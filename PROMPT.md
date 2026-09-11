@@ -16,6 +16,8 @@ Build **Graft**, a terminal Git client that works with both keyboard and mouse. 
 - be the easiest Git tool to learn
 - be reliable enough to trust with production repositories
 
+**Platforms:** macOS and Linux. **Windows is an explicit non-goal for v1** and nothing in the plan pays for it: no Windows CI, no Windows Terminal in the manual checklist, no path, PTY or line-ending special cases carried "just in case". Keep the platform-specific code behind the module boundaries in section 6 so Windows stays *possible* later, but do not claim it, test it or block on it.
+
 ## Why this exists (every decision follows from this)
 
 Terminal clients such as lazygit, tig and gitui draw history as a thin line of ASCII characters, or leave it out. That hides the most useful thing a Git GUI shows: the *shape* of history. In Sublime Merge you can see a bad merge straight away: main merged into a feature branch, an accidental `git pull` merge, a foxtrot merge that rewrites main's first-parent line, or a merge that slips in unrelated changes. Graft must make those mistakes obvious, easy to understand and easy to recover from.
@@ -69,6 +71,7 @@ Graft detects which tier to use automatically. The user can override it with `gr
 **Tier 1: Pixel.** For terminals with the Kitty graphics protocol (Kitty, Ghostty, WezTerm), iTerm2 inline images, or Sixel.
 
 - **Drawing:** anti-aliased lines, smooth Bézier curves where branches fork and merge, and circular commit nodes with distinct ring styles.
+- **Transparency:** render strips with a real alpha channel and never paint the background into them. Many users run a translucent or blurred terminal background, and `OSC 11` reports an opaque colour that ignores alpha, so a baked-in background would punch opaque rectangles through their translucency. Let the terminal composite.
 - **Cell size:** draw at the terminal's real cell size in pixels. Query it with `CSI 16 t` or `TIOCGWINSZ`, and fall back sensibly if neither answers.
 - **Alignment:** each image row must line up exactly with its text row, with no tearing or lag while scrolling.
 - **Caching:** render in strips the size of the viewport. Cache them by row range, layout hash, theme and cell size, and redraw only when one of those changes.
@@ -87,7 +90,9 @@ Graft detects which tier to use automatically. The user can override it with `gr
 The layout engine is a **pure library crate** with no terminal code, so it can be tested and benchmarked in isolation.
 
 - **One commit per row.** Topological order by default, with date order and first-parent-only as options.
-- **Stable lanes.** The first-parent chain of each branch stays in one straight column for its whole life. The trunk sits in lane 0 and is always straight. Trunk means `main`, `master`, `trunk` or `develop` by default, configurable.
+- **Stable lanes.** The first-parent chain of each branch stays in one straight column for its whole life. The **default branch** sits in lane 0 and is always straight.
+  - The default branch is a repo's main line of history: the branch everything else grows out of and merges back into. Detect it by this **ordered** precedence, resolved once per repo and cached: (1) `origin/HEAD` if it resolves, (2) `init.defaultBranch` from git config, (3) the first existing of `main`, `master`, (4) otherwise the branch with the most first-parent merge targets. Always overridable per repo in config.
+  - An **integration branch** is a long-lived branch that collects work but is not the default branch, such as `develop` or a `release/*` line. It gets a stable lane adjacent to lane 0 and never competes for lane 0.
 - **Lane reuse.** A lane freed when a branch ends can be reused, but never on the same row that frees it, so the picture stays unambiguous.
 - **Compact output.** Keep line crossings and total graph width to a minimum. When too many branches run in parallel, compress them behind a `+N` indicator that expands on demand.
 - **Invariants,** enforced with property tests:
@@ -131,7 +136,7 @@ The layout engine is a **pure library crate** with no terminal code, so it can b
 **Folding**
 
 - Collapse a merged branch's commits into its merge commit, and expand it again.
-- A "first-parent view" gives a clean trunk-only history.
+- A "first-parent view" gives a clean default-branch-only history.
 - Stashes can be shown in or hidden from the graph.
 
 ### 1.4 Mistake Radar (signature feature)
@@ -140,13 +145,13 @@ Detect the following problems and mark each with a small, calm marker in the gra
 
 | Pattern | Detection | Default severity |
 |---|---|---|
-| **Backward merge** | Trunk merged *into* a feature branch | info (configurable, since some teams do this on purpose) |
-| **Foxtrot merge** | A merge on trunk whose first parent is not the previous trunk tip, so trunk's first-parent history was rewritten (usually by pulling on trunk and then pushing) | warning |
+| **Backward merge** | The default branch merged *into* a feature branch | info (configurable, since some teams do this on purpose) |
+| **Foxtrot merge** | A merge on the default branch whose first parent is not the previous tip of that branch, so its first-parent history was rewritten (usually by pulling on the default branch and then pushing) | warning |
 | **Accidental pull merge** | `Merge branch 'x' of <remote>`: a branch merged with its own remote copy | info |
-| **Evil merge** | A merge that introduces changes found in neither parent. Show them with `git show --remerge-diff` | warning |
-| **Duplicate commits** | The same patch-id on several branches, left behind by cherry-picks or rebases. Link the copies together | info |
-| **Force-pushed remote** | The remote-tracking tip is not a descendant of its previous value (check the remote ref's reflog) | warning |
-| **Risky state** | Detached HEAD, unpushed commits on trunk, a branch with no upstream | info |
+| **Evil merge** | A merge that introduces changes found in neither parent. Show them with `git show --remerge-diff`. **Computed lazily, only for the selected merge** — re-merging every merge in a repo costs minutes of CPU. Until computed, the marker reads "unchecked" | warning |
+| **Duplicate commits** | The same patch-id on several branches, left behind by cherry-picks or rebases. Link the copies together. **Bounded:** computed off-thread, only across visible refs and within a capped commit window — patch-id over full history diffs every commit | info |
+| **Force-pushed remote** | The remote-tracking tip is not a descendant of its previous value (check the remote ref's reflog). The reflog is empty in a fresh clone, so when there is no history to check, say **"not checkable in this repo"** — never report absence as if it were verified | warning |
+| **Risky state** | Detached HEAD, unpushed commits on the default branch, a branch with no upstream | info |
 
 Each marker has two actions:
 
@@ -206,15 +211,18 @@ It must stay usable at 80×24. Split sizes can be changed with the mouse or keyb
 
 **Mouse**
 
+Keyboard-first, mouse fully supported: every action is reachable from the keyboard and no feature is mouse-only, but every mouse affordance below is first-class.
+
+- **Never send `XTSHIFTESCAPE` with `n=1`.** Terminals reserve `Shift`+drag to bypass mouse capture and do native text selection; requesting that `Shift` be delivered to the application instead would take the user's ability to select and copy text out of Graft.
 - click to select; double-click to open; right-click for a context menu
 - the scroll wheel works on every scrollable area; drag dividers to resize
 - **Drag and drop:** drag a branch badge onto a commit or another branch. A menu offers Merge into…, Rebase onto…, Reset to here and Cherry-pick, each with a Ghost Preview.
 
 **Keyboard**
 
-- Arrow keys and vim keys (`j/k/h/l`, `g/G`, `/` to search).
+- **Mnemonic-first.** Single-letter actions are mnemonic (`c` commit, `m` merge, `s` stage) and always listed in the hint bar. This is the organising principle: the hint bar teaches the tool, which is what "the easiest Git tool to learn" requires.
+- Arrows navigate. Vim navigation keys (`j/k/h/l`, `g/G`, `/` to search) are **additional** bindings for movement only, never the primary grammar. Where a vim key and a mnemonic collide, the mnemonic wins.
 - `Tab`/`Shift-Tab` move between panes, `Enter` drills in and `Esc` backs out.
-- Single-letter actions are mnemonic and listed in the hint bar.
 - `?` opens context help.
 - Every binding can be remapped.
 
@@ -231,9 +239,16 @@ It must stay usable at 80×24. Split sizes can be changed with the mouse or keyb
 
 **Undo and redo** (`Ctrl+Z` / `u`, redo with `Ctrl+Shift+Z` / `U`)
 
+This is Graft's headline safety feature, not plumbing. The tools it competes with cannot undo a discard, cannot undo a pull, and leave users unable to tell what is undoable at all. Graft's answer is an explicit, browsable journal — treat it as a differentiator and design it accordingly.
+
+`Ctrl+Z` is `SIGTSTP` (suspend) in a terminal. Graft captures it for undo by default, because undo is where every user reaches for that key. Restore suspend with `keys.suspend_on_ctrl_z = true`.
+
 - Undo reverses the last Graft operation: commit, amend, merge, rebase, reset, branch delete, discard, stash drop and so on.
 - Before each operation, Graft records ref states in an operation journal.
-- Before any operation that destroys working-tree content, it also saves a snapshot with `git stash create` under `refs/graft/backup/<timestamp>`.
+- Before any operation that destroys working-tree content, it also saves a snapshot under `refs/graft/backup/<timestamp>`.
+  - **`git stash create` is not sufficient on its own: it silently omits untracked files.** It has no `-u` flag, and passing one is accepted as the stash *message*, so it exits 0 and returns a valid commit containing none of the untracked work. Discarding a new file this way is unrecoverable.
+  - Back untracked content up explicitly (write blobs with `git hash-object -w` and record them in the backup tree) so the snapshot covers tracked *and* untracked files.
+  - Cover this with a test: create an untracked file, discard it, undo, and assert the contents come back byte-for-byte.
 - The journal is browsable, and each entry can be reverted.
 
 **Long operations** (fetch, push, clone, rebase)
@@ -253,13 +268,14 @@ It must stay usable at 80×24. Split sizes can be changed with the mouse or keyb
 - Helpers for sign-off and co-authors; commit templates are respected; message history.
 - An option to open `$EDITOR` instead.
 
-## 4. Feature scope (match Sublime Merge)
+## 4. Feature scope (equal or better than Sublime Merge)
+
+Sublime Merge is the **floor**, not the target. Match its core workflows and beat it on safety and discoverability — the undo journal, Ghost Preview, Mistake Radar and the always-visible hint bar are where Graft is meant to be better. Do not chase parity on things Sublime Merge itself does not do well; see *Deferred* at the end of this section.
 
 **Repositories**
 
 - Open from the current directory or with `graft [path]`; init; clone with progress; recent repos.
-- Several repos open at once in tabs.
-- A worktree switcher; submodules (view, update, open as a tab).
+- Submodules appear in the sidebar and can be opened. *(Deferred: multiple repos in tabs; the worktree switcher; submodule update/sync.)*
 - Bare repos open read-only; shallow clones are handled.
 
 **Working changes**
@@ -339,21 +355,31 @@ It must stay usable at 80×24. Split sizes can be changed with the mouse or keyb
 
 **Also**
 
-- Visual bisect: mark commits good or bad in the graph.
-- LFS awareness (pointer files, locks); sparse-checkout awareness; co-author display.
+- Co-author display.
 - Open a commit or PR in the browser, with the URL worked out from the remote. This makes no network calls of its own.
+
+**Deferred (stretch goals, not v1 promises)**
+
+These are recorded in `KNOWN_GAPS.md` from day one rather than carried as promises. Each is either something Sublime Merge does not do either, or something the primary user does not use. Do not build them without asking; do not let a milestone claim "done" while implying they exist.
+
+- Visual bisect
+- Worktree switcher (opening a worktree directly still works: it looks like a normal repo)
+- LFS awareness beyond what the user's own git filters already do
+- Sparse-checkout awareness
+- Several repos open at once in tabs
 
 ## 5. Visual design system
 
 - **Identity:** original, calm and high-signal. The interface chrome stays in the background; the graph and diffs stand out. Dense, but with room to breathe.
 - **Colour tokens:** `bg`, `surface`, `surface-raised`, `border`, `text`, `text-muted`, `accent`, `added`, `removed`, `warning`, `info`, `lane-1…12`.
   - Ship dark, light and high-contrast themes.
-  - Pick the theme automatically from the terminal background (query it with OSC 11), with a manual override.
+  - Pick the theme automatically from the terminal background (query it with OSC 11), with a manual override. Note `OSC 11` reports an opaque colour even on a translucent background, so treat the result as a light/dark hint, not as a colour to paint with.
+  - **The lane palette is independent of the UI theme.** Themes restyle chrome; lanes keep their own validated, colourblind-safe hues in every theme. A theme must never be able to make two adjacent lanes indistinguishable.
   - Honour `NO_COLOR`.
 - **Colour depth:** use truecolor, and fall back to 256 and then 16 colours using perceptual nearest-colour mapping (not naive rounding).
 - **Hierarchy in monospace:** use weight, dim, italic (where supported), case, spacing and strict column alignment, not colour alone.
 - **Borders:** thin and rounded. The focused pane gets an accent border and a stronger title; unfocused panes dim slightly.
-- **Icons:** plain Unicode by default. Nerd Font icons are opt-in (`ui.icons = "nerd"`); a patched font is never required.
+- **Icons:** plain Unicode by default. Nerd Font icons are opt-in (`ui.icons = "nerd"`); a patched font is never required. The **shipped default must be designed and snapshot-tested on an unpatched font**, not built with Nerd Font glyphs and then downgraded. Nerd Font detection is unreliable (there is no query for it), so never auto-enable it: the plain tier is the one every user sees first, and it has to look deliberate on its own.
 - **Diffs**
   - soft tints on added and removed lines, a stronger tint on changed words
   - a line-number gutter; hunk headers that stay pinned while scrolling
@@ -466,7 +492,19 @@ Tests run on the developer's laptop while they're using it. **The suite must nev
    - conflicting rebases, submodules, worktrees, LFS pointers
 
    Mistake Radar must flag exactly the fixtures it should, and nothing else.
-3. **Screen snapshots** with `TestBackend` for every main view at 80×24, 120×40 and 200×60, in dark and light themes. Also keep PNG snapshots of the pixel graph.
+
+   **The test corpus is named, scripted and reproducible.** It is not "the developer's own repos": those are not reproducible, not shareable and, in this project's case, contain no merges and no tags at all, which would make the graph and Mistake Radar checkpoints unfalsifiable. The corpus is:
+
+   | Corpus | What it proves | Tier |
+   |---|---|---|
+   | Scripted synthetic fixtures (`git fast-import`) | **Correctness.** Every graph invariant and every Mistake Radar pattern, with a known-right answer to assert against | Fast |
+   | `git/git`, cloned with `--filter=tree:0` | **Human proof.** Real, messy, merge-heavy history that a person can eyeball. Roughly 80k commits with thousands of merges and tags | Heavy / manual |
+   | A small real repo with linear history and no merges | **The trivial case.** Proves the graph still looks deliberate when there is nothing to draw | Fast |
+
+   The Linux kernel repo stays where 7.1 puts it: manual tier only, never downloaded automatically.
+3. **Screen snapshots** with `TestBackend` for every main view at 80×24, 120×40 and 200×60, in dark and light themes.
+   - For the pixel graph, snapshot the **rasterised RGBA buffer at a fixed synthetic cell size** (say 8×16), not a PNG of a real terminal. Real cell sizes vary by font, font size and display scaling, so a PNG taken on one machine fails everywhere else for reasons that have nothing to do with the code. Assert on the buffer's bytes (or a perceptual hash of them) with the cell size pinned by the test.
+   - Cover terminal-reported cell geometry separately, as a unit test of the `CSI 16 t` / `TIOCGWINSZ` parsing and the fallbacks, including terminals that report nothing.
 4. **Every write operation:**
    - run it through `ops` on a temporary repo
    - check that the resulting refs, index and worktree match what the equivalent git CLI produces
@@ -474,12 +512,13 @@ Tests run on the developer's laptop while they're using it. **The suite must nev
 5. **Fuzzing** of the diff, porcelain and blame parsers with `cargo-fuzz`, time-limited as described in 7.1.
 6. **CI on GitHub Actions** (once the project has a GitHub repo). Heavier runs belong here, not on the laptop.
    - checks: `cargo fmt --check`, `clippy -D warnings`, the fast and heavy test tiers, benchmarks
-   - platforms: macOS, Linux and Windows
+   - platforms: macOS and Linux
    - git versions: the oldest supported and the latest
 7. **Manual terminal checklist** in `TESTING.md`, to be run before each release:
-   - Ghostty, Kitty, WezTerm, iTerm2
-   - Terminal.app, Alacritty, the VS Code terminal, Windows Terminal
-   - inside tmux, and over SSH
+   - **Pixel tier must pass:** Ghostty, Kitty, WezTerm, iTerm2
+   - **Unicode tier must look deliberate:** Terminal.app, Alacritty, the VS Code terminal
+   - **Must degrade, not break:** inside tmux, and over SSH. tmux's graphics passthrough depends on the tmux version, `allow-passthrough` and the outer terminal, so the pass condition inside tmux is *either* a correct pixel graph *or* a clean fall back to the Unicode tier — never a broken screen or stray escape sequences. Detect tmux and pick the tier deliberately rather than hoping passthrough works.
+   - Windows terminals are out of scope (see Mission).
 
 ## 8. Delivery plan (milestones)
 
@@ -497,27 +536,36 @@ Don't start the next milestone while any test is failing.
 | **M0** | Foundations | Workspace, terminal setup and teardown, panic hook, capability detection, theme tokens, config, event loop, job runner, open repo |
 | **M1** | **The graph** (read-only, best-in-class) | Build the fixtures first, then the layout engine and all three renderers, ref badges, selection, ancestry highlighting, folding, hover, search, virtualized scrolling, performance budgets. *Put most of the design effort here.* |
 | **M2** | Details and diffs | Commit detail pane, file tree, unified and side-by-side diffs, word diffs, syntax highlighting, compare any two commits, Mistake Radar detection and Explain |
-| **M3** | Working tree | Status, file/hunk/line staging, discard with backup, commit and amend, the commit editor, **undo journal** |
-| **M4** | Branching and rewriting | Branches, tags, checkout, merge, rebase, cherry-pick, revert, reset, drag and drop, **Ghost Preview**, Mistake Radar Fix actions |
-| **M5** | Conflicts | Three-pane resolver, operation banners, recovery on relaunch |
-| **M6** | Remotes | Fetch, pull and push with progress, in-app authentication, clone, managing remotes |
-| **M7** | Power tools | Interactive-rebase editor, stash, blame, file and line history, reflog, bisect, worktrees, submodules, branch comparison |
-| **M8** | Polish and ship | Themes, keybinding help and remapping, first-run tour, docs, man page, `cargo install`, Homebrew tap, release binaries via `cargo-dist` |
+| **M3** | Working tree, undo and **stash** | Status, file/hunk/line staging, discard with backup, commit and amend, the commit editor, **undo journal**, stash save/apply/pop/drop |
+| **M4** | **Remotes** | Fetch, pull and push with progress, in-app authentication, clone, managing remotes |
+| **M5** | Branching and rewriting | Branches, tags, checkout, merge, rebase, cherry-pick, revert, reset, drag and drop, **Ghost Preview**, Mistake Radar Fix actions |
+| **M6** | Conflicts | Three-pane resolver, operation banners, recovery on relaunch |
+| **M7** | Power tools | Interactive-rebase editor, blame, file and line history, reflog, submodule display, branch comparison |
+| **M8** | Polish, **final name** and ship | Themes, keybinding help and remapping, first-run tour, docs, man page, `cargo install`, Homebrew tap, release binaries via `cargo-dist` |
+
+**Why this order.** The milestones are ordered by *how often the primary user does the thing*, not by how hard it is to build. Fetch, pull, push, merge, conflict resolution, stash and cherry-pick are all daily work, so none of them may sit behind six milestones of machinery. Stash moves next to staging because they are the same reflex (put this aside), and remotes move ahead of history rewriting because fetching and pushing are more frequent, and lower risk, than rebasing.
+
+**M5 ships without a conflict resolver.** Merge and rebase can produce conflicts one milestone before M6 builds the three-pane resolver. M5 must therefore ship an honest interim: detect the conflicted state, show which files conflict, and hand off to the user's configured `git mergetool` or editor, with the operation banner and Abort always available. **Record this in `KNOWN_GAPS.md` with M6 named as its expiry**, and never let M5 claim conflict resolution is done.
 
 ## 9. Definition of done
 
 - The heavy tier's 100k-commit repo meets the performance and memory budgets. In the manual check (7.1), opening the Linux kernel repo paints the first screen in 500 ms or less, and scrolling to the bottom stays smooth.
-- In Ghostty, Kitty, WezTerm and iTerm2, the graph renders as anti-aliased curves lined up with the text rows, with no smearing while scrolling. In Terminal.app, the Unicode tier looks deliberately designed.
+- On `git/git` (the named human-proof corpus in 7.2), the history shape is legible without zooming, panning or squinting: lanes stay distinguishable, the default branch is straight, and merges read as merges.
+- In Ghostty, Kitty, WezTerm and iTerm2, the graph renders as anti-aliased curves lined up with the text rows, with no smearing while scrolling. In Terminal.app, the Unicode tier looks deliberately designed. Inside tmux, the chosen tier renders cleanly, whichever tier that is.
+- On a translucent terminal background, the graph's own background stays translucent: no opaque rectangles behind the lanes.
 - The foxtrot-merge fixture is flagged in the graph, and Explain highlights the rewritten first-parent line.
 - Every write operation can be undone. Killing Graft with `kill -9` mid-rebase leaves a state that git recognises, and on relaunch Graft offers Continue or Abort.
 - A new user can do all of the following without reading docs, using only the hint bar and the command palette:
   - stage a single hunk
   - commit
+  - stash the rest and bring it back
   - create a branch
   - merge it with a Ghost Preview
+  - resolve a conflict
   - push
 - No stray characters remain in the terminal after quitting or crashing.
-- Zero clippy warnings, and all tests pass on all three operating systems.
+- Every deferred item in section 4 is listed in `KNOWN_GAPS.md`, and nothing in the README or the first-run tour implies it exists.
+- Zero clippy warnings, and all tests pass on macOS and Linux.
 
 ## 10. How to work with me
 
