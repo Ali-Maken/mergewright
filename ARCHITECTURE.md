@@ -1,0 +1,125 @@
+# Graft: Architecture
+
+A one-page map of the crates: what each one owns, what it may depend on, and
+where to start reading. Read this before adding a module or moving code
+between crates — and update it in the same ticket if that ticket changes the
+crate map. The full reasoning behind every choice here is
+[`DESIGN.md` §7](DESIGN.md#7-architecture); this file is the short version.
+
+"Graft" is a codename (see `CLAUDE.md`). Domain vocabulary — lane, default
+branch, rendering tier, Ghost Preview, Mistake Radar, marker, ref badge,
+operation, undo journal, Command Log, job — is fixed in `CONTEXT.md`; this
+file uses those terms rather than redefining them.
+
+## The shape
+
+A pure core, a thin shell (PROMPT.md §6.1). The parts that *decide* — graph
+layout, diff/porcelain parsing, Mistake Radar, undo planning, `update` — are
+plain functions: data in, data out, no terminal, no filesystem, no clock, no
+threads. Only the outer layer touches any of those. Data flows one way:
+
+```
+Event ──▶ update(state) ──▶ (new state, [Command]) ──▶ view(state)
+```
+
+`update` never does I/O; it returns `Command`s. The job runner executes each
+`Command` off the UI thread as a cancellable `Job` and reports the result back
+as an `Event`. The UI thread only ever waits on the next `Event` — never on a
+`Job` — which is why input stays responsive during a two-minute fetch.
+
+## Where to start reading
+
+- **Changing how history is drawn** (lanes, compaction, a new rendering tier)
+  → `graph`. Start at `DESIGN.md` §3 for the algorithm.
+- **Changing what Graft reads from a repo** (status, log, diff parsing) →
+  `git`. Its `RepoReader` seam has a `gix` adapter and a `git2` fallback.
+- **Changing what a write operation does, or how undo works** → `ops`. Start
+  at `DESIGN.md` §5.
+- **Changing terminal detection or an image protocol** → `term`. Start at
+  `DESIGN.md` §4.
+- **Changing a screen or a keybinding** → `ui` for the widget, `app` for the
+  key-to-`Command` mapping. Start at `DESIGN.md` §1–§2.
+- **Adding a new kind of `Command` or wiring a new job** → `app`. It's the
+  only crate allowed to see every other crate, and `update` and the job
+  runner both live there.
+
+## The crates
+
+| Crate | Owns | May depend on |
+|---|---|---|
+| `core` | Domain types with no I/O: commit and ref identity, events, the record shapes other crates read and write, errors for its own parsing | nothing internal |
+| `graph` | The pure layout engine and the pixel/Unicode/ASCII renderers | `core` |
+| `git` | Repository reads (`gix`, `git2` fallback), the typed git command runner, output and diff parsers | `core` |
+| `ops` | Operations, the undo journal, Mistake Radar detection, Ghost Preview planning | `git`, `core` |
+| `term` | Terminal capability detection, image-protocol encoding, escape-sequence sanitising | `core` |
+| `ui` | Widgets, screen layout, theme, view models | `graph`, `term`, `core` |
+| `app` | The binary: event loop, `AppState`, `update`, the job runner, config, wiring | everything |
+
+As layers — each row may depend only on row(s) above it:
+
+```
+core
+graph   git   term        (each: + core)
+        ops                (+ git, core)
+ui                          (+ graph, term, core)
+app                          (+ everything above)
+```
+
+`graph`, `git` and `term` are siblings and may not depend on each other. `ui`
+never imports `git` or `ops`: every screen renders from a plain view model
+`app` assembles, not from a live repository handle.
+
+## Shared types worth knowing where they live
+
+A few types read naturally as part of one crate's algorithm but, checked
+against the table above, can only compile in `core` — because two crates that
+may not depend on each other both need them. The full list and reasoning is
+`DESIGN.md` §7.2; the ones that come up most:
+
+- `Commit`, `Oid`, `CommitId`, `RefName` — produced by `git`, consumed by
+  `graph`, `ops` and `ui`.
+- `MistakeRadarKind` — produced by `ops::MistakeRadar`, attached to a
+  `graph::Row` as plain input data (`graph` never calls into `ops`), rendered
+  by `ui`.
+- `Capabilities`, `RenderingTier` — detected by `term`, consumed by `graph`'s
+  renderer choice and `ui`'s diagnostics.
+- `RasterFrame` — `graph`'s pixel renderer output; `term` encodes it into
+  Kitty/iTerm2/Sixel bytes. Drawing and protocol-encoding are deliberately two
+  different crates.
+- `JournalEntry`, `OperationKind` — written by `ops::UndoJournal`, read by
+  `app` to build the undo journal browser's view model for `ui`.
+
+`Command` is the one exception: it is **not** a `core` type, even though it
+carries `Event`s' name in PROMPT.md §6.1. A command like "run this fetch" has
+to name a `git::GitInvocation`; `core` can't depend on `git`. `Command` lives
+in `app`, the only crate that can see what it needs to name.
+
+## Dependency rule and enforcement
+
+Cargo rejects cycles, which stops the graph above from ever growing a loop.
+It does **not** stop a new acyclic edge that breaks the intended layering —
+`ui` adding `git` as a dependency compiles fine and violates the rule anyway.
+`DESIGN.md` §8 proposes an explicit test (parse `cargo metadata`, assert the
+edge set above exactly) so a stray dependency fails the fast tier instead of
+waiting for review.
+
+## Keeping crates deep
+
+Every crate here should be checkable against one question: can a caller get
+everything they need through the handful of functions it exposes, without
+reaching into its internals? `graph::layout` is the model case — one call
+replaces lane assignment, compaction and incremental checkpointing. Where a
+crate needs more than one concrete implementation of something (`git`'s
+`gix`/`git2` readers, `term`'s per-protocol encoders), that split is an
+*internal* seam, private to the crate — not a reason to widen its public
+interface. Default to `pub(crate)`; a type becomes `pub` only when another
+crate in the table actually needs it.
+
+## Elsewhere
+
+- `DESIGN.md` — the full design: view mockups, keymap, the graph layout
+  algorithm, terminal-capability detection, the undo journal, this
+  architecture in more detail, and proposed deviations from PROMPT.md.
+- `CONTEXT.md` — the glossary. Use its terms, not synonyms.
+- `docs/adr/` — decision records, one per significant choice.
+- `KNOWN_GAPS.md` — everything unfinished, stubbed or deferred.
