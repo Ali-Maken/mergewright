@@ -4,20 +4,20 @@
 
 Open this folder in Claude Code on **Opus** and run `/conduct`. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** 0. Setup
+**Current step:** 1. Decisions interview
 
 ---
 
 ## Phase A: Setup and decisions
 
-- [ ] **0. Setup** (You)
-  - [ ] Install Rust: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`, then check with `rustc --version`
-  - [ ] Claude Code installed and signed in, and **Fable** available on your plan
-  - [ ] Ghostty or iTerm2 installed, for the pixel graph
-  - [ ] `git --version` shows 2.38 or later (`brew install git` if it's older)
-  - [ ] In your terminal: `claude plugins install mattpocock-skills`
-  - [ ] Open this folder in Claude Code and run `/setup-matt-pocock-skills`. When asked where issues live, choose **local markdown**. Then commit.
-  - [ ] Have 2–3 of your messiest real repos ready for testing
+- [x] **0. Setup** (You)
+  - [x] Install Rust: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`, then check with `rustc --version`
+  - [x] Claude Code installed and signed in, and **Fable** available on your plan
+  - [x] Ghostty or iTerm2 installed, for the pixel graph
+  - [x] `git --version` shows 2.38 or later (`brew install git` if it's older)
+  - [x] In your terminal: `claude plugins install mattpocock-skills`
+  - [x] Open this folder in Claude Code and run `/setup-matt-pocock-skills`. When asked where issues live, choose **local markdown**. Then commit.
+  - [x] Have 2–3 of your messiest real repos ready for testing
 
 - [ ] **1. Decisions interview** (You, with Opus, in the main session). Run:
   > /grill-with-docs Read PROMPT.md. Interview me one question at a time about decisions only I can make: which workflows I use daily versus rarely, keybinding style, Mac-only or cross-platform, mouse versus keyboard priority, trunk branch names, personal or open-source, and anything in the spec you think is wrong or risky. Already decided: Rust, tickets in local files, the conductor stops at checkpoints, Fable as planned, and the real name is chosen in M8. Don't add features. Propose PROMPT.md edits for my approval.

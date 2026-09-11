@@ -30,3 +30,13 @@
 - **Keep your context lean:** read what you need, not everything.
 - **Tests must be laptop-safe** (PROMPT.md 7.1). Builders run only the fast tier (`cargo test`). The heavy tier, fuzzing and benchmarks run only in milestone reviews.
 - **One heavy job at a time:** never run two cargo commands or test suites at once. Never generate large fixtures outside the heavy tier.
+
+## Agent skills
+
+### Issue tracker
+
+Local markdown: tickets live as files under `.scratch/<milestone-slug>/issues/NN-<slug>.md`. There is no remote. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
