@@ -60,7 +60,7 @@ Open this folder in Claude Code on **Opus** and run `/conduct`. It works through
 | [ ] | M7 Power tools | Sonnet (Opus for interactive rebase) | Interactive rebase, stash, blame, bisect |
 | [ ] | M8 Polish, **final name**, ship | Sonnet | Pick the name (below), then a fresh install and the first-run tour |
 
-**Name shortlist for M8:** Tributary (command `trib`) and Thicket passed the clash check on 2026-09-11. Graft is taken. Names built on "git" (such as "tergit") break Git's trademark policy.
+**Naming (an M8 job for Sonnet):** pick a name in the style of Sublime Merge or Araxis Merge, with no "git" in it (Git's trademark policy forbids "git" inside names like "tergit"). Starting shortlist: Tributary (command `trib`) and Thicket passed the clash check on 2026-09-11. Graft is taken.
 
 **Every 2–3 milestones** (after M2, M4 and M7), the conductor also runs `/improve-codebase-architecture`.
 
