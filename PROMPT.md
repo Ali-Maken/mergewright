@@ -630,5 +630,6 @@ Don't start the next milestone while any test is failing.
 
   **Then stop for my review.** Stop again after M1 so I can try the graph in my terminal.
 - Record every significant choice as an ADR (see CLAUDE.md).
+- Challenge this spec. If you see a better approach, or think something here is wrong, propose it with reasons in a "Proposed changes" section. Don't silently comply or silently deviate. I decide at the next checkpoint.
 - Never quietly stub a feature and call it finished. Say it plainly and list it in `KNOWN_GAPS.md`. Ask me before cutting scope.
 - Work in small, verified steps: run the tests and the app yourself, and check the snapshots after any visual change.

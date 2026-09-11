@@ -52,14 +52,6 @@ User wants clear + concise over grammar. Telegraphic style.
 - Questions: one line + short options.
 - Code and doc comments: readable, per PROMPT.md 6.2.
 
-## Design docs (DESIGN.md, ARCHITECTURE.md, ADRs)
-
-Short, plain, easy for a human to use. Not a showpiece.
-- Headings: one per main topic. Subheadings are fine where a topic genuinely has distinct parts, but most topics shouldn't need them. If most headings have subheadings under them, it's over-structured: flatten it.
-- Mockups, tables and lists beat paragraphs. Each topic: what it is, how it works, why, in a few lines.
-- No filler, no restating the spec, no decorative subtitles.
-- As short as possible while still complete. If a section can be cut without losing a decision, cut it.
-
 Example:
 ```
 M1 done. Graph renders, 3 tiers. Pixel ok in Ghostty.
@@ -67,3 +59,11 @@ Try: cargo run -- ~/code/api   (j/k scroll, / search)
 Gaps: hover tooltip → M2
 Next: M2, 9 tickets (.scratch/m2/). Approve? yes / change
 ```
+
+## Design docs (DESIGN.md, ARCHITECTURE.md, ADRs)
+
+Write for a human who wants to understand and use it quickly. Structure it however serves that. No filler.
+
+## Challenge the spec
+
+PROMPT.md is the brief, not gospel. If you see a better approach, or think part of it is wrong, say so. Put it in a **Proposed changes** section (in DESIGN.md, or in your report) with the reasons and trade-offs. Don't silently comply and don't silently deviate. The user approves or rejects at the next checkpoint; approved changes become ADRs and spec edits.
