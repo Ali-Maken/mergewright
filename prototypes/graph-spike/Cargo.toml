@@ -1,0 +1,17 @@
+[package]
+name = "graph-spike"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Throwaway prototype (PROGRESS.md step 3): pixel graph alignment + scrolling"
+
+# Deliberately its own workspace root: the spike must never join the main
+# workspace or its build/lint gates (CLAUDE.md scopes those to code outside
+# prototypes/).
+[workspace]
+
+[dependencies]
+base64 = "0.22"
+crossterm = "0.28"
+libc = "0.2"
+png = "0.17"
