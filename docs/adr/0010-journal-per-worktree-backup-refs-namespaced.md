@@ -25,3 +25,15 @@ need a linked-worktree fixture test: record an operation in a linked
 worktree, assert the journal lands under `.git/worktrees/<name>/graft/`,
 assert the other worktree's journal doesn't see the entry, and assert the
 backup ref carries the right `<worktree>` segment.
+
+## Correction (2026-09-12, review R2-2)
+
+The `<timestamp>` segment collides: ADR-0009 made snapshots frequent, two
+inside the same tick write the same ref name, and the second update
+silently orphans the first snapshot's objects — gc-able lost work. The
+scheme is corrected to `refs/graft/backup/<worktree>/<ulid>`, where
+`<ulid>` is the owning `JournalEntry.id` (already unique and sortable).
+Nothing else changes: `backup_ref` records the exact name, the
+`<worktree>` namespacing above stands, and the M3 fixture test asserts
+the `<worktree>` segment as before. Read `<timestamp>` in this ADR's
+decision text as superseded by `<ulid>`.

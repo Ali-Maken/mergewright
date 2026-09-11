@@ -1141,12 +1141,17 @@ only place allowed to run a write operation.
   to the repo's own history, human-readable enough to inspect by hand if
   something goes wrong.
 - **Backup content:** real git objects under
-  `refs/graft/backup/<worktree>/<timestamp>`, created before any operation
+  `refs/graft/backup/<worktree>/<ulid>`, created before any operation
   that touches the working tree (§6.3). Refs, unlike the journal, are
   shared across every worktree of a repo, so the `<worktree>` segment —
   `main` for the main worktree, the directory name under
   `.git/worktrees/` for a linked one — keeps two worktrees' backups from
-  colliding and says where each came from (ADR-0010). A backup ref keeps
+  colliding and says where each came from (ADR-0010). The `<ulid>`
+  segment is the owning journal entry's `id` — unique by construction, so
+  two snapshots taken in the same second can never write the same ref
+  name (a timestamp there could, and the second write would silently
+  orphan the first snapshot's objects) — and the name alone links a
+  backup back to its journal entry. A backup ref keeps
   its objects reachable for ordinary `git gc`, so no extra pinning
   mechanism is needed while the ref exists.
 
@@ -1163,7 +1168,7 @@ JournalEntry {
     index_before: Option<Oid>,       // pre-op index tree
     index_after: Option<Oid>,        // post-op index tree, recorded with the Committed record
     worktree_after: Option<Oid>,     // post-op combined tree (§6.3 hashing), for §6.7's comparison
-    backup_ref: Option<RefName>,     // refs/graft/backup/<worktree>/<timestamp>, set for any op
+    backup_ref: Option<RefName>,     // refs/graft/backup/<worktree>/<ulid>, set for any op
                                      //  that touched the working tree (§6.3)
     reverses: Option<Ulid>,          // set on an undo/redo entry: which entry it reverses
 }
@@ -1202,7 +1207,8 @@ and clean — and before any undo whose inverse rewrites the working tree
 2. For every untracked file in scope, `git hash-object -w` its contents into
    a blob and add it to that tree at its path (ignored files too, when the
    operation in question would also remove them).
-3. Commit that combined tree under `refs/graft/backup/<worktree>/<timestamp>` — one
+3. Commit that combined tree under `refs/graft/backup/<worktree>/<ulid>`
+   (the `<ulid>` being the owning journal entry's `id`, §6.1) — one
    object graph that represents tracked *and* untracked content as it stood
    immediately before the operation.
 

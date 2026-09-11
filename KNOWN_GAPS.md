@@ -39,6 +39,30 @@ until the milestone that needs them.
 | Rebase with a dirty tree (review N3) | DESIGN.md never says whether Graft surfaces git's refusal or offers `--autostash`. Decide in M5's design; if autostash, the popped stash needs DESIGN.md §6.3's untracked-safe snapshot handling, not a bare `git stash` | M5 |
 | 50k+ refs in the sidebar and ref badges (review N4) | PROMPT.md §6.3 requires handling repos with 50k+ refs; branch-tree filtering, badge lookup and ranking at that scale are undesigned. Validate in M1's performance pass, not assumed free | M1 |
 
+## Design gaps (step 2 review round 2, 2026-09-12)
+
+Named in `docs/reviews/step-2-design-round-2.md`. (R2-2, backup-ref naming,
+is already fixed in DESIGN.md §6 and ADR-0010 — not a gap.)
+
+**REQUIRED M1 TICKET — R2-1: post-promotion checkpoint state on the
+no-commit-graph path.** Whoever drafts M1's tickets must create a ticket for
+this; it is not optional polish. DESIGN.md §3.2/§3.6 never say what
+`walker_state` checkpoints contain after promotion on the fallback path. The
+naive reading — snapshot the fallback topo walker's in-degree state — is
+O(remaining history) per checkpoint: 100+ MB of checkpoints on the 100k
+no-commit-graph fixture, busting the heavy tier's 300 MB peak-memory gate
+(the exact configuration ADR-0008 orders that gate to run). Required fix, one
+or two sentences in §3.2/§3.6 plus the matching implementation: after the
+background walk completes, retain the emitted order as a compact commit-id
+list; post-promotion `walker_state` is an index into it, so checkpoints stay
+small on both paths and §3.1's "bounded by parallelism" annotation holds
+unconditionally. Expiry: **M1**.
+
+| Gap | What's needed | Expiry |
+|---|---|---|
+| Unconditional snapshot cost on high-frequency index ops (R2-3) | Every stage/unstage fires the full §6.3 snapshot (status walk, untracked hashing, commit object, backup ref, two journal lines), and §6.8's manual-only retention lets backup refs pile up at keystroke rate. Off-thread, so no UI block — but measure on the heavy fixture in M2; if staging lags on untracked-heavy repos, propose scoping (e.g. skip untracked hashing for ops that provably can't touch untracked files) as an ADR, never silently | M2 |
+| Commit-graph offer plumbing unspecified (R2-4) | §3.2's "declined, remembered" flag has no stated home — put it in a file under `git rev-parse --git-path graft/…`, per §6.1's rule. And `git commit-graph write --reachable` is a repo write, which §6 says only `ops` may run: route the offer through `ops`, journaled as an ordinary non-undoable entry or explicitly exempted | M2 |
+
 ## Scheduled interim states
 
 These are *temporary*. Each one is a real gap between the milestone that creates
