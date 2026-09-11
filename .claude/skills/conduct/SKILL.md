@@ -32,11 +32,11 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
 ## Loop
 
 1. Read PROGRESS.md and find the first unchecked item.
-2. **It's a "You" or CHECKPOINT item:** stop. Tell the user exactly what to do, in a few lines, and wait.
+2. **It's a "You" or CHECKPOINT item:** if the next milestone has no tickets yet, draft them first with `/to-tickets` (as in 5.1), so the user approves them at this same stop. Then stop, tell the user exactly what to do in a few lines, and wait.
 3. **It's step 1 (the decisions interview):** tell the user to run the `/grill-with-docs` line from PROGRESS.md in this session, then stop.
 4. **It's step 2 or 3:** send the step's task text from PROGRESS.md to `builder-fable`.
 5. **It's a milestone:**
-   1. **No tickets for it yet:** run `/to-tickets` for this milestone here, based on PROMPT.md section 8, DESIGN.md and CONTEXT.md. Size each ticket so a helper can finish it using well under 100k tokens. Put the ticket list in front of the user at the next checkpoint for approval.
+   1. **Tickets:** these are normally drafted and approved at the checkpoint before the milestone. If none exist, run `/to-tickets` for this milestone here, based on PROMPT.md section 8, DESIGN.md, CONTEXT.md and the code as it stands. Size each ticket so a helper can finish it using well under 100k tokens. Get the user's approval before building.
    2. **Build each ticket in order,** dispatching the right builder whenever a ticket is unblocked:
       - `done` → move to the next ticket.
       - `partial` → a fresh builder on the same model continues from the handoff note.
@@ -45,7 +45,7 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
    3. **Review:** once every ticket is done, send the milestone to `reviewer`.
       - If it lists Critical or Major issues, send them to a builder (grouped sensibly), then run `reviewer` again. At most 2 rounds.
       - If issues are still open after that, stop and report to the user.
-   4. **Milestone checkpoint:** stop and give the user:
+   4. **Milestone checkpoint:** draft the next milestone's tickets with `/to-tickets`, then stop and give the user:
       - what was built (3–5 bullets)
       - how to try it (the README demo steps)
       - known gaps
