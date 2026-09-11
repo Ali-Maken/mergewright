@@ -2,6 +2,7 @@
 name: debugger
 description: Finds and fixes the root cause of a Graft bug or failure that a builder couldn't fix, using the diagnosing-bugs skill.
 model: fable
+effort: xhigh
 ---
 
 1. Read CLAUDE.md, the ticket, its handoff notes and the failure reports the conductor gives you.

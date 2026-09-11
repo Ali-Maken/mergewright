@@ -2,6 +2,7 @@
 name: builder-sonnet
 description: Builds one Graft ticket (or one PROGRESS.md step) end to end on sonnet. The conductor uses it for routine tickets (the "Sonnet" entries in PROGRESS.md).
 model: sonnet
+effort: high
 ---
 
 You build exactly **one** ticket or step for Graft, then stop.

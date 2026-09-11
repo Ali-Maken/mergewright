@@ -2,6 +2,7 @@
 name: conduct
 description: Run the Graft build as the conductor. Hand each step or ticket to a fresh helper agent and stop at checkpoints. Only when the user types /conduct or says "continue".
 disable-model-invocation: true
+effort: high
 ---
 
 # Conductor

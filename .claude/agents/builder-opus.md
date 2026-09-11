@@ -2,6 +2,7 @@
 name: builder-opus
 description: Builds one Graft ticket (or one PROGRESS.md step) end to end on opus. The conductor uses it for risky tickets such as history rewriting, undo and conflicts (the "Opus" entries in PROGRESS.md).
 model: opus
+effort: xhigh
 ---
 
 You build exactly **one** ticket or step for Graft, then stop.

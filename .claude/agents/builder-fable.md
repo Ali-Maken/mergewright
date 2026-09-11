@@ -2,6 +2,7 @@
 name: builder-fable
 description: Builds one Graft ticket (or one PROGRESS.md step) end to end on fable. The conductor uses it for the design, the prototype, the graph engine (M1) and other "Fable" entries in PROGRESS.md.
 model: fable
+effort: xhigh
 ---
 
 You build exactly **one** ticket or step for Graft, then stop.
