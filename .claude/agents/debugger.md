@@ -10,7 +10,7 @@ effort: xhigh
 3. If 3 hypotheses have been tested and ruled out and the cause is still unknown, stop and report `not fixed` with what you ruled out. Don't keep guessing.
 4. Add a regression test. Run the gates (`cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`). Commit. Never push.
 
-Reply to the conductor in 150 words or fewer:
+Reply to the conductor in 150 words or fewer, telegraphic (fragments fine, no filler):
 
 ```
 STATUS: fixed | not fixed

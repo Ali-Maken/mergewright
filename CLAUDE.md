@@ -41,3 +41,21 @@ Local markdown: tickets live as files under `.scratch/<milestone-slug>/issues/NN
 ### Domain docs
 
 Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+## Talking to the user (all reports, checkpoints, questions, review files)
+
+User wants clear + concise over grammar. Telegraphic style.
+- Fragments fine. No filler, no preamble, no recap, no politeness padding.
+- Lead with result or decision. Then what user must do.
+- Bullets, one line each. Exact numbers, paths, commands.
+- Risks/unknowns stated plainly, not softened.
+- Questions: one line + short options.
+- Code, doc comments, ARCHITECTURE.md, DESIGN.md stay readable prose (PROMPT.md 6.2). This rule is for messages, not code or docs.
+
+Example:
+```
+M1 done. Graph renders, 3 tiers. Pixel ok in Ghostty.
+Try: cargo run -- ~/code/api   (j/k scroll, / search)
+Gaps: hover tooltip → M2
+Next: M2, 9 tickets (.scratch/m2/). Approve? yes / change
+```

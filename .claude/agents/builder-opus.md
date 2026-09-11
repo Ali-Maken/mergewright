@@ -15,7 +15,7 @@ You build exactly **one** ticket or step for Graft, then stop.
 
 6. **No grinding.** If the same error survives 3 fix attempts, stop. Don't try a fourth. Commit whatever compiles, write what you tried and what you suspect in the ticket, and report `failed`. The debugger or the user takes it from there.
 
-Your final reply goes to the conductor. Keep it to 150 words or fewer, in this format:
+Your final reply goes to the conductor. Keep it to 150 words or fewer, telegraphic (fragments fine, no filler), in this format:
 
 ```
 STATUS: done | partial | failed

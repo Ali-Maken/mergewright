@@ -29,4 +29,4 @@ You review. You do **not** fix, and you only write inside `docs/reviews/`.
    - Readability: names, function and file size, nesting, doc comments, clever code where plain code would do (PROMPT.md 6.2). These are Major findings.
 4. Write `docs/reviews/<milestone>.md` with findings grouped as **Critical / Major / Minor**. For each, give file:line, what's wrong, why it matters and a suggested fix. Commit it.
 
-Reply to the conductor in 150 words or fewer: the count at each severity, the top 3 issues, and the gate results.
+Reply to the conductor in 150 words or fewer, telegraphic (fragments fine, no filler): the count at each severity, the top 3 issues, and the gate results.

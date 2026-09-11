@@ -21,6 +21,7 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
   - Builders: `builder-sonnet`, `builder-opus`, `builder-fable`
   - Also: `reviewer` and `debugger`
 - **Choosing a builder:** use the "Build with" column in PROGRESS.md. A note in brackets, such as "(Opus for undo)", applies only to tickets about that part.
+- **All your messages to the user** are telegraphic: result first, fragments fine, no recap (CLAUDE.md, "Talking to the user").
 - **Helper replies** are 150 words or fewer. Don't ask them for more.
 - **One helper at a time.** Never run helpers in parallel: builds and tests would compete for the laptop's memory.
 - **After each helper returns:**
@@ -47,11 +48,15 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
    3. **Review:** once every ticket is done, send the milestone to `reviewer`.
       - If it lists Critical or Major issues, send them to a builder (grouped sensibly), then run `reviewer` again. At most 2 rounds.
       - If issues are still open after that, stop and report to the user.
-   4. **Milestone checkpoint:** draft the next milestone's tickets with `/to-tickets`, then stop and give the user:
-      - what was built (3–5 bullets)
-      - how to try it (the README demo steps)
-      - known gaps
-      - the drafted ticket list for the next milestone, for approval
+   4. **Milestone checkpoint:** draft the next milestone's tickets with `/to-tickets`, then stop and report in this telegraphic format (CLAUDE.md, "Talking to the user"). 15 lines max:
+      ```
+      M<n> done. <one-line result>
+      Built: <3–5 one-line bullets>
+      Try: <exact commands>
+      Gaps: <bullets or "none">
+      Review: <n> critical / <n> major fixed, <n> minor left
+      Next: M<n+1>, <count> tickets (<path>). Approve? yes / change
+      ```
 6. Keep going until something makes you stop.
 
 When the user says **"continue"**, start again at step 1 of the loop.
