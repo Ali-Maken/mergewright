@@ -4,7 +4,7 @@ A one-page map of the crates: what each one owns, what it may depend on, and
 where to start reading. Read this before adding a module or moving code
 between crates — and update it in the same ticket if that ticket changes the
 crate map. The full reasoning behind every choice here is
-[`DESIGN.md` §7](DESIGN.md#7-architecture); this file is the short version.
+[`DESIGN.md` §8](DESIGN.md#8-architecture); this file is the short version.
 
 "Graft" is a codename (see `CLAUDE.md`). Domain vocabulary — lane, default
 branch, rendering tier, Ghost Preview, Mistake Radar, marker, ref badge,
@@ -34,7 +34,7 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 - **Changing what Graft reads from a repo** (status, log, diff parsing) →
   `git`. Its `RepoReader` seam has a `gix` adapter and a `git2` fallback.
 - **Changing what a write operation does, or how undo works** → `ops`. Start
-  at `DESIGN.md` §5.
+  at `DESIGN.md` §6.
 - **Changing terminal detection or an image protocol** → `term`. Start at
   `DESIGN.md` §4.
 - **Changing a screen or a keybinding** → `ui` for the widget, `app` for the
@@ -47,7 +47,7 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 
 | Crate | Owns | May depend on |
 |---|---|---|
-| `core` | Domain types with no I/O: commit and ref identity, events, the record shapes other crates read and write, errors for its own parsing | nothing internal |
+| `core` | Plain data only — no behaviour, no algorithms: commit and ref identity, events, the record shapes other crates read and write, errors for its own parsing | nothing internal |
 | `graph` | The pure layout engine and the pixel/Unicode/ASCII renderers | `core` |
 | `git` | Repository reads (`gix`, `git2` fallback), the typed git command runner, output and diff parsers | `core` |
 | `ops` | Operations, the undo journal, Mistake Radar detection, Ghost Preview planning | `git`, `core` |
@@ -71,10 +71,14 @@ never imports `git` or `ops`: every screen renders from a plain view model
 
 ## Shared types worth knowing where they live
 
-A few types read naturally as part of one crate's algorithm but, checked
-against the table above, can only compile in `core` — because two crates that
-may not depend on each other both need them. The full list and reasoning is
-`DESIGN.md` §7.2; the ones that come up most:
+`core` holds plain data only — no behaviour, no algorithms. Laying out a
+graph, parsing `git` output, detecting a Mistake Radar pattern, replaying a
+journal entry, probing a terminal: all of that lives in the crate that owns
+the behaviour, never in `core` (ADR-0007). A few types read naturally as
+part of one crate's algorithm but, checked against the table above, can
+only compile in `core` — because two crates that may not depend on each
+other both need the same shape. The full list and reasoning is `DESIGN.md`
+§8.2; the ones that come up most:
 
 - `Commit`, `Oid`, `CommitId`, `RefName` — produced by `git`, consumed by
   `graph`, `ops` and `ui`.
@@ -99,9 +103,9 @@ in `app`, the only crate that can see what it needs to name.
 Cargo rejects cycles, which stops the graph above from ever growing a loop.
 It does **not** stop a new acyclic edge that breaks the intended layering —
 `ui` adding `git` as a dependency compiles fine and violates the rule anyway.
-`DESIGN.md` §8 proposes an explicit test (parse `cargo metadata`, assert the
-edge set above exactly) so a stray dependency fails the fast tier instead of
-waiting for review.
+A fast-tier test closes that gap: it parses `cargo metadata` and asserts the
+edge set above matches exactly, so a stray dependency fails the fast tier
+instead of waiting for review (`DESIGN.md` §8.5, ADR-0006).
 
 ## Keeping crates deep
 

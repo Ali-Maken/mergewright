@@ -18,10 +18,11 @@ decision so the checkpoint review can push back on it specifically.
 2. [Keymap](#2-keymap)
 3. [Graph layout algorithm](#3-graph-layout-algorithm)
 4. [Terminal-capability detection](#4-terminal-capability-detection)
-5. [Undo journal design](#5-undo-journal-design)
-6. [Open design questions](#6-open-design-questions)
-7. [Architecture](#7-architecture)
-8. [Proposed changes](#8-proposed-changes)
+5. [Visualization](#5-visualization)
+6. [Undo journal design](#6-undo-journal-design)
+7. [Open design questions](#7-open-design-questions)
+8. [Architecture](#8-architecture)
+9. [Proposed changes](#9-proposed-changes)
 
 ---
 
@@ -33,7 +34,11 @@ width best fits. Colour, weight and italics don't render in ASCII — where they
 matter, a legend line says what would be a colour or style in the real UI.
 Lane colour is noted with a letter suffix on the node (`●a`, `●b`, …) standing
 in for a distinct hue; ref badges are `[name]`; Mistake Radar markers are `⚠`
-(warning) or `ⓘ` (info).
+(warning) or `ⓘ` (info). A merge node uses the same letter on both sides of
+its curve (`◉a──╯a`) when the recovered branch name on both parents resolves
+to the same identity (§3.4) — the shape of an accidental pull merge, where
+the "other side" is just the remote-tracking copy of the branch already
+being drawn.
 
 ### 1.1 Main graph view — wide (160+ columns, three-column layout)
 
@@ -45,7 +50,7 @@ in for a distinct hue; ref badges are `[name]`; Mistake Radar markers are `⚠`
 │    auth            │ │ ●b    [feature/auth] Add OAuth provider                AK      1h     7f6e5d4 │ Contained in: main              │
 │    billing         │ ◉a──╯b  ⚠ [main]       Merge 'feature/login'             RM      3h     3c2b1a0 │                                 │
 │ REMOTES            │ ●a                     Bump deps                        RM      1d     0a9b8c7 │ Fix token refresh race          │
-│ ▸ origin           │ ●a      ⓘ              Merge branch 'main' of origin     RM      2d     9f8e7d6 │                                 │
+│ ▸ origin           │ ◉a──╯a  ⓘ              Merge branch 'main' of origin     RM      2d     9f8e7d6 │                                 │
 │ TAGS               │ ●a      [v2.3.0]       Release 2.3.0                     AK      4d     88ee11c │ ▾ src/auth/token.rs   +12 −4    │
 │ STASHES (2)        │ ⋮                                                                                │   @@ -40,7 +40,15 @@ fn refresh()│
 │ WORKTREES          │                                                                                  │  40   let token = self.cache;   │
@@ -99,7 +104,7 @@ that means switching tabs.
 │ │●b     Add OAuth provider                   1h     7f6e5d4            │
 │ ◉a─╯b ⚠ Merge 'feature/login'                3h     3c2b1a0            │
 │ ●a      Bump deps                            1d     0a9b8c7            │
-│ ●a      Merge branch 'main' of origin  ⓘ     2d     9f8e7d6            │
+│ ◉a─╯a ⓘ Merge branch 'main' of origin        2d     9f8e7d6            │
 │ ●a      Release 2.3.0                        4d     88ee11c            │
 │ ⋮                                                                       │
 │                                                                          │
@@ -393,6 +398,12 @@ overlay are never out of sync with each other or with reality.
 | `.` | Context actions menu for the selected item |
 | `Space` | Toggle stage where staging applies, else expand/collapse |
 
+`Ctrl+Shift+Z` is not a reliable binding: many terminals collapse it to the
+same byte sequence as `Ctrl+Z`, so Graft cannot tell the two apart on every
+terminal it targets. `U` is therefore not just a convenience alias — it's
+the binding that actually works everywhere, and the one the help overlay
+and any redo prompt should lead with.
+
 ### 2.3 Graph / history pane
 
 | Key | Action |
@@ -412,6 +423,9 @@ overlay are never out of sync with each other or with reality.
 | `i` | Add to `.gitignore` |
 | `e` | Open in `$EDITOR` |
 | `Enter` (on a sidebar branch/tag/stash) | Checkout / open |
+| `M` | Toggle Map view (§5.1) |
+| `F` | Toggle Focus mode on the selected commit (§5.2) |
+| `O` | Toggle the Overview strip (§5.3) |
 
 ### 2.4 Working tree / staging (detail pane)
 
@@ -856,13 +870,151 @@ never stalls launch.
 
 ---
 
-## 5. Undo journal design
+## 5. Visualization
+
+Three optional overlays on top of the graph pane from §1.1–§1.3: Map view,
+Focus mode, and the Overview strip. All three are off by default and cost
+nothing when off — no extra column, no extra pass, no permanent chrome added
+to the quiet default view PROMPT.md §1.1 describes. Each is a toggle, not a
+mode you back out of through a menu: press the key again, or `Esc`, to
+return to exactly the view you left.
+
+### 5.1 Map view
+
+Zooms all the way out: one line per branch, plotted against a time axis
+instead of one line per commit. It answers "what's been happening, and
+where" before committing to reading any single commit's history — the
+question the per-commit graph is deliberately bad at, since it shows
+everything at the same resolution.
+
+```
+╭─ MAP · main ─ last 4 months ──────────────────────────────────────────────╮
+│ BRANCH                                                              NOW   │
+│ ▸ main             a  ▁▁▂▁▃▁▁▂▇▁▁▁▂▁▃▁▁▂▁▁▅▁▁▂▁▁▁▂▁▁▇▁▁▂▁▁▁▂▁▁▁▂▁▁▁▁▁▁  ● │
+│   feature/auth     b     ▁▂▃▇▁▁●╮                                         │
+│   feature/billing  c         ▁▁▂▃▁▇▁▁▁▂▁▁▁▁▁▁  (active)                   │
+│   release/2.3      d                       ▁▂▇  [v2.3.0] ⓘ                │
+│ ⋮                                                                          │
+╰ ↑↓ select branch  ⏎ zoom to commits here  M / Esc: back ──────────────────╯
+```
+
+- **Shows:** every local branch (a remote collapses into its upstream's row
+  unless it's diverged) as one row: a density sparkline bucketed by commit
+  date, the branch's identity colour and lane letter, a merge elbow
+  (`●╮`/`╯`) where its line joins the branch it merged into, and the
+  Mistake Radar/tag markers already attached to the commits it's built from.
+  The current branch is prefixed `▸`, its row running to a `NOW` marker at
+  the right edge.
+- **Toggle:** `M` in the Graph/history pane (§2.3). `Enter` on a selected
+  branch row zooms into the ordinary per-commit graph (§1.1–§1.3), scrolled
+  to that branch's tip; `M` or `Esc` returns to Map view from there, `Esc`
+  alone exits Map view back to the normal graph.
+- **Rendering tiers (§4):** tier-aware like the main graph. Pixel tier
+  rasterises a real density curve per branch through the same
+  Kitty/iTerm2/Sixel path the pixel graph renderer already uses. Unicode
+  tier buckets commit counts into block-density characters (`▁▂▃▄▅▆▇█`), one
+  per column, coloured by identity. ASCII tier drops to a bounded character
+  ramp (` .:-=+*#%@`, clamped to what a bucket's count maps to) so density
+  stays legible with no colour and no block glyphs.
+- **Cost:** deliberately cheaper than the graph layout algorithm (§3) it
+  sits next to. Map view never assigns lanes or resolves crossings — it only
+  needs, per branch, a count of commits per time bucket, a single walk of
+  that branch's history with no lane-occupancy state to track. It's built on
+  toggle-on, not maintained continuously, and discarded on toggle-off.
+
+### 5.2 Focus mode
+
+Selecting a commit fades every lane that isn't an ancestor or descendant of
+it, so a tangled multi-branch history collapses, for a moment, to just the
+one thread the selected commit sits on.
+
+```
+│ ●a      [main]          Fix token refresh race            RM   2m   a1b2c│
+│ │ ●b    [feature/auth]  Add OAuth provider                 ·    ·    ·   │
+│ ◉a──╯b  ⚠ [main]        Merge 'feature/login'             RM   3h   3c2b1│
+│ ●a                      Bump deps                          ·    ·    ·   │
+│ ◉a──╯a  ⓘ               Merge branch 'main' of origin     RM   2d   9f8e7│
+╰ Focused on a1b2c3d — ancestors/descendants stay lit, rest fades ──────────╯
+```
+
+- **Shows:** full-strength lane colour and detail text on the selected
+  commit's ancestor/descendant path; every other row keeps its shape (lanes
+  don't disappear — the graph's topology stays legible) but drops to a
+  low-saturation, dimmed render. The mockup stands in for that dimming the
+  same way §1.7's ghost nodes stand in for a lower alpha: `·` marks columns
+  that would render muted, not blank. This is a deliberately different
+  visual vocabulary from Ghost Preview's dashed `┊`/`┈` (§1.7) — a faded row
+  is a real commit that's simply off the thread you asked about; a ghost row
+  isn't a real commit at all.
+- **Toggle:** `F` in the Graph/history pane (§2.3), applied to the currently
+  selected row (selecting the topmost row first if nothing is selected yet).
+  Moving the selection while Focus mode is on recomputes the fade from the
+  new row; `F` or `Esc` turns it off and restores full-strength rendering
+  everywhere.
+- **Rendering tiers (§4):** applies at every tier — it's a paint-time
+  attribute on rows the layout algorithm already produced, not a layout
+  change, so it costs the same one extra bit of per-row state (`Row.faded`
+  or equivalent) whether the renderer is pixel, Unicode or ASCII.
+- **Cost:** answers the same question the detail pane's "Contained in" field
+  (§1.1) already answers — is this row an ancestor, descendant, or neither,
+  of the selection — over the rows currently laid out and visible. It's an
+  O(visible rows) walk on selection change, not a new pass over history.
+
+### 5.3 Overview strip
+
+A compressed, non-1:1 column at the graph pane's scroll edge — its own right
+edge in the narrow/tab layout (§1.3), just inside the detail pane's border
+in the wide/medium layout (§1.1–§1.2) — showing the whole history's shape in
+one column, independent of how much of it is currently laid out or on
+screen.
+
+```
+╭─ ◆ graft ─ ⎇ main ↑2 ↓0 ────────────────────────────────────────── ⌃P ──╮
+│ GRAPH   REF          SUBJECT                     AUTHOR  WHEN   SHA   ┆ │
+│ ●a      [main]       Fix token refresh race        RM    2m    a1b2c ┆ │
+│ │ ●b    [feature/..] Add OAuth provider            AK    1h    7f6e5 █ │ ← viewport
+│ ◉a──╯b  ⚠ [main]     Merge 'feature/login'         RM    3h    3c2b1 █ │
+│ ●a                   Bump deps                     RM    1d    0a9b8 ┆ │
+│ ⋮                                                                    ⚠ │ ← radar hit further down
+│                                                                       ◆ │ ← search hit
+│                                                                       ┆ │
+│                                                                      ●h │ ← HEAD
+╰────────────────────────────────────────────────────────────────────────╯
+```
+
+- **Shows:** one glyph per bucket of the full commit range for whichever
+  markers fall there — `◉` for a merge, `⚠`/`ⓘ` for a Mistake Radar hit, `◆`
+  for a search hit, `●` plus the branch's lane letter for HEAD/the current
+  branch's tip — over an otherwise-blank `┆` column, plus a solid block
+  (`█`) marking which rows the main pane currently has on screen. It's a map
+  of "where are the interesting things," not a second copy of the graph.
+- **Toggle:** `O` in the Graph/history pane (§2.3). Independent of Map view
+  and Focus mode; toggling Map view on hides the strip automatically, since
+  Map view already shows the whole history's shape, and restores it on
+  toggling Map view back off if it was on before.
+- **Rendering tiers (§4):** plain text/glyphs at every tier — there's no
+  pixel variant, since a one-cell-wide column gains nothing from
+  rasterizing. It reads whichever tier the main graph is already using only
+  to draw its own glyphs consistently (lane letters, marker characters).
+- **Cost:** piggybacks on data the incremental layout (§3.6) is already
+  producing rather than triggering a new history walk. Merge and Mistake
+  Radar markers come from `Row.marker` on whatever's already in the `rows`
+  buffer; search hits come from the search job already scanning history for
+  the active search (§3.6's "search hit at row 900,000" example is exactly
+  this). For a huge repo whose full history hasn't been walked yet, the
+  strip is honestly incomplete above/below what's been laid out so far and
+  fills in as background streaming catches up — a navigational aid, not a
+  guarantee every marker in history is already plotted.
+
+---
+
+## 6. Undo journal design
 
 The undo journal is the mechanism behind `Ctrl+Z`/`u` and `Ctrl+Shift+Z`/`U`
 (ADR-0002) and lives in the `ops` module (PROMPT.md §6), which is also the
 only place allowed to run a write operation.
 
-### 5.1 Storage and data model
+### 6.1 Storage and data model
 
 - **Append-only log:** `.git/graft/undo-journal.jsonl`, one JSON record per
   line. Repo-local (travels with the repo's `.git`, not with Graft's global
@@ -889,11 +1041,11 @@ JournalEntry {
 }
 ```
 
-### 5.2 Recording protocol
+### 6.2 Recording protocol
 
 1. **Before** running the operation: read the current OIDs of every ref it
    might touch, and — for anything that can destroy working-tree content —
-   take the combined snapshot (§5.3). Append a `Pending` record.
+   take the combined snapshot (§6.3). Append a `Pending` record.
 2. **Run** the operation through `ops` (the same typed-argument git
    invocation that populates the Command Log).
 3. **On success:** capture the resulting OIDs and append a `Committed` record
@@ -906,7 +1058,7 @@ JournalEntry {
 4. **On failure/abort:** append an `Aborted` record. Nothing needs undoing,
    but it stays in the log for the Command Log / troubleshooting view.
 
-### 5.3 Working-tree snapshot (the untracked-file fix)
+### 6.3 Working-tree snapshot (the untracked-file fix)
 
 Per PROMPT.md §3, `git stash create` silently omits untracked files and must
 not be used for this. Instead, before an operation that can destroy
@@ -928,7 +1080,7 @@ paths). This is exactly what closes the gap PROMPT.md calls out, and it's
 covered by the test PROMPT.md names explicitly: create an untracked file,
 discard it, undo, assert the bytes come back exactly.
 
-### 5.4 Per-kind inverse
+### 6.4 Per-kind inverse
 
 Undo is not one generic "run the reverse command" — each kind has its own
 specific inverse, computed from the journal entry:
@@ -939,7 +1091,7 @@ specific inverse, computed from the journal entry:
 | Merge / Rebase / Cherry-pick / Revert | Move the branch ref back to `refs_before` using a compare-and-swap `update-ref` (fails loudly rather than clobbering if something else moved it since), restore index and working tree to match |
 | Reset | Move ref back to `refs_before` (working tree was already covered by the pre-reset snapshot if it was `--hard`) |
 | Branch delete | Recreate the ref at its recorded pre-delete OID |
-| Discard | Restore files from the combined snapshot tree (§5.3) |
+| Discard | Restore files from the combined snapshot tree (§6.3) |
 | Stash drop | Recreate the `refs/stash` reflog entry pointing at the (still-reachable, thanks to the backup ref) stash commit |
 | Push | **Not silently undoable** — it changed shared state. Journaled for transparency and shown in the browser, but "undo" here opens a guided, freshly-confirmed re-push of the pre-push ref state rather than a one-key reversal, since it affects other people |
 
@@ -949,7 +1101,7 @@ the operation finishes or is cleanly aborted through the operation banner
 (§1.13). The banner's Abort is the mid-flight escape hatch; the undo journal
 picks up once there's a finished operation to reverse.
 
-### 5.5 Redo
+### 6.5 Redo
 
 Undo is itself journaled as an ordinary entry (`kind: Undo`, `reverses: Some(id)`),
 computed and recorded the same way as any other operation, including its own
@@ -966,7 +1118,7 @@ undo journal browser (§1.10) can still show the abandoned entries; they're
 just not reachable through plain redo any more, matching how the browser is
 described as fully browsable even for entries off the current undo/redo path.
 
-### 5.6 Browsing and Ghost Preview
+### 6.6 Browsing and Ghost Preview
 
 Selecting an entry in the browser (§1.10) and confirming reverts state to
 just *before* that entry, by applying each entry's specific inverse from the
@@ -975,17 +1127,17 @@ the predicted resulting ref state as a Ghost Preview (§1.7) — undo gets the
 same "see it before you do it" treatment as every other history-changing
 operation, per PROMPT.md §1.5.
 
-### 5.7 Safety rails
+### 6.7 Safety rails
 
 Before applying an undo, Graft compares the ref/tree it expects to find
 (`refs_after` / the state right after the operation being undone) against
 what's actually there now. If they differ — the user ran a bare `git` command
 outside Graft in the meantime — undo doesn't silently overwrite the
 unexpected state. It stops, explains what changed, and offers to snapshot the
-current state first (the same combined-tree mechanism as §5.3) before
+current state first (the same combined-tree mechanism as §6.3) before
 proceeding, so an undo can never discard work Graft didn't itself put there.
 
-### 5.8 Retention
+### 6.8 Retention
 
 Backup refs and journal entries are **kept indefinitely by default.** Git
 objects are content-addressed and deduplicated, and a ref list entry is
@@ -996,7 +1148,7 @@ effect of any other operation.
 
 ---
 
-## 6. Open design questions
+## 7. Open design questions
 
 Parameters this document fixed with a reasonable default but that the M0/M1
 prototype (PROGRESS.md step 3) or early milestones should validate against a
@@ -1025,7 +1177,7 @@ with a documented default, not gaps in scope, so they aren't duplicated in
 
 ---
 
-## 7. Architecture
+## 8. Architecture
 
 PROMPT.md §6.1 fixes the crate map and the dependency rule. This section fills
 in the part §6.1 leaves open: which crate each *type* used elsewhere in this
@@ -1036,14 +1188,14 @@ hiding a lot of implementation, or is it a pass-through? `ARCHITECTURE.md` at
 the repo root is the short, standalone version of this section for whoever is
 about to add or move a module; this section is where its reasoning lives.
 
-### 7.1 Crate map
+### 8.1 Crate map
 
 | Crate | Owns | May depend on |
 |---|---|---|
-| `core` | Shared domain types with no I/O: commit and ref identity, events, the record shapes other crates write and read, errors for core's own parsing | nothing internal |
+| `core` | Plain data only — no behaviour, no algorithms: commit and ref identity, events, the record shapes other crates write and read, errors for core's own parsing | nothing internal |
 | `graph` | The pure layout engine (§3) and the pixel/Unicode/ASCII renderers | `core` |
 | `git` | Repository reads (`gix`), the typed git command runner, output and diff parsers | `core` |
-| `ops` | Operations, the undo journal (§5), Mistake Radar detection, Ghost Preview planning | `git`, `core` |
+| `ops` | Operations, the undo journal (§6), Mistake Radar detection, Ghost Preview planning | `git`, `core` |
 | `term` | Terminal capability detection (§4), image-protocol encoding, escape-sequence sanitising | `core` |
 | `ui` | Widgets, screen layout, theme, view models | `graph`, `term`, `core` |
 | `app` | The binary: event loop, `AppState`, `update`, the job runner, config, wiring | everything |
@@ -1060,19 +1212,24 @@ app                          (+ everything above)
 ```
 
 `graph`, `git` and `term` are siblings: none of them may depend on each other.
-That's what forces any type all three need — see §7.2 — up into `core`.
+That's what forces any type all three need — see §8.2 — up into `core`.
 
-### 7.2 Key types and where they live
+### 8.2 Key types and where they live
 
-Several types this document already defines (§3.1, §5.1) are written without a
+Several types this document already defines (§3.1, §6.1) are written without a
 crate label, because they read naturally as part of the algorithm they support
 rather than as part of an architecture diagram. Placed against the dependency
-rule in §7.1, most of them have exactly one legal home. Nothing below changes
-the shapes already defined in §3.1 or §5.1 — it says which crate each one
+rule in §8.1, most of them have exactly one legal home. Nothing below changes
+the shapes already defined in §3.1 or §6.1 — it says which crate each one
 compiles in and, where that isn't obvious, why.
 
-**`core`** — plain data with no behaviour, used across crates that may not
-depend on each other:
+**`core`** holds plain data types only — no behaviour, no algorithms.
+Everything that *does* something with that data — laying out a graph,
+parsing `git` output, detecting a Mistake Radar pattern, replaying a journal
+entry, probing a terminal — lives in the crate that owns that behaviour
+(`graph`, `git`, `ops`, `term`, `ui`), never in `core` itself (ADR-0007).
+`core` types exist purely because two crates that may not depend on each
+other both need the same shape:
 
 - `Oid` (raw git object id) and `CommitId` (an `Oid` known to name a commit) —
   needed by `git` (produces them), `graph` (lays them out), `ops` (journals
@@ -1104,7 +1261,7 @@ depend on each other:
   `core` for the same reason `Capabilities` does. This is the split between
   *drawing* the graph (pure, in `graph`) and *encoding it for this terminal*
   (protocol-specific, in `term`) that §1 and §4 don't spell out separately.
-- `JournalEntry`, `OperationKind` (§5.1) — §5.1 says the undo journal "lives
+- `JournalEntry`, `OperationKind` (§6.1) — §6.1 says the undo journal "lives
   in the `ops` module," which is true for the journal's *behaviour* (append,
   replay, compute the inverse — all in `ops::UndoJournal`). But the undo
   journal browser (§1.10) is a `ui` view, and `ui` may not depend on `ops`, so
@@ -1120,7 +1277,11 @@ depend on each other:
   what a finished `JobId` actually produced.
 - Each crate keeps its own `Error` enum (§6.2 of PROMPT.md); `core::Error`
   only covers `core`'s own fallible constructors (parsing an `Oid` from a
-  string, and so on) — it is not a shared error type other crates wrap.
+  string, and so on) — it is not a shared error type other crates wrap. A
+  constructor rejecting a malformed string is enforcing the type's own
+  invariant, not an algorithm acting on domain data — the same "no
+  behaviour" boundary a plain newtype has in any language, not an exception
+  to it.
 
 **`graph`** (+ `core`): `Lane`, `Row`, `LayoutCursor`, `BranchIdentity` (§3.1)
 — all layout-engine-internal, only ever touched by `graph` itself and by `ui`
@@ -1143,7 +1304,7 @@ spawn the user's `git`, parse its output — no shared code with the reader
 seam beyond the argument and output types.
 
 **`ops`** (+ `git`, `core`): `UndoJournal` (records and replays
-`core::JournalEntry`, §5), `MistakeRadar::scan(commits) -> Map<CommitId,
+`core::JournalEntry`, §6), `MistakeRadar::scan(commits) -> Map<CommitId,
 MistakeRadarKind>`, `GhostPreview::plan(operation) -> PreviewPlan` (predicted
 ref and commit deltas). `ops` never touches `graph`: to draw a Ghost Preview,
 `app` takes the `PreviewPlan`, synthesises the predicted commits into the
@@ -1178,7 +1339,7 @@ reports a `core::Event::JobFinished` back to `update` — lives there. `Event`
 stays in `core`; `Command` lives in `app`. That split is the one place this
 section adds something PROMPT.md's phrasing doesn't quite say.
 
-### 7.3 Data flow
+### 8.3 Data flow
 
 ```
                  ┌─────────────────────────────────────────┐
@@ -1203,10 +1364,10 @@ draws from `state` and otherwise only waits on the next `Event`; it never
 waits on a `Job` directly, which is what keeps input responsive during a
 two-minute fetch (PROMPT.md, non-negotiable principle 3).
 
-### 7.4 Keeping crates deep
+### 8.4 Keeping crates deep
 
-Depth is checked the same way for every crate in §7.1: could a caller do
-everything they need through the handful of functions in §7.2, without
+Depth is checked the same way for every crate in §8.1: could a caller do
+everything they need through the handful of functions in §8.2, without
 reaching past them into the crate's internals? `graph::layout` is the
 clearest case — one function call replaces lane assignment, compaction and
 checkpointing (§3), which is exactly the leverage a deep module is supposed
@@ -1215,36 +1376,36 @@ implementation behind a function — `git`'s `gix`/`git2` reader split, or
 `term`'s per-protocol encoders — that split is an **internal seam**, private
 to the crate and invisible to callers, not a reason to expose more surface
 area. `pub(crate)` is the default everywhere (PROMPT.md §6.1); a type only
-becomes `pub` when another crate in §7.1's dependency graph actually needs it.
+becomes `pub` when another crate in §8.1's dependency graph actually needs it.
 
-### 7.5 Dependency rule and enforcement
+### 8.5 Dependency rule and enforcement
 
-The rule from PROMPT.md §6.1: dependencies only point downward (§7.1's
+The rule from PROMPT.md §6.1: dependencies only point downward (§8.1's
 picture), and it's a Cargo workspace so a cycle fails to compile. That
 catches *cycles*. It does not, by itself, catch a new *acyclic* dependency
 that still breaks the layering — `ui` adding `git` as a path dependency
 compiles fine (no cycle) but violates "`ui` never imports `git` or `ops`."
-§8 proposes closing that gap with an explicit test rather than relying on
-review to catch it every time.
+PROMPT.md §6.1 says "the compiler rejects cycles, so the structure can't
+quietly erode," which is true but incomplete: cycle-rejection alone does
+nothing about a direct, acyclic `ui → git` edge, which is exactly the kind
+of erosion §6.1 is trying to prevent and which the compiler happily accepts.
+
+Graft therefore enforces the full edge set, not just acyclicity: a fast-tier
+test parses `cargo metadata`'s dependency graph and asserts it matches
+§8.1's table exactly — no more edges, no fewer. It lives in `app`'s test
+suite, since `app` is the only crate that already depends on everything it
+needs to inspect, and ships as an M0 ticket alongside the workspace
+scaffold. Adding a crate or an allowed edge means updating this test in the
+same commit; that one-line tax is what turns "a reviewer might notice" into
+"the fast tier fails" (ADR-0006).
 
 ---
 
-## 8. Proposed changes
+## 9. Proposed changes
 
 Where this document would deviate from PROMPT.md, and why (CLAUDE.md,
-"Challenge the spec"). One item — everything else in §7 fills in detail
-PROMPT.md left open rather than disagreeing with it.
-
-- **Add an automated dependency-edge check, not just cycle-freedom (§7.5).**
-  PROMPT.md §6.1 says "the compiler rejects cycles, so the structure can't
-  quietly erode." True, but incomplete: cycle-rejection stops `ui` from
-  depending on something that depends back on `ui`; it does nothing about a
-  direct, acyclic `ui → git` dependency, which is exactly the kind of erosion
-  §6.1 is trying to prevent, and which the compiler will happily accept.
-  Trade-off: a small test — parse `cargo metadata`'s dependency graph and
-  assert it matches §7.1's edge set exactly — costs a few lines now and one
-  edit whenever a crate or an allowed edge is added, in exchange for turning
-  "a reviewer might notice" into "the fast tier fails." Propose adding it as
-  an M0 ticket alongside the workspace scaffold, living in `app`'s test suite
-  since `app` is the only crate that already depends on everything it needs
-  to inspect.
+"Challenge the spec"). Nothing is currently proposed — everything in §8
+fills in detail PROMPT.md left open rather than disagreeing with it. The
+dependency-edge check that used to be the one item here (§8.5) was approved
+at the design checkpoint and is now a decided rule, not a proposal; see
+ADR-0006.
