@@ -6,7 +6,7 @@ undo journal. No code — this document is reviewed by the user before M0 starts
 
 It uses the vocabulary fixed in `CONTEXT.md` (default branch, lane, rendering
 tier, Ghost Preview, Mistake Radar, marker, ref badge, operation, undo journal,
-Command Log, job) and follows the decisions in `docs/adr/0001`–`0005`. Where a
+Command Log, job) and follows the decisions in `docs/adr/0001`–`0010`. Where a
 choice here narrows something PROMPT.md left open, it's called out as a design
 decision so the checkpoint review can push back on it specifically.
 
@@ -578,7 +578,10 @@ Row            { commit: Commit,
                  incoming: [usize],              // lanes that converge on this row (closing edges)
                  outgoing: [(usize, CommitId)],   // lanes leaving this row, one per parent
                  marker: Option<MistakeRadarKind> }
-LayoutCursor    { walker_state, active: [Option<Lane>], waiting: Map<CommitId,[usize]>,
+LayoutCursor    { walker_state,                   // §3.2-step-2 walk frontier: generation-ordered
+                                                  // queue + frontier in-degrees — bounded by graph
+                                                  // parallelism, not history size (ADR-0008)
+                  active: [Option<Lane>], waiting: Map<CommitId,[usize]>,
                   free_pool: [usize], rows_emitted: usize }
                                                   // opaque, resumable snapshot of everything below
 ```
@@ -595,11 +598,44 @@ branch even when they're temporarily idle.
 **2. Walk commits in topological order** (date order and first-parent-only
 are alternate walk strategies selected by the same interface, per PROMPT.md
 §1.2). "Topological" means: a commit is only emitted once every one of its
-children that's part of the visible walk has already been emitted — the
-standard in-degree-counting topological sort git itself uses for
-`--topo-order`. Multiple commits can be ready to emit at once (parallel
-branches); break the tie by commit date (most recent first) and, if dates
-tie exactly, by commit id, so the order is fully deterministic.
+children that's part of the visible walk has already been emitted. Multiple
+commits can be ready to emit at once (parallel branches); break the tie by
+commit date (most recent first) and, if dates tie exactly, by commit id, so
+the order is fully deterministic.
+
+A naive in-degree topological sort has to see the whole visible range
+before it can emit a single commit — first paint would wait on a full
+history walk. So which walk runs depends on the repo's **commit-graph
+file** (ADR-0008):
+
+- **Commit-graph present** — the common case: `git gc` and
+  `fetch.writeCommitGraph` both write one, and any commit-graph written by
+  git ≥2.38 (Graft's minimum) carries generation numbers, which gix
+  exposes via `gix-commitgraph`. Use git's own incremental topo-sort:
+  explore commits through a queue ordered by generation number,
+  descending. A child's generation always exceeds its parent's, so once
+  every commit still awaiting exploration sits at or below a commit's
+  generation, nothing unexplored can turn out to be its child — its
+  in-degree is final and it can be emitted. Emission starts after
+  exploring a small frontier, not the whole range; `walker_state` in
+  `LayoutCursor` is that queue plus the frontier's in-degree map, bounded
+  by the graph's parallelism rather than history size, so it snapshots
+  cheaply into checkpoints (§3.6). This path is what meets the 150 ms
+  first paint.
+- **No commit-graph:** first paint uses **commit-date order** — the
+  rev-walk's natural streaming order, already a first-class walk strategy,
+  through the same `layout_chunk` machinery — and still lands inside
+  150 ms. Two things then happen off-thread: a full topo-order walk of the
+  visible range runs as a background job, and Graft offers — **once per
+  repo**, remembered if declined — to run `git commit-graph write
+  --reachable` in the background so every later open takes the fast path.
+  When the background topo walk finishes, the view **promotes** to strict
+  topo order in one step: layout re-runs from the topo walk, rows are
+  swapped behind the next frame, and the selection and scroll anchor are
+  re-found by commit id, never by row index. Until promotion, a one-line
+  status notice says the order is provisional. The 150 ms budget survives,
+  with its meaning stated honestly: without a commit-graph it buys a
+  date-order first paint, and strict topo order arrives at promotion.
 
 **3. For each commit, as it's emitted, assign it a lane:**
 
@@ -652,7 +688,7 @@ fn layout_chunk(cursor, walker, chunk_size) -> [Row]:
     rows = []
     pending_free = []
     for _ in 0..chunk_size:
-        commit = walker.next_topological()     # None when history is exhausted
+        commit = walker.next()                 # per §3.2 step 2's walk strategy; None when exhausted
         if commit is None: break
 
         incoming = waiting.remove(commit.id) or []
@@ -732,23 +768,46 @@ When `active.len()` (lanes open and not `reserved`) exceeds `graph.max_lanes`:
 ### 3.6 Incremental, streaming and virtualized layout
 
 - **Streaming:** `layout_chunk` (chunk size ~500 commits) is called
-  repeatedly, appending to a `rows: Vec<Row>` buffer that backs the view. The
-  first chunk is sized to hit the 150 ms first-paint budget; later chunks run
-  in the background between frames.
+  repeatedly, filling the row cache below. The first chunk is sized to hit
+  the 150 ms first-paint budget — strict topo order when a commit-graph
+  file exists, date order until promotion when it doesn't (§3.2 step 2,
+  ADR-0008); later chunks run in the background between frames.
+- **Row cache with eviction — never an append-only buffer.** Laid-out rows
+  live in a chunked cache inside `graph`'s incremental layout, one entry
+  per `layout_chunk`, keyed by row range. Resident at any moment: the
+  chunks covering `[nearest checkpoint at or before viewport_top − buffer,
+  viewport_bottom + buffer]`; everything else is evictable,
+  oldest-touched first, once the cache passes its budget. Scrolling back
+  into an evicted range rebuilds those chunks by resuming from the nearest
+  earlier checkpoint — layout is deterministic (§3.7), so a rebuilt chunk
+  is identical to the one evicted. This eviction, not virtualization
+  alone, is what makes memory grow with the viewport rather than history
+  (PROMPT.md §1.2): the resident set is a handful of chunks plus the
+  checkpoint list, no matter how deep the user has scrolled. The heavy
+  tier's peak-memory test (PROMPT.md §7.1: load and scroll the 100k-commit
+  fixture, fail above 300 MB by `getrusage`) is the gate that proves it —
+  including after a jump to the bottom and a scroll back up.
 - **Rendering virtualization:** only rows in `[viewport_top − buffer,
-  viewport_bottom + buffer]` are rasterized/drawn, independent of how much of
-  `rows` has been computed. But since lane occupancy is stateful, `rows` up
-  to `viewport_bottom` must already exist — scrolling far into history can't
-  skip layout for what it skips over.
-- **Checkpoints** make deep jumps (search hit at row 900,000, `G` to the very
-  end) cheap without laying out everything first: every N rows (e.g. 2,000),
-  snapshot the full `LayoutCursor`. Jumping to a distant row resumes from the
-  nearest earlier checkpoint rather than row 0. Checkpoints are pure
-  functions of the commit sequence up to that point, so they're cache-only
-  (bounded, LRU-evicted) and always rebuildable — nothing about them needs to
-  be durable. This is what keeps memory bounded by viewport-plus-checkpoints
-  rather than by history size (PROMPT.md §1.2's "memory grows with the
-  viewport, not with history size").
+  viewport_bottom + buffer]` are rasterized/drawn. Lane occupancy is
+  stateful, so the walk must still pass *through* everything above the
+  viewport — but passing through means advancing the `LayoutCursor` and
+  dropping the rows, not retaining them.
+- **Checkpoints** make deep jumps (search hit at row 900,000) cheap: every
+  N rows (e.g. 2,000), snapshot the full `LayoutCursor`. A jump resumes
+  from the nearest earlier checkpoint rather than row 0, and a scroll-back
+  into evicted rows rebuilds from one. Checkpoints are pure functions of
+  the commit sequence up to that point, so they're cache-only (bounded,
+  LRU-evicted) and always rebuildable — nothing about them needs to be
+  durable.
+- **A cold deep jump is a background job.** `G` on a freshly opened repo,
+  or a search hit far past the last checkpoint, still needs the walk to
+  advance that far before the target row can exist. That walk runs as a
+  cancellable job through the standard machinery (§8.3): the UI thread
+  never blocks, the status area shows progress ("laying out… 412k/1.2M
+  commits"), input — including cancelling the jump — keeps working, and
+  the viewport stays put until the job lands and the view jumps to real
+  rows. The checkpoints laid down along the way survive the rows'
+  eviction, so the next deep jump in either direction is cheap.
 - **Folding a merged branch** (PROMPT.md §1.3) and **first-parent view** are
   both expressed as a different *inclusion predicate* over which commits the
   walker in step 2 emits at all, re-using the same `layout_chunk` machinery
@@ -1016,14 +1075,29 @@ only place allowed to run a write operation.
 
 ### 6.1 Storage and data model
 
-- **Append-only log:** `.git/graft/undo-journal.jsonl`, one JSON record per
-  line. Repo-local (travels with the repo's `.git`, not with Graft's global
-  config), never committed to the repo's own history, human-readable enough
-  to inspect by hand if something goes wrong.
-- **Backup content:** real git objects under `refs/graft/backup/<timestamp>`,
-  created before any operation that can destroy working-tree content. A
-  backup ref keeps its objects reachable for ordinary `git gc`, so no
-  extra pinning mechanism is needed while the ref exists.
+- **Append-only log**, one JSON record per line, at the path
+  `git rev-parse --git-path graft/undo-journal.jsonl` resolves to — never a
+  literal `.git/` join, because at the root of a linked worktree `.git` is
+  a *file* pointing at the real git dir, not a directory. Every other path
+  Graft keeps under the git dir resolves the same way. `--git-path` puts
+  the journal in the **per-worktree** git dir: `.git/graft/…` for the main
+  worktree, `.git/worktrees/<name>/graft/…` for a linked one. The journal
+  is deliberately per-worktree (ADR-0010): every entry's index and
+  working-tree state belongs to exactly the worktree the operation ran in,
+  so an entry can never be replayed against the wrong working tree — and
+  an operation is undoable only from the worktree it ran in. Repo-local
+  (travels with the repo, not with Graft's global config), never committed
+  to the repo's own history, human-readable enough to inspect by hand if
+  something goes wrong.
+- **Backup content:** real git objects under
+  `refs/graft/backup/<worktree>/<timestamp>`, created before any operation
+  that touches the working tree (§6.3). Refs, unlike the journal, are
+  shared across every worktree of a repo, so the `<worktree>` segment —
+  `main` for the main worktree, the directory name under
+  `.git/worktrees/` for a linked one — keeps two worktrees' backups from
+  colliding and says where each came from (ADR-0010). A backup ref keeps
+  its objects reachable for ordinary `git gc`, so no extra pinning
+  mechanism is needed while the ref exists.
 
 ```
 JournalEntry {
@@ -1035,8 +1109,11 @@ JournalEntry {
     status: Pending | Committed | Aborted,
     refs_before: Map<RefName, Option<Oid>>,   // captured before the op runs
     refs_after: Map<RefName, Option<Oid>>,    // filled in once the op finishes
-    index_before: Option<Oid>,       // pre-op index tree, for ops that don't touch the working tree
-    backup_ref: Option<RefName>,     // refs/graft/backup/<timestamp>, when working-tree content was at risk
+    index_before: Option<Oid>,       // pre-op index tree
+    index_after: Option<Oid>,        // post-op index tree, recorded with the Committed record
+    worktree_after: Option<Oid>,     // post-op combined tree (§6.3 hashing), for §6.7's comparison
+    backup_ref: Option<RefName>,     // refs/graft/backup/<worktree>/<timestamp>, set for any op
+                                     //  that touched the working tree (§6.3)
     reverses: Option<Ulid>,          // set on an undo/redo entry: which entry it reverses
 }
 ```
@@ -1044,13 +1121,16 @@ JournalEntry {
 ### 6.2 Recording protocol
 
 1. **Before** running the operation: read the current OIDs of every ref it
-   might touch, and — for anything that can destroy working-tree content —
-   take the combined snapshot (§6.3). Append a `Pending` record.
+   might touch, and — for any operation that touches the working tree or
+   index at all, not only the obviously destructive ones — take the
+   combined snapshot (§6.3), unconditionally. Append a `Pending` record.
 2. **Run** the operation through `ops` (the same typed-argument git
    invocation that populates the Command Log).
-3. **On success:** capture the resulting OIDs and append a `Committed` record
-   referencing the same `id`. The log is append-only — this is a second line,
-   not an edit to the first — so a crash between steps 1 and 3 leaves a
+3. **On success:** capture the resulting OIDs, the post-op index tree and
+   the post-op combined working-tree hash (`index_after` /
+   `worktree_after` — what §6.7 later compares against), and append a
+   `Committed` record referencing the same `id`. The log is append-only —
+   this is a second line, not an edit to the first — so a crash between steps 1 and 3 leaves a
    `Pending` record with no matching `Committed` one. On next launch, Graft
    treats an unmatched `Pending` entry the same way it treats a stray
    `rebase-merge/` directory (PROMPT.md §6): surfaced explicitly, offered for
@@ -1061,15 +1141,17 @@ JournalEntry {
 ### 6.3 Working-tree snapshot (the untracked-file fix)
 
 Per PROMPT.md §3, `git stash create` silently omits untracked files and must
-not be used for this. Instead, before an operation that can destroy
-working-tree content (discard, forced checkout, `reset --hard`, stash drop,
-clean):
+not be used for this. Instead, before **any operation that touches the
+working tree or index** — merge, rebase, cherry-pick, revert and stash
+apply/pop as much as discard, forced checkout, `reset --hard`, stash drop
+and clean — and before any undo whose inverse rewrites the working tree
+(§6.4), unconditionally, not only when drift is detected (ADR-0009):
 
 1. Start from the pre-op index tree.
 2. For every untracked file in scope, `git hash-object -w` its contents into
    a blob and add it to that tree at its path (ignored files too, when the
    operation in question would also remove them).
-3. Commit that combined tree under `refs/graft/backup/<timestamp>` — one
+3. Commit that combined tree under `refs/graft/backup/<worktree>/<timestamp>` — one
    object graph that represents tracked *and* untracked content as it stood
    immediately before the operation.
 
@@ -1094,6 +1176,17 @@ specific inverse, computed from the journal entry:
 | Discard | Restore files from the combined snapshot tree (§6.3) |
 | Stash drop | Recreate the `refs/stash` reflog entry pointing at the (still-reachable, thanks to the backup ref) stash commit |
 | Push | **Not silently undoable** — it changed shared state. Journaled for transparency and shown in the browser, but "undo" here opens a guided, freshly-confirmed re-push of the pre-push ref state rather than a one-key reversal, since it affects other people |
+
+**Undo snapshots before it restores.** Any inverse that rewrites the
+working tree (the Merge / Rebase / Cherry-pick / Revert row, Reset,
+Discard) starts by taking a fresh combined snapshot (§6.3) of the working
+tree and index *as they stand at undo time* — unconditionally, not only
+when §6.7's comparison notices drift. An edit made after the operation
+finished and before `Ctrl+Z` never moved a ref, but it's still someone's
+work; the fresh snapshot means the restore is always backed by a recovery
+point, so "never lose work" holds even for changes no ref ever saw
+(ADR-0009). Undo is itself journaled (§6.5), so this snapshot is simply
+the undo entry's own `backup_ref`.
 
 A mid-flight operation (a rebase currently stopped on a conflict) is not a
 journal entry yet — its `Pending` record only resolves to `Committed` once
@@ -1129,13 +1222,25 @@ operation, per PROMPT.md §1.5.
 
 ### 6.7 Safety rails
 
-Before applying an undo, Graft compares the ref/tree it expects to find
-(`refs_after` / the state right after the operation being undone) against
-what's actually there now. If they differ — the user ran a bare `git` command
-outside Graft in the meantime — undo doesn't silently overwrite the
-unexpected state. It stops, explains what changed, and offers to snapshot the
-current state first (the same combined-tree mechanism as §6.3) before
-proceeding, so an undo can never discard work Graft didn't itself put there.
+Before applying an undo, Graft compares the state the journal entry says
+the operation left behind against what's actually there now — three
+comparisons, not one:
+
+- **Refs:** every ref in `refs_after` against its current OID.
+- **Index:** the entry's `index_after` tree against the current index
+  tree.
+- **Working tree:** the entry's `worktree_after` hash against a fresh
+  combined-tree hash (§6.3's mechanism, untracked files included) of the
+  working tree as it is now.
+
+If any of the three differ — a bare `git` command run outside Graft, or
+just an edited file — undo doesn't silently overwrite the unexpected
+state: it stops, explains exactly which of the three changed, and asks
+before proceeding. A plain working-tree edit never moves a ref, which is
+why comparing refs alone was never enough. And because §6.4's inverse
+snapshots unconditionally before touching the working tree, even a drift
+this comparison could somehow miss is still recoverable afterwards: the
+rail is the warning, the snapshot is the guarantee (ADR-0009).
 
 ### 6.8 Retention
 
