@@ -410,12 +410,58 @@ It must stay usable at 80×24. Split sizes can be changed with the mouse or keyb
 
 ## 7. Testing and quality gates ("bug-free" in practice)
 
+### 7.1 Laptop-safe testing (hard rules)
+
+Tests run on the developer's laptop while they're using it. **The suite must never make the machine swap, freeze or crash.**
+
+| Tier | Command | When | Budget |
+|---|---|---|---|
+| **Fast** (default) | `cargo test` | After every change; the gate for every ticket | Under 3 minutes and about 2 GB of RAM in total |
+| **Heavy** | `cargo test --features heavy-tests -- --ignored --test-threads=2` | Milestone reviews only | Under 10 minutes and about 3 GB |
+| **Manual** | Steps in `TESTING.md` | Only when the user chooses (the M1 and M8 checkpoints) | — |
+
+**What each tier contains**
+
+- **Fast tier:**
+  - small fixtures only (500 commits or fewer each)
+  - `proptest` capped at 64 cases (the `PROPTEST_CASES` variable can change this)
+  - no network, no fuzzing, no benchmarks
+- **Heavy tier:**
+  - the 100k-commit synthetic repo and the performance budgets
+  - `proptest` at 1,000 cases
+  - a **peak-memory test** that fails if loading and scrolling the 100k repo uses more than 300 MB (measured with `getrusage`)
+  - mark these tests `#[ignore]` and put them behind the `heavy-tests` feature
+- **Manual tier:** the Linux kernel repo. Never downloaded or run automatically. `TESTING.md` explains how to make a commits-only clone (`git clone --filter=tree:0`) if the user wants to try it.
+
+**Limits that keep the machine usable**
+
+- **Parallelism:** `.cargo/config.toml` caps builds at 4 jobs. Tests run on at most 4 threads (`RUST_TEST_THREADS=4`), and heavy tests on 2.
+- **One integration-test binary:** put integration tests in `tests/it/`, with a single `main.rs` that includes the other files as modules. Every separate file in `tests/` becomes its own binary to compile and link, which is slow and uses a lot of memory.
+- **Lighter debug info:** use `debug = "line-tables-only"` for dev and test builds. It cuts the memory needed for linking and the disk space used.
+- **Fixtures:**
+  - generate them once with a script using `git fast-import`, not thousands of `git commit` calls
+  - cache them in `target/fixtures/` and share them read-only
+  - tests that write copy a small fixture into a temp directory, which is deleted afterwards
+- **Isolated git:** every test that runs git:
+  - has a 30-second timeout
+  - sets `GIT_TERMINAL_PROMPT=0`, `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_NOSYSTEM=1`
+  - never uses the network
+
+  No test may ever hang waiting for input.
+- **One heavy job at a time:** never run two cargo commands, two test suites or two helper agents at the same moment.
+- **Fuzzing:** only at milestone reviews. Limit each target to 60 seconds with `-max_total_time=60 -rss_limit_mb=1024`. `cargo-fuzz` needs nightly Rust, so install that only when it's needed.
+- **Benchmarks:** only at milestone reviews, with short runs (`--warm-up-time 1 --measurement-time 3`).
+- **Disk:** the reviewer reports the size of `target/`. Run `cargo clean` when it passes 20 GB.
+- **Slow tests are bugs.** A fast-tier test that takes over 10 seconds, or a fast suite over its budget, is a Major review finding.
+
+### 7.2 What to test
+
 1. **Graph layout:** unit tests and property tests (`proptest`) for every invariant in 1.2, plus snapshot tests of the layout output.
 2. **Fixture repos from scripts:**
    - linear history, feature branches, octopus merges, criss-cross merges
    - foxtrot, backward, evil and accidental pull merges
    - orphan branches and cherry-pick duplicates
-   - a synthetic history of 100k commits
+   - a synthetic history of 100k commits (heavy tier only)
    - Unicode and non-UTF-8 names
    - conflicting rebases, submodules, worktrees, LFS pointers
 
@@ -425,9 +471,9 @@ It must stay usable at 80×24. Split sizes can be changed with the mouse or keyb
    - run it through `ops` on a temporary repo
    - check that the resulting refs, index and worktree match what the equivalent git CLI produces
    - check that **undo restores exactly the previous state**
-5. **Fuzzing** of the diff, porcelain and blame parsers with `cargo-fuzz`.
-6. **CI on GitHub Actions:**
-   - checks: `cargo fmt --check`, `clippy -D warnings`, tests, benchmarks
+5. **Fuzzing** of the diff, porcelain and blame parsers with `cargo-fuzz`, time-limited as described in 7.1.
+6. **CI on GitHub Actions** (once the project has a GitHub repo). Heavier runs belong here, not on the laptop.
+   - checks: `cargo fmt --check`, `clippy -D warnings`, the fast and heavy test tiers, benchmarks
    - platforms: macOS, Linux and Windows
    - git versions: the oldest supported and the latest
 7. **Manual terminal checklist** in `TESTING.md`, to be run before each release:
@@ -460,7 +506,7 @@ Don't start the next milestone while any test is failing.
 
 ## 9. Definition of done
 
-- Opening the Linux kernel repo paints the first screen in 500 ms or less, and scrolling to the bottom stays smooth.
+- The heavy tier's 100k-commit repo meets the performance and memory budgets. In the manual check (7.1), opening the Linux kernel repo paints the first screen in 500 ms or less, and scrolling to the bottom stays smooth.
 - In Ghostty, Kitty, WezTerm and iTerm2, the graph renders as anti-aliased curves lined up with the text rows, with no smearing while scrolling. In Terminal.app, the Unicode tier looks deliberately designed.
 - The foxtrot-merge fixture is flagged in the graph, and Explain highlights the rewritten first-parent line.
 - Every write operation can be undone. Killing Graft with `kill -9` mid-rebase leaves a state that git recognises, and on relaunch Graft offers Continue or Abort.

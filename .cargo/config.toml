@@ -1,0 +1,9 @@
+# Keep builds and tests from overloading the laptop (see PROMPT.md 7.1).
+[build]
+jobs = 4
+
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.test]
+debug = "line-tables-only"

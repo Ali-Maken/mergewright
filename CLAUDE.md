@@ -28,3 +28,5 @@
 - **Commit** after each ticket. Never push or force.
 - **Ask the user** (through the conductor) before changing the spec or cutting scope. Record agreed changes as ADRs.
 - **Keep your context lean:** read what you need, not everything.
+- **Tests must be laptop-safe** (PROMPT.md 7.1). Builders run only the fast tier (`cargo test`). The heavy tier, fuzzing and benchmarks run only in milestone reviews.
+- **One heavy job at a time:** never run two cargo commands or test suites at once. Never generate large fixtures outside the heavy tier.

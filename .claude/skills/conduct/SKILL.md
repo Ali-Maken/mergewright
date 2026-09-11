@@ -21,6 +21,7 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
   - Also: `reviewer` and `debugger`
 - **Choosing a builder:** use the "Build with" column in PROGRESS.md. A note in brackets, such as "(Opus for undo)", applies only to tickets about that part.
 - **Helper replies** are 150 words or fewer. Don't ask them for more.
+- **One helper at a time.** Never run helpers in parallel: builds and tests would compete for the laptop's memory.
 - **After each helper returns:**
   - tick the box in PROGRESS.md
   - update **Current step**
