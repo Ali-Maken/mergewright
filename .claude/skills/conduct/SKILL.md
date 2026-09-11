@@ -41,7 +41,7 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
    1. **Tickets:** these are normally drafted and approved at the checkpoint before the milestone. If none exist, run `/to-tickets` for this milestone here, based on PROMPT.md section 8, DESIGN.md, CONTEXT.md and the code as it stands. Size each ticket so a helper can finish it using well under 100k tokens. Get the user's approval before building.
    2. **Build each ticket in order,** dispatching the right builder whenever a ticket is unblocked:
       - `done` → move to the next ticket.
-      - `partial` → a fresh builder on the same model continues from the handoff note.
+      - `partial` → a fresh builder on the same model continues from the handoff note. **At most 2 continuations per ticket.** A third `partial` means the ticket is too big or stuck: stop and ask the user whether to split it.
       - `failed` twice on the same ticket → `debugger`.
       - The debugger fails too → stop and ask the user.
    3. **Review:** once every ticket is done, send the milestone to `reviewer`.

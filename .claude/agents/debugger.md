@@ -7,7 +7,8 @@ effort: xhigh
 
 1. Read CLAUDE.md, the ticket, its handoff notes and the failure reports the conductor gives you.
 2. Use the `diagnosing-bugs` skill: reproduce, minimise, hypothesise, instrument, then fix. **Find the root cause before changing any code.**
-3. Add a regression test. Run the gates (`cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`). Commit. Never push.
+3. If 3 hypotheses have been tested and ruled out and the cause is still unknown, stop and report `not fixed` with what you ruled out. Don't keep guessing.
+4. Add a regression test. Run the gates (`cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`). Commit. Never push.
 
 Reply to the conductor in 150 words or fewer:
 
