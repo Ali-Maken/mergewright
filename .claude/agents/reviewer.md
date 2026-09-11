@@ -25,6 +25,8 @@ You review. You do **not** fix, and you only write inside `docs/reviews/`.
    - Terminal escape sequences not being sanitised
    - Performance budgets, and whether the tests stay laptop-safe (7.1 budgets, timeouts, no hangs)
    - Anything marked done that is really stubbed
+   - Architecture: crate dependency rules, pure core versus shell, whether ARCHITECTURE.md matches the code (PROMPT.md 6.1)
+   - Readability: names, function and file size, nesting, doc comments, clever code where plain code would do (PROMPT.md 6.2). These are Major findings.
 4. Write `docs/reviews/<milestone>.md` with findings grouped as **Critical / Major / Minor**. For each, give file:line, what's wrong, why it matters and a suggested fix. Commit it.
 
 Reply to the conductor in 150 words or fewer: the count at each severity, the top 3 issues, and the gate results.

@@ -394,19 +394,70 @@ These are recorded in `KNOWN_GAPS.md` from day one rather than carried as promis
 
 ## 6. Engineering and architecture
 
-- **One-way data flow:** `Event → update(state) → view(state)`. Git work runs as Jobs whose results come back as Events, and the UI never waits on git.
-- **Modules** (a Cargo workspace is fine):
+### 6.1 Architecture: a pure core with a thin shell
 
-  | Module | Responsibility |
-  |---|---|
-  | `app` | Event loop and state |
-  | `ui` | Components and widgets |
-  | `graph` | Pure layout, plus the pixel, Unicode and ASCII renderers |
-  | `git` | Reads via `gix`; runs the typed git CLI and parses its output |
-  | `ops` | High-level operations and the undo journal |
-  | `term` | Capability detection and image protocols |
-  | `config` | Settings |
-  | `theme` | Colours and styles |
+- **The shape:** the parts that *decide* are pure functions: data in, data out, with no I/O, no clock and no terminal. Only a thin outer layer (the "shell") touches the terminal, the filesystem, git and threads. The pure parts are:
+  - graph layout
+  - diff and porcelain parsing
+  - Mistake Radar
+  - undo planning
+  - `update(state, event)`
+
+  So most of the code can be tested without a terminal or a real repo.
+- **One-way data flow:** `Event → update(state) → (new state, commands) → view(state)`.
+  - `update` never does I/O. Instead it returns *commands*, such as "run git fetch".
+  - The shell runs each command as a Job, and the result comes back as an Event.
+  - The UI never waits on git.
+- **Crate boundaries enforce the architecture.** It's a Cargo workspace, and dependencies only point downward. The compiler rejects cycles, so the structure can't quietly erode.
+
+  | Crate | Responsibility | May depend on |
+  |---|---|---|
+  | `core` | Shared domain types, in CONTEXT.md's terms: commit IDs, refs, events, commands, errors | nothing internal |
+  | `graph` | The pure layout engine and the pixel, Unicode and ASCII renderers | `core` |
+  | `git` | Repository reads (`gix`), the typed git command runner, output parsers | `core` |
+  | `ops` | High-level operations, the undo journal, Mistake Radar, Ghost Preview planning | `git`, `core` |
+  | `term` | Terminal capability detection, image protocols, escape-sequence sanitising | `core` |
+  | `ui` | Widgets, screen layout, theme, view models | `graph`, `term`, `core` |
+  | `app` | The binary: event loop, state, `update`, job runner, config, wiring | everything |
+
+  `ui` never imports `git` or `ops`. It receives plain view models, which keeps screens easy to test and to change.
+- **Deep modules:** each crate and module offers a small, well-named public API that hides a lot of work (use the `codebase-design` skill). Keep internals `pub(crate)`.
+- **`ARCHITECTURE.md`** sits at the repo root. It's a one-page map in the style of rust-analyzer's: the crates, what each one owns, the dependency rules and where to start reading. It's written in step 2 alongside DESIGN.md, and updated by any ticket that changes the structure.
+
+### 6.2 Readable code (hard rules)
+
+Anyone who knows basic Rust should be able to follow any file without help.
+
+- **Names:**
+  - Use CONTEXT.md's terms exactly: a "lane" is always a lane.
+  - Use full words. The only abbreviations allowed are universal ones (`id`, `oid`, `ui`).
+  - Functions are verbs and types are nouns. Booleans read as questions (`is_merge`, `has_upstream`).
+- **Small pieces:**
+  - Functions stay under about 60 lines, files under about 400 lines, and nesting at most 3 levels deep. Split a function once it needs comments to separate its sections.
+  - Enforce this with Clippy's `too_many_lines` and `cognitive_complexity` lints, thresholds set in `clippy.toml`.
+- **Plain over clever:**
+  - no macros where a function would do
+  - no traits or generics without at least two real uses
+  - owned data and simple lifetimes are preferred
+  - early returns instead of deep nesting
+- **Explicit errors:**
+  - Each library crate has its own error enum (`thiserror`) whose messages a user can understand. `anyhow` is allowed only in `app`.
+  - Never swallow an error.
+- **Comments explain why, not what:**
+  - Every public item has a doc comment (the `missing_docs` lint is on).
+  - Every module opens with a short `//!` paragraph saying what it's for.
+  - Tricky algorithms (lane layout, undo, Mistake Radar) get a prose explanation with a small worked example.
+- **No `unsafe`:** put `#![forbid(unsafe_code)]` in every crate. Any exception needs an ADR.
+- **Tests read as documentation:**
+  - Test names describe behaviour, such as `merge_of_trunk_into_feature_is_flagged_as_backward_merge`.
+  - Each fixture script says in a comment what history it builds.
+- **Enforced, not hoped for:**
+  - `rustfmt.toml`, plus workspace-level lints (`[workspace.lints]`) in the root `Cargo.toml`
+  - Clippy's `pedantic` group on, with any noisy lint allowed in one place, with a reason
+  - `cargo clippy -- -D warnings` is a gate
+- **Reviewed:** unclear names, oversized functions, missing docs and broken dependency rules are Major review findings.
+
+### 6.3 Runtime behaviour
 
 - **Awareness of in-progress operations:** read git's state files (`MERGE_HEAD`, `rebase-merge/`, `CHERRY_PICK_HEAD`, `BISECT_LOG` and so on) and show the operation banner. Relaunching mid-operation offers Continue or Abort.
 - **Refresh:** watch the worktree and `.git` (refs, HEAD, index), debounced. Never refresh in the middle of an operation.
@@ -533,7 +584,7 @@ Don't start the next milestone while any test is failing.
 
 | # | Milestone | Contents |
 |---|---|---|
-| **M0** | Foundations | Workspace, terminal setup and teardown, panic hook, capability detection, theme tokens, config, event loop, job runner, open repo |
+| **M0** | Foundations | Workspace with the crate map from ARCHITECTURE.md, lint and format config, terminal setup and teardown, panic hook, capability detection, theme tokens, config, event loop, job runner, open repo |
 | **M1** | **The graph** (read-only, best-in-class) | Build the fixtures first, then the layout engine and all three renderers, ref badges, selection, ancestry highlighting, folding, hover, search, virtualized scrolling, performance budgets. *Put most of the design effort here.* |
 | **M2** | Details and diffs | Commit detail pane, file tree, unified and side-by-side diffs, word diffs, syntax highlighting, compare any two commits, Mistake Radar detection and Explain |
 | **M3** | Working tree, undo and **stash** | Status, file/hunk/line staging, discard with backup, commit and amend, the commit editor, **undo journal**, stash save/apply/pop/drop |
@@ -575,6 +626,7 @@ Don't start the next milestone while any test is failing.
   - the graph layout algorithm, in prose and pseudocode
   - the terminal-capability detection plan
   - the undo journal design
+  - the crate map, key types and dependency rules (section 6.1), also written up as `ARCHITECTURE.md`
 
   **Then stop for my review.** Stop again after M1 so I can try the graph in my terminal.
 - Record every significant choice as an ADR (see CLAUDE.md).
