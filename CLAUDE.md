@@ -55,7 +55,7 @@ User wants clear + concise over grammar. Telegraphic style.
 ## Design docs (DESIGN.md, ARCHITECTURE.md, ADRs)
 
 Short, plain, easy for a human to use. Not a showpiece.
-- Few headings: one per main topic, no sub-sub-headings.
+- Headings: one per main topic. Subheadings are fine where a topic genuinely has distinct parts, but most topics shouldn't need them. If most headings have subheadings under them, it's over-structured: flatten it.
 - Mockups, tables and lists beat paragraphs. Each topic: what it is, how it works, why, in a few lines.
 - No filler, no restating the spec, no decorative subtitles.
 - As short as possible while still complete. If a section can be cut without losing a decision, cut it.
