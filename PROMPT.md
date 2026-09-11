@@ -370,7 +370,7 @@ These are recorded in `KNOWN_GAPS.md` from day one rather than carried as promis
 
 ## 5. Visual design system
 
-- **Identity:** original, calm and high-signal. The interface chrome stays in the background; the graph and diffs stand out. Dense, but with room to breathe.
+- **Identity:** original, calm and high-signal. The interface chrome stays in the background; the graph and diffs stand out. Dense, but with room to breathe. No decorative labels, subtitles or headings in the UI: every label must help the user act.
 - **Colour tokens:** `bg`, `surface`, `surface-raised`, `border`, `text`, `text-muted`, `accent`, `added`, `removed`, `warning`, `info`, `lane-1…12`.
   - Ship dark, light and high-contrast themes.
   - Pick the theme automatically from the terminal background (query it with OSC 11), with a manual override. Note `OSC 11` reports an opaque colour even on a translucent background, so treat the result as a light/dark hint, not as a colour to paint with.

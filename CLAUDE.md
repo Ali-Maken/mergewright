@@ -50,7 +50,15 @@ User wants clear + concise over grammar. Telegraphic style.
 - Bullets, one line each. Exact numbers, paths, commands.
 - Risks/unknowns stated plainly, not softened.
 - Questions: one line + short options.
-- Code, doc comments, ARCHITECTURE.md, DESIGN.md stay readable prose (PROMPT.md 6.2). This rule is for messages, not code or docs.
+- Code and doc comments: readable, per PROMPT.md 6.2.
+
+## Design docs (DESIGN.md, ARCHITECTURE.md, ADRs)
+
+Short, plain, easy for a human to use. Not a showpiece.
+- Few headings: one per main topic, no sub-sub-headings.
+- Mockups, tables and lists beat paragraphs. Each topic: what it is, how it works, why, in a few lines.
+- No filler, no restating the spec, no decorative subtitles.
+- As short as possible while still complete. If a section can be cut without losing a decision, cut it.
 
 Example:
 ```
