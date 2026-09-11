@@ -33,8 +33,8 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
 ## Loop
 
 1. Read PROGRESS.md and find the first unchecked item.
-2. **It's a "You" or CHECKPOINT item:** if the next milestone has no tickets yet, draft them first with `/to-tickets` (as in 5.1), so the user approves them at this same stop. Then stop, tell the user exactly what to do in a few lines, and wait.
-3. **It's step 1 (the decisions interview):** tell the user to run the `/grill-with-docs` line from PROGRESS.md in this session, then stop.
+2. **It's a "You" or CHECKPOINT item:** if the next milestone has no tickets yet, draft them first with `/to-tickets` (as in 5.1), so the user approves them at this same stop. Then stop, tell the user exactly what to do in a few lines, and wait. If the user says they've already done it, check it's really done (for example, the files it should have produced exist), then tick it, commit and carry on.
+3. **It's step 1 (the decisions interview):** if `CONTEXT.md` and ADRs already exist, the interview has probably happened but wasn't ticked. Ask the user whether it's finished; if it is, tick it, commit and carry on. Otherwise, tell the user to run the `/grill-with-docs` line from PROGRESS.md in this session, then stop.
 4. **It's step 2 or 3:** send the step's task text from PROGRESS.md to `builder-fable`.
 5. **It's a milestone:**
    1. **Tickets:** these are normally drafted and approved at the checkpoint before the milestone. If none exist, run `/to-tickets` for this milestone here, based on PROMPT.md section 8, DESIGN.md, CONTEXT.md and the code as it stands. Size each ticket so a helper can finish it using well under 100k tokens. Get the user's approval before building.
