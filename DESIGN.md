@@ -57,7 +57,7 @@ being drawn.
 │ SUBMODULES         │                                                                                  │  41 - if token.is_expired() {   │
 │                    │                                                                                  │  41 + if token.is_expired()     │
 │                    │                                                                                  │  42 +     && !refreshing {      │
-╰─ ↑↓ move  ⏎ open  space stage  c commit  m merge  r rebase  ⚠ foxtrot merge — e Explain  ? help ───────╯
+╰─ ↑↓ move  ⏎ open  space stage  c commit  m merge  r rebase  ⚠ foxtrot merge — . Explain  ? help ───────╯
 ```
 
 - Left: sidebar tree, filter box at the top (`⌕`).
@@ -218,8 +218,12 @@ before/after reads as one continuous picture, not two separate graphs.
 ╰───────────────────────────────────────────────────────────────────────╯
 ```
 
-`Fix…` opens the options from PROMPT.md §1.4 (revert with `-m 1`, reset with
-a backup ref, or rebase instead), each behind its own Ghost Preview.
+`[ Explain ]` and `[ Fix… ]` are buttons (mouse-clickable) reached from the
+keyboard through `.` (context actions) on the marked row — Explain owns no
+letter, because `e` means "open in `$EDITOR`" everywhere the graph vocabulary
+is live (§2.3). `Fix…` opens the options from PROMPT.md §1.4 (revert with
+`-m 1`, reset with a backup ref, or rebase instead), each behind its own
+Ghost Preview.
 
 ### 1.9 Interactive rebase editor
 
@@ -356,7 +360,7 @@ overlay are never out of sync with each other or with reality.
 - **Focus-scoped panes may reuse a letter for a *different* vocabulary, never
   a conflicting one.** The hint bar always shows what's active, so this isn't
   a hidden mode: it's the same rule modal editors use for a command palette
-  that means something different depending on where the cursor is. Three
+  that means something different depending on where the cursor is. Four
   places do this deliberately:
   - The **conflict resolver** binds `o`/`t`/`b` to ours/theirs/both — `t`
     (normally "new tag") doesn't apply mid-resolve, so it's free.
@@ -368,13 +372,17 @@ overlay are never out of sync with each other or with reality.
     Continue/Skip/Abort — "commit," "stage" and "amend" aren't valid while an
     operation is in progress, so the letters are free and match the buttons'
     initials exactly.
+  - The **first-run / empty state** (§2.13) binds `o`/`i`/`c` to
+    Open/Init/Clone — no repo is open yet, so the whole repo vocabulary
+    (`c` commit included) is off duty.
 - **Bulk variants use a modifier, not a different letter.** `Ctrl+A` stages
   everything; plain `a` stays "amend" everywhere. This avoids growing the
   letter bank for "the same verb, but all of them."
 - **Rare verbs live behind `.` (context actions) or the palette, not a
   dedicated key.** Rename, delete branch/tag, cherry-pick, reset to here,
-  create branch/tag from an arbitrary commit, copy SHA and open-in-browser
-  are all reachable in at most two steps without owning a letter.
+  explain/fix a Mistake Radar marker, create branch/tag from an arbitrary
+  commit, copy SHA and open-in-browser are all reachable in at most two
+  steps without owning a letter.
 - **Every binding is remappable** in `[keys]` in `config.toml`; Graft detects
   and warns about remap collisions at startup rather than picking silently.
 
@@ -827,6 +835,49 @@ against it:
 | Deterministic output | Heap tie-break by date then commit id; no unordered iteration in lane allocation |
 | A lane never changes column mid-life | A lane's column is fixed at open time; only `waiting_for` mutates until the lane closes |
 
+### 3.8 Strip cache (pixel tier) and the 16 ms frame budget
+
+PROMPT.md §1.1 fixes the cache keys ("row range, layout hash, theme and
+cell size"); this fills in the mechanism that makes 60 fps on 1M+ commits
+and input-to-frame under 16 ms (PROMPT.md §6.3) achievable in the pixel
+tier.
+
+- **What's cached:** rendered strips — `RasterFrame`s covering fixed-height
+  bands of rows, aligned to multiples of the strip height (start at 32
+  rows; tune in M1's performance pass). Alignment is what makes a scrolled
+  viewport re-hit existing strips instead of missing on every new offset.
+- **Where it lives:** inside `graph`'s pixel renderer, as renderer-private
+  state (§8.4 — an internal seam, invisible to callers). A bounded LRU of a
+  few viewports' worth of strips. `term`'s encoder may additionally reuse
+  already-transmitted image ids where the protocol allows (Kitty); that's
+  an encoder-internal optimisation, not part of this cache.
+- **The key:** `(strip row range, layout hash, theme id, cell size)`.
+- **The layout hash** is computed by the renderer from the layout-relevant
+  content of the strip's rows — per row: commit id, `lane`, `incoming`,
+  `outgoing`, `marker` — plus the set of pass-through lanes crossing the
+  strip (index and `BranchIdentity`, since identity drives colour). No
+  field is added to `Row`; the hash is derived from rows the renderer is
+  consuming anyway. Layout is deterministic (§3.7), so a chunk evicted and
+  rebuilt (§3.6) hashes identically — row-cache eviction never costs strip
+  cache hits.
+- **Invalidation** is mostly implicit: a refresh after a commit, fetch or
+  ref move changes row content, so the layout hash changes and the stale
+  strip simply stops being hit (and ages out of the LRU). Explicit
+  wholesale flushes on: theme change, cell-size change or capability
+  re-detection (§4.5), and terminal resize (strip pixel width changes).
+  **Scrolling is not an invalidation** — that is the entire point.
+- **Why this hits the budgets:** a scroll frame changes only the row range,
+  so it blits resident strips and renders at most one new strip entering
+  at the viewport edge; the strip height is chosen so one strip render
+  fits well inside 16 ms. The common frame rasterizes nothing at all —
+  lookup and placement only — which is what sustains 60 fps regardless of
+  history depth. Validated against the heavy tier's 100k-commit fixture in
+  M1's performance pass, alongside §3.6's memory gate.
+
+The Unicode and ASCII tiers don't need this: they emit styled text cells,
+ratatui already diffs frames cell-by-cell, and there's no rasterization
+cost to amortize.
+
 ---
 
 ## 4. Terminal-capability detection
@@ -1177,6 +1228,12 @@ specific inverse, computed from the journal entry:
 | Stash drop | Recreate the `refs/stash` reflog entry pointing at the (still-reachable, thanks to the backup ref) stash commit |
 | Push | **Not silently undoable** — it changed shared state. Journaled for transparency and shown in the browser, but "undo" here opens a guided, freshly-confirmed re-push of the pre-push ref state rather than a one-key reversal, since it affects other people |
 
+Undoing a push moves the remote branch backward — a non-fast-forward
+update — so the re-push goes through the exact same rail as every force
+push (PROMPT.md §4): `--force-with-lease --force-if-includes`, with
+explicit confirmation, never a plain `--force`. Undo is not a separate,
+less-guarded path into pushing.
+
 **Undo snapshots before it restores.** Any inverse that rewrites the
 working tree (the Merge / Rebase / Cherry-pick / Revert row, Reset,
 Discard) starts by taking a fresh combined snapshot (§6.3) of the working
@@ -1266,6 +1323,9 @@ changes something PROMPT.md fixed) rather than in code comments:
 - **Checkpoint interval of 2,000 rows** (§3.6) trades memory against jump
   latency; tune it against the heavy tier's 100k-commit fixture once that
   exists.
+- **Strip height of 32 rows** (§3.8) trades cache granularity against the
+  cost of rendering one new strip per scroll frame; tune it in the same
+  performance pass.
 - **Capability-probe budgets (200 ms local / 500 ms over SSH)** (§4.1, §4.4)
   are starting points; the manual terminal checklist (PROMPT.md §7.1) is what
   actually validates them across Ghostty/Kitty/WezTerm/iTerm2/tmux.
@@ -1275,9 +1335,15 @@ changes something PROMPT.md fixed) rather than in code comments:
 - **`Ctrl+A` for "stage all"** (§2.4) is this document's choice to keep the
   bulk variant off a bare letter; worth confirming it doesn't collide with a
   terminal or OS-level binding on the user's actual setup before it ships.
+- **First-paint order vs. the commit-graph file (§3.2, ADR-0008)** is the
+  biggest performance risk in this document, not a tunable: validate
+  against the `git/git` heavy-tier fixture, before M1 ships, that the
+  commit-graph path really paints inside 150 ms, and that the
+  no-commit-graph path's date-order→topo promotion re-anchors selection
+  and scroll without visible jumping.
 
-None of these are stubbed features — they're numeric or ergonomic parameters
-with a documented default, not gaps in scope, so they aren't duplicated in
+None of these are stubbed features — they're documented defaults and decided
+designs awaiting validation, not gaps in scope, so they aren't duplicated in
 `KNOWN_GAPS.md`.
 
 ---
@@ -1400,13 +1466,18 @@ internal — a deep module: one call in, a fully laid-out graph out.
 **`git`** (+ `core`): `RepoHandle` (an open repository), `GitInvocation` /
 `GitArg` (the typed command builder — Technology §"Writing to the repo": never
 a joined shell string), `WorktreeStatus`, `DiffHunk`, `WordDiff` (porcelain
-and diff parsing output). Internally, reads split into a small `RepoReader`
-seam with a `gix` adapter and a `git2` fallback adapter (PROMPT.md
-Technology) — two real adapters, so this is a real seam, not a hypothetical
-one (codebase-design: "one adapter means a hypothetical seam, two means a
-real one"). Writes are a second, separate path: build a `GitInvocation`,
-spawn the user's `git`, parse its output — no shared code with the reader
-seam beyond the argument and output types.
+and diff parsing output). Reads are **`gix`-primary — there is no second
+adapter** (ADR-0011). PROMPT.md's Technology section allows `git2` only as
+"an acceptable fallback for anything `gix` lacks," and this design takes
+that narrowly: if a specific capability turns out to be missing or broken
+in `gix`, that one function gets a `git2`-backed body behind the same
+`pub(crate)` reader signature, with the gap named in `KNOWN_GAPS.md` so it
+can be retired when `gix` catches up — never a parallel `RepoReader`
+implementation of status, rev-walk, diff and blame, whose doubled parsing
+and test surface nothing in the product motivates. Writes are a second,
+separate path: build a `GitInvocation`, spawn the user's `git`, parse its
+output — no shared code with the read side beyond the argument and output
+types.
 
 **`ops`** (+ `git`, `core`): `UndoJournal` (records and replays
 `core::JournalEntry`, §6), `MistakeRadar::scan(commits) -> Map<CommitId,
@@ -1425,12 +1496,41 @@ reasons: detection varies by *terminal*, encoding varies by *protocol*
 (Kitty/iTerm2/Sixel) — keeping them separate means adding a protocol doesn't
 touch detection and vice versa.
 
+`term` also owns the escape-sequence sanitiser PROMPT.md §6.3 requires:
+`term::sanitize(&str) -> SanitizedText`. `SanitizedText` is a newtype with
+a private field, and `sanitize` is its **only** constructor — holding one is
+proof the cleaning ran. The cleaning replaces with a visible placeholder
+(`␛` for controls, `�` otherwise), never silently deletes, so a spoofing
+attempt is *seen* rather than papered over. It neutralises:
+
+- all C0/C1 control characters except `\n` and `\t` (those two are handled
+  structurally by widgets, never passed through raw);
+- `ESC` itself — which alone kills every CSI, OSC (OSC 8 hyperlinks
+  included), DCS, APC and PM sequence;
+- bidi override and isolate characters (U+202A–202E, U+2066–2069);
+- zero-width and invisible formatting characters (U+200B–200F, U+2060,
+  U+FEFF) — both these and bidi controls can make what's drawn differ from
+  what git acts on.
+
+The one mandatory application point is `app`'s view-model assembly — the
+only place `git`/`ops` output meets `ui` types (§8.3). Every view-model
+field carrying repo-derived text is typed `SanitizedText`, so an
+unsanitised `String` reaching `ui` is a compile error, not a code-review
+catch. All five untrusted categories from PROMPT.md §6.3 cross that
+boundary and nowhere else: **commit messages** (subject and body — graph
+rows, detail pane, blame), **author names** (author and committer,
+mailmap-resolved included — rows, chips, blame), **file names** (status,
+diff headers, conflict lists, file tree), **file contents** (diff hunks,
+blame lines, conflict panes), and **branch names** (all refs: branches,
+tags, remotes, stash titles — badges and sidebar).
+
 **`ui`** (+ `graph`, `term`, `core`): plain view-model structs assembled by
 `app` (for example a `GraphViewModel` wrapping a slice of `graph::Row`, or a
 `JournalViewModel` wrapping `core::JournalEntry`), plus the ratatui widgets
 that render them. `ui` never imports `git` or `ops` — every fact a screen
 needs, including undo-journal entries and Mistake Radar explanations, arrives
-already resolved into a `core` or `graph` type.
+already resolved into a `core` or `graph` type, and every repo-derived
+string arrives as a `term::SanitizedText` (see `term` above).
 
 **`app`** (+ everything): `AppState` (the aggregate of every sub-state),
 `update(state: &AppState, event: core::Event) -> (AppState, Vec<Command>)`,
@@ -1477,10 +1577,10 @@ reaching past them into the crate's internals? `graph::layout` is the
 clearest case — one function call replaces lane assignment, compaction and
 checkpointing (§3), which is exactly the leverage a deep module is supposed
 to give its one caller (`app`). Where a crate needs more than one concrete
-implementation behind a function — `git`'s `gix`/`git2` reader split, or
-`term`'s per-protocol encoders — that split is an **internal seam**, private
-to the crate and invisible to callers, not a reason to expose more surface
-area. `pub(crate)` is the default everywhere (PROMPT.md §6.1); a type only
+implementation behind a function — `term`'s per-protocol encoders, or a
+`git` read that a named `gix` gap forces onto `git2` (ADR-0011) — that
+split is an **internal seam**, private to the crate and invisible to
+callers, not a reason to expose more surface area. `pub(crate)` is the default everywhere (PROMPT.md §6.1); a type only
 becomes `pub` when another crate in §8.1's dependency graph actually needs it.
 
 ### 8.5 Dependency rule and enforcement

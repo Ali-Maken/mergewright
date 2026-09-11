@@ -32,7 +32,8 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 - **Changing how history is drawn** (lanes, compaction, a new rendering tier)
   → `graph`. Start at `DESIGN.md` §3 for the algorithm.
 - **Changing what Graft reads from a repo** (status, log, diff parsing) →
-  `git`. Its `RepoReader` seam has a `gix` adapter and a `git2` fallback.
+  `git`. Reads are `gix`-primary; `git2` backs single named gaps only
+  (ADR-0011), never a second full adapter.
 - **Changing what a write operation does, or how undo works** → `ops`. Start
   at `DESIGN.md` §6.
 - **Changing terminal detection or an image protocol** → `term`. Start at
@@ -49,7 +50,7 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 |---|---|---|
 | `core` | Plain data only — no behaviour, no algorithms: commit and ref identity, events, the record shapes other crates read and write, errors for its own parsing | nothing internal |
 | `graph` | The pure layout engine and the pixel/Unicode/ASCII renderers | `core` |
-| `git` | Repository reads (`gix`, `git2` fallback), the typed git command runner, output and diff parsers | `core` |
+| `git` | Repository reads (`gix`; `git2` only per named gap, ADR-0011), the typed git command runner, output and diff parsers | `core` |
 | `ops` | Operations, the undo journal, Mistake Radar detection, Ghost Preview planning | `git`, `core` |
 | `term` | Terminal capability detection, image-protocol encoding, escape-sequence sanitising | `core` |
 | `ui` | Widgets, screen layout, theme, view models | `graph`, `term`, `core` |
@@ -67,7 +68,11 @@ app                          (+ everything above)
 
 `graph`, `git` and `term` are siblings and may not depend on each other. `ui`
 never imports `git` or `ops`: every screen renders from a plain view model
-`app` assembles, not from a live repository handle.
+`app` assembles, not from a live repository handle. Repo-derived strings
+(commit messages, author names, file names, file contents, ref names) cross
+into `ui` only as `term::SanitizedText` — a newtype only `term::sanitize`
+can construct, applied by `app` at the view-model boundary (`DESIGN.md`
+§8.2), so escape-sequence injection is a compile error, not a review catch.
 
 ## Shared types worth knowing where they live
 
@@ -113,11 +118,11 @@ Every crate here should be checkable against one question: can a caller get
 everything they need through the handful of functions it exposes, without
 reaching into its internals? `graph::layout` is the model case — one call
 replaces lane assignment, compaction and incremental checkpointing. Where a
-crate needs more than one concrete implementation of something (`git`'s
-`gix`/`git2` readers, `term`'s per-protocol encoders), that split is an
-*internal* seam, private to the crate — not a reason to widen its public
-interface. Default to `pub(crate)`; a type becomes `pub` only when another
-crate in the table actually needs it.
+crate needs more than one concrete implementation of something (`term`'s
+per-protocol encoders, or a `git` read that a named `gix` gap forces onto
+`git2` — ADR-0011), that split is an *internal* seam, private to the crate —
+not a reason to widen its public interface. Default to `pub(crate)`; a type
+becomes `pub` only when another crate in the table actually needs it.
 
 ## Elsewhere
 

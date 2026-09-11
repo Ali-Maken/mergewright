@@ -29,6 +29,16 @@ primary user does not use. Don't build them without asking.
 |---|---|---|
 | Windows | Explicit non-goal for v1 (ADR-0005). No Windows CI, no Windows terminals in the manual checklist | Not planned for v1 |
 
+## Design gaps (step 2 review, 2026-09-11)
+
+Named in `docs/reviews/step-2-design.md`; deliberately left out of DESIGN.md
+until the milestone that needs them.
+
+| Gap | What's needed | Expiry |
+|---|---|---|
+| Rebase with a dirty tree (review N3) | DESIGN.md never says whether Graft surfaces git's refusal or offers `--autostash`. Decide in M5's design; if autostash, the popped stash needs DESIGN.md §6.3's untracked-safe snapshot handling, not a bare `git stash` | M5 |
+| 50k+ refs in the sidebar and ref badges (review N4) | PROMPT.md §6.3 requires handling repos with 50k+ refs; branch-tree filtering, badge lookup and ranking at that scale are undesigned. Validate in M1's performance pass, not assumed free | M1 |
+
 ## Scheduled interim states
 
 These are *temporary*. Each one is a real gap between the milestone that creates
