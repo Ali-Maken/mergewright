@@ -1,0 +1,14 @@
+---
+source: crates/graft-graph/tests/it/corpus.rs
+expression: text
+---
+shape: evil-merge
+order: requested Topological, in force CommitDate (provisional)
+default: main
+integration: []
+commits: 4, columns: 2
+
+* \  cc1103b  main               Merge branch 'alpha'
+* |  0631550  main               Advance main
+| *  bd20b78  alpha              alpha: work
+* /  68d5d19  main               Add the base

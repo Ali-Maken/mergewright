@@ -29,6 +29,10 @@ fn commit(id: u8, parents: &[u8], seconds: i64, subject: &[u8]) -> Commit {
     }
 }
 
+/// Where a row sits and which edges touch it — everything about a row except
+/// the commit itself.
+type Placement = (usize, Vec<usize>, Vec<(usize, Oid)>);
+
 fn seed(tip: u8, identity: BranchIdentity) -> BranchSeed {
     BranchSeed {
         tip: oid(tip),
@@ -290,7 +294,7 @@ fn equal_dates_change_nothing_and_two_runs_still_agree() {
 
     assert_eq!(layout(&tied, seeds()), layout(&tied, seeds()));
 
-    let shape = |rows: Vec<Row>| -> Vec<(usize, Vec<usize>, Vec<(usize, Oid)>)> {
+    let shape = |rows: Vec<Row>| -> Vec<Placement> {
         rows.into_iter()
             .map(|row| (row.lane, row.incoming, row.outgoing))
             .collect()

@@ -1,0 +1,14 @@
+---
+source: crates/graft-graph/tests/it/corpus.rs
+expression: text
+---
+shape: orphan-branch
+order: requested Topological, in force CommitDate (provisional)
+default: main
+integration: []
+commits: 4, columns: 2
+
+| *  f4a9901  docs               docs: second page
+| *  1526215  docs               docs: first page
+*    90cb5c5  main               Add the code
+*    0e8dfb1  main               Add a readme

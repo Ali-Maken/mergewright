@@ -1,0 +1,15 @@
+---
+source: crates/graft-graph/tests/it/corpus.rs
+expression: text
+---
+shape: unicode-names
+order: requested Topological, in force CommitDate (provisional)
+default: main
+integration: []
+commits: 5, columns: 4
+
+| *      e26412c  ветка              ветка: первый коммит
+| | *    9c306b6  機能                 機能: 最初のコミット
+| | | *  a6b3175  fonctionnalité     fonctionnalité : première étape 🚀
+* / / /  06a6fae  main               日本語のコミットメッセージ
+*        c0b1044  main               Ajoute le fichier café ☕

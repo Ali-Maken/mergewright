@@ -1,0 +1,14 @@
+---
+source: crates/graft-graph/tests/it/corpus.rs
+expression: text
+---
+shape: backward-merge
+order: requested Topological, in force CommitDate (provisional)
+default: main
+integration: []
+commits: 4, columns: 3
+
+| * \  84cc93e  feature            Merge branch 'main' into feature
+| * |  8fa6bfc  feature            feature: work
+* | /  18ca7c9  main               Advance main
+* /    68d5d19  main               Add the base

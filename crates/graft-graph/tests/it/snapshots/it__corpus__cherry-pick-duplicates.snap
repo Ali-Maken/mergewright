@@ -1,0 +1,14 @@
+---
+source: crates/graft-graph/tests/it/corpus.rs
+expression: text
+---
+shape: cherry-pick-duplicates
+order: requested Topological, in force CommitDate (provisional)
+default: main
+integration: []
+commits: 4, columns: 2
+
+| *  3fb661a  topic              topic: unrelated work
+| *  c0f7180  topic              Fix the greeting (cherry picked)
+* |  9a9350a  main               Fix the greeting
+* /  fc8069b  main               Add the greeting

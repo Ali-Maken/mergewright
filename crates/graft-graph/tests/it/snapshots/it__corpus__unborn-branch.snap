@@ -1,0 +1,13 @@
+---
+source: crates/graft-graph/tests/it/corpus.rs
+expression: text
+---
+shape: unborn-branch
+order: requested Topological, in force CommitDate (provisional)
+default: main
+integration: []
+commits: 3, columns: 2
+
+| *  e1b73f9  other              other: work
+* |  8fee593  main               Add a.txt
+* /  ca2dfba  main               Add a readme

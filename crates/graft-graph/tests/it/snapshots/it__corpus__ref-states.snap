@@ -1,0 +1,18 @@
+---
+source: crates/graft-graph/tests/it/corpus.rs
+expression: text
+---
+shape: ref-states
+order: requested Topological, in force CommitDate (provisional)
+default: main
+integration: []
+commits: 8, columns: 4
+
+| *      51ea533  51ea533            Archived work
+| | *    b9b94c1  origin/behind      behind: theirs
+| | *    379c02d  origin/behind      behind: shared
+| | | *  0994ff4  ahead              ahead: not pushed yet
+| | | *  7be40e6  ahead              ahead: pushed
+* | | |  a676d37  main               Advance main again
+* | / /  31948ff  main               Advance main
+* /      68d5d19  main               Add the base

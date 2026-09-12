@@ -1,0 +1,15 @@
+---
+source: crates/graft-graph/tests/it/corpus.rs
+expression: text
+---
+shape: stash
+order: requested Topological, in force CommitDate (provisional)
+default: main
+integration: []
+commits: 5, columns: 4
+
+| * \ \  393688e  393688e            On main: wip: with an untracked file
+| | * |  b4bed6e  b4bed6e            index on main: d96881b Add a.txt
+| | | *  f11c383  f11c383            untracked files on main: d96881b Add a.txt
+* / /    d96881b  main               Add a.txt
+*        8c1d9f3  main               Add a readme
