@@ -37,7 +37,9 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 - **Changing what a write operation does, or how undo works** → `ops`. Start
   at `DESIGN.md` §6.
 - **Changing terminal detection or an image protocol** → `term`. Start at
-  `DESIGN.md` §4.
+  `DESIGN.md` §4, then `graft-term/src/detect/` — where `detect::tty` is the
+  only module that touches the real terminal, so everything above it is
+  tested against scripted replies.
 - **Changing a screen or a keybinding** → `ui` for the widget, `app` for the
   key-to-`Command` mapping. Start at `DESIGN.md` §1–§2.
 - **Adding a new kind of `Command` or wiring a new job** → `app`. It's the

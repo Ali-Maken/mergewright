@@ -8,6 +8,10 @@ publish.workspace = true
 
 [dependencies]
 graft-core.workspace = true
+# `poll`, `read` and the `TIOCGWINSZ` ioctl, for the one module that talks to
+# the real terminal (`detect::tty`). No crate wraps those three without also
+# owning the event loop, which `app` owns.
+libc = "0.2"
 
 [lints]
 workspace = true

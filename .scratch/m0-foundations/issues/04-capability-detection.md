@@ -1,6 +1,6 @@
 # m0-foundations/04 — Terminal-capability detection (`term::detect`)
 
-Status: todo
+Status: done (2026-09-12, Opus)
 Build with: Sonnet
 Blocked by: 01
 
@@ -31,10 +31,31 @@ Out:
 - The sanitiser (ticket 05).
 
 ## Acceptance
-- [ ] Parser unit tests per reply type, incl. malformed and truncated replies (use byte strings captured in the spike/ADR as fixtures).
-- [ ] Driver test with a scripted fake: full-answer terminal → pixel tier; silent terminal → falls back per-query and still returns within budget; tmux-too-old → unicode.
-- [ ] Every fallback value carries provenance (visible in the struct, later in diagnostics).
-- [ ] All tests laptop-safe, no real terminal needed; total added test time well under 10 s.
+- [x] Parser unit tests per reply type, incl. malformed and truncated replies (use byte strings captured in the spike/ADR as fixtures).
+- [x] Driver test with a scripted fake: full-answer terminal → pixel tier; silent terminal → falls back per-query and still returns within budget; tmux-too-old → unicode.
+- [x] Every fallback value carries provenance (visible in the struct, later in diagnostics).
+- [x] All tests laptop-safe, no real terminal needed; total added test time well under 10 s.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test`
+
+## What was built
+
+- `graft-core::capabilities` — `Capabilities` and the provenance types (`CellSizeSource`, `ThemeSource`, `Supported`, `TmuxStatus`, `ProbeOutcome`). Plain data, no behaviour (ADR-0007).
+- `graft-term::detect` — `detect(&Environment, &mut dyn TerminalHost) -> Capabilities`, with `reply` (escape-sequence scanner + per-reply parsers), `probe` (the six queries, the `DA1` fence, tmux passthrough wrapping) and `tty` (the only module that touches the real terminal: `poll`, `read`, `TIOCGWINSZ`, `tmux -V`).
+- `cargo run -p graft --example capability_probe` — manual check; prints the whole report, no alternate screen.
+- 46 tests in `graft-term`, all under 10 ms.
+
+## Deviations from the letter of the spec (flag at the checkpoint)
+
+1. **`Capabilities::detect(...)` is a free function, `graft_term::detect::detect(...)`.** `Capabilities` lives in `graft-core` (DESIGN.md §8.2) and Rust cannot put an inherent `impl` on a foreign type — and ADR-0007 forbids the behaviour living in `core` anyway. Same call, different spelling.
+2. **Detection takes the environment as a value, not from `std::env`.** `Environment::from_process()` reads the variables once; everything below is a pure decision over that value, which is what makes the tier table testable without `unsafe { set_var }`.
+3. **Inside tmux, `iterm2_images` is false unless the passthrough re-probe answered.** tmux blocks `OSC 1337` the same way it blocks the Kitty protocol, so an env hint that survives into tmux would otherwise promise images that never draw.
+4. **A tmux session with no reachable protocol gets Unicode even when §4.2's table would say ASCII** (e.g. no `COLORTERM`). §4.3 is the more specific rule and says so explicitly.
+5. **The tmux re-probe gets a fresh budget**, so a tmux session can spend up to 2x the deadline at startup. §4.3 mandates the second round and §4.4 only sizes a single one.
+
+## Verified how
+
+- Scripted-fake tests: the tier table, both fallback chains, all four tmux outcomes, the SSH budget (asserted on the deadline handed to `read`, so no test waits).
+- One run in a bare pty (`script -q /dev/null`): the six queries go out in order with `DA1` last; a terminal that answers nothing times out at 201 ms against the 200 ms budget and falls back per query, with every fallback flagged.
+- **Not verified: any real terminal answering.** See the M0 rows in KNOWN_GAPS.md — the manual runs (Ghostty, iTerm2, Kitty, WezTerm, Terminal.app, Zed, VS Code, tmux with and without passthrough, SSH) are outstanding.

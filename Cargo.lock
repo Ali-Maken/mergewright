@@ -104,6 +104,7 @@ name = "graft-term"
 version = "0.1.0"
 dependencies = [
  "graft-core",
+ "libc",
 ]
 
 [[package]]
