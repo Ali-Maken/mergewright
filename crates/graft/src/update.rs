@@ -5,12 +5,15 @@
 //! same state and the same event it returns the same answer, every time,
 //! forever. It reads no clock, opens no file, spawns no thread and draws
 //! nothing. Anything that has to touch the world leaves here as a [`Command`]
-//! for the job runner (ticket 10) to execute.
+//! for the job runner (`crate::jobs`) to execute.
 //!
 //! That is what makes the application testable without a terminal: every test
 //! below is a plain function call over plain data.
 
+use std::path::PathBuf;
+
 use graft_core::event::{Event, KeyCode, KeyPress};
+use graft_core::job::JobId;
 
 /// Everything Graft knows, as one value.
 ///
@@ -27,6 +30,10 @@ pub struct AppState {
     pub status: Status,
     /// The terminal's last reported size, in character cells.
     pub size: Size,
+    /// The repository Graft was pointed at. Empty in a default state, which is
+    /// only ever a starting point: `event_loop::run` fills it in before the
+    /// first frame.
+    pub repo_path: PathBuf,
 }
 
 /// What the status line has to say.
@@ -60,13 +67,21 @@ pub struct Size {
 /// Work for the job runner: something [`update`] wants done that it cannot do
 /// itself, because doing it would mean touching the world.
 ///
-/// Empty, and that is deliberate. An uninhabited enum makes "there is nothing
-/// to run yet" a fact the compiler enforces rather than a promise in a comment:
-/// no `Command` value can exist, so the loop cannot silently drop one. The
-/// moment ticket 10 adds the first variant, every place that has to handle a
-/// command stops compiling until it does.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Command {}
+/// Plain data, with no closure and no handle in it, so that `update` stays a
+/// function whose answer can be compared with `assert_eq!`. Turning a command
+/// into the code that runs it is the job runner's business (`crate::jobs`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Command {
+    /// Open the repository at this path and check it is one.
+    ///
+    /// At M0 that is all there is to read from a repository, so this is also
+    /// what `Ctrl+R` (manual refresh, DESIGN.md §2.1) re-runs. The tickets that
+    /// add the rev-walk and the status read extend the work behind it.
+    OpenRepository(PathBuf),
+    /// Stop a job whose result is no longer wanted. Cooperative: a job that has
+    /// not started is dropped, and a running one stops at its next check.
+    CancelJob(JobId),
+}
 
 /// Answer one event: the new state, and the work it wants done.
 ///
@@ -77,27 +92,41 @@ pub enum Command {}
 pub fn update(state: &AppState, event: Event) -> (AppState, Vec<Command>) {
     let mut next = state.clone();
 
+    let mut commands = Vec::new();
+
     match event {
         Event::Key(key) => {
             if is_quit(key) {
                 next.should_quit = true;
+            } else if is_refresh(key) {
+                commands.push(Command::OpenRepository(next.repo_path.clone()));
             }
         }
         Event::Resize { columns, rows } => {
             next.size = Size { columns, rows };
         }
-        Event::JobFailed(id, error) => {
+        Event::JobFailed(id, failure) => {
             // Surfaced, not swallowed: the user is told which job failed and
-            // why, even though this ticket has no job that can fail yet.
-            next.status = Status::Failed(format!("{id} failed: {error}"));
+            // why. A panicking job says so in the same place — it is still a
+            // failure, and the crash report's path rides along with it.
+            next.status = Status::Failed(format!("{id} failed: {failure}"));
         }
+        Event::JobFinished(_) => {
+            // The last thing Graft was asked to do worked, so a failure still
+            // on the status line is stale. Nothing keyed by job id is kept yet,
+            // which is also what makes a result for a job whose screen has gone
+            // harmless: there is nothing for it to overwrite.
+            next.status = Status::Ready;
+        }
+        // Cancellation is not a failure and not news: the application asked for
+        // it. The status line keeps whatever it was already saying.
+        Event::JobCancelled(_) => {}
         // Nothing is bound to these yet. They reach `update` so that the
         // tickets that need them have somewhere obvious to add the handling.
         Event::Mouse(_) | Event::Paste(_) | Event::FocusGained | Event::FocusLost => {}
-        Event::JobFinished(_) => {}
     }
 
-    (next, Vec::new())
+    (next, commands)
 }
 
 /// The two keys that mean "leave" (DESIGN.md §2.2).
@@ -111,11 +140,16 @@ fn is_quit(key: KeyPress) -> bool {
     plain_q || control_c
 }
 
+/// Manual refresh (DESIGN.md §2.1): re-read the repository now, rather than
+/// waiting for whatever would have noticed on its own.
+fn is_refresh(key: KeyPress) -> bool {
+    key.code == KeyCode::Char('r') && key.modifiers.control
+}
+
 #[cfg(test)]
 mod tests {
-    use graft_core::error::Error;
     use graft_core::event::{Modifiers, MouseInput, MouseKind};
-    use graft_core::job::JobId;
+    use graft_core::job::{JobFailure, JobId};
 
     use super::*;
 
@@ -174,7 +208,7 @@ mod tests {
             Event::Paste("hello".to_owned()),
             Event::FocusGained,
             Event::FocusLost,
-            Event::JobFinished(JobId::new(1)),
+            Event::JobCancelled(JobId::new(1)),
         ];
 
         for event in unbound {
@@ -222,15 +256,91 @@ mod tests {
 
     #[test]
     fn a_failed_job_reaches_the_status_line() {
-        let error = Error::OidLength { len: 3 };
-        let expected = format!("job 9 failed: {error}");
+        let failure = JobFailure::Failed("not a git repository".to_owned());
+
+        let (next, commands) = update(
+            &AppState::default(),
+            Event::JobFailed(JobId::new(9), failure),
+        );
+
+        assert_eq!(
+            next.status,
+            Status::Failed("job 9 failed: not a git repository".to_owned())
+        );
+        assert!(commands.is_empty());
+    }
+
+    #[test]
+    fn a_panicking_job_says_so_and_names_its_report() {
+        let failure = JobFailure::Panicked {
+            message: "lane 3 vanished".to_owned(),
+            report: Some("/state/graft/crash-1.log".to_owned()),
+        };
 
         let (next, _) = update(
             &AppState::default(),
-            Event::JobFailed(JobId::new(9), error.clone()),
+            Event::JobFailed(JobId::new(2), failure),
         );
 
-        assert_eq!(next.status, Status::Failed(expected));
+        assert_eq!(
+            next.status,
+            Status::Failed(
+                "job 2 failed: panicked: lane 3 vanished — report: /state/graft/crash-1.log"
+                    .to_owned()
+            )
+        );
+    }
+
+    #[test]
+    fn a_job_that_worked_clears_a_stale_failure() {
+        let failed = AppState {
+            status: Status::Failed("job 1 failed: not a git repository".to_owned()),
+            ..AppState::default()
+        };
+
+        let (next, _) = update(&failed, Event::JobFinished(JobId::new(2)));
+
+        assert_eq!(next.status, Status::Ready);
+    }
+
+    #[test]
+    fn a_cancelled_job_leaves_the_status_line_alone() {
+        // Cancellation is something Graft asked for. Reporting it would put an
+        // error in front of the user when nothing is wrong (CLAUDE.md).
+        let failed = AppState {
+            status: Status::Failed("job 1 failed: not a git repository".to_owned()),
+            ..AppState::default()
+        };
+
+        let (next, _) = update(&failed, Event::JobCancelled(JobId::new(1)));
+
+        assert_eq!(next, failed);
+    }
+
+    #[test]
+    fn control_r_asks_for_the_repository_to_be_re_read() {
+        let state = AppState {
+            repo_path: PathBuf::from("/code/api"),
+            ..AppState::default()
+        };
+
+        let (next, commands) = update(&state, Event::Key(KeyPress::control(KeyCode::Char('r'))));
+
+        assert_eq!(
+            commands,
+            vec![Command::OpenRepository(PathBuf::from("/code/api"))]
+        );
+        // Asking for work is all it does: the state is the job's to change,
+        // once the job comes back.
+        assert_eq!(next, state);
+    }
+
+    #[test]
+    fn a_bare_r_asks_for_nothing() {
+        // `r` is rebase on the history screen (DESIGN.md §2.3), not refresh.
+        let (_, commands) = update(&AppState::default(), key(KeyCode::Char('r')));
+
+        assert!(commands.is_empty());
     }
 
     #[test]
@@ -244,6 +354,7 @@ mod tests {
                 columns: 80,
                 rows: 24,
             },
+            repo_path: PathBuf::from("/code/api"),
         };
 
         let first = update(&state, key(KeyCode::Char('q')));

@@ -144,6 +144,7 @@ mod tests {
                 columns: 40,
                 rows: 4,
             },
+            repo_path: std::path::PathBuf::from("/code/api"),
         };
         let before = state.clone();
 

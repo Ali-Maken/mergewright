@@ -9,10 +9,11 @@
 
 use std::any::Any;
 use std::backtrace::Backtrace;
+use std::cell::{Cell, RefCell};
 use std::env;
 use std::fs;
 use std::io::{self, Write};
-use std::panic::{self, PanicHookInfo};
+use std::panic::{self, AssertUnwindSafe, PanicHookInfo};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -28,7 +29,6 @@ pub fn install(restorer: TerminalRestorer) {
     // panic message and backtrace into stderr that the report already holds,
     // burying the one line that matters — where the report is.
     panic::set_hook(Box::new(move |panic_info| {
-        let restore_error = restorer.restore().err();
         let timestamp = Timestamp::now();
         let report = report(
             message(panic_info.payload()),
@@ -36,9 +36,90 @@ pub fn install(restorer: TerminalRestorer) {
             &Backtrace::force_capture().to_string(),
             &timestamp,
         );
+
+        if being_caught() {
+            // A caller is catching this panic and will report it itself — the
+            // job runner, whose worker must not take the application down with
+            // it. Graft is still drawing, so restoring the terminal here would
+            // wipe a live screen and printing here would corrupt the frame.
+            // The report is still written, and where it went is left for the
+            // catcher to put in front of the user.
+            remember_report(save(&report, &timestamp));
+            return;
+        }
+
+        let restore_error = restorer.restore().err();
         let saved = save(&report, &timestamp);
         announce(&mut io::stderr(), &report, saved, restore_error);
     }));
+}
+
+thread_local! {
+    /// True while this thread is inside [`catching`].
+    static BEING_CAUGHT: Cell<bool> = const { Cell::new(false) };
+    /// Where the hook put the report for the panic [`catching`] is about to
+    /// return. Written by the hook, taken by `catching`.
+    static CAUGHT_REPORT: RefCell<Option<String>> = const { RefCell::new(None) };
+}
+
+/// A panic that was caught rather than allowed to end the process.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Panicked {
+    /// What the panic said.
+    pub message: String,
+    /// Where the crash report went, or why it could not be written. `None`
+    /// when no hook is installed — a library user, or a test.
+    pub report: Option<String>,
+}
+
+/// Run `work`, catching a panic instead of letting it end the process, with
+/// Graft's crash handling stood down for the duration.
+///
+/// This is what a job runner worker wraps a job in: a panicking job is a bug,
+/// but it is one job's bug, and the application it was started from is still
+/// on screen and still responsive. The caller gets the panic message and the
+/// crash report's location, and owes the user both — a caught panic that goes
+/// unreported is a bug that ships (CLAUDE.md).
+///
+/// `work` is asserted to be unwind-safe: a job owns everything it touches,
+/// and what it shares with the runner (the cancellation flag, the channel the
+/// result goes down) is atomic or poison-checked, so a half-finished job
+/// leaves nothing behind for the next one to trip over.
+pub fn catching<R>(work: impl FnOnce() -> R) -> Result<R, Panicked> {
+    let outer = BEING_CAUGHT.with(|caught| caught.replace(true));
+    let outcome = panic::catch_unwind(AssertUnwindSafe(work));
+    BEING_CAUGHT.with(|caught| caught.set(outer));
+
+    outcome.map_err(|payload| Panicked {
+        message: message(payload.as_ref()).to_owned(),
+        report: CAUGHT_REPORT.with(|report| report.borrow_mut().take()),
+    })
+}
+
+/// Whether the panic now unwinding this thread is one [`catching`] will hand
+/// back to its caller.
+///
+/// A thread whose locals are already being destroyed cannot answer, and the
+/// safe answer there is "no": full crash handling, rather than a panic that
+/// nobody reports.
+fn being_caught() -> bool {
+    BEING_CAUGHT.try_with(Cell::get).unwrap_or(false)
+}
+
+/// Leave the report's whereabouts for [`catching`] to pick up.
+fn remember_report(saved: io::Result<PathBuf>) {
+    let told = match saved {
+        Ok(path) => path.display().to_string(),
+        // Losing the report must not also lose the fact that it was lost.
+        Err(error) => format!("the crash report could not be written: {error}"),
+    };
+    // The failure is deliberately not propagated: `try_with` fails only while
+    // this thread's locals are being destroyed, and by then there is no
+    // `catching` frame left to read the note. Nothing is lost, and a panic hook
+    // must never panic.
+    CAUGHT_REPORT
+        .try_with(|report| *report.borrow_mut() = Some(told))
+        .unwrap_or(());
 }
 
 /// Write the report where `install`'s hook would, and hand back its path.
@@ -364,6 +445,44 @@ mod tests {
         assert!(printed.contains("stdout is closed"), "{printed}");
         assert!(printed.contains("read-only file system"), "{printed}");
         assert!(printed.contains("the whole report"), "{printed}");
+    }
+
+    /// Why a job can panic without the screen going away: inside `catching`,
+    /// the thread is marked, and the hook uses that mark to stand down instead
+    /// of restoring the terminal out from under a running application.
+    ///
+    /// The mark is per thread and nests, so a job that catches a panic of its
+    /// own leaves the worker's own catching frame exactly as it found it.
+    #[test]
+    fn a_thread_inside_catching_tells_the_hook_to_stand_down() {
+        assert!(
+            !being_caught(),
+            "an ordinary thread is not catching anything"
+        );
+
+        let seen = catching(|| {
+            let outer = being_caught();
+            let inner = catching(being_caught).expect("this closure does not panic");
+            let after_inner = being_caught();
+            (outer, inner, after_inner)
+        })
+        .expect("this closure does not panic");
+
+        assert_eq!(seen, (true, true, true));
+        assert!(!being_caught(), "the mark is cleared on the way out");
+    }
+
+    /// And a panic that nobody is catching leaves the mark alone, so the hook
+    /// does the full job: restore, report, announce.
+    #[test]
+    fn a_panic_that_escapes_catching_clears_the_mark_behind_it() {
+        let panicked = catching(|| panic!("lane 3 vanished"));
+
+        assert_eq!(
+            panicked.expect_err("the closure panics").message,
+            "lane 3 vanished"
+        );
+        assert!(!being_caught(), "a panic must not leave the mark set");
     }
 
     #[test]

@@ -1,6 +1,6 @@
 # m0-foundations/10 — Job runner
 
-Status: todo
+Status: done
 Build with: Sonnet
 Blocked by: 09
 
@@ -27,9 +27,22 @@ Out:
 - async runtimes — plain threads + channels are enough at M0; adding tokio would be a spec change (Technology section says worker pool; propose via ADR if you disagree).
 
 ## Acceptance
-- [ ] Tests with fake jobs: completion arrives as an event; N jobs on a pool of 2 all complete; cancellation stops a cooperative job promptly; a panicking job yields a failure event and the pool keeps working.
-- [ ] No test sleeps longer than ~100 ms; total added test time seconds, not minutes; at most 4 worker threads in tests (PROMPT.md §7.1).
-- [ ] UI thread code path contains no `join()`/blocking wait on a job (review check, noted in code comments).
+- [x] Tests with fake jobs: completion arrives as an event; N jobs on a pool of 2 all complete; cancellation stops a cooperative job promptly; a panicking job yields a failure event and the pool keeps working.
+- [x] No test sleeps longer than ~100 ms; total added test time seconds, not minutes; at most 4 worker threads in tests (PROMPT.md §7.1).
+- [x] UI thread code path contains no `join()`/blocking wait on a job (review check, noted in code comments).
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test`
+
+## What was built
+- `crates/graft/src/jobs/mod.rs`: `JobRunner` (pool, FIFO channel queue, `MAX_WORKERS = 4`), `Cancel` token, `Outcome`, the `JobEvents` and `Dispatch` seams, and `shutdown(grace) -> Shutdown::{Clean, Stalled{workers}}` — a bounded `Condvar` wait, never a `join` that can hang. Every job ends in exactly one event; the five outcomes are tabulated in the module doc.
+- `crates/graft/src/crash.rs`: `catching()` — `catch_unwind` at the worker boundary with Graft's crash hook stood down for the duration, so a job's panic still writes a crash report but does **not** restore the terminal out from under a live screen. The report's path rides back in `JobFailure::Panicked { report }`.
+- `crates/graft-core`: `JobFailure` (`Failed(String)` / `Panicked { message, report }`) and a new `Event::JobCancelled`. Ticket 09's `JobFailed(JobId, core::error::Error)` could not carry a panic or a git error, and `core` may not name `git`/`ops` error types, so a failure crosses as rendered text.
+- `crates/graft/src/update.rs`: `AppState.repo_path`; `Ctrl+R` (DESIGN.md §2.1 manual refresh) emits `Command::OpenRepository`; job events reach the status line.
+- `crates/graft/src/event_loop/mod.rs`: dispatches every command from `update` to the runner and returns immediately, opens the cwd's repository at startup, shuts the pool down after the terminal is restored and reports a stalled worker on stderr.
+
+## Verified
+- 226 tests pass (32 new: 19 in `jobs`, 2 in `crash`, 3 in `event_loop`, 6 in `update`, 3 in `core::job`). Gates: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` all clean.
+- No test sleeps at all: order is forced with channels; the only durations are failure bounds (a 5 s `recv_timeout`) and the 20 ms grace in the shutdown test. Pools of 1-4 threads; the whole `graft` lib suite runs in ~0.06 s.
+- Real run in a pty (80x24, `q` to quit): inside this repository the status line stays `ready`; in a plain directory it reads `job 1 failed: <path> … is not a git repository`. Exit 0, terminal restored, nothing on stderr.
+- Not verified: the panic hook's suppression branch under a real installed hook (see KNOWN_GAPS.md).

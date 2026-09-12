@@ -40,3 +40,82 @@ impl fmt::Display for JobId {
         write!(f, "job {}", self.0)
     }
 }
+
+/// Why a job produced no result.
+///
+/// The message is already rendered as text, and that is deliberate: `core`
+/// cannot name `git`'s or `ops`' error types (ARCHITECTURE.md), and the only
+/// thing the application does with a failed job is tell the user about it. The
+/// job runner renders the error at the boundary where the concrete type is
+/// still in scope.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum JobFailure {
+    /// The job ran and reported that it could not do what it was asked — no
+    /// repository at that path, a `git` command that exited non-zero. Expected,
+    /// and the user's to act on.
+    Failed(String),
+    /// The job panicked: a bug in Graft, caught at the worker boundary so that
+    /// one broken job cannot take the whole application down with it.
+    Panicked {
+        /// What the panic said.
+        message: String,
+        /// Where the crash report went, when there was a crash handler to
+        /// write one — either a path or why it could not be written. `None`
+        /// when no handler was installed, which is the case in tests.
+        report: Option<String>,
+    },
+}
+
+/// Reads as a status line: `not a git repository`, or
+/// `panicked: index out of bounds — report: /…/crash-20260912-124000.log`.
+impl fmt::Display for JobFailure {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            JobFailure::Failed(message) => f.write_str(message),
+            JobFailure::Panicked {
+                message,
+                report: None,
+            } => write!(f, "panicked: {message}"),
+            JobFailure::Panicked {
+                message,
+                report: Some(report),
+            } => write!(f, "panicked: {message} — report: {report}"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn an_id_reads_as_a_short_label() {
+        assert_eq!(JobId::new(7).to_string(), "job 7");
+    }
+
+    #[test]
+    fn a_failure_reads_as_what_went_wrong() {
+        assert_eq!(
+            JobFailure::Failed("not a git repository".to_owned()).to_string(),
+            "not a git repository"
+        );
+    }
+
+    #[test]
+    fn a_panic_says_so_and_names_its_report() {
+        let without = JobFailure::Panicked {
+            message: "lane 3 vanished".to_owned(),
+            report: None,
+        };
+        let with = JobFailure::Panicked {
+            message: "lane 3 vanished".to_owned(),
+            report: Some("/state/graft/crash-1.log".to_owned()),
+        };
+
+        assert_eq!(without.to_string(), "panicked: lane 3 vanished");
+        assert_eq!(
+            with.to_string(),
+            "panicked: lane 3 vanished — report: /state/graft/crash-1.log"
+        );
+    }
+}

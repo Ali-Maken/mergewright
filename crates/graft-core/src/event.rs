@@ -12,8 +12,7 @@
 //! terminal library stays an implementation detail of `app`'s input
 //! translation, and `update` stays a pure function over plain data.
 
-use crate::error::Error;
-use crate::job::JobId;
+use crate::job::{JobFailure, JobId};
 
 /// Something that happened and that `update` must answer.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -46,8 +45,13 @@ pub enum Event {
     /// A background job finished. What it produced is looked up by id in the
     /// job runner's own table — `core` never sees a job's contents.
     JobFinished(JobId),
-    /// A background job failed, and why.
-    JobFailed(JobId, Error),
+    /// A background job failed, and why. Never dropped on the floor: a job
+    /// that could not do its work always says so (CLAUDE.md).
+    JobFailed(JobId, JobFailure),
+    /// A background job stopped because it was cancelled. Its own outcome —
+    /// not a success and not a failure, because the application asked for it,
+    /// so there is nothing to report to the user.
+    JobCancelled(JobId),
 }
 
 /// A key going down, as Graft's keymap thinks of it.

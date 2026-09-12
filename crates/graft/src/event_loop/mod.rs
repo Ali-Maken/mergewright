@@ -16,6 +16,7 @@
 pub mod input;
 pub mod signals;
 
+use std::env;
 use std::io::{self, Write};
 use std::sync::mpsc::{self, Receiver, Sender};
 
@@ -23,8 +24,9 @@ use ratatui::Terminal;
 use ratatui::backend::{Backend, CrosstermBackend};
 
 use crate::crash;
+use crate::jobs::{self, Delivery, Dispatch, JobEvents, JobRunner, Shutdown};
 use crate::terminal::{SessionOptions, TerminalSession};
-use crate::update::{AppState, update};
+use crate::update::{AppState, Command, Status, update};
 use crate::view::view;
 
 /// Begin a synchronized update: the terminal buffers what follows and paints
@@ -81,6 +83,17 @@ impl ChannelWakes {
     }
 }
 
+/// A job's result is a wake like any other: the loop reads it from the same
+/// channel as the keyboard, in the order it arrived.
+impl JobEvents for Sender<Wake> {
+    fn deliver(&self, event: graft_core::event::Event) -> Delivery {
+        match self.send(Wake::Event(event)) {
+            Ok(()) => Delivery::Received,
+            Err(_returned) => Delivery::NobodyListening,
+        }
+    }
+}
+
 impl Wakes for ChannelWakes {
     fn next_wake(&mut self) -> Option<Wake> {
         // The only error `recv` can give is "all senders dropped", which is
@@ -101,13 +114,18 @@ pub fn run(options: SessionOptions) -> io::Result<Exit> {
 
     let (mut wakes, sender) = ChannelWakes::new();
     let signals = signals::watch(sender.clone())?;
+    let jobs = JobRunner::with_default_size(sender.clone())?;
     input::spawn_reader(sender)?;
 
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
-    let outcome = pump(&mut terminal, &mut wakes, AppState::default());
+    let outcome = pump(&mut terminal, &mut wakes, &jobs, opening_repository(&jobs));
     // Dropped before the restore so that its own teardown (it shows the cursor
     // it hid) goes out while the session is still in charge of the terminal.
     drop(terminal);
+
+    // Stop the pool before the terminal goes back, so that a job still writing
+    // its result cannot outlive the screen it was writing for.
+    let shutdown = jobs.shutdown(jobs::SHUTDOWN_GRACE);
 
     // Let the signal thread end. The input thread cannot be stopped — it is
     // blocked inside a terminal read that only returns when the user types —
@@ -117,6 +135,7 @@ pub fn run(options: SessionOptions) -> io::Result<Exit> {
     // Restore explicitly rather than leaving it to `Drop`, so a restore
     // failure can be returned instead of merely printed.
     let restored = session.restore();
+    report_stalled_jobs(shutdown);
     match (outcome, restored) {
         (Ok(exit), Ok(())) => Ok(exit),
         (Ok(_), Err(restore_error)) => Err(restore_error),
@@ -137,18 +156,69 @@ pub fn run(options: SessionOptions) -> io::Result<Exit> {
     }
 }
 
+/// The state Graft starts in, with the first job already on its way.
+///
+/// Graft is started inside the repository it is meant to show, so the first
+/// thing it does is open it — as a job, because opening a repository reads the
+/// disk and the first frame must not wait for that.
+fn opening_repository(jobs: &impl Dispatch) -> AppState {
+    match env::current_dir() {
+        Ok(directory) => {
+            jobs.dispatch(Command::OpenRepository(directory.clone()));
+            AppState {
+                repo_path: directory,
+                ..AppState::default()
+            }
+        }
+        // A deleted or unreadable working directory. There is no repository to
+        // open and no path to show, and saying nothing would leave an empty
+        // screen with no explanation.
+        Err(error) => AppState {
+            status: Status::Failed(format!(
+                "cannot tell which directory Graft was started in: {error}"
+            )),
+            ..AppState::default()
+        },
+    }
+}
+
+/// Say so when jobs had to be abandoned, now that the terminal is the user's
+/// again.
+///
+/// Rare, and a bug when it happens: it means a job did not check its
+/// cancellation token often enough. Printing it is the only way anyone finds
+/// out, since by this point there is no screen left to put it on.
+fn report_stalled_jobs(shutdown: Shutdown) {
+    let Shutdown::Stalled { workers } = shutdown else {
+        return;
+    };
+
+    let mut stderr = io::stderr();
+    // Nothing sensible is left to do if even stderr is gone, and the exit is
+    // otherwise a normal one.
+    writeln!(
+        stderr,
+        "graft: {workers} background job(s) did not stop in time and were abandoned"
+    )
+    .and_then(|()| stderr.flush())
+    .unwrap_or(());
+}
+
 /// The loop itself: draw, wait, update, repeat.
 ///
-/// Split out from [`run`] so it can be driven over any backend and any source
-/// of wakes — which is what lets the frame bytes be asserted in a test.
-pub fn pump<B, W>(
+/// Split out from [`run`] so it can be driven over any backend, any source of
+/// wakes and any job runner — which is what lets the frame bytes be asserted in
+/// a test.
+pub fn pump<B, W, D>(
     terminal: &mut Terminal<B>,
     wakes: &mut W,
+    jobs: &D,
     mut state: AppState,
 ) -> io::Result<Exit>
 where
     B: Backend<Error = io::Error> + Write,
     W: Wakes,
+    D: Dispatch,
 {
     // Draw before waiting: the first frame must be on screen while Graft sits
     // idle waiting for the user's first key.
@@ -170,12 +240,13 @@ where
         let (next, commands) = update(&state, event);
         state = next;
 
-        if let Some(command) = commands.into_iter().next() {
-            // `Command` has no variants yet, so this arm is unreachable and the
-            // compiler knows it. The moment ticket 10 adds the first variant
-            // this stops compiling — which is the point: a command can never be
-            // quietly dropped.
-            match command {}
+        for command in commands {
+            // Handed over and forgotten. `dispatch` starts the work and
+            // returns: there is no handle here to join and no result to wait
+            // for, because the result comes back as another `Event`
+            // (ARCHITECTURE.md). This is the line that keeps the keyboard
+            // responsive during a two-minute fetch.
+            jobs.dispatch(command);
         }
 
         if state.should_quit {
@@ -247,6 +318,29 @@ mod tests {
         }
     }
 
+    /// A job runner that runs nothing and remembers everything, so a test can
+    /// see exactly what the loop handed over.
+    #[derive(Default)]
+    struct Recorded(Mutex<Vec<Command>>);
+
+    impl Recorded {
+        fn commands(&self) -> Vec<Command> {
+            self.0
+                .lock()
+                .expect("no test panics while holding this")
+                .clone()
+        }
+    }
+
+    impl Dispatch for Recorded {
+        fn dispatch(&self, command: Command) {
+            self.0
+                .lock()
+                .expect("no test panics while holding this")
+                .push(command);
+        }
+    }
+
     /// A scripted source of wakes: hands out what it was given, then reports
     /// that its producers are gone.
     struct ScriptedWakes {
@@ -291,8 +385,13 @@ mod tests {
         let (mut terminal, _recorder) = terminal(20, 3);
         let mut wakes = ScriptedWakes::new(vec![quit_key()]);
 
-        let exit = pump(&mut terminal, &mut wakes, AppState::default())
-            .expect("writing to memory cannot fail");
+        let exit = pump(
+            &mut terminal,
+            &mut wakes,
+            &Recorded::default(),
+            AppState::default(),
+        )
+        .expect("writing to memory cannot fail");
 
         assert_eq!(exit, Exit::Quit);
     }
@@ -302,8 +401,13 @@ mod tests {
         let (mut terminal, _recorder) = terminal(20, 3);
         let mut wakes = ScriptedWakes::new(vec![Wake::Shutdown(signals::WATCHED[1])]);
 
-        let exit = pump(&mut terminal, &mut wakes, AppState::default())
-            .expect("writing to memory cannot fail");
+        let exit = pump(
+            &mut terminal,
+            &mut wakes,
+            &Recorded::default(),
+            AppState::default(),
+        )
+        .expect("writing to memory cannot fail");
 
         assert_eq!(exit, Exit::Signal(signals::WATCHED[1]));
     }
@@ -320,8 +424,13 @@ mod tests {
             quit_key(),
         ]);
 
-        let exit = pump(&mut terminal, &mut wakes, AppState::default())
-            .expect("writing to memory cannot fail");
+        let exit = pump(
+            &mut terminal,
+            &mut wakes,
+            &Recorded::default(),
+            AppState::default(),
+        )
+        .expect("writing to memory cannot fail");
 
         assert_eq!(exit, Exit::Signal(signals::WATCHED[0]));
     }
@@ -332,8 +441,13 @@ mod tests {
         let failure = io::Error::new(io::ErrorKind::BrokenPipe, "the terminal went away");
         let mut wakes = ScriptedWakes::new(vec![Wake::InputFailed(failure)]);
 
-        let error = pump(&mut terminal, &mut wakes, AppState::default())
-            .expect_err("a failed read must not be swallowed");
+        let error = pump(
+            &mut terminal,
+            &mut wakes,
+            &Recorded::default(),
+            AppState::default(),
+        )
+        .expect_err("a failed read must not be swallowed");
 
         assert_eq!(error.kind(), io::ErrorKind::BrokenPipe);
     }
@@ -343,8 +457,13 @@ mod tests {
         let (mut terminal, _recorder) = terminal(20, 3);
         let mut wakes = ScriptedWakes::new(Vec::new());
 
-        let exit = pump(&mut terminal, &mut wakes, AppState::default())
-            .expect("writing to memory cannot fail");
+        let exit = pump(
+            &mut terminal,
+            &mut wakes,
+            &Recorded::default(),
+            AppState::default(),
+        )
+        .expect("writing to memory cannot fail");
 
         assert_eq!(exit, Exit::Quit);
     }
@@ -362,8 +481,13 @@ mod tests {
             quit_key(),
         ]);
 
-        pump(&mut terminal, &mut wakes, AppState::default())
-            .expect("writing to memory cannot fail");
+        pump(
+            &mut terminal,
+            &mut wakes,
+            &Recorded::default(),
+            AppState::default(),
+        )
+        .expect("writing to memory cannot fail");
 
         let bytes = recorder.written();
         assert_eq!(bytes.matches("\u{1b}[?2026h").count(), 2);
@@ -383,8 +507,13 @@ mod tests {
         let (mut terminal, recorder) = terminal(30, 3);
         let mut wakes = ScriptedWakes::new(vec![quit_key()]);
 
-        pump(&mut terminal, &mut wakes, AppState::default())
-            .expect("writing to memory cannot fail");
+        pump(
+            &mut terminal,
+            &mut wakes,
+            &Recorded::default(),
+            AppState::default(),
+        )
+        .expect("writing to memory cannot fail");
 
         // The backend skips blank cells and moves the cursor instead, so the
         // line arrives as words rather than as one string.
@@ -407,10 +536,81 @@ mod tests {
             quit_key(),
         ]);
 
-        let exit = pump(&mut terminal, &mut wakes, AppState::default())
-            .expect("writing to memory cannot fail");
+        let exit = pump(
+            &mut terminal,
+            &mut wakes,
+            &Recorded::default(),
+            AppState::default(),
+        )
+        .expect("writing to memory cannot fail");
 
         assert_eq!(exit, Exit::Quit);
+    }
+
+    #[test]
+    fn a_command_from_update_reaches_the_job_runner() {
+        let (mut terminal, _recorder) = terminal(20, 3);
+        let jobs = Recorded::default();
+        let mut wakes = ScriptedWakes::new(vec![
+            Wake::Event(Event::Key(KeyPress::control(KeyCode::Char('r')))),
+            quit_key(),
+        ]);
+        let state = AppState {
+            repo_path: std::path::PathBuf::from("/code/api"),
+            ..AppState::default()
+        };
+
+        pump(&mut terminal, &mut wakes, &jobs, state).expect("writing to memory cannot fail");
+
+        assert_eq!(
+            jobs.commands(),
+            vec![Command::OpenRepository(std::path::PathBuf::from(
+                "/code/api"
+            ))]
+        );
+    }
+
+    #[test]
+    fn a_job_result_is_just_another_wake() {
+        let (mut terminal, recorder) = terminal(40, 3);
+        let mut wakes = ScriptedWakes::new(vec![
+            Wake::Event(Event::JobFailed(
+                graft_core::job::JobId::new(1),
+                graft_core::job::JobFailure::Failed("not a git repository".to_owned()),
+            )),
+            quit_key(),
+        ]);
+
+        pump(
+            &mut terminal,
+            &mut wakes,
+            &Recorded::default(),
+            AppState::default(),
+        )
+        .expect("writing to memory cannot fail");
+
+        let bytes = recorder.written();
+        for word in ["job", "failed", "repository"] {
+            assert!(bytes.contains(word), "{word:?} never reached the terminal");
+        }
+    }
+
+    /// The rule the whole architecture rests on, checked rather than reviewed:
+    /// nothing on the UI thread's path waits for a job. A result arrives as a
+    /// wake or it does not arrive; the loop is never parked on one.
+    #[test]
+    fn the_ui_thread_never_waits_on_a_job() {
+        let source = include_str!("mod.rs");
+        let (code, _tests) = source
+            .split_once("#[cfg(test)]")
+            .expect("this module has a test section");
+
+        for forbidden in [".join()", "recv_timeout", "wait_timeout", "thread::sleep"] {
+            assert!(
+                !code.contains(forbidden),
+                "the loop must never wait on a job, but it mentions `{forbidden}`"
+            );
+        }
     }
 
     #[test]
