@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M0 CHECKPOINT — user tests M0 and approves M1 tickets (12 tickets in `.scratch/m0-foundations/`, approved 2026-09-12)
+**Current step:** M0 CHECKPOINT — user tests M0. **M1 tickets deliberately not drafted** (user, 2026-09-12: stop after M0). Draft them when the user says to start M1. (12 tickets in `.scratch/m0-foundations/`, approved 2026-09-12)
 
 ---
 
@@ -120,3 +120,4 @@ Decisions and checks waiting on the user. Raise all of these at the M0 checkpoin
 - 2026-09-12 · M0 review round 1 · opus · done · 0 Critical, 3 Major, 3 Minor; docs/reviews/m0-foundations.md, commit 3592226
 - 2026-09-12 · M0 review fixes · opus · done · all 6 fixed: honest TierSource, workspace lints + ADR-0013 (unsafe), detect/ split, ADR-0014 + DESIGN.md edits; commits 1691ea7, 33cb445, cc60d4f
 - 2026-09-12 · M0 review round 2 · opus · done · all 6 genuinely resolved; 0 Critical, 0 Major, 3 new Minor; docs/reviews/m0-foundations-round-2.md, commit 9c14cbc
+- 2026-09-12 · M1 ticket split · opus · cancelled · user asked to stop after M0; no M1 files written
