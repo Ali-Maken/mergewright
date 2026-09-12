@@ -97,6 +97,9 @@ impl Session {
 
 impl Drop for Session {
     fn drop(&mut self) {
+        // Ignored results, deliberately: Drop cannot propagate errors, and
+        // a failed write here means the terminal itself is gone — there is
+        // nobody left to tell and nothing better to do than keep restoring.
         let mut out = debug::Tee::new(io::stdout());
         if self.protocol == Protocol::Kitty {
             let _ = term::kitty_free_all(&mut out);
@@ -139,6 +142,11 @@ fn event_loop(protocol: Protocol, cell: &CellSize) -> io::Result<()> {
     // the image data (see draw_frame).
     let mut drawn_for: Option<(u16, u16)> = None;
     let mut last_upload = 0.0;
+    // Last graphics error the terminal reported (kitty commands run at
+    // q=1: silent on success, APC reply on failure). Shown in the status
+    // line — the q=2 of the original spike swallowed these, which is how
+    // "blank graph in Ghostty" shipped as "done".
+    let mut gfx_err: Option<String> = None;
     loop {
         let (cols, rows) = terminal::size()?;
         let refresh = drawn_for != Some((cols, rows));
@@ -163,13 +171,17 @@ fn event_loop(protocol: Protocol, cell: &CellSize) -> io::Result<()> {
             last_upload = stats.upload;
         }
         stats.upload = last_upload;
-        draw_status(&mut out, protocol, cell, &vp, &stats)?;
+        draw_status(&mut out, protocol, cell, &vp, &stats, gfx_err.as_deref())?;
         out.write_all(b"\x1b[?2026l")?; // end synchronized update
         out.flush()?;
         match term::read_key() {
             Key::Quit => return Ok(()),
             Key::Down => offset = (offset + 1).min(max_offset),
             Key::Up => offset = offset.saturating_sub(1),
+            Key::Graphics(reply) => {
+                debug::note("graphics error reply", &reply);
+                gfx_err = Some(term::reply_message(&reply));
+            }
             Key::Other => {}
         }
     }
@@ -283,10 +295,13 @@ fn draw_status(
     cell: &CellSize,
     vp: &Viewport,
     stats: &Stats,
+    gfx_err: Option<&str>,
 ) -> io::Result<()> {
     let provenance = if cell.reported { "reported" } else { "assumed" };
+    // The error goes first so narrow windows can't truncate it away.
+    let err = gfx_err.map_or(String::new(), |e| format!("GFX ERROR: {e} | "));
     let mut text = format!(
-        " {} | cell {}x{}px ({provenance}) | rows {}-{}/{} | frame {:.1}ms \
+        " {err}{} | cell {}x{}px ({provenance}) | rows {}-{}/{} | frame {:.1}ms \
          (raster {:.1} encode {:.1} upload {:.0}) | j/k scroll, q quit",
         protocol.name(),
         cell.w,

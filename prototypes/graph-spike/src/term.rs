@@ -174,6 +174,9 @@ pub enum Key {
     Up,
     Down,
     Quit,
+    /// An APC graphics reply arrived instead of a key. The kitty commands
+    /// run at `q=1`, so this only ever happens to report an error.
+    Graphics(Vec<u8>),
     Other,
 }
 
@@ -194,6 +197,7 @@ pub fn read_key() -> Key {
             match (seq.first(), seq.get(1)) {
                 (Some(b'['), Some(b'A')) => Key::Up,
                 (Some(b'['), Some(b'B')) => Key::Down,
+                (Some(b'_'), Some(b'G')) => Key::Graphics(drain_apc(seq)),
                 (None, _) => Key::Quit,
                 _ => Key::Other,
             }
@@ -202,15 +206,40 @@ pub fn read_key() -> Key {
     }
 }
 
+/// Finish reading an APC graphics reply (`ESC _ G ... ; message ESC \`);
+/// `seq` is what arrived so far, minus the leading ESC.
+fn drain_apc(mut seq: Vec<u8>) -> Vec<u8> {
+    let st = |b: &[u8]| b.windows(2).any(|w| w == b"\x1b\\");
+    if !st(&seq) {
+        seq.extend(read_reply(Duration::from_millis(100), st));
+    }
+    seq
+}
+
+/// Human-readable part of an APC graphics reply: the text after the first
+/// `;`, e.g. "ENOENT: image not found".
+pub fn reply_message(reply: &[u8]) -> String {
+    let body = match reply.iter().position(|&b| b == b';') {
+        Some(i) => &reply[i + 1..],
+        None => reply,
+    };
+    let end = body.iter().position(|&b| b == 0x1b).unwrap_or(body.len());
+    String::from_utf8_lossy(&body[..end]).into_owned()
+}
+
 /// Transmit the full graph strip once as Kitty image 1 (raw RGBA, base64,
 /// chunked at 4096 bytes, no display). Frames then place crops of it.
+///
+/// `q=1`: silent on success, but errors come back as APC replies —
+/// `read_key` catches those and the status line shows them. The original
+/// spike used `q=2` and Ghostty's ENOENT answers vanished with the graph.
 pub fn kitty_transmit(out: &mut impl Write, rgba: &[u8], w: u32, h: u32) -> io::Result<()> {
     let b64 = B64.encode(rgba);
     let mut chunks = b64.as_bytes().chunks(4096).enumerate().peekable();
     while let Some((i, chunk)) = chunks.next() {
         let more = u8::from(chunks.peek().is_some());
         if i == 0 {
-            write!(out, "\x1b_Ga=t,f=32,i=1,s={w},v={h},q=2,m={more};")?;
+            write!(out, "\x1b_Ga=t,f=32,i=1,s={w},v={h},q=1,m={more};")?;
         } else {
             write!(out, "\x1b_Gm={more};")?;
         }
@@ -238,11 +267,14 @@ pub fn kitty_place(
 ) -> io::Result<()> {
     write!(
         out,
-        "\x1b_Ga=p,i=1,p=1,x=0,y={src_y},w={src_w},h={src_h},c={cols},r={rows},q=2\x1b\\"
+        "\x1b_Ga=p,i=1,p=1,x=0,y={src_y},w={src_w},h={src_h},c={cols},r={rows},q=1\x1b\\"
     )
 }
 
-/// Delete every image and free its data (used on exit).
+/// Delete every image and free its data (used on exit). This one stays at
+/// `q=2`: it runs during teardown, so an error reply would arrive after raw
+/// mode is off and echo into the user's shell as garbage — and there is no
+/// meaningful way `d=A` fails that the exiting spike could act on.
 pub fn kitty_free_all(out: &mut impl Write) -> io::Result<()> {
     write!(out, "\x1b_Ga=d,d=A,q=2\x1b\\")
 }

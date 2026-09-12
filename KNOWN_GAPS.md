@@ -63,14 +63,21 @@ unconditionally. Expiry: **M1**.
 | Unconditional snapshot cost on high-frequency index ops (R2-3) | Every stage/unstage fires the full §6.3 snapshot (status walk, untracked hashing, commit object, backup ref, two journal lines), and §6.8's manual-only retention lets backup refs pile up at keystroke rate. Off-thread, so no UI block — but measure on the heavy fixture in M2; if staging lags on untracked-heavy repos, propose scoping (e.g. skip untracked hashing for ops that provably can't touch untracked files) as an ADR, never silently | M2 |
 | Commit-graph offer plumbing unspecified (R2-4) | §3.2's "declined, remembered" flag has no stated home — put it in a file under `git rev-parse --git-path graft/…`, per §6.1's rule. And `git commit-graph write --reachable` is a repo write, which §6 says only `ops` may run: route the offer through `ops`, journaled as an ordinary non-undoable entry or explicitly exempted | M2 |
 
-## Prototype gaps (step 3 spike, 2026-09-12)
+## Prototype gaps (step 3 spike, 2026-09-12; revised at the step-3 fix)
 
-The graph spike (`prototypes/graph-spike/`, ADR-0012) proved Kitty + iTerm2
-alignment and scrolling. It is throwaway code; these are the questions it
-deliberately did not answer.
+The graph spike (`prototypes/graph-spike/`, ADR-0012 + its Correction). The
+original claim "proved Kitty + iTerm2 alignment and scrolling" was wrong —
+that was pty-capture evidence, which proves emission, not rendering. After
+the fix, the Kitty path is verified to the strongest level available without
+human eyes: a real Ghostty 1.3.1 answered the probe, accepted the transmit
+and placement at `q=1`, and reported zero errors. It is throwaway code;
+these are the open questions.
 
 | Gap | What's needed | Expiry |
 |---|---|---|
+| Kitty pixels unseen by a human | Protocol-level success in real Ghostty is not eyes on pixels. User must confirm at the checkpoint: curves/nodes visible in the left 7 columns, aligned with text rows, staying aligned over j/k | Step-3 checkpoint |
+| iTerm2 path unverified and possibly stale | Never run in a real iTerm2, and untouched by the kitty fix: it still clears (`ESC[2J`) and re-sends every frame, which is probably fine for iTerm2 but is exactly the pattern that broke in Ghostty. Verify in a real iTerm2 before trusting | M1 |
+| Is ED-frees-image-data Ghostty-specific? | Only Ghostty 1.3.1 was tested. Unknown whether kitty-the-terminal (or other kitty-protocol terminals) also free image data on `ESC[2J`. M1 must not assume uploads survive a clear anywhere | M1 |
 | Sixel and plain-text rendering tiers unproven | Spike exercises only Kitty and iTerm2. Sixel alignment/scroll strategy and the text-cell fallback graph need their own validation | M1 |
 | tmux passthrough and SSH untested | No `tmux` escape wrapping attempted; detection over SSH (env vars lie) not exercised | M1 |
 | Probe/input conflicts and resize | Spike loses typeahead during capability probes (two readers on stdin) and never re-probes cell size on SIGWINCH. M1 needs the input mux and resize handling named in ADR-0012 | M1 |

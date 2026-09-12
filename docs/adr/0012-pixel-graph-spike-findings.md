@@ -1,5 +1,9 @@
 # Pixel graph: transmit-once + crop for Kitty, re-send for iTerm2
 
+> **Corrected 2026-09-12.** The live Ghostty run showed a blank graph. The
+> bullets marked ⚠ below were wrong; the Correction section at the end
+> sets them right. The decision itself stands.
+
 Findings from the graph-drawing spike (`prototypes/graph-spike/`,
 PROGRESS.md step 3): a hard-coded 30-commit, 3-lane graph with merges,
 drawn as one RGBA strip, aligned with text rows, scrolled with `j`/`k` on
@@ -27,6 +31,9 @@ pixel-perfect cell-size knowledge.
   step. Captured stream confirms: 168,000 RGBA bytes uploaded once, then
   five placements with `y = 0,20,40,60,40` for `j j j k`. This is
   DESIGN.md §3.8's image-reuse idea working in miniature.
+  ⚠ *Overstated — the capture proved the bytes were emitted, not that
+  anything rendered. In Ghostty the pattern as written drew nothing. See
+  Correction.*
 - **iTerm2: re-send per frame is affordable at viewport scale.** The
   protocol has no image ids or crops, so every frame re-rasterizes and
   re-encodes the visible band. Measured on a 23-row viewport: 0.4 ms
@@ -45,6 +52,9 @@ pixel-perfect cell-size knowledge.
 - DEC 2026 synchronized-output brackets around every frame; placement
   delete (`a=d,d=i`) per frame and free-all (`a=d,d=A`) on exit left the
   terminal clean.
+  ⚠ *Wrong — "clean" was the bug. The frame's `ESC[2J` freed the image
+  data in Ghostty, every later placement silently failed, and the "clean
+  terminal" was a graph-less one. See Correction.*
 
 ## What didn't
 
@@ -74,4 +84,77 @@ pixel-perfect cell-size knowledge.
 - Anti-aliased drawing and curved lane transitions.
 - Cache encoded PNG bands by (offset, viewport) on the iTerm2 tier.
 - Keep: cell-rect placement, probe chain with provenance, transmit-once +
-  crop on Kitty, delete-placements-then-place per frame, free-all on exit.
+  crop on Kitty, ~~delete-placements-then-place per frame~~ *(corrected:
+  replace one fixed placement id per frame; never `ESC[2J` between
+  transmit and placement)*, free-all on exit.
+
+## Correction (2026-09-12)
+
+The step-3 checkpoint failed: in Ghostty 1.3.1, no graph at all — text
+only, status bar showing `raster 0.0 encode 0.0`. This section records
+what the original findings got wrong and what was actually true.
+
+### What the pty captures did and did not prove
+
+The captures proved exactly one thing: the spike *emitted* well-formed
+escape sequences in the intended order. They proved nothing about
+rendering — a pty has no graphics implementation, so it accepts any byte
+stream, including one a real terminal rejects on every frame. "Verified at
+the escape-stream level" was treated as acceptance evidence; it must never
+be again. Only a real terminal answering the graphics commands (or human
+eyes) verifies rendering.
+
+### The actual failure, root-caused in a real Ghostty
+
+Reproduced by replaying the spike's stream from a harness *inside a
+Ghostty window* with `q=0` (all replies logged):
+
+1. Each frame began `ESC[?2026h ESC[2J`, then deleted placements and
+   placed a crop, with `q=2` on every graphics command.
+2. **Ghostty frees kitty image *data* on ED (`ESC[2J`)** — not just
+   placements. Even a transmitted-but-never-placed image is gone after a
+   clear. Every placement after the first frame's clear answered
+   `ENOENT: image not found`.
+3. `q=2` suppressed every one of those replies. The failure was invisible
+   by construction — the spike asked the terminal not to report errors,
+   then treated silence as success.
+4. `raster 0.0 encode 0.0` was a red herring: legitimate on the Kitty
+   path, where scroll frames only place a crop (raster cost is paid once
+   at transmit; encode is iTerm2-only). The numbers were honest; the
+   acceptance evidence was not.
+
+Also checked: the spike uses **direct placement** (`a=p` at the cursor),
+not U+10EEEE unicode placeholders. Ghostty supports direct placement fine
+(probe and placements ACK `OK` at `q=0`); placeholders were never needed
+and are not the issue.
+
+### What actually renders in Ghostty
+
+- Transmit the strip **after every full clear**, not "once per session".
+  Steady-state frames must not emit `ESC[2J` at all; the spike now clears
+  only when the terminal size changes, and immediately retransmits.
+- Replace a **single fixed placement id** (`p=1`) each frame instead of
+  delete-then-place; the terminal swaps the crop atomically.
+- Run graphics commands at **`q=1`** (silent on success, errors
+  reported); the spike now reads APC error replies off stdin and shows
+  them in the status line. `q=2` hid this entire bug and is banned from
+  the frame path.
+- Text rows erase their own tails (`ESC[K` starting right of the text)
+  rather than relying on a full clear; erasing cells under a kitty image
+  can delete it.
+
+Verified 2026-09-12 in a real Ghostty 1.3.1 window: probe ACK, one
+transmit, cell-rect placement at `q=1`, **zero error replies** — where
+the pre-fix stream answered ENOENT on every placement. Pixel appearance
+and scroll alignment still require human eyes at the checkpoint.
+
+### Amendments to "What M1 must do differently"
+
+- Never assume transmitted image data survives a screen clear. Treat any
+  ED/alt-screen transition as invalidating uploads; retransmit after.
+  (Whether this is Ghostty-specific or general kitty-protocol behavior is
+  unknown — assume the worst.)
+- Never run steady-state graphics at `q=2`. Use `q=1` and route APC error
+  replies through the input mux to a visible channel.
+- Acceptance evidence for rendering tiers is a real terminal's replies or
+  a human looking at it — never a pty capture.
