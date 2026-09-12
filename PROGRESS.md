@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** 3. Graph-drawing prototype — fixed, awaiting checkpoint (user verifies in Ghostty)
+**Current step:** M0 Foundations — ticket 01 (12 tickets in `.scratch/m0-foundations/`, approved 2026-09-12)
 
 ---
 
@@ -31,10 +31,10 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 
 - [x] **CHECKPOINT: review DESIGN.md** (You). Read it and ask for changes. For a second opinion, ask the conductor to run `reviewer` on it.
 
-- [ ] **3. Graph-drawing prototype** (conductor → `builder-fable`). Task:
+- [x] **3. Graph-drawing prototype** (conductor → `builder-fable`). Task:
   > Build a throwaway prototype in prototypes/graph-spike/: a tiny Rust app that draws a hard-coded 30-commit graph with branches and merges using the Kitty graphics protocol and iTerm2 inline images, lined up with text rows and scrollable with j/k. The goal is to prove that alignment and scrolling work. Record the findings as an ADR.
 
-- [ ] **CHECKPOINT: try the prototype and approve the M0 tickets** (You)
+- [x] **CHECKPOINT: try the prototype and approve the M0 tickets** (You)
   - Run `cargo run --manifest-path prototypes/graph-spike/Cargo.toml` in Ghostty or iTerm2.
   - If it doesn't work, decide the next approach with the conductor before M0.
 
@@ -93,3 +93,5 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 - 2026-09-12 · M0 ticket split · fable · done · 12 tickets in .scratch/m0-foundations/, commit ed862e1
 - 2026-09-12 · step 3 reopened · — · — · blank graph in Ghostty; pty captures proved emission, not rendering. M0 tickets NOT approved.
 - 2026-09-12 · step 3 fix · fable · done · root cause: Ghostty frees kitty image data on `ESC[2J` and `q=2` hid every ENOENT. Fixed: no steady-state clear, retransmit on resize, replace placement `p=1`, `q=1` errors shown in status line, `GRAPH_SPIKE_DEBUG=1` dump. Real-Ghostty run: zero graphics errors. ADR-0012 Correction. Pixels await user's eyes at the checkpoint.
+- 2026-09-12 · step 3 perf + row cap · opus · done · 23ms "upload" was a status-line misattribution, not a re-upload; upload-once was intact. Removed MAX_VIEW=24 cap, added `tx N`. commit 78a73a0
+- 2026-09-12 · step 3 APPROVED by user · — · — · Ghostty and iTerm2 both verified by eye. M0 tickets approved as drafted, ticket 05 included.
