@@ -20,27 +20,20 @@ const FAST: u32 = 64;
 /// The heavy tier's count.
 const HEAVY: u32 = 1000;
 
-/// How many cases to configure, for whichever tier this was compiled for.
-///
-/// Always `Some`. The [`Option`] is left over from the days when the
-/// environment could opt out, and stays only until the last call site
-/// stops matching on it (KNOWN_GAPS.md, "`proptest_cases` still returns an
-/// Option").
+/// How many cases to configure, for whichever tier this was compiled for:
+/// 64 fast, 1000 with `--features heavy-tests`.
 ///
 /// ```text
 /// fn config() -> ProptestConfig {
-///     match graft_fixtures::proptest_cases() {
-///         Some(cases) => ProptestConfig::with_cases(cases),
-///         None => ProptestConfig::default(),
-///     }
+///     ProptestConfig::with_cases(graft_fixtures::proptest_cases())
 /// }
 /// ```
-pub fn proptest_cases() -> Option<u32> {
-    Some(if cfg!(feature = "heavy-tests") {
+pub fn proptest_cases() -> u32 {
+    if cfg!(feature = "heavy-tests") {
         HEAVY
     } else {
         FAST
-    })
+    }
 }
 
 #[cfg(test)]
@@ -54,6 +47,6 @@ mod tests {
         } else {
             FAST
         };
-        assert_eq!(proptest_cases(), Some(expected));
+        assert_eq!(proptest_cases(), expected);
     }
 }

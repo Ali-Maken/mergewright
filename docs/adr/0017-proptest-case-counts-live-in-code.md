@@ -46,7 +46,7 @@ proptest here goes through `proptest_cases`, so today that is none of them.
 
 ## Follow-up
 
-`proptest_cases` still returns `Option<u32>`, always `Some`, so that the
-three call sites keep compiling unchanged while M1/06 is in flight. The
-signature becomes a plain `u32` in the sweep that follows; tracked in
-`KNOWN_GAPS.md`.
+Done in the same day: `proptest_cases` returns a plain `u32`, and the three
+call sites call `ProptestConfig::with_cases(graft_fixtures::proptest_cases())`
+directly. There is no way left to express "leave the count to the
+environment".

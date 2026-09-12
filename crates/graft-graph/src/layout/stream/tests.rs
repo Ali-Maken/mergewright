@@ -696,10 +696,7 @@ fn an_empty_promoted_order_is_done_before_it_starts() {
 // ---- the property ----------------------------------------------------------
 
 fn tier() -> ProptestConfig {
-    match graft_fixtures::proptest_cases() {
-        Some(cases) => ProptestConfig::with_cases(cases),
-        None => ProptestConfig::default(),
-    }
+    ProptestConfig::with_cases(graft_fixtures::proptest_cases())
 }
 
 #[derive(Clone, Debug)]

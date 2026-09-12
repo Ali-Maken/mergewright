@@ -302,15 +302,10 @@ mod properties {
     /// The case count for whichever tier this was compiled for: 64 in the
     /// fast tier, 1000 with `--features heavy-tests` (PROMPT.md §7.1).
     /// `graft-fixtures` owns the two numbers so that turning the tier on
-    /// changes every proptest in the workspace at once, and returns `None`
-    /// when `PROPTEST_CASES` is set — `ProptestConfig::default()` reads that
-    /// variable itself, and overriding it would ignore the person trying to
-    /// reproduce a failure.
+    /// changes every proptest in the workspace at once. The environment
+    /// cannot change the count (ADR-0017).
     fn tier() -> ProptestConfig {
-        match graft_fixtures::proptest_cases() {
-            Some(cases) => ProptestConfig::with_cases(cases),
-            None => ProptestConfig::default(),
-        }
+        ProptestConfig::with_cases(graft_fixtures::proptest_cases())
     }
 
     proptest! {

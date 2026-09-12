@@ -21,13 +21,10 @@ use super::*;
 /// lane event — open, continue, converge, close, reuse — many times over.
 const MAX_COMMITS: usize = 32;
 
-/// The tier's case count. `None` means `PROPTEST_CASES` is set in the
-/// environment, and proptest's own default reads it.
+/// The tier's case count: 64 fast, 1000 with `--features heavy-tests`.
+/// `graft-fixtures` owns both numbers (ADR-0017).
 fn tier() -> ProptestConfig {
-    match graft_fixtures::proptest_cases() {
-        Some(cases) => ProptestConfig::with_cases(cases),
-        None => ProptestConfig::default(),
-    }
+    ProptestConfig::with_cases(graft_fixtures::proptest_cases())
 }
 
 /// Which kind of subject a generated commit carries. The two merge shapes
