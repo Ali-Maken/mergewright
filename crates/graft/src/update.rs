@@ -14,8 +14,10 @@ use std::path::PathBuf;
 
 use graft_core::event::{Event, KeyCode, KeyPress};
 use graft_core::job::JobId;
+use graft_git::history::Order;
 use graft_git::version::SystemGit;
 
+use crate::history::History;
 use crate::repository::RepositoryFacts;
 
 /// Everything the loop can be told.
@@ -30,8 +32,30 @@ use crate::repository::RepositoryFacts;
 pub enum AppEvent {
     /// Something `core` can describe.
     Core(Event),
+    /// A job has been queued, and this is the id its result will carry.
+    ///
+    /// Announced before the work is queued, so the state knows which id it is
+    /// waiting for before any result can arrive — otherwise `Esc` has nothing
+    /// to cancel until the job it would cancel has already finished. The
+    /// runner sends it down the same channel as the result, so it is always
+    /// the earlier of the two.
+    Started(JobId, Task),
     /// A job that ended with something the application keeps.
     Produced(JobId, Product),
+}
+
+/// What a job was started to do.
+///
+/// Only enough to tell the one job whose result the screen waits for from the
+/// ones that simply land when they land.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Task {
+    /// Open the repository and read what the status line shows.
+    OpenRepository,
+    /// Ask this machine's `git` what version it is.
+    CheckSystemGit,
+    /// Walk history.
+    ReadHistory,
 }
 
 /// What a job brought back.
@@ -43,6 +67,10 @@ pub enum Product {
     Repository(Result<RepositoryFacts, String>),
     /// What the `git` on this machine turned out to be.
     SystemGit(GitCheck),
+    /// The commits a walk brought back. Boxed because it is much the largest
+    /// thing a job returns, and every other variant would otherwise be as big
+    /// as it is.
+    History(Box<History>),
 }
 
 /// What running `git --version` found.
@@ -81,6 +109,15 @@ pub struct AppState {
     pub repository: Option<RepositoryFacts>,
     /// What the system `git` turned out to be, once that job has answered.
     pub system_git: Option<GitCheck>,
+    /// The history job whose answer the screen is waiting for.
+    ///
+    /// One at a time, on purpose: asking again supersedes the previous ask,
+    /// and a result carrying any other id belongs to a question that has
+    /// since been withdrawn. That is what makes a stale result harmless — it
+    /// is dropped here, before it can reach a screen.
+    pub awaiting: Option<JobId>,
+    /// The commits on screen, once a walk has finished.
+    pub history: Option<History>,
 }
 
 /// Why Graft is leaving.
@@ -138,15 +175,23 @@ pub struct Size {
 /// into the code that runs it is the job runner's business (`crate::jobs`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Command {
-    /// Open the repository at this path and check it is one.
+    /// Open the repository Graft was pointed at and check it is one.
     ///
-    /// At M0 that is all there is to read from a repository, so this is also
-    /// what `Ctrl+R` (manual refresh, DESIGN.md §2.1) re-runs. The tickets that
-    /// add the rev-walk and the status read extend the work behind it.
-    OpenRepository(PathBuf),
+    /// No path: which repository this run is about is settled before the loop
+    /// starts and is the job runner's to hold (`crate::repos`), not something
+    /// a keystroke gets to change. This is also what `Ctrl+R` (manual
+    /// refresh, DESIGN.md §2.1) re-runs, and it is where anything cached
+    /// about the repository is thrown away.
+    OpenRepository,
     /// Find out whether the `git` on this machine is new enough (2.38,
     /// DESIGN.md §3.1). Runs once, at startup: it shells out, so it is a job.
     CheckSystemGit,
+    /// Walk history in this order and bring the commits back.
+    ///
+    /// The order asked for is not always the order that comes back: without a
+    /// commit-graph file a topological walk falls to commit date, and says so
+    /// (ADR-0008).
+    ReadHistory(Order),
     /// Stop a job whose result is no longer wanted. Cooperative: a job that has
     /// not started is dropped, and a running one stops at its next check.
     CancelJob(JobId),
@@ -164,6 +209,14 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
 
     match event {
         AppEvent::Core(event) => core_event(&mut next, &mut commands, event),
+        AppEvent::Started(id, Task::ReadHistory) => {
+            // The newest ask wins. Anything the previous walk was going to
+            // say is now about a question nobody asked.
+            next.awaiting = Some(id);
+        }
+        // Neither of these is waited on: their results are welcome whenever
+        // they arrive, and there is nothing for `Esc` to cancel.
+        AppEvent::Started(_, Task::OpenRepository | Task::CheckSystemGit) => {}
         AppEvent::Produced(_, Product::Repository(Ok(facts))) => {
             next.repository = Some(facts);
             // Whatever went wrong last time has been superseded by a
@@ -186,28 +239,46 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
         AppEvent::Produced(_, Product::SystemGit(check)) => {
             next.system_git = Some(check);
         }
+        AppEvent::Produced(id, Product::History(history)) => {
+            if next.awaiting == Some(id) {
+                next.awaiting = None;
+                next.history = Some(*history);
+                next.status = Status::Ready;
+            }
+            // Otherwise it is the answer to a walk that was cancelled or
+            // superseded. Dropped here, which is the whole reason the id
+            // travels with the result.
+        }
     }
 
     (next, commands)
 }
 
 /// The half of [`update`] that answers the events `core` defines.
-// Two arms below do nothing, for two different reasons, and each says which.
-// Merged they would share one comment that fits neither.
-#[allow(clippy::match_same_arms, reason = "each empty arm has its own reason")]
 fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
     match event {
         Event::Key(key) => {
             if is_quit(key) {
                 next.quit = Some(Quit::Requested);
             } else if is_refresh(key) {
-                commands.push(Command::OpenRepository(next.repo_path.clone()));
+                commands.push(Command::OpenRepository);
+                commands.push(Command::ReadHistory(Order::Topological));
+            } else if key.code == KeyCode::Escape {
+                // Stop waiting first, then ask the job to stop. The order
+                // matters: a job that finishes between the two lines still
+                // sends its result, and it has to find nobody waiting for it.
+                if let Some(id) = next.awaiting.take() {
+                    commands.push(Command::CancelJob(id));
+                }
             }
         }
         Event::Resize { columns, rows } => {
             next.size = Size { columns, rows };
         }
         Event::JobFailed(id, failure) => {
+            if next.awaiting == Some(id) {
+                next.awaiting = None;
+            }
             // Surfaced, not swallowed: the user is told which job failed and
             // why. A panicking job says so in the same place — it is still a
             // failure, and the crash report's path rides along with it.
@@ -222,7 +293,13 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
         }
         // Cancellation is not a failure and not news: the application asked for
         // it. The status line keeps whatever it was already saying.
-        Event::JobCancelled(_) => {}
+        Event::JobCancelled(id) => {
+            // A walk cancelled by anything other than `Esc` — shutdown, say —
+            // must not leave the screen waiting for it either.
+            if next.awaiting == Some(id) {
+                next.awaiting = None;
+            }
+        }
         // Nothing is bound to these yet. They reach `update` so that the
         // tickets that need them have somewhere obvious to add the handling.
         Event::Mouse(_) | Event::Paste(_) | Event::FocusGained | Event::FocusLost => {}
@@ -444,7 +521,10 @@ mod tests {
 
         assert_eq!(
             commands,
-            vec![Command::OpenRepository(PathBuf::from("/code/api"))]
+            vec![
+                Command::OpenRepository,
+                Command::ReadHistory(Order::Topological)
+            ]
         );
         // Asking for work is all it does: the state is the job's to change,
         // once the job comes back.
@@ -473,6 +553,8 @@ mod tests {
             repo_path: PathBuf::from("/code/api"),
             repository: Some(facts("/code/api", "main")),
             system_git: None,
+            awaiting: None,
+            history: None,
         };
 
         let first = update(&state, key(KeyCode::Char('q')));
@@ -577,6 +659,136 @@ mod tests {
             Some(GitCheck::Unavailable("no git on PATH".to_owned()))
         );
         assert!(commands.is_empty());
+    }
+
+    /// The result of a walk with no commits in it: these tests care about
+    /// which result lands, not what is in it.
+    fn walked(requested: Order, order: Order) -> Product {
+        Product::History(Box::new(History {
+            commits: Vec::new().into(),
+            requested,
+            order,
+            default_branch: None,
+            integration: Vec::new().into(),
+        }))
+    }
+
+    /// The state of an application with a walk in flight.
+    fn awaiting(id: JobId) -> AppState {
+        let (next, commands) = update(
+            &AppState::default(),
+            AppEvent::Started(id, Task::ReadHistory),
+        );
+
+        assert!(
+            commands.is_empty(),
+            "being told a job started asks for no work"
+        );
+        assert_eq!(next.awaiting, Some(id));
+        next
+    }
+
+    #[test]
+    fn esc_cancels_the_walk_the_screen_is_waiting_for() {
+        let id = JobId::new(4);
+
+        let (next, commands) = update(&awaiting(id), key(KeyCode::Escape));
+
+        assert_eq!(commands, vec![Command::CancelJob(id)]);
+        assert_eq!(
+            next.awaiting, None,
+            "nothing is waited on once `Esc` has been pressed"
+        );
+    }
+
+    #[test]
+    fn esc_with_no_walk_running_does_nothing() {
+        let before = AppState::default();
+
+        let (next, commands) = update(&before, key(KeyCode::Escape));
+
+        assert_eq!(next, before);
+        assert!(commands.is_empty());
+    }
+
+    /// The race `Esc` has to survive: the walk finishes between the key press
+    /// and the cancel flag being read, so the result is sent anyway. It must
+    /// not appear.
+    #[test]
+    fn a_cancelled_walk_that_answers_anyway_is_discarded() {
+        let id = JobId::new(4);
+        let (cancelled, _) = update(&awaiting(id), key(KeyCode::Escape));
+
+        let (next, commands) = update(
+            &cancelled,
+            AppEvent::Produced(id, walked(Order::Topological, Order::Topological)),
+        );
+
+        assert!(
+            next.history.is_none(),
+            "a walk the user stopped must never land on screen"
+        );
+        assert!(commands.is_empty());
+    }
+
+    /// Two walks in flight: the older one's answer is about a question nobody
+    /// is asking any more.
+    #[test]
+    fn a_superseded_walk_loses_to_the_newer_one() {
+        let old = JobId::new(1);
+        let new = JobId::new(2);
+        let state = awaiting(old);
+        let (state, _) = update(&state, AppEvent::Started(new, Task::ReadHistory));
+
+        let (state, _) = update(
+            &state,
+            AppEvent::Produced(old, walked(Order::Topological, Order::CommitDate)),
+        );
+        assert!(state.history.is_none(), "the stale walk must be dropped");
+
+        let (state, _) = update(
+            &state,
+            AppEvent::Produced(new, walked(Order::Topological, Order::Topological)),
+        );
+
+        let history = state.history.expect("the awaited walk lands");
+        assert!(!history.is_provisional());
+        assert_eq!(state.awaiting, None);
+    }
+
+    /// ADR-0008 in the state: a repository with no commit-graph file answers
+    /// in commit-date order, and the screen is told the order is not final.
+    #[test]
+    fn a_walk_that_fell_back_to_date_order_says_it_is_provisional() {
+        let id = JobId::new(7);
+
+        let (next, _) = update(
+            &awaiting(id),
+            AppEvent::Produced(id, walked(Order::Topological, Order::CommitDate)),
+        );
+
+        let history = next.history.expect("the awaited walk lands");
+        assert!(history.is_provisional());
+        assert_eq!(next.status, Status::Ready);
+    }
+
+    /// A walk that failed or was cancelled by something other than `Esc` —
+    /// shutdown, say — must not leave the screen waiting for ever.
+    #[test]
+    fn a_walk_that_ends_without_an_answer_stops_being_awaited() {
+        let id = JobId::new(3);
+
+        let (cancelled, _) = update(&awaiting(id), core(Event::JobCancelled(id)));
+        assert_eq!(cancelled.awaiting, None);
+
+        let (failed, _) = update(
+            &awaiting(id),
+            core(Event::JobFailed(
+                id,
+                JobFailure::Failed("the pack is corrupt".to_owned()),
+            )),
+        );
+        assert_eq!(failed.awaiting, None);
     }
 
     /// Purity's other half, which no runtime test can observe: that `update`

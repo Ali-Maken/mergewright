@@ -6,7 +6,9 @@
 //! touches the terminal or the UI.
 #![forbid(unsafe_code)]
 
+pub mod branches;
 #[cfg(test)]
 mod fixture;
+pub mod history;
 pub mod repo;
 pub mod version;

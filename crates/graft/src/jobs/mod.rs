@@ -36,7 +36,6 @@
 
 use std::collections::HashMap;
 use std::io;
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
@@ -46,9 +45,13 @@ use std::time::{Duration, Instant};
 use graft_core::event::Event;
 use graft_core::job::{JobFailure, JobId};
 
+use graft_git::history::Order;
+
 use crate::crash;
+use crate::history::{self, Read};
+use crate::repos::RepoStore;
 use crate::repository;
-use crate::update::{AppEvent, Command, GitCheck, Product};
+use crate::update::{AppEvent, Command, GitCheck, Product, Task};
 
 #[cfg(test)]
 mod tests;
@@ -281,6 +284,9 @@ pub struct JobRunner<S: JobEvents> {
     workers: Vec<JoinHandle<()>>,
     /// Kept so the runner can report a job it could not even start.
     sink: S,
+    /// The repository every job reads from, opened at most once for the whole
+    /// run (`crate::repos`).
+    repos: Arc<RepoStore>,
 }
 
 impl<S: JobEvents> JobRunner<S> {
@@ -289,7 +295,7 @@ impl<S: JobEvents> JobRunner<S> {
     /// `workers` is clamped to at least one and at most [`MAX_WORKERS`]: a pool
     /// of none would accept jobs and never run them, and a pool of fifty would
     /// be a laptop with no battery left (PROMPT.md §7.1).
-    pub fn start(sink: S, workers: usize) -> io::Result<Self> {
+    pub fn start(sink: S, workers: usize, repos: Arc<RepoStore>) -> io::Result<Self> {
         let (queue, receiver) = std::sync::mpsc::channel();
         // `mpsc` has one receiver, and every worker needs to take from the same
         // queue, so the receiver itself is the thing they share. The lock is
@@ -336,13 +342,14 @@ impl<S: JobEvents> JobRunner<S> {
             alive,
             workers: handles,
             sink,
+            repos,
         })
     }
 
     /// Start a pool sized for this machine.
-    pub fn with_default_size(sink: S) -> io::Result<Self> {
+    pub fn with_default_size(sink: S, repos: Arc<RepoStore>) -> io::Result<Self> {
         let parallelism = thread::available_parallelism().map_or(1, std::num::NonZero::get);
-        Self::start(sink, parallelism.min(MAX_WORKERS))
+        Self::start(sink, parallelism.min(MAX_WORKERS), repos)
     }
 
     /// How many worker threads this pool is running.
@@ -356,9 +363,41 @@ impl<S: JobEvents> JobRunner<S> {
     /// Returns as soon as the work is on the queue: the caller is the UI
     /// thread, and it has a frame to draw.
     pub fn submit(&self, work: impl FnOnce(&Cancel) -> Outcome + Send + 'static) -> JobId {
+        self.queue_job(None, work)
+    }
+
+    /// Queue some work and tell the loop, before it is queued, which id the
+    /// result will carry.
+    ///
+    /// The announcement goes down the same channel as the result and is sent
+    /// first, so the loop always learns the id before it learns the answer.
+    /// Without that, `Esc` could not cancel a walk that has not come back
+    /// yet: there would be nothing to name.
+    fn announce(
+        &self,
+        task: Task,
+        work: impl FnOnce(&Cancel) -> Outcome + Send + 'static,
+    ) -> JobId {
+        self.queue_job(Some(task), work)
+    }
+
+    fn queue_job(
+        &self,
+        task: Option<Task>,
+        work: impl FnOnce(&Cancel) -> Outcome + Send + 'static,
+    ) -> JobId {
         let id = JobId::new(self.next_id.fetch_add(1, Ordering::Relaxed));
         let cancel = Cancel::new();
         self.live.register(id, cancel.clone());
+
+        if let Some(task) = task {
+            // The announcement is deliberately not acted on either way. If
+            // the loop has already finished, the job is still queued: the
+            // worker that picks it up finds the same dead channel, and that
+            // is the one place stopping the rest belongs. Deciding it twice,
+            // in two places, is how the two come to disagree.
+            self.sink.deliver(AppEvent::Started(id, task));
+        }
 
         if let Err(undelivered) = self.queue.send(Assignment {
             id,
@@ -427,11 +466,20 @@ impl<S: JobEvents> JobRunner<S> {
 impl<S: JobEvents> Dispatch for JobRunner<S> {
     fn dispatch(&self, command: Command) {
         match command {
-            Command::OpenRepository(path) => {
-                self.submit(open_repository(path));
+            Command::OpenRepository => {
+                self.announce(
+                    Task::OpenRepository,
+                    open_repository(Arc::clone(&self.repos)),
+                );
             }
             Command::CheckSystemGit => {
-                self.submit(check_system_git());
+                self.announce(Task::CheckSystemGit, check_system_git());
+            }
+            Command::ReadHistory(order) => {
+                self.announce(
+                    Task::ReadHistory,
+                    read_history(Arc::clone(&self.repos), order),
+                );
             }
             Command::CancelJob(id) => self.cancel(id),
         }
@@ -442,15 +490,45 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
 ///
 /// Opening a repository touches the disk and can take a moment on a cold cache
 /// or a network filesystem, which is exactly why it is a job and not something
-/// `update` does.
-fn open_repository(path: PathBuf) -> Work {
+/// `update` does. Only the first one pays: after that the store hands out a
+/// handle onto a repository that is already open.
+///
+/// This is also what `Ctrl+R` re-runs, so it is where anything derived from
+/// refs — the default branch, ADR-0001 — is thrown away and worked out again.
+fn open_repository(store: Arc<RepoStore>) -> Work {
     Box::new(move |cancel| {
         if cancel.is_cancelled() {
             return Outcome::Cancelled;
         }
+        store.refresh();
         // Whether it opened or not is the answer, and both halves go back the
         // same way: "not a repository" is what the user asked about.
-        Outcome::Produced(Product::Repository(repository::facts(&path)))
+        let facts = store
+            .shared()
+            .map_err(|error| error.to_string())
+            .and_then(|repo| repository::facts(&repo.handle()));
+        Outcome::Produced(Product::Repository(facts))
+    })
+}
+
+/// The work behind [`Command::ReadHistory`].
+///
+/// The long one: on a large repository this reads every commit behind every
+/// ref. It checks its token after each chunk, so `Esc` stops it within a
+/// chunk rather than at the end of the walk.
+fn read_history(store: Arc<RepoStore>, order: Order) -> Work {
+    Box::new(move |cancel| {
+        if cancel.is_cancelled() {
+            return Outcome::Cancelled;
+        }
+        match history::read(&store, order, &|| cancel.is_cancelled()) {
+            Ok(Read::Done(history)) => Outcome::Produced(Product::History(history)),
+            // The partial result is dropped rather than sent: a walk that was
+            // stopped half way through is not a shorter history, it is a
+            // wrong one.
+            Ok(Read::Cancelled) => Outcome::Cancelled,
+            Err(message) => Outcome::Failed(message),
+        }
     })
 }
 

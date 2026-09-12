@@ -9,6 +9,7 @@
 #![forbid(unsafe_code)]
 
 pub mod capabilities;
+pub mod commit;
 pub mod error;
 pub mod event;
 pub mod job;

@@ -9,24 +9,67 @@ publish.workspace = true
 [dependencies]
 # Reads go through `gix` and nothing else (ADR-0011). Default features off:
 # the default set pulls the network clients, the worktree writers and the
-# whole diff/blame stack, none of which M0 opens a repository with. Only the
-# two hash backends are on — without one, `gix`'s object-id type has no
-# variants and the crate does not compile. Performance features (`parallel`,
-# the pack caches) and read surfaces (`revision`, `status`, `blame`,
-# `mailmap`) arrive with the tickets that need them.
+# whole diff/blame stack, none of which Graft opens a repository with.
+#
+# What is on, and why:
+#   sha1, sha256  - the hash backends. Without one, `gix`'s object-id type
+#                   has no variants and the crate does not compile.
+#   parallel      - on for correctness, not for speed. It is what makes
+#                   `gix::ThreadSafeRepository` `Send + Sync`: without it
+#                   `gix-features` swaps `Arc`/`RwLock` for `Rc`/`RefCell`,
+#                   and `SharedRepo` — one repository shared by every job
+#                   thread — does not compile. Measured below it is worth
+#                   nothing; it is here because the alternative is
+#                   re-opening the repository per job.
+#
+# Measured before deciding (m1-the-graph/04). Fixture: `graft-fixtures`'
+# synthetic 20,000-commit repository with no commit-graph file
+# (`Scale::of(20_000)`), and a `git clone --no-local` copy of it repacked
+# `-adf --depth=250 --window=250` to give the delta chains a `git gc
+# --aggressive` would. Method: release build, one full commit-date `Walk`
+# over all refs, 500-commit chunks, best of three rounds. Times in
+# milliseconds, with and without the 16 MiB per-handle object cache
+# (`SharedRepo::OBJECT_CACHE_BYTES`):
+#
+#   feature set                          plain fixture   deep deltas
+#   sha1+sha256                          56.8 / 82.4     -
+#   + parallel                           56.3 / 81.4     55.0 / 79.9
+#   + pack-cache-lru-static and -dynamic 57.2 / 81.9     55.8 / 80.2
+#
+# So the pack delta caches are off: they made no measurable difference even
+# against depth-250 chains, and a feature that buys nothing is a dependency
+# with no payer. The object cache is the one that pays — 82.4 -> 56.8 ms,
+# about a third — and it is code, not a feature.
+#
+# Still off: `revision` (it drags in `gix-index`, and the rev-walk needs
+# neither `describe` nor `merge_base`), `status`, `blame`, `mailmap` — each
+# arrives with the ticket that needs it. The commit-graph reader is not a
+# feature at all: `gix-commitgraph` is a hard dependency of `gix`.
 gix = { version = "0.87.1", default-features = false, features = [
     "sha1",
     "sha256",
+    "parallel",
 ] }
 graft-core.workspace = true
 thiserror.workspace = true
+
+[features]
+# Turns the heavy tier on for this crate's tests, per TESTING.md. A crate
+# that uses the heavy fixtures forwards the flag rather than naming
+# `graft-fixtures`' feature at the command line, so one
+# `cargo test --features heavy-tests` at the workspace root reaches all of
+# them at once.
+heavy-tests = ["graft-fixtures/heavy-tests"]
 
 [lints]
 workspace = true
 
 [dev-dependencies]
 # The named fixture corpus (m1-the-graph/01). A dev-dependency only, so it is
-# not an internal dependency edge (ADR-0006).
+# not an internal dependency edge (ADR-0006). Optional so that the
+# `heavy-tests` feature above has something to forward to; it is pulled in by
+# every test build regardless, because dev-dependencies are not optional in
+# practice — the feature only chooses which tier it builds.
 graft-fixtures.workspace = true
 # Repository fixtures are built by real `git` commands in a temporary
 # directory: tiny ones, per PROMPT.md §7.1's fast tier.

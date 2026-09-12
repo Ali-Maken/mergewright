@@ -7,6 +7,7 @@
 //! turns a hang into a named assertion failure rather than a test suite that
 //! never returns.
 
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -17,11 +18,33 @@ use super::*;
 /// Generous, because it is never reached when the code works.
 const PATIENCE: Duration = Duration::from_secs(5);
 
+/// This crate's own source tree: a real repository, and the one the tests
+/// that dispatch a repository command read.
+fn this_repository() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+}
+
 /// A runner and the events it reports, with no event loop in sight.
 fn runner(workers: usize) -> (JobRunner<Sender<AppEvent>>, Receiver<AppEvent>) {
+    let (runner, events, _store) = runner_at(&this_repository(), workers);
+    (runner, events)
+}
+
+/// The same, over a named repository, handing back the store so a test can
+/// ask how many times it was opened.
+fn runner_at(
+    path: &Path,
+    workers: usize,
+) -> (
+    JobRunner<Sender<AppEvent>>,
+    Receiver<AppEvent>,
+    Arc<RepoStore>,
+) {
     let (sender, receiver) = mpsc::channel();
-    let runner = JobRunner::start(sender, workers).expect("a test machine can start a thread");
-    (runner, receiver)
+    let store = Arc::new(RepoStore::new(path.to_path_buf(), None));
+    let runner = JobRunner::start(sender, workers, Arc::clone(&store))
+        .expect("a test machine can start a thread");
+    (runner, receiver, store)
 }
 
 /// The next thing the runner reported, whatever kind it is.
@@ -37,9 +60,17 @@ fn next_report(events: &Receiver<AppEvent>) -> AppEvent {
 fn next_event(events: &Receiver<AppEvent>) -> Event {
     match next_report(events) {
         AppEvent::Core(event) => event,
-        other @ AppEvent::Produced(..) => {
-            panic!("expected a lifecycle event, got {other:?}")
-        }
+        other => panic!("expected a lifecycle event, got {other:?}"),
+    }
+}
+
+/// The announcement a dispatched command makes before its job can finish, and
+/// the id it named. It is what lets the application know which job it is
+/// waiting for while the job is still running.
+fn next_started(events: &Receiver<AppEvent>, expected: Task) -> JobId {
+    match next_report(events) {
+        AppEvent::Started(id, task) if task == expected => id,
+        other => panic!("expected {expected:?} to be announced, got {other:?}"),
     }
 }
 
@@ -319,7 +350,8 @@ fn a_result_with_nobody_listening_is_not_an_error() {
 #[test]
 fn a_pool_whose_events_go_nowhere_still_shuts_down() {
     let (sender, receiver) = mpsc::channel::<AppEvent>();
-    let runner = JobRunner::start(sender, 2).expect("a test machine can start a thread");
+    let store = Arc::new(RepoStore::new(this_repository(), None));
+    let runner = JobRunner::start(sender, 2, store).expect("a test machine can start a thread");
     drop(receiver);
 
     runner.submit(|_cancel| Outcome::Done);
@@ -341,7 +373,9 @@ fn the_pool_is_never_empty_and_never_larger_than_the_cap() {
 #[test]
 fn the_default_pool_fits_a_laptop() {
     let (sender, _events) = mpsc::channel::<AppEvent>();
-    let runner = JobRunner::with_default_size(sender).expect("a test machine can start a thread");
+    let store = Arc::new(RepoStore::new(this_repository(), None));
+    let runner =
+        JobRunner::with_default_size(sender, store).expect("a test machine can start a thread");
 
     assert!((1..=MAX_WORKERS).contains(&runner.worker_count()));
     assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
@@ -353,27 +387,55 @@ fn the_default_pool_fits_a_laptop() {
 #[test]
 fn opening_a_repository_reports_what_it_found() {
     let (runner, events) = runner(1);
-    let not_a_repository = tempfile::tempdir().expect("a temporary directory");
 
-    runner.dispatch(Command::OpenRepository(PathBuf::from(env!(
-        "CARGO_MANIFEST_DIR"
-    ))));
+    runner.dispatch(Command::OpenRepository);
+
+    next_started(&events, Task::OpenRepository);
     match next_report(&events) {
         AppEvent::Produced(_, Product::Repository(Ok(facts))) => {
             assert!(!facts.bare, "this repository has a working tree");
         }
         other => panic!("expected an open repository, got {other:?}"),
     }
+    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+}
 
-    runner.dispatch(Command::OpenRepository(
-        not_a_repository.path().to_path_buf(),
-    ));
+#[test]
+fn a_path_that_is_not_a_repository_comes_back_as_an_answer() {
+    let not_a_repository = tempfile::tempdir().expect("a temporary directory");
+    let (runner, events, _store) = runner_at(not_a_repository.path(), 1);
+
+    runner.dispatch(Command::OpenRepository);
+
+    next_started(&events, Task::OpenRepository);
     match next_report(&events) {
         AppEvent::Produced(_, Product::Repository(Err(message))) => {
             assert!(!message.is_empty(), "a refusal must say why");
         }
         other => panic!("expected a refusal, got {other:?}"),
     }
+    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+}
+
+/// The point of [`RepoStore`]: two jobs, one open. Discovering and opening a
+/// repository is the expensive part, and M0 paid it once per job.
+#[test]
+fn two_jobs_share_one_open_repository() {
+    let (runner, events, store) = runner_at(&this_repository(), 1);
+
+    runner.dispatch(Command::OpenRepository);
+    next_started(&events, Task::OpenRepository);
+    next_report(&events);
+
+    runner.dispatch(Command::ReadHistory(Order::CommitDate));
+    next_started(&events, Task::ReadHistory);
+    next_report(&events);
+
+    assert_eq!(
+        store.opens(),
+        1,
+        "the second job must reuse the handle the first one opened"
+    );
     assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
 }
 
@@ -385,6 +447,7 @@ fn checking_the_system_git_reports_either_way() {
 
     runner.dispatch(Command::CheckSystemGit);
 
+    next_started(&events, Task::CheckSystemGit);
     match next_report(&events) {
         AppEvent::Produced(_, Product::SystemGit(check)) => match check {
             GitCheck::Ran(_) => {}

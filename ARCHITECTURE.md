@@ -53,6 +53,9 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 - **Adding a new kind of `Command` or wiring a new job** → `app`. It's the
   only crate allowed to see every other crate, and `update` and the job
   runner both live there.
+- **Anything that needs the open repository from a job** → `app/src/repos.rs`.
+  It owns the one open repository for the run; see the seam below before
+  opening one yourself.
 
 ## The crates
 
@@ -97,6 +100,34 @@ into `ui` only as `term::SanitizedText` — a newtype only `term::sanitize`
 can construct, applied by `app` at the view-model boundary (`DESIGN.md`
 §8.2), so escape-sequence injection is a compile error, not a review catch.
 
+### The open repository: `SharedRepo` and `RepoStore`
+
+Opening a repository is expensive — discovery walks up the tree, then the
+whole config stack is parsed — and every job needs one. Three constraints
+meet here:
+
+- `gix::Repository` is not `Send`, so a job thread cannot be handed one;
+- `AppState` is cloned on every event and must stay pure, so the state
+  cannot hold one either;
+- opening once per job is what M0 did, and it is the wrong answer.
+
+The seam is two types:
+
+- `git::repo::SharedRepo` — the `Send + Sync` half: the parsed config and the
+  object database. `handle()` turns it into a thread-local
+  `RepoHandle` for the cost of a clone of some `Arc`s, and sets the object
+  cache. This is why `gix`'s `parallel` feature is on
+  (`graft-git/Cargo.toml`): without it `gix-features` uses `Rc`, and
+  `SharedRepo` is not `Send`.
+- `app::repos::RepoStore` — one per run, owned by the job runner and never by
+  the state. It opens the repository the first time a job asks, keeps it, and
+  caches the answer to ADR-0001's "which branch owns lane 0", whose last rule
+  counts merges across the whole of history. `Ctrl+R` drops the cached
+  conclusion and keeps the open repository.
+
+A job therefore takes `Arc<RepoStore>`, calls `shared()?.handle()`, and reads.
+`RepoStore::opens()` exists so a test can assert the count stays at one.
+
 ### `fixtures`: test-only, outside the table
 
 `graft-fixtures` (`crates/graft-fixtures/`) is the whole test harness, for
@@ -115,9 +146,9 @@ It is **not** a row in the table above, because nothing in the shipped binary
 may reach it: it is `publish = false` and appears only in
 `[dev-dependencies]`. The `cargo metadata` edge test deliberately ignores
 dev-dependency edges (ADR-0006), so the enforced edge set is unchanged by it.
-`graft-term` depends on it that way, for the case count, and re-exports the
-feature as its own `heavy-tests` so one `--features heavy-tests` turns the
-tier on across the workspace.
+`graft-term` depends on it that way for the case count, `graft-git` and `app`
+for the corpus, and each re-exports the feature as its own `heavy-tests` so
+one `--features heavy-tests` turns the tier on across the workspace.
 
 It depends on no other Graft crate, in either direction. That is the rule
 that keeps it usable: the corpus can be built before the crate that reads it

@@ -2,11 +2,11 @@
 //!
 //! A [`RepoHandle`] cannot live in [`AppState`](crate::update::AppState): it is
 //! not `Send`, the state is cloned on every event, and `update` must stay pure.
-//! So the job reads what the screen needs, hands back these plain facts, and
-//! drops the handle. M1's rev-walk is the ticket that needs a handle to stay
-//! open, and owns that decision (KNOWN_GAPS.md).
+//! So the job borrows a handle from the [`RepoStore`](crate::repos::RepoStore),
+//! reads what the screen needs, hands back these plain facts, and drops the
+//! handle. The repository behind it stays open.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use graft_core::oid::Oid;
 use graft_git::repo::{HeadState, RepoHandle};
@@ -43,17 +43,14 @@ pub enum Head {
     Unreadable(String),
 }
 
-/// Open the repository at `path` and read what the status screen shows.
+/// Read what the status screen shows from an open repository.
 ///
 /// # Errors
-/// The failure text, ready to show: the path is not a repository, or the
-/// repository is there but cannot be used. The message is formed here rather
-/// than passed on as a typed error because it crosses a thread as part of a
-/// job result, and there is exactly one thing every caller does with it —
-/// tell the user.
-pub fn facts(path: &Path) -> Result<RepositoryFacts, String> {
-    let repository = RepoHandle::open(path).map_err(|error| error.to_string())?;
-
+/// The failure text, ready to show. The message is formed here rather than
+/// passed on as a typed error because it crosses a thread as part of a job
+/// result, and there is exactly one thing every caller does with it — tell
+/// the user.
+pub fn facts(repository: &RepoHandle) -> Result<RepositoryFacts, String> {
     let location = repository
         .workdir()
         .unwrap_or_else(|| repository.git_dir())
@@ -104,20 +101,12 @@ mod tests {
     }
 
     #[test]
-    fn a_path_that_is_not_a_repository_says_so() {
-        let directory = tempfile::tempdir().expect("a temporary directory");
-
-        let error = facts(directory.path()).expect_err("an empty directory is not a repository");
-
-        assert!(error.contains("not inside a git repository"), "{error}");
-    }
-
-    #[test]
     fn a_fresh_repository_is_on_a_branch_with_no_commits() {
         let directory = initialised(&[]);
         let expected = directory.path().to_path_buf();
 
-        let facts = facts(directory.path()).expect("git init makes a repository");
+        let handle = RepoHandle::open(directory.path()).expect("git init makes a repository");
+        let facts = facts(&handle).expect("an open repository has facts");
 
         assert_eq!(facts.path, expected);
         assert!(!facts.bare);
@@ -129,7 +118,9 @@ mod tests {
         let directory = initialised(&["--bare"]);
         let expected = directory.path().to_path_buf();
 
-        let facts = facts(directory.path()).expect("git init --bare makes a repository");
+        let handle =
+            RepoHandle::open(directory.path()).expect("git init --bare makes a repository");
+        let facts = facts(&handle).expect("an open repository has facts");
 
         assert!(facts.bare);
         // No working tree, so the path shown is the repository itself.

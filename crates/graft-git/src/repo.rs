@@ -155,6 +155,189 @@ impl RepoHandle {
         found.sort_by(|left, right| left.name.cmp(&right.name));
         Ok(found)
     }
+
+    /// Every commit a ref reaches, `HEAD` included: where a walk starts.
+    ///
+    /// Annotated tags are peeled, which costs an object read each, and that
+    /// is the point — a walk seeded from the tag object rather than the
+    /// commit it names would find nothing.
+    ///
+    /// A ref that does not lead to a commit is skipped, not an error: a tag
+    /// on a blob and `refs/notes/commits` are both legal, and neither has a
+    /// place in a commit graph. A ref that cannot be *read* is an error, and
+    /// is returned as one.
+    ///
+    /// The result is sorted and free of duplicates, so two refs at the same
+    /// commit seed the walk once.
+    ///
+    /// # Errors
+    /// [`TipsError`] if the ref store cannot be read, or a ref cannot be
+    /// peeled for a reason other than not naming a commit.
+    pub fn commit_tips(&self) -> Result<Vec<Oid>, TipsError> {
+        let read = |source: Box<dyn std::error::Error + Send + Sync>| TipsError::Read {
+            git_dir: self.git_dir().to_path_buf(),
+            source,
+        };
+
+        let platform = self.repo.references().map_err(|why| read(Box::new(why)))?;
+        let iter = platform.all().map_err(|why| read(Box::new(why)))?;
+
+        let mut tips = Vec::new();
+        for reference in iter {
+            let mut reference = reference.map_err(read)?;
+            self.push_tip(&mut tips, &mut reference)?;
+        }
+        // `HEAD` is not in the ref store's iteration, and on a detached
+        // `HEAD` it is the only thing holding its commit. An unborn `HEAD`
+        // peels to nothing and adds no tip, which is the right answer.
+        let mut head = self.repo.head().map_err(|why| read(Box::new(why)))?;
+        if let Some(id) = head.try_peel_to_id().map_err(|why| read(Box::new(why)))? {
+            tips.push(self.oid(id.as_bytes())?);
+        }
+
+        tips.sort_unstable();
+        tips.dedup();
+        Ok(tips)
+    }
+
+    /// Peels one ref to a commit and records it, ignoring refs that do not
+    /// name a commit at all.
+    fn push_tip(
+        &self,
+        tips: &mut Vec<Oid>,
+        reference: &mut gix::Reference<'_>,
+    ) -> Result<(), TipsError> {
+        match reference.peel_to_commit() {
+            Ok(commit) => {
+                let id = self.oid(commit.id().as_bytes())?;
+                tips.push(id);
+                Ok(())
+            }
+            // A tag on a tree or a blob, and `refs/notes/*`, peel to
+            // something that is not a commit. Legal, and not a tip: `gix`
+            // reports the object it stopped on, which is how "this ref has
+            // no commit" is told apart from "this ref cannot be read".
+            Err(gix::reference::peel::to_kind::Error::PeelObject(
+                gix::object::peel::to_kind::Error::NotFound { .. },
+            )) => Ok(()),
+            Err(other) => Err(TipsError::Read {
+                git_dir: self.git_dir().to_path_buf(),
+                source: Box::new(other),
+            }),
+        }
+    }
+
+    /// An object id from raw bytes, blaming this repository if it is the
+    /// wrong length.
+    fn oid(&self, bytes: &[u8]) -> Result<Oid, TipsError> {
+        Oid::from_bytes(bytes).map_err(|source| TipsError::Malformed {
+            git_dir: self.git_dir().to_path_buf(),
+            source,
+        })
+    }
+
+    /// The repository `gix` is holding.
+    ///
+    /// Crate-private: `gix`'s types are this crate's business, and letting
+    /// one out would put `gix` in every caller's signature (ADR-0011).
+    pub(crate) fn gix(&self) -> &gix::Repository {
+        &self.repo
+    }
+}
+
+/// A repository handle that can be sent between threads, and the thing that
+/// keeps it open.
+///
+/// Opening a repository reads its configuration, probes its object database
+/// and works out which refs backend it uses: real work, and work that must
+/// not happen again on every rev-walk. But `gix::Repository` is `Send` and
+/// not `Sync`, so it cannot simply be shared. `gix` splits the two apart, and
+/// so does this: `SharedRepo` owns the expensive, shared half and hands out a
+/// cheap per-thread [`RepoHandle`] on demand.
+///
+/// This is the type that closes M0's "the repository handle does not outlive
+/// the job that opened it": the app keeps one `SharedRepo` for the life of
+/// the window, and each job takes a handle from it.
+pub struct SharedRepo {
+    repo: gix::ThreadSafeRepository,
+    /// How much decompressed object data a handle may keep. Applied per
+    /// handle, because the cache lives in the thread-local half.
+    object_cache_bytes: usize,
+}
+
+impl SharedRepo {
+    /// The per-handle object cache, in bytes.
+    ///
+    /// A rev-walk reads the same commit objects repeatedly — once to find its
+    /// parents while exploring, once again to render it — and every read of a
+    /// packed object walks its delta chain. `gix` leaves the cache off unless
+    /// asked, and 16 MiB is what `git` itself defaults `core.deltaBaseCacheLimit`
+    /// to plus room for the objects themselves, which is small against
+    /// PROMPT.md §7.1's memory budget and large enough to hold the working set
+    /// of a chunked walk.
+    pub const OBJECT_CACHE_BYTES: usize = 16 * 1024 * 1024;
+
+    /// Opens the repository that governs `path`, exactly as
+    /// [`RepoHandle::open`] does, and keeps it open.
+    ///
+    /// # Errors
+    /// The same four cases as [`RepoHandle::open`].
+    pub fn open(path: &Path) -> Result<Self, OpenError> {
+        match gix::ThreadSafeRepository::discover(path) {
+            Ok(repo) => Ok(SharedRepo {
+                repo,
+                object_cache_bytes: Self::OBJECT_CACHE_BYTES,
+            }),
+            Err(error) => Err(OpenError::classify(path, error)),
+        }
+    }
+
+    /// A handle for the calling thread.
+    ///
+    /// Cheap: it clones the already-loaded configuration and object database
+    /// rather than discovering or parsing anything. A job takes one of these
+    /// and drops it when it finishes; the repository stays open regardless.
+    #[must_use]
+    pub fn handle(&self) -> RepoHandle {
+        let mut repo = self.repo.to_thread_local();
+        repo.object_cache_size_if_unset(self.object_cache_bytes);
+        RepoHandle { repo }
+    }
+
+    /// The repository's own directory. See [`RepoHandle::git_dir`].
+    #[must_use]
+    pub fn git_dir(&self) -> &Path {
+        self.repo.git_dir()
+    }
+}
+
+impl fmt::Debug for SharedRepo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SharedRepo")
+            .field("git_dir", &self.git_dir())
+            .finish()
+    }
+}
+
+/// Why a walk's starting points could not be found.
+#[derive(Debug, thiserror::Error)]
+pub enum TipsError {
+    /// The ref store could not be read, or a ref could not be peeled.
+    #[error("cannot read the refs in {}: {source}", git_dir.display())]
+    Read {
+        /// The repository whose refs were being read.
+        git_dir: PathBuf,
+        /// What `gix` said. Boxed to keep `TipsError` small.
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
+    /// A ref peeled to an object id git's own rules reject.
+    #[error("a ref in {} names a malformed object: {source}", git_dir.display())]
+    Malformed {
+        /// The repository whose refs were being read.
+        git_dir: PathBuf,
+        /// Which invariant the value broke.
+        source: graft_core::error::Error,
+    },
 }
 
 /// One ref, as the ref store holds it.

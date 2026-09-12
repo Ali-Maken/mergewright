@@ -19,15 +19,18 @@ pub mod signals;
 
 use std::io::{self, Write};
 use std::path::Path;
+use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, Sender};
 
 use graft_core::capabilities::Supported;
+use graft_git::history::Order;
 use graft_term::detect::{self, TtyHost};
 use ratatui::Terminal;
 use ratatui::backend::{Backend, CrosstermBackend};
 
 use crate::crash;
 use crate::jobs::{self, Delivery, Dispatch, JobEvents, JobRunner, Shutdown};
+use crate::repos::RepoStore;
 use crate::session::{Session, Startup};
 use crate::terminal::{SessionOptions, TerminalSession};
 use crate::update::{AppEvent, AppState, Command, Quit, update};
@@ -138,7 +141,11 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
 
     let (mut wakes, sender) = ChannelWakes::new();
     let signals = signals::watch(sender.clone())?;
-    let jobs = JobRunner::with_default_size(sender.clone())?;
+    // One repository, opened once and shared by every job that follows
+    // (`crate::repos`). Built here rather than inside the pool so that its
+    // lifetime is the session's, not a job's.
+    let repos = Arc::new(RepoStore::new(repo_path.clone(), None));
+    let jobs = JobRunner::with_default_size(sender.clone(), repos)?;
     input::spawn_reader(sender)?;
 
     let state = opening_repository(&jobs, &repo_path);
@@ -187,8 +194,12 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
 /// so both are jobs: the first frame is drawn while they are still running,
 /// and says so, rather than waiting on the disk.
 fn opening_repository(jobs: &impl Dispatch, repo_path: &Path) -> AppState {
-    jobs.dispatch(Command::OpenRepository(repo_path.to_path_buf()));
+    jobs.dispatch(Command::OpenRepository);
     jobs.dispatch(Command::CheckSystemGit);
+    // The third is the one with work in it: reading history. Asked for in
+    // topological order, which ADR-0008 downgrades to commit date when the
+    // repository has no commit-graph file.
+    jobs.dispatch(Command::ReadHistory(Order::Topological));
     AppState {
         repo_path: repo_path.to_path_buf(),
         ..AppState::default()
@@ -584,9 +595,10 @@ mod tests {
 
         assert_eq!(
             jobs.commands(),
-            vec![Command::OpenRepository(std::path::PathBuf::from(
-                "/code/api"
-            ))]
+            vec![
+                Command::OpenRepository,
+                Command::ReadHistory(Order::Topological)
+            ]
         );
     }
 
