@@ -13,5 +13,12 @@ graft-core.workspace = true
 # owning the event loop, which `app` owns.
 libc = "0.2"
 
+[dev-dependencies]
+# Property tests for the sanitiser (PROMPT.md §7.1 mandates `proptest` and
+# caps the fast tier at 64 cases). Default features off: `fork` and `timeout`
+# would pull in a process-spawning harness the sanitiser's pure tests never
+# need.
+proptest = { version = "1", default-features = false, features = ["std", "bit-set"] }
+
 [lints]
 workspace = true

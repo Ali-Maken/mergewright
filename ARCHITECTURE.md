@@ -40,6 +40,12 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   `DESIGN.md` §4, then `graft-term/src/detect/` — where `detect::tty` is the
   only module that touches the real terminal, so everything above it is
   tested against scripted replies.
+- **Changing what counts as hostile repository text** (a new escape or
+  invisible-character class) → `graft-term/src/sanitize/`. One function and
+  a small set of entry points; `DESIGN.md` §8.2 sets the minimum classes and
+  the replacement policy, and the module doc is the authority on what is
+  actually neutralised (it takes all of Unicode's `Cf` category, which is a
+  superset).
 - **Changing a screen or a keybinding** → `ui` for the widget, `app` for the
   key-to-`Command` mapping. Start at `DESIGN.md` §1–§2.
 - **Adding a new kind of `Command` or wiring a new job** → `app`. It's the
