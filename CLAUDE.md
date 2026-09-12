@@ -34,6 +34,27 @@
 
 ## Agent skills
 
+### Which skills to use
+
+Use these, by these exact names:
+
+| Skill | When |
+|---|---|
+| `to-tickets` | Splitting a milestone into tickets. Once per milestone. |
+| `implement` | Building a ticket. |
+| `tdd` | Test-first work inside a ticket. |
+| `code-review` | Reviewing a finished ticket or milestone. |
+| `diagnosing-bugs` | A bug or failure a builder couldn't fix. |
+
+**Never use:** `prototype`, `wayfinder`, `to-spec`, `triage`.
+
+- `prototype` builds HTML prototypes. Questions about terminal rendering are answered only by a binary running in a real terminal. Keep its principles — throwaway, minimal, findings recorded as an ADR — not the skill.
+- `wayfinder`, `to-spec`: the plan already exists. `PROMPT.md` is the spec, `DESIGN.md` the design, `PROGRESS.md` the plan. Don't create a second one.
+- `triage`: not how work is chosen here. The conductor takes the next unchecked box in `PROGRESS.md`.
+
+Some of these aren't in the Skill tool's listing. They are installed; read the SKILL.md directly:
+`~/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/engineering/<name>/SKILL.md`
+
 ### Issue tracker
 
 Local markdown: tickets live as files under `.scratch/<milestone-slug>/issues/NN-<slug>.md`. There is no remote. See `docs/agents/issue-tracker.md`.
