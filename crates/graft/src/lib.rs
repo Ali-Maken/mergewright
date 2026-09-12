@@ -8,5 +8,6 @@
 //! tests, and the manual `terminal_probe` example, can drive the same code the
 //! binary runs.
 
+pub mod config;
 pub mod crash;
 pub mod terminal;
