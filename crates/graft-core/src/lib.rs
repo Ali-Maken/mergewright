@@ -8,3 +8,6 @@
 //! crate; everything else depends on it.
 
 pub mod capabilities;
+pub mod error;
+pub mod oid;
+pub mod ref_name;

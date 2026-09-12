@@ -4,3 +4,8 @@
 //! parsers for its porcelain and diff output. Commands are built from typed
 //! arguments, never by joining shell strings. Depends only on `core`; it never
 //! touches the terminal or the UI.
+
+#[cfg(test)]
+mod fixture;
+pub mod repo;
+pub mod version;

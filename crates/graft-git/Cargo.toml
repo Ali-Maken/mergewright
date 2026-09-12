@@ -7,7 +7,23 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+# Reads go through `gix` and nothing else (ADR-0011). Default features off:
+# the default set pulls the network clients, the worktree writers and the
+# whole diff/blame stack, none of which M0 opens a repository with. Only the
+# two hash backends are on — without one, `gix`'s object-id type has no
+# variants and the crate does not compile. Performance features (`parallel`,
+# the pack caches) and read surfaces (`revision`, `status`, `blame`,
+# `mailmap`) arrive with the tickets that need them.
+gix = { version = "0.87.1", default-features = false, features = [
+    "sha1",
+    "sha256",
+] }
 graft-core.workspace = true
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+# Repository fixtures are built by real `git` commands in a temporary
+# directory: tiny ones, per PROMPT.md §7.1's fast tier.
+tempfile = "3.27.0"
