@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M1 The graph** — ticket 06 (17 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. **M1 runs straight through without stopping for ticket approval** — see "How M1 runs" below.
+**Current step:** **M1 The graph** — ticket 07 (17 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. **M1 runs straight through without stopping for ticket approval** — see "How M1 runs" below.
 
 ---
 
@@ -166,6 +166,9 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-12 · M1/04 reading history · opus · done · graft-git/history/ (simple, topo, date orders) checked against git rev-list on the corpus; branches/, repos.rs, cancellable jobs (Esc); 364 tests. Nothing on screen yet - no widget reads AppState::history; 6 gaps logged; commit 331971b
 
 - 2026-09-12 · M1/05 layout engine · fable · done · resumed after interrupt (3c30a91, 8a2aa1b kept, nothing rewritten); added 4 §1.2 invariant proptests, outside-in replay, random chunking, 18 corpus snapshots read row by row; proptests proved themselves by catching 2 deliberate layout mutations. 5 gaps logged. commits bbb2fd0, 7b07d2a, b07a588, e7db822
+
+- 2026-09-12 · M1/06 streaming layout · fable · done · chunks, checkpoints, LRU eviction, promotion; R2-1 closed (checkpoint 1,578 B @10k / 1,694 B @40k, identical on both paths). Observed on 100k in-memory rows: 16 chunks/8,000 rows resident, 49 checkpoints = 90 kB, EmittedOrder 9.0 MB; jump to row 15,000 replayed 300 rows, 0 walk pulls; evicted chunk rebuilt equal. Real 100k fixture, getrusage/300 MB and the 150 ms budget NOT measured → m1-16. 421 tests. commits 4061028, 695db1b, 06cc3d2, 33d0f71
+- 2026-09-12 · proptest counts moved into code · opus (conductor) · done · ADR-0017: PROPTEST_CASES removed from .claude/settings.json and from graft-fixtures; 64 fast / 1000 heavy set by feature flag; PROMPT.md §7.1, TESTING.md, KNOWN_GAPS and the checkpoint question corrected (the variable was this repo's, not the user's shell); commits ecad6dd, 8105193
 
 ## Open questions for the M1 checkpoint
 
