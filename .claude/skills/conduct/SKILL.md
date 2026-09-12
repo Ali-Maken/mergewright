@@ -27,7 +27,7 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
 - **After each helper returns:**
   - tick the box in PROGRESS.md
   - update **Current step**
-  - add a one-line Session log entry
+  - add a one-line Session log entry. If the helper reports it compacted mid-ticket, end that line with `· COMPACTED` — that ticket was too big and is a candidate for splitting.
   - commit: `git commit -am "progress: <what>"`
 - **Never** push, force anything or skip a failing gate.
 - If the conversation was auto-compacted, that's fine: everything lives in files. Re-read PROGRESS.md and carry on.

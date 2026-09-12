@@ -123,6 +123,7 @@ want to review them one by one.
 
 <!-- The conductor adds one line per helper run:
 - YYYY-MM-DD · step or ticket · model · done, partial or failed · one-line note
+Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too big.
 -->
 
 - 2026-09-11 · step 2 DESIGN.md (sections 1–6) · fable · partial · stopped mid-revision, draft kept
