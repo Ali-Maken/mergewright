@@ -77,7 +77,6 @@ questions that remain.
 
 | Gap | What's needed | Expiry |
 |---|---|---|
-| Kitty pixels unseen by a human | Protocol-level success in real Ghostty is not eyes on pixels. User must confirm at the checkpoint: curves/nodes visible in the left 7 columns, aligned with text rows, staying aligned over j/k | Step-3 checkpoint |
 | Resize frame busts the frame budget | A terminal resize clears and retransmits the whole strip: ~32–41 ms in the Ghostty bench, against a 16 ms budget. One frame per resize, so the spike leaves it. M1's fixed-height strips with ids (DESIGN.md §3.8) must not inherit a whole-viewport retransmit on every SIGWINCH | M1 |
 | Is ED-frees-image-data Ghostty-specific? | Only Ghostty 1.3.1 was tested. Unknown whether kitty-the-terminal (or other kitty-protocol terminals) also free image data on `ESC[2J`. M1 must not assume uploads survive a clear anywhere | M1 |
 | Sixel and plain-text rendering tiers unproven | Spike exercises only Kitty and iTerm2. Sixel alignment/scroll strategy and the text-cell fallback graph need their own validation | M1 |
