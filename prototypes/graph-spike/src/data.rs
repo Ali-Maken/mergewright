@@ -58,8 +58,17 @@ const fn row(
 }
 
 /// The history: `main` on lane 0 with four merges, three fork points (one
-/// where three branches meet), and up to three lanes open at once.
-pub const ROWS: [GraphRow; 30] = [
+/// where three branches meet), and up to three lanes open at once — then
+/// the same shapes again as older history, with `ff…` ids and a `[v1.9]`
+/// badge.
+///
+/// It repeats on purpose. The spike has to keep a scroll range on a
+/// window taller than the dataset, and the alternative (capping the
+/// visible rows) was the bug that showed `rows 1-24/30` in a window with
+/// room for all 30. The seam at row 30 joins a root (no parents drawn) to
+/// a tip (no children drawn), so no edge crosses it: this is a rendering
+/// fixture, not a plausible history.
+pub const ROWS: [GraphRow; 60] = [
     row(
         "9f3e2a1",
         "chore: release 2.0",
@@ -146,4 +155,82 @@ pub const ROWS: [GraphRow; 30] = [
     row("42e8b5d", "core: config loading", "", 0, &[0, 1], &[0], &[]),
     row("9d150cf", "core: project skeleton", "", 0, &[0], &[0], &[]),
     row("5b0a2e7", "init: empty repo", "", 0, &[0], &[], &[]),
+    row("ff3e2a1", "chore: release 2.0", "[v1.9]", 0, &[], &[0], &[]),
+    row("ffd01c4", "chore: fmt sweep", "", 0, &[0], &[0], &[]),
+    row("ff99e02", "test: golden frames", "", 0, &[0], &[0], &[]),
+    row("ffb6f77", "fix: strip cache leak", "", 0, &[0], &[0], &[]),
+    row(
+        "ff08c53",
+        "Merge branch 'feature-d'",
+        "",
+        0,
+        &[0],
+        &[0, 1],
+        &[],
+    ),
+    row("ff4413b", "d: encode placements", "", 1, &[1], &[1], &[0]),
+    row("ff5b9d0", "docs: user guide", "", 0, &[0], &[0], &[1]),
+    row("ffcaa08", "d: probe cell size", "", 1, &[1], &[1], &[0]),
+    row(
+        "ffd17ee",
+        "core: refactor renderer",
+        "",
+        0,
+        &[0, 1],
+        &[0],
+        &[],
+    ),
+    row("fff0b2a", "perf: cache layout rows", "", 0, &[0], &[0], &[]),
+    row(
+        "ff1ac45",
+        "Merge branch 'feature-b'",
+        "",
+        0,
+        &[0],
+        &[0, 1],
+        &[],
+    ),
+    row("ff7de91", "b: smooth scrolling", "", 1, &[1], &[1], &[0]),
+    row("fff302d", "fix: typo in help", "", 0, &[0], &[0], &[1]),
+    row("ff6e8fa", "b: keybindings", "", 1, &[1], &[1], &[0]),
+    row(
+        "ffa4bc7",
+        "Merge branch 'feature-c'",
+        "",
+        0,
+        &[0],
+        &[0, 2],
+        &[1],
+    ),
+    row("ffe91d5", "c: lexer states", "", 2, &[2], &[2], &[0, 1]),
+    row("ff205c9", "b: pane styles", "", 1, &[1], &[1], &[0, 2]),
+    row("fff37a2", "chore: bump deps", "", 0, &[0], &[0], &[1, 2]),
+    row("ff0b81e", "c: parser skeleton", "", 2, &[2], &[2], &[0, 1]),
+    row("ffc5f60", "b: layout pass", "", 1, &[1], &[1], &[0, 2]),
+    row(
+        "ff218d9",
+        "fix: crash on empty repo",
+        "",
+        0,
+        &[0, 1, 2],
+        &[0],
+        &[],
+    ),
+    row(
+        "ff9ea34",
+        "Merge branch 'feature-a'",
+        "",
+        0,
+        &[0],
+        &[0, 1],
+        &[],
+    ),
+    row("ffd0c7f", "a: public api", "", 1, &[1], &[1], &[0]),
+    row("ff6a1b8", "core: logging", "", 0, &[0], &[0], &[1]),
+    row("ff8f4e3", "a: data model", "", 1, &[1], &[1], &[0]),
+    row("ffc2d90", "docs: readme", "", 0, &[0], &[0], &[1]),
+    row("ff1709a", "a: scaffold module", "", 1, &[1], &[1], &[0]),
+    row("ffe8b5d", "core: config loading", "", 0, &[0, 1], &[0], &[]),
+    row("ff150cf", "core: project skeleton", "", 0, &[0], &[0], &[]),
+    row("ff0a2e7", "init: empty repo", "", 0, &[0], &[], &[]),
 ];

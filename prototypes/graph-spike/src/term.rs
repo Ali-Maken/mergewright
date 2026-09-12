@@ -170,6 +170,49 @@ fn read_reply(timeout: Duration, done: impl Fn(&[u8]) -> bool) -> Vec<u8> {
     buf
 }
 
+/// Take whatever the terminal has already sent back, without blocking, and
+/// pick out the APC graphics replies. The kitty commands run at `q=1`, so a
+/// reply here is always an error report — the thing the original spike hid
+/// behind `q=2` (ADR-0012 correction). Used by the bench driver, which
+/// never blocks on a key and would otherwise never see one.
+pub fn pending_graphics_replies() -> Vec<Vec<u8>> {
+    let buf = read_available();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while let Some(start) = buf[i..].windows(3).position(|w| w == b"\x1b_G") {
+        let from = i + start;
+        let end = match buf[from..].windows(2).position(|w| w == b"\x1b\\") {
+            Some(e) => from + e + 2,
+            None => buf.len(),
+        };
+        out.push(buf[from..end].to_vec());
+        i = end;
+    }
+    out
+}
+
+/// Everything readable on stdin right now; empty when nothing is waiting.
+fn read_available() -> Vec<u8> {
+    let mut buf = Vec::new();
+    loop {
+        let mut fd = libc::pollfd {
+            fd: 0,
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        if unsafe { libc::poll(&mut fd, 1, 0) } <= 0 {
+            break;
+        }
+        let mut chunk = [0u8; 512];
+        let n = unsafe { libc::read(0, chunk.as_mut_ptr().cast(), chunk.len()) };
+        if n <= 0 {
+            break;
+        }
+        buf.extend_from_slice(&chunk[..n as usize]);
+    }
+    buf
+}
+
 pub enum Key {
     Up,
     Down,

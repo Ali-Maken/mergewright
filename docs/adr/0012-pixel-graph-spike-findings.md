@@ -158,3 +158,85 @@ and scroll alignment still require human eyes at the checkpoint.
   replies through the input mux to a visible channel.
 - Acceptance evidence for rendering tiers is a real terminal's replies or
   a human looking at it — never a pty capture.
+
+## Follow-up (2026-09-12): measuring the fixed spike
+
+The corrected spike renders in Ghostty, so the next question was cost. The
+status line read `frame 24.9ms (raster 2.0 encode 0.0 upload 23)`, which
+looks like a per-frame re-upload — the very optimisation the ENOENT fix
+was suspected of dropping. It was not. Two separate things were wrong, and
+neither was the transmit policy.
+
+### How it was measured
+
+A pty cannot time a frame: it drains writes instantly, so the write
+back-pressure that dominates a real graphics frame disappears. The spike
+grew a **bench mode** instead — `GRAPH_SPIKE_BENCH=<frames>` scrolls
+itself back and forth, paced by `GRAPH_SPIKE_BENCH_HZ` (default 30, `0` =
+flat out), times each frame *including the final flush*, drains Kitty
+`q=1` error replies every frame, and writes a report to
+`GRAPH_SPIKE_BENCH_OUT`. Run it inside a real terminal window and the
+numbers are real. This is the honest version of "measure it"; a pty run
+only proves the bytes are well formed (see the Correction above).
+
+Real Ghostty 1.3.1, 122×40 cells, cell 17×37 px, 300 frames at 30 Hz:
+
+```
+transmits     1
+graphics err  0 []
+frame ms      first 41.4 | min 0.1 med 0.4 p95 0.5 max 41.4
+over 16ms     1 of 300
+retransmits   [(1, 122, 40)]   (frame, cols, rows)
+steady ms     min 0.1 med 0.4 max 0.5   (frames 2..)
+```
+
+**One** transmit in 300 frames, and every other frame is a placement crop
+at **0.4 ms median, 0.5 ms worst** — against a 16 ms budget. `graphics
+err 0` says none of those 299 placements silently ENOENTed, which is the
+check that matters: a crop into a freed image is exactly the bug the
+Correction above fixed, and it fails silently. Transmit-once + crop
+survived that fix intact.
+
+An earlier run of the same bench caught a window still settling and read
+`transmits 2, retransmits [(1, 122, 38), (242, 122, 40)]` — the second
+transmit being a real 38 → 40 row resize, costing 32 ms. That is the
+policy working, not leaking: the only thing that retransmits is a size
+change.
+
+### Defect 1: the status line lied, the renderer didn't
+
+`upload` was carried forward from the last transmit, so every crop-only
+frame displayed a cost it had not paid. `frame 24.9ms … upload 23` was a
+resize frame's real cost (a retransmit *is* ~25–40 ms) shown under a
+scroll frame's label. Fixed by making every number belong to the frame
+being drawn — except `frame`, which is necessarily the previous frame's
+total and is documented as such — and by adding a `tx N` counter to the
+status line. A silent per-frame retransmit would now be visible as `tx`
+climbing with the scroll. **Numbers that outlive their frame lie**; a
+measurement you cannot attribute to one frame is not a measurement.
+
+Retransmit-on-resize stays over budget (~32–41 ms) and is left alone here:
+it is one frame per resize, and M1's fixed-height strips (DESIGN.md §3.8)
+change the shape of that cost anyway.
+
+### Defect 2: `MAX_VIEW = 24`
+
+`rows 1-24/30` in a window with room for 39 was a leftover constant
+capping the viewport, not a strip-height bug. Removed; the view is now
+`rows − 1` (the status line owns the last row), clamped to the dataset.
+The dataset went from 30 to 60 rows so a scroll range still exists in a
+tall window — the tempting alternative, capping visible rows to keep the
+scroll interesting, is exactly the bug.
+
+### iTerm2 tier: unverified, not working
+
+No iTerm2 on the development machine, so nothing about its rendering is
+claimed. Structurally it is now sound: the `ESC[2J` moved to the shared
+resize-only path (it had been clearing every frame on that tier too), and
+PNG encoding switched to `Compression::Fast` because encode time is frame
+budget there. Under a pty at 122×40 it emits correct OSC 1337 args
+(`inline=1;size=…;width=7;height=39;preserveAspectRatio=0`), ~60 KB per
+frame, ~8.3 ms median CPU — raster ~1 ms, encode ~7 ms, write cost
+excluded. `tx` counts every iTerm2 frame, because that tier really does
+re-send the image every time. Whether it renders is an open question in
+KNOWN_GAPS.md, not a finding.

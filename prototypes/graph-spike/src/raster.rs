@@ -70,6 +70,11 @@ impl Canvas {
         let mut enc = png::Encoder::new(&mut out, self.w, self.h);
         enc.set_color(png::ColorType::Rgba);
         enc.set_depth(png::BitDepth::Eight);
+        // Fast over small: this PNG is written straight to a terminal and
+        // thrown away, and on the iTerm2 tier it is re-encoded every frame,
+        // so encode time is frame budget. Default compression roughly
+        // doubles it for a file nobody keeps.
+        enc.set_compression(png::Compression::Fast);
         let mut writer = enc.write_header().map_err(std::io::Error::other)?;
         writer
             .write_image_data(&self.px)
