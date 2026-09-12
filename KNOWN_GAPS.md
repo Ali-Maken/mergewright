@@ -139,6 +139,17 @@ keep the code, amend the document, as recorded in ADR-0014.
 | **Sanitising strips the emoji joiner (U+200D), so a multi-part emoji breaks into its pieces** in a commit subject or branch name. A family or a profession emoji renders as two or three separate glyphs. Direct consequence of taking all of Unicode `Cf` (ADR-0014), which the user confirmed — the joiner is a format character, and telling it apart from a hostile one means special-casing emoji sequences | Raised and accepted by the user at the M0 checkpoint, 2026-09-12: cosmetic, and the safety trade is the right way round. **Revisit only if it annoys him in daily use** — not scheduled work | Not planned; revisit on user's say-so |
 
 
+## M1 gaps
+
+**Fixture corpus** (m1-the-graph/01, 2026-09-12).
+
+| Gap | What is missing | Closed by |
+|---|---|---|
+| **Shapes PROMPT.md §7.2 names that the corpus does not hold.** Conflicting rebases, submodules, worktrees and LFS pointers are all absent. Ticket 01 put them out of scope on purpose: nothing reads them yet, and a fixture nobody opens is a fixture nobody notices going stale | One shape each, added by the milestone that first reads it, with the test that reads it | Conflicting rebases → M6; submodules and worktrees → M5; LFS pointers → M7 |
+| **The non-UTF-8 shape does not exist on this machine.** `Shape::NonUtf8Names` is skipped and the reason is recorded: `apfs at /System/Volumes/Data rejects file names that are not valid UTF-8 (Illegal byte sequence (os error 92))`. `graft_fixtures::try_borrow` returns that reason and the test for that shape prints the skip; it never passes quietly. So the byte-oriented ref-name and path handling in `core` and `git` is still typed for and untested | A heavy-tier run on Linux (ext4/tmpfs accept arbitrary bytes), where the same generator builds the shape and the same test opens it. Pairs with the existing "Non-UTF-8 paths are typed for, not tested" row above | M1 heavy tier |
+| **Two fixture builders now exist.** `graft-git/src/fixture.rs` is a `#[cfg(test)]`-only helper that makes small repositories with plain `git` commands, written in M0 before the corpus existed. Its unit tests still use it. The corpus is the one every *new* test must use (m1-the-graph/01) | Move `graft-git`'s unit tests onto `graft_fixtures` where a named shape fits, and delete what is left of `fixture.rs`. Not done in ticket 01: it would rewrite tests the ticket has no reason to touch | M1, after the rev-walk tickets stop changing those tests |
+| **Determinism is proven on one machine, not across machines.** The test builds the corpus twice in two temporary directories and asserts every object id matches. That covers "the generator is deterministic"; it does not cover a different `git` version producing different objects, which is why `git --version` is folded into the cache key rather than asserted | Nothing scheduled. The key makes a version change rebuild instead of silently reusing; a cross-version guarantee would need CI, which does not exist yet | Not planned |
+
 ## Scheduled interim states
 
 These are *temporary*. Each one is a real gap between the milestone that creates

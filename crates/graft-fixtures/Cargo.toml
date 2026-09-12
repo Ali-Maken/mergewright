@@ -1,0 +1,22 @@
+[package]
+name = "graft-fixtures"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Test-only. Nothing in the shipped binary may depend on this crate: it is a
+# dev-dependency everywhere it is used, so it never appears in an internal
+# dependency edge (ARCHITECTURE.md, ADR-0006). It deliberately depends on no
+# other Graft crate either, so the corpus can be built before anything that
+# reads it exists.
+[dependencies]
+thiserror.workspace = true
+
+# A fixture a test wants to write to is copied into a temporary directory that
+# is deleted when the test ends (PROMPT.md 7.1).
+tempfile = "3.27.0"
+
+[lints]
+workspace = true

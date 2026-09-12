@@ -1131,11 +1131,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "graft-fixtures"
+version = "0.1.0"
+dependencies = [
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "graft-git"
 version = "0.1.0"
 dependencies = [
  "gix",
  "graft-core",
+ "graft-fixtures",
  "tempfile",
  "thiserror",
 ]

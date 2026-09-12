@@ -111,6 +111,89 @@ impl RepoHandle {
             )),
         }
     }
+
+    /// Every ref in the repository, sorted by full name.
+    ///
+    /// Branches, tags, remote-tracking branches, `refs/stash` and anything
+    /// else the ref store holds — but not `HEAD`, which is
+    /// [`head`](Self::head)'s job because its three states are not a ref's
+    /// three states.
+    ///
+    /// An annotated tag's target is the *tag object*, not the commit it
+    /// points at: peeling costs an object read per tag, and the caller that
+    /// needs the commit is the one that should pay for it.
+    ///
+    /// # Errors
+    /// [`RefsError`] if the ref store cannot be read, or holds a name or an
+    /// id that git's own rules reject.
+    pub fn references(&self) -> Result<Vec<RefEntry>, RefsError> {
+        let read = |source: Box<dyn std::error::Error + Send + Sync>| RefsError::Read {
+            git_dir: self.git_dir().to_path_buf(),
+            source,
+        };
+        let malformed = |source| RefsError::Malformed {
+            git_dir: self.git_dir().to_path_buf(),
+            source,
+        };
+
+        let platform = self.repo.references().map_err(|why| read(Box::new(why)))?;
+        let iter = platform.all().map_err(|why| read(Box::new(why)))?;
+        let mut found = Vec::new();
+        for reference in iter {
+            let reference = reference.map_err(read)?;
+            let target = match reference.target() {
+                gix::refs::TargetRef::Object(id) => {
+                    RefTarget::Object(Oid::from_bytes(id.as_bytes()).map_err(malformed)?)
+                }
+                gix::refs::TargetRef::Symbolic(name) => {
+                    RefTarget::Symbolic(RefName::new(name.as_bstr().to_vec()).map_err(malformed)?)
+                }
+            };
+            let name = RefName::new(reference.name().as_bstr().to_vec()).map_err(malformed)?;
+            found.push(RefEntry { name, target });
+        }
+        found.sort_by(|left, right| left.name.cmp(&right.name));
+        Ok(found)
+    }
+}
+
+/// One ref, as the ref store holds it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RefEntry {
+    /// The full name — `refs/heads/main`, `refs/tags/v1.0`.
+    pub name: RefName,
+    /// What the ref points at.
+    pub target: RefTarget,
+}
+
+/// What a ref points at: an object, or another ref.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RefTarget {
+    /// An object id, read as stored and not peeled.
+    Object(Oid),
+    /// Another ref's full name. Rare outside `HEAD`, but legal anywhere.
+    Symbolic(RefName),
+}
+
+/// Why the refs could not be read.
+#[derive(Debug, thiserror::Error)]
+pub enum RefsError {
+    /// The ref store could not be read.
+    #[error("cannot read the refs in {}: {source}", git_dir.display())]
+    Read {
+        /// The repository whose refs were being read.
+        git_dir: PathBuf,
+        /// What `gix` said. Boxed to keep `RefsError` small.
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
+    /// A ref was read, but names something git's own rules reject.
+    #[error("a ref in {} is malformed: {source}", git_dir.display())]
+    Malformed {
+        /// The repository whose refs were being read.
+        git_dir: PathBuf,
+        /// Which invariant the value broke.
+        source: graft_core::error::Error,
+    },
 }
 
 impl fmt::Debug for RepoHandle {

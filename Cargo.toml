@@ -10,6 +10,9 @@ license = "MIT"
 publish = false
 
 [workspace.dependencies]
+# Test-only: a dev-dependency everywhere it is used, so it is not an
+# internal dependency edge (ADR-0006).
+graft-fixtures = { path = "crates/graft-fixtures" }
 graft-core = { path = "crates/graft-core" }
 graft-graph = { path = "crates/graft-graph" }
 graft-git = { path = "crates/graft-git" }

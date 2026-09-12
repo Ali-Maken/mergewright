@@ -97,6 +97,22 @@ into `ui` only as `term::SanitizedText` — a newtype only `term::sanitize`
 can construct, applied by `app` at the view-model boundary (`DESIGN.md`
 §8.2), so escape-sequence injection is a compile error, not a review catch.
 
+### `fixtures`: test-only, outside the table
+
+`graft-fixtures` (`crates/graft-fixtures/`) builds the named fixture corpus —
+one small repository per history or ref shape (PROMPT.md §7.2) — and hands a
+test a path to one in two lines. It is **not** a row in the table above,
+because nothing in the shipped binary may reach it: it is `publish = false`
+and appears only in `[dev-dependencies]`. The `cargo metadata` edge test
+deliberately ignores dev-dependency edges (ADR-0006), so the enforced edge
+set is unchanged by it.
+
+It depends on no other Graft crate, in either direction. That is the rule
+that keeps it usable: the corpus can be built before the crate that reads it
+exists, and a change to `core` or `git` can never make the fixtures fail to
+build. It shells out to real `git` and owns nothing a production code path
+would want.
+
 ## Shared types worth knowing where they live
 
 `core` holds plain data only — no behaviour, no algorithms. Laying out a

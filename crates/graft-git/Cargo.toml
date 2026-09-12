@@ -25,6 +25,9 @@ thiserror.workspace = true
 workspace = true
 
 [dev-dependencies]
+# The named fixture corpus (m1-the-graph/01). A dev-dependency only, so it is
+# not an internal dependency edge (ADR-0006).
+graft-fixtures.workspace = true
 # Repository fixtures are built by real `git` commands in a temporary
 # directory: tiny ones, per PROMPT.md §7.1's fast tier.
 tempfile = "3.27.0"

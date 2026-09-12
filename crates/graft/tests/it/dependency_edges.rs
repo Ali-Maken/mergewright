@@ -9,7 +9,9 @@
 //! Dev-dependencies are deliberately excluded. A test-only helper — `graft-ui`
 //! reaching for a `graft-git` fixture builder in its own tests — never ships in
 //! the binary and so can't erode the layering. Normal and build dependencies
-//! both do ship, so both count.
+//! both do ship, so both count. `graft-fixtures` is the standing example: it
+//! is a dev-dependency everywhere it is used, so it adds no edge here
+//! (ARCHITECTURE.md, "`fixtures`: test-only, outside the table").
 
 use std::collections::BTreeSet;
 use std::process::Command;

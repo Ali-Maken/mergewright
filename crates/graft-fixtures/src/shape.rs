@@ -1,0 +1,116 @@
+//! The named shapes the corpus contains.
+//!
+//! PROMPT.md §7.2 insists the corpus is *named*: a test asserts against a
+//! shape someone can describe, not against whatever a developer's own
+//! repository happens to look like. The list below is that spec's list, plus
+//! the ref states a graph has to draw, plus the trivial case — a repository
+//! with nothing to draw at all, which is the one the graph is easiest to get
+//! wrong on.
+
+/// One history or ref shape, and one repository on disk.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
+pub enum Shape {
+    /// A small linear repository: no merges, no tags, no branch but the
+    /// default one. The trivial case (PROMPT.md §7.2).
+    Trivial,
+    /// 200 commits in a straight line — still small enough for the fast
+    /// tier, long enough that a viewport has to scroll.
+    Linear,
+    /// Several feature branches off different points, two merged back, one
+    /// still open.
+    FeatureBranches,
+    /// One merge with four parents.
+    OctopusMerge,
+    /// Two branches that merged each other, so they share two merge bases.
+    CrissCrossMerge,
+    /// A merge on the default branch whose *first* parent is the feature
+    /// branch, so first-parent history leaves the default branch.
+    FoxtrotMerge,
+    /// The default branch merged *into* a feature branch.
+    BackwardMerge,
+    /// A merge whose tree holds a change that is in neither parent.
+    EvilMerge,
+    /// The merge `git pull` makes when a push was rejected: `Merge branch
+    /// 'main' of <remote>`.
+    AccidentalPullMerge,
+    /// A second root commit: a branch with no ancestor in common with the
+    /// default branch.
+    OrphanBranch,
+    /// The same patch committed on two branches, so the two commits share a
+    /// patch id and no ancestry.
+    CherryPickDuplicates,
+    /// Lightweight and annotated tags, including one annotated tag whose
+    /// message a graph row has to show.
+    Tags,
+    /// Branch names, tag names, paths, commit messages and an author name
+    /// that are valid UTF-8 and not ASCII.
+    UnicodeNames,
+    /// Remote-tracking states: one branch level with its upstream, one
+    /// ahead, one behind, and a commit no branch reaches — only a tag does.
+    RefStates,
+    /// `HEAD` naming a commit directly, with no branch to advance.
+    DetachedHead,
+    /// `HEAD` on a branch that has no commit yet, while other branches do.
+    UnbornBranch,
+    /// Two stash entries, so `refs/stash` and its reflog both exist.
+    Stash,
+    /// A ref name and a path that are not valid UTF-8. Built only where the
+    /// filesystem accepts such names — not on APFS.
+    NonUtf8Names,
+}
+
+impl Shape {
+    /// Every shape, in a fixed order.
+    pub const ALL: &'static [Shape] = &[
+        Shape::Trivial,
+        Shape::Linear,
+        Shape::FeatureBranches,
+        Shape::OctopusMerge,
+        Shape::CrissCrossMerge,
+        Shape::FoxtrotMerge,
+        Shape::BackwardMerge,
+        Shape::EvilMerge,
+        Shape::AccidentalPullMerge,
+        Shape::OrphanBranch,
+        Shape::CherryPickDuplicates,
+        Shape::Tags,
+        Shape::UnicodeNames,
+        Shape::RefStates,
+        Shape::DetachedHead,
+        Shape::UnbornBranch,
+        Shape::Stash,
+        Shape::NonUtf8Names,
+    ];
+
+    /// The shape's directory name inside the corpus, and the name tests and
+    /// reports call it by.
+    pub fn name(self) -> &'static str {
+        match self {
+            Shape::Trivial => "trivial",
+            Shape::Linear => "linear",
+            Shape::FeatureBranches => "feature-branches",
+            Shape::OctopusMerge => "octopus-merge",
+            Shape::CrissCrossMerge => "criss-cross-merge",
+            Shape::FoxtrotMerge => "foxtrot-merge",
+            Shape::BackwardMerge => "backward-merge",
+            Shape::EvilMerge => "evil-merge",
+            Shape::AccidentalPullMerge => "accidental-pull-merge",
+            Shape::OrphanBranch => "orphan-branch",
+            Shape::CherryPickDuplicates => "cherry-pick-duplicates",
+            Shape::Tags => "tags",
+            Shape::UnicodeNames => "unicode-names",
+            Shape::RefStates => "ref-states",
+            Shape::DetachedHead => "detached-head",
+            Shape::UnbornBranch => "unborn-branch",
+            Shape::Stash => "stash",
+            Shape::NonUtf8Names => "non-utf8-names",
+        }
+    }
+}
+
+impl std::fmt::Display for Shape {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.name())
+    }
+}
