@@ -55,9 +55,14 @@ pub enum Shape {
     UnbornBranch,
     /// Two stash entries, so `refs/stash` and its reflog both exist.
     Stash,
-    /// A ref name and a path that are not valid UTF-8. Built only where the
-    /// filesystem accepts such names — not on APFS.
-    NonUtf8Names,
+    /// A path that is not valid UTF-8, living only inside a tree object.
+    /// Nothing is ever checked out, so this one builds anywhere — including
+    /// on APFS, where a non-UTF-8 *file* name is impossible.
+    NonUtf8Path,
+    /// A branch name that is not valid UTF-8. A loose ref is a file, so this
+    /// one is built only where the filesystem accepts such a name — not on
+    /// APFS.
+    NonUtf8RefName,
 }
 
 impl Shape {
@@ -80,7 +85,8 @@ impl Shape {
         Shape::DetachedHead,
         Shape::UnbornBranch,
         Shape::Stash,
-        Shape::NonUtf8Names,
+        Shape::NonUtf8Path,
+        Shape::NonUtf8RefName,
     ];
 
     /// The shape's directory name inside the corpus, and the name tests and
@@ -104,7 +110,8 @@ impl Shape {
             Shape::DetachedHead => "detached-head",
             Shape::UnbornBranch => "unborn-branch",
             Shape::Stash => "stash",
-            Shape::NonUtf8Names => "non-utf8-names",
+            Shape::NonUtf8Path => "non-utf8-path",
+            Shape::NonUtf8RefName => "non-utf8-ref-name",
         }
     }
 }

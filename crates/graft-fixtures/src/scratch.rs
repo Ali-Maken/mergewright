@@ -27,6 +27,9 @@ impl Scratch {
     pub(crate) fn from(source: &Path, prefix: &str) -> Result<Self, io::Error> {
         let dir = TempDir::with_prefix(format!("graft-{prefix}-"))?;
         copy_tree(source, dir.path())?;
+        // The shared corpus is read-only and `fs::copy` copies permissions
+        // with the bytes, so the copy arrives read-only too.
+        crate::permissions::unseal(dir.path())?;
         Ok(Scratch { dir })
     }
 }

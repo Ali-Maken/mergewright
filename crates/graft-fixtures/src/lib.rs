@@ -30,8 +30,10 @@
 //!
 //! # Shapes a machine cannot hold
 //!
-//! [`Shape::NonUtf8Names`] needs a filesystem that accepts a file name which
-//! is not valid UTF-8. APFS does not. [`try_borrow`] returns
+//! [`Shape::NonUtf8RefName`] needs a filesystem that accepts a file name
+//! which is not valid UTF-8, because a loose ref is a file. APFS does not.
+//! ([`Shape::NonUtf8Path`] has the same bytes in a path inside a tree object,
+//! so it builds everywhere.) [`try_borrow`] returns
 //! [`CorpusError::Unavailable`] there, carrying a reason that names the
 //! filesystem; a test for that shape reports the skip rather than passing
 //! quietly.
@@ -41,7 +43,8 @@
 mod corpus;
 mod digest;
 mod filesystem;
-mod git;
+pub mod git;
+mod permissions;
 mod scratch;
 mod shape;
 mod shapes;

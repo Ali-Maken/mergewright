@@ -239,11 +239,31 @@ fn stash() {
 }
 
 #[test]
-fn non_utf8_names() {
-    // The one shape a machine may legitimately not be able to hold. On APFS
-    // it must report a skip that names the filesystem, never pass quietly
-    // (m1-the-graph/01).
-    match graft_fixtures::try_borrow(Shape::NonUtf8Names) {
+fn non_utf8_path() {
+    // A path lives inside a tree object, so every filesystem can hold this
+    // one — it is the half of the non-UTF-8 coverage that is not skippable.
+    let dir = graft_fixtures::borrow(Shape::NonUtf8Path);
+    assert_shape(
+        Shape::NonUtf8Path,
+        2,
+        &["refs/heads/latin1", "refs/heads/main"],
+    );
+    let listed = graft_fixtures::git::run(&dir, &["ls-tree", "-r", "-z", "--name-only", "latin1"])
+        .unwrap_or_else(|why| panic!("listing the non-utf8-path fixture's tree: {why}"));
+    assert!(
+        listed
+            .split(|byte| *byte == 0)
+            .any(|path| !path.is_empty() && std::str::from_utf8(path).is_err()),
+        "the non-utf8-path fixture must hold a path that is not UTF-8"
+    );
+}
+
+#[test]
+fn non_utf8_ref_name() {
+    // The one shape a machine may legitimately not be able to hold: a loose
+    // ref is a file. On APFS it must report a skip that names the
+    // filesystem, never pass quietly (m1-the-graph/01).
+    match graft_fixtures::try_borrow(Shape::NonUtf8RefName) {
         Ok(dir) => {
             let repo = open(&dir);
             let entries = repo
@@ -255,7 +275,7 @@ fn non_utf8_names() {
                 .collect();
             assert!(
                 names.iter().any(|name| std::str::from_utf8(name).is_err()),
-                "the non-utf8-names fixture must hold a ref name that is not UTF-8"
+                "the non-utf8-ref-name fixture must hold a ref name that is not UTF-8"
             );
         }
         Err(why) => {

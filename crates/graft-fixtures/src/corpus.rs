@@ -21,6 +21,7 @@ use std::time::{Duration, Instant};
 use crate::digest;
 use crate::filesystem::{self, Support};
 use crate::git::{self, GitError};
+use crate::permissions;
 use crate::scratch::Scratch;
 use crate::shape::Shape;
 use crate::shapes::{self, BuildError};
@@ -103,7 +104,7 @@ fn io_error(context: impl Into<String>) -> impl FnOnce(io::Error) -> CorpusError
 /// the work and the rest wait for it.
 pub fn ensure() -> Result<Report, CorpusError> {
     static ONCE: OnceLock<Result<Report, String>> = OnceLock::new();
-    match ONCE.get_or_init(|| build_once().map_err(|why| why.to_string())) {
+    match ONCE.get_or_init(|| build_into(&base_dir()).map_err(|why| why.to_string())) {
         Ok(report) => Ok(report.clone()),
         Err(why) => Err(CorpusError::Unusable(why.clone())),
     }
@@ -138,14 +139,6 @@ pub fn try_copy_into_temp(shape: Shape) -> Result<Scratch, CorpusError> {
 /// stops that. Everything else about the build is the same, digest-named
 /// subdirectory included.
 pub fn build_into(base: &Path) -> Result<Report, CorpusError> {
-    build_in(base)
-}
-
-fn build_once() -> Result<Report, CorpusError> {
-    build_in(&base_dir())
-}
-
-fn build_in(base: &Path) -> Result<Report, CorpusError> {
     let started = Instant::now();
     let root = base.join(digest::corpus_key()?);
 
@@ -155,6 +148,9 @@ fn build_in(base: &Path) -> Result<Report, CorpusError> {
 
     fs::create_dir_all(base).map_err(io_error(format!("creating {}", base.display())))?;
     let staging = build_staging(base)?;
+    // Sealed before it is published, so no one can ever see a writable
+    // corpus at its final name.
+    permissions::seal(&staging).map_err(io_error(format!("sealing {}", staging.display())))?;
     claim(&staging, &root)?;
     finish(root, true, started)
 }
@@ -188,7 +184,7 @@ fn build_staging(base: &Path) -> Result<PathBuf, CorpusError> {
     for shape in Shape::ALL {
         let dir = staging.path().join(shape.name());
         match (*shape, &non_utf8) {
-            (Shape::NonUtf8Names, Support::Unavailable(reason)) => skip(&dir, reason)?,
+            (Shape::NonUtf8RefName, Support::Unavailable(reason)) => skip(&dir, reason)?,
             _ => shapes::build(*shape, &dir, streams.path())?,
         }
     }

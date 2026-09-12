@@ -8,9 +8,9 @@
 
 use std::collections::BTreeMap;
 use std::path::Path;
-use std::process::Command;
 
 use graft_fixtures::Shape;
+use graft_fixtures::git::GitError;
 
 /// Every object id a build produced, as `<shape> <refname> <id>` lines plus
 /// the whole commit list per shape.
@@ -32,7 +32,7 @@ fn identity(root: &Path) -> BTreeMap<String, String> {
             shape.name()
         );
         let commits = git(&dir, &["rev-list", "--all", "--reflog"]);
-        let head = git(&dir, &["symbolic-ref", "-q", "HEAD"]);
+        let head = head(&dir);
         found.insert(
             shape.name().to_owned(),
             format!("{refs}\n{commits}\n{head}"),
@@ -46,27 +46,26 @@ fn identity(root: &Path) -> BTreeMap<String, String> {
     found
 }
 
-/// A read-only `git`, isolated the same way the generator's is.
+/// A read-only `git`, isolated and deadlined by the generator's own runner —
+/// the same rules, not a second copy of them.
 ///
-/// `symbolic-ref -q` exits 1 on a detached `HEAD`, so a non-zero status is an
-/// answer here, not a failure; the caller compares the output either way.
+/// Any failure is fatal. A test that compared the output of two failed
+/// commands would compare two empty strings and pass.
 fn git(dir: &Path, args: &[&str]) -> String {
-    let out = Command::new("git")
-        .args(args)
-        .current_dir(dir)
-        .env("GIT_TERMINAL_PROMPT", "0")
-        .env("GIT_CONFIG_NOSYSTEM", "1")
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("LC_ALL", "C")
-        .output()
-        .unwrap_or_else(|why| {
-            panic!(
-                "running `git {}` in {}: {why}",
-                args.join(" "),
-                dir.display()
-            )
-        });
-    String::from_utf8_lossy(&out.stdout).into_owned()
+    let out = graft_fixtures::git::run(dir, args).unwrap_or_else(|why| panic!("{why}"));
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// The branch `HEAD` points at, or `detached`.
+///
+/// `symbolic-ref -q` exits 1 when `HEAD` is detached: that is its answer, not
+/// a failure. Every other way of failing still is one.
+fn head(dir: &Path) -> String {
+    match graft_fixtures::git::run(dir, &["symbolic-ref", "-q", "HEAD"]) {
+        Ok(out) => String::from_utf8_lossy(&out).into_owned(),
+        Err(GitError::Failed { status, .. }) if status.code() == Some(1) => "detached".to_owned(),
+        Err(why) => panic!("{why}"),
+    }
 }
 
 fn build(base: &Path) -> graft_fixtures::Report {
@@ -149,8 +148,8 @@ fn the_shared_corpus_is_reachable_and_every_shape_accounted_for() {
 }
 
 #[test]
-fn the_non_utf8_shape_exists_or_names_the_filesystem_it_cannot_live_on() {
-    match graft_fixtures::try_borrow(Shape::NonUtf8Names) {
+fn the_non_utf8_ref_name_shape_exists_or_names_the_filesystem_it_cannot_live_on() {
+    match graft_fixtures::try_borrow(Shape::NonUtf8RefName) {
         Ok(dir) => assert!(
             dir.join(".git").is_dir(),
             "a built fixture must be a repository"
@@ -167,4 +166,18 @@ fn the_non_utf8_shape_exists_or_names_the_filesystem_it_cannot_live_on() {
             eprintln!("skipped: {reason}");
         }
     }
+}
+
+#[test]
+fn the_shared_corpus_is_read_only() {
+    let dir = graft_fixtures::borrow(Shape::Trivial);
+    let head_file = dir.join(".git").join("HEAD");
+    let refused = std::fs::OpenOptions::new().write(true).open(&head_file);
+    let why = refused.expect_err("the shared corpus must refuse a write");
+    assert_eq!(
+        why.kind(),
+        std::io::ErrorKind::PermissionDenied,
+        "writing {} was refused for the wrong reason: {why}",
+        head_file.display()
+    );
 }

@@ -15,13 +15,18 @@ use crate::git::{self, GitError};
 /// The sources that decide what the corpus contains. Any edit to one of them
 /// changes the digest, and so the directory the corpus is built in.
 const GENERATOR: &[&str] = &[
-    include_str!("shapes.rs"),
+    include_str!("shapes/mod.rs"),
+    include_str!("shapes/history.rs"),
+    include_str!("shapes/merges.rs"),
+    include_str!("shapes/refs.rs"),
     include_str!("stream.rs"),
     include_str!("shape.rs"),
     include_str!("git.rs"),
     include_str!("corpus.rs"),
-    // Decides whether the non-UTF-8 shape is built or skipped here.
+    // Decides whether the non-UTF-8 ref-name shape is built or skipped here.
     include_str!("filesystem.rs"),
+    // Decides what the corpus's files look like once built.
+    include_str!("permissions.rs"),
 ];
 
 /// Bumped by hand when the *layout* of the corpus changes in a way the
