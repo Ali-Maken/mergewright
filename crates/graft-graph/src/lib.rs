@@ -7,3 +7,9 @@
 //! `git`, `ops` or `term`.
 
 #![forbid(unsafe_code)]
+
+pub mod identity;
+pub mod merge_name;
+
+pub use identity::BranchIdentity;
+pub use merge_name::recover_branch_name;

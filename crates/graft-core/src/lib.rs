@@ -13,5 +13,6 @@ pub mod commit;
 pub mod error;
 pub mod event;
 pub mod job;
+pub mod mistake_radar;
 pub mod oid;
 pub mod ref_name;
