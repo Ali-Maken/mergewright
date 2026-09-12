@@ -1,10 +1,49 @@
 # m1-the-graph/05 — The layout engine: lanes, rows, edges
 
-Status: ready
+Status: in progress
 Build with: **Fable** (the graph layout engine — PROGRESS.md routing; xhigh-class work)
 Blocked by: 01
 
 Why: this is the centre of the product. Every invariant in PROMPT.md §1.2 is either true here or nowhere, and "is the history shape obvious at a glance?" is decided by lane choices long before a renderer draws anything.
+
+## Progress (handoff, 2026-09-12)
+
+Interrupted mid-flight once; resumed by a second builder. Nothing landed was
+rewritten.
+
+Landed on `main`:
+
+- `3c30a91` — `MistakeRadarKind` in `core`; `BranchIdentity` (FNV-1a, stable
+  across runs, `of_name` / `of_short_sha`); `recover_branch_name` with unit
+  tests for all four message shapes, the no-match fallback and malformed
+  variants. **Acceptance item 5 is covered by these tests.**
+- `8a2aa1b` — `Lane`, `Row`, `Seeds`/`BranchSeed`, `LayoutCursor`, `layout()`.
+  Lane 0 reserved and wins ties; integration lanes reserved adjacent to 0 and
+  never returned to the free pool on any closing path; first parent continues
+  the row's lane; extra parents take the lowest free column or open a new one;
+  pending-free list at **row** granularity (documented in `layout.rs` — chunk
+  granularity would make the layout depend on chunk size); merge-lane identity
+  from the message, short-SHA fallback; octopus handled generically. Directed
+  tests: freed column reused only on the next row (**acceptance item 3**), two
+  runs byte-identical, chunk-boundary invariance, reserved-lane guards,
+  octopus, short-SHA fallback.
+
+Remaining when this note was written (all in this ticket's scope):
+
+1. Property tests for the four §1.2 invariants (fast 64 / heavy 1000 via
+   `graft_fixtures::proptest_cases()`), over a generated commit DAG in walk
+   order. `graft-graph` has no dev-deps yet: needs `proptest`,
+   `graft-fixtures`, `heavy-tests` forwarding feature.
+2. Human-readable snapshot tests of row/lane output for every `Shape::ALL`
+   fixture. Needs `graft-git` as a **dev**-dependency to read fixture commits
+   (ADR-0006: dev-deps are not enforced edges — `tests/it/dependency_edges.rs`
+   skips them by design). `Shape::NonUtf8RefName` must report a skip.
+3. An explicit equal-date tie test (acceptance item 4's second half).
+4. Confirm the edge test already pins `graft-graph -> graft-core` only. (It
+   does: `EXPECTED_EDGES` lists exactly that edge for `graft-graph`.)
+5. `KNOWN_GAPS.md`: the M0 row saying `graft-graph` is empty is stale; `Row`
+   carries a lane index only, so a renderer needing a row's colour later must
+   capture `active_lanes()` when the row is produced.
 
 ## Read first
 - PROMPT.md §1.2 (all of it, including the invariant list) and §1.3's merge-commit rules
