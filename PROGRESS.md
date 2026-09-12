@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M0 CHECKPOINT — user tests M0. **M1 tickets deliberately not drafted** (user, 2026-09-12: stop after M0). Draft them when the user says to start M1. (12 tickets in `.scratch/m0-foundations/`, approved 2026-09-12)
+**Current step:** M0 CHECKPOINT — user tests M0 on a real terminal. **M1 tickets drafted** (17, in `.scratch/m1-the-graph/`) and awaiting the user's approval at that checkpoint; no M1 code started. Tickets 03, 12 and 14 assume M0's capability detection works on real emulators — that is what the checkpoint is testing. (M0: 12 tickets in `.scratch/m0-foundations/`, approved 2026-09-12)
 
 ---
 
@@ -121,3 +121,4 @@ Decisions and checks waiting on the user. Raise all of these at the M0 checkpoin
 - 2026-09-12 · M0 review fixes · opus · done · all 6 fixed: honest TierSource, workspace lints + ADR-0013 (unsafe), detect/ split, ADR-0014 + DESIGN.md edits; commits 1691ea7, 33cb445, cc60d4f
 - 2026-09-12 · M0 review round 2 · opus · done · all 6 genuinely resolved; 0 Critical, 0 Major, 3 new Minor; docs/reviews/m0-foundations-round-2.md, commit 9c14cbc
 - 2026-09-12 · M1 ticket split · opus · cancelled · user asked to stop after M0; no M1 files written
+- 2026-09-12 · M1 ticket split · opus · done · 17 tickets in .scratch/m1-the-graph/; Fable = 05/06/07 (layout engine) only; Unicode tier ordered before pixel; Map view, Overview strip and hover's "Contained in" deferred to M2
