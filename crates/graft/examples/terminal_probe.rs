@@ -14,8 +14,9 @@
 //!
 //! After `quit` or `panic` the shell must behave normally (echo on, Ctrl+C
 //! works) and the screen must hold whatever it held before. `hang` is there to
-//! be killed: it shows what a signal does, which today is *not* a clean exit —
-//! see KNOWN_GAPS.md.
+//! be killed: it shows what a signal does to *this* example, which still takes
+//! the default action and dies without restoring. The product binary does not
+//! — `event_loop::signals` turns a signal into an ordinary wake-up (m0/09).
 
 use std::io::{self, Write};
 use std::process::ExitCode;

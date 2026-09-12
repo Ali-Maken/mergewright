@@ -9,5 +9,7 @@
 
 pub mod capabilities;
 pub mod error;
+pub mod event;
+pub mod job;
 pub mod oid;
 pub mod ref_name;

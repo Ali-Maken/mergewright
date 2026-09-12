@@ -299,7 +299,7 @@ fn channel(field: &[u8]) -> Option<u8> {
 /// channels with no separators.
 fn hash_color(hex_digits: &[u8]) -> Option<Rgb> {
     let width = hex_digits.len() / 3;
-    if width == 0 || width > 4 || hex_digits.len() % 3 != 0 {
+    if width == 0 || width > 4 || !hex_digits.len().is_multiple_of(3) {
         return None;
     }
     Some(Rgb {

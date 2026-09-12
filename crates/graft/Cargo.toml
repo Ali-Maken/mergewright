@@ -10,8 +10,9 @@ publish.workspace = true
 [dependencies]
 # Only what the terminal session needs: `events` carries the mouse, focus and
 # keyboard-enhancement commands, `bracketed-paste` the paste ones, `windows`
-# the platform shim. crossterm's `derive-more` default is left off: it exists
-# for `Display` impls on key types this crate never formats.
+# the platform shim. `derive-more` is left off here, though `ratatui-crossterm`
+# depends on crossterm without disabling defaults, so it is on in the build
+# anyway — turning it off here still documents that Graft needs none of it.
 crossterm = { version = "0.29", default-features = false, features = [
     "events",
     "bracketed-paste",
@@ -23,11 +24,24 @@ graft-graph.workspace = true
 graft-ops.workspace = true
 graft-term.workspace = true
 graft-ui.workspace = true
+# The drawing half of the loop (PROMPT.md Technology). Defaults off because
+# they pull `underline-color`, `scrolling-regions` and the palette crates;
+# `std` and the crossterm 0.29 backend are all the view needs, and the backend
+# feature must match the crossterm above or two versions get linked at once.
+ratatui = { version = "0.30", default-features = false, features = [
+    "std",
+    "crossterm_0_29",
+] }
 # The config file (PROMPT.md Technology: "TOML via `serde`"). `toml`'s
 # `display` default is off — Graft reads config and never writes it, so the
 # serializer would be dead weight — and its error `Display` is what gives a bad
 # config file its line, column and quoted source line.
 serde = { version = "1.0.229", features = ["derive"] }
+# Signals, without a signal handler of Graft's own: signal-hook's handler only
+# writes to a self-pipe, so the loop can treat `SIGINT`/`SIGTERM`/`SIGHUP` like
+# any other event and still unwind, which is what restores the terminal
+# (`event_loop/signals.rs`).
+signal-hook = "0.3"
 toml = { version = "1.1.6", default-features = false, features = [
     "parse",
     "serde",
@@ -38,6 +52,10 @@ toml = { version = "1.1.6", default-features = false, features = [
 # alone is enough for that; the `cargo_metadata` crate would pull a much larger
 # tree for typed structs this one test doesn't need.
 [dev-dependencies]
+# Snapshots of what `view` draws. The rendered frame is a block of text, and
+# a diff of two blocks of text is the only readable way to review a layout
+# change.
+insta = "1"
 serde_json = "1.0.151"
 # Config files under test go in a temporary directory, never in a real home
 # (PROMPT.md Technology; ticket 07).

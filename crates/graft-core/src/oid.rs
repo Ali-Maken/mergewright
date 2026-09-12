@@ -60,11 +60,12 @@ impl Oid {
 
         let digits = hex.as_bytes();
         let len = hash_len(digits.len() / 2)
-            .filter(|_| digits.len() % 2 == 0)
+            .filter(|_| digits.len().is_multiple_of(2))
             .ok_or_else(invalid)?;
 
         let mut bytes = [0u8; Self::MAX_BYTES];
-        for (byte, pair) in bytes.iter_mut().zip(digits.chunks_exact(2)) {
+        let (pairs, _) = digits.as_chunks::<2>();
+        for (byte, pair) in bytes.iter_mut().zip(pairs) {
             let high = nibble(pair[0]).ok_or_else(invalid)?;
             let low = nibble(pair[1]).ok_or_else(invalid)?;
             *byte = (high << 4) | low;

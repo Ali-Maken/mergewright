@@ -10,4 +10,7 @@
 
 pub mod config;
 pub mod crash;
+pub mod event_loop;
 pub mod terminal;
+pub mod update;
+pub mod view;
