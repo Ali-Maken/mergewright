@@ -501,7 +501,7 @@ Tests run on the developer's laptop while they're using it. **The suite must nev
 
 - **Fast tier:**
   - small fixtures only (500 commits or fewer each)
-  - `proptest` capped at 64 cases (the `PROPTEST_CASES` variable can change this)
+  - `proptest` capped at 64 cases, set in code (`graft_fixtures::proptest_cases`). The environment cannot change it — see ADR-0017
   - no network, no fuzzing, no benchmarks
 - **Heavy tier:**
   - the 100k-commit synthetic repo and the performance budgets

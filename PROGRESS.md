@@ -173,6 +173,9 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
   ignored tests, so PROMPT.md §7.1's single heavy-tier command never reaches the
   proptests. Fix either way: amend §7.1 to two commands, or drop `--ignored` and
   gate the heavy tier on the feature flag alone. Raised by M1/02.
-- **`PROPTEST_CASES=64` is exported in the user's shell env** (not from this
-  repo). It silently overrides the heavy tier's case count. Heavy runs need
-  `env -u PROPTEST_CASES`, or the export should go.
+- ~~**`PROPTEST_CASES=64` is exported in the user's shell env**~~ — **wrong,
+  and now fixed.** It was set in this repository's own `.claude/settings.json`,
+  not the user's shell; M1/02 reported it as external and PROGRESS.md and
+  KNOWN_GAPS.md repeated that for a day. Settled 2026-09-12: the variable is
+  removed and the case counts live in code (64 fast, 1,000 heavy), ADR-0017.
+  Nothing for the checkpoint to decide.

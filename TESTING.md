@@ -70,15 +70,17 @@ it:
 cargo clippy --all-targets --features heavy-tests -- -D warnings
 ```
 
-**`PROPTEST_CASES` beats the tier, deliberately.** It is proptest's own
-variable and the way you narrow in on a failure (`PROPTEST_CASES=10000
-cargo test -p graft-term`). If it is set in your shell — check with `env |
-grep PROPTEST` — then the heavy tier's 1,000 does *not* apply and neither
-does the fast tier's 64. Unset it before a milestone review:
+**The case count is fixed in code: 64 fast, 1,000 heavy** (ADR-0017).
+`PROPTEST_CASES` is not read, so there is nothing to unset and no way for
+your shell to weaken a review:
 
 ```sh
-env -u PROPTEST_CASES cargo test --features heavy-tests -- --test-threads=2
+cargo test --features heavy-tests -- --test-threads=2
 ```
+
+To hammer one property while chasing a failure, edit its config for the
+run — `#![proptest_config(ProptestConfig::with_cases(10_000))]` — and
+revert it afterwards.
 
 `--test-threads=2` is the heavy tier's own cap (the fast tier's 4 comes
 from `.cargo/config.toml`). Do not raise it, and do not run two cargo
