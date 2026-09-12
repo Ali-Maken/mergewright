@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M0 Foundations — ticket 06 (12 tickets in `.scratch/m0-foundations/`, approved 2026-09-12)
+**Current step:** M0 Foundations — ticket 07 (12 tickets in `.scratch/m0-foundations/`, approved 2026-09-12)
 
 ---
 
@@ -110,3 +110,4 @@ Decisions and checks waiting on the user. Raise all of these at the M0 checkpoin
 - 2026-09-12 · M0/03 terminal session + panic hook · opus · done · RAII restore verified under a pty on quit and panic (termios byte-identical); signal gap moved to ticket 09; commit 32a6268
 - 2026-09-12 · M0/04 capability detection · opus · done · 6 queries + DA1 sentinel, 200ms budget; only a bare pty seen so far — no emulator has answered. User probe run queued for the M0 checkpoint; commit 7b9bef9
 - 2026-09-12 · M0/05 sanitizer · opus · done · 22 tests incl. proptest; unsanitised construction banned at the type level; 2 spec deviations queued for the M0 checkpoint; commit 5081758
+- 2026-09-12 · M0/06 theme tokens · opus · done · 3 themes x 23 tokens x 3 depths, checked by eye on a swatch grid; fixed OKLab hue drift (dark bg -> navy). 16-colour lane collapse 12->6 is real, 3 gaps logged, expiry M1; commit 169e21a
