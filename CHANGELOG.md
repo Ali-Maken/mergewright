@@ -8,6 +8,36 @@ the versioning scheme are decided in M8.
 
 ## [Unreleased]
 
+### M1 — The graph (in progress)
+
+Nothing user-visible yet. What exists so far is the ground the graph is
+tested on.
+
+#### Added
+
+- **A scripted fixture corpus** for the fast tier: one small repository per
+  history and ref shape, built by `git fast-import` with a fixed identity and
+  clock, so the same shape has the same object ids on every machine. Built
+  once into `target/fixtures/` and cached under a digest of the generator, so
+  changing the generator rebuilds and nothing goes stale.
+- **A heavy test tier**, off by default and run only at milestone reviews. It
+  builds a **100,000-commit** repository (2 s, 35 MB) — and the same history
+  with a commit-graph, as a separate fixture, because ADR-0008 makes
+  first-paint order depend on having one — and raises `proptest` from 64 cases
+  to 1,000. `cargo test` still runs zero of it: heavy tests are `#[ignore]`d
+  *and* behind the `heavy-tests` feature, so a default build does not compile
+  them.
+- **A peak-memory measurement** (`getrusage`, ADR-0015) for the 300 MB gate
+  PROMPT.md §7.1 asks for. The measurement is here and unit-tested; the
+  assertion that uses it is still to come.
+- **`scripts/clone-git-git.sh`**, which caches `git/git` outside the
+  repository for manual testing — 85,649 commits in 42 MB, because
+  `--filter=tree:0` leaves the trees on the server. Run by hand; no test ever
+  touches it.
+- **[`TESTING.md`](TESTING.md)**: the three tiers and their exact commands,
+  what each costs, how to build and delete the fixtures, and the manual
+  terminal checklist with its pass conditions.
+
 ### M0 — Foundations (2026-09-12)
 
 The first thing a user can run. Graft opens a repository, says what it found,

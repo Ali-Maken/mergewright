@@ -16,6 +16,9 @@
 //! the resulting tree explicitly. That is a feature for this corpus: an evil
 //! merge is written the same way as an honest one, with different contents.
 
+#[cfg(feature = "heavy-tests")]
+use std::io::{self, Write};
+
 /// A reference to an object earlier in the same stream.
 ///
 /// `fast-import` has no way to name an object it has not written yet, so the
@@ -141,6 +144,37 @@ impl Stream {
     pub fn finish(mut self) -> Vec<u8> {
         self.bytes.extend_from_slice(b"done\n");
         self.bytes
+    }
+
+    /// Writes everything buffered so far to `out` and empties the buffer,
+    /// keeping the mark counter and the clock exactly where they were.
+    ///
+    /// This is what lets the heavy tier's 100k-commit fixture be generated
+    /// without ever holding the whole stream in memory — a stream of any size
+    /// can be written a chunk at a time. Marks must keep counting across the
+    /// drain, which is why this takes `&mut self` rather than consuming the
+    /// stream: `fast-import` numbers objects for the whole stream, not per
+    /// chunk.
+    ///
+    /// Call it only *between* commands. Every method here appends one whole
+    /// command, so any point after one of them returns is a boundary; there
+    /// is no way to be part-way through a command from outside.
+    ///
+    /// Behind the feature because the heavy tier is its only caller: the
+    /// named corpus's streams are kilobytes and are written in one go.
+    #[cfg(feature = "heavy-tests")]
+    pub fn drain_into(&mut self, out: &mut impl Write) -> io::Result<()> {
+        out.write_all(&self.bytes)?;
+        self.bytes.clear();
+        Ok(())
+    }
+
+    /// Drains the rest of the stream to `out` and terminates it with `done`,
+    /// which is what makes a truncated stream an error rather than a partial
+    /// import.
+    #[cfg(feature = "heavy-tests")]
+    pub fn finish_into(self, out: &mut impl Write) -> io::Result<()> {
+        out.write_all(&self.finish())
     }
 
     fn reserve_mark(&mut self) -> Mark {

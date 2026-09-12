@@ -99,13 +99,25 @@ can construct, applied by `app` at the view-model boundary (`DESIGN.md`
 
 ### `fixtures`: test-only, outside the table
 
-`graft-fixtures` (`crates/graft-fixtures/`) builds the named fixture corpus —
-one small repository per history or ref shape (PROMPT.md §7.2) — and hands a
-test a path to one in two lines. It is **not** a row in the table above,
-because nothing in the shipped binary may reach it: it is `publish = false`
-and appears only in `[dev-dependencies]`. The `cargo metadata` edge test
-deliberately ignores dev-dependency edges (ADR-0006), so the enforced edge
-set is unchanged by it.
+`graft-fixtures` (`crates/graft-fixtures/`) is the whole test harness, for
+all three tiers ([`TESTING.md`](TESTING.md)):
+
+- the named fixture corpus — one small repository per history or ref shape
+  (PROMPT.md §7.2) — handed to a test as a path in two lines;
+- behind the `heavy-tests` feature, the synthetic repository generator with a
+  size parameter, which is where PROMPT.md §7.1's 100,000-commit fixture comes
+  from;
+- the peak-memory measurement the 300 MB gate will assert on (ADR-0015), and
+  the case count that makes `proptest` run 64 times in the fast tier and 1,000
+  in the heavy one.
+
+It is **not** a row in the table above, because nothing in the shipped binary
+may reach it: it is `publish = false` and appears only in
+`[dev-dependencies]`. The `cargo metadata` edge test deliberately ignores
+dev-dependency edges (ADR-0006), so the enforced edge set is unchanged by it.
+`graft-term` depends on it that way, for the case count, and re-exports the
+feature as its own `heavy-tests` so one `--features heavy-tests` turns the
+tier on across the workspace.
 
 It depends on no other Graft crate, in either direction. That is the rule
 that keeps it usable: the corpus can be built before the crate that reads it

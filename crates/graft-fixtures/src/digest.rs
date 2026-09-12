@@ -23,6 +23,8 @@ const GENERATOR: &[&str] = &[
     include_str!("shape.rs"),
     include_str!("git.rs"),
     include_str!("corpus.rs"),
+    // Decides where the corpus is cached and how it is published.
+    include_str!("cache.rs"),
     // Decides whether the non-UTF-8 ref-name shape is built or skipped here.
     include_str!("filesystem.rs"),
     // Decides what the corpus's files look like once built.
@@ -40,6 +42,32 @@ pub fn corpus_key() -> Result<String, GitError> {
         hash = fold(hash, source.as_bytes());
     }
     hash = fold(hash, LAYOUT_VERSION.as_bytes());
+    hash = fold(hash, git::version()?.as_bytes());
+    Ok(format!("{hash:016x}"))
+}
+
+/// The sources that decide what the heavy tier's synthetic repository
+/// contains. Keyed separately from the named corpus: the two are built
+/// independently, and a change to one must not throw the other away.
+#[cfg(feature = "heavy-tests")]
+const SYNTHETIC: &[&str] = &[
+    include_str!("synthetic.rs"),
+    include_str!("stream.rs"),
+    include_str!("git.rs"),
+    include_str!("cache.rs"),
+    include_str!("permissions.rs"),
+];
+
+/// The synthetic repository's cache key, which also folds in its scale: two
+/// sizes are two different fixtures and must not share a directory.
+#[cfg(feature = "heavy-tests")]
+pub fn synthetic_key(scale: &str) -> Result<String, GitError> {
+    let mut hash = FNV_OFFSET;
+    for source in SYNTHETIC {
+        hash = fold(hash, source.as_bytes());
+    }
+    hash = fold(hash, LAYOUT_VERSION.as_bytes());
+    hash = fold(hash, scale.as_bytes());
     hash = fold(hash, git::version()?.as_bytes());
     Ok(format!("{hash:016x}"))
 }

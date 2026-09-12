@@ -19,6 +19,15 @@ libc = "0.2"
 # would pull in a process-spawning harness the sanitiser's pure tests never
 # need.
 proptest = { version = "1", default-features = false, features = ["std", "bit-set"] }
+# The tier the tests are running in: `graft_fixtures::proptest_cases()` is 64
+# in the fast tier and 1000 in the heavy one, so the count is not a number
+# copied into each test module.
+graft-fixtures.workspace = true
+
+# Forwards to `graft-fixtures`, so one `cargo test --features heavy-tests`
+# turns the tier on across the workspace. See TESTING.md.
+[features]
+heavy-tests = ["graft-fixtures/heavy-tests"]
 
 [lints]
 workspace = true

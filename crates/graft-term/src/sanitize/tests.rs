@@ -299,19 +299,22 @@ mod properties {
 
     use super::*;
 
-    /// PROMPT.md §7.1 caps the fast tier at 64 cases and lets `PROPTEST_CASES`
-    /// change it. `Config::default()` already reads that variable, so only the
-    /// unset case needs the cap applied.
-    fn fast_tier() -> ProptestConfig {
-        if std::env::var_os("PROPTEST_CASES").is_some() {
-            ProptestConfig::default()
-        } else {
-            ProptestConfig::with_cases(64)
+    /// The case count for whichever tier this was compiled for: 64 in the
+    /// fast tier, 1000 with `--features heavy-tests` (PROMPT.md §7.1).
+    /// `graft-fixtures` owns the two numbers so that turning the tier on
+    /// changes every proptest in the workspace at once, and returns `None`
+    /// when `PROPTEST_CASES` is set — `ProptestConfig::default()` reads that
+    /// variable itself, and overriding it would ignore the person trying to
+    /// reproduce a failure.
+    fn tier() -> ProptestConfig {
+        match graft_fixtures::proptest_cases() {
+            Some(cases) => ProptestConfig::with_cases(cases),
+            None => ProptestConfig::default(),
         }
     }
 
     proptest! {
-        #![proptest_config(fast_tier())]
+        #![proptest_config(tier())]
 
         /// The whole contract, over arbitrary text: nothing forbidden gets
         /// out, nothing is silently dropped, and a second pass is a no-op.

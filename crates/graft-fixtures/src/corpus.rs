@@ -1,15 +1,11 @@
 //! Building the corpus once, and finding it afterwards.
 //!
-//! The cache key is a digest of the generator, and it is part of the path
-//! (`target/fixtures/<key>/`). So "rebuilt only when the generating script
-//! changes" needs no staleness check: a changed generator names a directory
-//! that does not exist, and an old corpus is still valid for the generator
-//! that made it.
-//!
-//! A build happens in a staging directory and is moved into place with a
-//! single `rename`, which is atomic. Two test binaries running at once
-//! therefore cannot see a half-built corpus, and the loser of the race throws
-//! its own copy away rather than overwriting the winner's.
+//! The corpus lives at `target/fixtures/<generator digest>/`. Caching,
+//! atomic publication and the build race are [`crate::cache`]'s job — shared
+//! with the heavy tier's synthetic repository, so both get the same
+//! guarantees. What is here is what is specific to the named corpus: one
+//! directory per [`Shape`], and an honest record of the shapes this machine
+//! cannot hold.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -18,6 +14,7 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
+use crate::cache::{self, CacheError};
 use crate::digest;
 use crate::filesystem::{self, Support};
 use crate::git::{self, GitError};
@@ -26,17 +23,9 @@ use crate::scratch::Scratch;
 use crate::shape::Shape;
 use crate::shapes::{self, BuildError};
 
-/// Written last, inside the staging directory. Its presence in a corpus
-/// directory means every fixture in it finished.
-const MARKER: &str = "corpus.ok";
-
 /// Written inside a fixture's directory instead of the repository, when the
 /// machine cannot hold that fixture. Its contents are the stated reason.
 const UNAVAILABLE: &str = "UNAVAILABLE";
-
-/// Set this to build the corpus somewhere other than the workspace's
-/// `target/fixtures`.
-const OVERRIDE_VAR: &str = "GRAFT_FIXTURES_DIR";
 
 /// What one call to [`ensure`] found or did.
 #[derive(Clone, Debug)]
@@ -68,6 +57,9 @@ pub enum CorpusError {
     /// One fixture's `git` work failed.
     #[error(transparent)]
     Build(#[from] BuildError),
+    /// The corpus could not be cached, published or measured.
+    #[error(transparent)]
+    Cache(#[from] CacheError),
     /// `git` itself could not be run.
     #[error(transparent)]
     Git(#[from] GitError),
@@ -104,7 +96,7 @@ fn io_error(context: impl Into<String>) -> impl FnOnce(io::Error) -> CorpusError
 /// the work and the rest wait for it.
 pub fn ensure() -> Result<Report, CorpusError> {
     static ONCE: OnceLock<Result<Report, String>> = OnceLock::new();
-    match ONCE.get_or_init(|| build_into(&base_dir()).map_err(|why| why.to_string())) {
+    match ONCE.get_or_init(|| build_into(&cache::base_dir()).map_err(|why| why.to_string())) {
         Ok(report) => Ok(report.clone()),
         Err(why) => Err(CorpusError::Unusable(why.clone())),
     }
@@ -142,7 +134,7 @@ pub fn build_into(base: &Path) -> Result<Report, CorpusError> {
     let started = Instant::now();
     let root = base.join(digest::corpus_key()?);
 
-    if root.join(MARKER).is_file() {
+    if cache::is_built(&root) {
         return finish(root, false, started);
     }
 
@@ -151,29 +143,17 @@ pub fn build_into(base: &Path) -> Result<Report, CorpusError> {
     // Sealed before it is published, so no one can ever see a writable
     // corpus at its final name.
     permissions::seal(&staging).map_err(io_error(format!("sealing {}", staging.display())))?;
-    claim(&staging, &root)?;
+    cache::claim(&staging, &root)?;
     finish(root, true, started)
 }
 
 /// Builds every fixture into a fresh directory under `base` and returns it.
 fn build_staging(base: &Path) -> Result<PathBuf, CorpusError> {
-    let staging = tempfile::Builder::new()
-        .prefix("staging-")
-        .tempdir_in(base)
-        .map_err(io_error(format!(
-            "creating a staging directory in {}",
-            base.display()
-        )))?;
+    let staging = cache::staging_in(base, "staging-")?;
 
     // Streams are large-ish and belong to nobody afterwards, so they live
     // outside the directory that becomes the corpus.
-    let streams = tempfile::Builder::new()
-        .prefix("streams-")
-        .tempdir_in(base)
-        .map_err(io_error(format!(
-            "creating a stream directory in {}",
-            base.display()
-        )))?;
+    let streams = cache::staging_in(base, "streams-")?;
 
     // Probed inside the staging directory, so the answer is about the
     // filesystem the corpus will actually live on.
@@ -189,7 +169,7 @@ fn build_staging(base: &Path) -> Result<PathBuf, CorpusError> {
         }
     }
 
-    let marker = staging.path().join(MARKER);
+    let marker = staging.path().join(cache::MARKER);
     fs::write(&marker, format!("{}\n", git::version()?))
         .map_err(io_error(format!("writing {}", marker.display())))?;
     Ok(staging.keep())
@@ -203,30 +183,9 @@ fn skip(dir: &Path, reason: &str) -> Result<(), CorpusError> {
     fs::write(&note, format!("{reason}\n")).map_err(io_error(format!("writing {}", note.display())))
 }
 
-/// Moves a finished staging directory to its final name, or — if another
-/// process got there first — throws it away and uses theirs.
-fn claim(staging: &Path, root: &Path) -> Result<(), CorpusError> {
-    match fs::rename(staging, root) {
-        Ok(()) => Ok(()),
-        Err(why) if root.join(MARKER).is_file() => {
-            // A concurrent build won the race. Its corpus is identical to
-            // ours by construction — same key, same generator — so the only
-            // thing to do is stop littering.
-            fs::remove_dir_all(staging).map_err(io_error(format!(
-                "removing {} after losing the build race ({why})",
-                staging.display()
-            )))
-        }
-        Err(source) => Err(CorpusError::Io {
-            context: format!("moving {} to {}", staging.display(), root.display()),
-            source,
-        }),
-    }
-}
-
 fn finish(root: PathBuf, built: bool, started: Instant) -> Result<Report, CorpusError> {
     let unavailable = read_skips(&root)?;
-    let bytes = tree_size(&root).map_err(io_error(format!("measuring {}", root.display())))?;
+    let bytes = cache::tree_size(&root)?;
     Ok(Report {
         root,
         built,
@@ -257,43 +216,4 @@ fn read_skips(root: &Path) -> Result<Vec<Unavailable>, CorpusError> {
         .into_iter()
         .map(|(shape, reason)| Unavailable { shape, reason })
         .collect())
-}
-
-fn tree_size(dir: &Path) -> Result<u64, io::Error> {
-    let mut total = 0;
-    for entry in fs::read_dir(dir)? {
-        let entry = entry?;
-        let kind = entry.file_type()?;
-        if kind.is_dir() {
-            total += tree_size(&entry.path())?;
-        } else if kind.is_file() {
-            total += entry.metadata()?.len();
-        }
-    }
-    Ok(total)
-}
-
-/// Where the corpus is built: the workspace's `target/fixtures`, unless
-/// `CARGO_TARGET_DIR` moved `target` or [`OVERRIDE_VAR`] moved the corpus.
-fn base_dir() -> PathBuf {
-    if let Some(explicit) = std::env::var_os(OVERRIDE_VAR) {
-        return PathBuf::from(explicit);
-    }
-    let target = match std::env::var_os("CARGO_TARGET_DIR") {
-        Some(dir) => PathBuf::from(dir),
-        None => workspace_root().join("target"),
-    };
-    target.join("fixtures")
-}
-
-/// `crates/graft-fixtures` is two levels below the workspace root, and the
-/// manifest directory is fixed at compile time, so this is the same answer
-/// whether a binary or a test binary is asking.
-fn workspace_root() -> PathBuf {
-    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
-    manifest
-        .parent()
-        .and_then(Path::parent)
-        .unwrap_or(manifest)
-        .to_path_buf()
 }

@@ -1,6 +1,6 @@
 # m1-the-graph/02 — Heavy tier, the 100k fixture, `git/git`, and TESTING.md
 
-Status: ready
+Status: done (2026-09-12)
 Build with: Opus
 Blocked by: 01
 
@@ -30,11 +30,61 @@ Out:
 - `cargo-fuzz` targets — M2 parsers, not M1.
 
 ## Acceptance
-- [ ] `cargo test --features heavy-tests --no-run` compiles; the fast tier is unchanged in count and runtime.
-- [ ] The generator is verified end to end at a **reduced** size (a few thousand commits) inside this session, and the 100k run is left to the milestone review — say exactly which size you ran and what it cost in time and disk. Never claim the 100k run you did not do.
-- [ ] The peak-memory helper is asserted against a known allocation in a unit test.
-- [ ] The `git/git` clone script is run once by hand (or explicitly not run, with the reason); record commit count and disk size if run.
-- [ ] `TESTING.md` exists and a human can follow it without reading any other file.
+- [x] `cargo test --features heavy-tests --no-run` compiles; the fast tier is unchanged in count and runtime.
+- [x] The generator is verified end to end at a **reduced** size (a few thousand commits) inside this session, and the 100k run is left to the milestone review — say exactly which size you ran and what it cost in time and disk. Never claim the 100k run you did not do.
+- [x] The peak-memory helper is asserted against a known allocation in a unit test.
+- [x] The `git/git` clone script is run once by hand (or explicitly not run, with the reason); record commit count and disk size if run.
+- [x] `TESTING.md` exists and a human can follow it without reading any other file.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test`
+
+
+## Result (2026-09-12)
+
+Done. All five acceptance items met; the 100k run was **not** deferred.
+
+**Measured, on this machine (macOS, Apple silicon, git 2.51):**
+
+| | |
+|---|---|
+| Fast tier | 307 tests, 4.3 s warm. Was 303 before this ticket; +4 is the `memory` (3) and `tier` (1) unit tests |
+| `cargo test -- --ignored` | 0 tests run — the proof the fast tier never touches the heavy one |
+| Heavy tier, command 1 | 4 tests, 1.7 s with fixtures cached, 6 s when it builds them |
+| Heavy tier, command 2 | 307 tests, 4.4 s, proptest at 1,000 cases |
+| Synthetic at 5,000 | built in 248 ms, 1.8 MiB |
+| **Synthetic at 100,000** | **built in 2.106 s, 35 MiB** |
+| Synthetic at 5,000 + commit-graph | 2.1 MiB |
+| `target/fixtures` total | 45 MB |
+| `scripts/clone-git-git.sh` | run: **85,649 commits, 1,017 refs, 42 MB, 14.9 s**; re-run 1.9 s. Cached at `~/.cache/graft/git-git.git` |
+| Gates | `fmt --check`, `clippy --all-targets`, `clippy --all-targets --features heavy-tests`, `test`, `test --features heavy-tests --no-run` — all clean |
+
+**Built:** `graft-fixtures::synthetic` (the size-parameterised generator, cached
+per digest, with a `CommitGraph::{Absent,Present}` axis because ADR-0008 makes
+first-paint order depend on one), `graft-fixtures::tier` (the proptest case
+count), `tests/it/heavy.rs` (4 `#[ignore]`d tests), `scripts/clone-git-git.sh`,
+`TESTING.md`, ADR-0015.
+
+**Three things the conductor needs to decide or know:**
+
+1. **The heavy tier is two commands, not the one PROMPT.md §7.1 names.**
+   `-- --ignored` runs *only* the ignored tests, so the documented command
+   would never reach a property test and the "1,000 cases" half of the tier
+   would silently not happen. `TESTING.md` documents both and why. PROMPT.md
+   §7.1 should be amended, or `--ignored` dropped. User's call.
+2. **`PROPTEST_CASES=64` is exported in this machine's environment**, from
+   outside the repository. `proptest_cases()` yields to it deliberately — it is
+   proptest's own variable — so a milestone review run in that shell quietly
+   gets 64 cases, not 1,000. Use `env -u PROPTEST_CASES`. In KNOWN_GAPS.md.
+3. **`graft-fixtures` now contains one `unsafe` call** (`getrusage`, which
+   PROMPT.md §7.1 names as the way the gate is measured). It went from
+   `forbid(unsafe_code)` to `deny` plus one narrow allow. **ADR-0015 records it
+   and explicitly amends ADR-0013**, whose "only `graft-term`" claim is no
+   longer true. The crate is `publish = false` and dev-only, so this never
+   links into anything a user runs.
+
+**Gaps logged** (KNOWN_GAPS.md, M1 section): the tier asserts nothing about
+Graft yet (ticket 16); the two-command problem; the `PROPTEST_CASES` override;
+heavy code is outside the standard clippy gate; the manual checklist has never
+been run; `git/git` is on disk but nothing reads it. The M0 row "Only the fast
+test tier exists" is rewritten as partly closed.

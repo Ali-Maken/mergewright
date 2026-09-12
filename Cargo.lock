@@ -1134,6 +1134,7 @@ dependencies = [
 name = "graft-fixtures"
 version = "0.1.0"
 dependencies = [
+ "libc",
  "tempfile",
  "thiserror",
 ]
@@ -1169,6 +1170,7 @@ name = "graft-term"
 version = "0.1.0"
 dependencies = [
  "graft-core",
+ "graft-fixtures",
  "libc",
  "proptest",
 ]

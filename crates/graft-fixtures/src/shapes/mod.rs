@@ -73,10 +73,7 @@ impl<'a> Site<'a> {
             streams,
         };
         site.mkdir(dir)?;
-        // `--object-format=sha1` is stated rather than inherited: the corpus
-        // records object ids, and a machine configured for sha256 by default
-        // would silently produce a different corpus.
-        site.git(&["init", "-q", "-b", "main", "--object-format=sha1", "."])?;
+        git::init_repo(dir).map_err(|source| BuildError::Git { shape, source })?;
         Ok(site)
     }
 

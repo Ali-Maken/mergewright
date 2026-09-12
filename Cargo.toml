@@ -27,8 +27,9 @@ thiserror = "2.0.20"
 
 # PROMPT.md 6.2's "enforced, not hoped for": every rule that a lint can check
 # is a lint, so the gate catches it instead of a reviewer. Each crate root
-# also carries `#![forbid(unsafe_code)]` — `graft-term` is the one exception
-# and says why (ADR-0013).
+# also carries `#![forbid(unsafe_code)]`. Two crates are the exceptions and
+# each says why at its root: `graft-term` (ADR-0013) and `graft-fixtures`
+# (ADR-0015).
 [workspace.lints.rust]
 # Every public item has a doc comment.
 missing_docs = "warn"

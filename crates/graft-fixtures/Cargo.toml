@@ -18,5 +18,23 @@ thiserror.workspace = true
 # is deleted when the test ends (PROMPT.md 7.1).
 tempfile = "3.27.0"
 
+# `getrusage`, for the peak-memory helper the heavy tier's 300 MB budget is
+# measured with (PROMPT.md 7.1 names the call). One `unsafe` site, ADR-0015.
+libc = "0.2"
+
+# The heavy tier (PROMPT.md 7.1): the synthetic repository of 100k commits and
+# every test that reads it. Off by default, so a fast-tier `cargo test` cannot
+# compile — let alone run — anything that generates a fixture that large.
+#
+# A crate that grows a heavy test declares its own forwarding feature:
+#
+#     [features]
+#     heavy-tests = ["graft-fixtures/heavy-tests"]
+#
+# so that one `cargo test --features heavy-tests` at the workspace root turns
+# the tier on everywhere at once. See TESTING.md.
+[features]
+heavy-tests = []
+
 [lints]
 workspace = true

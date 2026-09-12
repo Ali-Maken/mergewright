@@ -212,6 +212,20 @@ pub const IDENTITY_EMAIL: &str = "fixture@example.invalid";
 /// made after the history was imported does not appear to predate it.
 pub const FIXED_DATE: &str = "2021-01-01T00:00:00+00:00";
 
+/// `git init` on the terms every fixture in this crate is built on.
+///
+/// One spelling, shared by the named corpus and by the heavy tier's synthetic
+/// repository. `--object-format=sha1` is stated rather than inherited: a
+/// fixture records object ids, and a machine configured for sha256 by default
+/// would silently produce different ones.
+pub fn init_repo(dir: &Path) -> Result<(), GitError> {
+    run(
+        dir,
+        &["init", "-q", "-b", "main", "--object-format=sha1", "."],
+    )?;
+    Ok(())
+}
+
 /// `git --version`, trimmed — part of the corpus digest, because the objects
 /// plain `git` writes (a stash, above all) are its output, not ours.
 pub fn version() -> Result<String, GitError> {

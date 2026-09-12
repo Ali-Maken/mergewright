@@ -147,8 +147,9 @@ a fatal error naming the line and column.
 
 | Path | What it is |
 |---|---|
-| `crates/` | The workspace: `graft-core`, `graft-graph`, `graft-git`, `graft-ops`, `graft-term`, `graft-ui`, and `graft` (the binary) |
+| `crates/` | The workspace: `graft-core`, `graft-graph`, `graft-git`, `graft-ops`, `graft-term`, `graft-ui`, `graft` (the binary), and `graft-fixtures` (test-only) |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | The crate map and the allowed dependency edges, enforced by a test |
+| [`TESTING.md`](TESTING.md) | The three test tiers, the fixtures, and the manual terminal checklist |
 | [`DESIGN.md`](DESIGN.md) | The approved design |
 | [`CONTEXT.md`](CONTEXT.md) | The domain glossary; these terms are used everywhere |
 | [`docs/adr/`](docs/adr/) | Decision records |
@@ -167,9 +168,26 @@ cargo test
 ```
 
 `cargo test` is the **fast tier** only — it must stay under three minutes and
-must not melt a laptop (PROMPT.md §7.1). The heavy tier, fuzzing and benchmarks
-run at milestone reviews, never here. Build parallelism is pinned in
-`.cargo/config.toml`.
+must not melt a laptop (PROMPT.md §7.1). It is 307 tests and about 4 seconds
+warm. Build parallelism is pinned in `.cargo/config.toml`.
+
+The **heavy tier** exists and runs only at milestone reviews. It builds a
+100,000-commit repository (2 s, 35 MB in `target/fixtures/`) and raises
+`proptest` from 64 cases to 1,000. Two commands, because `--ignored` runs only
+the ignored tests:
+
+```sh
+cargo test --features heavy-tests -- --ignored --test-threads=2
+cargo test --features heavy-tests -- --test-threads=2
+```
+
+For a real, merge-heavy history to look at, `scripts/clone-git-git.sh` caches
+`git/git` outside the repository — 85,649 commits for 42 MB, because
+`--filter=tree:0` leaves the trees on the server. It is run by hand; no test
+ever touches it.
+
+[`TESTING.md`](TESTING.md) has all three tiers, what each one costs, how to
+delete the fixtures, and the manual terminal checklist.
 
 ## Licence
 
