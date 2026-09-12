@@ -67,7 +67,8 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 - **Opus** builds everything else, M1's other tickets included.
 - **Sonnet** is no longer used for building.
 - **Reviews** run on Opus, except M1, M3 and M5, which stay Fable.
-- **Effort:** `builder-opus` is `high` by default. The conductor uses `builder-opus-xhigh` only for undo (M3), conflicts (M6), interactive rebase (M7) and the M1 graph layout engine.
+- **Effort:** everything runs at `high` — `builder-opus`, `builder-fable`, `reviewer` and `debugger` (set 2026-09-12).
+  `xhigh` is used only when the user asks for it on a specific ticket. Undo (M3), conflicts (M6), interactive rebase (M7) and the M1 graph layout engine are the tickets worth asking for; they no longer get it automatically.
 
 **Naming (an M8 job):** pick a name in the style of Sublime Merge or Araxis Merge (a naming-pattern reference only: Araxis Merge is a diff/merge tool, not a Git client, and is not prior art for this project), with no "git" in it (Git's trademark policy forbids "git" inside names like "tergit"). Starting shortlist: Tributary (command `trib`) and Thicket passed the clash check on 2026-09-11. Graft is taken.
 

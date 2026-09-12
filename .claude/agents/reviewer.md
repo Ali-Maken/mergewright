@@ -2,7 +2,7 @@
 name: reviewer
 description: Reviews a finished Graft milestone against PROMPT.md and DESIGN.md and writes a findings file. Never changes source code.
 model: fable
-effort: xhigh
+effort: high
 tools: Read, Grep, Glob, Bash, Write
 ---
 
