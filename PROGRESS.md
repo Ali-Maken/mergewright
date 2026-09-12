@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M1 The graph** — ticket 03 (17 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. **M1 runs straight through without stopping for ticket approval** — see "How M1 runs" below.
+**Current step:** **M1 The graph** — ticket 04 (17 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. **M1 runs straight through without stopping for ticket approval** — see "How M1 runs" below.
 
 ---
 
@@ -158,6 +158,8 @@ want to review them one by one.
 - 2026-09-12 · M1/01 fixture corpus · opus · done · new dev-only crate graft-fixtures, git fast-import, 13 shapes, deterministic (two independent builds compared), 303 tests, build 1.15s/3.1MiB; non-UTF-8 ref-name fixture unbuilt on APFS (gap); commits 14b725a, ebdfa47
 - 2026-09-12 · M1/02 heavy tier · opus · done · heavy-tests feature + #[ignore]; 100k fixture built for real (2.1s, 35MiB); getrusage peak-RSS helper (ADR-0015, amends ADR-0013); proptest 64/1000; scripts/clone-git-git.sh run (85,649 commits, 42MB); TESTING.md with the manual checklist. Fast tier 307 tests/4.3s, 0 ignored-and-run. Two open items for the user: the heavy tier needs two commands not PROMPT.md §7.1's one, and PROPTEST_CASES=64 in this machine's env silently overrides the tier; commit 90c3bb0
 - 2026-09-12 · M1/02 heavy tier harness · opus · done · 100k fixture really built (2.1s, 35MiB); git/git cloned 85,649 commits/1,017 refs/42MB/15s; TESTING.md, ADR-0015; fast 307/307, heavy 4/4; commits 90c3bb0, 8ab260d
+
+- 2026-09-12 · M1/03 tier order + M0 minors · opus · done · ADR-0016: Kitty > Unicode > iTerm2 > Sixel > ASCII (Unicode is first-class, not fallback); DESIGN.md §4.2-4.6 amended, detect::tier changed to match, M0's 3 Minors cleared; new gap: Sixel can win the tier with no encoder (owner M1/14); commit 3915275
 
 ## Open questions for the M1 checkpoint
 
