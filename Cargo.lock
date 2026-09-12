@@ -1279,6 +1279,10 @@ name = "graft-graph"
 version = "0.1.0"
 dependencies = [
  "graft-core",
+ "graft-fixtures",
+ "graft-git",
+ "insta",
+ "proptest",
 ]
 
 [[package]]

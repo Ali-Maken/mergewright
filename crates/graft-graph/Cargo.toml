@@ -9,5 +9,29 @@ publish.workspace = true
 [dependencies]
 graft-core.workspace = true
 
+# Every crate below is test-only. Dev-dependencies are not internal
+# dependency edges (ADR-0006; `graft/tests/it/dependency_edges.rs` skips
+# them), so `graph -> core` stays the crate's only real edge.
+[dev-dependencies]
+# Property tests for the PROMPT.md §1.2 invariants. Default features off:
+# `fork` and `timeout` would pull in a process-spawning harness these pure
+# tests never need.
+proptest = { version = "1", default-features = false, features = ["std", "bit-set"] }
+# The tier the tests run in (`proptest_cases()`: 64 fast, 1000 heavy) and
+# the named fixture corpus the snapshot tests lay out.
+graft-fixtures.workspace = true
+# Reads the corpus fixtures' commits and resolves their default branch, so
+# the snapshots show the layout of real repositories rather than hand-typed
+# commit lists. Test-only: the layout itself never touches a repository.
+graft-git.workspace = true
+# Snapshots of the row/lane output per fixture shape: a block of text is the
+# only readable record of what "obvious at a glance" means.
+insta = "1"
+
+# Forwards to `graft-fixtures`, so one `cargo test --features heavy-tests`
+# turns the tier on across the workspace. See TESTING.md.
+[features]
+heavy-tests = ["graft-fixtures/heavy-tests"]
+
 [lints]
 workspace = true
