@@ -6,6 +6,7 @@
 //! (ADR-0007). A type earns a place here only when two crates that may not
 //! depend on each other both need its shape. `core` depends on no other Graft
 //! crate; everything else depends on it.
+#![forbid(unsafe_code)]
 
 pub mod capabilities;
 pub mod error;

@@ -128,8 +128,11 @@ impl Token {
 /// contrast from their wallpaper would be wrong more often than right.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ThemeKind {
+    /// For a dark terminal background. The default.
     Dark,
+    /// For a light terminal background.
     Light,
+    /// Maximum contrast, minimum colour. Override only.
     HighContrast,
 }
 

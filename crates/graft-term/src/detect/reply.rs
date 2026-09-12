@@ -131,6 +131,7 @@ fn csi(bytes: &[u8], start: usize) -> Scan<'_> {
 
 /// Which terminators end a string sequence. OSC accepts the older `BEL` as
 /// well as `ST`; APC and DCS take `ST` only.
+#[derive(Clone, Copy)]
 enum Terminator {
     St,
     BellOrSt,
@@ -285,12 +286,13 @@ pub(crate) fn background_color(reply: Reply<'_>) -> Option<Rgb> {
 /// One `rgb:` channel: 1–4 hex digits, scaled so that the widest value of any
 /// width becomes 255 (`f` and `ffff` are both full brightness).
 fn channel(field: &[u8]) -> Option<u8> {
-    let digits = field.len();
+    // A `u32` from the start: it is a bit count below, never a length.
+    let digits = u32::try_from(field.len()).ok()?;
     if digits == 0 || digits > 4 {
         return None;
     }
     let value = hex(field)?;
-    let full = (1u32 << (4 * digits as u32)) - 1;
+    let full = (1u32 << (4 * digits)) - 1;
     // Rounds to nearest rather than truncating: `8/f` is 136, not 128.
     u8::try_from((value * 255 + full / 2) / full).ok()
 }

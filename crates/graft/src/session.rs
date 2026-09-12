@@ -12,9 +12,9 @@
 //! are settled once, and keeping them out of the state is what keeps `update`
 //! a function of the things that actually vary.
 
-use graft_core::capabilities::{Capabilities, ThemeSource};
+use graft_core::capabilities::{Capabilities, ProbeOutcome, ThemeSource};
 use graft_term::{SanitizedText, sanitize_line};
-use graft_ui::status_screen::RenderingView;
+use graft_ui::status_screen::{RenderingView, TierSource};
 use graft_ui::theme::{Theme, ThemeKind};
 
 use crate::config::Loaded;
@@ -59,7 +59,7 @@ impl Session {
 
         let rendering = RenderingView {
             tier: forced_tier.unwrap_or(capabilities.tier),
-            tier_forced: forced_tier.is_some(),
+            tier_source: tier_source(forced_tier.is_some(), &capabilities.probe),
             cell_size: capabilities.cell_size,
             theme: kind,
             theme_forced: forced_theme.is_some(),
@@ -71,16 +71,44 @@ impl Session {
             no_color: capabilities.no_color,
         };
 
+        let mut notes: Vec<SanitizedText> = config
+            .warnings
+            .iter()
+            .map(|warning| sanitize_line(&warning.to_string()))
+            .collect();
+        // The tier row says the probe failed; only here is there room to say
+        // what it failed with. An I/O error on the terminal is not something
+        // to drop on the floor because Graft managed to carry on without it.
+        if let ProbeOutcome::Failed(error) = &capabilities.probe {
+            notes.push(sanitize_line(&format!(
+                "the terminal capability probe failed: {error}"
+            )));
+        }
+
         Self {
             theme: Theme::new(kind, &capabilities),
             rendering,
-            notes: config
-                .warnings
-                .iter()
-                .map(|warning| sanitize_line(&warning.to_string()))
-                .collect(),
+            notes,
             capabilities,
         }
+    }
+}
+
+/// Where the tier on screen came from (DESIGN.md §4.1's provenance rule).
+///
+/// Config first, because an override means detection's answer is not what is
+/// in force whatever the probe did. Otherwise the probe's own outcome decides:
+/// only a round that came back fenced licenses the word "detected" — everything
+/// else produced a tier from environment hints alone.
+fn tier_source(forced: bool, probe: &ProbeOutcome) -> TierSource {
+    if forced {
+        return TierSource::Forced;
+    }
+    match probe {
+        ProbeOutcome::Answered => TierSource::Detected,
+        ProbeOutcome::TimedOut => TierSource::Silent,
+        ProbeOutcome::Failed(_) => TierSource::ProbeFailed,
+        ProbeOutcome::Skipped => TierSource::NotProbed,
     }
 }
 
@@ -165,7 +193,7 @@ mod tests {
         let session = Session::settle(&Loaded::default(), for_tests::capabilities());
 
         assert_eq!(session.rendering.tier, RenderingTier::Unicode);
-        assert!(!session.rendering.tier_forced);
+        assert_eq!(session.rendering.tier_source, TierSource::Detected);
         assert_eq!(session.rendering.theme, ThemeKind::Dark);
         assert!(!session.rendering.theme_forced);
         assert!(!session.rendering.theme_unknown);
@@ -179,7 +207,7 @@ mod tests {
         let session = Session::settle(&config, for_tests::capabilities());
 
         assert_eq!(session.rendering.tier, RenderingTier::Pixel);
-        assert!(session.rendering.tier_forced);
+        assert_eq!(session.rendering.tier_source, TierSource::Forced);
         assert_eq!(session.rendering.theme, ThemeKind::Light);
         assert!(session.rendering.theme_forced);
     }
@@ -193,6 +221,61 @@ mod tests {
 
         assert_eq!(session.rendering.theme, ThemeKind::Dark);
         assert!(session.rendering.theme_unknown);
+    }
+
+    #[test]
+    fn a_terminal_that_never_answered_the_probe_does_not_claim_detection() {
+        // The M0 review's Major 2: the tier was worked out from environment
+        // hints alone, and the screen must not call that a measurement.
+        let mut capabilities = for_tests::capabilities();
+        capabilities.probe = ProbeOutcome::TimedOut;
+
+        let session = Session::settle(&Loaded::default(), capabilities);
+
+        assert_eq!(session.rendering.tier_source, TierSource::Silent);
+    }
+
+    #[test]
+    fn a_probe_that_failed_says_so_and_reports_the_error() {
+        let mut capabilities = for_tests::capabilities();
+        capabilities.probe = ProbeOutcome::Failed("broken pipe".to_owned());
+
+        let session = Session::settle(&Loaded::default(), capabilities);
+
+        assert_eq!(session.rendering.tier_source, TierSource::ProbeFailed);
+        assert!(
+            session
+                .notes
+                .iter()
+                .any(|note| note.as_str().contains("broken pipe")),
+            "{:?}",
+            session.notes
+        );
+    }
+
+    #[test]
+    fn a_terminal_that_was_never_asked_says_that_instead() {
+        let mut capabilities = for_tests::capabilities();
+        capabilities.probe = ProbeOutcome::Skipped;
+
+        let session = Session::settle(&Loaded::default(), capabilities);
+
+        assert_eq!(session.rendering.tier_source, TierSource::NotProbed);
+    }
+
+    #[test]
+    fn an_override_is_named_as_one_even_when_the_probe_never_answered() {
+        // Both are true; the override is what is actually in force, so that is
+        // what the row says.
+        let mut capabilities = for_tests::capabilities();
+        capabilities.probe = ProbeOutcome::TimedOut;
+
+        let session = Session::settle(
+            &loaded(ThemeChoice::Dark, RendererChoice::Ascii),
+            capabilities,
+        );
+
+        assert_eq!(session.rendering.tier_source, TierSource::Forced);
     }
 
     #[test]

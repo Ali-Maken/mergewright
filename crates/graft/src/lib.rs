@@ -7,6 +7,7 @@
 //! `app` is a library with a thin binary (`main.rs`) on top so that its own
 //! tests, and the manual `terminal_probe` example, can drive the same code the
 //! binary runs.
+#![forbid(unsafe_code)]
 
 pub mod cli;
 pub mod config;

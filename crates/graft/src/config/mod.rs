@@ -58,7 +58,9 @@ use serde::Deserialize;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(default)]
 pub struct Config {
+    /// `[ui]`: how Graft looks.
     pub ui: Ui,
+    /// `[graph]`: how history is drawn.
     pub graph: Graph,
 }
 
@@ -66,7 +68,9 @@ pub struct Config {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(default)]
 pub struct Ui {
+    /// `ui.theme`.
     pub theme: ThemeChoice,
+    /// `ui.icons`.
     pub icons: IconSet,
 }
 
@@ -74,6 +78,7 @@ pub struct Ui {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(default)]
 pub struct Graph {
+    /// `graph.renderer`.
     pub renderer: RendererChoice,
 }
 
@@ -89,7 +94,9 @@ pub enum ThemeChoice {
     /// nothing.
     #[default]
     Auto,
+    /// Always the dark theme, whatever the terminal's background is.
     Dark,
+    /// Always the light theme, whatever the terminal's background is.
     Light,
     /// Reachable only from here: no terminal background implies it
     /// ([`ThemeKind::HighContrast`]).
@@ -120,8 +127,12 @@ pub enum RendererChoice {
     /// Use whatever capability detection found.
     #[default]
     Auto,
+    /// Force the pixel tier. Honoured even when detection found no image
+    /// protocol: see this enum's note.
     Pixel,
+    /// Force the Unicode tier: box-drawing characters, no images.
     Unicode,
+    /// Force the ASCII tier: nothing outside 7-bit ASCII.
     Ascii,
 }
 
@@ -156,6 +167,7 @@ pub enum IconSet {
 /// What [`load`] found.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Loaded {
+    /// The settings in effect: the file's values over the defaults.
     pub config: Config,
     /// The file the values came from, or `None` when no file was read — either
     /// because there isn't one or because there is nowhere to look.
@@ -176,7 +188,10 @@ pub enum ConfigWarning {
     /// A key Graft has no meaning for, as a dotted path (`ui.icns`). Either a
     /// typo, which does nothing, or a key from a newer version, which also
     /// does nothing here.
-    UnknownKey { path: String },
+    UnknownKey {
+        /// The dotted path of the key nobody recognised.
+        path: String,
+    },
     /// Neither `XDG_CONFIG_HOME` nor `HOME` names a directory to look in, so
     /// no config file could be read at all. Rare — a stripped environment, a
     /// daemon, a container — and worth saying out loud, because every setting
@@ -208,11 +223,18 @@ pub enum ConfigError {
     /// The file exists but could not be read — permissions, a directory in its
     /// place, an I/O failure. A missing file is not an error and never reaches
     /// here.
-    Read { path: PathBuf, source: io::Error },
+    Read {
+        /// The file Graft tried to read.
+        path: PathBuf,
+        /// Why it could not be.
+        source: io::Error,
+    },
     /// The file is not valid TOML, or a value is not one of the spellings its
     /// key accepts.
     Parse {
+        /// The file that would not parse.
         path: PathBuf,
+        /// Where it went wrong, with the line and column toml reported.
         source: toml::de::Error,
     },
 }

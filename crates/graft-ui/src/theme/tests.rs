@@ -510,8 +510,9 @@ fn naive_cube_index(color: Rgb) -> u8 {
             .iter()
             .enumerate()
             .min_by_key(|&(_, &level)| i32::from(channel).abs_diff(i32::from(level)))
-            .map(|(index, _)| index as u8)
-            .unwrap_or(0)
+            .map_or(0, |(index, _)| {
+                u8::try_from(index).expect("CUBE_LEVELS has six entries")
+            })
     };
 
     16 + 36 * level(color.red) + 6 * level(color.green) + level(color.blue)

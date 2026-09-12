@@ -1,0 +1,8 @@
+# Pinned rather than left to the toolchain's defaults, so `cargo fmt --check`
+# gives the same answer on every machine and a rustfmt release cannot quietly
+# reformat the tree (PROMPT.md 6.2, "enforced, not hoped for").
+edition = "2024"
+max_width = 100
+tab_spaces = 4
+hard_tabs = false
+newline_style = "Unix"

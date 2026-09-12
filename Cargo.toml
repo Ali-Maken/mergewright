@@ -17,11 +17,48 @@ graft-ops = { path = "crates/graft-ops" }
 graft-term = { path = "crates/graft-term" }
 graft-ui = { path = "crates/graft-ui" }
 
+# PROMPT.md 6.2's "enforced, not hoped for": every rule that a lint can check
+# is a lint, so the gate catches it instead of a reviewer. Each crate root
+# also carries `#![forbid(unsafe_code)]` — `graft-term` is the one exception
+# and says why (ADR-0013).
+[workspace.lints.rust]
+# Every public item has a doc comment.
+missing_docs = "warn"
+unsafe_code = "deny"
+
 # No `unwrap()` or `expect()` outside tests (PROMPT.md 6.3). `clippy.toml`
 # re-allows both inside `#[cfg(test)]`.
 [workspace.lints.clippy]
 unwrap_used = "deny"
 expect_used = "deny"
+# The whole pedantic group, with the noisy members allowed below, each with a
+# reason. Negative priority so those individual allows win over the group.
+pedantic = { level = "warn", priority = -1 }
+# Not in pedantic: the two size lints PROMPT.md 6.2 names by hand. Their
+# thresholds are in `clippy.toml`.
+cognitive_complexity = "warn"
+too_many_lines = "warn"
+
+# The pedantic members that are allowed, each with its reason (PROMPT.md 6.2
+# permits exactly this, in one place).
+#
+# Every error type here is an enum whose variants carry their own doc
+# comments and whose `Display` is the message the user reads. A `# Errors`
+# section would restate the return type in prose.
+missing_errors_doc = "allow"
+# `#[must_use]` is used deliberately on the constructors and view models where
+# dropping the value is a real mistake. Blanketing it over every getter turns
+# it into noise that stops meaning anything.
+must_use_candidate = "allow"
+# The alternative is `write!` into a `String`, which returns a `Result` that
+# cannot fail and would then have to be discarded — the ignored error CLAUDE.md
+# forbids, in the one place it genuinely is safe. `push_str(&format!(..))` says
+# the same thing without the lie.
+format_push_string = "allow"
+# The structs this fires on — a terminal's capabilities, an input event — are
+# records of independent yes/no facts, not state machines. Collapsing them into
+# enums would invent combinations that do not exist and lose the ones that do.
+struct_excessive_bools = "allow"
 
 # Lighter debug info: less memory to link, less disk used (PROMPT.md 7.1).
 [profile.dev]

@@ -3,3 +3,5 @@
 //! and planning a Ghost Preview of what an operation would do before it runs.
 //! The planning and detection halves are pure; the parts that touch a
 //! repository go through `git`. Depends on `git` and `core` only.
+
+#![forbid(unsafe_code)]

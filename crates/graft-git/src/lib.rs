@@ -4,6 +4,7 @@
 //! parsers for its porcelain and diff output. Commands are built from typed
 //! arguments, never by joining shell strings. Depends only on `core`; it never
 //! touches the terminal or the UI.
+#![forbid(unsafe_code)]
 
 #[cfg(test)]
 mod fixture;

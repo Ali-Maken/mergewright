@@ -257,8 +257,13 @@ impl Timestamp {
     }
 
     fn from_unix_seconds(seconds: u64) -> Self {
-        let days = (seconds / 86_400) as i64;
-        let second_of_day = (seconds % 86_400) as u32;
+        // Both conversions are total: whole days since the epoch are at most
+        // `u64::MAX / 86_400`, which is four orders of magnitude inside `i64`,
+        // and a second of the day is below 86_400. The fallbacks are
+        // unreachable, and are clamps rather than failures because a strange
+        // clock must not stop a crash report being written.
+        let days = i64::try_from(seconds / 86_400).unwrap_or(i64::MAX);
+        let second_of_day = u32::try_from(seconds % 86_400).unwrap_or(0);
         let (year, month, day) = civil_from_days(days);
         Self {
             year,
@@ -290,6 +295,16 @@ impl Timestamp {
 /// Days since the Unix epoch to a calendar date, by Howard Hinnant's
 /// `civil_from_days` (public domain). Shifting the year to start in March puts
 /// the leap day last, which is what makes the month arithmetic branch-free.
+// The algorithm's own arithmetic keeps the day in 1..=31 and the month in
+// 1..=12 before either is narrowed, so neither cast can truncate or lose a
+// sign. Rewriting them as fallible conversions would add branches that can
+// never be taken to a piece of arithmetic whose whole point is that it has
+// none.
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "day and month are already bounded by the algorithm"
+)]
 fn civil_from_days(days: i64) -> (i64, u32, u32) {
     // Re-base onto 0000-03-01, the start of a 400-year era.
     let shifted = days + 719_468;

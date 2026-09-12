@@ -58,8 +58,11 @@ pub enum Supported {
 /// One character cell, in pixels, and where the number came from.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct CellSize {
+    /// Cell width in pixels.
     pub width: u32,
+    /// Cell height in pixels.
     pub height: u32,
+    /// Whether anything measured the two numbers above.
     pub source: CellSizeSource,
 }
 
@@ -83,15 +86,21 @@ pub enum CellSizeSource {
 /// here, used for the light/dark hint and never as a paint colour (ADR-0003).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Rgb {
+    /// Red, 0-255.
     pub red: u8,
+    /// Green, 0-255.
     pub green: u8,
+    /// Blue, 0-255.
     pub blue: u8,
 }
 
 /// Which way the terminal's colours run.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Theme {
+    /// Light text on a dark background. Graft's default, and what an
+    /// unreported background is assumed to be.
     Dark,
+    /// Dark text on a light background.
     Light,
 }
 
@@ -101,6 +110,7 @@ pub struct ThemeHint {
     /// Usable straight away: [`ThemeSource::Assumed`] already resolves to
     /// [`Theme::Dark`] (DESIGN.md §4.1 step 3).
     pub theme: Theme,
+    /// Whether the terminal reported the background this was read from.
     pub source: ThemeSource,
 }
 
@@ -119,8 +129,13 @@ pub enum ThemeSource {
 /// this is what the terminal *can* do, that is what the user *asked* for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ColorDepth {
+    /// 24-bit colour: any RGB value is drawable as asked.
     TrueColor,
+    /// The 256-colour palette. Graft's colours are matched to the nearest
+    /// entry.
     Palette256,
+    /// The 16 ANSI colours, whose actual values the user's terminal theme
+    /// chooses. The floor for anything colourful.
     Palette16,
     /// No colour at all: `TERM=dumb`, or output that is not a terminal.
     None,
@@ -134,14 +149,23 @@ pub enum TmuxStatus {
     Outside,
     /// Inside tmux, and tmux answered the passthrough-wrapped probe: the outer
     /// terminal is reachable, so a pixel tier is on the table.
-    Passthrough { version: String },
+    Passthrough {
+        /// The `major.minor[suffix]` string tmux reported.
+        version: String,
+    },
     /// Inside tmux, passthrough usable in principle, but the wrapped probe
     /// went unanswered — `allow-passthrough` is off, or the outer terminal has
     /// no image protocol. Unicode tier, deliberately.
-    PassthroughSilent { version: String },
+    PassthroughSilent {
+        /// The `major.minor[suffix]` string tmux reported.
+        version: String,
+    },
     /// Inside tmux older than the version that can pass escape sequences
     /// through at all. Unicode tier, deliberately.
-    TooOld { version: String },
+    TooOld {
+        /// The `major.minor[suffix]` string tmux reported.
+        version: String,
+    },
     /// Inside tmux, but its version could not be established (`tmux -V` did
     /// not run, or its output was not a version). Treated as too old.
     VersionUnknown,
@@ -196,8 +220,11 @@ pub struct Capabilities {
     /// DEC mode 2026. Diagnostic only: Graft brackets frames either way,
     /// because a terminal without the mode ignores the sequence harmlessly.
     pub synchronized_output: Supported,
+    /// One character cell in pixels, for the pixel tier to draw against.
     pub cell_size: CellSize,
+    /// Light or dark, and whether the terminal said so.
     pub theme: ThemeHint,
+    /// How much colour the terminal can show, whatever the user asked for.
     pub color_depth: ColorDepth,
     /// `NO_COLOR` is set to a non-empty value. Colour off in the chrome; the
     /// tier is unaffected, because `NO_COLOR` is about colour, not about
@@ -208,7 +235,12 @@ pub struct Capabilities {
     /// `$SSH_TTY`/`$SSH_CONNECTION` is set. Only effect: a longer probe
     /// deadline (DESIGN.md §4.4).
     pub over_ssh: bool,
+    /// Whether Graft is inside tmux, and whether the outer terminal could be
+    /// reached through it.
     pub tmux: TmuxStatus,
+    /// What became of the probe round. Anything but
+    /// [`ProbeOutcome::Answered`] means every field above that could not be
+    /// answered from the environment is a fallback.
     pub probe: ProbeOutcome,
     /// The deadline detection gave the terminal to answer.
     pub probe_budget: Duration,

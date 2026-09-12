@@ -192,6 +192,9 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
 }
 
 /// The half of [`update`] that answers the events `core` defines.
+// Two arms below do nothing, for two different reasons, and each says which.
+// Merged they would share one comment that fits neither.
+#[allow(clippy::match_same_arms, reason = "each empty arm has its own reason")]
 fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
     match event {
         Event::Key(key) => {

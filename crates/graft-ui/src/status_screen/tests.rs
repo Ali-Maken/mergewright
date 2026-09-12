@@ -10,7 +10,7 @@ use graft_term::{SanitizedText, sanitize_line};
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 
-use super::{HeadView, RenderingView, RepositoryView, StatusScreen, StatusView};
+use super::{HeadView, RenderingView, RepositoryView, StatusScreen, StatusView, TierSource};
 use crate::test_support::terminal as capabilities;
 use crate::theme::{Theme, ThemeKind};
 
@@ -36,7 +36,7 @@ fn text(value: &str) -> SanitizedText {
 fn measured() -> RenderingView {
     RenderingView {
         tier: RenderingTier::Unicode,
-        tier_forced: false,
+        tier_source: TierSource::Detected,
         cell_size: CellSize {
             width: 9,
             height: 18,
@@ -166,7 +166,7 @@ fn every_guess_says_it_is_a_guess() {
     let mut view = healthy();
     view.rendering = RenderingView {
         tier: RenderingTier::Pixel,
-        tier_forced: true,
+        tier_source: TierSource::Forced,
         cell_size: CellSize {
             width: 8,
             height: 16,
@@ -178,6 +178,44 @@ fn every_guess_says_it_is_a_guess() {
         color_depth: ColorDepth::Palette256,
         no_color: false,
     };
+
+    insta::assert_snapshot!(draw(&view, 72, 10));
+}
+
+#[test]
+fn a_tier_nothing_measured_never_reads_as_detected() {
+    // The M0 review's Major 2. Every source that is not `Detected` produced
+    // the tier from environment hints, and the row has to say so — a user
+    // comparing terminals is reading this exact line for whether the probe
+    // worked.
+    for source in [
+        TierSource::Silent,
+        TierSource::ProbeFailed,
+        TierSource::NotProbed,
+    ] {
+        let mut view = healthy();
+        view.rendering.tier_source = source;
+
+        let screen = draw(&view, 72, 10);
+
+        assert!(
+            !screen.contains("detected"),
+            "{source:?} rendered as a measurement: {screen}"
+        );
+        assert!(screen.contains("assumed ("), "{source:?}: {screen}");
+    }
+}
+
+#[test]
+fn a_terminal_that_said_nothing_about_itself() {
+    let mut view = healthy();
+    view.rendering.tier_source = TierSource::Silent;
+    view.rendering.cell_size = CellSize {
+        width: 8,
+        height: 16,
+        source: CellSizeSource::Assumed,
+    };
+    view.rendering.theme_unknown = true;
 
     insta::assert_snapshot!(draw(&view, 72, 10));
 }

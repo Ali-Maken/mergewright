@@ -203,6 +203,10 @@ enum Verdict {
 }
 
 /// The single decision this module makes. Everything above is plumbing.
+// One arm per Unicode class, each with the comment that says why that class is
+// here. Merging the arms that happen to share a verdict would save two lines
+// and lose the reason.
+#[allow(clippy::match_same_arms, reason = "the arms are the classification")]
 fn classify(c: char, newlines: Newlines) -> Verdict {
     match c {
         // Structural whitespace, or two more controls, depending on where the

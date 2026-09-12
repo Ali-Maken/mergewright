@@ -12,10 +12,24 @@
 
 use std::io::{self, Read, Write};
 use std::os::fd::{AsRawFd, RawFd};
-use std::process::Command;
-use std::time::Instant;
+use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 
 use super::{TerminalHost, WindowPixels};
+
+/// How long `tmux -V` gets before Graft stops waiting for it.
+///
+/// The same argument that bounds `git --version` in `graft-git`: this runs at
+/// startup, before there is a window to show anything in, so a `tmux` that
+/// wedges — a stale network mount on `PATH`, a shadowing wrapper script —
+/// must cost Graft a known version, never a window that never appears. `tmux
+/// -V` prints one short line; two seconds is already generous. (The shape is
+/// deliberately duplicated rather than shared: `term` and `git` are siblings
+/// and neither may depend on the other, ARCHITECTURE.md.)
+const TMUX_VERSION_DEADLINE: Duration = Duration::from_secs(2);
+
+/// How often the wait above checks whether tmux has finished.
+const TMUX_VERSION_POLL: Duration = Duration::from_millis(2);
 
 /// The process's own terminal: queries out on stdout, replies in on stdin.
 ///
@@ -50,6 +64,10 @@ impl TerminalHost for TtyHost {
         output.flush()
     }
 
+    // `continue` is the point at both sites below, and each has a comment
+    // above it saying why the wait is restarted. An empty arm body would say
+    // "do nothing" where what is meant is "wait again".
+    #[allow(clippy::needless_continue, reason = "the retry is the behaviour")]
     fn read(&mut self, buffer: &mut [u8], deadline: Instant) -> io::Result<usize> {
         let fd = self.input.as_raw_fd();
         loop {
@@ -57,7 +75,10 @@ impl TerminalHost for TtyHost {
             if remaining.is_zero() {
                 return Ok(0);
             }
-            let milliseconds = remaining.as_millis().min(i32::MAX as u128) as i32;
+            // `poll` takes its timeout in `int` milliseconds. A remaining
+            // wait longer than 24 days cannot happen here — the budget is
+            // milliseconds — and clamping is the right answer if it ever did.
+            let milliseconds = i32::try_from(remaining.as_millis()).unwrap_or(i32::MAX);
             match wait_for_input(fd, milliseconds) {
                 // A signal cut the wait short. Retrying against a *recomputed*
                 // deadline is not a workaround for a failure: the caller asked
@@ -77,10 +98,24 @@ impl TerminalHost for TtyHost {
         }
     }
 
+    #[allow(
+        unsafe_code,
+        reason = "TIOCGWINSZ has no safe wrapper in the standard library; \
+                  ADR-0013 covers this call and its soundness argument"
+    )]
     fn window_pixels(&mut self) -> Option<WindowPixels> {
+        // Built field by field rather than zeroed through `mem::zeroed`:
+        // every field is a `u16` with a valid all-zeroes value, so the
+        // initialisation needs no `unsafe` at all (ADR-0013).
+        let mut size = libc::winsize {
+            ws_row: 0,
+            ws_col: 0,
+            ws_xpixel: 0,
+            ws_ypixel: 0,
+        };
         // SAFETY: `TIOCGWINSZ` writes one `winsize` through the pointer, which
-        // points at a live local of exactly that type.
-        let mut size: libc::winsize = unsafe { std::mem::zeroed() };
+        // points at a live, fully initialised local of exactly that type, and
+        // the fd is this process's own stdout. ADR-0013.
         let queried =
             unsafe { libc::ioctl(self.output.as_raw_fd(), libc::TIOCGWINSZ, &raw mut size) };
         if queried != 0 {
@@ -96,8 +131,43 @@ impl TerminalHost for TtyHost {
         })
     }
 
+    /// `None` covers every way this can come to nothing — tmux is not on the
+    /// `PATH`, it failed, it took longer than [`TMUX_VERSION_DEADLINE`], or it
+    /// printed bytes that are not text. The caller turns all of them into
+    /// `TmuxStatus::VersionUnknown`, which is shown on the diagnostics screen
+    /// and treated as too old, so nothing is lost by not distinguishing them
+    /// here.
     fn tmux_version(&mut self) -> Option<String> {
-        let output = Command::new("tmux").arg("-V").output().ok()?;
+        let mut child = Command::new("tmux")
+            .arg("-V")
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .ok()?;
+
+        let started = Instant::now();
+        loop {
+            match child.try_wait() {
+                Ok(Some(_)) => break,
+                // It cannot be waited for, so its output will never arrive.
+                Err(_) => return None,
+                Ok(None) => {}
+            }
+            if started.elapsed() >= TMUX_VERSION_DEADLINE {
+                // Best effort, and deliberately unreported: the answer is
+                // already "no version", and a process that cannot be killed
+                // is beyond this program's reach with nothing useful to say
+                // about it.
+                let _ = child.kill().and_then(|()| child.wait().map(drop));
+                return None;
+            }
+            // One short line of output, far less than a pipe buffer, so
+            // neither pipe can fill while this waits.
+            std::thread::sleep(TMUX_VERSION_POLL);
+        }
+
+        let output = child.wait_with_output().ok()?;
         if !output.status.success() {
             return None;
         }
@@ -107,13 +177,19 @@ impl TerminalHost for TtyHost {
 
 /// Wait up to `timeout` milliseconds for `fd` to have something to read.
 /// `false` means the timeout won.
+#[allow(
+    unsafe_code,
+    reason = "poll(2) has no safe wrapper in the standard library; ADR-0013 \
+              covers this call and its soundness argument"
+)]
 fn wait_for_input(fd: RawFd, timeout: i32) -> io::Result<bool> {
     let mut watched = libc::pollfd {
         fd,
         events: libc::POLLIN,
         revents: 0,
     };
-    // SAFETY: the pointer is to one live `pollfd`, and the count says one.
+    // SAFETY: the pointer is to one live, fully initialised `pollfd`, the
+    // count says one, and `poll` writes only `revents` back. ADR-0013.
     let ready = unsafe { libc::poll(&raw mut watched, 1, timeout) };
     match ready {
         0 => Ok(false),

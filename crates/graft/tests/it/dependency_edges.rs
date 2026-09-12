@@ -123,13 +123,12 @@ fn cargo_metadata() -> Value {
         Ok(output) => output,
         Err(error) => panic!("could not run `cargo metadata`: {error}"),
     };
-    if !output.status.success() {
-        panic!(
-            "`cargo metadata` failed ({}):\n{}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr),
-        );
-    }
+    assert!(
+        output.status.success(),
+        "`cargo metadata` failed ({}):\n{}",
+        output.status,
+        String::from_utf8_lossy(&output.stderr),
+    );
     match serde_json::from_slice(&output.stdout) {
         Ok(value) => value,
         Err(error) => panic!("could not parse `cargo metadata` output as JSON: {error}"),

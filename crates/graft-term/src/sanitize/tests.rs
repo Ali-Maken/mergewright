@@ -18,6 +18,9 @@ const ESC: char = '\u{1B}';
 /// The first group is the classes DESIGN.md §8.2 names; the second is this
 /// module's documented widening to the whole `Cf` category and the two line
 /// separators.
+// Grouped by where the rule comes from — DESIGN.md's list, then this module's
+// widening — which matters more here than collapsing arms that share `true`.
+#[allow(clippy::match_same_arms, reason = "the grouping is the documentation")]
 fn is_forbidden(c: char) -> bool {
     match c {
         '\n' | '\t' => false,

@@ -56,7 +56,17 @@ enum Step {
 /// `termios` call on the controlling terminal — so it can neither be captured
 /// by a test sink nor be undone by writing an escape sequence.
 pub trait RawMode: Send {
+    /// Turn raw mode on. Keys arrive unbuffered and unechoed from here.
+    ///
+    /// # Errors
+    /// Whatever the `termios` call failed with — usually "not a terminal".
     fn enable(&mut self) -> io::Result<()>;
+
+    /// Put the terminal back the way it was found.
+    ///
+    /// # Errors
+    /// As [`RawMode::enable`]. The caller reports it and carries on: a shell
+    /// left in raw mode is bad, and refusing to finish shutting down is worse.
     fn disable(&mut self) -> io::Result<()>;
 }
 

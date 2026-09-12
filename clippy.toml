@@ -2,3 +2,22 @@
 # both, where a panic is the intended failure mode (PROMPT.md 6.3).
 allow-unwrap-in-tests = true
 allow-expect-in-tests = true
+
+# PROMPT.md 6.2: functions under about 60 lines. Clippy counts statements,
+# not comment or blank lines, so a function at the limit here is already well
+# over 60 lines on screen.
+too-many-lines-threshold = 60
+
+# The default is 25, which in practice fires only at genuinely tangled code.
+# Detection's `detect` — a sequence of small decisions — sits at 5.
+cognitive-complexity-threshold = 15
+
+# Proper nouns and filenames that Graft's prose uses as words, not as code.
+# Backticking `OKLab` or `WezTerm` would be wrong; `..` keeps Clippy's own
+# default list as well.
+doc-valid-idents = [
+    "KNOWN_GAPS.md",
+    "OKLab",
+    "WezTerm",
+    "..",
+]

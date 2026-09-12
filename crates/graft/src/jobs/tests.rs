@@ -37,7 +37,9 @@ fn next_report(events: &Receiver<AppEvent>) -> AppEvent {
 fn next_event(events: &Receiver<AppEvent>) -> Event {
     match next_report(events) {
         AppEvent::Core(event) => event,
-        other => panic!("expected a lifecycle event, got {other:?}"),
+        other @ AppEvent::Produced(..) => {
+            panic!("expected a lifecycle event, got {other:?}")
+        }
     }
 }
 

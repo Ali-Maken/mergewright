@@ -5,3 +5,5 @@
 //! `RasterFrame`; encoding that into a terminal image protocol is `term`'s job,
 //! deliberately a different crate. Depends only on `core`; it never calls into
 //! `git`, `ops` or `term`.
+
+#![forbid(unsafe_code)]

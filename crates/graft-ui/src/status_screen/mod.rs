@@ -81,8 +81,8 @@ pub enum HeadView {
 pub struct RenderingView {
     /// The tier in effect — detection's answer, unless config overrode it.
     pub tier: RenderingTier,
-    /// The tier came from `graph.renderer`, not from detection.
-    pub tier_forced: bool,
+    /// Where that tier came from, and — when nothing was measured — why not.
+    pub tier_source: TierSource,
     /// The size of one character cell, and whether anything measured it.
     pub cell_size: CellSize,
     /// The theme in effect.
@@ -97,6 +97,34 @@ pub struct RenderingView {
     /// `NO_COLOR` is set: the chrome is drawn without colour whatever the
     /// terminal can do.
     pub no_color: bool,
+}
+
+/// Where the rendering tier in effect came from.
+///
+/// The tier is a conclusion, and a conclusion drawn from silence is not the
+/// same as one drawn from an answer. Every variant below that is not
+/// [`Detected`](TierSource::Detected) means the terminal never told Graft
+/// anything: the tier is then a fallback from environment hints, and the
+/// screen says so rather than printing `detected` over a guess (CLAUDE.md's
+/// status-field rule). Mirrors [`CellSizeSource`] deliberately — the two
+/// answer the same question about two different fields.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TierSource {
+    /// `graph.renderer` in the config file set it. Detection did not decide,
+    /// and may well have concluded something else.
+    Forced,
+    /// The probe round finished — the queries went out and the fence came
+    /// back — so the tier rests on what the terminal actually answered.
+    Detected,
+    /// The terminal was asked and said nothing before the deadline. The tier
+    /// is a fallback from environment hints, not a measurement.
+    Silent,
+    /// The terminal could not be written to or read from, so the probe never
+    /// got an answer to fall back *from*. The error itself is a note on the
+    /// screen; this only records that the tier is a fallback.
+    ProbeFailed,
+    /// Nothing was asked: output is not a terminal, or `TERM=dumb`.
+    NotProbed,
 }
 
 /// The status screen, ready to render.
@@ -210,10 +238,16 @@ fn head(head: &HeadView) -> String {
 /// The rendering row's value: the tier, where it came from, and the cell size
 /// the pixel tier would measure against.
 fn rendering(view: &RenderingView) -> String {
-    let source = if view.tier_forced {
-        "set by graph.renderer"
-    } else {
-        "detected"
+    let source = match view.tier_source {
+        TierSource::Forced => "set by graph.renderer",
+        TierSource::Detected => "detected",
+        // Not "detected": nothing was. Each of these is a fallback worked out
+        // from environment hints, and the wording says which wall was hit so
+        // that a user comparing terminals can tell a silent terminal from one
+        // Graft never got to ask.
+        TierSource::Silent => "assumed (terminal silent)",
+        TierSource::ProbeFailed => "assumed (probe failed)",
+        TierSource::NotProbed => "assumed (terminal not asked)",
     };
     let CellSize {
         width,

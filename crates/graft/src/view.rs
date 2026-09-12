@@ -104,6 +104,7 @@ mod tests {
     use graft_core::capabilities::RenderingTier;
     use graft_core::oid::Oid;
     use graft_git::version::GitVersion;
+    use graft_ui::status_screen::TierSource;
     use ratatui::Terminal;
     use ratatui::backend::TestBackend;
 
@@ -240,7 +241,7 @@ mod tests {
         let view = status_view(&session, &AppState::default());
 
         assert_eq!(view.rendering.tier, RenderingTier::Unicode);
-        assert!(!view.rendering.tier_forced);
+        assert_eq!(view.rendering.tier_source, TierSource::Detected);
     }
 
     #[test]

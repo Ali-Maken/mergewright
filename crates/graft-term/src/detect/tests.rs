@@ -8,6 +8,9 @@
 use std::collections::VecDeque;
 use std::io;
 
+use graft_core::capabilities::ColorDepth;
+
+use super::environment::version;
 use super::*;
 
 /// A terminal that answers everything: Ghostty's replies, byte for byte, as
@@ -29,7 +32,10 @@ struct FakeHost {
     deadlines: Vec<Instant>,
     window: Option<WindowPixels>,
     tmux_version: Option<String>,
-    write_error: bool,
+    /// Which write fails, counting from zero. One round per write, so this
+    /// picks the round: `Some(1)` is a terminal that took the first batch and
+    /// broke before the tmux re-probe.
+    write_failure_at: Option<usize>,
 }
 
 impl FakeHost {
@@ -41,7 +47,7 @@ impl FakeHost {
             deadlines: Vec::new(),
             window: None,
             tmux_version: None,
-            write_error: false,
+            write_failure_at: None,
         }
     }
 
@@ -65,7 +71,12 @@ impl FakeHost {
     }
 
     fn failing_to_write(mut self) -> Self {
-        self.write_error = true;
+        self.write_failure_at = Some(0);
+        self
+    }
+
+    fn failing_to_write_on_round(mut self, round: usize) -> Self {
+        self.write_failure_at = Some(round);
         self
     }
 
@@ -82,7 +93,7 @@ impl FakeHost {
 impl TerminalHost for FakeHost {
     fn write_probe(&mut self, bytes: &[u8]) -> io::Result<()> {
         self.written.push(bytes.to_vec());
-        if self.write_error {
+        if self.write_failure_at == Some(self.written.len() - 1) {
             return Err(io::Error::other("scripted write failure"));
         }
         // A round with no script is a terminal that says nothing back.
@@ -410,6 +421,31 @@ fn tmux_that_forwards_nothing_back_falls_back_to_unicode() {
     );
     assert_eq!(capabilities.kitty_graphics, Supported::Silent);
     assert_eq!(host.written.len(), 2, "the wrapped re-probe still goes out");
+}
+
+/// The M0 review's Minor 2. The tmux re-probe re-asks only the graphics
+/// queries, so its failure is evidence about graphics and about nothing else.
+/// A fenced first round already established that this terminal has neither the
+/// Kitty keyboard protocol nor DEC 2026 — a spoken "no", not silence — and the
+/// second round's failure must not walk that back.
+#[test]
+fn a_failed_tmux_reprobe_does_not_unanswer_the_first_round() {
+    let mut host = FakeHost::answering(&[ONLY_THE_FENCE])
+        .with_tmux_version("tmux 3.4")
+        .failing_to_write_on_round(1);
+
+    let capabilities = detect(&inside_tmux(), &mut host);
+
+    assert_eq!(capabilities.kitty_keyboard, Supported::No);
+    assert_eq!(capabilities.synchronized_output, Supported::No);
+    // The failure itself is still reported: it is a fact about this terminal.
+    let ProbeOutcome::Failed(message) = &capabilities.probe else {
+        panic!("expected a reported failure, got {:?}", capabilities.probe);
+    };
+    assert!(message.contains("scripted write failure"), "{message}");
+    // And graphics, which the second round *was* asking about, stay unproven.
+    assert_eq!(capabilities.kitty_graphics, Supported::Silent);
+    assert_eq!(capabilities.tier, RenderingTier::Unicode);
 }
 
 /// An unknown version is treated as too old. Hoping and drawing a broken

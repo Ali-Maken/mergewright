@@ -118,6 +118,9 @@ impl Wakes for ChannelWakes {
 /// order, whatever happens in between — including a panic, which the hook
 /// handles first (`crate::crash`).
 pub fn run(startup: Startup) -> io::Result<Exit> {
+    // Taken apart here: `run` consumes the startup facts, and the two halves
+    // are used at opposite ends of the function.
+    let Startup { repo_path, config } = startup;
     // Kitty keyboard is deliberately off here and pushed below instead:
     // whether the terminal speaks the protocol is something only the probe
     // knows, and the probe needs the raw mode this session turns on.
@@ -131,14 +134,14 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     if capabilities.kitty_keyboard == Supported::Yes {
         session.enable_kitty_keyboard()?;
     }
-    let settled = Session::settle(&startup.config, capabilities);
+    let settled = Session::settle(&config, capabilities);
 
     let (mut wakes, sender) = ChannelWakes::new();
     let signals = signals::watch(sender.clone())?;
     let jobs = JobRunner::with_default_size(sender.clone())?;
     input::spawn_reader(sender)?;
 
-    let state = opening_repository(&jobs, &startup.repo_path);
+    let state = opening_repository(&jobs, &repo_path);
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
     let outcome = pump(&mut terminal, &mut wakes, &jobs, &settled, state);
     // Dropped before the restore so that its own teardown (it shows the cursor
