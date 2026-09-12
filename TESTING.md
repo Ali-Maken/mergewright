@@ -248,17 +248,72 @@ no gap or overlap at the row boundaries, and it survives a resize.
 
 ### Unicode tier — must look deliberate
 
+**This is the default tier** (ADR-0016: Kitty → Unicode → iTerm2 → Sixel →
+ASCII). Every terminal here except a Kitty-protocol one draws it, including
+the two the graph is read in most days.
+
 | Terminal | Version | Result | Notes |
 |---|---|---|---|
+| Zed terminal | | not run | |
+| VS Code terminal | | not run | |
 | Terminal.app | | not run | |
 | Alacritty | | not run | |
-| VS Code terminal | | not run | |
 
 Pass: box-drawing characters line up into continuous lanes, nothing is a
 replacement glyph or a tofu box, and no character is double-width where a
 single-width one was assumed. "Looks deliberate" is the bar: a reasonable
 person seeing only this tier should think it was designed, not that
 something failed. This is the tier most people will actually live in.
+
+### Does a pixel tier beat Unicode here?
+
+This is the only thing that moves iTerm2 or Sixel above Unicode in ADR-0016's
+order. Run it per terminal, answer yes or no, and give the reason.
+
+1. Same repository, same window, same font size, no resizing between runs.
+2. `graph.renderer = "unicode"` in the config, `cargo run -- <repo>`. Look at
+   it. Scroll a few screens.
+3. Change to `graph.renderer = "pixel"`, run again, look at the same screens.
+4. Answer: **is the pixel version better to look at, and does it lose
+   nothing?** "Loses nothing" means alignment holds at every row boundary, a
+   resize leaves it correct, no stray escape sequences, and the scrollback is
+   undamaged after `q`. Any one of those failing is a no whatever it looks
+   like.
+
+| Terminal | Protocol | Pixel beats Unicode? | Why |
+|---|---|---|---|
+| iTerm2 | iTerm2 inline | not run | |
+| Ghostty | Kitty | not run | |
+| Kitty | Kitty | not run | |
+| WezTerm | Kitty | not run | |
+
+A yes here is evidence for a **new** ADR superseding ADR-0016, not an edit to
+it. A no is just as much of a result: record it, and the order stands.
+
+### Does VS Code give a usable Sixel tier?
+
+**Open question, and only the user can answer it.** VS Code has a setting,
+`terminal.integrated.enableImages`. If turning it on produces a usable Sixel
+graph, then one of the two daily terminals is not image-less and ADR-0016's
+premise moves. Until this row is filled in, VS Code is treated as a Unicode
+terminal.
+
+1. In VS Code settings, set `terminal.integrated.enableImages` to `true` and
+   restart the terminal (the setting does not apply to open ones).
+2. `cargo run -p graft --example capability_probe` in that terminal. Record
+   the `sixel` line and the `protocol` line verbatim.
+3. `graph.renderer = "pixel"` in the config, then `cargo run -- <repo>`.
+   Scroll a few screens, resize the window, quit with `q`.
+
+| Question | Answer | Evidence |
+|---|---|---|
+| Does `DA1` report Sixel with the setting on? | not run | paste the `sixel` and `protocol` lines |
+| Does the forced pixel graph draw correctly? | not run | aligned / garbled / nothing drawn; and what the scrollback looks like after `q` |
+| Does it beat the Unicode tier there? | not run | the comparison above, run in VS Code |
+
+A yes to all three reopens ADR-0016. A yes to the first two and a no to the
+third changes nothing: Sixel stays below Unicode, which is where the order
+already puts it.
 
 ### Must degrade, not break
 

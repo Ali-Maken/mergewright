@@ -22,11 +22,16 @@ use super::{TerminalHost, WindowPixels};
 /// The same argument that bounds `git --version` in `graft-git`: this runs at
 /// startup, before there is a window to show anything in, so a `tmux` that
 /// wedges — a stale network mount on `PATH`, a shadowing wrapper script —
-/// must cost Graft a known version, never a window that never appears. `tmux
-/// -V` prints one short line; two seconds is already generous. (The shape is
-/// deliberately duplicated rather than shared: `term` and `git` are siblings
-/// and neither may depend on the other, ARCHITECTURE.md.)
-const TMUX_VERSION_DEADLINE: Duration = Duration::from_secs(2);
+/// must cost Graft a known version, never a window that never appears. (The
+/// shape is deliberately duplicated rather than shared: `term` and `git` are
+/// siblings and neither may depend on the other, ARCHITECTURE.md.)
+///
+/// It is the local probe budget, not a number of its own, because it is added
+/// to the probe budget: everything between launch and the first frame is
+/// bounded by DESIGN.md §4.4's total, and a deadline in seconds would dwarf
+/// the rounds it sits beside. `tmux` is a local binary printing one short
+/// line, so 200 ms is already twenty times what a healthy one needs.
+const TMUX_VERSION_DEADLINE: Duration = super::LOCAL_PROBE_BUDGET;
 
 /// How often the wait above checks whether tmux has finished.
 const TMUX_VERSION_POLL: Duration = Duration::from_millis(2);
@@ -151,7 +156,12 @@ impl TerminalHost for TtyHost {
             match child.try_wait() {
                 Ok(Some(_)) => break,
                 // It cannot be waited for, so its output will never arrive.
-                Err(_) => return None,
+                // Kill it anyway rather than leave a child nobody reaps; the
+                // same best-effort argument as the deadline arm below.
+                Err(_) => {
+                    let _ = child.kill().and_then(|()| child.wait().map(drop));
+                    return None;
+                }
                 Ok(None) => {}
             }
             if started.elapsed() >= TMUX_VERSION_DEADLINE {

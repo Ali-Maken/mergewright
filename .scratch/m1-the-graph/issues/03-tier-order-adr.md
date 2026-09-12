@@ -1,6 +1,6 @@
 # m1-the-graph/03 — Settle the rendering-tier order (ADR) and clear M0's three Minors
 
-Status: ready
+Status: done
 Build with: Opus
 Blocked by: —
 
@@ -29,11 +29,54 @@ Out:
 - Changing the probe sequence itself.
 
 ## Acceptance
-- [ ] ADR written, numbered, linked from DESIGN.md §4.2.
-- [ ] DESIGN.md §4.2 and §4.4 read consistently with the code and with each other; no sentence still calls Unicode a fallback or a downgrade anywhere in DESIGN.md.
-- [ ] Minor 2's edge has a failing-then-passing test.
-- [ ] `TESTING.md` carries the VS Code Sixel question and the tier-order pass conditions.
-- [ ] Report to the conductor: the order is the **user's** stated preference; if the VS Code answer or the M0 checkpoint probe runs contradict it, the ADR gets superseded, not quietly edited.
+- [x] ADR written, numbered, linked from DESIGN.md §4.2.
+- [x] DESIGN.md §4.2 and §4.4 read consistently with the code and with each other; no sentence still calls Unicode a fallback or a downgrade anywhere in DESIGN.md.
+- [x] Minor 2's edge has a failing-then-passing test.
+- [x] `TESTING.md` carries the VS Code Sixel question and the tier-order pass conditions.
+- [x] Report to the conductor: the order is the **user's** stated preference; if the VS Code answer or the M0 checkpoint probe runs contradict it, the ADR gets superseded, not quietly edited.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test`
+
+## Done (2026-09-12)
+
+- **ADR-0016** `docs/adr/0016-rendering-tier-order-kitty-then-unicode.md` — order
+  Kitty → Unicode → iTerm2 → Sixel → ASCII, the reasons, what "demonstrably
+  beats Unicode" means (a `TESTING.md` checklist row run by the user with both
+  tiers on screen), the two questions when several protocols answer, and a
+  "What would reopen this" section: contradicting evidence **supersedes** the
+  ADR, it is not edited into it.
+- **DESIGN.md** §4.2 rewritten as two tables (protocol reachability, then
+  tier); §4.3 "falls back to" → "settles on"; §4.4 gained the `tmux -V` bullet
+  with the real worst case; §4.6 and §7 reworded. No sentence in DESIGN.md
+  calls the Unicode tier a fallback or a downgrade.
+- **Minor 1:** ADR-0013's false claim replaced — a statement-level
+  `#[allow(unsafe_code)]` does compile; function scope is the chosen
+  granularity because each `SAFETY:` argument spans the whole function.
+- **Minor 2:** `detect::probe`'s outcome now folds both rounds (a failure in
+  either wins; otherwise a fenced tmux re-probe counts as an answer). Proved
+  red-then-green: with the fold reverted,
+  `a_tmux_reprobe_that_answers_is_not_reported_as_silence` fails
+  `left: TimedOut, right: Answered`; restored, 73 pass in `graft-term`.
+- **Minor 3:** `TMUX_VERSION_DEADLINE` is now `super::LOCAL_PROBE_BUDGET`
+  (200 ms) rather than 2 s — structural, not a coincidence of numbers — and
+  DESIGN.md §4.4 / ADR-0014 §6 state the resulting worst case: 600 ms locally,
+  1.2 s over SSH, inside tmux only. The `try_wait` `Err` arm kills and reaps
+  the child before returning.
+- **TESTING.md:** two new sections — "Does a pixel tier beat Unicode here?"
+  (the procedure that decides a promotion, 4 terminals, all *not run*) and
+  "Does VS Code give a usable Sixel tier?" (3 questions, *not run*).
+
+### Deliberately past the "Out" list
+`detect::tier` was changed. The ticket says "Out: any renderer code", but
+acceptance requires §4.2 to "read consistently with the code", and leaving
+`tier()` preferring iTerm2/Sixel over Unicode would contradict the ADR being
+written in the same commit. `tier()` is detection, not a renderer and not the
+probe sequence. `pixel_protocol` is still reported independently, so
+`graph.renderer = "pixel"` can still force iTerm2/Sixel.
+
+### Gaps logged
+`KNOWN_GAPS.md`, "Rendering tiers: order and the Unicode tier": VS Code Sixel
+unverified; "demonstrably beats Unicode" never measured for any protocol; and
+a new one — **no Sixel encoder is planned**, yet a Sixel-only terminal without
+truecolor now selects the pixel tier. Owned by M1 ticket 14.

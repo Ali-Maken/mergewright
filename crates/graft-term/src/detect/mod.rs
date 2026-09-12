@@ -154,12 +154,21 @@ pub fn detect(environment: &Environment, host: &mut dyn TerminalHost) -> Capabil
         graphics,
         failure,
     } = tmux_probe;
-    // A second-round failure is a fact about this terminal, so it replaces a
-    // first round that went fine rather than disappearing behind it. It
-    // replaces it only as the *round* outcome, though: see below.
-    let outcome = match failure {
-        Some(error) => ProbeOutcome::Failed(error),
-        None => first_round.clone(),
+    // What the diagnostics view reports about the probe, folding both rounds
+    // into one answer. A failure in either is a fact about this terminal and
+    // outranks everything, so it is never dropped. Otherwise a fenced tmux
+    // re-probe counts as an answer even when round one timed out: that round
+    // is the one that decided the tier, and the screen must not read "pixel,
+    // assumed (terminal silent)" about a tier the outer terminal really did
+    // ack (M0 review round 2, Minor 2).
+    let outcome = if let Some(error) = failure {
+        ProbeOutcome::Failed(error)
+    } else if matches!(first_round, ProbeOutcome::Failed(_))
+        || !matches!(tmux, TmuxStatus::Passthrough { .. })
+    {
+        first_round.clone()
+    } else {
+        ProbeOutcome::Answered
     };
 
     let iterm2_images = environment.is_iterm2() && graphics.reaches_the_terminal;
@@ -220,12 +229,21 @@ impl Graphics {
     }
 }
 
-/// The tier table of DESIGN.md §4.2, plus §4.3's tmux rule.
+/// The tier tables of DESIGN.md §4.2, plus §4.3's tmux rule.
 ///
-/// The protocol preference — Kitty, then iTerm2, then Sixel — is §4.2's.
-/// KNOWN_GAPS.md records that M1 revisits this order (the user's is Kitty,
-/// then *Unicode*, then iTerm2, then Sixel) and must write an ADR when it
-/// settles; until then the approved design stands.
+/// Two answers, decided separately because they are two questions. The
+/// *protocol* is the best image transport this terminal can be reached
+/// through — Kitty, then iTerm2, then Sixel — and is reported whatever tier
+/// is chosen, because it is a fact about the terminal and because
+/// `graph.renderer = "pixel"` needs to know what to force.
+///
+/// The *tier* follows ADR-0016's order: **Kitty → Unicode → iTerm2 → Sixel →
+/// ASCII**. Unicode is not a fallback here; it is the default for every
+/// terminal without the Kitty protocol, because the terminals this graph is
+/// read in most days have no image protocol at all. iTerm2 and Sixel take the
+/// tier only where the alternative is ASCII, which they plainly beat; moving
+/// them above Unicode needs a `TESTING.md` checklist row saying they beat
+/// that too, and a new ADR.
 fn tier(
     environment: &Environment,
     graphics: &Graphics,
@@ -241,15 +259,18 @@ fn tier(
         None
     };
 
-    match protocol {
-        Some(protocol) => (RenderingTier::Pixel, Some(protocol)),
-        // §4.3 is explicit that a tmux without passthrough falls back to the
+    let tier = match protocol {
+        Some(PixelProtocol::Kitty) => RenderingTier::Pixel,
+        // §4.3 is explicit that a tmux without passthrough settles on the
         // Unicode tier, so it does not drop further on a missing `COLORTERM`:
         // tmux draws box-drawing characters whatever its colour depth.
-        None if environment.tmux.is_some() => (RenderingTier::Unicode, None),
-        None if environment.has_truecolor() => (RenderingTier::Unicode, None),
-        None => (RenderingTier::Ascii, None),
-    }
+        _ if environment.tmux.is_some() || environment.has_truecolor() => RenderingTier::Unicode,
+        // No truecolor and no tmux: the choice is between pixels and `|`/`*`,
+        // and an image protocol wins that one.
+        Some(PixelProtocol::Iterm2 | PixelProtocol::Sixel) => RenderingTier::Pixel,
+        None => RenderingTier::Ascii,
+    };
+    (tier, protocol)
 }
 
 /// The cell-size fallback chain of DESIGN.md §4.1 step 3, in order: what the

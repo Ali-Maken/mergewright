@@ -22,6 +22,8 @@ const ONLY_THE_FENCE: &[u8] = b"\x1b[?62;22c";
 const SIXEL_ONLY: &[u8] = b"\x1b[6;30;14t\x1b[?62;4;22c";
 /// The graphics round coming back through tmux passthrough.
 const GRAPHICS_THROUGH_TMUX: &[u8] = b"\x1b_Gi=31;OK\x1b\\\x1b[?62;22c";
+/// A round the terminal never answers at all: no replies, no fence.
+const SAYS_NOTHING: &[u8] = b"";
 
 /// A terminal that replies from a script: one entry per probe round, in the
 /// order the rounds go out. An unscripted round is a silent one.
@@ -299,8 +301,10 @@ fn what_the_terminal_reports_beats_what_the_kernel_infers() {
     );
 }
 
+/// ADR-0016 ranks Sixel below Unicode and above ASCII, so it takes the tier
+/// exactly where ASCII is the alternative — here, a 256-colour `xterm`.
 #[test]
-fn sixel_carries_the_pixel_tier_when_nothing_better_answers() {
+fn sixel_carries_the_pixel_tier_only_over_ascii() {
     let mut host = FakeHost::answering(&[SIXEL_ONLY]);
 
     let capabilities = detect(&terminal(), &mut host);
@@ -309,6 +313,38 @@ fn sixel_carries_the_pixel_tier_when_nothing_better_answers() {
     assert_eq!(capabilities.pixel_protocol, Some(PixelProtocol::Sixel));
     assert_eq!(capabilities.sixel, Supported::Yes);
     assert_eq!(capabilities.kitty_graphics, Supported::No);
+}
+
+/// The same terminal with truecolor draws Unicode instead: an unproven image
+/// protocol does not displace the tier the user actually reads (ADR-0016).
+#[test]
+fn sixel_does_not_take_the_tier_from_unicode() {
+    let environment = Environment {
+        colorterm: Some("truecolor".to_owned()),
+        ..terminal()
+    };
+    let mut host = FakeHost::answering(&[SIXEL_ONLY]);
+
+    let capabilities = detect(&environment, &mut host);
+
+    assert_eq!(capabilities.tier, RenderingTier::Unicode);
+    assert_eq!(capabilities.pixel_protocol, Some(PixelProtocol::Sixel));
+}
+
+/// Kitty is the one protocol that outranks Unicode, and it does so on a
+/// terminal that would otherwise have drawn characters (ADR-0016).
+#[test]
+fn kitty_takes_the_tier_from_unicode() {
+    let environment = Environment {
+        colorterm: Some("truecolor".to_owned()),
+        ..terminal()
+    };
+    let mut host = FakeHost::answering(&[ANSWERS_EVERYTHING]);
+
+    let capabilities = detect(&environment, &mut host);
+
+    assert_eq!(capabilities.tier, RenderingTier::Pixel);
+    assert_eq!(capabilities.pixel_protocol, Some(PixelProtocol::Kitty));
 }
 
 /// DESIGN.md §4.2: Kitty first when more than one protocol answers.
@@ -324,8 +360,13 @@ fn kitty_wins_over_sixel_when_both_answer() {
 
 /// The one capability allowed to rest on an environment variable, because
 /// iTerm2 offers nothing to ask (DESIGN.md §4.1 step 4).
+///
+/// It is reported, and it does not take the tier: ADR-0016 ranks iTerm2 below
+/// Unicode until a checklist row says its pixels beat one. The protocol is on
+/// the struct anyway, because `graph.renderer = "pixel"` has to know what to
+/// reach for.
 #[test]
-fn iterm2_is_taken_from_the_environment_alone() {
+fn iterm2_is_taken_from_the_environment_alone_and_does_not_take_the_tier() {
     let environment = Environment {
         term_program: Some("iTerm.app".to_owned()),
         term_program_version: Some("3.5.11".to_owned()),
@@ -335,7 +376,7 @@ fn iterm2_is_taken_from_the_environment_alone() {
 
     let capabilities = detect(&environment, &mut host);
 
-    assert_eq!(capabilities.tier, RenderingTier::Pixel);
+    assert_eq!(capabilities.tier, RenderingTier::Unicode);
     assert_eq!(capabilities.pixel_protocol, Some(PixelProtocol::Iterm2));
     assert!(capabilities.iterm2_images);
     assert_eq!(capabilities.kitty_graphics, Supported::No);
@@ -446,6 +487,38 @@ fn a_failed_tmux_reprobe_does_not_unanswer_the_first_round() {
     // And graphics, which the second round *was* asking about, stay unproven.
     assert_eq!(capabilities.kitty_graphics, Supported::Silent);
     assert_eq!(capabilities.tier, RenderingTier::Unicode);
+}
+
+/// The M0 review's Minor 2, the other half. An outer terminal can stay silent
+/// unfenced and answer through tmux's passthrough — rare, but then the tier
+/// *was* measured, and the status screen must not read "pixel, assumed
+/// (terminal silent)" beside it.
+#[test]
+fn a_tmux_reprobe_that_answers_is_not_reported_as_silence() {
+    let mut host =
+        FakeHost::answering(&[SAYS_NOTHING, GRAPHICS_THROUGH_TMUX]).with_tmux_version("tmux 3.4");
+
+    let capabilities = detect(&inside_tmux(), &mut host);
+
+    assert_eq!(capabilities.tier, RenderingTier::Pixel);
+    assert_eq!(capabilities.pixel_protocol, Some(PixelProtocol::Kitty));
+    assert_eq!(capabilities.probe, ProbeOutcome::Answered);
+    // Round two re-asks only the graphics queries, so the two the silent first
+    // round asked about are still unproven. Answered is about the tier.
+    assert_eq!(capabilities.kitty_keyboard, Supported::Silent);
+    assert_eq!(capabilities.synchronized_output, Supported::Silent);
+}
+
+/// And the reverse still holds: a silent first round with a tmux that forwards
+/// nothing stays silence, because nothing measured anything.
+#[test]
+fn two_silent_rounds_are_still_silence() {
+    let mut host = FakeHost::answering(&[SAYS_NOTHING]).with_tmux_version("tmux 3.4");
+
+    let capabilities = detect(&inside_tmux(), &mut host);
+
+    assert_eq!(capabilities.tier, RenderingTier::Unicode);
+    assert_eq!(capabilities.probe, ProbeOutcome::TimedOut);
 }
 
 /// An unknown version is treated as too old. Hoping and drawing a broken

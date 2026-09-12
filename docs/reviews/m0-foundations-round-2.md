@@ -150,6 +150,23 @@ None.
    comment says why `None` is right; a `kill` before the `return` would cost
    one line.
 
+### All three: resolved in m1-the-graph/03 (2026-09-12)
+
+1. ADR-0013's "smallest unit the language offers" paragraph is replaced. The
+   statement-level allowance is acknowledged as available; the function is
+   justified as the chosen granularity, because the `SAFETY:` argument spans
+   the whole function in both cases.
+2. `detect::mod`'s `outcome` now folds both rounds: a fenced tmux re-probe
+   reads `Answered` even after a silent first round, a failure in either
+   round still outranks everything, and
+   `a_tmux_reprobe_that_answers_is_not_reported_as_silence` plus
+   `two_silent_rounds_are_still_silence` pin both directions.
+3. `TMUX_VERSION_DEADLINE` is now `LOCAL_PROBE_BUDGET` (200 ms), not 2 s, so
+   the bound is the probe budget by construction rather than by coincidence.
+   DESIGN.md §4.4 states the real worst case — 600 ms locally, 1.2 s over
+   SSH, inside tmux only — and ADR-0014 §6 carries the amendment. The
+   `try_wait` `Err` arm kills and reaps before returning `None`.
+
 ## Gates and measurements (reviewer-run, one job at a time)
 
 | Check | Result |

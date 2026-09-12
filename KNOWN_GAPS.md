@@ -83,16 +83,18 @@ questions that remain.
 | tmux passthrough and SSH untested | No `tmux` escape wrapping attempted; detection over SSH (env vars lie) not exercised | M1 |
 | Probe/input conflicts and resize | Spike loses typeahead during capability probes (two readers on stdin) and never re-probes cell size on SIGWINCH. M1 needs the input mux and resize handling named in ADR-0012 | M1 |
 
-## Rendering tiers: order and the Unicode tier (recorded 2026-09-12, settle at the start of M1)
+## Rendering tiers: order and the Unicode tier (settled 2026-09-12, ADR-0016)
 
-Raised by the user at the step-3 fix. **Recorded, not decided** — DESIGN.md is
-deliberately untouched and no ADR is written yet. M1 opens by settling this.
+**Settled.** The order is **Kitty → Unicode → iTerm2 → Sixel → ASCII**
+(`docs/adr/0016-rendering-tier-order-kitty-then-unicode.md`). DESIGN.md §4.2
+is rewritten around it, `detect::tier` implements it, and Unicode is the
+default tier rather than a fallback. What is left is evidence, not decisions.
 
 | Gap | What's needed | Expiry |
 |---|---|---|
-| **Unicode tier is the daily view, not a fallback** | The user works in the Zed and VS Code terminals, which have no image protocol, so the Unicode graph is what he sees most days. M1 must build it as a first-class tier — designed, not degraded — and judge it by eye in those terminals to the same standard as the pixel tier in Ghostty. Nothing may describe it as a downgrade | M1 |
-| **Protocol preference order conflicts with DESIGN.md §4.2** — **needs an ADR when settled** | The user's order is Kitty → **Unicode** → iTerm2 → Sixel, with Sixel used only if it demonstrably beats Unicode. DESIGN.md §4.2 says Kitty > iTerm2 > Sixel and treats Unicode as the downgrade path. These disagree. M1 must resolve it and then do both: **write an ADR recording the order and why** (this is not optional — it is a design decision that overrides an approved DESIGN.md section), and amend §4.2 to match. Neither DESIGN.md nor an ADR may be edited before the decision is made | M1 |
-| Sixel in VS Code unverified | VS Code has `terminal.integrated.enableImages`; whether it gives a usable Sixel tier there is untested. Check before assuming VS Code is image-less — it changes what the order above should be | M1 |
+| **Sixel in VS Code unverified** | VS Code has `terminal.integrated.enableImages`; whether it gives a usable Sixel tier there is untested, and only the user can answer it. A yes would mean one of the two daily terminals is not image-less, which is the premise ADR-0016 rests on. `TESTING.md`, "Does VS Code give a usable Sixel tier?" carries the three questions and what each answer implies. Nothing is built on the answer either way — VS Code is treated as a Unicode terminal until the rows are filled in | The M1 manual checklist |
+| **"Demonstrably beats Unicode" has never been measured for any protocol** | ADR-0016 puts iTerm2 and Sixel below Unicode because no side-by-side comparison exists — the Unicode tier does not exist yet. `TESTING.md`, "Does a pixel tier beat Unicode here?" is the procedure, and every row says **not run**. A yes for iTerm2 would supersede ADR-0016 with a new ADR, not edit it | M1 tickets 08 and 14, then the M1 checkpoint |
+| **No Sixel encoder is planned** | ADR-0016 does not keep Sixel, so ticket 14 builds Kitty and iTerm2 only. A terminal whose *only* image protocol is Sixel and which has no truecolor is selected for the pixel tier by `detect::tier` (Sixel beats ASCII) and will find no encoder behind it. Ticket 14 must either build one or make that combination fall to Unicode/ASCII explicitly — not leave a tier with nothing behind it | M1 ticket 14 |
 
 ## M0 gaps
 

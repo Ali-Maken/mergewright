@@ -202,8 +202,11 @@ pub struct Capabilities {
     /// The tier as *detected*. Config may override it (DESIGN.md §4.2, last
     /// row); that combination happens in the app layer, not here.
     pub tier: RenderingTier,
-    /// Which protocol [`RenderingTier::Pixel`] would use. `None` on every
-    /// other tier.
+    /// The best image transport this terminal can be reached through, or
+    /// `None` when there is none. Reported whatever [`Self::tier`] ended up
+    /// being: a terminal can have a reachable protocol and still draw Unicode,
+    /// because only Kitty outranks Unicode (ADR-0016), and `graph.renderer =
+    /// "pixel"` needs to know what to force.
     pub pixel_protocol: Option<PixelProtocol>,
     /// Answered the Kitty graphics query (`a=q`), fenced by `DA1`.
     pub kitty_graphics: Supported,

@@ -921,13 +921,42 @@ never stalls launch.
 
 ### 4.2 Tier decision
 
+The order is **Kitty → Unicode → iTerm2 → Sixel → ASCII** (ADR-0016). Unicode
+is not a fallback: it is what Graft picks for every terminal that is not
+running the Kitty graphics protocol, because the terminals the graph is read
+in most days — Zed's and VS Code's — have no image protocol at all. Kitty is
+the one protocol that outranks it, because it is the one verified end to end
+(ADR-0012, and the M0 checkpoint's real Ghostty run).
+
+Two separate questions, decided separately:
+
+**Which pixel protocol is reachable**, highest first. Reported in
+`Capabilities::pixel_protocol` whatever tier is chosen, because it is a fact
+about the terminal and because `graph.renderer = "pixel"` needs to know what
+to force.
+
+| Condition | Protocol |
+|---|---|
+| Kitty graphics query acknowledged | **Kitty** |
+| iTerm2 hint matched (§4.1 step 4) and image bytes reach the terminal (§4.3) | **iTerm2** |
+| Sixel indicated by `DA1` | **Sixel** |
+| None of the above | none |
+
+**Which tier gets drawn.** First row that matches wins.
+
 | Condition | Tier |
 |---|---|
-| Kitty graphics query acknowledged, iTerm2 hint matched, or Sixel indicated by `DA1` | **Pixel** (prefer Kitty > iTerm2 > Sixel when more than one answers) |
+| `graph.renderer` set in config | Whatever it says — always wins over detection. Forcing `pixel` on a terminal that didn't ack the query still attempts it, using the reachable protocol above, with a one-key escape hatch to drop a tier if the output looks garbled |
+| Kitty protocol reachable | **Pixel**, via Kitty |
 | Truecolor indicated (`COLORTERM=truecolor`/`24bit`, or a known-truecolor terminal) | **Unicode** |
 | Inside tmux, with no graphics protocol through the passthrough (§4.3) | **Unicode** — not ASCII: tmux itself draws Unicode fine, and the missing capability is the image transport, not the character set (ADR-0014) |
-| Neither of the above, or `TERM=dumb`, or output isn't a TTY | **ASCII** |
-| `graph.renderer` set in config | Always wins over detection; forcing `pixel` on a terminal that didn't ack the query still attempts it, with a one-key escape hatch to drop a tier if the output looks garbled |
+| iTerm2 or Sixel reachable, and neither of the two rows above matched | **Pixel**, via that protocol — an image protocol with no truecolor beats ASCII, which is the only comparison it has to win (ADR-0016) |
+| Anything left, or `TERM=dumb`, or output isn't a TTY | **ASCII** |
+
+iTerm2 and Sixel move above Unicode only when a `TESTING.md` manual-checklist
+row, run by the user in that terminal with both tiers on screen, says the
+pixel graph is better to look at and loses nothing. Until then they stay
+below it, and ADR-0016 is superseded — not edited — if the answer changes.
 
 ### 4.3 tmux
 
@@ -943,11 +972,12 @@ never stalls launch.
   hint alone is not enough: the tier is pixel only if the passthrough re-probe
   answered (ADR-0014).
 - If the wrapped probe fails, times out, or the tmux version is too old,
-  Graft falls back to the Unicode tier — deliberately, not by hoping
-  passthrough happens to work. This is what PROMPT.md §7.1's manual-checklist
-  pass condition ("a correct pixel graph *or* a clean fallback, never a
-  broken screen") requires, and it's a decision made once at startup, not a
-  per-frame guess.
+  Graft settles on the Unicode tier — deliberately, not by hoping passthrough
+  happens to work. That is the ordinary tier for a terminal without the Kitty
+  protocol (§4.2, ADR-0016), not a consolation for a failed probe. It is also
+  what PROMPT.md §7.1's manual-checklist pass condition ("a correct pixel
+  graph *or* a clean fallback, never a broken screen") requires, and it's a
+  decision made once at startup, not a per-frame guess.
 
 ### 4.4 SSH
 
@@ -959,8 +989,16 @@ never stalls launch.
   200 ms) to absorb one extra network round trip before giving up on a query.
 - **The deadline is per probe round, not per startup** (ADR-0014). §4.3's
   tmux re-probe is a second round and gets a full budget of its own, so a slow
-  first round cannot starve it into misreporting passthrough. The worst case
-  is two silent rounds — 400 ms locally, 1 s over SSH — and only inside tmux.
+  first round cannot starve it into misreporting passthrough. Two silent
+  probe rounds cost 400 ms locally, 1 s over SSH, and only inside tmux.
+- **Inside tmux, `tmux -V` is the third bound**, and the largest. Graft runs
+  it when `$TMUX` is set and tmux has not published its version in
+  `$TERM_PROGRAM_VERSION`, and waits at most 200 ms — the same scale as a
+  probe round, because tmux is a local binary printing one short line, and a
+  startup budget measured in seconds is not a budget. So the true worst case
+  before the first frame is 200 ms (`tmux -V` wedged) + two silent rounds:
+  **600 ms locally, 1.2 s over SSH**, and only inside tmux. Outside it,
+  200 ms / 500 ms.
 
 ### 4.5 Re-detection triggers
 
@@ -978,7 +1016,7 @@ never stalls launch.
   outright. For the graph specifically, lane identity falls back to the same
   shape/pattern redundancy already required for colourblind safety (distinct
   node shapes, and — for lines — distinct dash patterns per lane) rather than
-  forcing a tier downgrade: `NO_COLOR` is about colour, not about protocol
+  changing the tier: `NO_COLOR` is about colour, not about protocol
   capability, so a pixel-tier terminal keeps drawing real graphics, just
   without colour.
 - When truecolor isn't available but colour is (`NO_COLOR` unset), Graft
@@ -1343,8 +1381,10 @@ changes something PROMPT.md fixed) rather than in code comments:
   cost of rendering one new strip per scroll frame; tune it in the same
   performance pass.
 - **Capability-probe budgets (200 ms local / 500 ms over SSH)** (§4.1, §4.4)
-  are starting points; the manual terminal checklist (PROMPT.md §7.1) is what
-  actually validates them across Ghostty/Kitty/WezTerm/iTerm2/tmux.
+  are starting points, and `tmux -V`'s deadline is the local one by
+  construction rather than a number of its own; the manual terminal checklist
+  (PROMPT.md §7.1) is what actually validates them across
+  Ghostty/Kitty/WezTerm/iTerm2/tmux.
 - **8×16 px fallback cell size** (§4.1) when no geometry query answers at
   all — a placeholder until the graph-drawing prototype shows whether that
   assumption produces a usable picture or needs to be per-platform.

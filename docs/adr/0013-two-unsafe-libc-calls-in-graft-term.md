@@ -98,10 +98,16 @@ explicit, reasoned allowance, and the allowances are on the two functions
 rather than on the module or the crate, so a third `unsafe` anywhere in
 `graft-term` — including elsewhere in `tty.rs` — still fails the build.
 
-The narrower scoping that was available and rejected: an `unsafe` block
-cannot itself carry the allowance without the surrounding item also
-allowing it, so a function is the smallest unit the language offers here.
-Both functions are short and do nothing but the call.
+The narrower scoping that was available and rejected: a statement-level
+`#[allow(unsafe_code)]` on the `let … = unsafe { … };` itself compiles, so
+the language does offer a smaller unit than the function. The function is
+the chosen granularity anyway, because the `SAFETY:` argument is about the
+whole function — in both cases it is the surrounding lines that establish
+the invariant the call relies on (the `pollfd` is built two lines up; the
+`winsize` is initialised field by field right before the `ioctl`), and an
+allowance scoped tighter than its own justification invites someone to move
+the call and leave the argument behind. Both functions are short and do
+nothing but set up the call and make it.
 
 Every other crate keeps `#![forbid(unsafe_code)]`, so this is one crate,
 one module, two functions, and the rest of the workspace cannot use

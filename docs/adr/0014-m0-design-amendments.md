@@ -82,8 +82,14 @@ trusted with box-drawing characters at all.
 ## 6. The probe deadline is per round
 
 §4.4 sized one budget and read as though it covered startup. §4.3's tmux
-re-probe is a second round and takes a full budget of its own, so the worst
-case is two silent rounds: 400 ms locally, 1 s over SSH.
+re-probe is a second round and takes a full budget of its own, so two silent
+rounds cost 400 ms locally, 1 s over SSH.
+
+(Amended by the M0 round-2 review, which found a third bound this section
+had missed: `tmux -V`. Its deadline was 2 s, which made the real worst case
+~2.4 s. It is now the local probe budget, 200 ms, so the worst case before
+the first frame is 600 ms locally and 1.2 s over SSH, and only inside tmux.
+DESIGN.md §4.4 carries the current numbers.)
 
 Sharing one budget across both rounds would mean a slow first round leaves the
 second too little time to get an answer, and a passthrough that works would be

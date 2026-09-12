@@ -20,7 +20,7 @@ use std::process::ExitCode;
 use std::time::Instant;
 
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
-use graft_core::capabilities::{Capabilities, CellSizeSource, ThemeSource};
+use graft_core::capabilities::{Capabilities, CellSizeSource, RenderingTier, ThemeSource};
 use graft_term::detect::{Environment, TtyHost, detect};
 
 fn main() -> ExitCode {
@@ -61,13 +61,16 @@ fn report(
 ) -> io::Result<()> {
     writeln!(out, "env      {environment:?}")?;
     writeln!(out)?;
+    writeln!(out, "tier     {:?}", capabilities.tier)?;
+    // The protocol is reported whatever the tier is (ADR-0016): a reachable
+    // one that Unicode outranks is exactly what this report exists to show.
     writeln!(
         out,
-        "tier     {:?}{}",
-        capabilities.tier,
-        match capabilities.pixel_protocol {
-            Some(protocol) => format!(" via {protocol:?}"),
-            None => String::new(),
+        "protocol {}",
+        match (capabilities.pixel_protocol, capabilities.tier) {
+            (Some(protocol), RenderingTier::Pixel) => format!("{protocol:?}, drawing"),
+            (Some(protocol), _) => format!("{protocol:?}, reachable but not chosen (ADR-0016)"),
+            (None, _) => "none reachable".to_owned(),
         }
     )?;
     writeln!(out, "probe    {:?} in {elapsed:?}", capabilities.probe)?;
