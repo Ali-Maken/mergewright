@@ -5,16 +5,26 @@
 //! while scrolling with `j`/`k`. Two strategies, chosen by detection:
 //!
 //! - **Kitty** (Ghostty, Kitty): the whole 30-row strip is rasterized and
-//!   transmitted once; every frame just places a crop of it — a miniature
-//!   of DESIGN.md §3.8's image reuse.
+//!   transmitted after each full clear; every frame then just replaces one
+//!   placement (`p=1`) with a new crop of it — a miniature of DESIGN.md
+//!   §3.8's image reuse. The frame loop itself never emits `ESC[2J`:
+//!   Ghostty frees kitty image *data* on ED, so a clear after the upload
+//!   silently kills every later placement (the step-3 "blank in Ghostty"
+//!   bug). Full clears happen only on terminal-size changes, immediately
+//!   followed by a retransmit.
 //! - **iTerm2**: no image ids or crops exist, so the visible band is
-//!   re-rasterized, PNG-encoded and re-sent on every frame.
+//!   re-rasterized, PNG-encoded and re-sent on every frame, after a full
+//!   clear (kept as originally written; unverified in a real iTerm2 — see
+//!   KNOWN_GAPS.md).
 //!
 //! `--snapshot [path]` writes the full strip as a PNG and exits (headless
 //! geometry check). `GRAPH_SPIKE_PROTOCOL=kitty|iterm2` forces a protocol.
-//! Findings: docs/adr/0012.
+//! `GRAPH_SPIKE_DEBUG=1` dumps the sent escape stream and the probe replies
+//! to `graph-spike-debug.log` in the working directory.
+//! Findings and their correction: docs/adr/0012.
 
 mod data;
+mod debug;
 mod raster;
 mod term;
 
@@ -28,8 +38,17 @@ use data::{GRAPH_COLS, LANE_COLORS, ROWS};
 use raster::Canvas;
 use term::{CellSize, Key, Protocol};
 
-/// 1-based terminal column where commit text starts (right of the graph).
+/// 1-based terminal column where commit text starts. Columns 1..=GRAPH_COLS
+/// are reserved for the graph image, plus one blank separator column; text
+/// never writes left of this, and its end-of-line erase never reaches back
+/// into the reserved columns.
 const TEXT_COL: u16 = GRAPH_COLS + 2;
+
+/// Cap on visible graph rows. The dataset is 30 rows; without a cap, any
+/// window taller than the dataset shows everything and j/k has nothing to
+/// scroll — the one thing the spike exists to demonstrate. 24 leaves at
+/// least 6 rows of scroll range.
+const MAX_VIEW: usize = 24;
 
 fn main() -> io::Result<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -69,7 +88,7 @@ struct Session {
 
 impl Session {
     fn start(protocol: Protocol) -> io::Result<Self> {
-        let mut out = io::stdout();
+        let mut out = debug::Tee::new(io::stdout());
         out.write_all(b"\x1b[?1049h\x1b[?25l\x1b[2J")?;
         out.flush()?;
         Ok(Session { protocol })
@@ -78,7 +97,7 @@ impl Session {
 
 impl Drop for Session {
     fn drop(&mut self) {
-        let mut out = io::stdout();
+        let mut out = debug::Tee::new(io::stdout());
         if self.protocol == Protocol::Kitty {
             let _ = term::kitty_free_all(&mut out);
         }
@@ -97,32 +116,36 @@ struct Viewport {
 }
 
 /// Frame timings shown in the status line, in milliseconds.
+///
+/// On the Kitty path, `raster` and `upload` are nonzero only on frames that
+/// retransmit the strip (the first frame, and after a resize); ordinary
+/// scroll frames are placement-only and legitimately show 0.0. `encode` is
+/// iTerm2-only (the Kitty path sends raw RGBA, nothing to encode).
 #[derive(Default)]
 struct Stats {
     frame: f64,
     raster: f64,
     encode: f64,
-    /// Kitty only: the one-off cost of transmitting the full strip.
-    upload_once: f64,
+    /// Cost of the most recent full-strip transmit (Kitty only).
+    upload: f64,
 }
 
 fn event_loop(protocol: Protocol, cell: &CellSize) -> io::Result<()> {
-    let mut out = io::BufWriter::new(io::stdout());
+    let mut out = debug::Tee::new(io::BufWriter::new(io::stdout()));
     let total = ROWS.len();
-
-    let mut upload_once = 0.0;
-    if protocol == Protocol::Kitty {
-        let t = Instant::now();
-        let full = rasterize(0, total, cell);
-        term::kitty_transmit(&mut out, full.rgba(), full.w, full.h)?;
-        out.flush()?;
-        upload_once = ms(t);
-    }
-
     let mut offset = 0usize;
+    // The terminal size the last frame was drawn for. A change forces a
+    // full clear — and, on Kitty, a retransmit, because the clear frees
+    // the image data (see draw_frame).
+    let mut drawn_for: Option<(u16, u16)> = None;
+    let mut last_upload = 0.0;
     loop {
         let (cols, rows) = terminal::size()?;
-        let view = (rows.saturating_sub(1) as usize).clamp(1, total);
+        let refresh = drawn_for != Some((cols, rows));
+        drawn_for = Some((cols, rows));
+        let view = (rows.saturating_sub(1) as usize)
+            .clamp(1, total)
+            .min(MAX_VIEW);
         let max_offset = total - view;
         offset = offset.min(max_offset);
         let vp = Viewport {
@@ -131,8 +154,15 @@ fn event_loop(protocol: Protocol, cell: &CellSize) -> io::Result<()> {
             view,
             offset,
         };
-        let mut stats = draw_frame(&mut out, protocol, cell, &vp)?;
-        stats.upload_once = upload_once;
+        debug::note(
+            "frame",
+            format!("offset={offset} view={view} refresh={refresh}").as_bytes(),
+        );
+        let mut stats = draw_frame(&mut out, protocol, cell, &vp, refresh)?;
+        if stats.upload > 0.0 {
+            last_upload = stats.upload;
+        }
+        stats.upload = last_upload;
         draw_status(&mut out, protocol, cell, &vp, &stats)?;
         out.write_all(b"\x1b[?2026l")?; // end synchronized update
         out.flush()?;
@@ -147,18 +177,35 @@ fn event_loop(protocol: Protocol, cell: &CellSize) -> io::Result<()> {
 
 /// Draw the graph image and the text rows for one frame. Leaves the
 /// synchronized update open so the status line joins the same frame.
+///
+/// Kitty: no `ESC[2J` in the steady state — Ghostty answers any later
+/// placement of image 1 with `ENOENT` once an ED has run, because ED frees
+/// stored image data, not just placements (verified against Ghostty 1.3.1
+/// with `q=0` replies; ADR-0012 correction). Each frame instead *replaces*
+/// the single placement `p=1` with the new crop, and text rows erase only
+/// their own tails. On `refresh` (first frame, resize) it does clear —
+/// then immediately retransmits the strip.
 fn draw_frame(
     out: &mut impl Write,
     protocol: Protocol,
     cell: &CellSize,
     vp: &Viewport,
+    refresh: bool,
 ) -> io::Result<Stats> {
     let frame_start = Instant::now();
     let mut stats = Stats::default();
-    out.write_all(b"\x1b[?2026h\x1b[2J")?; // begin synchronized update, clear
+    out.write_all(b"\x1b[?2026h")?; // begin synchronized update
     match protocol {
         Protocol::Kitty => {
-            term::kitty_clear_placements(out)?;
+            if refresh {
+                out.write_all(b"\x1b[2J")?;
+                let t = Instant::now();
+                let full = rasterize(0, ROWS.len(), cell);
+                stats.raster = ms(t);
+                let t = Instant::now();
+                term::kitty_transmit(out, full.rgba(), full.w, full.h)?;
+                stats.upload = ms(t);
+            }
             out.write_all(b"\x1b[1;1H")?;
             term::kitty_place(
                 out,
@@ -170,6 +217,7 @@ fn draw_frame(
             )?;
         }
         Protocol::Iterm2 => {
+            out.write_all(b"\x1b[2J")?;
             let t = Instant::now();
             let band = rasterize(vp.offset, vp.view, cell);
             stats.raster = ms(t);
@@ -186,9 +234,12 @@ fn draw_frame(
     Ok(stats)
 }
 
-/// One text line per commit, at a fixed column right of the graph pane.
-/// Every write starts with an absolute cursor move — never trust where an
-/// image emission left the cursor.
+/// One text line per commit, at a fixed column right of the reserved graph
+/// columns. Every write starts with an absolute cursor move — never trust
+/// where an image emission left the cursor. Each row ends with an
+/// erase-to-end-of-line so the previous frame's longer text can't linger:
+/// that erase starts right of the text, so it can never touch the graph
+/// columns (erasing cells under a kitty image deletes it in Ghostty).
 fn draw_text(out: &mut impl Write, vp: &Viewport) -> io::Result<()> {
     let budget = usize::from(vp.cols.saturating_sub(TEXT_COL)) + 1;
     for i in 0..vp.view {
@@ -202,7 +253,7 @@ fn draw_text(out: &mut impl Write, vp: &Viewport) -> io::Result<()> {
             write_clipped(out, "", "  ", &mut left)?;
             write_clipped(out, "\x1b[36m", row.refs, &mut left)?; // cyan
         }
-        out.write_all(b"\x1b[0m")?;
+        out.write_all(b"\x1b[0m\x1b[K")?;
     }
     Ok(())
 }
@@ -236,7 +287,7 @@ fn draw_status(
     let provenance = if cell.reported { "reported" } else { "assumed" };
     let mut text = format!(
         " {} | cell {}x{}px ({provenance}) | rows {}-{}/{} | frame {:.1}ms \
-         (raster {:.1} encode {:.1} upload-once {:.0}) | j/k scroll, q quit",
+         (raster {:.1} encode {:.1} upload {:.0}) | j/k scroll, q quit",
         protocol.name(),
         cell.w,
         cell.h,
@@ -246,7 +297,7 @@ fn draw_status(
         stats.frame,
         stats.raster,
         stats.encode,
-        stats.upload_once,
+        stats.upload,
     );
     text.truncate(usize::from(vp.cols));
     let width = usize::from(vp.cols);

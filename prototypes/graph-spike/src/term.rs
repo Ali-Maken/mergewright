@@ -60,14 +60,14 @@ pub fn detect_protocol() -> Option<Protocol> {
 fn kitty_acks_graphics_query() -> bool {
     let mut out = io::stdout();
     // i=31: arbitrary id. A 1x1 RGB pixel as direct payload ("AAAA" = 3 bytes).
-    let ok = out
-        .write_all(b"\x1b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\\x1b[c")
-        .and_then(|()| out.flush())
-        .is_ok();
+    let probe = b"\x1b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\\x1b[c";
+    crate::debug::note("probe: kitty graphics query + DA1", probe);
+    let ok = out.write_all(probe).and_then(|()| out.flush()).is_ok();
     if !ok {
         return false;
     }
     let reply = read_reply(Duration::from_millis(300), da1_complete);
+    crate::debug::note("probe reply", &reply);
     reply.windows(3).any(|w| w == b"\x1b_G")
 }
 
@@ -83,6 +83,7 @@ fn da1_complete(buf: &[u8]) -> bool {
 /// kernel's winsize pixel fields, then assume 10x20 and flag it.
 pub fn detect_cell_size() -> CellSize {
     let mut out = io::stdout();
+    crate::debug::note("probe: cell size (CSI 16 t)", b"\x1b[16t");
     let ok = out
         .write_all(b"\x1b[16t")
         .and_then(|()| out.flush())
@@ -91,6 +92,7 @@ pub fn detect_cell_size() -> CellSize {
         let reply = read_reply(Duration::from_millis(300), |b| {
             reply_ended(b, b"\x1b[6;", b't')
         });
+        crate::debug::note("probe reply", &reply);
         if let Some((h, w)) = parse_cell_reply(&reply) {
             return CellSize {
                 w,
@@ -221,6 +223,11 @@ pub fn kitty_transmit(out: &mut impl Write, rgba: &[u8], w: u32, h: u32) -> io::
 /// Place a crop of image 1 at the cursor, scaled into `cols` x `rows` cells.
 /// The crop's pixel size matches that cell rect exactly, so no scaling
 /// actually happens — that exactness is what the spike is checking.
+///
+/// The fixed placement id `p=1` makes every frame *replace* the previous
+/// placement atomically. The old delete-then-place pattern needed no `p`,
+/// but the frame's `ESC[2J` around it freed the image data in Ghostty and
+/// every placement after that was a silent ENOENT (ADR-0012 correction).
 pub fn kitty_place(
     out: &mut impl Write,
     src_y: u32,
@@ -231,13 +238,8 @@ pub fn kitty_place(
 ) -> io::Result<()> {
     write!(
         out,
-        "\x1b_Ga=p,i=1,x=0,y={src_y},w={src_w},h={src_h},c={cols},r={rows},q=2\x1b\\"
+        "\x1b_Ga=p,i=1,p=1,x=0,y={src_y},w={src_w},h={src_h},c={cols},r={rows},q=2\x1b\\"
     )
-}
-
-/// Remove image 1's on-screen placements, keeping the transmitted data.
-pub fn kitty_clear_placements(out: &mut impl Write) -> io::Result<()> {
-    write!(out, "\x1b_Ga=d,d=i,i=1,q=2\x1b\\")
 }
 
 /// Delete every image and free its data (used on exit).
