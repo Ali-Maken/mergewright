@@ -9,7 +9,15 @@
 #![forbid(unsafe_code)]
 
 pub mod identity;
+pub mod lane;
+pub mod layout;
 pub mod merge_name;
+pub mod row;
+pub mod seeds;
 
 pub use identity::BranchIdentity;
+pub use lane::Lane;
+pub use layout::{LayoutCursor, layout};
 pub use merge_name::recover_branch_name;
+pub use row::Row;
+pub use seeds::{BranchSeed, Seeds};
