@@ -14,8 +14,8 @@
 //!   followed by a retransmit.
 //! - **iTerm2**: no image ids or crops exist, so the visible band is
 //!   re-rasterized, PNG-encoded and re-sent on every frame, after a full
-//!   clear (kept as originally written; unverified in a real iTerm2 — see
-//!   KNOWN_GAPS.md).
+//!   clear (kept as originally written). Confirmed to draw in a real
+//!   iTerm2 by the user, 2026-09-12; see docs/adr/0012.
 //!
 //! `--snapshot [path]` writes the full strip as a PNG and exits (headless
 //! geometry check). `GRAPH_SPIKE_PROTOCOL=kitty|iterm2` forces a protocol.
@@ -433,8 +433,9 @@ fn median(times: &[f64]) -> f64 {
 ///
 /// iTerm2 has no image ids and no crops, so its band is re-rasterized and
 /// re-encoded every frame; it skips the clear too, drawing the new image
-/// over the same cell rectangle. Unverified in a real iTerm2 — see
-/// KNOWN_GAPS.md.
+/// over the same cell rectangle. Confirmed to draw in a real iTerm2 by the
+/// user, 2026-09-12 (ADR-0012); its frame cost with write back-pressure
+/// included is still unmeasured there.
 fn draw_frame(
     out: &mut impl Write,
     protocol: Protocol,
@@ -526,8 +527,9 @@ fn write_clipped(
     Ok(())
 }
 
-/// Inverse-video status line on the terminal's last row: protocol, cell
-/// size and its provenance, scroll position, frame timings, keys.
+/// Inverse-video status line on the terminal's last row: graphics health,
+/// protocol, cell size and its provenance, scroll position, frame timings,
+/// keys.
 fn draw_status(
     out: &mut impl Write,
     protocol: Protocol,
@@ -538,10 +540,18 @@ fn draw_status(
     gfx_err: Option<&str>,
 ) -> io::Result<()> {
     let provenance = if cell.reported { "reported" } else { "assumed" };
-    // The error goes first so narrow windows can't truncate it away.
-    let err = gfx_err.map_or(String::new(), |e| format!("GFX ERROR: {e} | "));
+    // Named by its state, not by its worst state: `gfx ok` while the
+    // terminal has reported nothing, `gfx: <error>` once it has. It stays
+    // visible in both, and stays first so a narrow window truncates the
+    // tail instead of the one field that says whether the pixels landed.
+    // Always-visible matters here specifically: the bug this spike shipped
+    // was silence mistaken for success (q=2 swallowed every ENOENT), and a
+    // field that only appears on failure is indistinguishable from a
+    // reporting path that has died. `ok` means "asked at q=1, nothing came
+    // back" — not "a human has seen the graph".
+    let gfx = gfx_err.map_or_else(|| "gfx ok".to_string(), |e| format!("gfx: {e}"));
     let mut text = format!(
-        " {err}{} | cell {}x{}px ({provenance}) | rows {}-{}/{} | frame {:.1}ms \
+        " {gfx} | {} | cell {}x{}px ({provenance}) | rows {}-{}/{} | frame {:.1}ms \
          (raster {:.1} encode {:.1} upload {:.1}) | tx {transmits} | j/k scroll, q quit",
         protocol.name(),
         cell.w,

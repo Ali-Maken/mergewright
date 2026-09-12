@@ -9,8 +9,9 @@ PROGRESS.md step 3): a hard-coded 30-commit, 3-lane graph with merges,
 drawn as one RGBA strip, aligned with text rows, scrolled with `j`/`k` on
 the Kitty graphics and iTerm2 inline-image rendering tiers. Verified at the
 escape-stream level under a pty for both tiers, plus a `--snapshot` PNG
-geometry check; a live run in Ghostty/iTerm2 happens at the step-3
-checkpoint.
+geometry check. Both tiers were then confirmed to actually draw in a real
+terminal — Ghostty at the step-3 checkpoint, iTerm2 by the user on
+2026-09-12 (see the Correction and the iTerm2 section below).
 
 Decision: **the pixel-graph approach in DESIGN.md §3.8 stands.** Scrolling
 is a placement-crop on Kitty and a full re-send on iTerm2, and text/pixel
@@ -228,15 +229,26 @@ The dataset went from 30 to 60 rows so a scroll range still exists in a
 tall window — the tempting alternative, capping visible rows to keep the
 scroll interesting, is exactly the bug.
 
-### iTerm2 tier: unverified, not working
+### iTerm2 tier: verified by eye, 2026-09-12
 
-No iTerm2 on the development machine, so nothing about its rendering is
-claimed. Structurally it is now sound: the `ESC[2J` moved to the shared
-resize-only path (it had been clearing every frame on that tier too), and
-PNG encoding switched to `Compression::Fast` because encode time is frame
-budget there. Under a pty at 122×40 it emits correct OSC 1337 args
+**Verified.** The user ran the spike in a real iTerm2 on 2026-09-12 and the
+graph drew correctly. That is eyes-on-pixels evidence — the standard this
+ADR's Correction sets, and the only one that counts for a rendering tier.
+Both tiers are now confirmed to draw: Kitty by Ghostty's own replies plus
+the checkpoint, iTerm2 by the user looking at it.
+
+This was written up as unverified while no iTerm2 existed on the
+development machine. What was claimed then still holds and is what was
+being looked at: the `ESC[2J` moved to the shared resize-only path (it had
+been clearing every frame on that tier too), and PNG encoding switched to
+`Compression::Fast` because encode time is frame budget there. Under a pty
+at 122×40 it emits correct OSC 1337 args
 (`inline=1;size=…;width=7;height=39;preserveAspectRatio=0`), ~60 KB per
 frame, ~8.3 ms median CPU — raster ~1 ms, encode ~7 ms, write cost
 excluded. `tx` counts every iTerm2 frame, because that tier really does
-re-send the image every time. Whether it renders is an open question in
-KNOWN_GAPS.md, not a finding.
+re-send the image every time.
+
+Still unmeasured on real iTerm2: frame cost with write back-pressure
+included. The ~8.3 ms above is pty CPU time, and a per-frame re-send of
+~60 KB is the one tier where write cost could dominate. Bench it there in
+M1 before trusting the number.

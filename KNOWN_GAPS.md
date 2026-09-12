@@ -70,13 +70,14 @@ original claim "proved Kitty + iTerm2 alignment and scrolling" was wrong —
 that was pty-capture evidence, which proves emission, not rendering. After
 the fix, the Kitty path is verified to the strongest level available without
 human eyes: a real Ghostty 1.3.1 answered the probe, accepted the transmit
-and placement at `q=1`, and reported zero errors. It is throwaway code;
-these are the open questions.
+and placement at `q=1`, and reported zero errors. The iTerm2 tier is no
+longer a gap — the user ran it in a real iTerm2 on 2026-09-12 and the graph
+drew correctly (ADR-0012). It is throwaway code; these are the open
+questions that remain.
 
 | Gap | What's needed | Expiry |
 |---|---|---|
 | Kitty pixels unseen by a human | Protocol-level success in real Ghostty is not eyes on pixels. User must confirm at the checkpoint: curves/nodes visible in the left 7 columns, aligned with text rows, staying aligned over j/k | Step-3 checkpoint |
-| iTerm2 path unverified | Still never run in a real iTerm2 — none installed on the development machine, so nothing about its rendering is claimed. It is now structurally sound: clears only on resize (it had been clearing every frame, the pattern that broke Ghostty), fast PNG encode, correct OSC 1337 args, ~60 KB and ~8 ms CPU per frame under a pty. Whether it draws anything is untested | M1 |
 | Resize frame busts the frame budget | A terminal resize clears and retransmits the whole strip: ~32–41 ms in the Ghostty bench, against a 16 ms budget. One frame per resize, so the spike leaves it. M1's fixed-height strips with ids (DESIGN.md §3.8) must not inherit a whole-viewport retransmit on every SIGWINCH | M1 |
 | Is ED-frees-image-data Ghostty-specific? | Only Ghostty 1.3.1 was tested. Unknown whether kitty-the-terminal (or other kitty-protocol terminals) also free image data on `ESC[2J`. M1 must not assume uploads survive a clear anywhere | M1 |
 | Sixel and plain-text rendering tiers unproven | Spike exercises only Kitty and iTerm2. Sixel alignment/scroll strategy and the text-cell fallback graph need their own validation | M1 |
@@ -91,7 +92,7 @@ deliberately untouched and no ADR is written yet. M1 opens by settling this.
 | Gap | What's needed | Expiry |
 |---|---|---|
 | **Unicode tier is the daily view, not a fallback** | The user works in the Zed and VS Code terminals, which have no image protocol, so the Unicode graph is what he sees most days. M1 must build it as a first-class tier — designed, not degraded — and judge it by eye in those terminals to the same standard as the pixel tier in Ghostty. Nothing may describe it as a downgrade | M1 |
-| **Protocol preference order conflicts with DESIGN.md §4.2** | The user's order is Kitty → **Unicode** → iTerm2 → Sixel, with Sixel used only if it demonstrably beats Unicode. DESIGN.md §4.2 says Kitty > iTerm2 > Sixel and treats Unicode as the downgrade path. These disagree; M1 must resolve it, then amend §4.2 and write the ADR | M1 |
+| **Protocol preference order conflicts with DESIGN.md §4.2** — **needs an ADR when settled** | The user's order is Kitty → **Unicode** → iTerm2 → Sixel, with Sixel used only if it demonstrably beats Unicode. DESIGN.md §4.2 says Kitty > iTerm2 > Sixel and treats Unicode as the downgrade path. These disagree. M1 must resolve it and then do both: **write an ADR recording the order and why** (this is not optional — it is a design decision that overrides an approved DESIGN.md section), and amend §4.2 to match. Neither DESIGN.md nor an ADR may be edited before the decision is made | M1 |
 | Sixel in VS Code unverified | VS Code has `terminal.integrated.enableImages`; whether it gives a usable Sixel tier there is untested. Check before assuming VS Code is image-less — it changes what the order above should be | M1 |
 
 ## Scheduled interim states
