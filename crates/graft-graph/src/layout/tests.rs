@@ -101,7 +101,7 @@ fn freed_column_is_not_reused_on_the_freeing_row_only_the_next_one() {
         ..Seeds::default()
     };
 
-    let rows = LayoutCursor::new(seeds).extend(&[t1, f, g]);
+    let rows = LayoutCursor::new(seeds).extend(&[t1, f, g], &mut EmittedOrder::new());
 
     assert_eq!(
         rows[0].lane, 1,
@@ -183,7 +183,7 @@ fn octopus_merge_opens_a_distinct_lane_per_extra_parent() {
     };
 
     let mut cursor = LayoutCursor::new(seeds);
-    let rows = cursor.extend(&[m]);
+    let rows = cursor.extend(&[m], &mut EmittedOrder::new());
 
     assert_eq!(rows[0].lane, 0);
     let lanes: Vec<usize> = rows[0].outgoing.iter().map(|&(lane, _)| lane).collect();
@@ -220,7 +220,7 @@ fn merge_lane_falls_back_to_short_sha_identity_when_no_pattern_matches() {
     };
 
     let mut cursor = LayoutCursor::new(seeds);
-    let _rows = cursor.extend(&[m]);
+    let _rows = cursor.extend(&[m], &mut EmittedOrder::new());
 
     let lane = cursor.active_lanes()[1]
         .as_ref()
@@ -258,9 +258,10 @@ fn chunk_boundaries_do_not_change_the_rows_produced() {
     let one_call = layout(&commits, seeds());
 
     let mut cursor = LayoutCursor::new(seeds());
-    let mut split_calls = cursor.extend(&commits[0..1]);
-    split_calls.extend(cursor.extend(&commits[1..2]));
-    split_calls.extend(cursor.extend(&commits[2..3]));
+    let mut order = EmittedOrder::new();
+    let mut split_calls = cursor.extend(&commits[0..1], &mut order);
+    split_calls.extend(cursor.extend(&commits[1..2], &mut order));
+    split_calls.extend(cursor.extend(&commits[2..3], &mut order));
 
     assert_eq!(
         one_call, split_calls,
@@ -324,7 +325,7 @@ fn an_edge_to_a_commit_already_drawn_is_recorded_and_its_lane_closes_at_once() {
     };
 
     let mut cursor = LayoutCursor::new(seeds);
-    let rows = cursor.extend(&commits);
+    let rows = cursor.extend(&commits, &mut EmittedOrder::new());
 
     assert_eq!(rows[0].lane, 1, "the early parent opens an ordinary lane");
     assert_eq!(rows[1].lane, 0);
@@ -341,6 +342,64 @@ fn an_edge_to_a_commit_already_drawn_is_recorded_and_its_lane_closes_at_once() {
         rows[2].lane, 1,
         "the ordinary column freed by the root is reused; lane 0 is not"
     );
+}
+
+#[test]
+fn a_checkpoint_costs_the_same_after_a_long_history_as_after_a_short_one() {
+    // The cursor is what a checkpoint clones (DESIGN.md §3.6), so it must
+    // not remember history: KNOWN_GAPS R2-1 was exactly a cursor that did.
+    // A linear chain keeps one lane open however long it runs, so the two
+    // clones below must weigh the same.
+    let chain = |length: usize| -> Vec<Commit> {
+        (0..length)
+            .map(|i| {
+                let id = u16::try_from(length - i).expect("short chain");
+                let mut commit = commit(0, &[], 1_000_000 - i64::from(id), b"step");
+                commit.id = wide_oid(id);
+                commit.parents = if i + 1 < length {
+                    vec![wide_oid(id - 1)]
+                } else {
+                    Vec::new()
+                };
+                commit
+            })
+            .collect()
+    };
+    let seeds = |tip: Oid| Seeds {
+        default_branch: Some(BranchSeed {
+            tip,
+            identity: BranchIdentity::of_name(b"main"),
+        }),
+        ..Seeds::default()
+    };
+
+    let short = chain(20);
+    let mut short_cursor = LayoutCursor::new(seeds(short[0].id));
+    let short_rows = short_cursor.extend(&short, &mut EmittedOrder::new());
+
+    let long = chain(5_000);
+    let mut long_cursor = LayoutCursor::new(seeds(long[0].id));
+    let long_rows = long_cursor.extend(&long, &mut EmittedOrder::new());
+
+    assert!(short_rows.iter().chain(&long_rows).all(|row| row.lane == 0));
+    assert_eq!(long_cursor.rows_emitted(), 5_000);
+    assert_eq!(
+        long_cursor.approximate_bytes(),
+        short_cursor.approximate_bytes(),
+        "a checkpoint's size depends on open lanes, not on rows emitted"
+    );
+    assert!(
+        long_cursor.approximate_bytes() < 1024,
+        "one open lane is a few hundred bytes, got {}",
+        long_cursor.approximate_bytes()
+    );
+}
+
+/// An oid distinct for every `u16`, for histories longer than a byte counts.
+fn wide_oid(n: u16) -> Oid {
+    let mut bytes = [0u8; Oid::SHA1_BYTES];
+    bytes[..2].copy_from_slice(&n.to_be_bytes());
+    Oid::from_bytes(&bytes).expect("20 bytes is a valid oid length")
 }
 
 mod properties;

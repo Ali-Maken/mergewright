@@ -419,9 +419,10 @@ proptest! {
     #[test]
     fn open_lanes_are_only_ever_touched_by_the_row_they_are_waiting_for(history in history()) {
         let mut cursor = LayoutCursor::new(history.seeds());
+        let mut order = EmittedOrder::new();
         for commit in &history.commits {
             let before = cursor.active_lanes().to_vec();
-            let row = cursor.extend(std::slice::from_ref(commit)).remove(0);
+            let row = cursor.extend(std::slice::from_ref(commit), &mut order).remove(0);
             let after = cursor.active_lanes();
 
             for (column, lane) in after.iter().enumerate() {
@@ -446,15 +447,16 @@ proptest! {
         prop_assert_eq!(&whole, &layout(&history.commits, history.seeds()));
 
         let mut cursor = LayoutCursor::new(history.seeds());
+        let mut order = EmittedOrder::new();
         let mut chunked = Vec::new();
         let mut rest = history.commits.as_slice();
         for size in chunk_sizes {
             let take = size.min(rest.len());
             let (chunk, tail) = rest.split_at(take);
-            chunked.extend(cursor.extend(chunk));
+            chunked.extend(cursor.extend(chunk, &mut order));
             rest = tail;
         }
-        chunked.extend(cursor.extend(rest));
+        chunked.extend(cursor.extend(rest, &mut order));
         prop_assert_eq!(&whole, &chunked);
     }
 }

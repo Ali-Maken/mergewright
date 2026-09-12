@@ -23,7 +23,7 @@ use graft_git::history::{CHUNK, Order, Walk};
 use graft_git::repo::{RefEntry, RefTarget, RepoHandle};
 use graft_graph::identity::BranchIdentity;
 use graft_graph::lane::Lane;
-use graft_graph::layout::{LayoutCursor, layout};
+use graft_graph::layout::{EmittedOrder, LayoutCursor, layout};
 use graft_graph::merge_name::recover_branch_name;
 use graft_graph::row::Row;
 use graft_graph::seeds::{BranchSeed, Seeds};
@@ -214,10 +214,13 @@ struct Drawing {
 /// after each so every row can be labelled with the lane it draws in.
 fn draw(commits: &[Commit], seeds: Seeds, labels: &HashMap<BranchIdentity, String>) -> Drawing {
     let mut cursor = LayoutCursor::new(seeds);
+    let mut order = EmittedOrder::new();
     let mut steps = Vec::with_capacity(commits.len());
     for commit in commits {
         let before = cursor.active_lanes().to_vec();
-        let row = cursor.extend(std::slice::from_ref(commit)).remove(0);
+        let row = cursor
+            .extend(std::slice::from_ref(commit), &mut order)
+            .remove(0);
         let after = cursor.active_lanes().to_vec();
         steps.push((row, before, after));
     }

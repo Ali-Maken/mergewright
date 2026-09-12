@@ -6,12 +6,22 @@
 //! freed and ready to be reused — so that laying out one more chunk of
 //! commits after the last is exactly the same operation as laying out the
 //! first chunk.
+//!
+//! The cursor is deliberately small — bounded by how many lanes are open at
+//! once, never by how much history lies above — because a checkpoint
+//! (DESIGN.md §3.6) is nothing more than a clone of it. What does grow with
+//! history, the list of commits laid out so far, lives in a single
+//! [`EmittedOrder`] shared by the cursor and every checkpoint taken from it.
 
-use std::collections::{HashMap, HashSet};
+pub mod order;
+
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use graft_core::commit::Commit;
 use graft_core::oid::Oid;
 
+pub use self::order::EmittedOrder;
 use crate::identity::BranchIdentity;
 use crate::lane::Lane;
 use crate::merge_name::recover_branch_name;
@@ -22,9 +32,14 @@ use crate::seeds::{BranchSeed, Seeds};
 ///
 /// A convenience over [`LayoutCursor`] for callers that already have every
 /// commit in hand and do not need a resumable cursor.
+///
+/// # Panics
+///
+/// If `commits` draws the same commit twice; see [`LayoutCursor::extend`].
 #[must_use]
 pub fn layout(commits: &[Commit], seeds: Seeds) -> Vec<Row> {
-    LayoutCursor::new(seeds).extend(commits)
+    let mut order = EmittedOrder::new();
+    LayoutCursor::new(seeds).extend(commits, &mut order)
 }
 
 /// The state carried from one row to the next while laying out a graph.
@@ -33,7 +48,12 @@ pub fn layout(commits: &[Commit], seeds: Seeds) -> Vec<Row> {
 /// a whole map — which is what keeps the algorithm's own bookkeeping free of
 /// the hashing-order nondeterminism that would otherwise make two runs over
 /// the same commits disagree.
-#[derive(Debug, Default)]
+///
+/// Cloning a cursor is how a checkpoint is taken (DESIGN.md §3.6). The clone
+/// costs what the open lanes cost: the seeds' identity table is shared, not
+/// copied, and nothing here remembers the rows already emitted beyond
+/// counting them.
+#[derive(Clone, Debug, Default)]
 pub struct LayoutCursor {
     /// Every open lane, indexed by column. `None` is a column nothing
     /// currently occupies: either never allocated past this point, or
@@ -45,13 +65,15 @@ pub struct LayoutCursor {
     /// Columns closed on an earlier row and free to be reused, starting from
     /// the row after the one that freed them.
     free_pool: Vec<usize>,
-    /// Every commit already emitted as a row, so a lane whose target was
-    /// already drawn (a late-arriving parent under `Order::CommitDate`, or
-    /// clock-skewed history) can be closed immediately instead of left
-    /// waiting for a commit that will never come.
-    already_emitted: HashSet<Oid>,
+    /// How many rows this cursor has laid out: the row the next commit lands
+    /// on. Together with an [`EmittedOrder`] it tells whether a lane's
+    /// target was already drawn (a late-arriving parent under
+    /// `Order::CommitDate`, or clock-skewed history) so the lane can close
+    /// at once instead of waiting for a commit that will never come.
+    rows_emitted: usize,
     /// Known tips, for colour stability when an ordinary lane opens fresh.
-    known_identities: HashMap<Oid, BranchIdentity>,
+    /// Fixed once the cursor is built, so clones share one table.
+    known_identities: Arc<HashMap<Oid, BranchIdentity>>,
 }
 
 impl LayoutCursor {
@@ -67,25 +89,65 @@ impl LayoutCursor {
         for (offset, seed) in seeds.integration_branches.into_iter().enumerate() {
             cursor.reserve_lane(1 + offset, seed);
         }
-        for seed in seeds.known_branches {
-            cursor.known_identities.insert(seed.tip, seed.identity);
-        }
+        cursor.known_identities = Arc::new(
+            seeds
+                .known_branches
+                .into_iter()
+                .map(|seed| (seed.tip, seed.identity))
+                .collect(),
+        );
 
         cursor
     }
 
     /// Lays out the next batch of commits, continuing from wherever the last
-    /// call left off.
+    /// call left off, and records each in `order` at the row it lands on.
     ///
     /// `commits` must be in the same walk order the cursor has already seen
     /// — the order DESIGN.md §3.2 assumes throughout: a parent is laid out
-    /// no earlier than its child.
+    /// no earlier than its child. `order` must be the one every earlier call
+    /// on this cursor (or on the cursor it was cloned from) recorded into.
+    ///
+    /// # Panics
+    ///
+    /// If a commit is laid out twice, or if `order` already holds a
+    /// different commit at the row being laid out — see
+    /// [`EmittedOrder::note`].
     #[must_use]
-    pub fn extend(&mut self, commits: &[Commit]) -> Vec<Row> {
+    pub fn extend(&mut self, commits: &[Commit], order: &mut EmittedOrder) -> Vec<Row> {
         commits
             .iter()
-            .map(|commit| self.assign_row(commit))
+            .map(|commit| {
+                order.note(self.rows_emitted, commit.id);
+                let row = self.assign_row(commit, order);
+                self.rows_emitted += 1;
+                row
+            })
             .collect()
+    }
+
+    /// How many rows this cursor has laid out so far.
+    #[must_use]
+    pub fn rows_emitted(&self) -> usize {
+        self.rows_emitted
+    }
+
+    /// Roughly how much memory a checkpoint made from this cursor costs,
+    /// counting reserved capacity rather than only what is in use. The
+    /// shared identity table is not counted: it exists once however many
+    /// checkpoints there are.
+    #[must_use]
+    pub fn approximate_bytes(&self) -> usize {
+        std::mem::size_of::<Self>()
+            + self.active.capacity() * std::mem::size_of::<Option<Lane>>()
+            + self.free_pool.capacity() * std::mem::size_of::<usize>()
+            + self.waiting.capacity()
+                * (std::mem::size_of::<Oid>() + std::mem::size_of::<Vec<usize>>())
+            + self
+                .waiting
+                .values()
+                .map(|lanes| lanes.capacity() * std::mem::size_of::<usize>())
+                .sum::<usize>()
     }
 
     /// Every column's current lane, `None` where nothing is open.
@@ -118,7 +180,7 @@ impl LayoutCursor {
 
     /// Assigns one commit to a lane, records its edges, and advances every
     /// lane its parents continue or open.
-    fn assign_row(&mut self, commit: &Commit) -> Row {
+    fn assign_row(&mut self, commit: &Commit, order: &EmittedOrder) -> Row {
         let found = self.waiting.remove(&commit.id).unwrap_or_default();
         let mut parents = commit.parents.iter().copied();
         let first_parent = parents.next();
@@ -137,14 +199,13 @@ impl LayoutCursor {
 
         let mut outgoing = Vec::new();
         match first_parent {
-            Some(parent) => self.continue_lane(lane, parent, &mut outgoing, &mut closing),
+            Some(parent) => self.continue_lane(lane, parent, order, &mut outgoing, &mut closing),
             None => self.close_lane(lane, &mut closing),
         }
         for parent in parents {
-            self.open_merge_lane(commit, parent, &mut outgoing, &mut closing);
+            self.open_merge_lane(commit, parent, order, &mut outgoing, &mut closing);
         }
 
-        self.already_emitted.insert(commit.id);
         // Row granularity, not the chunk granularity DESIGN.md §3.3's
         // pseudocode sketches: promoting only after a whole chunk would make
         // the layout depend on the chunk size, which contradicts §3.6's
@@ -169,11 +230,12 @@ impl LayoutCursor {
         &mut self,
         lane: usize,
         parent: Oid,
+        order: &EmittedOrder,
         outgoing: &mut Vec<(usize, Oid)>,
         closing: &mut Vec<usize>,
     ) {
         outgoing.push((lane, parent));
-        if self.already_emitted.contains(&parent) {
+        if self.drawn_already(parent, order) {
             self.close_lane(lane, closing);
             return;
         }
@@ -197,6 +259,7 @@ impl LayoutCursor {
         &mut self,
         commit: &Commit,
         parent: Oid,
+        order: &EmittedOrder,
         outgoing: &mut Vec<(usize, Oid)>,
         closing: &mut Vec<usize>,
     ) {
@@ -212,11 +275,20 @@ impl LayoutCursor {
             reserved: false,
         });
         outgoing.push((lane, parent));
-        if self.already_emitted.contains(&parent) {
+        if self.drawn_already(parent, order) {
             self.close_lane(lane, closing);
             return;
         }
         self.register_waiting(lane, parent);
+    }
+
+    /// Whether `id` sits on a row above the one being laid out.
+    ///
+    /// A replay from a checkpoint sees an `order` that already runs past the
+    /// cursor's own position; a commit recorded *below* the cursor is one the
+    /// replay has yet to reach, exactly as it was for the original run.
+    fn drawn_already(&self, id: Oid, order: &EmittedOrder) -> bool {
+        order.row_of(id).is_some_and(|row| row < self.rows_emitted)
     }
 
     /// Opens a lane for a commit nothing was waiting for: a fresh tip.

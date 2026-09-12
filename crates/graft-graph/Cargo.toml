@@ -8,6 +8,7 @@ publish.workspace = true
 
 [dependencies]
 graft-core.workspace = true
+thiserror.workspace = true
 
 # Every crate below is test-only. Dev-dependencies are not internal
 # dependency edges (ADR-0006; `graft/tests/it/dependency_edges.rs` skips
