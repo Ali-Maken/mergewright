@@ -83,6 +83,7 @@ Decisions and checks waiting on the user. Raise all of these at the M0 checkpoin
 1. **Capability probe has never been answered by a real emulator** (ticket 04). Only a bare pty. Run `cargo run -p graft --example capability_probe` in Ghostty, iTerm2, Zed, VS Code, in tmux (passthrough on and off) and over SSH, and paste what it prints.
 2. **Sanitiser takes all of Unicode `Cf`**, not the five ranges DESIGN.md §8.2 lists (ticket 05). Strictly safer, catches format characters §8.2 missed. Approve → ADR + §8.2 edit.
 3. **Sanitiser adds `sanitize_line`**, which also strips `\n` and `\t` (ticket 05). §8.2 excused those as "widgets handle it", but nothing enforced it and a filename containing either scrolls the screen or jumps the cursor in a single-line row. Approve → ADR + §8.2 edit.
+4. **Detection deviates from DESIGN.md §4.2–§4.4 in four places** (ticket 04, flagged there and never raised since). Inside tmux, `iterm2_images` is forced false unless the passthrough re-probe answered; a tmux session with no reachable protocol gets Unicode where §4.2's table says ASCII; the tmux re-probe gets a second full budget where §4.4 sizes one; and `Capabilities::detect(…)` is spelled `graft_term::detect::detect(…)` because `Capabilities` lives in `core` and ADR-0007 bars behaviour there. Approve → ADR + §4.2/§4.4 edits.
 
 ---
 
