@@ -1,0 +1,81 @@
+---
+source: crates/graft-ui/src/theme/tests.rs
+expression: rendered
+---
+theme dark
+  token           truecolor   256   16
+  bg              #14161B     233   0
+  surface         #1B1E24     234   0
+  surface-raised  #232730     235   0
+  border          #333944     237   8
+  text            #D7DBE0     253   7
+  text-muted      #8A919C     246   8
+  accent          #4FA3E3     75    6
+  added           #5DB87A     71    2
+  removed         #E06C75     167   9
+  warning         #E5A94E     179   3
+  info            #6FB3D2     74    7
+  lane-1          #0077BB     32    6
+  lane-2          #EE8866     209   9
+  lane-3          #AA3377     125   5
+  lane-4          #77AADD     110   7
+  lane-5          #DDCC77     186   7
+  lane-6          #009988     30    6
+  lane-7          #CCBB44     178   3
+  lane-8          #CC3311     160   9
+  lane-9          #FFAABB     217   7
+  lane-10         #CC6677     168   8
+  lane-11         #88CCEE     117   7
+  lane-12         #999933     100   3
+
+theme light
+  token           truecolor   256   16
+  bg              #FBFBFC     231   15
+  surface         #F2F3F5     255   15
+  surface-raised  #E8EAED     255   15
+  border          #C9CDD4     252   7
+  text            #1E222A     235   0
+  text-muted      #5F6773     241   8
+  accent          #15639F     25    6
+  added           #15703C     29    2
+  removed         #B4232B     124   1
+  warning         #8A5A00     94    3
+  info            #1C6B8C     24    6
+  lane-1          #0077BB     32    6
+  lane-2          #EE8866     209   9
+  lane-3          #AA3377     125   5
+  lane-4          #77AADD     110   7
+  lane-5          #DDCC77     186   7
+  lane-6          #009988     30    6
+  lane-7          #CCBB44     178   3
+  lane-8          #CC3311     160   9
+  lane-9          #FFAABB     217   7
+  lane-10         #CC6677     168   8
+  lane-11         #88CCEE     117   7
+  lane-12         #999933     100   3
+
+theme high-contrast
+  token           truecolor   256   16
+  bg              #000000     16    0
+  surface         #000000     16    0
+  surface-raised  #1A1A1A     234   0
+  border          #FFFFFF     231   15
+  text            #FFFFFF     231   15
+  text-muted      #D0D0D0     252   7
+  accent          #FFD400     220   11
+  added           #00E676     41    10
+  removed         #FF5252     203   9
+  warning         #FF9E1F     214   3
+  info            #40C4FF     81    14
+  lane-1          #0077BB     32    6
+  lane-2          #EE8866     209   9
+  lane-3          #AA3377     125   5
+  lane-4          #77AADD     110   7
+  lane-5          #DDCC77     186   7
+  lane-6          #009988     30    6
+  lane-7          #CCBB44     178   3
+  lane-8          #CC3311     160   9
+  lane-9          #FFAABB     217   7
+  lane-10         #CC6677     168   8
+  lane-11         #88CCEE     117   7
+  lane-12         #999933     100   3

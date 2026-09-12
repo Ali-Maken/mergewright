@@ -11,5 +11,11 @@ graft-core.workspace = true
 graft-graph.workspace = true
 graft-term.workspace = true
 
+[dev-dependencies]
+# Snapshot of every resolved token, in every theme, at every colour depth
+# (PROMPT.md §7.1). A colour table is exactly the kind of thing nobody reviews
+# by eye twice.
+insta = "1"
+
 [lints]
 workspace = true

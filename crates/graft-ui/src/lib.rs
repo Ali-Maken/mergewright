@@ -4,3 +4,5 @@
 //! assembles, and repo-derived strings reach it only as `term::SanitizedText`,
 //! so escape-sequence injection is a compile error rather than a review catch.
 //! Depends on `graph`, `term` and `core`.
+
+pub mod theme;
