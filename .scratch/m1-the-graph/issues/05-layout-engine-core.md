@@ -1,12 +1,12 @@
 # m1-the-graph/05 — The layout engine: lanes, rows, edges
 
-Status: in progress
+Status: done
 Build with: **Fable** (the graph layout engine — PROGRESS.md routing; xhigh-class work)
 Blocked by: 01
 
 Why: this is the centre of the product. Every invariant in PROMPT.md §1.2 is either true here or nowhere, and "is the history shape obvious at a glance?" is decided by lane choices long before a renderer draws anything.
 
-## Progress (handoff, 2026-09-12)
+## Progress (2026-09-12) — done
 
 Interrupted mid-flight once; resumed by a second builder. Nothing landed was
 rewritten.
@@ -16,7 +16,7 @@ Landed on `main`:
 - `3c30a91` — `MistakeRadarKind` in `core`; `BranchIdentity` (FNV-1a, stable
   across runs, `of_name` / `of_short_sha`); `recover_branch_name` with unit
   tests for all four message shapes, the no-match fallback and malformed
-  variants. **Acceptance item 5 is covered by these tests.**
+  variants (acceptance item 5).
 - `8a2aa1b` — `Lane`, `Row`, `Seeds`/`BranchSeed`, `LayoutCursor`, `layout()`.
   Lane 0 reserved and wins ties; integration lanes reserved adjacent to 0 and
   never returned to the free pool on any closing path; first parent continues
@@ -24,26 +24,40 @@ Landed on `main`:
   pending-free list at **row** granularity (documented in `layout.rs` — chunk
   granularity would make the layout depend on chunk size); merge-lane identity
   from the message, short-SHA fallback; octopus handled generically. Directed
-  tests: freed column reused only on the next row (**acceptance item 3**), two
+  tests: freed column reused only on the next row (acceptance item 3), two
   runs byte-identical, chunk-boundary invariance, reserved-lane guards,
   octopus, short-SHA fallback.
+- `bbb2fd0` — the mid-flight handoff note.
+- `7b07d2a` — property tests for the four §1.2 invariants
+  (`src/layout/tests/properties.rs`): a generated DAG of up to 32 commits in
+  walk order, replayed row by row from the outside (which columns are live,
+  which are retired, which reserved) so every edge, convergence and column
+  reuse is checked against what a renderer would see; fast 64 / heavy 1000
+  via `graft_fixtures::proptest_cases()`; chunking randomised for the
+  determinism property. Dev-deps `proptest`, `graft-fixtures`, `graft-git`,
+  `insta` and the `heavy-tests` forwarding feature. Also the equal-date tie
+  test (acceptance item 4) and a test for an edge to a parent already drawn
+  (commit-date order / clock skew): recorded, lane closes at once.
+- `b07a588` — `tests/it/corpus.rs`: one human-readable snapshot per fixture
+  shape (18 written under `tests/it/snapshots/`; `NonUtf8RefName` skipped
+  with its reason on APFS). Each snapshot: lane grid, short SHA, lane label
+  (ref name / recovered merge name / short SHA), subject; header records the
+  walk order in force. `KNOWN_GAPS.md` updated ("Layout engine" section).
 
-Remaining when this note was written (all in this ticket's scope):
+Verified beyond green gates:
 
-1. Property tests for the four §1.2 invariants (fast 64 / heavy 1000 via
-   `graft_fixtures::proptest_cases()`), over a generated commit DAG in walk
-   order. `graft-graph` has no dev-deps yet: needs `proptest`,
-   `graft-fixtures`, `heavy-tests` forwarding feature.
-2. Human-readable snapshot tests of row/lane output for every `Shape::ALL`
-   fixture. Needs `graft-git` as a **dev**-dependency to read fixture commits
-   (ADR-0006: dev-deps are not enforced edges — `tests/it/dependency_edges.rs`
-   skips them by design). `Shape::NonUtf8RefName` must report a skip.
-3. An explicit equal-date tie test (acceptance item 4's second half).
-4. Confirm the edge test already pins `graft-graph -> graft-core` only. (It
-   does: `EXPECTED_EDGES` lists exactly that edge for `graft-graph`.)
-5. `KNOWN_GAPS.md`: the M0 row saying `graft-graph` is empty is stale; `Row`
-   carries a lane index only, so a renderer needing a row's colour later must
-   capture `active_lanes()` when the row is produced.
+- The property checker catches bugs: two deliberate mutations of `layout.rs`
+  (pooling reserved lanes; choosing the highest waiting lane instead of the
+  lowest) each failed `rows_replay_cleanly_from_the_outside`. Both reverted.
+- All 18 snapshots read row by row against the fixture's intended shape
+  (criss-cross, octopus, foxtrot, stash, ref-states traced in full).
+- Edge test (`crates/graft/tests/it/dependency_edges.rs`) lists exactly
+  `graft-graph -> graft-core`; the new `graft-git`/`graft-fixtures` deps are
+  dev-only and not ADR-0006 edges.
+
+Not verified: the heavy tier (1000 cases) — milestone review runs it.
+Snapshots are in commit-date order because the corpus has no commit-graph;
+they will change when the fixture builder writes one (KNOWN_GAPS.md).
 
 ## Read first
 - PROMPT.md §1.2 (all of it, including the invariant list) and §1.3's merge-commit rules
@@ -70,12 +84,12 @@ Out:
 - Any renderer (08 onward).
 
 ## Acceptance
-- [ ] A `proptest` per PROMPT.md §1.2 invariant, mapped through DESIGN.md §3.7's table: every parent edge drawn; no edge passes through an unrelated node; output deterministic; a lane never changes column mid-life. 64 cases fast / 1000 heavy.
-- [ ] Snapshot tests of the row/lane output for every fixture shape from ticket 01 — these snapshots are the record of what "obvious at a glance" means, so make them readable by a human.
-- [ ] Lane reuse never happens on the row that freed the lane (a directed test, not only a property).
-- [ ] Two runs over the same commits produce byte-identical output, including tie-broken cases with equal dates.
-- [ ] Branch-name recovery covered for all four message shapes plus the no-match fallback.
-- [ ] `graph` has no dependency but `core` (the edge test proves it).
+- [x] A `proptest` per PROMPT.md §1.2 invariant, mapped through DESIGN.md §3.7's table: every parent edge drawn; no edge passes through an unrelated node; output deterministic; a lane never changes column mid-life. 64 cases fast / 1000 heavy.
+- [x] Snapshot tests of the row/lane output for every fixture shape from ticket 01 — these snapshots are the record of what "obvious at a glance" means, so make them readable by a human.
+- [x] Lane reuse never happens on the row that freed the lane (a directed test, not only a property).
+- [x] Two runs over the same commits produce byte-identical output, including tie-broken cases with equal dates.
+- [x] Branch-name recovery covered for all four message shapes plus the no-match fallback.
+- [x] `graph` has no dependency but `core` (the edge test proves it).
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test`
