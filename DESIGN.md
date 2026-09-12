@@ -925,6 +925,7 @@ never stalls launch.
 |---|---|
 | Kitty graphics query acknowledged, iTerm2 hint matched, or Sixel indicated by `DA1` | **Pixel** (prefer Kitty > iTerm2 > Sixel when more than one answers) |
 | Truecolor indicated (`COLORTERM=truecolor`/`24bit`, or a known-truecolor terminal) | **Unicode** |
+| Inside tmux, with no graphics protocol through the passthrough (§4.3) | **Unicode** — not ASCII: tmux itself draws Unicode fine, and the missing capability is the image transport, not the character set (ADR-0014) |
 | Neither of the above, or `TERM=dumb`, or output isn't a TTY | **ASCII** |
 | `graph.renderer` set in config | Always wins over detection; forcing `pixel` on a terminal that didn't ack the query still attempts it, with a one-key escape hatch to drop a tier if the output looks garbled |
 
@@ -936,6 +937,11 @@ never stalls launch.
   checks the tmux version and then re-sends the capability probe wrapped in
   tmux's passthrough sequence (`\ePtmux;...\e\\`), applying the same
   per-query fallback as §4.1.
+- **Every pixel protocol fails closed inside tmux, iTerm2 included.** §4.1's
+  env-hint exception describes the *outer* terminal, and says nothing about
+  whether tmux will carry the image bytes to it, so under `$TMUX` the iTerm2
+  hint alone is not enough: the tier is pixel only if the passthrough re-probe
+  answered (ADR-0014).
 - If the wrapped probe fails, times out, or the tmux version is too old,
   Graft falls back to the Unicode tier — deliberately, not by hoping
   passthrough happens to work. This is what PROMPT.md §7.1's manual-checklist
@@ -951,6 +957,10 @@ never stalls launch.
   the same probe-timeout fallback in §4.1 degrades gracefully when it
   doesn't. The one adjustment is a longer probe deadline (500 ms instead of
   200 ms) to absorb one extra network round trip before giving up on a query.
+- **The deadline is per probe round, not per startup** (ADR-0014). §4.3's
+  tmux re-probe is a second round and gets a full budget of its own, so a slow
+  first round cannot starve it into misreporting passthrough. The worst case
+  is two silent rounds — 400 ms locally, 1 s over SSH — and only inside tmux.
 
 ### 4.5 Re-detection triggers
 
@@ -1494,10 +1504,15 @@ walk, and runs the result through the same `graph::layout` used for real
 history — dimmed/dashed styling is a `ui` rendering concern, not something
 `ops` or `graph` need to know about.
 
-**`term`** (+ `core`): `Capabilities::detect(probe_budget) -> Capabilities`
-(§4.1–§4.4, the only impure function in this list — it's the one that talks
-to the terminal), and an image encoder, `encode(&RasterFrame, Protocol) ->
-Bytes`. Detection and encoding are two different seams for two different
+**`term`** (+ `core`): `term::detect::detect(&Environment, &mut impl
+TerminalHost) -> Capabilities` (§4.1–§4.4, the only impure function in this
+list — it's the one that talks to the terminal). A free function in `term`
+rather than the `Capabilities::detect` this document first sketched, because
+`Capabilities` lives in `core` and `core` holds no behaviour (ADR-0007,
+ADR-0014); the budget is not a parameter because it follows from the
+environment (§4.4), and `TerminalHost` is the seam the scripted terminals in
+`term`'s tests substitute for the real one. Also an image encoder,
+`encode(&RasterFrame, Protocol) -> Bytes`. Detection and encoding are two different seams for two different
 reasons: detection varies by *terminal*, encoding varies by *protocol*
 (Kitty/iTerm2/Sixel) — keeping them separate means adding a protocol doesn't
 touch detection and vice versa.
@@ -1509,14 +1524,29 @@ proof the cleaning ran. The cleaning replaces with a visible placeholder
 (`␛` for controls, `�` otherwise), never silently deletes, so a spoofing
 attempt is *seen* rather than papered over. It neutralises:
 
-- all C0/C1 control characters except `\n` and `\t` (those two are handled
-  structurally by widgets, never passed through raw);
+- all C0/C1 control characters and DEL, `\n` and `\t` aside (see below);
 - `ESC` itself — which alone kills every CSI, OSC (OSC 8 hyperlinks
   included), DCS, APC and PM sequence;
-- bidi override and isolate characters (U+202A–202E, U+2066–2069);
-- zero-width and invisible formatting characters (U+200B–200F, U+2060,
-  U+FEFF) — both these and bidi controls can make what's drawn differ from
-  what git acts on.
+- **the whole of Unicode's `Cf` (format) category**, plus U+2028 and U+2029
+  (ADR-0014). That category is where the bidi overrides and isolates
+  (U+202A–202E, U+2066–2069) and the zero-width characters (U+200B–200F,
+  U+2060, U+FEFF) live, and all of them can make what's drawn differ from
+  what git acts on — but so can the soft hyphen, the Arabic letter mark, the
+  interlinear annotation characters and the U+E0000 tag block, which can
+  carry a whole hidden sentence. The rule is the category, so a Unicode
+  revision that adds a format character adds it here; the ranges are spelled
+  out in `term::sanitize` as of Unicode 16.0 and are refreshed with the
+  tables, rather than being five ranges chosen by hand and never revisited.
+  U+2028/2029 are not `Cf` and are here because they end a line in anything
+  that understands them.
+
+`\n` and `\t` are the one thing the caller chooses, because whether they are
+structure or an attack depends on where the text is going (ADR-0014):
+`term::sanitize` keeps them for a multi-line pane, `term::sanitize_line`
+replaces them for anything drawn in a single row, and
+`term::sanitize_path`/`sanitize_path_bytes` are the same for a path — a file
+name may legally contain a newline, and a status row that passes one through
+scrolls the screen.
 
 The one mandatory application point is `app`'s view-model assembly — the
 only place `git`/`ops` output meets `ui` types (§8.3). Every view-model

@@ -37,9 +37,11 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 - **Changing what a write operation does, or how undo works** → `ops`. Start
   at `DESIGN.md` §6.
 - **Changing terminal detection or an image protocol** → `term`. Start at
-  `DESIGN.md` §4, then `graft-term/src/detect/` — where `detect::tty` is the
-  only module that touches the real terminal, so everything above it is
-  tested against scripted replies.
+  `DESIGN.md` §4, then `graft-term/src/detect/`: `environment` reads the env
+  vars, `probe` writes the queries, `reply` parses what comes back, `tmux`
+  owns the passthrough round, and `mod` is the decision that turns all of it
+  into a `Capabilities`. `detect::tty` is the only module that touches the
+  real terminal, so everything above it is tested against scripted replies.
 - **Changing what counts as hostile repository text** (a new escape or
   invisible-character class) → `graft-term/src/sanitize/`. One function and
   a small set of entry points; `DESIGN.md` §8.2 sets the minimum classes and
