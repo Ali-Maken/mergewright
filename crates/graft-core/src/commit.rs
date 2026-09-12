@@ -44,7 +44,7 @@ pub struct Identity {
 /// `parents` is in git's own order, so `parents[0]` is the first parent — the
 /// distinction the whole first-parent view rests on. A root commit has none,
 /// and an octopus merge has more than two.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Commit {
     /// This commit's object id.
     pub id: Oid,

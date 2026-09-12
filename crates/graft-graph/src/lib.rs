@@ -17,7 +17,10 @@ pub mod seeds;
 
 pub use identity::BranchIdentity;
 pub use lane::Lane;
-pub use layout::{EmittedOrder, LayoutCursor, layout};
+pub use layout::{
+    Advance, Anchor, CommitSource, EmittedOrder, LayoutCursor, Pull, Resident, StreamConfig,
+    StreamError, StreamingLayout, Work, layout,
+};
 pub use merge_name::recover_branch_name;
 pub use row::Row;
 pub use seeds::{BranchSeed, Seeds};

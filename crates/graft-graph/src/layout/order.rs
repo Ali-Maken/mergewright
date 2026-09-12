@@ -22,11 +22,17 @@ pub struct EmittedOrder {
     rows: HashMap<Oid, usize>,
 }
 
-/// A commit id that appears twice in an order handed to
-/// [`EmittedOrder::from_ids`].
-#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
-#[error("commit {0} appears twice in the walk order")]
-pub struct RepeatedCommit(pub Oid);
+/// A commit the walk order names twice.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("the walk yielded commit {id} twice: at row {first}, then again at row {again}")]
+pub struct RepeatedCommit {
+    /// The commit.
+    pub id: Oid,
+    /// The row it was first seen at.
+    pub first: usize,
+    /// The row it turned up at again.
+    pub again: usize,
+}
 
 impl EmittedOrder {
     /// An order with nothing laid out yet.
@@ -43,8 +49,12 @@ impl EmittedOrder {
     pub fn from_ids(ids: Vec<Oid>) -> Result<Self, RepeatedCommit> {
         let mut rows = HashMap::with_capacity(ids.len());
         for (row, &id) in ids.iter().enumerate() {
-            if rows.insert(id, row).is_some() {
-                return Err(RepeatedCommit(id));
+            if let Some(first) = rows.insert(id, row) {
+                return Err(RepeatedCommit {
+                    id,
+                    first,
+                    again: row,
+                });
             }
         }
         Ok(Self { ids, rows })
@@ -187,7 +197,11 @@ mod tests {
     fn a_full_order_rejects_a_repeated_commit() {
         assert_eq!(
             EmittedOrder::from_ids(vec![oid(1), oid(2), oid(1)]).map(|order| order.len()),
-            Err(RepeatedCommit(oid(1)))
+            Err(RepeatedCommit {
+                id: oid(1),
+                first: 0,
+                again: 2
+            })
         );
         let order = EmittedOrder::from_ids(vec![oid(1), oid(2)]).expect("distinct ids");
         assert_eq!(order.row_of(oid(2)), Some(1));

@@ -13,7 +13,11 @@
 //! history, the list of commits laid out so far, lives in a single
 //! [`EmittedOrder`] shared by the cursor and every checkpoint taken from it.
 
+mod cache;
+mod checkpoint;
 pub mod order;
+pub mod source;
+pub mod stream;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -22,6 +26,10 @@ use graft_core::commit::Commit;
 use graft_core::oid::Oid;
 
 pub use self::order::EmittedOrder;
+pub use self::source::{CommitSource, Pull};
+pub use self::stream::{
+    Advance, Anchor, Resident, StreamConfig, StreamError, StreamingLayout, Work,
+};
 use crate::identity::BranchIdentity;
 use crate::lane::Lane;
 use crate::merge_name::recover_branch_name;

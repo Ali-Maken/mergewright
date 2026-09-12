@@ -5,7 +5,10 @@ use graft_core::mistake_radar::MistakeRadarKind;
 use graft_core::oid::Oid;
 
 /// One commit, positioned in the graph.
-#[derive(Clone, Debug, PartialEq, Eq)]
+///
+/// Hashable so a row cache can keep a fingerprint of rows it evicted and
+/// check that a rebuild reproduced them (DESIGN.md §3.6).
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Row {
     /// The commit this row draws.
     pub commit: Commit,
