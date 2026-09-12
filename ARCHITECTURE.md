@@ -46,6 +46,12 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
 
 ## The crates
 
+Every package is named with a `graft-` prefix — `graft-core`, `graft-graph`,
+`graft-git`, `graft-ops`, `graft-term`, `graft-ui` — because a bare package
+called `core` collides with Rust's built-in `core`. `app` is the binary, and
+its package is simply `graft`. This page uses the short names throughout; the
+prefix exists only in `Cargo.toml` and in `use` paths (`graft_core::…`).
+
 | Crate | Owns | May depend on |
 |---|---|---|
 | `core` | Plain data only — no behaviour, no algorithms: commit and ref identity, events, the record shapes other crates read and write, errors for its own parsing | nothing internal |

@@ -1,9 +1,8 @@
 # Keep builds and tests from overloading the laptop (see PROMPT.md 7.1).
+# The matching `debug = "line-tables-only"` profiles live in the workspace
+# Cargo.toml, so they apply however cargo is invoked.
 [build]
 jobs = 4
 
-[profile.dev]
-debug = "line-tables-only"
-
-[profile.test]
-debug = "line-tables-only"
+[env]
+RUST_TEST_THREADS = "4"

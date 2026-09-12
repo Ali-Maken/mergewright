@@ -1,6 +1,6 @@
 # m0-foundations/01 — Workspace scaffold, lint and format config
 
-Status: todo
+Status: done
 Build with: Sonnet
 Blocked by: —
 
@@ -31,10 +31,30 @@ Out:
 - CI config (none exists; gates run locally).
 
 ## Acceptance
-- [ ] `cargo build --workspace` succeeds; 7 packages, edges exactly per ARCHITECTURE.md.
-- [ ] A deliberate `x.unwrap()` in `graft` fails clippy; the same in a `#[cfg(test)]` module passes (verify manually, then remove).
-- [ ] `.cargo/config.toml` and profiles match PROMPT.md §7.1.
-- [ ] ARCHITECTURE.md notes the package-name prefix.
+- [x] `cargo build --workspace` succeeds; 7 packages, edges exactly per ARCHITECTURE.md.
+- [x] A deliberate `x.unwrap()` in `graft` fails clippy; the same in a `#[cfg(test)]` module passes (verify manually, then remove).
+- [x] `.cargo/config.toml` and profiles match PROMPT.md §7.1.
+- [x] ARCHITECTURE.md notes the package-name prefix.
+
+## Notes (build)
+
+- Layout: `crates/<package>/`, package names `graft-*`, binary package `graft`.
+  `prototypes/*` is excluded from the workspace so `graph-spike` stays standalone.
+- Edition 2024, `resolver = "3"`, rust-version 1.85 (toolchain here is 1.98.1).
+- Lints live in `[workspace.lints.clippy]` (`unwrap_used`/`expect_used` = deny) with
+  `[lints] workspace = true` in all 7 manifests; `clippy.toml` re-allows both in tests.
+- Profiles (`debug = "line-tables-only"` for dev and test) moved from `.cargo/config.toml`
+  into the workspace `Cargo.toml` — one source of truth, and they apply however cargo is
+  invoked. `.cargo/config.toml` keeps `jobs = 4` and `[env] RUST_TEST_THREADS = "4"`.
+- Verified by hand, not just by green gates:
+  - `unwrap()` outside tests → clippy error `used unwrap() on an Option value` (unwrap_used).
+  - `unwrap()` + `expect()` inside `#[cfg(test)]` → clippy clean. Both probes removed.
+    (Note: use a non-literal `Option` when probing; `Some(1).unwrap()` trips the unrelated
+    `unnecessary_literal_unwrap` lint and muddies the result.)
+  - `cargo metadata` edge set printed and compared to ARCHITECTURE.md: exact match.
+  - A temporary test printed `RUST_TEST_THREADS=Ok("4")` inside a test process, proving the
+    `[env]` block reaches test binaries. Removed afterwards.
+  - `cargo test` runs exactly one integration binary, `tests/it/main.rs` (target `it`).
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test`

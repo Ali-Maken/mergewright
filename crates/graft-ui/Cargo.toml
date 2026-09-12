@@ -1,0 +1,15 @@
+[package]
+name = "graft-ui"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+graft-core.workspace = true
+graft-graph.workspace = true
+graft-term.workspace = true
+
+[lints]
+workspace = true

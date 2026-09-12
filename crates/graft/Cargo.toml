@@ -1,0 +1,19 @@
+[package]
+name = "graft"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# `app` is the only crate allowed to see every other crate (ARCHITECTURE.md).
+[dependencies]
+graft-core.workspace = true
+graft-git.workspace = true
+graft-graph.workspace = true
+graft-ops.workspace = true
+graft-term.workspace = true
+graft-ui.workspace = true
+
+[lints]
+workspace = true

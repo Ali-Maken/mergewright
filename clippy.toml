@@ -1,0 +1,4 @@
+# `unwrap()` and `expect()` are denied in the workspace lints; tests may use
+# both, where a panic is the intended failure mode (PROMPT.md 6.3).
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true

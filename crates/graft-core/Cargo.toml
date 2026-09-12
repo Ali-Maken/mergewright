@@ -1,0 +1,13 @@
+[package]
+name = "graft-core"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# No internal dependencies: `core` is the root of the layering (ARCHITECTURE.md).
+[dependencies]
+
+[lints]
+workspace = true
