@@ -94,6 +94,12 @@ deliberately untouched and no ADR is written yet. M1 opens by settling this.
 | **Protocol preference order conflicts with DESIGN.md §4.2** — **needs an ADR when settled** | The user's order is Kitty → **Unicode** → iTerm2 → Sixel, with Sixel used only if it demonstrably beats Unicode. DESIGN.md §4.2 says Kitty > iTerm2 > Sixel and treats Unicode as the downgrade path. These disagree. M1 must resolve it and then do both: **write an ADR recording the order and why** (this is not optional — it is a design decision that overrides an approved DESIGN.md section), and amend §4.2 to match. Neither DESIGN.md nor an ADR may be edited before the decision is made | M1 |
 | Sixel in VS Code unverified | VS Code has `terminal.integrated.enableImages`; whether it gives a usable Sixel tier there is untested. Check before assuming VS Code is image-less — it changes what the order above should be | M1 |
 
+## M0 gaps
+
+| Gap | What's needed | Expiry |
+|---|---|---|
+| **A signal kills Graft with the terminal still in raw mode.** `TerminalSession` restores on quit and on panic, both verified under a pty (m0/03). SIGINT, SIGTERM and SIGHUP still take their default action: the process dies without unwinding, so neither the panic hook nor `Drop` runs, and the shell is left with echo, canonical mode and `ISIG` off. Measured, not assumed: a `kill -TERM` under a pty leaves `ECHO=false ICANON=false ISIG=false`. Note this is *not* Ctrl+C at the keyboard — raw mode means that arrives as a key event, not a signal (ticket 09 maps it to quit) — it is `kill`, a closed terminal window, and a logout | A handler that restores the terminal and re-raises the signal with the default action, so the exit status stays honest. Out of ticket 03's stated scope; needs a decision on where it lands (ticket 09's event loop is the natural home) and whether `signal-hook` — already in the tree under `crossterm` — is the way | **M0** |
+
 ## Scheduled interim states
 
 These are *temporary*. Each one is a real gap between the milestone that creates

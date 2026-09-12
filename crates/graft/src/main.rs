@@ -1,7 +1,6 @@
-//! The Graft binary — ARCHITECTURE.md's `app` layer, and the only crate that
-//! may see every other one. It owns the event loop, `AppState`, the pure
-//! `update` function that maps an `Event` to a new state plus a list of
-//! `Command`s, the job runner that executes those commands off the UI thread,
-//! config loading, and the wiring that assembles view models for `ui`.
+//! The Graft binary. Deliberately thin: everything it runs lives in the
+//! `graft` library (`lib.rs`) so the same code can be driven from tests and
+//! from the `terminal_probe` example. The event loop that ties the terminal
+//! session, the panic hook and `update` together arrives in ticket 09.
 
 fn main() {}

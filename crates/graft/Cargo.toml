@@ -8,6 +8,15 @@ publish.workspace = true
 
 # `app` is the only crate allowed to see every other crate (ARCHITECTURE.md).
 [dependencies]
+# Only what the terminal session needs: `events` carries the mouse, focus and
+# keyboard-enhancement commands, `bracketed-paste` the paste ones, `windows`
+# the platform shim. crossterm's `derive-more` default is left off: it exists
+# for `Display` impls on key types this crate never formats.
+crossterm = { version = "0.29", default-features = false, features = [
+    "events",
+    "bracketed-paste",
+    "windows",
+] }
 graft-core.workspace = true
 graft-git.workspace = true
 graft-graph.workspace = true

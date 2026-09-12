@@ -52,6 +52,13 @@ called `core` collides with Rust's built-in `core`. `app` is the binary, and
 its package is simply `graft`. This page uses the short names throughout; the
 prefix exists only in `Cargo.toml` and in `use` paths (`graft_core::…`).
 
+`app` is a library (`crates/graft/src/lib.rs`) with a thin binary
+(`main.rs`) on top of it. Everything lives in the library so that `app`'s own
+tests, its integration tests and the manual `terminal_probe` example all drive
+the same code the binary runs; `main.rs` only starts it. This is a target
+split inside one package, not a new crate: the dependency table below is
+unchanged.
+
 | Crate | Owns | May depend on |
 |---|---|---|
 | `core` | Plain data only — no behaviour, no algorithms: commit and ref identity, events, the record shapes other crates read and write, errors for its own parsing | nothing internal |
