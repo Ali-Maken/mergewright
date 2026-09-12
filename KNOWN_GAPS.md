@@ -96,26 +96,26 @@ deliberately untouched and no ADR is written yet. M1 opens by settling this.
 
 ## M0 gaps
 
-**What M0 has been seen doing, and what it has not** (swept at m0/12,
-2026-09-12). Everything M0 built has been exercised under a *bare pty* — a
+**What M0 has been seen doing** (swept at m0/12, revised at the M0 checkpoint,
+2026-09-12). Everything M0 built was first exercised under a *bare pty* — a
 `pty.fork` or `script -q /dev/null` with no emulator behind it — and by unit,
-snapshot and property tests. That proves the bytes Graft writes and the
-decisions it makes from scripted replies. It does not prove a single pixel.
-**No real terminal emulator has ever answered a capability probe, and no human
-has looked at Graft's screen.** So the tier, cell size, theme and colour depth
-every pty run reports are the silent-terminal fallback, and the status screen's
-layout, colours and hint row have been read as text, never seen rendered. The
-three rows below marked **M0 review** are the checkpoint's job; nothing a
-builder can do closes them.
+snapshot and property tests. That proved the bytes Graft writes and the
+decisions it makes from scripted replies, but not a single pixel.
 
-Two rows that were here are gone, closed by the M0 review fix round
-(2026-09-12): the `Rendering` line now says where the tier came from
-(`detected` only when the probe round finished, otherwise `assumed` and which
-wall was hit), and the six DESIGN.md divergences are ruled on and recorded in
-ADR-0014 with the matching DESIGN.md edits. The new wording has still only
-been read in a pty, where the answer is always the silent-terminal fallback —
-seeing `detected` on screen needs a real emulator, which is the first row
-below.
+**That is no longer the whole story: the user ran M0 in a real terminal at the
+M0 checkpoint and approved it.** Observed by eye, not inferred: the status
+screen showed the repo, HEAD on `main`, the **pixel** tier via the Kitty
+protocol, cell size **17x37**, a **dark** theme taken from the terminal's own
+background, and **truecolor**. The capability probe was answered in **367 µs**
+— three orders of magnitude inside the 200 ms budget. `q` exited clean. So
+detection, the `detected` wording, the theme hint and the colour depth are all
+now confirmed against a real emulator, and the two rows that used to sit here
+saying otherwise are gone.
+
+Still unseen: any emulator other than the user's daily one, tmux, SSH, and the
+16-colour and ASCII fallback paths — nobody has watched those degrade. The
+six DESIGN.md divergences were **confirmed by the user at the checkpoint**:
+keep the code, amend the document, as recorded in ADR-0014.
 
 | Gap | What's needed | Expiry |
 |---|---|---|
@@ -136,6 +136,8 @@ below.
 | **`gix` is compiled with almost no features.** m0/08 enables only `sha1` and `sha256`. Rev-walks, status, blame and mailmap are off, as are `parallel` and the pack caches, so nothing here says anything about read performance | The ticket that needs each surface turns its feature on and measures it. M1's first rev-walk is the one that decides whether `parallel` and the object caches are on by default | M1 |
 | **`graft-graph` and `graft-ops` are empty.** Both are a crate doc comment and nothing else: no types, no functions, no tests. They exist so ARCHITECTURE.md's crate map and m0/02's dependency-edge test are real from the start. Nothing in M0 draws a graph or writes to a repository, and these two crates are where that would live | `graph` fills up in M1 (layout engine and the three renderers); `ops` in M3 (write operations and the undo journal). Until then, a green `cargo test` on the workspace says nothing about either | M1 / M3 |
 | **Only the fast test tier exists.** `cargo test` is 276 tests in about 0.6 s warm. PROMPT.md §7.1's heavy tier, §7's `criterion` benchmarks and `cargo-fuzz` targets, and the scripted test corpus of §7.2 have no harness, no fixtures and no feature flag yet — so "gates green" currently means the fast tier only, and no performance or memory budget in the spec has ever been measured. There is also no CI: PROMPT.md §7 item 6 makes that conditional on the project having a GitHub repo, which it does not | M1 builds the fixtures first (PROMPT.md §8) and is the milestone that first has something worth benchmarking. `TESTING.md` and its manual checklist start there too | M1 |
+| **Sanitising strips the emoji joiner (U+200D), so a multi-part emoji breaks into its pieces** in a commit subject or branch name. A family or a profession emoji renders as two or three separate glyphs. Direct consequence of taking all of Unicode `Cf` (ADR-0014), which the user confirmed — the joiner is a format character, and telling it apart from a hostile one means special-casing emoji sequences | Raised and accepted by the user at the M0 checkpoint, 2026-09-12: cosmetic, and the safety trade is the right way round. **Revisit only if it annoys him in daily use** — not scheduled work | Not planned; revisit on user's say-so |
+
 
 ## Scheduled interim states
 

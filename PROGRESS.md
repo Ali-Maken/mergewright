@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M0 CHECKPOINT — user tests M0 on a real terminal. **M1 tickets drafted** (17, in `.scratch/m1-the-graph/`) and awaiting the user's approval at that checkpoint; no M1 code started. Tickets 03, 12 and 14 assume M0's capability detection works on real emulators — that is what the checkpoint is testing. (M0: 12 tickets in `.scratch/m0-foundations/`, approved 2026-09-12)
+**Current step:** **M1 The graph** — ticket 01 (17 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. **M1 runs straight through without stopping for ticket approval** — see "How M1 runs" below.
 
 ---
 
@@ -52,7 +52,7 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 
 | ✓ | Milestone | Build with | Review | CHECKPOINT: what you test |
 |---|---|---|---|---|
-| [ ] | M0 Foundations | Opus | Opus | Opens a repo; quitting leaves the terminal clean |
+| [x] | M0 Foundations | Opus | Opus | Opens a repo; quitting leaves the terminal clean |
 | [ ] | **M1 The graph** | **Fable** for the graph layout engine tickets, **Opus** for the rest | Fable | `git/git` and the merge-mistake fixtures: is the history shape obvious at a glance? |
 | [ ] | M2 Details and diffs | Opus | Opus | Diffs look right; bad merges get flagged |
 | [ ] | M3 Working tree, undo and stash | Opus (xhigh for undo) | Fable | Stage a hunk, commit, undo it, stash and unstash, then try to lose work |
@@ -75,13 +75,46 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 
 ---
 
-## Open for the M0 checkpoint
+## M0 checkpoint: approved 2026-09-12
 
-Decisions and checks waiting on the user. Raise all of these at the M0 checkpoint.
+The user ran M0 in a real terminal and approved it. **Observed by eye**, which
+closes the standing "no emulator has ever answered a probe, no human has seen
+the screen" caveat:
 
-0. **Nobody has seen the app in a real terminal yet** (ticket 09). Ticket 09's last acceptance box is deliberately unticked. `cargo run` in Ghostty/iTerm2: does it draw, does `q` quit clean, any stray characters?
-1. **Capability probe has never been answered by a real emulator** (ticket 04). Only a bare pty. Run `cargo run -p graft --example capability_probe` in Ghostty, iTerm2, Zed, VS Code, in tmux (passthrough on and off) and over SSH, and paste what it prints.
-2. **Six DESIGN.md divergences: already written up, confirm or reject** (tickets 04 and 05). The M0 review ruled keep the code, amend the document, so the fix round wrote **ADR-0014** and made the matching DESIGN.md edits — this is now a confirmation, not an open decision. The six: the sanitiser takes all of Unicode `Cf` plus U+2028/2029 rather than §8.2's five ranges; `sanitize_line`/`sanitize_path*` exist and replace `\n`/`\t` where §8.2 assumed widgets would; `Capabilities::detect(…)` is the free function `graft_term::detect::detect(…)` (ADR-0007 bars behaviour in `core`); inside tmux `iterm2_images` is false unless the passthrough re-probe answered; a tmux session with no reachable protocol gets Unicode where §4.2's table said ASCII; and the tmux re-probe gets a full budget of its own, so the worst case is 400 ms local / 1 s SSH. Reject any of them → revert that edit and change the code.
+- Status screen correct: repo, HEAD on `main`.
+- **Pixel tier via the Kitty protocol**, cell size **17x37**.
+- **Dark** theme, taken from the terminal's own background.
+- **Truecolor**.
+- Capability probe answered in **367 µs** — against a 200 ms budget.
+- `q` exits clean.
+
+**ADR-0014 confirmed**: all six DESIGN.md divergences stand. Keep the code,
+the amended DESIGN.md is correct.
+
+**Raised by the user, logged not fixed:** sanitising strips the emoji joiner
+(U+200D), so a multi-part emoji breaks into its pieces in a commit subject.
+Accepted as the right safety trade; in `KNOWN_GAPS.md` as revisit-only-if-it-annoys-him.
+
+Still unseen: emulators other than his daily one, tmux, SSH, and the 16-colour
+and ASCII fallback paths.
+
+---
+
+## How M1 runs (set by the user, 2026-09-12)
+
+**M1 builds straight through. Do not stop for ticket approval.** The 17
+tickets in `.scratch/m1-the-graph/` are approved as drafted — the user did not
+want to review them one by one.
+
+- Build every ticket in dependency order, dispatching per each ticket's
+  `Build with` line (Fable for 05, 06, 07 — the graph-crate algorithm; Opus for
+  the rest).
+- Run `reviewer` on the milestone as usual, and fix what it finds.
+- **Stop only if something Critical survives the review rounds.** Majors and
+  Minors get fixed and the milestone carries on.
+- The M1 checkpoint itself still stands: the user tests `git/git` and the
+  merge-mistake fixtures and judges whether the history shape is obvious at a
+  glance. That is his call, not a reviewer's.
 
 ---
 
