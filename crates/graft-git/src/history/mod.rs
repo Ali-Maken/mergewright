@@ -124,12 +124,7 @@ impl<'a> Walk<'a> {
         tips: &[Oid],
     ) -> Result<Self, WalkError> {
         let repo = handle.gix();
-        let graph = repo
-            .commit_graph_if_enabled()
-            .map_err(|source| WalkError::CommitGraph {
-                source: Box::new(source),
-            })?;
-        let nodes = RepoNodes::new(repo, graph);
+        let nodes = open_nodes(repo)?;
         let commit_graph = nodes.has_commit_graph();
 
         // ADR-0008: without generation numbers the incremental topological
@@ -163,6 +158,37 @@ impl<'a> Walk<'a> {
             sequence,
             requested: order,
             in_force,
+            commit_graph,
+            reads,
+        })
+    }
+
+    /// The topological walk over everything `tips` reaches, whether or not
+    /// there is a commit-graph file.
+    ///
+    /// ADR-0008's background job. Without generation numbers this walk reads
+    /// every commit before it emits the first one, so it is never the walk
+    /// for a first paint — [`from_tips`](Self::from_tips) serves commit date
+    /// for that — but the order it produces is the one the graph is drawn
+    /// in, and the layout promotes to it once it finishes. It reports
+    /// [`Order::Topological`] both as requested and in force, so it is never
+    /// provisional. With a commit-graph file it is exactly the walk
+    /// `from_tips` would build.
+    ///
+    /// # Errors
+    /// [`WalkError`] if a tip cannot be read.
+    pub fn full_topological(handle: &'a RepoHandle, tips: &[Oid]) -> Result<Self, WalkError> {
+        let repo = handle.gix();
+        let nodes = open_nodes(repo)?;
+        let commit_graph = nodes.has_commit_graph();
+        let mut reads = 0;
+        let sequence = Sequence::Topological(Topological::new(&nodes, tips, &mut reads)?);
+        Ok(Walk {
+            nodes,
+            repo,
+            sequence,
+            requested: Order::Topological,
+            in_force: Order::Topological,
             commit_graph,
             reads,
         })
@@ -246,7 +272,7 @@ impl<'a> Walk<'a> {
                 Sequence::Dated(walk) => walk.next(&self.nodes, &mut self.reads)?,
             };
             match next {
-                Some(id) => commits.push(self.hydrate(id)?),
+                Some(id) => commits.push(hydrate(self.repo, id)?),
                 None => {
                     return Ok(Chunk {
                         commits,
@@ -257,40 +283,63 @@ impl<'a> Walk<'a> {
             }
         }
     }
+}
 
-    /// Reads the whole commit object for one emitted id.
-    ///
-    /// Only emitted commits are hydrated. Exploration works on [`node`]s,
-    /// which come out of the commit-graph without touching the object
-    /// database at all when there is one — so the cost of a walk is roughly
-    /// the cost of what it shows, not of what it had to look at.
-    fn hydrate(&self, id: Oid) -> Result<Commit, WalkError> {
-        let commit = node::find_commit(self.repo, id)?;
-        let unreadable = |source: gix::objs::decode::Error| NodeError::Unreadable {
-            id,
+/// Reads one commit whole, by id.
+///
+/// The streaming layout rebuilds evicted rows by re-reading commits it has
+/// already emitted (DESIGN.md §3.6); this is that read. It is the same object
+/// read a walk does for the commits it emits, so a commit read back is
+/// identical to the one the walk produced.
+///
+/// # Errors
+/// [`WalkError`] if the commit cannot be read or decoded.
+pub fn read_commit(handle: &RepoHandle, id: Oid) -> Result<Commit, WalkError> {
+    hydrate(handle.gix(), id)
+}
+
+/// The repository's commits as [`node`]s, through the commit-graph file when
+/// there is one `gix` will use.
+fn open_nodes(repo: &gix::Repository) -> Result<RepoNodes<'_>, WalkError> {
+    let graph = repo
+        .commit_graph_if_enabled()
+        .map_err(|source| WalkError::CommitGraph {
             source: Box::new(source),
-        };
+        })?;
+    Ok(RepoNodes::new(repo, graph))
+}
 
-        let parents = commit
-            .parent_ids()
-            .map(|parent| {
-                Oid::from_bytes(parent.as_bytes())
-                    .map_err(|source| NodeError::Malformed { id, source })
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+/// Reads the whole commit object for one emitted id.
+///
+/// Only emitted commits are hydrated. Exploration works on [`node`]s, which
+/// come out of the commit-graph without touching the object database at all
+/// when there is one — so the cost of a walk is roughly the cost of what it
+/// shows, not of what it had to look at.
+fn hydrate(repo: &gix::Repository, id: Oid) -> Result<Commit, WalkError> {
+    let commit = node::find_commit(repo, id)?;
+    let unreadable = |source: gix::objs::decode::Error| NodeError::Unreadable {
+        id,
+        source: Box::new(source),
+    };
 
-        let author = identity(commit.author().map_err(unreadable)?, id)?;
-        let committer = identity(commit.committer().map_err(unreadable)?, id)?;
-        let message = commit.message_raw().map_err(unreadable)?.to_vec();
-
-        Ok(Commit {
-            id,
-            parents,
-            author,
-            committer,
-            message,
+    let parents = commit
+        .parent_ids()
+        .map(|parent| {
+            Oid::from_bytes(parent.as_bytes()).map_err(|source| NodeError::Malformed { id, source })
         })
-    }
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let author = identity(commit.author().map_err(unreadable)?, id)?;
+    let committer = identity(commit.committer().map_err(unreadable)?, id)?;
+    let message = commit.message_raw().map_err(unreadable)?.to_vec();
+
+    Ok(Commit {
+        id,
+        parents,
+        author,
+        committer,
+        message,
+    })
 }
 
 /// How many merges lie on a commit's first-parent chain.
@@ -305,13 +354,7 @@ impl<'a> Walk<'a> {
 /// # Errors
 /// [`WalkError`] if a commit on the chain cannot be read.
 pub fn first_parent_merges(handle: &RepoHandle, tip: Oid) -> Result<usize, WalkError> {
-    let repo = handle.gix();
-    let graph = repo
-        .commit_graph_if_enabled()
-        .map_err(|source| WalkError::CommitGraph {
-            source: Box::new(source),
-        })?;
-    let nodes = RepoNodes::new(repo, graph);
+    let nodes = open_nodes(handle.gix())?;
 
     let mut merges = 0;
     let mut seen = std::collections::HashSet::new();

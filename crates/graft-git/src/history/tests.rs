@@ -19,7 +19,7 @@ use graft_fixtures::Shape;
 use super::node::{MapNodes, Node, Nodes};
 use super::simple::{Dated, Follow};
 use super::topological::Topological;
-use super::{CHUNK, Chunk, Order, Walk};
+use super::{CHUNK, Chunk, Order, Walk, WalkError, read_commit};
 use crate::repo::SharedRepo;
 
 /// Nothing asks these walks to stop.
@@ -232,6 +232,73 @@ fn asking_for_date_order_is_never_provisional() {
 
     assert!(!walk.has_commit_graph());
     assert!(!walk.is_provisional(), "date order is what was asked for");
+}
+
+#[test]
+fn the_full_topological_walk_needs_no_commit_graph_file_and_is_never_provisional() {
+    // ADR-0008's background job, on the corpus (which never has one).
+    let path = graft_fixtures::borrow(Shape::CrissCrossMerge);
+    let shared = SharedRepo::open(&path).expect("the fixture opens");
+    let handle = shared.handle();
+    let tips = handle
+        .commit_tips()
+        .expect("the fixture's refs can be read");
+    let mut walk = Walk::full_topological(&handle, &tips).expect("the walk starts");
+
+    assert!(!walk.has_commit_graph());
+    assert_eq!(walk.requested_order(), Order::Topological);
+    assert_eq!(walk.order_in_force(), Order::Topological);
+    assert!(!walk.is_provisional());
+    // Strictly increasing fixture timestamps make date order a topological
+    // order too, so git's date order is the oracle here as it is above.
+    assert_eq!(all(&mut walk), rev_list(&path, &["--date-order", "--all"]));
+}
+
+#[test]
+fn the_full_topological_walk_reads_the_whole_range_before_it_emits() {
+    // The price of ADR-0008's background job, stated: without generation
+    // numbers the first commit out costs one read per commit in the range.
+    let path = graft_fixtures::borrow(Shape::Linear);
+    let shared = SharedRepo::open(&path).expect("the fixture opens");
+    let handle = shared.handle();
+    let tips = handle
+        .commit_tips()
+        .expect("the fixture's refs can be read");
+    let mut walk = Walk::full_topological(&handle, &tips).expect("the walk starts");
+
+    let first = walk.next_chunk(1, &never).expect("commits can be read");
+    assert_eq!(first.commits.len(), 1);
+    assert_eq!(walk.explorations(), 200);
+    assert_eq!(all(&mut walk).len(), 199);
+    assert_eq!(walk.explorations(), 200, "and no more than that");
+}
+
+#[test]
+fn read_commit_returns_exactly_what_the_walk_emitted() {
+    let path = graft_fixtures::borrow(Shape::CrissCrossMerge);
+    let shared = SharedRepo::open(&path).expect("the fixture opens");
+    let handle = shared.handle();
+    let mut walk = Walk::all_refs(&handle, Order::CommitDate).expect("the walk starts");
+
+    let chunk = walk.next_chunk(CHUNK, &never).expect("commits can be read");
+    assert!(chunk.done, "the fixture fits in one chunk");
+    for emitted in &chunk.commits {
+        let read = read_commit(&handle, emitted.id).expect("an emitted commit reads back");
+        assert_eq!(&read, emitted);
+    }
+}
+
+#[test]
+fn reading_a_commit_the_repository_does_not_have_is_an_error() {
+    let path = graft_fixtures::borrow(Shape::Trivial);
+    let shared = SharedRepo::open(&path).expect("the fixture opens");
+    let handle = shared.handle();
+
+    let missing = read_commit(&handle, oid(0xab));
+    assert!(
+        matches!(missing, Err(WalkError::Commit(_))),
+        "an absent object must be reported as one, got {missing:?}"
+    );
 }
 
 #[test]

@@ -4,3 +4,4 @@
 //! gets a module here, not a new `tests/*.rs`.
 
 mod corpus;
+mod streaming;

@@ -33,16 +33,22 @@ const REMOTES: &[u8] = b"refs/remotes/";
 
 #[test]
 fn every_shape_lays_out_as_snapshotted() {
+    for_each_shape(|shape, dir| {
+        let text = picture(shape, dir);
+        insta::assert_snapshot!(shape.name(), text);
+    });
+}
+
+/// Calls `visit` on every corpus shape this machine can hold.
+///
+/// The one shape a machine may legitimately not be able to hold is the
+/// non-UTF-8 ref name (a ref name is a file name, and APFS insists on
+/// UTF-8). A skip must say so, never pass quietly.
+pub(super) fn for_each_shape(mut visit: impl FnMut(Shape, &Path)) {
     for &shape in Shape::ALL {
         match graft_fixtures::try_borrow(shape) {
-            Ok(dir) => {
-                let text = picture(shape, &dir);
-                insta::assert_snapshot!(shape.name(), text);
-            }
+            Ok(dir) => visit(shape, &dir),
             Err(why) => {
-                // The one shape a machine may legitimately not be able to
-                // hold (a ref name is a file name, and APFS insists on
-                // UTF-8). A skip must say so, never pass quietly.
                 let reason = why.to_string();
                 assert!(
                     reason.contains("not valid UTF-8"),
@@ -52,6 +58,19 @@ fn every_shape_lays_out_as_snapshotted() {
             }
         }
     }
+}
+
+/// Opens a fixture and builds the seeds the app would from its refs.
+pub(super) fn open_with_seeds(shape: Shape, dir: &Path) -> (RepoHandle, Seeds) {
+    let handle = RepoHandle::open(dir)
+        .unwrap_or_else(|why| panic!("opening the {shape} fixture at {}: {why}", dir.display()));
+    let refs = handle
+        .references()
+        .unwrap_or_else(|why| panic!("reading the refs of the {shape} fixture: {why}"));
+    let branches = Branches::resolve(&handle, None)
+        .unwrap_or_else(|why| panic!("resolving the branches of the {shape} fixture: {why}"));
+    let seeds = seeds_for(&refs, &branches);
+    (handle, seeds)
 }
 
 /// Reads one shape, lays it out, and draws it.
@@ -112,10 +131,10 @@ fn picture(shape: Shape, dir: &Path) -> String {
 }
 
 /// What the walk reported about itself.
-struct Walked {
+pub(super) struct Walked {
     requested: Order,
     in_force: Order,
-    provisional: bool,
+    pub(super) provisional: bool,
 }
 
 /// Every commit the refs reach, in the order the graph is drawn in.
@@ -126,7 +145,7 @@ struct Walked {
 /// topological order — its timestamps strictly increase — so the layout
 /// never meets a parent before its child here. Should a shape ever change
 /// that, the snapshot will show the lane closing early rather than hide it.
-fn walk_everything(handle: &RepoHandle, shape: Shape) -> (Vec<Commit>, Walked) {
+pub(super) fn walk_everything(handle: &RepoHandle, shape: Shape) -> (Vec<Commit>, Walked) {
     let mut walk = Walk::all_refs(handle, Order::Topological)
         .unwrap_or_else(|why| panic!("starting the walk of the {shape} fixture: {why}"));
     let mut commits = Vec::new();
