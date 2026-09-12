@@ -204,15 +204,17 @@ fn parse_version(stdout: &str) -> Result<GitVersion, VersionError> {
 }
 
 /// Why the system git's version could not be established.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum VersionError {
     /// `git` could not be started — most often, it is not installed — or
     /// could not be waited for once it was.
+    #[error("cannot run git: {source}")]
     Spawn {
         /// What the operating system said.
         source: io::Error,
     },
     /// `git --version` ran and failed.
+    #[error("`git --version` {status}: {stderr}")]
     Failed {
         /// How it exited.
         status: String,
@@ -220,49 +222,28 @@ pub enum VersionError {
         stderr: String,
     },
     /// `git --version` did not finish in time.
+    #[error("`git --version` did not finish within {after:?}{}", unstoppable(.kill.as_ref()))]
     Timeout {
         /// How long it was given.
         after: Duration,
         /// Why the wedged process could not be killed, if it could not be.
+        #[source]
         kill: Option<io::Error>,
     },
     /// `git --version` printed something that is not a version.
+    #[error("`git --version` printed \"{output}\", not a version")]
     Unrecognised {
         /// What it printed, escaped for display.
         output: String,
     },
 }
 
-impl fmt::Display for VersionError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            VersionError::Spawn { source } => {
-                write!(f, "cannot run git: {source}")
-            }
-            VersionError::Failed { status, stderr } => {
-                write!(f, "`git --version` {status}: {stderr}")
-            }
-            VersionError::Timeout { after, kill } => {
-                write!(f, "`git --version` did not finish within {after:?}")?;
-                match kill {
-                    Some(error) => write!(f, "; it could not be stopped: {error}"),
-                    None => Ok(()),
-                }
-            }
-            VersionError::Unrecognised { output } => {
-                write!(f, "`git --version` printed \"{output}\", not a version")
-            }
-        }
-    }
-}
-
-impl std::error::Error for VersionError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            VersionError::Spawn { source } => Some(source),
-            VersionError::Timeout { kill, .. } => kill.as_ref().map(|error| error as _),
-            VersionError::Failed { .. } | VersionError::Unrecognised { .. } => None,
-        }
+/// The second half of a timeout message, when there is one: a wedged `git`
+/// that could not even be killed is a different situation from one that was.
+fn unstoppable(kill: Option<&io::Error>) -> String {
+    match kill {
+        Some(error) => format!("; it could not be stopped: {error}"),
+        None => String::new(),
     }
 }
 

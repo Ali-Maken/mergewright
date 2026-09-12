@@ -1119,12 +1119,16 @@ dependencies = [
  "serde_json",
  "signal-hook",
  "tempfile",
+ "thiserror",
  "toml",
 ]
 
 [[package]]
 name = "graft-core"
 version = "0.1.0"
+dependencies = [
+ "thiserror",
+]
 
 [[package]]
 name = "graft-git"
@@ -1133,6 +1137,7 @@ dependencies = [
  "gix",
  "graft-core",
  "tempfile",
+ "thiserror",
 ]
 
 [[package]]

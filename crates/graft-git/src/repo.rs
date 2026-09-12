@@ -143,20 +143,23 @@ pub enum HeadState {
 /// everything else: "you are not in a repository" is an ordinary thing for a
 /// person to do and gets an explanation, while an unreadable path or a
 /// repository git refuses is a failure and gets reported as one.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum OpenError {
     /// Neither the path nor any ancestor of it is a repository.
+    #[error("{} is not inside a git repository", path.display())]
     NotARepo {
         /// The path Graft was asked to open.
         path: PathBuf,
     },
     /// The path itself is unusable as a starting point: it does not exist, is
     /// not a directory, or reaches above the root of the filesystem.
+    #[error("{} is not a directory Graft can read", path.display())]
     Inaccessible {
         /// The path Graft was asked to open.
         path: PathBuf,
     },
     /// Something on the way up from the path could not be read.
+    #[error("cannot read {}: {source}", path.display())]
     Io {
         /// The path Graft was asked to open.
         path: PathBuf,
@@ -165,6 +168,7 @@ pub enum OpenError {
     },
     /// A repository was found, but git itself could not use it — a broken
     /// config file, an unsupported repository format.
+    #[error("the repository above {} cannot be opened: {source}", path.display())]
     Unusable {
         /// The path Graft was asked to open.
         path: PathBuf,
@@ -219,43 +223,11 @@ impl OpenError {
     }
 }
 
-impl fmt::Display for OpenError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            OpenError::NotARepo { path } => {
-                write!(f, "{} is not inside a git repository", path.display())
-            }
-            OpenError::Inaccessible { path } => {
-                write!(f, "{} is not a directory Graft can read", path.display())
-            }
-            OpenError::Io { path, source } => {
-                write!(f, "cannot read {}: {source}", path.display())
-            }
-            OpenError::Unusable { path, source } => {
-                write!(
-                    f,
-                    "the repository above {} cannot be opened: {source}",
-                    path.display()
-                )
-            }
-        }
-    }
-}
-
-impl std::error::Error for OpenError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            OpenError::NotARepo { .. } | OpenError::Inaccessible { .. } => None,
-            OpenError::Io { source, .. } => Some(source),
-            OpenError::Unusable { source, .. } => Some(source.as_ref()),
-        }
-    }
-}
-
 /// Why `HEAD` could not be read.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum HeadError {
     /// `HEAD` itself could not be read.
+    #[error("cannot read HEAD in {}: {source}", git_dir.display())]
     Read {
         /// The repository whose `HEAD` was being read.
         git_dir: PathBuf,
@@ -264,34 +236,13 @@ pub enum HeadError {
     },
     /// `HEAD` was read, but names something git's own rules reject: a ref name
     /// with a control character in it, or an object id of the wrong length.
+    #[error("HEAD in {} is malformed: {source}", git_dir.display())]
     Malformed {
         /// The repository whose `HEAD` was being read.
         git_dir: PathBuf,
         /// Which invariant the value broke.
         source: graft_core::error::Error,
     },
-}
-
-impl fmt::Display for HeadError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            HeadError::Read { git_dir, source } => {
-                write!(f, "cannot read HEAD in {}: {source}", git_dir.display())
-            }
-            HeadError::Malformed { git_dir, source } => {
-                write!(f, "HEAD in {} is malformed: {source}", git_dir.display())
-            }
-        }
-    }
-}
-
-impl std::error::Error for HeadError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            HeadError::Read { source, .. } => Some(source.as_ref()),
-            HeadError::Malformed { source, .. } => Some(source),
-        }
-    }
 }
 
 #[cfg(test)]

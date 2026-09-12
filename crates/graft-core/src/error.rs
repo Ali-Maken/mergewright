@@ -10,19 +10,24 @@
 use std::fmt;
 
 /// A value offered to a `core` constructor that the type cannot represent.
-#[derive(Clone, Debug, PartialEq, Eq)]
+// `thiserror::Error` spelled out: this crate's own error type is called
+// `Error` too, and importing the derive would shadow it.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum Error {
     /// An object id was not one of git's two hash sizes.
+    #[error("a git object id is 20 bytes (SHA-1) or 32 (SHA-256), not {len}")]
     OidLength {
         /// How many bytes were offered.
         len: usize,
     },
     /// An object id's hex text was not `2 × hash size` hex digits.
+    #[error("not a git object id in hex: \"{text}\"")]
     OidHex {
         /// The offered text, escaped for display.
         text: String,
     },
     /// A ref name git's own `check-ref-format` rules reject.
+    #[error("not a valid git ref name: \"{name}\" ({reason})")]
     RefName {
         /// The offered name, escaped for display.
         name: String,
@@ -53,23 +58,8 @@ pub enum RefNameRule {
     TrailingDot,
 }
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Error::OidLength { len } => write!(
-                f,
-                "a git object id is 20 bytes (SHA-1) or 32 (SHA-256), not {len}"
-            ),
-            Error::OidHex { text } => {
-                write!(f, "not a git object id in hex: \"{text}\"")
-            }
-            Error::RefName { name, reason } => {
-                write!(f, "not a valid git ref name: \"{name}\" ({reason})")
-            }
-        }
-    }
-}
-
+/// Not an error type of its own — it is the parenthesis in [`Error::RefName`]'s
+/// message — so this stays a plain `Display`, hand-written like any other.
 impl fmt::Display for RefNameRule {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let reason = match self {
@@ -85,5 +75,3 @@ impl fmt::Display for RefNameRule {
         f.write_str(reason)
     }
 }
-
-impl std::error::Error for Error {}

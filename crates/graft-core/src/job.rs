@@ -68,6 +68,10 @@ pub enum JobFailure {
 
 /// Reads as a status line: `not a git repository`, or
 /// `panicked: index out of bounds — report: /…/crash-20260912-124000.log`.
+///
+/// Hand-written rather than derived: a job failure is a value that travels
+/// through an event, never a `Result`'s error, so it is not an
+/// `std::error::Error` and `thiserror` would make it one.
 impl fmt::Display for JobFailure {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

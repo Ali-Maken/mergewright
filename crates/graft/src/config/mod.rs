@@ -199,6 +199,8 @@ pub enum ConfigWarning {
     NoConfigHome,
 }
 
+/// A warning is not a failure — nothing was prevented, and nobody can `?` on
+/// one — so this is a plain `Display` rather than a `thiserror` error type.
 impl fmt::Display for ConfigWarning {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -218,11 +220,12 @@ impl fmt::Display for ConfigWarning {
 /// Both variants are fatal by design: the caller prints this and exits before
 /// the terminal session starts, so there is no half-initialised terminal to
 /// restore (ticket 11).
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
     /// The file exists but could not be read — permissions, a directory in its
     /// place, an I/O failure. A missing file is not an error and never reaches
     /// here.
+    #[error("couldn't read the config file {}: {source}", path.display())]
     Read {
         /// The file Graft tried to read.
         path: PathBuf,
@@ -231,41 +234,16 @@ pub enum ConfigError {
     },
     /// The file is not valid TOML, or a value is not one of the spellings its
     /// key accepts.
+    // toml's own `Display` is the good part here: it quotes the offending
+    // line, points at the column and says what it expected. It ends in a
+    // newline, which a one-line error message shouldn't.
+    #[error("{}:\n{}", path.display(), source.to_string().trim_end())]
     Parse {
         /// The file that would not parse.
         path: PathBuf,
         /// Where it went wrong, with the line and column toml reported.
         source: toml::de::Error,
     },
-}
-
-impl fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ConfigError::Read { path, source } => {
-                write!(
-                    f,
-                    "couldn't read the config file {}: {source}",
-                    path.display()
-                )
-            }
-            // toml's own `Display` is the good part here: it quotes the
-            // offending line, points at the column and says what it expected.
-            // It ends in a newline, which a one-line error message shouldn't.
-            ConfigError::Parse { path, source } => {
-                write!(f, "{}:\n{}", path.display(), source.to_string().trim_end())
-            }
-        }
-    }
-}
-
-impl std::error::Error for ConfigError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            ConfigError::Read { source, .. } => Some(source),
-            ConfigError::Parse { source, .. } => Some(source),
-        }
-    }
 }
 
 /// Load the user's config from the standard path.

@@ -24,6 +24,7 @@ graft-graph.workspace = true
 graft-ops.workspace = true
 graft-term.workspace = true
 graft-ui.workspace = true
+thiserror.workspace = true
 # The drawing half of the loop (PROMPT.md Technology). Defaults off because
 # they pull `underline-color`, `scrolling-regions` and the palette crates;
 # `std` and the crossterm 0.29 backend are all the view needs, and the backend

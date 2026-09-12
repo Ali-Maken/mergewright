@@ -174,3 +174,29 @@ fn the_real_git_binary_is_run_and_its_output_parsed() {
         "the verdict must follow from the version alone"
     );
 }
+
+#[test]
+fn a_timeout_says_whether_the_wedged_git_could_be_stopped() {
+    // The one message assembled from two pieces. The second clause appears
+    // only when the kill failed, because "it could not be stopped" is a
+    // different situation — something is stuck that Graft cannot clear.
+    let stopped = VersionError::Timeout {
+        after: Duration::from_secs(10),
+        kill: None,
+    };
+    let wedged = VersionError::Timeout {
+        after: Duration::from_secs(10),
+        kill: Some(io::Error::from(io::ErrorKind::PermissionDenied)),
+    };
+
+    assert_eq!(
+        stopped.to_string(),
+        "`git --version` did not finish within 10s"
+    );
+    assert!(
+        wedged
+            .to_string()
+            .starts_with("`git --version` did not finish within 10s; it could not be stopped: "),
+        "{wedged}"
+    );
+}

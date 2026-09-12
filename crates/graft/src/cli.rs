@@ -7,7 +7,6 @@
 
 use std::env;
 use std::ffi::OsString;
-use std::fmt;
 use std::io;
 use std::path::PathBuf;
 
@@ -21,40 +20,19 @@ pub enum Invocation {
 }
 
 /// What the arguments could not be made sense of.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum CliError {
     /// A flag Graft has never heard of. Not ignored: a user who types
     /// `--themes dark` deserves to be told, not to get the default silently.
+    #[error("unknown option `{0}`\n\n{USAGE}")]
     UnknownOption(String),
     /// More than one path. Graft opens one repository.
+    #[error("Graft opens one repository\n\n{USAGE}")]
     TooManyPaths,
     /// No path was given and the current directory could not be read — it has
     /// been deleted, or its permissions changed, under the running shell.
-    NoWorkingDirectory(io::Error),
-}
-
-impl fmt::Display for CliError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            CliError::UnknownOption(option) => {
-                write!(f, "unknown option `{option}`\n\n{USAGE}")
-            }
-            CliError::TooManyPaths => write!(f, "Graft opens one repository\n\n{USAGE}"),
-            CliError::NoWorkingDirectory(error) => write!(
-                f,
-                "cannot tell which directory Graft was started in: {error}"
-            ),
-        }
-    }
-}
-
-impl std::error::Error for CliError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            CliError::NoWorkingDirectory(error) => Some(error),
-            CliError::UnknownOption(_) | CliError::TooManyPaths => None,
-        }
-    }
+    #[error("cannot tell which directory Graft was started in: {0}")]
+    NoWorkingDirectory(#[source] io::Error),
 }
 
 /// What `--help` prints.

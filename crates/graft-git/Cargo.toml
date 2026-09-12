@@ -19,6 +19,7 @@ gix = { version = "0.87.1", default-features = false, features = [
     "sha256",
 ] }
 graft-core.workspace = true
+thiserror.workspace = true
 
 [lints]
 workspace = true

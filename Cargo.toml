@@ -17,6 +17,11 @@ graft-ops = { path = "crates/graft-ops" }
 graft-term = { path = "crates/graft-term" }
 graft-ui = { path = "crates/graft-ui" }
 
+# Error types are declarations, not `Display` implementations to be
+# hand-written and kept in step (PROMPT.md 6.2). Only the crates that define
+# an error type depend on it.
+thiserror = "2.0.20"
+
 # PROMPT.md 6.2's "enforced, not hoped for": every rule that a lint can check
 # is a lint, so the gate catches it instead of a reviewer. Each crate root
 # also carries `#![forbid(unsafe_code)]` — `graft-term` is the one exception
