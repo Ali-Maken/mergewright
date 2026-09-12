@@ -47,22 +47,29 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 1. **Tickets:** splits the milestone into small tickets with `/to-tickets`. You approve them at the checkpoint before the milestone starts.
 2. **Build:** each ticket goes to a fresh builder on the model below, which builds it test-first, reviews it and commits.
 3. **Stuck:** if a ticket fails twice, `debugger` (Fable) finds the root cause.
-4. **Review:** `reviewer` (Fable) checks the whole milestone and builders fix what it finds (at most 2 rounds).
+4. **Review:** `reviewer` checks the whole milestone and builders fix what it finds (at most 2 rounds). Opus, except M1, M3 and M5, which review on Fable.
 5. **CHECKPOINT:** you test the milestone, approve the next milestone's tickets and type `continue`.
 
-| ✓ | Milestone | Build with | CHECKPOINT: what you test |
-|---|---|---|---|
-| [ ] | M0 Foundations | Sonnet | Opens a repo; quitting leaves the terminal clean |
-| [ ] | **M1 The graph** | **Fable** | `git/git` and the merge-mistake fixtures: is the history shape obvious at a glance? |
-| [ ] | M2 Details and diffs | Sonnet (Opus for Mistake Radar) | Diffs look right; bad merges get flagged |
-| [ ] | M3 Working tree, undo and stash | Sonnet (Opus for undo) | Stage a hunk, commit, undo it, stash and unstash, then try to lose work |
-| [ ] | M4 Remotes | Sonnet | Fetch, pull and push on a real remote; wrong password |
-| [ ] | M5 Merge, rebase, reset, Ghost Preview | Fable | Every history change is previewed and can be undone |
-| [ ] | M6 Conflict resolver | Opus | Resolve a real conflict; kill mid-rebase, relaunch |
-| [ ] | M7 Power tools | Sonnet (Opus for interactive rebase) | Interactive rebase, blame, line history, reflog |
-| [ ] | M8 Polish, **final name**, ship | Sonnet | Pick the name (below), then a fresh install and the first-run tour |
+| ✓ | Milestone | Build with | Review | CHECKPOINT: what you test |
+|---|---|---|---|---|
+| [ ] | M0 Foundations | Opus | Opus | Opens a repo; quitting leaves the terminal clean |
+| [ ] | **M1 The graph** | **Fable** for the graph layout engine tickets, **Opus** for the rest | Fable | `git/git` and the merge-mistake fixtures: is the history shape obvious at a glance? |
+| [ ] | M2 Details and diffs | Opus | Opus | Diffs look right; bad merges get flagged |
+| [ ] | M3 Working tree, undo and stash | Opus (xhigh for undo) | Fable | Stage a hunk, commit, undo it, stash and unstash, then try to lose work |
+| [ ] | M4 Remotes | Opus | Opus | Fetch, pull and push on a real remote; wrong password |
+| [ ] | M5 Merge, rebase, reset, Ghost Preview | Opus | Fable | Every history change is previewed and can be undone |
+| [ ] | M6 Conflict resolver | Opus (xhigh) | Opus | Resolve a real conflict; kill mid-rebase, relaunch |
+| [ ] | M7 Power tools | Opus (xhigh for interactive rebase) | Opus | Interactive rebase, blame, line history, reflog |
+| [ ] | M8 Polish, **final name**, ship | Opus | Opus | Pick the name (below), then a fresh install and the first-run tour |
 
-**Naming (an M8 job for Sonnet):** pick a name in the style of Sublime Merge or Araxis Merge (a naming-pattern reference only: Araxis Merge is a diff/merge tool, not a Git client, and is not prior art for this project), with no "git" in it (Git's trademark policy forbids "git" inside names like "tergit"). Starting shortlist: Tributary (command `trib`) and Thicket passed the clash check on 2026-09-11. Graft is taken.
+**Who builds what.** Cost control, set 2026-09-12:
+- **Fable** only for the M1 graph layout engine tickets, and the `debugger` agent. Nothing else.
+- **Opus** builds everything else, M1's other tickets included.
+- **Sonnet** is no longer used for building.
+- **Reviews** run on Opus, except M1, M3 and M5, which stay Fable.
+- **Effort:** `builder-opus` is `high` by default. The conductor uses `builder-opus-xhigh` only for undo (M3), conflicts (M6), interactive rebase (M7) and the M1 graph layout engine.
+
+**Naming (an M8 job):** pick a name in the style of Sublime Merge or Araxis Merge (a naming-pattern reference only: Araxis Merge is a diff/merge tool, not a Git client, and is not prior art for this project), with no "git" in it (Git's trademark policy forbids "git" inside names like "tergit"). Starting shortlist: Tributary (command `trib`) and Thicket passed the clash check on 2026-09-11. Graft is taken.
 
 **Every 2–3 milestones** (after M2, M5 and M7), the conductor also runs `/improve-codebase-architecture`.
 

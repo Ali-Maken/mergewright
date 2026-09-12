@@ -18,6 +18,11 @@
 ## How work runs
 
 - The user runs `/conduct` in a main session on **Opus**. The conductor hands every piece of work to a fresh helper in `.claude/agents/` and stops at checkpoints.
+- **Who builds what** (cost control, set 2026-09-12). The routing table in PROGRESS.md is authoritative; the rule is:
+  - **Fable** only for the M1 graph layout engine tickets and the `debugger` agent. Nothing else.
+  - **Opus** builds everything else, including M1's other tickets. Sonnet is no longer used for building.
+  - **Reviews** run on Opus, except M1, M3 and M5, which stay Fable.
+  - **Effort:** `builder-opus` is `high`. The conductor dispatches `builder-opus-xhigh` only for undo (M3), conflicts (M6), interactive rebase (M7) and the M1 graph layout engine.
 - **The one exception is step 1** (`/grill-with-docs`), which runs in the main session because it needs the user.
 - Do only the next unchecked step. Never start a new milestone without the user's OK at a checkpoint.
 
