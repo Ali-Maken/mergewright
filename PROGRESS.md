@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M0 Foundations — ticket 11 (12 tickets in `.scratch/m0-foundations/`, approved 2026-09-12)
+**Current step:** M0 Foundations — ticket 12 (12 tickets in `.scratch/m0-foundations/`, approved 2026-09-12)
 
 ---
 
@@ -116,3 +116,4 @@ Decisions and checks waiting on the user. Raise all of these at the M0 checkpoin
 - 2026-09-12 · M0/08 open repo · opus · done · bare/worktree/submodule/detached/unborn/not-a-repo all exercised against real git 2.50.1; non-UTF-8 paths untestable on APFS, gap logged; commit e85ca86
 - 2026-09-12 · M0/09 event loop + signals · opus · done · SIGINT/SIGTERM/SIGHUP each leave termios byte-identical, measured under a pty; ticket 03's signal gap closed. MSRV 1.85->1.88. Real-terminal run still unwitnessed; commit 50c3ecd
 - 2026-09-12 · M0/10 job runner · opus · done · no-sleep deterministic tests, bounded shutdown reports Stalled rather than hanging; Event::JobFailed now carries panic/git detail; commit a423927
+- 2026-09-12 · M0/11 open-repo screen · opus · partial (limit) then done by a fresh opus · all of M0 wired; binary run in a pty: opens repo, q exits 0 clean, non-repo exits 1 clean, NO_COLOR honoured; commit 7bd7ba7
