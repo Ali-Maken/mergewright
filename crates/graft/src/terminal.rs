@@ -128,6 +128,23 @@ impl TerminalSession {
         Ok(session)
     }
 
+    /// Push the kitty keyboard protocol's disambiguation flag now, after the
+    /// session is already open.
+    ///
+    /// Startup cannot decide this up front: whether the terminal supports the
+    /// protocol is something only the capability probe knows, and the probe
+    /// needs raw mode — which means the session has to exist first. The flag
+    /// joins the applied steps, so teardown pops it in the right order like
+    /// any other.
+    ///
+    /// # Errors
+    /// The sequence could not be written to the terminal.
+    pub fn enable_kitty_keyboard(&self) -> io::Result<()> {
+        let mut state = lock(&self.state)?;
+        state.apply(Step::KittyKeyboard)?;
+        state.sink.flush()
+    }
+
     /// A handle that can restore this session from anywhere — specifically
     /// from the panic hook, which runs before `Drop` does.
     pub fn restorer(&self) -> TerminalRestorer {

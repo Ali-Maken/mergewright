@@ -5,4 +5,9 @@
 //! so escape-sequence injection is a compile error rather than a review catch.
 //! Depends on `graph`, `term` and `core`.
 
+pub mod paint;
+pub mod status_screen;
 pub mod theme;
+
+#[cfg(test)]
+mod test_support;

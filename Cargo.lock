@@ -1167,6 +1167,7 @@ dependencies = [
  "graft-graph",
  "graft-term",
  "insta",
+ "ratatui",
 ]
 
 [[package]]

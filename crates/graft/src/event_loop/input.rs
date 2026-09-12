@@ -20,6 +20,7 @@ use crossterm::event::{
 use graft_core::event::{Event, KeyCode, KeyPress, Modifiers, MouseButton, MouseInput, MouseKind};
 
 use super::Wake;
+use crate::update::AppEvent;
 
 /// Read the terminal forever on a thread of its own, sending each event to the
 /// loop.
@@ -40,7 +41,7 @@ fn read_until_done(wakes: &Sender<Wake>) {
             // Events with no meaning to Graft are dropped here rather than
             // waking the loop to do nothing.
             Ok(event) => match translate(event) {
-                Some(event) => Wake::Event(event),
+                Some(event) => Wake::Event(AppEvent::Core(event)),
                 None => continue,
             },
             // A failed read is not survivable — there is no input any more —

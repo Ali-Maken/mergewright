@@ -1,0 +1,14 @@
+---
+source: crates/graft-ui/src/status_screen/tests.rs
+expression: "draw(&view, 72, 10)"
+---
+"Graft                                                                   "
+"                                                                        "
+"Repository  /code/api                                                   "
+"HEAD        main                                                        "
+"Rendering   pixel, set by graph.renderer, cell 8x16 (assumed)           "
+"Theme       high-contrast, set by ui.theme, 256 colours                 "
+"                                                                        "
+"q  quit                                                                 "
+"                                                                        "
+"                                                                        "

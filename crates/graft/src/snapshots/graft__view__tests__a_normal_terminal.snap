@@ -1,8 +1,0 @@
----
-source: crates/graft/src/view.rs
-expression: "draw(&AppState::default(), 40, 4)"
----
-"Graft — press q to quit                 "
-"                                        "
-"                                        "
-"ready                                   "

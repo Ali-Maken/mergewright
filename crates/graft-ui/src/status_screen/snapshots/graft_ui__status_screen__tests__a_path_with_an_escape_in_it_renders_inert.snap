@@ -1,0 +1,14 @@
+---
+source: crates/graft-ui/src/status_screen/tests.rs
+expression: screen
+---
+"Graft                                                       "
+"                                                            "
+"Repository  /tmp/␛]0;pwned␛/api                             "
+"HEAD        main                                            "
+"Rendering   unicode, detected, cell 9x18 (reported)         "
+"Theme       dark, from the terminal background, truecolor   "
+"                                                            "
+"q  quit                                                     "
+"                                                            "
+"                                                            "

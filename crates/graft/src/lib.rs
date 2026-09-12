@@ -8,10 +8,13 @@
 //! tests, and the manual `terminal_probe` example, can drive the same code the
 //! binary runs.
 
+pub mod cli;
 pub mod config;
 pub mod crash;
 pub mod event_loop;
 pub mod jobs;
+pub mod repository;
+pub mod session;
 pub mod terminal;
 pub mod update;
 pub mod view;

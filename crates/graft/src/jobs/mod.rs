@@ -18,6 +18,7 @@
 //! | What happened | What the loop is told |
 //! |---|---|
 //! | The work finished | `Event::JobFinished` |
+//! | The work finished and brought something back | [`AppEvent::Produced`] |
 //! | The work reported an error | `Event::JobFailed` with [`JobFailure::Failed`] |
 //! | The work panicked | `Event::JobFailed` with [`JobFailure::Panicked`] |
 //! | It was cancelled, before or during | `Event::JobCancelled` |
@@ -44,10 +45,10 @@ use std::time::{Duration, Instant};
 
 use graft_core::event::Event;
 use graft_core::job::{JobFailure, JobId};
-use graft_git::repo::RepoHandle;
 
 use crate::crash;
-use crate::update::Command;
+use crate::repository;
+use crate::update::{AppEvent, Command, GitCheck, Product};
 
 #[cfg(test)]
 mod tests;
@@ -72,6 +73,11 @@ pub const SHUTDOWN_GRACE: Duration = Duration::from_millis(200);
 pub enum Outcome {
     /// The work is done.
     Done,
+    /// The work is done and brought something back for the application to
+    /// keep. Distinct from [`Outcome::Done`] only in that there is a value:
+    /// "this path is not a repository" arrives here too, because it is an
+    /// answer to the question that was asked, not a job that broke.
+    Produced(Product),
     /// The work stopped early because its [`Cancel`] token was set.
     Cancelled,
     /// The work could not be completed, and this is what to tell the user.
@@ -125,7 +131,7 @@ impl Cancel {
 /// an `mpsc::Sender` — the real implementation — actually supports.
 pub trait JobEvents: Clone + Send + 'static {
     /// Deliver one job result.
-    fn deliver(&self, event: Event) -> Delivery;
+    fn deliver(&self, event: AppEvent) -> Delivery;
 }
 
 /// What became of a delivered event.
@@ -139,8 +145,8 @@ pub enum Delivery {
     NobodyListening,
 }
 
-impl JobEvents for Sender<Event> {
-    fn deliver(&self, event: Event) -> Delivery {
+impl JobEvents for Sender<AppEvent> {
+    fn deliver(&self, event: AppEvent) -> Delivery {
         match self.send(event) {
             Ok(()) => Delivery::Received,
             Err(_returned) => Delivery::NobodyListening,
@@ -364,10 +370,10 @@ impl<S: JobEvents> JobRunner<S> {
             // for something that is never coming.
             drop(undelivered);
             self.live.finish(id);
-            self.sink.deliver(Event::JobFailed(
+            self.sink.deliver(AppEvent::Core(Event::JobFailed(
                 id,
                 JobFailure::Failed("the job runner has stopped".to_owned()),
-            ));
+            )));
         }
 
         id
@@ -424,6 +430,9 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::OpenRepository(path) => {
                 self.submit(open_repository(path));
             }
+            Command::CheckSystemGit => {
+                self.submit(check_system_git());
+            }
             Command::CancelJob(id) => self.cancel(id),
         }
     }
@@ -439,13 +448,28 @@ fn open_repository(path: PathBuf) -> Work {
         if cancel.is_cancelled() {
             return Outcome::Cancelled;
         }
-        match RepoHandle::open(&path) {
-            // The handle is dropped here: nothing in `AppState` can hold a
-            // repository yet, so all this proves is that the path opens.
-            // Ticket 11 keeps what it opened (KNOWN_GAPS.md).
-            Ok(_repository) => Outcome::Done,
-            Err(error) => Outcome::Failed(error.to_string()),
+        // Whether it opened or not is the answer, and both halves go back the
+        // same way: "not a repository" is what the user asked about.
+        Outcome::Produced(Product::Repository(repository::facts(&path)))
+    })
+}
+
+/// The work behind [`Command::CheckSystemGit`].
+///
+/// Spawns `git --version` and waits for it, which is not something the UI
+/// thread may do — on a cold `PATH` over a network mount it is not instant.
+fn check_system_git() -> Work {
+    Box::new(move |cancel| {
+        if cancel.is_cancelled() {
+            return Outcome::Cancelled;
         }
+        let check = match graft_git::version::system_git() {
+            Ok(found) => GitCheck::Ran(found),
+            // Not a job failure: the job did its work and the answer is "this
+            // machine's git cannot be asked". The user still needs to hear it.
+            Err(error) => GitCheck::Unavailable(error.to_string()),
+        };
+        Outcome::Produced(Product::SystemGit(check))
     })
 }
 
@@ -498,16 +522,16 @@ impl<S: JobEvents> Worker<S> {
 
 /// Run one job and turn whatever happens into the single event it owes the
 /// loop.
-fn run_job(assignment: Assignment) -> Event {
+fn run_job(assignment: Assignment) -> AppEvent {
     let Assignment { id, cancel, work } = assignment;
 
     if cancel.is_cancelled() {
         // Cancelled while it was queued. The work never runs at all.
-        return Event::JobCancelled(id);
+        return AppEvent::Core(Event::JobCancelled(id));
     }
 
     match crash::catching(|| work(&cancel)) {
-        Err(panicked) => Event::JobFailed(
+        Err(panicked) => AppEvent::Core(Event::JobFailed(
             id,
             // A panic is reported even for a cancelled job: cancellation
             // explains a job stopping, never a bug.
@@ -515,12 +539,15 @@ fn run_job(assignment: Assignment) -> Event {
                 message: panicked.message,
                 report: panicked.report,
             },
-        ),
+        )),
         // Whatever it came back with, the application asked for it to stop and
         // is no longer expecting a result. One job, one event.
-        Ok(_) if cancel.is_cancelled() => Event::JobCancelled(id),
-        Ok(Outcome::Done) => Event::JobFinished(id),
-        Ok(Outcome::Cancelled) => Event::JobCancelled(id),
-        Ok(Outcome::Failed(message)) => Event::JobFailed(id, JobFailure::Failed(message)),
+        Ok(_) if cancel.is_cancelled() => AppEvent::Core(Event::JobCancelled(id)),
+        Ok(Outcome::Done) => AppEvent::Core(Event::JobFinished(id)),
+        Ok(Outcome::Produced(product)) => AppEvent::Produced(id, product),
+        Ok(Outcome::Cancelled) => AppEvent::Core(Event::JobCancelled(id)),
+        Ok(Outcome::Failed(message)) => {
+            AppEvent::Core(Event::JobFailed(id, JobFailure::Failed(message)))
+        }
     }
 }

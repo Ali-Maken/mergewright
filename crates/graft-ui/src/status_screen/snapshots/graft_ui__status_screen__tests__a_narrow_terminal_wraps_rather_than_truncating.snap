@@ -1,0 +1,18 @@
+---
+source: crates/graft-ui/src/status_screen/tests.rs
+expression: "draw(&healthy(), 24, 14)"
+---
+"Graft                   "
+"                        "
+"Repository  /code/api   "
+"HEAD        main        "
+"Rendering   unicode,    "
+"detected, cell 9x18     "
+"(reported)              "
+"Theme       dark, from  "
+"the terminal background,"
+"truecolor               "
+"                        "
+"q  quit                 "
+"                        "
+"                        "

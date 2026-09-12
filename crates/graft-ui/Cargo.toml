@@ -10,6 +10,11 @@ publish.workspace = true
 graft-core.workspace = true
 graft-graph.workspace = true
 graft-term.workspace = true
+# The drawing half of the loop (PROMPT.md Technology). No backend feature
+# here: `ui` builds widgets and never owns a terminal, so `std` is all it
+# needs — the backend, and the crossterm version behind it, are `app`'s
+# choice.
+ratatui = { version = "0.30", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 # Snapshot of every resolved token, in every theme, at every colour depth

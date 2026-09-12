@@ -18,16 +18,27 @@ use super::*;
 const PATIENCE: Duration = Duration::from_secs(5);
 
 /// A runner and the events it reports, with no event loop in sight.
-fn runner(workers: usize) -> (JobRunner<Sender<Event>>, Receiver<Event>) {
+fn runner(workers: usize) -> (JobRunner<Sender<AppEvent>>, Receiver<AppEvent>) {
     let (sender, receiver) = mpsc::channel();
     let runner = JobRunner::start(sender, workers).expect("a test machine can start a thread");
     (runner, receiver)
 }
 
-fn next_event(events: &Receiver<Event>) -> Event {
+/// The next thing the runner reported, whatever kind it is.
+fn next_report(events: &Receiver<AppEvent>) -> AppEvent {
     events
         .recv_timeout(PATIENCE)
         .expect("a job must always report what became of it")
+}
+
+/// The next report, which these tests expect to be a plain lifecycle event.
+/// A job that brought a value back is a different shape and a test that wants
+/// one says so by calling [`next_report`].
+fn next_event(events: &Receiver<AppEvent>) -> Event {
+    match next_report(events) {
+        AppEvent::Core(event) => event,
+        other => panic!("expected a lifecycle event, got {other:?}"),
+    }
 }
 
 #[test]
@@ -295,17 +306,17 @@ fn shutting_down_an_idle_pool_is_clean() {
 /// to a run rather than a failure to report.
 #[test]
 fn a_result_with_nobody_listening_is_not_an_error() {
-    let (sender, receiver) = mpsc::channel::<Event>();
+    let (sender, receiver) = mpsc::channel::<AppEvent>();
     drop(receiver);
 
-    let delivery = sender.deliver(Event::JobFinished(JobId::new(1)));
+    let delivery = sender.deliver(AppEvent::Core(Event::JobFinished(JobId::new(1))));
 
     assert_eq!(delivery, Delivery::NobodyListening);
 }
 
 #[test]
 fn a_pool_whose_events_go_nowhere_still_shuts_down() {
-    let (sender, receiver) = mpsc::channel::<Event>();
+    let (sender, receiver) = mpsc::channel::<AppEvent>();
     let runner = JobRunner::start(sender, 2).expect("a test machine can start a thread");
     drop(receiver);
 
@@ -327,15 +338,16 @@ fn the_pool_is_never_empty_and_never_larger_than_the_cap() {
 
 #[test]
 fn the_default_pool_fits_a_laptop() {
-    let (sender, _events) = mpsc::channel::<Event>();
+    let (sender, _events) = mpsc::channel::<AppEvent>();
     let runner = JobRunner::with_default_size(sender).expect("a test machine can start a thread");
 
     assert!((1..=MAX_WORKERS).contains(&runner.worker_count()));
     assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
 }
 
-/// The command that proves the pipeline: a real repository opens, and a
-/// directory that is not one says so rather than failing silently.
+/// The command that proves the pipeline: a real repository opens and brings its
+/// facts back, and a directory that is not one comes back as an answer — a
+/// `Product` carrying the reason — rather than as a broken job.
 #[test]
 fn opening_a_repository_reports_what_it_found() {
     let (runner, events) = runner(1);
@@ -344,16 +356,41 @@ fn opening_a_repository_reports_what_it_found() {
     runner.dispatch(Command::OpenRepository(PathBuf::from(env!(
         "CARGO_MANIFEST_DIR"
     ))));
-    assert!(matches!(next_event(&events), Event::JobFinished(_)));
+    match next_report(&events) {
+        AppEvent::Produced(_, Product::Repository(Ok(facts))) => {
+            assert!(!facts.bare, "this repository has a working tree");
+        }
+        other => panic!("expected an open repository, got {other:?}"),
+    }
 
     runner.dispatch(Command::OpenRepository(
         not_a_repository.path().to_path_buf(),
     ));
-    match next_event(&events) {
-        Event::JobFailed(_, JobFailure::Failed(message)) => {
-            assert!(!message.is_empty(), "a failure must say what went wrong");
+    match next_report(&events) {
+        AppEvent::Produced(_, Product::Repository(Err(message))) => {
+            assert!(!message.is_empty(), "a refusal must say why");
         }
-        other => panic!("expected a failure, got {other:?}"),
+        other => panic!("expected a refusal, got {other:?}"),
+    }
+    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+}
+
+/// The other startup command. Whether git is there or not is an answer, and
+/// either way the job succeeds and the application is told.
+#[test]
+fn checking_the_system_git_reports_either_way() {
+    let (runner, events) = runner(1);
+
+    runner.dispatch(Command::CheckSystemGit);
+
+    match next_report(&events) {
+        AppEvent::Produced(_, Product::SystemGit(check)) => match check {
+            GitCheck::Ran(_) => {}
+            GitCheck::Unavailable(why) => {
+                assert!(!why.is_empty(), "a missing git must say why");
+            }
+        },
+        other => panic!("expected a git check, got {other:?}"),
     }
     assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
 }

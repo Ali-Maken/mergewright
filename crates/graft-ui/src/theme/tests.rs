@@ -7,12 +7,9 @@
 //! drops a lane pair below the distinguishable line, or a "nicer" muted grey
 //! that falls under the contrast floor, would otherwise ship looking fine.
 
-use std::time::Duration;
+use graft_core::capabilities::{ColorDepth, Rgb, Theme as TerminalTheme, ThemeHint, ThemeSource};
 
-use graft_core::capabilities::{
-    Capabilities, CellSize, CellSizeSource, ColorDepth, ProbeOutcome, RenderingTier, Rgb,
-    Supported, Theme as TerminalTheme, ThemeHint, ThemeSource, TmuxStatus,
-};
+use crate::test_support::terminal;
 
 use super::depth::{Oklab, linearize, nearest_16, nearest_256, oklab, oklab_from_linear};
 use super::lanes::LANE_HUES;
@@ -22,36 +19,6 @@ const EVERY_THEME: [ThemeKind; 3] = [ThemeKind::Dark, ThemeKind::Light, ThemeKin
 
 fn rgb(red: u8, green: u8, blue: u8) -> Rgb {
     Rgb { red, green, blue }
-}
-
-/// A terminal with the given colour depth and `NO_COLOR` setting. Every other
-/// field is irrelevant to this module and is filled with something inert.
-fn terminal(color_depth: ColorDepth, no_color: bool) -> Capabilities {
-    Capabilities {
-        tier: RenderingTier::Unicode,
-        pixel_protocol: None,
-        kitty_graphics: Supported::No,
-        sixel: Supported::No,
-        iterm2_images: false,
-        kitty_keyboard: Supported::No,
-        synchronized_output: Supported::No,
-        cell_size: CellSize {
-            width: 8,
-            height: 16,
-            source: CellSizeSource::Assumed,
-        },
-        theme: ThemeHint {
-            theme: TerminalTheme::Dark,
-            source: ThemeSource::Assumed,
-        },
-        color_depth,
-        no_color,
-        is_tty: true,
-        over_ssh: false,
-        tmux: TmuxStatus::Outside,
-        probe: ProbeOutcome::Answered,
-        probe_budget: Duration::from_millis(250),
-    }
 }
 
 // ---------------------------------------------------------------- tokens

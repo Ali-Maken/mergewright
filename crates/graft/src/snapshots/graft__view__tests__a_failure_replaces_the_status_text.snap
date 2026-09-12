@@ -1,8 +1,0 @@
----
-source: crates/graft/src/view.rs
-expression: "draw(&state, 40, 4)"
----
-"Graft — press q to quit                 "
-"                                        "
-"                                        "
-"job 3 failed: no such ref               "

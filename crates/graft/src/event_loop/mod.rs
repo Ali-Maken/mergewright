@@ -10,23 +10,27 @@
 //! because nothing polls and nothing ticks.
 //!
 //! [`run`] is the whole application: it sets up the terminal, installs the
-//! panic hook, starts the input and signal threads, and hands control to
-//! [`pump`], which is the part that can be tested without a terminal at all.
+//! panic hook, asks the terminal what it can do, starts the input and signal
+//! threads, and hands control to [`pump`], which is the part that can be
+//! tested without a terminal at all.
 
 pub mod input;
 pub mod signals;
 
-use std::env;
 use std::io::{self, Write};
+use std::path::Path;
 use std::sync::mpsc::{self, Receiver, Sender};
 
+use graft_core::capabilities::Supported;
+use graft_term::detect::{self, TtyHost};
 use ratatui::Terminal;
 use ratatui::backend::{Backend, CrosstermBackend};
 
 use crate::crash;
 use crate::jobs::{self, Delivery, Dispatch, JobEvents, JobRunner, Shutdown};
+use crate::session::{Session, Startup};
 use crate::terminal::{SessionOptions, TerminalSession};
-use crate::update::{AppState, Command, Status, update};
+use crate::update::{AppEvent, AppState, Command, Quit, update};
 use crate::view::view;
 
 /// Begin a synchronized update: the terminal buffers what follows and paints
@@ -37,20 +41,25 @@ const BEGIN_SYNCHRONIZED_UPDATE: &[u8] = b"\x1b[?2026h";
 const END_SYNCHRONIZED_UPDATE: &[u8] = b"\x1b[?2026l";
 
 /// Why the loop stopped.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Exit {
     /// The user asked to leave.
     Quit,
     /// This signal arrived. The caller re-raises it once the terminal is back,
     /// so the process dies the way it was told to.
     Signal(i32),
+    /// Graft could not go on, and this is the reason to print. Carried out of
+    /// the loop rather than printed inside it: a message written into the
+    /// alternate screen disappears with the alternate screen, which is how a
+    /// program comes to "exit without saying anything".
+    Fatal(String),
 }
 
 /// Something that wakes the loop.
 #[derive(Debug)]
 pub enum Wake {
-    /// The user did something.
-    Event(graft_core::event::Event),
+    /// The user did something, or a job came back with something.
+    Event(AppEvent),
     /// A signal arrived and Graft should stop. Carries the signal number so
     /// the exit status can be honest about which one it was.
     Shutdown(i32),
@@ -86,7 +95,7 @@ impl ChannelWakes {
 /// A job's result is a wake like any other: the loop reads it from the same
 /// channel as the keyboard, in the order it arrived.
 impl JobEvents for Sender<Wake> {
-    fn deliver(&self, event: graft_core::event::Event) -> Delivery {
+    fn deliver(&self, event: AppEvent) -> Delivery {
         match self.send(Wake::Event(event)) {
             Ok(()) => Delivery::Received,
             Err(_returned) => Delivery::NobodyListening,
@@ -108,17 +117,30 @@ impl Wakes for ChannelWakes {
 /// The terminal is set up before the loop and restored after it, in that
 /// order, whatever happens in between — including a panic, which the hook
 /// handles first (`crate::crash`).
-pub fn run(options: SessionOptions) -> io::Result<Exit> {
-    let session = TerminalSession::on_stdout(options)?;
+pub fn run(startup: Startup) -> io::Result<Exit> {
+    // Kitty keyboard is deliberately off here and pushed below instead:
+    // whether the terminal speaks the protocol is something only the probe
+    // knows, and the probe needs the raw mode this session turns on.
+    let session = TerminalSession::on_stdout(SessionOptions::default())?;
     crash::install(session.restorer());
+
+    // Before the input thread exists, and never at the same time as it: the
+    // probe writes queries to the terminal and reads the replies off stdin,
+    // and a reader running alongside it would eat them.
+    let capabilities = detect::detect(&detect::Environment::from_process(), &mut TtyHost::new());
+    if capabilities.kitty_keyboard == Supported::Yes {
+        session.enable_kitty_keyboard()?;
+    }
+    let settled = Session::settle(&startup.config, capabilities);
 
     let (mut wakes, sender) = ChannelWakes::new();
     let signals = signals::watch(sender.clone())?;
     let jobs = JobRunner::with_default_size(sender.clone())?;
     input::spawn_reader(sender)?;
 
+    let state = opening_repository(&jobs, &startup.repo_path);
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
-    let outcome = pump(&mut terminal, &mut wakes, &jobs, opening_repository(&jobs));
+    let outcome = pump(&mut terminal, &mut wakes, &jobs, &settled, state);
     // Dropped before the restore so that its own teardown (it shows the cursor
     // it hid) goes out while the session is still in charge of the terminal.
     drop(terminal);
@@ -156,29 +178,17 @@ pub fn run(options: SessionOptions) -> io::Result<Exit> {
     }
 }
 
-/// The state Graft starts in, with the first job already on its way.
+/// The state Graft starts in, with the first two jobs already on their way.
 ///
-/// Graft is started inside the repository it is meant to show, so the first
-/// thing it does is open it — as a job, because opening a repository reads the
-/// disk and the first frame must not wait for that.
-fn opening_repository(jobs: &impl Dispatch) -> AppState {
-    match env::current_dir() {
-        Ok(directory) => {
-            jobs.dispatch(Command::OpenRepository(directory.clone()));
-            AppState {
-                repo_path: directory,
-                ..AppState::default()
-            }
-        }
-        // A deleted or unreadable working directory. There is no repository to
-        // open and no path to show, and saying nothing would leave an empty
-        // screen with no explanation.
-        Err(error) => AppState {
-            status: Status::Failed(format!(
-                "cannot tell which directory Graft was started in: {error}"
-            )),
-            ..AppState::default()
-        },
+/// Both read the world — one opens the repository, one runs `git --version` —
+/// so both are jobs: the first frame is drawn while they are still running,
+/// and says so, rather than waiting on the disk.
+fn opening_repository(jobs: &impl Dispatch, repo_path: &Path) -> AppState {
+    jobs.dispatch(Command::OpenRepository(repo_path.to_path_buf()));
+    jobs.dispatch(Command::CheckSystemGit);
+    AppState {
+        repo_path: repo_path.to_path_buf(),
+        ..AppState::default()
     }
 }
 
@@ -213,6 +223,7 @@ pub fn pump<B, W, D>(
     terminal: &mut Terminal<B>,
     wakes: &mut W,
     jobs: &D,
+    session: &Session,
     mut state: AppState,
 ) -> io::Result<Exit>
 where
@@ -222,7 +233,7 @@ where
 {
     // Draw before waiting: the first frame must be on screen while Graft sits
     // idle waiting for the user's first key.
-    draw(terminal, &state)?;
+    draw(terminal, session, &state)?;
 
     loop {
         let Some(wake) = wakes.next_wake() else {
@@ -249,11 +260,14 @@ where
             jobs.dispatch(command);
         }
 
-        if state.should_quit {
-            return Ok(Exit::Quit);
+        match &state.quit {
+            Some(Quit::Requested) => return Ok(Exit::Quit),
+            // Reported by the caller, once the terminal is the user's again.
+            Some(Quit::Fatal(reason)) => return Ok(Exit::Fatal(reason.clone())),
+            None => {}
         }
 
-        draw(terminal, &state)?;
+        draw(terminal, session, &state)?;
     }
 }
 
@@ -263,7 +277,7 @@ where
 /// that does not understand DEC 2026 ignores the sequence, and probing for it
 /// would cost a round-trip on every frame to learn something that changes
 /// nothing.
-fn draw<B>(terminal: &mut Terminal<B>, state: &AppState) -> io::Result<()>
+fn draw<B>(terminal: &mut Terminal<B>, session: &Session, state: &AppState) -> io::Result<()>
 where
     B: Backend<Error = io::Error> + Write,
 {
@@ -271,7 +285,9 @@ where
         .backend_mut()
         .write_all(BEGIN_SYNCHRONIZED_UPDATE)?;
 
-    let drawn = terminal.draw(|frame| view(state, frame)).map(|_| ());
+    let drawn = terminal
+        .draw(|frame| view(session, state, frame))
+        .map(|_| ());
 
     // The end marker goes out even when the draw failed. Leaving the terminal
     // inside a synchronized update would freeze the user's screen on whatever
@@ -293,6 +309,7 @@ mod tests {
     use ratatui::{TerminalOptions, Viewport};
 
     use super::*;
+    use crate::session::for_tests::session;
 
     /// A terminal's output stream, kept in memory and readable while the
     /// `Terminal` still owns the backend.
@@ -377,7 +394,15 @@ mod tests {
     }
 
     fn quit_key() -> Wake {
-        Wake::Event(Event::Key(KeyPress::plain(KeyCode::Char('q'))))
+        key(KeyPress::plain(KeyCode::Char('q')))
+    }
+
+    fn key(press: KeyPress) -> Wake {
+        Wake::Event(AppEvent::Core(Event::Key(press)))
+    }
+
+    fn resized(columns: u16, rows: u16) -> Wake {
+        Wake::Event(AppEvent::Core(Event::Resize { columns, rows }))
     }
 
     #[test]
@@ -389,6 +414,7 @@ mod tests {
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
+            &session(),
             AppState::default(),
         )
         .expect("writing to memory cannot fail");
@@ -405,6 +431,7 @@ mod tests {
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
+            &session(),
             AppState::default(),
         )
         .expect("writing to memory cannot fail");
@@ -416,10 +443,7 @@ mod tests {
     fn a_signal_wins_over_a_key_that_arrived_first() {
         let (mut terminal, _recorder) = terminal(20, 3);
         let mut wakes = ScriptedWakes::new(vec![
-            Wake::Event(Event::Resize {
-                columns: 20,
-                rows: 3,
-            }),
+            resized(20, 3),
             Wake::Shutdown(signals::WATCHED[0]),
             quit_key(),
         ]);
@@ -428,6 +452,7 @@ mod tests {
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
+            &session(),
             AppState::default(),
         )
         .expect("writing to memory cannot fail");
@@ -445,6 +470,7 @@ mod tests {
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
+            &session(),
             AppState::default(),
         )
         .expect_err("a failed read must not be swallowed");
@@ -461,6 +487,7 @@ mod tests {
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
+            &session(),
             AppState::default(),
         )
         .expect("writing to memory cannot fail");
@@ -473,18 +500,13 @@ mod tests {
         let (mut terminal, recorder) = terminal(20, 3);
         // One frame before the wait, one after the resize, and none after the
         // quit — three wakes, two frames.
-        let mut wakes = ScriptedWakes::new(vec![
-            Wake::Event(Event::Resize {
-                columns: 20,
-                rows: 3,
-            }),
-            quit_key(),
-        ]);
+        let mut wakes = ScriptedWakes::new(vec![resized(20, 3), quit_key()]);
 
         pump(
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
+            &session(),
             AppState::default(),
         )
         .expect("writing to memory cannot fail");
@@ -503,22 +525,23 @@ mod tests {
     }
 
     #[test]
-    fn the_placeholder_reaches_the_terminal() {
-        let (mut terminal, recorder) = terminal(30, 3);
+    fn the_status_screen_reaches_the_terminal() {
+        let (mut terminal, recorder) = terminal(60, 12);
         let mut wakes = ScriptedWakes::new(vec![quit_key()]);
 
         pump(
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
+            &session(),
             AppState::default(),
         )
         .expect("writing to memory cannot fail");
 
         // The backend skips blank cells and moves the cursor instead, so the
-        // line arrives as words rather than as one string.
+        // screen arrives as words rather than as whole lines.
         let bytes = recorder.written();
-        for word in ["Graft", "press", "quit", "ready"] {
+        for word in ["Graft", "Repository", "opening", "Rendering", "quit"] {
             assert!(bytes.contains(word), "{word:?} never reached the terminal");
         }
     }
@@ -528,18 +551,13 @@ mod tests {
         // ADR-0012's degenerate pty, driven through the whole loop rather than
         // just through `view`.
         let (mut terminal, _recorder) = terminal(0, 0);
-        let mut wakes = ScriptedWakes::new(vec![
-            Wake::Event(Event::Resize {
-                columns: 0,
-                rows: 0,
-            }),
-            quit_key(),
-        ]);
+        let mut wakes = ScriptedWakes::new(vec![resized(0, 0), quit_key()]);
 
         let exit = pump(
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
+            &session(),
             AppState::default(),
         )
         .expect("writing to memory cannot fail");
@@ -551,16 +569,15 @@ mod tests {
     fn a_command_from_update_reaches_the_job_runner() {
         let (mut terminal, _recorder) = terminal(20, 3);
         let jobs = Recorded::default();
-        let mut wakes = ScriptedWakes::new(vec![
-            Wake::Event(Event::Key(KeyPress::control(KeyCode::Char('r')))),
-            quit_key(),
-        ]);
+        let mut wakes =
+            ScriptedWakes::new(vec![key(KeyPress::control(KeyCode::Char('r'))), quit_key()]);
         let state = AppState {
             repo_path: std::path::PathBuf::from("/code/api"),
             ..AppState::default()
         };
 
-        pump(&mut terminal, &mut wakes, &jobs, state).expect("writing to memory cannot fail");
+        pump(&mut terminal, &mut wakes, &jobs, &session(), state)
+            .expect("writing to memory cannot fail");
 
         assert_eq!(
             jobs.commands(),
@@ -572,12 +589,12 @@ mod tests {
 
     #[test]
     fn a_job_result_is_just_another_wake() {
-        let (mut terminal, recorder) = terminal(40, 3);
+        let (mut terminal, recorder) = terminal(60, 14);
         let mut wakes = ScriptedWakes::new(vec![
-            Wake::Event(Event::JobFailed(
+            Wake::Event(AppEvent::Core(Event::JobFailed(
                 graft_core::job::JobId::new(1),
                 graft_core::job::JobFailure::Failed("not a git repository".to_owned()),
-            )),
+            ))),
             quit_key(),
         ]);
 
@@ -585,12 +602,13 @@ mod tests {
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
+            &session(),
             AppState::default(),
         )
         .expect("writing to memory cannot fail");
 
         let bytes = recorder.written();
-        for word in ["job", "failed", "repository"] {
+        for word in ["failed", "repository"] {
             assert!(bytes.contains(word), "{word:?} never reached the terminal");
         }
     }

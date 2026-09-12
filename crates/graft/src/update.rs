@@ -14,6 +14,47 @@ use std::path::PathBuf;
 
 use graft_core::event::{Event, KeyCode, KeyPress};
 use graft_core::job::JobId;
+use graft_git::version::SystemGit;
+
+use crate::repository::RepositoryFacts;
+
+/// Everything the loop can be told.
+///
+/// [`Event`] is what `core` can describe on its own — a key, a resize, a job
+/// that ended. It cannot carry a repository: `core` does not know what one is,
+/// and moving the git types down into it to make it possible would invert the
+/// layering (ADR-0007). So `app` wraps it, and jobs that have something to
+/// hand over hand it over here. Symmetric with [`Command`]: commands go out,
+/// products come back.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AppEvent {
+    /// Something `core` can describe.
+    Core(Event),
+    /// A job that ended with something the application keeps.
+    Produced(JobId, Product),
+}
+
+/// What a job brought back.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Product {
+    /// The repository opened, or it did not. A path that is not a repository
+    /// is an ordinary answer to an ordinary question, not a job failure —
+    /// [`Event::JobFailed`] stays for jobs that broke.
+    Repository(Result<RepositoryFacts, String>),
+    /// What the `git` on this machine turned out to be.
+    SystemGit(GitCheck),
+}
+
+/// What running `git --version` found.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum GitCheck {
+    /// `git` ran and said which version it is.
+    Ran(SystemGit),
+    /// `git` could not be run at all, and this is why. Not fatal at M0 —
+    /// nothing has shelled out to it yet — but the user needs to know now
+    /// rather than at the first operation that needs it.
+    Unavailable(String),
+}
 
 /// Everything Graft knows, as one value.
 ///
@@ -22,10 +63,11 @@ use graft_core::job::JobId;
 /// tickets that need them.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AppState {
-    /// Set once the user has asked to leave. The event loop reads it after
-    /// every event and returns, which drops the `TerminalSession` and hands
-    /// the terminal back.
-    pub should_quit: bool,
+    /// Set once Graft is leaving, and why. The event loop reads it after every
+    /// event and returns, which drops the `TerminalSession` and hands the
+    /// terminal back — a fatal quit is reported only after that, on a terminal
+    /// that is the user's again.
+    pub quit: Option<Quit>,
     /// What the status line has to say.
     pub status: Status,
     /// The terminal's last reported size, in character cells.
@@ -34,6 +76,30 @@ pub struct AppState {
     /// only ever a starting point: `event_loop::run` fills it in before the
     /// first frame.
     pub repo_path: PathBuf,
+    /// What the repository turned out to be, once the job that opened it has
+    /// answered. `None` until then, which is the first frame.
+    pub repository: Option<RepositoryFacts>,
+    /// What the system `git` turned out to be, once that job has answered.
+    pub system_git: Option<GitCheck>,
+}
+
+/// Why Graft is leaving.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Quit {
+    /// The user asked to.
+    Requested,
+    /// Graft cannot go on, and this is the line to print. The terminal is
+    /// restored first: a message written into the alternate screen vanishes
+    /// with it, which is how "it just exits and says nothing" happens.
+    Fatal(String),
+}
+
+impl AppState {
+    /// Is the loop finished?
+    #[must_use]
+    pub fn should_quit(&self) -> bool {
+        self.quit.is_some()
+    }
 }
 
 /// What the status line has to say.
@@ -78,6 +144,9 @@ pub enum Command {
     /// what `Ctrl+R` (manual refresh, DESIGN.md §2.1) re-runs. The tickets that
     /// add the rev-walk and the status read extend the work behind it.
     OpenRepository(PathBuf),
+    /// Find out whether the `git` on this machine is new enough (2.38,
+    /// DESIGN.md §3.1). Runs once, at startup: it shells out, so it is a job.
+    CheckSystemGit,
     /// Stop a job whose result is no longer wanted. Cooperative: a job that has
     /// not started is dropped, and a running one stops at its next check.
     CancelJob(JobId),
@@ -89,15 +158,45 @@ pub enum Command {
 /// in place, so a caller can always compare before with after — which is what
 /// undo, and the tests below, rely on.
 #[must_use]
-pub fn update(state: &AppState, event: Event) -> (AppState, Vec<Command>) {
+pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
     let mut next = state.clone();
-
     let mut commands = Vec::new();
 
     match event {
+        AppEvent::Core(event) => core_event(&mut next, &mut commands, event),
+        AppEvent::Produced(_, Product::Repository(Ok(facts))) => {
+            next.repository = Some(facts);
+            // Whatever went wrong last time has been superseded by a
+            // repository that opened.
+            next.status = Status::Ready;
+        }
+        AppEvent::Produced(_, Product::Repository(Err(failure))) => {
+            if next.repository.is_none() {
+                // Nothing was ever opened, so there is no screen to show this
+                // on and nothing for the user to do with Graft. Leaving, with
+                // the reason, beats an empty screen with an error in a corner.
+                next.quit = Some(Quit::Fatal(failure));
+            } else {
+                // A refresh of a repository that is already open failed — the
+                // directory went away mid-run, say. The screen still has
+                // something to show, so this goes on the status line.
+                next.status = Status::Failed(failure);
+            }
+        }
+        AppEvent::Produced(_, Product::SystemGit(check)) => {
+            next.system_git = Some(check);
+        }
+    }
+
+    (next, commands)
+}
+
+/// The half of [`update`] that answers the events `core` defines.
+fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
+    match event {
         Event::Key(key) => {
             if is_quit(key) {
-                next.should_quit = true;
+                next.quit = Some(Quit::Requested);
             } else if is_refresh(key) {
                 commands.push(Command::OpenRepository(next.repo_path.clone()));
             }
@@ -125,8 +224,6 @@ pub fn update(state: &AppState, event: Event) -> (AppState, Vec<Command>) {
         // tickets that need them have somewhere obvious to add the handling.
         Event::Mouse(_) | Event::Paste(_) | Event::FocusGained | Event::FocusLost => {}
     }
-
-    (next, commands)
 }
 
 /// The two keys that mean "leave" (DESIGN.md §2.2).
@@ -152,44 +249,57 @@ mod tests {
     use graft_core::job::{JobFailure, JobId};
 
     use super::*;
+    use crate::repository::Head;
 
-    fn key(code: KeyCode) -> Event {
-        Event::Key(KeyPress::plain(code))
+    fn key(code: KeyCode) -> AppEvent {
+        AppEvent::Core(Event::Key(KeyPress::plain(code)))
+    }
+
+    fn core(event: Event) -> AppEvent {
+        AppEvent::Core(event)
+    }
+
+    fn facts(path: &str, branch: &str) -> RepositoryFacts {
+        RepositoryFacts {
+            path: PathBuf::from(path),
+            bare: false,
+            head: Head::Branch(branch.as_bytes().to_vec()),
+        }
     }
 
     #[test]
     fn q_quits() {
         let (next, commands) = update(&AppState::default(), key(KeyCode::Char('q')));
 
-        assert!(next.should_quit);
+        assert_eq!(next.quit, Some(Quit::Requested));
         assert!(commands.is_empty());
     }
 
     #[test]
     fn control_c_quits() {
-        let event = Event::Key(KeyPress::control(KeyCode::Char('c')));
+        let event = core(Event::Key(KeyPress::control(KeyCode::Char('c'))));
 
         let (next, _) = update(&AppState::default(), event);
 
-        assert!(next.should_quit);
+        assert_eq!(next.quit, Some(Quit::Requested));
     }
 
     #[test]
     fn control_q_is_not_quit() {
         // Only the bare `q` is bound. A modified one belongs to whatever
         // binding claims it later, and must not fall through to quitting.
-        let event = Event::Key(KeyPress::control(KeyCode::Char('q')));
+        let event = core(Event::Key(KeyPress::control(KeyCode::Char('q'))));
 
         let (next, _) = update(&AppState::default(), event);
 
-        assert!(!next.should_quit);
+        assert_eq!(next.quit, None);
     }
 
     #[test]
     fn a_bare_c_is_not_quit() {
         let (next, _) = update(&AppState::default(), key(KeyCode::Char('c')));
 
-        assert!(!next.should_quit);
+        assert_eq!(next.quit, None);
     }
 
     #[test]
@@ -199,16 +309,16 @@ mod tests {
             key(KeyCode::Char('z')),
             key(KeyCode::Enter),
             key(KeyCode::Function(7)),
-            Event::Mouse(MouseInput {
+            core(Event::Mouse(MouseInput {
                 kind: MouseKind::Moved,
                 column: 3,
                 row: 4,
                 modifiers: Modifiers::NONE,
-            }),
-            Event::Paste("hello".to_owned()),
-            Event::FocusGained,
-            Event::FocusLost,
-            Event::JobCancelled(JobId::new(1)),
+            })),
+            core(Event::Paste("hello".to_owned())),
+            core(Event::FocusGained),
+            core(Event::FocusLost),
+            core(Event::JobCancelled(JobId::new(1))),
         ];
 
         for event in unbound {
@@ -223,10 +333,10 @@ mod tests {
     fn resize_is_remembered_including_a_degenerate_one() {
         let (next, _) = update(
             &AppState::default(),
-            Event::Resize {
+            core(Event::Resize {
                 columns: 0,
                 rows: 0,
-            },
+            }),
         );
 
         assert_eq!(
@@ -239,10 +349,10 @@ mod tests {
 
         let (next, _) = update(
             &next,
-            Event::Resize {
+            core(Event::Resize {
                 columns: 120,
                 rows: 40,
-            },
+            }),
         );
 
         assert_eq!(
@@ -260,7 +370,7 @@ mod tests {
 
         let (next, commands) = update(
             &AppState::default(),
-            Event::JobFailed(JobId::new(9), failure),
+            core(Event::JobFailed(JobId::new(9), failure)),
         );
 
         assert_eq!(
@@ -279,7 +389,7 @@ mod tests {
 
         let (next, _) = update(
             &AppState::default(),
-            Event::JobFailed(JobId::new(2), failure),
+            core(Event::JobFailed(JobId::new(2), failure)),
         );
 
         assert_eq!(
@@ -298,7 +408,7 @@ mod tests {
             ..AppState::default()
         };
 
-        let (next, _) = update(&failed, Event::JobFinished(JobId::new(2)));
+        let (next, _) = update(&failed, core(Event::JobFinished(JobId::new(2))));
 
         assert_eq!(next.status, Status::Ready);
     }
@@ -312,7 +422,7 @@ mod tests {
             ..AppState::default()
         };
 
-        let (next, _) = update(&failed, Event::JobCancelled(JobId::new(1)));
+        let (next, _) = update(&failed, core(Event::JobCancelled(JobId::new(1))));
 
         assert_eq!(next, failed);
     }
@@ -324,7 +434,10 @@ mod tests {
             ..AppState::default()
         };
 
-        let (next, commands) = update(&state, Event::Key(KeyPress::control(KeyCode::Char('r'))));
+        let (next, commands) = update(
+            &state,
+            core(Event::Key(KeyPress::control(KeyCode::Char('r')))),
+        );
 
         assert_eq!(
             commands,
@@ -348,20 +461,119 @@ mod tests {
         // Purity's observable half: no clock, no counter, no hidden state, so
         // repeating a call repeats the answer.
         let state = AppState {
-            should_quit: false,
+            quit: None,
             status: Status::Failed("earlier".to_owned()),
             size: Size {
                 columns: 80,
                 rows: 24,
             },
             repo_path: PathBuf::from("/code/api"),
+            repository: Some(facts("/code/api", "main")),
+            system_git: None,
         };
 
         let first = update(&state, key(KeyCode::Char('q')));
         let second = update(&state, key(KeyCode::Char('q')));
 
         assert_eq!(first, second);
-        assert!(!state.should_quit, "the input state was mutated");
+        assert_eq!(state.quit, None, "the input state was mutated");
+    }
+
+    #[test]
+    fn an_opened_repository_becomes_what_the_screen_shows() {
+        let (next, commands) = update(
+            &AppState::default(),
+            AppEvent::Produced(
+                JobId::new(1),
+                Product::Repository(Ok(facts("/code/api", "main"))),
+            ),
+        );
+
+        assert_eq!(next.repository, Some(facts("/code/api", "main")));
+        assert_eq!(next.status, Status::Ready);
+        assert!(commands.is_empty());
+    }
+
+    #[test]
+    fn a_repository_that_opened_clears_an_earlier_failure() {
+        let failed = AppState {
+            status: Status::Failed("could not re-read the repository".to_owned()),
+            repository: Some(facts("/code/api", "main")),
+            ..AppState::default()
+        };
+
+        let (next, _) = update(
+            &failed,
+            AppEvent::Produced(
+                JobId::new(2),
+                Product::Repository(Ok(facts("/code/api", "release"))),
+            ),
+        );
+
+        assert_eq!(next.repository, Some(facts("/code/api", "release")));
+        assert_eq!(next.status, Status::Ready);
+    }
+
+    #[test]
+    fn a_path_that_is_not_a_repository_ends_the_run() {
+        // Nothing was ever open, so there is nothing to show. Graft leaves and
+        // says why, on a terminal it has handed back.
+        let (next, commands) = update(
+            &AppState::default(),
+            AppEvent::Produced(
+                JobId::new(1),
+                Product::Repository(Err("/tmp is not inside a git repository".to_owned())),
+            ),
+        );
+
+        assert_eq!(
+            next.quit,
+            Some(Quit::Fatal(
+                "/tmp is not inside a git repository".to_owned()
+            ))
+        );
+        assert!(commands.is_empty());
+    }
+
+    #[test]
+    fn a_failed_refresh_of_an_open_repository_only_reaches_the_status_line() {
+        let open = AppState {
+            repository: Some(facts("/code/api", "main")),
+            ..AppState::default()
+        };
+
+        let (next, _) = update(
+            &open,
+            AppEvent::Produced(
+                JobId::new(3),
+                Product::Repository(Err("the repository went away".to_owned())),
+            ),
+        );
+
+        assert_eq!(next.quit, None, "a refresh must not end the run");
+        assert_eq!(
+            next.status,
+            Status::Failed("the repository went away".to_owned())
+        );
+        // The repository already read stays on screen: stale beats blank.
+        assert_eq!(next.repository, Some(facts("/code/api", "main")));
+    }
+
+    #[test]
+    fn what_the_system_git_is_is_remembered() {
+        let (next, commands) = update(
+            &AppState::default(),
+            AppEvent::Produced(
+                JobId::new(4),
+                Product::SystemGit(GitCheck::Unavailable("no git on PATH".to_owned())),
+            ),
+        );
+
+        assert_eq!(
+            next.system_git,
+            Some(GitCheck::Unavailable("no git on PATH".to_owned()))
+        );
+        assert!(commands.is_empty());
     }
 
     /// Purity's other half, which no runtime test can observe: that `update`
