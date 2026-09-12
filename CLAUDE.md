@@ -36,23 +36,28 @@
 
 ### Which skills to use
 
-Use these, by these exact names:
+The Matt Pocock plugin's skills are **banned by default**. Only these are allowed, and only for what the "When" column says:
 
-| Skill | When |
+| Skill | Allowed for |
 |---|---|
 | `to-tickets` | Splitting a milestone into tickets. Once per milestone. |
 | `implement` | Building a ticket. |
 | `tdd` | Test-first work inside a ticket. |
 | `code-review` | Reviewing a finished ticket or milestone. |
-| `diagnosing-bugs` | A bug or failure a builder couldn't fix. |
+| `diagnosing-bugs` | **`debugger` agent only.** Not builders. |
+| `codebase-design` | Module changes only (adding or moving modules). |
+| `handoff` | Mid-ticket handover only. |
+| `improve-codebase-architecture` | After M2, M5 and M7 only. |
 
-**Never use:** `prototype`, `wayfinder`, `to-spec`, `triage`.
+**Every other skill in that plugin is banned**, `prototype` and `wayfinder` included.
 
+If you think you need a banned skill: **stop and ask the user** (through the conductor). Don't use it, and don't work around it silently.
+
+Why the two that keep getting reached for:
 - `prototype` builds HTML prototypes. Questions about terminal rendering are answered only by a binary running in a real terminal. Keep its principles — throwaway, minimal, findings recorded as an ADR — not the skill.
-- `wayfinder`, `to-spec`: the plan already exists. `PROMPT.md` is the spec, `DESIGN.md` the design, `PROGRESS.md` the plan. Don't create a second one.
-- `triage`: not how work is chosen here. The conductor takes the next unchecked box in `PROGRESS.md`.
+- `wayfinder` (and `to-spec`) would create a second plan. The plan already exists: `PROMPT.md` is the spec, `DESIGN.md` the design, `PROGRESS.md` the plan.
 
-Some of these aren't in the Skill tool's listing. They are installed; read the SKILL.md directly:
+Some allowed skills aren't in the Skill tool's listing. They are installed; read the SKILL.md directly:
 `~/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/engineering/<name>/SKILL.md`
 
 ### Issue tracker
