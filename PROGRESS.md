@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M1 The graph** — ticket 04 (17 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. **M1 runs straight through without stopping for ticket approval** — see "How M1 runs" below.
+**Current step:** **M1 The graph** — ticket 05 (17 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. **M1 runs straight through without stopping for ticket approval** — see "How M1 runs" below.
 
 ---
 
@@ -160,6 +160,8 @@ want to review them one by one.
 - 2026-09-12 · M1/02 heavy tier harness · opus · done · 100k fixture really built (2.1s, 35MiB); git/git cloned 85,649 commits/1,017 refs/42MB/15s; TESTING.md, ADR-0015; fast 307/307, heavy 4/4; commits 90c3bb0, 8ab260d
 
 - 2026-09-12 · M1/03 tier order + M0 minors · opus · done · ADR-0016: Kitty > Unicode > iTerm2 > Sixel > ASCII (Unicode is first-class, not fallback); DESIGN.md §4.2-4.6 amended, detect::tier changed to match, M0's 3 Minors cleared; new gap: Sixel can win the tier with no encoder (owner M1/14); commit 3915275
+
+- 2026-09-12 · M1/04 reading history · opus · done · graft-git/history/ (simple, topo, date orders) checked against git rev-list on the corpus; branches/, repos.rs, cancellable jobs (Esc); 364 tests. Nothing on screen yet - no widget reads AppState::history; 6 gaps logged; commit 331971b
 
 ## Open questions for the M1 checkpoint
 
