@@ -42,21 +42,10 @@ until the milestone that needs them.
 ## Design gaps (step 2 review round 2, 2026-09-12)
 
 Named in `docs/reviews/step-2-design-round-2.md`. (R2-2, backup-ref naming,
-is already fixed in DESIGN.md §6 and ADR-0010 — not a gap.)
-
-**REQUIRED M1 TICKET — R2-1: post-promotion checkpoint state on the
-no-commit-graph path.** Whoever drafts M1's tickets must create a ticket for
-this; it is not optional polish. DESIGN.md §3.2/§3.6 never say what
-`walker_state` checkpoints contain after promotion on the fallback path. The
-naive reading — snapshot the fallback topo walker's in-degree state — is
-O(remaining history) per checkpoint: 100+ MB of checkpoints on the 100k
-no-commit-graph fixture, busting the heavy tier's 300 MB peak-memory gate
-(the exact configuration ADR-0008 orders that gate to run). Required fix, one
-or two sentences in §3.2/§3.6 plus the matching implementation: after the
-background walk completes, retain the emitted order as a compact commit-id
-list; post-promotion `walker_state` is an index into it, so checkpoints stay
-small on both paths and §3.1's "bounded by parallelism" annotation holds
-unconditionally. Expiry: **M1**.
+is already fixed in DESIGN.md §6 and ADR-0010 — not a gap. R2-1, post-promotion
+checkpoint state on the no-commit-graph path, was closed by m1-the-graph/06:
+DESIGN.md §3.1/§3.2/§3.6 say what a checkpoint holds on each path, and the
+size is measured — 1.6 KiB, the same on both.)
 
 | Gap | What's needed | Expiry |
 |---|---|---|
@@ -169,8 +158,8 @@ job (`app::repos::RepoStore`), `gix` being compiled with almost no features
 
 | Gap | What is missing | Closed by |
 |---|---|---|
-| **History arrives in one lump, not a stream.** The walk itself is chunked and resumable — `Walk::next_chunk` hands back 500 commits at a time and checks for cancellation between chunks — but `app::history::read` drains every chunk and the job reports once, because a job reports exactly once by design. So the first row still waits for the last one, and PROMPT.md's 150 ms first paint is not achievable through this path as it stands | Incremental delivery belongs with the consumer: the layout engine takes a chunk, the screen draws it, and the next chunk follows. `next_chunk` is already the shape that needs — what is missing is a job that can report more than once, or a shared buffer the UI reads while the walk fills it | M1 tickets 05–06 |
-| **ADR-0008's promotion is not built.** The fallback half is: a repository with no commit-graph file walks in commit-date order, `Walk::order_in_force` says so, and `History::is_provisional` carries it to the state. The promotion half — run the topological walk in the background, then re-anchor the view by commit id — does not exist, and nothing on screen says the order is provisional yet because nothing draws history at all | Ticket 06 for the promotion and the re-anchoring; ticket 10 for the screen that says so | M1 tickets 06, 10 |
+| **History arrives in one lump, not a stream.** The walk itself is chunked and resumable — `Walk::next_chunk` hands back 500 commits at a time and checks for cancellation between chunks — but `app::history::read` drains every chunk and the job reports once, because a job reports exactly once by design. So the first row still waits for the last one, and PROMPT.md's 150 ms first paint is not achievable through this path as it stands | The consumer now exists: `StreamingLayout::advance(budget, stop)` takes commits a chunk at a time and lays them out (m1-06). What is missing is the job that feeds it and reports more than once, or a shared buffer the UI reads while the walk fills it | M1 ticket 10 |
+| **ADR-0008's promotion is built in `graph`, not in the app.** The engine half exists (m1-06): `Walk::full_topological` runs the whole-range topological walk without a commit-graph file, `StreamingLayout::from_order` lays its output out by re-reading commits rather than walking, and `reanchor` finds the selected commit again by id — proved on the corpus in `graft-graph/tests/it/streaming.rs` and on skewed dates in the unit tests. What does not exist: the app job that runs the background walk and swaps the layouts behind a frame, and the screen that says the order is provisional | Ticket 10 | M1 ticket 10 |
 | **`graph.default_branch` is not a config key.** ADR-0001 rule 1 is an override the user sets; `RepoStore::new` takes it and `Branches::resolve` honours it, but nothing parses it out of the config file, so `app` passes `None` and rule 1 can never fire. `config::Graph` is `Copy` today and a `String` field would end that | A config change — a new key parsed into `config::Graph`, alongside `graph.integration_branches`, which has the same hole. Wanted by whichever ticket first makes a wrong lane 0 visible, which is ticket 10 at the latest | M1 ticket 10 |
 | **The corpus cannot tell date order and topological order apart.** `graft-fixtures` writes strictly increasing commit timestamps, so every child is later than its parents and date order is *always* a valid topological order on every shape in it. The corpus tests therefore prove both walks agree with `git rev-list` — they do not prove the topological walk is doing anything the date walk isn't. That distinction is made only by unit tests over a hand-built skewed DAG (`MapNodes`), where a merge is older than one of its parents | A corpus shape with deliberately skewed committer dates — a rebase or a cherry-pick that back-dates — read by the same tests that read the others | M1, whichever ticket next touches the corpus |
 | **The walk has never been run against a big repository.** Everything measured so far is the synthetic 20,000-commit fixture and the corpus. `git/git` (85,649 commits, 1,017 refs) is cloned and still unopened, and no budget is asserted anywhere | Ticket 16's budget assertions, and ticket 10's first real graph on screen | M1 tickets 10, 16 |
@@ -185,6 +174,20 @@ job (`app::repos::RepoStore`), `gix` being compiled with almost no features
 | **Column 0 stays empty when there are integration branches but no default branch.** `Seeds { default_branch: None, integration_branches: [..] }` reserves columns 1.. and never allocates 0, so the graph is drawn one column to the right. A repository with `develop` but no `main`/`master` and no `graph.default_branch` override would hit it. Not a correctness problem — every invariant holds — and `Branches::resolve` picks a default whenever any local branch exists, so the app cannot produce these seeds today | Leave it; revisit if a seed builder ever emits integration branches without a default | Not planned |
 | **The app's seed builder does not exist yet, and its choices matter for colour.** The corpus snapshot test builds `Seeds` itself: default and integration branches from `Branches::resolve`, `known_branches` from every `refs/heads/*` *and* `refs/remotes/*` tip. The remote half is deliberate — in the `ref-states` shape the remote is ahead of the local `behind` branch, so the lane opens at the remote's tip and would be a short SHA without it | The ticket that wires the graph screen to the walk builds the real seeds; it should make the same choice (or a better one) and say why | M1 tickets 08 / 10 |
 | **The snapshots are in commit-date order, not a commit-graph topological walk.** The header of every snapshot records `requested Topological, in force CommitDate (provisional)`; the corpus has no commit-graph file, and for it date order is a valid topological order (see m1-the-graph/04's row above), so no snapshot shows a parent arriving before its child. The already-drawn-parent path is covered by a directed unit test only | A corpus shape with a commit-graph file and out-of-order dates, whenever m1-the-graph/04's row is closed | M1 review |
+
+**Streaming layout** (m1-the-graph/06, 2026-09-12). This ticket closed
+KNOWN_GAPS R2-1 (above) and the engine half of two m1/04 rows (rewritten in
+place).
+
+| Gap | What is missing | Closed by |
+|---|---|---|
+| **`CommitSource` has no implementation in the product.** The trait is the seam between `graph` and `git` (ARCHITECTURE.md); the only implementation is the test one in `graft-graph/tests/it/streaming.rs`, a `Walk` plus `read_commit`. Nothing in `app` builds a `StreamingLayout`, so no screen streams yet | Ticket 10: a job that calls `advance` in budgets, reports rows as they land, runs the promotion walk and swaps the layouts | M1 ticket 10 |
+| **The emitted order grows with history, at about 90 bytes per commit.** `EmittedOrder` keeps every emitted id twice — a `Vec<Oid>` at 33 bytes each and an `Oid → row` map — 9,027,656 bytes at 100k rows, so roughly 110 MB at git/git's 1.2M commits if all of it is ever laid out. Inside the 300 MB gate at 100k and the dominant term there; a compact index (20-byte SHA-1 storage, `u32` rows, a set of indices instead of a map of copies) would roughly halve it. The evicted-chunk fingerprint map also grows with history, at 24 bytes per chunk — negligible | Ticket 16 measures it on the real fixture with `getrusage` and decides whether the compact index is needed | M1 ticket 16 |
+| **Nothing has been measured on the 100k fixture or in wall-clock time.** Every number in DESIGN.md §3.6 comes from an in-memory 100k-commit history in a unit test — fast tier, no repository, no `getrusage`: 16 chunks / 8,000 rows resident, 49 checkpoints = 90,158 bytes, 1.6 KiB per checkpoint. The 300 MB gate, the 150 ms first paint and the right size for the first `advance` budget are unmeasured; the corpus run (`tests/it/streaming.rs`, 200-commit repositories) proves the plumbing, not the budgets | Ticket 16 | M1 ticket 16 |
+| **Least-recently-used is the wrong policy once checkpoints pass `max_checkpoints`.** 64 checkpoints at 2,000 rows cover 128k rows. Past that, LRU keeps whichever were touched last, so a deep history can be left with a long stretch that has no checkpoint at all, and a jump back into it replays from the nearest surviving one — correct (checkpoints are re-recorded on the way) but potentially hundreds of thousands of re-reads. Thinning (drop every other one, keep the spacing even) would bound the replay | Measure on git/git in ticket 16; change the policy if the replay shows | M1 ticket 16 |
+| **`rows()` clones every row it returns.** A viewport's worth of `Row`s — each carrying a `Commit` with its message and identities — is copied out of the cache on every call. Cheap at 50 rows a frame; not free | Borrowed slices per chunk, or an iterator, once tickets 08 and 14 know what the renderers need | M1 ticket 08 |
+| **Promotion hands the app a swap to get right.** `from_order` builds a second `StreamingLayout`; the provisional one's rows and checkpoints go with it. The app must advance the promoted layout to the anchor *before* swapping (the corpus test does) or the user watches the graph empty and refill, and a scroll down right after promotion pays a cold `advance` because the provisional layout's checkpoints past the anchor are gone | Ticket 10 | M1 ticket 10 |
+| **`Walk::full_topological` reads the whole range before it emits.** Measured: 200 reads before the first commit on the 200-commit linear fixture. That is the design (ADR-0008 — a background job), but on git/git it is 1.2M object reads per open until the commit-graph offer (R2-4) is accepted, and nothing caches the order between runs | The commit-graph offer (R2-4) | M2 |
 
 ## Scheduled interim states
 

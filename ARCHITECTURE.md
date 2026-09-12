@@ -128,6 +128,25 @@ The seam is two types:
 A job therefore takes `Arc<RepoStore>`, calls `shared()?.handle()`, and reads.
 `RepoStore::opens()` exists so a test can assert the count stays at one.
 
+### The layout and the walk: `graph::CommitSource`
+
+`graph` and `git` are siblings, and the streaming layout
+(`graph::layout::stream`) needs commits from a repository twice over: the
+next chunk at the frontier, and a re-read of commits it already emitted when
+it rebuilds an evicted chunk (`DESIGN.md` §3.6). The seam is one trait,
+`graph::CommitSource` — `next(limit, stop)` and `read(ids)` — and `git`
+offers exactly what an implementation needs: `history::Walk::next_chunk`
+(plus `Walk::full_topological`, ADR-0008's background job) and
+`history::read_commit`. `app` will own the implementation (m1-10). Until then
+the only one is in `graft-graph/tests/it/streaming.rs`, on the crate's
+dev-dependency edge to `git`, which ADR-0006's rule does not count.
+
+Inside `graph`, `layout.rs` is the cursor (lane state, one row at a time) and
+`layout/` holds what streams it: `order` (the emitted commit ids — the one
+structure that grows with history), `source` (the trait above), `cache`
+(chunked rows, eviction, fingerprints), `checkpoint` (cursor snapshots) and
+`stream` (`StreamingLayout`, the one type callers see).
+
 ### `fixtures`: test-only, outside the table
 
 `graft-fixtures` (`crates/graft-fixtures/`) is the whole test harness, for

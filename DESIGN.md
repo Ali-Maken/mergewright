@@ -586,12 +586,21 @@ Row            { commit: Commit,
                  incoming: [usize],              // lanes that converge on this row (closing edges)
                  outgoing: [(usize, CommitId)],   // lanes leaving this row, one per parent
                  marker: Option<MistakeRadarKind> }
-LayoutCursor    { walker_state,                   // §3.2-step-2 walk frontier: generation-ordered
-                                                  // queue + frontier in-degrees — bounded by graph
-                                                  // parallelism, not history size (ADR-0008)
-                  active: [Option<Lane>], waiting: Map<CommitId,[usize]>,
+LayoutCursor    { active: [Option<Lane>], waiting: Map<CommitId,[usize]>,
                   free_pool: [usize], rows_emitted: usize }
-                                                  // opaque, resumable snapshot of everything below
+                                                  // lane state only: an opaque, resumable snapshot
+                                                  // of everything below. ~1.6 KiB whatever the
+                                                  // depth — this is what a checkpoint is (§3.6)
+EmittedOrder    { ids: [CommitId], row_of: Map<CommitId, usize> }
+                                                  // the commit on every row so far; one copy,
+                                                  // shared by the frontier and every checkpoint.
+                                                  // The one O(history) structure (~90 B/commit)
+walker_state                                      // §3.2 step 2's walk frontier, held by the
+                                                  // streaming layout beside the cursor — never by
+                                                  // a checkpoint. With a commit-graph: the
+                                                  // generation-ordered queue + frontier in-degrees,
+                                                  // bounded by graph parallelism (ADR-0008); after
+                                                  // promotion: an index into EmittedOrder
 ```
 
 ### 3.2 Algorithm overview (prose)
@@ -625,11 +634,12 @@ file** (ADR-0008):
   every commit still awaiting exploration sits at or below a commit's
   generation, nothing unexplored can turn out to be its child — its
   in-degree is final and it can be emitted. Emission starts after
-  exploring a small frontier, not the whole range; `walker_state` in
-  `LayoutCursor` is that queue plus the frontier's in-degree map, bounded
-  by the graph's parallelism rather than history size, so it snapshots
-  cheaply into checkpoints (§3.6). This path is what meets the 150 ms
-  first paint.
+  exploring a small frontier, not the whole range; `walker_state` is that
+  queue plus the frontier's in-degree map, bounded by the graph's
+  parallelism rather than history size. It lives beside the `LayoutCursor`
+  in the streaming layout and is never part of a checkpoint (§3.6): a
+  rebuild re-reads emitted commits, it never re-walks. This path is what
+  meets the 150 ms first paint.
 - **No commit-graph:** first paint uses **commit-date order** — the
   rev-walk's natural streaming order, already a first-class walk strategy,
   through the same `layout_chunk` machinery — and still lands inside
@@ -640,8 +650,16 @@ file** (ADR-0008):
   When the background topo walk finishes, the view **promotes** to strict
   topo order in one step: layout re-runs from the topo walk, rows are
   swapped behind the next frame, and the selection and scroll anchor are
-  re-found by commit id, never by row index. Until promotion, a one-line
-  status notice says the order is provisional. The 150 ms budget survives,
+  re-found by commit id, never by row index. The promoted layout keeps the
+  topo walk's output as a compact commit-id list (`EmittedOrder`, §3.1)
+  and its `walker_state` is an index into that list: rows are rebuilt by
+  re-reading the commits at those indices, never by walking again. So a
+  post-promotion checkpoint is the same lane-state snapshot as one on the
+  commit-graph path — measured at 1,578 bytes at 10k rows and 1,694 at
+  40k, identical on both paths — O(1) in remaining history, not
+  O(remaining history) (m1-06; this was KNOWN_GAPS R2-1). Until
+  promotion, a one-line status notice says the order is provisional. The
+  150 ms budget survives,
   with its meaning stated honestly: without a commit-graph it buys a
   date-order first paint, and strict topo order arrives at promotion.
 
@@ -775,50 +793,80 @@ When `active.len()` (lanes open and not `reserved`) exceeds `graph.max_lanes`:
 
 ### 3.6 Incremental, streaming and virtualized layout
 
-- **Streaming:** `layout_chunk` (chunk size ~500 commits) is called
-  repeatedly, filling the row cache below. The first chunk is sized to hit
-  the 150 ms first-paint budget — strict topo order when a commit-graph
+- **Streaming:** `StreamingLayout::advance(budget, stop)` is the unit of
+  incremental work. It pulls commits from a `CommitSource` (§8.2) at most
+  one chunk (`chunk_rows`, default 500) at a time, lays them out at the
+  frontier, and stops at `budget` rows, at the source's end, or when `stop`
+  says so — checked before every pull. The caller sizes the first call to
+  hit the 150 ms first-paint budget — strict topo order when a commit-graph
   file exists, date order until promotion when it doesn't (§3.2 step 2,
-  ADR-0008); later chunks run in the background between frames.
+  ADR-0008); later calls run in the background between frames. A source
+  that returns nothing without finishing is a `Stalled` error, not a spin.
 - **Row cache with eviction — never an append-only buffer.** Laid-out rows
-  live in a chunked cache inside `graph`'s incremental layout, one entry
-  per `layout_chunk`, keyed by row range. Resident at any moment: the
-  chunks covering `[nearest checkpoint at or before viewport_top − buffer,
-  viewport_bottom + buffer]`; everything else is evictable,
-  oldest-touched first, once the cache passes its budget. Scrolling back
-  into an evicted range rebuilds those chunks by resuming from the nearest
-  earlier checkpoint — layout is deterministic (§3.7), so a rebuilt chunk
-  is identical to the one evicted. This eviction, not virtualization
-  alone, is what makes memory grow with the viewport rather than history
-  (PROMPT.md §1.2): the resident set is a handful of chunks plus the
-  checkpoint list, no matter how deep the user has scrolled. The heavy
-  tier's peak-memory test (PROMPT.md §7.1: load and scroll the 100k-commit
-  fixture, fail above 300 MB by `getrusage`) is the gate that proves it —
-  including after a jump to the bottom and a scroll back up.
+  live in a chunked cache inside `graph`'s streaming layout, one entry per
+  chunk, keyed by chunk index. Protected at any moment: the chunks covering
+  `[nearest checkpoint at or before viewport_top − buffer, viewport_bottom
+  + buffer]`; everything else is evictable, oldest-touched first, once the
+  cache passes its budget (`resident_chunks`, default 16) — and only then;
+  eviction is a memory decision, not a tidy-up. Scrolling back into an
+  evicted range rebuilds those chunks by re-reading their commits from the
+  retained order and replaying from the nearest earlier checkpoint. Layout
+  is deterministic (§3.7), so a rebuilt chunk is identical to the one
+  evicted — and that is checked, not assumed: every eviction leaves a
+  fingerprint (row count + hash) behind, and a rebuild that does not
+  reproduce it is a `RebuildDiffers` error, never a display. This
+  eviction, not virtualization alone, is what makes memory grow with the
+  viewport rather than history (PROMPT.md §1.2). Measured (m1-06, an
+  in-memory 100k-commit history, default configuration): scrolling all
+  100k rows held at most 16 chunks = 8,000 rows at any point; 49
+  checkpoints cost 90,158 bytes between them; the emitted order
+  (`EmittedOrder`, §3.1) cost 9,027,656 bytes and is the one term that
+  grows with history. The heavy tier's peak-memory test (PROMPT.md §7.1:
+  load and scroll the 100k-commit fixture, fail above 300 MB by
+  `getrusage`) is the gate that proves it on a real repository — including
+  after a jump to the bottom and a scroll back up (m1-16).
 - **Rendering virtualization:** only rows in `[viewport_top − buffer,
   viewport_bottom + buffer]` are rasterized/drawn. Lane occupancy is
   stateful, so the walk must still pass *through* everything above the
   viewport — but passing through means advancing the `LayoutCursor` and
-  dropping the rows, not retaining them.
+  letting the rows be evicted, not retaining them.
 - **Checkpoints** make deep jumps (search hit at row 900,000) cheap: every
-  N rows (e.g. 2,000), snapshot the full `LayoutCursor`. A jump resumes
-  from the nearest earlier checkpoint rather than row 0, and a scroll-back
-  into evicted rows rebuilds from one. Checkpoints are pure functions of
-  the commit sequence up to that point, so they're cache-only (bounded,
-  LRU-evicted) and always rebuildable — nothing about them needs to be
-  durable.
+  `checkpoint_every` rows (default 2,000) the streaming layout keeps a
+  clone of the `LayoutCursor` — lane state only, about 1.6 KiB whatever
+  the depth (§3.1), on the commit-graph path and the promoted path alike.
+  A checkpoint holds no walker state: a rebuild resumes the cursor at the
+  checkpoint and feeds it the commits the retained order says come next,
+  re-read from the repository, so nothing is ever walked twice. A jump
+  into evicted rows replays from the nearest earlier checkpoint rather
+  than row 0 (measured: a jump to row 15,000 of a 20k-row layout replayed
+  300 rows from the checkpoint at 14,800 and pulled nothing from the
+  walk). No checkpoint is taken at the very end of history — nothing would
+  resume from it. Checkpoints are pure functions of the commit sequence up
+  to that point, so they're cache-only (bounded at `max_checkpoints`,
+  default 64, least recently used evicted; a rebuild that needed an
+  evicted one replays from the one before and re-records it on the way)
+  and always rebuildable — nothing about them needs to be durable.
 - **A cold deep jump is a background job.** `G` on a freshly opened repo,
-  or a search hit far past the last checkpoint, still needs the walk to
-  advance that far before the target row can exist. That walk runs as a
-  cancellable job through the standard machinery (§8.3): the UI thread
-  never blocks, the status area shows progress ("laying out… 412k/1.2M
-  commits"), input — including cancelling the jump — keeps working, and
-  the viewport stays put until the job lands and the view jumps to real
-  rows. The checkpoints laid down along the way survive the rows'
-  eviction, so the next deep jump in either direction is cheap.
+  or a search hit far past the frontier, still needs the walk to advance
+  that far before the target row can exist. That is `advance` called in
+  budgets as a cancellable job through the standard machinery (§8.3): the
+  UI thread never blocks, the status area shows progress ("laying out…
+  412k/1.2M commits" — `rows_emitted` against `expected_rows`, known once
+  the walk is done or the order is promoted), input — including cancelling
+  the jump — keeps working, and the viewport stays put until the job lands
+  and the view jumps to real rows. The checkpoints laid down along the way
+  survive the rows' eviction, so the next deep jump in either direction is
+  cheap.
+- **Promotion (§3.2 step 2)** is a second streaming layout built over the
+  finished topo walk's id list (`from_order`) and advanced until the
+  anchored commit has a row again (`reanchor`: that commit's new row, less
+  the offset it had on screen); then it replaces the provisional layout
+  behind the next frame, and the rows below the anchor fill in as it
+  catches up without moving it. Its source never walks — it only re-reads
+  by id — and its checkpoints are the size they were before promotion.
 - **Folding a merged branch** (PROMPT.md §1.3) and **first-parent view** are
   both expressed as a different *inclusion predicate* over which commits the
-  walker in step 2 emits at all, re-using the same `layout_chunk` machinery
+  walker in step 2 emits at all, re-using the same streaming machinery
   rather than being a separate code path — first-parent view is simply "only
   follow `parents[0]`," which trivially keeps everything in lane 0.
 
@@ -832,7 +880,7 @@ against it:
 |---|---|
 | Every parent edge is drawn | Every element of `commit.parents` produces exactly one `outgoing` entry |
 | No edge passes through a node it isn't connected to | Only lanes in a row's `incoming`/`outgoing` bend toward that row; every other open lane draws a straight pass-through segment |
-| Deterministic output | Heap tie-break by date then commit id; no unordered iteration in lane allocation |
+| Deterministic output | Heap tie-break by date then commit id; no unordered iteration in lane allocation; and checked at run time — a rebuilt chunk must match the fingerprint its evicted copy left (§3.6) |
 | A lane never changes column mid-life | A lane's column is fixed at open time; only `waiting_for` mutates until the lane closes |
 
 ### 3.8 Strip cache (pixel tier) and the 16 ms frame budget
@@ -1517,7 +1565,11 @@ roughly `layout(commits, strategy, markers) -> impl Iterator<Item = Row>`, one
 function per rendering tier taking a `Row` stream and producing either styled
 text cells (Unicode/ASCII) or a `core::RasterFrame` (pixel). Everything about
 lane assignment, compaction (§3.5) and incremental checkpoints (§3.6) is
-internal — a deep module: one call in, a fully laid-out graph out.
+internal — a deep module: one call in, a fully laid-out graph out. `graph`
+never reads a repository: the streaming layout pulls commits through
+`graph::CommitSource` — `next(limit, stop)` for the frontier, `read(ids)`
+for rebuilds — which `app` implements over `git::history::Walk` and
+`git::history::read_commit` (m1-10), so `graph` and `git` stay siblings.
 
 **`git`** (+ `core`): `RepoHandle` (an open repository), `GitInvocation` /
 `GitArg` (the typed command builder — Technology §"Writing to the repo": never
