@@ -37,7 +37,7 @@ const MARK: &str = "budget:";
 /// children running at once slow each other past the budget (four did, in
 /// m1-the-graph/27d: 170-182 ms against 68-72 ms alone); the test harness
 /// runs tests in parallel, so the budget tests take turns.
-static MEASURING: Mutex<()> = Mutex::new(());
+pub static MEASURING: Mutex<()> = Mutex::new(());
 
 #[test]
 fn budgets_hold_on_the_100k_fixture_without_a_commit_graph() {

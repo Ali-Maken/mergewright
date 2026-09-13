@@ -21,6 +21,10 @@ tiny-skia = { version = "0.12", default-features = false, features = ["std"] }
 # dependency edges (ADR-0006; `graft/tests/it/dependency_edges.rs` skips
 # them), so `graph -> core` stays the crate's only real edge.
 [dev-dependencies]
+# PROMPT.md §6.3 / §7.1: the hot paths benchmarked with `criterion`, run
+# only at milestone reviews with short runs (m1-the-graph/30). Default
+# features off: no plotting, no rayon.
+criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
 # Property tests for the PROMPT.md §1.2 invariants. Default features off:
 # `fork` and `timeout` would pull in a process-spawning harness these pure
 # tests never need.
@@ -45,3 +49,9 @@ heavy-tests = ["graft-fixtures/heavy-tests"]
 
 [lints]
 workspace = true
+
+# Not in `cargo test` (bench targets are not test targets by default); run at
+# milestone reviews: `cargo bench -p graft-graph -- --warm-up-time 1 --measurement-time 3`.
+[[bench]]
+name = "hot_paths"
+harness = false

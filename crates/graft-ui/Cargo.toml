@@ -28,6 +28,10 @@ ratatui = { version = "0.30", default-features = false, features = [
 unicode-width = "0.2"
 
 [dev-dependencies]
+# PROMPT.md §6.3 / §7.1: the hot paths benchmarked with `criterion`, run
+# only at milestone reviews with short runs (m1-the-graph/30). Default
+# features off: no plotting, no rayon.
+criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
 # Snapshot of every resolved token, in every theme, at every colour depth
 # (PROMPT.md §7.1). A colour table is exactly the kind of thing nobody reviews
 # by eye twice.
@@ -39,3 +43,9 @@ graft-git.workspace = true
 
 [lints]
 workspace = true
+
+# Not in `cargo test` (bench targets are not test targets by default); run at
+# milestone reviews: `cargo bench -p graft-ui -- --warm-up-time 1 --measurement-time 3`.
+[[bench]]
+name = "row_render"
+harness = false
