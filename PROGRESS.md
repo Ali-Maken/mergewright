@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — ticket 30f seam 4b (proofs, perf run, docs) · 63 tickets: 46 done, 13 ready, 2 partial, 1 split, 1 wontfix
+**Current step:** M1 The graph — ticket 37 · 63 tickets: 48 done, 12 ready, 1 partial, 1 split, 1 wontfix
 
 ---
 
@@ -215,6 +215,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-13 · M1/30h idle prefetch (retry) · opus · done · fixes cause: page keys no longer rasterise, strips above/below prefetched when idle; uncounted release 4/4, pixel 100k p99/max 6.4/8.0 ms (was 13.2/16.8); idle cost ~3–6 ms once per scroll stop (suspect RefBadges clone, KNOWN_GAPS row); 783 tests, gates green; ~127k tokens (over 80k target), no compaction
 - 2026-09-13 · conductor · Current step cut to one line (user); history stays in this log. Remaining order: 30f seam 4, 37, 38, 42, 39, 44, 40, 41, 45, 43, 46, 28, user re-walks gallery, review. Open by-eye (user): gallery, 30b PgDn blank frame, 29 tmux/SSH, 28 "reads well", 39/40 git/git seen at 120 cols
 - 2026-09-13 · M1/30f seam 4 · opus · partial · release frames 7/7 counted runs pass, no reruns (worst key 14.6 ms, Unicode 50k); idle-wake 14/140 over 16 ms (all 50k refs, max 19.1), reported not failing; debug frames run fails rows-on-hand on held PageDown (debug layout can't keep up at 60 Hz; loop never blocked); conductor decided option A under ADR-0021 (pace-dependent check asserts in release, records in debug); proofs, full release perf run, docs, 30c/30f close remain; ~75k tokens, no compaction; continuation 1
+- 2026-09-13 · M1/30f seam 4 continuation · opus · done · rows-on-hand check asserts in release, prints counts in debug (ADR-0021 application; symptom of slow debug layout, no user cost); fast 783/783, heavy debug 803/803, release perf 10/10; release frames max 10.9 ms, first paint 30–56 ms, peak RSS 181 MiB; proofs: 4/10 ms limits fail all 9 budget tests, reverted; idle-wake 14/140 over 16 ms at 50k refs (max 19.1) in KNOWN_GAPS; 30c and 30f closed (30c by-eye box left for user's gallery re-walk); ~78k tokens, no compaction
 
 ## Open questions for the M1 checkpoint
 - **By eye (30b):** pixel graph goes blank for one frame on PgDn before rows arrive. User judges whether that's acceptable.
