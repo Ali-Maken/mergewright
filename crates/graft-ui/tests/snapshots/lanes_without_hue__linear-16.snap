@@ -1,0 +1,54 @@
+---
+source: crates/graft-ui/tests/lanes_without_hue.rs
+expression: text
+---
+shape: linear, 16, 80x24, cursor on row 2
+
+ graft ~/code/api  200 commits
+◆   Commit 200                                                      3y   d5ae5fd
+● ▏ Commit 199                                                      3y   13e6ab1
+●   Commit 198                                                      3y   f5055d9
+●   Commit 197                                                      3y   2cce853
+●   Commit 196                                                      3y   325da3f
+●   Commit 195                                                      3y   0722297
+●   Commit 194                                                      3y   b6a4a47
+●   Commit 193                                                      3y   60af0eb
+●   Commit 192                                                      3y   aceb8c5
+●   Commit 191                                                      3y   11d68ff
+●   Commit 190                                                      3y   91900bd
+●   Commit 189                                                      3y   cec3e93
+●   Commit 188                                                      3y   0a91ece
+●   Commit 187                                                      3y   3121935
+●   Commit 186                                                      3y   fab25df
+●   Commit 185                                                      3y   09ae97c
+●   Commit 184                                                      3y   49d7783
+●   Commit 183                                                      3y   22d55c9
+●   Commit 182                                                      3y   d212b3e
+●   Commit 181                                                      3y   c8254c5
+●   Commit 180                                                      3y   e95ccd4
+●   Commit 179                                                      3y   97b58e5
+ q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom
+
+graph colour per cell:
+5.
+5.
+5.
+5.
+5.
+5.
+5.
+5.
+5.
+5.
+5.
+5.
+5.
+5.
+5.
+5.
+5.
+5.
+5.
+5.
+5.
+5.

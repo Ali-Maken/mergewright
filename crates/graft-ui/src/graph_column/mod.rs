@@ -20,9 +20,21 @@
 //! are rounded, so a fork reads `●─╮` and a merge reads `●─╯`. A lane
 //! passing through a horizontal edge keeps its `│`: the edge hops over it
 //! rather than appearing to join it.
+//!
+//! # Lanes without hue
+//!
+//! Hue says which branch a lane is. Where the terminal cannot show enough
+//! hues — twelve collapse to six at 16 colours, and `NO_COLOR` leaves none —
+//! shape says which *neighbour* it is: at [`ColorDepth::Palette16`] and
+//! [`ColorDepth::None`], every lane in an odd column draws its straight runs
+//! dashed (`╎`, `╌`), so two lanes side by side never look alike whatever
+//! their colour (DESIGN.md §4.6, ADR-0019). Elbows and junctions have no
+//! dashed forms and stay solid. The pattern follows the column, which a lane
+//! keeps for its whole life, so it never flips along a line.
 
 use std::borrow::Cow;
 
+use graft_core::capabilities::ColorDepth;
 use graft_graph::identity::BranchIdentity;
 use graft_graph::row::Row;
 use ratatui::buffer::Buffer;
@@ -176,30 +188,62 @@ impl<'a> GraphColumn<'a> {
 
 impl Widget for GraphColumn<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        let dashes = dashes_odd_columns(self.theme.color_depth());
         for (line, y) in self.lines.iter().zip(area.top()..area.bottom()) {
             let cells = row_cells(&line.row, line.node);
             for x in 0..area.width {
                 let cell = cells.get(usize::from(x)).copied().unwrap_or(BLANK);
                 let mut style = Style::new().add_modifier(line.paint.modifier());
-                if let Some(identity) = cell.identity {
-                    style = style.fg(color(self.theme.branch(identity)));
+                let mut glyph = cell.glyph;
+                if let Some(owner) = cell.owner {
+                    style = style.fg(color(self.theme.branch(owner.identity)));
+                    if dashes && owner.column % 2 == 1 {
+                        glyph = dashed(glyph);
+                    }
                 }
-                buf[(area.x + x, y)].set_char(cell.glyph).set_style(style);
+                buf[(area.x + x, y)].set_char(glyph).set_style(style);
             }
         }
     }
 }
 
-/// One drawn cell: its glyph and the branch it belongs to, if any.
+/// Whether lanes in odd columns draw dashed at this colour depth: only where
+/// hue alone cannot tell neighbours apart.
+fn dashes_odd_columns(depth: ColorDepth) -> bool {
+    match depth {
+        ColorDepth::TrueColor | ColorDepth::Palette256 => false,
+        ColorDepth::Palette16 | ColorDepth::None => true,
+    }
+}
+
+/// The dashed form of a straight run. Anything else — nodes, elbows,
+/// junctions — has none and draws as it is.
+fn dashed(glyph: char) -> char {
+    match glyph {
+        '│' => '╎',
+        '─' => '╌',
+        other => other,
+    }
+}
+
+/// One drawn cell: its glyph and the lane it belongs to, if any.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Cell {
     glyph: char,
-    identity: Option<BranchIdentity>,
+    owner: Option<Owner>,
+}
+
+/// The lane a cell is part of: the branch that colours it, and the column
+/// whose pattern it draws in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Owner {
+    identity: BranchIdentity,
+    column: usize,
 }
 
 const BLANK: Cell = Cell {
     glyph: ' ',
-    identity: None,
+    owner: None,
 };
 
 /// Every cell of one row, from lane 0's cell to the last lane's gap.
@@ -211,7 +255,7 @@ fn row_cells(row: &Row, node: NodeKind) -> Vec<Cell> {
         cells.push(if column == row.lane {
             Cell {
                 glyph: node.glyph(),
-                identity: geometry.identity_at(column),
+                owner: geometry.owner_at(column),
             }
         } else {
             geometry.lane_cell(column)
@@ -255,20 +299,21 @@ impl<'a> Geometry<'a> {
         }
     }
 
-    fn identity_at(&self, column: usize) -> Option<BranchIdentity> {
-        self.row.lanes.get(column).copied().flatten()
+    fn owner_at(&self, column: usize) -> Option<Owner> {
+        let identity = self.row.lanes.get(column).copied().flatten()?;
+        Some(Owner { identity, column })
     }
 
-    /// The branch a horizontal edge at `column` belongs to: the nearest
-    /// elbow at or beyond it, looking away from the node.
-    fn horizontal_owner(&self, column: usize) -> Option<BranchIdentity> {
+    /// The lane a horizontal edge at `column` belongs to: the nearest elbow
+    /// at or beyond it, looking away from the node.
+    fn horizontal_owner(&self, column: usize) -> Option<Owner> {
         let elbows = self.elbows.iter().copied();
         let nearest = if column > self.row.lane {
             elbows.filter(|&c| c >= column).min()
         } else {
             elbows.filter(|&c| c <= column).max()
         };
-        nearest.and_then(|c| self.identity_at(c))
+        nearest.and_then(|c| self.owner_at(c))
     }
 
     /// A lane's own cell, for any column but the node's.
@@ -280,15 +325,15 @@ impl<'a> Geometry<'a> {
         let left_span = self
             .left_end
             .is_some_and(|end| column < lane && column >= end);
-        let present = self.identity_at(column).is_some();
+        let present = self.owner_at(column).is_some();
         let sides = Sides {
             up: present && !self.opened.contains(&column),
             down: present && !self.row.incoming.contains(&column),
             left: right_span || (left_span && self.left_end != Some(column)),
             right: left_span || (right_span && self.right_end != Some(column)),
         };
-        let identity = if sides.up || sides.down {
-            self.identity_at(column)
+        let owner = if sides.up || sides.down {
+            self.owner_at(column)
         } else if right_span || left_span {
             self.horizontal_owner(column)
         } else {
@@ -296,7 +341,7 @@ impl<'a> Geometry<'a> {
         };
         Cell {
             glyph: sides.glyph(self.elbows.contains(&column)),
-            identity,
+            owner,
         }
     }
 
@@ -313,12 +358,12 @@ impl<'a> Geometry<'a> {
         if rightward {
             Cell {
                 glyph: '─',
-                identity: self.horizontal_owner(column + 1),
+                owner: self.horizontal_owner(column + 1),
             }
         } else if leftward {
             Cell {
                 glyph: '─',
-                identity: self.horizontal_owner(column),
+                owner: self.horizontal_owner(column),
             }
         } else {
             BLANK

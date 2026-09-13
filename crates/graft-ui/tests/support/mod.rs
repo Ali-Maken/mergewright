@@ -5,6 +5,7 @@
 )]
 
 pub mod corpus;
+pub mod screen;
 
 use graft_core::capabilities::{
     Capabilities, CellSize, CellSizeSource, ColorDepth, ProbeOutcome, RenderingTier, Supported,
@@ -14,6 +15,12 @@ use graft_ui::theme::{Theme, ThemeKind};
 
 /// A theme on an ordinary Unicode terminal with this colour depth.
 pub fn theme(kind: ThemeKind, color_depth: ColorDepth) -> Theme {
+    themed(kind, color_depth, false)
+}
+
+/// A theme on an ordinary Unicode terminal with this colour depth, and
+/// `NO_COLOR` set or not.
+pub fn themed(kind: ThemeKind, color_depth: ColorDepth, no_color: bool) -> Theme {
     Theme::new(
         kind,
         &Capabilities {
@@ -34,7 +41,7 @@ pub fn theme(kind: ThemeKind, color_depth: ColorDepth) -> Theme {
                 source: ThemeSource::Assumed,
             },
             color_depth,
-            no_color: false,
+            no_color,
             is_tty: true,
             over_ssh: false,
             tmux: TmuxStatus::Outside,

@@ -1,0 +1,37 @@
+---
+source: crates/graft-ui/tests/lanes_without_hue.rs
+expression: text
+---
+shape: octopus-merge, 256, 80x24, cursor on row 2
+
+ graft ~/code/api  5 commits
+◆─┬─┬─╮   Merge branches 'topic-1', 'topic-2' and 'topic-3'         3y   e385b54
+│ │ │ ●   topic 3                                                   3y   c95dba0
+│ │ ● │   topic 2                                                   3y   3d625a5
+│ ● │ │   topic 1                                                   3y   04bb363
+◇─┴─┴─╯   Add the base                                              3y   68d5d19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom
+
+graph colour per cell:
+chhkkff.
+c.h.k.f.
+c.h.k.f.
+c.h.k.f.
+chhkkff.

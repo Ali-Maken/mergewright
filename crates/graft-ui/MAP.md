@@ -24,7 +24,7 @@ One line per public item. Update when a public item changes.
 - `GraphLine` (struct) — `row` (borrowed or synthesised), `node`, `paint` for one drawn row.
 - `GraphLine::plain` (fn) — a row drawn normally, borrowing a real `Row`.
 - `GraphLine::owned` (fn) — a row drawn normally, owning a synthesised `Row` (the uncommitted-changes row).
-- `GraphColumn` (struct) — widget drawing consecutive rows; fills its area exactly.
+- `GraphColumn` (struct) — widget drawing consecutive rows; fills its area exactly. At 16 colours and `NO_COLOR`, odd-column lanes draw dashed (`╎`, `╌`).
 - `GraphColumn::new` (fn) — draw lines in a theme.
 - `GraphColumn::width_for` (fn) — cells for N lanes.
 

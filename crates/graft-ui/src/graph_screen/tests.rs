@@ -389,3 +389,23 @@ fn ui_icons_changes_how_badges_render() {
     insta::assert_snapshot!("badges-icons-plain", plain);
     insta::assert_snapshot!("badges-icons-nerd", nerd);
 }
+
+#[test]
+fn with_no_color_the_cursor_row_keeps_its_rule_and_dimmed_rows_stay_faint() {
+    let rows = linear(3);
+    let theme = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::TrueColor, true));
+    let mut view = view(&rows, WalkView::Complete { rows: 3 }, 1);
+    view.rows[2].line.paint = RowPaint::Dimmed;
+    let mut terminal = Terminal::new(TestBackend::new(40, 6)).expect("test backend opens");
+    terminal
+        .draw(|frame| frame.render_widget(GraphScreen::new(&view, &theme), frame.area()))
+        .expect("drawing into a test backend cannot fail");
+    let buffer = terminal.backend().buffer();
+
+    // No colour at all, so no background step and no accent: the rule's
+    // shape is the highlight, and weight/faintness carry the paint.
+    let has_rule = (0..buffer.area.width).any(|x| buffer[(x, 2)].symbol() == "▏");
+    assert!(has_rule, "expected a rule on the cursor row: {buffer:#?}");
+    assert!(buffer[(10, 2)].modifier.contains(Modifier::BOLD));
+    assert!(buffer[(10, 3)].modifier.contains(Modifier::DIM));
+}

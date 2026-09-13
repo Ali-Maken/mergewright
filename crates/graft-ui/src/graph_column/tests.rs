@@ -180,3 +180,57 @@ fn a_256_colour_terminal_gets_palette_indices() {
 
     assert!(matches!(buf[(0, 0)].fg, Color::Indexed(_)));
 }
+
+/// Which cells of a rendered row are dashed, as a string of `╎`/`╌` positions.
+fn dashes(buf: &Buffer, y: u16) -> String {
+    (0..buf.area.width)
+        .map(|x| match buf[(x, y)].symbol() {
+            "╎" | "╌" => 'd',
+            _ => '.',
+        })
+        .collect()
+}
+
+#[test]
+fn where_hue_cannot_carry_lanes_odd_columns_are_dashed() {
+    let rows = reuse_rows();
+    let lines: Vec<_> = rows.iter().map(GraphLine::plain).collect();
+    let truecolor = render(&lines, &dark(ColorDepth::TrueColor), 4);
+    for depth in [ColorDepth::Palette16, ColorDepth::None] {
+        let buf = render(&lines, &dark(depth), 4);
+        for y in 0..buf.area.height {
+            let solid: String = text(&truecolor, y).replace('│', "|").replace('─', "-");
+            let drawn = text(&buf, y);
+            // Same picture, only the lane in column 1 (cell 2) and the
+            // horizontal edge it owns (cell 1) swap to their dashed forms.
+            let expected: String = solid
+                .chars()
+                .enumerate()
+                .map(|(x, glyph)| match (x, glyph) {
+                    (2, '|') => '╎',
+                    (1, '-') => '╌',
+                    (_, '|') => '│',
+                    (_, '-') => '─',
+                    (_, other) => other,
+                })
+                .collect();
+            assert_eq!(drawn, expected, "{depth:?} row {y}");
+        }
+        assert!(
+            (0..buf.area.height).any(|y| dashes(&buf, y).contains('d')),
+            "{depth:?}: the fixture has an odd-column lane to dash"
+        );
+    }
+}
+
+#[test]
+fn with_enough_colour_every_lane_stays_solid() {
+    let rows = reuse_rows();
+    let lines: Vec<_> = rows.iter().map(GraphLine::plain).collect();
+    for depth in [ColorDepth::TrueColor, ColorDepth::Palette256] {
+        let buf = render(&lines, &dark(depth), 4);
+        for y in 0..buf.area.height {
+            assert_eq!(dashes(&buf, y), "....", "{depth:?} row {y}");
+        }
+    }
+}

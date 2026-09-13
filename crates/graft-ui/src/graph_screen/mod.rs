@@ -424,7 +424,9 @@ impl GraphScreen<'_> {
     /// to the same index (KNOWN_GAPS.md M0), so the raised background step
     /// would paint nothing a viewer can see — the marker slot's rule
     /// (DESIGN.md §4.6) carries the highlight there instead, so the
-    /// background step is skipped rather than drawn for nothing.
+    /// background step is skipped rather than drawn for nothing. `NO_COLOR`
+    /// ([`ColorDepth::None`]) has no background step either, so it takes the
+    /// same rule — uncoloured, its shape alone marks the row.
     fn row_emphasis(
         &self,
         entry: &GraphEntry<'_>,
@@ -435,7 +437,11 @@ impl GraphScreen<'_> {
         let mut style = foreground(self.theme, Token::Text);
         let mut trailing_style = foreground(self.theme, Token::TextMuted);
         let highlighted = entry.line.paint == RowPaint::Highlighted;
-        let palette16_edge = highlighted && self.theme.color_depth() == ColorDepth::Palette16;
+        let palette16_edge = highlighted
+            && matches!(
+                self.theme.color_depth(),
+                ColorDepth::Palette16 | ColorDepth::None
+            );
 
         if highlighted {
             style = style.add_modifier(Modifier::BOLD);
