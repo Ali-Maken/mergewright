@@ -1,6 +1,6 @@
 # m1-the-graph/40 — Pixel tier: folded edges are fading tails, the rail is a dotted line
 
-Status: done — user check pending (40 capture)
+Status: done — user check pending (joint with 47: git/git seen at 120 cols and 80×24 after j j, captured by 47; user, 2026-09-13)
 Build with: **Opus** (high) — drawing in the rasteriser (gradients, Béziers); the approach is decided, the result is judged by eye, so not Fable
 Needs: 39 (`DrawnRow`, `FoldedEdge`, `Toward`, `raster::Stub`, `RasterRow::stubs`); 42 (`stroke_width`, `OFF_THREAD_ALPHA`, `FADED_ALPHA`)
 Blocked by: 39, 42
