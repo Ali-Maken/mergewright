@@ -2,7 +2,7 @@
 
 Status: ready
 Build with: **Opus** (high) — terminal graphics protocol, strip cache, background history
-Blocked by: 36
+Blocked by: M1 graph design pass (user order: design decisions land first)
 Leaves runnable: yes — scrolling git/git in the pixel tier never leaves rows without their graph.
 
 Why: user's gallery walk, 2026-09-13, stop 23/23 `git-git` (pixel tier, "gfx ok", 384 rows so far, tooltip pinned): "this page was buggy as hell, and upon scrolling a bit, the graph disappears." Screenshot: `docs/shots/user-37-git-git-pixel-after-scroll.png` (look at it). Also visible there: the last row reads `### match next` in the message column — find out what that is (search prompt or hint bleeding into a graph row?) and fix it if it's wrong.

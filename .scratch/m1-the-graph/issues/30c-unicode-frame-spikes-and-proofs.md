@@ -111,3 +111,21 @@ Gotchas: run frames tests alone and send output to a file (`cargo test [--releas
 4. Combination: 3, then 1 for the first key after idle if it still misses.
 
 Next exact step once decided: implement the choice, then per `frames::` test tighten `INPUT_TO_FRAME` (e.g. 4 ms) and `heavy::FIRST_PAINT_LIMIT` (e.g. 10 ms) in release, see each fail, revert; then run the release command in TESTING.md once, alone, output to a file; fill the acceptance boxes.
+
+## Decision (key 37 / release assert flake) — user, 2026-09-13
+
+User, verbatim:
+
+> (a). Cut the per-key cost — and treat it as spec compliance, not an optimisation: PROMPT.md's third non-negotiable says the UI never waits on a job, and 353 of 420 keys currently do. Keys render from the rows already laid out; the worker's answer arrives as an event and redraws.
+> Keep measuring the idle-wake case, but report it separately rather than failing on it, so a future regression is still visible.
+> Acceptance: no key waits on a background answer; the release frame check passes 7 runs out of 7; and I feel no lag on the first keypress after a pause when I re-walk the gallery.
+
+Also from the user: "It's also the case you'll feel most: in a history browser you look at the screen for a few seconds, then press a key. That's the half-second-idle path, every time." Options b (exclude the key) and c (busy core while measuring) are rejected: they hide the evidence.
+
+Remaining scope for part b, in this order:
+- [ ] Test first: a key whose rows aren't laid out yet returns a frame without waiting on the worker (assert no blocking receive on the key path); red now.
+- [ ] Keys draw from the rows already laid out; the worker's answer arrives as an event and redraws. Fix the cause; no timeouts, no polling.
+- [ ] Idle-wake case (first key after ≥0.5 s idle) measured and reported separately in the release run output, not failing.
+- [ ] Release frame check passes 7 runs out of 7 (record all 7).
+- [ ] Proofs and one release run (the original part b remainder).
+- [ ] By eye, user: no lag on the first keypress after a pause, in the gallery re-walk.
