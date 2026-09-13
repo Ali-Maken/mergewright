@@ -153,6 +153,52 @@ fn line(out: &mut String, case: &Case<'_>, cell: (u32, u32)) {
     .unwrap_or_else(|why| panic!("writing to a String: {why}"));
 }
 
+/// A strip of `rows[range]` drawn plainly, with the row above it if any.
+fn plain<'a>(
+    name: &'static str,
+    rows: &'a [Row],
+    range: std::ops::Range<usize>,
+    marker: Option<Marker>,
+) -> Case<'a> {
+    Case {
+        name,
+        above: range.start.checked_sub(1).map(|above| &rows[above]),
+        lane_columns: width_of(rows),
+        rows: rows[range].iter().map(RasterRow::plain).collect(),
+        marker,
+    }
+}
+
+/// Rows 40..72 of `rows` with a thread on two rows in three (`even`, then
+/// `few`) and some rows dimmed or highlighted whole.
+fn threaded<'a>(rows: &'a [Row], even: &'a BTreeSet<usize>, few: &'a BTreeSet<usize>) -> Case<'a> {
+    Case {
+        name: "wide-thread",
+        rows: rows[40..72]
+            .iter()
+            .enumerate()
+            .map(|(index, row)| RasterRow {
+                thread: match index % 3 {
+                    0 => Some(even),
+                    1 => Some(few),
+                    _ => None,
+                },
+                emphasis: if index % 5 == 0 {
+                    Emphasis::Dimmed
+                } else if index % 4 == 0 {
+                    Emphasis::Highlighted
+                } else {
+                    Emphasis::Normal
+                },
+                ..RasterRow::plain(row)
+            })
+            .collect(),
+        above: Some(&rows[39]),
+        lane_columns: width_of(rows),
+        marker: None,
+    }
+}
+
 #[test]
 fn strips_keep_every_byte() {
     let shapes = ["foxtrot-merge", "criss-cross-merge", "octopus-merge"];
@@ -175,61 +221,21 @@ fn strips_keep_every_byte() {
             marker: None,
         })
         .collect();
+    cases.push(plain("chain", &chain, 0..32, None));
+    cases.push(plain("parallel-mid", &parallel, 32..64, None));
+    cases.push(plain("wide-mid", &wide, 32..64, None));
+    cases.push(threaded(&wide, &even, &few));
     cases.push(Case {
-        name: "chain",
-        rows: chain[..32].iter().map(RasterRow::plain).collect(),
-        above: None,
-        lane_columns: width_of(&chain),
-        marker: None,
-    });
-    cases.push(Case {
-        name: "parallel-mid",
-        rows: parallel[32..64].iter().map(RasterRow::plain).collect(),
-        above: Some(&parallel[31]),
-        lane_columns: width_of(&parallel),
-        marker: None,
-    });
-    cases.push(Case {
-        name: "wide-mid",
-        rows: wide[32..64].iter().map(RasterRow::plain).collect(),
-        above: Some(&wide[31]),
-        lane_columns: wide_columns,
-        marker: None,
-    });
-    cases.push(Case {
-        name: "wide-thread",
-        rows: wide[40..72]
-            .iter()
-            .enumerate()
-            .map(|(index, row)| RasterRow {
-                thread: match index % 3 {
-                    0 => Some(&even),
-                    1 => Some(&few),
-                    _ => None,
-                },
-                emphasis: if index % 5 == 0 {
-                    Emphasis::Dimmed
-                } else if index % 4 == 0 {
-                    Emphasis::Highlighted
-                } else {
-                    Emphasis::Normal
-                },
-                ..RasterRow::plain(row)
-            })
-            .collect(),
-        above: Some(&wide[39]),
-        lane_columns: wide_columns,
-        marker: None,
-    });
-    cases.push(Case {
-        name: "wide-marker",
-        rows: wide[32..64].iter().map(RasterRow::plain).collect(),
-        above: Some(&wide[31]),
         lane_columns: 12,
-        marker: Some(Marker {
-            column: 11,
-            folded: 17,
-        }),
+        ..plain(
+            "wide-marker",
+            &wide,
+            32..64,
+            Some(Marker {
+                column: 11,
+                folded: 17,
+            }),
+        )
     });
 
     let mut out = String::new();
