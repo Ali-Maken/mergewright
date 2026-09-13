@@ -1,4 +1,4 @@
-# Order, inclusion and the promoted order on handles
+# m1-the-graph/51 — Order, inclusion and the promoted order on handles
 
 Status: ready
 Build with: **Sonnet** (medium) — a key-type substitution across `graft-graph` and `graft::history`, held by property tests, the corpus snapshots and the promotion tests. Escalates to Opus on a second failure.

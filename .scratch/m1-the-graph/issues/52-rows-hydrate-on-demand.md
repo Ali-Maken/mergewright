@@ -1,4 +1,4 @@
-# Rows hydrate on demand: the layout lays out links, reads commits only near the viewport
+# m1-the-graph/52 — Rows hydrate on demand: the layout lays out links, reads commits only near the viewport
 
 Status: ready
 Build with: **Opus** (high) — the streaming layout's core semantics (pass-through, materialisation, rebuild fingerprints); correctness is judged by determinism tests and the memory curve, so not Fable.

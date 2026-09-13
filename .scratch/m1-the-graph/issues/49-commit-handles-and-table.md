@@ -1,4 +1,4 @@
-# Commit handles and the shared id table
+# m1-the-graph/49 — Commit handles and the shared id table
 
 Status: ready
 Build with: **Opus** (high) — gix commit-graph internals; the table's shape is structural for three crates, but the approach is decided in ADR-0026 and correctness is round-trip tests, so not Fable.

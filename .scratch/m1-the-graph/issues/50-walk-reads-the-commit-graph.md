@@ -1,4 +1,4 @@
-# The walk reads the commit-graph, and its state is dense
+# m1-the-graph/50 — The walk reads the commit-graph, and its state is dense
 
 Status: ready
 Build with: **Opus** (high) — rev-walk correctness against the git oracle, generation-number rules, commits outside the graph.
