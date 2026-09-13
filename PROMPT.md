@@ -494,7 +494,7 @@ Tests run on the developer's laptop while they're using it. **The suite must nev
 | Tier | Command | When | Budget |
 |---|---|---|---|
 | **Fast** (default) | `cargo test` | After every change; the gate for every ticket | Under 3 minutes and about 2 GB of RAM in total |
-| **Heavy** | `cargo test --features heavy-tests -- --ignored --test-threads=2` | Milestone reviews only | Under 10 minutes and about 3 GB |
+| **Heavy** | `cargo test --features heavy-tests -- --test-threads=2` | Milestone reviews only | Under 10 minutes and about 3 GB |
 | **Manual** | Steps in `TESTING.md` | Only when the user chooses (the M1 and M8 checkpoints) | — |
 
 **What each tier contains**
@@ -507,7 +507,7 @@ Tests run on the developer's laptop while they're using it. **The suite must nev
   - the 100k-commit synthetic repo and the performance budgets
   - `proptest` at 1,000 cases
   - a **peak-memory test** that fails if loading and scrolling the 100k repo uses more than 300 MB (measured with `getrusage`)
-  - mark these tests `#[ignore]` and put them behind the `heavy-tests` feature
+  - put these tests behind the `heavy-tests` feature only — no `#[ignore]`, so the one command above runs the whole tier (ADR-0018)
 - **Manual tier:** the Linux kernel repo. Never downloaded or run automatically. `TESTING.md` explains how to make a commits-only clone (`git clone --filter=tree:0`) if the user wants to try it.
 
 **Limits that keep the machine usable**

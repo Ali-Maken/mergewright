@@ -34,12 +34,11 @@ fewer), `proptest` at 64 cases, no network, no fuzzing, no benchmarks. It
 builds the [fixture corpus](#fixtures) the first time and finds it cached
 afterwards.
 
-**It never runs a heavy test.** Heavy tests are `#[ignore]`d *and* behind
-the `heavy-tests` feature, so a default build does not even compile them.
-To prove it:
+**It never runs a heavy test.** Heavy tests are behind the `heavy-tests`
+feature, so a default build does not even compile them. To prove it:
 
 ```sh
-cargo test -- --ignored     # 0 tests run
+cargo test --test it -p graft-fixtures -- --list | grep -c '^heavy::'   # 0
 ```
 
 A fast-tier test that takes more than 10 seconds is a bug, not a slow test
@@ -47,20 +46,20 @@ A fast-tier test that takes more than 10 seconds is a bug, not a slow test
 
 ## The heavy tier
 
-Two commands, not one, and you need both:
+One command (ADR-0018):
 
 ```sh
-# 1. The tests that are marked #[ignore]: the 100k-commit repository and,
-#    from ticket 16, the performance and memory budgets.
-cargo test --features heavy-tests -- --ignored --test-threads=2
-
-# 2. Everything else, with proptest at 1,000 cases instead of 64.
+# The 100k-commit repository, the budgets from tickets 27 and 30, and every
+# property test at 1,000 cases instead of 64.
 cargo test --features heavy-tests -- --test-threads=2
 ```
 
-`--ignored` runs *only* the ignored tests, so the first command on its own
-would never reach a property test. PROMPT.md §7.1 lists command 1; command
-2 is what makes its "proptest at 1,000 cases" actually happen.
+The feature alone gates heavy tests; none is `#[ignore]`d.
+
+> **Until m1-the-graph/27 lands:** the four generator tests in
+> `crates/graft-fixtures/tests/it/heavy.rs` still carry `#[ignore]`. Append
+> `--include-ignored` to every heavy command on this page, or they are
+> skipped. 27 removes the attributes and this note.
 
 Also lint the heavy code, which the standard gate does not see — a feature
 that is off is not compiled, so `clippy --all-targets` says nothing about
@@ -139,9 +138,9 @@ The synthetic repository is only reachable from the heavy tier. To build
 it without running anything else:
 
 ```sh
-cargo test --features heavy-tests --test it -- --ignored --nocapture \
+cargo test --features heavy-tests --test it -- --nocapture \
   the_generator_builds_exactly_the_history_it_promises     # 5,000 commits
-cargo test --features heavy-tests --test it -- --ignored --nocapture \
+cargo test --features heavy-tests --test it -- --nocapture \
   the_heavy_fixture_is_the_size_prompt_md_asks_for         # 100,000 commits
 ```
 

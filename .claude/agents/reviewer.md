@@ -11,7 +11,7 @@ You review. You do **not** fix, and you only write inside `docs/reviews/`.
 1. Read CLAUDE.md, the milestone's section in PROMPT.md, DESIGN.md, the milestone's tickets and KNOWN_GAPS.md.
 2. Run the checks **one at a time, never in parallel** (see PROMPT.md 7.1):
    1. the gates: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` (time it)
-   2. the heavy tier: `cargo test --features heavy-tests -- --ignored --test-threads=2`
+   2. the heavy tier: `cargo test --features heavy-tests -- --test-threads=2` (ADR-0018; one command runs all of it)
    3. fuzzing and benchmarks, if they exist, within the 7.1 time limits
 
    Report the fast-suite time, the 5 slowest tests, peak memory and the size of `target/`.
