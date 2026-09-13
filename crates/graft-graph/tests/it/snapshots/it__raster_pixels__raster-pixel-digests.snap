@@ -1,0 +1,21 @@
+---
+source: crates/graft-graph/tests/it/raster_pixels.rs
+assertion_line: 241
+expression: out
+---
+foxtrot-merge @17x37: 68x148 f20073bb0b9a3f08
+criss-cross-merge @17x37: 170x259 5d3d5b1611ae2743
+octopus-merge @17x37: 136x185 8d249aa28cb1ab59
+chain @17x37: 68x1184 2353a7dbbff4a94f
+parallel-mid @17x37: 238x1184 469b70c225ccf992
+wide-mid @17x37: 986x1184 b6ccabf8b80c130a
+wide-thread @17x37: 986x1184 674f4bc0acc2630c
+wide-marker @17x37: 408x1184 bad1d0d0eb549c3a
+foxtrot-merge @8x16: 32x64 8208836e5840bd02
+criss-cross-merge @8x16: 80x112 7ea5e1bbfcaca4e2
+octopus-merge @8x16: 64x80 79d7d6f3f1a8f663
+chain @8x16: 32x512 ca0219336adf39d4
+parallel-mid @8x16: 112x512 e23adb0c230fb6bc
+wide-mid @8x16: 464x512 a4c03ce07eb347a8
+wide-thread @8x16: 464x512 c321cb372425a2ef
+wide-marker @8x16: 192x512 01a06c1a9728f9f9

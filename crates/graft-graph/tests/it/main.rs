@@ -5,5 +5,6 @@
 
 mod corpus;
 mod raster;
+mod raster_pixels;
 mod streaming;
 mod strip_cache;
