@@ -44,6 +44,15 @@ pub enum Shape {
     /// from two branches, so commit-date order shows it above a child and
     /// only a topological walk puts it below both (ADR-0008 promotion).
     SkewedDates,
+    /// One straight lane whose seven commits sit at real-clock ages from
+    /// "now" back to a bit over a year: 5s, 90s, 90min, 36h, 14d, 70d, 400d
+    /// (m1-the-graph/48) — every unit the relative-date column has,
+    /// `now`/`m`/`h`/`d`/`w`/`mo`/`y`, in one screen. Unlike every other
+    /// shape, its commit times are wall-clock offsets taken when the
+    /// fixture is built, not the corpus's fixed 2020-01-01 clock, so its
+    /// object ids are **not** byte-identical run to run — the point of this
+    /// shape is to look right *today*, not to hash the same forever.
+    RelativeDates,
     /// Lightweight and annotated tags, including one annotated tag whose
     /// message a graph row has to show.
     Tags,
@@ -84,6 +93,7 @@ impl Shape {
         Shape::OrphanBranch,
         Shape::CherryPickDuplicates,
         Shape::SkewedDates,
+        Shape::RelativeDates,
         Shape::Tags,
         Shape::UnicodeNames,
         Shape::RefStates,
@@ -110,6 +120,7 @@ impl Shape {
             Shape::OrphanBranch => "orphan-branch",
             Shape::CherryPickDuplicates => "cherry-pick-duplicates",
             Shape::SkewedDates => "skewed-dates",
+            Shape::RelativeDates => "relative-dates",
             Shape::Tags => "tags",
             Shape::UnicodeNames => "unicode-names",
             Shape::RefStates => "ref-states",

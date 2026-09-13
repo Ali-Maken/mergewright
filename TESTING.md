@@ -471,7 +471,7 @@ repository at a time, with a stated finding per stop.
 ```sh
 cargo run -p graft --example gallery                      # first stop
 cargo run -p graft --example gallery -- --start foxtrot-merge
-cargo run -p graft --example gallery -- --list            # the 23 stops
+cargo run -p graft --example gallery -- --list            # the 24 stops
 cargo run -p graft --example gallery -- --matrix          # coverage matrix
 ```
 
@@ -485,7 +485,7 @@ frame (ticket 38: the footer alone did not tell a first-time viewer where
 they were):
 
 ```
- gallery 1/23 trivial · one lane · ] next [ back q quit · unicode
+ gallery 1/24 trivial · one lane · ] next [ back q quit · unicode
  shows: 3 commits in one straight lane: ◆ HEAD on top, ◇ root at the bottom
  differs: the smallest stop, so only 3 rows show: that is all of it, a baseline
 ```
@@ -609,54 +609,62 @@ Press `F3` at any stop: the text right of the graph must not move.
     **below** `Main 01` (directly above `◇ Add the base`), never above
     `Main 12`. `feature: build on the fast commit` (`[feature]`) branches off
     it in a second column.
-13. **tags** — 4 rows, one tag each, reading down: `[◆ main] [tag: v2.0]` on
+13. **relative-dates** — one straight lane, 7 commits, oldest at the bottom.
+    Reading up, the When column reads `1y`, `2mo`, `2w`, `2d`, `2h`, `2m`,
+    `now` — one commit sitting right at each unit's own threshold (400, 70,
+    14 days; 36, 2 hours; 90 seconds ago; 5 seconds ago), so every unit the
+    column can show appears exactly once, in order. Unlike every other stop,
+    these ages are real wall-clock time taken when the corpus was built, not
+    the fixed 2020-01-01 clock, so re-running the gallery tomorrow still
+    shows the same seven units — just not the same absolute dates.
+14. **tags** — 4 rows, one tag each, reading down: `[◆ main] [tag: v2.0]` on
     `Add c.txt`, `[tag: v1.0]` on `Add b.txt`, `[tag: v0.2]` on `Add a.txt`,
     `[tag: v0.1]` on `◇ Add a readme`. `v1.0` and `v2.0` are annotated: their
     badges sit on the commit rows (the tag object is peeled), and read the
     same as the lightweight ones.
-14. **ref-states** — 8 commits. `Advance main again` carries
+15. **ref-states** — 8 commits. `Advance main again` carries
     `[◆ main ⇄ origin]` (one merged badge, no counts). `ahead: not pushed
     yet` carries `[ahead ↑1]` with `[origin/ahead]` one row below it.
     `behind: theirs` carries `[origin/behind]` and, one row below, `behind:
     shared` carries `[behind ↓1]`. `Archived work` carries `[tag: archived]`
     and no branch badge, in its own column off `◇ Add the base`.
-15. **detached-head** — 4 rows, one column. `[main]` (no `◆`: it is not
+16. **detached-head** — 4 rows, one column. `[main]` (no `◆`: it is not
     the current branch) on `Commit 4`, then `Commit 3`, then `◆ Commit 2`
     with `[HEAD]`, two rows below main's tip; `◇ Commit 1` at the bottom.
-16. **unborn-branch** — 3 commits. HEAD is the unborn branch `fresh`: no
+17. **unborn-branch** — 3 commits. HEAD is the unborn branch `fresh`: no
     row is `◆`, and no `Uncommitted changes` row appears at the top. `Add
     a.txt` (`[main]`) and `other: work` (`[other]`) in two columns above
     `◇ Add a readme`.
-17. **stash** — top row is the newest stash: `■` with `[stash]`, subject
+18. **stash** — top row is the newest stash: `■` with `[stash]`, subject
     `On main: wip: with an untracked file`, one row **above** `◆ Add a.txt`
     (`[◆ main]`). Press `H`: the stash row disappears, `Add a.txt` becomes
     the top row, nothing else moves. `H` again brings it back.
-18. **unicode-names** — 5 commits, author `Ünïcödé Fixture`. Three branch
+19. **unicode-names** — 5 commits, author `Ünïcödé Fixture`. Three branch
     rows off `日本語のコミットメッセージ`: `[fonctionnalité]`, `[機能]`,
     `[ветка]`, each in its own column. The `☕` and `🚀` subjects and the
     CJK badge take two cells per glyph, yet the author, date and SHA columns
     on those rows start in the same screen column as on every other row.
     `[tag: версия-1.0]` sits on the `日本語` row next to `[◆ main]`.
-19. **non-utf8-path** — 2 columns: `Add a Latin-1 path` (`[latin1]`) and
+20. **non-utf8-path** — 2 columns: `Add a Latin-1 path` (`[latin1]`) and
     `◆ Add a readme` (`[◆ main]`). The bad byte lives in a tree path, so no
     `\u{fffd}` or stray byte appears anywhere on screen.
-20. **non-utf8-ref-name** — builds only where the filesystem takes a Latin-1
+21. **non-utf8-ref-name** — builds only where the filesystem takes a Latin-1
     file name (not APFS): on a Mac the stop reads `not available — build
     with: …`. Where it builds: `Work under a Latin-1 branch name` carries a
     badge reading `caf�` (one replacement character), `Add a readme` carries
     `[◆ main]`, and nothing else on the row is disturbed.
-21. **graft-self** — this checkout, ~100 commits at M1's end. One column the
+22. **graft-self** — this checkout, ~100 commits at M1's end. One column the
     whole way, every node `●` except `◆` at HEAD and `◇` at the bottom; no
     curve anywhere. An `Uncommitted changes` row appears at the top only if
     the tree is dirty.
-22. **synthetic-100k** — present only after the heavy tier has built it
+23. **synthetic-100k** — present only after the heavy tier has built it
     (`--matrix` and the stop itself say `not available — build with: …`
     otherwise). With it: the first frame paints without a visible wait; more
     than eight parallel lanes fold behind a `⋮` rail, the header counting them
     (`+N lanes`; `+` unfolds them);
     `j` held down and `G` never stall; `1` collapses to the default branch's
     single column.
-23. **git-git** — `scripts/clone-git-git.sh` first. `master` is lane 0 and
+24. **git-git** — `scripts/clone-git-git.sh` first. `master` is lane 0 and
     stays in the leftmost column for the whole history (`G` to the bottom
     and back). Merge rows are `◉` with a curve coming in; release commits
     carry `[tag: v2.x.y]` badges. `1` leaves a single column of merges and
@@ -691,9 +699,9 @@ Press `F3` at any stop: the text right of the graph must not move.
 ### Per terminal: walk the gallery
 
 Procedure, in each terminal of the checklist above: `cargo run -p graft
---example gallery`, then `]` through all 23 stops, checking each against its
-entry; at stops 3, 5, 6 and 17 also press `Space`, `1`, `F` (`Esc` to leave)
-and `H` as the entry says; at stop 23 press `F3` three times and scroll.
+--example gallery`, then `]` through all 24 stops, checking each against its
+entry; at stops 3, 5, 6 and 18 also press `Space`, `1`, `F` (`Esc` to leave)
+and `H` as the entry says; at stop 24 press `F3` three times and scroll.
 The pass conditions are the ones above:
 
 - **Pixel tier, must pass** (Ghostty, Kitty, WezTerm, iTerm2): the 23
@@ -701,8 +709,8 @@ The pass conditions are the ones above:
   every stop, and the octopus (4), criss-cross (5) and foxtrot (6) curves are
   smooth, not stepped.
 - **Unicode tier, must look deliberate** (Terminal.app, Alacritty, the VS
-  Code and Zed terminals): the 23 entries hold with the glyphs listed under
-  "Reading the entries"; at stop 18 nothing is a tofu box.
+  Code and Zed terminals): the 24 entries hold with the glyphs listed under
+  "Reading the entries"; at stop 19 nothing is a tofu box.
 - **Must degrade, not break** (tmux, SSH): either a correct pixel gallery or
   a clean Unicode one, per the tmux/SSH block above; every stop's footer
   line reads in full.

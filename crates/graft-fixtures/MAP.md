@@ -2,7 +2,7 @@
 
 Public items, one line each.
 
-- `Shape` (enum) — one hand-written corpus repository per history shape; `Shape::ALL`, `name()`. `SkewedDates` has a commit a day ahead of its children, so date order is not topological.
+- `Shape` (enum) — one hand-written corpus repository per history shape; `Shape::ALL`, `name()`. `SkewedDates` has a commit a day ahead of its children, so date order is not topological. `RelativeDates` (m1-the-graph/48) is timed off the wall clock at build time instead of the corpus's fixed clock, so — unlike every other shape — its object ids are not byte-identical run to run; `corpus::identity` (tests) exempts it from that check by name.
 - `borrow` (fn) — the directory of one corpus fixture, read-only; panics if unavailable.
 - `try_borrow` (fn) — `borrow` that returns why a shape is unavailable.
 - `copy_into_temp` (fn) — a writable copy of one fixture, deleted on drop; panics if unavailable.

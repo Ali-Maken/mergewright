@@ -72,7 +72,7 @@ pub const KEYS: &str = "] next [ back q quit";
 /// `Shape::ALL`'s order: similar shapes sit together so `]` shows what
 /// changes between neighbours. The test below keeps this a permutation of
 /// `Shape::ALL`, so a new shape fails it until a row is written.
-const CORPUS: [(Shape, &str, &str, &str); 20] = [
+const CORPUS: [(Shape, &str, &str, &str); 21] = [
     (
         Shape::Trivial,
         ONE_LANE,
@@ -144,6 +144,12 @@ const CORPUS: [(Shape, &str, &str, &str); 20] = [
         ODD,
         "'Commit from a fast clock' is dated a day ahead yet sits below Main 01",
         "the only stop where date order and topological order disagree",
+    ),
+    (
+        Shape::RelativeDates,
+        ODD,
+        "one lane, oldest to newest: 1y, 2mo, 2w, 2d, 2h, 2m, now — every unit",
+        "the date column varies here; every other stop sits in one tight window",
     ),
     (
         Shape::Tags,

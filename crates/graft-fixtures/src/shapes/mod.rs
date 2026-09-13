@@ -154,6 +154,7 @@ pub fn build(shape: Shape, dir: &Path, streams: &Path) -> Result<(), BuildError>
         Shape::OrphanBranch => history::orphan_branch(&site),
         Shape::CherryPickDuplicates => history::cherry_pick_duplicates(&site),
         Shape::SkewedDates => history::skewed_dates(&site),
+        Shape::RelativeDates => history::relative_dates(&site),
         Shape::Tags => refs::tags(&site),
         Shape::UnicodeNames => refs::unicode_names(&site),
         Shape::RefStates => refs::ref_states(&site),

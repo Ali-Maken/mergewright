@@ -54,8 +54,17 @@ impl Laid {
 
 /// Calls `visit` on every shape this machine can hold. The non-UTF-8 ref
 /// name cannot exist on APFS; that skip is announced, any other one fails.
+///
+/// `RelativeDates` (m1-the-graph/48) is left out: it is timed off the wall
+/// clock at build time, so its object ids — and the short SHAs these
+/// snapshots capture — are not stable build to build. Its layout is a
+/// plain straight lane, already covered by `Trivial`/`Linear`; it is
+/// judged by eye in the gallery, not by a snapshot here.
 pub fn for_each_shape(mut visit: impl FnMut(Shape, &Path)) {
     for &shape in Shape::ALL {
+        if shape == Shape::RelativeDates {
+            continue;
+        }
         match graft_fixtures::try_borrow(shape) {
             Ok(dir) => visit(shape, &dir),
             Err(why) => {

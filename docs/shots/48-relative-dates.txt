@@ -1,0 +1,26 @@
+gallery stop 13/24: relative-dates, unicode tier, 80x24
+
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/f807b0fe6df7da4b/r…
+ gallery 13/24 relative-dates · quirks · ] next [ back q quit · unicode
+ shows: one lane, oldest to newest: 1y, 2mo, 2w, 2d, 2h, 2m, now — every unit
+ differs: the date column varies here; every other stop sits in one tight window
+◆   [◆ main] Commit 7                                               7m   7dc4e3f
+●─  Commit 6                                                        8m   827e9dd
+●─  Commit 5                                                        2h   d64cc9a
+●─  Commit 4                                                        2d   0317112
+●i  Commit 3                                                        2w   4726c96
+●   Commit 2                                                        2mo  7b19d94
+◇   Commit 1                                                        1y   dc50d9c
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  F3 renderer  / search  j/k move  ⏎ full subject  Space foldG
+ q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent

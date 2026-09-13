@@ -108,6 +108,27 @@ impl Stream {
         self.commit_at(identity, when, refname, message, parents, files)
     }
 
+    /// [`commit`](Self::commit), authored and committed at the exact Unix
+    /// time `when` rather than the stream's own synthetic clock.
+    ///
+    /// Every other commit in the corpus is timed off `EPOCH`/`STEP` so
+    /// object ids are byte-identical run to run (this module's doc
+    /// comment). The one shape that needs a commit to sit at a real
+    /// wall-clock age — "36 hours ago", read back by `relative_date` at
+    /// render time — cannot use that clock and stay honest about the age,
+    /// so it calls this instead; `next_time` is left untouched, since a
+    /// shape built entirely with explicit times never reads it.
+    pub fn commit_at_time(
+        &mut self,
+        when: u64,
+        refname: &[u8],
+        message: &[u8],
+        parents: &[Mark],
+        files: &[FileContent<'_>],
+    ) -> Mark {
+        self.commit_at(IDENTITY, when, refname, message, parents, files)
+    }
+
     /// A commit by `identity`, authored and committed at `when`.
     fn commit_at(
         &mut self,

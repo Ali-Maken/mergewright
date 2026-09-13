@@ -20,6 +20,14 @@ use graft_fixtures::git::GitError;
 fn identity(root: &Path) -> BTreeMap<String, String> {
     let mut found = BTreeMap::new();
     for shape in Shape::ALL {
+        // `RelativeDates` is timed off the wall clock at build time, not
+        // this corpus's fixed clock (m1-the-graph/48, `Shape` doc comment):
+        // its object ids are supposed to differ from one build to the
+        // next, so it is exempt from the determinism this test checks for
+        // everything else, by design, not a gap in the guarantee.
+        if *shape == Shape::RelativeDates {
+            continue;
+        }
         let dir = root.join(shape.name());
         if !dir.join(".git").is_dir() {
             continue;

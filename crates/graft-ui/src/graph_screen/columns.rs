@@ -29,27 +29,54 @@ pub fn initials(name: &str) -> String {
 }
 
 /// How long ago `then` was, relative to `now` — both Unix seconds — in the
-/// short form a narrow column needs: `"2m"`, `"3h"`, `"1d"`.
+/// short form a narrow column needs: `"2m"`, `"3h"`, `"2d"`, `"2w"`, `"2mo"`,
+/// `"1y"`.
 ///
-/// Widens to `"{n}mo"` past 30 days and `"{n}y"` past 365; a commit from the
-/// future (a clock skewed ahead, or a rebase authored ahead of "now") reads
-/// as `"now"` rather than a negative count.
+/// Matches `git log --date=relative`'s own rounding and unit thresholds
+/// (m1-the-graph/48; verified against the real `git` binary, table in that
+/// ticket), just spelled compactly. Concretely, that means:
+///
+/// - each stage rounds to the *nearest* count, not down (`elapsed/unit`
+///   floors; a commit 46h old floored to `1d`, but git — and now Graft —
+///   call 46h `"2d"`, since it rounds to the nearest day);
+/// - the rounding cascades stage to stage — minutes, then from minutes to
+///   hours, then hours to days — exactly as git's does, because rounding
+///   raw seconds straight to (say) days directly makes a different, wrong
+///   call within a few thousand seconds of the week/month boundary;
+/// - a unit never shows `1`: the smallest count entering minutes is `2`
+///   (`89s` is still `"now"`; `90s` rounds straight to `"2m"`), and the same
+///   holds for hours, days, weeks and months — this is git's own behaviour,
+///   not a Graft quirk;
+/// - weeks (`"2w"` .. `"10w"`) sit between days and months, a unit this
+///   column didn't have before: git uses one there, so Graft now does too.
+///
+/// A commit from the future (a clock skewed ahead, or a rebase authored
+/// ahead of "now") reads as `"now"` rather than a negative count.
 #[must_use]
 pub fn relative_date(now: i64, then: i64) -> String {
     let elapsed = now.saturating_sub(then);
-    if elapsed < 60 {
-        "now".to_owned()
-    } else if elapsed < 60 * 60 {
-        format!("{}m", elapsed / 60)
-    } else if elapsed < 24 * 60 * 60 {
-        format!("{}h", elapsed / (60 * 60))
-    } else if elapsed < 30 * 24 * 60 * 60 {
-        format!("{}d", elapsed / (24 * 60 * 60))
-    } else if elapsed < 365 * 24 * 60 * 60 {
-        format!("{}mo", elapsed / (30 * 24 * 60 * 60))
-    } else {
-        format!("{}y", elapsed / (365 * 24 * 60 * 60))
+    if elapsed < 90 {
+        return "now".to_owned();
     }
+    let minutes = (elapsed + 30) / 60;
+    if minutes < 90 {
+        return format!("{minutes}m");
+    }
+    let hours = (minutes + 30) / 60;
+    if hours < 36 {
+        return format!("{hours}h");
+    }
+    let days = (hours + 12) / 24;
+    if days < 14 {
+        return format!("{days}d");
+    }
+    if days < 70 {
+        return format!("{}w", (days + 3) / 7);
+    }
+    if days < 365 {
+        return format!("{}mo", (days + 15) / 30);
+    }
+    format!("{}y", (days + 182) / 365)
 }
 
 /// The commit's own recorded date, absolute, in its own offset:
@@ -138,18 +165,60 @@ mod tests {
     }
 
     #[test]
-    fn relative_date_picks_the_widest_unit_that_still_fits() {
-        assert_eq!(relative_date(1000, 1000), "now");
-        assert_eq!(relative_date(1000, 940), "1m");
-        assert_eq!(relative_date(10_000, 0), "2h");
-        assert_eq!(relative_date(100_000, 0), "1d");
-        assert_eq!(relative_date(40 * 24 * 60 * 60, 0), "1mo");
-        assert_eq!(relative_date(400 * 24 * 60 * 60, 0), "1y");
-    }
-
-    #[test]
     fn a_commit_from_the_future_reads_as_now() {
         assert_eq!(relative_date(0, 1000), "now");
+    }
+
+    /// Every row is `relative_date(now, now - elapsed)`, `elapsed` a boundary
+    /// from m1-the-graph/48's table, checked against real
+    /// `git log --date=relative` output (git's compact word dropped, unit
+    /// abbreviated: "2 days ago" -> "2d").
+    #[test]
+    fn matches_git_log_date_relative_at_every_boundary() {
+        let cases: &[(i64, &str)] = &[
+            // seconds: git counts seconds up to 89s; Graft has no seconds
+            // unit, so both sides of that stage read "now".
+            (1, "now"),
+            (89, "now"),
+            // 90s is git's first minute reading, and it is "2m" (never
+            // "1m" — the minute stage's rounding never lands on 1).
+            (90, "2m"),
+            (91, "2m"),
+            (5339, "89m"), // just under 89.5m, rounds down to 89m
+            (5340, "89m"), // exactly 89.5m, rounds down (ties go down)
+            (5341, "89m"),
+            (5400, "2h"), // 90m rounds up out of the minute stage
+            (7200, "2h"),
+            (125_999, "35h"),
+            (126_000, "35h"),
+            (129_599, "2d"), // 36h rounds up out of the hour stage
+            (129_600, "2d"),
+            (1_123_199, "13d"),
+            (1_123_200, "13d"),
+            (1_209_599, "2w"), // 14d rounds up out of the day stage
+            (1_209_600, "2w"),
+            (5_443_200, "9w"),
+            (6_002_969, "10w"),
+            (6_002_970, "2mo"), // 70d rounds up out of the week stage
+            (6_048_000, "2mo"),
+            (30_412_800, "12mo"),
+            (31_536_000, "1y"), // 365d rounds up out of the month stage
+            (34_560_000, "1y"),
+            (47_174_400, "1y"), // 1y6mo (git) rounds to the nearer year
+            (157_680_000, "5y"),
+            (172_800_000, "5y"),
+            (180_000_000, "6y"),
+            (315_360_000, "10y"),
+            (630_720_000, "20y"),
+        ];
+        let now = 2_000_000_000;
+        for &(elapsed, expected) in cases {
+            assert_eq!(
+                relative_date(now, now - elapsed),
+                expected,
+                "elapsed = {elapsed}s"
+            );
+        }
     }
 
     #[test]
