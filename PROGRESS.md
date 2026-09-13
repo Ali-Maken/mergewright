@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M1 The graph** — ticket 27 (31, 07–26, 32–34 done; user Ghostty check: pixels ok, found wheel-scroll wrap → 32; user chose F3 as a cycle → 33; tooltip fix + pin on Enter + author/date (user decisions) → 34; then 27; 24 split into 24b/24c/24d; 37 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
+**Current step:** **M1 The graph** — ticket 27 (31, 07–26, 32–34 done; user Ghostty check: pixels ok, found wheel-scroll wrap → 32; user chose F3 as a cycle → 33; tooltip fix + pin on Enter + author/date (user decisions) → 34; order now 27, 29, 30, 35 graph gallery (acceptance, Fable, user decision), 28, then review; 24 split into 24b/24c/24d; 38 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
 
 ---
 
@@ -186,6 +186,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-13 · M1/34 tooltip: whole commit, author/date, pin on Enter (user decisions) · sonnet · done · cause: box height from raw line count, not wrapped count (fix uses ratatui unstable-rendered-line-info feature); pinned tooltip split from hover; author/absolute+relative date/full hash; ADR-0020; pty captures docs/shots/34-*.txt on a fixture shaped like 8219724 (not the real commit); by eye (Ghostty + Shift+drag copy) unticked; gates pass; 110k tokens, no compaction; commit 60f1b2b
 
 ## Open questions for the M1 checkpoint
+- **Report rule (user, 2026-09-13):** graph test-plan layers 5 (terminals), 6 (scale), 7 (by eye) stay open until 27, 29, 30 land and 35 is judged by the user. Say so in the M1 checkpoint report; don't call M1 done over them.
 - **ratatui unstable feature** (m1/34): `unstable-rendered-line-info` enabled for tooltip height. Unstable API may break on a ratatui upgrade; reviewer to judge keep vs own wrap count.
 - **Proposed change (m1/25): DESIGN §3.8 drop the strip flush on resize.** Resize only needs row-by-row clearing; uploads survive. Approve / keep flush. Also: png 0.18 added to graft-term for iTerm2 (reviewer to check crate rules).
 

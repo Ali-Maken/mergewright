@@ -45,10 +45,10 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
 4. **It's a milestone:**
    1. **Design pass and ticket specs, then filing** (normally done at the checkpoint before the milestone):
       - No `docs/design-notes/<milestone>.md` → send `planner-fable` the milestone slug, its PROMPT.md §8 entry and "write the note and the ticket specs". It writes the note plus unnumbered specs in `.scratch/<milestone>/issues/`. If it expects more than about twelve tickets, it does pass 1 (note + interface-first specs) and says so; send a fresh `planner-fable` for pass 2. Commit as `design: <milestone>`.
-      - **File and sequence** the specs: number them `NN-<slug>.md` in dependency order, set `Blocked by:` from each spec's `Needs:`, set `Status: ready`. Don't change scope, signatures or `Build with`. Commit as `tickets: <milestone>`.
+      - **File and sequence** the specs: number them `NN-<slug>.md` in dependency order, the acceptance ticket last (if the spec pass didn't write one, send it back to `planner-fable`), set `Blocked by:` from each spec's `Needs:`, set `Status: ready`. Don't change scope, signatures or `Build with`. Commit as `tickets: <milestone>`.
       - **Don't run `/to-tickets`** for any milestone with a Fable spec pass (M2 onward). It was for M0 and M1 only.
       - M8: file the standing `fable-architecture-pass.md` ticket with the rest.
-      - **Stop and tell the user** if the plan wants three or more Fable builds (signature tickets count; escalation redos don't), or the note would differ from DESIGN.md (a Proposed change; tickets follow DESIGN.md until approved).
+      - **Stop and tell the user** if the plan wants three or more Fable builds (signature tickets count; escalation redos and the acceptance ticket don't), or the note would differ from DESIGN.md (a Proposed change; tickets follow DESIGN.md until approved).
       - Ticket approval: only where the checkpoint policy requires it.
    2. **Build each ticket in dependency order,** dispatching per its `Build with` line whenever it's unblocked. When dispatching the milestone's first ticket, add `M<n> start <hash>` (current HEAD) to the session log: the reviewer diffs from it.
       - `done` → next ticket.
@@ -66,7 +66,7 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
       Models: spec Fable · Sonnet 01,03,04 · Opus 02,05 · Fable 06 (signature) · review Fable · escalated: <ids or none>
       Compacted: <ticket ids → split into ids, or none>
       Try: <exact commands>
-      Gaps: <bullets or "none">
+      Gaps: <bullets or "none">   (open test-plan layers or an unjudged acceptance ticket are gaps: never call the milestone done over them)
       Review: <n> critical / <n> major fixed, <n> minor left
       Next: M<n+1>, <count> tickets (<path>). Approve? yes / change   (read-only next milestone: "continue?")
       ```

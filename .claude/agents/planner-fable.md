@@ -19,6 +19,7 @@ You make the design decisions for **one** Graft milestone and write its ticket s
    **Never read source** (`crates/**/*.rs`, `prototypes/`). If a MAP.md is missing or too thin to design against, say so in the note rather than opening source.
 
 2. **Write `docs/design-notes/<milestone-slug>.md`** (for example `m2-details-and-diffs.md`). **Two pages max.** Telegraphic. Exactly these sections:
+   - **Promise:** one line, what the milestone lets the user rely on (CLAUDE.md names M1, M3, M5, M6; name the others). The acceptance ticket proves it.
    - **Interfaces and data shapes:** the types, traits and function signatures the milestone introduces or changes, in which crate, and who calls them. Real Rust signatures, not prose.
    - **Hard-to-reverse choices:** the two or three decisions that would be expensive to undo later. For each: options, **recommendation**, one-line why.
    - **Where I'd differ from DESIGN.md:** what and why, with the trade-off. "None" is a valid answer. These go to the user as Proposed changes; don't treat them as decided.
@@ -32,6 +33,8 @@ You make the design decisions for **one** Graft milestone and write its ticket s
    - **Signatures:** the exact Rust signatures the work must expose and call
    - **Acceptance:** checkable criteria; for visual work, the `docs/shots/` capture it must end with
    - **Gates** and **Size** (one context, under ~80k tokens)
+
+   **The last spec is always the acceptance ticket** (`Build with: Fable`, `Needs:` every other ticket): the command that walks the promise's scenarios, the `TESTING.md` entries saying concretely what right looks like (never "looks correct"), the `docs/shots/` captures, and the context guard (captures to files, report paths only). It doesn't count against the Fable build expectation.
 
    Follow CLAUDE.md "Standing rules → Tickets" and "→ Models": interface-first grouping; signature tickets go on Fable; any other Fable ticket must pass all three tests; one or two Fable builds per milestone, signature tickets included.
 
