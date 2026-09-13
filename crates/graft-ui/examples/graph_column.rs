@@ -34,7 +34,7 @@ fn main() {
 
         println!("── {shape} ──");
         for (line, y) in lines.iter().zip(0..area.height) {
-            println!("{}  {}", ansi_row(&buf, y), corpus::caption(line.row));
+            println!("{}  {}", ansi_row(&buf, y), corpus::caption(&line.row));
         }
         println!();
     });

@@ -48,15 +48,15 @@ fn feature_branches_at_every_designed_size() {
                 .iter()
                 .take(height)
                 .enumerate()
-                .map(|(index, &line)| GraphEntry {
+                .map(|(index, line)| GraphEntry {
                     badges: Vec::new(),
                     line: if index == 1 {
                         graft_ui::graph_column::GraphLine {
                             paint: RowPaint::Highlighted,
-                            ..line
+                            ..line.clone()
                         }
                     } else {
-                        line
+                        line.clone()
                     },
                     subject: sanitize_line(&String::from_utf8_lossy(line.row.commit.subject())),
                     author: AuthorChip {

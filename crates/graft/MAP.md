@@ -55,8 +55,8 @@ One line per public item. Update when a public item changes.
 ## update
 - `AppEvent` (enum) — events fed into `update`, including job products.
 - `Progress` (enum) — what a running job hands over before it ends.
-- `Task` (enum) — jobs identified so their results can be told apart from stray ones; `ReadRefs` reads the badges.
-- `Product` (enum) — what a job brought back; `Refs` carries `RefBadges` or why they failed.
+- `Task` (enum) — jobs identified so their results can be told apart from stray ones; `ReadRefs` reads the badges; `ReadWorkingTree` reads working-tree status counts.
+- `Product` (enum) — what a job brought back; `Refs` carries `RefBadges` or why they failed; `WorkingTree` carries `WorkingTreeCounts` or why they failed.
 - `GitCheck` (enum) — what running `git --version` found.
 - `AppState` (struct) — the whole app state.
 - `AppState::quit` (field) — set when Graft is leaving; terminal restored before reporting.
@@ -68,6 +68,7 @@ One line per public item. Update when a public item changes.
 - `AppState::awaiting` (field) — job id whose result is still wanted; stale ones dropped.
 - `AppState::history` (field) — the history walk shown on screen, if one was asked for.
 - `AppState::refs` (field) — refs on each commit, once the refs job answers.
+- `AppState::working_tree` (field) — working-tree status counts, once that job answers.
 - `AppState::screen` (field) — which screen is on show; graph by default.
 - `Screen` (enum) — `Graph` (default) or `Status`.
 - `Screen::toggled` (fn) — the other screen; `F2` swaps.
@@ -77,7 +78,7 @@ One line per public item. Update when a public item changes.
 - `Size` (struct) — terminal size in character cells.
 - `Size::columns` (field) — width in character cells.
 - `Size::rows` (field) — height in character cells.
-- `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows; `ReadRefs` reads refs and ahead/behind off the loop's thread.
+- `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows; `ReadRefs` reads refs and ahead/behind off the loop's thread; `ReadWorkingTree` reads working-tree status counts off the loop's thread.
 - `CHROME_ROWS` (const) — screen rows that are not the graph; `graft_ui::graph_screen::CHROME_ROWS`.
 - `AppState::graph_rows` (fn) — history rows the graph pane shows at the current size; never zero.
 - `update` (fn) — the pure state transition function.
@@ -217,3 +218,6 @@ One line per public item. Update when a public item changes.
 
 ## history::seeds
 - `seeds_for` (fn) — compute walk seeds from refs and branches; symbolic refs excluded.
+
+## working_tree
+- `read` (fn) — read working-tree status counts off the repository store (a job's work).

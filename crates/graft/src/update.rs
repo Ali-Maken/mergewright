@@ -68,6 +68,8 @@ pub enum Task {
     ReadHistory,
     /// Read the refs each commit's badges show.
     ReadRefs,
+    /// Read the working tree's staged/unstaged/untracked counts.
+    ReadWorkingTree,
 }
 
 /// What a job brought back.
@@ -82,6 +84,9 @@ pub enum Product {
     /// The refs on each commit and how far each branch is from its
     /// upstream, or why they could not be read.
     Refs(Result<crate::refs::RefBadges, String>),
+    /// The working tree's staged/unstaged/untracked counts, or why they
+    /// could not be read.
+    WorkingTree(Result<graft_git::status::WorkingTreeCounts, String>),
 }
 
 /// What running `git --version` found.
@@ -132,6 +137,10 @@ pub struct AppState {
     pub history: Option<History>,
     /// The refs on each commit, once the refs job has answered.
     pub refs: Option<crate::refs::RefBadges>,
+    /// The working tree's staged/unstaged/untracked counts, once that job
+    /// has answered. `None` until then, and while it fails: a failed read
+    /// goes on the status line rather than showing a stale count.
+    pub working_tree: Option<graft_git::status::WorkingTreeCounts>,
     /// Which screen is on show. The graph, unless the user asked for the
     /// status screen — the only place tier and cell size are shown.
     pub screen: Screen,
@@ -246,6 +255,9 @@ pub enum Command {
     /// Read the refs for the badges, counting ahead/behind off the loop's
     /// thread.
     ReadRefs,
+    /// Read the working tree's staged/unstaged/untracked counts off the
+    /// loop's thread.
+    ReadWorkingTree,
     /// Hand history job `JobId` a request for rows. The rows come back as a
     /// [`HistoryUpdate::Window`] tagged with the request's id.
     ShowRows(JobId, RowRequest),
@@ -278,7 +290,10 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
         }
         // Neither of these is waited on: their results are welcome whenever
         // they arrive, and there is nothing for `Esc` to cancel.
-        AppEvent::Started(_, Task::OpenRepository | Task::CheckSystemGit | Task::ReadRefs) => {}
+        AppEvent::Started(
+            _,
+            Task::OpenRepository | Task::CheckSystemGit | Task::ReadRefs | Task::ReadWorkingTree,
+        ) => {}
         AppEvent::Produced(_, Product::Repository(Ok(facts))) => {
             next.repository = Some(facts);
             // Whatever went wrong last time has been superseded by a
@@ -307,6 +322,15 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
         AppEvent::Produced(_, Product::Refs(Err(failure))) => {
             // The graph still draws without badges; the reason goes on the
             // status line rather than leaving them silently missing.
+            next.status = Status::Failed(failure);
+        }
+        AppEvent::Produced(_, Product::WorkingTree(Ok(counts))) => {
+            next.working_tree = Some(counts);
+        }
+        AppEvent::Produced(_, Product::WorkingTree(Err(failure))) => {
+            // The graph still draws without the uncommitted row; the reason
+            // goes on the status line rather than leaving it silently
+            // missing.
             next.status = Status::Failed(failure);
         }
         AppEvent::Progress(id, Progress::History(update)) => {
@@ -389,6 +413,7 @@ fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         commands.push(Command::OpenRepository);
         commands.push(Command::ReadHistory(Order::Topological));
         commands.push(Command::ReadRefs);
+        commands.push(Command::ReadWorkingTree);
     } else if is_screen_toggle(key) {
         next.screen = next.screen.toggled();
     } else if let Some(motion) = motion_for(key) {
@@ -702,6 +727,7 @@ mod tests {
                 Command::OpenRepository,
                 Command::ReadHistory(Order::Topological),
                 Command::ReadRefs,
+                Command::ReadWorkingTree,
             ]
         );
         // Asking for work is all it does: the state is the job's to change,
@@ -734,6 +760,7 @@ mod tests {
             awaiting: None,
             history: None,
             refs: None,
+            working_tree: None,
             screen: Screen::Graph,
         };
 

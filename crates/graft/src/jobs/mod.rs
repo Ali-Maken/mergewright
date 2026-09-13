@@ -503,6 +503,15 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
                     Outcome::Produced(Product::Refs(crate::refs::read(&repos, &cache)))
                 });
             }
+            Command::ReadWorkingTree => {
+                let repos = Arc::clone(&self.repos);
+                self.announce(Task::ReadWorkingTree, move |cancel| {
+                    if cancel.is_cancelled() {
+                        return Outcome::Cancelled;
+                    }
+                    Outcome::Produced(Product::WorkingTree(crate::working_tree::read(&repos)))
+                });
+            }
             Command::ReadHistory(order) => {
                 let repos = Arc::clone(&self.repos);
                 let sink = self.sink.clone();

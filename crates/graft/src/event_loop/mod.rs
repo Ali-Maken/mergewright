@@ -222,6 +222,8 @@ fn opening_repository(
     jobs.dispatch(Command::ReadHistory(Order::Topological));
     // Badges: ahead/behind walks commits, so it is a job too.
     jobs.dispatch(Command::ReadRefs);
+    // The uncommitted-changes row: a status read, so it is a job too.
+    jobs.dispatch(Command::ReadWorkingTree);
     AppState {
         repo_path: repo_path.to_path_buf(),
         size,
@@ -641,6 +643,7 @@ mod tests {
                 Command::OpenRepository,
                 Command::ReadHistory(Order::Topological),
                 Command::ReadRefs,
+                Command::ReadWorkingTree,
             ]
         );
     }

@@ -21,6 +21,8 @@
 //! passing through a horizontal edge keeps its `│`: the edge hops over it
 //! rather than appearing to join it.
 
+use std::borrow::Cow;
+
 use graft_graph::identity::BranchIdentity;
 use graft_graph::row::Row;
 use ratatui::buffer::Buffer;
@@ -104,10 +106,16 @@ impl RowPaint {
 }
 
 /// One row of the graph column, as the widget draws it.
-#[derive(Clone, Copy, Debug)]
+///
+/// `row` is a [`Cow`] rather than a plain reference so that a virtual row
+/// with no commit behind it — the uncommitted-changes row, PROMPT.md §1.3 —
+/// can draw with the same connector-line geometry as a real one, by owning a
+/// synthesised [`Row`] instead of borrowing one out of the walk.
+#[derive(Clone, Debug)]
 pub struct GraphLine<'a> {
-    /// The laid-out commit.
-    pub row: &'a Row,
+    /// The laid-out commit, borrowed for a real row or owned for a
+    /// synthesised one.
+    pub row: Cow<'a, Row>,
     /// Its node's shape.
     pub node: NodeKind,
     /// How strongly it paints.
@@ -119,8 +127,19 @@ impl<'a> GraphLine<'a> {
     #[must_use]
     pub fn plain(row: &'a Row) -> Self {
         GraphLine {
-            row,
             node: NodeKind::of(row),
+            row: Cow::Borrowed(row),
+            paint: RowPaint::Normal,
+        }
+    }
+
+    /// A row with no commit behind it, drawn normally. For a synthesised row
+    /// (the uncommitted-changes row) whose `Row` exists only to be drawn.
+    #[must_use]
+    pub fn owned(row: Row) -> Self {
+        GraphLine {
+            node: NodeKind::of(&row),
+            row: Cow::Owned(row),
             paint: RowPaint::Normal,
         }
     }
@@ -158,7 +177,7 @@ impl<'a> GraphColumn<'a> {
 impl Widget for GraphColumn<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         for (line, y) in self.lines.iter().zip(area.top()..area.bottom()) {
-            let cells = row_cells(line.row, line.node);
+            let cells = row_cells(&line.row, line.node);
             for x in 0..area.width {
                 let cell = cells.get(usize::from(x)).copied().unwrap_or(BLANK);
                 let mut style = Style::new().add_modifier(line.paint.modifier());

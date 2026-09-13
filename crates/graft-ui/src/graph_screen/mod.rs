@@ -333,7 +333,7 @@ impl GraphScreen<'_> {
             .unwrap_or(1);
         // Half the width at most: the subject is what makes a row readable.
         let graph_width = GraphColumn::width_for(lanes).min(area.width / 2);
-        let graph_lines: Vec<GraphLine<'_>> = rows.iter().map(|entry| entry.line).collect();
+        let graph_lines: Vec<GraphLine<'_>> = rows.iter().map(|entry| entry.line.clone()).collect();
         GraphColumn::new(&graph_lines, self.theme).render(
             Rect {
                 width: graph_width,

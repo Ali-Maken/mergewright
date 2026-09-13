@@ -10,8 +10,10 @@
 //! called `ma<ESC>[31min` reaches the terminal as the picture of an escape and
 //! never as the escape (DESIGN.md §8.2).
 
+use graft_git::status::WorkingTreeCounts;
 use graft_git::version::SystemGit;
 use graft_graph::identity::BranchIdentity;
+use graft_graph::row::Row;
 use graft_term::{SanitizedText, sanitize_line, sanitize_path, sanitize_path_bytes};
 use graft_ui::graph_column::{GraphLine, NodeKind, RowPaint};
 use graft_ui::graph_screen::{
@@ -93,6 +95,21 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
         },
         Phase::Failed(reason) => WalkView::Failed(sanitize_line(reason)),
     };
+    let rows = visible_rows(state, history);
+
+    GraphView {
+        location,
+        problem,
+        walk,
+        rows,
+        icons: graft_ui::graph_screen::Icons::default(),
+    }
+}
+
+/// The rows the viewport shows: the uncommitted-changes row, when the
+/// working tree is dirty and `HEAD` is the topmost visible commit, then the
+/// history rows the walk last sent.
+fn visible_rows<'a>(state: &'a AppState, history: &'a History) -> Vec<GraphEntry<'a>> {
     let mailmap = state.repository.as_ref().map(|facts| &facts.mailmap);
     // A clock reading, not repository text — the moment "now" is drawn at,
     // for the relative-date column. `duration_since` only fails when the
@@ -103,28 +120,132 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
         .map_or(0, |elapsed| {
             i64::try_from(elapsed.as_secs()).unwrap_or(i64::MAX)
         });
-    let rows = history
-        .visible(state.graph_rows())
-        .iter()
-        .zip(history.top..)
-        .map(|(row, index)| {
-            row_entry(
-                row,
-                index == history.cursor,
-                mailmap,
-                state.refs.as_ref(),
-                now,
-            )
-        })
-        .collect();
+    // The topmost visible row, independent of viewport height: whether the
+    // uncommitted row attaches depends only on what is at the very top, not
+    // on how many rows are shown below it.
+    let top_row = history.visible(1).first();
+    let dirty = state.working_tree.filter(|counts| !counts.is_clean());
+    let uncommitted = dirty.filter(|_| head_is_topmost(state.refs.as_ref(), top_row));
+    // The virtual row takes one of the viewport's rows when it draws:
+    // `History::visible` knows nothing about it.
+    let height = if uncommitted.is_some() {
+        state.graph_rows().saturating_sub(1)
+    } else {
+        state.graph_rows()
+    };
+    uncommitted
+        .map(|counts| uncommitted_entry(top_row, counts))
+        .into_iter()
+        .chain(
+            history
+                .visible(height)
+                .iter()
+                .zip(history.top..)
+                .map(|(row, index)| {
+                    row_entry(
+                        row,
+                        index == history.cursor,
+                        mailmap,
+                        state.refs.as_ref(),
+                        now,
+                    )
+                }),
+        )
+        .collect()
+}
 
-    GraphView {
-        location,
-        problem,
-        walk,
-        rows,
-        icons: graft_ui::graph_screen::Icons::default(),
+/// Is `HEAD` the topmost visible row? The uncommitted row attaches only
+/// then (PROMPT.md §1.3): otherwise it would draw beside a commit it is not
+/// actually on top of, once the viewport has scrolled.
+///
+/// `refs` unresolved (the job has not answered yet) reads as "no": showing
+/// the row and then possibly retracting it once the answer arrives would
+/// flicker, and a clean-looking first frame is the safer guess.
+fn head_is_topmost(refs: Option<&RefBadges>, top: Option<&Row>) -> bool {
+    let Some(refs) = refs else {
+        return false;
+    };
+    match refs.head() {
+        // An unborn branch has no commit for the row to sit on top of, so
+        // it is trivially the topmost thing there is.
+        None => true,
+        Some(head_id) => top.is_some_and(|row| row.commit.id == head_id),
     }
+}
+
+/// The uncommitted-changes row's [`GraphEntry`]: `head_row` — `HEAD`'s row,
+/// or `None` on an unborn branch — gives it the same lane and lane
+/// occupancy `HEAD`'s row has, so the connector line reads as continuing
+/// down into it. Author, date and SHA stay blank (DESIGN.md §1.1's mockup):
+/// there is no commit behind this row to show them for.
+fn uncommitted_entry<'a>(head_row: Option<&Row>, counts: WorkingTreeCounts) -> GraphEntry<'a> {
+    let mut line = GraphLine::owned(uncommitted_row(head_row));
+    line.node = NodeKind::Uncommitted;
+    GraphEntry {
+        badges: Vec::new(),
+        line,
+        subject: sanitize_line(&uncommitted_subject(counts)),
+        author: AuthorChip {
+            initials: sanitize_line(""),
+            identity: BranchIdentity::of_name(b""),
+        },
+        when: String::new(),
+        sha: String::new(),
+    }
+}
+
+/// A `Row` with no commit behind it, drawn only to give the uncommitted
+/// row's node the same connector-line geometry `GraphColumn` gives a real
+/// one. Never reaches a ref comparison or a selection target: `view` builds
+/// it fresh every frame and nothing else holds it.
+fn uncommitted_row(head_row: Option<&Row>) -> Row {
+    let blank = graft_core::commit::Identity {
+        name: Vec::new(),
+        email: Vec::new(),
+        when: graft_core::commit::Timestamp {
+            seconds: 0,
+            offset_seconds: 0,
+        },
+    };
+    // Never a real object id — all zero bytes, at whatever length this
+    // repository's ids are — so it can never collide with a commit a ref or
+    // the selection could name.
+    let id_len = head_row.map_or(graft_core::oid::Oid::SHA1_BYTES, |row| {
+        row.commit.id.as_bytes().len()
+    });
+    let id = graft_core::oid::Oid::from_bytes(&vec![0u8; id_len])
+        .unwrap_or_else(|_| unreachable!("id_len is always a hash length Oid::from_bytes accepts"));
+    Row {
+        commit: graft_core::commit::Commit {
+            id,
+            parents: Vec::new(),
+            author: blank.clone(),
+            committer: blank,
+            message: Vec::new(),
+        },
+        lane: head_row.map_or(0, |row| row.lane),
+        incoming: Vec::new(),
+        outgoing: head_row.map_or_else(Vec::new, |row| vec![(row.lane, row.commit.id)]),
+        lanes: head_row.map_or_else(Vec::new, |row| row.lanes.clone()),
+        marker: None,
+    }
+}
+
+/// The subject text the uncommitted row shows: which of staged, unstaged
+/// and untracked are non-zero, and how many of each (DESIGN.md §1.1's
+/// mockup: `"Uncommitted changes (3 staged)"`).
+fn uncommitted_subject(counts: WorkingTreeCounts) -> String {
+    let mut parts = Vec::new();
+    if counts.staged > 0 {
+        parts.push(format!("{} staged", counts.staged));
+    }
+    if counts.unstaged > 0 {
+        parts.push(format!("{} unstaged", counts.unstaged));
+    }
+    if counts.untracked > 0 {
+        parts.push(format!("{} untracked", counts.untracked));
+    }
+    format!("Uncommitted changes ({})", parts.join(", "))
 }
 
 /// One row's [`GraphEntry`]: the graph cells, the sanitised subject, and the
@@ -414,6 +535,179 @@ mod tests {
             !screen.contains('\u{1b}'),
             "a subject's escape reached the cells"
         );
+    }
+
+    /// Refs whose `HEAD` resolves to `head`, or is unborn when `head` is
+    /// `None`.
+    fn refs_with_head(head: Option<Oid>) -> crate::refs::RefBadges {
+        let state = match head {
+            Some(id) => graft_git::repo::HeadState::Detached(id),
+            None => graft_git::repo::HeadState::Unborn(
+                graft_core::ref_name::RefName::new(b"refs/heads/main".to_vec())
+                    .expect("a valid ref name"),
+            ),
+        };
+        crate::refs::badges(&[], &state, &std::collections::HashMap::new(), |_, _| {
+            Ok(graft_git::history::AheadBehind {
+                ahead: 0,
+                behind: 0,
+            })
+        })
+        .expect("no branches to count")
+    }
+
+    fn oid(byte: u8) -> Oid {
+        Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes")
+    }
+
+    /// `state` with a 3-commit history (newest is `oid(3)`) and `HEAD`
+    /// attached to the newest commit.
+    fn state_with_head_and_counts(counts: graft_git::status::WorkingTreeCounts) -> AppState {
+        AppState {
+            history: Some(history_of(3, 0)),
+            refs: Some(refs_with_head(Some(oid(3)))),
+            working_tree: Some(counts),
+            size: Size {
+                columns: 60,
+                rows: 5,
+            },
+            ..AppState::default()
+        }
+    }
+
+    fn counts(
+        staged: usize,
+        unstaged: usize,
+        untracked: usize,
+    ) -> graft_git::status::WorkingTreeCounts {
+        graft_git::status::WorkingTreeCounts {
+            staged,
+            unstaged,
+            untracked,
+        }
+    }
+
+    #[test]
+    fn a_clean_tree_draws_no_uncommitted_row() {
+        let state = state_with_head_and_counts(counts(0, 0, 0));
+
+        let view = graph_view(&state);
+
+        assert_eq!(view.rows.len(), 3, "no virtual row taken from the budget");
+        assert_eq!(view.rows[0].line.row.commit.id, oid(3));
+    }
+
+    #[test]
+    fn staged_only_names_only_staged() {
+        let state = state_with_head_and_counts(counts(3, 0, 0));
+
+        let view = graph_view(&state);
+
+        assert_eq!(view.rows[0].line.node, NodeKind::Uncommitted);
+        assert_eq!(
+            view.rows[0].subject.as_str(),
+            "Uncommitted changes (3 staged)"
+        );
+        assert_eq!(view.rows[0].author.initials.as_str(), "");
+        assert_eq!(view.rows[0].when, "");
+        assert_eq!(view.rows[0].sha, "");
+        // The virtual row plus history rows, one fewer than a full viewport
+        // (graph_rows() is 3 here; the row it draws takes one of them).
+        assert_eq!(view.rows.len(), 3, "1 virtual row + 2 history rows");
+        assert_eq!(view.rows[1].line.row.commit.id, oid(3));
+    }
+
+    #[test]
+    fn unstaged_only_names_only_unstaged() {
+        let state = state_with_head_and_counts(counts(0, 2, 0));
+
+        let view = graph_view(&state);
+
+        assert_eq!(
+            view.rows[0].subject.as_str(),
+            "Uncommitted changes (2 unstaged)"
+        );
+    }
+
+    #[test]
+    fn untracked_only_names_only_untracked() {
+        let state = state_with_head_and_counts(counts(0, 0, 4));
+
+        let view = graph_view(&state);
+
+        assert_eq!(
+            view.rows[0].subject.as_str(),
+            "Uncommitted changes (4 untracked)"
+        );
+    }
+
+    #[test]
+    fn all_three_are_named_together() {
+        let state = state_with_head_and_counts(counts(1, 2, 3));
+
+        let view = graph_view(&state);
+
+        assert_eq!(
+            view.rows[0].subject.as_str(),
+            "Uncommitted changes (1 staged, 2 unstaged, 3 untracked)"
+        );
+    }
+
+    #[test]
+    fn the_row_is_hidden_when_head_is_not_the_topmost_visible_commit() {
+        // HEAD points at a commit that is not row 0 of what is on screen —
+        // scrolled down, say. The row must not draw beside the wrong commit.
+        let mut state = state_with_head_and_counts(counts(1, 0, 0));
+        state.refs = Some(refs_with_head(Some(oid(1))));
+
+        let view = graph_view(&state);
+
+        assert_eq!(view.rows.len(), 3, "no virtual row");
+        assert_eq!(view.rows[0].line.row.commit.id, oid(3));
+    }
+
+    #[test]
+    fn an_unborn_branch_with_staged_files_still_shows_the_row() {
+        // No commits at all yet, so nothing else could be "on top" of it.
+        let state = AppState {
+            history: Some(history_of(0, 0)),
+            refs: Some(refs_with_head(None)),
+            working_tree: Some(counts(2, 0, 0)),
+            size: Size {
+                columns: 60,
+                rows: 5,
+            },
+            ..AppState::default()
+        };
+
+        let view = graph_view(&state);
+
+        assert_eq!(view.rows.len(), 1);
+        assert_eq!(view.rows[0].line.node, NodeKind::Uncommitted);
+        assert_eq!(
+            view.rows[0].subject.as_str(),
+            "Uncommitted changes (2 staged)"
+        );
+    }
+
+    #[test]
+    fn a_dirty_tree_before_refs_have_loaded_draws_no_row() {
+        // Attachment cannot be decided without knowing HEAD; showing the row
+        // and then possibly retracting it once refs answer would flicker.
+        let state = AppState {
+            history: Some(history_of(3, 0)),
+            refs: None,
+            working_tree: Some(counts(1, 0, 0)),
+            size: Size {
+                columns: 60,
+                rows: 5,
+            },
+            ..AppState::default()
+        };
+
+        let view = graph_view(&state);
+
+        assert_eq!(view.rows.len(), 3);
     }
 
     #[test]

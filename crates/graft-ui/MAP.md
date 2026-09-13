@@ -21,8 +21,9 @@ One line per public item. Update when a public item changes.
 - `NodeKind::of` (fn) — commit/merge/root from a row's parents.
 - `NodeKind::glyph` (fn) — the node's character.
 - `RowPaint` (enum) — normal, dimmed, highlighted.
-- `GraphLine` (struct) — `row`, `node`, `paint` for one drawn row.
-- `GraphLine::plain` (fn) — a row drawn normally.
+- `GraphLine` (struct) — `row` (borrowed or synthesised), `node`, `paint` for one drawn row.
+- `GraphLine::plain` (fn) — a row drawn normally, borrowing a real `Row`.
+- `GraphLine::owned` (fn) — a row drawn normally, owning a synthesised `Row` (the uncommitted-changes row).
 - `GraphColumn` (struct) — widget drawing consecutive rows; fills its area exactly.
 - `GraphColumn::new` (fn) — draw lines in a theme.
 - `GraphColumn::width_for` (fn) — cells for N lanes.

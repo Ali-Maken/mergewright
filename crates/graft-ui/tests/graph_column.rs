@@ -36,7 +36,7 @@ fn every_shape_draws_as_snapshotted_and_the_same_in_dark_and_light() {
         let mut text = format!("shape: {shape} (dark = light, asserted), truecolor\n\n");
         for (line, y) in lines.iter().zip(0u16..) {
             let (glyphs, slots) = describe(&dark, y, &theme);
-            text.push_str(&format!("{glyphs}  {slots}  {}\n", caption(line.row)));
+            text.push_str(&format!("{glyphs}  {slots}  {}\n", caption(&line.row)));
         }
         insta::assert_snapshot!(shape.name(), text);
     });
