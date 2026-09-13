@@ -27,7 +27,7 @@ shape: foxtrot-merge, 16, 80x24, cursor on row 2
 
 
 
- q quit  F2 status  F3 renderer  / search  j/k move  Enter details  Space fold
+ q quit  F2 status  F3 renderer  / search  j/k move  Enter pin  Space fold
 
 graph colour per cell:
 555.

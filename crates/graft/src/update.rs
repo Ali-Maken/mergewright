@@ -168,11 +168,18 @@ pub struct AppState {
     /// Focus mode (`F`, DESIGN.md §5.2): rows off the selection's thread
     /// fade. A paint decision like `lanes_expanded`; the walk is not asked.
     pub focus: bool,
-    /// The commit tooltip's row, if it is open: an absolute history row
-    /// number, set the same way whether a hover or `Enter` opened it
-    /// (DESIGN.md §2.15, PROMPT.md §1.3; m1-the-graph/17). `None` when
-    /// closed.
+    /// The hover tooltip's row: an absolute history row number, set by
+    /// pointer movement over the graph (DESIGN.md §2.15, PROMPT.md §1.3;
+    /// m1-the-graph/17). `None` when the pointer is not over a row. A
+    /// pinned tooltip (below) takes priority over this one on screen, but
+    /// hover keeps tracking the pointer underneath it regardless.
     pub tooltip: Option<usize>,
+    /// The tooltip `Enter` pinned open, if any: an absolute history row
+    /// number that stays put under hover and scrolling — the commit it was
+    /// opened for, not the cursor (m1-the-graph/34's choice, so the tooltip
+    /// can be read and copied while the user keeps browsing). `Enter`
+    /// toggles it; `Esc` and a second `Enter` close it.
+    pub pinned_tooltip: Option<usize>,
     /// The tier-drop key (`F3`) forced this tier for the rest of the run, or
     /// `None` for whatever `Session::settle` decided. A view-time override
     /// like `lanes_expanded` — the rows are untouched, only how they draw
@@ -571,10 +578,7 @@ fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     } else if is_tier_cycle(key) {
         cycle_tier(next, commands);
     } else if is_tooltip_key(key) {
-        // The keyboard's route to the same content a hover opens (DESIGN.md
-        // §2.15): the selection's row, looked up the same way `graph_row_at`
-        // looks up a hovered one.
-        next.tooltip = next.history.as_ref().map(|history| history.cursor);
+        toggle_pinned_tooltip(next);
     } else if let Some(change) = view_change(key) {
         let height = next.graph_rows();
         let stash = next.refs.as_ref().and_then(crate::refs::RefBadges::stash);
@@ -598,10 +602,26 @@ fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     }
 }
 
-/// `Esc`: closes the tooltip if one is open, else backs a `G` still walking
-/// out first, then leaves Focus mode, then cancels the walk — the lightest
+/// `Enter` pins the tooltip open (m1-the-graph/34): a second `Enter`
+/// closes it, wherever the cursor has moved to since — `take()` reports
+/// whether one was already open before deciding whether to open a new
+/// one. Pinning is the keyboard's route to the same content a hover opens
+/// (DESIGN.md §2.15): the selection's row, looked up the same way
+/// `graph_row_at` looks up a hovered one.
+fn toggle_pinned_tooltip(next: &mut AppState) {
+    if next.pinned_tooltip.take().is_none() {
+        next.pinned_tooltip = next.history.as_ref().map(|history| history.cursor);
+    }
+}
+
+/// `Esc`: closes the tooltip if one is open — pinned first, since it is the
+/// one that survives everything else — else backs a `G` still walking out
+/// first, then leaves Focus mode, then cancels the walk — the lightest
 /// thing on screen goes first (m1-the-graph/17, DESIGN.md §2.2).
 fn escape_key(next: &mut AppState, commands: &mut Vec<Command>) {
+    if next.pinned_tooltip.take().is_some() {
+        return;
+    }
     if next.tooltip.take().is_some() {
         return;
     }
@@ -1478,9 +1498,60 @@ mod tests {
 
         let (opened, _) = update(&state, key(KeyCode::Enter));
         assert_eq!(
-            opened.tooltip, hovered.tooltip,
+            opened.pinned_tooltip, hovered.tooltip,
             "the keyboard names the same row as the hover"
         );
+    }
+
+    #[test]
+    fn hovering_another_row_does_not_move_or_close_a_pinned_tooltip() {
+        let id = JobId::new(23);
+        let (state, _) = merge_on_screen(id, 1);
+        let (opened, _) = update(&state, key(KeyCode::Enter));
+        assert_eq!(opened.pinned_tooltip, Some(1));
+
+        let hover = core(Event::Mouse(MouseInput {
+            kind: MouseKind::Moved,
+            column: 5,
+            row: HEADER_ROWS,
+            modifiers: Modifiers::NONE,
+        }));
+        let (hovered, _) = update(&opened, hover);
+        assert_eq!(
+            hovered.pinned_tooltip,
+            Some(1),
+            "hover cannot overwrite the pin"
+        );
+        assert_ne!(
+            hovered.tooltip, hovered.pinned_tooltip,
+            "hover still tracks the pointer underneath it"
+        );
+    }
+
+    #[test]
+    fn moving_the_cursor_does_not_move_a_pinned_tooltip() {
+        let id = JobId::new(23);
+        let (state, _) = merge_on_screen(id, 1);
+        let (opened, _) = update(&state, key(KeyCode::Enter));
+        assert_eq!(opened.pinned_tooltip, Some(1));
+
+        let (moved, _) = update(&opened, key(KeyCode::Char('j')));
+        assert_eq!(
+            moved.pinned_tooltip,
+            Some(1),
+            "the pin stays on the commit it was opened for"
+        );
+    }
+
+    #[test]
+    fn enter_again_closes_the_pin() {
+        let id = JobId::new(23);
+        let (state, _) = merge_on_screen(id, 1);
+        let (opened, _) = update(&state, key(KeyCode::Enter));
+        assert_eq!(opened.pinned_tooltip, Some(1));
+
+        let (closed, _) = update(&opened, key(KeyCode::Enter));
+        assert_eq!(closed.pinned_tooltip, None);
     }
 
     #[test]
@@ -1488,10 +1559,10 @@ mod tests {
         let id = JobId::new(23);
         let (state, _) = merge_on_screen(id, 1);
         let (opened, _) = update(&state, key(KeyCode::Enter));
-        assert_eq!(opened.tooltip, Some(1));
+        assert_eq!(opened.pinned_tooltip, Some(1));
 
         let (closed, commands) = update(&opened, key(KeyCode::Escape));
-        assert_eq!(closed.tooltip, None);
+        assert_eq!(closed.pinned_tooltip, None);
         assert!(
             commands.is_empty(),
             "closing the tooltip asks nothing of the walk"
@@ -1741,6 +1812,7 @@ mod tests {
             lanes_expanded: false,
             focus: false,
             tooltip: None,
+            pinned_tooltip: None,
             renderer_override: None,
             settled_tier: None,
             search_prompt: None,

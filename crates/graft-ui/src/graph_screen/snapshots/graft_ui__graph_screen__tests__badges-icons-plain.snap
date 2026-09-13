@@ -6,4 +6,4 @@ expression: plain
 ●   [◆ main ⇄ origin] [feature/auth ↑2 ↓1] [origin/f… Commit 2                                           TE 2h   0202020
 ◇   [topic] Commit 1                                                                                     TE 2h   0101010
                                                                                                                         
- q quit  F2 status  F3 renderer  / search  j/k move  Enter details  Space fold  1 first-parent  F focus  H stash
+ q quit  F2 status  F3 renderer  / search  j/k move  Enter pin  Space fold  1 first-parent  F focus  H stash

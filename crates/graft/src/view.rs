@@ -21,7 +21,7 @@ use graft_ui::graph_column::{GraphLine, NodeKind, RowPaint};
 use graft_ui::graph_screen::{
     AuthorChip, Badge, BadgeKind, Compaction, Filters, GraphEntry, GraphScreen, GraphView,
     GraphicsStatus, OrderNotice, SHA_WIDTH, SearchLine, Tracking, WalkView, initials,
-    relative_date, short_sha,
+    relative_date, short_sha, tooltip_date,
 };
 use graft_ui::status_screen::{
     HeadView, HistoryState, HistoryView, RepositoryView, StatusScreen, StatusView,
@@ -231,21 +231,73 @@ pub(crate) fn order_notice(history: &History) -> Option<OrderNotice> {
     })
 }
 
-/// The commit tooltip, if one is open: hover and the keyboard both leave
-/// `state.tooltip` pointing at an absolute row number, so both paths build
-/// the same content from the same lookup (m1-the-graph/17). `None` when the
-/// row it names has not (or no longer) arrived.
+/// A clock reading, not repository text — the moment "now" is drawn at, for
+/// every relative date on screen. `duration_since` only fails when the
+/// system clock reads before 1970, in which case every commit is at least
+/// that old and `relative_date` reads it the same as any far-past commit.
+fn now_seconds() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |elapsed| {
+            i64::try_from(elapsed.as_secs()).unwrap_or(i64::MAX)
+        })
+}
+
+/// An identity's mailmap-resolved name and email, or the identity's own
+/// when no mailmap is loaded yet.
+fn resolve_identity(
+    mailmap: Option<&graft_git::mailmap::Mailmap>,
+    identity: &graft_core::commit::Identity,
+) -> (Vec<u8>, Vec<u8>) {
+    match mailmap {
+        Some(mailmap) => mailmap.resolve(identity),
+        None => (identity.name.clone(), identity.email.clone()),
+    }
+}
+
+/// `Name <email>`, sanitised: repository text once mailmap has resolved it.
+fn identity_line(name: &[u8], email: &[u8]) -> SanitizedText {
+    sanitize(&format!(
+        "{} <{}>",
+        String::from_utf8_lossy(name),
+        String::from_utf8_lossy(email)
+    ))
+}
+
+/// The commit tooltip, if one is open: a pinned tooltip (`Enter`) wins over
+/// a hover, so hovering another row can never overwrite it
+/// (m1-the-graph/34). Both read through the same lookup, so their content
+/// is identical apart from `pinned`. `None` when the row it names has not
+/// (or no longer) arrived.
 fn tooltip_view(state: &AppState, history: &History) -> Option<graft_ui::graph_screen::Tooltip> {
-    let row = history.row_at(state.tooltip?)?;
+    let (row_index, pinned) = match state.pinned_tooltip {
+        Some(row) => (row, true),
+        None => (state.tooltip?, false),
+    };
+    let row = history.row_at(row_index)?;
     let commit = &row.commit;
+    let mailmap = state.repository.as_ref().map(|facts| &facts.mailmap);
+    let (author_name, author_email) = resolve_identity(mailmap, &commit.author);
+    let (committer_name, committer_email) = resolve_identity(mailmap, &commit.committer);
+    let committer = (committer_name != author_name || committer_email != author_email)
+        .then(|| identity_line(&committer_name, &committer_email));
     Some(graft_ui::graph_screen::Tooltip {
-        subject: sanitize_line(&String::from_utf8_lossy(commit.subject())),
-        body: sanitize(&String::from_utf8_lossy(commit_body(commit))),
+        hash: commit.id.to_string(),
+        author: identity_line(&author_name, &author_email),
+        committer,
+        date: tooltip_date(
+            now_seconds(),
+            commit.author.when.seconds,
+            commit.author.when.offset_seconds,
+        ),
         parents: commit
             .parents
             .iter()
             .map(|id| short_sha(&id.to_string(), usize::from(SHA_WIDTH)))
             .collect(),
+        subject: sanitize_line(&String::from_utf8_lossy(commit.subject())),
+        body: sanitize(&String::from_utf8_lossy(commit_body(commit))),
+        pinned,
     })
 }
 
@@ -320,15 +372,7 @@ fn visible_rows<'a>(
     thread: Option<&Thread>,
 ) -> Vec<GraphEntry<'a>> {
     let mailmap = state.repository.as_ref().map(|facts| &facts.mailmap);
-    // A clock reading, not repository text — the moment "now" is drawn at,
-    // for the relative-date column. `duration_since` only fails when the
-    // system clock reads before 1970, in which case every commit is at least
-    // that old and `relative_date` reads it the same as any far-past commit.
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |elapsed| {
-            i64::try_from(elapsed.as_secs()).unwrap_or(i64::MAX)
-        });
+    let now = now_seconds();
     // The topmost visible row, independent of viewport height: whether the
     // uncommitted row attaches depends only on what is at the very top, not
     // on how many rows are shown below it.

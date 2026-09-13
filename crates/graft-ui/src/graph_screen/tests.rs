@@ -4,7 +4,7 @@ use graft_core::oid::Oid;
 use graft_graph::layout::layout;
 use graft_graph::row::Row;
 use graft_graph::seeds::Seeds;
-use graft_term::sanitize_line;
+use graft_term::{sanitize, sanitize_line};
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 
@@ -506,6 +506,21 @@ fn filters_are_named_in_the_header_only_when_something_is_left_out() {
     assert_eq!(one.text(), "1 merge folded");
 }
 
+/// A tooltip with placeholder author/date/hash, for tests only interested
+/// in the subject/body/parents it overrides.
+fn base_tooltip() -> Tooltip {
+    Tooltip {
+        hash: "0123456789012345678901234567890123456789".to_owned(),
+        author: sanitize_line("Test <test@example.invalid>"),
+        committer: None,
+        date: "2026-09-13 14:02 +0000 · 4h ago".to_owned(),
+        parents: Vec::new(),
+        subject: sanitize_line(""),
+        body: sanitize_line(""),
+        pinned: false,
+    }
+}
+
 #[test]
 fn a_tooltip_overlays_the_body_with_the_subject_and_parents() {
     let rows = linear(3);
@@ -514,12 +529,148 @@ fn a_tooltip_overlays_the_body_with_the_subject_and_parents() {
         subject: sanitize_line("Commit 3"),
         body: sanitize_line(""),
         parents: vec!["deadbee".to_owned()],
+        ..base_tooltip()
     });
 
-    let screen = text(&draw(&open, 40, 8));
+    let screen = text(&draw(&open, 60, 12));
     let joined = screen.join("\n");
     assert!(joined.contains("Commit 3"), "{screen:#?}");
     assert!(joined.contains("deadbee"), "{screen:#?}");
+}
+
+/// Root cause of m1-the-graph/34: the box height was sized from the raw
+/// (unwrapped) line count, not from how many rows the content actually
+/// takes once a long subject wraps — so a wrapped subject crowded the body
+/// and parents out with no truncation marker.
+#[test]
+fn a_wrapped_subject_does_not_crowd_out_the_body_and_parents() {
+    let rows = linear(3);
+    let mut open = view(&rows, WalkView::Complete { rows: 3 }, 0);
+    open.tooltip = Some(Tooltip {
+        subject: sanitize_line(
+            "A very long subject line that is much wider than the tooltip box and needs wrapping",
+        ),
+        body: sanitize("Co-Authored-By: Someone <someone@example.invalid>"),
+        parents: vec!["fc4afcd".to_owned()],
+        ..base_tooltip()
+    });
+
+    let screen = text(&draw(&open, 40, 20));
+    let joined = screen.join("\n");
+    assert!(joined.contains("Co-Authored-By"), "{screen:#?}");
+    assert!(joined.contains("fc4afcd"), "{screen:#?}");
+}
+
+#[test]
+fn a_merge_commit_tooltip_shows_both_parents() {
+    let rows = linear(3);
+    let mut open = view(&rows, WalkView::Complete { rows: 3 }, 0);
+    open.tooltip = Some(Tooltip {
+        subject: sanitize_line("Merge branch 'topic'"),
+        parents: vec!["aaaaaaa".to_owned(), "bbbbbbb".to_owned()],
+        ..base_tooltip()
+    });
+
+    let screen = text(&draw(&open, 60, 12));
+    let joined = screen.join("\n");
+    assert!(joined.contains("parents aaaaaaa bbbbbbb"), "{screen:#?}");
+}
+
+/// A box too short even at the tallest the viewport allows still shows
+/// everything it can plus an explicit `truncated` marker — never silent
+/// blank rows (m1-the-graph/34 acceptance).
+#[test]
+fn a_box_too_short_for_everything_shows_a_truncation_marker() {
+    let rows = linear(3);
+    let mut open = view(&rows, WalkView::Complete { rows: 3 }, 0);
+    open.tooltip = Some(Tooltip {
+        subject: sanitize_line("Subject"),
+        body: sanitize("line one\nline two\nline three\nline four\nline five\nline six"),
+        parents: vec!["fc4afcd".to_owned()],
+        ..base_tooltip()
+    });
+
+    // A very short viewport: not enough rows for hash, author, date,
+    // parents, subject and a six-line body all at once.
+    let screen = text(&draw(&open, 40, 8));
+    let joined = screen.join("\n");
+    assert!(joined.contains("truncated"), "{screen:#?}");
+}
+
+#[test]
+fn author_and_date_and_full_hash_appear_in_the_tooltip() {
+    let rows = linear(3);
+    let mut open = view(&rows, WalkView::Complete { rows: 3 }, 0);
+    open.tooltip = Some(Tooltip {
+        hash: "0123456789012345678901234567890123456789".to_owned(),
+        author: sanitize_line("Ada King <ada@example.invalid>"),
+        date: "2026-09-13 14:02 +0500 · 4h ago".to_owned(),
+        subject: sanitize_line("Subject"),
+        ..base_tooltip()
+    });
+
+    let screen = text(&draw(&open, 60, 12));
+    let joined = screen.join("\n");
+    assert!(
+        joined.contains("0123456789012345678901234567890123456789"),
+        "{screen:#?}"
+    );
+    assert!(
+        joined.contains("Ada King <ada@example.invalid>"),
+        "{screen:#?}"
+    );
+    assert!(joined.contains("2026-09-13 14:02 +0500"), "{screen:#?}");
+    assert!(joined.contains("4h ago"), "{screen:#?}");
+}
+
+#[test]
+fn a_committer_line_appears_only_when_different_from_the_author() {
+    let rows = linear(3);
+    let mut open = view(&rows, WalkView::Complete { rows: 3 }, 0);
+    open.tooltip = Some(Tooltip {
+        author: sanitize_line("Ada King <ada@example.invalid>"),
+        committer: Some(sanitize_line("Bea Lane <bea@example.invalid>")),
+        subject: sanitize_line("Subject"),
+        ..base_tooltip()
+    });
+
+    let screen = text(&draw(&open, 60, 12));
+    let joined = screen.join("\n");
+    assert!(
+        joined.contains("committer Bea Lane <bea@example.invalid>"),
+        "{screen:#?}"
+    );
+}
+
+#[test]
+fn a_pinned_tooltip_shows_a_pinned_title() {
+    let rows = linear(3);
+    let mut open = view(&rows, WalkView::Complete { rows: 3 }, 0);
+    open.tooltip = Some(Tooltip {
+        subject: sanitize_line("Subject"),
+        pinned: true,
+        ..base_tooltip()
+    });
+
+    let screen = text(&draw(&open, 60, 12));
+    let joined = screen.join("\n");
+    assert!(joined.contains("pinned"), "{screen:#?}");
+    assert!(joined.contains("esc close"), "{screen:#?}");
+}
+
+#[test]
+fn a_hover_tooltip_shows_no_pinned_title() {
+    let rows = linear(3);
+    let mut open = view(&rows, WalkView::Complete { rows: 3 }, 0);
+    open.tooltip = Some(Tooltip {
+        subject: sanitize_line("Subject"),
+        pinned: false,
+        ..base_tooltip()
+    });
+
+    let screen = text(&draw(&open, 60, 12));
+    let joined = screen.join("\n");
+    assert!(!joined.contains("pinned"), "{screen:#?}");
 }
 
 #[test]

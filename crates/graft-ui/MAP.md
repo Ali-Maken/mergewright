@@ -52,7 +52,7 @@ One line per public item. Update when a public item changes.
 - `SearchLine` (enum) — `Prompt(text)` draws ` /text_`; `Status{text, failed}` draws the search's line, warning-coloured only when failed.
 - `GraphView::graphics` (field) — `gfx ok` / `gfx: <message>` in the header while pixels are drawn; `None` otherwise.
 - `GraphicsStatus` (enum) — `Ok` or `Failed(SanitizedText)`: what the terminal said about the graph images.
-- `Tooltip` (struct) — `subject`, `body` (both `SanitizedText`), `parents` (short shas); hover and `Enter` build it identically (m1-the-graph/17). "Contained in" is out of scope — `KNOWN_GAPS.md`.
+- `Tooltip` (struct) — `hash` (full 40-char), `author` (`SanitizedText`, mailmap-applied `Name <email>`), `committer` (`Option<SanitizedText>`, only when it differs from `author`), `date` (absolute-with-offset and relative, e.g. `"2026-09-13 14:02 +0500 · 4h ago"`), `parents` (short shas), `subject`, `body` (both `SanitizedText`), `pinned` (bool). Hover and `Enter` build it identically (m1-the-graph/17), except `pinned` (m1-the-graph/34); the box wraps and, when even the tallest box the terminal allows can't fit everything, drops lines from the bottom for a `truncated` marker rather than going silently blank (m1-the-graph/34). "Contained in" is out of scope — `KNOWN_GAPS.md`.
 - `Filters` (struct) — `first_parent`, `folded` (merge count), `stash_hidden`, `focused` (Focus mode on); `Filters::text` is the header's words, empty for none.
 - `Compaction` (struct) — `max_lanes` (`graph.max_lanes`), `expanded` (the `+` key), `pinned` (reserved integration lanes and the selection's thread columns).
 - `Compaction::at` (fn) — collapsed, nothing pinned but lane 0.
@@ -75,6 +75,8 @@ One line per public item. Update when a public item changes.
 ## graph_screen::columns
 - `initials` (fn) — two letters standing in for a sanitised name, for the author chip.
 - `relative_date` (fn) — how long ago a Unix timestamp was, in short form (`"2m"`, `"3h"`, `"1d"`).
+- `absolute_date` (fn) — a commit's recorded date in its own offset, `"2026-09-13 14:02 +0500"` (Hinnant's `civil_from_days`, integer-only, no date/time crate) (m1-the-graph/34).
+- `tooltip_date` (fn) — `absolute_date` and `relative_date` together for the tooltip, `"2026-09-13 14:02 +0500 · 4h ago"` (m1-the-graph/34).
 - `short_sha` (fn) — the first N hex characters of a full object id.
 
 ## paint

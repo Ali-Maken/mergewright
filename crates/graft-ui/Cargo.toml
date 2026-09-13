@@ -14,7 +14,15 @@ graft-term.workspace = true
 # here: `ui` builds widgets and never owns a terminal, so `std` is all it
 # needs — the backend, and the crossterm version behind it, are `app`'s
 # choice.
-ratatui = { version = "0.30", default-features = false, features = ["std"] }
+# `unstable-rendered-line-info` gives `Paragraph::line_count`, which the
+# tooltip box uses to size itself from the same word-wrap it renders with
+# (m1-the-graph/34, ADR-0020) rather than guessing from the unwrapped line
+# count. Ratatui marks the API unstable; nothing here depends on it beyond
+# a `usize` row count, so a breaking change fails loudly at compile time.
+ratatui = { version = "0.30", default-features = false, features = [
+    "std",
+    "unstable-rendered-line-info",
+] }
 # How many cells a character takes, for clamping text to an exact width
 # (`fit`). Already in the build through ratatui, at this version.
 unicode-width = "0.2"

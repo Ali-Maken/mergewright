@@ -102,7 +102,8 @@ One line per public item. Update when a public item changes.
 - `AppState::screen` (field) — which screen is on show; graph by default.
 - `AppState::lanes_expanded` (field) — `+` pressed: lanes draw unfolded; a view flag, the rows are untouched.
 - `AppState::focus` (field) — Focus mode (`F`; `Esc` leaves it before cancelling anything): rows off the selection's thread fade; paint only.
-- `AppState::tooltip` (field) — the open tooltip's absolute row number, set identically by hover and `Enter`; `Esc` closes it first (m1-the-graph/17).
+- `AppState::tooltip` (field) — the hover tooltip's absolute row number, set by pointer movement; keeps tracking the pointer even while a tooltip is pinned (m1-the-graph/17, m1-the-graph/34).
+- `AppState::pinned_tooltip` (field) — `Enter`'s tooltip, pinned to the row it was opened on: `j`/`k` and scrolling don't move or close it; `Esc` or a second `Enter` does. Takes rendering priority over `tooltip` when both are set (m1-the-graph/34).
 - `AppState::renderer_override` (field) — the tier-drop key (`F3`) forced this tier for the rest of the run, or `None` for whatever `Session::settle` decided (m1-the-graph/19).
 - `AppState::settled_tier` (field) — `Session::settle`'s tier, copied in at loop start; `None` without a session (m1-the-graph/24d).
 - `AppState::tier` (fn) — tier in force: F3's override, else settled, else Unicode. F3 (`cycle_tier`) cycles Pixel→Unicode→Ascii→settled tier, never above it; back at the top the override clears. History pads to strips only at Pixel (m1-the-graph/33).

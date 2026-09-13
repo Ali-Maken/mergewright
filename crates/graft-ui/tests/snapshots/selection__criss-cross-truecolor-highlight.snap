@@ -27,7 +27,7 @@ shape: criss-cross-merge, truecolor, highlight, 80x24, row 4 selected
 
 
 
- q quit  F2 status  F3 renderer  / search  j/k move  Enter details  Space fold
+ q quit  F2 status  F3 renderer  / search  j/k move  Enter pin  Space fold
 
 modifiers: graph | subject
 ..b.......| .

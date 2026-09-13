@@ -37,13 +37,13 @@ Out:
 - "Contained in" (M2). Clipboard / copy action (`.` context actions, later). Tooltip styling beyond the above.
 
 ## Acceptance
-- [ ] A test that fails before the fix, using a message shaped like `8219724` (subject wider than the box, blank line, trailer).
-- [ ] Merge commit: both parents shown (test).
-- [ ] Box taller than the space available still shows everything or an explicit truncation marker (test).
-- [ ] Author (mailmap-applied), absolute + relative date and full hash present (test).
-- [ ] Pinned: hover over other rows leaves it unchanged; `Esc` and `Enter` close it; hover tooltip still follows the pointer (tests).
-- [ ] ADR written.
-- [ ] pty capture `docs/shots/34-*`: hover `8219724`; `Enter` pin then pointer moved to another row, box unchanged.
+- [x] A test that fails before the fix, using a message shaped like `8219724` (subject wider than the box, blank line, trailer).
+- [x] Merge commit: both parents shown (test).
+- [x] Box taller than the space available still shows everything or an explicit truncation marker (test).
+- [x] Author (mailmap-applied), absolute + relative date and full hash present (test).
+- [x] Pinned: hover over other rows leaves it unchanged; `Esc` and `Enter` close it; hover tooltip still follows the pointer (tests).
+- [x] ADR written.
+- [x] pty capture `docs/shots/34-*`: hover `8219724`; `Enter` pin then pointer moved to another row, box unchanged.
 - [ ] **By eye (user):** in Ghostty, `Enter` pins, then Shift+drag selects and copies the hash or author from the box. Unticked until the user tries it.
 
 ## Gates
@@ -51,3 +51,44 @@ Out:
 
 ## Size
 One context, under ~80k tokens. If you compact, say so; stop at a clean seam with a handoff note.
+
+## Notes
+
+**Root cause:** the box's height was sized from the tooltip's raw logical
+line count, not the wrapped row count `ratatui` would actually render, so
+a long subject silently pushed the body and parents past the bottom of
+the box. Fixed by measuring the wrapped height with
+`Paragraph::line_count` (ratatui's `unstable-rendered-line-info` feature,
+enabled in `graft-ui`'s `Cargo.toml`) and by dropping lines from the
+bottom with a `truncated` marker when even the tallest box the terminal
+allows still can't fit everything — see `fit_tooltip_lines` in
+`crates/graft-ui/src/graph_screen/mod.rs`. A secondary off-by-two in the
+old height clamp (comparing a total box height against an interior bound)
+is fixed by the same rewrite.
+
+**Design decision — `j`/`k` and scrolling vs. a pinned tooltip:** the
+pinned tooltip stays anchored to the commit it was opened for, not the
+cursor. `j`/`k` and scrolling move freely without moving or closing it;
+only `Esc` or a second `Enter` closes it. Recorded in
+`docs/adr/0020-tooltip-pins-on-enter-and-shows-author-and-date.md`
+alongside the author/date-now decision.
+
+**No compaction.** The whole ticket — root-cause fix, pin/hover split,
+author/date, ADR, MAP.md updates, pty captures — ran in one context.
+
+**What was verified:** `cargo fmt --check`, `cargo clippy --all-targets
+-- -D warnings`, and `cargo test` (workspace, fast tier) are all green
+(`graft` 260 lib tests, `graft-ui` 99 lib tests plus 5 snapshot/integration
+binaries, all passing; no other crate touched). The visual fix and pin
+behaviour were checked by running a real release binary in a real pty
+against a fixture repo shaped like the reported bug (long wrapped
+subject, blank line, body, `Co-Authored-By` trailer, one parent) — see
+`docs/shots/34-hover-body-and-parents.txt` (hover shows hash, author,
+date, parent, full subject and body, nothing dropped) and
+`docs/shots/34-pin-stays-put.txt` (`Enter` pins, title changes to
+`pinned · esc close`, box unchanged after the pointer moves to another
+row). The exact commit `8219724` and repo from the user's Ghostty report
+aren't available here, so the fixture reproduces the same shape rather
+than that literal hash — the by-eye box below is for the user to confirm
+in their own Ghostty/repo, including the Shift+drag copy this ticket
+doesn't itself exercise.

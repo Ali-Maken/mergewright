@@ -30,7 +30,7 @@ use ratatui::widgets::{Block, Borders, Clear, Paragraph, Widget, Wrap};
 use unicode_width::UnicodeWidthStr;
 
 pub use badges::{Badge, BadgeKind, Icons, Tracking};
-pub use columns::{initials, relative_date, short_sha};
+pub use columns::{absolute_date, initials, relative_date, short_sha, tooltip_date};
 
 use crate::fit::fit;
 use crate::graph_column::{GraphColumn, GraphLine, RowPaint};
@@ -123,17 +123,34 @@ pub enum GraphicsStatus {
 }
 
 /// The commit tooltip: the full message and the parents, reachable
-/// identically from a hover and from the keyboard. "Contained in"
+/// identically from a hover and from the keyboard, plus the author, date
+/// and (when different) committer m1-the-graph/34 adds. "Contained in"
 /// (PROMPT.md §1.3) is left for M2 (`KNOWN_GAPS`) — nothing here fakes it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Tooltip {
+    /// The full 40-character hex object id. Hex from a fixed alphabet is
+    /// safe as-is, like [`GraphEntry::sha`] — no sanitising needed.
+    pub hash: String,
+    /// `Name <email>`, mailmap-resolved, sanitised (repository text).
+    pub author: SanitizedText,
+    /// Same shape as `author`. `None` when the committer identity equals
+    /// the author's, once mailmap has resolved both — the common case.
+    pub committer: Option<SanitizedText>,
+    /// The absolute date (the commit's own recorded offset) and its
+    /// relative age together, e.g. `"2026-09-13 14:02 +0500 · 4h ago"`.
+    /// Graft's own text, like [`columns::relative_date`] — no sanitising
+    /// needed.
+    pub date: String,
+    /// Parent short SHAs, first parent first. Hex — no sanitising needed.
+    pub parents: Vec<String>,
     /// The commit's subject line, sanitised.
     pub subject: SanitizedText,
     /// The rest of the message, sanitised; empty when the commit has none.
     pub body: SanitizedText,
-    /// Parent short SHAs, first parent first. Hex from a fixed alphabet is
-    /// safe as-is, like [`GraphEntry::sha`] — no sanitising needed.
-    pub parents: Vec<String>,
+    /// Whether `Enter` pinned this tooltip open. A pinned tooltip stays
+    /// open under hover and shows a `pinned` title; a hover tooltip does
+    /// not (m1-the-graph/34).
+    pub pinned: bool,
 }
 
 /// What the history on screen leaves out (PROMPT.md §1.3). The default is
@@ -448,7 +465,7 @@ const HINTS: [&str; 13] = [
     "F3 renderer",
     "/ search",
     "j/k move",
-    "Enter details",
+    "Enter pin",
     "Space fold",
     "1 first-parent",
     "F focus",
@@ -541,40 +558,115 @@ impl Widget for GraphScreen<'_> {
     }
 }
 
+/// A line the box can drop from the bottom if the content overflows,
+/// paired with whether losing it needs the truncation marker (blank
+/// separators don't — dropping only a blank line before content that
+/// itself got dropped is not a loss worth flagging).
+struct TooltipLine {
+    line: Line<'static>,
+    reportable: bool,
+}
+
 /// Draws the commit tooltip as a bordered box floating over the graph,
-/// centred in `area`. Wrapped, so a long body never runs off the terminal.
+/// centred in `area`. Wrapped, so a long line never runs off the terminal;
+/// when even the tallest box `area` allows still can't fit everything, the
+/// bottom is dropped for a `truncated` marker rather than silently blank
+/// (m1-the-graph/34 — the box height used to be sized from the raw line
+/// count, ignoring wrapping, so content past what that undercount reserved
+/// vanished with no sign anything was missing).
 fn render_tooltip(tooltip: &Tooltip, area: Rect, theme: &Theme, buf: &mut Buffer) {
-    let mut lines = vec![Line::styled(
-        tooltip.subject.as_str().to_owned(),
-        foreground(theme, Token::Text).add_modifier(Modifier::BOLD),
-    )];
-    if !tooltip.body.as_str().is_empty() {
-        lines.push(Line::raw(""));
-        lines.extend(
-            tooltip
-                .body
-                .as_str()
-                .lines()
-                .map(|line| Line::raw(line.to_owned())),
-        );
-    }
-    lines.push(Line::raw(""));
-    lines.push(Line::styled(
-        if tooltip.parents.is_empty() {
-            "root commit — no parents".to_owned()
-        } else {
-            format!("parents: {}", tooltip.parents.join(" "))
+    let muted = foreground(theme, Token::TextMuted);
+    let lines = tooltip_lines(tooltip, theme, muted);
+    render_tooltip_lines(lines, tooltip.pinned, area, theme, buf);
+}
+
+/// Builds the tooltip's content lines, in display order: hash, author,
+/// date, committer (only when it differs from the author), the parent
+/// line, a blank separator, the subject, and — when non-empty — a blank
+/// separator and the body.
+fn tooltip_lines(tooltip: &Tooltip, theme: &Theme, muted: Style) -> Vec<TooltipLine> {
+    let mut lines = vec![
+        TooltipLine {
+            line: Line::raw(tooltip.hash.clone()),
+            reportable: true,
         },
-        foreground(theme, Token::TextMuted),
-    ));
+        TooltipLine {
+            line: Line::raw(tooltip.author.as_str().to_owned()),
+            reportable: true,
+        },
+        TooltipLine {
+            line: Line::styled(tooltip.date.clone(), muted),
+            reportable: true,
+        },
+    ];
+    if let Some(committer) = &tooltip.committer {
+        lines.push(TooltipLine {
+            line: Line::raw(format!("committer {}", committer.as_str())),
+            reportable: true,
+        });
+    }
+    lines.push(TooltipLine {
+        line: Line::styled(
+            match tooltip.parents.len() {
+                0 => "root commit — no parents".to_owned(),
+                1 => format!("parent {}", tooltip.parents[0]),
+                _ => format!("parents {}", tooltip.parents.join(" ")),
+            },
+            muted,
+        ),
+        reportable: true,
+    });
+    lines.push(TooltipLine {
+        line: Line::raw(""),
+        reportable: false,
+    });
+    lines.push(TooltipLine {
+        line: Line::styled(
+            tooltip.subject.as_str().to_owned(),
+            foreground(theme, Token::Text).add_modifier(Modifier::BOLD),
+        ),
+        reportable: true,
+    });
+    if !tooltip.body.as_str().is_empty() {
+        lines.push(TooltipLine {
+            line: Line::raw(""),
+            reportable: false,
+        });
+        lines.extend(tooltip.body.as_str().lines().map(|line| TooltipLine {
+            line: Line::raw(line.to_owned()),
+            reportable: true,
+        }));
+    }
+    lines
+}
+
+/// Measures, fits and draws the tooltip's content lines as a bordered box
+/// floating over `area`, centred, sized to the wrapped content up to the
+/// tallest box `area` allows.
+fn render_tooltip_lines(
+    lines: Vec<TooltipLine>,
+    pinned: bool,
+    area: Rect,
+    theme: &Theme,
+    buf: &mut Buffer,
+) {
+    let muted = foreground(theme, Token::TextMuted);
 
     let width = area.width.saturating_sub(4).clamp(1, 70).min(area.width);
-    let content_height = u16::try_from(lines.len()).unwrap_or(u16::MAX);
+    let text_width = width.saturating_sub(2).max(1);
+    let max_total_height = area.height.max(3);
+    let max_content_height = max_total_height.saturating_sub(2);
+    let fitted = fit_tooltip_lines(lines, text_width, max_content_height, muted);
+    let content_height = u16::try_from(
+        Paragraph::new(fitted.clone())
+            .wrap(Wrap { trim: false })
+            .line_count(text_width),
+    )
+    .unwrap_or(u16::MAX);
     let height = content_height
         .saturating_add(2)
-        .min(area.height.saturating_sub(2))
-        .max(1)
-        .min(area.height);
+        .min(max_total_height)
+        .max(3);
     let tooltip_area = Rect {
         x: area.x + (area.width.saturating_sub(width)) / 2,
         y: area.y + (area.height.saturating_sub(height)) / 2,
@@ -583,15 +675,60 @@ fn render_tooltip(tooltip: &Tooltip, area: Rect, theme: &Theme, buf: &mut Buffer
     };
 
     Clear.render(tooltip_area, buf);
+    let title = if pinned { " pinned · esc close " } else { "" };
     let block = Block::default()
         .borders(Borders::ALL)
+        .title(title)
         .border_style(foreground(theme, Token::Border))
         .style(Style::new().bg(color(theme.token(Token::SurfaceRaised))));
-    Paragraph::new(lines)
+    Paragraph::new(fitted)
         .block(block)
         .wrap(Wrap { trim: false })
         .style(foreground(theme, Token::Text))
         .render(tooltip_area, buf);
+}
+
+/// Drops whole lines from the bottom until the wrapped content fits
+/// `max_height` rows at `width` — measured with [`Paragraph::line_count`],
+/// the same word-wrap the box renders with, so the fit is exact rather
+/// than approximated. Appends a `truncated` marker, but only when a
+/// reportable line (not just a blank separator) actually had to go.
+fn fit_tooltip_lines(
+    lines: Vec<TooltipLine>,
+    width: u16,
+    max_height: u16,
+    muted: Style,
+) -> Vec<Line<'static>> {
+    let measure = |lines: &[TooltipLine]| {
+        let owned: Vec<Line<'static>> = lines.iter().map(|entry| entry.line.clone()).collect();
+        u16::try_from(
+            Paragraph::new(owned)
+                .wrap(Wrap { trim: false })
+                .line_count(width),
+        )
+        .unwrap_or(u16::MAX)
+    };
+
+    let mut kept = lines;
+    let mut dropped_reportable = false;
+    while measure(&kept) > max_height {
+        match kept.pop() {
+            Some(last) => dropped_reportable |= last.reportable,
+            None => break,
+        }
+    }
+    if !dropped_reportable {
+        return kept.into_iter().map(|entry| entry.line).collect();
+    }
+
+    // Room for the marker line itself.
+    let budget = max_height.saturating_sub(1);
+    while !kept.is_empty() && measure(&kept) > budget {
+        kept.pop();
+    }
+    let mut rendered: Vec<Line<'static>> = kept.into_iter().map(|entry| entry.line).collect();
+    rendered.push(Line::styled("truncated", muted));
+    rendered
 }
 
 /// Where each trailing column sits and how wide it is, once the graph and

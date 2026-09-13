@@ -27,7 +27,7 @@ shape: linear, 16, 80x24, cursor on row 2
 ●   Commit 181                                                      3y   c8254c5
 ●   Commit 180                                                      3y   e95ccd4
 ●   Commit 179                                                      3y   97b58e5
- q quit  F2 status  F3 renderer  / search  j/k move  Enter details  Space fold
+ q quit  F2 status  F3 renderer  / search  j/k move  Enter pin  Space fold
 
 graph colour per cell:
 5.
