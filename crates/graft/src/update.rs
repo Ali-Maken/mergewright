@@ -568,8 +568,8 @@ fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         next.lanes_expanded = !next.lanes_expanded;
     } else if is_focus_toggle(key) {
         next.focus = !next.focus;
-    } else if is_tier_drop(key) {
-        drop_tier(next, commands);
+    } else if is_tier_cycle(key) {
+        cycle_tier(next, commands);
     } else if is_tooltip_key(key) {
         // The keyboard's route to the same content a hover opens (DESIGN.md
         // §2.15): the selection's row, looked up the same way `graph_row_at`
@@ -936,20 +936,24 @@ fn is_lane_toggle(key: KeyPress) -> bool {
     key.code == KeyCode::Char('+') && !key.modifiers.control && !key.modifiers.alt
 }
 
-/// `F3` pressed: one tier down, and the history's row requests follow.
-fn drop_tier(next: &mut AppState, commands: &mut Vec<Command>) {
-    // One step down: pixels to Unicode, anything else to ASCII. The view
-    // layer says so in the footer (`graft::view`). Off pixels, requests
-    // stop padding to whole strips.
-    let dropped = if next.tier() == RenderingTier::Pixel {
-        RenderingTier::Unicode
-    } else {
-        RenderingTier::Ascii
+/// `F3` pressed: the next tier down, and from ASCII back to the tier the
+/// terminal settled on — never above it. The history's row requests follow.
+fn cycle_tier(next: &mut AppState, commands: &mut Vec<Command>) {
+    let top = next.settled_tier.unwrap_or(RenderingTier::Unicode);
+    let lower = match next.tier() {
+        RenderingTier::Pixel => Some(RenderingTier::Unicode),
+        RenderingTier::Unicode => Some(RenderingTier::Ascii),
+        RenderingTier::Ascii => None,
     };
-    next.renderer_override = Some(dropped);
+    // Back at the top the override clears, so the footer has nothing extra
+    // to say (`graft::view`). On an ASCII-only terminal that is every press.
+    next.renderer_override = lower.filter(|&tier| tier != top);
+    let tier = next.tier();
     let height = next.graph_rows();
     if let Some(history) = next.history.as_mut() {
-        history.strip_rows = strip_rows_for(dropped);
+        // Off pixels, requests stop padding to whole strips; back on, they
+        // pad again.
+        history.strip_rows = strip_rows_for(tier);
         if let Some(request) = history.show(height)
             && let Some(id) = next.awaiting
         {
@@ -964,11 +968,11 @@ fn strip_rows_for(tier: RenderingTier) -> Option<usize> {
     (tier == RenderingTier::Pixel).then_some(graft_graph::raster::cache::STRIP_ROWS)
 }
 
-/// `F3`: drop one tier for the rest of the run — pixels to Unicode, Unicode
-/// to ASCII — and say so (DESIGN.md §4.2 — config wins over detection, and a
-/// key press wins the same way over both; tickets m1-the-graph/19, 24d). Not
-/// one of DESIGN.md's keymap, like `F2`.
-fn is_tier_drop(key: KeyPress) -> bool {
+/// `F3`: cycle the renderer tier — pixels, Unicode, ASCII, then back to the
+/// terminal's own tier — and say so (DESIGN.md §4.2 — config wins over
+/// detection, and a key press wins the same way over both; tickets
+/// m1-the-graph/19, 24d, 33). Not one of DESIGN.md's keymap, like `F2`.
+fn is_tier_cycle(key: KeyPress) -> bool {
     key.code == KeyCode::Function(3) && !key.modifiers.control && !key.modifiers.alt
 }
 
@@ -1158,18 +1162,37 @@ mod tests {
         assert_eq!(graph.screen, Screen::Graph);
     }
 
+    /// `F3` from `settled` and on, `presses` times: the override after each.
+    fn f3_presses(settled: Option<RenderingTier>, presses: usize) -> Vec<Option<RenderingTier>> {
+        let mut state = AppState {
+            settled_tier: settled,
+            ..AppState::default()
+        };
+        (0..presses)
+            .map(|_| {
+                let (next, commands) = update(&state, key(KeyCode::Function(3)));
+                assert!(commands.is_empty(), "a view-time flag: {commands:?}");
+                state = next;
+                state.renderer_override
+            })
+            .collect()
+    }
+
     #[test]
-    fn f3_forces_ascii_and_asks_the_world_for_nothing() {
-        let state = AppState::default();
-        assert_eq!(state.renderer_override, None);
+    fn f3_on_a_unicode_terminal_toggles_unicode_and_ascii() {
+        // No session (`settled_tier` None) counts as Unicode, the same way.
+        for settled in [Some(RenderingTier::Unicode), None] {
+            assert_eq!(
+                f3_presses(settled, 3),
+                vec![Some(RenderingTier::Ascii), None, Some(RenderingTier::Ascii)],
+                "back at the top the override clears: nothing extra to say"
+            );
+        }
+    }
 
-        let (dropped, commands) = update(&state, key(KeyCode::Function(3)));
-        assert_eq!(dropped.renderer_override, Some(RenderingTier::Ascii));
-        assert!(commands.is_empty(), "a view-time flag: {commands:?}");
-
-        // Pressing it again is a no-op, not a crash or a cycle back up.
-        let (still, _) = update(&dropped, key(KeyCode::Function(3)));
-        assert_eq!(still.renderer_override, Some(RenderingTier::Ascii));
+    #[test]
+    fn f3_on_an_ascii_only_terminal_does_nothing() {
+        assert_eq!(f3_presses(Some(RenderingTier::Ascii), 2), vec![None, None]);
     }
 
     #[test]
@@ -1193,19 +1216,30 @@ mod tests {
     }
 
     #[test]
-    fn f3_from_pixels_drops_to_unicode_and_stops_padding_to_strips() {
+    fn f3_cycles_pixels_unicode_ascii_and_back_to_whole_strips() {
         let state = AppState {
             settled_tier: Some(RenderingTier::Pixel),
             ..AppState::default()
         };
         let (started, _) = update(&state, AppEvent::Started(JobId::new(1), Task::ReadHistory));
+        let strip_rows = |state: &AppState| state.history.as_ref().and_then(|h| h.strip_rows);
 
         let (unicode, _) = update(&started, key(KeyCode::Function(3)));
-        assert_eq!(unicode.renderer_override, Some(RenderingTier::Unicode));
-        assert_eq!(unicode.history.as_ref().and_then(|h| h.strip_rows), None);
+        assert_eq!(unicode.tier(), RenderingTier::Unicode);
+        assert_eq!(strip_rows(&unicode), None);
 
         let (ascii, _) = update(&unicode, key(KeyCode::Function(3)));
-        assert_eq!(ascii.renderer_override, Some(RenderingTier::Ascii));
+        assert_eq!(ascii.tier(), RenderingTier::Ascii);
+        assert_eq!(strip_rows(&ascii), None);
+
+        let (pixel, _) = update(&ascii, key(KeyCode::Function(3)));
+        assert_eq!(pixel.renderer_override, None, "the settled tier again");
+        assert_eq!(pixel.tier(), RenderingTier::Pixel);
+        assert_eq!(
+            strip_rows(&pixel),
+            Some(graft_graph::raster::cache::STRIP_ROWS),
+            "requests pad to whole strips again"
+        );
     }
 
     /// A walk in flight whose window holds a plain commit (row 0) and a

@@ -738,6 +738,7 @@ mod tests {
         history.strip_rows = Some(graft_graph::raster::cache::STRIP_ROWS);
         let state = AppState {
             history: Some(history),
+            settled_tier: Some(RenderingTier::Pixel),
             size: Size {
                 columns: PIXEL_COLUMNS,
                 rows: PIXEL_ROWS,
@@ -936,11 +937,15 @@ mod tests {
         let frames: Vec<&str> = written.split(&end).collect();
         assert!(!transmitted(frames[0]).is_empty(), "Kitty attempted");
         assert!(
-            frames[1].contains("a=d,d=i,i="),
-            "placements removed: {:?}",
+            frames[1].contains("a=d,d=I,i="),
+            "uploads freed: {:?}",
             frames[1]
         );
-        assert!(frames[1].contains("forced to unicode"), "{:?}", frames[1]);
+        assert!(
+            frames[1].contains("renderer: unicode (F3 cycles)"),
+            "{:?}",
+            frames[1]
+        );
         assert!(!frames[1].contains("gfx"), "no pixels, no gfx status");
     }
 
@@ -988,6 +993,57 @@ mod tests {
             "{:?}",
             frames[1]
         );
+    }
+
+    /// Pixels, then `F3` three times (Unicode, ASCII, pixels again), then
+    /// quit: the four frames and the tail.
+    fn f3_round_trip() -> (Vec<String>, String) {
+        let f3 = || key(KeyPress::plain(KeyCode::Function(3)));
+        let (frames, tail) = pixel_run(vec![f3(), f3(), f3(), quit_key()], vec![]);
+        assert_eq!(frames.len(), 4);
+        (frames, tail)
+    }
+
+    #[test]
+    fn f3_off_pixels_frees_every_upload_and_names_the_tier() {
+        let (frames, _tail) = f3_round_trip();
+        let first = transmitted(&frames[0]);
+        assert!(!first.is_empty(), "{:?}", frames[0]);
+        for id in &first {
+            assert!(
+                frames[1].contains(&format!("a=d,d=I,i={id},")),
+                "{id} freed leaving pixels: {:?}",
+                frames[1]
+            );
+        }
+        assert!(frames[1].contains("renderer: unicode (F3 cycles)"));
+        assert!(!frames[1].contains("gfx"), "no pixels, no gfx status");
+        // Later frames are diffs: only the changed cells are written.
+        assert!(frames[2].contains("ascii"), "{:?}", frames[2]);
+        assert!(transmitted(&frames[2]).is_empty());
+    }
+
+    #[test]
+    fn f3_back_onto_pixels_transmits_afresh_and_frees_every_id_by_exit() {
+        let (frames, tail) = f3_round_trip();
+        let first = transmitted(&frames[0]);
+        let again = transmitted(&frames[3]);
+        assert!(!again.is_empty(), "back on pixels, strips sent again");
+        assert!(
+            again.iter().all(|id| !first.contains(id)),
+            "fresh ids, never a freed one: {first:?} {again:?}"
+        );
+        assert!(frames[3].contains("a=p,i="), "and placed");
+        assert!(frames[3].contains("gfx ok"), "{:?}", frames[3]);
+        assert!(!frames[3].contains("F3 cycles"), "nothing extra at the top");
+
+        let everything = frames.concat() + &tail;
+        for id in first.iter().chain(&again) {
+            assert!(
+                everything.contains(&format!("a=d,d=I,i={id},")),
+                "{id} freed by exit"
+            );
+        }
     }
 
     #[test]

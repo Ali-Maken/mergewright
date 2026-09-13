@@ -105,7 +105,7 @@ One line per public item. Update when a public item changes.
 - `AppState::tooltip` (field) — the open tooltip's absolute row number, set identically by hover and `Enter`; `Esc` closes it first (m1-the-graph/17).
 - `AppState::renderer_override` (field) — the tier-drop key (`F3`) forced this tier for the rest of the run, or `None` for whatever `Session::settle` decided (m1-the-graph/19).
 - `AppState::settled_tier` (field) — `Session::settle`'s tier, copied in at loop start; `None` without a session (m1-the-graph/24d).
-- `AppState::tier` (fn) — tier in force: F3's override, else settled, else Unicode. F3 drops Pixel→Unicode, else →Ascii; history pads to strips only at Pixel.
+- `AppState::tier` (fn) — tier in force: F3's override, else settled, else Unicode. F3 (`cycle_tier`) cycles Pixel→Unicode→Ascii→settled tier, never above it; back at the top the override clears. History pads to strips only at Pixel (m1-the-graph/33).
 - `Screen` (enum) — `Graph` (default) or `Status`.
 - `Screen::toggled` (fn) — the other screen; `F2` swaps.
 - `Quit` (enum) — why Graft is leaving.
@@ -182,6 +182,7 @@ One line per public item. Update when a public item changes.
 ## view
 - `view` (fn) — draw the current state to a frame: the graph screen, or the status screen.
 - `view_with_graphics` (fn) — `view`, plus the gfx status in the header at the pixel tier; returns the graph rect the images go in, `None` when no pixels this frame.
+- `tier_in_force` (fn) — the graph's tier from `Session` + `AppState`: F3's override, else the session's (m1-the-graph/33).
 - `draws_pixels` (fn) — graph screen, pixel tier (override else session), Kitty or iTerm2 protocol — or no acked protocol at all (forced `pixel` attempts Kitty, m1-the-graph/24d).
 - `graph_view` (fn) — build a `GraphView` from the history window, cursor and status; the selection's `Ancestry` over the window lights lanes, fades rows in Focus mode, and pins its columns against folding.
 - `status_view` (fn) — build a `StatusView` from session and app state.

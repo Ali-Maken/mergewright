@@ -12,7 +12,7 @@ use std::ops::Range;
 use std::sync::Arc;
 use std::time::Instant;
 
-use graft_core::capabilities::PixelProtocol;
+use graft_core::capabilities::{PixelProtocol, RenderingTier};
 use graft_core::raster::RasterFrame;
 use graft_graph::raster::cache::{Flush, STRIP_ROWS, StripCache};
 use graft_term::input::ReplyWaiter;
@@ -108,6 +108,10 @@ impl<R: GraphicsReplies> Graphics<R> {
 
     /// Append the commands that put this frame's strips into `graph`, the
     /// graph column; `None` (no pixels this frame) removes every placement.
+    /// Off the pixel tier (`F3`) it frees every upload too: the terminal may
+    /// evict unplaced images while the text tiers draw, so coming back to
+    /// pixels transmits afresh instead of placing ids it may no longer hold
+    /// (m1-the-graph/33). The status screen only hides them.
     pub fn frame(
         &mut self,
         session: &Session,
@@ -116,7 +120,11 @@ impl<R: GraphicsReplies> Graphics<R> {
         out: &mut Vec<u8>,
     ) {
         let Some(graph) = graph.filter(|area| !area.is_empty()) else {
-            self.images.hide(out);
+            if crate::view::tier_in_force(session, state) == RenderingTier::Pixel {
+                self.images.hide(out);
+            } else {
+                self.images.free_all(out);
+            }
             self.bands.hide(out);
             return;
         };

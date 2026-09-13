@@ -1,0 +1,135 @@
+ESC [?1049h
+ESC [2J
+APC G a=t,f=32,t=d,i=1000,s=48,v=128,q=1,m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=0  [payload 4096 bytes]
+ESC 7
+ESC [2;3H
+APC G a=p,i=1000,p=1,x=0,y=0,w=48,h=128,c=6,r=8,C=1,q=1  [payload 0 bytes]
+ESC 8
+APC G a=t,f=32,t=d,i=1001,s=48,v=128,q=1,m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=0  [payload 4096 bytes]
+ESC 7
+ESC [10;3H
+APC G a=p,i=1001,p=1,x=0,y=0,w=48,h=128,c=6,r=8,C=1,q=1  [payload 0 bytes]
+ESC 8
+ESC [c
+ESC 7
+ESC [2;3H
+APC G a=p,i=1000,p=1,x=0,y=48,w=48,h=80,c=6,r=5,C=1,q=1  [payload 0 bytes]
+ESC 8
+ESC 7
+ESC [7;3H
+APC G a=p,i=1001,p=1,x=0,y=0,w=48,h=128,c=6,r=8,C=1,q=1  [payload 0 bytes]
+ESC 8
+ESC [c
+ESC [1;1H
+ESC [2K
+ESC [2;1H
+ESC [2K
+ESC [3;1H
+ESC [2K
+ESC [4;1H
+ESC [2K
+ESC [5;1H
+ESC [2K
+ESC [6;1H
+ESC [2K
+ESC [7;1H
+ESC [2K
+ESC [8;1H
+ESC [2K
+ESC [9;1H
+ESC [2K
+ESC [10;1H
+ESC [2K
+ESC [11;1H
+ESC [2K
+ESC [12;1H
+ESC [2K
+ESC [13;1H
+ESC [2K
+ESC [14;1H
+ESC [2K
+ESC [15;1H
+ESC [2K
+ESC [16;1H
+ESC [2K
+ESC [17;1H
+ESC [2K
+ESC [18;1H
+ESC [2K
+ESC 7
+ESC [2;3H
+APC G a=p,i=1000,p=1,x=0,y=0,w=48,h=128,c=6,r=8,C=1,q=1  [payload 0 bytes]
+ESC 8
+ESC 7
+ESC [10;3H
+APC G a=p,i=1001,p=1,x=0,y=0,w=48,h=128,c=6,r=8,C=1,q=1  [payload 0 bytes]
+ESC 8
+ESC [c
+APC G a=d,d=i,i=1000,p=1,q=1  [payload 0 bytes]
+APC G a=d,d=i,i=1001,p=1,q=1  [payload 0 bytes]
+ESC [c
+ESC 7
+ESC [2;3H
+APC G a=p,i=1000,p=1,x=0,y=0,w=48,h=128,c=6,r=8,C=1,q=1  [payload 0 bytes]
+ESC 8
+ESC 7
+ESC [10;3H
+APC G a=p,i=1001,p=1,x=0,y=0,w=48,h=128,c=6,r=8,C=1,q=1  [payload 0 bytes]
+ESC 8
+ESC [c
+APC G a=d,d=I,i=1000,q=1  [payload 0 bytes]
+APC G a=d,d=I,i=1001,q=1  [payload 0 bytes]
+ESC [c
+APC G a=t,f=32,t=d,i=1002,s=48,v=128,q=1,m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=0  [payload 4096 bytes]
+ESC 7
+ESC [2;3H
+APC G a=p,i=1002,p=1,x=0,y=0,w=48,h=128,c=6,r=8,C=1,q=1  [payload 0 bytes]
+ESC 8
+APC G a=t,f=32,t=d,i=1003,s=48,v=128,q=1,m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=1  [payload 4096 bytes]
+APC G m=0  [payload 4096 bytes]
+ESC 7
+ESC [10;3H
+APC G a=p,i=1003,p=1,x=0,y=0,w=48,h=128,c=6,r=8,C=1,q=1  [payload 0 bytes]
+ESC 8
+ESC [c
+APC G a=p,i=999999,p=1,q=1  [payload 0 bytes]
+ESC [c
+ESC [2J
+ESC 7
+ESC [2;3H
+APC G a=p,i=1002,p=1,x=0,y=0,w=48,h=128,c=6,r=8,C=1,q=1  [payload 0 bytes]
+ESC 8
+ESC 7
+ESC [10;3H
+APC G a=p,i=1003,p=1,x=0,y=0,w=48,h=128,c=6,r=8,C=1,q=1  [payload 0 bytes]
+ESC 8
+ESC [c
+ESC [?1049l
+ESC [c

@@ -1,0 +1,107 @@
+=== frame after startup ===
+ graft /Users/devuser/dev/sandbox/gitter  194 commits
+◌   Uncommitted changes (40 unstaged, 5 untracked)
+◆   [◆ main] tickets: m1/34 adds pin on Enter and author/date to t… 6m   703e6b5
+●   progress: m1/32 done, next 33                                   7m   7c17957
+●   m1-the-graph-32: wheel scroll no longer snaps to the top once … 7m   27a4886
+●   tickets: m1/34 tooltip shows only the subject (user report)     9m   9efc680
+●   tickets: m1/33 also fixes footer key hints per PROMPT principl… 11m  66e34a9
+●   tickets: m1/33 F3 cycles renderer tiers (user decision)         12m  5ccc7f7
+●   progress: m1 open question, F3 one-way                          13m  b5db603
+●   tickets: m1/32 wheel scroll wraps before history loads (user r… 16m  ed98794
+●   progress: m1/26 done, pause for user Ghostty check, next 27     28m  1508cdd
+●   m1-the-graph-26: / search as a cancellable job (subject, autho… 29m  8548e22
+●   progress: m1/25 done, next 26                                   50m  ef7735c
+●   m1-the-graph-25: iTerm2 inline-image bands re-sent per frame a… 50m  f683354
+●   progress: m1/24d done (24 done), next 25                        1h   673afd7
+●   m1-the-graph-24d: flush strips on theme/cell-size/resize (resi… 1h   3e28dc7
+●   progress: m1/24c done, next 24d                                 1h   97b065a
+●   m1-the-graph-24c: Kitty strips drawn in the app — blank pixel … 1h   d6312b3
+●   progress: m1/24b done, next 24c                                 1h   8d4ffff
+●   m1-the-graph-24b: rows for aligned pixel strips — History pads… 1h   4714e89
+●   progress: m1/24 partial, split into 24b/24c/24d, next 24b       1h   15b1abc
+●   m1-the-graph-24: kitty encoder — transmit-once strips, p=1 cro… 1h   f313456
+●   progress: m1/23 done, next 24                                   1h   7afca6d
+ q quit  F2 status  F3 renderer  / search  j/k move  Enter details  Space fold
+
+=== frame after F3 press 1 ===
+ graft /Users/devuser/dev/sandbox/gitter  194 commits
+*   Uncommitted changes (40 unstaged, 5 untracked)
+*   [◆ main] tickets: m1/34 adds pin on Enter and author/date to t… 6m   703e6b5
+*   progress: m1/32 done, next 33                                   7m   7c17957
+*   m1-the-graph-32: wheel scroll no longer snaps to the top once … 7m   27a4886
+*   tickets: m1/34 tooltip shows only the subject (user report)     9m   9efc680
+*   tickets: m1/33 also fixes footer key hints per PROMPT principl… 11m  66e34a9
+*   tickets: m1/33 F3 cycles renderer tiers (user decision)         12m  5ccc7f7
+*   progress: m1 open question, F3 one-way                          13m  b5db603
+*   tickets: m1/32 wheel scroll wraps before history loads (user r… 16m  ed98794
+*   progress: m1/26 done, pause for user Ghostty check, next 27     28m  1508cdd
+*   m1-the-graph-26: / search as a cancellable job (subject, autho… 29m  8548e22
+*   progress: m1/25 done, next 26                                   50m  ef7735c
+*   m1-the-graph-25: iTerm2 inline-image bands re-sent per frame a… 50m  f683354
+*   progress: m1/24d done (24 done), next 25                        1h   673afd7
+*   m1-the-graph-24d: flush strips on theme/cell-size/resize (resi… 1h   3e28dc7
+*   progress: m1/24c done, next 24d                                 1h   97b065a
+*   m1-the-graph-24c: Kitty strips drawn in the app — blank pixel … 1h   d6312b3
+*   progress: m1/24b done, next 24c                                 1h   8d4ffff
+*   m1-the-graph-24b: rows for aligned pixel strips — History pads… 1h   4714e89
+*   progress: m1/24 partial, split into 24b/24c/24d, next 24b       1h   15b1abc
+*   m1-the-graph-24: kitty encoder — transmit-once strips, p=1 cro… 1h   f313456
+*   progress: m1/23 done, next 24                                   1h   7afca6d
+ renderer: ascii (F3 cycles)
+
+=== frame after F3 press 2 ===
+ graft /Users/devuser/dev/sandbox/gitter  194 commits
+◌   Uncommitted changes (40 unstaged, 5 untracked)
+◆   [◆ main] tickets: m1/34 adds pin on Enter and author/date to t… 6m   703e6b5
+●   progress: m1/32 done, next 33                                   7m   7c17957
+●   m1-the-graph-32: wheel scroll no longer snaps to the top once … 7m   27a4886
+●   tickets: m1/34 tooltip shows only the subject (user report)     9m   9efc680
+●   tickets: m1/33 also fixes footer key hints per PROMPT principl… 11m  66e34a9
+●   tickets: m1/33 F3 cycles renderer tiers (user decision)         12m  5ccc7f7
+●   progress: m1 open question, F3 one-way                          13m  b5db603
+●   tickets: m1/32 wheel scroll wraps before history loads (user r… 16m  ed98794
+●   progress: m1/26 done, pause for user Ghostty check, next 27     28m  1508cdd
+●   m1-the-graph-26: / search as a cancellable job (subject, autho… 29m  8548e22
+●   progress: m1/25 done, next 26                                   50m  ef7735c
+●   m1-the-graph-25: iTerm2 inline-image bands re-sent per frame a… 50m  f683354
+●   progress: m1/24d done (24 done), next 25                        1h   673afd7
+●   m1-the-graph-24d: flush strips on theme/cell-size/resize (resi… 1h   3e28dc7
+●   progress: m1/24c done, next 24d                                 1h   97b065a
+●   m1-the-graph-24c: Kitty strips drawn in the app — blank pixel … 1h   d6312b3
+●   progress: m1/24b done, next 24c                                 1h   8d4ffff
+●   m1-the-graph-24b: rows for aligned pixel strips — History pads… 1h   4714e89
+●   progress: m1/24 partial, split into 24b/24c/24d, next 24b       1h   15b1abc
+●   m1-the-graph-24: kitty encoder — transmit-once strips, p=1 cro… 1h   f313456
+●   progress: m1/23 done, next 24                                   1h   7afca6d
+ q quit  F2 status  F3 renderer  / search  j/k move  Enter details  Space fold
+
+=== frame after F3 press 3 ===
+ graft /Users/devuser/dev/sandbox/gitter  194 commits
+*   Uncommitted changes (40 unstaged, 5 untracked)
+*   [◆ main] tickets: m1/34 adds pin on Enter and author/date to t… 6m   703e6b5
+*   progress: m1/32 done, next 33                                   7m   7c17957
+*   m1-the-graph-32: wheel scroll no longer snaps to the top once … 7m   27a4886
+*   tickets: m1/34 tooltip shows only the subject (user report)     9m   9efc680
+*   tickets: m1/33 also fixes footer key hints per PROMPT principl… 11m  66e34a9
+*   tickets: m1/33 F3 cycles renderer tiers (user decision)         12m  5ccc7f7
+*   progress: m1 open question, F3 one-way                          13m  b5db603
+*   tickets: m1/32 wheel scroll wraps before history loads (user r… 16m  ed98794
+*   progress: m1/26 done, pause for user Ghostty check, next 27     28m  1508cdd
+*   m1-the-graph-26: / search as a cancellable job (subject, autho… 29m  8548e22
+*   progress: m1/25 done, next 26                                   50m  ef7735c
+*   m1-the-graph-25: iTerm2 inline-image bands re-sent per frame a… 50m  f683354
+*   progress: m1/24d done (24 done), next 25                        1h   673afd7
+*   m1-the-graph-24d: flush strips on theme/cell-size/resize (resi… 1h   3e28dc7
+*   progress: m1/24c done, next 24d                                 1h   97b065a
+*   m1-the-graph-24c: Kitty strips drawn in the app — blank pixel … 1h   d6312b3
+*   progress: m1/24b done, next 24c                                 1h   8d4ffff
+*   m1-the-graph-24b: rows for aligned pixel strips — History pads… 1h   4714e89
+*   progress: m1/24 partial, split into 24b/24c/24d, next 24b       1h   15b1abc
+*   m1-the-graph-24: kitty encoder — transmit-once strips, p=1 cro… 1h   f313456
+*   progress: m1/23 done, next 24                                   1h   7afca6d
+ renderer: ascii (F3 cycles)
+
+=== termios sanity ===
+identical before launch / after quit: True
+exited by: status 0

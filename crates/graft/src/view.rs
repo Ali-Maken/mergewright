@@ -55,6 +55,12 @@ pub fn view(session: &Session, state: &AppState, frame: &mut Frame) {
     view_with_graphics(session, state, &GraphicsStatus::Ok, frame);
 }
 
+/// The tier the graph draws at: `F3`'s override, else the session's.
+#[must_use]
+pub fn tier_in_force(session: &Session, state: &AppState) -> RenderingTier {
+    state.renderer_override.unwrap_or(session.rendering.tier)
+}
+
 /// Whether this frame's graph is drawn in pixels: the graph screen, at the
 /// pixel tier, over the Kitty protocol or iTerm2 inline images.
 ///
@@ -64,7 +70,7 @@ pub fn view(session: &Session, state: &AppState, frame: &mut Frame) {
 #[must_use]
 pub fn draws_pixels(session: &Session, state: &AppState) -> bool {
     state.screen == Screen::Graph
-        && state.renderer_override.unwrap_or(session.rendering.tier) == RenderingTier::Pixel
+        && tier_in_force(session, state) == RenderingTier::Pixel
         && matches!(
             session.capabilities.pixel_protocol,
             Some(PixelProtocol::Kitty | PixelProtocol::Iterm2) | None
@@ -93,11 +99,13 @@ pub fn view_with_graphics(
             let mut screen = graph_view(state);
             screen.icons = session.icons;
             screen.compaction.max_lanes = session.max_lanes;
-            let tier = state.renderer_override.unwrap_or(session.rendering.tier);
+            let tier = tier_in_force(session, state);
             screen.ascii = tier == RenderingTier::Ascii;
+            // Only below the terminal's own tier: `F3` clears the override
+            // when it cycles back to the top (m1-the-graph/33).
             if state.renderer_override.is_some() {
                 screen.notice = Some(sanitize_line(&format!(
-                    "renderer forced to {} (F3)",
+                    "renderer: {} (F3 cycles)",
                     tier_name(tier)
                 )));
             }
@@ -762,7 +770,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn the_tier_drop_key_forces_ascii_and_says_so_in_the_footer() {
+    fn the_tier_cycle_key_forces_ascii_and_says_so_in_the_footer() {
         let state = AppState {
             history: Some(history_of(5, 1)),
             size: Size {
@@ -780,7 +788,7 @@ pub(crate) mod tests {
         );
 
         let screen = draw(&state, 60, 5);
-        assert!(screen.contains("renderer forced to ascii (F3)"), "{screen}");
+        assert!(screen.contains("renderer: ascii (F3 cycles)"), "{screen}");
         assert!(
             !screen.contains('╭'),
             "the graph column drew Unicode: {screen}"

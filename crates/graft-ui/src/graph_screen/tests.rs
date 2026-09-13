@@ -571,3 +571,43 @@ fn the_graphics_status_is_named_by_its_state() {
     let header = text(&draw(&screen, 80, 4))[0].clone();
     assert!(header.contains("gfx: ENOENT:gone"), "{header}");
 }
+
+/// The footer row alone at `columns`, drawn over a short linear history.
+fn footer_at(columns: u16) -> String {
+    let rows = linear(3);
+    let screen = text(&draw(
+        &view(&rows, WalkView::Complete { rows: 3 }, 0),
+        columns,
+        6,
+    ));
+    screen[5].trim_end().to_owned()
+}
+
+#[test]
+fn the_footer_lists_every_graph_key_dropping_whole_hints_when_narrow() {
+    let wide = footer_at(200);
+    for hint in HINTS {
+        assert!(wide.contains(hint), "{hint} missing: {wide}");
+    }
+    for columns in [80, 120, 200] {
+        let footer = footer_at(columns);
+        assert!(footer.contains("F3 renderer"), "{columns}: {footer}");
+        assert!(footer.chars().count() <= usize::from(columns), "{footer}");
+        // A narrower footer is the wide one cut at a hint boundary.
+        assert!(wide.starts_with(&footer), "{columns}: {footer}");
+        assert!(
+            wide.len() == footer.len() || wide[footer.len()..].starts_with("  "),
+            "{columns} cut a hint in half: {footer}"
+        );
+        insta::assert_snapshot!(format!("footer-hints-{columns}"), footer);
+    }
+}
+
+#[test]
+fn the_expand_hint_keeps_its_place_after_the_renderer() {
+    let line = key_hints(Some("+ expand lanes"), 200);
+    assert!(
+        line.starts_with(" q quit  F2 status  F3 renderer  + expand lanes  / search"),
+        "{line}"
+    );
+}

@@ -13,10 +13,12 @@
 //! 2. scroll: the same uploads re-cropped (no transmit);
 //! 3. resize: rows erased one by one (the app's resize clear since
 //!    m1-the-graph/25), then a frame that only re-places — no transmit;
-//! 4. tier drop: `hide` every placement;
-//! 5. controls: a missing id must ENOENT; a full `ESC[2J` then placements
+//! 4. status screen: `hide` every placement;
+//! 5. F3 away from pixels frees every upload, F3 back transmits afresh under
+//!    new ids and places (m1-the-graph/33);
+//! 6. controls: a missing id must ENOENT; a full `ESC[2J` then placements
 //!    only shows whether the clear freed the uploads;
-//! 6. exit: `free_all`.
+//! 7. exit: `free_all`.
 //!
 //! After each step a DA1 query (`CSI c`) fences the replies: everything the
 //! terminal says about images before the DA1 answer belongs to that step.
@@ -119,6 +121,14 @@ fn check() -> io::Result<(String, Vec<u8>)> {
     images.hide(&mut out);
     steps.push(run_step("hide", &out, &mut stdout, &input, &mut capture)?);
 
+    steps.extend(f3_round_trip(
+        &mut images,
+        &strips,
+        &mut stdout,
+        &input,
+        &mut capture,
+    )?);
+
     let (control, cleared) = controls(&mut images, &strips, &mut stdout, &input, &mut capture)?;
 
     let mut out = Vec::new();
@@ -133,6 +143,36 @@ fn check() -> io::Result<(String, Vec<u8>)> {
     )?);
 
     Ok((report(&steps, &control, &cleared), capture))
+}
+
+/// F3 off the pixel tier and back: re-place, free every upload (as the app
+/// does on leaving the tier), then a frame that transmits again and places
+/// (m1-the-graph/33).
+fn f3_round_trip(
+    images: &mut KittyImages,
+    strips: &[Arc<RasterFrame>; 2],
+    stdout: &mut impl Write,
+    input: &Receiver<Vec<u8>>,
+    capture: &mut Vec<u8>,
+) -> io::Result<Vec<Step>> {
+    let replaced = run_step(
+        "re-place before F3",
+        &frame(images, strips, 0),
+        stdout,
+        input,
+        capture,
+    )?;
+    let mut out = Vec::new();
+    images.free_all(&mut out);
+    let away = run_step("F3 away: free all", &out, stdout, input, capture)?;
+    let back = run_step(
+        "F3 back: transmit + place",
+        &frame(images, strips, 0),
+        stdout,
+        input,
+        capture,
+    )?;
+    Ok(vec![replaced, away, back])
 }
 
 /// The two controls: a placement of a never-sent id, and a full clear

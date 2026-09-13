@@ -27,7 +27,7 @@ shape: criss-cross-merge (widest), 256, 80x24, cursor on row 2
 
 
 
- q quit  F2 status  / search  j/k move  PgUp/PgDn page  g/G top/bottom
+ q quit  F2 status  F3 renderer  / search  j/k move  Enter details  Space fold
 
 graph colour per cell:
 ..f.......

@@ -435,22 +435,61 @@ pub enum SearchLine {
     },
 }
 
-/// The key hints the footer lists, around the lane-expansion hint. Leaving
-/// and the status screen first, then `+` while it applies: a narrow terminal
-/// cuts from the right, and the hint that comes and goes matters more than
-/// the movement keys that are always there.
-const HINTS: &str = " q quit  F2 status";
-/// The hints after the lane-expansion hint.
-const MORE_HINTS: &str = "  / search  j/k move  PgUp/PgDn page  g/G top/bottom";
+/// Every key the graph screen answers, in the order the footer drops them
+/// (PROMPT.md principle 4: the hint bar teaches the tool). Leaving, the
+/// status screen and the renderer first, then `+` while it applies
+/// ([`LEADING_HINTS`] of these come before it), then the actions, and the
+/// movement keys last: a narrow terminal drops whole hints from the right,
+/// and the hint that comes and goes matters more than the movement keys
+/// that are always there. `n`/`N` live on the search line, where they work.
+const HINTS: [&str; 13] = [
+    "q quit",
+    "F2 status",
+    "F3 renderer",
+    "/ search",
+    "j/k move",
+    "Enter details",
+    "Space fold",
+    "1 first-parent",
+    "F focus",
+    "H stash",
+    "PgUp/PgDn page",
+    "g/G top/bottom",
+    "Ctrl+R refresh",
+];
+/// How many of [`HINTS`] come before the lane-expansion hint.
+const LEADING_HINTS: usize = 3;
 
 /// The hint for the lane-expansion key, shown only while there is something
 /// to expand or collapse.
-fn expand_hint(fold: &Fold, expanded: bool) -> &'static str {
+fn expand_hint(fold: &Fold, expanded: bool) -> Option<&'static str> {
     match (fold.marker().is_some(), expanded) {
-        (false, false) => "",
-        (_, true) => "  + collapse lanes",
-        (true, false) => "  + expand lanes",
+        (false, false) => None,
+        (_, true) => Some("+ collapse lanes"),
+        (true, false) => Some("+ expand lanes"),
     }
+}
+
+/// The footer's key hints within `width` columns: as many whole hints as
+/// fit, dropped from the right, never one cut in half.
+fn key_hints(expand: Option<&str>, width: usize) -> String {
+    let (leading, rest) = HINTS.split_at(LEADING_HINTS);
+    let mut line = String::new();
+    for hint in leading
+        .iter()
+        .copied()
+        .chain(expand)
+        .chain(rest.iter().copied())
+    {
+        let separator = if line.is_empty() { " " } else { "  " };
+        if !line.is_empty() && text_width(&line) + text_width(separator) + text_width(hint) > width
+        {
+            break;
+        }
+        line.push_str(separator);
+        line.push_str(hint);
+    }
+    line
 }
 
 fn text_width(text: &str) -> usize {
@@ -488,10 +527,7 @@ impl Widget for GraphScreen<'_> {
                 ),
                 (None, None, Some(notice)) => (format!(" {notice}"), Token::Info),
                 (None, None, None) => (
-                    format!(
-                        "{HINTS}{}{MORE_HINTS}",
-                        expand_hint(&fold, self.view.compaction.expanded)
-                    ),
+                    key_hints(expand_hint(&fold, self.view.compaction.expanded), width),
                     Token::TextMuted,
                 ),
             };

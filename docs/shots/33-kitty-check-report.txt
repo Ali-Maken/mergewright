@@ -1,0 +1,16 @@
+kitty_check: TERM=xterm-ghostty TERM_PROGRAM=ghostty 1.3.1
+first frame          transmits  2  placements  2  replies  0  errors  0  DA1 answered
+scroll 3 rows        transmits  0  placements  2  replies  0  errors  0  DA1 answered
+erase rows + replace transmits  0  placements  2  replies  0  errors  0  DA1 answered
+hide                 transmits  0  placements  0  replies  0  errors  0  DA1 answered
+re-place before F3   transmits  0  placements  2  replies  0  errors  0  DA1 answered
+F3 away: free all    transmits  0  placements  0  replies  0  errors  0  DA1 answered
+F3 back: transmit + place transmits  2  placements  2  replies  0  errors  0  DA1 answered
+free all             transmits  0  placements  0  replies  0  errors  0  DA1 answered
+control: missing id  transmits  0  placements  1  replies  1  errors  1  DA1 answered
+    reply i=Some(999999) ENOENT: image not found
+control: full clear  transmits  0  placements  2  replies  2  errors  2  DA1 answered
+    reply i=Some(1002) ENOENT: image not found
+    reply i=Some(1003) ENOENT: image not found
+PASS: 0 error replies, 0 unfenced steps; control heard 1 ENOENT (want 1)
+full clear then place: 2 ENOENT of 2 placements (2 = the clear freed the uploads)

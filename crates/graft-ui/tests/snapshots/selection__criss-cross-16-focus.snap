@@ -27,7 +27,7 @@ shape: criss-cross-merge, 16, focus, 80x24, row 4 selected
 
 
 
- q quit  F2 status  / search  j/k move  PgUp/PgDn page  g/G top/bottom
+ q quit  F2 status  F3 renderer  / search  j/k move  Enter details  Space fold
 
 modifiers: graph | subject
 ..b.......| .
