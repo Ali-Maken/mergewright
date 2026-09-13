@@ -11,7 +11,7 @@ One line per public item. Update when a public item changes.
 - `BranchIdentity::slot` (fn) — which of N palette entries this identity draws in.
 
 ## lane
-- `Lane` (struct) — one open column: `index`, `identity`, `waiting_for`, `reserved`.
+- `Lane` (struct) — one open column: `index`, `identity`, `waiting_for` (`CommitHandle`, ADR-0026), `reserved`.
 
 ## row
 - `Row` (struct) — one laid-out commit.
@@ -59,23 +59,25 @@ One line per public item. Update when a public item changes.
 - `Inclusion` (struct) — `hidden_stashes`, `folded` merges; can change while a layout lives.
 - `seeds_for` (fn) — the seeds a view lays out from (first-parent drops integration lanes).
 - `apply` (fn) — slice form: the commits a view shows, parents trimmed, and its seeds.
-- `Included` (struct) — `CommitSource` wrapper letting through only what a view shows; remembers walked ids so a change re-reads, never re-walks.
+- `Included` (struct) — `CommitSource` wrapper letting through only what a view shows; remembers walked handles (ADR-0026: `HandleSet`, not an id list) so a change re-reads, never re-walks.
 - `Included::new` / `seeds` / `follow` / `inclusion` / `inner` (fn) — build and query.
-- `Included::reinclude` (fn) — switch inclusion; the first row whose drawing can change, or `None`.
+- `Included::walked` / `shown` (fn) — the walked and currently-shown handles, as `HandleSet`s.
+- `Included::reinclude` (fn) — switch inclusion; the first row whose drawing can change, or `None`; replays through `CommitSource::links`, not whole commits.
 - `reinclude` (fn) — switch a `StreamingLayout<Included<_>>`'s inclusion and truncate from the first changed row; returns `Invalidated`.
 
 ## layout
-- `layout` (fn) — lay out a whole commit slice in one call.
+- `HandleLookup` (trait) — `handle_of(&self, id: Oid) -> CommitHandle` (infallible); blanket-implemented for every `CommitSource`. Lets `LayoutCursor` and `layout()` resolve seed/parent ids to handles without needing the whole `CommitSource` seam.
+- `layout` (fn) — lay out a whole commit slice in one call; unchanged signature — builds its own private id table internally (ADR-0026) so no caller outside `graft-graph` had to change.
 - `LayoutCursor` (struct) — resumable lane state; a clone is a checkpoint.
-- `LayoutCursor::new` (fn) — cursor seeded with lane 0 and integration lanes.
-- `LayoutCursor::extend` (fn) — lay out the next batch, recording into an `EmittedOrder`.
+- `LayoutCursor::new` (fn) — `new(seeds, handles: &impl HandleLookup)`; cursor seeded with lane 0 and integration lanes, by handle.
+- `LayoutCursor::extend` (fn) — `extend(commits, handles: &impl HandleLookup, order: &mut EmittedOrder)`; lay out the next batch.
 - `LayoutCursor::rows_emitted` (fn) — rows laid out so far.
 - `LayoutCursor::approximate_bytes` (fn) — checkpoint cost estimate.
 - `LayoutCursor::active_lanes` (fn) — current occupant of each column.
 
 ## layout::order
-- `EmittedOrder` (struct) — commit per row plus reverse lookup; `new`, `from_ids`, `note`, `row_of`, `id_at`, `ids`, `len`, `is_empty`, `approximate_bytes`.
-- `RepeatedCommit` (struct) — a commit the walk named twice: `id`, `first`, `again`.
+- `EmittedOrder` (struct) — `Vec<CommitHandle>` row → handle plus a dense `Vec<u32>` reverse lookup (ADR-0026); `new`, `from_handles` (was `from_ids`), `note`, `row_of`, `handle_at` (was `id_at`), `handles` (was `ids`), `len`, `is_empty`, `approximate_bytes`.
+- `RepeatedCommit` (struct) — a commit the walk named twice: `commit` (`CommitHandle`), `first`, `again`.
 
 ## layout::source
 - `CommitSource` (trait) — a walk the layout pulls from and re-reads by id; `links` (parents as the view shows them), `handle_of`, `id_of` over the repository's id table.
@@ -89,7 +91,8 @@ One line per public item. Update when a public item changes.
 - `Resident` (struct) — held rows, chunks, checkpoints and their byte estimates.
 - `Work` (struct) — pulls, re-reads, replayed rows, rebuilt chunks.
 - `StreamingLayout` (struct) — chunked layout with a bounded resident set.
-- `StreamingLayout::new` / `from_order` (fn) — stream a walk / lay out a known order.
+- `StreamingLayout::new` (fn) — stream a walk.
+- `StreamingLayout::from_order` (fn) — `from_order(source, order: Vec<CommitHandle>, seeds, config)`; lay out a known order (ADR-0026: handles in, not ids).
 - `StreamingLayout::advance` (fn) — lay out up to a budget of rows past the frontier.
 - `StreamingLayout::set_viewport` / `viewport` (fn) — rows on screen.
 - `StreamingLayout::rows` (fn) — rows in a range, rebuilding evicted chunks.

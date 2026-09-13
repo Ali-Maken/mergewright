@@ -23,6 +23,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use graft_core::commit::Commit;
+use graft_core::commit_handle::CommitHandle;
 use graft_core::oid::Oid;
 
 pub use self::order::EmittedOrder;
@@ -36,6 +37,66 @@ use crate::merge_name::recover_branch_name;
 use crate::row::Row;
 use crate::seeds::{BranchSeed, Seeds};
 
+/// Resolves a commit's id to its handle (ADR-0026).
+///
+/// `LayoutCursor` never needs the rest of [`CommitSource`] — no pull, no
+/// read, no links — only this one lookup, so it asks for this instead of the
+/// whole trait. Every [`CommitSource`] is one (below), so a real walk's
+/// source works here unchanged; [`layout`]'s convenience path, which has no
+/// source at all, builds a throwaway one straight from the commits in hand.
+pub trait HandleLookup {
+    /// The handle for `id`. Every id this is asked for was itself read from
+    /// the same walk this resolver was built over, so this cannot fail; an
+    /// id this resolver has never seen is a bug and panics.
+    fn handle_of(&self, id: Oid) -> CommitHandle;
+}
+
+impl<S: CommitSource> HandleLookup for S {
+    fn handle_of(&self, id: Oid) -> CommitHandle {
+        CommitSource::handle_of(self, &id)
+            .unwrap_or_else(|| panic!("{id:?} has no handle in this source's table"))
+    }
+}
+
+/// A dense id-to-handle table built from a commit list already in hand.
+///
+/// Backs [`layout`]'s convenience path: assigns handles in first-seen order
+/// over every id and parent, exactly as a repository's own table would for
+/// the same commits, but privately and only for the lifetime of one call —
+/// nothing outside `layout` ever sees these handles.
+/// A table's next handle, as a `u32` — no repository (or one call's worth of
+/// commits) holds anywhere near 4 billion, so a table this size is itself
+/// the bug.
+fn handle_index(len: usize) -> u32 {
+    u32::try_from(len).unwrap_or_else(|_| panic!("more than u32::MAX commits in one table"))
+}
+
+struct LocalHandles(HashMap<Oid, CommitHandle>);
+
+impl LocalHandles {
+    fn of(commits: &[Commit]) -> Self {
+        let mut table = HashMap::new();
+        for commit in commits {
+            let next = handle_index(table.len());
+            table.entry(commit.id).or_insert(CommitHandle(next));
+            for &parent in &commit.parents {
+                let next = handle_index(table.len());
+                table.entry(parent).or_insert(CommitHandle(next));
+            }
+        }
+        LocalHandles(table)
+    }
+}
+
+impl HandleLookup for LocalHandles {
+    fn handle_of(&self, id: Oid) -> CommitHandle {
+        *self
+            .0
+            .get(&id)
+            .unwrap_or_else(|| panic!("{id:?} was never seen in this layout's commits"))
+    }
+}
+
 /// Lays out a whole commit sequence in one call.
 ///
 /// A convenience over [`LayoutCursor`] for callers that already have every
@@ -46,8 +107,9 @@ use crate::seeds::{BranchSeed, Seeds};
 /// If `commits` draws the same commit twice; see [`LayoutCursor::extend`].
 #[must_use]
 pub fn layout(commits: &[Commit], seeds: Seeds) -> Vec<Row> {
+    let handles = LocalHandles::of(commits);
     let mut order = EmittedOrder::new();
-    LayoutCursor::new(seeds).extend(commits, &mut order)
+    LayoutCursor::new(seeds, &handles).extend(commits, &handles, &mut order)
 }
 
 /// The state carried from one row to the next while laying out a graph.
@@ -69,7 +131,7 @@ pub struct LayoutCursor {
     active: Vec<Option<Lane>>,
     /// For each commit still to come, the lanes waiting for it to continue
     /// them.
-    waiting: HashMap<Oid, Vec<usize>>,
+    waiting: HashMap<CommitHandle, Vec<usize>>,
     /// Columns closed on an earlier row and free to be reused, starting from
     /// the row after the one that freed them.
     free_pool: Vec<usize>,
@@ -92,14 +154,14 @@ impl LayoutCursor {
     /// A cursor seeded with lane 0 and the reserved integration lanes,
     /// ready to lay out the first commit.
     #[must_use]
-    pub fn new(seeds: Seeds) -> Self {
+    pub fn new(seeds: Seeds, handles: &impl HandleLookup) -> Self {
         let mut cursor = LayoutCursor::default();
 
         if let Some(seed) = seeds.default_branch {
-            cursor.reserve_lane(0, seed);
+            cursor.reserve_lane(0, seed, handles);
         }
         for (offset, seed) in seeds.integration_branches.into_iter().enumerate() {
-            cursor.reserve_lane(1 + offset, seed);
+            cursor.reserve_lane(1 + offset, seed, handles);
         }
         cursor.known_identities = Arc::new(
             seeds
@@ -126,12 +188,19 @@ impl LayoutCursor {
     /// different commit at the row being laid out — see
     /// [`EmittedOrder::note`].
     #[must_use]
-    pub fn extend(&mut self, commits: &[Commit], order: &mut EmittedOrder) -> Vec<Row> {
+    pub fn extend(
+        &mut self,
+        commits: &[Commit],
+        handles: &impl HandleLookup,
+        order: &mut EmittedOrder,
+    ) -> Vec<Row> {
         commits
             .iter()
             .map(|commit| {
-                order.note(self.rows_emitted, commit.id);
-                let row = self.assign_row(commit, order);
+                order
+                    .note(handles.handle_of(commit.id))
+                    .unwrap_or_else(|err| panic!("{err}"));
+                let row = self.assign_row(commit, handles, order);
                 self.rows_emitted += 1;
                 row
             })
@@ -155,7 +224,7 @@ impl LayoutCursor {
             + self.free_pool.capacity() * std::mem::size_of::<usize>()
             + self.unreached.capacity() * std::mem::size_of::<usize>()
             + self.waiting.capacity()
-                * (std::mem::size_of::<Oid>() + std::mem::size_of::<Vec<usize>>())
+                * (std::mem::size_of::<CommitHandle>() + std::mem::size_of::<Vec<usize>>())
             + self
                 .waiting
                 .values()
@@ -178,24 +247,33 @@ impl LayoutCursor {
     }
 
     /// Registers a reserved lane at `column`, waiting for `seed.tip`.
-    fn reserve_lane(&mut self, column: usize, seed: BranchSeed) {
+    fn reserve_lane(&mut self, column: usize, seed: BranchSeed, handles: &impl HandleLookup) {
         while self.active.len() <= column {
             self.active.push(None);
         }
+        let waiting_for = handles.handle_of(seed.tip);
         self.active[column] = Some(Lane {
             index: column,
             identity: seed.identity,
-            waiting_for: seed.tip,
+            waiting_for,
             reserved: true,
         });
-        self.register_waiting(column, seed.tip);
+        self.register_waiting(column, waiting_for);
         self.unreached.push(column);
     }
 
     /// Assigns one commit to a lane, records its edges, and advances every
     /// lane its parents continue or open.
-    fn assign_row(&mut self, commit: &Commit, order: &EmittedOrder) -> Row {
-        let found = self.waiting.remove(&commit.id).unwrap_or_default();
+    fn assign_row(
+        &mut self,
+        commit: &Commit,
+        handles: &impl HandleLookup,
+        order: &EmittedOrder,
+    ) -> Row {
+        let found = self
+            .waiting
+            .remove(&handles.handle_of(commit.id))
+            .unwrap_or_default();
         let mut parents = commit.parents.iter().copied();
         let first_parent = parents.next();
 
@@ -212,7 +290,8 @@ impl LayoutCursor {
             })
             .collect();
 
-        let lane = winning_lane(&found).unwrap_or_else(|| self.open_new_lane(commit, first_parent));
+        let lane = winning_lane(&found)
+            .unwrap_or_else(|| self.open_new_lane(commit, first_parent, handles));
         self.unreached.retain(|&column| column != lane);
         // Read before anything closes: a root that is also a fresh tip opens
         // and closes its lane on this one row.
@@ -231,12 +310,14 @@ impl LayoutCursor {
 
         let mut outgoing = Vec::new();
         match first_parent {
-            Some(parent) => self.continue_lane(lane, parent, order, &mut outgoing, &mut closing),
+            Some(parent) => {
+                self.continue_lane(lane, parent, handles, order, &mut outgoing, &mut closing);
+            }
             None => self.close_lane(lane, &mut closing),
         }
         for parent in parents {
             let (column, identity) =
-                self.open_merge_lane(commit, parent, order, &mut outgoing, &mut closing);
+                self.open_merge_lane(commit, parent, handles, order, &mut outgoing, &mut closing);
             set_column(&mut lanes, column, Some(identity));
         }
         while lanes.last().is_some_and(Option::is_none) {
@@ -268,19 +349,21 @@ impl LayoutCursor {
         &mut self,
         lane: usize,
         parent: Oid,
+        handles: &impl HandleLookup,
         order: &EmittedOrder,
         outgoing: &mut Vec<(usize, Oid)>,
         closing: &mut Vec<usize>,
     ) {
         outgoing.push((lane, parent));
-        if self.drawn_already(parent, order) {
+        let target = handles.handle_of(parent);
+        if self.drawn_already(target, order) {
             self.close_lane(lane, closing);
             return;
         }
         if let Some(entry) = &mut self.active[lane] {
-            entry.waiting_for = parent;
+            entry.waiting_for = target;
         }
-        self.register_waiting(lane, parent);
+        self.register_waiting(lane, target);
     }
 
     /// Opens a new lane for a merge parent (the second and any later parent
@@ -300,6 +383,7 @@ impl LayoutCursor {
         &mut self,
         commit: &Commit,
         parent: Oid,
+        handles: &impl HandleLookup,
         order: &EmittedOrder,
         outgoing: &mut Vec<(usize, Oid)>,
         closing: &mut Vec<usize>,
@@ -309,28 +393,31 @@ impl LayoutCursor {
             Some(name) => BranchIdentity::of_name(&name),
             None => BranchIdentity::of_short_sha(parent),
         };
+        let target = handles.handle_of(parent);
         self.active[lane] = Some(Lane {
             index: lane,
             identity,
-            waiting_for: parent,
+            waiting_for: target,
             reserved: false,
         });
         outgoing.push((lane, parent));
-        if self.drawn_already(parent, order) {
+        if self.drawn_already(target, order) {
             self.close_lane(lane, closing);
         } else {
-            self.register_waiting(lane, parent);
+            self.register_waiting(lane, target);
         }
         (lane, identity)
     }
 
-    /// Whether `id` sits on a row above the one being laid out.
+    /// Whether `handle` sits on a row above the one being laid out.
     ///
     /// A replay from a checkpoint sees an `order` that already runs past the
     /// cursor's own position; a commit recorded *below* the cursor is one the
     /// replay has yet to reach, exactly as it was for the original run.
-    fn drawn_already(&self, id: Oid, order: &EmittedOrder) -> bool {
-        order.row_of(id).is_some_and(|row| row < self.rows_emitted)
+    fn drawn_already(&self, handle: CommitHandle, order: &EmittedOrder) -> bool {
+        order
+            .row_of(handle)
+            .is_some_and(|row| row < self.rows_emitted)
     }
 
     /// Opens a lane for a commit nothing was waiting for: a fresh tip.
@@ -339,17 +426,23 @@ impl LayoutCursor {
     /// commit that is also a fresh tip has no parent to wait for; either way
     /// the caller overwrites or closes the lane immediately afterward, so
     /// this never has to invent a value that would otherwise be observed.
-    fn open_new_lane(&mut self, commit: &Commit, first_parent: Option<Oid>) -> usize {
+    fn open_new_lane(
+        &mut self,
+        commit: &Commit,
+        first_parent: Option<Oid>,
+        handles: &impl HandleLookup,
+    ) -> usize {
         let lane = self.allocate_column();
         let identity = self
             .known_identities
             .get(&commit.id)
             .copied()
             .unwrap_or_else(|| BranchIdentity::of_short_sha(commit.id));
+        let waiting_for = handles.handle_of(first_parent.unwrap_or(commit.id));
         self.active[lane] = Some(Lane {
             index: lane,
             identity,
-            waiting_for: first_parent.unwrap_or(commit.id),
+            waiting_for,
             reserved: false,
         });
         lane
@@ -394,7 +487,7 @@ impl LayoutCursor {
     }
 
     /// Records that `lane` is waiting for `target` to continue it.
-    fn register_waiting(&mut self, lane: usize, target: Oid) {
+    fn register_waiting(&mut self, lane: usize, target: CommitHandle) {
         self.waiting.entry(target).or_default().push(lane);
     }
 }

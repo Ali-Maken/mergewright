@@ -552,14 +552,15 @@ fn promotion_from_date_order_to_topological_keeps_the_selected_commit_on_screen(
     let (anchor, provisional_row) = selected_on_first_paint(&dated, &seeds, config);
 
     // Background: the topological walk finished and produced its order.
-    let ids: Vec<Oid> = topo.iter().map(|commit| commit.id).collect();
-    let mut promoted = StreamingLayout::from_order(
-        VecSource::readable(&topo, Vec::new()),
-        ids,
-        seeds.clone(),
-        config,
-    )
-    .expect("a topological walk yields each commit once");
+    let source = VecSource::readable(&topo, Vec::new());
+    let order: Vec<CommitHandle> = topo
+        .iter()
+        .map(|commit| {
+            CommitSource::handle_of(&source, &commit.id).expect("interned by VecSource::readable")
+        })
+        .collect();
+    let mut promoted = StreamingLayout::from_order(source, order, seeds.clone(), config)
+        .expect("a topological walk yields each commit once");
     assert_eq!(promoted.expected_rows(), Some(6_000));
     let target = promoted
         .row_of(anchor.commit)
@@ -606,14 +607,16 @@ fn checkpoint_size_does_not_grow_with_history_on_either_path() {
     let config = StreamConfig::default();
     let per_checkpoint = |commits: &[Commit], promoted: bool| -> (usize, usize, usize) {
         let mut streaming = if promoted {
-            let ids = commits.iter().map(|commit| commit.id).collect();
-            StreamingLayout::from_order(
-                VecSource::readable(commits, Vec::new()),
-                ids,
-                seeds_for(commits),
-                config,
-            )
-            .expect("distinct ids")
+            let source = VecSource::readable(commits, Vec::new());
+            let order: Vec<CommitHandle> = commits
+                .iter()
+                .map(|commit| {
+                    CommitSource::handle_of(&source, &commit.id)
+                        .expect("interned by VecSource::readable")
+                })
+                .collect();
+            StreamingLayout::from_order(source, order, seeds_for(commits), config)
+                .expect("distinct ids")
         } else {
             stream(commits, config)
         };
@@ -712,14 +715,15 @@ fn a_walk_that_repeats_a_commit_is_refused() {
 #[test]
 fn a_promoted_order_that_repeats_a_commit_is_refused() {
     let commits = history(30, 10);
-    let mut ids: Vec<Oid> = commits.iter().map(|commit| commit.id).collect();
-    ids.push(ids[5]);
-    let outcome = StreamingLayout::from_order(
-        VecSource::readable(&commits, Vec::new()),
-        ids,
-        seeds_for(&commits),
-        small(),
-    );
+    let source = VecSource::readable(&commits, Vec::new());
+    let mut order: Vec<CommitHandle> = commits
+        .iter()
+        .map(|commit| {
+            CommitSource::handle_of(&source, &commit.id).expect("interned by VecSource::readable")
+        })
+        .collect();
+    order.push(order[5]);
+    let outcome = StreamingLayout::from_order(source, order, seeds_for(&commits), small());
     assert!(matches!(
         outcome.map(|_| ()),
         Err(StreamError::Repeated(RepeatedCommit {
@@ -748,8 +752,13 @@ fn a_source_that_answers_a_read_with_the_wrong_commit_is_caught() {
         .zip(&shifted)
         .map(|(asked, served)| (asked.id, served.clone()))
         .collect();
-    let ids: Vec<Oid> = commits.iter().map(|commit| commit.id).collect();
-    let mut streaming = StreamingLayout::from_order(wrong, ids, seeds_for(&commits), small())
+    let order: Vec<CommitHandle> = commits
+        .iter()
+        .map(|commit| {
+            CommitSource::handle_of(&wrong, &commit.id).expect("interned by VecSource::readable")
+        })
+        .collect();
+    let mut streaming = StreamingLayout::from_order(wrong, order, seeds_for(&commits), small())
         .expect("distinct ids");
     match streaming.advance(10, &never) {
         Err(StreamError::WrongCommit { asked, got }) => {

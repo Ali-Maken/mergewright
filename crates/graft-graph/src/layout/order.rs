@@ -1,4 +1,4 @@
-//! The order commits were laid out in, as a list of ids.
+//! The order commits were laid out in, as a list of handles.
 //!
 //! This is the one piece of layout state that grows with history, and it is
 //! kept *outside* [`LayoutCursor`](super::LayoutCursor) on purpose: a
@@ -7,27 +7,37 @@
 //! shared by the frontier and every checkpoint alike, and answers the two
 //! questions that used to need a per-cursor set: "was this commit drawn
 //! already?" and "which commit is at row *n*?".
+//!
+//! ADR-0026: everything here holds a [`CommitHandle`] (a `u32`), never an
+//! `Oid` (33 bytes) — the id-sized state that made a million-commit history
+//! cost most of a gigabyte. The reverse lookup (handle → row) is a dense
+//! `Vec<u32>`, `u32::MAX` marking a handle never emitted: handles are dense
+//! and stable for the repository's life, so this is a plain array, not a
+//! hash table.
 
-use std::collections::HashMap;
 use std::ops::Range;
 
-use graft_core::oid::Oid;
+use graft_core::commit_handle::CommitHandle;
+
+/// A handle with no row: `handle_at`/`row_by_handle` never emitted it.
+const UNSET: u32 = u32::MAX;
 
 /// Every commit laid out so far, in row order, with the reverse lookup.
 #[derive(Clone, Debug, Default)]
 pub struct EmittedOrder {
-    /// `ids[row]` is the commit drawn on `row`.
-    ids: Vec<Oid>,
-    /// The row each commit was drawn on.
-    rows: HashMap<Oid, usize>,
+    /// `rows[row]` is the commit drawn on `row`.
+    rows: Vec<CommitHandle>,
+    /// `row_by_handle[handle.index()]` is the row `handle` was drawn on, or
+    /// [`UNSET`]. Grown to the largest handle seen so far.
+    row_by_handle: Vec<u32>,
 }
 
 /// A commit the walk order names twice.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
-#[error("the walk yielded commit {id} twice: at row {first}, then again at row {again}")]
+#[error("the walk yielded commit {commit:?} twice: at row {first}, then again at row {again}")]
 pub struct RepeatedCommit {
     /// The commit.
-    pub id: Oid,
+    pub commit: CommitHandle,
     /// The row it was first seen at.
     pub first: usize,
     /// The row it turned up at again.
@@ -44,100 +54,109 @@ impl EmittedOrder {
     /// An order known in full before any row is laid out — the product of a
     /// finished background topological walk (ADR-0008 promotion).
     ///
-    /// Fails if `ids` repeats a commit: the layout has no meaning for a
+    /// Fails if `order` repeats a commit: the layout has no meaning for a
     /// sequence that draws the same commit twice.
-    pub fn from_ids(ids: Vec<Oid>) -> Result<Self, RepeatedCommit> {
-        let mut rows = HashMap::with_capacity(ids.len());
-        for (row, &id) in ids.iter().enumerate() {
-            if let Some(first) = rows.insert(id, row) {
+    pub fn from_handles(order: Vec<CommitHandle>) -> Result<Self, RepeatedCommit> {
+        let mut built = EmittedOrder {
+            rows: order,
+            row_by_handle: Vec::new(),
+        };
+        for row in 0..built.rows.len() {
+            let commit = built.rows[row];
+            if let Some(first) = built.row_of(commit) {
                 return Err(RepeatedCommit {
-                    id,
+                    commit,
                     first,
                     again: row,
                 });
             }
+            built.set_row_by_handle(commit, row);
         }
-        Ok(Self { ids, rows })
+        Ok(built)
     }
 
-    /// Records that `id` is the commit on `row`.
+    /// Records that `commit` is the next commit laid out, returning the row
+    /// it took. Idempotent: a `commit` already recorded — a checkpoint replay
+    /// feeding rows the order already knows — returns the row it already has,
+    /// without recording it again. A rebuild reproducing a different sequence
+    /// is caught above this, at the chunk level, by DESIGN.md §3.6's
+    /// eviction fingerprint (`RebuildDiffers`); nothing here re-derives that
+    /// row by row.
     ///
-    /// Appending (`row == len()`) adds a commit never seen before. Revisiting
-    /// (`row < len()`) is a replay from a checkpoint and must agree with what
-    /// the order already holds — the streaming layer checks the ids it got
-    /// back from the repository before it lays them out, so a disagreement
-    /// here is a bug in that check, not bad data.
+    /// # Errors
     ///
-    /// # Panics
-    ///
-    /// If `row` is past the end, if an appended `id` is already in the
-    /// order, or if a revisited `row` holds a different commit. Each is a
-    /// broken contract between the layout and its caller, never a state a
-    /// repository can put it in.
-    pub fn note(&mut self, row: usize, id: Oid) {
-        match row.cmp(&self.ids.len()) {
-            std::cmp::Ordering::Less => assert_eq!(
-                self.ids[row], id,
-                "replaying row {row}: the order holds {} but {id} was laid out",
-                self.ids[row]
-            ),
-            std::cmp::Ordering::Equal => {
-                let previous = self.rows.insert(id, row);
-                assert!(
-                    previous.is_none(),
-                    "commit {id} laid out twice: on row {} and again on row {row}",
-                    previous.unwrap_or(row)
-                );
-                self.ids.push(id);
-            }
-            std::cmp::Ordering::Greater => {
-                panic!("row {row} laid out ahead of row {}", self.ids.len());
-            }
+    /// If a fresh append would give `commit` a second, different row — the
+    /// walk itself named a commit twice, never a replay.
+    pub fn note(&mut self, commit: CommitHandle) -> Result<usize, RepeatedCommit> {
+        if let Some(row) = self.row_of(commit) {
+            return Ok(row);
         }
+        Ok(self.append(commit))
+    }
+
+    /// Appends `commit` as the next row and grows the reverse lookup to
+    /// cover it. Only called once a caller has confirmed `commit` has no row
+    /// yet.
+    fn append(&mut self, commit: CommitHandle) -> usize {
+        let row = self.rows.len();
+        self.rows.push(commit);
+        self.set_row_by_handle(commit, row);
+        row
+    }
+
+    /// Grows the reverse lookup to cover `commit` and records `row` for it.
+    fn set_row_by_handle(&mut self, commit: CommitHandle, row: usize) {
+        let index = commit.index();
+        if index >= self.row_by_handle.len() {
+            self.row_by_handle.resize(index + 1, UNSET);
+        }
+        self.row_by_handle[index] =
+            u32::try_from(row).unwrap_or_else(|_| panic!("more than u32::MAX rows in one order"));
     }
 
     /// Forgets every row from `row` on, so the layout can lay them out
     /// again under a different inclusion (`graph::inclusion`). Rows before
     /// `row` are untouched.
     pub(crate) fn truncate(&mut self, row: usize) {
-        if row >= self.ids.len() {
+        if row >= self.rows.len() {
             return;
         }
-        for id in self.ids.drain(row..) {
-            self.rows.remove(&id);
+        for commit in self.rows.drain(row..) {
+            self.row_by_handle[commit.index()] = UNSET;
         }
     }
 
-    /// The row `id` was drawn on, if it has been.
+    /// The row `commit` was drawn on, if it has been.
     #[must_use]
-    pub fn row_of(&self, id: Oid) -> Option<usize> {
-        self.rows.get(&id).copied()
+    pub fn row_of(&self, commit: CommitHandle) -> Option<usize> {
+        let row = *self.row_by_handle.get(commit.index())?;
+        (row != UNSET).then_some(row as usize)
     }
 
     /// The commit drawn on `row`, if that row exists.
     #[must_use]
-    pub fn id_at(&self, row: usize) -> Option<Oid> {
-        self.ids.get(row).copied()
+    pub fn handle_at(&self, row: usize) -> Option<CommitHandle> {
+        self.rows.get(row).copied()
     }
 
     /// The commits on `rows`, clamped to the rows that exist.
     #[must_use]
-    pub fn ids(&self, rows: Range<usize>) -> &[Oid] {
-        let end = rows.end.min(self.ids.len());
+    pub fn handles(&self, rows: Range<usize>) -> &[CommitHandle] {
+        let end = rows.end.min(self.rows.len());
         let start = rows.start.min(end);
-        &self.ids[start..end]
+        &self.rows[start..end]
     }
 
     /// How many rows have been laid out.
     #[must_use]
     pub fn len(&self) -> usize {
-        self.ids.len()
+        self.rows.len()
     }
 
     /// Whether nothing has been laid out yet.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.ids.is_empty()
+        self.rows.is_empty()
     }
 
     /// Roughly how much memory the order holds, counting the space its
@@ -146,8 +165,8 @@ impl EmittedOrder {
     #[must_use]
     pub fn approximate_bytes(&self) -> usize {
         std::mem::size_of::<Self>()
-            + self.ids.capacity() * std::mem::size_of::<Oid>()
-            + self.rows.capacity() * (std::mem::size_of::<Oid>() + std::mem::size_of::<usize>())
+            + self.rows.capacity() * std::mem::size_of::<CommitHandle>()
+            + self.row_by_handle.capacity() * std::mem::size_of::<u32>()
     }
 }
 
@@ -155,76 +174,73 @@ impl EmittedOrder {
 mod tests {
     use super::*;
 
-    fn oid(byte: u8) -> Oid {
-        Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is a valid oid length")
+    fn handle(n: u32) -> CommitHandle {
+        CommitHandle(n)
     }
 
     #[test]
     fn appending_records_both_directions_of_the_lookup() {
         let mut order = EmittedOrder::new();
-        order.note(0, oid(7));
-        order.note(1, oid(3));
+        assert_eq!(order.note(handle(7)), Ok(0));
+        assert_eq!(order.note(handle(3)), Ok(1));
 
         assert_eq!(order.len(), 2);
-        assert_eq!(order.row_of(oid(3)), Some(1));
-        assert_eq!(order.id_at(0), Some(oid(7)));
-        assert_eq!(order.row_of(oid(9)), None);
-        assert_eq!(order.id_at(2), None);
+        assert_eq!(order.row_of(handle(3)), Some(1));
+        assert_eq!(order.handle_at(0), Some(handle(7)));
+        assert_eq!(order.row_of(handle(9)), None);
+        assert_eq!(order.handle_at(2), None);
     }
 
     #[test]
-    fn revisiting_a_row_with_the_same_commit_is_a_no_op() {
+    fn noting_the_same_commit_again_is_idempotent() {
         let mut order = EmittedOrder::new();
-        order.note(0, oid(7));
-        order.note(1, oid(3));
-        order.note(0, oid(7));
+        assert_eq!(order.note(handle(7)), Ok(0));
+        assert_eq!(order.note(handle(3)), Ok(1));
+        assert_eq!(order.note(handle(7)), Ok(0));
         assert_eq!(order.len(), 2);
-    }
-
-    #[test]
-    #[should_panic(expected = "replaying row 1")]
-    fn revisiting_a_row_with_a_different_commit_is_a_broken_contract() {
-        let mut order = EmittedOrder::new();
-        order.note(0, oid(7));
-        order.note(1, oid(3));
-        order.note(1, oid(4));
-    }
-
-    #[test]
-    #[should_panic(expected = "laid out twice")]
-    fn appending_a_commit_already_drawn_is_a_broken_contract() {
-        let mut order = EmittedOrder::new();
-        order.note(0, oid(7));
-        order.note(1, oid(7));
-    }
-
-    #[test]
-    #[should_panic(expected = "ahead of row 0")]
-    fn skipping_a_row_is_a_broken_contract() {
-        let mut order = EmittedOrder::new();
-        order.note(1, oid(7));
     }
 
     #[test]
     fn a_full_order_rejects_a_repeated_commit() {
         assert_eq!(
-            EmittedOrder::from_ids(vec![oid(1), oid(2), oid(1)]).map(|order| order.len()),
+            EmittedOrder::from_handles(vec![handle(1), handle(2), handle(1)])
+                .map(|order| order.len()),
             Err(RepeatedCommit {
-                id: oid(1),
+                commit: handle(1),
                 first: 0,
                 again: 2
             })
         );
-        let order = EmittedOrder::from_ids(vec![oid(1), oid(2)]).expect("distinct ids");
-        assert_eq!(order.row_of(oid(2)), Some(1));
+        let order = EmittedOrder::from_handles(vec![handle(1), handle(2)]).expect("distinct");
+        assert_eq!(order.row_of(handle(2)), Some(1));
     }
 
     #[test]
-    fn ids_clamps_to_the_rows_that_exist() {
-        let order = EmittedOrder::from_ids(vec![oid(1), oid(2), oid(3)]).expect("distinct ids");
-        assert_eq!(order.ids(1..10), &[oid(2), oid(3)]);
-        assert_eq!(order.ids(5..10), &[]);
+    fn handles_clamps_to_the_rows_that_exist() {
+        let order =
+            EmittedOrder::from_handles(vec![handle(1), handle(2), handle(3)]).expect("distinct");
+        assert_eq!(order.handles(1..10), &[handle(2), handle(3)]);
+        assert_eq!(order.handles(5..10), &[]);
         let backwards = Range { start: 2, end: 1 };
-        assert_eq!(order.ids(backwards), &[]);
+        assert_eq!(order.handles(backwards), &[]);
+    }
+
+    #[test]
+    fn truncate_forgets_the_reverse_lookup_too() {
+        let mut order = EmittedOrder::new();
+        order.note(handle(7)).unwrap();
+        order.note(handle(3)).unwrap();
+        order.truncate(1);
+        assert_eq!(order.len(), 1);
+        assert_eq!(order.row_of(handle(3)), None);
+        assert_eq!(order.row_of(handle(7)), Some(0));
+    }
+
+    #[test]
+    fn sparse_handles_do_not_allocate_the_gap_in_rows() {
+        let mut order = EmittedOrder::new();
+        order.note(handle(1_000)).unwrap();
+        assert_eq!(order.len(), 1);
+        assert!(order.approximate_bytes() < 5_000);
     }
 }

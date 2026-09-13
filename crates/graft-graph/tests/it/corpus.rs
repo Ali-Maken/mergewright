@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use graft_core::commit::Commit;
+use graft_core::commit_handle::CommitHandle;
 use graft_core::oid::Oid;
 use graft_fixtures::Shape;
 use graft_git::branches::Branches;
@@ -23,10 +24,39 @@ use graft_git::history::{CHUNK, Order, Walk};
 use graft_git::repo::{RefEntry, RefTarget, RepoHandle};
 use graft_graph::identity::BranchIdentity;
 use graft_graph::lane::Lane;
-use graft_graph::layout::{EmittedOrder, LayoutCursor, layout};
+use graft_graph::layout::{EmittedOrder, HandleLookup, LayoutCursor, layout};
 use graft_graph::merge_name::recover_branch_name;
 use graft_graph::row::Row;
 use graft_graph::seeds::{BranchSeed, Seeds};
+
+/// A dense id-to-handle table over the commits this test lays out, built
+/// once per drawing — exactly what `layout()`'s own convenience path builds
+/// internally, but here `draw` needs the cursor directly (to read lanes
+/// before and after each row), so it builds its own.
+struct TestHandles(HashMap<Oid, CommitHandle>);
+
+impl TestHandles {
+    fn of(commits: &[Commit]) -> Self {
+        let mut table = HashMap::new();
+        for commit in commits {
+            for id in std::iter::once(&commit.id).chain(&commit.parents) {
+                let next = u32::try_from(table.len())
+                    .unwrap_or_else(|_| panic!("more than u32::MAX commits in one drawing"));
+                table.entry(*id).or_insert(CommitHandle(next));
+            }
+        }
+        TestHandles(table)
+    }
+}
+
+impl HandleLookup for TestHandles {
+    fn handle_of(&self, id: Oid) -> CommitHandle {
+        *self
+            .0
+            .get(&id)
+            .unwrap_or_else(|| panic!("{id:?} was never seen in this drawing's commits"))
+    }
+}
 
 const HEADS: &[u8] = b"refs/heads/";
 const REMOTES: &[u8] = b"refs/remotes/";
@@ -234,13 +264,14 @@ struct Drawing {
 /// Lays the commits out one at a time, reading the open lanes before and
 /// after each so every row can be labelled with the lane it draws in.
 fn draw(commits: &[Commit], seeds: Seeds, labels: &HashMap<BranchIdentity, String>) -> Drawing {
-    let mut cursor = LayoutCursor::new(seeds);
+    let handles = TestHandles::of(commits);
+    let mut cursor = LayoutCursor::new(seeds, &handles);
     let mut order = EmittedOrder::new();
     let mut steps = Vec::with_capacity(commits.len());
     for commit in commits {
         let before = cursor.active_lanes().to_vec();
         let row = cursor
-            .extend(std::slice::from_ref(commit), &mut order)
+            .extend(std::slice::from_ref(commit), &handles, &mut order)
             .remove(0);
         let after = cursor.active_lanes().to_vec();
         steps.push((row, before, after));

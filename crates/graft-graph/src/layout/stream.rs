@@ -18,6 +18,7 @@ use std::collections::HashMap;
 use std::ops::Range;
 
 use graft_core::commit::Commit;
+use graft_core::commit_handle::CommitHandle;
 use graft_core::oid::Oid;
 
 use crate::layout::LayoutCursor;
@@ -202,18 +203,18 @@ impl<S: CommitSource> StreamingLayout<S> {
     ///
     /// # Errors
     ///
-    /// If `ids` repeats a commit.
+    /// If `order` repeats a commit.
     ///
     /// # Panics
     ///
     /// As [`StreamingLayout::new`].
     pub fn from_order(
         source: S,
-        ids: Vec<Oid>,
+        order: Vec<CommitHandle>,
         seeds: Seeds,
         config: StreamConfig,
     ) -> Result<Self, StreamError<S::Error>> {
-        let order = EmittedOrder::from_ids(ids)?;
+        let order = EmittedOrder::from_handles(order)?;
         let total = order.len();
         Ok(Self::build(source, seeds, config, order, Some(total)))
     }
@@ -233,7 +234,7 @@ impl<S: CommitSource> StreamingLayout<S> {
             config.checkpoint_every,
             config.chunk_rows
         );
-        let base = LayoutCursor::new(seeds);
+        let base = LayoutCursor::new(seeds, &source);
         Self {
             source,
             frontier: base.clone(),
@@ -280,7 +281,9 @@ impl<S: CommitSource> StreamingLayout<S> {
                 return Err(StreamError::Stalled);
             }
 
-            let rows = self.frontier.extend(&pull.commits, &mut self.order);
+            let rows = self
+                .frontier
+                .extend(&pull.commits, &self.source, &mut self.order);
             emitted += rows.len();
             self.cache.push_frontier(start, rows);
             // A checkpoint at the very end of history would never be
@@ -313,8 +316,8 @@ impl<S: CommitSource> StreamingLayout<S> {
     ) -> Result<Pull, StreamError<S::Error>> {
         let start = self.frontier.rows_emitted();
         if self.order.len() > start {
-            let ids = self.order.ids(start..start + limit);
-            let commits = read_exactly(&mut self.source, &mut self.work, ids)?;
+            let ids = self.ids_for(self.order.handles(start..start + limit));
+            let commits = read_exactly(&mut self.source, &mut self.work, &ids)?;
             let done = start + commits.len() >= self.order.len();
             return Ok(Pull {
                 commits,
@@ -328,13 +331,17 @@ impl<S: CommitSource> StreamingLayout<S> {
         let mut fresh = HashMap::with_capacity(pull.commits.len());
         for (offset, commit) in pull.commits.iter().enumerate() {
             let again = start + offset;
+            let handle = self
+                .source
+                .handle_of(&commit.id)
+                .unwrap_or_else(|| panic!("{:?} has no handle in this source's table", commit.id));
             let first = self
                 .order
-                .row_of(commit.id)
-                .or_else(|| fresh.insert(commit.id, again));
+                .row_of(handle)
+                .or_else(|| fresh.insert(handle, again));
             if let Some(first) = first {
                 return Err(RepeatedCommit {
-                    id: commit.id,
+                    commit: handle,
                     first,
                     again,
                 }
@@ -406,11 +413,12 @@ impl<S: CommitSource> StreamingLayout<S> {
             .checkpoints
             .nearest_at_or_before(chunk * chunk_rows)
             .unwrap_or_else(|| (0, self.base.clone()));
-        let commits = read_exactly(&mut self.source, &mut self.work, self.order.ids(row..end))?;
+        let ids = self.ids_for(self.order.handles(row..end));
+        let commits = read_exactly(&mut self.source, &mut self.work, &ids)?;
         self.work.rows_replayed += commits.len();
 
         for batch in commits.chunks(chunk_rows) {
-            let rows = cursor.extend(batch, &mut self.order);
+            let rows = cursor.extend(batch, &self.source, &mut self.order);
             let index = row / chunk_rows;
             if !self.cache.contains(index) {
                 self.work.chunks_rebuilt += 1;
@@ -470,13 +478,24 @@ impl<S: CommitSource> StreamingLayout<S> {
     /// not reached yet; [`reanchor`](Self::reanchor) is the check for that.
     #[must_use]
     pub fn row_of(&self, id: Oid) -> Option<usize> {
-        self.order.row_of(id)
+        self.order.row_of(self.source.handle_of(&id)?)
     }
 
     /// The commit on `row`, if the order knows it.
     #[must_use]
     pub fn id_at(&self, row: usize) -> Option<Oid> {
-        self.order.id_at(row)
+        self.order
+            .handle_at(row)
+            .map(|handle| self.source.id_of(handle))
+    }
+
+    /// The ids `handles` name, in order — what [`read_exactly`] needs, since
+    /// `CommitSource::read` is unchanged by ADR-0026 and still takes ids.
+    fn ids_for(&self, handles: &[CommitHandle]) -> Vec<Oid> {
+        handles
+            .iter()
+            .map(|&handle| self.source.id_of(handle))
+            .collect()
     }
 
     /// Where the viewport goes so that `anchor`'s commit sits at the same
@@ -484,7 +503,8 @@ impl<S: CommitSource> StreamingLayout<S> {
     /// advancing: the commit is not on any row yet.
     #[must_use]
     pub fn reanchor(&self, anchor: &Anchor, height: usize) -> Option<Range<usize>> {
-        let row = self.order.row_of(anchor.commit)?;
+        let handle = self.source.handle_of(&anchor.commit)?;
+        let row = self.order.row_of(handle)?;
         if row >= self.frontier.rows_emitted() {
             return None;
         }
@@ -558,11 +578,12 @@ impl<S: CommitSource> StreamingLayout<S> {
             .checkpoints
             .nearest_at_or_before(row)
             .unwrap_or_else(|| (0, self.base.clone()));
-        let commits = read_exactly(&mut self.source, &mut self.work, self.order.ids(start..row))?;
+        let ids = self.ids_for(self.order.handles(start..row));
+        let commits = read_exactly(&mut self.source, &mut self.work, &ids)?;
         self.work.rows_replayed += commits.len();
         // The replayed rows are the ones the cache still holds before `row`;
         // only the cursor they leave behind is wanted.
-        let _replayed = cursor.extend(&commits, &mut self.order);
+        let _replayed = cursor.extend(&commits, &self.source, &mut self.order);
         self.order.truncate(row);
         self.frontier = cursor;
         self.done = false;

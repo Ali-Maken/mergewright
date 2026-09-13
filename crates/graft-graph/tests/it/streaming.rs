@@ -260,7 +260,16 @@ fn promotion_on_a_real_repository_finds_the_selected_commit_again() {
     // Promotion: the same commits in the promoted order, re-read rather than
     // walked, advanced until the selected commit has a row again.
     let source = WalkSource::new(&handle, first_paint_walk(&handle, shape));
-    let mut promoted = StreamingLayout::from_order(source, ids, seeds, SMALL)
+    // This walk's table starts empty (the corpus has no shared, persisted
+    // table across the two walks this test drives) — the app hands the
+    // topological order the same `Arc<CommitTable>` its walk used
+    // (`WalkSource::in_order`), so here the promoted ids are interned into
+    // this source's table before being resolved, standing in for that.
+    let order: Vec<CommitHandle> = ids
+        .iter()
+        .map(|&id| source.walk.table().intern(&id))
+        .collect();
+    let mut promoted = StreamingLayout::from_order(source, order, seeds, SMALL)
         .expect("a walk emits every commit once");
     assert_eq!(promoted.expected_rows(), Some(commits.len()));
     let viewport = loop {

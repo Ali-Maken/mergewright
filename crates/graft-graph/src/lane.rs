@@ -1,6 +1,6 @@
 //! A lane: one open column in the graph, holding one branch's chain.
 
-use graft_core::oid::Oid;
+use graft_core::commit_handle::CommitHandle;
 
 use crate::identity::BranchIdentity;
 
@@ -17,7 +17,7 @@ pub struct Lane {
     /// The colour this lane draws in, independent of `index`.
     pub identity: BranchIdentity,
     /// The next commit that continues this lane.
-    pub waiting_for: Oid,
+    pub waiting_for: CommitHandle,
     /// `true` for lane 0 and every integration-branch lane: never handed to
     /// the free pool, even once nothing is left to draw in it (DESIGN.md
     /// §3.1) — the column stays permanently theirs, rather than being

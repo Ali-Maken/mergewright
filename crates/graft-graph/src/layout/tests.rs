@@ -102,7 +102,10 @@ fn freed_column_is_not_reused_on_the_freeing_row_only_the_next_one() {
         ..Seeds::default()
     };
 
-    let rows = LayoutCursor::new(seeds).extend(&[t1, f, g], &mut EmittedOrder::new());
+    let commits = [t1, f, g];
+    let handles = Handles::of(&commits);
+    let rows =
+        LayoutCursor::new(seeds, &handles).extend(&commits, &handles, &mut EmittedOrder::new());
 
     assert_eq!(
         rows[0].lane, 1,
@@ -183,8 +186,10 @@ fn octopus_merge_opens_a_distinct_lane_per_extra_parent() {
         ..Seeds::default()
     };
 
-    let mut cursor = LayoutCursor::new(seeds);
-    let rows = cursor.extend(&[m], &mut EmittedOrder::new());
+    let commits = [m];
+    let handles = Handles::of(&commits);
+    let mut cursor = LayoutCursor::new(seeds, &handles);
+    let rows = cursor.extend(&commits, &handles, &mut EmittedOrder::new());
 
     assert_eq!(rows[0].lane, 0);
     let lanes: Vec<usize> = rows[0].outgoing.iter().map(|&(lane, _)| lane).collect();
@@ -220,8 +225,10 @@ fn merge_lane_falls_back_to_short_sha_identity_when_no_pattern_matches() {
         ..Seeds::default()
     };
 
-    let mut cursor = LayoutCursor::new(seeds);
-    let _rows = cursor.extend(&[m], &mut EmittedOrder::new());
+    let commits = [m];
+    let handles = Handles::of(&commits);
+    let mut cursor = LayoutCursor::new(seeds, &handles);
+    let _rows = cursor.extend(&commits, &handles, &mut EmittedOrder::new());
 
     let lane = cursor.active_lanes()[1]
         .as_ref()
@@ -258,11 +265,12 @@ fn chunk_boundaries_do_not_change_the_rows_produced() {
 
     let one_call = layout(&commits, seeds());
 
-    let mut cursor = LayoutCursor::new(seeds());
+    let handles = Handles::of(&commits);
+    let mut cursor = LayoutCursor::new(seeds(), &handles);
     let mut order = EmittedOrder::new();
-    let mut split_calls = cursor.extend(&commits[0..1], &mut order);
-    split_calls.extend(cursor.extend(&commits[1..2], &mut order));
-    split_calls.extend(cursor.extend(&commits[2..3], &mut order));
+    let mut split_calls = cursor.extend(&commits[0..1], &handles, &mut order);
+    split_calls.extend(cursor.extend(&commits[1..2], &handles, &mut order));
+    split_calls.extend(cursor.extend(&commits[2..3], &handles, &mut order));
 
     assert_eq!(
         one_call, split_calls,
@@ -325,8 +333,9 @@ fn an_edge_to_a_commit_already_drawn_is_recorded_and_its_lane_closes_at_once() {
         ..Seeds::default()
     };
 
-    let mut cursor = LayoutCursor::new(seeds);
-    let rows = cursor.extend(&commits, &mut EmittedOrder::new());
+    let handles = Handles::of(&commits);
+    let mut cursor = LayoutCursor::new(seeds, &handles);
+    let rows = cursor.extend(&commits, &handles, &mut EmittedOrder::new());
 
     assert_eq!(rows[0].lane, 1, "the early parent opens an ordinary lane");
     assert_eq!(rows[1].lane, 0);
@@ -375,12 +384,14 @@ fn a_checkpoint_costs_the_same_after_a_long_history_as_after_a_short_one() {
     };
 
     let short = chain(20);
-    let mut short_cursor = LayoutCursor::new(seeds(short[0].id));
-    let short_rows = short_cursor.extend(&short, &mut EmittedOrder::new());
+    let short_handles = Handles::of(&short);
+    let mut short_cursor = LayoutCursor::new(seeds(short[0].id), &short_handles);
+    let short_rows = short_cursor.extend(&short, &short_handles, &mut EmittedOrder::new());
 
     let long = chain(5_000);
-    let mut long_cursor = LayoutCursor::new(seeds(long[0].id));
-    let long_rows = long_cursor.extend(&long, &mut EmittedOrder::new());
+    let long_handles = Handles::of(&long);
+    let mut long_cursor = LayoutCursor::new(seeds(long[0].id), &long_handles);
+    let long_rows = long_cursor.extend(&long, &long_handles, &mut EmittedOrder::new());
 
     assert!(short_rows.iter().chain(&long_rows).all(|row| row.lane == 0));
     assert_eq!(long_cursor.rows_emitted(), 5_000);
@@ -455,6 +466,12 @@ impl Handles {
                 }
             })
             .collect()
+    }
+}
+
+impl crate::layout::HandleLookup for Handles {
+    fn handle_of(&self, id: Oid) -> CommitHandle {
+        Handles::handle_of(self, &id).expect("id was interned by Handles::of")
     }
 }
 

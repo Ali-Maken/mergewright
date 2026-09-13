@@ -327,15 +327,16 @@ fn check_column(
     before: Option<&Lane>,
     after: Option<&Lane>,
     row: &Row,
+    handles: &Handles,
 ) -> Result<(), TestCaseError> {
     let Some(previous) = before else {
         return Ok(());
     };
-    if previous.waiting_for != row.commit.id {
+    if previous.waiting_for != handles.handle_of(&row.commit.id).expect("interned") {
         prop_assert_eq!(
             after,
             Some(previous),
-            "row {} touched column {}, which was waiting for {}",
+            "row {} touched column {}, which was waiting for {:?}",
             row.commit.id,
             column,
             previous.waiting_for
@@ -352,7 +353,13 @@ fn check_column(
         "a continuing lane keeps its identity"
     );
     prop_assert_eq!(now.reserved, previous.reserved);
-    prop_assert_eq!(Some(now.waiting_for), row.commit.parents.first().copied());
+    prop_assert_eq!(
+        Some(now.waiting_for),
+        row.commit
+            .parents
+            .first()
+            .map(|&parent| handles.handle_of(&parent).expect("interned"))
+    );
     Ok(())
 }
 
@@ -418,12 +425,13 @@ fn check_lane_zero(commits: &[Commit], seeds: &Seeds) -> Result<(), TestCaseErro
 /// being laid out is untouched by it, and a lane that is connected either
 /// closes or continues in place with its identity intact.
 fn check_lanes_stay_put(commits: &[Commit], seeds: &Seeds) -> Result<(), TestCaseError> {
-    let mut cursor = LayoutCursor::new(seeds.clone());
+    let handles = Handles::of(commits);
+    let mut cursor = LayoutCursor::new(seeds.clone(), &handles);
     let mut order = EmittedOrder::new();
     for commit in commits {
         let before = cursor.active_lanes().to_vec();
         let row = cursor
-            .extend(std::slice::from_ref(commit), &mut order)
+            .extend(std::slice::from_ref(commit), &handles, &mut order)
             .remove(0);
         let after = cursor.active_lanes();
 
@@ -433,7 +441,13 @@ fn check_lanes_stay_put(commits: &[Commit], seeds: &Seeds) -> Result<(), TestCas
             }
         }
         for (column, previous) in before.iter().enumerate() {
-            check_column(column, previous.as_ref(), after[column].as_ref(), &row)?;
+            check_column(
+                column,
+                previous.as_ref(),
+                after[column].as_ref(),
+                &row,
+                &handles,
+            )?;
         }
     }
     Ok(())
@@ -449,17 +463,18 @@ fn check_deterministic(
     let whole = layout(commits, seeds.clone());
     prop_assert_eq!(&whole, &layout(commits, seeds.clone()));
 
-    let mut cursor = LayoutCursor::new(seeds.clone());
+    let handles = Handles::of(commits);
+    let mut cursor = LayoutCursor::new(seeds.clone(), &handles);
     let mut order = EmittedOrder::new();
     let mut chunked = Vec::new();
     let mut rest = commits;
     for &size in chunk_sizes {
         let take = size.min(rest.len());
         let (chunk, tail) = rest.split_at(take);
-        chunked.extend(cursor.extend(chunk, &mut order));
+        chunked.extend(cursor.extend(chunk, &handles, &mut order));
         rest = tail;
     }
-    chunked.extend(cursor.extend(rest, &mut order));
+    chunked.extend(cursor.extend(rest, &handles, &mut order));
     prop_assert_eq!(&whole, &chunked);
     Ok(())
 }
