@@ -160,22 +160,7 @@ fn check(tier: RenderingTier, refs: Refs) {
         run.bytes,
     );
 
-    for (trigger, frames, sum) in &run.by_trigger {
-        println!(
-            "frames: tier={tier:?} refs={refs:?} trigger={trigger} frames={frames} totals: bytes={} transmits={} transmit_bytes={} placements={} deletes={} frees={}",
-            sum.bytes, sum.transmits, sum.transmit_bytes, sum.placements, sum.deletes, sum.frees,
-        );
-    }
-
-    let idle: Vec<_> = idle_wakes()
-        .iter()
-        .zip(idle)
-        .map(|(key, latency)| format!("{key:?}={}", latency.as_micros()))
-        .collect();
-    println!(
-        "frames: tier={tier:?} refs={refs:?} idle_wake_us (first key after {IDLE:?} idle; recorded, not asserted): {}",
-        idle.join(" ")
-    );
+    print_details(tier, refs, &run, idle);
     match tier {
         RenderingTier::Pixel => assert!(run.kitty_commands > 0, "the pixel tier drew no images"),
         _ => assert_eq!(run.kitty_commands, 0, "a text tier sent images"),
@@ -202,6 +187,27 @@ fn check(tier: RenderingTier, refs: Refs) {
         late.len(),
         sorted.len(),
         late.join(", ")
+    );
+}
+
+/// Prints what each kind of wake cost and the idle-wake keys: recorded,
+/// not asserted.
+fn print_details(tier: RenderingTier, refs: Refs, run: &Run, idle: &[Duration]) {
+    for (trigger, frames, sum) in &run.by_trigger {
+        println!(
+            "frames: tier={tier:?} refs={refs:?} trigger={trigger} frames={frames} totals: bytes={} transmits={} transmit_bytes={} placements={} deletes={} frees={}",
+            sum.bytes, sum.transmits, sum.transmit_bytes, sum.placements, sum.deletes, sum.frees,
+        );
+    }
+
+    let idle: Vec<_> = idle_wakes()
+        .iter()
+        .zip(idle)
+        .map(|(key, latency)| format!("{key:?}={}", latency.as_micros()))
+        .collect();
+    println!(
+        "frames: tier={tier:?} refs={refs:?} idle_wake_us (first key after {IDLE:?} idle; recorded, not asserted): {}",
+        idle.join(" ")
     );
 }
 
@@ -578,8 +584,6 @@ enum Kind {
 /// One wake handed to the loop.
 struct Handed {
     kind: Kind,
-    /// `ShowRows` requests sent before this wake was handed over.
-    asked_before: usize,
 }
 
 /// Wakes for [`pump`]: the script's keys on a 60 Hz clock, job events as
@@ -626,10 +630,7 @@ impl<'a, D> Paced<'a, D> {
     }
 
     fn hand(&mut self, kind: Kind, event: AppEvent) -> Wake {
-        self.handed.push(Handed {
-            kind,
-            asked_before: self.watching.asked().len(),
-        });
+        self.handed.push(Handed { kind });
         self.replay.push(event.clone());
         Wake::Event(event)
     }
@@ -747,10 +748,7 @@ impl<D> Wakes for Paced<'_, D> {
                 self.due += *pause;
             }
             let press = KeyPress::plain(self.keys[key].0);
-            return Some(self.hand(
-                Kind::Key(key, due),
-                AppEvent::Core(Event::Key(press)),
-            ));
+            return Some(self.hand(Kind::Key(key, due), AppEvent::Core(Event::Key(press))));
         }
         // The script is over: wait only for rows still out.
         let newest_asked = self.watching.asked().iter().max().copied();

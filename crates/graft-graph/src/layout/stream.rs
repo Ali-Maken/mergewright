@@ -427,14 +427,20 @@ impl<S: CommitSource> StreamingLayout<S> {
     }
 
     /// Evicts chunks outside the protected window until the cache is within
-    /// budget. The window runs from the nearest checkpoint at or before
+    /// budget. The window runs from the checkpoint due at or before
     /// `viewport_top − buffer` to `viewport_bottom + buffer` (DESIGN.md §3.6):
     /// what a scroll in either direction would otherwise have to replay.
+    ///
+    /// It is the row where a checkpoint is *due*, not the nearest one still
+    /// kept: kept checkpoints are capped, so none may stand before a viewport
+    /// far behind the frontier, and reaching back to the nearest kept one (row
+    /// 0 when there is none) would protect every row laid out. A rebuild from
+    /// further back records the due checkpoint again on its way.
     fn evict(&mut self) {
         let chunk_rows = self.config.chunk_rows;
         let top = self.viewport.start.saturating_sub(self.config.buffer_rows);
         let bottom = self.viewport.end.saturating_add(self.config.buffer_rows);
-        let first = self.checkpoints.floor(top) / chunk_rows;
+        let first = (top - top % self.config.checkpoint_every) / chunk_rows;
         let last = bottom.saturating_sub(1) / chunk_rows;
         self.cache.evict_outside(first..last + 1);
     }

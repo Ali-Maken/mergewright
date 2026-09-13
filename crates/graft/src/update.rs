@@ -2066,7 +2066,7 @@ mod tests {
         // Ten graph rows: the resize asked for them, and they arrive.
         let (state, _) = update(&state, rows_for(id, 2, 0..30, 500));
 
-        let (mut state, commands) = update(&state, key(KeyCode::Char('j')));
+        let (state, commands) = update(&state, key(KeyCode::Char('j')));
         assert!(commands.is_empty(), "row 1 is held: {commands:?}");
         assert_eq!(state.history.as_ref().map(|h| h.cursor), Some(1));
 

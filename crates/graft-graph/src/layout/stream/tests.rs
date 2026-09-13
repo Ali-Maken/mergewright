@@ -278,6 +278,45 @@ fn scrolling_the_whole_history_keeps_the_resident_set_bounded() {
     );
 }
 
+/// Checkpoints are few and the oldest go first, so after a long walk none
+/// may stand before a viewport far behind the frontier. The protected window
+/// still reaches back only to where a checkpoint is due, not to row 0:
+/// otherwise every row laid out stays resident.
+#[test]
+fn a_viewport_before_every_kept_checkpoint_still_evicts_the_rows_before_it() {
+    let commits = history(10_000, 3);
+    let whole = layout(&commits, seeds_for(&commits));
+    let config = StreamConfig {
+        max_checkpoints: 2,
+        resident_chunks: 2,
+        ..small()
+    };
+    let mut streaming = stream(&commits, config);
+    let height = 60;
+    streaming.set_viewport(5_000..5_000 + height);
+    advance_all(&mut streaming);
+    assert!(
+        streaming.checkpoint_rows().iter().all(|&row| row > 5_000),
+        "no checkpoint is kept before the viewport: {:?}",
+        streaming.checkpoint_rows()
+    );
+
+    let window_rows = config.checkpoint_every + 2 * config.buffer_rows + height;
+    let bound = window_rows.div_ceil(config.chunk_rows) + config.resident_chunks;
+    let held = streaming.resident().chunks;
+    assert!(held <= bound, "{held} chunks resident, bound {bound}");
+
+    let rows = streaming
+        .rows(5_000..5_000 + height)
+        .expect("an in-memory source");
+    assert_eq!(rows, whole[5_000..5_000 + height]);
+    let held = streaming.resident().chunks;
+    assert!(
+        held <= bound,
+        "after reading: {held} chunks resident, bound {bound}"
+    );
+}
+
 // ---- acceptance 2: an evicted chunk rebuilds byte-identical --------------
 
 #[test]

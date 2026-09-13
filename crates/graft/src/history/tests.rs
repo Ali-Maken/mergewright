@@ -252,16 +252,10 @@ fn scrolling_top_to_bottom_keeps_resident_rows_bounded() {
     let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
 
     // What the layout may protect at once: the window the screen asks for
-    // (seven screens) and, while an answer is laid out, the window before it
-    // (at most two screens behind: a request goes out once two screens of
-    // slack are no longer on hand) — back to a checkpoint, plus its buffers,
-    // its end rounded up to a whole chunk, in whole chunks — and the two
-    // chunks its budget lets it keep besides.
-    let protected = (9 * HEIGHT
-        + SMALL.checkpoint_every
-        + 2 * SMALL.buffer_rows
-        + SMALL.chunk_rows)
-        .div_ceil(SMALL.chunk_rows);
+    // (seven screens), back to a checkpoint, plus its buffers — in whole
+    // chunks — and the two chunks its budget lets it keep besides.
+    let protected =
+        (7 * HEIGHT + SMALL.checkpoint_every + 2 * SMALL.buffer_rows).div_ceil(SMALL.chunk_rows);
     let bound = (protected + SMALL.resident_chunks) * SMALL.chunk_rows;
     assert!(bound < whole.len(), "the bound is below the history's size");
 

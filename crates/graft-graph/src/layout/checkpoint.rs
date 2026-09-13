@@ -81,17 +81,6 @@ impl Checkpoints {
         Some((found.row, found.cursor.clone()))
     }
 
-    /// The row of the nearest checkpoint at or before `row`, or 0 if a
-    /// replay to `row` would have to start from the beginning. Does not
-    /// touch anything: this is how the protected window is worked out, not a
-    /// use of the checkpoint.
-    pub(crate) fn floor(&self, row: usize) -> usize {
-        let count = self.taken.partition_point(|taken| taken.row <= row);
-        count
-            .checked_sub(1)
-            .map_or(0, |position| self.taken[position].row)
-    }
-
     /// Drops every checkpoint standing past `row`, returning their rows,
     /// ascending. One *at* `row` is kept: it is the lane state before `row`
     /// is laid out, which nothing past `row` can change.
