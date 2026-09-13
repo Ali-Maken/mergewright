@@ -18,9 +18,10 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
   - `git log --oneline -10` and `git status --short`
 - **Model check:** this session should be Opus. If it isn't, tell the user to run `/model opus` and stop.
 - **Every piece of work goes to a fresh helper** via the Agent tool, one ticket per helper. Tell it the milestone, the ticket ID and path, and "Read CLAUDE.md first."
-  - Builders: `builder-sonnet`, `builder-opus`, `builder-fable`
-  - Also: `reviewer` and `debugger`
-- **Choosing a builder:** use the "Build with" column in PROGRESS.md. A note in brackets, such as "(Opus for undo)", applies only to tickets about that part.
+  - Builders: `builder-sonnet` (mechanical), `builder-opus` (concurrency, terminal protocols, git writes, undo, conflicts), `builder-fable` (genuinely algorithmic only)
+  - Also: `reviewer` and `debugger` (Fable)
+- **Choosing a builder:** use the ticket's `Build with` line. The rules behind it are CLAUDE.md, "Standing rules → Models".
+- **Reviewer model:** `reviewer` runs on Opus. For **M3 and M5** pass `model: "fable"` in the Agent call.
 - **All your messages to the user** are telegraphic: result first, fragments fine, no recap (CLAUDE.md, "Talking to the user").
 - **Helper replies** are 150 words or fewer. Don't ask them for more.
 - **One helper at a time.** Never run helpers in parallel: builds and tests would compete for the laptop's memory.
@@ -35,27 +36,38 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
 ## Loop
 
 1. Read PROGRESS.md and find the first unchecked item.
-2. **It's a "You" or CHECKPOINT item:** if the next milestone has no tickets yet, draft them first with `/to-tickets` (as in 5.1), so the user approves them at this same stop. Then stop, tell the user exactly what to do in a few lines, and wait. If the user says they've already done it, check it's really done (for example, the files it should have produced exist), then tick it, commit and carry on.
+2. **It's a "You" or CHECKPOINT item:** if the next milestone has no tickets yet, draft them first with `/to-tickets` (as in 5.1). **Write milestone (M3–M6):** the user approves them at this same stop. **Read-only milestone (M2, M7, M8):** no ticket approval; the stop is only for the checkpoint itself. Then stop, tell the user exactly what to do in a few lines, and wait. If the user says they've already done it, check it's really done (for example, the files it should have produced exist), then tick it, commit and carry on.
 3. **It's step 1 (the decisions interview):** if `CONTEXT.md` and ADRs already exist, the interview has probably happened but wasn't ticked. Ask the user whether it's finished; if it is, tick it, commit and carry on. Otherwise, tell the user to run the `/grill-with-docs` line from PROGRESS.md in this session, then stop.
 4. **It's step 2 or 3:** send the step's task text from PROGRESS.md to `builder-fable`.
 5. **It's a milestone:**
-   1. **Tickets:** these are normally drafted and approved at the checkpoint before the milestone. If none exist, run `/to-tickets` for this milestone here, based on PROMPT.md section 8, DESIGN.md, CONTEXT.md and the code as it stands. Size each ticket so a helper can finish it using well under 100k tokens. Get the user's approval before building.
+   1. **Tickets:** these are normally drafted at the checkpoint before the milestone. If none exist, run `/to-tickets` for this milestone here, based on PROMPT.md section 8, DESIGN.md, CONTEXT.md and the code as it stands. **Ticket planning rules** (CLAUDE.md, "Standing rules"), every ticket:
+      - **Size:** finishes inside one context, target **under 80k tokens**.
+      - **States:** scope in/out; acceptance criteria; the **exact sections** to read (never a whole document); the **exact signatures** it must expose and call.
+      - **Interface-first:** the first ticket of a group defines traits and stubs; the rest fill them in.
+      - **`Build with` line:** Fable high = genuinely algorithmic only; Opus high = concurrency, terminal protocols, git writes, undo, conflicts; Sonnet medium = everything mechanical (wiring, config, docs, plain widgets, tests, renames).
+      - **MAP.md:** if the ticket changes a public item, acceptance includes updating `crates/<crate>/MAP.md` (creating it if missing).
+
+      **Approval:** write milestones (M3, M4, M5, M6) need the user's approval before building. Read-only milestones (M2, M7, M8) build straight through.
    2. **Build each ticket in order,** dispatching the right builder whenever a ticket is unblocked:
       - `done` → move to the next ticket.
+      - **Helper compacted** (done or partial) → log `· COMPACTED`. If work remains, split the remainder into new tickets under the planning rules above and build those; don't continue the oversized ticket. Write milestones: the user approves the split tickets at the next stop; read-only milestones: carry on.
       - `partial` → a fresh builder on the same model continues from the handoff note. **At most 2 continuations per ticket.** A third `partial` means the ticket is too big or stuck: stop and ask the user whether to split it.
-      - `failed` twice on the same ticket → `debugger`.
+      - `failed` twice on a **Sonnet** ticket → re-run it on `builder-opus`. Twice more there → `debugger`.
+      - `failed` twice on an Opus or Fable ticket → `debugger`.
       - The debugger fails too → stop and ask the user.
    3. **Review:** once every ticket is done, send the milestone to `reviewer`.
       - If it lists Critical or Major issues, send them to a builder (grouped sensibly), then run `reviewer` again. At most 2 rounds.
-      - If issues are still open after that, stop and report to the user.
-   4. **Milestone checkpoint:** draft the next milestone's tickets with `/to-tickets`, then stop and report in this telegraphic format (CLAUDE.md, "Talking to the user"). 15 lines max:
+      - If issues are still open after that: **write milestone** → stop and report. **Read-only milestone** → stop only if a Critical survives; Majors/Minors left go to KNOWN_GAPS.md and the milestone carries on.
+   4. **Milestone checkpoint:** draft the next milestone's tickets with `/to-tickets`, then stop and report in this telegraphic format (CLAUDE.md, "Talking to the user"). **15 lines max.** Must say which model ran each ticket and whether anything compacted:
       ```
       M<n> done. <one-line result>
       Built: <3–5 one-line bullets>
+      Models: Sonnet 01,03,04 · Opus 02,05 · Fable 06 · escalated: <ids or none>
+      Compacted: <ticket ids → split into ids, or none>
       Try: <exact commands>
       Gaps: <bullets or "none">
       Review: <n> critical / <n> major fixed, <n> minor left
-      Next: M<n+1>, <count> tickets (<path>). Approve? yes / change
+      Next: M<n+1>, <count> tickets (<path>). Approve? yes / change   (read-only next milestone: "continue?")
       ```
 6. Keep going until something makes you stop.
 

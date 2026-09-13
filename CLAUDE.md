@@ -18,14 +18,42 @@
 ## How work runs
 
 - The user runs `/conduct` in a main session on **Opus**. The conductor hands every piece of work to a fresh helper in `.claude/agents/` and stops at checkpoints.
-- **Who builds what** (cost control, set 2026-09-12). The routing table in PROGRESS.md is authoritative; the rule is:
-  - **Fable** only for the M1 graph layout engine tickets and the `debugger` agent. Nothing else.
-  - **Opus** builds everything else, including M1's other tickets. Sonnet is no longer used for building.
-  - **Reviews** run on Opus, except M1, M3 and M5, which stay Fable.
-  - **Effort:** everything runs at `high` — `builder-opus`, and `builder-fable`, `reviewer` and `debugger` too (set 2026-09-12).
-    `xhigh` is not automatic: the conductor dispatches `builder-opus-xhigh` only when the user asks for it on a specific ticket. The former standing xhigh list (undo M3, conflicts M6, interactive rebase M7, the M1 graph layout engine) is now a hint about which tickets are worth asking for, not a rule.
+- **Who builds what, ticket size, context and checkpoints:** see **Standing rules** below (set 2026-09-13, every remaining milestone). They replace the 2026-09-12 cost-control routing.
+  `xhigh` is not automatic: the conductor dispatches `builder-opus-xhigh` only when the user asks for it on a specific ticket.
 - **The one exception is step 1** (`/grill-with-docs`), which runs in the main session because it needs the user.
 - Do only the next unchecked step. Never start a new milestone without the user's OK at a checkpoint.
+
+## Standing rules (every remaining milestone, set 2026-09-13)
+
+### Tickets
+
+- **Size:** each ticket finishes inside one context, target **under 80k tokens**. Compaction means the ticket was too big: the helper says so in its report, the conductor splits the remainder into new tickets.
+- **Each ticket states:** scope in/out; acceptance criteria; the **exact sections** to read (never a whole document); the **exact signatures** the work must expose and call.
+- **Interface-first grouping:** the first ticket of a group defines the traits and stubs; the rest fill them in.
+
+### Models
+
+| Work | Agent | Model, effort |
+|---|---|---|
+| Genuinely algorithmic work only | `builder-fable` | Fable, high |
+| Concurrency, terminal protocols, git writes, undo, conflicts | `builder-opus` | Opus, high |
+| Everything mechanical: wiring, config, docs, plain widgets, tests, renames | `builder-sonnet` | Sonnet, medium |
+| Reviews | `reviewer` | Opus; **Fable for M3 and M5** |
+| Debugging | `debugger` | Fable |
+
+- **Escalation:** two failures on a Sonnet ticket → Opus → `debugger`.
+- Each ticket's `Build with` line names its model; the conductor follows it.
+
+### Context
+
+- **Scouts:** builders delegate exploration to a Sonnet or Haiku scout (Agent tool, `Explore` with `model: haiku` or `sonnet`) that returns a summary of one page or less, instead of reading source into their own context.
+- **MAP.md:** every crate keeps `crates/<crate>/MAP.md`, one line per public item. Any ticket changing a public item updates it. Builders read MAP.md before source. A crate without one gets it from the next ticket that touches the crate.
+
+### Checkpoint policy
+
+- **Read-only milestones (M2, M7, M8):** build straight through, no ticket approval. Stop only if a Critical survives review, or at the end.
+- **Write milestones (M3, M4, M5, M6):** full gates and ticket approval.
+- **Checkpoint reports:** 15 lines max, telegraphic; say which model ran each ticket and whether anything compacted.
 
 ## Rules for every agent
 
@@ -36,7 +64,7 @@
 - **Architecture and readability are hard rules** (PROMPT.md 6.1 and 6.2). Read `ARCHITECTURE.md` before adding or moving modules, use the `codebase-design` skill when you do, and update `ARCHITECTURE.md` if the structure changes. Never add a dependency that breaks the crate rules.
 - **Keep your context lean:** read what you need, not everything.
 - **Context window:** `CLAUDE_CODE_AUTO_COMPACT_WINDOW` is `200000` in `.claude/settings.json`, raised from 150000 on 2026-09-12. Builders were compacting mid-ticket; losing the prompt cache and re-reading the same files costs more than the larger window does. Keeping your context lean still matters — the cap is headroom, not an allowance.
-- **If you compact mid-ticket, say so in your report.** The conductor logs it in PROGRESS.md's session log, so we can see which tickets are too big and split them.
+- **If you compact mid-ticket, say so in your report.** The conductor logs it in PROGRESS.md's session log and splits the remainder into new tickets.
 - **Fix the cause, not the symptom.** When something fails, find out why before changing anything. No workaround, retry loop, sleep, hardcoded special case or disabled test without the user's OK. If the root cause is out of scope: stop, say what it is, and ask — don't route around it and log a gap.
 - **Never swallow an error.** A hidden failure doesn't go away; it ships. No ignored `Result`, no `let _ =`, no `unwrap_or_default()` standing in for a real failure, no empty `Err(_) => {}` arm, no catch-all that logs and carries on. Every error is handled, propagated, or surfaced to the user. If you genuinely must ignore one, say in a comment why it's safe.
 - **A status field must never read as an error when nothing is wrong.** Name and render status by its state: `gfx ok` / `gfx: <error>`, or show the field only when there is something to report. A permanently-visible `GFX_ERROR:` label trains the user to ignore it, which is how a real error gets missed.

@@ -47,28 +47,22 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 1. **Tickets:** splits the milestone into small tickets with `/to-tickets`. You approve them at the checkpoint before the milestone starts.
 2. **Build:** each ticket goes to a fresh builder on the model below, which builds it test-first, reviews it and commits.
 3. **Stuck:** if a ticket fails twice, `debugger` (Fable) finds the root cause.
-4. **Review:** `reviewer` checks the whole milestone and builders fix what it finds (at most 2 rounds). Opus, except M1, M3 and M5, which review on Fable.
-5. **CHECKPOINT:** you test the milestone, approve the next milestone's tickets and type `continue`.
+4. **Review:** `reviewer` checks the whole milestone and builders fix what it finds (at most 2 rounds). Opus, except M3 and M5, which review on Fable.
+5. **CHECKPOINT:** you test the milestone, approve the next milestone's tickets (write milestones only) and type `continue`.
 
-| ✓ | Milestone | Build with | Review | CHECKPOINT: what you test |
+| ✓ | Milestone | Build with (per ticket, CLAUDE.md standing rules) | Review | CHECKPOINT: what you test |
 |---|---|---|---|---|
 | [x] | M0 Foundations | Opus | Opus | Opens a repo; quitting leaves the terminal clean |
-| [ ] | **M1 The graph** | **Fable** for the graph layout engine tickets, **Opus** for the rest | Fable | `git/git` and the merge-mistake fixtures: is the history shape obvious at a glance? |
-| [ ] | M2 Details and diffs | Opus | Opus | Diffs look right; bad merges get flagged |
-| [ ] | M3 Working tree, undo and stash | Opus (xhigh for undo) | Fable | Stage a hunk, commit, undo it, stash and unstash, then try to lose work |
-| [ ] | M4 Remotes | Opus | Opus | Fetch, pull and push on a real remote; wrong password |
-| [ ] | M5 Merge, rebase, reset, Ghost Preview | Opus | Fable | Every history change is previewed and can be undone |
-| [ ] | M6 Conflict resolver | Opus (xhigh) | Opus | Resolve a real conflict; kill mid-rebase, relaunch |
-| [ ] | M7 Power tools | Opus (xhigh for interactive rebase) | Opus | Interactive rebase, blame, line history, reflog |
-| [ ] | M8 Polish, **final name**, ship | Opus | Opus | Pick the name (below), then a fresh install and the first-run tour |
+| [ ] | **M1 The graph** | per ticket's `Build with` line | Opus | `git/git` and the merge-mistake fixtures: is the history shape obvious at a glance? |
+| [ ] | M2 Details and diffs (read-only) | per ticket | Opus | Diffs look right; bad merges get flagged |
+| [ ] | M3 Working tree, undo and stash (write) | per ticket | Fable | Stage a hunk, commit, undo it, stash and unstash, then try to lose work |
+| [ ] | M4 Remotes (write) | per ticket | Opus | Fetch, pull and push on a real remote; wrong password |
+| [ ] | M5 Merge, rebase, reset, Ghost Preview (write) | per ticket | Fable | Every history change is previewed and can be undone |
+| [ ] | M6 Conflict resolver (write) | per ticket | Opus | Resolve a real conflict; kill mid-rebase, relaunch |
+| [ ] | M7 Power tools (read-only) | per ticket | Opus | Interactive rebase, blame, line history, reflog |
+| [ ] | M8 Polish, **final name**, ship (read-only) | per ticket | Opus | Pick the name (below), then a fresh install and the first-run tour |
 
-**Who builds what.** Cost control, set 2026-09-12:
-- **Fable** only for the M1 graph layout engine tickets, and the `debugger` agent. Nothing else.
-- **Opus** builds everything else, M1's other tickets included.
-- **Sonnet** is no longer used for building.
-- **Reviews** run on Opus, except M1, M3 and M5, which stay Fable.
-- **Effort:** everything runs at `high` — `builder-opus`, `builder-fable`, `reviewer` and `debugger` (set 2026-09-12).
-  `xhigh` is used only when the user asks for it on a specific ticket. Undo (M3), conflicts (M6), interactive rebase (M7) and the M1 graph layout engine are the tickets worth asking for; they no longer get it automatically.
+**Who builds what, ticket size, context, checkpoints:** CLAUDE.md, "Standing rules" (set 2026-09-13, replaces the 2026-09-12 cost-control routing). Short version: Fable = algorithmic, Opus = concurrency / terminal protocols / git writes / undo / conflicts, Sonnet medium = mechanical; tickets under 80k tokens; read-only milestones (M2, M7, M8) build straight through, write milestones (M3–M6) get ticket approval.
 
 **Naming (an M8 job):** pick a name in the style of Sublime Merge or Araxis Merge (a naming-pattern reference only: Araxis Merge is a diff/merge tool, not a Git client, and is not prior art for this project), with no "git" in it (Git's trademark policy forbids "git" inside names like "tergit"). Starting shortlist: Tributary (command `trib`) and Thicket passed the clash check on 2026-09-11. Graft is taken.
 
