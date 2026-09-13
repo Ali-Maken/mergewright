@@ -4,8 +4,8 @@
 //! malicious repository cannot inject escape sequences into the screen
 //! (`sanitize`), and owning stdin: decoding keys and routing terminal
 //! replies to whoever asked (`input`). Image encoders turn a `core::RasterFrame` into
-//! protocol bytes (DESIGN.md §8.2): Kitty (`kitty`) and iTerm2 (`iterm2`);
-//! Sixel follows. Depends only on `core`.
+//! protocol bytes (DESIGN.md §8.2): Kitty (`kitty`) and iTerm2 (`iterm2`),
+//! carried through tmux by `tmux`. No Sixel encoder (ADR-0016). Depends only on `core`.
 // `deny`, not `forbid`, and this is the only crate where that is true.
 // Reading the terminal's window size and waiting on its file descriptor are
 // two libc calls with no safe equivalent in the standard library; ADR-0013
@@ -21,5 +21,7 @@ pub mod input;
 pub mod iterm2;
 pub mod kitty;
 pub mod sanitize;
+pub mod tmux;
 
 pub use sanitize::{SanitizedText, sanitize, sanitize_line, sanitize_path, sanitize_path_bytes};
+pub use tmux::{Transport, tmux_passthrough};

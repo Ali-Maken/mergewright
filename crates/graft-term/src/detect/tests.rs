@@ -301,15 +301,17 @@ fn what_the_terminal_reports_beats_what_the_kernel_infers() {
     );
 }
 
-/// ADR-0016 ranks Sixel below Unicode and above ASCII, so it takes the tier
-/// exactly where ASCII is the alternative — here, a 256-colour `xterm`.
+/// A Sixel-only terminal with no truecolor — here, a 256-colour `xterm` —
+/// draws ASCII. ADR-0016 ranks Sixel above ASCII, but keeps no Sixel encoder,
+/// so a pixel tier would have nothing behind it. The protocol is still
+/// reported: it is a fact about the terminal.
 #[test]
-fn sixel_carries_the_pixel_tier_only_over_ascii() {
+fn a_sixel_only_terminal_without_truecolor_draws_ascii_not_an_empty_pixel_tier() {
     let mut host = FakeHost::answering(&[SIXEL_ONLY]);
 
     let capabilities = detect(&terminal(), &mut host);
 
-    assert_eq!(capabilities.tier, RenderingTier::Pixel);
+    assert_eq!(capabilities.tier, RenderingTier::Ascii);
     assert_eq!(capabilities.pixel_protocol, Some(PixelProtocol::Sixel));
     assert_eq!(capabilities.sixel, Supported::Yes);
     assert_eq!(capabilities.kitty_graphics, Supported::No);

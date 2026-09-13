@@ -28,6 +28,7 @@ use std::sync::Arc;
 use graft_core::raster::RasterFrame;
 
 use crate::kitty::{self, CellRect, Place};
+use crate::tmux::Transport;
 
 /// One encoded band and the key it was encoded under.
 #[derive(Debug)]
@@ -50,6 +51,7 @@ pub struct ItermImages {
     covered: Vec<CellRect>,
     encoded: u64,
     clock: u64,
+    transport: Transport,
 }
 
 impl ItermImages {
@@ -63,7 +65,17 @@ impl ItermImages {
             covered: Vec::new(),
             encoded: 0,
             clock: 0,
+            transport: Transport::Direct,
         }
+    }
+
+    /// Send each band's `OSC 1337` over `transport`: inside tmux, one
+    /// passthrough wrapper per band; the cursor moves and erases stay outside
+    /// it, for tmux to see.
+    #[must_use]
+    pub fn with_transport(mut self, transport: Transport) -> Self {
+        self.transport = transport;
+        self
     }
 
     /// PNG encodes done since this was made: a band re-sent unchanged does
@@ -89,7 +101,7 @@ impl ItermImages {
             band.last_used = self.clock;
             out.extend_from_slice(b"\x1b7");
             move_to(out, place.cells.row, place.cells.column);
-            out.extend_from_slice(&band.sequence);
+            self.transport.write(&band.sequence, out);
             out.extend_from_slice(b"\x1b8");
             self.covered.push(CellRect {
                 rows: band.cell_rows,
@@ -340,6 +352,31 @@ mod tests {
         let mut out = Vec::new();
         images.hide(&mut out);
         assert!(out.is_empty());
+    }
+
+    /// Inside tmux each band is one passthrough and the erase/move stay
+    /// outside; what tmux forwards is the direct stream exactly.
+    #[test]
+    fn through_tmux_each_band_is_wrapped_and_the_cursor_moves_are_not() {
+        let frame = strip(4);
+        let places = [place(&frame, 0..2, 5), place(&frame, 2..4, 7)];
+        let mut direct = Vec::new();
+        ItermImages::new(4).frame(&places, &mut direct).unwrap();
+        let mut tmux = Vec::new();
+        let mut images = ItermImages::new(4).with_transport(Transport::TmuxPassthrough);
+        images.frame(&places, &mut tmux).unwrap();
+
+        let (forwarded, wrappers) = crate::tmux::unwrap_all(&tmux);
+        assert_eq!(forwarded, direct);
+        assert_eq!(wrappers, 2);
+        assert!(text(&tmux).starts_with("\x1b7\x1b[6;3H\x1bPtmux;\x1b\x1b]1337;File="));
+
+        let mut erase = Vec::new();
+        images.hide(&mut erase);
+        assert!(
+            !erase.windows(2).any(|pair| pair == b"\x1bP"),
+            "erases go to tmux"
+        );
     }
 
     #[test]

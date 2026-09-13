@@ -1,0 +1,17 @@
+^D<ESC>_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA<ESC>\<ESC>[?u<ESC>[16t<ESC>[?2026$p<ESC>]11;?<ESC>\<ESC>[cenv      Environment { term: Some("xterm-256color"), term_program: None, term_program_version: None, colorterm: None, kitty_window_id: None, tmux: None, over_ssh: true, no_color: false, stdout_is_tty: true }
+
+tier     Ascii
+protocol none reachable
+probe    TimedOut in 49.5µs
+budget   500ms
+kitty    Silent
+sixel    Silent
+iterm2   false
+keyboard Silent
+sync     Silent
+cell     8x16 (assumed, not measured)
+theme    Dark (assumed, not reported)
+colour   Palette256
+no_color false
+tmux     Outside
+ssh      true

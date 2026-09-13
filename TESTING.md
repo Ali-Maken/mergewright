@@ -322,6 +322,46 @@ already puts it.
 | SSH (to a Linux host) | | not run | |
 | SSH inside tmux | | not run | |
 
+Exact commands (m1-the-graph/29). Every row: first run the probe report and
+paste its `tier`, `probe`, `budget`, `tmux` and `ssh` lines into Notes, then run
+Graft and walk "What to do in each terminal".
+
+```sh
+# Setup, once: tmux >= 3.3, and a git/git clone.
+brew install tmux && tmux -V
+REPO="$(scripts/clone-git-git.sh --where)"
+
+# tmux (inside a pixel terminal): run from Ghostty or Kitty.
+# a) passthrough on: expect `tier Pixel`, `tmux Passthrough { version: "3.x" }`,
+#    a pixel graph.
+tmux -L graft -f /dev/null new-session \; set -g allow-passthrough on
+cargo run -p graft --example capability_probe
+cargo run -- "$REPO"
+# b) still inside, split and run in the right-hand pane: pixels must land in
+#    that pane, not at the window's left edge. Ctrl-b %, then:
+cargo run -- "$REPO"
+# c) passthrough off (tmux's default): expect `tier Unicode`,
+#    `tmux PassthroughSilent { .. }`, a clean Unicode graph, no stray bytes.
+tmux kill-server -L graft; tmux -L graft -f /dev/null new-session
+cargo run -- "$REPO"
+
+# tmux (inside a Unicode terminal): Zed or VS Code terminal, passthrough on.
+# Expect `tier Unicode` and a Unicode graph — never ASCII.
+tmux -L graft -f /dev/null new-session \; set -g allow-passthrough on
+cargo run -- "$REPO"
+
+# SSH: needs a host with Rust and a Graft checkout (ssh localhost works:
+# System Settings > General > Sharing > Remote Login). Expect `ssh true`,
+# `budget 500ms`, and the tier the local terminal would get.
+ssh -t HOST 'cd ~/path/to/graft && cargo run -p graft --example capability_probe && cargo run -- "$(scripts/clone-git-git.sh --where)"'
+
+# SSH inside tmux: start tmux (passthrough on) locally, then the SSH line
+# inside it. Expect `tier Pixel` only if the report says `tmux Passthrough`.
+```
+
+When done: `tmux kill-server -L graft`. A row passes or fails on the pass
+conditions below, never on the probe report alone.
+
 **tmux passes on *either* of two outcomes**: a correct pixel graph, *or* a
 clean fall back to the Unicode tier. Which one you get depends on the tmux
 version, on `allow-passthrough`, and on the outer terminal, so both are

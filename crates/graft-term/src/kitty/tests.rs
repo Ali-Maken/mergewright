@@ -5,6 +5,7 @@
 use std::sync::Arc;
 
 use super::*;
+use crate::tmux::Transport;
 
 /// A strip of `rows` rows, 3 columns of 2×4 px cells, every pixel the same
 /// premultiplied colour.
@@ -321,4 +322,58 @@ fn replies_parse_ids_and_messages_and_skip_other_replies() {
 fn a_reply_message_is_sanitised_before_anyone_can_draw_it() {
     let found = replies(b"\x1b_Gi=1;ENOENT:\x07bad\x1b\\");
     assert_eq!(found[0].message, "ENOENT:\u{fffd}bad");
+}
+
+/// Inside tmux every command, each upload chunk included, is its own
+/// passthrough; the cursor save, move and restore around a placement stay
+/// outside for tmux; and what tmux forwards is the direct stream exactly.
+#[test]
+fn through_tmux_each_command_and_each_chunk_gets_its_own_wrapper() {
+    let frame = strip(40, [255, 0, 0, 255]);
+    let places = [place(&frame, 0, 0..40, 0)];
+    let mut direct = Vec::new();
+    KittyImages::new(4).frame(&places, &mut direct);
+    let mut tmux = Vec::new();
+    KittyImages::new(4)
+        .with_transport(Transport::TmuxPassthrough)
+        .frame(&places, &mut tmux);
+
+    let sent = commands(&direct);
+    assert_eq!(
+        sent.iter()
+            .filter(|command| command.starts_with("a=t") || command.starts_with("m="))
+            .count(),
+        2,
+        "the strip must be big enough to chunk: {sent:?}"
+    );
+    let (forwarded, wrappers) = crate::tmux::unwrap_all(&tmux);
+    assert_eq!(forwarded, direct);
+    assert_eq!(wrappers, sent.len());
+    assert!(
+        tmux.starts_with(b"\x1bPtmux;\x1b\x1b_Ga=t"),
+        "{:?}",
+        text(&tmux[..20])
+    );
+    let moves = text(&tmux);
+    assert!(
+        moves.contains("\x1b\\\x1b7\x1b[1;3H\x1bPtmux;\x1b\x1b_Ga=p"),
+        "{moves:?}"
+    );
+}
+
+#[test]
+fn through_tmux_hide_and_free_are_wrapped_too() {
+    let frame = strip(1, [0, 0, 0, 255]);
+    let mut images = KittyImages::new(4).with_transport(Transport::TmuxPassthrough);
+    images.frame(&[place(&frame, 0, 0..1, 0)], &mut Vec::new());
+
+    let mut out = Vec::new();
+    images.hide(&mut out);
+    images.free_all(&mut out);
+
+    assert_eq!(
+        text(&out),
+        "\x1bPtmux;\x1b\x1b_Ga=d,d=i,i=1000,p=1,q=1\x1b\x1b\\\x1b\\\
+         \x1bPtmux;\x1b\x1b_Ga=d,d=I,i=1000,q=1\x1b\x1b\\\x1b\\"
+    );
 }

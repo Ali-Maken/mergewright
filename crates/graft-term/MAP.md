@@ -7,6 +7,8 @@ One line per public item. Update when a public item changes.
 - `iterm2` (mod) — iTerm2 inline images (OSC 1337): bands re-sent per frame, PNG encoded once per (strip, crop, cells).
 - `kitty` (mod) — Kitty graphics protocol: strips to bytes, error replies back (ADR-0012 rules).
 - `sanitize` (mod) — repo-derived text made safe to draw.
+- `tmux` (mod) — getting image sequences through tmux: the DCS passthrough wrapper.
+- `Transport`, `tmux_passthrough` (re-exports) — see `tmux`.
 - `SanitizedText`, `sanitize`, `sanitize_line`, `sanitize_path`, `sanitize_path_bytes` (re-exports) — see `sanitize`.
 
 ## detect
@@ -38,6 +40,7 @@ One line per public item. Update when a public item changes.
 ## kitty
 - `KittyImages` (struct) — uploads held by the terminal; emits transmit-once, `p=1` replace, `q=1` commands.
 - `KittyImages::new` (fn) — track uploads, at most `capacity` unplaced images kept.
+- `KittyImages::with_transport` (fn) — send commands over a `Transport`; inside tmux each command and upload chunk is wrapped alone.
 - `KittyImages::frame` (fn) — append commands so the screen shows exactly these `Place`s.
 - `KittyImages::hide` (fn) — remove every placement, keep data (tier dropped away from pixels).
 - `KittyImages::free_all` (fn) — delete every upload with its data; call on exit.
@@ -52,9 +55,14 @@ One line per public item. Update when a public item changes.
 ## iterm2
 - `ItermImages` (struct) — encoded bands kept for re-sending; erases last frame's cells (`ECH`) before writing.
 - `ItermImages::new` (fn) — keep at most `capacity` encoded bands (current frame's always kept).
+- `ItermImages::with_transport` (fn) — send each band's OSC 1337 over a `Transport`; cursor moves and erases stay unwrapped.
 - `ItermImages::frame` (fn) — erase covered cells, write each `Place` at its cell (`doNotMoveCursor=1`); `io::Error` on a bad crop.
 - `ItermImages::hide` (fn) — erase every cell the last frame covered; bands stay encoded.
 - `ItermImages::encoded` (fn) — PNG encodes so far (an unchanged re-send does not count).
+
+## tmux
+- `tmux_passthrough` (fn) — append one sequence as `ESC P tmux;` + sequence with every `ESC` doubled + `ESC \`.
+- `Transport` (enum) — `Direct` or `TmuxPassthrough`; `Transport::for_tmux` (anything but `TmuxStatus::Outside` wraps), `Transport::write`.
 
 ## sanitize
 - `SanitizedText` (struct) — text proven free of escape and control sequences.

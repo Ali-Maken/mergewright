@@ -18,7 +18,7 @@ use graft_graph::raster::cache::{Flush, STRIP_ROWS, StripCache};
 use graft_term::input::ReplyWaiter;
 use graft_term::iterm2::ItermImages;
 use graft_term::kitty::{self, CellRect, KittyImages, Place};
-use graft_term::sanitize_line;
+use graft_term::{Transport, sanitize_line};
 use graft_ui::graph_screen::GraphicsStatus;
 use ratatui::layout::Rect;
 
@@ -82,6 +82,15 @@ impl<R: GraphicsReplies> Graphics<R> {
             replies,
             status: GraphicsStatus::Ok,
         }
+    }
+
+    /// Send image commands over `transport` (tmux's passthrough inside tmux,
+    /// DESIGN.md §4.3).
+    #[must_use]
+    pub fn with_transport(mut self, transport: Transport) -> Self {
+        self.images = self.images.with_transport(transport);
+        self.bands = self.bands.with_transport(transport);
+        self
     }
 
     /// What the header says while pixels are drawn.

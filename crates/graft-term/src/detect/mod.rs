@@ -249,10 +249,11 @@ impl Graphics {
 /// The *tier* follows ADR-0016's order: **Kitty → Unicode → iTerm2 → Sixel →
 /// ASCII**. Unicode is not a fallback here; it is the default for every
 /// terminal without the Kitty protocol, because the terminals this graph is
-/// read in most days have no image protocol at all. iTerm2 and Sixel take the
-/// tier only where the alternative is ASCII, which they plainly beat; moving
-/// them above Unicode needs a `TESTING.md` checklist row saying they beat
-/// that too, and a new ADR.
+/// read in most days have no image protocol at all. iTerm2 takes the tier
+/// only where the alternative is ASCII, which it plainly beats; moving it
+/// above Unicode needs a `TESTING.md` checklist row saying it beats that too,
+/// and a new ADR. Sixel never takes the tier: there is no encoder behind it
+/// (ADR-0016), so a Sixel-only terminal draws text like one with no protocol.
 fn tier(
     environment: &Environment,
     graphics: &Graphics,
@@ -275,9 +276,13 @@ fn tier(
         // tmux draws box-drawing characters whatever its colour depth.
         _ if environment.tmux.is_some() || environment.has_truecolor() => RenderingTier::Unicode,
         // No truecolor and no tmux: the choice is between pixels and `|`/`*`,
-        // and an image protocol wins that one.
-        Some(PixelProtocol::Iterm2 | PixelProtocol::Sixel) => RenderingTier::Pixel,
-        None => RenderingTier::Ascii,
+        // and an image protocol wins that one — when Graft has an encoder
+        // for it.
+        Some(PixelProtocol::Iterm2) => RenderingTier::Pixel,
+        // Sixel is reported but never drawn: ADR-0016 keeps no Sixel encoder,
+        // so a pixel tier here would be a tier with nothing behind it. With
+        // no truecolor, the text tier the table leaves is ASCII.
+        Some(PixelProtocol::Sixel) | None => RenderingTier::Ascii,
     };
     (tier, protocol)
 }

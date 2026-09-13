@@ -28,6 +28,7 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use graft_core::capabilities::Supported;
 use graft_git::history::Order;
 use graft_graph::raster::cache::Flush;
+use graft_term::Transport;
 use graft_term::detect::{self, TtyHost};
 use graft_term::input::InputMux;
 use ratatui::Terminal;
@@ -231,7 +232,8 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     // redetector's rounds and the images' error replies never steal from
     // each other (and each ignores the other's kind).
     state.settled_tier = Some(settled.rendering.tier);
-    let mut graphics = Graphics::new(mux.waiter());
+    let mut graphics =
+        Graphics::new(mux.waiter()).with_transport(Transport::for_tmux(&settled.capabilities.tmux));
     let outcome = pump_with(
         &mut terminal,
         &mut wakes,

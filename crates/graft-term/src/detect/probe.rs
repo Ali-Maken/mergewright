@@ -89,17 +89,10 @@ pub(crate) fn background_round() -> Vec<u8> {
 }
 
 /// Wrap a query batch in tmux's passthrough sequence so the outer terminal
-/// sees it: `ESC P tmux; … ESC \`, with every `ESC` in the payload doubled.
+/// sees it (see [`crate::tmux`]).
 pub(crate) fn tmux_passthrough(payload: &[u8]) -> Vec<u8> {
-    let mut wrapped = Vec::with_capacity(payload.len() * 2 + 10);
-    wrapped.extend_from_slice(b"\x1bPtmux;");
-    for &byte in payload {
-        if byte == 0x1b {
-            wrapped.push(0x1b);
-        }
-        wrapped.push(byte);
-    }
-    wrapped.extend_from_slice(b"\x1b\x1b\\");
+    let mut wrapped = Vec::new();
+    crate::tmux::tmux_passthrough(payload, &mut wrapped);
     wrapped
 }
 
@@ -165,14 +158,6 @@ mod tests {
         let round = full_round();
         assert!(round.ends_with(DEVICE_ATTRIBUTES_QUERY));
         assert!(round.starts_with(KITTY_GRAPHICS_QUERY));
-    }
-
-    /// tmux eats one level of escaping, so the payload it forwards is the
-    /// original batch byte for byte.
-    #[test]
-    fn passthrough_doubles_every_escape_in_the_payload() {
-        let wrapped = tmux_passthrough(b"\x1b[c");
-        assert_eq!(wrapped, b"\x1bPtmux;\x1b\x1b[c\x1b\x1b\\");
     }
 
     #[test]

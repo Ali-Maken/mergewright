@@ -28,6 +28,8 @@ use std::sync::Arc;
 
 use graft_core::raster::RasterFrame;
 
+use crate::tmux::Transport;
+
 /// Image ids start here, clear of the ids detection's probe uses (`i=31`).
 const FIRST_IMAGE_ID: u32 = 1000;
 /// Base64 bytes per transmit chunk, the protocol's limit.
@@ -104,6 +106,7 @@ pub struct KittyImages {
     capacity: usize,
     next_id: u32,
     clock: u64,
+    transport: Transport,
 }
 
 impl KittyImages {
@@ -117,7 +120,17 @@ impl KittyImages {
             capacity: capacity.max(1),
             next_id: FIRST_IMAGE_ID,
             clock: 0,
+            transport: Transport::Direct,
         }
+    }
+
+    /// Send every command over `transport`: inside tmux, each `APC` command
+    /// (each upload chunk included) gets its own passthrough wrapper, and the
+    /// cursor moves around a placement stay outside it for tmux to see.
+    #[must_use]
+    pub fn with_transport(mut self, transport: Transport) -> Self {
+        self.transport = transport;
+        self
     }
 
     /// Images currently held by the terminal, as far as Graft knows.
@@ -135,11 +148,11 @@ impl KittyImages {
         for place in places {
             let id = self.ensure_uploaded(place, out);
             shown.push(id);
-            put_placement(id, place, out);
+            put_placement(self.transport, id, place, out);
         }
         for upload in &mut self.uploads {
             if upload.placed && !shown.contains(&upload.id) {
-                delete_placement(upload.id, out);
+                delete_placement(self.transport, upload.id, out);
             }
             upload.placed = shown.contains(&upload.id);
         }
@@ -150,7 +163,7 @@ impl KittyImages {
     /// pixels, or the graph is not on screen).
     pub fn hide(&mut self, out: &mut Vec<u8>) {
         for upload in self.uploads.iter_mut().filter(|upload| upload.placed) {
-            delete_placement(upload.id, out);
+            delete_placement(self.transport, upload.id, out);
             upload.placed = false;
         }
     }
@@ -158,7 +171,7 @@ impl KittyImages {
     /// Delete every upload with its data. Call on exit.
     pub fn free_all(&mut self, out: &mut Vec<u8>) {
         for upload in self.uploads.drain(..) {
-            free(upload.id, out);
+            free(self.transport, upload.id, out);
         }
     }
 
@@ -191,11 +204,11 @@ impl KittyImages {
             }
             // Same slot, new pixels: a fresh id, so a late reply about the
             // old image can never be mistaken for one about the new.
-            free(self.uploads.remove(index).id, out);
+            free(self.transport, self.uploads.remove(index).id, out);
         }
         let id = self.next_id;
         self.next_id = self.next_id.checked_add(1).unwrap_or(FIRST_IMAGE_ID);
-        transmit(id, place.frame, out);
+        transmit(self.transport, id, place.frame, out);
         self.uploads.push(Upload {
             id,
             first_row: place.first_row,
@@ -219,13 +232,13 @@ impl KittyImages {
             else {
                 return;
             };
-            free(self.uploads.remove(index).id, out);
+            free(self.transport, self.uploads.remove(index).id, out);
         }
     }
 }
 
 /// `a=t`: the strip's straight-alpha RGBA, base64 in 4096-byte chunks.
-fn transmit(id: u32, frame: &RasterFrame, out: &mut Vec<u8>) {
+fn transmit(transport: Transport, id: u32, frame: &RasterFrame, out: &mut Vec<u8>) {
     let mut encoded = Vec::with_capacity(frame.pixels.len().div_ceil(3) * 4);
     base64(&straight_alpha(&frame.pixels), &mut encoded);
     let mut chunks = encoded.chunks(CHUNK).peekable();
@@ -233,6 +246,7 @@ fn transmit(id: u32, frame: &RasterFrame, out: &mut Vec<u8>) {
     // An empty strip still needs one (empty) command to say so.
     if chunks.peek().is_none() {
         write_command(
+            transport,
             out,
             format_args!(
                 "a=t,f=32,t=d,i={id},s={},v={},q=1,m=0",
@@ -246,6 +260,7 @@ fn transmit(id: u32, frame: &RasterFrame, out: &mut Vec<u8>) {
         let more = u8::from(chunks.peek().is_some());
         if first {
             write_command(
+                transport,
                 out,
                 format_args!(
                     "a=t,f=32,t=d,i={id},s={},v={},q=1,m={more}",
@@ -255,14 +270,14 @@ fn transmit(id: u32, frame: &RasterFrame, out: &mut Vec<u8>) {
             );
             first = false;
         } else {
-            write_command(out, format_args!("m={more}"), chunk);
+            write_command(transport, out, format_args!("m={more}"), chunk);
         }
     }
 }
 
 /// `a=p`: move to the cell, place the crop into the cell rectangle,
 /// replacing placement `p=1`, and leave the cursor where it was.
-fn put_placement(id: u32, place: &Place<'_>, out: &mut Vec<u8>) {
+fn put_placement(transport: Transport, id: u32, place: &Place<'_>, out: &mut Vec<u8>) {
     let frame = place.frame;
     let cell_height = u32::try_from(frame.height as usize / frame.rows.max(1)).unwrap_or(0);
     let start = u32::try_from(place.rows.start).unwrap_or(u32::MAX);
@@ -288,6 +303,7 @@ fn put_placement(id: u32, place: &Place<'_>, out: &mut Vec<u8>) {
     )
     .ok();
     write_command(
+        transport,
         out,
         format_args!(
             "a=p,i={id},p=1,x=0,y={},w={},h={},c={columns},r={rows},C=1,q=1",
@@ -301,25 +317,32 @@ fn put_placement(id: u32, place: &Place<'_>, out: &mut Vec<u8>) {
 }
 
 /// `a=d,d=i`: remove a strip's placement, keep its data.
-fn delete_placement(id: u32, out: &mut Vec<u8>) {
-    write_command(out, format_args!("a=d,d=i,i={id},p=1,q=1"), b"");
+fn delete_placement(transport: Transport, id: u32, out: &mut Vec<u8>) {
+    write_command(transport, out, format_args!("a=d,d=i,i={id},p=1,q=1"), b"");
 }
 
 /// `a=d,d=I`: delete an image and free its data.
-fn free(id: u32, out: &mut Vec<u8>) {
-    write_command(out, format_args!("a=d,d=I,i={id},q=1"), b"");
+fn free(transport: Transport, id: u32, out: &mut Vec<u8>) {
+    write_command(transport, out, format_args!("a=d,d=I,i={id},q=1"), b"");
 }
 
-/// `ESC _ G <control>[;payload] ESC \`.
-fn write_command(out: &mut Vec<u8>, control: std::fmt::Arguments<'_>, payload: &[u8]) {
-    out.extend_from_slice(b"\x1b_G");
+/// `ESC _ G <control>[;payload] ESC \`, over `transport`.
+fn write_command(
+    transport: Transport,
+    out: &mut Vec<u8>,
+    control: std::fmt::Arguments<'_>,
+    payload: &[u8],
+) {
+    let mut command = Vec::with_capacity(payload.len() + 64);
+    command.extend_from_slice(b"\x1b_G");
     // `write!` into a `Vec` cannot fail.
-    out.write_fmt(control).ok();
+    command.write_fmt(control).ok();
     if !payload.is_empty() {
-        out.push(b';');
-        out.extend_from_slice(payload);
+        command.push(b';');
+        command.extend_from_slice(payload);
     }
-    out.extend_from_slice(b"\x1b\\");
+    command.extend_from_slice(b"\x1b\\");
+    transport.write(&command, out);
 }
 
 /// Premultiplied RGBA to the straight alpha `f=32` means.
