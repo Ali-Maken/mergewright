@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — ticket 45 · 64 tickets: 56 done, 5 ready, 1 partial, 1 split, 1 wontfix
+**Current step:** M1 The graph — ticket 43 · 64 tickets: 57 done, 4 ready, 1 partial, 1 split, 1 wontfix
 
 ---
 
@@ -226,6 +226,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-14 · M1/44 lane cap follows width · sonnet · done · graph.max_lanes Option; unset → 8/10/12 by width, clamped by lanes_that_fit (ADR-0025); captures docs/shots/44-git-git-{80x24,160x40}.txt (user eyeballs); gates green; ~141k tokens (over 80k target), no compaction
 - 2026-09-14 · M1/47 pins are priorities, cap holds · sonnet · done, user check pending (joint with 40) · cause: ticket 16's flat pinned set made every thread column an absolute fold veto; replaced by ADR-0025 priority budget Fold::plan(max_lanes, &Keep, rows); header +N exact (tested); captures docs/shots/47-seen-120-{unicode.txt,pixel.png}, 47-git-git-80x24-after-jj{.txt,-pixel.png}, 47-many-lanes-{80x24,120x40}.txt; 806 tests, gates green; ~77k tokens reported, compacted twice at clean seams, nothing remains · COMPACTED
 - 2026-09-14 · M1/41 tooltip out, footer reveal · sonnet · done · tooltip and pin removed (ADR-0023), hover/Enter peek reveals truncated subject in footer via GraphView::reveal; ~29 snapshots; pty captures docs/shots/41-{hover-reveal,peek,no-reveal}.txt on a throwaway 3-commit repo (user judges); gates green; PROMPT/DESIGN tooltip text not updated → conductor added spec edits for ADR-0022–0025 to 28's scope; ~100k tokens (over 80k target) · COMPACTED
+- 2026-09-14 · M1/45 y copies SHA (OSC 52) · opus · done · graft-term::clipboard::osc52_copy (local base64, no dep), via tmux passthrough Transport, write error propagates; hints `y sha`; release pty check: OSC 52 bytes = base64(HEAD SHA), notice shown, cleared by j; captures docs/shots/45-{y-copies-sha,notice-cleared}.txt; paste in Ghostty/Zed/VS Code/tmux untried (user); open: dropped if tmux passthrough off, tmux set-clipboard unused (KNOWN_GAPS); 816 tests, gates green; ~110k tokens (over 80k target), no compaction
 
 ## Open questions for the M1 checkpoint
 - **By eye (30b):** pixel graph goes blank for one frame on PgDn before rows arrive. User judges whether that's acceptable.
