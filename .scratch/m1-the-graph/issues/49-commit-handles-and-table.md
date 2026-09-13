@@ -23,6 +23,9 @@ In:
 Out: changing what `EmittedOrder`, `Included`, `Topological`, `Dated`, `Views.promoted` store (next tickets); hydration; any memory measurement beyond a unit-level `approximate_bytes`.
 
 ## Signatures
+
+**Amended 2026-09-14 (planner-fable, spec-only pass on the builder's seam-(b) question):** `next_links` takes `limit` like `next_chunk`; `LinkChunk` carries `done` and `stopped`, not `more`. Same shape as `Chunk { commits, done, stopped }` (ticket 04) and as 52's `Pull { links, done, stopped }`, so `WalkSource::pull` maps it field for field. `more` was wrong: it conflates "the walk ended" with "`stop()` fired mid-chunk", and the caller must tell them apart (27c's `next_ids` tests check `stopped`; a stopped chunk is resumed, a done one is not). No other change.
+
 ```rust
 // graft-core::commit_handle
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
@@ -60,12 +63,18 @@ impl CommitTable {
 pub enum TableError { /* opening the commit-graph failed: name the file and the gix error */ }
 
 // graft-git::history
-pub struct LinkChunk { pub links: Vec<Link>, pub more: bool }
+/// One batch of links a walk hands back. Same contract as `Chunk`:
+/// `done` — the walk has emitted its last commit (no further call yields anything);
+/// `stopped` — `stop()` returned true before `limit` was reached; the walk resumes on the next call.
+/// Exactly one of `links.len() == limit`, `done`, `stopped` explains why the batch ended.
+pub struct LinkChunk { pub links: Vec<Link>, pub done: bool, pub stopped: bool }
 impl Walk {
     pub fn all_refs(repo: &RepoHandle, order: Order, table: Arc<CommitTable>) -> Result<Self, WalkError>;   // existing params kept, table added
     pub fn from_tips(/* existing */, table: Arc<CommitTable>) -> Result<Self, WalkError>;
     pub fn full_topological(/* existing */, table: Arc<CommitTable>) -> Result<Self, WalkError>;
-    pub fn next_links(&mut self, stop: &dyn Fn() -> bool) -> Result<LinkChunk, WalkError>;   // parents as walked (untrimmed); same order as next_chunk
+    pub fn next_links(&mut self, limit: usize, stop: &dyn Fn() -> bool) -> Result<LinkChunk, WalkError>;
+        // at most `limit` links; parents as walked (untrimmed), interned through the table;
+        // same commit sequence and same limit/stop semantics as next_chunk(limit, stop)
     pub fn table(&self) -> &Arc<CommitTable>;
 }
 // removed: Walk::next_ids, IdChunk
@@ -79,7 +88,7 @@ pub trait CommitSource {
     fn id_of(&self, handle: CommitHandle) -> Oid;                                            // NEW
 }
 ```
-Callers: `graft::history::WalkSource` (implements), `graft_graph::Included` (delegates, trims in `links`), `graft::history::topological_order` (uses `next_links`), `RepoStore` (opens the table once).
+Callers: `graft::history::WalkSource` (implements), `graft_graph::Included` (delegates, trims in `links`), `graft::history::topological_order` (uses `next_links(CHUNK, stop)`, keeps `link.commit`, loops until `done`; a `stopped` chunk is handled exactly as `next_ids`'s was), `RepoStore` (opens the table once).
 
 ## Acceptance
 - [ ] Round-trip on every corpus shape: for each commit `id_of(intern(id)) == id`, `handle_of(id) == Some(intern(id))`, `intern` twice gives one handle, `len()` equals the commit count; with and without a commit-graph (the 5k synthetic pair in the heavy tier covers the graph path at scale; a corpus shape gets a commit-graph written in-test for the fast tier).
@@ -87,7 +96,7 @@ Callers: `graft::history::WalkSource` (implements), `graft_graph::Included` (del
 - [ ] A constructed 8-byte prefix collision (two ids sharing their first 8 bytes) resolves to two handles, both round-trip.
 - [ ] SHA-256 hash length handled (a unit test on the overflow with 32-byte ids; a repo fixture is not required).
 - [ ] `HandleSet`: insert/contains/remove/len property test against `HashSet<u32>` at 64 cases.
-- [ ] `Walk::next_links` yields the same commit sequence as `next_chunk` on every corpus shape and the 5k synthetic pair; `stop` honoured mid-walk (27c's `next_ids` tests moved over, `next_ids` gone).
+- [ ] `Walk::next_links` yields the same commit sequence as `next_chunk` on every corpus shape and the 5k synthetic pair, chunk boundaries included (`limit` honoured: `links.len() ≤ limit`; `done` on the last chunk only); `stop` honoured mid-walk with `stopped == true` and the walk resuming on the next call (27c's `next_ids` tests moved over, `next_ids` gone).
 - [ ] `topological_order` uses `next_links`; git/git no-cg promotion still lands (`history/tests.rs` promotion tests green).
 - [ ] MAP.md updated in core, git, graph, graft; ARCHITECTURE.md if the crate map text changes.
 - [ ] Report: `approximate_bytes` of the overflow at 100k no-cg (heavy tier, printed), expected ≤ 60 B/commit.
@@ -109,7 +118,7 @@ Context passed the ~80k target once seam (a) was green, so stopped per Size.
 
 **Remaining (seam b), exact next steps:**
 1. `Walk::{all_refs, from_tips, full_topological}` gain `table: Arc<CommitTable>` (last param); store it; `Walk::table()`.
-2. `Walk::next_links(limit, stop) -> LinkChunk { links, more }`: reuse `Walk::advance`; parents come from `self.nodes.node(id)?.parents` (node.rs) — check whether `Topological`/`Dated` already hold the node at emit time to avoid a second lookup. Intern commit + parents. Note: the spec signature omits `limit`, but `next_chunk`/`next_ids` both take one and `topological_order` passes `CHUNK`; keep `limit` unless planner says otherwise. `LinkChunk` spec has `more` only, not `done`/`stopped` — decide whether `stopped` is needed for `stop` semantics (next_ids tests check it).
+2. `Walk::next_links(limit, stop) -> LinkChunk { links, done, stopped }` (**decided 2026-09-14, see the amended Signatures above**): reuse `Walk::advance`; parents come from `self.nodes.node(id)?.parents` (node.rs) — check whether `Topological`/`Dated` already hold the node at emit time to avoid a second lookup. Intern commit + parents. `limit`/`done`/`stopped` behave exactly as in `next_chunk`.
 3. Move `next_ids` tests (`history/tests.rs` ~L545–580) to `next_links`; delete `next_ids`, `IdChunk`; update MAP.
 4. `graft/src/history/mod.rs` `topological_order` (~L362–380) → `next_links`, keep `link.commit` mapped through `table.id_of`.
 5. `CommitSource` (graft-graph/src/layout/source.rs) + `links`, `handle_of`, `id_of`. Implementors: `graft::history::WalkSource`, `graft_graph::Included` (inclusion.rs L280, trim parents in `links`), test sources `layout/stream/tests.rs` (VecSource, Forgetful, Stalling), `inclusion/tests.rs` VecSource, `graft-graph/tests/it/streaming.rs` WalkSource, `benches/hot_paths.rs` InMemory. Test sources need their own id↔handle map (graph may not depend on git).

@@ -52,6 +52,8 @@ pub struct Work { /* existing */ pub hydrated: usize, pub links_read: usize }
 pub fn fingerprint(shapes: &[RowShape]) -> Fingerprint;   // pub(crate) is fine; named so the test can call it
 ```
 
+**Amended 2026-09-14 (planner-fable, spec-only pass on 49's seam-(b) question):** `Walk::next_links(limit, stop) -> LinkChunk { links, done, stopped }` (ticket 49, amended Signatures). `WalkSource::pull` calls `next_links` with the same `limit` it passes to `next_chunk` today and maps `LinkChunk` to `Pull` field for field (`links`, `done`, `stopped`); no translation, no `more`.
+
 ## Acceptance
 - [ ] Determinism: on every corpus shape and the 5k synthetic pair, `rows(0..n)` after a cold `advance` to the end (viewport at the top, so all but the first chunks pass through) equals the rows of a layout that materialised everything — same `Row`s, field by field; every rebuilt chunk's fingerprint matches its pass-through fingerprint.
 - [ ] `Work.hydrated` after a cold `G` on the 100k fixture with the viewport at the top ≤ `2 × chunk_rows + buffer_rows` (only what the screen asked for); `links_read` ≥ the replay length.
