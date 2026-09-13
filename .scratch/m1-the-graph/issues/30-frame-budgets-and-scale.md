@@ -2,7 +2,7 @@
 
 Status: ready
 Build with: **Opus** (high) — timing the event loop and the pixel path
-Blocked by: 11, 25, 27
+Blocked by: 11, 25, 27, 27b
 Leaves runnable: yes — benches run at review; input-to-frame asserted in the heavy tier.
 
 Why: the rest of the retired performance ticket (16, text in 35bec3e). Split from 27 so each fits one context.
