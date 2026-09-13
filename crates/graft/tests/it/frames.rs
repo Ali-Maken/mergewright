@@ -24,7 +24,7 @@
 use std::collections::HashMap;
 use std::io::{self, Write};
 use std::path::Path;
-use std::sync::mpsc::{Receiver, RecvTimeoutError};
+use std::sync::mpsc::{Receiver, RecvTimeoutError, TryRecvError};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
@@ -202,6 +202,24 @@ fn print_details(tier: RenderingTier, refs: Refs, run: &Run, idle: &[Duration]) 
         );
     }
 
+    let mut prefetch = run.prefetch.clone();
+    prefetch.sort();
+    let over = |limit: Duration| prefetch.iter().filter(|spent| **spent >= limit).count();
+    println!(
+        "frames: tier={tier:?} refs={refs:?} idle_prefetch_us (per frame; recorded, not asserted): frames={} p50={} p99={} max={} total={} over_1ms={} over_2ms={}",
+        prefetch.len(),
+        prefetch
+            .get(prefetch.len() / 2)
+            .map_or(0, Duration::as_micros),
+        prefetch
+            .get((prefetch.len().saturating_sub(1)) * 99 / 100)
+            .map_or(0, Duration::as_micros),
+        prefetch.last().map_or(0, Duration::as_micros),
+        prefetch.iter().sum::<Duration>().as_micros(),
+        over(Duration::from_millis(1)),
+        over(Duration::from_millis(2)),
+    );
+
     let idle: Vec<_> = idle_wakes()
         .iter()
         .zip(idle)
@@ -225,6 +243,9 @@ struct Run {
     kitty_commands: usize,
     /// Every byte the loop wrote.
     bytes: usize,
+    /// Per frame: the idle prefetch after it (the loop's first look for a
+    /// wake to its `next_wake`).
+    prefetch: Vec<Duration>,
     /// Per trigger (key name, `Window`, `Other`): frames, and what they wrote.
     by_trigger: Vec<(String, usize, Counts)>,
 }
@@ -273,6 +294,7 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs) -> Result<Run, String> {
         return Err(failure);
     }
     let latencies = wakes.latencies()?;
+    let prefetch = std::mem::take(&mut wakes.prefetch);
     // The scroll is over and every latency stamped: only now read what the
     // terminal was sent.
     let (written, counted) = sink.count(&wakes.written);
@@ -288,6 +310,7 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs) -> Result<Run, String> {
     }
     Ok(Run {
         latencies,
+        prefetch,
         breakdown,
         waited,
         kitty_commands: written.kitty_commands,
@@ -664,6 +687,14 @@ struct Paced<'a, D> {
     written: Vec<usize>,
     sink: Sink,
     failure: Option<String>,
+    /// An event `waiting` took off the channel to see it; handed out first.
+    seen: Option<AppEvent>,
+    /// When the loop first looked for a wake since the last one was handed:
+    /// its frame was on the terminal then, before any idle prefetch began.
+    looked: Option<Instant>,
+    /// Per look: from the loop's first look to its `next_wake` — the idle
+    /// prefetch after that frame.
+    prefetch: Vec<Duration>,
 }
 
 impl Handed {
@@ -695,6 +726,18 @@ impl<'a, D> Paced<'a, D> {
             written: Vec::new(),
             sink,
             failure: None,
+            seen: None,
+            looked: None,
+            prefetch: Vec::new(),
+        }
+    }
+
+    /// Stamp the frame just drawn, once: at the loop's first look for a wake.
+    fn stamp(&mut self) {
+        if self.looked.is_none() {
+            self.looked = Some(Instant::now());
+            self.drawn.push(Instant::now());
+            self.written.push(self.sink.sent());
         }
     }
 
@@ -839,8 +882,13 @@ impl<'a, D> Paced<'a, D> {
 
 impl<D> Wakes for Paced<'_, D> {
     fn next_wake(&mut self) -> Option<Wake> {
-        self.drawn.push(Instant::now());
-        self.written.push(self.sink.sent());
+        self.stamp();
+        if let Some(looked) = self.looked.take() {
+            self.prefetch.push(looked.elapsed());
+        }
+        if let Some(event) = self.seen.take() {
+            return Some(self.event(event));
+        }
         if self.next_key < self.keys.len() {
             let wait = self.due.saturating_duration_since(Instant::now());
             if !wait.is_zero() {
@@ -881,6 +929,34 @@ impl<D> Wakes for Paced<'_, D> {
                 self.failure = Some(format!("rows still out after {PATIENCE:?}: {why}"));
                 None
             }
+        }
+    }
+
+    /// The next key is due, or an event has come: the loop stops readying
+    /// strips, so a key's latency counts the one strip it waited behind.
+    fn waiting(&mut self) -> bool {
+        self.looked()
+    }
+}
+
+impl<D> Paced<'_, D> {
+    fn looked(&mut self) -> bool {
+        self.stamp();
+        if self.seen.is_some() {
+            return true;
+        }
+        // The script is over: nothing left to measure, so nothing to ready.
+        if self.next_key >= self.keys.len() || Instant::now() >= self.due {
+            return true;
+        }
+        match self.events.try_recv() {
+            Ok(event) => {
+                self.seen = Some(event);
+                true
+            }
+            Err(TryRecvError::Empty) => false,
+            // `next_wake` records the hang-up.
+            Err(TryRecvError::Disconnected) => true,
         }
     }
 }

@@ -111,6 +111,7 @@ One line per public item. Update when a public item changes.
 - `StripCache::new` / `capacity_for` (fn) — make one; strips a viewport plus buffer needs at any offset.
 - `StripCache::strips_for` (fn) — aligned strip ranges covering a viewport.
 - `StripCache::get` (fn) — a strip from the cache, rasterised on a miss; refuses a misaligned strip. An `Uncommitted` ring row does not count toward the strip height.
+- `StripCache::contains` (fn) — is a strip already rasterised; touches neither counters nor recency (idle prefetch, m1-the-graph/30h).
 - `StripCache::flush` (fn) — drop everything on theme, cell-size, re-detection or resize.
 - `StripCache::len`, `is_empty`, `resident_bytes`, `stats`, `strip_rows` (fn) — introspection.
 - `STRIP_ROWS` (const) — 32, chosen by measurement.

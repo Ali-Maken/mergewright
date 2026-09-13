@@ -44,7 +44,7 @@ One line per public item. Update when a public item changes.
 ## event_loop
 - `Wake::Terminal` (variant) — a re-detected answer changed; `pump` applies it to the session and redraws.
 - `Wake::TerminalFailed` (variant) — a re-query could not be written or read; ends the loop with the error.
-- `pump` (fn) — now takes `&mut Session`, so re-detection can update it.
+- `pump` (fn) — idle, while nothing waits, rasterises the strips `PageDown`/`PageUp` would show (30h). Now takes `&mut Session`, so re-detection can update it.
 - `input::spawn_reader` (fn) — forwards input; on `FocusGained` also asks the redetector for the theme; returns the `Forwarder`.
 - `input::Forwarder` (struct) — the running forwarder; `finish` waits for it to end (after `InputMux::hold`, a bounded drain, never a job wait).
 - `signals::watch_resizes` (fn) — resize wakes; each also asks the redetector for the cell size.
@@ -198,6 +198,7 @@ One line per public item. Update when a public item changes.
 - `Exit` (enum) — why the loop stopped: `Quit`, `HandedBack(KeyCode)` (a `Harness::hand_back` key), `Signal(i32)`, `Fatal(String)`.
 - `Wake` (enum) — something that wakes the loop.
 - `Wakes` (trait) — a seam so `pump` can be driven by a scripted list in tests.
+- `Wakes::waiting` (fn) — is a wake already here, never blocking; the loop asks before each idle-prefetched strip (m1-the-graph/30h). `ChannelWakes` keeps a wake it saw for `next_wake` and `unhandled_input`.
 - `ChannelWakes` (struct) — the real wake source: one channel, two feeder threads.
 - `ChannelWakes::new` (fn) — build the channel and the sender its producers clone.
 - `ChannelWakes::unhandled_input` (fn) — the terminal input queued after the wake that ended the loop, in order; the rest is dropped with the loop.

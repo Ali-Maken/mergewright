@@ -23,10 +23,10 @@ pub mod signals;
 use std::io::{self, IsTerminal, Write};
 use std::path::Path;
 use std::sync::Arc;
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 
 use graft_core::capabilities::Supported;
-use graft_core::event::Event;
+use graft_core::event::{Event, KeyCode, KeyPress};
 use graft_git::history::Order;
 use graft_graph::raster::cache::Flush;
 use graft_term::Transport;
@@ -42,7 +42,7 @@ use crate::repos::RepoStore;
 use crate::session::{Session, Startup, TerminalChange};
 use crate::terminal::{SessionOptions, TerminalSession};
 use crate::update::{AppEvent, AppState, Command, Quit, Size, update};
-use crate::view::{view, view_with_graphics};
+use crate::view::{draws_pixels, view, view_with_graphics};
 use graphics::{Graphics, GraphicsReplies, NoReplies};
 use redetect::Redetector;
 use row_clear::RowClear;
@@ -100,11 +100,19 @@ pub trait Wakes {
     /// Block until something happens. `None` once nothing can happen again,
     /// because every producer has gone.
     fn next_wake(&mut self) -> Option<Wake>;
+
+    /// Is a wake already here? Never blocks. The loop asks between pieces of
+    /// idle work (the strips a page key would show) and stops as soon as the
+    /// answer is `true`; a source that has ended says `true` too, so the loop
+    /// goes straight to finding that out.
+    fn waiting(&mut self) -> bool;
 }
 
 /// The real source: one channel fed by the input thread and the signal thread.
 pub struct ChannelWakes {
     receiver: Receiver<Wake>,
+    /// A wake `waiting` took off the channel to see it; handed out first.
+    seen: Option<Wake>,
 }
 
 impl ChannelWakes {
@@ -112,7 +120,13 @@ impl ChannelWakes {
     #[must_use]
     pub fn new() -> (Self, Sender<Wake>) {
         let (sender, receiver) = mpsc::channel();
-        (Self { receiver }, sender)
+        (
+            Self {
+                receiver,
+                seen: None,
+            },
+            sender,
+        )
     }
 
     /// The terminal input the loop never got to, in order: what the input
@@ -123,8 +137,9 @@ impl ChannelWakes {
     /// Only complete once the forwarder has stopped (`run` joins it first).
     #[must_use]
     pub fn unhandled_input(self) -> Vec<Event> {
-        self.receiver
-            .try_iter()
+        self.seen
+            .into_iter()
+            .chain(self.receiver.try_iter())
             .filter_map(|wake| match wake {
                 Wake::Event(AppEvent::Core(event)) => Some(event),
                 Wake::Event(_)
@@ -150,10 +165,28 @@ impl JobEvents for Sender<Wake> {
 
 impl Wakes for ChannelWakes {
     fn next_wake(&mut self) -> Option<Wake> {
+        if let Some(seen) = self.seen.take() {
+            return Some(seen);
+        }
         // The only error `recv` can give is "all senders dropped", which is
         // not a failure: it means both threads have ended and no wake can ever
         // arrive again. That is exactly what `None` says.
         self.receiver.recv().ok()
+    }
+
+    fn waiting(&mut self) -> bool {
+        if self.seen.is_some() {
+            return true;
+        }
+        match self.receiver.try_recv() {
+            Ok(wake) => {
+                self.seen = Some(wake);
+                true
+            }
+            Err(TryRecvError::Empty) => false,
+            // Every producer has gone: `next_wake` says so at once.
+            Err(TryRecvError::Disconnected) => true,
+        }
     }
 }
 
@@ -548,6 +581,8 @@ where
     draw(terminal, session, &state, graphics)?;
 
     loop {
+        // Idle: nothing is waiting, so get the next page ready.
+        prefetch(session, &state, graphics, wakes);
         let Some(wake) = wakes.next_wake() else {
             // Nothing can wake the loop again. Leave as if the user had quit
             // rather than spinning on a dead channel.
@@ -598,6 +633,37 @@ where
 
         draw(terminal, session, &state, graphics)?;
     }
+}
+
+/// While nothing is waiting, rasterise the strips a page key would show:
+/// `PageDown`'s and `PageUp`'s next screens, as `update` would draw them
+/// (their cursor moves, so their thread and fold do too, and only strips
+/// keyed exactly like that frame's are hits). Asks `wakes` before every
+/// strip, so a key that arrives waits behind one strip at most; it never
+/// uploads anything. Returns the strips rasterised.
+fn prefetch<W, R>(
+    session: &Session,
+    state: &AppState,
+    graphics: &mut Graphics<R>,
+    wakes: &mut W,
+) -> usize
+where
+    W: Wakes,
+    R: GraphicsReplies,
+{
+    // The first look comes before any work, so a queued key costs nothing.
+    // The search prompt takes page keys as text: nothing to ready there.
+    if wakes.waiting() || !draws_pixels(session, state) || state.search_prompt.is_some() {
+        return 0;
+    }
+    let mut rasterised = 0;
+    for page in [KeyCode::PageDown, KeyCode::PageUp] {
+        // What the screen would be after `page`; never shown. Its commands
+        // (rows to fetch) are dropped: the real key asks for them again.
+        let (paged, _unsent) = update(state, AppEvent::Core(Event::Key(KeyPress::plain(page))));
+        rasterised += graphics.prefetch(session, &paged, &mut || wakes.waiting());
+    }
+    rasterised
 }
 
 /// Delete every image Graft uploaded, as one whole write.
@@ -724,21 +790,45 @@ mod tests {
 
     /// A scripted source of wakes: hands out what it was given, then reports
     /// that its producers are gone.
+    ///
+    /// Every scripted wake is already queued, so `waiting` says `true` —
+    /// unless `idle` says how many times it answers `false` first.
     struct ScriptedWakes {
         remaining: std::vec::IntoIter<Wake>,
+        /// `idle[i]`: `waiting` calls that find nothing before wake `i`.
+        idle: std::collections::VecDeque<usize>,
+        asked: usize,
     }
 
     impl ScriptedWakes {
         fn new(wakes: Vec<Wake>) -> Self {
+            Self::idle(wakes, Vec::new())
+        }
+
+        fn idle(wakes: Vec<Wake>, idle: Vec<usize>) -> Self {
             Self {
                 remaining: wakes.into_iter(),
+                idle: idle.into(),
+                asked: 0,
             }
         }
     }
 
     impl Wakes for ScriptedWakes {
         fn next_wake(&mut self) -> Option<Wake> {
+            self.idle.pop_front();
             self.remaining.next()
+        }
+
+        fn waiting(&mut self) -> bool {
+            self.asked += 1;
+            match self.idle.front_mut() {
+                Some(left) if *left > 0 => {
+                    *left -= 1;
+                    false
+                }
+                _ => true,
+            }
         }
     }
 
@@ -1339,6 +1429,139 @@ mod tests {
         for word in ["failed", "repository"] {
             assert!(bytes.contains(word), "{word:?} never reached the terminal");
         }
+    }
+
+    /// A pixel-tier loop through `wakes`, `idle` as [`ScriptedWakes::idle`],
+    /// starting from `state`: strips rasterised, strips served from the cache.
+    fn prefetch_run(state: AppState, wakes: Vec<Wake>, idle: Vec<usize>) -> (u64, u64) {
+        let (mut terminal, _recorder) = terminal(PIXEL_COLUMNS, PIXEL_ROWS);
+        let (mut session, _) = at_pixel_tier();
+        let mut graphics = Graphics::new(NoReplies);
+        pump_with(
+            &mut terminal,
+            &mut ScriptedWakes::idle(wakes, idle),
+            &Recorded::default(),
+            &mut session,
+            state,
+            &mut graphics,
+        )
+        .expect("writing to memory cannot fail");
+        let counters = graphics.strip_stats();
+        (counters.rasterised, counters.hits)
+    }
+
+    /// 255 commits, the screen showing row `top` with the cursor on it.
+    fn scrolled_to(top: usize) -> AppState {
+        let (_, mut state) = at_pixel_tier();
+        let mut history = crate::view::tests::history_of(255, top);
+        history.top = top;
+        history.strip_rows = Some(graft_graph::raster::cache::STRIP_ROWS);
+        state.history = Some(history);
+        state
+    }
+
+    #[test]
+    fn no_strip_is_prefetched_while_input_is_queued() {
+        let queued = prefetch_run(scrolled_to(100), vec![quit_key()], vec![0]);
+        let idle = prefetch_run(scrolled_to(100), vec![quit_key()], vec![usize::MAX]);
+
+        let (session, _) = at_pixel_tier();
+        let mut drawn_only = Graphics::new(NoReplies);
+        let (mut terminal, _) = terminal(PIXEL_COLUMNS, PIXEL_ROWS);
+        draw(&mut terminal, &session, &scrolled_to(100), &mut drawn_only).expect("memory");
+
+        assert_eq!(
+            queued.0,
+            drawn_only.strip_stats().rasterised,
+            "with a key queued the loop rasterises only what the frame shows"
+        );
+        assert!(
+            idle.0 > queued.0,
+            "idle, the loop does prefetch (else this proves nothing): {idle:?} vs {queued:?}"
+        );
+    }
+
+    #[test]
+    fn a_key_arriving_mid_prefetch_waits_for_at_most_one_strip() {
+        // The key arrives after `checks` looks at the queue: each look more
+        // may let one more strip through, never two.
+        let rasterised: Vec<u64> = (0..12)
+            .map(|checks| prefetch_run(scrolled_to(100), vec![quit_key()], vec![checks]).0)
+            .collect();
+        for pair in rasterised.windows(2) {
+            assert!(
+                pair[1] <= pair[0] + 1,
+                "one more look at the queue let more than one strip through: {rasterised:?}"
+            );
+        }
+        let whole = prefetch_run(scrolled_to(100), vec![quit_key()], vec![usize::MAX]).0;
+        assert!(
+            whole >= rasterised[0] + 2,
+            "an uninterrupted prefetch does at least two strips (else this proves nothing): {whole} vs {rasterised:?}"
+        );
+    }
+
+    #[test]
+    fn page_keys_find_their_strips_already_rasterised() {
+        for page in [KeyCode::PageDown, KeyCode::PageUp] {
+            let (session, _) = at_pixel_tier();
+            let (mut terminal, _) = terminal(PIXEL_COLUMNS, PIXEL_ROWS);
+            let mut graphics = Graphics::new(NoReplies);
+            let state = scrolled_to(100);
+            draw(&mut terminal, &session, &state, &mut graphics).expect("memory");
+            let done = prefetch(
+                &session,
+                &state,
+                &mut graphics,
+                &mut ScriptedWakes::idle(Vec::new(), vec![usize::MAX]),
+            );
+            let before = graphics.strip_stats();
+
+            let paged = update(&state, AppEvent::Core(Event::Key(KeyPress::plain(page)))).0;
+            draw(&mut terminal, &session, &paged, &mut graphics).expect("memory");
+            let after = graphics.strip_stats();
+
+            assert!(done > 0, "{page:?}: something was prefetched");
+            assert_eq!(
+                after.rasterised, before.rasterised,
+                "{page:?}'s frame rasterised nothing: its strips were prefetched"
+            );
+            assert!(
+                after.hits > before.hits,
+                "{page:?}'s frame drew from the cache"
+            );
+        }
+    }
+
+    #[test]
+    fn a_wake_seen_while_checking_is_handed_out_next_and_kept_as_unhandled_input() {
+        let (mut wakes, sender) = ChannelWakes::new();
+        assert!(!wakes.waiting(), "nothing sent yet");
+        sender.send(quit_key()).expect("receiver alive");
+        sender
+            .send(key(KeyPress::plain(KeyCode::Char('j'))))
+            .expect("receiver alive");
+        assert!(wakes.waiting());
+        assert!(wakes.waiting(), "asking again loses nothing");
+        drop(sender);
+
+        let unhandled = wakes.unhandled_input();
+        assert_eq!(
+            unhandled.len(),
+            2,
+            "the wake seen while checking is kept: {unhandled:?}"
+        );
+
+        let (mut wakes, sender) = ChannelWakes::new();
+        sender.send(quit_key()).expect("receiver alive");
+        assert!(wakes.waiting());
+        drop(sender);
+        assert!(matches!(wakes.next_wake(), Some(Wake::Event(_))));
+        assert!(wakes.next_wake().is_none());
+        assert!(
+            wakes.waiting(),
+            "an ended source is worth finding out about"
+        );
     }
 
     /// The rule the whole architecture rests on, checked rather than reviewed:

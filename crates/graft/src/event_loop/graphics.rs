@@ -186,6 +186,42 @@ impl<R: GraphicsReplies> Graphics<R> {
         }
     }
 
+    /// Rasterise, without drawing or uploading, the first strip `state`
+    /// would show that is not cached yet; then the next, until none is left
+    /// or `waiting` says a wake has come. Asked before every strip, so work
+    /// already begun when a wake arrives is one strip at most. Returns the
+    /// strips rasterised.
+    pub fn prefetch(
+        &mut self,
+        session: &Session,
+        state: &AppState,
+        waiting: &mut impl FnMut() -> bool,
+    ) -> usize {
+        let pixels = pixel_rows(state, session.max_lanes, STRIP_ROWS);
+        let paint = StripPaint::of(session);
+        let mut rasterised = 0;
+        for strip in &pixels.strips {
+            let cache = &mut self.strips;
+            if strip.with_strip(&pixels, &paint, |painted| {
+                cache.contains(strip.first_row, painted)
+            }) {
+                continue;
+            }
+            if waiting() {
+                break;
+            }
+            match strip.with_strip(&pixels, &paint, |painted| {
+                cache.get(strip.first_row, painted)
+            }) {
+                Ok(_frame) => rasterised += 1,
+                // The same failure `frame` shows when this strip comes on
+                // screen; shown now too, so it is never lost.
+                Err(why) => self.status = GraphicsStatus::Failed(sanitize_line(&why.to_string())),
+            }
+        }
+        rasterised
+    }
+
     /// Throw away every rasterised strip: the theme or the cell size
     /// changed, so every strip's pixels did.
     ///

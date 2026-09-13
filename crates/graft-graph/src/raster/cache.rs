@@ -161,28 +161,7 @@ impl StripCache {
         first_row: usize,
         strip: &Strip<'_>,
     ) -> Result<Arc<RasterFrame>, CacheError> {
-        let rows = strip.rows.len();
-        let history_rows = strip
-            .rows
-            .iter()
-            .filter(|row| row.ring != Ring::Uncommitted)
-            .count();
-        if !first_row.is_multiple_of(self.strip_rows) || rows == 0 || history_rows > self.strip_rows
-        {
-            return Err(CacheError::Misaligned {
-                first_row,
-                rows,
-                strip_rows: self.strip_rows,
-            });
-        }
-        let key = StripKey {
-            first_row,
-            rows,
-            layout: layout_hash(strip),
-            theme: theme_id(strip.palette, strip.muted),
-            cell_width: strip.cell_width,
-            cell_height: strip.cell_height,
-        };
+        let key = self.key(first_row, strip)?;
         self.clock += 1;
         if let Some(entry) = self.entries.get_mut(&key) {
             entry.last_used = self.clock;
@@ -202,6 +181,40 @@ impl StripCache {
             },
         );
         Ok(frame)
+    }
+
+    /// Is this strip already rasterised? A look, not a use: it moves neither
+    /// the counters nor the strip's place in the eviction order. A strip
+    /// [`StripCache::get`] would refuse is never there.
+    pub fn contains(&self, first_row: usize, strip: &Strip<'_>) -> bool {
+        self.key(first_row, strip)
+            .is_ok_and(|key| self.entries.contains_key(&key))
+    }
+
+    /// The key `strip` is cached under, or why it cannot be cached.
+    fn key(&self, first_row: usize, strip: &Strip<'_>) -> Result<StripKey, CacheError> {
+        let rows = strip.rows.len();
+        let history_rows = strip
+            .rows
+            .iter()
+            .filter(|row| row.ring != Ring::Uncommitted)
+            .count();
+        if !first_row.is_multiple_of(self.strip_rows) || rows == 0 || history_rows > self.strip_rows
+        {
+            return Err(CacheError::Misaligned {
+                first_row,
+                rows,
+                strip_rows: self.strip_rows,
+            });
+        }
+        Ok(StripKey {
+            first_row,
+            rows,
+            layout: layout_hash(strip),
+            theme: theme_id(strip.palette, strip.muted),
+            cell_width: strip.cell_width,
+            cell_height: strip.cell_height,
+        })
     }
 
     /// Throw every strip away.
