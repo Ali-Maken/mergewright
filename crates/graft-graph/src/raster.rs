@@ -177,6 +177,21 @@ pub fn rasterise(strip: &Strip<'_>) -> Result<RasterFrame, RasterError> {
     }
     let mut pixmap = Pixmap::new(width, height).ok_or_else(too_large)?;
     let pen = Pen::new(strip);
+    // Edges column by column down the whole strip, so a lane passing
+    // straight through many rows is one stroke, not one per row. Within any
+    // one band the order is unchanged (columns left to right), and edges
+    // stay confined to their band, so the pixels are the per-row drawing's.
+    let widest = strip
+        .rows
+        .iter()
+        .map(|raster_row| raster_row.row.lanes.len())
+        .max()
+        .unwrap_or(0);
+    for column in 0..widest {
+        pen.column(&mut pixmap, column);
+    }
+    // Then what sits on each row's node: stubs, the marker, the node disc
+    // punched over the edges.
     for (index, raster_row) in strip.rows.iter().enumerate() {
         let above = match index.checked_sub(1) {
             Some(previous) => Some(strip.rows[previous].row),
@@ -196,7 +211,7 @@ struct Band {
 }
 
 /// A colour, its opacity and the stroke width it draws at.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 struct Ink {
     rgb: Rgb,
     alpha: u8,
@@ -243,6 +258,55 @@ impl<'a> Pen<'a> {
         Ink { rgb, alpha, width }
     }
 
+    fn band(&self, index: usize) -> Band {
+        let top = count(index) * self.cell_height;
+        Band {
+            top,
+            mid: top + self.cell_height / 2.0,
+            bottom: top + self.cell_height,
+        }
+    }
+
+    /// One non-node column's edges down the whole strip: a closing arc, an
+    /// opening arc, or a line straight through the band. Consecutive rows
+    /// passing straight through in the same ink are one stroke.
+    fn column(&self, pixmap: &mut Pixmap, column: usize) {
+        let is_marker = self.strip.marker.map(|marker| marker.column) == Some(column);
+        let x = self.x(column);
+        // The straight run being extended: its top, its bottom, its ink.
+        let mut run: Option<(f32, f32, Ink)> = None;
+        for (index, raster_row) in self.strip.rows.iter().enumerate() {
+            let row = raster_row.row;
+            let band = self.band(index);
+            let identity = row.lanes.get(column).copied().flatten();
+            if identity.is_none() || column == row.lane {
+                flush(pixmap, x, run.take());
+                continue;
+            }
+            let ink = self.ink(identity, raster_row.emphasis_at(column));
+            let node = self.x(row.lane);
+            if row.incoming.contains(&column) {
+                flush(pixmap, x, run.take());
+                stroke(pixmap, arc_in((x, band.top), (node, band.mid)), ink);
+            } else if row.outgoing.iter().any(|&(out, _)| out == column) {
+                flush(pixmap, x, run.take());
+                stroke(pixmap, arc_out((node, band.mid), (x, band.bottom)), ink);
+            } else if is_marker {
+                flush(pixmap, x, run.take());
+            } else {
+                run = match run {
+                    Some((top, _, run_ink)) if run_ink == ink => Some((top, band.bottom, ink)),
+                    other => {
+                        flush(pixmap, x, other);
+                        Some((band.top, band.bottom, ink))
+                    }
+                };
+            }
+        }
+        flush(pixmap, x, run);
+    }
+
+    /// A row's own lane stubs, its marker and its node, drawn over the edges.
     fn row(
         &self,
         pixmap: &mut Pixmap,
@@ -250,21 +314,8 @@ impl<'a> Pen<'a> {
         raster_row: &RasterRow<'_>,
         above: Option<&Row>,
     ) {
-        let top = count(index) * self.cell_height;
-        let band = Band {
-            top,
-            mid: top + self.cell_height / 2.0,
-            bottom: top + self.cell_height,
-        };
+        let band = self.band(index);
         let row = raster_row.row;
-        let marker = self.strip.marker.map(|marker| marker.column);
-        for (column, identity) in row.lanes.iter().enumerate() {
-            if identity.is_none() || column == row.lane {
-                continue;
-            }
-            let ink = self.ink(*identity, raster_row.emphasis_at(column));
-            self.edge(pixmap, row, column, band, ink, marker == Some(column));
-        }
         let lane_ink = self.ink(
             row.lanes.get(row.lane).copied().flatten(),
             raster_row.emphasis_at(row.lane),
@@ -280,27 +331,6 @@ impl<'a> Pen<'a> {
             self.marker(pixmap, raster_row, marker, band);
         }
         node::draw(pixmap, raster_row.ring, (x, band.mid), self.node, lane_ink);
-    }
-
-    /// One non-node column's edge on a row.
-    fn edge(
-        &self,
-        pixmap: &mut Pixmap,
-        row: &Row,
-        column: usize,
-        band: Band,
-        ink: Ink,
-        is_marker: bool,
-    ) {
-        let x = self.x(column);
-        let node = self.x(row.lane);
-        if row.incoming.contains(&column) {
-            stroke(pixmap, arc_in((x, band.top), (node, band.mid)), ink);
-        } else if row.outgoing.iter().any(|&(out, _)| out == column) {
-            stroke(pixmap, arc_out((node, band.mid), (x, band.bottom)), ink);
-        } else if !is_marker {
-            stroke(pixmap, line(x, band.top, x, band.bottom), ink);
-        }
     }
 
     fn marker(&self, pixmap: &mut Pixmap, raster_row: &RasterRow<'_>, marker: Marker, band: Band) {
@@ -329,6 +359,13 @@ fn goes_down(row: &Row, column: usize) -> bool {
         return row.outgoing.iter().any(|&(out, _)| out == column);
     }
     row.lanes.get(column).copied().flatten().is_some() && !row.incoming.contains(&column)
+}
+
+/// Stroke a straight run of a lane down column `x`, if one is open.
+fn flush(pixmap: &mut Pixmap, x: f32, run: Option<(f32, f32, Ink)>) {
+    if let Some((top, bottom, ink)) = run {
+        stroke(pixmap, line(x, top, x, bottom), ink);
+    }
 }
 
 fn line(x0: f32, y0: f32, x1: f32, y1: f32) -> Option<tiny_skia::Path> {
