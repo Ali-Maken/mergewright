@@ -1,0 +1,53 @@
+17 tooltip sanitizes escapes: real release binary in a pty, 80x24, truecolor. Repo /tmp/g17: HEAD's subject and body carry a raw ESC[31m...ESC[0m sequence (a hostile commit message). Enter opens the tooltip for it. Look for: the placeholder glyph, not a live color escape or cursor move, in both the subject and body lines.
+
+== boot (HEAD is the escape-carrying commit) ==
+ graft /tmp/g17  6 commits
+◆   [◆ main] Evil commit␛[31mRED␛[0m                                2y   035be34
+●   Commit 5                                                        2y   0f5b722
+●   Commit 4                                                        2y   73910c5
+●   Commit 3                                                        2y   00a921e
+●   Commit 2                                                        2y   bb8fa59
+◇   Commit 1                                                        2y   8b46afc
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom
+
+== Enter opens the tooltip: escape renders inert ==
+ graft /tmp/g17  6 commits
+◆   [◆ main] Evil commit␛[31mRED␛[0m                                2y   035be34
+●   Commit 5                                                        2y   0f5b722
+●   Commit 4                                                        2y   73910c5
+●   Commit 3                                                        2y   00a921e
+●   Commit 2                                                        2y   bb8fa59
+◇   Commit 1                                                        2y   8b46afc
+
+     ┌────────────────────────────────────────────────────────────────────┐
+     │Evil commit␛[31mRED␛[0m                                             │
+     │                                                                    │
+     │                                                                    │
+     │Body with escape ␛[31mred␛[0m inside it.                            │
+     │                                                                    │
+     │parents: 0f5b722                                                    │
+     └────────────────────────────────────────────────────────────────────┘
+
+
+
+
+
+
+
+ q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom

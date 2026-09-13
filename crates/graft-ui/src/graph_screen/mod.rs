@@ -26,7 +26,7 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Widget;
+use ratatui::widgets::{Block, Borders, Clear, Paragraph, Widget, Wrap};
 use unicode_width::UnicodeWidthStr;
 
 pub use badges::{Badge, BadgeKind, Icons, Tracking};
@@ -87,6 +87,24 @@ pub struct GraphView<'a> {
     /// What the history shown leaves out; said in the header so a folded or
     /// first-parent graph is never mistaken for the whole one.
     pub filters: Filters,
+    /// The commit tooltip, open over the graph: hover or the keyboard opened
+    /// it on the same content (PROMPT.md §1.3, DESIGN.md §2.15). `None` when
+    /// closed.
+    pub tooltip: Option<Tooltip>,
+}
+
+/// The commit tooltip: the full message and the parents, reachable
+/// identically from a hover and from the keyboard. "Contained in"
+/// (PROMPT.md §1.3) is left for M2 (`KNOWN_GAPS`) — nothing here fakes it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Tooltip {
+    /// The commit's subject line, sanitised.
+    pub subject: SanitizedText,
+    /// The rest of the message, sanitised; empty when the commit has none.
+    pub body: SanitizedText,
+    /// Parent short SHAs, first parent first. Hex from a fixed alphabet is
+    /// safe as-is, like [`GraphEntry::sha`] — no sanitising needed.
+    pub parents: Vec<String>,
 }
 
 /// What the history on screen leaves out (PROMPT.md §1.3). The default is
@@ -358,7 +376,64 @@ impl Widget for GraphScreen<'_> {
             let footer = Line::styled(fit(&text, width), foreground(self.theme, token));
             buf.set_line(area.x, area.bottom() - 1, &footer, area.width);
         }
+
+        if let Some(tooltip) = &self.view.tooltip {
+            render_tooltip(tooltip, area, self.theme, buf);
+        }
     }
+}
+
+/// Draws the commit tooltip as a bordered box floating over the graph,
+/// centred in `area`. Wrapped, so a long body never runs off the terminal.
+fn render_tooltip(tooltip: &Tooltip, area: Rect, theme: &Theme, buf: &mut Buffer) {
+    let mut lines = vec![Line::styled(
+        tooltip.subject.as_str().to_owned(),
+        foreground(theme, Token::Text).add_modifier(Modifier::BOLD),
+    )];
+    if !tooltip.body.as_str().is_empty() {
+        lines.push(Line::raw(""));
+        lines.extend(
+            tooltip
+                .body
+                .as_str()
+                .lines()
+                .map(|line| Line::raw(line.to_owned())),
+        );
+    }
+    lines.push(Line::raw(""));
+    lines.push(Line::styled(
+        if tooltip.parents.is_empty() {
+            "root commit — no parents".to_owned()
+        } else {
+            format!("parents: {}", tooltip.parents.join(" "))
+        },
+        foreground(theme, Token::TextMuted),
+    ));
+
+    let width = area.width.saturating_sub(4).clamp(1, 70).min(area.width);
+    let content_height = u16::try_from(lines.len()).unwrap_or(u16::MAX);
+    let height = content_height
+        .saturating_add(2)
+        .min(area.height.saturating_sub(2))
+        .max(1)
+        .min(area.height);
+    let tooltip_area = Rect {
+        x: area.x + (area.width.saturating_sub(width)) / 2,
+        y: area.y + (area.height.saturating_sub(height)) / 2,
+        width,
+        height,
+    };
+
+    Clear.render(tooltip_area, buf);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(foreground(theme, Token::Border))
+        .style(Style::new().bg(color(theme.token(Token::SurfaceRaised))));
+    Paragraph::new(lines)
+        .block(block)
+        .wrap(Wrap { trim: false })
+        .style(foreground(theme, Token::Text))
+        .render(tooltip_area, buf);
 }
 
 /// Where each trailing column sits and how wide it is, once the graph and

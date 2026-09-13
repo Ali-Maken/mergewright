@@ -12,7 +12,7 @@
 
 use std::path::PathBuf;
 
-use graft_core::event::{Event, KeyCode, KeyPress};
+use graft_core::event::{Event, KeyCode, KeyPress, Modifiers, MouseButton, MouseInput, MouseKind};
 use graft_core::job::JobId;
 use graft_core::oid::Oid;
 use graft_git::history::Order;
@@ -154,6 +154,11 @@ pub struct AppState {
     /// Focus mode (`F`, DESIGN.md §5.2): rows off the selection's thread
     /// fade. A paint decision like `lanes_expanded`; the walk is not asked.
     pub focus: bool,
+    /// The commit tooltip's row, if it is open: an absolute history row
+    /// number, set the same way whether a hover or `Enter` opened it
+    /// (DESIGN.md §2.15, PROMPT.md §1.3; m1-the-graph/17). `None` when
+    /// closed.
+    pub tooltip: Option<usize>,
 }
 
 /// The screens Graft can show.
@@ -408,9 +413,10 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
                 set_phase(next, Phase::Cancelled);
             }
         }
+        Event::Mouse(mouse) => mouse_event(next, commands, mouse),
         // Nothing is bound to these yet. They reach `update` so that the
         // tickets that need them have somewhere obvious to add the handling.
-        Event::Mouse(_) | Event::Paste(_) | Event::FocusGained | Event::FocusLost => {}
+        Event::Paste(_) | Event::FocusGained | Event::FocusLost => {}
     }
 }
 
@@ -434,6 +440,11 @@ fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         next.lanes_expanded = !next.lanes_expanded;
     } else if is_focus_toggle(key) {
         next.focus = !next.focus;
+    } else if is_tooltip_key(key) {
+        // The keyboard's route to the same content a hover opens (DESIGN.md
+        // §2.15): the selection's row, looked up the same way `graph_row_at`
+        // looks up a hovered one.
+        next.tooltip = next.history.as_ref().map(|history| history.cursor);
     } else if let Some(change) = view_change(key) {
         let height = next.graph_rows();
         let stash = next.refs.as_ref().and_then(crate::refs::RefBadges::stash);
@@ -453,28 +464,38 @@ fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
             commands.push(Command::ShowRows(id, request));
         }
     } else if key.code == KeyCode::Escape {
-        let height = next.graph_rows();
-        // A `G` still walking is what `Esc` backs out of first; the
-        // walk itself goes on serving the rows already on screen.
-        if let Some(id) = next.awaiting
-            && let Some(history) = next.history.as_mut()
-            && let Some(request) = history.withdraw_jump(height)
-        {
-            commands.push(Command::ShowRows(id, request));
-            return;
-        }
-        // Then Focus mode: leaving it is not a reason to stop the walk.
-        if next.focus {
-            next.focus = false;
-            return;
-        }
-        // Stop waiting first, then ask the job to stop. The order
-        // matters: a job that finishes between the two lines still
-        // sends its result, and it has to find nobody waiting for it.
-        if let Some(id) = next.awaiting.take() {
-            commands.push(Command::CancelJob(id));
-            set_phase(next, Phase::Cancelled);
-        }
+        escape_key(next, commands);
+    }
+}
+
+/// `Esc`: closes the tooltip if one is open, else backs a `G` still walking
+/// out first, then leaves Focus mode, then cancels the walk — the lightest
+/// thing on screen goes first (m1-the-graph/17, DESIGN.md §2.2).
+fn escape_key(next: &mut AppState, commands: &mut Vec<Command>) {
+    if next.tooltip.take().is_some() {
+        return;
+    }
+    let height = next.graph_rows();
+    // A `G` still walking is what `Esc` backs out of first; the
+    // walk itself goes on serving the rows already on screen.
+    if let Some(id) = next.awaiting
+        && let Some(history) = next.history.as_mut()
+        && let Some(request) = history.withdraw_jump(height)
+    {
+        commands.push(Command::ShowRows(id, request));
+        return;
+    }
+    // Then Focus mode: leaving it is not a reason to stop the walk.
+    if next.focus {
+        next.focus = false;
+        return;
+    }
+    // Stop waiting first, then ask the job to stop. The order
+    // matters: a job that finishes between the two lines still
+    // sends its result, and it has to find nobody waiting for it.
+    if let Some(id) = next.awaiting.take() {
+        commands.push(Command::CancelJob(id));
+        set_phase(next, Phase::Cancelled);
     }
 }
 
@@ -529,6 +550,82 @@ fn is_focus_toggle(key: KeyPress) -> bool {
 
 fn is_lane_toggle(key: KeyPress) -> bool {
     key.code == KeyCode::Char('+') && !key.modifiers.control && !key.modifiers.alt
+}
+
+/// `Enter`: open the tooltip for the selection — the keyboard's route to the
+/// content a hover shows (DESIGN.md §2.15, PROMPT.md §1.3). Free on the graph
+/// pane: DESIGN.md §2.3 binds it only on a sidebar row, which m1 has none of.
+fn is_tooltip_key(key: KeyPress) -> bool {
+    key.code == KeyCode::Enter && key.modifiers == Modifiers::NONE
+}
+
+/// Screen rows above the graph body: the header line `graph_screen` draws at
+/// the top (`CHROME_ROWS` also counts the footer, which a mouse row never
+/// needs to skip past — `graph_rows` already excludes it).
+const HEADER_ROWS: u16 = 1;
+
+/// Rows the wheel moves the viewport per notch (DESIGN.md §2.15). The
+/// keyboard's `j`/`k` move the selection; the wheel moves the viewport
+/// instead and leaves it alone, the way every other terminal pager's wheel
+/// does.
+const WHEEL_LINES: isize = 3;
+
+/// The half of [`core_event`] that answers the mouse (DESIGN.md §2.15).
+fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mouse: MouseInput) {
+    match mouse.kind {
+        MouseKind::ScrollUp => scroll(next, commands, -WHEEL_LINES),
+        MouseKind::ScrollDown => scroll(next, commands, WHEEL_LINES),
+        MouseKind::Down(MouseButton::Left) => {
+            if let Some(row) = graph_row_at(next, mouse.row) {
+                select_row(next, commands, row);
+            }
+        }
+        // Any-motion reporting (`terminal.rs`) is what makes this arrive with
+        // no button held — hover, not a drag.
+        MouseKind::Moved => next.tooltip = graph_row_at(next, mouse.row),
+        _ => {}
+    }
+}
+
+/// Scrolls the viewport by `lines` wheel notches; the selection stays put.
+fn scroll(next: &mut AppState, commands: &mut Vec<Command>, lines: isize) {
+    let height = next.graph_rows();
+    if let Some(history) = next.history.as_mut()
+        && let Some(request) = history.scroll(lines, height)
+        && let Some(id) = next.awaiting
+    {
+        commands.push(Command::ShowRows(id, request));
+    }
+}
+
+/// Selects the row a click landed on.
+fn select_row(next: &mut AppState, commands: &mut Vec<Command>, row: usize) {
+    let height = next.graph_rows();
+    if let Some(history) = next.history.as_mut()
+        && let Some(request) = history.select_at(row, height)
+        && let Some(id) = next.awaiting
+    {
+        commands.push(Command::ShowRows(id, request));
+    }
+}
+
+/// The absolute history row a screen row names, if it names a row at all:
+/// `None` over the header, the footer, the uncommitted-changes row (nothing
+/// selectable there — `d` already reaches it directly), or a row below what
+/// has laid out so far.
+fn graph_row_at(state: &AppState, screen_row: u16) -> Option<usize> {
+    let history = state.history.as_ref()?;
+    let offset = usize::from(screen_row.checked_sub(HEADER_ROWS)?);
+    if offset >= state.graph_rows() {
+        return None;
+    }
+    let offset = if crate::view::uncommitted_shown(state) {
+        offset.checked_sub(1)?
+    } else {
+        offset
+    };
+    let absolute = history.top + offset;
+    (absolute < history.rows).then_some(absolute)
 }
 
 /// A key that changes which history is shown (PROMPT.md §1.3). DESIGN.md
@@ -599,7 +696,7 @@ fn is_refresh(key: KeyPress) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use graft_core::event::{Modifiers, MouseInput, MouseKind};
+    use graft_core::event::Modifiers;
     use graft_core::job::{JobFailure, JobId};
 
     use graft_core::commit::{Commit, Identity, Timestamp};
@@ -799,6 +896,106 @@ mod tests {
         assert_eq!(left.history, before);
     }
 
+    #[test]
+    fn a_click_selects_the_row_under_the_pointer() {
+        let id = JobId::new(20);
+        let (mut state, merge_id) = merge_on_screen(id, 0);
+        state.size = Size {
+            columns: 80,
+            rows: 5,
+        };
+
+        let click = core(Event::Mouse(MouseInput {
+            kind: MouseKind::Down(MouseButton::Left),
+            column: 10,
+            row: HEADER_ROWS + 1,
+            modifiers: Modifiers::NONE,
+        }));
+        let (next, _) = update(&state, click);
+
+        assert_eq!(next.history.as_ref().map(|history| history.cursor), Some(1));
+        assert_eq!(
+            next.history
+                .as_ref()
+                .and_then(History::selected)
+                .map(|row| row.commit.id),
+            Some(merge_id)
+        );
+    }
+
+    #[test]
+    fn the_wheel_scrolls_the_viewport_and_leaves_the_selection_alone() {
+        let id = JobId::new(21);
+        let (mut state, _) = merge_on_screen(id, 0);
+        state.size = Size {
+            columns: 80,
+            rows: 5,
+        };
+
+        let scroll_down = core(Event::Mouse(MouseInput {
+            kind: MouseKind::ScrollDown,
+            column: 0,
+            row: 0,
+            modifiers: Modifiers::NONE,
+        }));
+        let (down, _) = update(&state, scroll_down);
+        assert_eq!(down.history.as_ref().map(|history| history.top), Some(1));
+        assert_eq!(down.history.as_ref().map(|history| history.cursor), Some(0));
+
+        let scroll_up = core(Event::Mouse(MouseInput {
+            kind: MouseKind::ScrollUp,
+            column: 0,
+            row: 0,
+            modifiers: Modifiers::NONE,
+        }));
+        let (up, _) = update(&down, scroll_up);
+        assert_eq!(up.history.as_ref().map(|history| history.top), Some(0));
+    }
+
+    #[test]
+    fn hover_and_enter_open_the_tooltip_on_the_same_row() {
+        let id = JobId::new(22);
+        let (mut state, _) = merge_on_screen(id, 1);
+        state.size = Size {
+            columns: 80,
+            rows: 5,
+        };
+
+        let hover = core(Event::Mouse(MouseInput {
+            kind: MouseKind::Moved,
+            column: 5,
+            row: HEADER_ROWS + 1,
+            modifiers: Modifiers::NONE,
+        }));
+        let (hovered, _) = update(&state, hover);
+        assert_eq!(hovered.tooltip, Some(1), "hover names the row under it");
+
+        let (opened, _) = update(&state, key(KeyCode::Enter));
+        assert_eq!(
+            opened.tooltip, hovered.tooltip,
+            "the keyboard names the same row as the hover"
+        );
+    }
+
+    #[test]
+    fn esc_closes_the_tooltip_before_anything_else() {
+        let id = JobId::new(23);
+        let (state, _) = merge_on_screen(id, 1);
+        let (opened, _) = update(&state, key(KeyCode::Enter));
+        assert_eq!(opened.tooltip, Some(1));
+
+        let (closed, commands) = update(&opened, key(KeyCode::Escape));
+        assert_eq!(closed.tooltip, None);
+        assert!(
+            commands.is_empty(),
+            "closing the tooltip asks nothing of the walk"
+        );
+        assert_eq!(
+            closed.awaiting, opened.awaiting,
+            "the walk itself is untouched"
+        );
+    }
+
     /// Moving the selection inside the rows on hand asks the history job for
     /// nothing: the thread and its fade are worked out from those rows, so a
     /// selection change makes no layout or walk call.
@@ -868,14 +1065,7 @@ mod tests {
         let before = AppState::default();
         let unbound = [
             key(KeyCode::Char('z')),
-            key(KeyCode::Enter),
             key(KeyCode::Function(7)),
-            core(Event::Mouse(MouseInput {
-                kind: MouseKind::Moved,
-                column: 3,
-                row: 4,
-                modifiers: Modifiers::NONE,
-            })),
             core(Event::Paste("hello".to_owned())),
             core(Event::FocusGained),
             core(Event::FocusLost),
@@ -1043,6 +1233,7 @@ mod tests {
             screen: Screen::Graph,
             lanes_expanded: false,
             focus: false,
+            tooltip: None,
         };
 
         let first = update(&state, key(KeyCode::Char('q')));

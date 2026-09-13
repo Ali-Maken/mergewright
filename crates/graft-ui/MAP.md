@@ -42,6 +42,8 @@ One line per public item. Update when a public item changes.
 - `GraphView::icons` (field) — which glyphs badges draw with (`ui.icons`).
 - `GraphView::compaction` (field) — lane limit, expansion flag and pinned columns; the screen plans one `Fold` per frame over the rows it draws.
 - `GraphView::filters` (field) — what the history shown leaves out; said in the header.
+- `GraphView::tooltip` (field) — the commit tooltip, open over the graph, or `None` (m1-the-graph/17).
+- `Tooltip` (struct) — `subject`, `body` (both `SanitizedText`), `parents` (short shas); hover and `Enter` build it identically (m1-the-graph/17). "Contained in" is out of scope — `KNOWN_GAPS.md`.
 - `Filters` (struct) — `first_parent`, `folded` (merge count), `stash_hidden`, `focused` (Focus mode on); `Filters::text` is the header's words, empty for none.
 - `Compaction` (struct) — `max_lanes` (`graph.max_lanes`), `expanded` (the `+` key), `pinned` (reserved integration lanes and the selection's thread columns).
 - `Compaction::at` (fn) — collapsed, nothing pinned but lane 0.

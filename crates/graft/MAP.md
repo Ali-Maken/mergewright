@@ -73,6 +73,7 @@ One line per public item. Update when a public item changes.
 - `AppState::screen` (field) — which screen is on show; graph by default.
 - `AppState::lanes_expanded` (field) — `+` pressed: lanes draw unfolded; a view flag, the rows are untouched.
 - `AppState::focus` (field) — Focus mode (`F`; `Esc` leaves it before cancelling anything): rows off the selection's thread fade; paint only.
+- `AppState::tooltip` (field) — the open tooltip's absolute row number, set identically by hover and `Enter`; `Esc` closes it first (m1-the-graph/17).
 - `Screen` (enum) — `Graph` (default) or `Status`.
 - `Screen::toggled` (fn) — the other screen; `F2` swaps.
 - `Quit` (enum) — why Graft is leaving.
@@ -213,6 +214,9 @@ One line per public item. Update when a public item changes.
 - `History::view` (field) — the view every request asks for; kept across refresh.
 - `History::change_view` (fn) — switch view, returning the request that shows it (a `Follow` switch goes to the top; the selected commit is re-found in the rows that come back).
 - `History::selected` (fn) — the row under the cursor, if it has arrived.
+- `History::row_at` (fn) — the row at an absolute row number, if it has arrived; what `selected` and a mouse hover both ask for.
+- `History::select_at` (fn) — move the cursor straight to a row (a click), clamped to what has laid out.
+- `History::scroll` (fn) — move the viewport by N lines without moving the selection (the wheel).
 - `History::started` (fn) — a walk asked for but that has sent nothing yet.
 - `History::apply` (fn) — take in one update; answers to any but the newest request are dropped.
 - `History::show` (fn) — request filling the viewport where it is (start, resize), if needed.

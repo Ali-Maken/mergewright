@@ -226,6 +226,7 @@ exists.
 | Gap | Created by | Expiry |
 |---|---|---|
 | **No in-app conflict resolver.** M5 can produce conflicts through merge, rebase and cherry-pick before M6 builds the three-pane resolver. M5 must detect the conflicted state, list the conflicting files, offer the user's configured `git mergetool` or `$EDITOR`, and keep the operation banner with Continue / Skip / Abort available. M5 must not claim conflict resolution works | M5 | **M6** |
+| **The commit tooltip has no "contained in" line.** m1-the-graph/17 built the tooltip (hover and `Enter`, identical content): subject, full body, parent shas. Which branches/tags a commit is contained in (PROMPT.md §1.3) needs the branch-tip ancestry lookup the sidebar work hasn't built yet, so it is left out rather than faked | m1-the-graph/17 | M2 |
 
 ---
 

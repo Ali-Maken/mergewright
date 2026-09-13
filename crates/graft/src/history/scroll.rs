@@ -142,8 +142,41 @@ impl History {
     /// The row the cursor is on, if it has arrived.
     #[must_use]
     pub fn selected(&self) -> Option<&Row> {
+        self.row_at(self.cursor)
+    }
+
+    /// The row at absolute row number `at`, if it is in the window on hand.
+    /// What [`History::selected`] asks for at the cursor, and what a mouse
+    /// hover asks for at whatever row is under the pointer (m1-the-graph/17).
+    #[must_use]
+    pub fn row_at(&self, at: usize) -> Option<&Row> {
         let window = self.window.as_ref()?;
-        window.rows.get(self.cursor.checked_sub(window.first)?)
+        window.rows.get(at.checked_sub(window.first)?)
+    }
+
+    /// Moves the cursor straight to row `at` — a click, not a step — clamped
+    /// to the last row laid out so far. Scrolls the viewport to keep it on
+    /// screen and returns the request for any rows that now need fetching.
+    pub fn select_at(&mut self, at: usize, height: usize) -> Option<RowRequest> {
+        let height = height.max(1);
+        let withdrew = self.jump.take().is_some();
+        self.cursor = at.min(self.rows.saturating_sub(1));
+        self.follow(height);
+        self.wanted(height, withdrew)
+    }
+
+    /// Scrolls the viewport by `lines` (negative is up) without moving the
+    /// selection — the wheel (DESIGN.md §2.15), which is not the keyboard's
+    /// `j`/`k` and does not follow the cursor onto or off screen.
+    pub fn scroll(&mut self, lines: isize, height: usize) -> Option<RowRequest> {
+        let height = height.max(1);
+        let last = self.rows.saturating_sub(1);
+        self.top = if lines.is_negative() {
+            self.top.saturating_sub(lines.unsigned_abs())
+        } else {
+            self.top.saturating_add(lines.unsigned_abs()).min(last)
+        };
+        self.wanted(height, false)
     }
 
     /// Withdraws a `G` still walking, returning the request that replaces it

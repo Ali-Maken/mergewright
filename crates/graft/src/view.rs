@@ -15,7 +15,7 @@ use graft_git::version::SystemGit;
 use graft_graph::identity::BranchIdentity;
 use graft_graph::row::Row;
 use graft_graph::{Ancestry, Kin};
-use graft_term::{SanitizedText, sanitize_line, sanitize_path, sanitize_path_bytes};
+use graft_term::{SanitizedText, sanitize, sanitize_line, sanitize_path, sanitize_path_bytes};
 use graft_ui::graph_column::{GraphLine, NodeKind, RowPaint};
 use graft_ui::graph_screen::{
     AuthorChip, Badge, BadgeKind, Compaction, Filters, GraphEntry, GraphScreen, GraphView,
@@ -83,6 +83,7 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
             icons: graft_ui::graph_screen::Icons::default(),
             compaction: Compaction::at(crate::config::DEFAULT_MAX_LANES),
             filters: Filters::default(),
+            tooltip: None,
         };
     };
 
@@ -115,7 +116,33 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
             stash_hidden: !history.view.inclusion.hidden_stashes.is_empty(),
             focused: state.focus,
         },
+        tooltip: tooltip_view(state, history),
     }
+}
+
+/// The commit tooltip, if one is open: hover and the keyboard both leave
+/// `state.tooltip` pointing at an absolute row number, so both paths build
+/// the same content from the same lookup (m1-the-graph/17). `None` when the
+/// row it names has not (or no longer) arrived.
+fn tooltip_view(state: &AppState, history: &History) -> Option<graft_ui::graph_screen::Tooltip> {
+    let row = history.row_at(state.tooltip?)?;
+    let commit = &row.commit;
+    Some(graft_ui::graph_screen::Tooltip {
+        subject: sanitize_line(&String::from_utf8_lossy(commit.subject())),
+        body: sanitize(&String::from_utf8_lossy(commit_body(commit))),
+        parents: commit
+            .parents
+            .iter()
+            .map(|id| short_sha(&id.to_string(), usize::from(SHA_WIDTH)))
+            .collect(),
+    })
+}
+
+/// The message after its subject line, with the separating newline dropped.
+/// Empty for a one-line message.
+fn commit_body(commit: &graft_core::commit::Commit) -> &[u8] {
+    let rest = &commit.message[commit.subject().len()..];
+    rest.strip_prefix(b"\n").unwrap_or(rest)
 }
 
 /// How the graph folds its lanes: the session's limit is filled in by
@@ -230,6 +257,21 @@ fn visible_rows<'a>(
                 }),
         )
         .collect()
+}
+
+/// Does the uncommitted-changes row draw at the top of the viewport this
+/// frame? [`visible_rows`]'s own check, exposed so a mouse row (`update.rs`)
+/// can tell a click or a hover on it apart from a click on the real history
+/// row it displaces — the same working-tree and `HEAD` facts, asked the same
+/// way, off the same state.
+#[must_use]
+pub(crate) fn uncommitted_shown(state: &AppState) -> bool {
+    let Some(history) = &state.history else {
+        return false;
+    };
+    let top_row = history.visible(1).first();
+    let dirty = state.working_tree.is_some_and(|counts| !counts.is_clean());
+    dirty && head_is_topmost(state.refs.as_ref(), top_row)
 }
 
 /// Is `HEAD` the topmost visible row? The uncommitted row attaches only
@@ -614,6 +656,72 @@ mod tests {
             !screen.contains('\u{1b}'),
             "a subject's escape reached the cells"
         );
+    }
+
+    /// A message an escape sequence rendered inert in the tooltip
+    /// (m1-the-graph/17): `history_of`'s fixture commits carry `\x1b[31m` in
+    /// their subject, and neither the tooltip's subject nor its body may let
+    /// a raw escape byte through.
+    #[test]
+    fn a_tooltip_renders_an_escape_sequence_inert() {
+        let mut history = history_of(3, 0);
+        history.cursor = 0;
+        let state = AppState {
+            tooltip: Some(0),
+            history: Some(history),
+            size: Size {
+                columns: 60,
+                rows: 5,
+            },
+            ..AppState::default()
+        };
+
+        let tooltip = graph_view(&state).tooltip.expect("row 0 has arrived");
+        assert!(tooltip.subject.as_ref().starts_with("Commit 3"));
+        assert!(
+            !tooltip.subject.as_ref().contains('\u{1b}'),
+            "{}",
+            tooltip.subject.as_ref()
+        );
+        assert!(
+            !tooltip.body.as_ref().contains('\u{1b}'),
+            "{}",
+            tooltip.body.as_ref()
+        );
+
+        let screen = draw(&state, 60, 5);
+        assert!(!screen.contains('\u{1b}'), "{screen}");
+    }
+
+    /// Hover and the keyboard both point `state.tooltip` at the same
+    /// absolute row, so both routes build byte-for-byte identical content
+    /// (m1-the-graph/17) — the acceptance criterion this proves.
+    #[test]
+    fn hover_and_keyboard_produce_identical_tooltip_content() {
+        let history = history_of(4, 2);
+        let base = AppState {
+            history: Some(history),
+            size: Size {
+                columns: 60,
+                rows: 5,
+            },
+            ..AppState::default()
+        };
+
+        // The keyboard opens the tooltip for the current selection (cursor).
+        let keyboard = AppState {
+            tooltip: Some(base.history.as_ref().expect("a walk").cursor),
+            ..base.clone()
+        };
+        // A hover over that same row sets the identical absolute index.
+        let hover = AppState {
+            tooltip: Some(2),
+            ..base.clone()
+        };
+
+        let from_keyboard = graph_view(&keyboard).tooltip.expect("row 2 has arrived");
+        let from_hover = graph_view(&hover).tooltip.expect("row 2 has arrived");
+        assert_eq!(from_keyboard, from_hover);
     }
 
     /// Refs whose `HEAD` resolves to `head`, or is unborn when `head` is

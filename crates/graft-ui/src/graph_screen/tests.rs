@@ -72,6 +72,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
         icons: Icons::Plain,
         compaction: Compaction::at(8),
         filters: Filters::default(),
+        tooltip: None,
     }
 }
 
@@ -497,4 +498,20 @@ fn filters_are_named_in_the_header_only_when_something_is_left_out() {
         ..Filters::default()
     };
     assert_eq!(one.text(), "1 merge folded");
+}
+
+#[test]
+fn a_tooltip_overlays_the_body_with_the_subject_and_parents() {
+    let rows = linear(3);
+    let mut open = view(&rows, WalkView::Complete { rows: 3 }, 0);
+    open.tooltip = Some(Tooltip {
+        subject: sanitize_line("Commit 3"),
+        body: sanitize_line(""),
+        parents: vec!["deadbee".to_owned()],
+    });
+
+    let screen = text(&draw(&open, 40, 8));
+    let joined = screen.join("\n");
+    assert!(joined.contains("Commit 3"), "{screen:#?}");
+    assert!(joined.contains("deadbee"), "{screen:#?}");
 }
