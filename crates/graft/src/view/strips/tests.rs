@@ -161,7 +161,11 @@ fn one_fold_spans_every_strip_and_its_marker_reaches_the_strip() {
     let folded = pixel_rows(&state, 3, STRIP_ROWS);
     assert_eq!(firsts_and_lengths(&folded), vec![(32, 32)]);
     let marker = folded.marker.expect("lanes past the limit fold");
-    assert!(marker.folded > 0);
+    assert_eq!(
+        marker.column + 1,
+        folded.lane_columns,
+        "the rail is the last drawn column"
+    );
     assert!(folded.lane_columns <= 3, "{}", folded.lane_columns);
     let paint = StripPaint::of(&session());
     folded.strips[0].with_strip(&folded, &paint, |strip| {

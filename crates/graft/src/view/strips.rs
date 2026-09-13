@@ -31,7 +31,7 @@ pub struct StripPaint {
     pub cell_height: u32,
     /// Lane hues (`Theme::raster_lanes`).
     pub palette: Vec<Rgb>,
-    /// The `+N` marker's hue when no lane joins it.
+    /// The rail's hue.
     pub muted: Rgb,
 }
 
@@ -63,16 +63,13 @@ pub struct PixelRows {
 }
 
 impl PixelRows {
-    /// `strips` with the width and `+N` marker `fold` draws them at.
+    /// `strips` with the width and rail `fold` draws them at.
     fn drawn_through(strips: Vec<StripRows>, fold: &Fold, uncommitted_on_top: bool) -> PixelRows {
         PixelRows {
             strips,
             uncommitted_on_top,
             lane_columns: fold.drawn_columns(),
-            marker: fold.marker().map(|column| Marker {
-                column,
-                folded: fold.folded_count(),
-            }),
+            marker: fold.marker().map(|column| Marker { column }),
         }
     }
 }

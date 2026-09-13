@@ -277,6 +277,11 @@ Ghostty, git/git, pixel tier, cursor on the top row: lane 0 is the same
 thickness as every other lane and brighter than them; nothing in the graph
 is wider than a node ring's stroke.
 
+Ghostty, git/git, pixel tier (ticket 40): each merge node has a short tail
+that fades out to its right; the rightmost graph column is a faint dotted
+line; no number is drawn in the graph; no curve crosses other lanes to reach
+the dotted line.
+
 ### Unicode tier — must look deliberate
 
 **This is the default tier** (ADR-0016: Kitty → Unicode → iTerm2 → Sixel →

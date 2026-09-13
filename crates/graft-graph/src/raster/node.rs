@@ -61,6 +61,12 @@ impl NodeSize {
             gap,
         }
     }
+
+    /// From the node's centre to the nearest point a line may touch beside
+    /// a plain node: its outer radius plus the clear gap.
+    pub(super) fn clearance(self) -> f32 {
+        self.radius + self.gap
+    }
 }
 
 /// Draw one node centred at `centre`.

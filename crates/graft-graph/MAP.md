@@ -100,9 +100,9 @@ One line per public item. Update when a public item changes.
 - `Invalidated` (struct) — `from_row`, `chunks`, `checkpoints` a truncate threw away.
 
 ## raster
-- `rasterise` (fn) — a `Strip` in, a premultiplied `core::RasterFrame` out; pure, no cache; background never painted (ADR-0003).
+- `rasterise` (fn) — a `Strip` in, a premultiplied `core::RasterFrame` out; pure, no cache; background never painted (ADR-0003). Folded edges: a tail from the node's right edge, half a band toward `Toward`, alpha fading to 0 short of the next column's centre.
 - `Strip` (struct) — `rows`, `above` (row before the strip), `lane_columns`, `marker`, `cell_width`/`cell_height`, `palette`, `muted`.
-- `RasterRow` (struct) — a row in drawn columns plus `ring`, `emphasis`, `thread` (drawn columns on the selection's thread), `stubs` (folded edges; hashed, drawn by m1-the-graph/40). Clone, no longer Copy.
+- `RasterRow` (struct) — a row in drawn columns plus `ring`, `emphasis`, `thread` (drawn columns on the selection's thread), `stubs` (folded edges, drawn as one fading tail per row). Clone, no longer Copy.
 - `Stub` (struct) — `identity`, `toward` (`fold::Toward`): a folded edge for the rasteriser.
 - `RasterRow::plain` (fn) — `Ring::of` the row, normal emphasis, no thread.
 - `Ring` (enum) — node style by shape: `Commit`, `Merge`, `Root`, `Head`, `Stash`, `Uncommitted`; `Ring::of` (fn) from parent count.
@@ -110,7 +110,7 @@ One line per public item. Update when a public item changes.
 - `stroke_width` (fn, pub(crate)) — `(cell_width / 8.0).clamp(1.5, 2.5)`; the one stroke width for every lane, curve and node ring in a strip.
 - `OFF_THREAD_ALPHA` (const, 0.5) — alpha of a lane column off the selection's ancestry thread, when a thread is present.
 - `FADED_ALPHA` (const, 0.3) — alpha of an `Emphasis::Dimmed` row/column with no thread in play.
-- `Marker` (struct) — the rail column: `column`, `folded` (still fed from `Fold::folded_count` until 40 removes it).
+- `Marker` (struct) — the rail column: `column` only; drawn as a 1 px dotted muted vertical, no count (ADR-0022).
 - `RasterError` (enum) — `EmptyPalette`, `TooLarge`.
 - `CELLS_PER_LANE` (const) — cells per lane column (2), matching the Unicode tier.
 

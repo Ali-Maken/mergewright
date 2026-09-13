@@ -13,8 +13,10 @@ use std::time::Instant;
 use graft_core::capabilities::Rgb;
 use graft_core::raster::RasterFrame;
 use graft_fixtures::Shape;
+use graft_graph::fold::Toward;
+use graft_graph::identity::BranchIdentity;
 use graft_graph::layout::layout;
-use graft_graph::raster::{Emphasis, Marker, RasterRow, Ring, Strip, rasterise};
+use graft_graph::raster::{Emphasis, Marker, RasterRow, Ring, Strip, Stub, rasterise};
 use graft_graph::row::Row;
 
 use super::corpus::{open_with_seeds, walk_everything};
@@ -411,27 +413,210 @@ fn the_thread_is_alpha_not_a_wider_stroke() {
     );
 }
 
-#[test]
-fn the_marker_column_draws_its_count() {
-    let rows = rows_of("octopus-merge");
-    let row = &rows[1];
-    let raster_rows = [RasterRow::plain(row)];
-    let marker = Marker {
-        column: 4,
-        folded: 3,
+/// 40's strip: one lane of four commits beside the rail (column 1). Row 0 is
+/// a merge whose second parent folded (`Below`) and which also lost a forked
+/// branch (`Above`, listed second, so not drawn); row 2 had a branch fork off
+/// above it that folded (`Above`).
+fn folded_rows() -> Vec<Row> {
+    let base = lone(&rows_of("foxtrot-merge"));
+    (0..4)
+        .map(|index| {
+            let mut row = base.clone();
+            if index < 3 {
+                row.outgoing = vec![(0, base.commit.id)];
+            }
+            row
+        })
+        .collect()
+}
+
+fn topic() -> BranchIdentity {
+    BranchIdentity::of_name(b"topic")
+}
+
+fn feature() -> BranchIdentity {
+    BranchIdentity::of_name(b"feature")
+}
+
+fn folded_raster_rows(rows: &[Row], stubs: bool) -> Vec<RasterRow<'_>> {
+    let below = Stub {
+        identity: topic(),
+        toward: Toward::Below,
     };
-    let frame = rasterise(&Strip {
-        marker: Some(marker),
-        ..strip(&raster_rows, 5, SNAPSHOT_CELL)
+    let above = Stub {
+        identity: feature(),
+        toward: Toward::Above,
+    };
+    rows.iter()
+        .enumerate()
+        .map(|(index, row)| RasterRow {
+            ring: if index == 0 {
+                Ring::Merge
+            } else {
+                Ring::Commit
+            },
+            stubs: match (stubs, index) {
+                (true, 0) => vec![below, above],
+                (true, 2) => vec![above],
+                _ => Vec::new(),
+            },
+            ..RasterRow::plain(row)
+        })
+        .collect()
+}
+
+fn folded_frame(rows: &[Row], above: Option<&Row>, stubs: bool, cell: (u32, u32)) -> RasterFrame {
+    let raster_rows = folded_raster_rows(rows, stubs);
+    rasterise(&Strip {
+        above,
+        marker: Some(Marker { column: 1 }),
+        ..strip(&raster_rows, 2, cell)
     })
-    .unwrap();
-    let left = 8 * SNAPSHOT_CELL.0;
-    let solid = (left..frame.width)
-        .flat_map(|x| (0..frame.height).map(move |y| (x, y)))
-        .filter(|&(x, y)| frame.pixel(x, y).unwrap()[3] == 255)
-        .count();
-    // `+3` at scale 1: 5 pixels for the plus, 11 for the three.
-    assert_eq!(solid, 16, "the label's pixels, crisp:\n{}", art(&frame));
+    .unwrap_or_else(|why| panic!("rasterising the folded strip: {why}"))
+}
+
+#[test]
+fn folded_merge_snapshot() {
+    let rows = folded_rows();
+    insta::assert_snapshot!(
+        "raster-folded-merge",
+        art(&folded_frame(&rows, None, true, SNAPSHOT_CELL))
+    );
+}
+
+/// Pixels a strip's stubs changed: `(x, y, pixel)` of the drawing with stubs
+/// wherever it differs from the same strip drawn without them.
+fn tail_pixels(rows: &[Row]) -> Vec<(u32, u32, [u8; 4])> {
+    let with = folded_frame(rows, None, true, USER_CELL);
+    let without = folded_frame(rows, None, false, USER_CELL);
+    (0..with.height)
+        .flat_map(|y| (0..with.width).map(move |x| (x, y)))
+        .filter_map(|(x, y)| {
+            let at = |frame: &RasterFrame| {
+                frame
+                    .pixel(x, y)
+                    .unwrap_or_else(|| panic!("({x}, {y}) is outside the frame"))
+            };
+            let pixel = at(&with);
+            (pixel != at(&without)).then_some((x, y, pixel))
+        })
+        .collect()
+}
+
+#[test]
+fn a_folded_edge_is_a_tail_that_fades_out_before_the_next_column() {
+    assert_ne!(topic().slot(PALETTE.len()), feature().slot(PALETTE.len()));
+    let rows = folded_rows();
+    let (cell_width, cell_height) = USER_CELL;
+    let tail = tail_pixels(&rows);
+    // The next column's centre line is lane 1's centre, x 42.5, where the
+    // rail is: a tail pixel spans x..x+1, so it must start left of 42.
+    let next_centre = cell_width * 5 / 2;
+    for band in [0, 2] {
+        let top = band * cell_height;
+        let mid = top + cell_height / 2;
+        let own: Vec<_> = tail
+            .iter()
+            .filter(|&&(_, y, _)| (top..top + cell_height).contains(&y))
+            .collect();
+        assert!(!own.is_empty(), "band {band} draws a tail");
+        for &&(x, y, _) in &own {
+            assert!(
+                x < next_centre,
+                "band {band}: tail pixel at x {x} reaches the next column"
+            );
+            // Row 0's first stub leads down, row 2's up; one tail a row.
+            if band == 0 {
+                assert!(y + 2 >= mid, "band 0's tail rises to y {y}");
+            } else {
+                assert!(y <= mid + 2, "band 2's tail falls to y {y}");
+            }
+        }
+        let peak = |column: u32| {
+            own.iter()
+                .filter(|&&&(x, _, _)| x == column)
+                .map(|&&(_, _, pixel)| pixel[3])
+                .max()
+                .unwrap_or(0)
+        };
+        let first = own.iter().map(|&&(x, _, _)| x).min().unwrap();
+        let last = own.iter().map(|&&(x, _, _)| x).max().unwrap();
+        assert!(
+            last - first >= cell_width,
+            "band {band}: a tail about a lane long, {first}..={last}"
+        );
+        assert!(
+            f32::from(peak(last)) < 0.1 * f32::from(peak(first)),
+            "band {band}: the tail fades, {} at x {first} to {} at x {last}",
+            peak(first),
+            peak(last)
+        );
+        let solid = own
+            .iter()
+            .max_by_key(|&&&(_, _, pixel)| pixel[3])
+            .map(|&&(_, _, pixel)| pixel)
+            .unwrap();
+        let expected = if band == 0 { topic() } else { feature() };
+        assert_eq!(
+            slot(solid),
+            expected.slot(PALETTE.len()),
+            "band {band}: the first stub's colour"
+        );
+    }
+}
+
+#[test]
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // Sample rows inside a 37 px band.
+fn the_rail_is_a_grey_dotted_line_whose_dashes_never_jump() {
+    let rows = folded_rows();
+    let (_, cell_height) = USER_CELL;
+    let frame = folded_frame(&rows, None, true, USER_CELL);
+    // Lane 1's centre line is x 42.5; the rail takes the whole pixel 42.
+    let x = 42;
+    let alpha = |frame: &RasterFrame, y: u32| frame.pixel(x, y).unwrap()[3];
+    for y in 0..frame.height {
+        let [red, green, blue, _] = frame.pixel(x, y).unwrap();
+        assert!(
+            red.abs_diff(green) <= 1 && green.abs_diff(blue) <= 1,
+            "rail pixel at y {y} has colour: {red} {green} {blue}"
+        );
+    }
+    let third = f64::from(cell_height) / 3.0;
+    for band in 0..4 {
+        let top = f64::from(band * cell_height);
+        for dash in 0..3 {
+            let start = top + f64::from(dash) * third;
+            let on = (start + third / 4.0) as u32;
+            let off = (start + third * 0.75) as u32;
+            assert_eq!(
+                alpha(&frame, on),
+                255,
+                "band {band} dash {dash} is on at y {on}"
+            );
+            assert_eq!(
+                alpha(&frame, off),
+                0,
+                "band {band} dash {dash} is off at y {off}"
+            );
+        }
+    }
+    // Every band repeats the one before, and a strip starting mid-history
+    // draws its band 0 as the whole strip drew that row.
+    for y in 0..cell_height {
+        assert_eq!(
+            alpha(&frame, y),
+            alpha(&frame, y + cell_height),
+            "row edge at y {y}"
+        );
+    }
+    let later = folded_frame(&rows[2..], Some(&rows[1]), true, USER_CELL);
+    for y in 0..cell_height {
+        assert_eq!(
+            alpha(&later, y),
+            alpha(&frame, y + 2 * cell_height),
+            "strip edge at y {y}"
+        );
+    }
 }
 
 /// Acceptance: render time for a 32-row strip at the user's cell. Reported,
@@ -515,6 +700,13 @@ fn write_shots() {
         Some((0x1E, 0x1E, 0x2E)),
     );
     write_thread_shot(&shots);
+    // 40: folded edges as fading tails beside the dotted rail (ADR-0022).
+    let rows = folded_rows();
+    save(
+        &folded_frame(&rows, None, true, USER_CELL),
+        &shots.join("40-raster-folded-on-dark.png"),
+        Some((0x1E, 0x1E, 0x2E)),
+    );
 }
 
 /// 42: lane 0 on the selection's thread among four others — a line to

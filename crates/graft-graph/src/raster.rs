@@ -13,18 +13,21 @@
 //!   edge into the node, leaving vertically and arriving level;
 //! - a lane opening from the node: the mirror image, down to the band's
 //!   bottom edge;
+//! - an edge into a folded lane: a short tail leaving the node's right edge
+//!   and fading to nothing before the next column (ADR-0022);
+//! - the rail, when anything folds: a 1 px dotted vertical in the muted hue
+//!   on the marker column's centre line, three dashes a band;
 //! - the node itself, on a disc punched clear of every line, drawn in its
 //!   [`Ring`] style.
 //!
 //! The background is never painted (ADR-0003): a pixel no line, node or
-//! label touches stays `[0, 0, 0, 0]`, and the terminal composites.
+//! rail touches stays `[0, 0, 0, 0]`, and the terminal composites.
 //!
 //! Colour depth never dashes a lane here: an image carries full RGB whatever
 //! the terminal's text palette, so the Unicode tier's odd-column dashing
 //! (low colour depth only) has no pixel counterpart.
 
 pub mod cache;
-mod label;
 mod node;
 
 use std::cell::RefCell;
@@ -32,7 +35,10 @@ use std::collections::BTreeSet;
 
 use graft_core::capabilities::Rgb;
 use graft_core::raster::RasterFrame;
-use tiny_skia::{BlendMode, LineCap, Paint, PathBuilder, Pixmap, Stroke, Transform};
+use tiny_skia::{
+    BlendMode, Color, GradientStop, LineCap, LinearGradient, Paint, PathBuilder, Pixmap, Point,
+    Rect, SpreadMode, Stroke, Transform,
+};
 
 use crate::fold::Toward;
 use crate::identity::BranchIdentity;
@@ -80,8 +86,7 @@ impl Emphasis {
 }
 
 /// An edge a fold took out of a row (`fold::FoldedEdge`), to draw as a short
-/// tail on the node rather than a line to the rail (ADR-0022). Carried and
-/// hashed now; drawn by m1-the-graph/40.
+/// tail on the node rather than a line to the rail (ADR-0022).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Stub {
     /// The folded branch: the tail's colour.
@@ -132,13 +137,12 @@ impl<'a> RasterRow<'a> {
     }
 }
 
-/// The `+N` column: where it draws and how many lanes fold behind it.
+/// The rail: the drawn column folded lanes sit behind. It carries no count
+/// (ADR-0022); the screen header says how many lanes fold.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Marker {
-    /// The drawn column the marker takes (`Fold::marker`).
+    /// The drawn column the rail takes (`Fold::marker`).
     pub column: usize,
-    /// Lanes folded behind it (`Fold::folded().len()`).
-    pub folded: usize,
 }
 
 /// Everything one strip is drawn from.
@@ -151,7 +155,7 @@ pub struct Strip<'a> {
     pub above: Option<&'a Row>,
     /// Lane columns the strip is wide, marker included.
     pub lane_columns: usize,
-    /// The `+N` column, if anything folds.
+    /// The rail column, if anything folds.
     pub marker: Option<Marker>,
     /// Cell width in pixels.
     pub cell_width: u32,
@@ -159,7 +163,7 @@ pub struct Strip<'a> {
     pub cell_height: u32,
     /// Lane colours; an identity draws in `palette[identity.slot(len)]`.
     pub palette: &'a [Rgb],
-    /// The colour of a marker with no joining lane.
+    /// The rail's colour.
     pub muted: Rgb,
 }
 
@@ -232,8 +236,8 @@ pub fn rasterise(strip: &Strip<'_>) -> Result<RasterFrame, RasterError> {
     for column in 0..widest {
         pen.column(&mut pixmap, column);
     }
-    // Then what sits on each row's node: stubs, the marker, the node disc
-    // punched over the edges.
+    // Then what sits on each row's node: its lane's own stubs, a folded
+    // edge's tail, the rail, the node disc punched over the edges.
     for (index, raster_row) in strip.rows.iter().enumerate() {
         let above = match index.checked_sub(1) {
             Some(previous) => Some(strip.rows[previous].row),
@@ -371,7 +375,8 @@ impl<'a> Pen<'a> {
         flush(pixmap, run);
     }
 
-    /// A row's own lane stubs, its marker and its node, drawn over the edges.
+    /// A row's own lane stubs, its folded edge's tail, the rail and its node,
+    /// drawn over the edges.
     fn row(
         &self,
         pixmap: &mut Pixmap,
@@ -392,8 +397,9 @@ impl<'a> Pen<'a> {
         if row.outgoing.iter().any(|&(column, _)| column == row.lane) {
             stroke(pixmap, line(x, band.mid, x, band.bottom), lane_ink);
         }
+        self.tail(pixmap, raster_row, band);
         if let Some(marker) = self.strip.marker {
-            self.marker(pixmap, raster_row, marker, band);
+            self.rail(pixmap, raster_row, marker, band);
         }
         node::draw(pixmap, raster_row.ring, (x, band.mid), self.node, lane_ink);
     }
@@ -468,23 +474,73 @@ impl<'a> Pen<'a> {
         Some(scanlines.len() - 1)
     }
 
-    fn marker(&self, pixmap: &mut Pixmap, raster_row: &RasterRow<'_>, marker: Marker, band: Band) {
-        let joined = raster_row.row.lanes.get(marker.column).copied().flatten();
-        // The marker stands for lanes off the thread, so a thread dims it.
+    /// A folded edge's tail (ADR-0022): leaves the node's right edge level,
+    /// curves toward where the folded branch went (down for `Below`, up for
+    /// `Above`) over half a band, and fades from the lane's alpha to nothing
+    /// before the next column's centre line, so it never reads as reaching
+    /// another lane. Several folded edges on a row draw one tail, in the
+    /// first edge's colour.
+    fn tail(&self, pixmap: &mut Pixmap, raster_row: &RasterRow<'_>, band: Band) {
+        let Some(first) = raster_row.stubs.first() else {
+            return;
+        };
+        let row = raster_row.row;
+        let ink = self.ink(Some(first.identity), raster_row.alpha_at(row.lane));
+        let from = (self.x(row.lane) + self.node.clearance(), band.mid);
+        // Half a stroke short, and half again for anti-aliasing: the tail's
+        // widest reach stays left of the next centre line.
+        let to_x = self.x(row.lane + 1) - self.stroke;
+        let to_y = match first.toward {
+            Toward::Below => band.bottom,
+            Toward::Above => band.top,
+        };
+        let Rgb { red, green, blue } = ink.rgb;
+        // A gradient across x: alpha falls with distance from the node,
+        // whichever way the curve bends.
+        let shader = LinearGradient::new(
+            Point::from_xy(from.0, band.mid),
+            Point::from_xy(to_x, band.mid),
+            vec![
+                GradientStop::new(0.0, Color::from_rgba8(red, green, blue, ink.alpha)),
+                GradientStop::new(1.0, Color::from_rgba8(red, green, blue, 0)),
+            ],
+            SpreadMode::Pad,
+            Transform::identity(),
+        );
+        // `new` is `None` only when start and end coincide; the tail then
+        // has no length and there is nothing to draw.
+        let Some(shader) = shader else { return };
+        let paint = Paint {
+            shader,
+            anti_alias: true,
+            ..Paint::default()
+        };
+        stroke_with(pixmap, arc_out(from, (to_x, to_y)), &paint, ink.width);
+    }
+
+    /// The rail on one band: a 1 px dotted vertical on the marker column's
+    /// centre line (where the Unicode tier puts its `⋮`), in the muted hue.
+    /// Dashes are a sixth of a band on, a sixth off, starting at the band's
+    /// top, so every band draws the same three dashes and the pattern never
+    /// jumps at a row or strip edge.
+    fn rail(&self, pixmap: &mut Pixmap, raster_row: &RasterRow<'_>, marker: Marker, band: Band) {
+        // The rail stands for lanes off the thread, so a thread dims it.
         let alpha = if raster_row.thread.is_some() {
             OFF_THREAD_ALPHA
         } else {
             raster_row.emphasis.alpha()
         };
-        let ink = self.ink(joined, alpha);
-        let centre_x = self.x(marker.column) + self.cell_width / 2.0;
-        label::draw(
-            pixmap,
-            marker.folded,
-            (centre_x, band.mid),
-            self.cell_height,
-            ink,
-        );
+        let paint = paint(self.ink(None, alpha));
+        // A whole pixel column, so the rail is crisp, not two half-lit ones.
+        let left = (self.x(marker.column) - 0.5).round();
+        let dash = self.cell_height / 6.0;
+        for index in 0..3 {
+            let top = band.top + count(index) * 2.0 * dash;
+            // `from_xywh` is `None` only for an empty or non-finite rectangle.
+            if let Some(rect) = Rect::from_xywh(left, top, 1.0, dash) {
+                pixmap.fill_rect(rect, &paint, Transform::identity(), None);
+            }
+        }
     }
 }
 
@@ -541,15 +597,19 @@ fn arc_out(from: (f32, f32), to: (f32, f32)) -> Option<tiny_skia::Path> {
 }
 
 fn stroke(pixmap: &mut Pixmap, path: Option<tiny_skia::Path>, ink: Ink) {
+    stroke_with(pixmap, path, &paint(ink), ink.width);
+}
+
+fn stroke_with(pixmap: &mut Pixmap, path: Option<tiny_skia::Path>, paint: &Paint<'_>, width: f32) {
     // `finish` yields `None` only for a path with no length; there is then
     // nothing to draw.
     let Some(path) = path else { return };
     let stroke = Stroke {
-        width: ink.width,
+        width,
         line_cap: LineCap::Butt,
         ..Stroke::default()
     };
-    pixmap.stroke_path(&path, &paint(ink), &stroke, Transform::identity(), None);
+    pixmap.stroke_path(&path, paint, &stroke, Transform::identity(), None);
 }
 
 fn paint(ink: Ink) -> Paint<'static> {
@@ -559,8 +619,8 @@ fn paint(ink: Ink) -> Paint<'static> {
     paint
 }
 
-/// A paint that erases to transparent: node discs and label backs punch
-/// through whatever lines were drawn under them.
+/// A paint that erases to transparent: node discs punch through whatever
+/// lines were drawn under them.
 fn eraser() -> Paint<'static> {
     Paint {
         blend_mode: BlendMode::Clear,

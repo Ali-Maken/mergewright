@@ -11,8 +11,8 @@
 //! The strips cover what the drawing order could disturb: straight lanes
 //! over many rows, merges and forks crossing other lanes, an octopus, a
 //! wide (~28-lane) strip mid-history (with the row above it), a thread's
-//! per-column emphasis, whole-row dimming and highlighting, and the `+N`
-//! marker punching its label through the lines.
+//! per-column emphasis, whole-row dimming and highlighting, and the rail
+//! over a lane-free marker column.
 
 use std::collections::BTreeSet;
 use std::fmt::Write as _;
@@ -225,15 +225,7 @@ fn strips_keep_every_byte() {
     cases.push(threaded(&wide, &even, &few));
     cases.push(Case {
         lane_columns: 12,
-        ..plain(
-            "wide-marker",
-            &wide,
-            32..64,
-            Some(Marker {
-                column: 11,
-                folded: 17,
-            }),
-        )
+        ..plain("wide-marker", &wide, 32..64, Some(Marker { column: 11 }))
     });
 
     let mut out = String::new();

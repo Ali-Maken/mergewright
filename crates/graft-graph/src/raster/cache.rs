@@ -270,7 +270,7 @@ impl StripCache {
 /// cell size aside: per row its commit id, columns, edges, lane identities,
 /// Mistake Radar marker, ring, and emphasis (the thread's lit columns when
 /// it has one, else the row's own); the edges of the row above that
-/// reach into the strip; the strip's width and `+N` marker. Nothing else — a
+/// reach into the strip; the strip's width and rail column. Nothing else — a
 /// commit message the rasteriser never reads does not change it.
 ///
 /// Layout is deterministic (DESIGN.md §3.7), so an evicted and rebuilt row
