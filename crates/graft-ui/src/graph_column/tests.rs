@@ -276,8 +276,8 @@ fn wide_merges() -> Vec<Row> {
     rows
 }
 
-fn no_pins() -> std::collections::BTreeSet<usize> {
-    std::collections::BTreeSet::new()
+fn no_pins() -> graft_graph::fold::Keep {
+    graft_graph::fold::Keep::default()
 }
 
 fn render_through(lines: &[GraphLine<'_>], fold: &Fold, theme: &Theme) -> Buffer {
@@ -294,7 +294,7 @@ fn render_through(lines: &[GraphLine<'_>], fold: &Fold, theme: &Theme) -> Buffer
 fn folded_lanes_draw_a_rail_and_their_edges_as_stubs() {
     let rows = wide_merges();
     let lines: Vec<_> = rows.iter().map(GraphLine::plain).collect();
-    let fold = Fold::plan(&rows, 8, &no_pins());
+    let fold = Fold::plan(8, &no_pins(), &rows);
     let theme = dark(ColorDepth::TrueColor);
     let buf = render_through(&lines, &fold, &theme);
 
@@ -318,7 +318,7 @@ fn folded_lanes_draw_a_rail_and_their_edges_as_stubs() {
 fn every_row_ends_in_the_rail_with_no_count_at_every_colour_depth() {
     let rows = wide_merges();
     let lines: Vec<_> = rows.iter().map(GraphLine::plain).collect();
-    let fold = Fold::plan(&rows, 8, &no_pins());
+    let fold = Fold::plan(8, &no_pins(), &rows);
     let truecolor: Vec<String> = {
         let buf = render_through(&lines, &fold, &dark(ColorDepth::TrueColor));
         (0..buf.area.height).map(|y| text(&buf, y)).collect()
@@ -349,7 +349,7 @@ fn every_row_ends_in_the_rail_with_no_count_at_every_colour_depth() {
 #[test]
 fn a_folded_incoming_edge_stubs_upward() {
     let rows = wide_merges();
-    let fold = Fold::plan(&rows, 8, &no_pins());
+    let fold = Fold::plan(8, &no_pins(), &rows);
     let folded = fold.folded()[0];
     // A commit on lane 0 that a folded lane closes into from above.
     let mut row = rows[11].clone();
@@ -404,7 +404,7 @@ fn ascii_never_draws_the_dash_lane_convention() {
 fn ascii_folded_lanes_draw_the_rail_and_stubs_from_the_table() {
     let rows = wide_merges();
     let lines: Vec<_> = rows.iter().map(GraphLine::plain).collect();
-    let fold = Fold::plan(&rows, 8, &no_pins());
+    let fold = Fold::plan(8, &no_pins(), &rows);
     let theme = dark(ColorDepth::TrueColor);
     let width = GraphColumn::width_through(&fold);
     let area = Rect::new(0, 0, width, u16::try_from(lines.len()).expect("few rows"));
@@ -422,7 +422,7 @@ fn ascii_folded_lanes_draw_the_rail_and_stubs_from_the_table() {
 fn a_fold_that_folds_nothing_draws_as_laid_out() {
     let rows = reuse_rows();
     let lines: Vec<_> = rows.iter().map(GraphLine::plain).collect();
-    let fold = Fold::plan(&rows, 8, &no_pins());
+    let fold = Fold::plan(8, &no_pins(), &rows);
     let theme = dark(ColorDepth::TrueColor);
     let plain = render(&lines, &theme, 4);
     let through = render_through(&lines, &fold, &theme);
@@ -434,7 +434,7 @@ fn dashes_follow_the_real_column_through_a_fold() {
     let rows = wide_merges();
     let lines: Vec<_> = rows.iter().map(GraphLine::plain).collect();
     // Seven folded: real column 8 draws at position 1, real 9 at position 2.
-    let fold = Fold::plan(&rows, 7, &no_pins());
+    let fold = Fold::plan(7, &no_pins(), &rows);
     assert_eq!(fold.kept(), [0, 8, 9, 10, 11, 12]);
     let buf = render_through(&lines, &fold, &dark(ColorDepth::Palette16));
 

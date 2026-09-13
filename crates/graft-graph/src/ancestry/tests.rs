@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use super::*;
+use crate::fold::Keep;
 use crate::layout::layout;
 use crate::layout::tests::{commit, oid};
 use crate::{BranchIdentity, BranchSeed, Fold, Seeds};
@@ -107,10 +108,13 @@ fn columns_are_every_lit_column_in_the_window() {
     assert_eq!(ancestry.columns(), union);
 }
 
-/// Ticket 14's fold never hides a lane the selection's thread runs in: twelve
-/// topics merged into main, a lane limit of three, the oldest topic selected.
+/// ADR-0025: the selection's thread is a budget priority, not a veto. Twelve
+/// topics merged into main; at a lane limit of three the thread (lane 0 and
+/// the merged branch's own column) fits the budget and survives, but at a
+/// tight enough limit the thread's own branch column folds too — only lane 0
+/// (the one class that never folds) is guaranteed.
 #[test]
-fn a_lane_on_the_selected_ancestry_is_never_folded() {
+fn a_lane_on_the_selected_ancestry_survives_while_the_budget_allows_it() {
     const TOPICS: u8 = 12;
     let mut commits = Vec::new();
     for k in (1..=TOPICS).rev() {
@@ -136,7 +140,14 @@ fn a_lane_on_the_selected_ancestry_is_never_folded() {
         let Some(ancestry) = Ancestry::of(window, oid(selected)) else {
             panic!("merge {k} is in the window");
         };
-        let fold = Fold::plan(window, 3, &ancestry.columns());
+        let keep = Keep {
+            selected: None,
+            reserved: BTreeSet::new(),
+            preferred: ancestry.columns(),
+        };
+
+        // A budget with room for the thread keeps it whole.
+        let fold = Fold::plan(6, &keep, window);
         assert!(
             !fold.folded().is_empty(),
             "merge {k}: the limit forces a fold"
@@ -144,12 +155,30 @@ fn a_lane_on_the_selected_ancestry_is_never_folded() {
         for column in ancestry.columns() {
             assert!(
                 !fold.folded().contains(&column),
-                "merge {k}: thread column {column} folded"
+                "merge {k}: thread column {column} folded even though the budget had room"
             );
         }
         assert!(
             fold.drawn(rows[usize::from(TOPICS - k)].outgoing[1].0)
                 .is_some()
         );
+
+        // A tight enough budget still folds part of the thread: it is a
+        // priority, not a veto (ADR-0025). Lane 0 is the only column ever
+        // guaranteed.
+        let tight = Fold::plan(1, &keep, window);
+        assert!(
+            tight.kept().contains(&0),
+            "merge {k}: lane 0 is never folded"
+        );
+        if ancestry.columns().len() > 1 {
+            assert!(
+                !ancestry
+                    .columns()
+                    .iter()
+                    .all(|column| tight.kept().contains(column)),
+                "merge {k}: the whole thread survived an impossibly tight budget"
+            );
+        }
     }
 }

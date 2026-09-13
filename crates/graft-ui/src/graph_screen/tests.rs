@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use graft_core::capabilities::ColorDepth;
 use graft_core::commit::{Commit, Identity, Timestamp};
 use graft_core::oid::Oid;
@@ -483,6 +485,55 @@ fn more_lanes_than_the_limit_fold_behind_a_rail_and_leave_the_subject_readable()
     assert!(screen[1].contains("Merge branch 'topic-12'"), "{screen:#?}");
     assert!(screen[12].contains("Merge branch 'topic-1'"), "{screen:#?}");
     assert!(screen[23].contains("+ expand lanes"), "{screen:#?}");
+}
+
+/// ADR-0025: a thread twenty columns wide is a priority, not a veto — the
+/// configured cap still holds. Twenty-two rows (twenty merges plus two
+/// topics), the cursor on the topmost merge, its whole thread kept: the
+/// column still stops at `max_lanes = 8`, the rail is the last column drawn
+/// on every row, and the header's count is exact.
+#[test]
+fn a_thread_of_twenty_columns_still_fits_the_configured_cap() {
+    let mut rows = wide_history(20);
+    rows.truncate(22);
+    let opened_on = |k: usize| rows[k].outgoing[1].0;
+    let selected = opened_on(0);
+    let thread: BTreeSet<usize> = (0..20).map(opened_on).collect();
+
+    let mut screen_view = view(&rows, WalkView::Complete { rows: 22 }, 0);
+    screen_view.compaction = Compaction {
+        max_lanes: 8,
+        expanded: false,
+        keep: Keep {
+            selected: Some(selected),
+            reserved: BTreeSet::new(),
+            preferred: thread,
+        },
+    };
+    let fold = screen_view.compaction.plan(rows.iter());
+    let width = usize::from(GraphColumn::width_through(&fold));
+    assert!(width <= 40, "graph column {width} cells wide");
+
+    let open = fold.kept().len() + fold.folded().len();
+    let screen = text(&draw(&screen_view, 80, 24));
+    assert!(
+        screen[0]
+            .trim_end()
+            .ends_with(&format!("+{} lanes", open - 7)),
+        "{screen:#?}"
+    );
+
+    // The rail is the drawn column right after every kept lane: nothing but
+    // the marker and padding sits between the graph and the subject.
+    let rail = fold.marker().expect("the thread does not fit unfolded");
+    assert_eq!(rail, fold.kept().len());
+    for line in &screen[1..23] {
+        assert_eq!(
+            cells(line, width).chars().count(),
+            width,
+            "row shorter than the column it was given: {line:?}"
+        );
+    }
 }
 
 #[test]

@@ -16,7 +16,7 @@ use graft_graph::raster::{Emphasis, Marker, RasterRow, Ring, Strip, Stub};
 use graft_graph::row::Row;
 use graft_graph::{Fold, Kin};
 
-use super::{Thread, head_is_topmost, thread, uncommitted_row};
+use super::{Thread, head_is_topmost, keep_for, thread, uncommitted_row};
 use crate::history::History;
 use crate::refs::RefBadges;
 use crate::session::Session;
@@ -285,8 +285,8 @@ fn aligned(viewport: Range<usize>, strip_rows: usize) -> impl Iterator<Item = Ra
 }
 
 /// One fold over every strip drawn, so a lane keeps its column across strip
-/// boundaries. Pinned as the text tiers pin: the integration lanes and the
-/// selection's thread over the rows drawn.
+/// boundaries. Weighs columns as the text tiers do — [`keep_for`], shared —
+/// so a lane never folds differently between tiers.
 fn plan<'r>(
     state: &AppState,
     history: &History,
@@ -300,24 +300,29 @@ fn plan<'r>(
         .walk
         .as_ref()
         .map_or(0, |walk| walk.integration.len());
-    let rows = || ranges.iter().flat_map(Range::clone);
-    let pinned: BTreeSet<usize> = (1..=integration)
-        .chain(
-            thread
-                .into_iter()
-                .flat_map(|thread| rows().flat_map(move |index| thread.lit(index).iter().copied())),
-        )
+    let reserved: BTreeSet<usize> = (1..=integration).collect();
+    let indices: Vec<usize> = ranges.iter().flat_map(Range::clone).collect();
+    let drawn: Vec<Row> = virtual_row
+        .into_iter()
+        .cloned()
+        .chain(indices.iter().map(|&index| row_at(index).clone()))
         .collect();
+    let cursor = indices
+        .iter()
+        .position(|&index| index == history.cursor)
+        .map(|position| position + usize::from(virtual_row.is_some()));
+    let keep = keep_for(
+        &drawn,
+        cursor,
+        &reserved,
+        thread.map(|thread| &thread.ancestry),
+    );
     let max_lanes = if state.lanes_expanded {
         usize::MAX
     } else {
         max_lanes
     };
-    Fold::plan(
-        virtual_row.into_iter().chain(rows().map(&row_at)),
-        max_lanes,
-        &pinned,
-    )
+    Fold::plan(max_lanes, &keep, &drawn)
 }
 
 /// Paints a history row the way `visible_rows` does for text.

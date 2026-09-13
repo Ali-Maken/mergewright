@@ -35,11 +35,12 @@ One line per public item. Update when a public item changes.
 - `Ancestry::of` (fn) — the thread of a commit through a row window; `None` if it is not there.
 - `Ancestry::kin` (fn) — a window row's relation to the selection.
 - `Ancestry::lit` (fn) — real columns on a window row carrying the thread.
-- `Ancestry::columns` (fn) — every lit column: the protected set handed to `Fold::plan`.
+- `Ancestry::columns` (fn) — every lit column: the preferred set a fold weighs above ordinary columns, `Keep::preferred` (ADR-0025) — a priority, not a veto.
 
 ## fold
 - `Fold` (struct) — which real columns a window of rows draws and which fold behind the rail; a lens over laid-out rows, never a re-layout (DESIGN.md §3.5).
-- `Fold::plan` (fn) — decide the fold for a window: at most `max_lanes` drawn (marker included); folds least-recently-touched first, never lane 0, a pinned column, or a column holding a node in the window; a column open in no row is dropped, not counted.
+- `Keep` (struct) — `selected` (the selected commit's own column), `reserved` (integration lanes), `preferred` (the selection's thread): budget priorities for `Fold::plan`, not vetoes (ADR-0025).
+- `Fold::plan` (fn) — `plan(max_lanes, &keep, rows)`: decide the fold for a window. The cap is a budget: admits columns in priority order — lane 0; any column holding a node in the window (may still exceed the budget); `keep.selected`; `keep.reserved`; `keep.preferred`; everything else — least-recently-touched first within a class. A column open in no row is dropped, not counted.
 - `Fold::is_empty` (fn) — nothing folded and nothing dropped: the window draws as laid out.
 - `Fold::folded` (fn) — real columns behind the marker, ascending.
 - `Fold::kept` (fn) — real columns drawn, in drawn order.

@@ -1,0 +1,27 @@
+m1-the-graph/47: git/git, 80x24, Unicode tier, after j j onto a merge train. ADR-0025: the selected commit's thread no longer pins the graph column and rail to half the terminal width.
+
+== final frame, plain ==
+ graft /Users/devuser/.cache/graft/git-git.git  88 rows so far  +17 lanes
+◉▾            ⋮   [next] Merge branch 'jk/ci-use-system-asciidocto… 1d   848ec2e
+│ ◉▾          ⋮   [seen] Merge branch 'js/rust-in-windows-ci' into… 1d   a184f46
+│ ◉▾          ⋮   Merge branch 'ap/var-broken-down-idents' into se… 1d   01c5fa0
+│ ◉▾          ⋮   Merge branch 'ks/history-commit-leakfix' into se… 1d   2c03a69
+│ ◉▾          ⋮   Merge branch 'ps/ref-storage-format' into seen    1d   37f625a
+│ ◉▾          ⋮   Merge branch 'jc/rust-cargo-build-target' into s… 1d   9b27d4b
+│ ◉▾          ⋮   Merge branch 'tc/push-force-if-includes-fixes' i… 1d   aeac75a
+│ ◉▾          ⋮   Merge branch 'tb/rerere-lock-grace' into seen     1d   bc3ed91
+│ ◉▾          ⋮   Merge branch 'as/push-force-if-includes-no-reflo… 1d   37cba83
+│ ◉▾          ⋮   Merge branch 'mm/diff-process-hunks' into seen    1d   49433a1
+│ ◉▾          ⋮   Merge branch 'cc/early-scan-options' into seen    1d   161b15a
+│ ◉▾          ⋮   Merge branch 'tc/last-modified-bloom' into seen   1d   9a7d54e
+│ ◉▾          ⋮   Merge branch 'll/doc-pushcert-if-asked' into seen 1d   9e3f1e6
+│ ◉▾          ⋮   Merge branch 'jc/checkout-refactor' into seen     1d   8b26a30
+│ ◉▾          ⋮   Merge branch 'fz/rebase-autosquash-empty' into s… 1d   bd7b139
+│ ◉▾          ⋮   Merge branch 'ws/squelch-svn-migrate' into seen   1d   ceeb10c
+│ ◉▾          ⋮   Merge branch 'hn/history-squash' into seen        1d   6b7797e
+│ ◉─╮         ⋮   Merge branch 'kh/format-rev-more-options' into s… 1d   65a1653
+│ ◉─│─╮       ⋮   Merge branch 'gg/http-ssl-verify-status' into se… 1d   c5f1475
+│ ◉─│─│─╮     ⋮   Merge branch 'cc/lazy-fetch-trusted-bit' into se… 1d   f7b5265
+│ ◉─│─│─│─╮   ⋮   Merge branch 'ty/repo-config-cleanups' into seen  1d   0922e37
+│ ◉─│─│─│─│─╮ ⋮   Merge branch 'bc/restrict-hex-to-lowercase' into… 1d   6b8525b
+ q quit  F2 status  F3 renderer  + expand lanes  / search  j/k move  Enter pin

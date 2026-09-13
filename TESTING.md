@@ -610,16 +610,32 @@ Press `F3` at any stop: the text right of the graph must not move.
     and back). Merge rows are `◉` with a curve coming in; release commits
     carry `[tag: v2.x.y]` badges. `1` leaves a single column of merges and
     direct commits; `Space` folds each merge's side commits behind it.
-    **At 80×24 (ticket 39):** on the first frame the header ends `+N lanes` (N = 17 on the
-    2026-09-13 clone; any N > 0 passes); each merge
+    **At 80×24 (ticket 39, 47):** on the first frame the header ends `+N lanes`, N ≥ 10 (17 on the
+    2026-09-13 clone); each merge
     row whose second parent is folded shows `◉▾` (stub right of its node); the
     last graph column is `⋮` on every row; no `+` or digits in any row's graph
     column; no curve reaches the `⋮` column. `+` expands: rail and count gone.
+    After `j j` (ticket 47, ADR-0025 — the cursor's move onto a merge train no
+    longer pins its whole thread against folding): the header still ends
+    `+N lanes` with N ≥ 10, and the graph column and rail are not cut to half
+    the terminal's width.
     **The cap follows width (ticket 44):** git/git at 80 columns: 7 lanes and
     the rail; at 160: 11 and the rail. `graph.max_lanes = 6` in config: 5 and
     the rail at both widths. `graph.max_lanes = 30` at 80 columns: 19 and the
     rail, nothing cut (the screen's own bound, not the configured number,
     wins).
+    **many-lanes (ticket 39/47's synthetic corpus, fourteen topics merged one
+    after another):** at 80×24 the first frame reads `+6 lanes` (9 node
+    columns and the rail drawn: lane 0 and topics 14–7 hold nodes in the
+    window; topics 6–1 fold); at 120×40 nothing folds and no rail (every
+    column holds a node in the 38-row window — correct, not a gap).
+
+    **Pins are priorities, not vetoes (ticket 47, ADR-0025):** the merge
+    train's own thread column, the reserved integration lanes and the
+    cursor's own column are budget priorities — they fold too once the
+    budget can't hold them. `docs/shots/47-git-git-80x24-after-jj.txt`: the
+    header still ends `+N lanes` (N ≥ 10) after `j j` lands on a merge, and
+    the rail sits well inside the terminal's width, not cut at half of it.
 
 ### Per terminal: walk the gallery
 

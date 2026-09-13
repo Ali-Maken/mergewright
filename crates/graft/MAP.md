@@ -190,7 +190,7 @@ One line per public item. Update when a public item changes.
 - `view_with_graphics` (fn) — `view`, plus the gfx status in the header at the pixel tier; returns the graph rect the images go in, `None` when no pixels this frame.
 - `tier_in_force` (fn) — the graph's tier from `Session` + `AppState`: F3's override, else the session's (m1-the-graph/33).
 - `draws_pixels` (fn) — graph screen, pixel tier (override else session), Kitty or iTerm2 protocol — or no acked protocol at all (forced `pixel` attempts Kitty, m1-the-graph/24d).
-- `graph_view` (fn) — build a `GraphView` from the history window, cursor and status; the selection's `Ancestry` over the window lights lanes, fades rows in Focus mode, and pins its columns against folding.
+- `graph_view` (fn) — build a `GraphView` from the history window, cursor and status; the selection's `Ancestry` over the window lights lanes, fades rows in Focus mode, and weighs its columns as a fold priority — not a veto (ADR-0025).
 - `status_view` (fn) — build a `StatusView` from session and app state.
 
 ## event_loop

@@ -13,6 +13,7 @@
 use graft_core::capabilities::{PixelProtocol, RenderingTier};
 use graft_git::status::WorkingTreeCounts;
 use graft_git::version::SystemGit;
+use graft_graph::fold::Keep;
 use graft_graph::identity::BranchIdentity;
 use graft_graph::row::Row;
 use graft_graph::{Ancestry, Kin};
@@ -28,6 +29,7 @@ use graft_ui::status_screen::{
 };
 use ratatui::Frame;
 use ratatui::layout::Rect;
+use std::collections::BTreeSet;
 
 use crate::history::{History, Phase, Promotion, WalkFacts};
 use crate::refs::{RefBadges, RefLabel, Upstream};
@@ -182,6 +184,7 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
     let walk = walk_view(history);
     let thread = thread(history);
     let rows = visible_rows(state, history, thread.as_ref());
+    let compaction = compaction(state, history, thread.as_ref(), &rows);
 
     GraphView {
         location,
@@ -189,7 +192,7 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
         walk,
         rows,
         icons: graft_ui::graph_screen::Icons::default(),
-        compaction: compaction(state, history, thread.as_ref()),
+        compaction,
         filters: Filters {
             first_parent: history.view.follow == graft_graph::Follow::FirstParent,
             folded: history.view.inclusion.folded.len(),
@@ -331,24 +334,55 @@ fn commit_body(commit: &graft_core::commit::Commit) -> &[u8] {
 }
 
 /// How the graph folds its lanes: the session's limit is filled in by
-/// [`view`], the expansion flag is the user's, and the reserved integration
-/// lanes (`1..=n`, after lane 0) are pinned so a fold never hides a lane a
-/// branch was promised. So are the columns the selection's thread runs in
-/// on screen: a fold never hides where the selected commit came from.
-fn compaction(state: &AppState, history: &History, thread: Option<&Thread>) -> Compaction {
+/// [`view`], the expansion flag is the user's, and [`keep_for`] weighs the
+/// reserved integration lanes (`1..=n`, after lane 0), the cursor's own
+/// column and the selection's thread ahead of everything else (ADR-0025) —
+/// a priority a fold still overrides once the budget runs out, not a veto.
+fn compaction(
+    state: &AppState,
+    history: &History,
+    thread: Option<&Thread>,
+    rows: &[GraphEntry<'_>],
+) -> Compaction {
     let integration = history
         .walk
         .as_ref()
         .map_or(0, |walk| walk.integration.len());
+    let reserved: BTreeSet<usize> = (1..=integration).collect();
+    let cursor = rows
+        .iter()
+        .position(|entry| entry.line.paint == RowPaint::Highlighted);
+    let drawn: Vec<Row> = rows
+        .iter()
+        .map(|entry| entry.line.row.as_ref())
+        .cloned()
+        .collect();
     Compaction {
         max_lanes: crate::config::DEFAULT_MAX_LANES,
         expanded: state.lanes_expanded,
-        pinned: (1..=integration)
-            .chain(thread.into_iter().flat_map(|thread| {
-                (history.top..history.top + state.graph_rows())
-                    .flat_map(|index| thread.lit(index).iter().copied())
-            }))
-            .collect(),
+        keep: keep_for(
+            &drawn,
+            cursor,
+            &reserved,
+            thread.map(|thread| &thread.ancestry),
+        ),
+    }
+}
+
+/// The columns a fold weighs above the ordinary rank (ADR-0025), built once
+/// and shared by the text and pixel tiers so a lane never folds differently
+/// between them: the cursor's own column when its row is among `rows`,
+/// `reserved` as given, and the selection's thread (`Ancestry::columns`).
+fn keep_for(
+    rows: &[Row],
+    cursor: Option<usize>,
+    reserved: &BTreeSet<usize>,
+    thread: Option<&Ancestry>,
+) -> Keep {
+    Keep {
+        selected: cursor.and_then(|at| rows.get(at)).map(|row| row.lane),
+        reserved: reserved.clone(),
+        preferred: thread.map(Ancestry::columns).unwrap_or_default(),
     }
 }
 

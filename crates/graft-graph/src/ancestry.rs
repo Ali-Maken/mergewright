@@ -77,8 +77,9 @@ impl Ancestry {
         self.lit.get(row).unwrap_or(&NONE)
     }
 
-    /// Every column the thread lights anywhere in the window: the protected
-    /// set a fold must not hide (DESIGN.md §3.5).
+    /// Every column the thread lights anywhere in the window: the preferred
+    /// set a fold weighs above ordinary columns, [`crate::fold::Keep::preferred`]
+    /// (ADR-0025) — a priority, not a veto.
     #[must_use]
     pub fn columns(&self) -> BTreeSet<usize> {
         self.lit.iter().flatten().copied().collect()

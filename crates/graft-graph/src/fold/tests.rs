@@ -49,14 +49,14 @@ fn opened_on(rows: &[Row], row: usize) -> usize {
     rows[row].outgoing[1].0
 }
 
-fn none() -> BTreeSet<usize> {
-    BTreeSet::new()
+fn none() -> Keep {
+    Keep::default()
 }
 
 #[test]
 fn a_window_within_the_limit_draws_as_laid_out() {
     let rows = wide_history();
-    let fold = Fold::plan(&rows[..3], 8, &none());
+    let fold = Fold::plan(8, &none(), &rows[..3]);
 
     assert!(fold.is_empty());
     assert_eq!(fold.marker(), None);
@@ -70,7 +70,7 @@ fn a_window_within_the_limit_draws_as_laid_out() {
 fn the_least_recently_touched_lanes_fold_first_and_the_marker_fits_the_limit() {
     let rows = wide_history();
     let merges = &rows[..12];
-    let fold = Fold::plan(merges, 8, &none());
+    let fold = Fold::plan(8, &none(), merges);
 
     // Thirteen columns open; seven drawn plus the marker is eight.
     assert_eq!(fold.drawn_columns(), 8);
@@ -90,7 +90,7 @@ fn the_least_recently_touched_lanes_fold_first_and_the_marker_fits_the_limit() {
 fn a_lane_no_row_touches_folds_before_one_a_row_touched() {
     let rows = wide_history();
     // Rows 3..12: the lanes the top three merges opened only pass through.
-    let fold = Fold::plan(&rows[3..12], 4, &none());
+    let fold = Fold::plan(4, &none(), &rows[3..12]);
 
     let pass_throughs: BTreeSet<usize> = (0..3).map(|row| opened_on(&rows, row)).collect();
     let folded: BTreeSet<usize> = fold.folded().iter().copied().collect();
@@ -103,7 +103,7 @@ fn a_lane_no_row_touches_folds_before_one_a_row_touched() {
 #[test]
 fn edges_into_folded_lanes_leave_the_row_as_stubs_in_their_colour() {
     let rows = wide_history();
-    let fold = Fold::plan(&rows[..12], 8, &none());
+    let fold = Fold::plan(8, &none(), &rows[..12]);
     let top = &rows[0];
     let folded_column = opened_on(&rows, 0);
     assert!(fold.folded().contains(&folded_column));
@@ -130,7 +130,7 @@ fn edges_into_folded_lanes_leave_the_row_as_stubs_in_their_colour() {
 #[test]
 fn a_fold_that_changes_nothing_borrows_the_row_and_folds_no_edge() {
     let rows = wide_history();
-    let fold = Fold::plan(&rows, 64, &none());
+    let fold = Fold::plan(64, &none(), &rows);
     assert!(fold.is_empty());
     assert_eq!(fold.folded_count(), 0);
     for row in &rows {
@@ -144,25 +144,87 @@ fn a_fold_that_changes_nothing_borrows_the_row_and_folds_no_edge() {
     }
 }
 
+/// ADR-0025: the budget admits columns in strict priority order — selected
+/// over reserved, reserved over preferred, preferred over an unclassed
+/// column, whatever their recency. Twelve merges open thirteen columns
+/// (lane 0 plus one per merge); `opened_on(&rows, 0..3)` are the three
+/// earliest-touched — the first candidates a pure recency rule would fold —
+/// while `opened_on(&rows, 11)` is the latest-touched of the unclassed rest.
 #[test]
-fn a_pinned_column_stays_and_the_next_candidate_folds_instead() {
+fn the_budget_admits_selected_then_reserved_then_preferred_over_a_more_recently_touched_column() {
     let rows = wide_history();
-    let pinned: BTreeSet<usize> = [opened_on(&rows, 0)].into_iter().collect();
-    let fold = Fold::plan(&rows[..12], 8, &pinned);
+    let merges = &rows[..12];
+    let selected = opened_on(&rows, 0);
+    let reserved = opened_on(&rows, 1);
+    let preferred = opened_on(&rows, 2);
+    let recent_unclassed = opened_on(&rows, 11);
+    let keep = Keep {
+        selected: Some(selected),
+        reserved: BTreeSet::from([reserved]),
+        preferred: BTreeSet::from([preferred]),
+    };
 
-    assert!(!fold.folded().contains(&opened_on(&rows, 0)));
-    assert!(fold.kept().contains(&opened_on(&rows, 0)));
-    let mut expected: Vec<usize> = (1..7).map(|row| opened_on(&rows, row)).collect();
-    expected.sort_unstable();
-    assert_eq!(fold.folded(), expected);
-    assert_eq!(fold.drawn_columns(), 8);
+    // Room for lane 0 plus all three classified columns: the nine unclassed
+    // columns fold, `recent_unclassed` included, though it was touched more
+    // recently than every classified column.
+    let fold = Fold::plan(5, &keep, merges);
+    assert_eq!(fold.drawn_columns(), 5);
+    for column in [selected, reserved, preferred] {
+        assert!(fold.kept().contains(&column), "{column} should survive");
+    }
+    assert!(fold.folded().contains(&recent_unclassed));
+
+    // One slot less: `preferred` folds too, `reserved` still survives.
+    let fold = Fold::plan(4, &keep, merges);
+    assert_eq!(fold.drawn_columns(), 4);
+    assert!(fold.folded().contains(&preferred), "preferred should fold");
+    assert!(fold.kept().contains(&reserved), "reserved should survive");
+    assert!(fold.kept().contains(&selected), "selected should survive");
+
+    // One slot less again: `reserved` folds too, only `selected` survives.
+    let fold = Fold::plan(3, &keep, merges);
+    assert_eq!(fold.drawn_columns(), 3);
+    assert!(fold.folded().contains(&reserved), "reserved should fold");
+    assert!(fold.kept().contains(&selected), "selected should survive");
 }
 
 #[test]
-fn when_only_nodes_and_pins_remain_the_window_draws_wider_than_the_limit() {
+fn lane_zero_draws_alone_when_the_budget_allows_only_the_rail() {
+    let rows = wide_history();
+    // Eleven merges: lane 0 plus eleven opened lanes, twelve open columns.
+    let fold = Fold::plan(2, &none(), &rows[..11]);
+
+    assert_eq!(fold.kept(), [0]);
+    assert_eq!(fold.folded_count(), 11);
+    assert_eq!(fold.drawn_columns(), 2);
+}
+
+#[test]
+fn a_thread_of_twelve_columns_still_folds_down_to_the_budget() {
+    let rows = wide_history();
+    let merges = &rows[..12];
+    let selected = opened_on(&rows, 0);
+    let thread: BTreeSet<usize> = (0..12).map(|row| opened_on(&rows, row)).collect();
+    let keep = Keep {
+        selected: Some(selected),
+        reserved: BTreeSet::new(),
+        preferred: thread,
+    };
+
+    let fold = Fold::plan(8, &keep, merges);
+    assert_eq!(fold.drawn_columns(), 8);
+    assert!(fold.folded_count() >= 5, "{}", fold.folded_count());
+    assert!(
+        fold.kept().contains(&selected),
+        "the selected column is always drawn"
+    );
+}
+
+#[test]
+fn when_only_nodes_remain_the_window_draws_wider_than_the_limit() {
     let rows = wide_history();
     // Every topic commit is a node in this window: nothing may fold.
-    let fold = Fold::plan(&rows[12..], 8, &none());
+    let fold = Fold::plan(8, &none(), &rows[12..]);
 
     assert!(fold.folded().is_empty());
     assert_eq!(fold.drawn_columns(), 13);
@@ -198,7 +260,7 @@ fn a_column_open_in_no_row_is_dropped_without_counting() {
         ],
         marker: None,
     };
-    let fold = Fold::plan([&row], 8, &none());
+    let fold = Fold::plan(8, &none(), std::slice::from_ref(&row));
 
     assert_eq!(
         fold.marker(),
@@ -219,14 +281,15 @@ fn tier() -> ProptestConfig {
     ProptestConfig::with_cases(graft_fixtures::proptest_cases())
 }
 
-/// A laid-out history, a window into it, a lane limit and a pinned set.
+/// A laid-out history, a window into it, a lane limit and a keep.
 #[derive(Debug)]
 struct Case {
     history: History,
     rows: Vec<Row>,
     window: std::ops::Range<usize>,
     max_lanes: usize,
-    pinned: BTreeSet<usize>,
+    selected: Option<usize>,
+    preferred: BTreeSet<usize>,
 }
 
 fn case() -> impl Strategy<Value = Case> {
@@ -237,16 +300,20 @@ fn case() -> impl Strategy<Value = Case> {
             Just(history),
             Just(rows),
             (0..len).prop_flat_map(move |start| (Just(start), start + 1..=len)),
-            1..=6usize,
+            2..=6usize,
+            proptest::option::of(0..8usize),
             proptest::collection::btree_set(0..8usize, 0..=3),
         )
-            .prop_map(|(history, rows, (start, end), max_lanes, pinned)| Case {
-                history,
-                rows,
-                window: start..end,
-                max_lanes,
-                pinned,
-            })
+            .prop_map(
+                |(history, rows, (start, end), max_lanes, selected, preferred)| Case {
+                    history,
+                    rows,
+                    window: start..end,
+                    max_lanes,
+                    selected,
+                    preferred,
+                },
+            )
     })
 }
 
@@ -255,10 +322,16 @@ impl Case {
         &self.rows[self.window.clone()]
     }
 
+    fn keep(&self) -> Keep {
+        Keep {
+            selected: self.selected,
+            reserved: self.history.reserved_columns(),
+            preferred: self.preferred.clone(),
+        }
+    }
+
     fn plan(&self) -> Fold {
-        let mut pinned = self.history.reserved_columns();
-        pinned.extend(&self.pinned);
-        Fold::plan(self.window(), self.max_lanes, &pinned)
+        Fold::plan(self.max_lanes, &self.keep(), self.window())
     }
 }
 
@@ -266,16 +339,38 @@ proptest! {
     #![proptest_config(tier())]
 
     #[test]
-    fn never_folds_lane_zero_a_reserved_lane_a_pinned_lane_or_a_node(case in case()) {
+    fn kept_and_folded_partition_every_open_column_and_the_plan_is_deterministic(case in case()) {
         let fold = case.plan();
-        let noded: BTreeSet<usize> = case.window().iter().map(|row| row.lane).collect();
-        for &column in fold.folded() {
-            prop_assert_ne!(column, 0, "lane 0 folded");
-            prop_assert!(!case.history.reserved_columns().contains(&column), "reserved {column} folded");
-            prop_assert!(!case.pinned.contains(&column), "pinned {column} folded");
-            prop_assert!(!noded.contains(&column), "a node's column {column} folded");
-        }
+        let kept: BTreeSet<usize> = fold.kept().iter().copied().collect();
+        let folded: BTreeSet<usize> = fold.folded().iter().copied().collect();
+        prop_assert!(kept.is_disjoint(&folded), "a column is both kept and folded");
+        prop_assert_eq!(kept.len() + folded.len(), fold.kept().len() + fold.folded().len());
         prop_assert_eq!(&fold, &case.plan(), "not deterministic");
+    }
+
+    #[test]
+    fn only_required_columns_survive_when_the_budget_cannot_fit_more(case in case()) {
+        let fold = case.plan();
+        let open: BTreeSet<usize> = fold.kept().iter().chain(fold.folded()).copied().collect();
+        let noded: BTreeSet<usize> = case.window().iter().map(|row| row.lane).collect();
+        let required: BTreeSet<usize> = open
+            .iter()
+            .copied()
+            .filter(|&c| c == 0 || noded.contains(&c))
+            .collect();
+        for &column in fold.folded() {
+            prop_assert!(!required.contains(&column), "required column {column} folded");
+        }
+        if required.len() < case.max_lanes {
+            prop_assert!(fold.drawn_columns() <= case.max_lanes);
+        } else {
+            let kept: BTreeSet<usize> = fold.kept().iter().copied().collect();
+            prop_assert_eq!(
+                &kept,
+                &required,
+                "no selected, reserved, preferred or other column should survive"
+            );
+        }
     }
 
     #[test]
@@ -337,22 +432,6 @@ proptest! {
             prop_assert!(drawn.row.lanes.len() <= fold.kept().len());
             if let Some(rail) = rail {
                 prop_assert_eq!(drawn.row.lanes.get(rail).copied().flatten(), None);
-            }
-        }
-    }
-
-    #[test]
-    fn the_window_draws_within_the_limit_unless_only_unfoldables_remain(case in case()) {
-        let fold = case.plan();
-        if fold.drawn_columns() > case.max_lanes {
-            let noded: BTreeSet<usize> = case.window().iter().map(|row| row.lane).collect();
-            let mut pinned = case.history.reserved_columns();
-            pinned.extend(&case.pinned);
-            for &column in fold.kept() {
-                prop_assert!(
-                    column == 0 || noded.contains(&column) || pinned.contains(&column),
-                    "column {} could still fold", column
-                );
             }
         }
     }

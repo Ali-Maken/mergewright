@@ -42,7 +42,7 @@ One line per public item. Update when a public item changes.
 - `GraphView::problem` (field) — an unsuperseded error; replaces the key hints while it lasts.
 - `GraphView::rows` (field) — viewport rows, top first; the cursor's row is painted highlighted.
 - `GraphView::icons` (field) — which glyphs badges draw with (`ui.icons`).
-- `GraphView::compaction` (field) — lane limit, expansion flag and pinned columns; the screen plans one `Fold` per frame over the rows it draws, and its header ends ` · +N lanes` while that fold hides lanes (not when expanded).
+- `GraphView::compaction` (field) — lane limit, expansion flag and `Keep` priorities; the screen plans one `Fold` per frame over the rows it draws, and its header ends ` · +N lanes` while that fold hides lanes (not when expanded).
 - `GraphView::filters` (field) — what the history shown leaves out; said in the header.
 - `GraphView::tooltip` (field) — the commit tooltip, open over the graph, or `None` (m1-the-graph/17).
 - `GraphView::order` (field) — the order notice while rows are not in their final order, or `None`.
@@ -56,8 +56,8 @@ One line per public item. Update when a public item changes.
 - `GraphicsStatus` (enum) — `Ok` or `Failed(SanitizedText)`: what the terminal said about the graph images.
 - `Tooltip` (struct) — `hash` (full 40-char), `author` (`SanitizedText`, mailmap-applied `Name <email>`), `committer` (`Option<SanitizedText>`, only when it differs from `author`), `date` (absolute-with-offset and relative, e.g. `"2026-09-13 14:02 +0500 · 4h ago"`), `parents` (short shas), `subject`, `body` (both `SanitizedText`), `pinned` (bool). Hover and `Enter` build it identically (m1-the-graph/17), except `pinned` (m1-the-graph/34); the box wraps and, when even the tallest box the terminal allows can't fit everything, drops lines from the bottom for a `truncated` marker rather than going silently blank (m1-the-graph/34). "Contained in" is out of scope — `KNOWN_GAPS.md`.
 - `Filters` (struct) — `first_parent`, `folded` (merge count), `stash_hidden`, `focused` (Focus mode on); `Filters::text` is the header's words, empty for none.
-- `Compaction` (struct) — `max_lanes` (the resolved cap for this frame, see `max_lanes_for`), `expanded` (the `+` key), `pinned` (reserved integration lanes and the selection's thread columns).
-- `Compaction::at` (fn) — collapsed, nothing pinned but lane 0.
+- `Compaction` (struct) — `max_lanes` (the resolved cap for this frame, see `max_lanes_for`), `expanded` (the `+` key), `keep` (`graft_graph::fold::Keep`: selected column, reserved integration lanes, the selection's thread — budget priorities, not vetoes, ADR-0025).
+- `Compaction::at` (fn) — collapsed, `Keep::default()`.
 - `lanes_that_fit` (fn) — the most lane columns, rail included, the graph column can hold at a screen width; never below 2 (m1-the-graph/44).
 - `max_lanes_for` (fn) — `graph.max_lanes` if configured, else 8/10/12 by the width breakpoint (`< 100`, `100..160`, `160+`), then clamped to `lanes_that_fit` so a configured number larger than the screen never cuts the rail (ADR-0022, ADR-0025; m1-the-graph/44).
 - `GraphEntry` (struct) — one row: `line`, `badges`, sanitised `subject`, `author` chip, `when`, `sha`.

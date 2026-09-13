@@ -15,10 +15,8 @@ pub mod columns;
 #[cfg(test)]
 mod tests;
 
-use std::collections::BTreeSet;
-
 use graft_core::capabilities::ColorDepth;
-use graft_graph::fold::Fold;
+use graft_graph::fold::{Fold, Keep};
 use graft_graph::identity::BranchIdentity;
 use graft_graph::row::Row;
 use graft_term::SanitizedText;
@@ -206,25 +204,28 @@ pub struct Compaction {
     /// until they press it again. The rows are the same either way — the
     /// fold is a lens over them, never a re-layout.
     pub expanded: bool,
-    /// Columns that never fold beyond lane 0: the reserved integration lanes
-    /// and, once selection exists, the selected commit's ancestry.
-    pub pinned: BTreeSet<usize>,
+    /// Columns a fold weighs above the ordinary rank: the selected commit's
+    /// own column, reserved integration lanes and the selection's thread
+    /// (ADR-0025). A priority, not a veto — one still folds if the budget
+    /// cannot hold it.
+    pub keep: Keep,
 }
 
 impl Compaction {
-    /// Compaction at `max_lanes`, collapsed, with nothing pinned but lane 0.
+    /// Compaction at `max_lanes`, collapsed, with nothing kept but lane 0.
     #[must_use]
     pub fn at(max_lanes: usize) -> Self {
         Compaction {
             max_lanes,
             expanded: false,
-            pinned: BTreeSet::new(),
+            keep: Keep::default(),
         }
     }
 
     /// The fold for `rows`, whether or not it is applied.
     fn plan<'a>(&self, rows: impl IntoIterator<Item = &'a Row>) -> Fold {
-        Fold::plan(rows, self.max_lanes, &self.pinned)
+        let rows: Vec<Row> = rows.into_iter().cloned().collect();
+        Fold::plan(self.max_lanes, &self.keep, &rows)
     }
 }
 
