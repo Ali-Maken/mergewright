@@ -54,13 +54,13 @@ struct SeedPlan {
 
 /// A generated history: commits in walk order, and where the seeds point.
 #[derive(Clone, Debug)]
-struct History {
-    commits: Vec<Commit>,
+pub(crate) struct History {
+    pub(crate) commits: Vec<Commit>,
     plan: SeedPlan,
 }
 
 impl History {
-    fn seeds(&self) -> Seeds {
+    pub(crate) fn seeds(&self) -> Seeds {
         let at = |position: usize| BranchSeed {
             tip: self.commits[position].id,
             identity: BranchIdentity::of_name(format!("branch-{position}").as_bytes()),
@@ -74,7 +74,7 @@ impl History {
 
     /// The columns the seeds reserve: 0 for the default branch, then one
     /// per integration branch.
-    fn reserved_columns(&self) -> BTreeSet<usize> {
+    pub(crate) fn reserved_columns(&self) -> BTreeSet<usize> {
         let mut columns = BTreeSet::new();
         if self.plan.default.is_some() {
             columns.insert(0);
@@ -146,7 +146,7 @@ fn build(drafts: &[Draft]) -> Vec<Commit> {
         .collect()
 }
 
-fn history() -> impl Strategy<Value = History> {
+pub(crate) fn history() -> impl Strategy<Value = History> {
     drafts().prop_flat_map(|drafts| {
         let len = drafts.len();
         let all: Vec<usize> = (0..len).collect();

@@ -423,4 +423,4 @@ fn winning_lane(incoming: &[usize]) -> Option<usize> {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

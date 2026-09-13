@@ -8,6 +8,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod fold;
 pub mod identity;
 pub mod lane;
 pub mod layout;
@@ -15,6 +16,7 @@ pub mod merge_name;
 pub mod row;
 pub mod seeds;
 
+pub use fold::Fold;
 pub use identity::BranchIdentity;
 pub use lane::Lane;
 pub use layout::{

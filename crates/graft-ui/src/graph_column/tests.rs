@@ -6,7 +6,7 @@ use graft_graph::seeds::{BranchSeed, Seeds};
 use ratatui::style::Color;
 
 use super::*;
-use crate::test_support::terminal;
+use crate::test_support::{terminal, wide_history};
 use crate::theme::ThemeKind;
 
 fn oid(byte: u8) -> Oid {
@@ -233,4 +233,77 @@ fn with_enough_colour_every_lane_stays_solid() {
             assert_eq!(dashes(&buf, y), "....", "{depth:?} row {y}");
         }
     }
+}
+
+/// The twelve merge rows of a twelve-topic history: thirteen columns open.
+fn wide_merges() -> Vec<Row> {
+    let mut rows = wide_history(12);
+    rows.truncate(12);
+    rows
+}
+
+fn no_pins() -> std::collections::BTreeSet<usize> {
+    std::collections::BTreeSet::new()
+}
+
+fn render_through(lines: &[GraphLine<'_>], fold: &Fold, theme: &Theme) -> Buffer {
+    let width = GraphColumn::width_through(fold);
+    let area = Rect::new(0, 0, width, u16::try_from(lines.len()).expect("few rows"));
+    let mut buf = Buffer::empty(area);
+    GraphColumn::new(lines, theme)
+        .through(fold)
+        .render(area, &mut buf);
+    buf
+}
+
+#[test]
+fn folded_lanes_draw_as_one_marker_in_the_last_column() {
+    let rows = wide_merges();
+    let lines: Vec<_> = rows.iter().map(GraphLine::plain).collect();
+    let fold = Fold::plan(&rows, 8, &no_pins());
+    assert_eq!(fold.folded(), [1, 2, 3, 4, 5, 6]);
+    let theme = dark(ColorDepth::TrueColor);
+    let buf = render_through(&lines, &fold, &theme);
+
+    assert_eq!(
+        GraphColumn::width_through(&fold),
+        17,
+        "seven lanes, then `+6` and a gap"
+    );
+    // The top merge's second parent lives in a folded lane: its edge runs
+    // to the marker and takes the lane's colour.
+    assert_eq!(text(&buf, 0), "◉─────────────+6 ");
+    let topic_12 = rows[0].lanes[1].expect("row 0 opened column 1 for topic-12");
+    assert_eq!(buf[(14, 0)].fg, color(theme.branch(topic_12)));
+    // Row 6 opened column 7, the first kept lane after lane 0: the marker
+    // is muted, the folded lanes only pass through.
+    assert_eq!(text(&buf, 6), "◉─╮           +6 ");
+    assert_eq!(buf[(14, 6)].fg, color(theme.token(Token::TextMuted)));
+    assert_eq!(text(&buf, 11), "◉─│─│─│─│─│─╮ +6 ");
+}
+
+#[test]
+fn a_fold_that_folds_nothing_draws_as_laid_out() {
+    let rows = reuse_rows();
+    let lines: Vec<_> = rows.iter().map(GraphLine::plain).collect();
+    let fold = Fold::plan(&rows, 8, &no_pins());
+    let theme = dark(ColorDepth::TrueColor);
+    let plain = render(&lines, &theme, 4);
+    let through = render_through(&lines, &fold, &theme);
+    assert_eq!(through, plain);
+}
+
+#[test]
+fn dashes_follow_the_real_column_through_a_fold() {
+    let rows = wide_merges();
+    let lines: Vec<_> = rows.iter().map(GraphLine::plain).collect();
+    // Seven folded: real column 8 draws at position 1, real 9 at position 2.
+    let fold = Fold::plan(&rows, 7, &no_pins());
+    assert_eq!(fold.kept(), [0, 8, 9, 10, 11, 12]);
+    let buf = render_through(&lines, &fold, &dark(ColorDepth::Palette16));
+
+    // Both lanes pass through the bottom merge row.
+    assert_eq!(text(&buf, 11), "◉─│─╎─│─╎─╮ +7 ");
+    assert_eq!(buf[(2, 11)].symbol(), "│", "real column 8 is even: solid");
+    assert_eq!(buf[(4, 11)].symbol(), "╎", "real column 9 is odd: dashed");
 }

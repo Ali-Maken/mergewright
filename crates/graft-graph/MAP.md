@@ -2,7 +2,7 @@
 One line per public item. Update when a public item changes.
 
 ## lib.rs
-- `identity`, `lane`, `layout`, `merge_name`, `row`, `seeds` (mods) — re-exported at the root.
+- `fold`, `identity`, `lane`, `layout`, `merge_name`, `row`, `seeds` (mods) — re-exported at the root (`Fold` too).
 
 ## identity
 - `BranchIdentity` (struct) — stable FNV-1a hash of a branch name (or a commit id); the source of lane colour.
@@ -28,6 +28,18 @@ One line per public item. Update when a public item changes.
 
 ## merge_name
 - `recover_branch_name` (fn) — branch name from a merge subject, git's conventional forms.
+
+## fold
+- `Fold` (struct) — which real columns a window of rows draws and which fold behind `+N`; a lens over laid-out rows, never a re-layout (DESIGN.md §3.5).
+- `Fold::plan` (fn) — decide the fold for a window: at most `max_lanes` drawn (marker included); folds least-recently-touched first, never lane 0, a pinned column, or a column holding a node in the window; a column open in no row is dropped, not counted.
+- `Fold::is_empty` (fn) — nothing folded and nothing dropped: the window draws as laid out.
+- `Fold::folded` (fn) — real columns behind the marker, ascending.
+- `Fold::kept` (fn) — real columns drawn, in drawn order.
+- `Fold::drawn` (fn) — where a real column draws, `None` if folded or dropped.
+- `Fold::real` (fn) — the real column at a drawn position, `None` at the marker (dash parity keys on this).
+- `Fold::marker` (fn) — the drawn column the `+N` marker takes, if anything folded.
+- `Fold::drawn_columns` (fn) — columns drawn, marker included.
+- `Fold::view` (fn) — a row remapped to drawn columns; edges into folded lanes go to the marker, whose cell carries the joining lane's identity.
 
 ## layout
 - `layout` (fn) — lay out a whole commit slice in one call.

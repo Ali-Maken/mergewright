@@ -2,11 +2,11 @@ use graft_core::commit::{Identity, Timestamp};
 
 use super::*;
 
-fn oid(byte: u8) -> Oid {
+pub(crate) fn oid(byte: u8) -> Oid {
     Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is a valid oid length")
 }
 
-fn identity_at(seconds: i64) -> Identity {
+pub(crate) fn identity_at(seconds: i64) -> Identity {
     Identity {
         name: b"Test".to_vec(),
         email: b"test@example.invalid".to_vec(),
@@ -19,7 +19,7 @@ fn identity_at(seconds: i64) -> Identity {
 
 /// A commit with `id` and `parents` given as raw bytes (see [`oid`]), authored
 /// and committed at `seconds`, with `subject` as its whole message.
-fn commit(id: u8, parents: &[u8], seconds: i64, subject: &[u8]) -> Commit {
+pub(crate) fn commit(id: u8, parents: &[u8], seconds: i64, subject: &[u8]) -> Commit {
     Commit {
         id: oid(id),
         parents: parents.iter().map(|&byte| oid(byte)).collect(),
@@ -402,7 +402,7 @@ fn wide_oid(n: u16) -> Oid {
     Oid::from_bytes(&bytes).expect("20 bytes is a valid oid length")
 }
 
-mod properties;
+pub(crate) mod properties;
 
 #[test]
 fn a_row_records_the_identity_of_every_column_it_draws() {

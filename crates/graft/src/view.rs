@@ -17,8 +17,8 @@ use graft_graph::row::Row;
 use graft_term::{SanitizedText, sanitize_line, sanitize_path, sanitize_path_bytes};
 use graft_ui::graph_column::{GraphLine, NodeKind, RowPaint};
 use graft_ui::graph_screen::{
-    AuthorChip, Badge, BadgeKind, GraphEntry, GraphScreen, GraphView, SHA_WIDTH, Tracking,
-    WalkView, initials, relative_date, short_sha,
+    AuthorChip, Badge, BadgeKind, Compaction, GraphEntry, GraphScreen, GraphView, SHA_WIDTH,
+    Tracking, WalkView, initials, relative_date, short_sha,
 };
 use graft_ui::status_screen::{
     HeadView, HistoryState, HistoryView, RepositoryView, StatusScreen, StatusView,
@@ -48,6 +48,7 @@ pub fn view(session: &Session, state: &AppState, frame: &mut Frame) {
         Screen::Graph => {
             let mut screen = graph_view(state);
             screen.icons = session.icons;
+            screen.compaction.max_lanes = session.max_lanes;
             frame.render_widget(GraphScreen::new(&screen, &session.theme), area);
         }
         Screen::Status => {
@@ -79,6 +80,7 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
             walk: WalkView::Opening,
             rows: Vec::new(),
             icons: graft_ui::graph_screen::Icons::default(),
+            compaction: Compaction::at(crate::config::DEFAULT_MAX_LANES),
         };
     };
 
@@ -103,6 +105,24 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
         walk,
         rows,
         icons: graft_ui::graph_screen::Icons::default(),
+        compaction: compaction(state, history),
+    }
+}
+
+/// How the graph folds its lanes: the session's limit is filled in by
+/// [`view`], the expansion flag is the user's, and the reserved integration
+/// lanes (`1..=n`, after lane 0) are pinned so a fold never hides a lane a
+/// branch was promised. The selected commit's ancestry joins the pins once
+/// selection exists (ticket 16).
+fn compaction(state: &AppState, history: &History) -> Compaction {
+    let integration = history
+        .walk
+        .as_ref()
+        .map_or(0, |walk| walk.integration.len());
+    Compaction {
+        max_lanes: crate::config::DEFAULT_MAX_LANES,
+        expanded: state.lanes_expanded,
+        pinned: (1..=integration).collect(),
     }
 }
 

@@ -20,6 +20,7 @@ One line per public item. Update when a public item changes.
 - `Startup` (struct) — what `main` decided before touching the terminal.
 - `Session` (struct) — what Graft is drawing with, for as long as this run lasts.
 - `Session::icons` (field) — badge glyph set from `ui.icons`.
+- `Session::max_lanes` (field) — lane limit from `graph.max_lanes`.
 - `Session::settle` (fn) — resolve capabilities, theme, rendering info at startup.
 
 ## refs
@@ -70,6 +71,7 @@ One line per public item. Update when a public item changes.
 - `AppState::refs` (field) — refs on each commit, once the refs job answers.
 - `AppState::working_tree` (field) — working-tree status counts, once that job answers.
 - `AppState::screen` (field) — which screen is on show; graph by default.
+- `AppState::lanes_expanded` (field) — `+` pressed: lanes draw unfolded; a view flag, the rows are untouched.
 - `Screen` (enum) — `Graph` (default) or `Status`.
 - `Screen::toggled` (fn) — the other screen; `F2` swaps.
 - `Quit` (enum) — why Graft is leaving.
@@ -102,6 +104,8 @@ One line per public item. Update when a public item changes.
 - `Graph` (struct) — `[graph]` section.
 - `Graph::renderer` (field) — `graph.renderer`.
 - `Graph::default_branch` (field) — forced default branch full ref name; `None` lets detection decide.
+- `Graph::max_lanes` (field) — `graph.max_lanes`: lanes drawn before folding behind `+N`; default 8, values below 2 are a parse error.
+- `DEFAULT_MAX_LANES` (const) — 8.
 - `ThemeChoice` (enum) — `ui.theme` values.
 - `ThemeChoice::overridden` (fn) — the override to hand `ThemeKind::select`.
 - `RendererChoice` (enum) — `graph.renderer` values.

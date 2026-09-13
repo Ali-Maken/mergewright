@@ -322,3 +322,28 @@ fn a_default_branch_git_would_refuse_names_the_file_and_the_line() {
     assert!(message.contains("line 3"), "{message}");
     assert!(message.contains("two..dots"), "{message}");
 }
+
+#[test]
+fn max_lanes_is_read_and_defaults_to_eight() {
+    let (_dir, path) = config_file("[graph]\nmax_lanes = 12\n");
+    let loaded = load_from(&path).expect("a valid lane limit loads");
+    assert_eq!(loaded.config.graph.max_lanes, 12);
+    assert_eq!(loaded.warnings, [], "max_lanes is a known key");
+
+    let (_dir, path) = config_file("[graph]\nrenderer = \"unicode\"\n");
+    let loaded = load_from(&path).expect("loads");
+    assert_eq!(loaded.config.graph.max_lanes, DEFAULT_MAX_LANES);
+    assert_eq!(DEFAULT_MAX_LANES, 8);
+}
+
+#[test]
+fn a_lane_limit_with_no_room_for_the_marker_is_refused() {
+    for text in ["[graph]\nmax_lanes = 1\n", "[graph]\nmax_lanes = 0\n"] {
+        let (_dir, path) = config_file(text);
+        let error = load_error(&path);
+        assert!(matches!(error, ConfigError::Parse { .. }), "{error:?}");
+        assert!(error.to_string().contains("+N"), "{error}");
+    }
+    let (_dir, path) = config_file("[graph]\nmax_lanes = \"many\"\n");
+    assert!(matches!(load_error(&path), ConfigError::Parse { .. }));
+}

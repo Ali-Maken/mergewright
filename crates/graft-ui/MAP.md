@@ -27,6 +27,8 @@ One line per public item. Update when a public item changes.
 - `GraphColumn` (struct) — widget drawing consecutive rows; fills its area exactly. At 16 colours and `NO_COLOR`, odd-column lanes draw dashed (`╎`, `╌`).
 - `GraphColumn::new` (fn) — draw lines in a theme.
 - `GraphColumn::width_for` (fn) — cells for N lanes.
+- `GraphColumn::through` (fn) — draw through a `Fold`: kept lanes in their drawn columns, folded ones as one `+N` marker in the last column; dashes still key on the real column.
+- `GraphColumn::width_through` (fn) — cells for a window drawn through a `Fold` (kept lanes plus the marker).
 
 ## graph_screen
 - `CHROME_ROWS` (const) — screen rows that are not graph rows (header + footer).
@@ -38,6 +40,9 @@ One line per public item. Update when a public item changes.
 - `GraphView::problem` (field) — an unsuperseded error; replaces the key hints while it lasts.
 - `GraphView::rows` (field) — viewport rows, top first; the cursor's row is painted highlighted.
 - `GraphView::icons` (field) — which glyphs badges draw with (`ui.icons`).
+- `GraphView::compaction` (field) — lane limit, expansion flag and pinned columns; the screen plans one `Fold` per frame over the rows it draws.
+- `Compaction` (struct) — `max_lanes` (`graph.max_lanes`), `expanded` (the `+` key), `pinned` (reserved integration lanes; ancestry later).
+- `Compaction::at` (fn) — collapsed, nothing pinned but lane 0.
 - `GraphEntry` (struct) — one row: `line`, `badges`, sanitised `subject`, `author` chip, `when`, `sha`.
 - `AuthorChip` (struct) — an author's chip: sanitised `initials` and the `identity` that colours it.
 - `WalkView` (enum) — walk state for the header: opening, reading, jumping, complete, cancelled, failed.

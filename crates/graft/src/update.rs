@@ -144,6 +144,11 @@ pub struct AppState {
     /// Which screen is on show. The graph, unless the user asked for the
     /// status screen — the only place tier and cell size are shown.
     pub screen: Screen,
+    /// The user pressed `+`: every lane draws in its real column instead of
+    /// folding behind `+N` (DESIGN.md §3.5). A view-time flag only — the
+    /// rows are the same either way, so toggling it asks nothing of the
+    /// history job.
+    pub lanes_expanded: bool,
 }
 
 /// The screens Graft can show.
@@ -416,6 +421,8 @@ fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         commands.push(Command::ReadWorkingTree);
     } else if is_screen_toggle(key) {
         next.screen = next.screen.toggled();
+    } else if is_lane_toggle(key) {
+        next.lanes_expanded = !next.lanes_expanded;
     } else if let Some(motion) = motion_for(key) {
         let height = next.graph_rows();
         if let Some(history) = next.history.as_mut()
@@ -487,6 +494,12 @@ fn is_screen_toggle(key: KeyPress) -> bool {
     key.code == KeyCode::Function(2) && !key.modifiers.control && !key.modifiers.alt
 }
 
+/// `+` expands the lanes folded behind `+N`, and folds them again
+/// (DESIGN.md §3.5).
+fn is_lane_toggle(key: KeyPress) -> bool {
+    key.code == KeyCode::Char('+') && !key.modifiers.control && !key.modifiers.alt
+}
+
 /// Manual refresh (DESIGN.md §2.1): re-read the repository now, rather than
 /// waiting for whatever would have noticed on its own.
 fn is_refresh(key: KeyPress) -> bool {
@@ -534,6 +547,26 @@ mod tests {
 
         let (graph, _) = update(&status, key(KeyCode::Function(2)));
         assert_eq!(graph.screen, Screen::Graph);
+    }
+
+    #[test]
+    fn plus_expands_and_collapses_the_lanes_without_touching_the_walk() {
+        let id = JobId::new(3);
+        let (state, _) = update(&awaiting(id), rows(id, 4));
+        let before = state.history.clone();
+
+        let (expanded, commands) = update(&state, key(KeyCode::Char('+')));
+        assert!(expanded.lanes_expanded);
+        assert!(
+            commands.is_empty(),
+            "expanding is a view decision: {commands:?}"
+        );
+        assert_eq!(expanded.history, before, "the rows are not laid out again");
+
+        let (folded, commands) = update(&expanded, key(KeyCode::Char('+')));
+        assert!(!folded.lanes_expanded);
+        assert!(commands.is_empty(), "{commands:?}");
+        assert_eq!(folded.history, before);
     }
 
     fn core(event: Event) -> AppEvent {
@@ -762,6 +795,7 @@ mod tests {
             refs: None,
             working_tree: None,
             screen: Screen::Graph,
+            lanes_expanded: false,
         };
 
         let first = update(&state, key(KeyCode::Char('q')));

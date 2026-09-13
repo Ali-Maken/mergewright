@@ -30,11 +30,19 @@
 //! dashed (`╎`, `╌`), so two lanes side by side never look alike whatever
 //! their colour (DESIGN.md §4.6, ADR-0019). Elbows and junctions have no
 //! dashed forms and stay solid. The pattern follows the column, which a lane
-//! keeps for its whole life, so it never flips along a line.
+//! keeps for its whole life, so it never flips along a line — the *real*
+//! column, even when compaction ([`GraphColumn::through`]) draws the lane
+//! somewhere else.
+//!
+//! Compaction (DESIGN.md §3.5): drawn through a [`Fold`], the kept lanes
+//! take their drawn columns and the folded ones become one `+N` marker in
+//! the last column, muted where they only pass through and in the joining
+//! lane's colour on a row whose edge leads into them.
 
 use std::borrow::Cow;
 
 use graft_core::capabilities::ColorDepth;
+use graft_graph::fold::Fold;
 use graft_graph::identity::BranchIdentity;
 use graft_graph::row::Row;
 use ratatui::buffer::Buffer;
@@ -42,8 +50,8 @@ use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::widgets::Widget;
 
-use crate::paint::color;
-use crate::theme::Theme;
+use crate::paint::{color, foreground};
+use crate::theme::{Theme, Token};
 
 /// Cells each lane takes: its own, then the gap before the next lane.
 pub const CELLS_PER_LANE: u16 = 2;
@@ -166,13 +174,38 @@ impl<'a> GraphLine<'a> {
 pub struct GraphColumn<'a> {
     lines: &'a [GraphLine<'a>],
     theme: &'a Theme,
+    /// The compaction the rows draw through, if any (DESIGN.md §3.5).
+    fold: Option<&'a Fold>,
 }
 
 impl<'a> GraphColumn<'a> {
-    /// Draw `lines` in `theme`.
+    /// Draw `lines` in `theme`, every lane in its real column.
     #[must_use]
     pub fn new(lines: &'a [GraphLine<'a>], theme: &'a Theme) -> Self {
-        GraphColumn { lines, theme }
+        GraphColumn {
+            lines,
+            theme,
+            fold: None,
+        }
+    }
+
+    /// Draw the lines through `fold`: kept lanes in their drawn columns, the
+    /// folded ones behind a `+N` marker in the last column. A fold that
+    /// changes nothing draws exactly as [`GraphColumn::new`] does.
+    #[must_use]
+    pub fn through(mut self, fold: &'a Fold) -> Self {
+        self.fold = (!fold.is_empty()).then_some(fold);
+        self
+    }
+
+    /// The cells needed to show a window through `fold` without cutting any
+    /// drawn lane or the marker.
+    #[must_use]
+    pub fn width_through(fold: &Fold) -> u16 {
+        let marker = fold
+            .marker()
+            .map_or(0, |_| marker_width(fold.folded().len()));
+        Self::width_for(fold.kept().len()).saturating_add(marker)
     }
 
     /// The cells needed to show `columns` lanes without cutting any.
@@ -189,22 +222,81 @@ impl<'a> GraphColumn<'a> {
 impl Widget for GraphColumn<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let dashes = dashes_odd_columns(self.theme.color_depth());
+        // The dash pattern follows a lane's *real* column, so folding never
+        // flips a lane between solid and dashed.
+        let real_column = |drawn: usize| match self.fold {
+            Some(fold) => fold.real(drawn),
+            None => Some(drawn),
+        };
         for (line, y) in self.lines.iter().zip(area.top()..area.bottom()) {
-            let cells = row_cells(&line.row, line.node);
+            let viewed;
+            let row = match self.fold {
+                Some(fold) => {
+                    viewed = fold.view(&line.row);
+                    &viewed
+                }
+                None => &*line.row,
+            };
+            let cells = row_cells(row, line.node);
             for x in 0..area.width {
                 let cell = cells.get(usize::from(x)).copied().unwrap_or(BLANK);
                 let mut style = Style::new().add_modifier(line.paint.modifier());
                 let mut glyph = cell.glyph;
                 if let Some(owner) = cell.owner {
                     style = style.fg(color(self.theme.branch(owner.identity)));
-                    if dashes && owner.column % 2 == 1 {
+                    if dashes && real_column(owner.column).is_some_and(|c| c % 2 == 1) {
                         glyph = dashed(glyph);
                     }
                 }
                 buf[(area.x + x, y)].set_char(glyph).set_style(style);
             }
+            if let Some((fold, marker)) = self.fold.and_then(|f| f.marker().map(|m| (f, m))) {
+                self.draw_marker(fold, marker, row, line.paint, area, y, buf);
+            }
         }
     }
+}
+
+impl GraphColumn<'_> {
+    /// The `+N` marker on one row: muted where the folded lanes only pass
+    /// through, in the joining lane's colour where an edge on this row leads
+    /// into them.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_marker(
+        &self,
+        fold: &Fold,
+        marker: usize,
+        row: &Row,
+        paint: RowPaint,
+        area: Rect,
+        y: u16,
+        buf: &mut Buffer,
+    ) {
+        let joined = row.lanes.get(marker).copied().flatten();
+        let mut style = match joined {
+            Some(identity) => Style::new().fg(color(self.theme.branch(identity))),
+            None => foreground(self.theme, Token::TextMuted),
+        };
+        style = style.add_modifier(paint.modifier());
+        let text = format!("+{}", fold.folded().len());
+        let start = u16::try_from(marker)
+            .unwrap_or(u16::MAX)
+            .saturating_mul(CELLS_PER_LANE);
+        for (offset, glyph) in text.chars().enumerate() {
+            let x = start.saturating_add(u16::try_from(offset).unwrap_or(u16::MAX));
+            if x >= area.width {
+                break;
+            }
+            buf[(area.x + x, y)].set_char(glyph).set_style(style);
+        }
+    }
+}
+
+/// The cells the marker column takes: `+N` and the gap after it, never
+/// narrower than a lane.
+fn marker_width(folded: usize) -> u16 {
+    let digits = u16::try_from(folded.to_string().len()).unwrap_or(u16::MAX);
+    digits.saturating_add(2).max(CELLS_PER_LANE)
 }
 
 /// Whether lanes in odd columns draw dashed at this colour depth: only where

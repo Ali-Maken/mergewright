@@ -76,7 +76,7 @@ pub struct Ui {
 }
 
 /// `[graph]`.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(default)]
 pub struct Graph {
     /// `graph.renderer`.
@@ -86,6 +86,41 @@ pub struct Graph {
     /// full ref name (`refs/heads/trunk`). `None` lets detection decide.
     #[serde(deserialize_with = "branch_name")]
     pub default_branch: Option<RefName>,
+    /// `graph.max_lanes`: how many lanes the graph draws before folding the
+    /// rest behind `+N` (DESIGN.md §3.5). The marker counts as one, so the
+    /// least that makes sense is two: lane 0 and the marker.
+    #[serde(deserialize_with = "lane_limit")]
+    pub max_lanes: usize,
+}
+
+/// `graph.max_lanes` when the file does not set it.
+pub const DEFAULT_MAX_LANES: usize = 8;
+
+impl Default for Graph {
+    fn default() -> Self {
+        Graph {
+            renderer: RendererChoice::default(),
+            default_branch: None,
+            max_lanes: DEFAULT_MAX_LANES,
+        }
+    }
+}
+
+/// `graph.max_lanes`, refusing anything below two: one lane leaves no room
+/// for the `+N` marker, so `1` would silently mean "never fold", and `0`
+/// nothing at all. A refusal is a parse error with a line and column, like
+/// every other bad value.
+fn lane_limit<'de, D>(deserializer: D) -> Result<usize, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let limit = usize::deserialize(deserializer)?;
+    if limit < 2 {
+        return Err(serde::de::Error::custom(format!(
+            "max_lanes = {limit} leaves no room for lanes and the `+N` marker; use 2 or more"
+        )));
+    }
+    Ok(limit)
 }
 
 /// `graph.default_branch = "trunk"` as `refs/heads/trunk`.
@@ -369,7 +404,7 @@ fn parse(path: &Path, text: &str) -> Result<Loaded, ConfigError> {
 /// adding it here too, or the user gets told their new setting is unknown —
 /// which is the safe direction for the mistake to go.
 const SCHEMA: &[(&str, &[&str])] = &[
-    ("graph", &["default_branch", "renderer"]),
+    ("graph", &["default_branch", "max_lanes", "renderer"]),
     ("ui", &["icons", "theme"]),
 ];
 

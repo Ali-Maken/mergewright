@@ -221,7 +221,9 @@ instead of waiting for review (`DESIGN.md` §8.5, ADR-0006).
 Every crate here should be checkable against one question: can a caller get
 everything they need through the handful of functions it exposes, without
 reaching into its internals? `graph::layout` is the model case — one call
-replaces lane assignment, compaction and incremental checkpointing. Where a
+replaces lane assignment and incremental checkpointing; `graph::fold` beside
+it is compaction as a lens over the rows a screen is about to draw, so
+expanding `+N` never re-runs layout. Where a
 crate needs more than one concrete implementation of something (`term`'s
 per-protocol encoders, or a `git` read that a named `gix` gap forces onto
 `git2` — ADR-0011), that split is an *internal* seam, private to the crate —

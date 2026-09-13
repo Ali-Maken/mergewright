@@ -15,8 +15,12 @@ pub mod columns;
 #[cfg(test)]
 mod tests;
 
+use std::collections::BTreeSet;
+
 use graft_core::capabilities::ColorDepth;
+use graft_graph::fold::Fold;
 use graft_graph::identity::BranchIdentity;
+use graft_graph::row::Row;
 use graft_term::SanitizedText;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
@@ -77,6 +81,40 @@ pub struct GraphView<'a> {
     pub rows: Vec<GraphEntry<'a>>,
     /// Which glyphs ref badges draw with (`ui.icons`).
     pub icons: Icons,
+    /// How many lanes the graph may draw before folding the rest behind
+    /// `+N`, and whether the user has expanded them (DESIGN.md §3.5).
+    pub compaction: Compaction,
+}
+
+/// Lane compaction as the screen applies it (DESIGN.md §3.5).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Compaction {
+    /// `graph.max_lanes`: the most lanes drawn, the `+N` marker included.
+    pub max_lanes: usize,
+    /// The user pressed the expand key: every lane draws in its real column
+    /// until they press it again. The rows are the same either way — the
+    /// fold is a lens over them, never a re-layout.
+    pub expanded: bool,
+    /// Columns that never fold beyond lane 0: the reserved integration lanes
+    /// and, once selection exists, the selected commit's ancestry.
+    pub pinned: BTreeSet<usize>,
+}
+
+impl Compaction {
+    /// Compaction at `max_lanes`, collapsed, with nothing pinned but lane 0.
+    #[must_use]
+    pub fn at(max_lanes: usize) -> Self {
+        Compaction {
+            max_lanes,
+            expanded: false,
+            pinned: BTreeSet::new(),
+        }
+    }
+
+    /// The fold for `rows`, whether or not it is applied.
+    fn plan<'a>(&self, rows: impl IntoIterator<Item = &'a Row>) -> Fold {
+        Fold::plan(rows, self.max_lanes, &self.pinned)
+    }
 }
 
 /// One row of the graph screen.
@@ -216,6 +254,16 @@ fn walk_text(walk: &WalkView) -> (String, Token) {
 /// narrow terminal cuts from the right.
 const HINTS: &str = " q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom";
 
+/// The hint for the lane-expansion key, shown only while there is something
+/// to expand or collapse.
+fn expand_hint(fold: &Fold, expanded: bool) -> &'static str {
+    match (fold.marker().is_some(), expanded) {
+        (false, false) => "",
+        (_, true) => "  + collapse lanes",
+        (true, false) => "  + expand lanes",
+    }
+}
+
 fn text_width(text: &str) -> usize {
     use unicode_width::UnicodeWidthStr;
     text.width()
@@ -235,18 +283,30 @@ impl Widget for GraphScreen<'_> {
             height: area.height.saturating_sub(CHROME_ROWS),
             ..area
         };
+        let rows = &self.view.rows[..self.view.rows.len().min(usize::from(body.height))];
+        // Planned over exactly the rows drawn, expanded or not: the hint
+        // has to know whether there is anything to collapse.
+        let fold = self
+            .view
+            .compaction
+            .plan(rows.iter().map(|entry| &*entry.line.row));
+        let applied = (!self.view.compaction.expanded).then_some(&fold);
         if body.height > 0 {
-            self.body(body, buf);
+            self.body(body, rows, applied, buf);
         }
 
         if area.height > 1 {
-            let footer = match &self.view.problem {
-                Some(problem) => Line::styled(
-                    fit(&format!(" {problem}"), width),
-                    foreground(self.theme, Token::Warning),
+            let (text, token) = match &self.view.problem {
+                Some(problem) => (format!(" {problem}"), Token::Warning),
+                None => (
+                    format!(
+                        "{HINTS}{}",
+                        expand_hint(&fold, self.view.compaction.expanded)
+                    ),
+                    Token::TextMuted,
                 ),
-                None => Line::styled(fit(HINTS, width), foreground(self.theme, Token::TextMuted)),
             };
+            let footer = Line::styled(fit(&text, width), foreground(self.theme, token));
             buf.set_line(area.x, area.bottom() - 1, &footer, area.width);
         }
     }
@@ -325,17 +385,24 @@ impl Columns {
 impl GraphScreen<'_> {
     /// The rows: graph, the reserved marker slot, the subject, and — when
     /// there is room — the author chip, the relative date and the short SHA.
-    fn body(&self, area: Rect, buf: &mut Buffer) {
-        let rows = &self.view.rows[..self.view.rows.len().min(usize::from(area.height))];
-        let lanes = rows
-            .iter()
-            .map(|entry| entry.line.row.lanes.len().max(entry.line.row.lane + 1))
-            .max()
-            .unwrap_or(1);
+    fn body(&self, area: Rect, rows: &[GraphEntry<'_>], fold: Option<&Fold>, buf: &mut Buffer) {
+        let full_width = || {
+            let lanes = rows
+                .iter()
+                .map(|entry| entry.line.row.lanes.len().max(entry.line.row.lane + 1))
+                .max()
+                .unwrap_or(1);
+            GraphColumn::width_for(lanes)
+        };
+        let wanted = fold.map_or_else(full_width, GraphColumn::width_through);
         // Half the width at most: the subject is what makes a row readable.
-        let graph_width = GraphColumn::width_for(lanes).min(area.width / 2);
+        let graph_width = wanted.min(area.width / 2);
         let graph_lines: Vec<GraphLine<'_>> = rows.iter().map(|entry| entry.line.clone()).collect();
-        GraphColumn::new(&graph_lines, self.theme).render(
+        let mut column = GraphColumn::new(&graph_lines, self.theme);
+        if let Some(fold) = fold {
+            column = column.through(fold);
+        }
+        column.render(
             Rect {
                 width: graph_width,
                 ..area

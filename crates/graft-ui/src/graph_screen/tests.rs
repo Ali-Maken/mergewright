@@ -9,7 +9,7 @@ use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 
 use super::*;
-use crate::test_support::terminal;
+use crate::test_support::{terminal, wide_history};
 use crate::theme::ThemeKind;
 
 fn oid(byte: u8) -> Oid {
@@ -70,6 +70,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
             })
             .collect(),
         icons: Icons::Plain,
+        compaction: Compaction::at(8),
     }
 }
 
@@ -408,4 +409,68 @@ fn with_no_color_the_cursor_row_keeps_its_rule_and_dimmed_rows_stay_faint() {
     assert!(has_rule, "expected a rule on the cursor row: {buffer:#?}");
     assert!(buffer[(10, 2)].modifier.contains(Modifier::BOLD));
     assert!(buffer[(10, 3)].modifier.contains(Modifier::DIM));
+}
+
+/// The first `count` cells of a screen line.
+fn cells(line: &str, count: usize) -> String {
+    line.chars().take(count).collect()
+}
+
+/// The twelve merge rows of a twelve-topic history: thirteen columns open,
+/// more than `graph.max_lanes` allows.
+fn wide_merges() -> Vec<Row> {
+    let mut rows = wide_history(12);
+    rows.truncate(12);
+    rows
+}
+
+#[test]
+fn more_lanes_than_the_limit_fold_behind_a_marker_and_leave_the_subject_readable() {
+    let rows = wide_merges();
+    let screen = text(&draw(
+        &view(&rows, WalkView::Complete { rows: 12 }, 0),
+        80,
+        24,
+    ));
+
+    // Seven lanes plus `+6`: 17 cells, the subject right after.
+    assert_eq!(cells(&screen[1], 17), "◉─────────────+6 ", "{screen:#?}");
+    assert!(screen[1].contains("Merge branch 'topic-12'"), "{screen:#?}");
+    assert!(screen[12].contains("Merge branch 'topic-1'"), "{screen:#?}");
+    assert!(screen[23].contains("+ expand lanes"), "{screen:#?}");
+}
+
+#[test]
+fn expanded_every_lane_draws_in_its_real_column_from_the_same_rows() {
+    let rows = wide_merges();
+    let mut expanded = view(&rows, WalkView::Complete { rows: 12 }, 0);
+    expanded.compaction.expanded = true;
+    let screen = text(&draw(&expanded, 80, 24));
+
+    assert_eq!(
+        cells(&screen[1], 26),
+        "◉─╮                       ",
+        "{screen:#?}"
+    );
+    assert_eq!(
+        cells(&screen[12], 26),
+        "◉─│─│─│─│─│─│─│─│─│─│─│─╮ ",
+        "{screen:#?}"
+    );
+    assert!(
+        !screen.iter().any(|line| line.contains("+6")),
+        "{screen:#?}"
+    );
+    assert!(screen[23].contains("+ collapse lanes"), "{screen:#?}");
+}
+
+#[test]
+fn within_the_limit_there_is_nothing_to_expand_and_no_hint_says_so() {
+    let rows = linear(3);
+    let screen = text(&draw(
+        &view(&rows, WalkView::Complete { rows: 3 }, 0),
+        80,
+        6,
+    ));
+    assert!(!screen[5].contains("lanes"), "{screen:#?}");
 }
