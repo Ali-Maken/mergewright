@@ -1,7 +1,7 @@
 # m1-the-graph/22 — The pixel graph rasteriser
 
 Status: ready
-Build with: **Fable** (high) — algorithm: anti-aliased curves and nodes from lane geometry
+Build with: **Opus** (high) — drawing, not algorithm design: the spike (ADR-0012) settled the approach; anti-aliased lines, Béziers and rings are standard coverage techniques over lane geometry 05 already produces
 Blocked by: 05
 Leaves runnable: yes — pure `graph` code with buffer snapshots; nothing reaches the terminal until 24.
 
