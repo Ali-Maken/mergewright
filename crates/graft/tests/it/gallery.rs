@@ -123,7 +123,7 @@ fn expectation(shape: Shape) -> &'static str {
             "topological order: 'Commit from a fast clock' sits below Main 01, not above it"
         }
         Shape::Tags => {
-            "four commits, tag badges v0.1 v0.2 v1.0 v2.0 one per row, annotated ones distinct"
+            "four commits, tag badges v0.1 v0.2 v1.0 v2.0 one per row; the annotated v1.0 and v2.0 sit on their commits, peeled"
         }
         Shape::UnicodeNames => {
             "branches fonctionnalité 機能 ветка and the ☕ subject align; no cell out of place"

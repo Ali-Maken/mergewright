@@ -374,6 +374,204 @@ passthrough works.
 screen is correct at that tier. A slower probe (500 ms instead of 200 ms)
 is expected; a probe that never answers must fall back, not hang.
 
+## Graph gallery
+
+M1's acceptance ticket (35). M1 promises that **the shape of history is
+obvious at a glance**; the gallery is how a person checks that promise, one
+repository at a time, with a stated finding per stop.
+
+```sh
+cargo run -p graft --example gallery                      # first stop
+cargo run -p graft --example gallery -- --start foxtrot-merge
+cargo run -p graft --example gallery -- --list            # the 23 stops
+cargo run -p graft --example gallery -- --matrix          # coverage matrix
+```
+
+`]` next stop, `[` previous, `q` quit. Every graph key works inside it:
+`j`/`k`, `Space` fold merges, `1` first-parent, `H` hide stashes, `F` Focus,
+`+` unfold lanes, `F3` cycle the tier (Pixel → Unicode → ASCII → back).
+The footer's last line names the stop, its `n/N` and `expect: …`, the
+one-line finding. Each stop restarts the run, so expect a blink per step.
+
+Captures of every stop, Unicode and ASCII at 80x24, are under
+`docs/shots/35-<stop>-{unicode,ascii}.txt`;
+`docs/shots/35-gallery-two-steps.txt` shows two `]` presses. They are what
+`.scratch/m1-the-graph/pty-gallery.py` saw, not what a person saw: the
+user judges by eye (ticket 35's last box).
+
+### Reading the entries
+
+The fixture facts come from `crates/graft-fixtures/src/shapes/`: subjects,
+branch names, parent order. "Row" counts from the top of the graph, after
+any `Uncommitted changes` row (the fixtures' trees are clean, so none has
+one; `graft-self` might).
+
+**Node glyphs, Unicode tier:** `●` commit, `◉` merge, `◇` root (no
+parent), `◆` HEAD's commit, `■` the newest stash, `◌` uncommitted changes.
+HEAD wins over the others: a merge commit that HEAD points at draws `◆`,
+not `◉`. **ASCII tier:** every node is `*`, lines are `| - / \ +`; the shape
+distinction survives only in the badges. **Pixel tier:** filled disc, ringed
+disc (merge), hollow circle (root), a larger disc (HEAD), a square (stash).
+
+**Badges, plain icons (the default):** `[◆ main]` the current branch,
+`[◆ main ⇄ origin]` in sync with its upstream, `[ahead ↑1]`, `[behind ↓1]`,
+`[origin/main]` remote, `[tag: v0.1]`, `[HEAD]` when detached, `[stash]`.
+With `ui.icons = "nerd"` the brackets become icons.
+
+**Colour:** each lane's colour is a hash of its branch name, not its
+column; the second-parent curve into a merge is drawn in the merged
+branch's colour, and the branch's badge shares it. So "in feature's colour"
+means: the same colour as the `[feature]` badge.
+
+**Straight lanes:** the default branch (`main` here; `master` in git/git) is
+lane 0, the leftmost column, and its first-parent chain never leaves it.
+
+**Across tiers (`F3`):** the rows, badges, subjects and the column each
+lane occupies are identical in all three tiers; only the glyphs change.
+Press `F3` at any stop: the text right of the graph must not move.
+
+### The stops
+
+1. **trivial** — 3 rows in one column: `◆ Correct the note` with `[◆ main]`,
+   `● Add the first note`, `◇ Add a readme` at the bottom. No tag, no curve,
+   no second column. `Space`, `1`, `H` change nothing.
+2. **linear** — 200 rows, `Commit 200` (`◆`, `[◆ main]`) down to
+   `Commit 001` (`◇`). One column the whole way: press `G` then `g`, and
+   `PageDown` through it; the node column never shifts left or right and no
+   row shows a second lane.
+3. **feature-branches** — 9 commits. `main` is lane 0. Two merge nodes on
+   main: `Merge branch 'feature/two'` (top, `◆`, `[◆ main]`) and
+   `Merge branch 'feature/one'` (`◉`). Into each, one curve comes in from
+   the right in that feature's colour; each curve reaches back to
+   `one: finish` / `two: finish` (`[feature/one]`, `[feature/two]`). `three: in
+   progress` (`[feature/three]`) sits in its own lane with no curve into main:
+   its line runs down to `Add b.txt` and ends there, open at the top.
+   `Space`: both merged branches fold, `feature/three` stays. `1`: only the
+   main column remains (5 rows: two merges, Add b, Add a, Add a readme).
+4. **octopus-merge** — 5 commits. The top row `Merge branches 'topic-1',
+   'topic-2' and 'topic-3'` (`◆`) has **three** curves coming in, one per
+   topic, each in its own colour matching `[topic-1]`, `[topic-2]`,
+   `[topic-3]`. The three topic rows each carry one node and one badge.
+   `◇ Add the base` at the bottom is where all four lines join. `1`: two
+   rows only (the merge and the base).
+5. **criss-cross-merge** — 7 commits. `alpha: merge beta` and `beta: merge
+   alpha` are both `◉`, one in alpha's lane, one in beta's, each with a curve
+   from the other's lane: the two curves **cross**. Above them `Merge branch
+   'alpha'` (`◆`, `[◆ main]`) in lane 0 takes one curve from alpha; `beta:
+   carry on` (`[beta]`) continues beta's lane above the crossing. Select
+   `alpha: merge beta` and press `F`: beta's `carry on` row fades, both
+   `Add the base` and `beta: work` stay lit (they are ancestors).
+6. **foxtrot-merge** — 4 commits, the shape to compare with 7. The merge
+   `Merge branch 'main' into feature` is main's tip (`◆`, `[◆ main]`) but its
+   **first** parent is `feature: work`, so the merge node sits in feature's
+   column, not lane 0, and main's own line (`Advance main`, `Add the base`)
+   is what curves **into** it. Press `1`: the first-parent walk leaves lane 0
+   — `Advance main` disappears and `feature: work` stays. That is the
+   foxtrot; a normal merge (stop 3, stop 8) keeps the merge node in lane 0
+   and `1` keeps every main commit.
+7. **backward-merge** — the same four subjects as 6, but the merge is
+   `feature`'s tip, not main's. `[feature]` sits on the `◉` merge row in
+   feature's column; `[◆ main]` sits on `Advance main` (`◆`) in lane 0,
+   straight down to `Add the base`. Main's line curves into the merge; lane 0
+   itself never bends. `1`: main shows both its rows, unchanged.
+8. **evil-merge** — 4 commits, a normal merge: `Merge branch 'alpha'` (`◆`,
+   `[◆ main]`) in lane 0, one curve in from `alpha: work` (`[alpha]`) in
+   alpha's colour, `Advance main` below in lane 0. Nothing on screen marks
+   the merge as evil (the extra `evil.txt` is a tree fact, Mistake Radar's
+   job in M2): this stop is the control for "an ordinary merge looks
+   ordinary".
+9. **accidental-pull-merge** — 4 commits. The top row is a merge (`◆`,
+   `[◆ main]`) whose subject starts `Merge branch 'main' of
+   https://example.invalid/graft.git into main`; its curve comes from `Their
+   commit`, which carries `[origin/main]` and no local branch. `My commit`
+   sits below in lane 0.
+10. **orphan-branch** — 4 commits, two roots. `main`'s two rows (`◆ Add the
+    code`, `◇ Add a readme`) in lane 0. `docs: second page` (`[docs]`) and
+    `docs: first page` in a second column; `docs: first page` is a `◇` with
+    **no line below it** and no line ever joins the two columns.
+11. **cherry-pick-duplicates** — 4 commits. `Fix the greeting` (`◆`,
+    `[◆ main]`) in lane 0 and `Fix the greeting (cherry picked)` in topic's
+    column below `topic: unrelated work` (`[topic]`). No curve joins the two
+    fix rows; both lines run down to `◇ Add the greeting`.
+12. **skewed-dates** — 15 commits. `Commit from a fast clock` is dated a
+    day ahead of everything above it. Topological order wins: it sits
+    **below** `Main 01` (directly above `◇ Add the base`), never above
+    `Main 12`. `feature: build on the fast commit` (`[feature]`) branches off
+    it in a second column.
+13. **tags** — 4 rows, one tag each, reading down: `[◆ main] [tag: v2.0]` on
+    `Add c.txt`, `[tag: v1.0]` on `Add b.txt`, `[tag: v0.2]` on `Add a.txt`,
+    `[tag: v0.1]` on `◇ Add a readme`. `v1.0` and `v2.0` are annotated: their
+    badges sit on the commit rows (the tag object is peeled), and read the
+    same as the lightweight ones.
+14. **unicode-names** — 5 commits, author `Ünïcödé Fixture`. Three branch
+    rows off `日本語のコミットメッセージ`: `[fonctionnalité]`, `[機能]`,
+    `[ветка]`, each in its own column. The `☕` and `🚀` subjects and the
+    CJK badge take two cells per glyph, yet the author, date and SHA columns
+    on those rows start in the same screen column as on every other row.
+    `[tag: версия-1.0]` sits on the `日本語` row next to `[◆ main]`.
+15. **ref-states** — 8 commits. `Advance main again` carries
+    `[◆ main ⇄ origin]` (one merged badge, no counts). `ahead: not pushed
+    yet` carries `[ahead ↑1]` with `[origin/ahead]` one row below it.
+    `behind: theirs` carries `[origin/behind]` and, one row below, `behind:
+    shared` carries `[behind ↓1]`. `Archived work` carries `[tag: archived]`
+    and no branch badge, in its own column off `◇ Add the base`.
+16. **detached-head** — 4 rows, one column. `[main]` (no `◆`: it is not
+    the current branch) on `Commit 4`, then `Commit 3`, then `◆ Commit 2`
+    with `[HEAD]`, two rows below main's tip; `◇ Commit 1` at the bottom.
+17. **unborn-branch** — 3 commits. HEAD is the unborn branch `fresh`: no
+    row is `◆`, and no `Uncommitted changes` row appears at the top. `Add
+    a.txt` (`[main]`) and `other: work` (`[other]`) in two columns above
+    `◇ Add a readme`.
+18. **stash** — top row is the newest stash: `■` with `[stash]`, subject
+    `On main: wip: with an untracked file`, one row **above** `◆ Add a.txt`
+    (`[◆ main]`). Press `H`: the stash row disappears, `Add a.txt` becomes
+    the top row, nothing else moves. `H` again brings it back.
+19. **non-utf8-path** — 2 columns: `Add a Latin-1 path` (`[latin1]`) and
+    `◆ Add a readme` (`[◆ main]`). The bad byte lives in a tree path, so no
+    `\u{fffd}` or stray byte appears anywhere on screen.
+20. **non-utf8-ref-name** — builds only where the filesystem takes a Latin-1
+    file name (not APFS): on a Mac the stop reads `not available — build
+    with: …`. Where it builds: `Work under a Latin-1 branch name` carries a
+    badge reading `caf�` (one replacement character), `Add a readme` carries
+    `[◆ main]`, and nothing else on the row is disturbed.
+21. **graft-self** — this checkout, ~100 commits at M1's end. One column the
+    whole way, every node `●` except `◆` at HEAD and `◇` at the bottom; no
+    curve anywhere. An `Uncommitted changes` row appears at the top only if
+    the tree is dirty.
+22. **synthetic-100k** — present only after the heavy tier has built it
+    (`--matrix` and the stop itself say `not available — build with: …`
+    otherwise). With it: the first frame paints without a visible wait; more
+    than eight parallel lanes fold behind a `+N` marker (`+` unfolds them);
+    `j` held down and `G` never stall; `1` collapses to the default branch's
+    single column.
+23. **git-git** — `scripts/clone-git-git.sh` first. `master` is lane 0 and
+    stays in the leftmost column for the whole history (`G` to the bottom
+    and back). Merge rows are `◉` with a curve coming in; release commits
+    carry `[tag: v2.x.y]` badges. `1` leaves a single column of merges and
+    direct commits; `Space` folds each merge's side commits behind it.
+
+### Per terminal: walk the gallery
+
+Procedure, in each terminal of the checklist above: `cargo run -p graft
+--example gallery`, then `]` through all 23 stops, checking each against its
+entry; at stops 3, 5, 6 and 18 also press `Space`, `1`, `F` (`Esc` to leave)
+and `H` as the entry says; at stop 23 press `F3` three times and scroll.
+The pass conditions are the ones above:
+
+- **Pixel tier, must pass** (Ghostty, Kitty, WezTerm, iTerm2): the 23
+  entries hold with the pixel glyphs; strips line up with their text rows at
+  every stop, and the octopus (4), criss-cross (5) and foxtrot (6) curves are
+  smooth, not stepped.
+- **Unicode tier, must look deliberate** (Terminal.app, Alacritty, the VS
+  Code and Zed terminals): the 23 entries hold with the glyphs listed under
+  "Reading the entries"; at stop 14 nothing is a tofu box.
+- **Must degrade, not break** (tmux, SSH): either a correct pixel gallery or
+  a clean Unicode one, per the tmux/SSH block above; every stop's footer
+  line reads in full.
+
+Record the result in the tier tables above, one line per terminal, naming
+the stop that failed if one did.
+
 ### Out of scope
 
 Windows terminals (PROMPT.md, Mission; ADR-0005). Not tested, not
