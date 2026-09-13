@@ -130,3 +130,33 @@ Idle-wake µs (printed, not asserted), runs 1–3: Pixel 50k 15795 14256 16221 1
 - **Keep:** `the_ui_thread_never_waits_on_a_job` (forbids `recv_timeout`/`sleep` in mod.rs: use `try_recv`).
 - **Cost to report:** idle CPU after each scroll stop (strips rasterised × per-strip cost, ~1.1 ms wide after 30g), and the at-most-one-strip wait.
 - Then: 7 counted runs from run 1 (`target/30f/counted-b-N.txt`), stop at the first miss; if B misses → option D to the user. After 7/7: debug frames run, proofs (INPUT_TO_FRAME 4 ms, FIRST_PAINT_LIMIT 10 ms, release, revert), full release perf run (TESTING.md), ADR-0021 open → decided, TESTING/KNOWN_GAPS (row "Input to frame misses 16 ms", line ~295, is stale), tick 30c/30f boxes.
+
+## Seam 4 (2026-09-13, builder-opus)
+
+**Counted release runs, count restarted at run 1 after 30h (HEAD 655be37, frames:: alone, `target/30f/counted-N.txt`; seam 3's first count kept as `seam3-counted-{1,2,3}.txt`). 7 of 7 pass, no reruns, no misses.** Keys p50 / p99 / max, ms:
+
+| Run | Result | Pixel 50k | Unicode 50k | Pixel 100k | Unicode 100k |
+|---|---|---|---|---|---|
+| 1 | 4/4 pass | 5.8 / 7.3 / 8.0 | 7.6 / 12.7 / 13.6 | 5.5 / 9.1 / 11.6 | 5.8 / 8.9 / 9.1 |
+| 2 | 4/4 pass | 5.8 / 7.3 / 8.1 | 7.4 / 12.4 / 14.2 | 5.6 / 9.2 / 10.1 | 5.9 / 8.9 / 9.3 |
+| 3 | 4/4 pass | 5.8 / 7.2 / 7.9 | 7.5 / 12.3 / 13.2 | 5.6 / 9.0 / 11.0 | 5.6 / 9.0 / 9.9 |
+| 4 | 4/4 pass | 5.7 / 7.2 / 8.1 | 7.2 / 12.7 / 13.9 | 5.7 / 9.2 / 9.9 | 5.8 / 8.8 / 9.3 |
+| 5 | 4/4 pass | 5.7 / 7.3 / 7.8 | 7.4 / 12.2 / 14.6 | 3.9 / 6.0 / 6.6 | 3.9 / 5.1 / 5.4 |
+| 6 | 4/4 pass | 4.4 / 5.4 / 6.5 | 6.2 / 10.7 / 11.2 | 4.2 / 5.9 / 9.3 | 3.9 / 5.3 / 5.6 |
+| 7 | 4/4 pass | 4.4 / 5.5 / 6.1 | 6.2 / 10.7 / 11.4 | 4.1 / 5.8 / 9.4 | 3.9 / 5.3 / 5.6 |
+
+Worst key over all 7 runs: 14.6 ms (Unicode 50k refs, run 5). The replay check (`waited`: no key drew without its rows) passed in every run: it fails the test in both builds.
+
+**Idle-wake µs (first key after 600 ms idle; printed, not asserted), keys j PgDn k PgUp j:**
+
+| Run | Pixel 50k | Unicode 50k | Pixel 100k | Unicode 100k |
+|---|---|---|---|---|
+| 1 | 15856 12041 12734 10940 16336 | 15588 17145 16741 13494 6466 | 10152 3670 8495 6613 11989 | 3205 11387 11518 10537 11661 |
+| 2 | 16445 14196 17635 17991 11757 | 16617 14021 10232 13453 18783 | 6489 7278 11981 2396 10840 | 11638 3127 11571 11733 7659 |
+| 3 | 14940 17416 15839 9807 12437 | 14798 9540 11381 16000 13141 | 9988 12209 10554 3850 11980 | 11698 11716 10856 11794 11590 |
+| 4 | 15762 14046 8152 13527 18846 | 17774 15586 6788 17456 14440 | 7580 7570 10938 9294 11714 | 11630 3742 5737 1624 3938 |
+| 5 | 19120 16160 11582 15755 9413 | 18495 18019 18455 9336 16356 | 4885 7159 4733 7074 2791 | 6710 6081 3187 5284 4467 |
+| 6 | 10079 9764 13637 10718 13295 | 13412 9520 12885 13071 11468 | 7054 3963 6345 6212 2234 | 4986 5094 6601 6785 1544 |
+| 7 | 12431 10446 5945 11951 11958 | 13614 11848 12892 13149 12128 | 3723 6017 4860 7150 7009 | 6166 6544 1905 4781 5007 |
+
+Idle-wake over 16 ms: 14 of 140 keys, all at 50k refs (max 19.1 ms). The user's by-eye check of the first key after a pause is still open.
