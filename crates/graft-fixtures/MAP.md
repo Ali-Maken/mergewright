@@ -20,4 +20,4 @@ Public items, one line each.
 - `MemoryError` (enum) — why memory could not be read.
 - `proptest_cases` (fn) — property-test case count for the tier in force.
 - `git` (mod) — running system git for fixture building; `GitError`.
-- `synthetic` (mod, `heavy-tests`) — large generated histories: `Scale` (`of`, `HEAVY`, `with_commit_graph`, `with_realistic_commits`, `commits`, `name`), `CommitGraph`, `CommitSize` (`Small` default, `Realistic` sized after git/git), `ensure`, `borrow`.
+- `synthetic` (mod, `heavy-tests`) — large generated histories: `Scale` (`of`, `HEAVY`, `with_commit_graph`, `with_realistic_commits`, `with_refs` (50k-ref variant: packed branches + upstreams + `[branch]` sections), `commits`, `name`), `CommitGraph`, `CommitSize` (`Small` default, `Realistic` sized after git/git), `ensure`, `borrow`.

@@ -65,6 +65,13 @@ fn budgets_hold_on_the_100k_realistic_fixture_with_a_commit_graph() {
     );
 }
 
+/// PROMPT.md §6.3's 50k refs (m1-the-graph/30d): the graph's first paint
+/// and memory hold with them, the badges arriving by their own job.
+#[test]
+fn budgets_hold_on_the_100k_fixture_with_50k_refs() {
+    check(crate::many_refs::FIFTY_THOUSAND_REFS, true);
+}
+
 /// Not a test of its own: the half of a budget test that runs in a fresh
 /// process. Without [`CHILD_REPO`] set — any ordinary run of the tier —
 /// there is nothing for it to measure and it returns at once.

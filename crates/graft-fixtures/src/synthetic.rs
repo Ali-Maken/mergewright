@@ -127,6 +127,9 @@ pub struct Scale {
     commits: u32,
     commit_graph: CommitGraph,
     commit_size: CommitSize,
+    /// Extra refs beyond the history's own: half local branches, half their
+    /// remote-tracking upstreams. `0` for every fixture that predates them.
+    many_refs: u32,
 }
 
 impl Scale {
@@ -139,6 +142,7 @@ impl Scale {
             commits,
             commit_graph: CommitGraph::Absent,
             commit_size: CommitSize::Small,
+            many_refs: 0,
         }
     }
 
@@ -163,6 +167,21 @@ impl Scale {
         }
     }
 
+    /// The same history with `refs` extra refs (m1-the-graph/30d): `refs / 2`
+    /// local branches `refs/heads/many/NNNNNN`, each with a `[branch]` config
+    /// section tracking `refs/remotes/origin/many/NNNNNN`, all packed into
+    /// `packed-refs` as a repository that has run `git gc` keeps them. Every
+    /// hundredth branch is one commit ahead of its upstream, so ahead/behind
+    /// has real walks to do; the rest are in sync. A separate fixture with its
+    /// own cache directory.
+    #[must_use]
+    pub const fn with_refs(self, refs: u32) -> Scale {
+        Scale {
+            many_refs: refs,
+            ..self
+        }
+    }
+
     /// How many commits the repository holds. Exactly this many: the
     /// generator checks, and fails the build rather than handing back a
     /// fixture of the wrong size.
@@ -177,8 +196,14 @@ impl Scale {
             CommitSize::Small => "",
             CommitSize::Realistic => "-realistic",
         };
+        // No extra refs keeps the name they were always cached under too.
+        let refs = if self.many_refs == 0 {
+            String::new()
+        } else {
+            format!("-refs{}", self.many_refs)
+        };
         format!(
-            "synthetic-{}{size}-{}",
+            "synthetic-{}{size}{refs}-{}",
             self.commits,
             self.commit_graph.name()
         )
@@ -304,6 +329,7 @@ fn build(scale: Scale, dir: &Path) -> Result<(), SyntheticError> {
     std::fs::remove_file(&stream_path).map_err(io_error(scale, &stream_path))?;
 
     drop_scratch_branch(scale, dir)?;
+    add_many_refs(scale, dir)?;
     // The final tree is three small files however long the history is, so a
     // checkout costs nothing and the fixture behaves like a normal
     // repository rather than one with every file deleted.
@@ -320,6 +346,64 @@ fn build(scale: Scale, dir: &Path) -> Result<(), SyntheticError> {
         git::version().map_err(git_error(scale))?
     );
     std::fs::write(&marker, note).map_err(io_error(scale, &marker))
+}
+
+/// Every hundredth extra branch is this many commits ahead of its upstream.
+const DRIFT_EVERY: u32 = 100;
+
+/// Adds [`Scale::with_refs`]'s branches, upstreams and `[branch]` sections,
+/// then packs every ref. Nothing to do when none were asked for.
+fn add_many_refs(scale: Scale, dir: &Path) -> Result<(), SyntheticError> {
+    let branches = scale.many_refs / 2;
+    if branches == 0 {
+        return Ok(());
+    }
+    // One commit more than there are branches, so a drifted upstream can sit
+    // on the commit after its branch's.
+    let max_count = format!("--max-count={}", branches + 1);
+    let listed =
+        git::run(dir, &["rev-list", &max_count, "refs/heads/main"]).map_err(git_error(scale))?;
+    let listed = String::from_utf8_lossy(&listed);
+    let ids: Vec<&str> = listed.lines().collect();
+    if ids.len() < 2 {
+        // A history this short cannot give a drifted upstream a commit of
+        // its own; reported, not papered over with a fixture of fewer refs.
+        return Err(SyntheticError::WrongSize {
+            scale: scale.name(),
+            want: 2,
+            got: u32::from(!ids.is_empty()),
+        });
+    }
+
+    let mut transaction = String::new();
+    let mut config = String::from(
+        "[remote \"origin\"]\n\turl = https://example.invalid/many.git\n\tfetch = +refs/heads/*:refs/remotes/origin/*\n",
+    );
+    for n in 0..branches {
+        let at = n as usize % (ids.len() - 1);
+        let upstream_at = if n % DRIFT_EVERY == 0 { at + 1 } else { at };
+        let name = format!("many/{n:06}");
+        transaction.push_str(&format!("create refs/heads/{name} {}\n", ids[at]));
+        transaction.push_str(&format!(
+            "create refs/remotes/origin/{name} {}\n",
+            ids[upstream_at]
+        ));
+        config.push_str(&format!(
+            "[branch \"{name}\"]\n\tremote = origin\n\tmerge = refs/heads/{name}\n"
+        ));
+    }
+
+    let script = dir.join("many-refs.txt");
+    std::fs::write(&script, transaction).map_err(io_error(scale, &script))?;
+    git::run_with_stdin_file(dir, &["update-ref", "--stdin"], &script).map_err(git_error(scale))?;
+    std::fs::remove_file(&script).map_err(io_error(scale, &script))?;
+    git::run(dir, &["pack-refs", "--all", "--prune"]).map_err(git_error(scale))?;
+
+    let config_path = dir.join(".git").join("config");
+    let mut existing =
+        std::fs::read_to_string(&config_path).map_err(io_error(scale, &config_path))?;
+    existing.push_str(&config);
+    std::fs::write(&config_path, existing).map_err(io_error(scale, &config_path))
 }
 
 /// Removes the branch the throwaway topics were built on, if any topic was

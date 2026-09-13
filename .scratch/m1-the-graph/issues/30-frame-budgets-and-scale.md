@@ -75,6 +75,19 @@ After 30b (both causes: the cursor highlight in the strip key, and strips drawn 
 | input→frame < 16 ms | 7.7 / 16.4 / 21.5 ms; 6/420 over; 193 MB | Pixel | 100k, cg | release | **missed (narrowly)** |
 | input→frame < 16 ms, 50k refs | 9.2 / 15.8 / 19.9 ms; 5/420 over; 193 MB | Pixel | same | release | **missed (narrowly)** |
 
+After 30d: 50k refs read from a real repository (`Scale::HEAVY.with_commit_graph().with_refs(50_000)`: 25k packed branches with `[branch]` sections + 25k upstreams, 1 in 100 one commit ahead). Tests `crates/graft/tests/it/many_refs.rs`, `heavy::budgets_hold_on_the_100k_fixture_with_50k_refs`. Each run alone:
+
+| Budget | Measured | Tier | Fixture | Build | Result |
+|---|---|---|---|---|---|
+| `refs::read` (no budget; guard 1.5 s) | 2.94 s before fixes → 0.91 s (peel 424 ms, upstreams 402 ms, badges 78 ms) | — | 100k cg + 50k refs | debug | guard holds |
+| `refs::read` | 165 ms (peel 91-136 ms, upstreams 57 ms, badges 15 ms) | — | same | release | recorded |
+| open → graph + badges on screen (guard 1.5 s) | 1.04 s | — | same | debug | guard holds |
+| open → graph + badges on screen | 209 ms | — | same | release | recorded |
+| graph first paint ≤ 150 ms | 800 ms (63 ms without the refs) | — | same | debug | **missed** |
+| graph first paint ≤ 150 ms | 160 ms (31 ms without the refs); peak RSS well under 300 MB | — | same | release | **missed (narrowly)** |
+
+30d fixes (no behaviour change): `badges` checked each remote ref against a `Vec` of merged upstreams (quadratic, ~1.3 s debug); `ahead_behind` opened the commit graph before noticing an in-sync pair (~0.6 s debug over 25k branches).
+
 One-row scroll (`j`) frame: 64 KB, down from 364 KB; a transmit only when a strip enters the view. Details are in 30b.
 
 Release pixel runs wrote 388 MB over 420 keys (~925 KB, ~230 Kitty commands per frame). The heavy tier is a debug build, so as written these tests fail there by a wide margin that is mostly debug overhead; whether the heavy tier should assert frame time in debug at all is a question for the conductor (see NOTES).

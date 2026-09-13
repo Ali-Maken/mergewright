@@ -11,7 +11,7 @@
 #[cfg(test)]
 mod tests;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::hash::BuildHasher;
 use std::sync::{Mutex, PoisonError};
 
@@ -195,7 +195,10 @@ pub fn badges<S: BuildHasher>(
     let tips: HashMap<&RefName, Oid> = refs.iter().map(|(name, id)| (name, *id)).collect();
     let mut result = RefBadges::default();
     // Remote-tracking refs whose local branch's badge already says "in sync".
-    let mut merged: Vec<&RefName> = Vec::new();
+    // A set, not a list: every remote-tracking ref is checked against it, and
+    // with 25k in-sync branches a list made that check quadratic (1.3 s of a
+    // 50k-ref read in debug, m1-the-graph/30d).
+    let mut merged: HashSet<&RefName> = HashSet::new();
 
     let head_id = match head {
         HeadState::Detached(id) => {
@@ -219,7 +222,7 @@ pub fn badges<S: BuildHasher>(
                 Some((up, up_id)) => {
                     let counts = count(*id, up_id)?;
                     if counts.in_sync() {
-                        merged.push(up);
+                        merged.insert(up);
                         Upstream::InSync {
                             remote: remote_of(up).to_vec(),
                         }
@@ -252,14 +255,14 @@ fn remote_of(name: &RefName) -> &[u8] {
 impl RefBadges {
     /// Everything after the local branches: remote-tracking refs not merged
     /// into an in-sync branch's badge, then tags, then the stash.
-    fn push_remotes_tags_and_stash(&mut self, refs: &[(RefName, Oid)], merged: &[&RefName]) {
+    fn push_remotes_tags_and_stash(&mut self, refs: &[(RefName, Oid)], merged: &HashSet<&RefName>) {
         let result = self;
         for (name, id) in refs {
             let full = name.as_bytes();
             if full.starts_with(REMOTES) {
                 // `origin/HEAD` is a pointer to the remote's default branch, which
                 // already has its own badge.
-                if full.ends_with(b"/HEAD") || merged.contains(&name) {
+                if full.ends_with(b"/HEAD") || merged.contains(name) {
                     continue;
                 }
                 result.push(*id, RefLabel::Remote(full[REMOTES.len()..].to_vec()));

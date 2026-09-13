@@ -185,3 +185,60 @@ fn the_heavy_fixture_is_the_size_prompt_md_asks_for() {
         "100000",
     );
 }
+
+/// m1-the-graph/30d: the many-refs variant has exactly the refs it promises,
+/// packed, each branch tracking its upstream through a `[branch]` section.
+#[test]
+fn the_many_refs_variant_packs_branches_that_each_track_an_upstream() {
+    let scale = SMALL.with_refs(1_000);
+    let repo = synthetic::borrow(scale).unwrap_or_else(|why| panic!("{why}"));
+
+    assert_eq!(
+        count(
+            &repo,
+            &["for-each-ref", "--format=%(refname)", "refs/heads/many/"]
+        ),
+        500
+    );
+    assert_eq!(
+        count(
+            &repo,
+            &[
+                "for-each-ref",
+                "--format=%(refname)",
+                "refs/remotes/origin/many/"
+            ]
+        ),
+        500
+    );
+    assert!(
+        !repo.join(".git/refs/heads/many").exists(),
+        "the extra refs are packed, not loose"
+    );
+    assert_eq!(
+        read(&repo, &["config", "--get", "branch.many/000123.merge"]),
+        "refs/heads/many/000123"
+    );
+    assert_eq!(
+        read(&repo, &["rev-parse", "refs/heads/many/000001"]),
+        read(&repo, &["rev-parse", "refs/remotes/origin/many/000001"]),
+        "an ordinary branch is in sync with its upstream"
+    );
+    assert_eq!(
+        count(
+            &repo,
+            &[
+                "rev-list",
+                "refs/remotes/origin/many/000000..refs/heads/many/000000"
+            ]
+        ),
+        1,
+        "every hundredth branch is one commit ahead"
+    );
+    assert_eq!(
+        count(&repo, &["rev-list", "--all"]),
+        SMALL.commits() as usize,
+        "the extra refs add no commits"
+    );
+    assert_ne!(scale.name(), SMALL.name(), "a separate fixture");
+}

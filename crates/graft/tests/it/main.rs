@@ -12,5 +12,7 @@ mod dependency_edges;
 mod frames;
 #[cfg(feature = "heavy-tests")]
 mod heavy;
+#[cfg(feature = "heavy-tests")]
+mod many_refs;
 mod not_a_repo;
 mod piped_stdout;

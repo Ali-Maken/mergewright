@@ -50,6 +50,12 @@ pub fn ahead_behind(
     local: Oid,
     upstream: Oid,
 ) -> Result<AheadBehind, WalkError> {
+    // Checked before opening the commit graph, not only inside `count`: most
+    // branches sit on their upstream, and opening it for each of 25k such
+    // branches cost ~0.6 s of a 50k-ref read in debug (m1-the-graph/30d).
+    if local == upstream {
+        return Ok(AheadBehind::default());
+    }
     let nodes = open_nodes(handle.gix())?;
     Ok(count(&nodes, local, upstream)?)
 }
