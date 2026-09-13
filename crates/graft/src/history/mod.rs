@@ -321,7 +321,9 @@ pub fn stream(
     let refs = handle.references().map_err(|error| error.to_string())?;
     let seeds = seeds_for(&refs, &branches);
 
-    let walk = Walk::all_refs(&handle, order).map_err(|error| error.to_string())?;
+    let table = store.table().map_err(|error| error.to_string())?;
+    let walk =
+        Walk::all_refs(&handle, order, Arc::clone(&table)).map_err(|error| error.to_string())?;
     let facts = WalkFacts {
         requested: walk.requested_order(),
         order: walk.order_in_force(),
@@ -338,11 +340,15 @@ pub fn stream(
     let mut started = Some(walk);
     let open = move |promoted: Option<&Arc<[Oid]>>| {
         if let Some(ids) = promoted {
-            return Ok(WalkSource::in_order(handle, Arc::clone(ids)));
+            return Ok(WalkSource::in_order(
+                handle,
+                Arc::clone(ids),
+                Arc::clone(&table),
+            ));
         }
         let walk = match started.take() {
             Some(walk) => walk,
-            None => Walk::all_refs(handle, order)?,
+            None => Walk::all_refs(handle, order, Arc::clone(&table))?,
         };
         Ok(WalkSource::new(handle, walk))
     };
@@ -366,14 +372,16 @@ pub fn topological_order(
     // The walk reads each commit once, so a cache would fill and never be hit
     // (m1-the-graph/27b, fix D).
     let handle = repo.handle_with_object_cache(0);
+    let table = store.table().map_err(|error| error_chain(&error))?;
     let tips = handle.commit_tips().map_err(|error| error.to_string())?;
-    let mut walk = Walk::full_topological(&handle, &tips).map_err(|error| error_chain(&error))?;
+    let mut walk = Walk::full_topological(&handle, &tips, Arc::clone(&table))
+        .map_err(|error| error_chain(&error))?;
     let mut order = Vec::new();
     loop {
         let chunk = walk
-            .next_ids(CHUNK, stop)
+            .next_links(CHUNK, stop)
             .map_err(|error| error_chain(&error))?;
-        order.extend(chunk.ids);
+        order.extend(chunk.links.iter().map(|link| table.id_of(link.commit)));
         if chunk.stopped {
             return Ok(None);
         }

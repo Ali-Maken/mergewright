@@ -32,7 +32,10 @@ mod simple;
 mod table;
 mod topological;
 
+use std::sync::Arc;
+
 use graft_core::commit::{Commit, Identity, Timestamp};
+use graft_core::commit_handle::{Link, Parents};
 use graft_core::oid::Oid;
 
 use crate::repo::{RepoHandle, TipsError};
@@ -81,15 +84,20 @@ pub struct Chunk {
     pub stopped: bool,
 }
 
-/// One batch of commit ids, and whether there are more: [`Chunk`] without
-/// the commits read whole.
+/// One batch of links a walk hands back: [`Chunk`] without the commits read
+/// whole, each commit and its parents as handles into the walk's
+/// [`CommitTable`].
+///
+/// Same contract as [`Chunk`]. Exactly one of `links.len() == limit`, `done`
+/// and `stopped` explains why the batch ended.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct IdChunk {
-    /// The ids, in the walk's order.
-    pub ids: Vec<Oid>,
-    /// As [`Chunk::done`].
+pub struct LinkChunk {
+    /// The links, in the walk's order; parents as walked, untrimmed.
+    pub links: Vec<Link>,
+    /// As [`Chunk::done`]: the walk has emitted its last commit.
     pub done: bool,
-    /// As [`Chunk::stopped`].
+    /// As [`Chunk::stopped`]: `stop` fired before the batch was full; the
+    /// next call carries on.
     pub stopped: bool,
 }
 
@@ -106,6 +114,7 @@ pub struct Walk<'a> {
     in_force: Order,
     commit_graph: bool,
     reads: u64,
+    table: Arc<CommitTable>,
 }
 
 /// The three orderings, behind one call.
@@ -117,12 +126,19 @@ enum Sequence {
 impl<'a> Walk<'a> {
     /// A walk over everything the repository's refs reach.
     ///
+    /// `table` is the repository's one id table: [`next_links`](Self::next_links)
+    /// hands out handles from it.
+    ///
     /// # Errors
     /// [`WalkError`] if the refs cannot be read, or a commit they name
     /// cannot be.
-    pub fn all_refs(handle: &'a RepoHandle, order: Order) -> Result<Self, WalkError> {
+    pub fn all_refs(
+        handle: &'a RepoHandle,
+        order: Order,
+        table: Arc<CommitTable>,
+    ) -> Result<Self, WalkError> {
         let tips = handle.commit_tips()?;
-        Walk::from_tips(handle, order, &tips)
+        Walk::from_tips(handle, order, &tips, table)
     }
 
     /// A walk over everything `tips` reaches.
@@ -138,6 +154,7 @@ impl<'a> Walk<'a> {
         handle: &'a RepoHandle,
         order: Order,
         tips: &[Oid],
+        table: Arc<CommitTable>,
     ) -> Result<Self, WalkError> {
         let repo = handle.gix();
         let nodes = open_nodes(repo)?;
@@ -176,6 +193,7 @@ impl<'a> Walk<'a> {
             in_force,
             commit_graph,
             reads,
+            table,
         })
     }
 
@@ -193,7 +211,11 @@ impl<'a> Walk<'a> {
     ///
     /// # Errors
     /// [`WalkError`] if a tip cannot be read.
-    pub fn full_topological(handle: &'a RepoHandle, tips: &[Oid]) -> Result<Self, WalkError> {
+    pub fn full_topological(
+        handle: &'a RepoHandle,
+        tips: &[Oid],
+        table: Arc<CommitTable>,
+    ) -> Result<Self, WalkError> {
         let repo = handle.gix();
         let nodes = open_nodes(repo)?;
         let commit_graph = nodes.has_commit_graph();
@@ -207,6 +229,7 @@ impl<'a> Walk<'a> {
             in_force: Order::Topological,
             commit_graph,
             reads,
+            table,
         })
     }
 
@@ -244,6 +267,12 @@ impl<'a> Walk<'a> {
         self.commit_graph
     }
 
+    /// The id table this walk's handles come from.
+    #[must_use]
+    pub fn table(&self) -> &Arc<CommitTable> {
+        &self.table
+    }
+
     /// How many commits the walk has read so far.
     ///
     /// The measure the 150 ms first paint is argued in: an incremental sort
@@ -268,7 +297,7 @@ impl<'a> Walk<'a> {
         stop: &dyn Fn() -> bool,
     ) -> Result<Chunk, WalkError> {
         let mut commits = Vec::new();
-        let paused = self.advance(limit, stop, |repo, id| {
+        let paused = self.advance(limit, stop, |repo, id, _parents| {
             commits.push(hydrate(repo, id)?);
             Ok(())
         })?;
@@ -279,28 +308,37 @@ impl<'a> Walk<'a> {
         })
     }
 
-    /// The next batch of at most `limit` commit ids, without reading the
-    /// commits whole.
+    /// The next batch of at most `limit` links, without reading the commits
+    /// whole: each commit and its parents as walked (untrimmed), interned
+    /// through [`table`](Self::table).
     ///
-    /// For a caller that needs only the order, like ADR-0008's promotion:
-    /// it skips the full object read and decode [`next_chunk`](Self::next_chunk)
-    /// does for every commit, and the object cache that read fills. `stop`
-    /// behaves as it does there.
+    /// The same commits as [`next_chunk`](Self::next_chunk) in the same
+    /// order, and `limit` and `stop` behave as they do there. For a caller
+    /// that needs only the shape, like ADR-0008's promotion: it skips the
+    /// object read and decode `next_chunk` does per commit, and the parents
+    /// come from the walk's own exploration, so no commit is looked up twice.
     ///
     /// # Errors
     /// [`WalkError`] if a commit cannot be read while walking.
-    pub fn next_ids(
+    pub fn next_links(
         &mut self,
         limit: usize,
         stop: &dyn Fn() -> bool,
-    ) -> Result<IdChunk, WalkError> {
-        let mut ids = Vec::new();
-        let paused = self.advance(limit, stop, |_, id| {
-            ids.push(id);
+    ) -> Result<LinkChunk, WalkError> {
+        let mut links = Vec::new();
+        let table = Arc::clone(&self.table);
+        let paused = self.advance(limit, stop, |_, id, parents| {
+            links.push(Link {
+                commit: table.intern(&id),
+                parents: parents
+                    .iter()
+                    .map(|parent| table.intern(parent))
+                    .collect::<Parents>(),
+            });
             Ok(())
         })?;
-        Ok(IdChunk {
-            ids,
+        Ok(LinkChunk {
+            links,
             done: paused == Paused::Done,
             stopped: paused == Paused::Stopped,
         })
@@ -312,7 +350,7 @@ impl<'a> Walk<'a> {
         &mut self,
         limit: usize,
         stop: &dyn Fn() -> bool,
-        mut emit: impl FnMut(&'a gix::Repository, Oid) -> Result<(), WalkError>,
+        mut emit: impl FnMut(&'a gix::Repository, Oid, Vec<Oid>) -> Result<(), WalkError>,
     ) -> Result<Paused, WalkError> {
         let mut emitted = 0;
         loop {
@@ -327,8 +365,8 @@ impl<'a> Walk<'a> {
                 Sequence::Dated(walk) => walk.next(&self.nodes, &mut self.reads)?,
             };
             match next {
-                Some(id) => {
-                    emit(self.repo, id)?;
+                Some((id, parents)) => {
+                    emit(self.repo, id, parents)?;
                     emitted += 1;
                 }
                 None => return Ok(Paused::Done),

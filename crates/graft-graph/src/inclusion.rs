@@ -24,6 +24,7 @@
 use std::collections::{BTreeSet, HashMap};
 
 use graft_core::commit::Commit;
+use graft_core::commit_handle::{CommitHandle, Link};
 use graft_core::oid::Oid;
 
 use crate::layout::source::{CommitSource, Pull};
@@ -329,6 +330,30 @@ impl<S: CommitSource> CommitSource for Included<S> {
             .into_iter()
             .map(|commit| drawn_as(commit, self.follow, &self.inclusion))
             .collect())
+    }
+
+    fn links(&mut self, commits: &[CommitHandle]) -> Result<Vec<Link>, Self::Error> {
+        let mut links = self.source.links(commits)?;
+        for link in &mut links {
+            // As `drawn_as`, on handles.
+            if self.follow == Follow::FirstParent
+                || self
+                    .inclusion
+                    .folded
+                    .contains(&self.source.id_of(link.commit))
+            {
+                link.parents = link.parents.first().into_iter().collect();
+            }
+        }
+        Ok(links)
+    }
+
+    fn handle_of(&self, id: &Oid) -> Option<CommitHandle> {
+        self.source.handle_of(id)
+    }
+
+    fn id_of(&self, handle: CommitHandle) -> Oid {
+        self.source.id_of(handle)
     }
 }
 

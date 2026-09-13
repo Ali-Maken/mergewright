@@ -1,4 +1,5 @@
 use graft_core::commit::{Identity, Timestamp};
+use graft_core::commit_handle::{CommitHandle, Link};
 
 use super::*;
 
@@ -400,6 +401,61 @@ fn wide_oid(n: u16) -> Oid {
     let mut bytes = [0u8; Oid::SHA1_BYTES];
     bytes[..2].copy_from_slice(&n.to_be_bytes());
     Oid::from_bytes(&bytes).expect("20 bytes is a valid oid length")
+}
+
+/// A test source's id table: dense handles over every id its commits name,
+/// parents included, in first-seen order.
+#[derive(Debug, Default)]
+pub(crate) struct Handles {
+    ids: Vec<Oid>,
+    by_id: std::collections::HashMap<Oid, u32>,
+}
+
+impl Handles {
+    pub(crate) fn of(commits: &[Commit]) -> Self {
+        let mut handles = Handles::default();
+        for commit in commits {
+            for id in std::iter::once(&commit.id).chain(&commit.parents) {
+                if !handles.by_id.contains_key(id) {
+                    let next =
+                        u32::try_from(handles.ids.len()).expect("a test history fits in u32");
+                    handles.by_id.insert(*id, next);
+                    handles.ids.push(*id);
+                }
+            }
+        }
+        handles
+    }
+
+    pub(crate) fn handle_of(&self, id: &Oid) -> Option<CommitHandle> {
+        self.by_id.get(id).copied().map(CommitHandle)
+    }
+
+    pub(crate) fn id_of(&self, handle: CommitHandle) -> Oid {
+        self.ids[handle.index()]
+    }
+
+    /// The links of `commits`, parents untrimmed, looked up in `by_id`.
+    pub(crate) fn links(
+        &self,
+        by_id: &std::collections::HashMap<Oid, Commit>,
+        commits: &[CommitHandle],
+    ) -> Vec<Link> {
+        commits
+            .iter()
+            .map(|&handle| {
+                let commit = &by_id[&self.id_of(handle)];
+                Link {
+                    commit: handle,
+                    parents: commit
+                        .parents
+                        .iter()
+                        .map(|parent| self.handle_of(parent).expect("interned with the commit"))
+                        .collect(),
+                }
+            })
+            .collect()
+    }
 }
 
 pub(crate) mod properties;

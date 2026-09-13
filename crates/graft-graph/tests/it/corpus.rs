@@ -146,7 +146,9 @@ pub(super) struct Walked {
 /// never meets a parent before its child here. Should a shape ever change
 /// that, the snapshot will show the lane closing early rather than hide it.
 pub(super) fn walk_everything(handle: &RepoHandle, shape: Shape) -> (Vec<Commit>, Walked) {
-    let mut walk = Walk::all_refs(handle, Order::Topological)
+    let table = graft_git::history::CommitTable::open(handle)
+        .unwrap_or_else(|why| panic!("opening the id table of the {shape} fixture: {why}"));
+    let mut walk = Walk::all_refs(handle, Order::Topological, std::sync::Arc::new(table))
         .unwrap_or_else(|why| panic!("starting the walk of the {shape} fixture: {why}"));
     let mut commits = Vec::new();
     loop {

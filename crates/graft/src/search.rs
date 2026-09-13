@@ -148,8 +148,9 @@ pub fn scan(
 ) -> Result<Scanned, String> {
     let repo = store.shared().map_err(|error| error.to_string())?;
     let handle = repo.handle();
+    let table = store.table().map_err(|error| error.to_string())?;
     let mut walk =
-        Walk::all_refs(&handle, Order::Topological).map_err(|error| error.to_string())?;
+        Walk::all_refs(&handle, Order::Topological, table).map_err(|error| error.to_string())?;
     let mut author = Vec::new();
     loop {
         if stop() {
@@ -375,7 +376,8 @@ mod tests {
     fn walked(store: &RepoStore) -> Vec<Commit> {
         let repo = store.shared().expect("the fixture is a repository");
         let handle = repo.handle();
-        let mut walk = Walk::all_refs(&handle, Order::Topological).expect("walk starts");
+        let table = store.table().expect("the table opens");
+        let mut walk = Walk::all_refs(&handle, Order::Topological, table).expect("walk starts");
         let mut commits = Vec::new();
         loop {
             let chunk = walk.next_chunk(500, &|| false).expect("walk reads");

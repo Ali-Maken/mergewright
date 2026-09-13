@@ -82,13 +82,13 @@ impl Dated {
         Ok(walk)
     }
 
-    /// The next commit: the most recent one on the frontier, with an exact
-    /// date tie broken by the smaller id.
+    /// The next commit and its parents: the most recent one on the frontier,
+    /// with an exact date tie broken by the smaller id.
     pub(crate) fn next(
         &mut self,
         nodes: &impl Nodes,
         reads: &mut u64,
-    ) -> Result<Option<Oid>, NodeError> {
+    ) -> Result<Option<(Oid, Vec<Oid>)>, NodeError> {
         let Some(top) = self.frontier.pop() else {
             return Ok(None);
         };
@@ -99,7 +99,9 @@ impl Dated {
         for &parent in parents {
             self.push(nodes, parent, reads)?;
         }
-        Ok(Some(top.key.id))
+        // The parents as walked, untrimmed: first-parent order follows only
+        // the first, but the commit still has the others.
+        Ok(Some((top.key.id, top.node.parents)))
     }
 
     fn push(&mut self, nodes: &impl Nodes, id: Oid, reads: &mut u64) -> Result<(), NodeError> {

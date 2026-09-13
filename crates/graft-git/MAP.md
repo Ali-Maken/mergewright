@@ -22,18 +22,19 @@ One line per public item. Update when a public item changes.
 - `CHUNK` (const) — commits per chunk a walk hands back at a time.
 - `Order` (enum) — the order a walk emits rows in.
 - `Chunk` (struct) — one batch of rows a walk hands back, and whether more remain.
-- `IdChunk` (struct) — one batch of commit ids a walk hands back (no commits read whole), and whether more remain.
+- `LinkChunk` (struct) — one batch of `Link`s (commit + parents as handles, no commits read whole): `links`, `done`, `stopped`, as `Chunk`.
 - `Walk` (struct) — a rev-walk in progress; holds its position across chunks.
-- `Walk::all_refs` (fn) — walk from every ref, in the given order.
-- `Walk::from_tips` (fn) — walk from an explicit set of tip commits.
-- `Walk::full_topological` (fn) — walk every commit reachable from the given tips, topologically.
+- `Walk::all_refs` (fn) — walk from every ref, in the given order; takes the repository's `Arc<CommitTable>`.
+- `Walk::from_tips` (fn) — walk from an explicit set of tip commits; takes the `Arc<CommitTable>`.
+- `Walk::full_topological` (fn) — walk every commit reachable from the given tips, topologically; takes the `Arc<CommitTable>`.
+- `Walk::table` (fn) — the id table the walk's handles come from.
 - `Walk::requested_order` (fn) — the order the caller asked for.
 - `Walk::order_in_force` (fn) — the order actually being walked in (may fall back from the request).
 - `Walk::is_provisional` (fn) — the order in force is not the one requested, and may still change.
 - `Walk::has_commit_graph` (fn) — the repository has a commit-graph file backing this walk.
 - `Walk::explorations` (fn) — how many commits the walk has visited so far.
 - `Walk::next_chunk` (fn) — advance the walk and return its next `Chunk`.
-- `Walk::next_ids` (fn) — advance the walk and return its next `IdChunk`: ids only, for callers that need just the order (promotion).
+- `Walk::next_links` (fn) — advance the walk and return its next `LinkChunk`: same commits and limit/stop semantics as `next_chunk`, parents as walked, interned (promotion).
 - `CommitTable` (struct) — one repository's id table: commit-graph positions, then an overflow interner (ADR-0026); `Send + Sync`.
 - `CommitTable::open` (fn) — bind the commit-graph if the repository has one `gix` will use.
 - `CommitTable::has_commit_graph` / `graph_count` (fn) — whether a graph backs the low handles; how many.

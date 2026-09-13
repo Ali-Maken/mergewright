@@ -107,13 +107,13 @@ impl Topological {
         Ok(sort)
     }
 
-    /// The next commit in topological order, or [`None`] when the walk is
-    /// complete.
+    /// The next commit in topological order with its parents, or [`None`]
+    /// when the walk is complete.
     pub(crate) fn next(
         &mut self,
         nodes: &impl Nodes,
         reads: &mut u64,
-    ) -> Result<Option<Oid>, NodeError> {
+    ) -> Result<Option<(Oid, Vec<Oid>)>, NodeError> {
         loop {
             let Some(top) = self.candidates.pop() else {
                 return Ok(None);
@@ -137,8 +137,8 @@ impl Topological {
             }
 
             entry.emitted = true;
-            self.release_parents(nodes, top.id, reads)?;
-            return Ok(Some(top.id));
+            let parents = self.release_parents(nodes, top.id, reads)?;
+            return Ok(Some((top.id, parents)));
         }
     }
 
@@ -242,7 +242,7 @@ impl Topological {
         nodes: &impl Nodes,
         id: Oid,
         reads: &mut u64,
-    ) -> Result<(), NodeError> {
+    ) -> Result<Vec<Oid>, NodeError> {
         // A candidate is always expanded by the time it is emitted, because
         // `expand_down_to` covers its own generation. Calling again is a
         // no-op and keeps the invariant local rather than assumed.
@@ -253,7 +253,7 @@ impl Topological {
             Some(entry) => std::mem::take(&mut entry.parents),
             None => Vec::new(),
         };
-        for parent in parents {
+        for &parent in &parents {
             let key = self.discover(nodes, parent, reads)?;
             if let Some(entry) = self.known.get_mut(&parent) {
                 entry.indegree = entry.indegree.saturating_sub(1);
@@ -262,6 +262,6 @@ impl Topological {
                 }
             }
         }
-        Ok(())
+        Ok(parents)
     }
 }

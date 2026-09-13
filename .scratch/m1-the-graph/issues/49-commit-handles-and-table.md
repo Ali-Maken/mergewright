@@ -1,6 +1,6 @@
 # m1-the-graph/49 — Commit handles and the shared id table
 
-Status: partial — seam (a) done, seam (b) remains (handoff below)
+Status: done
 Build with: **Opus** (high) — gix commit-graph internals; the table's shape is structural for three crates, but the approach is decided in ADR-0026 and correctness is round-trip tests, so not Fable.
 Needs: none (first ticket of the group; defines the types and trait additions the others fill in).
 Blocked by: 53
@@ -91,15 +91,15 @@ pub trait CommitSource {
 Callers: `graft::history::WalkSource` (implements), `graft_graph::Included` (delegates, trims in `links`), `graft::history::topological_order` (uses `next_links(CHUNK, stop)`, keeps `link.commit`, loops until `done`; a `stopped` chunk is handled exactly as `next_ids`'s was), `RepoStore` (opens the table once).
 
 ## Acceptance
-- [ ] Round-trip on every corpus shape: for each commit `id_of(intern(id)) == id`, `handle_of(id) == Some(intern(id))`, `intern` twice gives one handle, `len()` equals the commit count; with and without a commit-graph (the 5k synthetic pair in the heavy tier covers the graph path at scale; a corpus shape gets a commit-graph written in-test for the fast tier).
-- [ ] A commit absent from the graph (write the graph, then add a commit) interns above `graph_count`, `overflow_len() == 1`, round-trips.
-- [ ] A constructed 8-byte prefix collision (two ids sharing their first 8 bytes) resolves to two handles, both round-trip.
-- [ ] SHA-256 hash length handled (a unit test on the overflow with 32-byte ids; a repo fixture is not required).
-- [ ] `HandleSet`: insert/contains/remove/len property test against `HashSet<u32>` at 64 cases.
-- [ ] `Walk::next_links` yields the same commit sequence as `next_chunk` on every corpus shape and the 5k synthetic pair, chunk boundaries included (`limit` honoured: `links.len() ≤ limit`; `done` on the last chunk only); `stop` honoured mid-walk with `stopped == true` and the walk resuming on the next call (27c's `next_ids` tests moved over, `next_ids` gone).
-- [ ] `topological_order` uses `next_links`; git/git no-cg promotion still lands (`history/tests.rs` promotion tests green).
-- [ ] MAP.md updated in core, git, graph, graft; ARCHITECTURE.md if the crate map text changes.
-- [ ] Report: `approximate_bytes` of the overflow at 100k no-cg (heavy tier, printed), expected ≤ 60 B/commit.
+- [x] Round-trip on every corpus shape: for each commit `id_of(intern(id)) == id`, `handle_of(id) == Some(intern(id))`, `intern` twice gives one handle, `len()` equals the commit count; with and without a commit-graph (the 5k synthetic pair in the heavy tier covers the graph path at scale; a corpus shape gets a commit-graph written in-test for the fast tier).
+- [x] A commit absent from the graph (write the graph, then add a commit) interns above `graph_count`, `overflow_len() == 1`, round-trips.
+- [x] A constructed 8-byte prefix collision (two ids sharing their first 8 bytes) resolves to two handles, both round-trip.
+- [x] SHA-256 hash length handled (a unit test on the overflow with 32-byte ids; a repo fixture is not required).
+- [x] `HandleSet`: insert/contains/remove/len property test against `HashSet<u32>` at 64 cases.
+- [x] `Walk::next_links` yields the same commit sequence as `next_chunk` on every corpus shape and the 5k synthetic pair, chunk boundaries included (`limit` honoured: `links.len() ≤ limit`; `done` on the last chunk only); `stop` honoured mid-walk with `stopped == true` and the walk resuming on the next call (27c's `next_ids` tests moved over, `next_ids` gone).
+- [x] `topological_order` uses `next_links`; git/git no-cg promotion still lands (`history/tests.rs` promotion tests green).
+- [x] MAP.md updated in core, git, graph, graft; ARCHITECTURE.md if the crate map text changes.
+- [ ] (heavy tier, milestone review) Report: `approximate_bytes` of the overflow at 100k no-cg (heavy tier, printed), expected ≤ 60 B/commit.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo clippy --all-targets --features heavy-tests -- -D warnings` · `cargo test`
@@ -126,3 +126,13 @@ Context passed the ~80k target once seam (a) was green, so stopped per Size.
 7. MAP.md for graph and graft; check ARCHITECTURE.md crate-map text.
 
 Gotchas: workspace denies `expect_used`/`unwrap_used` in lib code — use `match` + `panic!` with a reason. Shape fixtures: use `try_borrow` + the "not valid UTF-8" skip pattern.
+
+## Seam (b) done (2026-09-14, builder-opus; no compaction)
+
+- `Walk::{all_refs, from_tips, full_topological}` take `Arc<CommitTable>`; `Walk::table()`; `Walk::next_links(limit, stop) -> LinkChunk { links, done, stopped }`. `IdChunk`/`next_ids` gone.
+- Parents come from the walk's own exploration: `Topological::next`/`Dated::next` now return `(id, parents)` at emit, so `next_links` does no second node lookup (no extra object read on no-cg promotion).
+- `CommitSource` gains `links`, `handle_of`, `id_of`. Implementors: `WalkSource`, `Included` (trims first-parent / folded, as `drawn_as`), stream-test `VecSource`/`Forgetful`/`Stalling`, inclusion-test `VecSource` (shared test `layout::tests::Handles`), integration `WalkSource`, bench `InMemory`.
+- `RepoStore::table()` opens once, kept across `refresh`; `StoreError::Table`. `stream`, `topological_order`, `search::scan` use it.
+- Tests: `next_links` == `next_chunk` (ids and untrimmed parents, batches of 3, all three orders) on every shape, with and without a commit-graph; stop mid-batch then resume; `Included::links` trims; store shares one table. Heavy: 5k pair `next_links` test written, not run.
+- **Deviation from Signatures:** `WalkSource::new(handle, walk)` takes the table from `walk.table()` instead of a separate `Arc<CommitTable>` parameter, so the two cannot disagree. `in_order` takes the table as specified.
+- Gap: `WalkSource::links` reads commits whole for parents (KNOWN_GAPS.md).

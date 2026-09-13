@@ -5,6 +5,7 @@
 //! over `git`'s history walk, and tests implement it over a `Vec`.
 
 use graft_core::commit::Commit;
+use graft_core::commit_handle::{CommitHandle, Link};
 use graft_core::oid::Oid;
 
 /// A walk the layout can pull commits from, and go back to for commits it
@@ -24,6 +25,18 @@ pub trait CommitSource {
     /// rebuild of evicted rows needs, and what a layout over a walk order
     /// already known in full (ADR-0008 promotion) is fed with.
     fn read(&mut self, ids: &[Oid]) -> Result<Vec<Commit>, Self::Error>;
+
+    /// The links of `commits`, one per handle and in the same order: each
+    /// commit's parents as this source shows them (a view that trims parents
+    /// trims them here too). Every handle came from this source.
+    fn links(&mut self, commits: &[CommitHandle]) -> Result<Vec<Link>, Self::Error>;
+
+    /// The handle of the commit `id`, if the repository's table has one.
+    fn handle_of(&self, id: &Oid) -> Option<CommitHandle>;
+
+    /// The id behind `handle`. Handles come only from this source, so this
+    /// cannot fail; a foreign handle is a bug and panics.
+    fn id_of(&self, handle: CommitHandle) -> Oid;
 }
 
 /// What one [`CommitSource::next`] call produced.

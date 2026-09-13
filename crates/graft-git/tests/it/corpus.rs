@@ -308,7 +308,10 @@ fn a_scratch_copy_is_writable_and_separate() {
 /// walks the ADR-0008 promotion swaps between really do differ here.
 #[test]
 fn skewed_dates() {
-    use graft_git::history::{CHUNK, Order, Walk};
+    use graft_git::history::{CHUNK, CommitTable, Order, Walk};
+
+    let table =
+        |repo: &RepoHandle| std::sync::Arc::new(CommitTable::open(repo).expect("the table opens"));
 
     let repo = assert_shape(
         Shape::SkewedDates,
@@ -330,9 +333,9 @@ fn skewed_dates() {
             }
         }
     };
-    let by_date = subjects(Walk::all_refs(&repo, Order::CommitDate).expect("starts"));
+    let by_date = subjects(Walk::all_refs(&repo, Order::CommitDate, table(&repo)).expect("starts"));
     let tips = repo.commit_tips().expect("tips");
-    let topological = subjects(Walk::full_topological(&repo, &tips).expect("starts"));
+    let topological = subjects(Walk::full_topological(&repo, &tips, table(&repo)).expect("starts"));
     let fast = "Commit from a fast clock";
     let row = |order: &[_]| order.iter().position(|subject| *subject == fast);
     assert_eq!(row(&by_date), Some(1), "{by_date:?}");

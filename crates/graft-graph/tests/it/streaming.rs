@@ -14,10 +14,13 @@
 //! rebuilt from re-reads and nothing walked — and the unit tests prove the
 //! reordering on skewed dates.
 
+use std::sync::Arc;
+
 use graft_core::commit::Commit;
+use graft_core::commit_handle::{CommitHandle, Link};
 use graft_core::oid::Oid;
 use graft_fixtures::Shape;
-use graft_git::history::{CHUNK, Order, Walk, WalkError, read_commit};
+use graft_git::history::{CHUNK, CommitTable, Order, Walk, WalkError, read_commit};
 use graft_git::repo::RepoHandle;
 use graft_graph::layout::{Anchor, CommitSource, Pull, StreamConfig, StreamingLayout, layout};
 use graft_graph::row::Row;
@@ -78,6 +81,37 @@ impl CommitSource for WalkSource<'_> {
         self.reads += ids.len();
         ids.iter().map(|&id| read_commit(self.handle, id)).collect()
     }
+
+    fn links(&mut self, commits: &[CommitHandle]) -> Result<Vec<Link>, WalkError> {
+        let table = Arc::clone(self.walk.table());
+        commits
+            .iter()
+            .map(|&handle| {
+                let commit = read_commit(self.handle, table.id_of(handle))?;
+                Ok(Link {
+                    commit: handle,
+                    parents: commit
+                        .parents
+                        .iter()
+                        .map(|parent| table.intern(parent))
+                        .collect(),
+                })
+            })
+            .collect()
+    }
+
+    fn handle_of(&self, id: &Oid) -> Option<CommitHandle> {
+        self.walk.table().handle_of(id)
+    }
+
+    fn id_of(&self, handle: CommitHandle) -> Oid {
+        self.walk.table().id_of(handle)
+    }
+}
+
+/// The repository's id table, as the app shares it.
+fn table(handle: &RepoHandle) -> Arc<CommitTable> {
+    Arc::new(CommitTable::open(handle).unwrap_or_else(|why| panic!("opening the id table: {why}")))
 }
 
 /// Nothing asks these layouts to stop.
@@ -91,7 +125,7 @@ fn topological_order(handle: &RepoHandle, shape: Shape) -> Vec<Oid> {
     let tips = handle
         .commit_tips()
         .unwrap_or_else(|why| panic!("reading the refs of the {shape} fixture: {why}"));
-    let mut walk = Walk::full_topological(handle, &tips)
+    let mut walk = Walk::full_topological(handle, &tips, table(handle))
         .unwrap_or_else(|why| panic!("starting the topological walk of {shape}: {why}"));
     assert!(!walk.is_provisional());
     let mut ids = Vec::new();
@@ -109,7 +143,7 @@ fn topological_order(handle: &RepoHandle, shape: Shape) -> Vec<Oid> {
 /// The walk the app starts with: topological asked for, whatever the
 /// repository can serve in force.
 fn first_paint_walk(handle: &RepoHandle, shape: Shape) -> Walk<'_> {
-    Walk::all_refs(handle, Order::Topological)
+    Walk::all_refs(handle, Order::Topological, table(handle))
         .unwrap_or_else(|why| panic!("starting the walk of the {shape} fixture: {why}"))
 }
 

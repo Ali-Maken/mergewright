@@ -4,8 +4,9 @@
 use std::sync::Arc;
 
 use graft_core::commit::Commit;
+use graft_core::commit_handle::{CommitHandle, Link};
 use graft_core::oid::Oid;
-use graft_git::history::{Walk, WalkError, read_commit};
+use graft_git::history::{CommitTable, Walk, WalkError, read_commit};
 use graft_git::repo::RepoHandle;
 use graft_graph::layout::{CommitSource, Pull};
 
@@ -19,6 +20,8 @@ use graft_graph::layout::{CommitSource, Pull};
 pub struct WalkSource<'a> {
     handle: &'a RepoHandle,
     feed: Feed<'a>,
+    /// The repository's id table: handles in, ids out.
+    table: Arc<CommitTable>,
 }
 
 /// Where the next commits come from.
@@ -32,11 +35,14 @@ enum Feed<'a> {
 }
 
 impl<'a> WalkSource<'a> {
-    /// A source that streams `walk` and re-reads from `handle`.
+    /// A source that streams `walk` and re-reads from `handle`, its handles
+    /// from the walk's own table — taken from the walk rather than passed
+    /// beside it, so the two cannot disagree.
     #[must_use]
     pub fn new(handle: &'a RepoHandle, walk: Walk<'a>) -> Self {
         WalkSource {
             handle,
+            table: Arc::clone(walk.table()),
             feed: Feed::Walk(Box::new(walk)),
         }
     }
@@ -48,10 +54,11 @@ impl<'a> WalkSource<'a> {
     /// `graft_graph::Included` can still decide what each view lets through:
     /// the one order serves every view.
     #[must_use]
-    pub fn in_order(handle: &'a RepoHandle, ids: Arc<[Oid]>) -> Self {
+    pub fn in_order(handle: &'a RepoHandle, ids: Arc<[Oid]>, table: Arc<CommitTable>) -> Self {
         WalkSource {
             handle,
             feed: Feed::Order { ids, next: 0 },
+            table,
         }
     }
 }
@@ -93,5 +100,33 @@ impl CommitSource for WalkSource<'_> {
 
     fn read(&mut self, ids: &[Oid]) -> Result<Vec<Commit>, WalkError> {
         ids.iter().map(|&id| read_commit(self.handle, id)).collect()
+    }
+
+    // Reads each commit whole for its parents: `pull` and `read` still hand
+    // out whole commits, so nothing calls this on a hot path yet. The
+    // hydrate-on-demand ticket reads parents from the walk instead.
+    fn links(&mut self, commits: &[CommitHandle]) -> Result<Vec<Link>, WalkError> {
+        commits
+            .iter()
+            .map(|&commit| {
+                let read = read_commit(self.handle, self.table.id_of(commit))?;
+                Ok(Link {
+                    commit,
+                    parents: read
+                        .parents
+                        .iter()
+                        .map(|parent| self.table.intern(parent))
+                        .collect(),
+                })
+            })
+            .collect()
+    }
+
+    fn handle_of(&self, id: &Oid) -> Option<CommitHandle> {
+        self.table.handle_of(id)
+    }
+
+    fn id_of(&self, handle: CommitHandle) -> Oid {
+        self.table.id_of(handle)
     }
 }

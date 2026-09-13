@@ -327,3 +327,7 @@ entry is (CLAUDE.md).*
 - **Whether the clipboard got it is unknown to Graft.** OSC 52 has no reply; the notice says what was sent. Terminals with OSC 52 off (some VS Code/Zed settings, tmux without `allow-passthrough` or `set-clipboard`) silently drop it. Paste in Ghostty/Zed/VS Code/tmux is a user by-eye check, not yet done.
 - **Inside tmux the request is wrapped in DCS passthrough, like images (ticket spec).** tmux's own `set-clipboard on` path (unwrapped OSC 52) is not used; with passthrough off the copy is dropped. Open whether to send unwrapped inside tmux instead.
 - **`y` while a failure is on the status line** still sends the SHA but shows no notice: the failure is never replaced by a notice.
+
+## m1-the-graph/49 — commit handles and the id table
+- `graft::history::WalkSource::links` reads each commit whole to get its parents (`read_commit`). Nothing calls it on a hot path yet (`pull`/`read` still hand out whole commits); the hydrate-on-demand ticket should take parents from the walk, as `Walk::next_links` does.
+- Heavy-tier tests for the table and `next_links` (5k pair; 100k overflow ≤ 60 B/commit) are written, not run by the builder; they run in the milestone review.

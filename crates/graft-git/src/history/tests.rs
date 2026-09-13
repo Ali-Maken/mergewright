@@ -12,6 +12,7 @@
 
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::Arc;
 
 use graft_core::oid::Oid;
 use graft_fixtures::Shape;
@@ -19,8 +20,13 @@ use graft_fixtures::Shape;
 use super::node::{MapNodes, Node, Nodes};
 use super::simple::{Dated, Follow};
 use super::topological::Topological;
-use super::{CHUNK, Chunk, Order, Walk, WalkError, read_commit};
+use super::{CHUNK, Chunk, CommitTable, Order, Walk, WalkError, read_commit};
 use crate::repo::SharedRepo;
+
+/// The repository's id table, as the app shares it.
+fn table(handle: &crate::repo::RepoHandle) -> Arc<CommitTable> {
+    Arc::new(CommitTable::open(handle).expect("the table opens"))
+}
 
 /// Nothing asks these walks to stop.
 fn never() -> bool {
@@ -71,7 +77,8 @@ fn commit_date_order_agrees_with_git_on_the_criss_cross_fixture() {
     let path = graft_fixtures::borrow(Shape::CrissCrossMerge);
     let shared = SharedRepo::open(&path).expect("the fixture opens");
     let handle = shared.handle();
-    let mut walk = Walk::all_refs(&handle, Order::CommitDate).expect("the walk starts");
+    let mut walk =
+        Walk::all_refs(&handle, Order::CommitDate, table(&handle)).expect("the walk starts");
 
     assert_eq!(all(&mut walk), rev_list(&path, &["--date-order", "--all"]));
 }
@@ -81,7 +88,8 @@ fn commit_date_order_agrees_with_git_on_the_octopus_fixture() {
     let path = graft_fixtures::borrow(Shape::OctopusMerge);
     let shared = SharedRepo::open(&path).expect("the fixture opens");
     let handle = shared.handle();
-    let mut walk = Walk::all_refs(&handle, Order::CommitDate).expect("the walk starts");
+    let mut walk =
+        Walk::all_refs(&handle, Order::CommitDate, table(&handle)).expect("the walk starts");
 
     assert_eq!(all(&mut walk), rev_list(&path, &["--date-order", "--all"]));
 }
@@ -91,7 +99,8 @@ fn the_linear_fixture_comes_out_newest_first() {
     let path = graft_fixtures::borrow(Shape::Linear);
     let shared = SharedRepo::open(&path).expect("the fixture opens");
     let handle = shared.handle();
-    let mut walk = Walk::all_refs(&handle, Order::CommitDate).expect("the walk starts");
+    let mut walk =
+        Walk::all_refs(&handle, Order::CommitDate, table(&handle)).expect("the walk starts");
 
     let ids = all(&mut walk);
     assert_eq!(ids, rev_list(&path, &["--all"]));
@@ -105,7 +114,8 @@ fn topological_order_agrees_with_git_on_the_criss_cross_fixture() {
     let scratch = with_commit_graph(Shape::CrissCrossMerge);
     let shared = SharedRepo::open(scratch.path()).expect("the fixture opens");
     let handle = shared.handle();
-    let mut walk = Walk::all_refs(&handle, Order::Topological).expect("the walk starts");
+    let mut walk =
+        Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("the walk starts");
 
     assert_eq!(walk.order_in_force(), Order::Topological);
     // Every fixture's timestamps strictly increase with its stream order, so
@@ -122,7 +132,8 @@ fn topological_order_agrees_with_git_on_the_octopus_fixture() {
     let scratch = with_commit_graph(Shape::OctopusMerge);
     let shared = SharedRepo::open(scratch.path()).expect("the fixture opens");
     let handle = shared.handle();
-    let mut walk = Walk::all_refs(&handle, Order::Topological).expect("the walk starts");
+    let mut walk =
+        Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("the walk starts");
 
     assert_eq!(
         all(&mut walk),
@@ -135,7 +146,8 @@ fn every_commit_of_the_octopus_fixture_comes_before_its_parents() {
     let scratch = with_commit_graph(Shape::OctopusMerge);
     let shared = SharedRepo::open(scratch.path()).expect("the fixture opens");
     let handle = shared.handle();
-    let mut walk = Walk::all_refs(&handle, Order::Topological).expect("the walk starts");
+    let mut walk =
+        Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("the walk starts");
 
     let mut seen: Vec<Oid> = Vec::new();
     loop {
@@ -170,7 +182,8 @@ fn the_first_parent_view_of_the_foxtrot_fixture_is_the_default_branchs_chain() {
 
     let expected = rev_list(&path, &["--first-parent", "refs/heads/main"]);
     let tip = *expected.first().expect("main has commits");
-    let mut walk = Walk::from_tips(&handle, Order::FirstParent, &[tip]).expect("the walk starts");
+    let mut walk = Walk::from_tips(&handle, Order::FirstParent, &[tip], table(&handle))
+        .expect("the walk starts");
 
     assert_eq!(all(&mut walk), expected);
 }
@@ -184,8 +197,10 @@ fn first_parent_leaves_out_what_a_full_walk_includes() {
     let tip = *rev_list(&path, &["--first-parent", "refs/heads/main"])
         .first()
         .expect("main has commits");
-    let mut trunk = Walk::from_tips(&handle, Order::FirstParent, &[tip]).expect("the walk starts");
-    let mut whole = Walk::from_tips(&handle, Order::CommitDate, &[tip]).expect("the walk starts");
+    let mut trunk = Walk::from_tips(&handle, Order::FirstParent, &[tip], table(&handle))
+        .expect("the walk starts");
+    let mut whole = Walk::from_tips(&handle, Order::CommitDate, &[tip], table(&handle))
+        .expect("the walk starts");
 
     assert!(
         all(&mut trunk).len() < all(&mut whole).len(),
@@ -199,7 +214,8 @@ fn a_repository_with_no_commit_graph_file_falls_to_date_order_and_says_so() {
     let path = graft_fixtures::borrow(Shape::CrissCrossMerge);
     let shared = SharedRepo::open(&path).expect("the fixture opens");
     let handle = shared.handle();
-    let mut walk = Walk::all_refs(&handle, Order::Topological).expect("the walk starts");
+    let mut walk =
+        Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("the walk starts");
 
     assert!(!walk.has_commit_graph());
     assert_eq!(walk.requested_order(), Order::Topological);
@@ -216,7 +232,8 @@ fn a_repository_with_a_commit_graph_file_runs_the_topological_path() {
     let scratch = with_commit_graph(Shape::CrissCrossMerge);
     let shared = SharedRepo::open(scratch.path()).expect("the fixture opens");
     let handle = shared.handle();
-    let walk = Walk::all_refs(&handle, Order::Topological).expect("the walk starts");
+    let walk =
+        Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("the walk starts");
 
     assert!(walk.has_commit_graph());
     assert_eq!(walk.order_in_force(), Order::Topological);
@@ -228,7 +245,7 @@ fn asking_for_date_order_is_never_provisional() {
     let path = graft_fixtures::borrow(Shape::Linear);
     let shared = SharedRepo::open(&path).expect("the fixture opens");
     let handle = shared.handle();
-    let walk = Walk::all_refs(&handle, Order::CommitDate).expect("the walk starts");
+    let walk = Walk::all_refs(&handle, Order::CommitDate, table(&handle)).expect("the walk starts");
 
     assert!(!walk.has_commit_graph());
     assert!(!walk.is_provisional(), "date order is what was asked for");
@@ -243,7 +260,7 @@ fn the_full_topological_walk_needs_no_commit_graph_file_and_is_never_provisional
     let tips = handle
         .commit_tips()
         .expect("the fixture's refs can be read");
-    let mut walk = Walk::full_topological(&handle, &tips).expect("the walk starts");
+    let mut walk = Walk::full_topological(&handle, &tips, table(&handle)).expect("the walk starts");
 
     assert!(!walk.has_commit_graph());
     assert_eq!(walk.requested_order(), Order::Topological);
@@ -264,7 +281,7 @@ fn the_full_topological_walk_reads_the_whole_range_before_it_emits() {
     let tips = handle
         .commit_tips()
         .expect("the fixture's refs can be read");
-    let mut walk = Walk::full_topological(&handle, &tips).expect("the walk starts");
+    let mut walk = Walk::full_topological(&handle, &tips, table(&handle)).expect("the walk starts");
 
     let first = walk.next_chunk(1, &never).expect("commits can be read");
     assert_eq!(first.commits.len(), 1);
@@ -278,7 +295,8 @@ fn read_commit_returns_exactly_what_the_walk_emitted() {
     let path = graft_fixtures::borrow(Shape::CrissCrossMerge);
     let shared = SharedRepo::open(&path).expect("the fixture opens");
     let handle = shared.handle();
-    let mut walk = Walk::all_refs(&handle, Order::CommitDate).expect("the walk starts");
+    let mut walk =
+        Walk::all_refs(&handle, Order::CommitDate, table(&handle)).expect("the walk starts");
 
     let chunk = walk.next_chunk(CHUNK, &never).expect("commits can be read");
     assert!(chunk.done, "the fixture fits in one chunk");
@@ -308,7 +326,8 @@ fn the_topological_walk_emits_before_it_has_walked_the_range() {
     let scratch = with_commit_graph(Shape::Linear);
     let shared = SharedRepo::open(scratch.path()).expect("the fixture opens");
     let handle = shared.handle();
-    let mut walk = Walk::all_refs(&handle, Order::Topological).expect("the walk starts");
+    let mut walk =
+        Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("the walk starts");
     assert_eq!(walk.order_in_force(), Order::Topological);
 
     let first = walk.next_chunk(1, &never).expect("commits can be read");
@@ -332,10 +351,12 @@ fn a_walk_carries_on_where_the_last_chunk_stopped() {
     let shared = SharedRepo::open(&path).expect("the fixture opens");
     let handle = shared.handle();
 
-    let mut whole = Walk::all_refs(&handle, Order::CommitDate).expect("the walk starts");
+    let mut whole =
+        Walk::all_refs(&handle, Order::CommitDate, table(&handle)).expect("the walk starts");
     let expected = all(&mut whole);
 
-    let mut chunked = Walk::all_refs(&handle, Order::CommitDate).expect("the walk starts");
+    let mut chunked =
+        Walk::all_refs(&handle, Order::CommitDate, table(&handle)).expect("the walk starts");
     let mut ids = Vec::new();
     let mut chunks = 0;
     loop {
@@ -356,7 +377,8 @@ fn a_walk_that_is_told_to_stop_says_so_and_keeps_what_it_had() {
     let path = graft_fixtures::borrow(Shape::Linear);
     let shared = SharedRepo::open(&path).expect("the fixture opens");
     let handle = shared.handle();
-    let mut walk = Walk::all_refs(&handle, Order::CommitDate).expect("the walk starts");
+    let mut walk =
+        Walk::all_refs(&handle, Order::CommitDate, table(&handle)).expect("the walk starts");
 
     // Stops once three commits are out: what a cancelled job looks like from
     // in here.
@@ -381,7 +403,8 @@ fn a_finished_walk_stays_finished() {
     let path = graft_fixtures::borrow(Shape::Trivial);
     let shared = SharedRepo::open(&path).expect("the fixture opens");
     let handle = shared.handle();
-    let mut walk = Walk::all_refs(&handle, Order::CommitDate).expect("the walk starts");
+    let mut walk =
+        Walk::all_refs(&handle, Order::CommitDate, table(&handle)).expect("the walk starts");
 
     assert!(!all(&mut walk).is_empty());
     assert_eq!(
@@ -399,7 +422,8 @@ fn a_commits_fields_survive_the_walk() {
     let path = graft_fixtures::borrow(Shape::Trivial);
     let shared = SharedRepo::open(&path).expect("the fixture opens");
     let handle = shared.handle();
-    let mut walk = Walk::all_refs(&handle, Order::CommitDate).expect("the walk starts");
+    let mut walk =
+        Walk::all_refs(&handle, Order::CommitDate, table(&handle)).expect("the walk starts");
 
     let chunk = walk.next_chunk(1, &never).expect("commits can be read");
     let commit = chunk.commits.first().expect("the fixture has commits");
@@ -442,7 +466,7 @@ fn dated(nodes: &impl Nodes, tips: &[Oid], follow: Follow) -> Vec<Oid> {
     let mut reads = 0;
     let mut walk = Dated::new(nodes, tips, follow, &mut reads).expect("the walk starts");
     let mut ids = Vec::new();
-    while let Some(id) = walk.next(nodes, &mut reads).expect("the graph is complete") {
+    while let Some((id, _)) = walk.next(nodes, &mut reads).expect("the graph is complete") {
         ids.push(id);
     }
     ids
@@ -452,7 +476,7 @@ fn topological(nodes: &impl Nodes, tips: &[Oid]) -> Vec<Oid> {
     let mut reads = 0;
     let mut sort = Topological::new(nodes, tips, &mut reads).expect("the walk starts");
     let mut ids = Vec::new();
-    while let Some(id) = sort.next(nodes, &mut reads).expect("the graph is complete") {
+    while let Some((id, _)) = sort.next(nodes, &mut reads).expect("the graph is complete") {
         ids.push(id);
     }
     ids
@@ -539,44 +563,164 @@ fn a_commit_reachable_two_ways_is_emitted_once() {
     assert_eq!(dated(&nodes, &[oid(0x03)], Follow::AllParents).len(), 4);
 }
 
-#[test]
-fn ids_come_out_in_the_order_whole_commits_do() {
-    // Promotion walks ids only (m1/27b); it must promote to exactly the
-    // order the commit walk produces, including across chunk boundaries.
-    let path = graft_fixtures::borrow(Shape::OctopusMerge);
-    let shared = SharedRepo::open(&path).expect("the fixture opens");
+/// Every link a walk produces in batches of `limit`, checking each batch's
+/// contract on the way.
+fn links_in_batches(walk: &mut Walk<'_>, limit: usize) -> Vec<graft_core::commit_handle::Link> {
+    let mut links = Vec::new();
+    loop {
+        let chunk = walk.next_links(limit, &never).expect("the walk reads");
+        assert!(!chunk.stopped, "nothing asked the walk to stop");
+        assert!(chunk.links.len() <= limit, "a batch holds at most `limit`");
+        if !chunk.done {
+            assert_eq!(chunk.links.len(), limit, "only the last batch is short");
+        }
+        links.extend(chunk.links);
+        if chunk.done {
+            return links;
+        }
+    }
+}
+
+/// Every commit a walk produces in batches of `limit`, as whole commits.
+fn commits_in_batches(walk: &mut Walk<'_>, limit: usize) -> Vec<super::Commit> {
+    let mut commits = Vec::new();
+    loop {
+        let chunk = walk.next_chunk(limit, &never).expect("the walk reads");
+        commits.extend(chunk.commits);
+        if chunk.done {
+            return commits;
+        }
+    }
+}
+
+/// `next_links` and `next_chunk` agree commit for commit, parents included,
+/// in every order, at a batch size that splits every shape.
+fn assert_links_match_commits(repo: &Path, what: &str) {
+    let shared = SharedRepo::open(repo).expect("the fixture opens");
     let handle = shared.handle();
     let tips = handle
         .commit_tips()
         .expect("the fixture's refs can be read");
-    let mut commits = Walk::full_topological(&handle, &tips).expect("the walk starts");
-
-    let uncached = shared.handle_with_object_cache(0);
-    let mut ids = Walk::full_topological(&uncached, &tips).expect("the walk starts");
-    let mut walked = Vec::new();
-    loop {
-        let chunk = ids.next_ids(2, &never).expect("the walk reads");
-        assert!(!chunk.stopped);
-        assert!(chunk.ids.len() <= 2);
-        walked.extend(chunk.ids);
-        if chunk.done {
-            break;
+    let table = table(&handle);
+    for order in [Order::Topological, Order::CommitDate, Order::FirstParent] {
+        let mut commits =
+            Walk::from_tips(&handle, order, &tips, Arc::clone(&table)).expect("the walk starts");
+        let mut linked =
+            Walk::from_tips(&handle, order, &tips, Arc::clone(&table)).expect("the walk starts");
+        let commits = commits_in_batches(&mut commits, 3);
+        let links = links_in_batches(&mut linked, 3);
+        assert_eq!(
+            links.len(),
+            commits.len(),
+            "{what} {order:?}: one link per commit"
+        );
+        for (link, commit) in links.iter().zip(&commits) {
+            assert_eq!(
+                table.id_of(link.commit),
+                commit.id,
+                "{what} {order:?}: same sequence"
+            );
+            let parents: Vec<Oid> = link
+                .parents
+                .iter()
+                .map(|parent| table.id_of(parent))
+                .collect();
+            assert_eq!(
+                parents, commit.parents,
+                "{what} {order:?}: parents as walked, untrimmed"
+            );
         }
     }
+}
 
-    assert_eq!(walked, all(&mut commits));
+/// The fixture, or `None` for a shape this machine cannot check out (a
+/// non-UTF-8 ref name on APFS), said rather than passed over.
+fn available<T, E: std::fmt::Display>(shape: Shape, fixture: Result<T, E>) -> Option<T> {
+    match fixture {
+        Ok(fixture) => Some(fixture),
+        Err(why) => {
+            let reason = why.to_string();
+            assert!(reason.contains("not valid UTF-8"), "{shape}: {reason}");
+            eprintln!("skipped: {shape} — {reason}");
+            None
+        }
+    }
 }
 
 #[test]
-fn an_id_walk_asked_to_stop_says_so() {
+fn links_come_out_as_whole_commits_do_on_every_shape() {
+    for &shape in Shape::ALL {
+        let Some(repo) = available(shape, graft_fixtures::try_borrow(shape)) else {
+            continue;
+        };
+        assert_links_match_commits(&repo, &format!("{shape:?}"));
+    }
+}
+
+#[test]
+fn links_come_out_as_whole_commits_do_with_a_commit_graph() {
+    for &shape in Shape::ALL {
+        let Some(scratch) = available(shape, graft_fixtures::try_copy_into_temp(shape)) else {
+            continue;
+        };
+        graft_fixtures::git::run(scratch.path(), &["commit-graph", "write", "--reachable"])
+            .expect("git writes a commit-graph");
+        assert_links_match_commits(scratch.path(), &format!("{shape:?} with a commit-graph"));
+    }
+}
+
+#[test]
+fn a_link_walk_asked_to_stop_says_so_and_resumes() {
     let path = graft_fixtures::borrow(Shape::CrissCrossMerge);
     let shared = SharedRepo::open(&path).expect("the fixture opens");
     let handle = shared.handle();
-    let mut walk = Walk::all_refs(&handle, Order::CommitDate).expect("the walk starts");
+    let table = table(&handle);
+    let mut whole =
+        Walk::all_refs(&handle, Order::CommitDate, Arc::clone(&table)).expect("the walk starts");
+    let expected = all(&mut whole);
+    let mut walk =
+        Walk::all_refs(&handle, Order::CommitDate, Arc::clone(&table)).expect("the walk starts");
 
-    let chunk = walk.next_ids(CHUNK, &|| true).expect("the walk reads");
+    let stopped = walk.next_links(CHUNK, &|| true).expect("the walk reads");
+    assert!(stopped.stopped);
+    assert!(!stopped.done);
+    assert!(stopped.links.is_empty());
 
-    assert!(chunk.stopped);
-    assert!(!chunk.done);
-    assert!(chunk.ids.is_empty());
+    // Stop after two commits, mid-batch: the two are real, and the next
+    // call carries on from the third.
+    let asked = std::cell::Cell::new(0);
+    let after_two = || {
+        asked.set(asked.get() + 1);
+        asked.get() > 2
+    };
+    let partial = walk.next_links(CHUNK, &after_two).expect("the walk reads");
+    assert!(partial.stopped);
+    assert!(!partial.done);
+    assert_eq!(partial.links.len(), 2);
+    let mut walked: Vec<Oid> = partial
+        .links
+        .iter()
+        .map(|link| table.id_of(link.commit))
+        .collect();
+    walked.extend(
+        links_in_batches(&mut walk, CHUNK)
+            .iter()
+            .map(|link| table.id_of(link.commit)),
+    );
+    assert_eq!(walked, expected, "a stopped walk resumes where it stopped");
+}
+
+#[cfg(feature = "heavy-tests")]
+mod heavy {
+    use graft_fixtures::synthetic::{self, Scale};
+
+    use super::assert_links_match_commits;
+
+    #[test]
+    fn links_come_out_as_whole_commits_do_on_the_five_thousand_commit_pair() {
+        for scale in [Scale::of(5_000), Scale::of(5_000).with_commit_graph()] {
+            let repo = synthetic::borrow(scale).unwrap_or_else(|why| panic!("{why}"));
+            assert_links_match_commits(&repo, &scale.name());
+        }
+    }
 }

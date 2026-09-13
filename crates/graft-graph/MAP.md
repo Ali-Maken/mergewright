@@ -78,7 +78,7 @@ One line per public item. Update when a public item changes.
 - `RepeatedCommit` (struct) — a commit the walk named twice: `id`, `first`, `again`.
 
 ## layout::source
-- `CommitSource` (trait) — a walk the layout pulls from and re-reads by id.
+- `CommitSource` (trait) — a walk the layout pulls from and re-reads by id; `links` (parents as the view shows them), `handle_of`, `id_of` over the repository's id table.
 - `Pull` (struct) — one pull: `commits`, `done`, `stopped`.
 
 ## layout::stream

@@ -18,6 +18,7 @@ use std::hint::black_box;
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use graft_core::capabilities::Rgb;
 use graft_core::commit::{Commit, Identity, Timestamp};
+use graft_core::commit_handle::{CommitHandle, Link};
 use graft_core::oid::Oid;
 use graft_graph::identity::BranchIdentity;
 use graft_graph::layout::layout;
@@ -149,6 +150,31 @@ impl CommitSource for InMemory {
             .iter()
             .filter_map(|id| self.by_id.get(id).map(|&index| self.walk[index].clone()))
             .collect())
+    }
+
+    // Handles are walk positions: the benches never ask for a parent's.
+    fn links(&mut self, commits: &[CommitHandle]) -> Result<Vec<Link>, Self::Error> {
+        Ok(commits
+            .iter()
+            .map(|&handle| Link {
+                commit: handle,
+                parents: self.walk[handle.index()]
+                    .parents
+                    .iter()
+                    .filter_map(|parent| self.handle_of(parent))
+                    .collect(),
+            })
+            .collect())
+    }
+
+    fn handle_of(&self, id: &Oid) -> Option<CommitHandle> {
+        self.by_id
+            .get(id)
+            .map(|&index| CommitHandle(u32::try_from(index).expect("a bench history fits in u32")))
+    }
+
+    fn id_of(&self, handle: CommitHandle) -> Oid {
+        self.walk[handle.index()].id
     }
 }
 

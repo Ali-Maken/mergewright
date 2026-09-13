@@ -97,7 +97,9 @@ pub fn lay_out(shape: Shape, dir: &Path) -> Laid {
     };
     let stash = tips.get(b"refs/stash".as_slice()).copied();
 
-    let mut walk = Walk::all_refs(&handle, Order::Topological)
+    let table = graft_git::history::CommitTable::open(&handle)
+        .unwrap_or_else(|why| panic!("opening the id table of the {shape} fixture: {why}"));
+    let mut walk = Walk::all_refs(&handle, Order::Topological, std::sync::Arc::new(table))
         .unwrap_or_else(|why| panic!("starting the walk of the {shape} fixture: {why}"));
     let mut commits = Vec::new();
     loop {

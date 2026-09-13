@@ -6,11 +6,13 @@ use std::collections::HashMap;
 use std::convert::Infallible;
 
 use graft_core::commit::{Identity, Timestamp};
+use graft_core::commit_handle::{CommitHandle, Link};
 use proptest::prelude::*;
 
 use super::*;
 use crate::identity::BranchIdentity;
 use crate::layout::layout;
+use crate::layout::tests::Handles;
 use crate::seeds::BranchSeed;
 
 // ---- a generated history -------------------------------------------------
@@ -131,6 +133,7 @@ struct VecSource {
     position: usize,
     pulls: usize,
     reads: usize,
+    handles: Handles,
 }
 
 impl VecSource {
@@ -139,12 +142,14 @@ impl VecSource {
             .iter()
             .map(|commit| (commit.id, commit.clone()))
             .collect();
+        let handles = Handles::of(&walk);
         Self {
             walk,
             by_id,
             position: 0,
             pulls: 0,
             reads: 0,
+            handles,
         }
     }
 
@@ -156,6 +161,7 @@ impl VecSource {
             .iter()
             .map(|commit| (commit.id, commit.clone()))
             .collect();
+        source.handles = Handles::of(&[commits, &source.walk].concat());
         source
     }
 }
@@ -194,6 +200,18 @@ impl CommitSource for VecSource {
                 })
             })
             .collect())
+    }
+
+    fn links(&mut self, commits: &[CommitHandle]) -> Result<Vec<Link>, Infallible> {
+        Ok(self.handles.links(&self.by_id, commits))
+    }
+
+    fn handle_of(&self, id: &Oid) -> Option<CommitHandle> {
+        self.handles.handle_of(id)
+    }
+
+    fn id_of(&self, handle: CommitHandle) -> Oid {
+        self.handles.id_of(handle)
     }
 }
 
@@ -377,6 +395,18 @@ impl CommitSource for Forgetful {
             commit.message = b"rewritten".to_vec();
         }
         Ok(commits)
+    }
+
+    fn links(&mut self, commits: &[CommitHandle]) -> Result<Vec<Link>, Infallible> {
+        self.0.links(commits)
+    }
+
+    fn handle_of(&self, id: &Oid) -> Option<CommitHandle> {
+        self.0.handle_of(id)
+    }
+
+    fn id_of(&self, handle: CommitHandle) -> Oid {
+        self.0.id_of(handle)
     }
 }
 
@@ -636,6 +666,22 @@ impl CommitSource for Stalling {
 
     fn read(&mut self, _: &[Oid]) -> Result<Vec<Commit>, Infallible> {
         Ok(Vec::new())
+    }
+
+    fn links(&mut self, commits: &[CommitHandle]) -> Result<Vec<Link>, Infallible> {
+        assert!(
+            commits.is_empty(),
+            "a source that served nothing has no handles"
+        );
+        Ok(Vec::new())
+    }
+
+    fn handle_of(&self, _: &Oid) -> Option<CommitHandle> {
+        None
+    }
+
+    fn id_of(&self, handle: CommitHandle) -> Oid {
+        panic!("a source that served nothing has no handle {handle:?}")
     }
 }
 

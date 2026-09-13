@@ -8,7 +8,7 @@ use graft_core::commit::Commit;
 use graft_core::ref_name::RefName;
 use graft_fixtures::Shape;
 use graft_git::branches::Branches;
-use graft_git::history::{CHUNK, Order, Walk};
+use graft_git::history::{CHUNK, CommitTable, Order, Walk};
 use graft_git::repo::{RefTarget, RepoHandle};
 use graft_graph::layout::{CommitSource, StreamConfig, StreamingLayout, layout};
 use graft_graph::{BranchIdentity, Row, Seeds};
@@ -25,13 +25,18 @@ const SMALL: StreamConfig = StreamConfig {
     buffer_rows: 4,
 };
 
+/// The repository's id table, as the store shares it.
+fn table(handle: &RepoHandle) -> Arc<CommitTable> {
+    Arc::new(CommitTable::open(handle).expect("the table opens"))
+}
+
 fn never() -> bool {
     false
 }
 
 /// Every commit the refs reach, in the order the app asks for.
 fn every_commit(handle: &RepoHandle, shape: Shape) -> Vec<Commit> {
-    let mut walk = Walk::all_refs(handle, Order::Topological)
+    let mut walk = Walk::all_refs(handle, Order::Topological, table(handle))
         .unwrap_or_else(|why| panic!("starting the walk of {shape}: {why}"));
     let mut commits = Vec::new();
     loop {
@@ -103,7 +108,8 @@ fn the_product_source_lays_out_every_shape_as_the_whole_layout_does() {
         let seeds = seeds_for(&refs, &branches);
         let whole = layout(&every_commit(&handle, shape), seeds.clone());
 
-        let walk = Walk::all_refs(&handle, Order::Topological).expect("walk starts");
+        let walk =
+            Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
         let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), seeds, SMALL);
         let rows = reported_rows(&mut stream, shape);
 
@@ -248,7 +254,7 @@ fn scrolling_top_to_bottom_keeps_resident_rows_bounded() {
     let dir = graft_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
     let whole = layout(&every_commit(&handle, Shape::Linear), Seeds::default());
-    let walk = Walk::all_refs(&handle, Order::Topological).expect("walk starts");
+    let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
     let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
 
     // What the layout may protect at once: the window the screen asks for
@@ -305,7 +311,7 @@ fn scrolling_top_to_bottom_keeps_resident_rows_bounded() {
 fn every_key_draws_from_rows_on_hand_while_the_worker_answers_a_key_late() {
     let dir = graft_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
-    let walk = Walk::all_refs(&handle, Order::Topological).expect("walk starts");
+    let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
     let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
 
     let mut history = History::started();
@@ -359,7 +365,7 @@ fn scroll_from_launch(step: impl Fn(&mut History) -> Option<RowRequest>) {
     let dir = graft_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
     let whole = layout(&every_commit(&handle, Shape::Linear), Seeds::default());
-    let walk = Walk::all_refs(&handle, Order::Topological).expect("walk starts");
+    let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
     let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
 
     let mut history = History::started();
@@ -411,7 +417,7 @@ fn page_down_from_launch_stops_at_the_oldest_commit_and_never_wraps() {
 fn a_withdrawn_jump_stops_walking_and_lands_nothing() {
     let dir = graft_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
-    let walk = Walk::all_refs(&handle, Order::Topological).expect("walk starts");
+    let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
     let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
 
     let mut history = History::started();
@@ -499,7 +505,7 @@ fn assert_late_jump_answers_are_dropped(history: &mut History, jump: u64) {
 fn nothing_is_reported_once_stop_is_asked() {
     let dir = graft_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
-    let walk = Walk::all_refs(&handle, Order::Topological).expect("walk starts");
+    let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
     let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
 
     let stopped = AtomicBool::new(false);
@@ -538,7 +544,7 @@ fn a_walk_nobody_can_ask_ends() {
         opened += 1;
         Ok(WalkSource::new(
             &handle,
-            Walk::all_refs(&handle, Order::Topological)?,
+            Walk::all_refs(&handle, Order::Topological, table(&handle))?,
         ))
     };
     let mut views = Views::new(Seeds::default(), SMALL, Box::new(open));
@@ -591,7 +597,7 @@ fn views_fold_unfold_and_switch_to_first_parent_over_one_walk() {
             opened += 1;
             Ok(WalkSource::new(
                 &handle,
-                Walk::all_refs(&handle, Order::Topological)?,
+                Walk::all_refs(&handle, Order::Topological, table(&handle))?,
             ))
         };
         let mut views = Views::new(seeds_for(&refs, &branches), SMALL, Box::new(open));
@@ -656,7 +662,7 @@ fn a_request_in_another_view_interrupts_and_is_answered_next() {
     let open = |_: Option<&Arc<[Oid]>>| {
         Ok(WalkSource::new(
             &handle,
-            Walk::all_refs(&handle, Order::Topological)?,
+            Walk::all_refs(&handle, Order::Topological, table(&handle))?,
         ))
     };
     let mut views = Views::new(seeds_for(&refs, &branches), SMALL, Box::new(open));
@@ -713,7 +719,7 @@ fn a_request_in_another_view_interrupts_and_is_answered_next() {
 fn selection_stays_on_its_commit_after_its_chunk_is_evicted_and_rebuilt() {
     let dir = graft_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
-    let walk = Walk::all_refs(&handle, Order::Topological).expect("walk starts");
+    let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
     let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
 
     let mut history = History::started();
@@ -821,8 +827,11 @@ fn promotion_keeps_the_selected_commit_where_it_is_on_screen() {
     let branches = Branches::resolve(&handle, None).expect("branches resolve");
     let open = |promoted: Option<&Arc<[Oid]>>| {
         Ok(match promoted {
-            Some(ids) => WalkSource::in_order(&handle, Arc::clone(ids)),
-            None => WalkSource::new(&handle, Walk::all_refs(&handle, Order::CommitDate)?),
+            Some(ids) => WalkSource::in_order(&handle, Arc::clone(ids), table(&handle)),
+            None => WalkSource::new(
+                &handle,
+                Walk::all_refs(&handle, Order::CommitDate, table(&handle))?,
+            ),
         })
     };
     let mut views = Views::new(seeds_for(&refs, &branches), SMALL, Box::new(open));
@@ -888,8 +897,11 @@ fn key_while_promotion_swaps(
     let branches = Branches::resolve(&handle, None).expect("branches resolve");
     let open = |promoted: Option<&Arc<[Oid]>>| {
         Ok(match promoted {
-            Some(ids) => WalkSource::in_order(&handle, Arc::clone(ids)),
-            None => WalkSource::new(&handle, Walk::all_refs(&handle, Order::CommitDate)?),
+            Some(ids) => WalkSource::in_order(&handle, Arc::clone(ids), table(&handle)),
+            None => WalkSource::new(
+                &handle,
+                Walk::all_refs(&handle, Order::CommitDate, table(&handle))?,
+            ),
         })
     };
     let mut views = Views::new(seeds_for(&refs, &branches), SMALL, Box::new(open));
@@ -969,8 +981,11 @@ fn promotion_lands_on_a_jump_in_flight(
     let branches = Branches::resolve(&handle, None).expect("branches resolve");
     let open = |promoted: Option<&Arc<[Oid]>>| {
         Ok(match promoted {
-            Some(ids) => WalkSource::in_order(&handle, Arc::clone(ids)),
-            None => WalkSource::new(&handle, Walk::all_refs(&handle, Order::CommitDate)?),
+            Some(ids) => WalkSource::in_order(&handle, Arc::clone(ids), table(&handle)),
+            None => WalkSource::new(
+                &handle,
+                Walk::all_refs(&handle, Order::CommitDate, table(&handle))?,
+            ),
         })
     };
     let mut views = Views::new(seeds_for(&refs, &branches), SMALL, Box::new(open));
@@ -1180,7 +1195,7 @@ fn the_last_partial_strip_at_the_end_of_history_is_covered_by_the_rows_there() {
 fn a_search_hit_past_the_first_chunk_is_laid_out_to_and_selected() {
     let dir = graft_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
-    let walk = Walk::all_refs(&handle, Order::Topological).expect("walk starts");
+    let walk = Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("walk starts");
     let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
     let mut history = History::started();
     let first = history
@@ -1218,7 +1233,7 @@ fn a_request_lays_out_only_the_rows_it_names() {
     let open = |_: Option<&Arc<[Oid]>>| {
         Ok(WalkSource::new(
             &handle,
-            Walk::all_refs(&handle, Order::Topological)?,
+            Walk::all_refs(&handle, Order::Topological, table(&handle))?,
         ))
     };
     let mut views = Views::new(Seeds::default(), SMALL, Box::new(open));

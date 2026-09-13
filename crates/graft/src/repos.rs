@@ -21,6 +21,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use graft_core::ref_name::RefName;
 use graft_git::branches::{BranchError, Branches};
+use graft_git::history::{CommitTable, TableError};
 use graft_git::repo::{OpenError, SharedRepo};
 
 /// The open repository, and what has been worked out about it once.
@@ -30,6 +31,9 @@ pub struct RepoStore {
     override_branch: Option<RefName>,
     open: Mutex<Option<Arc<SharedRepo>>>,
     branches: Mutex<Option<Arc<Branches>>>,
+    /// The repository's one id table (ADR-0026): every walk and source hands
+    /// out handles from it, so a handle means the same commit in every job.
+    table: Mutex<Option<Arc<CommitTable>>>,
     /// How many times the repository has actually been discovered and opened.
     ///
     /// Kept because "the handle outlives the job" is not something a type
@@ -49,6 +53,7 @@ impl RepoStore {
             override_branch,
             open: Mutex::new(None),
             branches: Mutex::new(None),
+            table: Mutex::new(None),
             opens: AtomicUsize::new(0),
         }
     }
@@ -98,6 +103,27 @@ impl RepoStore {
         Ok(resolved)
     }
 
+    /// The repository's id table, opened the first time it is asked for and
+    /// shared from then on.
+    ///
+    /// Kept across [`refresh`](Self::refresh): a handle is stable for the
+    /// process's life, and a commit made since the table opened simply
+    /// interns past the commit-graph.
+    ///
+    /// # Errors
+    /// [`StoreError`] if the repository cannot be opened or its commit-graph
+    /// cannot be read.
+    pub fn table(&self) -> Result<Arc<CommitTable>, StoreError> {
+        let repo = self.shared()?;
+        let mut cached = lock(&self.table);
+        if let Some(table) = cached.as_ref() {
+            return Ok(Arc::clone(table));
+        }
+        let table = Arc::new(CommitTable::open(&repo.handle())?);
+        *cached = Some(Arc::clone(&table));
+        Ok(table)
+    }
+
     /// How many times the repository has been opened from scratch.
     #[must_use]
     pub fn opens(&self) -> usize {
@@ -133,6 +159,9 @@ pub enum StoreError {
     /// It opened, but ADR-0001's question could not be answered.
     #[error(transparent)]
     Branches(#[from] BranchError),
+    /// It opened, but its commit-graph could not be read for the id table.
+    #[error(transparent)]
+    Table(#[from] TableError),
 }
 
 /// A poisoned lock here is recovered from rather than propagated.
@@ -157,6 +186,22 @@ mod tests {
     /// A store over a fixture from the corpus, borrowed read-only.
     fn store(shape: Shape) -> RepoStore {
         RepoStore::new(graft_fixtures::borrow(shape), None)
+    }
+
+    /// ADR-0026: one id table per open repository, so a handle means the
+    /// same commit in every job.
+    #[test]
+    fn the_id_table_is_opened_once_and_shared() {
+        let store = store(Shape::Linear);
+
+        let first = store.table().expect("the table opens");
+        store.refresh();
+        let second = store.table().expect("the table opens");
+
+        assert!(
+            Arc::ptr_eq(&first, &second),
+            "one table, kept across a refresh"
+        );
     }
 
     /// The M0 gap this module closes: every job used to discover and parse

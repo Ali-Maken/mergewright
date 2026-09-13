@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::convert::Infallible;
 
+use graft_core::commit_handle::{CommitHandle, Link};
 use proptest::prelude::*;
 
 use super::*;
@@ -8,7 +9,7 @@ use crate::identity::BranchIdentity;
 use crate::layout::layout;
 use crate::layout::stream::StreamConfig;
 use crate::layout::tests::properties::viewed;
-use crate::layout::tests::{commit, oid};
+use crate::layout::tests::{Handles, commit, oid};
 use crate::row::Row;
 use crate::seeds::BranchSeed;
 
@@ -18,6 +19,7 @@ struct VecSource {
     by_id: HashMap<Oid, Commit>,
     position: usize,
     pulls: usize,
+    handles: Handles,
 }
 
 impl VecSource {
@@ -27,6 +29,7 @@ impl VecSource {
             by_id: walk.iter().map(|c| (c.id, c.clone())).collect(),
             position: 0,
             pulls: 0,
+            handles: Handles::of(walk),
         }
     }
 }
@@ -48,6 +51,18 @@ impl CommitSource for VecSource {
 
     fn read(&mut self, ids: &[Oid]) -> Result<Vec<Commit>, Infallible> {
         Ok(ids.iter().map(|id| self.by_id[id].clone()).collect())
+    }
+
+    fn links(&mut self, commits: &[CommitHandle]) -> Result<Vec<Link>, Infallible> {
+        Ok(self.handles.links(&self.by_id, commits))
+    }
+
+    fn handle_of(&self, id: &Oid) -> Option<CommitHandle> {
+        self.handles.handle_of(id)
+    }
+
+    fn id_of(&self, handle: CommitHandle) -> Oid {
+        self.handles.id_of(handle)
     }
 }
 
@@ -180,6 +195,52 @@ fn small() -> StreamConfig {
         resident_chunks: 64,
         buffer_rows: 4,
     }
+}
+
+#[test]
+fn links_trim_parents_as_the_view_draws_them() {
+    let (walk, seeds) = long_history();
+    let merge = walk
+        .iter()
+        .find(|commit| commit.parents.len() > 1)
+        .expect("the history has a merge")
+        .id;
+    let untrimmed = |source: &mut Included<VecSource>| {
+        let handle = source.handle_of(&merge).expect("the merge has a handle");
+        let links = source.links(&[handle]).expect("infallible");
+        assert_eq!(links[0].commit, handle);
+        assert_eq!(source.id_of(handle), merge);
+        links[0].parents.len()
+    };
+
+    let mut all = Included::new(
+        VecSource::new(&walk),
+        seeds.clone(),
+        Follow::AllParents,
+        Inclusion::default(),
+    );
+    assert!(untrimmed(&mut all) > 1, "the full view keeps every parent");
+
+    let mut first = Included::new(
+        VecSource::new(&walk),
+        seeds.clone(),
+        Follow::FirstParent,
+        Inclusion::default(),
+    );
+    assert_eq!(
+        untrimmed(&mut first),
+        1,
+        "first-parent view keeps the first"
+    );
+
+    let mut folded = Inclusion::default();
+    folded.folded.insert(merge);
+    let mut folded = Included::new(VecSource::new(&walk), seeds, Follow::AllParents, folded);
+    assert_eq!(
+        untrimmed(&mut folded),
+        1,
+        "a folded merge keeps its first parent"
+    );
 }
 
 #[test]
