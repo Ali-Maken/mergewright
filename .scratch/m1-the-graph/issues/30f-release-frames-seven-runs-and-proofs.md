@@ -1,8 +1,8 @@
 # m1-the-graph/30f — Release frame check 7/7, idle-wake report, proofs
 
-Status: partial — waiting on a user decision (seam 2: sink measurement fixed; pixel page keys still miss on rasterise; options in "Seam 2")
+Status: blocked — seam 3 (7 counted release runs, proofs, docs) waits on 30g (conductor chose option A then B, 2026-09-13)
 Build with: **Opus** (high) — frame timing under the job/redraw loop (split from 30c part b seam 2)
-Blocked by: 30e
+Blocked by: 30g
 Leaves runnable: yes — release frame check passes 7 runs of 7; idle-wake reported separately.
 
 Why: the remainder of 30c part b after seam 2 (commit 5c4594e). Scope is the unchecked boxes of 30c's "Decision (key 37 / release assert flake) — user, 2026-09-13" section, minus the key-path fix (done in seam 2) and the eviction bug (30e).
