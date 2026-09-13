@@ -2,7 +2,7 @@
 
 Status: ready
 Build with: **Opus** (high) — terminal graphics protocol and frame-time work
-Blocked by: 24
+Blocked by: 24d
 Leaves runnable: yes — iTerm2 shows the pixel graph; resizing rebuilds only what changed.
 
 Why: the spike spent 32–41 ms per resize retransmitting the whole viewport against a 16 ms budget, and 7 ms re-encoding unchanged iTerm2 bands.

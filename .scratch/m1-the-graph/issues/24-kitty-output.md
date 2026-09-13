@@ -1,6 +1,6 @@
 # m1-the-graph/24 — Pixels on Kitty-protocol terminals
 
-Status: partial — encoder done (24a); app wiring remains (split, see Handoff)
+Status: partial — encoder done; remainder split into 24b, 24c, 24d
 Build with: **Opus** (high) — terminal graphics protocol
 Blocked by: 19, 23
 Leaves runnable: yes — Ghostty and other Kitty-protocol terminals show the pixel graph; everything else unchanged.

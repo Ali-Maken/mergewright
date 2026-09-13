@@ -2,7 +2,7 @@
 
 Status: ready
 Build with: **Opus** (high) — terminal graphics protocol passthrough
-Blocked by: 24, 25
+Blocked by: 24d, 25
 Leaves runnable: yes — inside tmux the graph is pixels when passthrough answers, clean Unicode otherwise.
 
 Why: the retired pixel-protocols ticket (14, text in 35bec3e) owned tmux passthrough, SSH and the Sixel-only gap. The re-scope pointed 24 and 25 at "26" for them, which was never written.
