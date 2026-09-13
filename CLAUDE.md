@@ -37,6 +37,8 @@
 - **Splitting a remainder:** the conductor cuts along the seams in the builder's handoff note and keeps the original scope, signatures and model. If the split needs a new decision (a new signature, a scope change, another model), it goes to `planner-fable` as a spec-only pass for those tickets.
 - **Each ticket states:** scope in/out; acceptance criteria; the **exact sections** to read (never a whole document); the **exact signatures** the work must expose and call; its `Build with` line.
 - **Interface-first grouping:** the first ticket of a group defines the traits and stubs; the rest fill them in.
+- **Every milestone ends with an acceptance ticket** (set 2026-09-13, from M1's ticket 35). It builds the means to judge the milestone's **promise**, not just its tests: one command that walks the scenarios, a `TESTING.md` checklist saying concretely what right looks like for each (never "looks correct"), and captures under `docs/shots/`. The milestone isn't done until that ticket is. It is built on `builder-fable`: defining what good means is a decision, not plumbing. It comes last in the ticket order, before the review. Its captures go straight to files; the builder reports paths, not capture contents.
+  - **Promises** (each design note names its milestone's promise, so the acceptance ticket has something concrete to prove): M1 "the shape of history is obvious at a glance"; M3 "you cannot lose work"; M5 "you see the result before you confirm"; M6 "a real conflict is resolvable without leaving the app". `planner-fable` names the others in their design notes.
 
 ### Models
 
@@ -47,6 +49,7 @@
 | **Design pass + ticket specs** at the start of every milestone | `planner-fable` | Fable, high |
 | Filing and sequencing the specs (numbers, order, blocked-by) | the conductor | Opus |
 | **Signature tickets** (list below) | `builder-fable` | Fable, high |
+| **Acceptance ticket**, last ticket of every milestone | `builder-fable` | Fable, high |
 | A ticket that passes all three Fable tests (below) | `builder-fable` | Fable, high |
 | Concurrency, terminal protocols, git writes, undo, conflicts | `builder-opus` | Opus, high |
 | Everything mechanical: wiring, config, docs, plain widgets, tests, renames | `builder-sonnet` | Sonnet, medium |
@@ -56,6 +59,7 @@
 
 - **Design pass (M2 onward):** `planner-fable` reads only the relevant PROMPT.md and DESIGN.md sections and the crate MAP.md files — never source — and writes two things:
   1. `docs/design-notes/<milestone>.md`, two pages max, covering:
+     - **the milestone's promise**, one line (see Tickets → acceptance ticket)
      - the interfaces and data shapes the milestone introduces
      - the two or three hard-to-reverse choices, each with a recommendation
      - where it would differ from DESIGN.md, and why
@@ -77,7 +81,7 @@
   1. the ticket doesn't decide the approach;
   2. a wrong choice becomes structural for later tickets;
   3. correctness can't be judged from the diff or the tests.
-- **Expect one or two Fable builds per milestone, signature tickets included.** If a plan wants three or more, the conductor says so: the design is usually underspecified and needs another design pass, not more Fable builds. Escalation redos (below) don't count; they aren't planned.
+- **Expect one or two Fable builds per milestone, signature tickets included.** If a plan wants three or more, the conductor says so: the design is usually underspecified and needs another design pass, not more Fable builds. Escalation redos (below) don't count; they aren't planned. **The acceptance ticket doesn't count either:** it is standing, like the M8 architecture pass.
 - **Escalation beats prediction:**
   - Sonnet ticket fails twice → Opus.
   - Opus ticket stalls twice (`failed` or `partial` without progress), or a review finds its design wrong → redo that ticket on `builder-fable`.
