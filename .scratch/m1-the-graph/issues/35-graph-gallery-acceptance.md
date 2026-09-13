@@ -1,6 +1,6 @@
 # m1-the-graph/35 — Graph gallery: M1's acceptance ticket
 
-Status: ready
+Status: partial (part a done; part b = TESTING.md entries + captures)
 Build with: **Fable** (high) — the deliverable is a judgment about what good looks like; M1's promise is visual (user decision, 2026-09-13)
 Blocked by: 27d, 29, 30b, 30d, 34
 Leaves runnable: yes — one dev command walks every test repo so the user can judge the graph by eye.
@@ -34,13 +34,13 @@ Out:
 - Report **file paths and the coverage matrix only**.
 
 ## Acceptance
-- [ ] `cargo run --example gallery` (or the chosen name) steps through every repo with a key; footer shows name, position and expected finding (test on the footer text; pty capture of two steps).
-- [ ] Heavy repos: present → in the cycle; absent → `not available — build with: …` (test).
-- [ ] Not in the shipped binary (state how verified, e.g. release build symbol / `cargo tree -e normal`).
+- [x] `cargo run -p graft --example gallery` steps through every repo with `]`/`[`; footer shows name, position and expected finding (tests: `tests/it/gallery.rs` footer text, `view.rs` footer draw, `update.rs` hand-back). **pty capture of two steps: part b.**
+- [x] Heavy repos: present → in the cycle; absent → `not available — build with: …` (test `heavy_repos_are_used_only_if_present_and_say_how_to_build_otherwise`).
+- [x] Not in the shipped binary: `cargo tree -e normal -p graft --depth 1` lists no `graft-fixtures`; `strings target/release/graft` has none of the gallery's strings (`expect: `, `no finding written yet`; its two `not available` hits are libstd's). The lib seam (`Harness`) is in the binary but default-empty.
 - [ ] TESTING.md "Graph gallery" section: one concrete entry per repo, per-terminal block; no entry reads "looks correct" / "renders fine".
-- [ ] Coverage matrix printed and committed at `docs/shots/35-coverage-matrix.txt`; gaps in KNOWN_GAPS.md with owners.
+- [x] Coverage matrix printed and committed at `docs/shots/35-coverage-matrix.txt`; gaps in KNOWN_GAPS.md with owners.
 - [ ] Captures under `docs/shots/35-*`.
-- [ ] Exact command for the user written into this ticket.
+- [x] Exact command for the user written into this ticket (below).
 - [ ] **By eye (user):** walks the gallery in Ghostty and the VS Code terminal against TESTING.md. Unticked until the user does.
 
 ## Gates
@@ -48,3 +48,22 @@ Out:
 
 ## Size
 One context, under ~80k tokens. Natural seam if it grows: (a) gallery command + matrix, (b) TESTING.md entries + captures. Stop at the seam with a handoff note rather than compacting.
+
+## Part a: what was built (2026-09-13, Fable)
+
+**Command:** `cargo run -p graft --example gallery` — `]` next repo, `[` previous, `q` quit; all graph keys and `F3` work. `-- --start foxtrot-merge` starts there; `-- --list` prints the 23 stops; `-- --matrix` prints and writes the coverage matrix.
+
+- **Lib seam** (`crates/graft`): `update::Harness { notice, hand_back }` on `Startup` and `AppState`; `Quit::HandedBack(KeyCode)` → `Exit::HandedBack(KeyCode)`; `view::footer_notice` shows the notice on the hints' line, after F3's renderer line when both apply. Default-empty in `main.rs`. A hand-back key is not consulted while the search prompt is open.
+- **Cycle** (`tests/it/gallery.rs`, included by the example via `#[path]` like `budgets.rs`): `Shape::ALL` (20) + `graft-self` (this checkout: the real linear repo) + `synthetic-100k` + `git-git`. Heavy ones are located, never built: `target/fixtures/synthetic-100000-*/corpus.ok` (or `GRAFT_FIXTURES_DIR`/`CARGO_TARGET_DIR`), `~/.cache/graft/git-git.git` (or `GRAFT_GIT_GIT_DIR`/`XDG_CACHE_HOME`). Absent → a raw-mode page `<name> · n/N · not available — build with: <cmd>`.
+- **Each step restarts `event_loop::run`** on the next repo (terminal restored, re-probed): a blink per step. Accepted for a dev tool; in KNOWN_GAPS.
+- **Matrix:** classifies every `.snap` under `crates/` and every file in `docs/shots/` by name (tier from `raster/kitty/iterm2/.png`, `ascii`, graft-graph's corpus snaps as tier-less `layout`; theme from the word `light`; size from a `WxH` token, else `?`). Names only, stated in its header.
+- On this machine: `synthetic-100k` absent (only 5k variants built), `git-git` present (85k commits), `non-utf8-ref-name` unavailable (APFS).
+- Not verified by eye: the gallery has only been run headlessly (`--matrix`, `--list`) and through its tests; nobody has yet walked it in a terminal.
+
+## Handoff: part b (TESTING.md entries + captures)
+
+Not started. Exact next steps:
+
+1. **TESTING.md "Graph gallery" section** (after "The manual terminal checklist", before "Out of scope"): one entry per stop, in `--list` order. Long form of each `expect` line in `tests/it/gallery.rs::expectation` — use the fixture facts from ticket 01's `src/shapes/` (subjects, branch names, parent order) to say which row carries which node shape/badge, which lane stays straight, where the curve is and in whose colour, foxtrot vs normal merge, what fold (`Space`), first-parent (`1`) and Focus (`F`) leave on screen, what is identical across tiers (`F3`). Then the per-terminal block (§7.2 item 7): pixel must pass Ghostty/Kitty/WezTerm/iTerm2; Unicode must look deliberate in Terminal.app/Alacritty/VS Code; tmux/SSH degrade — pass conditions already exist above it; add "walk the gallery" as the procedure. Never "looks correct".
+2. **Captures:** write `.scratch/m1-the-graph/pty-gallery.py` modelled on `pty-wheel-check.py` (pyte, 80x24). `cargo build -p graft --example gallery`, exec `target/debug/examples/gallery` under the pty with `XDG_CONFIG_HOME=<tmp>` where `<tmp>/graft/config.toml` holds `[graph]\nrenderer = "unicode"` (then a second run with `"ascii"`) — **verify the config file name in `crates/graft/src/config/mod.rs::path_in_environment` first**. For each of the 23 stops: wait for the frame (`\x1b[?2026h` marker, then settle ≥ 1 s: each step re-probes; give git-git 3 s), write `docs/shots/35-<name>-<tier>.txt`, send `]`. The first three frames of the Unicode run also go to `docs/shots/35-gallery-two-steps.txt`. Gotchas: stops 20 (non-utf8-ref-name) and 22 (synthetic-100k) show the "not available" page (raw text, still capture it); a `[` byte in pyte input is fine (no ESC before it). **Never cat a capture**: check with `wc -c` and `grep -c "expect:"`.
+3. Tick the remaining acceptance boxes (TESTING.md, captures, the two-step capture) and re-run `--matrix` so the 35-* captures appear in the matrix; commit `m1-the-graph-35: part b …`.

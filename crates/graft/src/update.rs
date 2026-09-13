@@ -125,6 +125,9 @@ pub struct AppState {
     /// terminal back — a fatal quit is reported only after that, on a terminal
     /// that is the user's again.
     pub quit: Option<Quit>,
+    /// What a harness wrapping the run asked for; default in the shipped
+    /// binary.
+    pub harness: Harness,
     /// What the status line has to say.
     pub status: Status,
     /// The terminal's last reported size, in character cells.
@@ -238,11 +241,29 @@ impl AppState {
     }
 }
 
+/// What a harness wrapping `event_loop::run` asks for (the graph gallery,
+/// m1-the-graph/35). The default asks for nothing, which is what the
+/// shipped binary passes.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Harness {
+    /// A line the graph footer keeps showing while nothing more urgent (a
+    /// failure, the search) has it; the gallery names what is on screen.
+    pub notice: Option<String>,
+    /// Keys the loop does not interpret: pressing one sets `quit` to
+    /// [`Quit::HandedBack`] so the caller can act on it (the gallery steps
+    /// to the next repository). Not consulted while the search prompt is
+    /// open, where every printable key is text.
+    pub hand_back: Vec<KeyCode>,
+}
+
 /// Why Graft is leaving.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Quit {
     /// The user asked to.
     Requested,
+    /// The user pressed a key the caller asked to have handed back
+    /// (`Harness::hand_back`), so the loop stops for the caller to act.
+    HandedBack(KeyCode),
     /// Graft cannot go on, and this is the line to print. The terminal is
     /// restored first: a message written into the alternate screen vanishes
     /// with it, which is how "it just exits and says nothing" happens.
@@ -481,9 +502,15 @@ fn sorted(
 fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
     match event {
         // The search's keys go first: the open prompt takes every letter.
+        // A handed-back key is checked next, before any graph binding, so
+        // a harness can claim a key whatever the graph would do with it.
         Event::Key(key) => {
-            if !search_key(next, commands, key) {
-                key_event(next, commands, key);
+            if next.search_prompt.is_some() || !next.harness.hand_back.contains(&key.code) {
+                if !search_key(next, commands, key) {
+                    key_event(next, commands, key);
+                }
+            } else {
+                next.quit = Some(Quit::HandedBack(key.code));
             }
         }
         Event::Resize { columns, rows } => {
@@ -1795,6 +1822,7 @@ mod tests {
         // repeating a call repeats the answer.
         let state = AppState {
             quit: None,
+            harness: Harness::default(),
             status: Status::Failed("earlier".to_owned()),
             size: Size {
                 columns: 80,
@@ -2571,5 +2599,38 @@ mod tests {
         assert_eq!(lines[0], "no matches");
         assert_eq!(lines[1], "search cancelled, 0 matches found");
         assert_eq!(lines[2], "search failed: walk broke");
+    }
+
+    #[test]
+    fn a_handed_back_key_ends_the_run_naming_the_key() {
+        let state = AppState {
+            harness: Harness {
+                hand_back: vec![KeyCode::Char(']')],
+                ..Harness::default()
+            },
+            ..AppState::default()
+        };
+        let (next, commands) = update(&state, key(KeyCode::Char(']')));
+        assert_eq!(next.quit, Some(Quit::HandedBack(KeyCode::Char(']'))));
+        assert!(commands.is_empty());
+        assert!(next.should_quit());
+
+        let (next, _) = update(&state, key(KeyCode::Char('j')));
+        assert_eq!(next.quit, None, "other keys are the graph's");
+    }
+
+    #[test]
+    fn an_open_search_prompt_keeps_a_handed_back_key_as_text() {
+        let state = AppState {
+            harness: Harness {
+                hand_back: vec![KeyCode::Char(']')],
+                ..Harness::default()
+            },
+            search_prompt: Some(String::from("fox")),
+            ..AppState::default()
+        };
+        let (next, _) = update(&state, key(KeyCode::Char(']')));
+        assert_eq!(next.quit, None);
+        assert_eq!(next.search_prompt.as_deref(), Some("fox]"));
     }
 }

@@ -25,6 +25,11 @@ pub struct Startup {
     pub repo_path: std::path::PathBuf,
     /// The config file, and anything odd about it.
     pub config: Loaded,
+    /// What a harness wrapping `run` asks for (the graph gallery,
+    /// m1-the-graph/35): a standing footer line, keys handed back as
+    /// [`crate::event_loop::Exit::HandedBack`]. Default for the shipped
+    /// binary.
+    pub harness: crate::update::Harness,
 }
 
 /// A terminal answer that changed mid-session (DESIGN.md §4.5).

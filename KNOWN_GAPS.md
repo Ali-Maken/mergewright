@@ -295,3 +295,18 @@ entry is (CLAUDE.md).*
 - **Frames measured without a terminal.** The in-memory backend leaves out pty write back-pressure and the terminal's own parse/paint; the 25-era Ghostty resize bench (32–41 ms) is the only real-terminal number.
 
 - **Pixel strips rasterised again after eviction (m1-the-graph/30b):** cause 2 fixed (strips wait for the cursor's row). Still, 43 of 556 strip misses in the release 100k pixel frames run re-rasterise a strip whose inputs didn't change, because it was evicted (StripCache or Kitty unplaced capacity too small for a PageUp return). Each costs a ~434 KB retransmit. Not tuned. Also: on a page key whose cursor row isn't on hand, the graph shows blank for one frame. Not yet judged by eye.
+
+## m1-the-graph/35 — graph gallery (part a: command + matrix)
+
+`docs/shots/35-coverage-matrix.txt` (regenerate: `cargo run -p graft --example gallery -- --matrix`) reads file names only, so it shows what is *named*, not what a file happens to contain. Gaps it shows, with owners:
+
+| Gap | What is missing | Owner |
+|---|---|---|
+| **Light theme: nothing named `light` for any repo.** `10-row-columns.txt` holds light captures, but its name does not say so, and no `.snap` renders the graph in light (`graph_column` asserts dark == light bytes and snapshots dark) | A light-theme snapshot per shape, or a name that says light on the captures that have it | M1 review → new ticket |
+| **Pixel evidence for 3 shapes only** (foxtrot, criss-cross, octopus raster buffers and PNGs); 17 shapes and every real repo have none | Raster snapshots for the shapes whose picture differs (orphan root, cherry-pick twins, tags, unicode names) | M1 review |
+| **ASCII evidence for 3 shapes only**, none for the real repos | ASCII snapshots for the same set, or a statement that ASCII shares the Unicode layout so the 3 suffice | M1 review |
+| **Sizes are not in snapshot names** (`?` in nearly every cell); only `graph_screen__feature-branches-{80x24,120x40,200x60}` names its size, so §7.2 item 3's three sizes are provably covered for one shape | Put the size in every screen snapshot's name, or add the three sizes for the merge shapes | M1 review → new ticket |
+| **`graft-self` and `synthetic-100k`: nothing named**; `git-git` has two captures (80x24, 120x40) and no snapshot (by rule: no test may touch it) | Gallery captures (part b of this ticket) name each; the 100k fixture is not built on this machine (only 5k variants under `target/fixtures/`) | Part b; heavy tier for the 100k build |
+| **`non-utf8-ref-name`: nothing**, the APFS skip (ticket 01) | A Linux heavy-tier run | M1 heavy tier (existing row) |
+| **The gallery restarts the run at every step**: terminal restored, re-probed, repainted (a blink). Keeping the terminal across repositories needs `run` split into terminal setup and per-repo loop | Only if the blink hurts by eye; dev-only tool | Not planned |
+| **The "not available" page understands only `]`, `[`, `q`**; an escape sequence is skipped, a lone `Esc` swallows the next key | Reuse the input mux instead of raw byte reads | Not planned |

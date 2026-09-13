@@ -103,12 +103,7 @@ pub fn view_with_graphics(
             screen.ascii = tier == RenderingTier::Ascii;
             // Only below the terminal's own tier: `F3` clears the override
             // when it cycles back to the top (m1-the-graph/33).
-            if state.renderer_override.is_some() {
-                screen.notice = Some(sanitize_line(&format!(
-                    "renderer: {} (F3 cycles)",
-                    tier_name(tier)
-                )));
-            }
+            screen.notice = footer_notice(state, tier);
             screen.pixel = pixels;
             screen.graphics = pixels.then(|| graphics.clone());
             let widget = GraphScreen::new(&screen, &session.theme);
@@ -122,6 +117,25 @@ pub fn view_with_graphics(
             None
         }
     }
+}
+
+/// The footer's notice: `F3`'s renderer line while an override is on, then
+/// the standing notice a harness asked for (`Harness::notice`), both when
+/// both apply. `None` in the shipped binary with no override, so the key
+/// hints show.
+fn footer_notice(state: &AppState, tier: RenderingTier) -> Option<SanitizedText> {
+    // Only below the terminal's own tier: `F3` clears the override when it
+    // cycles back to the top (m1-the-graph/33).
+    let renderer = state
+        .renderer_override
+        .map(|_| format!("renderer: {} (F3 cycles)", tier_name(tier)));
+    let line = match (renderer, &state.harness.notice) {
+        (Some(renderer), Some(notice)) => format!("{renderer} · {notice}"),
+        (Some(renderer), None) => renderer,
+        (None, Some(notice)) => notice.clone(),
+        (None, None) => return None,
+    };
+    Some(sanitize_line(&line))
 }
 
 /// Everything the graph screen draws: the rows in the viewport, the cursor
@@ -705,6 +719,7 @@ pub(crate) mod tests {
 
     use super::*;
     use crate::session::for_tests::session;
+    use crate::update::Harness;
     use crate::update::Size;
 
     /// Draw `state` into a terminal of exactly this size and return what the
@@ -810,6 +825,38 @@ pub(crate) mod tests {
         assert!(
             !screen.contains('\u{1b}'),
             "a subject's escape reached the cells"
+        );
+    }
+
+    #[test]
+    fn a_standing_notice_holds_the_footer_and_joins_the_renderer_line() {
+        let mut state = AppState {
+            history: Some(history_of(5, 1)),
+            size: Size {
+                columns: 80,
+                rows: 5,
+            },
+            harness: Harness {
+                notice: Some(String::from("foxtrot-merge · 6/23 · expect: a lane jump")),
+                ..Harness::default()
+            },
+            ..AppState::default()
+        };
+        let screen = draw(&state, 80, 5);
+        assert!(
+            screen.contains("foxtrot-merge · 6/23 · expect: a lane jump"),
+            "{screen}"
+        );
+        assert!(
+            !screen.contains("q quit"),
+            "the notice takes the hints' line"
+        );
+
+        state.renderer_override = Some(RenderingTier::Ascii);
+        let screen = draw(&state, 80, 5);
+        assert!(
+            screen.contains("renderer: ascii (F3 cycles) · foxtrot-merge · 6/23"),
+            "{screen}"
         );
     }
 

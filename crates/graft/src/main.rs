@@ -17,6 +17,7 @@ use graft::cli::{self, Invocation};
 use graft::config;
 use graft::event_loop::{self, Exit};
 use graft::session::Startup;
+use graft::update::Harness;
 
 fn main() -> ExitCode {
     let repo_path = match cli::from_process() {
@@ -42,8 +43,15 @@ fn main() -> ExitCode {
         }
     };
 
-    match event_loop::run(Startup { repo_path, config }) {
-        Ok(Exit::Quit) => ExitCode::SUCCESS,
+    let startup = Startup {
+        repo_path,
+        config,
+        harness: Harness::default(),
+    };
+    match event_loop::run(startup) {
+        // The harness is the default, so `HandedBack` cannot happen; if it
+        // did, the loop stopped where it was told to, which is a success.
+        Ok(Exit::Quit | Exit::HandedBack(_)) => ExitCode::SUCCESS,
         Ok(Exit::Signal(signal)) => {
             // Normally this does not return: the process dies of the signal.
             if let Err(error) = event_loop::signals::reraise(signal) {

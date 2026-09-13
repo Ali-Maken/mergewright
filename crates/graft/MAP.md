@@ -16,6 +16,7 @@ One line per public item. Update when a public item changes.
 - `terminal` (mod) — raw mode and terminal session setup/restore.
 - `update` (mod) — app state and the update function.
 - `view` (mod) — draws state to a frame.
+- `examples/gallery` (dev-only example, not in the binary) — walks every test repo with `]`/`[`; footer names the stop and its expected finding; `--matrix` writes `docs/shots/35-coverage-matrix.txt` (m1-the-graph/35). Its pure half is `tests/it/gallery.rs`, included by `#[path]`.
 
 ## history
 - `Wanted::Find { commit, rows, fallback }` — lay out until `commit` has a row, answer around it (search's far hit); `fallback` when the walk ends without it.
@@ -32,7 +33,7 @@ One line per public item. Update when a public item changes.
 - `StripPaint` (struct) — `cell_width`, `cell_height`, `palette`, `muted`; `StripPaint::of(session)`.
 
 ## session
-- `Startup` (struct) — what `main` decided before touching the terminal.
+- `Startup` (struct) — what `main` decided before touching the terminal; `harness` is what a wrapper around `run` asks for (`update::Harness`, default in the binary).
 - `Session` (struct) — what Graft is drawing with, for as long as this run lasts.
 - `Session::icons` (field) — badge glyph set from `ui.icons`.
 - `Session::max_lanes` (field) — lane limit from `graph.max_lanes`.
@@ -87,6 +88,8 @@ One line per public item. Update when a public item changes.
 - `GitCheck` (enum) — what running `git --version` found.
 - `AppState` (struct) — the whole app state.
 - `AppState::quit` (field) — set when Graft is leaving; terminal restored before reporting.
+- `AppState::harness` (field) — `Harness`: a standing footer `notice` (shown under F3's renderer line when both apply) and `hand_back` keys that end the run with `Quit::HandedBack(key)`; never while the search prompt is open (m1-the-graph/35).
+- `Harness` (struct) — `notice: Option<String>`, `hand_back: Vec<KeyCode>`; `Default` asks for nothing.
 - `AppState::status` (field) — what the status line has to say.
 - `AppState::size` (field) — terminal's last reported size, in character cells.
 - `AppState::repo_path` (field) — repo path; starting point, filled in by `event_loop::run`.
@@ -109,7 +112,7 @@ One line per public item. Update when a public item changes.
 - `AppState::tier` (fn) — tier in force: F3's override, else settled, else Unicode. F3 (`cycle_tier`) cycles Pixel→Unicode→Ascii→settled tier, never above it; back at the top the override clears. History pads to strips only at Pixel (m1-the-graph/33).
 - `Screen` (enum) — `Graph` (default) or `Status`.
 - `Screen::toggled` (fn) — the other screen; `F2` swaps.
-- `Quit` (enum) — why Graft is leaving.
+- `Quit` (enum) — why Graft is leaving: `Requested`, `HandedBack(KeyCode)`, `Fatal(String)`.
 - `Quit::should_quit` (fn) — is the loop finished?
 - `Status` (enum) — status-line state; never reads as an error when nothing is wrong.
 - `Size` (struct) — terminal size in character cells.
@@ -191,7 +194,7 @@ One line per public item. Update when a public item changes.
 ## event_loop
 - `input` (mod) — input reader thread and event translation.
 - `signals` (mod) — signal watcher thread.
-- `Exit` (enum) — why the loop stopped.
+- `Exit` (enum) — why the loop stopped: `Quit`, `HandedBack(KeyCode)` (a `Harness::hand_back` key), `Signal(i32)`, `Fatal(String)`.
 - `Wake` (enum) — something that wakes the loop.
 - `Wakes` (trait) — a seam so `pump` can be driven by a scripted list in tests.
 - `ChannelWakes` (struct) — the real wake source: one channel, two feeder threads.

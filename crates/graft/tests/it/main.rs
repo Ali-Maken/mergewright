@@ -10,6 +10,7 @@ mod budget_run;
 mod dependency_edges;
 #[cfg(feature = "heavy-tests")]
 mod frames;
+mod gallery;
 #[cfg(feature = "heavy-tests")]
 mod heavy;
 #[cfg(feature = "heavy-tests")]

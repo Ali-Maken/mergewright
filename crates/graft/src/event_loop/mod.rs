@@ -58,6 +58,9 @@ const END_SYNCHRONIZED_UPDATE: &[u8] = b"\x1b[?2026l";
 pub enum Exit {
     /// The user asked to leave.
     Quit,
+    /// The user pressed one of `Harness::hand_back`'s keys; the caller
+    /// asked for it back and acts on it now that the terminal is restored.
+    HandedBack(graft_core::event::KeyCode),
     /// This signal arrived. The caller re-raises it once the terminal is back,
     /// so the process dies the way it was told to.
     Signal(i32),
@@ -163,7 +166,11 @@ fn start_redetector(
 pub fn run(startup: Startup) -> io::Result<Exit> {
     // Taken apart here: `run` consumes the startup facts, and the two halves
     // are used at opposite ends of the function.
-    let Startup { repo_path, config } = startup;
+    let Startup {
+        repo_path,
+        config,
+        harness,
+    } = startup;
     // One repository, opened once and shared by every job that follows
     // (`crate::repos`). Opened *before* the terminal is touched: a path that
     // is not a repository is a plain line on a plain terminal, never an
@@ -232,6 +239,7 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     // redetector's rounds and the images' error replies never steal from
     // each other (and each ignores the other's kind).
     state.settled_tier = Some(settled.rendering.tier);
+    state.harness = harness;
     let mut graphics =
         Graphics::new(mux.waiter()).with_transport(Transport::for_tmux(&settled.capabilities.tmux));
     let outcome = pump_with(
@@ -539,6 +547,7 @@ where
 
         match &state.quit {
             Some(Quit::Requested) => return Ok(Exit::Quit),
+            Some(Quit::HandedBack(key)) => return Ok(Exit::HandedBack(*key)),
             // Reported by the caller, once the terminal is the user's again.
             Some(Quit::Fatal(reason)) => return Ok(Exit::Fatal(reason.clone())),
             None => {}

@@ -1,0 +1,30 @@
+Graph coverage: repo × tier × theme, with sizes (m1-the-graph/35)
+S snapshot (.snap under crates/)   C capture (docs/shots/)   — nothing
+Sizes as the file name says; ? = not in the name. Read from names only:
+a file covering more than its name says counts once, as its name says.
+layout = graft-graph's tier-less layout diagrams.
+
+repo                    pixel/dark              pixel/light             unicode/dark            unicode/light           ascii/dark              ascii/light             layout/dark           
+trivial                 —                       —                       S:?                     —                       —                       —                       S:?                   
+linear                  —                       —                       S:?                     —                       —                       —                       S:?                   
+feature-branches        —                       —                       S:?,80x24,120x40,200x60  —                       —                       —                       S:?                   
+octopus-merge           S:? C:?                 —                       S:?                     —                       S:?                     —                       S:?                   
+criss-cross-merge       S:? C:?                 —                       S:? C:?                 —                       S:? C:?                 —                       S:?                   
+foxtrot-merge           S:? C:?                 —                       S:? C:?                 —                       S:?                     —                       S:?                   
+backward-merge          —                       —                       S:?                     —                       —                       —                       S:?                   
+evil-merge              —                       —                       S:?                     —                       —                       —                       S:?                   
+accidental-pull-merge   —                       —                       S:?                     —                       —                       —                       S:?                   
+orphan-branch           —                       —                       S:?                     —                       —                       —                       S:?                   
+cherry-pick-duplicates  —                       —                       S:?                     —                       —                       —                       S:?                   
+skewed-dates            —                       —                       S:? C:?                 —                       —                       —                       S:?                   
+tags                    —                       —                       S:?                     —                       —                       —                       S:?                   
+unicode-names           —                       —                       S:?                     —                       —                       —                       S:?                   
+ref-states              —                       —                       S:?                     —                       —                       —                       S:?                   
+detached-head           —                       —                       S:?                     —                       —                       —                       S:?                   
+unborn-branch           —                       —                       S:?                     —                       —                       —                       S:?                   
+stash                   —                       —                       S:? C:?                 —                       —                       —                       S:?                   
+non-utf8-path           —                       —                       S:?                     —                       —                       —                       S:?                   
+non-utf8-ref-name       —                       —                       —                       —                       —                       —                       —                     
+graft-self              —                       —                       —                       —                       —                       —                       —                     
+synthetic-100k          —                       —                       —                       —                       —                       —                       —                     
+git-git                 —                       —                       C:80x24,120x40          —                       —                       —                       —                     

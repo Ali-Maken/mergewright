@@ -1,0 +1,180 @@
+//! The graph gallery (ticket m1-the-graph/35): one command that walks every
+//! test repository so the graph can be judged by eye against TESTING.md's
+//! "Graph gallery" section. Dev-only; nothing here is in the shipped binary.
+//!
+//! ```sh
+//! cargo run -p graft --example gallery            # start at the first stop
+//! cargo run -p graft --example gallery -- --start foxtrot-merge
+//! cargo run -p graft --example gallery -- --list   # the stops, in order
+//! cargo run -p graft --example gallery -- --matrix # coverage matrix, also
+//!                                                  # written to docs/shots/
+//! ```
+//!
+//! Inside: `]` next repository, `[` previous, `q` quit; every graph key and
+//! `F3` work as in Graft. The footer names the stop, its position and what
+//! to expect. Each step restarts the run on the next repository, so the
+//! screen is re-probed and repainted (a blink), which a dev tool can afford.
+//! A heavy repository that is not on disk gets a page saying how to build
+//! it; on that page only `]`, `[` and `q` do anything.
+
+#[path = "../tests/it/gallery.rs"]
+mod gallery;
+
+use std::fs;
+use std::io::{self, Read, Write};
+use std::path::{Path, PathBuf};
+use std::process::ExitCode;
+
+use gallery::{Availability, coverage_matrix, entries, footer, missing_line, resolve, roots};
+use graft::event_loop::{self, Exit};
+use graft::session::Startup;
+use graft::terminal::{SessionOptions, TerminalSession};
+use graft::update::Harness;
+use graft_core::event::KeyCode;
+
+const NEXT: KeyCode = KeyCode::Char(']');
+const PREVIOUS: KeyCode = KeyCode::Char('[');
+const USAGE: &str = "usage: gallery [--start <repo> | --list | --matrix]";
+
+/// Where the walk goes after a stop.
+enum Step {
+    Next,
+    Previous,
+    Quit,
+}
+
+fn main() -> ExitCode {
+    let workspace = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let start = match args.first().map(String::as_str) {
+        None => 0,
+        Some("--list") => {
+            for (index, entry) in entries().iter().enumerate() {
+                println!("{:2} {}", index + 1, entry.name);
+            }
+            return ExitCode::SUCCESS;
+        }
+        Some("--matrix") => return write_matrix(&workspace),
+        Some("--start") => {
+            let Some(name) = args.get(1) else {
+                eprintln!("{USAGE}");
+                return ExitCode::FAILURE;
+            };
+            let Some(index) = entries().iter().position(|entry| entry.name == name) else {
+                eprintln!("gallery: no stop named {name}; --list has them");
+                return ExitCode::FAILURE;
+            };
+            index
+        }
+        Some(_) => {
+            eprintln!("{USAGE}");
+            return ExitCode::FAILURE;
+        }
+    };
+    match walk(start, &workspace) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("gallery: {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// Print the coverage matrix and write it where the ticket wants it.
+fn write_matrix(workspace: &Path) -> ExitCode {
+    let matrix = coverage_matrix(workspace);
+    print!("{matrix}");
+    let out = workspace.join("docs/shots/35-coverage-matrix.txt");
+    match fs::write(&out, &matrix) {
+        Ok(()) => {
+            eprintln!("written to {}", out.display());
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("gallery: could not write {}: {error}", out.display());
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// Walk the stops from `index` until the user quits.
+fn walk(mut index: usize, workspace: &Path) -> Result<(), String> {
+    let all = entries();
+    let roots = roots(workspace);
+    loop {
+        let entry = &all[index];
+        let step = match resolve(entry, workspace, &roots) {
+            Availability::Ready(path) => show(path, footer(entry, index, all.len()))?,
+            Availability::Missing { build_with } => {
+                show_missing(&missing_line(entry, index, all.len(), &build_with))?
+            }
+        };
+        index = match step {
+            Step::Next => (index + 1) % all.len(),
+            Step::Previous => (index + all.len() - 1) % all.len(),
+            Step::Quit => return Ok(()),
+        };
+    }
+}
+
+/// Run Graft on one repository until a step key or `q`.
+fn show(repo_path: PathBuf, notice: String) -> Result<Step, String> {
+    let config = graft::config::load().map_err(|error| error.to_string())?;
+    let startup = Startup {
+        repo_path,
+        config,
+        harness: Harness {
+            notice: Some(notice),
+            hand_back: vec![NEXT, PREVIOUS],
+        },
+    };
+    match event_loop::run(startup).map_err(|error| error.to_string())? {
+        Exit::Quit => Ok(Step::Quit),
+        Exit::HandedBack(key) if key == NEXT => Ok(Step::Next),
+        Exit::HandedBack(_) => Ok(Step::Previous),
+        Exit::Signal(signal) => {
+            // Normally does not return: the process dies of the signal.
+            event_loop::signals::reraise(signal)
+                .map_err(|error| format!("could not re-raise signal {signal}: {error}"))?;
+            Ok(Step::Quit)
+        }
+        Exit::Fatal(reason) => Err(reason),
+    }
+}
+
+/// The page for a repository that is not on disk. Raw mode, so lines end
+/// in `\r\n`; escape sequences (arrow keys) are skipped rather than read.
+fn show_missing(line: &str) -> Result<Step, String> {
+    let session =
+        TerminalSession::on_stdout(SessionOptions::default()).map_err(|error| error.to_string())?;
+    let shown = page(line);
+    let restored = session.restore();
+    match (shown, restored) {
+        (Ok(step), Ok(())) => Ok(step),
+        (Err(error), _) | (_, Err(error)) => Err(error.to_string()),
+    }
+}
+
+fn page(line: &str) -> io::Result<Step> {
+    let mut out = io::stdout();
+    write!(
+        out,
+        "\x1b[2J\x1b[H{line}\r\n\r\n]  next    [  previous    q  quit\r\n"
+    )?;
+    out.flush()?;
+    let mut stdin = io::stdin();
+    let mut byte = [0u8; 1];
+    loop {
+        if stdin.read(&mut byte)? == 0 {
+            return Ok(Step::Quit);
+        }
+        match byte[0] {
+            b']' => return Ok(Step::Next),
+            b'[' => return Ok(Step::Previous),
+            b'q' | 0x03 => return Ok(Step::Quit),
+            // ESC: swallow the rest of a CSI/SS3 sequence up to its final byte.
+            0x1b => while stdin.read(&mut byte)? == 1 && !(0x40..=0x7e).contains(&byte[0]) {},
+            _ => {}
+        }
+    }
+}
