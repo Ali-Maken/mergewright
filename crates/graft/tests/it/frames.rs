@@ -169,7 +169,7 @@ fn check(tier: RenderingTier, refs: Refs) {
         .iter()
         .enumerate()
         .filter(|(_, latency)| **latency >= INPUT_TO_FRAME)
-        .map(|(key, latency)| format!("key {key}: {latency:?}"))
+        .map(|(key, latency)| format!("key {key}: {latency:?} ({})", run.breakdown[key]))
         .collect();
     if cfg!(debug_assertions) {
         // ADR-0021: debug records the budget, release enforces it.
@@ -215,6 +215,8 @@ fn print_details(tier: RenderingTier, refs: Refs, run: &Run, idle: &[Duration]) 
 struct Run {
     /// Per key, in [`keys`] order: due time → the key's own frame.
     latencies: Vec<Duration>,
+    /// Per key, in [`keys`] order: where its latency went.
+    breakdown: Vec<String>,
     /// Keys whose own frame lacked the cursor's row or part of the viewport.
     waited: Vec<String>,
     /// Kitty graphics commands written (`ESC _ G`): images at the pixel tier.
@@ -269,6 +271,7 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs) -> Result<Run, String> {
         return Err(failure);
     }
     let latencies = wakes.latencies()?;
+    let breakdown = wakes.breakdown();
     let waited = wakes.waited(initial);
     let by_trigger = wakes.written_by_trigger();
 
@@ -281,6 +284,7 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs) -> Result<Run, String> {
     let written = sink.0.lock().unwrap_or_else(PoisonError::into_inner);
     Ok(Run {
         latencies,
+        breakdown,
         waited,
         kitty_commands: written.kitty_commands,
         bytes: written.bytes,
@@ -584,6 +588,8 @@ enum Kind {
 /// One wake handed to the loop.
 struct Handed {
     kind: Kind,
+    /// When the loop took it: its frame runs from here to the next stamp.
+    at: Instant,
 }
 
 /// Wakes for [`pump`]: the script's keys on a 60 Hz clock, job events as
@@ -605,6 +611,16 @@ struct Paced<'a, D> {
     written: Vec<Counts>,
     sink: Sink,
     failure: Option<String>,
+}
+
+impl Handed {
+    fn kind_name(&self) -> String {
+        match self.kind {
+            Kind::Key(key, _) => format!("key {key}"),
+            Kind::Window(request) => format!("window {request}"),
+            Kind::Other => "other event".to_owned(),
+        }
+    }
 }
 
 impl<'a, D> Paced<'a, D> {
@@ -630,7 +646,10 @@ impl<'a, D> Paced<'a, D> {
     }
 
     fn hand(&mut self, kind: Kind, event: AppEvent) -> Wake {
-        self.handed.push(Handed { kind });
+        self.handed.push(Handed {
+            kind,
+            at: Instant::now(),
+        });
         self.replay.push(event.clone());
         Wake::Event(event)
     }
@@ -689,6 +708,46 @@ impl<'a, D> Paced<'a, D> {
             latencies.push(drawn.saturating_duration_since(due));
         }
         Ok(latencies)
+    }
+
+    /// Per key, in [`keys`] order, where its latency went: time queued
+    /// behind the wake before it (and what that wake was), then the key's
+    /// own frame and what it wrote. Printed for late keys.
+    fn breakdown(&self) -> Vec<String> {
+        let mut lines = Vec::new();
+        for (index, handed) in self.handed.iter().enumerate() {
+            let Kind::Key(_, due) = handed.kind else {
+                continue;
+            };
+            let (Some(drawn), Some(before), Some(after)) = (
+                self.drawn.get(index + 1),
+                self.written.get(index),
+                self.written.get(index + 1),
+            ) else {
+                lines.push("no frame drawn".to_owned());
+                continue;
+            };
+            let previous = index.checked_sub(1).and_then(|at| {
+                let wake = self.handed.get(at)?;
+                let ended = self.drawn.get(at + 1)?;
+                Some(format!(
+                    "{} frame {:?}",
+                    wake.kind_name(),
+                    ended.saturating_duration_since(wake.at)
+                ))
+            });
+            let frame = after.minus(*before);
+            lines.push(format!(
+                "queued {:?} behind {}; own frame {:?}, bytes={} transmits={} placements={}",
+                handed.at.saturating_duration_since(due),
+                previous.unwrap_or_else(|| "nothing".to_owned()),
+                drawn.saturating_duration_since(handed.at),
+                frame.bytes,
+                frame.transmits,
+                frame.placements,
+            ));
+        }
+        lines
     }
 
     /// The keys whose own frame had to wait on the worker: replays every

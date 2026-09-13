@@ -346,36 +346,63 @@ fn write_command(
 }
 
 /// Premultiplied RGBA to the straight alpha `f=32` means.
+///
+/// Encode time is frame budget (m1-the-graph/30f: three strips in one
+/// `PageDown` frame). A graph strip is nearly all empty background (alpha 0)
+/// and opaque ink (alpha 255), which need no division; only antialiased edges
+/// pay for one per channel.
 pub(crate) fn straight_alpha(pixels: &[u8]) -> Vec<u8> {
-    let mut straight = Vec::with_capacity(pixels.len());
-    for &[red, green, blue, alpha] in pixels.as_chunks::<4>().0 {
-        let channel = |value: u8| {
-            // Rounded, and clamped: a premultiplied channel above alpha is
-            // malformed but must not overflow. Zero alpha has no colour.
-            (u16::from(value) * 255 + u16::from(alpha) / 2)
-                .checked_div(u16::from(alpha))
-                .map_or(0, |straight| {
+    let mut straight = vec![0; pixels.len() / 4 * 4];
+    for (to, &[red, green, blue, alpha]) in straight
+        .as_chunks_mut::<4>()
+        .0
+        .iter_mut()
+        .zip(pixels.as_chunks::<4>().0)
+    {
+        *to = match alpha {
+            // Zero alpha has no colour; the buffer is zeroed already.
+            0 => continue,
+            255 => [red, green, blue, alpha],
+            _ => {
+                let channel = |value: u8| {
+                    // Rounded, and clamped: a premultiplied channel above
+                    // alpha is malformed but must not overflow.
+                    let straight =
+                        (u16::from(value) * 255 + u16::from(alpha) / 2) / u16::from(alpha);
                     u8::try_from(straight.min(255)).unwrap_or(u8::MAX)
-                })
+                };
+                [channel(red), channel(green), channel(blue), alpha]
+            }
         };
-        straight.extend_from_slice(&[channel(red), channel(green), channel(blue), alpha]);
     }
     straight
 }
 
-/// Standard base64 with padding.
+/// Standard base64 with padding, appended to `out`.
 pub(crate) fn base64(input: &[u8], out: &mut Vec<u8>) {
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    for group in input.chunks(3) {
-        let bits = group.iter().enumerate().fold(0u32, |bits, (at, byte)| {
+    let symbol = |bits: u32, shift: u32| ALPHABET[(bits >> shift & 63) as usize];
+    let start = out.len();
+    out.resize(start + input.len().div_ceil(3) * 4, b'=');
+    let (groups, rest) = input.as_chunks::<3>();
+    let (whole, tail) = out[start..].as_chunks_mut::<4>();
+    for (to, &[a, b, c]) in whole.iter_mut().zip(groups) {
+        let bits = u32::from(a) << 16 | u32::from(b) << 8 | u32::from(c);
+        *to = [
+            symbol(bits, 18),
+            symbol(bits, 12),
+            symbol(bits, 6),
+            symbol(bits, 0),
+        ];
+    }
+    debug_assert!(tail.is_empty(), "the output is a whole number of groups");
+    if let Some(last) = whole.last_mut().filter(|_| !rest.is_empty()) {
+        let bits = rest.iter().enumerate().fold(0u32, |bits, (at, byte)| {
             bits | u32::from(*byte) << (16 - 8 * at)
         });
-        for at in 0..4 {
-            if at <= group.len() {
-                out.push(ALPHABET[(bits >> (18 - 6 * at) & 63) as usize]);
-            } else {
-                out.push(b'=');
-            }
+        // One byte left: two symbols and `==`; two bytes: three and `=`.
+        for (at, to) in last.iter_mut().enumerate().take(rest.len() + 1) {
+            *to = symbol(bits, 18 - 6 * u32::try_from(at).unwrap_or(0));
         }
     }
 }

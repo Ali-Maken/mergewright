@@ -377,3 +377,67 @@ fn through_tmux_hide_and_free_are_wrapped_too() {
          \x1bPtmux;\x1b\x1b_Ga=d,d=I,i=1000,q=1\x1b\x1b\\\x1b\\"
     );
 }
+
+/// The straight-alpha conversion as first written, one division per
+/// channel: the reference the fast path must match byte for byte.
+fn straight_alpha_reference(pixels: &[u8]) -> Vec<u8> {
+    let mut straight = Vec::with_capacity(pixels.len());
+    for &[red, green, blue, alpha] in pixels.as_chunks::<4>().0 {
+        let channel = |value: u8| {
+            (u16::from(value) * 255 + u16::from(alpha) / 2)
+                .checked_div(u16::from(alpha))
+                .map_or(0, |straight| {
+                    u8::try_from(straight.min(255)).unwrap_or(u8::MAX)
+                })
+        };
+        straight.extend_from_slice(&[channel(red), channel(green), channel(blue), alpha]);
+    }
+    straight
+}
+
+#[test]
+fn straight_alpha_matches_the_per_channel_division_for_every_value_and_alpha() {
+    let mut pixels = Vec::new();
+    for alpha in 0..=255u8 {
+        for value in 0..=255u8 {
+            // Malformed values above alpha included: they clamp, never wrap.
+            pixels.extend_from_slice(&[value, value / 2, 255 - value, alpha]);
+        }
+    }
+    assert_eq!(straight_alpha(&pixels), straight_alpha_reference(&pixels));
+}
+
+#[test]
+fn base64_matches_the_standard_alphabet_for_every_length_and_byte() {
+    fn reference(input: &[u8]) -> String {
+        const ALPHABET: &[u8; 64] =
+            b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        let mut out = String::new();
+        for group in input.chunks(3) {
+            let bits = group.iter().enumerate().fold(0u32, |bits, (at, byte)| {
+                bits | u32::from(*byte) << (16 - 8 * at)
+            });
+            for at in 0..4 {
+                if at <= group.len() {
+                    out.push(char::from(ALPHABET[(bits >> (18 - 6 * at) & 63) as usize]));
+                } else {
+                    out.push('=');
+                }
+            }
+        }
+        out
+    }
+    let bytes: Vec<u8> = (0..=255u8).cycle().take(1000).collect();
+    for length in 0..40 {
+        let mut out = vec![b'x'];
+        base64(&bytes[length..length * 2], &mut out);
+        assert_eq!(
+            text(&out[1..]),
+            reference(&bytes[length..length * 2]),
+            "length {length}"
+        );
+    }
+    let mut out = Vec::new();
+    base64(&bytes, &mut out);
+    assert_eq!(text(&out), reference(&bytes));
+}
