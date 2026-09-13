@@ -596,7 +596,8 @@ Press `F3` at any stop: the text right of the graph must not move.
 22. **synthetic-100k** — present only after the heavy tier has built it
     (`--matrix` and the stop itself say `not available — build with: …`
     otherwise). With it: the first frame paints without a visible wait; more
-    than eight parallel lanes fold behind a `+N` marker (`+` unfolds them);
+    than eight parallel lanes fold behind a `⋮` rail, the header counting them
+    (`+N lanes`; `+` unfolds them);
     `j` held down and `G` never stall; `1` collapses to the default branch's
     single column.
 23. **git-git** — `scripts/clone-git-git.sh` first. `master` is lane 0 and
@@ -604,6 +605,11 @@ Press `F3` at any stop: the text right of the graph must not move.
     and back). Merge rows are `◉` with a curve coming in; release commits
     carry `[tag: v2.x.y]` badges. `1` leaves a single column of merges and
     direct commits; `Space` folds each merge's side commits behind it.
+    **At 80×24 (ticket 39):** on the first frame the header ends `+N lanes` (N = 17 on the
+    2026-09-13 clone; any N > 0 passes); each merge
+    row whose second parent is folded shows `◉▾` (stub right of its node); the
+    last graph column is `⋮` on every row; no `+` or digits in any row's graph
+    column; no curve reaches the `⋮` column. `+` expands: rail and count gone.
 
 ### Per terminal: walk the gallery
 

@@ -28,8 +28,9 @@ One line per public item. Update when a public item changes.
 - `GraphColumn::new` (fn) — draw lines in a theme.
 - `GraphColumn::ascii` (fn) — draw with the ASCII glyph table instead of Unicode box-drawing.
 - `GraphColumn::width_for` (fn) — cells for N lanes.
-- `GraphColumn::through` (fn) — draw through a `Fold`: kept lanes in their drawn columns, folded ones as one `+N` marker in the last column; dashes still key on the real column.
-- `GraphColumn::width_through` (fn) — cells for a window drawn through a `Fold` (kept lanes plus the marker).
+- `GraphColumn::through` (fn) — draw through a `Fold`: kept lanes in their drawn columns, a `RAIL` in the last column on every row (text-muted), folded edges as one stub in the gap right of the node (first edge's colour); no count in the column; dashes still key on the real column.
+- `STUB_BELOW` / `STUB_ABOVE` / `RAIL` (const) — `▾` / `▴` / `⋮` (ASCII `v` / `^` / `:`).
+- `GraphColumn::width_through` (fn) — cells for a window drawn through a `Fold` (kept lanes plus the rail, two cells each).
 
 ## graph_screen
 - `CHROME_ROWS` (const) — screen rows that are not graph rows (header + footer); a `GraphView::banner` adds one row per line.
@@ -41,7 +42,7 @@ One line per public item. Update when a public item changes.
 - `GraphView::problem` (field) — an unsuperseded error; replaces the key hints while it lasts.
 - `GraphView::rows` (field) — viewport rows, top first; the cursor's row is painted highlighted.
 - `GraphView::icons` (field) — which glyphs badges draw with (`ui.icons`).
-- `GraphView::compaction` (field) — lane limit, expansion flag and pinned columns; the screen plans one `Fold` per frame over the rows it draws.
+- `GraphView::compaction` (field) — lane limit, expansion flag and pinned columns; the screen plans one `Fold` per frame over the rows it draws, and its header ends ` · +N lanes` while that fold hides lanes (not when expanded).
 - `GraphView::filters` (field) — what the history shown leaves out; said in the header.
 - `GraphView::tooltip` (field) — the commit tooltip, open over the graph, or `None` (m1-the-graph/17).
 - `GraphView::order` (field) — the order notice while rows are not in their final order, or `None`.

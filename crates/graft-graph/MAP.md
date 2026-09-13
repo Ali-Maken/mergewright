@@ -38,16 +38,20 @@ One line per public item. Update when a public item changes.
 - `Ancestry::columns` (fn) — every lit column: the protected set handed to `Fold::plan`.
 
 ## fold
-- `Fold` (struct) — which real columns a window of rows draws and which fold behind `+N`; a lens over laid-out rows, never a re-layout (DESIGN.md §3.5).
+- `Fold` (struct) — which real columns a window of rows draws and which fold behind the rail; a lens over laid-out rows, never a re-layout (DESIGN.md §3.5).
 - `Fold::plan` (fn) — decide the fold for a window: at most `max_lanes` drawn (marker included); folds least-recently-touched first, never lane 0, a pinned column, or a column holding a node in the window; a column open in no row is dropped, not counted.
 - `Fold::is_empty` (fn) — nothing folded and nothing dropped: the window draws as laid out.
 - `Fold::folded` (fn) — real columns behind the marker, ascending.
 - `Fold::kept` (fn) — real columns drawn, in drawn order.
 - `Fold::drawn` (fn) — where a real column draws, `None` if folded or dropped.
 - `Fold::real` (fn) — the real column at a drawn position, `None` at the marker (dash parity keys on this).
-- `Fold::marker` (fn) — the drawn column the `+N` marker takes, if anything folded.
+- `Fold::marker` (fn) — the drawn column the rail takes, if anything folded.
+- `Fold::folded_count` (fn) — lanes behind the rail, 0 when nothing folds; the screen header's `+N lanes` (ADR-0022).
 - `Fold::drawn_columns` (fn) — columns drawn, marker included.
-- `Fold::view` (fn) — a row remapped to drawn columns; edges into folded lanes go to the marker, whose cell carries the joining lane's identity.
+- `Fold::view` (fn) — a `DrawnRow`: the row in drawn columns (borrowed when `is_empty`), edges into folded lanes removed and listed in `folded`; `lanes` never reaches the rail column.
+- `Toward` (enum) — `Below` (outgoing edge, branch continues below) / `Above` (incoming edge, came from above).
+- `FoldedEdge` (struct) — `identity`, `toward`: an edge a fold took out of a row, drawn as a stub on the node.
+- `DrawnRow` (struct) — `row: Cow<Row>`, `folded: Vec<FoldedEdge>` (outgoing first in parent order, then incoming ascending).
 
 ## inclusion
 - `Follow` (enum) — `AllParents` or `FirstParent`; fixed per layout (it changes the seeds).
@@ -98,14 +102,15 @@ One line per public item. Update when a public item changes.
 ## raster
 - `rasterise` (fn) — a `Strip` in, a premultiplied `core::RasterFrame` out; pure, no cache; background never painted (ADR-0003).
 - `Strip` (struct) — `rows`, `above` (row before the strip), `lane_columns`, `marker`, `cell_width`/`cell_height`, `palette`, `muted`.
-- `RasterRow` (struct) — a row in drawn columns plus `ring`, `emphasis`, `thread` (drawn columns on the selection's thread).
+- `RasterRow` (struct) — a row in drawn columns plus `ring`, `emphasis`, `thread` (drawn columns on the selection's thread), `stubs` (folded edges; hashed, drawn by m1-the-graph/40). Clone, no longer Copy.
+- `Stub` (struct) — `identity`, `toward` (`fold::Toward`): a folded edge for the rasteriser.
 - `RasterRow::plain` (fn) — `Ring::of` the row, normal emphasis, no thread.
 - `Ring` (enum) — node style by shape: `Commit`, `Merge`, `Root`, `Head`, `Stash`, `Uncommitted`; `Ring::of` (fn) from parent count.
 - `Emphasis` (enum) — `Normal`, `Dimmed` (faded). Alpha only, never width: `Highlighted` removed (ADR-0024) — the ancestry thread and Focus dimming are expressed purely by alpha (`OFF_THREAD_ALPHA`, `FADED_ALPHA`), so no line, curve or ring is ever wider than another.
 - `stroke_width` (fn, pub(crate)) — `(cell_width / 8.0).clamp(1.5, 2.5)`; the one stroke width for every lane, curve and node ring in a strip.
 - `OFF_THREAD_ALPHA` (const, 0.5) — alpha of a lane column off the selection's ancestry thread, when a thread is present.
 - `FADED_ALPHA` (const, 0.3) — alpha of an `Emphasis::Dimmed` row/column with no thread in play.
-- `Marker` (struct) — the `+N` column: `column`, `folded`.
+- `Marker` (struct) — the rail column: `column`, `folded` (still fed from `Fold::folded_count` until 40 removes it).
 - `RasterError` (enum) — `EmptyPalette`, `TooLarge`.
 - `CELLS_PER_LANE` (const) — cells per lane column (2), matching the Unicode tier.
 
@@ -121,4 +126,4 @@ One line per public item. Update when a public item changes.
 - `Flush` (enum) — `Theme`, `CellSize`, `Redetection`, `Resize`.
 - `CacheError` (enum) — `Misaligned`, `Raster`.
 - `CacheStats` (struct) — `hits`, `rasterised`, `evicted`, `flushes`.
-- `layout_hash` (fn) — hash of what the rasteriser draws from a strip, colours and cell size aside.
+- `layout_hash` (fn) — hash of what the rasteriser draws from a strip (stubs included), colours and cell size aside.

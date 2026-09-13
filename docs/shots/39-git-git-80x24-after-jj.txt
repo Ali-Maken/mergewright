@@ -1,0 +1,27 @@
+39 fold vocabulary: pty capture of target/release/graft (text tier: the pty answers no graphics query), truecolor env, script docs/shots/39-capture.py. git/git history-only clone (all branches, seen included), 80x24, keys j j q. KNOWN_GAPS: the selection pins its thread, the window draws wider than half the screen and the rail is cut off while the header still counts. Judge by eye: header ends '+N lanes'; merges show ◉▾; last graph column ⋮ on every row; no digits in the graph column.
+
+== final frame, plain ==
+ graft /Users/devuser/.cache/graft/git-git.git  88 rows so far  +2 lanes
+◉▾                                        [next] Merge branch 'jk/… 1d   848ec2e
+│ ◉▾                                      [seen] Merge branch 'js/… 1d   a184f46
+│ ◉─╮                                     Merge branch 'ap/var-bro… 1d   01c5fa0
+│ ◉─│─╮                                   Merge branch 'ks/history… 1d   2c03a69
+│ ◉─│─│─╮                                 Merge branch 'ps/ref-sto… 1d   37f625a
+│ ◉─│─│─│─╮                               Merge branch 'jc/rust-ca… 1d   9b27d4b
+│ ◉─│─│─│─│─╮                             Merge branch 'tc/push-fo… 1d   aeac75a
+│ ◉─│─│─│─│─│─╮                           Merge branch 'tb/rerere-… 1d   bc3ed91
+│ ◉─│─│─│─│─│─│─╮                         Merge branch 'as/push-fo… 1d   37cba83
+│ ◉─│─│─│─│─│─│─│─╮                       Merge branch 'mm/diff-pr… 1d   49433a1
+│ ◉─│─│─│─│─│─│─│─│─╮                     Merge branch 'cc/early-s… 1d   161b15a
+│ ◉─│─│─│─│─│─│─│─│─│─╮                   Merge branch 'tc/last-mo… 1d   9a7d54e
+│ ◉─│─│─│─│─│─│─│─│─│─│─╮                 Merge branch 'll/doc-pus… 1d   9e3f1e6
+│ ◉─│─│─│─│─│─│─│─│─│─│─│─╮               Merge branch 'jc/checkou… 1d   8b26a30
+│ ◉─│─│─│─│─│─│─│─│─│─│─│─│─╮             Merge branch 'fz/rebase-… 1d   bd7b139
+│ ◉─│─│─│─│─│─│─│─│─│─│─│─│─│─╮           Merge branch 'ws/squelch… 1d   ceeb10c
+│ ◉─│─│─│─│─│─│─│─│─│─│─│─│─│─│─╮         Merge branch 'hn/history… 1d   6b7797e
+│ ◉─│─│─│─│─│─│─│─│─│─│─│─│─│─│─│─╮       Merge branch 'kh/format-… 1d   65a1653
+│ ◉─│─│─│─│─│─│─│─│─│─│─│─│─│─│─│─│─╮     Merge branch 'gg/http-ss… 1d   c5f1475
+│ ◉─│─│─│─│─│─│─│─│─│─│─│─│─│─│─│─│─│─╮   Merge branch 'cc/lazy-fe… 1d   f7b5265
+│ ◉─│─│─│─│─│─│─│─│─│─│─│─│─│─│─│─│─│─│─  Merge branch 'ty/repo-co… 1d   0922e37
+│ ◉─│─│─│─│─│─│─│─│─│─│─│─│─│─│─│─│─│─│─  Merge branch 'bc/restric… 1d   6b8525b
+ q quit  F2 status  F3 renderer  + expand lanes  / search  j/k move  Enter pin
