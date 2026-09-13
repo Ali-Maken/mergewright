@@ -40,8 +40,15 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   `DESIGN.md` §4, then `graft-term/src/detect/`: `environment` reads the env
   vars, `probe` writes the queries, `reply` parses what comes back, `tmux`
   owns the passthrough round, and `mod` is the decision that turns all of it
-  into a `Capabilities`. `detect::tty` is the only module that touches the
-  real terminal, so everything above it is tested against scripted replies.
+  into a `Capabilities`. `detect::tty` writes the queries to the real
+  terminal and reads replies through the input mux, so everything above it
+  is tested against scripted replies.
+- **Changing how keys, mouse or terminal replies are read** →
+  `graft-term/src/input/`. `mux` is the one thread that owns stdin for the
+  whole run; `decode` is the pure bytes → events/replies decoder, where every
+  key encoding lives. A reply goes to every open `ReplyWaiter`; anything else
+  is an event queued in arrival order. `app`'s `event_loop::input` only
+  forwards those events into the loop.
 - **Changing what counts as hostile repository text** (a new escape or
   invisible-character class) → `graft-term/src/sanitize/`. One function and
   a small set of entry points; `DESIGN.md` §8.2 sets the minimum classes and

@@ -161,11 +161,11 @@ One line per public item. Update when a public item changes.
 ## event_loop::signals
 - `WATCHED` (const) — signals watched: SIGINT, SIGTERM, SIGHUP.
 - `watch` (fn) — start the signal-watching thread; returns a `Handle` to stop it.
+- `watch_resizes` (fn) — watch `SIGWINCH`, waking the loop with `Event::Resize` at the new size.
 - `reraise` (fn) — restore default disposition and re-raise a signal.
 
 ## event_loop::input
-- `spawn_reader` (fn) — start the input-reading thread.
-- `translate` (fn) — turn a terminal event into an `Event`, or drop it.
+- `spawn_reader` (fn) — forward the input mux's `Inputs` into the loop's wakes, on a thread of its own.
 
 ## jobs
 - `MAX_WORKERS` (const) — worker thread cap (PROMPT.md §7.1).

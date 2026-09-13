@@ -1,9 +1,11 @@
-# Two `unsafe` libc calls, confined to `graft-term::detect::tty`
+# Two `unsafe` libc calls, confined to `graft-term`
 
 PROMPT.md §6.2 requires `#![forbid(unsafe_code)]`. Every crate in the
 workspace has it except `graft-term`, which has `#![deny(unsafe_code)]` and
-two `#[allow(unsafe_code, reason = "…")]` sites in
-`crates/graft-term/src/detect/tty.rs`. This ADR is the justification the M0
+two `#[allow(unsafe_code, reason = "…")]` sites: the `ioctl` in
+`crates/graft-term/src/detect/tty.rs` and the `poll` in
+`crates/graft-term/src/input/mux.rs` (moved there from `tty.rs` by
+m1-the-graph/20, when the input mux took ownership of stdin). This ADR is the justification the M0
 review asked for: what each call does, why it is sound, what would break
 it, and why the allowance is scoped the way it is.
 
@@ -63,9 +65,10 @@ allowance and its own entry here, not a widened one.
 
 ## Call 2: `poll(&mut pollfd, 1, timeout_ms)` — `wait_for_input`
 
-**What it does.** Waits until stdin has bytes or the deadline passes, so a
-terminal that never answers a probe costs Graft a bounded wait instead of
-a hang (DESIGN.md §4.4's probe budgets).
+**What it does.** Waits until stdin has bytes, or until an unfinished escape
+sequence has waited `SEQUENCE_TIMEOUT` for the rest of itself (which is how
+a lone `Esc` is told apart from an arrow key). With nothing held it waits
+for as long as it takes: the input mux's thread has nothing else to do.
 
 **Why it is sound.**
 
@@ -75,13 +78,13 @@ a hang (DESIGN.md §4.4's probe budgets).
   the classic `poll` mistake (a count larger than the array) is not
   expressible here without editing both halves of one line.
 - `poll` writes only `revents`, a `c_short`, back into that local.
-- The fd is this process's stdin, obtained from `io::Stdin` via
-  `AsRawFd`, which is open for the whole program. `poll` on a closed or
+- The fd is a duplicate of stdin (`try_clone_to_owned`) owned by the
+  mux's reader thread, so it is open for as long as that thread polls it. `poll` on a closed or
   invalid fd is defined behaviour anyway: it reports `POLLNVAL`, and a
   negative return becomes `io::Error::last_os_error()`.
-- The timeout is an `i32` clamped from a `Duration`, so it cannot be an
-  out-of-range value; a negative timeout — the "block forever" case — is
-  unreachable because the clamp's floor is zero.
+- The timeout is `-1` ("block forever", a documented `poll` value) or an
+  `i32` clamped from a `Duration`, so it cannot be any other negative or
+  out-of-range value.
 
 **What would break it.** Watching more than one fd by growing the local
 into an array and forgetting to grow the count with it, or handing out the
@@ -96,7 +99,8 @@ all and a crate whose `unsafe` is deliberate and annotated. `deny` gives
 the same protection as `forbid` for every line that does not carry an
 explicit, reasoned allowance, and the allowances are on the two functions
 rather than on the module or the crate, so a third `unsafe` anywhere in
-`graft-term` — including elsewhere in `tty.rs` — still fails the build.
+`graft-term` — including elsewhere in `tty.rs` or `mux.rs` — still fails
+the build.
 
 The narrower scoping that was available and rejected: a statement-level
 `#[allow(unsafe_code)]` on the `let … = unsafe { … };` itself compiles, so

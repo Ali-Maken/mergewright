@@ -22,6 +22,7 @@ use std::time::Instant;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use graft_core::capabilities::{Capabilities, CellSizeSource, RenderingTier, ThemeSource};
 use graft_term::detect::{Environment, TtyHost, detect};
+use graft_term::input::InputMux;
 
 fn main() -> ExitCode {
     let environment = Environment::from_process();
@@ -35,8 +36,19 @@ fn main() -> ExitCode {
         eprintln!("capability_probe: could not enter raw mode: {error}");
         return ExitCode::FAILURE;
     }
+    let mut host = if raw_mode {
+        match InputMux::on_stdin() {
+            Ok((mux, _inputs)) => TtyHost::new(mux.waiter()),
+            Err(error) => {
+                eprintln!("capability_probe: could not read the terminal: {error}");
+                return ExitCode::FAILURE;
+            }
+        }
+    } else {
+        TtyHost::unread()
+    };
     let started = Instant::now();
-    let capabilities = detect(&environment, &mut TtyHost::new());
+    let capabilities = detect(&environment, &mut host);
     let elapsed = started.elapsed();
     if raw_mode && let Err(error) = disable_raw_mode() {
         eprintln!("capability_probe: could not leave raw mode: {error}");

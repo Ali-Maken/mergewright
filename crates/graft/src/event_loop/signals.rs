@@ -29,10 +29,12 @@ use std::io;
 use std::sync::mpsc::Sender;
 use std::thread;
 
-use signal_hook::consts::{SIGHUP, SIGINT, SIGTERM};
+use graft_core::event::Event;
+use signal_hook::consts::{SIGHUP, SIGINT, SIGTERM, SIGWINCH};
 use signal_hook::iterator::{Handle, Signals};
 
 use super::Wake;
+use crate::update::AppEvent;
 
 /// The signals Graft treats as "stop, cleanly".
 ///
@@ -74,6 +76,41 @@ pub fn watch(wakes: Sender<Wake>) -> io::Result<Handle> {
         return Err(error);
     }
 
+    Ok(handle)
+}
+
+/// Start watching for the window changing size, and wake `wakes` with the
+/// new size each time it does.
+///
+/// Stdin belongs to `graft_term::input`'s mux, so nothing else notices
+/// `SIGWINCH` for Graft. Call [`Handle::close`] once the loop is over.
+pub fn watch_resizes(wakes: Sender<Wake>) -> io::Result<Handle> {
+    let mut signals = Signals::new([SIGWINCH])?;
+    let handle = signals.handle();
+
+    let spawned = thread::Builder::new()
+        .name("graft-resize".to_owned())
+        .spawn(move || {
+            for _ in &mut signals {
+                let wake = match crossterm::terminal::size() {
+                    Ok((columns, rows)) => {
+                        Wake::Event(AppEvent::Core(Event::Resize { columns, rows }))
+                    }
+                    // A terminal whose size cannot be read cannot be drawn
+                    // on; the loop stops and says so.
+                    Err(error) => Wake::InputFailed(error),
+                };
+                if wakes.send(wake).is_err() {
+                    // The loop has already finished.
+                    return;
+                }
+            }
+        });
+
+    if let Err(error) = spawned {
+        handle.close();
+        return Err(error);
+    }
     Ok(handle)
 }
 

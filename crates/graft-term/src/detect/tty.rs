@@ -2,7 +2,9 @@
 //!
 //! Everything above this file works against the [`TerminalHost`] trait, so the
 //! decisions are tested against scripted terminals and only the three syscalls
-//! here are untestable. That is the point of the split: this module holds no
+//! here are untestable.
+//! Reading replies goes through the input mux, which owns stdin for the
+//! whole run (`crate::input`). That is the point of the split: this module holds no
 //! logic worth testing, and the logic holds no syscalls that stop it being
 //! tested.
 //!
@@ -10,12 +12,13 @@
 //! (PROMPT.md, Mission), and the platform-specific code is confined here so
 //! that staying possible costs nothing today.
 
-use std::io::{self, Read, Write};
-use std::os::fd::{AsRawFd, RawFd};
+use std::io::{self, Write};
+use std::os::fd::AsRawFd;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use super::{TerminalHost, WindowPixels};
+use crate::input::ReplyWaiter;
 
 /// How long `tmux -V` gets before Graft stops waiting for it.
 ///
@@ -36,29 +39,35 @@ const TMUX_VERSION_DEADLINE: Duration = super::LOCAL_PROBE_BUDGET;
 /// How often the wait above checks whether tmux has finished.
 const TMUX_VERSION_POLL: Duration = Duration::from_millis(2);
 
-/// The process's own terminal: queries out on stdout, replies in on stdin.
+/// The process's own terminal: queries out on stdout, replies in through the
+/// input mux ([`crate::input::InputMux`]), which owns stdin.
 ///
 /// Requires raw mode — in cooked mode the terminal's replies sit in the line
 /// buffer until the user presses Return, and the deadline expires first.
 #[derive(Debug)]
 pub struct TtyHost {
-    input: io::Stdin,
+    replies: Option<ReplyWaiter>,
     output: io::Stdout,
 }
 
 impl TtyHost {
-    /// Wrap this process's stdin and stdout.
-    pub fn new() -> Self {
+    /// Write to this process's stdout and read replies from `replies`.
+    pub fn new(replies: ReplyWaiter) -> Self {
         Self {
-            input: io::stdin(),
+            replies: Some(replies),
             output: io::stdout(),
         }
     }
-}
 
-impl Default for TtyHost {
-    fn default() -> Self {
-        Self::new()
+    /// A host that is never read: for a run where detection cannot probe
+    /// (stdout is not a terminal), so no input mux is started to steal the
+    /// user's typing from whatever else owns stdin. Every read reports that
+    /// nothing arrived.
+    pub fn unread() -> Self {
+        Self {
+            replies: None,
+            output: io::stdout(),
+        }
     }
 }
 
@@ -69,37 +78,10 @@ impl TerminalHost for TtyHost {
         output.flush()
     }
 
-    // `continue` is the point at both sites below, and each has a comment
-    // above it saying why the wait is restarted. An empty arm body would say
-    // "do nothing" where what is meant is "wait again".
-    #[allow(clippy::needless_continue, reason = "the retry is the behaviour")]
     fn read(&mut self, buffer: &mut [u8], deadline: Instant) -> io::Result<usize> {
-        let fd = self.input.as_raw_fd();
-        loop {
-            let remaining = deadline.saturating_duration_since(Instant::now());
-            if remaining.is_zero() {
-                return Ok(0);
-            }
-            // `poll` takes its timeout in `int` milliseconds. A remaining
-            // wait longer than 24 days cannot happen here — the budget is
-            // milliseconds — and clamping is the right answer if it ever did.
-            let milliseconds = i32::try_from(remaining.as_millis()).unwrap_or(i32::MAX);
-            match wait_for_input(fd, milliseconds) {
-                // A signal cut the wait short. Retrying against a *recomputed*
-                // deadline is not a workaround for a failure: the caller asked
-                // to wait until a point in time, and that point has not come.
-                Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
-                Err(error) => return Err(error),
-                // The deadline arrived before the terminal did.
-                Ok(false) => return Ok(0),
-                Ok(true) => match self.input.lock().read(buffer) {
-                    // A signal interrupted the read; the deadline is still the
-                    // deadline, so recompute it and carry on rather than
-                    // reporting a failure that did not happen.
-                    Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
-                    result => return result,
-                },
-            }
+        match &mut self.replies {
+            Some(replies) => replies.read(buffer, deadline),
+            None => Ok(0),
         }
     }
 
@@ -182,28 +164,5 @@ impl TerminalHost for TtyHost {
             return None;
         }
         String::from_utf8(output.stdout).ok()
-    }
-}
-
-/// Wait up to `timeout` milliseconds for `fd` to have something to read.
-/// `false` means the timeout won.
-#[allow(
-    unsafe_code,
-    reason = "poll(2) has no safe wrapper in the standard library; ADR-0013 \
-              covers this call and its soundness argument"
-)]
-fn wait_for_input(fd: RawFd, timeout: i32) -> io::Result<bool> {
-    let mut watched = libc::pollfd {
-        fd,
-        events: libc::POLLIN,
-        revents: 0,
-    };
-    // SAFETY: the pointer is to one live, fully initialised `pollfd`, the
-    // count says one, and `poll` writes only `revents` back. ADR-0013.
-    let ready = unsafe { libc::poll(&raw mut watched, 1, timeout) };
-    match ready {
-        0 => Ok(false),
-        count if count > 0 => Ok(true),
-        _ => Err(io::Error::last_os_error()),
     }
 }

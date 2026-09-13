@@ -25,6 +25,7 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use graft_core::capabilities::Supported;
 use graft_git::history::Order;
 use graft_term::detect::{self, TtyHost};
+use graft_term::input::InputMux;
 use ratatui::Terminal;
 use ratatui::backend::{Backend, CrosstermBackend, TestBackend};
 
@@ -155,10 +156,15 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     let session = TerminalSession::on_stdout(SessionOptions::default())?;
     crash::install(session.restorer());
 
-    // Before the input thread exists, and never at the same time as it: the
-    // probe writes queries to the terminal and reads the replies off stdin,
-    // and a reader running alongside it would eat them.
-    let capabilities = detect::detect(&detect::Environment::from_process(), &mut TtyHost::new());
+    // The mux owns stdin from here to the end of the run (ticket
+    // m1-the-graph/20). It starts before the probe, so the probe's replies
+    // reach detection through a waiter while any key typed meanwhile is
+    // queued, in order, for the loop.
+    let (mux, inputs) = InputMux::on_stdin()?;
+    let capabilities = detect::detect(
+        &detect::Environment::from_process(),
+        &mut TtyHost::new(mux.waiter()),
+    );
     if capabilities.kitty_keyboard == Supported::Yes {
         session.enable_kitty_keyboard()?;
     }
@@ -167,7 +173,8 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     let (mut wakes, sender) = ChannelWakes::new();
     let signals = signals::watch(sender.clone())?;
     let jobs = JobRunner::with_default_size(sender.clone(), repos)?;
-    input::spawn_reader(sender)?;
+    let resizes = signals::watch_resizes(sender.clone())?;
+    input::spawn_reader(inputs, sender)?;
 
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
     // The first frame and the first row request are both sized from this. A
@@ -191,10 +198,11 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     // its result cannot outlive the screen it was writing for.
     let shutdown = jobs.shutdown(jobs::SHUTDOWN_GRACE);
 
-    // Let the signal thread end. The input thread cannot be stopped — it is
-    // blocked inside a terminal read that only returns when the user types —
-    // so it is left to die with the process. It holds nothing that matters.
+    // Let the signal threads end. The mux's reader cannot be stopped — it is
+    // blocked waiting on the terminal until the user types — so it is left to
+    // die with the process. It holds nothing that matters.
     signals.close();
+    resizes.close();
 
     // Restore explicitly rather than leaving it to `Drop`, so a restore
     // failure can be returned instead of merely printed.
@@ -234,7 +242,9 @@ fn run_headless(
     config: &crate::config::Loaded,
     repos: Arc<RepoStore>,
 ) -> io::Result<Exit> {
-    let capabilities = detect::detect(&detect::Environment::from_process(), &mut TtyHost::new());
+    // Never probed (stdout is not a terminal), so no mux is started to read
+    // a stdin that may belong to the user's shell.
+    let capabilities = detect::detect(&detect::Environment::from_process(), &mut TtyHost::unread());
     let session = Session::settle(config, capabilities);
 
     let (mut wakes, sender) = ChannelWakes::new();

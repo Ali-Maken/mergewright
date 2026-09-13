@@ -2,7 +2,8 @@
 //! what the host emulator supports and choosing a rendering tier
 //! (`detect`), and sanitising repo-derived strings into `SanitizedText` so a
 //! malicious repository cannot inject escape sequences into the screen
-//! (`sanitize`). The image encoder that turns a `core::RasterFrame` into
+//! (`sanitize`), and owning stdin: decoding keys and routing terminal
+//! replies to whoever asked (`input`). The image encoder that turns a `core::RasterFrame` into
 //! Kitty, iTerm2 or Sixel bytes belongs here too (DESIGN.md §8.2) and lands
 //! in M1. Depends only on `core`.
 // `deny`, not `forbid`, and this is the only crate where that is true.
@@ -16,6 +17,7 @@
 #![deny(unsafe_code)]
 
 pub mod detect;
+pub mod input;
 pub mod sanitize;
 
 pub use sanitize::{SanitizedText, sanitize, sanitize_line, sanitize_path, sanitize_path_bytes};
