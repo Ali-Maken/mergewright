@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M1 The graph** — ticket 24d (31, 07–23, 24b, 24c done; 24 partial → split 24b/24c/24d; 34 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
+**Current step:** **M1 The graph** — ticket 25 (31, 07–24d done; 24 split into 24b/24c/24d; 34 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
 
 ---
 
@@ -178,6 +178,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-13 · M1/24 kitty output · opus · partial · graft-term::kitty encoder + q=1 reply parser: transmit-once strips, p=1 crop replacement, ENOENT retransmit, free_all; 18 byte-stream tests; no app wiring, no real-Ghostty run, no capture; 105k tokens, no compaction; remainder too big for one context → split along handoff seams into 24b (aligned strip rows), 24c (draw + replies + gfx status), 24d (flush, F3, Ghostty check); 25 → blocked by 24d, 29 → 24d, 25; 660 tests; commit f313456
 - 2026-09-13 · M1/24b aligned strip rows · opus · done · padded the request (History::strip_rows), not an offset key; view/strips.rs pixel_rows/StripRows/StripPaint; text tiers unchanged (tested); uncommitted row no longer counts toward strip height; nothing sets strip_rows yet (→ 24d); tests only, no pixels; 671 tests; 142k tokens, no compaction; commit 4714e89
 - 2026-09-13 · M1/24c kitty draw + replies · opus · done · event_loop/graphics.rs: frame inside hold_output, replies drained, gfx ok / gfx: <msg>, free_all on exit, hide on F2; redetect ignores graphics replies (tested); byte-stream tests only, no real terminal; gaps: column width from text lane count (stretch?), replies read only on other wake, panic leaves images, fixed cache 16; resize has no forget_uploads + ratatui clears on resize (→ 24d); 680 tests; 156k tokens, no compaction; commit d6312b3
+- 2026-09-13 · M1/24d flush + F3 + Ghostty check · opus · done · cache flush on theme/cell size/resize + forget_uploads, F3 Pixel→Unicode, strip_rows set from settled tier, forced pixel attempts Kitty; examples/kitty_check.rs run in real Ghostty 1.3.1: transmit/crop/clear+retransmit/hide/free DA1-fenced, 0 errors, control ENOENT heard (synthetic images via real encoder, not the app); captures docs/shots/24d-kitty-check*; user command in ticket, by-eye unticked; 24 marked done except by-eye; gaps: retransmit after clear leaks old ids, wide strip squeezed, resize redraws all strips; 686 tests; 136k tokens, no compaction; commit 3e28dc7
 
 ## Open questions for the M1 checkpoint
 
