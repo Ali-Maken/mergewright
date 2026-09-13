@@ -1,6 +1,6 @@
 # m1-the-graph/48 — Relative dates round like git; one gallery stop spans minutes to years
 
-Status: partial — conductor review: 90 min row disagrees with git in the table; 29 snapshots and the new fixture depend on wall-clock now (acceptance asked for a fixed clock); exemptions by name are a workaround → follow-up spec (planner-fable)
+Status: done — follow-up (fixed clock, exemptions, 90 min row) split to 53
 Build with: **Sonnet** (medium) — verify against real git output, then match it; one fixture and one gallery stop
 Blocked by: 46
 Leaves runnable: yes — the date column reads the same unit and number `git log --date=relative` would, and the gallery has one stop where dates vary.
