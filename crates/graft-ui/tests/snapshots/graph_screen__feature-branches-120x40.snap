@@ -1,18 +1,19 @@
 ---
 source: crates/graft-ui/tests/graph_screen.rs
+assertion_line: 84
 expression: text
 ---
  graft ~/code/api  10 commits
-  ●      three: in progress
-◆─│─╮    Merge branch 'feature/two'
-│ │ ●    two: finish
-│ │ ●    two: start
-◉─│─│─╮  Merge branch 'feature/one'
-│ │ │ ●  one: finish
-│ │ │ ●  one: start
-●─┴─╯ │  Add b.txt
-●─────╯  Add a.txt
-◇        Add a readme
+  ●       three: in progress                                                                             GF 3y   0683985
+◆─│─╮     Merge branch 'feature/two'                                                                     GF 3y   5202e1c
+│ │ ●     two: finish                                                                                    GF 3y   e30e870
+│ │ ●     two: start                                                                                     GF 3y   40034e4
+◉─│─│─╮   Merge branch 'feature/one'                                                                     GF 3y   3a97003
+│ │ │ ●   one: finish                                                                                    GF 3y   fdb311f
+│ │ │ ●   one: start                                                                                     GF 3y   bba225a
+●─┴─╯ │   Add b.txt                                                                                      GF 3y   de95041
+●─────╯   Add a.txt                                                                                      GF 3y   21b16b9
+◇         Add a readme                                                                                   GF 3y   daa5167
 
 
 

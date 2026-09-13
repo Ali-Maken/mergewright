@@ -79,6 +79,17 @@ impl RepoHandle {
         self.repo.is_bare()
     }
 
+    /// The repository's resolved `.mailmap`, merging every source git would
+    /// (working tree file, `mailmap.blob`, `mailmap.file`).
+    ///
+    /// Never fails: a missing or unreadable `.mailmap` resolves every
+    /// identity to itself, which is how git treats it too — the file is
+    /// optional, not a repository requirement.
+    #[must_use]
+    pub fn mailmap(&self) -> crate::mailmap::Mailmap {
+        crate::mailmap::Mailmap::from_snapshot(self.repo.open_mailmap())
+    }
+
     /// Where `HEAD` points right now.
     ///
     /// Read on every call rather than cached at open: a checkout, a commit or

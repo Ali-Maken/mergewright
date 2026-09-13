@@ -10,5 +10,6 @@ pub mod branches;
 #[cfg(test)]
 mod fixture;
 pub mod history;
+pub mod mailmap;
 pub mod repo;
 pub mod version;

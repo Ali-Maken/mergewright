@@ -61,6 +61,18 @@ fn ansi_colour_injection_in_a_commit_message_comes_out_inert() {
 }
 
 #[test]
+fn an_author_name_carrying_an_escape_sequence_comes_out_inert() {
+    // An author chip is drawn from `sanitize_line`, not `sanitize` — the same
+    // boundary the subject crosses, but single-line, since a chip has no room
+    // for a literal newline either (m1-the-graph/10).
+    let hostile = "Reza\u{1B}[31m M";
+    let clean = sanitize_line(hostile);
+
+    assert!(!clean.contains(ESC), "ESC survived: {clean:?}");
+    assert_eq!(clean.as_str(), "Reza␛[31m M");
+}
+
+#[test]
 fn osc_8_hyperlink_comes_out_inert() {
     // OSC 8 wraps visible text in a link to somewhere else entirely. Both the
     // ESC-introduced and the C1-introduced (0x9D) spellings must die, and so

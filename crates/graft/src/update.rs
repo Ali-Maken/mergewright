@@ -501,6 +501,7 @@ mod tests {
             path: PathBuf::from(path),
             bare: false,
             head: Head::Branch(branch.as_bytes().to_vec()),
+            mailmap: graft_git::mailmap::Mailmap::default(),
         }
     }
 

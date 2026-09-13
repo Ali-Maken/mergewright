@@ -9,6 +9,7 @@
 use std::path::PathBuf;
 
 use graft_core::oid::Oid;
+use graft_git::mailmap::Mailmap;
 use graft_git::repo::{HeadState, RepoHandle};
 
 /// What one open repository told Graft.
@@ -21,6 +22,9 @@ pub struct RepositoryFacts {
     pub bare: bool,
     /// Where `HEAD` points.
     pub head: Head,
+    /// The repository's resolved `.mailmap`, for the author chip
+    /// (m1-the-graph/10).
+    pub mailmap: Mailmap,
 }
 
 /// Where `HEAD` points — the three states a repository can be in, plus the one
@@ -71,6 +75,7 @@ pub fn facts(repository: &RepoHandle) -> Result<RepositoryFacts, String> {
             Ok(HeadState::Unborn(name)) => Head::Unborn(name.shorthand().to_vec()),
             Err(error) => Head::Unreadable(error.to_string()),
         },
+        mailmap: repository.mailmap(),
     })
     // The handle is dropped here, on the worker thread that opened it.
 }

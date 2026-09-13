@@ -5,6 +5,7 @@ One line per public item. Update when a public item changes.
 - `fit` (mod) — clamp text to an exact cell width.
 - `graph_column` (mod) — the Unicode-tier graph column widget.
 - `graph_screen` (mod) — the graph screen Graft opens on: header, rows, key hints.
+- `graph_screen::columns` (mod) — pure formatting for the author initials, relative date and short SHA.
 - `paint` (mod) — token-to-style helpers for widgets.
 - `status_screen` (mod) — the status screen view and widget.
 - `theme` (mod) — theme kinds, tokens, and colour resolution.
@@ -27,15 +28,23 @@ One line per public item. Update when a public item changes.
 
 ## graph_screen
 - `CHROME_ROWS` (const) — screen rows that are not graph rows (header + footer).
+- `SHA_WIDTH` (const) — cells the short-SHA column takes, and hex digits to call `short_sha` with.
+- `AUTHOR_BREAKPOINT` (const) — width below which the author chip drops (DESIGN.md §1.2/§1.3).
 - `GraphView` (struct) — everything the graph screen draws.
 - `GraphView::location` (field) — the repository's path, once open.
 - `GraphView::walk` (field) — where the history walk is.
 - `GraphView::problem` (field) — an unsuperseded error; replaces the key hints while it lasts.
 - `GraphView::rows` (field) — viewport rows, top first; the cursor's row is painted highlighted.
-- `GraphEntry` (struct) — one row: `line` (graph cells, paint) and sanitised `subject`.
+- `GraphEntry` (struct) — one row: `line`, sanitised `subject`, `author` chip, `when`, `sha`.
+- `AuthorChip` (struct) — an author's chip: sanitised `initials` and the `identity` that colours it.
 - `WalkView` (enum) — walk state for the header: opening, reading, jumping, complete, cancelled, failed.
 - `GraphScreen` (struct) — the graph screen, ready to render.
 - `GraphScreen::new` (fn) — draw `view` in `theme`.
+
+## graph_screen::columns
+- `initials` (fn) — two letters standing in for a sanitised name, for the author chip.
+- `relative_date` (fn) — how long ago a Unix timestamp was, in short form (`"2m"`, `"3h"`, `"1d"`).
+- `short_sha` (fn) — the first N hex characters of a full object id.
 
 ## paint
 - `color` (fn) — resolve a `TokenColor` to a ratatui `Color`.

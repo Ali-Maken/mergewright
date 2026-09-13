@@ -10,9 +10,11 @@
 //! assembles from the rows the walk last sent. It never asks for rows and
 //! never scrolls — the viewport arrives already cut.
 
+pub mod columns;
 #[cfg(test)]
 mod tests;
 
+use graft_graph::identity::BranchIdentity;
 use graft_term::SanitizedText;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
@@ -20,10 +22,37 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Widget;
 
+pub use columns::{initials, relative_date, short_sha};
+
 use crate::fit::fit;
 use crate::graph_column::{GraphColumn, GraphLine, RowPaint};
 use crate::paint::{color, foreground};
 use crate::theme::{Theme, Token};
+
+/// Cells the marker slot always takes: its glyph, then a gap. Reserved
+/// whether or not a row has a marker (`graph` never sets one; `ops` will,
+/// M2), so the columns after it never move when markers start appearing.
+const MARKER_WIDTH: u16 = 2;
+
+/// Cells the author chip takes: two initials, then a gap.
+const AUTHOR_WIDTH: u16 = 3;
+
+/// Cells the relative-date column takes: its widest form (`"999d"`), then a
+/// gap.
+const WHEN_WIDTH: u16 = 5;
+
+/// Cells the short-SHA column takes, and how many hex digits `short_sha`
+/// should be called with to fill it exactly (`DESIGN.md`'s mock-ups show
+/// `a1b2c3d`) — rightmost, so no trailing gap.
+pub const SHA_WIDTH: u16 = 7;
+
+/// The gap left of the trailing columns, between them and the subject.
+const SUBJECT_GAP: u16 = 1;
+
+/// Below this width the author chip drops (DESIGN.md §1.2/§1.3's
+/// narrow/medium boundary); ref badges (m1-the-graph/11) drop at the same
+/// width.
+pub const AUTHOR_BREAKPOINT: u16 = 100;
 
 /// Screen rows that are not graph rows: the header above, the key hints
 /// below.
@@ -51,6 +80,33 @@ pub struct GraphEntry<'a> {
     pub line: GraphLine<'a>,
     /// The commit's subject, sanitised.
     pub subject: SanitizedText,
+    /// The author's chip: initials and the identity that colours it.
+    pub author: AuthorChip,
+    /// How long ago the commit was made, already formatted (`"2m"`, `"3h"`).
+    /// Not repository text — a clock reading `app` computed — so it needs no
+    /// sanitising.
+    pub when: String,
+    /// The commit's short SHA, lowercase hex. Not repository text either:
+    /// hex drawn from a fixed digit alphabet is safe as-is
+    /// (`graft_core::oid::Oid`'s own doc comment).
+    pub sha: String,
+}
+
+/// An author's chip: two initials, coloured by the author's identity.
+///
+/// The colour comes from [`BranchIdentity`] and the same lane palette a
+/// branch draws in ([`Theme::branch`](crate::theme::Theme::branch)) — reused
+/// rather than given its own palette, since both are "a stable colour for a
+/// hash of some bytes" and a second palette would only have to be proven
+/// colourblind-safe all over again.
+#[derive(Clone, Debug)]
+pub struct AuthorChip {
+    /// The two initials drawn in the chip, sanitised.
+    pub initials: SanitizedText,
+    /// The identity the chip's colour comes from — of the author's
+    /// `.mailmap`-resolved email, so two identities mapped to one person
+    /// share a colour along with their chip.
+    pub identity: BranchIdentity,
 }
 
 /// Where the history walk is, as the header says it. Each state is worded
@@ -187,8 +243,79 @@ impl Widget for GraphScreen<'_> {
     }
 }
 
+/// Where each trailing column sits and how wide it is, once the graph and
+/// the subject have taken their share.
+///
+/// Computed right to left from `area.right()`, each column clamped by
+/// `min`/`saturating_sub` against what is left: at any width, down to zero,
+/// a column simply stops taking space rather than the arithmetic
+/// underflowing. The author chip is the one column that can drop entirely,
+/// below [`AUTHOR_BREAKPOINT`] (DESIGN.md §1.2/§1.3); the rest only narrow.
+struct Columns {
+    marker_x: u16,
+    marker_width: u16,
+    subject_x: u16,
+    subject_width: u16,
+    author_x: u16,
+    author_width: u16,
+    when_x: u16,
+    when_width: u16,
+    sha_x: u16,
+    sha_width: u16,
+}
+
+impl Columns {
+    fn compute(area: Rect, graph_width: u16) -> Self {
+        let marker_x = area.x + graph_width.min(area.width);
+        let marker_width = MARKER_WIDTH.min(area.width.saturating_sub(graph_width));
+        let content_x = marker_x + marker_width;
+
+        // Right to left: the rightmost column claims space first, so a
+        // narrow terminal drops the leftmost of these (the author chip)
+        // before it ever eats into the SHA or the date.
+        let mut right = area.right();
+        let sha_width = SHA_WIDTH.min(right.saturating_sub(content_x));
+        right -= sha_width;
+        let sha_x = right;
+
+        let when_width = WHEN_WIDTH.min(right.saturating_sub(content_x));
+        right -= when_width;
+        let when_x = right;
+
+        let show_author = area.width >= AUTHOR_BREAKPOINT;
+        let author_width = if show_author {
+            AUTHOR_WIDTH.min(right.saturating_sub(content_x))
+        } else {
+            0
+        };
+        right -= author_width;
+        let author_x = right;
+
+        let gap_width = if sha_width + when_width + author_width > 0 {
+            SUBJECT_GAP.min(right.saturating_sub(content_x))
+        } else {
+            0
+        };
+        right -= gap_width;
+
+        Columns {
+            marker_x,
+            marker_width,
+            subject_x: content_x,
+            subject_width: right.saturating_sub(content_x),
+            author_x,
+            author_width,
+            when_x,
+            when_width,
+            sha_x,
+            sha_width,
+        }
+    }
+}
+
 impl GraphScreen<'_> {
-    /// The rows: graph column, a gap, the subject.
+    /// The rows: graph, the reserved marker slot, the subject, and — when
+    /// there is room — the author chip, the relative date and the short SHA.
     fn body(&self, area: Rect, buf: &mut Buffer) {
         let rows = &self.view.rows[..self.view.rows.len().min(usize::from(area.height))];
         let lanes = rows
@@ -207,28 +334,90 @@ impl GraphScreen<'_> {
             buf,
         );
 
-        let subject_x = area.x + graph_width.saturating_add(1).min(area.width);
-        let subject_width = area.right().saturating_sub(subject_x);
+        let columns = Columns::compute(area, graph_width);
         for (entry, y) in rows.iter().zip(area.top()..) {
-            let mut style = foreground(self.theme, Token::Text);
-            if entry.line.paint == RowPaint::Highlighted {
-                style = style.add_modifier(Modifier::BOLD);
-                let raised = color(self.theme.token(Token::SurfaceRaised));
-                buf.set_style(
-                    Rect {
-                        y,
-                        height: 1,
-                        ..area
-                    },
-                    Style::new().bg(raised),
-                );
-            } else if entry.line.paint == RowPaint::Dimmed {
-                style = style.add_modifier(Modifier::DIM);
-            }
-            if subject_width > 0 {
-                let text = fit(entry.subject.as_str(), usize::from(subject_width));
-                buf.set_stringn(subject_x, y, text, usize::from(subject_width), style);
-            }
+            self.draw_row(entry, y, area, &columns, buf);
         }
     }
+
+    /// One row's text columns: highlight/dim first, then the marker slot,
+    /// the subject, and whichever trailing columns fit.
+    fn draw_row(
+        &self,
+        entry: &GraphEntry<'_>,
+        y: u16,
+        area: Rect,
+        columns: &Columns,
+        buf: &mut Buffer,
+    ) {
+        let mut style = foreground(self.theme, Token::Text);
+        let mut trailing_style = foreground(self.theme, Token::TextMuted);
+        if entry.line.paint == RowPaint::Highlighted {
+            style = style.add_modifier(Modifier::BOLD);
+            trailing_style = trailing_style.add_modifier(Modifier::BOLD);
+            let raised = color(self.theme.token(Token::SurfaceRaised));
+            buf.set_style(
+                Rect {
+                    y,
+                    height: 1,
+                    ..area
+                },
+                Style::new().bg(raised),
+            );
+        } else if entry.line.paint == RowPaint::Dimmed {
+            style = style.add_modifier(Modifier::DIM);
+            trailing_style = trailing_style.add_modifier(Modifier::DIM);
+        }
+
+        let glyph = if entry.line.row.marker.is_some() {
+            "! "
+        } else {
+            "  "
+        };
+        draw_cell(buf, columns.marker_x, y, columns.marker_width, glyph, style);
+        draw_cell(
+            buf,
+            columns.subject_x,
+            y,
+            columns.subject_width,
+            entry.subject.as_str(),
+            style,
+        );
+        let author_style = trailing_style.fg(color(self.theme.branch(entry.author.identity)));
+        draw_cell(
+            buf,
+            columns.author_x,
+            y,
+            columns.author_width,
+            entry.author.initials.as_str(),
+            author_style,
+        );
+        draw_cell(
+            buf,
+            columns.when_x,
+            y,
+            columns.when_width,
+            &entry.when,
+            trailing_style,
+        );
+        draw_cell(
+            buf,
+            columns.sha_x,
+            y,
+            columns.sha_width,
+            &entry.sha,
+            trailing_style,
+        );
+    }
+}
+
+/// Draws `text`, clamped and padded to exactly `width` cells, at `(x, y)`.
+/// Does nothing when `width` is zero — the column has dropped for this
+/// area's size.
+fn draw_cell(buf: &mut Buffer, x: u16, y: u16, width: u16, text: &str, style: Style) {
+    if width == 0 {
+        return;
+    }
+    let text = fit(text, usize::from(width));
+    buf.set_stringn(x, y, text, usize::from(width), style);
 }

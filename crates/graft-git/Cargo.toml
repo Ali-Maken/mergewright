@@ -42,13 +42,18 @@ publish.workspace = true
 # about a third — and it is code, not a feature.
 #
 # Still off: `revision` (it drags in `gix-index`, and the rev-walk needs
-# neither `describe` nor `merge_base`), `status`, `blame`, `mailmap` — each
-# arrives with the ticket that needs it. The commit-graph reader is not a
-# feature at all: `gix-commitgraph` is a hard dependency of `gix`.
+# neither `describe` nor `merge_base`), `status`, `blame`. The commit-graph
+# reader is not a feature at all: `gix-commitgraph` is a hard dependency of
+# `gix`.
+#
+#   mailmap - on since m1-the-graph/10: the author chip needs `.mailmap`
+#             resolution, and `Repository::open_mailmap()` is the only way
+#             to get it without a second `.mailmap` parser (ADR-0011).
 gix = { version = "0.87.1", default-features = false, features = [
     "sha1",
     "sha256",
     "parallel",
+    "mailmap",
 ] }
 graft-core.workspace = true
 thiserror.workspace = true

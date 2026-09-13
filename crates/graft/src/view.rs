@@ -11,9 +11,13 @@
 //! never as the escape (DESIGN.md §8.2).
 
 use graft_git::version::SystemGit;
+use graft_graph::identity::BranchIdentity;
 use graft_term::{SanitizedText, sanitize_line, sanitize_path, sanitize_path_bytes};
 use graft_ui::graph_column::{GraphLine, RowPaint};
-use graft_ui::graph_screen::{GraphEntry, GraphScreen, GraphView, WalkView};
+use graft_ui::graph_screen::{
+    AuthorChip, GraphEntry, GraphScreen, GraphView, SHA_WIDTH, WalkView, initials, relative_date,
+    short_sha,
+};
 use graft_ui::status_screen::{
     HeadView, HistoryState, HistoryView, RepositoryView, StatusScreen, StatusView,
 };
@@ -86,20 +90,21 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
         },
         Phase::Failed(reason) => WalkView::Failed(sanitize_line(reason)),
     };
+    let mailmap = state.repository.as_ref().map(|facts| &facts.mailmap);
+    // A clock reading, not repository text — the moment "now" is drawn at,
+    // for the relative-date column. `duration_since` only fails when the
+    // system clock reads before 1970, in which case every commit is at least
+    // that old and `relative_date` reads it the same as any far-past commit.
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |elapsed| {
+            i64::try_from(elapsed.as_secs()).unwrap_or(i64::MAX)
+        });
     let rows = history
         .visible(state.graph_rows())
         .iter()
         .zip(history.top..)
-        .map(|(row, index)| {
-            let mut line = GraphLine::plain(row);
-            if index == history.cursor {
-                line.paint = RowPaint::Highlighted;
-            }
-            GraphEntry {
-                line,
-                subject: sanitize_line(&String::from_utf8_lossy(row.commit.subject())),
-            }
-        })
+        .map(|(row, index)| row_entry(row, index == history.cursor, mailmap, now))
         .collect();
 
     GraphView {
@@ -107,6 +112,39 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
         problem,
         walk,
         rows,
+    }
+}
+
+/// One row's [`GraphEntry`]: the graph cells, the sanitised subject, and the
+/// author/date/SHA columns m1-the-graph/10 adds — the author's identity
+/// resolved through `mailmap` first, so two identities mapped to one person
+/// share a chip and a colour.
+fn row_entry<'a>(
+    row: &'a graft_graph::row::Row,
+    highlighted: bool,
+    mailmap: Option<&graft_git::mailmap::Mailmap>,
+    now: i64,
+) -> GraphEntry<'a> {
+    let mut line = GraphLine::plain(row);
+    if highlighted {
+        line.paint = RowPaint::Highlighted;
+    }
+    let (name, email) = match mailmap {
+        Some(mailmap) => mailmap.resolve(&row.commit.author),
+        None => (
+            row.commit.author.name.clone(),
+            row.commit.author.email.clone(),
+        ),
+    };
+    GraphEntry {
+        line,
+        subject: sanitize_line(&String::from_utf8_lossy(row.commit.subject())),
+        author: AuthorChip {
+            initials: sanitize_line(&initials(&String::from_utf8_lossy(&name))),
+            identity: BranchIdentity::of_name(&email),
+        },
+        when: relative_date(now, row.commit.date().seconds),
+        sha: short_sha(&row.commit.id.to_string(), usize::from(SHA_WIDTH)),
     }
 }
 
@@ -220,6 +258,7 @@ mod tests {
                 path: std::path::PathBuf::from("/code/api"),
                 bare: false,
                 head,
+                mailmap: graft_git::mailmap::Mailmap::default(),
             }),
             ..AppState::default()
         }

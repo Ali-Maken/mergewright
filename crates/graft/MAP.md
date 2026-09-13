@@ -72,6 +72,7 @@ One line per public item. Update when a public item changes.
 - `RepositoryFacts::path` (field) — working tree root, or the repo dir itself if bare.
 - `RepositoryFacts::bare` (field) — no working tree.
 - `RepositoryFacts::head` (field) — where `HEAD` points.
+- `RepositoryFacts::mailmap` (field) — the repository's resolved `.mailmap`, for the author chip.
 - `Head` (enum) — where `HEAD` points, one step before the sanitiser.
 - `facts` (fn) — read facts about an open repository.
 

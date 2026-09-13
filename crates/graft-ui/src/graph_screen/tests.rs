@@ -57,6 +57,14 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
                 GraphEntry {
                     line,
                     subject: sanitize_line(&String::from_utf8_lossy(row.commit.subject())),
+                    author: AuthorChip {
+                        initials: sanitize_line(&initials(&String::from_utf8_lossy(
+                            &row.commit.author.name,
+                        ))),
+                        identity: BranchIdentity::of_name(&row.commit.author.email),
+                    },
+                    when: "2h".to_owned(),
+                    sha: short_sha(&row.commit.id.to_string(), usize::from(SHA_WIDTH)),
                 }
             })
             .collect(),
@@ -173,6 +181,40 @@ fn more_rows_than_fit_are_cut_at_the_footer() {
 
     assert!(screen[3].contains("Commit 8"), "{screen:#?}");
     assert!(screen[4].contains("q quit"), "{screen:#?}");
+}
+
+#[test]
+fn the_marker_slot_is_the_same_width_empty_or_filled() {
+    let rows = linear(2);
+    let empty = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    let empty_screen = text(&draw(&empty, 120, 5));
+
+    let mut marked = rows.clone();
+    marked[0].marker = Some(graft_core::mistake_radar::MistakeRadarKind::EvilMerge);
+    let filled = view(&marked, WalkView::Complete { rows: 2 }, 0);
+    let filled_screen = text(&draw(&filled, 120, 5));
+
+    // Whether or not row 0 carries a marker, the subject starts at the same
+    // column: the marker glyph and its neighbour's blank both take
+    // `MARKER_WIDTH` cells, so later columns never shift.
+    let subject_at = |line: &str| line.find("Commit").expect("the subject is drawn");
+    assert_eq!(subject_at(&empty_screen[1]), subject_at(&filled_screen[1]));
+    assert_ne!(empty_screen[1], filled_screen[1]);
+}
+
+#[test]
+fn the_author_chip_drops_below_the_breakpoint_and_returns_above_it() {
+    let rows = linear(2);
+    let view = view(&rows, WalkView::Complete { rows: 2 }, 0);
+
+    let narrow = text(&draw(&view, AUTHOR_BREAKPOINT - 1, 5));
+    let wide = text(&draw(&view, AUTHOR_BREAKPOINT, 5));
+
+    assert!(!narrow[1].contains("TE"), "{narrow:#?}");
+    assert!(wide[1].contains("TE"), "{wide:#?}");
+    // The date and SHA survive at both widths — only the author chip drops.
+    assert!(narrow[1].contains("2h"), "{narrow:#?}");
+    assert!(wide[1].contains("2h"), "{wide:#?}");
 }
 
 #[test]
