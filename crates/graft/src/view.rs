@@ -21,7 +21,7 @@ use graft_ui::graph_column::{GraphLine, NodeKind, RowPaint};
 use graft_ui::graph_screen::{
     AuthorChip, Badge, BadgeKind, Compaction, Filters, GraphEntry, GraphScreen, GraphView,
     GraphicsStatus, OrderNotice, SHA_WIDTH, SearchLine, Tracking, WalkView, initials,
-    relative_date, short_sha, tooltip_date,
+    max_lanes_for, relative_date, short_sha, tooltip_date,
 };
 use graft_ui::status_screen::{
     HeadView, HistoryState, HistoryView, RepositoryView, StatusScreen, StatusView,
@@ -98,7 +98,7 @@ pub fn view_with_graphics(
         Screen::Graph => {
             let mut screen = graph_view(state);
             screen.icons = session.icons;
-            screen.compaction.max_lanes = session.max_lanes;
+            screen.compaction.max_lanes = max_lanes_for(state.size.columns, session.max_lanes);
             let tier = tier_in_force(session, state);
             screen.ascii = tier == RenderingTier::Ascii;
             // Only below the terminal's own tier: `F3` clears the override

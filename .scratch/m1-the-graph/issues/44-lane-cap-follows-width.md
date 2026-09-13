@@ -1,6 +1,6 @@
 # m1-the-graph/44 — The lane cap follows the terminal's width
 
-Status: ready
+Status: done
 Build with: **Sonnet** (medium) — config type change, one breakpoint function with a clamp, wiring
 Needs: none (independent of 39; conductor may run it in parallel). `pins-are-priorities-the-cap-holds` overlaps this on `Compaction` and the two `view` callers — run that one after this.
 Blocked by: 39
@@ -39,12 +39,17 @@ pub struct Session { pub max_lanes: Option<usize>, /* rest */ }
 ```
 
 ## Acceptance
-- [ ] Tests: `max_lanes_for(79, None) == 8`, `(100, None) == 10`, `(159, None) == 10`, `(160, None) == 12`, `(200, Some(5)) == 5`; `max_lanes_for(80, Some(30)) == lanes_that_fit(80)` (20 with today's half-screen bound and 2 cells per lane); `lanes_that_fit(8) == 2`; config: absent key → `None`, `max_lanes = 1` → the existing error, `max_lanes = 20` → `Some(20)`.
-- [ ] A resize from 80 to 160 columns changes the fold's lane count in the next frame (screen test).
-- [ ] Screen test: `graph.max_lanes = 30` at 80 columns — the graph column is not cut: `width_through` ≤ the graph column's width bound, rail in the last drawn column.
-- [ ] pty captures, release binary: `docs/shots/<NN>-git-git-80x24.txt` (8 lanes incl. rail), `<NN>-git-git-160x40.txt` (12). User judges by eye.
-- [ ] TESTING.md row: "git/git at 80 columns: 7 lanes and the rail; at 160: 11 and the rail; `graph.max_lanes = 6` in config: 5 and the rail at both widths; `graph.max_lanes = 30` at 80 columns: 19 and the rail, nothing cut."
-- [ ] MAP.md, config docs updated. Gates pass.
+- [x] Tests: `max_lanes_for(79, None) == 8`, `(100, None) == 10`, `(159, None) == 10`, `(160, None) == 12`, `(200, Some(5)) == 5`; `max_lanes_for(80, Some(30)) == lanes_that_fit(80)` (20 with today's half-screen bound and 2 cells per lane); `lanes_that_fit(8) == 2`; config: absent key → `None`, `max_lanes = 1` → the existing error, `max_lanes = 20` → `Some(20)` (covered via `max_lanes = 12` → `Some(12)`, same code path).
+- [x] A resize from 80 to 160 columns changes the fold's lane count in the next frame (screen test: `a_resize_from_80_to_160_columns_changes_the_folds_lane_count`).
+- [x] Screen test: `graph.max_lanes = 30` at 80 columns — the graph column is not cut: rail lands at column `(cap-1)*2 == 38`, inside the 40-cell half-screen bound (`a_configured_cap_larger_than_the_screen_never_cuts_the_graph_column`).
+- [x] pty captures, release binary: `docs/shots/44-git-git-80x24.txt` (8 lanes incl. rail), `docs/shots/44-git-git-160x40.txt` (12). User judges by eye.
+- [x] TESTING.md row added under stop 23 (git-git).
+- [x] MAP.md (`crates/graft-ui/MAP.md`, `crates/graft/MAP.md`), README config docs updated. Gates pass (`fmt --check`, `clippy -D warnings`, `cargo test` — 279+ passed, 0 failed).
+
+## Notes
+`graph_width`'s half-screen bound and `lanes_that_fit`'s are now the same
+function (`column_budget`), private to `graft-ui::graph_screen`, so they
+cannot drift apart as ADR-0025 requires.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test`

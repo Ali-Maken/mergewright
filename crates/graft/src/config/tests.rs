@@ -324,15 +324,18 @@ fn a_default_branch_git_would_refuse_names_the_file_and_the_line() {
 }
 
 #[test]
-fn max_lanes_is_read_and_defaults_to_eight() {
+fn max_lanes_is_read_and_absent_means_the_width_decides() {
     let (_dir, path) = config_file("[graph]\nmax_lanes = 12\n");
     let loaded = load_from(&path).expect("a valid lane limit loads");
-    assert_eq!(loaded.config.graph.max_lanes, 12);
+    assert_eq!(loaded.config.graph.max_lanes, Some(12));
     assert_eq!(loaded.warnings, [], "max_lanes is a known key");
 
     let (_dir, path) = config_file("[graph]\nrenderer = \"unicode\"\n");
     let loaded = load_from(&path).expect("loads");
-    assert_eq!(loaded.config.graph.max_lanes, DEFAULT_MAX_LANES);
+    assert_eq!(
+        loaded.config.graph.max_lanes, None,
+        "unset means the cap follows the terminal's width"
+    );
     assert_eq!(DEFAULT_MAX_LANES, 8);
 }
 

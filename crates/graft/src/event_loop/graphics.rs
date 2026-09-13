@@ -19,7 +19,7 @@ use graft_term::input::ReplyWaiter;
 use graft_term::iterm2::ItermImages;
 use graft_term::kitty::{self, CellRect, KittyImages, Place};
 use graft_term::{Transport, sanitize_line};
-use graft_ui::graph_screen::GraphicsStatus;
+use graft_ui::graph_screen::{GraphicsStatus, max_lanes_for};
 use ratatui::layout::Rect;
 
 use crate::session::Session;
@@ -138,7 +138,11 @@ impl<R: GraphicsReplies> Graphics<R> {
             return;
         };
         let top = state.history.as_ref().map_or(0, |history| history.top);
-        let pixels = pixel_rows(state, session.max_lanes, STRIP_ROWS);
+        let pixels = pixel_rows(
+            state,
+            max_lanes_for(state.size.columns, session.max_lanes),
+            STRIP_ROWS,
+        );
         let paint = StripPaint::of(session);
 
         let mut drawn: Vec<(usize, Arc<RasterFrame>, Range<usize>, u16)> = Vec::new();
@@ -197,7 +201,11 @@ impl<R: GraphicsReplies> Graphics<R> {
         state: &AppState,
         waiting: &mut impl FnMut() -> bool,
     ) -> usize {
-        let pixels = pixel_rows(state, session.max_lanes, STRIP_ROWS);
+        let pixels = pixel_rows(
+            state,
+            max_lanes_for(state.size.columns, session.max_lanes),
+            STRIP_ROWS,
+        );
         let paint = StripPaint::of(session);
         let mut rasterised = 0;
         for strip in &pixels.strips {

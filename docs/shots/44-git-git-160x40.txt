@@ -1,0 +1,43 @@
+m1-the-graph/44: lane cap follows width. Default (graph.max_lanes unset): 12 lanes at 160 columns and above (ceiling = the lane palette's hue count). pty capture of target/release/graft, truecolor env, script docs/shots/39-capture.py. Judge by eye: header ends '+N lanes' with N exact; last graph column shows the rail; nothing cut past half the screen.
+
+== final frame, plain ==
+ graft /Users/devuser/.cache/graft/git-git.git  152 rows so far  +29 lanes
+◉─╮                   ⋮   [next] Merge branch 'jk/ci-use-system-asciidoctor' into next                                                           JC 1d   848ec2e
+│ │ ◉▾                ⋮   [seen] Merge branch 'js/rust-in-windows-ci' into seen                                                                  JC 1d   a184f46
+│ │ ◉▾                ⋮   Merge branch 'ap/var-broken-down-idents' into seen                                                                     JC 1d   01c5fa0
+│ │ ◉▾                ⋮   Merge branch 'ks/history-commit-leakfix' into seen                                                                     JC 1d   2c03a69
+│ │ ◉▾                ⋮   Merge branch 'ps/ref-storage-format' into seen                                                                         JC 1d   37f625a
+│ │ ◉▾                ⋮   Merge branch 'jc/rust-cargo-build-target' into seen                                                                    JC 1d   9b27d4b
+│ │ ◉▾                ⋮   Merge branch 'tc/push-force-if-includes-fixes' into seen                                                               JC 1d   aeac75a
+│ │ ◉▾                ⋮   Merge branch 'tb/rerere-lock-grace' into seen                                                                          JC 1d   bc3ed91
+│ │ ◉▾                ⋮   Merge branch 'as/push-force-if-includes-no-reflog' into seen                                                           JC 1d   37cba83
+│ │ ◉▾                ⋮   Merge branch 'mm/diff-process-hunks' into seen                                                                         JC 1d   49433a1
+│ │ ◉▾                ⋮   Merge branch 'cc/early-scan-options' into seen                                                                         JC 1d   161b15a
+│ │ ◉▾                ⋮   Merge branch 'tc/last-modified-bloom' into seen                                                                        JC 1d   9a7d54e
+│ │ ◉▾                ⋮   Merge branch 'll/doc-pushcert-if-asked' into seen                                                                      JC 1d   9e3f1e6
+│ │ ◉▾                ⋮   Merge branch 'jc/checkout-refactor' into seen                                                                          JC 1d   8b26a30
+│ │ ◉▾                ⋮   Merge branch 'fz/rebase-autosquash-empty' into seen                                                                    JC 1d   bd7b139
+│ │ ◉▾                ⋮   Merge branch 'ws/squelch-svn-migrate' into seen                                                                        JC 1d   ceeb10c
+│ │ ◉▾                ⋮   Merge branch 'hn/history-squash' into seen                                                                             JC 1d   6b7797e
+│ │ ◉▾                ⋮   Merge branch 'kh/format-rev-more-options' into seen                                                                    JC 1d   65a1653
+│ │ ◉▾                ⋮   Merge branch 'gg/http-ssl-verify-status' into seen                                                                     JC 1d   c5f1475
+│ │ ◉▾                ⋮   Merge branch 'cc/lazy-fetch-trusted-bit' into seen                                                                     JC 1d   f7b5265
+│ │ ◉▾                ⋮   Merge branch 'ty/repo-config-cleanups' into seen                                                                       JC 1d   0922e37
+│ │ ◉▾                ⋮   Merge branch 'bc/restrict-hex-to-lowercase' into seen                                                                  JC 1d   6b8525b
+│ │ ◉▾                ⋮   Merge branch 'pz/fetch-submodule-errors-config' into seen                                                              JC 1d   65e650c
+│ │ ◉▾                ⋮   Merge branch 'kj/repo-info-more-path-keys' into seen                                                                   JC 1d   7437335
+│ │ ◉▾                ⋮   Merge branch 'ds/trace2-tolerate-failed-timestamp' into seen                                                           JC 1d   c29cd64
+│ │ ◉▾                ⋮   Merge branch 'mm/line-log-limited-ops' into seen                                                                       JC 1d   2c4c106
+│ │ ◉▾                ⋮   Merge branch 'tb/midx-incremental-custom-base' into seen                                                               JC 1d   cd97bb7
+│ │ ◉▾                ⋮   Merge branch 'ec/commit-fixup-options' into seen                                                                       JC 1d   9a22aa0
+│ │ ◉▾                ⋮   [jch] Merge branch 'jc/cocci-free-updates' into jch                                                                    JC 1d   af9ee51
+│ │ ◉▾                ⋮   Merge branch 'hn/range-diff-matched-only' into jch                                                                     JC 1d   f656add
+│ │ ◉─╮               ⋮   Merge branch 'pp/midx-write-skip-empty' into jch                                                                       JC 1d   be1ae0c
+│ │ ◉─│─╮             ⋮   Merge branch 'jk/merge-ll-tempfile-cleanup' into jch                                                                   JC 1d   9ce7701
+│ │ ◉─│─│─╮           ⋮   Merge branch 'ta/command-list-guides-sync-lint' into jch                                                               JC 1d   8542c91
+│ │ ◉─│─│─│─╮         ⋮   Merge branch 'ps/odb-pluggable-fsck' into jch                                                                          JC 1d   b27e9d7
+│ │ ◉─│─│─│─│─╮       ⋮   Merge branch 'ps/odb-alternates-at-creation' into jch                                                                  JC 1d   35deb28
+│ │ ◉─│─│─│─│─│─╮     ⋮   Merge branch 'dw/config-read-both-global' into jch                                                                     JC 1d   cce2a48
+│ │ ◉─│─│─│─│─│─│─╮   ⋮   Merge branch 'vv/branch-recurse-no-start-ref' into jch                                                                 JC 1d   81823c1
+│ │ ◉─│─│─│─│─│─│─│─╮ ⋮   Merge branch 'as/utimensat-utimes' into jch                                                                            JC 1d   a607996
+ q quit  F2 status  F3 renderer  + expand lanes  / search  j/k move  Enter pin  Space fold  1 first-parent  F focus  H stash  PgUp/PgDn page  g/G top/bottom

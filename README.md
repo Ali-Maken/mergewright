@@ -137,6 +137,11 @@ icons = "plain"     # plain | nerd        (nothing reads this until M1)
 
 [graph]
 renderer = "auto"   # auto | pixel | unicode | ascii
+# max_lanes = 10     # unset (default): the cap follows the terminal's width —
+                      # 8 lanes under 100 columns, 10 at 100–159, 12 at 160+.
+                      # A number larger than the screen can hold is reduced to
+                      # what fits; 1 or 0 is refused, there being no room left
+                      # for the `+N` marker.
 ```
 
 An unknown key is a warning on the status screen, not an error, so a file

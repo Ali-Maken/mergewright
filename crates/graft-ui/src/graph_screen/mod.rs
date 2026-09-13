@@ -33,7 +33,7 @@ pub use badges::{Badge, BadgeKind, Icons, Tracking};
 pub use columns::{absolute_date, initials, relative_date, short_sha, tooltip_date};
 
 use crate::fit::fit;
-use crate::graph_column::{GraphColumn, GraphLine, RowPaint};
+use crate::graph_column::{CELLS_PER_LANE, GraphColumn, GraphLine, RowPaint};
 use crate::paint::{color, foreground};
 use crate::theme::{Theme, Token};
 
@@ -435,6 +435,14 @@ fn left_out(filters: Filters, folded_lanes: usize) -> String {
     words
 }
 
+/// Cells the graph column can take at most, at this screen width: half the
+/// width — the subject is what makes a row readable. Shared with
+/// [`lanes_that_fit`] so a fold's cap and the column's actual bound cannot
+/// drift apart (ADR-0025 decision 3).
+fn column_budget(columns: u16) -> u16 {
+    columns / 2
+}
+
 /// Cells the graph column takes in the rows' `area`: what its lanes want,
 /// half the width at most — the subject is what makes a row readable.
 fn graph_width(area: Rect, rows: &[GraphEntry<'_>], fold: Option<&Fold>) -> u16 {
@@ -447,7 +455,50 @@ fn graph_width(area: Rect, rows: &[GraphEntry<'_>], fold: Option<&Fold>) -> u16 
         GraphColumn::width_for(lanes)
     };
     fold.map_or_else(full_width, GraphColumn::width_through)
-        .min(area.width / 2)
+        .min(column_budget(area.width))
+}
+
+/// The most lane columns, the rail included, the graph column can hold at
+/// `columns` screen width — never below two (lane 0 and the rail). Uses the
+/// same half-screen bound `graph_width` draws to, and the same cell cost per
+/// lane, so a fold planned to this cap never gets cut by the column it is
+/// drawn into (ADR-0025 decision 3).
+#[must_use]
+pub fn lanes_that_fit(columns: u16) -> usize {
+    let lanes = column_budget(columns) / CELLS_PER_LANE;
+    usize::from(lanes).max(2)
+}
+
+/// `graph.max_lanes` under 100 columns (DESIGN.md §1.1's breakpoint).
+const NARROW_LANES: usize = 8;
+/// `graph.max_lanes` at 100–159 columns (DESIGN.md §1.2's breakpoint).
+const MEDIUM_LANES: usize = 10;
+/// `graph.max_lanes` at 160 columns and above (DESIGN.md §1.3's breakpoint).
+/// The ceiling: the lane palette has 12 hues, so more lanes add width
+/// without adding a colour to tell them apart by (ADR-0022 decision 3).
+const WIDE_LANES: usize = 12;
+
+/// The lane cap for this frame: `configured` if the config file set one,
+/// else the width breakpoint (ADR-0022 decision 3); then clamped to what the
+/// graph column can actually hold at `columns` (ADR-0025 decision 3), so a
+/// configured number larger than the screen never cuts the rail.
+#[must_use]
+pub fn max_lanes_for(columns: u16, configured: Option<usize>) -> usize {
+    configured
+        .unwrap_or(breakpoint_lanes(columns))
+        .min(lanes_that_fit(columns))
+}
+
+/// The width breakpoint's lane count: `NARROW_LANES` under 100 columns,
+/// `MEDIUM_LANES` at 100–159, `WIDE_LANES` at 160 and above.
+fn breakpoint_lanes(columns: u16) -> usize {
+    if columns < 100 {
+        NARROW_LANES
+    } else if columns < 160 {
+        MEDIUM_LANES
+    } else {
+        WIDE_LANES
+    }
 }
 
 /// The header's account of the walk, and the token it is drawn in.

@@ -615,6 +615,11 @@ Press `F3` at any stop: the text right of the graph must not move.
     row whose second parent is folded shows `◉▾` (stub right of its node); the
     last graph column is `⋮` on every row; no `+` or digits in any row's graph
     column; no curve reaches the `⋮` column. `+` expands: rail and count gone.
+    **The cap follows width (ticket 44):** git/git at 80 columns: 7 lanes and
+    the rail; at 160: 11 and the rail. `graph.max_lanes = 6` in config: 5 and
+    the rail at both widths. `graph.max_lanes = 30` at 80 columns: 19 and the
+    rail, nothing cut (the screen's own bound, not the configured number,
+    wins).
 
 ### Per terminal: walk the gallery
 

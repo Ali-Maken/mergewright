@@ -56,8 +56,10 @@ One line per public item. Update when a public item changes.
 - `GraphicsStatus` (enum) — `Ok` or `Failed(SanitizedText)`: what the terminal said about the graph images.
 - `Tooltip` (struct) — `hash` (full 40-char), `author` (`SanitizedText`, mailmap-applied `Name <email>`), `committer` (`Option<SanitizedText>`, only when it differs from `author`), `date` (absolute-with-offset and relative, e.g. `"2026-09-13 14:02 +0500 · 4h ago"`), `parents` (short shas), `subject`, `body` (both `SanitizedText`), `pinned` (bool). Hover and `Enter` build it identically (m1-the-graph/17), except `pinned` (m1-the-graph/34); the box wraps and, when even the tallest box the terminal allows can't fit everything, drops lines from the bottom for a `truncated` marker rather than going silently blank (m1-the-graph/34). "Contained in" is out of scope — `KNOWN_GAPS.md`.
 - `Filters` (struct) — `first_parent`, `folded` (merge count), `stash_hidden`, `focused` (Focus mode on); `Filters::text` is the header's words, empty for none.
-- `Compaction` (struct) — `max_lanes` (`graph.max_lanes`), `expanded` (the `+` key), `pinned` (reserved integration lanes and the selection's thread columns).
+- `Compaction` (struct) — `max_lanes` (the resolved cap for this frame, see `max_lanes_for`), `expanded` (the `+` key), `pinned` (reserved integration lanes and the selection's thread columns).
 - `Compaction::at` (fn) — collapsed, nothing pinned but lane 0.
+- `lanes_that_fit` (fn) — the most lane columns, rail included, the graph column can hold at a screen width; never below 2 (m1-the-graph/44).
+- `max_lanes_for` (fn) — `graph.max_lanes` if configured, else 8/10/12 by the width breakpoint (`< 100`, `100..160`, `160+`), then clamped to `lanes_that_fit` so a configured number larger than the screen never cuts the rail (ADR-0022, ADR-0025; m1-the-graph/44).
 - `GraphEntry` (struct) — one row: `line`, `badges`, sanitised `subject`, `author` chip, `when`, `sha`.
 - `AuthorChip` (struct) — an author's chip: sanitised `initials` and the `identity` that colours it.
 - `OrderNotice` (enum) — header notice: `Sorting` (date order while sorting) or `Provisional` (sort stopped; order stays).

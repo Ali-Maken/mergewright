@@ -59,8 +59,10 @@ pub struct Session {
     /// Which glyphs ref badges draw with: `ui.icons`, plain unless the
     /// config file asks for Nerd Font icons (never detected, PROMPT.md §5).
     pub icons: graft_ui::graph_screen::Icons,
-    /// How many lanes the graph draws before folding the rest: `graph.max_lanes`.
-    pub max_lanes: usize,
+    /// `graph.max_lanes`: the configured lane cap, or `None` to follow the
+    /// terminal's width (`graft_ui::graph_screen::max_lanes_for` resolves it
+    /// per frame, since it depends on the current screen width).
+    pub max_lanes: Option<usize>,
 }
 
 impl Session {

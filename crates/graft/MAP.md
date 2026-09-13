@@ -36,7 +36,7 @@ One line per public item. Update when a public item changes.
 - `Startup` (struct) — what `main` decided before touching the terminal; `harness` is what a wrapper around `run` asks for (`update::Harness`, default in the binary).
 - `Session` (struct) — what Graft is drawing with, for as long as this run lasts.
 - `Session::icons` (field) — badge glyph set from `ui.icons`.
-- `Session::max_lanes` (field) — lane limit from `graph.max_lanes`.
+- `Session::max_lanes` (field) — `graph.max_lanes` as configured, or `None` to let the width breakpoint decide (`graft_ui::graph_screen::max_lanes_for` resolves it per frame, m1-the-graph/44).
 - `Session::settle` (fn) — resolve capabilities, theme, rendering info at startup.
 - `Session::apply` (fn) — take in a re-detected cell size or theme; `true` when anything changed. Never touches the tier.
 - `TerminalChange` (enum) — a mid-session answer that changed: `CellSize(CellSize)`, `Theme(ThemeHint)`.
@@ -151,7 +151,7 @@ One line per public item. Update when a public item changes.
 - `Graph` (struct) — `[graph]` section.
 - `Graph::renderer` (field) — `graph.renderer`.
 - `Graph::default_branch` (field) — forced default branch full ref name; `None` lets detection decide.
-- `Graph::max_lanes` (field) — `graph.max_lanes`: lanes drawn before folding behind `+N`; default 8, values below 2 are a parse error.
+- `Graph::max_lanes` (field) — `graph.max_lanes`: lanes drawn before folding behind `+N`. `None` (unset, the default) follows the terminal's width; a set value below 2 is a parse error (m1-the-graph/44).
 - `DEFAULT_MAX_LANES` (const) — 8.
 - `ThemeChoice` (enum) — `ui.theme` values.
 - `ThemeChoice::overridden` (fn) — the override to hand `ThemeKind::select`.

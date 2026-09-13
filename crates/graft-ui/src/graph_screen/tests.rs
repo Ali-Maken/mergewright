@@ -805,3 +805,78 @@ fn the_expand_hint_keeps_its_place_after_the_renderer() {
         "{line}"
     );
 }
+
+// m1-the-graph/44: the lane cap follows the terminal's width (ADR-0022
+// decision 3, ADR-0025 decision 3).
+
+#[test]
+fn lanes_that_fit_matches_graph_widths_half_screen_bound() {
+    // Half of 8 columns is 4 cells, one lane at 2 cells each — but the rail
+    // always fits alongside lane 0, so the floor is 2, not 1.
+    assert_eq!(lanes_that_fit(8), 2);
+    // Half of 80 columns is 40 cells, 20 lanes at 2 cells each.
+    assert_eq!(lanes_that_fit(80), 20);
+}
+
+#[test]
+fn max_lanes_for_follows_the_width_breakpoints_when_unconfigured() {
+    assert_eq!(max_lanes_for(79, None), 8);
+    assert_eq!(max_lanes_for(100, None), 10);
+    assert_eq!(max_lanes_for(159, None), 10);
+    assert_eq!(max_lanes_for(160, None), 12);
+    assert_eq!(max_lanes_for(200, Some(5)), 5);
+}
+
+#[test]
+fn max_lanes_for_clamps_a_configured_value_to_what_the_screen_holds() {
+    assert_eq!(max_lanes_for(80, Some(30)), lanes_that_fit(80));
+    assert_eq!(max_lanes_for(80, Some(30)), 20);
+}
+
+/// A history wide enough that its open columns exceed even the screen's own
+/// bound at 80 columns (more than `lanes_that_fit(80) == 20`).
+fn very_wide_merges() -> Vec<Row> {
+    let mut rows = wide_history(30);
+    rows.truncate(30);
+    rows
+}
+
+#[test]
+fn a_resize_from_80_to_160_columns_changes_the_folds_lane_count() {
+    let rows = very_wide_merges();
+    let mut view = view(&rows, WalkView::Complete { rows: rows.len() }, 0);
+    view.compaction = Compaction::at(max_lanes_for(80, None));
+    let narrow = text(&draw(&view, 80, 24));
+    let narrow_header = narrow[0].clone();
+
+    view.compaction = Compaction::at(max_lanes_for(160, None));
+    let wide = text(&draw(&view, 160, 40));
+    let wide_header = wide[0].clone();
+
+    // 30 topics open 31 columns; 8 lanes at 80 columns and 10 at 160 both
+    // fold most of them, but the wider screen folds fewer.
+    assert!(narrow_header.contains("lanes"), "{narrow_header}");
+    assert!(wide_header.contains("lanes"), "{wide_header}");
+    assert_ne!(narrow_header, wide_header);
+}
+
+#[test]
+fn a_configured_cap_larger_than_the_screen_never_cuts_the_graph_column() {
+    let rows = very_wide_merges();
+    let mut view = view(&rows, WalkView::Complete { rows: rows.len() }, 0);
+    let cap = max_lanes_for(80, Some(30));
+    assert_eq!(cap, 20, "clamped to what 80 columns can hold");
+    view.compaction = Compaction::at(cap);
+    let screen = text(&draw(&view, 80, 24));
+
+    // 20 lanes (rail included) at 2 cells each is 40 cells — exactly the
+    // half-screen bound `graph_width` enforces, so the column is not cut.
+    assert!(screen[1].contains('⋮'), "no rail drawn: {screen:#?}");
+    let rail_at = screen[1]
+        .chars()
+        .position(|c| c == '⋮')
+        .expect("rail is drawn");
+    // The rail is the last drawn column: column (cap - 1), 2 cells wide.
+    assert_eq!(rail_at, (cap - 1) * 2, "{screen:#?}");
+    assert!(rail_at <= 40, "cut past the half-screen bound: {screen:#?}");
+}

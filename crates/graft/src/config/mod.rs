@@ -76,7 +76,7 @@ pub struct Ui {
 }
 
 /// `[graph]`.
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(default)]
 pub struct Graph {
     /// `graph.renderer`.
@@ -87,30 +87,26 @@ pub struct Graph {
     #[serde(deserialize_with = "branch_name")]
     pub default_branch: Option<RefName>,
     /// `graph.max_lanes`: how many lanes the graph draws before folding the
-    /// rest behind `+N` (DESIGN.md §3.5). The marker counts as one, so the
-    /// least that makes sense is two: lane 0 and the marker.
-    #[serde(deserialize_with = "lane_limit")]
-    pub max_lanes: usize,
+    /// rest behind `+N` (DESIGN.md §3.5). `None` (unset) means the cap
+    /// follows the terminal's width instead of one fixed number
+    /// (ADR-0022 decision 3). The marker counts as one, so a set value
+    /// below two is refused: lane 0 and the marker is the least that makes
+    /// sense.
+    #[serde(deserialize_with = "lane_limit", default)]
+    pub max_lanes: Option<usize>,
 }
 
-/// `graph.max_lanes` when the file does not set it.
+/// The lane cap under 100 columns when `graph.max_lanes` is unset — the
+/// narrowest of the three width breakpoints (ADR-0022 decision 3,
+/// `graft_ui::graph_screen::max_lanes_for`).
 pub const DEFAULT_MAX_LANES: usize = 8;
-
-impl Default for Graph {
-    fn default() -> Self {
-        Graph {
-            renderer: RendererChoice::default(),
-            default_branch: None,
-            max_lanes: DEFAULT_MAX_LANES,
-        }
-    }
-}
 
 /// `graph.max_lanes`, refusing anything below two: one lane leaves no room
 /// for the `+N` marker, so `1` would silently mean "never fold", and `0`
 /// nothing at all. A refusal is a parse error with a line and column, like
-/// every other bad value.
-fn lane_limit<'de, D>(deserializer: D) -> Result<usize, D::Error>
+/// every other bad value. Absent from the file, the field default (`None`)
+/// applies without calling this at all.
+fn lane_limit<'de, D>(deserializer: D) -> Result<Option<usize>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -120,7 +116,7 @@ where
             "max_lanes = {limit} leaves no room for lanes and the `+N` marker; use 2 or more"
         )));
     }
-    Ok(limit)
+    Ok(Some(limit))
 }
 
 /// `graph.default_branch = "trunk"` as `refs/heads/trunk`.
