@@ -4,6 +4,7 @@ One line per public item. Update when a public item changes.
 ## lib.rs
 - `fit` (mod) — clamp text to an exact cell width.
 - `graph_column` (mod) — the Unicode-tier graph column widget.
+- `graph_screen` (mod) — the graph screen Graft opens on: header, rows, key hints.
 - `paint` (mod) — token-to-style helpers for widgets.
 - `status_screen` (mod) — the status screen view and widget.
 - `theme` (mod) — theme kinds, tokens, and colour resolution.
@@ -23,6 +24,18 @@ One line per public item. Update when a public item changes.
 - `GraphColumn` (struct) — widget drawing consecutive rows; fills its area exactly.
 - `GraphColumn::new` (fn) — draw lines in a theme.
 - `GraphColumn::width_for` (fn) — cells for N lanes.
+
+## graph_screen
+- `CHROME_ROWS` (const) — screen rows that are not graph rows (header + footer).
+- `GraphView` (struct) — everything the graph screen draws.
+- `GraphView::location` (field) — the repository's path, once open.
+- `GraphView::walk` (field) — where the history walk is.
+- `GraphView::problem` (field) — an unsuperseded error; replaces the key hints while it lasts.
+- `GraphView::rows` (field) — viewport rows, top first; the cursor's row is painted highlighted.
+- `GraphEntry` (struct) — one row: `line` (graph cells, paint) and sanitised `subject`.
+- `WalkView` (enum) — walk state for the header: opening, reading, jumping, complete, cancelled, failed.
+- `GraphScreen` (struct) — the graph screen, ready to render.
+- `GraphScreen::new` (fn) — draw `view` in `theme`.
 
 ## paint
 - `color` (fn) — resolve a `TokenColor` to a ratatui `Color`.

@@ -125,11 +125,35 @@ pub struct AppState {
     /// The history walk the screen shows: its rows so far and where it is.
     /// `None` until one has been asked for.
     pub history: Option<History>,
+    /// Which screen is on show. The graph, unless the user asked for the
+    /// status screen — the only place tier and cell size are shown.
+    pub screen: Screen,
+}
+
+/// The screens Graft can show.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Screen {
+    /// The history graph. What Graft opens on.
+    #[default]
+    Graph,
+    /// What Graft opened and what it is drawing with.
+    Status,
+}
+
+impl Screen {
+    /// The other screen: `F2` swaps between the two.
+    #[must_use]
+    pub fn toggled(self) -> Screen {
+        match self {
+            Screen::Graph => Screen::Status,
+            Screen::Status => Screen::Graph,
+        }
+    }
 }
 
 /// Screen rows that are not the graph: one line of header above it and one of
 /// status below. The graph screen (DESIGN.md §1.3) draws within this.
-pub const CHROME_ROWS: u16 = 2;
+pub const CHROME_ROWS: u16 = graft_ui::graph_screen::CHROME_ROWS;
 
 impl AppState {
     /// How many rows of history the graph pane shows at the current size.
@@ -346,6 +370,8 @@ fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         }
         commands.push(Command::OpenRepository);
         commands.push(Command::ReadHistory(Order::Topological));
+    } else if is_screen_toggle(key) {
+        next.screen = next.screen.toggled();
     } else if let Some(motion) = motion_for(key) {
         let height = next.graph_rows();
         if let Some(history) = next.history.as_mut()
@@ -411,6 +437,12 @@ fn is_quit(key: KeyPress) -> bool {
     plain_q || control_c
 }
 
+/// `F2`: swap between the graph and the status screen. Not one of DESIGN.md
+/// §2.2–§2.3's keys, which are all taken; the status screen is a diagnostic.
+fn is_screen_toggle(key: KeyPress) -> bool {
+    key.code == KeyCode::Function(2) && !key.modifiers.control && !key.modifiers.alt
+}
+
 /// Manual refresh (DESIGN.md §2.1): re-read the repository now, rather than
 /// waiting for whatever would have noticed on its own.
 fn is_refresh(key: KeyPress) -> bool {
@@ -445,6 +477,19 @@ mod tests {
 
     fn key(code: KeyCode) -> AppEvent {
         AppEvent::Core(Event::Key(KeyPress::plain(code)))
+    }
+
+    #[test]
+    fn graft_opens_on_the_graph_and_f2_swaps_to_the_status_screen_and_back() {
+        let state = AppState::default();
+        assert_eq!(state.screen, Screen::Graph);
+
+        let (status, commands) = update(&state, key(KeyCode::Function(2)));
+        assert_eq!(status.screen, Screen::Status);
+        assert!(commands.is_empty(), "{commands:?}");
+
+        let (graph, _) = update(&status, key(KeyCode::Function(2)));
+        assert_eq!(graph.screen, Screen::Graph);
     }
 
     fn core(event: Event) -> AppEvent {
@@ -667,6 +712,7 @@ mod tests {
             system_git: None,
             awaiting: None,
             history: None,
+            screen: Screen::Graph,
         };
 
         let first = update(&state, key(KeyCode::Char('q')));

@@ -6,10 +6,7 @@
 
 mod support;
 
-use graft_core::capabilities::{
-    Capabilities, CellSize, CellSizeSource, ColorDepth, ProbeOutcome, RenderingTier, Supported,
-    Theme as TerminalTheme, ThemeHint, ThemeSource, TmuxStatus,
-};
+use graft_core::capabilities::ColorDepth;
 use graft_fixtures::Shape;
 use graft_ui::graph_column::{GraphColumn, GraphLine};
 use graft_ui::paint::color;
@@ -20,6 +17,7 @@ use ratatui::buffer::Buffer;
 use ratatui::style::Color;
 
 use support::corpus::{caption, for_each_shape, lay_out};
+use support::theme;
 
 #[test]
 fn every_shape_draws_as_snapshotted_and_the_same_in_dark_and_light() {
@@ -99,35 +97,4 @@ fn describe(buf: &Buffer, y: u16, theme: &Theme) -> (String, String) {
         slots.push(slot.map_or('.', |lane| char::from(b"abcdefghijkl"[lane])));
     }
     (glyphs, slots)
-}
-
-fn theme(kind: ThemeKind, color_depth: ColorDepth) -> Theme {
-    Theme::new(
-        kind,
-        &Capabilities {
-            tier: RenderingTier::Unicode,
-            pixel_protocol: None,
-            kitty_graphics: Supported::No,
-            sixel: Supported::No,
-            iterm2_images: false,
-            kitty_keyboard: Supported::No,
-            synchronized_output: Supported::No,
-            cell_size: CellSize {
-                width: 8,
-                height: 16,
-                source: CellSizeSource::Assumed,
-            },
-            theme: ThemeHint {
-                theme: TerminalTheme::Dark,
-                source: ThemeSource::Assumed,
-            },
-            color_depth,
-            no_color: false,
-            is_tty: true,
-            over_ssh: false,
-            tmux: TmuxStatus::Outside,
-            probe: ProbeOutcome::Answered,
-            probe_budget: std::time::Duration::from_millis(250),
-        },
-    )
 }

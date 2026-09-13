@@ -153,8 +153,19 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     let jobs = JobRunner::with_default_size(sender.clone(), repos)?;
     input::spawn_reader(sender)?;
 
-    let state = opening_repository(&jobs, &repo_path);
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
+    // The first frame and the first row request are both sized from this. A
+    // terminal sends no resize at startup, so without it the graph would ask
+    // for, and draw, a single row until the window changed size.
+    let size = terminal.size()?;
+    let state = opening_repository(
+        &jobs,
+        &repo_path,
+        crate::update::Size {
+            columns: size.width,
+            rows: size.height,
+        },
+    );
     let outcome = pump(&mut terminal, &mut wakes, &jobs, &settled, state);
     // Dropped before the restore so that its own teardown (it shows the cursor
     // it hid) goes out while the session is still in charge of the terminal.
@@ -198,7 +209,11 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
 /// Both read the world — one opens the repository, one runs `git --version` —
 /// so both are jobs: the first frame is drawn while they are still running,
 /// and says so, rather than waiting on the disk.
-fn opening_repository(jobs: &impl Dispatch, repo_path: &Path) -> AppState {
+fn opening_repository(
+    jobs: &impl Dispatch,
+    repo_path: &Path,
+    size: crate::update::Size,
+) -> AppState {
     jobs.dispatch(Command::OpenRepository);
     jobs.dispatch(Command::CheckSystemGit);
     // The third is the one with work in it: reading history. Asked for in
@@ -207,6 +222,7 @@ fn opening_repository(jobs: &impl Dispatch, repo_path: &Path) -> AppState {
     jobs.dispatch(Command::ReadHistory(Order::Topological));
     AppState {
         repo_path: repo_path.to_path_buf(),
+        size,
         ..AppState::default()
     }
 }
@@ -544,16 +560,35 @@ mod tests {
     }
 
     #[test]
+    fn graft_starts_at_the_terminals_size_not_zero_by_zero() {
+        // Found under a pty: with a 0×0 starting size the history walk was
+        // asked for one row, and the graph drew one row, until a resize.
+        let size = crate::update::Size {
+            columns: 80,
+            rows: 24,
+        };
+
+        let state = opening_repository(&Recorded::default(), Path::new("/code/api"), size);
+
+        assert_eq!(state.size, size);
+        assert_eq!(state.graph_rows(), 22);
+    }
+
+    #[test]
     fn the_status_screen_reaches_the_terminal() {
         let (mut terminal, recorder) = terminal(60, 12);
         let mut wakes = ScriptedWakes::new(vec![quit_key()]);
+        let state = AppState {
+            screen: crate::update::Screen::Status,
+            ..AppState::default()
+        };
 
         pump(
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
             &session(),
-            AppState::default(),
+            state,
         )
         .expect("writing to memory cannot fail");
 

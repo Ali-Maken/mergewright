@@ -53,6 +53,9 @@ One line per public item. Update when a public item changes.
 - `AppState::system_git` (field) — system git check result once that job answers.
 - `AppState::awaiting` (field) — job id whose result is still wanted; stale ones dropped.
 - `AppState::history` (field) — the history walk shown on screen, if one was asked for.
+- `AppState::screen` (field) — which screen is on show; graph by default.
+- `Screen` (enum) — `Graph` (default) or `Status`.
+- `Screen::toggled` (fn) — the other screen; `F2` swaps.
 - `Quit` (enum) — why Graft is leaving.
 - `Quit::should_quit` (fn) — is the loop finished?
 - `Status` (enum) — status-line state; never reads as an error when nothing is wrong.
@@ -60,7 +63,7 @@ One line per public item. Update when a public item changes.
 - `Size::columns` (field) — width in character cells.
 - `Size::rows` (field) — height in character cells.
 - `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows.
-- `CHROME_ROWS` (const) — screen rows that are not the graph (header + status).
+- `CHROME_ROWS` (const) — screen rows that are not the graph; `graft_ui::graph_screen::CHROME_ROWS`.
 - `AppState::graph_rows` (fn) — history rows the graph pane shows at the current size; never zero.
 - `update` (fn) — the pure state transition function.
 
@@ -115,7 +118,8 @@ One line per public item. Update when a public item changes.
 - `parse` (fn) — parse an arbitrary argument list.
 
 ## view
-- `view` (fn) — draw the current state to a frame.
+- `view` (fn) — draw the current state to a frame: the graph screen, or the status screen.
+- `graph_view` (fn) — build a `GraphView` from the history window, cursor and status.
 - `status_view` (fn) — build a `StatusView` from session and app state.
 
 ## event_loop

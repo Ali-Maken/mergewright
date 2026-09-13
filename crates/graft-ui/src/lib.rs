@@ -8,6 +8,7 @@
 
 pub mod fit;
 pub mod graph_column;
+pub mod graph_screen;
 pub mod paint;
 pub mod status_screen;
 pub mod theme;

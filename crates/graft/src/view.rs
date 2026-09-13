@@ -12,6 +12,8 @@
 
 use graft_git::version::SystemGit;
 use graft_term::{SanitizedText, sanitize_line, sanitize_path, sanitize_path_bytes};
+use graft_ui::graph_column::{GraphLine, RowPaint};
+use graft_ui::graph_screen::{GraphEntry, GraphScreen, GraphView, WalkView};
 use graft_ui::status_screen::{
     HeadView, HistoryState, HistoryView, RepositoryView, StatusScreen, StatusView,
 };
@@ -20,7 +22,7 @@ use ratatui::Frame;
 use crate::history::{History, Phase};
 use crate::repository::{Head, RepositoryFacts};
 use crate::session::Session;
-use crate::update::{AppState, GitCheck, Status};
+use crate::update::{AppState, GitCheck, Screen, Status};
 
 /// How much of a commit id a detached `HEAD` shows. Long enough to be unique
 /// in any repository a person works in, short enough to read back.
@@ -35,8 +37,77 @@ pub fn view(session: &Session, state: &AppState, frame: &mut Frame) {
         return;
     }
 
-    let screen = status_view(session, state);
-    frame.render_widget(StatusScreen::new(&screen, &session.theme), area);
+    match state.screen {
+        Screen::Graph => {
+            let screen = graph_view(state);
+            frame.render_widget(GraphScreen::new(&screen, &session.theme), area);
+        }
+        Screen::Status => {
+            let screen = status_view(session, state);
+            frame.render_widget(StatusScreen::new(&screen, &session.theme), area);
+        }
+    }
+}
+
+/// Everything the graph screen draws: the rows in the viewport, the cursor
+/// among them, and where the walk is.
+///
+/// The rows are borrowed from the window the walk last sent; only the
+/// subjects, which came out of the repository, are copied — sanitised.
+#[must_use]
+pub fn graph_view(state: &AppState) -> GraphView<'_> {
+    let location = state
+        .repository
+        .as_ref()
+        .map(|facts| sanitize_path(&facts.path));
+    let problem = match &state.status {
+        Status::Ready => None,
+        Status::Failed(message) => Some(sanitize_line(message)),
+    };
+    let Some(history) = &state.history else {
+        return GraphView {
+            location,
+            problem,
+            walk: WalkView::Opening,
+            rows: Vec::new(),
+        };
+    };
+
+    let walk = match &history.phase {
+        Phase::Streaming if history.jump.is_some() => WalkView::Jumping {
+            laid_out: history.rows,
+        },
+        Phase::Streaming => WalkView::Reading {
+            laid_out: history.rows,
+        },
+        Phase::Complete => WalkView::Complete { rows: history.rows },
+        Phase::Cancelled => WalkView::Cancelled {
+            laid_out: history.rows,
+        },
+        Phase::Failed(reason) => WalkView::Failed(sanitize_line(reason)),
+    };
+    let rows = history
+        .visible(state.graph_rows())
+        .iter()
+        .zip(history.top..)
+        .map(|(row, index)| {
+            let mut line = GraphLine::plain(row);
+            if index == history.cursor {
+                line.paint = RowPaint::Highlighted;
+            }
+            GraphEntry {
+                line,
+                subject: sanitize_line(&String::from_utf8_lossy(row.commit.subject())),
+            }
+        })
+        .collect();
+
+    GraphView {
+        location,
+        problem,
+        walk,
+        rows,
+    }
 }
 
 /// Everything the status screen draws, assembled from the two things `app`
@@ -143,6 +214,7 @@ mod tests {
 
     fn open(head: Head) -> AppState {
         AppState {
+            screen: Screen::Status,
             repo_path: std::path::PathBuf::from("/code/api"),
             repository: Some(RepositoryFacts {
                 path: std::path::PathBuf::from("/code/api"),
@@ -160,6 +232,93 @@ mod tests {
         assert!(screen.contains("/code/api"), "{screen}");
         assert!(screen.contains("main"), "{screen}");
         assert!(screen.contains("unicode"), "{screen}");
+    }
+
+    /// A history of `count` commits, newest first, already laid out and
+    /// sent as one window.
+    fn history_of(count: u8, cursor: usize) -> History {
+        use graft_core::commit::{Commit, Identity, Timestamp};
+        use graft_graph::layout::layout;
+        use graft_graph::seeds::Seeds;
+
+        let oid = |byte: u8| Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes");
+        let commits: Vec<Commit> = (1..=count)
+            .rev()
+            .map(|id| {
+                let who = Identity {
+                    name: b"Test".to_vec(),
+                    email: b"test@example.invalid".to_vec(),
+                    when: Timestamp {
+                        seconds: i64::from(id),
+                        offset_seconds: 0,
+                    },
+                };
+                Commit {
+                    id: oid(id),
+                    parents: if id == 1 { vec![] } else { vec![oid(id - 1)] },
+                    author: who.clone(),
+                    committer: who,
+                    message: format!("Commit {id}\x1b[31m").into_bytes(),
+                }
+            })
+            .collect();
+        let rows = layout(&commits, Seeds::default());
+        History {
+            window: Some(crate::history::Window {
+                request: 0,
+                first: 0,
+                laid_out: rows.len(),
+                done: true,
+                rows: rows.into(),
+            }),
+            rows: usize::from(count),
+            phase: Phase::Complete,
+            cursor,
+            ..History::started()
+        }
+    }
+
+    #[test]
+    fn graft_opens_on_the_graph_with_the_cursor_row_highlighted() {
+        let state = AppState {
+            history: Some(history_of(5, 1)),
+            size: Size {
+                columns: 60,
+                rows: 5,
+            },
+            ..AppState::default()
+        };
+
+        let view = graph_view(&state);
+        let screen = draw(&state, 60, 5);
+
+        assert_eq!(view.rows.len(), 3, "rows minus the chrome");
+        assert_eq!(view.walk, WalkView::Complete { rows: 5 });
+        assert_eq!(view.rows[1].line.paint, RowPaint::Highlighted);
+        assert_eq!(view.rows[0].line.paint, RowPaint::Normal);
+        assert!(screen.contains("Commit 5"), "{screen}");
+        assert!(screen.contains("q quit"), "{screen}");
+        assert!(
+            !screen.contains('\u{1b}'),
+            "a subject's escape reached the cells"
+        );
+    }
+
+    #[test]
+    fn a_pending_jump_reads_as_one() {
+        let mut history = history_of(2, 0);
+        history.phase = Phase::Streaming;
+        history.jump = Some(4);
+        history.rows = 1500;
+        let state = AppState {
+            history: Some(history),
+            ..AppState::default()
+        };
+
+        assert_eq!(
+            graph_view(&state).walk,
+            WalkView::Jumping { laid_out: 1500 }
+        );
     }
 
     #[test]
