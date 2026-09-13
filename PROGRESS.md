@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M1 The graph** — ticket 07 (30 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. **M1 runs straight through without stopping for ticket approval** — see "How M1 runs" below.
+**Current step:** **M1 The graph** — ticket 31, then 07 (31 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. **M1 runs straight through without stopping for ticket approval** — see "How M1 runs" below.
 
 ---
 
@@ -167,7 +167,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 ## Open questions for the M1 checkpoint
 
 - ~~**Heavy tier is two commands, not one.**~~ **Decided 2026-09-13:** drop
-  `#[ignore]`, gate on the feature alone (ADR-0018). Code change in m1/27.
+  `#[ignore]`, gate on the feature alone (ADR-0018). Code change in m1/31, built before 07.
   Nothing for the checkpoint to decide.
 - ~~**`PROPTEST_CASES=64` is exported in the user's shell env**~~ — **wrong,
   and now fixed.** It was set in this repository's own `.claude/settings.json`,

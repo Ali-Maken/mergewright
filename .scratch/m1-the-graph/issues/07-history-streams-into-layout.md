@@ -2,7 +2,7 @@
 
 Status: ready
 Build with: **Opus** (high) — concurrency: a background walk feeding a layout between frames
-Blocked by: 06
+Blocked by: 06, 31
 Leaves runnable: yes — the status screen shows rows laid out so far and the history state.
 
 Why: 06 built `StreamingLayout` and the `CommitSource` seam, but the product has no source, no seed builder, and `app::history::read` still drains the whole walk in one lump. Every screen after this reads from here.

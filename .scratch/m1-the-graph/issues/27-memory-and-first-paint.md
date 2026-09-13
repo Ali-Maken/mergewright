@@ -2,7 +2,7 @@
 
 Status: ready
 Build with: **Opus** (high) — measuring a concurrent streaming pipeline and deciding what to fix
-Blocked by: 07, 09, 18
+Blocked by: 07, 09, 18, 31
 Leaves runnable: yes — heavy tier asserts the 300 MB and 150 ms budgets.
 
 Why: M1/06 built checkpoints, eviction and promotion but measured only an in-memory 100k history in a unit test. The real 100k repository, `getrusage`, the 300 MB gate and wall-clock first paint were deferred here (06's notes; KNOWN_GAPS "Nothing has been measured on the 100k fixture"). This is the retired ticket 16's core, text in 35bec3e.
@@ -17,7 +17,6 @@ Why: M1/06 built checkpoints, eviction and promotion but measured only an in-mem
 
 ## Scope
 In:
-- **Heavy tier first (ADR-0018):** drop `#[ignore]` from every heavy test; the `heavy-tests` feature alone gates them. Update the module doc in `tests/it/heavy.rs`. Remove TESTING.md's interim `--include-ignored` note.
 - Heavy-tier assertions on the 100k fixture (`Scale::HEAVY`), **with and without the commit-graph file** (ADR-0008: two paths, two numbers):
   - peak RSS < 300 MB over open → first paint → `G` to the bottom → back to top, via `graft_fixtures::memory::measure`.
   - first paint ≤ 150 ms: process start to the first frame with rows.
@@ -38,7 +37,6 @@ Call (existing):
 Expose: none public. If a first-paint timestamp needs a seam in `graft`, keep it `pub(crate)` and test-only.
 
 ## Acceptance
-- [ ] `cargo test --features heavy-tests -- --test-threads=2` runs every heavy test and every proptest at 1,000 cases in one command; `grep -rn '#\[ignore' crates` finds nothing.
 - [ ] Results table in this ticket: budget · measured · fixture · commit-graph yes/no · machine. 100k ×2 and git/git ×2.
 - [ ] Each assertion proven to fail by temporarily tightening its threshold — say so, then revert.
 - [ ] Compact-index and checkpoint-policy decisions written with the numbers; the three KNOWN_GAPS rows closed or re-owned with a reason.

@@ -7,6 +7,8 @@ Leaves runnable: yes — pure `graph` code with buffer snapshots; nothing reache
 
 Why: the spike drew chunky straight segments. The pixel tier is only worth having if it looks clearly better than Unicode.
 
+**Unproven:** the spike only drew straight lines. Anti-aliasing and curves have never been drawn in this project; buffer snapshots prove the pixels are deterministic, not that they look good. **The user judges them by eye at the M1 checkpoint** — no builder or reviewer ticks that.
+
 ## Read first
 - PROMPT.md §1.1 (the pixel tier paragraph) and §7.2 item 3
 - DESIGN.md §3.8 (the paragraphs about `RasterFrame`, not the cache)

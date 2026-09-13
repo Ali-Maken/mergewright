@@ -56,10 +56,10 @@ cargo test --features heavy-tests -- --test-threads=2
 
 The feature alone gates heavy tests; none is `#[ignore]`d.
 
-> **Until m1-the-graph/27 lands:** the four generator tests in
+> **Until m1-the-graph/31 lands:** the four generator tests in
 > `crates/graft-fixtures/tests/it/heavy.rs` still carry `#[ignore]`. Append
 > `--include-ignored` to every heavy command on this page, or they are
-> skipped. 27 removes the attributes and this note.
+> skipped. 31 removes the attributes and this note.
 
 Also lint the heavy code, which the standard gate does not see — a feature
 that is off is not compiled, so `clippy --all-targets` says nothing about

@@ -36,5 +36,5 @@ heavy tests to be both ignored and feature-gated.
   feature, so `cargo test --test it -- --list` shows no `heavy::` test.
 - **Code not changed yet.** The four generator tests in
   `crates/graft-fixtures/tests/it/heavy.rs` still carry `#[ignore]`.
-  m1-the-graph/27 removes them as its first step. Until then, append
+  m1-the-graph/31 removes them, before any other M1 ticket builds. Until then, append
   `--include-ignored` to the heavy command.
