@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M1 The graph** — ticket 09, continuation 1 (31, 07, 08 done; 31 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
+**Current step:** **M1 The graph** — ticket 10 (31, 07, 08, 09 done; 31 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
 
 ---
 
@@ -157,6 +157,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-13 · M1/07 history streams into layout · opus · done · WalkSource/seeds_for feed StreamingLayout via jobs; status screen shows rows + streaming/complete/cancelled; config graph.default_branch; pty: 20k in steps of 500, 100k Esc at 1.0s → cancelled at 22,000 rows; 432 tests; 3 gaps (AppState keeps every row, first advance not sized to 150 ms, Esc drops the in-flight chunk); MAP.md for graft, graft-ui; first try stopped by user with nothing written; commit 34dfc28 · COMPACTED (once, after pty runs; nothing left to split)
 - 2026-09-13 · M1/08 Unicode graph column · opus · done · Row.lanes per column + BranchIdentity::slot; graph_column/ in graft-ui; murmur hue hash after octopus shared main's hue; capture docs/shots/08-unicode-graph-column.txt for user's eye; 452 tests; 3 gaps (adjacent hue collisions, HEAD glyph hides merge, ambiguous-width glyphs); 164k tokens, no compaction; commit 8689b5d
 - 2026-09-13 · M1/09 graph screen · opus · partial · history job answers row requests with a bounded window; cursor + j/k/PgUp/PgDn/g/G; Esc drops pending G; no graph screen yet (app still opens on status); 456 tests; 3 gaps (history job holds 1 of 4 workers, layout advances on demand only vs DESIGN.md §3.6, nothing draws history); 160k tokens, no compaction; commit 47f624b
+- 2026-09-13 · M1/09 graph screen (continuation 1) · opus · done · app opens on the graph, F2 status; pty-only bug fixed (0x0 first state drew 1 row); expect under pty: j/k, q exits 0; git/git first graph frame 567 ms debug build, one run (budget checked in 27/30); capture docs/shots/09-graph-screen.txt; background advance stays with 27; gaps: HEAD node unmarked, git/git ~28 lanes fill the column; 468 tests; 140k tokens, no compaction; commit bf71a25
 
 ## Open questions for the M1 checkpoint
 
