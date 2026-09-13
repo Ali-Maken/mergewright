@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M1 The graph** — ticket 19 (31, 07–18 done; 31 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
+**Current step:** **M1 The graph** — ticket 20 (31, 07–19 done; 31 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
 
 ---
 
@@ -170,10 +170,11 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-13 · M1/16 selection and focus · opus · done · ancestry.rs; selection draws thread lanes bold, others dim; F toggles Focus (dims unrelated rows), Esc leaves Focus first; 1/Space/H re-find the selection; thread lanes never fold; 4 criss-cross snapshots truecolor + 16; release-binary captures docs/shots/16-*.txt (5); `1` gap narrowed (only within first 2 screens); new: thread limited to rows on hand, bold/dim only; 576 tests; 149k tokens, no compaction; commit 14f54ed
 - 2026-09-13 · M1/17 mouse and tooltip · sonnet · done · click selects row, wheel scrolls viewport not cursor, Enter opens tooltip, Esc closes it first; tooltip sanitises escapes; release binary in pty with SGR mouse bytes via pyte; captures docs/shots/17-{mouse-select-and-tooltip,tooltip-sanitizes-escape}.txt; "Contained in" → M2 in KNOWN_GAPS; workspace green; 132k tokens · COMPACTED (once; finished, nothing left to split)
 - 2026-09-13 · M1/18 promotion and clean startup · opus · done · provisional → topo promotion keeps selected commit and screen offset (SkewedDates fixture, row 12→11), superseded sort dropped, Esc keeps provisional order and says so; non-repo exits 1 without alt screen; deviated: WalkSource::in_order under Included (from_order skipped view filter); captures docs/shots/18-{not-a-repo,promotion-skewed-dates}.txt; Esc mid-sort unseen in pty (sort takes ms); `1` >2 screens gap still open; 5 gaps closed, new: sort ignores stop, walk silent while promotion catches up, long path hides notice; 590 tests; commit d4a2fa2 · COMPACTED (once; finished, nothing left to split)
+- 2026-09-13 · M1/19 ASCII tier and override · sonnet · done · ASCII glyph table; F3 drops the tier; headless path when stdout isn't a tty (piped_stdout test); pty script .scratch/m1-the-graph/pty-tier-drop-check.py, termios identical before/after; captures docs/shots/19-ascii-tier-{drop-key,crisscross}.txt; workspace green; commit a51c702 · COMPACTED (twice, before code was written; finished, nothing left to split)
 
 ## Open questions for the M1 checkpoint
 
-- **New keys from m1/15** (DESIGN.md had none): `Space` fold/unfold merge, `1` first-parent, `H` hide stash; m1/17 adds `Enter` opens tooltip, wheel scrolls view not cursor. Keep, or rebind?
+- **New keys from m1/15** (DESIGN.md had none): `Space` fold/unfold merge, `1` first-parent, `H` hide stash; m1/17 adds `Enter` opens tooltip, wheel scrolls view not cursor; m1/19 adds `F3` drops to the ASCII tier. Keep, or rebind?
 - **Uncommitted row only shows when HEAD is the top visible row** (m1/12b). If another branch has newer commits above HEAD, or you scroll, the dirty-tree row is hidden. Keep, or pin it to the top?
 - **Node glyphs ignore `ui.icons`** (m1/11): ◆ HEAD / ■ stash draw even with icons off. Keep, or follow the setting?
 - ~~**Heavy tier is two commands, not one.**~~ **Decided 2026-09-13:** drop
