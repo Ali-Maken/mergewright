@@ -1,8 +1,8 @@
 # m1-the-graph/36 — Pinned tooltip shows the wrong commit after a re-sort
 
-Status: blocked
+Status: draft — **proposed wontfix** (M1 graph design pass, 2026-09-13): ADR-0023 removes the tooltip and the pin, so there is no row-keyed pin to re-key. Close as wontfix when the user approves ADR-0023 (ticket 41 removes the code and closes the KNOWN_GAPS row). If ADR-0023 is rejected, this ticket stands as written below.
 Build with: **Opus** (high) — state that must survive the ADR-0008 promotion swap
-Blocked by: tooltip design pass (user, 2026-09-13)
+Blocked by: user's decision on ADR-0023
 Leaves runnable: yes — a tooltip pinned with Enter keeps showing the commit it was pinned on, through promotion, refresh and scrolling.
 
 Why: found in 27c. The pinned tooltip (34, ADR-0020) stores a row number. When the promotion swap (ADR-0008) re-sorts history, that row holds a different commit, so the pin silently shows the wrong commit's hash, author and message. **User decision (2026-09-13): a correctness bug, fixed in M1, not carried to the review.**
