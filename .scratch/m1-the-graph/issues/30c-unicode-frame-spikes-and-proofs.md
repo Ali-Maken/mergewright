@@ -24,6 +24,10 @@ Out: pixel byte cost (30b), 50k refs real read (30d), 1M claim (extrapolated, in
 ## Decision (debug vs release)
 Pending the user (asked 2026-09-13). Recommendation: assert frame budgets only under `--release`; debug heavy tier still runs them as measurements without asserting.
 
+Also covers 30d's remainder: first paint with 50k refs passes in release (57 ms) but is 494 ms in debug (three passes over 50k refs: resolve 195, references 85, tips 113 ms). If the user keeps debug asserts, that needs a shared ref read (new graft-git signatures) or an optimized-deps dev profile.
+
+**Until the user answers:** do scope items 1 and 4 (spike fix, benches), stop at seam (a) with a handoff note. Don't implement item 2 or the proofs that depend on it.
+
 ## Acceptance
 - [ ] Spike cause named with numbers; fix measured before/after.
 - [ ] All four `frames::` tests pass in the chosen build mode; each proven by tightening.

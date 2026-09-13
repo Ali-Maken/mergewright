@@ -1,6 +1,6 @@
 # m1-the-graph/30d — 50k refs: time the real ref read
 
-Status: done (release) — first paint 160 → 57 ms release meets 150 ms; debug 800 → 494 ms still misses, remainder needs a signature decision (KNOWN_GAPS)
+Status: done — release budget met (first paint with 50k refs 57 ms); debug 494 ms still over, folded into 30c's debug-vs-release decision
 Build with: **Opus** (high) — split from 30, same model
 Blocked by: 30
 Leaves runnable: yes — heavy tier times `refs::read` on a generated repo with 50k refs.
