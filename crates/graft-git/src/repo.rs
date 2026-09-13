@@ -16,6 +16,10 @@ use std::path::{Path, PathBuf};
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
 
+/// What each object a ref points straight at peeled to, so refs sharing a
+/// target are peeled once.
+type KnownTips = std::collections::HashMap<gix::ObjectId, Option<Oid>>;
+
 /// An open repository.
 ///
 /// Cheap to hold and cheap to clone within a process; opening one reads the
@@ -194,9 +198,10 @@ impl RepoHandle {
         let iter = platform.all().map_err(|why| read(Box::new(why)))?;
 
         let mut tips = Vec::new();
+        let mut known = KnownTips::new();
         for reference in iter {
             let mut reference = reference.map_err(read)?;
-            self.push_tip(&mut tips, &mut reference)?;
+            tips.extend(self.tip_of(&mut reference, &mut known)?);
         }
         // `HEAD` is not in the ref store's iteration, and on a detached
         // `HEAD` it is the only thing holding its commit. An unborn `HEAD`
@@ -211,8 +216,6 @@ impl RepoHandle {
         Ok(tips)
     }
 
-    /// Peels one ref to a commit and records it, ignoring refs that do not
-    /// name a commit at all.
     /// Every ref that reaches a commit, with the commit it peels to, sorted
     /// by full name.
     ///
@@ -233,6 +236,7 @@ impl RepoHandle {
         let platform = self.repo.references().map_err(|why| read(Box::new(why)))?;
         let iter = platform.all().map_err(|why| read(Box::new(why)))?;
         let mut found = Vec::new();
+        let mut known = KnownTips::new();
         for reference in iter {
             let mut reference = reference.map_err(read)?;
             let name = RefName::new(reference.name().as_bstr().to_vec()).map_err(|source| {
@@ -241,9 +245,7 @@ impl RepoHandle {
                     source,
                 }
             })?;
-            let mut tips = Vec::with_capacity(1);
-            self.push_tip(&mut tips, &mut reference)?;
-            if let Some(id) = tips.pop() {
+            if let Some(id) = self.tip_of(&mut reference, &mut known)? {
                 found.push((name, id));
             }
         }
@@ -284,24 +286,53 @@ impl RepoHandle {
         }
     }
 
-    fn push_tip(
+    /// The commit `reference` reaches, or `None` if it reaches none.
+    ///
+    /// Big repositories hold tens of thousands of refs naming far fewer
+    /// commits — a branch and its remote-tracking ref usually agree — so a
+    /// ref pointing straight at an object is answered once per object, from
+    /// `known`. And the object's header says whether it is a commit without
+    /// reading the commit: 30d measured reading every one as 3/4 of the
+    /// graph's first paint on 50k refs. Everything else (a symbolic ref, a
+    /// tag, a tree, a blob, a header that cannot be read) goes through
+    /// [`peel_commit`](Self::peel_commit), which gives the answer and the
+    /// errors this always gave.
+    fn tip_of(
         &self,
-        tips: &mut Vec<Oid>,
         reference: &mut gix::Reference<'_>,
-    ) -> Result<(), TipsError> {
-        match reference.peel_to_commit() {
-            Ok(commit) => {
-                let id = self.oid(commit.id().as_bytes())?;
-                tips.push(id);
-                Ok(())
+        known: &mut KnownTips,
+    ) -> Result<Option<Oid>, TipsError> {
+        let gix::refs::TargetRef::Object(target) = reference.target() else {
+            return self.peel_commit(reference);
+        };
+        let target = target.to_owned();
+        if let Some(tip) = known.get(&target) {
+            return Ok(*tip);
+        }
+        let tip = match self.repo.find_header(target) {
+            Ok(header) if header.kind() == gix::object::Kind::Commit => {
+                Some(self.oid(target.as_bytes())?)
             }
+            // Not a commit, or not readable this way: the full peel decides,
+            // and reports the failure if there is one.
+            Ok(_) | Err(_) => self.peel_commit(reference)?,
+        };
+        known.insert(target, tip);
+        Ok(tip)
+    }
+
+    /// Peels one ref all the way to a commit, reading objects as it goes;
+    /// `None` for a ref that names no commit at all.
+    fn peel_commit(&self, reference: &mut gix::Reference<'_>) -> Result<Option<Oid>, TipsError> {
+        match reference.peel_to_commit() {
+            Ok(commit) => Ok(Some(self.oid(commit.id().as_bytes())?)),
             // A tag on a tree or a blob, and `refs/notes/*`, peel to
             // something that is not a commit. Legal, and not a tip: `gix`
             // reports the object it stopped on, which is how "this ref has
             // no commit" is told apart from "this ref cannot be read".
             Err(gix::reference::peel::to_kind::Error::PeelObject(
                 gix::object::peel::to_kind::Error::NotFound { .. },
-            )) => Ok(()),
+            )) => Ok(None),
             Err(other) => Err(TipsError::Read {
                 git_dir: self.git_dir().to_path_buf(),
                 source: Box::new(other),

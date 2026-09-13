@@ -1,6 +1,6 @@
 # m1-the-graph/30d — 50k refs: time the real ref read
 
-Status: partial — fixture, timings, two fixes, guards done; graph first paint with 50k refs misses 150 ms (cause not found), split out
+Status: done (release) — first paint 160 → 57 ms release meets 150 ms; debug 800 → 494 ms still misses, remainder needs a signature decision (KNOWN_GAPS)
 Build with: **Opus** (high) — split from 30, same model
 Blocked by: 30
 Leaves runnable: yes — heavy tier times `refs::read` on a generated repo with 50k refs.
@@ -21,7 +21,7 @@ Out: frame budgets (30b, 30c).
 
 ## Acceptance
 - [x] Fixture in heavy tier only; numbers recorded (ticket 30 table); assertion proven (guards at 500 ms fail: 0.91 s read, 1.04 s paint; reverted to 1.5 s).
-- [ ] Gates pass.
+- [x] Gates pass.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo clippy --all-targets --features heavy-tests -- -D warnings` · `cargo test`; heavy tier alone.
@@ -39,3 +39,11 @@ Still failing (a measurement, like 30's frames tests): `heavy::budgets_hold_on_t
 Next step: time the jobs dispatched by `budget_run::open` on this fixture (OpenRepository, ReadHistory's tips via `commit_tips`/`peeled_references`, `Branches::resolve`) with temporary prints, as done here for `refs::read` (peel 424 ms debug alone). Suspect every ref peeled with an object lookup; packed-refs already carries `^` peeled lines. Also check whether 4 pool threads contend (refs job + history job both peel).
 
 Gotchas: fixture builds in ~25 s; run heavy tests alone with `--test-threads=1`, output to a file.
+
+## Continuation 1 (2026-09-13, builder-opus)
+
+Cause named with temporary timers in the history job (debug / release): `Branches::resolve` 205 / 25 ms, `references()` 85 / 7.5, seeds 35 / 3, **`commit_tips` 424 / 114**, `from_tips` 53 / 6. `commit_tips` peeled each of 50k refs with `peel_to_commit` (a full object read), for 25,543 distinct commits.
+Fix (graft-git `repo.rs`, private): `tip_of` memoises by direct target id and asks the object header whether it is a commit; symbolic refs, tags, trees, blobs and unreadable headers take the old full peel (same answers, same errors). Also serves `peeled_references`. Pinned by `repo::tests::refs_sharing_commits_or_naming_no_commit_peel_the_same_loose_or_packed` (green before and after). Red→green guard `many_refs::reading_tips_from_50k_real_refs_is_within_budget` (200 ms debug; red at 405 ms, green at 113-121 ms).
+One behaviour nuance: a ref whose commit object has a readable header but corrupt data is now a tip here instead of a read error; the walk still reads that commit and fails there.
+Heavy test alone: release 57 ms (passes); debug 494 ms (fails). Numbers in ticket 30's table.
+Not done (needs a decision, see KNOWN_GAPS): debug first paint. Remainder is three 50k-ref passes in unoptimised gix; fixing it means sharing one ref read across `Branches::resolve`, `references`, `commit_tips`: new signatures.

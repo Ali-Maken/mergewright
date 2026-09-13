@@ -86,6 +86,17 @@ After 30d: 50k refs read from a real repository (`Scale::HEAVY.with_commit_graph
 | graph first paint ≤ 150 ms | 800 ms (63 ms without the refs) | — | same | debug | **missed** |
 | graph first paint ≤ 150 ms | 160 ms (31 ms without the refs); peak RSS well under 300 MB | — | same | release | **missed (narrowly)** |
 
+30d continuation: the history job's start on 50k refs was mostly `commit_tips` (424 ms debug / 114 ms release of 800 / 155 ms): every ref read its commit object, though the 50k refs name 25,543 commits. Fixed without behaviour change (one peel per distinct target; an object header says "commit" without reading it; pinned by `refs_sharing_commits_or_naming_no_commit_peel_the_same_loose_or_packed`). Each run alone:
+
+| Budget | Measured | Tier | Fixture | Build | Result |
+|---|---|---|---|---|---|
+| `commit_tips` (guard 200 ms, red at 405 ms) | 424 ms → 113-121 ms | — | 100k cg + 50k refs | debug | guard holds |
+| `commit_tips` | 114 ms → (not re-timed alone; history start 155 → ~50 ms est.) | — | same | release | recorded |
+| `refs::read` (guard 1.5 s) | 0.91 s → 0.59 s | — | same | debug | guard holds |
+| open → graph + badges on screen (guard 1.5 s) | 1.04-1.10 s → 0.71 s | — | same | debug | guard holds |
+| graph first paint ≤ 150 ms | 800 ms → 494 ms (rest: `Branches::resolve` 195, second `references()` 85, seeds 35, tips 113, `from_tips` 37 — three passes over 50k refs in unoptimised gix) | — | same | debug | **missed** |
+| graph first paint ≤ 150 ms | 160 ms → 57 ms; peak RSS 189 MB | — | same | release | **met** |
+
 30d fixes (no behaviour change): `badges` checked each remote ref against a `Vec` of merged upstreams (quadratic, ~1.3 s debug); `ahead_behind` opened the commit graph before noticing an in-sync pair (~0.6 s debug over 25k branches).
 
 One-row scroll (`j`) frame: 64 KB, down from 364 KB; a transmit only when a strip enters the view. Details are in 30b.

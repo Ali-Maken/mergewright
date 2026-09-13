@@ -326,3 +326,72 @@ fn ahead_behind_counts_the_ref_states_branches() {
         }
     );
 }
+
+/// What `commit_tips` and `peeled_references` return when many refs share a
+/// commit and some refs name no commit at all — loose, then packed with
+/// git's peeled lines. Pins the answer so reading refs faster cannot change it
+/// (m1-the-graph/30d).
+#[test]
+fn refs_sharing_commits_or_naming_no_commit_peel_the_same_loose_or_packed() {
+    let fixture = Fixture::with_two_commits();
+    let head = fixture.rev_parse("HEAD");
+    let parent = fixture.rev_parse("HEAD~1");
+    let tree = fixture.rev_parse("HEAD^{tree}");
+    std::fs::write(fixture.root().join("loose.txt"), "a blob\n").expect("file writes");
+    let blob = fixture.git(&["hash-object", "-w", "loose.txt"]);
+    let current = fixture.git(&["symbolic-ref", "HEAD"]);
+    for (ref_name, target) in [
+        ("refs/heads/twin-a", &head),
+        ("refs/heads/twin-b", &head),
+        ("refs/remotes/origin/twin-a", &head),
+        ("refs/heads/older", &parent),
+        ("refs/tags/on-tree", &tree),
+        ("refs/tags/on-blob", &blob),
+    ] {
+        fixture.git(&["update-ref", ref_name, target]);
+    }
+    fixture.git(&["tag", "-a", "-m", "release", "release", &parent]);
+    fixture.git(&["tag", "-a", "-m", "a tree", "tree-tag", &tree]);
+    fixture.git(&["symbolic-ref", "refs/heads/alias", "refs/heads/older"]);
+
+    let hex = |id: &Oid| id.to_string();
+    let expected_peeled: Vec<(String, String)> = std::collections::BTreeMap::from([
+        ("refs/heads/alias".to_owned(), parent.clone()),
+        (current, head.clone()),
+        ("refs/heads/older".to_owned(), parent.clone()),
+        ("refs/heads/twin-a".to_owned(), head.clone()),
+        ("refs/heads/twin-b".to_owned(), head.clone()),
+        ("refs/remotes/origin/twin-a".to_owned(), head.clone()),
+        ("refs/tags/release".to_owned(), parent.clone()),
+    ])
+    .into_iter()
+    .collect();
+    let mut expected_tips = vec![head.clone(), parent.clone()];
+    expected_tips.sort();
+
+    for packed in [false, true] {
+        if packed {
+            fixture.git(&["pack-refs", "--all"]);
+        }
+        let repo = RepoHandle::open(fixture.root()).expect("the fixture opens");
+        let tips: Vec<String> = repo
+            .commit_tips()
+            .expect("tips read")
+            .iter()
+            .map(hex)
+            .collect();
+        assert_eq!(tips, expected_tips, "tips, packed: {packed}");
+        let peeled: Vec<(String, String)> = repo
+            .peeled_references()
+            .expect("refs read")
+            .iter()
+            .map(|(ref_name, id)| {
+                (
+                    String::from_utf8_lossy(ref_name.as_bytes()).into_owned(),
+                    hex(id),
+                )
+            })
+            .collect();
+        assert_eq!(peeled, expected_peeled, "peeled refs, packed: {packed}");
+    }
+}

@@ -95,3 +95,30 @@ fn first_paint_with_50k_real_refs_is_within_budget() {
         "first paint with badges took {first_paint:?}, over the {FIRST_PAINT_LIMIT:?} budget"
     );
 }
+
+/// Reading the walk's tips from 50k refs, the step the graph's first paint
+/// waits on. A debug-build guard: 30d measured 424 ms debug (114 ms release,
+/// three quarters of the history job's start) when every ref read and
+/// decoded its commit, though the 50k refs name only 25.5k commits.
+const TIPS_LIMIT: Duration = Duration::from_millis(200);
+
+#[test]
+fn reading_tips_from_50k_real_refs_is_within_budget() {
+    let repo = synthetic::borrow(FIFTY_THOUSAND_REFS).unwrap_or_else(|why| panic!("{why}"));
+    let turn = MEASURING.lock().unwrap_or_else(PoisonError::into_inner);
+    let store = RepoStore::new(repo.clone(), None);
+    let shared = store.shared().unwrap_or_else(|why| panic!("{why}"));
+    let handle = shared.handle();
+
+    let started = Instant::now();
+    let tips = handle.commit_tips().unwrap_or_else(|why| panic!("{why}"));
+    let read = started.elapsed();
+    drop(turn);
+
+    println!("commit_tips on 50k refs: {read:?} ({} tips)", tips.len());
+    assert!(tips.len() > 25_000, "every distinct tip is found");
+    assert!(
+        read <= TIPS_LIMIT,
+        "commit_tips took {read:?}, over the {TIPS_LIMIT:?} budget"
+    );
+}
