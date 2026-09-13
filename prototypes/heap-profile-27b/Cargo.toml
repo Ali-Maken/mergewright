@@ -1,0 +1,12 @@
+[package]
+name = "prof27b"
+version = "0.0.0"
+edition = "2024"
+[workspace]
+[dependencies]
+graft = { path = "../../crates/graft" }
+graft-core = { path = "../../crates/graft-core" }
+graft-git = { path = "../../crates/graft-git" }
+graft-fixtures = { path = "../../crates/graft-fixtures" }
+[profile.release]
+debug = true
