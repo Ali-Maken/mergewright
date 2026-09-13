@@ -17,6 +17,7 @@
 mod graphics;
 pub mod input;
 pub mod redetect;
+mod row_clear;
 pub mod signals;
 
 use std::io::{self, IsTerminal, Write};
@@ -25,7 +26,6 @@ use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, Sender};
 
 use graft_core::capabilities::Supported;
-use graft_core::event::Event;
 use graft_git::history::Order;
 use graft_graph::raster::cache::Flush;
 use graft_term::detect::{self, TtyHost};
@@ -43,6 +43,7 @@ use crate::update::{AppEvent, AppState, Command, Quit, Size, update};
 use crate::view::{view, view_with_graphics};
 use graphics::{Graphics, GraphicsReplies, NoReplies};
 use redetect::Redetector;
+use row_clear::RowClear;
 
 /// Begin a synchronized update: the terminal buffers what follows and paints
 /// it in one go (DEC 2026, DESIGN.md §4.1).
@@ -211,7 +212,9 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     let resizes = signals::watch_resizes(sender.clone(), redetector.clone())?;
     input::spawn_reader(inputs, sender, redetector)?;
 
-    let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
+    // Resizes clear row by row: a whole-screen clear frees Kitty image data
+    // in Ghostty, and every resize would retransmit the viewport (ADR-0012).
+    let mut terminal = Terminal::new(RowClear(CrosstermBackend::new(io::stdout())))?;
     // The first frame and the first row request are both sized from this. A
     // terminal sends no resize at startup, so without it the graph would ask
     // for, and draw, a single row until the window changed size.
@@ -520,9 +523,6 @@ where
             }
         };
 
-        if matches!(event, AppEvent::Core(Event::Resize { .. })) {
-            graphics.flush(Flush::Resize);
-        }
         let (next, commands) = update(&state, event);
         state = next;
 
@@ -805,16 +805,94 @@ mod tests {
         (graphics.strip_stats().flushes, frames)
     }
 
+    /// A pixel-tier run on `protocol` through `wakes`: every frame drawn,
+    /// the graphics state after, and how long each `draw` took.
+    fn pixel_frames(
+        protocol: graft_core::capabilities::PixelProtocol,
+        wakes: Vec<Wake>,
+    ) -> (Vec<String>, Graphics<NoReplies>, Vec<std::time::Duration>) {
+        let (mut terminal, recorder) = terminal(PIXEL_COLUMNS, PIXEL_ROWS);
+        let (mut session, mut state) = at_pixel_tier();
+        session.capabilities.pixel_protocol = Some(protocol);
+        let mut graphics = Graphics::new(NoReplies);
+        let mut times = Vec::new();
+        let started = std::time::Instant::now();
+        draw(&mut terminal, &session, &state, &mut graphics).expect("memory");
+        times.push(started.elapsed());
+        for wake in wakes {
+            let Wake::Event(event) = wake else {
+                panic!("only events are scripted here");
+            };
+            state = update(&state, event).0;
+            let started = std::time::Instant::now();
+            draw(&mut terminal, &session, &state, &mut graphics).expect("memory");
+            times.push(started.elapsed());
+        }
+        let end = String::from_utf8_lossy(END_SYNCHRONIZED_UPDATE).into_owned();
+        let frames = recorder.written().split(&end).map(str::to_owned).collect();
+        (frames, graphics, times)
+    }
+
     #[test]
-    fn a_resize_flushes_the_strips_and_re_sends_them() {
-        let (flushes, frames) = pixel_flushes(vec![resized(PIXEL_COLUMNS, PIXEL_ROWS), quit_key()]);
-        assert_eq!(flushes, 1);
+    fn a_resize_re_places_strips_without_retransmitting_them() {
+        use graft_core::capabilities::PixelProtocol;
+        let (_, still, _) = pixel_frames(PixelProtocol::Kitty, vec![]);
+        let (frames, graphics, times) = pixel_frames(
+            PixelProtocol::Kitty,
+            vec![resized(PIXEL_COLUMNS - 20, PIXEL_ROWS - 4)],
+        );
         assert!(!transmitted(&frames[0]).is_empty());
         assert!(
-            !transmitted(&frames[1]).is_empty(),
-            "after the resize's clear every strip goes again: {:?}",
+            transmitted(&frames[1]).is_empty(),
+            "a resize transmits nothing: {:?}",
             frames[1]
         );
+        assert!(frames[1].contains("a=p,"), "the strips are placed again");
+        assert_eq!(graphics.strip_stats().flushes, 0);
+        assert_eq!(
+            graphics.strip_stats().rasterised,
+            still.strip_stats().rasterised,
+            "no strip rasterised again"
+        );
+        // Measured, not asserted: a debug build without a terminal's write
+        // cost (m1-the-graph/25 reports the release numbers).
+        eprintln!(
+            "kitty first frame {:?}, resize frame {:?}",
+            times[0], times[1]
+        );
+    }
+
+    #[test]
+    fn iterm2_resends_every_band_but_encodes_an_unchanged_one_once() {
+        use graft_core::capabilities::PixelProtocol;
+        let (frames, graphics, times) = pixel_frames(
+            PixelProtocol::Iterm2,
+            vec![
+                resized(PIXEL_COLUMNS, PIXEL_ROWS),
+                resized(PIXEL_COLUMNS - 20, PIXEL_ROWS),
+            ],
+        );
+        let bands = frames[0].matches("\x1b]1337;File=").count();
+        assert!(bands > 0, "{:?}", frames[0]);
+        assert_eq!(frames[1].matches("\x1b]1337;File=").count(), bands);
+        assert_eq!(frames[2].matches("\x1b]1337;File=").count(), bands);
+        assert_eq!(
+            graphics.bands_encoded(),
+            u64::try_from(bands).unwrap(),
+            "re-sent twice, encoded once"
+        );
+        assert!(!frames[1].contains("a=t,"), "no Kitty bytes on iTerm2");
+        eprintln!(
+            "iterm2 first frame {:?}, unchanged frame {:?}, resize frame {:?}",
+            times[0], times[1], times[2]
+        );
+    }
+
+    #[test]
+    fn the_loop_no_longer_flushes_strips_on_a_resize() {
+        let (flushes, frames) = pixel_flushes(vec![resized(PIXEL_COLUMNS, PIXEL_ROWS), quit_key()]);
+        assert_eq!(flushes, 0);
+        assert!(transmitted(&frames[1]).is_empty(), "{:?}", frames[1]);
     }
 
     #[test]

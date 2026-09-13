@@ -252,3 +252,21 @@ Still unmeasured on real iTerm2: frame cost with write back-pressure
 included. The ~8.3 ms above is pty CPU time, and a per-frame re-send of
 ~60 KB is the one tier where write cost could dominate. Bench it there in
 M1 before trusting the number.
+
+### Resize without retransmitting (m1-the-graph/25, 2026-09-13)
+
+What frees the uploads is `ESC[2J`, not the resize. Checked in a real
+Ghostty 1.3.1 (`crates/graft/examples/kitty_check.rs`, report
+`docs/shots/25-kitty-resize-check-report.txt`): every row erased with
+`ESC[2K`, then placements only — 0 errors; a full `ESC[2J`, then placements
+only — one `ENOENT` per strip. ratatui clears with `ESC[2J` on a size
+change, so the app's backend (`event_loop::row_clear::RowClear`) turns that
+clear into per-row erases. A resize now re-places uploaded strips and
+rasterises only strips whose cache key changed; the loop no longer flushes
+the strip cache on resize (lane columns are in the layout hash). Measured in
+memory, release build: resize frame 0.30 ms (Kitty), 0.25 ms (iTerm2) —
+terminal write cost excluded.
+
+iTerm2 bands are cached by (strip pixels, crop, cell rectangle): a frame
+whose bands did not change re-sends the stored bytes and encodes nothing.
+

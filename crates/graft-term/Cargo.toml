@@ -12,6 +12,9 @@ graft-core.workspace = true
 # the real terminal (`detect::tty`). No crate wraps those three without also
 # owning the event loop, which `app` owns.
 libc = "0.2"
+# PNG for iTerm2 inline images (OSC 1337 takes a file, not raw RGBA).
+# `Compression::Fast` because encode time is frame budget (ADR-0012).
+png = { version = "0.18", default-features = false }
 
 [dev-dependencies]
 # Property tests for the sanitiser (PROMPT.md §7.1 mandates `proptest` and

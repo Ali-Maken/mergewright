@@ -168,7 +168,7 @@ One line per public item. Update when a public item changes.
 ## view
 - `view` (fn) — draw the current state to a frame: the graph screen, or the status screen.
 - `view_with_graphics` (fn) — `view`, plus the gfx status in the header at the pixel tier; returns the graph rect the images go in, `None` when no pixels this frame.
-- `draws_pixels` (fn) — graph screen, pixel tier (override else session), Kitty protocol — or no acked protocol at all (forced `pixel` attempts Kitty, m1-the-graph/24d).
+- `draws_pixels` (fn) — graph screen, pixel tier (override else session), Kitty or iTerm2 protocol — or no acked protocol at all (forced `pixel` attempts Kitty, m1-the-graph/24d).
 - `graph_view` (fn) — build a `GraphView` from the history window, cursor and status; the selection's `Ancestry` over the window lights lanes, fades rows in Focus mode, and pins its columns against folding.
 - `status_view` (fn) — build a `StatusView` from session and app state.
 
@@ -181,7 +181,7 @@ One line per public item. Update when a public item changes.
 - `ChannelWakes` (struct) — the real wake source: one channel, two feeder threads.
 - `ChannelWakes::new` (fn) — build the channel and the sender its producers clone.
 - `run` (fn) — run the event loop for a session, start to `Exit`.
-- `pump` (fn) — drive the loop; testable independent of a real terminal. Draws Kitty strips at the pixel tier, drains image replies each wake, frees every upload on exit (m1-the-graph/24c). Theme/cell-size changes flush the strip cache; a resize also forgets uploads so the frame after ratatui's clear retransmits (24d).
+- `pump` (fn) — drive the loop; testable independent of a real terminal. Draws Kitty strips at the pixel tier, drains image replies each wake, frees every upload on exit (m1-the-graph/24c). Theme/cell-size changes flush the strip cache; a resize flushes nothing and retransmits nothing — strips re-place, only changed keys rasterise (25). iTerm2 protocol: bands re-sent per frame, encoded once (25).
 
 ## event_loop::signals
 - `WATCHED` (const) — signals watched: SIGINT, SIGTERM, SIGHUP.

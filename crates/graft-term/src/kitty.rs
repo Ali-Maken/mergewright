@@ -323,7 +323,7 @@ fn write_command(out: &mut Vec<u8>, control: std::fmt::Arguments<'_>, payload: &
 }
 
 /// Premultiplied RGBA to the straight alpha `f=32` means.
-fn straight_alpha(pixels: &[u8]) -> Vec<u8> {
+pub(crate) fn straight_alpha(pixels: &[u8]) -> Vec<u8> {
     let mut straight = Vec::with_capacity(pixels.len());
     for &[red, green, blue, alpha] in pixels.as_chunks::<4>().0 {
         let channel = |value: u8| {
@@ -341,7 +341,7 @@ fn straight_alpha(pixels: &[u8]) -> Vec<u8> {
 }
 
 /// Standard base64 with padding.
-fn base64(input: &[u8], out: &mut Vec<u8>) {
+pub(crate) fn base64(input: &[u8], out: &mut Vec<u8>) {
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     for group in input.chunks(3) {
         let bits = group.iter().enumerate().fold(0u32, |bits, (at, byte)| {

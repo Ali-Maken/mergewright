@@ -11,10 +11,12 @@
 //!
 //! 1. first frame: transmit two strips and place them;
 //! 2. scroll: the same uploads re-cropped (no transmit);
-//! 3. resize: a full clear (what ratatui does on a size change), then
-//!    `forget_uploads`, then a frame that must transmit again;
+//! 3. resize: rows erased one by one (the app's resize clear since
+//!    m1-the-graph/25), then a frame that only re-places — no transmit;
 //! 4. tier drop: `hide` every placement;
-//! 5. exit: `free_all`.
+//! 5. controls: a missing id must ENOENT; a full `ESC[2J` then placements
+//!    only shows whether the clear freed the uploads;
+//! 6. exit: `free_all`.
 //!
 //! After each step a DA1 query (`CSI c`) fences the replies: everything the
 //! terminal says about images before the DA1 answer belongs to that step.
@@ -101,11 +103,12 @@ fn check() -> io::Result<(String, Vec<u8>)> {
         &mut capture,
     )?);
 
-    let mut out = b"\x1b[2J".to_vec();
-    images.forget_uploads();
+    // What the app's resize does since m1-the-graph/25: rows erased one by
+    // one (`ESC[2K`, never `ESC[2J`), uploads kept, strips only re-placed.
+    let mut out = erase_rows(2 * ROWS + 2);
     out.extend_from_slice(&frame(&mut images, &strips, 0));
     steps.push(run_step(
-        "clear + retransmit",
+        "erase rows + replace",
         &out,
         &mut stdout,
         &input,
@@ -116,16 +119,7 @@ fn check() -> io::Result<(String, Vec<u8>)> {
     images.hide(&mut out);
     steps.push(run_step("hide", &out, &mut stdout, &input, &mut capture)?);
 
-    // Control: a placement of an image never sent must come back as one
-    // ENOENT. Proves the fence hears errors, so zero above means zero.
-    let out = b"\x1b_Ga=p,i=999999,p=1,q=1\x1b\\".to_vec();
-    let control = run_step(
-        "control: missing id",
-        &out,
-        &mut stdout,
-        &input,
-        &mut capture,
-    )?;
+    let (control, cleared) = controls(&mut images, &strips, &mut stdout, &input, &mut capture)?;
 
     let mut out = Vec::new();
     images.free_all(&mut out);
@@ -138,7 +132,45 @@ fn check() -> io::Result<(String, Vec<u8>)> {
         &mut capture,
     )?);
 
-    Ok((report(&steps, &control), capture))
+    Ok((report(&steps, &control, &cleared), capture))
+}
+
+/// The two controls: a placement of a never-sent id, and a full clear
+/// followed by placements only. Replies to the second are answered, so the
+/// exit step frees only what the terminal still holds.
+fn controls(
+    images: &mut KittyImages,
+    strips: &[Arc<RasterFrame>; 2],
+    stdout: &mut impl Write,
+    input: &Receiver<Vec<u8>>,
+    capture: &mut Vec<u8>,
+) -> io::Result<(Step, Step)> {
+    // Control: a placement of an image never sent must come back as one
+    // ENOENT. Proves the fence hears errors, so zero above means zero.
+    let out = b"\x1b_Ga=p,i=999999,p=1,q=1\x1b\\".to_vec();
+    let control = run_step("control: missing id", &out, stdout, input, capture)?;
+
+    // Second control: a full clear, then placements only. Ghostty frees
+    // image data on `ESC[2J` (ADR-0012), so this should hear an ENOENT per
+    // strip: the reason the app's resize erases rows instead.
+    let mut out = b"\x1b[2J".to_vec();
+    out.extend_from_slice(&frame(images, strips, 0));
+    let cleared = run_step("control: full clear", &out, stdout, input, capture)?;
+    for reply in &cleared.replies {
+        images.answer(reply);
+    }
+
+    Ok((control, cleared))
+}
+
+/// `ESC[2K` on each of the first `rows` screen rows, as the app's resize
+/// clear does.
+fn erase_rows(rows: usize) -> Vec<u8> {
+    let mut out = Vec::new();
+    for row in 1..=rows {
+        out.extend_from_slice(format!("\x1b[{row};1H\x1b[2K").as_bytes());
+    }
+    out
 }
 
 /// The commands showing both strips with `scroll` rows cropped off the top.
@@ -278,7 +310,7 @@ fn stripes(seed: u8) -> RasterFrame {
     }
 }
 
-fn report(steps: &[Step], control: &Step) -> String {
+fn report(steps: &[Step], control: &Step, cleared: &Step) -> String {
     let errors: usize = steps
         .iter()
         .map(|step| step.replies.iter().filter(|reply| reply.is_error()).count())
@@ -294,7 +326,7 @@ fn report(steps: &[Step], control: &Step) -> String {
         "kitty_check: TERM={term} TERM_PROGRAM={program} {version}"
     )
     .ok();
-    for step in steps.iter().chain([control]) {
+    for step in steps.iter().chain([control, cleared]) {
         writeln!(
             text,
             "{:<20} transmits {:>2}  placements {:>2}  replies {:>2}  errors {:>2}  {}",
@@ -327,6 +359,16 @@ fn report(steps: &[Step], control: &Step) -> String {
     writeln!(
         text,
         "{verdict}: {errors} error replies, {silent} unfenced steps; control heard {heard} ENOENT (want 1)"
+    )
+    .ok();
+    let freed = cleared
+        .replies
+        .iter()
+        .filter(|reply| reply.is_missing_image())
+        .count();
+    writeln!(
+        text,
+        "full clear then place: {freed} ENOENT of 2 placements (2 = the clear freed the uploads)"
     )
     .ok();
     text

@@ -4,6 +4,7 @@ One line per public item. Update when a public item changes.
 ## lib.rs
 - `detect` (mod) — terminal capability detection and the rendering tier.
 - `input` (mod) — the one reader of stdin: keys to events, replies to waiters.
+- `iterm2` (mod) — iTerm2 inline images (OSC 1337): bands re-sent per frame, PNG encoded once per (strip, crop, cells).
 - `kitty` (mod) — Kitty graphics protocol: strips to bytes, error replies back (ADR-0012 rules).
 - `sanitize` (mod) — repo-derived text made safe to draw.
 - `SanitizedText`, `sanitize`, `sanitize_line`, `sanitize_path`, `sanitize_path_bytes` (re-exports) — see `sanitize`.
@@ -47,6 +48,13 @@ One line per public item. Update when a public item changes.
 - `CellRect` (struct) — zero-based cell rectangle: `column`, `row`, `columns`, `rows` (0 = crop's rows).
 - `GraphicsReply` (struct) — `image`, `placement`, `message` (controls replaced); `is_error`, `is_missing_image`.
 - `replies` (fn) — every APC graphics reply in a byte buffer; other replies skipped.
+
+## iterm2
+- `ItermImages` (struct) — encoded bands kept for re-sending; erases last frame's cells (`ECH`) before writing.
+- `ItermImages::new` (fn) — keep at most `capacity` encoded bands (current frame's always kept).
+- `ItermImages::frame` (fn) — erase covered cells, write each `Place` at its cell (`doNotMoveCursor=1`); `io::Error` on a bad crop.
+- `ItermImages::hide` (fn) — erase every cell the last frame covered; bands stay encoded.
+- `ItermImages::encoded` (fn) — PNG encodes so far (an unchanged re-send does not count).
 
 ## sanitize
 - `SanitizedText` (struct) — text proven free of escape and control sequences.

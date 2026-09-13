@@ -1468,6 +1468,7 @@ dependencies = [
  "graft-core",
  "graft-fixtures",
  "libc",
+ "png",
  "proptest",
 ]
 

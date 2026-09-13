@@ -55,7 +55,7 @@ pub fn view(session: &Session, state: &AppState, frame: &mut Frame) {
 }
 
 /// Whether this frame's graph is drawn in pixels: the graph screen, at the
-/// pixel tier, over the Kitty protocol (iTerm2 is ticket 25).
+/// pixel tier, over the Kitty protocol or iTerm2 inline images.
 ///
 /// `graph.renderer = pixel` on a terminal that never acked any image
 /// protocol attempts Kitty anyway (DESIGN.md §4.2: config wins, and silence
@@ -66,7 +66,7 @@ pub fn draws_pixels(session: &Session, state: &AppState) -> bool {
         && state.renderer_override.unwrap_or(session.rendering.tier) == RenderingTier::Pixel
         && matches!(
             session.capabilities.pixel_protocol,
-            Some(PixelProtocol::Kitty) | None
+            Some(PixelProtocol::Kitty | PixelProtocol::Iterm2) | None
         )
 }
 

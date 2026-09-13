@@ -1,0 +1,18 @@
+graft iTerm2 tier under a pty: 100x30, then SIGWINCH at 80x30, then q
+ESC[2J anywhere in the stream: 0
+
+frame  0 (before resize): 0 bands, png bytes [], cells [], 2K rows 0, ECH 0
+frame  1 (before resize): 0 bands, png bytes [], cells [], 2K rows 0, ECH 0
+frame  2 (before resize): 0 bands, png bytes [], cells [], 2K rows 0, ECH 0
+frame  3 (before resize): 0 bands, png bytes [], cells [], 2K rows 0, ECH 0
+frame  4 (before resize): 0 bands, png bytes [], cells [], 2K rows 0, ECH 0
+frame  5 (before resize): 0 bands, png bytes [], cells [], 2K rows 0, ECH 0
+frame  6 (before resize): 0 bands, png bytes [], cells [], 2K rows 0, ECH 0
+frame  7 (before resize): 0 bands, png bytes [], cells [], 2K rows 0, ECH 0
+frame  8 (before resize): 0 bands, png bytes [], cells [], 2K rows 0, ECH 0
+frame  9 (before resize): 0 bands, png bytes [], cells [], 2K rows 0, ECH 0
+frame 10 (before resize): 0 bands, png bytes [], cells [], 2K rows 0, ECH 0
+frame 11 (before resize): 0 bands, png bytes [], cells [], 2K rows 0, ECH 0
+frame 12 (before resize): 1 bands, png bytes [6437], cells ['width=2;height=28'], 2K rows 0, ECH 0
+frame 13 (after resize): 1 bands, png bytes [6437], cells ['width=2;height=28'], 2K rows 60, ECH 28
+frame 14 (after q): 0 bands, png bytes [], cells [], 2K rows 0, ECH 0

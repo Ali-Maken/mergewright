@@ -1,5 +1,6 @@
-//! The pixel tier's output: Kitty images placed in the graph column, and the
-//! terminal's replies about them (ticket m1-the-graph/24c, ADR-0012).
+//! The pixel tier's output: Kitty images or iTerm2 inline images placed in
+//! the graph column, and the terminal's replies about them (tickets
+//! m1-the-graph/24c and 25, ADR-0012).
 //!
 //! Every command goes out with `q=1`, so the terminal answers only failures.
 //! Those replies reach the loop through the input mux like any other; each
@@ -11,9 +12,11 @@ use std::ops::Range;
 use std::sync::Arc;
 use std::time::Instant;
 
+use graft_core::capabilities::PixelProtocol;
 use graft_core::raster::RasterFrame;
 use graft_graph::raster::cache::{Flush, STRIP_ROWS, StripCache};
 use graft_term::input::ReplyWaiter;
+use graft_term::iterm2::ItermImages;
 use graft_term::kitty::{self, CellRect, KittyImages, Place};
 use graft_term::sanitize_line;
 use graft_ui::graph_screen::GraphicsStatus;
@@ -63,6 +66,7 @@ impl GraphicsReplies for NoReplies {
 #[derive(Debug)]
 pub struct Graphics<R> {
     images: KittyImages,
+    bands: ItermImages,
     strips: StripCache,
     replies: R,
     status: GraphicsStatus,
@@ -73,6 +77,7 @@ impl<R: GraphicsReplies> Graphics<R> {
     pub fn new(replies: R) -> Self {
         Graphics {
             images: KittyImages::new(STRIPS_KEPT),
+            bands: ItermImages::new(STRIPS_KEPT),
             strips: StripCache::new(STRIP_ROWS, STRIPS_KEPT),
             replies,
             status: GraphicsStatus::Ok,
@@ -112,6 +117,7 @@ impl<R: GraphicsReplies> Graphics<R> {
     ) {
         let Some(graph) = graph.filter(|area| !area.is_empty()) else {
             self.images.hide(out);
+            self.bands.hide(out);
             return;
         };
         let top = state.history.as_ref().map_or(0, |history| history.top);
@@ -154,18 +160,24 @@ impl<R: GraphicsReplies> Graphics<R> {
                 },
             })
             .collect();
-        self.images.frame(&places, out);
+        if session.capabilities.pixel_protocol == Some(PixelProtocol::Iterm2) {
+            if let Err(why) = self.bands.frame(&places, out) {
+                self.status = GraphicsStatus::Failed(sanitize_line(&why.to_string()));
+            }
+        } else {
+            self.images.frame(&places, out);
+        }
     }
 
-    /// Throw away every rasterised strip: the theme, the cell size or the
-    /// window changed. A resize also forgets every upload, because ratatui
-    /// clears the whole screen on a size change and Ghostty frees image data
-    /// on that clear (ADR-0012, Correction): the next frame transmits again
-    /// instead of placing images the terminal no longer holds.
+    /// Throw away every rasterised strip: the theme or the cell size
+    /// changed, so every strip's pixels did.
+    ///
+    /// A resize is not a reason. A strip's pixels depend on its rows, lane
+    /// columns (in the layout hash), theme and cell size — not the window —
+    /// so a resize re-places what it can and rasterises only strips whose key
+    /// changed. Uploads survive it too: the loop's backend clears row by row
+    /// (`row_clear`), never with the `ESC[2J` Ghostty frees image data on.
     pub fn flush(&mut self, why: Flush) {
-        if matches!(why, Flush::Resize) {
-            self.images.forget_uploads();
-        }
         self.strips.flush(why);
     }
 
@@ -173,6 +185,12 @@ impl<R: GraphicsReplies> Graphics<R> {
     #[cfg(test)]
     pub fn strip_stats(&self) -> graft_graph::raster::cache::CacheStats {
         self.strips.stats()
+    }
+
+    /// PNG encodes on the iTerm2 tier, for tests.
+    #[cfg(test)]
+    pub fn bands_encoded(&self) -> u64 {
+        self.bands.encoded()
     }
 
     /// Append the commands deleting every upload. Call once, leaving.
