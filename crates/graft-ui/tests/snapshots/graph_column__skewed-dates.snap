@@ -1,0 +1,21 @@
+---
+source: crates/graft-ui/tests/graph_column.rs
+expression: text
+---
+shape: skewed-dates (dark = light, asserted), truecolor
+
+  ●   ..d.  7144678  feature: build on the fast commit
+  ●   ..d.  f579e57  Commit from a fast clock
+◆ │   c.d.  220859a  Main 12
+● │   c.d.  cfad0c5  Main 11
+● │   c.d.  6bb1f97  Main 10
+● │   c.d.  cf41cfe  Main 09
+● │   c.d.  54daf1d  Main 08
+● │   c.d.  00fbefc  Main 07
+● │   c.d.  82e17d4  Main 06
+● │   c.d.  ebe9ef1  Main 05
+● │   c.d.  1cce4e1  Main 04
+● │   c.d.  1305908  Main 03
+● │   c.d.  d8f8975  Main 02
+● │   c.d.  ec05a04  Main 01
+  ◇   ..d.  68d5d19  Add the base

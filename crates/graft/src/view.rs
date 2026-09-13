@@ -19,14 +19,14 @@ use graft_term::{SanitizedText, sanitize, sanitize_line, sanitize_path, sanitize
 use graft_ui::graph_column::{GraphLine, NodeKind, RowPaint};
 use graft_ui::graph_screen::{
     AuthorChip, Badge, BadgeKind, Compaction, Filters, GraphEntry, GraphScreen, GraphView,
-    SHA_WIDTH, Tracking, WalkView, initials, relative_date, short_sha,
+    OrderNotice, SHA_WIDTH, Tracking, WalkView, initials, relative_date, short_sha,
 };
 use graft_ui::status_screen::{
     HeadView, HistoryState, HistoryView, RepositoryView, StatusScreen, StatusView,
 };
 use ratatui::Frame;
 
-use crate::history::{History, Phase};
+use crate::history::{History, Phase, Promotion, WalkFacts};
 use crate::refs::{RefBadges, RefLabel, Upstream};
 use crate::repository::{Head, RepositoryFacts};
 use crate::session::Session;
@@ -84,6 +84,7 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
             compaction: Compaction::at(crate::config::DEFAULT_MAX_LANES),
             filters: Filters::default(),
             tooltip: None,
+            order: None,
         };
     };
 
@@ -117,7 +118,23 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
             focused: state.focus,
         },
         tooltip: tooltip_view(state, history),
+        order: order_notice(history),
     }
+}
+
+/// What the header says about the order the rows are in (ADR-0008): nothing
+/// once they are in the order asked for; while commit-date order stands in
+/// for a topological one, that it is being sorted — or, once the sort is
+/// stopped or has failed, that the order stays as it is.
+pub(crate) fn order_notice(history: &History) -> Option<OrderNotice> {
+    let provisional = history.walk.as_ref().is_some_and(WalkFacts::is_provisional);
+    if !provisional {
+        return None;
+    }
+    Some(match history.promotion {
+        Some(Promotion::Kept) => OrderNotice::Provisional,
+        Some(Promotion::Sorting | Promotion::Swapping { .. }) | None => OrderNotice::Sorting,
+    })
 }
 
 /// The commit tooltip, if one is open: hover and the keyboard both leave
@@ -623,6 +640,7 @@ mod tests {
                 laid_out: rows.len(),
                 done: true,
                 rows: rows.into(),
+                promoted: false,
             }),
             rows: usize::from(count),
             phase: Phase::Complete,

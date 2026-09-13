@@ -124,6 +124,19 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     // Taken apart here: `run` consumes the startup facts, and the two halves
     // are used at opposite ends of the function.
     let Startup { repo_path, config } = startup;
+    // One repository, opened once and shared by every job that follows
+    // (`crate::repos`). Opened *before* the terminal is touched: a path that
+    // is not a repository is a plain line on a plain terminal, never an
+    // alternate screen flashed for the length of the capability probe.
+    // `graph.default_branch` is ADR-0001's rule 1, so it goes where the
+    // branches are resolved.
+    let repos = Arc::new(RepoStore::new(
+        repo_path.clone(),
+        config.config.graph.default_branch.clone(),
+    ));
+    if let Err(error) = repos.shared() {
+        return Ok(Exit::Fatal(error.to_string()));
+    }
     // Kitty keyboard is deliberately off here and pushed below instead:
     // whether the terminal speaks the protocol is something only the probe
     // knows, and the probe needs the raw mode this session turns on.
@@ -141,15 +154,6 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
 
     let (mut wakes, sender) = ChannelWakes::new();
     let signals = signals::watch(sender.clone())?;
-    // One repository, opened once and shared by every job that follows
-    // (`crate::repos`). Built here rather than inside the pool so that its
-    // lifetime is the session's, not a job's.
-    // `graph.default_branch` is ADR-0001's rule 1, so it goes where the branches
-    // are resolved.
-    let repos = Arc::new(RepoStore::new(
-        repo_path.clone(),
-        config.config.graph.default_branch.clone(),
-    ));
     let jobs = JobRunner::with_default_size(sender.clone(), repos)?;
     input::spawn_reader(sender)?;
 

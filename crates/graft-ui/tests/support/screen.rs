@@ -50,5 +50,6 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
         compaction: Compaction::at(8),
         filters: Filters::default(),
         tooltip: None,
+        order: None,
     }
 }

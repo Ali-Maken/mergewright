@@ -481,6 +481,25 @@ impl<S: JobEvents> JobRunner<S> {
     }
 }
 
+impl<S: JobEvents> JobRunner<S> {
+    /// Sorts the whole range topologically off the loop's thread, for a walk
+    /// whose order is provisional (ADR-0008).
+    fn promote_history(&self) {
+        let repos = Arc::clone(&self.repos);
+        self.announce(Task::PromoteHistory, move |cancel| {
+            let stop = || cancel.is_cancelled();
+            if stop() {
+                return Outcome::Cancelled;
+            }
+            match history::topological_order(&repos, &stop) {
+                Ok(Some(order)) => Outcome::Produced(Product::TopologicalOrder(order)),
+                Ok(None) => Outcome::Cancelled,
+                Err(message) => Outcome::Failed(message),
+            }
+        });
+    }
+}
+
 impl<S: JobEvents> Dispatch for JobRunner<S> {
     fn dispatch(&self, command: Command) {
         match command {
@@ -512,6 +531,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
                     Outcome::Produced(Product::WorkingTree(crate::working_tree::read(&repos)))
                 });
             }
+            Command::PromoteHistory => self.promote_history(),
             Command::ReadHistory(order) => {
                 let repos = Arc::clone(&self.repos);
                 let sink = self.sink.clone();

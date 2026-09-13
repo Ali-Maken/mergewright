@@ -56,8 +56,8 @@ One line per public item. Update when a public item changes.
 ## update
 - `AppEvent` (enum) — events fed into `update`, including job products.
 - `Progress` (enum) — what a running job hands over before it ends.
-- `Task` (enum) — jobs identified so their results can be told apart from stray ones; `ReadRefs` reads the badges; `ReadWorkingTree` reads working-tree status counts.
-- `Product` (enum) — what a job brought back; `Refs` carries `RefBadges` or why they failed; `WorkingTree` carries `WorkingTreeCounts` or why they failed.
+- `Task` (enum) — jobs identified so their results can be told apart from stray ones; `ReadRefs` reads the badges; `ReadWorkingTree` reads working-tree status counts; `PromoteHistory` sorts for ADR-0008 promotion.
+- `Product` (enum) — what a job brought back; `Refs` carries `RefBadges` or why they failed; `WorkingTree` carries `WorkingTreeCounts` or why they failed; `TopologicalOrder` carries a sort's order.
 - `GitCheck` (enum) — what running `git --version` found.
 - `AppState` (struct) — the whole app state.
 - `AppState::quit` (field) — set when Graft is leaving; terminal restored before reporting.
@@ -67,6 +67,7 @@ One line per public item. Update when a public item changes.
 - `AppState::repository` (field) — repository facts once the opening job answers.
 - `AppState::system_git` (field) — system git check result once that job answers.
 - `AppState::awaiting` (field) — job id whose result is still wanted; stale ones dropped.
+- `AppState::promoting` (field) — the topological sort still wanted; any other sort's order is dropped.
 - `AppState::history` (field) — the history walk shown on screen, if one was asked for.
 - `AppState::refs` (field) — refs on each commit, once the refs job answers.
 - `AppState::working_tree` (field) — working-tree status counts, once that job answers.
@@ -82,7 +83,7 @@ One line per public item. Update when a public item changes.
 - `Size` (struct) — terminal size in character cells.
 - `Size::columns` (field) — width in character cells.
 - `Size::rows` (field) — height in character cells.
-- `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows; `ReadRefs` reads refs and ahead/behind off the loop's thread; `ReadWorkingTree` reads working-tree status counts off the loop's thread.
+- `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows; `ReadRefs` reads refs and ahead/behind off the loop's thread; `ReadWorkingTree` reads working-tree status counts off the loop's thread; `PromoteHistory` sorts a provisional walk's range topologically.
 - `CHROME_ROWS` (const) — screen rows that are not the graph; `graft_ui::graph_screen::CHROME_ROWS`.
 - `AppState::graph_rows` (fn) — history rows the graph pane shows at the current size; never zero.
 - `update` (fn) — the pure state transition function.
@@ -195,10 +196,13 @@ One line per public item. Update when a public item changes.
 - `WalkFacts::is_provisional` (fn) — is this order one the user should be told isn't final?
 - `Wanted` (enum) — rows a request names: `Rows(range)` or `Last(n)` (walks to the end first).
 - `View` (struct) — `follow` (every parent / first-parent) and `inclusion` (folded merges, hidden stashes).
-- `RowRequest` (struct) — `id` (increasing; only the newest answer is wanted), `wanted`, and the `view` they are wanted in.
-- `Views` (struct) — one `StreamingLayout<Included<_>>` per `Follow`, opened on first ask; `Views::new`, `Views::layout` (opens or re-includes).
-- `Open` (type) — boxed closure opening a fresh source over the same walk.
-- `Window` (struct) — rows answering one request: `request`, `first`, `rows`, `laid_out`, `done`; `end()`.
+- `RowRequest` (struct) — `id` (increasing; only the newest answer is wanted), `wanted`, the `view` they are wanted in, and `promote` while a promotion swaps in.
+- `Promote` (struct) — a topological `order` to swap to, the selection's `anchor` and the viewport `height`; the worker lays the new layout out to the anchor before swapping (ADR-0008).
+- `Promotion` (enum) — where promoting to topological order is: `Sorting`, `Swapping { order, anchor }`, `Kept` (stopped or failed; order stays provisional).
+- `topological_order` (fn) — the whole range in strict topological order (a job's work); `Ok(None)` when stopped.
+- `Views` (struct) — one `StreamingLayout<Included<_>>` per `Follow`, opened on first ask; `Views::new`, `Views::layout` (opens or re-includes), `Views::promote` (lay a promoted order out to the anchor, then swap; idempotent).
+- `Open` (type) — boxed closure opening a fresh source over the same walk, or over a promoted order when given one.
+- `Window` (struct) — rows answering one request: `request`, `first`, `rows`, `laid_out`, `done`, `promoted` (the first answer in a promoted order); `end()`.
 - `HistoryUpdate` (enum) — what a walk tells the screen: `Started(facts)`, `Progress { request, laid_out }`, `Window(window)`.
 - `Phase` (enum) — where a walk is.
 - `History` (struct) — history on screen: one bounded window, never all rows.
@@ -211,6 +215,8 @@ One line per public item. Update when a public item changes.
 - `History::reanchor` (field) — commit a view change looks for in the next window, to put the cursor back on it.
 - `History::asked` (field) — id of the newest request.
 - `History::jump` (field) — the `G` request still walking, if any.
+- `History::promotion` (field) — where promoting a provisional order is, if it has begun.
+- `History::promote` (fn) — hand the walk a topological order, returning the request carrying it (`None` if the walk has gone).
 - `History::view` (field) — the view every request asks for; kept across refresh.
 - `History::change_view` (fn) — switch view, returning the request that shows it (a `Follow` switch goes to the top; the selected commit is re-found in the rows that come back).
 - `History::selected` (fn) — the row under the cursor, if it has arrived.
@@ -231,6 +237,7 @@ One line per public item. Update when a public item changes.
 ## history::source
 - `WalkSource` (struct) — a walk paired with the repo handle it re-reads from, one worker thread.
 - `WalkSource::new` (fn) — build a source that streams `walk` and re-reads from `handle`.
+- `WalkSource::in_order` (fn) — build a source that streams a known order of ids, reading each commit.
 
 ## history::seeds
 - `seeds_for` (fn) — compute walk seeds from refs and branches; symbolic refs excluded.

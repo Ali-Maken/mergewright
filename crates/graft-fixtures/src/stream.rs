@@ -74,6 +74,24 @@ impl Stream {
         self.commit_by(IDENTITY, refname, message, parents, files)
     }
 
+    /// [`commit`](Self::commit), dated `ahead` seconds later than its place in
+    /// the stream says — a commit made on a machine whose clock ran fast.
+    ///
+    /// The one way to make commit-date order and topological order disagree:
+    /// a child committed after this one in the stream is dated *earlier* than
+    /// it. The clock carries on from the stream's own time, not this date.
+    pub fn commit_ahead(
+        &mut self,
+        ahead: u64,
+        refname: &[u8],
+        message: &[u8],
+        parents: &[Mark],
+        files: &[FileContent<'_>],
+    ) -> Mark {
+        let when = self.tick() + ahead;
+        self.commit_at(IDENTITY, when, refname, message, parents, files)
+    }
+
     /// [`commit`](Self::commit), with the author and committer spelled out.
     ///
     /// Only the Unicode shape needs this: an identity with non-ASCII letters
@@ -87,6 +105,19 @@ impl Stream {
         files: &[FileContent<'_>],
     ) -> Mark {
         let when = self.tick();
+        self.commit_at(identity, when, refname, message, parents, files)
+    }
+
+    /// A commit by `identity`, authored and committed at `when`.
+    fn commit_at(
+        &mut self,
+        identity: &str,
+        when: u64,
+        refname: &[u8],
+        message: &[u8],
+        parents: &[Mark],
+        files: &[FileContent<'_>],
+    ) -> Mark {
         let mark = self.reserve_mark();
 
         self.bytes.extend_from_slice(b"commit ");

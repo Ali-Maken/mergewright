@@ -18,7 +18,7 @@ use graft_core::oid::Oid;
 use graft_git::history::Order;
 use graft_git::version::SystemGit;
 
-use crate::history::{History, HistoryUpdate, Motion, Phase, RowRequest, View};
+use crate::history::{History, HistoryUpdate, Motion, Phase, Promotion, RowRequest, View};
 use crate::repository::RepositoryFacts;
 use graft_graph::Follow;
 
@@ -72,6 +72,8 @@ pub enum Task {
     ReadRefs,
     /// Read the working tree's staged/unstaged/untracked counts.
     ReadWorkingTree,
+    /// Work out the strict topological order a provisional walk promotes to.
+    PromoteHistory,
 }
 
 /// What a job brought back.
@@ -89,6 +91,9 @@ pub enum Product {
     /// The working tree's staged/unstaged/untracked counts, or why they
     /// could not be read.
     WorkingTree(Result<graft_git::status::WorkingTreeCounts, String>),
+    /// Every commit in strict topological order, for the walk on screen to
+    /// promote to (ADR-0008).
+    TopologicalOrder(std::sync::Arc<[graft_core::oid::Oid]>),
 }
 
 /// What running `git --version` found.
@@ -134,6 +139,9 @@ pub struct AppState {
     /// since been withdrawn. That is what makes a stale result harmless — it
     /// is dropped here, before it can reach a screen.
     pub awaiting: Option<JobId>,
+    /// The topological sort whose order the screen will promote to, while
+    /// it runs (ADR-0008). A result from any other sort is dropped.
+    pub promoting: Option<JobId>,
     /// The history walk the screen shows: its rows so far and where it is.
     /// `None` until one has been asked for.
     pub history: Option<History>,
@@ -273,6 +281,10 @@ pub enum Command {
     /// Read the working tree's staged/unstaged/untracked counts off the
     /// loop's thread.
     ReadWorkingTree,
+    /// Work out the whole range's strict topological order, for a walk whose
+    /// order is provisional (ADR-0008). Only the newest such job's answer is
+    /// used.
+    PromoteHistory,
     /// Hand history job `JobId` a request for rows. The rows come back as a
     /// [`HistoryUpdate::Window`] tagged with the request's id.
     ShowRows(JobId, RowRequest),
@@ -307,12 +319,16 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             }
             next.history = Some(history);
         }
+        AppEvent::Started(id, Task::PromoteHistory) => sort_started(&mut next, &mut commands, id),
         // Neither of these is waited on: their results are welcome whenever
         // they arrive, and there is nothing for `Esc` to cancel.
         AppEvent::Started(
             _,
             Task::OpenRepository | Task::CheckSystemGit | Task::ReadRefs | Task::ReadWorkingTree,
         ) => {}
+        AppEvent::Produced(id, Product::TopologicalOrder(order)) => {
+            sorted(&mut next, &mut commands, id, order);
+        }
         AppEvent::Produced(_, Product::Repository(Ok(facts))) => {
             next.repository = Some(facts);
             // Whatever went wrong last time has been superseded by a
@@ -353,19 +369,69 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             next.status = Status::Failed(failure);
         }
         AppEvent::Progress(id, Progress::History(update)) => {
-            let height = next.graph_rows();
-            if next.awaiting == Some(id)
-                && let Some(history) = next.history.as_mut()
-            {
-                history.apply(update, height);
-            }
-            // Otherwise it is from a walk that was cancelled or superseded.
-            // Dropped here, which is the whole reason the id travels with it:
-            // no chunk lands after `Esc`.
+            walk_progress(&mut next, &mut commands, id, update);
         }
     }
 
     (next, commands)
+}
+
+/// One update from history job `id`, taken in if it is the walk on screen.
+fn walk_progress(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    id: JobId,
+    update: HistoryUpdate,
+) {
+    let height = next.graph_rows();
+    if next.awaiting == Some(id)
+        && let Some(history) = next.history.as_mut()
+    {
+        // ADR-0008: a provisional order is sorted properly off-thread.
+        if let HistoryUpdate::Started(facts) = &update
+            && facts.is_provisional()
+        {
+            commands.push(Command::PromoteHistory);
+        }
+        history.apply(update, height);
+    }
+    // Otherwise it is from a walk that was cancelled or superseded. Dropped
+    // here, which is the whole reason the id travels with it: no chunk lands
+    // after `Esc`.
+}
+
+/// A topological sort has started (ADR-0008). Only the newest is wanted: an
+/// older one still running is superseded and cancelled.
+fn sort_started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId) {
+    if let Some(older) = next.promoting.replace(id) {
+        commands.push(Command::CancelJob(older));
+    }
+    if let Some(history) = next.history.as_mut() {
+        history.promotion = Some(Promotion::Sorting);
+    }
+}
+
+/// A topological sort has produced its `order`: handed to the walk on screen
+/// if it is from the sort still wanted, dropped if it was cancelled or
+/// superseded.
+fn sorted(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    id: JobId,
+    order: std::sync::Arc<[graft_core::oid::Oid]>,
+) {
+    if next.promoting != Some(id) {
+        return;
+    }
+    next.promoting = None;
+    let height = next.graph_rows();
+    if let Some(history) = next.history.as_mut() {
+        match (next.awaiting, history.promote(order, height)) {
+            (Some(walk), Some(request)) => commands.push(Command::ShowRows(walk, request)),
+            // The walk has gone; nobody would take the order up.
+            _ => history.promotion = Some(Promotion::Kept),
+        }
+    }
 }
 
 /// The half of [`update`] that answers the events `core` defines.
@@ -386,6 +452,10 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             if next.awaiting == Some(id) {
                 next.awaiting = None;
                 set_phase(next, Phase::Failed(failure.to_string()));
+                give_up_promotion(next, commands);
+            }
+            if next.promoting == Some(id) {
+                give_up_promotion(next, commands);
             }
             // Surfaced, not swallowed: the user is told which job failed and
             // why. A panicking job says so in the same place — it is still a
@@ -393,6 +463,11 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             next.status = Status::Failed(format!("{id} failed: {failure}"));
         }
         Event::JobFinished(id) => {
+            // A sort that finished without producing its order: nothing
+            // will swap in, so the order stays provisional.
+            if next.promoting == Some(id) {
+                give_up_promotion(next, commands);
+            }
             if next.awaiting == Some(id) {
                 next.awaiting = None;
                 set_phase(next, Phase::Complete);
@@ -411,6 +486,10 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             if next.awaiting == Some(id) {
                 next.awaiting = None;
                 set_phase(next, Phase::Cancelled);
+                give_up_promotion(next, commands);
+            }
+            if next.promoting == Some(id) {
+                give_up_promotion(next, commands);
             }
         }
         Event::Mouse(mouse) => mouse_event(next, commands, mouse),
@@ -428,6 +507,9 @@ fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         // The walk on screen would otherwise sit waiting for row
         // requests that now go to its replacement.
         if let Some(id) = next.awaiting.take() {
+            commands.push(Command::CancelJob(id));
+        }
+        if let Some(id) = next.promoting.take() {
             commands.push(Command::CancelJob(id));
         }
         commands.push(Command::OpenRepository);
@@ -490,12 +572,39 @@ fn escape_key(next: &mut AppState, commands: &mut Vec<Command>) {
         next.focus = false;
         return;
     }
+    // Then a topological sort still running: the rows stay in the order they
+    // are in, and the screen says that order is provisional. Once the order
+    // has been handed to the walk it is no longer the sort's to cancel.
+    if next.promoting.is_some() {
+        give_up_promotion(next, commands);
+        return;
+    }
     // Stop waiting first, then ask the job to stop. The order
     // matters: a job that finishes between the two lines still
     // sends its result, and it has to find nobody waiting for it.
     if let Some(id) = next.awaiting.take() {
         commands.push(Command::CancelJob(id));
         set_phase(next, Phase::Cancelled);
+    }
+}
+
+/// Stops promoting to topological order: cancels the sort if it is still
+/// running, and leaves the order on screen marked provisional. A promotion
+/// already swapping in is left alone unless the walk itself has ended — the
+/// walk may have taken the order up, and only its answer can say.
+fn give_up_promotion(next: &mut AppState, commands: &mut Vec<Command>) {
+    if let Some(id) = next.promoting.take() {
+        commands.push(Command::CancelJob(id));
+    }
+    let walk_gone = next.awaiting.is_none();
+    if let Some(history) = next.history.as_mut() {
+        match history.promotion {
+            Some(Promotion::Sorting) => history.promotion = Some(Promotion::Kept),
+            Some(Promotion::Swapping { .. }) if walk_gone => {
+                history.promotion = Some(Promotion::Kept);
+            }
+            _ => {}
+        }
     }
 }
 
@@ -708,6 +817,7 @@ mod tests {
 
     use crate::history::{WalkFacts, Wanted, Window};
     use crate::repository::Head;
+    use graft_ui::graph_screen::OrderNotice;
 
     fn identity() -> Identity {
         Identity {
@@ -764,6 +874,7 @@ mod tests {
             rows: vec![plain, merge].into(),
             laid_out: 2,
             done: false,
+            promoted: false,
         };
         let (mut state, _) = update(
             &awaiting(id),
@@ -1227,6 +1338,7 @@ mod tests {
             repository: Some(facts("/code/api", "main")),
             system_git: None,
             awaiting: None,
+            promoting: None,
             history: None,
             refs: None,
             working_tree: None,
@@ -1387,6 +1499,7 @@ mod tests {
                 rows: vec![row; n.min(3)].into(),
                 laid_out: n,
                 done: false,
+                promoted: false,
             })),
         )
     }
@@ -1437,6 +1550,7 @@ mod tests {
             id,
             wanted,
             view: View::default(),
+            promote: None,
         }
     }
 
@@ -1513,6 +1627,7 @@ mod tests {
                 rows: vec![one; span.len()].into(),
                 laid_out,
                 done: false,
+                promoted: false,
             })),
         )
     }
@@ -1601,6 +1716,112 @@ mod tests {
         );
         let walk = next.history.and_then(|history| history.walk);
         assert!(!walk.expect("the walk said what it is").is_provisional());
+    }
+
+    /// A provisional walk and the topological sort it asked for, started as
+    /// job `sort`.
+    fn sorting(walk: JobId, sort: JobId) -> AppState {
+        let (next, commands) = update(
+            &awaiting(walk),
+            from(walk, started(Order::Topological, Order::CommitDate)),
+        );
+        assert!(
+            commands.contains(&Command::PromoteHistory),
+            "a provisional walk asks for its order: {commands:?}"
+        );
+        let (next, _) = update(&next, AppEvent::Started(sort, Task::PromoteHistory));
+        assert_eq!(next.promoting, Some(sort));
+        next
+    }
+
+    fn order() -> std::sync::Arc<[Oid]> {
+        vec![Oid::from_bytes(&[7; Oid::SHA1_BYTES]).expect("20 bytes is an oid")].into()
+    }
+
+    /// A walk already in the order asked for has nothing to promote.
+    #[test]
+    fn a_walk_in_its_final_order_asks_for_no_sort() {
+        let id = JobId::new(7);
+        let (_, commands) = update(
+            &awaiting(id),
+            from(id, started(Order::Topological, Order::Topological)),
+        );
+        assert!(!commands.contains(&Command::PromoteHistory));
+    }
+
+    /// The order from a sort that has been replaced by a newer one never
+    /// reaches the walk; the newest sort's does.
+    #[test]
+    fn a_superseded_sort_is_never_applied() {
+        let (walk, old, new) = (JobId::new(1), JobId::new(2), JobId::new(3));
+        let state = sorting(walk, old);
+        let (state, commands) = update(&state, AppEvent::Started(new, Task::PromoteHistory));
+        assert_eq!(commands, vec![Command::CancelJob(old)]);
+
+        let (state, commands) = update(
+            &state,
+            AppEvent::Produced(old, Product::TopologicalOrder(order())),
+        );
+        assert!(commands.is_empty(), "{commands:?}");
+        let history = state.history.as_ref().expect("a walk");
+        assert_eq!(history.promotion, Some(Promotion::Sorting));
+
+        let (state, commands) = update(
+            &state,
+            AppEvent::Produced(new, Product::TopologicalOrder(order())),
+        );
+        let [Command::ShowRows(to, request)] = commands.as_slice() else {
+            panic!("the newest order goes to the walk: {commands:?}");
+        };
+        assert_eq!(*to, walk);
+        assert!(request.promote.is_some());
+        assert_eq!(state.promoting, None);
+    }
+
+    /// `Esc` while sorting stops the sort and keeps the rows where they are,
+    /// and the header says the order stays provisional.
+    #[test]
+    fn esc_while_sorting_keeps_the_provisional_order_and_says_so() {
+        let (walk, sort) = (JobId::new(1), JobId::new(2));
+        let state = sorting(walk, sort);
+        let history = state.history.as_ref().expect("a walk");
+        assert_eq!(
+            crate::view::order_notice(history),
+            Some(OrderNotice::Sorting)
+        );
+
+        let (state, commands) = update(&state, key(KeyCode::Escape));
+        assert_eq!(commands, vec![Command::CancelJob(sort)]);
+        assert_eq!(state.awaiting, Some(walk), "the walk itself goes on");
+        let history = state.history.as_ref().expect("a walk");
+        assert_eq!(history.promotion, Some(Promotion::Kept));
+        assert_eq!(
+            crate::view::order_notice(history),
+            Some(OrderNotice::Provisional)
+        );
+
+        // The sort's late answer changes nothing.
+        let (state, commands) = update(
+            &state,
+            AppEvent::Produced(sort, Product::TopologicalOrder(order())),
+        );
+        assert!(commands.is_empty(), "{commands:?}");
+        let (_, commands) = update(&state, core(Event::JobCancelled(sort)));
+        assert!(commands.is_empty(), "{commands:?}");
+    }
+
+    /// A sort that fails leaves the order provisional, not an error.
+    #[test]
+    fn a_failed_sort_leaves_the_order_provisional() {
+        let (walk, sort) = (JobId::new(1), JobId::new(2));
+        let (state, _) = update(
+            &sorting(walk, sort),
+            core(Event::JobFailed(sort, JobFailure::Failed("oom".to_owned()))),
+        );
+        assert_eq!(state.promoting, None);
+        let history = state.history.as_ref().expect("a walk");
+        assert_eq!(history.phase, Phase::Streaming);
+        assert_eq!(history.promotion, Some(Promotion::Kept));
     }
 
     /// A walk that failed or was cancelled by something other than `Esc` —

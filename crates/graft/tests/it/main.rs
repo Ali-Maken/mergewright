@@ -6,3 +6,4 @@
 //! test by writing `tests/it/<area>.rs` and a `mod <area>;` line below.
 
 mod dependency_edges;
+mod not_a_repo;

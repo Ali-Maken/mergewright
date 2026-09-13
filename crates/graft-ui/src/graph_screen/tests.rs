@@ -73,6 +73,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
         compaction: Compaction::at(8),
         filters: Filters::default(),
         tooltip: None,
+        order: None,
     }
 }
 

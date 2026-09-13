@@ -43,12 +43,14 @@ One line per public item. Update when a public item changes.
 - `GraphView::compaction` (field) — lane limit, expansion flag and pinned columns; the screen plans one `Fold` per frame over the rows it draws.
 - `GraphView::filters` (field) — what the history shown leaves out; said in the header.
 - `GraphView::tooltip` (field) — the commit tooltip, open over the graph, or `None` (m1-the-graph/17).
+- `GraphView::order` (field) — the order notice while rows are not in their final order, or `None`.
 - `Tooltip` (struct) — `subject`, `body` (both `SanitizedText`), `parents` (short shas); hover and `Enter` build it identically (m1-the-graph/17). "Contained in" is out of scope — `KNOWN_GAPS.md`.
 - `Filters` (struct) — `first_parent`, `folded` (merge count), `stash_hidden`, `focused` (Focus mode on); `Filters::text` is the header's words, empty for none.
 - `Compaction` (struct) — `max_lanes` (`graph.max_lanes`), `expanded` (the `+` key), `pinned` (reserved integration lanes and the selection's thread columns).
 - `Compaction::at` (fn) — collapsed, nothing pinned but lane 0.
 - `GraphEntry` (struct) — one row: `line`, `badges`, sanitised `subject`, `author` chip, `when`, `sha`.
 - `AuthorChip` (struct) — an author's chip: sanitised `initials` and the `identity` that colours it.
+- `OrderNotice` (enum) — header notice: `Sorting` (date order while sorting) or `Provisional` (sort stopped; order stays).
 - `WalkView` (enum) — walk state for the header: opening, reading, jumping, complete, cancelled, failed.
 - `GraphScreen` (struct) — the graph screen, ready to render.
 - `GraphScreen::new` (fn) — draw `view` in `theme`.

@@ -91,6 +91,8 @@ pub struct GraphView<'a> {
     /// it on the same content (PROMPT.md §1.3, DESIGN.md §2.15). `None` when
     /// closed.
     pub tooltip: Option<Tooltip>,
+    /// The order notice, while the rows are not yet in their final order.
+    pub order: Option<OrderNotice>,
 }
 
 /// The commit tooltip: the full message and the parents, reachable
@@ -215,6 +217,17 @@ pub struct AuthorChip {
     pub identity: BranchIdentity,
 }
 
+/// What the header says about the order the rows are in, when it is not the
+/// final one (ADR-0008). Absent when there is nothing to say.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OrderNotice {
+    /// Rows are in commit-date order while the topological order is worked
+    /// out; `Esc` stops that and keeps this order.
+    Sorting,
+    /// The sort was stopped or failed: the rows stay in commit-date order.
+    Provisional,
+}
+
 /// Where the history walk is, as the header says it. Each state is worded
 /// for itself: a walk that is fine never reads as an error.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -295,6 +308,17 @@ impl<'a> GraphScreen<'a> {
         }
         if matches!(self.view.walk, WalkView::Jumping { .. }) {
             push("  Esc cancels".to_owned(), muted, &mut spans);
+        }
+        match self.view.order {
+            Some(OrderNotice::Sorting) => {
+                push("  date order, sorting…".to_owned(), muted, &mut spans);
+            }
+            Some(OrderNotice::Provisional) => push(
+                "  order stays provisional (date)".to_owned(),
+                foreground(self.theme, Token::Warning),
+                &mut spans,
+            ),
+            None => {}
         }
         Line::from(spans)
     }

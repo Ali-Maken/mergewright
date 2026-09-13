@@ -40,6 +40,10 @@ pub enum Shape {
     /// The same patch committed on two branches, so the two commits share a
     /// patch id and no ancestry.
     CherryPickDuplicates,
+    /// A commit dated a day ahead of its children — a fast clock — reached
+    /// from two branches, so commit-date order shows it above a child and
+    /// only a topological walk puts it below both (ADR-0008 promotion).
+    SkewedDates,
     /// Lightweight and annotated tags, including one annotated tag whose
     /// message a graph row has to show.
     Tags,
@@ -79,6 +83,7 @@ impl Shape {
         Shape::AccidentalPullMerge,
         Shape::OrphanBranch,
         Shape::CherryPickDuplicates,
+        Shape::SkewedDates,
         Shape::Tags,
         Shape::UnicodeNames,
         Shape::RefStates,
@@ -104,6 +109,7 @@ impl Shape {
             Shape::AccidentalPullMerge => "accidental-pull-merge",
             Shape::OrphanBranch => "orphan-branch",
             Shape::CherryPickDuplicates => "cherry-pick-duplicates",
+            Shape::SkewedDates => "skewed-dates",
             Shape::Tags => "tags",
             Shape::UnicodeNames => "unicode-names",
             Shape::RefStates => "ref-states",

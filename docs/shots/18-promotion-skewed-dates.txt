@@ -1,0 +1,39 @@
+18 promotion on skewed dates: real debug binary in a pty, 100x30, TERM=xterm-256color, repo = corpus shape skewed-dates via symlink /tmp/sk (short path so the header fits). No commit-graph file, so the walk starts in commit-date order and a background topological sort promotes it. Only frames whose screen changed are kept; header line first.
+
+== frame 1 of 2 ==
+ graft /tmp/sk  15 commits  date order, sorting…
+  ●   [feature] feature: build on the fast commit                                    GF 6y   7144678
+  ●   Commit from a fast clock                                                       GF 6y   f579e57
+◆ │   [◆ main] Main 12                                                               GF 6y   220859a
+● │   Main 11                                                                        GF 6y   cfad0c5
+● │   Main 10                                                                        GF 6y   6bb1f97
+● │   Main 09                                                                        GF 6y   cf41cfe
+● │   Main 08                                                                        GF 6y   54daf1d
+● │   Main 07                                                                        GF 6y   00fbefc
+● │   Main 06                                                                        GF 6y   82e17d4
+● │   Main 05                                                                        GF 6y   ebe9ef1
+● │   Main 04                                                                        GF 6y   1cce4e1
+● │   Main 03                                                                        GF 6y   1305908
+● │   Main 02                                                                        GF 6y   d8f8975
+● │   Main 01                                                                        GF 6y   ec05a04
+  ◇   Add the base                                                                   GF 6y   68d5d19
+
+
+== frame 2 of 2 ==
+ graft /tmp/sk  15 commits
+  ●   [feature] feature: build on the fast commit                                    GF 6y   7144678
+◆ │   [◆ main] Main 12                                                               GF 6y   220859a
+● │   Main 11                                                                        GF 6y   cfad0c5
+● │   Main 10                                                                        GF 6y   6bb1f97
+● │   Main 09                                                                        GF 6y   cf41cfe
+● │   Main 08                                                                        GF 6y   54daf1d
+● │   Main 07                                                                        GF 6y   00fbefc
+● │   Main 06                                                                        GF 6y   82e17d4
+● │   Main 05                                                                        GF 6y   ebe9ef1
+● │   Main 04                                                                        GF 6y   1cce4e1
+● │   Main 03                                                                        GF 6y   1305908
+● │   Main 02                                                                        GF 6y   d8f8975
+● │   Main 01                                                                        GF 6y   ec05a04
+●─╯   Commit from a fast clock                                                       GF 6y   f579e57
+◇     Add the base                                                                   GF 6y   68d5d19
+

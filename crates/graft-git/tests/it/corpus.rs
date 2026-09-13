@@ -302,3 +302,39 @@ fn a_scratch_copy_is_writable_and_separate() {
     std::fs::write(scratch.path().join("scribble.txt"), b"written\n").expect("writing a scratch");
     assert!(!shared.join("scribble.txt").exists());
 }
+
+/// The one shape where commit-date order is not topological: the fast-clock
+/// commit comes second by date and last-but-one topologically, so the two
+/// walks the ADR-0008 promotion swaps between really do differ here.
+#[test]
+fn skewed_dates() {
+    use graft_git::history::{CHUNK, Order, Walk};
+
+    let repo = assert_shape(
+        Shape::SkewedDates,
+        2,
+        &["refs/heads/feature", "refs/heads/main"],
+    );
+    let subjects = |mut walk: Walk<'_>| {
+        let mut subjects = Vec::new();
+        loop {
+            let chunk = walk.next_chunk(CHUNK, &|| false).expect("walks");
+            subjects.extend(
+                chunk
+                    .commits
+                    .iter()
+                    .map(|commit| String::from_utf8_lossy(commit.subject()).into_owned()),
+            );
+            if chunk.done {
+                return subjects;
+            }
+        }
+    };
+    let by_date = subjects(Walk::all_refs(&repo, Order::CommitDate).expect("starts"));
+    let tips = repo.commit_tips().expect("tips");
+    let topological = subjects(Walk::full_topological(&repo, &tips).expect("starts"));
+    let fast = "Commit from a fast clock";
+    let row = |order: &[_]| order.iter().position(|subject| *subject == fast);
+    assert_eq!(row(&by_date), Some(1), "{by_date:?}");
+    assert_eq!(row(&topological), Some(13), "{topological:?}");
+}

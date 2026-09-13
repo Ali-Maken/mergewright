@@ -55,6 +55,7 @@ fn reported_rows<S: CommitSource>(layout: &mut StreamingLayout<S>, shape: Shape)
             id,
             wanted: Wanted::Rows(rows.len()..rows.len() + chunk),
             view: View::default(),
+            promote: None,
         };
         let mut done = false;
         let ended = answer(layout, request, &mut || None, &never, &mut |update| {
@@ -173,6 +174,7 @@ fn a_configured_default_branch_takes_lane_0() {
             id: 1,
             wanted: Wanted::Rows(0..usize::MAX),
             view: View::default(),
+            promote: None,
         };
         asks.send(everything).expect("the receiver is right here");
         // Nobody asks again, so the walk ends once it has answered.
@@ -371,6 +373,7 @@ fn assert_late_jump_answers_are_dropped(history: &mut History, jump: u64) {
         rows: Vec::new().into(),
         laid_out: 200,
         done: true,
+        promoted: false,
     };
     history.apply(HistoryUpdate::Window(late), HEIGHT);
     history.apply(
@@ -397,6 +400,7 @@ fn nothing_is_reported_once_stop_is_asked() {
         id: 1,
         wanted: Wanted::Last(HEIGHT),
         view: View::default(),
+        promote: None,
     };
     let ended = answer(
         &mut stream,
@@ -422,7 +426,7 @@ fn a_walk_nobody_can_ask_ends() {
     let dir = graft_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
     let mut opened = 0;
-    let open = || {
+    let open = |_: Option<&Arc<[Oid]>>| {
         opened += 1;
         Ok(WalkSource::new(
             &handle,
@@ -450,6 +454,7 @@ fn rows_in<S: CommitSource>(views: &mut Views<'_, S>, view: &View, shape: Shape)
         id: 1,
         wanted: Wanted::Rows(0..usize::MAX),
         view: view.clone(),
+        promote: None,
     };
     let ended = answer(layout, everything, &mut || None, &never, &mut |update| {
         if let HistoryUpdate::Window(window) = update {
@@ -474,7 +479,7 @@ fn views_fold_unfold_and_switch_to_first_parent_over_one_walk() {
         let refs = handle.references().expect("refs read");
         let branches = Branches::resolve(&handle, None).expect("branches resolve");
         let mut opened = 0;
-        let open = || {
+        let open = |_: Option<&Arc<[Oid]>>| {
             opened += 1;
             Ok(WalkSource::new(
                 &handle,
@@ -540,7 +545,7 @@ fn a_request_in_another_view_interrupts_and_is_answered_next() {
     let handle = RepoHandle::open(&dir).expect("opens");
     let refs = handle.references().expect("refs read");
     let branches = Branches::resolve(&handle, None).expect("branches resolve");
-    let open = || {
+    let open = |_: Option<&Arc<[Oid]>>| {
         Ok(WalkSource::new(
             &handle,
             Walk::all_refs(&handle, Order::Topological)?,
@@ -557,11 +562,13 @@ fn a_request_in_another_view_interrupts_and_is_answered_next() {
         id: 1,
         wanted: Wanted::Last(HEIGHT),
         view: View::default(),
+        promote: None,
     };
     let switch = RowRequest {
         id: 2,
         wanted: Wanted::Rows(0..usize::MAX),
         view: first_parent,
+        promote: None,
     };
     let mut newer = Some(switch.clone());
     let mut windows = 0;
@@ -650,6 +657,7 @@ fn a_view_change_puts_the_cursor_back_on_the_selected_commit() {
             rows: rows.to_vec().into(),
             laid_out: whole.len(),
             done: false,
+            promoted: false,
         })
     };
     history.asked = 1;
@@ -665,4 +673,91 @@ fn a_view_change_puts_the_cursor_back_on_the_selected_commit() {
     assert_eq!(history.cursor, 3);
     assert_eq!(history.selected().map(|r| r.commit.id), Some(chosen));
     assert_eq!(history.reanchor, None);
+}
+
+/// Sends `request` through the worker's loop and applies what comes back, as
+/// the job and `update` would between them.
+fn served<S: CommitSource>(views: &mut Views<'_, S>, history: &mut History, request: RowRequest)
+where
+    S::Error: std::fmt::Debug,
+{
+    let (asks, requests) = mpsc::channel();
+    asks.send(request).expect("the receiver is right here");
+    drop(asks);
+    let mut reports = Vec::new();
+    let ended = serve(views, &requests, &never, &mut |update| {
+        reports.push(update);
+        Delivery::Received
+    })
+    .expect("lays out");
+    assert_eq!(ended, Ended::Cancelled, "nobody asks again");
+    for update in reports {
+        history.apply(update, HEIGHT);
+    }
+}
+
+/// ADR-0008 end to end on the one shape where commit-date order is not
+/// topological: rows first in date order, then promoted in one step, with the
+/// selected commit still selected at the same place on screen — though its
+/// row number has moved.
+#[test]
+fn promotion_keeps_the_selected_commit_where_it_is_on_screen() {
+    let shape = Shape::SkewedDates;
+    let dir = graft_fixtures::borrow(shape);
+    let store = RepoStore::new(dir.clone(), None);
+    let order = topological_order(&store, &never)
+        .expect("sorts")
+        .expect("never stopped");
+    let handle = RepoHandle::open(&dir).expect("opens");
+    let refs = handle.references().expect("refs read");
+    let branches = Branches::resolve(&handle, None).expect("branches resolve");
+    let open = |promoted: Option<&Arc<[Oid]>>| {
+        Ok(match promoted {
+            Some(ids) => WalkSource::in_order(&handle, Arc::clone(ids)),
+            None => WalkSource::new(&handle, Walk::all_refs(&handle, Order::CommitDate)?),
+        })
+    };
+    let mut views = Views::new(seeds_for(&refs, &branches), SMALL, Box::new(open));
+
+    let mut history = History::started();
+    history.walk = Some(WalkFacts {
+        requested: Order::Topological,
+        order: Order::CommitDate,
+        default_branch: None,
+        integration: Vec::new().into(),
+    });
+    let first = history.show(HEIGHT).expect("asks for the first screen");
+    served(&mut views, &mut history, first);
+    if let Some(more) = history.move_cursor(Motion::Down(12), HEIGHT) {
+        served(&mut views, &mut history, more);
+    }
+    let subject = |history: &History| {
+        let row = history.selected().expect("a row is selected");
+        String::from_utf8_lossy(row.commit.subject()).into_owned()
+    };
+    // Date order: feature, the fast commit, Main 12 .. Main 01, base.
+    assert_eq!((history.cursor, history.top), (12, 3));
+    assert_eq!(subject(&history), "Main 02");
+    let chosen = history.selected().map(|row| row.commit.id);
+
+    let promote = history
+        .promote(order, HEIGHT)
+        .expect("a walk still going takes the order");
+    assert!(promote.promote.is_some());
+    served(&mut views, &mut history, promote);
+
+    assert_eq!(history.promotion, None, "the promotion has landed");
+    let walk = history.walk.as_ref().expect("facts");
+    assert_eq!(walk.order, Order::Topological);
+    assert!(!walk.is_provisional());
+    assert_eq!(history.selected().map(|row| row.commit.id), chosen);
+    // Topological order puts the fast commit below Main 01: Main 02 moves
+    // up a row, and the viewport with it.
+    assert_eq!((history.cursor, history.top), (11, 2));
+    let on_screen: Vec<_> = history
+        .visible(HEIGHT)
+        .iter()
+        .map(|row| String::from_utf8_lossy(row.commit.subject()).into_owned())
+        .collect();
+    assert_eq!(on_screen[0], "Main 11", "{on_screen:?}");
 }

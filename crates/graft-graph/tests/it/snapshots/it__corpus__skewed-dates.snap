@@ -1,0 +1,25 @@
+---
+source: crates/graft-graph/tests/it/corpus.rs
+expression: text
+---
+shape: skewed-dates
+order: requested Topological, in force CommitDate (provisional)
+default: main
+integration: []
+commits: 15, columns: 2
+
+| *  7144678  feature            feature: build on the fast commit
+| *  f579e57  feature            Commit from a fast clock
+* |  220859a  main               Main 12
+* |  cfad0c5  main               Main 11
+* |  6bb1f97  main               Main 10
+* |  cf41cfe  main               Main 09
+* |  54daf1d  main               Main 08
+* |  00fbefc  main               Main 07
+* |  82e17d4  main               Main 06
+* |  ebe9ef1  main               Main 05
+* |  1cce4e1  main               Main 04
+* |  1305908  main               Main 03
+* |  d8f8975  main               Main 02
+* |  ec05a04  main               Main 01
+  *  68d5d19  feature            Add the base

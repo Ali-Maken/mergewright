@@ -25,9 +25,9 @@ use std::sync::mpsc::Receiver;
 
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
-use graft_git::history::{Order, Walk};
+use graft_git::history::{CHUNK, Order, Walk};
 use graft_graph::inclusion::reinclude;
-use graft_graph::layout::{CommitSource, StreamConfig, StreamError, StreamingLayout};
+use graft_graph::layout::{Anchor, CommitSource, StreamConfig, StreamError, StreamingLayout};
 use graft_graph::{Follow, Included, Inclusion, Row, Seeds};
 
 use crate::jobs::Delivery;
@@ -93,6 +93,39 @@ pub struct RowRequest {
     /// The view they are asked for in. Every request says it, so the newest
     /// request alone decides what the walk shows.
     pub view: View,
+    /// The promoted order to show it in, while the screen is waiting for the
+    /// walk to take it up (ADR-0008). Carried by *every* request until an
+    /// answer says it is in force, so skipping to the newest request can
+    /// never skip the promotion; `wanted` is then ignored, because its row
+    /// numbers were counted in the order being replaced.
+    pub promote: Option<Promote>,
+}
+
+/// A topological order to swap in, and where the screen is in the order it
+/// replaces (ADR-0008, DESIGN.md §3.6).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Promote {
+    /// Every commit, in strict topological order.
+    pub order: Arc<[Oid]>,
+    /// The selected commit and its place in the viewport, if one is selected.
+    pub anchor: Option<Anchor>,
+    /// How many rows the viewport shows.
+    pub height: usize,
+}
+
+impl Promote {
+    /// The rows a viewport needs in `layout` so that the anchor sits where it
+    /// sat — or at the top, with no anchor or one this view does not show.
+    fn around<S: CommitSource>(&self, layout: &StreamingLayout<S>) -> Wanted {
+        let top = self
+            .anchor
+            .and_then(|anchor| {
+                let row = layout.row_of(anchor.commit)?;
+                Some(row.saturating_sub(anchor.offset))
+            })
+            .unwrap_or(0);
+        Wanted::Rows(top.saturating_sub(self.height)..top + 2 * self.height)
+    }
 }
 
 /// The rows that answer one [`RowRequest`].
@@ -109,6 +142,9 @@ pub struct Window {
     pub laid_out: usize,
     /// Whether that is every row there is.
     pub done: bool,
+    /// Whether these rows answer a request's [`Promote`]: their row numbers
+    /// are the promoted order's, and the screen re-finds its anchor in them.
+    pub promoted: bool,
 }
 
 impl Window {
@@ -134,6 +170,25 @@ pub enum HistoryUpdate {
     },
     /// The rows a request asked for.
     Window(Window),
+}
+
+/// How far promoting a provisional order to strict topological order has
+/// got (ADR-0008). Only a walk whose order is provisional has one.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Promotion {
+    /// The topological order is being worked out in the background.
+    Sorting,
+    /// The order has been handed to the walk, attached to every request until
+    /// an answer comes back in it. `anchor` is the selection it re-finds.
+    Swapping {
+        /// Every commit, in topological order.
+        order: Arc<[Oid]>,
+        /// The selected commit and its place on screen when last known.
+        anchor: Option<Anchor>,
+    },
+    /// Given up — `Esc`, or the sort failed: the order on screen stays
+    /// provisional.
+    Kept,
 }
 
 /// Where a walk is.
@@ -181,6 +236,9 @@ pub struct History {
     /// The view every request asks for: first-parent or not, what is folded
     /// and hidden.
     pub view: View,
+    /// Promotion to topological order, while one is under way or was given
+    /// up; `None` once promoted, or when the order was never provisional.
+    pub promotion: Option<Promotion>,
 }
 
 impl History {
@@ -198,6 +256,7 @@ impl History {
             asked: 0,
             jump: None,
             view: View::default(),
+            promotion: None,
         }
     }
 }
@@ -252,7 +311,10 @@ pub fn stream(
     // (the other `Follow`) starts its own.
     let handle = &handle;
     let mut started = Some(walk);
-    let open = move || {
+    let open = move |promoted: Option<&Arc<[Oid]>>| {
+        if let Some(ids) = promoted {
+            return Ok(WalkSource::in_order(handle, Arc::clone(ids)));
+        }
         let walk = match started.take() {
             Some(walk) => walk,
             None => Walk::all_refs(handle, order)?,
@@ -263,8 +325,41 @@ pub fn stream(
     serve(&mut views, requests, stop, report).map_err(|error| error_chain(&error))
 }
 
-/// Opens a fresh source over the same walk, for a view laid out on its own.
-pub type Open<'o, S> = Box<dyn FnMut() -> Result<S, <S as CommitSource>::Error> + 'o>;
+/// The whole range's strict topological order, worked out without a
+/// commit-graph file: what the view promotes to (ADR-0008). `Ok(None)` if
+/// `stop` asked it to stop.
+///
+/// # Errors
+/// The failure text, ready to show: the repository, its refs or a commit
+/// could not be read. Formed here because it crosses a thread as part of a
+/// job result.
+pub fn topological_order(
+    store: &RepoStore,
+    stop: &dyn Fn() -> bool,
+) -> Result<Option<Arc<[Oid]>>, String> {
+    let repo = store.shared().map_err(|error| error.to_string())?;
+    let handle = repo.handle();
+    let tips = handle.commit_tips().map_err(|error| error.to_string())?;
+    let mut walk = Walk::full_topological(&handle, &tips).map_err(|error| error_chain(&error))?;
+    let mut order = Vec::new();
+    loop {
+        let chunk = walk
+            .next_chunk(CHUNK, stop)
+            .map_err(|error| error_chain(&error))?;
+        order.extend(chunk.commits.iter().map(|commit| commit.id));
+        if chunk.stopped {
+            return Ok(None);
+        }
+        if chunk.done {
+            return Ok(Some(order.into()));
+        }
+    }
+}
+
+/// Opens a fresh source over the same walk, for a view laid out on its own —
+/// or, given a promoted order, a source that hands out that order instead.
+pub type Open<'o, S> =
+    Box<dyn FnMut(Option<&Arc<[Oid]>>) -> Result<S, <S as CommitSource>::Error> + 'o>;
 
 /// The layouts one walk is shown through: one per [`Follow`], each opened
 /// the first time a request asks for it and kept while the walk lives.
@@ -277,6 +372,8 @@ pub struct Views<'o, S: CommitSource> {
     seeds: Seeds,
     config: StreamConfig,
     open: Open<'o, S>,
+    /// The promoted order every layout is opened over, once there is one.
+    promoted: Option<Arc<[Oid]>>,
     all_parents: Option<StreamingLayout<Included<S>>>,
     first_parent: Option<StreamingLayout<Included<S>>>,
 }
@@ -290,6 +387,7 @@ impl<'o, S: CommitSource> Views<'o, S> {
             seeds,
             config,
             open,
+            promoted: None,
             all_parents: None,
             first_parent: None,
         }
@@ -304,28 +402,101 @@ impl<'o, S: CommitSource> Views<'o, S> {
         &mut self,
         view: &View,
     ) -> Result<&mut StreamingLayout<Included<S>>, StreamError<S::Error>> {
-        let slot = match view.follow {
+        let layout = if let Some(layout) = self.slot(view.follow).take() {
+            layout
+        } else {
+            let promoted = self.promoted.clone();
+            self.open_layout(view, promoted.as_ref())?
+        };
+        let layout = self.slot(view.follow).insert(layout);
+        if layout.source().inclusion() != &view.inclusion {
+            reinclude(layout, view.inclusion.clone())?;
+        }
+        Ok(layout)
+    }
+
+    /// Swaps every layout for ones over `promote`'s order, unless that order
+    /// is already in force, and lays `view`'s out as far as the anchor.
+    ///
+    /// The layouts it replaces stay until the new one has reached the anchor,
+    /// so the swap is one step: never an empty graph refilling. Returns
+    /// `false` if `stop` asked it to stop first, leaving the old layouts in
+    /// force.
+    ///
+    /// # Errors
+    /// Opening the source, or laying out, failed.
+    pub fn promote(
+        &mut self,
+        view: &View,
+        promote: &Promote,
+        stop: &dyn Fn() -> bool,
+    ) -> Result<bool, StreamError<S::Error>> {
+        let anchor = promote.anchor.map(|anchor| anchor.commit);
+        let in_force = self
+            .promoted
+            .as_ref()
+            .is_some_and(|order| Arc::ptr_eq(order, &promote.order));
+        if in_force {
+            return reach(self.layout(view)?, anchor, stop);
+        }
+        let mut layout = self.open_layout(view, Some(&promote.order))?;
+        if !reach(&mut layout, anchor, stop)? {
+            return Ok(false);
+        }
+        self.promoted = Some(Arc::clone(&promote.order));
+        self.all_parents = None;
+        self.first_parent = None;
+        *self.slot(view.follow) = Some(layout);
+        Ok(true)
+    }
+
+    /// Where `follow`'s layout is kept.
+    fn slot(&mut self, follow: Follow) -> &mut Option<StreamingLayout<Included<S>>> {
+        match follow {
             Follow::AllParents => &mut self.all_parents,
             Follow::FirstParent => &mut self.first_parent,
-        };
-        if let Some(layout) = slot {
-            if layout.source().inclusion() != &view.inclusion {
-                reinclude(layout, view.inclusion.clone())?;
-            }
-            Ok(layout)
-        } else {
-            {
-                let source = (self.open)().map_err(StreamError::Source)?;
-                let included = Included::new(
-                    source,
-                    self.seeds.clone(),
-                    view.follow,
-                    view.inclusion.clone(),
-                );
-                // Laid out from the view's seeds, not the walk's.
-                let seeds = included.seeds().clone();
-                Ok(slot.insert(StreamingLayout::new(included, seeds, self.config)))
-            }
+        }
+    }
+
+    /// A new layout of `view`, over the walk or over a promoted order.
+    fn open_layout(
+        &mut self,
+        view: &View,
+        promoted: Option<&Arc<[Oid]>>,
+    ) -> Result<StreamingLayout<Included<S>>, StreamError<S::Error>> {
+        let source = (self.open)(promoted).map_err(StreamError::Source)?;
+        let included = Included::new(
+            source,
+            self.seeds.clone(),
+            view.follow,
+            view.inclusion.clone(),
+        );
+        // Laid out from the view's seeds, not the walk's.
+        let seeds = included.seeds().clone();
+        Ok(StreamingLayout::new(included, seeds, self.config))
+    }
+}
+
+/// Lays `layout` out until `anchor` has a row, or history ends. Returns
+/// `false` if `stop` asked it to stop first.
+fn reach<S: CommitSource>(
+    layout: &mut StreamingLayout<S>,
+    anchor: Option<Oid>,
+    stop: &dyn Fn() -> bool,
+) -> Result<bool, StreamError<S::Error>> {
+    let chunk = layout.config().chunk_rows;
+    loop {
+        let found = anchor.is_none_or(|id| {
+            layout
+                .row_of(id)
+                .is_some_and(|row| row < layout.rows_emitted())
+        });
+        if found || layout.is_done() {
+            return Ok(true);
+        }
+        let advanced = layout.advance(chunk, stop)?;
+        if advanced.stopped || stop() {
+            return Ok(false);
         }
     }
 }
@@ -361,6 +532,13 @@ pub fn serve<S: CommitSource>(
             },
         };
         let view = request.view.clone();
+        let mut request = request;
+        if let Some(promote) = request.promote.clone() {
+            if !views.promote(&view, &promote, stop)? {
+                return Ok(Ended::Cancelled);
+            }
+            request.wanted = promote.around(views.layout(&view)?);
+        }
         let layout = views.layout(&view)?;
         let mut latest = None;
         let mut newer = || {
@@ -371,8 +549,9 @@ pub fn serve<S: CommitSource>(
         if let Some(ended) = answer(layout, request, &mut newer, stop, report)? {
             return Ok(ended);
         }
-        // `answer` gives up on a request only for one in another view.
-        interrupted = latest.filter(|newest| newest.view != view);
+        // `answer` gives up on a request only for one in another view, or
+        // one carrying a promotion.
+        interrupted = latest.filter(|newest| newest.view != view || newest.promote.is_some());
     }
 }
 
@@ -382,8 +561,8 @@ pub fn serve<S: CommitSource>(
 /// Between chunks it reports progress and asks `newer` whether a newer request
 /// has arrived; one that has replaces this one, so a withdrawn `G` stops
 /// walking within a chunk. Returns `None` once the answer is sent — or,
-/// sending nothing, once a newer request names a different view: `layout`
-/// cannot answer that one, and the caller must.
+/// sending nothing, once a newer request names a different view or carries a
+/// promotion: `layout` cannot answer that one, and the caller must.
 ///
 /// # Errors
 /// Whatever the layout reports.
@@ -415,7 +594,7 @@ fn answer<S: CommitSource>(
             return Ok(Some(Ended::NobodyListening));
         }
         if let Some(replacement) = newer() {
-            if replacement.view != request.view {
+            if replacement.view != request.view || replacement.promote.is_some() {
                 return Ok(None);
             }
             request = replacement;
@@ -435,6 +614,7 @@ fn answer<S: CommitSource>(
         rows: rows.into(),
         laid_out,
         done: layout.is_done(),
+        promoted: request.promote.is_some(),
     };
     if report(HistoryUpdate::Window(window)) == Delivery::NobodyListening {
         return Ok(Some(Ended::NobodyListening));

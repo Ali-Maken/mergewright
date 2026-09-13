@@ -6,8 +6,13 @@
 //! back later through [`History::apply`].
 
 use graft_graph::Row;
+use graft_graph::layout::Anchor;
 
-use super::{History, HistoryUpdate, Phase, RowRequest, View, Wanted};
+use std::sync::Arc;
+
+use graft_core::oid::Oid;
+
+use super::{History, HistoryUpdate, Phase, Promote, Promotion, RowRequest, View, Wanted};
 
 /// A cursor movement the graph pane understands (DESIGN.md §2.2).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -45,6 +50,10 @@ impl History {
                 if window.request != self.asked {
                     return;
                 }
+                if window.promoted {
+                    self.promoted(window, height.max(1));
+                    return;
+                }
                 self.rows = window.laid_out;
                 // A view with fewer rows can leave the cursor past the end.
                 if window.done {
@@ -70,6 +79,70 @@ impl History {
                 self.window = Some(window);
             }
         }
+    }
+
+    /// Hands the walk a topological `order` to promote to, returning the
+    /// request that carries it — or `None` if the walk has gone, in which case
+    /// the order on screen stays provisional.
+    ///
+    /// Every request from here on carries the order and the selection, until
+    /// an answer comes back in the new order ([`Window::promoted`]).
+    ///
+    /// [`Window::promoted`]: super::Window::promoted
+    pub fn promote(&mut self, order: Arc<[Oid]>, height: usize) -> Option<RowRequest> {
+        if matches!(self.phase, Phase::Cancelled | Phase::Failed(_)) {
+            self.promotion = Some(Promotion::Kept);
+            return None;
+        }
+        self.promotion = Some(Promotion::Swapping {
+            order,
+            anchor: None,
+        });
+        self.wanted(height.max(1), true)
+    }
+
+    /// Takes in the first rows in the promoted order: the cursor goes back on
+    /// the selected commit, at the same place on screen.
+    fn promoted(&mut self, window: super::Window, height: usize) {
+        let anchor = match self.promotion.take() {
+            Some(Promotion::Swapping { anchor, .. }) => anchor,
+            other => {
+                // Only a request made while swapping carries an order, and
+                // only the newest request's answer gets here.
+                self.promotion = other;
+                None
+            }
+        };
+        if let Some(walk) = self.walk.as_mut() {
+            walk.order = walk.requested;
+        }
+        self.rows = window.laid_out;
+        self.jump = None;
+        self.reanchor = None;
+        if matches!(self.phase, Phase::Streaming | Phase::Complete) {
+            self.phase = if window.done {
+                Phase::Complete
+            } else {
+                Phase::Streaming
+            };
+        }
+        let found = anchor.and_then(|anchor| {
+            let at = window
+                .rows
+                .iter()
+                .position(|row| row.commit.id == anchor.commit)?;
+            Some((window.first + at, anchor.offset))
+        });
+        if let Some((row, offset)) = found {
+            self.cursor = row;
+            self.top = row.saturating_sub(offset);
+        } else {
+            // Nothing selected, or a commit this view does not show.
+            self.cursor = self.cursor.min(self.rows.saturating_sub(1));
+            self.top = self.top.min(self.cursor);
+        }
+        self.follow(height);
+        self.window = Some(window);
     }
 
     /// The request that fills a `height`-row viewport where it is now, if the
@@ -103,7 +176,7 @@ impl History {
                 self.top = 0;
             }
             Motion::Bottom if self.phase == Phase::Streaming => {
-                let request = self.ask(Wanted::Last(2 * height));
+                let request = self.ask(Wanted::Last(2 * height), height);
                 self.jump = Some(request.id);
                 return Some(request);
             }
@@ -240,16 +313,36 @@ impl History {
             return None;
         }
         let from = self.top.saturating_sub(height);
-        Some(self.ask(Wanted::Rows(from..bottom + height)))
+        Some(self.ask(Wanted::Rows(from..bottom + height), height))
     }
 
-    /// The next request, numbered after every earlier one.
-    fn ask(&mut self, wanted: Wanted) -> RowRequest {
+    /// The next request, numbered after every earlier one — carrying the
+    /// promoted order and the selection while a promotion is swapping in.
+    fn ask(&mut self, wanted: Wanted, height: usize) -> RowRequest {
         self.asked += 1;
+        let selected = self.selected().map(|row| Anchor {
+            commit: row.commit.id,
+            offset: self.cursor.saturating_sub(self.top),
+        });
+        let promote = match &mut self.promotion {
+            Some(Promotion::Swapping { order, anchor }) => {
+                // The selection off the rows on hand keeps the last one known.
+                if selected.is_some() {
+                    *anchor = selected;
+                }
+                Some(Promote {
+                    order: Arc::clone(order),
+                    anchor: *anchor,
+                    height,
+                })
+            }
+            _ => None,
+        };
         RowRequest {
             id: self.asked,
             wanted,
             view: self.view.clone(),
+            promote,
         }
     }
 }

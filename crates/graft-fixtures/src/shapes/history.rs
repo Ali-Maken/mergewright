@@ -171,3 +171,41 @@ pub(super) fn cherry_pick_duplicates(site: &Site<'_>) -> Result<(), BuildError> 
     site.import(stream)?;
     site.checkout_main()
 }
+
+/// A commit from a clock a day fast, with a twelve-commit line on `main` and
+/// a `feature` branch both growing from it.
+///
+/// A date-order walk reaches it through `feature` — the newest tip — and,
+/// being the newest date in the queue, emits it second: above its twelve
+/// `main` children. A topological walk puts it below all of them.
+pub(super) fn skewed_dates(site: &Site<'_>) -> Result<(), BuildError> {
+    const DAY: u64 = 24 * 60 * 60;
+    let mut stream = Stream::new();
+    let base = stream.commit(MAIN, b"Add the base\n", &[], &[file(b"base.txt", b"0\n")]);
+    let fast = stream.commit_ahead(
+        DAY,
+        MAIN,
+        b"Commit from a fast clock\n",
+        &[base],
+        &[file(b"fast.txt", b"ahead\n")],
+    );
+    let mut tip = fast;
+    for n in 1..=12 {
+        let message = format!("Main {n:02}\n");
+        let content = format!("line {n}\n");
+        tip = stream.commit(
+            MAIN,
+            message.as_bytes(),
+            &[tip],
+            &[file(b"main.txt", content.as_bytes())],
+        );
+    }
+    stream.commit(
+        b"refs/heads/feature",
+        b"feature: build on the fast commit\n",
+        &[fast],
+        &[file(b"feature.txt", b"f\n")],
+    );
+    site.import(stream)?;
+    site.checkout_main()
+}

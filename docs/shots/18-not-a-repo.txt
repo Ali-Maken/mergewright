@@ -1,0 +1,7 @@
+18 not a repo: real debug binary in a pty, 100x30, TERM=xterm-256color. `graft <empty temp dir>` with GIT_CEILING_DIRECTORIES set to its parent. Exit code 1. The complete byte stream graft wrote to the pty, as a Python bytes literal, follows: one line on stderr and no escape sequence at all, so no `ESC[?1049h` alternate-screen enter and nothing to flash.
+
+== byte stream ==
+b'graft: /tmp/graft18-notrepo.Azby is not inside a git repository\r\n'
+
+== as the terminal shows it ==
+graft: /tmp/graft18-notrepo.Azby is not inside a git repository
