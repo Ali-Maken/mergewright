@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M1 The graph** — ticket 31, then 07 (31 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. **M1 runs straight through without stopping for ticket approval** — see "How M1 runs" below.
+**Current step:** **M1 The graph** — ticket 07 (31 done; 31 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. **M1 runs straight through without stopping for ticket approval** — see "How M1 runs" below.
 
 ---
 
@@ -175,3 +175,4 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
   KNOWN_GAPS.md repeated that for a day. Settled 2026-09-12: the variable is
   removed and the case counts live in code (64 fast, 1,000 heavy), ADR-0017.
   Nothing for the checkpoint to decide.
+- 2026-09-13 · M1/31 heavy tests feature-only · sonnet · done · #[ignore] removed; default --list 0 heavy::, with feature 4; clippy clean both ways; heavy tier not run; commit d606cb3
