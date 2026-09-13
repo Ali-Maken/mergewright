@@ -1,0 +1,24 @@
+ graft /tmp/graft45.pPAm  3 commits
+◆   [◆ main] commit 3                                               now  e6b52ac
+●   commit 2                                                        now  fc30a11
+◇   commit 1                                                        now  9d84727
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent

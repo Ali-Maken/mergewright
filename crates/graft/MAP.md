@@ -116,11 +116,11 @@ One line per public item. Update when a public item changes.
 - `Screen::toggled` (fn) — the other screen; `F2` swaps.
 - `Quit` (enum) — why Graft is leaving: `Requested`, `HandedBack(KeyCode)`, `Fatal(String)`.
 - `Quit::should_quit` (fn) — is the loop finished?
-- `Status` (enum) — status-line state; never reads as an error when nothing is wrong.
+- `Status` (enum) — status-line state; never reads as an error when nothing is wrong. `Copied { short }`: `y` sent the SHA (OSC 52); footer notice until the next key; worded as what was sent (m1-the-graph/45).
 - `Size` (struct) — terminal size in character cells.
 - `Size::columns` (field) — width in character cells.
 - `Size::rows` (field) — height in character cells.
-- `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows; `ReadRefs` reads refs and ahead/behind off the loop's thread; `ReadWorkingTree` reads working-tree status counts off the loop's thread; `PromoteHistory` sorts a provisional walk's range topologically; `Search(Query)` starts a search job.
+- `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows; `ReadRefs` reads refs and ahead/behind off the loop's thread; `ReadWorkingTree` reads working-tree status counts off the loop's thread; `PromoteHistory` sorts a provisional walk's range topologically; `Search(Query)` starts a search job. `CopyToClipboard(String)` is terminal output the loop writes itself (through the session's tmux transport; a write error ends the loop), never dispatched to jobs (m1-the-graph/45).
 - `CHROME_ROWS` (const) — screen rows that are not the graph without a harness banner; `graft_ui::graph_screen::CHROME_ROWS`. `AppState::graph_rows` adds `Harness::banner_rows`.
 - `AppState::graph_rows` (fn) — history rows the graph pane shows at the current size; never zero.
 - `update` (fn) — the pure state transition function.

@@ -122,9 +122,15 @@ pub fn view_with_graphics(
     }
 }
 
-/// The footer's notice: `F3`'s renderer line while an override is on.
-/// `None` with no override, so the key hints show.
+/// The footer's notice: `y`'s copy line until the next key, else `F3`'s
+/// renderer line while an override is on. `None` otherwise, so the key
+/// hints show.
 fn footer_notice(state: &AppState, tier: RenderingTier) -> Option<SanitizedText> {
+    // `y`'s notice is the newer news: it lasts one key, the override stays.
+    // Worded as what was sent; whether the terminal honoured it is unknowable.
+    if let Status::Copied { short } = &state.status {
+        return Some(sanitize_line(&format!("{short}… → clipboard (osc 52)")));
+    }
     // Only below the terminal's own tier: `F3` clears the override when it
     // cycles back to the top (m1-the-graph/33).
     state
@@ -158,7 +164,7 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
         .as_ref()
         .map(|facts| sanitize_path(&facts.path));
     let problem = match &state.status {
-        Status::Ready => None,
+        Status::Ready | Status::Copied { .. } => None,
         Status::Failed(message) => Some(sanitize_line(message)),
     };
     let Some(history) = &state.history else {
@@ -640,7 +646,7 @@ pub fn status_view(session: &Session, state: &AppState) -> StatusView {
         rendering: session.rendering,
         notes: notes(session, state),
         problem: match &state.status {
-            Status::Ready => None,
+            Status::Ready | Status::Copied { .. } => None,
             Status::Failed(message) => Some(sanitize_line(message)),
         },
         history: state.history.as_ref().map(history_view),

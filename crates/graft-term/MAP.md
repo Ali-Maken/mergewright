@@ -2,6 +2,7 @@
 One line per public item. Update when a public item changes.
 
 ## lib.rs
+- `clipboard` (mod) — OSC 52 clipboard requests (ADR-0023).
 - `detect` (mod) — terminal capability detection and the rendering tier.
 - `input` (mod) — the one reader of stdin: keys to events, replies to waiters.
 - `iterm2` (mod) — iTerm2 inline images (OSC 1337): bands re-sent per frame, PNG encoded once per (strip, crop, cells).
@@ -69,3 +70,6 @@ One line per public item. Update when a public item changes.
 ## sanitize
 - `SanitizedText` (struct) — text proven free of escape and control sequences.
 - `sanitize` / `sanitize_line` / `sanitize_path` / `sanitize_path_bytes` (fn) — make untrusted text safe to draw.
+
+## clipboard
+- `osc52_copy` (fn) — `ESC ] 52 ; c ; <base64(text)> ESC \`; write it through `Transport::write` so tmux wraps it (m1-the-graph/45).

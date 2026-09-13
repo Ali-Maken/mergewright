@@ -615,6 +615,15 @@ where
         state = next;
 
         for command in commands {
+            // Output, not work: the clipboard request goes to the terminal
+            // now, and a failed write ends the loop like any other.
+            let command = match command {
+                Command::CopyToClipboard(text) => {
+                    write_clipboard(terminal, session, &text)?;
+                    continue;
+                }
+                command => command,
+            };
             // Handed over and forgotten. `dispatch` starts the work and
             // returns: there is no handle here to join and no result to wait
             // for, because the result comes back as another `Event`
@@ -668,6 +677,22 @@ where
         rasterised += graphics.prefetch(session, &paged, &mut || wakes.waiting());
     }
     rasterised
+}
+
+/// Ask the terminal to put `text` on its clipboard (OSC 52), wrapped for
+/// tmux the way the image commands are, as one whole write.
+fn write_clipboard<B>(terminal: &mut Terminal<B>, session: &Session, text: &str) -> io::Result<()>
+where
+    B: Backend<Error = io::Error> + Write,
+{
+    let mut bytes = Vec::new();
+    Transport::for_tmux(&session.capabilities.tmux)
+        .write(&graft_term::clipboard::osc52_copy(text), &mut bytes);
+    let _whole = redetect::hold_output();
+    let backend = terminal.backend_mut();
+    backend
+        .write_all(&bytes)
+        .and_then(|()| Write::flush(backend))
 }
 
 /// Delete every image Graft uploaded, as one whole write.
@@ -1618,5 +1643,99 @@ mod tests {
                 Event::Key(KeyPress::plain(KeyCode::Char('q'))),
             ]
         );
+    }
+
+    /// The first of 255 commits selected, at the default (Outside) session.
+    fn copy_run(session: &mut Session) -> (Result<Exit, io::Error>, Recorder, String) {
+        let (mut terminal, recorder) = terminal(80, 24);
+        let history = crate::view::tests::history_of(255, 0);
+        let sha = history
+            .selected()
+            .expect("the cursor row is on hand")
+            .commit
+            .id
+            .to_string();
+        let state = AppState {
+            history: Some(history),
+            ..AppState::default()
+        };
+        let mut wakes =
+            ScriptedWakes::new(vec![key(KeyPress::plain(KeyCode::Char('y'))), quit_key()]);
+        let exit = pump(
+            &mut terminal,
+            &mut wakes,
+            &Recorded::default(),
+            session,
+            state,
+        );
+        (exit, recorder, sha)
+    }
+
+    #[test]
+    fn y_writes_the_osc_52_request_to_the_terminal_and_not_to_the_jobs() {
+        let (exit, recorder, sha) = copy_run(&mut session());
+        exit.expect("writing to memory cannot fail");
+        let sequence =
+            String::from_utf8(graft_term::clipboard::osc52_copy(&sha)).expect("OSC 52 is ASCII");
+        let written = recorder.written();
+        assert!(written.contains(&sequence), "no OSC 52 for {sha}");
+        assert!(written.contains(" → clipboard (osc 52)"), "no notice drawn");
+    }
+
+    #[test]
+    fn inside_tmux_the_osc_52_request_is_wrapped_in_the_passthrough() {
+        let mut inside = session();
+        inside.capabilities.tmux = graft_core::capabilities::TmuxStatus::Passthrough {
+            version: "3.4".to_owned(),
+        };
+        let (exit, recorder, sha) = copy_run(&mut inside);
+        exit.expect("writing to memory cannot fail");
+        let mut wrapped = Vec::new();
+        graft_term::tmux_passthrough(&graft_term::clipboard::osc52_copy(&sha), &mut wrapped);
+        let wrapped = String::from_utf8(wrapped).expect("ASCII");
+        assert!(recorder.written().contains(&wrapped));
+    }
+
+    /// A terminal whose clipboard write fails: frames go through, the OSC 52
+    /// request does not.
+    struct RefusesOsc52;
+
+    impl Write for RefusesOsc52 {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            if buf.windows(4).any(|window| window == b"]52;") {
+                return Err(io::Error::other("the terminal went away"));
+            }
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn a_failed_clipboard_write_ends_the_loop_with_its_error() {
+        let mut terminal = Terminal::with_options(
+            CrosstermBackend::new(RefusesOsc52),
+            TerminalOptions {
+                viewport: Viewport::Fixed(Rect::new(0, 0, 80, 24)),
+            },
+        )
+        .expect("a fixed viewport never asks the backend for its size");
+        let state = AppState {
+            history: Some(crate::view::tests::history_of(10, 0)),
+            ..AppState::default()
+        };
+        let mut wakes =
+            ScriptedWakes::new(vec![key(KeyPress::plain(KeyCode::Char('y'))), quit_key()]);
+        let error = pump(
+            &mut terminal,
+            &mut wakes,
+            &Recorded::default(),
+            &mut session(),
+            state,
+        )
+        .expect_err("the write error reaches the caller");
+        assert_eq!(error.to_string(), "the terminal went away");
     }
 }

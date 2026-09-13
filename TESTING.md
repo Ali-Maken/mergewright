@@ -436,6 +436,20 @@ Captures (80x24, release binary), written straight to files:
 eye, per the project rule — green tests only prove the reveal logic
 agrees with itself.
 
+### `y` copies the SHA (ticket 45, ADR-0023)
+
+| Check | What right looks like |
+|---|---|
+| Select a commit, press `y` | The bottom line reads `<7 hex>… → clipboard (osc 52)`; paste in another window gives the 40-character SHA. Press `j`: the line is gone. |
+| Hint bar at 120 columns | Includes `y sha` after `H stash`; dropped from the right with the others when narrow |
+| Inside tmux (`allow-passthrough on`) | Same notice; paste outside tmux gives the full SHA |
+| Terminal with OSC 52 disabled | Same notice (Graft cannot tell); paste gives whatever was there before — not a Graft bug |
+
+Automated: `python3 .scratch/m1-the-graph/pty-copy-check.py <release graft> <repo>`
+asserts the byte stream holds `ESC ] 52 ; c ;` + base64 of HEAD's SHA and
+writes `docs/shots/45-y-copies-sha.txt`. The paste itself is judged by hand
+per terminal (Ghostty, Zed, VS Code, tmux) — unticked until tried.
+
 ## Graph gallery
 
 M1's acceptance ticket (35). M1 promises that **the shape of history is
@@ -451,7 +465,8 @@ cargo run -p graft --example gallery -- --matrix          # coverage matrix
 
 `]` next stop, `[` previous, `q` quit. Every graph key works inside it:
 `j`/`k`, `Space` fold merges, `1` first-parent, `H` hide stashes, `F` Focus,
-`+` unfold lanes, `F3` cycle the tier (Pixel → Unicode → ASCII → back).
+`+` unfold lanes, `y` copy the SHA, `F3` cycle the tier (Pixel → Unicode →
+ASCII → back).
 
 A three-line banner sits under the header, above the rows, from the first
 frame (ticket 38: the footer alone did not tell a first-time viewer where

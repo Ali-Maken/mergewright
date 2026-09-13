@@ -318,3 +318,8 @@ entry is (CLAUDE.md).*
 | **Idle prefetch (30h) costs CPU after every pixel frame with idle time, mostly not rasterising**: release, per frame p50/p99/max: 100k fixture refs 0.8/4.6/6.7 ms; 50k refs 3.3/5.1/5.6 ms (429 of 697 frames over 1 ms; `target/30h/release-frames.txt`). Each look runs `update` twice (a whole `AppState` clone, `RefBadges` by value) and `pixel_rows` twice even when every strip is cached. Suspected, not profiled: the 50k-ref clone | Profile; `Arc` the ref badges in `AppState`, or skip the what-ifs when the window, cursor and cache are unchanged since the last prefetch | 30f seam 4 or M1 review |
 | **The "not available" page understands only `]`, `[`, `q`**; an escape sequence is skipped, a lone `Esc` swallows the next key | Reuse the input mux instead of raw byte reads | Not planned |
 
+## m1-the-graph/45 — `y` copies the SHA
+- **Copy SHA under `.` context actions: M2+ (menu not built).** `y` is the only route until then.
+- **Whether the clipboard got it is unknown to Graft.** OSC 52 has no reply; the notice says what was sent. Terminals with OSC 52 off (some VS Code/Zed settings, tmux without `allow-passthrough` or `set-clipboard`) silently drop it. Paste in Ghostty/Zed/VS Code/tmux is a user by-eye check, not yet done.
+- **Inside tmux the request is wrapped in DCS passthrough, like images (ticket spec).** tmux's own `set-clipboard on` path (unwrapped OSC 52) is not used; with passthrough off the copy is dropped. Open whether to send unwrapped inside tmux instead.
+- **`y` while a failure is on the status line** still sends the SHA but shows no notice: the failure is never replaced by a notice.

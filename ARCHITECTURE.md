@@ -43,6 +43,9 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   into a `Capabilities`. `detect::tty` writes the queries to the real
   terminal and reads replies through the input mux, so everything above it
   is tested against scripted replies.
+- **Changing what `y` sends to the clipboard** → `graft-term/src/clipboard.rs`
+  builds the OSC 52 request; `graft/src/event_loop` writes it through the
+  session's `Transport` (ADR-0023).
 - **Changing how keys, mouse or terminal replies are read** →
   `graft-term/src/input/`. `mux` is the one thread that owns stdin for the
   whole run; `decode` is the pure bytes → events/replies decoder, where every

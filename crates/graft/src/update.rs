@@ -321,6 +321,14 @@ pub enum Status {
     /// A background job failed, and this is what it said. Shown until
     /// something replaces it — a failure is never dropped on the floor.
     Failed(String),
+    /// `y` sent the selected commit's SHA to the terminal's clipboard
+    /// request (OSC 52); `short` is its first seven hex digits. Says what
+    /// Graft sent, not that the clipboard has it: nothing comes back to
+    /// tell (ADR-0023). Cleared by the next key.
+    Copied {
+        /// The SHA's first seven hex digits.
+        short: String,
+    },
 }
 
 /// A terminal size in character cells.
@@ -379,6 +387,10 @@ pub enum Command {
     CancelJob(JobId),
     /// Search history for a query off the loop's thread (`/`).
     Search(crate::search::Query),
+    /// Ask the terminal to put this text on its clipboard (OSC 52, `y`).
+    /// Written by the loop itself, to the terminal, through the session's
+    /// transport: it is output, not a job, and never reaches the job runner.
+    CopyToClipboard(String),
 }
 
 /// Answer one event: the new state, and the work it wants done.
@@ -616,6 +628,10 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
 /// other key clears a peek left on: it is a one-shot, not a mode
 /// (ADR-0023).
 fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
+    // The copy notice lasts until the next key, whatever that key does.
+    if matches!(next.status, Status::Copied { .. }) {
+        next.status = Status::Ready;
+    }
     if is_peek_key(key) {
         next.peek = !next.peek;
         return;
@@ -651,6 +667,8 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         next.focus = !next.focus;
     } else if is_tier_cycle(key) {
         cycle_tier(next, commands);
+    } else if is_copy_key(key) {
+        copy_selected_sha(next, commands);
     } else if let Some(change) = view_change(key) {
         let height = next.graph_rows();
         let stash = next.refs.as_ref().and_then(crate::refs::RefBadges::stash);
@@ -1051,6 +1069,26 @@ fn strip_rows_for(tier: RenderingTier) -> Option<usize> {
 /// m1-the-graph/19, 24d, 33). Not one of DESIGN.md's keymap, like `F2`.
 fn is_tier_cycle(key: KeyPress) -> bool {
     key.code == KeyCode::Function(3) && !key.modifiers.control && !key.modifiers.alt
+}
+
+/// `y`: copy the selected commit's full SHA (vim's yank; ADR-0023).
+fn is_copy_key(key: KeyPress) -> bool {
+    key.code == KeyCode::Char('y') && !key.modifiers.control && !key.modifiers.alt
+}
+
+/// `y` on a selected row: ask the loop to send the full SHA to the
+/// terminal's clipboard and say so in the footer. No selected row, nothing.
+/// A failure on the status line stays: it is never dropped for a notice.
+fn copy_selected_sha(next: &mut AppState, commands: &mut Vec<Command>) {
+    let Some(row) = next.history.as_ref().and_then(|history| history.selected()) else {
+        return;
+    };
+    let sha = row.commit.id.to_string();
+    let short = sha.chars().take(7).collect();
+    commands.push(Command::CopyToClipboard(sha));
+    if !matches!(next.status, Status::Failed(_)) {
+        next.status = Status::Copied { short };
+    }
 }
 
 /// `Enter`: peek the cursor row's full subject — the keyboard's route to the
@@ -1611,6 +1649,49 @@ mod tests {
 
         let (opened, _) = update(&state, key(KeyCode::Enter));
         assert!(opened.peek, "Enter turns the peek on");
+    }
+
+    /// `y` on the selected row copies its full SHA and says what was sent
+    /// (ADR-0023 decision 4).
+    #[test]
+    fn y_on_a_selected_row_copies_the_full_sha_and_says_so() {
+        let (state, _) = merge_on_screen(JobId::new(31), 0);
+        let (copied, commands) = update(&state, key(KeyCode::Char('y')));
+        let sha = "01".repeat(20);
+        assert_eq!(commands, vec![Command::CopyToClipboard(sha)]);
+        assert_eq!(
+            copied.status,
+            Status::Copied {
+                short: "0101010".to_owned()
+            }
+        );
+    }
+
+    #[test]
+    fn y_with_no_rows_sends_nothing_and_leaves_the_status_alone() {
+        let state = AppState::default();
+        let (next, commands) = update(&state, key(KeyCode::Char('y')));
+        assert!(commands.is_empty(), "{commands:?}");
+        assert_eq!(next.status, Status::Ready);
+    }
+
+    #[test]
+    fn the_next_key_clears_the_copy_notice() {
+        let (state, _) = merge_on_screen(JobId::new(32), 0);
+        let (copied, _) = update(&state, key(KeyCode::Char('y')));
+        let (moved, _) = update(&copied, key(KeyCode::Char('j')));
+        assert_eq!(moved.status, Status::Ready);
+    }
+
+    /// A failure is never dropped for a notice: the SHA is still sent, the
+    /// failure stays on the status line.
+    #[test]
+    fn y_sends_the_sha_but_keeps_a_failure_on_screen() {
+        let (mut state, _) = merge_on_screen(JobId::new(33), 0);
+        state.status = Status::Failed("the refs could not be read".to_owned());
+        let (next, commands) = update(&state, key(KeyCode::Char('y')));
+        assert_eq!(commands.len(), 1, "{commands:?}");
+        assert_eq!(next.status, state.status);
     }
 
     #[test]

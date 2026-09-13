@@ -567,6 +567,11 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
                 self.row_requests().remove(&id);
                 self.cancel(id);
             }
+            // The loop writes this to the terminal itself (`event_loop`);
+            // reaching here is a routing bug, not a runtime condition.
+            Command::CopyToClipboard(_) => {
+                unreachable!("CopyToClipboard is terminal output, never a job")
+            }
         }
     }
 }

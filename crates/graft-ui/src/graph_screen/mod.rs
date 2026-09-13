@@ -516,7 +516,7 @@ pub enum SearchLine {
 /// always there. `n`/`N` live on the search line, where they work. `Enter`
 /// has no permanent hint (ADR-0023): it peeks a truncated subject, which
 /// [`reveal_hint`] names only while the cursor row needs it.
-const HINTS: [&str; 12] = [
+const HINTS: [&str; 13] = [
     "q quit",
     "F2 status",
     "F3 renderer",
@@ -526,6 +526,7 @@ const HINTS: [&str; 12] = [
     "1 first-parent",
     "F focus",
     "H stash",
+    "y sha",
     "PgUp/PgDn page",
     "g/G top/bottom",
     "Ctrl+R refresh",

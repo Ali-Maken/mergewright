@@ -4,7 +4,7 @@ One line per public item. Update when a public item changes.
 ## lib.rs
 - `fit` (mod) — clamp text to an exact cell width.
 - `graph_column` (mod) — the Unicode-tier graph column widget.
-- `graph_screen` (mod) — the graph screen Graft opens on: header, rows, key hints (every graph key, F3 included; narrow widths drop whole hints from the right, m1-the-graph/33).
+- `graph_screen` (mod) — the graph screen Graft opens on: header, rows, key hints (every graph key, F3 included; narrow widths drop whole hints from the right, m1-the-graph/33; `y sha` added in 45).
 - `graph_screen::badges` (mod) — ref badges: kinds, tracking state, plain/Nerd Font text.
 - `graph_screen::columns` (mod) — pure formatting for the author initials, relative date and short SHA.
 - `paint` (mod) — token-to-style helpers for widgets.

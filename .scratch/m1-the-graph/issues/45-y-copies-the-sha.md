@@ -1,6 +1,6 @@
 # m1-the-graph — `y` copies the selected commit's SHA (OSC 52)
 
-Status: ready
+Status: done (user paste check pending)
 Build with: **Opus** (high) — a terminal protocol through tmux passthrough (CLAUDE.md Models); small
 Needs: none strictly; touches the same footer/hint/key code as 41 — sequence after it
 Blocked by: 41
@@ -34,14 +34,23 @@ pub enum Status  { /* existing */ Copied { short: String } }
 ```
 
 ## Acceptance
-- [ ] Test: `osc52_copy("abc")` is exactly `\x1b]52;c;YWJj\x1b\\`; through `Transport::TmuxPassthrough` it is DCS-wrapped with `ESC` doubled.
-- [ ] Update tests: `y` on a selected row → `CopyToClipboard(<40 hex>)` and `Status::Copied`; `y` with no rows → no command, status unchanged; the next key clears the notice.
-- [ ] pty test (release binary, as 17/24 did): after `y`, the captured byte stream contains `\x1b]52;c;` followed by the base64 of the selected SHA; footer shows the notice. Capture `docs/shots/<NN>-y-copies-sha.txt`. User judges by eye and pastes in Ghostty (by-eye box, unticked until tried).
-- [ ] TESTING.md row: "Select a commit, press `y`: the bottom line reads `<7 hex>… → clipboard (osc 52)`; paste in another window gives the 40-character SHA. Press `j`: the line is gone."
-- [ ] KNOWN_GAPS and MAP.md updated. Gates pass.
+- [x] Test: `osc52_copy("abc")` is exactly `\x1b]52;c;YWJj\x1b\\`; through `Transport::TmuxPassthrough` it is DCS-wrapped with `ESC` doubled.
+- [x] Update tests: `y` on a selected row → `CopyToClipboard(<40 hex>)` and `Status::Copied`; `y` with no rows → no command, status unchanged; the next key clears the notice.
+- [x] pty test (release binary, as 17/24 did): after `y`, the captured byte stream contains `\x1b]52;c;` followed by the base64 of the selected SHA; footer shows the notice. Capture `docs/shots/<NN>-y-copies-sha.txt`. User judges by eye and pastes in Ghostty (by-eye box, unticked until tried).
+- [ ] User by eye: paste in Ghostty / Zed / VS Code / tmux gives the 40-hex SHA.
+- [x] TESTING.md row: "Select a commit, press `y`: the bottom line reads `<7 hex>… → clipboard (osc 52)`; paste in another window gives the 40-character SHA. Press `j`: the line is gone."
+- [x] KNOWN_GAPS and MAP.md updated. Gates pass.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test`
 
 ## Size
 Under ~80k tokens.
+
+## Notes (builder, 2026-09-14)
+- base64: local 20-line encoder in `graft-term::clipboard`, no new dependency; RFC 4648 vectors tested.
+- `CopyToClipboard` is written by `event_loop::frames` through `Transport::for_tmux(session.capabilities.tmux)`, under `hold_output`; the write error propagates out of `pump` (test: `a_failed_clipboard_write_ends_the_loop_with_its_error`). `jobs` has an `unreachable!` arm: never dispatched.
+- Choice: `y` while `Status::Failed` sends the SHA but keeps the failure (never dropped); no notice then. In KNOWN_GAPS.
+- pty test is a script like 41's: `.scratch/m1-the-graph/pty-copy-check.py` (asserts OSC 52 bytes, notice, notice cleared). Captures `docs/shots/45-y-copies-sha.txt`, `docs/shots/45-notice-cleared.txt`.
+- Open question for the user: inside tmux the request is DCS-wrapped (per spec); tmux's native `set-clipboard` path would need it unwrapped. In KNOWN_GAPS.
+- Not compacted.

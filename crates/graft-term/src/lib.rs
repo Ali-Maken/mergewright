@@ -5,7 +5,8 @@
 //! (`sanitize`), and owning stdin: decoding keys and routing terminal
 //! replies to whoever asked (`input`). Image encoders turn a `core::RasterFrame` into
 //! protocol bytes (DESIGN.md §8.2): Kitty (`kitty`) and iTerm2 (`iterm2`),
-//! carried through tmux by `tmux`. No Sixel encoder (ADR-0016). Depends only on `core`.
+//! carried through tmux by `tmux`. `clipboard` builds the OSC 52 copy
+//! request. No Sixel encoder (ADR-0016). Depends only on `core`.
 // `deny`, not `forbid`, and this is the only crate where that is true.
 // Reading the terminal's window size and waiting on its file descriptor are
 // two libc calls with no safe equivalent in the standard library; ADR-0013
@@ -16,6 +17,7 @@
 // all.
 #![deny(unsafe_code)]
 
+pub mod clipboard;
 pub mod detect;
 pub mod input;
 pub mod iterm2;
