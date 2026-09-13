@@ -1,6 +1,6 @@
 # m1-the-graph/27b — git/git without a commit-graph misses the 300 MB budget
 
-Status: partial (fix B landed; C blocked on a promotion/`G` race — question for the user)
+Status: partial — profile + fix B landed; remainder split into 27c (promotion/jump race) and 27d (C, D, margin, guard)
 Build with: **Opus** (high) — split from 27's remainder; same scope and model
 Blocked by: 27
 Leaves runnable: yes — git/git stays under 300 MB peak RSS with and without a commit-graph.
