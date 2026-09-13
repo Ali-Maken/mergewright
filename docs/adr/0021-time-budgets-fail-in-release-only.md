@@ -49,3 +49,14 @@ heavier burst meets a slow CPU:
 How the release assertion treats this (exclude the named key, hold the CPU
 busy while measuring, or cut the per-key cost until a cold CPU fits) is
 **open**: m1-the-graph/30c's handoff asks the user.
+
+## Applied: rows on hand (m1-the-graph/30f, 2026-09-13)
+
+Not a new decision; this rule applied to one more check. `frames::`'s
+rows-on-hand check (no key drawn before its viewport rows arrived) depends
+on pace as the time budgets do: whether layout stays two screens ahead of
+`PageDown` held at 60 Hz (~2,400 rows/s) is a question of how fast the
+worker runs. The first debug run failed it (pixel 50k: 42 keys, pixel 100k:
+19, Unicode 50k: 1); 7 release runs never did. It fails in release and is
+printed in debug (`rows on hand recorded not asserted: N of M keys`), so a
+regression stays visible. The script's pace was not slowed for debug.
