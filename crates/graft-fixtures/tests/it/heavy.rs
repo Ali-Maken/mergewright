@@ -109,6 +109,43 @@ fn the_same_scale_twice_is_the_same_repository() {
 }
 
 #[test]
+fn the_realistic_variant_has_git_git_sized_commits_on_the_same_shape() {
+    let plain = synthetic::borrow(SMALL).unwrap_or_else(|why| panic!("{why}"));
+    let scale = SMALL.with_realistic_commits();
+    let real = synthetic::borrow(scale).unwrap_or_else(|why| panic!("{why}"));
+    assert_ne!(plain, real, "the realistic variant shares the plain cache");
+
+    // The same graph: the budget tests compare the two on history shape.
+    for args in [
+        &["rev-list", "--count", "--all"][..],
+        &["rev-list", "--count", "--all", "--merges"][..],
+    ] {
+        assert_eq!(read(&plain, args), read(&real, args), "{args:?}");
+    }
+
+    // git/git (m1-the-graph/27d): mean commit object 726 bytes, median 577.
+    let sizes = read(
+        &real,
+        &[
+            "cat-file",
+            "--batch-all-objects",
+            "--batch-check=%(objecttype) %(objectsize)",
+        ],
+    );
+    let commits: Vec<u64> = sizes
+        .lines()
+        .filter_map(|line| line.strip_prefix("commit "))
+        .map(|size| size.parse().unwrap_or_else(|why| panic!("{size}: {why}")))
+        .collect();
+    let mean = commits.iter().sum::<u64>() / commits.len() as u64;
+    assert!((500..=1000).contains(&mean), "mean commit is {mean} bytes");
+
+    let authors = read(&real, &["log", "--all", "--format=%ae"]);
+    let distinct: std::collections::HashSet<&str> = authors.lines().collect();
+    assert!(distinct.len() > 500, "only {} authors", distinct.len());
+}
+
+#[test]
 fn the_commit_graph_variant_is_a_separate_fixture_that_has_one() {
     let plain = synthetic::borrow(SMALL).unwrap_or_else(|why| panic!("{why}"));
     let scale = SMALL.with_commit_graph();

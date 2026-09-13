@@ -89,6 +89,25 @@ pub enum CommitGraph {
     Present,
 }
 
+/// How big each commit object is: what a walk that reads commits pays per
+/// commit.
+///
+/// [`CommitSize::Small`] is the default and the fixture every other test
+/// has always used: one-line messages and one identity. That undersells a
+/// real repository: git/git's commit objects are 726 bytes on average
+/// (median 577, p90 1262), with ~35-byte identities from many people, and
+/// m1-the-graph/27 found the 100k fixture passing the memory budget at 179
+/// MiB while git/git failed it at 305. [`CommitSize::Realistic`] is sized
+/// after git/git so a budget test sees what that repository costs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CommitSize {
+    /// One-line messages, one identity: a few hundred bytes a commit.
+    Small,
+    /// Multi-paragraph messages and a thousand identities, sized after
+    /// git/git (mean commit object about 700 bytes).
+    Realistic,
+}
+
 impl CommitGraph {
     fn name(self) -> &'static str {
         match self {
@@ -107,6 +126,7 @@ impl CommitGraph {
 pub struct Scale {
     commits: u32,
     commit_graph: CommitGraph,
+    commit_size: CommitSize,
 }
 
 impl Scale {
@@ -118,6 +138,7 @@ impl Scale {
         Scale {
             commits,
             commit_graph: CommitGraph::Absent,
+            commit_size: CommitSize::Small,
         }
     }
 
@@ -132,6 +153,16 @@ impl Scale {
         }
     }
 
+    /// The same history shape with [`CommitSize::Realistic`] commits. A
+    /// separate fixture with its own cache directory.
+    #[must_use]
+    pub const fn with_realistic_commits(self) -> Scale {
+        Scale {
+            commit_size: CommitSize::Realistic,
+            ..self
+        }
+    }
+
     /// How many commits the repository holds. Exactly this many: the
     /// generator checks, and fails the build rather than handing back a
     /// fixture of the wrong size.
@@ -141,7 +172,16 @@ impl Scale {
 
     /// The name this scale is cached and reported under.
     pub fn name(self) -> String {
-        format!("synthetic-{}-{}", self.commits, self.commit_graph.name())
+        // Small commits keep the name they were always cached under.
+        let size = match self.commit_size {
+            CommitSize::Small => "",
+            CommitSize::Realistic => "-realistic",
+        };
+        format!(
+            "synthetic-{}{size}-{}",
+            self.commits,
+            self.commit_graph.name()
+        )
     }
 }
 
@@ -322,7 +362,7 @@ fn check_size(scale: Scale, dir: &Path) -> Result<(), SyntheticError> {
 /// Writes the whole `fast-import` stream to `path`, a chunk at a time.
 fn write_stream(scale: Scale, path: &Path) -> Result<(), io::Error> {
     let mut out = BufWriter::new(File::create(path)?);
-    let mut history = History::new(scale.commits);
+    let mut history = History::new(scale.commits, scale.commit_size);
     history.write(&mut out)?;
     out.into_inner()
         .map_err(io::IntoInnerError::into_error)?
@@ -341,10 +381,11 @@ struct History {
     buffered: u32,
     tip: Option<Mark>,
     cycle: u32,
+    size: CommitSize,
 }
 
 impl History {
-    fn new(commits: u32) -> Self {
+    fn new(commits: u32, size: CommitSize) -> Self {
         History {
             stream: Stream::new(),
             left: commits,
@@ -352,6 +393,7 @@ impl History {
             buffered: 0,
             tip: None,
             cycle: 0,
+            size,
         }
     }
 
@@ -374,7 +416,9 @@ impl History {
             let content = format!("trunk {}\n", self.done + 1);
             let message = format!("Trunk commit {}\n", self.done + 1);
             let parents: Vec<Mark> = self.tip.into_iter().collect();
-            self.tip = Some(self.stream.commit(
+            let (identity, message) = self.dressed(message);
+            self.tip = Some(self.stream.commit_by(
+                &identity,
                 MAIN,
                 message.as_bytes(),
                 &parents,
@@ -417,7 +461,9 @@ impl History {
         for step in 1..=TOPIC_RUN {
             content = format!("topic {} step {step}\n", self.cycle);
             let message = format!("topic/{:06}: step {step}\n", self.cycle);
-            topic = self.stream.commit(
+            let (identity, message) = self.dressed(message);
+            topic = self.stream.commit_by(
+                &identity,
                 branch.as_bytes(),
                 message.as_bytes(),
                 &[topic],
@@ -431,7 +477,9 @@ impl History {
             // `fast-import` starts a merge from the *first* parent's tree and
             // applies only what the stream spells out, so the topic's file
             // has to be restated here or the merge would undo it.
-            self.tip = Some(self.stream.commit(
+            let (identity, message) = self.dressed(message);
+            self.tip = Some(self.stream.commit_by(
+                &identity,
                 MAIN,
                 message.as_bytes(),
                 &[base, topic],
@@ -443,6 +491,22 @@ impl History {
 
         self.cycle += 1;
         self.maybe_drain(out)
+    }
+
+    /// The identity and message the next commit carries: `subject` and the
+    /// fixture identity for small commits; for realistic ones, a body and a
+    /// sign-off added to the subject and one of a thousand identities, both
+    /// picked from the commit's number so the fixture is the same every build.
+    fn dressed(&self, subject: String) -> (String, String) {
+        match self.size {
+            CommitSize::Small => (crate::stream::IDENTITY.to_owned(), subject),
+            CommitSize::Realistic => {
+                let n = self.done + 1;
+                let identity = realistic_identity(n);
+                let message = realistic_message(n, &subject, &identity);
+                (identity, message)
+            }
+        }
     }
 
     /// Records one emitted commit.
@@ -475,6 +539,42 @@ impl History {
         }
         Ok(())
     }
+}
+
+/// Body lines of a realistic message, picked by a commit's number. At 64
+/// bytes a line this is a mean of ~500 bytes (median ~350, p90 ~770) before
+/// the subject and sign-off: with the headers, git/git's commit sizes.
+const BODY_LINES: [u32; 10] = [2, 3, 4, 5, 5, 6, 7, 9, 12, 24];
+
+/// Identities a realistic fixture spreads its commits over.
+const IDENTITIES: u32 = 1000;
+
+/// A number that looks unrelated to `n` but is always the same for it
+/// (Knuth's multiplicative hash), so neighbouring commits differ in size.
+fn scatter(n: u32) -> u32 {
+    n.wrapping_mul(2_654_435_761)
+}
+
+/// About 35 bytes, like git/git's mean identity.
+fn realistic_identity(n: u32) -> String {
+    let who = (scatter(n) >> 12) % IDENTITIES;
+    format!("Author {who:04} <a{who:04}@example.invalid>")
+}
+
+/// `subject`, a blank line, a wrapped body and a `Signed-off-by` trailer.
+fn realistic_message(n: u32, subject: &str, identity: &str) -> String {
+    const LINE: &str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do.\n";
+    let lines = BODY_LINES[(scatter(n) % 10) as usize];
+    let mut message = String::with_capacity(subject.len() + LINE.len() * lines as usize + 64);
+    message.push_str(subject);
+    message.push('\n');
+    for _ in 0..lines {
+        message.push_str(LINE);
+    }
+    message.push_str("\nSigned-off-by: ");
+    message.push_str(identity);
+    message.push('\n');
+    message
 }
 
 fn git_error(scale: Scale) -> impl FnOnce(GitError) -> SyntheticError {

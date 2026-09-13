@@ -62,7 +62,9 @@ What is timed: `crates/graft/tests/it/budget_run.rs` — real `JobRunner` + real
 | first paint ≤ 150 ms | 46 ms warm, 82–113 ms cold | git/git 85,649 | yes (clone ships one) | release | `cargo run --release -p graft --example budgets -- "$(scripts/clone-git-git.sh --where)"`, 6 runs |
 | peak RSS < 300 MB | 254.5–255.8 MiB (at paint 78 MiB) | git/git | yes | release | same |
 | first paint ≤ 150 ms | 13.5 ms warm, 67 ms cold | git/git | no (copy in /tmp, `objects/info/commit-graph` removed) | release | same example on the copy, 3 runs |
-| **peak RSS < 300 MB** | **300.5–305.9 MiB — MISSED** | git/git | no | release | same |
+| peak RSS < 300 MB (27, before fixes) | 300.5–305.9 MiB, missed | git/git | no | release | same |
+| peak RSS < 300 MB | 223.6–225.3 MiB (after 27b B, 27c C, 27d D) | git/git | yes | release | `examples/budgets`, 3 runs (27d) |
+| **peak RSS < 300 MB** | **219.1–221.5 MiB (after B, C, D)** | git/git | no | release | same, 3 runs (27d); per-fix table in ticket 27d |
 
 Also seen: `G` 3.3 s (100k, cg, debug), 7.4 s (100k, no cg, debug), 0.52 s (git/git, cg, release), 1.25–1.33 s (git/git, no cg, release). `g` back to top after `G` ≈ 0.1 ms on all.
 

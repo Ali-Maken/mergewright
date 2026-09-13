@@ -14,6 +14,7 @@
 
 use std::path::Path;
 use std::process::Command;
+use std::sync::{Mutex, PoisonError};
 use std::time::Duration;
 
 use graft_fixtures::synthetic::{self, Scale};
@@ -32,6 +33,12 @@ const CHILD_REPO: &str = "GRAFT_BUDGET_CHILD_REPO";
 /// The child's result line starts with this.
 const MARK: &str = "budget:";
 
+/// Held while a child measures. First paint is wall-clock time, so two
+/// children running at once slow each other past the budget (four did, in
+/// m1-the-graph/27d: 170-182 ms against 68-72 ms alone); the test harness
+/// runs tests in parallel, so the budget tests take turns.
+static MEASURING: Mutex<()> = Mutex::new(());
+
 #[test]
 fn budgets_hold_on_the_100k_fixture_without_a_commit_graph() {
     check(Scale::HEAVY, false);
@@ -40,6 +47,22 @@ fn budgets_hold_on_the_100k_fixture_without_a_commit_graph() {
 #[test]
 fn budgets_hold_on_the_100k_fixture_with_a_commit_graph() {
     check(Scale::HEAVY.with_commit_graph(), true);
+}
+
+/// The same history with commits sized after git/git (m1-the-graph/27d):
+/// the small fixture passed at 179 MiB while git/git failed at 305, because
+/// the cost that broke the budget scaled with commit bytes, not commits.
+#[test]
+fn budgets_hold_on_the_100k_realistic_fixture_without_a_commit_graph() {
+    check(Scale::HEAVY.with_realistic_commits(), false);
+}
+
+#[test]
+fn budgets_hold_on_the_100k_realistic_fixture_with_a_commit_graph() {
+    check(
+        Scale::HEAVY.with_realistic_commits().with_commit_graph(),
+        true,
+    );
 }
 
 /// Not a test of its own: the half of a budget test that runs in a fresh
@@ -66,7 +89,12 @@ fn budget_child() {
 
 fn check(scale: Scale, commit_graph: bool) {
     let repo = synthetic::borrow(scale).unwrap_or_else(|why| panic!("{why}"));
+    // Poisoned only when another budget test panicked while holding it; that
+    // test has already failed on its own, and the lock guards no data, so
+    // this one may still measure.
+    let turn = MEASURING.lock().unwrap_or_else(PoisonError::into_inner);
     let line = result_line(&repo);
+    drop(turn);
     let line = line.as_str();
     let field = |name: &str| -> String {
         line.split_whitespace()
