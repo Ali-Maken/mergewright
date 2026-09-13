@@ -331,3 +331,4 @@ entry is (CLAUDE.md).*
 ## m1-the-graph/49 — commit handles and the id table
 - `graft::history::WalkSource::links` reads each commit whole to get its parents (`read_commit`). Nothing calls it on a hot path yet (`pull`/`read` still hand out whole commits); the hydrate-on-demand ticket should take parents from the walk, as `Walk::next_links` does.
 - Heavy-tier tests for the table and `next_links` (5k pair; 100k overflow ≤ 60 B/commit) are written, not run by the builder; they run in the milestone review.
+- **1M first paint is not the walk** (m1/50). On the 1M commit-graph fixture the topological walk's first emission costs 3 ms (6,498 graph reads), yet the app's first paint is 261–327 ms with ~215 MiB RSS at paint: something linear in history (6,497 refs, or setup before the first window) runs first. Profile it in ticket 55 (1M first paint); ADR-0026 judges it against 500 ms.

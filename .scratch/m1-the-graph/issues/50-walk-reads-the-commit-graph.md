@@ -1,6 +1,6 @@
 # m1-the-graph/50 — The walk reads the commit-graph, and its state is dense
 
-Status: ready
+Status: done
 Build with: **Opus** (high) — rev-walk correctness against the git oracle, generation-number rules, commits outside the graph.
 Needs: `CommitHandle`, `Parents`, `Link`, `HandleSet` (core), `CommitTable`, `Walk::next_links` (commit-handles-and-table).
 Blocked by: 49
@@ -45,3 +45,32 @@ fn node_from_object(repo: &RepoHandle, id: &Oid) -> Result<Node, WalkError>;    
 
 ## Size
 One context, under ~80k tokens. Seam: (a) cg path from the graph + dense state; (b) no-cg sort + `Dated.seen` + measurements. Stop at the seam with a handoff note rather than compacting.
+
+## Result (builder, 2026-09-14)
+
+Code: dc47d28. `Nodes` is handle-based (`handle`/`id`/`node`/`rereadable`); `node_from_graph` reads by position, `node_from_object` header-parses overflow commits (generation `u32::MAX`). `Topological`: `State { indegree: Vec<u32>, discovered/expanded/emitted: HandleSet, frontier: HashMap<CommitHandle, Node> }`. `Sorted` (no-cg `full_topological`): paged dense arrays by handle, freed at the end. `Dated.seen`: `HandleSet`. `divergence` (ahead/behind) ported to the same `Nodes` trait. `Parents` gained `Default` (core).
+
+Deviations from the spec's private shapes (reviewer, please check):
+- `frontier` holds only nodes that are **not** rereadable (overflow commits). A graph commit is re-read from the mapped file instead of kept: stricter than "only the frontier", and matches ADR-0026 item 3 ("no entry is ever hashed"). An extra `discovered` bitset makes that possible.
+- `node_from_graph` returns `Result<Node, NodeError>`: a corrupt parent edge is surfaced, not a silent odb fallback.
+- `node_from_object(repo: &gix::Repository, id, table) -> Result<Node, NodeError>` (not `&RepoHandle`/`WalkError`): parents are interned there.
+- No-cg arrays are `Paged<T>` (2^16-entry pages), not `Vec`: `Vec` doubling put the sort over 40 B/commit.
+
+### Measurements (release, 1M synthetic fixtures, 3 runs each)
+Walk odb reads counted with a temporary counter in `node_from_object`, printed by `examples/budgets` and a throwaway probe (both reverted).
+
+| | before | after |
+|---|---|---|
+| cg: walk objects read from odb during `G` | 1M (via nodes) | **0** (all 3 runs) |
+| cg: `G` | 4.0 s | 3.56–3.58 s |
+| cg: peak RSS (getrusage) | 933–935 MiB | 646–650 MiB |
+| cg: footprint (`time -l`) | 590 MiB | 304–307 MiB |
+| cg: first paint | 292–346 ms | 261–327 ms |
+| no-cg: `G` / peak RSS | 5.8–6.0 s / 881 MiB | 5.56–5.57 s / 786–787 MiB |
+| no-cg: promotion sort peak live heap (counting allocator, table pre-filled) | 267 MiB | **38.3 B/commit** (36.5 MiB) |
+| no-cg: same, table filled during the sort | — | 107.7 B/commit (table 56.6 final + its growth transients) |
+
+Remaining `G` RSS on the cg path is hydration (`next_chunk` reads every commit): the hydrate-on-demand ticket.
+
+### First-paint finding (for the acceptance ticket)
+**Refuted for Graft.** The incremental sort expands only down to the generation of the candidate it is confirming (the newest tip), not down to the oldest tip's generation as git's `compute_indegrees_to_depth` does. 1M cg fixture, 6,497 tips: first emission after **6,498 node reads, 3.0–3.2 ms** (≈0.5 µs per read from the graph); the whole 1M walk takes 264 ms, 7.8 B/commit peak heap. No-cg `full_topological`: first emission after 1M reads, 2.1 s. So the 261–327 ms app first paint at 1M is **not** the walk; something else linear runs before the first window (RSS at paint still ~215 MiB). Logged in KNOWN_GAPS.
