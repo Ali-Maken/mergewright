@@ -34,6 +34,12 @@ One line per public item. Update when a public item changes.
 - `Walk::explorations` (fn) — how many commits the walk has visited so far.
 - `Walk::next_chunk` (fn) — advance the walk and return its next `Chunk`.
 - `Walk::next_ids` (fn) — advance the walk and return its next `IdChunk`: ids only, for callers that need just the order (promotion).
+- `CommitTable` (struct) — one repository's id table: commit-graph positions, then an overflow interner (ADR-0026); `Send + Sync`.
+- `CommitTable::open` (fn) — bind the commit-graph if the repository has one `gix` will use.
+- `CommitTable::has_commit_graph` / `graph_count` (fn) — whether a graph backs the low handles; how many.
+- `CommitTable::intern` / `handle_of` / `id_of` (fn) — handle for an id (appending once) / without appending / id for a handle (panics on a foreign one).
+- `CommitTable::len` / `is_empty` / `overflow_len` / `approximate_bytes` (fn) — entries; entries outside the graph; heap bytes (graph not counted).
+- `TableError` (enum) — why the table could not open: the commit-graph directory and gix's error.
 - `read_commit` (fn) — read one commit whole, by id.
 - `first_parent_merges` (fn) — how many merges lie on a commit's first-parent chain.
 - `AheadBehind` (struct) — commits only a branch has (`ahead`) and only its upstream has (`behind`).

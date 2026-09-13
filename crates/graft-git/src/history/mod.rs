@@ -29,6 +29,7 @@
 mod divergence;
 mod node;
 mod simple;
+mod table;
 mod topological;
 
 use graft_core::commit::{Commit, Identity, Timestamp};
@@ -41,6 +42,7 @@ use topological::Topological;
 
 pub use divergence::{AheadBehind, ahead_behind};
 pub use node::NodeError;
+pub use table::{CommitTable, TableError};
 
 /// How many commits a chunk holds.
 ///

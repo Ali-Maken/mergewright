@@ -12,3 +12,7 @@ thiserror.workspace = true
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+# `HandleSet`'s model test against `HashSet` (PROMPT.md §7.1 names proptest).
+proptest = { version = "1", default-features = false, features = ["std", "bit-set"] }

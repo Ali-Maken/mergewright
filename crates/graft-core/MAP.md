@@ -22,6 +22,12 @@ One line per public item. Update when a public item changes.
 - `Commit` (struct) — one commit: id, parents, author, committer, message.
 - `Commit::date` / `subject` (fn) — committer date; first message line.
 
+## commit_handle
+- `CommitHandle` (struct) — a commit as a dense `u32` from its repository's id table; `index` (fn).
+- `Parents` (enum) — parents by handle, inline for ≤ 2; `iter` / `len` / `is_empty` / `first` (fn), `FromIterator`.
+- `Link` (struct) — `commit` and its `parents`, by handle.
+- `HandleSet` (struct) — bitset of handles; `new` / `insert` / `contains` / `remove` / `len` / `is_empty` / `approximate_bytes` (fn).
+
 ## error
 - `Error` (enum) — a value a core constructor cannot represent.
 - `RefNameRule` (enum) — the `check-ref-format` rule a rejected ref broke.

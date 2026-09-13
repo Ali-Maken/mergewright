@@ -10,6 +10,7 @@
 
 pub mod capabilities;
 pub mod commit;
+pub mod commit_handle;
 pub mod error;
 pub mod event;
 pub mod job;

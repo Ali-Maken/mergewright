@@ -1,6 +1,6 @@
 # m1-the-graph/49 — Commit handles and the shared id table
 
-Status: ready
+Status: partial — seam (a) done, seam (b) remains (handoff below)
 Build with: **Opus** (high) — gix commit-graph internals; the table's shape is structural for three crates, but the approach is decided in ADR-0026 and correctness is round-trip tests, so not Fable.
 Needs: none (first ticket of the group; defines the types and trait additions the others fill in).
 Blocked by: 53
@@ -97,3 +97,23 @@ Callers: `graft::history::WalkSource` (implements), `graft_graph::Included` (del
 
 ## Size
 One context, under ~80k tokens. Seam if it grows: (a) core types + `CommitTable` + tests; (b) `Walk` and `CommitSource` additions + implementors. Stop at the seam with a handoff note rather than compacting.
+
+## Handoff (2026-09-14, builder-opus; stopped at seam (a), no compaction)
+
+Context passed the ~80k target once seam (a) was green, so stopped per Size.
+
+**Done (seam a):**
+- `graft-core::commit_handle` — `CommitHandle` (+ `index()`), `Parents`, `Link`, `HandleSet` as specified; module doc says why the bitset is within ADR-0007. Tests incl. 64-case proptest vs `HashSet<u32>`. `proptest` added as a core dev-dependency.
+- `graft-git::history::table` — `CommitTable` + `TableError`, re-exported from `history`. Opens via `commit_graph_if_enabled` (same rule the walk uses, so handles agree with `Walk::has_commit_graph`). Tests: every corpus shape round-trips with and without a commit-graph (non-UTF-8 fixture skipped on APFS, said); late commit → overflow above `graph_count`, `overflow_len()==1`; 8-byte prefix collision → two handles; SHA-256 overflow; `Send + Sync`. Heavy-tier tests written, not run (builders run fast tier only): 5k pair round-trip; 100k no-cg overflow `approximate_bytes` printed, asserted ≤ 60 B/commit.
+- MAP.md: core and git updated for the new items.
+
+**Remaining (seam b), exact next steps:**
+1. `Walk::{all_refs, from_tips, full_topological}` gain `table: Arc<CommitTable>` (last param); store it; `Walk::table()`.
+2. `Walk::next_links(limit, stop) -> LinkChunk { links, more }`: reuse `Walk::advance`; parents come from `self.nodes.node(id)?.parents` (node.rs) — check whether `Topological`/`Dated` already hold the node at emit time to avoid a second lookup. Intern commit + parents. Note: the spec signature omits `limit`, but `next_chunk`/`next_ids` both take one and `topological_order` passes `CHUNK`; keep `limit` unless planner says otherwise. `LinkChunk` spec has `more` only, not `done`/`stopped` — decide whether `stopped` is needed for `stop` semantics (next_ids tests check it).
+3. Move `next_ids` tests (`history/tests.rs` ~L545–580) to `next_links`; delete `next_ids`, `IdChunk`; update MAP.
+4. `graft/src/history/mod.rs` `topological_order` (~L362–380) → `next_links`, keep `link.commit` mapped through `table.id_of`.
+5. `CommitSource` (graft-graph/src/layout/source.rs) + `links`, `handle_of`, `id_of`. Implementors: `graft::history::WalkSource`, `graft_graph::Included` (inclusion.rs L280, trim parents in `links`), test sources `layout/stream/tests.rs` (VecSource, Forgetful, Stalling), `inclusion/tests.rs` VecSource, `graft-graph/tests/it/streaming.rs` WalkSource, `benches/hot_paths.rs` InMemory. Test sources need their own id↔handle map (graph may not depend on git).
+6. `WalkSource::new/in_order` take the `Arc<CommitTable>`; `RepoStore` (graft/src/repos.rs) opens it once. Call sites of `Walk::all_refs`: graft search.rs (2), history/mod.rs (3), history/tests.rs (~15), graft-ui/tests/support/corpus.rs, graft-graph/tests/it/{corpus,streaming}.rs, graft-git/tests/it/corpus.rs, graft-git history/tests.rs (~20).
+7. MAP.md for graph and graft; check ARCHITECTURE.md crate-map text.
+
+Gotchas: workspace denies `expect_used`/`unwrap_used` in lib code — use `match` + `panic!` with a reason. Shape fixtures: use `try_borrow` + the "not valid UTF-8" skip pattern.
