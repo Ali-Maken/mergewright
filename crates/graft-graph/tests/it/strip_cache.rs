@@ -470,7 +470,7 @@ fn a_threaded_rows_own_emphasis_changes_neither_pixels_nor_key() {
             .enumerate()
             .map(|(index, row)| RasterRow {
                 emphasis: if cursor == Some(index) {
-                    Emphasis::Highlighted
+                    Emphasis::Dimmed
                 } else {
                     Emphasis::Normal
                 },

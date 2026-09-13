@@ -273,6 +273,10 @@ The graph must render as an image, not as characters.
 Pass: the graph is a real image, aligned to the text rows beside it, with
 no gap or overlap at the row boundaries, and it survives a resize.
 
+Ghostty, git/git, pixel tier, cursor on the top row: lane 0 is the same
+thickness as every other lane and brighter than them; nothing in the graph
+is wider than a node ring's stroke.
+
 ### Unicode tier — must look deliberate
 
 **This is the default tier** (ADR-0016: Kitty → Unicode → iTerm2 → Sixel →

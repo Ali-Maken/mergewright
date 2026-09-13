@@ -11,7 +11,7 @@ c.    .c.                       |
 c .cc. cc                       |
 . cccc .c..                     |
 . cccc .c.cc..                  |
-c .cc. cc.ccccc.                |
+c .cc. cc..cccc.                |
 c.    .c.   .cccc.              |
 ccc..ccc       .cc.             |
  .cccc.         .cc.            |
@@ -56,7 +56,7 @@ cccccccc           cc           |
  .cccc.         .cc.            |
 ccc..ccc       .cc.             |
 c.    .c.   .cccc.              |
-c      cc.ccccc.                |
+c      cc..cccc.                |
 .      .c.cc..                  |
 .      .c..                     |
 c      cc                       |

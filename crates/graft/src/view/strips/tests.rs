@@ -187,7 +187,10 @@ fn the_selection_thread_and_focus_reach_the_strip() {
     let strip = &rows.strips[0];
     assert_eq!(strip.first_row, 32);
     let cursor = &strip.rows[35 - 32];
-    assert_eq!(cursor.emphasis, Emphasis::Highlighted);
+    // The cursor's own row carries no row-level emphasis: it is on the
+    // thread, which the rasteriser draws at full alpha regardless
+    // (ADR-0024).
+    assert_eq!(cursor.emphasis, Emphasis::Normal);
     let lit = cursor
         .thread
         .as_ref()

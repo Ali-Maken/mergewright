@@ -184,7 +184,6 @@ pub fn pixel_rows(state: &AppState, max_lanes: usize, strip_rows: usize) -> Pixe
     );
     let painter = Painter {
         state,
-        history,
         thread: thread.as_ref(),
         fold: &fold,
     };
@@ -314,7 +313,6 @@ fn plan<'r>(
 /// Paints a history row the way `visible_rows` does for text.
 struct Painter<'a> {
     state: &'a AppState,
-    history: &'a History,
     thread: Option<&'a Thread>,
     fold: &'a Fold,
 }
@@ -330,11 +328,11 @@ impl Painter<'_> {
         } else {
             Ring::of(row)
         };
-        let mut emphasis = if index == self.history.cursor {
-            Emphasis::Highlighted
-        } else {
-            Emphasis::Normal
-        };
+        // The cursor's own row needs no row-level emphasis: it is always on
+        // its own thread, and the rasteriser draws the thread at full alpha
+        // regardless of `emphasis` (ADR-0024 — the thread is never a wider
+        // stroke, only alpha).
+        let mut emphasis = Emphasis::Normal;
         let thread = self.thread.map(|thread| {
             if self.state.focus && thread.kin(index) == Kin::Unrelated {
                 emphasis = Emphasis::Dimmed;

@@ -101,7 +101,10 @@ One line per public item. Update when a public item changes.
 - `RasterRow` (struct) — a row in drawn columns plus `ring`, `emphasis`, `thread` (drawn columns on the selection's thread).
 - `RasterRow::plain` (fn) — `Ring::of` the row, normal emphasis, no thread.
 - `Ring` (enum) — node style by shape: `Commit`, `Merge`, `Root`, `Head`, `Stash`, `Uncommitted`; `Ring::of` (fn) from parent count.
-- `Emphasis` (enum) — `Normal`, `Dimmed` (faded), `Highlighted` (heavier stroke).
+- `Emphasis` (enum) — `Normal`, `Dimmed` (faded). Alpha only, never width: `Highlighted` removed (ADR-0024) — the ancestry thread and Focus dimming are expressed purely by alpha (`OFF_THREAD_ALPHA`, `FADED_ALPHA`), so no line, curve or ring is ever wider than another.
+- `stroke_width` (fn, pub(crate)) — `(cell_width / 8.0).clamp(1.5, 2.5)`; the one stroke width for every lane, curve and node ring in a strip.
+- `OFF_THREAD_ALPHA` (const, 0.5) — alpha of a lane column off the selection's ancestry thread, when a thread is present.
+- `FADED_ALPHA` (const, 0.3) — alpha of an `Emphasis::Dimmed` row/column with no thread in play.
 - `Marker` (struct) — the `+N` column: `column`, `folded`.
 - `RasterError` (enum) — `EmptyPalette`, `TooLarge`.
 - `CELLS_PER_LANE` (const) — cells per lane column (2), matching the Unicode tier.

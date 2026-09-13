@@ -7,6 +7,7 @@
 //! a byte hash would not, and a reviewer can read it. Whether the strips
 //! *look* good is judged by eye from the PNGs `write_shots` produces.
 
+use std::collections::BTreeSet;
 use std::time::Instant;
 
 use graft_core::capabilities::Rgb;
@@ -281,8 +282,10 @@ fn rings_differ_in_shape_whatever_the_colour() {
     assert_eq!(hollow, [false, false, true, false, false, true]);
 }
 
+/// Emphasis fades a row's alpha; it never widens a stroke (ADR-0024): a
+/// dimmed row paints no more pixels than normal, only fainter ones.
 #[test]
-fn emphasis_fades_or_thickens_the_strokes() {
+fn emphasis_fades_without_thickening_the_strokes() {
     let rows = rows_of("foxtrot-merge");
     let columns = width_of(&rows);
     let draw = |emphasis| {
@@ -304,18 +307,16 @@ fn emphasis_fades_or_thickens_the_strokes() {
             .filter(|p| p[3] > 0)
             .count()
     };
-    let (normal, dimmed, bold) = (
-        draw(Emphasis::Normal),
-        draw(Emphasis::Dimmed),
-        draw(Emphasis::Highlighted),
-    );
+    let (normal, dimmed) = (draw(Emphasis::Normal), draw(Emphasis::Dimmed));
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // FADED_ALPHA is 0.0..=1.0.
+    let max_dimmed_alpha = (graft_graph::raster::FADED_ALPHA * 255.0).round() as u8;
     assert!(
         dimmed
             .pixels
             .as_chunks::<4>()
             .0
             .iter()
-            .all(|pixel| pixel[3] <= 90)
+            .all(|pixel| pixel[3] <= max_dimmed_alpha)
     );
     assert!(
         normal
@@ -325,7 +326,89 @@ fn emphasis_fades_or_thickens_the_strokes() {
             .iter()
             .any(|pixel| pixel[3] == 255)
     );
-    assert!(painted(&bold) > painted(&normal));
+    // Same shape drawn, only fainter: the painted footprint does not grow.
+    assert_eq!(painted(&dimmed), painted(&normal));
+}
+
+/// The longest run of `alpha > 0.5` pixels across one pixel row.
+fn solid_run(frame: &RasterFrame, y: u32) -> usize {
+    let mut best = 0;
+    let mut run = 0;
+    for x in 0..frame.width {
+        let alpha = frame.pixel(x, y).unwrap_or_else(|| panic!("({x}, {y})"))[3];
+        if alpha > 127 {
+            run += 1;
+            best = best.max(run);
+        } else {
+            run = 0;
+        }
+    }
+    best
+}
+
+/// The highest alpha seen in one pixel row over `x_range`.
+fn peak_alpha(frame: &RasterFrame, y: u32, x_range: std::ops::Range<u32>) -> u8 {
+    x_range
+        .filter_map(|x| frame.pixel(x, y))
+        .map(|pixel| pixel[3])
+        .max()
+        .unwrap_or(0)
+}
+
+/// ADR-0024's cause and fix, at the user's own cell: the ancestry thread
+/// used to widen lane 0 to a slab (`stroke * 1.6`) because the cursor
+/// starts on the top row, so lane 0 is on the thread by default (`ticket
+/// 42`'s finding). Now the thread is contrast only: on-thread and
+/// off-thread lines are the same width, and off-thread is about half the
+/// on-thread alpha.
+#[test]
+fn the_thread_is_alpha_not_a_wider_stroke() {
+    use std::collections::BTreeSet;
+
+    let rows = super::raster_pixels::synthetic(20, 5);
+    let lane_columns = width_of(&rows);
+    let lit: BTreeSet<usize> = [0].into_iter().collect();
+    // Rows 8..16 at row 11 (index 3) are a plain straight-through band for
+    // every lane (not a multiple of 7, so no merge arc; not the strip's own
+    // edge row).
+    let draw = |thread: Option<&BTreeSet<usize>>| {
+        let raster_rows: Vec<RasterRow<'_>> = rows[8..16]
+            .iter()
+            .map(|row| RasterRow {
+                thread,
+                ..RasterRow::plain(row)
+            })
+            .collect();
+        rasterise(&Strip {
+            rows: &raster_rows,
+            above: Some(&rows[7]),
+            lane_columns,
+            marker: None,
+            cell_width: USER_CELL.0,
+            cell_height: USER_CELL.1,
+            palette: &PALETTE,
+            muted: MUTED,
+        })
+        .unwrap()
+    };
+    // Near the band's top edge: clear of the node disc drawn at its mid.
+    let y = 3 * USER_CELL.1 + 2;
+    let off = draw(None);
+    let on = draw(Some(&lit));
+    for frame in [&off, &on] {
+        assert!(
+            solid_run(frame, y) <= 3,
+            "a lane's solid (alpha > 0.5) run must read as a line, not a slab: {}",
+            solid_run(frame, y)
+        );
+    }
+    // Lane 0 (x ~8) is on the thread; lane 1 (x ~42) is not.
+    let on_thread_peak = peak_alpha(&on, y, 0..20);
+    let off_thread_peak = peak_alpha(&on, y, 35..50);
+    assert!(
+        (f32::from(off_thread_peak) - f32::from(on_thread_peak) / 2.0).abs() <= 0.05 * 255.0,
+        "off-thread ({off_thread_peak}) should be about half on-thread ({on_thread_peak})"
+    );
 }
 
 #[test]
@@ -423,6 +506,43 @@ fn write_shots() {
     save(
         &frame,
         &shots.join("22-raster-rings-on-dark.png"),
+        Some((0x1E, 0x1E, 0x2E)),
+    );
+    // 42: the same ring shapes, at 42's stroke width (ADR-0024).
+    save(
+        &frame,
+        &shots.join("42-raster-rings-on-dark.png"),
+        Some((0x1E, 0x1E, 0x2E)),
+    );
+    write_thread_shot(&shots);
+}
+
+/// 42: lane 0 on the selection's thread among four others — a line to
+/// follow, brighter than the rest, never a slab (ADR-0024).
+fn write_thread_shot(shots: &std::path::Path) {
+    let thread_rows = super::raster_pixels::synthetic(20, 5);
+    let lit: BTreeSet<usize> = [0].into_iter().collect();
+    let raster_rows: Vec<RasterRow<'_>> = thread_rows[4..16]
+        .iter()
+        .map(|row| RasterRow {
+            thread: Some(&lit),
+            ..RasterRow::plain(row)
+        })
+        .collect();
+    let thread_frame = rasterise(&Strip {
+        rows: &raster_rows,
+        above: Some(&thread_rows[3]),
+        lane_columns: width_of(&thread_rows),
+        marker: None,
+        cell_width: USER_CELL.0,
+        cell_height: USER_CELL.1,
+        palette: &PALETTE,
+        muted: MUTED,
+    })
+    .unwrap_or_else(|why| panic!("thread shot: {why}"));
+    save(
+        &thread_frame,
+        &shots.join("42-raster-thread-on-dark.png"),
         Some((0x1E, 0x1E, 0x2E)),
     );
 }

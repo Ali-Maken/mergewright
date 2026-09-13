@@ -43,16 +43,39 @@ pub use node::Ring;
 /// lane's own cell and the gap right of it.
 pub const CELLS_PER_LANE: u32 = 2;
 
-/// How strongly a row, or one column of it, is drawn.
+/// Alpha for a column off the selection's thread (ADR-0024): the thread is
+/// emphasised by contrast, never by a heavier stroke.
+pub const OFF_THREAD_ALPHA: f32 = 0.5;
+
+/// Alpha for a whole row faded by Focus mode ([`Emphasis::Dimmed`]).
+pub const FADED_ALPHA: f32 = 0.3;
+
+/// The one stroke width every line and ring in a strip draws at: lanes,
+/// curves and node rings alike (ADR-0024). Emphasis is never a wider
+/// stroke, only alpha, so a lane reads as a line to follow at any size.
+pub(crate) fn stroke_width(cell_width: u32) -> f32 {
+    #[allow(clippy::cast_precision_loss)] // Cell widths are far below f32's exact range.
+    let cell_width = cell_width as f32;
+    (cell_width / 8.0).clamp(1.5, 2.5)
+}
+
+/// How strongly a whole row is drawn when no thread singles out its columns.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Emphasis {
     /// Drawn as laid out.
     #[default]
     Normal,
-    /// Faded: off the selection's thread.
+    /// Faded: the row is off the selection's thread while Focus is on.
     Dimmed,
-    /// Heavier strokes: on the selection's thread.
-    Highlighted,
+}
+
+impl Emphasis {
+    fn alpha(self) -> f32 {
+        match self {
+            Emphasis::Normal => 1.0,
+            Emphasis::Dimmed => FADED_ALPHA,
+        }
+    }
 }
 
 /// One row to rasterise and how to paint it.
@@ -65,9 +88,9 @@ pub struct RasterRow<'a> {
     /// The whole row's emphasis when no thread is given.
     pub emphasis: Emphasis,
     /// Drawn columns carrying the selection's thread on this row. When set,
-    /// those columns draw [`Emphasis::Highlighted`] and every other column
-    /// [`Emphasis::Dimmed`], overriding `emphasis` (the Unicode tier's
-    /// bold/dim rule, ticket 16).
+    /// those columns draw at full alpha and every other column at
+    /// [`OFF_THREAD_ALPHA`], overriding `emphasis` (the Unicode tier's
+    /// bold/dim rule, ticket 16). Never a wider stroke (ADR-0024).
     pub thread: Option<&'a BTreeSet<usize>>,
 }
 
@@ -82,11 +105,13 @@ impl<'a> RasterRow<'a> {
         }
     }
 
-    fn emphasis_at(&self, column: usize) -> Emphasis {
+    /// The alpha a column draws at: full on the thread, [`OFF_THREAD_ALPHA`]
+    /// off it, or the row's own [`Emphasis`] when no thread is given.
+    fn alpha_at(&self, column: usize) -> f32 {
         match self.thread {
-            Some(thread) if thread.contains(&column) => Emphasis::Highlighted,
-            Some(_) => Emphasis::Dimmed,
-            None => self.emphasis,
+            Some(thread) if thread.contains(&column) => 1.0,
+            Some(_) => OFF_THREAD_ALPHA,
+            None => self.emphasis.alpha(),
         }
     }
 }
@@ -246,7 +271,7 @@ impl<'a> Pen<'a> {
     fn new(strip: &'a Strip<'a>) -> Self {
         let cell_width = pixels(strip.cell_width);
         let cell_height = pixels(strip.cell_height);
-        let stroke = (cell_width * 0.2).max(1.5);
+        let stroke = stroke_width(strip.cell_width);
         Pen {
             strip,
             cell_width,
@@ -262,16 +287,19 @@ impl<'a> Pen<'a> {
         (count(column) * pixels(CELLS_PER_LANE) + 0.5) * self.cell_width
     }
 
-    fn ink(&self, identity: Option<BranchIdentity>, emphasis: Emphasis) -> Ink {
+    /// `alpha` is 0.0–1.0; the stroke width never varies with emphasis
+    /// (ADR-0024) so a line reads as a line whether it is the thread or not.
+    fn ink(&self, identity: Option<BranchIdentity>, alpha: f32) -> Ink {
         let rgb = identity.map_or(self.strip.muted, |identity| {
             self.strip.palette[identity.slot(self.strip.palette.len())]
         });
-        let (alpha, width) = match emphasis {
-            Emphasis::Normal => (255, self.stroke),
-            Emphasis::Dimmed => (90, self.stroke),
-            Emphasis::Highlighted => (255, self.stroke * 1.6),
-        };
-        Ink { rgb, alpha, width }
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // alpha is 0.0..=1.0.
+        let alpha = (alpha.clamp(0.0, 1.0) * 255.0).round() as u8;
+        Ink {
+            rgb,
+            alpha,
+            width: self.stroke,
+        }
     }
 
     fn band(&self, index: usize) -> Band {
@@ -304,7 +332,7 @@ impl<'a> Pen<'a> {
                 flush(pixmap, run.take());
                 continue;
             }
-            let ink = self.ink(identity, raster_row.emphasis_at(column));
+            let ink = self.ink(identity, raster_row.alpha_at(column));
             let node = self.x(row.lane);
             if row.incoming.contains(&column) {
                 flush(pixmap, run.take());
@@ -339,7 +367,7 @@ impl<'a> Pen<'a> {
         let row = raster_row.row;
         let lane_ink = self.ink(
             row.lanes.get(row.lane).copied().flatten(),
-            raster_row.emphasis_at(row.lane),
+            raster_row.alpha_at(row.lane),
         );
         let x = self.x(row.lane);
         if above.is_some_and(|above| goes_down(above, row.lane)) {
@@ -427,12 +455,12 @@ impl<'a> Pen<'a> {
     fn marker(&self, pixmap: &mut Pixmap, raster_row: &RasterRow<'_>, marker: Marker, band: Band) {
         let joined = raster_row.row.lanes.get(marker.column).copied().flatten();
         // The marker stands for lanes off the thread, so a thread dims it.
-        let emphasis = if raster_row.thread.is_some() {
-            Emphasis::Dimmed
+        let alpha = if raster_row.thread.is_some() {
+            OFF_THREAD_ALPHA
         } else {
-            raster_row.emphasis
+            raster_row.emphasis.alpha()
         };
-        let ink = self.ink(joined, emphasis);
+        let ink = self.ink(joined, alpha);
         let centre_x = self.x(marker.column) + self.cell_width / 2.0;
         label::draw(
             pixmap,
@@ -546,4 +574,17 @@ fn pixels_len(width: u32) -> usize {
 #[allow(clippy::cast_precision_loss)] // Strip rows and lanes are far below f32's 2^24 exact-integer range.
 fn count(value: usize) -> f32 {
     value as f32
+}
+
+#[cfg(test)]
+mod tests {
+    use super::stroke_width;
+
+    #[test]
+    #[allow(clippy::float_cmp)] // Exact clamp bounds and an exact division; no rounding involved.
+    fn stroke_width_clamps_by_cell_width() {
+        assert_eq!(stroke_width(8), 1.5);
+        assert_eq!(stroke_width(24), 2.5);
+        assert_eq!(stroke_width(17), 17.0 / 8.0);
+    }
 }

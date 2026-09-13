@@ -63,7 +63,7 @@ fn at(seconds: i64) -> Identity {
 /// is `i + lanes`), with every seventh commit also merging the commit three
 /// rows down, so lanes pass straight through for many rows while arcs cross
 /// them.
-fn synthetic(count: usize, lanes: usize) -> Vec<Row> {
+pub(crate) fn synthetic(count: usize, lanes: usize) -> Vec<Row> {
     let commits: Vec<Commit> = (0..count)
         .map(|index| {
             let mut parents = Vec::new();
@@ -170,7 +170,7 @@ fn plain<'a>(
 }
 
 /// Rows 40..72 of `rows` with a thread on two rows in three (`even`, then
-/// `few`) and some rows dimmed or highlighted whole.
+/// `few`) and some rows dimmed whole.
 fn threaded<'a>(rows: &'a [Row], even: &'a BTreeSet<usize>, few: &'a BTreeSet<usize>) -> Case<'a> {
     Case {
         name: "wide-thread",
@@ -185,8 +185,6 @@ fn threaded<'a>(rows: &'a [Row], even: &'a BTreeSet<usize>, few: &'a BTreeSet<us
                 },
                 emphasis: if index % 5 == 0 {
                     Emphasis::Dimmed
-                } else if index % 4 == 0 {
-                    Emphasis::Highlighted
                 } else {
                     Emphasis::Normal
                 },
