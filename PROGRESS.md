@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — planner-fable spec pass (fold pinning vs lane cap), then 44 · 63 tickets: 52 done, 8 ready, 1 partial, 1 split, 1 wontfix
+**Current step:** M1 The graph — ticket 40 (44, 47 wait on user approving ADR-0025) · 64 tickets: 52 done, 9 ready/blocked, 1 partial, 1 split, 1 wontfix
 
 ---
 
@@ -220,6 +220,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-13 · M1/38 gallery orientation · fable · done · 3-line banner from frame 1 (stop n/N, group, keys, tier; shows:; differs:), lines ≤80 cols tested; stops regrouped as a progression, TESTING.md renumbered; "three lines on launch" = stop 1 trivial repo (3 commits), banner says so; cost: 3 fewer graph rows in gallery only; captures docs/shots/38-*.txt (user judges); 789 tests, gates green; ~143k tokens (over 80k target), no compaction
 - 2026-09-13 · M1/42 lane 0 one stroke width · sonnet · done · cause confirmed first: Emphasis::Highlighted was a 1.6× width multiplier on the cursor's ancestry, and the cursor starts on row 0 so lane 0 always drew thick (5 px vs 3 px at 17×37); now one width, off-thread alpha 128/255, Highlighted removed (cause, per ADR-0024); captures docs/shots/42-raster-{thread,rings}-on-dark.png (user judges); gates green; ~95k tokens (over 80k target), no compaction
 - 2026-09-13 · M1/39 compaction stubs and rail · opus · done, user check pending (docs/shots/39-seen-120-unicode.txt) · fold vocabulary ▾/▴ stubs, ⋮ rail, header +N lanes (cause); git/git 80×24 first frame +17 lanes, rail 21/21 rows, stubs on 17 (script-checked); TESTING row loosened N≥40 → N>0 by builder; found: selection pins its ancestry lanes against folding — many-lanes fixture folds nothing, git/git after j j rail cut at half width while header says +2 lanes; 796 tests, gates green; ~147k tokens (over 80k target), no compaction; conductor → planner-fable spec-only pass before 44
+- 2026-09-13 · M1 spec-only pass, fold pinning vs lane cap · fable · done · ADR-0025 Proposed (cap is a budget, pins are priorities: lane 0 → node columns → selected column → reserved → thread → rest; header +N exact; screen clamps cap; folded thread columns as coloured stubs; changes DESIGN §3.5, needs user OK); new ticket 47 pins-are-priorities (Sonnet), 44 amended (lanes_that_fit clamp, Sonnet); TESTING git/git row → N ≥ 10 first frame and after j j; conductor: 44/47 held for approval, 40 runs first (independent of fold ranking); order now 40, [user: ADR-0025], 44, 47, 41, 45, 43, 46, 28
 
 ## Open questions for the M1 checkpoint
 - **By eye (30b):** pixel graph goes blank for one frame on PgDn before rows arrive. User judges whether that's acceptable.
