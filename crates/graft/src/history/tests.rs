@@ -1,26 +1,19 @@
 //! The product source, seeds and streaming driver, on the fixture corpus.
 
-use std::collections::HashMap;
-use std::convert::Infallible;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
-use std::thread;
-use std::time::Duration;
 
 use graft_core::commit::Commit;
-use graft_core::job::JobId;
-use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
 use graft_fixtures::Shape;
 use graft_git::branches::Branches;
 use graft_git::history::{CHUNK, Order, Walk};
 use graft_git::repo::{RefTarget, RepoHandle};
-use graft_graph::layout::{CommitSource, Pull, StreamConfig, StreamingLayout, layout};
+use graft_graph::layout::{CommitSource, StreamConfig, StreamingLayout, layout};
 use graft_graph::{BranchIdentity, Row, Seeds};
 
 use super::*;
-use crate::update::{AppEvent, AppState, Progress, Task, update};
 
 /// Small enough that every corpus shape spans several chunks and overflows
 /// the resident budget.
@@ -31,9 +24,6 @@ const SMALL: StreamConfig = StreamConfig {
     resident_chunks: 2,
     buffer_rows: 4,
 };
-
-/// Generous, because it is never reached when the code works.
-const PATIENCE: Duration = Duration::from_secs(30);
 
 fn never() -> bool {
     false
@@ -55,17 +45,30 @@ fn every_commit(handle: &RepoHandle, shape: Shape) -> Vec<Commit> {
     }
 }
 
-/// Runs `layout` to the end, collecting every row it reports.
+/// Asks `layout` for every row there is a chunk at a time, as a screen
+/// paging down would, collecting the answers.
 fn reported_rows<S: CommitSource>(layout: &mut StreamingLayout<S>, shape: Shape) -> Vec<Row> {
-    let mut rows = Vec::new();
-    let ended = lay_out(layout, &never, &mut |update| {
-        if let HistoryUpdate::Rows(chunk) = update {
-            rows.extend(chunk.iter().cloned());
+    let chunk = layout.config().chunk_rows;
+    let mut rows: Vec<Row> = Vec::new();
+    for id in 1.. {
+        let request = RowRequest {
+            id,
+            wanted: Wanted::Rows(rows.len()..rows.len() + chunk),
+        };
+        let mut done = false;
+        let ended = answer(layout, request, &mut || None, &never, &mut |update| {
+            if let HistoryUpdate::Window(window) = update {
+                rows.extend(window.rows.iter().cloned());
+                done = window.done && window.end() == window.laid_out;
+            }
+            Delivery::Received
+        })
+        .unwrap_or_else(|why| panic!("{shape}: laying out: {why}"));
+        assert_eq!(ended, None, "{shape}: answered and still listening");
+        if done {
+            break;
         }
-        Delivery::Received
-    })
-    .unwrap_or_else(|why| panic!("{shape}: laying out: {why}"));
-    assert_eq!(ended, Ended::Complete, "{shape}");
+    }
     rows
 }
 
@@ -164,15 +167,30 @@ fn a_configured_default_branch_takes_lane_0() {
         let store = RepoStore::new(dir.clone(), override_name);
         let mut facts = None;
         let mut rows = Vec::new();
-        let ended = stream(&store, Order::Topological, &never, &mut |update| {
-            match update {
-                HistoryUpdate::Started(started) => facts = Some(*started),
-                HistoryUpdate::Rows(chunk) => rows.extend(chunk.iter().cloned()),
-            }
-            Delivery::Received
-        })
+        let (asks, requests) = mpsc::channel();
+        let everything = RowRequest {
+            id: 1,
+            wanted: Wanted::Rows(0..usize::MAX),
+        };
+        asks.send(everything).expect("the receiver is right here");
+        // Nobody asks again, so the walk ends once it has answered.
+        drop(asks);
+        let ended = stream(
+            &store,
+            Order::Topological,
+            &requests,
+            &never,
+            &mut |update| {
+                match update {
+                    HistoryUpdate::Started(started) => facts = Some(*started),
+                    HistoryUpdate::Window(window) => rows.extend(window.rows.iter().cloned()),
+                    HistoryUpdate::Progress { .. } => {}
+                }
+                Delivery::Received
+            },
+        )
         .expect("the walk streams");
-        assert_eq!(ended, Ended::Complete);
+        assert_eq!(ended, Ended::Cancelled);
         let lane = rows
             .iter()
             .find(|row| row.commit.id == tip)
@@ -193,103 +211,174 @@ fn a_configured_default_branch_takes_lane_0() {
     assert_eq!(lane, 0);
 }
 
-/// A source over commits already read, that hands out its first chunk and
-/// then waits to be released before handing out any more.
-struct GatedSource {
-    commits: Vec<Commit>,
-    served: usize,
-    gate: mpsc::Receiver<()>,
+/// How many rows the viewport shows in these tests.
+const HEIGHT: usize = 10;
+
+/// Answers `request` against `layout` and applies everything it reports to
+/// `history`, as the job and `update` would between them. `newer` stands in
+/// for requests that arrive while it works.
+fn round_trip<S: CommitSource>(
+    layout: &mut StreamingLayout<S>,
+    history: &mut History,
+    request: RowRequest,
+    newer: &mut dyn FnMut() -> Option<RowRequest>,
+) -> Vec<HistoryUpdate> {
+    let mut reports = Vec::new();
+    let ended = answer(layout, request, newer, &never, &mut |update| {
+        reports.push(update);
+        Delivery::Received
+    })
+    .expect("lays out");
+    assert_eq!(ended, None);
+    for update in reports.clone() {
+        history.apply(update, HEIGHT);
+    }
+    reports
 }
 
-impl CommitSource for GatedSource {
-    type Error = Infallible;
-
-    fn next(&mut self, limit: usize, _stop: &dyn Fn() -> bool) -> Result<Pull, Infallible> {
-        if self.served > 0 {
-            match self.gate.recv_timeout(PATIENCE) {
-                // Released, or the test dropped its sender: either way, go on.
-                Ok(()) | Err(mpsc::RecvTimeoutError::Disconnected) => {}
-                Err(mpsc::RecvTimeoutError::Timeout) => panic!("the gate was never released"),
-            }
-        }
-        let end = (self.served + limit).min(self.commits.len());
-        let commits = self.commits[self.served..end].to_vec();
-        self.served = end;
-        Ok(Pull {
-            commits,
-            done: end == self.commits.len(),
-            stopped: false,
-        })
-    }
-
-    fn read(&mut self, ids: &[Oid]) -> Result<Vec<Commit>, Infallible> {
-        let by_id: HashMap<Oid, &Commit> = self.commits.iter().map(|c| (c.id, c)).collect();
-        Ok(ids.iter().map(|id| by_id[id].clone()).collect())
-    }
-}
-
-/// The first chunk reaches `AppState` while the walk is still blocked on its
-/// second: the screen does not wait for the last commit.
+/// Paging from the first row to the last keeps both halves bounded: the rows
+/// the layout holds, and the window the screen holds. Every row shown is the
+/// row the whole layout puts there.
 #[test]
-fn a_chunk_lands_in_app_state_before_the_walk_finishes() {
+fn scrolling_top_to_bottom_keeps_resident_rows_bounded() {
     let dir = graft_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
-    let commits = every_commit(&handle, Shape::Linear);
-    let total = commits.len();
-    assert!(total > SMALL.chunk_rows, "more than one chunk");
+    let whole = layout(&every_commit(&handle, Shape::Linear), Seeds::default());
+    let walk = Walk::all_refs(&handle, Order::Topological).expect("walk starts");
+    let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
 
-    let (release, gate) = mpsc::channel();
-    let (updates, received) = mpsc::channel();
-    let finished = std::sync::Arc::new(AtomicBool::new(false));
-    let walker = {
-        let finished = std::sync::Arc::clone(&finished);
-        thread::spawn(move || {
-            let source = GatedSource {
-                commits,
-                served: 0,
-                gate,
-            };
-            let mut stream = StreamingLayout::new(source, Seeds::default(), SMALL);
-            let ended = lay_out(
-                &mut stream,
-                &never,
-                &mut |update| match updates.send(update) {
-                    Ok(()) => Delivery::Received,
-                    Err(_) => Delivery::NobodyListening,
-                },
-            );
-            finished.store(true, Ordering::SeqCst);
-            ended
-        })
-    };
+    // What the layout may protect at once: the window the screen asks for
+    // (three screens), back to a checkpoint, plus its buffers — in whole
+    // chunks — and the two chunks its budget lets it keep besides.
+    let protected =
+        (3 * HEIGHT + SMALL.checkpoint_every + 2 * SMALL.buffer_rows).div_ceil(SMALL.chunk_rows);
+    let bound = (protected + SMALL.resident_chunks) * SMALL.chunk_rows;
+    assert!(bound < whole.len(), "the bound is below the history's size");
 
-    let id = JobId::new(9);
-    let (mut state, _) = update(
-        &AppState::default(),
-        AppEvent::Started(id, Task::ReadHistory),
-    );
-    let first = received.recv_timeout(PATIENCE).expect("the first chunk");
-    (state, _) = update(&state, AppEvent::Progress(id, Progress::History(first)));
-
-    let history = state.history.as_ref().expect("a walk is on screen");
-    assert_eq!(history.rows, SMALL.chunk_rows);
-    assert_eq!(history.phase, Phase::Streaming);
-    assert!(
-        !finished.load(Ordering::SeqCst),
-        "the walk is still blocked on its second chunk"
-    );
-
-    release.send(()).expect("the walker is waiting");
-    drop(release);
-    let mut rows = SMALL.chunk_rows;
-    for update in &received {
-        if let HistoryUpdate::Rows(chunk) = update {
-            rows += chunk.len();
+    let mut history = History::started();
+    let mut request = history.show(HEIGHT);
+    let mut pages = 0;
+    while history.phase != Phase::Complete || history.cursor + 1 < history.rows {
+        if let Some(asked) = request.take() {
+            round_trip(&mut stream, &mut history, asked, &mut || None);
         }
+        let held = stream.resident().rows;
+        assert!(
+            held <= bound,
+            "page {pages}: layout holds {held} rows, bound {bound}"
+        );
+        let window = history.window.as_ref().expect("answered");
+        assert!(
+            window.rows.len() <= 3 * HEIGHT,
+            "page {pages}: window {}",
+            window.rows.len()
+        );
+
+        let visible = history.visible(HEIGHT);
+        assert_eq!(visible.len(), HEIGHT.min(history.rows - history.top));
+        for (offset, row) in visible.iter().enumerate() {
+            assert_eq!(
+                row,
+                &whole[history.top + offset],
+                "page {pages}, row {offset}"
+            );
+        }
+
+        request = history.move_cursor(Motion::PageDown, HEIGHT);
+        pages += 1;
+        assert!(pages < whole.len(), "paging reaches the end");
     }
-    let ended = walker.join().expect("the walker does not panic");
-    assert_eq!(ended.expect("lays out"), Ended::Complete);
-    assert_eq!(rows, total);
+    assert_eq!(history.rows, whole.len());
+    assert_eq!(history.cursor, whole.len() - 1);
+}
+
+/// `G` on a cold walk, then `Esc`: the walk stops within a chunk of the
+/// replacement arriving, the viewport never moves, and nothing the jump sent
+/// — its progress or a late answer — lands.
+#[test]
+fn a_withdrawn_jump_stops_walking_and_lands_nothing() {
+    let dir = graft_fixtures::borrow(Shape::Linear);
+    let handle = RepoHandle::open(&dir).expect("opens");
+    let walk = Walk::all_refs(&handle, Order::Topological).expect("walk starts");
+    let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
+
+    let mut history = History::started();
+    let first = history
+        .show(HEIGHT)
+        .expect("a fresh walk asks for its first screen");
+    round_trip(&mut stream, &mut history, first, &mut || None);
+    let (top, cursor, window) = (history.top, history.cursor, history.window.clone());
+    let laid_before = stream.rows_emitted();
+
+    let jump = history
+        .move_cursor(Motion::Bottom, HEIGHT)
+        .expect("a cold `G` is a request");
+    assert_eq!(jump.wanted, Wanted::Last(2 * HEIGHT));
+    let replacement = history
+        .withdraw_jump(HEIGHT)
+        .expect("`Esc` replaces the jump");
+    assert_eq!(history.jump, None);
+
+    let mut arrives = Some(replacement.clone());
+    let reports = round_trip(&mut stream, &mut history, jump.clone(), &mut || {
+        arrives.take()
+    });
+
+    assert_eq!(
+        stream.rows_emitted(),
+        laid_before + SMALL.chunk_rows,
+        "stopped walking one chunk after the replacement arrived"
+    );
+    assert!(!stream.is_done());
+    assert!(
+        reports.iter().any(
+            |update| matches!(update, HistoryUpdate::Window(w) if w.request == replacement.id)
+        ),
+        "the replacement is answered"
+    );
+    assert_eq!(
+        (history.top, history.cursor),
+        (top, cursor),
+        "the viewport stays put"
+    );
+    assert_eq!(
+        history.rows,
+        stream.rows_emitted(),
+        "the replacement's answer says how far the walk got"
+    );
+    assert_eq!(
+        history.window.as_ref().map(|w| w.request),
+        Some(replacement.id)
+    );
+    assert_eq!(
+        history.window.as_ref().map(|w| &w.rows),
+        window.as_ref().map(|w| &w.rows),
+        "the same rows, answered afresh"
+    );
+
+    assert_late_jump_answers_are_dropped(&mut history, jump.id);
+}
+
+/// A late answer to request `jump`, and late progress, as if the jump had
+/// finished before hearing it was withdrawn: neither moves anything.
+fn assert_late_jump_answers_are_dropped(history: &mut History, jump: u64) {
+    let before = history.clone();
+    let late = Window {
+        request: jump,
+        first: 190,
+        rows: Vec::new().into(),
+        laid_out: 200,
+        done: true,
+    };
+    history.apply(HistoryUpdate::Window(late), HEIGHT);
+    history.apply(
+        HistoryUpdate::Progress {
+            request: jump,
+            laid_out: 200,
+        },
+        HEIGHT,
+    );
+    assert_eq!(*history, before, "nothing from the withdrawn jump lands");
 }
 
 /// Once `stop` has said stop, nothing more is reported.
@@ -302,13 +391,44 @@ fn nothing_is_reported_once_stop_is_asked() {
 
     let stopped = AtomicBool::new(false);
     let mut reports = 0;
-    let ended = lay_out(&mut stream, &|| stopped.load(Ordering::SeqCst), &mut |_| {
-        reports += 1;
-        stopped.store(true, Ordering::SeqCst);
-        Delivery::Received
-    })
+    let jump = RowRequest {
+        id: 1,
+        wanted: Wanted::Last(HEIGHT),
+    };
+    let ended = answer(
+        &mut stream,
+        jump,
+        &mut || None,
+        &|| stopped.load(Ordering::SeqCst),
+        &mut |_| {
+            reports += 1;
+            stopped.store(true, Ordering::SeqCst);
+            Delivery::Received
+        },
+    )
     .expect("lays out");
 
-    assert_eq!(ended, Ended::Cancelled);
+    assert_eq!(ended, Some(Ended::Cancelled));
     assert_eq!(reports, 1);
+}
+
+/// A walk whose request sender is gone ends: nobody can ask it for rows again,
+/// so it gives its worker back.
+#[test]
+fn a_walk_nobody_can_ask_ends() {
+    let dir = graft_fixtures::borrow(Shape::Linear);
+    let handle = RepoHandle::open(&dir).expect("opens");
+    let walk = Walk::all_refs(&handle, Order::Topological).expect("walk starts");
+    let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
+    let (asks, requests) = mpsc::channel::<RowRequest>();
+    drop(asks);
+
+    let ended = serve(&mut stream, &requests, &never, &mut |_| Delivery::Received);
+
+    assert_eq!(ended.expect("nothing to lay out"), Ended::Cancelled);
+    assert_eq!(
+        stream.rows_emitted(),
+        0,
+        "nothing was asked, so nothing was walked"
+    );
 }

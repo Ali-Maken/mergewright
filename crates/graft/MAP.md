@@ -59,7 +59,9 @@ One line per public item. Update when a public item changes.
 - `Size` (struct) — terminal size in character cells.
 - `Size::columns` (field) — width in character cells.
 - `Size::rows` (field) — height in character cells.
-- `Command` (enum) — effects `update` asks the loop to carry out.
+- `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows.
+- `CHROME_ROWS` (const) — screen rows that are not the graph (header + status).
+- `AppState::graph_rows` (fn) — history rows the graph pane shows at the current size; never zero.
 - `update` (fn) — the pure state transition function.
 
 ## repository
@@ -164,18 +166,30 @@ One line per public item. Update when a public item changes.
 - `WalkFacts::default_branch` (field) — branch owning lane 0, or `None` with no branches.
 - `WalkFacts::integration` (field) — branches beside lane 0 that never compete for it.
 - `WalkFacts::is_provisional` (fn) — is this order one the user should be told isn't final?
-- `HistoryUpdate` (enum) — one thing a running walk tells the screen.
+- `Wanted` (enum) — rows a request names: `Rows(range)` or `Last(n)` (walks to the end first).
+- `RowRequest` (struct) — `id` (increasing; only the newest answer is wanted) and `wanted`.
+- `Window` (struct) — rows answering one request: `request`, `first`, `rows`, `laid_out`, `done`; `end()`.
+- `HistoryUpdate` (enum) — what a walk tells the screen: `Started(facts)`, `Progress { request, laid_out }`, `Window(window)`.
 - `Phase` (enum) — where a walk is.
-- `History` (struct) — the history on screen: what has arrived of the walk so far.
+- `History` (struct) — history on screen: one bounded window, never all rows.
 - `History::walk` (field) — the walk's facts, once it has said.
-- `History::chunks` (field) — rows laid out so far, chunk by chunk.
-- `History::rows` (field) — how many rows `chunks` holds between them.
+- `History::window` (field) — rows last answered for the newest request.
+- `History::rows` (field) — rows laid out, as far as the screen has heard.
 - `History::phase` (field) — where the walk is.
+- `History::top` (field) — row at the top of the viewport.
+- `History::cursor` (field) — row the cursor is on (plain index).
+- `History::asked` (field) — id of the newest request.
+- `History::jump` (field) — the `G` request still walking, if any.
 - `History::started` (fn) — a walk asked for but that has sent nothing yet.
-- `History::apply` (fn) — take in one update from the walk.
-- `Ended` (enum) — how a `stream` or `lay_out` call ended, when it did not fail.
-- `stream` (fn) — stream a walk's commits, forming errors that cross the job's thread.
-- `lay_out` (fn) — lay out commits from a `CommitSource`, reporting failure/repeat/stall.
+- `History::apply` (fn) — take in one update; answers to any but the newest request are dropped.
+- `History::show` (fn) — request filling the viewport where it is (start, resize), if needed.
+- `History::move_cursor` (fn) — move by a `Motion`, returning the request for rows now needed.
+- `History::withdraw_jump` (fn) — withdraw a pending `G`, returning the replacement request.
+- `History::visible` (fn) — rows on screen for a viewport height.
+- `Motion` (enum, re-export from scroll) — `Down(n)`, `Up(n)`, `PageDown`, `PageUp`, `Top`, `Bottom`.
+- `Ended` (enum) — how `stream`/`serve` ended when not failing: `Cancelled`, `NobodyListening`.
+- `stream` (fn) — open the walk and serve row requests from a channel until it closes.
+- `serve` (fn) — answer `RowRequest`s against a `StreamingLayout` until the channel has no sender.
 
 ## history::source
 - `WalkSource` (struct) — a walk paired with the repo handle it re-reads from, one worker thread.

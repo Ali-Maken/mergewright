@@ -17,7 +17,7 @@ use graft_core::job::JobId;
 use graft_git::history::Order;
 use graft_git::version::SystemGit;
 
-use crate::history::{History, HistoryUpdate, Phase};
+use crate::history::{History, HistoryUpdate, Motion, Phase, RowRequest};
 use crate::repository::RepositoryFacts;
 
 /// Everything the loop can be told.
@@ -127,6 +127,19 @@ pub struct AppState {
     pub history: Option<History>,
 }
 
+/// Screen rows that are not the graph: one line of header above it and one of
+/// status below. The graph screen (DESIGN.md §1.3) draws within this.
+pub const CHROME_ROWS: u16 = 2;
+
+impl AppState {
+    /// How many rows of history the graph pane shows at the current size.
+    /// Never zero, so a movement always has somewhere to go.
+    #[must_use]
+    pub fn graph_rows(&self) -> usize {
+        usize::from(self.size.rows.saturating_sub(CHROME_ROWS)).max(1)
+    }
+}
+
 /// Why Graft is leaving.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Quit {
@@ -199,6 +212,9 @@ pub enum Command {
     /// commit-graph file a topological walk falls to commit date, and says so
     /// (ADR-0008).
     ReadHistory(Order),
+    /// Hand history job `JobId` a request for rows. The rows come back as a
+    /// [`HistoryUpdate::Window`] tagged with the request's id.
+    ShowRows(JobId, RowRequest),
     /// Stop a job whose result is no longer wanted. Cooperative: a job that has
     /// not started is dropped, and a running one stops at its next check.
     CancelJob(JobId),
@@ -220,7 +236,11 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             // The newest ask wins. Anything the previous walk was going to
             // say is now about a question nobody asked.
             next.awaiting = Some(id);
-            next.history = Some(History::started());
+            let mut history = History::started();
+            if let Some(request) = history.show(next.graph_rows()) {
+                commands.push(Command::ShowRows(id, request));
+            }
+            next.history = Some(history);
         }
         // Neither of these is waited on: their results are welcome whenever
         // they arrive, and there is nothing for `Esc` to cancel.
@@ -248,10 +268,11 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             next.system_git = Some(check);
         }
         AppEvent::Progress(id, Progress::History(update)) => {
+            let height = next.graph_rows();
             if next.awaiting == Some(id)
                 && let Some(history) = next.history.as_mut()
             {
-                history.apply(update);
+                history.apply(update, height);
             }
             // Otherwise it is from a walk that was cancelled or superseded.
             // Dropped here, which is the whole reason the id travels with it:
@@ -265,24 +286,16 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
 /// The half of [`update`] that answers the events `core` defines.
 fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
     match event {
-        Event::Key(key) => {
-            if is_quit(key) {
-                next.quit = Some(Quit::Requested);
-            } else if is_refresh(key) {
-                commands.push(Command::OpenRepository);
-                commands.push(Command::ReadHistory(Order::Topological));
-            } else if key.code == KeyCode::Escape {
-                // Stop waiting first, then ask the job to stop. The order
-                // matters: a job that finishes between the two lines still
-                // sends its result, and it has to find nobody waiting for it.
-                if let Some(id) = next.awaiting.take() {
-                    commands.push(Command::CancelJob(id));
-                    set_phase(next, Phase::Cancelled);
-                }
-            }
-        }
+        Event::Key(key) => key_event(next, commands, key),
         Event::Resize { columns, rows } => {
             next.size = Size { columns, rows };
+            let height = next.graph_rows();
+            if let Some(history) = next.history.as_mut()
+                && let Some(request) = history.show(height)
+                && let Some(id) = next.awaiting
+            {
+                commands.push(Command::ShowRows(id, request));
+            }
         }
         Event::JobFailed(id, failure) => {
             if next.awaiting == Some(id) {
@@ -321,11 +334,69 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
     }
 }
 
+/// The half of [`core_event`] that answers a key.
+fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
+    if is_quit(key) {
+        next.quit = Some(Quit::Requested);
+    } else if is_refresh(key) {
+        // The walk on screen would otherwise sit waiting for row
+        // requests that now go to its replacement.
+        if let Some(id) = next.awaiting.take() {
+            commands.push(Command::CancelJob(id));
+        }
+        commands.push(Command::OpenRepository);
+        commands.push(Command::ReadHistory(Order::Topological));
+    } else if let Some(motion) = motion_for(key) {
+        let height = next.graph_rows();
+        if let Some(history) = next.history.as_mut()
+            && let Some(request) = history.move_cursor(motion, height)
+            && let Some(id) = next.awaiting
+        {
+            commands.push(Command::ShowRows(id, request));
+        }
+    } else if key.code == KeyCode::Escape {
+        let height = next.graph_rows();
+        // A `G` still walking is what `Esc` backs out of first; the
+        // walk itself goes on serving the rows already on screen.
+        if let Some(id) = next.awaiting
+            && let Some(history) = next.history.as_mut()
+            && let Some(request) = history.withdraw_jump(height)
+        {
+            commands.push(Command::ShowRows(id, request));
+            return;
+        }
+        // Stop waiting first, then ask the job to stop. The order
+        // matters: a job that finishes between the two lines still
+        // sends its result, and it has to find nobody waiting for it.
+        if let Some(id) = next.awaiting.take() {
+            commands.push(Command::CancelJob(id));
+            set_phase(next, Phase::Cancelled);
+        }
+    }
+}
+
 /// Moves the walk on screen to `phase`. Called only for the walk the screen
 /// was waiting for, which always has a [`History`].
 fn set_phase(next: &mut AppState, phase: Phase) {
     if let Some(history) = next.history.as_mut() {
         history.phase = phase;
+    }
+}
+
+/// The movement a key asks for, if it is one (DESIGN.md §2.2): vim keys and
+/// arrows, a screen at a time, and the ends.
+fn motion_for(key: KeyPress) -> Option<Motion> {
+    if key.modifiers.control || key.modifiers.alt {
+        return None;
+    }
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Some(Motion::Down(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Motion::Up(1)),
+        KeyCode::PageDown => Some(Motion::PageDown),
+        KeyCode::PageUp => Some(Motion::PageUp),
+        KeyCode::Char('g') | KeyCode::Home => Some(Motion::Top),
+        KeyCode::Char('G') | KeyCode::End => Some(Motion::Bottom),
+        _ => None,
     }
 }
 
@@ -356,7 +427,9 @@ mod tests {
     use graft_graph::Row;
 
     use super::*;
-    use crate::history::WalkFacts;
+    use std::ops::Range;
+
+    use crate::history::{WalkFacts, Wanted, Window};
     use crate::repository::Head;
 
     fn identity() -> Identity {
@@ -721,8 +794,9 @@ mod tests {
         }
     }
 
-    /// `n` rows from job `id`. The rows themselves do not matter here, only
-    /// whether they land, so they are copies of one row.
+    /// Job `id`'s answer to the first request, with `n` rows laid out. The
+    /// rows themselves do not matter here, only whether they land, so they are
+    /// copies of one row.
     fn rows(id: JobId, n: usize) -> AppEvent {
         let row = Row {
             commit: Commit {
@@ -740,7 +814,13 @@ mod tests {
         };
         AppEvent::Progress(
             id,
-            Progress::History(HistoryUpdate::Rows(vec![row; n].into())),
+            Progress::History(HistoryUpdate::Window(Window {
+                request: 1,
+                first: 0,
+                rows: vec![row; n.min(3)].into(),
+                laid_out: n,
+                done: false,
+            })),
         )
     }
 
@@ -751,12 +831,15 @@ mod tests {
             AppEvent::Started(id, Task::ReadHistory),
         );
 
-        assert!(
-            commands.is_empty(),
-            "being told a job started asks for no work"
+        // A default state is zero rows tall, which shows one row: the first
+        // screen, and one more screen below it.
+        assert_eq!(
+            commands,
+            vec![Command::ShowRows(id, request(1, Wanted::Rows(0..2)))],
+            "a walk that has started is asked for its first screen"
         );
         assert_eq!(next.awaiting, Some(id));
-        assert_eq!(next.history, Some(History::started()));
+        assert_eq!(next.history.as_ref().map(|history| history.asked), Some(1));
         next
     }
 
@@ -773,13 +856,94 @@ mod tests {
 
         let (state, _) = update(&state, rows(id, 500));
         assert_eq!(progress(&state), (Phase::Streaming, 500));
-        let (state, _) = update(&state, rows(id, 12));
+        let (state, _) = update(&state, rows(id, 512));
         assert_eq!(progress(&state), (Phase::Streaming, 512));
 
         let (state, commands) = update(&state, core(Event::JobFinished(id)));
         assert_eq!(progress(&state), (Phase::Complete, 512));
         assert_eq!(state.awaiting, None);
         assert!(commands.is_empty());
+    }
+
+    fn request(id: u64, wanted: Wanted) -> RowRequest {
+        RowRequest { id, wanted }
+    }
+
+    fn sized(columns: u16, rows: u16) -> AppEvent {
+        core(Event::Resize { columns, rows })
+    }
+
+    /// Moving past the rows held asks the walk for the rows there, and
+    /// only then: moving within them asks for nothing.
+    #[test]
+    fn moving_past_the_window_asks_for_the_rows_there() {
+        let id = JobId::new(4);
+        let (state, _) = update(&awaiting(id), sized(80, 12));
+        // Ten graph rows: the resize asked for them, and they arrive.
+        let (state, _) = update(&state, rows_for(id, 2, 0..30, 500));
+
+        let (mut state, commands) = update(&state, key(KeyCode::Char('j')));
+        assert!(commands.is_empty(), "row 1 is held: {commands:?}");
+        assert_eq!(state.history.as_ref().map(|h| h.cursor), Some(1));
+
+        for page in 1..=2 {
+            let (paged, commands) = update(&state, key(KeyCode::PageDown));
+            assert!(commands.is_empty(), "page {page} is held: {commands:?}");
+            state = paged;
+        }
+        let (_, commands) = update(&state, key(KeyCode::PageDown));
+        assert_eq!(
+            commands,
+            vec![Command::ShowRows(id, request(3, Wanted::Rows(20..50)))]
+        );
+    }
+
+    /// `G` on a walk not laid out to its end asks for the last rows and leaves
+    /// the viewport where it is; `Esc` then withdraws the jump — not the walk.
+    #[test]
+    fn esc_withdraws_a_jump_before_it_cancels_the_walk() {
+        let id = JobId::new(4);
+        let (state, _) = update(&awaiting(id), sized(80, 12));
+        let (state, _) = update(&state, rows_for(id, 2, 0..30, 500));
+
+        let (jumping, commands) = update(&state, key(KeyCode::Char('G')));
+        assert_eq!(
+            commands,
+            vec![Command::ShowRows(id, request(3, Wanted::Last(20)))]
+        );
+        let history = jumping.history.as_ref().expect("a walk");
+        assert_eq!((history.top, history.cursor, history.jump), (0, 0, Some(3)));
+
+        let (withdrawn, commands) = update(&jumping, key(KeyCode::Escape));
+        assert_eq!(
+            commands,
+            vec![Command::ShowRows(id, request(4, Wanted::Rows(0..20)))]
+        );
+        assert_eq!(withdrawn.awaiting, Some(id), "the walk goes on");
+        assert_eq!(withdrawn.history.as_ref().and_then(|h| h.jump), None);
+
+        let (after, _) = update(&withdrawn, rows_for(id, 3, 480..500, 500));
+        assert_eq!(after, withdrawn, "the jump's answer does not land");
+    }
+
+    /// Job `id`'s answer to request `request`: `span` rows, `laid_out` so far.
+    fn rows_for(id: JobId, request: u64, span: Range<usize>, laid_out: usize) -> AppEvent {
+        let AppEvent::Progress(_, Progress::History(HistoryUpdate::Window(window))) =
+            rows(id, span.len())
+        else {
+            unreachable!("`rows` answers with a window");
+        };
+        let one = window.rows[0].clone();
+        AppEvent::Progress(
+            id,
+            Progress::History(HistoryUpdate::Window(Window {
+                request,
+                first: span.start,
+                rows: vec![one; span.len()].into(),
+                laid_out,
+                done: false,
+            })),
+        )
     }
 
     #[test]

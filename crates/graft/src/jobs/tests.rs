@@ -505,44 +505,48 @@ fn cancelling_a_job_that_is_over_changes_nothing() {
     );
 }
 
-/// The history job streams: it says what the walk is, sends its rows a chunk
-/// at a time as they are laid out, and only then ends — once.
+/// The history job says what the walk is, answers a request for rows with
+/// those rows, and stays for the next request until it is cancelled — which
+/// ends it once idle, giving the worker back.
 #[test]
-fn a_history_job_sends_its_rows_before_it_ends() {
+fn a_history_job_answers_row_requests_until_cancelled() {
     let dir = graft_fixtures::borrow(graft_fixtures::Shape::Linear);
     let (runner, events, _store) = runner_at(&dir, 1);
 
     runner.dispatch(Command::ReadHistory(Order::Topological));
     let id = next_started(&events, Task::ReadHistory);
+    let asked = history::RowRequest {
+        id: 1,
+        wanted: history::Wanted::Rows(190..usize::MAX),
+    };
+    runner.dispatch(Command::ShowRows(id, asked));
 
     let mut started = false;
-    let mut chunks = 0;
-    let mut rows = 0;
-    let ended = loop {
+    let window = loop {
         match next_report(&events) {
             AppEvent::Progress(from, Progress::History(update)) => {
                 assert_eq!(from, id);
                 match update {
-                    history::HistoryUpdate::Started(_) => {
-                        assert!(!started && chunks == 0, "the walk says what it is first");
-                        started = true;
-                    }
-                    history::HistoryUpdate::Rows(chunk) => {
-                        chunks += 1;
-                        rows += chunk.len();
-                    }
+                    history::HistoryUpdate::Started(_) => started = true,
+                    history::HistoryUpdate::Progress { request, .. } => assert_eq!(request, 1),
+                    history::HistoryUpdate::Window(window) => break window,
                 }
             }
-            other => break other,
+            other => panic!("the job is still answering, but it said {other:?}"),
         }
     };
+    assert!(started, "the walk says what it is first");
+    // The linear shape is 200 commits: rows 190.. are its last ten.
+    assert_eq!(
+        (window.request, window.first, window.rows.len()),
+        (1, 190, 10)
+    );
+    assert_eq!((window.laid_out, window.done), (200, true));
 
-    assert_eq!(ended, AppEvent::Core(Event::JobFinished(id)));
-    assert!(started);
-    // The linear shape is 200 commits; the default chunk is 500 rows, so
-    // this proves the rows arrive before the ending, not that they arrive in
-    // several chunks — `history::tests` proves that with a small chunk.
-    assert_eq!(rows, 200);
-    assert!(chunks >= 1);
+    runner.dispatch(Command::CancelJob(id));
+    assert_eq!(
+        next_report(&events),
+        AppEvent::Core(Event::JobCancelled(id))
+    );
     assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
 }

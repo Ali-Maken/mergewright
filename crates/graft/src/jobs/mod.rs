@@ -52,7 +52,7 @@ use graft_core::job::{JobFailure, JobId};
 use graft_git::history::Order;
 
 use crate::crash;
-use crate::history::{self, Ended};
+use crate::history::{self, Ended, RowRequest};
 use crate::repos::RepoStore;
 use crate::repository;
 use crate::update::{AppEvent, Command, GitCheck, Product, Progress, Task};
@@ -291,6 +291,10 @@ pub struct JobRunner<S: JobEvents> {
     /// The repository every job reads from, opened at most once for the whole
     /// run (`crate::repos`).
     repos: Arc<RepoStore>,
+    /// Where each live history job takes its row requests from. Dropping a
+    /// sender is what ends that job once it is idle, so a cancelled walk
+    /// releases its worker instead of waiting for requests forever.
+    row_requests: Mutex<HashMap<JobId, Sender<RowRequest>>>,
 }
 
 impl<S: JobEvents> JobRunner<S> {
@@ -347,6 +351,7 @@ impl<S: JobEvents> JobRunner<S> {
             workers: handles,
             sink,
             repos,
+            row_requests: Mutex::new(HashMap::new()),
         })
     }
 
@@ -427,6 +432,15 @@ impl<S: JobEvents> JobRunner<S> {
         self.live.cancel(id);
     }
 
+    /// The row-request senders, locked.
+    fn row_requests(&self) -> MutexGuard<'_, HashMap<JobId, Sender<RowRequest>>> {
+        // A poisoned lock is safe to take over: every change to the map is a
+        // single insert, remove or clear, none of which can leave it half-done.
+        self.row_requests
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+    }
+
     /// Stop the pool: cancel everything, then wait up to `grace` for the
     /// workers to notice.
     ///
@@ -436,6 +450,7 @@ impl<S: JobEvents> JobRunner<S> {
     /// costs `grace` and then is abandoned rather than waited on forever.
     #[must_use]
     pub fn shutdown(self, grace: Duration) -> Shutdown {
+        self.row_requests().clear();
         self.live.cancel_all();
         // Dropping the queue is what ends a worker that is idle: its `recv`
         // fails, and it stops.
@@ -477,11 +492,31 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::ReadHistory(order) => {
                 let repos = Arc::clone(&self.repos);
                 let sink = self.sink.clone();
-                self.queue_job(Some(Task::ReadHistory), |id| {
-                    read_history(repos, order, sink, id)
+                let (asks, requests) = std::sync::mpsc::channel();
+                // Registered before `update` can see the job has started: the
+                // announcement travels through the loop's queue, and this runs
+                // on the loop's own thread before it reads that queue again.
+                let id = self.queue_job(Some(Task::ReadHistory), |id| {
+                    read_history(repos, order, requests, sink, id)
                 });
+                self.row_requests().insert(id, asks);
             }
-            Command::CancelJob(id) => self.cancel(id),
+            Command::ShowRows(id, request) => {
+                let mut row_requests = self.row_requests();
+                // No sender means the job was cancelled or has ended; its answer
+                // would be dropped as stale anyway, so there is nobody to tell.
+                if let Some(asks) = row_requests.get(&id)
+                    && asks.send(request).is_err()
+                {
+                    // The job has ended on its own (it failed, or found the loop
+                    // gone). Its failure is reported through its own outcome.
+                    row_requests.remove(&id);
+                }
+            }
+            Command::CancelJob(id) => {
+                self.row_requests().remove(&id);
+                self.cancel(id);
+            }
         }
     }
 }
@@ -513,19 +548,26 @@ fn open_repository(store: Arc<RepoStore>) -> Work {
 
 /// The work behind [`Command::ReadHistory`], as job `id`.
 ///
-/// The long one: on a large repository this reads every commit behind every
-/// ref. Each chunk of rows goes to `sink` the moment it is laid out, so the
-/// screen fills while the walk runs; the token is checked before every chunk,
-/// so `Esc` stops it within one rather than at the end of the walk.
-fn read_history<S: JobEvents>(store: Arc<RepoStore>, order: Order, sink: S, id: JobId) -> Work {
+/// The long one, and it stays: it answers the screen's row requests from
+/// `requests` for as long as the walk is on screen, laying out only as far as
+/// they reach. The token is checked before every chunk, so `Esc` stops it
+/// within one; dropping the request sender ends it once idle.
+fn read_history<S: JobEvents>(
+    store: Arc<RepoStore>,
+    order: Order,
+    requests: Receiver<RowRequest>,
+    sink: S,
+    id: JobId,
+) -> Work {
     Box::new(move |cancel| {
         if cancel.is_cancelled() {
             return Outcome::Cancelled;
         }
         let mut report = |update| sink.deliver(AppEvent::Progress(id, Progress::History(update)));
-        match history::stream(&store, order, &|| cancel.is_cancelled(), &mut report) {
-            Ok(Ended::Complete) => Outcome::Done,
-            // Stopped by its token, or a report found the loop gone — then
+        let stop = || cancel.is_cancelled();
+        match history::stream(&store, order, &requests, &stop, &mut report) {
+            // Stopped by its token, its requests closed, or a report found the
+            // loop gone — then
             // nobody reads the ending either, and the worker delivering it
             // finds the same dead channel and stops there (`Worker::run`).
             Ok(Ended::Cancelled | Ended::NobodyListening) => Outcome::Cancelled,

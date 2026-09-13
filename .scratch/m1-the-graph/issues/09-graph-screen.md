@@ -1,6 +1,6 @@
 # m1-the-graph/09 — The graph screen: open on a graph and scroll it
 
-Status: ready
+Status: partial — 09a (walk serves row requests, bounded window, scroll keys) done; 09b (the screen) remains
 Build with: **Opus** (high) — event loop, frames fed by a streaming job, virtualization
 Blocked by: 07, 08
 Leaves runnable: yes — `graft <repo>` opens on a scrollable graph. The first ticket the user can look at.
@@ -26,12 +26,28 @@ Out:
 
 ## Acceptance
 - [ ] `cargo run -- <fixture>` opens on a graph and `q` quits clean; snapshots at 80×24, 120×40, 200×60.
-- [ ] Scrolling top to bottom of the largest fast-tier fixture keeps resident rows bounded — asserted.
-- [ ] `G` then `Esc` on a cold walk: viewport stays put, nothing from the cancelled job lands.
+- [x] Scrolling top to bottom of the largest fast-tier fixture keeps resident rows bounded — asserted (`history::tests::scrolling_top_to_bottom_keeps_resident_rows_bounded`).
+- [x] `G` then `Esc` on a cold walk: viewport stays put, nothing from the cancelled job lands (`history::tests::a_withdrawn_jump_stops_walking_and_lands_nothing`, `update::tests::esc_withdraws_a_jump_before_it_cancels_the_walk`).
 - [ ] Open `git/git` once under a pty and record time to first graph frame (an observation, not a budget).
 - [ ] Exact command prepared for the user to try in Zed and VS Code.
 
-## Gates
+## Notes (handoff, 2026-09-13)
+
+Split at a clean seam: too big for one context. No compaction.
+
+**Done (09a):**
+- Protocol: history job no longer ships every row. `history::stream` takes a `Receiver<RowRequest>` and `serve`s: each `RowRequest { id, wanted: Rows(range) | Last(n) }` is answered with `HistoryUpdate::Window` (only those rows), laying out a chunk at a time as far as the request reaches, reporting `Progress { request, laid_out }` between chunks and switching to a newer request if one queued. Idle between requests (blocks on `recv`); ends when the sender drops.
+- Runner: `JobRunner.row_requests: Mutex<HashMap<JobId, Sender<RowRequest>>>`; `Command::ShowRows(JobId, RowRequest)` routes; `CancelJob` and `shutdown` drop senders.
+- State: `History` holds one `Window`, `rows` (laid out), `top`, `cursor`, `asked`, `jump`. `history/scroll.rs`: `apply`, `show`, `move_cursor(Motion, height)`, `withdraw_jump`, `visible(height)`. Stale ids dropped. A screen of slack asked each side.
+- `update`: `Started` asks the first screen; `j/k`, arrows, PgUp/PgDn, `g`/Home, `G`/End; `Esc` withdraws a pending `G` first, else cancels the walk (old behaviour); resize re-asks; `Ctrl+R` cancels the old walk before starting a new one. `AppState::graph_rows()` = rows − `CHROME_ROWS` (2), min 1.
+
+**Remains (09b), exact next steps:**
+1. `graft-ui`: new `graph_screen` module — header line (sanitised path, walk phase / `laying out… N rows` while `History::jump` is set, `Esc cancels`), rows: `GraphColumn` + one plain subject column (`sanitize_line` on `Commit::subject()`, `fit`), cursor row `RowPaint::Highlighted`, footer key hints. Takes a view struct built in `graft::view` from `History::visible(state.graph_rows())`. Must fit `CHROME_ROWS`.
+2. `AppState` screen toggle (graph default; status screen from a key — suggest `F2`, since `Tab`/`s`/`i` are taken in DESIGN.md §2.2–2.3) and `view` dispatch.
+3. insta snapshots at 80×24, 120×40, 200×60 (corpus shape via `graft-ui/tests/support/corpus.rs`).
+4. pty capture to `docs/shots/09-graph-screen.txt`; open `git/git` under a pty, record time to first graph frame; write the Zed/VS Code command.
+- Gotcha: the status screen's row count now means rows laid out as far as asked (≈ 2 screens at startup), not the whole walk.
+
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test` (fast tier only)
 
 ## Size

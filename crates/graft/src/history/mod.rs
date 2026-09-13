@@ -4,20 +4,24 @@
 //! neither may see the other (ARCHITECTURE.md). This is where they meet:
 //! [`WalkSource`] puts a `Walk` behind the layout's `CommitSource` seam,
 //! [`seeds_for`] turns ADR-0001's branch resolution into reserved lanes, and
-//! [`stream`] drives a `StreamingLayout` a chunk at a time, handing each
-//! chunk's rows to the UI thread as soon as it is laid out — so the first row
-//! is on screen long before the last commit is read.
+//! [`stream`] drives a `StreamingLayout` for as long as the screen shows it,
+//! answering each [`RowRequest`] with just the rows it names — laying out
+//! further only when a request reaches past the frontier. The screen holds one
+//! [`Window`] of rows, never the whole history (DESIGN.md §3.6).
 //!
-//! Nothing here knows about jobs or threads beyond a `stop` check and a
-//! `report` callback; `crate::jobs` supplies both.
+//! Nothing here knows about jobs or threads beyond a `stop` check, a
+//! request channel and a `report` callback; `crate::jobs` supplies both.
 
+mod scroll;
 mod seeds;
 mod source;
 
 #[cfg(test)]
 mod tests;
 
+use std::ops::Range;
 use std::sync::Arc;
+use std::sync::mpsc::Receiver;
 
 use graft_core::ref_name::RefName;
 use graft_git::history::{Order, Walk};
@@ -27,6 +31,7 @@ use graft_graph::layout::{CommitSource, StreamConfig, StreamError, StreamingLayo
 use crate::jobs::Delivery;
 use crate::repos::RepoStore;
 
+pub use scroll::Motion;
 pub use seeds::seeds_for;
 pub use source::WalkSource;
 
@@ -55,40 +60,104 @@ impl WalkFacts {
     }
 }
 
+/// Which rows the screen wants from the walk.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Wanted {
+    /// These rows. The walk is laid out as far as their end first, if it has
+    /// not got there yet; past the end of history, fewer come back.
+    Rows(Range<usize>),
+    /// The last this-many rows of history. The walk is laid out to its end
+    /// first — on a cold walk of a big repository, that is the long one (`G`).
+    Last(usize),
+}
+
+/// One ask for rows, numbered so its answer can be told from a stale one.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RowRequest {
+    /// Increases with every ask; only the newest ask's answer is wanted.
+    pub id: u64,
+    /// The rows asked for.
+    pub wanted: Wanted,
+}
+
+/// The rows that answer one [`RowRequest`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Window {
+    /// The request this answers.
+    pub request: u64,
+    /// The row number of `rows[0]`.
+    pub first: usize,
+    /// The rows, in order. Shared rather than cloned: the state is copied on
+    /// every event.
+    pub rows: Arc<[Row]>,
+    /// How many rows the walk had laid out when it answered.
+    pub laid_out: usize,
+    /// Whether that is every row there is.
+    pub done: bool,
+}
+
+impl Window {
+    /// The row number one past the last row held.
+    #[must_use]
+    pub fn end(&self) -> usize {
+        self.first + self.rows.len()
+    }
+}
+
 /// One thing a running walk tells the screen.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HistoryUpdate {
     /// The walk has started; this is what it is. Always the first update.
     Started(Box<WalkFacts>),
-    /// The next rows, in order, straight after the ones already sent.
-    /// Shared rather than cloned: the state is copied on every event.
-    Rows(Arc<[Row]>),
+    /// Still laying out towards request `request`; `laid_out` rows so far.
+    /// What the screen shows while `G` walks a cold history.
+    Progress {
+        /// The request being worked towards.
+        request: u64,
+        /// Rows laid out so far.
+        laid_out: usize,
+    },
+    /// The rows a request asked for.
+    Window(Window),
 }
 
 /// Where a walk is.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Phase {
-    /// Rows are still arriving.
+    /// Not every commit has a row yet; more are laid out as the screen asks.
     Streaming,
     /// Every commit has a row.
     Complete,
-    /// The user stopped it. The rows that had arrived stay.
+    /// The user stopped it. The rows on screen stay.
     Cancelled,
     /// It broke, and this is why.
     Failed(String),
 }
 
-/// The history on screen: what has arrived of the walk the screen waits for.
+/// The history on screen: a window of rows around the viewport, and where the
+/// viewport and the cursor are.
+///
+/// Never the whole history. The rows held are the latest [`Window`] the walk
+/// answered with, so memory follows the screen, not the repository (DESIGN.md
+/// §3.6); moving is in `scroll.rs`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct History {
     /// What the walk is, once it has said.
     pub walk: Option<WalkFacts>,
-    /// The rows laid out so far, chunk by chunk as they arrived.
-    pub chunks: Vec<Arc<[Row]>>,
-    /// How many rows [`History::chunks`] holds between them.
+    /// The rows last sent for the newest request, if any have come.
+    pub window: Option<Window>,
+    /// How many rows the walk has laid out, as far as the screen has heard.
     pub rows: usize,
     /// Where the walk is.
     pub phase: Phase,
+    /// The row at the top of the viewport.
+    pub top: usize,
+    /// The row the cursor is on. A plain index; selection is ticket 16's.
+    pub cursor: usize,
+    /// The id of the newest request. Answers to any other are dropped.
+    pub asked: u64,
+    /// The `G` request still laying out, if one is. `Esc` withdraws it.
+    pub jump: Option<u64>,
 }
 
 impl History {
@@ -97,37 +166,34 @@ impl History {
     pub fn started() -> Self {
         History {
             walk: None,
-            chunks: Vec::new(),
+            window: None,
             rows: 0,
             phase: Phase::Streaming,
-        }
-    }
-
-    /// Takes in one update from the walk.
-    pub fn apply(&mut self, update: HistoryUpdate) {
-        match update {
-            HistoryUpdate::Started(facts) => self.walk = Some(*facts),
-            HistoryUpdate::Rows(rows) => {
-                self.rows += rows.len();
-                self.chunks.push(rows);
-            }
+            top: 0,
+            cursor: 0,
+            asked: 0,
+            jump: None,
         }
     }
 }
 
-/// How a [`stream`] or [`lay_out`] call ended, when it did not fail.
+/// How a [`stream`] or [`serve`] call ended, when it did not fail.
+///
+/// There is no "complete": a walk that has laid out every row still answers
+/// requests for as long as the screen asks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Ended {
-    /// Every commit was laid out and reported.
-    Complete,
-    /// `stop` asked it to stop. Nothing laid out after that was reported.
+    /// `stop` asked it to stop, or nobody will ask for rows again.
     Cancelled,
     /// A report found nobody listening: the loop has gone.
     NobodyListening,
 }
 
-/// Walk `store`'s repository in `order`, laying it out and reporting each
-/// chunk of rows through `report` as it lands.
+/// Walk `store`'s repository in `order`, answering each [`RowRequest`] that
+/// arrives on `requests` with the rows it names.
+///
+/// Returns once `requests` has no sender left (the job was cancelled, or Graft
+/// is leaving), `stop` says stop, or a report finds nobody listening.
 ///
 /// # Errors
 /// The failure text, ready to show: the repository could not be opened, its
@@ -136,6 +202,7 @@ pub enum Ended {
 pub fn stream(
     store: &RepoStore,
     order: Order,
+    requests: &Receiver<RowRequest>,
     stop: &dyn Fn() -> bool,
     report: &mut dyn FnMut(HistoryUpdate) -> Delivery,
 ) -> Result<Ended, String> {
@@ -158,44 +225,95 @@ pub fn stream(
 
     let source = WalkSource::new(&handle, walk);
     let mut layout = StreamingLayout::new(source, seeds, StreamConfig::default());
-    lay_out(&mut layout, stop, report).map_err(|error| error_chain(&error))
+    serve(&mut layout, requests, stop, report).map_err(|error| error_chain(&error))
 }
 
-/// Advances `layout` a chunk at a time until its source is exhausted,
-/// reporting each chunk's rows the moment they are laid out.
+/// Answers requests from `requests` until it has no sender left.
 ///
-/// `stop` is checked before every chunk and handed to the source within one.
-/// Once it has said stop, nothing more is reported — the rows of a chunk it
-/// interrupted are not a chunk anybody asked for.
+/// Waits between requests: this is a worker thread, and a walk nobody is
+/// scrolling costs nothing. Requests that queued while one was being answered
+/// are skipped to the newest — only its answer would be looked at.
 ///
 /// # Errors
-/// Whatever the layout reports: the source failed, repeated a commit or
-/// stalled.
-pub fn lay_out<S: CommitSource>(
+/// Whatever the layout reports: the source failed, repeated a commit, stalled,
+/// or a rebuilt chunk differed.
+pub fn serve<S: CommitSource>(
     layout: &mut StreamingLayout<S>,
+    requests: &Receiver<RowRequest>,
     stop: &dyn Fn() -> bool,
     report: &mut dyn FnMut(HistoryUpdate) -> Delivery,
 ) -> Result<Ended, StreamError<S::Error>> {
-    let chunk = layout.config().chunk_rows;
-    loop {
-        let before = layout.rows_emitted();
-        let advanced = layout.advance(chunk, stop)?;
-        if advanced.stopped || stop() {
-            return Ok(Ended::Cancelled);
-        }
-        let after = layout.rows_emitted();
-        if after > before {
-            // The newest chunk is the most recently touched, so it is still
-            // resident: this reads the cache, it does not rebuild.
-            let rows = layout.rows(before..after)?;
-            if report(HistoryUpdate::Rows(rows.into())) == Delivery::NobodyListening {
-                return Ok(Ended::NobodyListening);
-            }
-        }
-        if advanced.done {
-            return Ok(Ended::Complete);
+    // `recv` failing means every sender is gone: the runner dropped it
+    // because the job was cancelled or Graft is leaving. Nobody can ask again.
+    while let Ok(first) = requests.recv() {
+        let request = requests.try_iter().last().unwrap_or(first);
+        let mut newer = || requests.try_iter().last();
+        if let Some(ended) = answer(layout, request, &mut newer, stop, report)? {
+            return Ok(ended);
         }
     }
+    Ok(Ended::Cancelled)
+}
+
+/// Answers one request: lays out as far as it needs, a chunk at a time, then
+/// reports the rows it names.
+///
+/// Between chunks it reports progress and asks `newer` whether a newer request
+/// has arrived; one that has replaces this one, so a withdrawn `G` stops
+/// walking within a chunk. Returns `None` once the answer is sent.
+///
+/// # Errors
+/// Whatever the layout reports.
+fn answer<S: CommitSource>(
+    layout: &mut StreamingLayout<S>,
+    mut request: RowRequest,
+    newer: &mut dyn FnMut() -> Option<RowRequest>,
+    stop: &dyn Fn() -> bool,
+    report: &mut dyn FnMut(HistoryUpdate) -> Delivery,
+) -> Result<Option<Ended>, StreamError<S::Error>> {
+    let chunk = layout.config().chunk_rows;
+    loop {
+        let reach = match &request.wanted {
+            Wanted::Rows(rows) => rows.end,
+            Wanted::Last(_) => usize::MAX,
+        };
+        if layout.is_done() || layout.rows_emitted() >= reach {
+            break;
+        }
+        let advanced = layout.advance(chunk, stop)?;
+        if advanced.stopped || stop() {
+            return Ok(Some(Ended::Cancelled));
+        }
+        let progress = HistoryUpdate::Progress {
+            request: request.id,
+            laid_out: layout.rows_emitted(),
+        };
+        if report(progress) == Delivery::NobodyListening {
+            return Ok(Some(Ended::NobodyListening));
+        }
+        if let Some(replacement) = newer() {
+            request = replacement;
+        }
+    }
+
+    let laid_out = layout.rows_emitted();
+    let range = match request.wanted {
+        Wanted::Rows(rows) => rows.start.min(laid_out)..rows.end.min(laid_out),
+        Wanted::Last(count) => laid_out.saturating_sub(count)..laid_out,
+    };
+    layout.set_viewport(range.clone());
+    let rows = layout.rows(range.clone())?;
+    let window = Window {
+        request: request.id,
+        first: range.start,
+        rows: rows.into(),
+        laid_out,
+        done: layout.is_done(),
+    };
+    if report(HistoryUpdate::Window(window)) == Delivery::NobodyListening {
+        return Ok(Some(Ended::NobodyListening));
+    }
+    Ok(None)
 }
 
 /// An error and every cause under it, on one line: `StreamError::Source`
