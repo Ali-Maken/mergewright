@@ -65,7 +65,7 @@ Release, `examples/budgets` on git/git (85,649 commits), each run alone, 3 runs 
 |---|---|---|---|
 | small | 144.4 MiB | 121.3 MiB | −23 |
 | realistic | 157.4 MiB | 130.6 MiB | −27 |
-| git/git (release, part a) | 250 → 290 range | 219–222 | −70 |
+| git/git (release, part a; B only vs B+C+D) | 290.3–294.4 MiB | 219.1–221.5 MiB | −70 |
 
 The realistic sizes move the fixture only slightly toward git/git. **Seam stated: the 300 MB guard cannot see a C+D-sized regression**; message bytes aren't the main multiplier. Suspect lane width (git/git ~28 lanes; `Row.lanes` top holder in 27b). Logged in KNOWN_GAPS, not built (a new fixture shape is a scope decision).
 
