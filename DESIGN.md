@@ -434,6 +434,9 @@ and any redo prompt should lead with.
 | `M` | Toggle Map view (§5.1) |
 | `F` | Toggle Focus mode on the selected commit (§5.2) |
 | `O` | Toggle the Overview strip (§5.3) |
+| `Space` (on a merge) | Fold its merged branch into it / unfold (PROMPT.md §1.3; m1/15) |
+| `1` | Toggle first-parent view (m1/15) |
+| `H` | Hide / show the stash in the graph (m1/15) |
 
 ### 2.4 Working tree / staging (detail pane)
 

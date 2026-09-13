@@ -518,6 +518,7 @@ fn a_history_job_answers_row_requests_until_cancelled() {
     let asked = history::RowRequest {
         id: 1,
         wanted: history::Wanted::Rows(190..usize::MAX),
+        view: history::View::default(),
     };
     runner.dispatch(Command::ShowRows(id, asked));
 

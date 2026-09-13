@@ -14,11 +14,13 @@ use std::path::PathBuf;
 
 use graft_core::event::{Event, KeyCode, KeyPress};
 use graft_core::job::JobId;
+use graft_core::oid::Oid;
 use graft_git::history::Order;
 use graft_git::version::SystemGit;
 
-use crate::history::{History, HistoryUpdate, Motion, Phase, RowRequest};
+use crate::history::{History, HistoryUpdate, Motion, Phase, RowRequest, View};
 use crate::repository::RepositoryFacts;
+use graft_graph::Follow;
 
 /// Everything the loop can be told.
 ///
@@ -288,6 +290,10 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             // say is now about a question nobody asked.
             next.awaiting = Some(id);
             let mut history = History::started();
+            // A refresh keeps what the user folded, hid or switched to.
+            if let Some(previous) = &next.history {
+                history.view = previous.view.clone();
+            }
             if let Some(request) = history.show(next.graph_rows()) {
                 commands.push(Command::ShowRows(id, request));
             }
@@ -423,6 +429,16 @@ fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         next.screen = next.screen.toggled();
     } else if is_lane_toggle(key) {
         next.lanes_expanded = !next.lanes_expanded;
+    } else if let Some(change) = view_change(key) {
+        let height = next.graph_rows();
+        let stash = next.refs.as_ref().and_then(crate::refs::RefBadges::stash);
+        if let Some(history) = next.history.as_mut()
+            && let Some(view) = change.apply(history, stash)
+            && let Some(request) = history.change_view(view, height)
+            && let Some(id) = next.awaiting
+        {
+            commands.push(Command::ShowRows(id, request));
+        }
     } else if let Some(motion) = motion_for(key) {
         let height = next.graph_rows();
         if let Some(history) = next.history.as_mut()
@@ -500,6 +516,66 @@ fn is_lane_toggle(key: KeyPress) -> bool {
     key.code == KeyCode::Char('+') && !key.modifiers.control && !key.modifiers.alt
 }
 
+/// A key that changes which history is shown (PROMPT.md §1.3). DESIGN.md
+/// §2.3 assigns none of these; they are recorded there.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ViewChange {
+    /// `Space` on a merge: fold its merged branch into it, or unfold it.
+    Fold,
+    /// `1`: the first-parent view, or back to every parent.
+    FirstParent,
+    /// `H`: hide the stash, or show it again.
+    Stashes,
+}
+
+impl ViewChange {
+    /// The view after this change, or `None` where it does nothing: `Space`
+    /// off a merge, `H` with no stash.
+    fn apply(self, history: &History, stash: Option<Oid>) -> Option<View> {
+        let mut view = history.view.clone();
+        match self {
+            ViewChange::Fold => {
+                let commit = &history.selected()?.commit;
+                // A folded merge is drawn with one parent, so it is known
+                // by the fold, not by its parents.
+                if !view.inclusion.folded.remove(&commit.id) {
+                    if commit.parents.len() < 2 {
+                        return None;
+                    }
+                    view.inclusion.folded.insert(commit.id);
+                }
+            }
+            ViewChange::FirstParent => {
+                view.follow = match view.follow {
+                    Follow::AllParents => Follow::FirstParent,
+                    Follow::FirstParent => Follow::AllParents,
+                };
+            }
+            ViewChange::Stashes => {
+                if view.inclusion.hidden_stashes.is_empty() {
+                    view.inclusion.hidden_stashes.insert(stash?);
+                } else {
+                    view.inclusion.hidden_stashes.clear();
+                }
+            }
+        }
+        Some(view)
+    }
+}
+
+/// The view change a key asks for, if it is one.
+fn view_change(key: KeyPress) -> Option<ViewChange> {
+    if key.modifiers.control || key.modifiers.alt {
+        return None;
+    }
+    match key.code {
+        KeyCode::Char(' ') => Some(ViewChange::Fold),
+        KeyCode::Char('1') => Some(ViewChange::FirstParent),
+        KeyCode::Char('H') => Some(ViewChange::Stashes),
+        _ => None,
+    }
+}
+
 /// Manual refresh (DESIGN.md §2.1): re-read the repository now, rather than
 /// waiting for whatever would have noticed on its own.
 fn is_refresh(key: KeyPress) -> bool {
@@ -547,6 +623,127 @@ mod tests {
 
         let (graph, _) = update(&status, key(KeyCode::Function(2)));
         assert_eq!(graph.screen, Screen::Graph);
+    }
+
+    /// A walk in flight whose window holds a plain commit (row 0) and a
+    /// merge (row 1), the cursor on row `cursor`.
+    fn merge_on_screen(id: JobId, cursor: usize) -> (AppState, Oid) {
+        let commit = |byte: u8, parents: Vec<Oid>| Row {
+            commit: Commit {
+                id: Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is an oid"),
+                parents,
+                author: identity(),
+                committer: identity(),
+                message: b"a commit".to_vec(),
+            },
+            lane: 0,
+            incoming: Vec::new(),
+            outgoing: Vec::new(),
+            lanes: Vec::new(),
+            marker: None,
+        };
+        let parent = |byte| Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("an oid");
+        let plain = commit(1, vec![parent(2)]);
+        let merge = commit(2, vec![parent(3), parent(4)]);
+        let merge_id = merge.commit.id;
+        let window = Window {
+            request: 1,
+            first: 0,
+            rows: vec![plain, merge].into(),
+            laid_out: 2,
+            done: false,
+        };
+        let (mut state, _) = update(
+            &awaiting(id),
+            AppEvent::Progress(id, Progress::History(HistoryUpdate::Window(window))),
+        );
+        state.history.as_mut().expect("a walk").cursor = cursor;
+        (state, merge_id)
+    }
+
+    /// The view the last `ShowRows` asks for.
+    fn asked_view(commands: &[Command]) -> View {
+        match commands {
+            [Command::ShowRows(_, request)] => request.view.clone(),
+            other => panic!("expected one row request, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn space_folds_the_merge_under_the_cursor_and_unfolds_it() {
+        let id = JobId::new(5);
+        let (state, merge) = merge_on_screen(id, 1);
+
+        let (folded, commands) = update(&state, key(KeyCode::Char(' ')));
+        let view = asked_view(&commands);
+        assert_eq!(view.inclusion.folded, [merge].into());
+        assert_eq!(folded.history.as_ref().map(|h| &h.view), Some(&view));
+        assert_eq!(
+            folded.history.as_ref().map(|h| h.cursor),
+            Some(1),
+            "stays put"
+        );
+
+        let (unfolded, commands) = update(&folded, key(KeyCode::Char(' ')));
+        assert_eq!(asked_view(&commands), View::default());
+        assert_eq!(unfolded.history.map(|h| h.view), Some(View::default()));
+    }
+
+    #[test]
+    fn space_off_a_merge_changes_nothing() {
+        let id = JobId::new(5);
+        let (state, _) = merge_on_screen(id, 0);
+        let (next, commands) = update(&state, key(KeyCode::Char(' ')));
+        assert!(commands.is_empty(), "{commands:?}");
+        assert_eq!(next.history, state.history);
+    }
+
+    #[test]
+    fn one_switches_to_first_parent_view_from_the_top_and_back() {
+        let id = JobId::new(6);
+        let (state, _) = merge_on_screen(id, 1);
+
+        let (straight, commands) = update(&state, key(KeyCode::Char('1')));
+        assert_eq!(asked_view(&commands).follow, Follow::FirstParent);
+        let history = straight.history.as_ref().expect("a walk");
+        assert_eq!((history.top, history.cursor), (0, 0));
+
+        let (full, commands) = update(&straight, key(KeyCode::Char('1')));
+        assert_eq!(asked_view(&commands), View::default());
+        assert_eq!(full.history.map(|h| h.view), Some(View::default()));
+    }
+
+    #[test]
+    fn capital_h_hides_the_stash_and_shows_it_again() {
+        let id = JobId::new(7);
+        let (mut state, _) = merge_on_screen(id, 0);
+        let (none, commands) = update(&state, key(KeyCode::Char('H')));
+        assert!(
+            commands.is_empty(),
+            "no stash, nothing to hide: {commands:?}"
+        );
+        assert_eq!(none.history, state.history);
+
+        let stash = Oid::from_bytes(&[9; Oid::SHA1_BYTES]).expect("an oid");
+        let name = graft_core::ref_name::RefName::new("refs/stash").expect("valid");
+        let badges = crate::refs::badges(
+            &[(name, stash)],
+            &graft_git::repo::HeadState::Detached(stash),
+            &std::collections::HashMap::new(),
+            |_, _| Err("no upstreams here".to_owned()),
+        )
+        .expect("badges");
+        assert_eq!(badges.stash(), Some(stash));
+        state.refs = Some(badges);
+
+        let (hidden, commands) = update(&state, key(KeyCode::Char('H')));
+        assert_eq!(
+            asked_view(&commands).inclusion.hidden_stashes,
+            [stash].into()
+        );
+        let (shown, commands) = update(&hidden, key(KeyCode::Char('H')));
+        assert_eq!(asked_view(&commands), View::default());
+        assert_eq!(shown.history.map(|h| h.view), Some(View::default()));
     }
 
     #[test]
@@ -995,7 +1192,11 @@ mod tests {
     }
 
     fn request(id: u64, wanted: Wanted) -> RowRequest {
-        RowRequest { id, wanted }
+        RowRequest {
+            id,
+            wanted,
+            view: View::default(),
+        }
     }
 
     fn sized(columns: u16, rows: u16) -> AppEvent {

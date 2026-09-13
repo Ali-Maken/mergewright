@@ -84,6 +84,41 @@ pub struct GraphView<'a> {
     /// How many lanes the graph may draw before folding the rest behind
     /// `+N`, and whether the user has expanded them (DESIGN.md §3.5).
     pub compaction: Compaction,
+    /// What the history shown leaves out; said in the header so a folded or
+    /// first-parent graph is never mistaken for the whole one.
+    pub filters: Filters,
+}
+
+/// What the history on screen leaves out (PROMPT.md §1.3). The default is
+/// nothing: every commit, every parent.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Filters {
+    /// Only first parents are followed.
+    pub first_parent: bool,
+    /// How many merges are drawn folded.
+    pub folded: usize,
+    /// The stash is hidden.
+    pub stash_hidden: bool,
+}
+
+impl Filters {
+    /// The header's words for these filters: empty when nothing is left out.
+    #[must_use]
+    pub fn text(self) -> String {
+        let mut parts = Vec::new();
+        if self.first_parent {
+            parts.push("first-parent".to_owned());
+        }
+        match self.folded {
+            0 => {}
+            1 => parts.push("1 merge folded".to_owned()),
+            many => parts.push(format!("{many} merges folded")),
+        }
+        if self.stash_hidden {
+            parts.push("stash hidden".to_owned());
+        }
+        parts.join(" · ")
+    }
 }
 
 /// Lane compaction as the screen applies it (DESIGN.md §3.5).
@@ -226,6 +261,14 @@ impl<'a> GraphScreen<'a> {
         }
         let (walk, token) = walk_text(&self.view.walk);
         push(walk, foreground(self.theme, token), &mut spans);
+        let filters = self.view.filters.text();
+        if !filters.is_empty() {
+            push(
+                format!("  {filters}"),
+                foreground(self.theme, Token::Accent),
+                &mut spans,
+            );
+        }
         if matches!(self.view.walk, WalkView::Jumping { .. }) {
             push("  Esc cancels".to_owned(), muted, &mut spans);
         }

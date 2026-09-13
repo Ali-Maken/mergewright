@@ -54,6 +54,7 @@ fn reported_rows<S: CommitSource>(layout: &mut StreamingLayout<S>, shape: Shape)
         let request = RowRequest {
             id,
             wanted: Wanted::Rows(rows.len()..rows.len() + chunk),
+            view: View::default(),
         };
         let mut done = false;
         let ended = answer(layout, request, &mut || None, &never, &mut |update| {
@@ -171,6 +172,7 @@ fn a_configured_default_branch_takes_lane_0() {
         let everything = RowRequest {
             id: 1,
             wanted: Wanted::Rows(0..usize::MAX),
+            view: View::default(),
         };
         asks.send(everything).expect("the receiver is right here");
         // Nobody asks again, so the walk ends once it has answered.
@@ -394,6 +396,7 @@ fn nothing_is_reported_once_stop_is_asked() {
     let jump = RowRequest {
         id: 1,
         wanted: Wanted::Last(HEIGHT),
+        view: View::default(),
     };
     let ended = answer(
         &mut stream,
@@ -418,17 +421,172 @@ fn nothing_is_reported_once_stop_is_asked() {
 fn a_walk_nobody_can_ask_ends() {
     let dir = graft_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
-    let walk = Walk::all_refs(&handle, Order::Topological).expect("walk starts");
-    let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
+    let mut opened = 0;
+    let open = || {
+        opened += 1;
+        Ok(WalkSource::new(
+            &handle,
+            Walk::all_refs(&handle, Order::Topological)?,
+        ))
+    };
+    let mut views = Views::new(Seeds::default(), SMALL, Box::new(open));
     let (asks, requests) = mpsc::channel::<RowRequest>();
     drop(asks);
 
-    let ended = serve(&mut stream, &requests, &never, &mut |_| Delivery::Received);
+    let ended = serve(&mut views, &requests, &never, &mut |_| Delivery::Received);
 
     assert_eq!(ended.expect("nothing to lay out"), Ended::Cancelled);
-    assert_eq!(
-        stream.rows_emitted(),
-        0,
-        "nothing was asked, so nothing was walked"
-    );
+    drop(views);
+    assert_eq!(opened, 0, "nothing was asked, so nothing was walked");
+}
+
+/// Every row `view` shows of `shape`, laid out through `views`.
+fn rows_in<S: CommitSource>(views: &mut Views<'_, S>, view: &View, shape: Shape) -> Vec<Row> {
+    let layout = views
+        .layout(view)
+        .unwrap_or_else(|why| panic!("{shape}: opening the view: {why}"));
+    let mut rows = Vec::new();
+    let everything = RowRequest {
+        id: 1,
+        wanted: Wanted::Rows(0..usize::MAX),
+        view: view.clone(),
+    };
+    let ended = answer(layout, everything, &mut || None, &never, &mut |update| {
+        if let HistoryUpdate::Window(window) = update {
+            rows.extend(window.rows.iter().cloned());
+        }
+        Delivery::Received
+    })
+    .unwrap_or_else(|why| panic!("{shape}: laying out: {why}"));
+    assert_eq!(ended, None, "{shape}");
+    rows
+}
+
+/// The app's views of the merge shapes: folding a merge hides its branch and
+/// unfolding brings back the very rows there were; first-parent view is one
+/// straight lane and is laid out on its own, leaving the full view's rows as
+/// they were. Two sources are opened, one per `Follow`, never more.
+#[test]
+fn views_fold_unfold_and_switch_to_first_parent_over_one_walk() {
+    for shape in [Shape::FoxtrotMerge, Shape::CrissCrossMerge] {
+        let dir = graft_fixtures::borrow(shape);
+        let handle = RepoHandle::open(&dir).expect("opens");
+        let refs = handle.references().expect("refs read");
+        let branches = Branches::resolve(&handle, None).expect("branches resolve");
+        let mut opened = 0;
+        let open = || {
+            opened += 1;
+            Ok(WalkSource::new(
+                &handle,
+                Walk::all_refs(&handle, Order::Topological)?,
+            ))
+        };
+        let mut views = Views::new(seeds_for(&refs, &branches), SMALL, Box::new(open));
+
+        let full = View::default();
+        let all = rows_in(&mut views, &full, shape);
+        let merge = all
+            .iter()
+            .find(|row| row.commit.parents.len() > 1)
+            .unwrap_or_else(|| panic!("{shape} has a merge"))
+            .commit
+            .id;
+        let folded_view = View {
+            inclusion: Inclusion {
+                folded: [merge].into(),
+                ..Inclusion::default()
+            },
+            ..View::default()
+        };
+        let folded = rows_in(&mut views, &folded_view, shape);
+        assert!(
+            folded.len() < all.len(),
+            "{shape}: folding hides the branch"
+        );
+        assert_eq!(rows_in(&mut views, &full, shape), all, "{shape}: unfolded");
+
+        let first_parent = View {
+            follow: Follow::FirstParent,
+            ..View::default()
+        };
+        let straight = rows_in(&mut views, &first_parent, shape);
+        assert!(!straight.is_empty(), "{shape}");
+        assert!(
+            straight.iter().all(|row| row.lane == 0),
+            "{shape}: first-parent view is one lane"
+        );
+        let rebuilt_before = views.layout(&full).expect("open").work().chunks_rebuilt;
+        assert_eq!(
+            rows_in(&mut views, &full, shape),
+            all,
+            "{shape}: back again"
+        );
+        assert_eq!(
+            views.layout(&full).expect("open").work().chunks_rebuilt,
+            rebuilt_before,
+            "{shape}: switching views leaves the full view's cache alone"
+        );
+        drop(views);
+        assert_eq!(opened, 2, "{shape}: one source per Follow");
+    }
+}
+
+/// A newer request in another view stops the answer in hand, sends nothing
+/// for it, and `serve` answers the newer one in its own view.
+#[test]
+fn a_request_in_another_view_interrupts_and_is_answered_next() {
+    let shape = Shape::FoxtrotMerge;
+    let dir = graft_fixtures::borrow(shape);
+    let handle = RepoHandle::open(&dir).expect("opens");
+    let refs = handle.references().expect("refs read");
+    let branches = Branches::resolve(&handle, None).expect("branches resolve");
+    let open = || {
+        Ok(WalkSource::new(
+            &handle,
+            Walk::all_refs(&handle, Order::Topological)?,
+        ))
+    };
+    let mut views = Views::new(seeds_for(&refs, &branches), SMALL, Box::new(open));
+    let first_parent = View {
+        follow: Follow::FirstParent,
+        ..View::default()
+    };
+    let straight = rows_in(&mut views, &first_parent, shape);
+
+    let jump = RowRequest {
+        id: 1,
+        wanted: Wanted::Last(HEIGHT),
+        view: View::default(),
+    };
+    let switch = RowRequest {
+        id: 2,
+        wanted: Wanted::Rows(0..usize::MAX),
+        view: first_parent,
+    };
+    let mut newer = Some(switch.clone());
+    let mut windows = 0;
+    let layout = views.layout(&jump.view).expect("opens");
+    let ended = answer(layout, jump, &mut || newer.take(), &never, &mut |update| {
+        if matches!(update, HistoryUpdate::Window(_)) {
+            windows += 1;
+        }
+        Delivery::Received
+    })
+    .expect("lays out");
+    assert_eq!(ended, None);
+    assert_eq!(windows, 0, "nothing is sent for the interrupted jump");
+
+    let (asks, requests) = mpsc::channel();
+    asks.send(switch).expect("the receiver is right here");
+    drop(asks);
+    let mut answered = Vec::new();
+    let ended = serve(&mut views, &requests, &never, &mut |update| {
+        if let HistoryUpdate::Window(window) = update {
+            answered.extend(window.rows.iter().cloned());
+        }
+        Delivery::Received
+    })
+    .expect("lays out");
+    assert_eq!(ended, Ended::Cancelled);
+    assert_eq!(answered, straight, "answered in the view it named");
 }

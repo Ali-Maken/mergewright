@@ -1,6 +1,6 @@
 # m1-the-graph/15 — Folding merged branches, first-parent view, stash visibility
 
-Status: partial — graph side done; app wiring, keys and shots remain (15b)
+Status: done
 Build with: **Opus** (high) — an inclusion predicate reusing `layout_chunk` (DESIGN.md's name; in code `layout` / `LayoutCursor::extend`, `graft-graph/src/layout.rs`), not new algorithm design
 Blocked by: 14
 Leaves runnable: yes — keys fold a merged branch, toggle first-parent view and show/hide stashes.
@@ -27,7 +27,7 @@ Out:
 - [x] Fold then unfold returns rows equal to the original (property test).
 - [x] The §1.2 invariant property tests pass with each predicate switched on.
 - [x] Toggling never invalidates the cache wholesale: the invalidated set is asserted and written into this ticket (graph level; not yet reachable from a key).
-- [ ] A key for each toggle (not done — 15b).
+- [x] A key for each toggle: `Space` (fold/unfold the merge under the cursor), `1` (first-parent view), `H` (hide/show the stash). Recorded in DESIGN.md §2.3.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test` (fast tier only)
@@ -58,3 +58,18 @@ Verified: 72 graft-graph lib tests incl. 3 directed inclusion tests, 2 proptests
 4. Pty captures under `docs/shots/15-*` (reuse the 14 approach: release binary, pyte, 80x24): folded/unfolded merge, first-parent, stashes hidden.
 
 Gotchas: `Included` must be laid out from `included.seeds()`, not the original seeds. `reinclude` re-reads from the walk's top to the change (gap logged, ticket 27). The KNOWN_GAPS `incoming`-not-in-`lanes` row does not affect this work (inclusion only removes commits/parents before layout); left logged.
+
+## NOTES (continuation 1, 2026-09-13, builder-opus)
+
+**Done.** No compaction.
+
+App side (`crates/graft`):
+- `history::View { follow, inclusion }` rides on every `RowRequest`; the newest request alone decides the view.
+- `history::Views`: one `StreamingLayout<Included<WalkSource>>` per `Follow`, opened on first ask (the first reuses the walk `stream` started). Inclusion change → `graft_graph::inclusion::reinclude` (the invalidated set above); Follow change → the other layout, cache untouched (tested: `chunks_rebuilt` unchanged on return).
+- `serve`: a newer request in another view interrupts `answer` (nothing sent) and is answered next.
+- `History::change_view` (Follow switch → top; fold/stash keep the viewport), `History::selected`; refresh keeps the view.
+- Keys in `update.rs` (`ViewChange`). Header names what is left out (`graft_ui::graph_screen::Filters`): "first-parent · N merges folded · stash hidden".
+
+Verified: 563 tests; new: fold/unfold/first-parent over one walk on foxtrot + criss-cross (rows equal after unfold and after switching back, 2 sources opened), interruption test (caught a mutation removing the view check), 4 key tests, header text. Real binary in a pty on /tmp/g15/dated: `docs/shots/15-merges-full.txt`, `15-merges-folded.txt`, `15-merges-unfolded.txt`, `15-first-parent.txt`, `15-first-parent-back.txt`, `15-stash-hidden.txt`. Unfold and 1-1 captures are byte-identical to full. User judges by eye.
+
+Gaps: closed the two m1/14–15 rows (keys/wiring; `+N` node lanes now have fold and first-parent as the answer). Logged: tied commit dates put a parent above its child (pre-existing, found while capturing); folded merge has no glyph; `1` goes back to the top; keys not in the footer.

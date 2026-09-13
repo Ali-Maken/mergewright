@@ -4,8 +4,8 @@ use graft_graph::identity::BranchIdentity;
 use graft_term::{sanitize_line, sanitize_path};
 use graft_ui::graph_column::{GraphLine, RowPaint};
 use graft_ui::graph_screen::{
-    AuthorChip, Compaction, GraphEntry, GraphView, Icons, WalkView, initials, relative_date,
-    short_sha,
+    AuthorChip, Compaction, Filters, GraphEntry, GraphView, Icons, WalkView, initials,
+    relative_date, short_sha,
 };
 
 /// A fixed clock reading, so the "how long ago" column is deterministic —
@@ -48,5 +48,6 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
             .collect(),
         icons: Icons::Plain,
         compaction: Compaction::at(8),
+        filters: Filters::default(),
     }
 }

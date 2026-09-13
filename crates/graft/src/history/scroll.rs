@@ -7,7 +7,7 @@
 
 use graft_graph::Row;
 
-use super::{History, HistoryUpdate, Phase, RowRequest, Wanted};
+use super::{History, HistoryUpdate, Phase, RowRequest, View, Wanted};
 
 /// A cursor movement the graph pane understands (DESIGN.md §2.2).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -46,6 +46,11 @@ impl History {
                     return;
                 }
                 self.rows = window.laid_out;
+                // A view with fewer rows can leave the cursor past the end.
+                if window.done {
+                    self.cursor = self.cursor.min(self.rows.saturating_sub(1));
+                    self.top = self.top.min(self.cursor);
+                }
                 if window.done && self.phase == Phase::Streaming {
                     self.phase = Phase::Complete;
                 }
@@ -101,6 +106,34 @@ impl History {
         }
         self.follow(height);
         self.wanted(height, withdrew)
+    }
+
+    /// Switches to `view`, returning the request that shows the viewport in
+    /// it — or `None` if nothing changes or the walk has gone.
+    ///
+    /// Switching `Follow` starts at the top: the other view has different
+    /// rows, and the row numbers here mean nothing in it. A fold or a hidden
+    /// stash keeps the viewport: the rows above the change stay put.
+    pub fn change_view(&mut self, view: View, height: usize) -> Option<RowRequest> {
+        if view == self.view || matches!(self.phase, Phase::Cancelled | Phase::Failed(_)) {
+            return None;
+        }
+        if view.follow != self.view.follow {
+            self.top = 0;
+            self.cursor = 0;
+        }
+        self.view = view;
+        self.jump = None;
+        // The rows below the change are laid out again.
+        self.phase = Phase::Streaming;
+        self.wanted(height.max(1), true)
+    }
+
+    /// The row the cursor is on, if it has arrived.
+    #[must_use]
+    pub fn selected(&self) -> Option<&Row> {
+        let window = self.window.as_ref()?;
+        window.rows.get(self.cursor.checked_sub(window.first)?)
     }
 
     /// Withdraws a `G` still walking, returning the request that replaces it
@@ -173,6 +206,7 @@ impl History {
         RowRequest {
             id: self.asked,
             wanted,
+            view: self.view.clone(),
         }
     }
 }

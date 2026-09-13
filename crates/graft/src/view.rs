@@ -17,8 +17,8 @@ use graft_graph::row::Row;
 use graft_term::{SanitizedText, sanitize_line, sanitize_path, sanitize_path_bytes};
 use graft_ui::graph_column::{GraphLine, NodeKind, RowPaint};
 use graft_ui::graph_screen::{
-    AuthorChip, Badge, BadgeKind, Compaction, GraphEntry, GraphScreen, GraphView, SHA_WIDTH,
-    Tracking, WalkView, initials, relative_date, short_sha,
+    AuthorChip, Badge, BadgeKind, Compaction, Filters, GraphEntry, GraphScreen, GraphView,
+    SHA_WIDTH, Tracking, WalkView, initials, relative_date, short_sha,
 };
 use graft_ui::status_screen::{
     HeadView, HistoryState, HistoryView, RepositoryView, StatusScreen, StatusView,
@@ -81,6 +81,7 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
             rows: Vec::new(),
             icons: graft_ui::graph_screen::Icons::default(),
             compaction: Compaction::at(crate::config::DEFAULT_MAX_LANES),
+            filters: Filters::default(),
         };
     };
 
@@ -106,6 +107,11 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
         rows,
         icons: graft_ui::graph_screen::Icons::default(),
         compaction: compaction(state, history),
+        filters: Filters {
+            first_parent: history.view.follow == graft_graph::Follow::FirstParent,
+            folded: history.view.inclusion.folded.len(),
+            stash_hidden: !history.view.inclusion.hidden_stashes.is_empty(),
+        },
     }
 }
 

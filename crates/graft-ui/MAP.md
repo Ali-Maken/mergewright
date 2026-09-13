@@ -41,6 +41,8 @@ One line per public item. Update when a public item changes.
 - `GraphView::rows` (field) — viewport rows, top first; the cursor's row is painted highlighted.
 - `GraphView::icons` (field) — which glyphs badges draw with (`ui.icons`).
 - `GraphView::compaction` (field) — lane limit, expansion flag and pinned columns; the screen plans one `Fold` per frame over the rows it draws.
+- `GraphView::filters` (field) — what the history shown leaves out; said in the header.
+- `Filters` (struct) — `first_parent`, `folded` (merge count), `stash_hidden`; `Filters::text` is the header's words, empty for none.
 - `Compaction` (struct) — `max_lanes` (`graph.max_lanes`), `expanded` (the `+` key), `pinned` (reserved integration lanes; ancestry later).
 - `Compaction::at` (fn) — collapsed, nothing pinned but lane 0.
 - `GraphEntry` (struct) — one row: `line`, `badges`, sanitised `subject`, `author` chip, `when`, `sha`.

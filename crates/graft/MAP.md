@@ -192,7 +192,10 @@ One line per public item. Update when a public item changes.
 - `WalkFacts::integration` (field) — branches beside lane 0 that never compete for it.
 - `WalkFacts::is_provisional` (fn) — is this order one the user should be told isn't final?
 - `Wanted` (enum) — rows a request names: `Rows(range)` or `Last(n)` (walks to the end first).
-- `RowRequest` (struct) — `id` (increasing; only the newest answer is wanted) and `wanted`.
+- `View` (struct) — `follow` (every parent / first-parent) and `inclusion` (folded merges, hidden stashes).
+- `RowRequest` (struct) — `id` (increasing; only the newest answer is wanted), `wanted`, and the `view` they are wanted in.
+- `Views` (struct) — one `StreamingLayout<Included<_>>` per `Follow`, opened on first ask; `Views::new`, `Views::layout` (opens or re-includes).
+- `Open` (type) — boxed closure opening a fresh source over the same walk.
 - `Window` (struct) — rows answering one request: `request`, `first`, `rows`, `laid_out`, `done`; `end()`.
 - `HistoryUpdate` (enum) — what a walk tells the screen: `Started(facts)`, `Progress { request, laid_out }`, `Window(window)`.
 - `Phase` (enum) — where a walk is.
@@ -205,6 +208,9 @@ One line per public item. Update when a public item changes.
 - `History::cursor` (field) — row the cursor is on (plain index).
 - `History::asked` (field) — id of the newest request.
 - `History::jump` (field) — the `G` request still walking, if any.
+- `History::view` (field) — the view every request asks for; kept across refresh.
+- `History::change_view` (fn) — switch view, returning the request that shows it (a `Follow` switch goes to the top).
+- `History::selected` (fn) — the row under the cursor, if it has arrived.
 - `History::started` (fn) — a walk asked for but that has sent nothing yet.
 - `History::apply` (fn) — take in one update; answers to any but the newest request are dropped.
 - `History::show` (fn) — request filling the viewport where it is (start, resize), if needed.
@@ -214,7 +220,7 @@ One line per public item. Update when a public item changes.
 - `Motion` (enum, re-export from scroll) — `Down(n)`, `Up(n)`, `PageDown`, `PageUp`, `Top`, `Bottom`.
 - `Ended` (enum) — how `stream`/`serve` ended when not failing: `Cancelled`, `NobodyListening`.
 - `stream` (fn) — open the walk and serve row requests from a channel until it closes.
-- `serve` (fn) — answer `RowRequest`s against a `StreamingLayout` until the channel has no sender.
+- `serve` (fn) — answer `RowRequest`s through `Views`, each in the view it names, until the channel has no sender.
 
 ## history::source
 - `WalkSource` (struct) — a walk paired with the repo handle it re-reads from, one worker thread.

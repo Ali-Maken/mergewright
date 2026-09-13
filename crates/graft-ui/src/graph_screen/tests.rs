@@ -71,6 +71,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
             .collect(),
         icons: Icons::Plain,
         compaction: Compaction::at(8),
+        filters: Filters::default(),
     }
 }
 
@@ -473,4 +474,23 @@ fn within_the_limit_there_is_nothing_to_expand_and_no_hint_says_so() {
         6,
     ));
     assert!(!screen[5].contains("lanes"), "{screen:#?}");
+}
+
+/// The header says what the graph leaves out, and says nothing when it
+/// leaves nothing out.
+#[test]
+fn filters_are_named_in_the_header_only_when_something_is_left_out() {
+    use super::Filters;
+    assert_eq!(Filters::default().text(), "");
+    let all = Filters {
+        first_parent: true,
+        folded: 2,
+        stash_hidden: true,
+    };
+    assert_eq!(all.text(), "first-parent · 2 merges folded · stash hidden");
+    let one = Filters {
+        folded: 1,
+        ..Filters::default()
+    };
+    assert_eq!(one.text(), "1 merge folded");
 }
