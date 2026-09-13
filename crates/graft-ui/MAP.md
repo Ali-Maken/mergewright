@@ -21,7 +21,7 @@ One line per public item. Update when a public item changes.
 - `NodeKind::of` (fn) — commit/merge/root from a row's parents.
 - `NodeKind::glyph` (fn) — the node's character.
 - `RowPaint` (enum) — normal, dimmed, highlighted.
-- `GraphLine` (struct) — `row` (borrowed or synthesised), `node`, `paint` for one drawn row.
+- `GraphLine` (struct) — `row` (borrowed or synthesised), `node`, `paint`, `thread` (real columns on the selection's thread: bold; other lanes dim; `None` = no selection) for one drawn row.
 - `GraphLine::plain` (fn) — a row drawn normally, borrowing a real `Row`.
 - `GraphLine::owned` (fn) — a row drawn normally, owning a synthesised `Row` (the uncommitted-changes row).
 - `GraphColumn` (struct) — widget drawing consecutive rows; fills its area exactly. At 16 colours and `NO_COLOR`, odd-column lanes draw dashed (`╎`, `╌`).
@@ -42,8 +42,8 @@ One line per public item. Update when a public item changes.
 - `GraphView::icons` (field) — which glyphs badges draw with (`ui.icons`).
 - `GraphView::compaction` (field) — lane limit, expansion flag and pinned columns; the screen plans one `Fold` per frame over the rows it draws.
 - `GraphView::filters` (field) — what the history shown leaves out; said in the header.
-- `Filters` (struct) — `first_parent`, `folded` (merge count), `stash_hidden`; `Filters::text` is the header's words, empty for none.
-- `Compaction` (struct) — `max_lanes` (`graph.max_lanes`), `expanded` (the `+` key), `pinned` (reserved integration lanes; ancestry later).
+- `Filters` (struct) — `first_parent`, `folded` (merge count), `stash_hidden`, `focused` (Focus mode on); `Filters::text` is the header's words, empty for none.
+- `Compaction` (struct) — `max_lanes` (`graph.max_lanes`), `expanded` (the `+` key), `pinned` (reserved integration lanes and the selection's thread columns).
 - `Compaction::at` (fn) — collapsed, nothing pinned but lane 0.
 - `GraphEntry` (struct) — one row: `line`, `badges`, sanitised `subject`, `author` chip, `when`, `sha`.
 - `AuthorChip` (struct) — an author's chip: sanitised `initials` and the `identity` that colours it.

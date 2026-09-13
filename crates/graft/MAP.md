@@ -72,6 +72,7 @@ One line per public item. Update when a public item changes.
 - `AppState::working_tree` (field) — working-tree status counts, once that job answers.
 - `AppState::screen` (field) — which screen is on show; graph by default.
 - `AppState::lanes_expanded` (field) — `+` pressed: lanes draw unfolded; a view flag, the rows are untouched.
+- `AppState::focus` (field) — Focus mode (`F`; `Esc` leaves it before cancelling anything): rows off the selection's thread fade; paint only.
 - `Screen` (enum) — `Graph` (default) or `Status`.
 - `Screen::toggled` (fn) — the other screen; `F2` swaps.
 - `Quit` (enum) — why Graft is leaving.
@@ -140,7 +141,7 @@ One line per public item. Update when a public item changes.
 
 ## view
 - `view` (fn) — draw the current state to a frame: the graph screen, or the status screen.
-- `graph_view` (fn) — build a `GraphView` from the history window, cursor and status.
+- `graph_view` (fn) — build a `GraphView` from the history window, cursor and status; the selection's `Ancestry` over the window lights lanes, fades rows in Focus mode, and pins its columns against folding.
 - `status_view` (fn) — build a `StatusView` from session and app state.
 
 ## event_loop
@@ -205,11 +206,12 @@ One line per public item. Update when a public item changes.
 - `History::rows` (field) — rows laid out, as far as the screen has heard.
 - `History::phase` (field) — where the walk is.
 - `History::top` (field) — row at the top of the viewport.
-- `History::cursor` (field) — row the cursor is on (plain index).
+- `History::cursor` (field) — the selection: a row number in the current view, so the same commit across scrolls, arriving chunks and eviction.
+- `History::reanchor` (field) — commit a view change looks for in the next window, to put the cursor back on it.
 - `History::asked` (field) — id of the newest request.
 - `History::jump` (field) — the `G` request still walking, if any.
 - `History::view` (field) — the view every request asks for; kept across refresh.
-- `History::change_view` (fn) — switch view, returning the request that shows it (a `Follow` switch goes to the top).
+- `History::change_view` (fn) — switch view, returning the request that shows it (a `Follow` switch goes to the top; the selected commit is re-found in the rows that come back).
 - `History::selected` (fn) — the row under the cursor, if it has arrived.
 - `History::started` (fn) — a walk asked for but that has sent nothing yet.
 - `History::apply` (fn) — take in one update; answers to any but the newest request are dropped.

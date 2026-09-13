@@ -14,6 +14,7 @@ use graft_git::status::WorkingTreeCounts;
 use graft_git::version::SystemGit;
 use graft_graph::identity::BranchIdentity;
 use graft_graph::row::Row;
+use graft_graph::{Ancestry, Kin};
 use graft_term::{SanitizedText, sanitize_line, sanitize_path, sanitize_path_bytes};
 use graft_ui::graph_column::{GraphLine, NodeKind, RowPaint};
 use graft_ui::graph_screen::{
@@ -98,7 +99,8 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
         },
         Phase::Failed(reason) => WalkView::Failed(sanitize_line(reason)),
     };
-    let rows = visible_rows(state, history);
+    let thread = thread(history);
+    let rows = visible_rows(state, history, thread.as_ref());
 
     GraphView {
         location,
@@ -106,11 +108,12 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
         walk,
         rows,
         icons: graft_ui::graph_screen::Icons::default(),
-        compaction: compaction(state, history),
+        compaction: compaction(state, history, thread.as_ref()),
         filters: Filters {
             first_parent: history.view.follow == graft_graph::Follow::FirstParent,
             folded: history.view.inclusion.folded.len(),
             stash_hidden: !history.view.inclusion.hidden_stashes.is_empty(),
+            focused: state.focus,
         },
     }
 }
@@ -118,9 +121,9 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
 /// How the graph folds its lanes: the session's limit is filled in by
 /// [`view`], the expansion flag is the user's, and the reserved integration
 /// lanes (`1..=n`, after lane 0) are pinned so a fold never hides a lane a
-/// branch was promised. The selected commit's ancestry joins the pins once
-/// selection exists (ticket 16).
-fn compaction(state: &AppState, history: &History) -> Compaction {
+/// branch was promised. So are the columns the selection's thread runs in
+/// on screen: a fold never hides where the selected commit came from.
+fn compaction(state: &AppState, history: &History, thread: Option<&Thread>) -> Compaction {
     let integration = history
         .walk
         .as_ref()
@@ -128,14 +131,56 @@ fn compaction(state: &AppState, history: &History) -> Compaction {
     Compaction {
         max_lanes: crate::config::DEFAULT_MAX_LANES,
         expanded: state.lanes_expanded,
-        pinned: (1..=integration).collect(),
+        pinned: (1..=integration)
+            .chain(thread.into_iter().flat_map(|thread| {
+                (history.top..history.top + state.graph_rows())
+                    .flat_map(|index| thread.lit(index).iter().copied())
+            }))
+            .collect(),
     }
+}
+
+/// The selection's thread through the window the walk last sent, keyed by
+/// history row number. Worked out from rows already on hand — one pass over
+/// the window, never a layout or walk call (DESIGN.md §5.2).
+struct Thread {
+    first: usize,
+    ancestry: Ancestry,
+}
+
+impl Thread {
+    fn lit(&self, index: usize) -> &std::collections::BTreeSet<usize> {
+        self.ancestry.lit(index.saturating_sub(self.first))
+    }
+
+    fn kin(&self, index: usize) -> Kin {
+        match index.checked_sub(self.first) {
+            Some(at) => self.ancestry.kin(at),
+            None => Kin::Unrelated,
+        }
+    }
+}
+
+fn thread(history: &History) -> Option<Thread> {
+    let window = history.window.as_ref()?;
+    let selected = history.selected()?.commit.id;
+    Some(Thread {
+        first: window.first,
+        ancestry: Ancestry::of(&window.rows, selected)?,
+    })
 }
 
 /// The rows the viewport shows: the uncommitted-changes row, when the
 /// working tree is dirty and `HEAD` is the topmost visible commit, then the
 /// history rows the walk last sent.
-fn visible_rows<'a>(state: &'a AppState, history: &'a History) -> Vec<GraphEntry<'a>> {
+///
+/// Under a selection every lane draws bold on its thread and dim off it; in
+/// Focus mode the rows off the thread fade as a whole.
+fn visible_rows<'a>(
+    state: &'a AppState,
+    history: &'a History,
+    thread: Option<&Thread>,
+) -> Vec<GraphEntry<'a>> {
     let mailmap = state.repository.as_ref().map(|facts| &facts.mailmap);
     // A clock reading, not repository text — the moment "now" is drawn at,
     // for the relative-date column. `duration_since` only fails when the
@@ -168,13 +213,20 @@ fn visible_rows<'a>(state: &'a AppState, history: &'a History) -> Vec<GraphEntry
                 .iter()
                 .zip(history.top..)
                 .map(|(row, index)| {
-                    row_entry(
+                    let mut entry = row_entry(
                         row,
                         index == history.cursor,
                         mailmap,
                         state.refs.as_ref(),
                         now,
-                    )
+                    );
+                    if let Some(thread) = thread {
+                        entry.line.thread = Some(thread.lit(index).clone());
+                        if state.focus && thread.kin(index) == Kin::Unrelated {
+                            entry.line.paint = RowPaint::Dimmed;
+                        }
+                    }
+                    entry
                 }),
         )
         .collect()
@@ -533,6 +585,7 @@ mod tests {
             rows: usize::from(count),
             phase: Phase::Complete,
             cursor,
+            reanchor: None,
             ..History::started()
         }
     }

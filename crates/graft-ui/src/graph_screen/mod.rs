@@ -99,6 +99,9 @@ pub struct Filters {
     pub folded: usize,
     /// The stash is hidden.
     pub stash_hidden: bool,
+    /// Focus mode is on (DESIGN.md §5.2): rows off the selection's thread
+    /// fade. Nothing is left out, but the header says so, with its way out.
+    pub focused: bool,
 }
 
 impl Filters {
@@ -116,6 +119,9 @@ impl Filters {
         }
         if self.stash_hidden {
             parts.push("stash hidden".to_owned());
+        }
+        if self.focused {
+            parts.push("focus (F/Esc off)".to_owned());
         }
         parts.join(" · ")
     }

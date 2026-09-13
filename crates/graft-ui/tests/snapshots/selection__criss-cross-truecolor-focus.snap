@@ -1,0 +1,39 @@
+---
+source: crates/graft-ui/tests/selection.rs
+expression: text
+---
+shape: criss-cross-merge, truecolor, focus, 80x24, row 4 selected
+
+ graft ~/code/api  7 commits  focus (F/Esc off)
+  ●         beta: carry on                                          3y   be27a12
+◆─│─╮       Merge branch 'alpha'                                    3y   e44c042
+│ ◉─│─╮     beta: merge alpha                                       3y   f77039c
+│ │ ◉─│─╮   alpha: merge beta                                       3y   89c164d
+│ ●─│─│─╯   beta: work                                              3y   4cfd7d9
+│ │ ●─╯     alpha: work                                             3y   bd20b78
+◇─┴─╯       Add the base                                            3y   68d5d19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom
+
+modifiers: graph | subject
+..b.......| .
+bbbbb.....| .
+d.bdbdd...| .
+d.b.bbdbb.| .
+d.bbdbdbb.| b
+d.b.ddd...| d
+bbbdd.....| .

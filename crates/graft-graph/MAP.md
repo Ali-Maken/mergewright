@@ -2,7 +2,7 @@
 One line per public item. Update when a public item changes.
 
 ## lib.rs
-- `fold`, `identity`, `inclusion`, `lane`, `layout`, `merge_name`, `row`, `seeds` (mods) — re-exported at the root (`Fold`, `Follow`, `Included`, `Inclusion`, `Invalidated` too).
+- `ancestry`, `fold`, `identity`, `inclusion`, `lane`, `layout`, `merge_name`, `row`, `seeds` (mods) — re-exported at the root (`Ancestry`, `Kin`, `Fold`, `Follow`, `Included`, `Inclusion`, `Invalidated` too).
 
 ## identity
 - `BranchIdentity` (struct) — stable FNV-1a hash of a branch name (or a commit id); the source of lane colour.
@@ -28,6 +28,14 @@ One line per public item. Update when a public item changes.
 
 ## merge_name
 - `recover_branch_name` (fn) — branch name from a merge subject, git's conventional forms.
+
+## ancestry
+- `Kin` (enum) — `Selected`, `Ancestor`, `Descendant`, `Unrelated`: how a row stands to the selection.
+- `Ancestry` (struct) — the selection's thread over one window of rows; a paint-time lens, one pass, no layout or walk call (DESIGN.md §5.2).
+- `Ancestry::of` (fn) — the thread of a commit through a row window; `None` if it is not there.
+- `Ancestry::kin` (fn) — a window row's relation to the selection.
+- `Ancestry::lit` (fn) — real columns on a window row carrying the thread.
+- `Ancestry::columns` (fn) — every lit column: the protected set handed to `Fold::plan`.
 
 ## fold
 - `Fold` (struct) — which real columns a window of rows draws and which fold behind `+N`; a lens over laid-out rows, never a re-layout (DESIGN.md §3.5).

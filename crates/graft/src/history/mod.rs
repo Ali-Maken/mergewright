@@ -23,6 +23,7 @@ use std::ops::Range;
 use std::sync::Arc;
 use std::sync::mpsc::Receiver;
 
+use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
 use graft_git::history::{Order, Walk};
 use graft_graph::inclusion::reinclude;
@@ -166,8 +167,13 @@ pub struct History {
     pub phase: Phase,
     /// The row at the top of the viewport.
     pub top: usize,
-    /// The row the cursor is on. A plain index; selection is ticket 16's.
+    /// The row the cursor is on: the selection. A row number in the current
+    /// view, so it names the same commit however its chunk comes and goes;
+    /// [`History::selected`] reads the commit.
     pub cursor: usize,
+    /// The commit to put the cursor back on once the next window arrives:
+    /// set by a view change, which can move every row number.
+    pub reanchor: Option<Oid>,
     /// The id of the newest request. Answers to any other are dropped.
     pub asked: u64,
     /// The `G` request still laying out, if one is. `Esc` withdraws it.
@@ -188,6 +194,7 @@ impl History {
             phase: Phase::Streaming,
             top: 0,
             cursor: 0,
+            reanchor: None,
             asked: 0,
             jump: None,
             view: View::default(),

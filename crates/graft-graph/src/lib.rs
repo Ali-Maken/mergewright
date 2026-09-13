@@ -8,6 +8,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod ancestry;
 pub mod fold;
 pub mod identity;
 pub mod inclusion;
@@ -17,6 +18,7 @@ pub mod merge_name;
 pub mod row;
 pub mod seeds;
 
+pub use ancestry::{Ancestry, Kin};
 pub use fold::Fold;
 pub use identity::BranchIdentity;
 pub use inclusion::{Follow, Included, Inclusion};

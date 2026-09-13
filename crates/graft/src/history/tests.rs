@@ -590,3 +590,79 @@ fn a_request_in_another_view_interrupts_and_is_answered_next() {
     assert_eq!(ended, Ended::Cancelled);
     assert_eq!(answered, straight, "answered in the view it named");
 }
+
+/// The selection is a row number in its view, so it names the same commit
+/// after its chunk is evicted and laid out again: page away until the
+/// selected row's chunk is gone, page back, and the same commit is selected.
+#[test]
+fn selection_stays_on_its_commit_after_its_chunk_is_evicted_and_rebuilt() {
+    let dir = graft_fixtures::borrow(Shape::Linear);
+    let handle = RepoHandle::open(&dir).expect("opens");
+    let walk = Walk::all_refs(&handle, Order::Topological).expect("walk starts");
+    let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
+
+    let mut history = History::started();
+    let mut request = history.show(HEIGHT);
+    let settle = |stream: &mut StreamingLayout<_>, history: &mut History, request| {
+        if let Some(asked) = request {
+            round_trip(stream, history, asked, &mut || None);
+        }
+    };
+    settle(&mut stream, &mut history, request.take());
+    request = history.move_cursor(Motion::Down(5), HEIGHT);
+    settle(&mut stream, &mut history, request.take());
+    let chosen = history.selected().expect("row 5 arrived").commit.id;
+    let row = history.cursor;
+    assert!(stream.is_resident(row));
+
+    let mut pages = 0;
+    while stream.is_resident(row) {
+        request = history.move_cursor(Motion::PageDown, HEIGHT);
+        settle(&mut stream, &mut history, request.take());
+        pages += 1;
+        assert!(pages < 50, "paging away evicts the selected row's chunk");
+    }
+    assert_ne!(history.selected().map(|r| r.commit.id), Some(chosen));
+    for _ in 0..pages {
+        request = history.move_cursor(Motion::PageUp, HEIGHT);
+        settle(&mut stream, &mut history, request.take());
+    }
+    assert_eq!(history.cursor, row);
+    assert!(
+        stream.work().chunks_rebuilt > 0,
+        "the chunk was laid out again"
+    );
+    assert_eq!(history.selected().map(|r| r.commit.id), Some(chosen));
+}
+
+/// A view change can move every row number; the cursor finds its commit
+/// among the rows that come back.
+#[test]
+fn a_view_change_puts_the_cursor_back_on_the_selected_commit() {
+    let dir = graft_fixtures::borrow(Shape::Linear);
+    let handle = RepoHandle::open(&dir).expect("opens");
+    let whole = layout(&every_commit(&handle, Shape::Linear), Seeds::default());
+    let mut history = History::started();
+    let window = |request, first: usize, rows: &[Row]| {
+        HistoryUpdate::Window(Window {
+            request,
+            first,
+            rows: rows.to_vec().into(),
+            laid_out: whole.len(),
+            done: false,
+        })
+    };
+    history.asked = 1;
+    history.apply(window(1, 0, &whole[..20]), HEIGHT);
+    history.cursor = 5;
+    let chosen = whole[5].commit.id;
+
+    let mut view = View::default();
+    view.inclusion.hidden_stashes.insert(whole[0].commit.id);
+    let asked = history.change_view(view, HEIGHT).expect("asks for rows");
+    // Two rows above the selection went away in the new view.
+    history.apply(window(asked.id, 0, &whole[2..22]), HEIGHT);
+    assert_eq!(history.cursor, 3);
+    assert_eq!(history.selected().map(|r| r.commit.id), Some(chosen));
+    assert_eq!(history.reanchor, None);
+}

@@ -54,6 +54,14 @@ impl History {
                 if window.done && self.phase == Phase::Streaming {
                     self.phase = Phase::Complete;
                 }
+                // A view change moves row numbers: find the selected commit
+                // among the new rows. Not there, the cursor keeps its index.
+                if let Some(id) = self.reanchor.take()
+                    && let Some(at) = window.rows.iter().position(|row| row.commit.id == id)
+                {
+                    self.cursor = window.first + at;
+                    self.follow(height.max(1));
+                }
                 if self.jump == Some(window.request) {
                     self.jump = None;
                     self.cursor = self.rows.saturating_sub(1);
@@ -113,11 +121,13 @@ impl History {
     ///
     /// Switching `Follow` starts at the top: the other view has different
     /// rows, and the row numbers here mean nothing in it. A fold or a hidden
-    /// stash keeps the viewport: the rows above the change stay put.
+    /// stash keeps the viewport. Either way the selected commit is looked for
+    /// in the rows that come back, and the cursor lands on it if it is there.
     pub fn change_view(&mut self, view: View, height: usize) -> Option<RowRequest> {
         if view == self.view || matches!(self.phase, Phase::Cancelled | Phase::Failed(_)) {
             return None;
         }
+        self.reanchor = self.selected().map(|row| row.commit.id);
         if view.follow != self.view.follow {
             self.top = 0;
             self.cursor = 0;

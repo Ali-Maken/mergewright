@@ -151,6 +151,9 @@ pub struct AppState {
     /// rows are the same either way, so toggling it asks nothing of the
     /// history job.
     pub lanes_expanded: bool,
+    /// Focus mode (`F`, DESIGN.md §5.2): rows off the selection's thread
+    /// fade. A paint decision like `lanes_expanded`; the walk is not asked.
+    pub focus: bool,
 }
 
 /// The screens Graft can show.
@@ -429,6 +432,8 @@ fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         next.screen = next.screen.toggled();
     } else if is_lane_toggle(key) {
         next.lanes_expanded = !next.lanes_expanded;
+    } else if is_focus_toggle(key) {
+        next.focus = !next.focus;
     } else if let Some(change) = view_change(key) {
         let height = next.graph_rows();
         let stash = next.refs.as_ref().and_then(crate::refs::RefBadges::stash);
@@ -456,6 +461,11 @@ fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
             && let Some(request) = history.withdraw_jump(height)
         {
             commands.push(Command::ShowRows(id, request));
+            return;
+        }
+        // Then Focus mode: leaving it is not a reason to stop the walk.
+        if next.focus {
+            next.focus = false;
             return;
         }
         // Stop waiting first, then ask the job to stop. The order
@@ -512,6 +522,11 @@ fn is_screen_toggle(key: KeyPress) -> bool {
 
 /// `+` expands the lanes folded behind `+N`, and folds them again
 /// (DESIGN.md §3.5).
+/// `F`: Focus mode on the selected commit (DESIGN.md §2.3, §5.2).
+fn is_focus_toggle(key: KeyPress) -> bool {
+    key.code == KeyCode::Char('F') && !key.modifiers.control && !key.modifiers.alt
+}
+
 fn is_lane_toggle(key: KeyPress) -> bool {
     key.code == KeyCode::Char('+') && !key.modifiers.control && !key.modifiers.alt
 }
@@ -766,6 +781,40 @@ mod tests {
         assert_eq!(folded.history, before);
     }
 
+    #[test]
+    fn capital_f_toggles_focus_and_esc_leaves_it_without_touching_the_walk() {
+        let id = JobId::new(3);
+        let (state, _) = update(&awaiting(id), rows(id, 4));
+        let before = state.history.clone();
+
+        let (focused, commands) = update(&state, key(KeyCode::Char('F')));
+        assert!(focused.focus);
+        assert!(commands.is_empty(), "focus is paint: {commands:?}");
+        assert_eq!(focused.history, before);
+
+        let (left, commands) = update(&focused, key(KeyCode::Escape));
+        assert!(!left.focus);
+        assert!(commands.is_empty(), "Esc leaves focus first: {commands:?}");
+        assert_eq!(left.awaiting, Some(id), "the walk goes on");
+        assert_eq!(left.history, before);
+    }
+
+    /// Moving the selection inside the rows on hand asks the history job for
+    /// nothing: the thread and its fade are worked out from those rows, so a
+    /// selection change makes no layout or walk call.
+    #[test]
+    fn a_selection_change_inside_the_window_asks_for_no_rows() {
+        let id = JobId::new(3);
+        let (mut state, _) = update(&awaiting(id), rows(id, 4));
+        state.focus = true;
+        for code in [KeyCode::Char('j'), KeyCode::Char('j'), KeyCode::Char('k')] {
+            let (moved, commands) = update(&state, key(code));
+            assert!(commands.is_empty(), "{code:?}: {commands:?}");
+            state = moved;
+        }
+        assert_eq!(state.history.as_ref().map(|h| h.cursor), Some(1));
+    }
+
     fn core(event: Event) -> AppEvent {
         AppEvent::Core(event)
     }
@@ -993,6 +1042,7 @@ mod tests {
             working_tree: None,
             screen: Screen::Graph,
             lanes_expanded: false,
+            focus: false,
         };
 
         let first = update(&state, key(KeyCode::Char('q')));

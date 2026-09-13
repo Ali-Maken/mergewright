@@ -40,6 +40,7 @@
 //! lane's colour on a row whose edge leads into them.
 
 use std::borrow::Cow;
+use std::collections::BTreeSet;
 
 use graft_core::capabilities::ColorDepth;
 use graft_graph::fold::Fold;
@@ -140,6 +141,10 @@ pub struct GraphLine<'a> {
     pub node: NodeKind,
     /// How strongly it paints.
     pub paint: RowPaint,
+    /// The real columns on this row that carry the selection's thread
+    /// (`graft_graph::Ancestry::lit`): those lanes draw bold, every other
+    /// lane dim. `None` when nothing is selected: every lane as designed.
+    pub thread: Option<BTreeSet<usize>>,
 }
 
 impl<'a> GraphLine<'a> {
@@ -150,6 +155,7 @@ impl<'a> GraphLine<'a> {
             node: NodeKind::of(row),
             row: Cow::Borrowed(row),
             paint: RowPaint::Normal,
+            thread: None,
         }
     }
 
@@ -161,6 +167,7 @@ impl<'a> GraphLine<'a> {
             node: NodeKind::of(&row),
             row: Cow::Owned(row),
             paint: RowPaint::Normal,
+            thread: None,
         }
     }
 }
@@ -244,6 +251,7 @@ impl Widget for GraphColumn<'_> {
                 let mut glyph = cell.glyph;
                 if let Some(owner) = cell.owner {
                     style = style.fg(color(self.theme.branch(owner.identity)));
+                    style = on_thread(style, line, real_column(owner.column));
                     if dashes && real_column(owner.column).is_some_and(|c| c % 2 == 1) {
                         glyph = dashed(glyph);
                     }
@@ -251,7 +259,16 @@ impl Widget for GraphColumn<'_> {
                 buf[(area.x + x, y)].set_char(glyph).set_style(style);
             }
             if let Some((fold, marker)) = self.fold.and_then(|f| f.marker().map(|m| (f, m))) {
-                self.draw_marker(fold, marker, row, line.paint, area, y, buf);
+                self.draw_marker(
+                    fold,
+                    marker,
+                    row,
+                    line.paint,
+                    line.thread.is_some(),
+                    area,
+                    y,
+                    buf,
+                );
             }
         }
     }
@@ -268,6 +285,7 @@ impl GraphColumn<'_> {
         marker: usize,
         row: &Row,
         paint: RowPaint,
+        thread: bool,
         area: Rect,
         y: u16,
         buf: &mut Buffer,
@@ -278,6 +296,13 @@ impl GraphColumn<'_> {
             None => foreground(self.theme, Token::TextMuted),
         };
         style = style.add_modifier(paint.modifier());
+        if thread {
+            // A fold never hides a thread lane (the thread is its protected
+            // set), so the marker is always off the thread.
+            style = style
+                .remove_modifier(Modifier::BOLD)
+                .add_modifier(Modifier::DIM);
+        }
         let text = format!("+{}", fold.folded().len());
         let start = u16::try_from(marker)
             .unwrap_or(u16::MAX)
@@ -289,6 +314,20 @@ impl GraphColumn<'_> {
             }
             buf[(area.x + x, y)].set_char(glyph).set_style(style);
         }
+    }
+}
+
+/// A lane cell's style under a selection: bold on the thread, dim off it.
+/// Without a selection, or for a cell with no real column, unchanged.
+fn on_thread(style: Style, line: &GraphLine<'_>, real: Option<usize>) -> Style {
+    match (&line.thread, real) {
+        (Some(thread), Some(column)) if thread.contains(&column) => style
+            .remove_modifier(Modifier::DIM)
+            .add_modifier(Modifier::BOLD),
+        (Some(_), _) => style
+            .remove_modifier(Modifier::BOLD)
+            .add_modifier(Modifier::DIM),
+        (None, _) => style,
     }
 }
 

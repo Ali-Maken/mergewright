@@ -486,8 +486,12 @@ fn filters_are_named_in_the_header_only_when_something_is_left_out() {
         first_parent: true,
         folded: 2,
         stash_hidden: true,
+        focused: true,
     };
-    assert_eq!(all.text(), "first-parent · 2 merges folded · stash hidden");
+    assert_eq!(
+        all.text(),
+        "first-parent · 2 merges folded · stash hidden · focus (F/Esc off)"
+    );
     let one = Filters {
         folded: 1,
         ..Filters::default()

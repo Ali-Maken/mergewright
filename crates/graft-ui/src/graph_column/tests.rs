@@ -142,6 +142,31 @@ fn the_caller_decides_head_and_the_row_decides_the_rest() {
 }
 
 #[test]
+fn a_thread_lights_its_lanes_bold_and_dims_the_rest_of_the_row() {
+    let rows = reuse_rows();
+    let theme = dark(ColorDepth::TrueColor);
+    let merge = &rows[0];
+    let lit = merge.lane;
+    let line = GraphLine {
+        thread: Some([lit].into()),
+        ..GraphLine::plain(merge)
+    };
+    let width = GraphColumn::width_for(merge.lanes.len().max(merge.lane + 1));
+    let buf = render(&[line], &theme, width);
+    let node = u16::try_from(lit).expect("small") * CELLS_PER_LANE;
+    assert!(buf[(node, 0)].modifier.contains(Modifier::BOLD));
+    assert!(!buf[(node, 0)].modifier.contains(Modifier::DIM));
+    let other = merge
+        .outgoing
+        .iter()
+        .map(|(column, _)| *column)
+        .find(|c| *c != lit);
+    let other = other.expect("a merge has a second lane");
+    let cell = u16::try_from(other).expect("small") * CELLS_PER_LANE;
+    assert!(buf[(cell, 0)].modifier.contains(Modifier::DIM), "{other}");
+}
+
+#[test]
 fn paint_dims_or_emphasises_every_cell_of_the_row() {
     let rows = reuse_rows();
     let theme = dark(ColorDepth::TrueColor);
