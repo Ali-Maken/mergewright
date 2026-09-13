@@ -1,6 +1,6 @@
 # m1-the-graph/35b — Graph gallery part b: TESTING.md entries and captures
 
-Status: partial — seam (a) done (TESTING.md entries); seam (b) captures blocked by a gallery bug, see Handoff
+Status: partial — seam (a) done (TESTING.md entries); fix + captures split into 35c
 Build with: **Fable** (high) — remainder of 35 (M1's acceptance ticket), same scope and model; defining what right looks like per repo is the judgment
 Blocked by: 35
 Leaves runnable: yes — TESTING.md says concretely what right looks like at every gallery stop; captures for every stop under docs/shots/35-*.
