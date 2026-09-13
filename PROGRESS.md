@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — ticket 46 · 65 tickets: 58 done, 4 ready, 1 partial, 1 split, 1 wontfix
+**Current step:** M1 The graph — planner-fable design pass: memory at 1M commits (then 48) · 65 tickets: 59 done, 3 ready, 1 partial, 1 split, 1 wontfix
 
 ---
 
@@ -229,6 +229,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-14 · M1/45 y copies SHA (OSC 52) · opus · done · graft-term::clipboard::osc52_copy (local base64, no dep), via tmux passthrough Transport, write error propagates; hints `y sha`; release pty check: OSC 52 bytes = base64(HEAD SHA), notice shown, cleared by j; captures docs/shots/45-{y-copies-sha,notice-cleared}.txt; paste in Ghostty/Zed/VS Code/tmux untried (user); open: dropped if tmux passthrough off, tmux set-clipboard unused (KNOWN_GAPS); 816 tests, gates green; ~110k tokens (over 80k target), no compaction
 - 2026-09-14 · M1/43 dates all 1d · sonnet · done, no bug · date column = committer time, floored m/h/d/mo/y, matches git log; git/git seen/next/jch tops are real merges ~46 h old → all 1d; deeper rows 21y, graft repo 1m..2h; side finding: gallery fixtures use tight commit-time windows so each stop shows one unit → user preference question; captures docs/shots/43-*.txt; no source change; ~93k tokens (over 80k target), no compaction
 - 2026-09-14 · user · dates: (a) narrowly — one fixture spanning minutes to years as a single gallery stop, don't re-date the other fixtures; before (c) verify rounding against real git (git rounds to nearest, Graft floors: 46 h = "2 days ago" vs "1d"); if they differ it's a correctness fix, c moot → ticket 48 (Sonnet), 28 blocked by 47, 48; 46: carry on, 300 MB failing at 1M is a design finding for planner-fable. Order: 46, 48, 28, user re-walks gallery, review
+- 2026-09-14 · M1/46 memory curve to 1M · opus · done · 300 MB fails at 1M: peak RSS release ×3: 10k 24–37 MiB, 100k 104–129, 1M 881–949, peak always during generation walk; flat: rows ~7 MiB, gix caches ~20; grows: pack pages read by the walk ~290–340, EmittedOrder 131–222, Topological.known 178 (kept with commit-graph), Included, Views.promoted, freed memory macOS retains; no-commit-graph EmittedOrder 2× (cause unknown, maybe bug); first paint at 1M 292–383 ms, over budget; measured with counting allocator, vmmap, malloc_history; scripts/memory-curve.sh; slope guard not built (KNOWN_GAPS); 1M fixtures ~1 GiB in target/fixtures; budget unchanged; ~134k tokens (over 80k target), no compaction; per user → design finding to planner-fable
 
 ## Open questions for the M1 checkpoint
 - **By eye (30b):** pixel graph goes blank for one frame on PgDn before rows arrive. User judges whether that's acceptable.
