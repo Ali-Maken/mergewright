@@ -35,3 +35,20 @@ Out: changing the gate measure (RSS vs footprint is with the user; keep `getrusa
 
 ## Size
 Under ~80k tokens. Seam: (a) C + D + A′ measured, (b) heavy-tier guard + tables.
+
+## Result, part (a): C + D measured (2026-09-13, builder-opus)
+
+Release, `examples/budgets` on git/git (85,649 commits), each run alone, 3 runs per cell. RSS = `getrusage` peak (the gate); footprint = `/usr/bin/time -l`. No cg = `target/27b/nocg.git` (commit-graph removed). Script `target/27b/meas.sh`, raw `target/27b/meas/summary.txt` (labels `before`, `B`, `C27d`, `D`); 27c's own C runs in `target/27c/nocg-run*.txt`.
+
+| Fix | no cg RSS | no cg footprint | no cg G | cg RSS | cg footprint | cg G |
+|---|---|---|---|---|---|---|
+| before (27b) | 303.7–306.7 | 202.8–205.7 | 1.26 s | 255.3–255.8 | 159.0–162.6 | 0.54 s |
+| B (27b) | 290.3–294.4 | 173.1–174.2 | 1.25 s | 222.6–225.7 | 129.7–131.9 | 0.53–0.57 s |
+| C (27c runs) | 250.2–250.7 | 162–164 | 0.88 s | — | — | — |
+| C (27d re-run) | 248.8–250.4 | 154.2–163.8 | 0.86–0.87 s | 223.1–225.9 | 130.2–132.8 | 0.52–0.56 s |
+| **D landed** | **219.1–221.5** | **141.5–142.3** | **0.85–0.86 s** | **223.6–225.3** | **130.5–132.6** | **0.53–0.54 s** |
+
+- **C** (promotion walk reads ids only): −40 MiB no cg. No effect with a commit-graph, as expected: that order is not provisional, so no promotion runs.
+- **D** (promotion handle `handle_with_object_cache(0)`, `graft::history::topological_order`): −29 MiB no cg, `G` slightly faster (the cache was never hit). No effect with cg, same reason.
+- **A′ not tried:** not needed.
+- **Margin:** worst of all 12 runs is 225.9 MiB (cg), so ≥ 74 MiB (25 %) under 300. Justification: run-to-run spread is ≤ 3 MiB; the next-largest step seen in this series was 40 MiB (C); git/git grows a few hundred commits a month (≈ a few KB of order per commit), so 74 MiB absorbs normal repo growth and allocator noise with room for one regression of C's size before the gate trips.

@@ -357,7 +357,9 @@ pub fn topological_order(
     stop: &dyn Fn() -> bool,
 ) -> Result<Option<Arc<[Oid]>>, String> {
     let repo = store.shared().map_err(|error| error.to_string())?;
-    let handle = repo.handle();
+    // The walk reads each commit once, so a cache would fill and never be hit
+    // (m1-the-graph/27b, fix D).
+    let handle = repo.handle_with_object_cache(0);
     let tips = handle.commit_tips().map_err(|error| error.to_string())?;
     let mut walk = Walk::full_topological(&handle, &tips).map_err(|error| error_chain(&error))?;
     let mut order = Vec::new();
