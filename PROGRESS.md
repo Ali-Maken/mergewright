@@ -163,6 +163,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 
 - 2026-09-12 · M1/06 streaming layout · fable · done · chunks, checkpoints, LRU eviction, promotion; R2-1 closed (checkpoint 1,578 B @10k / 1,694 B @40k, identical on both paths). Observed on 100k in-memory rows: 16 chunks/8,000 rows resident, 49 checkpoints = 90 kB, EmittedOrder 9.0 MB; jump to row 15,000 replayed 300 rows, 0 walk pulls; evicted chunk rebuilt equal. Real 100k fixture, getrusage/300 MB and the 150 ms budget NOT measured → m1-16. 421 tests. commits 4061028, 695db1b, 06cc3d2, 33d0f71
 - 2026-09-12 · proptest counts moved into code · opus (conductor) · done · ADR-0017: PROPTEST_CASES removed from .claude/settings.json and from graft-fixtures; 64 fast / 1000 heavy set by feature flag; PROMPT.md §7.1, TESTING.md, KNOWN_GAPS and the checkpoint question corrected (the variable was this repo's, not the user's shell); commits ecad6dd, 8105193
+- 2026-09-13 · M1/31 heavy tests feature-only · sonnet · done · #[ignore] removed; default --list 0 heavy::, with feature 4; clippy clean both ways; heavy tier not run; commit d606cb3
 
 ## Open questions for the M1 checkpoint
 
@@ -175,4 +176,3 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
   KNOWN_GAPS.md repeated that for a day. Settled 2026-09-12: the variable is
   removed and the case counts live in code (64 fast, 1,000 heavy), ADR-0017.
   Nothing for the checkpoint to decide.
-- 2026-09-13 · M1/31 heavy tests feature-only · sonnet · done · #[ignore] removed; default --list 0 heavy::, with feature 4; clippy clean both ways; heavy tier not run; commit d606cb3
