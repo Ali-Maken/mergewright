@@ -34,16 +34,19 @@
 //! column, even when compaction ([`GraphColumn::through`]) draws the lane
 //! somewhere else.
 //!
-//! Compaction (DESIGN.md §3.5): drawn through a [`Fold`], the kept lanes
-//! take their drawn columns and the folded ones become one `+N` marker in
-//! the last column, muted where they only pass through and in the joining
-//! lane's colour on a row whose edge leads into them.
+//! Compaction (DESIGN.md §3.5, ADR-0022): drawn through a [`Fold`], the kept
+//! lanes take their drawn columns and the folded ones become a quiet rail
+//! ([`RAIL`], `text-muted`) in the last column, on every row. An edge into a
+//! folded lane is never drawn to the rail: it is a stub in the gap right of
+//! its node — [`STUB_BELOW`] for an edge leading down, [`STUB_ABOVE`] for one
+//! that came from above — in the branch's colour. How many lanes fold is the
+//! screen header's to say, never a row's.
 
 use std::borrow::Cow;
 use std::collections::BTreeSet;
 
 use graft_core::capabilities::ColorDepth;
-use graft_graph::fold::Fold;
+use graft_graph::fold::{Fold, Toward};
 use graft_graph::identity::BranchIdentity;
 use graft_graph::row::Row;
 use ratatui::buffer::Buffer;
@@ -53,6 +56,13 @@ use ratatui::widgets::Widget;
 
 use crate::paint::{color, foreground};
 use crate::theme::{Theme, Token};
+
+/// A folded outgoing edge: the branch continues below, behind the fold.
+pub const STUB_BELOW: char = '▾';
+/// A folded incoming edge: the branch came from above, behind the fold.
+pub const STUB_ABOVE: char = '▴';
+/// The rail: the column folded lanes sit behind.
+pub const RAIL: char = '⋮';
 
 /// Cells each lane takes: its own, then the gap before the next lane.
 pub const CELLS_PER_LANE: u16 = 2;
@@ -208,8 +218,8 @@ impl<'a> GraphColumn<'a> {
     /// the row's own text carry what shape used to. The 16-colour/`NO_COLOR`
     /// dash convention (`dashes_odd_columns`) has no ASCII equivalent in
     /// this glyph set either, so odd-column lanes draw solid like every
-    /// other lane: at this tier, lane identity leans on the `+N` marker and
-    /// column position rather than a per-cell mark.
+    /// other lane: at this tier, lane identity leans on column position and
+    /// the row's rather than a per-cell mark.
     #[must_use]
     pub fn ascii(mut self, ascii: bool) -> Self {
         self.ascii = ascii;
@@ -217,7 +227,7 @@ impl<'a> GraphColumn<'a> {
     }
 
     /// Draw the lines through `fold`: kept lanes in their drawn columns, the
-    /// folded ones behind a `+N` marker in the last column. A fold that
+    /// folded ones behind a rail in the last column, their edges as stubs. A fold that
     /// changes nothing draws exactly as [`GraphColumn::new`] does.
     #[must_use]
     pub fn through(mut self, fold: &'a Fold) -> Self {
@@ -226,13 +236,10 @@ impl<'a> GraphColumn<'a> {
     }
 
     /// The cells needed to show a window through `fold` without cutting any
-    /// drawn lane or the marker.
+    /// drawn lane or the rail.
     #[must_use]
     pub fn width_through(fold: &Fold) -> u16 {
-        let marker = fold
-            .marker()
-            .map_or(0, |_| marker_width(fold.folded().len()));
-        Self::width_for(fold.kept().len()).saturating_add(marker)
+        Self::width_for(fold.drawn_columns())
     }
 
     /// The cells needed to show `columns` lanes without cutting any.
@@ -256,14 +263,8 @@ impl Widget for GraphColumn<'_> {
             None => Some(drawn),
         };
         for (line, y) in self.lines.iter().zip(area.top()..area.bottom()) {
-            let viewed;
-            let row = match self.fold {
-                Some(fold) => {
-                    viewed = fold.view(&line.row);
-                    &viewed
-                }
-                None => &*line.row,
-            };
+            let drawn = self.fold.map(|fold| fold.view(&line.row));
+            let row = drawn.as_ref().map_or(&*line.row, |drawn| &*drawn.row);
             let cells = row_cells(row, line.node);
             for x in 0..area.width {
                 let cell = cells.get(usize::from(x)).copied().unwrap_or(BLANK);
@@ -276,67 +277,64 @@ impl Widget for GraphColumn<'_> {
                         glyph = dashed(glyph);
                     }
                 }
-                if self.ascii {
-                    glyph = to_ascii(glyph);
-                }
-                buf[(area.x + x, y)].set_char(glyph).set_style(style);
+                self.put(buf, area, x, y, glyph, style);
             }
-            if let Some((fold, marker)) = self.fold.and_then(|f| f.marker().map(|m| (f, m))) {
-                self.draw_marker(
-                    fold,
-                    marker,
-                    row,
-                    line.paint,
-                    line.thread.is_some(),
-                    area,
-                    y,
-                    buf,
+            let (Some(fold), Some(drawn)) = (self.fold, &drawn) else {
+                continue;
+            };
+            if let Some(rail) = fold.marker() {
+                let style = off_thread(foreground(self.theme, Token::TextMuted), line);
+                self.put(buf, area, lane_x(rail), y, RAIL, style);
+            }
+            // Several folded edges on one row draw one stub, in the first
+            // edge's colour (ADR-0022). It takes the gap cell even when a
+            // kept edge runs through it: the edge reads on either side.
+            if let Some(first) = drawn.folded.first() {
+                let glyph = match first.toward {
+                    Toward::Below => STUB_BELOW,
+                    Toward::Above => STUB_ABOVE,
+                };
+                let style = off_thread(
+                    Style::new().fg(color(self.theme.branch(first.identity))),
+                    line,
                 );
+                let gap = lane_x(row.lane).saturating_add(1);
+                self.put(buf, area, gap, y, glyph, style);
             }
         }
     }
 }
 
 impl GraphColumn<'_> {
-    /// The `+N` marker on one row: muted where the folded lanes only pass
-    /// through, in the joining lane's colour where an edge on this row leads
-    /// into them.
-    #[allow(clippy::too_many_arguments)]
-    fn draw_marker(
-        &self,
-        fold: &Fold,
-        marker: usize,
-        row: &Row,
-        paint: RowPaint,
-        thread: bool,
-        area: Rect,
-        y: u16,
-        buf: &mut Buffer,
-    ) {
-        let joined = row.lanes.get(marker).copied().flatten();
-        let mut style = match joined {
-            Some(identity) => Style::new().fg(color(self.theme.branch(identity))),
-            None => foreground(self.theme, Token::TextMuted),
-        };
-        style = style.add_modifier(paint.modifier());
-        if thread {
-            // A fold never hides a thread lane (the thread is its protected
-            // set), so the marker is always off the thread.
-            style = style
-                .remove_modifier(Modifier::BOLD)
-                .add_modifier(Modifier::DIM);
+    /// Write one glyph at `x` cells into the column, if it fits, through the
+    /// ASCII table when this is the ASCII tier.
+    fn put(&self, buf: &mut Buffer, area: Rect, x: u16, y: u16, glyph: char, style: Style) {
+        if x >= area.width {
+            return;
         }
-        let text = format!("+{}", fold.folded().len());
-        let start = u16::try_from(marker)
-            .unwrap_or(u16::MAX)
-            .saturating_mul(CELLS_PER_LANE);
-        for (offset, glyph) in text.chars().enumerate() {
-            let x = start.saturating_add(u16::try_from(offset).unwrap_or(u16::MAX));
-            if x >= area.width {
-                break;
-            }
-            buf[(area.x + x, y)].set_char(glyph).set_style(style);
-        }
+        let glyph = if self.ascii { to_ascii(glyph) } else { glyph };
+        buf[(area.x + x, y)].set_char(glyph).set_style(style);
+    }
+}
+
+/// The first cell of a drawn lane column.
+fn lane_x(column: usize) -> u16 {
+    u16::try_from(column)
+        .unwrap_or(u16::MAX)
+        .saturating_mul(CELLS_PER_LANE)
+}
+
+/// A rail or stub cell's style on `line`. A fold never hides a thread lane
+/// (the thread is its protected set), so both are off the thread: dim under
+/// a selection, the row's own paint otherwise.
+fn off_thread(style: Style, line: &GraphLine<'_>) -> Style {
+    let style = style.add_modifier(line.paint.modifier());
+    if line.thread.is_some() {
+        style
+            .remove_modifier(Modifier::BOLD)
+            .add_modifier(Modifier::DIM)
+    } else {
+        style
     }
 }
 
@@ -352,13 +350,6 @@ fn on_thread(style: Style, line: &GraphLine<'_>, real: Option<usize>) -> Style {
             .add_modifier(Modifier::DIM),
         (None, _) => style,
     }
-}
-
-/// The cells the marker column takes: `+N` and the gap after it, never
-/// narrower than a lane.
-fn marker_width(folded: usize) -> u16 {
-    let digits = u16::try_from(folded.to_string().len()).unwrap_or(u16::MAX);
-    digits.saturating_add(2).max(CELLS_PER_LANE)
 }
 
 /// Whether lanes in odd columns draw dashed at this colour depth: only where
@@ -396,6 +387,9 @@ fn to_ascii(glyph: char) -> char {
         '╯' | '╭' => '/',
         '╰' | '╮' => '\\',
         '┤' | '├' | '┴' | '┬' | '┼' => '+',
+        STUB_BELOW => 'v',
+        STUB_ABOVE => '^',
+        RAIL => ':',
         ' ' => ' ',
         _ => '*',
     }

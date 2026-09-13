@@ -464,7 +464,7 @@ fn wide_merges() -> Vec<Row> {
 }
 
 #[test]
-fn more_lanes_than_the_limit_fold_behind_a_marker_and_leave_the_subject_readable() {
+fn more_lanes_than_the_limit_fold_behind_a_rail_and_leave_the_subject_readable() {
     let rows = wide_merges();
     let screen = text(&draw(
         &view(&rows, WalkView::Complete { rows: 12 }, 0),
@@ -472,8 +472,14 @@ fn more_lanes_than_the_limit_fold_behind_a_marker_and_leave_the_subject_readable
         24,
     ));
 
-    // Seven lanes plus `+6`: 17 cells, the subject right after.
-    assert_eq!(cells(&screen[1], 17), "◉─────────────+6 ", "{screen:#?}");
+    // Seven lanes plus the rail: 16 cells, the subject right after. The
+    // count is the header's, never a row's.
+    assert_eq!(cells(&screen[1], 16), "◉▾            ⋮ ", "{screen:#?}");
+    assert!(screen[0].trim_end().ends_with("+6 lanes"), "{screen:#?}");
+    assert!(
+        !screen[1..23].iter().any(|line| line.contains("+6")),
+        "{screen:#?}"
+    );
     assert!(screen[1].contains("Merge branch 'topic-12'"), "{screen:#?}");
     assert!(screen[12].contains("Merge branch 'topic-1'"), "{screen:#?}");
     assert!(screen[23].contains("+ expand lanes"), "{screen:#?}");
@@ -497,8 +503,10 @@ fn expanded_every_lane_draws_in_its_real_column_from_the_same_rows() {
         "{screen:#?}"
     );
     assert!(
-        !screen.iter().any(|line| line.contains("+6")),
-        "{screen:#?}"
+        !screen
+            .iter()
+            .any(|line| line.contains("+6") || line.contains('⋮')),
+        "expanded: no count and no rail: {screen:#?}"
     );
     assert!(screen[23].contains("+ collapse lanes"), "{screen:#?}");
 }
@@ -512,6 +520,10 @@ fn within_the_limit_there_is_nothing_to_expand_and_no_hint_says_so() {
         6,
     ));
     assert!(!screen[5].contains("lanes"), "{screen:#?}");
+    assert!(
+        !screen[0].contains("lanes"),
+        "nothing folds, no count: {screen:#?}"
+    );
 }
 
 /// The header says what the graph leaves out, and says nothing when it

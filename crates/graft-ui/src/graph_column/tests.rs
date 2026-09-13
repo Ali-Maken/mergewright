@@ -291,29 +291,75 @@ fn render_through(lines: &[GraphLine<'_>], fold: &Fold, theme: &Theme) -> Buffer
 }
 
 #[test]
-fn folded_lanes_draw_as_one_marker_in_the_last_column() {
+fn folded_lanes_draw_a_rail_and_their_edges_as_stubs() {
     let rows = wide_merges();
     let lines: Vec<_> = rows.iter().map(GraphLine::plain).collect();
     let fold = Fold::plan(&rows, 8, &no_pins());
-    assert_eq!(fold.folded(), [1, 2, 3, 4, 5, 6]);
     let theme = dark(ColorDepth::TrueColor);
     let buf = render_through(&lines, &fold, &theme);
 
     assert_eq!(
         GraphColumn::width_through(&fold),
-        17,
-        "seven lanes, then `+6` and a gap"
+        16,
+        "seven lanes, then the rail and a gap"
     );
-    // The top merge's second parent lives in a folded lane: its edge runs
-    // to the marker and takes the lane's colour.
-    assert_eq!(text(&buf, 0), "◉─────────────+6 ");
+    // The top merge's second parent lives in a folded lane: a stub right of
+    // the node in the lane's colour, and nothing runs to the rail.
+    assert_eq!(text(&buf, 0), "◉▾            ⋮ ");
     let topic_12 = rows[0].lanes[1].expect("row 0 opened column 1 for topic-12");
-    assert_eq!(buf[(14, 0)].fg, color(theme.branch(topic_12)));
-    // Row 6 opened column 7, the first kept lane after lane 0: the marker
-    // is muted, the folded lanes only pass through.
-    assert_eq!(text(&buf, 6), "◉─╮           +6 ");
-    assert_eq!(buf[(14, 6)].fg, color(theme.token(Token::TextMuted)));
-    assert_eq!(text(&buf, 11), "◉─│─│─│─│─│─╮ +6 ");
+    assert_eq!(buf[(1, 0)].fg, color(theme.branch(topic_12)));
+    assert_eq!(buf[(14, 0)].fg, color(theme.token(Token::TextMuted)));
+    // Row 6 opened column 7, the first kept lane after lane 0: no stub.
+    assert_eq!(text(&buf, 6), "◉─╮           ⋮ ");
+    assert_eq!(text(&buf, 11), "◉─│─│─│─│─│─╮ ⋮ ");
+}
+
+#[test]
+fn every_row_ends_in_the_rail_with_no_count_at_every_colour_depth() {
+    let rows = wide_merges();
+    let lines: Vec<_> = rows.iter().map(GraphLine::plain).collect();
+    let fold = Fold::plan(&rows, 8, &no_pins());
+    let truecolor: Vec<String> = {
+        let buf = render_through(&lines, &fold, &dark(ColorDepth::TrueColor));
+        (0..buf.area.height).map(|y| text(&buf, y)).collect()
+    };
+    for depth in [
+        ColorDepth::TrueColor,
+        ColorDepth::Palette16,
+        ColorDepth::None,
+    ] {
+        let buf = render_through(&lines, &fold, &dark(depth));
+        for y in 0..buf.area.height {
+            let row = text(&buf, y);
+            assert_eq!(buf[(14, y)].symbol(), "⋮", "{depth:?} row {y}: {row:?}");
+            assert!(
+                !row.chars().any(|c| c.is_ascii_digit() || c == '+'),
+                "{depth:?} row {y}: {row:?} carries a count"
+            );
+        }
+        // Rows 0–5 fold their merge's second parent: a stub on every one.
+        for y in 0..6 {
+            assert_eq!(buf[(1, y)].symbol(), "▾", "{depth:?} row {y}");
+        }
+    }
+    // Colour depth never moves a stub or the rail (dash parity aside).
+    assert_eq!(truecolor[0], "◉▾            ⋮ ");
+}
+
+#[test]
+fn a_folded_incoming_edge_stubs_upward() {
+    let rows = wide_merges();
+    let fold = Fold::plan(&rows, 8, &no_pins());
+    let folded = fold.folded()[0];
+    // A commit on lane 0 that a folded lane closes into from above.
+    let mut row = rows[11].clone();
+    row.outgoing.truncate(1);
+    row.incoming = vec![folded];
+    let lines = [GraphLine::plain(&row)];
+    let buf = render_through(&lines, &fold, &dark(ColorDepth::TrueColor));
+
+    assert_eq!(buf[(1, 0)].symbol(), STUB_ABOVE.to_string());
+    assert_eq!(buf[(14, 0)].symbol(), RAIL.to_string());
 }
 
 #[test]
@@ -355,7 +401,7 @@ fn ascii_never_draws_the_dash_lane_convention() {
 }
 
 #[test]
-fn ascii_folded_lanes_still_draw_the_n_marker() {
+fn ascii_folded_lanes_draw_the_rail_and_stubs_from_the_table() {
     let rows = wide_merges();
     let lines: Vec<_> = rows.iter().map(GraphLine::plain).collect();
     let fold = Fold::plan(&rows, 8, &no_pins());
@@ -368,7 +414,8 @@ fn ascii_folded_lanes_still_draw_the_n_marker() {
         .ascii(true)
         .render(area, &mut buf);
 
-    assert_eq!(text(&buf, 0), "*-------------+6 ");
+    assert_eq!(text(&buf, 0), "*v            : ");
+    assert_eq!(text(&buf, 11), "*-|-|-|-|-|-\\ : ");
 }
 
 #[test]
@@ -392,7 +439,7 @@ fn dashes_follow_the_real_column_through_a_fold() {
     let buf = render_through(&lines, &fold, &dark(ColorDepth::Palette16));
 
     // Both lanes pass through the bottom merge row.
-    assert_eq!(text(&buf, 11), "◉─│─╎─│─╎─╮ +7 ");
+    assert_eq!(text(&buf, 11), "◉─│─╎─│─╎─╮ ⋮ ");
     assert_eq!(buf[(2, 11)].symbol(), "│", "real column 8 is even: solid");
     assert_eq!(buf[(4, 11)].symbol(), "╎", "real column 9 is odd: dashed");
 }

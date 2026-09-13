@@ -11,7 +11,8 @@ use std::collections::BTreeSet;
 use std::ops::Range;
 
 use graft_core::capabilities::Rgb;
-use graft_graph::raster::{Emphasis, Marker, RasterRow, Ring, Strip};
+use graft_graph::fold::DrawnRow;
+use graft_graph::raster::{Emphasis, Marker, RasterRow, Ring, Strip, Stub};
 use graft_graph::row::Row;
 use graft_graph::{Fold, Kin};
 
@@ -70,7 +71,7 @@ impl PixelRows {
             lane_columns: fold.drawn_columns(),
             marker: fold.marker().map(|column| Marker {
                 column,
-                folded: fold.folded().len(),
+                folded: fold.folded_count(),
             }),
         }
     }
@@ -91,6 +92,22 @@ struct PaintedRow {
     ring: Ring,
     emphasis: Emphasis,
     thread: Option<BTreeSet<usize>>,
+    /// Edges the fold took out of `row`, for the rasteriser to draw as stubs.
+    stubs: Vec<Stub>,
+}
+
+impl PaintedRow {
+    /// The uncommitted-changes row, drawn through `fold`, never on a thread.
+    fn uncommitted(fold: &Fold, row: &Row) -> PaintedRow {
+        let drawn = fold.view(row);
+        PaintedRow {
+            stubs: stubs_of(&drawn),
+            row: drawn.row.into_owned(),
+            ring: Ring::Uncommitted,
+            emphasis: Emphasis::Normal,
+            thread: None,
+        }
+    }
 }
 
 impl StripRows {
@@ -121,6 +138,7 @@ impl StripRows {
                 ring: painted.ring,
                 emphasis: painted.emphasis,
                 thread: painted.thread.as_ref(),
+                stubs: painted.stubs.clone(),
             })
             .collect();
         draw(&Strip {
@@ -199,16 +217,11 @@ pub fn pixel_rows(state: &AppState, max_lanes: usize, strip_rows: usize) -> Pixe
             above: range
                 .start
                 .checked_sub(1)
-                .map(|above| fold.view(row_at(above))),
+                .map(|above| fold.view(row_at(above)).row.into_owned()),
         })
         .collect();
     if let Some(virtual_row) = &virtual_row {
-        let on_top = PaintedRow {
-            row: fold.view(virtual_row),
-            ring: Ring::Uncommitted,
-            emphasis: Emphasis::Normal,
-            thread: None,
-        };
+        let on_top = PaintedRow::uncommitted(&fold, virtual_row);
         put_uncommitted(&mut strips, on_top, history.top, window_rows.is_empty());
     }
 
@@ -344,13 +357,27 @@ impl Painter<'_> {
                 .filter_map(|&column| self.fold.drawn(column))
                 .collect()
         });
+        let drawn = self.fold.view(row);
         PaintedRow {
-            row: self.fold.view(row),
+            stubs: stubs_of(&drawn),
+            row: drawn.row.into_owned(),
             ring,
             emphasis,
             thread,
         }
     }
+}
+
+/// The rasteriser's stubs for a drawn row: one per folded edge, in order.
+fn stubs_of(drawn: &DrawnRow<'_>) -> Vec<Stub> {
+    drawn
+        .folded
+        .iter()
+        .map(|edge| Stub {
+            identity: edge.identity,
+            toward: edge.toward,
+        })
+        .collect()
 }
 
 #[cfg(test)]

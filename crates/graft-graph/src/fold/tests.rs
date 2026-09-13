@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::BTreeSet;
 
 use proptest::prelude::*;
@@ -61,7 +62,7 @@ fn a_window_within_the_limit_draws_as_laid_out() {
     assert_eq!(fold.marker(), None);
     assert_eq!(fold.drawn_columns(), 4, "lane 0 and three topic lanes");
     for row in &rows[..3] {
-        assert_eq!(&fold.view(row), row);
+        assert_eq!(&*fold.view(row).row, row);
     }
 }
 
@@ -100,26 +101,47 @@ fn a_lane_no_row_touches_folds_before_one_a_row_touched() {
 }
 
 #[test]
-fn edges_into_folded_lanes_lead_to_the_marker_and_keep_their_colour() {
+fn edges_into_folded_lanes_leave_the_row_as_stubs_in_their_colour() {
     let rows = wide_history();
     let fold = Fold::plan(&rows[..12], 8, &none());
     let top = &rows[0];
     let folded_column = opened_on(&rows, 0);
     assert!(fold.folded().contains(&folded_column));
 
-    let view = fold.view(top);
-    assert_eq!(view.lane, 0);
-    assert_eq!(view.outgoing[0].0, 0);
+    let drawn = fold.view(top);
+    assert_eq!(drawn.row.lane, 0);
     assert_eq!(
-        view.outgoing[1].0, 7,
-        "the second parent's edge goes to the marker"
+        drawn.row.outgoing,
+        [top.outgoing[0]],
+        "only the first parent's edge is drawn; the second went to the fold"
     );
-    assert_eq!(view.outgoing[1].1, top.outgoing[1].1);
     assert_eq!(
-        view.lanes[7], top.lanes[folded_column],
-        "the marker's cell carries the folded lane's identity on this row"
+        drawn.folded,
+        [FoldedEdge {
+            identity: top.lanes[folded_column].expect("the merge opened a lane"),
+            toward: Toward::Below,
+        }]
     );
-    assert_eq!(view.lanes.len(), 8);
+    let rail = fold.marker().expect("something folds");
+    assert_eq!(drawn.row.lanes.get(rail).copied().flatten(), None);
+    assert_eq!(fold.folded_count(), fold.folded().len());
+}
+
+#[test]
+fn a_fold_that_changes_nothing_borrows_the_row_and_folds_no_edge() {
+    let rows = wide_history();
+    let fold = Fold::plan(&rows, 64, &none());
+    assert!(fold.is_empty());
+    assert_eq!(fold.folded_count(), 0);
+    for row in &rows {
+        let drawn = fold.view(row);
+        assert!(
+            matches!(drawn.row, Cow::Borrowed(_)),
+            "{:?} was copied",
+            row.commit.id
+        );
+        assert!(drawn.folded.is_empty());
+    }
 }
 
 #[test]
@@ -188,7 +210,7 @@ fn a_column_open_in_no_row_is_dropped_without_counting() {
         !fold.is_empty(),
         "column 1 is dropped, so the row is not drawn as laid out"
     );
-    let view = fold.view(&row);
+    let view = fold.view(&row).row;
     assert_eq!(view.lanes.len(), 8);
     assert_eq!(view.lanes[1], some("b"));
 }
@@ -261,7 +283,7 @@ proptest! {
         let fold = case.plan();
         let folded: BTreeSet<usize> = fold.folded().iter().copied().collect();
         for row in case.window() {
-            let view = fold.view(row);
+            let view = fold.view(row).row;
             // The node and every kept lane are where the fold says they are.
             prop_assert_eq!(fold.real(view.lane), Some(row.lane));
             for (drawn, &real) in fold.kept().iter().enumerate() {
@@ -280,6 +302,41 @@ proptest! {
                     .map(|&(c, parent)| fold.real(c).map(|real| (real, parent)))
                     .collect();
                 prop_assert_eq!(outgoing.as_deref(), Some(row.outgoing.as_slice()));
+            }
+        }
+    }
+
+    #[test]
+    fn kept_and_folded_edges_are_exactly_the_laid_out_edges(case in case()) {
+        let fold = case.plan();
+        let rail = fold.marker();
+        for row in case.window() {
+            let drawn = fold.view(row);
+            // Kept edges map back to real columns that are not folded.
+            let kept_out: Vec<(usize, _)> = drawn.row.outgoing.iter()
+                .map(|&(c, parent)| (fold.real(c).expect("an edge drawn on the rail"), parent))
+                .collect();
+            let kept_in: Vec<usize> = drawn.row.incoming.iter()
+                .map(|&c| fold.real(c).expect("an edge drawn on the rail"))
+                .collect();
+            let below = drawn.folded.iter().filter(|e| e.toward == Toward::Below).count();
+            let above = drawn.folded.iter().filter(|e| e.toward == Toward::Above).count();
+            // None lost, none doubled: the kept edges are the laid-out edges
+            // minus exactly those into folded columns, in order.
+            let expected_out: Vec<(usize, _)> = row.outgoing.iter().copied()
+                .filter(|&(c, _)| fold.drawn(c).is_some()).collect();
+            let expected_in: Vec<usize> = row.incoming.iter().copied()
+                .filter(|&c| fold.drawn(c).is_some()).collect();
+            prop_assert_eq!(&kept_out, &expected_out);
+            prop_assert_eq!(&kept_in, &expected_in);
+            prop_assert_eq!(kept_out.len() + below, row.outgoing.len());
+            prop_assert_eq!(kept_in.len() + above, row.incoming.len());
+            // No folded lane's column appears in the drawn row.
+            for &(c, _) in &drawn.row.outgoing { prop_assert!(Some(c) != rail); }
+            for &c in &drawn.row.incoming { prop_assert!(Some(c) != rail); }
+            prop_assert!(drawn.row.lanes.len() <= fold.kept().len());
+            if let Some(rail) = rail {
+                prop_assert_eq!(drawn.row.lanes.get(rail).copied().flatten(), None);
             }
         }
     }

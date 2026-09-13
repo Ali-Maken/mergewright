@@ -422,7 +422,7 @@ fn the_uncommitted_row_does_not_count_toward_the_strip_height() {
         ring: Ring::Uncommitted,
         ..RasterRow::plain(&rows[39])
     };
-    let mut with_virtual = vec![virtual_row];
+    let mut with_virtual = vec![virtual_row.clone()];
     with_virtual.extend(rows[0..32].iter().map(RasterRow::plain));
     let strip = |rows| Strip {
         rows,
@@ -449,6 +449,38 @@ fn the_uncommitted_row_does_not_count_toward_the_strip_height() {
         cache.get(0, &strip(&two_over)),
         Err(CacheError::Misaligned { .. })
     ));
+}
+
+/// m1-the-graph/39: a stub is drawn from the row (by ticket 40), so a row
+/// gaining one must key apart from the same row without it.
+#[test]
+fn a_row_gaining_a_stub_changes_the_layout_hash() {
+    use graft_graph::fold::Toward;
+    use graft_graph::identity::BranchIdentity;
+    use graft_graph::raster::Stub;
+    use graft_graph::raster::cache::layout_hash;
+
+    let rows = rows(32);
+    let plain: Vec<RasterRow<'_>> = rows.iter().map(RasterRow::plain).collect();
+    let mut stubbed = plain.clone();
+    stubbed[5].stubs.push(Stub {
+        identity: BranchIdentity::of_name(b"topic"),
+        toward: Toward::Below,
+    });
+    let strip = |rows| Strip {
+        rows,
+        above: None,
+        lane_columns: 3,
+        marker: None,
+        cell_width: CELL.0,
+        cell_height: CELL.1,
+        palette: &PALETTE,
+        muted: MUTED,
+    };
+    assert_ne!(layout_hash(&strip(&plain)), layout_hash(&strip(&stubbed)));
+    let mut above = stubbed.clone();
+    above[5].stubs[0].toward = Toward::Above;
+    assert_ne!(layout_hash(&strip(&stubbed)), layout_hash(&strip(&above)));
 }
 
 /// m1-the-graph/30b: moving the cursor toggles a row's `emphasis`, but

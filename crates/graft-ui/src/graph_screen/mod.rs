@@ -357,7 +357,9 @@ impl<'a> GraphScreen<'a> {
         (body, rows, applied)
     }
 
-    fn header(&self, width: usize) -> Line<'static> {
+    /// The header line; `folded_lanes` is how many lanes the drawn fold
+    /// hides behind the rail (0 when nothing folds or lanes are expanded).
+    fn header(&self, width: usize, folded_lanes: usize) -> Line<'static> {
         let muted = foreground(self.theme, Token::TextMuted);
         let brand = " graft ".len().min(width);
         let mut spans = vec![Span::styled(
@@ -383,7 +385,7 @@ impl<'a> GraphScreen<'a> {
         }
         let (walk, token) = walk_text(&self.view.walk);
         push(walk, foreground(self.theme, token), &mut spans);
-        let filters = self.view.filters.text();
+        let filters = left_out(self.view.filters, folded_lanes);
         if !filters.is_empty() {
             push(
                 format!("  {filters}"),
@@ -416,6 +418,21 @@ impl<'a> GraphScreen<'a> {
         }
         Line::from(spans)
     }
+}
+
+/// The header's words for what the screen leaves out: the filters, then
+/// `+N lanes` while the drawn fold hides any. The count is the screen's to
+/// say — it planned the fold — and shows only while something folds, never on
+/// a row (ADR-0022).
+fn left_out(filters: Filters, folded_lanes: usize) -> String {
+    let mut words = filters.text();
+    if folded_lanes > 0 {
+        if !words.is_empty() {
+            words.push_str(" · ");
+        }
+        words.push_str(&format!("+{folded_lanes} lanes"));
+    }
+    words
 }
 
 /// Cells the graph column takes in the rows' `area`: what its lanes want,
@@ -534,7 +551,14 @@ impl Widget for GraphScreen<'_> {
             return;
         }
         let width = usize::from(area.width);
-        buf.set_line(area.x, area.y, &self.header(width), area.width);
+        let (body, rows, applied) = self.body_layout(area);
+        let folded_lanes = applied.as_ref().map_or(0, Fold::folded_count);
+        buf.set_line(
+            area.x,
+            area.y,
+            &self.header(width, folded_lanes),
+            area.width,
+        );
         for (offset, line) in self.view.banner.iter().enumerate() {
             let y = area
                 .y
@@ -557,7 +581,6 @@ impl Widget for GraphScreen<'_> {
 
         // Planned over exactly the rows drawn, expanded or not: the hint
         // has to know whether there is anything to collapse.
-        let (body, rows, applied) = self.body_layout(area);
         let fold = self
             .view
             .compaction

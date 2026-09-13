@@ -288,6 +288,7 @@ pub fn layout_hash(strip: &Strip<'_>) -> u64 {
         hash_edges(row, &mut hasher);
         row.marker.hash(&mut hasher);
         raster_row.ring.hash(&mut hasher);
+        raster_row.stubs.hash(&mut hasher);
         // Under a thread the rasteriser draws per-column emphasis and never
         // reads the row's own, so hashing it would turn every cursor move
         // into a miss and a retransmit with identical pixels (30b).

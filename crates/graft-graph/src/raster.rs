@@ -34,6 +34,7 @@ use graft_core::capabilities::Rgb;
 use graft_core::raster::RasterFrame;
 use tiny_skia::{BlendMode, LineCap, Paint, PathBuilder, Pixmap, Stroke, Transform};
 
+use crate::fold::Toward;
 use crate::identity::BranchIdentity;
 use crate::row::Row;
 
@@ -78,8 +79,19 @@ impl Emphasis {
     }
 }
 
+/// An edge a fold took out of a row (`fold::FoldedEdge`), to draw as a short
+/// tail on the node rather than a line to the rail (ADR-0022). Carried and
+/// hashed now; drawn by m1-the-graph/40.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Stub {
+    /// The folded branch: the tail's colour.
+    pub identity: BranchIdentity,
+    /// Whether the tail leads down or up.
+    pub toward: Toward,
+}
+
 /// One row to rasterise and how to paint it.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct RasterRow<'a> {
     /// The row, in drawn columns (a `Fold::view` when anything folds).
     pub row: &'a Row,
@@ -92,6 +104,9 @@ pub struct RasterRow<'a> {
     /// [`OFF_THREAD_ALPHA`], overriding `emphasis` (the Unicode tier's
     /// bold/dim rule, ticket 16). Never a wider stroke (ADR-0024).
     pub thread: Option<&'a BTreeSet<usize>>,
+    /// Edges into folded lanes, drawn as stubs on the node; empty when
+    /// nothing on this row folds.
+    pub stubs: Vec<Stub>,
 }
 
 impl<'a> RasterRow<'a> {
@@ -102,6 +117,7 @@ impl<'a> RasterRow<'a> {
             ring: Ring::of(row),
             emphasis: Emphasis::Normal,
             thread: None,
+            stubs: Vec::new(),
         }
     }
 
