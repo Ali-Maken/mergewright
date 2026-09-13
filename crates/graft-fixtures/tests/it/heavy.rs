@@ -1,11 +1,9 @@
 //! The heavy tier's own tests: the synthetic repository, at the size
 //! PROMPT.md §7.1 asks for and at a size a person can wait for.
 //!
-//! Every test here is both `#[cfg(feature = "heavy-tests")]` and
-//! `#[ignore]`. Either alone would be enough to keep it out of a fast-tier
-//! run; together they mean that turning the feature on by accident still
-//! does not spend ten minutes of someone's afternoon, and that
-//! `cargo test -- --ignored` without the feature finds nothing to run.
+//! Every test here is gated by `#[cfg(feature = "heavy-tests")]` alone
+//! (ADR-0018). The feature is off by default and nothing turns it on, so a
+//! fast-tier build does not even compile these tests.
 //!
 //! See `TESTING.md` for the commands and what they cost.
 
@@ -43,7 +41,6 @@ fn count(repo: &Path, args: &[&str]) -> usize {
 const SMALL: Scale = Scale::of(5_000);
 
 #[test]
-#[ignore = "heavy tier: builds a 5,000-commit repository"]
 fn the_generator_builds_exactly_the_history_it_promises() {
     let report = synthetic::ensure(SMALL).unwrap_or_else(|why| panic!("{why}"));
     let repo = report.root.as_path();
@@ -100,7 +97,6 @@ fn the_generator_builds_exactly_the_history_it_promises() {
 }
 
 #[test]
-#[ignore = "heavy tier: builds the same history twice"]
 fn the_same_scale_twice_is_the_same_repository() {
     let first = synthetic::ensure(SMALL).unwrap_or_else(|why| panic!("{why}"));
     let second = synthetic::ensure(SMALL).unwrap_or_else(|why| panic!("{why}"));
@@ -113,7 +109,6 @@ fn the_same_scale_twice_is_the_same_repository() {
 }
 
 #[test]
-#[ignore = "heavy tier: builds a 5,000-commit repository with a commit-graph"]
 fn the_commit_graph_variant_is_a_separate_fixture_that_has_one() {
     let plain = synthetic::borrow(SMALL).unwrap_or_else(|why| panic!("{why}"));
     let scale = SMALL.with_commit_graph();
@@ -138,7 +133,6 @@ fn the_commit_graph_variant_is_a_separate_fixture_that_has_one() {
 }
 
 #[test]
-#[ignore = "heavy tier: builds the 100,000-commit repository (minutes, hundreds of MiB)"]
 fn the_heavy_fixture_is_the_size_prompt_md_asks_for() {
     let report = synthetic::ensure(Scale::HEAVY).unwrap_or_else(|why| panic!("{why}"));
     println!(

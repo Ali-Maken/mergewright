@@ -34,7 +34,6 @@ heavy tests to be both ignored and feature-gated.
   list and never add `--all-features` to a gate.
 - The fast-tier proof changes: heavy tests are not compiled without the
   feature, so `cargo test --test it -- --list` shows no `heavy::` test.
-- **Code not changed yet.** The four generator tests in
-  `crates/graft-fixtures/tests/it/heavy.rs` still carry `#[ignore]`.
-  m1-the-graph/31 removes them, before any other M1 ticket builds. Until then, append
-  `--include-ignored` to the heavy command.
+- **Code changed.** m1-the-graph/31 removed `#[ignore]` from the four
+  generator tests in `crates/graft-fixtures/tests/it/heavy.rs`; the
+  `heavy-tests` feature is now the only gate.

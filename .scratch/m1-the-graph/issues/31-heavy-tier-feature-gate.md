@@ -1,6 +1,6 @@
 # m1-the-graph/31 — Heavy tests gated by the feature alone (ADR-0018)
 
-Status: ready
+Status: done
 Build with: **Sonnet** (medium) — mechanical: remove attributes, fix docs, run one check
 Blocked by: none. **Runs before 07** (07 is blocked by it).
 Leaves runnable: yes — one heavy-tier command runs the whole tier.
@@ -29,13 +29,45 @@ Out:
 Expose: none. Call: none. Test attributes and docs only.
 
 ## Acceptance
-- [ ] `grep -rn '#\[ignore' crates` finds nothing — output pasted.
-- [ ] Plain `cargo test` compiles no heavy test: `cargo test -p graft-fixtures --test it -- --list | grep -c '^heavy::'` prints `0` — output pasted. Also `cargo test -p graft-fixtures --features heavy-tests --test it -- --list | grep -c '^heavy::'` prints `4`, proving the filter would catch them. Run these one at a time.
-- [ ] `cargo clippy --all-targets --features heavy-tests -- -D warnings` clean (the heavy code is otherwise unlinted).
-- [ ] TESTING.md footnote gone; ADR-0018 and KNOWN_GAPS row updated.
+- [x] `grep -rn '#\[ignore' crates` finds nothing — output pasted.
+
+```
+$ grep -rn '#\[ignore' crates
+(no output)
+```
+
+- [x] Plain `cargo test` compiles no heavy test: `cargo test -p graft-fixtures --test it -- --list | grep -c '^heavy::'` prints `0` — output pasted. Also `cargo test -p graft-fixtures --features heavy-tests --test it -- --list | grep -c '^heavy::'` prints `4`, proving the filter would catch them. Run these one at a time.
+
+```
+$ cargo test -p graft-fixtures --test it -- --list | grep -c '^heavy::'
+0
+
+$ cargo test -p graft-fixtures --features heavy-tests --test it -- --list | grep -c '^heavy::'
+4
+```
+
+- [x] `cargo clippy --all-targets --features heavy-tests -- -D warnings` clean (the heavy code is otherwise unlinted).
+
+```
+$ cargo clippy --all-targets --features heavy-tests -- -D warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.08s
+```
+
+- [x] TESTING.md footnote gone; ADR-0018 and KNOWN_GAPS row updated.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test` (fast tier only)
+
+```
+$ cargo fmt --check
+(no output, clean)
+
+$ cargo clippy --all-targets -- -D warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.06s
+
+$ cargo test
+... all suites: ok, 0 failed
+```
 
 ## Size
 One context, well under ~80k tokens. Read only what "Read first" names. If you compact, say so in your report.
