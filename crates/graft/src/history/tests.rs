@@ -898,6 +898,76 @@ fn a_search_jump_in_flight_when_promotion_lands_reaches_its_match() {
     );
 }
 
+/// The other side of the race: the jump is asked first, and the promotion's
+/// request supersedes it before any answer. Only the promotion's request is
+/// served, so it must carry the jump.
+fn promotion_lands_on_a_jump_in_flight(
+    press: impl FnOnce(&mut History, &[Oid]) -> Option<RowRequest>,
+) -> (History, Arc<[Oid]>) {
+    let shape = Shape::Linear;
+    let dir = graft_fixtures::borrow(shape);
+    let store = RepoStore::new(dir.clone(), None);
+    let order = topological_order(&store, &never)
+        .expect("sorts")
+        .expect("never stopped");
+    let handle = RepoHandle::open(&dir).expect("opens");
+    let refs = handle.references().expect("refs read");
+    let branches = Branches::resolve(&handle, None).expect("branches resolve");
+    let open = |promoted: Option<&Arc<[Oid]>>| {
+        Ok(match promoted {
+            Some(ids) => WalkSource::in_order(&handle, Arc::clone(ids)),
+            None => WalkSource::new(&handle, Walk::all_refs(&handle, Order::CommitDate)?),
+        })
+    };
+    let mut views = Views::new(seeds_for(&refs, &branches), SMALL, Box::new(open));
+    let mut history = History::started();
+    history.walk = Some(WalkFacts {
+        requested: Order::Topological,
+        order: Order::CommitDate,
+        default_branch: None,
+        integration: Vec::new().into(),
+    });
+    let first = history.show(HEIGHT).expect("asks for the first screen");
+    served(&mut views, &mut history, first);
+    assert_eq!(history.phase, Phase::Streaming, "the walk is not done yet");
+
+    let unsent = press(&mut history, &order);
+    assert!(unsent.is_some(), "the key asks for rows");
+    let request = history
+        .promote(Arc::clone(&order), HEIGHT)
+        .expect("a walk still going takes the order");
+    served(&mut views, &mut history, request);
+    assert_eq!(history.promotion, None, "the promotion has landed");
+    (history, order)
+}
+
+#[test]
+fn promotion_asked_after_g_still_reaches_the_bottom() {
+    let (history, order) = promotion_lands_on_a_jump_in_flight(|history, _| {
+        history.move_cursor(Motion::Bottom, HEIGHT)
+    });
+
+    assert_eq!(history.jump, None);
+    assert_eq!(history.cursor, order.len() - 1);
+    assert_eq!(
+        history.selected().map(|row| row.commit.id),
+        order.last().copied()
+    );
+}
+
+#[test]
+fn promotion_asked_after_a_search_jump_still_reaches_its_match() {
+    let (history, order) = promotion_lands_on_a_jump_in_flight(|history, order| {
+        history.seek(*order.last().expect("commits"), HEIGHT)
+    });
+
+    assert_eq!((history.jump, history.seeking), (None, None));
+    assert_eq!(
+        history.selected().map(|row| row.commit.id),
+        order.last().copied()
+    );
+}
+
 /// A move onto rows not fetched yet has no commit to anchor the swap to: it
 /// keeps its row numbers, and does not snap back to the last commit selected.
 #[test]

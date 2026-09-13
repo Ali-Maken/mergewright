@@ -109,7 +109,18 @@ impl History {
             order,
             anchor: None,
         });
-        self.wanted(height.max(1), true)
+        let height = height.max(1);
+        // A `G` or a search jump not yet answered is superseded by this
+        // request: ask it again, carrying the order, or it is lost (27c).
+        if self.jump.is_some() {
+            if let Some(commit) = self.seeking {
+                return self.seek(commit, height);
+            }
+            let request = self.ask(Wanted::Last(2 * height), height);
+            self.jump = Some(request.id);
+            return Some(request);
+        }
+        self.wanted(height, true)
     }
 
     /// Takes in the first rows in the promoted order: the cursor goes back on

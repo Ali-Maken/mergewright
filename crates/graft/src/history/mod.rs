@@ -363,9 +363,9 @@ pub fn topological_order(
     let mut order = Vec::new();
     loop {
         let chunk = walk
-            .next_chunk(CHUNK, stop)
+            .next_ids(CHUNK, stop)
             .map_err(|error| error_chain(&error))?;
-        order.extend(chunk.commits.iter().map(|commit| commit.id));
+        order.extend(chunk.ids);
         if chunk.stopped {
             return Ok(None);
         }
