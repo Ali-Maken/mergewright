@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M1 The graph** — ticket 33 (31, 07–26, 32 done; user Ghostty check: pixels ok, found wheel-scroll wrap → 32; user chose F3 as a cycle → 33; tooltip shows only subject → 34; then 27; 24 split into 24b/24c/24d; 37 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
+**Current step:** **M1 The graph** — ticket 33 (31, 07–26, 32 done; user Ghostty check: pixels ok, found wheel-scroll wrap → 32; user chose F3 as a cycle → 33; tooltip fix + pin on Enter + author/date (user decisions) → 34; then 27; 24 split into 24b/24c/24d; 37 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
 
 ---
 
