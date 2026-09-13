@@ -74,6 +74,8 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
         filters: Filters::default(),
         tooltip: None,
         order: None,
+        ascii: false,
+        notice: None,
     }
 }
 

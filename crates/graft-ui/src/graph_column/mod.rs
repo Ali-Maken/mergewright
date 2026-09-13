@@ -183,6 +183,10 @@ pub struct GraphColumn<'a> {
     theme: &'a Theme,
     /// The compaction the rows draw through, if any (DESIGN.md §3.5).
     fold: Option<&'a Fold>,
+    /// Draw with the ASCII glyph table (ticket m1-the-graph/19) instead of
+    /// Unicode box-drawing. The same widget, the same geometry — only the
+    /// glyph each cell resolves to changes.
+    ascii: bool,
 }
 
 impl<'a> GraphColumn<'a> {
@@ -193,7 +197,23 @@ impl<'a> GraphColumn<'a> {
             lines,
             theme,
             fold: None,
+            ascii: false,
         }
+    }
+
+    /// Draw with the ASCII tier's glyph table (`* | / \ - +`) rather than
+    /// Unicode box-drawing (DESIGN.md §4.2, ADR-0016). Node shape is lost —
+    /// six glyphs leave no room for six node kinds and a graph too — so
+    /// every node draws as `*`; paint (bold selection, dim off-thread) and
+    /// the row's own text carry what shape used to. The 16-colour/`NO_COLOR`
+    /// dash convention (`dashes_odd_columns`) has no ASCII equivalent in
+    /// this glyph set either, so odd-column lanes draw solid like every
+    /// other lane: at this tier, lane identity leans on the `+N` marker and
+    /// column position rather than a per-cell mark.
+    #[must_use]
+    pub fn ascii(mut self, ascii: bool) -> Self {
+        self.ascii = ascii;
+        self
     }
 
     /// Draw the lines through `fold`: kept lanes in their drawn columns, the
@@ -255,6 +275,9 @@ impl Widget for GraphColumn<'_> {
                     if dashes && real_column(owner.column).is_some_and(|c| c % 2 == 1) {
                         glyph = dashed(glyph);
                     }
+                }
+                if self.ascii {
+                    glyph = to_ascii(glyph);
                 }
                 buf[(area.x + x, y)].set_char(glyph).set_style(style);
             }
@@ -354,6 +377,27 @@ fn dashed(glyph: char) -> char {
         '│' => '╎',
         '─' => '╌',
         other => other,
+    }
+}
+
+/// The ASCII tier's glyph table (ticket m1-the-graph/19, ADR-0016): every
+/// glyph this widget draws collapses onto one of six ASCII characters
+/// (`* | / \ - +`). Node shape is lost — six glyphs leave no room for six
+/// node kinds and a graph too — so every node draws as `*`; paint (bold
+/// selection, dim off-thread) and the row's own text (subject, badges) carry
+/// what shape used to. The dashed forms (`╎`/`╌`) collapse onto the same
+/// character as their solid counterparts: ASCII has no seventh glyph to
+/// spare for the odd-column lane distinction DESIGN.md §4.6 asks for at low
+/// colour depth, so at this tier that redundancy is not drawn.
+fn to_ascii(glyph: char) -> char {
+    match glyph {
+        '│' | '╎' => '|',
+        '─' | '╌' => '-',
+        '╯' | '╭' => '/',
+        '╰' | '╮' => '\\',
+        '┤' | '├' | '┴' | '┬' | '┼' => '+',
+        ' ' => ' ',
+        _ => '*',
     }
 }
 

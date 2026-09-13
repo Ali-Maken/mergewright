@@ -51,5 +51,7 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
         filters: Filters::default(),
         tooltip: None,
         order: None,
+        ascii: false,
+        notice: None,
     }
 }

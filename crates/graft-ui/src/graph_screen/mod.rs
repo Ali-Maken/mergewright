@@ -93,6 +93,14 @@ pub struct GraphView<'a> {
     pub tooltip: Option<Tooltip>,
     /// The order notice, while the rows are not yet in their final order.
     pub order: Option<OrderNotice>,
+    /// Draw the graph column with the ASCII glyph table rather than Unicode
+    /// box-drawing (`graph.renderer`, ticket m1-the-graph/19; DESIGN.md §4.2,
+    /// ADR-0016).
+    pub ascii: bool,
+    /// What the app layer did to the renderer tier the user did not ask to
+    /// be told twice — the tier-drop key said what it did. Takes the
+    /// footer's place under [`GraphView::problem`], above the hints.
+    pub notice: Option<SanitizedText>,
 }
 
 /// The commit tooltip: the full message and the parents, reachable
@@ -387,9 +395,10 @@ impl Widget for GraphScreen<'_> {
         }
 
         if area.height > 1 {
-            let (text, token) = match &self.view.problem {
-                Some(problem) => (format!(" {problem}"), Token::Warning),
-                None => (
+            let (text, token) = match (&self.view.problem, &self.view.notice) {
+                (Some(problem), _) => (format!(" {problem}"), Token::Warning),
+                (None, Some(notice)) => (format!(" {notice}"), Token::Info),
+                (None, None) => (
                     format!(
                         "{HINTS}{}",
                         expand_hint(&fold, self.view.compaction.expanded)
@@ -546,7 +555,7 @@ impl GraphScreen<'_> {
         // Half the width at most: the subject is what makes a row readable.
         let graph_width = wanted.min(area.width / 2);
         let graph_lines: Vec<GraphLine<'_>> = rows.iter().map(|entry| entry.line.clone()).collect();
-        let mut column = GraphColumn::new(&graph_lines, self.theme);
+        let mut column = GraphColumn::new(&graph_lines, self.theme).ascii(self.view.ascii);
         if let Some(fold) = fold {
             column = column.through(fold);
         }

@@ -10,6 +10,7 @@
 //! called `ma<ESC>[31min` reaches the terminal as the picture of an escape and
 //! never as the escape (DESIGN.md §8.2).
 
+use graft_core::capabilities::RenderingTier;
 use graft_git::status::WorkingTreeCounts;
 use graft_git::version::SystemGit;
 use graft_graph::identity::BranchIdentity;
@@ -36,6 +37,15 @@ use crate::update::{AppState, GitCheck, Screen, Status};
 /// in any repository a person works in, short enough to read back.
 const ABBREVIATED_ID: usize = 12;
 
+/// The tier's name, as `graph.renderer` and the status screen spell it.
+fn tier_name(tier: RenderingTier) -> &'static str {
+    match tier {
+        RenderingTier::Pixel => "pixel",
+        RenderingTier::Unicode => "unicode",
+        RenderingTier::Ascii => "ascii",
+    }
+}
+
 /// Draw the current state.
 pub fn view(session: &Session, state: &AppState, frame: &mut Frame) {
     let area = frame.area();
@@ -50,6 +60,14 @@ pub fn view(session: &Session, state: &AppState, frame: &mut Frame) {
             let mut screen = graph_view(state);
             screen.icons = session.icons;
             screen.compaction.max_lanes = session.max_lanes;
+            let tier = state.renderer_override.unwrap_or(session.rendering.tier);
+            screen.ascii = tier == RenderingTier::Ascii;
+            if state.renderer_override.is_some() {
+                screen.notice = Some(sanitize_line(&format!(
+                    "renderer forced to {} (F3)",
+                    tier_name(tier)
+                )));
+            }
             frame.render_widget(GraphScreen::new(&screen, &session.theme), area);
         }
         Screen::Status => {
@@ -85,6 +103,8 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
             filters: Filters::default(),
             tooltip: None,
             order: None,
+            ascii: false,
+            notice: None,
         };
     };
 
@@ -119,6 +139,8 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
         },
         tooltip: tooltip_view(state, history),
         order: order_notice(history),
+        ascii: false,
+        notice: None,
     }
 }
 
@@ -559,7 +581,6 @@ fn notes(session: &Session, state: &AppState) -> Vec<SanitizedText> {
 
 #[cfg(test)]
 mod tests {
-    use graft_core::capabilities::RenderingTier;
     use graft_core::oid::Oid;
     use graft_git::version::GitVersion;
     use graft_ui::status_screen::TierSource;
@@ -674,6 +695,96 @@ mod tests {
             !screen.contains('\u{1b}'),
             "a subject's escape reached the cells"
         );
+    }
+
+    #[test]
+    fn the_tier_drop_key_forces_ascii_and_says_so_in_the_footer() {
+        let state = AppState {
+            history: Some(history_of(5, 1)),
+            size: Size {
+                columns: 60,
+                rows: 5,
+            },
+            renderer_override: Some(RenderingTier::Ascii),
+            ..AppState::default()
+        };
+
+        let view = graph_view(&state);
+        assert!(
+            !view.ascii,
+            "graph_view alone does not know the session's tier"
+        );
+
+        let screen = draw(&state, 60, 5);
+        assert!(screen.contains("renderer forced to ascii (F3)"), "{screen}");
+        assert!(
+            !screen.contains('╭'),
+            "the graph column drew Unicode: {screen}"
+        );
+    }
+
+    #[test]
+    fn every_graph_renderer_config_value_draws_as_it_says() {
+        use crate::config::{Config, Graph, Loaded, RendererChoice};
+        use crate::session::for_tests::capabilities;
+
+        let state = AppState {
+            history: Some(history_of(5, 1)),
+            size: Size {
+                columns: 60,
+                rows: 5,
+            },
+            ..AppState::default()
+        };
+
+        // `Auto` and `Unicode` both draw Unicode here: the detected terminal
+        // is a Unicode one, and `Unicode` asks for exactly that. `Pixel` has
+        // no renderer yet (ticket m1-the-graph/24) so it falls back the same
+        // way; only `Ascii` changes what is drawn.
+        for (renderer, ascii) in [
+            (RendererChoice::Auto, false),
+            (RendererChoice::Unicode, false),
+            (RendererChoice::Pixel, false),
+            (RendererChoice::Ascii, true),
+        ] {
+            let loaded = Loaded {
+                config: Config {
+                    graph: Graph {
+                        renderer,
+                        ..Graph::default()
+                    },
+                    ..Config::default()
+                },
+                ..Loaded::default()
+            };
+            let session = Session::settle(&loaded, capabilities());
+            let mut terminal =
+                Terminal::new(TestBackend::new(60, 5)).expect("TestBackend reports its size");
+            terminal
+                .draw(|frame| view(&session, &state, frame))
+                .expect("TestBackend cannot fail to draw");
+            let screen = terminal.backend().to_string();
+
+            insta::assert_snapshot!(format!("renderer-{renderer:?}"), screen);
+            assert_eq!(screen.contains('●'), !ascii, "{renderer:?}: {screen}");
+            assert_eq!(screen.contains('*'), ascii, "{renderer:?}: {screen}");
+        }
+    }
+
+    #[test]
+    fn with_no_override_the_footer_keeps_the_ordinary_hints() {
+        let state = AppState {
+            history: Some(history_of(5, 1)),
+            size: Size {
+                columns: 60,
+                rows: 5,
+            },
+            ..AppState::default()
+        };
+
+        let screen = draw(&state, 60, 5);
+        assert!(screen.contains("q quit"), "{screen}");
+        assert!(!screen.contains("renderer forced"), "{screen}");
     }
 
     /// A message an escape sequence rendered inert in the tooltip

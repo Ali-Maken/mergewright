@@ -24,8 +24,9 @@ One line per public item. Update when a public item changes.
 - `GraphLine` (struct) — `row` (borrowed or synthesised), `node`, `paint`, `thread` (real columns on the selection's thread: bold; other lanes dim; `None` = no selection) for one drawn row.
 - `GraphLine::plain` (fn) — a row drawn normally, borrowing a real `Row`.
 - `GraphLine::owned` (fn) — a row drawn normally, owning a synthesised `Row` (the uncommitted-changes row).
-- `GraphColumn` (struct) — widget drawing consecutive rows; fills its area exactly. At 16 colours and `NO_COLOR`, odd-column lanes draw dashed (`╎`, `╌`).
+- `GraphColumn` (struct) — widget drawing consecutive rows; fills its area exactly. At 16 colours and `NO_COLOR`, odd-column lanes draw dashed (`╎`, `╌`); at the ASCII tier, every glyph collapses onto `* | / \ - +` instead (m1-the-graph/19).
 - `GraphColumn::new` (fn) — draw lines in a theme.
+- `GraphColumn::ascii` (fn) — draw with the ASCII glyph table instead of Unicode box-drawing.
 - `GraphColumn::width_for` (fn) — cells for N lanes.
 - `GraphColumn::through` (fn) — draw through a `Fold`: kept lanes in their drawn columns, folded ones as one `+N` marker in the last column; dashes still key on the real column.
 - `GraphColumn::width_through` (fn) — cells for a window drawn through a `Fold` (kept lanes plus the marker).
@@ -44,6 +45,8 @@ One line per public item. Update when a public item changes.
 - `GraphView::filters` (field) — what the history shown leaves out; said in the header.
 - `GraphView::tooltip` (field) — the commit tooltip, open over the graph, or `None` (m1-the-graph/17).
 - `GraphView::order` (field) — the order notice while rows are not in their final order, or `None`.
+- `GraphView::ascii` (field) — draw the graph column with the ASCII glyph table (`graph.renderer`, m1-the-graph/19).
+- `GraphView::notice` (field) — what the app layer did to the renderer tier, shown in the footer under `problem`, above the hints; `None` for nothing to say.
 - `Tooltip` (struct) — `subject`, `body` (both `SanitizedText`), `parents` (short shas); hover and `Enter` build it identically (m1-the-graph/17). "Contained in" is out of scope — `KNOWN_GAPS.md`.
 - `Filters` (struct) — `first_parent`, `folded` (merge count), `stash_hidden`, `focused` (Focus mode on); `Filters::text` is the header's words, empty for none.
 - `Compaction` (struct) — `max_lanes` (`graph.max_lanes`), `expanded` (the `+` key), `pinned` (reserved integration lanes and the selection's thread columns).

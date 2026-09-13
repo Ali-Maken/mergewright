@@ -12,6 +12,7 @@
 
 use std::path::PathBuf;
 
+use graft_core::capabilities::RenderingTier;
 use graft_core::event::{Event, KeyCode, KeyPress, Modifiers, MouseButton, MouseInput, MouseKind};
 use graft_core::job::JobId;
 use graft_core::oid::Oid;
@@ -167,6 +168,11 @@ pub struct AppState {
     /// (DESIGN.md §2.15, PROMPT.md §1.3; m1-the-graph/17). `None` when
     /// closed.
     pub tooltip: Option<usize>,
+    /// The tier-drop key (`F3`) forced this tier for the rest of the run, or
+    /// `None` for whatever `Session::settle` decided. A view-time override
+    /// like `lanes_expanded` — the rows are untouched, only how they draw
+    /// changes (`graph.renderer`, m1-the-graph/19).
+    pub renderer_override: Option<RenderingTier>,
 }
 
 /// The screens Graft can show.
@@ -522,6 +528,11 @@ fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         next.lanes_expanded = !next.lanes_expanded;
     } else if is_focus_toggle(key) {
         next.focus = !next.focus;
+    } else if is_tier_drop(key) {
+        // Only one tier below Unicode exists until pixel tiers land
+        // (ticket m1-the-graph/24), so dropping always lands on ASCII; the
+        // view layer says so in the footer (`graft::view`).
+        next.renderer_override = Some(RenderingTier::Ascii);
     } else if is_tooltip_key(key) {
         // The keyboard's route to the same content a hover opens (DESIGN.md
         // §2.15): the selection's row, looked up the same way `graph_row_at`
@@ -659,6 +670,14 @@ fn is_focus_toggle(key: KeyPress) -> bool {
 
 fn is_lane_toggle(key: KeyPress) -> bool {
     key.code == KeyCode::Char('+') && !key.modifiers.control && !key.modifiers.alt
+}
+
+/// `F3`: force the ASCII tier for the rest of the run, and say so
+/// (DESIGN.md §4.2 — config wins over detection, and a key press wins the
+/// same way over both; ticket m1-the-graph/19). Not one of DESIGN.md's
+/// keymap, like `F2`.
+fn is_tier_drop(key: KeyPress) -> bool {
+    key.code == KeyCode::Function(3) && !key.modifiers.control && !key.modifiers.alt
 }
 
 /// `Enter`: open the tooltip for the selection — the keyboard's route to the
@@ -845,6 +864,21 @@ mod tests {
 
         let (graph, _) = update(&status, key(KeyCode::Function(2)));
         assert_eq!(graph.screen, Screen::Graph);
+    }
+
+    #[test]
+    fn f3_forces_ascii_and_asks_the_world_for_nothing() {
+        let state = AppState::default();
+        assert_eq!(state.renderer_override, None);
+
+        let (dropped, commands) = update(&state, key(KeyCode::Function(3)));
+        assert_eq!(dropped.renderer_override, Some(RenderingTier::Ascii));
+        assert!(commands.is_empty(), "a view-time flag: {commands:?}");
+
+        // Pressing it again is a no-op, not a crash or a cycle back to
+        // Unicode — only one tier below Unicode exists so far.
+        let (still, _) = update(&dropped, key(KeyCode::Function(3)));
+        assert_eq!(still.renderer_override, Some(RenderingTier::Ascii));
     }
 
     /// A walk in flight whose window holds a plain commit (row 0) and a
@@ -1346,6 +1380,7 @@ mod tests {
             lanes_expanded: false,
             focus: false,
             tooltip: None,
+            renderer_override: None,
         };
 
         let first = update(&state, key(KeyCode::Char('q')));

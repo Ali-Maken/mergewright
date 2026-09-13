@@ -17,7 +17,7 @@
 pub mod input;
 pub mod signals;
 
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -26,14 +26,15 @@ use graft_core::capabilities::Supported;
 use graft_git::history::Order;
 use graft_term::detect::{self, TtyHost};
 use ratatui::Terminal;
-use ratatui::backend::{Backend, CrosstermBackend};
+use ratatui::backend::{Backend, CrosstermBackend, TestBackend};
 
 use crate::crash;
+use crate::history::Phase;
 use crate::jobs::{self, Delivery, Dispatch, JobEvents, JobRunner, Shutdown};
 use crate::repos::RepoStore;
 use crate::session::{Session, Startup};
 use crate::terminal::{SessionOptions, TerminalSession};
-use crate::update::{AppEvent, AppState, Command, Quit, update};
+use crate::update::{AppEvent, AppState, Command, Quit, Size, update};
 use crate::view::view;
 
 /// Begin a synchronized update: the terminal buffers what follows and paints
@@ -137,6 +138,17 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     if let Err(error) = repos.shared() {
         return Ok(Exit::Fatal(error.to_string()));
     }
+
+    // A stdout that is not a tty — piped, redirected — never gets the
+    // alternate screen or a single escape byte (ticket m1-the-graph/19): no
+    // probe can tell the other end of a pipe apart from a terminal that
+    // simply has not answered yet, so the only safe thing to draw there is
+    // plain text (DESIGN.md §4.2 treats an unprobeable terminal as ASCII for
+    // the same reason).
+    if !io::stdout().is_terminal() {
+        return run_headless(&repo_path, &config, repos);
+    }
+
     // Kitty keyboard is deliberately off here and pushed below instead:
     // whether the terminal speaks the protocol is something only the probe
     // knows, and the probe needs the raw mode this session turns on.
@@ -206,6 +218,93 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
             Err(loop_error)
         }
     }
+}
+
+/// Runs Graft to one finished frame with no terminal at all, for a stdout
+/// that [`run`] found is not a tty (ticket m1-the-graph/19).
+///
+/// The same `update`/`Command`/job machinery as the interactive loop — jobs
+/// are dispatched and awaited over the same channel `pump` uses — but there
+/// is nothing to draw between wakes: nobody is watching a screen that
+/// blinks, so the loop simply runs the walk to its end and prints one plain
+/// frame, in the tier `Session::settle` chose (ASCII, since detection never
+/// probes a terminal that cannot be probeable — `graft_term::detect`).
+fn run_headless(
+    repo_path: &Path,
+    config: &crate::config::Loaded,
+    repos: Arc<RepoStore>,
+) -> io::Result<Exit> {
+    let capabilities = detect::detect(&detect::Environment::from_process(), &mut TtyHost::new());
+    let session = Session::settle(config, capabilities);
+
+    let (mut wakes, sender) = ChannelWakes::new();
+    let jobs = JobRunner::with_default_size(sender, repos)?;
+
+    // No real terminal to size against; wide and tall enough that the
+    // fixtures this ships with are not truncated mid-row.
+    let size = Size {
+        columns: 200,
+        rows: 200,
+    };
+    let mut state = opening_repository(&jobs, repo_path, size);
+
+    while !headless_settled(&state) {
+        let Some(wake) = wakes.next_wake() else {
+            break;
+        };
+        let event = match wake {
+            Wake::Event(event) => event,
+            Wake::Shutdown(signal) => return Ok(Exit::Signal(signal)),
+            Wake::InputFailed(error) => return Err(error),
+        };
+
+        let (next, commands) = update(&state, event);
+        state = next;
+        for command in commands {
+            jobs.dispatch(command);
+        }
+        if let Some(Quit::Fatal(reason)) = &state.quit {
+            return Ok(Exit::Fatal(reason.clone()));
+        }
+    }
+
+    print_headless_frame(&session, &state, size)?;
+    Ok(Exit::Quit)
+}
+
+/// Whether the headless loop has seen enough to print: the walk has left
+/// `Streaming`, one way or another. `None` (no history asked for yet, which
+/// never actually happens — `opening_repository` always asks) would loop
+/// forever, so it counts as settled too rather than hanging.
+fn headless_settled(state: &AppState) -> bool {
+    state
+        .history
+        .as_ref()
+        .is_none_or(|history| !matches!(history.phase, Phase::Streaming))
+}
+
+/// Renders one frame into a backend nothing writes escape bytes to, and
+/// prints it as plain text: exactly the picture a real terminal would show,
+/// with none of the bytes that only make sense to one.
+fn print_headless_frame(session: &Session, state: &AppState, size: Size) -> io::Result<()> {
+    let mut terminal = Terminal::new(TestBackend::new(size.columns, size.rows))
+        .unwrap_or_else(|error: std::convert::Infallible| match error {});
+    terminal
+        .draw(|frame| view(session, state, frame))
+        .unwrap_or_else(|error: std::convert::Infallible| match error {});
+
+    let buffer = terminal.backend().buffer();
+    let mut text = String::new();
+    for y in 0..buffer.area.height {
+        for x in 0..buffer.area.width {
+            text.push_str(buffer[(x, y)].symbol());
+        }
+        text.push('\n');
+    }
+
+    let mut stdout = io::stdout().lock();
+    stdout.write_all(text.as_bytes())?;
+    stdout.flush()
 }
 
 /// The state Graft starts in, with the first two jobs already on their way.

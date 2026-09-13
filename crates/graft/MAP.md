@@ -75,6 +75,7 @@ One line per public item. Update when a public item changes.
 - `AppState::lanes_expanded` (field) — `+` pressed: lanes draw unfolded; a view flag, the rows are untouched.
 - `AppState::focus` (field) — Focus mode (`F`; `Esc` leaves it before cancelling anything): rows off the selection's thread fade; paint only.
 - `AppState::tooltip` (field) — the open tooltip's absolute row number, set identically by hover and `Enter`; `Esc` closes it first (m1-the-graph/17).
+- `AppState::renderer_override` (field) — the tier-drop key (`F3`) forced this tier for the rest of the run, or `None` for whatever `Session::settle` decided (m1-the-graph/19).
 - `Screen` (enum) — `Graph` (default) or `Status`.
 - `Screen::toggled` (fn) — the other screen; `F2` swaps.
 - `Quit` (enum) — why Graft is leaving.

@@ -7,3 +7,4 @@
 
 mod dependency_edges;
 mod not_a_repo;
+mod piped_stdout;

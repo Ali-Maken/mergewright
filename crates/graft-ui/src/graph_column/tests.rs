@@ -72,6 +72,15 @@ fn text(buf: &Buffer, y: u16) -> String {
     (0..buf.area.width).map(|x| buf[(x, y)].symbol()).collect()
 }
 
+fn render_ascii(lines: &[GraphLine<'_>], theme: &Theme, width: u16) -> Buffer {
+    let area = Rect::new(0, 0, width, u16::try_from(lines.len()).expect("few rows"));
+    let mut buf = Buffer::empty(area);
+    GraphColumn::new(lines, theme)
+        .ascii(true)
+        .render(area, &mut buf);
+    buf
+}
+
 fn dark(depth: ColorDepth) -> Theme {
     Theme::new(ThemeKind::Dark, &terminal(depth, false))
 }
@@ -305,6 +314,61 @@ fn folded_lanes_draw_as_one_marker_in_the_last_column() {
     assert_eq!(text(&buf, 6), "◉─╮           +6 ");
     assert_eq!(buf[(14, 6)].fg, color(theme.token(Token::TextMuted)));
     assert_eq!(text(&buf, 11), "◉─│─│─│─│─│─╮ +6 ");
+}
+
+#[test]
+fn the_ascii_tier_draws_only_the_six_glyph_table() {
+    let rows = reuse_rows();
+    let lines: Vec<_> = rows.iter().map(GraphLine::plain).collect();
+    let buf = render_ascii(&lines, &dark(ColorDepth::TrueColor), 4);
+
+    let drawn: Vec<String> = (0..6).map(|y| text(&buf, y)).collect();
+    assert_eq!(
+        drawn,
+        ["*-\\ ", "| * ", "*-/ ", "*-\\ ", "| * ", "*-/ "],
+        "every node collapses to *, elbows to / or \\"
+    );
+    for row in &drawn {
+        for ch in row.chars() {
+            assert!(
+                "*|/\\-+ ".contains(ch),
+                "{ch:?} is not in the ASCII glyph table"
+            );
+        }
+    }
+}
+
+#[test]
+fn ascii_never_draws_the_dash_lane_convention() {
+    let rows = reuse_rows();
+    let lines: Vec<_> = rows.iter().map(GraphLine::plain).collect();
+    for depth in [ColorDepth::Palette16, ColorDepth::None] {
+        let buf = render_ascii(&lines, &dark(depth), 4);
+        for y in 0..buf.area.height {
+            let row = text(&buf, y);
+            assert!(
+                !row.contains('╎') && !row.contains('╌'),
+                "{depth:?} row {y}: {row:?} has a Unicode dash the ASCII table has no room for"
+            );
+        }
+    }
+}
+
+#[test]
+fn ascii_folded_lanes_still_draw_the_n_marker() {
+    let rows = wide_merges();
+    let lines: Vec<_> = rows.iter().map(GraphLine::plain).collect();
+    let fold = Fold::plan(&rows, 8, &no_pins());
+    let theme = dark(ColorDepth::TrueColor);
+    let width = GraphColumn::width_through(&fold);
+    let area = Rect::new(0, 0, width, u16::try_from(lines.len()).expect("few rows"));
+    let mut buf = Buffer::empty(area);
+    GraphColumn::new(&lines, &theme)
+        .through(&fold)
+        .ascii(true)
+        .render(area, &mut buf);
+
+    assert_eq!(text(&buf, 0), "*-------------+6 ");
 }
 
 #[test]

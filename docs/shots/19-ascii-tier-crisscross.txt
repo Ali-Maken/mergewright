@@ -1,0 +1,58 @@
+19 ASCII tier drop key (F3): criss-cross-merge fixture, real pty. Keys: F3.
+Look for: all box-drawing glyphs (├ │ ╮ ╯ ┼ etc.) collapse onto the six-glyph ASCII table (* | / \ - +); footer notice; terminal left sane after quit.
+
+=== frame after startup ===
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/c…
+  ●         [beta] beta: carry on                                   6y   be27a12
+◆─│─╮       [◆ main] Merge branch 'alpha'                           6y   e44c042
+│ ◉─│─╮     beta: merge alpha                                       6y   f77039c
+│ │ ◉─│─╮   [alpha] alpha: merge beta                               6y   89c164d
+│ ●─│─│─╯   beta: work                                              6y   4cfd7d9
+│ │ ●─╯     alpha: work                                             6y   bd20b78
+◇─┴─╯       Add the base                                            6y   68d5d19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom
+
+=== frame after F3 (tier-drop key) ===
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/c…
+  *         [beta] beta: carry on                                   6y   be27a12
+*-|-\       [◆ main] Merge branch 'alpha'                           6y   e44c042
+| *-|-\     beta: merge alpha                                       6y   f77039c
+| | *-|-\   [alpha] alpha: merge beta                               6y   89c164d
+| *-|-|-/   beta: work                                              6y   4cfd7d9
+| | *-/     alpha: work                                             6y   bd20b78
+*-+-/       Add the base                                            6y   68d5d19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ renderer forced to ascii (F3)
+
+=== termios sanity ===
+identical before launch / after quit: True
+exited by: status 0
