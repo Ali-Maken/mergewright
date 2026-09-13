@@ -102,6 +102,7 @@ One line per public item. Update when a public item changes.
 - `Theme` (struct) — a resolved theme; no path hands a widget a colour the terminal can't show.
 - `Theme::new` (fn) — resolve a theme for a kind and terminal capabilities.
 - `Theme::kind` (fn) — which theme this is (diagnostics, config round-trips).
+- `Theme::color_depth` (fn) — how much colour this terminal has, `NO_COLOR`-reduced like every token; widgets use it to reach for a non-colour separator at `Palette16`.
 - `Theme::token` (fn) — the colour for one chrome token.
 - `Theme::lane` (fn) — the colour for one graph lane; shape/dash separate same-hue lanes.
 - `Theme::branch` (fn) — the colour a branch identity draws in, independent of column.

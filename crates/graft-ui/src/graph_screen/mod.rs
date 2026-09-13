@@ -15,6 +15,7 @@ pub mod columns;
 #[cfg(test)]
 mod tests;
 
+use graft_core::capabilities::ColorDepth;
 use graft_graph::identity::BranchIdentity;
 use graft_term::SanitizedText;
 use ratatui::buffer::Buffer;
@@ -358,31 +359,26 @@ impl GraphScreen<'_> {
         columns: &Columns,
         buf: &mut Buffer,
     ) {
-        let mut style = foreground(self.theme, Token::Text);
-        let mut trailing_style = foreground(self.theme, Token::TextMuted);
-        if entry.line.paint == RowPaint::Highlighted {
-            style = style.add_modifier(Modifier::BOLD);
-            trailing_style = trailing_style.add_modifier(Modifier::BOLD);
-            let raised = color(self.theme.token(Token::SurfaceRaised));
-            buf.set_style(
-                Rect {
-                    y,
-                    height: 1,
-                    ..area
-                },
-                Style::new().bg(raised),
-            );
-        } else if entry.line.paint == RowPaint::Dimmed {
-            style = style.add_modifier(Modifier::DIM);
-            trailing_style = trailing_style.add_modifier(Modifier::DIM);
-        }
+        let (style, trailing_style, palette16_edge) = self.row_emphasis(entry, y, area, buf);
 
-        let glyph = if entry.line.row.marker.is_some() {
-            "! "
+        let (glyph, glyph_style) = if entry.line.row.marker.is_some() {
+            ("! ", style)
+        } else if palette16_edge {
+            (
+                "▏ ",
+                foreground(self.theme, Token::Accent).add_modifier(Modifier::BOLD),
+            )
         } else {
-            "  "
+            ("  ", style)
         };
-        draw_cell(buf, columns.marker_x, y, columns.marker_width, glyph, style);
+        draw_cell(
+            buf,
+            columns.marker_x,
+            y,
+            columns.marker_width,
+            glyph,
+            glyph_style,
+        );
         let taken = self.draw_badges(entry, y, columns, style, buf);
         draw_cell(
             buf,
@@ -417,6 +413,50 @@ impl GraphScreen<'_> {
             &entry.sha,
             trailing_style,
         );
+    }
+
+    /// The text style, the trailing-column style, and whether the row falls
+    /// back to the Palette16 rule instead of a background fill: `Highlighted`
+    /// paints bold and, where the terminal can show it, a raised background;
+    /// `Dimmed` paints faint; anything else is plain.
+    ///
+    /// At [`ColorDepth::Palette16`], `bg`/`surface`/`surface-raised` collapse
+    /// to the same index (KNOWN_GAPS.md M0), so the raised background step
+    /// would paint nothing a viewer can see — the marker slot's rule
+    /// (DESIGN.md §4.6) carries the highlight there instead, so the
+    /// background step is skipped rather than drawn for nothing.
+    fn row_emphasis(
+        &self,
+        entry: &GraphEntry<'_>,
+        y: u16,
+        area: Rect,
+        buf: &mut Buffer,
+    ) -> (Style, Style, bool) {
+        let mut style = foreground(self.theme, Token::Text);
+        let mut trailing_style = foreground(self.theme, Token::TextMuted);
+        let highlighted = entry.line.paint == RowPaint::Highlighted;
+        let palette16_edge = highlighted && self.theme.color_depth() == ColorDepth::Palette16;
+
+        if highlighted {
+            style = style.add_modifier(Modifier::BOLD);
+            trailing_style = trailing_style.add_modifier(Modifier::BOLD);
+            if !palette16_edge {
+                let raised = color(self.theme.token(Token::SurfaceRaised));
+                buf.set_style(
+                    Rect {
+                        y,
+                        height: 1,
+                        ..area
+                    },
+                    Style::new().bg(raised),
+                );
+            }
+        } else if entry.line.paint == RowPaint::Dimmed {
+            style = style.add_modifier(Modifier::DIM);
+            trailing_style = trailing_style.add_modifier(Modifier::DIM);
+        }
+
+        (style, trailing_style, palette16_edge)
     }
 }
 

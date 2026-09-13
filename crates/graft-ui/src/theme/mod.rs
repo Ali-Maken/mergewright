@@ -203,6 +203,7 @@ pub enum TokenColor {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Theme {
     kind: ThemeKind,
+    depth: ColorDepth,
     chrome: [TokenColor; TOKEN_COUNT],
     lanes: [TokenColor; LANE_COUNT],
 }
@@ -236,6 +237,7 @@ impl Theme {
 
         Theme {
             kind,
+            depth,
             chrome: resolved_chrome,
             lanes: resolved_lanes,
         }
@@ -244,6 +246,15 @@ impl Theme {
     /// Which theme this is. For the diagnostics view and for config round-trips.
     pub fn kind(&self) -> ThemeKind {
         self.kind
+    }
+
+    /// How much colour this terminal has, or [`ColorDepth::None`] if
+    /// `NO_COLOR` was set — the same reduction [`Theme::new`] applied to
+    /// every token. Widgets read this to reach for a non-colour separator
+    /// (DESIGN.md §4.6) where a background step alone would flatten at
+    /// [`ColorDepth::Palette16`] (KNOWN_GAPS.md M0).
+    pub fn color_depth(&self) -> ColorDepth {
+        self.depth
     }
 
     /// The colour for one chrome token.

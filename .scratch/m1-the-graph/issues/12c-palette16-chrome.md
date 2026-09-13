@@ -1,6 +1,6 @@
 # m1-the-graph/12c — Pane separation at 16 colours
 
-Status: ready
+Status: done — `Theme::color_depth()` added (stored in `Theme::new`); `graph_screen::draw_row` skips the raised-background step at `Palette16` and draws an accent left-edge rule (`▏`) in the marker slot instead. Truecolor/256 unchanged (tests + capture confirm). Capture: `docs/shots/12c-palette16-chrome.txt` (raw ANSI, forced 16 colours) — judge by eye. KNOWN_GAPS.md M0 row closed. MAP.md updated. Gates green.
 Build with: **Sonnet** (medium) — a theme accessor and a separator rule
 Blocked by: 12b
 Leaves runnable: yes — at 16 colours the panes are visibly separated.

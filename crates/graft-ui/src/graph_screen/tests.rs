@@ -128,6 +128,43 @@ fn terminal_caps() -> graft_core::capabilities::Capabilities {
 }
 
 #[test]
+fn at_palette16_the_cursor_row_gets_a_rule_instead_of_a_background() {
+    let rows = linear(3);
+    let theme = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::Palette16, false));
+    let mut terminal = Terminal::new(TestBackend::new(40, 6)).expect("test backend opens");
+    let view = view(&rows, WalkView::Complete { rows: 3 }, 1);
+    terminal
+        .draw(|frame| frame.render_widget(GraphScreen::new(&view, &theme), frame.area()))
+        .expect("drawing into a test backend cannot fail");
+    let buffer = terminal.backend().buffer();
+
+    // No usable background step at this depth: the row's fill is left
+    // untouched, same as an unhighlighted row, not `surface-raised`.
+    assert_eq!(buffer[(30, 2)].bg, buffer[(30, 1)].bg, "{buffer:#?}");
+    // The marker slot carries the highlight instead, in the accent colour.
+    let accent = color(theme.token(Token::Accent));
+    let has_rule = (0..buffer.area.width)
+        .any(|x| buffer[(x, 2)].symbol() == "▏" && buffer[(x, 2)].fg == accent);
+    assert!(
+        has_rule,
+        "expected a Palette16 rule on the cursor row: {buffer:#?}"
+    );
+    assert!(!buffer[(10, 2)].modifier.is_empty()); // still bold
+}
+
+#[test]
+fn truecolor_snapshot_is_unchanged_by_the_palette16_rule() {
+    let rows = linear(3);
+    let terminal = draw(&view(&rows, WalkView::Complete { rows: 3 }, 1), 40, 6);
+    let buffer = terminal.backend().buffer();
+    let theme = Theme::new(ThemeKind::Dark, &terminal_caps());
+    let raised = color(theme.token(Token::SurfaceRaised));
+
+    assert_eq!(buffer[(30, 2)].bg, raised);
+    assert!(!(0..buffer.area.width).any(|x| buffer[(x, 2)].symbol() == "▏"));
+}
+
+#[test]
 fn a_jump_in_progress_says_how_far_it_has_got_and_how_to_back_out() {
     let rows = linear(2);
     let screen = text(&draw(

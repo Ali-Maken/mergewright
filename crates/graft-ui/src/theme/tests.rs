@@ -339,6 +339,21 @@ fn a_colourless_terminal_is_empty_even_without_no_color() {
     assert_eq!(theme.lane(0), TokenColor::Default);
 }
 
+#[test]
+fn color_depth_reports_what_the_terminal_can_show() {
+    let truecolor = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::TrueColor, false));
+    let sixteen = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::Palette16, false));
+
+    assert_eq!(truecolor.color_depth(), ColorDepth::TrueColor);
+    assert_eq!(sixteen.color_depth(), ColorDepth::Palette16);
+
+    // `NO_COLOR` overrides the terminal's own depth, same as every token
+    // (`no_color_empties_every_token_in_every_theme`): a widget asking
+    // `color_depth()` for its own separator logic sees the reduction too.
+    let no_color = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::Palette16, true));
+    assert_eq!(no_color.color_depth(), ColorDepth::None);
+}
+
 // -------------------------------------------------------------- contrast
 
 #[test]
