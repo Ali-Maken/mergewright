@@ -81,3 +81,17 @@ Fast tier after: 740 passed, 9 s wall.
 - Done: measurement harness (`tests/it/budget_run.rs`, `tests/it/heavy.rs`, `examples/budgets.rs`), both 100k budgets asserted and green, git/git measured.
 - **Not done: git/git without a commit-graph peaks at 300.5–305.9 MiB**, over the 300 MB gate (it is also 254 MiB with one, too close). Nearly all of it arrives during `G` (+175 MiB with cg, +278 MiB without) while row chunks are bounded, so something holds ~2–3 KB per commit or a cache grows. Next step: find what, with a heap profile of `examples/budgets` on the no-cg copy (`cp -R` the clone, delete `objects/info/commit-graph`), then fix. Suspects below.
 - Gotcha: zsh does not word-split `$VAR` commands; spell cargo commands out.
+
+### Suspects (scout, from source, unmeasured — confirm with a heap profile first)
+
+1. `graft-git/src/history/topological.rs` `Topological::{known, indegree, expanded, emitted}` never shrink: ~250–350 B per discovered commit for the walk's life. Without a commit-graph every generation is unknown, so the frontier heaps also hold ~all commits.
+2. ADR-0008 promotion runs a second `Topological` (`graft/src/history/mod.rs` `topological_order`) and hydrates full `Commit`s (message, author, committer) only to take `commit.id`.
+3. `Views::promote` builds the new layout (order, `Included`, cache, checkpoints) before dropping the old one: transient doubling.
+4. `hydrate` churn on `G`: ~85k decoded commits of 500–800 B, freed but kept as allocator high-water.
+5. `graft-git/src/repo.rs` 16 MiB object cache per `RepoHandle`, per thread (walk + promotion + refs).
+6. `Included::{walked, shown}` + `EmittedOrder`: ~12 MB at 85k, by design.
+Why git/git and not the synthetic 100k: real messages and identities are larger, so (2) and (4) scale with commit size.
+
+## NOTES
+
+- Context compacted once near the end (after commit b040bb8, before this section).
