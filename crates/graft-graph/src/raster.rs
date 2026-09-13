@@ -23,6 +23,7 @@
 //! the terminal's text palette, so the Unicode tier's odd-column dashing
 //! (low colour depth only) has no pixel counterpart.
 
+pub mod cache;
 mod label;
 mod node;
 

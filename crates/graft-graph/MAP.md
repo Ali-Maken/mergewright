@@ -105,3 +105,16 @@ One line per public item. Update when a public item changes.
 - `Marker` (struct) — the `+N` column: `column`, `folded`.
 - `RasterError` (enum) — `EmptyPalette`, `TooLarge`.
 - `CELLS_PER_LANE` (const) — cells per lane column (2), matching the Unicode tier.
+
+## raster::cache
+- `StripCache` (struct) — bounded LRU of rasterised strips keyed on (row range, layout hash, theme id, cell size) (DESIGN.md §3.8).
+- `StripCache::new` / `capacity_for` (fn) — make one; strips a viewport plus buffer needs at any offset.
+- `StripCache::strips_for` (fn) — aligned strip ranges covering a viewport.
+- `StripCache::get` (fn) — a strip from the cache, rasterised on a miss; refuses a misaligned strip.
+- `StripCache::flush` (fn) — drop everything on theme, cell-size, re-detection or resize.
+- `StripCache::len`, `is_empty`, `resident_bytes`, `stats`, `strip_rows` (fn) — introspection.
+- `STRIP_ROWS` (const) — 32, chosen by measurement.
+- `Flush` (enum) — `Theme`, `CellSize`, `Redetection`, `Resize`.
+- `CacheError` (enum) — `Misaligned`, `Raster`.
+- `CacheStats` (struct) — `hits`, `rasterised`, `evicted`, `flushes`.
+- `layout_hash` (fn) — hash of what the rasteriser draws from a strip, colours and cell size aside.

@@ -250,6 +250,7 @@ entry is (CLAUDE.md).*
 ## m1-the-graph/22 — rasteriser
 - Node style is defined twice: `graft_ui::graph_column::NodeKind` (Unicode glyphs) and `graft_graph::raster::Ring` (pixels), same six variants. `ui` depends on `graph`, so `NodeKind` could become `Ring` (or map to it); left for the pixel-output wiring ticket (24) to decide.
 - `CELLS_PER_LANE` (= 2) is declared in both `graft-ui` and `graft-graph::raster`; they must agree or pixels drift from text. Same fix: `ui` re-uses `graph`'s.
+- Strip cache (m1/23) has no owner yet: nothing calls `StripCache::flush` on 21's resize / theme re-query / re-detection events. Wiring lands with the pixel output (24). Until then the key alone (theme colours, cell size, width in the layout hash) already keeps stale strips from being hit.
 - The raster tests copy the 12 lane hues from `graft-ui/src/theme/lanes.rs` (`graph` cannot see `ui`). Palette colour does not affect any assertion except the snapshot's slot letters.
 - Pixel shots are rendered at the 17×37 cell only; how they look at other cell sizes (e.g. 8×16 on a small font) is unjudged.
 - Render time measured on the fast tier only: 32 rows × 5 lanes at 17×37, Apple M5, median 1.38 ms release / 13.4 ms debug. Wide strips (many lanes) unmeasured; the frame-budget ticket (30) owns it.
