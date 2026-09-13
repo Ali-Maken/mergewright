@@ -1,6 +1,6 @@
 # m1-the-graph/44 — The lane cap follows the terminal's width
 
-Status: blocked — amended by ADR-0025 (Proposed); waits on the user approving it
+Status: ready
 Build with: **Sonnet** (medium) — config type change, one breakpoint function with a clamp, wiring
 Needs: none (independent of 39; conductor may run it in parallel). `pins-are-priorities-the-cap-holds` overlaps this on `Compaction` and the two `view` callers — run that one after this.
 Blocked by: 39

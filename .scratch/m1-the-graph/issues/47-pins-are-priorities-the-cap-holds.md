@@ -1,9 +1,9 @@
 # m1-the-graph/47 — Pins are priorities: the lane cap holds and the rail is never cut by the thread
 
-Status: blocked — waits on the user approving ADR-0025
+Status: ready
 Build with: **Sonnet** (medium) — the order, the type and the properties are decided (ADR-0025); the work is one admission loop, a type rename through two callers, tests and captures. Property tests judge it, so not Fable; nothing here is concurrency or a git write, so not Opus.
 Needs: none. Overlaps `lane-cap-follows-width` (44) on `Compaction` and the two `view` callers — sequence after 44, don't run in parallel.
-Blocked by: 44, ADR-0025 approval
+Blocked by: 40, 44
 Leaves runnable: yes — folding on a merge train obeys the cap; the header count is exact; the rail is in the last graph column on every row.
 
 Finding (ticket 39 notes, KNOWN_GAPS "A selection on a merge train pins its whole thread"): after `j j` on git/git 20 columns are kept under a cap of 8, the graph column is cut at half the screen, the rail with it, header `+2 lanes`. Cause: ticket 16 made every thread column a veto against folding; a set of vetoes has no bound. ADR-0025 (Proposed): the cap is a budget, pins are priorities.
@@ -57,6 +57,9 @@ Callers to update: `view::graph_view`, `view::strips::pixel_rows`, every test th
 - [ ] pty captures, release binary, `docs/shots/39-capture.py` reused: `docs/shots/<NN>-git-git-80x24-after-jj.txt` (rail on 21/21 rows in the last graph column, header `+N lanes` N ≥ 10, no row wider than 40 graph cells), `<NN>-many-lanes-80x24.txt` (`+6 lanes`), `<NN>-many-lanes-120x40.txt` (no rail, no count), `<NN>-seen-120-unicode.txt` after `j j` (for the user's eye check alongside 39/40's). Report paths only; the user judges by eye.
 - [ ] TESTING.md rows as in Scope. KNOWN_GAPS rows as in Scope. MAP.md updated. Gates pass.
 - Report: cause fixed or symptom hidden, and what it costs the user (ADR-0025 says: a folded thread column shows as coloured stubs, not an open lane).
+
+- [ ] **The header's `+N lanes` stays exact** (user, 2026-09-13): for every rendered window, N equals the number of folded columns, first frame and after `j j`; a test asserts it.
+- [ ] **User check before close** (user, 2026-09-13): capture git/git `seen` at 120 columns and at 80×24 after `j j`, straight to files under `docs/shots/47-*` (Unicode tier and pixel tier, since 40 has landed). Leave Status `done — user check pending (47 captures)`; the user judges both by eye before 40 or 47 closes.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test`

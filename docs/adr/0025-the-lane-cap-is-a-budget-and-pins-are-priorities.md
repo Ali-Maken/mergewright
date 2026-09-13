@@ -1,7 +1,7 @@
 # The lane cap is a budget; pins are priorities, not vetoes
 
-Status: **Proposed** (planner-fable, 2026-09-13, spec-only pass after ticket
-39; needs the user's OK before the git/git `seen` eye check at 120 columns).
+Status: **Accepted** (user, 2026-09-13; planner-fable, spec-only pass after
+ticket 39).
 Changes DESIGN.md §3.5's "never fold … a lane on the ancestry path of the
 currently selected commit". ADR-0022 said the fold ranking was unchanged; this
 is why it is a new ADR, not an addendum.
@@ -89,3 +89,10 @@ row, not planned for M1.
 The user's eye on git/git `seen` at 120 columns after 39, 40 and this: if a
 folded thread reads as "my selection's history vanished", promote class 5
 above class 4, or above class 2 with the rail-node drawing built.
+
+## User notes on approval (2026-09-13)
+
+- "The veto-versus-budget diagnosis is right and the residual is honestly logged."
+- The header's `+N lanes` must stay exact after this change (ticket 47 acceptance).
+- After 40 and 47 land: capture git/git `seen` at 120 columns and at 80×24 after `j j`; the user judges both by eye before either ticket closes.
+- 39's bar of at least 10 folded lanes at 80×24 stands; "above 0" was meaningless and "at least 40" came from the wrong model.
