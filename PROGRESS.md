@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — ticket 42 · 63 tickets: 50 done, 10 ready, 1 partial, 1 split, 1 wontfix
+**Current step:** M1 The graph — ticket 39 · 63 tickets: 51 done, 9 ready, 1 partial, 1 split, 1 wontfix
 
 ---
 
@@ -218,6 +218,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-13 · M1/30f seam 4 continuation · opus · done · rows-on-hand check asserts in release, prints counts in debug (ADR-0021 application; symptom of slow debug layout, no user cost); fast 783/783, heavy debug 803/803, release perf 10/10; release frames max 10.9 ms, first paint 30–56 ms, peak RSS 181 MiB; proofs: 4/10 ms limits fail all 9 budget tests, reverted; idle-wake 14/140 over 16 ms at 50k refs (max 19.1) in KNOWN_GAPS; 30c and 30f closed (30c by-eye box left for user's gallery re-walk); ~78k tokens, no compaction
 - 2026-09-13 · M1/37 pixel graph disappears · opus · done · reproduced under pty (release, git/git, pixel): wheel/trackpad scroll left graph blank until j/k; cause: 30b's strip wait assumed the cursor is on screen, wheel moves only the view; now waits only while cursor on screen (cause, no user cost); failing test first; capture docs/shots/37-wheel-scroll-placements.txt (placement timeline, user judges in Ghostty); 784 tests, gates green; ~98k tokens, no compaction
 - 2026-09-13 · M1/38 gallery orientation · fable · done · 3-line banner from frame 1 (stop n/N, group, keys, tier; shows:; differs:), lines ≤80 cols tested; stops regrouped as a progression, TESTING.md renumbered; "three lines on launch" = stop 1 trivial repo (3 commits), banner says so; cost: 3 fewer graph rows in gallery only; captures docs/shots/38-*.txt (user judges); 789 tests, gates green; ~143k tokens (over 80k target), no compaction
+- 2026-09-13 · M1/42 lane 0 one stroke width · sonnet · done · cause confirmed first: Emphasis::Highlighted was a 1.6× width multiplier on the cursor's ancestry, and the cursor starts on row 0 so lane 0 always drew thick (5 px vs 3 px at 17×37); now one width, off-thread alpha 128/255, Highlighted removed (cause, per ADR-0024); captures docs/shots/42-raster-{thread,rings}-on-dark.png (user judges); gates green; ~95k tokens (over 80k target), no compaction
 
 ## Open questions for the M1 checkpoint
 - **By eye (30b):** pixel graph goes blank for one frame on PgDn before rows arrive. User judges whether that's acceptable.
