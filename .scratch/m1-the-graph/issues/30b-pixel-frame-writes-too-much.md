@@ -1,6 +1,6 @@
 # m1-the-graph/30b — A one-row scroll in the pixel tier writes ~336 KB
 
-Status: ready
+Status: partial
 Build with: **Opus** (high) — Kitty protocol, split from 30
 Blocked by: 30
 Leaves runnable: yes — a one-row scroll frame places existing images and transmits at most one new strip.
@@ -32,3 +32,41 @@ Out: Unicode chunk spikes, release-vs-debug assertion policy, tightening proofs 
 
 ## Size
 Under ~80k tokens. Stop with a handoff note rather than compacting.
+
+## Finding (2026-09-13, builder-opus)
+
+Measured with the `frames.rs` `Sink` now splitting Kitty commands by kind (`a=t` + continuation chunks, `a=p`, `a=d,d=i`, `a=d,d=I`), grouped by what woke each frame. Pixel tier, 100k fixture, debug, before any fix (`/tmp/30b/before-debug.txt`):
+
+| Trigger | Frames | Transmits | Transmit bytes | Placements | Deletes | Frees | Bytes/frame |
+|---|---|---|---|---|---|---|---|
+| `j` | 120 | 100 | 43.4 MB | 225 | 2 | 99 | 364 KB |
+| `PageDown` | 240 | 120 | 51.6 MB | 150 | 119 | 115 | 217 KB |
+| `PageUp` | 60 | 33 | 14.2 MB | 35 | 34 | 33 | 239 KB |
+| Window (rows answer) | 268 | 102 | 43.8 MB | 137 | 0 | 94 | 165 KB |
+
+One strip transmit ≈ 434 KB. Frees ≈ transmits in every row: almost every transmit is `KittyImages::ensure_uploaded`'s "same slot (`first_row`), new pixels" path, i.e. the strip `Arc` handed in changed while its rows did not.
+
+**Cause 1 (fixed):** `graft_graph::raster::cache::layout_hash` hashed each row's own `emphasis`. The app sets `Emphasis::Highlighted` on the cursor row, but every row also carries a `thread` whenever something is selected, and under a thread the rasteriser reads only per-column emphasis (`RasterRow::emphasis_at`, `marker`). So every cursor move changed the key of the strip under the old and new cursor, missed, re-rasterised identical pixels, and `KittyImages` freed and retransmitted the slot. Fix: hash the row's `emphasis` only when it has no thread. Fast test: `strip_cache::a_threaded_rows_own_emphasis_changes_neither_pixels_nor_key` (red: rasterised 2, want 1; pixels already equal).
+
+After fix 1 (`/tmp/30b/after1-{debug,release}.txt`, not committed):
+
+| Run | p50 / p99 / max | Keys over 16 ms | Total bytes | `j` frames: transmits, bytes/frame |
+|---|---|---|---|---|
+| debug, before | 65 / 375 / 425 ms | 420/420 | 155 MB | 100 / 120, 364 KB |
+| debug, after 1 | 42 / 96 / 117 ms | 328/420 | 118 MB | 18 / 120, 67 KB |
+| release, after 1 | 7.3 / 15.9 / 19.2 ms | 5/420 | 284 MB | 19 / 120, 71 KB |
+
+(Release writes more in total because it keeps up and draws more frames on page keys: 153 window frames, 287 transmits.)
+
+## Handoff (what remains) — status partial
+
+**Cause 2 (not fixed, not yet named):** page keys and the window answering them still transmit ~1–2 strips per frame, and frees ≈ transmits there too (release: PageDown 240 frames, 298 transmits, 291 frees; Window 153 frames, 287 transmits, 281 frees). So the same `first_row` slot gets new pixels twice per page: once on the key's frame and again when the window arrives. Suspects, in order: (a) `thread` lit columns change when the window changes (`view::thread` runs `Ancestry::of(&window.rows, ..)` over the window only, so rows near the window's edges light differently); (b) `Fold::plan`'s pinned set includes the thread, so `lane_columns`/`marker` change for every strip in view; (c) the key frame draws a strip over rows the old window still covers, then the new window redraws it. Legitimate pixel change (thread following the selection) may be part of it; a double transmit per page is not.
+
+Exact next step: temporarily split `layout_hash` into sub-hashes (lane_columns+marker, per-row commit/edges, thread, ring) and, on a `StripCache::get` miss whose `first_row` was cached before, count which part differed. Run the pixel `frames::` test alone in release with `--nocapture` to a file. Then fix the dominant one and add a fast test for it.
+
+Not done: 50k-refs pixel re-run and 30's table update (after cause 2); `docs/shots/` capture not needed (hash change draws identical pixels, test-proven).
+
+Gotchas: `frames.rs` `Sink` now prints per-trigger `frames: ... trigger=` lines (transmits, transmit_bytes, placements, deletes, frees) — use them. Debug still misses badly; release narrowly (debug-vs-release policy is 30c).
+
+## NOTES
+- No compaction. Stopped at ~60k tokens at a clean point rather than start the cause-2 diagnosis.

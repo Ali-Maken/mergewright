@@ -255,7 +255,8 @@ impl StripCache {
 
 /// A hash of everything in a strip the rasteriser draws from, colours and
 /// cell size aside: per row its commit id, columns, edges, lane identities,
-/// Mistake Radar marker, ring and emphasis; the edges of the row above that
+/// Mistake Radar marker, ring, and emphasis (the thread's lit columns when
+/// it has one, else the row's own); the edges of the row above that
 /// reach into the strip; the strip's width and `+N` marker. Nothing else — a
 /// commit message the rasteriser never reads does not change it.
 ///
@@ -274,8 +275,14 @@ pub fn layout_hash(strip: &Strip<'_>) -> u64 {
         hash_edges(row, &mut hasher);
         row.marker.hash(&mut hasher);
         raster_row.ring.hash(&mut hasher);
-        raster_row.emphasis.hash(&mut hasher);
-        raster_row.thread.hash(&mut hasher);
+        // Under a thread the rasteriser draws per-column emphasis and never
+        // reads the row's own, so hashing it would turn every cursor move
+        // into a miss and a retransmit with identical pixels (30b).
+        match raster_row.thread {
+            Some(thread) => thread.hash(&mut hasher),
+            None => raster_row.emphasis.hash(&mut hasher),
+        }
+        raster_row.thread.is_some().hash(&mut hasher);
     }
     match strip.above {
         Some(above) => {

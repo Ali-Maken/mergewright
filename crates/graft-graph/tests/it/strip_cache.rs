@@ -450,3 +450,56 @@ fn the_uncommitted_row_does_not_count_toward_the_strip_height() {
         Err(CacheError::Misaligned { .. })
     ));
 }
+
+/// m1-the-graph/30b: moving the cursor toggles a row's `emphasis`, but
+/// under a thread the rasteriser draws per-column emphasis and ignores the
+/// row's own. Such a toggle must neither change the pixels nor miss the
+/// cache — before the fix every `j` re-rasterised and retransmitted a strip.
+#[test]
+fn a_threaded_rows_own_emphasis_changes_neither_pixels_nor_key() {
+    use graft_graph::raster::Emphasis;
+    use std::collections::BTreeSet;
+
+    let rows = rows(40);
+    let mut cache = StripCache::new(STRIP_ROWS, 4);
+    let lanes = width_of(&rows);
+    let lit: BTreeSet<usize> = [0].into_iter().collect();
+    let draw = |cache: &mut StripCache, cursor: Option<usize>| {
+        let raster_rows: Vec<RasterRow<'_>> = rows[0..32]
+            .iter()
+            .enumerate()
+            .map(|(index, row)| RasterRow {
+                emphasis: if cursor == Some(index) {
+                    Emphasis::Highlighted
+                } else {
+                    Emphasis::Normal
+                },
+                thread: Some(&lit),
+                ..RasterRow::plain(row)
+            })
+            .collect();
+        let strip = Strip {
+            rows: &raster_rows,
+            above: None,
+            lane_columns: lanes,
+            marker: None,
+            cell_width: CELL.0,
+            cell_height: CELL.1,
+            palette: &PALETTE,
+            muted: MUTED,
+        };
+        let pixels = graft_graph::raster::rasterise(&strip)
+            .expect("rasterises")
+            .pixels;
+        cache.get(0, &strip).expect("rasterises");
+        pixels
+    };
+    let on_row_3 = draw(&mut cache, Some(3));
+    let on_row_4 = draw(&mut cache, Some(4));
+    assert!(
+        on_row_3 == on_row_4,
+        "the row's own emphasis reached pixels"
+    );
+    assert_eq!(cache.stats().rasterised, 1, "a cursor move re-rasterised");
+    assert_eq!(cache.stats().hits, 1);
+}

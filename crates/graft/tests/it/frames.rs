@@ -122,6 +122,13 @@ fn check(tier: RenderingTier, refs: Refs) {
         run.bytes,
     );
 
+    for (trigger, frames, sum) in &run.by_trigger {
+        println!(
+            "frames: tier={tier:?} refs={refs:?} trigger={trigger} frames={frames} totals: bytes={} transmits={} transmit_bytes={} placements={} deletes={} frees={}",
+            sum.bytes, sum.transmits, sum.transmit_bytes, sum.placements, sum.deletes, sum.frees,
+        );
+    }
+
     assert_eq!(sorted.len(), script().len(), "every key got a frame");
     match tier {
         RenderingTier::Pixel => assert!(run.kitty_commands > 0, "the pixel tier drew no images"),
@@ -151,6 +158,8 @@ struct Run {
     kitty_commands: usize,
     /// Every byte the loop wrote.
     bytes: usize,
+    /// Per trigger (key name, `Window`, `Other`): frames, and what they wrote.
+    by_trigger: Vec<(String, usize, Counts)>,
 }
 
 fn scroll(repo: &Path, tier: RenderingTier, refs: Refs) -> Result<Run, String> {
@@ -184,7 +193,7 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs) -> Result<Run, String> {
         inner: &jobs,
         asked: Mutex::default(),
     };
-    let mut wakes = Paced::new(&events, script(), &watching);
+    let mut wakes = Paced::new(&events, script(), &watching, sink.clone());
     let exit = pump(&mut terminal, &mut wakes, &watching, &mut session, state)
         .map_err(|why| format!("the loop failed: {why}"))?;
     if !matches!(exit, Exit::Quit) {
@@ -196,6 +205,7 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs) -> Result<Run, String> {
         return Err(failure);
     }
     let latencies = wakes.latencies()?;
+    let by_trigger = wakes.written_by_trigger();
 
     match jobs.shutdown(Duration::from_secs(10)) {
         Shutdown::Clean => {}
@@ -208,6 +218,7 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs) -> Result<Run, String> {
         latencies,
         kitty_commands: written.kitty_commands,
         bytes: written.bytes,
+        by_trigger,
     })
 }
 
@@ -308,21 +319,156 @@ fn capabilities(tier: RenderingTier) -> Capabilities {
     }
 }
 
-/// The terminal: counts what was written and keeps none of it.
+/// The terminal: counts what was written, by Kitty command kind, and keeps
+/// none of it.
 #[derive(Clone, Default)]
 struct Sink(Arc<Mutex<Written>>);
+
+impl Sink {
+    fn snapshot(&self) -> Counts {
+        self.0.lock().unwrap_or_else(PoisonError::into_inner).counts
+    }
+}
 
 #[derive(Default)]
 struct Written {
     bytes: usize,
     kitty_commands: usize,
+    counts: Counts,
+    parse: Parse,
+    control: Vec<u8>,
+    /// The kind of the command being read, for its payload bytes.
+    current: Option<CommandKind>,
+}
+
+/// Running totals of what was written, by kind.
+#[derive(Clone, Copy, Default, Debug)]
+struct Counts {
+    bytes: usize,
+    /// `a=t` commands: one per transmitted strip.
+    transmits: usize,
+    /// Bytes of transmit commands, continuation chunks included.
+    transmit_bytes: usize,
+    /// `a=p` commands.
+    placements: usize,
+    /// `a=d,d=i`: placements removed.
+    deletes: usize,
+    /// `a=d,d=I`: uploads freed.
+    frees: usize,
+}
+
+impl Counts {
+    fn minus(self, before: Counts) -> Counts {
+        Counts {
+            bytes: self.bytes - before.bytes,
+            transmits: self.transmits - before.transmits,
+            transmit_bytes: self.transmit_bytes - before.transmit_bytes,
+            placements: self.placements - before.placements,
+            deletes: self.deletes - before.deletes,
+            frees: self.frees - before.frees,
+        }
+    }
+
+    fn plus(self, other: Counts) -> Counts {
+        Counts {
+            bytes: self.bytes + other.bytes,
+            transmits: self.transmits + other.transmits,
+            transmit_bytes: self.transmit_bytes + other.transmit_bytes,
+            placements: self.placements + other.placements,
+            deletes: self.deletes + other.deletes,
+            frees: self.frees + other.frees,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+enum CommandKind {
+    Transmit,
+    Other,
+}
+
+/// Where the byte stream is, relative to `ESC _ G <control> [; payload] ESC \`.
+#[derive(Default, Clone, Copy, PartialEq)]
+enum Parse {
+    #[default]
+    Outside,
+    Esc,
+    EscUnderscore,
+    Control,
+    ControlEsc,
+    Payload,
+    PayloadEsc,
+}
+
+impl Written {
+    fn take(&mut self, byte: u8) {
+        if matches!(self.current, Some(CommandKind::Transmit)) {
+            self.counts.transmit_bytes += 1;
+        }
+        self.parse = match (self.parse, byte) {
+            (Parse::Outside | Parse::Esc, 0x1b) => Parse::Esc,
+            (Parse::Esc, b'_') => Parse::EscUnderscore,
+            (Parse::EscUnderscore, b'G') => {
+                self.kitty_commands += 1;
+                self.control.clear();
+                Parse::Control
+            }
+            (Parse::Outside | Parse::Esc | Parse::EscUnderscore, _) => Parse::Outside,
+            (Parse::Control, b';') => {
+                self.classify();
+                Parse::Payload
+            }
+            (Parse::Control, 0x1b) => {
+                self.classify();
+                Parse::ControlEsc
+            }
+            (Parse::Control, _) => {
+                self.control.push(byte);
+                Parse::Control
+            }
+            (Parse::Payload, 0x1b) => Parse::PayloadEsc,
+            (Parse::ControlEsc | Parse::PayloadEsc, b'\\') => {
+                self.current = None;
+                Parse::Outside
+            }
+            (Parse::Payload | Parse::ControlEsc | Parse::PayloadEsc, _) => Parse::Payload,
+        };
+    }
+
+    /// The control keys are in: count the command by kind. A continuation
+    /// chunk (`m=` only) belongs to the transmit before it.
+    fn classify(&mut self) {
+        let control = String::from_utf8_lossy(&self.control).into_owned();
+        let keys: Vec<&str> = control.split(',').collect();
+        let has = |key: &str| keys.contains(&key);
+        if has("a=t") {
+            self.counts.transmits += 1;
+            self.current = Some(CommandKind::Transmit);
+        } else if keys.iter().all(|key| key.starts_with("m=")) {
+            self.current = Some(CommandKind::Transmit);
+        } else if has("a=p") {
+            self.counts.placements += 1;
+            self.current = Some(CommandKind::Other);
+        } else if has("d=i") {
+            self.counts.deletes += 1;
+            self.current = Some(CommandKind::Other);
+        } else if has("d=I") {
+            self.counts.frees += 1;
+            self.current = Some(CommandKind::Other);
+        } else {
+            self.current = Some(CommandKind::Other);
+        }
+    }
 }
 
 impl Write for Sink {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let mut written = self.0.lock().unwrap_or_else(PoisonError::into_inner);
         written.bytes += buf.len();
-        written.kitty_commands += buf.windows(3).filter(|w| w == b"\x1b_G").count();
+        written.counts.bytes += buf.len();
+        for &byte in buf {
+            written.take(byte);
+        }
         Ok(buf.len())
     }
 
@@ -389,6 +535,9 @@ struct Paced<'a, D> {
     /// `drawn[i]`: the frame after `handed[i - 1]` was on the terminal
     /// (`drawn[0]` is the first frame, before any wake).
     drawn: Vec<Instant>,
+    /// `written[i]`: what the terminal had been sent when `drawn[i]` was stamped.
+    written: Vec<Counts>,
+    sink: Sink,
     failure: Option<String>,
 }
 
@@ -397,6 +546,7 @@ impl<'a, D> Paced<'a, D> {
         events: &'a Receiver<AppEvent>,
         keys: Vec<KeyCode>,
         watching: &'a Watching<'a, D>,
+        sink: Sink,
     ) -> Self {
         Self {
             events,
@@ -406,6 +556,8 @@ impl<'a, D> Paced<'a, D> {
             watching,
             handed: Vec::new(),
             drawn: Vec::new(),
+            written: Vec::new(),
+            sink,
             failure: None,
         }
     }
@@ -426,6 +578,34 @@ impl<'a, D> Paced<'a, D> {
             _ => Kind::Other,
         };
         self.hand(kind, Wake::Event(event))
+    }
+
+    /// What the frame after each wake wrote, summed by what woke it: the
+    /// script's key, a window of rows, or another job event.
+    fn written_by_trigger(&self) -> Vec<(String, usize, Counts)> {
+        let keys = script();
+        let mut groups: Vec<(String, usize, Counts)> = Vec::new();
+        for (index, handed) in self.handed.iter().enumerate() {
+            let (Some(before), Some(after)) =
+                (self.written.get(index), self.written.get(index + 1))
+            else {
+                continue;
+            };
+            let name = match handed.kind {
+                Kind::Key(key, _) => format!("{:?}", keys[key]),
+                Kind::Window(_) => "Window".to_owned(),
+                Kind::Other => "Other".to_owned(),
+            };
+            let frame = after.minus(*before);
+            match groups.iter_mut().find(|(group, ..)| *group == name) {
+                Some((_, frames, sum)) => {
+                    *frames += 1;
+                    *sum = sum.plus(frame);
+                }
+                None => groups.push((name, 1, frame)),
+            }
+        }
+        groups
     }
 
     /// Each key's latency: due tick → the frame drawn after it, or after the
@@ -462,6 +642,7 @@ impl<'a, D> Paced<'a, D> {
 impl<D> Wakes for Paced<'_, D> {
     fn next_wake(&mut self) -> Option<Wake> {
         self.drawn.push(Instant::now());
+        self.written.push(self.sink.snapshot());
         if self.next_key < self.keys.len() {
             let wait = self.due.saturating_duration_since(Instant::now());
             if !wait.is_zero() {
