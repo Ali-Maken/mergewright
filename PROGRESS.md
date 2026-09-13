@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M1 The graph** — ticket 22 (31, 07–21 done; 31 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
+**Current step:** **M1 The graph** — ticket 23 (31, 07–22 done; 31 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
 
 ---
 
@@ -173,6 +173,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-13 · M1/19 ASCII tier and override · sonnet · done · ASCII glyph table; F3 drops the tier; headless path when stdout isn't a tty (piped_stdout test); pty script .scratch/m1-the-graph/pty-tier-drop-check.py, termios identical before/after; captures docs/shots/19-ascii-tier-{drop-key,crisscross}.txt; workspace green; commit a51c702 · COMPACTED (twice, before code was written; finished, nothing left to split)
 - 2026-09-13 · M1/20 input mux · opus · done · graft-term input/ own decoder (keys, SGR/X10 mouse, paste, focus) replaces crossterm::event::read; resize from SIGWINCH; ADR-0013 + ARCHITECTURE.md; pty: F2 typeahead during 200 ms probe lands right, resize widens to 110, F3 + M0 termios checks pass; key order proven by socket-pair unit test only, not on screen; capture docs/shots/20-typeahead-f2-during-probe.txt; closed probe-eats-typeahead; logged: 50 ms timeout may split slow SSH replies, on-screen order check, urxvt 1015 mouse; 612 tests; 155k tokens, no compaction; commit 43f0d4a
 - 2026-09-13 · M1/21 resize and redetection · opus · done · graft-term detect/redetect.rs + event_loop/redetect.rs; resize re-queries cell size (silence keeps old size marked assumed), focus re-queries theme (silent focus unchanged, forced theme wins); frames and queries share one stdout lock; pty script pty-redetect-check.py; launch at 0x0/1x1 no panic, termios restored; captures docs/shots/21-*.txt (3); 50 ms SSH gap now worse: split replies mid-session arrive as keys (logged, owner 29), plus rare late-reply mix-up; 628 tests; 132k tokens, no compaction; commit 9a371e1
+- 2026-09-13 · M1/22 rasteriser · opus · done · graft-graph raster.rs (+node, label), graft-core RasterFrame; new dep tiny-skia 0.12 (simd off for stable snapshot bytes; no ADR — check at review); pixel tests: untouched pixels 0, anti-aliased fork curve, 6 ring styles, +N label, dim/highlight emphasis built now; images always RGB so 13's dashing n/a; 32x5 lanes at 17x37: 1.38 ms release; PNGs docs/shots/22-raster-*.png (7); gaps: node style + CELLS_PER_LANE defined twice, 17x37 only; 635 tests; 136k tokens, no compaction; commit 6233a2a
 
 ## Open questions for the M1 checkpoint
 
