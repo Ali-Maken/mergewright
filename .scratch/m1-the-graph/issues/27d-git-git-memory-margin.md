@@ -13,6 +13,8 @@ Why: 27b landed fix B (no cg RSS 305 → 290–294, footprint 204 → 173; cg 25
 - `crates/graft-git/MAP.md`, `crates/graft/MAP.md`
 
 ## Scope
+**Update from 27c (conductor, 2026-09-13):** C's call site landed in 27c (commits f791d7b, 983184c): no cg peak RSS 250 MiB, footprint 162–164, 3 runs, no hang. Item 1 is now: measure C with a commit-graph (3×) and fill the before/after table from 27c's numbers.
+
 In (27b "Next steps" 2–5):
 1. Re-apply C's call site (`walk.next_ids` in `graft::history::topological_order`); measure 3× RSS and footprint, cg and no cg.
 2. Wire D (`handle_with_object_cache` for the promotion handle); measure 3×, watch `G` time.
