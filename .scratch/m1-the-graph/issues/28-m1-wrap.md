@@ -16,6 +16,7 @@ Why: M1's checkpoint is the user opening `git/git` and the merge-mistake fixture
 ## Scope
 In:
 - TESTING.md's manual matrix complete for M1: Ghostty, Kitty, WezTerm, iTerm2 (pixel); Terminal.app, Alacritty, VS Code, Zed (Unicode); tmux inside each; one SSH session. Pass condition per PROMPT.md §7.1: correct graph **or** clean fallback, never a broken screen or stray escapes. Merge the rows 08, 24, 25 and 29 filled in.
+- **Two verdicts per terminal, not one** (user, 2026-09-13): (1) "correct or clean fallback" — the PROMPT.md §7.1 pass condition; (2) "reads well" — is the shape of history obvious at a glance (the M1 promise). Verdict 2 is the user's alone: leave it blank for the user, never fill it in. Put the Unicode tier in **Zed and VS Code** first and mark them as the user's priority (where the user works daily).
 - `scripts/m1-checkpoint.sh <scenario>`: locates or clones `git/git`, builds the merge-mistake fixtures, prints and runs the command for each; says what to look at (default branch a straight line, where a merge went wrong, lanes distinguishable).
 - KNOWN_GAPS sweep: every M1-owned row closed, or re-owned to a named later milestone with a reason. No row silently carried.
 - The heavy-code clippy line (`--features heavy-tests`) added to `.claude/agents/reviewer.md`'s checks; closes that KNOWN_GAPS row.
