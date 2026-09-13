@@ -10,9 +10,9 @@
 //! honest about being provisional.
 
 use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashSet};
+use std::collections::BinaryHeap;
 
-use graft_core::oid::Oid;
+use graft_core::commit_handle::{CommitHandle, HandleSet, Parents};
 
 use super::node::{Key, Node, NodeError, Nodes};
 
@@ -59,7 +59,7 @@ impl Eq for Queued {}
 /// A date-ordered walk.
 pub(crate) struct Dated {
     frontier: BinaryHeap<Queued>,
-    seen: HashSet<Oid>,
+    seen: HandleSet,
     follow: Follow,
 }
 
@@ -67,13 +67,13 @@ impl Dated {
     /// Seeds the walk with the commits it starts from.
     pub(crate) fn new(
         nodes: &impl Nodes,
-        tips: &[Oid],
+        tips: &[CommitHandle],
         follow: Follow,
         reads: &mut u64,
     ) -> Result<Self, NodeError> {
         let mut walk = Dated {
             frontier: BinaryHeap::new(),
-            seen: HashSet::new(),
+            seen: HandleSet::new(),
             follow,
         };
         for &tip in tips {
@@ -88,30 +88,35 @@ impl Dated {
         &mut self,
         nodes: &impl Nodes,
         reads: &mut u64,
-    ) -> Result<Option<(Oid, Vec<Oid>)>, NodeError> {
+    ) -> Result<Option<(CommitHandle, Parents)>, NodeError> {
         let Some(top) = self.frontier.pop() else {
             return Ok(None);
         };
-        let parents: &[Oid] = match self.follow {
-            Follow::AllParents => &top.node.parents,
-            Follow::FirstParentOnly => &top.node.parents[..top.node.parents.len().min(1)],
+        let follow = match self.follow {
+            Follow::AllParents => top.node.parents.len(),
+            Follow::FirstParentOnly => 1,
         };
-        for &parent in parents {
+        for parent in top.node.parents.iter().take(follow) {
             self.push(nodes, parent, reads)?;
         }
         // The parents as walked, untrimmed: first-parent order follows only
         // the first, but the commit still has the others.
-        Ok(Some((top.key.id, top.node.parents)))
+        Ok(Some((top.key.handle, top.node.parents)))
     }
 
-    fn push(&mut self, nodes: &impl Nodes, id: Oid, reads: &mut u64) -> Result<(), NodeError> {
-        if !self.seen.insert(id) {
+    fn push(
+        &mut self,
+        nodes: &impl Nodes,
+        handle: CommitHandle,
+        reads: &mut u64,
+    ) -> Result<(), NodeError> {
+        if !self.seen.insert(handle) {
             return Ok(());
         }
-        let node = nodes.node(id)?;
+        let node = nodes.node(handle)?;
         *reads += 1;
         self.frontier.push(Queued {
-            key: Key::of(&node),
+            key: Key::of(nodes, handle, &node),
             node,
         });
         Ok(())

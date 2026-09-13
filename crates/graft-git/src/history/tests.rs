@@ -17,7 +17,7 @@ use std::sync::Arc;
 use graft_core::oid::Oid;
 use graft_fixtures::Shape;
 
-use super::node::{MapNodes, Node, Nodes};
+use super::node::{MapNodes, Nodes};
 use super::simple::{Dated, Follow};
 use super::topological::Topological;
 use super::{CHUNK, Chunk, CommitTable, Order, Walk, WalkError, read_commit};
@@ -125,6 +125,92 @@ fn topological_order_agrees_with_git_on_the_criss_cross_fixture() {
         all(&mut walk),
         rev_list(scratch.path(), &["--date-order", "--all"])
     );
+}
+
+/// Makes a commit with `git commit-tree` on `parents` and returns its id.
+fn commit_tree(dir: &Path, parents: &[&str], message: &str) -> String {
+    let mut args = vec!["commit-tree", "HEAD^{tree}"];
+    for parent in parents {
+        args.extend_from_slice(&["-p", parent]);
+    }
+    args.extend_from_slice(&["-m", message]);
+    let stdout = graft_fixtures::git::run(dir, &args).expect("git makes a commit");
+    String::from_utf8(stdout)
+        .expect("git prints ids as ASCII")
+        .trim()
+        .to_owned()
+}
+
+/// Two commits the commit-graph does not know about, on a new branch: a
+/// child of `HEAD`, then a merge of that child with the root commit, which
+/// the graph does hold. Dated now, after every fixture commit, so git's date order is
+/// still the one topological order.
+fn commits_after_the_graph(dir: &Path) {
+    let roots = graft_fixtures::git::run(dir, &["rev-list", "--max-parents=0", "HEAD"])
+        .expect("git lists the root commits");
+    let roots = String::from_utf8(roots).expect("ASCII");
+    let root = roots.lines().next().expect("a history has a root");
+    let child = commit_tree(dir, &["HEAD"], "after the graph");
+    let merge = commit_tree(dir, &[&child, root], "merge after the graph");
+    graft_fixtures::git::run(dir, &["update-ref", "refs/heads/late", &merge])
+        .expect("git moves a ref");
+}
+
+#[test]
+fn commits_made_after_the_commit_graph_walk_in_gits_order() {
+    // The overflow path: the graph covers the fixture, not the two commits
+    // made since. Those are read from their objects with an unknown
+    // generation, so they are explored before anything below them is
+    // confirmed.
+    let scratch = with_commit_graph(Shape::CrissCrossMerge);
+    commits_after_the_graph(scratch.path());
+    let shared = SharedRepo::open(scratch.path()).expect("the fixture opens");
+    let handle = shared.handle();
+    let table = table(&handle);
+    let mut walk =
+        Walk::all_refs(&handle, Order::Topological, Arc::clone(&table)).expect("the walk starts");
+    assert_eq!(walk.order_in_force(), Order::Topological);
+
+    assert_eq!(
+        all(&mut walk),
+        rev_list(scratch.path(), &["--date-order", "--all"])
+    );
+    assert_eq!(table.overflow_len(), 2, "only the two late commits");
+}
+
+#[test]
+fn a_two_layer_commit_graph_chain_walks_in_gits_order() {
+    let scratch = graft_fixtures::copy_into_temp(Shape::CrissCrossMerge);
+    let dir = scratch.path();
+    graft_fixtures::git::run(dir, &["commit-graph", "write", "--reachable", "--split"])
+        .expect("git writes the base layer");
+    commits_after_the_graph(dir);
+    graft_fixtures::git::run(
+        dir,
+        &["commit-graph", "write", "--reachable", "--split=no-merge"],
+    )
+    .expect("git writes a second layer");
+    let chain = graft_fixtures::git::run(
+        dir,
+        &[
+            "rev-parse",
+            "--git-path",
+            "objects/info/commit-graphs/commit-graph-chain",
+        ],
+    )
+    .expect("git names the chain file");
+    let chain = dir.join(String::from_utf8(chain).expect("ASCII").trim());
+    let layers = std::fs::read_to_string(&chain).expect("the chain file is there");
+    assert_eq!(layers.lines().count(), 2, "two layers, not one merged file");
+
+    let shared = SharedRepo::open(dir).expect("the fixture opens");
+    let handle = shared.handle();
+    let table = table(&handle);
+    let mut walk =
+        Walk::all_refs(&handle, Order::Topological, Arc::clone(&table)).expect("the walk starts");
+    assert_eq!(walk.order_in_force(), Order::Topological);
+    assert_eq!(all(&mut walk), rev_list(dir, &["--date-order", "--all"]));
+    assert_eq!(table.overflow_len(), 0, "both layers cover every commit");
 }
 
 #[test]
@@ -446,38 +532,35 @@ fn oid(n: u8) -> Oid {
 }
 
 /// A graph from `(id, parents, time, generation)` tuples.
-fn graph(rows: &[(u8, &[u8], i64, u64)]) -> MapNodes {
+fn graph(rows: &[(u8, &[u8], i64, u32)]) -> MapNodes {
     let mut nodes = HashMap::new();
     for &(id, parents, time, generation) in rows {
         nodes.insert(
             oid(id),
-            Node {
-                id: oid(id),
-                parents: parents.iter().map(|&p| oid(p)).collect(),
-                time,
-                generation,
-            },
+            (parents.iter().map(|&p| oid(p)).collect(), time, generation),
         );
     }
-    MapNodes(nodes)
+    MapNodes::new(nodes)
 }
 
 fn dated(nodes: &impl Nodes, tips: &[Oid], follow: Follow) -> Vec<Oid> {
     let mut reads = 0;
-    let mut walk = Dated::new(nodes, tips, follow, &mut reads).expect("the walk starts");
+    let tips: Vec<_> = tips.iter().map(|tip| nodes.handle(tip)).collect();
+    let mut walk = Dated::new(nodes, &tips, follow, &mut reads).expect("the walk starts");
     let mut ids = Vec::new();
-    while let Some((id, _)) = walk.next(nodes, &mut reads).expect("the graph is complete") {
-        ids.push(id);
+    while let Some((handle, _)) = walk.next(nodes, &mut reads).expect("the graph is complete") {
+        ids.push(nodes.id(handle));
     }
     ids
 }
 
 fn topological(nodes: &impl Nodes, tips: &[Oid]) -> Vec<Oid> {
     let mut reads = 0;
-    let mut sort = Topological::new(nodes, tips, &mut reads).expect("the walk starts");
+    let tips: Vec<_> = tips.iter().map(|tip| nodes.handle(tip)).collect();
+    let mut sort = Topological::new(nodes, &tips, &mut reads).expect("the walk starts");
     let mut ids = Vec::new();
-    while let Some((id, _)) = sort.next(nodes, &mut reads).expect("the graph is complete") {
-        ids.push(id);
+    while let Some((handle, _)) = sort.next(nodes, &mut reads).expect("the graph is complete") {
+        ids.push(nodes.id(handle));
     }
     ids
 }

@@ -11,10 +11,13 @@
 
 use std::collections::{BinaryHeap, HashMap};
 
+use std::sync::Arc;
+
+use graft_core::commit_handle::CommitHandle;
 use graft_core::oid::Oid;
 
-use super::node::{Node, NodeError, Nodes};
-use super::{WalkError, open_nodes};
+use super::node::{Node, NodeError, Nodes, RepoNodes};
+use super::{CommitTable, WalkError};
 use crate::repo::RepoHandle;
 
 /// How many commits a branch has that its upstream does not, and the other
@@ -56,7 +59,10 @@ pub fn ahead_behind(
     if local == upstream {
         return Ok(AheadBehind::default());
     }
-    let nodes = open_nodes(handle.gix())?;
+    let table = CommitTable::open(handle).map_err(|source| WalkError::CommitGraph {
+        source: Box::new(source),
+    })?;
+    let nodes = RepoNodes::new(handle.gix(), Arc::new(table));
     Ok(count(&nodes, local, upstream)?)
 }
 
@@ -79,15 +85,18 @@ pub(crate) fn count(
         return Ok(counts);
     }
     let mut paint = Paint::default();
-    paint.reach(nodes, local, LOCAL)?;
-    paint.reach(nodes, upstream, UPSTREAM)?;
+    paint.reach(nodes, nodes.handle(&local), LOCAL)?;
+    paint.reach(nodes, nodes.handle(&upstream), UPSTREAM)?;
 
     while paint.unshared > 0 {
-        let Some((_, id)) = paint.queue.pop() else {
+        let Some((_, id, handle)) = paint.queue.pop() else {
             break;
         };
         let (flags, parents) = {
-            let entry = paint.seen.get_mut(&id).ok_or(NodeError::Missing { id })?;
+            let entry = paint
+                .seen
+                .get_mut(&handle)
+                .ok_or(NodeError::Missing { id })?;
             entry.queued = false;
             (entry.flags, entry.node.parents.clone())
         };
@@ -102,7 +111,7 @@ pub(crate) fn count(
                 paint.unshared -= 1;
             }
         }
-        for parent in parents {
+        for parent in parents.iter() {
             paint.reach(nodes, parent, flags)?;
         }
     }
@@ -120,8 +129,9 @@ struct Seen {
 /// visit, newest first.
 #[derive(Default)]
 struct Paint {
-    seen: HashMap<Oid, Seen>,
-    queue: BinaryHeap<(i64, Oid)>,
+    seen: HashMap<CommitHandle, Seen>,
+    /// Date, then id (the tie-break), then the handle the id has.
+    queue: BinaryHeap<(i64, Oid, CommitHandle)>,
     /// Queued commits not yet known to be reached by both sides. The walk is
     /// over when this reaches zero.
     unshared: usize,
@@ -129,8 +139,13 @@ struct Paint {
 
 impl Paint {
     /// Marks `id` as reached by `flags`, queueing it if that is news.
-    fn reach(&mut self, nodes: &impl Nodes, id: Oid, flags: u8) -> Result<(), NodeError> {
-        if let Some(entry) = self.seen.get_mut(&id) {
+    fn reach(
+        &mut self,
+        nodes: &impl Nodes,
+        handle: CommitHandle,
+        flags: u8,
+    ) -> Result<(), NodeError> {
+        if let Some(entry) = self.seen.get_mut(&handle) {
             let grown = entry.flags | flags;
             if grown == entry.flags {
                 return Ok(());
@@ -144,7 +159,7 @@ impl Paint {
                 // a child that also reaches it. Visit it again so what it
                 // passes on to its own parents is right.
                 entry.queued = true;
-                self.queue.push((entry.node.time, id));
+                self.queue.push((entry.node.time, nodes.id(handle), handle));
                 if grown != BOTH {
                     self.unshared += 1;
                 }
@@ -152,13 +167,13 @@ impl Paint {
             entry.flags = grown;
             return Ok(());
         }
-        let node = nodes.node(id)?;
-        self.queue.push((node.time, id));
+        let node = nodes.node(handle)?;
+        self.queue.push((node.time, nodes.id(handle), handle));
         if flags != BOTH {
             self.unshared += 1;
         }
         self.seen.insert(
-            id,
+            handle,
             Seen {
                 node,
                 flags,
@@ -183,18 +198,17 @@ mod tests {
     /// A graph from `(commit, parents)` pairs; commit `n` is dated `n`, so
     /// higher numbers are newer.
     fn graph(edges: &[(u8, &[u8])]) -> MapNodes {
-        MapNodes(
+        MapNodes::new(
             edges
                 .iter()
                 .map(|&(id, parents)| {
                     (
                         oid(id),
-                        Node {
-                            id: oid(id),
-                            parents: parents.iter().map(|&p| oid(p)).collect(),
-                            time: i64::from(id),
-                            generation: Node::UNKNOWN_GENERATION,
-                        },
+                        (
+                            parents.iter().map(|&p| oid(p)).collect(),
+                            i64::from(id),
+                            Node::UNKNOWN_GENERATION,
+                        ),
                     )
                 })
                 .collect::<HashMap<_, _>>(),

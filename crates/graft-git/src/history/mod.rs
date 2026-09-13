@@ -35,13 +35,13 @@ mod topological;
 use std::sync::Arc;
 
 use graft_core::commit::{Commit, Identity, Timestamp};
-use graft_core::commit_handle::{Link, Parents};
+use graft_core::commit_handle::{CommitHandle, Link, Parents};
 use graft_core::oid::Oid;
 
 use crate::repo::{RepoHandle, TipsError};
 use node::{Nodes, RepoNodes};
 use simple::{Dated, Follow};
-use topological::Topological;
+use topological::{Sorted, Topological};
 
 pub use divergence::{AheadBehind, ahead_behind};
 pub use node::NodeError;
@@ -120,6 +120,8 @@ pub struct Walk<'a> {
 /// The three orderings, behind one call.
 enum Sequence {
     Topological(Topological),
+    /// Topological with no commit-graph: read the range, then emit.
+    Sorted(Sorted),
     Dated(Dated),
 }
 
@@ -157,8 +159,9 @@ impl<'a> Walk<'a> {
         table: Arc<CommitTable>,
     ) -> Result<Self, WalkError> {
         let repo = handle.gix();
-        let nodes = open_nodes(repo)?;
+        let nodes = RepoNodes::new(repo, Arc::clone(&table));
         let commit_graph = nodes.has_commit_graph();
+        let tips = handles(&nodes, tips);
 
         // ADR-0008: without generation numbers the incremental topological
         // sort cannot confirm anything until it has read everything, so
@@ -172,14 +175,14 @@ impl<'a> Walk<'a> {
         let mut reads = 0;
         let sequence = match in_force {
             Order::Topological => {
-                Sequence::Topological(Topological::new(&nodes, tips, &mut reads)?)
+                Sequence::Topological(Topological::new(&nodes, &tips, &mut reads)?)
             }
             Order::CommitDate => {
-                Sequence::Dated(Dated::new(&nodes, tips, Follow::AllParents, &mut reads)?)
+                Sequence::Dated(Dated::new(&nodes, &tips, Follow::AllParents, &mut reads)?)
             }
             Order::FirstParent => Sequence::Dated(Dated::new(
                 &nodes,
-                tips,
+                &tips,
                 Follow::FirstParentOnly,
                 &mut reads,
             )?),
@@ -217,10 +220,18 @@ impl<'a> Walk<'a> {
         table: Arc<CommitTable>,
     ) -> Result<Self, WalkError> {
         let repo = handle.gix();
-        let nodes = open_nodes(repo)?;
+        let nodes = RepoNodes::new(repo, Arc::clone(&table));
         let commit_graph = nodes.has_commit_graph();
+        let tips = handles(&nodes, tips);
         let mut reads = 0;
-        let sequence = Sequence::Topological(Topological::new(&nodes, tips, &mut reads)?);
+        // With a commit-graph this is the incremental sort `from_tips` runs.
+        // Without one that sort would expand the whole range before its first
+        // emission anyway; `Sorted` does the same in dense arrays.
+        let sequence = if commit_graph {
+            Sequence::Topological(Topological::new(&nodes, &tips, &mut reads)?)
+        } else {
+            Sequence::Sorted(Sorted::new(&tips))
+        };
         Ok(Walk {
             nodes,
             repo,
@@ -297,8 +308,9 @@ impl<'a> Walk<'a> {
         stop: &dyn Fn() -> bool,
     ) -> Result<Chunk, WalkError> {
         let mut commits = Vec::new();
-        let paused = self.advance(limit, stop, |repo, id, _parents| {
-            commits.push(hydrate(repo, id)?);
+        let table = Arc::clone(&self.table);
+        let paused = self.advance(limit, stop, |repo, commit, _parents| {
+            commits.push(hydrate(repo, table.id_of(commit))?);
             Ok(())
         })?;
         Ok(Chunk {
@@ -326,15 +338,8 @@ impl<'a> Walk<'a> {
         stop: &dyn Fn() -> bool,
     ) -> Result<LinkChunk, WalkError> {
         let mut links = Vec::new();
-        let table = Arc::clone(&self.table);
-        let paused = self.advance(limit, stop, |_, id, parents| {
-            links.push(Link {
-                commit: table.intern(&id),
-                parents: parents
-                    .iter()
-                    .map(|parent| table.intern(parent))
-                    .collect::<Parents>(),
-            });
+        let paused = self.advance(limit, stop, |_, commit, parents| {
+            links.push(Link { commit, parents });
             Ok(())
         })?;
         Ok(LinkChunk {
@@ -350,7 +355,7 @@ impl<'a> Walk<'a> {
         &mut self,
         limit: usize,
         stop: &dyn Fn() -> bool,
-        mut emit: impl FnMut(&'a gix::Repository, Oid, Vec<Oid>) -> Result<(), WalkError>,
+        mut emit: impl FnMut(&'a gix::Repository, CommitHandle, Parents) -> Result<(), WalkError>,
     ) -> Result<Paused, WalkError> {
         let mut emitted = 0;
         loop {
@@ -362,6 +367,7 @@ impl<'a> Walk<'a> {
             }
             let next = match &mut self.sequence {
                 Sequence::Topological(sort) => sort.next(&self.nodes, &mut self.reads)?,
+                Sequence::Sorted(sort) => sort.next(&self.nodes, &mut self.reads)?,
                 Sequence::Dated(walk) => walk.next(&self.nodes, &mut self.reads)?,
             };
             match next {
@@ -399,15 +405,9 @@ pub fn read_commit(handle: &RepoHandle, id: Oid) -> Result<Commit, WalkError> {
     hydrate(handle.gix(), id)
 }
 
-/// The repository's commits as [`node`]s, through the commit-graph file when
-/// there is one `gix` will use.
-fn open_nodes(repo: &gix::Repository) -> Result<RepoNodes<'_>, WalkError> {
-    let graph = repo
-        .commit_graph_if_enabled()
-        .map_err(|source| WalkError::CommitGraph {
-            source: Box::new(source),
-        })?;
-    Ok(RepoNodes::new(repo, graph))
+/// The walk's tips as handles, each interned once.
+fn handles(nodes: &impl Nodes, tips: &[Oid]) -> Vec<CommitHandle> {
+    tips.iter().map(|tip| nodes.handle(tip)).collect()
 }
 
 /// Reads the whole commit object for one emitted id.
@@ -455,22 +455,25 @@ fn hydrate(repo: &gix::Repository, id: Oid) -> Result<Commit, WalkError> {
 /// # Errors
 /// [`WalkError`] if a commit on the chain cannot be read.
 pub fn first_parent_merges(handle: &RepoHandle, tip: Oid) -> Result<usize, WalkError> {
-    let nodes = open_nodes(handle.gix())?;
+    let table = CommitTable::open(handle).map_err(|source| WalkError::CommitGraph {
+        source: Box::new(source),
+    })?;
+    let nodes = RepoNodes::new(handle.gix(), Arc::new(table));
 
     let mut merges = 0;
-    let mut seen = std::collections::HashSet::new();
-    let mut at = Some(tip);
-    while let Some(id) = at {
+    let mut seen = graft_core::commit_handle::HandleSet::new();
+    let mut at = Some(nodes.handle(&tip));
+    while let Some(commit) = at {
         // A first-parent chain cannot revisit a commit in a well-formed
         // repository, but a corrupt one must not spin here for ever.
-        if !seen.insert(id) {
+        if !seen.insert(commit) {
             break;
         }
-        let node = nodes.node(id)?;
+        let node = nodes.node(commit)?;
         if node.parents.len() > 1 {
             merges += 1;
         }
-        at = node.parents.first().copied();
+        at = node.parents.first();
     }
     Ok(merges)
 }

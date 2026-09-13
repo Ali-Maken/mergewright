@@ -58,7 +58,7 @@ impl CommitTable {
     }
 
     /// A table over `graph`, with an overflow for ids of `hash_len` bytes.
-    fn with_graph(graph: Option<gix::commitgraph::Graph>, hash_len: usize) -> Self {
+    pub(crate) fn with_graph(graph: Option<gix::commitgraph::Graph>, hash_len: usize) -> Self {
         let graph_count = graph
             .as_ref()
             .map_or(0, gix::commitgraph::Graph::num_commits);
@@ -74,6 +74,12 @@ impl CommitTable {
     #[must_use]
     pub fn has_commit_graph(&self) -> bool {
         self.graph.is_some()
+    }
+
+    /// The commit-graph file behind the low handles, if there is one: the walk
+    /// reads parents, dates and generations straight out of it.
+    pub(crate) fn graph(&self) -> Option<&gix::commitgraph::Graph> {
+        self.graph.as_ref()
     }
 
     /// How many commits the commit-graph covers; 0 without one.

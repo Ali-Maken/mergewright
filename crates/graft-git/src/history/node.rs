@@ -11,16 +11,19 @@
 use std::cmp::Ordering;
 #[cfg(test)]
 use std::collections::HashMap;
+use std::sync::Arc;
 
+use graft_core::commit_handle::{CommitHandle, Parents};
 use graft_core::oid::Oid;
 
-/// A commit reduced to the four things an ordering depends on.
+use super::table::CommitTable;
+
+/// A commit reduced to the three things an ordering depends on, besides its
+/// id: which commit it is travels as a [`CommitHandle`] beside it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Node {
-    /// The commit's id.
-    pub(crate) id: Oid,
     /// The parents, first parent first.
-    pub(crate) parents: Vec<Oid>,
+    pub(crate) parents: Parents,
     /// The committer date, in seconds since the Unix epoch.
     pub(crate) time: i64,
     /// The commit-graph generation number: one more than the largest
@@ -30,15 +33,16 @@ pub(crate) struct Node {
     /// commit-graph file — which is also the right value for the ordering to
     /// use, because a commit whose generation is unknown could be a child of
     /// anything and so must be explored before anything can be confirmed.
-    pub(crate) generation: u64,
+    /// It is git's `GENERATION_NUMBER_INFINITY`.
+    pub(crate) generation: u32,
 }
 
 impl Node {
     /// The generation of a commit the commit-graph does not cover.
-    pub(crate) const UNKNOWN_GENERATION: u64 = u64::MAX;
+    pub(crate) const UNKNOWN_GENERATION: u32 = u32::MAX;
 }
 
-/// Where a walk gets its [`Node`]s.
+/// Where a walk gets its [`Node`]s, and how handles and ids convert.
 ///
 /// A trait, not a concrete type, so the orderings can be tested against a
 /// hand-built graph with no repository behind it. The fixture corpus is
@@ -46,12 +50,23 @@ impl Node {
 /// topological order agree on every shape in it; only a graph with skewed
 /// dates can tell the two algorithms apart.
 pub(crate) trait Nodes {
-    /// The node for `id`.
+    /// The handle for `id`, giving it one if it has none yet.
+    fn handle(&self, id: &Oid) -> CommitHandle;
+
+    /// The id a handle names.
+    fn id(&self, handle: CommitHandle) -> Oid;
+
+    /// The node for `handle`.
     ///
     /// # Errors
     /// [`NodeError`] if the commit is missing, unreadable, or holds a field
     /// git's own rules reject.
-    fn node(&self, id: Oid) -> Result<Node, NodeError>;
+    fn node(&self, handle: CommitHandle) -> Result<Node, NodeError>;
+
+    /// Whether reading `handle`'s node again is as cheap as holding it: a
+    /// record in the mapped commit-graph file. A walk keeps only the nodes
+    /// for which this is `false` — commits it had to parse out of an object.
+    fn rereadable(&self, handle: CommitHandle) -> bool;
 }
 
 /// Why a commit could not be reduced to a [`Node`].
@@ -88,20 +103,34 @@ pub enum NodeError {
 /// DESIGN.md §3.2 names, and it is what makes two runs over the same
 /// repository produce the same graph — commit dates tie constantly in
 /// fast-import repositories, in rebases and in scripted history.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+///
+/// The handle rides along so the winner needs no lookup; it never takes part
+/// in the comparison (handle order is not id order: commit-graph layers and
+/// the overflow are each sorted differently).
+#[derive(Clone, Copy, Debug)]
 pub(crate) struct Key {
     pub(crate) time: i64,
     pub(crate) id: Oid,
+    pub(crate) handle: CommitHandle,
 }
 
 impl Key {
-    pub(crate) fn of(node: &Node) -> Self {
+    pub(crate) fn of(nodes: &impl Nodes, handle: CommitHandle, node: &Node) -> Self {
         Key {
             time: node.time,
-            id: node.id,
+            id: nodes.id(handle),
+            handle,
         }
     }
 }
+
+impl PartialEq for Key {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+impl Eq for Key {}
 
 impl Ord for Key {
     fn cmp(&self, other: &Self) -> Ordering {
@@ -118,89 +147,165 @@ impl PartialOrd for Key {
 }
 
 /// A graph held in memory, for tests that need dates the corpus cannot
-/// produce.
+/// produce: `id → (parents, time, generation)`.
+///
+/// A node with [`Node::UNKNOWN_GENERATION`] stands for a commit outside the
+/// commit-graph, so it is not [`rereadable`](Nodes::rereadable) and the walk
+/// has to keep it, as it would a parsed object.
 #[cfg(test)]
-pub(crate) struct MapNodes(pub(crate) HashMap<Oid, Node>);
+pub(crate) struct MapNodes {
+    nodes: HashMap<Oid, (Vec<Oid>, i64, u32)>,
+    table: CommitTable,
+}
 
 #[cfg(test)]
-impl Nodes for MapNodes {
-    fn node(&self, id: Oid) -> Result<Node, NodeError> {
-        self.0.get(&id).cloned().ok_or(NodeError::Missing { id })
+impl MapNodes {
+    pub(crate) fn new(nodes: HashMap<Oid, (Vec<Oid>, i64, u32)>) -> Self {
+        MapNodes {
+            nodes,
+            table: CommitTable::with_graph(None, Oid::SHA1_BYTES),
+        }
     }
 }
 
-/// The repository's own nodes: the commit-graph file when there is one, the
-/// object database when there is not.
+#[cfg(test)]
+impl Nodes for MapNodes {
+    fn handle(&self, id: &Oid) -> CommitHandle {
+        self.table.intern(id)
+    }
+
+    fn id(&self, handle: CommitHandle) -> Oid {
+        self.table.id_of(handle)
+    }
+
+    fn node(&self, handle: CommitHandle) -> Result<Node, NodeError> {
+        let id = self.id(handle);
+        let (parents, time, generation) = self.nodes.get(&id).ok_or(NodeError::Missing { id })?;
+        Ok(Node {
+            parents: parents.iter().map(|parent| self.handle(parent)).collect(),
+            time: *time,
+            generation: *generation,
+        })
+    }
+
+    fn rereadable(&self, handle: CommitHandle) -> bool {
+        self.nodes
+            .get(&self.id(handle))
+            .is_some_and(|&(_, _, generation)| generation != Node::UNKNOWN_GENERATION)
+    }
+}
+
+/// The repository's own nodes: the commit-graph file for every commit it
+/// covers, the object database only for the ones it does not.
 pub(crate) struct RepoNodes<'a> {
     repo: &'a gix::Repository,
-    graph: Option<gix::commitgraph::Graph>,
+    table: Arc<CommitTable>,
 }
 
 impl<'a> RepoNodes<'a> {
-    pub(crate) fn new(repo: &'a gix::Repository, graph: Option<gix::commitgraph::Graph>) -> Self {
-        RepoNodes { repo, graph }
+    pub(crate) fn new(repo: &'a gix::Repository, table: Arc<CommitTable>) -> Self {
+        RepoNodes { repo, table }
     }
 
     /// Whether a commit-graph file is backing these reads.
     pub(crate) fn has_commit_graph(&self) -> bool {
-        self.graph.is_some()
+        self.table.has_commit_graph()
     }
 
-    /// The node straight out of the commit-graph file, or [`None`] if this
-    /// commit is not in it.
-    ///
-    /// Every `?` here also means "not in it": a position the file says is out
-    /// of range, or a timestamp too large for an `i64`, means the file is
-    /// corrupt or from a future format. Both fall through to the object
-    /// database, which is the truth the file is only a cache of — and a real
-    /// read failure there is reported rather than hidden.
-    fn from_commit_graph(graph: &gix::commitgraph::Graph, id: Oid) -> Option<Node> {
-        let oid = gix::hash::oid::try_from_bytes(id.as_bytes()).ok()?;
-        let commit = graph.commit_by_id(oid)?;
-        let mut parents = Vec::with_capacity(1);
-        for parent in commit.iter_parents() {
-            // A parent position the file itself calls out of range means the
-            // commit-graph is corrupt. Falling back to the object database
-            // is the honest answer: the objects are the truth, the graph is
-            // only a cache of them.
-            let position = parent.ok()?;
-            parents.push(Oid::from_bytes(graph.id_at(position).as_bytes()).ok()?);
-        }
-        Some(Node {
-            id,
-            parents,
-            time: i64::try_from(commit.committer_timestamp()).ok()?,
-            generation: u64::from(commit.generation()),
-        })
-    }
-
-    fn read_object(&self, id: Oid) -> Result<Node, NodeError> {
-        let commit = find_commit(self.repo, id)?;
-        let mut parents = Vec::with_capacity(1);
-        for parent in commit.parent_ids() {
-            parents.push(
-                Oid::from_bytes(parent.as_bytes())
-                    .map_err(|source| NodeError::Malformed { id, source })?,
-            );
-        }
-        Ok(Node {
-            id,
-            parents,
-            time: commit_time(&commit, id)?,
-            generation: Node::UNKNOWN_GENERATION,
-        })
+    /// The commit-graph position a handle is, if it is one.
+    fn position(&self, handle: CommitHandle) -> Option<(&gix::commitgraph::Graph, u32)> {
+        let graph = self.table.graph()?;
+        (handle.0 < self.table.graph_count()).then_some((graph, handle.0))
     }
 }
 
 impl Nodes for RepoNodes<'_> {
-    fn node(&self, id: Oid) -> Result<Node, NodeError> {
-        if let Some(graph) = &self.graph
-            && let Some(node) = Self::from_commit_graph(graph, id)
-        {
-            return Ok(node);
-        }
-        self.read_object(id)
+    fn handle(&self, id: &Oid) -> CommitHandle {
+        self.table.intern(id)
     }
+
+    fn id(&self, handle: CommitHandle) -> Oid {
+        self.table.id_of(handle)
+    }
+
+    fn node(&self, handle: CommitHandle) -> Result<Node, NodeError> {
+        if let Some((graph, position)) = self.position(handle) {
+            return node_from_graph(graph, gix::commitgraph::Position(position));
+        }
+        node_from_object(self.repo, &self.id(handle), &self.table)
+    }
+
+    fn rereadable(&self, handle: CommitHandle) -> bool {
+        self.position(handle).is_some()
+    }
+}
+
+/// A commit's node straight out of the commit-graph file: parents as
+/// positions (which are handles), date and generation. No object is read.
+///
+/// # Errors
+/// [`NodeError::Unreadable`] if the file names a parent position out of range
+/// or a date past `i64`: the file is corrupt, and saying so beats guessing.
+pub(crate) fn node_from_graph(
+    graph: &gix::commitgraph::Graph,
+    pos: gix::commitgraph::Position,
+) -> Result<Node, NodeError> {
+    let commit = graph.commit_at(pos);
+    let corrupt = |source: Box<dyn std::error::Error + Send + Sync>| NodeError::Unreadable {
+        id: graph_id(graph, pos),
+        source,
+    };
+    let time =
+        i64::try_from(commit.committer_timestamp()).map_err(|source| corrupt(Box::new(source)))?;
+    let generation = commit.generation();
+    let parents = commit
+        .iter_parents()
+        .map(|parent| parent.map(|position| CommitHandle(position.0)))
+        .collect::<Result<Parents, _>>()
+        .map_err(|source| corrupt(source.to_string().into()))?;
+    Ok(Node {
+        parents,
+        time,
+        generation,
+    })
+}
+
+/// The id at a commit-graph position.
+///
+/// # Panics
+/// If the file holds an id of a length Graft cannot hold, as
+/// [`CommitTable::id_of`] does for the same file.
+fn graph_id(graph: &gix::commitgraph::Graph, pos: gix::commitgraph::Position) -> Oid {
+    match Oid::from_bytes(graph.id_at(pos).as_bytes()) {
+        Ok(id) => id,
+        Err(error) => panic!("the commit-graph holds an id Graft cannot: {error}"),
+    }
+}
+
+/// A commit outside the commit-graph, header-parsed from the object
+/// database: parents interned through `table`, generation unknown (explored
+/// first, git's rule).
+///
+/// # Errors
+/// [`NodeError`] if the object is missing, unreadable or malformed.
+pub(crate) fn node_from_object(
+    repo: &gix::Repository,
+    id: &Oid,
+    table: &CommitTable,
+) -> Result<Node, NodeError> {
+    let id = *id;
+    let commit = find_commit(repo, id)?;
+    let mut parents = Vec::with_capacity(1);
+    for parent in commit.parent_ids() {
+        let parent = Oid::from_bytes(parent.as_bytes())
+            .map_err(|source| NodeError::Malformed { id, source })?;
+        parents.push(table.intern(&parent));
+    }
+    Ok(Node {
+        parents: parents.into_iter().collect(),
+        time: commit_time(&commit, id)?,
+        generation: Node::UNKNOWN_GENERATION,
+    })
 }
 
 /// Finds a commit object, telling "not in this repository" apart from "could

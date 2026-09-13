@@ -35,9 +35,10 @@ impl CommitHandle {
 ///
 /// Almost every commit has one or two parents, so those cases are held inline:
 /// a walk emitting a million links allocates only for octopus merges.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub enum Parents {
-    /// A root commit.
+    /// A root commit. The default: no parents.
+    #[default]
     None,
     /// An ordinary commit.
     One(CommitHandle),

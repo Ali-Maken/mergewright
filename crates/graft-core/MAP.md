@@ -24,7 +24,7 @@ One line per public item. Update when a public item changes.
 
 ## commit_handle
 - `CommitHandle` (struct) — a commit as a dense `u32` from its repository's id table; `index` (fn).
-- `Parents` (enum) — parents by handle, inline for ≤ 2; `iter` / `len` / `is_empty` / `first` (fn), `FromIterator`.
+- `Parents` (enum) — parents by handle, inline for ≤ 2; `iter` / `len` / `is_empty` / `first` (fn), `FromIterator`, `Default` (`None`).
 - `Link` (struct) — `commit` and its `parents`, by handle.
 - `HandleSet` (struct) — bitset of handles; `new` / `insert` / `contains` / `remove` / `len` / `is_empty` / `approximate_bytes` (fn).
 

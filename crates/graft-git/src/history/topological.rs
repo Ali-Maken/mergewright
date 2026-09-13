@@ -21,9 +21,21 @@
 //! file: with every generation unknown it degenerates into the whole-range
 //! walk above.
 
+//! [`Sorted`] is the other topological sort, for when there is no
+//! commit-graph: ADR-0008's background promotion, which has to read the whole
+//! range first anyway, so it does exactly that — once, into dense arrays
+//! indexed by handle, freed when the sort ends.
+//!
+//! Neither keeps a map keyed by commit id. Per-commit state is a `u32`
+//! in-degree per handle and one bit per question (discovered, expanded,
+//! emitted); a node is held only while its commit is discovered and not yet
+//! emitted, and only when it cannot be read again from the commit-graph for
+//! the price of holding it (ADR-0026).
+
+use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 
-use graft_core::oid::Oid;
+use graft_core::commit_handle::{CommitHandle, HandleSet, Parents};
 
 use super::node::{Key, Node, NodeError, Nodes};
 
@@ -31,36 +43,65 @@ use super::node::{Key, Node, NodeError, Nodes};
 /// highest generations come off the heap before the lower ones.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct Pending {
-    generation: u64,
+    generation: u32,
     key: Key,
 }
 
-/// Everything the sort knows about one discovered commit, in one place.
-///
-/// One map entry per commit rather than a map per question (in-degree,
-/// expanded, emitted): on a repository the size of git/git the separate
-/// tables were a third of the sort's memory (ticket m1-the-graph/27b).
-struct Entry {
-    /// The commit's parents; emptied, and its allocation freed, once the
-    /// commit is emitted and nothing will ask for them again.
-    parents: Vec<Oid>,
-    time: i64,
-    generation: u64,
-    /// How many discovered children have not been emitted yet.
-    indegree: u32,
-    /// Its parents have been counted, so a commit with many children is
-    /// expanded once.
-    expanded: bool,
-    /// Already handed out.
-    emitted: bool,
+/// A commit whose in-degree has reached zero, most recent first. Carries its
+/// generation so confirming it needs no read.
+#[derive(Clone, Copy)]
+struct Candidate {
+    key: Key,
+    generation: u32,
 }
 
-impl Entry {
-    fn key(&self, id: Oid) -> Key {
-        Key {
-            time: self.time,
-            id,
+impl PartialEq for Candidate {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+}
+
+impl Eq for Candidate {}
+
+impl Ord for Candidate {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.key.cmp(&other.key)
+    }
+}
+
+impl PartialOrd for Candidate {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+/// Everything the incremental sort knows per commit, dense by handle.
+struct State {
+    /// How many discovered children have not been emitted yet, by handle.
+    indegree: Vec<u32>,
+    /// Read once; everything after is a lookup.
+    discovered: HandleSet,
+    /// Its parents have been counted, so a commit with many children is
+    /// expanded once.
+    expanded: HandleSet,
+    /// Already handed out.
+    emitted: HandleSet,
+    /// Nodes discovered and not yet emitted that the commit-graph cannot give
+    /// back: commits parsed out of an object. Empty on a graph-covered walk.
+    frontier: HashMap<CommitHandle, Node>,
+}
+
+impl State {
+    fn indegree_mut(&mut self, handle: CommitHandle) -> &mut u32 {
+        let index = handle.index();
+        if index >= self.indegree.len() {
+            self.indegree.resize(index + 1, 0);
         }
+        &mut self.indegree[index]
+    }
+
+    fn indegree(&self, handle: CommitHandle) -> u32 {
+        self.indegree.get(handle.index()).copied().unwrap_or(0)
     }
 }
 
@@ -73,36 +114,38 @@ pub(crate) struct Topological {
     /// Entries here are candidates, not decisions: a commit can be pushed
     /// with an in-degree of zero and then gain a child as exploration goes
     /// on, which is what the check at pop time is for.
-    candidates: BinaryHeap<Key>,
-    /// Every commit discovered so far, read exactly once.
-    known: HashMap<Oid, Entry>,
+    candidates: BinaryHeap<Candidate>,
+    state: State,
 }
 
 impl Topological {
     /// Seeds the sort with the commits a walk starts from.
     pub(crate) fn new(
         nodes: &impl Nodes,
-        tips: &[Oid],
+        tips: &[CommitHandle],
         reads: &mut u64,
     ) -> Result<Self, NodeError> {
         let mut sort = Topological {
             explore: BinaryHeap::new(),
             candidates: BinaryHeap::new(),
-            known: HashMap::new(),
+            state: State {
+                indegree: Vec::new(),
+                discovered: HandleSet::new(),
+                expanded: HandleSet::new(),
+                emitted: HandleSet::new(),
+                frontier: HashMap::new(),
+            },
         };
         for &tip in tips {
-            if sort.known.contains_key(&tip) {
+            if sort.state.discovered.contains(tip) {
                 continue;
             }
-            let key = sort.discover(nodes, tip, reads)?;
-            sort.explore.push(Pending {
-                generation: sort.generation(tip),
-                key,
-            });
+            let (key, generation) = sort.discover(nodes, tip, reads)?;
+            sort.explore.push(Pending { generation, key });
             // A tip has no children until exploration finds one, so it is a
             // candidate from the start. One tip being an ancestor of another
             // is normal — the in-degree check at pop time catches it.
-            sort.candidates.push(key);
+            sort.candidates.push(Candidate { key, generation });
         }
         Ok(sort)
     }
@@ -113,64 +156,56 @@ impl Topological {
         &mut self,
         nodes: &impl Nodes,
         reads: &mut u64,
-    ) -> Result<Option<(Oid, Vec<Oid>)>, NodeError> {
+    ) -> Result<Option<(CommitHandle, Parents)>, NodeError> {
         loop {
             let Some(top) = self.candidates.pop() else {
                 return Ok(None);
             };
+            let handle = top.key.handle;
 
             // Everything that could still turn out to be a child of `top`
             // has to be expanded before `top`'s in-degree is final.
-            self.expand_down_to(nodes, self.generation(top.id), reads)?;
+            self.expand_down_to(nodes, top.generation, reads)?;
 
-            // Every candidate was discovered on its way into the heap.
-            let Some(entry) = self.known.get_mut(&top.id) else {
-                continue;
-            };
-            if entry.emitted {
+            if self.state.emitted.contains(handle) {
                 continue;
             }
-            if entry.indegree > 0 {
+            if self.state.indegree(handle) > 0 {
                 // A child turned up while exploring. Dropping the candidate
                 // is safe: emitting that child pushes this commit back.
                 continue;
             }
 
-            entry.emitted = true;
-            let parents = self.release_parents(nodes, top.id, reads)?;
-            return Ok(Some((top.id, parents)));
+            self.state.emitted.insert(handle);
+            let parents = self.release_parents(nodes, handle, reads)?;
+            return Ok(Some((handle, parents)));
         }
     }
 
-    /// The generation of a commit already discovered.
-    ///
-    /// An unknown commit cannot reach here — everything in either heap was
-    /// discovered on the way in — and treating one as uncovered would only
-    /// make the sort explore more, never emit too early.
-    fn generation(&self, id: Oid) -> u64 {
-        self.known
-            .get(&id)
-            .map_or(Node::UNKNOWN_GENERATION, |entry| entry.generation)
-    }
-
-    /// Reads a commit once and remembers it.
-    fn discover(&mut self, nodes: &impl Nodes, id: Oid, reads: &mut u64) -> Result<Key, NodeError> {
-        if let Some(entry) = self.known.get(&id) {
-            return Ok(entry.key(id));
-        }
-        let node = nodes.node(id)?;
+    /// Reads a commit for the first time, keeping its node only if the
+    /// commit-graph cannot give it back.
+    fn discover(
+        &mut self,
+        nodes: &impl Nodes,
+        handle: CommitHandle,
+        reads: &mut u64,
+    ) -> Result<(Key, u32), NodeError> {
+        self.state.discovered.insert(handle);
+        let node = nodes.node(handle)?;
         *reads += 1;
-        let entry = Entry {
-            parents: node.parents,
-            time: node.time,
-            generation: node.generation,
-            indegree: 0,
-            expanded: false,
-            emitted: false,
-        };
-        let key = entry.key(id);
-        self.known.insert(id, entry);
-        Ok(key)
+        let found = (Key::of(nodes, handle, &node), node.generation);
+        if !nodes.rereadable(handle) {
+            self.state.frontier.insert(handle, node);
+        }
+        Ok(found)
+    }
+
+    /// The node of a commit already discovered and not yet emitted.
+    fn look(&self, nodes: &impl Nodes, handle: CommitHandle) -> Result<Node, NodeError> {
+        match self.state.frontier.get(&handle) {
+            Some(node) => Ok(node.clone()),
+            None => nodes.node(handle),
+        }
     }
 
     /// Expands every discovered commit whose generation is at least
@@ -178,7 +213,7 @@ impl Topological {
     fn expand_down_to(
         &mut self,
         nodes: &impl Nodes,
-        generation: u64,
+        generation: u32,
         reads: &mut u64,
     ) -> Result<(), NodeError> {
         while let Some(pending) = self.explore.peek().copied() {
@@ -186,51 +221,29 @@ impl Topological {
                 break;
             }
             self.explore.pop();
-            self.expand(nodes, pending.key.id, reads)?;
+            self.expand(nodes, pending.key.handle, reads)?;
         }
         Ok(())
     }
 
     /// Counts a commit against each of its parents and queues any parent not
     /// seen before.
-    fn expand(&mut self, nodes: &impl Nodes, id: Oid, reads: &mut u64) -> Result<(), NodeError> {
-        self.discover(nodes, id, reads)?;
-        let parents = match self.known.get_mut(&id) {
-            Some(entry) if !entry.expanded => {
-                entry.expanded = true;
-                // Taken out so the loop below can touch other entries; put
-                // back after. Moving a `Vec` does not reallocate it.
-                std::mem::take(&mut entry.parents)
-            }
-            _ => return Ok(()),
-        };
-        let counted = self.count_parents(nodes, &parents, reads);
-        if let Some(entry) = self.known.get_mut(&id) {
-            entry.parents = parents;
-        }
-        counted
-    }
-
-    /// Adds one child to each parent, discovering and queueing the new ones.
-    fn count_parents(
+    fn expand(
         &mut self,
         nodes: &impl Nodes,
-        parents: &[Oid],
+        handle: CommitHandle,
         reads: &mut u64,
     ) -> Result<(), NodeError> {
-        for &parent in parents {
-            if let Some(entry) = self.known.get_mut(&parent) {
-                entry.indegree += 1;
-                continue;
+        if !self.state.expanded.insert(handle) {
+            return Ok(());
+        }
+        let node = self.look(nodes, handle)?;
+        for parent in node.parents.iter() {
+            if !self.state.discovered.contains(parent) {
+                let (key, generation) = self.discover(nodes, parent, reads)?;
+                self.explore.push(Pending { generation, key });
             }
-            let key = self.discover(nodes, parent, reads)?;
-            if let Some(entry) = self.known.get_mut(&parent) {
-                entry.indegree += 1;
-            }
-            self.explore.push(Pending {
-                generation: self.generation(parent),
-                key,
-            });
+            *self.state.indegree_mut(parent) += 1;
         }
         Ok(())
     }
@@ -240,28 +253,180 @@ impl Topological {
     fn release_parents(
         &mut self,
         nodes: &impl Nodes,
-        id: Oid,
+        handle: CommitHandle,
         reads: &mut u64,
-    ) -> Result<Vec<Oid>, NodeError> {
+    ) -> Result<Parents, NodeError> {
         // A candidate is always expanded by the time it is emitted, because
         // `expand_down_to` covers its own generation. Calling again is a
         // no-op and keeps the invariant local rather than assumed.
-        self.expand(nodes, id, reads)?;
-        // Emitted and expanded: nothing asks for these parents again, so the
-        // allocation goes now rather than when the walk ends.
-        let parents = match self.known.get_mut(&id) {
-            Some(entry) => std::mem::take(&mut entry.parents),
-            None => Vec::new(),
+        self.expand(nodes, handle, reads)?;
+        // Emitted: nothing asks for this node again.
+        let node = match self.state.frontier.remove(&handle) {
+            Some(node) => node,
+            None => nodes.node(handle)?,
         };
-        for &parent in &parents {
-            let key = self.discover(nodes, parent, reads)?;
-            if let Some(entry) = self.known.get_mut(&parent) {
-                entry.indegree = entry.indegree.saturating_sub(1);
-                if entry.indegree == 0 && !entry.emitted {
-                    self.candidates.push(key);
-                }
+        for parent in node.parents.iter() {
+            let indegree = self.state.indegree_mut(parent);
+            *indegree = indegree.saturating_sub(1);
+            if *indegree == 0 && !self.state.emitted.contains(parent) {
+                let parent_node = self.look(nodes, parent)?;
+                self.candidates.push(Candidate {
+                    key: Key::of(nodes, parent, &parent_node),
+                    generation: parent_node.generation,
+                });
             }
         }
-        Ok(parents)
+        Ok(node.parents)
+    }
+}
+
+/// The topological sort with no generation numbers to go on: read the whole
+/// range, then emit.
+///
+/// Emits exactly what [`Topological`] emits when every generation is
+/// unknown — there the first confirmation expands everything too, and from
+/// then on the next commit is always the most recent one with no unemitted
+/// child — without the per-commit map that sort would need for nodes parsed
+/// out of objects.
+pub(crate) struct Sorted {
+    /// The walk's tips until the range is read, then nothing.
+    tips: Vec<CommitHandle>,
+    /// Filled by the read; dropped as soon as the last commit is out.
+    range: Option<Range>,
+}
+
+/// The whole range, dense by handle.
+struct Range {
+    parents: Paged<Parents>,
+    time: Paged<i64>,
+    indegree: Paged<u32>,
+    emitted: HandleSet,
+    /// Commits with no unemitted child. Most recent first.
+    ready: BinaryHeap<Key>,
+}
+
+impl Sorted {
+    /// A sort from `tips`. Reads nothing until the first [`next`](Self::next).
+    pub(crate) fn new(tips: &[CommitHandle]) -> Self {
+        Sorted {
+            tips: tips.to_vec(),
+            range: None,
+        }
+    }
+
+    /// The next commit in topological order with its parents, or [`None`]
+    /// when the walk is complete.
+    pub(crate) fn next(
+        &mut self,
+        nodes: &impl Nodes,
+        reads: &mut u64,
+    ) -> Result<Option<(CommitHandle, Parents)>, NodeError> {
+        if self.range.is_none() {
+            let tips = std::mem::take(&mut self.tips);
+            self.range = Some(Range::read(nodes, &tips, reads)?);
+        }
+        let Some(range) = self.range.as_mut() else {
+            return Ok(None);
+        };
+        let Some(top) = range.ready.pop() else {
+            // Done: the arrays go now, not when the walk is dropped.
+            range.parents = Paged::default();
+            range.time = Paged::default();
+            range.indegree = Paged::default();
+            return Ok(None);
+        };
+        let handle = top.handle;
+        range.emitted.insert(handle);
+        let parents = std::mem::take(range.parents.get_mut(handle));
+        for parent in parents.iter() {
+            let indegree = range.indegree.get_mut(parent);
+            *indegree = indegree.saturating_sub(1);
+            if *indegree == 0 && !range.emitted.contains(parent) {
+                range.ready.push(Key {
+                    time: *range.time.get_mut(parent),
+                    id: nodes.id(parent),
+                    handle: parent,
+                });
+            }
+        }
+        Ok(Some((handle, parents)))
+    }
+}
+
+impl Range {
+    /// Reads every commit `tips` reach, once each, counting in-degrees.
+    fn read(nodes: &impl Nodes, tips: &[CommitHandle], reads: &mut u64) -> Result<Self, NodeError> {
+        let mut range = Range {
+            parents: Paged::default(),
+            time: Paged::default(),
+            indegree: Paged::default(),
+            emitted: HandleSet::new(),
+            ready: BinaryHeap::new(),
+        };
+        let mut seen = HandleSet::new();
+        let mut stack: Vec<CommitHandle> = Vec::new();
+        for &tip in tips {
+            if seen.insert(tip) {
+                stack.push(tip);
+            }
+        }
+        while let Some(handle) = stack.pop() {
+            let node = nodes.node(handle)?;
+            *reads += 1;
+            for parent in node.parents.iter() {
+                *range.indegree.get_mut(parent) += 1;
+                if seen.insert(parent) {
+                    stack.push(parent);
+                }
+            }
+            *range.time.get_mut(handle) = node.time;
+            *range.parents.get_mut(handle) = node.parents;
+        }
+        // Only a tip can have no child inside the range.
+        let mut tips_ready = HandleSet::new();
+        for &tip in tips {
+            if *range.indegree.get_mut(tip) == 0 && tips_ready.insert(tip) {
+                range.ready.push(Key {
+                    time: *range.time.get_mut(tip),
+                    id: nodes.id(tip),
+                    handle: tip,
+                });
+            }
+        }
+        Ok(range)
+    }
+}
+
+/// A dense array by handle, grown a fixed page at a time.
+///
+/// Not a `Vec`: growing a million-entry `Vec` by doubling holds the old and
+/// the new allocation at once and leaves up to half of it unused, which is
+/// the whole per-commit budget of the sort. A page is 2¹⁶ entries, so the
+/// slack is one page and nothing is ever copied.
+struct Paged<T> {
+    pages: Vec<Box<[T]>>,
+}
+
+impl<T> Default for Paged<T> {
+    fn default() -> Self {
+        Paged { pages: Vec::new() }
+    }
+}
+
+const PAGE_BITS: u32 = 16;
+
+impl<T: Default> Paged<T> {
+    /// The entry for `handle`, created (as `T::default()`) with its page.
+    fn get_mut(&mut self, handle: CommitHandle) -> &mut T {
+        let page = (handle.0 >> PAGE_BITS) as usize;
+        let slot = (handle.0 & ((1 << PAGE_BITS) - 1)) as usize;
+        while self.pages.len() <= page {
+            self.pages.push(
+                std::iter::repeat_with(T::default)
+                    .take(1 << PAGE_BITS)
+                    .collect(),
+            );
+        }
+        &mut self.pages[page][slot]
     }
 }
