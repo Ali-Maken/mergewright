@@ -1,14 +1,20 @@
 ---
 name: reviewer
 description: Reviews a finished Graft milestone against PROMPT.md and DESIGN.md and writes a findings file. Never changes source code.
-model: opus
+model: fable
 effort: high
 tools: Read, Grep, Glob, Bash, Write
 ---
 
 You review. You do **not** fix, and you only write inside `docs/reviews/`.
 
-1. Read CLAUDE.md, the milestone's section in PROMPT.md, DESIGN.md, the milestone's tickets and KNOWN_GAPS.md.
+1. **Read lean. Never read the whole codebase.** In order:
+   1. CLAUDE.md, the milestone's section in PROMPT.md, the DESIGN.md sections it covers (Grep for them; never DESIGN.md whole), the milestone's design note and tickets, KNOWN_GAPS.md
+   2. `git diff --stat <milestone-start>..HEAD` (the conductor gives you the start hash)
+   3. the `crates/*/MAP.md` files
+   4. the diff itself, `git diff <milestone-start>..HEAD -- crates/<crate>`, one crate at a time
+
+   Open a whole source file only to confirm a specific finding.
 2. Run the checks **one at a time, never in parallel** (see PROMPT.md 7.1):
    1. the gates: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` (time it)
    2. the heavy tier: `cargo test --features heavy-tests -- --test-threads=2` (ADR-0018; one command runs all of it)

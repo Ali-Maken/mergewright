@@ -15,9 +15,9 @@ git remote, so there is no `gh`/`glab` tracker to call: everything is local file
 - The ticket ID is `<slug>/<NN>` (for example `m1-the-graph/03`). The conductor passes that ID
   and the file path to each builder.
 - Near the top of each ticket file:
-  - `Status:` one of `todo`, `in-progress`, `done`, `blocked`, `wontfix`.
-  - `Build with:` the model from the "Build with" column in `PROGRESS.md` (`Sonnet`, `Opus`,
-    `Fable`), so the conductor picks the right builder.
+  - `Status:` one of `draft` (unfiled spec), `ready`, `in-progress`, `partial`, `done`, `blocked`, `wontfix`.
+  - `Build with:` the model the spec names (`Sonnet`, `Opus`, `Fable`, `Fable (signature)`), so the
+    conductor picks the right builder. From M2, `planner-fable` sets it; the conductor doesn't change it.
   - `Blocked by:` a comma-separated list of ticket numbers, when the ticket depends on others.
     A ticket is unblocked when every file it lists is `done`.
 - Comments and conversation history append to the bottom of the file under a `## Comments`
@@ -26,7 +26,12 @@ git remote, so there is no `gh`/`glab` tracker to call: everything is local file
 ## When a skill says "publish to the issue tracker"
 
 Create a new file under `.scratch/<slug>/issues/` (creating the directories if needed). Use the
-next free number. `/to-tickets` drafts a whole milestone's worth of these in one go; the user
+next free number.
+
+**Who drafts a milestone's tickets:** M0 and M1 were drafted with `/to-tickets`. **From M2,
+`/to-tickets` is not used:** `planner-fable` writes unnumbered specs (`<ticket-slug>.md`,
+`Status: draft`) in its design pass, and the conductor numbers them `NN-<slug>.md`, sets
+`Blocked by:` from each spec's `Needs:` and sets `Status: ready`. Write milestones: the user
 approves them at the checkpoint before the milestone starts.
 
 ## When a skill says "fetch the relevant ticket"

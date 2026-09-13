@@ -14,56 +14,77 @@
 | Tickets | Local markdown, wherever `docs/agents/issue-tracker.md` says. |
 | `KNOWN_GAPS.md` | Anything unfinished or stubbed. |
 | `docs/reviews/` | Milestone reviews. |
+| `docs/design-notes/` | One design note per milestone, by `planner-fable`. |
+| `docs/AUTHORSHIP.md` | Which model designed, specified, built and reviewed each milestone. Generated from PROGRESS.md's session log; the conductor regenerates it at every milestone checkpoint. Facts from the log only. |
 
 ## How work runs
 
 - The user runs `/conduct` in a main session on **Opus**. The conductor hands every piece of work to a fresh helper in `.claude/agents/` and stops at checkpoints.
-- **Who builds what, ticket size, context and checkpoints:** see **Standing rules** below (set 2026-09-13, every remaining milestone). They replace the 2026-09-12 cost-control routing.
+- **Who designs, specifies, builds and reviews; ticket size, context and checkpoints:** see **Standing rules** below (set 2026-09-13, every remaining milestone). They replace the 2026-09-12 cost-control routing.
   `xhigh` is not automatic: the conductor dispatches `builder-opus-xhigh` only when the user asks for it on a specific ticket.
 - **The one exception is step 1** (`/grill-with-docs`), which runs in the main session because it needs the user.
 - Do only the next unchecked step. Never start a new milestone without the user's OK at a checkpoint.
 
-## Standing rules (every remaining milestone, set 2026-09-13)
+## Standing rules (every remaining milestone, set 2026-09-13; Fable's share raised for M2 onward)
+
+**M1 is grandfathered:** its existing tickets, `Build with` lines and Opus review stay as they are. Everything below marked "M2 onward" applies from M2.
 
 ### Tickets
 
+- **Who writes them (M2 onward):** `planner-fable` writes every ticket spec in its design pass (see Models). The conductor **files and sequences** them: numbering, dependency order, `Blocked by:`, `Status:`. It does not re-decide scope, signatures or `Build with`. A spec the conductor thinks is wrong goes back to `planner-fable` or to the user; the conductor doesn't edit it.
+- **`/to-tickets` is not used for any milestone with a Fable spec pass** (M2 onward). It drafted M0 and M1 only.
 - **Size:** each ticket finishes inside one context, target **under 80k tokens**. Compaction means the ticket was too big: the helper says so in its report, the conductor splits the remainder into new tickets.
-- **Each ticket states:** scope in/out; acceptance criteria; the **exact sections** to read (never a whole document); the **exact signatures** the work must expose and call.
+- **Splitting a remainder:** the conductor cuts along the seams in the builder's handoff note and keeps the original scope, signatures and model. If the split needs a new decision (a new signature, a scope change, another model), it goes to `planner-fable` as a spec-only pass for those tickets.
+- **Each ticket states:** scope in/out; acceptance criteria; the **exact sections** to read (never a whole document); the **exact signatures** the work must expose and call; its `Build with` line.
 - **Interface-first grouping:** the first ticket of a group defines the traits and stubs; the rest fill them in.
 
 ### Models
 
-**Fable decides; Opus plans; Opus and Sonnet build.**
+**Fable decides, specifies and reviews; Opus conducts and builds; Sonnet builds the mechanical work.**
 
 | Work | Who | Model, effort |
 |---|---|---|
-| **Design pass** at the start of every milestone, before tickets | `planner-fable` | Fable, high |
-| Drafting tickets from the design note | the conductor | Opus |
+| **Design pass + ticket specs** at the start of every milestone | `planner-fable` | Fable, high |
+| Filing and sequencing the specs (numbers, order, blocked-by) | the conductor | Opus |
+| **Signature tickets** (list below) | `builder-fable` | Fable, high |
+| A ticket that passes all three Fable tests (below) | `builder-fable` | Fable, high |
 | Concurrency, terminal protocols, git writes, undo, conflicts | `builder-opus` | Opus, high |
 | Everything mechanical: wiring, config, docs, plain widgets, tests, renames | `builder-sonnet` | Sonnet, medium |
-| A ticket that passes all three Fable tests (below) | `builder-fable` | Fable, high |
-| Reviews | `reviewer` | Opus; **Fable for M3 and M5** |
+| Reviews, **every milestone from M2** (M1: Opus) | `reviewer` | Fable, high |
+| **M8 architecture pass** (MAP.md files and public interfaces, never source) | `planner-fable` | Fable, high |
 | Debugging | `debugger` | Fable |
 
-- **Design pass:** `planner-fable` reads only the relevant PROMPT.md and DESIGN.md sections and the crate MAP.md files — never source — and writes `docs/design-notes/<milestone>.md`, two pages max. It covers:
-  - the interfaces and data shapes the milestone introduces
-  - the two or three hard-to-reverse choices, each with a recommendation
-  - where it would differ from DESIGN.md, and why
-  - which tickets are genuinely risky
-  - **new UI** the milestone introduces that DESIGN.md doesn't already specify: screen layout, what each pane shows at each breakpoint, visual hierarchy, interaction
+- **Design pass (M2 onward):** `planner-fable` reads only the relevant PROMPT.md and DESIGN.md sections and the crate MAP.md files — never source — and writes two things:
+  1. `docs/design-notes/<milestone>.md`, two pages max, covering:
+     - the interfaces and data shapes the milestone introduces
+     - the two or three hard-to-reverse choices, each with a recommendation
+     - where it would differ from DESIGN.md, and why
+     - which tickets are genuinely risky
+     - **new UI** the milestone introduces that DESIGN.md doesn't already specify: screen layout, what each pane shows at each breakpoint, visual hierarchy, interaction
+  2. **The ticket specs**, straight into `.scratch/<milestone>/issues/` as unnumbered `<ticket-slug>.md` files. Each has scope in/out, exact signatures, acceptance criteria, Read-first sections (the note's included), the `Build with` line, and `Needs:` (the signatures it calls from other tickets, so the conductor can derive the order).
 
-  No code. The conductor drafts tickets from the note; each ticket's "Read first" lists the note's relevant section, and builders follow it.
-- **Fable builds a ticket only when all three hold:**
+  **More than about twelve tickets → two passes**, never one oversized context: pass 1 writes the note and the interface-first specs; pass 2, a fresh `planner-fable`, reads the note and pass 1's specs (no source) and writes the rest.
+
+  No code. Builders follow the note and the spec.
+- **Signature tickets — Fable builds them, whatever the three tests say**, because the code is the idea:
+  - M2: Mistake Radar detection
+  - M3: the undo journal's per-kind inverse
+  - M5: Ghost Preview planning
+  - M6: the conflict and operation state machine
+
+  The spec marks them `Build with: Fable (signature)`.
+- **Any other ticket goes to Fable only when all three hold:**
   1. the ticket doesn't decide the approach;
   2. a wrong choice becomes structural for later tickets;
   3. correctness can't be judged from the diff or the tests.
-
-  Expect one or two per milestone. If a plan wants three or more, the conductor says so: the design is usually underspecified and needs another design pass, not more Fable builds.
+- **Expect one or two Fable builds per milestone, signature tickets included.** If a plan wants three or more, the conductor says so: the design is usually underspecified and needs another design pass, not more Fable builds. Escalation redos (below) don't count; they aren't planned.
 - **Escalation beats prediction:**
   - Sonnet ticket fails twice → Opus.
   - Opus ticket stalls twice (`failed` or `partial` without progress), or a review finds its design wrong → redo that ticket on `builder-fable`.
   - Fable fails too → `debugger`.
 - Each ticket's `Build with` line names its model; the conductor follows it.
+- **Reviewer efficiency (M2 onward):** the conductor logs `M<n> start <hash>` in the session log when it dispatches the milestone's first ticket. The reviewer reads, in order: `git diff --stat <start>..HEAD`, the crate MAP.md files, then the diff itself (`git diff <start>..HEAD`, crate by crate). It opens a whole source file only to confirm a finding. It never reads the whole codebase, and reads only the PROMPT.md and DESIGN.md sections the milestone covers.
+- **M8 architecture pass:** a standing M8 ticket, `.scratch/m8-polish-and-ship/issues/fable-architecture-pass.md`. `planner-fable` reads every `crates/*/MAP.md` and ARCHITECTURE.md, never source, and writes `docs/reviews/m8-architecture.md`. It's a review, not a build: it doesn't count against the Fable build expectation. M8's spec pass files its other tickets around it.
 
 ### Context
 
@@ -102,7 +123,7 @@ The Matt Pocock plugin's skills are **banned by default**. Only these are allowe
 
 | Skill | Allowed for |
 |---|---|
-| `to-tickets` | Splitting a milestone into tickets. Once per milestone. |
+| `to-tickets` | M0 and M1 only (done). **Not used from M2:** `planner-fable` writes the ticket specs. |
 | `implement` | Building a ticket. |
 | `tdd` | Test-first work inside a ticket. |
 | `code-review` | Reviewing a finished ticket or milestone. |

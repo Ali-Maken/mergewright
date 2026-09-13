@@ -44,27 +44,27 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 
 **What the conductor does for every milestone:**
 
-1. **Design, then tickets:** `planner-fable` writes `docs/design-notes/<milestone>.md` (interfaces, hard-to-reverse choices, risky tickets; no code). The conductor splits the milestone into tickets from it with `/to-tickets`.
+1. **Design and ticket specs:** `planner-fable` writes `docs/design-notes/<milestone>.md` (interfaces, hard-to-reverse choices, risky tickets, new UI; no code) **and every ticket spec** (scope, signatures, acceptance, Read first, `Build with`), in two passes past ~12 tickets. The conductor numbers and sequences them; it doesn't re-decide them. `/to-tickets` was used for M0 and M1 only.
 2. **Build:** each ticket goes to a fresh builder on its `Build with` model, which builds it test-first, reviews it and commits.
 3. **Stuck:** escalation per CLAUDE.md "Standing rules → Models".
-4. **Review:** `reviewer` checks the whole milestone (model in the table) and builders fix what it finds (at most 2 rounds).
+4. **Review:** `reviewer` checks the milestone from its diff and the MAP.md files (model in the table) and builders fix what it finds (at most 2 rounds).
 5. **CHECKPOINT:** you test the milestone, approve the next milestone's tickets (write milestones only) and type `continue`.
 
 | ✓ | Milestone | Build with (per ticket, CLAUDE.md standing rules) | Review | CHECKPOINT: what you test |
 |---|---|---|---|---|
 | [x] | M0 Foundations | Opus | Opus | Opens a repo; quitting leaves the terminal clean |
 | [ ] | **M1 The graph** | per ticket's `Build with` line | Opus | `git/git` and the merge-mistake fixtures: is the history shape obvious at a glance? |
-| [ ] | M2 Details and diffs (read-only) | per ticket | Opus | Diffs look right; bad merges get flagged |
-| [ ] | M3 Working tree, undo and stash (write) | per ticket | Fable | Stage a hunk, commit, undo it, stash and unstash, then try to lose work |
-| [ ] | M4 Remotes (write) | per ticket | Opus | Fetch, pull and push on a real remote; wrong password |
-| [ ] | M5 Merge, rebase, reset, Ghost Preview (write) | per ticket | Fable | Every history change is previewed and can be undone |
-| [ ] | M6 Conflict resolver (write) | per ticket | Opus | Resolve a real conflict; kill mid-rebase, relaunch |
-| [ ] | M7 Power tools (read-only) | per ticket | Opus | Interactive rebase, blame, line history, reflog |
-| [ ] | M8 Polish, **final name**, ship (read-only) | per ticket | Opus | Pick the name (below), then a fresh install and the first-run tour |
+| [ ] | M2 Details and diffs (read-only) | per ticket; Fable: Mistake Radar detection | Fable | Diffs look right; bad merges get flagged |
+| [ ] | M3 Working tree, undo and stash (write) | per ticket; Fable: undo per-kind inverse | Fable | Stage a hunk, commit, undo it, stash and unstash, then try to lose work |
+| [ ] | M4 Remotes (write) | per ticket | Fable | Fetch, pull and push on a real remote; wrong password |
+| [ ] | M5 Merge, rebase, reset, Ghost Preview (write) | per ticket; Fable: Ghost Preview planning | Fable | Every history change is previewed and can be undone |
+| [ ] | M6 Conflict resolver (write) | per ticket; Fable: conflict and operation state machine | Fable | Resolve a real conflict; kill mid-rebase, relaunch |
+| [ ] | M7 Power tools (read-only) | per ticket | Fable | Interactive rebase, blame, line history, reflog |
+| [ ] | M8 Polish, **final name**, ship (read-only) | per ticket; Fable: architecture pass over MAP.md files | Fable | Pick the name (below), then a fresh install and the first-run tour |
 
-**Who builds what, ticket size, context, checkpoints:** CLAUDE.md, "Standing rules". Not restated here.
+**Who designs, specifies, builds and reviews; ticket size, context, checkpoints:** CLAUDE.md, "Standing rules". Not restated here. Fable's share was raised for M2 onward on 2026-09-13; M1 keeps its tickets and its Opus review. Record of who did what: `docs/AUTHORSHIP.md`.
 
-**M2 design pass** (`planner-fable`) runs when M1 finishes. Its New UI section must cover: the detail pane, diff views, the Mistake Radar Explain panel, and the Map view and Overview strip deferred from M1.
+**M2 design pass** (`planner-fable`, note and ticket specs) runs when M1 finishes. Its New UI section must cover: the detail pane, diff views, the Mistake Radar Explain panel, and the Map view and Overview strip deferred from M1.
 
 **Naming (an M8 job):** pick a name in the style of Sublime Merge or Araxis Merge (a naming-pattern reference only: Araxis Merge is a diff/merge tool, not a Git client, and is not prior art for this project), with no "git" in it (Git's trademark policy forbids "git" inside names like "tergit"). Starting shortlist: Tributary (command `trib`) and Thicket passed the clash check on 2026-09-11. Graft is taken.
 
