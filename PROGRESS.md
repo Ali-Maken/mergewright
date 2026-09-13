@@ -183,6 +183,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-13 · M1/26 search · opus · done · search.rs own job re-walking history; pty+pyte release 100k fixture: far hit 641 ms Enter→row, 401 F2 toggles during search median 3.5 ms max 9.2 ms none missed; captures docs/shots/26-search-far.txt, 26-search-typing.txt (by eye unticked); ESC in subject drawn inert (tested); gaps: only current hit marked, hidden hits say "(not in this view)", n before first hit no-op; 719 tests; commit 8548e22 · COMPACTED (once; finished, nothing left to split)
 
 ## Open questions for the M1 checkpoint
+- **F3 is one-way** (user asked): Pixel→Unicode→ASCII, no key back up; relaunch re-detects. Add a way back (e.g. Shift+F3 steps up, capped at detected tier), or keep one-way?
 - **Keys are undiscoverable** (user, Ghostty check): F3 and other keys aren't shown anywhere in the window. Add a key-hint line or `?` help now, or leave to M8?
 - **Proposed change (m1/25): DESIGN §3.8 drop the strip flush on resize.** Resize only needs row-by-row clearing; uploads survive. Approve / keep flush. Also: png 0.18 added to graft-term for iTerm2 (reviewer to check crate rules).
 
