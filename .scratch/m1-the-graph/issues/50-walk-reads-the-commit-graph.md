@@ -74,3 +74,7 @@ Remaining `G` RSS on the cg path is hydration (`next_chunk` reads every commit):
 
 ### First-paint finding (for the acceptance ticket)
 **Refuted for Graft.** The incremental sort expands only down to the generation of the candidate it is confirming (the newest tip), not down to the oldest tip's generation as git's `compute_indegrees_to_depth` does. 1M cg fixture, 6,497 tips: first emission after **6,498 node reads, 3.0–3.2 ms** (≈0.5 µs per read from the graph); the whole 1M walk takes 264 ms, 7.8 B/commit peak heap. No-cg `full_topological`: first emission after 1M reads, 2.1 s. So the 261–327 ms app first paint at 1M is **not** the walk; something else linear runs before the first window (RSS at paint still ~215 MiB). Logged in KNOWN_GAPS.
+
+### Heavy tier (debug, once, alone)
+- `cargo test -p graft-git --features heavy-tests --lib`: 97/97 (5k synthetic pair with and without a graph included).
+- `cargo test -p graft --features heavy-tests --test it heavy::budgets`: 5/5 — 100k with and without a commit-graph, realistic both ways, 50k refs.
