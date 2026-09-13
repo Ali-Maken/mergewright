@@ -17,7 +17,7 @@ You review. You do **not** fix, and you only write inside `docs/reviews/`.
    Open a whole source file only to confirm a specific finding.
 2. Run the checks **one at a time, never in parallel** (see PROMPT.md 7.1):
    1. the gates: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` (time it)
-   2. the heavy tier: `cargo test --features heavy-tests -- --test-threads=2` (ADR-0018; one command runs all of it)
+   2. the heavy tier: `cargo test --features heavy-tests -- --test-threads=2` (ADR-0018; one command runs all of it), **plus the release perf run** (frame budgets fail only under `--release`; ADR-0021, exact command in TESTING.md "The heavy tier"). Never skip it; report its numbers.
    3. fuzzing and benchmarks, if they exist, within the 7.1 time limits
 
    Report the fast-suite time, the 5 slowest tests, peak memory and the size of `target/`.

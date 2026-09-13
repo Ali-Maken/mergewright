@@ -2,7 +2,7 @@
 
 Status: partial (part a done: spike fix + benches; stopped at seam (a) awaiting the debug-vs-release decision)
 Build with: **Opus** (high) — event loop timing, split from 30
-Blocked by: 30b
+Blocked by: 30b (part a done; part b unblocked by user decision)
 Leaves runnable: yes — heavy `frames::` tests pass and each is proven to fail when tightened.
 
 Why: 30 measured Unicode input-to-frame spikes of 32–41 ms (debug) at layout-chunk edges; release 2–12 of 420 keys over 16 ms, max 17–23 ms.
@@ -21,12 +21,15 @@ In:
 
 Out: pixel byte cost (30b), 50k refs real read (30d), 1M claim (extrapolated, in KNOWN_GAPS).
 
-## Decision (debug vs release)
-Pending the user (asked 2026-09-13). Recommendation: assert frame budgets only under `--release`; debug heavy tier still runs them as measurements without asserting.
+## Decision (debug vs release) — user, 2026-09-13
+- **Frame budgets fail only in `--release`.** The debug heavy tier still runs the `frames::` tests and records the numbers, without failing.
+- **The release perf run is part of every milestone review**, not only local: the heavy tier gains a release run for `frames::` (and the 50k-refs first-paint test from 30d). Update TESTING.md "The heavy tier" and `.claude/agents/reviewer.md` step 2 with the exact command. The conductor has updated CLAUDE.md.
+- Record as **ADR-0021** (PROMPT §7.1's heavy-tier command gains a release frame-budget run; debug records only).
+- 30d's debug first paint with 50k refs (494 ms) follows the same rule: recorded, not failing. No shared-ref-read work needed.
+- **Memory gate stays `getrusage` peak RSS** (user). Add to KNOWN_GAPS: git/git peaks at 219–226 MiB RSS against the 300 MB budget — less headroom than it sounds (100k synthetic fixtures don't see what git/git does; ref 27d's guard gap).
 
-Also covers 30d's remainder: first paint with 50k refs passes in release (57 ms) but is 494 ms in debug (three passes over 50k refs: resolve 195, references 85, tips 113 ms). If the user keeps debug asserts, that needs a shared ref read (new graft-git signatures) or an optimized-deps dev profile.
-
-**Until the user answers:** do scope items 1 and 4 (spike fix, benches), stop at seam (a) with a handoff note. Don't implement item 2 or the proofs that depend on it.
+## Key 37 (user question)
+Before any fix: say whether the `j` that misses 16 ms in release (key 37, 17–18 ms, every run) is **the first keypress after idle** or **arbitrary**. Vary the idle time before it, its position in the sequence, and the key sequence; report the numbers. Warm-up (e.g. first key after an idle gap, a lazy init, a cache fill) is documentable — document it in TESTING.md and the ADR with its cause, and exclude it from the assertion only if the cause is named. An arbitrary stutter is a bug: find the cause and fix it.
 
 ## Acceptance
 - [ ] Spike cause named with numbers; fix measured before/after.
