@@ -220,6 +220,8 @@ fn opening_repository(
     // topological order, which ADR-0008 downgrades to commit date when the
     // repository has no commit-graph file.
     jobs.dispatch(Command::ReadHistory(Order::Topological));
+    // Badges: ahead/behind walks commits, so it is a job too.
+    jobs.dispatch(Command::ReadRefs);
     AppState {
         repo_path: repo_path.to_path_buf(),
         size,
@@ -637,7 +639,8 @@ mod tests {
             jobs.commands(),
             vec![
                 Command::OpenRepository,
-                Command::ReadHistory(Order::Topological)
+                Command::ReadHistory(Order::Topological),
+                Command::ReadRefs,
             ]
         );
     }

@@ -224,3 +224,105 @@ fn every_open_error_names_the_path_it_was_given() {
         fixture.root().display()
     );
 }
+
+/// Runs `git` in `dir`, failing the test on anything but success.
+#[track_caller]
+fn git_in(dir: &Path, args: &[&str]) {
+    let status = std::process::Command::new("git")
+        .arg("-C")
+        .arg(dir)
+        .args(args)
+        .status()
+        .unwrap_or_else(|why| panic!("git runs: {why}"));
+    assert!(status.success(), "git {args:?} failed");
+}
+
+/// The ref-states shape, whose `main`, `ahead` and `behind` all track
+/// `origin`, with `behind`'s upstream setting removed.
+fn ref_states_with_upstreams() -> graft_fixtures::Scratch {
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::RefStates);
+    git_in(
+        scratch.path(),
+        &["config", "--unset", "branch.behind.merge"],
+    );
+    scratch
+}
+
+fn name(text: &str) -> RefName {
+    RefName::new(text.as_bytes().to_vec()).expect("a valid ref name")
+}
+
+#[test]
+fn a_configured_upstream_resolves_through_the_fetch_refspec() {
+    let scratch = ref_states_with_upstreams();
+    let repo = RepoHandle::open(scratch.path()).expect("the fixture opens");
+
+    assert_eq!(
+        repo.upstream(&name("refs/heads/ahead"))
+            .expect("config reads"),
+        Some(name("refs/remotes/origin/ahead"))
+    );
+    assert_eq!(
+        repo.upstream(&name("refs/heads/behind"))
+            .expect("config reads"),
+        None,
+        "no branch.behind.merge setting, so no upstream"
+    );
+}
+
+#[test]
+fn annotated_tags_peel_to_their_commit() {
+    let scratch = ref_states_with_upstreams();
+    let repo = RepoHandle::open(scratch.path()).expect("the fixture opens");
+
+    let peeled = repo.peeled_references().expect("refs read");
+    let tips = repo.commit_tips().expect("tips read");
+    for (ref_name, id) in &peeled {
+        assert!(tips.contains(id), "{ref_name:?} peels to a tip");
+    }
+    assert!(
+        peeled
+            .iter()
+            .any(|(ref_name, _)| ref_name.as_bytes() == b"refs/tags/archived")
+    );
+}
+
+#[test]
+fn ahead_behind_counts_the_ref_states_branches() {
+    use crate::history::{AheadBehind, ahead_behind};
+    let dir = graft_fixtures::borrow(graft_fixtures::Shape::RefStates);
+    let repo = RepoHandle::open(&dir).expect("the fixture opens");
+    let peeled = repo.peeled_references().expect("refs read");
+    let tip = |wanted: &str| {
+        peeled
+            .iter()
+            .find(|(ref_name, _)| ref_name.as_bytes() == wanted.as_bytes())
+            .map_or_else(|| panic!("{wanted} exists"), |&(_, id)| id)
+    };
+    let count = |local: &str, upstream: &str| {
+        ahead_behind(&repo, tip(local), tip(upstream)).expect("both sides read")
+    };
+
+    assert!(count("refs/heads/main", "refs/remotes/origin/main").in_sync());
+    assert_eq!(
+        count("refs/heads/ahead", "refs/remotes/origin/ahead"),
+        AheadBehind {
+            ahead: 1,
+            behind: 0
+        }
+    );
+    assert_eq!(
+        count("refs/heads/behind", "refs/remotes/origin/behind"),
+        AheadBehind {
+            ahead: 0,
+            behind: 1
+        }
+    );
+    assert_eq!(
+        count("refs/heads/ahead", "refs/remotes/origin/behind"),
+        AheadBehind {
+            ahead: 2,
+            behind: 2
+        }
+    );
+}

@@ -13,10 +13,10 @@
 use graft_git::version::SystemGit;
 use graft_graph::identity::BranchIdentity;
 use graft_term::{SanitizedText, sanitize_line, sanitize_path, sanitize_path_bytes};
-use graft_ui::graph_column::{GraphLine, RowPaint};
+use graft_ui::graph_column::{GraphLine, NodeKind, RowPaint};
 use graft_ui::graph_screen::{
-    AuthorChip, GraphEntry, GraphScreen, GraphView, SHA_WIDTH, WalkView, initials, relative_date,
-    short_sha,
+    AuthorChip, Badge, BadgeKind, GraphEntry, GraphScreen, GraphView, SHA_WIDTH, Tracking,
+    WalkView, initials, relative_date, short_sha,
 };
 use graft_ui::status_screen::{
     HeadView, HistoryState, HistoryView, RepositoryView, StatusScreen, StatusView,
@@ -24,6 +24,7 @@ use graft_ui::status_screen::{
 use ratatui::Frame;
 
 use crate::history::{History, Phase};
+use crate::refs::{RefBadges, RefLabel, Upstream};
 use crate::repository::{Head, RepositoryFacts};
 use crate::session::Session;
 use crate::update::{AppState, GitCheck, Screen, Status};
@@ -43,7 +44,8 @@ pub fn view(session: &Session, state: &AppState, frame: &mut Frame) {
 
     match state.screen {
         Screen::Graph => {
-            let screen = graph_view(state);
+            let mut screen = graph_view(state);
+            screen.icons = session.icons;
             frame.render_widget(GraphScreen::new(&screen, &session.theme), area);
         }
         Screen::Status => {
@@ -74,6 +76,7 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
             problem,
             walk: WalkView::Opening,
             rows: Vec::new(),
+            icons: graft_ui::graph_screen::Icons::default(),
         };
     };
 
@@ -104,7 +107,15 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
         .visible(state.graph_rows())
         .iter()
         .zip(history.top..)
-        .map(|(row, index)| row_entry(row, index == history.cursor, mailmap, now))
+        .map(|(row, index)| {
+            row_entry(
+                row,
+                index == history.cursor,
+                mailmap,
+                state.refs.as_ref(),
+                now,
+            )
+        })
         .collect();
 
     GraphView {
@@ -112,6 +123,7 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
         problem,
         walk,
         rows,
+        icons: graft_ui::graph_screen::Icons::default(),
     }
 }
 
@@ -123,9 +135,19 @@ fn row_entry<'a>(
     row: &'a graft_graph::row::Row,
     highlighted: bool,
     mailmap: Option<&graft_git::mailmap::Mailmap>,
+    refs: Option<&RefBadges>,
     now: i64,
 ) -> GraphEntry<'a> {
     let mut line = GraphLine::plain(row);
+    if let Some(refs) = refs {
+        // HEAD wins over the stash and over the parent-derived shapes: it is
+        // the one node a person looks for first.
+        if refs.head() == Some(row.commit.id) {
+            line.node = NodeKind::Head;
+        } else if refs.stash() == Some(row.commit.id) {
+            line.node = NodeKind::Stash;
+        }
+    }
     if highlighted {
         line.paint = RowPaint::Highlighted;
     }
@@ -136,7 +158,11 @@ fn row_entry<'a>(
             row.commit.author.email.clone(),
         ),
     };
+    let badges = refs.map_or_else(Vec::new, |refs| {
+        refs.on(row.commit.id).iter().map(badge_view).collect()
+    });
     GraphEntry {
+        badges,
         line,
         subject: sanitize_line(&String::from_utf8_lossy(row.commit.subject())),
         author: AuthorChip {
@@ -145,6 +171,53 @@ fn row_entry<'a>(
         },
         when: relative_date(now, row.commit.date().seconds),
         sha: short_sha(&row.commit.id.to_string(), usize::from(SHA_WIDTH)),
+    }
+}
+
+/// One ref's badge, its names sanitised on the way into `ui`: ref names are
+/// bytes a repository chose, and a branch called `ma<ESC>[31min` must reach
+/// the terminal as a picture of the escape.
+fn badge_view(label: &RefLabel) -> Badge {
+    match label {
+        RefLabel::DetachedHead => Badge {
+            name: sanitize_line("HEAD"),
+            kind: BadgeKind::Head,
+        },
+        RefLabel::Branch {
+            name,
+            current,
+            upstream,
+        } => Badge {
+            name: sanitize_path_bytes(name),
+            kind: BadgeKind::Branch {
+                identity: BranchIdentity::of_name(name),
+                current: *current,
+                tracking: match upstream {
+                    Upstream::None => Tracking::Untracked,
+                    Upstream::InSync { remote } => Tracking::InSync {
+                        remote: sanitize_path_bytes(remote),
+                    },
+                    Upstream::Apart(counts) => Tracking::Apart {
+                        ahead: counts.ahead,
+                        behind: counts.behind,
+                    },
+                },
+            },
+        },
+        RefLabel::Remote(name) => Badge {
+            name: sanitize_path_bytes(name),
+            kind: BadgeKind::Remote {
+                identity: BranchIdentity::of_name(name),
+            },
+        },
+        RefLabel::Tag(name) => Badge {
+            name: sanitize_path_bytes(name),
+            kind: BadgeKind::Tag,
+        },
+        RefLabel::Stash => Badge {
+            name: sanitize_line("stash"),
+            kind: BadgeKind::Stash,
+        },
     }
 }
 
@@ -377,6 +450,26 @@ mod tests {
 
         assert!(!screen.contains('\u{1b}'), "an escape reached the cells");
         assert!(screen.contains('\u{241b}'), "{screen}");
+    }
+
+    #[test]
+    fn a_branch_name_with_an_escape_sequence_renders_inert() {
+        let label = crate::refs::RefLabel::Branch {
+            name: b"ma\x1b[31min".to_vec(),
+            current: false,
+            upstream: crate::refs::Upstream::InSync {
+                remote: b"or\x1b]0;pwned\x07igin".to_vec(),
+            },
+        };
+
+        let text = badge_view(&label).text(graft_ui::graph_screen::Icons::Plain);
+
+        assert!(!text.contains('\x1b'), "{text:?}");
+        assert!(!text.contains('\x07'), "{text:?}");
+        assert!(
+            text.contains("[31min"),
+            "the rest of the name is kept: {text:?}"
+        );
     }
 
     #[test]

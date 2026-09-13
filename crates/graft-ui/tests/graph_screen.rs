@@ -49,6 +49,7 @@ fn feature_branches_at_every_designed_size() {
                 .take(height)
                 .enumerate()
                 .map(|(index, &line)| GraphEntry {
+                    badges: Vec::new(),
                     line: if index == 1 {
                         graft_ui::graph_column::GraphLine {
                             paint: RowPaint::Highlighted,
@@ -68,6 +69,7 @@ fn feature_branches_at_every_designed_size() {
                     sha: short_sha(&line.row.commit.id.to_string(), 7),
                 })
                 .collect(),
+            icons: graft_ui::graph_screen::Icons::Plain,
         };
         let mut terminal = Terminal::new(TestBackend::new(columns, rows))
             .unwrap_or_else(|why| panic!("a test backend always opens: {why}"));

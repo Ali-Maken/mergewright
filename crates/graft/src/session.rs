@@ -42,6 +42,9 @@ pub struct Session {
     /// today, the config file's warnings. Already sanitised: the text quotes
     /// keys the user typed.
     pub notes: Vec<SanitizedText>,
+    /// Which glyphs ref badges draw with: `ui.icons`, plain unless the
+    /// config file asks for Nerd Font icons (never detected, PROMPT.md §5).
+    pub icons: graft_ui::graph_screen::Icons,
 }
 
 impl Session {
@@ -85,7 +88,13 @@ impl Session {
             )));
         }
 
+        let icons = match config.config.ui.icons {
+            crate::config::IconSet::Plain => graft_ui::graph_screen::Icons::Plain,
+            crate::config::IconSet::Nerd => graft_ui::graph_screen::Icons::Nerd,
+        };
+
         Self {
+            icons,
             theme: Theme::new(kind, &capabilities),
             rendering,
             notes,

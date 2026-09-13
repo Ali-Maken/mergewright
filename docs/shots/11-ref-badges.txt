@@ -1,0 +1,191 @@
+11 ref badges: pty captures of the real binary (target/debug/graft), replayed through pyte to the last frame before q.
+Judge by eye. Dark theme and ui.icons set via a temp XDG_CONFIG_HOME config.toml. Bold/colour not visible in plain text.
+Nerd Font icons are private-use code points; they may show as blanks or boxes here without a patched font.
+
+== this repo (HEAD on main, no remote): 80x24, ui.icons = "plain", exit 0 ==
+ graft /Users/devuser/dev/sandbox/gitter  141 commits
+◆   [◆ main] progress: m1/10 done, next 11                          15m  3071c57
+●   m1-10: row text columns and width degradation                   15m  d1c2aa1
+●   progress: m1/09 done, next 10                                   46m  76597ae
+●   m1-09b: graph screen is the default view; F2 status screen; st… 47m  bf71a25
+●   progress: m1/09 partial, continuing                             58m  d28c525
+●   m1-09a: history walk serves row requests; bounded window, curs… 58m  47f624b
+●   progress: m1/08 done, next 09                                   1h   366fa7d
+●   m1-08: Unicode graph column; Row carries per-column branch ide… 1h   8689b5d
+●   rules: design notes cover new UI; visual tickets end with a pt… 1h   476c03e
+●   rules: one source of truth — CLAUDE.md holds rules, /conduct a… 1h   19ae013
+●   progress: m1/07 done, next 08                                   1h   cffe7db
+●   m1-07: history streams into the layout                          1h   34dfc28
+●   rules: Fable decides (planner-fable design pass per milestone)… 1h   dee8eaf
+●   progress: session log line for m1/31 in the right section       1h   7d68a6d
+●   progress: m1/31 done, next 07                                   1h   b4968f6
+●   m1-31: heavy tests gated by heavy-tests feature alone           1h   d606cb3
+●   m1 replan: ticket 31 removes #[ignore] before 07; 27 measures … 1h   b695696
+●   m1 replan: ticket 22 rasteriser builds on Opus                  2h   8e63edb
+●   progress: M1 dispatch points at each ticket's Build with line   2h   155afd2
+●   adr-0018: heavy tests gated by the heavy-tests feature alone    2h   383c36f
+●   m1 replan: tickets 26-30 (search, memory/first paint, wrap, tm… 2h   fcbc809
+●   rules: standing rules for tickets, models, context, checkpoints 2h   9fdcded
+ q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom
+
+== ref-states corpus (in sync, ahead, behind, tag-only): 120x40, ui.icons = "plain", exit 0 ==
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/0776a59f62de8371/ref-states  8 commits
+  ●       [tag: archived] Archived work                                                                  GF 6y   51ea533
+  │ ●     [origin/behind] behind: theirs                                                                 GF 6y   b9b94c1
+  │ ●     [behind ↓1] behind: shared                                                                     GF 6y   379c02d
+  │ │ ●   [ahead ↑1] ahead: not pushed yet                                                               GF 6y   0994ff4
+  │ │ ●   [origin/ahead] ahead: pushed                                                                   GF 6y   7be40e6
+◆ │ │ │   [◆ main ⇄ origin] Advance main again                                                           GF 6y   a676d37
+●─│─┴─╯   Advance main                                                                                   GF 6y   31948ff
+◇─╯       Add the base                                                                                   GF 6y   68d5d19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom
+
+== ref-states corpus: 80x24, ui.icons = "plain", exit 0 ==
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/0776a59f62de8371/r…
+  ●       [tag: archived] Archived work                             6y   51ea533
+  │ ●     [origin/behind] behind: theirs                            6y   b9b94c1
+  │ ●     [behind ↓1] behind: shared                                6y   379c02d
+  │ │ ●   [ahead ↑1] ahead: not pushed yet                          6y   0994ff4
+  │ │ ●   [origin/ahead] ahead: pushed                              6y   7be40e6
+◆ │ │ │   [◆ main ⇄ origin] Advance main again                      6y   a676d37
+●─│─┴─╯   Advance main                                              6y   31948ff
+◇─╯       Add the base                                              6y   68d5d19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom
+
+== ref-states corpus: 120x40, ui.icons = "nerd", exit 0 ==
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/0776a59f62de8371/ref-states  8 commits
+  ●        archived Archived work                                                                       GF 6y   51ea533
+  │ ●      origin/behind behind: theirs                                                                 GF 6y   b9b94c1
+  │ ●      behind ↓1 behind: shared                                                                     GF 6y   379c02d
+  │ │ ●    ahead ↑1 ahead: not pushed yet                                                               GF 6y   0994ff4
+  │ │ ●    origin/ahead ahead: pushed                                                                   GF 6y   7be40e6
+◆ │ │ │    ◆ main ⇄ origin Advance main again                                                           GF 6y   a676d37
+●─│─┴─╯   Advance main                                                                                   GF 6y   31948ff
+◇─╯       Add the base                                                                                   GF 6y   68d5d19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom
+
+== stash corpus: 80x24, ui.icons = "plain", exit 0 ==
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/0776a59f62de8371/s…
+  ■─┬─╮   [stash] On main: wip: with an untracked file              5y   393688e
+  │ ● │   index on main: d96881b Add a.txt                          5y   b4bed6e
+  │ │ ◇   untracked files on main: d96881b Add a.txt                5y   f11c383
+◆─┴─╯     [◆ main] Add a.txt                                        6y   d96881b
+◇         Add a readme                                              6y   8c1d9f3
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom
+
+== detached-head corpus: 80x24, ui.icons = "plain", exit 0 ==
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/0776a59f62de8371/d…
+●   [main] Commit 4                                                 6y   c393c13
+●   Commit 3                                                        6y   4d62f2a
+◆   [HEAD] Commit 2                                                 6y   8863aa9
+◇   Commit 1                                                        6y   b291a87
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom

@@ -5,6 +5,7 @@ One line per public item. Update when a public item changes.
 - `fit` (mod) — clamp text to an exact cell width.
 - `graph_column` (mod) — the Unicode-tier graph column widget.
 - `graph_screen` (mod) — the graph screen Graft opens on: header, rows, key hints.
+- `graph_screen::badges` (mod) — ref badges: kinds, tracking state, plain/Nerd Font text.
 - `graph_screen::columns` (mod) — pure formatting for the author initials, relative date and short SHA.
 - `paint` (mod) — token-to-style helpers for widgets.
 - `status_screen` (mod) — the status screen view and widget.
@@ -35,11 +36,20 @@ One line per public item. Update when a public item changes.
 - `GraphView::walk` (field) — where the history walk is.
 - `GraphView::problem` (field) — an unsuperseded error; replaces the key hints while it lasts.
 - `GraphView::rows` (field) — viewport rows, top first; the cursor's row is painted highlighted.
-- `GraphEntry` (struct) — one row: `line`, sanitised `subject`, `author` chip, `when`, `sha`.
+- `GraphView::icons` (field) — which glyphs badges draw with (`ui.icons`).
+- `GraphEntry` (struct) — one row: `line`, `badges`, sanitised `subject`, `author` chip, `when`, `sha`.
 - `AuthorChip` (struct) — an author's chip: sanitised `initials` and the `identity` that colours it.
 - `WalkView` (enum) — walk state for the header: opening, reading, jumping, complete, cancelled, failed.
 - `GraphScreen` (struct) — the graph screen, ready to render.
 - `GraphScreen::new` (fn) — draw `view` in `theme`.
+
+## graph_screen::badges
+- `Icons` (enum) — `Plain` (default, bracketed) or `Nerd` (icon-prefixed).
+- `Badge` (struct) — one ref on a commit: sanitised `name` and `kind`.
+- `Badge::text` (fn) — the badge as it reads on screen in an icon set.
+- `BadgeKind` (enum) — branch (identity, current, tracking), remote, tag, detached HEAD, stash.
+- `Tracking` (enum) — untracked, in sync with a remote, or apart by ahead/behind counts.
+- `separator` (fn) — what goes between two badges in an icon set.
 
 ## graph_screen::columns
 - `initials` (fn) — two letters standing in for a sanitised name, for the author chip.

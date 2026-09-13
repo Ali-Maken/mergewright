@@ -66,6 +66,8 @@ pub enum Task {
     CheckSystemGit,
     /// Walk history.
     ReadHistory,
+    /// Read the refs each commit's badges show.
+    ReadRefs,
 }
 
 /// What a job brought back.
@@ -77,6 +79,9 @@ pub enum Product {
     Repository(Result<RepositoryFacts, String>),
     /// What the `git` on this machine turned out to be.
     SystemGit(GitCheck),
+    /// The refs on each commit and how far each branch is from its
+    /// upstream, or why they could not be read.
+    Refs(Result<crate::refs::RefBadges, String>),
 }
 
 /// What running `git --version` found.
@@ -125,6 +130,8 @@ pub struct AppState {
     /// The history walk the screen shows: its rows so far and where it is.
     /// `None` until one has been asked for.
     pub history: Option<History>,
+    /// The refs on each commit, once the refs job has answered.
+    pub refs: Option<crate::refs::RefBadges>,
     /// Which screen is on show. The graph, unless the user asked for the
     /// status screen — the only place tier and cell size are shown.
     pub screen: Screen,
@@ -236,6 +243,9 @@ pub enum Command {
     /// commit-graph file a topological walk falls to commit date, and says so
     /// (ADR-0008).
     ReadHistory(Order),
+    /// Read the refs for the badges, counting ahead/behind off the loop's
+    /// thread.
+    ReadRefs,
     /// Hand history job `JobId` a request for rows. The rows come back as a
     /// [`HistoryUpdate::Window`] tagged with the request's id.
     ShowRows(JobId, RowRequest),
@@ -268,7 +278,7 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
         }
         // Neither of these is waited on: their results are welcome whenever
         // they arrive, and there is nothing for `Esc` to cancel.
-        AppEvent::Started(_, Task::OpenRepository | Task::CheckSystemGit) => {}
+        AppEvent::Started(_, Task::OpenRepository | Task::CheckSystemGit | Task::ReadRefs) => {}
         AppEvent::Produced(_, Product::Repository(Ok(facts))) => {
             next.repository = Some(facts);
             // Whatever went wrong last time has been superseded by a
@@ -290,6 +300,14 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
         }
         AppEvent::Produced(_, Product::SystemGit(check)) => {
             next.system_git = Some(check);
+        }
+        AppEvent::Produced(_, Product::Refs(Ok(refs))) => {
+            next.refs = Some(refs);
+        }
+        AppEvent::Produced(_, Product::Refs(Err(failure))) => {
+            // The graph still draws without badges; the reason goes on the
+            // status line rather than leaving them silently missing.
+            next.status = Status::Failed(failure);
         }
         AppEvent::Progress(id, Progress::History(update)) => {
             let height = next.graph_rows();
@@ -370,6 +388,7 @@ fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         }
         commands.push(Command::OpenRepository);
         commands.push(Command::ReadHistory(Order::Topological));
+        commands.push(Command::ReadRefs);
     } else if is_screen_toggle(key) {
         next.screen = next.screen.toggled();
     } else if let Some(motion) = motion_for(key) {
@@ -681,7 +700,8 @@ mod tests {
             commands,
             vec![
                 Command::OpenRepository,
-                Command::ReadHistory(Order::Topological)
+                Command::ReadHistory(Order::Topological),
+                Command::ReadRefs,
             ]
         );
         // Asking for work is all it does: the state is the job's to change,
@@ -713,6 +733,7 @@ mod tests {
             system_git: None,
             awaiting: None,
             history: None,
+            refs: None,
             screen: Screen::Graph,
         };
 

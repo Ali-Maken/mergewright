@@ -1,0 +1,9 @@
+---
+source: crates/graft-ui/src/graph_screen/tests.rs
+expression: plain
+---
+ graft /code/api  2 commits                                                                                             
+●   [◆ main ⇄ origin] [feature/auth ↑2 ↓1] [origin/f… Commit 2                                           TE 2h   0202020
+◇   [topic] Commit 1                                                                                     TE 2h   0101010
+                                                                                                                        
+ q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom

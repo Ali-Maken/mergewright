@@ -55,6 +55,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
                     line.paint = RowPaint::Highlighted;
                 }
                 GraphEntry {
+                    badges: Vec::new(),
                     line,
                     subject: sanitize_line(&String::from_utf8_lossy(row.commit.subject())),
                     author: AuthorChip {
@@ -68,6 +69,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
                 }
             })
             .collect(),
+        icons: Icons::Plain,
     }
 }
 
@@ -225,4 +227,128 @@ fn tiny_and_empty_terminals_draw_without_panicking() {
         let terminal = draw(&view, columns, height);
         assert_eq!(terminal.backend().buffer().area.height, height);
     }
+}
+
+fn branch(name: &str, current: bool, tracking: Tracking) -> Badge {
+    Badge {
+        name: sanitize_line(name),
+        kind: BadgeKind::Branch {
+            identity: BranchIdentity::of_name(name.as_bytes()),
+            current,
+            tracking,
+        },
+    }
+}
+
+/// One of each kind of badge, the way `app` hands them over.
+fn every_kind() -> Vec<Badge> {
+    vec![
+        branch(
+            "main",
+            true,
+            Tracking::InSync {
+                remote: sanitize_line("origin"),
+            },
+        ),
+        branch(
+            "feature/auth",
+            false,
+            Tracking::Apart {
+                ahead: 2,
+                behind: 1,
+            },
+        ),
+        Badge {
+            name: sanitize_line("origin/feature/auth"),
+            kind: BadgeKind::Remote {
+                identity: BranchIdentity::of_name(b"origin/feature/auth"),
+            },
+        },
+        Badge {
+            name: sanitize_line("v2.3.0"),
+            kind: BadgeKind::Tag,
+        },
+        Badge {
+            name: sanitize_line("HEAD"),
+            kind: BadgeKind::Head,
+        },
+        Badge {
+            name: sanitize_line("stash"),
+            kind: BadgeKind::Stash,
+        },
+    ]
+}
+
+#[test]
+fn badges_read_as_designed_in_plain_unicode() {
+    let texts: Vec<String> = every_kind()
+        .iter()
+        .map(|badge| badge.text(Icons::Plain))
+        .collect();
+    assert_eq!(
+        texts,
+        [
+            "[◆ main ⇄ origin]",
+            "[feature/auth ↑2 ↓1]",
+            "[origin/feature/auth]",
+            "[tag: v2.3.0]",
+            "[HEAD]",
+            "[stash]",
+        ]
+    );
+    let ahead_only = branch(
+        "a",
+        false,
+        Tracking::Apart {
+            ahead: 3,
+            behind: 0,
+        },
+    );
+    let behind_only = branch(
+        "b",
+        false,
+        Tracking::Apart {
+            ahead: 0,
+            behind: 4,
+        },
+    );
+    assert_eq!(ahead_only.text(Icons::Plain), "[a ↑3]");
+    assert_eq!(behind_only.text(Icons::Plain), "[b ↓4]");
+}
+
+/// Rows 0 and 1 of a two-commit history, with every kind of badge on row 0.
+fn badged(rows: &[Row], icons: Icons) -> GraphView<'_> {
+    let mut view = view(rows, WalkView::Complete { rows: 2 }, 1);
+    view.rows[0].badges = every_kind();
+    view.rows[1].badges = vec![branch("topic", false, Tracking::Untracked)];
+    view.icons = icons;
+    view
+}
+
+#[test]
+fn badges_are_cut_before_the_subject_disappears_at_80_columns() {
+    let rows = linear(2);
+    let screen = text(&draw(&badged(&rows, Icons::Plain), 80, 5));
+
+    assert!(screen[1].contains("[◆ main ⇄ origin]"), "{screen:#?}");
+    assert!(
+        screen[1].contains('…'),
+        "the pile of badges is cut: {screen:#?}"
+    );
+    assert!(
+        screen[1].contains("Commit 2"),
+        "the subject survives: {screen:#?}"
+    );
+    assert!(screen[2].contains("[topic] Commit 1"), "{screen:#?}");
+}
+
+#[test]
+fn ui_icons_changes_how_badges_render() {
+    let rows = linear(2);
+    let plain = text(&draw(&badged(&rows, Icons::Plain), 120, 5)).join("\n");
+    let nerd = text(&draw(&badged(&rows, Icons::Nerd), 120, 5)).join("\n");
+
+    assert_ne!(plain, nerd);
+    insta::assert_snapshot!("badges-icons-plain", plain);
+    insta::assert_snapshot!("badges-icons-nerd", nerd);
 }

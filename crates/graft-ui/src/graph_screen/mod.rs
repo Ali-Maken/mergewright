@@ -10,6 +10,7 @@
 //! assembles from the rows the walk last sent. It never asks for rows and
 //! never scrolls — the viewport arrives already cut.
 
+pub mod badges;
 pub mod columns;
 #[cfg(test)]
 mod tests;
@@ -21,7 +22,9 @@ use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Widget;
+use unicode_width::UnicodeWidthStr;
 
+pub use badges::{Badge, BadgeKind, Icons, Tracking};
 pub use columns::{initials, relative_date, short_sha};
 
 use crate::fit::fit;
@@ -71,6 +74,8 @@ pub struct GraphView<'a> {
     /// The rows in the viewport, top first. The cursor's row is the one
     /// painted [`RowPaint::Highlighted`].
     pub rows: Vec<GraphEntry<'a>>,
+    /// Which glyphs ref badges draw with (`ui.icons`).
+    pub icons: Icons,
 }
 
 /// One row of the graph screen.
@@ -78,6 +83,9 @@ pub struct GraphView<'a> {
 pub struct GraphEntry<'a> {
     /// The graph column's cells for this row, and how strongly it paints.
     pub line: GraphLine<'a>,
+    /// The refs on this commit, in the order they are drawn. Empty for
+    /// most rows.
+    pub badges: Vec<Badge>,
     /// The commit's subject, sanitised.
     pub subject: SanitizedText,
     /// The author's chip: initials and the identity that colours it.
@@ -375,11 +383,12 @@ impl GraphScreen<'_> {
             "  "
         };
         draw_cell(buf, columns.marker_x, y, columns.marker_width, glyph, style);
+        let taken = self.draw_badges(entry, y, columns, style, buf);
         draw_cell(
             buf,
-            columns.subject_x,
+            columns.subject_x + taken,
             y,
-            columns.subject_width,
+            columns.subject_width - taken,
             entry.subject.as_str(),
             style,
         );
@@ -408,6 +417,74 @@ impl GraphScreen<'_> {
             &entry.sha,
             trailing_style,
         );
+    }
+}
+
+impl GraphScreen<'_> {
+    /// The row's ref badges, left of the subject, and how many cells they
+    /// took (their trailing gap included).
+    ///
+    /// Badges never take more than half the subject column: at 80 columns a
+    /// commit with a pile of refs still says what it is. What does not fit is
+    /// cut with `…` rather than pushing the subject off the row.
+    fn draw_badges(
+        &self,
+        entry: &GraphEntry<'_>,
+        y: u16,
+        columns: &Columns,
+        style: Style,
+        buf: &mut Buffer,
+    ) -> u16 {
+        if entry.badges.is_empty() {
+            return 0;
+        }
+        let icons = self.view.icons;
+        let texts: Vec<String> = entry.badges.iter().map(|badge| badge.text(icons)).collect();
+        let separator = badges::separator(icons);
+        let wanted = texts.iter().map(|text| text.width()).sum::<usize>()
+            + separator.width() * (texts.len() - 1)
+            + usize::from(SUBJECT_GAP);
+        let budget = columns.subject_width / 2;
+        let taken = u16::try_from(wanted).unwrap_or(u16::MAX).min(budget);
+        // Room for the badges themselves; the gap after them stays blank.
+        let room = taken.saturating_sub(SUBJECT_GAP);
+
+        let mut x = columns.subject_x;
+        let end = columns.subject_x + room;
+        for (index, (badge, text)) in entry.badges.iter().zip(&texts).enumerate() {
+            if index > 0 {
+                let gap = u16::try_from(separator.width()).unwrap_or(u16::MAX);
+                x = x.saturating_add(gap).min(end);
+            }
+            let width = u16::try_from(text.width()).unwrap_or(u16::MAX).min(end - x);
+            if width == 0 {
+                break;
+            }
+            draw_cell(buf, x, y, width, text, style.patch(self.badge_style(badge)));
+            x += width;
+        }
+        taken
+    }
+
+    /// The colour and weight one badge draws in: branches and remotes in
+    /// their lane's colour, so a badge and its line read as one thing.
+    fn badge_style(&self, badge: &Badge) -> Style {
+        match &badge.kind {
+            BadgeKind::Branch {
+                identity, current, ..
+            } => {
+                let style = Style::new().fg(color(self.theme.branch(*identity)));
+                if *current {
+                    style.add_modifier(Modifier::BOLD)
+                } else {
+                    style
+                }
+            }
+            BadgeKind::Remote { identity } => Style::new().fg(color(self.theme.branch(*identity))),
+            BadgeKind::Tag => foreground(self.theme, Token::Warning),
+            BadgeKind::Head => foreground(self.theme, Token::Accent).add_modifier(Modifier::BOLD),
+            BadgeKind::Stash => foreground(self.theme, Token::Info),
+        }
     }
 }
 

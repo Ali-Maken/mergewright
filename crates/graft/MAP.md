@@ -8,6 +8,7 @@ One line per public item. Update when a public item changes.
 - `event_loop` (mod) — the run loop, input, signals.
 - `history` (mod) — history walk, layout, streaming.
 - `jobs` (mod) — background job runner.
+- `refs` (mod) — refs on each commit and ahead/behind, for the ref badges.
 - `repos` (mod) — repository store, opened once and cached.
 - `repository` (mod) — facts about one open repository.
 - `session` (mod) — startup and per-run session state.
@@ -18,7 +19,20 @@ One line per public item. Update when a public item changes.
 ## session
 - `Startup` (struct) — what `main` decided before touching the terminal.
 - `Session` (struct) — what Graft is drawing with, for as long as this run lasts.
+- `Session::icons` (field) — badge glyph set from `ui.icons`.
 - `Session::settle` (fn) — resolve capabilities, theme, rendering info at startup.
+
+## refs
+- `RefBadges` (struct) — refs on every commit that has one, plus the `HEAD` and stash commits.
+- `RefBadges::on` (fn) — the refs on one commit, in drawing order.
+- `RefBadges::head` (fn) — the commit `HEAD` resolves to; `None` while unborn.
+- `RefBadges::stash` (fn) — the newest stash entry's commit.
+- `RefLabel` (enum) — one ref before sanitising: detached HEAD, branch, remote, tag, stash.
+- `Upstream` (enum) — a branch against its upstream: none, in sync (remote), apart (counts).
+- `AheadBehindCache` (struct) — counts keyed by (branch tip, upstream tip), shared by refs jobs.
+- `AheadBehindCache::get_or_count` (fn) — cached counts, walking only for a new pair.
+- `read` (fn) — read the repository's refs into `RefBadges` (a job's work).
+- `badges` (fn) — the pure half of `read`: refs, HEAD, upstreams, a counter → `RefBadges`.
 
 ## crash
 - `install` (fn) — install a panic hook that restores the terminal before dying.
@@ -41,8 +55,8 @@ One line per public item. Update when a public item changes.
 ## update
 - `AppEvent` (enum) — events fed into `update`, including job products.
 - `Progress` (enum) — what a running job hands over before it ends.
-- `Task` (enum) — jobs identified so their results can be told apart from stray ones.
-- `Product` (enum) — what a job brought back.
+- `Task` (enum) — jobs identified so their results can be told apart from stray ones; `ReadRefs` reads the badges.
+- `Product` (enum) — what a job brought back; `Refs` carries `RefBadges` or why they failed.
 - `GitCheck` (enum) — what running `git --version` found.
 - `AppState` (struct) — the whole app state.
 - `AppState::quit` (field) — set when Graft is leaving; terminal restored before reporting.
@@ -53,6 +67,7 @@ One line per public item. Update when a public item changes.
 - `AppState::system_git` (field) — system git check result once that job answers.
 - `AppState::awaiting` (field) — job id whose result is still wanted; stale ones dropped.
 - `AppState::history` (field) — the history walk shown on screen, if one was asked for.
+- `AppState::refs` (field) — refs on each commit, once the refs job answers.
 - `AppState::screen` (field) — which screen is on show; graph by default.
 - `Screen` (enum) — `Graph` (default) or `Status`.
 - `Screen::toggled` (fn) — the other screen; `F2` swaps.
@@ -62,7 +77,7 @@ One line per public item. Update when a public item changes.
 - `Size` (struct) — terminal size in character cells.
 - `Size::columns` (field) — width in character cells.
 - `Size::rows` (field) — height in character cells.
-- `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows.
+- `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows; `ReadRefs` reads refs and ahead/behind off the loop's thread.
 - `CHROME_ROWS` (const) — screen rows that are not the graph; `graft_ui::graph_screen::CHROME_ROWS`.
 - `AppState::graph_rows` (fn) — history rows the graph pane shows at the current size; never zero.
 - `update` (fn) — the pure state transition function.

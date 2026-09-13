@@ -33,6 +33,9 @@ One line per public item. Update when a public item changes.
 - `Walk::next_chunk` (fn) — advance the walk and return its next `Chunk`.
 - `read_commit` (fn) — read one commit whole, by id.
 - `first_parent_merges` (fn) — how many merges lie on a commit's first-parent chain.
+- `AheadBehind` (struct) — commits only a branch has (`ahead`) and only its upstream has (`behind`).
+- `AheadBehind::in_sync` (fn) — neither side has a commit the other lacks.
+- `ahead_behind` (fn) — count how far a branch tip and its upstream tip have drifted apart.
 - `WalkError` (enum) — why a rev-walk failed.
 
 ## mailmap
@@ -51,6 +54,8 @@ One line per public item. Update when a public item changes.
 - `RepoHandle::head` (fn) — where `HEAD` points.
 - `RepoHandle::references` (fn) — every ref in the repository.
 - `RepoHandle::commit_tips` (fn) — every branch/tag tip commit.
+- `RepoHandle::peeled_references` (fn) — every ref that reaches a commit, with that commit (tags peeled).
+- `RepoHandle::upstream` (fn) — the remote-tracking ref a branch pulls from, per its config.
 - `SharedRepo` (struct) — the `Send`, expensive-to-open half of a repository; hands out `RepoHandle`s.
 - `SharedRepo::OBJECT_CACHE_BYTES` (const) — object cache size a `SharedRepo` opens with.
 - `SharedRepo::open` (fn) — open the repository at `path`.

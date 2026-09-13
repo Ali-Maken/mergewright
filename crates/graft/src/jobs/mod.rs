@@ -295,6 +295,9 @@ pub struct JobRunner<S: JobEvents> {
     /// sender is what ends that job once it is idle, so a cancelled walk
     /// releases its worker instead of waiting for requests forever.
     row_requests: Mutex<HashMap<JobId, Sender<RowRequest>>>,
+    /// Ahead/behind counts every refs job shares, so a refresh walks only
+    /// the branches whose tips moved.
+    ahead_behind: Arc<crate::refs::AheadBehindCache>,
 }
 
 impl<S: JobEvents> JobRunner<S> {
@@ -352,6 +355,7 @@ impl<S: JobEvents> JobRunner<S> {
             sink,
             repos,
             row_requests: Mutex::new(HashMap::new()),
+            ahead_behind: Arc::default(),
         })
     }
 
@@ -488,6 +492,16 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             }
             Command::CheckSystemGit => {
                 self.announce(Task::CheckSystemGit, check_system_git());
+            }
+            Command::ReadRefs => {
+                let repos = Arc::clone(&self.repos);
+                let cache = Arc::clone(&self.ahead_behind);
+                self.announce(Task::ReadRefs, move |cancel| {
+                    if cancel.is_cancelled() {
+                        return Outcome::Cancelled;
+                    }
+                    Outcome::Produced(Product::Refs(crate::refs::read(&repos, &cache)))
+                });
             }
             Command::ReadHistory(order) => {
                 let repos = Arc::clone(&self.repos);

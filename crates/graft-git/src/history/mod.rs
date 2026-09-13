@@ -26,6 +26,7 @@
 //! screen, check whether anyone still wants the rest, and come back for
 //! more.
 
+mod divergence;
 mod node;
 mod simple;
 mod topological;
@@ -38,6 +39,7 @@ use node::{Nodes, RepoNodes};
 use simple::{Dated, Follow};
 use topological::Topological;
 
+pub use divergence::{AheadBehind, ahead_behind};
 pub use node::NodeError;
 
 /// How many commits a chunk holds.

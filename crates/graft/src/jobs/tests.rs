@@ -550,3 +550,30 @@ fn a_history_job_answers_row_requests_until_cancelled() {
     );
     assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
 }
+
+#[test]
+fn ahead_behind_is_counted_on_a_worker_never_the_loops_thread() {
+    let dir = graft_fixtures::borrow(graft_fixtures::Shape::RefStates);
+    let (runner, events, _store) = runner_at(&dir, 1);
+
+    runner.dispatch(Command::ReadRefs);
+
+    next_started(&events, Task::ReadRefs);
+    match next_report(&events) {
+        AppEvent::Produced(_, Product::Refs(Ok(refs))) => {
+            assert!(refs.head().is_some(), "HEAD is on `main`, which has a tip");
+        }
+        other => panic!("expected the refs, got {other:?}"),
+    }
+    let walked_on = runner.ahead_behind.walked_on();
+    assert!(
+        !walked_on.is_empty(),
+        "ref-states has branches with upstreams"
+    );
+    let here = std::thread::current().id();
+    assert!(
+        walked_on.iter().all(|&thread| thread != here),
+        "{walked_on:?}"
+    );
+    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+}

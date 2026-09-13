@@ -213,6 +213,77 @@ impl RepoHandle {
 
     /// Peels one ref to a commit and records it, ignoring refs that do not
     /// name a commit at all.
+    /// Every ref that reaches a commit, with the commit it peels to, sorted
+    /// by full name.
+    ///
+    /// Where [`references`](Self::references) leaves an annotated tag
+    /// pointing at its tag object, this follows it to the commit — what a
+    /// ref badge is drawn on. Refs that peel to a tree or a blob, and
+    /// symbolic refs whose target is gone, are left out: they sit on no
+    /// commit.
+    ///
+    /// # Errors
+    /// [`TipsError`] if the ref store cannot be read or a ref cannot be
+    /// peeled.
+    pub fn peeled_references(&self) -> Result<Vec<(RefName, Oid)>, TipsError> {
+        let read = |source: Box<dyn std::error::Error + Send + Sync>| TipsError::Read {
+            git_dir: self.git_dir().to_path_buf(),
+            source,
+        };
+        let platform = self.repo.references().map_err(|why| read(Box::new(why)))?;
+        let iter = platform.all().map_err(|why| read(Box::new(why)))?;
+        let mut found = Vec::new();
+        for reference in iter {
+            let mut reference = reference.map_err(read)?;
+            let name = RefName::new(reference.name().as_bstr().to_vec()).map_err(|source| {
+                TipsError::Malformed {
+                    git_dir: self.git_dir().to_path_buf(),
+                    source,
+                }
+            })?;
+            let mut tips = Vec::with_capacity(1);
+            self.push_tip(&mut tips, &mut reference)?;
+            if let Some(id) = tips.pop() {
+                found.push((name, id));
+            }
+        }
+        found.sort_by(|left, right| left.0.cmp(&right.0));
+        Ok(found)
+    }
+
+    /// The remote-tracking ref `branch` pulls from, as git's
+    /// `branch.<name>.remote` and `branch.<name>.merge` settings and the
+    /// remote's fetch refspecs name it — `refs/remotes/origin/main` for
+    /// `refs/heads/main` set up the usual way. `None` when the branch has no
+    /// upstream configured. The ref named may not exist.
+    ///
+    /// # Errors
+    /// [`RefsError`] if the configuration names an upstream that cannot be
+    /// resolved (an unknown remote, a malformed refspec).
+    pub fn upstream(&self, branch: &RefName) -> Result<Option<RefName>, RefsError> {
+        let read = |source: Box<dyn std::error::Error + Send + Sync>| RefsError::Read {
+            git_dir: self.git_dir().to_path_buf(),
+            source,
+        };
+        let full = gix::refs::FullName::try_from(gix::bstr::BString::from(branch.as_bytes()))
+            .map_err(|why| read(Box::new(why)))?;
+        match self
+            .repo
+            .branch_remote_tracking_ref_name(full.as_ref(), gix::remote::Direction::Fetch)
+        {
+            None => Ok(None),
+            Some(Err(why)) => Err(read(Box::new(why))),
+            Some(Ok(tracking)) => {
+                RefName::new(tracking.as_bstr().to_vec())
+                    .map(Some)
+                    .map_err(|source| RefsError::Malformed {
+                        git_dir: self.git_dir().to_path_buf(),
+                        source,
+                    })
+            }
+        }
+    }
+
     fn push_tip(
         &self,
         tips: &mut Vec<Oid>,
