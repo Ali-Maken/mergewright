@@ -13,7 +13,9 @@
 //! out.
 //!
 //! What it leaves out: the terminal's own parsing and painting, and write
-//! back-pressure on a real pty. Heavy tier only (`heavy-tests`, ADR-0018).
+//! back-pressure on a real pty. The in-memory terminal only copies what it
+//! is sent; counting Kitty commands in it happens after the scroll, outside
+//! every timed window (see [`Sink`]). Heavy tier only (`heavy-tests`, ADR-0018).
 //!
 //! The budget fails only in a release build (ADR-0021): PROMPT.md's 16 ms is
 //! a claim about the shipped binary. A debug build runs the same scroll and
@@ -271,9 +273,12 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs) -> Result<Run, String> {
         return Err(failure);
     }
     let latencies = wakes.latencies()?;
-    let breakdown = wakes.breakdown();
+    // The scroll is over and every latency stamped: only now read what the
+    // terminal was sent.
+    let (written, counted) = sink.count(&wakes.written);
+    let breakdown = wakes.breakdown(&counted);
     let waited = wakes.waited(initial);
-    let by_trigger = wakes.written_by_trigger();
+    let by_trigger = wakes.written_by_trigger(&counted);
 
     match jobs.shutdown(Duration::from_secs(10)) {
         Shutdown::Clean => {}
@@ -281,7 +286,6 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs) -> Result<Run, String> {
             return Err(format!("the job pool did not stop cleanly: {other:?}"));
         }
     }
-    let written = sink.0.lock().unwrap_or_else(PoisonError::into_inner);
     Ok(Run {
         latencies,
         breakdown,
@@ -389,14 +393,54 @@ fn capabilities(tier: RenderingTier) -> Capabilities {
     }
 }
 
-/// The terminal: counts what was written, by Kitty command kind, and keeps
-/// none of it.
+/// The terminal: keeps every byte it is sent, and only copies them.
+///
+/// A write is a copy into a log, the way a write to a pty is a copy into the
+/// kernel's buffer; parsing is the terminal's own work, which this test
+/// leaves out. Frames note only how many bytes had been sent
+/// ([`Sink::sent`]); [`Sink::count`] parses the log once, after the scroll,
+/// so no timed window pays for the test's own bookkeeping (m1-the-graph/30f:
+/// parsing each byte inside `write` added ~3.6 ms to every pixel page key).
 #[derive(Clone, Default)]
-struct Sink(Arc<Mutex<Written>>);
+struct Sink(Arc<Mutex<Log>>);
+
+/// The bytes sent, in chunks so that growing the log never moves what is
+/// already in it (a reallocation would copy megabytes inside one frame).
+#[derive(Default)]
+struct Log {
+    chunks: Vec<Vec<u8>>,
+    len: usize,
+}
+
+/// A new chunk's capacity, unless one write is bigger.
+const CHUNK: usize = 4 << 20;
 
 impl Sink {
-    fn snapshot(&self) -> Counts {
-        self.0.lock().unwrap_or_else(PoisonError::into_inner).counts
+    /// Bytes sent so far.
+    fn sent(&self) -> usize {
+        self.0.lock().unwrap_or_else(PoisonError::into_inner).len
+    }
+
+    /// Parses everything sent: the totals, and the running [`Counts`] at each
+    /// of `marks` (byte offsets from [`Sink::sent`], in order).
+    fn count(&self, marks: &[usize]) -> (Written, Vec<Counts>) {
+        let log = self.0.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut written = Written::default();
+        let mut at = Vec::with_capacity(marks.len());
+        let mut marks = marks.iter().peekable();
+        let mut offset = 0;
+        let mut note = |written: &Written, offset: usize, at: &mut Vec<Counts>| {
+            while marks.next_if(|mark| **mark <= offset).is_some() {
+                at.push(written.counts);
+            }
+        };
+        for &byte in log.chunks.iter().flatten() {
+            note(&written, offset, &mut at);
+            written.take(byte);
+            offset += 1;
+        }
+        note(&written, offset, &mut at);
+        (written, at)
     }
 }
 
@@ -472,6 +516,8 @@ enum Parse {
 
 impl Written {
     fn take(&mut self, byte: u8) {
+        self.bytes += 1;
+        self.counts.bytes += 1;
         if matches!(self.current, Some(CommandKind::Transmit)) {
             self.counts.transmit_bytes += 1;
         }
@@ -533,12 +579,18 @@ impl Written {
 
 impl Write for Sink {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let mut written = self.0.lock().unwrap_or_else(PoisonError::into_inner);
-        written.bytes += buf.len();
-        written.counts.bytes += buf.len();
-        for &byte in buf {
-            written.take(byte);
+        let mut log = self.0.lock().unwrap_or_else(PoisonError::into_inner);
+        let room = log
+            .chunks
+            .last()
+            .map_or(0, |chunk| chunk.capacity() - chunk.len());
+        if room < buf.len() {
+            log.chunks.push(Vec::with_capacity(CHUNK.max(buf.len())));
         }
+        if let Some(chunk) = log.chunks.last_mut() {
+            chunk.extend_from_slice(buf);
+        }
+        log.len += buf.len();
         Ok(buf.len())
     }
 
@@ -607,8 +659,9 @@ struct Paced<'a, D> {
     /// `drawn[i]`: the frame after `handed[i - 1]` was on the terminal
     /// (`drawn[0]` is the first frame, before any wake).
     drawn: Vec<Instant>,
-    /// `written[i]`: what the terminal had been sent when `drawn[i]` was stamped.
-    written: Vec<Counts>,
+    /// `written[i]`: bytes the terminal had been sent when `drawn[i]` was
+    /// stamped; parsed into [`Counts`] after the scroll ([`Sink::count`]).
+    written: Vec<usize>,
     sink: Sink,
     failure: Option<String>,
 }
@@ -666,13 +719,12 @@ impl<'a, D> Paced<'a, D> {
 
     /// What the frame after each wake wrote, summed by what woke it: the
     /// script's key, a window of rows, or another job event.
-    fn written_by_trigger(&self) -> Vec<(String, usize, Counts)> {
+    /// `counted[i]` is `written[i]` parsed.
+    fn written_by_trigger(&self, counted: &[Counts]) -> Vec<(String, usize, Counts)> {
         let keys = keys();
         let mut groups: Vec<(String, usize, Counts)> = Vec::new();
         for (index, handed) in self.handed.iter().enumerate() {
-            let (Some(before), Some(after)) =
-                (self.written.get(index), self.written.get(index + 1))
-            else {
+            let (Some(before), Some(after)) = (counted.get(index), counted.get(index + 1)) else {
                 continue;
             };
             let name = match handed.kind {
@@ -713,7 +765,8 @@ impl<'a, D> Paced<'a, D> {
     /// Per key, in [`keys`] order, where its latency went: time queued
     /// behind the wake before it (and what that wake was), then the key's
     /// own frame and what it wrote. Printed for late keys.
-    fn breakdown(&self) -> Vec<String> {
+    /// `counted[i]` is `written[i]` parsed.
+    fn breakdown(&self, counted: &[Counts]) -> Vec<String> {
         let mut lines = Vec::new();
         for (index, handed) in self.handed.iter().enumerate() {
             let Kind::Key(_, due) = handed.kind else {
@@ -721,8 +774,8 @@ impl<'a, D> Paced<'a, D> {
             };
             let (Some(drawn), Some(before), Some(after)) = (
                 self.drawn.get(index + 1),
-                self.written.get(index),
-                self.written.get(index + 1),
+                counted.get(index),
+                counted.get(index + 1),
             ) else {
                 lines.push("no frame drawn".to_owned());
                 continue;
@@ -787,7 +840,7 @@ impl<'a, D> Paced<'a, D> {
 impl<D> Wakes for Paced<'_, D> {
     fn next_wake(&mut self) -> Option<Wake> {
         self.drawn.push(Instant::now());
-        self.written.push(self.sink.snapshot());
+        self.written.push(self.sink.sent());
         if self.next_key < self.keys.len() {
             let wait = self.due.saturating_duration_since(Instant::now());
             if !wait.is_zero() {
@@ -830,4 +883,56 @@ impl<D> Wakes for Paced<'_, D> {
             }
         }
     }
+}
+
+/// The measurement change must not change what is counted: parsing the log
+/// after the run gives, at every frame mark, exactly what parsing each write
+/// as it arrived gave (the Sink before m1-the-graph/30f). Commands split
+/// across writes, a continuation chunk, and a write bigger than a chunk.
+#[test]
+fn the_sink_counts_after_the_run_what_parsing_each_write_counted_during_it() {
+    let transmit_payload = "A".repeat(CHUNK + 10);
+    let stream: Vec<String> = vec![
+        "plain text \x1b[31m red".to_owned(),
+        format!("\x1b_Ga=t,f=32,i=1,m=1;{transmit_payload}\x1b\\"),
+        "\x1b_Gm=0;QUJD\x1b\\".to_owned(),
+        "\x1b_Ga=p,i=1,p=1\x1b\\\x1b_Ga=d,d=i,i=1\x1b\\".to_owned(),
+        "\x1b_Ga=d,d=I,i=1\x1b\\\x1b_Gq=2\x1b\\ tail".to_owned(),
+    ];
+    let bytes: Vec<u8> = stream.concat().into_bytes();
+    // Split everywhere interesting: inside ESC _ G, inside the control keys,
+    // inside the payload, between ESC and '\'.
+    let cuts = [0, 3, 13, 14, 15, 22, 40, CHUNK, CHUNK + 30, CHUNK + 33];
+    let cuts: Vec<usize> = cuts
+        .into_iter()
+        .chain((CHUNK + 40..bytes.len()).step_by(7))
+        .chain([bytes.len()])
+        .collect();
+
+    let mut sink = Sink::default();
+    let mut during = Written::default();
+    let mut expected = vec![during.counts];
+    let mut marks = vec![0];
+    for pair in cuts.windows(2) {
+        let piece = &bytes[pair[0]..pair[1]];
+        sink.write_all(piece).unwrap_or_else(|why| panic!("{why}"));
+        for &byte in piece {
+            during.take(byte);
+        }
+        expected.push(during.counts);
+        marks.push(sink.sent());
+    }
+
+    let (after, counted) = sink.count(&marks);
+    assert_eq!(sink.sent(), bytes.len(), "every byte kept");
+    assert_eq!(after.bytes, during.bytes);
+    assert_eq!(after.kitty_commands, during.kitty_commands);
+    assert_eq!(after.kitty_commands, 6);
+    let (transmits, placements, deletes, frees) = (1, 1, 1, 1);
+    let last = counted.last().copied().unwrap_or_default();
+    assert_eq!(
+        (last.transmits, last.placements, last.deletes, last.frees),
+        (transmits, placements, deletes, frees)
+    );
+    assert_eq!(format!("{counted:?}"), format!("{expected:?}"));
 }
