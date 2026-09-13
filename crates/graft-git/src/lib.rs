@@ -12,4 +12,5 @@ mod fixture;
 pub mod history;
 pub mod mailmap;
 pub mod repo;
+pub mod status;
 pub mod version;

@@ -6,6 +6,7 @@ One line per public item. Update when a public item changes.
 - `history` (mod) — rev-walks: chunked, ordered, resumable.
 - `mailmap` (mod) — `.mailmap` resolution, via gix's own parser.
 - `repo` (mod) — opening a repository and reading `HEAD`, refs and tips from it.
+- `status` (mod) — counting staged, unstaged and untracked working-tree changes.
 - `version` (mod) — running and classifying the system `git` binary's version.
 
 ## branches
@@ -69,6 +70,12 @@ One line per public item. Update when a public item changes.
 - `OpenError` (enum) — why opening a repository failed.
 - `OpenError::path` (fn) — the path that failed to open.
 - `HeadError` (enum) — why reading `HEAD` failed.
+
+## status
+- `WorkingTreeCounts` (struct) — how many files are staged, unstaged and untracked.
+- `WorkingTreeCounts::is_clean` (fn) — no staged, unstaged or untracked changes.
+- `StatusError` (enum) — why counting the working tree's changes failed.
+- `counts` (fn) — count staged, unstaged and untracked files (bare repos report clean).
 
 ## version
 - `GitVersion` (struct) — a parsed `major.minor.patch` git version.
