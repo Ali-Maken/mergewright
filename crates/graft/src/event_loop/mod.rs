@@ -144,7 +144,12 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     // One repository, opened once and shared by every job that follows
     // (`crate::repos`). Built here rather than inside the pool so that its
     // lifetime is the session's, not a job's.
-    let repos = Arc::new(RepoStore::new(repo_path.clone(), None));
+    // `graph.default_branch` is ADR-0001's rule 1, so it goes where the branches
+    // are resolved.
+    let repos = Arc::new(RepoStore::new(
+        repo_path.clone(),
+        config.config.graph.default_branch.clone(),
+    ));
     let jobs = JobRunner::with_default_size(sender.clone(), repos)?;
     input::spawn_reader(sender)?;
 

@@ -182,7 +182,10 @@ mod tests {
                     theme,
                     ..Ui::default()
                 },
-                graph: Graph { renderer },
+                graph: Graph {
+                    renderer,
+                    ..Graph::default()
+                },
             },
             ..Loaded::default()
         }

@@ -290,3 +290,35 @@ fn nowhere_to_look_loads_defaults_and_says_so() {
         loaded.warnings[0]
     );
 }
+
+#[test]
+fn the_default_branch_is_read_as_a_full_branch_name() {
+    let (_dir, path) = config_file("[graph]\ndefault_branch = \"trunk\"\n");
+    let loaded = load_from(&path).expect("a valid default branch loads");
+
+    assert_eq!(
+        loaded.config.graph.default_branch,
+        Some(RefName::new("refs/heads/trunk").expect("valid"))
+    );
+    assert_eq!(loaded.warnings, [], "default_branch is a known key");
+}
+
+#[test]
+fn no_default_branch_leaves_detection_to_decide() {
+    let (_dir, path) = config_file("[graph]\nrenderer = \"unicode\"\n");
+    let loaded = load_from(&path).expect("loads");
+    assert_eq!(loaded.config.graph.default_branch, None);
+}
+
+#[test]
+fn a_default_branch_git_would_refuse_names_the_file_and_the_line() {
+    let (_dir, path) =
+        config_file("[graph]\nrenderer = \"auto\"\ndefault_branch = \"two..dots\"\n");
+    let error = load_error(&path);
+
+    assert!(matches!(error, ConfigError::Parse { .. }), "{error:?}");
+    let message = error.to_string();
+    assert!(message.contains(&path.display().to_string()), "{message}");
+    assert!(message.contains("line 3"), "{message}");
+    assert!(message.contains("two..dots"), "{message}");
+}

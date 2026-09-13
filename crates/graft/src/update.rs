@@ -17,7 +17,7 @@ use graft_core::job::JobId;
 use graft_git::history::Order;
 use graft_git::version::SystemGit;
 
-use crate::history::History;
+use crate::history::{History, HistoryUpdate, Phase};
 use crate::repository::RepositoryFacts;
 
 /// Everything the loop can be told.
@@ -42,6 +42,16 @@ pub enum AppEvent {
     Started(JobId, Task),
     /// A job that ended with something the application keeps.
     Produced(JobId, Product),
+    /// A running job has something to show before it ends. Always between
+    /// the job's [`AppEvent::Started`] and its one ending event.
+    Progress(JobId, Progress),
+}
+
+/// What a running job hands over before it ends.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Progress {
+    /// The history walk has started, or laid out its next rows.
+    History(HistoryUpdate),
 }
 
 /// What a job was started to do.
@@ -67,10 +77,6 @@ pub enum Product {
     Repository(Result<RepositoryFacts, String>),
     /// What the `git` on this machine turned out to be.
     SystemGit(GitCheck),
-    /// The commits a walk brought back. Boxed because it is much the largest
-    /// thing a job returns, and every other variant would otherwise be as big
-    /// as it is.
-    History(Box<History>),
 }
 
 /// What running `git --version` found.
@@ -116,7 +122,8 @@ pub struct AppState {
     /// since been withdrawn. That is what makes a stale result harmless — it
     /// is dropped here, before it can reach a screen.
     pub awaiting: Option<JobId>,
-    /// The commits on screen, once a walk has finished.
+    /// The history walk the screen shows: its rows so far and where it is.
+    /// `None` until one has been asked for.
     pub history: Option<History>,
 }
 
@@ -213,6 +220,7 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             // The newest ask wins. Anything the previous walk was going to
             // say is now about a question nobody asked.
             next.awaiting = Some(id);
+            next.history = Some(History::started());
         }
         // Neither of these is waited on: their results are welcome whenever
         // they arrive, and there is nothing for `Esc` to cancel.
@@ -239,15 +247,15 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
         AppEvent::Produced(_, Product::SystemGit(check)) => {
             next.system_git = Some(check);
         }
-        AppEvent::Produced(id, Product::History(history)) => {
-            if next.awaiting == Some(id) {
-                next.awaiting = None;
-                next.history = Some(*history);
-                next.status = Status::Ready;
+        AppEvent::Progress(id, Progress::History(update)) => {
+            if next.awaiting == Some(id)
+                && let Some(history) = next.history.as_mut()
+            {
+                history.apply(update);
             }
-            // Otherwise it is the answer to a walk that was cancelled or
-            // superseded. Dropped here, which is the whole reason the id
-            // travels with the result.
+            // Otherwise it is from a walk that was cancelled or superseded.
+            // Dropped here, which is the whole reason the id travels with it:
+            // no chunk lands after `Esc`.
         }
     }
 
@@ -269,6 +277,7 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
                 // sends its result, and it has to find nobody waiting for it.
                 if let Some(id) = next.awaiting.take() {
                     commands.push(Command::CancelJob(id));
+                    set_phase(next, Phase::Cancelled);
                 }
             }
         }
@@ -278,13 +287,18 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
         Event::JobFailed(id, failure) => {
             if next.awaiting == Some(id) {
                 next.awaiting = None;
+                set_phase(next, Phase::Failed(failure.to_string()));
             }
             // Surfaced, not swallowed: the user is told which job failed and
             // why. A panicking job says so in the same place — it is still a
             // failure, and the crash report's path rides along with it.
             next.status = Status::Failed(format!("{id} failed: {failure}"));
         }
-        Event::JobFinished(_) => {
+        Event::JobFinished(id) => {
+            if next.awaiting == Some(id) {
+                next.awaiting = None;
+                set_phase(next, Phase::Complete);
+            }
             // The last thing Graft was asked to do worked, so a failure still
             // on the status line is stale. Nothing keyed by job id is kept yet,
             // which is also what makes a result for a job whose screen has gone
@@ -298,11 +312,20 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             // must not leave the screen waiting for it either.
             if next.awaiting == Some(id) {
                 next.awaiting = None;
+                set_phase(next, Phase::Cancelled);
             }
         }
         // Nothing is bound to these yet. They reach `update` so that the
         // tickets that need them have somewhere obvious to add the handling.
         Event::Mouse(_) | Event::Paste(_) | Event::FocusGained | Event::FocusLost => {}
+    }
+}
+
+/// Moves the walk on screen to `phase`. Called only for the walk the screen
+/// was waiting for, which always has a [`History`].
+fn set_phase(next: &mut AppState, phase: Phase) {
+    if let Some(history) = next.history.as_mut() {
+        history.phase = phase;
     }
 }
 
@@ -328,8 +351,24 @@ mod tests {
     use graft_core::event::{Modifiers, MouseInput, MouseKind};
     use graft_core::job::{JobFailure, JobId};
 
+    use graft_core::commit::{Commit, Identity, Timestamp};
+    use graft_core::oid::Oid;
+    use graft_graph::Row;
+
     use super::*;
+    use crate::history::WalkFacts;
     use crate::repository::Head;
+
+    fn identity() -> Identity {
+        Identity {
+            name: b"Test".to_vec(),
+            email: b"test@example.invalid".to_vec(),
+            when: Timestamp {
+                seconds: 0,
+                offset_seconds: 0,
+            },
+        }
+    }
 
     fn key(code: KeyCode) -> AppEvent {
         AppEvent::Core(Event::Key(KeyPress::plain(code)))
@@ -661,16 +700,47 @@ mod tests {
         assert!(commands.is_empty());
     }
 
-    /// The result of a walk with no commits in it: these tests care about
-    /// which result lands, not what is in it.
-    fn walked(requested: Order, order: Order) -> Product {
-        Product::History(Box::new(History {
-            commits: Vec::new().into(),
-            requested,
-            order,
-            default_branch: None,
-            integration: Vec::new().into(),
-        }))
+    /// What a walk says first: the order it is in.
+    fn started(requested: Order, order: Order) -> AppEvent {
+        AppEvent::Progress(
+            JobId::new(0),
+            Progress::History(HistoryUpdate::Started(Box::new(WalkFacts {
+                requested,
+                order,
+                default_branch: None,
+                integration: Vec::new().into(),
+            }))),
+        )
+    }
+
+    /// The same event, from job `id`.
+    fn from(id: JobId, event: AppEvent) -> AppEvent {
+        match event {
+            AppEvent::Progress(_, progress) => AppEvent::Progress(id, progress),
+            other => other,
+        }
+    }
+
+    /// `n` rows from job `id`. The rows themselves do not matter here, only
+    /// whether they land, so they are copies of one row.
+    fn rows(id: JobId, n: usize) -> AppEvent {
+        let row = Row {
+            commit: Commit {
+                id: Oid::from_bytes(&[7; Oid::SHA1_BYTES]).expect("20 bytes is an oid"),
+                parents: Vec::new(),
+                author: identity(),
+                committer: identity(),
+                message: b"a commit".to_vec(),
+            },
+            lane: 0,
+            incoming: Vec::new(),
+            outgoing: Vec::new(),
+            marker: None,
+        };
+        AppEvent::Progress(
+            id,
+            Progress::History(HistoryUpdate::Rows(vec![row; n].into())),
+        )
     }
 
     /// The state of an application with a walk in flight.
@@ -685,20 +755,45 @@ mod tests {
             "being told a job started asks for no work"
         );
         assert_eq!(next.awaiting, Some(id));
+        assert_eq!(next.history, Some(History::started()));
         next
+    }
+
+    /// Where the walk on screen is, and how many rows it has.
+    fn progress(state: &AppState) -> (Phase, usize) {
+        let history = state.history.as_ref().expect("a walk was asked for");
+        (history.phase.clone(), history.rows)
+    }
+
+    #[test]
+    fn rows_land_as_they_arrive_and_the_walk_completes() {
+        let id = JobId::new(4);
+        let state = awaiting(id);
+
+        let (state, _) = update(&state, rows(id, 500));
+        assert_eq!(progress(&state), (Phase::Streaming, 500));
+        let (state, _) = update(&state, rows(id, 12));
+        assert_eq!(progress(&state), (Phase::Streaming, 512));
+
+        let (state, commands) = update(&state, core(Event::JobFinished(id)));
+        assert_eq!(progress(&state), (Phase::Complete, 512));
+        assert_eq!(state.awaiting, None);
+        assert!(commands.is_empty());
     }
 
     #[test]
     fn esc_cancels_the_walk_the_screen_is_waiting_for() {
         let id = JobId::new(4);
+        let (state, _) = update(&awaiting(id), rows(id, 500));
 
-        let (next, commands) = update(&awaiting(id), key(KeyCode::Escape));
+        let (next, commands) = update(&state, key(KeyCode::Escape));
 
         assert_eq!(commands, vec![Command::CancelJob(id)]);
         assert_eq!(
             next.awaiting, None,
             "nothing is waited on once `Esc` has been pressed"
         );
+        assert_eq!(progress(&next), (Phase::Cancelled, 500));
     }
 
     #[test]
@@ -711,49 +806,44 @@ mod tests {
         assert!(commands.is_empty());
     }
 
-    /// The race `Esc` has to survive: the walk finishes between the key press
-    /// and the cancel flag being read, so the result is sent anyway. It must
-    /// not appear.
+    /// The race `Esc` has to survive: the walk lays out another chunk between
+    /// the key press and the cancel flag being read, and sends it anyway. It
+    /// must not appear, and neither may the walk's ending undo the cancel.
     #[test]
-    fn a_cancelled_walk_that_answers_anyway_is_discarded() {
+    fn no_chunk_lands_after_esc() {
         let id = JobId::new(4);
-        let (cancelled, _) = update(&awaiting(id), key(KeyCode::Escape));
+        let (state, _) = update(&awaiting(id), rows(id, 500));
+        let (cancelled, _) = update(&state, key(KeyCode::Escape));
 
-        let (next, commands) = update(
-            &cancelled,
-            AppEvent::Produced(id, walked(Order::Topological, Order::Topological)),
-        );
-
-        assert!(
-            next.history.is_none(),
-            "a walk the user stopped must never land on screen"
-        );
+        let (next, commands) = update(&cancelled, rows(id, 500));
+        assert_eq!(progress(&next), (Phase::Cancelled, 500));
         assert!(commands.is_empty());
+
+        for ending in [Event::JobFinished(id), Event::JobCancelled(id)] {
+            let (after, _) = update(&next, core(ending));
+            assert_eq!(progress(&after), (Phase::Cancelled, 500));
+        }
     }
 
-    /// Two walks in flight: the older one's answer is about a question nobody
+    /// Two walks in flight: the older one's rows are about a question nobody
     /// is asking any more.
     #[test]
     fn a_superseded_walk_loses_to_the_newer_one() {
         let old = JobId::new(1);
         let new = JobId::new(2);
-        let state = awaiting(old);
+        let (state, _) = update(&awaiting(old), rows(old, 3));
         let (state, _) = update(&state, AppEvent::Started(new, Task::ReadHistory));
+        assert_eq!(progress(&state), (Phase::Streaming, 0));
 
-        let (state, _) = update(
-            &state,
-            AppEvent::Produced(old, walked(Order::Topological, Order::CommitDate)),
-        );
-        assert!(state.history.is_none(), "the stale walk must be dropped");
-
-        let (state, _) = update(
-            &state,
-            AppEvent::Produced(new, walked(Order::Topological, Order::Topological)),
+        let (state, _) = update(&state, rows(old, 500));
+        assert_eq!(
+            progress(&state),
+            (Phase::Streaming, 0),
+            "stale rows dropped"
         );
 
-        let history = state.history.expect("the awaited walk lands");
-        assert!(!history.is_provisional());
-        assert_eq!(state.awaiting, None);
+        let (state, _) = update(&state, rows(new, 2));
+        assert_eq!(progress(&state), (Phase::Streaming, 2));
     }
 
     /// ADR-0008 in the state: a repository with no commit-graph file answers
@@ -764,22 +854,29 @@ mod tests {
 
         let (next, _) = update(
             &awaiting(id),
-            AppEvent::Produced(id, walked(Order::Topological, Order::CommitDate)),
+            from(id, started(Order::Topological, Order::CommitDate)),
         );
+        let walk = next.history.and_then(|history| history.walk);
+        assert!(walk.expect("the walk said what it is").is_provisional());
 
-        let history = next.history.expect("the awaited walk lands");
-        assert!(history.is_provisional());
-        assert_eq!(next.status, Status::Ready);
+        let (next, _) = update(
+            &awaiting(id),
+            from(id, started(Order::Topological, Order::Topological)),
+        );
+        let walk = next.history.and_then(|history| history.walk);
+        assert!(!walk.expect("the walk said what it is").is_provisional());
     }
 
     /// A walk that failed or was cancelled by something other than `Esc` —
-    /// shutdown, say — must not leave the screen waiting for ever.
+    /// shutdown, say — must not leave the screen waiting for ever, and says
+    /// which it was.
     #[test]
-    fn a_walk_that_ends_without_an_answer_stops_being_awaited() {
+    fn a_walk_that_ends_without_finishing_says_how() {
         let id = JobId::new(3);
 
         let (cancelled, _) = update(&awaiting(id), core(Event::JobCancelled(id)));
         assert_eq!(cancelled.awaiting, None);
+        assert_eq!(progress(&cancelled), (Phase::Cancelled, 0));
 
         let (failed, _) = update(
             &awaiting(id),
@@ -789,6 +886,11 @@ mod tests {
             )),
         );
         assert_eq!(failed.awaiting, None);
+        let (phase, _) = progress(&failed);
+        assert!(
+            matches!(&phase, Phase::Failed(reason) if reason.contains("the pack is corrupt")),
+            "{phase:?}"
+        );
     }
 
     /// Purity's other half, which no runtime test can observe: that `update`

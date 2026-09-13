@@ -504,3 +504,45 @@ fn cancelling_a_job_that_is_over_changes_nothing() {
         "a job that is over must not report twice"
     );
 }
+
+/// The history job streams: it says what the walk is, sends its rows a chunk
+/// at a time as they are laid out, and only then ends — once.
+#[test]
+fn a_history_job_sends_its_rows_before_it_ends() {
+    let dir = graft_fixtures::borrow(graft_fixtures::Shape::Linear);
+    let (runner, events, _store) = runner_at(&dir, 1);
+
+    runner.dispatch(Command::ReadHistory(Order::Topological));
+    let id = next_started(&events, Task::ReadHistory);
+
+    let mut started = false;
+    let mut chunks = 0;
+    let mut rows = 0;
+    let ended = loop {
+        match next_report(&events) {
+            AppEvent::Progress(from, Progress::History(update)) => {
+                assert_eq!(from, id);
+                match update {
+                    history::HistoryUpdate::Started(_) => {
+                        assert!(!started && chunks == 0, "the walk says what it is first");
+                        started = true;
+                    }
+                    history::HistoryUpdate::Rows(chunk) => {
+                        chunks += 1;
+                        rows += chunk.len();
+                    }
+                }
+            }
+            other => break other,
+        }
+    };
+
+    assert_eq!(ended, AppEvent::Core(Event::JobFinished(id)));
+    assert!(started);
+    // The linear shape is 200 commits; the default chunk is 500 rows, so
+    // this proves the rows arrive before the ending, not that they arrive in
+    // several chunks — `history::tests` proves that with a small chunk.
+    assert_eq!(rows, 200);
+    assert!(chunks >= 1);
+    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+}

@@ -12,9 +12,12 @@
 
 use graft_git::version::SystemGit;
 use graft_term::{SanitizedText, sanitize_line, sanitize_path, sanitize_path_bytes};
-use graft_ui::status_screen::{HeadView, RepositoryView, StatusScreen, StatusView};
+use graft_ui::status_screen::{
+    HeadView, HistoryState, HistoryView, RepositoryView, StatusScreen, StatusView,
+};
 use ratatui::Frame;
 
+use crate::history::{History, Phase};
 use crate::repository::{Head, RepositoryFacts};
 use crate::session::Session;
 use crate::update::{AppState, GitCheck, Status};
@@ -50,6 +53,21 @@ pub fn status_view(session: &Session, state: &AppState) -> StatusView {
         problem: match &state.status {
             Status::Ready => None,
             Status::Failed(message) => Some(sanitize_line(message)),
+        },
+        history: state.history.as_ref().map(history_view),
+    }
+}
+
+/// How far the walk has got. A failure's text came out of git, so it is
+/// sanitised like any other.
+fn history_view(history: &History) -> HistoryView {
+    HistoryView {
+        rows: history.rows,
+        state: match &history.phase {
+            Phase::Streaming => HistoryState::Streaming,
+            Phase::Complete => HistoryState::Complete,
+            Phase::Cancelled => HistoryState::Cancelled,
+            Phase::Failed(reason) => HistoryState::Failed(sanitize_line(reason)),
         },
     }
 }

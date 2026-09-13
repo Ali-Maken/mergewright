@@ -48,6 +48,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use graft_core::capabilities::RenderingTier;
+use graft_core::ref_name::RefName;
 use graft_ui::theme::ThemeKind;
 use serde::Deserialize;
 
@@ -55,7 +56,7 @@ use serde::Deserialize;
 ///
 /// Every field has a default, so this is also the configuration of a machine
 /// with no config file at all.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(default)]
 pub struct Config {
     /// `[ui]`: how Graft looks.
@@ -75,11 +76,35 @@ pub struct Ui {
 }
 
 /// `[graph]`.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(default)]
 pub struct Graph {
     /// `graph.renderer`.
     pub renderer: RendererChoice,
+    /// `graph.default_branch`: the branch that owns lane 0, overriding
+    /// ADR-0001's detection. Written as a branch name (`trunk`), held as the
+    /// full ref name (`refs/heads/trunk`). `None` lets detection decide.
+    #[serde(deserialize_with = "branch_name")]
+    pub default_branch: Option<RefName>,
+}
+
+/// `graph.default_branch = "trunk"` as `refs/heads/trunk`.
+///
+/// A name git would refuse is an error, not a default: it fails the typed
+/// parse, so the error carries the file, line and column like every other bad
+/// value. A valid name for a branch that does not exist is not an error here —
+/// `Branches::resolve` ignores it, so a stale setting never leaves the graph
+/// without a spine.
+fn branch_name<'de, D>(deserializer: D) -> Result<Option<RefName>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let name = String::deserialize(deserializer)?;
+    RefName::new(format!("refs/heads/{name}"))
+        .map(Some)
+        .map_err(|why| {
+            serde::de::Error::custom(format!("`{name}` is not a branch name git accepts: {why}"))
+        })
 }
 
 /// `ui.theme`: which of the three shipped themes to use, or `auto`.
@@ -343,7 +368,10 @@ fn parse(path: &Path, text: &str) -> Result<Loaded, ConfigError> {
 /// the types above are the authority on what they mean. Adding a key means
 /// adding it here too, or the user gets told their new setting is unknown —
 /// which is the safe direction for the mistake to go.
-const SCHEMA: &[(&str, &[&str])] = &[("graph", &["renderer"]), ("ui", &["icons", "theme"])];
+const SCHEMA: &[(&str, &[&str])] = &[
+    ("graph", &["default_branch", "renderer"]),
+    ("ui", &["icons", "theme"]),
+];
 
 /// What serde ignored, as warnings, in the file's key order.
 fn unknown_keys(table: &toml::Table) -> Vec<ConfigWarning> {

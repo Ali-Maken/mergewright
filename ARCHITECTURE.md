@@ -137,9 +137,12 @@ it rebuilds an evicted chunk (`DESIGN.md` §3.6). The seam is one trait,
 `graph::CommitSource` — `next(limit, stop)` and `read(ids)` — and `git`
 offers exactly what an implementation needs: `history::Walk::next_chunk`
 (plus `Walk::full_topological`, ADR-0008's background job) and
-`history::read_commit`. `app` will own the implementation (m1-10). Until then
-the only one is in `graft-graph/tests/it/streaming.rs`, on the crate's
-dev-dependency edge to `git`, which ADR-0006's rule does not count.
+`history::read_commit`. `app` owns the product implementation,
+`app::history::WalkSource`, beside the seed builder (`history::seeds_for`) and
+the driver that hands each laid-out chunk to the UI thread
+(`history::stream`, m1-07). The test one in
+`graft-graph/tests/it/streaming.rs` sits on that crate's dev-dependency edge
+to `git`, which ADR-0006's rule does not count.
 
 Inside `graph`, `layout.rs` is the cursor (lane state, one row at a time) and
 `layout/` holds what streams it: `order` (the emitted commit ids — the one

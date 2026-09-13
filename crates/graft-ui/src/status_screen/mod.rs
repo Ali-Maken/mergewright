@@ -42,6 +42,32 @@ pub struct StatusView {
     /// Something went wrong and has not been superseded. Absent when nothing
     /// is wrong — there is no permanent error field on this screen (CLAUDE.md).
     pub problem: Option<SanitizedText>,
+    /// The history walk, once one has been started. `None` before that, and
+    /// nothing is drawn for it.
+    pub history: Option<HistoryView>,
+}
+
+/// How far the history walk has got.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HistoryView {
+    /// Where the walk is.
+    pub state: HistoryState,
+    /// Rows the layout engine has laid out so far.
+    pub rows: usize,
+}
+
+/// Where a history walk is. Each state is named for itself, so a walk that is
+/// fine never reads as an error.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum HistoryState {
+    /// Rows are still arriving.
+    Streaming,
+    /// Every commit has a row.
+    Complete,
+    /// The user stopped it; the rows already laid out stay.
+    Cancelled,
+    /// It broke, and this is why.
+    Failed(SanitizedText),
 }
 
 /// The repository Graft opened.
@@ -158,6 +184,9 @@ impl<'a> StatusScreen<'a> {
                 lines.push(self.row("Repository", "opening", Token::TextMuted));
             }
         }
+        if let Some(history) = &self.view.history {
+            lines.push(history_row(self, history));
+        }
         lines.push(self.row("Rendering", &rendering(&self.view.rendering), Token::Text));
         lines.push(self.row("Theme", &theming(&self.view.rendering), Token::Text));
 
@@ -197,6 +226,18 @@ impl<'a> StatusScreen<'a> {
             Span::styled(value.to_owned(), foreground(self.theme, token)),
         ])
     }
+}
+
+/// `History     streaming, 412 rows laid out`.
+fn history_row(screen: &StatusScreen<'_>, history: &HistoryView) -> Line<'static> {
+    let (state, token) = match &history.state {
+        HistoryState::Streaming => ("streaming".to_owned(), Token::Text),
+        HistoryState::Complete => ("complete".to_owned(), Token::Text),
+        HistoryState::Cancelled => ("cancelled".to_owned(), Token::TextMuted),
+        HistoryState::Failed(reason) => (format!("failed: {}", reason.as_str()), Token::Warning),
+    };
+    let value = format!("{state}, {} rows laid out", history.rows);
+    screen.row("History", &value, token)
 }
 
 impl Widget for StatusScreen<'_> {

@@ -10,7 +10,10 @@ use graft_term::{SanitizedText, sanitize_line};
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 
-use super::{HeadView, RenderingView, RepositoryView, StatusScreen, StatusView, TierSource};
+use super::{
+    HeadView, HistoryState, HistoryView, RenderingView, RepositoryView, StatusScreen, StatusView,
+    TierSource,
+};
 use crate::test_support::terminal as capabilities;
 use crate::theme::{Theme, ThemeKind};
 
@@ -61,6 +64,7 @@ fn healthy() -> StatusView {
         rendering: measured(),
         notes: Vec::new(),
         problem: None,
+        history: None,
     }
 }
 
@@ -266,4 +270,30 @@ fn a_terminal_with_no_cells_at_all() {
         .expect("TestBackend cannot fail to draw");
 
     assert_eq!(terminal.backend().buffer().area.area(), 0);
+}
+
+#[test]
+fn history_says_where_the_walk_is_and_how_many_rows_it_has() {
+    let states = [
+        (HistoryState::Streaming, "streaming, 412 rows laid out"),
+        (HistoryState::Complete, "complete, 412 rows laid out"),
+        (HistoryState::Cancelled, "cancelled, 412 rows laid out"),
+        (
+            HistoryState::Failed(text("the pack is corrupt")),
+            "failed: the pack is corrupt, 412 rows laid out",
+        ),
+    ];
+    for (state, expected) in states {
+        let mut view = healthy();
+        view.history = Some(HistoryView { state, rows: 412 });
+        let screen = draw(&view, 72, 10);
+        assert!(
+            screen.contains(&format!("History     {expected}")),
+            "{expected}:\n{screen}"
+        );
+    }
+    assert!(
+        !draw(&healthy(), 72, 10).contains("History"),
+        "no walk started, no history row"
+    );
 }

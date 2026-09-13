@@ -24,6 +24,10 @@
 //! | It was cancelled, before or during | `Event::JobCancelled` |
 //! | It could not be started at all | `Event::JobFailed` |
 //!
+//! A job may also report [`AppEvent::Progress`] any number of times before
+//! that one ending event — the history walk sends each chunk of laid-out rows
+//! as it lands. Progress never ends a job and never stands in for its ending.
+//!
 //! There is no sixth outcome where a job simply disappears. A job that is over
 //! and says nothing is a failure that ships (CLAUDE.md), so the only case where
 //! no event is delivered is the one where the application itself has already
@@ -48,10 +52,10 @@ use graft_core::job::{JobFailure, JobId};
 use graft_git::history::Order;
 
 use crate::crash;
-use crate::history::{self, Read};
+use crate::history::{self, Ended};
 use crate::repos::RepoStore;
 use crate::repository;
-use crate::update::{AppEvent, Command, GitCheck, Product, Task};
+use crate::update::{AppEvent, Command, GitCheck, Product, Progress, Task};
 
 #[cfg(test)]
 mod tests;
@@ -363,7 +367,7 @@ impl<S: JobEvents> JobRunner<S> {
     /// Returns as soon as the work is on the queue: the caller is the UI
     /// thread, and it has a frame to draw.
     pub fn submit(&self, work: impl FnOnce(&Cancel) -> Outcome + Send + 'static) -> JobId {
-        self.queue_job(None, work)
+        self.queue_job(None, |_| Box::new(work))
     }
 
     /// Queue some work and tell the loop, before it is queued, which id the
@@ -378,15 +382,14 @@ impl<S: JobEvents> JobRunner<S> {
         task: Task,
         work: impl FnOnce(&Cancel) -> Outcome + Send + 'static,
     ) -> JobId {
-        self.queue_job(Some(task), work)
+        self.queue_job(Some(task), |_| Box::new(work))
     }
 
-    fn queue_job(
-        &self,
-        task: Option<Task>,
-        work: impl FnOnce(&Cancel) -> Outcome + Send + 'static,
-    ) -> JobId {
+    /// Queue the work `build` makes once it knows the job's id — which work
+    /// that reports progress needs, because every progress event carries it.
+    fn queue_job(&self, task: Option<Task>, build: impl FnOnce(JobId) -> Work) -> JobId {
         let id = JobId::new(self.next_id.fetch_add(1, Ordering::Relaxed));
+        let work = build(id);
         let cancel = Cancel::new();
         self.live.register(id, cancel.clone());
 
@@ -399,11 +402,7 @@ impl<S: JobEvents> JobRunner<S> {
             self.sink.deliver(AppEvent::Started(id, task));
         }
 
-        if let Err(undelivered) = self.queue.send(Assignment {
-            id,
-            cancel,
-            work: Box::new(work),
-        }) {
+        if let Err(undelivered) = self.queue.send(Assignment { id, cancel, work }) {
             // Every worker has gone, so this job can never run. Dropping it
             // quietly is exactly the failure that ships: the screen would wait
             // for something that is never coming.
@@ -476,10 +475,11 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
                 self.announce(Task::CheckSystemGit, check_system_git());
             }
             Command::ReadHistory(order) => {
-                self.announce(
-                    Task::ReadHistory,
-                    read_history(Arc::clone(&self.repos), order),
-                );
+                let repos = Arc::clone(&self.repos);
+                let sink = self.sink.clone();
+                self.queue_job(Some(Task::ReadHistory), |id| {
+                    read_history(repos, order, sink, id)
+                });
             }
             Command::CancelJob(id) => self.cancel(id),
         }
@@ -511,22 +511,24 @@ fn open_repository(store: Arc<RepoStore>) -> Work {
     })
 }
 
-/// The work behind [`Command::ReadHistory`].
+/// The work behind [`Command::ReadHistory`], as job `id`.
 ///
 /// The long one: on a large repository this reads every commit behind every
-/// ref. It checks its token after each chunk, so `Esc` stops it within a
-/// chunk rather than at the end of the walk.
-fn read_history(store: Arc<RepoStore>, order: Order) -> Work {
+/// ref. Each chunk of rows goes to `sink` the moment it is laid out, so the
+/// screen fills while the walk runs; the token is checked before every chunk,
+/// so `Esc` stops it within one rather than at the end of the walk.
+fn read_history<S: JobEvents>(store: Arc<RepoStore>, order: Order, sink: S, id: JobId) -> Work {
     Box::new(move |cancel| {
         if cancel.is_cancelled() {
             return Outcome::Cancelled;
         }
-        match history::read(&store, order, &|| cancel.is_cancelled()) {
-            Ok(Read::Done(history)) => Outcome::Produced(Product::History(history)),
-            // The partial result is dropped rather than sent: a walk that was
-            // stopped half way through is not a shorter history, it is a
-            // wrong one.
-            Ok(Read::Cancelled) => Outcome::Cancelled,
+        let mut report = |update| sink.deliver(AppEvent::Progress(id, Progress::History(update)));
+        match history::stream(&store, order, &|| cancel.is_cancelled(), &mut report) {
+            Ok(Ended::Complete) => Outcome::Done,
+            // Stopped by its token, or a report found the loop gone — then
+            // nobody reads the ending either, and the worker delivering it
+            // finds the same dead channel and stops there (`Worker::run`).
+            Ok(Ended::Cancelled | Ended::NobodyListening) => Outcome::Cancelled,
             Err(message) => Outcome::Failed(message),
         }
     })
