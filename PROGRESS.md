@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M1 The graph** — ticket 27 (31, 07–26 done; paused for user Ghostty check before 27; 24 split into 24b/24c/24d; 34 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
+**Current step:** **M1 The graph** — ticket 32 bug (31, 07–26 done; user Ghostty check: pixels ok, found wheel-scroll wrap → 32, then 27; 24 split into 24b/24c/24d; 35 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
 
 ---
 
@@ -183,6 +183,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-13 · M1/26 search · opus · done · search.rs own job re-walking history; pty+pyte release 100k fixture: far hit 641 ms Enter→row, 401 F2 toggles during search median 3.5 ms max 9.2 ms none missed; captures docs/shots/26-search-far.txt, 26-search-typing.txt (by eye unticked); ESC in subject drawn inert (tested); gaps: only current hit marked, hidden hits say "(not in this view)", n before first hit no-op; 719 tests; commit 8548e22 · COMPACTED (once; finished, nothing left to split)
 
 ## Open questions for the M1 checkpoint
+- **Keys are undiscoverable** (user, Ghostty check): F3 and other keys aren't shown anywhere in the window. Add a key-hint line or `?` help now, or leave to M8?
 - **Proposed change (m1/25): DESIGN §3.8 drop the strip flush on resize.** Resize only needs row-by-row clearing; uploads survive. Approve / keep flush. Also: png 0.18 added to graft-term for iTerm2 (reviewer to check crate rules).
 
 - **New keys from m1/15** (DESIGN.md had none): `Space` fold/unfold merge, `1` first-parent, `H` hide stash; m1/17 adds `Enter` opens tooltip, wheel scrolls view not cursor; m1/19 adds `F3` drops to the ASCII tier. Keep, or rebind?
