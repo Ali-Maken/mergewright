@@ -1,7 +1,7 @@
 # m1-the-graph/05 — The layout engine: lanes, rows, edges
 
 Status: done
-Build with: **Fable** (the graph layout engine — PROGRESS.md routing; xhigh-class work)
+Build with: **Fable** (the graph layout engine — PROGRESS.md routing)
 Blocked by: 01
 
 Why: this is the centre of the product. Every invariant in PROMPT.md §1.2 is either true here or nowhere, and "is the history shape obvious at a glance?" is decided by lane choices long before a renderer draws anything.

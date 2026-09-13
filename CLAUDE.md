@@ -33,15 +33,35 @@
 
 ### Models
 
-| Work | Agent | Model, effort |
+**Fable decides; Opus plans; Opus and Sonnet build.**
+
+| Work | Who | Model, effort |
 |---|---|---|
-| Genuinely algorithmic work only | `builder-fable` | Fable, high |
+| **Design pass** at the start of every milestone, before tickets | `planner-fable` | Fable, high |
+| Drafting tickets from the design note | the conductor | Opus |
 | Concurrency, terminal protocols, git writes, undo, conflicts | `builder-opus` | Opus, high |
 | Everything mechanical: wiring, config, docs, plain widgets, tests, renames | `builder-sonnet` | Sonnet, medium |
+| A ticket that passes all three Fable tests (below) | `builder-fable` | Fable, high |
 | Reviews | `reviewer` | Opus; **Fable for M3 and M5** |
 | Debugging | `debugger` | Fable |
 
-- **Escalation:** two failures on a Sonnet ticket → Opus → `debugger`.
+- **Design pass:** `planner-fable` reads only the relevant PROMPT.md and DESIGN.md sections and the crate MAP.md files — never source — and writes `docs/design-notes/<milestone>.md`, two pages max. It covers:
+  - the interfaces and data shapes the milestone introduces
+  - the two or three hard-to-reverse choices, each with a recommendation
+  - where it would differ from DESIGN.md, and why
+  - which tickets are genuinely risky
+
+  No code. The conductor drafts tickets from the note; each ticket's "Read first" lists the note's relevant section, and builders follow it.
+- **Fable builds a ticket only when all three hold:**
+  1. the ticket doesn't decide the approach;
+  2. a wrong choice becomes structural for later tickets;
+  3. correctness can't be judged from the diff or the tests.
+
+  Expect one or two per milestone. If a plan wants three or more, the conductor says so: the design is usually underspecified and needs another design pass, not more Fable builds.
+- **Escalation beats prediction:**
+  - Sonnet ticket fails twice → Opus.
+  - Opus ticket stalls twice (`failed` or `partial` without progress), or a review finds its design wrong → redo that ticket on `builder-fable`.
+  - Fable fails too → `debugger`.
 - Each ticket's `Build with` line names its model; the conductor follows it.
 
 ### Context

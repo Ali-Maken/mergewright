@@ -1,7 +1,7 @@
 # m1-the-graph/15 — Folding merged branches, first-parent view, stash visibility
 
 Status: ready
-Build with: **Fable** (high) — inclusion predicates over the layout without a second code path
+Build with: **Opus** (high) — an inclusion predicate reusing `layout_chunk` (DESIGN.md's name; in code `layout` / `LayoutCursor::extend`, `graft-graph/src/layout.rs`), not new algorithm design
 Blocked by: 14
 Leaves runnable: yes — keys fold a merged branch, toggle first-parent view and show/hide stashes.
 

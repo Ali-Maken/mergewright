@@ -44,7 +44,7 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 
 **What the conductor does for every milestone:**
 
-1. **Tickets:** splits the milestone into small tickets with `/to-tickets`. You approve them at the checkpoint before the milestone starts.
+1. **Design, then tickets:** `planner-fable` writes `docs/design-notes/<milestone>.md` (interfaces, hard-to-reverse choices, risky tickets; no code). The conductor splits the milestone into tickets from it with `/to-tickets`. You approve them at the checkpoint before the milestone starts.
 2. **Build:** each ticket goes to a fresh builder on the model below, which builds it test-first, reviews it and commits.
 3. **Stuck:** if a ticket fails twice, `debugger` (Fable) finds the root cause.
 4. **Review:** `reviewer` checks the whole milestone and builders fix what it finds (at most 2 rounds). Opus, except M3 and M5, which review on Fable.
@@ -62,7 +62,7 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 | [ ] | M7 Power tools (read-only) | per ticket | Opus | Interactive rebase, blame, line history, reflog |
 | [ ] | M8 Polish, **final name**, ship (read-only) | per ticket | Opus | Pick the name (below), then a fresh install and the first-run tour |
 
-**Who builds what, ticket size, context, checkpoints:** CLAUDE.md, "Standing rules" (set 2026-09-13, replaces the 2026-09-12 cost-control routing). Short version: Fable = algorithmic, Opus = concurrency / terminal protocols / git writes / undo / conflicts, Sonnet medium = mechanical; tickets under 80k tokens; read-only milestones (M2, M7, M8) build straight through, write milestones (M3–M6) get ticket approval.
+**Who builds what, ticket size, context, checkpoints:** CLAUDE.md, "Standing rules" (set 2026-09-13, replaces the 2026-09-12 cost-control routing). Short version: Fable decides (design pass per milestone; builds only tickets passing all three Fable tests, or redoes an Opus ticket that stalled twice), Opus plans and builds concurrency / terminal protocols / git writes / undo / conflicts, Sonnet medium = mechanical; **M2 design pass runs when M1 finishes**; tickets under 80k tokens; read-only milestones (M2, M7, M8) build straight through, write milestones (M3–M6) get ticket approval.
 
 **Naming (an M8 job):** pick a name in the style of Sublime Merge or Araxis Merge (a naming-pattern reference only: Araxis Merge is a diff/merge tool, not a Git client, and is not prior art for this project), with no "git" in it (Git's trademark policy forbids "git" inside names like "tergit"). Starting shortlist: Tributary (command `trib`) and Thicket passed the clash check on 2026-09-11. Graft is taken.
 
