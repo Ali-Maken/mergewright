@@ -5,26 +5,26 @@ a file covering more than its name says counts once, as its name says.
 layout = graft-graph's tier-less layout diagrams.
 
 repo                    pixel/dark              pixel/light             unicode/dark            unicode/light           ascii/dark              ascii/light             layout/dark           
-trivial                 —                       —                       S:?                     —                       —                       —                       S:?                   
-linear                  —                       —                       S:?                     —                       —                       —                       S:?                   
-feature-branches        —                       —                       S:?,80x24,120x40,200x60  —                       —                       —                       S:?                   
-octopus-merge           S:? C:?                 —                       S:?                     —                       S:?                     —                       S:?                   
+trivial                 —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
+linear                  —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
+feature-branches        —                       —                       S:?,80x24,120x40,200x60 C:?  —                       C:?                     —                       S:?                   
+octopus-merge           S:? C:?                 —                       S:? C:?                 —                       S:? C:?                 —                       S:?                   
 criss-cross-merge       S:? C:?                 —                       S:? C:?                 —                       S:? C:?                 —                       S:?                   
-foxtrot-merge           S:? C:?                 —                       S:? C:?                 —                       S:?                     —                       S:?                   
-backward-merge          —                       —                       S:?                     —                       —                       —                       S:?                   
-evil-merge              —                       —                       S:?                     —                       —                       —                       S:?                   
-accidental-pull-merge   —                       —                       S:?                     —                       —                       —                       S:?                   
-orphan-branch           —                       —                       S:?                     —                       —                       —                       S:?                   
-cherry-pick-duplicates  —                       —                       S:?                     —                       —                       —                       S:?                   
-skewed-dates            —                       —                       S:? C:?                 —                       —                       —                       S:?                   
-tags                    —                       —                       S:?                     —                       —                       —                       S:?                   
-unicode-names           —                       —                       S:?                     —                       —                       —                       S:?                   
-ref-states              —                       —                       S:?                     —                       —                       —                       S:?                   
-detached-head           —                       —                       S:?                     —                       —                       —                       S:?                   
-unborn-branch           —                       —                       S:?                     —                       —                       —                       S:?                   
-stash                   —                       —                       S:? C:?                 —                       —                       —                       S:?                   
-non-utf8-path           —                       —                       S:?                     —                       —                       —                       S:?                   
-non-utf8-ref-name       —                       —                       —                       —                       —                       —                       —                     
-graft-self              —                       —                       —                       —                       —                       —                       —                     
-synthetic-100k          —                       —                       —                       —                       —                       —                       —                     
-git-git                 —                       —                       C:80x24,120x40          —                       —                       —                       —                     
+foxtrot-merge           S:? C:?                 —                       S:? C:?                 —                       S:? C:?                 —                       S:?                   
+backward-merge          —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
+evil-merge              —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
+accidental-pull-merge   —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
+orphan-branch           —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
+cherry-pick-duplicates  —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
+skewed-dates            —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
+tags                    —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
+unicode-names           —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
+ref-states              —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
+detached-head           —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
+unborn-branch           —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
+stash                   —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
+non-utf8-path           —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
+non-utf8-ref-name       —                       —                       C:?                     —                       C:?                     —                       —                     
+graft-self              —                       —                       C:?                     —                       C:?                     —                       —                     
+synthetic-100k          —                       —                       C:?                     —                       C:?                     —                       —                     
+git-git                 —                       —                       C:?,80x24,120x40        —                       C:?                     —                       —                     

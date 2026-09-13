@@ -1,0 +1,26 @@
+gallery stop 16/23: detached-head, ascii tier, 80x24
+
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/d…
+*   [main] Commit 4                                                 6y   c393c13
+*-  Commit 3                                                        6y   4d62f2a
+*-  [HEAD][Commit 2                                                 6y   8863aa9
+*-  Commit 1                                                        6y   b291a87
+*i|3|,*=  [origin/ahead]iahead: pushed                              6y   7be40e6
+*i|3|,|=  [◆ main ⇄ origin]AAdvance main again                      6y   a676d37
+*-|-+-/a  Advance main                                              6y   31948ff
+*-/3  Ma  Add the base                                              6y   68d5d19
+Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA                                     6y   ebe9ef1
+* |   Main 04                                                       6y   1cce4e1
+*i|3  Main 03                                                       6y   1305908
+* |   Main 02                                                       6y   d8f8975
+* |   Main 01                                                       6y   ec05a04
+*-/   Commit from a fast clock                                      6y   f579e57
+*  Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA                                  6y   68d5d19
+*   Commit 185                                                      6y   09ae97c
+*   Commit 184                                                      6y   49d7783
+*   Commit 183                                                      6y   22d55c9
+*   Commit 182                                                      6y   d212b3e
+*   Commit 181                                                      6y   c8254c5
+*   Commit 180                                                      6y   e95ccd4
+*   Commit 179                                                      6y   97b58e5
+ detached-head · 16/23 · expect: HEAD badge on Commit 2, two rows below main's …

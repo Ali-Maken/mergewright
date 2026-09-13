@@ -1,0 +1,26 @@
+gallery stop 11/23: cherry-pick-duplicates, unicode tier, 80x24
+
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/c…
+  ●   [topic] topic: unrelated work                                 6y   3fb661a
+●─●─  Fix the greeting (cherry picked)                              6y   c0f7180
+◆─│─  [◆ main]mFix the greeting                                     6y   9a9350a
+◇─╯   Add the greeting                                              6y   fc8069b
+Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA                                     6y   4cfd7d9
+│i│3●─╯=1,  alpha: work                                             6y   bd20b78
+◇─┴─╯o●m    Add the base                                            6y   68d5d19
+Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA                                     6y   de95041
+●─────╯m  Add a.txt                                                 6y   21b16b9
+◇   Comm  Add a readme                                              6y   daa5167
+Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA                                     6y   91900bd
+●   Commit 189                                                      6y   cec3e93
+●   Commit 188                                                      6y   0a91ece
+●   Commit 187                                                      6y   3121935
+●   Commit 186                                                      6y   fab25df
+●   Commit 185                                                      6y   09ae97c
+●   Commit 184                                                      6y   49d7783
+●   Commit 183                                                      6y   22d55c9
+●   Commit 182                                                      6y   d212b3e
+●   Commit 181                                                      6y   c8254c5
+●   Commit 180                                                      6y   e95ccd4
+●   Commit 179                                                      6y   97b58e5
+ cherry-pick-duplicates · 11/23 · expect: 'Fix the greeting' appears twice, on …

@@ -45,7 +45,8 @@ One line per public item. Update when a public item changes.
 - `Wake::Terminal` (variant) — a re-detected answer changed; `pump` applies it to the session and redraws.
 - `Wake::TerminalFailed` (variant) — a re-query could not be written or read; ends the loop with the error.
 - `pump` (fn) — now takes `&mut Session`, so re-detection can update it.
-- `input::spawn_reader` (fn) — forwards input; on `FocusGained` also asks the redetector for the theme.
+- `input::spawn_reader` (fn) — forwards input; on `FocusGained` also asks the redetector for the theme; returns the `Forwarder`.
+- `input::Forwarder` (struct) — the running forwarder; `finish` waits for it to end (after `InputMux::hold`, a bounded drain, never a job wait).
 - `signals::watch_resizes` (fn) — resize wakes; each also asks the redetector for the cell size.
 - `redetect::Redetector` (struct) — handle to the re-query worker; `spawn(host, cell_size, theme, budget, wakes)`, `ask(Query)`.
 - `redetect::Query` (enum) — `CellSize` or `Theme`.
@@ -199,7 +200,8 @@ One line per public item. Update when a public item changes.
 - `Wakes` (trait) — a seam so `pump` can be driven by a scripted list in tests.
 - `ChannelWakes` (struct) — the real wake source: one channel, two feeder threads.
 - `ChannelWakes::new` (fn) — build the channel and the sender its producers clone.
-- `run` (fn) — run the event loop for a session, start to `Exit`.
+- `ChannelWakes::unhandled_input` (fn) — the terminal input queued after the wake that ended the loop, in order; the rest is dropped with the loop.
+- `run` (fn) — run the event loop for a session, start to `Exit`; may be called again by a wrapper (the gallery): stdin has one reader per process, and the keys this run never handled go to the next.
 - `pump` (fn) — drive the loop; testable independent of a real terminal. Draws Kitty strips at the pixel tier, drains image replies each wake, frees every upload on exit (m1-the-graph/24c). Theme/cell-size changes flush the strip cache; a resize flushes nothing and retransmits nothing — strips re-place, only changed keys rasterise (25). iTerm2 protocol: bands re-sent per frame, encoded once (25).
 
 ## event_loop::signals

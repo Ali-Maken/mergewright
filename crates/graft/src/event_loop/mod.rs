@@ -26,6 +26,7 @@ use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, Sender};
 
 use graft_core::capabilities::Supported;
+use graft_core::event::Event;
 use graft_git::history::Order;
 use graft_graph::raster::cache::Flush;
 use graft_term::Transport;
@@ -112,6 +113,27 @@ impl ChannelWakes {
     pub fn new() -> (Self, Sender<Wake>) {
         let (sender, receiver) = mpsc::channel();
         (Self { receiver }, sender)
+    }
+
+    /// The terminal input the loop never got to, in order: what the input
+    /// forwarder sent after the wake that ended the loop. Everything else
+    /// still queued (job results, signals, terminal changes) is for a loop
+    /// that has finished, and is dropped with it.
+    ///
+    /// Only complete once the forwarder has stopped (`run` joins it first).
+    #[must_use]
+    pub fn unhandled_input(self) -> Vec<Event> {
+        self.receiver
+            .try_iter()
+            .filter_map(|wake| match wake {
+                Wake::Event(AppEvent::Core(event)) => Some(event),
+                Wake::Event(_)
+                | Wake::Shutdown(_)
+                | Wake::InputFailed(_)
+                | Wake::Terminal(_)
+                | Wake::TerminalFailed(_) => None,
+            })
+            .collect()
     }
 }
 
@@ -219,7 +241,7 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     let jobs = JobRunner::with_default_size(sender.clone(), repos)?;
     let redetector = start_redetector(&environment, &mux, &settled, &sender)?;
     let resizes = signals::watch_resizes(sender.clone(), redetector.clone())?;
-    input::spawn_reader(inputs, sender, redetector)?;
+    let forwarder = input::spawn_reader(inputs, sender, redetector)?;
 
     // Resizes clear row by row: a whole-screen clear frees Kitty image data
     // in Ghostty, and every resize would retransmit the viewport (ADR-0012).
@@ -251,10 +273,7 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
         state,
         &mut graphics,
     );
-    // This run is done reading: a key typed from here on is kept for the
-    // next `on_stdin` (a wrapper's next run) instead of being forwarded to
-    // a loop that has finished.
-    mux.hold();
+    let outcome = hand_back_input(&mux, forwarder, wakes, outcome);
     // Dropped before the restore so that its own teardown (it shows the cursor
     // it hid) goes out while the session is still in charge of the terminal.
     drop(terminal);
@@ -275,6 +294,24 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     let restored = session.restore();
     report_stalled_jobs(shutdown);
     finish(outcome, restored)
+}
+
+/// This run is done reading (ticket m1-the-graph/35c). A key typed from here
+/// on is kept for the next `on_stdin` (a wrapper's next run), and so is any
+/// key already forwarded past the loop when it stopped: `]q` typed in one go
+/// must step once and then quit, not step and lose the `q`. Joining the
+/// forwarder first makes the hand-back complete — it ends once `hold` drops
+/// its `Inputs` sender, after forwarding all it had.
+fn hand_back_input(
+    mux: &InputMux,
+    forwarder: input::Forwarder,
+    wakes: ChannelWakes,
+    outcome: io::Result<Exit>,
+) -> io::Result<Exit> {
+    mux.hold();
+    let outcome = outcome.and_then(|exit| forwarder.finish().map(|()| exit));
+    mux.give_back(wakes.unhandled_input());
+    outcome
 }
 
 /// The loop's outcome, unless putting the terminal back failed: a terminal
@@ -1328,5 +1365,31 @@ mod tests {
         drop(sender);
 
         assert!(wakes.next_wake().is_none());
+    }
+
+    #[test]
+    fn the_input_a_finished_loop_never_handled_is_returned_in_order_without_the_rest() {
+        let (mut wakes, sender) = ChannelWakes::new();
+        sender
+            .send(key(KeyPress::plain(KeyCode::Char(']'))))
+            .unwrap();
+        sender.send(Wake::Shutdown(15)).unwrap();
+        sender.send(resized(80, 24)).unwrap();
+        sender
+            .send(key(KeyPress::plain(KeyCode::Char('q'))))
+            .unwrap();
+        assert!(matches!(wakes.next_wake(), Some(Wake::Event(_))));
+
+        let unhandled = wakes.unhandled_input();
+        assert_eq!(
+            unhandled,
+            vec![
+                Event::Resize {
+                    columns: 80,
+                    rows: 24
+                },
+                Event::Key(KeyPress::plain(KeyCode::Char('q'))),
+            ]
+        );
     }
 }

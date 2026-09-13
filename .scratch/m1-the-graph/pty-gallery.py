@@ -77,8 +77,8 @@ def wait_for_stop(name, index, seconds):
         # A wrong frame under the right name would mislead the user who
         # judges these by eye, so stop rather than write it.
         os.write(master, b"q")
-        sys.exit(f"{name}: its footer never appeared within 60 s (see ticket 35b: "
-                 "each step starts another stdin reader, and stale ones swallow keys)")
+        sys.exit(f"{name}: its footer never appeared within 60 s (a lost `]`? "
+                 "35c made the stdin reader one per process; see KNOWN_GAPS)")
     settle(seconds)
 
 

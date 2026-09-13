@@ -1,6 +1,6 @@
 # m1-the-graph/35c — Gallery loses keys (one stdin reader per run); then the captures
 
-Status: ready
+Status: done (2026-09-13, Fable, no compaction)
 Build with: **Fable** (high) — remainder of 35/35b (M1's acceptance ticket), same model
 Blocked by: 35b
 Leaves runnable: yes — every `]` in the gallery steps exactly once; captures for every stop under docs/shots/35-*.
@@ -25,13 +25,21 @@ Out: snapshot gaps from the matrix (owners in KNOWN_GAPS).
 Captures go straight to files under `docs/shots/35-*`. **Never print capture contents into your own context.** Report file paths and the coverage matrix only.
 
 ## Acceptance
-- [ ] Test red before fix, green after; pty run steps all 23 stops without a lost key (both tiers).
-- [ ] `docs/shots/35-<repo>-{unicode,ascii}.txt` for all stops, each naming its own stop; `docs/shots/35-gallery-two-steps.txt`.
-- [ ] Matrix re-run and committed; MAP.md updated.
-- [ ] Gates pass.
+- [x] Test red before fix, green after; pty run steps all 23 stops without a lost key (both tiers).
+- [x] `docs/shots/35-<repo>-{unicode,ascii}.txt` for all stops, each naming its own stop; `docs/shots/35-gallery-two-steps.txt`.
+- [x] Matrix re-run and committed; MAP.md updated.
+- [x] Gates pass.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test`
 
 ## Size
 Under ~80k tokens. Seam: (a) fix + test, (b) captures + matrix.
+
+## Built (2026-09-13, Fable, no compaction)
+
+**Choice: one reader per process, not the `run` split.** `InputMux::on_stdin` starts the stdin reader on its first call (`static STDIN`) and every call returns a fresh `Inputs` (`InputMux::inputs`); the reader delivers to the current `Inputs` and *holds* events while there is none. Chosen over splitting `run` because the split changes the shipped binary's structure for a harness-only need; the blink stays (KNOWN_GAPS row updated). The shipped binary calls `run` once (`main.rs`), so it never had the bug.
+
+**A second loss window, found by the capture's own `]q` ending:** keys the forwarder had already pushed past the loop when it stopped (`]q` in one read) died with the wake channel — the first capture run hung on its final `q`. Fixed at the cause: `run` → `hand_back_input`: `mux.hold()`, `Forwarder::finish` (join, bounded: the sender is gone), `ChannelWakes::unhandled_input` (the core events queued after the ending wake, in order) → `mux.give_back` (ahead of anything held since). Tests: `mux/tests.rs` (fresh `Inputs` takes over; keys with no listener go to the next; `hold`; `give_back` ordering), `event_loop::tests::the_input_a_finished_loop_never_handled_is_returned_in_order_without_the_rest`. Not unit-testable end to end (needs a tty); observed under the pty: 23 stops × 2 tiers, every footer seen, `]q` ending quits.
+
+**Captures:** `python3 .scratch/m1-the-graph/pty-gallery.py <tier> $STOPS`, 80x24, 46 stop files + `35-gallery-two-steps.txt`; each verified by grep to name its own stop; ASCII files have `*` nodes and `|` lines, Unicode files `●`/`│`. The `◆` in ASCII files is the `[◆ main]` badge icon (a setting, not the tier). Matrix: every stop has `C` in unicode/dark and ascii/dark (size `?`: the file names don't carry it; the header line inside each file does). **By eye (user):** the captures and the gallery walk in Ghostty and VS Code; nobody here ticked "looks right".

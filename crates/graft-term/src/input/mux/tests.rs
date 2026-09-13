@@ -162,3 +162,17 @@ fn hold_keeps_keys_for_the_next_inputs_and_ends_the_current_one() {
     let next = mux.inputs();
     assert_eq!(next_key(&next), KeyCode::Char('q'));
 }
+
+#[test]
+fn keys_given_back_come_before_anything_held_since() {
+    let (mut terminal, mux, first) = started();
+    mux.hold();
+    drop(first);
+    terminal.write_all(b"y").unwrap();
+    thread::sleep(SEQUENCE_TIMEOUT * 2);
+    // A run took `x` off its `Inputs` but stopped before handling it.
+    mux.give_back([Event::Key(KeyPress::plain(KeyCode::Char('x')))]);
+    let next = mux.inputs();
+    assert_eq!(next_key(&next), KeyCode::Char('x'));
+    assert_eq!(next_key(&next), KeyCode::Char('y'));
+}

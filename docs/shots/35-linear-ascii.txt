@@ -1,0 +1,26 @@
+gallery stop 2/23: linear, ascii tier, 80x24
+
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/l…
+*   [◆ main] Commit 200                                             6y   d5ae5fd
+*   Commit 199                                                      6y   13e6ab1
+*   Commit 198                                                      6y   f5055d9
+*i  Commit 197                                                      6y   2cce853
+*   Commit 196                                                      6y   325da3f
+*   Commit 195                                                      6y   0722297
+*   Commit 194                                                      6y   b6a4a47
+*   Commit 193                                                      6y   60af0eb
+*   Commit 192                                                      6y   aceb8c5
+*   Commit 191                                                      6y   11d68ff
+*   Commit 190                                                      6y   91900bd
+*   Commit 189                                                      6y   cec3e93
+*   Commit 188                                                      6y   0a91ece
+*   Commit 187                                                      6y   3121935
+*   Commit 186                                                      6y   fab25df
+*   Commit 185                                                      6y   09ae97c
+*   Commit 184                                                      6y   49d7783
+*   Commit 183                                                      6y   22d55c9
+*   Commit 182                                                      6y   d212b3e
+*   Commit 181                                                      6y   c8254c5
+*   Commit 180                                                      6y   e95ccd4
+*   Commit 179                                                      6y   97b58e5
+ linear · 2/23 · expect: 200 commits, one straight lane the whole way; scrollin…

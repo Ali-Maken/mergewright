@@ -34,12 +34,12 @@ Out:
 - Report **file paths and the coverage matrix only**.
 
 ## Acceptance
-- [x] `cargo run -p graft --example gallery` steps through every repo with `]`/`[`; footer shows name, position and expected finding (tests: `tests/it/gallery.rs` footer text, `view.rs` footer draw, `update.rs` hand-back). **pty capture of two steps: part b.**
+- [x] `cargo run -p graft --example gallery` steps through every repo with `]`/`[`; footer shows name, position and expected finding (tests: `tests/it/gallery.rs` footer text, `view.rs` footer draw, `update.rs` hand-back). pty capture of two steps: `docs/shots/35-gallery-two-steps.txt` (35c).
 - [x] Heavy repos: present → in the cycle; absent → `not available — build with: …` (test `heavy_repos_are_used_only_if_present_and_say_how_to_build_otherwise`).
 - [x] Not in the shipped binary: `cargo tree -e normal -p graft --depth 1` lists no `graft-fixtures`; `strings target/release/graft` has none of the gallery's strings (`expect: `, `no finding written yet`; its two `not available` hits are libstd's). The lib seam (`Harness`) is in the binary but default-empty.
 - [x] TESTING.md "Graph gallery" section: one concrete entry per repo, per-terminal block; no entry reads "looks correct" / "renders fine". (35b)
 - [x] Coverage matrix printed and committed at `docs/shots/35-coverage-matrix.txt`; gaps in KNOWN_GAPS.md with owners.
-- [ ] Captures under `docs/shots/35-*`.
+- [x] Captures under `docs/shots/35-*` (35c): `35-<stop>-{unicode,ascii}.txt` for all 23 stops at 80x24, each verified (grep) to name its own stop; `35-gallery-two-steps.txt`; `non-utf8-ref-name` shows the not-available page (APFS).
 - [x] Exact command for the user written into this ticket (below).
 - [ ] **By eye (user):** walks the gallery in Ghostty and the VS Code terminal against TESTING.md. Unticked until the user does.
 

@@ -1,0 +1,26 @@
+gallery stop 22/23: synthetic-100k, unicode tier, 80x24
+
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-r…
+◌     Uncommitted changes (1 untracked)
+◆     [◆ main] [many/000000 ↑1] [t… Trunk commit 100000             6y   907b0e4
+●r    [many/000001 ⇄ origin] [orig… Trunk commit 99999              6y   94bd832
+●     [many/000002 ⇄ origin] Trunk commit 99998                     6y   0684f50
+●     [many/000003 ⇄ origin] Trunk commit 99997                     6y   0393e30
+●i    [many/000004 ⇄ origin] Trunk commit 99996                     6y   2d55d14
+●     [many/000005 ⇄ origin] Trunk commit 99995                     6y   d5fceaa
+●     [many/000006 ⇄ origin] Trunk commit 99994                     6y   61bbea5
+●     [many/000007 ⇄ origin] Trunk commit 99993                     6y   6ae2116
+●     [many/000008 ⇄ origin] Trunk commit 99992                     6y   1625da4
+●     [many/000009 ⇄ origin] Trunk commit 99991                     6y   31a7fb7
+●     [many/000010 ⇄ origin] Trunk commit 99990                     6y   f0f960d
+◉─╮   [many/000011 ⇄ origin] Merge branch 'topic/007157'            6y   4609447
+│ ●   [many/000012 ⇄ origin] topic/007157: step 3                   6y   1e480f2
+│ ●   [many/000013 ⇄ origin] topic/007157: step 2                   6y   4cb91e5
+│ ●   [many/000014 ⇄ origin] topic/007157: step 1                   6y   c144116
+●─╯   [many/000015 ⇄ origin] Trunk commit 99985                     6y   0debbae
+●     [many/000016 ⇄ origin] Trunk commit 99984                     6y   03b75ec
+●     [many/000017 ⇄ origin] Trunk commit 99983                     6y   b1b2bb0
+●     [many/000018 ⇄ origin] Trunk commit 99982                     6y   916a61b
+●     [many/000019 ⇄ origin] Trunk commit 99981                     6y   f79e1fa
+●     [many/000020 ⇄ origin] Trunk commit 99980                     6y   9f71232
+ synthetic-100k · 22/23 · expect: busy but legible: lanes fold behind +N, first…

@@ -138,6 +138,18 @@ impl InputMux {
         Outlet::lock(&self.outlet).sender = None;
     }
 
+    /// Put back events a run took off its [`Inputs`] but never handled —
+    /// the keys behind the one that ended its loop. They go ahead of
+    /// anything held since (they were typed first), so the next
+    /// [`InputMux::inputs`] sees the terminal's order. Call after
+    /// [`InputMux::hold`], once the run has stopped taking from its `Inputs`.
+    pub fn give_back(&self, events: impl IntoIterator<Item = Event>) {
+        let mut outlet = Outlet::lock(&self.outlet);
+        let since: Vec<_> = std::mem::take(&mut outlet.held);
+        outlet.held.extend(events.into_iter().map(Ok));
+        outlet.held.extend(since);
+    }
+
     /// Start receiving terminal replies.
     ///
     /// Every waiter open when a reply arrives gets a copy; each one picks

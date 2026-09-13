@@ -7,7 +7,7 @@
 
 use std::io;
 use std::sync::mpsc::Sender;
-use std::thread;
+use std::thread::{self, JoinHandle};
 
 use graft_core::event::Event;
 use graft_term::input::Inputs;
@@ -25,8 +25,8 @@ pub fn spawn_reader(
     inputs: Inputs,
     wakes: Sender<Wake>,
     redetector: Option<Redetector>,
-) -> io::Result<()> {
-    thread::Builder::new()
+) -> io::Result<Forwarder> {
+    let thread = thread::Builder::new()
         .name("graft-input-forward".to_owned())
         .spawn(move || {
             for input in inputs {
@@ -47,5 +47,24 @@ pub fn spawn_reader(
                 }
             }
         })?;
-    Ok(())
+    Ok(Forwarder { thread })
+}
+
+/// The running input forwarder, for the run that started it.
+#[derive(Debug)]
+pub struct Forwarder {
+    thread: JoinHandle<()>,
+}
+
+impl Forwarder {
+    /// Wait for the forwarder to end, so that everything it had is in the
+    /// wake channel. Call after `InputMux::hold` has dropped its `Inputs`
+    /// sender: from then on the thread only drains what was already sent
+    /// and stops, so this is a bounded wait on the loop's own input, never
+    /// on a job (the rule `event_loop::tests` checks).
+    pub fn finish(self) -> io::Result<()> {
+        self.thread
+            .join()
+            .map_err(|_panic| io::Error::other("the input forwarder panicked"))
+    }
 }
