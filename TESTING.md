@@ -56,6 +56,30 @@ cargo test --features heavy-tests -- --test-threads=2
 
 The feature alone gates heavy tests; none is `#[ignore]`d.
 
+**Then the release perf run** (ADR-0021), alone, after the command above:
+
+```sh
+# Time budgets fail only here: input to frame (frames::, four tests) and
+# first paint (heavy::budgets_hold_*, the 50k-refs one included).
+cargo test --release -p graft --features heavy-tests --test it -- frames:: heavy::budgets_hold --test-threads=1 --nocapture
+```
+
+In the debug run above those same tests measure and print their numbers
+(`debug build, budget recorded not asserted`) without failing; peak RSS
+fails in both builds. Every milestone review runs both and reports the
+release numbers.
+
+**Frame numbers depend on the CPU's power state** (m1/30c part b). On the
+build machine (Apple Silicon), a scroll paced at 60 Hz is light load, and
+the CPU stays in a slow state until a heavier burst: the first key that
+asks for rows past those on hand (key 37 of the script: a `j` that costs
+its own frame, a progress frame and the rows' frame back to back) measured
+12–25 ms in release, and so did the first key after ≥ 0.5 s idle. With one
+core kept busy by an unrelated spinning thread the same key took
+6.5–6.8 ms and p99 fell from 12–15 ms to 7 ms. Close other work before the
+release run; a real user's first keypress after reading the screen pays
+the same ramp.
+
 Also lint the heavy code, which the standard gate does not see — a feature
 that is off is not compiled, so `clippy --all-targets` says nothing about
 it:

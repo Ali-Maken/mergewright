@@ -140,6 +140,14 @@ fn check(scale: Scale, commit_graph: bool) {
         PEAK_RSS_LIMIT / (1024 * 1024)
     );
     let first_paint = Duration::from_micros(number("first_paint_us"));
+    if cfg!(debug_assertions) {
+        // ADR-0021: time budgets fail only in release; debug records them.
+        // Peak RSS above is asserted in both.
+        println!(
+            "first paint {first_paint:?} against the {FIRST_PAINT_LIMIT:?} budget: debug build, recorded not asserted"
+        );
+        return;
+    }
     assert!(
         first_paint <= FIRST_PAINT_LIMIT,
         "first paint {first_paint:?} is over the {FIRST_PAINT_LIMIT:?} budget"

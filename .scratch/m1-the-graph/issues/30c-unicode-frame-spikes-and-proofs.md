@@ -1,6 +1,6 @@
 # m1-the-graph/30c — Unicode chunk-edge frame spikes; frame asserts pass and are proven; benches run
 
-Status: partial (part a done: spike fix + benches; stopped at seam (a) awaiting the debug-vs-release decision)
+Status: partial (part a done; part b seam 1 done: key 37 answered, release-only asserts, docs; proofs + release run wait on a user decision, see "Part b, seam 1")
 Build with: **Opus** (high) — event loop timing, split from 30
 Blocked by: 30b (part a done; part b unblocked by user decision)
 Leaves runnable: yes — heavy `frames::` tests pass and each is proven to fail when tightened.
@@ -80,3 +80,34 @@ Next, in order:
 5. Fix the bench command wherever it's written (ticket 30, TESTING.md if present).
 
 Gotchas: run frames tests alone and send output to a file (`cargo test [--release] -p graft --features heavy-tests --test it frames:: -- --test-threads=1 --nocapture`, about 30 s). Failure messages list the late keys.
+
+## Part b, seam 1 (2026-09-13, builder-opus): key 37 answered; release-only asserts; docs
+
+**Key 37: neither first-after-idle nor arbitrary. It is the first key that sends a row request**, wherever it falls. Release, Unicode, 50k refs, temporary tracing (removed):
+
+| Variant | First requesting key | Its latency |
+|---|---|---|
+| default script, 5 runs | 37 | 13.0, 18.5, 20.7, 21.2, 21.4 ms |
+| 0 / 500 / 2000 ms idle before the scroll | 37 | 13.0 / 13.3 / 17.5, 16.4 ms |
+| 10 `k` first | 47 | 17.6, 25.4 ms |
+| 20 / 60 no-op keys first | 57 / 97 | 15.8 / 18.9 ms |
+| `PageDown` first, straight after the start-up answer | 0 | 5.9 ms |
+| `PageDown` first after 1 s idle | 0 | 24.8 ms |
+
+- Only Progress and Window wakes land during the scroll: no refs/badges job arrives at key 37 (the part a guess is ruled out).
+- Its cost: the key's frame, a layout Progress frame and the Window frame, back to back. `j` frames before it 6–9 ms, after it 3–5 ms.
+- **Cause: CPU power state.** Same test with one unrelated thread spinning on another core (3 runs): key 37 6.5–6.8 ms, p99 6.6–7.0 ms (without: 11.7–15.0), max 6.9–7.1 ms, no misses; the `PageUp` misses at 16.3–17.4 ms (keys 371–419, in ~half of runs) disappear too. Idle + `PageDown` first: 24.8 → 16.0 ms with the spinner.
+- Second finding: the first key after ≥ 0.5 s idle misses in release (17.0–24.8 ms), same cause.
+- Also seen: since part a, 353 of 420 keys send a request (every `j` past row 37 round-trips). Not a miss on a hot CPU, but it's why a cold CPU has no headroom.
+
+**Done in this seam:** `frames::check` and `heavy::check` fail time budgets only under `cfg!(not(debug_assertions))`; debug prints `debug build, budget recorded not asserted` with the late keys / first paint (RSS still asserted in both). TESTING.md "The heavy tier": release perf run command + the power-state note. `.claude/agents/reviewer.md` step 2: exact command. ADR-0021 written (decision open on warm-up handling). KNOWN_GAPS: git/git RSS headroom row. Gates: fmt, clippy (with heavy-tests), `cargo test`.
+
+**Not done (next seam):** tightening proofs (item 3), the release run once alone, acceptance boxes.
+
+**Blocked on a user decision:** as it stands the release assert flakes (key 37 misses in 4 of 7 default runs; PageUp keys in ~half). Options:
+1. Exclude the first requesting key (cause named) — PageUp keys still flake at 16.3–17.4 ms. Not enough alone.
+2. Hold one core busy while measuring (a spinner thread in the test) — measures the code, not the governor; CLAUDE.md calls this a workaround needing the user's OK.
+3. Cut per-key cost so a cold CPU fits: lay out a screen of read-ahead past each request (no round trip per `j`), and/or don't draw a frame for a Progress update when its Window is already queued. Code change, re-measure.
+4. Combination: 3, then 1 for the first key after idle if it still misses.
+
+Next exact step once decided: implement the choice, then per `frames::` test tighten `INPUT_TO_FRAME` (e.g. 4 ms) and `heavy::FIRST_PAINT_LIMIT` (e.g. 10 ms) in release, see each fail, revert; then run the release command in TESTING.md once, alone, output to a file; fill the acceptance boxes.
