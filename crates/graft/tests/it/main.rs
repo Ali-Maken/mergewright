@@ -5,6 +5,10 @@
 //! `tests/it/` and are included from here as modules (PROMPT.md 7.1). Add a
 //! test by writing `tests/it/<area>.rs` and a `mod <area>;` line below.
 
+#[cfg(feature = "heavy-tests")]
+mod budget_run;
 mod dependency_edges;
+#[cfg(feature = "heavy-tests")]
+mod heavy;
 mod not_a_repo;
 mod piped_stdout;
