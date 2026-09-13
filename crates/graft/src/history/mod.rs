@@ -108,8 +108,10 @@ pub struct RowRequest {
     /// The promoted order to show it in, while the screen is waiting for the
     /// walk to take it up (ADR-0008). Carried by *every* request until an
     /// answer says it is in force, so skipping to the newest request can
-    /// never skip the promotion; `wanted` is then ignored, because its row
-    /// numbers were counted in the order being replaced.
+    /// never skip the promotion. Row numbers in `wanted` were counted in the
+    /// order being replaced, so rows by number are asked for again around the
+    /// anchor (kept as they are without one); a `G` or a search jump is kept,
+    /// and lands in the new order.
     pub promote: Option<Promote>,
 }
 
@@ -127,16 +129,11 @@ pub struct Promote {
 
 impl Promote {
     /// The rows a viewport needs in `layout` so that the anchor sits where it
-    /// sat — or at the top, with no anchor or one this view does not show.
-    fn around<S: CommitSource>(&self, layout: &StreamingLayout<S>) -> Wanted {
-        let top = self
-            .anchor
-            .and_then(|anchor| {
-                let row = layout.row_of(anchor.commit)?;
-                Some(row.saturating_sub(anchor.offset))
-            })
-            .unwrap_or(0);
-        Wanted::Rows(top.saturating_sub(self.height)..top + 2 * self.height)
+    /// sat — or `None` with no anchor, or one this view does not show.
+    fn around<S: CommitSource>(&self, layout: &StreamingLayout<S>) -> Option<Range<usize>> {
+        let anchor = self.anchor?;
+        let top = layout.row_of(anchor.commit)?.saturating_sub(anchor.offset);
+        Some(top.saturating_sub(self.height)..top + 2 * self.height)
     }
 }
 
@@ -559,7 +556,19 @@ pub fn serve<S: CommitSource>(
             if !views.promote(&view, &promote, stop)? {
                 return Ok(Ended::Cancelled);
             }
-            request.wanted = promote.around(views.layout(&view)?);
+            // With nothing to anchor to, row numbers are the best guess left.
+            if let Some(around) = promote.around(views.layout(&view)?) {
+                request.wanted = match request.wanted {
+                    Wanted::Rows(_) => Wanted::Rows(around),
+                    Wanted::Find { commit, rows, .. } => Wanted::Find {
+                        commit,
+                        rows,
+                        fallback: around,
+                    },
+                    // Counted from the end, which the new order shares.
+                    last @ Wanted::Last(_) => last,
+                };
+            }
         }
         let layout = views.layout(&view)?;
         let mut latest = None;

@@ -113,7 +113,9 @@ impl History {
     }
 
     /// Takes in the first rows in the promoted order: the cursor goes back on
-    /// the selected commit, at the same place on screen.
+    /// the selected commit, at the same place on screen — unless the request
+    /// was a `G` or a search jump, which the walk kept and answered in the new
+    /// order: then it lands as it would have (m1-the-graph/27c).
     fn promoted(&mut self, window: super::Window, height: usize) {
         let anchor = match self.promotion.take() {
             Some(Promotion::Swapping { anchor, .. }) => anchor,
@@ -128,7 +130,6 @@ impl History {
             walk.order = walk.requested;
         }
         self.rows = window.laid_out;
-        self.jump = None;
         self.reanchor = None;
         if matches!(self.phase, Phase::Streaming | Phase::Complete) {
             self.phase = if window.done {
@@ -153,6 +154,22 @@ impl History {
             self.top = self.top.min(self.cursor);
         }
         self.follow(height);
+        if self.jump == Some(window.request) {
+            if let Some(id) = self.seeking {
+                // Not in this view: the cursor stays on the anchor.
+                if let Some(at) = window.rows.iter().position(|row| row.commit.id == id) {
+                    self.cursor = window.first + at;
+                    self.top = self.cursor.saturating_sub(height / 2);
+                }
+            } else {
+                self.cursor = self.rows.saturating_sub(1);
+                self.top = self.rows.saturating_sub(height);
+            }
+        }
+        // Answered, or a jump no request is still asking for: either way no
+        // answer is coming, and a search waiting on the seek must hear so.
+        self.jump = None;
+        self.seeking = None;
         self.window = Some(window);
     }
 
@@ -419,10 +436,9 @@ impl History {
         });
         let promote = match &mut self.promotion {
             Some(Promotion::Swapping { order, anchor }) => {
-                // The selection off the rows on hand keeps the last one known.
-                if selected.is_some() {
-                    *anchor = selected;
-                }
+                // A cursor moved off the rows on hand has no commit to anchor
+                // to yet: an older anchor would snap it back (27c).
+                *anchor = selected;
                 Some(Promote {
                     order: Arc::clone(order),
                     anchor: *anchor,

@@ -816,6 +816,104 @@ fn promotion_keeps_the_selected_commit_where_it_is_on_screen() {
     assert_eq!(on_screen[0], "Main 11", "{on_screen:?}");
 }
 
+/// The race of m1-the-graph/27c: a promotion is handed to the walk but has not
+/// landed when a key asks for rows. The worker skips to the newest request,
+/// so only the key's request is served, and it carries the promotion. Returns
+/// the history after that answer, and the promoted order.
+fn key_while_promotion_swaps(
+    press: impl FnOnce(&mut History, &[Oid]) -> Option<RowRequest>,
+) -> (History, Arc<[Oid]>) {
+    let shape = Shape::Linear;
+    let dir = graft_fixtures::borrow(shape);
+    let store = RepoStore::new(dir.clone(), None);
+    let order = topological_order(&store, &never)
+        .expect("sorts")
+        .expect("never stopped");
+    let handle = RepoHandle::open(&dir).expect("opens");
+    let refs = handle.references().expect("refs read");
+    let branches = Branches::resolve(&handle, None).expect("branches resolve");
+    let open = |promoted: Option<&Arc<[Oid]>>| {
+        Ok(match promoted {
+            Some(ids) => WalkSource::in_order(&handle, Arc::clone(ids)),
+            None => WalkSource::new(&handle, Walk::all_refs(&handle, Order::CommitDate)?),
+        })
+    };
+    let mut views = Views::new(seeds_for(&refs, &branches), SMALL, Box::new(open));
+    let mut history = History::started();
+    history.walk = Some(WalkFacts {
+        requested: Order::Topological,
+        order: Order::CommitDate,
+        default_branch: None,
+        integration: Vec::new().into(),
+    });
+    let first = history.show(HEIGHT).expect("asks for the first screen");
+    served(&mut views, &mut history, first);
+    assert_eq!(history.phase, Phase::Streaming, "the walk is not done yet");
+
+    let unsent = history.promote(Arc::clone(&order), HEIGHT);
+    assert!(unsent.is_some(), "a walk still going takes the order");
+    let request = press(&mut history, &order).expect("the key asks for rows");
+    assert!(
+        request.promote.is_some(),
+        "the key's request carries the order"
+    );
+    served(&mut views, &mut history, request);
+    assert_eq!(history.promotion, None, "the promotion has landed");
+    (history, order)
+}
+
+#[test]
+fn g_pressed_while_promotion_swaps_reaches_the_bottom() {
+    let (history, order) =
+        key_while_promotion_swaps(|history, _| history.move_cursor(Motion::Bottom, HEIGHT));
+
+    assert_eq!(history.jump, None);
+    assert_eq!(history.phase, Phase::Complete);
+    assert_eq!(history.rows, order.len());
+    assert_eq!(history.cursor, order.len() - 1);
+    assert_eq!(history.top, order.len() - HEIGHT);
+    assert_eq!(
+        history.selected().map(|row| row.commit.id),
+        order.last().copied()
+    );
+}
+
+#[test]
+fn a_search_jump_in_flight_when_promotion_lands_reaches_its_match() {
+    let (history, order) = key_while_promotion_swaps(|history, order| {
+        let far = *order.last().expect("commits");
+        history.seek(far, HEIGHT)
+    });
+
+    assert_eq!((history.jump, history.seeking), (None, None));
+    assert_eq!(
+        history.selected().map(|row| row.commit.id),
+        order.last().copied()
+    );
+    assert!(
+        (history.top..history.top + HEIGHT).contains(&history.cursor),
+        "the hit is on screen: top {}, cursor {}",
+        history.top,
+        history.cursor
+    );
+}
+
+/// A move onto rows not fetched yet has no commit to anchor the swap to: it
+/// keeps its row numbers, and does not snap back to the last commit selected.
+#[test]
+fn page_down_past_the_rows_on_hand_while_promotion_swaps_keeps_its_place() {
+    let (history, order) = key_while_promotion_swaps(|history, _| {
+        assert_eq!(history.move_cursor(Motion::PageDown, HEIGHT), None);
+        history.move_cursor(Motion::PageDown, HEIGHT)
+    });
+    // Linear history: the promoted order numbers every row as before.
+    assert_eq!((history.cursor, history.top), (2 * HEIGHT, 2 * HEIGHT));
+    assert_eq!(
+        history.selected().map(|row| row.commit.id),
+        Some(order[2 * HEIGHT])
+    );
+}
+
 /// `count` rows of a straight line, as a window starting at `first`.
 fn window_of(first: usize, count: usize) -> Window {
     use graft_core::commit::{Identity, Timestamp};
