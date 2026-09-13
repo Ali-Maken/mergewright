@@ -28,9 +28,11 @@ One line per public item. Update when a public item changes.
 - `requery_theme` (fn) — on focus regain: `OSC 11`; silence returns the previous hint unchanged.
 
 ## input
-- `InputMux` (struct) — owns stdin for the process's life; decodes bytes on its own thread.
-- `InputMux::on_stdin` (fn) — start reading a duplicate of stdin; returns the mux and its `Inputs`.
+- `InputMux` (struct) — owns stdin for the process's life; decodes bytes on its own thread; events go to the current `Inputs`, or are kept for the next one while there is none.
+- `InputMux::on_stdin` (fn) — first call starts the process's one stdin reader; every call returns that mux and a fresh `Inputs` (the previous one ends). Never a second reader.
 - `InputMux::start` (fn) — start reading any fd (tests use a socket pair).
+- `InputMux::inputs` (fn) — open a fresh `Inputs` that takes over; events held while nobody listened come first.
+- `InputMux::hold` (fn) — end the current `Inputs`; keep every event for the next `inputs()`. `event_loop::run` calls it when its loop is done.
 - `InputMux::waiter` (fn) — open a `ReplyWaiter`; every open waiter gets a copy of each reply.
 - `ReplyWaiter` (struct) — terminal replies for one asker, as raw bytes.
 - `ReplyWaiter::read` (fn) — copy reply bytes into a buffer, waiting until a deadline; `Ok(0)` when none came.

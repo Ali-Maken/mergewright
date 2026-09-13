@@ -35,29 +35,107 @@ pub type Inputs = Receiver<io::Result<Event>>;
 #[derive(Debug, Clone)]
 pub struct InputMux {
     waiters: Arc<Mutex<Vec<Sender<Vec<u8>>>>>,
+    outlet: Arc<Mutex<Outlet>>,
 }
 
+/// Where decoded events go: the current [`Inputs`], or a queue for the next
+/// one while there is none.
+///
+/// A key is never dropped because its receiver went away — a wrapper that
+/// runs the loop again (the gallery) gets it on the `Inputs` it opens next.
+#[derive(Debug, Default)]
+struct Outlet {
+    sender: Option<Sender<io::Result<Event>>>,
+    held: Vec<io::Result<Event>>,
+}
+
+impl Outlet {
+    fn deliver(&mut self, item: io::Result<Event>) {
+        let Some(sender) = self.sender.as_ref() else {
+            self.held.push(item);
+            return;
+        };
+        // Nobody reads that `Inputs` any more: keep the event for the next
+        // one. `send` hands a refused item back, so nothing is lost.
+        if let Err(mpsc::SendError(item)) = sender.send(item) {
+            self.sender = None;
+            self.held.push(item);
+        }
+    }
+
+    fn lock(outlet: &Mutex<Self>) -> std::sync::MutexGuard<'_, Self> {
+        // Every change under the lock is one field assignment or one push,
+        // so a panic while it was held cannot have left it half-changed.
+        outlet.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+}
+
+/// The one reader of this process's stdin (ticket m1-the-graph/35c). Stdin
+/// has one owner; the second `on_stdin` hands out the same one.
+static STDIN: Mutex<Option<InputMux>> = Mutex::new(None);
+
 impl InputMux {
-    /// Start reading this process's stdin. Call once, before anything writes
-    /// a query to the terminal, and with raw mode already on.
+    /// Start reading this process's stdin, or, from the second call on, take
+    /// over the reader the first call started. Call before anything writes a
+    /// query to the terminal, and with raw mode already on.
+    ///
+    /// Returns a fresh [`Inputs`] each time (see [`InputMux::inputs`]): only
+    /// one run at a time reads the terminal, so the previous run's `Inputs`
+    /// ends and every key from here on goes to the new one.
     pub fn on_stdin() -> io::Result<(Self, Inputs)> {
+        let mut stdin = STDIN.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(mux) = stdin.as_ref() {
+            return Ok((mux.clone(), mux.inputs()));
+        }
         // `Stdin` reads through a buffer of its own, which would hold bytes
         // `poll` cannot see. A duplicate of the raw descriptor reads exactly
         // what the kernel has, and nothing more.
-        Self::start(io::stdin().as_fd().try_clone_to_owned()?)
+        let (mux, inputs) = Self::start(io::stdin().as_fd().try_clone_to_owned()?)?;
+        *stdin = Some(mux.clone());
+        Ok((mux, inputs))
     }
 
     /// Start reading `input` on a thread of its own.
     pub fn start(input: OwnedFd) -> io::Result<(Self, Inputs)> {
+        let (sender, inputs) = mpsc::channel();
         let mux = Self {
             waiters: Arc::new(Mutex::new(Vec::new())),
+            outlet: Arc::new(Mutex::new(Outlet {
+                sender: Some(sender),
+                held: Vec::new(),
+            })),
         };
-        let (events, inputs) = mpsc::channel();
         let waiters = Arc::clone(&mux.waiters);
+        let outlet = Arc::clone(&mux.outlet);
         thread::Builder::new()
             .name("graft-input".to_owned())
-            .spawn(move || read_until_done(File::from(input), &waiters, &events))?;
+            .spawn(move || read_until_done(File::from(input), &waiters, &outlet))?;
         Ok((mux, inputs))
+    }
+
+    /// Open a fresh [`Inputs`] and make it the one that gets every event from
+    /// now on. The previous `Inputs` gets nothing more and ends (its sender
+    /// is dropped here), and anything that arrived while no `Inputs` was
+    /// listening — after [`InputMux::hold`], or after the previous receiver
+    /// was dropped — comes first, in order.
+    pub fn inputs(&self) -> Inputs {
+        let (sender, inputs) = mpsc::channel();
+        let mut outlet = Outlet::lock(&self.outlet);
+        outlet.sender = Some(sender);
+        // Through `deliver`, so the held events take the same path as live
+        // ones (the receiver is in this function's hands, so none is refused).
+        for item in std::mem::take(&mut outlet.held) {
+            outlet.deliver(item);
+        }
+        inputs
+    }
+
+    /// End the current [`Inputs`] and keep every event from now on for the
+    /// next [`InputMux::inputs`]. A run calls this the moment its loop is
+    /// done, so a key typed while it tears down reaches the run that
+    /// follows instead of a forwarder nobody listens to.
+    pub fn hold(&self) {
+        Outlet::lock(&self.outlet).sender = None;
     }
 
     /// Start receiving terminal replies.
@@ -109,11 +187,7 @@ impl ReplyWaiter {
     }
 }
 
-fn read_until_done(
-    mut input: File,
-    waiters: &Mutex<Vec<Sender<Vec<u8>>>>,
-    events: &Sender<io::Result<Event>>,
-) {
+fn read_until_done(mut input: File, waiters: &Mutex<Vec<Sender<Vec<u8>>>>, outlet: &Mutex<Outlet>) {
     let fd = input.as_raw_fd();
     let mut decoder = Decoder::new();
     let mut chunk = [0u8; 4096];
@@ -149,35 +223,25 @@ fn read_until_done(
                 }
             },
         };
-        if !route(&mut finished, waiters, events) {
-            // Nobody reads events any more: the loop has finished.
-            return;
-        }
+        route(&mut finished, waiters, outlet);
         if let Some(error) = failure {
-            // Sent, not retried: there is no input any more. A failed send
-            // means the loop is gone too, and there is nobody left to tell.
-            if events.send(Err(error)).is_err() {
-                return;
-            }
+            // Delivered, not retried: there is no input any more, and this
+            // is the reader's last word.
+            Outlet::lock(outlet).deliver(Err(error));
             break;
         }
     }
 }
 
-/// Send each decoded item where it goes. `false` once the event receiver
-/// has gone.
+/// Send each decoded item where it goes.
 fn route(
     decoded: &mut Vec<Decoded>,
     waiters: &Mutex<Vec<Sender<Vec<u8>>>>,
-    events: &Sender<io::Result<Event>>,
-) -> bool {
+    outlet: &Mutex<Outlet>,
+) {
     for item in decoded.drain(..) {
         match item {
-            Decoded::Event(event) => {
-                if events.send(Ok(event)).is_err() {
-                    return false;
-                }
-            }
+            Decoded::Event(event) => Outlet::lock(outlet).deliver(Ok(event)),
             Decoded::Reply(bytes) => waiters
                 .lock()
                 // Only pushed to or filtered; see `InputMux::waiter`.
@@ -186,7 +250,6 @@ fn route(
                 .retain(|waiter| waiter.send(bytes.clone()).is_ok()),
         }
     }
-    true
 }
 
 /// Wait for `fd` to have something to read, up to `timeout` (`None`: for as

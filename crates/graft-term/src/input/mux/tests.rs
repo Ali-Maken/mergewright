@@ -123,3 +123,42 @@ fn a_control_chord_keeps_its_modifier() {
         })
     );
 }
+
+// One reader per process (ticket m1-the-graph/35c): a wrapper that runs the
+// loop more than once — the gallery — asks the same mux for a fresh `Inputs`
+// each time, and every key goes to exactly one of them.
+
+#[test]
+fn a_fresh_inputs_takes_over_and_the_old_one_gets_nothing_more() {
+    let (mut terminal, mux, first) = started();
+    terminal.write_all(b"a").unwrap();
+    assert_eq!(next_key(&first), KeyCode::Char('a'));
+
+    let second = mux.inputs();
+    terminal.write_all(b"b").unwrap();
+    assert_eq!(next_key(&second), KeyCode::Char('b'));
+    // Its sender was dropped by the swap, so a forwarder blocked on it ends.
+    assert!(first.recv_timeout(PATIENCE).is_err());
+}
+
+#[test]
+fn keys_typed_while_nobody_is_listening_go_to_the_next_inputs() {
+    let (mut terminal, mux, first) = started();
+    drop(first);
+    terminal.write_all(b"]").unwrap();
+    // Let the reader see the key with no receiver alive.
+    thread::sleep(SEQUENCE_TIMEOUT * 2);
+    let next = mux.inputs();
+    assert_eq!(next_key(&next), KeyCode::Char(']'));
+}
+
+#[test]
+fn hold_keeps_keys_for_the_next_inputs_and_ends_the_current_one() {
+    let (mut terminal, mux, first) = started();
+    mux.hold();
+    assert!(first.recv_timeout(PATIENCE).is_err());
+    terminal.write_all(b"q").unwrap();
+    thread::sleep(SEQUENCE_TIMEOUT * 2);
+    let next = mux.inputs();
+    assert_eq!(next_key(&next), KeyCode::Char('q'));
+}
