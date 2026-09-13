@@ -254,3 +254,5 @@ entry is (CLAUDE.md).*
 - The raster tests copy the 12 lane hues from `graft-ui/src/theme/lanes.rs` (`graph` cannot see `ui`). Palette colour does not affect any assertion except the snapshot's slot letters.
 - Pixel shots are rendered at the 17×37 cell only; how they look at other cell sizes (e.g. 8×16 on a small font) is unjudged.
 - Render time measured on the fast tier only: 32 rows × 5 lanes at 17×37, Apple M5, median 1.38 ms release / 13.4 ms debug. Wide strips (many lanes) unmeasured; the frame-budget ticket (30) owns it.
+
+- **m1/24 pixel tier not wired (2026-09-13).** `graft-term::kitty` encoder exists and is tested; nothing in `app` calls it yet, so Ghostty still draws the Unicode graph. Remaining: 24b aligned-strip rows, 24c draw + reply draining + `gfx` status, 24d flush/F3/real-Ghostty check. See `.scratch/m1-the-graph/issues/24-kitty-output.md` Handoff.

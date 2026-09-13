@@ -3,9 +3,9 @@
 //! (`detect`), and sanitising repo-derived strings into `SanitizedText` so a
 //! malicious repository cannot inject escape sequences into the screen
 //! (`sanitize`), and owning stdin: decoding keys and routing terminal
-//! replies to whoever asked (`input`). The image encoder that turns a `core::RasterFrame` into
-//! Kitty, iTerm2 or Sixel bytes belongs here too (DESIGN.md §8.2) and lands
-//! in M1. Depends only on `core`.
+//! replies to whoever asked (`input`). Image encoders turn a `core::RasterFrame` into
+//! protocol bytes (DESIGN.md §8.2): Kitty today (`kitty`); iTerm2 and Sixel
+//! follow. Depends only on `core`.
 // `deny`, not `forbid`, and this is the only crate where that is true.
 // Reading the terminal's window size and waiting on its file descriptor are
 // two libc calls with no safe equivalent in the standard library; ADR-0013
@@ -18,6 +18,7 @@
 
 pub mod detect;
 pub mod input;
+pub mod kitty;
 pub mod sanitize;
 
 pub use sanitize::{SanitizedText, sanitize, sanitize_line, sanitize_path, sanitize_path_bytes};

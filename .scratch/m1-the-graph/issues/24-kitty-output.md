@@ -1,6 +1,6 @@
 # m1-the-graph/24 — Pixels on Kitty-protocol terminals
 
-Status: ready
+Status: partial — encoder done (24a); app wiring remains (split, see Handoff)
 Build with: **Opus** (high) — terminal graphics protocol
 Blocked by: 19, 23
 Leaves runnable: yes — Ghostty and other Kitty-protocol terminals show the pixel graph; everything else unchanged.
@@ -37,3 +37,19 @@ Out:
 
 ## Size
 One context, under ~80k tokens. Read only what "Read first" names. If you compact, say so in your report; if a second compaction is coming, stop at a clean seam with a handoff note.
+
+## Handoff (2026-09-13, builder-opus, no compaction)
+
+Done (committed): `graft-term::kitty` — pure encoder + reply parser, 18 byte-stream tests.
+- Transmit once per strip id (ids from 1000), base64 chunks ≤4096, straight alpha (RasterFrame is premultiplied; f=32 is not).
+- One `p=1` placement per image, replaced each frame; crop `y = rows.start × cell_h`; cell rect `c`/`r`; cursor saved (`ESC 7/8`), `C=1`.
+- Strip scrolled out → `a=d,d=i,…,p=1` (data kept). Changed pixels for a slot → `d=I` old id, new id. LRU past capacity frees unplaced only.
+- `q=1` everywhere; no `ESC[2J`, no `q=2` (asserted). `free_all` on exit (`d=I` per id, not `d=A`).
+- `replies()` + `KittyImages::answer`: `ENOENT` forgets the upload → next frame retransmits. `forget_uploads()` for clear/resize.
+
+Not done — suggested split:
+- **24b rows for aligned strips.** `StripCache::get` needs whole 32-row aligned strips; `History.window` holds only what the walk sent (~viewport). Pixel tier must request rows padded to strip boundaries (plus the uncommitted virtual row, fold marker, thread emphasis, theme palette → `Strip`). Decide: request padding in `History::show`, or rasterise short strips with an offset key.
+- **24c draw + replies.** `graft-ui`: blank graph column at Pixel tier (keep width); export the graph rect (`GraphScreen::body`: `x = area.x`, `width = min(wanted, area.width/2)`). `event_loop::draw`: after `terminal.draw`, inside `hold_output()` and before END_SYNCHRONIZED_UPDATE, `KittyImages::frame`. Open a `ReplyWaiter`, drain non-blocking each wake, `answer` each, status `gfx ok` / `gfx: <msg>` (sanitize_line). `free_all` on exit, `hide` when F3 leaves pixels.
+- **24d flush + F3 + verification.** `StripCache::flush` from `Session::apply` (CellSize/Theme) and resize; resize also `forget_uploads`. F3 today always drops to Ascii (`update.rs` `is_tier_drop`); from Pixel it should drop to Unicode — `update` needs the settled tier in `AppState`. `graph.renderer = pixel` with no protocol → attempt Kitty. Automated real-Ghostty check (example writing transmit+place at q=1, DA1 fence, count APC errors, report file); raw escape capture + decoded summary under `docs/shots/`; Ghostty command for the user.
+
+Gotchas: redetect worker's `ReplyWaiter` also receives graphics replies — confirm it ignores them. Crop math uses `frame.height / frame.rows` (strip pixel space only), never cell pixel size for placement.

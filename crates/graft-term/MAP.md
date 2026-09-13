@@ -4,6 +4,7 @@ One line per public item. Update when a public item changes.
 ## lib.rs
 - `detect` (mod) — terminal capability detection and the rendering tier.
 - `input` (mod) — the one reader of stdin: keys to events, replies to waiters.
+- `kitty` (mod) — Kitty graphics protocol: strips to bytes, error replies back (ADR-0012 rules).
 - `sanitize` (mod) — repo-derived text made safe to draw.
 - `SanitizedText`, `sanitize`, `sanitize_line`, `sanitize_path`, `sanitize_path_bytes` (re-exports) — see `sanitize`.
 
@@ -32,6 +33,20 @@ One line per public item. Update when a public item changes.
 - `ReplyWaiter::read` (fn) — copy reply bytes into a buffer, waiting until a deadline; `Ok(0)` when none came.
 - `Inputs` (type) — `Receiver<io::Result<Event>>`: key/mouse/paste/focus events in arrival order; an `Err` is the last item.
 - `SEQUENCE_TIMEOUT` (const) — 50 ms an unfinished escape sequence waits before it is read as keys (lone `Esc`).
+
+## kitty
+- `KittyImages` (struct) — uploads held by the terminal; emits transmit-once, `p=1` replace, `q=1` commands.
+- `KittyImages::new` (fn) — track uploads, at most `capacity` unplaced images kept.
+- `KittyImages::frame` (fn) — append commands so the screen shows exactly these `Place`s.
+- `KittyImages::hide` (fn) — remove every placement, keep data (tier dropped away from pixels).
+- `KittyImages::free_all` (fn) — delete every upload with its data; call on exit.
+- `KittyImages::forget_uploads` (fn) — after a clear or resize: retransmit everything next frame.
+- `KittyImages::answer` (fn) — take in a reply; `ENOENT` forgets that upload so it retransmits.
+- `KittyImages::uploaded` (fn) — images the terminal holds, as far as Graft knows.
+- `Place` (struct) — one strip this frame: `first_row`, `frame` (`&Arc<RasterFrame>`), `rows` crop, `cells`.
+- `CellRect` (struct) — zero-based cell rectangle: `column`, `row`, `columns`, `rows` (0 = crop's rows).
+- `GraphicsReply` (struct) — `image`, `placement`, `message` (controls replaced); `is_error`, `is_missing_image`.
+- `replies` (fn) — every APC graphics reply in a byte buffer; other replies skipped.
 
 ## sanitize
 - `SanitizedText` (struct) — text proven free of escape and control sequences.
