@@ -22,7 +22,7 @@ In:
 - Status screen shows `rows laid out: N` and `history: streaming | complete | cancelled | failed: <reason>`.
 
 Out:
-- Drawing the graph (08, 09). Promotion and the provisional-order notice (18). Budgets (30).
+- Drawing the graph (08, 09). Promotion and the provisional-order notice (18). Budgets (27, 30).
 
 ## Acceptance
 - [ ] On corpus fixtures, rows from the product source equal rows from the test source (ids, lanes, edges).

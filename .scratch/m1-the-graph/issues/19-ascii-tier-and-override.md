@@ -22,7 +22,7 @@ In:
 - Non-TTY stdout lands on ASCII without complaint.
 
 Out:
-- Pixel tiers (22–26). Changing detection.
+- Pixel tiers (22–25, 29). Changing detection.
 
 ## Acceptance
 - [ ] Snapshots of criss-cross, foxtrot, octopus and the widest fixture in ASCII at 80×24, with and without colour.

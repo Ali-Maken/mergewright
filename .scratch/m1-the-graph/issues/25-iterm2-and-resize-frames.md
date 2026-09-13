@@ -19,7 +19,7 @@ In:
 - Measure the resize frame against 16 ms and report it honestly.
 
 Out:
-- tmux and SSH (26).
+- tmux and SSH (29).
 
 ## Acceptance
 - [ ] iTerm2 encoder byte-stream tests.

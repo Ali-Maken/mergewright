@@ -23,7 +23,7 @@ In:
 - `graph.renderer = pixel` added to 19's override.
 
 Out:
-- iTerm2 and resize frame cost (25). tmux and SSH (26).
+- iTerm2 and resize frame cost (25). tmux and SSH (29).
 
 ## Acceptance
 - [ ] Byte-stream unit tests: chunking, ids, crop per scroll step, placement replacement, free on exit.

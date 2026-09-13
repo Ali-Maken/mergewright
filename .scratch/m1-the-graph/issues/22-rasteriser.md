@@ -21,7 +21,7 @@ In:
 - The `+N` column and the paint attribute (dimmed / highlighted).
 
 Out:
-- The strip cache (23). Any escape-sequence encoding (24–26).
+- The strip cache (23). Any escape-sequence encoding (24, 25, 29).
 
 ## Acceptance
 - [ ] RGBA buffer snapshots at a pinned 8×16 cell for criss-cross, octopus and foxtrot.

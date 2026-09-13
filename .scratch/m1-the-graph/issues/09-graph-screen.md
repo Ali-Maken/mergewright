@@ -22,7 +22,7 @@ In:
 - One plain subject column beside the graph so the screen is readable; 10 replaces it.
 
 Out:
-- Columns and badges (10–12), mouse (17), promotion notice (18), search (27, 28), pixel tier (22–26).
+- Columns and badges (10–12), mouse (17), promotion notice (18), search (26), pixel tier (22–25, 29).
 
 ## Acceptance
 - [ ] `cargo run -- <fixture>` opens on a graph and `q` quits clean; snapshots at 80×24, 120×40, 200×60.

@@ -23,7 +23,7 @@ In:
 - Use (or add) a corpus shape with skewed committer dates so date and topological order differ.
 
 Out:
-- Making `full_topological` cheaper (30 measures and decides).
+- Making `full_topological` cheaper (27 measures and decides).
 
 ## Acceptance
 - [ ] Skewed-dates fixture: notice shown, promotion lands, selected commit id and its on-screen row unchanged (test).

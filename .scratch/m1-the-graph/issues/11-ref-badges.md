@@ -22,7 +22,7 @@ In:
 - Add a corpus shape only if a badge case below has none (e.g. a stash).
 
 Out:
-- 50k-ref scale (31). "Contained in" (M2).
+- 50k-ref scale (30). "Contained in" (M2).
 
 ## Acceptance
 - [ ] One test each: in sync, ahead only, behind only, diverged, detached HEAD, tag-only commit, stash, unborn branch.

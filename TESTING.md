@@ -97,7 +97,7 @@ commands at once.
 - Property tests at 1,000 cases.
 
 Not there yet: the performance budgets and the 300 MB peak-memory gate
-(M1 ticket 16). The measurement they will use —
+(M1 tickets 27 and 30). The measurement they will use —
 `graft_fixtures::measure` — is here and unit-tested; the assertions are
 not. `cargo-fuzz` targets land in M2.
 
