@@ -1,6 +1,6 @@
 # m1-the-graph/27 — Peak memory and first paint, measured for real
 
-Status: partial — 100k budgets asserted and green; remainder (git/git no-cg over 300 MB) split into 27b
+Status: done — 100k budgets here; remainder completed in 27b, 27c, 27d
 Build with: **Opus** (high) — measuring a concurrent streaming pipeline and deciding what to fix
 Blocked by: 07, 09, 18, 31
 Leaves runnable: yes — heavy tier asserts the 300 MB and 150 ms budgets.
