@@ -1,9 +1,9 @@
 # m1-the-graph/40 — Pixel tier: folded edges are fading tails, the rail is a dotted line
 
-Status: draft (until the user approves ADR-0022)
+Status: ready
 Build with: **Opus** (high) — drawing in the rasteriser (gradients, Béziers); the approach is decided, the result is judged by eye, so not Fable
 Needs: 39 (`DrawnRow`, `FoldedEdge`, `Toward`, `raster::Stub`, `RasterRow::stubs`); 42 (`stroke_width`, `OFF_THREAD_ALPHA`, `FADED_ALPHA`)
-Blocked by: 39, 42; user approval of ADR-0022
+Blocked by: 39, 42
 Leaves runnable: yes — the pixel tier draws the same fold vocabulary as the text tiers.
 
 Finding (user gallery walk, 2026-09-13, git/git, same screenshot): "Second-parent curves end in dangling stubs at the compaction boundary — ambiguous on every row." Decision 1 (ADR-0022): a folded edge is a stub on its node, the marker is a rail, no digits. 39 built the model and the text tiers; this is the pixel half.
@@ -34,6 +34,11 @@ pub struct Stub { pub identity: BranchIdentity, pub toward: Toward }
 pub(crate) fn stroke_width(cell_width: u32) -> f32;
 pub const OFF_THREAD_ALPHA: f32; pub const FADED_ALPHA: f32;
 ```
+
+## User check before close (user, 2026-09-13, ADR-0022)
+
+- [ ] Capture git/git `seen` at **120 columns** after 39 and 40 (both tiers where they apply) under `docs/shots/<NN>-seen-120-*`; the user judges by eye whether it reads as **history or decoration**. 39 and 40 stay open until the user has judged it.
+- Report: cause fixed or symptom hidden, and what it costs the user.
 
 ## Acceptance
 - [ ] Buffer assertions at 17×37: the tail's alpha at its last pixel column is < 0.1 × its first; the tail's pixels stay left of the next column's centre; every rail pixel has zero chroma (R=G=B within 1) and the on/off pattern repeats at `cell_height/3`.

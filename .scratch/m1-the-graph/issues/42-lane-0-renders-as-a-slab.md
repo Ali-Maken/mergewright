@@ -1,9 +1,9 @@
 # m1-the-graph/42 — Lane 0 is a line: one stroke width, emphasis by alpha
 
-Status: draft (until the user approves ADR-0024)
+Status: ready
 Build with: **Sonnet** (medium) — confirm a cause, then constants and snapshots; the decision is ADR-0024. Escalate per CLAUDE.md if the cause is elsewhere in the rasteriser.
 Needs: none (40 needs this)
-Blocked by: user approval of ADR-0024
+Blocked by: 38
 Leaves runnable: yes — every graph line in the pixel tier is the same width; the thread is the full-colour one.
 
 Finding (user gallery walk, 2026-09-13, pixel tier, Ghostty, same screenshot): "Lane 0 renders as a thick slab, not a line to follow." Hypothesis (ADR-0024): the ancestry thread draws heavier, the cursor starts on the top row, so lane 0 is always on the thread and always heavy. Confirm before changing anything.

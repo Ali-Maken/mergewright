@@ -1,6 +1,6 @@
 # No hover tooltip: the subject reveals in the footer, details live in the detail pane, `y` copies the SHA
 
-Status: **Proposed** (planner-fable, 2026-09-13, evaluating the user's own
+Status: **Accepted** (user, 2026-09-13, judged from the file). Was: Proposed (planner-fable, 2026-09-13, evaluating the user's own
 proposal; needs the user's approval at the M1 graph design checkpoint).
 Supersedes **ADR-0020**. Changes PROMPT.md §1.3 ("**Hover** shows a tooltip
 with the full message, parents and containing branches"), DESIGN.md §2.15's
@@ -66,3 +66,8 @@ The proposal is right, for reasons beyond the bugs:
   mention the tooltip are rewritten by ticket 41.
 - Until M2 lands, `KNOWN_GAPS.md` carries: "no commit body or parents on
   screen; M2 detail pane."
+
+## User notes on approval (2026-09-13)
+
+- KNOWN_GAPS records that M1 ships with no way to read a commit body or see parents, expiring at M2's detail pane.
+- Keep the "what Graft sent" wording for the copy notice; never claim the clipboard received it.

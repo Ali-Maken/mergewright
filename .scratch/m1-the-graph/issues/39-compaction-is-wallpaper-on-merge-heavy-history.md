@@ -1,9 +1,9 @@
 # m1-the-graph/39 — Compaction draws stubs and a rail; the count moves to the header
 
-Status: draft (until the user approves ADR-0022)
+Status: ready
 Build with: **Opus** (high) — changes the fold model's output shape that 40 builds on; property tests and snapshots judge it, so not Fable
 Needs: none
-Blocked by: user approval of ADR-0022
+Blocked by: 38
 Leaves runnable: yes — text tiers draw the new fold vocabulary; the pixel tier draws no folded edges until 40 (KNOWN_GAPS row, expiry 40)
 
 Finding (user gallery walk, 2026-09-13, git/git, `docs/shots/user-37-git-git-pixel-after-scroll.png`): "Compaction is wallpaper: every row shows +54." and (40) "Second-parent curves end in dangling stubs at the compaction boundary." Both have one cause and one fix: `+N` is a per-window number printed per row, and every folded lane is nodeless in its window, so a curve into the marker says nothing. Ticket 40 is the pixel half; this is the model and the text tiers.
@@ -45,6 +45,11 @@ pub const STUB_ABOVE: char = '▴';
 pub const RAIL: char = '⋮';
 ```
 Callers to update: `GraphColumn::through` / `width_through`, `view::strips::pixel_rows`, `raster::cache::layout_hash`, `GraphScreen` header.
+
+## User check before close (user, 2026-09-13, ADR-0022)
+
+- [ ] Capture git/git `seen` at **120 columns** after 39 and 40 (both tiers where they apply) under `docs/shots/<NN>-seen-120-*`; the user judges by eye whether it reads as **history or decoration**. 39 and 40 stay open until the user has judged it.
+- Report: cause fixed or symptom hidden, and what it costs the user.
 
 ## Acceptance
 - [ ] Property test: for every row of a random window, kept edges plus `folded` equal the original edges (none lost, none doubled); no folded lane's column appears in the drawn row; `row.lanes[marker]` is `None`.

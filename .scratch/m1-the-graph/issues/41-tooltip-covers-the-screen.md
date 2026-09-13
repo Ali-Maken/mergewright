@@ -1,9 +1,9 @@
 # m1-the-graph/41 — Tooltip out; a truncated subject reveals in the footer
 
-Status: draft (until the user approves ADR-0023)
+Status: ready
 Build with: **Sonnet** (medium) — deletion plus one footer line and two keys; every decision is in ADR-0023
 Needs: none
-Blocked by: user approval of ADR-0023
+Blocked by: 40
 Leaves runnable: yes — no popup; hovering (or `Enter` on) a truncated subject shows the whole subject in the hint line.
 
 Finding (user gallery walk, 2026-09-13, same screenshot): "Tooltip covers half the screen, truncates the subject column, no border, no visible dismiss." Decision 2 (ADR-0023): remove the popup; details are M2's detail pane; the SHA copy key is its own ticket (`y-copies-the-sha`). Ticket 36 becomes wontfix with this.

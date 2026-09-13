@@ -1,6 +1,6 @@
 # Folded edges are stubs, the count leaves the rows, the lane cap follows width
 
-Status: **Proposed** (planner-fable, 2026-09-13; needs the user's approval at
+Status: **Accepted** (user, 2026-09-13, judged from the file). Was: Proposed (planner-fable, 2026-09-13; needs the user's approval at
 the M1 graph design checkpoint). Supersedes DESIGN.md §3.5's third and fourth
 bullets and the "default 8" in §3.2 step 5; rewords PROMPT.md §1.2 "compress
 them behind a `+N` indicator that expands on demand".
@@ -78,3 +78,7 @@ The user's eye on `docs/shots/39-*`, `40-*`. If stubs still read as
 the stub to the rail (`◉▾┄┄⋮`), which reintroduces crossings but not
 ambiguity. If 12 lanes at 160+ columns read as a barcode, drop the wide
 value to 10.
+
+## Acceptance check (user, 2026-09-13)
+
+The test is the user's eye, not a ratio of rows: after tickets 39 and 40, capture git/git `seen` at 120 columns; the user judges whether the screen reads as history or as decoration **before 39 and 40 close**.

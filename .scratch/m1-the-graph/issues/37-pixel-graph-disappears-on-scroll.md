@@ -2,7 +2,7 @@
 
 Status: ready
 Build with: **Opus** (high) — terminal graphics protocol, strip cache, background history
-Blocked by: M1 graph design pass (user order: design decisions land first)
+Blocked by: 30c
 Leaves runnable: yes — scrolling git/git in the pixel tier never leaves rows without their graph.
 
 Why: user's gallery walk, 2026-09-13, stop 23/23 `git-git` (pixel tier, "gfx ok", 384 rows so far, tooltip pinned): "this page was buggy as hell, and upon scrolling a bit, the graph disappears." Screenshot: `docs/shots/user-37-git-git-pixel-after-scroll.png` (look at it). Also visible there: the last row reads `### match next` in the message column — find out what that is (search prompt or hint bleeding into a graph row?) and fix it if it's wrong.
@@ -16,7 +16,7 @@ Correctness bug in the shipped graph screen, not only the gallery: reproduce in 
 
 ## Scope
 In:
-- Reproduce first, under a pty, in the pixel tier: git/git, scroll with j, PgDn, wheel; with and without a pinned tooltip; during and after background loading and the promotion swap. Record which input and which state loses the graph.
+- Reproduce first, under a pty, in the pixel tier: git/git, scroll with j, PgDn, wheel; (the pinned-tooltip case is void: ADR-0023 removes it); during and after background loading and the promotion swap. Record which input and which state loses the graph.
 - Find the cause (strip deleted/evicted but not redrawn? placement ids reused? tooltip overlay clearing images? swap invalidating strips?). Fix the cause; no redraw-everything workaround.
 - Test red before, green after, at the layer where the bug lives.
 - The `### match next` row: explain; fix if wrong.

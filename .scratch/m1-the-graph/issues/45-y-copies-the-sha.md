@@ -1,9 +1,9 @@
 # m1-the-graph — `y` copies the selected commit's SHA (OSC 52)
 
-Status: draft (until the user approves ADR-0023)
+Status: ready
 Build with: **Opus** (high) — a terminal protocol through tmux passthrough (CLAUDE.md Models); small
 Needs: none strictly; touches the same footer/hint/key code as 41 — sequence after it
-Blocked by: 41 (same files); user approval of ADR-0023
+Blocked by: 41
 Leaves runnable: yes — `y` sends the full SHA to the terminal clipboard and says so.
 
 Why: ADR-0023 removes the tooltip, which was the only place the full SHA appeared (and the only copy route besides Shift+drag on the short SHA). Decision 4: `y` copies via OSC 52; `.` lists it when the context menu exists (M2+).

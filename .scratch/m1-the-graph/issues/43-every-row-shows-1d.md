@@ -2,7 +2,7 @@
 
 Status: ready
 Build with: **Sonnet** (medium) — verify, then fix if wrong
-Blocked by: M1 graph design pass (user order: design decisions land first)
+Blocked by: 45
 Leaves runnable: yes — the date column matches git.
 
 Finding (user gallery walk, 2026-09-13, git/git, screenshot `docs/shots/user-37-git-git-pixel-after-scroll.png`): "Every row shows '1d' — verify against git log."

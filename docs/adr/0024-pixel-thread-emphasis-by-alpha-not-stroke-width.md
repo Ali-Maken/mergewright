@@ -1,6 +1,6 @@
 # Pixel tier: the ancestry thread is emphasised by alpha, never by stroke width
 
-Status: **Proposed** (planner-fable, 2026-09-13; needs the user's approval at
+Status: **Accepted** (user, 2026-09-13, judged from the file). Was: Proposed (planner-fable, 2026-09-13; needs the user's approval at
 the M1 graph design checkpoint). Reverses the judgement call in tickets 16
 and 22 ("on-thread heavier"). Changes no PROMPT.md or DESIGN.md text: it
 brings the pixel tier back to DESIGN.md §5.2, which says off-thread rows

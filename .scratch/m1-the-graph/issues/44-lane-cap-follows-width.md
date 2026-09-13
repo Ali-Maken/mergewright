@@ -1,9 +1,9 @@
 # m1-the-graph — The lane cap follows the terminal's width
 
-Status: draft (until the user approves ADR-0022)
+Status: ready
 Build with: **Sonnet** (medium) — config type change, one breakpoint function, wiring
 Needs: none (independent of 39; conductor may run it in parallel)
-Blocked by: user approval of ADR-0022
+Blocked by: 39
 Leaves runnable: yes — `graph.max_lanes` unset draws 8 / 10 / 12 lanes by width; a set value holds everywhere.
 
 Why: the user's "the 8-lane default is wrong for merge-heavy history" (2026-09-13). ADR-0022 decision 3: the number was picked for 80 columns and applied at 200. Ceiling 12 = the lane palette's hue count.
