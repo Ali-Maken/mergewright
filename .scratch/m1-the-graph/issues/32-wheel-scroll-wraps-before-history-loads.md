@@ -35,7 +35,7 @@ Out:
 - [x] A test that fails before the fix: wheel-scroll repeatedly while the walk has not finished → never returns to the top; reaches the oldest commit.
 - [x] Same check for PgDn during loading.
 - [x] pty reproduction before/after (capture under `docs/shots/32-*`), report says what was verified.
-- [ ] **By eye (user):** trackpad in Ghostty right after launch stops at the oldest commit. Unticked until the user looks.
+- [x] **By eye (user, 2026-09-13: "trackpad stops at the end now"):** trackpad in Ghostty right after launch stops at the oldest commit. Unticked until the user looks.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test` (fast tier only)
