@@ -651,13 +651,17 @@ where
     W: Wakes,
     R: GraphicsReplies,
 {
-    // The first look comes before any work, so a queued key costs nothing.
     // The search prompt takes page keys as text: nothing to ready there.
-    if wakes.waiting() || !draws_pixels(session, state) || state.search_prompt.is_some() {
+    if !draws_pixels(session, state) || state.search_prompt.is_some() {
         return 0;
     }
     let mut rasterised = 0;
     for page in [KeyCode::PageDown, KeyCode::PageUp] {
+        // A look before each page's what-if too: its `update` clones the
+        // state (every ref badge with it), work a key must not queue behind.
+        if wakes.waiting() {
+            break;
+        }
         // What the screen would be after `page`; never shown. Its commands
         // (rows to fetch) are dropped: the real key asks for them again.
         let (paged, _unsent) = update(state, AppEvent::Core(Event::Key(KeyPress::plain(page))));
