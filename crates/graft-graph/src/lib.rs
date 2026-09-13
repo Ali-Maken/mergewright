@@ -15,6 +15,7 @@ pub mod inclusion;
 pub mod lane;
 pub mod layout;
 pub mod merge_name;
+pub mod raster;
 pub mod row;
 pub mod seeds;
 

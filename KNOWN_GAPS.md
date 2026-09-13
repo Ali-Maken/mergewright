@@ -246,3 +246,10 @@ entry is (CLAUDE.md).*
 | **A re-query reply that arrives after its deadline can be taken for the next round's.** `detect::redetect` discards waiting bytes before each round, but a late reply landing *during* the next round is parsed as its answer (its fence ends the read early). Needs a reply later than the 200/500 ms budget; not observed | Tag rounds (e.g. a distinct `DECRQM` per round as the fence) if it is ever seen | when seen |
 | **Key order under a pty is proven by unit test only.** The pty check proves arrival (F2 ×2 and ×3 during the probe land on the right screen) but its selection detector cannot see the cursor row, so `jjjk` during the probe was not verified on screen. Order is covered by `input::mux::tests` over a socket pair | A pty assertion on the cursor row (e.g. read the selected commit from the `Enter` tooltip) | M1 review |
 | **Decoder covers xterm, SS3, kitty `CSI u`, SGR and X10 mouse.** Not covered: urxvt `1015` mouse (`CSI b;x;y M` without `<`), which crossterm's `EnableMouseCapture` also turns on; terminals that prefer SGR (`1006`) never send it | Decode `1015` if a supported terminal is found sending it | when seen |
+
+## m1-the-graph/22 — rasteriser
+- Node style is defined twice: `graft_ui::graph_column::NodeKind` (Unicode glyphs) and `graft_graph::raster::Ring` (pixels), same six variants. `ui` depends on `graph`, so `NodeKind` could become `Ring` (or map to it); left for the pixel-output wiring ticket (24) to decide.
+- `CELLS_PER_LANE` (= 2) is declared in both `graft-ui` and `graft-graph::raster`; they must agree or pixels drift from text. Same fix: `ui` re-uses `graph`'s.
+- The raster tests copy the 12 lane hues from `graft-ui/src/theme/lanes.rs` (`graph` cannot see `ui`). Palette colour does not affect any assertion except the snapshot's slot letters.
+- Pixel shots are rendered at the 17×37 cell only; how they look at other cell sizes (e.g. 8×16 on a small font) is unjudged.
+- Render time measured on the fast tier only: 32 rows × 5 lanes at 17×37, Apple M5, median 1.38 ms release / 13.4 ms debug. Wide strips (many lanes) unmeasured; the frame-budget ticket (30) owns it.

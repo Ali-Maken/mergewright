@@ -1,0 +1,54 @@
+# graft-core — map
+One line per public item. Update when a public item changes.
+
+## capabilities
+- `RenderingTier` (enum) — how Graft draws the commit graph.
+- `PixelProtocol` (enum) — the image protocol the pixel tier would use.
+- `Supported` (enum) — answer to one yes/no capability query, silence kept distinct.
+- `CellSize` (struct) — one character cell in pixels, and where the number came from.
+- `CellSizeSource` (enum) — reported, window size, or assumed.
+- `Rgb` (struct) — an 8-bit-per-channel colour.
+- `Theme` (enum) — dark or light.
+- `ThemeHint` (struct) — light/dark hint, always usable, always carrying its source.
+- `ThemeSource` (enum) — where a `ThemeHint` came from: background or assumed.
+- `ColorDepth` (enum) — how much colour the terminal has: true colour down to none.
+- `TmuxStatus` (enum) — whether Graft is inside tmux and the outer terminal is reachable.
+- `ProbeOutcome` (enum) — what became of the probe round: answered, timed out, skipped.
+- `Capabilities` (struct) — everything detection established about the terminal.
+
+## commit
+- `Timestamp` (struct) — when something happened, as git stores it.
+- `Identity` (struct) — a name, an email and a moment.
+- `Commit` (struct) — one commit: id, parents, author, committer, message.
+- `Commit::date` / `subject` (fn) — committer date; first message line.
+
+## error
+- `Error` (enum) — a value a core constructor cannot represent.
+- `RefNameRule` (enum) — the `check-ref-format` rule a rejected ref broke.
+
+## event
+- `Event` (enum) — something that happened and that update must answer.
+- `KeyPress` (struct) — a key going down, with modifiers; `plain` / `control` (fn) build one.
+- `KeyCode` (enum) — the keys the keymap can name.
+- `Modifiers` (struct) — control, alt, shift, command; `NONE` / `CONTROL` (const).
+- `MouseInput` (struct) — a mouse event positioned in cells.
+- `MouseKind` (enum) — down, up, drag, move, scroll.
+- `MouseButton` (enum) — left, middle, right.
+
+## job
+- `JobId` (struct) — names one background job; `new` / `raw` (fn).
+- `JobFailure` (enum) — why a job produced no result: failed or panicked.
+
+## mistake_radar
+- `MistakeRadarKind` (enum) — a row's Mistake Radar classification.
+
+## oid
+- `Oid` (struct) — a git object id, 20 or 32 bytes inline; `SHA1_BYTES` / `MAX_BYTES` (const).
+- `Oid::from_bytes` / `from_hex` / `as_bytes` (fn) — build, parse, read.
+
+## raster
+- `RasterFrame` (struct) — the pixel renderer's strip: `width`, `height`, `rows`, `columns`, premultiplied RGBA `pixels`, never a painted background.
+- `RasterFrame::pixel` (fn) — the premultiplied RGBA at one pixel, `None` outside.
+
+## ref_name
+- `RefName` (struct) — a git ref's full name; `new` / `as_bytes` / `shorthand` (fn).

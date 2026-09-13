@@ -2,7 +2,7 @@
 One line per public item. Update when a public item changes.
 
 ## lib.rs
-- `ancestry`, `fold`, `identity`, `inclusion`, `lane`, `layout`, `merge_name`, `row`, `seeds` (mods) — re-exported at the root (`Ancestry`, `Kin`, `Fold`, `Follow`, `Included`, `Inclusion`, `Invalidated` too).
+- `ancestry`, `fold`, `identity`, `inclusion`, `lane`, `layout`, `merge_name`, `raster`, `row`, `seeds` (mods) — re-exported at the root (`Ancestry`, `Kin`, `Fold`, `Follow`, `Included`, `Inclusion`, `Invalidated` too).
 
 ## identity
 - `BranchIdentity` (struct) — stable FNV-1a hash of a branch name (or a commit id); the source of lane colour.
@@ -94,3 +94,14 @@ One line per public item. Update when a public item changes.
 - `StreamingLayout::source_mut` (fn) — the source, mutably.
 - `StreamingLayout::truncate` (fn) — forget rows from a row on (chunks cut, later checkpoints dropped, order truncated), frontier replayed to it; returns `Invalidated`.
 - `Invalidated` (struct) — `from_row`, `chunks`, `checkpoints` a truncate threw away.
+
+## raster
+- `rasterise` (fn) — a `Strip` in, a premultiplied `core::RasterFrame` out; pure, no cache; background never painted (ADR-0003).
+- `Strip` (struct) — `rows`, `above` (row before the strip), `lane_columns`, `marker`, `cell_width`/`cell_height`, `palette`, `muted`.
+- `RasterRow` (struct) — a row in drawn columns plus `ring`, `emphasis`, `thread` (drawn columns on the selection's thread).
+- `RasterRow::plain` (fn) — `Ring::of` the row, normal emphasis, no thread.
+- `Ring` (enum) — node style by shape: `Commit`, `Merge`, `Root`, `Head`, `Stash`, `Uncommitted`; `Ring::of` (fn) from parent count.
+- `Emphasis` (enum) — `Normal`, `Dimmed` (faded), `Highlighted` (heavier stroke).
+- `Marker` (struct) — the `+N` column: `column`, `folded`.
+- `RasterError` (enum) — `EmptyPalette`, `TooLarge`.
+- `CELLS_PER_LANE` (const) — cells per lane column (2), matching the Unicode tier.

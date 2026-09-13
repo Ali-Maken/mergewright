@@ -9,6 +9,13 @@ publish.workspace = true
 [dependencies]
 graft-core.workspace = true
 thiserror.workspace = true
+# The pixel tier's rasteriser (PROMPT.md §1.1 names it): anti-aliased
+# strokes, cubic Béziers and circles over a premultiplied RGBA buffer. An
+# external crate, so not an internal edge (ADR-0006). Default features off:
+# `simd` picks per-CPU code paths whose rounding can differ between
+# machines, and the RGBA snapshots must not; `png-format` is I/O, which the
+# rasteriser never does.
+tiny-skia = { version = "0.12", default-features = false, features = ["std"] }
 
 # Every crate below is test-only. Dev-dependencies are not internal
 # dependency edges (ADR-0006; `graft/tests/it/dependency_edges.rs` skips
@@ -28,6 +35,8 @@ graft-git.workspace = true
 # Snapshots of the row/lane output per fixture shape: a block of text is the
 # only readable record of what "obvious at a glance" means.
 insta = "1"
+# PNG writer for the committed eyeball shots under `docs/shots/` (ticket 22).
+tiny-skia = { version = "0.12", default-features = false, features = ["std", "png-format"] }
 
 # Forwards to `graft-fixtures`, so one `cargo test --features heavy-tests`
 # turns the tier on across the workspace. See TESTING.md.
