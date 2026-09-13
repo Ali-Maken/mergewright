@@ -71,7 +71,7 @@
 
 ### Checkpoint policy
 
-- **Read-only milestones (M2, M7, M8):** build straight through, no ticket approval. Stop only if a Critical survives review, or at the end.
+- **Read-only milestones (M1, M2, M7, M8):** build straight through, no ticket approval. Stop only if a Critical survives review, or at the end.
 - **Write milestones (M3, M4, M5, M6):** full gates and ticket approval.
 - **Checkpoint reports:** 15 lines max, telegraphic; say which model ran each ticket and whether anything compacted.
 

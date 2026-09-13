@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M1 The graph** — ticket 08 (31, 07 done; 31 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. **M1 runs straight through without stopping for ticket approval** — see "How M1 runs" below.
+**Current step:** **M1 The graph** — ticket 08 (31, 07 done; 31 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
 
 ---
 
@@ -44,10 +44,10 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 
 **What the conductor does for every milestone:**
 
-1. **Design, then tickets:** `planner-fable` writes `docs/design-notes/<milestone>.md` (interfaces, hard-to-reverse choices, risky tickets; no code). The conductor splits the milestone into tickets from it with `/to-tickets`. You approve them at the checkpoint before the milestone starts.
-2. **Build:** each ticket goes to a fresh builder on the model below, which builds it test-first, reviews it and commits.
-3. **Stuck:** if a ticket fails twice, `debugger` (Fable) finds the root cause.
-4. **Review:** `reviewer` checks the whole milestone and builders fix what it finds (at most 2 rounds). Opus, except M3 and M5, which review on Fable.
+1. **Design, then tickets:** `planner-fable` writes `docs/design-notes/<milestone>.md` (interfaces, hard-to-reverse choices, risky tickets; no code). The conductor splits the milestone into tickets from it with `/to-tickets`.
+2. **Build:** each ticket goes to a fresh builder on its `Build with` model, which builds it test-first, reviews it and commits.
+3. **Stuck:** escalation per CLAUDE.md "Standing rules → Models".
+4. **Review:** `reviewer` checks the whole milestone (model in the table) and builders fix what it finds (at most 2 rounds).
 5. **CHECKPOINT:** you test the milestone, approve the next milestone's tickets (write milestones only) and type `continue`.
 
 | ✓ | Milestone | Build with (per ticket, CLAUDE.md standing rules) | Review | CHECKPOINT: what you test |
@@ -62,7 +62,9 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 | [ ] | M7 Power tools (read-only) | per ticket | Opus | Interactive rebase, blame, line history, reflog |
 | [ ] | M8 Polish, **final name**, ship (read-only) | per ticket | Opus | Pick the name (below), then a fresh install and the first-run tour |
 
-**Who builds what, ticket size, context, checkpoints:** CLAUDE.md, "Standing rules" (set 2026-09-13, replaces the 2026-09-12 cost-control routing). Short version: Fable decides (design pass per milestone; builds only tickets passing all three Fable tests, or redoes an Opus ticket that stalled twice), Opus plans and builds concurrency / terminal protocols / git writes / undo / conflicts, Sonnet medium = mechanical; **M2 design pass runs when M1 finishes**; tickets under 80k tokens; read-only milestones (M2, M7, M8) build straight through, write milestones (M3–M6) get ticket approval.
+**Who builds what, ticket size, context, checkpoints:** CLAUDE.md, "Standing rules". Not restated here.
+
+**M2 design pass** (`planner-fable`) runs when M1 finishes.
 
 **Naming (an M8 job):** pick a name in the style of Sublime Merge or Araxis Merge (a naming-pattern reference only: Araxis Merge is a diff/merge tool, not a Git client, and is not prior art for this project), with no "git" in it (Git's trademark policy forbids "git" inside names like "tergit"). Starting shortlist: Tributary (command `trib`) and Thicket passed the clash check on 2026-09-11. Graft is taken.
 
@@ -95,21 +97,9 @@ and ASCII fallback paths.
 
 ---
 
-## How M1 runs (set by the user, 2026-09-12)
+## How M1 runs
 
-**M1 builds straight through. Do not stop for ticket approval.** The
-tickets in `.scratch/m1-the-graph/` are approved as drafted — the user did not
-want to review them one by one.
-
-- Build every ticket in dependency order, dispatching per each ticket's
-  `Build with` line — model and effort are on that line; CLAUDE.md
-  "Standing rules → Models" says how they are chosen.
-- Run `reviewer` on the milestone as usual, and fix what it finds.
-- **Stop only if something Critical survives the review rounds.** Majors and
-  Minors get fixed and the milestone carries on.
-- The M1 checkpoint itself still stands: the user tests `git/git` and the
-  merge-mistake fixtures and judges whether the history shape is obvious at a
-  glance. That is his call, not a reviewer's.
+M1 follows the read-only checkpoint policy (CLAUDE.md, "Standing rules → Checkpoint policy"); its tickets were approved as drafted on 2026-09-12.
 
 ---
 
