@@ -1,6 +1,6 @@
 # m1-the-graph/30f — Release frame check 7/7, idle-wake report, proofs
 
-Status: partial (seam 1: release runs 1-4 all fail at the pixel tier, cause located; Kitty encode fix in; see "Seam 1")
+Status: partial — waiting on a user decision (seam 2: sink measurement fixed; pixel page keys still miss on rasterise; options in "Seam 2")
 Build with: **Opus** (high) — frame timing under the job/redraw loop (split from 30c part b seam 2)
 Blocked by: 30e
 Leaves runnable: yes — release frame check passes 7 runs of 7; idle-wake reported separately.
@@ -65,3 +65,42 @@ Also in: frames.rs `Paced::breakdown` (per key: queued behind which wake, own-fr
 3. Only then the 7 counted release runs (frames:: alone), debug frames run (records), proofs (INPUT_TO_FRAME 4 ms / FIRST_PAINT_LIMIT 10 ms, revert), one full release perf run (TESTING.md), ADR-0021 "open" → decided (a), KNOWN_GAPS/TESTING updates, tick 30c boxes.
 
 Gotchas: temporary timers go in `event_loop/mod.rs::frame` (draw / graphics / write) and `event_loop/graphics.rs::frame` (pixel_rows / each `cache.get` / `images.frame`); revert with `git checkout` before committing. Pixel 100k test alone takes ~10 s release.
+
+## Seam 2 (2026-09-13, builder-opus): partial — stopped for a user decision, no compaction
+
+**1. Sink: measurement fix (commit 72524df).** The frames test's in-memory terminal parsed every byte (Kitty command state machine, under a mutex) inside `write`, so ~3.6 ms of test bookkeeping per pixel page key landed inside the key's timed frame. Now `Sink::write` appends to a chunked log (a copy, as a pty write copies into the kernel buffer; chunks so growth never reallocates megabytes mid-frame); frames record only a byte offset; `Sink::count` parses the log once, after `pump` returns and every latency is stamped. Proof: `frames::the_sink_counts_after_the_run_what_parsing_each_write_counted_during_it` (commands split at every awkward boundary, a write bigger than a chunk; counts at every mark equal the old parse-per-write counts).
+Why this is not hiding a user cost: the parse was never Graft's work nor a model of the terminal's — a real terminal parses in its own process. What the user *does* pay for writing ~1.3 MB to a real pty (back-pressure while the terminal drains it) is still unmeasured here, as the module doc already said; it can only add to the numbers below.
+
+**Release runs (seam 2).** None counts toward 7/7.
+
+| Run | File | Change before it | Result |
+|---|---|---|---|
+| 5 | `release-5-sink.txt` | sink fix | 3/4 pass. **Pixel 100k fails 1 key**: key 389 16.2 ms (queued 1.5, own frame 14.7, 3 transmits). Pixel 50k p50 7.0 / p99 10.9 / max 14.7; Unicode 50k 6.8/10.2/10.7. |
+| 6 | `release-6-diag-timers.txt` | temporary frame timers (reverted) | Pixel 100k alone: passed, max 13.1 ms. Diagnostic, not counted. |
+| 7 | `release-7-diag-every-transmit.txt` | timers printing every frame that sends images (reverted) | Pixel 100k alone: **failed**, max 16.6 ms. |
+
+**2. What the user pays per pixel page key (run 7, every image-sending frame, release, ms):**
+
+| Strips rasterised | Frames | Own draw total p50 / max | Rasterise | Kitty encode | Cell draw | Write (copy) |
+|---|---|---|---|---|---|---|
+| 0 (re-placed only) | 10 | 2.7 / 2.9 | 0 | 1.0 | 1.2 | 0.1 |
+| 1 | 186 | 5.1 / 6.8 | 2.9 / 3.9 | 0.65 | 1.1 | 0.1 |
+| 2 | 103 | 8.4 / 12.5 | 5.4 / 9.0 | 1.2 | 1.1 | 0.2 |
+| 3 | 13 | 10.8 / 14.7 | 7.4 / 10.3 | 2.0 | 1.1 | 0.3 |
+
+Plus 1–2 ms queued behind the previous frame. Rasterise is ~70 % of a late key. Per strip 2.3–3 ms p50, 4.8 max; the 0.66 ms bench is the same code on a ~2-lane strip, `STRIP_ROWS`'s own note measured 1.36 ms at 12 lanes — the gap is work size (lanes), not a skipped path. Scout (code-visible, unprofiled): `Pen::row` (`graft-graph/src/raster.rs:246-283`) strokes each lane column separately on every row (O(rows × lanes) `stroke_path` calls, a straight lane through 32 rows is 32 strokes); a fresh `PathBuilder`/`Path` per segment (`raster.rs:334-376`); a fresh zeroed `Pixmap` per miss (`raster.rs:178`). `STRIPS_KEPT` (16) is LRU capacity only; nothing rasterises ahead of need.
+
+**Not done, as instructed:** rasterising was not moved off the key path.
+
+**Options for the user (conductor to put):**
+
+| | Option | What the user sees | Cost / risk |
+|---|---|---|---|
+| A | **Make rasterise cheaper, same frame.** One stroke per lane run across consecutive rows instead of per row; reuse path builders and the pixmap buffer. | Nothing changes: rows and graph still arrive together. | Gain unmeasured until built (guess: the per-row strokes are most of it; wide repos, e.g. git/git's ~28 lanes, cost more). Needs byte-for-byte pixel guards. May not be enough alone. graft-graph work, one ticket. |
+| B | **Rasterise the strip above and below the viewport while idle, on the loop thread** (after a frame, only when no input is waiting); keys still rasterise on the key path when the prefetch hasn't reached them. | Same frame as now: never a blank graph. A held PgDn faster than idle time still falls back to today's cost. | Idle CPU and power after each scroll stop (~3 strips × 2.5 ms); a key arriving mid-prefetch waits for at most one strip (~3 ms) — must check input between strips. |
+| C | Rasterise on a worker, draw the graph when it's ready. | **Graph arrives a frame after the rows** — the blank-graph frame flagged on PgDn in 30b and ticket 37. | Meets 16 ms by showing less. Not recommended. |
+| D | Accept pixel page keys over 16 ms (up to ~18 ms seen); record in an ADR. | Occasional dropped 60 Hz frame on held PgUp/PgDn at the pixel tier only. | Spec change (PROMPT.md §6.3) — user's call. |
+
+Recommendation: A first (no visible change), measure with this ticket's frames run; then B if pixel still misses. Both keep "graph and rows in the same frame".
+
+**Next exact step after the decision:** build the chosen fix (A: `graft-graph` raster, guards first); then step 3 of the order: 7 counted release runs (frames:: alone), debug frames run, proofs, full release perf run, ADR-0021, TESTING.md/KNOWN_GAPS, tick 30c.
