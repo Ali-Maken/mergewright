@@ -107,6 +107,10 @@ Reading of the misses (debug runs; unconfirmed, from the per-key lists, not prof
 - Unicode: every spike is a `PageDown` roughly every 13–14 pages ≈ one 500-row layout chunk (`StreamConfig::chunk_rows`). The key waits for the history job to lay out the next chunk on demand. This is the "background advance between frames" decision (27, re-owned here): laying out ahead of the viewport would remove it.
 - Pixel: every frame, including `j` frames that need no new strip, costs more than a tick; 141 MB written over 420 keys (~336 KB and ~84 Kitty commands per frame) suggests strips are re-transmitted on frames that should only re-place. Needs a look at what `Graphics::frame` sends per scroll frame before any tuning.
 
+After 30c part a (a request lays out only the rows it names; details and before/after table in 30c): Unicode release 100k 6.9 / 10.9 / 12.2 ms, 0 over; chunk-edge spikes gone in every run.
+
+Benches, release, once (30c): `StreamingLayout::advance/one chunk` 977.9 µs · `rasterise/one strip` 657.9 µs · `StripCache::get/hit` 1.66 µs · `StripCache::get/miss` 661.3 µs · `GraphColumn::render/one screen` 14.86 µs. The command in step 4 below needs `--bench hot_paths --bench row_render`; without it the lib test harness rejects the criterion flags.
+
 ## Handoff (what remains)
 
 Done (committed, gates green): criterion benches `crates/graft-graph/benches/hot_paths.rs` (advance per chunk, rasterise one strip, strip-cache hit/miss) and `crates/graft-ui/benches/row_render.rs` (one screen of `GraphColumn`); heavy tests `crates/graft/tests/it/frames.rs` (4 tests, Unicode/pixel × fixture/50k refs), sharing `heavy::MEASURING`; `budget_run::{open, pump_until}` made public for it. **The four heavy tests fail**: they are the measurement, and the budget is not met.

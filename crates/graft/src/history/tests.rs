@@ -973,6 +973,14 @@ fn promotion_asked_after_a_search_jump_still_reaches_its_match() {
 #[test]
 fn page_down_past_the_rows_on_hand_while_promotion_swaps_keeps_its_place() {
     let (history, order) = key_while_promotion_swaps(|history, _| {
+        // A walk still laying out reports rows past the window it sent, so
+        // the second key lands on a row laid out but not fetched (a request
+        // lays out only the rows it names, 30c).
+        let progress = HistoryUpdate::Progress {
+            request: history.asked,
+            laid_out: 3 * HEIGHT,
+        };
+        history.apply(progress, HEIGHT);
         assert_eq!(history.move_cursor(Motion::PageDown, HEIGHT), None);
         history.move_cursor(Motion::PageDown, HEIGHT)
     });
@@ -1120,4 +1128,44 @@ fn a_search_hit_past_the_first_chunk_is_laid_out_to_and_selected() {
         history.top,
         history.cursor
     );
+}
+
+/// A request just past the frontier lays out the rows it names, not the rest
+/// of their chunk: a whole chunk read from the repository costs frames a page
+/// key cannot spare (ticket 30c).
+#[test]
+fn a_request_lays_out_only_the_rows_it_names() {
+    let dir = graft_fixtures::borrow(Shape::Linear);
+    let handle = RepoHandle::open(&dir).expect("opens");
+    let open = |_: Option<&Arc<[Oid]>>| {
+        Ok(WalkSource::new(
+            &handle,
+            Walk::all_refs(&handle, Order::Topological)?,
+        ))
+    };
+    let mut views = Views::new(Seeds::default(), SMALL, Box::new(open));
+    let request = RowRequest {
+        id: 1,
+        wanted: Wanted::Rows(0..3),
+        view: View::default(),
+        promote: None,
+    };
+    let mut laid_out = None;
+    let layout = views.layout(&request.view).expect("opens");
+    let ended = answer(layout, request, &mut || None, &never, &mut |update| {
+        if let HistoryUpdate::Window(window) = update {
+            laid_out = Some(window.laid_out);
+        }
+        Delivery::Received
+    })
+    .expect("lays out");
+
+    assert_eq!(ended, None, "answered");
+    const {
+        assert!(
+            SMALL.chunk_rows > 3,
+            "the request ends inside the first chunk"
+        );
+    };
+    assert_eq!(laid_out, Some(3), "no row past the request was laid out");
 }

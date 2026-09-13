@@ -588,8 +588,8 @@ pub fn serve<S: CommitSource>(
     }
 }
 
-/// Answers one request: lays out as far as it needs, a chunk at a time, then
-/// reports the rows it names.
+/// Answers one request: lays out only as far as it needs, at most a chunk
+/// per step, then reports the rows it names.
 ///
 /// Between chunks it reports progress and asks `newer` whether a newer request
 /// has arrived; one that has replaces this one, so a withdrawn `G` stops
@@ -619,7 +619,11 @@ fn answer<S: CommitSource>(
         if layout.is_done() || layout.rows_emitted() >= reach {
             break;
         }
-        let advanced = layout.advance(chunk, stop)?;
+        // Lay out only what this request still needs, a chunk at most: a
+        // whole chunk read from the repository costs about 30 ms unoptimised,
+        // two frames, when a page key needs a screenful (ticket 30c).
+        let needed = chunk.min(reach - layout.rows_emitted());
+        let advanced = layout.advance(needed, stop)?;
         if advanced.stopped || stop() {
             return Ok(Some(Ended::Cancelled));
         }
