@@ -89,6 +89,19 @@ pub use shape::Shape;
 pub use synthetic::{CommitGraph, Scale};
 pub use tier::proptest_cases;
 
+/// The instant every corpus snapshot and gallery stop is viewed at, Unix
+/// seconds (m1-the-graph/53).
+///
+/// `2020-01-03T00:00:00Z`, two days after the corpus's own fixed clock
+/// (`stream::EPOCH`, `2020-01-01T00:00:00Z`). The floor is
+/// [`Shape::SkewedDates`]'s "fast clock" commit — the one commit in the
+/// whole corpus dated *ahead* of its place in the stream, a day ahead of
+/// its children — at `EPOCH + STEP + 1 day` (`stream.rs`'s own `STEP`,
+/// 60s), the latest committer time any fixed-clock shape produces. Two
+/// days clears it with a day to spare; nothing else in the corpus reaches
+/// even one day past `EPOCH` on its own.
+pub const CORPUS_NOW: i64 = 1_578_009_600;
+
 /// The directory holding one fixture, ready to open read-only.
 ///
 /// # Panics

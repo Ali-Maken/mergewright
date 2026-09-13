@@ -41,6 +41,42 @@ pub enum TerminalChange {
     Theme(ThemeHint),
 }
 
+/// The one place `SystemTime::now()` is read on the date path
+/// (m1-the-graph/53): every relative date on screen is `then` fitted
+/// against `Clock::now_seconds()`, never the wall clock read directly.
+///
+/// `Wall` is what the shipped binary passes. `Fixed` is what a caller that
+/// cannot tolerate drift asks for instead: a snapshot test, or the gallery
+/// viewing a corpus stop at `graft_fixtures::CORPUS_NOW` so its capture
+/// never ages.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum Clock {
+    /// Read the real system clock.
+    #[default]
+    Wall,
+    /// Always this instant, Unix seconds.
+    Fixed(i64),
+}
+
+impl Clock {
+    /// The instant to draw every relative date against.
+    ///
+    /// `duration_since` only fails when the system clock reads before 1970,
+    /// in which case every commit is at least that old and `relative_date`
+    /// reads it the same as any far-past commit.
+    #[must_use]
+    pub fn now_seconds(self) -> i64 {
+        match self {
+            Clock::Wall => std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |elapsed| {
+                    i64::try_from(elapsed.as_secs()).unwrap_or(i64::MAX)
+                }),
+            Clock::Fixed(seconds) => seconds,
+        }
+    }
+}
+
 /// What Graft is drawing with, for as long as this run lasts.
 pub struct Session {
     /// Everything detection found. Kept whole: the tier and theme below are

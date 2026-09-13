@@ -3,7 +3,7 @@ source: crates/graft/src/view.rs
 expression: screen
 ---
 " graft 5 commits                                            "
-"●   Commit 5␛[31m                               57y  0505050"
-"●   Commit 4␛[31m                               57y  0404040"
-"●   Commit 3␛[31m                               57y  0303030"
+"●   Commit 5␛[31m                               63y  0505050"
+"●   Commit 4␛[31m                               63y  0404040"
+"●   Commit 3␛[31m                               63y  0303030"
 " q quit  F2 status  F3 renderer  / search  j/k move         "

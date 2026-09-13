@@ -610,13 +610,13 @@ Press `F3` at any stop: the text right of the graph must not move.
     `Main 12`. `feature: build on the fast commit` (`[feature]`) branches off
     it in a second column.
 13. **relative-dates** — one straight lane, 7 commits, oldest at the bottom.
-    Reading up, the When column reads `1y`, `2mo`, `2w`, `2d`, `2h`, `2m`,
-    `now` — one commit sitting right at each unit's own threshold (400, 70,
-    14 days; 36, 2 hours; 90 seconds ago; 5 seconds ago), so every unit the
-    column can show appears exactly once, in order. Unlike every other stop,
-    these ages are real wall-clock time taken when the corpus was built, not
-    the fixed 2020-01-01 clock, so re-running the gallery tomorrow still
-    shows the same seven units — just not the same absolute dates.
+    The When column reads `now`, `2m`, `2h`, `2d`, `2w`, `2mo`, `1y` top to
+    bottom — one commit sitting right at each unit's own threshold (5
+    seconds; 90 seconds; 90 minutes; 36 hours; 14, 70, 400 days ago), so
+    every unit the column can show appears exactly once, in order. Viewed
+    at `graft_fixtures::CORPUS_NOW`, a fixed instant (m1-the-graph/53), not
+    the wall clock: the same seven units, any day, any machine — the
+    capture never goes stale.
 14. **tags** — 4 rows, one tag each, reading down: `[◆ main] [tag: v2.0]` on
     `Add c.txt`, `[tag: v1.0]` on `Add b.txt`, `[tag: v0.2]` on `Add a.txt`,
     `[tag: v0.1]` on `◇ Add a readme`. `v1.0` and `v2.0` are annotated: their

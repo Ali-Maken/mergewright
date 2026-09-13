@@ -16,7 +16,7 @@ One line per public item. Update when a public item changes.
 - `terminal` (mod) — raw mode and terminal session setup/restore.
 - `update` (mod) — app state and the update function.
 - `view` (mod) — draws state to a frame.
-- `examples/gallery` (dev-only example, not in the binary) — walks every test repo with `]`/`[`, grouped as a progression; a three-line banner under the header names the stop, group, keys and tier, then `shows:` and `differs:` (m1-the-graph/38); `--list` prints the same lines, `--matrix` writes `docs/shots/35-coverage-matrix.txt` (m1-the-graph/35). Its pure half is `tests/it/gallery.rs`, included by `#[path]`.
+- `examples/gallery` (dev-only example, not in the binary) — walks every test repo with `]`/`[`, grouped as a progression; a three-line banner under the header names the stop, group, keys and tier, then `shows:` and `differs:` (m1-the-graph/38); `--list` prints the same lines, `--matrix` writes `docs/shots/35-coverage-matrix.txt` (m1-the-graph/35). Its pure half is `tests/it/gallery.rs`, included by `#[path]`; `Entry::clock()` (m1-the-graph/53) says which clock each stop views its dates at — `Fixed(graft_fixtures::CORPUS_NOW)` for a corpus shape, `Wall` for a real repository — and `show` passes it into the `Harness`.
 
 ## history
 - `Wanted::Find { commit, rows, fallback }` — lay out until `commit` has a row, answer around it (search's far hit); `fallback` when the walk ends without it.
@@ -40,6 +40,7 @@ One line per public item. Update when a public item changes.
 - `Session::settle` (fn) — resolve capabilities, theme, rendering info at startup.
 - `Session::apply` (fn) — take in a re-detected cell size or theme; `true` when anything changed. Never touches the tier.
 - `TerminalChange` (enum) — a mid-session answer that changed: `CellSize(CellSize)`, `Theme(ThemeHint)`.
+- `Clock` (enum) — `Wall` (default) or `Fixed(i64)`; `now_seconds()` is the one `SystemTime::now()` read on the date path (m1-the-graph/53). `update::Harness::clock` carries it; `view::graph_view` takes the result.
 
 ## event_loop
 - `Wake::Terminal` (variant) — a re-detected answer changed; `pump` applies it to the session and redraws.
@@ -90,7 +91,7 @@ One line per public item. Update when a public item changes.
 - `AppState` (struct) — the whole app state.
 - `AppState::quit` (field) — set when Graft is leaving; terminal restored before reporting.
 - `AppState::harness` (field) — `Harness`: a `banner` pinned under the header (its rows come off `graph_rows` and the mouse row math) and `hand_back` keys that end the run with `Quit::HandedBack(key)`; never while the search prompt is open (m1-the-graph/35, 38).
-- `Harness` (struct) — `banner: Option<Banner>`, `hand_back: Vec<KeyCode>`; `Default` asks for nothing. `banner_rows()` is the rows the banner takes, 0 without one.
+- `Harness` (struct) — `banner: Option<Banner>`, `hand_back: Vec<KeyCode>`, `clock: Clock`; `Default` asks for nothing (`Clock::Wall`). `banner_rows()` is the rows the banner takes, 0 without one.
 - `Banner` (struct) — `title: String` (the view appends ` · <tier>` for the tier in force), `lines: Vec<String>`; `rows()` is `1 + lines.len()` (m1-the-graph/38).
 - `AppState::status` (field) — what the status line has to say.
 - `AppState::size` (field) — terminal's last reported size, in character cells.
@@ -190,7 +191,7 @@ One line per public item. Update when a public item changes.
 - `view_with_graphics` (fn) — `view`, plus the gfx status in the header at the pixel tier; returns the graph rect the images go in, `None` when no pixels this frame.
 - `tier_in_force` (fn) — the graph's tier from `Session` + `AppState`: F3's override, else the session's (m1-the-graph/33).
 - `draws_pixels` (fn) — graph screen, pixel tier (override else session), Kitty or iTerm2 protocol — or no acked protocol at all (forced `pixel` attempts Kitty, m1-the-graph/24d).
-- `graph_view` (fn) — build a `GraphView` from the history window, cursor and status; the selection's `Ancestry` over the window lights lanes, fades rows in Focus mode, and weighs its columns as a fold priority — not a veto (ADR-0025).
+- `graph_view(state, now_seconds)` (fn) — build a `GraphView` from the history window, cursor and status; the selection's `Ancestry` over the window lights lanes, fades rows in Focus mode, and weighs its columns as a fold priority — not a veto (ADR-0025). `now_seconds` (m1-the-graph/53) is the instant every row's date is fitted against; callers pass `state.harness.clock.now_seconds()`.
 - `status_view` (fn) — build a `StatusView` from session and app state.
 
 ## event_loop

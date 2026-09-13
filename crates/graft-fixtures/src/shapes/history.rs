@@ -1,8 +1,6 @@
 //! Histories with no merge in them: the smallest possible repository, a long
 //! straight line, a fork that never joins, and a commit that exists twice.
 
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use super::{BuildError, MAIN, Site, file};
 use crate::stream::{Mark, Stream};
 
@@ -212,23 +210,23 @@ pub(super) fn skewed_dates(site: &Site<'_>) -> Result<(), BuildError> {
     site.checkout_main()
 }
 
-/// One straight lane, seven commits, each one age older than the last, at
-/// wall-clock offsets from the moment this fixture is built: 5 seconds,
-/// 90 seconds, 90 minutes, 36 hours, 14 days, 70 days, 400 days ago
-/// (m1-the-graph/48). Those are the exact points `relative_date` steps to
-/// its next unit — 89s is still `now`, 90s is the smallest `m` git ever
-/// shows, and so on through `h`/`d`/`w`/`mo`/`y` — so the gallery stop shows
-/// every unit the column has, and each commit sits right where git's own
-/// rounding puts it, not a round number a person picked.
+/// One straight lane, seven commits, each one age older than the last,
+/// offset from [`crate::CORPUS_NOW`]: 5 seconds, 90 seconds, 90 minutes,
+/// 36 hours, 14 days, 70 days, 400 days before it (m1-the-graph/48, dated
+/// off a fixed clock in 53). Those are the exact points `relative_date`
+/// steps to its next unit — 89s is still `now`, 90s is the smallest `m` git
+/// ever shows, and so on through `h`/`d`/`w`/`mo`/`y` — so the gallery stop
+/// shows every unit the column has, and each commit sits right where git's
+/// own rounding puts it, not a round number a person picked.
 ///
-/// Ages come from real time, not the corpus's fixed clock (this module's
-/// doc comment), because the whole point is to be checked against what
-/// `relative_date` prints *right now* — a fixed-epoch commit would just
-/// grow older every day the corpus cache lives, until the ages this shape
-/// is built to demonstrate stopped matching the units it names.
+/// Dated off `CORPUS_NOW`, not real time: unlike ticket 48's version, this
+/// shape's object ids are byte-identical build to build, exactly like every
+/// other shape's, because `CORPUS_NOW` never changes. Viewing it (the
+/// gallery, `graph_view`) at `CORPUS_NOW` — not the wall clock — is what
+/// keeps the seven ages reading `now`/`2m`/`2h`/`2d`/`2w`/`2mo`/`1y`.
 pub(super) fn relative_dates(site: &Site<'_>) -> Result<(), BuildError> {
     // Oldest (the root, bottom of the graph) to newest (the tip, top).
-    const AGO: [u64; 7] = [
+    const AGO: [i64; 7] = [
         400 * 24 * 60 * 60, // 400d -> "1y"
         70 * 24 * 60 * 60,  // 70d  -> "2mo"
         14 * 24 * 60 * 60,  // 14d  -> "2w"
@@ -237,15 +235,19 @@ pub(super) fn relative_dates(site: &Site<'_>) -> Result<(), BuildError> {
         90,                 // 90s  -> "2m"
         5,                  // 5s   -> "now"
     ];
-    let now = wall_clock_now();
     let mut stream = Stream::new();
     let mut tip: Option<Mark> = None;
     for (n, ago) in AGO.iter().enumerate() {
         let message = format!("Commit {}\n", n + 1);
         let content = format!("line {}\n", n + 1);
         let parents: Vec<Mark> = tip.into_iter().collect();
+        #[allow(
+            clippy::cast_sign_loss,
+            reason = "CORPUS_NOW - ago is always positive: every AGO entry is well under CORPUS_NOW"
+        )]
+        let when = (crate::CORPUS_NOW - ago) as u64;
         tip = Some(stream.commit_at_time(
-            now.saturating_sub(*ago),
+            when,
             MAIN,
             message.as_bytes(),
             &parents,
@@ -254,12 +256,4 @@ pub(super) fn relative_dates(site: &Site<'_>) -> Result<(), BuildError> {
     }
     site.import(stream)?;
     site.checkout_main()
-}
-
-/// Seconds since the Unix epoch, right now. A clock reading no build of
-/// this fixture can avoid taking — see [`relative_dates`].
-fn wall_clock_now() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |elapsed| elapsed.as_secs())
 }

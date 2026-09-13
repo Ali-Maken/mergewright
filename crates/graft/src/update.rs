@@ -22,6 +22,7 @@ use graft_git::version::SystemGit;
 use crate::history::{History, HistoryUpdate, Motion, Phase, Promotion, RowRequest, View};
 use crate::repository::RepositoryFacts;
 use crate::search::{Search, SearchState};
+use crate::session::Clock;
 use graft_graph::Follow;
 
 /// Everything the loop can be told.
@@ -256,6 +257,11 @@ pub struct Harness {
     /// to the next repository). Not consulted while the search prompt is
     /// open, where every printable key is text.
     pub hand_back: Vec<KeyCode>,
+    /// The instant every relative date on screen is drawn against
+    /// (m1-the-graph/53). `Wall` for the shipped binary; a gallery corpus
+    /// stop or a snapshot test asks for `Fixed` instead, so its capture
+    /// never drifts with real time.
+    pub clock: Clock,
 }
 
 impl Harness {

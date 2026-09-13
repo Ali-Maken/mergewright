@@ -1,0 +1,26 @@
+gallery stop 13/24: relative-dates, unicode tier, 80x24, fixed clock (CORPUS_NOW)
+
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/eb4b99caec644413/r…
+ gallery 13/24 relative-dates · quirks · ] next [ back q quit · unicode
+ shows: one lane, top to bottom: now, 2m, 2h, 2d, 2w, 2mo, 1y — every unit
+ differs: the date column varies here; every other stop sits in one tight window
+◆   [◆ main] Commit 7                                               now  03edf28
+●─  Commit 6                                                        2m   67f3c12
+●─  Commit 5                                                        2h   1c42477
+●─  Commit 4                                                        2d   10cf242
+●i  Commit 3                                                        2w   d79f60e
+●   Commit 2                                                        2mo  f0e073d
+◇   Commit 1                                                        1y   0e460cc
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  F3 renderer  / search  j/k move  ⏎ full subject  Space foldG
+ q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent

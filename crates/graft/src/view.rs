@@ -98,7 +98,7 @@ pub fn view_with_graphics(
 
     match state.screen {
         Screen::Graph => {
-            let mut screen = graph_view(state);
+            let mut screen = graph_view(state, state.harness.clock.now_seconds());
             screen.icons = session.icons;
             screen.compaction.max_lanes = max_lanes_for(state.size.columns, session.max_lanes);
             let tier = tier_in_force(session, state);
@@ -158,7 +158,7 @@ fn banner_lines(state: &AppState, tier: RenderingTier) -> Vec<SanitizedText> {
 /// The rows are borrowed from the window the walk last sent; only the
 /// subjects, which came out of the repository, are copied — sanitised.
 #[must_use]
-pub fn graph_view(state: &AppState) -> GraphView<'_> {
+pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
     let location = state
         .repository
         .as_ref()
@@ -189,7 +189,7 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
 
     let walk = walk_view(history);
     let thread = thread(history);
-    let rows = visible_rows(state, history, thread.as_ref());
+    let rows = visible_rows(state, history, thread.as_ref(), now_seconds);
     let compaction = compaction(state, history, thread.as_ref(), &rows);
     let reveal = reveal_index(state, history, &rows);
 
@@ -261,18 +261,6 @@ pub(crate) fn order_notice(history: &History) -> Option<OrderNotice> {
         Some(Promotion::Kept) => OrderNotice::Provisional,
         Some(Promotion::Sorting | Promotion::Swapping { .. }) | None => OrderNotice::Sorting,
     })
-}
-
-/// A clock reading, not repository text — the moment "now" is drawn at, for
-/// every relative date on screen. `duration_since` only fails when the
-/// system clock reads before 1970, in which case every commit is at least
-/// that old and `relative_date` reads it the same as any far-past commit.
-fn now_seconds() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |elapsed| {
-            i64::try_from(elapsed.as_secs()).unwrap_or(i64::MAX)
-        })
 }
 
 /// Which of `rows` the footer reveals in full, if any (ADR-0023): the
@@ -387,9 +375,9 @@ fn visible_rows<'a>(
     state: &'a AppState,
     history: &'a History,
     thread: Option<&Thread>,
+    now: i64,
 ) -> Vec<GraphEntry<'a>> {
     let mailmap = state.repository.as_ref().map(|facts| &facts.mailmap);
-    let now = now_seconds();
     // The topmost visible row, independent of viewport height: whether the
     // uncommitted row attaches depends only on what is at the very top, not
     // on how many rows are shown below it.
@@ -582,7 +570,7 @@ fn row_entry<'a>(
             initials: sanitize_line(&initials(&String::from_utf8_lossy(&name))),
             identity: BranchIdentity::of_name(&email),
         },
-        when: relative_date(now, row.commit.date().seconds),
+        when: relative_date(row.commit.date().seconds, now),
         sha: short_sha(&row.commit.id.to_string(), usize::from(SHA_WIDTH)),
     }
 }
@@ -816,7 +804,7 @@ pub(crate) mod tests {
             ..AppState::default()
         };
 
-        let view = graph_view(&state);
+        let view = graph_view(&state, state.harness.clock.now_seconds());
         let screen = draw(&state, 60, 5);
 
         assert_eq!(view.rows.len(), 3, "rows minus the chrome");
@@ -881,7 +869,7 @@ pub(crate) mod tests {
             ..AppState::default()
         };
 
-        let view = graph_view(&state);
+        let view = graph_view(&state, state.harness.clock.now_seconds());
         assert!(
             !view.ascii,
             "graph_view alone does not know the session's tier"
@@ -898,13 +886,22 @@ pub(crate) mod tests {
     #[test]
     fn every_graph_renderer_config_value_draws_as_it_says() {
         use crate::config::{Config, Graph, Loaded, RendererChoice};
+        use crate::session::Clock;
         use crate::session::for_tests::capabilities;
+        use crate::update::Harness;
 
+        // `history_of` dates its commits `1..=count` seconds since the Unix
+        // epoch, so the date column reads decades old; fixed so the
+        // snapshot below never drifts with real time (m1-the-graph/53).
         let state = AppState {
             history: Some(history_of(5, 1)),
             size: Size {
                 columns: 60,
                 rows: 5,
+            },
+            harness: Harness {
+                clock: Clock::Fixed(2_000_000_000),
+                ..Harness::default()
             },
             ..AppState::default()
         };
@@ -1034,7 +1031,11 @@ pub(crate) mod tests {
             ..AppState::default()
         };
 
-        assert_eq!(graph_view(&state).reveal, Some(0), "row 0 has arrived");
+        assert_eq!(
+            graph_view(&state, state.harness.clock.now_seconds()).reveal,
+            Some(0),
+            "row 0 has arrived"
+        );
         let screen = draw(&state, 60, 5);
         assert!(!screen.contains('\u{1b}'), "{screen}");
         assert!(screen.contains("A very long subject"), "{screen}");
@@ -1066,8 +1067,12 @@ pub(crate) mod tests {
             ..base.clone()
         };
 
-        let from_keyboard = graph_view(&keyboard).reveal.expect("row 2 has arrived");
-        let from_hover = graph_view(&hover).reveal.expect("row 2 has arrived");
+        let from_keyboard = graph_view(&keyboard, keyboard.harness.clock.now_seconds())
+            .reveal
+            .expect("row 2 has arrived");
+        let from_hover = graph_view(&hover, hover.harness.clock.now_seconds())
+            .reveal
+            .expect("row 2 has arrived");
         assert_eq!(from_keyboard, from_hover);
     }
 
@@ -1125,7 +1130,7 @@ pub(crate) mod tests {
     fn a_clean_tree_draws_no_uncommitted_row() {
         let state = state_with_head_and_counts(counts(0, 0, 0));
 
-        let view = graph_view(&state);
+        let view = graph_view(&state, state.harness.clock.now_seconds());
 
         assert_eq!(view.rows.len(), 3, "no virtual row taken from the budget");
         assert_eq!(view.rows[0].line.row.commit.id, oid(3));
@@ -1135,7 +1140,7 @@ pub(crate) mod tests {
     fn staged_only_names_only_staged() {
         let state = state_with_head_and_counts(counts(3, 0, 0));
 
-        let view = graph_view(&state);
+        let view = graph_view(&state, state.harness.clock.now_seconds());
 
         assert_eq!(view.rows[0].line.node, NodeKind::Uncommitted);
         assert_eq!(
@@ -1155,7 +1160,7 @@ pub(crate) mod tests {
     fn unstaged_only_names_only_unstaged() {
         let state = state_with_head_and_counts(counts(0, 2, 0));
 
-        let view = graph_view(&state);
+        let view = graph_view(&state, state.harness.clock.now_seconds());
 
         assert_eq!(
             view.rows[0].subject.as_str(),
@@ -1167,7 +1172,7 @@ pub(crate) mod tests {
     fn untracked_only_names_only_untracked() {
         let state = state_with_head_and_counts(counts(0, 0, 4));
 
-        let view = graph_view(&state);
+        let view = graph_view(&state, state.harness.clock.now_seconds());
 
         assert_eq!(
             view.rows[0].subject.as_str(),
@@ -1179,7 +1184,7 @@ pub(crate) mod tests {
     fn all_three_are_named_together() {
         let state = state_with_head_and_counts(counts(1, 2, 3));
 
-        let view = graph_view(&state);
+        let view = graph_view(&state, state.harness.clock.now_seconds());
 
         assert_eq!(
             view.rows[0].subject.as_str(),
@@ -1194,7 +1199,7 @@ pub(crate) mod tests {
         let mut state = state_with_head_and_counts(counts(1, 0, 0));
         state.refs = Some(refs_with_head(Some(oid(1))));
 
-        let view = graph_view(&state);
+        let view = graph_view(&state, state.harness.clock.now_seconds());
 
         assert_eq!(view.rows.len(), 3, "no virtual row");
         assert_eq!(view.rows[0].line.row.commit.id, oid(3));
@@ -1214,7 +1219,7 @@ pub(crate) mod tests {
             ..AppState::default()
         };
 
-        let view = graph_view(&state);
+        let view = graph_view(&state, state.harness.clock.now_seconds());
 
         assert_eq!(view.rows.len(), 1);
         assert_eq!(view.rows[0].line.node, NodeKind::Uncommitted);
@@ -1239,7 +1244,7 @@ pub(crate) mod tests {
             ..AppState::default()
         };
 
-        let view = graph_view(&state);
+        let view = graph_view(&state, state.harness.clock.now_seconds());
 
         assert_eq!(view.rows.len(), 3);
     }
@@ -1256,7 +1261,7 @@ pub(crate) mod tests {
         };
 
         assert_eq!(
-            graph_view(&state).walk,
+            graph_view(&state, state.harness.clock.now_seconds()).walk,
             WalkView::Jumping { laid_out: 1500 }
         );
     }

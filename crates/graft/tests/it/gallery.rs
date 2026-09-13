@@ -7,6 +7,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use graft::session::Clock;
 use graft::update::Banner;
 use graft_fixtures::Shape;
 
@@ -30,6 +31,22 @@ pub struct Entry {
     /// Words a snapshot or capture file name uses for this repository, for
     /// the coverage matrix; the entry's own name always counts.
     pub stems: &'static [&'static str],
+}
+
+impl Entry {
+    /// The clock to view this stop's dates at (m1-the-graph/53): a corpus
+    /// shape is fixed at [`graft_fixtures::CORPUS_NOW`] — the instant every
+    /// one of its dates, `relative-dates` included, was built to read
+    /// against — so a capture never drifts; a real repository has no such
+    /// instant, so it draws against the wall clock like the shipped binary
+    /// does.
+    #[must_use]
+    pub fn clock(&self) -> Clock {
+        match self.source {
+            Source::Shape(_) => Clock::Fixed(graft_fixtures::CORPUS_NOW),
+            Source::Workspace | Source::Synthetic100k | Source::GitGit => Clock::Wall,
+        }
+    }
 }
 
 /// Where an entry's repository comes from.
@@ -148,7 +165,7 @@ const CORPUS: [(Shape, &str, &str, &str); 21] = [
     (
         Shape::RelativeDates,
         ODD,
-        "one lane, oldest to newest: 1y, 2mo, 2w, 2d, 2h, 2m, now — every unit",
+        "one lane, top to bottom: now, 2m, 2h, 2d, 2w, 2mo, 1y — every unit",
         "the date column varies here; every other stop sits in one tight window",
     ),
     (
@@ -606,6 +623,17 @@ mod tests {
             ]
         );
         assert_eq!(banner.rows(), 3);
+    }
+
+    #[test]
+    fn corpus_stops_view_at_corpus_now_real_repos_view_the_wall_clock() {
+        for entry in entries() {
+            let expected = match entry.source {
+                Source::Shape(_) => Clock::Fixed(graft_fixtures::CORPUS_NOW),
+                Source::Workspace | Source::Synthetic100k | Source::GitGit => Clock::Wall,
+            };
+            assert_eq!(entry.clock(), expected, "{}", entry.name);
+        }
     }
 
     #[test]

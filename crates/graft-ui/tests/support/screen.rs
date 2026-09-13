@@ -42,7 +42,7 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
                     ))),
                     identity: BranchIdentity::of_name(&line.row.commit.author.email),
                 },
-                when: relative_date(NOW, line.row.commit.date().seconds),
+                when: relative_date(line.row.commit.date().seconds, NOW),
                 sha: short_sha(&line.row.commit.id.to_string(), 7),
             })
             .collect(),

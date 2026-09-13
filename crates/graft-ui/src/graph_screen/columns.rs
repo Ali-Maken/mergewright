@@ -51,10 +51,16 @@ pub fn initials(name: &str) -> String {
 ///   column didn't have before: git uses one there, so Graft now does too.
 ///
 /// A commit from the future (a clock skewed ahead, or a rebase authored
-/// ahead of "now") reads as `"now"` rather than a negative count.
+/// ahead of "now") reads as `"future"`, never `"now"` and never an age: git
+/// itself prints "in the future" there, and folding it into `"now"` would
+/// make a clock-skewed commit indistinguishable from one made this second
+/// (m1-the-graph/53).
 #[must_use]
-pub fn relative_date(now: i64, then: i64) -> String {
+pub fn relative_date(then: i64, now: i64) -> String {
     let elapsed = now.saturating_sub(then);
+    if elapsed < 0 {
+        return "future".to_owned();
+    }
     if elapsed < 90 {
         return "now".to_owned();
     }
@@ -164,15 +170,15 @@ mod tests {
         assert_eq!(initials("   "), "");
     }
 
-    #[test]
-    fn a_commit_from_the_future_reads_as_now() {
-        assert_eq!(relative_date(0, 1000), "now");
-    }
-
-    /// Every row is `relative_date(now, now - elapsed)`, `elapsed` a boundary
+    /// Every row is `relative_date(now - elapsed, now)`, `elapsed` a boundary
     /// from m1-the-graph/48's table, checked against real
     /// `git log --date=relative` output (git's compact word dropped, unit
-    /// abbreviated: "2 days ago" -> "2d").
+    /// abbreviated: "2 days ago" -> "2d"). 5339/5340/5400 re-checked against
+    /// real git in m1-the-graph/53 (probe in that ticket): the minute stage
+    /// does not cross into hours until 5370s (`(elapsed+30)/60 == 90`), so
+    /// 5339 and 5340 both still read `89m` — ticket 48's table row calling
+    /// git's 90-minute mark "90 minutes ago" was itself wrong, corrected in
+    /// 53.
     #[test]
     fn matches_git_log_date_relative_at_every_boundary() {
         let cases: &[(i64, &str)] = &[
@@ -214,11 +220,20 @@ mod tests {
         let now = 2_000_000_000;
         for &(elapsed, expected) in cases {
             assert_eq!(
-                relative_date(now, now - elapsed),
+                relative_date(now - elapsed, now),
                 expected,
                 "elapsed = {elapsed}s"
             );
         }
+    }
+
+    /// `then > now` (clock skew, or a rebase authored ahead of "now") reads
+    /// `"future"`, distinct from every real age (m1-the-graph/53, decision
+    /// 4).
+    #[test]
+    fn a_future_date_reads_future_not_an_age() {
+        let now = 2_000_000_000;
+        assert_eq!(relative_date(now + 60, now), "future");
     }
 
     #[test]

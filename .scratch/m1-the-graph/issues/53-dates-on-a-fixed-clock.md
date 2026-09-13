@@ -1,6 +1,6 @@
 # m1-the-graph/53 — Dates on a fixed clock: snapshots stop drifting, the exemptions go, the 90-minute row is settled
 
-Status: ready
+Status: done
 Build with: **Sonnet** (medium) — one injected value threaded through the date path, a fixture re-dated off a constant, snapshots re-recorded once, one boundary checked against real git. Escalates to Opus on a second failure.
 Needs: none. Touches `update::Harness` like `commit-graph-offer` does (one new field each): sequence this one first.
 Blocked by: 48
@@ -55,13 +55,26 @@ impl Stop { pub fn clock(&self) -> Clock; }   // Fixed(CORPUS_NOW) for corpus sh
 Callers: `view::view` (passes the clock's seconds), the gallery (`Harness { clock: stop.clock(), .. }`), every `.snap`-producing test (passes `CORPUS_NOW`), `Shape::RelativeDates`'s builder.
 
 ## Acceptance
-- [ ] Probe lines (four) in this ticket; 48's table row corrected; the boundary test covers 5339/5340/5400 and a future case and agrees with the probe.
-- [ ] `cargo test` twice, a minute apart, and once with the system clock's day changed in thought experiment only — concretely: the date column's snapshots contain no value computed from the wall clock (grep the diff of the 29 re-recorded `.snap` files: only the date field changed, listed in the report).
-- [ ] `Shape::RelativeDates`: `corpus::identity` passes with it included; both `for_each_shape` helpers iterate `Shape::ALL` with no skip; its object ids are identical across two clean builds (the identity test proves it).
-- [ ] `rg 'SystemTime::now' crates/ -t rust` outside `#[cfg(test)]`: one hit, in `Clock::now_seconds`; others listed as not-date.
-- [ ] Gallery capture of the `relative-dates` stop at the fixed clock, Unicode tier, 80×24 → `docs/shots/<ticket-number>-relative-dates-fixed-clock.txt`; the `when` column reads `now 2m 2h 2d 2w 2mo 1y` top to bottom (the user judges by eye; the report names the path only). `docs/shots/48-relative-dates.txt` stays.
-- [ ] MAP.md for `graft-fixtures`, `graft-ui`, `graft`; TESTING.md entry.
-- [ ] Report: cause vs symptom — the cause was a wall-clock read on a snapshot path; the cost to the user was snapshots that fail on a calendar boundary and a fixture exempted from the checks that guard every other one.
+- [x] Probe lines (four) in this ticket; 48's table row corrected; the boundary test covers 5339/5340/5400 and a future case and agrees with the probe.
+
+  **Probe (real git 2.50.1, macOS, `/tmp/probe53`, commits at `@$((NOW-offset)) +0000`, `NOW` = the actual wall clock at probe time, `git log --date=relative --format='%ad %s'`):**
+  ```
+  offset=5400  -> "2 hours ago"
+  offset=5340  -> "89 minutes ago"
+  offset=5339  -> "89 minutes ago"
+  offset=-60   -> "in the future"
+  ```
+  Confirms decision 3: git's minute value is `m = (s+30)/60` (integer division). At `s=5339` and `s=5340`, `m = 89` (`5369/60` and `5370/60` both truncate to 89), and `89 < 90` keeps it in the minute stage: "89 minutes ago". Only at `s=5400` does `m = (5430)/60 = 90`, which is `≥ 90` and steps to hours: `h = (90+30)/60 = 2` → "2 hours ago". So `m=90` — and the string "90 minutes ago" — never actually prints; the cascade jumps straight from 89 to the next stage. Ticket 48's table row was wrong; corrected in place there (see its Verification table) with a note pointing here. Graft's existing cascade (`relative_date`) already matched real git at 5339/5340 (`89m`) and 5400 (`2h`) — **no code change to the cascade itself**, only the future arm and the `(then, now)` parameter order were added/changed.
+
+- [x] `cargo test` twice, a minute apart — n/a as literally stated (nothing left reads the wall clock on the date path); concretely: the date column's snapshots contain no value computed from the wall clock. Diff of every re-recorded `.snap` confirmed to touch only the date field:
+  - `crates/graft/src/snapshots/graft__view__tests__renderer-{Auto,Unicode,Ascii,Pixel}.snap`: `57y` → `63y` only (the `history_of` test helper's near-epoch commits, now read against `Clock::Fixed(2_000_000_000)` instead of a drifting `SystemTime::now()`).
+  - `crates/graft-graph/tests/it/snapshots/it__corpus__relative-dates.snap` (new — shape no longer skipped).
+  - `crates/graft-ui/tests/snapshots/graph_column__relative-dates.snap` (new — shape no longer skipped).
+- [x] `Shape::RelativeDates`: `corpus::identity` passes with it included (`cargo test -p graft-fixtures` green, no skip block remains); both `for_each_shape` helpers (`graft-graph`, `graft-ui`) iterate `Shape::ALL` with no skip.
+- [x] `rg 'SystemTime::now' crates/ -t rust`: two hits — `crates/graft/src/session.rs` (`Clock::Wall`'s `now_seconds`, the one date-path read) and `crates/graft/src/crash.rs:253` (crash-report timestamp, not-date, out of scope).
+- [x] Gallery capture: `docs/shots/53-relative-dates-fixed-clock.txt` (Unicode tier, 80×24, `Fixed(CORPUS_NOW)`); `when` column reads `now 2m 2h 2d 2w 2mo 1y` top to bottom. `docs/shots/48-relative-dates.txt` untouched. User judges by eye.
+- [x] MAP.md for `graft-fixtures`, `graft-ui`, `graft`; TESTING.md entry.
+- [x] Report: cause vs symptom — **cause** (not symptom): a wall-clock read (`SystemTime::now()`) sat directly on the snapshot-rendering path (`view.rs::now_seconds`, and `RelativeDates`' own builder), instead of every other fixture's fixed build-time clock. **Cost to the user:** snapshots that silently fail on a calendar boundary days or months after they were recorded — a CI run failing for no code reason — and one shape permanently exempted from the two checks (`for_each_shape`, `corpus::identity`) that catch every other shape's regressions, so bugs specific to `RelativeDates` had no test coverage at all.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test`

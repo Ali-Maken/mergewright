@@ -107,7 +107,9 @@ fn walk(mut index: usize, workspace: &Path) -> Result<(), String> {
     loop {
         let entry = &all[index];
         let step = match resolve(entry, workspace, &roots) {
-            Availability::Ready(path) => show(path, banner(entry, index, all.len()))?,
+            Availability::Ready(path) => {
+                show(path, banner(entry, index, all.len()), entry.clock())?
+            }
             Availability::Missing { build_with } => {
                 show_missing(&missing_page(entry, index, all.len(), &build_with))?
             }
@@ -121,7 +123,7 @@ fn walk(mut index: usize, workspace: &Path) -> Result<(), String> {
 }
 
 /// Run Graft on one repository until a step key or `q`.
-fn show(repo_path: PathBuf, banner: Banner) -> Result<Step, String> {
+fn show(repo_path: PathBuf, banner: Banner, clock: graft::session::Clock) -> Result<Step, String> {
     let config = graft::config::load().map_err(|error| error.to_string())?;
     let startup = Startup {
         repo_path,
@@ -129,6 +131,7 @@ fn show(repo_path: PathBuf, banner: Banner) -> Result<Step, String> {
         harness: Harness {
             banner: Some(banner),
             hand_back: vec![NEXT, PREVIOUS],
+            clock,
         },
     };
     match event_loop::run(startup).map_err(|error| error.to_string())? {

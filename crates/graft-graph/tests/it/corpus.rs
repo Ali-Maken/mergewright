@@ -44,18 +44,8 @@ fn every_shape_lays_out_as_snapshotted() {
 /// The one shape a machine may legitimately not be able to hold is the
 /// non-UTF-8 ref name (a ref name is a file name, and APFS insists on
 /// UTF-8). A skip must say so, never pass quietly.
-///
-/// `RelativeDates` (m1-the-graph/48) is timed off the wall clock at build
-/// time, so its object ids — and this module's snapshotted short SHAs —
-/// are not stable build to build; it is left out here rather than churning
-/// a snapshot on every run. Its layout is a plain straight lane, already
-/// covered by `Trivial`/`Linear`; it is judged by eye in the gallery, not
-/// by this snapshot (see `Shape`'s doc comment, `graft-fixtures/MAP.md`).
 pub(super) fn for_each_shape(mut visit: impl FnMut(Shape, &Path)) {
     for &shape in Shape::ALL {
-        if shape == Shape::RelativeDates {
-            continue;
-        }
         match graft_fixtures::try_borrow(shape) {
             Ok(dir) => visit(shape, &dir),
             Err(why) => {

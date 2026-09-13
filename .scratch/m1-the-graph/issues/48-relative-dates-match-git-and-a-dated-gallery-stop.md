@@ -46,7 +46,7 @@ per unit, independently — never cascading); **after** = this ticket's fix.
 | 89 s | now | 1m | now |
 | 90 s | 2 minutes ago | 1m | 2m |
 | 89 min | 89 minutes ago | 1h | 89m |
-| 90 min | 90 minutes ago | 1h | 2h |
+| 90 min | 89 minutes ago (corrected in 53 — real git never prints "90 minutes ago"; the minute stage's rounding stops at 89) | 1h | 2h |
 | 35 h | 35 hours ago | 1d | 35h |
 | 36 h | 2 days ago | 1d | 2d |
 | 46 h | 2 days ago | 1d | 2d |

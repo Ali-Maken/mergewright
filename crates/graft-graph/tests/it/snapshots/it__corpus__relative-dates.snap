@@ -1,0 +1,17 @@
+---
+source: crates/graft-graph/tests/it/corpus.rs
+expression: text
+---
+shape: relative-dates
+order: requested Topological, in force CommitDate (provisional)
+default: main
+integration: []
+commits: 7, columns: 1
+
+*  03edf28  main               Commit 7
+*  67f3c12  main               Commit 6
+*  1c42477  main               Commit 5
+*  10cf242  main               Commit 4
+*  d79f60e  main               Commit 3
+*  f0e073d  main               Commit 2
+*  0e460cc  main               Commit 1
