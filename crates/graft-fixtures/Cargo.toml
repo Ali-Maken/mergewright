@@ -38,3 +38,8 @@ heavy-tests = []
 
 [lints]
 workspace = true
+
+# Builds one synthetic repository of any size, for the memory curve (m1/46).
+[[example]]
+name = "synthetic"
+required-features = ["heavy-tests"]

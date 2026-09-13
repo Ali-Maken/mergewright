@@ -119,6 +119,18 @@ commands at once.
   measurements, not one.
 - Property tests at 1,000 cases.
 
+### Memory curve to a million commits (m1/46)
+
+`scripts/memory-curve.sh [sizes…]` — release, one process at a time, 3 runs per cell, raw in `target/46/curve.txt`. Builds 1M fixtures on first run (~30 s and ~300–360 MiB each). Not part of `cargo test`: run by hand at reviews. Budget: 300 MB peak RSS (PROMPT §1.2/§7.1).
+
+| Commits | small, no cg | small, cg | realistic, no cg | Verdict |
+|---|---|---|---|---|
+| 10k | 24–25 MiB | 24 MiB | 36–37 MiB | pass |
+| 100k | 117–118 MiB | 104 MiB | 126–129 MiB | pass |
+| 1M | **881–882 MiB** | **933–935 MiB** | **947–949 MiB** | **fails, 3× over** |
+
+Always peaks during `G`. What holds it (pack pages, `EmittedOrder`, `Topological.known`, `Included`): ticket m1-the-graph/46.
+
 Not there yet: the performance budgets and the 300 MB peak-memory gate
 (M1 tickets 27 and 30). The measurement they will use —
 `graft_fixtures::measure` — is here and unit-tested; the assertions are

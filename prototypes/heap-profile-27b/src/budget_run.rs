@@ -114,11 +114,11 @@ fn peak() -> Result<u64, String> {
 }
 
 /// A started job pool, the events it reports, and the state before any.
-type Opened = (JobRunner<Sender<AppEvent>>, Receiver<AppEvent>, AppState);
+pub type Opened = (JobRunner<Sender<AppEvent>>, Receiver<AppEvent>, AppState);
 
 /// Starts the pool and asks for what `event_loop::opening_repository` asks
 /// for, in the same order.
-fn open(repo: &Path) -> Result<Opened, String> {
+pub fn open(repo: &Path) -> Result<Opened, String> {
     let (sender, events) = mpsc::channel();
     let store = Arc::new(RepoStore::new(repo.to_path_buf(), None));
     let jobs = JobRunner::start(sender, 4, store).map_err(|why| why.to_string())?;
@@ -163,17 +163,29 @@ fn press(jobs: &impl Dispatch, state: &AppState, code: KeyCode) -> AppState {
 fn pump(
     jobs: &impl Dispatch,
     events: &Receiver<AppEvent>,
-    mut state: AppState,
+    state: AppState,
     done: impl Fn(&History) -> bool,
 ) -> Result<AppState, String> {
+    pump_until(jobs, events, state, |state| {
+        state.history.as_ref().is_some_and(&done)
+    })
+}
+
+/// Feeds job events through `update` until `done` holds for the whole state.
+pub fn pump_until(
+    jobs: &impl Dispatch,
+    events: &Receiver<AppEvent>,
+    mut state: AppState,
+    done: impl Fn(&AppState) -> bool,
+) -> Result<AppState, String> {
     loop {
-        if let Some(history) = &state.history {
-            if let Phase::Failed(why) = &history.phase {
-                return Err(format!("the walk failed: {why}"));
-            }
-            if done(history) {
-                return Ok(state);
-            }
+        if let Some(history) = &state.history
+            && let Phase::Failed(why) = &history.phase
+        {
+            return Err(format!("the walk failed: {why}"));
+        }
+        if done(&state) {
+            return Ok(state);
         }
         let event = events
             .recv_timeout(PATIENCE)
