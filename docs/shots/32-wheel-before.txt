@@ -1,0 +1,183 @@
+binary: before; 100 wheel-down notches, 20 ms apart, from the first frame
+
+WRAPPED: first row went back to HEAD at notch 26
+
+--- first frame ---
+ graft opening…=q,t=d,f=24;AAAA
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  / search  j/k move  PgUp/PgDn page  g/G top/bottom
+
+--- notch 26: back at the top ---
+ graft /Users/devuser/dev/sandbox/gitter  191 commits
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  / search  j/k move  PgUp/PgDn page  g/G top/bottom
+
+--- after 100 notches ---
+ graft /Users/devuser/dev/sandbox/gitter  191 commits
+●   progress: m1/24d done (24 done), next 25                        52m  673afd7
+●   m1-the-graph-24d: flush strips on theme/cell-size/resize (resi… 53m  3e28dc7
+●   progress: m1/24c done, next 24d                                 1h   97b065a
+●   m1-the-graph-24c: Kitty strips drawn in the app — blank pixel … 1h   d6312b3
+●   progress: m1/24b done, next 24c                                 1h   8d4ffff
+●   m1-the-graph-24b: rows for aligned pixel strips — History pads… 1h   4714e89
+●   progress: m1/24 partial, split into 24b/24c/24d, next 24b       1h   15b1abc
+●   m1-the-graph-24: kitty encoder — transmit-once strips, p=1 cro… 1h   f313456
+●   progress: m1/23 done, next 24                                   1h   7afca6d
+●   m1-the-graph-23: strip cache — aligned 32-row strips in a boun… 1h   7b407a7
+●   progress: m1/22 done, next 23                                   1h   a78a6f7
+●   m1-the-graph-22: pixel rasteriser — anti-aliased lanes, Bézier… 1h   6233a2a
+●   progress: m1/21 done, next 22                                   1h   dbc45c9
+●   m1-the-graph-21: re-measure cell size on resize, re-read theme… 1h   9a371e1
+●   progress: m1/20 done, next 21                                   2h   1da8a82
+●   m1-the-graph-20: input mux owns stdin; typeahead during the pr… 2h   43f0d4a
+●   progress: m1/19 done, next 20                                   2h   c7bc273
+●   m1-the-graph-19: ASCII glyph tier, graph.renderer override, an… 2h   a51c702
+●   rules: from M2 Fable writes design notes and ticket specs, bui… 2h   8219724
+●   progress: m1/18 done, next 19                                   3h   fc4afcd
+●   m1-the-graph-18: promote provisional history to topological or… 3h   d4a2fa2
+●   progress: m1/17 done, next 18                                   3h   a02c75a
+ q quit  F2 status  / search  j/k move  PgUp/PgDn page  g/G top/bottom
+
+--- first history row after each notch ---
+  1 
+  2 
+  3 ●   progress: m1 open question, F3 one-way                          5m   b5db603
+  4 ●   m1-the-graph-26: / search as a cancellable job (subject, autho… 20m  8548e22
+  5 ●   progress: m1/24d done (24 done), next 25                        52m  673afd7
+  6 ●   m1-the-graph-24c: Kitty strips drawn in the app — blank pixel … 1h   d6312b3
+  7 ●   progress: m1/24 partial, split into 24b/24c/24d, next 24b       1h   15b1abc
+  8 ●   m1-the-graph-23: strip cache — aligned 32-row strips in a boun… 1h   7b407a7
+  9 ●   progress: m1/21 done, next 22                                   1h   dbc45c9
+ 10 ●   tickets: m1/33 F3 cycles renderer tiers (user decision)         4m   5ccc7f7
+ 11 ●   progress: m1 open question, F3 one-way                          5m   b5db603
+ 12 ●   m1-the-graph-26: / search as a cancellable job (subject, autho… 20m  8548e22
+ 13 ●   progress: m1/24d done (24 done), next 25                        52m  673afd7
+ 14 ●   m1-the-graph-24c: Kitty strips drawn in the app — blank pixel … 1h   d6312b3
+ 15 ●   progress: m1/24 partial, split into 24b/24c/24d, next 24b       1h   15b1abc
+ 16 ●   m1-the-graph-23: strip cache — aligned 32-row strips in a boun… 1h   7b407a7
+ 17 ●   progress: m1/21 done, next 22                                   1h   dbc45c9
+ 18 ●   m1-the-graph-20: input mux owns stdin; typeahead during the pr… 2h   43f0d4a
+ 19 ●   rules: from M2 Fable writes design notes and ticket specs, bui… 2h   8219724
+ 20 ●   progress: m1/17 done, next 18                                   3h   a02c75a
+ 21 ●   m1-the-graph-16: selection thread, ancestry highlight and Focu… 3h   14f54ed
+ 22 ●   progress: m1/15 partial, continuing                             4h   5817215
+ 23 ●   m1-the-graph-14: compaction — +N folds least-recently-touched … 4h   a811bad
+ 24 ●   progress: m1/12c done, next 13                                  4h   d6cdde0
+ 25 ●   m1-the-graph-12b: wire uncommitted-changes row into app and gr… 5h   b1320c5
+ 26 
+ 27 ◆   [◆ main] tickets: m1/34 tooltip shows only the subject (user r… now  9efc680
+ 28 ●   progress: m1 open question, F3 one-way                          5m   b5db603
+ 29 ●   m1-the-graph-26: / search as a cancellable job (subject, autho… 20m  8548e22
+ 30 ●   progress: m1/24d done (24 done), next 25                        52m  673afd7
+ 31 ●   m1-the-graph-24c: Kitty strips drawn in the app — blank pixel … 1h   d6312b3
+ 32 ●   progress: m1/24 partial, split into 24b/24c/24d, next 24b       1h   15b1abc
+ 33 ●   m1-the-graph-23: strip cache — aligned 32-row strips in a boun… 1h   7b407a7
+ 34 ●   progress: m1/21 done, next 22                                   1h   dbc45c9
+ 35 ●   m1-the-graph-20: input mux owns stdin; typeahead during the pr… 2h   43f0d4a
+ 36 ●   progress: m1/26 done, pause for user Ghostty check, next 27     20m  1508cdd
+ 37 ◆   [◆ main] tickets: m1/34 tooltip shows only the subject (user r… now  9efc680
+ 38 ●   progress: m1 open question, F3 one-way                          5m   b5db603
+ 39 ●   m1-the-graph-26: / search as a cancellable job (subject, autho… 20m  8548e22
+ 40 ●   progress: m1/24d done (24 done), next 25                        52m  673afd7
+ 41 ●   m1-the-graph-24c: Kitty strips drawn in the app — blank pixel … 1h   d6312b3
+ 42 ●   progress: m1/24 partial, split into 24b/24c/24d, next 24b       1h   15b1abc
+ 43 ●   m1-the-graph-23: strip cache — aligned 32-row strips in a boun… 1h   7b407a7
+ 44 ●   progress: m1/21 done, next 22                                   1h   dbc45c9
+ 45 ●   m1-the-graph-20: input mux owns stdin; typeahead during the pr… 2h   43f0d4a
+ 46 ●   progress: m1/26 done, pause for user Ghostty check, next 27     20m  1508cdd
+ 47 ◆   [◆ main] tickets: m1/34 tooltip shows only the subject (user r… now  9efc680
+ 48 ●   progress: m1 open question, F3 one-way                          5m   b5db603
+ 49 ●   m1-the-graph-26: / search as a cancellable job (subject, autho… 20m  8548e22
+ 50 ●   progress: m1/24d done (24 done), next 25                        52m  673afd7
+ 51 ●   m1-the-graph-24c: Kitty strips drawn in the app — blank pixel … 1h   d6312b3
+ 52 ●   progress: m1/24 partial, split into 24b/24c/24d, next 24b       1h   15b1abc
+ 53 ●   m1-the-graph-23: strip cache — aligned 32-row strips in a boun… 1h   7b407a7
+ 54 ●   progress: m1/21 done, next 22                                   1h   dbc45c9
+ 55 ●   m1-the-graph-20: input mux owns stdin; typeahead during the pr… 2h   43f0d4a
+ 56 ●   progress: m1/26 done, pause for user Ghostty check, next 27     20m  1508cdd
+ 57 ◆   [◆ main] tickets: m1/34 tooltip shows only the subject (user r… now  9efc680
+ 58 ●   progress: m1 open question, F3 one-way                          5m   b5db603
+ 59 ●   m1-the-graph-26: / search as a cancellable job (subject, autho… 20m  8548e22
+ 60 ●   progress: m1/24d done (24 done), next 25                        52m  673afd7
+ 61 ●   m1-the-graph-24c: Kitty strips drawn in the app — blank pixel … 1h   d6312b3
+ 62 ●   progress: m1/24 partial, split into 24b/24c/24d, next 24b       1h   15b1abc
+ 63 ●   m1-the-graph-23: strip cache — aligned 32-row strips in a boun… 1h   7b407a7
+ 64 ●   progress: m1/21 done, next 22                                   1h   dbc45c9
+ 65 ●   m1-the-graph-20: input mux owns stdin; typeahead during the pr… 2h   43f0d4a
+ 66 ●   progress: m1/26 done, pause for user Ghostty check, next 27     20m  1508cdd
+ 67 ◆   [◆ main] tickets: m1/34 tooltip shows only the subject (user r… now  9efc680
+ 68 ●   progress: m1 open question, F3 one-way                          5m   b5db603
+ 69 ●   m1-the-graph-26: / search as a cancellable job (subject, autho… 20m  8548e22
+ 70 ●   progress: m1/24d done (24 done), next 25                        52m  673afd7
+ 71 ●   m1-the-graph-24c: Kitty strips drawn in the app — blank pixel … 1h   d6312b3
+ 72 ●   progress: m1/24 partial, split into 24b/24c/24d, next 24b       1h   15b1abc
+ 73 ●   m1-the-graph-23: strip cache — aligned 32-row strips in a boun… 1h   7b407a7
+ 74 ●   progress: m1/21 done, next 22                                   1h   dbc45c9
+ 75 ●   m1-the-graph-20: input mux owns stdin; typeahead during the pr… 2h   43f0d4a
+ 76 ●   progress: m1/26 done, pause for user Ghostty check, next 27     20m  1508cdd
+ 77 ◆   [◆ main] tickets: m1/34 tooltip shows only the subject (user r… now  9efc680
+ 78 ●   progress: m1 open question, F3 one-way                          5m   b5db603
+ 79 ●   m1-the-graph-26: / search as a cancellable job (subject, autho… 20m  8548e22
+ 80 ●   progress: m1/24d done (24 done), next 25                        52m  673afd7
+ 81 ●   m1-the-graph-24c: Kitty strips drawn in the app — blank pixel … 1h   d6312b3
+ 82 ●   progress: m1/24 partial, split into 24b/24c/24d, next 24b       1h   15b1abc
+ 83 ●   m1-the-graph-23: strip cache — aligned 32-row strips in a boun… 1h   7b407a7
+ 84 ●   progress: m1/21 done, next 22                                   1h   dbc45c9
+ 85 ●   m1-the-graph-20: input mux owns stdin; typeahead during the pr… 2h   43f0d4a
+ 86 ●   progress: m1/26 done, pause for user Ghostty check, next 27     20m  1508cdd
+ 87 ◆   [◆ main] tickets: m1/34 tooltip shows only the subject (user r… now  9efc680
+ 88 ●   progress: m1 open question, F3 one-way                          5m   b5db603
+ 89 ●   m1-the-graph-26: / search as a cancellable job (subject, autho… 20m  8548e22
+ 90 ●   progress: m1/24d done (24 done), next 25                        52m  673afd7
+ 91 ●   m1-the-graph-24c: Kitty strips drawn in the app — blank pixel … 1h   d6312b3
+ 92 ●   progress: m1/24 partial, split into 24b/24c/24d, next 24b       1h   15b1abc
+ 93 ●   m1-the-graph-23: strip cache — aligned 32-row strips in a boun… 1h   7b407a7
+ 94 ●   progress: m1/21 done, next 22                                   1h   dbc45c9
+ 95 ●   m1-the-graph-20: input mux owns stdin; typeahead during the pr… 2h   43f0d4a
+ 96 ●   progress: m1/26 done, pause for user Ghostty check, next 27     20m  1508cdd
+ 97 ◆   [◆ main] tickets: m1/34 tooltip shows only the subject (user r… now  9efc680
+ 98 ●   progress: m1 open question, F3 one-way                          5m   b5db603
+ 99 ●   m1-the-graph-26: / search as a cancellable job (subject, autho… 20m  8548e22
+100 ●   progress: m1/24d done (24 done), next 25                        52m  673afd7

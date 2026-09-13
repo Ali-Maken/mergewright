@@ -58,8 +58,7 @@ impl History {
                 self.rows = window.laid_out;
                 // A view with fewer rows can leave the cursor past the end.
                 if window.done {
-                    self.cursor = self.cursor.min(self.rows.saturating_sub(1));
-                    self.top = self.top.min(self.cursor);
+                    self.keep_within_rows(height.max(1));
                 }
                 if window.done && self.phase == Phase::Streaming {
                     self.phase = Phase::Complete;
@@ -307,9 +306,9 @@ impl History {
         let height = height.max(1);
         self.jump = None;
         self.seeking = None;
-        self.cursor = cursor.min(self.rows.saturating_sub(1));
-        self.top = top.min(self.cursor);
-        self.follow(height);
+        self.cursor = cursor;
+        self.top = top;
+        self.keep_within_rows(height);
         self.wanted(height, true)
     }
 
@@ -337,6 +336,21 @@ impl History {
             .saturating_sub(window.first)
             .min(window.rows.len());
         window.rows.get(start..end).unwrap_or_default()
+    }
+
+    /// Pulls the cursor and the viewport back onto the rows there are, once
+    /// the walk has said how many. The viewport is clamped on its own, not to
+    /// the cursor: the wheel leaves the cursor off screen on purpose, and
+    /// clamping the top to it snapped a wheel-scrolled view back to row 0 on
+    /// every answer after the walk finished (m1-the-graph/32). Only a cursor
+    /// that had to move is followed back into view.
+    fn keep_within_rows(&mut self, height: usize) {
+        let last = self.rows.saturating_sub(1);
+        self.top = self.top.min(last);
+        if self.cursor > last {
+            self.cursor = last;
+            self.follow(height);
+        }
     }
 
     /// Scrolls just enough to keep the cursor inside the viewport.

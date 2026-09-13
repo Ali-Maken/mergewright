@@ -296,6 +296,60 @@ fn scrolling_top_to_bottom_keeps_resident_rows_bounded() {
     assert_eq!(history.cursor, whole.len() - 1);
 }
 
+/// Scrolls from the first row with `step` while the walk is still laying
+/// out, answering every request, until the viewport stops moving. The view
+/// never goes back towards the top (m1-the-graph/32: once the walk finished,
+/// every answer snapped the wheel's viewport back to the selection on row 0),
+/// and it ends on the oldest commit.
+fn scroll_from_launch(step: impl Fn(&mut History) -> Option<RowRequest>) {
+    let dir = graft_fixtures::borrow(Shape::Linear);
+    let handle = RepoHandle::open(&dir).expect("opens");
+    let whole = layout(&every_commit(&handle, Shape::Linear), Seeds::default());
+    let walk = Walk::all_refs(&handle, Order::Topological).expect("walk starts");
+    let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
+
+    let mut history = History::started();
+    let mut request = history.show(HEIGHT);
+    let mut steps = 0;
+    loop {
+        if let Some(asked) = request.take() {
+            round_trip(&mut stream, &mut history, asked, &mut || None);
+        }
+        let before = history.top;
+        request = step(&mut history);
+        if let Some(asked) = request.take() {
+            round_trip(&mut stream, &mut history, asked, &mut || None);
+        }
+        assert!(
+            history.top >= before,
+            "step {steps}: the viewport went back from row {before} to {}",
+            history.top
+        );
+        if history.top == before && request.is_none() && history.phase == Phase::Complete {
+            break;
+        }
+        steps += 1;
+        assert!(steps < 2 * whole.len(), "scrolling reaches the end");
+    }
+    assert_eq!(history.rows, whole.len());
+    let last = history.visible(HEIGHT).last().expect("rows on screen");
+    assert_eq!(
+        last,
+        whole.last().expect("history"),
+        "ends on the oldest commit"
+    );
+}
+
+#[test]
+fn the_wheel_from_launch_stops_at_the_oldest_commit_and_never_wraps() {
+    scroll_from_launch(|history| history.scroll(3, HEIGHT));
+}
+
+#[test]
+fn page_down_from_launch_stops_at_the_oldest_commit_and_never_wraps() {
+    scroll_from_launch(|history| history.move_cursor(Motion::PageDown, HEIGHT));
+}
+
 /// `G` on a cold walk, then `Esc`: the walk stops within a chunk of the
 /// replacement arriving, the viewport never moves, and nothing the jump sent
 /// — its progress or a late answer — lands.

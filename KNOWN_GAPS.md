@@ -281,3 +281,6 @@ entry is (CLAUDE.md).*
 - **A hit hidden by the view** (first-parent or folded history) is counted but not selectable; the line says "(not in this view)".
 - **Search walks history again on its own job** (a second walk alongside the history walk), not the rows the history job already read. 100k no-match scan measured under a pty; see `docs/shots/26-search-typing.txt`.
 - **`n` before the first hit arrives does nothing** (no queued step).
+
+## m1-the-graph/32 — wheel scroll
+- **The wheel scrolls until only the oldest commit is left on screen** (`top` stops at the last row), where `G` fills a page. This was ticket 17's clamp and 32 keeps it. It's open whether the wheel should stop when the last row reaches the bottom.

@@ -1,0 +1,157 @@
+binary: after; 100 wheel-down notches, 20 ms apart, from the first frame
+
+no wrap: the first row never went back to HEAD
+
+--- first frame ---
+ graft opening…=q,t=d,f=24;AAAA
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  / search  j/k move  PgUp/PgDn page  g/G top/bottom
+
+--- after 100 notches ---
+ graft /Users/devuser/dev/sandbox/gitter  191 commits
+◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  / search  j/k move  PgUp/PgDn page  g/G top/bottom
+
+--- first history row after each notch ---
+  1 
+  2 ●   progress: m1 open question, F3 one-way                          5m   b5db603
+  3 ●   m1-the-graph-26: / search as a cancellable job (subject, autho… 20m  8548e22
+  4 ●   progress: m1/24d done (24 done), next 25                        52m  673afd7
+  5 ●   m1-the-graph-24c: Kitty strips drawn in the app — blank pixel … 1h   d6312b3
+  6 ●   progress: m1/24 partial, split into 24b/24c/24d, next 24b       1h   15b1abc
+  7 ●   m1-the-graph-23: strip cache — aligned 32-row strips in a boun… 1h   7b407a7
+  8 ●   progress: m1/21 done, next 22                                   1h   dbc45c9
+  9 ●   m1-the-graph-20: input mux owns stdin; typeahead during the pr… 2h   43f0d4a
+ 10 ●   rules: from M2 Fable writes design notes and ticket specs, bui… 2h   8219724
+ 11 ●   progress: m1/17 done, next 18                                   3h   a02c75a
+ 12 ●   m1-the-graph-16: selection thread, ancestry highlight and Focu… 3h   14f54ed
+ 13 ●   progress: m1/15 partial, continuing                             4h   5817215
+ 14 ●   m1-the-graph-14: compaction — +N folds least-recently-touched … 4h   a811bad
+ 15 ●   progress: m1/12c done, next 13                                  4h   d6cdde0
+ 16 ●   m1-the-graph-12b: wire uncommitted-changes row into app and gr… 5h   b1320c5
+ 17 ●   progress: m1/11 done, next 12                                   5h   7c6583e
+ 18 ●   m1-10: row text columns and width degradation                   5h   d1c2aa1
+ 19 ●   progress: m1/09 partial, continuing                             6h   d28c525
+ 20 ●   m1-08: Unicode graph column; Row carries per-column branch ide… 6h   8689b5d
+ 21 ●   progress: m1/07 done, next 08                                   7h   cffe7db
+ 22 ●   progress: session log line for m1/31 in the right section       7h   7d68a6d
+ 23 ●   m1 replan: ticket 31 removes #[ignore] before 07; 27 measures … 7h   b695696
+ 24 ●   adr-0018: heavy tests gated by the heavy-tests feature alone    7h   383c36f
+ 25 ●   m1 replan: ticket 25-iterm2-and-resize-frames.md                8h   a8f3f90
+ 26 ●   m1 replan: ticket 22-rasteriser.md                              8h   ba82eda
+ 27 ●   m1 replan: ticket 19-ascii-tier-and-override.md                 8h   cd92a22
+ 28 ●   m1 replan: ticket 16-selection-and-focus.md                     8h   0cf6663
+ 29 ●   m1 replan: ticket 13-lanes-without-hue.md                       8h   bb8dc63
+ 30 ●   m1 replan: ticket 10-row-text-columns.md                        8h   74bbcd6
+ 31 ●   m1 replan: ticket 07-history-streams-into-layout.md             8h   362ea25
+ 32 ●   tests: proptest_cases returns u32; the Option is gone           18h  8105193
+ 33 ●   tests: proptest case counts live in code, not the environment … 18h  ecad6dd
+ 34 ●   agents: Fable, reviewer and debugger run at high; xhigh only o… 18h  8771f60
+ 35 ●   m1-05: ticket done                                              19h  e7db822
+ 36 ●   m1-05: handoff note — what landed, what remains                 19h  bbb2fd0
+ 37 ●   progress: M1/04 reading history done                            20h  faeffb6
+ 38 ●   m1-the-graph-03: the rendering-tier order (ADR-0016) and M0's … 21h  3915275
+ 39 ●   m1-the-graph-02: the heavy test tier, the 100k fixture, git/gi… 21h  90c3bb0
+ 40 ●   m1-the-graph-01: the scripted fixture corpus (fast tier)        22h  14b725a
+ 41 ●   progress: stop at the M0 checkpoint; M1 tickets not drafted pe… 23h  62fdaa5
+ 42 ●   m0-review: ADR-0014 and the DESIGN.md edits for six divergences 23h  cc60d4f
+ 43 ●   docs/reviews: M0 Foundations milestone review                   1d   3592226
+ 44 ●   m0-11: open a repo, show it on a status screen, quit clean      1d   7bd7ba7
+ 45 ●   progress: M0/09 event loop done, signal gap closed              1d   886a30d
+ 46 ●   m0-08: open a repository with gix, and check the system git's … 1d   e85ca86
+ 47 ●   progress: M0/06 theme tokens done                               1d   d47233f
+ 48 ●   m0-05: escape-sequence sanitiser, the one way repo text reache… 1d   5081758
+ 49 ●   progress: M0/03 done; signal handling assigned to ticket 09     1d   64c1ee7
+ 50 ●   m0-02: dependency-edge test locks the crate map to ARCHITECTUR… 1d   0dadc65
+ 51 ●   KNOWN_GAPS: drop stale 'Kitty pixels unseen' row — user verifi… 1d   fff11b5
+ 52 ●   step-3-perf: honest frame numbers, no view cap, bench mode      1d   78a73a0
+ 53 ●   CLAUDE.md: root-cause over workarounds, never swallow errors, … 1d   df3e04a
+ 54 ●   progress: step 3 reopened, graph not visible in Ghostty         1d   48f8282
+ 55 ●   Step 3: graph-drawing prototype — pixel/text alignment and scr… 1d   84e8feb
+ 56 ●   progress: round-2 design review logged                          1d   1e08e26
+ 57 ●   Step 2 fixes: resolve Major and Minor review findings (M1-M5, … 1d   15d2f10
+ 58 ●   progress: design review of step 2 logged                        1d   3e85c08
+ 59 ●   progress: step 2 done, DESIGN.md and ARCHITECTURE.md written    1d   b4b2393
+ 60 ●   Design docs: subheadings allowed where needed, just not everyw… 1d   4215645
+ 61 ●   Loop guards: max 2 partial continuations per ticket; builders … 1d   5b8ccda
+ 62 ●   Step 1: decisions interview settled, applied to the spec        1d   d6d06ad
+ 63 ●   Agent config: local-markdown tickets, single-context domain do… 1d   3afb88e
+ 64 ●   Plan: naming deferred to M8 (Sonnet)                            1d   89a0337
+ 65 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 66 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 67 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 68 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 69 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 70 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 71 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 72 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 73 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 74 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 75 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 76 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 77 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 78 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 79 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 80 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 81 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 82 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 83 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 84 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 85 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 86 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 87 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 88 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 89 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 90 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 91 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 92 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 93 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 94 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 95 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 96 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 97 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 98 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+ 99 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
+100 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba

@@ -1,6 +1,6 @@
 # m1-the-graph/32 — Bug: trackpad scroll wraps to the top before history has loaded
 
-Status: ready
+Status: done
 Build with: **Opus** (high) — history window / streaming walk interaction
 Blocked by: none
 Leaves runnable: yes — wheel scroll stops at the end instead of wrapping.
@@ -32,9 +32,9 @@ Out:
 - Anything else about the mouse or tooltip.
 
 ## Acceptance
-- [ ] A test that fails before the fix: wheel-scroll repeatedly while the walk has not finished → never returns to the top; reaches the oldest commit.
-- [ ] Same check for PgDn during loading.
-- [ ] pty reproduction before/after (capture under `docs/shots/32-*`), report says what was verified.
+- [x] A test that fails before the fix: wheel-scroll repeatedly while the walk has not finished → never returns to the top; reaches the oldest commit.
+- [x] Same check for PgDn during loading.
+- [x] pty reproduction before/after (capture under `docs/shots/32-*`), report says what was verified.
 - [ ] **By eye (user):** trackpad in Ghostty right after launch stops at the oldest commit. Unticked until the user looks.
 
 ## Gates
@@ -42,3 +42,10 @@ Out:
 
 ## Size
 One context, under ~80k tokens. If you compact, say so; stop at a clean seam with a handoff note.
+
+## Notes (builder, 2026-09-13)
+- Cause: `History::apply` ran `top = top.min(cursor)` on every window with `done` set. The wheel moves only `top` and leaves the cursor on row 0, so once the walk had finished, every answer snapped the view back to row 0: the wrap. After `j` to the end the cursor is on the last row, so the clamp did nothing, which explains the contrast. It isn't about unloaded rows: wheel requests already ask past the frontier.
+- Fix: `keep_within_rows` clamps `top` to the last row on its own, and follows only a cursor that had to move. `restore` (Esc on a running search) had the same `top.min(cursor)` and now uses it too.
+- Tests: `history::tests::the_wheel_from_launch_...` failed before the fix ("went back from row 189 to 0"). `page_down_from_launch_...` passes before and after; PgDn keeps `top <= cursor`. G and search jumps set both cursor and top, so they don't have this fault.
+- pty: `.scratch/m1-the-graph/pty-wheel-check.py` sends 100 wheel notches from the first frame. `docs/shots/32-wheel-before.txt` wraps at notch 26; `32-wheel-after.txt` never wraps and stops on the root commit.
+- No compaction.
