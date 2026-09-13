@@ -1,6 +1,6 @@
 # m1-the-graph/27b — git/git without a commit-graph misses the 300 MB budget
 
-Status: partial (profile + finding done; no fix landed)
+Status: partial (fix B landed; C blocked on a promotion/`G` race — question for the user)
 Build with: **Opus** (high) — split from 27's remainder; same scope and model
 Blocked by: 27
 Leaves runnable: yes — git/git stays under 300 MB peak RSS with and without a commit-graph.
@@ -94,5 +94,28 @@ Next step: **attribute churn, not live heap.**
 
 Gotchas: one heavy job at a time; `prototypes/` profile builds need `--offline` (no network here); a threshold arg of `0` means "never stop".
 
+## Continuation 1 (2026-09-13, builder-opus)
+
+**Churn attribution.** `MallocStackLogging=malloc` (not `1`) gives full mode; `malloc_history <pid> -highWaterMark -callTree -invert -consolidateAllBySymbol` works. No cg, high water 149 MiB, **cumulative allocated 1.77 GB** (5.2M allocs). High-water holders match the table above: `Row.lanes` 36.8M; the promotion `hydrate` gix cache; stream `Dated` cache 14.6M; `Topological::discover`. Per-site churn totals were not extracted (`-allEvents` too large). Raw: `target/27b/prof2/hwm.txt`.
+
+**Measurements** (release, 3 runs, `examples/budgets`; RSS = `getrusage` peak, footprint = `time -l`; script `target/27b/meas.sh`, raw `target/27b/meas/summary.txt`):
+
+| | no cg RSS | no cg footprint | no cg G | cg RSS | cg footprint | cg G |
+|---|---|---|---|---|---|---|
+| before | 303.7–306.7 | 202.8–205.7 | 1.26 s | 255.3–255.8 | 159.0–162.6 | 0.54 s |
+| **B landed** | **290.3–294.4** | **173.1–174.2** | 1.25 s | **222.6–225.7** | **129.7–131.9** | 0.53–0.57 s |
+
+**Fix B (landed).** `Topological` keeps one `Entry` per commit (parents, time, generation, `u32` in-degree, expanded/emitted flags) instead of `known` + `indegree` + `expanded` + `emitted`; parents are taken, not cloned, on expand and freed on emit; `Node.parents` starts at capacity 1. Same emitted order (graft-git tests, incl. git-oracle tests). No cg is **still under 300 with only a ~6–10 MiB margin: not done.**
+
+**Fix C (blocked, call site reverted).** `Walk::next_ids` / `IdChunk` added and tested (ids equal `next_chunk` ids across chunks; stop honoured); `SharedRepo::handle_with_object_cache` added (unused yet). MAP.md updated. Pointing `graft::history::topological_order` at `next_ids` **hangs the no-cg budget run**: 1 of 3 runs died, the next waited out PATIENCE (300 s). Stuck state: promoted window landed (`promoted: true`, `asked 3 == request 3`), `jump: None`, `promotion: None`, `cursor 0`, `laid_out 500`, `done false`. So the `G` press (`update.rs:926`, `Motion::Bottom`) either asked for nothing or had its request superseded by the promotion swap (`scroll.rs:103-157`, `promoted()` clears `jump` unconditionally at :131), and nothing re-asks. The faster promotion lands around the `G` press; the race exists before C but was unlikely. A scout also found `promoted()` clears `jump` but never `seeking` (update.rs `seek_landed` :837 then waits for ever on a search jump). **Fixing this changes app state logic: asked through the conductor, not done.**
+
+### Next steps
+1. User/conductor: OK to fix the promotion-vs-jump race in `graft::history::scroll` (`promoted()` should re-issue or preserve an in-flight jump/seek)? Then add a unit test for "`G` pressed while promotion Swapping reaches the bottom".
+2. Re-apply C's call site (`order.extend(chunk.ids)` via `walk.next_ids`), measure 3×.
+3. Wire D: promotion `store.shared()?.handle_with_object_cache(0)`; measure 3× (watch G time).
+4. A′ only if still short of margin; judge on RSS.
+5. Heavy-tier regression guard (scope item 3) and 27's results table / KNOWN_GAPS rows still open.
+
 ## NOTES
 - No compaction. Stopped at the size seam (about 70k tokens): profile and finding done, no fix landed.
+- Continuation 1: no compaction. Stopped at the race (needs the user), ~75k tokens.

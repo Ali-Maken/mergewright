@@ -538,3 +538,45 @@ fn a_commit_reachable_two_ways_is_emitted_once() {
     assert_eq!(topological(&nodes, &[oid(0x03)]).len(), 4);
     assert_eq!(dated(&nodes, &[oid(0x03)], Follow::AllParents).len(), 4);
 }
+
+#[test]
+fn ids_come_out_in_the_order_whole_commits_do() {
+    // Promotion walks ids only (m1/27b); it must promote to exactly the
+    // order the commit walk produces, including across chunk boundaries.
+    let path = graft_fixtures::borrow(Shape::OctopusMerge);
+    let shared = SharedRepo::open(&path).expect("the fixture opens");
+    let handle = shared.handle();
+    let tips = handle
+        .commit_tips()
+        .expect("the fixture's refs can be read");
+    let mut commits = Walk::full_topological(&handle, &tips).expect("the walk starts");
+
+    let uncached = shared.handle_with_object_cache(0);
+    let mut ids = Walk::full_topological(&uncached, &tips).expect("the walk starts");
+    let mut walked = Vec::new();
+    loop {
+        let chunk = ids.next_ids(2, &never).expect("the walk reads");
+        assert!(!chunk.stopped);
+        assert!(chunk.ids.len() <= 2);
+        walked.extend(chunk.ids);
+        if chunk.done {
+            break;
+        }
+    }
+
+    assert_eq!(walked, all(&mut commits));
+}
+
+#[test]
+fn an_id_walk_asked_to_stop_says_so() {
+    let path = graft_fixtures::borrow(Shape::CrissCrossMerge);
+    let shared = SharedRepo::open(&path).expect("the fixture opens");
+    let handle = shared.handle();
+    let mut walk = Walk::all_refs(&handle, Order::CommitDate).expect("the walk starts");
+
+    let chunk = walk.next_ids(CHUNK, &|| true).expect("the walk reads");
+
+    assert!(chunk.stopped);
+    assert!(!chunk.done);
+    assert!(chunk.ids.is_empty());
+}

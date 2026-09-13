@@ -386,6 +386,19 @@ impl SharedRepo {
         RepoHandle { repo }
     }
 
+    /// A handle for the calling thread with an object cache of at most
+    /// `bytes`, or none at all for `0`.
+    ///
+    /// For a job whose reads do not repeat — a walk that reads each commit
+    /// once, like ADR-0008's promotion — where [`handle`](Self::handle)'s
+    /// cache would fill and never be hit (ticket m1-the-graph/27b).
+    #[must_use]
+    pub fn handle_with_object_cache(&self, bytes: usize) -> RepoHandle {
+        let mut repo = self.repo.to_thread_local();
+        repo.object_cache_size(bytes);
+        RepoHandle { repo }
+    }
+
     /// The repository's own directory. See [`RepoHandle::git_dir`].
     #[must_use]
     pub fn git_dir(&self) -> &Path {

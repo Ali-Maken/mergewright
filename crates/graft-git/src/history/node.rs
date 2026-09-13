@@ -157,7 +157,7 @@ impl<'a> RepoNodes<'a> {
     fn from_commit_graph(graph: &gix::commitgraph::Graph, id: Oid) -> Option<Node> {
         let oid = gix::hash::oid::try_from_bytes(id.as_bytes()).ok()?;
         let commit = graph.commit_by_id(oid)?;
-        let mut parents = Vec::new();
+        let mut parents = Vec::with_capacity(1);
         for parent in commit.iter_parents() {
             // A parent position the file itself calls out of range means the
             // commit-graph is corrupt. Falling back to the object database
@@ -176,7 +176,7 @@ impl<'a> RepoNodes<'a> {
 
     fn read_object(&self, id: Oid) -> Result<Node, NodeError> {
         let commit = find_commit(self.repo, id)?;
-        let mut parents = Vec::new();
+        let mut parents = Vec::with_capacity(1);
         for parent in commit.parent_ids() {
             parents.push(
                 Oid::from_bytes(parent.as_bytes())

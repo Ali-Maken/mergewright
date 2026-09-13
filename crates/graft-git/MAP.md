@@ -22,6 +22,7 @@ One line per public item. Update when a public item changes.
 - `CHUNK` (const) — commits per chunk a walk hands back at a time.
 - `Order` (enum) — the order a walk emits rows in.
 - `Chunk` (struct) — one batch of rows a walk hands back, and whether more remain.
+- `IdChunk` (struct) — one batch of commit ids a walk hands back (no commits read whole), and whether more remain.
 - `Walk` (struct) — a rev-walk in progress; holds its position across chunks.
 - `Walk::all_refs` (fn) — walk from every ref, in the given order.
 - `Walk::from_tips` (fn) — walk from an explicit set of tip commits.
@@ -32,6 +33,7 @@ One line per public item. Update when a public item changes.
 - `Walk::has_commit_graph` (fn) — the repository has a commit-graph file backing this walk.
 - `Walk::explorations` (fn) — how many commits the walk has visited so far.
 - `Walk::next_chunk` (fn) — advance the walk and return its next `Chunk`.
+- `Walk::next_ids` (fn) — advance the walk and return its next `IdChunk`: ids only, for callers that need just the order (promotion).
 - `read_commit` (fn) — read one commit whole, by id.
 - `first_parent_merges` (fn) — how many merges lie on a commit's first-parent chain.
 - `AheadBehind` (struct) — commits only a branch has (`ahead`) and only its upstream has (`behind`).
@@ -61,6 +63,7 @@ One line per public item. Update when a public item changes.
 - `SharedRepo::OBJECT_CACHE_BYTES` (const) — object cache size a `SharedRepo` opens with.
 - `SharedRepo::open` (fn) — open the repository at `path`.
 - `SharedRepo::handle` (fn) — a cheap per-thread `RepoHandle` onto this repository.
+- `SharedRepo::handle_with_object_cache` (fn) — the same, with an object cache of the given bytes (`0`: none), for jobs whose reads do not repeat.
 - `SharedRepo::git_dir` (fn) — the `.git` directory.
 - `TipsError` (enum) — why reading commit tips failed.
 - `RefEntry` (struct) — one ref: its name and target.

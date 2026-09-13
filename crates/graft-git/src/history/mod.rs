@@ -79,6 +79,18 @@ pub struct Chunk {
     pub stopped: bool,
 }
 
+/// One batch of commit ids, and whether there are more: [`Chunk`] without
+/// the commits read whole.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct IdChunk {
+    /// The ids, in the walk's order.
+    pub ids: Vec<Oid>,
+    /// As [`Chunk::done`].
+    pub done: bool,
+    /// As [`Chunk::stopped`].
+    pub stopped: bool,
+}
+
 /// A walk in progress.
 ///
 /// Holds its position, so calling [`next_chunk`](Self::next_chunk) again
@@ -254,37 +266,84 @@ impl<'a> Walk<'a> {
         stop: &dyn Fn() -> bool,
     ) -> Result<Chunk, WalkError> {
         let mut commits = Vec::new();
+        let paused = self.advance(limit, stop, |repo, id| {
+            commits.push(hydrate(repo, id)?);
+            Ok(())
+        })?;
+        Ok(Chunk {
+            commits,
+            done: paused == Paused::Done,
+            stopped: paused == Paused::Stopped,
+        })
+    }
+
+    /// The next batch of at most `limit` commit ids, without reading the
+    /// commits whole.
+    ///
+    /// For a caller that needs only the order, like ADR-0008's promotion:
+    /// it skips the full object read and decode [`next_chunk`](Self::next_chunk)
+    /// does for every commit, and the object cache that read fills. `stop`
+    /// behaves as it does there.
+    ///
+    /// # Errors
+    /// [`WalkError`] if a commit cannot be read while walking.
+    pub fn next_ids(
+        &mut self,
+        limit: usize,
+        stop: &dyn Fn() -> bool,
+    ) -> Result<IdChunk, WalkError> {
+        let mut ids = Vec::new();
+        let paused = self.advance(limit, stop, |_, id| {
+            ids.push(id);
+            Ok(())
+        })?;
+        Ok(IdChunk {
+            ids,
+            done: paused == Paused::Done,
+            stopped: paused == Paused::Stopped,
+        })
+    }
+
+    /// Hands up to `limit` commits in walk order to `emit`, and says why it
+    /// paused.
+    fn advance(
+        &mut self,
+        limit: usize,
+        stop: &dyn Fn() -> bool,
+        mut emit: impl FnMut(&'a gix::Repository, Oid) -> Result<(), WalkError>,
+    ) -> Result<Paused, WalkError> {
+        let mut emitted = 0;
         loop {
             if stop() {
-                return Ok(Chunk {
-                    commits,
-                    done: false,
-                    stopped: true,
-                });
+                return Ok(Paused::Stopped);
             }
-            if commits.len() >= limit {
-                return Ok(Chunk {
-                    commits,
-                    done: false,
-                    stopped: false,
-                });
+            if emitted >= limit {
+                return Ok(Paused::Full);
             }
             let next = match &mut self.sequence {
                 Sequence::Topological(sort) => sort.next(&self.nodes, &mut self.reads)?,
                 Sequence::Dated(walk) => walk.next(&self.nodes, &mut self.reads)?,
             };
             match next {
-                Some(id) => commits.push(hydrate(self.repo, id)?),
-                None => {
-                    return Ok(Chunk {
-                        commits,
-                        done: true,
-                        stopped: false,
-                    });
+                Some(id) => {
+                    emit(self.repo, id)?;
+                    emitted += 1;
                 }
+                None => return Ok(Paused::Done),
             }
         }
     }
+}
+
+/// Why [`Walk::advance`] handed control back.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Paused {
+    /// The batch is full; more may follow.
+    Full,
+    /// `stop` asked the walk to give up.
+    Stopped,
+    /// The walk has emitted everything.
+    Done,
 }
 
 /// Reads one commit whole, by id.
