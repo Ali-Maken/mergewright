@@ -50,6 +50,7 @@
   - the two or three hard-to-reverse choices, each with a recommendation
   - where it would differ from DESIGN.md, and why
   - which tickets are genuinely risky
+  - **new UI** the milestone introduces that DESIGN.md doesn't already specify: screen layout, what each pane shows at each breakpoint, visual hierarchy, interaction
 
   No code. The conductor drafts tickets from the note; each ticket's "Read first" lists the note's relevant section, and builders follow it.
 - **Fable builds a ticket only when all three hold:**
@@ -89,6 +90,7 @@
 - **Never swallow an error.** A hidden failure doesn't go away; it ships. No ignored `Result`, no `let _ =`, no `unwrap_or_default()` standing in for a real failure, no empty `Err(_) => {}` arm, no catch-all that logs and carries on. Every error is handled, propagated, or surfaced to the user. If you genuinely must ignore one, say in a comment why it's safe.
 - **A status field must never read as an error when nothing is wrong.** Name and render status by its state: `gfx ok` / `gfx: <error>`, or show the field only when there is something to report. A permanently-visible `GFX_ERROR:` label trains the user to ignore it, which is how a real error gets missed.
 - **Green gates are not evidence.** `fmt`/`clippy`/`test` passing means the code compiles and your own tests agree with you. It does not mean the thing works. Say what you actually verified and how, and what you couldn't. Never claim behaviour you didn't observe.
+- **Visual results are judged by eye, by the user.** Green gates are not evidence for how something looks. Any ticket whose result is visual ends by capturing what it actually renders — a pty capture committed under `docs/shots/` — and its report names the capture and says the user judges it by eye. No builder or reviewer ticks "looks right".
 - **Tests must be laptop-safe** (PROMPT.md 7.1). Builders run only the fast tier (`cargo test`). The heavy tier, fuzzing and benchmarks run only in milestone reviews.
 - **One heavy job at a time:** never run two cargo commands or test suites at once. Never generate large fixtures outside the heavy tier.
 

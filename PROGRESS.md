@@ -64,7 +64,7 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 
 **Who builds what, ticket size, context, checkpoints:** CLAUDE.md, "Standing rules". Not restated here.
 
-**M2 design pass** (`planner-fable`) runs when M1 finishes.
+**M2 design pass** (`planner-fable`) runs when M1 finishes. Its New UI section must cover: the detail pane, diff views, the Mistake Radar Explain panel, and the Map view and Overview strip deferred from M1.
 
 **Naming (an M8 job):** pick a name in the style of Sublime Merge or Araxis Merge (a naming-pattern reference only: Araxis Merge is a diff/merge tool, not a Git client, and is not prior art for this project), with no "git" in it (Git's trademark policy forbids "git" inside names like "tergit"). Starting shortlist: Tributary (command `trib`) and Thicket passed the clash check on 2026-09-11. Graft is taken.
 
