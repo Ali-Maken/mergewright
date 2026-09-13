@@ -46,9 +46,14 @@ heavier burst meets a slow CPU:
 - The first key after ≥ 0.5 s idle before the scroll missed as well
   (17.0–24.8 ms; 16.0 ms with the spinner).
 
-How the release assertion treats this (exclude the named key, hold the CPU
-busy while measuring, or cut the per-key cost until a cold CPU fits) is
-**open**: m1-the-graph/30c's handoff asks the user.
+How the release assertion treats this: **decided (user, 2026-09-13, option
+a): cut the per-key cost until a cold CPU fits.** Excluding the key or
+holding a core busy while measuring were rejected: they hide the evidence.
+Keys draw from the rows already laid out and never wait on the worker
+(m1-the-graph/30c), strips either side are rasterised while idle (30h), and
+the first key after ≥ 0.5 s idle is printed separately, not asserted. Result
+(m1-the-graph/30f): 7 of 7 counted release runs pass, worst key 14.6 ms;
+idle-wake 14 of 140 keys over 16 ms, all at 50k refs, max 19.1 ms.
 
 ## Applied: rows on hand (m1-the-graph/30f, 2026-09-13)
 

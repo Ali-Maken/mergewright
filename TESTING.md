@@ -65,8 +65,10 @@ cargo test --release -p graft --features heavy-tests --test it -- frames:: heavy
 ```
 
 In the debug run above those same tests measure and print their numbers
-(`debug build, budget recorded not asserted`) without failing; peak RSS
-fails in both builds. Every milestone review runs both and reports the
+(`debug build, budget recorded not asserted`) without failing; so does
+`frames::`'s rows-on-hand check (`rows on hand recorded not asserted: N of M
+keys`), since whether layout keeps ahead of a held `PageDown` depends on
+build speed too. Peak RSS fails in both builds. Every milestone review runs both and reports the
 release numbers.
 
 **Frame numbers depend on the CPU's power state** (m1/30c part b). On the
@@ -74,7 +76,10 @@ build machine (Apple Silicon), a scroll paced at 60 Hz is light load, and
 the CPU stays in a slow state until a heavier burst: the first key that
 asks for rows past those on hand (key 37 of the script: a `j` that costs
 its own frame, a progress frame and the rows' frame back to back) measured
-12–25 ms in release, and so did the first key after ≥ 0.5 s idle. With one
+12–25 ms in release before m1/30c–30h cut the per-key cost (after: 7 of 7
+release runs pass, worst key 14.6 ms), and so did the first key after
+≥ 0.5 s idle (still 14 of 140 over 16 ms at 50k refs, max 19.1 ms; printed
+as `idle_wake_us`, not asserted). With one
 core kept busy by an unrelated spinning thread the same key took
 6.5–6.8 ms and p99 fell from 12–15 ms to 7 ms. Close other work before the
 release run; a real user's first keypress after reading the screen pays

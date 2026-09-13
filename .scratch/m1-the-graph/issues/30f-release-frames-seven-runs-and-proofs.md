@@ -1,6 +1,6 @@
 # m1-the-graph/30f — Release frame check 7/7, idle-wake report, proofs
 
-Status: partial — seam 4: 7/7 counted release runs pass; debug frames run fails the `waited` check (decision needed); proofs, perf run, docs open
+Status: done — 7/7 release runs; rows-on-hand release-only (ADR-0021 applied); proofs and release perf run done
 Build with: **Opus** (high) — frame timing under the job/redraw loop (split from 30c part b seam 2)
 Blocked by: 30h
 Leaves runnable: yes — release frame check passes 7 runs of 7; idle-wake reported separately.
@@ -27,11 +27,11 @@ In:
 Out: eviction (30e). The user's by-eye check (no lag after a pause) happens at the gallery re-walk.
 
 ## Acceptance
-- [ ] frames.rs green in debug (records) and release.
-- [ ] 7/7 release runs recorded.
-- [ ] Idle-wake numbers printed separately.
-- [ ] Proofs done; release perf run numbers in the ticket.
-- [ ] Gates pass.
+- [x] frames.rs green in debug (records) and release.
+- [x] 7/7 release runs recorded.
+- [x] Idle-wake numbers printed separately.
+- [x] Proofs done; release perf run numbers in the ticket.
+- [x] Gates pass.
 
 ## Size
 Under ~80k tokens. Stop with a handoff note rather than compacting.
@@ -172,3 +172,25 @@ Reading (from the check's code, not profiled): `Paced::waited` flags a key whose
 - C. Pace the debug script slower. This hides it; not recommended.
 
 **Handoff — next exact steps:** apply the decision; re-run the debug frames run to a file; then the proofs (release, frames:: with `INPUT_TO_FRAME` 16→4 ms in `crates/graft/tests/it/frames.rs:56`, see all 4 fail; `heavy::FIRST_PAINT_LIMIT` 150→10 ms in `crates/graft/tests/it/heavy.rs:28`, see `heavy::budgets_hold*` fail; revert both); the full release perf run (TESTING.md "The heavy tier", both commands, alone, to `target/30f/`); ADR-0021 open → decided (a); TESTING.md/KNOWN_GAPS (the stale row "Input to frame misses 16 ms"; a row for idle-wake over 16 ms at 50k refs: 14 of 140, max 19.1 ms); tick 30c/30f boxes. 7/7 counted is done: don't re-run the count unless code on the key path changes.
+
+## Seam 5 (2026-09-13, builder-opus): done, no compaction
+
+**Rows-on-hand check: conductor decision A.** `frames::check` asserts `waited` in release only; debug prints `rows on hand recorded not asserted: N of M keys drawn before their rows arrived: …`. Message no longer says "waiting on the worker" (nothing waits). ADR-0021 gains "Applied: rows on hand" (the rule applied, not a new decision). Pace not changed.
+Cause or symptom: **symptom of the test's build, not of Graft** — debug layout (2–5x slower) can't stay two screens ahead of PageDown held at 60 Hz. Cost to the user: none in the binary they run (release still fails on it; 0 keys in 7 counted runs and in this seam's perf run). Lost: a debug-only throughput shortfall no longer fails, only prints. Release behaviour untouched → 7/7 count not re-run.
+
+**Debug frames run** (`target/30f/debug-frames-2.txt`): 5/5 pass. Recorded: rows drawn before arrival — Pixel 50k 42 of 425, Pixel 100k 17, Unicode 50k 0, Unicode 100k 0. Late keys (≥16 ms) — Pixel 50k 185 of 420, Pixel 100k 142 (p50 12.0 / p99 30.8 / max 35.2 ms), both Unicode 0.
+
+**Proofs** (`target/30f/proof-budgets.txt`, release, reverted): `INPUT_TO_FRAME` 4 ms → all 4 `frames::` tests fail (255 / 342 / 225 / 114 of 420 keys); `FIRST_PAINT_LIMIT` 10 ms → all 5 `heavy::budgets_hold*` fail (first paint 29.6–101.2 ms). Sink test passes (not a budget).
+
+**Full perf run.** Heavy tier debug (`target/30f/heavy-debug.txt`): 803 passed, 0 failed, 1:57. Release (`target/30f/release-perf.txt`): 10/10 pass.
+
+| Release | p50 / p99 / max ms |
+|---|---|
+| frames Pixel 50k | 4.3 / 5.5 / 6.3 |
+| frames Unicode 50k | 6.2 / 10.2 / 10.9 |
+| frames Pixel 100k | 3.9 / 6.3 / 10.5 |
+| frames Unicode 100k | 3.9 / 5.2 / 5.4 |
+
+First paint ms (limit 150): 50k refs 55.7; commit-graph 30.5; no commit-graph 30.6; realistic with 32.1; realistic without 31.7. Peak RSS (first three): 181 / 105 / 119 MiB (limit 300 MB). Idle-wake this run max 13.3 ms (none over 16).
+
+**Docs:** ADR-0021 "open" → decided (user's option a) with the 30f result; TESTING.md heavy tier notes rows-on-hand recording and refreshes stale key-37 numbers; KNOWN_GAPS: stale "Input to frame misses 16 ms" and "Pixel-tier page keys miss 16 ms" rows replaced by "Idle-wake keys can miss 16 ms at 50k refs" (14 of 140, max 19.1 ms); 30c boxes ticked, by-eye box left for the user.

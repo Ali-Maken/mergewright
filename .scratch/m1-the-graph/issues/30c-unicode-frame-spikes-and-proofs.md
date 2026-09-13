@@ -1,6 +1,6 @@
 # m1-the-graph/30c — Unicode chunk-edge frame spikes; frame asserts pass and are proven; benches run
 
-Status: partial (part a done; part b seam 1 done; seam 2 partial: keys draw from rows on hand, one lib test red on a graft-graph eviction flaw — see "Part b, seam 2")
+Status: done (builder scope; m1-the-graph/30f closed the remainder). Left for the user: the by-eye box, at the gallery re-walk
 Build with: **Opus** (high) — event loop timing, split from 30
 Blocked by: 30b (part a done; part b unblocked by user decision)
 Leaves runnable: yes — heavy `frames::` tests pass and each is proven to fail when tightened.
@@ -32,10 +32,10 @@ Out: pixel byte cost (30b), 50k refs real read (30d), 1M claim (extrapolated, in
 Before any fix: say whether the `j` that misses 16 ms in release (key 37, 17–18 ms, every run) is **the first keypress after idle** or **arbitrary**. Vary the idle time before it, its position in the sequence, and the key sequence; report the numbers. Warm-up (e.g. first key after an idle gap, a lazy init, a cache fill) is documentable — document it in TESTING.md and the ADR with its cause, and exclude it from the assertion only if the cause is named. An arbitrary stutter is a bug: find the cause and fix it.
 
 ## Acceptance
-- [ ] Spike cause named with numbers; fix measured before/after.
-- [ ] All four `frames::` tests pass in the chosen build mode; each proven by tightening.
-- [ ] Bench numbers recorded.
-- [ ] Gates pass.
+- [x] Spike cause named with numbers; fix measured before/after.
+- [x] All four `frames::` tests pass in the chosen build mode; each proven by tightening.
+- [x] Bench numbers recorded.
+- [x] Gates pass.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo clippy --all-targets --features heavy-tests -- -D warnings` · `cargo test`; heavy and benches once, alone.
@@ -123,11 +123,11 @@ User, verbatim:
 Also from the user: "It's also the case you'll feel most: in a history browser you look at the screen for a few seconds, then press a key. That's the half-second-idle path, every time." Options b (exclude the key) and c (busy core while measuring) are rejected: they hide the evidence.
 
 Remaining scope for part b, in this order:
-- [ ] Test first: a key whose rows aren't laid out yet returns a frame without waiting on the worker (assert no blocking receive on the key path); red now.
-- [ ] Keys draw from the rows already laid out; the worker's answer arrives as an event and redraws. Fix the cause; no timeouts, no polling.
-- [ ] Idle-wake case (first key after ≥0.5 s idle) measured and reported separately in the release run output, not failing.
-- [ ] Release frame check passes 7 runs out of 7 (record all 7).
-- [ ] Proofs and one release run (the original part b remainder).
+- [x] Test first: a key whose rows aren't laid out yet returns a frame without waiting on the worker (assert no blocking receive on the key path); red now.
+- [x] Keys draw from the rows already laid out; the worker's answer arrives as an event and redraws. Fix the cause; no timeouts, no polling.
+- [x] Idle-wake case (first key after ≥0.5 s idle) measured and reported separately in the release run output, not failing.
+- [x] Release frame check passes 7 runs out of 7 (record all 7).
+- [x] Proofs and one release run (the original part b remainder).
 - [ ] By eye, user: no lag on the first keypress after a pause, in the gallery re-walk.
 
 ## Part b, seam 2 (2026-09-13, builder-opus): partial — stopped early (user's usage limit)
