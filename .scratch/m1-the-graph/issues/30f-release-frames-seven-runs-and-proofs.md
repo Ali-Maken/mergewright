@@ -1,6 +1,6 @@
 # m1-the-graph/30f — Release frame check 7/7, idle-wake report, proofs
 
-Status: ready — seam 4 (7 counted runs from run 1, proofs, docs); 30h done
+Status: partial — seam 4: 7/7 counted release runs pass; debug frames run fails the `waited` check (decision needed); proofs, perf run, docs open
 Build with: **Opus** (high) — frame timing under the job/redraw loop (split from 30c part b seam 2)
 Blocked by: 30h
 Leaves runnable: yes — release frame check passes 7 runs of 7; idle-wake reported separately.
@@ -160,3 +160,15 @@ Worst key over all 7 runs: 14.6 ms (Unicode 50k refs, run 5). The replay check (
 | 7 | 12431 10446 5945 11951 11958 | 13614 11848 12892 13149 12128 | 3723 6017 4860 7150 7009 | 6166 6544 1905 4781 5007 |
 
 Idle-wake over 16 ms: 14 of 140 keys, all at 50k refs (max 19.1 ms). The user's by-eye check of the first key after a pause is still open.
+
+**Debug frames run (`target/30f/debug-frames.txt`): FAILS, 2 passed / 3 failed. It is the first debug run of the reworked frames.rs; no earlier one exists, so a pre-30h baseline is unknown.** The time budget is only recorded in debug, as designed (Unicode 100k: p50 7.0 / p99 10.6 / max 11.4 ms, 0 late). The failures are the `waited` replay check (frames.rs:143, asserted in both builds):
+- Pixel 50k refs: 42 keys; Pixel 100k: 19 keys; Unicode 50k: 1 key (key 306). All are `PageDown` during the 240-key page run, e.g. "key 132 (PageDown): cursor 453, top 416, 0 of 38 rows on hand".
+
+Reading (from the check's code, not profiled): `Paced::waited` flags a key whose viewport rows weren't on hand when it was drawn. The loop didn't block: it drew what it had. In debug, layout can't stay 2 screens ahead of PageDown at 60 Hz (~2,400 rows/s), and the pixel tier is worse (slower debug frames, plus the prefetch what-ifs). So the check depends on how fast the worker is, which the check's comment says it doesn't ("not a time budget"), and its message says "waiting on the worker" when nothing waited. The user sees blank rows on held PgDn until the answer lands; release showed none in 7 runs.
+
+**Decision needed (conductor → user or planner), not made here:**
+- A. Assert `waited` in release only and record it in debug, like the time budgets (ADR-0021); fix the message to say "drawn before their rows arrived". Cost: a debug-only throughput shortfall isn't caught.
+- B. Keep it in both builds and make layout keep up in debug (more read-ahead per answer). Cost: bigger windows and more memory (30c seam 2 hit an eviction regression widening them).
+- C. Pace the debug script slower. This hides it; not recommended.
+
+**Handoff — next exact steps:** apply the decision; re-run the debug frames run to a file; then the proofs (release, frames:: with `INPUT_TO_FRAME` 16→4 ms in `crates/graft/tests/it/frames.rs:56`, see all 4 fail; `heavy::FIRST_PAINT_LIMIT` 150→10 ms in `crates/graft/tests/it/heavy.rs:28`, see `heavy::budgets_hold*` fail; revert both); the full release perf run (TESTING.md "The heavy tier", both commands, alone, to `target/30f/`); ADR-0021 open → decided (a); TESTING.md/KNOWN_GAPS (the stale row "Input to frame misses 16 ms"; a row for idle-wake over 16 ms at 50k refs: 14 of 140, max 19.1 ms); tick 30c/30f boxes. 7/7 counted is done: don't re-run the count unless code on the key path changes.
