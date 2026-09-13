@@ -7,6 +7,7 @@ One line per public item. Update when a public item changes.
 - `crash` (mod) — panic handling and terminal restore on crash.
 - `event_loop` (mod) — the run loop, input, signals.
 - `history` (mod) — history walk, layout, streaming.
+- `search` (mod) — `/` search over commit subject, author, sha prefix and body (m1-the-graph/26).
 - `jobs` (mod) — background job runner.
 - `refs` (mod) — refs on each commit and ahead/behind, for the ref badges.
 - `repos` (mod) — repository store, opened once and cached.
@@ -17,6 +18,10 @@ One line per public item. Update when a public item changes.
 - `view` (mod) — draws state to a frame.
 
 ## history
+- `Wanted::Find { commit, rows, fallback }` — lay out until `commit` has a row, answer around it (search's far hit); `fallback` when the walk ends without it.
+- `History::seeking` (field) — the commit a pending `Find` is to select.
+- `History::seek` (fn) — select a commit: at once if on hand, else a `Find` request (a jump, so Esc withdraws it).
+- `History::restore` (fn) — put cursor/top back (search cancelled) and ask for that window.
 - `History::strip_rows` (field) — pixel tier's strip height; requests widen to whole strips plus the row above. `None` (text tiers) asks exactly as before.
 
 ## view::strips
@@ -77,7 +82,7 @@ One line per public item. Update when a public item changes.
 ## update
 - `AppEvent` (enum) — events fed into `update`, including job products.
 - `Progress` (enum) — what a running job hands over before it ends.
-- `Task` (enum) — jobs identified so their results can be told apart from stray ones; `ReadRefs` reads the badges; `ReadWorkingTree` reads working-tree status counts; `PromoteHistory` sorts for ADR-0008 promotion.
+- `Task` (enum) — jobs identified so their results can be told apart from stray ones; `ReadRefs` reads the badges; `ReadWorkingTree` reads working-tree status counts; `PromoteHistory` sorts for ADR-0008 promotion; `Search` scans for `/`. `Progress::Search` carries one chunk's hits.
 - `Product` (enum) — what a job brought back; `Refs` carries `RefBadges` or why they failed; `WorkingTree` carries `WorkingTreeCounts` or why they failed; `TopologicalOrder` carries a sort's order.
 - `GitCheck` (enum) — what running `git --version` found.
 - `AppState` (struct) — the whole app state.
@@ -89,6 +94,8 @@ One line per public item. Update when a public item changes.
 - `AppState::system_git` (field) — system git check result once that job answers.
 - `AppState::awaiting` (field) — job id whose result is still wanted; stale ones dropped.
 - `AppState::promoting` (field) — the topological sort still wanted; any other sort's order is dropped.
+- `AppState::search_prompt` (field) — the `/` prompt's typed text while open; every key but Ctrl-C is text.
+- `AppState::search` (field) — the running or finished search, its footer line; Esc cancels a running one (restoring the selection), then closes it.
 - `AppState::history` (field) — the history walk shown on screen, if one was asked for.
 - `AppState::refs` (field) — refs on each commit, once the refs job answers.
 - `AppState::working_tree` (field) — working-tree status counts, once that job answers.
@@ -107,10 +114,17 @@ One line per public item. Update when a public item changes.
 - `Size` (struct) — terminal size in character cells.
 - `Size::columns` (field) — width in character cells.
 - `Size::rows` (field) — height in character cells.
-- `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows; `ReadRefs` reads refs and ahead/behind off the loop's thread; `ReadWorkingTree` reads working-tree status counts off the loop's thread; `PromoteHistory` sorts a provisional walk's range topologically.
+- `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows; `ReadRefs` reads refs and ahead/behind off the loop's thread; `ReadWorkingTree` reads working-tree status counts off the loop's thread; `PromoteHistory` sorts a provisional walk's range topologically; `Search(Query)` starts a search job.
 - `CHROME_ROWS` (const) — screen rows that are not the graph; `graft_ui::graph_screen::CHROME_ROWS`.
 - `AppState::graph_rows` (fn) — history rows the graph pane shows at the current size; never zero.
 - `update` (fn) — the pure state transition function.
+
+## search
+- `Query` (struct) — a case-insensitive literal needle; `parse` (None when blank), `text`, `matches(id, subject, author, body)` (sha prefix only when all hex).
+- `SearchState` (enum) — `Running{hits}` / `Done{hits}` / `Cancelled{hits}` / `Failed(String)`; `describe` words each distinctly ("N matches so far", "no matches", "search cancelled, N matches found", "search failed: …").
+- `Scanned` (enum) — how `scan` ended: `Finished` or `Stopped`.
+- `scan` (fn) — walks every ref chunk by chunk, handing each chunk's hits to `found`; stops on `stop` or when `found` returns false.
+- `Search` (struct) — the search on screen: query, owning job, hit batches (`Arc` so state clones stay cheap), current hit, prior cursor/top for Esc, `seeking`/`missed`; `hits`, `hit`, `step(forward)` (wraps), `line` (footer text).
 
 ## repository
 - `RepositoryFacts` (struct) — what one open repository told Graft.

@@ -48,6 +48,8 @@ One line per public item. Update when a public item changes.
 - `GraphView::ascii` (field) — draw the graph column with the ASCII glyph table (`graph.renderer`, m1-the-graph/19).
 - `GraphView::notice` (field) — what the app layer did to the renderer tier, shown in the footer under `problem`, above the hints; `None` for nothing to say.
 - `GraphView::pixel` (field) — the pixel tier draws the graph: the column keeps its width, left blank for the images (m1-the-graph/24c).
+- `GraphView::search` (field) — the search footer line (`SearchLine`): below `problem`, above `notice`; `None` when no search.
+- `SearchLine` (enum) — `Prompt(text)` draws ` /text_`; `Status{text, failed}` draws the search's line, warning-coloured only when failed.
 - `GraphView::graphics` (field) — `gfx ok` / `gfx: <message>` in the header while pixels are drawn; `None` otherwise.
 - `GraphicsStatus` (enum) — `Ok` or `Failed(SanitizedText)`: what the terminal said about the graph images.
 - `Tooltip` (struct) — `subject`, `body` (both `SanitizedText`), `parents` (short shas); hover and `Enter` build it identically (m1-the-graph/17). "Contained in" is out of scope — `KNOWN_GAPS.md`.

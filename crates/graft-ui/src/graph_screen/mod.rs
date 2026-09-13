@@ -107,6 +107,9 @@ pub struct GraphView<'a> {
     /// be told twice — the tier-drop key said what it did. Takes the
     /// footer's place under [`GraphView::problem`], above the hints.
     pub notice: Option<SanitizedText>,
+    /// The search prompt or the search's state, in the footer above a notice
+    /// and under a problem; `None` when there is no search (m1-the-graph/26).
+    pub search: Option<SearchLine>,
 }
 
 /// What the terminal said about the graph images, named by state: `gfx ok`
@@ -417,9 +420,28 @@ fn walk_text(walk: &WalkView) -> (String, Token) {
     }
 }
 
-/// The key hints the footer lists. Leaving and the status screen first: a
-/// narrow terminal cuts from the right.
-const HINTS: &str = " q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom";
+/// What the footer says about search: the prompt being typed, or how the
+/// search stands. Only a failed search reads as a warning.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SearchLine {
+    /// The `/` prompt: the query typed so far.
+    Prompt(SanitizedText),
+    /// A running or finished search: its line, and whether it failed.
+    Status {
+        /// Query, state, position and keys.
+        text: SanitizedText,
+        /// The search failed; drawn as a warning.
+        failed: bool,
+    },
+}
+
+/// The key hints the footer lists, around the lane-expansion hint. Leaving
+/// and the status screen first, then `+` while it applies: a narrow terminal
+/// cuts from the right, and the hint that comes and goes matters more than
+/// the movement keys that are always there.
+const HINTS: &str = " q quit  F2 status";
+/// The hints after the lane-expansion hint.
+const MORE_HINTS: &str = "  / search  j/k move  PgUp/PgDn page  g/G top/bottom";
 
 /// The hint for the lane-expansion key, shown only while there is something
 /// to expand or collapse.
@@ -457,12 +479,17 @@ impl Widget for GraphScreen<'_> {
         }
 
         if area.height > 1 {
-            let (text, token) = match (&self.view.problem, &self.view.notice) {
-                (Some(problem), _) => (format!(" {problem}"), Token::Warning),
-                (None, Some(notice)) => (format!(" {notice}"), Token::Info),
-                (None, None) => (
+            let (text, token) = match (&self.view.problem, &self.view.search, &self.view.notice) {
+                (Some(problem), _, _) => (format!(" {problem}"), Token::Warning),
+                (None, Some(SearchLine::Prompt(typed)), _) => (format!(" /{typed}_"), Token::Info),
+                (None, Some(SearchLine::Status { text, failed }), _) => (
+                    format!(" {text}"),
+                    if *failed { Token::Warning } else { Token::Info },
+                ),
+                (None, None, Some(notice)) => (format!(" {notice}"), Token::Info),
+                (None, None, None) => (
                     format!(
-                        "{HINTS}{}",
+                        "{HINTS}{}{MORE_HINTS}",
                         expand_hint(&fold, self.view.compaction.expanded)
                     ),
                     Token::TextMuted,

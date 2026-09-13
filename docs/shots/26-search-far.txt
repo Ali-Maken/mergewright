@@ -1,0 +1,251 @@
+--- first frame ---
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+◌     Uncommitted changes (1 untracked)
+◆     [◆ main] [tag: release/01000… Trunk commit 100000             6y   907b0e4
+●     Trunk commit 99999                                            6y   94bd832
+●     Trunk commit 99998                                            6y   0684f50
+●     Trunk commit 99997                                            6y   0393e30
+●     Trunk commit 99996                                            6y   2d55d14
+●     Trunk commit 99995                                            6y   d5fceaa
+●     Trunk commit 99994                                            6y   61bbea5
+●     Trunk commit 99993                                            6y   6ae2116
+●     Trunk commit 99992                                            6y   1625da4
+●     Trunk commit 99991                                            6y   31a7fb7
+●     Trunk commit 99990                                            6y   f0f960d
+◉─╮   Merge branch 'topic/007157'                                   6y   4609447
+│ ●   topic/007157: step 3                                          6y   1e480f2
+│ ●   topic/007157: step 2                                          6y   4cb91e5
+│ ●   topic/007157: step 1                                          6y   c144116
+●─╯   Trunk commit 99985                                            6y   0debbae
+●     Trunk commit 99984                                            6y   03b75ec
+●     Trunk commit 99983                                            6y   b1b2bb0
+●     Trunk commit 99982                                            6y   916a61b
+●     Trunk commit 99981                                            6y   f79e1fa
+●     Trunk commit 99980                                            6y   9f71232
+ q quit  F2 status  / search  j/k move  PgUp/PgDn page  g/G top/bottom
+--- prompt: /308912d880 ---
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+◌     Uncommitted changes (1 untracked)
+◆     [◆ main] [tag: release/01000… Trunk commit 100000             6y   907b0e4
+●     Trunk commit 99999                                            6y   94bd832
+●     Trunk commit 99998                                            6y   0684f50
+●     Trunk commit 99997                                            6y   0393e30
+●     Trunk commit 99996                                            6y   2d55d14
+●     Trunk commit 99995                                            6y   d5fceaa
+●     Trunk commit 99994                                            6y   61bbea5
+●     Trunk commit 99993                                            6y   6ae2116
+●     Trunk commit 99992                                            6y   1625da4
+●     Trunk commit 99991                                            6y   31a7fb7
+●     Trunk commit 99990                                            6y   f0f960d
+◉─╮   Merge branch 'topic/007157'                                   6y   4609447
+│ ●   topic/007157: step 3                                          6y   1e480f2
+│ ●   topic/007157: step 2                                          6y   4cb91e5
+│ ●   topic/007157: step 1                                          6y   c144116
+●─╯   Trunk commit 99985                                            6y   0debbae
+●     Trunk commit 99984                                            6y   03b75ec
+●     Trunk commit 99983                                            6y   b1b2bb0
+●     Trunk commit 99982                                            6y   916a61b
+●     Trunk commit 99981                                            6y   f79e1fa
+●     Trunk commit 99980                                            6y   9f71232
+ /308912d880_
+Enter -> oldest commit's row and (1/1) on screen: 641 ms
+--- far hit landed ---
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+│ ●   topic/000000: step 2                                          6y   29fb1fa
+│ ●   topic/000000: step 1                                          6y   aa1b47b
+●─╯   Trunk commit 10                                               6y   49cdf7d
+●     Trunk commit 9                                                6y   09080be
+●     Trunk commit 8                                                6y   bef7744
+●     Trunk commit 7                                                6y   6622734
+●     Trunk commit 6                                                6y   3bf03d1
+●     Trunk commit 5                                                6y   edf549f
+●     Trunk commit 4                                                6y   f22ee77
+●     Trunk commit 3                                                6y   b548192
+●     Trunk commit 2                                                6y   0a7754b
+◇     Trunk commit 1                                                6y   308912d
+
+
+
+
+
+
+                                                                    6y   b1b2bb0
+●     Trunk commit 99982                                            6y   916a61b
+●     Trunk commit 99981                                            6y   f79e1fa
+●     Trunk commit 99980                                            6y   9f71232
+ /308912d880  1 match (1/1)  n/N next/prev  Esc close
+--- search settled ---
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+│ ●   topic/000000: step 2                                          6y   29fb1fa
+│ ●   topic/000000: step 1                                          6y   aa1b47b
+●─╯   Trunk commit 10                                               6y   49cdf7d
+●     Trunk commit 9                                                6y   09080be
+●     Trunk commit 8                                                6y   bef7744
+●     Trunk commit 7                                                6y   6622734
+●     Trunk commit 6                                                6y   3bf03d1
+●     Trunk commit 5                                                6y   edf549f
+●     Trunk commit 4                                                6y   f22ee77
+●     Trunk commit 3                                                6y   b548192
+●     Trunk commit 2                                                6y   0a7754b
+◇     Trunk commit 1                                                6y   308912d
+
+
+
+
+
+
+
+
+
+
+ /308912d880  1 match (1/1)  n/N next/prev  Esc close
+--- many hits, count partial while running (first hit selected) ---
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+◌     Uncommitted changes (1 untracked)
+◆     [◆ main] [tag: release/01000… Trunk commit 100000             6y   907b0e4
+●     Trunk commit 99999                                            6y   94bd832
+●     Trunk commit 99998                                            6y   0684f50
+●     Trunk commit 99997                                            6y   0393e30
+●     Trunk commit 99996                                            6y   2d55d14
+●     Trunk commit 6                                                6y   3bf03d1
+●     Trunk commit 5                                                6y   edf549f
+●     Trunk commit 4                                                6y   f22ee77
+●     Trunk commit 3                                                6y   b548192
+●     Trunk commit 2                                                6y   0a7754b
+◇     Trunk commit 1                                                6y   308912d
+
+
+
+
+
+
+
+
+
+
+ /commit 99  360 matches so far (1/360)  n/N next/prev  Esc cancel
+--- Esc straight after (a running search is cancelled, selection restored) ---
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+│ ●   topic/000000: step 2                                          6y   29fb1fa
+│ ●   topic/000000: step 1                                          6y   aa1b47b
+●─╯   Trunk commit 10                                               6y   49cdf7d
+●     Trunk commit 9                                                6y   09080be
+●     Trunk commit 8                                                6y   bef7744
+●     Trunk commit 7                                                6y   6622734
+●     Trunk commit 6                                                6y   3bf03d1
+●     Trunk commit 5                                                6y   edf549f
+●     Trunk commit 4                                                6y   f22ee77
+●     Trunk commit 3                                                6y   b548192
+●     Trunk commit 2                                                6y   0a7754b
+◇     Trunk commit 1                                                6y   308912d
+
+
+
+
+
+
+
+
+
+
+ /commit 99  search cancelled, 718 matches found (1/718)  n/N next/prev  Esc cl…
+--- same query run to the end: count settled ---
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+◌     Uncommitted changes (1 untracked)
+◆     [◆ main] [tag: release/01000… Trunk commit 100000             6y   907b0e4
+●     Trunk commit 99999                                            6y   94bd832
+●     Trunk commit 99998                                            6y   0684f50
+●     Trunk commit 99997                                            6y   0393e30
+●     Trunk commit 99996                                            6y   2d55d14
+●     Trunk commit 99995                                            6y   d5fceaa
+●     Trunk commit 99994                                            6y   61bbea5
+●     Trunk commit 99993                                            6y   6ae2116
+●     Trunk commit 99992                                            6y   1625da4
+●     Trunk commit 99991                                            6y   31a7fb7
+●     Trunk commit 99990                                            6y   f0f960d
+◉─╮   Merge branch 'topic/007157'                                   6y   4609447
+│ ●   topic/007157: step 3                                          6y   1e480f2
+│ ●   topic/007157: step 2                                          6y   4cb91e5
+│ ●   topic/007157: step 1                                          6y   c144116
+●─╯   Trunk commit 99985                                            6y   0debbae
+●     Trunk commit 99984                                            6y   03b75ec
+●     Trunk commit 99983                                            6y   b1b2bb0
+●     Trunk commit 99982                                            6y   916a61b
+●     Trunk commit 99981                                            6y   f79e1fa
+●     Trunk commit 99980                                            6y   9f71232
+ /commit 99  797 matches (1/797)  n/N next/prev  Esc close
+--- after n ---
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+◌     Uncommitted changes (1 untracked)
+◆     [◆ main] [tag: release/01000… Trunk commit 100000             6y   907b0e4
+●     Trunk commit 99999                                            6y   94bd832
+●     Trunk commit 99998                                            6y   0684f50
+●     Trunk commit 99997                                            6y   0393e30
+●     Trunk commit 99996                                            6y   2d55d14
+●     Trunk commit 99995                                            6y   d5fceaa
+●     Trunk commit 99994                                            6y   61bbea5
+●     Trunk commit 99993                                            6y   6ae2116
+●     Trunk commit 99992                                            6y   1625da4
+●     Trunk commit 99991                                            6y   31a7fb7
+●     Trunk commit 99990                                            6y   f0f960d
+◉─╮   Merge branch 'topic/007157'                                   6y   4609447
+│ ●   topic/007157: step 3                                          6y   1e480f2
+│ ●   topic/007157: step 2                                          6y   4cb91e5
+│ ●   topic/007157: step 1                                          6y   c144116
+●─╯   Trunk commit 99985                                            6y   0debbae
+●     Trunk commit 99984                                            6y   03b75ec
+●     Trunk commit 99983                                            6y   b1b2bb0
+●     Trunk commit 99982                                            6y   916a61b
+●     Trunk commit 99981                                            6y   f79e1fa
+●     Trunk commit 99980                                            6y   9f71232
+ /commit 99  797 matches (2/797)  n/N next/prev  Esc close
+--- after N N (wraps from the first hit to the last) ---
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+│ ●   topic/000007: step 2                                          6y   fc2a41d
+│ ●   topic/000007: step 1                                          6y   5b09201
+●─╯   Trunk commit 108                                              6y   0a5aa19
+●     Trunk commit 107                                              6y   ca8e4b2
+●     Trunk commit 106                                              6y   176e908
+●     Trunk commit 105                                              6y   a010ff3
+●     Trunk commit 104                                              6y   2821271
+●     Trunk commit 103                                              6y   8f0b9a8
+●     Trunk commit 102                                              6y   b3f9df1
+●     Trunk commit 101                                              6y   940dd31
+●     Trunk commit 100                                              6y   0abd94b
+●     Trunk commit 99                                               6y   04cbb0f
+◉─╮   Merge branch 'topic/000006'                                   6y   7043041
+│ ●   topic/000006: step 3                                          6y   7f35fb0
+│ ●   topic/000006: step 2                                          6y   3e008cc
+│ ●   topic/000006: step 1                                          6y   18f3c45
+●─╯   Trunk commit 94                                               6y   a0cdb53
+●     Trunk commit 93                                               6y   a70ffc8
+●     Trunk commit 92                                               6y   0fe396e
+●     Trunk commit 91                                               6y   4f2c138
+●     Trunk commit 90                                               6y   23bc6ac
+●     Trunk commit 89                                               6y   495b551
+ /commit 99  797 matches (797/797)  n/N next/prev  Esc close
+--- zero matches ---
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+│ ●   topic/000007: step 2                                          6y   fc2a41d
+│ ●   topic/000007: step 1                                          6y   5b09201
+●─╯   Trunk commit 108                                              6y   0a5aa19
+●     Trunk commit 107                                              6y   ca8e4b2
+●     Trunk commit 106                                              6y   176e908
+●     Trunk commit 105                                              6y   a010ff3
+●     Trunk commit 104                                              6y   2821271
+●     Trunk commit 103                                              6y   8f0b9a8
+●     Trunk commit 102                                              6y   b3f9df1
+●     Trunk commit 101                                              6y   940dd31
+●     Trunk commit 100                                              6y   0abd94b
+●     Trunk commit 99                                               6y   04cbb0f
+◉─╮   Merge branch 'topic/000006'                                   6y   7043041
+│ ●   topic/000006: step 3                                          6y   7f35fb0
+│ ●   topic/000006: step 2                                          6y   3e008cc
+│ ●   topic/000006: step 1                                          6y   18f3c45
+●─╯   Trunk commit 94                                               6y   a0cdb53
+●     Trunk commit 93                                               6y   a70ffc8
+●     Trunk commit 92                                               6y   0fe396e
+●     Trunk commit 91                                               6y   4f2c138
+●     Trunk commit 90                                               6y   23bc6ac
+●     Trunk commit 89                                               6y   495b551
+ /no-such-commit-zq  no matches  Esc close

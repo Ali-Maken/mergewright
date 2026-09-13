@@ -71,6 +71,18 @@ pub enum Wanted {
     /// The last this-many rows of history. The walk is laid out to its end
     /// first — on a cold walk of a big repository, that is the long one (`G`).
     Last(usize),
+    /// The rows around one commit: `rows` either side of it (search, `n`/`N`).
+    /// The walk is laid out until the commit has a row, or to the end if it
+    /// never gets one (it is not in this view); then `fallback` comes back
+    /// instead, so the viewport keeps its rows.
+    Find {
+        /// The commit to reach.
+        commit: Oid,
+        /// Rows either side of it.
+        rows: usize,
+        /// The rows sent when the commit is not in this view.
+        fallback: Range<usize>,
+    },
 }
 
 /// Which history the screen is looking at: every parent or first parents
@@ -233,6 +245,9 @@ pub struct History {
     pub asked: u64,
     /// The `G` request still laying out, if one is. `Esc` withdraws it.
     pub jump: Option<u64>,
+    /// The commit a pending jump is seeking (`History::seek`), rather than
+    /// the bottom of history; `None` for a `G`.
+    pub seeking: Option<Oid>,
     /// The view every request asks for: first-parent or not, what is folded
     /// and hidden.
     pub view: View,
@@ -260,6 +275,7 @@ impl History {
             reanchor: None,
             asked: 0,
             jump: None,
+            seeking: None,
             view: View::default(),
             promotion: None,
             strip_rows: None,
@@ -583,7 +599,11 @@ fn answer<S: CommitSource>(
     loop {
         let reach = match &request.wanted {
             Wanted::Rows(rows) => rows.end,
-            Wanted::Last(_) => usize::MAX,
+            // A far hit is reached by laying out forward from the frontier;
+            // rows already emitted are found through the retained order and
+            // rebuilt from their checkpoint, never re-walked (DESIGN.md §3.6).
+            Wanted::Find { commit, .. } if layout.row_of(*commit).is_some() => 0,
+            Wanted::Last(_) | Wanted::Find { .. } => usize::MAX,
         };
         if layout.is_done() || layout.rows_emitted() >= reach {
             break;
@@ -611,6 +631,14 @@ fn answer<S: CommitSource>(
     let range = match request.wanted {
         Wanted::Rows(rows) => rows.start.min(laid_out)..rows.end.min(laid_out),
         Wanted::Last(count) => laid_out.saturating_sub(count)..laid_out,
+        Wanted::Find {
+            commit,
+            rows,
+            fallback,
+        } => match layout.row_of(commit) {
+            Some(row) => row.saturating_sub(rows)..row.saturating_add(rows + 1).min(laid_out),
+            None => fallback.start.min(laid_out)..fallback.end.min(laid_out),
+        },
     };
     layout.set_viewport(range.clone());
     let rows = layout.rows(range.clone())?;

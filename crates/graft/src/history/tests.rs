@@ -814,6 +814,7 @@ fn asked_rows(request: Option<RowRequest>) -> Option<std::ops::Range<usize>> {
     request.map(|request| match request.wanted {
         Wanted::Rows(rows) => rows,
         Wanted::Last(count) => panic!("asked for the last {count} rows"),
+        Wanted::Find { commit, .. } => panic!("asked for the rows around {commit}"),
     })
 }
 
@@ -862,4 +863,39 @@ fn the_last_partial_strip_at_the_end_of_history_is_covered_by_the_rows_there() {
     // One row short of the end is not.
     history.window = Some(window_of(31, 18));
     assert!(history.show(10).is_some());
+}
+
+/// A search hit past everything the first screen laid out is reached by
+/// laying the walk out to it (`Wanted::Find`), and the cursor lands on it,
+/// on screen.
+#[test]
+fn a_search_hit_past_the_first_chunk_is_laid_out_to_and_selected() {
+    let dir = graft_fixtures::borrow(Shape::Linear);
+    let handle = RepoHandle::open(&dir).expect("opens");
+    let walk = Walk::all_refs(&handle, Order::Topological).expect("walk starts");
+    let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
+    let mut history = History::started();
+    let first = history
+        .show(HEIGHT)
+        .expect("a fresh walk asks for its first screen");
+    round_trip(&mut stream, &mut history, first, &mut || None);
+    let far = every_commit(&handle, Shape::Linear)
+        .iter()
+        .map(|commit| commit.id)
+        .find(|id| stream.row_of(*id).is_none())
+        .expect("the linear shape has commits past the first screen");
+
+    let seek = history.seek(far, HEIGHT).expect("a far hit is a request");
+    assert!(matches!(seek.wanted, Wanted::Find { commit, .. } if commit == far));
+    assert_eq!(history.jump, Some(seek.id), "a pending find is a jump");
+    round_trip(&mut stream, &mut history, seek, &mut || None);
+
+    assert_eq!(history.selected().map(|row| row.commit.id), Some(far));
+    assert_eq!((history.jump, history.seeking), (None, None));
+    assert!(
+        (history.top..history.top + HEIGHT).contains(&history.cursor),
+        "the hit is on screen: top {}, cursor {}",
+        history.top,
+        history.cursor
+    );
 }

@@ -18,6 +18,7 @@ pub mod jobs;
 pub mod refs;
 pub mod repos;
 pub mod repository;
+pub mod search;
 pub mod session;
 pub mod terminal;
 pub mod update;

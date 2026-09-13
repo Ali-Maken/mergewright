@@ -556,6 +556,13 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
                     row_requests.remove(&id);
                 }
             }
+            Command::Search(query) => {
+                let repos = Arc::clone(&self.repos);
+                let sink = self.sink.clone();
+                // The id names the search on screen; `update` tells a
+                // superseded one apart by the order searches start in.
+                self.queue_job(Some(Task::Search), |id| search(repos, query, sink, id));
+            }
             Command::CancelJob(id) => {
                 self.row_requests().remove(&id);
                 self.cancel(id);
@@ -614,6 +621,28 @@ fn read_history<S: JobEvents>(
             // nobody reads the ending either, and the worker delivering it
             // finds the same dead channel and stops there (`Worker::run`).
             Ok(Ended::Cancelled | Ended::NobodyListening) => Outcome::Cancelled,
+            Err(message) => Outcome::Failed(message),
+        }
+    })
+}
+
+/// The work behind [`Command::Search`], as job `id`: hits go to the screen a
+/// chunk at a time, so the first one can be jumped to while the rest are read.
+fn search<S: JobEvents>(
+    store: Arc<RepoStore>,
+    query: crate::search::Query,
+    sink: S,
+    id: JobId,
+) -> Work {
+    Box::new(move |cancel| {
+        let stop = || cancel.is_cancelled();
+        let mut found = |hits| {
+            sink.deliver(AppEvent::Progress(id, Progress::Search(hits)))
+                != Delivery::NobodyListening
+        };
+        match crate::search::scan(&store, &query, graft_git::history::CHUNK, &stop, &mut found) {
+            Ok(crate::search::Scanned::Finished) => Outcome::Done,
+            Ok(crate::search::Scanned::Stopped) => Outcome::Cancelled,
             Err(message) => Outcome::Failed(message),
         }
     })

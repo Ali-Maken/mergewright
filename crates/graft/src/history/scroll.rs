@@ -72,6 +72,17 @@ impl History {
                     self.cursor = window.first + at;
                     self.follow(height.max(1));
                 }
+                if self.jump == Some(window.request)
+                    && let Some(id) = self.seeking.take()
+                {
+                    self.jump = None;
+                    // Not in this view: the cursor keeps its row, and the
+                    // caller sees `selected` is not the commit it sought.
+                    if let Some(at) = window.rows.iter().position(|row| row.commit.id == id) {
+                        self.cursor = window.first + at;
+                        self.top = self.cursor.saturating_sub(height.max(1) / 2);
+                    }
+                }
                 if self.jump == Some(window.request) {
                     self.jump = None;
                     self.cursor = self.rows.saturating_sub(1);
@@ -159,6 +170,7 @@ impl History {
     pub fn move_cursor(&mut self, motion: Motion, height: usize) -> Option<RowRequest> {
         let height = height.max(1);
         let withdrew = self.jump.take().is_some();
+        self.seeking = None;
         let last = self.rows.saturating_sub(1);
         let offset = self.cursor.saturating_sub(self.top);
         match motion {
@@ -234,6 +246,7 @@ impl History {
     pub fn select_at(&mut self, at: usize, height: usize) -> Option<RowRequest> {
         let height = height.max(1);
         let withdrew = self.jump.take().is_some();
+        self.seeking = None;
         self.cursor = at.min(self.rows.saturating_sub(1));
         self.follow(height);
         self.wanted(height, withdrew)
@@ -253,11 +266,59 @@ impl History {
         self.wanted(height, false)
     }
 
+    /// Puts the cursor on `commit` (a search hit), centred on screen — at
+    /// once if the rows on hand hold it, else by asking the walk to lay out
+    /// until it has a row ([`Wanted::Find`]). A pending find is a jump: the
+    /// header says so and `Esc` withdraws it. `None` when there is nothing to
+    /// ask (the rows on hand did it, or the walk has gone).
+    pub fn seek(&mut self, commit: Oid, height: usize) -> Option<RowRequest> {
+        let height = height.max(1);
+        let on_hand = self.window.as_ref().and_then(|window| {
+            let at = window.rows.iter().position(|row| row.commit.id == commit)?;
+            Some(window.first + at)
+        });
+        if let Some(row) = on_hand {
+            let withdrew = self.jump.take().is_some();
+            self.seeking = None;
+            self.cursor = row;
+            self.top = row.saturating_sub(height / 2);
+            return self.wanted(height, withdrew);
+        }
+        if matches!(self.phase, Phase::Cancelled | Phase::Failed(_)) {
+            return None;
+        }
+        let fallback = self.drawn(self.top.saturating_sub(height)..self.top + 2 * height);
+        let request = self.ask(
+            Wanted::Find {
+                commit,
+                rows: height,
+                fallback,
+            },
+            height,
+        );
+        self.jump = Some(request.id);
+        self.seeking = Some(commit);
+        Some(request)
+    }
+
+    /// Puts the cursor and viewport back where they were (`Esc` on a running
+    /// search), withdrawing any jump, and returns the request for their rows.
+    pub fn restore(&mut self, cursor: usize, top: usize, height: usize) -> Option<RowRequest> {
+        let height = height.max(1);
+        self.jump = None;
+        self.seeking = None;
+        self.cursor = cursor.min(self.rows.saturating_sub(1));
+        self.top = top.min(self.cursor);
+        self.follow(height);
+        self.wanted(height, true)
+    }
+
     /// Withdraws a `G` still walking, returning the request that replaces it
     /// — the rows where the viewport already is — or `None` if there was no
     /// jump to withdraw.
     pub fn withdraw_jump(&mut self, height: usize) -> Option<RowRequest> {
         self.jump.take()?;
+        self.seeking = None;
         self.wanted(height.max(1), true)
     }
 

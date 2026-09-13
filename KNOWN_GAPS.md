@@ -275,3 +275,9 @@ entry is (CLAUDE.md).*
 - **iTerm2 erases the graph cells every frame** (`ECH` over last frame's rects, then re-send). Inside the synchronized update, so no flicker expected; unverified in iTerm2.
 - **`Flush::Resize` is now unused by the app** (kept in `graft-graph` API). DESIGN.md §3.8 still lists resize as a wholesale flush; the key already covers it. Proposed change in 25's report.
 
+
+## m1-the-graph/26 — search
+- **Only the current hit is marked** (the selection moves to it); other hits' rows are not highlighted.
+- **A hit hidden by the view** (first-parent or folded history) is counted but not selectable; the line says "(not in this view)".
+- **Search walks history again on its own job** (a second walk alongside the history walk), not the rows the history job already read. 100k no-match scan measured under a pty; see `docs/shots/26-search-typing.txt`.
+- **`n` before the first hit arrives does nothing** (no queued step).

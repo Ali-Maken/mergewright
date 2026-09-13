@@ -1,6 +1,6 @@
 # m1-the-graph/26 — Search over history
 
-Status: ready
+Status: done
 Build with: **Opus** (high) — concurrency: a cancellable search job over history that may still be streaming
 Blocked by: 09, 16
 Leaves runnable: yes — `/` in the graph screen finds and jumps to commits.
@@ -40,15 +40,32 @@ Call (existing):
 - `StreamingLayout::row_of(Oid) -> Option<usize>`, `advance(budget, stop)`, `reanchor(&Anchor, height)`, `set_viewport(Range<usize>)`
 
 ## Acceptance
-- [ ] Fixture tests: a hit in each field, no hit, a hit beyond the first chunk, `n`/`N` wrap, cancel mid-search.
-- [ ] A search started while history streams shows a partial count that later settles — asserted.
-- [ ] A result from a superseded job id is discarded — asserted.
-- [ ] A subject containing an escape sequence matches and renders inert.
-- [ ] Heavy tier: time from `Enter` to a far hit on screen on the 100k fixture, measured and reported with the machine.
-- [ ] Input stays responsive during a search on the 100k fixture — say how you verified it.
+- [x] Fixture tests: a hit in each field, no hit, a hit beyond the first chunk, `n`/`N` wrap, cancel mid-search.
+- [x] A search started while history streams shows a partial count that later settles — asserted.
+- [x] A result from a superseded job id is discarded — asserted.
+- [x] A subject containing an escape sequence matches and renders inert.
+- [x] Heavy tier: time from `Enter` to a far hit on screen on the 100k fixture, measured and reported with the machine.
+- [x] Input stays responsive during a search on the 100k fixture — say how you verified it.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test` (fast tier only; the heavy measurement runs once, alone)
 
 ## Size
 One context, under ~80k tokens. Read only what "Read first" names. If you compact, say so in your report; if a second compaction is coming, stop at a clean seam with a handoff note.
+
+## Result (builder, Opus)
+- Matcher and scan: `crates/graft/src/search.rs`, a job on `JobRunner` (`jobs/mod.rs`) that hands over each chunk's hits.
+- Far hit: `Wanted::Find` lays the history walk out to the commit and selects it; `History::seek`/`restore`.
+- Tests:
+  - scan on fixtures: each field incl. body and sha prefix, no hit, the last commit at chunk 2, cancel mid-scan
+  - update flow: partial count settles, superseded job dropped, n/N wrap, Esc restores
+  - Find round trip in history/tests.rs
+  - view: ESC in the query is inert
+- Heavy, run once, alone, on an Apple M5 with 24 GB and the release build under a pty:
+  - Enter to the oldest of 100k commits' row plus "(1/1)" on screen: **641 ms** (646 ms on the first run)
+  - Responsiveness: F2 status toggles sent back to back after Enter on a no-match 100k search, 401 toggles over ~1.5 s, each timed from key to changed screen: median 3.5 ms, max 9.2 ms, none missed
+  - Script: `.scratch/m1-the-graph/pty-search-check.py`
+- Captures (text, pyte): `docs/shots/26-search-far.txt` (far hit, partial, cancelled, settled, n, N wrap, zero) and `docs/shots/26-search-typing.txt`. The by-eye look is the user's to judge, not ticked.
+- Not a unit test: "a subject with an escape sequence matches" is asserted on the matcher (`search.rs`) and the inert rendering on the view; there is no fixture commit with a raw ESC subject.
+- The builder compacted once mid-ticket.
+- Gaps: KNOWN_GAPS.md, m1-the-graph/26.

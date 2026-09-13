@@ -78,6 +78,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
         pixel: false,
         graphics: None,
         notice: None,
+        search: None,
     }
 }
 

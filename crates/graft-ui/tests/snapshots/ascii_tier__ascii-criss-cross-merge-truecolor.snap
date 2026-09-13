@@ -1,6 +1,5 @@
 ---
 source: crates/graft-ui/tests/ascii_tier.rs
-assertion_line: 94
 expression: text
 ---
 shape: criss-cross-merge, truecolor, 80x24, cursor on row 2
@@ -28,4 +27,4 @@ shape: criss-cross-merge, truecolor, 80x24, cursor on row 2
 
 
 
- q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom
+ q quit  F2 status  / search  j/k move  PgUp/PgDn page  g/G top/bottom

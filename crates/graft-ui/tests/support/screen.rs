@@ -55,5 +55,6 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
         pixel: false,
         graphics: None,
         notice: None,
+        search: None,
     }
 }

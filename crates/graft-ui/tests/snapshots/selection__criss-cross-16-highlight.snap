@@ -27,7 +27,7 @@ shape: criss-cross-merge, 16, highlight, 80x24, row 4 selected
 
 
 
- q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom
+ q quit  F2 status  / search  j/k move  PgUp/PgDn page  g/G top/bottom
 
 modifiers: graph | subject
 ..b.......| .

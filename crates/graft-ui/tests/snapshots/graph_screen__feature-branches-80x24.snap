@@ -1,6 +1,5 @@
 ---
 source: crates/graft-ui/tests/graph_screen.rs
-assertion_line: 84
 expression: text
 ---
  graft ~/code/api  10 commits
@@ -26,4 +25,4 @@ expression: text
 
 
 
- q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom
+ q quit  F2 status  / search  j/k move  PgUp/PgDn page  g/G top/bottom

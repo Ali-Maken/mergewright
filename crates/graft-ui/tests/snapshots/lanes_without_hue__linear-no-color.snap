@@ -27,7 +27,7 @@ shape: linear, no-color, 80x24, cursor on row 2
 ●   Commit 181                                                      3y   c8254c5
 ●   Commit 180                                                      3y   e95ccd4
 ●   Commit 179                                                      3y   97b58e5
- q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom
+ q quit  F2 status  / search  j/k move  PgUp/PgDn page  g/G top/bottom
 
 graph colour per cell:
 ..

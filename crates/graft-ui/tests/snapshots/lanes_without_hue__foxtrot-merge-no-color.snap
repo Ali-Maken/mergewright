@@ -27,7 +27,7 @@ shape: foxtrot-merge, no-color, 80x24, cursor on row 2
 
 
 
- q quit  F2 status  j/k move  PgUp/PgDn page  g/G top/bottom
+ q quit  F2 status  / search  j/k move  PgUp/PgDn page  g/G top/bottom
 
 graph colour per cell:
 ....

@@ -20,7 +20,8 @@ use graft_term::{SanitizedText, sanitize, sanitize_line, sanitize_path, sanitize
 use graft_ui::graph_column::{GraphLine, NodeKind, RowPaint};
 use graft_ui::graph_screen::{
     AuthorChip, Badge, BadgeKind, Compaction, Filters, GraphEntry, GraphScreen, GraphView,
-    GraphicsStatus, OrderNotice, SHA_WIDTH, Tracking, WalkView, initials, relative_date, short_sha,
+    GraphicsStatus, OrderNotice, SHA_WIDTH, SearchLine, Tracking, WalkView, initials,
+    relative_date, short_sha,
 };
 use graft_ui::status_screen::{
     HeadView, HistoryState, HistoryView, RepositoryView, StatusScreen, StatusView,
@@ -145,22 +146,11 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
             pixel: false,
             graphics: None,
             notice: None,
+            search: search_line(state),
         };
     };
 
-    let walk = match &history.phase {
-        Phase::Streaming if history.jump.is_some() => WalkView::Jumping {
-            laid_out: history.rows,
-        },
-        Phase::Streaming => WalkView::Reading {
-            laid_out: history.rows,
-        },
-        Phase::Complete => WalkView::Complete { rows: history.rows },
-        Phase::Cancelled => WalkView::Cancelled {
-            laid_out: history.rows,
-        },
-        Phase::Failed(reason) => WalkView::Failed(sanitize_line(reason)),
-    };
+    let walk = walk_view(history);
     let thread = thread(history);
     let rows = visible_rows(state, history, thread.as_ref());
 
@@ -183,7 +173,39 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
         pixel: false,
         graphics: None,
         notice: None,
+        search: search_line(state),
     }
+}
+
+/// The header's words for where the walk is.
+fn walk_view(history: &History) -> WalkView {
+    match &history.phase {
+        Phase::Streaming if history.jump.is_some() => WalkView::Jumping {
+            laid_out: history.rows,
+        },
+        Phase::Streaming => WalkView::Reading {
+            laid_out: history.rows,
+        },
+        Phase::Complete => WalkView::Complete { rows: history.rows },
+        Phase::Cancelled => WalkView::Cancelled {
+            laid_out: history.rows,
+        },
+        Phase::Failed(reason) => WalkView::Failed(sanitize_line(reason)),
+    }
+}
+
+/// The footer's search line: the prompt while it is open, else the search's
+/// state. The query came from the keyboard and the line is drawn, so it is
+/// sanitised like repository text.
+fn search_line(state: &AppState) -> Option<SearchLine> {
+    if let Some(typed) = &state.search_prompt {
+        return Some(SearchLine::Prompt(sanitize_line(typed)));
+    }
+    let search = state.search.as_ref()?;
+    Some(SearchLine::Status {
+        text: sanitize_line(&search.line()),
+        failed: matches!(search.state, crate::search::SearchState::Failed(_)),
+    })
 }
 
 /// What the header says about the order the rows are in (ADR-0008): nothing
@@ -1246,5 +1268,40 @@ pub(crate) mod tests {
         let _ = draw(&state, 40, 12);
 
         assert_eq!(state, before);
+    }
+
+    /// The search line draws the query sanitised: an escape sequence typed or
+    /// pasted into the prompt, or matched in a subject, is inert on screen.
+    #[test]
+    fn a_search_line_with_an_escape_sequence_renders_inert() {
+        use crate::search::{Query, Search, SearchState};
+
+        let mut search = Search::new(
+            Query::parse("Commit 3\x1b[31m").expect("a query"),
+            0,
+            (0, 0),
+        );
+        search.state = SearchState::Done { hits: 1 };
+        let state = AppState {
+            history: Some(history_of(5, 2)),
+            search: Some(search),
+            size: Size {
+                columns: 80,
+                rows: 8,
+            },
+            ..AppState::default()
+        };
+        let screen = draw(&state, 80, 8);
+        assert!(!screen.contains('\x1b'), "{screen}");
+        assert!(screen.contains("1 match"), "{screen}");
+
+        let prompt = AppState {
+            search_prompt: Some("x\x1b[2J".to_owned()),
+            search: None,
+            ..state
+        };
+        let screen = draw(&prompt, 80, 8);
+        assert!(!screen.contains('\x1b'), "{screen}");
+        assert!(screen.contains(" /x"), "{screen}");
     }
 }

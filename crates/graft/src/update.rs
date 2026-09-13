@@ -21,6 +21,7 @@ use graft_git::version::SystemGit;
 
 use crate::history::{History, HistoryUpdate, Motion, Phase, Promotion, RowRequest, View};
 use crate::repository::RepositoryFacts;
+use crate::search::{Search, SearchState};
 use graft_graph::Follow;
 
 /// Everything the loop can be told.
@@ -55,6 +56,8 @@ pub enum AppEvent {
 pub enum Progress {
     /// The history walk has started, or laid out its next rows.
     History(HistoryUpdate),
+    /// A search read another chunk of history and found these commits.
+    Search(std::sync::Arc<[graft_core::oid::Oid]>),
 }
 
 /// What a job was started to do.
@@ -75,6 +78,8 @@ pub enum Task {
     ReadWorkingTree,
     /// Work out the strict topological order a provisional walk promotes to.
     PromoteHistory,
+    /// Search history for a query (`/`).
+    Search,
 }
 
 /// What a job brought back.
@@ -178,6 +183,10 @@ pub struct AppState {
     /// pixel strips. `None` in a state built without a session (tests,
     /// headless), which draws as the Unicode tier would.
     pub settled_tier: Option<RenderingTier>,
+    /// The `/` prompt while it is open: what has been typed so far.
+    pub search_prompt: Option<String>,
+    /// The search on screen, running or finished, until `Esc` closes it.
+    pub search: Option<crate::search::Search>,
 }
 
 /// The screens Graft can show.
@@ -310,6 +319,8 @@ pub enum Command {
     /// Stop a job whose result is no longer wanted. Cooperative: a job that has
     /// not started is dropped, and a running one stops at its next check.
     CancelJob(JobId),
+    /// Search history for a query off the loop's thread (`/`).
+    Search(crate::search::Query),
 }
 
 /// Answer one event: the new state, and the work it wants done.
@@ -340,6 +351,7 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             next.history = Some(history);
         }
         AppEvent::Started(id, Task::PromoteHistory) => sort_started(&mut next, &mut commands, id),
+        AppEvent::Started(id, Task::Search) => search_started(&mut next, &mut commands, id),
         // Neither of these is waited on: their results are welcome whenever
         // they arrive, and there is nothing for `Esc` to cancel.
         AppEvent::Started(
@@ -391,6 +403,9 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
         AppEvent::Progress(id, Progress::History(update)) => {
             walk_progress(&mut next, &mut commands, id, update);
         }
+        AppEvent::Progress(id, Progress::Search(hits)) => {
+            search_progress(&mut next, &mut commands, id, hits);
+        }
     }
 
     (next, commands)
@@ -414,6 +429,7 @@ fn walk_progress(
             commands.push(Command::PromoteHistory);
         }
         history.apply(update, height);
+        seek_landed(next, commands, id);
     }
     // Otherwise it is from a walk that was cancelled or superseded. Dropped
     // here, which is the whole reason the id travels with it: no chunk lands
@@ -457,7 +473,12 @@ fn sorted(
 /// The half of [`update`] that answers the events `core` defines.
 fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
     match event {
-        Event::Key(key) => key_event(next, commands, key),
+        // The search's keys go first: the open prompt takes every letter.
+        Event::Key(key) => {
+            if !search_key(next, commands, key) {
+                key_event(next, commands, key);
+            }
+        }
         Event::Resize { columns, rows } => {
             next.size = Size { columns, rows };
             let height = next.graph_rows();
@@ -467,6 +488,11 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             {
                 commands.push(Command::ShowRows(id, request));
             }
+        }
+        event @ (Event::JobFailed(id, _) | Event::JobFinished(id) | Event::JobCancelled(id))
+            if searching(next, id) =>
+        {
+            search_job_ended(next, event);
         }
         Event::JobFailed(id, failure) => {
             if next.awaiting == Some(id) {
@@ -580,6 +606,15 @@ fn escape_key(next: &mut AppState, commands: &mut Vec<Command>) {
         return;
     }
     let height = next.graph_rows();
+    // A search still running: stop it and put the selection back.
+    if next
+        .search
+        .as_ref()
+        .is_some_and(|search| matches!(search.state, SearchState::Running { .. }))
+    {
+        cancel_search(next, commands);
+        return;
+    }
     // A `G` still walking is what `Esc` backs out of first; the
     // walk itself goes on serving the rows already on screen.
     if let Some(id) = next.awaiting
@@ -587,6 +622,10 @@ fn escape_key(next: &mut AppState, commands: &mut Vec<Command>) {
         && let Some(request) = history.withdraw_jump(height)
     {
         commands.push(Command::ShowRows(id, request));
+        return;
+    }
+    // Then a finished search's line.
+    if next.search.take().is_some() {
         return;
     }
     // Then Focus mode: leaving it is not a reason to stop the walk.
@@ -608,6 +647,220 @@ fn escape_key(next: &mut AppState, commands: &mut Vec<Command>) {
         commands.push(Command::CancelJob(id));
         set_phase(next, Phase::Cancelled);
     }
+}
+
+/// The search's keys, answered before any other binding: everything but
+/// `Ctrl-C` while the prompt is open, then `/`, `n` and `N`. `true` if the key
+/// was the search's.
+fn search_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    let control_c = key.code == KeyCode::Char('c') && key.modifiers.control;
+    if next.search_prompt.is_some() && !control_c {
+        prompt_key(next, commands, key);
+    } else if is_search_key(key) && next.screen == Screen::Graph && next.history.is_some() {
+        next.search_prompt = Some(String::new());
+    } else if let Some(forward) = search_step(key)
+        && next.search.is_some()
+    {
+        step_search(next, commands, forward);
+    } else {
+        return false;
+    }
+    true
+}
+
+/// `/`: open the search prompt over the graph.
+fn is_search_key(key: KeyPress) -> bool {
+    key.code == KeyCode::Char('/') && !key.modifiers.control && !key.modifiers.alt
+}
+
+/// `n` / `N`: the next or previous search hit, wrapping. `Some(true)` is `n`.
+fn search_step(key: KeyPress) -> Option<bool> {
+    if key.modifiers.control || key.modifiers.alt {
+        return None;
+    }
+    match key.code {
+        KeyCode::Char('n') => Some(true),
+        KeyCode::Char('N') => Some(false),
+        _ => None,
+    }
+}
+
+/// A key while the `/` prompt is open: text goes into the query, `Enter`
+/// searches, `Esc` closes the prompt and nothing else.
+fn prompt_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
+    let Some(prompt) = next.search_prompt.as_mut() else {
+        return;
+    };
+    match key.code {
+        KeyCode::Char(typed) if !key.modifiers.control && !key.modifiers.alt => prompt.push(typed),
+        KeyCode::Backspace => {
+            prompt.pop();
+        }
+        KeyCode::Escape => next.search_prompt = None,
+        KeyCode::Enter => {
+            // An empty query closes the prompt: nothing to search for.
+            if let Some(query) = crate::search::Query::parse(prompt) {
+                start_search(next, commands, query);
+            }
+            next.search_prompt = None;
+        }
+        _ => {}
+    }
+}
+
+/// Replaces any search on screen with one for `query`, remembering where the
+/// selection is so `Esc` can put it back.
+fn start_search(next: &mut AppState, commands: &mut Vec<Command>, query: crate::search::Query) {
+    let prior = next
+        .history
+        .as_ref()
+        .map_or((0, 0), |history| (history.cursor, history.top));
+    let (unstarted, prior) = match next.search.take() {
+        Some(older) => {
+            if let Some(job) = older.job {
+                commands.push(Command::CancelJob(job));
+            }
+            // A search replacing a running one goes back to where the first
+            // began, not to a hit of the one it replaced.
+            let prior = match older.state {
+                SearchState::Running { .. } => older.prior,
+                _ => prior,
+            };
+            (older.unstarted + 1, prior)
+        }
+        None => (1, prior),
+    };
+    next.search = Some(Search::new(query.clone(), unstarted, prior));
+    commands.push(Command::Search(query));
+}
+
+/// A search job has started. Starts arrive in the order searches were asked
+/// for, so only the last outstanding one belongs to the search on screen;
+/// any other is superseded and cancelled.
+fn search_started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId) {
+    let Some(search) = next.search.as_mut() else {
+        commands.push(Command::CancelJob(id));
+        return;
+    };
+    search.unstarted = search.unstarted.saturating_sub(1);
+    let wanted = search.unstarted == 0 && matches!(search.state, SearchState::Running { .. });
+    if wanted {
+        search.job = Some(id);
+    } else {
+        commands.push(Command::CancelJob(id));
+    }
+}
+
+/// Is job `id` the search on screen?
+fn searching(next: &AppState, id: JobId) -> bool {
+    next.search
+        .as_ref()
+        .is_some_and(|search| search.job == Some(id))
+}
+
+/// Hits from search job `id`: counted if it is the search on screen, dropped
+/// if it was superseded or cancelled. The first hit is jumped to at once.
+fn search_progress(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    id: JobId,
+    hits: std::sync::Arc<[Oid]>,
+) {
+    if !searching(next, id) {
+        return;
+    }
+    let Some(search) = next.search.as_mut() else {
+        return;
+    };
+    search.batches.push(hits);
+    search.state = SearchState::Running {
+        hits: search.hits(),
+    };
+    if search.current.is_none() {
+        step_search(next, commands, true);
+    }
+}
+
+/// `n` / `N`, and the first hit: move the selection to the next hit.
+fn step_search(next: &mut AppState, commands: &mut Vec<Command>, forward: bool) {
+    let height = next.graph_rows();
+    let Some(search) = next.search.as_mut() else {
+        return;
+    };
+    let Some(target) = search.step(forward) else {
+        return;
+    };
+    let Some(history) = next.history.as_mut() else {
+        return;
+    };
+    let request = history.seek(target, height);
+    search.seeking = history.seeking;
+    if search.seeking.is_none() {
+        search.missed = history.selected().map(|row| row.commit.id) != Some(target);
+    }
+    if let (Some(request), Some(walk)) = (request, next.awaiting) {
+        commands.push(Command::ShowRows(walk, request));
+    }
+}
+
+/// After a window from walk `walk` lands: if it answered a search's seek, say
+/// whether the hit is in this view, and fill in any rows the new viewport
+/// needs beyond what came back.
+fn seek_landed(next: &mut AppState, commands: &mut Vec<Command>, walk: JobId) {
+    let height = next.graph_rows();
+    let (Some(search), Some(history)) = (next.search.as_mut(), next.history.as_mut()) else {
+        return;
+    };
+    let Some(target) = search.seeking else {
+        return;
+    };
+    if history.seeking.is_some() {
+        return;
+    }
+    search.seeking = None;
+    search.missed = history.selected().map(|row| row.commit.id) != Some(target);
+    if let Some(request) = history.show(height) {
+        commands.push(Command::ShowRows(walk, request));
+    }
+}
+
+/// `Esc` on a running search: cancel its job, withdraw any jump to a hit, and
+/// put the selection back where it was.
+fn cancel_search(next: &mut AppState, commands: &mut Vec<Command>) {
+    let height = next.graph_rows();
+    let Some(search) = next.search.as_mut() else {
+        return;
+    };
+    if let Some(job) = search.job.take() {
+        commands.push(Command::CancelJob(job));
+    }
+    search.state = SearchState::Cancelled {
+        hits: search.hits(),
+    };
+    search.seeking = None;
+    let (cursor, top) = search.prior;
+    if let Some(history) = next.history.as_mut()
+        && let Some(request) = history.restore(cursor, top, height)
+        && let Some(walk) = next.awaiting
+    {
+        commands.push(Command::ShowRows(walk, request));
+    }
+}
+
+/// The search job ended — finished, cancelled or failed: record how. A
+/// failure shows on the search's own line, by state, not the status line.
+fn search_job_ended(next: &mut AppState, event: Event) {
+    let Some(search) = next.search.as_mut() else {
+        return;
+    };
+    let hits = search.hits();
+    let state = match event {
+        Event::JobFailed(_, failure) => SearchState::Failed(failure.to_string()),
+        Event::JobCancelled(_) => SearchState::Cancelled { hits },
+        _ => SearchState::Done { hits },
+    };
+    search.job = None;
+    search.state = state;
 }
 
 /// Stops promoting to topological order: cancels the sort if it is still
@@ -1456,6 +1709,8 @@ mod tests {
             tooltip: None,
             renderer_override: None,
             settled_tier: None,
+            search_prompt: None,
+            search: None,
         };
 
         let first = update(&state, key(KeyCode::Char('q')));
@@ -1997,5 +2252,218 @@ mod tests {
                 "`update` must stay pure, but its module mentions `{forbidden}`"
             );
         }
+    }
+
+    // Search (m1-the-graph/26).
+
+    use crate::search::{Query, Search, SearchState};
+
+    fn hit(byte: u8) -> Oid {
+        Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is an oid")
+    }
+
+    fn found(id: JobId, hits: &[u8]) -> AppEvent {
+        AppEvent::Progress(
+            id,
+            Progress::Search(hits.iter().map(|byte| hit(*byte)).collect()),
+        )
+    }
+
+    fn typed(state: &AppState, text: &str) -> (AppState, Vec<Command>) {
+        let mut state = state.clone();
+        let mut commands = Vec::new();
+        for code in std::iter::once(KeyCode::Char('/'))
+            .chain(text.chars().map(KeyCode::Char))
+            .chain(std::iter::once(KeyCode::Enter))
+        {
+            let (next, more) = update(&state, key(code));
+            state = next;
+            commands.extend(more);
+        }
+        (state, commands)
+    }
+
+    /// A walk `walk` with rows 0..30 on hand, commit `i + 1` on row `i`, of 500
+    /// laid out; ten graph rows.
+    fn on_hand(walk: JobId) -> AppState {
+        let (state, _) = update(&awaiting(walk), sized(80, 12));
+        let AppEvent::Progress(_, Progress::History(HistoryUpdate::Window(mut window))) =
+            rows_for(walk, 2, 0..30, 500)
+        else {
+            unreachable!("`rows_for` answers with a window");
+        };
+        window.rows = (0..30u8)
+            .map(|at| {
+                let mut row = window.rows[0].clone();
+                row.commit.id = hit(at + 1);
+                row
+            })
+            .collect();
+        let (state, _) = update(
+            &state,
+            AppEvent::Progress(walk, Progress::History(HistoryUpdate::Window(window))),
+        );
+        state
+    }
+
+    fn search_of(state: &AppState) -> &Search {
+        state.search.as_ref().expect("a search")
+    }
+
+    #[test]
+    fn slash_opens_a_prompt_that_takes_every_letter_and_enter_searches() {
+        let state = on_hand(JobId::new(4));
+        let (state, _) = update(&state, key(KeyCode::Char('/')));
+        let (state, _) = update(&state, key(KeyCode::Char('q')));
+        assert_eq!(state.quit, None, "q is text while the prompt is open");
+        let (state, _) = update(&state, key(KeyCode::Char('x')));
+        let (state, _) = update(&state, key(KeyCode::Backspace));
+        assert_eq!(state.search_prompt.as_deref(), Some("q"));
+
+        let (state, commands) = update(&state, key(KeyCode::Enter));
+        assert_eq!(state.search_prompt, None);
+        assert_eq!(
+            commands,
+            vec![Command::Search(Query::parse("q").expect("q"))]
+        );
+        assert_eq!(search_of(&state).state, SearchState::Running { hits: 0 });
+    }
+
+    #[test]
+    fn an_empty_query_or_esc_closes_the_prompt_without_searching() {
+        let state = on_hand(JobId::new(4));
+        let (closed, commands) = typed(&state, "  ");
+        assert_eq!(
+            (closed.search_prompt.clone(), closed.search.clone()),
+            (None, None)
+        );
+        assert!(commands.is_empty());
+        let (open, _) = update(&state, key(KeyCode::Char('/')));
+        let (closed, commands) = update(&open, key(KeyCode::Escape));
+        assert_eq!((closed.search_prompt, commands), (None, vec![]));
+    }
+
+    /// Hits count as partial while the job runs, the first is jumped to at
+    /// once, and the count settles when the job finishes.
+    #[test]
+    fn the_count_is_partial_while_running_and_settles_when_done() {
+        let walk = JobId::new(4);
+        let (state, _) = typed(&on_hand(walk), "fix");
+        let job = JobId::new(9);
+        let (state, _) = update(&state, AppEvent::Started(job, Task::Search));
+        let (state, _) = update(&state, found(job, &[3]));
+        assert_eq!(search_of(&state).state.describe(), "1 match so far");
+        let history = state.history.as_ref().expect("a walk");
+        assert_eq!(history.cursor, 2, "the first hit is selected at once");
+        assert!(search_of(&state).line().contains("(1/1)"));
+
+        let (state, _) = update(&state, found(job, &[12, 20]));
+        assert_eq!(search_of(&state).state.describe(), "3 matches so far");
+        let (state, _) = update(&state, core(Event::JobFinished(job)));
+        assert_eq!(search_of(&state).state, SearchState::Done { hits: 3 });
+        assert_eq!(search_of(&state).state.describe(), "3 matches");
+    }
+
+    #[test]
+    fn n_and_capital_n_walk_the_hits_and_wrap() {
+        let walk = JobId::new(4);
+        let (state, _) = typed(&on_hand(walk), "fix");
+        let job = JobId::new(9);
+        let (state, _) = update(&state, AppEvent::Started(job, Task::Search));
+        let (state, _) = update(&state, found(job, &[3, 12, 20]));
+        let cursor = |state: &AppState| state.history.as_ref().map(|h| h.cursor);
+        assert_eq!(cursor(&state), Some(2));
+        let (state, _) = update(&state, key(KeyCode::Char('n')));
+        assert_eq!(cursor(&state), Some(11));
+        let (state, _) = update(&state, key(KeyCode::Char('n')));
+        let (state, _) = update(&state, key(KeyCode::Char('n')));
+        assert_eq!(cursor(&state), Some(2), "n wraps past the last hit");
+        let (state, _) = update(&state, key(KeyCode::Char('N')));
+        assert_eq!(cursor(&state), Some(19), "N wraps before the first");
+    }
+
+    /// A hit not in the rows on hand is a find request to the walk; the
+    /// answer lands the cursor on it.
+    #[test]
+    fn a_far_hit_asks_the_walk_to_lay_out_to_it() {
+        let walk = JobId::new(4);
+        let (state, _) = typed(&on_hand(walk), "fix");
+        let job = JobId::new(9);
+        let (state, _) = update(&state, AppEvent::Started(job, Task::Search));
+        let (state, commands) = update(&state, found(job, &[200]));
+        let [Command::ShowRows(to, asked)] = commands.as_slice() else {
+            panic!("one request: {commands:?}");
+        };
+        assert_eq!(*to, walk);
+        assert!(matches!(asked.wanted, Wanted::Find { commit, .. } if commit == hit(200)));
+        assert_eq!(search_of(&state).seeking, Some(hit(200)));
+    }
+
+    /// Results from a superseded search job are dropped: its start is
+    /// cancelled, and its hits never count.
+    #[test]
+    fn a_superseded_search_jobs_hits_are_discarded() {
+        let walk = JobId::new(4);
+        let (state, _) = typed(&on_hand(walk), "fix");
+        // Typed again before the first search's job said it started.
+        let (state, _) = typed(&state, "bug");
+        let (old, new) = (JobId::new(9), JobId::new(10));
+        let (state, commands) = update(&state, AppEvent::Started(old, Task::Search));
+        assert_eq!(commands, vec![Command::CancelJob(old)]);
+        let (state, _) = update(&state, AppEvent::Started(new, Task::Search));
+        let (state, _) = update(&state, found(old, &[3]));
+        assert_eq!(
+            search_of(&state).hits(),
+            0,
+            "the old job's hits are dropped"
+        );
+        let (state, _) = update(&state, core(Event::JobFinished(old)));
+        assert_eq!(search_of(&state).state, SearchState::Running { hits: 0 });
+        assert_eq!(search_of(&state).job, Some(new));
+        assert_eq!(search_of(&state).query.text(), "bug");
+    }
+
+    #[test]
+    fn esc_cancels_a_running_search_and_restores_the_selection() {
+        let walk = JobId::new(4);
+        let (state, _) = typed(&on_hand(walk), "fix");
+        let job = JobId::new(9);
+        let (state, _) = update(&state, AppEvent::Started(job, Task::Search));
+        let (state, _) = update(&state, found(job, &[6]));
+        assert_eq!(state.history.as_ref().map(|h| h.cursor), Some(5));
+
+        let (state, commands) = update(&state, key(KeyCode::Escape));
+        assert!(commands.contains(&Command::CancelJob(job)), "{commands:?}");
+        assert_eq!(
+            state.history.as_ref().map(|h| (h.cursor, h.top)),
+            Some((0, 0))
+        );
+        assert_eq!(search_of(&state).state, SearchState::Cancelled { hits: 1 });
+        assert_eq!(state.awaiting, Some(walk), "the walk goes on");
+
+        let (state, _) = update(&state, core(Event::JobCancelled(job)));
+        assert_eq!(search_of(&state).state, SearchState::Cancelled { hits: 1 });
+        let (state, _) = update(&state, key(KeyCode::Escape));
+        assert_eq!(state.search, None, "a second Esc closes the line");
+    }
+
+    /// No matches, cancelled and failed are three states that read
+    /// differently, and a failure stays on the search's line.
+    #[test]
+    fn no_matches_cancelled_and_failed_are_distinct() {
+        let walk = JobId::new(4);
+        let (state, _) = typed(&on_hand(walk), "fix");
+        let job = JobId::new(9);
+        let (state, _) = update(&state, AppEvent::Started(job, Task::Search));
+
+        let (none, _) = update(&state, core(Event::JobFinished(job)));
+        let (cancelled, _) = update(&state, core(Event::JobCancelled(job)));
+        let failure = JobFailure::Failed("walk broke".to_owned());
+        let (failed, _) = update(&state, core(Event::JobFailed(job, failure)));
+
+        let lines = [none, cancelled, failed].map(|state| search_of(&state).state.describe());
+        assert_eq!(lines[0], "no matches");
+        assert_eq!(lines[1], "search cancelled, 0 matches found");
+        assert_eq!(lines[2], "search failed: walk broke");
     }
 }
