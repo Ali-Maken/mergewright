@@ -1,6 +1,6 @@
 # m1-the-graph/30b — A one-row scroll in the pixel tier writes ~336 KB
 
-Status: partial
+Status: done
 Build with: **Opus** (high) — Kitty protocol, split from 30
 Blocked by: 30
 Leaves runnable: yes — a one-row scroll frame places existing images and transmits at most one new strip.
@@ -21,11 +21,11 @@ In:
 Out: Unicode chunk spikes, release-vs-debug assertion policy, tightening proofs (→ 30c). 50k refs (→ 30d).
 
 ## Acceptance
-- [ ] Finding with numbers; cause named.
-- [ ] New fast test red before fix, green after.
-- [ ] Bytes per one-row scroll frame and p99 recorded, before/after.
-- [ ] Capture under `docs/shots/30b-*` if what's drawn changes; user judges by eye.
-- [ ] Gates pass.
+- [x] Finding with numbers; cause named.
+- [x] New fast test red before fix, green after.
+- [x] Bytes per one-row scroll frame and p99 recorded, before/after.
+- [x] Capture under `docs/shots/30b-*` if what's drawn changes: none; see "Cause 2" for the one-frame change a pty capture cannot hold (user checks by eye).
+- [x] Gates pass.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo clippy --all-targets --features heavy-tests -- -D warnings` · `cargo test`; `frames::` heavy tests alone, output to a file.
@@ -69,4 +69,39 @@ Not done: 50k-refs pixel re-run and 30's table update (after cause 2); `docs/sho
 Gotchas: `frames.rs` `Sink` now prints per-trigger `frames: ... trigger=` lines (transmits, transmit_bytes, placements, deletes, frees) — use them. Debug still misses badly; release narrowly (debug-vs-release policy is 30c).
 
 ## NOTES
-- No compaction. Stopped at ~60k tokens at a clean point rather than start the cause-2 diagnosis.
+- Part 1: no compaction, stopped at ~60k tokens at a clean point.
+- Continuation 1: no compaction. Cause 2 named and fixed. The Handoff section above is kept as history; it is superseded.
+
+## Cause 2 (2026-09-13, builder-opus, continuation 1)
+
+**Measured** (temporary diagnosis, since removed): `StripCache::get` split the layout hash into parts and, on each miss, compared them with the previous rasterisation at the same `first_row`, tagged with the selected id, the window's `first` and `history.top`. Release, 100k fixture, pixel, 556 misses (`/tmp/30b/diag2-release.txt`):
+
+| Miss | Count | Selection | Window | Top |
+|---|---|---|---|---|
+| New `first_row` (new territory, legitimate) | 288 | | | |
+| Thread + emphasis parts changed | 119 | changed | same | changed |
+| Thread + emphasis parts changed | 50 | changed | changed | same |
+| Thread part only (selection moved within the window, legitimate) | 52 | changed | same | changed |
+| Nothing changed (evicted, re-rasterised) | 43 | | | |
+| Ids/edges changed | 1 | | | |
+
+**Cause:** a page key moves the cursor to a row outside the window on hand. `view::thread` then returns None (`History::selected` is None), so the key's frame draws every strip whose rows are on hand **unthreaded** (the emphasis part changes, since unthreaded rows hash their own emphasis). It rasterises and transmits them, and when the window arrives the thread returns and they are rasterised and transmitted again (the 119 + 50 rows). Not a window-edge effect: ancestry is window-independent for rows in both windows.
+
+**Fix:** `view::strips::pixel_rows` leaves out every strip while the cursor's row has not arrived (a non-empty window with no thread). Same rule as a strip missing its rows: wait for the final picture. The cursor is always on screen, so its row is always on the way. Fast test `view::strips::tests::every_strip_waits_while_the_cursor_row_has_not_arrived`: red `left: [(32, 32), (64, 32), (96, 4)]`, green after.
+
+**Visible change (user judges by eye):** on a page key whose cursor row isn't on hand, the graph is blank for the one frame before the window answers, instead of drawing unlit for one frame. A pty capture can't hold one frame, so try PageDown fast in Ghostty/Kitty on a big repo.
+
+**After (both causes), pixel tier:**
+
+| Run | p50 / p99 / max | Keys over 16 ms | Total bytes | Kitty commands | Transmits: PageDown / Window |
+|---|---|---|---|---|---|
+| release 100k, after 1 | 7.3 / 15.9 / 19.2 ms | 5/420 | 284 MB | 70,794 | 298 / 287 |
+| release 100k, after 2 | 7.7 / 16.4 / 21.5 ms | 6/420 | 193 MB | 48,414 | 181 / 196 |
+| release 50k refs, after 2 | 9.2 / 15.8 / 19.9 ms | 5/420 | 193 MB | 48,414 | 181 / 196 |
+| debug 100k, before | 65 / 375 / 425 ms | 420/420 | 155 MB | | 120 / 102 |
+| debug 100k, after 2 | 38.7 / 94.0 / 112.5 ms | 324/420 | 113 MB | 28,378 | 84 / 136 |
+| debug 50k refs, after 2 | 42.7 / 93.4 / 123.1 ms | 330/420 | 86 MB | 21,327 | |
+
+`j` (one-row scroll) frames after both: 17 transmits in 120 frames, 7.7 MB, **64 KB/frame** (was 364 KB). Each of those 17 transmits is a strip entering the view. Latency barely moves: it isn't dominated by bytes to an in-memory sink. The budget is still missed (debug badly, release narrowly), which is 30c's work.
+
+Remaining transmits on page keys are mostly legitimate: new strips entering the view, and strips relit because the selection moved. The 43 evicted-and-rasterised-again misses are logged in KNOWN_GAPS.

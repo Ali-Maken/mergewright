@@ -208,3 +208,21 @@ fn the_selection_thread_and_focus_reach_the_strip() {
     let unfocused = pixel_rows(&state, MAX_LANES, STRIP_ROWS);
     assert_eq!(unfocused.strips[0].rows[50 - 32].emphasis, Emphasis::Normal);
 }
+
+#[test]
+fn every_strip_waits_while_the_cursor_row_has_not_arrived() {
+    // A page key moved the viewport to 40..120 and the cursor to row 110;
+    // the window on hand still ends at row 100. Strips 32 and 64 have their
+    // rows, but without the cursor's row there is no thread to light them:
+    // drawn now, they would be rasterised and sent unlit, then again once the
+    // window arrives and the thread lights them (30b).
+    let mut history = scrolled(history_of(200, 0), 40);
+    history.cursor = 110;
+    let window = history.window.as_mut().expect("history_of sends a window");
+    window.rows = window.rows[..100].into();
+    window.first = 0;
+
+    let rows = pixel_rows(&state(history, 80), MAX_LANES, STRIP_ROWS);
+
+    assert_eq!(firsts_and_lengths(&rows), vec![]);
+}

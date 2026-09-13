@@ -66,6 +66,17 @@ Same four tests, **release** build (`cargo test --release -p graft --features he
 | `refs::badges` on 50k refs | 458–461 ms | — | synthetic | release | no budget; recorded |
 | `RefBadges::on` lookup | 22–24 ns | — | 50k refs | release | fine |
 
+After 30b (both causes: the cursor highlight in the strip key, and strips drawn unlit before the cursor's row arrived). Pixel tier only, each run alone:
+
+| Budget | Measured (p50 / p99 / max) | Tier | Fixture | Build | Result |
+|---|---|---|---|---|---|
+| input→frame < 16 ms | 38.7 / 94.0 / 112.5 ms; 324/420 over; 113 MB | Pixel | 100k, cg | debug | **missed** |
+| input→frame < 16 ms, 50k refs | 42.7 / 93.4 / 123.1 ms; 330/420 over; 86 MB | Pixel | 100k, cg + 50k refs | debug | **missed** |
+| input→frame < 16 ms | 7.7 / 16.4 / 21.5 ms; 6/420 over; 193 MB | Pixel | 100k, cg | release | **missed (narrowly)** |
+| input→frame < 16 ms, 50k refs | 9.2 / 15.8 / 19.9 ms; 5/420 over; 193 MB | Pixel | same | release | **missed (narrowly)** |
+
+One-row scroll (`j`) frame: 64 KB, down from 364 KB; a transmit only when a strip enters the view. Details are in 30b.
+
 Release pixel runs wrote 388 MB over 420 keys (~925 KB, ~230 Kitty commands per frame). The heavy tier is a debug build, so as written these tests fail there by a wide margin that is mostly debug overhead; whether the heavy tier should assert frame time in debug at all is a question for the conductor (see NOTES).
 
 Reading of the misses (debug runs; unconfirmed, from the per-key lists, not profiled):
