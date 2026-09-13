@@ -1309,10 +1309,13 @@ name = "graft-ui"
 version = "0.1.0"
 dependencies = [
  "graft-core",
+ "graft-fixtures",
+ "graft-git",
  "graft-graph",
  "graft-term",
  "insta",
  "ratatui",
+ "unicode-width",
 ]
 
 [[package]]

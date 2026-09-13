@@ -41,6 +41,7 @@ mod tests;
 use graft_core::capabilities::{
     Capabilities, ColorDepth, Rgb, Theme as TerminalTheme, ThemeHint, ThemeSource,
 };
+use graft_graph::identity::BranchIdentity;
 
 /// The number of chrome tokens PROMPT.md §5 names, lanes excluded.
 const TOKEN_COUNT: usize = 11;
@@ -260,6 +261,14 @@ impl Theme {
     /// separates two lanes sharing a hue.
     pub fn lane(&self, lane: usize) -> TokenColor {
         self.lanes[lane % LANE_COUNT]
+    }
+
+    /// The colour a branch's lane draws in, from its identity alone — never
+    /// from the column it happens to occupy (PROMPT.md §1.2), so a branch
+    /// keeps its colour across scrolls, refreshes and column reuse.
+    #[must_use]
+    pub fn branch(&self, identity: BranchIdentity) -> TokenColor {
+        self.lanes[identity.slot(LANE_COUNT)]
     }
 }
 

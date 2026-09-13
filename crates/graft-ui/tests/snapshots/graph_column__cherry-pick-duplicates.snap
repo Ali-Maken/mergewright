@@ -1,0 +1,10 @@
+---
+source: crates/graft-ui/tests/graph_column.rs
+expression: text
+---
+shape: cherry-pick-duplicates (dark = light, asserted), truecolor
+
+  ●   ..f.  3fb661a  topic: unrelated work
+  ●   ..f.  c0f7180  Fix the greeting (cherry picked)
+◆ │   c.f.  9a9350a  Fix the greeting
+◇─╯   cff.  fc8069b  Add the greeting

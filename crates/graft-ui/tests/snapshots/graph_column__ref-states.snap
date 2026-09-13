@@ -1,0 +1,14 @@
+---
+source: crates/graft-ui/tests/graph_column.rs
+expression: text
+---
+shape: ref-states (dark = light, asserted), truecolor
+
+  ●       ..l.....  51ea533  Archived work
+  │ ●     ..l.f...  b9b94c1  behind: theirs
+  │ ●     ..l.f...  379c02d  behind: shared
+  │ │ ●   ..l.f.h.  0994ff4  ahead: not pushed yet
+  │ │ ●   ..l.f.h.  7be40e6  ahead: pushed
+◆ │ │ │   c.l.f.h.  a676d37  Advance main again
+●─│─┴─╯   cflffhh.  31948ff  Advance main
+◇─╯       cll.....  68d5d19  Add the base

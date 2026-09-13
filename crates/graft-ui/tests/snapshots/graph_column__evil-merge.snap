@@ -1,0 +1,10 @@
+---
+source: crates/graft-ui/tests/graph_column.rs
+expression: text
+---
+shape: evil-merge (dark = light, asserted), truecolor
+
+◆─╮   cdd.  cc1103b  Merge branch 'alpha'
+● │   c.d.  0631550  Advance main
+│ ●   c.d.  bd20b78  alpha: work
+◇─╯   cdd.  68d5d19  Add the base

@@ -55,6 +55,30 @@ impl BranchIdentity {
         let end = SHORT_SHA_BYTES.min(bytes.len());
         BranchIdentity(fnv1a(&bytes[..end]))
     }
+
+    /// Which of `slots` palette entries this identity draws in: the same
+    /// answer for the same branch on every row, run and machine.
+    ///
+    /// FNV-1a alone mixes poorly for short names — one-letter branch names
+    /// share their high bits, and their low bits cluster — so the hash goes
+    /// through murmur3's 64-bit finaliser before its top 16 bits pick the
+    /// slot. Stable: fixed constants, no `std` hasher.
+    ///
+    /// # Panics
+    ///
+    /// If `slots` is zero.
+    #[must_use]
+    pub fn slot(self, slots: usize) -> usize {
+        let mut mixed = self.0;
+        mixed ^= mixed >> 33;
+        mixed = mixed.wrapping_mul(0xff51_afd7_ed55_8ccd);
+        mixed ^= mixed >> 33;
+        mixed = mixed.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
+        mixed ^= mixed >> 33;
+        let [.., high, top] = mixed.to_le_bytes();
+        let folded = u16::from_le_bytes([high, top]);
+        usize::from(folded) % slots
+    }
 }
 
 /// A 64-bit FNV-1a hash.

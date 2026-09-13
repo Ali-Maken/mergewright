@@ -1,0 +1,10 @@
+---
+source: crates/graft-ui/tests/graph_column.rs
+expression: text
+---
+shape: detached-head (dark = light, asserted), truecolor
+
+●   c.  c393c13  Commit 4
+●   c.  4d62f2a  Commit 3
+◆   c.  8863aa9  Commit 2
+◇   c.  b291a87  Commit 1

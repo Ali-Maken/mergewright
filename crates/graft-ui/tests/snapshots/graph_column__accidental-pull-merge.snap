@@ -1,0 +1,10 @@
+---
+source: crates/graft-ui/tests/graph_column.rs
+expression: text
+---
+shape: accidental-pull-merge (dark = light, asserted), truecolor
+
+◆─╮   ccc.  3222407  Merge branch 'main' of https://example.invalid/graft.git into main
+● │   c.c.  abd2097  My commit
+│ ●   c.c.  781b8cc  Their commit
+◇─╯   ccc.  68d5d19  Add the base

@@ -15,12 +15,19 @@ graft-term.workspace = true
 # needs — the backend, and the crossterm version behind it, are `app`'s
 # choice.
 ratatui = { version = "0.30", default-features = false, features = ["std"] }
+# How many cells a character takes, for clamping text to an exact width
+# (`fit`). Already in the build through ratatui, at this version.
+unicode-width = "0.2"
 
 [dev-dependencies]
 # Snapshot of every resolved token, in every theme, at every colour depth
 # (PROMPT.md §7.1). A colour table is exactly the kind of thing nobody reviews
 # by eye twice.
 insta = "1"
+# The named corpus the graph column's snapshots draw, read through `git` the
+# way `graph`'s own corpus test does. Dev-only: not an ADR-0006 crate edge.
+graft-fixtures.workspace = true
+graft-git.workspace = true
 
 [lints]
 workspace = true

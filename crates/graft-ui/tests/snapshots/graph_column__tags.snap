@@ -1,0 +1,10 @@
+---
+source: crates/graft-ui/tests/graph_column.rs
+expression: text
+---
+shape: tags (dark = light, asserted), truecolor
+
+◆   c.  34a3dee  Add c.txt
+●   c.  fd98729  Add b.txt
+●   c.  ce1a638  Add a.txt
+◇   c.  05c5855  Add a readme

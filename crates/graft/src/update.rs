@@ -735,6 +735,7 @@ mod tests {
             lane: 0,
             incoming: Vec::new(),
             outgoing: Vec::new(),
+            lanes: Vec::new(),
             marker: None,
         };
         AppEvent::Progress(

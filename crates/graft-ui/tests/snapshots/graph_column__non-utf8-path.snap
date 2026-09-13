@@ -1,0 +1,8 @@
+---
+source: crates/graft-ui/tests/graph_column.rs
+expression: text
+---
+shape: non-utf8-path (dark = light, asserted), truecolor
+
+  ●   ..d.  16151d4  Add a Latin-1 path
+◆─╯   cdd.  7e00915  Add a readme

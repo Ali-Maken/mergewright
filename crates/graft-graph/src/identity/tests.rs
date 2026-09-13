@@ -43,3 +43,16 @@ fn short_shas_that_differ_in_their_leading_bytes_produce_different_identities() 
         BranchIdentity::of_short_sha(oid(2))
     );
 }
+
+#[test]
+fn short_names_spread_across_the_palette() {
+    let mut used = [false; 12];
+    for letter in b'a'..=b'z' {
+        used[BranchIdentity::of_name(&[letter]).slot(12)] = true;
+    }
+    let slots = used.iter().filter(|&&hit| hit).count();
+    assert!(
+        slots >= 10,
+        "26 one-letter names reach only {slots} of 12 hues"
+    );
+}

@@ -403,3 +403,100 @@ fn wide_oid(n: u16) -> Oid {
 }
 
 mod properties;
+
+#[test]
+fn a_row_records_the_identity_of_every_column_it_draws() {
+    let main = BranchIdentity::of_name(b"main");
+    let commits = [
+        commit(6, &[5, 4], 600, b"Merge branch 'b'"),
+        commit(4, &[5], 500, b"b: work"),
+        commit(5, &[1], 400, b"main: work"),
+        commit(1, &[], 100, b"root"),
+    ];
+    let seeds = Seeds {
+        default_branch: Some(seed(6, main)),
+        ..Seeds::default()
+    };
+
+    let rows = layout(&commits, seeds);
+
+    let b = BranchIdentity::of_name(b"b");
+    assert_eq!(
+        rows[0].lanes,
+        vec![Some(main), Some(b)],
+        "the merge opens b"
+    );
+    assert_eq!(
+        rows[1].lanes,
+        vec![Some(main), Some(b)],
+        "main passes b's node"
+    );
+    assert_eq!(
+        rows[2].lanes,
+        vec![Some(main), Some(b)],
+        "b closes into main"
+    );
+    assert_eq!(
+        rows[3].lanes,
+        vec![Some(main)],
+        "trailing columns are trimmed"
+    );
+}
+
+#[test]
+fn a_reserved_lane_is_not_drawn_above_its_tip() {
+    let main = BranchIdentity::of_name(b"main");
+    let commits = [
+        commit(3, &[1], 300, b"feature tip"),
+        commit(2, &[1], 200, b"main tip"),
+        commit(1, &[], 100, b"root"),
+    ];
+    let seeds = Seeds {
+        default_branch: Some(seed(2, main)),
+        ..Seeds::default()
+    };
+
+    let rows = layout(&commits, seeds);
+
+    assert_eq!(rows[0].lane, 1);
+    assert_eq!(rows[0].lanes[0], None, "main's tip is not reached yet");
+    assert_eq!(rows[1].lanes[0], Some(main));
+}
+
+#[test]
+fn a_root_that_is_also_a_tip_still_names_its_lane() {
+    let lone = BranchIdentity::of_name(b"lone");
+    let commits = [commit(1, &[], 100, b"root and tip")];
+    let seeds = Seeds {
+        known_branches: vec![seed(1, lone)],
+        ..Seeds::default()
+    };
+
+    let rows = layout(&commits, seeds);
+
+    assert_eq!(rows[0].lanes, vec![Some(lone)]);
+}
+
+#[test]
+fn a_reused_column_carries_the_new_branch_not_the_old_one() {
+    let main = BranchIdentity::of_name(b"main");
+    let commits = [
+        commit(6, &[5, 4], 600, b"Merge branch 'b'"),
+        commit(4, &[5], 550, b"b: work"),
+        commit(5, &[3], 500, b"main: work"),
+        commit(3, &[1, 2], 300, b"Merge branch 'c'"),
+        commit(2, &[1], 200, b"c: work"),
+        commit(1, &[], 100, b"root"),
+    ];
+    let seeds = Seeds {
+        default_branch: Some(seed(6, main)),
+        ..Seeds::default()
+    };
+
+    let rows = layout(&commits, seeds);
+
+    assert_eq!(rows[1].lane, 1);
+    assert_eq!(rows[4].lane, 1, "c reuses the column b freed");
+    assert_eq!(rows[1].lanes[1], Some(BranchIdentity::of_name(b"b")));
+    assert_eq!(rows[4].lanes[1], Some(BranchIdentity::of_name(b"c")));
+}

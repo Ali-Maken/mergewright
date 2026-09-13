@@ -1,0 +1,13 @@
+---
+source: crates/graft-ui/tests/graph_column.rs
+expression: text
+---
+shape: criss-cross-merge (dark = light, asserted), truecolor
+
+  ●         ..f.......  be27a12  beta: carry on
+◆─│─╮       cdfdd.....  e44c042  Merge branch 'alpha'
+│ ◉─│─╮     c.fjdjj...  f77039c  beta: merge alpha
+│ │ ◉─│─╮   c.f.dajaa.  89c164d  alpha: merge beta
+│ ●─│─│─╯   c.fadajaa.  4cfd7d9  beta: work
+│ │ ●─╯     c.f.djj...  bd20b78  alpha: work
+◇─┴─╯       cffdd.....  68d5d19  Add the base

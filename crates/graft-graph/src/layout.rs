@@ -82,6 +82,10 @@ pub struct LayoutCursor {
     /// Known tips, for colour stability when an ordinary lane opens fresh.
     /// Fixed once the cursor is built, so clones share one table.
     known_identities: Arc<HashMap<Oid, BranchIdentity>>,
+    /// Reserved columns whose tip no row has landed on yet. Such a lane is
+    /// open, but nothing is drawn above its tip, so rows leave it out of
+    /// [`Row::lanes`]. At most one entry per reserved lane.
+    unreached: Vec<usize>,
 }
 
 impl LayoutCursor {
@@ -149,6 +153,7 @@ impl LayoutCursor {
         std::mem::size_of::<Self>()
             + self.active.capacity() * std::mem::size_of::<Option<Lane>>()
             + self.free_pool.capacity() * std::mem::size_of::<usize>()
+            + self.unreached.capacity() * std::mem::size_of::<usize>()
             + self.waiting.capacity()
                 * (std::mem::size_of::<Oid>() + std::mem::size_of::<Vec<usize>>())
             + self
@@ -184,6 +189,7 @@ impl LayoutCursor {
             reserved: true,
         });
         self.register_waiting(column, seed.tip);
+        self.unreached.push(column);
     }
 
     /// Assigns one commit to a lane, records its edges, and advances every
@@ -193,7 +199,25 @@ impl LayoutCursor {
         let mut parents = commit.parents.iter().copied();
         let first_parent = parents.next();
 
+        // What is drawn above this row, before any lane closes or opens.
+        let mut lanes: Vec<Option<BranchIdentity>> = self
+            .active
+            .iter()
+            .enumerate()
+            .map(|(column, entry)| {
+                entry
+                    .as_ref()
+                    .filter(|_| !self.unreached.contains(&column))
+                    .map(|entry| entry.identity)
+            })
+            .collect();
+
         let lane = winning_lane(&found).unwrap_or_else(|| self.open_new_lane(commit, first_parent));
+        self.unreached.retain(|&column| column != lane);
+        // Read before anything closes: a root that is also a fresh tip opens
+        // and closes its lane on this one row.
+        let own = self.active[lane].as_ref().map(|entry| entry.identity);
+        set_column(&mut lanes, lane, own);
 
         let mut closing = Vec::new();
         let mut incoming: Vec<usize> = found
@@ -211,7 +235,12 @@ impl LayoutCursor {
             None => self.close_lane(lane, &mut closing),
         }
         for parent in parents {
-            self.open_merge_lane(commit, parent, order, &mut outgoing, &mut closing);
+            let (column, identity) =
+                self.open_merge_lane(commit, parent, order, &mut outgoing, &mut closing);
+            set_column(&mut lanes, column, Some(identity));
+        }
+        while lanes.last().is_some_and(Option::is_none) {
+            lanes.pop();
         }
 
         // Row granularity, not the chunk granularity DESIGN.md §3.3's
@@ -227,6 +256,7 @@ impl LayoutCursor {
             lane,
             incoming,
             outgoing,
+            lanes,
             marker: None,
         }
     }
@@ -263,6 +293,9 @@ impl LayoutCursor {
     /// a merge parent is a historical ancestor at merge time, essentially
     /// never equal to any branch's *current* tip, so the message (or its
     /// short-SHA fallback) is the only signal that can fire.
+    ///
+    /// Returns the column opened and the identity it draws in, which stay
+    /// observable to the row even if the lane closes again at once.
     fn open_merge_lane(
         &mut self,
         commit: &Commit,
@@ -270,7 +303,7 @@ impl LayoutCursor {
         order: &EmittedOrder,
         outgoing: &mut Vec<(usize, Oid)>,
         closing: &mut Vec<usize>,
-    ) {
+    ) -> (usize, BranchIdentity) {
         let lane = self.allocate_column();
         let identity = match recover_branch_name(commit.subject()) {
             Some(name) => BranchIdentity::of_name(&name),
@@ -285,9 +318,10 @@ impl LayoutCursor {
         outgoing.push((lane, parent));
         if self.drawn_already(parent, order) {
             self.close_lane(lane, closing);
-            return;
+        } else {
+            self.register_waiting(lane, parent);
         }
-        self.register_waiting(lane, parent);
+        (lane, identity)
     }
 
     /// Whether `id` sits on a row above the one being laid out.
@@ -363,6 +397,19 @@ impl LayoutCursor {
     fn register_waiting(&mut self, lane: usize, target: Oid) {
         self.waiting.entry(target).or_default().push(lane);
     }
+}
+
+/// Records `identity` as what `column` draws on a row, growing the row's
+/// column list as far as needed.
+fn set_column(
+    lanes: &mut Vec<Option<BranchIdentity>>,
+    column: usize,
+    identity: Option<BranchIdentity>,
+) {
+    if lanes.len() <= column {
+        lanes.resize(column + 1, None);
+    }
+    lanes[column] = identity;
 }
 
 /// Which lane a row belongs to, among the lanes waiting for it: lane 0 if it

@@ -1,0 +1,11 @@
+---
+source: crates/graft-ui/tests/graph_column.rs
+expression: text
+---
+shape: unicode-names (dark = light, asserted), truecolor
+
+  ●       ..i.....  e26412c  ветка: первый коммит
+  │ ●     ..i.i...  9c306b6  機能: 最初のコミット
+  │ │ ●   ..i.i.f.  a6b3175  fonctionnalité : première étape 🚀
+◆─┴─┴─╯   ciiiiff.  06a6fae  日本語のコミットメッセージ
+◇         c.......  c0b1044  Ajoute le fichier café ☕

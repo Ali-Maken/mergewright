@@ -2,9 +2,27 @@
 One line per public item. Update when a public item changes.
 
 ## lib.rs
+- `fit` (mod) — clamp text to an exact cell width.
+- `graph_column` (mod) — the Unicode-tier graph column widget.
 - `paint` (mod) — token-to-style helpers for widgets.
 - `status_screen` (mod) — the status screen view and widget.
 - `theme` (mod) — theme kinds, tokens, and colour resolution.
+
+## fit
+- `MAX_MARKS` (const) — combining marks kept per base character.
+- `fit` (fn) — text laid into exactly N cells: padded, or cut with `…`; wide chars never split.
+
+## graph_column
+- `CELLS_PER_LANE` (const) — cells per lane: its own, then a gap.
+- `NodeKind` (enum) — node shape: commit, merge, root, HEAD, stash, uncommitted.
+- `NodeKind::of` (fn) — commit/merge/root from a row's parents.
+- `NodeKind::glyph` (fn) — the node's character.
+- `RowPaint` (enum) — normal, dimmed, highlighted.
+- `GraphLine` (struct) — `row`, `node`, `paint` for one drawn row.
+- `GraphLine::plain` (fn) — a row drawn normally.
+- `GraphColumn` (struct) — widget drawing consecutive rows; fills its area exactly.
+- `GraphColumn::new` (fn) — draw lines in a theme.
+- `GraphColumn::width_for` (fn) — cells for N lanes.
 
 ## paint
 - `color` (fn) — resolve a `TokenColor` to a ratatui `Color`.
@@ -53,3 +71,4 @@ One line per public item. Update when a public item changes.
 - `Theme::kind` (fn) — which theme this is (diagnostics, config round-trips).
 - `Theme::token` (fn) — the colour for one chrome token.
 - `Theme::lane` (fn) — the colour for one graph lane; shape/dash separate same-hue lanes.
+- `Theme::branch` (fn) — the colour a branch identity draws in, independent of column.
