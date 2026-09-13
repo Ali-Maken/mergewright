@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M1 The graph** — ticket 15, continuation 1: app wiring (31, 07–14 done; 31 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
+**Current step:** **M1 The graph** — ticket 16 (31, 07–15 done; 31 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
 
 ---
 
@@ -166,9 +166,11 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-13 · M1/13 lanes without hue · opus · done · at 16 colours and NO_COLOR odd-column lanes draw dashed (╎ ╌); truecolor/256 unchanged; NO_COLOR highlighted row gets ▏; ADR-0019; corpus test: same-colour neighbours never share a glyph; pyte replay both modes; captures docs/shots/13-{foxtrot-merge,criss-cross-merge}-{16,no-color}.txt; 530 tests; 2 gaps closed, 08 hue gap partial (truecolor neighbours told apart by position only), new: 14 must keep dash pattern, corners undashed; 120k tokens, no compaction; commit ee8b594
 - 2026-09-13 · M1/14 compaction · fable · done · fold.rs: per window fold untouched then least-recently-touched lanes (never lane 0/reserved/pinned/node), +N marker, `+` expands, graph.max_lanes; proptests + real binary on git/git (80x24: 7 lanes + `+17`); captures docs/shots/14-*.txt (5); closed 09 + 13 gaps; new gaps: layout incoming column absent from Row.lanes, no corpus shape for compaction, node-heavy windows exceed limit (15); ARCHITECTURE.md updated; commit a811bad · COMPACTED (once; finished, nothing left to split)
 - 2026-09-13 · M1/15 folding + first-parent · opus · partial · graft-graph only: inclusion.rs predicate (first-parent, stashes, folded merges) before layout, stream truncate re-lays-out only invalidated rows; 4 acceptance tests; no keys/app wiring/captures; 557 tests; gaps: no wiring, reinclude re-reads from walk top (27), trimmed chunk loses fingerprint (review); 153k tokens, stopped early, no compaction; commit 6355c75
+- 2026-09-13 · M1/15 folding + first-parent (continuation 1) · opus · done · keys Space fold/unfold merge, 1 first-parent, H hide stash (added to DESIGN.md §2.3); one layout per view, switching back rebuilds no chunks; release binary in pty, unfold and 1-1 byte-identical to full; captures docs/shots/15-*.txt (6); closed 14 many-node-lanes + wiring gaps; logged: tied commit dates put parent above child (pre-existing), folded merge has no glyph, `1` resets to top, keys not in footer; 564 tests; 140k tokens, no compaction; commit 031de51
 
 ## Open questions for the M1 checkpoint
 
+- **New keys from m1/15** (DESIGN.md had none): `Space` fold/unfold merge, `1` first-parent, `H` hide stash. Keep, or rebind?
 - **Uncommitted row only shows when HEAD is the top visible row** (m1/12b). If another branch has newer commits above HEAD, or you scroll, the dirty-tree row is hidden. Keep, or pin it to the top?
 - **Node glyphs ignore `ui.icons`** (m1/11): ◆ HEAD / ■ stash draw even with icons off. Keep, or follow the setting?
 - ~~**Heavy tier is two commands, not one.**~~ **Decided 2026-09-13:** drop
