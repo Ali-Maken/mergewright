@@ -1,6 +1,6 @@
 # m1-the-graph/30c — Unicode chunk-edge frame spikes; frame asserts pass and are proven; benches run
 
-Status: partial (part a done; part b seam 1 done: key 37 answered, release-only asserts, docs; proofs + release run wait on a user decision, see "Part b, seam 1")
+Status: partial (part a done; part b seam 1 done; seam 2 partial: keys draw from rows on hand, one lib test red on a graft-graph eviction flaw — see "Part b, seam 2")
 Build with: **Opus** (high) — event loop timing, split from 30
 Blocked by: 30b (part a done; part b unblocked by user decision)
 Leaves runnable: yes — heavy `frames::` tests pass and each is proven to fail when tightened.
@@ -129,3 +129,23 @@ Remaining scope for part b, in this order:
 - [ ] Release frame check passes 7 runs out of 7 (record all 7).
 - [ ] Proofs and one release run (the original part b remainder).
 - [ ] By eye, user: no lag on the first keypress after a pause, in the gallery re-walk.
+
+## Part b, seam 2 (2026-09-13, builder-opus): partial — stopped early (user's usage limit)
+
+**Done, uncommitted until this commit (WIP, one lib test red):**
+- Red test first: `history::tests::every_key_draws_from_rows_on_hand_while_the_worker_answers_a_key_late` (46 keys, worker answers a key late; was red: 29 requests for 46 keys, one per key). Now green.
+- `History::wanted` (scroll.rs): asks only when the window stops holding the viewport **plus two screens either side**, then asks for **three screens either side**; new pub field `History::outstanding` (range of the newest unanswered `Rows` request, set in `ask`, cleared in `apply` when the newest window lands) so a key doesn't re-ask rows already asked for. One screen of slack was not enough: two `PageUp`s before an answer left the second without rows. Cause fix, not symptom: keys stop round-tripping. Cost to user: bigger windows per answer (7 screens of rows cloned), layout reads 2 more screens ahead.
+- Tests updated to the new ranges: history `text_tiers_keep_two_screens_either_side_on_hand_and_ask_for_three`, new `rows_already_asked_for_are_not_asked_for_again`, mid-strip, last partial strip; update.rs `awaiting` (0..4), `moving_past_the_window_asks_for_the_rows_there` (page 1 asks 0..50), `esc_withdraws_a_jump…` (0..40), `a_selection_change_inside_the_window…` (30 rows on hand).
+- MAP.md: `History::outstanding` line.
+- frames.rs (heavy, **not yet compiled/run**, see below): latency = due → key's own frame; `Paced::waited` replays every wake through `update` and fails (both builds) if a key's frame lacked the cursor row or viewport; 5 idle-wake keys after 600 ms (`IDLE`, `idle_wakes()`, `keys()`) printed as `idle_wake_us`, not asserted; release assert covers the 420 scripted keys only.
+
+**Blocking finding (red): `scrolling_top_to_bottom_keeps_resident_rows_bounded`.** With 3 screens asked either side, the streaming layout evicts nothing until the walk ends (held == laid_out: 40, 60 … 200; SMALL config). With 1 screen either side held stays 24–48 (experiment, reverted). So a request range wider than something in `StreamingLayout`'s eviction rule defeats eviction — suspect: range (70 rows) wider than `max_checkpoints × checkpoint_every` (4×16 = 64), or the protected region reaching back to a checkpoint. **Memory regression: must not ship.** The test's bound was only raised to `9 * HEIGHT + … + chunk_rows` as an experiment; it still fails (grows 20 rows per 2 pages) — revert that bound change to the real rule once the cause is known; don't loosen it.
+
+**Next exact steps:**
+1. Read graft-graph `StreamingLayout` eviction (scout: which chunks are protected, checkpoint thinning). Find why a 70-row viewport stops eviction on SMALL; decide: fix eviction (graft-graph) or keep ranges under the rule (e.g. 2 screens asked / 1 kept won't tolerate a late answer). Check the production config (`chunk_rows` 500) isn't affected the same way — the 100k frames/memory heavy tests will say.
+2. `cargo clippy --all-targets --features heavy-tests -- -D warnings`, fix frames.rs compile errors.
+3. Release frames run ×7 (TESTING.md command, alone, to files); record all 7 + idle-wake numbers.
+4. Tightening proofs (INPUT_TO_FRAME 4 ms, FIRST_PAINT_LIMIT 10 ms, release; revert), benches command fix, ADR-0021 "open" section → decided (option a), TESTING.md power-state note, KNOWN_GAPS row "Layout advances only as far as the screen asks" update.
+5. User by eye: gallery re-walk, first key after a pause.
+
+**Eviction cause (scout, graft-graph, after the note above):** `StreamingLayout::evict` (stream.rs:429-440) keeps `checkpoints.floor(viewport.start - buffer_rows) / chunk_rows ..= last`. `Checkpoints::floor` returns **0** when no checkpoint lies at or before that row (checkpoint.rs:88-93). Checkpoints are capped at `max_checkpoints`, dropping LRU (≈ oldest on a forward walk), so they cover only the last `max_checkpoints × checkpoint_every` rows behind the frontier (SMALL: 64). A request starting further behind the frontier than that (3 screens back + 3 ahead = 70 > 64) floors to row 0 → every row is protected → nothing evicts. Latent graft-graph bug exposed, not caused, by the wider ranges. Next step 1 is therefore a decision: (a) floor to the nearest *retained* checkpoint ≤ top only if it exists, else protect from `top` (rebuild falls back to base anyway, stream.rs:405-408), in graft-graph with its own red test; or (b) check production `StreamConfig` (`max_checkpoints × checkpoint_every` vs 7 screens) and leave SMALL-only. (a) fixes the cause. Also: 2 warnings to fix (`mut` at update.rs:2069; `Handed::asked_before` now unused in frames.rs — remove the field or use it). frames.rs compiles (`cargo check --features heavy-tests --tests`), not run.

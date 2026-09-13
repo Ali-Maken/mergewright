@@ -263,6 +263,7 @@ One line per public item. Update when a public item changes.
 - `History::asked` (field) — id of the newest request.
 - `History::jump` (field) — the `G` request still walking, if any.
 - `History::promotion` (field) — where promoting a provisional order is, if it has begun.
+- `History::outstanding` (field) — rows the newest request asked for, until its window lands; a key finding them asked does not ask again. Keys ask only when the window stops holding the viewport plus a screen either side, then for two screens either side, so no key waits on an answer (m1-the-graph/30c).
 - `History::promote` (fn) — hand the walk a topological order, returning the request carrying it (`None` if the walk has gone).
 - `History::view` (field) — the view every request asks for; kept across refresh.
 - `History::change_view` (fn) — switch view, returning the request that shows it (a `Follow` switch goes to the top; the selected commit is re-found in the rows that come back).

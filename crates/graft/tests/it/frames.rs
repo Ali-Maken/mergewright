@@ -32,7 +32,7 @@ use graft::history::HistoryUpdate;
 use graft::jobs::{Dispatch, Shutdown};
 use graft::refs::{RefBadges, badges};
 use graft::session::Session;
-use graft::update::{AppEvent, AppState, Command, Progress};
+use graft::update::{AppEvent, AppState, Command, Progress, update};
 use graft_core::capabilities::{
     Capabilities, CellSize, CellSizeSource, ColorDepth, PixelProtocol, ProbeOutcome, RenderingTier,
     Rgb, Supported, Theme as TerminalTheme, ThemeHint, ThemeSource, TmuxStatus,
@@ -55,6 +55,11 @@ const INPUT_TO_FRAME: Duration = Duration::from_millis(16);
 
 /// 60 Hz: the key clock, and the frame rate PROMPT.md §1.2 asks to sustain.
 const TICK: Duration = Duration::from_micros(16_667);
+
+/// The pause before each idle-wake key: longer than the half second after
+/// which the first key missed in release (m1-the-graph/30c), as when the user
+/// reads the screen before pressing the next key.
+const IDLE: Duration = Duration::from_millis(600);
 
 /// How long the end of a run waits for rows still out. Far above any
 /// budget: it turns a hang into a named failure, it is not a threshold.
@@ -101,6 +106,27 @@ fn script() -> Vec<KeyCode> {
     keys
 }
 
+/// After the scroll, keys that each follow an [`IDLE`] pause. Measured and
+/// printed on their own, never asserted (user, 2026-09-13): most of their
+/// cost is the CPU waking up (ADR-0021), and printing them keeps a real
+/// regression there visible.
+fn idle_wakes() -> Vec<KeyCode> {
+    vec![
+        KeyCode::Char('j'),
+        KeyCode::PageDown,
+        KeyCode::Char('k'),
+        KeyCode::PageUp,
+        KeyCode::Char('j'),
+    ]
+}
+
+/// Every key the run presses, with the pause before it.
+fn keys() -> Vec<(KeyCode, Duration)> {
+    let scroll = script().into_iter().map(|key| (key, TICK));
+    let idle = idle_wakes().into_iter().map(|key| (key, IDLE));
+    scroll.chain(idle).collect()
+}
+
 fn check(tier: RenderingTier, refs: Refs) {
     let repo =
         synthetic::borrow(Scale::HEAVY.with_commit_graph()).unwrap_or_else(|why| panic!("{why}"));
@@ -110,7 +136,16 @@ fn check(tier: RenderingTier, refs: Refs) {
     let run = scroll(&repo, tier, refs).unwrap_or_else(|why| panic!("{why}"));
     drop(turn);
 
-    let mut sorted = run.latencies.clone();
+    assert_eq!(run.latencies.len(), keys().len(), "every key got a frame");
+    // PROMPT.md's third principle, in both builds: it is not a time budget.
+    assert!(
+        run.waited.is_empty(),
+        "{} keys were drawn without their rows on hand, waiting on the worker: {}",
+        run.waited.len(),
+        run.waited.join(", ")
+    );
+    let (scrolled, idle) = run.latencies.split_at(script().len());
+    let mut sorted = scrolled.to_vec();
     sorted.sort();
     // Rank rounded down; a few hundred samples.
     let at = |percent: usize| sorted[(sorted.len() - 1) * percent / 100];
@@ -132,13 +167,20 @@ fn check(tier: RenderingTier, refs: Refs) {
         );
     }
 
-    assert_eq!(sorted.len(), script().len(), "every key got a frame");
+    let idle: Vec<_> = idle_wakes()
+        .iter()
+        .zip(idle)
+        .map(|(key, latency)| format!("{key:?}={}", latency.as_micros()))
+        .collect();
+    println!(
+        "frames: tier={tier:?} refs={refs:?} idle_wake_us (first key after {IDLE:?} idle; recorded, not asserted): {}",
+        idle.join(" ")
+    );
     match tier {
         RenderingTier::Pixel => assert!(run.kitty_commands > 0, "the pixel tier drew no images"),
         _ => assert_eq!(run.kitty_commands, 0, "a text tier sent images"),
     }
-    let late: Vec<_> = run
-        .latencies
+    let late: Vec<_> = scrolled
         .iter()
         .enumerate()
         .filter(|(_, latency)| **latency >= INPUT_TO_FRAME)
@@ -165,8 +207,10 @@ fn check(tier: RenderingTier, refs: Refs) {
 
 /// What one scroll measured.
 struct Run {
-    /// Per key, in script order: due tick → the frame showing its rows.
+    /// Per key, in [`keys`] order: due time → the key's own frame.
     latencies: Vec<Duration>,
+    /// Keys whose own frame lacked the cursor's row or part of the viewport.
+    waited: Vec<String>,
     /// Kitty graphics commands written (`ESC _ G`): images at the pixel tier.
     kitty_commands: usize,
     /// Every byte the loop wrote.
@@ -206,7 +250,8 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs) -> Result<Run, String> {
         inner: &jobs,
         asked: Mutex::default(),
     };
-    let mut wakes = Paced::new(&events, script(), &watching, sink.clone());
+    let initial = state.clone();
+    let mut wakes = Paced::new(&events, keys(), &watching, sink.clone());
     let exit = pump(&mut terminal, &mut wakes, &watching, &mut session, state)
         .map_err(|why| format!("the loop failed: {why}"))?;
     if !matches!(exit, Exit::Quit) {
@@ -218,6 +263,7 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs) -> Result<Run, String> {
         return Err(failure);
     }
     let latencies = wakes.latencies()?;
+    let waited = wakes.waited(initial);
     let by_trigger = wakes.written_by_trigger();
 
     match jobs.shutdown(Duration::from_secs(10)) {
@@ -229,6 +275,7 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs) -> Result<Run, String> {
     let written = sink.0.lock().unwrap_or_else(PoisonError::into_inner);
     Ok(Run {
         latencies,
+        waited,
         kitty_commands: written.kitty_commands,
         bytes: written.bytes,
         by_trigger,
@@ -540,11 +587,13 @@ struct Handed {
 /// for the wake before it, so each call is stamped.
 struct Paced<'a, D> {
     events: &'a Receiver<AppEvent>,
-    keys: Vec<KeyCode>,
+    keys: Vec<(KeyCode, Duration)>,
     next_key: usize,
     due: Instant,
     watching: &'a Watching<'a, D>,
     handed: Vec<Handed>,
+    /// `replay[i]`: the event `handed[i]` carried, to replay through `update`.
+    replay: Vec<AppEvent>,
     /// `drawn[i]`: the frame after `handed[i - 1]` was on the terminal
     /// (`drawn[0]` is the first frame, before any wake).
     drawn: Vec<Instant>,
@@ -557,7 +606,7 @@ struct Paced<'a, D> {
 impl<'a, D> Paced<'a, D> {
     fn new(
         events: &'a Receiver<AppEvent>,
-        keys: Vec<KeyCode>,
+        keys: Vec<(KeyCode, Duration)>,
         watching: &'a Watching<'a, D>,
         sink: Sink,
     ) -> Self {
@@ -568,6 +617,7 @@ impl<'a, D> Paced<'a, D> {
             due: Instant::now(),
             watching,
             handed: Vec::new(),
+            replay: Vec::new(),
             drawn: Vec::new(),
             written: Vec::new(),
             sink,
@@ -575,12 +625,13 @@ impl<'a, D> Paced<'a, D> {
         }
     }
 
-    fn hand(&mut self, kind: Kind, wake: Wake) -> Wake {
+    fn hand(&mut self, kind: Kind, event: AppEvent) -> Wake {
         self.handed.push(Handed {
             kind,
             asked_before: self.watching.asked().len(),
         });
-        wake
+        self.replay.push(event.clone());
+        Wake::Event(event)
     }
 
     fn event(&mut self, event: AppEvent) -> Wake {
@@ -590,13 +641,13 @@ impl<'a, D> Paced<'a, D> {
             }
             _ => Kind::Other,
         };
-        self.hand(kind, Wake::Event(event))
+        self.hand(kind, event)
     }
 
     /// What the frame after each wake wrote, summed by what woke it: the
     /// script's key, a window of rows, or another job event.
     fn written_by_trigger(&self) -> Vec<(String, usize, Counts)> {
-        let keys = script();
+        let keys = keys();
         let mut groups: Vec<(String, usize, Counts)> = Vec::new();
         for (index, handed) in self.handed.iter().enumerate() {
             let (Some(before), Some(after)) =
@@ -605,7 +656,7 @@ impl<'a, D> Paced<'a, D> {
                 continue;
             };
             let name = match handed.kind {
-                Kind::Key(key, _) => format!("{:?}", keys[key]),
+                Kind::Key(key, _) => format!("{:?}", keys[key].0),
                 Kind::Window(_) => "Window".to_owned(),
                 Kind::Other => "Other".to_owned(),
             };
@@ -621,34 +672,55 @@ impl<'a, D> Paced<'a, D> {
         groups
     }
 
-    /// Each key's latency: due tick → the frame drawn after it, or after the
-    /// window answering the newest request it sent.
+    /// Each key's latency: due time → its own frame, the one drawn right
+    /// after it. A key draws from the rows on hand ([`Paced::waited`] checks
+    /// they were there); rows it asked for arrive later as their own frame.
     fn latencies(&self) -> Result<Vec<Duration>, String> {
-        let asked = self.watching.asked();
         let mut latencies = Vec::new();
         for (index, handed) in self.handed.iter().enumerate() {
-            let Kind::Key(key, due) = handed.kind else {
+            let Kind::Key(_, due) = handed.kind else {
                 continue;
-            };
-            let asked_after = self
-                .handed
-                .get(index + 1)
-                .map_or(asked.len(), |next| next.asked_before);
-            let shown = match asked[handed.asked_before..asked_after].iter().max() {
-                None => index,
-                Some(&request) => self.handed[index + 1..]
-                    .iter()
-                    .position(|later| matches!(later.kind, Kind::Window(id) if id >= request))
-                    .map(|offset| index + 1 + offset)
-                    .ok_or_else(|| format!("key {key}'s request {request} was never answered"))?,
             };
             let drawn = self
                 .drawn
-                .get(shown + 1)
-                .ok_or_else(|| format!("no frame was drawn after wake {shown}"))?;
+                .get(index + 1)
+                .ok_or_else(|| format!("no frame was drawn after wake {index}"))?;
             latencies.push(drawn.saturating_duration_since(due));
         }
         Ok(latencies)
+    }
+
+    /// The keys whose own frame had to wait on the worker: replays every
+    /// wake through `update` from the state the loop started with, and after
+    /// each key checks that the cursor's row and the whole viewport were
+    /// already on hand. `update` is pure, so this is the state each key's
+    /// frame was drawn from. The text tiers draw exactly those rows; the
+    /// pixel tier's strips widen them (`History::drawn`), not checked here.
+    fn waited(&self, mut state: AppState) -> Vec<String> {
+        let keys = keys();
+        let mut waited = Vec::new();
+        for (handed, event) in self.handed.iter().zip(&self.replay) {
+            state = update(&state, event.clone()).0;
+            let Kind::Key(key, _) = handed.kind else {
+                continue;
+            };
+            let height = state.graph_rows();
+            let Some(history) = state.history.as_ref() else {
+                waited.push(format!("key {key}: no history on screen"));
+                continue;
+            };
+            let on_screen = height.min(history.rows.saturating_sub(history.top));
+            if history.selected().is_none() || history.visible(height).len() < on_screen {
+                waited.push(format!(
+                    "key {key} ({:?}): cursor {}, top {}, {} of {on_screen} rows on hand",
+                    keys[key].0,
+                    history.cursor,
+                    history.top,
+                    history.visible(height).len()
+                ));
+            }
+        }
+        waited
     }
 }
 
@@ -671,11 +743,13 @@ impl<D> Wakes for Paced<'_, D> {
             let key = self.next_key;
             let due = self.due;
             self.next_key += 1;
-            self.due += TICK;
-            let press = KeyPress::plain(self.keys[key]);
+            if let Some((_, pause)) = self.keys.get(self.next_key) {
+                self.due += *pause;
+            }
+            let press = KeyPress::plain(self.keys[key].0);
             return Some(self.hand(
                 Kind::Key(key, due),
-                Wake::Event(AppEvent::Core(Event::Key(press))),
+                AppEvent::Core(Event::Key(press)),
             ));
         }
         // The script is over: wait only for rows still out.

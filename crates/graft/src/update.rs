@@ -1606,7 +1606,7 @@ mod tests {
     #[test]
     fn a_selection_change_inside_the_window_asks_for_no_rows() {
         let id = JobId::new(3);
-        let (mut state, _) = update(&awaiting(id), rows(id, 4));
+        let (mut state, _) = update(&awaiting(id), rows_for(id, 1, 0..30, 500));
         state.focus = true;
         for code in [KeyCode::Char('j'), KeyCode::Char('j'), KeyCode::Char('k')] {
             let (moved, commands) = update(&state, key(code));
@@ -2014,7 +2014,7 @@ mod tests {
         // screen, and one more screen below it.
         assert_eq!(
             commands,
-            vec![Command::ShowRows(id, request(1, Wanted::Rows(0..2)))],
+            vec![Command::ShowRows(id, request(1, Wanted::Rows(0..4)))],
             "a walk that has started is asked for its first screen"
         );
         assert_eq!(next.awaiting, Some(id));
@@ -2070,15 +2070,13 @@ mod tests {
         assert!(commands.is_empty(), "row 1 is held: {commands:?}");
         assert_eq!(state.history.as_ref().map(|h| h.cursor), Some(1));
 
-        for page in 1..=2 {
-            let (paged, commands) = update(&state, key(KeyCode::PageDown));
-            assert!(commands.is_empty(), "page {page} is held: {commands:?}");
-            state = paged;
-        }
+        // Page 1 (10..20) is drawn from the rows held, but the second page
+        // after it is not held: ask now, three screens either side, so
+        // neither waits.
         let (_, commands) = update(&state, key(KeyCode::PageDown));
         assert_eq!(
             commands,
-            vec![Command::ShowRows(id, request(3, Wanted::Rows(20..50)))]
+            vec![Command::ShowRows(id, request(3, Wanted::Rows(0..50)))]
         );
     }
 
@@ -2101,7 +2099,7 @@ mod tests {
         let (withdrawn, commands) = update(&jumping, key(KeyCode::Escape));
         assert_eq!(
             commands,
-            vec![Command::ShowRows(id, request(4, Wanted::Rows(0..20)))]
+            vec![Command::ShowRows(id, request(4, Wanted::Rows(0..40)))]
         );
         assert_eq!(withdrawn.awaiting, Some(id), "the walk goes on");
         assert_eq!(withdrawn.history.as_ref().and_then(|h| h.jump), None);

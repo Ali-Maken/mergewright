@@ -256,6 +256,11 @@ pub struct History {
     /// (whose edges reach into it), so the strip cache only ever sees full
     /// aligned strips; the text tiers ask for exactly what they did before.
     pub strip_rows: Option<usize>,
+    /// The rows the newest request asked for, until its window arrives: a
+    /// key that finds them already asked for does not ask again
+    /// (m1-the-graph/30c). `None` when nothing is out or the newest request
+    /// is not a range (`G`, a search's find).
+    pub outstanding: Option<Range<usize>>,
 }
 
 impl History {
@@ -276,6 +281,7 @@ impl History {
             view: View::default(),
             promotion: None,
             strip_rows: None,
+            outstanding: None,
         }
     }
 }

@@ -51,6 +51,8 @@ impl History {
                 if window.request != self.asked {
                     return;
                 }
+                // The newest request is answered: nothing is out any more.
+                self.outstanding = None;
                 if window.promoted {
                     self.promoted(window, height.max(1));
                     return;
@@ -390,12 +392,18 @@ impl History {
         }
     }
 
-    /// The request for the rows a viewport at `top` needs, unless the window
-    /// already covers them and enough rows are laid out below the cursor to
-    /// keep moving. `force` asks regardless: it replaces a withdrawn jump.
+    /// The request that keeps the rows on hand ahead of the keys, or `None`
+    /// while they already are. `force` asks regardless: it replaces a
+    /// withdrawn jump.
     ///
-    /// A screen of slack is asked for on both sides, so moving a row at a time
-    /// asks again only once per screen.
+    /// PROMPT.md's third principle: a key never waits on the worker. Every
+    /// motion but `G` moves at most a screen, so while the window holds the
+    /// viewport and two screens either side, the next two keys are drawn
+    /// from rows on hand — the answer may land a key late on a slow CPU.
+    /// Once it doesn't, this asks for three screens either side: the answer
+    /// arrives as an event and redraws, and moving a row at a time asks about
+    /// once a screen rather than on every key (m1-the-graph/30c). A request
+    /// already out for those rows is not sent again.
     fn wanted(&mut self, height: usize, force: bool) -> Option<RowRequest> {
         let complete = match self.phase {
             Phase::Streaming => false,
@@ -404,20 +412,27 @@ impl History {
             Phase::Cancelled | Phase::Failed(_) => return None,
         };
         let bottom = self.top + height;
-        let needed = self.drawn(self.top..bottom);
-        let covered = self.window.as_ref().is_some_and(|window| {
+        let ahead = self.drawn(self.top.saturating_sub(2 * height)..bottom + 2 * height);
+        let on_hand = self.window.as_ref().is_some_and(|window| {
             let end = if complete {
-                needed.end.min(self.rows)
+                ahead.end.min(self.rows)
             } else {
-                needed.end
+                ahead.end
             };
-            window.first <= needed.start && window.end() >= end
+            window.first <= ahead.start && window.end() >= end
         });
-        let room_below = complete || self.rows > self.cursor + height;
-        if covered && room_below && !force {
+        let asking = self.outstanding.as_ref().is_some_and(|rows| {
+            let end = if complete {
+                ahead.end.min(self.rows)
+            } else {
+                ahead.end
+            };
+            rows.start <= ahead.start && rows.end >= end
+        });
+        if (on_hand || asking) && !force {
             return None;
         }
-        let asked = self.drawn(self.top.saturating_sub(height)..bottom + height);
+        let asked = self.drawn(self.top.saturating_sub(3 * height)..bottom + 3 * height);
         Some(self.ask(Wanted::Rows(asked), height))
     }
 
@@ -441,6 +456,10 @@ impl History {
     /// promoted order and the selection while a promotion is swapping in.
     fn ask(&mut self, wanted: Wanted, height: usize) -> RowRequest {
         self.asked += 1;
+        self.outstanding = match &wanted {
+            Wanted::Rows(rows) => Some(rows.clone()),
+            Wanted::Last(_) | Wanted::Find { .. } => None,
+        };
         let selected = self.selected().map(|row| Anchor {
             commit: row.commit.id,
             offset: self.cursor.saturating_sub(self.top),

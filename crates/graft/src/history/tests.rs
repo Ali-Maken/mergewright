@@ -252,10 +252,16 @@ fn scrolling_top_to_bottom_keeps_resident_rows_bounded() {
     let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
 
     // What the layout may protect at once: the window the screen asks for
-    // (three screens), back to a checkpoint, plus its buffers — in whole
-    // chunks — and the two chunks its budget lets it keep besides.
-    let protected =
-        (3 * HEIGHT + SMALL.checkpoint_every + 2 * SMALL.buffer_rows).div_ceil(SMALL.chunk_rows);
+    // (seven screens) and, while an answer is laid out, the window before it
+    // (at most two screens behind: a request goes out once two screens of
+    // slack are no longer on hand) — back to a checkpoint, plus its buffers,
+    // its end rounded up to a whole chunk, in whole chunks — and the two
+    // chunks its budget lets it keep besides.
+    let protected = (9 * HEIGHT
+        + SMALL.checkpoint_every
+        + 2 * SMALL.buffer_rows
+        + SMALL.chunk_rows)
+        .div_ceil(SMALL.chunk_rows);
     let bound = (protected + SMALL.resident_chunks) * SMALL.chunk_rows;
     assert!(bound < whole.len(), "the bound is below the history's size");
 
@@ -273,7 +279,7 @@ fn scrolling_top_to_bottom_keeps_resident_rows_bounded() {
         );
         let window = history.window.as_ref().expect("answered");
         assert!(
-            window.rows.len() <= 3 * HEIGHT,
+            window.rows.len() <= 7 * HEIGHT,
             "page {pages}: window {}",
             window.rows.len()
         );
@@ -294,6 +300,60 @@ fn scrolling_top_to_bottom_keeps_resident_rows_bounded() {
     }
     assert_eq!(history.rows, whole.len());
     assert_eq!(history.cursor, whole.len() - 1);
+}
+
+/// PROMPT.md's third principle: a key never waits on the worker. Each key's
+/// own frame is drawn from the rows already on hand — the cursor's row and
+/// the whole viewport — even when the worker's answer lands a key late, and
+/// even when the next key asks again before it lands (the newest request
+/// wins, so an answer overtaken by a newer request never arrives).
+#[test]
+fn every_key_draws_from_rows_on_hand_while_the_worker_answers_a_key_late() {
+    let dir = graft_fixtures::borrow(Shape::Linear);
+    let handle = RepoHandle::open(&dir).expect("opens");
+    let walk = Walk::all_refs(&handle, Order::Topological).expect("walk starts");
+    let mut stream = StreamingLayout::new(WalkSource::new(&handle, walk), Seeds::default(), SMALL);
+
+    let mut history = History::started();
+    let first = history.show(HEIGHT).expect("asks for the first screen");
+    round_trip(&mut stream, &mut history, first, &mut || None);
+
+    let mut keys = vec![Motion::Down(1); 3 * HEIGHT];
+    keys.extend([Motion::PageDown; 8]);
+    keys.extend([Motion::PageUp; 8]);
+    let mut pending: Option<RowRequest> = None;
+    let mut asked = 0;
+    for (index, motion) in keys.into_iter().enumerate() {
+        let request = history.move_cursor(motion, HEIGHT);
+        assert!(
+            history.selected().is_some(),
+            "key {index} ({motion:?}): the cursor's row {} is not on hand",
+            history.cursor
+        );
+        let visible = history.visible(HEIGHT).len();
+        assert_eq!(
+            visible,
+            HEIGHT.min(history.rows - history.top),
+            "key {index} ({motion:?}): viewport at {} not on hand",
+            history.top
+        );
+        match request {
+            // Overtakes the one still out; its answer lands after a later key.
+            Some(newer) => {
+                asked += 1;
+                pending = Some(newer);
+            }
+            None => {
+                if let Some(late) = pending.take() {
+                    round_trip(&mut stream, &mut history, late, &mut || None);
+                }
+            }
+        }
+    }
+    assert!(
+        asked <= 12,
+        "46 keys over about 11 screens asked {asked} times: a request per key, not per screen"
+    );
 }
 
 /// Scrolls from the first row with `step` while the walk is still laying
@@ -1048,38 +1108,60 @@ fn asked_rows(request: Option<RowRequest>) -> Option<std::ops::Range<usize>> {
     })
 }
 
-/// The text tiers ask for a screen of slack each side, exactly as before
-/// strips existed.
+/// The text tiers keep the viewport and two screens either side on hand, so
+/// the next keys are drawn from rows already there, and ask for three
+/// screens either side once they don't (m1-the-graph/30c).
 #[test]
-fn text_tiers_ask_for_the_viewport_and_a_screen_either_side() {
-    let mut history = scrolled(1000, 40, None);
-    assert_eq!(asked_rows(history.show(20)), Some(20..80));
+fn text_tiers_keep_two_screens_either_side_on_hand_and_ask_for_three() {
+    let mut history = scrolled(1000, 60, None);
+    assert_eq!(asked_rows(history.show(20)), Some(0..140));
 
-    // A window covering the viewport and no more is enough.
-    history.window = Some(window_of(40, 20));
+    // Each check below starts with that request answered.
+    // The viewport and a screen either side is not enough: a second page
+    // before the answer lands would wait.
+    history.outstanding = None;
+    history.window = Some(window_of(40, 60));
+    assert_eq!(asked_rows(history.show(20)), Some(0..140));
+    // Two screens either side is.
+    history.outstanding = None;
+    history.window = Some(window_of(20, 100));
     assert_eq!(asked_rows(history.show(20)), None);
 }
 
+/// A request already out for the rows a key needs is not sent again: the
+/// newest answer is on its way.
+#[test]
+fn rows_already_asked_for_are_not_asked_for_again() {
+    let mut history = scrolled(1000, 60, None);
+    history.phase = Phase::Streaming;
+    assert_eq!(asked_rows(history.show(20)), Some(0..140));
+    assert_eq!(asked_rows(history.move_cursor(Motion::Down(1), 20)), None);
+    // The first page is still covered by it; the second is past it and asks.
+    assert_eq!(asked_rows(history.move_cursor(Motion::PageDown, 20)), None);
+    assert!(history.move_cursor(Motion::PageDown, 20).is_some());
+}
+
 /// A viewport starting mid-strip asks for whole strips and the row above
-/// the first, and is not covered by a window that holds only the viewport.
+/// the first, and is not covered by a window that holds only its strips.
 #[test]
 fn a_viewport_starting_mid_strip_asks_for_whole_aligned_strips() {
     let mut history = scrolled(1000, 40, Some(32));
-    // Slack 20..80 widens to strips 0..96; strip 0 has no row above it.
-    assert_eq!(asked_rows(history.show(20)), Some(0..96));
+    // Three screens either side, 0..120, widen to strips 0..128; strip 0 has
+    // no row above it.
+    assert_eq!(asked_rows(history.show(20)), Some(0..128));
 
     let mut deeper = scrolled(1000, 100, Some(32));
-    // Slack 80..140 widens to strips 64..160, plus row 63 above.
-    assert_eq!(asked_rows(deeper.show(20)), Some(63..160));
+    // 40..180 widens to strips 32..192, plus row 31 above.
+    assert_eq!(asked_rows(deeper.show(20)), Some(31..192));
 
-    // The viewport (100..120) lies in strip 96..128: its rows alone, or the
-    // strip without row 95 above it, are not enough.
-    deeper.window = Some(window_of(100, 20));
-    assert!(deeper.show(20).is_some());
-    deeper.window = Some(window_of(96, 32));
-    assert!(deeper.show(20).is_some());
-    deeper.window = Some(window_of(95, 33));
-    assert_eq!(asked_rows(deeper.show(20)), None);
+    // What must be on hand is two screens either side, 60..160: strips
+    // 32..160 and row 31 above. The viewport's strip alone, or those strips
+    // without row 31, are not enough. Each check starts answered.
+    for (first, count, asks) in [(95, 33, true), (32, 128, true), (31, 129, false)] {
+        deeper.outstanding = None;
+        deeper.window = Some(window_of(first, count));
+        assert_eq!(deeper.show(20).is_some(), asks, "window {first}+{count}");
+    }
 }
 
 /// The last strip of a finished history is short; the rows that exist are
@@ -1087,11 +1169,13 @@ fn a_viewport_starting_mid_strip_asks_for_whole_aligned_strips() {
 #[test]
 fn the_last_partial_strip_at_the_end_of_history_is_covered_by_the_rows_there() {
     let mut history = scrolled(50, 40, Some(32));
-    history.window = Some(window_of(31, 19));
+    // Two screens either side, 20..70, widen to strips 0..96: rows 0..50
+    // exist.
+    history.window = Some(window_of(0, 50));
     assert_eq!(asked_rows(history.show(10)), None);
 
     // One row short of the end is not.
-    history.window = Some(window_of(31, 18));
+    history.window = Some(window_of(0, 49));
     assert!(history.show(10).is_some());
 }
 
