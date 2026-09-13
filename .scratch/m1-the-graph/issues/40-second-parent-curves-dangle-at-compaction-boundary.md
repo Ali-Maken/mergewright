@@ -1,6 +1,6 @@
 # m1-the-graph/40 — Pixel tier: folded edges are fading tails, the rail is a dotted line
 
-Status: ready
+Status: done — user check pending (40 capture)
 Build with: **Opus** (high) — drawing in the rasteriser (gradients, Béziers); the approach is decided, the result is judged by eye, so not Fable
 Needs: 39 (`DrawnRow`, `FoldedEdge`, `Toward`, `raster::Stub`, `RasterRow::stubs`); 42 (`stroke_width`, `OFF_THREAD_ALPHA`, `FADED_ALPHA`)
 Blocked by: 39, 42
@@ -41,15 +41,27 @@ pub const OFF_THREAD_ALPHA: f32; pub const FADED_ALPHA: f32;
 - Report: cause fixed or symptom hidden, and what it costs the user.
 
 ## Acceptance
-- [ ] Buffer assertions at 17×37: the tail's alpha at its last pixel column is < 0.1 × its first; the tail's pixels stay left of the next column's centre; every rail pixel has zero chroma (R=G=B within 1) and the on/off pattern repeats at `cell_height/3`.
-- [ ] No digit glyph code remains (the font module is gone); `Marker` has no count.
-- [ ] Snapshot `raster-folded-merge` committed; changed `22-*` snapshots regenerated with the reason in the notes.
-- [ ] `docs/shots/40-raster-folded-on-dark.png` committed; the user runs `cargo run --release -p graft -- ~/.cache/graft/git-git.git` in Ghostty and judges by eye. Report paths only.
-- [ ] TESTING.md row: "Ghostty, git/git, pixel tier: each merge node has a short tail that fades out to its right; the rightmost graph column is a faint dotted line; no number is drawn in the graph; no curve crosses other lanes to reach the dotted line."
-- [ ] MAP.md updated. Gates pass.
+- [x] Buffer assertions at 17×37: the tail's alpha at its last pixel column is < 0.1 × its first; the tail's pixels stay left of the next column's centre; every rail pixel has zero chroma (R=G=B within 1) and the on/off pattern repeats at `cell_height/3`.
+- [x] No digit glyph code remains (the font module is gone); `Marker` has no count.
+- [x] Snapshot `raster-folded-merge` committed; changed `22-*` snapshots regenerated with the reason in the notes.
+- [x] `docs/shots/40-raster-folded-on-dark.png` committed; the user runs `cargo run --release -p graft -- ~/.cache/graft/git-git.git` in Ghostty and judges by eye. Report paths only.
+- [x] TESTING.md row: "Ghostty, git/git, pixel tier: each merge node has a short tail that fades out to its right; the rightmost graph column is a faint dotted line; no number is drawn in the graph; no curve crosses other lanes to reach the dotted line."
+- [x] MAP.md updated. Gates pass.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test`
 
 ## Size
 Under ~80k tokens. Stop with a handoff note rather than compacting.
+
+## NOTES (build, 2026-09-13, builder-opus)
+
+No compaction.
+
+- Built: `Pen::tail` (cubic from node right edge `radius + gap`, half a band toward `Toward`, tiny-skia linear gradient along x, lane alpha → 0, one tail per row in the first stub's colour, drawn before the node disc); `Pen::rail` (1 px whole-pixel column, three dashes of `cell_height/6` from each band's top, muted, `OFF_THREAD_ALPHA` under a thread). `Marker { column }`; `raster/label.rs` (3×5 font) deleted; `view::strips` follows; `layout_hash` doc.
+- Tests: `folded_merge_snapshot` (new `raster-folded-merge`, 8×16), `a_folded_edge_is_a_tail_that_fades_out_before_the_next_column` and `the_rail_is_a_grey_dotted_line_whose_dashes_never_jump` (17×37, incl. a second strip starting at row 2 matching the first's band). `strips/tests.rs`: `marker.folded > 0` → rail is the last drawn column. 798 pass.
+- Snapshots: `22-*` text snapshots and PNGs unchanged (byte-identical; no marker in them). `raster-pixel-digests`: only `wide-marker` lines changed (digits → rail), expected.
+- Differs from ticket (say so, user/planner judges): (1) tail spans ≈ `2·cell_width − clearance − stroke` (≈19 px at 17×37), not a full 34 px: starting at the node's right edge, a full lane width would cross the next centre line, which the ticket also forbids. (2) Rail sits on the marker column's lane centre line (where text tiers put `⋮`), not the middle of its two cells.
+- Cause or symptom: cause — the edge into a folded lane no longer draws toward the rail; the fold model (39) hands stubs, 40 draws them. Cost to the user: the tail shows direction only, not where the folded branch goes; the count lives in the header.
+- Frame time (release, uncounted, `target/40/frames-release.txt`, pixel tier 100k): p50 5.7 ms, p99 9.1 ms, max 12.1 ms, under 16.
+- User check: `docs/shots/40-seen-120-pixel.png` (git/git at 120×40, release binary, Kitty images decoded and composited at 17×37 on dark, no text; `docs/shots/40-capture.py`). Script-checked only: 2 strips placed, graph pixels on screen rows 1–38. Not eyeballed. Also `docs/shots/40-raster-folded-on-dark.png`.
