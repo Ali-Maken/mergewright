@@ -27,6 +27,7 @@ pub mod cache;
 mod label;
 mod node;
 
+use std::cell::RefCell;
 use std::collections::BTreeSet;
 
 use graft_core::capabilities::Rgb;
@@ -225,6 +226,20 @@ struct Pen<'a> {
     cell_height: f32,
     stroke: f32,
     node: node::NodeSize,
+    /// Scanlines of straight runs already rasterised, by x and ink.
+    scanlines: RefCell<Vec<Scanline>>,
+}
+
+/// One scanline of a straight vertical line, rasterised once on a clear
+/// background: every scanline of the line between integer y bounds is the
+/// same, so a run over a clear background is these bytes, copied.
+struct Scanline {
+    x: f32,
+    ink: Ink,
+    /// The pixmap column of `pixels`' first pixel.
+    left: usize,
+    /// Premultiplied RGBA, clear margin included.
+    pixels: Vec<u8>,
 }
 
 impl<'a> Pen<'a> {
@@ -238,6 +253,7 @@ impl<'a> Pen<'a> {
             cell_height,
             stroke,
             node: node::NodeSize::for_cell(cell_width, cell_height, stroke),
+            scanlines: RefCell::new(Vec::new()),
         }
     }
 
@@ -273,6 +289,11 @@ impl<'a> Pen<'a> {
     fn column(&self, pixmap: &mut Pixmap, column: usize) {
         let is_marker = self.strip.marker.map(|marker| marker.column) == Some(column);
         let x = self.x(column);
+        let flush = |pixmap: &mut Pixmap, run: Option<(f32, f32, Ink)>| {
+            if let Some((top, bottom, ink)) = run {
+                self.straight(pixmap, x, top, bottom, ink);
+            }
+        };
         // The straight run being extended: its top, its bottom, its ink.
         let mut run: Option<(f32, f32, Ink)> = None;
         for (index, raster_row) in self.strip.rows.iter().enumerate() {
@@ -280,30 +301,30 @@ impl<'a> Pen<'a> {
             let band = self.band(index);
             let identity = row.lanes.get(column).copied().flatten();
             if identity.is_none() || column == row.lane {
-                flush(pixmap, x, run.take());
+                flush(pixmap, run.take());
                 continue;
             }
             let ink = self.ink(identity, raster_row.emphasis_at(column));
             let node = self.x(row.lane);
             if row.incoming.contains(&column) {
-                flush(pixmap, x, run.take());
+                flush(pixmap, run.take());
                 stroke(pixmap, arc_in((x, band.top), (node, band.mid)), ink);
             } else if row.outgoing.iter().any(|&(out, _)| out == column) {
-                flush(pixmap, x, run.take());
+                flush(pixmap, run.take());
                 stroke(pixmap, arc_out((node, band.mid), (x, band.bottom)), ink);
             } else if is_marker {
-                flush(pixmap, x, run.take());
+                flush(pixmap, run.take());
             } else {
                 run = match run {
                     Some((top, _, run_ink)) if run_ink == ink => Some((top, band.bottom, ink)),
                     other => {
-                        flush(pixmap, x, other);
+                        flush(pixmap, other);
                         Some((band.top, band.bottom, ink))
                     }
                 };
             }
         }
-        flush(pixmap, x, run);
+        flush(pixmap, run);
     }
 
     /// A row's own lane stubs, its marker and its node, drawn over the edges.
@@ -333,6 +354,76 @@ impl<'a> Pen<'a> {
         node::draw(pixmap, raster_row.ring, (x, band.mid), self.node, lane_ink);
     }
 
+    /// A straight run down `x` from `top` to `bottom`, both whole pixels.
+    ///
+    /// Anti-aliased stroking costs per scanline, and a lane passing through
+    /// a strip is most of its scanlines, so where the pixels under the line
+    /// are still clear the scanline rasterised once is copied; where
+    /// something is already drawn (an arc crossing), those rows are stroked
+    /// as before, so blending stays tiny-skia's. Byte-identical either way
+    /// (`tests/it/raster_pixels.rs`).
+    fn straight(&self, pixmap: &mut Pixmap, x: f32, top: f32, bottom: f32, ink: Ink) {
+        let Some(index) = self.scanline(pixmap.width(), x, ink) else {
+            stroke(pixmap, line(x, top, x, bottom), ink);
+            return;
+        };
+        let scanlines = self.scanlines.borrow();
+        let scanline = &scanlines[index];
+        let stride = pixels_len(pixmap.width());
+        let (left, span) = (scanline.left * 4, scanline.pixels.len());
+        let (first, last) = (whole(top), whole(bottom));
+        let mut dirty: Option<usize> = None;
+        for y in first..last {
+            let start = y * stride + left;
+            let under = &mut pixmap.data_mut()[start..start + span];
+            if under.iter().all(|&byte| byte == 0) {
+                under.copy_from_slice(&scanline.pixels);
+                if let Some(from) = dirty.take() {
+                    stroke(pixmap, line(x, count(from), x, count(y)), ink);
+                }
+            } else if dirty.is_none() {
+                dirty = Some(y);
+            }
+        }
+        if let Some(from) = dirty {
+            stroke(pixmap, line(x, count(from), x, count(last)), ink);
+        }
+    }
+
+    /// The index of `x`'s scanline in `ink`, rasterising it on first use;
+    /// `None` when its clear margin would leave the pixmap.
+    fn scanline(&self, width: u32, x: f32, ink: Ink) -> Option<usize> {
+        let mut scanlines = self.scanlines.borrow_mut();
+        if let Some(index) = scanlines
+            .iter()
+            .position(|scanline| scanline.x.to_bits() == x.to_bits() && scanline.ink == ink)
+        {
+            return Some(index);
+        }
+        let half = ink.width / 2.0;
+        // One clear pixel either side of anything the line can touch.
+        let left = (x - half).floor() - 1.0;
+        let right = (x + half).ceil() + 1.0;
+        if left < 0.0 || right > pixels(width) {
+            return None;
+        }
+        let (left, right) = (whole(left), whole(right));
+        let span = u32::try_from(right - left).ok()?;
+        let mut sample = Pixmap::new(span, 3)?;
+        // `left` is a whole pixel, so the fraction of `x` is kept exactly.
+        let local = x - count(left);
+        stroke(&mut sample, line(local, 0.0, local, 3.0), ink);
+        let stride = pixels_len(span);
+        let pixels = sample.data()[stride..2 * stride].to_vec();
+        scanlines.push(Scanline {
+            x,
+            ink,
+            left,
+            pixels,
+        });
+        Some(scanlines.len() - 1)
+    }
+
     fn marker(&self, pixmap: &mut Pixmap, raster_row: &RasterRow<'_>, marker: Marker, band: Band) {
         let joined = raster_row.row.lanes.get(marker.column).copied().flatten();
         // The marker stands for lanes off the thread, so a thread dims it.
@@ -359,13 +450,6 @@ fn goes_down(row: &Row, column: usize) -> bool {
         return row.outgoing.iter().any(|&(out, _)| out == column);
     }
     row.lanes.get(column).copied().flatten().is_some() && !row.incoming.contains(&column)
-}
-
-/// Stroke a straight run of a lane down column `x`, if one is open.
-fn flush(pixmap: &mut Pixmap, x: f32, run: Option<(f32, f32, Ink)>) {
-    if let Some((top, bottom, ink)) = run {
-        stroke(pixmap, line(x, top, x, bottom), ink);
-    }
 }
 
 fn line(x0: f32, y0: f32, x1: f32, y1: f32) -> Option<tiny_skia::Path> {
@@ -445,6 +529,17 @@ fn eraser() -> Paint<'static> {
 #[allow(clippy::cast_precision_loss)] // Cell sizes are far below f32's 2^24 exact-integer range.
 fn pixels(value: u32) -> f32 {
     value as f32
+}
+
+/// A whole, non-negative coordinate as a pixel index.
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // Callers pass whole pixels inside the pixmap.
+fn whole(value: f32) -> usize {
+    value as usize
+}
+
+/// Bytes in one scanline `width` pixels wide.
+fn pixels_len(width: u32) -> usize {
+    usize::try_from(width).map_or(usize::MAX, |width| width * 4)
 }
 
 /// A row or column index as a coordinate multiplier.
