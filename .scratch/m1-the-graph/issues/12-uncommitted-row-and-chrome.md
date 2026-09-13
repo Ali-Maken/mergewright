@@ -1,6 +1,6 @@
 # m1-the-graph/12 — The uncommitted-changes row and 16-colour chrome
 
-Status: partial (handoff below)
+Status: split — graft-git read done (40163c3); remainder in 12b (wiring + row) and 12c (16-colour chrome)
 Build with: **Sonnet** (medium) — a read, a virtual row, a separator rule
 Blocked by: 10
 Leaves runnable: yes — a dirty working tree shows as a row above HEAD.

@@ -2,7 +2,7 @@
 
 Status: ready
 Build with: **Opus** (high) — design judgment; one mechanism for two constraints
-Blocked by: 12
+Blocked by: 12b, 12c
 Leaves runnable: yes — the graph stays readable in 16-colour terminals and with `NO_COLOR`.
 
 Why: six hues cannot carry twelve lanes, and `NO_COLOR` carries none. One second channel must solve both.

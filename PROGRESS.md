@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M1 The graph** — ticket 12 (31, 07–11 done; 31 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
+**Current step:** **M1 The graph** — ticket 12b (31, 07–11 done; 12 split into 12b/12c; 31 tickets in `.scratch/m1-the-graph/`). M0 done and approved by the user 2026-09-12. M1 follows the read-only checkpoint policy (CLAUDE.md).
 
 ---
 
@@ -160,6 +160,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-13 · M1/09 graph screen (continuation 1) · opus · done · app opens on the graph, F2 status; pty-only bug fixed (0x0 first state drew 1 row); expect under pty: j/k, q exits 0; git/git first graph frame 567 ms debug build, one run (budget checked in 27/30); capture docs/shots/09-graph-screen.txt; background advance stays with 27; gaps: HEAD node unmarked, git/git ~28 lanes fill the column; 468 tests; 140k tokens, no compaction; commit bf71a25
 - 2026-09-13 · M1/10 row text columns · sonnet · done · columns + .mailmap via gix (mailmap.rs); insta snapshots 80x24/120x40/200x60; capture docs/shots/10-row-columns.txt (3 sizes x dark/light) for user's eye; no new gaps; commit d1c2aa1 · COMPACTED (once, finished in its continuation; nothing left to split)
 - 2026-09-13 · M1/11 ref badges · opus · done · badges + upstream ahead/behind; HEAD node ◆, newest stash ■ (09 gap closed); pty + pyte read-back on this repo, ref-states, stash, detached-head, all exit 0; capture docs/shots/11-ref-badges.txt (colour/bold/Nerd glyphs unseen in text dump); 506 tests; 5 gaps (node glyphs ignore ui.icons, only newest stash badged, ahead/behind trusts commit dates, 50k refs unmeasured, ref-states fixture ends on unborn orphan); commit 2bbe8e8 · COMPACTED (once; nothing left to split)
+- 2026-09-13 · M1/12 uncommitted row + chrome · sonnet · partial · graft_git::status::counts + 8 fixture tests; app wiring, virtual row, 16-colour separator, capture not started; handoff in ticket; split into 12b (wiring + row) and 12c (16-colour chrome), 13 now blocked by both; commit 40163c3 · COMPACTED (once)
 
 ## Open questions for the M1 checkpoint
 
