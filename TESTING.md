@@ -419,14 +419,36 @@ cargo run -p graft --example gallery -- --matrix          # coverage matrix
 `]` next stop, `[` previous, `q` quit. Every graph key works inside it:
 `j`/`k`, `Space` fold merges, `1` first-parent, `H` hide stashes, `F` Focus,
 `+` unfold lanes, `F3` cycle the tier (Pixel → Unicode → ASCII → back).
-The footer's last line names the stop, its `n/N` and `expect: …`, the
-one-line finding. Each stop restarts the run, so expect a blink per step.
+
+A three-line banner sits under the header, above the rows, from the first
+frame (ticket 38: the footer alone did not tell a first-time viewer where
+they were):
+
+```
+ gallery 1/23 trivial · one lane · ] next [ back q quit · unicode
+ shows: 3 commits in one straight lane: ◆ HEAD on top, ◇ root at the bottom
+ differs: the smallest stop, so only 3 rows show: that is all of it, a baseline
+```
+
+Line 1: the stop's number and name, its group, the keys, the tier in
+force. Line 2, `shows:`, is what right looks like; line 3, `differs:`, is
+what sets the stop apart from its neighbours. Every line fits 80 columns
+(a test holds the widths). The stops are ordered as a progression — one
+lane, merges, quirks, refs and badges, text, real repos — so `]` changes
+one thing at a time; `--list` prints the same lines, grouped. The
+banner costs three graph rows. Each stop restarts the run, so expect a
+blink per step. The first stop is `trivial`: three commits is the whole
+repository, and the banner says so.
 
 Captures of every stop, Unicode and ASCII at 80x24, are under
-`docs/shots/35-<stop>-{unicode,ascii}.txt`;
-`docs/shots/35-gallery-two-steps.txt` shows two `]` presses. They are what
-`.scratch/m1-the-graph/pty-gallery.py` saw, not what a person saw: the
-user judges by eye (ticket 35's last box).
+`docs/shots/35-<stop>-{unicode,ascii}.txt` (from before the banner: the
+graph is the same, the footer line is the old orientation);
+`docs/shots/38-gallery-first-frame-and-two-steps.txt` shows the first
+frame and two `]` presses with the banner, `docs/shots/38-trivial-ascii.txt`
+the first frame at the ASCII tier, `docs/shots/38-list.txt` what `--list`
+prints. They are what `.scratch/m1-the-graph/pty-gallery.py` and
+`pty-gallery-38.py` saw, not what a person saw: the user judges by eye
+(ticket 35's last box).
 
 ### Reading the entries
 
@@ -532,29 +554,29 @@ Press `F3` at any stop: the text right of the graph must not move.
     `[tag: v0.1]` on `◇ Add a readme`. `v1.0` and `v2.0` are annotated: their
     badges sit on the commit rows (the tag object is peeled), and read the
     same as the lightweight ones.
-14. **unicode-names** — 5 commits, author `Ünïcödé Fixture`. Three branch
-    rows off `日本語のコミットメッセージ`: `[fonctionnalité]`, `[機能]`,
-    `[ветка]`, each in its own column. The `☕` and `🚀` subjects and the
-    CJK badge take two cells per glyph, yet the author, date and SHA columns
-    on those rows start in the same screen column as on every other row.
-    `[tag: версия-1.0]` sits on the `日本語` row next to `[◆ main]`.
-15. **ref-states** — 8 commits. `Advance main again` carries
+14. **ref-states** — 8 commits. `Advance main again` carries
     `[◆ main ⇄ origin]` (one merged badge, no counts). `ahead: not pushed
     yet` carries `[ahead ↑1]` with `[origin/ahead]` one row below it.
     `behind: theirs` carries `[origin/behind]` and, one row below, `behind:
     shared` carries `[behind ↓1]`. `Archived work` carries `[tag: archived]`
     and no branch badge, in its own column off `◇ Add the base`.
-16. **detached-head** — 4 rows, one column. `[main]` (no `◆`: it is not
+15. **detached-head** — 4 rows, one column. `[main]` (no `◆`: it is not
     the current branch) on `Commit 4`, then `Commit 3`, then `◆ Commit 2`
     with `[HEAD]`, two rows below main's tip; `◇ Commit 1` at the bottom.
-17. **unborn-branch** — 3 commits. HEAD is the unborn branch `fresh`: no
+16. **unborn-branch** — 3 commits. HEAD is the unborn branch `fresh`: no
     row is `◆`, and no `Uncommitted changes` row appears at the top. `Add
     a.txt` (`[main]`) and `other: work` (`[other]`) in two columns above
     `◇ Add a readme`.
-18. **stash** — top row is the newest stash: `■` with `[stash]`, subject
+17. **stash** — top row is the newest stash: `■` with `[stash]`, subject
     `On main: wip: with an untracked file`, one row **above** `◆ Add a.txt`
     (`[◆ main]`). Press `H`: the stash row disappears, `Add a.txt` becomes
     the top row, nothing else moves. `H` again brings it back.
+18. **unicode-names** — 5 commits, author `Ünïcödé Fixture`. Three branch
+    rows off `日本語のコミットメッセージ`: `[fonctionnalité]`, `[機能]`,
+    `[ветка]`, each in its own column. The `☕` and `🚀` subjects and the
+    CJK badge take two cells per glyph, yet the author, date and SHA columns
+    on those rows start in the same screen column as on every other row.
+    `[tag: версия-1.0]` sits on the `日本語` row next to `[◆ main]`.
 19. **non-utf8-path** — 2 columns: `Add a Latin-1 path` (`[latin1]`) and
     `◆ Add a readme` (`[◆ main]`). The bad byte lives in a tree path, so no
     `\u{fffd}` or stray byte appears anywhere on screen.
@@ -583,7 +605,7 @@ Press `F3` at any stop: the text right of the graph must not move.
 
 Procedure, in each terminal of the checklist above: `cargo run -p graft
 --example gallery`, then `]` through all 23 stops, checking each against its
-entry; at stops 3, 5, 6 and 18 also press `Space`, `1`, `F` (`Esc` to leave)
+entry; at stops 3, 5, 6 and 17 also press `Space`, `1`, `F` (`Esc` to leave)
 and `H` as the entry says; at stop 23 press `F3` three times and scroll.
 The pass conditions are the ones above:
 
@@ -593,7 +615,7 @@ The pass conditions are the ones above:
   smooth, not stepped.
 - **Unicode tier, must look deliberate** (Terminal.app, Alacritty, the VS
   Code and Zed terminals): the 23 entries hold with the glyphs listed under
-  "Reading the entries"; at stop 14 nothing is a tofu box.
+  "Reading the entries"; at stop 18 nothing is a tofu box.
 - **Must degrade, not break** (tmux, SSH): either a correct pixel gallery or
   a clean Unicode one, per the tmux/SSH block above; every stop's footer
   line reads in full.

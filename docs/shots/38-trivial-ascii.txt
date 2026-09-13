@@ -1,0 +1,26 @@
+gallery stop 1/23: trivial, ascii tier, 80x24
+
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/t…
+ gallery 1/23 trivial · one lane · ] next [ back q quit · ascii
+ shows: 3 commits in one straight lane: ◆ HEAD on top, ◇ root at the bottom
+ differs: the smallest stop, so only 3 rows show: that is all of it, a baseline
+*   [◆ main] Correct the note                                       6y   a82960b
+*   Add the first note                                              6y   fadcfb3
+*   Add a readme                                                    6y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  F3 renderer  / search  j/k move  Enter pin  Space fold

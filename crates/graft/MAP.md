@@ -16,7 +16,7 @@ One line per public item. Update when a public item changes.
 - `terminal` (mod) — raw mode and terminal session setup/restore.
 - `update` (mod) — app state and the update function.
 - `view` (mod) — draws state to a frame.
-- `examples/gallery` (dev-only example, not in the binary) — walks every test repo with `]`/`[`; footer names the stop and its expected finding; `--matrix` writes `docs/shots/35-coverage-matrix.txt` (m1-the-graph/35). Its pure half is `tests/it/gallery.rs`, included by `#[path]`.
+- `examples/gallery` (dev-only example, not in the binary) — walks every test repo with `]`/`[`, grouped as a progression; a three-line banner under the header names the stop, group, keys and tier, then `shows:` and `differs:` (m1-the-graph/38); `--list` prints the same lines, `--matrix` writes `docs/shots/35-coverage-matrix.txt` (m1-the-graph/35). Its pure half is `tests/it/gallery.rs`, included by `#[path]`.
 
 ## history
 - `Wanted::Find { commit, rows, fallback }` — lay out until `commit` has a row, answer around it (search's far hit); `fallback` when the walk ends without it.
@@ -89,8 +89,9 @@ One line per public item. Update when a public item changes.
 - `GitCheck` (enum) — what running `git --version` found.
 - `AppState` (struct) — the whole app state.
 - `AppState::quit` (field) — set when Graft is leaving; terminal restored before reporting.
-- `AppState::harness` (field) — `Harness`: a standing footer `notice` (shown under F3's renderer line when both apply) and `hand_back` keys that end the run with `Quit::HandedBack(key)`; never while the search prompt is open (m1-the-graph/35).
-- `Harness` (struct) — `notice: Option<String>`, `hand_back: Vec<KeyCode>`; `Default` asks for nothing.
+- `AppState::harness` (field) — `Harness`: a `banner` pinned under the header (its rows come off `graph_rows` and the mouse row math) and `hand_back` keys that end the run with `Quit::HandedBack(key)`; never while the search prompt is open (m1-the-graph/35, 38).
+- `Harness` (struct) — `banner: Option<Banner>`, `hand_back: Vec<KeyCode>`; `Default` asks for nothing. `banner_rows()` is the rows the banner takes, 0 without one.
+- `Banner` (struct) — `title: String` (the view appends ` · <tier>` for the tier in force), `lines: Vec<String>`; `rows()` is `1 + lines.len()` (m1-the-graph/38).
 - `AppState::status` (field) — what the status line has to say.
 - `AppState::size` (field) — terminal's last reported size, in character cells.
 - `AppState::repo_path` (field) — repo path; starting point, filled in by `event_loop::run`.
@@ -120,7 +121,7 @@ One line per public item. Update when a public item changes.
 - `Size::columns` (field) — width in character cells.
 - `Size::rows` (field) — height in character cells.
 - `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows; `ReadRefs` reads refs and ahead/behind off the loop's thread; `ReadWorkingTree` reads working-tree status counts off the loop's thread; `PromoteHistory` sorts a provisional walk's range topologically; `Search(Query)` starts a search job.
-- `CHROME_ROWS` (const) — screen rows that are not the graph; `graft_ui::graph_screen::CHROME_ROWS`.
+- `CHROME_ROWS` (const) — screen rows that are not the graph without a harness banner; `graft_ui::graph_screen::CHROME_ROWS`. `AppState::graph_rows` adds `Harness::banner_rows`.
 - `AppState::graph_rows` (fn) — history rows the graph pane shows at the current size; never zero.
 - `update` (fn) — the pure state transition function.
 

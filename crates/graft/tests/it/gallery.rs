@@ -15,8 +15,8 @@ pub struct Entry {
     /// What the banner calls it; also the stem of its `docs/shots/35-` files.
     pub name: &'static str,
     /// The run of stops it belongs to; neighbours share one, so the walk
-    /// reads as a progression (one lane, merges, odd histories, refs and
-    /// badges, text, real repos).
+    /// reads as a progression (one lane, merges, quirks, refs and badges,
+    /// text, real repos).
     pub group: &'static str,
     /// Where the repository comes from.
     pub source: Source,
@@ -63,7 +63,7 @@ pub struct Roots {
 }
 
 /// The keys that move between stops, as the banner spells them.
-pub const KEYS: &str = "] next  [ back  q quit";
+pub const KEYS: &str = "] next [ back q quit";
 
 /// The corpus stops in walking order, each with its group, what right looks
 /// like, and what sets it apart from its neighbours. The subjects and branch
@@ -197,7 +197,7 @@ const CORPUS: [(Shape, &str, &str, &str); 20] = [
 
 const ONE_LANE: &str = "one lane";
 const MERGES: &str = "merges";
-const ODD: &str = "odd histories";
+const ODD: &str = "quirks";
 const REFS: &str = "refs and badges";
 const TEXT: &str = "text";
 const REAL: &str = "real repos";
@@ -256,10 +256,10 @@ fn stems(shape: Shape) -> &'static [&'static str] {
 }
 
 /// The banner's title: where the user is and how to move on. The run
-/// appends the tier in force.
+/// appends ` · <tier>` (`view::banner_lines`); [`TIER_SUFFIX`] reserves it.
 pub fn title(entry: &Entry, index: usize, total: usize) -> String {
     format!(
-        "gallery {}/{} · {} · {} · {KEYS}",
+        "gallery {}/{} {} · {} · {KEYS}",
         index + 1,
         total,
         entry.name,
@@ -568,6 +568,10 @@ mod tests {
     /// stop's line in full: the screen puts one cell of margin before it.
     const BANNER_WIDTH: usize = 79;
 
+    /// Cells the run adds to the title for the tier in force: ` · unicode`,
+    /// the longest tier name.
+    const TIER_SUFFIX: usize = 10;
+
     fn workspace() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
     }
@@ -583,7 +587,7 @@ mod tests {
         assert_eq!(
             banner.title,
             format!(
-                "gallery {}/{} · foxtrot-merge · merges · ] next  [ back  q quit",
+                "gallery {}/{} foxtrot-merge · merges · ] next [ back q quit",
                 foxtrot + 1,
                 all.len()
             )
@@ -633,7 +637,15 @@ mod tests {
                 assert!(text.len() > 20, "{}: too vague", entry.name);
             }
             let banner = banner(entry, index, all.len());
-            for line in std::iter::once(&banner.title).chain(&banner.lines) {
+            let title = UnicodeWidthStr::width(banner.title.as_str());
+            assert!(
+                title + TIER_SUFFIX <= BANNER_WIDTH,
+                "{}: {:?} is {title} cells, over {} with the tier",
+                entry.name,
+                banner.title,
+                BANNER_WIDTH - TIER_SUFFIX
+            );
+            for line in &banner.lines {
                 assert!(
                     UnicodeWidthStr::width(line.as_str()) <= BANNER_WIDTH,
                     "{}: {line:?} is {} cells, over {BANNER_WIDTH}",
@@ -658,7 +670,7 @@ mod tests {
             [
                 "one lane",
                 "merges",
-                "odd histories",
+                "quirks",
                 "refs and badges",
                 "text",
                 "real repos"
@@ -678,7 +690,7 @@ mod tests {
         let all = entries();
         let git_git = all.iter().find(|entry| entry.name == "git-git").unwrap();
         let page = missing_page(git_git, 22, 23, "scripts/clone-git-git.sh");
-        assert!(page[0].starts_with("gallery 23/23 · git-git · real repos"));
+        assert!(page[0].starts_with("gallery 23/23 git-git · real repos"));
         assert_eq!(
             page.last().map(String::as_str),
             Some("not available — build with: scripts/clone-git-git.sh")

@@ -18,13 +18,13 @@ orphan-branch           —                       —                       S:? 
 cherry-pick-duplicates  —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
 skewed-dates            —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
 tags                    —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
-unicode-names           —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
 ref-states              —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
 detached-head           —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
 unborn-branch           —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
 stash                   —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
+unicode-names           —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
 non-utf8-path           —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
 non-utf8-ref-name       —                       —                       C:?                     —                       C:?                     —                       —                     
 graft-self              —                       —                       C:?                     —                       C:?                     —                       —                     
 synthetic-100k          —                       —                       C:?                     —                       C:?                     —                       —                     
-git-git                 —                       —                       C:?,80x24,120x40        —                       C:?                     —                       —                     
+git-git                 C:?                     —                       C:?,80x24,120x40        —                       C:?                     —                       —                     

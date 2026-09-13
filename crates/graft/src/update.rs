@@ -267,7 +267,8 @@ impl Harness {
 }
 
 /// What a harness pins under the header (m1-the-graph/38). The view appends
-/// the rendering tier in force to the title, since only the run knows it.
+/// ` · <tier>` to the title for the rendering tier in force, since only the
+/// run knows it.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Banner {
     /// The first line, in the accent colour: where the user is and which

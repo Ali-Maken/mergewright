@@ -32,7 +32,7 @@ One line per public item. Update when a public item changes.
 - `GraphColumn::width_through` (fn) — cells for a window drawn through a `Fold` (kept lanes plus the marker).
 
 ## graph_screen
-- `CHROME_ROWS` (const) — screen rows that are not graph rows (header + footer).
+- `CHROME_ROWS` (const) — screen rows that are not graph rows (header + footer); a `GraphView::banner` adds one row per line.
 - `SHA_WIDTH` (const) — cells the short-SHA column takes, and hex digits to call `short_sha` with.
 - `AUTHOR_BREAKPOINT` (const) — width below which the author chip drops (DESIGN.md §1.2/§1.3).
 - `GraphView` (struct) — everything the graph screen draws.
@@ -49,6 +49,7 @@ One line per public item. Update when a public item changes.
 - `GraphView::notice` (field) — what the app layer did to the renderer tier, shown in the footer under `problem`, above the hints; `None` for nothing to say.
 - `GraphView::pixel` (field) — the pixel tier draws the graph: the column keeps its width, left blank for the images (m1-the-graph/24c).
 - `GraphView::search` (field) — the search footer line (`SearchLine`): below `problem`, above `notice`; `None` when no search.
+- `GraphView::banner` (field) — `Vec<SanitizedText>` drawn under the header, above the rows, each fitted to the width (first line accent, rest info); each line costs a body row, so `graph_area` moves down with it; empty in the shipped binary (m1-the-graph/38).
 - `SearchLine` (enum) — `Prompt(text)` draws ` /text_`; `Status{text, failed}` draws the search's line, warning-coloured only when failed.
 - `GraphView::graphics` (field) — `gfx ok` / `gfx: <message>` in the header while pixels are drawn; `None` otherwise.
 - `GraphicsStatus` (enum) — `Ok` or `Failed(SanitizedText)`: what the terminal said about the graph images.

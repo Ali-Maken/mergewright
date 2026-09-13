@@ -130,14 +130,15 @@ fn footer_notice(state: &AppState, tier: RenderingTier) -> Option<SanitizedText>
         .map(|_| sanitize_line(&format!("renderer: {} (F3 cycles)", tier_name(tier))))
 }
 
-/// The harness banner as drawn: its title with the tier in force appended
-/// (the harness cannot know it; the probe decides), then its lines. Empty
-/// without a harness banner, so the shipped binary draws nothing extra.
+/// The harness banner as drawn: its title with ` · <tier>` appended for the
+/// tier in force (the harness cannot know it; the probe decides), then its
+/// lines. Empty without a harness banner, so the shipped binary draws
+/// nothing extra.
 fn banner_lines(state: &AppState, tier: RenderingTier) -> Vec<SanitizedText> {
     let Some(banner) = &state.harness.banner else {
         return Vec::new();
     };
-    std::iter::once(format!("{} · {} tier", banner.title, tier_name(tier)))
+    std::iter::once(format!("{} · {}", banner.title, tier_name(tier)))
         .chain(banner.lines.iter().cloned())
         .map(|line| sanitize_line(&line))
         .collect()
@@ -857,7 +858,7 @@ pub(crate) mod tests {
         let lines: Vec<&str> = screen.lines().collect();
         assert!(lines[0].contains(" graft"), "{screen}");
         assert!(
-            lines[1].contains("gallery 6/23 · foxtrot-merge · ] next · unicode tier"),
+            lines[1].contains("gallery 6/23 · foxtrot-merge · ] next · unicode"),
             "the title carries the tier in force: {screen}"
         );
         assert!(lines[2].contains("shows: a lane jump"), "{screen}");
@@ -869,7 +870,7 @@ pub(crate) mod tests {
         state.renderer_override = Some(RenderingTier::Ascii);
         let screen = draw(&state, 80, 6);
         let lines: Vec<&str> = screen.lines().collect();
-        assert!(lines[1].contains("· ascii tier"), "{screen}");
+        assert!(lines[1].contains("] next · ascii "), "{screen}");
         assert!(lines[5].contains("renderer: ascii (F3 cycles)"), "{screen}");
     }
 
