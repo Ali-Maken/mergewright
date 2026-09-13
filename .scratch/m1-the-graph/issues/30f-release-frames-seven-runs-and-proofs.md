@@ -1,6 +1,6 @@
 # m1-the-graph/30f — Release frame check 7/7, idle-wake report, proofs
 
-Status: blocked — seam 4 (7 counted runs from run 1, proofs, docs) waits on 30h idle prefetch
+Status: ready — seam 4 (7 counted runs from run 1, proofs, docs); 30h done
 Build with: **Opus** (high) — frame timing under the job/redraw loop (split from 30c part b seam 2)
 Blocked by: 30h
 Leaves runnable: yes — release frame check passes 7 runs of 7; idle-wake reported separately.
