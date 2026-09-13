@@ -226,3 +226,25 @@ fn every_strip_waits_while_the_cursor_row_has_not_arrived() {
 
     assert_eq!(firsts_and_lengths(&rows), vec![]);
 }
+
+#[test]
+fn strips_draw_when_the_wheel_has_left_the_cursor_row_behind() {
+    // The wheel moves the viewport and leaves the selection alone (37): the
+    // viewport is 120..200, the cursor stayed on row 5, and the window on
+    // hand is 100..200. The cursor's row is not on its way, so waiting for it
+    // would blank the graph for as long as the user stays scrolled away.
+    let mut history = scrolled(history_of(200, 0), 120);
+    history.cursor = 5;
+    let window = history.window.as_mut().expect("history_of sends a window");
+    window.rows = window.rows[100..].into();
+    window.first = 100;
+
+    let rows = pixel_rows(&state(history, 80), MAX_LANES, STRIP_ROWS);
+
+    // Strip 96 lacks rows 96..100; the rest draw, unlit.
+    assert_eq!(
+        firsts_and_lengths(&rows),
+        vec![(128, 32), (160, 32), (192, 8)]
+    );
+    rasterise_all(&rows);
+}

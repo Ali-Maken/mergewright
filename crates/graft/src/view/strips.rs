@@ -143,8 +143,10 @@ impl StripRows {
 /// (`History::strip_rows`) makes that a moment between a scroll and its
 /// answer. The last strip of a history may be short; so may one whose rows
 /// past the window have not been laid out yet — its key says how many rows.
-/// Every strip waits while the cursor's row has not arrived: without it
-/// there is no thread, and an unlit strip would be sent twice.
+/// Every strip waits while the cursor's row is in the viewport but has not
+/// arrived: without it there is no thread, and an unlit strip would be sent
+/// twice. A cursor the wheel left off screen is not on its way, so strips
+/// draw unlit instead of waiting for it (37).
 pub fn pixel_rows(state: &AppState, max_lanes: usize, strip_rows: usize) -> PixelRows {
     let strip_rows = strip_rows.max(1);
     let Some(history) = &state.history else {
@@ -167,12 +169,8 @@ pub fn pixel_rows(state: &AppState, max_lanes: usize, strip_rows: usize) -> Pixe
     }
 
     let row_at = |index: usize| &window_rows[index - first];
-    // The cursor is always on screen, so its row is on its way. Until it
-    // comes there is no thread, and strips drawn without one would be
-    // rasterised and sent unlit, then again lit once the window arrives:
-    // a page key's frame and its answer each sent every strip (30b).
     let thread = thread(history);
-    if thread.is_none() && !window_rows.is_empty() {
+    if thread.is_none() && cursor_row_on_its_way(history, height) && !window_rows.is_empty() {
         return PixelRows::default();
     }
     let fold = plan(
@@ -216,6 +214,18 @@ pub fn pixel_rows(state: &AppState, max_lanes: usize, strip_rows: usize) -> Pixe
     }
 
     PixelRows::drawn_through(strips, &fold, uncommitted)
+}
+
+/// Whether the cursor sits in the viewport and its row has not arrived yet.
+///
+/// Such a row is on its way. Until it comes there is no thread, and strips
+/// drawn without one would be rasterised and sent unlit, then again lit once
+/// the window arrives: a page key's frame and its answer each sent every
+/// strip (30b). The wheel moves the viewport and leaves the cursor behind,
+/// and a cursor off screen is never on its way: waiting for it blanked the
+/// graph until a key brought the cursor back (37).
+fn cursor_row_on_its_way(history: &History, height: usize) -> bool {
+    history.selected().is_none() && (history.top..history.top + height).contains(&history.cursor)
 }
 
 /// The aligned strips covering `viewport` whose rows and row above are
