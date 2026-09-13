@@ -102,8 +102,8 @@ tickets in `.scratch/m1-the-graph/` are approved as drafted — the user did not
 want to review them one by one.
 
 - Build every ticket in dependency order, dispatching per each ticket's
-  `Build with` line (Fable for 05, 06, 07 — the graph-crate algorithm; Opus for
-  the rest).
+  `Build with` line — model and effort are on that line; CLAUDE.md
+  "Standing rules → Models" says how they are chosen.
 - Run `reviewer` on the milestone as usual, and fix what it finds.
 - **Stop only if something Critical survives the review rounds.** Majors and
   Minors get fixed and the milestone carries on.
