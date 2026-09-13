@@ -56,11 +56,18 @@ pub fn view(session: &Session, state: &AppState, frame: &mut Frame) {
 
 /// Whether this frame's graph is drawn in pixels: the graph screen, at the
 /// pixel tier, over the Kitty protocol (iTerm2 is ticket 25).
+///
+/// `graph.renderer = pixel` on a terminal that never acked any image
+/// protocol attempts Kitty anyway (DESIGN.md §4.2: config wins, and silence
+/// is not proof it cannot draw); `F3` drops to Unicode if nothing shows.
 #[must_use]
 pub fn draws_pixels(session: &Session, state: &AppState) -> bool {
     state.screen == Screen::Graph
         && state.renderer_override.unwrap_or(session.rendering.tier) == RenderingTier::Pixel
-        && session.capabilities.pixel_protocol == Some(PixelProtocol::Kitty)
+        && matches!(
+            session.capabilities.pixel_protocol,
+            Some(PixelProtocol::Kitty) | None
+        )
 }
 
 /// [`view`], saying `graphics` in the header when the graph is drawn in
@@ -773,14 +780,14 @@ pub(crate) mod tests {
         };
 
         // `Auto` and `Unicode` both draw Unicode here: the detected terminal
-        // is a Unicode one, and `Unicode` asks for exactly that. `Pixel` has
-        // no renderer yet (ticket m1-the-graph/24) so it falls back the same
-        // way; only `Ascii` changes what is drawn.
-        for (renderer, ascii) in [
-            (RendererChoice::Auto, false),
-            (RendererChoice::Unicode, false),
-            (RendererChoice::Pixel, false),
-            (RendererChoice::Ascii, true),
+        // is a Unicode one, and `Unicode` asks for exactly that. `Pixel` on
+        // this silent terminal attempts Kitty (m1-the-graph/24d): the column
+        // is left blank for images, so neither glyph set shows.
+        for (renderer, ascii, pixel) in [
+            (RendererChoice::Auto, false, false),
+            (RendererChoice::Unicode, false, false),
+            (RendererChoice::Pixel, false, true),
+            (RendererChoice::Ascii, true, false),
         ] {
             let loaded = Loaded {
                 config: Config {
@@ -801,7 +808,11 @@ pub(crate) mod tests {
             let screen = terminal.backend().to_string();
 
             insta::assert_snapshot!(format!("renderer-{renderer:?}"), screen);
-            assert_eq!(screen.contains('●'), !ascii, "{renderer:?}: {screen}");
+            assert_eq!(
+                screen.contains('●'),
+                !ascii && !pixel,
+                "{renderer:?}: {screen}"
+            );
             assert_eq!(screen.contains('*'), ascii, "{renderer:?}: {screen}");
         }
     }

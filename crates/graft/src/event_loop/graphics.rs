@@ -12,7 +12,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use graft_core::raster::RasterFrame;
-use graft_graph::raster::cache::{STRIP_ROWS, StripCache};
+use graft_graph::raster::cache::{Flush, STRIP_ROWS, StripCache};
 use graft_term::input::ReplyWaiter;
 use graft_term::kitty::{self, CellRect, KittyImages, Place};
 use graft_term::sanitize_line;
@@ -149,7 +149,7 @@ impl<R: GraphicsReplies> Graphics<R> {
                 cells: CellRect {
                     column: graph.x,
                     row: graph.y + at,
-                    columns: graph.width,
+                    columns: placed_columns(graph.width, frame.columns),
                     rows: u16::try_from(rows.len()).unwrap_or(u16::MAX),
                 },
             })
@@ -157,10 +157,35 @@ impl<R: GraphicsReplies> Graphics<R> {
         self.images.frame(&places, out);
     }
 
+    /// Throw away every rasterised strip: the theme, the cell size or the
+    /// window changed. A resize also forgets every upload, because ratatui
+    /// clears the whole screen on a size change and Ghostty frees image data
+    /// on that clear (ADR-0012, Correction): the next frame transmits again
+    /// instead of placing images the terminal no longer holds.
+    pub fn flush(&mut self, why: Flush) {
+        if matches!(why, Flush::Resize) {
+            self.images.forget_uploads();
+        }
+        self.strips.flush(why);
+    }
+
+    /// The strip cache's counters, for tests.
+    #[cfg(test)]
+    pub fn strip_stats(&self) -> graft_graph::raster::cache::CacheStats {
+        self.strips.stats()
+    }
+
     /// Append the commands deleting every upload. Call once, leaving.
     pub fn release(&mut self, out: &mut Vec<u8>) {
         self.images.free_all(out);
     }
+}
+
+/// Cells a strip is placed across: its own lane columns, never more than the
+/// graph column has. Placing a narrower strip across the whole column would
+/// make the terminal stretch it sideways.
+fn placed_columns(graph_width: u16, frame_columns: u32) -> u16 {
+    u16::try_from(frame_columns).map_or(graph_width, |columns| columns.min(graph_width))
 }
 
 /// The strip rows that land in a `height`-row graph column whose first row
@@ -185,7 +210,15 @@ fn on_screen(
 
 #[cfg(test)]
 mod tests {
-    use super::on_screen;
+    use super::{on_screen, placed_columns};
+
+    #[test]
+    fn a_strip_is_placed_across_its_own_columns_not_stretched() {
+        assert_eq!(placed_columns(20, 6), 6);
+        assert_eq!(placed_columns(20, 20), 20);
+        // Wider than the column: clamped (and squeezed; KNOWN_GAPS).
+        assert_eq!(placed_columns(20, 30), 20);
+    }
 
     #[test]
     fn a_strip_starting_above_the_viewport_is_cropped_to_it() {

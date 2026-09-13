@@ -97,6 +97,8 @@ One line per public item. Update when a public item changes.
 - `AppState::focus` (field) — Focus mode (`F`; `Esc` leaves it before cancelling anything): rows off the selection's thread fade; paint only.
 - `AppState::tooltip` (field) — the open tooltip's absolute row number, set identically by hover and `Enter`; `Esc` closes it first (m1-the-graph/17).
 - `AppState::renderer_override` (field) — the tier-drop key (`F3`) forced this tier for the rest of the run, or `None` for whatever `Session::settle` decided (m1-the-graph/19).
+- `AppState::settled_tier` (field) — `Session::settle`'s tier, copied in at loop start; `None` without a session (m1-the-graph/24d).
+- `AppState::tier` (fn) — tier in force: F3's override, else settled, else Unicode. F3 drops Pixel→Unicode, else →Ascii; history pads to strips only at Pixel.
 - `Screen` (enum) — `Graph` (default) or `Status`.
 - `Screen::toggled` (fn) — the other screen; `F2` swaps.
 - `Quit` (enum) — why Graft is leaving.
@@ -166,7 +168,7 @@ One line per public item. Update when a public item changes.
 ## view
 - `view` (fn) — draw the current state to a frame: the graph screen, or the status screen.
 - `view_with_graphics` (fn) — `view`, plus the gfx status in the header at the pixel tier; returns the graph rect the images go in, `None` when no pixels this frame.
-- `draws_pixels` (fn) — graph screen, pixel tier (override else session), Kitty protocol.
+- `draws_pixels` (fn) — graph screen, pixel tier (override else session), Kitty protocol — or no acked protocol at all (forced `pixel` attempts Kitty, m1-the-graph/24d).
 - `graph_view` (fn) — build a `GraphView` from the history window, cursor and status; the selection's `Ancestry` over the window lights lanes, fades rows in Focus mode, and pins its columns against folding.
 - `status_view` (fn) — build a `StatusView` from session and app state.
 
@@ -179,7 +181,7 @@ One line per public item. Update when a public item changes.
 - `ChannelWakes` (struct) — the real wake source: one channel, two feeder threads.
 - `ChannelWakes::new` (fn) — build the channel and the sender its producers clone.
 - `run` (fn) — run the event loop for a session, start to `Exit`.
-- `pump` (fn) — drive the loop; testable independent of a real terminal. Draws Kitty strips at the pixel tier, drains image replies each wake, frees every upload on exit (m1-the-graph/24c).
+- `pump` (fn) — drive the loop; testable independent of a real terminal. Draws Kitty strips at the pixel tier, drains image replies each wake, frees every upload on exit (m1-the-graph/24c). Theme/cell-size changes flush the strip cache; a resize also forgets uploads so the frame after ratatui's clear retransmits (24d).
 
 ## event_loop::signals
 - `WATCHED` (const) — signals watched: SIGINT, SIGTERM, SIGHUP.

@@ -25,7 +25,9 @@ use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, Sender};
 
 use graft_core::capabilities::Supported;
+use graft_core::event::Event;
 use graft_git::history::Order;
+use graft_graph::raster::cache::Flush;
 use graft_term::detect::{self, TtyHost};
 use graft_term::input::InputMux;
 use ratatui::Terminal;
@@ -214,7 +216,7 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     // terminal sends no resize at startup, so without it the graph would ask
     // for, and draw, a single row until the window changed size.
     let size = terminal.size()?;
-    let state = opening_repository(
+    let mut state = opening_repository(
         &jobs,
         &repo_path,
         crate::update::Size {
@@ -225,6 +227,7 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     // Its own waiter: every waiter gets a copy of each reply, so the
     // redetector's rounds and the images' error replies never steal from
     // each other (and each ignores the other's kind).
+    state.settled_tier = Some(settled.rendering.tier);
     let mut graphics = Graphics::new(mux.waiter());
     let outcome = pump_with(
         &mut terminal,
@@ -503,13 +506,23 @@ where
             Wake::Shutdown(signal) => return Ok(Exit::Signal(signal)),
             Wake::InputFailed(error) | Wake::TerminalFailed(error) => return Err(error),
             Wake::Terminal(change) => {
-                if session.apply(change) || replied {
+                let changed = session.apply(change);
+                if changed {
+                    graphics.flush(match change {
+                        TerminalChange::CellSize(_) => Flush::CellSize,
+                        TerminalChange::Theme(_) => Flush::Theme,
+                    });
+                }
+                if changed || replied {
                     draw(terminal, session, &state, graphics)?;
                 }
                 continue;
             }
         };
 
+        if matches!(event, AppEvent::Core(Event::Resize { .. })) {
+            graphics.flush(Flush::Resize);
+        }
         let (next, commands) = update(&state, event);
         state = next;
 
@@ -770,6 +783,87 @@ mod tests {
                     .expect("an id follows i=")
             })
             .collect()
+    }
+
+    /// Strip-cache flushes over a pixel-tier run through `wakes`, and every
+    /// frame it drew.
+    fn pixel_flushes(wakes: Vec<Wake>) -> (u64, Vec<String>) {
+        let (mut terminal, recorder) = terminal(PIXEL_COLUMNS, PIXEL_ROWS);
+        let (mut session, state) = at_pixel_tier();
+        let mut graphics = Graphics::new(NoReplies);
+        pump_with(
+            &mut terminal,
+            &mut ScriptedWakes::new(wakes),
+            &Recorded::default(),
+            &mut session,
+            state,
+            &mut graphics,
+        )
+        .expect("writing to memory cannot fail");
+        let end = String::from_utf8_lossy(END_SYNCHRONIZED_UPDATE).into_owned();
+        let frames = recorder.written().split(&end).map(str::to_owned).collect();
+        (graphics.strip_stats().flushes, frames)
+    }
+
+    #[test]
+    fn a_resize_flushes_the_strips_and_re_sends_them() {
+        let (flushes, frames) = pixel_flushes(vec![resized(PIXEL_COLUMNS, PIXEL_ROWS), quit_key()]);
+        assert_eq!(flushes, 1);
+        assert!(!transmitted(&frames[0]).is_empty());
+        assert!(
+            !transmitted(&frames[1]).is_empty(),
+            "after the resize's clear every strip goes again: {:?}",
+            frames[1]
+        );
+    }
+
+    #[test]
+    fn a_new_cell_size_or_theme_flushes_the_strips() {
+        use graft_core::capabilities::{Theme, ThemeHint, ThemeSource};
+        let (session, _) = at_pixel_tier();
+        let mut cell = session.capabilities.cell_size;
+        cell.width += 1;
+        let theme = ThemeHint {
+            theme: Theme::Light,
+            source: ThemeSource::Assumed,
+        };
+        let (flushes, _) = pixel_flushes(vec![
+            Wake::Terminal(TerminalChange::CellSize(cell)),
+            Wake::Terminal(TerminalChange::Theme(theme)),
+            // Unchanged: nothing to flush.
+            Wake::Terminal(TerminalChange::Theme(theme)),
+            quit_key(),
+        ]);
+        assert_eq!(flushes, 2);
+    }
+
+    #[test]
+    fn forced_pixels_on_a_silent_terminal_attempt_kitty_and_f3_recovers() {
+        let (mut terminal, recorder) = terminal(PIXEL_COLUMNS, PIXEL_ROWS);
+        let (mut session, mut state) = at_pixel_tier();
+        session.capabilities.pixel_protocol = None;
+        state.settled_tier = Some(session.rendering.tier);
+        let mut graphics = Graphics::new(NoReplies);
+        pump_with(
+            &mut terminal,
+            &mut ScriptedWakes::new(vec![key(KeyPress::plain(KeyCode::Function(3))), quit_key()]),
+            &Recorded::default(),
+            &mut session,
+            state,
+            &mut graphics,
+        )
+        .expect("writing to memory cannot fail");
+        let end = String::from_utf8_lossy(END_SYNCHRONIZED_UPDATE).into_owned();
+        let written = recorder.written();
+        let frames: Vec<&str> = written.split(&end).collect();
+        assert!(!transmitted(frames[0]).is_empty(), "Kitty attempted");
+        assert!(
+            frames[1].contains("a=d,d=i,i="),
+            "placements removed: {:?}",
+            frames[1]
+        );
+        assert!(frames[1].contains("forced to unicode"), "{:?}", frames[1]);
+        assert!(!frames[1].contains("gfx"), "no pixels, no gfx status");
     }
 
     fn unbound_key() -> Wake {

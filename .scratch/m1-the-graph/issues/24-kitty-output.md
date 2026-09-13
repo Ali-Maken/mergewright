@@ -1,6 +1,6 @@
 # m1-the-graph/24 — Pixels on Kitty-protocol terminals
 
-Status: partial — encoder done; remainder split into 24b, 24c, 24d
+Status: done — all acceptance met except the user's by-eye check (command in 24d)
 Build with: **Opus** (high) — terminal graphics protocol
 Blocked by: 19, 23
 Leaves runnable: yes — Ghostty and other Kitty-protocol terminals show the pixel graph; everything else unchanged.
@@ -26,11 +26,12 @@ Out:
 - iTerm2 and resize frame cost (25). tmux and SSH (29).
 
 ## Acceptance
-- [ ] Byte-stream unit tests: chunking, ids, crop per scroll step, placement replacement, free on exit.
-- [ ] A simulated `ENOENT` reply causes a re-transmit and a visible `gfx:` status.
-- [ ] An automated run against a real Kitty-protocol terminal reads back `q=1` replies with zero errors. A pty capture is not acceptance.
-- [ ] Forcing `pixel` on a terminal that never acked attempts it, and 19's tier-drop key recovers.
-- [ ] Exact command prepared for the user in Ghostty. **The by-eye box stays unticked until the user looks.**
+- [x] Byte-stream unit tests: chunking, ids, crop per scroll step, placement replacement, free on exit.
+- [x] A simulated `ENOENT` reply causes a re-transmit and a visible `gfx:` status.
+- [x] An automated run against a real Kitty-protocol terminal reads back `q=1` replies with zero errors. A pty capture is not acceptance.
+- [x] Forcing `pixel` on a terminal that never acked attempts it, and 19's tier-drop key recovers.
+- [x] Exact command prepared for the user in Ghostty (24d).
+- [ ] **The by-eye box stays unticked until the user looks.**
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test` (fast tier only)

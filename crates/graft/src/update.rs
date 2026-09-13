@@ -173,6 +173,11 @@ pub struct AppState {
     /// like `lanes_expanded` — the rows are untouched, only how they draw
     /// changes (`graph.renderer`, m1-the-graph/19).
     pub renderer_override: Option<RenderingTier>,
+    /// The tier `Session::settle` decided, copied in when the loop starts so
+    /// `update` knows what `F3` drops from and whether row requests pad to
+    /// pixel strips. `None` in a state built without a session (tests,
+    /// headless), which draws as the Unicode tier would.
+    pub settled_tier: Option<RenderingTier>,
 }
 
 /// The screens Graft can show.
@@ -201,6 +206,14 @@ impl Screen {
 pub const CHROME_ROWS: u16 = graft_ui::graph_screen::CHROME_ROWS;
 
 impl AppState {
+    /// The tier the graph draws at: `F3`'s override, else the settled one.
+    #[must_use]
+    pub fn tier(&self) -> RenderingTier {
+        self.renderer_override
+            .or(self.settled_tier)
+            .unwrap_or(RenderingTier::Unicode)
+    }
+
     /// How many rows of history the graph pane shows at the current size.
     /// Never zero, so a movement always has somewhere to go.
     #[must_use]
@@ -316,6 +329,7 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             // say is now about a question nobody asked.
             next.awaiting = Some(id);
             let mut history = History::started();
+            history.strip_rows = strip_rows_for(next.tier());
             // A refresh keeps what the user folded, hid or switched to.
             if let Some(previous) = &next.history {
                 history.view = previous.view.clone();
@@ -529,10 +543,7 @@ fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     } else if is_focus_toggle(key) {
         next.focus = !next.focus;
     } else if is_tier_drop(key) {
-        // Only one tier below Unicode exists until pixel tiers land
-        // (ticket m1-the-graph/24), so dropping always lands on ASCII; the
-        // view layer says so in the footer (`graft::view`).
-        next.renderer_override = Some(RenderingTier::Ascii);
+        drop_tier(next, commands);
     } else if is_tooltip_key(key) {
         // The keyboard's route to the same content a hover opens (DESIGN.md
         // §2.15): the selection's row, looked up the same way `graph_row_at`
@@ -672,10 +683,38 @@ fn is_lane_toggle(key: KeyPress) -> bool {
     key.code == KeyCode::Char('+') && !key.modifiers.control && !key.modifiers.alt
 }
 
-/// `F3`: force the ASCII tier for the rest of the run, and say so
-/// (DESIGN.md §4.2 — config wins over detection, and a key press wins the
-/// same way over both; ticket m1-the-graph/19). Not one of DESIGN.md's
-/// keymap, like `F2`.
+/// `F3` pressed: one tier down, and the history's row requests follow.
+fn drop_tier(next: &mut AppState, commands: &mut Vec<Command>) {
+    // One step down: pixels to Unicode, anything else to ASCII. The view
+    // layer says so in the footer (`graft::view`). Off pixels, requests
+    // stop padding to whole strips.
+    let dropped = if next.tier() == RenderingTier::Pixel {
+        RenderingTier::Unicode
+    } else {
+        RenderingTier::Ascii
+    };
+    next.renderer_override = Some(dropped);
+    let height = next.graph_rows();
+    if let Some(history) = next.history.as_mut() {
+        history.strip_rows = strip_rows_for(dropped);
+        if let Some(request) = history.show(height)
+            && let Some(id) = next.awaiting
+        {
+            commands.push(Command::ShowRows(id, request));
+        }
+    }
+}
+
+/// Rows per history request at `tier`: whole pixel strips at the pixel tier
+/// (`History::strip_rows`), exactly the viewport otherwise.
+fn strip_rows_for(tier: RenderingTier) -> Option<usize> {
+    (tier == RenderingTier::Pixel).then_some(graft_graph::raster::cache::STRIP_ROWS)
+}
+
+/// `F3`: drop one tier for the rest of the run — pixels to Unicode, Unicode
+/// to ASCII — and say so (DESIGN.md §4.2 — config wins over detection, and a
+/// key press wins the same way over both; tickets m1-the-graph/19, 24d). Not
+/// one of DESIGN.md's keymap, like `F2`.
 fn is_tier_drop(key: KeyPress) -> bool {
     key.code == KeyCode::Function(3) && !key.modifiers.control && !key.modifiers.alt
 }
@@ -875,10 +914,45 @@ mod tests {
         assert_eq!(dropped.renderer_override, Some(RenderingTier::Ascii));
         assert!(commands.is_empty(), "a view-time flag: {commands:?}");
 
-        // Pressing it again is a no-op, not a crash or a cycle back to
-        // Unicode — only one tier below Unicode exists so far.
+        // Pressing it again is a no-op, not a crash or a cycle back up.
         let (still, _) = update(&dropped, key(KeyCode::Function(3)));
         assert_eq!(still.renderer_override, Some(RenderingTier::Ascii));
+    }
+
+    #[test]
+    fn at_the_pixel_tier_history_asks_for_whole_strips() {
+        let state = AppState {
+            settled_tier: Some(RenderingTier::Pixel),
+            ..AppState::default()
+        };
+        let (started, _) = update(&state, AppEvent::Started(JobId::new(1), Task::ReadHistory));
+        let history = started.history.expect("a walk started");
+        assert_eq!(
+            history.strip_rows,
+            Some(graft_graph::raster::cache::STRIP_ROWS)
+        );
+
+        let (unicode, _) = update(
+            &AppState::default(),
+            AppEvent::Started(JobId::new(1), Task::ReadHistory),
+        );
+        assert_eq!(unicode.history.expect("a walk started").strip_rows, None);
+    }
+
+    #[test]
+    fn f3_from_pixels_drops_to_unicode_and_stops_padding_to_strips() {
+        let state = AppState {
+            settled_tier: Some(RenderingTier::Pixel),
+            ..AppState::default()
+        };
+        let (started, _) = update(&state, AppEvent::Started(JobId::new(1), Task::ReadHistory));
+
+        let (unicode, _) = update(&started, key(KeyCode::Function(3)));
+        assert_eq!(unicode.renderer_override, Some(RenderingTier::Unicode));
+        assert_eq!(unicode.history.as_ref().and_then(|h| h.strip_rows), None);
+
+        let (ascii, _) = update(&unicode, key(KeyCode::Function(3)));
+        assert_eq!(ascii.renderer_override, Some(RenderingTier::Ascii));
     }
 
     /// A walk in flight whose window holds a plain commit (row 0) and a
@@ -1381,6 +1455,7 @@ mod tests {
             focus: false,
             tooltip: None,
             renderer_override: None,
+            settled_tier: None,
         };
 
         let first = update(&state, key(KeyCode::Char('q')));

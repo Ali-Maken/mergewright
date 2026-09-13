@@ -255,11 +255,15 @@ entry is (CLAUDE.md).*
 - Pixel shots are rendered at the 17×37 cell only; how they look at other cell sizes (e.g. 8×16 on a small font) is unjudged.
 - Render time measured on the fast tier only: 32 rows × 5 lanes at 17×37, Apple M5, median 1.38 ms release / 13.4 ms debug. Wide strips (many lanes) unmeasured; the frame-budget ticket (30) owns it.
 
-- **m1/24 pixel tier not wired (2026-09-13).** `graft-term::kitty` encoder exists and is tested; nothing in `app` calls it yet, so Ghostty still draws the Unicode graph. Remaining: 24c draw + reply draining + `gfx` status, 24d flush/F3/real-Ghostty check. 24b done: `view::strips::pixel_rows` builds aligned strips and `History::strip_rows` pads requests, but nothing sets `strip_rows` yet (needs the settled tier in `AppState`, 24d) and nothing calls `pixel_rows` (24c). See `.scratch/m1-the-graph/issues/24-kitty-output.md` Handoff.
 
 ## m1-the-graph/24c — Kitty draw and replies
-- **Pixel column width comes from the text tier's fold** (visible rows), while strips are rasterised through one fold across every strip drawn (`pixel_rows`). When the two lane counts differ, the terminal scales the strip horizontally into the text-tier width. Not observed; measure in 24d's real-Ghostty check, and if seen, size the column from `PixelRows::lane_columns`.
+- **Pixel column width comes from the text tier's fold** (visible rows), while strips are rasterised through one fold across every strip drawn (`pixel_rows`). 24d places each strip across its own lane columns (`placed_columns`), so a narrower strip is no longer stretched; a strip *wider* than the column is still squeezed into it (`Place` has no column crop).
 - **Replies are drained only on a wake.** A `q=1` error reply arriving with no key, resize or job result after it waits for the next wake to be shown and retransmitted. The mux has no wake for replies.
 - **A panic leaves uploads in the terminal.** `free_all` runs on every loop exit (quit, signal, error), not from the panic hook.
 - `STRIPS_KEPT` (16) is fixed for both the strip cache and uploads, not sized from the viewport (`StripCache::capacity_for`).
-- Nothing has drawn a pixel yet: `History::strip_rows` is still never set outside tests (24d), so the app shows a blank graph column only if forced to the pixel tier on a Kitty terminal, and strips appear only when the window happens to cover whole strips.
+
+## m1-the-graph/24d — flush, F3, Ghostty check
+- **Retransmit after a clear uses new ids; the old ones are never freed.** `forget_uploads` drops Graft's record, so the next frame sends `i=1002…` and `free_all` on exit frees only those. Ghostty frees image data on the clear itself (ADR-0012), so nothing leaks there; a Kitty-protocol terminal that keeps data across `ESC[2J` holds the old uploads until it exits. Seen in `docs/shots/24d-kitty-check.esc.txt`.
+- **A resize re-rasterises every strip** (`Flush::Resize`) though strip pixels depend on cell size and theme, not window size. Cost unmeasured; frame-budget ticket (25/30).
+- **A size change ratatui notices before the SIGWINCH wake** clears the screen with no `forget_uploads`: that frame's placements ENOENT, `gfx:` shows the error, and the next wake retransmits. Self-healing, not observed.
+- **The real-Ghostty check drives the encoder with synthetic strips** (`examples/kitty_check.rs`), not the app: it proves Ghostty accepts Graft's transmit/crop/clear/hide/free commands at `q=1` with zero errors. Whether the app's history strips look right is the user's by-eye check.

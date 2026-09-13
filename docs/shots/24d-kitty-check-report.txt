@@ -1,0 +1,9 @@
+kitty_check: TERM=xterm-ghostty TERM_PROGRAM=ghostty 1.3.1
+first frame          transmits  2  placements  2  replies  0  errors  0  DA1 answered
+scroll 3 rows        transmits  0  placements  2  replies  0  errors  0  DA1 answered
+clear + retransmit   transmits  2  placements  2  replies  0  errors  0  DA1 answered
+hide                 transmits  0  placements  0  replies  0  errors  0  DA1 answered
+free all             transmits  0  placements  0  replies  0  errors  0  DA1 answered
+control: missing id  transmits  0  placements  1  replies  1  errors  1  DA1 answered
+    reply i=Some(999999) ENOENT: image not found
+PASS: 0 error replies, 0 unfenced steps; control heard 1 ENOENT (want 1)
