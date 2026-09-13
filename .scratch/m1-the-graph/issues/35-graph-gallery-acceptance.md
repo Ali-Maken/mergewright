@@ -2,7 +2,7 @@
 
 Status: ready
 Build with: **Fable** (high) — the deliverable is a judgment about what good looks like; M1's promise is visual (user decision, 2026-09-13)
-Blocked by: 27d, 29, 30, 34
+Blocked by: 27d, 29, 30b, 30c, 30d, 34
 Leaves runnable: yes — one dev command walks every test repo so the user can judge the graph by eye.
 
 **M1's promise:** *the shape of history is obvious at a glance.* This ticket builds the means to judge that promise, not more tests of it. M1 isn't done until this ticket is.

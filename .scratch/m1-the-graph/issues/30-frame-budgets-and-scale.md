@@ -1,6 +1,6 @@
 # m1-the-graph/30 — Frame budgets, benches, 50k refs, and the 1M claim
 
-Status: partial (handoff below)
+Status: partial — benches + frames heavy tests written (failing = budget missed); remainder split into 30b, 30c, 30d
 Build with: **Opus** (high) — timing the event loop and the pixel path
 Blocked by: 11, 25, 27, 27d
 Leaves runnable: yes — benches run at review; input-to-frame asserted in the heavy tier.

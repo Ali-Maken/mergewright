@@ -2,7 +2,7 @@
 
 Status: ready
 Build with: **Sonnet** (medium) — mechanical: a script, docs, a sweep
-Blocked by: 26, 27d, 29, 30, 35
+Blocked by: 26, 27d, 29, 30c, 30d, 35
 Leaves runnable: yes — one command per checkpoint scenario.
 
 Why: M1's checkpoint is the user opening `git/git` and the merge-mistake fixtures and judging whether the history shape is obvious at a glance. This makes that one command each and makes sure nothing was quietly left half-done. (Retired ticket 17, text in 35bec3e.)
