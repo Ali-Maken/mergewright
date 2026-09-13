@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — ticket 49 · 73 tickets: 61 done, 9 ready, 1 partial, 1 split, 1 wontfix
+**Current step:** M1 The graph — ticket 50 · 73 tickets: 62 done, 8 ready, 1 partial, 1 split, 1 wontfix
 
 ---
 
@@ -237,6 +237,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-14 · m1/53 dates on a fixed clock · sonnet · done · Clock on Harness, CORPUS_NOW, 3 exemptions removed, 4 snapshots re-recorded + 2 new; git 2.50.1 probe: 89 min → "89 minutes ago", 90 min → "2 hours ago" (code was right, 48's table row wrong); cause: wall-clock read on snapshot path; capture docs/shots/53-relative-dates-fixed-clock.txt for user's eye; 124k tokens (over 80k target, no compaction)
 - 2026-09-14 · m1/49 commit handles and table · opus · partial · seam (a) done (CommitHandle, Parents, Link, HandleSet, CommitTable, TableError; round-trips on real fixtures with and without commit-graph; heavy tests written, not run); stopped at seam past 80k, no compaction; seam (b) remains (Walk table param, next_links, next_ids removal, CommitSource methods, RepoStore wiring); spec question to planner: next_links lacks limit, LinkChunk only `more` vs existing done/stopped
 - 2026-09-14 · m1/49 spec amendment (next_links) · fable · done · next_links(limit, stop) -> LinkChunk { links, done, stopped } (same contract as Chunk and 52's Pull; `more` dropped: conflated end with stop); amended 49 and 52
+- 2026-09-14 · m1/49 continuation (seam b) · opus · done · next_links wired through Walk, CommitSource, RepoStore (table opens once, survives refresh); next_ids removed; next_links matches next_chunk on every shape/order with and without commit-graph, stop+resume verified; deviation: WalkSource::new takes table from walk.table() so they can't disagree; heavy tests (5k pair, 100k bytes) not run, open for review; gap: WalkSource::links reads whole commits (KNOWN_GAPS); 125k tokens, no compaction
 
 ## Open questions for the M1 checkpoint
 - **By eye (30b):** pixel graph goes blank for one frame on PgDn before rows arrive. User judges whether that's acceptable.
