@@ -105,20 +105,6 @@ fn civil_from_days(z: i64) -> (i64, u32, u32) {
     (year, month, day)
 }
 
-/// The tooltip's date line: absolute (in the commit's own recorded offset)
-/// and relative, together — `"2026-09-13 14:02 +0500 · 4h ago"`. `relative_date`'s
-/// own `"now"` has no "ago" appended.
-#[must_use]
-pub fn tooltip_date(now: i64, seconds: i64, offset_seconds: i32) -> String {
-    let relative = relative_date(now, seconds);
-    let relative = if relative == "now" {
-        relative
-    } else {
-        format!("{relative} ago")
-    };
-    format!("{} · {relative}", absolute_date(seconds, offset_seconds))
-}
-
 /// The first `len` hex characters of a full object id — `Display`'s output,
 /// not a re-hash, so it always agrees with the id `app` looked up.
 ///
@@ -188,14 +174,5 @@ mod tests {
     #[test]
     fn absolute_date_handles_a_zero_offset() {
         assert_eq!(absolute_date(0, 0), "1970-01-01 00:00 +0000");
-    }
-
-    #[test]
-    fn tooltip_date_appends_ago_except_for_now() {
-        assert_eq!(
-            tooltip_date(10_000, 0, 0),
-            "1970-01-01 00:00 +0000 · 2h ago"
-        );
-        assert_eq!(tooltip_date(1000, 1000, 0), "1970-01-01 00:16 +0000 · now");
     }
 }

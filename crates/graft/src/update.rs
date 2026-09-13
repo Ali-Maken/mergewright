@@ -171,18 +171,18 @@ pub struct AppState {
     /// Focus mode (`F`, DESIGN.md §5.2): rows off the selection's thread
     /// fade. A paint decision like `lanes_expanded`; the walk is not asked.
     pub focus: bool,
-    /// The hover tooltip's row: an absolute history row number, set by
-    /// pointer movement over the graph (DESIGN.md §2.15, PROMPT.md §1.3;
-    /// m1-the-graph/17). `None` when the pointer is not over a row. A
-    /// pinned tooltip (below) takes priority over this one on screen, but
-    /// hover keeps tracking the pointer underneath it regardless.
-    pub tooltip: Option<usize>,
-    /// The tooltip `Enter` pinned open, if any: an absolute history row
-    /// number that stays put under hover and scrolling — the commit it was
-    /// opened for, not the cursor (m1-the-graph/34's choice, so the tooltip
-    /// can be read and copied while the user keeps browsing). `Enter`
-    /// toggles it; `Esc` and a second `Enter` close it.
-    pub pinned_tooltip: Option<usize>,
+    /// The pointer's row: an absolute history row number, set by pointer
+    /// movement over the graph (DESIGN.md §2.15, PROMPT.md §1.3;
+    /// m1-the-graph/17, ADR-0023). `None` when the pointer is not over a
+    /// row. While a row's subject is cut with `…`, the footer reveals it in
+    /// full in place of the key hints (`graft_ui::graph_screen::graph_view`
+    /// turns this into `GraphView::reveal`).
+    pub hover: Option<usize>,
+    /// `Enter`'s one-shot peek (ADR-0023): while set, the cursor row's
+    /// subject reveals in the footer the same way a hover does, without
+    /// needing the mouse. `Enter` toggles it; any other key, or moving the
+    /// cursor, clears it; `Esc` clears it before anything else.
+    pub peek: bool,
     /// The tier-drop key (`F3`) forced this tier for the rest of the run, or
     /// `None` for whatever `Session::settle` decided. A view-time override
     /// like `lanes_expanded` — the rows are untouched, only how they draw
@@ -610,7 +610,24 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
 }
 
 /// The half of [`core_event`] that answers a key.
+///
+/// `Enter` (the peek key) and `Esc` handle the peek themselves — `Enter`
+/// toggles it, `Esc` clears it before anything else (`escape_key`). Every
+/// other key clears a peek left on: it is a one-shot, not a mode
+/// (ADR-0023).
 fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
+    if is_peek_key(key) {
+        next.peek = !next.peek;
+        return;
+    }
+    if key.code != KeyCode::Escape {
+        next.peek = false;
+    }
+    graph_key(next, commands, key);
+}
+
+/// The graph's own keys, once [`key_event`] has settled the peek.
+fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     if is_quit(key) {
         next.quit = Some(Quit::Requested);
     } else if is_refresh(key) {
@@ -634,8 +651,6 @@ fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         next.focus = !next.focus;
     } else if is_tier_cycle(key) {
         cycle_tier(next, commands);
-    } else if is_tooltip_key(key) {
-        toggle_pinned_tooltip(next);
     } else if let Some(change) = view_change(key) {
         let height = next.graph_rows();
         let stash = next.refs.as_ref().and_then(crate::refs::RefBadges::stash);
@@ -659,27 +674,12 @@ fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     }
 }
 
-/// `Enter` pins the tooltip open (m1-the-graph/34): a second `Enter`
-/// closes it, wherever the cursor has moved to since — `take()` reports
-/// whether one was already open before deciding whether to open a new
-/// one. Pinning is the keyboard's route to the same content a hover opens
-/// (DESIGN.md §2.15): the selection's row, looked up the same way
-/// `graph_row_at` looks up a hovered one.
-fn toggle_pinned_tooltip(next: &mut AppState) {
-    if next.pinned_tooltip.take().is_none() {
-        next.pinned_tooltip = next.history.as_ref().map(|history| history.cursor);
-    }
-}
-
-/// `Esc`: closes the tooltip if one is open — pinned first, since it is the
-/// one that survives everything else — else backs a `G` still walking out
-/// first, then leaves Focus mode, then cancels the walk — the lightest
-/// thing on screen goes first (m1-the-graph/17, DESIGN.md §2.2).
+/// `Esc`: clears a peek if one is on — the lightest thing on screen, so it
+/// goes first — else backs a `G` still walking out first, then leaves Focus
+/// mode, then cancels the walk (m1-the-graph/17, ADR-0023, DESIGN.md §2.2).
 fn escape_key(next: &mut AppState, commands: &mut Vec<Command>) {
-    if next.pinned_tooltip.take().is_some() {
-        return;
-    }
-    if next.tooltip.take().is_some() {
+    if next.peek {
+        next.peek = false;
         return;
     }
     let height = next.graph_rows();
@@ -1053,10 +1053,11 @@ fn is_tier_cycle(key: KeyPress) -> bool {
     key.code == KeyCode::Function(3) && !key.modifiers.control && !key.modifiers.alt
 }
 
-/// `Enter`: open the tooltip for the selection — the keyboard's route to the
-/// content a hover shows (DESIGN.md §2.15, PROMPT.md §1.3). Free on the graph
-/// pane: DESIGN.md §2.3 binds it only on a sidebar row, which m1 has none of.
-fn is_tooltip_key(key: KeyPress) -> bool {
+/// `Enter`: peek the cursor row's full subject — the keyboard's route to the
+/// content a hover shows (DESIGN.md §2.15, PROMPT.md §1.3, ADR-0023). Free
+/// on the graph pane: DESIGN.md §2.3 binds it only on a sidebar row, which
+/// m1 has none of.
+fn is_peek_key(key: KeyPress) -> bool {
     key.code == KeyCode::Enter && key.modifiers == Modifiers::NONE
 }
 
@@ -1089,7 +1090,7 @@ fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mouse: MouseInp
         }
         // Any-motion reporting (`terminal.rs`) is what makes this arrive with
         // no button held — hover, not a drag.
-        MouseKind::Moved => next.tooltip = graph_row_at(next, mouse.row),
+        MouseKind::Moved => next.hover = graph_row_at(next, mouse.row),
         _ => {}
     }
 }
@@ -1583,7 +1584,7 @@ mod tests {
     }
 
     #[test]
-    fn hover_and_enter_open_the_tooltip_on_the_same_row() {
+    fn hover_names_the_row_under_the_pointer() {
         let id = JobId::new(22);
         let (mut state, _) = merge_on_screen(id, 1);
         state.size = Size {
@@ -1598,21 +1599,26 @@ mod tests {
             modifiers: Modifiers::NONE,
         }));
         let (hovered, _) = update(&state, hover);
-        assert_eq!(hovered.tooltip, Some(1), "hover names the row under it");
+        assert_eq!(hovered.hover, Some(1), "hover names the row under it");
+    }
+
+    /// `Enter` peeks the cursor row without needing the mouse (ADR-0023).
+    #[test]
+    fn enter_toggles_a_peek_on_the_cursor_row_without_the_mouse() {
+        let id = JobId::new(23);
+        let (state, _) = merge_on_screen(id, 1);
+        assert!(!state.peek);
 
         let (opened, _) = update(&state, key(KeyCode::Enter));
-        assert_eq!(
-            opened.pinned_tooltip, hovered.tooltip,
-            "the keyboard names the same row as the hover"
-        );
+        assert!(opened.peek, "Enter turns the peek on");
     }
 
     #[test]
-    fn hovering_another_row_does_not_move_or_close_a_pinned_tooltip() {
+    fn hovering_another_row_does_not_touch_a_peek() {
         let id = JobId::new(23);
         let (state, _) = merge_on_screen(id, 1);
         let (opened, _) = update(&state, key(KeyCode::Enter));
-        assert_eq!(opened.pinned_tooltip, Some(1));
+        assert!(opened.peek);
 
         let hover = core(Event::Mouse(MouseInput {
             kind: MouseKind::Moved,
@@ -1621,55 +1627,44 @@ mod tests {
             modifiers: Modifiers::NONE,
         }));
         let (hovered, _) = update(&opened, hover);
-        assert_eq!(
-            hovered.pinned_tooltip,
-            Some(1),
-            "hover cannot overwrite the pin"
-        );
-        assert_ne!(
-            hovered.tooltip, hovered.pinned_tooltip,
-            "hover still tracks the pointer underneath it"
-        );
+        assert!(hovered.peek, "the peek is untouched by a hover elsewhere");
     }
 
+    /// Any key other than `Enter` clears the peek — a one-shot, not a mode.
     #[test]
-    fn moving_the_cursor_does_not_move_a_pinned_tooltip() {
+    fn moving_the_cursor_clears_the_peek() {
         let id = JobId::new(23);
         let (state, _) = merge_on_screen(id, 1);
         let (opened, _) = update(&state, key(KeyCode::Enter));
-        assert_eq!(opened.pinned_tooltip, Some(1));
+        assert!(opened.peek);
 
         let (moved, _) = update(&opened, key(KeyCode::Char('j')));
-        assert_eq!(
-            moved.pinned_tooltip,
-            Some(1),
-            "the pin stays on the commit it was opened for"
-        );
+        assert!(!moved.peek, "j clears a peek left on");
     }
 
     #[test]
-    fn enter_again_closes_the_pin() {
+    fn enter_again_closes_the_peek() {
         let id = JobId::new(23);
         let (state, _) = merge_on_screen(id, 1);
         let (opened, _) = update(&state, key(KeyCode::Enter));
-        assert_eq!(opened.pinned_tooltip, Some(1));
+        assert!(opened.peek);
 
         let (closed, _) = update(&opened, key(KeyCode::Enter));
-        assert_eq!(closed.pinned_tooltip, None);
+        assert!(!closed.peek);
     }
 
     #[test]
-    fn esc_closes_the_tooltip_before_anything_else() {
+    fn esc_clears_the_peek_before_anything_else() {
         let id = JobId::new(23);
         let (state, _) = merge_on_screen(id, 1);
         let (opened, _) = update(&state, key(KeyCode::Enter));
-        assert_eq!(opened.pinned_tooltip, Some(1));
+        assert!(opened.peek);
 
         let (closed, commands) = update(&opened, key(KeyCode::Escape));
-        assert_eq!(closed.pinned_tooltip, None);
+        assert!(!closed.peek);
         assert!(
             commands.is_empty(),
-            "closing the tooltip asks nothing of the walk"
+            "clearing the peek asks nothing of the walk"
         );
         assert_eq!(
             closed.awaiting, opened.awaiting,
@@ -1916,8 +1911,8 @@ mod tests {
             screen: Screen::Graph,
             lanes_expanded: false,
             focus: false,
-            tooltip: None,
-            pinned_tooltip: None,
+            hover: None,
+            peek: false,
             renderer_override: None,
             settled_tier: None,
             search_prompt: None,

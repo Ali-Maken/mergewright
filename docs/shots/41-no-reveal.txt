@@ -1,0 +1,24 @@
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/tmp.Qe8UEVAzQZ  3 commi…
+◆   [◆ main] Another short one                                      now  325d629
+●   A very long subject line that goes way past eighty columns and… now  20ce507
+◇   Short subject                                                   now  c479a86
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent

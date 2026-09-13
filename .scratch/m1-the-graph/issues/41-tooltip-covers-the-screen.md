@@ -1,6 +1,6 @@
 # m1-the-graph/41 — Tooltip out; a truncated subject reveals in the footer
 
-Status: ready
+Status: done
 Build with: **Sonnet** (medium) — deletion plus one footer line and two keys; every decision is in ADR-0023
 Needs: none
 Blocked by: 40
@@ -38,11 +38,26 @@ pub struct AppState { /* `tooltip`, `pinned_tooltip` removed */ pub hover: Optio
 Removed: `Tooltip`, `GraphView::tooltip`, `columns::tooltip_date`, `view::tooltip_view`.
 
 ## Acceptance
-- [ ] Tests: pointer on a truncated row → footer hint line is that row's full subject; pointer on a short row → hints unchanged; pointer leaves the graph → hints back. `Enter` on a truncated cursor row → same line; `j` clears it; `Esc` clears it before anything else. Escape sequences in a subject render inert in the reveal (17's fixture).
-- [ ] No `Tooltip` type, no `pinned_tooltip`, no ratatui unstable feature left (grep in the notes).
-- [ ] pty captures, 80×24, release binary, as 17 did: `docs/shots/41-hover-reveal.txt`, `41-peek.txt`, `41-no-reveal.txt` (short subject: hints unchanged). User judges by eye.
-- [ ] TESTING.md rows: "Pointer on a row ending in `…`: the bottom line is that commit's whole subject, nothing else changes. Pointer on a row without `…`: the key hints stay. `Enter` on a `…` row does the same; `j` brings the hints back."
-- [ ] ADR-0020 marked superseded; KNOWN_GAPS and MAP.md updated. Gates pass.
+- [x] Tests: pointer on a truncated row → footer hint line is that row's full subject; pointer on a short row → hints unchanged; pointer leaves the graph → hints back. `Enter` on a truncated cursor row → same line; `j` clears it; `Esc` clears it before anything else. Escape sequences in a subject render inert in the reveal (17's fixture).
+- [x] No `Tooltip` type, no `pinned_tooltip`, no ratatui unstable feature left (grep in the notes).
+- [x] pty captures, 80×24, release binary, as 17 did: `docs/shots/41-hover-reveal.txt`, `41-peek.txt`, `41-no-reveal.txt` (short subject: hints unchanged). User judges by eye.
+- [x] TESTING.md rows: "Pointer on a row ending in `…`: the bottom line is that commit's whole subject, nothing else changes. Pointer on a row without `…`: the key hints stay. `Enter` on a `…` row does the same; `j` brings the hints back."
+- [x] ADR-0020 marked superseded; KNOWN_GAPS and MAP.md updated. Gates pass.
+
+## Notes
+
+Session compacted at least once mid-ticket (continued from a prior
+compaction's summary). All acceptance boxes done: `hover`/`peek` replace
+`tooltip`/`pinned_tooltip` throughout graft and graft-ui; `GraphView::reveal`
+drives the footer; hint bar gains `⏎ full subject`, drops under width
+pressure with the others; `unstable-rendered-line-info` removed from
+`graft-ui/Cargo.toml`; ~29 insta snapshots regenerated (footer line only,
+verified by diff); KNOWN_GAPS.md and both MAP.md files updated; TESTING.md
+has a new "Hover and peek reveal" section; pty captures at
+`docs/shots/41-{hover-reveal,peek,no-reveal}.txt` via a new
+`.scratch/m1-the-graph/pty-reveal-check.py` script against a throwaway repo
+(one long subject, two short). Gates green: fmt, clippy -D warnings, test
+(280 lib tests + integration suites, all passing).
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test`

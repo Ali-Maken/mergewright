@@ -41,4 +41,4 @@ expression: text
 
 
 
- q quit  F2 status  F3 renderer  / search  j/k move  Enter pin  Space fold  1 first-parent  F focus  H stash
+ q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent  F focus  H stash  PgUp/PgDn page

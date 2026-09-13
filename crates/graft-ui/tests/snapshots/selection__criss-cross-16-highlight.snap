@@ -27,7 +27,7 @@ shape: criss-cross-merge, 16, highlight, 80x24, row 4 selected
 
 
 
- q quit  F2 status  F3 renderer  / search  j/k move  Enter pin  Space fold
+ q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent
 
 modifiers: graph | subject
 ..b.......| .

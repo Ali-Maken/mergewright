@@ -17,12 +17,12 @@ use graft_graph::fold::Keep;
 use graft_graph::identity::BranchIdentity;
 use graft_graph::row::Row;
 use graft_graph::{Ancestry, Kin};
-use graft_term::{SanitizedText, sanitize, sanitize_line, sanitize_path, sanitize_path_bytes};
+use graft_term::{SanitizedText, sanitize_line, sanitize_path, sanitize_path_bytes};
 use graft_ui::graph_column::{GraphLine, NodeKind, RowPaint};
 use graft_ui::graph_screen::{
     AuthorChip, Badge, BadgeKind, Compaction, Filters, GraphEntry, GraphScreen, GraphView,
     GraphicsStatus, OrderNotice, SHA_WIDTH, SearchLine, Tracking, WalkView, initials,
-    max_lanes_for, relative_date, short_sha, tooltip_date,
+    max_lanes_for, relative_date, short_sha,
 };
 use graft_ui::status_screen::{
     HeadView, HistoryState, HistoryView, RepositoryView, StatusScreen, StatusView,
@@ -170,7 +170,7 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
             icons: graft_ui::graph_screen::Icons::default(),
             compaction: Compaction::at(crate::config::DEFAULT_MAX_LANES),
             filters: Filters::default(),
-            tooltip: None,
+            reveal: None,
             order: None,
             ascii: false,
             pixel: false,
@@ -185,6 +185,7 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
     let thread = thread(history);
     let rows = visible_rows(state, history, thread.as_ref());
     let compaction = compaction(state, history, thread.as_ref(), &rows);
+    let reveal = reveal_index(state, history, &rows);
 
     GraphView {
         location,
@@ -199,7 +200,7 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
             stash_hidden: !history.view.inclusion.hidden_stashes.is_empty(),
             focused: state.focus,
         },
-        tooltip: tooltip_view(state, history),
+        reveal,
         order: order_notice(history),
         ascii: false,
         pixel: false,
@@ -268,69 +269,23 @@ fn now_seconds() -> i64 {
         })
 }
 
-/// An identity's mailmap-resolved name and email, or the identity's own
-/// when no mailmap is loaded yet.
-fn resolve_identity(
-    mailmap: Option<&graft_git::mailmap::Mailmap>,
-    identity: &graft_core::commit::Identity,
-) -> (Vec<u8>, Vec<u8>) {
-    match mailmap {
-        Some(mailmap) => mailmap.resolve(identity),
-        None => (identity.name.clone(), identity.email.clone()),
-    }
-}
-
-/// `Name <email>`, sanitised: repository text once mailmap has resolved it.
-fn identity_line(name: &[u8], email: &[u8]) -> SanitizedText {
-    sanitize(&format!(
-        "{} <{}>",
-        String::from_utf8_lossy(name),
-        String::from_utf8_lossy(email)
-    ))
-}
-
-/// The commit tooltip, if one is open: a pinned tooltip (`Enter`) wins over
-/// a hover, so hovering another row can never overwrite it
-/// (m1-the-graph/34). Both read through the same lookup, so their content
-/// is identical apart from `pinned`. `None` when the row it names has not
-/// (or no longer) arrived.
-fn tooltip_view(state: &AppState, history: &History) -> Option<graft_ui::graph_screen::Tooltip> {
-    let (row_index, pinned) = match state.pinned_tooltip {
-        Some(row) => (row, true),
-        None => (state.tooltip?, false),
+/// Which of `rows` the footer reveals in full, if any (ADR-0023): the
+/// hovered row, else the cursor row while a peek is on, else none. `hover`
+/// and the cursor are absolute history row numbers; `rows` is indexed from
+/// the top of the viewport, offset by one when the uncommitted row draws
+/// above it (`visible_rows`) — the same arithmetic, so the two never
+/// disagree about which row is which. `None` when the row named is not
+/// actually on screen (scrolled past, or the uncommitted row itself, which
+/// has no subject to reveal).
+fn reveal_index(state: &AppState, history: &History, rows: &[GraphEntry<'_>]) -> Option<usize> {
+    let absolute = match (state.hover, state.peek) {
+        (Some(row), _) => row,
+        (None, true) => history.cursor,
+        (None, false) => return None,
     };
-    let row = history.row_at(row_index)?;
-    let commit = &row.commit;
-    let mailmap = state.repository.as_ref().map(|facts| &facts.mailmap);
-    let (author_name, author_email) = resolve_identity(mailmap, &commit.author);
-    let (committer_name, committer_email) = resolve_identity(mailmap, &commit.committer);
-    let committer = (committer_name != author_name || committer_email != author_email)
-        .then(|| identity_line(&committer_name, &committer_email));
-    Some(graft_ui::graph_screen::Tooltip {
-        hash: commit.id.to_string(),
-        author: identity_line(&author_name, &author_email),
-        committer,
-        date: tooltip_date(
-            now_seconds(),
-            commit.author.when.seconds,
-            commit.author.when.offset_seconds,
-        ),
-        parents: commit
-            .parents
-            .iter()
-            .map(|id| short_sha(&id.to_string(), usize::from(SHA_WIDTH)))
-            .collect(),
-        subject: sanitize_line(&String::from_utf8_lossy(commit.subject())),
-        body: sanitize(&String::from_utf8_lossy(commit_body(commit))),
-        pinned,
-    })
-}
-
-/// The message after its subject line, with the separating newline dropped.
-/// Empty for a one-line message.
-fn commit_body(commit: &graft_core::commit::Commit) -> &[u8] {
-    let rest = &commit.message[commit.subject().len()..];
-    rest.strip_prefix(b"\n").unwrap_or(rest)
+    let offset = usize::from(uncommitted_shown(state));
+    let index = offset + absolute.checked_sub(history.top)?;
+    (index < rows.len()).then_some(index)
 }
 
 /// How the graph folds its lanes: the session's limit is filled in by
@@ -1002,16 +957,69 @@ pub(crate) mod tests {
         assert!(!screen.contains("renderer forced"), "{screen}");
     }
 
-    /// A message an escape sequence rendered inert in the tooltip
-    /// (m1-the-graph/17): `history_of`'s fixture commits carry `\x1b[31m` in
-    /// their subject, and neither the tooltip's subject nor its body may let
-    /// a raw escape byte through.
+    /// A history like [`history_of`], but the newest row's subject is
+    /// `subject` verbatim instead of `"Commit N\x1b[31m"` — for forcing a
+    /// reveal to actually show something.
+    fn history_with_subject(count: u8, cursor: usize, subject: &str) -> History {
+        use graft_core::commit::{Commit, Identity, Timestamp};
+        use graft_graph::layout::layout;
+        use graft_graph::seeds::Seeds;
+
+        let oid = |byte: u8| Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes");
+        let commits: Vec<Commit> = (1..=count)
+            .rev()
+            .enumerate()
+            .map(|(position, id)| {
+                let who = Identity {
+                    name: b"Test".to_vec(),
+                    email: b"test@example.invalid".to_vec(),
+                    when: Timestamp {
+                        seconds: i64::from(id),
+                        offset_seconds: 0,
+                    },
+                };
+                let message = if position == 0 {
+                    subject.as_bytes().to_vec()
+                } else {
+                    format!("Commit {id}").into_bytes()
+                };
+                Commit {
+                    id: oid(id),
+                    parents: if id == 1 { vec![] } else { vec![oid(id - 1)] },
+                    author: who.clone(),
+                    committer: who,
+                    message,
+                }
+            })
+            .collect();
+        let rows = layout(&commits, Seeds::default());
+        History {
+            window: Some(crate::history::Window {
+                request: 0,
+                first: 0,
+                laid_out: rows.len(),
+                done: true,
+                rows: rows.into(),
+                promoted: false,
+            }),
+            rows: usize::from(count),
+            phase: Phase::Complete,
+            cursor,
+            reanchor: None,
+            ..History::started()
+        }
+    }
+
+    /// An escape sequence in a subject renders inert in the footer reveal
+    /// (m1-the-graph/17's fixture, ADR-0023): a hover on a row long enough
+    /// to need the `…` may not let a raw escape byte through in its place.
     #[test]
-    fn a_tooltip_renders_an_escape_sequence_inert() {
-        let mut history = history_of(3, 0);
-        history.cursor = 0;
+    fn a_reveal_renders_an_escape_sequence_inert() {
+        let subject =
+            "A very long subject with an escape \x1b[31min it that needs the ellipsis to fit";
+        let history = history_with_subject(3, 0, subject);
         let state = AppState {
-            tooltip: Some(0),
+            hover: Some(0),
             history: Some(history),
             size: Size {
                 columns: 60,
@@ -1020,28 +1028,17 @@ pub(crate) mod tests {
             ..AppState::default()
         };
 
-        let tooltip = graph_view(&state).tooltip.expect("row 0 has arrived");
-        assert!(tooltip.subject.as_ref().starts_with("Commit 3"));
-        assert!(
-            !tooltip.subject.as_ref().contains('\u{1b}'),
-            "{}",
-            tooltip.subject.as_ref()
-        );
-        assert!(
-            !tooltip.body.as_ref().contains('\u{1b}'),
-            "{}",
-            tooltip.body.as_ref()
-        );
-
+        assert_eq!(graph_view(&state).reveal, Some(0), "row 0 has arrived");
         let screen = draw(&state, 60, 5);
         assert!(!screen.contains('\u{1b}'), "{screen}");
+        assert!(screen.contains("A very long subject"), "{screen}");
     }
 
-    /// Hover and the keyboard both point `state.tooltip` at the same
-    /// absolute row, so both routes build byte-for-byte identical content
-    /// (m1-the-graph/17) — the acceptance criterion this proves.
+    /// Hover and the keyboard peek both point at the same absolute row, so
+    /// both routes name the identical row in `reveal` (m1-the-graph/17,
+    /// ADR-0023) — the acceptance criterion this proves.
     #[test]
-    fn hover_and_keyboard_produce_identical_tooltip_content() {
+    fn hover_and_peek_name_the_same_reveal_row() {
         let history = history_of(4, 2);
         let base = AppState {
             history: Some(history),
@@ -1052,19 +1049,19 @@ pub(crate) mod tests {
             ..AppState::default()
         };
 
-        // The keyboard opens the tooltip for the current selection (cursor).
+        // The keyboard peeks the current selection (cursor).
         let keyboard = AppState {
-            tooltip: Some(base.history.as_ref().expect("a walk").cursor),
+            peek: true,
             ..base.clone()
         };
         // A hover over that same row sets the identical absolute index.
         let hover = AppState {
-            tooltip: Some(2),
+            hover: Some(2),
             ..base.clone()
         };
 
-        let from_keyboard = graph_view(&keyboard).tooltip.expect("row 2 has arrived");
-        let from_hover = graph_view(&hover).tooltip.expect("row 2 has arrived");
+        let from_keyboard = graph_view(&keyboard).reveal.expect("row 2 has arrived");
+        let from_hover = graph_view(&hover).reveal.expect("row 2 has arrived");
         assert_eq!(from_keyboard, from_hover);
     }
 

@@ -27,7 +27,7 @@ shape: criss-cross-merge (widest), no-color, 80x24, cursor on row 2
 
 
 
- q quit  F2 status  F3 renderer  / search  j/k move  Enter pin  Space fold
+ q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent
 
 graph colour per cell:
 ..........

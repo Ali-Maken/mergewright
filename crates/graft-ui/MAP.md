@@ -44,7 +44,7 @@ One line per public item. Update when a public item changes.
 - `GraphView::icons` (field) — which glyphs badges draw with (`ui.icons`).
 - `GraphView::compaction` (field) — lane limit, expansion flag and `Keep` priorities; the screen plans one `Fold` per frame over the rows it draws, and its header ends ` · +N lanes` while that fold hides lanes (not when expanded).
 - `GraphView::filters` (field) — what the history shown leaves out; said in the header.
-- `GraphView::tooltip` (field) — the commit tooltip, open over the graph, or `None` (m1-the-graph/17).
+- `GraphView::reveal` (field) — index into `rows`: the footer shows that row's full subject in place of the hints, but only when the row's subject actually needed truncation (`None` for no reveal) (m1-the-graph/41, ADR-0023).
 - `GraphView::order` (field) — the order notice while rows are not in their final order, or `None`.
 - `GraphView::ascii` (field) — draw the graph column with the ASCII glyph table (`graph.renderer`, m1-the-graph/19).
 - `GraphView::notice` (field) — what the app layer did to the renderer tier, shown in the footer under `problem`, above the hints; `None` for nothing to say.
@@ -54,7 +54,6 @@ One line per public item. Update when a public item changes.
 - `SearchLine` (enum) — `Prompt(text)` draws ` /text_`; `Status{text, failed}` draws the search's line, warning-coloured only when failed.
 - `GraphView::graphics` (field) — `gfx ok` / `gfx: <message>` in the header while pixels are drawn; `None` otherwise.
 - `GraphicsStatus` (enum) — `Ok` or `Failed(SanitizedText)`: what the terminal said about the graph images.
-- `Tooltip` (struct) — `hash` (full 40-char), `author` (`SanitizedText`, mailmap-applied `Name <email>`), `committer` (`Option<SanitizedText>`, only when it differs from `author`), `date` (absolute-with-offset and relative, e.g. `"2026-09-13 14:02 +0500 · 4h ago"`), `parents` (short shas), `subject`, `body` (both `SanitizedText`), `pinned` (bool). Hover and `Enter` build it identically (m1-the-graph/17), except `pinned` (m1-the-graph/34); the box wraps and, when even the tallest box the terminal allows can't fit everything, drops lines from the bottom for a `truncated` marker rather than going silently blank (m1-the-graph/34). "Contained in" is out of scope — `KNOWN_GAPS.md`.
 - `Filters` (struct) — `first_parent`, `folded` (merge count), `stash_hidden`, `focused` (Focus mode on); `Filters::text` is the header's words, empty for none.
 - `Compaction` (struct) — `max_lanes` (the resolved cap for this frame, see `max_lanes_for`), `expanded` (the `+` key), `keep` (`graft_graph::fold::Keep`: selected column, reserved integration lanes, the selection's thread — budget priorities, not vetoes, ADR-0025).
 - `Compaction::at` (fn) — collapsed, `Keep::default()`.
@@ -80,7 +79,6 @@ One line per public item. Update when a public item changes.
 - `initials` (fn) — two letters standing in for a sanitised name, for the author chip.
 - `relative_date` (fn) — how long ago a Unix timestamp was, in short form (`"2m"`, `"3h"`, `"1d"`).
 - `absolute_date` (fn) — a commit's recorded date in its own offset, `"2026-09-13 14:02 +0500"` (Hinnant's `civil_from_days`, integer-only, no date/time crate) (m1-the-graph/34).
-- `tooltip_date` (fn) — `absolute_date` and `relative_date` together for the tooltip, `"2026-09-13 14:02 +0500 · 4h ago"` (m1-the-graph/34).
 - `short_sha` (fn) — the first N hex characters of a full object id.
 
 ## paint

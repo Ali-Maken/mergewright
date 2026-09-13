@@ -2,4 +2,4 @@
 source: crates/graft-ui/src/graph_screen/tests.rs
 expression: footer
 ---
- q quit  F2 status  F3 renderer  / search  j/k move  Enter pin  Space fold
+ q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent

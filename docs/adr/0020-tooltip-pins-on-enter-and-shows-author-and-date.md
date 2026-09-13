@@ -1,5 +1,7 @@
 # The tooltip pins on Enter, and shows author and date now
 
+Status: Superseded by ADR-0023
+
 Decision: **`Enter` pins the tooltip open — hover can no longer replace or
 close it, and pointer movement no longer moves it — so the user can
 Shift+drag to copy its text. Author and date move from M2 into M1's

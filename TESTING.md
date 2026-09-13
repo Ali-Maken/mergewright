@@ -412,6 +412,30 @@ passthrough works.
 screen is correct at that tier. A slower probe (500 ms instead of 200 ms)
 is expected; a probe that never answers must fall back, not hang.
 
+### Hover and peek reveal (ticket 41, ADR-0023)
+
+There is no popup any more: a truncated subject (the graph column cut it
+with `…`) is read from the footer instead, never a box over the graph.
+
+| Check | What right looks like |
+|---|---|
+| Hover a row whose subject is truncated | Footer swaps its hint bar for that row's full subject, no `…` |
+| Hover a row whose subject was never truncated | Footer keeps the ordinary hints; nothing to reveal |
+| Move the pointer off the graph, or to a row without truncation | Footer reverts to hints once the mouse moves off the truncated row |
+| Press `Enter` on a truncated cursor row (no mouse) | Same reveal as hovering; a second `Enter` closes it |
+| Cursor row is truncated, nothing hovered or peeking | Hint bar includes `⏎ full subject`; drops first under width pressure with the other conditional hints |
+| Cursor row is not truncated | No `⏎ full subject` hint |
+| `Esc` while peeking | Closes the peek before anything else Esc does (jump-withdraw, focus-leave, walk-cancel) |
+| Any other key while peeking | Clears the peek (peek is one-shot, not sticky) |
+| Revealed subject contains raw escape bytes (sanitized upstream) | Renders inert — no cursor jump, no color leak, same as everywhere else text reaches the screen |
+
+Captures (80x24, release binary), written straight to files:
+`docs/shots/41-hover-reveal.txt` (hovering a truncated row),
+`docs/shots/41-peek.txt` (`Enter` peek on the cursor row),
+`docs/shots/41-no-reveal.txt` (a short subject: hints stay put). Judged by
+eye, per the project rule — green tests only prove the reveal logic
+agrees with itself.
+
 ## Graph gallery
 
 M1's acceptance ticket (35). M1 promises that **the shape of history is

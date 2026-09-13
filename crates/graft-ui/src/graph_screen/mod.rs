@@ -24,11 +24,11 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Clear, Paragraph, Widget, Wrap};
+use ratatui::widgets::Widget;
 use unicode_width::UnicodeWidthStr;
 
 pub use badges::{Badge, BadgeKind, Icons, Tracking};
-pub use columns::{absolute_date, initials, relative_date, short_sha, tooltip_date};
+pub use columns::{absolute_date, initials, relative_date, short_sha};
 
 use crate::fit::fit;
 use crate::graph_column::{CELLS_PER_LANE, GraphColumn, GraphLine, RowPaint};
@@ -85,10 +85,12 @@ pub struct GraphView<'a> {
     /// What the history shown leaves out; said in the header so a folded or
     /// first-parent graph is never mistaken for the whole one.
     pub filters: Filters,
-    /// The commit tooltip, open over the graph: hover or the keyboard opened
-    /// it on the same content (PROMPT.md §1.3, DESIGN.md §2.15). `None` when
-    /// closed.
-    pub tooltip: Option<Tooltip>,
+    /// The row whose full subject the footer reveals in place of the key
+    /// hints: an index into [`GraphView::rows`], from a hover, or from the
+    /// cursor while `Enter`'s one-shot peek is on (ADR-0023). `None` shows
+    /// the ordinary hints. A row whose subject was not cut with `…` draws
+    /// nothing extra even when named here — nothing to reveal.
+    pub reveal: Option<usize>,
     /// The order notice, while the rows are not yet in their final order.
     pub order: Option<OrderNotice>,
     /// Draw the graph column with the ASCII glyph table rather than Unicode
@@ -124,37 +126,6 @@ pub enum GraphicsStatus {
     Ok,
     /// The terminal refused an image command, and said this.
     Failed(SanitizedText),
-}
-
-/// The commit tooltip: the full message and the parents, reachable
-/// identically from a hover and from the keyboard, plus the author, date
-/// and (when different) committer m1-the-graph/34 adds. "Contained in"
-/// (PROMPT.md §1.3) is left for M2 (`KNOWN_GAPS`) — nothing here fakes it.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Tooltip {
-    /// The full 40-character hex object id. Hex from a fixed alphabet is
-    /// safe as-is, like [`GraphEntry::sha`] — no sanitising needed.
-    pub hash: String,
-    /// `Name <email>`, mailmap-resolved, sanitised (repository text).
-    pub author: SanitizedText,
-    /// Same shape as `author`. `None` when the committer identity equals
-    /// the author's, once mailmap has resolved both — the common case.
-    pub committer: Option<SanitizedText>,
-    /// The absolute date (the commit's own recorded offset) and its
-    /// relative age together, e.g. `"2026-09-13 14:02 +0500 · 4h ago"`.
-    /// Graft's own text, like [`columns::relative_date`] — no sanitising
-    /// needed.
-    pub date: String,
-    /// Parent short SHAs, first parent first. Hex — no sanitising needed.
-    pub parents: Vec<String>,
-    /// The commit's subject line, sanitised.
-    pub subject: SanitizedText,
-    /// The rest of the message, sanitised; empty when the commit has none.
-    pub body: SanitizedText,
-    /// Whether `Enter` pinned this tooltip open. A pinned tooltip stays
-    /// open under hover and shows a `pinned` title; a hover tooltip does
-    /// not (m1-the-graph/34).
-    pub pinned: bool,
 }
 
 /// What the history on screen leaves out (PROMPT.md §1.3). The default is
@@ -537,17 +508,20 @@ pub enum SearchLine {
 /// Every key the graph screen answers, in the order the footer drops them
 /// (PROMPT.md principle 4: the hint bar teaches the tool). Leaving, the
 /// status screen and the renderer first, then `+` while it applies
-/// ([`LEADING_HINTS`] of these come before it), then the actions, and the
-/// movement keys last: a narrow terminal drops whole hints from the right,
-/// and the hint that comes and goes matters more than the movement keys
-/// that are always there. `n`/`N` live on the search line, where they work.
-const HINTS: [&str; 13] = [
+/// ([`LEADING_HINTS`] of these come before it), then search and movement
+/// ([`PRE_REVEAL_HINTS`] of these come before the reveal hint), then the
+/// reveal hint while there is something to peek, then the rest of the
+/// actions: a narrow terminal drops whole hints from the right, and the
+/// hint that comes and goes matters more than the movement keys that are
+/// always there. `n`/`N` live on the search line, where they work. `Enter`
+/// has no permanent hint (ADR-0023): it peeks a truncated subject, which
+/// [`reveal_hint`] names only while the cursor row needs it.
+const HINTS: [&str; 12] = [
     "q quit",
     "F2 status",
     "F3 renderer",
     "/ search",
     "j/k move",
-    "Enter pin",
     "Space fold",
     "1 first-parent",
     "F focus",
@@ -558,6 +532,10 @@ const HINTS: [&str; 13] = [
 ];
 /// How many of [`HINTS`] come before the lane-expansion hint.
 const LEADING_HINTS: usize = 3;
+/// How many more of [`HINTS`], after the lane-expansion hint, come before
+/// the reveal hint: `/ search` and `j/k move`, so `⏎ full subject` sits
+/// where `Enter pin` used to.
+const PRE_REVEAL_HINTS: usize = 2;
 
 /// The hint for the lane-expansion key, shown only while there is something
 /// to expand or collapse.
@@ -569,15 +547,25 @@ fn expand_hint(fold: &Fold, expanded: bool) -> Option<&'static str> {
     }
 }
 
+/// The hint for `Enter`'s one-shot peek, shown only while the cursor row's
+/// subject is cut with `…` — a hint with nothing to do is noise, the same
+/// reasoning as [`expand_hint`].
+fn reveal_hint(cursor_subject_truncated: bool) -> Option<&'static str> {
+    cursor_subject_truncated.then_some("⏎ full subject")
+}
+
 /// The footer's key hints within `width` columns: as many whole hints as
 /// fit, dropped from the right, never one cut in half.
-fn key_hints(expand: Option<&str>, width: usize) -> String {
-    let (leading, rest) = HINTS.split_at(LEADING_HINTS);
+fn key_hints(expand: Option<&str>, reveal: Option<&str>, width: usize) -> String {
+    let (leading, after_leading) = HINTS.split_at(LEADING_HINTS);
+    let (pre_reveal, rest) = after_leading.split_at(PRE_REVEAL_HINTS);
     let mut line = String::new();
     for hint in leading
         .iter()
         .copied()
         .chain(expand)
+        .chain(pre_reveal.iter().copied())
+        .chain(reveal)
         .chain(rest.iter().copied())
     {
         let separator = if line.is_empty() { " " } else { "  " };
@@ -642,200 +630,61 @@ impl Widget for GraphScreen<'_> {
         }
 
         if area.height > 1 {
-            let (text, token) = match (&self.view.problem, &self.view.search, &self.view.notice) {
-                (Some(problem), _, _) => (format!(" {problem}"), Token::Warning),
-                (None, Some(SearchLine::Prompt(typed)), _) => (format!(" /{typed}_"), Token::Info),
-                (None, Some(SearchLine::Status { text, failed }), _) => (
-                    format!(" {text}"),
-                    if *failed { Token::Warning } else { Token::Info },
-                ),
-                (None, None, Some(notice)) => (format!(" {notice}"), Token::Info),
-                (None, None, None) => (
-                    key_hints(expand_hint(&fold, self.view.compaction.expanded), width),
-                    Token::TextMuted,
-                ),
-            };
+            let (text, token) = self.footer_line(body, rows, applied.as_ref(), &fold, width);
             let footer = Line::styled(fit(&text, width), foreground(self.theme, token));
             buf.set_line(area.x, area.bottom() - 1, &footer, area.width);
         }
-
-        if let Some(tooltip) = &self.view.tooltip {
-            render_tooltip(tooltip, area, self.theme, buf);
-        }
     }
 }
 
-/// A line the box can drop from the bottom if the content overflows,
-/// paired with whether losing it needs the truncation marker (blank
-/// separators don't — dropping only a blank line before content that
-/// itself got dropped is not a loss worth flagging).
-struct TooltipLine {
-    line: Line<'static>,
-    reportable: bool,
-}
+impl GraphScreen<'_> {
+    /// The footer's text and token: a problem, a search line, a notice, the
+    /// reveal (a truncated subject, named by hover or by peek), or — when
+    /// none of those apply — the ordinary key hints.
+    fn footer_line(
+        &self,
+        body: Rect,
+        rows: &[GraphEntry<'_>],
+        applied: Option<&Fold>,
+        fold: &Fold,
+        width: usize,
+    ) -> (String, Token) {
+        // Same columns the body just drew through: the reveal and the peek
+        // hint must agree with the body on which subjects the `…` actually
+        // landed on.
+        let columns = Columns::compute(body, graph_width(body, rows, applied));
+        let reveal_subject = self
+            .view
+            .reveal
+            .and_then(|index| rows.get(index))
+            .filter(|entry| subject_truncated(entry, self.view.icons, &columns))
+            .map(|entry| entry.subject.as_str().to_owned());
+        let cursor_truncated = rows
+            .iter()
+            .find(|entry| entry.line.paint == RowPaint::Highlighted)
+            .is_some_and(|entry| subject_truncated(entry, self.view.icons, &columns));
 
-/// Draws the commit tooltip as a bordered box floating over the graph,
-/// centred in `area`. Wrapped, so a long line never runs off the terminal;
-/// when even the tallest box `area` allows still can't fit everything, the
-/// bottom is dropped for a `truncated` marker rather than silently blank
-/// (m1-the-graph/34 — the box height used to be sized from the raw line
-/// count, ignoring wrapping, so content past what that undercount reserved
-/// vanished with no sign anything was missing).
-fn render_tooltip(tooltip: &Tooltip, area: Rect, theme: &Theme, buf: &mut Buffer) {
-    let muted = foreground(theme, Token::TextMuted);
-    let lines = tooltip_lines(tooltip, theme, muted);
-    render_tooltip_lines(lines, tooltip.pinned, area, theme, buf);
-}
-
-/// Builds the tooltip's content lines, in display order: hash, author,
-/// date, committer (only when it differs from the author), the parent
-/// line, a blank separator, the subject, and — when non-empty — a blank
-/// separator and the body.
-fn tooltip_lines(tooltip: &Tooltip, theme: &Theme, muted: Style) -> Vec<TooltipLine> {
-    let mut lines = vec![
-        TooltipLine {
-            line: Line::raw(tooltip.hash.clone()),
-            reportable: true,
-        },
-        TooltipLine {
-            line: Line::raw(tooltip.author.as_str().to_owned()),
-            reportable: true,
-        },
-        TooltipLine {
-            line: Line::styled(tooltip.date.clone(), muted),
-            reportable: true,
-        },
-    ];
-    if let Some(committer) = &tooltip.committer {
-        lines.push(TooltipLine {
-            line: Line::raw(format!("committer {}", committer.as_str())),
-            reportable: true,
-        });
-    }
-    lines.push(TooltipLine {
-        line: Line::styled(
-            match tooltip.parents.len() {
-                0 => "root commit — no parents".to_owned(),
-                1 => format!("parent {}", tooltip.parents[0]),
-                _ => format!("parents {}", tooltip.parents.join(" ")),
+        match (&self.view.problem, &self.view.search, &self.view.notice) {
+            (Some(problem), _, _) => (format!(" {problem}"), Token::Warning),
+            (None, Some(SearchLine::Prompt(typed)), _) => (format!(" /{typed}_"), Token::Info),
+            (None, Some(SearchLine::Status { text, failed }), _) => (
+                format!(" {text}"),
+                if *failed { Token::Warning } else { Token::Info },
+            ),
+            (None, None, Some(notice)) => (format!(" {notice}"), Token::Info),
+            (None, None, None) => match &reveal_subject {
+                Some(subject) => (format!(" {subject}"), Token::Text),
+                None => (
+                    key_hints(
+                        expand_hint(fold, self.view.compaction.expanded),
+                        reveal_hint(cursor_truncated),
+                        width,
+                    ),
+                    Token::TextMuted,
+                ),
             },
-            muted,
-        ),
-        reportable: true,
-    });
-    lines.push(TooltipLine {
-        line: Line::raw(""),
-        reportable: false,
-    });
-    lines.push(TooltipLine {
-        line: Line::styled(
-            tooltip.subject.as_str().to_owned(),
-            foreground(theme, Token::Text).add_modifier(Modifier::BOLD),
-        ),
-        reportable: true,
-    });
-    if !tooltip.body.as_str().is_empty() {
-        lines.push(TooltipLine {
-            line: Line::raw(""),
-            reportable: false,
-        });
-        lines.extend(tooltip.body.as_str().lines().map(|line| TooltipLine {
-            line: Line::raw(line.to_owned()),
-            reportable: true,
-        }));
-    }
-    lines
-}
-
-/// Measures, fits and draws the tooltip's content lines as a bordered box
-/// floating over `area`, centred, sized to the wrapped content up to the
-/// tallest box `area` allows.
-fn render_tooltip_lines(
-    lines: Vec<TooltipLine>,
-    pinned: bool,
-    area: Rect,
-    theme: &Theme,
-    buf: &mut Buffer,
-) {
-    let muted = foreground(theme, Token::TextMuted);
-
-    let width = area.width.saturating_sub(4).clamp(1, 70).min(area.width);
-    let text_width = width.saturating_sub(2).max(1);
-    let max_total_height = area.height.max(3);
-    let max_content_height = max_total_height.saturating_sub(2);
-    let fitted = fit_tooltip_lines(lines, text_width, max_content_height, muted);
-    let content_height = u16::try_from(
-        Paragraph::new(fitted.clone())
-            .wrap(Wrap { trim: false })
-            .line_count(text_width),
-    )
-    .unwrap_or(u16::MAX);
-    let height = content_height
-        .saturating_add(2)
-        .min(max_total_height)
-        .max(3);
-    let tooltip_area = Rect {
-        x: area.x + (area.width.saturating_sub(width)) / 2,
-        y: area.y + (area.height.saturating_sub(height)) / 2,
-        width,
-        height,
-    };
-
-    Clear.render(tooltip_area, buf);
-    let title = if pinned { " pinned · esc close " } else { "" };
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(title)
-        .border_style(foreground(theme, Token::Border))
-        .style(Style::new().bg(color(theme.token(Token::SurfaceRaised))));
-    Paragraph::new(fitted)
-        .block(block)
-        .wrap(Wrap { trim: false })
-        .style(foreground(theme, Token::Text))
-        .render(tooltip_area, buf);
-}
-
-/// Drops whole lines from the bottom until the wrapped content fits
-/// `max_height` rows at `width` — measured with [`Paragraph::line_count`],
-/// the same word-wrap the box renders with, so the fit is exact rather
-/// than approximated. Appends a `truncated` marker, but only when a
-/// reportable line (not just a blank separator) actually had to go.
-fn fit_tooltip_lines(
-    lines: Vec<TooltipLine>,
-    width: u16,
-    max_height: u16,
-    muted: Style,
-) -> Vec<Line<'static>> {
-    let measure = |lines: &[TooltipLine]| {
-        let owned: Vec<Line<'static>> = lines.iter().map(|entry| entry.line.clone()).collect();
-        u16::try_from(
-            Paragraph::new(owned)
-                .wrap(Wrap { trim: false })
-                .line_count(width),
-        )
-        .unwrap_or(u16::MAX)
-    };
-
-    let mut kept = lines;
-    let mut dropped_reportable = false;
-    while measure(&kept) > max_height {
-        match kept.pop() {
-            Some(last) => dropped_reportable |= last.reportable,
-            None => break,
         }
     }
-    if !dropped_reportable {
-        return kept.into_iter().map(|entry| entry.line).collect();
-    }
-
-    // Room for the marker line itself.
-    let budget = max_height.saturating_sub(1);
-    while !kept.is_empty() && measure(&kept) > budget {
-        kept.pop();
-    }
-    let mut rendered: Vec<Line<'static>> = kept.into_iter().map(|entry| entry.line).collect();
-    rendered.push(Line::styled("truncated", muted));
-    rendered
 }
 
 /// Where each trailing column sits and how wide it is, once the graph and
@@ -1075,11 +924,7 @@ impl GraphScreen<'_> {
         let icons = self.view.icons;
         let texts: Vec<String> = entry.badges.iter().map(|badge| badge.text(icons)).collect();
         let separator = badges::separator(icons);
-        let wanted = texts.iter().map(|text| text.width()).sum::<usize>()
-            + separator.width() * (texts.len() - 1)
-            + usize::from(SUBJECT_GAP);
-        let budget = columns.subject_width / 2;
-        let taken = u16::try_from(wanted).unwrap_or(u16::MAX).min(budget);
+        let taken = badges_width(entry, icons, columns);
         // Room for the badges themselves; the gap after them stays blank.
         let room = taken.saturating_sub(SUBJECT_GAP);
 
@@ -1120,6 +965,34 @@ impl GraphScreen<'_> {
             BadgeKind::Stash => foreground(self.theme, Token::Info),
         }
     }
+}
+
+/// Cells a row's badges take from the subject column's left edge, the
+/// trailing gap included — half the subject column at most. The same sum
+/// [`GraphScreen::draw_badges`] draws to, so it and the footer reveal's
+/// truncation check ([`subject_truncated`]) always agree on where the
+/// subject itself actually starts.
+fn badges_width(entry: &GraphEntry<'_>, icons: Icons, columns: &Columns) -> u16 {
+    if entry.badges.is_empty() {
+        return 0;
+    }
+    let texts: Vec<String> = entry.badges.iter().map(|badge| badge.text(icons)).collect();
+    let separator = badges::separator(icons);
+    let wanted = texts.iter().map(|text| text.width()).sum::<usize>()
+        + separator.width() * (texts.len() - 1)
+        + usize::from(SUBJECT_GAP);
+    let budget = columns.subject_width / 2;
+    u16::try_from(wanted).unwrap_or(u16::MAX).min(budget)
+}
+
+/// Whether `entry`'s subject needed a `…` to fit the subject column it is
+/// actually drawn into — badges' share subtracted first, the same as
+/// [`GraphScreen::draw_badges`]. What the footer reveal
+/// ([`GraphView::reveal`]) and the peek hint ([`reveal_hint`]) key off.
+fn subject_truncated(entry: &GraphEntry<'_>, icons: Icons, columns: &Columns) -> bool {
+    let taken = badges_width(entry, icons, columns);
+    let available = usize::from(columns.subject_width.saturating_sub(taken));
+    text_width(entry.subject.as_str()) > available
 }
 
 /// Draws `text`, clamped and padded to exactly `width` cells, at `(x, y)`.

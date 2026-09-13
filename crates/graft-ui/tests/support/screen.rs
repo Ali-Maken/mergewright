@@ -49,7 +49,7 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
         icons: Icons::Plain,
         compaction: Compaction::at(8),
         filters: Filters::default(),
-        tooltip: None,
+        reveal: None,
         order: None,
         ascii: false,
         pixel: false,
