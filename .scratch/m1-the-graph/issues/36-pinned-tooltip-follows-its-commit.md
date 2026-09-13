@@ -1,8 +1,8 @@
 # m1-the-graph/36 — Pinned tooltip shows the wrong commit after a re-sort
 
-Status: ready
+Status: blocked
 Build with: **Opus** (high) — state that must survive the ADR-0008 promotion swap
-Blocked by: 30c
+Blocked by: tooltip design pass (user, 2026-09-13)
 Leaves runnable: yes — a tooltip pinned with Enter keeps showing the commit it was pinned on, through promotion, refresh and scrolling.
 
 Why: found in 27c. The pinned tooltip (34, ADR-0020) stores a row number. When the promotion swap (ADR-0008) re-sorts history, that row holds a different commit, so the pin silently shows the wrong commit's hash, author and message. **User decision (2026-09-13): a correctness bug, fixed in M1, not carried to the review.**
@@ -33,3 +33,12 @@ Out: new tooltip content or layout.
 
 ## Size
 Under ~80k tokens. Stop with a handoff note rather than compacting.
+
+## Handoff (2026-09-13, stopped on conductor order: tooltip design pass)
+
+No code written; nothing stashed (tree was clean). Findings only.
+
+- **Cause confirmed:** `AppState::pinned_tooltip: Option<usize>` (`graft/src/update.rs` ~185) is a row number. `toggle_pinned_tooltip` stores `history.cursor`; `view.rs` `tooltip_view` reads it with `history.row_at(row)`. `History::promoted()` (`history/scroll.rs` ~130) re-anchors `cursor`/`top` by commit id but nothing re-keys the pin. Refresh (`AppEvent::Started(_, Task::ReadHistory)`, update.rs ~366) builds a fresh `History::started()` and also keeps the row number.
+- **Other row-keyed state:** hover `AppState::tooltip` is a row under the pointer, so after a swap it shows the commit drawn there (correct by definition, not this bug). Selection survives promotion by anchor (27c). Selection is not carried across Ctrl+R (fresh `History`): resets to the top, not a wrong commit, but worth a look.
+- **Open question for the fix:** `row_at` only sees the window on hand, so a pin keyed by `Oid` is found only while its row is in the window. "Commit gone" can't be told apart from "scrolled away" without a full-history membership check. Options: (a) pin stores `Oid` plus a `Commit` snapshot (renders anywhere; clear on refresh once the new walk is `Complete` without the id, or clear on every refresh); (b) `Oid` only, looked up in the window like `reanchor`.
+- **Next step if the tooltip stays:** red tests in `update.rs` beside `moving_the_cursor_does_not_move_a_pinned_tooltip` (pin, feed a promoted `Window` in which row 1 holds another commit, assert the tooltip hash is unchanged; same for a refresh), then change the field to an id and choose (a) or (b). Remove KNOWN_GAPS row "A pinned tooltip points at a row number" when fixed.
