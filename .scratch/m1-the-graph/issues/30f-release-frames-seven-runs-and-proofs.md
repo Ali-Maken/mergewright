@@ -1,6 +1,6 @@
 # m1-the-graph/30f — Release frame check 7/7, idle-wake report, proofs
 
-Status: ready — seam 3 (30g done: one uncounted run passed 4/4, pixel 100k max 15.8 ms)
+Status: partial — seam 3: counted run 3 of 7 missed (pixel 100k key 226, 16.8 ms); option B next, count restarts from 1
 Build with: **Opus** (high) — frame timing under the job/redraw loop (split from 30c part b seam 2)
 Blocked by: 30g
 Leaves runnable: yes — release frame check passes 7 runs of 7; idle-wake reported separately.
@@ -104,3 +104,29 @@ Plus 1–2 ms queued behind the previous frame. Rasterise is ~70 % of a late key
 Recommendation: A first (no visible change), measure with this ticket's frames run; then B if pixel still misses. Both keep "graph and rows in the same frame".
 
 **Next exact step after the decision:** build the chosen fix (A: `graft-graph` raster, guards first); then step 3 of the order: 7 counted release runs (frames:: alone), debug frames run, proofs, full release perf run, ADR-0021, TESTING.md/KNOWN_GAPS, tick 30c.
+
+## Seam 3 (2026-09-13, builder-opus)
+
+**Counted release runs, first count (HEAD 0086425, frames:: alone, `target/30f/counted-N.txt`).** Stopped at the first miss, per instruction; no reruns.
+
+| Run | Result | Pixel 50k p50/p99/max | Unicode 50k | Pixel 100k | Unicode 100k |
+|---|---|---|---|---|---|
+| 1 | 4/4 pass | 7.1 / 12.2 / 13.6 | 6.7 / 12.4 / 13.8 | 6.8 / 12.9 / 15.3 | 5.3 / 8.8 / 9.2 |
+| 2 | 4/4 pass | 7.7 / 12.0 / 14.4 | 7.2 / 13.4 / 14.7 | 7.0 / 13.2 / 15.7 | 5.9 / 8.8 / 9.3 |
+| 3 | **3/4, Pixel 100k fails** | 7.6 / 12.7 / 14.8 | 7.0 / 12.7 / 14.4 | 6.9 / 13.2 / **16.8** | 5.4 / 8.6 / 8.9 |
+
+Run 3 miss: key 226, 16.78 ms = queued 6.51 ms behind key 225 (whose frame took 3.06 ms) + own frame 10.27 ms, 864 KB, 2 transmits. Finding: pixel page keys still rasterise on the key path; the margin after 30g is ~0.2–1 ms. → option B (idle prefetch), count restarts from 1.
+
+Idle-wake µs (printed, not asserted), runs 1–3: Pixel 50k 15795 14256 16221 14221 15672 / 15842 5986 18919 6444 10976 / 15545 10394 11475 11337 17579; Unicode 50k 15816 12186 15577 15162 15564 / 13349 15100 14834 7347 10789 / 7298 5302 18355 16670 16312; Pixel 100k 10350 6224 3149 10283 11727 / 10294 10134 1787 12122 10896 / 3752 4503 4370 8951 12008; Unicode 100k 6453 7291 2934 3025 6764 / 11673 11704 11227 11725 11554 / 7675 10867 5153 11813 2336.
+
+**Stopped here (partial, ~75k tokens, no compaction):** building B would exceed the ticket's context. No code changed in this seam.
+
+**Handoff: build option B (idle prefetch), then restart the count.** Found while scouting, no code written:
+- **Rows are already there.** `History` asks for `top - 3·height .. bottom + 3·height`, widened to whole strips plus the row above (`history/scroll.rs` ~435–453, `drawn`). So the strips above and below the viewport normally have their rows on hand; no History change needed.
+- **Strip choice.** `view::strips::pixel_rows(state, max_lanes, STRIP_ROWS)` builds strips only for `history.top..top + height` (`strips.rs:148–163`, `strip_ranges(range, &on_hand, strip_rows)`). Prefetch needs the same for the one strip above and one below: add a row-range variant (or a `pixel_rows_around`) that reuses the fold, so a prefetched strip's cache key is exactly what the key's frame asks for (same `layout_hash`, theme, cell size), or it is a miss anyway. Guard with a test: the prefetched strips are hits on the next `PageDown`/`PageUp` frame (`Graphics::strip_stats`).
+- **Where.** `event_loop/mod.rs::frames` (loop at ~550): after `draw`, before blocking in `wakes.next_wake()`. Add a `Graphics::prefetch(&mut self, session, state, waiting: impl FnMut() -> bool)` that rasterises (via `StripCache::get`) one missing strip at a time and returns as soon as `waiting()` is true. It only fills the cache; it writes nothing (upload happens when a frame places it).
+- **Input check.** `Wakes` only has blocking `next_wake`. Add a non-blocking `fn waiting(&mut self) -> bool` (or `try_wake` that buffers one wake). `ChannelWakes`: `try_recv` into a one-slot buffer that `next_wake` returns first (never drops a wake — `unhandled_input` must include the buffered one). `ScriptedWakes` (mod.rs tests ~732) and `frames.rs::Paced` (`next_wake` ~841, `recv_timeout` pacing) need it too: Paced should say `true` once the next key is due, so its latency counts any strip it waited behind.
+- **Test (scope):** a key arriving mid-prefetch waits at most one strip: scripted wakes whose `waiting()` turns true after the first strip → exactly one strip rasterised before the key is handled.
+- **Keep:** `the_ui_thread_never_waits_on_a_job` (forbids `recv_timeout`/`sleep` in mod.rs: use `try_recv`).
+- **Cost to report:** idle CPU after each scroll stop (strips rasterised × per-strip cost, ~1.1 ms wide after 30g), and the at-most-one-strip wait.
+- Then: 7 counted runs from run 1 (`target/30f/counted-b-N.txt`), stop at the first miss; if B misses → option D to the user. After 7/7: debug frames run, proofs (INPUT_TO_FRAME 4 ms, FIRST_PAINT_LIMIT 10 ms, release, revert), full release perf run (TESTING.md), ADR-0021 open → decided, TESTING/KNOWN_GAPS (row "Input to frame misses 16 ms", line ~295, is stale), tick 30c/30f boxes.
