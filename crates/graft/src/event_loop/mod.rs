@@ -14,6 +14,7 @@
 //! threads, and hands control to [`pump`], which is the part that can be
 //! tested without a terminal at all.
 
+mod graphics;
 pub mod input;
 pub mod redetect;
 pub mod signals;
@@ -37,7 +38,8 @@ use crate::repos::RepoStore;
 use crate::session::{Session, Startup, TerminalChange};
 use crate::terminal::{SessionOptions, TerminalSession};
 use crate::update::{AppEvent, AppState, Command, Quit, Size, update};
-use crate::view::view;
+use crate::view::{view, view_with_graphics};
+use graphics::{Graphics, GraphicsReplies, NoReplies};
 use redetect::Redetector;
 
 /// Begin a synchronized update: the terminal buffers what follows and paints
@@ -220,7 +222,18 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
             rows: size.height,
         },
     );
-    let outcome = pump(&mut terminal, &mut wakes, &jobs, &mut settled, state);
+    // Its own waiter: every waiter gets a copy of each reply, so the
+    // redetector's rounds and the images' error replies never steal from
+    // each other (and each ignores the other's kind).
+    let mut graphics = Graphics::new(mux.waiter());
+    let outcome = pump_with(
+        &mut terminal,
+        &mut wakes,
+        &jobs,
+        &mut settled,
+        state,
+        &mut graphics,
+    );
     // Dropped before the restore so that its own teardown (it shows the cursor
     // it hid) goes out while the session is still in charge of the terminal.
     drop(terminal);
@@ -239,6 +252,12 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     // failure can be returned instead of merely printed.
     let restored = session.restore();
     report_stalled_jobs(shutdown);
+    finish(outcome, restored)
+}
+
+/// The loop's outcome, unless putting the terminal back failed: a terminal
+/// left in raw mode is never reported silently.
+fn finish(outcome: io::Result<Exit>, restored: io::Result<()>) -> io::Result<Exit> {
     match (outcome, restored) {
         (Ok(exit), Ok(())) => Ok(exit),
         (Ok(_), Err(restore_error)) => Err(restore_error),
@@ -410,16 +429,64 @@ pub fn pump<B, W, D>(
     wakes: &mut W,
     jobs: &D,
     session: &mut Session,
-    mut state: AppState,
+    state: AppState,
 ) -> io::Result<Exit>
 where
     B: Backend<Error = io::Error> + Write,
     W: Wakes,
     D: Dispatch,
 {
+    pump_with(
+        terminal,
+        wakes,
+        jobs,
+        session,
+        state,
+        &mut Graphics::new(NoReplies),
+    )
+}
+
+/// [`pump`], with the pixel tier's images and the replies about them; every
+/// upload is freed however the loop ends.
+fn pump_with<B, W, D, R>(
+    terminal: &mut Terminal<B>,
+    wakes: &mut W,
+    jobs: &D,
+    session: &mut Session,
+    state: AppState,
+    graphics: &mut Graphics<R>,
+) -> io::Result<Exit>
+where
+    B: Backend<Error = io::Error> + Write,
+    W: Wakes,
+    D: Dispatch,
+    R: GraphicsReplies,
+{
+    let exit = frames(terminal, wakes, jobs, session, state, graphics);
+    let released = release(terminal, graphics);
+    // When the loop itself failed, its error is the one to report; a free
+    // that fails too failed writing to the same broken terminal.
+    exit.and_then(|exit| released.map(|()| exit))
+}
+
+/// The loop's body: draw, wait, update, repeat.
+fn frames<B, W, D, R>(
+    terminal: &mut Terminal<B>,
+    wakes: &mut W,
+    jobs: &D,
+    session: &mut Session,
+    mut state: AppState,
+    graphics: &mut Graphics<R>,
+) -> io::Result<Exit>
+where
+    B: Backend<Error = io::Error> + Write,
+    W: Wakes,
+    D: Dispatch,
+    R: GraphicsReplies,
+{
     // Draw before waiting: the first frame must be on screen while Graft sits
     // idle waiting for the user's first key.
-    draw(terminal, session, &state)?;
+    draw(terminal, session, &state, graphics)?;
 
     loop {
         let Some(wake) = wakes.next_wake() else {
@@ -427,14 +494,17 @@ where
             // rather than spinning on a dead channel.
             return Ok(Exit::Quit);
         };
+        // Replies to the frames already drawn: an `ENOENT` here makes the
+        // next frame transmit that strip again.
+        let replied = graphics.drain()?;
 
         let event = match wake {
             Wake::Event(event) => event,
             Wake::Shutdown(signal) => return Ok(Exit::Signal(signal)),
             Wake::InputFailed(error) | Wake::TerminalFailed(error) => return Err(error),
             Wake::Terminal(change) => {
-                if session.apply(change) {
-                    draw(terminal, session, &state)?;
+                if session.apply(change) || replied {
+                    draw(terminal, session, &state, graphics)?;
                 }
                 continue;
             }
@@ -459,8 +529,26 @@ where
             None => {}
         }
 
-        draw(terminal, session, &state)?;
+        draw(terminal, session, &state, graphics)?;
     }
+}
+
+/// Delete every image Graft uploaded, as one whole write.
+fn release<B, R>(terminal: &mut Terminal<B>, graphics: &mut Graphics<R>) -> io::Result<()>
+where
+    B: Backend<Error = io::Error> + Write,
+    R: GraphicsReplies,
+{
+    let mut bytes = Vec::new();
+    graphics.release(&mut bytes);
+    if bytes.is_empty() {
+        return Ok(());
+    }
+    let _whole = redetect::hold_output();
+    let backend = terminal.backend_mut();
+    backend
+        .write_all(&bytes)
+        .and_then(|()| Write::flush(backend))
 }
 
 /// Draw one frame, wrapped in a synchronized update.
@@ -469,9 +557,18 @@ where
 /// that does not understand DEC 2026 ignores the sequence, and probing for it
 /// would cost a round-trip on every frame to learn something that changes
 /// nothing.
-fn draw<B>(terminal: &mut Terminal<B>, session: &Session, state: &AppState) -> io::Result<()>
+///
+/// At the pixel tier the images go out after the cells, inside the same
+/// update, so text and graph appear together; never after a clear.
+fn draw<B, R>(
+    terminal: &mut Terminal<B>,
+    session: &Session,
+    state: &AppState,
+    graphics: &mut Graphics<R>,
+) -> io::Result<()>
 where
     B: Backend<Error = io::Error> + Write,
+    R: GraphicsReplies,
 {
     // A whole frame, so a re-query cannot land inside one of its sequences.
     let _frame = redetect::hold_output();
@@ -479,9 +576,15 @@ where
         .backend_mut()
         .write_all(BEGIN_SYNCHRONIZED_UPDATE)?;
 
+    let mut graph = None;
     let drawn = terminal
-        .draw(|frame| view(session, state, frame))
+        .draw(|frame| graph = view_with_graphics(session, state, graphics.status(), frame))
         .map(|_| ());
+    let placed = drawn.as_ref().map_or(Ok(()), |()| {
+        let mut images = Vec::new();
+        graphics.frame(session, state, graph, &mut images);
+        terminal.backend_mut().write_all(&images)
+    });
 
     // The end marker goes out even when the draw failed. Leaving the terminal
     // inside a synchronized update would freeze the user's screen on whatever
@@ -491,7 +594,7 @@ where
         .write_all(END_SYNCHRONIZED_UPDATE)
         .and_then(|()| Write::flush(terminal.backend_mut()));
 
-    drawn.and(ended)
+    drawn.and(placed).and(ended)
 }
 
 #[cfg(test)]
@@ -597,6 +700,133 @@ mod tests {
 
     fn resized(columns: u16, rows: u16) -> Wake {
         Wake::Event(AppEvent::Core(Event::Resize { columns, rows }))
+    }
+
+    /// Replies handed out one batch per wake.
+    struct ScriptedReplies(std::collections::VecDeque<Vec<u8>>);
+
+    impl GraphicsReplies for ScriptedReplies {
+        fn take(&mut self) -> io::Result<Vec<u8>> {
+            Ok(self.0.pop_front().unwrap_or_default())
+        }
+    }
+
+    const PIXEL_COLUMNS: u16 = 80;
+    const PIXEL_ROWS: u16 = 24;
+
+    /// A Kitty-protocol terminal at the pixel tier, showing 100 commits
+    /// requested in whole strips.
+    fn at_pixel_tier() -> (Session, AppState) {
+        use graft_core::capabilities::{PixelProtocol, RenderingTier};
+        let mut session = session();
+        session.rendering.tier = RenderingTier::Pixel;
+        session.capabilities.pixel_protocol = Some(PixelProtocol::Kitty);
+        let mut history = crate::view::tests::history_of(100, 0);
+        history.strip_rows = Some(graft_graph::raster::cache::STRIP_ROWS);
+        let state = AppState {
+            history: Some(history),
+            size: Size {
+                columns: PIXEL_COLUMNS,
+                rows: PIXEL_ROWS,
+            },
+            ..AppState::default()
+        };
+        (session, state)
+    }
+
+    /// Runs the loop at the pixel tier through `wakes`, answering with
+    /// `replies`; returns every frame (split on the end of each synchronized
+    /// update) and whatever was written after the last one.
+    fn pixel_run(wakes: Vec<Wake>, replies: Vec<Vec<u8>>) -> (Vec<String>, String) {
+        let (mut terminal, recorder) = terminal(PIXEL_COLUMNS, PIXEL_ROWS);
+        let (mut session, state) = at_pixel_tier();
+        let mut graphics = Graphics::new(ScriptedReplies(replies.into()));
+        let exit = pump_with(
+            &mut terminal,
+            &mut ScriptedWakes::new(wakes),
+            &Recorded::default(),
+            &mut session,
+            state,
+            &mut graphics,
+        )
+        .expect("writing to memory cannot fail");
+        assert_eq!(exit, Exit::Quit);
+        let written = recorder.written();
+        let end = String::from_utf8_lossy(END_SYNCHRONIZED_UPDATE).into_owned();
+        let mut frames: Vec<String> = written.split(&end).map(str::to_owned).collect();
+        let tail = frames.pop().expect("split yields at least one piece");
+        (frames, tail)
+    }
+
+    /// Image ids a stream transmits, in order.
+    fn transmitted(stream: &str) -> Vec<u32> {
+        stream
+            .split("a=t,f=32,t=d,i=")
+            .skip(1)
+            .map(|rest| {
+                rest.split(',')
+                    .next()
+                    .and_then(|id| id.parse().ok())
+                    .expect("an id follows i=")
+            })
+            .collect()
+    }
+
+    fn unbound_key() -> Wake {
+        key(KeyPress::plain(KeyCode::Char('z')))
+    }
+
+    #[test]
+    fn at_the_pixel_tier_strips_are_sent_once_and_freed_on_exit() {
+        let (frames, tail) = pixel_run(vec![unbound_key(), unbound_key(), quit_key()], vec![]);
+
+        assert_eq!(frames.len(), 3);
+        let sent = transmitted(&frames[0]);
+        assert!(!sent.is_empty(), "the first frame uploads its strips");
+        assert!(frames[0].contains("a=p,i="), "and places them");
+        assert!(frames[0].contains("gfx ok"), "{}", frames[0]);
+        for frame in &frames[1..] {
+            assert!(
+                transmitted(frame).is_empty(),
+                "steady state re-sends nothing"
+            );
+        }
+        let everything = frames.concat() + &tail;
+        assert!(!everything.contains("\x1b[2J"), "never a clear");
+        assert!(!everything.contains("q=2"), "never silenced replies");
+        for id in &sent {
+            assert!(
+                tail.contains(&format!("a=d,d=I,i={id},")),
+                "{id} freed: {tail:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_enoent_reply_re_sends_the_strip_and_says_so() {
+        let (frames, _tail) = pixel_run(
+            vec![unbound_key(), quit_key()],
+            vec![b"\x1b_Gi=1000;ENOENT:image not found\x1b\\".to_vec()],
+        );
+
+        assert_eq!(transmitted(&frames[0]).first(), Some(&1000));
+        assert!(!transmitted(&frames[1]).is_empty(), "{:?}", frames[1]);
+        assert!(
+            frames[1].contains("gfx: ENOENT:image not found"),
+            "{:?}",
+            frames[1]
+        );
+    }
+
+    #[test]
+    fn leaving_the_graph_screen_removes_the_placements() {
+        let (frames, _tail) = pixel_run(
+            vec![key(KeyPress::plain(KeyCode::Function(2))), quit_key()],
+            vec![],
+        );
+
+        assert!(frames[1].contains("a=d,d=i,i="), "{:?}", frames[1]);
+        assert!(!frames[1].contains("gfx"), "no status off the pixel graph");
     }
 
     #[test]

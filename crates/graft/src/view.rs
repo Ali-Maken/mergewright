@@ -10,7 +10,7 @@
 //! called `ma<ESC>[31min` reaches the terminal as the picture of an escape and
 //! never as the escape (DESIGN.md §8.2).
 
-use graft_core::capabilities::RenderingTier;
+use graft_core::capabilities::{PixelProtocol, RenderingTier};
 use graft_git::status::WorkingTreeCounts;
 use graft_git::version::SystemGit;
 use graft_graph::identity::BranchIdentity;
@@ -20,12 +20,13 @@ use graft_term::{SanitizedText, sanitize, sanitize_line, sanitize_path, sanitize
 use graft_ui::graph_column::{GraphLine, NodeKind, RowPaint};
 use graft_ui::graph_screen::{
     AuthorChip, Badge, BadgeKind, Compaction, Filters, GraphEntry, GraphScreen, GraphView,
-    OrderNotice, SHA_WIDTH, Tracking, WalkView, initials, relative_date, short_sha,
+    GraphicsStatus, OrderNotice, SHA_WIDTH, Tracking, WalkView, initials, relative_date, short_sha,
 };
 use graft_ui::status_screen::{
     HeadView, HistoryState, HistoryView, RepositoryView, StatusScreen, StatusView,
 };
 use ratatui::Frame;
+use ratatui::layout::Rect;
 
 use crate::history::{History, Phase, Promotion, WalkFacts};
 use crate::refs::{RefBadges, RefLabel, Upstream};
@@ -50,12 +51,34 @@ fn tier_name(tier: RenderingTier) -> &'static str {
 
 /// Draw the current state.
 pub fn view(session: &Session, state: &AppState, frame: &mut Frame) {
+    view_with_graphics(session, state, &GraphicsStatus::Ok, frame);
+}
+
+/// Whether this frame's graph is drawn in pixels: the graph screen, at the
+/// pixel tier, over the Kitty protocol (iTerm2 is ticket 25).
+#[must_use]
+pub fn draws_pixels(session: &Session, state: &AppState) -> bool {
+    state.screen == Screen::Graph
+        && state.renderer_override.unwrap_or(session.rendering.tier) == RenderingTier::Pixel
+        && session.capabilities.pixel_protocol == Some(PixelProtocol::Kitty)
+}
+
+/// [`view`], saying `graphics` in the header when the graph is drawn in
+/// pixels; returns the rectangle those pixels go in, or `None` when this
+/// frame draws no pixels.
+pub fn view_with_graphics(
+    session: &Session,
+    state: &AppState,
+    graphics: &GraphicsStatus,
+    frame: &mut Frame,
+) -> Option<Rect> {
     let area = frame.area();
     if area.is_empty() {
         // Nothing to draw into. Not an error — a terminal can legitimately be
         // this size for a moment (ADR-0012) — so there is nothing to report.
-        return;
+        return None;
     }
+    let pixels = draws_pixels(session, state);
 
     match state.screen {
         Screen::Graph => {
@@ -70,11 +93,17 @@ pub fn view(session: &Session, state: &AppState, frame: &mut Frame) {
                     tier_name(tier)
                 )));
             }
-            frame.render_widget(GraphScreen::new(&screen, &session.theme), area);
+            screen.pixel = pixels;
+            screen.graphics = pixels.then(|| graphics.clone());
+            let widget = GraphScreen::new(&screen, &session.theme);
+            let graph = pixels.then(|| widget.graph_area(area));
+            frame.render_widget(widget, area);
+            graph
         }
         Screen::Status => {
             let screen = status_view(session, state);
             frame.render_widget(StatusScreen::new(&screen, &session.theme), area);
+            None
         }
     }
 }
@@ -106,6 +135,8 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
             tooltip: None,
             order: None,
             ascii: false,
+            pixel: false,
+            graphics: None,
             notice: None,
         };
     };
@@ -142,6 +173,8 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
         tooltip: tooltip_view(state, history),
         order: order_notice(history),
         ascii: false,
+        pixel: false,
+        graphics: None,
         notice: None,
     }
 }
@@ -582,7 +615,7 @@ fn notes(session: &Session, state: &AppState) -> Vec<SanitizedText> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use graft_core::oid::Oid;
     use graft_git::version::GitVersion;
     use graft_ui::status_screen::TierSource;
@@ -629,7 +662,7 @@ mod tests {
 
     /// A history of `count` commits, newest first, already laid out and
     /// sent as one window.
-    pub(super) fn history_of(count: u8, cursor: usize) -> History {
+    pub(crate) fn history_of(count: u8, cursor: usize) -> History {
         use graft_core::commit::{Commit, Identity, Timestamp};
         use graft_graph::layout::layout;
         use graft_graph::seeds::Seeds;
@@ -857,7 +890,7 @@ mod tests {
 
     /// Refs whose `HEAD` resolves to `head`, or is unborn when `head` is
     /// `None`.
-    pub(super) fn refs_with_head(head: Option<Oid>) -> crate::refs::RefBadges {
+    pub(crate) fn refs_with_head(head: Option<Oid>) -> crate::refs::RefBadges {
         let state = match head {
             Some(id) => graft_git::repo::HeadState::Detached(id),
             None => graft_git::repo::HeadState::Unborn(
@@ -874,7 +907,7 @@ mod tests {
         .expect("no branches to count")
     }
 
-    pub(super) fn oid(byte: u8) -> Oid {
+    pub(crate) fn oid(byte: u8) -> Oid {
         Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes")
     }
 
@@ -893,7 +926,7 @@ mod tests {
         }
     }
 
-    pub(super) fn counts(
+    pub(crate) fn counts(
         staged: usize,
         unstaged: usize,
         untracked: usize,

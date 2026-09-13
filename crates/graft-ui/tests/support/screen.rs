@@ -52,6 +52,8 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
         tooltip: None,
         order: None,
         ascii: false,
+        pixel: false,
+        graphics: None,
         notice: None,
     }
 }

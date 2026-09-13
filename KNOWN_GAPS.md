@@ -256,3 +256,10 @@ entry is (CLAUDE.md).*
 - Render time measured on the fast tier only: 32 rows × 5 lanes at 17×37, Apple M5, median 1.38 ms release / 13.4 ms debug. Wide strips (many lanes) unmeasured; the frame-budget ticket (30) owns it.
 
 - **m1/24 pixel tier not wired (2026-09-13).** `graft-term::kitty` encoder exists and is tested; nothing in `app` calls it yet, so Ghostty still draws the Unicode graph. Remaining: 24c draw + reply draining + `gfx` status, 24d flush/F3/real-Ghostty check. 24b done: `view::strips::pixel_rows` builds aligned strips and `History::strip_rows` pads requests, but nothing sets `strip_rows` yet (needs the settled tier in `AppState`, 24d) and nothing calls `pixel_rows` (24c). See `.scratch/m1-the-graph/issues/24-kitty-output.md` Handoff.
+
+## m1-the-graph/24c — Kitty draw and replies
+- **Pixel column width comes from the text tier's fold** (visible rows), while strips are rasterised through one fold across every strip drawn (`pixel_rows`). When the two lane counts differ, the terminal scales the strip horizontally into the text-tier width. Not observed; measure in 24d's real-Ghostty check, and if seen, size the column from `PixelRows::lane_columns`.
+- **Replies are drained only on a wake.** A `q=1` error reply arriving with no key, resize or job result after it waits for the next wake to be shown and retransmitted. The mux has no wake for replies.
+- **A panic leaves uploads in the terminal.** `free_all` runs on every loop exit (quit, signal, error), not from the panic hook.
+- `STRIPS_KEPT` (16) is fixed for both the strip cache and uploads, not sized from the viewport (`StripCache::capacity_for`).
+- Nothing has drawn a pixel yet: `History::strip_rows` is still never set outside tests (24d), so the app shows a blank graph column only if forced to the pixel tier on a Kitty terminal, and strips appear only when the window happens to cover whole strips.

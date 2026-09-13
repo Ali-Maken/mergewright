@@ -97,10 +97,26 @@ pub struct GraphView<'a> {
     /// box-drawing (`graph.renderer`, ticket m1-the-graph/19; DESIGN.md §4.2,
     /// ADR-0016).
     pub ascii: bool,
+    /// The pixel tier draws the graph: the column keeps its width but is left
+    /// blank, for the terminal's images to fill (ticket m1-the-graph/24c).
+    pub pixel: bool,
+    /// How the terminal took the last graph images, while the pixel tier
+    /// draws them; `None` at every other tier.
+    pub graphics: Option<GraphicsStatus>,
     /// What the app layer did to the renderer tier the user did not ask to
     /// be told twice — the tier-drop key said what it did. Takes the
     /// footer's place under [`GraphView::problem`], above the hints.
     pub notice: Option<SanitizedText>,
+}
+
+/// What the terminal said about the graph images, named by state: `gfx ok`
+/// when it reported nothing wrong, `gfx: <message>` when it did.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum GraphicsStatus {
+    /// No image command failed since the last wake.
+    Ok,
+    /// The terminal refused an image command, and said this.
+    Failed(SanitizedText),
 }
 
 /// The commit tooltip: the full message and the parents, reachable
@@ -280,6 +296,34 @@ impl<'a> GraphScreen<'a> {
         GraphScreen { view, theme }
     }
 
+    /// Where the graph column lands inside `area`, the whole screen: the
+    /// rectangle the pixel tier places its images in, every body row tall.
+    #[must_use]
+    pub fn graph_area(&self, area: Rect) -> Rect {
+        let (body, rows, applied) = self.body_layout(area);
+        Rect {
+            width: graph_width(body, rows, applied.as_ref()),
+            ..body
+        }
+    }
+
+    /// The rows' rectangle, the rows that fit in it, and the fold they are
+    /// drawn through (`None` while expanded).
+    fn body_layout(&self, area: Rect) -> (Rect, &[GraphEntry<'a>], Option<Fold>) {
+        let body = Rect {
+            y: area.y + 1,
+            height: area.height.saturating_sub(CHROME_ROWS),
+            ..area
+        };
+        let rows = &self.view.rows[..self.view.rows.len().min(usize::from(body.height))];
+        let fold = self
+            .view
+            .compaction
+            .plan(rows.iter().map(|entry| &*entry.line.row));
+        let applied = (!self.view.compaction.expanded).then_some(fold);
+        (body, rows, applied)
+    }
+
     fn header(&self, width: usize) -> Line<'static> {
         let muted = foreground(self.theme, Token::TextMuted);
         let brand = " graft ".len().min(width);
@@ -328,8 +372,32 @@ impl<'a> GraphScreen<'a> {
             ),
             None => {}
         }
+        match &self.view.graphics {
+            Some(GraphicsStatus::Ok) => push("  gfx ok".to_owned(), muted, &mut spans),
+            Some(GraphicsStatus::Failed(message)) => push(
+                format!("  gfx: {message}"),
+                foreground(self.theme, Token::Warning),
+                &mut spans,
+            ),
+            None => {}
+        }
         Line::from(spans)
     }
+}
+
+/// Cells the graph column takes in the rows' `area`: what its lanes want,
+/// half the width at most — the subject is what makes a row readable.
+fn graph_width(area: Rect, rows: &[GraphEntry<'_>], fold: Option<&Fold>) -> u16 {
+    let full_width = || {
+        let lanes = rows
+            .iter()
+            .map(|entry| entry.line.row.lanes.len().max(entry.line.row.lane + 1))
+            .max()
+            .unwrap_or(1);
+        GraphColumn::width_for(lanes)
+    };
+    fold.map_or_else(full_width, GraphColumn::width_through)
+        .min(area.width / 2)
 }
 
 /// The header's account of the walk, and the token it is drawn in.
@@ -377,21 +445,15 @@ impl Widget for GraphScreen<'_> {
         let width = usize::from(area.width);
         buf.set_line(area.x, area.y, &self.header(width), area.width);
 
-        let body = Rect {
-            y: area.y + 1,
-            height: area.height.saturating_sub(CHROME_ROWS),
-            ..area
-        };
-        let rows = &self.view.rows[..self.view.rows.len().min(usize::from(body.height))];
         // Planned over exactly the rows drawn, expanded or not: the hint
         // has to know whether there is anything to collapse.
+        let (body, rows, applied) = self.body_layout(area);
         let fold = self
             .view
             .compaction
             .plan(rows.iter().map(|entry| &*entry.line.row));
-        let applied = (!self.view.compaction.expanded).then_some(&fold);
         if body.height > 0 {
-            self.body(body, rows, applied, buf);
+            self.body(body, rows, applied.as_ref(), buf);
         }
 
         if area.height > 1 {
@@ -543,29 +605,24 @@ impl GraphScreen<'_> {
     /// The rows: graph, the reserved marker slot, the subject, and — when
     /// there is room — the author chip, the relative date and the short SHA.
     fn body(&self, area: Rect, rows: &[GraphEntry<'_>], fold: Option<&Fold>, buf: &mut Buffer) {
-        let full_width = || {
-            let lanes = rows
-                .iter()
-                .map(|entry| entry.line.row.lanes.len().max(entry.line.row.lane + 1))
-                .max()
-                .unwrap_or(1);
-            GraphColumn::width_for(lanes)
-        };
-        let wanted = fold.map_or_else(full_width, GraphColumn::width_through);
-        // Half the width at most: the subject is what makes a row readable.
-        let graph_width = wanted.min(area.width / 2);
-        let graph_lines: Vec<GraphLine<'_>> = rows.iter().map(|entry| entry.line.clone()).collect();
-        let mut column = GraphColumn::new(&graph_lines, self.theme).ascii(self.view.ascii);
-        if let Some(fold) = fold {
-            column = column.through(fold);
+        let graph_width = graph_width(area, rows, fold);
+        // At the pixel tier the cells stay blank: text drawn there would sit
+        // on top of the terminal's images.
+        if !self.view.pixel {
+            let graph_lines: Vec<GraphLine<'_>> =
+                rows.iter().map(|entry| entry.line.clone()).collect();
+            let mut column = GraphColumn::new(&graph_lines, self.theme).ascii(self.view.ascii);
+            if let Some(fold) = fold {
+                column = column.through(fold);
+            }
+            column.render(
+                Rect {
+                    width: graph_width,
+                    ..area
+                },
+                buf,
+            );
         }
-        column.render(
-            Rect {
-                width: graph_width,
-                ..area
-            },
-            buf,
-        );
 
         let columns = Columns::compute(area, graph_width);
         for (entry, y) in rows.iter().zip(area.top()..) {

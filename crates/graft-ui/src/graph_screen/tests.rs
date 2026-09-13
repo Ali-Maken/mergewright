@@ -75,6 +75,8 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
         tooltip: None,
         order: None,
         ascii: false,
+        pixel: false,
+        graphics: None,
         notice: None,
     }
 }
@@ -517,4 +519,54 @@ fn a_tooltip_overlays_the_body_with_the_subject_and_parents() {
     let joined = screen.join("\n");
     assert!(joined.contains("Commit 3"), "{screen:#?}");
     assert!(joined.contains("deadbee"), "{screen:#?}");
+}
+
+#[test]
+fn the_pixel_tier_leaves_the_graph_column_blank_at_the_same_width() {
+    let rows = linear(3);
+    let text_tier = view(&rows, WalkView::Complete { rows: 3 }, 1);
+    let mut pixel_tier = text_tier.clone();
+    pixel_tier.pixel = true;
+    let theme = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::TrueColor, false));
+    let area = Rect::new(0, 0, 40, 6);
+    let graph = GraphScreen::new(&text_tier, &theme).graph_area(area);
+
+    let drawn = text(&draw(&text_tier, 40, 6));
+    let blank = text(&draw(&pixel_tier, 40, 6));
+
+    assert_eq!(graph, Rect::new(0, 1, graph.width, 4), "every body row");
+    assert!(graph.width > 0);
+    assert_eq!(
+        GraphScreen::new(&pixel_tier, &theme).graph_area(area),
+        graph
+    );
+    let columns = usize::from(graph.width);
+    let split = |line: &str| -> (String, String) {
+        (
+            line.chars().take(columns).collect(),
+            line.chars().skip(columns).collect(),
+        )
+    };
+    for y in 1..4 {
+        let (drawn_graph, drawn_text) = split(&drawn[y]);
+        let (blank_graph, blank_text) = split(&blank[y]);
+        assert_ne!(drawn_graph.trim(), "", "{drawn:#?}");
+        assert_eq!(blank_graph.trim(), "", "{blank:#?}");
+        // Everything right of the column is where it was.
+        assert_eq!(drawn_text, blank_text, "{blank:#?}");
+    }
+}
+
+#[test]
+fn the_graphics_status_is_named_by_its_state() {
+    let rows = linear(1);
+    let mut screen = view(&rows, WalkView::Complete { rows: 1 }, 0);
+    assert!(!text(&draw(&screen, 80, 4))[0].contains("gfx"));
+
+    screen.graphics = Some(GraphicsStatus::Ok);
+    assert!(text(&draw(&screen, 80, 4))[0].contains("gfx ok"));
+
+    screen.graphics = Some(GraphicsStatus::Failed(sanitize_line("ENOENT:gone")));
+    let header = text(&draw(&screen, 80, 4))[0].clone();
+    assert!(header.contains("gfx: ENOENT:gone"), "{header}");
 }

@@ -56,13 +56,17 @@ pub struct PixelRows {
     pub lane_columns: usize,
     /// The `+N` column, if anything folds.
     pub marker: Option<Marker>,
+    /// The uncommitted row is on screen, above the viewport's first history
+    /// row: every history row sits one screen row lower.
+    pub uncommitted_on_top: bool,
 }
 
 impl PixelRows {
     /// `strips` with the width and `+N` marker `fold` draws them at.
-    fn drawn_through(strips: Vec<StripRows>, fold: &Fold) -> PixelRows {
+    fn drawn_through(strips: Vec<StripRows>, fold: &Fold, uncommitted_on_top: bool) -> PixelRows {
         PixelRows {
             strips,
+            uncommitted_on_top,
             lane_columns: fold.drawn_columns(),
             marker: fold.marker().map(|column| Marker {
                 column,
@@ -202,7 +206,7 @@ pub fn pixel_rows(state: &AppState, max_lanes: usize, strip_rows: usize) -> Pixe
         put_uncommitted(&mut strips, on_top, history.top, window_rows.is_empty());
     }
 
-    PixelRows::drawn_through(strips, &fold)
+    PixelRows::drawn_through(strips, &fold, uncommitted)
 }
 
 /// The aligned strips covering `viewport` whose rows and row above are

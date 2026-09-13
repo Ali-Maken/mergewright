@@ -47,6 +47,9 @@ One line per public item. Update when a public item changes.
 - `GraphView::order` (field) — the order notice while rows are not in their final order, or `None`.
 - `GraphView::ascii` (field) — draw the graph column with the ASCII glyph table (`graph.renderer`, m1-the-graph/19).
 - `GraphView::notice` (field) — what the app layer did to the renderer tier, shown in the footer under `problem`, above the hints; `None` for nothing to say.
+- `GraphView::pixel` (field) — the pixel tier draws the graph: the column keeps its width, left blank for the images (m1-the-graph/24c).
+- `GraphView::graphics` (field) — `gfx ok` / `gfx: <message>` in the header while pixels are drawn; `None` otherwise.
+- `GraphicsStatus` (enum) — `Ok` or `Failed(SanitizedText)`: what the terminal said about the graph images.
 - `Tooltip` (struct) — `subject`, `body` (both `SanitizedText`), `parents` (short shas); hover and `Enter` build it identically (m1-the-graph/17). "Contained in" is out of scope — `KNOWN_GAPS.md`.
 - `Filters` (struct) — `first_parent`, `folded` (merge count), `stash_hidden`, `focused` (Focus mode on); `Filters::text` is the header's words, empty for none.
 - `Compaction` (struct) — `max_lanes` (`graph.max_lanes`), `expanded` (the `+` key), `pinned` (reserved integration lanes and the selection's thread columns).
@@ -57,6 +60,7 @@ One line per public item. Update when a public item changes.
 - `WalkView` (enum) — walk state for the header: opening, reading, jumping, complete, cancelled, failed.
 - `GraphScreen` (struct) — the graph screen, ready to render.
 - `GraphScreen::new` (fn) — draw `view` in `theme`.
+- `GraphScreen::graph_area` (fn) — the graph column's rectangle inside the screen area, every body row tall: where pixel images are placed.
 
 ## graph_screen::badges
 - `Icons` (enum) — `Plain` (default, bracketed) or `Nerd` (icon-prefixed).

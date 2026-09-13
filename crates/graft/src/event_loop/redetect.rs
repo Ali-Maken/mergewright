@@ -282,6 +282,25 @@ mod tests {
     }
 
     #[test]
+    fn a_graphics_reply_among_the_answers_is_ignored() {
+        // The images' error replies reach every waiter, this worker's too.
+        let (redetector, wakes) = spawn(Scripted::answering(&[
+            b"\x1b_Gi=1000;ENOENT:gone\x1b\\\x1b[6;40;20t\x1b[?62;22c",
+        ]));
+
+        redetector.ask(Query::CellSize);
+
+        assert!(matches!(
+            next(&wakes),
+            Wake::Terminal(TerminalChange::CellSize(CellSize {
+                width: 20,
+                height: 40,
+                source: CellSizeSource::Reported,
+            }))
+        ));
+    }
+
+    #[test]
     fn an_unchanged_answer_wakes_nobody() {
         // Round one: the silent resize degrades the size to assumed — a
         // change. Round two is silent again — no change, no wake — so the

@@ -22,7 +22,7 @@ One line per public item. Update when a public item changes.
 ## view::strips
 - `strips` (mod) — pixel-tier rows: aligned strips covering the viewport, painted like the text tiers.
 - `pixel_rows` (fn) — this frame's strips from `AppState`: one fold across strips, uncommitted row on `HEAD`, thread/focus/cursor emphasis; strips missing rows or the row above are left out.
-- `PixelRows` (struct) — `strips`, shared `lane_columns`, `marker`.
+- `PixelRows` (struct) — `strips`, shared `lane_columns`, `marker`, `uncommitted_on_top` (history rows sit one screen row lower).
 - `StripRows` (struct) — one strip: `first_row`; `row_count`, `uncommitted_at`, `with_strip` (hands a `Strip` to e.g. `StripCache::get`).
 - `StripPaint` (struct) — `cell_width`, `cell_height`, `palette`, `muted`; `StripPaint::of(session)`.
 
@@ -165,6 +165,8 @@ One line per public item. Update when a public item changes.
 
 ## view
 - `view` (fn) — draw the current state to a frame: the graph screen, or the status screen.
+- `view_with_graphics` (fn) — `view`, plus the gfx status in the header at the pixel tier; returns the graph rect the images go in, `None` when no pixels this frame.
+- `draws_pixels` (fn) — graph screen, pixel tier (override else session), Kitty protocol.
 - `graph_view` (fn) — build a `GraphView` from the history window, cursor and status; the selection's `Ancestry` over the window lights lanes, fades rows in Focus mode, and pins its columns against folding.
 - `status_view` (fn) — build a `StatusView` from session and app state.
 
@@ -177,7 +179,7 @@ One line per public item. Update when a public item changes.
 - `ChannelWakes` (struct) — the real wake source: one channel, two feeder threads.
 - `ChannelWakes::new` (fn) — build the channel and the sender its producers clone.
 - `run` (fn) — run the event loop for a session, start to `Exit`.
-- `pump` (fn) — drive one loop iteration; testable independent of a real terminal.
+- `pump` (fn) — drive the loop; testable independent of a real terminal. Draws Kitty strips at the pixel tier, drains image replies each wake, frees every upload on exit (m1-the-graph/24c).
 
 ## event_loop::signals
 - `WATCHED` (const) — signals watched: SIGINT, SIGTERM, SIGHUP.
