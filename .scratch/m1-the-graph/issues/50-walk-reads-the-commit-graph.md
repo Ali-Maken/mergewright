@@ -1,8 +1,9 @@
 # The walk reads the commit-graph, and its state is dense
 
-Status: draft
+Status: ready
 Build with: **Opus** (high) — rev-walk correctness against the git oracle, generation-number rules, commits outside the graph.
 Needs: `CommitHandle`, `Parents`, `Link`, `HandleSet` (core), `CommitTable`, `Walk::next_links` (commit-handles-and-table).
+Blocked by: 49
 
 ## Read first
 - ADR-0026 "Decision" item 3, "Options considered → Pack pages, `Topological.known`", "The gate at 1M" (first-paint paragraph)

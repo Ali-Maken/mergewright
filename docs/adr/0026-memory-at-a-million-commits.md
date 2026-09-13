@@ -1,6 +1,6 @@
 # Memory at a million commits: handles instead of ids, the walk reads the commit-graph, and what the 300 MB gate covers at 1M
 
-Status: **Proposed** (planner-fable, 2026-09-14, on m1-the-graph/46's finding). Needs the user's decision on §"The gate at 1M" before any ticket lands.
+Status: **Accepted** (user, 2026-09-14; planner-fable, on m1-the-graph/46's finding). Lands in M1.
 
 ## Context
 
@@ -64,3 +64,12 @@ The no-graph run's one hash table had 2^22 buckets against the graph run's 2^21:
 - Search (`search::scan`) still reads every commit whole — it matches on messages, so it must; a 1M search touches the pack once, off-thread. Unchanged, noted.
 - `Row.lanes` sized to the widest column ever seen (4.5 KB/row on git/git, 27b) is flat in history and stays as it is.
 - DESIGN.md §3.1 `EmittedOrder` (~90 B/commit) and §3.2 walker_state, §3.6 "re-reading their commits from the retained order" are amended by the acceptance ticket once the numbers are in.
+
+## User decisions on approval (2026-09-14)
+
+- **The gate at 1M: yes, with two conditions.**
+  1. Wherever memory is reported rather than failed (1M without a commit-graph file), the numbers must be **visible in the milestone review and in KNOWN_GAPS.md**, not only in a results file.
+  2. When a repo has **no commit-graph file, Graft offers to build one**, as ADR-0008 already promised. The fallback path must not be silent.
+- **Lands in M1**, not M2: it is the foundation, and M2's reachability work wants the same table; doing it later means rewriting M2's work.
+- **The 1M first-screen miss (over 500 ms) gets its own ticket with a named cause**, not just a number in a report.
+- `CommitHandle`/`Link`/`Parents`/`HandleSet` in graft-core: fine (plain data, no behaviour, per ADR-0007). Reshaping `CommitSource` follows from it: fine.

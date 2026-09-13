@@ -1,8 +1,9 @@
 # Commit handles and the shared id table
 
-Status: draft
+Status: ready
 Build with: **Opus** (high) — gix commit-graph internals; the table's shape is structural for three crates, but the approach is decided in ADR-0026 and correctness is round-trip tests, so not Fable.
 Needs: none (first ticket of the group; defines the types and trait additions the others fill in).
+Blocked by: 48
 
 ## Read first
 - ADR-0026 (all; "Decision" items 1–2 are this ticket)

@@ -1,8 +1,9 @@
 # Order, inclusion and the promoted order on handles
 
-Status: draft
+Status: ready
 Build with: **Sonnet** (medium) — a key-type substitution across `graft-graph` and `graft::history`, held by property tests, the corpus snapshots and the promotion tests. Escalates to Opus on a second failure.
 Needs: `CommitHandle`, `HandleSet` (core), `CommitSource::{handle_of, id_of}` (commit-handles-and-table).
+Blocked by: 49
 
 ## Read first
 - ADR-0026 "Decision" item 2, "The 2× no-commit-graph `EmittedOrder`"
