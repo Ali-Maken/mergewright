@@ -34,6 +34,7 @@ use signal_hook::consts::{SIGHUP, SIGINT, SIGTERM, SIGWINCH};
 use signal_hook::iterator::{Handle, Signals};
 
 use super::Wake;
+use super::redetect::{Query, Redetector};
 use crate::update::AppEvent;
 
 /// The signals Graft treats as "stop, cleanly".
@@ -84,7 +85,7 @@ pub fn watch(wakes: Sender<Wake>) -> io::Result<Handle> {
 ///
 /// Stdin belongs to `graft_term::input`'s mux, so nothing else notices
 /// `SIGWINCH` for Graft. Call [`Handle::close`] once the loop is over.
-pub fn watch_resizes(wakes: Sender<Wake>) -> io::Result<Handle> {
+pub fn watch_resizes(wakes: Sender<Wake>, redetector: Option<Redetector>) -> io::Result<Handle> {
     let mut signals = Signals::new([SIGWINCH])?;
     let handle = signals.handle();
 
@@ -103,6 +104,11 @@ pub fn watch_resizes(wakes: Sender<Wake>) -> io::Result<Handle> {
                 if wakes.send(wake).is_err() {
                     // The loop has already finished.
                     return;
+                }
+                // After the resize itself, so the frame re-lays out at once
+                // and the cell size follows when the terminal answers.
+                if let Some(redetector) = &redetector {
+                    redetector.ask(Query::CellSize);
                 }
             }
         });

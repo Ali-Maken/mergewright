@@ -9,9 +9,11 @@ use std::io;
 use std::sync::mpsc::Sender;
 use std::thread;
 
+use graft_core::event::Event;
 use graft_term::input::Inputs;
 
 use super::Wake;
+use super::redetect::{Query, Redetector};
 use crate::update::AppEvent;
 
 /// Forward every decoded input to the loop on a thread of its own.
@@ -19,11 +21,20 @@ use crate::update::AppEvent;
 /// The thread blocks on the mux's queue, so an idle Graft costs nothing. It
 /// ends when the loop has gone (the wake receiver is dropped) or when the
 /// mux has stopped, whose last word is the failure the loop reports.
-pub fn spawn_reader(inputs: Inputs, wakes: Sender<Wake>) -> io::Result<()> {
+pub fn spawn_reader(
+    inputs: Inputs,
+    wakes: Sender<Wake>,
+    redetector: Option<Redetector>,
+) -> io::Result<()> {
     thread::Builder::new()
         .name("graft-input-forward".to_owned())
         .spawn(move || {
             for input in inputs {
+                if let (Ok(Event::FocusGained), Some(redetector)) = (&input, &redetector) {
+                    // Refresh-on-focus: a theme switched while Graft was in
+                    // the background is re-read (DESIGN.md §4.5).
+                    redetector.ask(Query::Theme);
+                }
                 let wake = match input {
                     Ok(event) => Wake::Event(AppEvent::Core(event)),
                     // Not survivable — there is no input any more — so it

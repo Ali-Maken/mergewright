@@ -1,0 +1,25 @@
+# m1-the-graph/21: resize + focus re-detection (pty, pyte; the script plays the terminal's replies).
+# Expect: step1 cell 10x20 (from the window size); step2 20x40 (reported); step3 20x40 (assumed); step4 theme light; step5 unchanged.
+# Command: python3 .scratch/m1-the-graph/pty-redetect-check.py target/debug/graft . steps
+=== startup ===
+Rendering   unicode, assumed (terminal silent), cell 8x16 (assumed)
+Theme       dark, terminal background unknown, truecolor
+=== step 1 resize 100x30, pixels 1000x600, query unanswered ===
+Rendering   unicode, assumed (terminal silent), cell 10x20 (from the window size)
+Theme       dark, terminal background unknown, truecolor
+=== step 2 resize 100x30, CSI 16 t answered 20x40 ===
+Rendering   unicode, assumed (terminal silent), cell 20x40 (reported)
+Theme       dark, terminal background unknown, truecolor
+=== step 3 resize 90x30, pixel fields zero, silent ===
+Rendering   unicode, assumed (terminal silent), cell 20x40 (assumed)
+Theme       dark, terminal background unknown, truecolor
+=== step 4 focus-in, OSC 11 answered white ===
+Rendering   unicode, assumed (terminal silent), cell 20x40 (assumed)
+Theme       light, from the terminal background, truecolor
+=== step 5 focus-in, silent ===
+Rendering   unicode, assumed (terminal silent), cell 20x40 (assumed)
+Theme       light, from the terminal background, truecolor
+
+=== result ===
+termios identical before launch / after quit: True
+exit status: 0

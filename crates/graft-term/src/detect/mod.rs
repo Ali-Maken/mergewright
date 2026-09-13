@@ -22,13 +22,16 @@
 //!   show `8×16 (assumed)` rather than a number that looks measured.
 //!
 //! The caller owns raw mode: [`detect`] writes queries and reads replies on a
-//! terminal that is already raw and not yet owned by the event loop. In M0
-//! that means startup-only, and keystrokes typed during the probe window are
-//! consumed by the reply reader rather than delivered — the known typeahead
-//! gap ADR-0012 records, which M1's input mux closes.
+//! terminal that is already raw; replies come in through the input mux, so
+//! keys typed meanwhile still reach the event loop.
+//!
+//! Mid-session, [`remeasure_cell_size`] and [`requery_theme`] re-ask the two
+//! answers that can change under a running Graft (DESIGN.md §4.5). The tier
+//! is never re-decided.
 
 mod environment;
 mod probe;
+mod redetect;
 mod reply;
 mod tmux;
 mod tty;
@@ -42,6 +45,7 @@ use graft_core::capabilities::{
 };
 
 pub use environment::Environment;
+pub use redetect::{remeasure_cell_size, requery_theme};
 use tmux::{TmuxProbe, through_tmux};
 pub use tty::TtyHost;
 
@@ -74,13 +78,18 @@ impl WindowPixels {
     /// Pixels per cell, or `None` when the terminal left the pixel fields at
     /// zero — which many do, and which is not an error.
     fn cell_size(self) -> Option<(u32, u32)> {
-        if self.columns == 0 || self.rows == 0 || self.width == 0 || self.height == 0 {
+        if self.columns == 0 || self.rows == 0 {
             return None;
         }
-        Some((
-            u32::from(self.width / self.columns),
-            u32::from(self.height / self.rows),
-        ))
+        let width = u32::from(self.width / self.columns);
+        let height = u32::from(self.height / self.rows);
+        // Zero pixel fields, or a window reporting fewer pixels than it has
+        // cells — both leave nothing to divide a cell by, and a zero-pixel
+        // cell would be a division by zero waiting in the pixel renderer.
+        if width == 0 || height == 0 {
+            return None;
+        }
+        Some((width, height))
     }
 }
 
@@ -276,43 +285,56 @@ fn tier(
 /// The cell-size fallback chain of DESIGN.md §4.1 step 3, in order: what the
 /// terminal reported, what the kernel knows, and finally a flagged guess.
 fn cell_size(replies: &probe::ProbeReplies, host: &mut dyn TerminalHost) -> CellSize {
-    if let Some((width, height)) = replies.cell_size {
-        return CellSize {
-            width,
-            height,
-            source: CellSizeSource::Reported,
-        };
-    }
-    if let Some((width, height)) = host.window_pixels().and_then(WindowPixels::cell_size) {
-        return CellSize {
-            width,
-            height,
-            source: CellSizeSource::WindowSize,
-        };
-    }
-    CellSize {
+    measured_cell_size(replies, host).unwrap_or(CellSize {
         width: ASSUMED_CELL_SIZE.0,
         height: ASSUMED_CELL_SIZE.1,
         source: CellSizeSource::Assumed,
+    })
+}
+
+/// The two measured rungs of the chain: the terminal's reply, then the
+/// kernel. `None` when neither measured anything, which leaves the caller to
+/// decide what to assume — the default at startup, the last value on resize.
+fn measured_cell_size(
+    replies: &probe::ProbeReplies,
+    host: &mut dyn TerminalHost,
+) -> Option<CellSize> {
+    if let Some((width, height)) = replies.cell_size {
+        return Some(CellSize {
+            width,
+            height,
+            source: CellSizeSource::Reported,
+        });
     }
+    let (width, height) = host.window_pixels().and_then(WindowPixels::cell_size)?;
+    Some(CellSize {
+        width,
+        height,
+        source: CellSizeSource::WindowSize,
+    })
 }
 
 /// The light/dark hint from the reported background, or dark flagged as the
 /// assumption it is (DESIGN.md §4.1 step 3).
 fn theme(background: Option<Rgb>) -> ThemeHint {
-    match background {
-        Some(background) => ThemeHint {
-            theme: if is_light(background) {
-                Theme::Light
-            } else {
-                Theme::Dark
-            },
-            source: ThemeSource::Background(background),
-        },
-        None => ThemeHint {
+    background.map_or(
+        ThemeHint {
             theme: Theme::Dark,
             source: ThemeSource::Assumed,
         },
+        reported_theme,
+    )
+}
+
+/// The hint a reported background gives.
+fn reported_theme(background: Rgb) -> ThemeHint {
+    ThemeHint {
+        theme: if is_light(background) {
+            Theme::Light
+        } else {
+            Theme::Dark
+        },
+        source: ThemeSource::Background(background),
     }
 }
 

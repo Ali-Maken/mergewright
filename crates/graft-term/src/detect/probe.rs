@@ -77,6 +77,17 @@ pub(crate) fn graphics_round() -> Vec<u8> {
     [KITTY_GRAPHICS_QUERY, DEVICE_ATTRIBUTES_QUERY].concat()
 }
 
+/// The cell-size query alone, fenced: what a resize re-asks (DESIGN.md §4.5).
+pub(crate) fn cell_size_round() -> Vec<u8> {
+    [CELL_SIZE_QUERY, DEVICE_ATTRIBUTES_QUERY].concat()
+}
+
+/// The background query alone, fenced: what focus regain re-asks
+/// (DESIGN.md §4.5).
+pub(crate) fn background_round() -> Vec<u8> {
+    [BACKGROUND_QUERY, DEVICE_ATTRIBUTES_QUERY].concat()
+}
+
 /// Wrap a query batch in tmux's passthrough sequence so the outer terminal
 /// sees it: `ESC P tmux; … ESC \`, with every `ESC` in the payload doubled.
 pub(crate) fn tmux_passthrough(payload: &[u8]) -> Vec<u8> {

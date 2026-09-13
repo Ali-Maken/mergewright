@@ -687,3 +687,158 @@ fn versions_parse_from_whatever_shape_they_arrive_in() {
     assert_eq!(version(""), None);
     assert_eq!(version("openbsd"), None);
 }
+
+mod redetection {
+    use graft_core::capabilities::{CellSize, CellSizeSource, Rgb, Theme, ThemeHint, ThemeSource};
+
+    use super::*;
+
+    const BUDGET: Duration = Duration::from_millis(200);
+
+    fn measured() -> CellSize {
+        CellSize {
+            width: 9,
+            height: 18,
+            source: CellSizeSource::Reported,
+        }
+    }
+
+    fn dark_background() -> ThemeHint {
+        ThemeHint {
+            theme: Theme::Dark,
+            source: ThemeSource::Background(Rgb {
+                red: 0x1d,
+                green: 0x1f,
+                blue: 0x21,
+            }),
+        }
+    }
+
+    #[test]
+    fn a_resize_asks_only_for_the_cell_size_and_the_fence() {
+        let mut host = FakeHost::silent();
+
+        remeasure_cell_size(&mut host, measured(), BUDGET).expect("a fake cannot fail");
+
+        assert_eq!(host.written, vec![b"\x1b[16t\x1b[c".to_vec()]);
+    }
+
+    #[test]
+    fn a_reported_cell_size_replaces_the_previous_one() {
+        let mut host = FakeHost::answering(&[b"\x1b[6;40;20t\x1b[?62;22c"]);
+
+        let size = remeasure_cell_size(&mut host, measured(), BUDGET).expect("a fake cannot fail");
+
+        assert_eq!(
+            size,
+            CellSize {
+                width: 20,
+                height: 40,
+                source: CellSizeSource::Reported,
+            }
+        );
+    }
+
+    #[test]
+    fn an_unanswered_query_falls_back_to_the_window_size() {
+        let mut host = FakeHost::answering(&[ONLY_THE_FENCE]).with_window(100, 50, 1100, 1100);
+
+        let size = remeasure_cell_size(&mut host, measured(), BUDGET).expect("a fake cannot fail");
+
+        assert_eq!(
+            size,
+            CellSize {
+                width: 11,
+                height: 22,
+                source: CellSizeSource::WindowSize,
+            }
+        );
+    }
+
+    #[test]
+    fn a_silent_resize_keeps_the_previous_size_but_marks_it_assumed() {
+        let mut host = FakeHost::silent();
+
+        let size = remeasure_cell_size(&mut host, measured(), BUDGET).expect("a fake cannot fail");
+
+        assert_eq!(
+            size,
+            CellSize {
+                source: CellSizeSource::Assumed,
+                ..measured()
+            }
+        );
+    }
+
+    #[test]
+    fn a_window_with_fewer_pixels_than_cells_is_no_measurement() {
+        // 1×1 and 0×0 ptys, and a window claiming 10 px across 80 columns:
+        // none of them may produce a zero-pixel cell.
+        for (columns, rows, width, height) in [(0, 0, 0, 0), (1, 1, 0, 0), (80, 24, 10, 10)] {
+            let mut host = FakeHost::silent().with_window(columns, rows, width, height);
+
+            let size =
+                remeasure_cell_size(&mut host, measured(), BUDGET).expect("a fake cannot fail");
+
+            assert_eq!(size.source, CellSizeSource::Assumed);
+            assert!(size.width > 0 && size.height > 0);
+        }
+    }
+
+    #[test]
+    fn a_write_failure_is_returned_not_absorbed() {
+        let mut resized = FakeHost::silent().failing_to_write();
+        let mut refocused = FakeHost::silent().failing_to_write();
+
+        assert!(remeasure_cell_size(&mut resized, measured(), BUDGET).is_err());
+        assert!(requery_theme(&mut refocused, dark_background(), BUDGET).is_err());
+    }
+
+    #[test]
+    fn focus_regain_asks_only_for_the_background_and_the_fence() {
+        let mut host = FakeHost::silent();
+
+        requery_theme(&mut host, dark_background(), BUDGET).expect("a fake cannot fail");
+
+        assert_eq!(host.written, vec![b"\x1b]11;?\x1b\\\x1b[c".to_vec()]);
+    }
+
+    #[test]
+    fn a_reported_light_background_switches_the_hint() {
+        let mut host = FakeHost::answering(&[b"\x1b]11;rgb:ffff/ffff/ffff\x1b\\\x1b[?62;22c"]);
+
+        let hint = requery_theme(&mut host, dark_background(), BUDGET).expect("a fake cannot fail");
+
+        assert_eq!(hint.theme, Theme::Light);
+        assert_eq!(
+            hint.source,
+            ThemeSource::Background(Rgb {
+                red: 255,
+                green: 255,
+                blue: 255,
+            })
+        );
+    }
+
+    #[test]
+    fn a_silent_terminal_leaves_the_theme_unchanged() {
+        for answer in [SAYS_NOTHING, ONLY_THE_FENCE] {
+            let mut host = FakeHost::answering(&[answer]);
+
+            let hint =
+                requery_theme(&mut host, dark_background(), BUDGET).expect("a fake cannot fail");
+
+            assert_eq!(hint, dark_background());
+        }
+    }
+
+    #[test]
+    fn a_re_query_waits_no_longer_than_its_budget() {
+        let mut host = FakeHost::silent();
+        let start = Instant::now();
+
+        requery_theme(&mut host, dark_background(), SSH_PROBE_BUDGET).expect("a fake cannot fail");
+
+        assert!(within_budget(host.longest_wait(start), SSH_PROBE_BUDGET));
+    }
+}

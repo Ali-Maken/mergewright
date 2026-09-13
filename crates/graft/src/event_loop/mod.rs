@@ -15,6 +15,7 @@
 //! tested without a terminal at all.
 
 pub mod input;
+pub mod redetect;
 pub mod signals;
 
 use std::io::{self, IsTerminal, Write};
@@ -33,10 +34,11 @@ use crate::crash;
 use crate::history::Phase;
 use crate::jobs::{self, Delivery, Dispatch, JobEvents, JobRunner, Shutdown};
 use crate::repos::RepoStore;
-use crate::session::{Session, Startup};
+use crate::session::{Session, Startup, TerminalChange};
 use crate::terminal::{SessionOptions, TerminalSession};
 use crate::update::{AppEvent, AppState, Command, Quit, Size, update};
 use crate::view::view;
+use redetect::Redetector;
 
 /// Begin a synchronized update: the terminal buffers what follows and paints
 /// it in one go (DEC 2026, DESIGN.md §4.1).
@@ -71,6 +73,13 @@ pub enum Wake {
     /// Reading the terminal failed. Not recoverable — there is no input any
     /// more — and not ignorable, so it wakes the loop to be reported.
     InputFailed(io::Error),
+    /// The terminal re-answered a question and the answer changed
+    /// (DESIGN.md §4.5). Applied to the session, not to `update`: it changes
+    /// what Graft draws with, not what it shows.
+    Terminal(TerminalChange),
+    /// Writing a re-query to the terminal, or reading its reply, failed. As
+    /// unrecoverable as [`Wake::InputFailed`]: the next frame would fail too.
+    TerminalFailed(io::Error),
 }
 
 /// Where the loop gets its wakes.
@@ -117,6 +126,29 @@ impl Wakes for ChannelWakes {
     }
 }
 
+/// Start the re-query worker (DESIGN.md §4.5), knowing what startup settled.
+///
+/// Only a terminal detection was allowed to ask may be asked again:
+/// `TERM=dumb` gets no query bytes mid-session either, so it gets `None`.
+fn start_redetector(
+    environment: &detect::Environment,
+    mux: &InputMux,
+    settled: &Session,
+    wakes: &Sender<Wake>,
+) -> io::Result<Option<Redetector>> {
+    if !environment.is_probeable() {
+        return Ok(None);
+    }
+    Redetector::spawn(
+        TtyHost::new(mux.waiter()),
+        settled.capabilities.cell_size,
+        settled.capabilities.theme,
+        environment.probe_budget(),
+        wakes.clone(),
+    )
+    .map(Some)
+}
+
 /// Run Graft until the user quits or a signal says stop.
 ///
 /// The terminal is set up before the loop and restored after it, in that
@@ -161,20 +193,19 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     // reach detection through a waiter while any key typed meanwhile is
     // queued, in order, for the loop.
     let (mux, inputs) = InputMux::on_stdin()?;
-    let capabilities = detect::detect(
-        &detect::Environment::from_process(),
-        &mut TtyHost::new(mux.waiter()),
-    );
+    let environment = detect::Environment::from_process();
+    let capabilities = detect::detect(&environment, &mut TtyHost::new(mux.waiter()));
     if capabilities.kitty_keyboard == Supported::Yes {
         session.enable_kitty_keyboard()?;
     }
-    let settled = Session::settle(&config, capabilities);
+    let mut settled = Session::settle(&config, capabilities);
 
     let (mut wakes, sender) = ChannelWakes::new();
     let signals = signals::watch(sender.clone())?;
     let jobs = JobRunner::with_default_size(sender.clone(), repos)?;
-    let resizes = signals::watch_resizes(sender.clone())?;
-    input::spawn_reader(inputs, sender)?;
+    let redetector = start_redetector(&environment, &mux, &settled, &sender)?;
+    let resizes = signals::watch_resizes(sender.clone(), redetector.clone())?;
+    input::spawn_reader(inputs, sender, redetector)?;
 
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
     // The first frame and the first row request are both sized from this. A
@@ -189,7 +220,7 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
             rows: size.height,
         },
     );
-    let outcome = pump(&mut terminal, &mut wakes, &jobs, &settled, state);
+    let outcome = pump(&mut terminal, &mut wakes, &jobs, &mut settled, state);
     // Dropped before the restore so that its own teardown (it shows the cursor
     // it hid) goes out while the session is still in charge of the terminal.
     drop(terminal);
@@ -265,7 +296,10 @@ fn run_headless(
         let event = match wake {
             Wake::Event(event) => event,
             Wake::Shutdown(signal) => return Ok(Exit::Signal(signal)),
-            Wake::InputFailed(error) => return Err(error),
+            Wake::InputFailed(error) | Wake::TerminalFailed(error) => return Err(error),
+            // Headless runs start no redetector, so nothing sends this; and
+            // plain text has no cell size or theme to change if it did.
+            Wake::Terminal(_) => continue,
         };
 
         let (next, commands) = update(&state, event);
@@ -375,7 +409,7 @@ pub fn pump<B, W, D>(
     terminal: &mut Terminal<B>,
     wakes: &mut W,
     jobs: &D,
-    session: &Session,
+    session: &mut Session,
     mut state: AppState,
 ) -> io::Result<Exit>
 where
@@ -397,7 +431,13 @@ where
         let event = match wake {
             Wake::Event(event) => event,
             Wake::Shutdown(signal) => return Ok(Exit::Signal(signal)),
-            Wake::InputFailed(error) => return Err(error),
+            Wake::InputFailed(error) | Wake::TerminalFailed(error) => return Err(error),
+            Wake::Terminal(change) => {
+                if session.apply(change) {
+                    draw(terminal, session, &state)?;
+                }
+                continue;
+            }
         };
 
         let (next, commands) = update(&state, event);
@@ -433,6 +473,8 @@ fn draw<B>(terminal: &mut Terminal<B>, session: &Session, state: &AppState) -> i
 where
     B: Backend<Error = io::Error> + Write,
 {
+    // A whole frame, so a re-query cannot land inside one of its sequences.
+    let _frame = redetect::hold_output();
     terminal
         .backend_mut()
         .write_all(BEGIN_SYNCHRONIZED_UPDATE)?;
@@ -566,7 +608,7 @@ mod tests {
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
-            &session(),
+            &mut session(),
             AppState::default(),
         )
         .expect("writing to memory cannot fail");
@@ -583,7 +625,7 @@ mod tests {
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
-            &session(),
+            &mut session(),
             AppState::default(),
         )
         .expect("writing to memory cannot fail");
@@ -604,7 +646,7 @@ mod tests {
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
-            &session(),
+            &mut session(),
             AppState::default(),
         )
         .expect("writing to memory cannot fail");
@@ -622,7 +664,7 @@ mod tests {
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
-            &session(),
+            &mut session(),
             AppState::default(),
         )
         .expect_err("a failed read must not be swallowed");
@@ -639,7 +681,7 @@ mod tests {
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
-            &session(),
+            &mut session(),
             AppState::default(),
         )
         .expect("writing to memory cannot fail");
@@ -658,7 +700,7 @@ mod tests {
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
-            &session(),
+            &mut session(),
             AppState::default(),
         )
         .expect("writing to memory cannot fail");
@@ -704,7 +746,7 @@ mod tests {
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
-            &session(),
+            &mut session(),
             state,
         )
         .expect("writing to memory cannot fail");
@@ -728,7 +770,7 @@ mod tests {
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
-            &session(),
+            &mut session(),
             AppState::default(),
         )
         .expect("writing to memory cannot fail");
@@ -747,7 +789,7 @@ mod tests {
             ..AppState::default()
         };
 
-        pump(&mut terminal, &mut wakes, &jobs, &session(), state)
+        pump(&mut terminal, &mut wakes, &jobs, &mut session(), state)
             .expect("writing to memory cannot fail");
 
         assert_eq!(
@@ -776,7 +818,7 @@ mod tests {
             &mut terminal,
             &mut wakes,
             &Recorded::default(),
-            &session(),
+            &mut session(),
             AppState::default(),
         )
         .expect("writing to memory cannot fail");

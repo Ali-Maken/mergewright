@@ -17,7 +17,11 @@ One line per public item. Update when a public item changes.
 - `TtyHost::new` (fn) — a host reading replies from the input mux's waiter.
 - `TtyHost::unread` (fn) — a host that is never read (stdout not a tty, so no mux); reads report nothing.
 - `Environment` (struct) — environment hints; `Environment::from_process`.
+- `Environment::is_probeable` (fn) — whether queries may be written at all (a tty, not `TERM=dumb`).
+- `Environment::probe_budget` (fn) — the probe deadline for this terminal (local or SSH).
 - `detect` (fn) — probe the terminal and return `Capabilities`; never reads stdin itself.
+- `remeasure_cell_size` (fn) — after a resize: `CSI 16 t`, then `TIOCGWINSZ`, else the previous size marked `Assumed`.
+- `requery_theme` (fn) — on focus regain: `OSC 11`; silence returns the previous hint unchanged.
 
 ## input
 - `InputMux` (struct) — owns stdin for the process's life; decodes bytes on its own thread.

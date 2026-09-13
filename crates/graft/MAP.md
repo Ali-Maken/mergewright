@@ -22,6 +22,17 @@ One line per public item. Update when a public item changes.
 - `Session::icons` (field) — badge glyph set from `ui.icons`.
 - `Session::max_lanes` (field) — lane limit from `graph.max_lanes`.
 - `Session::settle` (fn) — resolve capabilities, theme, rendering info at startup.
+- `Session::apply` (fn) — take in a re-detected cell size or theme; `true` when anything changed. Never touches the tier.
+- `TerminalChange` (enum) — a mid-session answer that changed: `CellSize(CellSize)`, `Theme(ThemeHint)`.
+
+## event_loop
+- `Wake::Terminal` (variant) — a re-detected answer changed; `pump` applies it to the session and redraws.
+- `Wake::TerminalFailed` (variant) — a re-query could not be written or read; ends the loop with the error.
+- `pump` (fn) — now takes `&mut Session`, so re-detection can update it.
+- `input::spawn_reader` (fn) — forwards input; on `FocusGained` also asks the redetector for the theme.
+- `signals::watch_resizes` (fn) — resize wakes; each also asks the redetector for the cell size.
+- `redetect::Redetector` (struct) — handle to the re-query worker; `spawn(host, cell_size, theme, budget, wakes)`, `ask(Query)`.
+- `redetect::Query` (enum) — `CellSize` or `Theme`.
 
 ## refs
 - `RefBadges` (struct) — refs on every commit that has one, plus the `HEAD` and stash commits.

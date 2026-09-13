@@ -12,7 +12,7 @@
 //! are settled once, and keeping them out of the state is what keeps `update`
 //! a function of the things that actually vary.
 
-use graft_core::capabilities::{Capabilities, ProbeOutcome, ThemeSource};
+use graft_core::capabilities::{Capabilities, CellSize, ProbeOutcome, ThemeHint, ThemeSource};
 use graft_term::{SanitizedText, sanitize_line};
 use graft_ui::status_screen::{RenderingView, TierSource};
 use graft_ui::theme::{Theme, ThemeKind};
@@ -25,6 +25,15 @@ pub struct Startup {
     pub repo_path: std::path::PathBuf,
     /// The config file, and anything odd about it.
     pub config: Loaded,
+}
+
+/// A terminal answer that changed mid-session (DESIGN.md §4.5).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TerminalChange {
+    /// The cell size after a resize, provenance included.
+    CellSize(CellSize),
+    /// The background's light/dark hint after focus regain.
+    Theme(ThemeHint),
 }
 
 /// What Graft is drawing with, for as long as this run lasts.
@@ -104,6 +113,34 @@ impl Session {
             capabilities,
         }
     }
+
+    /// Take in a re-detected answer; `true` when anything drawn from it
+    /// changed, so the caller knows to redraw (and the pixel renderer to
+    /// re-rasterise). The tier is never touched: it is decided once.
+    pub fn apply(&mut self, change: TerminalChange) -> bool {
+        match change {
+            TerminalChange::CellSize(size) => {
+                if self.capabilities.cell_size == size {
+                    return false;
+                }
+                self.capabilities.cell_size = size;
+                self.rendering.cell_size = size;
+            }
+            TerminalChange::Theme(hint) => {
+                if self.capabilities.theme == hint {
+                    return false;
+                }
+                self.capabilities.theme = hint;
+                // A `ui.theme` override still wins; only the evidence changes.
+                let forced = self.rendering.theme_forced.then_some(self.rendering.theme);
+                let kind = ThemeKind::select(forced, hint);
+                self.theme = Theme::new(kind, &self.capabilities);
+                self.rendering.theme = kind;
+                self.rendering.theme_unknown = matches!(hint.source, ThemeSource::Assumed);
+            }
+        }
+        true
+    }
 }
 
 /// Where the tier on screen came from (DESIGN.md §4.1's provenance rule).
@@ -182,7 +219,9 @@ pub(crate) mod for_tests {
 
 #[cfg(test)]
 mod tests {
-    use graft_core::capabilities::RenderingTier;
+    use graft_core::capabilities::{
+        CellSizeSource, RenderingTier, Rgb, Theme as TerminalTheme, ThemeHint,
+    };
 
     use super::*;
     use crate::config::{Config, Graph, RendererChoice, ThemeChoice, Ui};
@@ -291,6 +330,65 @@ mod tests {
         );
 
         assert_eq!(session.rendering.tier_source, TierSource::Forced);
+    }
+
+    #[test]
+    fn a_new_cell_size_changes_the_session_but_not_the_tier() {
+        let mut session = for_tests::session();
+        let tier = session.rendering.tier;
+        let size = CellSize {
+            width: 20,
+            height: 40,
+            source: CellSizeSource::WindowSize,
+        };
+
+        assert!(session.apply(TerminalChange::CellSize(size)));
+        assert!(
+            !session.apply(TerminalChange::CellSize(size)),
+            "no change twice"
+        );
+
+        assert_eq!(session.rendering.cell_size, size);
+        assert_eq!(session.capabilities.cell_size, size);
+        assert_eq!(session.rendering.tier, tier);
+    }
+
+    #[test]
+    fn a_light_background_on_focus_regain_switches_the_theme() {
+        let mut session = for_tests::session();
+        let light = ThemeHint {
+            theme: TerminalTheme::Light,
+            source: ThemeSource::Background(Rgb {
+                red: 250,
+                green: 250,
+                blue: 250,
+            }),
+        };
+
+        assert!(session.apply(TerminalChange::Theme(light)));
+
+        assert_eq!(session.rendering.theme, ThemeKind::Light);
+        assert!(!session.rendering.theme_unknown);
+    }
+
+    #[test]
+    fn a_forced_theme_survives_a_re_detected_background() {
+        let mut session = Session::settle(
+            &loaded(ThemeChoice::Dark, RendererChoice::Auto),
+            for_tests::capabilities(),
+        );
+        let light = ThemeHint {
+            theme: TerminalTheme::Light,
+            source: ThemeSource::Background(Rgb {
+                red: 250,
+                green: 250,
+                blue: 250,
+            }),
+        };
+
+        session.apply(TerminalChange::Theme(light));
+
+        assert_eq!(session.rendering.theme, ThemeKind::Dark);
     }
 
     #[test]

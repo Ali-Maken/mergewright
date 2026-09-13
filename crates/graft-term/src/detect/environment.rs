@@ -65,7 +65,7 @@ impl Environment {
     }
 
     /// How long the terminal gets to answer (DESIGN.md §4.4).
-    pub(super) fn probe_budget(&self) -> Duration {
+    pub fn probe_budget(&self) -> Duration {
         if self.over_ssh {
             SSH_PROBE_BUDGET
         } else {
@@ -76,7 +76,7 @@ impl Environment {
     /// A terminal worth asking questions. `TERM=dumb` answers nothing by
     /// definition, and a pipe would just be sent escape sequences that end up
     /// in the user's file.
-    pub(super) fn is_probeable(&self) -> bool {
+    pub fn is_probeable(&self) -> bool {
         self.stdout_is_tty && !self.is_dumb()
     }
 
