@@ -239,6 +239,11 @@ pub struct History {
     /// Promotion to topological order, while one is under way or was given
     /// up; `None` once promoted, or when the order was never provisional.
     pub promotion: Option<Promotion>,
+    /// The pixel tier's strip height, or `None` for the text tiers. When set,
+    /// every request is widened to whole strips plus the row above the first
+    /// (whose edges reach into it), so the strip cache only ever sees full
+    /// aligned strips; the text tiers ask for exactly what they did before.
+    pub strip_rows: Option<usize>,
 }
 
 impl History {
@@ -257,6 +262,7 @@ impl History {
             jump: None,
             view: View::default(),
             promotion: None,
+            strip_rows: None,
         }
     }
 }

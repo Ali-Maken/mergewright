@@ -119,4 +119,6 @@ One line per public item. Update when a public item changes.
 - `Theme::color_depth` (fn) — how much colour this terminal has, `NO_COLOR`-reduced like every token; widgets use it to reach for a non-colour separator at `Palette16`.
 - `Theme::token` (fn) — the colour for one chrome token.
 - `Theme::lane` (fn) — the colour for one graph lane; shape/dash separate same-hue lanes.
+- `Theme::raster_lanes` (fn) — truecolor lane hues for the pixel tier at any depth; one muted hue when colour is off.
+- `Theme::raster_muted` (fn) — the unreduced `text-muted` hue, for a pixel `+N` marker.
 - `Theme::branch` (fn) — the colour a branch identity draws in, independent of column.

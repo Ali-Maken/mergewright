@@ -37,6 +37,8 @@ use crate::update::{AppState, GitCheck, Screen, Status};
 /// in any repository a person works in, short enough to read back.
 const ABBREVIATED_ID: usize = 12;
 
+pub mod strips;
+
 /// The tier's name, as `graph.renderer` and the status screen spell it.
 fn tier_name(tier: RenderingTier) -> &'static str {
     match tier {
@@ -627,7 +629,7 @@ mod tests {
 
     /// A history of `count` commits, newest first, already laid out and
     /// sent as one window.
-    fn history_of(count: u8, cursor: usize) -> History {
+    pub(super) fn history_of(count: u8, cursor: usize) -> History {
         use graft_core::commit::{Commit, Identity, Timestamp};
         use graft_graph::layout::layout;
         use graft_graph::seeds::Seeds;
@@ -855,7 +857,7 @@ mod tests {
 
     /// Refs whose `HEAD` resolves to `head`, or is unborn when `head` is
     /// `None`.
-    fn refs_with_head(head: Option<Oid>) -> crate::refs::RefBadges {
+    pub(super) fn refs_with_head(head: Option<Oid>) -> crate::refs::RefBadges {
         let state = match head {
             Some(id) => graft_git::repo::HeadState::Detached(id),
             None => graft_git::repo::HeadState::Unborn(
@@ -872,7 +874,7 @@ mod tests {
         .expect("no branches to count")
     }
 
-    fn oid(byte: u8) -> Oid {
+    pub(super) fn oid(byte: u8) -> Oid {
         Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes")
     }
 
@@ -891,7 +893,7 @@ mod tests {
         }
     }
 
-    fn counts(
+    pub(super) fn counts(
         staged: usize,
         unstaged: usize,
         untracked: usize,

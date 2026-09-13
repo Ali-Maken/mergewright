@@ -22,7 +22,7 @@ use std::sync::Arc;
 use graft_core::capabilities::Rgb;
 use graft_core::raster::RasterFrame;
 
-use super::{RasterError, Strip, rasterise};
+use super::{RasterError, Ring, Strip, rasterise};
 use crate::row::Row;
 
 /// Rows per strip. Measured at the user's 17×37 px cell with 12 lanes in a
@@ -152,13 +152,23 @@ impl StripCache {
     /// The strip starting at `first_row`, from the cache or rasterised into
     /// it. `strip.rows` must start on a multiple of the strip height and hold
     /// between one row and a full strip (a short one ends the history).
+    ///
+    /// A [`Ring::Uncommitted`] row is not a history row, so it does not count
+    /// toward the strip height: the strip holding `HEAD` carries the virtual
+    /// row on top of its own full strip, and stays aligned on history rows.
     pub fn get(
         &mut self,
         first_row: usize,
         strip: &Strip<'_>,
     ) -> Result<Arc<RasterFrame>, CacheError> {
         let rows = strip.rows.len();
-        if !first_row.is_multiple_of(self.strip_rows) || rows == 0 || rows > self.strip_rows {
+        let history_rows = strip
+            .rows
+            .iter()
+            .filter(|row| row.ring != Ring::Uncommitted)
+            .count();
+        if !first_row.is_multiple_of(self.strip_rows) || rows == 0 || history_rows > self.strip_rows
+        {
             return Err(CacheError::Misaligned {
                 first_row,
                 rows,

@@ -8,6 +8,7 @@
 use graft_graph::Row;
 use graft_graph::layout::Anchor;
 
+use std::ops::Range;
 use std::sync::Arc;
 
 use graft_core::oid::Oid;
@@ -300,20 +301,37 @@ impl History {
             Phase::Cancelled | Phase::Failed(_) => return None,
         };
         let bottom = self.top + height;
+        let needed = self.drawn(self.top..bottom);
         let covered = self.window.as_ref().is_some_and(|window| {
-            let needed = if complete {
-                bottom.min(self.rows)
+            let end = if complete {
+                needed.end.min(self.rows)
             } else {
-                bottom
+                needed.end
             };
-            window.first <= self.top && window.end() >= needed
+            window.first <= needed.start && window.end() >= end
         });
         let room_below = complete || self.rows > self.cursor + height;
         if covered && room_below && !force {
             return None;
         }
-        let from = self.top.saturating_sub(height);
-        Some(self.ask(Wanted::Rows(from..bottom + height), height))
+        let asked = self.drawn(self.top.saturating_sub(height)..bottom + height);
+        Some(self.ask(Wanted::Rows(asked), height))
+    }
+
+    /// The rows a renderer needs on hand to draw `rows`. The text tiers draw
+    /// exactly those. The pixel tier draws whole aligned strips, and each
+    /// strip's first node needs the row above it: so the range widens to
+    /// strip boundaries, and one row further up. Padding here, rather than
+    /// rasterising short strips, keeps a strip's cache key its real range.
+    fn drawn(&self, rows: Range<usize>) -> Range<usize> {
+        match self.strip_rows {
+            None => rows,
+            Some(strip) => {
+                let strip = strip.max(1);
+                let start = (rows.start / strip * strip).saturating_sub(1);
+                start..rows.end.div_ceil(strip) * strip
+            }
+        }
     }
 
     /// The next request, numbered after every earlier one — carrying the

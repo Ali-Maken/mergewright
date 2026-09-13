@@ -761,3 +761,105 @@ fn promotion_keeps_the_selected_commit_where_it_is_on_screen() {
         .collect();
     assert_eq!(on_screen[0], "Main 11", "{on_screen:?}");
 }
+
+/// `count` rows of a straight line, as a window starting at `first`.
+fn window_of(first: usize, count: usize) -> Window {
+    use graft_core::commit::{Identity, Timestamp};
+    let oid = |index: usize| {
+        let mut bytes = [0u8; Oid::SHA1_BYTES];
+        bytes[..8].copy_from_slice(&(index as u64 + 1).to_be_bytes());
+        Oid::from_bytes(&bytes).expect("20 bytes")
+    };
+    let who = Identity {
+        name: b"Test".to_vec(),
+        email: b"test@example.invalid".to_vec(),
+        when: Timestamp {
+            seconds: 0,
+            offset_seconds: 0,
+        },
+    };
+    let commits: Vec<Commit> = (first..first + count)
+        .map(|index| Commit {
+            id: oid(index),
+            parents: vec![oid(index + 1)],
+            author: who.clone(),
+            committer: who.clone(),
+            message: b"row".to_vec(),
+        })
+        .collect();
+    let rows = layout(&commits, Seeds::default());
+    Window {
+        request: 1,
+        first,
+        laid_out: first + count,
+        done: true,
+        rows: rows.into(),
+        promoted: false,
+    }
+}
+
+/// A complete history of `rows` rows, scrolled to `top` with the cursor there.
+fn scrolled(rows: usize, top: usize, strip_rows: Option<usize>) -> History {
+    History {
+        rows,
+        phase: Phase::Complete,
+        top,
+        cursor: top,
+        strip_rows,
+        ..History::started()
+    }
+}
+
+fn asked_rows(request: Option<RowRequest>) -> Option<std::ops::Range<usize>> {
+    request.map(|request| match request.wanted {
+        Wanted::Rows(rows) => rows,
+        Wanted::Last(count) => panic!("asked for the last {count} rows"),
+    })
+}
+
+/// The text tiers ask for a screen of slack each side, exactly as before
+/// strips existed.
+#[test]
+fn text_tiers_ask_for_the_viewport_and_a_screen_either_side() {
+    let mut history = scrolled(1000, 40, None);
+    assert_eq!(asked_rows(history.show(20)), Some(20..80));
+
+    // A window covering the viewport and no more is enough.
+    history.window = Some(window_of(40, 20));
+    assert_eq!(asked_rows(history.show(20)), None);
+}
+
+/// A viewport starting mid-strip asks for whole strips and the row above
+/// the first, and is not covered by a window that holds only the viewport.
+#[test]
+fn a_viewport_starting_mid_strip_asks_for_whole_aligned_strips() {
+    let mut history = scrolled(1000, 40, Some(32));
+    // Slack 20..80 widens to strips 0..96; strip 0 has no row above it.
+    assert_eq!(asked_rows(history.show(20)), Some(0..96));
+
+    let mut deeper = scrolled(1000, 100, Some(32));
+    // Slack 80..140 widens to strips 64..160, plus row 63 above.
+    assert_eq!(asked_rows(deeper.show(20)), Some(63..160));
+
+    // The viewport (100..120) lies in strip 96..128: its rows alone, or the
+    // strip without row 95 above it, are not enough.
+    deeper.window = Some(window_of(100, 20));
+    assert!(deeper.show(20).is_some());
+    deeper.window = Some(window_of(96, 32));
+    assert!(deeper.show(20).is_some());
+    deeper.window = Some(window_of(95, 33));
+    assert_eq!(asked_rows(deeper.show(20)), None);
+}
+
+/// The last strip of a finished history is short; the rows that exist are
+/// enough.
+#[test]
+fn the_last_partial_strip_at_the_end_of_history_is_covered_by_the_rows_there() {
+    let mut history = scrolled(50, 40, Some(32));
+    history.window = Some(window_of(31, 19));
+    assert_eq!(asked_rows(history.show(10)), None);
+
+    // One row short of the end is not.
+    history.window = Some(window_of(31, 18));
+    assert!(history.show(10).is_some());
+}

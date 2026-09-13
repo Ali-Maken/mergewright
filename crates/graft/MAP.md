@@ -16,6 +16,16 @@ One line per public item. Update when a public item changes.
 - `update` (mod) — app state and the update function.
 - `view` (mod) — draws state to a frame.
 
+## history
+- `History::strip_rows` (field) — pixel tier's strip height; requests widen to whole strips plus the row above. `None` (text tiers) asks exactly as before.
+
+## view::strips
+- `strips` (mod) — pixel-tier rows: aligned strips covering the viewport, painted like the text tiers.
+- `pixel_rows` (fn) — this frame's strips from `AppState`: one fold across strips, uncommitted row on `HEAD`, thread/focus/cursor emphasis; strips missing rows or the row above are left out.
+- `PixelRows` (struct) — `strips`, shared `lane_columns`, `marker`.
+- `StripRows` (struct) — one strip: `first_row`; `row_count`, `uncommitted_at`, `with_strip` (hands a `Strip` to e.g. `StripCache::get`).
+- `StripPaint` (struct) — `cell_width`, `cell_height`, `palette`, `muted`; `StripPaint::of(session)`.
+
 ## session
 - `Startup` (struct) — what `main` decided before touching the terminal.
 - `Session` (struct) — what Graft is drawing with, for as long as this run lasts.

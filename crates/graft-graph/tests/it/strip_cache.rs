@@ -11,7 +11,7 @@ use graft_core::oid::Oid;
 use graft_graph::identity::BranchIdentity;
 use graft_graph::layout::layout;
 use graft_graph::raster::cache::{CacheError, Flush, STRIP_ROWS, StripCache};
-use graft_graph::raster::{RasterRow, Strip, rasterise};
+use graft_graph::raster::{RasterRow, Ring, Strip, rasterise};
 use graft_graph::row::Row;
 use graft_graph::seeds::{BranchSeed, Seeds};
 
@@ -410,4 +410,43 @@ fn strip_height_numbers() {
             bytes / 1024
         );
     }
+}
+
+/// The uncommitted row is not a history row: a full strip with it on top is
+/// still aligned, and keys apart from the same strip without it.
+#[test]
+fn the_uncommitted_row_does_not_count_toward_the_strip_height() {
+    let rows = rows(40);
+    let mut cache = StripCache::new(STRIP_ROWS, 4);
+    let virtual_row = RasterRow {
+        ring: Ring::Uncommitted,
+        ..RasterRow::plain(&rows[39])
+    };
+    let mut with_virtual = vec![virtual_row];
+    with_virtual.extend(rows[0..32].iter().map(RasterRow::plain));
+    let strip = |rows| Strip {
+        rows,
+        above: None,
+        lane_columns: 3,
+        marker: None,
+        cell_width: CELL.0,
+        cell_height: CELL.1,
+        palette: &PALETTE,
+        muted: MUTED,
+    };
+    let frame = cache
+        .get(0, &strip(&with_virtual))
+        .unwrap_or_else(|why| panic!("32 history rows and the virtual row: {why}"));
+    assert_eq!(frame.rows, 33);
+    cache
+        .get(0, &strip(&with_virtual[1..]))
+        .unwrap_or_else(|why| panic!("the same strip without it: {why}"));
+    assert_eq!(cache.len(), 2, "with and without the virtual row key apart");
+
+    let mut two_over = vec![virtual_row];
+    two_over.extend(rows[0..33].iter().map(RasterRow::plain));
+    assert!(matches!(
+        cache.get(0, &strip(&two_over)),
+        Err(CacheError::Misaligned { .. })
+    ));
 }

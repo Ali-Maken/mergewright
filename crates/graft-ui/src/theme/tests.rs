@@ -532,3 +532,20 @@ fn naive_cube_index(color: Rgb) -> u8 {
 
     16 + 36 * level(color.red) + 6 * level(color.green) + level(color.blue)
 }
+
+// ---------------------------------------------------------------- pixels
+
+#[test]
+fn raster_lanes_are_truecolor_hues_at_any_depth_and_one_muted_hue_without_colour() {
+    for depth in [
+        ColorDepth::TrueColor,
+        ColorDepth::Palette256,
+        ColorDepth::Palette16,
+    ] {
+        let theme = Theme::new(ThemeKind::Dark, &terminal(depth, false));
+        assert_eq!(theme.raster_lanes(), LANE_HUES.to_vec(), "{depth:?}");
+    }
+    let theme = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::TrueColor, true));
+    assert_eq!(theme.raster_lanes(), vec![theme.raster_muted()]);
+    assert_eq!(theme.raster_muted(), rgb(0x8A, 0x91, 0x9C));
+}

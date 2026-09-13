@@ -274,6 +274,29 @@ impl Theme {
         self.lanes[lane % LANE_COUNT]
     }
 
+    /// Lane hues for a pixel renderer, indexed like [`Theme::branch`]'s slots.
+    ///
+    /// An image is not limited to the terminal's ANSI palette, so these are
+    /// the theme's truecolor hues at any depth — except where colour is off
+    /// (`NO_COLOR`, or a terminal with none): then every lane draws in the
+    /// one muted hue, and shape carries lane identity as it does in text.
+    #[must_use]
+    pub fn raster_lanes(&self) -> Vec<Rgb> {
+        match self.depth {
+            ColorDepth::None => vec![self.raster_muted()],
+            ColorDepth::TrueColor | ColorDepth::Palette256 | ColorDepth::Palette16 => {
+                lanes::LANE_HUES.to_vec()
+            }
+        }
+    }
+
+    /// The muted hue (`text-muted`) a pixel renderer draws a `+N` marker in
+    /// when no lane joins it: the theme's truecolor value, never reduced.
+    #[must_use]
+    pub fn raster_muted(&self) -> Rgb {
+        self.kind.chrome()[Token::TextMuted.index()]
+    }
+
     /// The colour a branch's lane draws in, from its identity alone — never
     /// from the column it happens to occupy (PROMPT.md §1.2), so a branch
     /// keeps its colour across scrolls, refreshes and column reuse.
