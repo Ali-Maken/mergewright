@@ -11,11 +11,14 @@
 //! ```
 //!
 //! Inside: `]` next repository, `[` previous, `q` quit; every graph key and
-//! `F3` work as in Graft. The footer names the stop, its position and what
-//! to expect. Each step restarts the run on the next repository, so the
-//! screen is re-probed and repainted (a blink), which a dev tool can afford.
-//! A heavy repository that is not on disk gets a page saying how to build
-//! it; on that page only `]`, `[` and `q` do anything.
+//! `F3` work as in Graft. A banner under the header names the stop, its
+//! position, its group, the keys and the tier, then what right looks like
+//! and what sets the stop apart from its neighbours (m1-the-graph/38: the
+//! footer alone did not orient a first-time viewer). Each step restarts the
+//! run on the next repository, so the screen is re-probed and repainted (a
+//! blink), which a dev tool can afford. A heavy repository that is not on
+//! disk gets a page saying how to build it; on that page only `]`, `[` and
+//! `q` do anything.
 
 #[path = "../tests/it/gallery.rs"]
 mod gallery;
@@ -25,11 +28,13 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use gallery::{Availability, coverage_matrix, entries, footer, missing_line, resolve, roots};
+use gallery::{
+    Availability, banner, coverage_matrix, entries, listing, missing_page, resolve, roots,
+};
 use graft::event_loop::{self, Exit};
 use graft::session::Startup;
 use graft::terminal::{SessionOptions, TerminalSession};
-use graft::update::Harness;
+use graft::update::{Banner, Harness};
 use graft_core::event::KeyCode;
 
 const NEXT: KeyCode = KeyCode::Char(']');
@@ -49,9 +54,7 @@ fn main() -> ExitCode {
     let start = match args.first().map(String::as_str) {
         None => 0,
         Some("--list") => {
-            for (index, entry) in entries().iter().enumerate() {
-                println!("{:2} {}", index + 1, entry.name);
-            }
+            print!("{}", listing(&entries()));
             return ExitCode::SUCCESS;
         }
         Some("--matrix") => return write_matrix(&workspace),
@@ -104,9 +107,9 @@ fn walk(mut index: usize, workspace: &Path) -> Result<(), String> {
     loop {
         let entry = &all[index];
         let step = match resolve(entry, workspace, &roots) {
-            Availability::Ready(path) => show(path, footer(entry, index, all.len()))?,
+            Availability::Ready(path) => show(path, banner(entry, index, all.len()))?,
             Availability::Missing { build_with } => {
-                show_missing(&missing_line(entry, index, all.len(), &build_with))?
+                show_missing(&missing_page(entry, index, all.len(), &build_with))?
             }
         };
         index = match step {
@@ -118,13 +121,13 @@ fn walk(mut index: usize, workspace: &Path) -> Result<(), String> {
 }
 
 /// Run Graft on one repository until a step key or `q`.
-fn show(repo_path: PathBuf, notice: String) -> Result<Step, String> {
+fn show(repo_path: PathBuf, banner: Banner) -> Result<Step, String> {
     let config = graft::config::load().map_err(|error| error.to_string())?;
     let startup = Startup {
         repo_path,
         config,
         harness: Harness {
-            notice: Some(notice),
+            banner: Some(banner),
             hand_back: vec![NEXT, PREVIOUS],
         },
     };
@@ -144,10 +147,10 @@ fn show(repo_path: PathBuf, notice: String) -> Result<Step, String> {
 
 /// The page for a repository that is not on disk. Raw mode, so lines end
 /// in `\r\n`; escape sequences (arrow keys) are skipped rather than read.
-fn show_missing(line: &str) -> Result<Step, String> {
+fn show_missing(lines: &[String]) -> Result<Step, String> {
     let session =
         TerminalSession::on_stdout(SessionOptions::default()).map_err(|error| error.to_string())?;
-    let shown = page(line);
+    let shown = page(lines);
     let restored = session.restore();
     match (shown, restored) {
         (Ok(step), Ok(())) => Ok(step),
@@ -155,12 +158,12 @@ fn show_missing(line: &str) -> Result<Step, String> {
     }
 }
 
-fn page(line: &str) -> io::Result<Step> {
+fn page(lines: &[String]) -> io::Result<Step> {
     let mut out = io::stdout();
-    write!(
-        out,
-        "\x1b[2J\x1b[H{line}\r\n\r\n]  next    [  previous    q  quit\r\n"
-    )?;
+    write!(out, "\x1b[2J\x1b[H")?;
+    for line in lines {
+        write!(out, " {line}\r\n")?;
+    }
     out.flush()?;
     let mut stdin = io::stdin();
     let mut byte = [0u8; 1];

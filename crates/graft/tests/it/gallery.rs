@@ -7,17 +7,26 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use graft::update::Banner;
 use graft_fixtures::Shape;
 
 /// One stop of the gallery.
 pub struct Entry {
-    /// What the footer calls it; also the stem of its `docs/shots/35-` files.
+    /// What the banner calls it; also the stem of its `docs/shots/35-` files.
     pub name: &'static str,
+    /// The run of stops it belongs to; neighbours share one, so the walk
+    /// reads as a progression (one lane, merges, odd histories, refs and
+    /// badges, text, real repos).
+    pub group: &'static str,
     /// Where the repository comes from.
     pub source: Source,
-    /// What right looks like, in one line (TESTING.md "Graph gallery" has
+    /// What right looks like at this stop, in one line under 70 cells so an
+    /// 80-column terminal reads it in full (TESTING.md "Graph gallery" has
     /// the long form). Never "looks correct".
-    pub expect: &'static str,
+    pub shows: &'static str,
+    /// What sets this stop apart from its neighbours, one line under 70
+    /// cells: the shape it exercises that they don't.
+    pub differs: &'static str,
     /// Words a snapshot or capture file name uses for this repository, for
     /// the coverage matrix; the entry's own name always counts.
     pub stems: &'static [&'static str],
@@ -53,99 +62,185 @@ pub struct Roots {
     pub git_git: PathBuf,
 }
 
-/// The gallery's stops, in walking order: every `Shape::ALL` fixture, then
+/// The keys that move between stops, as the banner spells them.
+pub const KEYS: &str = "] next  [ back  q quit";
+
+/// The corpus stops in walking order, each with its group, what right looks
+/// like, and what sets it apart from its neighbours. The subjects and branch
+/// names are the fixture's (ticket 01), so each line can be checked, not
+/// felt; "stop n" refers to this table's order. A progression, not
+/// `Shape::ALL`'s order: similar shapes sit together so `]` shows what
+/// changes between neighbours. The test below keeps this a permutation of
+/// `Shape::ALL`, so a new shape fails it until a row is written.
+const CORPUS: [(Shape, &str, &str, &str); 20] = [
+    (
+        Shape::Trivial,
+        ONE_LANE,
+        "3 commits in one straight lane: ◆ HEAD on top, ◇ root at the bottom",
+        "the smallest stop, so only 3 rows show: that is all of it, a baseline",
+    ),
+    (
+        Shape::Linear,
+        ONE_LANE,
+        "200 commits in one lane; G, g and PageDown never shift the node column",
+        "the same lane as stop 1, 200 rows deep: scrolling is what it tests",
+    ),
+    (
+        Shape::FeatureBranches,
+        MERGES,
+        "two merges on main; feature/one and /two curve in, /three stays open",
+        "the first curves; Space folds the merged two, 1 leaves main's column",
+    ),
+    (
+        Shape::OctopusMerge,
+        MERGES,
+        "one merge node with three curves in, topic-1..3 each in its own colour",
+        "three parents into one node, where stop 3 has one curve per merge",
+    ),
+    (
+        Shape::CrissCrossMerge,
+        MERGES,
+        "alpha and beta merge each other, so two curves cross; main merges alpha",
+        "the only stop where curves cross; F on 'alpha: merge beta' fades beta",
+    ),
+    (
+        Shape::FoxtrotMerge,
+        MERGES,
+        "the ◆ merge sits in feature's column; main's own line curves into it",
+        "1 drops 'Advance main': main's first-parent walk leaves lane 0",
+    ),
+    (
+        Shape::BackwardMerge,
+        MERGES,
+        "stop 6's subjects, but the merge is feature's tip; lane 0 never bends",
+        "6's mirror: [◆ main] stays on 'Advance main'; 1 keeps both main rows",
+    ),
+    (
+        Shape::EvilMerge,
+        MERGES,
+        "an ordinary merge of alpha into main: ◆ in lane 0, one curve in",
+        "the control: evil is a tree fact (M2), so it must look like stop 3",
+    ),
+    (
+        Shape::AccidentalPullMerge,
+        MERGES,
+        "a merge whose subject starts 'Merge branch main of https://…'",
+        "the curve comes from [origin/main], with no local branch on that row",
+    ),
+    (
+        Shape::OrphanBranch,
+        ODD,
+        "two roots: docs' ◇ has no line below it and never joins main's lane",
+        "the only stop with two ◇ roots; nothing curves between the columns",
+    ),
+    (
+        Shape::CherryPickDuplicates,
+        ODD,
+        "'Fix the greeting' twice, on main and on topic, no line joining them",
+        "two lanes that share a root but never merge; stop 3's do",
+    ),
+    (
+        Shape::SkewedDates,
+        ODD,
+        "'Commit from a fast clock' is dated a day ahead yet sits below Main 01",
+        "the only stop where date order and topological order disagree",
+    ),
+    (
+        Shape::Tags,
+        REFS,
+        "one [tag: vX] per row, v0.1 to v2.0; annotated v1.0 and v2.0 sit peeled",
+        "badges only: one lane, no merge; up to stop 17 the refs are the point",
+    ),
+    (
+        Shape::RefStates,
+        REFS,
+        "[◆ main ⇄ origin], [ahead ↑1], [behind ↓1]; 'archived' is a tag alone",
+        "every upstream state at once; stop 13 had tags only, no remote",
+    ),
+    (
+        Shape::DetachedHead,
+        REFS,
+        "[HEAD] on ◆ Commit 2, two rows below [main] (no ◆: not current)",
+        "◆ and [main] on different rows; at every other stop they share one",
+    ),
+    (
+        Shape::UnbornBranch,
+        REFS,
+        "no ◆ row at all: HEAD is the unborn branch fresh; main and other draw",
+        "the one stop with no HEAD commit and no Uncommitted row at the top",
+    ),
+    (
+        Shape::Stash,
+        REFS,
+        "■ [stash] 'On main: wip…' one row above ◆ main's tip; H hides that row",
+        "the only ■ node; H removes one row and nothing else moves",
+    ),
+    (
+        Shape::UnicodeNames,
+        TEXT,
+        "wide glyphs (機能, ☕, 🚀) in badge and subject; the sha column holds",
+        "a plain shape (three branches): the cell widths are the test",
+    ),
+    (
+        Shape::NonUtf8Path,
+        TEXT,
+        "two lanes, main and latin1; no \u{fffd} or stray byte anywhere on screen",
+        "the bad byte is in a path, so nothing shows; 20 has one in a badge",
+    ),
+    (
+        Shape::NonUtf8RefName,
+        TEXT,
+        "a branch badge reading caf\u{fffd}: one replacement char, nothing else moved",
+        "the one stop that shows \u{fffd}; not built on APFS ('not available')",
+    ),
+];
+
+const ONE_LANE: &str = "one lane";
+const MERGES: &str = "merges";
+const ODD: &str = "odd histories";
+const REFS: &str = "refs and badges";
+const TEXT: &str = "text";
+const REAL: &str = "real repos";
+
+/// The gallery's stops, in walking order: the corpus as a progression, then
 /// this checkout, then the two heavy repositories.
 pub fn entries() -> Vec<Entry> {
-    let mut all: Vec<Entry> = Shape::ALL
+    let mut all: Vec<Entry> = CORPUS
         .iter()
-        .map(|&shape| Entry {
+        .map(|&(shape, group, shows, differs)| Entry {
             name: shape.name(),
+            group,
             source: Source::Shape(shape),
-            expect: expectation(shape),
+            shows,
+            differs,
             stems: stems(shape),
         })
         .collect();
     all.push(Entry {
         name: "graft-self",
+        group: REAL,
         source: Source::Workspace,
-        expect: "one straight lane, every node the plain shape, no curve anywhere",
+        shows: "this checkout: one lane, ● everywhere but ◆ at HEAD and ◇ at the bottom",
+        differs: "a real repo with no merges: stop 2's shape, real subjects and dates",
         stems: &["gitter"],
     });
     all.push(Entry {
         name: "synthetic-100k",
+        group: REAL,
         source: Source::Synthetic100k,
-        expect: "busy but legible: lanes fold behind +N, first paint at once, j/G never stall",
+        shows: "100k commits: paints at once; lanes fold behind +N; j and G never stall",
+        differs: "size is the test, the shape is synthetic; needs the heavy tier built",
         stems: &["100k", "synthetic-100000"],
     });
     all.push(Entry {
         name: "git-git",
+        group: REAL,
         source: Source::GitGit,
-        expect: "real merge-heavy history: master straight in lane 0, merges curve in, tags on releases",
+        shows: "master straight in lane 0 throughout; ◉ merges curve in; [tag: v2.x.y]",
+        differs: "stop 3's shapes at real scale; needs scripts/clone-git-git.sh first",
         stems: &["git-git"],
     });
     all
-}
-
-/// The one-line finding per corpus shape. The subjects and branch names are
-/// the fixture's (ticket 01), so the line can be checked, not felt.
-fn expectation(shape: Shape) -> &'static str {
-    match shape {
-        Shape::Trivial => "3 commits in one straight lane; plain nodes; no tag, no curve",
-        Shape::Linear => "200 commits, one straight lane the whole way; scrolling never shifts it",
-        Shape::FeatureBranches => {
-            "two merge nodes on main; feature/one and /two curve in, feature/three stays open"
-        }
-        Shape::OctopusMerge => {
-            "one merge node with three curves in (topic-1..3), each in its own colour"
-        }
-        Shape::CrissCrossMerge => {
-            "alpha and beta cross-merge each other (two curves crossing), then main merges alpha"
-        }
-        Shape::FoxtrotMerge => {
-            "main's first-parent line jumps lanes at the merge: the merge node sits on feature's line"
-        }
-        Shape::BackwardMerge => {
-            "the merge node sits on feature, main curves into it; main's own lane stays straight"
-        }
-        Shape::EvilMerge => {
-            "an ordinary-looking merge of alpha into main; nothing in the shape marks it"
-        }
-        Shape::AccidentalPullMerge => {
-            "a merge of origin/main into main: the 'Merge branch main of …' subject on a merge node"
-        }
-        Shape::OrphanBranch => {
-            "docs starts from nothing: its lane has a root node with no line below it"
-        }
-        Shape::CherryPickDuplicates => {
-            "'Fix the greeting' appears twice, on main and on topic, with no line joining them"
-        }
-        Shape::SkewedDates => {
-            "topological order: 'Commit from a fast clock' sits below Main 01, not above it"
-        }
-        Shape::Tags => {
-            "four commits, tag badges v0.1 v0.2 v1.0 v2.0 one per row; the annotated v1.0 and v2.0 sit on their commits, peeled"
-        }
-        Shape::UnicodeNames => {
-            "branches fonctionnalité 機能 ветка and the ☕ subject align; no cell out of place"
-        }
-        Shape::RefStates => {
-            "main ⇄ origin merged badge; ahead ↑1; behind ↓1; 'archived' tag alone on its commit"
-        }
-        Shape::DetachedHead => "HEAD badge on Commit 2, two rows below main's tip",
-        Shape::UnbornBranch => {
-            "no HEAD row at the top (branch fresh has no commit); main and other still draw"
-        }
-        Shape::Stash => "stash badge above main's tip, and H hides that row",
-        Shape::NonUtf8Path => {
-            "two lanes, main and latin1; the Latin-1 path never reaches the screen"
-        }
-        Shape::NonUtf8RefName => {
-            "a branch badge for caf\u{fffd}: the bad byte replaced, nothing else disturbed"
-        }
-        // `Shape` is non-exhaustive. A new shape lands here, and the test
-        // that every finding is concrete fails until one is written.
-        _ => "no finding written yet: add one to tests/it/gallery.rs",
-    }
 }
 
 /// File-name words older tickets used for a shape, where they differ from
@@ -160,26 +255,56 @@ fn stems(shape: Shape) -> &'static [&'static str] {
     }
 }
 
-/// The footer line while an entry is on screen.
-pub fn footer(entry: &Entry, index: usize, total: usize) -> String {
+/// The banner's title: where the user is and how to move on. The run
+/// appends the tier in force.
+pub fn title(entry: &Entry, index: usize, total: usize) -> String {
     format!(
-        "{} · {}/{} · expect: {}",
-        entry.name,
+        "gallery {}/{} · {} · {} · {KEYS}",
         index + 1,
         total,
-        entry.expect
+        entry.name,
+        entry.group
     )
 }
 
-/// The page shown instead of a repository that is not on disk.
-pub fn missing_line(entry: &Entry, index: usize, total: usize, build_with: &str) -> String {
-    format!(
-        "{} · {}/{} · not available — build with: {}",
-        entry.name,
-        index + 1,
-        total,
-        build_with
-    )
+/// The banner while an entry is on screen: the title, then what to look
+/// for and what sets the stop apart.
+pub fn banner(entry: &Entry, index: usize, total: usize) -> Banner {
+    Banner {
+        title: title(entry, index, total),
+        lines: vec![
+            format!("shows: {}", entry.shows),
+            format!("differs: {}", entry.differs),
+        ],
+    }
+}
+
+/// The page shown instead of a repository that is not on disk: the same
+/// banner, with the build command where the graph would be.
+pub fn missing_page(entry: &Entry, index: usize, total: usize, build_with: &str) -> Vec<String> {
+    let banner = banner(entry, index, total);
+    let mut lines = vec![banner.title];
+    lines.extend(banner.lines);
+    lines.push(String::new());
+    lines.push(format!("not available — build with: {build_with}"));
+    lines
+}
+
+/// What `--list` prints: every stop, its group and both finding lines, the
+/// same words the banner shows.
+pub fn listing(all: &[Entry]) -> String {
+    let mut out = String::new();
+    let mut group = "";
+    for (index, entry) in all.iter().enumerate() {
+        if entry.group != group {
+            group = entry.group;
+            out.push_str(&format!("\n{group}\n"));
+        }
+        out.push_str(&format!("{:2} {}\n", index + 1, entry.name));
+        out.push_str(&format!("   shows: {}\n", entry.shows));
+        out.push_str(&format!("   differs: {}\n", entry.differs));
+    }
+    out
 }
 
 /// Where the heavy repositories are looked for on this machine, following
@@ -437,49 +562,127 @@ fn cell(mine: &[&Evidence], tier: Tier, theme: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use unicode_width::UnicodeWidthStr;
+
+    /// The widest a banner line may be, so an 80-column terminal shows every
+    /// stop's line in full: the screen puts one cell of margin before it.
+    const BANNER_WIDTH: usize = 79;
 
     fn workspace() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
     }
 
     #[test]
-    fn the_footer_names_the_repo_its_position_and_the_finding() {
+    fn the_banner_names_the_stop_its_position_the_keys_and_both_findings() {
         let all = entries();
         let foxtrot = all
             .iter()
             .position(|entry| entry.name == "foxtrot-merge")
             .unwrap();
+        let banner = banner(&all[foxtrot], foxtrot, all.len());
         assert_eq!(
-            footer(&all[foxtrot], foxtrot, all.len()),
+            banner.title,
             format!(
-                "foxtrot-merge · {}/{} · expect: main's first-parent line jumps lanes at the merge: the merge node sits on feature's line",
+                "gallery {}/{} · foxtrot-merge · merges · ] next  [ back  q quit",
                 foxtrot + 1,
                 all.len()
             )
         );
+        assert_eq!(
+            banner.lines,
+            vec![
+                "shows: the ◆ merge sits in feature's column; main's own line curves into it",
+                "differs: 1 drops 'Advance main': main's first-parent walk leaves lane 0",
+            ]
+        );
+        assert_eq!(banner.rows(), 3);
     }
 
     #[test]
-    fn every_shape_is_a_stop_and_every_finding_is_concrete() {
+    fn the_first_stop_is_the_smallest_and_says_so() {
+        let all = entries();
+        assert_eq!(all[0].name, "trivial");
+        assert!(all[0].differs.contains("only 3 rows"), "{}", all[0].differs);
+    }
+
+    #[test]
+    fn every_shape_is_a_stop_once_and_every_finding_is_concrete_and_fits() {
         let all = entries();
         let names: Vec<&str> = all.iter().map(|entry| entry.name).collect();
         for shape in Shape::ALL {
-            assert!(names.contains(&shape.name()), "{} missing", shape.name());
+            assert_eq!(
+                names.iter().filter(|name| **name == shape.name()).count(),
+                1,
+                "{} must be exactly one stop",
+                shape.name()
+            );
         }
+        assert_eq!(all.len(), Shape::ALL.len() + 3);
         assert_eq!(
             &names[names.len() - 3..],
             &["graft-self", "synthetic-100k", "git-git"]
         );
-        for entry in &all {
-            let lower = entry.expect.to_ascii_lowercase();
-            assert!(
-                !lower.contains("looks correct") && !lower.contains("renders fine"),
-                "{}",
-                entry.name
-            );
-            assert!(!lower.contains("no finding written"), "{}", entry.name);
-            assert!(entry.expect.len() > 20, "{}: too vague", entry.name);
+        for (index, entry) in all.iter().enumerate() {
+            for text in [entry.shows, entry.differs] {
+                let lower = text.to_ascii_lowercase();
+                assert!(
+                    !lower.contains("looks correct") && !lower.contains("renders fine"),
+                    "{}",
+                    entry.name
+                );
+                assert!(text.len() > 20, "{}: too vague", entry.name);
+            }
+            let banner = banner(entry, index, all.len());
+            for line in std::iter::once(&banner.title).chain(&banner.lines) {
+                assert!(
+                    UnicodeWidthStr::width(line.as_str()) <= BANNER_WIDTH,
+                    "{}: {line:?} is {} cells, over {BANNER_WIDTH}",
+                    entry.name,
+                    UnicodeWidthStr::width(line.as_str())
+                );
+            }
         }
+    }
+
+    #[test]
+    fn neighbouring_stops_share_a_group_and_the_groups_read_as_a_progression() {
+        let all = entries();
+        let mut groups: Vec<&str> = Vec::new();
+        for entry in &all {
+            if groups.last() != Some(&entry.group) {
+                groups.push(entry.group);
+            }
+        }
+        assert_eq!(
+            groups,
+            [
+                "one lane",
+                "merges",
+                "odd histories",
+                "refs and badges",
+                "text",
+                "real repos"
+            ],
+            "a group must not be split by another"
+        );
+        let listing = listing(&all);
+        assert!(
+            listing.contains("\nmerges\n 3 feature-branches\n"),
+            "{listing}"
+        );
+        assert!(listing.contains("   differs: "), "{listing}");
+    }
+
+    #[test]
+    fn a_missing_repo_keeps_the_banner_and_says_how_to_build() {
+        let all = entries();
+        let git_git = all.iter().find(|entry| entry.name == "git-git").unwrap();
+        let page = missing_page(git_git, 22, 23, "scripts/clone-git-git.sh");
+        assert!(page[0].starts_with("gallery 23/23 · git-git · real repos"));
+        assert_eq!(
+            page.last().map(String::as_str),
+            Some("not available — build with: scripts/clone-git-git.sh")
+        );
     }
 
     #[test]
@@ -508,11 +711,6 @@ mod tests {
                 build_with: String::from("scripts/clone-git-git.sh")
             }
         );
-        assert_eq!(
-            missing_line(git_git, 22, 23, "scripts/clone-git-git.sh"),
-            "git-git · 23/23 · not available — build with: scripts/clone-git-git.sh"
-        );
-
         let half_built = roots.fixtures.join("synthetic-100000-no-commit-graph-aaaa");
         fs::create_dir_all(&half_built).unwrap();
         assert!(

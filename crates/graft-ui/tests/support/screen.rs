@@ -56,5 +56,6 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
         graphics: None,
         notice: None,
         search: None,
+        banner: Vec::new(),
     }
 }

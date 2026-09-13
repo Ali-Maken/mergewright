@@ -79,6 +79,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
         graphics: None,
         notice: None,
         search: None,
+        banner: Vec::new(),
     }
 }
 
@@ -117,6 +118,36 @@ fn rows_sit_between_the_header_and_the_key_hints() {
     assert!(screen[3].contains("Commit 1"), "{screen:#?}");
     assert!(screen[5].contains("q quit"), "{screen:#?}");
     assert_eq!(usize::from(CHROME_ROWS), 2);
+}
+
+#[test]
+fn a_banner_sits_under_the_header_and_takes_rows_from_the_body() {
+    let rows = linear(3);
+    let mut view = view(&rows, WalkView::Complete { rows: 3 }, 0);
+    view.banner = vec![
+        sanitize_line("gallery 1/23 · trivial · ] next"),
+        sanitize_line("shows: three commits"),
+    ];
+    let screen = text(&draw(&view, 40, 6));
+
+    assert!(screen[0].contains("/code/api"), "{screen:#?}");
+    assert!(screen[1].contains("gallery 1/23 · trivial"), "{screen:#?}");
+    assert!(screen[2].contains("shows: three commits"), "{screen:#?}");
+    assert!(screen[3].contains("Commit 3"), "{screen:#?}");
+    assert!(screen[4].contains("Commit 2"), "{screen:#?}");
+    assert!(
+        !screen[4].contains("Commit 1"),
+        "two rows left for the body"
+    );
+    assert!(
+        screen[5].contains("q quit"),
+        "the key hints keep the footer"
+    );
+
+    // The pixel tier's image rectangle moves down with the rows.
+    let theme = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::TrueColor, false));
+    let area = GraphScreen::new(&view, &theme).graph_area(Rect::new(0, 0, 40, 6));
+    assert_eq!((area.y, area.height), (3, 2));
 }
 
 #[test]

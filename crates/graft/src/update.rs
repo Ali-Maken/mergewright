@@ -237,7 +237,8 @@ impl AppState {
     /// Never zero, so a movement always has somewhere to go.
     #[must_use]
     pub fn graph_rows(&self) -> usize {
-        usize::from(self.size.rows.saturating_sub(CHROME_ROWS)).max(1)
+        let chrome = CHROME_ROWS.saturating_add(self.harness.banner_rows());
+        usize::from(self.size.rows.saturating_sub(chrome)).max(1)
     }
 }
 
@@ -246,14 +247,42 @@ impl AppState {
 /// shipped binary passes.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Harness {
-    /// A line the graph footer keeps showing while nothing more urgent (a
-    /// failure, the search) has it; the gallery names what is on screen.
-    pub notice: Option<String>,
+    /// Lines pinned under the header for the whole run: the gallery says
+    /// which stop this is and what to look for (m1-the-graph/38). Each
+    /// line costs a graph row.
+    pub banner: Option<Banner>,
     /// Keys the loop does not interpret: pressing one sets `quit` to
     /// [`Quit::HandedBack`] so the caller can act on it (the gallery steps
     /// to the next repository). Not consulted while the search prompt is
     /// open, where every printable key is text.
     pub hand_back: Vec<KeyCode>,
+}
+
+impl Harness {
+    /// Screen rows the banner takes, none without one.
+    #[must_use]
+    pub fn banner_rows(&self) -> u16 {
+        self.banner.as_ref().map_or(0, Banner::rows)
+    }
+}
+
+/// What a harness pins under the header (m1-the-graph/38). The view appends
+/// the rendering tier in force to the title, since only the run knows it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Banner {
+    /// The first line, in the accent colour: where the user is and which
+    /// keys move on.
+    pub title: String,
+    /// The lines under it, in the info colour: what to look for.
+    pub lines: Vec<String>,
+}
+
+impl Banner {
+    /// Screen rows the banner takes: the title and every line.
+    #[must_use]
+    pub fn rows(&self) -> u16 {
+        u16::try_from(self.lines.len().saturating_add(1)).unwrap_or(u16::MAX)
+    }
 }
 
 /// Why Graft is leaving.
@@ -1032,8 +1061,14 @@ fn is_tooltip_key(key: KeyPress) -> bool {
 
 /// Screen rows above the graph body: the header line `graph_screen` draws at
 /// the top (`CHROME_ROWS` also counts the footer, which a mouse row never
-/// needs to skip past — `graph_rows` already excludes it).
+/// needs to skip past — `graph_rows` already excludes it). A harness banner
+/// adds its rows; see [`rows_above_graph`].
 const HEADER_ROWS: u16 = 1;
+
+/// Screen rows above the first graph row: the header and any banner.
+fn rows_above_graph(state: &AppState) -> u16 {
+    HEADER_ROWS.saturating_add(state.harness.banner_rows())
+}
 
 /// Rows the wheel moves the viewport per notch (DESIGN.md §2.15). The
 /// keyboard's `j`/`k` move the selection; the wheel moves the viewport
@@ -1086,7 +1121,7 @@ fn select_row(next: &mut AppState, commands: &mut Vec<Command>, row: usize) {
 /// has laid out so far.
 fn graph_row_at(state: &AppState, screen_row: u16) -> Option<usize> {
     let history = state.history.as_ref()?;
-    let offset = usize::from(screen_row.checked_sub(HEADER_ROWS)?);
+    let offset = usize::from(screen_row.checked_sub(rows_above_graph(state))?);
     if offset >= state.graph_rows() {
         return None;
     }
@@ -1467,6 +1502,47 @@ mod tests {
         let (next, _) = update(&state, click);
 
         assert_eq!(next.history.as_ref().map(|history| history.cursor), Some(1));
+        assert_eq!(
+            next.history
+                .as_ref()
+                .and_then(History::selected)
+                .map(|row| row.commit.id),
+            Some(merge_id)
+        );
+    }
+
+    #[test]
+    fn a_click_under_a_harness_banner_lands_on_the_row_the_banner_pushed_down() {
+        let id = JobId::new(20);
+        let (mut state, merge_id) = merge_on_screen(id, 0);
+        state.size = Size {
+            columns: 80,
+            rows: 7,
+        };
+        state.harness.banner = Some(Banner {
+            title: String::from("gallery 3/23"),
+            lines: vec![String::from("shows: a merge")],
+        });
+        assert_eq!(state.graph_rows(), 3, "header, two banner rows, footer");
+
+        // The screen row a click on the header would have hit without the
+        // banner is now the banner's title: nothing selected.
+        let on_banner = core(Event::Mouse(MouseInput {
+            kind: MouseKind::Down(MouseButton::Left),
+            column: 10,
+            row: HEADER_ROWS,
+            modifiers: Modifiers::NONE,
+        }));
+        let (next, _) = update(&state, on_banner);
+        assert_eq!(next.history.as_ref().map(|history| history.cursor), Some(0));
+
+        let click = core(Event::Mouse(MouseInput {
+            kind: MouseKind::Down(MouseButton::Left),
+            column: 10,
+            row: HEADER_ROWS + 2 + 1,
+            modifiers: Modifiers::NONE,
+        }));
+        let (next, _) = update(&state, click);
         assert_eq!(
             next.history
                 .as_ref()

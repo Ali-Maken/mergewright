@@ -63,7 +63,7 @@ const SUBJECT_GAP: u16 = 1;
 pub const AUTHOR_BREAKPOINT: u16 = 100;
 
 /// Screen rows that are not graph rows: the header above, the key hints
-/// below.
+/// below. A harness banner ([`GraphView::banner`]) adds one row per line.
 pub const CHROME_ROWS: u16 = 2;
 
 /// Everything the graph screen draws.
@@ -110,6 +110,12 @@ pub struct GraphView<'a> {
     /// The search prompt or the search's state, in the footer above a notice
     /// and under a problem; `None` when there is no search (m1-the-graph/26).
     pub search: Option<SearchLine>,
+    /// Lines a harness pins under the header, above the rows, each fitted to
+    /// the width: the gallery says which stop this is and what to look for
+    /// (m1-the-graph/38). The first line is the title, drawn in the accent;
+    /// the rest in the info colour. Every line costs a graph row. Empty in
+    /// the shipped binary.
+    pub banner: Vec<SanitizedText>,
 }
 
 /// What the terminal said about the graph images, named by state: `gfx ok`
@@ -316,6 +322,12 @@ impl<'a> GraphScreen<'a> {
         GraphScreen { view, theme }
     }
 
+    /// Rows the banner takes under the header: one per line. Saturates, so a
+    /// banner taller than any terminal still leaves the arithmetic sound.
+    fn banner_rows(&self) -> u16 {
+        u16::try_from(self.view.banner.len()).unwrap_or(u16::MAX)
+    }
+
     /// Where the graph column lands inside `area`, the whole screen: the
     /// rectangle the pixel tier places its images in, every body row tall.
     #[must_use]
@@ -330,9 +342,10 @@ impl<'a> GraphScreen<'a> {
     /// The rows' rectangle, the rows that fit in it, and the fold they are
     /// drawn through (`None` while expanded).
     fn body_layout(&self, area: Rect) -> (Rect, &[GraphEntry<'a>], Option<Fold>) {
+        let banner = self.banner_rows();
         let body = Rect {
-            y: area.y + 1,
-            height: area.height.saturating_sub(CHROME_ROWS),
+            y: area.y.saturating_add(1).saturating_add(banner),
+            height: area.height.saturating_sub(CHROME_ROWS + banner),
             ..area
         };
         let rows = &self.view.rows[..self.view.rows.len().min(usize::from(body.height))];
@@ -522,6 +535,25 @@ impl Widget for GraphScreen<'_> {
         }
         let width = usize::from(area.width);
         buf.set_line(area.x, area.y, &self.header(width), area.width);
+        for (offset, line) in self.view.banner.iter().enumerate() {
+            let y = area
+                .y
+                .saturating_add(1)
+                .saturating_add(u16::try_from(offset).unwrap_or(u16::MAX));
+            if y >= area.bottom() {
+                break;
+            }
+            let token = if offset == 0 {
+                Token::Accent
+            } else {
+                Token::Info
+            };
+            let styled = Line::styled(
+                fit(&format!(" {line}"), width),
+                foreground(self.theme, token),
+            );
+            buf.set_line(area.x, y, &styled, area.width);
+        }
 
         // Planned over exactly the rows drawn, expanded or not: the hint
         // has to know whether there is anything to collapse.

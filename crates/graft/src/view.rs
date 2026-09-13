@@ -104,6 +104,7 @@ pub fn view_with_graphics(
             // Only below the terminal's own tier: `F3` clears the override
             // when it cycles back to the top (m1-the-graph/33).
             screen.notice = footer_notice(state, tier);
+            screen.banner = banner_lines(state, tier);
             screen.pixel = pixels;
             screen.graphics = pixels.then(|| graphics.clone());
             let widget = GraphScreen::new(&screen, &session.theme);
@@ -119,23 +120,27 @@ pub fn view_with_graphics(
     }
 }
 
-/// The footer's notice: `F3`'s renderer line while an override is on, then
-/// the standing notice a harness asked for (`Harness::notice`), both when
-/// both apply. `None` in the shipped binary with no override, so the key
-/// hints show.
+/// The footer's notice: `F3`'s renderer line while an override is on.
+/// `None` with no override, so the key hints show.
 fn footer_notice(state: &AppState, tier: RenderingTier) -> Option<SanitizedText> {
     // Only below the terminal's own tier: `F3` clears the override when it
     // cycles back to the top (m1-the-graph/33).
-    let renderer = state
+    state
         .renderer_override
-        .map(|_| format!("renderer: {} (F3 cycles)", tier_name(tier)));
-    let line = match (renderer, &state.harness.notice) {
-        (Some(renderer), Some(notice)) => format!("{renderer} · {notice}"),
-        (Some(renderer), None) => renderer,
-        (None, Some(notice)) => notice.clone(),
-        (None, None) => return None,
+        .map(|_| sanitize_line(&format!("renderer: {} (F3 cycles)", tier_name(tier))))
+}
+
+/// The harness banner as drawn: its title with the tier in force appended
+/// (the harness cannot know it; the probe decides), then its lines. Empty
+/// without a harness banner, so the shipped binary draws nothing extra.
+fn banner_lines(state: &AppState, tier: RenderingTier) -> Vec<SanitizedText> {
+    let Some(banner) = &state.harness.banner else {
+        return Vec::new();
     };
-    Some(sanitize_line(&line))
+    std::iter::once(format!("{} · {} tier", banner.title, tier_name(tier)))
+        .chain(banner.lines.iter().cloned())
+        .map(|line| sanitize_line(&line))
+        .collect()
 }
 
 /// Everything the graph screen draws: the rows in the viewport, the cursor
@@ -169,6 +174,7 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
             graphics: None,
             notice: None,
             search: search_line(state),
+            banner: Vec::new(),
         };
     };
 
@@ -196,6 +202,7 @@ pub fn graph_view(state: &AppState) -> GraphView<'_> {
         graphics: None,
         notice: None,
         search: search_line(state),
+        banner: Vec::new(),
     }
 }
 
@@ -719,8 +726,8 @@ pub(crate) mod tests {
 
     use super::*;
     use crate::session::for_tests::session;
-    use crate::update::Harness;
     use crate::update::Size;
+    use crate::update::{Banner, Harness};
 
     /// Draw `state` into a terminal of exactly this size and return what the
     /// cells ended up holding.
@@ -829,35 +836,41 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn a_standing_notice_holds_the_footer_and_joins_the_renderer_line() {
+    fn a_harness_banner_sits_under_the_header_with_the_tier_and_costs_rows() {
         let mut state = AppState {
             history: Some(history_of(5, 1)),
             size: Size {
                 columns: 80,
-                rows: 5,
+                rows: 6,
             },
             harness: Harness {
-                notice: Some(String::from("foxtrot-merge · 6/23 · expect: a lane jump")),
+                banner: Some(Banner {
+                    title: String::from("gallery 6/23 · foxtrot-merge · ] next"),
+                    lines: vec![String::from("shows: a lane jump")],
+                }),
                 ..Harness::default()
             },
             ..AppState::default()
         };
-        let screen = draw(&state, 80, 5);
+        assert_eq!(state.graph_rows(), 2, "header, two banner rows, footer");
+        let screen = draw(&state, 80, 6);
+        let lines: Vec<&str> = screen.lines().collect();
+        assert!(lines[0].contains(" graft"), "{screen}");
         assert!(
-            screen.contains("foxtrot-merge · 6/23 · expect: a lane jump"),
-            "{screen}"
+            lines[1].contains("gallery 6/23 · foxtrot-merge · ] next · unicode tier"),
+            "the title carries the tier in force: {screen}"
         );
+        assert!(lines[2].contains("shows: a lane jump"), "{screen}");
         assert!(
-            !screen.contains("q quit"),
-            "the notice takes the hints' line"
+            lines[5].contains("q quit"),
+            "the hints keep the footer: {screen}"
         );
 
         state.renderer_override = Some(RenderingTier::Ascii);
-        let screen = draw(&state, 80, 5);
-        assert!(
-            screen.contains("renderer: ascii (F3 cycles) · foxtrot-merge · 6/23"),
-            "{screen}"
-        );
+        let screen = draw(&state, 80, 6);
+        let lines: Vec<&str> = screen.lines().collect();
+        assert!(lines[1].contains("· ascii tier"), "{screen}");
+        assert!(lines[5].contains("renderer: ascii (F3 cycles)"), "{screen}");
     }
 
     #[test]

@@ -62,6 +62,9 @@ serde_json = "1.0.151"
 # Config files under test go in a temporary directory, never in a real home
 # (PROMPT.md Technology; ticket 07).
 tempfile = "3.27.0"
+# The gallery's banner lines must fit an 80-column terminal; width is
+# cells, not bytes (tests/it/gallery.rs).
+unicode-width = "0.2"
 
 [features]
 # Forwards the heavy tier to the fixture corpus, per TESTING.md, so one
