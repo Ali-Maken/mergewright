@@ -1,6 +1,6 @@
 # m1-the-graph/35 — Graph gallery: M1's acceptance ticket
 
-Status: partial — part a done; part b split into 35b
+Status: done — part a here; remainder completed in 35b, 35c; by-eye box (user) unticked
 Build with: **Fable** (high) — the deliverable is a judgment about what good looks like; M1's promise is visual (user decision, 2026-09-13)
 Blocked by: 27d, 29, 30b, 30d, 34
 Leaves runnable: yes — one dev command walks every test repo so the user can judge the graph by eye.
