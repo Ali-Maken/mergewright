@@ -29,7 +29,7 @@ Out:
 - [x] Footer hints list every working graph key (snapshot at 80, 120, 200 cols), F3 included.
 - [x] pty check (19's `pty-tier-drop-check.py` pattern): three presses leaves the terminal sane; capture under `docs/shots/33-*`.
 - [x] Real Ghostty (like 24d's `examples/kitty_check.rs`, or the app): cycle back to pixels gives 0 error replies — or say plainly it wasn't reachable.
-- [ ] **By eye (user):** F3 cycles in Ghostty and the pixel graph comes back clean. Unticked until the user looks.
+- [x] **By eye (user, 2026-09-13: "f3 works, footer shows keys"):** F3 cycles in Ghostty and the pixel graph comes back clean. Unticked until the user looks.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test` (fast tier only)
