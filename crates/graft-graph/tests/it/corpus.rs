@@ -314,3 +314,36 @@ fn short_sha(id: Oid) -> String {
 fn lossy(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).into_owned()
 }
+
+/// First-parent view (m1/15) of the two shapes whose merges bend the most:
+/// one straight lane, the default branch's first-parent chain only.
+#[test]
+fn first_parent_view_is_one_straight_lane() {
+    use std::fmt::Write as _;
+
+    use graft_graph::inclusion::{Follow, Inclusion, apply};
+
+    for shape in [Shape::FoxtrotMerge, Shape::CrissCrossMerge] {
+        let dir = graft_fixtures::try_borrow(shape)
+            .unwrap_or_else(|why| panic!("borrowing the {shape} fixture: {why}"));
+        let (handle, seeds) = open_with_seeds(shape, &dir);
+        let (commits, _) = walk_everything(&handle, shape);
+        let (shown, seeds) = apply(&commits, seeds, Follow::FirstParent, &Inclusion::default());
+        let rows = layout(&shown, seeds);
+        assert!(
+            rows.iter().all(|row| row.lane == 0 && row.lanes.len() == 1),
+            "{shape}: first-parent view drew more than one lane"
+        );
+        let mut text = String::new();
+        for row in &rows {
+            writeln!(
+                text,
+                "● {} {}",
+                short_sha(row.commit.id),
+                lossy(row.commit.subject())
+            )
+            .expect("writing to a String cannot fail");
+        }
+        insta::assert_snapshot!(format!("first-parent-{}", shape.name()), text);
+    }
+}

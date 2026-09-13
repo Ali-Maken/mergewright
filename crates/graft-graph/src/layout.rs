@@ -28,7 +28,7 @@ use graft_core::oid::Oid;
 pub use self::order::EmittedOrder;
 pub use self::source::{CommitSource, Pull};
 pub use self::stream::{
-    Advance, Anchor, Resident, StreamConfig, StreamError, StreamingLayout, Work,
+    Advance, Anchor, Invalidated, Resident, StreamConfig, StreamError, StreamingLayout, Work,
 };
 use crate::identity::BranchIdentity;
 use crate::lane::Lane;

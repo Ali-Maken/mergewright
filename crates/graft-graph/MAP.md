@@ -2,7 +2,7 @@
 One line per public item. Update when a public item changes.
 
 ## lib.rs
-- `fold`, `identity`, `lane`, `layout`, `merge_name`, `row`, `seeds` (mods) — re-exported at the root (`Fold` too).
+- `fold`, `identity`, `inclusion`, `lane`, `layout`, `merge_name`, `row`, `seeds` (mods) — re-exported at the root (`Fold`, `Follow`, `Included`, `Inclusion`, `Invalidated` too).
 
 ## identity
 - `BranchIdentity` (struct) — stable FNV-1a hash of a branch name (or a commit id); the source of lane colour.
@@ -41,6 +41,16 @@ One line per public item. Update when a public item changes.
 - `Fold::drawn_columns` (fn) — columns drawn, marker included.
 - `Fold::view` (fn) — a row remapped to drawn columns; edges into folded lanes go to the marker, whose cell carries the joining lane's identity.
 
+## inclusion
+- `Follow` (enum) — `AllParents` or `FirstParent`; fixed per layout (it changes the seeds).
+- `Inclusion` (struct) — `hidden_stashes`, `folded` merges; can change while a layout lives.
+- `seeds_for` (fn) — the seeds a view lays out from (first-parent drops integration lanes).
+- `apply` (fn) — slice form: the commits a view shows, parents trimmed, and its seeds.
+- `Included` (struct) — `CommitSource` wrapper letting through only what a view shows; remembers walked ids so a change re-reads, never re-walks.
+- `Included::new` / `seeds` / `follow` / `inclusion` / `inner` (fn) — build and query.
+- `Included::reinclude` (fn) — switch inclusion; the first row whose drawing can change, or `None`.
+- `reinclude` (fn) — switch a `StreamingLayout<Included<_>>`'s inclusion and truncate from the first changed row; returns `Invalidated`.
+
 ## layout
 - `layout` (fn) — lay out a whole commit slice in one call.
 - `LayoutCursor` (struct) — resumable lane state; a clone is a checkpoint.
@@ -73,3 +83,6 @@ One line per public item. Update when a public item changes.
 - `StreamingLayout::is_resident`, `rows_emitted`, `expected_rows`, `is_done`, `row_of`, `id_at` (fn) — queries.
 - `StreamingLayout::reanchor` (fn) — viewport that keeps an anchor's offset.
 - `StreamingLayout::resident`, `checkpoint_rows`, `work`, `source`, `config` (fn) — introspection.
+- `StreamingLayout::source_mut` (fn) — the source, mutably.
+- `StreamingLayout::truncate` (fn) — forget rows from a row on (chunks cut, later checkpoints dropped, order truncated), frontier replayed to it; returns `Invalidated`.
+- `Invalidated` (struct) — `from_row`, `chunks`, `checkpoints` a truncate threw away.

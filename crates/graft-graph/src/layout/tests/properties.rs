@@ -15,6 +15,7 @@ use std::collections::{BTreeSet, HashMap};
 use proptest::prelude::*;
 
 use super::*;
+use crate::inclusion::{Follow, Inclusion, apply};
 
 /// The most commits a generated history holds. The invariants are about
 /// shape, not scale: 32 commits with up to three parents each produce every
@@ -179,19 +180,21 @@ struct Replay {
 }
 
 impl Replay {
-    fn new(history: &History) -> Self {
-        let seeds = history.seeds();
+    fn new(seeds: &Seeds) -> Self {
         let mut live = HashMap::new();
-        if let Some(seed) = seeds.default_branch {
+        let mut reserved = BTreeSet::new();
+        if let Some(seed) = &seeds.default_branch {
             live.insert(0, seed.tip);
+            reserved.insert(0);
         }
         for (offset, seed) in seeds.integration_branches.iter().enumerate() {
             live.insert(1 + offset, seed.tip);
+            reserved.insert(1 + offset);
         }
         Replay {
             live,
             retired: BTreeSet::new(),
-            reserved: history.reserved_columns(),
+            reserved,
         }
     }
 
@@ -369,91 +372,175 @@ fn first_parent_chain(commits: &[Commit], tip: usize) -> Vec<usize> {
     chain
 }
 
+/// Every parent edge is drawn, no edge passes through an unrelated node,
+/// a freed column waits a row before reuse, and a reserved column is never
+/// handed back — all checked from the rows alone.
+fn check_replay(commits: &[Commit], seeds: &Seeds) -> Result<(), TestCaseError> {
+    let rows = layout(commits, seeds.clone());
+    prop_assert_eq!(rows.len(), commits.len());
+
+    let mut replay = Replay::new(seeds);
+    for row in &rows {
+        replay.step(row)?;
+    }
+    // Every seed and every parent is in the sequence, so every edge must
+    // have reached its target and closed.
+    prop_assert!(
+        replay.live.is_empty(),
+        "edges still in flight after the last row: {:?}",
+        replay.live
+    );
+    Ok(())
+}
+
+/// The default branch's first-parent chain is lane 0 for its whole life,
+/// whatever else converges on it along the way.
+fn check_lane_zero(commits: &[Commit], seeds: &Seeds) -> Result<(), TestCaseError> {
+    let rows = layout(commits, seeds.clone());
+    let Some(seed) = &seeds.default_branch else {
+        return Ok(());
+    };
+    let Some(tip) = commits.iter().position(|commit| commit.id == seed.tip) else {
+        return Ok(());
+    };
+    for position in first_parent_chain(commits, tip) {
+        prop_assert_eq!(
+            rows[position].lane,
+            0,
+            "commit {} is on the default branch's first-parent chain",
+            rows[position].commit.id
+        );
+    }
+    Ok(())
+}
+
+/// A lane never changes column mid-life: a lane not connected to the row
+/// being laid out is untouched by it, and a lane that is connected either
+/// closes or continues in place with its identity intact.
+fn check_lanes_stay_put(commits: &[Commit], seeds: &Seeds) -> Result<(), TestCaseError> {
+    let mut cursor = LayoutCursor::new(seeds.clone());
+    let mut order = EmittedOrder::new();
+    for commit in commits {
+        let before = cursor.active_lanes().to_vec();
+        let row = cursor
+            .extend(std::slice::from_ref(commit), &mut order)
+            .remove(0);
+        let after = cursor.active_lanes();
+
+        for (column, lane) in after.iter().enumerate() {
+            if let Some(lane) = lane {
+                prop_assert_eq!(lane.index, column, "a lane's index is its column");
+            }
+        }
+        for (column, previous) in before.iter().enumerate() {
+            check_column(column, previous.as_ref(), after[column].as_ref(), &row)?;
+        }
+    }
+    Ok(())
+}
+
+/// The same commits and seeds produce byte-identical rows, however the
+/// commits are chunked across `extend` calls.
+fn check_deterministic(
+    commits: &[Commit],
+    seeds: &Seeds,
+    chunk_sizes: &[usize],
+) -> Result<(), TestCaseError> {
+    let whole = layout(commits, seeds.clone());
+    prop_assert_eq!(&whole, &layout(commits, seeds.clone()));
+
+    let mut cursor = LayoutCursor::new(seeds.clone());
+    let mut order = EmittedOrder::new();
+    let mut chunked = Vec::new();
+    let mut rest = commits;
+    for &size in chunk_sizes {
+        let take = size.min(rest.len());
+        let (chunk, tail) = rest.split_at(take);
+        chunked.extend(cursor.extend(chunk, &mut order));
+        rest = tail;
+    }
+    chunked.extend(cursor.extend(rest, &mut order));
+    prop_assert_eq!(&whole, &chunked);
+    Ok(())
+}
+
+/// A generated history viewed through a generated inclusion: either follow
+/// mode, a random subset of its merges folded, and a random subset of its
+/// commits treated as hidden stashes.
+pub(crate) fn viewed() -> impl Strategy<Value = (History, Follow, Inclusion)> {
+    (
+        history(),
+        any::<bool>(),
+        proptest::collection::vec(any::<bool>(), 40),
+        proptest::collection::vec(proptest::bool::weighted(0.2), 40),
+    )
+        .prop_map(|(history, first_parent, folds, stashes)| {
+            let pick = |mask: &[bool], merges_only: bool| {
+                history
+                    .commits
+                    .iter()
+                    .zip(mask.iter().cycle())
+                    .filter(|(commit, on)| **on && (!merges_only || commit.parents.len() > 1))
+                    .map(|(commit, _)| commit.id)
+                    .collect()
+            };
+            let inclusion = Inclusion {
+                folded: pick(&folds, true),
+                hidden_stashes: pick(&stashes, false),
+            };
+            let follow = if first_parent {
+                Follow::FirstParent
+            } else {
+                Follow::AllParents
+            };
+            (history, follow, inclusion)
+        })
+}
+
 proptest! {
     #![proptest_config(tier())]
 
-    /// Every parent edge is drawn, no edge passes through an unrelated node,
-    /// a freed column waits a row before reuse, and a reserved column is
-    /// never handed back — all checked from the rows alone.
     #[test]
     fn rows_replay_cleanly_from_the_outside(history in history()) {
-        let rows = layout(&history.commits, history.seeds());
-        prop_assert_eq!(rows.len(), history.commits.len());
-
-        let mut replay = Replay::new(&history);
-        for row in &rows {
-            replay.step(row)?;
-        }
-        // Every seed and every parent is in the sequence, so every edge
-        // must have reached its target and closed.
-        prop_assert!(
-            replay.live.is_empty(),
-            "edges still in flight after the last row: {:?}",
-            replay.live
-        );
+        check_replay(&history.commits, &history.seeds())?;
     }
 
-    /// The default branch's first-parent chain is lane 0 for its whole life,
-    /// whatever else converges on it along the way.
     #[test]
     fn the_default_branch_is_lane_zero_and_straight(history in history()) {
-        let rows = layout(&history.commits, history.seeds());
-        if let Some(tip) = history.plan.default {
-            for position in first_parent_chain(&history.commits, tip) {
-                prop_assert_eq!(
-                    rows[position].lane,
-                    0,
-                    "commit {} is on the default branch's first-parent chain",
-                    rows[position].commit.id
-                );
-            }
-        }
+        check_lane_zero(&history.commits, &history.seeds())?;
     }
 
-    /// A lane never changes column mid-life: a lane not connected to the row
-    /// being laid out is untouched by it, and a lane that is connected either
-    /// closes or continues in place with its identity intact.
     #[test]
     fn open_lanes_are_only_ever_touched_by_the_row_they_are_waiting_for(history in history()) {
-        let mut cursor = LayoutCursor::new(history.seeds());
-        let mut order = EmittedOrder::new();
-        for commit in &history.commits {
-            let before = cursor.active_lanes().to_vec();
-            let row = cursor.extend(std::slice::from_ref(commit), &mut order).remove(0);
-            let after = cursor.active_lanes();
-
-            for (column, lane) in after.iter().enumerate() {
-                if let Some(lane) = lane {
-                    prop_assert_eq!(lane.index, column, "a lane's index is its column");
-                }
-            }
-            for (column, previous) in before.iter().enumerate() {
-                check_column(column, previous.as_ref(), after[column].as_ref(), &row)?;
-            }
-        }
+        check_lanes_stay_put(&history.commits, &history.seeds())?;
     }
 
-    /// The same commits and seeds produce byte-identical rows, however the
-    /// commits are chunked across `extend` calls.
     #[test]
     fn output_is_deterministic_and_independent_of_chunking(
         history in history(),
         chunk_sizes in proptest::collection::vec(1usize..=6, 0..=8),
     ) {
-        let whole = layout(&history.commits, history.seeds());
-        prop_assert_eq!(&whole, &layout(&history.commits, history.seeds()));
+        check_deterministic(&history.commits, &history.seeds(), &chunk_sizes)?;
+    }
 
-        let mut cursor = LayoutCursor::new(history.seeds());
-        let mut order = EmittedOrder::new();
-        let mut chunked = Vec::new();
-        let mut rest = history.commits.as_slice();
-        for size in chunk_sizes {
-            let take = size.min(rest.len());
-            let (chunk, tail) = rest.split_at(take);
-            chunked.extend(cursor.extend(chunk, &mut order));
-            rest = tail;
+    /// Every invariant above, on what a view draws: first-parent view,
+    /// folded merges and hidden stashes switched on (ticket m1/15).
+    #[test]
+    fn every_invariant_holds_under_every_inclusion(
+        (history, follow, inclusion) in viewed(),
+        chunk_sizes in proptest::collection::vec(1usize..=6, 0..=8),
+    ) {
+        let (commits, seeds) = apply(&history.commits, history.seeds(), follow, &inclusion);
+        check_replay(&commits, &seeds)?;
+        check_lane_zero(&commits, &seeds)?;
+        check_lanes_stay_put(&commits, &seeds)?;
+        check_deterministic(&commits, &seeds, &chunk_sizes)?;
+        if follow == Follow::FirstParent {
+            let rows = layout(&commits, seeds);
+            prop_assert!(
+                rows.iter().all(|row| row.lane == 0 && row.lanes.len() <= 1),
+                "first-parent view is one straight lane: {rows:?}"
+            );
         }
-        chunked.extend(cursor.extend(rest, &mut order));
-        prop_assert_eq!(&whole, &chunked);
     }
 }

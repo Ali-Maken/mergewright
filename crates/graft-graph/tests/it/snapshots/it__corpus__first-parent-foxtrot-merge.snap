@@ -1,0 +1,7 @@
+---
+source: crates/graft-graph/tests/it/corpus.rs
+expression: text
+---
+● 84cc93e Merge branch 'main' into feature
+● 8fa6bfc feature: work
+● 68d5d19 Add the base

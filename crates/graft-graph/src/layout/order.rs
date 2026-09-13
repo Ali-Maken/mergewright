@@ -96,6 +96,18 @@ impl EmittedOrder {
         }
     }
 
+    /// Forgets every row from `row` on, so the layout can lay them out
+    /// again under a different inclusion (`graph::inclusion`). Rows before
+    /// `row` are untouched.
+    pub(crate) fn truncate(&mut self, row: usize) {
+        if row >= self.ids.len() {
+            return;
+        }
+        for id in self.ids.drain(row..) {
+            self.rows.remove(&id);
+        }
+    }
+
     /// The row `id` was drawn on, if it has been.
     #[must_use]
     pub fn row_of(&self, id: Oid) -> Option<usize> {

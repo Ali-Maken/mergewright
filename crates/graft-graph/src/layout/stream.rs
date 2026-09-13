@@ -96,6 +96,18 @@ pub enum StreamError<E: std::error::Error + 'static> {
     },
 }
 
+/// What one [`StreamingLayout::truncate`] threw away: nothing outside it
+/// was touched.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Invalidated {
+    /// The first row laid out again; every row before it is kept.
+    pub from_row: usize,
+    /// Chunk indices dropped or cut back (held or evicted), ascending.
+    pub chunks: Vec<usize>,
+    /// Rows of the checkpoints dropped, ascending.
+    pub checkpoints: Vec<usize>,
+}
+
 /// What one [`StreamingLayout::advance`] call did.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Advance {
@@ -504,6 +516,56 @@ impl<S: CommitSource> StreamingLayout<S> {
     #[must_use]
     pub fn source(&self) -> &S {
         &self.source
+    }
+
+    /// The source, mutably — how `graph::inclusion` changes what an
+    /// [`Included`](crate::inclusion::Included) source lets through before
+    /// [`truncate`](Self::truncate) lays the rest out again.
+    pub fn source_mut(&mut self) -> &mut S {
+        &mut self.source
+    }
+
+    /// Forgets every row from `row` on, so the walk lays them out again from
+    /// there — the rows a change of inclusion can alter — and keeps
+    /// everything before `row`: its chunks, its checkpoints and its order.
+    ///
+    /// The frontier becomes the lane state at `row`, replayed from the
+    /// nearest checkpoint at or before it by re-reading commits already in
+    /// the order. The next [`advance`](Self::advance) pulls from the source
+    /// again, so the source must be ready to serve the walk from `row` on.
+    /// Truncating at or past the frontier invalidates nothing.
+    ///
+    /// # Errors
+    ///
+    /// If re-reading the commits to replay fails.
+    pub fn truncate(&mut self, row: usize) -> Result<Invalidated, StreamError<S::Error>> {
+        let reached = self.frontier.rows_emitted();
+        if row >= reached {
+            return Ok(Invalidated {
+                from_row: reached,
+                ..Invalidated::default()
+            });
+        }
+        let checkpoints = self.checkpoints.drop_after(row);
+        let chunks = self.cache.truncate(row);
+        let (start, mut cursor) = self
+            .checkpoints
+            .nearest_at_or_before(row)
+            .unwrap_or_else(|| (0, self.base.clone()));
+        let commits = read_exactly(&mut self.source, &mut self.work, self.order.ids(start..row))?;
+        self.work.rows_replayed += commits.len();
+        // The replayed rows are the ones the cache still holds before `row`;
+        // only the cursor they leave behind is wanted.
+        let _replayed = cursor.extend(&commits, &mut self.order);
+        self.order.truncate(row);
+        self.frontier = cursor;
+        self.done = false;
+        self.known_total = None;
+        Ok(Invalidated {
+            from_row: row,
+            chunks,
+            checkpoints,
+        })
     }
 
     /// The configuration in force.

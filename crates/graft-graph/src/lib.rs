@@ -10,6 +10,7 @@
 
 pub mod fold;
 pub mod identity;
+pub mod inclusion;
 pub mod lane;
 pub mod layout;
 pub mod merge_name;
@@ -18,10 +19,11 @@ pub mod seeds;
 
 pub use fold::Fold;
 pub use identity::BranchIdentity;
+pub use inclusion::{Follow, Included, Inclusion};
 pub use lane::Lane;
 pub use layout::{
-    Advance, Anchor, CommitSource, EmittedOrder, LayoutCursor, Pull, Resident, StreamConfig,
-    StreamError, StreamingLayout, Work, layout,
+    Advance, Anchor, CommitSource, EmittedOrder, Invalidated, LayoutCursor, Pull, Resident,
+    StreamConfig, StreamError, StreamingLayout, Work, layout,
 };
 pub use merge_name::recover_branch_name;
 pub use row::Row;

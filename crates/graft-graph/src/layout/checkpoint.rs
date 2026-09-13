@@ -92,6 +92,14 @@ impl Checkpoints {
             .map_or(0, |position| self.taken[position].row)
     }
 
+    /// Drops every checkpoint standing past `row`, returning their rows,
+    /// ascending. One *at* `row` is kept: it is the lane state before `row`
+    /// is laid out, which nothing past `row` can change.
+    pub(crate) fn drop_after(&mut self, row: usize) -> Vec<usize> {
+        let keep = self.taken.partition_point(|taken| taken.row <= row);
+        self.taken.drain(keep..).map(|taken| taken.row).collect()
+    }
+
     /// How many checkpoints are held.
     pub(crate) fn count(&self) -> usize {
         self.taken.len()

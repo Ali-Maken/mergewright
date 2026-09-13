@@ -223,7 +223,10 @@ everything they need through the handful of functions it exposes, without
 reaching into its internals? `graph::layout` is the model case — one call
 replaces lane assignment and incremental checkpointing; `graph::fold` beside
 it is compaction as a lens over the rows a screen is about to draw, so
-expanding `+N` never re-runs layout. Where a
+expanding `+N` never re-runs layout; `graph::inclusion` is first-parent
+view, hidden stashes and folded merges as a `CommitSource` wrapper in front
+of the same streaming layout, so a toggle lays out again only from the first
+row it changes. Where a
 crate needs more than one concrete implementation of something (`term`'s
 per-protocol encoders, or a `git` read that a named `gix` gap forces onto
 `git2` — ADR-0011), that split is an *internal* seam, private to the crate —

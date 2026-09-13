@@ -162,6 +162,36 @@ impl RowCache {
         }
     }
 
+    /// Forgets every row from `row` on: chunks starting at or past it are
+    /// dropped, the chunk holding it is cut back to the rows before it, and
+    /// the fingerprints of every chunk from that one on are forgotten (a
+    /// fingerprint of the longer chunk cannot check the shorter rebuild).
+    /// Returns the chunk indices touched, ascending — the invalidated set.
+    pub(crate) fn truncate(&mut self, row: usize) -> Vec<usize> {
+        let first = row / self.chunk_rows;
+        let offset = row % self.chunk_rows;
+        let mut touched: Vec<usize> = self
+            .chunks
+            .keys()
+            .chain(self.evicted.keys())
+            .copied()
+            .filter(|&chunk| chunk >= first)
+            .collect();
+        touched.sort_unstable();
+        touched.dedup();
+        for &chunk in &touched {
+            self.evicted.remove(&chunk);
+            if chunk == first && offset > 0 {
+                if let Some(resident) = self.chunks.get_mut(&chunk) {
+                    resident.rows.truncate(offset);
+                }
+            } else {
+                self.chunks.remove(&chunk);
+            }
+        }
+        touched
+    }
+
     /// How many chunks are held.
     pub(crate) fn resident_chunks(&self) -> usize {
         self.chunks.len()
