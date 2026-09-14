@@ -182,10 +182,13 @@ fn kept_parents(id: Oid, parents: &[Oid], follow: Follow, inclusion: &Inclusion)
     }
 }
 
-/// A shown commit as the view draws it (see [`kept_parents`]).
-fn drawn_as(mut commit: Commit, follow: Follow, inclusion: &Inclusion) -> Commit {
-    commit.parents = kept_parents(commit.id, &commit.parents, follow, inclusion);
-    commit
+/// A shown commit's link as the view draws it: [`kept_parents`], on
+/// handles. `id` is the link's commit id.
+fn drawn_link(mut link: Link, id: Oid, follow: Follow, inclusion: &Inclusion) -> Link {
+    if follow == Follow::FirstParent || inclusion.folded.contains(&id) {
+        link.parents = link.parents.first().into_iter().collect();
+    }
+    link
 }
 
 /// How many commits a rebuild of the frontier re-reads at once.
@@ -327,71 +330,57 @@ impl<S: CommitSource> Included<S> {
         }
         Ok(Some(row))
     }
-
-    /// The ids `handles` name, in order — what [`CommitSource::read`] needs,
-    /// since it is unchanged by ADR-0026 and still takes ids.
-    fn ids_for(&self, handles: &[CommitHandle]) -> Vec<Oid> {
-        handles
-            .iter()
-            .map(|&handle| self.source.id_of(handle))
-            .collect()
-    }
 }
 
 impl<S: CommitSource> CommitSource for Included<S> {
     type Error = S::Error;
 
-    fn next(&mut self, limit: usize, stop: &dyn Fn() -> bool) -> Result<Pull, Self::Error> {
-        let mut commits = Vec::new();
+    fn pull(&mut self, limit: usize, stop: &dyn Fn() -> bool) -> Result<Pull, Self::Error> {
+        let mut links = Vec::new();
         loop {
             let done = self.walk_done && self.decided == self.sequence.len();
             if limit == 0 || done {
                 return Ok(Pull {
-                    commits,
+                    links,
                     done,
                     stopped: false,
                 });
             }
             // Walked before a `reinclude` (or past an earlier limit) but not
-            // decided under the inclusion in force: re-read, never re-walked.
+            // decided under the inclusion in force: re-served by handle,
+            // never re-walked.
             let (batch, stopped) = if self.decided < self.sequence.len() {
                 let end = (self.decided + limit).min(self.sequence.len());
-                let ids = self.ids_for(&self.sequence[self.decided..end]);
-                (self.source.read(&ids)?, false)
+                (self.source.links(&self.sequence[self.decided..end])?, false)
             } else {
-                let pull = self.source.next(limit, stop)?;
-                for commit in &pull.commits {
-                    let handle = self.source.handle_of(&commit.id).unwrap_or_else(|| {
-                        panic!("{:?} has no handle in this source's table", commit.id)
-                    });
-                    self.sequence.push(handle);
-                    self.walked.insert(handle);
+                let pull = self.source.pull(limit, stop)?;
+                for link in &pull.links {
+                    self.sequence.push(link.commit);
+                    self.walked.insert(link.commit);
                 }
                 self.walk_done = pull.done;
-                (pull.commits, pull.stopped)
+                (pull.links, pull.stopped)
             };
-            for commit in &batch {
-                if commits.len() == limit {
+            for link in batch {
+                if links.len() == limit {
                     break;
                 }
-                let kept =
-                    self.frontier
-                        .decide(commit.id, &commit.parents, self.follow, &self.inclusion);
+                let id = self.source.id_of(link.commit);
+                let parents: Vec<Oid> = link.parents.iter().map(|p| self.source.id_of(p)).collect();
+                let shown = self
+                    .frontier
+                    .decide(id, &parents, self.follow, &self.inclusion)
+                    .is_some();
                 self.decided += 1;
-                if let Some(kept) = kept {
-                    let handle = self.source.handle_of(&commit.id).unwrap_or_else(|| {
-                        panic!("{:?} has no handle in this source's table", commit.id)
-                    });
-                    self.shown.insert(handle);
-                    let mut drawn = commit.clone();
-                    drawn.parents = kept;
-                    commits.push(drawn);
+                if shown {
+                    self.shown.insert(link.commit);
+                    links.push(drawn_link(link, id, self.follow, &self.inclusion));
                 }
             }
             let done = self.walk_done && self.decided == self.sequence.len();
-            if !commits.is_empty() || done || stopped {
+            if !links.is_empty() || done || stopped {
                 return Ok(Pull {
-                    commits,
+                    links,
                     done,
                     stopped,
                 });
@@ -399,28 +388,21 @@ impl<S: CommitSource> CommitSource for Included<S> {
         }
     }
 
-    fn read(&mut self, ids: &[Oid]) -> Result<Vec<Commit>, Self::Error> {
-        let commits = self.source.read(ids)?;
-        Ok(commits
-            .into_iter()
-            .map(|commit| drawn_as(commit, self.follow, &self.inclusion))
-            .collect())
+    // Untrimmed: a row takes its parents from its shape, which the trimmed
+    // links laid out.
+    fn read(&mut self, commits: &[CommitHandle]) -> Result<Vec<Commit>, Self::Error> {
+        self.source.read(commits)
     }
 
     fn links(&mut self, commits: &[CommitHandle]) -> Result<Vec<Link>, Self::Error> {
-        let mut links = self.source.links(commits)?;
-        for link in &mut links {
-            // As `drawn_as`, on handles.
-            if self.follow == Follow::FirstParent
-                || self
-                    .inclusion
-                    .folded
-                    .contains(&self.source.id_of(link.commit))
-            {
-                link.parents = link.parents.first().into_iter().collect();
-            }
-        }
-        Ok(links)
+        let links = self.source.links(commits)?;
+        Ok(links
+            .into_iter()
+            .map(|link| {
+                let id = self.source.id_of(link.commit);
+                drawn_link(link, id, self.follow, &self.inclusion)
+            })
+            .collect())
     }
 
     fn handle_of(&self, id: &Oid) -> Option<CommitHandle> {

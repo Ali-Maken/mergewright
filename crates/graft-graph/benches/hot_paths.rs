@@ -134,21 +134,23 @@ impl InMemory {
 impl CommitSource for InMemory {
     type Error = Infallible;
 
-    fn next(&mut self, limit: usize, _stop: &dyn Fn() -> bool) -> Result<Pull, Self::Error> {
+    fn pull(&mut self, limit: usize, _stop: &dyn Fn() -> bool) -> Result<Pull, Self::Error> {
         let end = (self.next + limit).min(self.walk.len());
-        let commits = self.walk[self.next..end].to_vec();
+        let handles: Vec<CommitHandle> = (self.next..end)
+            .map(|index| CommitHandle(u32::try_from(index).expect("a bench history fits in u32")))
+            .collect();
         self.next = end;
         Ok(Pull {
-            commits,
+            links: self.links(&handles)?,
             done: end == self.walk.len(),
             stopped: false,
         })
     }
 
-    fn read(&mut self, ids: &[Oid]) -> Result<Vec<Commit>, Self::Error> {
-        Ok(ids
+    fn read(&mut self, commits: &[CommitHandle]) -> Result<Vec<Commit>, Self::Error> {
+        Ok(commits
             .iter()
-            .filter_map(|id| self.by_id.get(id).map(|&index| self.walk[index].clone()))
+            .map(|handle| self.walk[handle.index()].clone())
             .collect())
     }
 

@@ -14,17 +14,20 @@ pub trait CommitSource {
     /// Why a pull or a re-read can fail.
     type Error: std::error::Error + 'static;
 
-    /// The next commits in walk order, at most `limit` of them.
+    /// The next links in walk order, at most `limit` of them: each commit
+    /// by handle, parents as this source shows them (a view that trims
+    /// parents trims them here too). No commit object need be read.
     ///
     /// `stop` is polled between commits; a pull that saw it return `true`
-    /// reports `stopped` and the commits it had by then, and the next call
+    /// reports `stopped` and the links it had by then, and the next call
     /// carries on where it left off.
-    fn next(&mut self, limit: usize, stop: &dyn Fn() -> bool) -> Result<Pull, Self::Error>;
+    fn pull(&mut self, limit: usize, stop: &dyn Fn() -> bool) -> Result<Pull, Self::Error>;
 
-    /// The commits with `ids`, one per id and in the same order: what a
-    /// rebuild of evicted rows needs, and what a layout over a walk order
-    /// already known in full (ADR-0008 promotion) is fed with.
-    fn read(&mut self, ids: &[Oid]) -> Result<Vec<Commit>, Self::Error>;
+    /// The whole commits behind `commits`, one per handle and in the same
+    /// order: what a row is assembled from. Parents as stored in the object,
+    /// untrimmed — the row takes its parents from the shape. Every handle
+    /// came from this source.
+    fn read(&mut self, commits: &[CommitHandle]) -> Result<Vec<Commit>, Self::Error>;
 
     /// The links of `commits`, one per handle and in the same order: each
     /// commit's parents as this source shows them (a view that trims parents
@@ -39,11 +42,11 @@ pub trait CommitSource {
     fn id_of(&self, handle: CommitHandle) -> Oid;
 }
 
-/// What one [`CommitSource::next`] call produced.
+/// What one [`CommitSource::pull`] call produced.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Pull {
-    /// The commits, in walk order.
-    pub commits: Vec<Commit>,
+    /// The links, in walk order.
+    pub links: Vec<Link>,
     /// Whether the walk has nothing more to give.
     pub done: bool,
     /// Whether the walk gave up early because `stop` asked it to.

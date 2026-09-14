@@ -74,35 +74,51 @@ impl<'a> WalkSource<'a> {
     }
 }
 
+/// `commit`'s link, parents read from its object and interned in `table`.
+fn link_of(
+    handle: &RepoHandle,
+    table: &CommitTable,
+    commit: CommitHandle,
+) -> Result<Link, WalkError> {
+    let read = read_commit(handle, table.id_of(commit))?;
+    Ok(Link {
+        commit,
+        parents: read
+            .parents
+            .iter()
+            .map(|parent| table.intern(parent))
+            .collect(),
+    })
+}
+
 impl CommitSource for WalkSource<'_> {
     type Error = WalkError;
 
-    fn next(&mut self, limit: usize, stop: &dyn Fn() -> bool) -> Result<Pull, WalkError> {
+    fn pull(&mut self, limit: usize, stop: &dyn Fn() -> bool) -> Result<Pull, WalkError> {
         match &mut self.feed {
             Feed::Walk(walk) => {
-                let chunk = walk.next_chunk(limit, stop)?;
+                let chunk = walk.next_links(limit, stop)?;
                 Ok(Pull {
-                    commits: chunk.commits,
+                    links: chunk.links,
                     done: chunk.done,
                     stopped: chunk.stopped,
                 })
             }
             Feed::Order { order, next } => {
-                let mut commits = Vec::new();
-                while commits.len() < limit && *next < order.len() {
+                let mut links = Vec::new();
+                while links.len() < limit && *next < order.len() {
                     if stop() {
                         return Ok(Pull {
-                            commits,
+                            links,
                             done: false,
                             stopped: true,
                         });
                     }
-                    let id = self.table.id_of(order[*next]);
-                    commits.push(read_commit(self.handle, id)?);
+                    links.push(link_of(self.handle, &self.table, order[*next])?);
                     *next += 1;
                 }
                 Ok(Pull {
-                    commits,
+                    links,
                     done: *next == order.len(),
                     stopped: false,
                 })
@@ -110,27 +126,19 @@ impl CommitSource for WalkSource<'_> {
         }
     }
 
-    fn read(&mut self, ids: &[Oid]) -> Result<Vec<Commit>, WalkError> {
-        ids.iter().map(|&id| read_commit(self.handle, id)).collect()
+    fn read(&mut self, commits: &[CommitHandle]) -> Result<Vec<Commit>, WalkError> {
+        commits
+            .iter()
+            .map(|&commit| read_commit(self.handle, self.table.id_of(commit)))
+            .collect()
     }
 
-    // Reads each commit whole for its parents: `pull` and `read` still hand
-    // out whole commits, so nothing calls this on a hot path yet. The
-    // hydrate-on-demand ticket reads parents from the walk instead.
+    // Reads each commit whole for its parents: a promoted order has no walk
+    // to take them from. A batched or commit-graph read is 52b's to measure.
     fn links(&mut self, commits: &[CommitHandle]) -> Result<Vec<Link>, WalkError> {
         commits
             .iter()
-            .map(|&commit| {
-                let read = read_commit(self.handle, self.table.id_of(commit))?;
-                Ok(Link {
-                    commit,
-                    parents: read
-                        .parents
-                        .iter()
-                        .map(|parent| self.table.intern(parent))
-                        .collect(),
-                })
-            })
+            .map(|&commit| link_of(self.handle, &self.table, commit))
             .collect()
     }
 

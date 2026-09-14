@@ -169,33 +169,37 @@ impl VecSource {
 impl CommitSource for VecSource {
     type Error = Infallible;
 
-    fn next(&mut self, limit: usize, stop: &dyn Fn() -> bool) -> Result<Pull, Infallible> {
+    fn pull(&mut self, limit: usize, stop: &dyn Fn() -> bool) -> Result<Pull, Infallible> {
         self.pulls += 1;
-        let mut commits = Vec::new();
-        while commits.len() < limit && self.position < self.walk.len() {
+        let mut handles = Vec::new();
+        let mut stopped = false;
+        while handles.len() < limit && self.position < self.walk.len() {
             if stop() {
-                return Ok(Pull {
-                    commits,
-                    done: false,
-                    stopped: true,
-                });
+                stopped = true;
+                break;
             }
-            commits.push(self.walk[self.position].clone());
+            let id = self.walk[self.position].id;
+            handles.push(
+                self.handles
+                    .handle_of(&id)
+                    .expect("walked commits are interned"),
+            );
             self.position += 1;
         }
         Ok(Pull {
-            commits,
-            done: self.position == self.walk.len(),
-            stopped: false,
+            links: self.handles.links(&self.by_id, &handles),
+            done: !stopped && self.position == self.walk.len(),
+            stopped,
         })
     }
 
-    fn read(&mut self, ids: &[Oid]) -> Result<Vec<Commit>, Infallible> {
+    fn read(&mut self, commits: &[CommitHandle]) -> Result<Vec<Commit>, Infallible> {
         self.reads += 1;
-        Ok(ids
+        Ok(commits
             .iter()
-            .map(|id| {
-                self.by_id.get(id).cloned().unwrap_or_else(|| {
+            .map(|&handle| {
+                let id = self.handles.id_of(handle);
+                self.by_id.get(&id).cloned().unwrap_or_else(|| {
                     panic!("the source was asked for {id}, which it never served")
                 })
             })
@@ -378,21 +382,23 @@ fn an_evicted_chunk_rebuilds_identically_when_scrolled_back_to() {
     );
 }
 
-/// A source that hands back a different commit on re-read than it did on
-/// the walk. The ids match, so only the fingerprint can catch it.
-struct Forgetful(VecSource);
+/// A source that hands back a different commit on every read after a
+/// commit's first. The ids match, so only the fingerprint can catch it.
+struct Forgetful(VecSource, std::collections::HashSet<CommitHandle>);
 
 impl CommitSource for Forgetful {
     type Error = Infallible;
 
-    fn next(&mut self, limit: usize, stop: &dyn Fn() -> bool) -> Result<Pull, Infallible> {
-        self.0.next(limit, stop)
+    fn pull(&mut self, limit: usize, stop: &dyn Fn() -> bool) -> Result<Pull, Infallible> {
+        self.0.pull(limit, stop)
     }
 
-    fn read(&mut self, ids: &[Oid]) -> Result<Vec<Commit>, Infallible> {
-        let mut commits = self.0.read(ids)?;
-        for commit in &mut commits {
-            commit.message = b"rewritten".to_vec();
+    fn read(&mut self, handles: &[CommitHandle]) -> Result<Vec<Commit>, Infallible> {
+        let mut commits = self.0.read(handles)?;
+        for (&handle, commit) in handles.iter().zip(&mut commits) {
+            if !self.1.insert(handle) {
+                commit.message = b"rewritten".to_vec();
+            }
         }
         Ok(commits)
     }
@@ -414,7 +420,10 @@ impl CommitSource for Forgetful {
 fn a_rebuild_that_does_not_match_the_evicted_rows_is_an_error_not_a_display() {
     let commits = history(2_000, 3);
     let mut streaming = StreamingLayout::new(
-        Forgetful(VecSource::new(commits.clone())),
+        Forgetful(
+            VecSource::new(commits.clone()),
+            std::collections::HashSet::new(),
+        ),
         seeds_for(&commits),
         small(),
     );
@@ -656,6 +665,58 @@ fn checkpoint_size_does_not_grow_with_history_on_either_path() {
     }
 }
 
+// ---- merge lanes named across a chunk boundary ---------------------------
+
+#[test]
+fn a_merge_lane_open_across_a_chunk_boundary_is_named_with_one_read() {
+    use crate::layout::tests::commit;
+    // M merges T into main; A continues main. Chunk 0 is M, A (the merge on
+    // hand); chunk 1 is T, R, still drawing M's lane with M above it.
+    let commits = vec![
+        commit(1, &[2, 3], 400, b"Merge branch 'topic'"),
+        commit(2, &[4], 300, b"main work"),
+        commit(3, &[4], 200, b"topic work"),
+        commit(4, &[], 100, b"root"),
+    ];
+    let seeds = Seeds {
+        default_branch: Some(BranchSeed {
+            tip: commits[0].id,
+            identity: BranchIdentity::of_name(b"main"),
+        }),
+        ..Seeds::default()
+    };
+    let config = StreamConfig {
+        chunk_rows: 2,
+        checkpoint_every: 2,
+        max_checkpoints: 8,
+        resident_chunks: 8,
+        buffer_rows: 0,
+    };
+    let whole = layout(&commits, seeds.clone());
+    let mut streaming = StreamingLayout::new(VecSource::new(commits.clone()), seeds, config);
+    streaming.set_viewport(0..4);
+
+    streaming.advance(2, &never).expect("an in-memory source");
+    assert_eq!(streaming.work().hydrated, 2);
+    assert_eq!(
+        streaming.work().merge_reads,
+        0,
+        "the merge is in the chunk that draws its lane"
+    );
+
+    streaming.advance(2, &never).expect("an in-memory source");
+    assert_eq!(streaming.work().hydrated, 4);
+    assert_eq!(
+        streaming.work().merge_reads,
+        1,
+        "one read names the lane the merge above opened"
+    );
+
+    let rows = streaming.rows(0..4).expect("an in-memory source");
+    assert_eq!(rows, whole, "deferred names resolve to today's identities");
+    assert_eq!(rows[2].lanes[1], Some(BranchIdentity::of_name(b"topic")));
+}
+
 // ---- contracts -----------------------------------------------------------
 
 struct Stalling;
@@ -663,11 +724,11 @@ struct Stalling;
 impl CommitSource for Stalling {
     type Error = Infallible;
 
-    fn next(&mut self, _: usize, _: &dyn Fn() -> bool) -> Result<Pull, Infallible> {
+    fn pull(&mut self, _: usize, _: &dyn Fn() -> bool) -> Result<Pull, Infallible> {
         Ok(Pull::default())
     }
 
-    fn read(&mut self, _: &[Oid]) -> Result<Vec<Commit>, Infallible> {
+    fn read(&mut self, _: &[CommitHandle]) -> Result<Vec<Commit>, Infallible> {
         Ok(Vec::new())
     }
 

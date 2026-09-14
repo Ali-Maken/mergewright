@@ -67,19 +67,23 @@ impl<'a> WalkSource<'a> {
 impl CommitSource for WalkSource<'_> {
     type Error = WalkError;
 
-    fn next(&mut self, limit: usize, stop: &dyn Fn() -> bool) -> Result<Pull, WalkError> {
+    fn pull(&mut self, limit: usize, stop: &dyn Fn() -> bool) -> Result<Pull, WalkError> {
         self.pulls += 1;
-        let chunk = self.walk.next_chunk(limit, stop)?;
+        let chunk = self.walk.next_links(limit, stop)?;
         Ok(Pull {
-            commits: chunk.commits,
+            links: chunk.links,
             done: chunk.done,
             stopped: chunk.stopped,
         })
     }
 
-    fn read(&mut self, ids: &[Oid]) -> Result<Vec<Commit>, WalkError> {
-        self.reads += ids.len();
-        ids.iter().map(|&id| read_commit(self.handle, id)).collect()
+    fn read(&mut self, commits: &[CommitHandle]) -> Result<Vec<Commit>, WalkError> {
+        self.reads += commits.len();
+        let table = Arc::clone(self.walk.table());
+        commits
+            .iter()
+            .map(|&handle| read_commit(self.handle, table.id_of(handle)))
+            .collect()
     }
 
     fn links(&mut self, commits: &[CommitHandle]) -> Result<Vec<Link>, WalkError> {
@@ -209,12 +213,20 @@ fn every_shape_streams_through_a_small_cache_as_the_whole_layout_would() {
                 work.chunks_rebuilt > 0,
                 "{shape}: the scroll back rebuilt evicted chunks"
             );
+            // Rows are hydrated by handle: every row the layout built, the
+            // first time and on each rebuild, plus any merge read only to
+            // name a lane, went through read_commit.
             assert_eq!(
                 stream.source().reads,
-                work.commits_reread,
-                "{shape}: every re-read went through read_commit"
+                work.hydrated + work.merge_reads,
+                "{shape}: every read went through read_commit"
             );
-            assert!(stream.source().reads > 0, "{shape}");
+            assert_eq!(
+                work.hydrated,
+                work.commits_pulled + work.commits_reread,
+                "{shape}: each row read once per build"
+            );
+            assert!(work.commits_reread > 0, "{shape}");
             eprintln!(
                 "{shape}: {} rows, {} pulled, {} reread, {} chunks rebuilt, {} checkpoints kept",
                 whole.len(),
@@ -299,10 +311,9 @@ fn promotion_on_a_real_repository_finds_the_selected_commit_again() {
     assert_eq!(rows[anchor.offset].commit.id, anchor.commit);
     let end = viewport.end.min(whole.len());
     assert_eq!(rows, whole[viewport.start..end]);
-    assert_eq!(
-        promoted.source().pulls,
-        0,
-        "a promoted layout re-reads; it never walks"
-    );
-    assert_eq!(promoted.source().reads, commits.len());
+    // A promoted layout never walks; it reads every row once, plus any merge
+    // read only to name a lane.
+    let (work, source) = (promoted.work(), promoted.source());
+    let seen = (source.pulls, work.hydrated, source.reads);
+    assert_eq!(seen, (0, commits.len(), commits.len() + work.merge_reads));
 }

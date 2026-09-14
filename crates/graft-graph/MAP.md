@@ -11,7 +11,8 @@ One line per public item. Update when a public item changes.
 - `BranchIdentity::slot` (fn) — which of N palette entries this identity draws in.
 
 ## lane
-- `Lane` (struct) — one open column: `index`, `identity`, `waiting_for` (`CommitHandle`, ADR-0026), `reserved`.
+- `Lane` (struct) — one open column: `index`, `identity` (`LaneIdentity`), `waiting_for` (`CommitHandle`, ADR-0026), `reserved`.
+- `LaneIdentity` (enum) — `Known(BranchIdentity)` or `Merge { merge, parent }`: a merge lane's name deferred to assembly (no commit read during layout); `known()`.
 
 ## row
 - `Row` (struct) — one laid-out commit.
@@ -21,6 +22,10 @@ One line per public item. Update when a public item changes.
 - `Row::outgoing` (field) — one `(column, parent)` per parent, first parent first.
 - `Row::lanes` (field) — identity drawn in each column on this row; `None` where no edge; trailing `None`s trimmed.
 - `Row::marker` (field) — Mistake Radar kind; always `None` from `graph`.
+- `Row::assemble` (fn) — `assemble(shape, commit, &names, id_of)`: a shape plus its whole commit → `Row` (parents from the shape, merge lanes resolved); `Err(AssembleError)` if a merge lane was not gathered.
+- `RowShape` (struct) — a row before hydration: `commit` handle, `lane`, `incoming`, `outgoing: (column, CommitHandle)`, `lanes: Option<LaneIdentity>`.
+- `MergeNames` (struct) — merge-lane names for one batch, keyed by (merge, parent); `gather(shapes, commits, read, id_of)` reads only merges not on hand, in one batch; `reads`, `resolve`.
+- `AssembleError` (enum) — `MergeNotGathered { merge }`.
 
 ## seeds
 - `BranchSeed` (struct) — a branch tip and its identity.
@@ -62,15 +67,15 @@ One line per public item. Update when a public item changes.
 - `Included` (struct) — `CommitSource` wrapper letting through only what a view shows; remembers walked handles (ADR-0026: `HandleSet`, not an id list) so a change re-reads, never re-walks.
 - `Included::new` / `seeds` / `follow` / `inclusion` / `inner` (fn) — build and query.
 - `Included::walked` / `shown` (fn) — the walked and currently-shown handles, as `HandleSet`s.
-- `Included::reinclude` (fn) — switch inclusion; the first row whose drawing can change, or `None`; replays through `CommitSource::links`, not whole commits.
+- `Included::reinclude` (fn) — switch inclusion; the first row whose drawing can change, or `None`; replays through `CommitSource::links`, not whole commits. Trims parents in `pull`/`links`; `read` passes through.
 - `reinclude` (fn) — switch a `StreamingLayout<Included<_>>`'s inclusion and truncate from the first changed row; returns `Invalidated`.
 
 ## layout
-- `HandleLookup` (trait) — `handle_of(&self, id: Oid) -> CommitHandle` (infallible); blanket-implemented for every `CommitSource`. Lets `LayoutCursor` and `layout()` resolve seed/parent ids to handles without needing the whole `CommitSource` seam.
+- `HandleLookup` (trait) — `handle_of(&self, id: Oid) -> CommitHandle` and `id_of(handle) -> Oid` (infallible); blanket-implemented for every `CommitSource`. Lets `LayoutCursor` and `layout()` resolve seed/parent ids to handles without needing the whole `CommitSource` seam.
 - `layout` (fn) — lay out a whole commit slice in one call; unchanged signature — builds its own private id table internally (ADR-0026) so no caller outside `graft-graph` had to change.
 - `LayoutCursor` (struct) — resumable lane state; a clone is a checkpoint.
 - `LayoutCursor::new` (fn) — `new(seeds, handles: &impl HandleLookup)`; cursor seeded with lane 0 and integration lanes, by handle.
-- `LayoutCursor::extend` (fn) — `extend(commits, handles: &impl HandleLookup, order: &mut EmittedOrder)`; lay out the next batch.
+- `LayoutCursor::extend` (fn) — `extend(links: &[Link], handles: &impl HandleLookup, order: &mut EmittedOrder) -> Vec<RowShape>`; lay out the next batch without reading commits.
 - `LayoutCursor::rows_emitted` (fn) — rows laid out so far.
 - `LayoutCursor::approximate_bytes` (fn) — checkpoint cost estimate.
 - `LayoutCursor::active_lanes` (fn) — current occupant of each column.
@@ -80,16 +85,16 @@ One line per public item. Update when a public item changes.
 - `RepeatedCommit` (struct) — a commit the walk named twice: `commit` (`CommitHandle`), `first`, `again`.
 
 ## layout::source
-- `CommitSource` (trait) — a walk the layout pulls from and re-reads by id; `links` (parents as the view shows them), `handle_of`, `id_of` over the repository's id table.
-- `Pull` (struct) — one pull: `commits`, `done`, `stopped`.
+- `CommitSource` (trait) — a walk the layout pulls links from (`pull`), hydrates by handle (`read`, whole commits, same order); `links` (parents as the view shows them), `handle_of`, `id_of` over the repository's id table.
+- `Pull` (struct) — one pull: `links`, `done`, `stopped`.
 
 ## layout::stream
 - `StreamConfig` (struct) — `chunk_rows`, `checkpoint_every`, `max_checkpoints`, `resident_chunks`, `buffer_rows`.
-- `StreamError` (enum) — why streaming could not go on.
+- `StreamError` (enum) — why streaming could not go on; `Assemble` when a row could not be assembled.
 - `Advance` (struct) — one advance: `rows_emitted`, `done`, `stopped`.
 - `Anchor` (struct) — selected `commit` and its viewport `offset`.
 - `Resident` (struct) — held rows, chunks, checkpoints and their byte estimates.
-- `Work` (struct) — pulls, re-reads, replayed rows, rebuilt chunks.
+- `Work` (struct) — pulls, re-reads (links re-served), replayed rows, rebuilt chunks, `hydrated` (commits read for rows), `merge_reads` (commits read only to name a lane).
 - `StreamingLayout` (struct) — chunked layout with a bounded resident set.
 - `StreamingLayout::new` (fn) — stream a walk.
 - `StreamingLayout::from_order` (fn) — `from_order(source, order: Vec<CommitHandle>, seeds, config)`; lay out a known order (ADR-0026: handles in, not ids).

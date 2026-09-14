@@ -1,4 +1,4 @@
-//! The lane-assignment algorithm: commits in, rows out.
+//! The lane-assignment algorithm: links in, row shapes out.
 //!
 //! This is DESIGN.md §3.2 and §3.3 turned into code. A [`LayoutCursor`] holds
 //! everything the algorithm needs to carry from one commit to the next — the
@@ -23,7 +23,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use graft_core::commit::Commit;
-use graft_core::commit_handle::CommitHandle;
+use graft_core::commit_handle::{CommitHandle, Link};
 use graft_core::oid::Oid;
 
 pub use self::order::EmittedOrder;
@@ -32,9 +32,8 @@ pub use self::stream::{
     Advance, Anchor, Invalidated, Resident, StreamConfig, StreamError, StreamingLayout, Work,
 };
 use crate::identity::BranchIdentity;
-use crate::lane::Lane;
-use crate::merge_name::recover_branch_name;
-use crate::row::Row;
+use crate::lane::{Lane, LaneIdentity};
+use crate::row::{MergeNames, Row, RowShape};
 use crate::seeds::{BranchSeed, Seeds};
 
 /// Resolves a commit's id to its handle (ADR-0026).
@@ -49,12 +48,20 @@ pub trait HandleLookup {
     /// the same walk this resolver was built over, so this cannot fail; an
     /// id this resolver has never seen is a bug and panics.
     fn handle_of(&self, id: Oid) -> CommitHandle;
+
+    /// The id behind `handle`. Handles come only from this resolver's
+    /// table, so this cannot fail; a foreign handle is a bug and panics.
+    fn id_of(&self, handle: CommitHandle) -> Oid;
 }
 
 impl<S: CommitSource> HandleLookup for S {
     fn handle_of(&self, id: Oid) -> CommitHandle {
         CommitSource::handle_of(self, &id)
             .unwrap_or_else(|| panic!("{id:?} has no handle in this source's table"))
+    }
+
+    fn id_of(&self, handle: CommitHandle) -> Oid {
+        CommitSource::id_of(self, handle)
     }
 }
 
@@ -71,30 +78,57 @@ fn handle_index(len: usize) -> u32 {
     u32::try_from(len).unwrap_or_else(|_| panic!("more than u32::MAX commits in one table"))
 }
 
-struct LocalHandles(HashMap<Oid, CommitHandle>);
+struct LocalHandles {
+    by_id: HashMap<Oid, CommitHandle>,
+    ids: Vec<Oid>,
+}
 
 impl LocalHandles {
     fn of(commits: &[Commit]) -> Self {
-        let mut table = HashMap::new();
+        let mut table = LocalHandles {
+            by_id: HashMap::new(),
+            ids: Vec::new(),
+        };
         for commit in commits {
-            let next = handle_index(table.len());
-            table.entry(commit.id).or_insert(CommitHandle(next));
-            for &parent in &commit.parents {
-                let next = handle_index(table.len());
-                table.entry(parent).or_insert(CommitHandle(next));
+            for &id in std::iter::once(&commit.id).chain(&commit.parents) {
+                if !table.by_id.contains_key(&id) {
+                    table
+                        .by_id
+                        .insert(id, CommitHandle(handle_index(table.ids.len())));
+                    table.ids.push(id);
+                }
             }
         }
-        LocalHandles(table)
+        table
     }
 }
 
 impl HandleLookup for LocalHandles {
     fn handle_of(&self, id: Oid) -> CommitHandle {
         *self
-            .0
+            .by_id
             .get(&id)
             .unwrap_or_else(|| panic!("{id:?} was never seen in this layout's commits"))
     }
+
+    fn id_of(&self, handle: CommitHandle) -> Oid {
+        self.ids[handle.index()]
+    }
+}
+
+/// The links of `commits`, parents as each commit holds them, by handle.
+pub(crate) fn links_of(commits: &[Commit], handles: &impl HandleLookup) -> Vec<Link> {
+    commits
+        .iter()
+        .map(|commit| Link {
+            commit: handles.handle_of(commit.id),
+            parents: commit
+                .parents
+                .iter()
+                .map(|&parent| handles.handle_of(parent))
+                .collect(),
+        })
+        .collect()
 }
 
 /// Lays out a whole commit sequence in one call.
@@ -109,7 +143,33 @@ impl HandleLookup for LocalHandles {
 pub fn layout(commits: &[Commit], seeds: Seeds) -> Vec<Row> {
     let handles = LocalHandles::of(commits);
     let mut order = EmittedOrder::new();
-    LayoutCursor::new(seeds, &handles).extend(commits, &handles, &mut order)
+    let shapes = LayoutCursor::new(seeds, &handles).extend(
+        &links_of(commits, &handles),
+        &handles,
+        &mut order,
+    );
+    // Every merge is one of `commits`, on hand: the whole history is one
+    // batch, so no lane opened above it and `gather` never reads.
+    let names = MergeNames::gather(
+        &shapes,
+        commits,
+        |merges| -> Result<Vec<Commit>, std::convert::Infallible> {
+            unreachable!("a whole-slice layout has every merge on hand, asked for {merges:?}")
+        },
+        |handle| handles.id_of(handle),
+    )
+    .unwrap_or_else(|never| match never {});
+    shapes
+        .into_iter()
+        .zip(commits)
+        .map(|(shape, commit)| {
+            // Cannot fail: `names` was gathered over these very shapes.
+            Row::assemble(shape, commit.clone(), &names, &|handle| {
+                handles.id_of(handle)
+            })
+            .unwrap_or_else(|err| unreachable!("gathered over the same shapes: {err}"))
+        })
+        .collect()
 }
 
 /// The state carried from one row to the next while laying out a graph.
@@ -142,7 +202,9 @@ pub struct LayoutCursor {
     /// at once instead of waiting for a commit that will never come.
     rows_emitted: usize,
     /// Known tips, for colour stability when an ordinary lane opens fresh.
-    /// Fixed once the cursor is built, so clones share one table.
+    /// Fixed once the cursor is built, so clones share one table. Keyed by
+    /// id, not handle: a known tip need not be in the resolver's table, and
+    /// a fresh tip's id is resolved anyway for its short-sha fallback.
     known_identities: Arc<HashMap<Oid, BranchIdentity>>,
     /// Reserved columns whose tip no row has landed on yet. Such a lane is
     /// open, but nothing is drawn above its tip, so rows leave it out of
@@ -174,8 +236,10 @@ impl LayoutCursor {
         cursor
     }
 
-    /// Lays out the next batch of commits, continuing from wherever the last
+    /// Lays out the next batch of links, continuing from wherever the last
     /// call left off, and records each in `order` at the row it lands on.
+    /// Reads nothing: merge lanes carry a deferred
+    /// [`LaneIdentity::Merge`], named at [`Row::assemble`].
     ///
     /// `commits` must be in the same walk order the cursor has already seen
     /// — the order DESIGN.md §3.2 assumes throughout: a parent is laid out
@@ -190,18 +254,18 @@ impl LayoutCursor {
     #[must_use]
     pub fn extend(
         &mut self,
-        commits: &[Commit],
+        links: &[Link],
         handles: &impl HandleLookup,
         order: &mut EmittedOrder,
-    ) -> Vec<Row> {
-        order.reserve(commits.len());
-        commits
+    ) -> Vec<RowShape> {
+        order.reserve(links.len());
+        links
             .iter()
-            .map(|commit| {
+            .map(|link| {
                 order
-                    .note(handles.handle_of(commit.id))
+                    .note(link.commit)
                     .unwrap_or_else(|err| panic!("{err}"));
-                let row = self.assign_row(commit, handles, order);
+                let row = self.assign_row(link, handles, order);
                 self.rows_emitted += 1;
                 row
             })
@@ -255,7 +319,7 @@ impl LayoutCursor {
         let waiting_for = handles.handle_of(seed.tip);
         self.active[column] = Some(Lane {
             index: column,
-            identity: seed.identity,
+            identity: LaneIdentity::Known(seed.identity),
             waiting_for,
             reserved: true,
         });
@@ -267,19 +331,16 @@ impl LayoutCursor {
     /// lane its parents continue or open.
     fn assign_row(
         &mut self,
-        commit: &Commit,
+        link: &Link,
         handles: &impl HandleLookup,
         order: &EmittedOrder,
-    ) -> Row {
-        let found = self
-            .waiting
-            .remove(&handles.handle_of(commit.id))
-            .unwrap_or_default();
-        let mut parents = commit.parents.iter().copied();
+    ) -> RowShape {
+        let found = self.waiting.remove(&link.commit).unwrap_or_default();
+        let mut parents = link.parents.iter();
         let first_parent = parents.next();
 
         // What is drawn above this row, before any lane closes or opens.
-        let mut lanes: Vec<Option<BranchIdentity>> = self
+        let mut lanes: Vec<Option<LaneIdentity>> = self
             .active
             .iter()
             .enumerate()
@@ -292,7 +353,7 @@ impl LayoutCursor {
             .collect();
 
         let lane = winning_lane(&found)
-            .unwrap_or_else(|| self.open_new_lane(commit, first_parent, handles));
+            .unwrap_or_else(|| self.open_new_lane(link.commit, first_parent, handles));
         self.unreached.retain(|&column| column != lane);
         // Read before anything closes: a root that is also a fresh tip opens
         // and closes its lane on this one row.
@@ -312,13 +373,13 @@ impl LayoutCursor {
         let mut outgoing = Vec::new();
         match first_parent {
             Some(parent) => {
-                self.continue_lane(lane, parent, handles, order, &mut outgoing, &mut closing);
+                self.continue_lane(lane, parent, order, &mut outgoing, &mut closing);
             }
             None => self.close_lane(lane, &mut closing),
         }
         for parent in parents {
             let (column, identity) =
-                self.open_merge_lane(commit, parent, handles, order, &mut outgoing, &mut closing);
+                self.open_merge_lane(link.commit, parent, order, &mut outgoing, &mut closing);
             set_column(&mut lanes, column, Some(identity));
         }
         while lanes.last().is_some_and(Option::is_none) {
@@ -333,13 +394,12 @@ impl LayoutCursor {
         // free pool than one taken between chunks, for the same commits.
         self.free_pool.extend(closing);
 
-        Row {
-            commit: commit.clone(),
+        RowShape {
+            commit: link.commit,
             lane,
             incoming,
             outgoing,
             lanes,
-            marker: None,
         }
     }
 
@@ -349,14 +409,12 @@ impl LayoutCursor {
     fn continue_lane(
         &mut self,
         lane: usize,
-        parent: Oid,
-        handles: &impl HandleLookup,
+        target: CommitHandle,
         order: &EmittedOrder,
-        outgoing: &mut Vec<(usize, Oid)>,
+        outgoing: &mut Vec<(usize, CommitHandle)>,
         closing: &mut Vec<usize>,
     ) {
-        outgoing.push((lane, parent));
-        let target = handles.handle_of(parent);
+        outgoing.push((lane, target));
         if self.drawn_already(target, order) {
             self.close_lane(lane, closing);
             return;
@@ -372,7 +430,9 @@ impl LayoutCursor {
     /// several of them, so an octopus merge needs no special case).
     ///
     /// The merged branch's identity is recovered from the merge message
-    /// (DESIGN.md §3.4); a `known_branches` lookup is deliberately not
+    /// (DESIGN.md §3.4) — at assembly, through [`LaneIdentity::Merge`]: the
+    /// message needs a commit read and the layout reads nothing. A
+    /// `known_branches` lookup is deliberately not
     /// consulted here the way it is in [`open_new_lane`](Self::open_new_lane):
     /// a merge parent is a historical ancestor at merge time, essentially
     /// never equal to any branch's *current* tip, so the message (or its
@@ -382,26 +442,24 @@ impl LayoutCursor {
     /// observable to the row even if the lane closes again at once.
     fn open_merge_lane(
         &mut self,
-        commit: &Commit,
-        parent: Oid,
-        handles: &impl HandleLookup,
+        merge: CommitHandle,
+        target: CommitHandle,
         order: &EmittedOrder,
-        outgoing: &mut Vec<(usize, Oid)>,
+        outgoing: &mut Vec<(usize, CommitHandle)>,
         closing: &mut Vec<usize>,
-    ) -> (usize, BranchIdentity) {
+    ) -> (usize, LaneIdentity) {
         let lane = self.allocate_column();
-        let identity = match recover_branch_name(commit.subject()) {
-            Some(name) => BranchIdentity::of_name(&name),
-            None => BranchIdentity::of_short_sha(parent),
+        let identity = LaneIdentity::Merge {
+            merge,
+            parent: target,
         };
-        let target = handles.handle_of(parent);
         self.active[lane] = Some(Lane {
             index: lane,
             identity,
             waiting_for: target,
             reserved: false,
         });
-        outgoing.push((lane, parent));
+        outgoing.push((lane, target));
         if self.drawn_already(target, order) {
             self.close_lane(lane, closing);
         } else {
@@ -429,20 +487,21 @@ impl LayoutCursor {
     /// this never has to invent a value that would otherwise be observed.
     fn open_new_lane(
         &mut self,
-        commit: &Commit,
-        first_parent: Option<Oid>,
+        commit: CommitHandle,
+        first_parent: Option<CommitHandle>,
         handles: &impl HandleLookup,
     ) -> usize {
         let lane = self.allocate_column();
+        let id = handles.id_of(commit);
         let identity = self
             .known_identities
-            .get(&commit.id)
+            .get(&id)
             .copied()
-            .unwrap_or_else(|| BranchIdentity::of_short_sha(commit.id));
-        let waiting_for = handles.handle_of(first_parent.unwrap_or(commit.id));
+            .unwrap_or_else(|| BranchIdentity::of_short_sha(id));
+        let waiting_for = first_parent.unwrap_or(commit);
         self.active[lane] = Some(Lane {
             index: lane,
-            identity,
+            identity: LaneIdentity::Known(identity),
             waiting_for,
             reserved: false,
         });
@@ -496,9 +555,9 @@ impl LayoutCursor {
 /// Records `identity` as what `column` draws on a row, growing the row's
 /// column list as far as needed.
 fn set_column(
-    lanes: &mut Vec<Option<BranchIdentity>>,
+    lanes: &mut Vec<Option<LaneIdentity>>,
     column: usize,
-    identity: Option<BranchIdentity>,
+    identity: Option<LaneIdentity>,
 ) {
     if lanes.len() <= column {
         lanes.resize(column + 1, None);

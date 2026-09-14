@@ -104,8 +104,13 @@ fn freed_column_is_not_reused_on_the_freeing_row_only_the_next_one() {
 
     let commits = [t1, f, g];
     let handles = Handles::of(&commits);
-    let rows =
-        LayoutCursor::new(seeds, &handles).extend(&commits, &handles, &mut EmittedOrder::new());
+    let rows = extend_rows(
+        &mut LayoutCursor::new(seeds, &handles),
+        &commits,
+        &commits,
+        &handles,
+        &mut EmittedOrder::new(),
+    );
 
     assert_eq!(
         rows[0].lane, 1,
@@ -189,7 +194,13 @@ fn octopus_merge_opens_a_distinct_lane_per_extra_parent() {
     let commits = [m];
     let handles = Handles::of(&commits);
     let mut cursor = LayoutCursor::new(seeds, &handles);
-    let rows = cursor.extend(&commits, &handles, &mut EmittedOrder::new());
+    let rows = extend_rows(
+        &mut cursor,
+        &commits,
+        &commits,
+        &handles,
+        &mut EmittedOrder::new(),
+    );
 
     assert_eq!(rows[0].lane, 0);
     let lanes: Vec<usize> = rows[0].outgoing.iter().map(|&(lane, _)| lane).collect();
@@ -228,12 +239,26 @@ fn merge_lane_falls_back_to_short_sha_identity_when_no_pattern_matches() {
     let commits = [m];
     let handles = Handles::of(&commits);
     let mut cursor = LayoutCursor::new(seeds, &handles);
-    let _rows = cursor.extend(&commits, &handles, &mut EmittedOrder::new());
+    let rows = extend_rows(
+        &mut cursor,
+        &commits,
+        &commits,
+        &handles,
+        &mut EmittedOrder::new(),
+    );
 
     let lane = cursor.active_lanes()[1]
         .as_ref()
         .expect("merge lane still open");
-    assert_eq!(lane.identity, BranchIdentity::of_short_sha(parent));
+    assert_eq!(
+        lane.identity,
+        LaneIdentity::Merge {
+            merge: handles.handle_of(&oid(10)).expect("interned"),
+            parent: handles.handle_of(&parent).expect("interned"),
+        },
+        "the layout defers the name to assembly"
+    );
+    assert_eq!(rows[0].lanes[1], Some(BranchIdentity::of_short_sha(parent)));
 }
 
 #[test]
@@ -268,9 +293,21 @@ fn chunk_boundaries_do_not_change_the_rows_produced() {
     let handles = Handles::of(&commits);
     let mut cursor = LayoutCursor::new(seeds(), &handles);
     let mut order = EmittedOrder::new();
-    let mut split_calls = cursor.extend(&commits[0..1], &handles, &mut order);
-    split_calls.extend(cursor.extend(&commits[1..2], &handles, &mut order));
-    split_calls.extend(cursor.extend(&commits[2..3], &handles, &mut order));
+    let mut split_calls = extend_rows(&mut cursor, &commits[0..1], &commits, &handles, &mut order);
+    split_calls.extend(extend_rows(
+        &mut cursor,
+        &commits[1..2],
+        &commits,
+        &handles,
+        &mut order,
+    ));
+    split_calls.extend(extend_rows(
+        &mut cursor,
+        &commits[2..3],
+        &commits,
+        &handles,
+        &mut order,
+    ));
 
     assert_eq!(
         one_call, split_calls,
@@ -335,7 +372,13 @@ fn an_edge_to_a_commit_already_drawn_is_recorded_and_its_lane_closes_at_once() {
 
     let handles = Handles::of(&commits);
     let mut cursor = LayoutCursor::new(seeds, &handles);
-    let rows = cursor.extend(&commits, &handles, &mut EmittedOrder::new());
+    let rows = extend_rows(
+        &mut cursor,
+        &commits,
+        &commits,
+        &handles,
+        &mut EmittedOrder::new(),
+    );
 
     assert_eq!(rows[0].lane, 1, "the early parent opens an ordinary lane");
     assert_eq!(rows[1].lane, 0);
@@ -386,12 +429,24 @@ fn a_checkpoint_costs_the_same_after_a_long_history_as_after_a_short_one() {
     let short = chain(20);
     let short_handles = Handles::of(&short);
     let mut short_cursor = LayoutCursor::new(seeds(short[0].id), &short_handles);
-    let short_rows = short_cursor.extend(&short, &short_handles, &mut EmittedOrder::new());
+    let short_rows = extend_rows(
+        &mut short_cursor,
+        &short,
+        &short,
+        &short_handles,
+        &mut EmittedOrder::new(),
+    );
 
     let long = chain(5_000);
     let long_handles = Handles::of(&long);
     let mut long_cursor = LayoutCursor::new(seeds(long[0].id), &long_handles);
-    let long_rows = long_cursor.extend(&long, &long_handles, &mut EmittedOrder::new());
+    let long_rows = extend_rows(
+        &mut long_cursor,
+        &long,
+        &long,
+        &long_handles,
+        &mut EmittedOrder::new(),
+    );
 
     assert!(short_rows.iter().chain(&long_rows).all(|row| row.lane == 0));
     assert_eq!(long_cursor.rows_emitted(), 5_000);
@@ -473,6 +528,49 @@ impl crate::layout::HandleLookup for Handles {
     fn handle_of(&self, id: Oid) -> CommitHandle {
         Handles::handle_of(self, &id).expect("id was interned by Handles::of")
     }
+
+    fn id_of(&self, handle: CommitHandle) -> Oid {
+        Handles::id_of(self, handle)
+    }
+}
+
+/// Lays out `batch` with `cursor` and assembles its rows, reading any merge
+/// named above the batch from `all`: `extend` plus the assembly a streaming
+/// layout does, for tests that drive the cursor directly.
+pub(crate) fn extend_rows(
+    cursor: &mut LayoutCursor,
+    batch: &[Commit],
+    all: &[Commit],
+    handles: &Handles,
+    order: &mut EmittedOrder,
+) -> Vec<Row> {
+    let shapes = cursor.extend(&links_of(batch, handles), handles, order);
+    let by_id: std::collections::HashMap<Oid, &Commit> =
+        all.iter().map(|commit| (commit.id, commit)).collect();
+    let names = MergeNames::gather(
+        &shapes,
+        batch,
+        |merges| {
+            Ok::<_, std::convert::Infallible>(
+                merges
+                    .iter()
+                    .map(|&merge| by_id[&handles.id_of(merge)].clone())
+                    .collect(),
+            )
+        },
+        |handle| handles.id_of(handle),
+    )
+    .unwrap_or_else(|never| match never {});
+    shapes
+        .into_iter()
+        .zip(batch)
+        .map(|(shape, commit)| {
+            Row::assemble(shape, commit.clone(), &names, &|handle| {
+                handles.id_of(handle)
+            })
+            .expect("names gathered over these shapes")
+        })
+        .collect()
 }
 
 pub(crate) mod properties;

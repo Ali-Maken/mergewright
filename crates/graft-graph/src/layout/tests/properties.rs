@@ -10,6 +10,7 @@
 //! Histories are generated in walk order: a commit's parents always lie
 //! later in the sequence, which is the precondition `extend` documents.
 
+use crate::layout::tests::extend_rows;
 use std::collections::{BTreeSet, HashMap};
 
 use proptest::prelude::*;
@@ -430,9 +431,14 @@ fn check_lanes_stay_put(commits: &[Commit], seeds: &Seeds) -> Result<(), TestCas
     let mut order = EmittedOrder::new();
     for commit in commits {
         let before = cursor.active_lanes().to_vec();
-        let row = cursor
-            .extend(std::slice::from_ref(commit), &handles, &mut order)
-            .remove(0);
+        let row = extend_rows(
+            &mut cursor,
+            std::slice::from_ref(commit),
+            commits,
+            &handles,
+            &mut order,
+        )
+        .remove(0);
         let after = cursor.active_lanes();
 
         for (column, lane) in after.iter().enumerate() {
@@ -471,10 +477,22 @@ fn check_deterministic(
     for &size in chunk_sizes {
         let take = size.min(rest.len());
         let (chunk, tail) = rest.split_at(take);
-        chunked.extend(cursor.extend(chunk, &handles, &mut order));
+        chunked.extend(extend_rows(
+            &mut cursor,
+            chunk,
+            commits,
+            &handles,
+            &mut order,
+        ));
         rest = tail;
     }
-    chunked.extend(cursor.extend(rest, &handles, &mut order));
+    chunked.extend(extend_rows(
+        &mut cursor,
+        rest,
+        commits,
+        &handles,
+        &mut order,
+    ));
     prop_assert_eq!(&whole, &chunked);
     Ok(())
 }

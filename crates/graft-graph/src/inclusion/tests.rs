@@ -37,20 +37,30 @@ impl VecSource {
 impl CommitSource for VecSource {
     type Error = Infallible;
 
-    fn next(&mut self, limit: usize, _stop: &dyn Fn() -> bool) -> Result<Pull, Infallible> {
+    fn pull(&mut self, limit: usize, _stop: &dyn Fn() -> bool) -> Result<Pull, Infallible> {
         self.pulls += 1;
         let end = (self.position + limit).min(self.walk.len());
-        let commits = self.walk[self.position..end].to_vec();
+        let handles: Vec<CommitHandle> = self.walk[self.position..end]
+            .iter()
+            .map(|commit| {
+                self.handles
+                    .handle_of(&commit.id)
+                    .expect("walked commits are interned")
+            })
+            .collect();
         self.position = end;
         Ok(Pull {
-            commits,
+            links: self.handles.links(&self.by_id, &handles),
             done: end == self.walk.len(),
             stopped: false,
         })
     }
 
-    fn read(&mut self, ids: &[Oid]) -> Result<Vec<Commit>, Infallible> {
-        Ok(ids.iter().map(|id| self.by_id[id].clone()).collect())
+    fn read(&mut self, commits: &[CommitHandle]) -> Result<Vec<Commit>, Infallible> {
+        Ok(commits
+            .iter()
+            .map(|&handle| self.by_id[&self.handles.id_of(handle)].clone())
+            .collect())
     }
 
     fn links(&mut self, commits: &[CommitHandle]) -> Result<Vec<Link>, Infallible> {

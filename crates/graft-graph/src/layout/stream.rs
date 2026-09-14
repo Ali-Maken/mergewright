@@ -10,7 +10,7 @@
 //! Two ways to start. [`StreamingLayout::new`] streams a walk as it comes.
 //! [`StreamingLayout::from_order`] takes a walk order already known in full
 //! — the product of ADR-0008's background topological walk — and fetches
-//! commits by id as it goes: the promoted view. From then on the two are
+//! links by handle as it goes: the promoted view. From then on the two are
 //! the same type doing the same work; the only trace of the promotion is
 //! that the order runs ahead of the frontier.
 
@@ -18,7 +18,7 @@ use std::collections::HashMap;
 use std::ops::Range;
 
 use graft_core::commit::Commit;
-use graft_core::commit_handle::CommitHandle;
+use graft_core::commit_handle::{CommitHandle, Link};
 use graft_core::oid::Oid;
 
 use crate::layout::LayoutCursor;
@@ -26,7 +26,7 @@ use crate::layout::cache::{Differs, RowCache};
 use crate::layout::checkpoint::Checkpoints;
 use crate::layout::order::{EmittedOrder, RepeatedCommit};
 use crate::layout::source::{CommitSource, Pull};
-use crate::row::Row;
+use crate::row::{AssembleError, MergeNames, Row, RowShape};
 use crate::seeds::Seeds;
 
 /// The knobs of DESIGN.md §3.6, with its starting values as defaults.
@@ -71,16 +71,16 @@ pub enum StreamError<E: std::error::Error + 'static> {
     /// stopped — a pull that could be retried forever, so it is not.
     #[error("the walk returned nothing, but reported neither finished nor stopped")]
     Stalled,
-    /// A re-read by id came back short.
-    #[error("asked for {asked} commits by id, the source returned {got}")]
+    /// A read or re-read by handle came back short.
+    #[error("asked for {asked} commits by handle, the source returned {got}")]
     ShortRead {
         /// How many ids were asked for.
         asked: usize,
         /// How many commits came back.
         got: usize,
     },
-    /// A re-read by id came back with a different commit.
-    #[error("asked for commit {asked} by id, the source returned {got}")]
+    /// A read or re-read by handle came back with a different commit.
+    #[error("asked for commit {asked} by handle, the source returned {got}")]
     WrongCommit {
         /// The id asked for.
         asked: Oid,
@@ -95,6 +95,9 @@ pub enum StreamError<E: std::error::Error + 'static> {
         /// One past the last row the evicted copy held.
         end: usize,
     },
+    /// A shape could not become a row.
+    #[error(transparent)]
+    Assemble(#[from] AssembleError),
 }
 
 /// What one [`StreamingLayout::truncate`] threw away: nothing outside it
@@ -154,14 +157,19 @@ pub struct Resident {
 /// know a rebuild replayed from a checkpoint rather than from the top.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Work {
-    /// Commits pulled from the source's walk.
+    /// Links pulled from the source's walk.
     pub commits_pulled: usize,
-    /// Commits re-read from the source by id.
+    /// Links re-served from the source by handle: a replay, or an order
+    /// already known.
     pub commits_reread: usize,
     /// Rows laid out again while rebuilding evicted chunks.
     pub rows_replayed: usize,
     /// Evicted chunks rebuilt.
     pub chunks_rebuilt: usize,
+    /// Whole commits read to assemble rows.
+    pub hydrated: usize,
+    /// Commits read only to name a merge lane opened above their batch.
+    pub merge_reads: usize,
 }
 
 /// A graph laid out a chunk at a time, with a bounded resident set.
@@ -277,13 +285,14 @@ impl<S: CommitSource> StreamingLayout<S> {
             let start = self.frontier.rows_emitted();
             let room = self.config.chunk_rows - start % self.config.chunk_rows;
             let pull = self.pull(room.min(budget - emitted), stop)?;
-            if pull.commits.is_empty() && !pull.done && !pull.stopped {
+            if pull.links.is_empty() && !pull.done && !pull.stopped {
                 return Err(StreamError::Stalled);
             }
 
-            let rows = self
+            let shapes = self
                 .frontier
-                .extend(&pull.commits, &self.source, &mut self.order);
+                .extend(&pull.links, &self.source, &mut self.order);
+            let rows = materialise(&mut self.source, &mut self.work, shapes)?;
             emitted += rows.len();
             self.cache.push_frontier(start, rows);
             // A checkpoint at the very end of history would never be
@@ -307,8 +316,8 @@ impl<S: CommitSource> StreamingLayout<S> {
         })
     }
 
-    /// The next commits for the frontier: read by id when the order already
-    /// knows them, pulled from the walk otherwise.
+    /// The next links for the frontier: re-served by handle when the order
+    /// already knows them, pulled from the walk otherwise.
     fn pull(
         &mut self,
         limit: usize,
@@ -316,25 +325,22 @@ impl<S: CommitSource> StreamingLayout<S> {
     ) -> Result<Pull, StreamError<S::Error>> {
         let start = self.frontier.rows_emitted();
         if self.order.len() > start {
-            let ids = self.ids_for(self.order.handles(start..start + limit));
-            let commits = read_exactly(&mut self.source, &mut self.work, &ids)?;
-            let done = start + commits.len() >= self.order.len();
+            let handles = self.order.handles(start..start + limit).to_vec();
+            let links = links_exactly(&mut self.source, &mut self.work, &handles)?;
+            let done = start + links.len() >= self.order.len();
             return Ok(Pull {
-                commits,
+                links,
                 done,
                 stopped: false,
             });
         }
 
-        let pull = self.source.next(limit, stop).map_err(StreamError::Source)?;
-        self.work.commits_pulled += pull.commits.len();
-        let mut fresh = HashMap::with_capacity(pull.commits.len());
-        for (offset, commit) in pull.commits.iter().enumerate() {
+        let pull = self.source.pull(limit, stop).map_err(StreamError::Source)?;
+        self.work.commits_pulled += pull.links.len();
+        let mut fresh = HashMap::with_capacity(pull.links.len());
+        for (offset, link) in pull.links.iter().enumerate() {
             let again = start + offset;
-            let handle = self
-                .source
-                .handle_of(&commit.id)
-                .unwrap_or_else(|| panic!("{:?} has no handle in this source's table", commit.id));
+            let handle = link.commit;
             let first = self
                 .order
                 .row_of(handle)
@@ -413,12 +419,13 @@ impl<S: CommitSource> StreamingLayout<S> {
             .checkpoints
             .nearest_at_or_before(chunk * chunk_rows)
             .unwrap_or_else(|| (0, self.base.clone()));
-        let ids = self.ids_for(self.order.handles(row..end));
-        let commits = read_exactly(&mut self.source, &mut self.work, &ids)?;
-        self.work.rows_replayed += commits.len();
+        let handles = self.order.handles(row..end).to_vec();
+        let links = links_exactly(&mut self.source, &mut self.work, &handles)?;
+        self.work.rows_replayed += links.len();
 
-        for batch in commits.chunks(chunk_rows) {
-            let rows = cursor.extend(batch, &self.source, &mut self.order);
+        for batch in links.chunks(chunk_rows) {
+            let shapes = cursor.extend(batch, &self.source, &mut self.order);
+            let rows = materialise(&mut self.source, &mut self.work, shapes)?;
             let index = row / chunk_rows;
             if !self.cache.contains(index) {
                 self.work.chunks_rebuilt += 1;
@@ -487,15 +494,6 @@ impl<S: CommitSource> StreamingLayout<S> {
         self.order
             .handle_at(row)
             .map(|handle| self.source.id_of(handle))
-    }
-
-    /// The ids `handles` name, in order — what [`read_exactly`] needs, since
-    /// `CommitSource::read` is unchanged by ADR-0026 and still takes ids.
-    fn ids_for(&self, handles: &[CommitHandle]) -> Vec<Oid> {
-        handles
-            .iter()
-            .map(|&handle| self.source.id_of(handle))
-            .collect()
     }
 
     /// Where the viewport goes so that `anchor`'s commit sits at the same
@@ -578,12 +576,12 @@ impl<S: CommitSource> StreamingLayout<S> {
             .checkpoints
             .nearest_at_or_before(row)
             .unwrap_or_else(|| (0, self.base.clone()));
-        let ids = self.ids_for(self.order.handles(start..row));
-        let commits = read_exactly(&mut self.source, &mut self.work, &ids)?;
-        self.work.rows_replayed += commits.len();
+        let handles = self.order.handles(start..row).to_vec();
+        let links = links_exactly(&mut self.source, &mut self.work, &handles)?;
+        self.work.rows_replayed += links.len();
         // The replayed rows are the ones the cache still holds before `row`;
-        // only the cursor they leave behind is wanted.
-        let _replayed = cursor.extend(&commits, &self.source, &mut self.order);
+        // only the cursor they leave behind is wanted, so nothing is read.
+        let _replayed = cursor.extend(&links, &self.source, &mut self.order);
         self.order.truncate(row);
         self.frontier = cursor;
         self.done = false;
@@ -602,21 +600,61 @@ impl<S: CommitSource> StreamingLayout<S> {
     }
 }
 
-/// Reads `ids` from `source` and checks it returned exactly them, in order.
-fn read_exactly<S: CommitSource>(
+/// Turns laid-out shapes into rows: reads their commits, names the merge
+/// lanes they draw (reading a merge only when it lies above the batch), and
+/// assembles each.
+fn materialise<S: CommitSource>(
     source: &mut S,
     work: &mut Work,
-    ids: &[Oid],
+    shapes: Vec<RowShape>,
+) -> Result<Vec<Row>, StreamError<S::Error>> {
+    let handles: Vec<CommitHandle> = shapes.iter().map(|shape| shape.commit).collect();
+    let commits = read_exactly(source, &handles)?;
+    work.hydrated += commits.len();
+    // `gather`'s reader borrows the source mutably, so the ids it asks for —
+    // only merge parents, for the short-sha fallback — are resolved first.
+    let parent_ids: HashMap<CommitHandle, Oid> = shapes
+        .iter()
+        .flat_map(|shape| shape.lanes.iter().flatten())
+        .filter_map(|identity| match *identity {
+            crate::lane::LaneIdentity::Merge { parent, .. } => Some((parent, source.id_of(parent))),
+            crate::lane::LaneIdentity::Known(_) => None,
+        })
+        .collect();
+    let names = MergeNames::gather(
+        &shapes,
+        &commits,
+        |merges| read_exactly(source, merges),
+        |parent| {
+            *parent_ids
+                .get(&parent)
+                .unwrap_or_else(|| unreachable!("{parent:?} is a merge parent of these shapes"))
+        },
+    )?;
+    work.merge_reads += names.reads();
+    let id_of = |handle| source.id_of(handle);
+    shapes
+        .into_iter()
+        .zip(commits)
+        .map(|(shape, commit)| Ok(Row::assemble(shape, commit, &names, &id_of)?))
+        .collect()
+}
+
+/// Reads `handles` from `source` and checks it returned exactly them, in
+/// order.
+fn read_exactly<S: CommitSource>(
+    source: &mut S,
+    handles: &[CommitHandle],
 ) -> Result<Vec<Commit>, StreamError<S::Error>> {
-    let commits = source.read(ids).map_err(StreamError::Source)?;
-    work.commits_reread += commits.len();
-    if commits.len() != ids.len() {
+    let commits = source.read(handles).map_err(StreamError::Source)?;
+    if commits.len() != handles.len() {
         return Err(StreamError::ShortRead {
-            asked: ids.len(),
+            asked: handles.len(),
             got: commits.len(),
         });
     }
-    for (&asked, commit) in ids.iter().zip(&commits) {
+    for (&handle, commit) in handles.iter().zip(&commits) {
+        let asked = source.id_of(handle);
         if commit.id != asked {
             return Err(StreamError::WrongCommit {
                 asked,
@@ -625,6 +663,32 @@ fn read_exactly<S: CommitSource>(
         }
     }
     Ok(commits)
+}
+
+/// Re-serves the links of `handles` from `source` and checks it returned
+/// exactly them, in order.
+fn links_exactly<S: CommitSource>(
+    source: &mut S,
+    work: &mut Work,
+    handles: &[CommitHandle],
+) -> Result<Vec<Link>, StreamError<S::Error>> {
+    let links = source.links(handles).map_err(StreamError::Source)?;
+    work.commits_reread += links.len();
+    if links.len() != handles.len() {
+        return Err(StreamError::ShortRead {
+            asked: handles.len(),
+            got: links.len(),
+        });
+    }
+    for (&handle, link) in handles.iter().zip(&links) {
+        if link.commit != handle {
+            return Err(StreamError::WrongCommit {
+                asked: source.id_of(handle),
+                got: source.id_of(link.commit),
+            });
+        }
+    }
+    Ok(links)
 }
 
 #[cfg(test)]

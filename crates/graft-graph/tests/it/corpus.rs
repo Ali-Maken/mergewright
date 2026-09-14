@@ -23,29 +23,32 @@ use graft_git::branches::Branches;
 use graft_git::history::{CHUNK, Order, Walk};
 use graft_git::repo::{RefEntry, RefTarget, RepoHandle};
 use graft_graph::identity::BranchIdentity;
-use graft_graph::lane::Lane;
+use graft_graph::lane::{Lane, LaneIdentity};
 use graft_graph::layout::{EmittedOrder, HandleLookup, LayoutCursor, layout};
 use graft_graph::merge_name::recover_branch_name;
-use graft_graph::row::Row;
+use graft_graph::row::{MergeNames, Row};
 use graft_graph::seeds::{BranchSeed, Seeds};
 
 /// A dense id-to-handle table over the commits this test lays out, built
 /// once per drawing — exactly what `layout()`'s own convenience path builds
 /// internally, but here `draw` needs the cursor directly (to read lanes
 /// before and after each row), so it builds its own.
-struct TestHandles(HashMap<Oid, CommitHandle>);
+struct TestHandles(HashMap<Oid, CommitHandle>, Vec<Oid>);
 
 impl TestHandles {
     fn of(commits: &[Commit]) -> Self {
-        let mut table = HashMap::new();
+        let mut table = TestHandles(HashMap::new(), Vec::new());
         for commit in commits {
             for id in std::iter::once(&commit.id).chain(&commit.parents) {
-                let next = u32::try_from(table.len())
-                    .unwrap_or_else(|_| panic!("more than u32::MAX commits in one drawing"));
-                table.entry(*id).or_insert(CommitHandle(next));
+                if !table.0.contains_key(id) {
+                    let next = u32::try_from(table.1.len())
+                        .unwrap_or_else(|_| panic!("more than u32::MAX commits in one drawing"));
+                    table.0.insert(*id, CommitHandle(next));
+                    table.1.push(*id);
+                }
             }
         }
-        TestHandles(table)
+        table
     }
 }
 
@@ -55,6 +58,10 @@ impl HandleLookup for TestHandles {
             .0
             .get(&id)
             .unwrap_or_else(|| panic!("{id:?} was never seen in this drawing's commits"))
+    }
+
+    fn id_of(&self, handle: CommitHandle) -> Oid {
+        self.1[handle.index()]
     }
 }
 
@@ -268,12 +275,40 @@ fn draw(commits: &[Commit], seeds: Seeds, labels: &HashMap<BranchIdentity, Strin
     let mut cursor = LayoutCursor::new(seeds, &handles);
     let mut order = EmittedOrder::new();
     let mut steps = Vec::with_capacity(commits.len());
+    let by_id: HashMap<Oid, &Commit> = commits.iter().map(|commit| (commit.id, commit)).collect();
     for commit in commits {
         let before = cursor.active_lanes().to_vec();
-        let row = cursor
-            .extend(std::slice::from_ref(commit), &handles, &mut order)
+        let link = graft_core::commit_handle::Link {
+            commit: handles.handle_of(commit.id),
+            parents: commit
+                .parents
+                .iter()
+                .map(|&parent| handles.handle_of(parent))
+                .collect(),
+        };
+        let shape = cursor
+            .extend(std::slice::from_ref(&link), &handles, &mut order)
             .remove(0);
         let after = cursor.active_lanes().to_vec();
+        let names = MergeNames::gather(
+            std::slice::from_ref(&shape),
+            std::slice::from_ref(commit),
+            |merges| {
+                Ok::<_, std::convert::Infallible>(
+                    merges
+                        .iter()
+                        .map(|&merge| by_id[&handles.id_of(merge)].clone())
+                        .collect(),
+                )
+            },
+            |handle| handles.id_of(handle),
+        )
+        .unwrap_or_else(|never| match never {});
+        let (before, after) = (with_names(before, &names), with_names(after, &names));
+        let row = Row::assemble(shape, commit.clone(), &names, &|handle| {
+            handles.id_of(handle)
+        })
+        .unwrap_or_else(|why| panic!("assembling a row from its own names: {why}"));
         steps.push((row, before, after));
     }
     // Columns are only ever appended, so the final count is the widest row.
@@ -285,6 +320,23 @@ fn draw(commits: &[Commit], seeds: Seeds, labels: &HashMap<BranchIdentity, Strin
         .collect();
     let rows = steps.into_iter().map(|(row, _, _)| row).collect();
     Drawing { rows, width, lines }
+}
+
+/// `lanes` with each merge lane's name resolved from `names`: every lane open
+/// above or below a row draws on it, so its name was gathered with the row's.
+fn with_names(lanes: Vec<Option<Lane>>, names: &MergeNames) -> Vec<Option<Lane>> {
+    lanes
+        .into_iter()
+        .map(|lane| {
+            lane.map(|mut lane| {
+                let known = names
+                    .resolve(lane.identity)
+                    .unwrap_or_else(|why| panic!("lane on this row not named: {why}"));
+                lane.identity = LaneIdentity::Known(known);
+                lane
+            })
+        })
+        .collect()
 }
 
 /// One row: the grid, then `sha7  lane-label  subject`.
@@ -324,7 +376,12 @@ fn row_line(
     let lane = open_at(before, row.lane).or_else(|| open_at(after, row.lane));
     let label = lane.map_or("?", |lane| {
         labels
-            .get(&lane.identity)
+            .get(
+                &lane
+                    .identity
+                    .known()
+                    .unwrap_or_else(|| panic!("draw names every lane it labels")),
+            )
             .map_or("(unnamed)", String::as_str)
     });
 

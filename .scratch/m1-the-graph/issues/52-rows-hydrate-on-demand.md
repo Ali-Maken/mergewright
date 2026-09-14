@@ -1,6 +1,6 @@
 # m1-the-graph/52 — The layout lays out links: `RowShape`, deferred merge-lane identity, `Row::assemble`
 
-Status: ready
+Status: done
 Build with: **Opus** (high) — the layout's core seam (links in, shapes out, one assembly step) with a deferred identity threaded through the cursor; judged by the existing snapshots staying byte-identical, so not Fable.
 Needs: `Link`, `Parents`, `CommitHandle` (core); `CommitSource::{links, handle_of, id_of}`, `Walk::next_links` (commit-handles-and-table); `EmittedOrder` on handles, `Lane.waiting_for: CommitHandle` (order-and-inclusion-on-handles).
 Blocked by: 49, 50, 51, 51b, 51c, 51d
@@ -107,13 +107,19 @@ pub enum LayoutError { /* existing */ Assemble(AssembleError) }   // `layout()` 
 `WalkSource::pull` calls `next_links` with the `limit` it passes to `next_chunk` today and maps `LinkChunk` to `Pull` field for field.
 
 ## Acceptance
-- [ ] Every existing `graft-graph` test and every corpus snapshot green, **unchanged** (`Row`s field by field, `lanes` included): the proof that a deferred identity resolves to today's identity.
-- [ ] `layout()` over a slice ≡ `StreamingLayout` rows over the same order, field by field, on every corpus shape and the 5k synthetic pair (the test that exists today, on the new path).
-- [ ] New test, `layout::stream::tests`: a merge whose lane stays open across a chunk boundary (`chunk_rows` small). The chunk holding the merge assembles with `MergeNames::reads() == 0`; the next chunk assembles with `reads() == 1`; both chunks' `lanes` equal `layout()`'s. `Work.merge_reads` counts it.
-- [ ] New test, `row`: `assemble` with a `Merge` identity missing from `names` → `Err(MergeNotGathered)`; nothing panics.
-- [ ] `graft::history` tests green; `frames::` rows-on-hand check still passes in release.
-- [ ] The guard above checked and stated in the report: `Lane.identity` is never compared for a layout decision (say where you looked).
-- [ ] MAP.md for both crates updated; no `unwrap_or_default`/`let _` on a read result.
+- [x] Every existing `graft-graph` test and every corpus snapshot green, **unchanged** (`Row`s field by field, `lanes` included): the proof that a deferred identity resolves to today's identity.
+- [x] `layout()` over a slice ≡ `StreamingLayout` rows over the same order, field by field, on every corpus shape and the 5k synthetic pair (the test that exists today, on the new path).
+- [x] New test, `layout::stream::tests`: a merge whose lane stays open across a chunk boundary (`chunk_rows` small). The chunk holding the merge assembles with `MergeNames::reads() == 0`; the next chunk assembles with `reads() == 1`; both chunks' `lanes` equal `layout()`'s. `Work.merge_reads` counts it.
+- [x] New test, `row`: `assemble` with a `Merge` identity missing from `names` → `Err(MergeNotGathered)`; nothing panics.
+- [ ] `graft::history` tests green (done); `frames::` rows-on-hand check still passes in release — **not run**: `frames` is heavy-tier (`#[cfg(feature = "heavy-tests")]`) and builders run the fast tier only; left for the M1 review's release run.
+- [x] The guard above checked and stated in the report: `Lane.identity` is never compared for a layout decision (say where you looked).
+- [x] MAP.md for both crates updated; no `unwrap_or_default`/`let _` on a read result.
+
+## Notes (builder, 2026-09-14)
+- Guard checked: in `layout.rs`, `Lane.identity` is only copied into `RowShape.lanes` (`assign_row`, `own`, `set_column`); column reuse, seeding and `known_identities` (looked up by commit id) never compare it.
+- Deviations: no `LayoutError` exists, so `extend` stays infallible; `pull` keeps its `limit`; `known_identities` stays keyed by `Oid` (a known tip may be absent from the table); `MergeNames` is keyed by (merge, parent) so an octopus merge's short-sha fallback stays per parent.
+- `tests/it/streaming.rs` read-count assertions changed by design: every materialised row is now read by handle, so `reads == hydrated + merge_reads` (was `reads == commits_reread`). Row equality assertions unchanged.
+- No compaction during the build itself; the session was continued once from a summary.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo clippy --all-targets --features heavy-tests -- -D warnings` · `cargo test`.

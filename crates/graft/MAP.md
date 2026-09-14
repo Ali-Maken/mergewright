@@ -287,7 +287,7 @@ One line per public item. Update when a public item changes.
 - `serve` (fn) — answer `RowRequest`s through `Views`, each in the view it names, until the channel has no sender.
 
 ## history::source
-- `WalkSource` (struct) — a walk paired with the repo handle it re-reads from, one worker thread.
+- `WalkSource` (struct) — a walk paired with the repo handle it re-reads from, one worker thread; `pull` yields links (`Walk::next_links`), `read` hydrates by handle through `read_commit`.
 - `WalkSource::new` (fn) — build a source that streams `walk` and re-reads from `handle`; handles from the walk's table.
 - `WalkSource::in_order` (fn) — build a source that streams a known order of handles, reading each commit; takes the `Arc<CommitTable>` the order's handles were interned against.
 
