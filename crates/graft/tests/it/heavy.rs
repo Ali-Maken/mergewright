@@ -58,6 +58,52 @@ fn budgets_hold_on_the_100k_fixture_with_a_commit_graph() {
     check(Scale::HEAVY.with_commit_graph(), true);
 }
 
+/// ADR-0026's slope guard: peak RSS may rise by at most this much per
+/// commit between the 10k and 100k commit-graph fixtures. Before the
+/// handle table it rose 0.85–0.93 KiB per commit (m1-the-graph/46).
+const PEAK_RSS_SLOPE_LIMIT: u64 = 150;
+
+/// The memory curve's slope (m1-the-graph/56, ADR-0026): peak RSS on the
+/// 100k commit-graph fixture minus peak RSS on the 10k one, per commit,
+/// must stay under [`PEAK_RSS_SLOPE_LIMIT`]. A flat rendering set and
+/// handle-sized order state give ~60–80 B; `Oid`-keyed tables gave ~900.
+#[test]
+fn peak_rss_slope_per_commit_with_a_commit_graph() {
+    let small = Scale::of(10_000).with_commit_graph();
+    let large = Scale::HEAVY.with_commit_graph();
+    let (small_peak, large_peak) = {
+        let turn = MEASURING.lock().unwrap_or_else(PoisonError::into_inner);
+        let pair = (peak_rss_of(small), peak_rss_of(large));
+        drop(turn);
+        pair
+    };
+    let commits = u64::from(large.commits() - small.commits());
+    let rise = large_peak.saturating_sub(small_peak);
+    let slope = rise.div_ceil(commits);
+    println!(
+        "peak RSS {} MiB at {} and {} MiB at {}: slope {slope} B/commit against {PEAK_RSS_SLOPE_LIMIT}",
+        small_peak / (1024 * 1024),
+        small.name(),
+        large_peak / (1024 * 1024),
+        large.name(),
+    );
+    assert!(
+        slope <= PEAK_RSS_SLOPE_LIMIT,
+        "peak RSS rises {slope} B per commit between {} and {}, over the {PEAK_RSS_SLOPE_LIMIT} B ADR-0026 allows",
+        small.name(),
+        large.name()
+    );
+}
+
+/// Peak RSS of one budget run on `scale`, measured in a child of its own.
+fn peak_rss_of(scale: Scale) -> u64 {
+    let repo = synthetic::borrow(scale).unwrap_or_else(|why| panic!("{why}"));
+    let line = result_line(&repo);
+    line.split_whitespace()
+        .find_map(|pair| pair.strip_prefix("peak_rss=")?.parse().ok())
+        .unwrap_or_else(|| panic!("no peak_rss in {line:?}"))
+}
+
 /// The same history with commits sized after git/git (m1-the-graph/27d):
 /// the small fixture passed at 179 MiB while git/git failed at 305, because
 /// the cost that broke the budget scaled with commit bytes, not commits.

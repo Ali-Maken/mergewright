@@ -1,0 +1,98 @@
+# m1-the-graph/56: the offer on a copy of the 1M small no-commit-graph fixture, 120x40, release
+# 120x40: the offer frame
+ graft /Users/devuser/dev/sandbox/gitter/target/56/offer-1m  reading history…
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent  F focus  H stash  y sha  PgUp/PgDn page
+# 120x40: after B, the written frame (B to written line: 5.1 s wall)
+ graft /Users/devuser/dev/sandbox/gitter/target/56/offer-1m  500 rows so far
+◌     Uncommitted changes (1 untracked)
+◆     [◆ main] [tag: release/1000000] Trunk commit 1000000                                               GF 5y   eae4445
+●     Trunk commit 999999                                                                                GF 5y   419a6cb
+●     Trunk commit 999998                                                                                GF 5y   25839b7
+●     Trunk commit 999997                                                                                GF 5y   0f9390b
+●     Trunk commit 999996                                                                                GF 5y   8a35bdc
+◉─╮   Merge branch 'topic/071587'                                                                        GF 5y   be105ab
+│ ●   topic/071587: step 3                                                                               GF 5y   15a3d8a
+│ ●   topic/071587: step 2                                                                               GF 5y   cd99018
+│ ●   topic/071587: step 1                                                                               GF 5y   44fd472
+●─╯   Trunk commit 999991                                                                                GF 5y   911f9b7
+●     Trunk commit 999990                                                                                GF 5y   ac223b6
+●     Trunk commit 999989                                                                                GF 5y   89d8cdd
+●     Trunk commit 999988                                                                                GF 5y   c7c7a42
+●     Trunk commit 999987                                                                                GF 5y   ed12d8c
+●     Trunk commit 999986                                                                                GF 5y   c6c0774
+●     Trunk commit 999985                                                                                GF 5y   54985c1
+●     Trunk commit 999984                                                                                GF 5y   6573a2c
+●     Trunk commit 999983                                                                                GF 5y   f8561e7
+●     Trunk commit 999982                                                                                GF 5y   480834f
+◉─╮   Merge branch 'topic/071586'                                                                        GF 5y   df33713
+│ ●   topic/071586: step 3                                                                               GF 5y   ea0cfb7
+│ ●   topic/071586: step 2                                                                               GF 5y   a967689
+│ ●   topic/071586: step 1                                                                               GF 5y   c003400
+●─╯   Trunk commit 999977                                                                                GF 5y   d1a35be
+●     Trunk commit 999976                                                                                GF 5y   2c4915b
+●     Trunk commit 999975                                                                                GF 5y   43f7469
+●     Trunk commit 999974                                                                                GF 5y   d978250
+●     Trunk commit 999973                                                                                GF 5y   6d0ada9
+●     Trunk commit 999972                                                                                GF 5y   ba2a24c
+●     Trunk commit 999971                                                                                GF 5y   27b21aa
+●     Trunk commit 999970                                                                                GF 5y   ece2519
+●     Trunk commit 999969                                                                                GF 5y   4609412
+●     Trunk commit 999968                                                                                GF 5y   8aeeda4
+◉─╮   Merge branch 'topic/071585'                                                                        GF 5y   1429acf
+│ ●   topic/071585: step 3                                                                               GF 5y   9f6712e
+│ ●   topic/071585: step 2                                                                               GF 5y   bc4b741
+ commit-graph written: 1,000,000 commits · the next open sorts at once
+ q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent  F focus  H stash  y sha  PgUp/PgDn page
+# the same repository after B, as a curve cell (scripts/memory-curve.sh --repo target/56/offer-1m; release, 3 runs)
+# 1M small after B: target/56/offer-1m
+# 1M small after B: pack 297 MiB on disk, commit-graph present
+1M small after B run1: first paint 122.030875ms, G 509.268542ms, g 631.333µs, 1000000 rows, provisional order: false, peak RSS at paint 218.9 MiB, after G 236.9 MiB, end 236.9 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+1M small after B run1: footprint 35.2 MiB, process max RSS 237.0 MiB
+1M small after B run2: first paint 93.764958ms, G 516.938625ms, g 714.959µs, 1000000 rows, provisional order: false, peak RSS at paint 218.7 MiB, after G 236.9 MiB, end 236.9 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+1M small after B run2: footprint 35.2 MiB, process max RSS 237.0 MiB
+1M small after B run3: first paint 91.755833ms, G 517.248917ms, g 636.792µs, 1000000 rows, provisional order: false, peak RSS at paint 218.8 MiB, after G 238.5 MiB, end 238.5 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+1M small after B run3: footprint 36.8 MiB, process max RSS 238.6 MiB
+1M small after B once: EmittedOrder: 11339736 B total over 1000000 commits, 12 B/commit (m1-the-graph/51c); peak RSS now 996.4 MiB
+1M small after B once: cold G, viewport at the top: hydrated 1500 (bound 2000), merge_reads 1 (bound 1), links_read 1000000, pulled 1000000, rows 1000000 (m1-the-graph/52b)
+1M small after B once: peak RSS after the cold G measurement 996.4 MiB
+1M small after B once: far jump half way, to row 500000 of 1000000: 1.456785542s, replayed 500500 rows, 1 chunks rebuilt, hydrated 500 (m1-the-graph/56)
+1M small after B once: far jump nine tenths, to row 900000 of 1000000: 2.1355ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500 (m1-the-graph/56)
+1M small after B once: peak RSS after the far jump measurements 996.4 MiB

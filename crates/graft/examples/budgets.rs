@@ -8,21 +8,26 @@
 //!
 //! Run it alone: the peak RSS is this process's, and the timings are wall
 //! clock.
+//!
+//! `--gate` runs only the gated path (open → first paint → `G` → `g`) and
+//! exits, so `/usr/bin/time -l`'s process-wide numbers describe that path
+//! and nothing else; the other measurements below lay history out again
+//! (m1-the-graph/56).
 
 #[path = "../tests/it/budget_run.rs"]
 mod budget_run;
 #[path = "budgets/phases.rs"]
 mod phases;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
-    let Some((want_phases, repo)) = arguments() else {
-        eprintln!("usage: budgets [--phases] <repository>");
+    let Some((mode, repo)) = arguments() else {
+        eprintln!("usage: budgets [--phases | --gate] <repository>");
         return ExitCode::FAILURE;
     };
-    if want_phases {
+    if mode == Mode::Phases {
         return run_phases(&repo);
     }
     let numbers = match budget_run::run(&repo) {
@@ -44,11 +49,21 @@ fn main() -> ExitCode {
         mib(numbers.peak_rss),
         numbers.overflow_len,
     );
-    match budget_run::order_bytes(&repo) {
+    if mode == Mode::Gate {
+        return ExitCode::SUCCESS;
+    }
+    counters(&repo)
+}
+
+/// The counters that lay history out again after the gated path: order
+/// bytes, what a cold `G` reads, two far jumps.
+fn counters(repo: &Path) -> ExitCode {
+    match budget_run::order_bytes(repo) {
         Ok((bytes, commits)) => {
             let per_commit = bytes.div_ceil(commits.max(1));
             println!(
-                "EmittedOrder: {bytes} B total over {commits} commits, {per_commit} B/commit (m1-the-graph/51c)"
+                "EmittedOrder: {bytes} B total over {commits} commits, {per_commit} B/commit (m1-the-graph/51c); peak RSS now {}",
+                peak_now()
             );
         }
         Err(why) => {
@@ -56,7 +71,7 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     }
-    match budget_run::cold_jump(&repo) {
+    match budget_run::cold_jump(repo) {
         Ok(jump) => {
             let work = jump.work;
             println!(
@@ -69,13 +84,39 @@ fn main() -> ExitCode {
                 work.commits_pulled,
                 jump.rows,
             );
-            ExitCode::SUCCESS
+            println!("peak RSS after the cold G measurement {}", peak_now());
         }
         Err(why) => {
             eprintln!("budgets: cold jump: {why}");
-            ExitCode::FAILURE
+            return ExitCode::FAILURE;
         }
     }
+    // A `Find` after a cold `G`, half way down and nine tenths of the way
+    // down: 64 LRU checkpoints × 2,000 rows anchor only the last 128k rows
+    // laid out, so past that the middle may have no checkpoint near
+    // (m1-the-graph/56, KNOWN_GAPS "Least-recently-used is the wrong policy").
+    for (name, at) in [
+        ("half way", (|rows| rows / 2) as fn(usize) -> usize),
+        ("nine tenths", |rows| rows / 10 * 9),
+    ] {
+        match budget_run::far_jump(repo, at) {
+            Ok(jump) => println!(
+                "far jump {name}, to row {} of {}: {:?}, replayed {} rows, {} chunks rebuilt, hydrated {} (m1-the-graph/56)",
+                jump.row,
+                jump.rows,
+                jump.took,
+                jump.rows_replayed,
+                jump.chunks_rebuilt,
+                jump.hydrated,
+            ),
+            Err(why) => {
+                eprintln!("budgets: far jump {name}: {why}");
+                return ExitCode::FAILURE;
+            }
+        }
+    }
+    println!("peak RSS after the far jump measurements {}", peak_now());
+    ExitCode::SUCCESS
 }
 
 /// `--phases`: first paint cut into phases, serially (m1-the-graph/55).
@@ -89,14 +130,37 @@ fn run_phases(repo: &std::path::Path) -> ExitCode {
     }
 }
 
-/// `[--phases] <repository>`: whether to print phases, and the repository.
-fn arguments() -> Option<(bool, PathBuf)> {
+/// What to measure.
+#[derive(PartialEq, Eq, Clone, Copy)]
+enum Mode {
+    /// Every measurement.
+    All,
+    /// First paint cut into phases (`--phases`).
+    Phases,
+    /// Only the gated path, then exit (`--gate`).
+    Gate,
+}
+
+/// `[--phases | --gate] <repository>`: the mode, and the repository.
+fn arguments() -> Option<(Mode, PathBuf)> {
     let mut args: Vec<_> = std::env::args_os().skip(1).collect();
-    let want_phases = args.first().is_some_and(|arg| arg == "--phases");
-    if want_phases {
+    let mode = match args.first() {
+        Some(flag) if flag == "--phases" => Mode::Phases,
+        Some(flag) if flag == "--gate" => Mode::Gate,
+        _ => Mode::All,
+    };
+    if mode != Mode::All {
         args.remove(0);
     }
-    args.first().map(|repo| (want_phases, PathBuf::from(repo)))
+    args.first().map(|repo| (mode, PathBuf::from(repo)))
+}
+
+/// This process's peak RSS so far, in MiB, or why it could not be read.
+fn peak_now() -> String {
+    match graft_fixtures::peak_rss() {
+        Ok(bytes) => format!("{} MiB", mib(bytes)),
+        Err(why) => format!("unreadable: {why}"),
+    }
 }
 
 fn mib(bytes: u64) -> String {

@@ -195,6 +195,66 @@ pub fn cold_jump(repo: &Path) -> Result<ColdJump, String> {
     })
 }
 
+/// One far jump after a cold `G` (m1-the-graph/56): what `rows` costs when
+/// the row asked for sits in a passed-through stretch of history.
+#[allow(
+    dead_code,
+    reason = "measured by examples/budgets.rs only; no test asserts on it yet (the 1M jump is a review-time number)"
+)]
+pub struct FarJump {
+    /// The row jumped to.
+    pub row: usize,
+    /// Rows laid out in total.
+    pub rows: usize,
+    /// Wall time of the one `rows` call.
+    pub took: Duration,
+    /// Rows replayed from the nearest checkpoint to serve it.
+    pub rows_replayed: usize,
+    /// Chunks rebuilt to serve it.
+    pub chunks_rebuilt: usize,
+    /// Commits read to assemble the screen.
+    pub hydrated: usize,
+}
+
+/// Lays out all of `repo` as [`cold_jump`] does, then asks for one screen
+/// at `at(rows)` — a `Find` deep into history — and reads what the layout
+/// had to replay to serve it (ADR-0026: `max_checkpoints` × `checkpoint_rows`
+/// cover 128k rows; past that LRU may leave a checkpoint-less stretch).
+#[allow(
+    dead_code,
+    reason = "measured by examples/budgets.rs only; no test asserts on it yet (the 1M jump is a review-time number)"
+)]
+pub fn far_jump(repo: &Path, at: impl FnOnce(usize) -> usize) -> Result<FarJump, String> {
+    direct_layout(repo, |layout| {
+        let screen = usize::from(SIZE.rows);
+        layout.set_viewport(0..screen);
+        advance_to_the_end(layout)?;
+        let rows = layout.rows_emitted();
+        let row = at(rows).min(rows.saturating_sub(screen));
+        let before = layout.work();
+        let started = Instant::now();
+        let served = layout
+            .rows(row..(row + screen).min(rows))
+            .map_err(|why| why.to_string())?;
+        let took = started.elapsed();
+        if served.len() != (row + screen).min(rows) - row {
+            return Err(format!(
+                "asked {screen} rows at {row}, got {}",
+                served.len()
+            ));
+        }
+        let after = layout.work();
+        Ok(FarJump {
+            row,
+            rows,
+            took,
+            rows_replayed: after.rows_replayed - before.rows_replayed,
+            chunks_rebuilt: after.chunks_rebuilt - before.chunks_rebuilt,
+            hydrated: after.hydrated - before.hydrated,
+        })
+    })
+}
+
 /// Distinct `Merge` identities drawn on `shape`.
 fn merge_lanes_open(shape: &RowShape) -> usize {
     let mut open: Vec<CommitHandle> = shape
