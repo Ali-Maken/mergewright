@@ -1,6 +1,6 @@
 # m1-the-graph/52 — Rows hydrate on demand: the layout lays out links, reads commits only near the viewport
 
-Status: ready
+Status: blocked (spec question, see Handoff)
 Build with: **Opus** (high) — the streaming layout's core semantics (pass-through, materialisation, rebuild fingerprints); correctness is judged by determinism tests and the memory curve, so not Fable.
 Needs: `Link`, `Parents`, `CommitHandle` (core); `CommitSource::{links, handle_of, id_of}`, `Walk::next_links` (commit-handles-and-table); `EmittedOrder` on handles, `Lane.waiting_for: CommitHandle` (order-and-inclusion-on-handles); the walk yielding links from the graph (walk-reads-the-commit-graph) for the cg-path numbers.
 Blocked by: 49, 50, 51, 51b, 51c, 51d
@@ -67,3 +67,18 @@ pub fn fingerprint(shapes: &[RowShape]) -> Fingerprint;   // pub(crate) is fine;
 
 ## Size
 One context, under ~80k tokens. Seam: (a) `graft-graph` (`Pull`/`RowShape`/`extend`/pass-through/`rows` rebuild) with tests; (b) `graft::history::WalkSource` + measurements. Stop at the seam with a handoff note rather than compacting.
+
+## Handoff (2026-09-14, builder-opus): blocked on a spec gap, no code changed
+
+**What's wrong:** `LayoutCursor::open_merge_lane` (layout.rs ~l.393) sets a merge lane's identity from `recover_branch_name(commit.subject())`, falling back to `of_short_sha(parent)`. The subject is in the commit **message**, and only a commit read (`read`) gets it. `Link` has handles only. The identity lives in `Lane.identity` and is copied into every later row's `lanes` while that lane stays open. So:
+- a passed-through chunk can't compute `RowShape.lanes` (or the next lane state) without reading every **merge** commit in it;
+- a materialised chunk far below needs the subjects of old merges whose lanes are still open.
+Other id-derived identities are fine: `known_identities.get(id)` and `of_short_sha(id)` both work through `id_of`. The subject is the only thing that needs a read.
+
+**Options (planner-fable or user to choose):**
+- (a) Pass-through reads merge commits only, through `read`, counted as `hydrated`. Simplest. Fails the stated `hydrated ≤ 2×chunk_rows + buffer_rows` bound on merge-heavy history (git/git has about 25% merges), so the acceptance would need restating. Costs the user pack pages for every merge during `G`.
+- (b) **Recommended.** Deferred merge identity. `Lane.identity` and `RowShape.lanes` hold `LaneIdentity::{Known(BranchIdentity), Merge { merge: CommitHandle, parent: CommitHandle }}`. The fingerprint hashes the deferred form, which stays deterministic. `Row::assemble` resolves it, reading at most one commit per distinct merge lane in the rows asked for (bounded by lanes on screen, cached per call). `Row.lanes` stays `Option<BranchIdentity>`, so snapshots, fold and raster don't change. Cost: `assemble` needs a resolver (`&mut dyn FnMut(CommitHandle) -> Commit subject`), so its signature changes from the spec. `Lane` becomes public API change.
+- (c) Get subjects through `links`/`pull`. Not possible: the commit-graph has no messages.
+
+**Next step once decided:** seam (a) as the Scope says, with `RowShape.lanes` typed per the choice. Read-first already done: source.rs, stream.rs, cache.rs, checkpoint.rs, layout.rs, row.rs. Callers of `extend`/`next`/`read`: `inclusion.rs`, `layout/tests.rs`, `layout/stream/tests.rs`, `graft::history::source`.
+**Gotcha:** `RowCache` fingerprints `&[Row]` today. Pass-through needs a `Fingerprint` over shapes, so evicted chunks should fingerprint shapes too (one kind, one check).
