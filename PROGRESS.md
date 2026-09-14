@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — M1 review (opus), round 1 · 89 tickets: 84 done, 1 partial, 2 split, 2 wontfix
+**Current step:** M1 The graph — paused (power cut); next: M1 review round 1 (opus), start 62fdaa5 · 89 tickets: 84 done, 1 partial, 2 split, 2 wontfix
 
 ---
 
@@ -276,6 +276,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-14 · conductor · filed 64 frames at a million (Sonnet): 1M cg `frames::` scroll tests, manual, fulfils ADR-0026's deferral; 28 blocked by 64
 - 2026-09-14 · m1/64 · sonnet · done · 1M cg frames:: p99 unicode 6.37–6.75 ms, pixel 6.89–8.01 ms (bar 16), 3 runs each; gated by GRAFT_1M env var (fails loudly unset, ADR-0018 bans #[ignore]); standing heavy commands get `--skip 1m`; 100k frames green; flake: fifty_thousand_refs_…_unicode failed once back-to-back, green on rerun (builder: CPU power state) → review to judge; 119k tokens, no compaction
 - 2026-09-14 · m1/28 wrap · sonnet · done · TESTING.md terminal matrix (two verdicts, reads-well blank; Zed/VS Code first) + ADR-0027 cold row; scripts/m1-checkpoint.sh (criss-cross verified via Python pty harness; git-git no-network exits 1 with message; foxtrot/octopus share the code path, not run separately); PROMPT/DESIGN edits for ADR-0022–25; KNOWN_GAPS sweep: 2 bare-M1 rows re-owned, 1 new (cargo run -- ambiguity, M2), heavy clippy closed; reviewer.md heavy clippy gate; README/CHANGELOG; open for user: confusables/variation-selector policy row (KNOWN_GAPS ~116); 97k tokens, no compaction
+- 2026-09-14 · conductor · M1 review round 1 (opus) dispatched then stopped at start — user: power cut coming, don't move on; start hash 62fdaa5 (last commit before M1); re-dispatch the review fresh on resume (brief: gates, heavy + release perf + GRAFT_1M frames, repeat-cycle leak check, 56 review table + KNOWN_GAPS 56d, carried items, frames flake)
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.
