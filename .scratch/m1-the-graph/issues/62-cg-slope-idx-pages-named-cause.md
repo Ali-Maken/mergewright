@@ -1,6 +1,6 @@
-# m1-the-graph — Commit-graph slope: name the `walk_new`/`first_chunk` page holders by measurement, cut only an avoidable gix read (bar 150 kept)
+# m1-the-graph/62 — Commit-graph slope: name the `walk_new`/`first_chunk` page holders by measurement, cut only an avoidable gix read (bar 150 kept)
 
-Status: draft — **file only if the user keeps ADR-0026's 150 B/commit and wants the cut attempted** (spec-only pass 3, planner-fable, 2026-09-14). The recommended branch is `slope-guard-bounds-heap-reports-pages.md`; its "The finding" section is this ticket's starting table.
+Status: wontfix — user chose the split check (61), 2026-09-14. Kept as record; the untraced idx offset-table read stays an open line in KNOWN_GAPS via 61.
 Build with: **Opus** (high) — attribution by vmmap region across four holders and a trace into gix's index loading; a stop rule that needs honest judgment; the bar is a number, so not Fable.
 Needs: `budget_run::gated_in_child` / `ChildPeak` (57); `budgets --phases` laps with footprint (57, 58b); the packed copies at `target/58b/packed-{1M,100k}-cg` if they still exist.
 Blocked by: the user's decision; 58b (done).

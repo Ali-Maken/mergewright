@@ -1,9 +1,9 @@
-# m1-the-graph — The slope guard bounds what Graft allocates; mapped pages get a bar derived from their named floor
+# m1-the-graph/61 — The slope guard bounds what Graft allocates; mapped pages get a bar derived from their named floor
 
-Status: draft — **file only if the user takes the recommendation below** (spec-only pass 3, planner-fable, 2026-09-14). The alternative branch is `cg-slope-idx-pages-named-cause.md`.
+Status: ready
 Build with: **Sonnet** (medium) — the child harness already returns both peaks (`ChildPeak.footprint_peak`, `.peak_rss`); this ticket moves one assertion, adds one, and writes the decision down. The numbers are the user's, not the builder's.
 Needs: `budget_run::gated_in_child` / `ChildPeak` (57); the guard `heavy::peak_rss_slope_per_commit_with_a_commit_graph` (56, 57).
-Blocked by: the user's decision on the bar (conductor fills in).
+Blocked by: none — user took the recommendation (split check: heap ≤50, RSS ≤200 B/commit), 2026-09-14. Use that date in the constants and the ADR-0026 amendment.
 
 ## The finding (why the 150 B/commit bar is not a number to adjust, and not one the design can meet)
 

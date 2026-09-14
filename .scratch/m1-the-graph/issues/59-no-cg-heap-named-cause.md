@@ -1,6 +1,6 @@
 # m1-the-graph/59 — No-commit-graph heap at 1M: name the holder, then fix what the design allows
 
-Status: partial (Phase A done; Phase B to file — seam)
+Status: partial — Phase A done (e397a95); Phase B filed as 59b
 Build with: **Opus** (high) — attribution needs judgment (which holder, at which stage, by how much) and the fix is inside the walk's topological sort in `graft-git`; the bar is a number, so it is not a Fable ticket.
 Needs: `graft_fixtures::footprint` and `budgets --gate` / `--phases` footprint lines (guards-measure-in-a-child).
 Blocked by: 57, 58b

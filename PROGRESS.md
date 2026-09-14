@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — planner-fable on slope-guard remainder (walk_new/first_chunk pages) · 82 tickets: 73 done, 5 ready, 2 partial, 2 split, 1 wontfix
+**Current step:** M1 The graph — ticket 61 · 85 tickets: 71 done, 7 ready, 4 partial, 1 split, 2 wontfix
 
 ---
 
@@ -262,6 +262,8 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-14 · m1/58b phase A · opus · partial (a8fdf82) · instrumentation only (TipStats, footprint per lap); reproduces +85.5 MiB (1M), +8.3 (100k); cause: mapped pages not heap — each tag reads two objects (tag then commit), 64 KB/tag at 1M; rest: commit-graph ID chunk 19.1 MiB + 14% of pack idx; object cache 0 and packed refs: no change; tags undeltified (delta-chain hypothesis wrong); estimate after phase B item 2: loose ~145–150 B/commit, packed ~120–125 (unmeasured); objects_read undercounts tags (1 vs 2); 114k tokens, no compaction; continuation 1 of 2 for phase B
 - 2026-09-14 · m1/58b phase B · opus · done, stop rule fired · packed-refs peeled line used, one decode per unknown tip, objects_read exact; off-spec: `KnownCommits::covers_the_graph` (default false) so no-cg repos don't read every tip; slope guard 3× loose 166/167/166, packed 156/156/157 (bar 150, still red); 1M ref_snapshot 85.5→74.0 MiB loose, 33.9 packed; 100k whole run −0.2 MiB only (first_chunk faults the pages later); remainder is walk_new/first_chunk pages → planner-fable; bar and fixtures unchanged; 118k tokens, no compaction
 - 2026-09-14 · m1 slope-guard remainder · planner-fable · spec pass · 150 bar derived without pack .idx pages; 100k packed ≈ cg pages 56 + idx pages 68 + heap 31–35 B/commit; in-design cut ≤11 → still red; 1M cg peak after 58b 168–173 MiB; user question: split guard (heap ≤50 B/commit gated, peak RSS ≤200 gated, page floor named); specs drafted: slope-guard-bounds-heap-reports-pages (Sonnet, on yes), cg-slope-idx-pages-named-cause (Opus, on keep 150); 56 amended; 96k tokens
+- 2026-09-14 · user decision · slope bar: split check (heap ≤50 B/commit gated, peak RSS ≤200 gated, floor named) → 61 filed (Sonnet), 62 (keep 150) wontfix; recorded as ADR-0026 amendment by 61
+- 2026-09-14 · m1/59 phase A · opus · partial (e397a95) · no-cg budgets --phases + prototypes/heap-profile-59; 1M no-cg footprint 170 B/commit (gate 176); cause: interner 58 B + ~94 B freed transients kept in footprint (sort paged arrays 46, interner doubling 38, swap 10); live floor ~76 < bar 100; OS release frees 0 → fix is not allocating; Phase B est ~110, may miss 100; heavy budgets_hold not run; 139k tokens, no compaction; stopped at seam → split 59b (Opus)
 
 ## Open questions for the M1 checkpoint
 - **By eye (30b):** pixel graph goes blank for one frame on PgDn before rows arrive. User judges whether that's acceptable.
