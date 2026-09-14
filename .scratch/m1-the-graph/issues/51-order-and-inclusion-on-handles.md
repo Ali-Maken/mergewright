@@ -1,6 +1,6 @@
 # m1-the-graph/51 — Order, inclusion and the promoted order on handles
 
-Status: split — seam (a) done (f063a33); seam (b) done in 51b (67ff2ac); approximate_bytes box: measured in 51c, fix in 51d
+Status: done — seam (a), (b), approximate_bytes box all closed (51d)
 Build with: **Sonnet** (medium) — a key-type substitution across `graft-graph` and `graft::history`, held by property tests, the corpus snapshots and the promotion tests. Escalates to Opus on a second failure.
 Needs: `CommitHandle`, `HandleSet` (core), `CommitSource::{handle_of, id_of}` (commit-handles-and-table).
 Blocked by: 49
@@ -60,7 +60,7 @@ impl WalkSource { pub fn in_order(handle: RepoHandle, table: Arc<CommitTable>, o
 ## Acceptance
 - [x] `graft-graph` property tests (invariants, determinism, rebuild-equals-evicted fingerprint) and every corpus snapshot pass byte-for-byte unchanged. (seam a, f063a33; `cargo test -p graft-graph` green, reconfirmed by 51b's full `cargo test`.)
 - [x] `graft::history` promotion tests (27c's five, m1/18's) green; `page_down_past_the_rows_on_hand_while_promotion_swaps_keeps_its_place` included. (51b: HEAD-red 6 tests fixed — see 51b's own Acceptance — full `cargo test` 0 failed.)
-- [ ] `EmittedOrder::approximate_bytes` at 100k ≤ 10 B/commit (printed in the heavy budget test; was ~90). **Not done, out of 51b's scope** (51b's Scope explicitly excludes "anything else in 51"; no print of `approximate_bytes` exists anywhere in the tree — grepped, none found). Flagging as a gap for the conductor rather than silently doing or skipping it.
+- [x] `EmittedOrder::approximate_bytes` at 100k ≤ 10 B/commit (printed in the heavy budget test). 51c measured 10.37 (over bar, growth slack named); 51d fixed the slack — **9 B/commit** at 100k and at 1M no-cg.
 - [x] The 2× check numbers written in the ticket for 100k and 1M no-cg (`overflow_len`, `len` after `G` and after promotion), both equal to the commit count — or the cause named and the ticket stopped. See 51b for the numbers.
 - [x] MAP.md updated. (`crates/graft/MAP.md`, this session.)
 

@@ -61,6 +61,12 @@ impl EmittedOrder {
             rows: order,
             row_by_handle: Vec::new(),
         };
+        // Handles are dense and assigned roughly in walk order, so the row
+        // count is a good hint for how large the reverse lookup will grow —
+        // reserved once, exactly, instead of `set_row_by_handle`'s `resize`
+        // doubling it call by call (the same growth slack `reserve` guards
+        // against in the streaming path below).
+        built.row_by_handle.reserve_exact(built.rows.len());
         for row in 0..built.rows.len() {
             let commit = built.rows[row];
             if let Some(first) = built.row_of(commit) {
@@ -92,6 +98,23 @@ impl EmittedOrder {
             return Ok(row);
         }
         Ok(self.append(commit))
+    }
+
+    /// Reserves room for `additional_rows` more rows before a batch of
+    /// `note` calls, so the batch pays for exactly the rows it is about to
+    /// append rather than `Vec::push`'s doubling growth (m1-the-graph/51d:
+    /// doubling left ~30% capacity slack over `len()` at 100k–1M commits,
+    /// pushing `approximate_bytes` over its 10 B/commit bar even though
+    /// nothing extra was stored).
+    ///
+    /// `additional_rows` is a hint sized to the caller's batch, not a
+    /// promise: `row_by_handle` is indexed by handle, not row, so a batch
+    /// whose handles run sparser than its row count still works — the
+    /// shortfall just falls back to `Vec`'s ordinary growth, exactly as
+    /// before this method existed.
+    pub(crate) fn reserve(&mut self, additional_rows: usize) {
+        self.rows.reserve_exact(additional_rows);
+        self.row_by_handle.reserve_exact(additional_rows);
     }
 
     /// Appends `commit` as the next row and grows the reverse lookup to

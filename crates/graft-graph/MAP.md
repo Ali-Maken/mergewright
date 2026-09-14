@@ -76,7 +76,7 @@ One line per public item. Update when a public item changes.
 - `LayoutCursor::active_lanes` (fn) — current occupant of each column.
 
 ## layout::order
-- `EmittedOrder` (struct) — `Vec<CommitHandle>` row → handle plus a dense `Vec<u32>` reverse lookup (ADR-0026); `new`, `from_handles` (was `from_ids`), `note`, `row_of`, `handle_at` (was `id_at`), `handles` (was `ids`), `len`, `is_empty`, `approximate_bytes`.
+- `EmittedOrder` (struct) — `Vec<CommitHandle>` row → handle plus a dense `Vec<u32>` reverse lookup (ADR-0026); `new`, `from_handles` (was `from_ids`), `note`, `row_of`, `handle_at` (was `id_at`), `handles` (was `ids`), `len`, `is_empty`, `approximate_bytes`. `reserve` (pub(crate)) — reserves exact capacity for a batch about to be appended, bounding `Vec::push` doubling slack (m1-the-graph/51d); called once per `LayoutCursor::extend` batch and once in `from_handles`.
 - `RepeatedCommit` (struct) — a commit the walk named twice: `commit` (`CommitHandle`), `first`, `again`.
 
 ## layout::source

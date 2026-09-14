@@ -194,6 +194,7 @@ impl LayoutCursor {
         handles: &impl HandleLookup,
         order: &mut EmittedOrder,
     ) -> Vec<Row> {
+        order.reserve(commits.len());
         commits
             .iter()
             .map(|commit| {
