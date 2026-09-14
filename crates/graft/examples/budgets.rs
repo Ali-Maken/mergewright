@@ -45,10 +45,29 @@ fn main() -> ExitCode {
             println!(
                 "EmittedOrder: {bytes} B total over {commits} commits, {per_commit} B/commit (m1-the-graph/51c)"
             );
-            ExitCode::SUCCESS
         }
         Err(why) => {
             eprintln!("budgets: EmittedOrder bytes: {why}");
+            return ExitCode::FAILURE;
+        }
+    }
+    match budget_run::cold_jump(&repo) {
+        Ok(jump) => {
+            let work = jump.work;
+            println!(
+                "cold G, viewport at the top: hydrated {} (bound {}), merge_reads {} (bound {}), links_read {}, pulled {}, rows {} (m1-the-graph/52b)",
+                work.hydrated,
+                jump.hydrated_bound,
+                work.merge_reads,
+                jump.merge_bound,
+                work.links_read,
+                work.commits_pulled,
+                jump.rows,
+            );
+            ExitCode::SUCCESS
+        }
+        Err(why) => {
+            eprintln!("budgets: cold jump: {why}");
             ExitCode::FAILURE
         }
     }

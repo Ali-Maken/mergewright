@@ -157,6 +157,23 @@ fn the_table_and_the_order_stay_at_the_commit_count_after_g_and_after_promotion(
 /// plus a dense `Vec<u32>` reverse lookup) against the design's own bound:
 /// the DESIGN.md §3.1 estimate this replaces was ~90 B/commit
 /// (m1-the-graph/51, 51's last acceptance box).
+/// m1-the-graph/52b: a cold `G` with the viewport at the top reads only the
+/// chunks around the screen; the rest of history passes through.
+#[test]
+fn a_cold_jump_on_the_100k_fixture_reads_only_the_top() {
+    let repo =
+        synthetic::borrow(Scale::HEAVY.with_commit_graph()).unwrap_or_else(|why| panic!("{why}"));
+    let jump = crate::budget_run::cold_jump(&repo).unwrap_or_else(|why| panic!("{why}"));
+    println!("cold jump at 100k: {jump:?}");
+    assert_eq!(
+        jump.rows,
+        usize::try_from(Scale::HEAVY.commits()).expect("fits")
+    );
+    assert!(jump.work.hydrated <= jump.hydrated_bound, "{jump:?}");
+    assert!(jump.work.links_read >= jump.rows, "{jump:?}");
+    assert!(jump.work.merge_reads <= jump.merge_bound, "{jump:?}");
+}
+
 #[test]
 fn emitted_order_bytes_stay_under_ten_per_commit_at_100k() {
     const LIMIT_PER_COMMIT: usize = 10;

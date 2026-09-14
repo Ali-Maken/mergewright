@@ -24,7 +24,12 @@ use graft::update::{AppEvent, AppState, Command, Size, update};
 use graft_core::commit_handle::CommitHandle;
 use graft_core::event::{Event, KeyCode, KeyPress};
 use graft_git::history::{Order, Walk};
-use graft_graph::layout::StreamConfig;
+use graft_graph::Included;
+use graft_graph::lane::LaneIdentity;
+use graft_graph::layout::{
+    CommitSource, EmittedOrder, LayoutCursor, StreamConfig, StreamingLayout, Work,
+};
+use graft_graph::row::RowShape;
 
 /// How long one step may take before the run is declared hung. Far above
 /// any budget: it turns a hang into a named failure, it is not a threshold.
@@ -124,13 +129,113 @@ fn peak() -> Result<u64, String> {
 
 /// `EmittedOrder`'s approximate bytes once every commit is laid out, and the
 /// commit count it was measured over (m1-the-graph/51c, 51's last box).
+pub fn order_bytes(repo: &Path) -> Result<(usize, usize), String> {
+    direct_layout(repo, |layout| {
+        layout.set_viewport(0..usize::MAX);
+        advance_to_the_end(layout)?;
+        Ok((layout.resident().order_bytes, layout.rows_emitted()))
+    })
+}
+
+/// What a cold `G` read with the viewport at the top (m1-the-graph/52b).
+#[derive(Debug)]
+pub struct ColdJump {
+    /// The layout's work counters once every row is laid out.
+    pub work: Work,
+    /// Rows laid out.
+    pub rows: usize,
+    /// `2 × chunk_rows + buffer_rows`: the most `work.hydrated` may be.
+    pub hydrated_bound: usize,
+    /// The most `work.merge_reads` may be: the distinct merge lanes open at
+    /// the first row of every materialised chunk after the first.
+    pub merge_bound: usize,
+}
+
+/// Lays out all of `repo` with the viewport on the first screen, as a cold
+/// `G` does before the screen moves, and reads the layout's work counters.
+pub fn cold_jump(repo: &Path) -> Result<ColdJump, String> {
+    direct_layout(repo, |layout| {
+        let screen = usize::from(SIZE.rows);
+        layout.set_viewport(0..screen);
+        advance_to_the_end(layout)?;
+        let work = layout.work();
+        let rows = layout.rows_emitted();
+        let config = layout.config();
+
+        // The chunks `advance` materialised: those meeting the viewport plus
+        // `buffer_rows`. Their shapes, replayed from the top by links only.
+        let reach = (screen + config.buffer_rows).min(rows);
+        let chunks = reach.div_ceil(config.chunk_rows);
+        let window = (chunks * config.chunk_rows).min(rows);
+        let handles = (0..window)
+            .map(|row| {
+                let id = layout.id_at(row).ok_or(format!("no commit at row {row}"))?;
+                layout
+                    .source()
+                    .handle_of(&id)
+                    .ok_or(format!("{id} is not interned"))
+            })
+            .collect::<Result<Vec<CommitHandle>, String>>()?;
+        let links = layout
+            .source_mut()
+            .links(&handles)
+            .map_err(|why| why.to_string())?;
+        let source = layout.source();
+        let mut cursor = LayoutCursor::new(source.seeds().clone(), source);
+        let shapes = cursor.extend(&links, source, &mut EmittedOrder::new());
+        let merge_bound = (1..chunks)
+            .map(|chunk| merge_lanes_open(&shapes[chunk * config.chunk_rows]))
+            .sum();
+        Ok(ColdJump {
+            work,
+            rows,
+            hydrated_bound: 2 * config.chunk_rows + config.buffer_rows,
+            merge_bound,
+        })
+    })
+}
+
+/// Distinct `Merge` identities drawn on `shape`.
+fn merge_lanes_open(shape: &RowShape) -> usize {
+    let mut open: Vec<CommitHandle> = shape
+        .lanes
+        .iter()
+        .flatten()
+        .filter_map(|identity| match *identity {
+            LaneIdentity::Merge { merge, .. } => Some(merge),
+            LaneIdentity::Known(_) => None,
+        })
+        .collect();
+    open.sort_unstable();
+    open.dedup();
+    open.len()
+}
+
+fn advance_to_the_end<S: CommitSource>(layout: &mut StreamingLayout<S>) -> Result<(), String>
+where
+    S::Error: std::fmt::Display,
+{
+    let stop = || false;
+    while !layout.is_done() {
+        layout
+            .advance(usize::MAX, &stop)
+            .map_err(|why| why.to_string())?;
+    }
+    Ok(())
+}
+
+/// Opens `repo`'s all-parents layout the way `history::stream` does and
+/// hands it to `drive`.
 ///
 /// `history::stream`'s own `Views` never leaves it — `serve` reports only
-/// `HistoryUpdate`, no resident-set numbers — so this repeats its setup
-/// (`Walk::all_refs`, `WalkSource`, `Views::new`) to drive a layout directly
-/// and read `StreamingLayout::resident().order_bytes` off it, rather than
-/// adding a new update variant through the job pool for one number.
-pub fn order_bytes(repo: &Path) -> Result<(usize, usize), String> {
+/// `HistoryUpdate`, no resident-set or work numbers — so this repeats its
+/// setup (`Walk::all_refs`, `WalkSource`, `Views::new`) to drive a layout
+/// directly, rather than adding a new update variant through the job pool
+/// for measurements.
+fn direct_layout<T>(
+    repo: &Path,
+    drive: impl FnOnce(&mut StreamingLayout<Included<WalkSource<'_>>>) -> Result<T, String>,
+) -> Result<T, String> {
     let store = RepoStore::new(repo.to_path_buf(), None);
     let branches = store.branches().map_err(|why| why.to_string())?;
     let shared = store.shared().map_err(|why| why.to_string())?;
@@ -161,13 +266,7 @@ pub fn order_bytes(repo: &Path) -> Result<(usize, usize), String> {
     let layout = views
         .layout(&View::default())
         .map_err(|why| why.to_string())?;
-    let stop = || false;
-    while !layout.is_done() {
-        layout
-            .advance(usize::MAX, &stop)
-            .map_err(|why| why.to_string())?;
-    }
-    Ok((layout.resident().order_bytes, layout.rows_emitted()))
+    drive(layout)
 }
 
 /// A started job pool, the events it reports, and the state before any.

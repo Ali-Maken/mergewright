@@ -857,6 +857,76 @@ fn a_deep_read_names_only_the_merge_lanes_open_at_its_first_row() {
     }
 }
 
+/// Distinct `Merge` identities drawn on `shape`: what naming its lanes may
+/// cost when a batch starts on it.
+fn merge_lanes_open(shape: &RowShape) -> usize {
+    let mut open: Vec<CommitHandle> = shape
+        .lanes
+        .iter()
+        .flatten()
+        .filter_map(|identity| match *identity {
+            crate::lane::LaneIdentity::Merge { merge, .. } => Some(merge),
+            crate::lane::LaneIdentity::Known(_) => None,
+        })
+        .collect();
+    open.sort_unstable();
+    open.dedup();
+    open.len()
+}
+
+#[test]
+fn passing_through_the_rest_of_history_reads_nothing() {
+    let config = small();
+    // Viewport 0..40 plus `buffer_rows` meets chunks 0, 1 and 2.
+    let window = 3 * config.chunk_rows;
+    for (walk, seeds) in five_thousand_pair() {
+        let mut to_the_end =
+            StreamingLayout::new(VecSource::new(walk.clone()), seeds.clone(), config);
+        to_the_end.set_viewport(0..40);
+        advance_all(&mut to_the_end);
+
+        let mut window_only =
+            StreamingLayout::new(VecSource::new(walk.clone()), seeds.clone(), config);
+        window_only.set_viewport(0..40);
+        while window_only.rows_emitted() < window {
+            window_only
+                .advance(window - window_only.rows_emitted(), &never)
+                .expect("an in-memory source");
+        }
+        assert!(!window_only.is_done());
+
+        let (end, top) = (to_the_end.work(), window_only.work());
+        assert_eq!(top.hydrated, window, "the window itself was read");
+        assert_eq!(end.hydrated, top.hydrated, "pass-through hydrates nothing");
+        assert_eq!(
+            end.merge_reads, top.merge_reads,
+            "pass-through names nothing"
+        );
+
+        // 52's rule: each materialised chunk after the first is its own
+        // batch, and may read once per merge lane open at its first row.
+        let mut source = VecSource::new(walk.clone());
+        let handles: Vec<CommitHandle> = walk
+            .iter()
+            .map(|commit| source.handle_of(&commit.id).expect("interned"))
+            .collect();
+        let links = source
+            .links(&handles[..window])
+            .expect("an in-memory source");
+        let mut cursor = LayoutCursor::new(seeds, &source);
+        let shapes = cursor.extend(&links, &source, &mut EmittedOrder::new());
+        let bound: usize = (1..3)
+            .map(|chunk| merge_lanes_open(&shapes[chunk * config.chunk_rows]))
+            .sum();
+        assert!(
+            end.merge_reads <= bound,
+            "{} merge reads, bound {bound}",
+            end.merge_reads
+        );
+        eprintln!("cold jump: {} merge reads, bound {bound}", end.merge_reads);
+    }
+}
+
 // ---- contracts -----------------------------------------------------------
 
 struct Stalling;

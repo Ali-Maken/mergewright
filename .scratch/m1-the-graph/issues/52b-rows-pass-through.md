@@ -1,6 +1,6 @@
 # m1-the-graph/52b — Rows hydrate on demand: chunks off screen pass through, a rebuild hydrates only what is asked
 
-Status: partial — seam (a) done, seam (b) measurements remain (handoff below)
+Status: done — seam (a) 71a7f89, seam (b) measurements + pass-through-adds-zero test (results below)
 Build with: **Opus** (high) — the streaming layout's pass-through and rebuild semantics; correctness is judged by determinism tests and the memory curve, so not Fable.
 Needs: everything ticket 52 exposes (`RowShape`, `LaneIdentity`, `MergeNames`, `Row::assemble`, `LayoutCursor::extend` on links, `CommitSource::{pull, read}`, `Work.{hydrated, merge_reads}`).
 Blocked by: 52
@@ -38,16 +38,16 @@ pub fn fingerprint(shapes: &[RowShape]) -> Fingerprint;   // pub(crate) is fine;
 ```
 
 ## Acceptance
-- [ ] Determinism: on every corpus shape and the 5k synthetic pair, `rows(0..n)` after a cold `advance` to the end (viewport at the top, so all but the first chunks pass through) equals the rows of a layout that materialised everything — same `Row`s, field by field, `lanes` included; every rebuilt chunk's fingerprint matches its pass-through fingerprint.
-- [ ] `Work.hydrated` after a cold `G` on the 100k fixture with the viewport at the top ≤ `2 × chunk_rows + buffer_rows`; `links_read` ≥ the replay length.
-- [ ] **Amended 2026-09-14 (planner-fable, spec-only pass; replaces `merge_reads == 0`).** `merge_reads` is bounded by lanes, not history. Two checks:
+- [x] Determinism: on every corpus shape and the 5k synthetic pair, `rows(0..n)` after a cold `advance` to the end (viewport at the top, so all but the first chunks pass through) equals the rows of a layout that materialised everything — same `Row`s, field by field, `lanes` included; every rebuilt chunk's fingerprint matches its pass-through fingerprint.
+- [x] `Work.hydrated` after a cold `G` on the 100k fixture with the viewport at the top ≤ `2 × chunk_rows + buffer_rows`; `links_read` ≥ the replay length.
+- [x] **Amended 2026-09-14 (planner-fable, spec-only pass; replaces `merge_reads == 0`).** `merge_reads` is bounded by lanes, not history. Two checks:
   1. For the cold-`G` run above: `merge_reads` ≤ Σ over every materialised chunk after the first of the distinct `Merge` identities open in that chunk's first row (52's rule: a merge lane opened above a batch costs one read; frontier chunks are separate batches). `a_merge_lane_open_across_a_chunk_boundary_is_named_with_one_read` stays exactly as it is. Carrying names across contiguous frontier batches is **out**.
   2. Pass-through reads nothing: on the 5k pair with a small `chunk_rows` and the viewport at the top, `Work.hydrated` and `Work.merge_reads` after `advance` to the end **equal** the same counters of a second layout advanced only far enough to materialise the viewport window (the stretch of passed-through chunks after the window adds zero to both). Assert it in a `stream::tests` test.
-- [ ] After `rows(r)` deep in a passed-through stretch: `merge_reads` for that call ≤ the count of distinct `Merge` identities in row `r.start`'s lanes (bounded by lanes, not history); assert it in a test on the 5k pair with a small `chunk_rows`.
-- [ ] Every existing `graft-graph` test and every corpus snapshot green, unchanged.
-- [ ] `graft::history` tests green; `frames::` rows-on-hand check still passes in release (a `PageDown` at the frontier must not wait on a rebuild: the materialisation window covers the viewport plus a screen either side, matching `History::outstanding`'s ask policy).
-- [ ] Measured and written in the ticket (release, `examples/budgets`, 3 runs): git/git cg and no-cg peak RSS (was 219–226 MiB), `G` time; 1M cg peak RSS and odb objects read during `G` (expected: only the chunks shown plus `merge_reads`, which must not grow with the fixture: compare git/git's and 1M's `merge_reads` for the same viewport and say so).
-- [ ] MAP.md and DESIGN.md §3.6 updated.
+- [x] After `rows(r)` deep in a passed-through stretch: `merge_reads` for that call ≤ the count of distinct `Merge` identities in row `r.start`'s lanes (bounded by lanes, not history); assert it in a test on the 5k pair with a small `chunk_rows`.
+- [x] Every existing `graft-graph` test and every corpus snapshot green, unchanged.
+- [x] `graft::history` tests green; `frames::` rows-on-hand check still passes in release (a `PageDown` at the frontier must not wait on a rebuild: the materialisation window covers the viewport plus a screen either side, matching `History::outstanding`'s ask policy).
+- [x] Measured and written in the ticket (release, `examples/budgets`, 3 runs): git/git cg and no-cg peak RSS (was 219–226 MiB), `G` time; 1M cg peak RSS and odb objects read during `G` (expected: only the chunks shown plus `merge_reads`, which must not grow with the fixture: compare git/git's and 1M's `merge_reads` for the same viewport and say so).
+- [x] MAP.md and DESIGN.md §3.6 updated.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo clippy --all-targets --features heavy-tests -- -D warnings` · `cargo test`; heavy tier once, alone, at the end.
@@ -77,3 +77,23 @@ Next (seam b), exact steps:
 2. Release, alone, 3 runs each: `cargo run --release -p graft --example budgets -- ~/.cache/graft/git-git.git` (cg and no-cg: check how 46/51 toggled the commit-graph — see `scripts/memory-curve.sh`); 1M cg via `scripts/memory-curve.sh 1000000` (builds a ~350 MiB fixture under target/fixtures, heavy).
 3. Record peak RSS (was 219–226 MiB git/git), G time, 1M cg RSS + objects read during G into this ticket. Batch `WalkSource::read` only if per-handle reads show in G.
 4. `frames::` rows-on-hand check in release (`crates/graft/tests/it/frames.rs`, heavy tier) and the heavy tier once at the end.
+
+## Result, seam (b) (2026-09-14, builder-opus)
+
+Tests added:
+- `stream::tests::passing_through_the_rest_of_history_reads_nothing` (5k pair, `small()`): layout advanced to the end vs one advanced only through the window (chunks 0-2): `hydrated` and `merge_reads` equal; `merge_reads` <= sum of merge lanes open at the first row of chunks 1 and 2 (3 <= 3, 9 <= 9). Chunk-boundary test untouched.
+- `heavy::a_cold_jump_on_the_100k_fixture_reads_only_the_top` (100k cg): `hydrated <= 2 x chunk_rows + buffer_rows`, `links_read >= rows`, `merge_reads <=` per-chunk lane bound. Green in release.
+- `budget_run::cold_jump` (drives the layout directly, shared `direct_layout` setup with `order_bytes`); `examples/budgets` prints its line.
+
+Measured: release, `examples/budgets`, each run alone, 3 runs. RSS = getrusage peak of the open -> paint -> G -> g run. Default `StreamConfig` (chunk 500, buffer 1000), viewport 0..40.
+
+| Repo | peak RSS | was | G | was | hydrated | merge_reads (bound) | links_read |
+|---|---|---|---|---|---|---|---|
+| git/git cg (85,649) | 45.6-46.6 MiB | 223.6-225.3 | 138-144 ms | 0.53-0.54 s | 1500 | 288 (288) | 85,649 |
+| git/git no cg (`target/27b/nocg.git`) | 97.2-98.3 MiB | 219.1-221.5 | 792-815 ms | 0.85-0.86 s | 1500 | 288 (288) | 85,649 |
+| 1M cg synthetic | 238.2-240.9 MiB | — | 507-514 ms | — | 1500 | 1 (1) | 1,000,000 |
+
+- Commits read from the odb during a cold G = `hydrated + merge_reads`: 1,788 on git/git, 1,501 at 1M. Neither grows with history: `hydrated` is the window (identical at 85k and 1M), `merge_reads` equals the merge lanes open at the window's chunk starts (git/git's top is merge-heavy, 288; the synthetic fixture's top has one). It follows the topology at the top, not the fixture size.
+- `WalkSource::read` not batched: 1,788 reads inside a 138 ms G on git/git; nothing points at per-handle reads. Not profiled.
+- 1M cg peak RSS 241 MiB, under the 300 MB gate. First paint at 1M is 263 ms with 219 MiB already held at paint: that is before G, not this ticket's path; ticket 46's open item.
+- Heavy tier (`cargo test --release -p graft --features heavy-tests`): 29/29, `frames::` rows-on-hand checks included.
