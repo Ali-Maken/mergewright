@@ -1,160 +1,170 @@
-# The memory curve: scripts/memory-curve.sh 10000 100000 (2026-09-14, release, 3 runs per cell, one process at a time)
+# The memory curve: scripts/memory-curve.sh 10000 100000 1000000 (2026-09-14, release, 3 runs per cell, one process at a time)
 # Gate: peak RSS < 300 MB with a commit-graph (ADR-0026); without one at 1M: reported, footprint < 300 MB.
 # 10000 small: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-10000-no-commit-graph-2ea66420a0c78085
 # 10000 small: pack 2 MiB on disk, commit-graph absent
-10000 small run1: first paint 18.997041ms, G 48.009292ms, g 46.333µs, 10000 rows, provisional order: true, peak RSS at paint 8.2 MiB, after G 17.8 MiB, end 17.8 MiB, overflow_len 10000 (m1-the-graph/51b 2x check)
-10000 small run1: footprint 11.4 MiB, process max RSS 17.8 MiB
-10000 small run2: first paint 2.507ms, G 37.164959ms, g 51.667µs, 10000 rows, provisional order: true, peak RSS at paint 8.0 MiB, after G 17.8 MiB, end 17.8 MiB, overflow_len 10000 (m1-the-graph/51b 2x check)
-10000 small run2: footprint 11.4 MiB, process max RSS 17.9 MiB
-10000 small run3: first paint 2.414083ms, G 36.539334ms, g 45.125µs, 10000 rows, provisional order: true, peak RSS at paint 8.0 MiB, after G 17.4 MiB, end 17.4 MiB, overflow_len 10000 (m1-the-graph/51b 2x check)
-10000 small run3: footprint 11.0 MiB, process max RSS 17.5 MiB
-10000 small once: EmittedOrder: 80072 B total over 10000 commits, 9 B/commit (m1-the-graph/51c); peak RSS now 20.7 MiB
+10000 small run1: first paint 23.318792ms, G 60.866875ms, g 52.292µs, 10000 rows, provisional order: true, peak RSS at paint 8.0 MiB, after G 16.9 MiB, end 16.9 MiB, overflow_len 10000 (m1-the-graph/51b 2x check)
+10000 small run1: footprint 10.5 MiB, process max RSS 17.0 MiB
+10000 small run2: first paint 2.518917ms, G 37.482041ms, g 51.375µs, 10000 rows, provisional order: true, peak RSS at paint 8.0 MiB, after G 15.7 MiB, end 15.8 MiB, overflow_len 10000 (m1-the-graph/51b 2x check)
+10000 small run2: footprint 9.4 MiB, process max RSS 15.8 MiB
+10000 small run3: first paint 2.413959ms, G 36.764042ms, g 52.291µs, 10000 rows, provisional order: true, peak RSS at paint 7.9 MiB, after G 15.7 MiB, end 15.7 MiB, overflow_len 10000 (m1-the-graph/51b 2x check)
+10000 small run3: footprint 9.3 MiB, process max RSS 15.7 MiB
+10000 small once: EmittedOrder: 80072 B total over 10000 commits, 9 B/commit (m1-the-graph/51c); peak RSS now 20.8 MiB
 10000 small once: cold G, viewport at the top: hydrated 1500 (bound 2000), merge_reads 0 (bound 0), links_read 10000, pulled 10000, rows 10000 (m1-the-graph/52b)
-10000 small once: peak RSS after the cold G measurement 20.9 MiB
-10000 small once: far jump to row 9000 of 10000: 1.818042ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500 (m1-the-graph/56)
-10000 small once: peak RSS after the far jump measurement 20.9 MiB
+10000 small once: peak RSS after the cold G measurement 22.5 MiB
+10000 small once: far jump half way, to row 5000 of 10000: 1.891917ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
+10000 small once: far jump nine tenths, to row 9000 of 10000: 1.875458ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
+10000 small once: peak RSS after the far jump measurements 22.7 MiB
 # 10000 --commit-graph: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-10000-commit-graph-f5daf3384154a14b
 # 10000 --commit-graph: pack 2 MiB on disk, commit-graph present
-10000 --commit-graph run1: first paint 2.533292ms, G 12.575833ms, g 41.875µs, 10000 rows, provisional order: false, peak RSS at paint 8.6 MiB, after G 12.5 MiB, end 12.5 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-10000 --commit-graph run1: footprint 6.4 MiB, process max RSS 12.5 MiB
-10000 --commit-graph run2: first paint 2.230375ms, G 12.41575ms, g 57.834µs, 10000 rows, provisional order: false, peak RSS at paint 8.6 MiB, after G 12.4 MiB, end 12.5 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-10000 --commit-graph run2: footprint 6.4 MiB, process max RSS 12.5 MiB
-10000 --commit-graph run3: first paint 2.222834ms, G 12.5145ms, g 43.208µs, 10000 rows, provisional order: false, peak RSS at paint 8.6 MiB, after G 12.6 MiB, end 12.7 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-10000 --commit-graph run3: footprint 6.6 MiB, process max RSS 12.7 MiB
-10000 --commit-graph once: EmittedOrder: 100496 B total over 10000 commits, 11 B/commit (m1-the-graph/51c); peak RSS now 20.5 MiB
+10000 --commit-graph run1: first paint 11.002166ms, G 16.081667ms, g 51.75µs, 10000 rows, provisional order: false, peak RSS at paint 7.8 MiB, after G 12.0 MiB, end 12.0 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+10000 --commit-graph run1: footprint 6.4 MiB, process max RSS 12.1 MiB
+10000 --commit-graph run2: first paint 2.16575ms, G 12.777417ms, g 56.958µs, 10000 rows, provisional order: false, peak RSS at paint 7.9 MiB, after G 11.9 MiB, end 12.0 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+10000 --commit-graph run2: footprint 6.3 MiB, process max RSS 12.0 MiB
+10000 --commit-graph run3: first paint 2.116625ms, G 12.670167ms, g 55.875µs, 10000 rows, provisional order: false, peak RSS at paint 7.9 MiB, after G 12.0 MiB, end 12.0 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+10000 --commit-graph run3: footprint 6.4 MiB, process max RSS 12.1 MiB
+10000 --commit-graph once: EmittedOrder: 100496 B total over 10000 commits, 11 B/commit (m1-the-graph/51c); peak RSS now 20.7 MiB
 10000 --commit-graph once: cold G, viewport at the top: hydrated 1500 (bound 2000), merge_reads 0 (bound 0), links_read 10000, pulled 10000, rows 10000 (m1-the-graph/52b)
-10000 --commit-graph once: peak RSS after the cold G measurement 20.5 MiB
-10000 --commit-graph once: far jump to row 9000 of 10000: 3.8535ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500 (m1-the-graph/56)
-10000 --commit-graph once: peak RSS after the far jump measurement 20.7 MiB
+10000 --commit-graph once: peak RSS after the cold G measurement 20.7 MiB
+10000 --commit-graph once: far jump half way, to row 5000 of 10000: 4.057875ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
+10000 --commit-graph once: far jump nine tenths, to row 9000 of 10000: 3.92675ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
+10000 --commit-graph once: peak RSS after the far jump measurements 20.7 MiB
 # 10000 --realistic: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-10000-realistic-no-commit-graph-0c4bbadb33b3fd58
 # 10000 --realistic: pack 3 MiB on disk, commit-graph absent
-10000 --realistic run1: first paint 13.798542ms, G 42.083042ms, g 42.208µs, 10000 rows, provisional order: true, peak RSS at paint 9.2 MiB, after G 25.5 MiB, end 25.5 MiB, overflow_len 10000 (m1-the-graph/51b 2x check)
-10000 --realistic run1: footprint 18.5 MiB, process max RSS 25.6 MiB
-10000 --realistic run2: first paint 2.406333ms, G 39.464083ms, g 57.416µs, 10000 rows, provisional order: true, peak RSS at paint 8.5 MiB, after G 25.7 MiB, end 25.7 MiB, overflow_len 10000 (m1-the-graph/51b 2x check)
-10000 --realistic run2: footprint 18.7 MiB, process max RSS 25.8 MiB
-10000 --realistic run3: first paint 2.479375ms, G 39.561708ms, g 56.042µs, 10000 rows, provisional order: true, peak RSS at paint 8.5 MiB, after G 26.2 MiB, end 26.2 MiB, overflow_len 10000 (m1-the-graph/51b 2x check)
-10000 --realistic run3: footprint 19.2 MiB, process max RSS 26.2 MiB
-10000 --realistic once: EmittedOrder: 80072 B total over 10000 commits, 9 B/commit (m1-the-graph/51c); peak RSS now 33.7 MiB
+10000 --realistic run1: first paint 13.476375ms, G 42.1725ms, g 46.084µs, 10000 rows, provisional order: true, peak RSS at paint 8.6 MiB, after G 24.5 MiB, end 24.6 MiB, overflow_len 10000 (m1-the-graph/51b 2x check)
+10000 --realistic run1: footprint 17.5 MiB, process max RSS 24.6 MiB
+10000 --realistic run2: first paint 2.459542ms, G 40.011333ms, g 50.25µs, 10000 rows, provisional order: true, peak RSS at paint 8.4 MiB, after G 24.4 MiB, end 24.4 MiB, overflow_len 10000 (m1-the-graph/51b 2x check)
+10000 --realistic run2: footprint 17.4 MiB, process max RSS 24.5 MiB
+10000 --realistic run3: first paint 2.477458ms, G 39.989583ms, g 67.75µs, 10000 rows, provisional order: true, peak RSS at paint 8.5 MiB, after G 24.5 MiB, end 24.5 MiB, overflow_len 10000 (m1-the-graph/51b 2x check)
+10000 --realistic run3: footprint 17.5 MiB, process max RSS 24.6 MiB
+10000 --realistic once: EmittedOrder: 80072 B total over 10000 commits, 9 B/commit (m1-the-graph/51c); peak RSS now 35.7 MiB
 10000 --realistic once: cold G, viewport at the top: hydrated 1500 (bound 2000), merge_reads 0 (bound 0), links_read 10000, pulled 10000, rows 10000 (m1-the-graph/52b)
-10000 --realistic once: peak RSS after the cold G measurement 33.8 MiB
-10000 --realistic once: far jump to row 9000 of 10000: 2.021375ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500 (m1-the-graph/56)
-10000 --realistic once: peak RSS after the far jump measurement 33.9 MiB
+10000 --realistic once: peak RSS after the cold G measurement 36.4 MiB
+10000 --realistic once: far jump half way, to row 5000 of 10000: 1.926459ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
+10000 --realistic once: far jump nine tenths, to row 9000 of 10000: 1.912542ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
+10000 --realistic once: peak RSS after the far jump measurements 36.6 MiB
 # 10000 --realistic --commit-graph: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-10000-realistic-commit-graph-a49fdfea7d23d228
 # 10000 --realistic --commit-graph: pack 3 MiB on disk, commit-graph present
-10000 --realistic --commit-graph run1: first paint 14.395125ms, G 15.576666ms, g 50.417µs, 10000 rows, provisional order: false, peak RSS at paint 9.1 MiB, after G 16.5 MiB, end 16.6 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-10000 --realistic --commit-graph run1: footprint 10.2 MiB, process max RSS 16.6 MiB
-10000 --realistic --commit-graph run2: first paint 2.276958ms, G 13.286375ms, g 60.792µs, 10000 rows, provisional order: false, peak RSS at paint 9.0 MiB, after G 16.5 MiB, end 16.5 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-10000 --realistic --commit-graph run2: footprint 10.1 MiB, process max RSS 16.5 MiB
-10000 --realistic --commit-graph run3: first paint 2.288375ms, G 13.339625ms, g 54.75µs, 10000 rows, provisional order: false, peak RSS at paint 9.1 MiB, after G 16.4 MiB, end 16.4 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-10000 --realistic --commit-graph run3: footprint 10.1 MiB, process max RSS 16.5 MiB
+10000 --realistic --commit-graph run1: first paint 11.224959ms, G 17.521166ms, g 62.875µs, 10000 rows, provisional order: false, peak RSS at paint 8.2 MiB, after G 15.8 MiB, end 15.9 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+10000 --realistic --commit-graph run1: footprint 10.0 MiB, process max RSS 15.9 MiB
+10000 --realistic --commit-graph run2: first paint 2.144ms, G 13.531166ms, g 62.958µs, 10000 rows, provisional order: false, peak RSS at paint 8.3 MiB, after G 15.8 MiB, end 15.9 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+10000 --realistic --commit-graph run2: footprint 10.1 MiB, process max RSS 16.0 MiB
+10000 --realistic --commit-graph run3: first paint 2.1585ms, G 13.593417ms, g 56.625µs, 10000 rows, provisional order: false, peak RSS at paint 8.3 MiB, after G 15.9 MiB, end 15.9 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+10000 --realistic --commit-graph run3: footprint 10.1 MiB, process max RSS 16.0 MiB
 10000 --realistic --commit-graph once: EmittedOrder: 96992 B total over 10000 commits, 10 B/commit (m1-the-graph/51c); peak RSS now 33.3 MiB
 10000 --realistic --commit-graph once: cold G, viewport at the top: hydrated 1500 (bound 2000), merge_reads 0 (bound 0), links_read 10000, pulled 10000, rows 10000 (m1-the-graph/52b)
 10000 --realistic --commit-graph once: peak RSS after the cold G measurement 33.3 MiB
-10000 --realistic --commit-graph once: far jump to row 9000 of 10000: 4.324417ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500 (m1-the-graph/56)
-10000 --realistic --commit-graph once: peak RSS after the far jump measurement 33.3 MiB
+10000 --realistic --commit-graph once: far jump half way, to row 5000 of 10000: 4.29525ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
+10000 --realistic --commit-graph once: far jump nine tenths, to row 9000 of 10000: 4.384541ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
+10000 --realistic --commit-graph once: peak RSS after the far jump measurements 33.3 MiB
 # 100000 small: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-no-commit-graph-ba5bf1dd41fcee03
-# 100000 small: pack 30 MiB on disk, commit-graph absent
-100000 small run1: first paint 94.856667ms, G 474.83625ms, g 96.416µs, 100000 rows, provisional order: true, peak RSS at paint 22.5 MiB, after G 69.2 MiB, end 69.3 MiB, overflow_len 100000 (m1-the-graph/51b 2x check)
-100000 small run1: footprint 37.2 MiB, process max RSS 69.3 MiB
-100000 small run2: first paint 11.827083ms, G 462.989875ms, g 96.166µs, 100000 rows, provisional order: true, peak RSS at paint 22.5 MiB, after G 69.2 MiB, end 69.2 MiB, overflow_len 100000 (m1-the-graph/51b 2x check)
-100000 small run2: footprint 37.2 MiB, process max RSS 69.3 MiB
-100000 small run3: first paint 11.624292ms, G 464.348167ms, g 90.5µs, 100000 rows, provisional order: true, peak RSS at paint 22.5 MiB, after G 69.2 MiB, end 69.2 MiB, overflow_len 100000 (m1-the-graph/51b 2x check)
-100000 small run3: footprint 37.2 MiB, process max RSS 69.3 MiB
-100000 small once: EmittedOrder: 800072 B total over 100000 commits, 9 B/commit (m1-the-graph/51c); peak RSS now 128.2 MiB
+# 100000 small: pack 29 MiB on disk, commit-graph absent
+100000 small run1: first paint 95.869417ms, G 506.508541ms, g 93.917µs, 100000 rows, provisional order: true, peak RSS at paint 22.4 MiB, after G 68.0 MiB, end 68.0 MiB, overflow_len 100000 (m1-the-graph/51b 2x check)
+100000 small run1: footprint 36.0 MiB, process max RSS 68.1 MiB
+100000 small run2: first paint 11.666834ms, G 469.292708ms, g 92.542µs, 100000 rows, provisional order: true, peak RSS at paint 22.4 MiB, after G 67.5 MiB, end 67.5 MiB, overflow_len 100000 (m1-the-graph/51b 2x check)
+100000 small run2: footprint 35.5 MiB, process max RSS 67.6 MiB
+100000 small run3: first paint 11.882ms, G 468.562583ms, g 97.959µs, 100000 rows, provisional order: true, peak RSS at paint 22.3 MiB, after G 68.0 MiB, end 68.0 MiB, overflow_len 100000 (m1-the-graph/51b 2x check)
+100000 small run3: footprint 36.0 MiB, process max RSS 68.0 MiB
+100000 small once: EmittedOrder: 800072 B total over 100000 commits, 9 B/commit (m1-the-graph/51c); peak RSS now 128.1 MiB
 100000 small once: cold G, viewport at the top: hydrated 1500 (bound 2000), merge_reads 0 (bound 1), links_read 100000, pulled 100000, rows 100000 (m1-the-graph/52b)
-100000 small once: peak RSS after the cold G measurement 128.4 MiB
-100000 small once: far jump to row 90000 of 100000: 948.834µs, replayed 500 rows, 1 chunks rebuilt, hydrated 500 (m1-the-graph/56)
-100000 small once: peak RSS after the far jump measurement 133.1 MiB
+100000 small once: peak RSS after the cold G measurement 128.9 MiB
+100000 small once: far jump half way, to row 50000 of 100000: 953.708µs, replayed 500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
+100000 small once: far jump nine tenths, to row 90000 of 100000: 1.075792ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
+100000 small once: peak RSS after the far jump measurements 138.4 MiB
 # 100000 --commit-graph: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-commit-graph-9a592fc3353d5ab5
-# 100000 --commit-graph: pack 30 MiB on disk, commit-graph present
-100000 --commit-graph run1: first paint 12.9525ms, G 48.332791ms, g 93.125µs, 100000 rows, provisional order: false, peak RSS at paint 28.2 MiB, after G 32.7 MiB, end 32.7 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-100000 --commit-graph run1: footprint 8.8 MiB, process max RSS 32.8 MiB
-100000 --commit-graph run2: first paint 10.708167ms, G 48.406917ms, g 96.083µs, 100000 rows, provisional order: false, peak RSS at paint 28.1 MiB, after G 33.0 MiB, end 33.0 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-100000 --commit-graph run2: footprint 9.1 MiB, process max RSS 33.0 MiB
-100000 --commit-graph run3: first paint 10.856083ms, G 48.750875ms, g 93.292µs, 100000 rows, provisional order: false, peak RSS at paint 28.1 MiB, after G 33.0 MiB, end 33.0 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-100000 --commit-graph run3: footprint 9.1 MiB, process max RSS 33.1 MiB
-100000 --commit-graph once: EmittedOrder: 852912 B total over 100000 commits, 9 B/commit (m1-the-graph/51c); peak RSS now 123.9 MiB
+# 100000 --commit-graph: pack 29 MiB on disk, commit-graph present
+100000 --commit-graph run1: first paint 16.405375ms, G 57.950708ms, g 97.292µs, 100000 rows, provisional order: false, peak RSS at paint 19.7 MiB, after G 26.7 MiB, end 26.7 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+100000 --commit-graph run1: footprint 9.3 MiB, process max RSS 26.8 MiB
+100000 --commit-graph run2: first paint 12.464ms, G 79.213292ms, g 92µs, 100000 rows, provisional order: false, peak RSS at paint 19.8 MiB, after G 26.6 MiB, end 26.6 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+100000 --commit-graph run2: footprint 9.1 MiB, process max RSS 26.6 MiB
+100000 --commit-graph run3: first paint 10.802792ms, G 51.918791ms, g 94.917µs, 100000 rows, provisional order: false, peak RSS at paint 19.8 MiB, after G 26.8 MiB, end 26.8 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+100000 --commit-graph run3: footprint 9.3 MiB, process max RSS 26.8 MiB
+100000 --commit-graph once: EmittedOrder: 852912 B total over 100000 commits, 9 B/commit (m1-the-graph/51c); peak RSS now 125.1 MiB
 100000 --commit-graph once: cold G, viewport at the top: hydrated 1500 (bound 2000), merge_reads 0 (bound 1), links_read 100000, pulled 100000, rows 100000 (m1-the-graph/52b)
-100000 --commit-graph once: peak RSS after the cold G measurement 123.9 MiB
-100000 --commit-graph once: far jump to row 90000 of 100000: 1.72975ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500 (m1-the-graph/56)
-100000 --commit-graph once: peak RSS after the far jump measurement 123.9 MiB
+100000 --commit-graph once: peak RSS after the cold G measurement 125.1 MiB
+100000 --commit-graph once: far jump half way, to row 50000 of 100000: 1.884625ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
+100000 --commit-graph once: far jump nine tenths, to row 90000 of 100000: 1.807083ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
+100000 --commit-graph once: peak RSS after the far jump measurements 125.1 MiB
 # 100000 --realistic: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-realistic-no-commit-graph-75d9d82601e974e2
-# 100000 --realistic: pack 36 MiB on disk, commit-graph absent
-100000 --realistic run1: first paint 100.081333ms, G 520.917167ms, g 107.708µs, 100000 rows, provisional order: true, peak RSS at paint 23.4 MiB, after G 76.0 MiB, end 76.0 MiB, overflow_len 100000 (m1-the-graph/51b 2x check)
-100000 --realistic run1: footprint 37.9 MiB, process max RSS 76.1 MiB
-100000 --realistic run2: first paint 12.331542ms, G 502.716083ms, g 93.833µs, 100000 rows, provisional order: true, peak RSS at paint 23.5 MiB, after G 76.5 MiB, end 76.5 MiB, overflow_len 100000 (m1-the-graph/51b 2x check)
-100000 --realistic run2: footprint 38.4 MiB, process max RSS 76.6 MiB
-100000 --realistic run3: first paint 12.3035ms, G 507.897667ms, g 109.541µs, 100000 rows, provisional order: true, peak RSS at paint 23.6 MiB, after G 76.0 MiB, end 76.1 MiB, overflow_len 100000 (m1-the-graph/51b 2x check)
-100000 --realistic run3: footprint 38.0 MiB, process max RSS 76.1 MiB
-100000 --realistic once: EmittedOrder: 800072 B total over 100000 commits, 9 B/commit (m1-the-graph/51c); peak RSS now 189.3 MiB
+# 100000 --realistic: pack 35 MiB on disk, commit-graph absent
+100000 --realistic run1: first paint 108.511917ms, G 543.992417ms, g 109µs, 100000 rows, provisional order: true, peak RSS at paint 23.5 MiB, after G 75.5 MiB, end 75.6 MiB, overflow_len 100000 (m1-the-graph/51b 2x check)
+100000 --realistic run1: footprint 37.4 MiB, process max RSS 75.6 MiB
+100000 --realistic run2: first paint 12.167417ms, G 516.434667ms, g 107.25µs, 100000 rows, provisional order: true, peak RSS at paint 23.4 MiB, after G 75.6 MiB, end 75.7 MiB, overflow_len 100000 (m1-the-graph/51b 2x check)
+100000 --realistic run2: footprint 37.6 MiB, process max RSS 75.8 MiB
+100000 --realistic run3: first paint 13.832333ms, G 536.964625ms, g 113.833µs, 100000 rows, provisional order: true, peak RSS at paint 23.5 MiB, after G 76.0 MiB, end 76.0 MiB, overflow_len 100000 (m1-the-graph/51b 2x check)
+100000 --realistic run3: footprint 37.9 MiB, process max RSS 76.1 MiB
+100000 --realistic once: EmittedOrder: 800072 B total over 100000 commits, 9 B/commit (m1-the-graph/51c); peak RSS now 188.8 MiB
 100000 --realistic once: cold G, viewport at the top: hydrated 1500 (bound 2000), merge_reads 0 (bound 1), links_read 100000, pulled 100000, rows 100000 (m1-the-graph/52b)
-100000 --realistic once: peak RSS after the cold G measurement 189.4 MiB
-100000 --realistic once: far jump to row 90000 of 100000: 1.048292ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500 (m1-the-graph/56)
-100000 --realistic once: peak RSS after the far jump measurement 189.4 MiB
+100000 --realistic once: peak RSS after the cold G measurement 189.7 MiB
+100000 --realistic once: far jump half way, to row 50000 of 100000: 1.922042ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
+100000 --realistic once: far jump nine tenths, to row 90000 of 100000: 1.052083ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
+100000 --realistic once: peak RSS after the far jump measurements 189.8 MiB
 # 100000 --realistic --commit-graph: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-realistic-commit-graph-7466bed2ec0d4c76
-# 100000 --realistic --commit-graph: pack 36 MiB on disk, commit-graph present
-100000 --realistic --commit-graph run1: first paint 105.664042ms, G 50.258833ms, g 110.25µs, 100000 rows, provisional order: false, peak RSS at paint 28.8 MiB, after G 37.0 MiB, end 37.1 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-100000 --realistic --commit-graph run1: footprint 12.6 MiB, process max RSS 37.1 MiB
-100000 --realistic --commit-graph run2: first paint 11.138291ms, G 49.540125ms, g 112.292µs, 100000 rows, provisional order: false, peak RSS at paint 28.8 MiB, after G 37.0 MiB, end 37.0 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-100000 --realistic --commit-graph run2: footprint 12.6 MiB, process max RSS 37.1 MiB
-100000 --realistic --commit-graph run3: first paint 10.989042ms, G 51.221625ms, g 115.666µs, 100000 rows, provisional order: false, peak RSS at paint 28.7 MiB, after G 37.2 MiB, end 37.2 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-100000 --realistic --commit-graph run3: footprint 12.8 MiB, process max RSS 37.3 MiB
+# 100000 --realistic --commit-graph: pack 35 MiB on disk, commit-graph present
+100000 --realistic --commit-graph run1: first paint 79.835209ms, G 60.30475ms, g 109.75µs, 100000 rows, provisional order: false, peak RSS at paint 19.7 MiB, after G 30.4 MiB, end 30.5 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+100000 --realistic --commit-graph run1: footprint 12.8 MiB, process max RSS 30.5 MiB
+100000 --realistic --commit-graph run2: first paint 10.078833ms, G 50.48025ms, g 94.667µs, 100000 rows, provisional order: false, peak RSS at paint 19.8 MiB, after G 30.5 MiB, end 30.5 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+100000 --realistic --commit-graph run2: footprint 12.8 MiB, process max RSS 30.5 MiB
+100000 --realistic --commit-graph run3: first paint 10.000916ms, G 50.341458ms, g 119.917µs, 100000 rows, provisional order: false, peak RSS at paint 19.7 MiB, after G 30.2 MiB, end 30.3 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+100000 --realistic --commit-graph run3: footprint 12.6 MiB, process max RSS 30.3 MiB
 100000 --realistic --commit-graph once: EmittedOrder: 1122440 B total over 100000 commits, 12 B/commit (m1-the-graph/51c); peak RSS now 190.4 MiB
 100000 --realistic --commit-graph once: cold G, viewport at the top: hydrated 1500 (bound 2000), merge_reads 0 (bound 1), links_read 100000, pulled 100000, rows 100000 (m1-the-graph/52b)
 100000 --realistic --commit-graph once: peak RSS after the cold G measurement 190.4 MiB
-100000 --realistic --commit-graph once: far jump to row 90000 of 100000: 1.936042ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500 (m1-the-graph/56)
-100000 --realistic --commit-graph once: peak RSS after the far jump measurement 190.4 MiB
-# The memory curve: scripts/memory-curve.sh 1000000 (2026-09-14, release, 3 runs per cell, one process at a time)
-# Gate: peak RSS < 300 MB with a commit-graph (ADR-0026); without one at 1M: reported, footprint < 300 MB.
+100000 --realistic --commit-graph once: far jump half way, to row 50000 of 100000: 1.968083ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
+100000 --realistic --commit-graph once: far jump nine tenths, to row 90000 of 100000: 1.9195ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
+100000 --realistic --commit-graph once: peak RSS after the far jump measurements 190.4 MiB
 # 1000000 small: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-1000000-no-commit-graph-d5f8e6a5494a9ead
-# 1000000 small: pack 300 MiB on disk, commit-graph absent
-1000000 small run1: first paint 982.835375ms, G 5.421727083s, g 617.208µs, 1000000 rows, provisional order: true, peak RSS at paint 162.5 MiB, after G 478.1 MiB, end 478.2 MiB, overflow_len 1000000 (m1-the-graph/51b 2x check)
-1000000 small run1: footprint 188.3 MiB, process max RSS 478.2 MiB
-1000000 small run2: first paint 107.187833ms, G 5.313901667s, g 626.916µs, 1000000 rows, provisional order: true, peak RSS at paint 162.3 MiB, after G 477.3 MiB, end 477.3 MiB, overflow_len 1000000 (m1-the-graph/51b 2x check)
-1000000 small run2: footprint 187.5 MiB, process max RSS 477.4 MiB
-1000000 small run3: first paint 109.45575ms, G 5.327028s, g 666µs, 1000000 rows, provisional order: true, peak RSS at paint 162.2 MiB, after G 476.3 MiB, end 476.3 MiB, overflow_len 1000000 (m1-the-graph/51b 2x check)
-1000000 small run3: footprint 186.5 MiB, process max RSS 476.4 MiB
-1000000 small once: EmittedOrder: 8000072 B total over 1000000 commits, 9 B/commit (m1-the-graph/51c); peak RSS now 1019.7 MiB
+# 1000000 small: pack 297 MiB on disk, commit-graph absent
+1000000 small run1: first paint 997.187458ms, G 6.083120541s, g 669.084µs, 1000000 rows, provisional order: true, peak RSS at paint 162.5 MiB, after G 445.4 MiB, end 445.4 MiB, overflow_len 1000000 (m1-the-graph/51b 2x check)
+1000000 small run1: footprint 155.6 MiB, process max RSS 445.5 MiB
+1000000 small run2: first paint 112.181584ms, G 5.458793041s, g 643.083µs, 1000000 rows, provisional order: true, peak RSS at paint 162.5 MiB, after G 445.1 MiB, end 445.1 MiB, overflow_len 1000000 (m1-the-graph/51b 2x check)
+1000000 small run2: footprint 155.3 MiB, process max RSS 445.2 MiB
+1000000 small run3: first paint 103.784333ms, G 5.330485666s, g 650.583µs, 1000000 rows, provisional order: true, peak RSS at paint 162.6 MiB, after G 444.6 MiB, end 444.6 MiB, overflow_len 1000000 (m1-the-graph/51b 2x check)
+1000000 small run3: footprint 154.8 MiB, process max RSS 444.7 MiB
+1000000 small once: EmittedOrder: 8000072 B total over 1000000 commits, 9 B/commit (m1-the-graph/51c); peak RSS now 1035.2 MiB
 1000000 small once: cold G, viewport at the top: hydrated 1500 (bound 2000), merge_reads 1 (bound 1), links_read 1000000, pulled 1000000, rows 1000000 (m1-the-graph/52b)
-1000000 small once: peak RSS after the cold G measurement 1020.0 MiB
-1000000 small once: far jump to row 900000 of 1000000: 1.914125ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500 (m1-the-graph/56)
-1000000 small once: peak RSS after the far jump measurement 1025.1 MiB
+1000000 small once: peak RSS after the cold G measurement 1037.0 MiB
+1000000 small once: far jump half way, to row 500000 of 1000000: 13.001084ms, replayed 4500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 16000 (m1-the-graph/56, 60)
+1000000 small once: far jump nine tenths, to row 900000 of 1000000: 13.273792ms, replayed 4500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 16000 (m1-the-graph/56, 60)
+1000000 small once: peak RSS after the far jump measurements 1037.3 MiB
 # 1000000 --commit-graph: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-1000000-commit-graph-511a25b425758b13
 # 1000000 --commit-graph: pack 297 MiB on disk, commit-graph present
-1000000 --commit-graph run1: first paint 975.479042ms, G 505.563584ms, g 641.917µs, 1000000 rows, provisional order: false, peak RSS at paint 219.2 MiB, after G 239.9 MiB, end 239.9 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-1000000 --commit-graph run1: footprint 38.1 MiB, process max RSS 240.0 MiB
-1000000 --commit-graph run2: first paint 100.977417ms, G 496.226708ms, g 637.666µs, 1000000 rows, provisional order: false, peak RSS at paint 219.3 MiB, after G 239.1 MiB, end 239.1 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-1000000 --commit-graph run2: footprint 37.3 MiB, process max RSS 239.2 MiB
-1000000 --commit-graph run3: first paint 101.122792ms, G 506.578208ms, g 620.5µs, 1000000 rows, provisional order: false, peak RSS at paint 219.2 MiB, after G 238.6 MiB, end 238.6 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-1000000 --commit-graph run3: footprint 36.8 MiB, process max RSS 238.7 MiB
-1000000 --commit-graph once: EmittedOrder: 11339736 B total over 1000000 commits, 12 B/commit (m1-the-graph/51c); peak RSS now 996.5 MiB
+1000000 --commit-graph run1: first paint 709.702875ms, G 564.083917ms, g 658.75µs, 1000000 rows, provisional order: false, peak RSS at paint 128.2 MiB, after G 174.2 MiB, end 174.2 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+1000000 --commit-graph run1: footprint 37.8 MiB, process max RSS 174.3 MiB
+1000000 --commit-graph run2: first paint 90.508125ms, G 538.689917ms, g 629.833µs, 1000000 rows, provisional order: false, peak RSS at paint 128.2 MiB, after G 173.4 MiB, end 173.4 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+1000000 --commit-graph run2: footprint 37.0 MiB, process max RSS 173.5 MiB
+1000000 --commit-graph run3: first paint 90.007125ms, G 526.777167ms, g 724µs, 1000000 rows, provisional order: false, peak RSS at paint 128.2 MiB, after G 174.2 MiB, end 174.2 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+1000000 --commit-graph run3: footprint 37.8 MiB, process max RSS 174.3 MiB
+1000000 --commit-graph once: EmittedOrder: 11339736 B total over 1000000 commits, 12 B/commit (m1-the-graph/51c); peak RSS now 997.4 MiB
 1000000 --commit-graph once: cold G, viewport at the top: hydrated 1500 (bound 2000), merge_reads 1 (bound 1), links_read 1000000, pulled 1000000, rows 1000000 (m1-the-graph/52b)
-1000000 --commit-graph once: peak RSS after the cold G measurement 996.5 MiB
-1000000 --commit-graph once: far jump to row 900000 of 1000000: 2.197958ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500 (m1-the-graph/56)
-1000000 --commit-graph once: peak RSS after the far jump measurement 996.5 MiB
+1000000 --commit-graph once: peak RSS after the cold G measurement 997.4 MiB
+1000000 --commit-graph once: far jump half way, to row 500000 of 1000000: 14.948041ms, replayed 4500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 16000 (m1-the-graph/56, 60)
+1000000 --commit-graph once: far jump nine tenths, to row 900000 of 1000000: 14.901292ms, replayed 4500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 16000 (m1-the-graph/56, 60)
+1000000 --commit-graph once: peak RSS after the far jump measurements 997.4 MiB
 # 1000000 --realistic: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-1000000-realistic-no-commit-graph-72fa024bc63d5a20
-# 1000000 --realistic: pack 364 MiB on disk, commit-graph absent
-1000000 --realistic run1: first paint 1.039685333s, G 5.979680083s, g 661.541µs, 1000000 rows, provisional order: true, peak RSS at paint 168.9 MiB, after G 539.1 MiB, end 539.2 MiB, overflow_len 1000000 (m1-the-graph/51b 2x check)
-1000000 --realistic run1: footprint 188.4 MiB, process max RSS 539.2 MiB
-1000000 --realistic run2: first paint 111.752166ms, G 5.75923975s, g 678.708µs, 1000000 rows, provisional order: true, peak RSS at paint 169.0 MiB, after G 539.7 MiB, end 539.7 MiB, overflow_len 1000000 (m1-the-graph/51b 2x check)
-1000000 --realistic run2: footprint 188.9 MiB, process max RSS 539.8 MiB
-1000000 --realistic run3: first paint 112.012333ms, G 5.726845584s, g 633.625µs, 1000000 rows, provisional order: true, peak RSS at paint 169.6 MiB, after G 537.4 MiB, end 537.5 MiB, overflow_len 1000000 (m1-the-graph/51b 2x check)
-1000000 --realistic run3: footprint 186.7 MiB, process max RSS 537.5 MiB
-1000000 --realistic once: EmittedOrder: 8000072 B total over 1000000 commits, 9 B/commit (m1-the-graph/51c); peak RSS now 1671.4 MiB
+# 1000000 --realistic: pack 358 MiB on disk, commit-graph absent
+1000000 --realistic run1: first paint 1.031568375s, G 6.300158791s, g 625.416µs, 1000000 rows, provisional order: true, peak RSS at paint 169.7 MiB, after G 507.4 MiB, end 507.5 MiB, overflow_len 1000000 (m1-the-graph/51b 2x check)
+1000000 --realistic run1: footprint 156.7 MiB, process max RSS 507.5 MiB
+1000000 --realistic run2: first paint 108.185458ms, G 5.877448791s, g 621.125µs, 1000000 rows, provisional order: true, peak RSS at paint 169.5 MiB, after G 508.4 MiB, end 508.4 MiB, overflow_len 1000000 (m1-the-graph/51b 2x check)
+1000000 --realistic run2: footprint 157.6 MiB, process max RSS 508.5 MiB
+1000000 --realistic run3: first paint 110.639084ms, G 6.155163208s, g 639.375µs, 1000000 rows, provisional order: true, peak RSS at paint 169.6 MiB, after G 508.7 MiB, end 508.7 MiB, overflow_len 1000000 (m1-the-graph/51b 2x check)
+1000000 --realistic run3: footprint 157.9 MiB, process max RSS 508.8 MiB
+1000000 --realistic once: EmittedOrder: 8000072 B total over 1000000 commits, 9 B/commit (m1-the-graph/51c); peak RSS now 1689.1 MiB
 1000000 --realistic once: cold G, viewport at the top: hydrated 1500 (bound 2000), merge_reads 1 (bound 1), links_read 1000000, pulled 1000000, rows 1000000 (m1-the-graph/52b)
-1000000 --realistic once: peak RSS after the cold G measurement 1672.1 MiB
-1000000 --realistic once: far jump to row 900000 of 1000000: 2.065208ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500 (m1-the-graph/56)
-1000000 --realistic once: peak RSS after the far jump measurement 1672.4 MiB
+1000000 --realistic once: peak RSS after the cold G measurement 1690.9 MiB
+1000000 --realistic once: far jump half way, to row 500000 of 1000000: 15.329875ms, replayed 4500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 16000 (m1-the-graph/56, 60)
+1000000 --realistic once: far jump nine tenths, to row 900000 of 1000000: 14.5385ms, replayed 4500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 16000 (m1-the-graph/56, 60)
+1000000 --realistic once: peak RSS after the far jump measurements 1691.4 MiB
 # 1000000 --realistic --commit-graph: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-1000000-realistic-commit-graph-c710f42cc79576f0
-# 1000000 --realistic --commit-graph: pack 365 MiB on disk, commit-graph present
-1000000 --realistic --commit-graph run1: first paint 1.0881975s, G 517.502625ms, g 656.792µs, 1000000 rows, provisional order: false, peak RSS at paint 222.7 MiB, after G 246.0 MiB, end 246.0 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-1000000 --realistic --commit-graph run1: footprint 41.4 MiB, process max RSS 246.1 MiB
-1000000 --realistic --commit-graph run2: first paint 98.736875ms, G 507.742375ms, g 646.125µs, 1000000 rows, provisional order: false, peak RSS at paint 223.2 MiB, after G 245.2 MiB, end 245.2 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-1000000 --realistic --commit-graph run2: footprint 40.6 MiB, process max RSS 245.3 MiB
-1000000 --realistic --commit-graph run3: first paint 99.907875ms, G 499.117959ms, g 618.125µs, 1000000 rows, provisional order: false, peak RSS at paint 223.3 MiB, after G 245.0 MiB, end 245.0 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-1000000 --realistic --commit-graph run3: footprint 40.4 MiB, process max RSS 245.1 MiB
-1000000 --realistic --commit-graph once: EmittedOrder: 9746064 B total over 1000000 commits, 10 B/commit (m1-the-graph/51c); peak RSS now 1649.1 MiB
+# 1000000 --realistic --commit-graph: pack 358 MiB on disk, commit-graph present
+1000000 --realistic --commit-graph run1: first paint 789.58025ms, G 609.424292ms, g 643.666µs, 1000000 rows, provisional order: false, peak RSS at paint 129.4 MiB, after G 183.6 MiB, end 183.7 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+1000000 --realistic --commit-graph run1: footprint 46.7 MiB, process max RSS 183.7 MiB
+1000000 --realistic --commit-graph run2: first paint 88.335792ms, G 566.350667ms, g 641.167µs, 1000000 rows, provisional order: false, peak RSS at paint 129.5 MiB, after G 182.5 MiB, end 182.5 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+1000000 --realistic --commit-graph run2: footprint 45.5 MiB, process max RSS 182.6 MiB
+1000000 --realistic --commit-graph run3: first paint 91.159625ms, G 636.819709ms, g 680.375µs, 1000000 rows, provisional order: false, peak RSS at paint 129.5 MiB, after G 183.1 MiB, end 183.1 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+1000000 --realistic --commit-graph run3: footprint 46.2 MiB, process max RSS 183.2 MiB
+1000000 --realistic --commit-graph once: EmittedOrder: 9746064 B total over 1000000 commits, 10 B/commit (m1-the-graph/51c); peak RSS now 1650.1 MiB
 1000000 --realistic --commit-graph once: cold G, viewport at the top: hydrated 1500 (bound 2000), merge_reads 1 (bound 1), links_read 1000000, pulled 1000000, rows 1000000 (m1-the-graph/52b)
-1000000 --realistic --commit-graph once: peak RSS after the cold G measurement 1649.1 MiB
-1000000 --realistic --commit-graph once: far jump to row 900000 of 1000000: 2.382375ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500 (m1-the-graph/56)
-1000000 --realistic --commit-graph once: peak RSS after the far jump measurement 1649.1 MiB
+1000000 --realistic --commit-graph once: peak RSS after the cold G measurement 1650.1 MiB
+1000000 --realistic --commit-graph once: far jump half way, to row 500000 of 1000000: 16.273958ms, replayed 4500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 16000 (m1-the-graph/56, 60)
+1000000 --realistic --commit-graph once: far jump nine tenths, to row 900000 of 1000000: 16.039ms, replayed 4500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 16000 (m1-the-graph/56, 60)
+1000000 --realistic --commit-graph once: peak RSS after the far jump measurements 1650.1 MiB

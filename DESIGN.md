@@ -597,13 +597,15 @@ LayoutCursor    { active: [Option<Lane>], waiting: Map<CommitId,[usize]>,
 EmittedOrder    { ids: [CommitId], row_of: Map<CommitId, usize> }
                                                   // the commit on every row so far; one copy,
                                                   // shared by the frontier and every checkpoint.
-                                                  // The one O(history) structure (~90 B/commit)
+                                                  // The one O(history) structure: handles, not
+                                                  // Oids, measured 9-12 B/commit (m1-the-graph/56c)
 walker_state                                      // §3.2 step 2's walk frontier, held by the
                                                   // streaming layout beside the cursor — never by
                                                   // a checkpoint. With a commit-graph: the
                                                   // generation-ordered queue + frontier in-degrees,
                                                   // bounded by graph parallelism (ADR-0008); after
-                                                  // promotion: an index into EmittedOrder
+                                                  // promotion: an index into EmittedOrder. Dense
+                                                  // by handle, since the graph is read, not the odb
 ```
 
 ### 3.2 Algorithm overview (prose)
@@ -821,10 +823,14 @@ When `active.len()` (lanes open and not `reserved`) exceeds `graph.max_lanes`:
   eviction, not virtualization alone, is what makes memory grow with the
   viewport rather than history (PROMPT.md §1.2). Measured (m1-06, an
   in-memory 100k-commit history, default configuration): scrolling all
-  100k rows held at most 16 chunks = 8,000 rows at any point; 49
-  checkpoints cost 90,158 bytes between them; the emitted order
-  (`EmittedOrder`, §3.1) cost 9,027,656 bytes and is the one term that
-  grows with history. The heavy tier's peak-memory test (PROMPT.md §7.1:
+  100k rows held at most 16 chunks = 8,000 rows at any point; checkpoints
+  now thin to an even grid rather than evict LRU (m1-the-graph/60), so a
+  far jump at 1M replays ≤ 16,000 rows (13–15 ms), not the whole history;
+  the emitted order (`EmittedOrder`, §3.1) measures 9-12 B/commit
+  (handles, not `Oid`s, m1-the-graph/56c) and is the one term that grows
+  with history — at 1M without a commit-graph, resident pack pages are
+  now the larger term (m1-the-graph/56c). The heavy tier's peak-memory
+  test (PROMPT.md §7.1:
   load and scroll the 100k-commit fixture, fail above 300 MB by
   `getrusage`) is the gate that proves it on a real repository — including
   after a jump to the bottom and a scroll back up (m1-16).

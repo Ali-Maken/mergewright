@@ -40,7 +40,7 @@
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
  q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent  F focus  H stash  y sha  PgUp/PgDn page
-# 120x40: after B, the written frame (B to written line: 5.1 s wall)
+# 120x40: after B, the written frame (B to written line: 5.3 s wall)
  graft /Users/devuser/dev/sandbox/gitter/target/56/offer-1m  500 rows so far
 ◌     Uncommitted changes (1 untracked)
 ◆     [◆ main] [tag: release/1000000] Trunk commit 1000000                                               GF 5y   eae4445
@@ -81,18 +81,17 @@
 │ ●   topic/071585: step 2                                                                               GF 5y   bc4b741
  commit-graph written: 1,000,000 commits · the next open sorts at once
  q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent  F focus  H stash  y sha  PgUp/PgDn page
-# the same repository after B, as a curve cell (scripts/memory-curve.sh --repo target/56/offer-1m; release, 3 runs)
 # 1M small after B: target/56/offer-1m
 # 1M small after B: pack 297 MiB on disk, commit-graph present
-1M small after B run1: first paint 122.030875ms, G 509.268542ms, g 631.333µs, 1000000 rows, provisional order: false, peak RSS at paint 218.9 MiB, after G 236.9 MiB, end 236.9 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-1M small after B run1: footprint 35.2 MiB, process max RSS 237.0 MiB
-1M small after B run2: first paint 93.764958ms, G 516.938625ms, g 714.959µs, 1000000 rows, provisional order: false, peak RSS at paint 218.7 MiB, after G 236.9 MiB, end 236.9 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-1M small after B run2: footprint 35.2 MiB, process max RSS 237.0 MiB
-1M small after B run3: first paint 91.755833ms, G 517.248917ms, g 636.792µs, 1000000 rows, provisional order: false, peak RSS at paint 218.8 MiB, after G 238.5 MiB, end 238.5 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
-1M small after B run3: footprint 36.8 MiB, process max RSS 238.6 MiB
-1M small after B once: EmittedOrder: 11339736 B total over 1000000 commits, 12 B/commit (m1-the-graph/51c); peak RSS now 996.4 MiB
+1M small after B run1: first paint 124.301666ms, G 534.694875ms, g 638.542µs, 1000000 rows, provisional order: false, peak RSS at paint 128.4 MiB, after G 173.4 MiB, end 173.4 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+1M small after B run1: footprint 37.0 MiB, process max RSS 173.4 MiB
+1M small after B run2: first paint 88.749792ms, G 541.707083ms, g 716.334µs, 1000000 rows, provisional order: false, peak RSS at paint 127.9 MiB, after G 172.7 MiB, end 172.7 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+1M small after B run2: footprint 36.3 MiB, process max RSS 172.8 MiB
+1M small after B run3: first paint 84.391916ms, G 552.345125ms, g 744.792µs, 1000000 rows, provisional order: false, peak RSS at paint 127.8 MiB, after G 173.8 MiB, end 173.8 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+1M small after B run3: footprint 37.5 MiB, process max RSS 173.9 MiB
+1M small after B once: EmittedOrder: 11339736 B total over 1000000 commits, 12 B/commit (m1-the-graph/51c); peak RSS now 996.0 MiB
 1M small after B once: cold G, viewport at the top: hydrated 1500 (bound 2000), merge_reads 1 (bound 1), links_read 1000000, pulled 1000000, rows 1000000 (m1-the-graph/52b)
-1M small after B once: peak RSS after the cold G measurement 996.4 MiB
-1M small after B once: far jump half way, to row 500000 of 1000000: 1.456785542s, replayed 500500 rows, 1 chunks rebuilt, hydrated 500 (m1-the-graph/56)
-1M small after B once: far jump nine tenths, to row 900000 of 1000000: 2.1355ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500 (m1-the-graph/56)
-1M small after B once: peak RSS after the far jump measurements 996.4 MiB
+1M small after B once: peak RSS after the cold G measurement 996.0 MiB
+1M small after B once: far jump half way, to row 500000 of 1000000: 14.914542ms, replayed 4500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 16000 (m1-the-graph/56, 60)
+1M small after B once: far jump nine tenths, to row 900000 of 1000000: 15.040542ms, replayed 4500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 16000 (m1-the-graph/56, 60)
+1M small after B once: peak RSS after the far jump measurements 996.0 MiB

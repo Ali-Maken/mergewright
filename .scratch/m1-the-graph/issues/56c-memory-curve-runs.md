@@ -38,3 +38,59 @@ Out: pass/fail verdicts, the `## For the M1 review` section, ADR-0026's status l
 
 ## Size
 One context, under ~60k. Runs ~15–25 min wall, all to files.
+
+## Numbers (2026-09-14, builder-sonnet)
+
+Raw: `docs/shots/m1-memory-curve.txt` (full re-run), `docs/shots/m1-memory-curve-offer.txt` (re-taken), `target/56c/heavy-full.log`, `target/56c/perf-run.log`, `target/59b/prof-{100k,1M}.txt`, `target/61/guard-{1,2,3}.txt`.
+
+**Curve cells** — release, 3 runs/cell, `scripts/memory-curve.sh 10000 100000 1000000` (`docs/shots/m1-memory-curve.txt`). Peak RSS = process max RSS (`time -l`); footprint = `time -l` peak memory footprint (anonymous pages).
+
+| Cell | pack on disk | peak RSS (run1/2/3) | footprint (run1/2/3) | first paint (run1/2/3) | `G` (run1/2/3) | `overflow_len` | checkpoint stride | Bar (copied, ADR-0026) |
+|---|---|---|---|---|---|---|---|---|
+| 10k small, no cg | 2 MiB | 17.0/15.8/15.7 MiB | 10.5/9.4/9.3 MiB | 23.3/2.5/2.4 ms | 60.9/37.5/36.8 ms | 10,000 | 2,000 | < 300 MB |
+| 10k small, cg | 2 MiB | 12.1/12.0/12.1 MiB | 6.4/6.3/6.4 MiB | 11.0/2.2/2.1 ms | 16.1/12.8/12.7 ms | 0 | 2,000 | < 300 MB |
+| 10k realistic, no cg | 3 MiB | 24.6/24.5/24.6 MiB | 17.5/17.4/17.5 MiB | 13.5/2.5/2.5 ms | 42.2/40.0/40.0 ms | 10,000 | 2,000 | < 300 MB |
+| 10k realistic, cg | 3 MiB | 15.9/16.0/16.0 MiB | 10.0/10.1/10.1 MiB | 11.2/2.1/2.2 ms | 17.5/13.5/13.6 ms | 0 | 2,000 | < 300 MB |
+| 100k small, no cg | 29 MiB | 68.1/67.6/68.0 MiB | 36.0/35.5/36.0 MiB | 95.9/11.7/11.9 ms | 506.5/469.3/468.6 ms | 100,000 | 2,000 | < 300 MB |
+| 100k small, cg | 29 MiB | 26.8/26.6/26.8 MiB | 9.3/9.1/9.3 MiB | 16.4/12.5/10.8 ms | 58.0/79.2/51.9 ms | 0 | 2,000 | < 300 MB |
+| 100k realistic, no cg | 35 MiB | 75.6/75.8/76.1 MiB | 37.4/37.6/37.9 MiB | 108.5/12.2/13.8 ms | 544.0/516.4/537.0 ms | 100,000 | 2,000 | < 300 MB |
+| 100k realistic, cg | 35 MiB | 30.5/30.5/30.3 MiB | 12.8/12.8/12.6 MiB | 79.8/10.1/10.0 ms | 60.3/50.5/50.3 ms | 0 | 2,000 | < 300 MB |
+| **1M small, no cg** | 297 MiB | **445.5/445.2/444.7 MiB** | **155.6/155.3/154.8 MiB** | 997.2/112.2/103.8 ms | 6.083/5.459/5.330 s | 1,000,000 | 16,000 | live heap ≤ 100 (ADR-0026 amendment 2); footprint: reported, floor ~140 |
+| 1M small, cg | 297 MiB | 174.3/173.5/174.3 MiB | 37.8/37.0/37.8 MiB | 709.7/90.5/90.0 ms | 564.1/538.7/526.8 ms | 0 | 16,000 | < 300 MB |
+| **1M realistic, no cg** | 358 MiB | **507.5/508.5/508.8 MiB** | **156.7/157.6/157.9 MiB** | 1031.6/108.2/110.6 ms | 6.300/5.877/6.155 s | 1,000,000 | 16,000 | live heap ≤ 100 (ADR-0026 amendment 2); footprint: reported, floor ~140 |
+| 1M realistic, cg | 358 MiB | 183.7/182.6/183.2 MiB | 46.7/45.5/46.2 MiB | 789.6/88.3/91.2 ms | 609.4/566.4/636.8 ms | 0 | 16,000 | < 300 MB |
+| 1M small, no cg → **after `B`** (offer, same repo, `docs/shots/m1-memory-curve-offer.txt`) | 297 MiB | 173.4/172.8/173.9 MiB | 37.0/36.3/37.5 MiB | 124.3/88.7/84.4 ms | 534.7/541.7/552.3 ms | 0 | 16,000 | < 300 MB (write 5.3 s wall, `git commit-graph write --reachable`) |
+
+**Live heap after `g`** (1M, 100k; `target/59b/prof-{1M,100k}.txt`, `prototypes/heap-profile-59`, reused from 59b — fresh, post-fix run, no re-run needed): 100k 27.0 MiB, 1M 92.5 MiB → **76 B/commit**. Footprint slope (from the curve cells above, 100k→1M no-cg small): (154.8–155.6 − 35.5–36.0) MiB / 900,000 ≈ **138–140 B/commit**. Bar: live heap ≤ 100 (pass, 76); footprint reported, floor ~140 (not gated further).
+
+**Far jumps** (rows/2, 9·rows/10; both 1M fixtures shown, plus cg variants; from the `once:` lines of `docs/shots/m1-memory-curve.txt`):
+
+| Fixture | half (row 500,000) | nine-tenths (row 900,000) | stride |
+|---|---|---|---|
+| 1M small, no cg | 13.0 ms, 4,500 rows | 13.3 ms, 4,500 rows | 16,000 |
+| 1M small, cg | 14.9 ms, 4,500 rows | 14.9 ms, 4,500 rows | 16,000 |
+| 1M realistic, no cg | 15.3 ms, 4,500 rows | 14.5 ms, 4,500 rows | 16,000 |
+| 1M realistic, cg | 16.3 ms, 4,500 rows | 16.0 ms, 4,500 rows | 16,000 |
+| 1M small, after `B` (cg) | 14.9 ms, 4,500 rows | 15.0 ms, 4,500 rows | 16,000 |
+
+Before m1-the-graph/60 (LRU): row 500,000 replayed 500,500 rows, 1.39–1.46 s.
+
+**Slope guard** (`heavy::slopes_per_commit_with_a_commit_graph`, `target/61/guard-{1,2,3}.txt`, release, 3 runs alone — reused from 61, not re-run: the guard's own fixtures/code unchanged by 56c): heap slope 29/31/29 B/commit (bar ≤ 50); RSS slope 167/169/167 B/commit (bar ≤ 200, floor ~166 named).
+
+**Heavy tier**, full run once alone, release (`cargo test --release --features heavy-tests -- --test-threads=2`, `target/56c/heavy-full.log`): **691 passed, 0 failed, 2 ignored** (0 red).
+
+**Release perf run** (ADR-0021, `cargo test --release -p graft --features heavy-tests --test it -- frames:: heavy::budgets_hold --test-threads=1 --nocapture`, `target/56c/perf-run.log`): **10 passed, 0 failed**, 21 filtered out (non-matching tests).
+
+| Test | Numbers | Bar |
+|---|---|---|
+| `frames::fifty_thousand_refs…pixel` | p50 4,348 µs, p99 5,740 µs, max 7,523 µs | ≤ 16 ms |
+| `frames::fifty_thousand_refs…unicode` | p50 5,576 µs, p99 10,003 µs, max 11,739 µs | ≤ 16 ms |
+| `frames::scrolling_the_100k_fixture…pixel` | p50 4,135 µs, p99 6,218 µs, max 7,397 µs | ≤ 16 ms |
+| `frames::scrolling_the_100k_fixture…unicode` | p50 3,912 µs, p99 5,318 µs, max 5,581 µs | ≤ 16 ms |
+| `heavy::budgets_hold_100k_with_50k_refs` | first_paint 40,652 µs, peak_rss 96.3 MiB | first paint ≤ 150 ms warm; RSS < 300 MB |
+| `heavy::budgets_hold_100k_cg` | first_paint 12,388 µs, peak_rss 27.0 MiB | same |
+| `heavy::budgets_hold_100k_no_cg` | first_paint 14,117 µs, peak_rss 68.8 MiB | same |
+| `heavy::budgets_hold_100k_realistic_cg` | first_paint 54,867 µs, peak_rss 30.7 MiB | same |
+| `heavy::budgets_hold_100k_realistic_no_cg` | first_paint 14,421 µs, peak_rss 74.7 MiB | same |
+
+No 1M-scale `frames::` test exists in the codebase (only 100k fixture and 50k-refs synthetic scroll scripts); the 1M scroll-shaped numbers this perf run covers are the far-jump table above (worker-thread jumps, not a frame-budget test). Flagging for the conductor/56d, not building one here (out of scope).

@@ -149,33 +149,37 @@ commands at once.
   measurements, not one.
 - Property tests at 1,000 cases.
 
-### Memory curve to a million commits (m1/46)
+### Memory curve to a million commits (m1/46, re-run m1-the-graph/56c)
 
-`scripts/memory-curve.sh [sizes…]` — release, one process at a time, 3 runs per cell, raw in `target/46/curve.txt`. Builds 1M fixtures on first run (~30 s and ~300–360 MiB each). Not part of `cargo test`: run by hand at reviews. Budget: 300 MB peak RSS (PROMPT §1.2/§7.1).
+`scripts/memory-curve.sh [sizes…]` — release, one process at a time, 3 runs per cell, raw in `docs/shots/m1-memory-curve.txt`. Builds 1M fixtures on first run (~30 s and ~300–360 MiB each). Not part of `cargo test`: run by hand at reviews. Bar: peak RSS < 300 MB with a commit-graph (ADR-0026); without one at 1M: reported, footprint < 300 MB.
 
-| Commits | small, no cg | small, cg | realistic, no cg | Verdict |
+Full re-run, 2026-09-14, release, 3 runs/cell (peak RSS = process max RSS; footprint = `time -l` peak memory footprint, anonymous pages):
+
+| Commits | small, no cg (peak RSS / footprint) | small, cg (peak RSS) | realistic, no cg (peak RSS / footprint) | realistic, cg (peak RSS) | Bar |
+|---|---|---|---|---|---|
+| 10k | 17.0/15.8/15.7 MiB / 10.5/9.4/9.3 MiB | 12.1/12.0/12.1 MiB | 24.6/24.5/24.6 MiB / 17.5/17.4/17.5 MiB | 15.9/16.0/16.0 MiB | < 300 MB — pass |
+| 100k | 68.1/67.6/68.0 MiB / 36.0/35.5/36.0 MiB | 26.8/26.6/26.8 MiB | 75.6/75.8/76.1 MiB / 37.4/37.6/37.9 MiB | 30.5/30.5/30.3 MiB | < 300 MB — pass |
+| 1M | **445.5/445.2/444.7 MiB / 155.6/155.3/154.8 MiB** | 174.3/173.5/174.3 MiB | **507.5/508.5/508.8 MiB / 156.7/157.6/157.9 MiB** | 183.2/182.6/183.7 MiB | cg < 300 MB — pass; no-cg — see below |
+
+Pack on disk: 10k 2–3 MiB, 100k 29–35 MiB, 1M 297–358 MiB. Checkpoint stride (m1-the-graph/60): 2,000 at 10k/100k, 16,000 at 1M, every variant. `overflow_len`: commit count without a commit-graph, 0 with one, every cell.
+
+**Without a commit-graph the 1M cell asserts two bars, not one** (m1-the-graph/59/59b/63, user decision 2026-09-14, ADR-0026 amended): **live heap slope ≤ 100 B/commit, gated at reviews** — read from `prototypes/heap-profile-59` at 100k and 1M (manual, not part of the curve script; raw `target/59b/prof-{100k,1M}.txt`); measured **76 B/commit** (100k 27.0 MiB → 1M 92.5 MiB live after `g`; interner 58 + one order 8 + promoted 4 + rest) — and **footprint at 1M: reported, floor named** — read from this table's `no cg` footprint column; measured **~138–140 B/commit** (76 live + ~62 allocator-retained memory, freed but kept in the process's footprint), against the existing "footprint under 300 MB at 1M" (154.8–157.9 MiB, well under). The floor is not gated further: see KNOWN_GAPS.
+
+The commit-graph offer, end to end, on a copy of the 1M small no-cg fixture (`docs/shots/m1-memory-curve-offer.txt`): before `B`, reported cell as above; `B` writes the graph in 5.3 s wall; after `B`, the same repository re-measured as a cg cell — peak RSS 173.4/172.8/173.9 MiB, footprint 36.3–37.5 MiB, far jump to row 500,000 14.9 ms (4,500 rows, stride 16,000) — gate pass.
+
+**Far jumps after a cold `G`, both 1M fixtures** (m1-the-graph/56, 60 — checkpoints thin to an even grid, never LRU): row 500,000 and row 900,000 both replay 4,500 rows in 13–16 ms at stride 16,000, every 1M variant (small/realistic × cg/no-cg). Before m1-the-graph/60's grid-thinning: row 500,000 replayed 500,500 rows in 1.39–1.46 s (LRU held only the last 128k rows' checkpoints).
+
+First paint per cell (m1-the-graph/55, `target/release/examples/budgets <fixture>`, release, with jobs; run 1 is cold, runs 2–3 warm — page cache not purged between runs). Judged 500 ms warm, reported against 150 ms (ADR-0026); cold run 1 reported beside it:
+
+| Commits | small, no cg (run1/2/3) | small, cg (run1/2/3) | realistic, no cg (run1/2/3) | realistic, cg (run1/2/3) |
 |---|---|---|---|---|
-| 10k | 24–25 MiB | 24 MiB | 36–37 MiB | pass |
-| 100k | 117–118 MiB | 104 MiB | 126–129 MiB | pass |
-| 1M | **881–882 MiB** | **933–935 MiB** | **947–949 MiB** | **fails, 3× over** |
+| 10k | 23.3/2.5/2.4 ms | 11.0/2.2/2.1 ms | 13.5/2.5/2.5 ms | 11.2/2.1/2.2 ms |
+| 100k | 95.9/11.7/11.9 ms | 16.4/12.5/10.8 ms | 108.5/12.2/13.8 ms | 79.8/10.1/10.0 ms |
+| 1M | **997/112/104 ms** | **710/91/90 ms** | **1,032/108/111 ms** | **790/88/91 ms** |
 
-Always peaks during `G`. What holds it (pack pages, `EmittedOrder`, `Topological.known`, `Included`): ticket m1-the-graph/46.
+Every 1M cell's run 1 is cold (~0.7–1.0 s, over 500 ms); warm runs 2–3 are 88–112 ms, well under 150 ms. Cause suspected (page cache: the pack `.idx` and loose refs not resident after a build or another 1M cell's I/O), not proven — needs `sudo purge` between runs (KNOWN_GAPS).
 
-**Without a commit-graph the 1M cell asserts two bars, not one** (m1-the-graph/59/59b/63, user decision 2026-09-14, ADR-0026 amended): **live heap slope ≤ 100 B/commit, gated at reviews** — read from `prototypes/heap-profile-59` at 100k and 1M (manual, not part of the curve script); measured **76 B/commit** (interner 58 + one order 8 + promoted 4 + rest) — and **footprint at 1M: reported, floor named** — read from this table's `no cg` cell; measured **~140 B/commit** (76 live + ~62 allocator-retained memory, freed but kept in the process's footprint), against the existing "footprint under 300 MB at 1M". The floor is not gated further: see KNOWN_GAPS.
-
-First paint per cell (m1-the-graph/55, `target/release/examples/budgets <fixture>`, release, with jobs, warm cache; raw `target/55/phaseB2.txt`). Judged 500 ms, reported against 150 ms (ADR-0026):
-
-| Commits | small, no cg | small, cg | realistic, no cg |
-|---|---|---|---|
-| 100k | 11 ms | 10 ms | not re-measured |
-| 1M | **104–105 ms** (was 297–383) | **98–99 ms** (was 292–346) | not re-measured |
-
-~90 % of the 1M number is the one ref read (6,498 loose refs); `budgets --phases <fixture>` splits it by phase. The first run after a build is cold (~1.0 s at 1M): discard it.
-
-Not there yet: the performance budgets and the 300 MB peak-memory gate
-(M1 tickets 27 and 30). The measurement they will use —
-`graft_fixtures::measure` — is here and unit-tested; the assertions are
-not. `cargo-fuzz` targets land in M2.
+Not there yet: `cargo-fuzz` targets, land in M2.
 
 ## Fixtures
 
