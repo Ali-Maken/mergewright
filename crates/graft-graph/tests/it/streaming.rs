@@ -127,7 +127,7 @@ fn never() -> bool {
 /// in topological order, whether or not there is a commit-graph file.
 fn topological_order(handle: &RepoHandle, shape: Shape) -> Vec<Oid> {
     let tips = handle
-        .commit_tips()
+        .commit_tips(&())
         .unwrap_or_else(|why| panic!("reading the refs of the {shape} fixture: {why}"));
     let mut walk = Walk::full_topological(handle, &tips, table(handle))
         .unwrap_or_else(|why| panic!("starting the topological walk of {shape}: {why}"));

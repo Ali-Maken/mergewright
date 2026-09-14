@@ -75,9 +75,10 @@ One line per public item. Update when a public item changes.
 - `RepoHandle::mailmap` (fn) — the repository's resolved `.mailmap`.
 - `RepoHandle::head` (fn) — where `HEAD` points.
 - `RepoHandle::references` (fn) — every ref in the repository.
-- `RepoHandle::commit_tips` (fn) — every branch/tag tip commit.
-- `RepoHandle::ref_snapshot` (fn) — `references` and `commit_tips` from one pass over the ref store.
-- `RepoHandle::peeled_references` (fn) — every ref that reaches a commit, with that commit (tags peeled).
+- `RepoHandle::commit_tips` (fn, takes `&dyn KnownCommits`) — every branch/tag tip commit; a tip the table already knows is a commit is never header-read (m1-the-graph/58).
+- `RepoHandle::ref_snapshot` (fn, takes `&dyn KnownCommits`) — `references` and `commit_tips` from one pass over the ref store.
+- `RepoHandle::peeled_references` (fn, takes `&dyn KnownCommits`) — every ref that reaches a commit, with that commit (tags peeled).
+- `KnownCommits` (trait) — `is_known_commit(&self, id: Oid) -> bool`, a free check a tip can be skipped past without reading its object. `()` always answers `false` (today's header-parse-everything path); `graft_git::history::CommitTable` answers from its handle table.
 - `RepoHandle::upstream` (fn) — the remote-tracking ref a branch pulls from, per its config.
 - `SharedRepo` (struct) — the `Send`, expensive-to-open half of a repository; hands out `RepoHandle`s.
 - `SharedRepo::OBJECT_CACHE_BYTES` (const) — object cache size a `SharedRepo` opens with.

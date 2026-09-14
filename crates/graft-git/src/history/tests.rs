@@ -344,7 +344,7 @@ fn the_full_topological_walk_needs_no_commit_graph_file_and_is_never_provisional
     let shared = SharedRepo::open(&path).expect("the fixture opens");
     let handle = shared.handle();
     let tips = handle
-        .commit_tips()
+        .commit_tips(&())
         .expect("the fixture's refs can be read");
     let mut walk = Walk::full_topological(&handle, &tips, table(&handle)).expect("the walk starts");
 
@@ -365,7 +365,7 @@ fn the_full_topological_walk_reads_the_whole_range_before_it_emits() {
     let shared = SharedRepo::open(&path).expect("the fixture opens");
     let handle = shared.handle();
     let tips = handle
-        .commit_tips()
+        .commit_tips(&())
         .expect("the fixture's refs can be read");
     let mut walk = Walk::full_topological(&handle, &tips, table(&handle)).expect("the walk starts");
 
@@ -682,7 +682,7 @@ fn assert_links_match_commits(repo: &Path, what: &str) {
     let shared = SharedRepo::open(repo).expect("the fixture opens");
     let handle = shared.handle();
     let tips = handle
-        .commit_tips()
+        .commit_tips(&())
         .expect("the fixture's refs can be read");
     let table = table(&handle);
     for order in [Order::Topological, Order::CommitDate, Order::FirstParent] {

@@ -75,9 +75,16 @@ pub fn run(repo: &Path) -> Result<(), String> {
     facts(&handle)?;
     clock.lap("open", "")?;
 
+    // Opened before the refs are read, so a tip the table already knows is a
+    // commit costs no object read (m1-the-graph/58).
+    let table = Arc::new(CommitTable::open(&handle).map_err(|why| why.to_string())?);
+    clock.lap("table", &format!("graph {}", table.graph_count()))?;
+
     // The history job's path since Phase B: one read of the refs serves the
     // branches, the seeds and the walk's tips.
-    let snapshot = handle.ref_snapshot().map_err(|why| why.to_string())?;
+    let snapshot = handle
+        .ref_snapshot(&*table)
+        .map_err(|why| why.to_string())?;
     clock.lap(
         "refs.ref_snapshot",
         &format!("{} refs, {} tips", snapshot.refs.len(), snapshot.tips.len()),
@@ -88,9 +95,6 @@ pub fn run(repo: &Path) -> Result<(), String> {
     let seeds = seeds_for(&snapshot.refs, &branches);
     clock.lap("refs.seeds_for", "")?;
     let tips = snapshot.tips;
-
-    let table = Arc::new(CommitTable::open(&handle).map_err(|why| why.to_string())?);
-    clock.lap("table", &format!("graph {}", table.graph_count()))?;
 
     let walk = Walk::from_tips(&handle, Order::Topological, &tips, Arc::clone(&table))
         .map_err(|why| why.to_string())?;

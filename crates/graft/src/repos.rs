@@ -107,7 +107,10 @@ impl RepoStore {
         {
             return Ok(Arc::clone(refs));
         }
-        let refs = Arc::new(repo.handle().ref_snapshot()?);
+        // A tip the table already knows is a commit costs no object read
+        // (m1-the-graph/58): with a commit-graph this is most of them.
+        let table = self.table()?;
+        let refs = Arc::new(repo.handle().ref_snapshot(&*table)?);
         *cached = Some((generation, Arc::clone(&refs)));
         Ok(refs)
     }

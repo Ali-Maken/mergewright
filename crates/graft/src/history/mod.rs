@@ -377,7 +377,9 @@ pub fn topological_order(
     // (m1-the-graph/27b, fix D).
     let handle = repo.handle_with_object_cache(0);
     let table = store.table().map_err(|error| error_chain(&error))?;
-    let tips = handle.commit_tips().map_err(|error| error.to_string())?;
+    let tips = handle
+        .commit_tips(&*table)
+        .map_err(|error| error.to_string())?;
     let mut walk = Walk::full_topological(&handle, &tips, Arc::clone(&table))
         .map_err(|error| error_chain(&error))?;
     let mut order = Vec::new();

@@ -194,6 +194,15 @@ impl CommitTable {
     }
 }
 
+impl crate::repo::KnownCommits for CommitTable {
+    /// A commit's own table knows it without appending: the graph's fanout
+    /// search or the overflow's prefix lookup, never a header read
+    /// (m1-the-graph/58).
+    fn is_known_commit(&self, id: Oid) -> bool {
+        self.handle_of(&id).is_some()
+    }
+}
+
 impl std::fmt::Debug for CommitTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("CommitTable")

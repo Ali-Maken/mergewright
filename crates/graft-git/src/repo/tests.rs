@@ -275,8 +275,8 @@ fn annotated_tags_peel_to_their_commit() {
     let scratch = ref_states_with_upstreams();
     let repo = RepoHandle::open(scratch.path()).expect("the fixture opens");
 
-    let peeled = repo.peeled_references().expect("refs read");
-    let tips = repo.commit_tips().expect("tips read");
+    let peeled = repo.peeled_references(&()).expect("refs read");
+    let tips = repo.commit_tips(&()).expect("tips read");
     for (ref_name, id) in &peeled {
         assert!(tips.contains(id), "{ref_name:?} peels to a tip");
     }
@@ -292,7 +292,7 @@ fn ahead_behind_counts_the_ref_states_branches() {
     use crate::history::{AheadBehind, ahead_behind};
     let dir = graft_fixtures::borrow(graft_fixtures::Shape::RefStates);
     let repo = RepoHandle::open(&dir).expect("the fixture opens");
-    let peeled = repo.peeled_references().expect("refs read");
+    let peeled = repo.peeled_references(&()).expect("refs read");
     let tip = |wanted: &str| {
         peeled
             .iter()
@@ -330,7 +330,7 @@ fn ahead_behind_counts_the_ref_states_branches() {
 /// m1-the-graph/55: the one-pass reading is exactly `references` and the
 /// expected tips.
 fn snapshot_is_both_halves(repo: &RepoHandle, expected_tips: &[String], packed: bool) {
-    let snapshot = repo.ref_snapshot().expect("refs read");
+    let snapshot = repo.ref_snapshot(&()).expect("refs read");
     assert_eq!(
         snapshot.refs,
         repo.references().expect("refs read"),
@@ -340,7 +340,7 @@ fn snapshot_is_both_halves(repo: &RepoHandle, expected_tips: &[String], packed: 
     assert_eq!(tips, expected_tips, "snapshot tips, packed: {packed}");
     assert_eq!(
         snapshot.peeled,
-        repo.peeled_references().expect("refs read"),
+        repo.peeled_references(&()).expect("refs read"),
         "snapshot peeled, packed: {packed}"
     );
 }
@@ -393,24 +393,69 @@ fn refs_sharing_commits_or_naming_no_commit_peel_the_same_loose_or_packed() {
         }
         let repo = RepoHandle::open(fixture.root()).expect("the fixture opens");
         let tips: Vec<String> = repo
-            .commit_tips()
+            .commit_tips(&())
             .expect("tips read")
             .iter()
             .map(hex)
             .collect();
         assert_eq!(tips, expected_tips, "tips, packed: {packed}");
         snapshot_is_both_halves(&repo, &expected_tips, packed);
-        let peeled: Vec<(String, String)> = repo
-            .peeled_references()
-            .expect("refs read")
-            .iter()
-            .map(|(ref_name, id)| {
-                (
-                    String::from_utf8_lossy(ref_name.as_bytes()).into_owned(),
-                    hex(id),
-                )
-            })
-            .collect();
-        assert_eq!(peeled, expected_peeled, "peeled refs, packed: {packed}");
+        assert_eq!(
+            peeled_pairs(&repo, &()),
+            expected_peeled,
+            "peeled refs, packed: {packed}"
+        );
+        assert_same_with_a_commit_graph_table(
+            &fixture,
+            &repo,
+            &expected_tips,
+            &expected_peeled,
+            packed,
+        );
     }
+}
+
+/// `peeled_references`, as `(ref name text, commit hex)` pairs.
+fn peeled_pairs(repo: &RepoHandle, known: &dyn crate::repo::KnownCommits) -> Vec<(String, String)> {
+    repo.peeled_references(known)
+        .expect("refs read")
+        .iter()
+        .map(|(ref_name, id)| {
+            (
+                String::from_utf8_lossy(ref_name.as_bytes()).into_owned(),
+                id.to_string(),
+            )
+        })
+        .collect()
+}
+
+/// m1-the-graph/58: with a commit-graph the table already knows every tip
+/// here (a tree/blob ref and a tag object are not commits, so the table has
+/// no opinion and today's header-parse-then-peel path still decides them).
+/// Tips and peeled refs must not change.
+fn assert_same_with_a_commit_graph_table(
+    fixture: &Fixture,
+    repo: &RepoHandle,
+    expected_tips: &[String],
+    expected_peeled: &[(String, String)],
+    packed: bool,
+) {
+    fixture.git(&["commit-graph", "write", "--reachable"]);
+    let table = crate::history::CommitTable::open(repo).expect("the commit-graph opens");
+    assert!(table.has_commit_graph(), "packed: {packed}");
+    let tips_with_table: Vec<String> = repo
+        .commit_tips(&table)
+        .expect("tips read")
+        .iter()
+        .map(Oid::to_string)
+        .collect();
+    assert_eq!(
+        tips_with_table, expected_tips,
+        "tips with the table, packed: {packed}"
+    );
+    assert_eq!(
+        peeled_pairs(repo, &table),
+        expected_peeled,
+        "peeled refs with the table, packed: {packed}"
+    );
 }

@@ -109,9 +109,14 @@ fn reading_tips_from_50k_real_refs_is_within_budget() {
     let store = RepoStore::new(repo.clone(), None);
     let shared = store.shared().unwrap_or_else(|why| panic!("{why}"));
     let handle = shared.handle();
+    let table = store.table().unwrap_or_else(|why| panic!("{why}"));
 
     let started = Instant::now();
-    let tips = handle.commit_tips().unwrap_or_else(|why| panic!("{why}"));
+    // With the commit-graph table (m1-the-graph/58), every tip here is a
+    // table hit: no object read at all.
+    let tips = handle
+        .commit_tips(&*table)
+        .unwrap_or_else(|why| panic!("{why}"));
     let read = started.elapsed();
     drop(turn);
 

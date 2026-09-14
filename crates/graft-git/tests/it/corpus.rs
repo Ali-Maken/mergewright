@@ -334,7 +334,7 @@ fn skewed_dates() {
         }
     };
     let by_date = subjects(Walk::all_refs(&repo, Order::CommitDate, table(&repo)).expect("starts"));
-    let tips = repo.commit_tips().expect("tips");
+    let tips = repo.commit_tips(&()).expect("tips");
     let topological = subjects(Walk::full_topological(&repo, &tips, table(&repo)).expect("starts"));
     let fast = "Commit from a fast clock";
     let row = |order: &[_]| order.iter().position(|subject| *subject == fast);

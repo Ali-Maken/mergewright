@@ -20,6 +20,24 @@ use graft_core::ref_name::RefName;
 /// target are peeled once.
 type KnownTips = std::collections::HashMap<gix::ObjectId, Option<Oid>>;
 
+/// Says whether an id is a commit without reading its object, when something
+/// already knows.
+///
+/// A tip whose id is not a commit's header away but a *position* in an
+/// already-open table (ADR-0026's [`CommitTable`](crate::history::CommitTable))
+/// costs nothing to identify. `false` means "not known here": the caller
+/// reads the header, exactly as it always did.
+pub trait KnownCommits {
+    /// Whether `id` is already known to be a commit.
+    fn is_known_commit(&self, id: Oid) -> bool;
+}
+
+impl KnownCommits for () {
+    fn is_known_commit(&self, _id: Oid) -> bool {
+        false
+    }
+}
+
 /// An open repository.
 ///
 /// Cheap to hold and cheap to clone within a process; opening one reads the
@@ -188,8 +206,8 @@ impl RepoHandle {
     /// # Errors
     /// [`TipsError`] if the ref store cannot be read, or a ref cannot be
     /// peeled for a reason other than not naming a commit.
-    pub fn commit_tips(&self) -> Result<Vec<Oid>, TipsError> {
-        Ok(self.ref_snapshot()?.tips)
+    pub fn commit_tips(&self, known: &dyn KnownCommits) -> Result<Vec<Oid>, TipsError> {
+        Ok(self.ref_snapshot(known)?.tips)
     }
 
     /// [`references`](Self::references), [`commit_tips`](Self::commit_tips)
@@ -200,11 +218,16 @@ impl RepoHandle {
     /// (m1-the-graph/55). Whoever needs both the refs and the tips reads them
     /// here, once. Each half is exactly what its own method returns.
     ///
+    /// `known` says which ids are already known to be commits (ADR-0026's
+    /// commit-graph table): a tip it recognises costs no object read at all.
+    /// Pass `&()` where nothing already knows — every tip is header-parsed as
+    /// before (m1-the-graph/58).
+    ///
     /// # Errors
     /// [`TipsError`] if the ref store cannot be read, holds a name or an id
     /// git's own rules reject, or a ref cannot be peeled for a reason other
     /// than not naming a commit.
-    pub fn ref_snapshot(&self) -> Result<RefSnapshot, TipsError> {
+    pub fn ref_snapshot(&self, known: &dyn KnownCommits) -> Result<RefSnapshot, TipsError> {
         let read = |source: Box<dyn std::error::Error + Send + Sync>| TipsError::Read {
             git_dir: self.git_dir().to_path_buf(),
             source,
@@ -220,7 +243,7 @@ impl RepoHandle {
         let mut refs = Vec::new();
         let mut tips = Vec::new();
         let mut peeled = Vec::new();
-        let mut known = KnownTips::new();
+        let mut peeled_cache = KnownTips::new();
         for reference in iter {
             let mut reference = reference.map_err(read)?;
             let target = match reference.target() {
@@ -230,7 +253,7 @@ impl RepoHandle {
                 }
             };
             let name = RefName::new(reference.name().as_bstr().to_vec()).map_err(malformed)?;
-            let tip = self.tip_of(&mut reference, &mut known)?;
+            let tip = self.tip_of(&mut reference, &mut peeled_cache, known)?;
             if let Some(id) = tip {
                 tips.push(id);
                 peeled.push((name.clone(), id));
@@ -261,11 +284,18 @@ impl RepoHandle {
     /// symbolic refs whose target is gone, are left out: they sit on no
     /// commit.
     ///
+    /// `known` is exactly [`ref_snapshot`](Self::ref_snapshot)'s: this never
+    /// reads a tip's header itself, so it costs nothing extra to thread
+    /// through.
+    ///
     /// # Errors
     /// [`TipsError`] if the ref store cannot be read or a ref cannot be
     /// peeled.
-    pub fn peeled_references(&self) -> Result<Vec<(RefName, Oid)>, TipsError> {
-        Ok(self.ref_snapshot()?.peeled)
+    pub fn peeled_references(
+        &self,
+        known: &dyn KnownCommits,
+    ) -> Result<Vec<(RefName, Oid)>, TipsError> {
+        Ok(self.ref_snapshot(known)?.peeled)
     }
 
     /// The remote-tracking ref `branch` pulls from, as git's
@@ -306,33 +336,39 @@ impl RepoHandle {
     /// Big repositories hold tens of thousands of refs naming far fewer
     /// commits — a branch and its remote-tracking ref usually agree — so a
     /// ref pointing straight at an object is answered once per object, from
-    /// `known`. And the object's header says whether it is a commit without
-    /// reading the commit: 30d measured reading every one as 3/4 of the
-    /// graph's first paint on 50k refs. Everything else (a symbolic ref, a
-    /// tag, a tree, a blob, a header that cannot be read) goes through
-    /// [`peel_commit`](Self::peel_commit), which gives the answer and the
-    /// errors this always gave.
+    /// `peeled_cache`. `known_commits` is asked first: an id it already
+    /// recognises is a commit, no object read at all (ADR-0026,
+    /// m1-the-graph/58). Otherwise the object's header says whether it is a
+    /// commit without reading the commit: 30d measured reading every one as
+    /// 3/4 of the graph's first paint on 50k refs. Everything else (a
+    /// symbolic ref, a tag, a tree, a blob, a header that cannot be read)
+    /// goes through [`peel_commit`](Self::peel_commit), which gives the
+    /// answer and the errors this always gave.
     fn tip_of(
         &self,
         reference: &mut gix::Reference<'_>,
-        known: &mut KnownTips,
+        peeled_cache: &mut KnownTips,
+        known_commits: &dyn KnownCommits,
     ) -> Result<Option<Oid>, TipsError> {
         let gix::refs::TargetRef::Object(target) = reference.target() else {
             return self.peel_commit(reference);
         };
         let target = target.to_owned();
-        if let Some(tip) = known.get(&target) {
+        if let Some(tip) = peeled_cache.get(&target) {
             return Ok(*tip);
         }
-        let tip = match self.repo.find_header(target) {
-            Ok(header) if header.kind() == gix::object::Kind::Commit => {
-                Some(self.oid(target.as_bytes())?)
+        let id = self.oid(target.as_bytes())?;
+        let tip = if known_commits.is_known_commit(id) {
+            Some(id)
+        } else {
+            match self.repo.find_header(target) {
+                Ok(header) if header.kind() == gix::object::Kind::Commit => Some(id),
+                // Not a commit, or not readable this way: the full peel
+                // decides, and reports the failure if there is one.
+                Ok(_) | Err(_) => self.peel_commit(reference)?,
             }
-            // Not a commit, or not readable this way: the full peel decides,
-            // and reports the failure if there is one.
-            Ok(_) | Err(_) => self.peel_commit(reference)?,
         };
-        known.insert(target, tip);
+        peeled_cache.insert(target, tip);
         Ok(tip)
     }
 

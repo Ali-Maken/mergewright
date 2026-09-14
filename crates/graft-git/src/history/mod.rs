@@ -139,7 +139,7 @@ impl<'a> Walk<'a> {
         order: Order,
         table: Arc<CommitTable>,
     ) -> Result<Self, WalkError> {
-        let tips = handle.commit_tips()?;
+        let tips = handle.commit_tips(&*table)?;
         Walk::from_tips(handle, order, &tips, table)
     }
 
