@@ -1,11 +1,13 @@
 # m1-the-graph/56 — Acceptance: the memory curve after ADR-0026
 
-Status: partial (seam: measurements and code done; docs, heavy full run, perf run remain)
+Status: partial (seam: measurements and code done; **blocked on the four findings tickets below**, then re-run, docs, heavy full run, perf run)
 Build with: **Fable** (high) — the standing acceptance ticket: it decides what "memory tracks the viewport" looks like in numbers and writes the checklist that proves it.
-Needs: every other ticket of this group (commit-handles-and-table, walk-reads-the-commit-graph, order-and-inclusion-on-handles, rows-hydrate-on-demand, **rows-pass-through** — split from 52 on 2026-09-14), plus **first-paint-at-a-million-named-cause** (its first-paint numbers and named cause are what the checklist reports) and **commit-graph-offer** (the end-to-end below accepts the offer on the 1M no-cg fixture).
-Blocked by: 49, 50, 51, 51b, 51c, 51d, 52, 52b (rows-pass-through), 53, 54, 55
+Needs: every other ticket of this group (commit-handles-and-table, walk-reads-the-commit-graph, order-and-inclusion-on-handles, rows-hydrate-on-demand, **rows-pass-through** — split from 52 on 2026-09-14), plus **first-paint-at-a-million-named-cause** (its first-paint numbers and named cause are what the checklist reports) and **commit-graph-offer** (the end-to-end below accepts the offer on the 1M no-cg fixture); **and, from the spec-only pass 2 (2026-09-14): guards-measure-in-a-child, tips-from-the-table, no-cg-heap-named-cause, checkpoints-thin-not-lru** (their numbers are what the checklist reports; the curve is re-run after them).
+Blocked by: 49, 50, 51, 51b, 51c, 51d, 52, 52b, 53, 54, 55, 57, 58, 59, 60
 
 Amended 2026-09-14 (planner-fable, spec-only pass) with the user's condition on approving ADR-0026: wherever memory is **reported rather than failed** (1M without a commit-graph), the numbers must be visible in the milestone review file and in KNOWN_GAPS.md — not only in a results file.
+
+Amended 2026-09-14 (planner-fable, **spec-only pass 2**, on this ticket's findings): see "Spec-only pass 2" at the end — the rulings per finding, the tickets they became, and the remaining work re-sequenced behind them. The Handoff's "Remaining" list is superseded by that section.
 
 ## Read first
 - ADR-0026 (all; "The gate at 1M" is what this ticket proves; "User decisions on approval" are the conditions)
@@ -13,6 +15,7 @@ Amended 2026-09-14 (planner-fable, spec-only pass) with the user's condition on 
 - PROMPT.md §1.2 "Incremental and virtualized", §6.3 "Performance budgets", §7.1 heavy tier
 - TESTING.md "The heavy tier" and "Memory curve to a million commits (m1/46)"; KNOWN_GAPS.md rows "The 300 MB budget fails at a million commits", "No-cg `EmittedOrder` holds twice the table", "No heavy-tier guard on the memory curve's slope", "First paint at 1M commits is 292–383 ms", "The emitted order grows with history", "Least-recently-used is the wrong policy once checkpoints pass `max_checkpoints`", "Commit-graph offer plumbing unspecified (R2-4)" (closed by commit-graph-offer; confirm)
 - `crates/graft-fixtures/MAP.md` (`synthetic`, `measure`, `peak_rss`); `scripts/memory-curve.sh`
+- **Pass 2:** the four findings tickets' result sections (their numbers are the after-after), and "Spec-only pass 2" below
 
 ## Scope
 In:
@@ -32,13 +35,13 @@ Out: any fix. A cell that misses is reported with the holder attribution (`proto
 None new. Calls: `graft_fixtures::synthetic::Scale::{of, with_commit_graph, with_realistic_commits}`, `graft_fixtures::peak_rss`, `examples/budgets` (and its `--phases`), `StreamingLayout::work` (replayed rows, `hydrated`, `merge_reads`), `CommitTable::overflow_len`, `graft_git::commit_graph::status` (the after-write count).
 
 ## Acceptance
-- [x] `docs/shots/m1-memory-curve.txt` committed: 10k / 100k / 1M × {small no-cg, small cg, realistic no-cg, realistic cg}, 3 runs each, the columns above.
-- [x] 1M cg (small and realistic): peak RSS < 300 MB on all runs. 100k and 10k: < 300 MB, all variants.
-- [ ] 1M no-cg: heap after `G` ≤ 100 B/commit, footprint < 300 MB; RSS reported next to the fixture's pack size.
-- [ ] 1M first paint: < 500 ms on every run; the number written against 150 ms with a yes/no and the named cause of any residual.
+- [x] `docs/shots/m1-memory-curve.txt` committed: 10k / 100k / 1M × {small no-cg, small cg, realistic no-cg, realistic cg}, 3 runs each, the columns above. **(Pass 2: regenerate in full after the four tickets; the committed file becomes the after-after.)**
+- [x] 1M cg (small and realistic): peak RSS < 300 MB on all runs. 100k and 10k: < 300 MB, all variants. **(Re-confirm on the re-run; expect ~95 MiB at 1M cg after tips-from-the-table.)**
+- [ ] 1M no-cg: heap after `G` ≤ 100 B/commit, footprint < 300 MB; RSS reported next to the fixture's pack size. **(Pass 2: from `budgets --gate`'s `footprint now` lines, fresh processes, peak and after-`G` both reported; the bar is on peak — no-cg-heap-named-cause makes it pass or reports the design floor to the user.)**
+- [ ] 1M first paint: < 500 ms on every run; the number written against 150 ms with a yes/no and the named cause of any residual. **(Pass 2: warm runs are the number judged; run 1 is reported beside it with the gap row below — user decision.)**
 - [x] The offer end-to-end: `docs/shots/m1-memory-curve-offer.txt` committed; the same repository's post-write curve cell meets the gate; write time recorded.
-- [ ] Slope guard in the heavy tier, seen failing by tightening, passing at 150 B/commit; heavy tier 100 % green run once, alone.
-- [x] The 1M jump measurements written (`g` after `G`, `Find` to ~900k: time, rows replayed).
+- [ ] Slope guard in the heavy tier, seen failing by tightening, passing at 150 B/commit; heavy tier 100 % green run once, alone. **(Pass 2: child-measured; green after tips-from-the-table; "seen failing" is satisfied by the recorded 237 B/commit red, no tightening needed.)**
+- [x] The 1M jump measurements written (`g` after `G`, `Find` to ~900k: time, rows replayed). **(Pass 2: re-run after checkpoints-thin-not-lru; the 500k jump joins the table.)**
 - [ ] KNOWN_GAPS.md's reported-cell row holds the numbers themselves; `## For the M1 review` section written; TESTING.md, DESIGN.md updated as scoped; ADR-0026 status line updated to what the user decided.
 - [ ] Report: paths only, plus one line per budget: pass/fail and the number; one line saying the review file must carry the reported-cell table.
 
@@ -57,6 +60,8 @@ Raw: `docs/shots/m1-memory-curve.txt` (release, 3 runs per cell, in-process getr
 **Measurement harness finding:** `budgets`'s counters (`order_bytes`, `cold_jump`, `far_jump`) lay history out again through `direct_layout` and hold 4× the app path (100k cg: 124 MiB process max RSS vs 33 MiB for the gated path; 1M cg: 997 vs 240). The first curve run took its footprint from that whole process, which is why `--gate` exists. The holder is `order_bytes` first (10k: 12.7 → 20.5 MiB). Harness only; the app path is what the gate measures. KNOWN_GAPS row to write.
 
 ## For the M1 review
+
+**(Pass 2: this table is the ADR-0026 "after"; it is superseded by the re-run once the four findings tickets land. Keep it here as the intermediate record; the review file carries the re-run's table, same columns.)**
 
 The reported cell (1M without a commit-graph) and its neighbours. Release, 3 runs, `scripts/memory-curve.sh 10000 100000 1000000` on 2026-09-14; peak RSS = in-process getrusage over open → first paint → `G` → `g` (the gate); footprint = `/usr/bin/time -l` peak memory footprint of `budgets --gate` (anonymous pages, excludes clean file-backed pack pages); first paint run 1 is cold (see below).
 
@@ -80,7 +85,7 @@ The reported cell (1M without a commit-graph) and its neighbours. Release, 3 run
 
 Done and committed: the code above, `docs/shots/m1-memory-curve.txt`, `docs/shots/m1-memory-curve-offer.txt`, fast gates green (fmt, clippy, clippy heavy, cargo test).
 
-Remaining, in order (all doc work except the two runs):
+Remaining, in order (all doc work except the two runs) — **superseded by "Spec-only pass 2 → Remaining" below; kept for the record:**
 1. **KNOWN_GAPS.md**: rewrite "The 300 MB budget fails at a million commits" as "1M without a commit-graph is reported, not gated (ADR-0026)" carrying the two no-cg rows above verbatim (RSS ×3, footprint, ~176 B/commit, pack size, first paint), expiry "stands while the user declines the offer; the offer is built (m1/54)". Close "No-cg `EmittedOrder` holds twice the table" (overflow_len = commits, order 9 B). Rewrite "No heavy-tier guard on the memory curve's slope" → guard exists, **red at 237 B/commit**, holder = open path (tips' header lookups + cg pages). "Least-recently-used is the wrong policy" → measured: 500k jump replays 500,500 rows, 1.4 s; the thinning seam above. "The emitted order grows with history" → 9–12 B/commit, closed. New rows: the ~1 s cold first paint at 1M (suspect page cache, unproven); the no-cg ~176 B/commit peak vs 100; the `budgets` counters harness holding 4× the app path. Confirm "Commit-graph offer plumbing" row closed (it is).
 2. **TESTING.md** "Memory curve to a million commits": replace the m1/46 table with the table above (all 12 cells + the offer row), one-line procedure per number (which line of `docs/shots/m1-memory-curve.txt`: `runN: first paint …` for RSS/paint/G, `runN: footprint …`, `once: far jump …`), the slope guard in "What is in the heavy tier today", `budgets --gate`.
 3. **DESIGN.md** §3.1 line 597 `EmittedOrder` (~90 B → handles, 9–12 B measured), line 601 `walker_state` (dense by handle; the graph is read), §3.6 lines 826–827 (the one term that grows → 9 B/commit; what grows now is pack pages without a cg).
@@ -89,3 +94,27 @@ Remaining, in order (all doc work except the two runs):
 6. Tick the remaining acceptance boxes honestly (slope: fails; first paint: warm yes / cold no).
 
 Gotchas: run `scripts/memory-curve.sh` only with nothing else on the machine; the 1M cells take ~90 s all told with `--gate`. `target/56/*.txt` hold the per-fixture jump runs (`jumps-1m*.txt`). The offer copy was deleted after its run (336 MiB); re-run the pty script from a fresh `cp -R` of the 1M no-cg fixture if the frames need retaking.
+
+## Spec-only pass 2 (2026-09-14, planner-fable): the findings → tickets, and what remains here
+
+The user's standing words: "If 300 MB doesn't survive a million commits, that's a design finding for planner-fable, not a number to adjust." No bar changes below; two things need the user (listed at the end).
+
+| # | Finding | Ruling | Ticket |
+|---|---|---|---|
+| 1 | Slope guard red, 237 B/commit; 19.6 of 20.5 MiB held at first paint | The guard measures the right thing (RSS over the gated path, same as the 300 MB gate; the 10k baseline subtracts fixed cost) and the miss is real: `commit_tips` header-parses every tip to learn it is a commit, faulting one scattered pack page per tip (+147 MiB at 1M cg, ≈150 B/commit in this fixture). With a graph the table already knows: check `CommitTable::handle_of` first, read only unknown ids. Expected slope 80–100 B (56 B graph pages + heap), 1M cg peak ≈ 95 MiB. Bar stays 150 | **tips-from-the-table** (Sonnet) |
+| 2 | 1M no-cg heap ~176 B/commit vs 100, unattributed | Measure-then-fix, one ticket with a seam: a per-stage footprint table at 100k and 1M no-cg (open, first paint, date walk, `topological_order` alone, swap, `g`) that sums to the slope within 15 B/commit and names the holder; then the in-design fixes it names (the sort's per-commit parent `Vec`s → CSR is the likely one; interner slack). If the design floor (interner + one order + bitsets) is itself > 100 B, stop after the measurement — user decision | **no-cg-heap-named-cause** (Opus) |
+| 3 | `Find` to row 500k replays 500,500 rows, 1.4 s | Build the seam: checkpoints thin to an even grid (stride doubles when the 64 cap is hit; never LRU); ≤ 16k rows replayed at 1M, nothing changes under 128k rows. Cache-only, no interface change | **checkpoints-thin-not-lru** (Sonnet) |
+| 4 | Cold run 1 at 1M ~1.0 s (> 500 ms), page cache suspected | **Gap, not a ticket.** The only proof is `sudo purge` between runs — the user's hand, not a builder's. The one in-design lever (fewer scattered reads at open) is finding 1's fix; tips-from-the-table reports run 1 before/after. The 500 ms kernel-class budget is judged **warm**, as 55 did; cold is reported beside it. KNOWN_GAPS row: the number, the evidence (134 ms on a just-built fixture vs ~1 s after 700 MiB of other packs), expiry "user runs `sudo purge` + `budgets --gate` once at the M1 checkpoint, or accepts the warm convention" | 56 (this ticket, docs) |
+| 5 | `budgets` counters hold 4× the app path | Harness-only; `--gate` already keeps it out of every gate — KNOWN_GAPS row, no ticket. **What does mislead a gate:** `ru_maxrss` is a lifetime maximum, so a *slope* guard run after the 100k no-cg test (69 MiB) in the same test binary reads ~0 — a false green in the full heavy run. Slope guards measure each fixture in a fresh child process from now on; `graft_fixtures::footprint()` (in-process `proc_pid_rusage`) is added at the same time so finding 2 has the reading it lacked | **guards-measure-in-a-child** (Sonnet) |
+
+**Remaining here, in order, once the four tickets are done:**
+1. Re-run `scripts/memory-curve.sh 10000 100000 1000000` in full (release, 3 runs, 12 cells; footprint now from `budgets --gate`'s own `footprint now` lines, `time -l` beside it) → regenerate `docs/shots/m1-memory-curve.txt`. Re-run the far jumps (rows/2, 9·rows/10) on both 1M fixtures. Re-take the offer pair only if the offer line or its numbers changed.
+2. Rewrite "For the M1 review" from the re-run (same columns; add `checkpoint stride` and `heap B/commit` columns; keep the pass-1 table above as "before the findings tickets").
+3. KNOWN_GAPS.md as the Handoff list says, with these changes: the slope row closes with its before/after numbers and the child-measurement note; the LRU row is closed by checkpoints-thin-not-lru (confirm); the no-cg heap row carries no-cg-heap-named-cause's holder table summary and the final B/commit (or the design-floor finding, expiry "user decision at the M1 checkpoint"); the cold first-paint row as finding 4 says; the counters row as finding 5 says (harness-only, and the lifetime-max reading the old guard gave in the wrong order, from guards-measure-in-a-child).
+4. TESTING.md, DESIGN.md §3.1/§3.6, ADR-0026 status line as scoped (ADR: add "Landed: m1/49–56 plus the four findings tickets", the slope guard's final number, the no-cg heap number or the floor finding).
+5. Heavy tier full run once, alone (`cargo test --features heavy-tests -- --test-threads=2`): **expect all green**, the slope guard included; anything red is reported, never loosened. Then the release perf run (ADR-0021), with the 1M `frames::` scroll numbers ADR-0026 deferred to it.
+6. Tick the boxes honestly; report paths only.
+
+**For the user (through the conductor):**
+- Finding 4: accept the warm-cache convention for §6.3's first-paint budgets with cold reported beside it (recommend yes — the disk is paid once by any tool; Graft's own work is what the number holds), and say whether he will run the `sudo purge` check once at the checkpoint (recommend yes: two numbers close the row).
+- Finding 2: no decision yet; if no-cg-heap-named-cause reports the design floor above 100 B/commit, the bar comes to him with the table (recommend holding the bar until then).
