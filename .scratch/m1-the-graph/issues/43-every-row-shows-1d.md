@@ -1,6 +1,6 @@
 # m1-the-graph/43 — Every row shows "1d": verify dates against git log
 
-Status: ready
+Status: done (per session log; builder left status stale — conductor, 2026-09-14)
 Build with: **Sonnet** (medium) — verify, then fix if wrong
 Blocked by: 45
 Leaves runnable: yes — the date column matches git.

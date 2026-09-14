@@ -1,6 +1,6 @@
 # m1-the-graph/57 — Guards measure in a child process (peak RSS and footprint per fixture, not per test binary)
 
-Status: ready
+Status: done (per session log; builder left status stale — conductor, 2026-09-14)
 Build with: **Sonnet** (medium) — plumbing with an exact pass condition: one FFI read, one re-exec, one parse; the number either matches the script's or it doesn't.
 Needs: none
 Blocked by: none

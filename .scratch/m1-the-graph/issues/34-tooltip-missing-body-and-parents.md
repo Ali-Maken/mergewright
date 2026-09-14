@@ -1,6 +1,6 @@
 # m1-the-graph/34 — Tooltip: show the whole commit, add author and date, pin on Enter
 
-Status: ready
+Status: done (per session log; builder left status stale — conductor, 2026-09-14)
 Build with: **Sonnet** (medium) — plain widget bug + small input change (17 was Sonnet)
 Blocked by: none (run after 33)
 Leaves runnable: yes — tooltip shows the whole commit; `Enter` pins it so text can be copied.
