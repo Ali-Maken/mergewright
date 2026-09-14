@@ -248,9 +248,9 @@ One line per public item. Update when a public item changes.
 - `Wanted` (enum) — rows a request names: `Rows(range)` or `Last(n)` (walks to the end first).
 - `View` (struct) — `follow` (every parent / first-parent) and `inclusion` (folded merges, hidden stashes).
 - `RowRequest` (struct) — `id` (increasing; only the newest answer is wanted), `wanted`, the `view` they are wanted in, and `promote` while a promotion swaps in.
-- `Promote` (struct) — a topological `order` to swap to, the selection's `anchor` and the viewport `height`; the worker lays the new layout out to the anchor before swapping (ADR-0008).
+- `Promote` (struct) — a topological `order` (`Arc<[CommitHandle]>`) to swap to, the selection's `anchor` and the viewport `height`; the worker lays the new layout out to the anchor before swapping (ADR-0008).
 - `Promotion` (enum) — where promoting to topological order is: `Sorting`, `Swapping { order, anchor }`, `Kept` (stopped or failed; order stays provisional).
-- `topological_order` (fn) — the whole range in strict topological order (a job's work); `Ok(None)` when stopped.
+- `topological_order` (fn) — the whole range in strict topological order, as handles sharing the store's `CommitTable` (a job's work); `Ok(None)` when stopped.
 - `Views` (struct) — one `StreamingLayout<Included<_>>` per `Follow`, opened on first ask; `Views::new`, `Views::layout` (opens or re-includes), `Views::promote` (lay a promoted order out to the anchor, then swap; idempotent).
 - `Open` (type) — boxed closure opening a fresh source over the same walk, or over a promoted order when given one.
 - `Window` (struct) — rows answering one request: `request`, `first`, `rows`, `laid_out`, `done`, `promoted` (the first answer in a promoted order); `end()`.
@@ -289,7 +289,7 @@ One line per public item. Update when a public item changes.
 ## history::source
 - `WalkSource` (struct) — a walk paired with the repo handle it re-reads from, one worker thread.
 - `WalkSource::new` (fn) — build a source that streams `walk` and re-reads from `handle`; handles from the walk's table.
-- `WalkSource::in_order` (fn) — build a source that streams a known order of ids, reading each commit; takes the `Arc<CommitTable>`.
+- `WalkSource::in_order` (fn) — build a source that streams a known order of handles, reading each commit; takes the `Arc<CommitTable>` the order's handles were interned against.
 
 ## history::seeds
 - `seeds_for` (fn) — compute walk seeds from refs and branches; symbolic refs excluded.

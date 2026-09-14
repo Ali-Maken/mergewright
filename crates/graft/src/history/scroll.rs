@@ -11,6 +11,7 @@ use graft_graph::layout::Anchor;
 use std::ops::Range;
 use std::sync::Arc;
 
+use graft_core::commit_handle::CommitHandle;
 use graft_core::oid::Oid;
 
 use super::{History, HistoryUpdate, Phase, Promote, Promotion, RowRequest, View, Wanted};
@@ -102,7 +103,7 @@ impl History {
     /// an answer comes back in the new order ([`Window::promoted`]).
     ///
     /// [`Window::promoted`]: super::Window::promoted
-    pub fn promote(&mut self, order: Arc<[Oid]>, height: usize) -> Option<RowRequest> {
+    pub fn promote(&mut self, order: Arc<[CommitHandle]>, height: usize) -> Option<RowRequest> {
         if matches!(self.phase, Phase::Cancelled | Phase::Failed(_)) {
             self.promotion = Some(Promotion::Kept);
             return None;

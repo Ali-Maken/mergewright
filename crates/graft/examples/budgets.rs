@@ -23,7 +23,7 @@ fn main() -> ExitCode {
     match budget_run::run(&repo) {
         Ok(numbers) => {
             println!(
-                "first paint {:?}, G {:?}, g {:?}, {} rows, provisional order: {}, peak RSS at paint {} MiB, after G {} MiB, end {} MiB",
+                "first paint {:?}, G {:?}, g {:?}, {} rows, provisional order: {}, peak RSS at paint {} MiB, after G {} MiB, end {} MiB, overflow_len {} (m1-the-graph/51b 2x check)",
                 numbers.first_paint,
                 numbers.bottom,
                 numbers.top,
@@ -32,6 +32,7 @@ fn main() -> ExitCode {
                 mib(numbers.rss_at_paint),
                 mib(numbers.rss_at_bottom),
                 mib(numbers.peak_rss),
+                numbers.overflow_len,
             );
             ExitCode::SUCCESS
         }

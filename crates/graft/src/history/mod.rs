@@ -23,6 +23,7 @@ use std::ops::Range;
 use std::sync::Arc;
 use std::sync::mpsc::Receiver;
 
+use graft_core::commit_handle::CommitHandle;
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
 use graft_git::history::{CHUNK, Order, Walk};
@@ -120,7 +121,7 @@ pub struct RowRequest {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Promote {
     /// Every commit, in strict topological order.
-    pub order: Arc<[Oid]>,
+    pub order: Arc<[CommitHandle]>,
     /// The selected commit and its place in the viewport, if one is selected.
     pub anchor: Option<Anchor>,
     /// How many rows the viewport shows.
@@ -191,7 +192,7 @@ pub enum Promotion {
     /// an answer comes back in it. `anchor` is the selection it re-finds.
     Swapping {
         /// Every commit, in topological order.
-        order: Arc<[Oid]>,
+        order: Arc<[CommitHandle]>,
         /// The selected commit and its place on screen when last known.
         anchor: Option<Anchor>,
     },
@@ -338,12 +339,12 @@ pub fn stream(
     // (the other `Follow`) starts its own.
     let handle = &handle;
     let mut started = Some(walk);
-    let open = move |promoted: Option<&Arc<[Oid]>>| {
-        if let Some(ids) = promoted {
+    let open = move |promoted: Option<&Arc<[CommitHandle]>>| {
+        if let Some(order) = promoted {
             return Ok(WalkSource::in_order(
                 handle,
-                Arc::clone(ids),
                 Arc::clone(&table),
+                Arc::clone(order),
             ));
         }
         let walk = match started.take() {
@@ -367,7 +368,7 @@ pub fn stream(
 pub fn topological_order(
     store: &RepoStore,
     stop: &dyn Fn() -> bool,
-) -> Result<Option<Arc<[Oid]>>, String> {
+) -> Result<Option<Arc<[CommitHandle]>>, String> {
     let repo = store.shared().map_err(|error| error.to_string())?;
     // The walk reads each commit once, so a cache would fill and never be hit
     // (m1-the-graph/27b, fix D).
@@ -381,7 +382,7 @@ pub fn topological_order(
         let chunk = walk
             .next_links(CHUNK, stop)
             .map_err(|error| error_chain(&error))?;
-        order.extend(chunk.links.iter().map(|link| table.id_of(link.commit)));
+        order.extend(chunk.links.iter().map(|link| link.commit));
         if chunk.stopped {
             return Ok(None);
         }
@@ -394,7 +395,7 @@ pub fn topological_order(
 /// Opens a fresh source over the same walk, for a view laid out on its own —
 /// or, given a promoted order, a source that hands out that order instead.
 pub type Open<'o, S> =
-    Box<dyn FnMut(Option<&Arc<[Oid]>>) -> Result<S, <S as CommitSource>::Error> + 'o>;
+    Box<dyn FnMut(Option<&Arc<[CommitHandle]>>) -> Result<S, <S as CommitSource>::Error> + 'o>;
 
 /// The layouts one walk is shown through: one per [`Follow`], each opened
 /// the first time a request asks for it and kept while the walk lives.
@@ -408,7 +409,7 @@ pub struct Views<'o, S: CommitSource> {
     config: StreamConfig,
     open: Open<'o, S>,
     /// The promoted order every layout is opened over, once there is one.
-    promoted: Option<Arc<[Oid]>>,
+    promoted: Option<Arc<[CommitHandle]>>,
     all_parents: Option<StreamingLayout<Included<S>>>,
     first_parent: Option<StreamingLayout<Included<S>>>,
 }
@@ -497,7 +498,7 @@ impl<'o, S: CommitSource> Views<'o, S> {
     fn open_layout(
         &mut self,
         view: &View,
-        promoted: Option<&Arc<[Oid]>>,
+        promoted: Option<&Arc<[CommitHandle]>>,
     ) -> Result<StreamingLayout<Included<S>>, StreamError<S::Error>> {
         let source = (self.open)(promoted).map_err(StreamError::Source)?;
         let included = Included::new(

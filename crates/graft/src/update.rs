@@ -100,7 +100,7 @@ pub enum Product {
     WorkingTree(Result<graft_git::status::WorkingTreeCounts, String>),
     /// Every commit in strict topological order, for the walk on screen to
     /// promote to (ADR-0008).
-    TopologicalOrder(std::sync::Arc<[graft_core::oid::Oid]>),
+    TopologicalOrder(std::sync::Arc<[graft_core::commit_handle::CommitHandle]>),
 }
 
 /// What running `git --version` found.
@@ -530,7 +530,7 @@ fn sorted(
     next: &mut AppState,
     commands: &mut Vec<Command>,
     id: JobId,
-    order: std::sync::Arc<[graft_core::oid::Oid]>,
+    order: std::sync::Arc<[graft_core::commit_handle::CommitHandle]>,
 ) {
     if next.promoting != Some(id) {
         return;
@@ -2390,8 +2390,8 @@ mod tests {
         next
     }
 
-    fn order() -> std::sync::Arc<[Oid]> {
-        vec![Oid::from_bytes(&[7; Oid::SHA1_BYTES]).expect("20 bytes is an oid")].into()
+    fn order() -> std::sync::Arc<[graft_core::commit_handle::CommitHandle]> {
+        vec![graft_core::commit_handle::CommitHandle(7)].into()
     }
 
     /// A walk already in the order asked for has nothing to promote.

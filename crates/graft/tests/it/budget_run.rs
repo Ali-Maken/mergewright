@@ -54,12 +54,17 @@ pub struct Numbers {
     pub rss_at_bottom: u64,
     /// This process's peak resident set, in bytes, after the whole run.
     pub peak_rss: u64,
+    /// `CommitTable::overflow_len()` once the run has settled (m1-the-graph/51b's
+    /// 2× check): with no commit-graph file every commit is overflow, and
+    /// promoting to strict topological order must resolve the same handles
+    /// rather than interning more of them.
+    pub overflow_len: usize,
 }
 
 /// Opens `repo` as `event_loop::opening_repository` does, and drives it.
 pub fn run(repo: &Path) -> Result<Numbers, String> {
     let started = Instant::now();
-    let (jobs, events, mut state) = open(repo)?;
+    let (jobs, events, mut state, store) = open_with_store(repo)?;
 
     let painted = |h: &History| h.window.as_ref().is_some_and(|w| !w.rows.is_empty());
     state = pump(&jobs, &events, state, painted)?;
@@ -97,6 +102,7 @@ pub fn run(repo: &Path) -> Result<Numbers, String> {
             return Err(format!("the job pool did not stop cleanly: {other:?}"));
         }
     }
+    let overflow_len = store.table().map_err(|why| why.to_string())?.overflow_len();
     Ok(Numbers {
         first_paint,
         bottom,
@@ -106,6 +112,7 @@ pub fn run(repo: &Path) -> Result<Numbers, String> {
         rss_at_paint,
         rss_at_bottom,
         peak_rss,
+        overflow_len,
     })
 }
 
@@ -114,14 +121,44 @@ fn peak() -> Result<u64, String> {
 }
 
 /// A started job pool, the events it reports, and the state before any.
+#[allow(
+    dead_code,
+    reason = "used by many_refs.rs and frames.rs, not visible from budgets.rs's separate compilation of this file"
+)]
 pub type Opened = (JobRunner<Sender<AppEvent>>, Receiver<AppEvent>, AppState);
+
+/// As [`Opened`], with the store `run` needs afterwards to read
+/// `CommitTable::overflow_len()` for the 2× check (m1-the-graph/51b), which
+/// nothing else here otherwise keeps a handle to once `JobRunner::start` has
+/// its own clone.
+type OpenedWithStore = (
+    JobRunner<Sender<AppEvent>>,
+    Receiver<AppEvent>,
+    AppState,
+    Arc<RepoStore>,
+);
 
 /// Starts the pool and asks for what `event_loop::opening_repository` asks
 /// for, in the same order.
+///
+/// Only `many_refs.rs` and `frames.rs` call this directly (`run`, in this
+/// file, uses [`open_with_store`] instead) — that makes it dead code from
+/// `examples/budgets.rs`'s own compilation of this file, which pulls in none
+/// of the other test modules; kept `pub` because the two callers are real.
+#[allow(
+    dead_code,
+    reason = "used by many_refs.rs and frames.rs, not visible from budgets.rs's separate compilation of this file"
+)]
 pub fn open(repo: &Path) -> Result<Opened, String> {
+    let (jobs, events, state, _store) = open_with_store(repo)?;
+    Ok((jobs, events, state))
+}
+
+/// As [`open`], but also hands back the store.
+fn open_with_store(repo: &Path) -> Result<OpenedWithStore, String> {
     let (sender, events) = mpsc::channel();
     let store = Arc::new(RepoStore::new(repo.to_path_buf(), None));
-    let jobs = JobRunner::start(sender, 4, store).map_err(|why| why.to_string())?;
+    let jobs = JobRunner::start(sender, 4, Arc::clone(&store)).map_err(|why| why.to_string())?;
     for command in [
         Command::OpenRepository,
         Command::CheckSystemGit,
@@ -136,7 +173,7 @@ pub fn open(repo: &Path) -> Result<Opened, String> {
         size: SIZE,
         ..AppState::default()
     };
-    Ok((jobs, events, state))
+    Ok((jobs, events, state, store))
 }
 
 /// No jump pending and no promotion outstanding: the screen shows final rows.

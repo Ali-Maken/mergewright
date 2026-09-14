@@ -30,8 +30,11 @@ enum Feed<'a> {
     /// Boxed: a walk is far larger than an order's cursor.
     Walk(Box<Walk<'a>>),
     /// An order worked out in full elsewhere (ADR-0008 promotion): handed
-    /// out a chunk at a time by reading the commits at the next ids.
-    Order { ids: Arc<[Oid]>, next: usize },
+    /// out a chunk at a time by reading the commits at the next handles.
+    Order {
+        order: Arc<[CommitHandle]>,
+        next: usize,
+    },
 }
 
 impl<'a> WalkSource<'a> {
@@ -47,17 +50,25 @@ impl<'a> WalkSource<'a> {
         }
     }
 
-    /// A source that hands out `ids` in order, reading each commit from
-    /// `handle` — the promoted topological order.
+    /// A source that hands out `order` a handle at a time, reading each
+    /// commit from `handle` — the promoted topological order.
+    ///
+    /// `table` must already have every handle in `order` interned (it is the
+    /// table the order was computed against): a fresh, unrelated table would
+    /// leave `handle_of`/`id_of` unable to resolve them.
     ///
     /// A stream rather than `StreamingLayout::from_order`, so that
     /// `graft_graph::Included` can still decide what each view lets through:
     /// the one order serves every view.
     #[must_use]
-    pub fn in_order(handle: &'a RepoHandle, ids: Arc<[Oid]>, table: Arc<CommitTable>) -> Self {
+    pub fn in_order(
+        handle: &'a RepoHandle,
+        table: Arc<CommitTable>,
+        order: Arc<[CommitHandle]>,
+    ) -> Self {
         WalkSource {
             handle,
-            feed: Feed::Order { ids, next: 0 },
+            feed: Feed::Order { order, next: 0 },
             table,
         }
     }
@@ -76,9 +87,9 @@ impl CommitSource for WalkSource<'_> {
                     stopped: chunk.stopped,
                 })
             }
-            Feed::Order { ids, next } => {
+            Feed::Order { order, next } => {
                 let mut commits = Vec::new();
-                while commits.len() < limit && *next < ids.len() {
+                while commits.len() < limit && *next < order.len() {
                     if stop() {
                         return Ok(Pull {
                             commits,
@@ -86,12 +97,13 @@ impl CommitSource for WalkSource<'_> {
                             stopped: true,
                         });
                     }
-                    commits.push(read_commit(self.handle, ids[*next])?);
+                    let id = self.table.id_of(order[*next]);
+                    commits.push(read_commit(self.handle, id)?);
                     *next += 1;
                 }
                 Ok(Pull {
                     commits,
-                    done: *next == ids.len(),
+                    done: *next == order.len(),
                     stopped: false,
                 })
             }

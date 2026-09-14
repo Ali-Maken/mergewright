@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 
 use graft_core::commit::Commit;
+use graft_core::commit_handle::CommitHandle;
 use graft_core::ref_name::RefName;
 use graft_fixtures::Shape;
 use graft_git::branches::Branches;
@@ -540,7 +541,7 @@ fn a_walk_nobody_can_ask_ends() {
     let dir = graft_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
     let mut opened = 0;
-    let open = |_: Option<&Arc<[Oid]>>| {
+    let open = |_: Option<&Arc<[CommitHandle]>>| {
         opened += 1;
         Ok(WalkSource::new(
             &handle,
@@ -593,7 +594,7 @@ fn views_fold_unfold_and_switch_to_first_parent_over_one_walk() {
         let refs = handle.references().expect("refs read");
         let branches = Branches::resolve(&handle, None).expect("branches resolve");
         let mut opened = 0;
-        let open = |_: Option<&Arc<[Oid]>>| {
+        let open = |_: Option<&Arc<[CommitHandle]>>| {
             opened += 1;
             Ok(WalkSource::new(
                 &handle,
@@ -659,7 +660,7 @@ fn a_request_in_another_view_interrupts_and_is_answered_next() {
     let handle = RepoHandle::open(&dir).expect("opens");
     let refs = handle.references().expect("refs read");
     let branches = Branches::resolve(&handle, None).expect("branches resolve");
-    let open = |_: Option<&Arc<[Oid]>>| {
+    let open = |_: Option<&Arc<[CommitHandle]>>| {
         Ok(WalkSource::new(
             &handle,
             Walk::all_refs(&handle, Order::Topological, table(&handle))?,
@@ -825,12 +826,15 @@ fn promotion_keeps_the_selected_commit_where_it_is_on_screen() {
     let handle = RepoHandle::open(&dir).expect("opens");
     let refs = handle.references().expect("refs read");
     let branches = Branches::resolve(&handle, None).expect("branches resolve");
-    let open = |promoted: Option<&Arc<[Oid]>>| {
+    // The table `order`'s handles were interned against: shared, not a fresh
+    // one, so `in_order` can resolve them (they were pre-51b's bug).
+    let table = store.table().expect("table");
+    let open = |promoted: Option<&Arc<[CommitHandle]>>| {
         Ok(match promoted {
-            Some(ids) => WalkSource::in_order(&handle, Arc::clone(ids), table(&handle)),
+            Some(order) => WalkSource::in_order(&handle, Arc::clone(&table), Arc::clone(order)),
             None => WalkSource::new(
                 &handle,
-                Walk::all_refs(&handle, Order::CommitDate, table(&handle))?,
+                Walk::all_refs(&handle, Order::CommitDate, Arc::clone(&table))?,
             ),
         })
     };
@@ -895,12 +899,16 @@ fn key_while_promotion_swaps(
     let handle = RepoHandle::open(&dir).expect("opens");
     let refs = handle.references().expect("refs read");
     let branches = Branches::resolve(&handle, None).expect("branches resolve");
-    let open = |promoted: Option<&Arc<[Oid]>>| {
+    // The table `order`'s handles were interned against: shared, not a fresh
+    // one, so `in_order` can resolve them (they were pre-51b's bug).
+    let table = store.table().expect("table");
+    let ids: Arc<[Oid]> = order.iter().map(|&commit| table.id_of(commit)).collect();
+    let open = |promoted: Option<&Arc<[CommitHandle]>>| {
         Ok(match promoted {
-            Some(ids) => WalkSource::in_order(&handle, Arc::clone(ids), table(&handle)),
+            Some(order) => WalkSource::in_order(&handle, Arc::clone(&table), Arc::clone(order)),
             None => WalkSource::new(
                 &handle,
-                Walk::all_refs(&handle, Order::CommitDate, table(&handle))?,
+                Walk::all_refs(&handle, Order::CommitDate, Arc::clone(&table))?,
             ),
         })
     };
@@ -918,14 +926,14 @@ fn key_while_promotion_swaps(
 
     let unsent = history.promote(Arc::clone(&order), HEIGHT);
     assert!(unsent.is_some(), "a walk still going takes the order");
-    let request = press(&mut history, &order).expect("the key asks for rows");
+    let request = press(&mut history, &ids).expect("the key asks for rows");
     assert!(
         request.promote.is_some(),
         "the key's request carries the order"
     );
     served(&mut views, &mut history, request);
     assert_eq!(history.promotion, None, "the promotion has landed");
-    (history, order)
+    (history, ids)
 }
 
 #[test]
@@ -979,12 +987,16 @@ fn promotion_lands_on_a_jump_in_flight(
     let handle = RepoHandle::open(&dir).expect("opens");
     let refs = handle.references().expect("refs read");
     let branches = Branches::resolve(&handle, None).expect("branches resolve");
-    let open = |promoted: Option<&Arc<[Oid]>>| {
+    // The table `order`'s handles were interned against: shared, not a fresh
+    // one, so `in_order` can resolve them (they were pre-51b's bug).
+    let table = store.table().expect("table");
+    let ids: Arc<[Oid]> = order.iter().map(|&commit| table.id_of(commit)).collect();
+    let open = |promoted: Option<&Arc<[CommitHandle]>>| {
         Ok(match promoted {
-            Some(ids) => WalkSource::in_order(&handle, Arc::clone(ids), table(&handle)),
+            Some(order) => WalkSource::in_order(&handle, Arc::clone(&table), Arc::clone(order)),
             None => WalkSource::new(
                 &handle,
-                Walk::all_refs(&handle, Order::CommitDate, table(&handle))?,
+                Walk::all_refs(&handle, Order::CommitDate, Arc::clone(&table))?,
             ),
         })
     };
@@ -1000,14 +1012,14 @@ fn promotion_lands_on_a_jump_in_flight(
     served(&mut views, &mut history, first);
     assert_eq!(history.phase, Phase::Streaming, "the walk is not done yet");
 
-    let unsent = press(&mut history, &order);
+    let unsent = press(&mut history, &ids);
     assert!(unsent.is_some(), "the key asks for rows");
     let request = history
         .promote(Arc::clone(&order), HEIGHT)
         .expect("a walk still going takes the order");
     served(&mut views, &mut history, request);
     assert_eq!(history.promotion, None, "the promotion has landed");
-    (history, order)
+    (history, ids)
 }
 
 #[test]
@@ -1230,7 +1242,7 @@ fn a_search_hit_past_the_first_chunk_is_laid_out_to_and_selected() {
 fn a_request_lays_out_only_the_rows_it_names() {
     let dir = graft_fixtures::borrow(Shape::Linear);
     let handle = RepoHandle::open(&dir).expect("opens");
-    let open = |_: Option<&Arc<[Oid]>>| {
+    let open = |_: Option<&Arc<[CommitHandle]>>| {
         Ok(WalkSource::new(
             &handle,
             Walk::all_refs(&handle, Order::Topological, table(&handle))?,
