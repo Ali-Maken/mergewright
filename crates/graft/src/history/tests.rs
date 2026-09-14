@@ -1235,6 +1235,57 @@ fn a_search_hit_past_the_first_chunk_is_laid_out_to_and_selected() {
     );
 }
 
+/// A wheel scroll that arrives while a far search jump is still walking must
+/// not strand `seeking`: the answer that eventually lands is for the wheel's
+/// own (newer) request, never for the jump's, so only withdrawing the jump
+/// when the wheel asks — symmetric with `select_at` — clears it in time
+/// (m1-the-graph/65, `KNOWN_GAPS.md:197`, review M3).
+#[test]
+fn a_wheel_scroll_during_a_far_seek_withdraws_the_seek() {
+    let far = {
+        let mut bytes = [0u8; Oid::SHA1_BYTES];
+        bytes[0] = 0xAB;
+        Oid::from_bytes(&bytes).expect("20 bytes")
+    };
+    // No window on hand: `seek` cannot find `far` among rows it already
+    // has, so it sends a `Find` request and starts a jump, as it would for
+    // a hit far down a real walk.
+    let mut history = scrolled(1000, 0, None);
+    let seek = history.seek(far, HEIGHT).expect("a far hit is a request");
+    assert_eq!(history.jump, Some(seek.id));
+    assert_eq!(history.seeking, Some(far));
+
+    // The wheel arrives next, before the seek's `Find` answer lands.
+    let scroll = history
+        .scroll(3, HEIGHT)
+        .expect("rows off the top of a cold walk need asking for");
+    assert_ne!(
+        scroll.id, seek.id,
+        "the wheel's request supersedes the seek's"
+    );
+    assert_eq!(
+        (history.jump, history.seeking),
+        (None, None),
+        "the wheel scroll must withdraw the stranded seek itself: no answer \
+         will ever carry the seek's request id"
+    );
+
+    // Only the wheel's own request is ever answered — as in the real
+    // failure, the seek's `Find` answer never arrives once superseded.
+    history.apply(
+        HistoryUpdate::Window(Window {
+            request: scroll.id,
+            ..window_of(0, 43)
+        }),
+        HEIGHT,
+    );
+    assert_eq!(
+        (history.jump, history.seeking),
+        (None, None),
+        "seeking must not reappear once the wheel's own answer lands"
+    );
+}
+
 /// A request just past the frontier lays out the rows it names, not the rest
 /// of their chunk: a whole chunk read from the repository costs frames a page
 /// key cannot spare (ticket 30c).

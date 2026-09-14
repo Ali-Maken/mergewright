@@ -285,6 +285,11 @@ impl History {
     /// Scrolls the viewport by `lines` (negative is up) without moving the
     /// selection — the wheel (DESIGN.md §2.15), which is not the keyboard's
     /// `j`/`k` and does not follow the cursor onto or off screen.
+    ///
+    /// Withdraws a pending `G` or search jump, as [`History::select_at`]
+    /// does: the request the wheel sends supersedes it, and no answer will
+    /// ever carry the jump's id, so leaving it set would strand `seeking`
+    /// with the header stuck on "seeking" (m1-the-graph/65).
     pub fn scroll(&mut self, lines: isize, height: usize) -> Option<RowRequest> {
         let height = height.max(1);
         let last = self.rows.saturating_sub(1);
@@ -293,7 +298,9 @@ impl History {
         } else {
             self.top.saturating_add(lines.unsigned_abs()).min(last)
         };
-        self.wanted(height, false)
+        let withdrew = self.jump.take().is_some();
+        self.seeking = None;
+        self.wanted(height, withdrew)
     }
 
     /// Puts the cursor on `commit` (a search hit), centred on screen — at
