@@ -18,6 +18,8 @@ Public items, one line each.
 - `measure` (fn) — run work and report its peak memory rise.
 - `peak_rss` (fn) — this process's peak resident set size.
 - `Measured` (struct) — a measurement; `rise()`.
+- `footprint` (fn) — this process's physical footprint, current and lifetime peak (`ri_phys_footprint`/`ri_lifetime_max_phys_footprint`); macOS only, `Err(MemoryError::Unsupported)` elsewhere (m1-the-graph/57).
+- `Footprint` (struct) — `current`, `peak`, in bytes.
 - `MemoryError` (enum) — why memory could not be read.
 - `proptest_cases` (fn) — property-test case count for the tier in force.
 - `git` (mod) — running system git for fixture building; `GitError`.

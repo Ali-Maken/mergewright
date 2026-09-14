@@ -49,6 +49,11 @@ fn main() -> ExitCode {
         mib(numbers.peak_rss),
         numbers.overflow_len,
     );
+    println!(
+        "footprint now: {} after G, {} at end (m1-the-graph/57)",
+        format_footprint(numbers.footprint_at_bottom),
+        format_footprint(numbers.footprint_at_end),
+    );
     if mode == Mode::Gate {
         return ExitCode::SUCCESS;
     }
@@ -65,6 +70,7 @@ fn counters(repo: &Path) -> ExitCode {
                 "EmittedOrder: {bytes} B total over {commits} commits, {per_commit} B/commit (m1-the-graph/51c); peak RSS now {}",
                 peak_now()
             );
+            println!("{}", footprint_now());
         }
         Err(why) => {
             eprintln!("budgets: EmittedOrder bytes: {why}");
@@ -85,6 +91,7 @@ fn counters(repo: &Path) -> ExitCode {
                 jump.rows,
             );
             println!("peak RSS after the cold G measurement {}", peak_now());
+            println!("{}", footprint_now());
         }
         Err(why) => {
             eprintln!("budgets: cold jump: {why}");
@@ -116,6 +123,7 @@ fn counters(repo: &Path) -> ExitCode {
         }
     }
     println!("peak RSS after the far jump measurements {}", peak_now());
+    println!("{}", footprint_now());
     ExitCode::SUCCESS
 }
 
@@ -159,6 +167,31 @@ fn arguments() -> Option<(Mode, PathBuf)> {
 fn peak_now() -> String {
     match graft_fixtures::peak_rss() {
         Ok(bytes) => format!("{} MiB", mib(bytes)),
+        Err(why) => format!("unreadable: {why}"),
+    }
+}
+
+/// This process's physical footprint right now, `<current MiB> / peak
+/// <peak MiB>` (m1-the-graph/57), or why it could not be read — macOS only,
+/// see `graft_fixtures::MemoryError::Unsupported`.
+fn footprint_now() -> String {
+    format!(
+        "footprint now: {}",
+        format_footprint(graft_fixtures::footprint())
+    )
+}
+
+/// `<current MiB> / peak <peak MiB>` for an already-taken reading, or why it
+/// could not be read.
+fn format_footprint(
+    footprint: Result<graft_fixtures::Footprint, graft_fixtures::MemoryError>,
+) -> String {
+    match footprint {
+        Ok(footprint) => format!(
+            "{} MiB / peak {} MiB",
+            mib(footprint.current),
+            mib(footprint.peak)
+        ),
         Err(why) => format!("unreadable: {why}"),
     }
 }

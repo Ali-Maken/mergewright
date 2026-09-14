@@ -82,7 +82,7 @@ pub use cache::CacheError;
 pub use corpus::{
     CorpusError, Report, Unavailable, build_into, ensure, try_borrow, try_copy_into_temp,
 };
-pub use memory::{Measured, MemoryError, measure, peak_rss};
+pub use memory::{Footprint, Measured, MemoryError, footprint, measure, peak_rss};
 pub use scratch::Scratch;
 pub use shape::Shape;
 #[cfg(feature = "heavy-tests")]

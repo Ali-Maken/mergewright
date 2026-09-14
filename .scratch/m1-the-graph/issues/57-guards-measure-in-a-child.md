@@ -45,15 +45,49 @@ pub fn gated_in_child(repo: &std::path::Path) -> Result<ChildPeak, ChildError>;
 `heavy::child_gated_run` (a `#[test]`, heavy feature) is the child side. Calls: `graft_fixtures::{peak_rss, footprint}`, the existing gated-run function `budgets --gate` uses.
 
 ## Acceptance
-- [ ] `graft_fixtures::footprint()` exists, unit-tested; MAP.md line added; `MemoryError::Unsupported` documented.
-- [ ] `budgets --gate` / `--phases` print `footprint now:` per stage; one 100k cell shows in-process peak within 5 % of `/usr/bin/time -l` (numbers in the ticket).
-- [ ] `gated_in_child` + `heavy::child_gated_run`; a broken child (bad path) is `Err`, the test fails with the stderr tail, nothing is swallowed.
-- [ ] Slope guard on `gated_in_child`; alone vs after-the-100k-test: same slope within 10 %; within 10 % of the script's cells. The old in-process reading in the second ordering recorded in the ticket.
-- [ ] The guard is still **red** (≈ 237 B/commit) — this ticket fixes how it measures, not what it finds; say so in the report.
-- [ ] TESTING.md "The heavy tier": one paragraph — slope guards run each fixture in a child; why.
+- [x] `graft_fixtures::footprint()` exists, unit-tested; MAP.md line added; `MemoryError::Unsupported` documented.
+- [x] `budgets --gate` / `--phases` print `footprint now:` per stage; one 100k cell shows in-process peak within 5 % of `/usr/bin/time -l` (numbers in the ticket).
+- [x] `gated_in_child` + `heavy::child_gated_run`; a broken child (bad path) is `Err`, the test fails with the stderr tail, nothing is swallowed.
+- [x] Slope guard on `gated_in_child`; alone vs after-the-100k-test: same slope within 10 %; within 10 % of the script's cells. The old in-process reading in the second ordering recorded in the ticket.
+- [x] The guard is still **red** (≈ 237 B/commit) — this ticket fixes how it measures, not what it finds; say so in the report.
+- [x] TESTING.md "The heavy tier": one paragraph — slope guards run each fixture in a child; why.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo clippy --all-targets --features heavy-tests -- -D warnings` · `cargo test`; the named heavy tests above, one invocation at a time, release.
 
 ## Size
 One context, under ~80k: FFI + one spawn/parse + one test moved; the heavy runs are 10k/100k only (seconds each).
+
+## Result (2026-09-14, builder-sonnet)
+
+**footprint() vs `/usr/bin/time -l`**, 100k-commit-graph fixture, `budgets --gate`
+(raw: `docs/shots/57-footprint-vs-time-l.txt`): in-process footprint 9.0 MiB /
+`time -l` peak memory footprint 9,552,256 B (9.11 MiB) — 1.2 % apart. Peak RSS:
+in-process 32.9 MiB / `time -l` maximum resident set size 34,586,624 B
+(32.99 MiB) — 0.3 % apart. Both well under the 5 % bar.
+
+**Isolation proof**, `cargo test --release -p graft --features heavy-tests
+--test it -- heavy::budgets_hold_on_the_100k_fixture_without_a_commit_graph
+heavy::peak_rss_slope --test-threads=1 --nocapture`:
+- Old code (`peak_rss_of` → `result_line`/`budget_child`, already re-execs a
+  child per fixture, predates this ticket): alone 237 B/commit, adversarial
+  238 B/commit. **No false green found** — 56's own re-exec-per-fixture
+  pattern for `peak_rss_of` already isolated this guard before 57 started;
+  the false-green risk the ticket describes did not reproduce empirically
+  here. KNOWN_GAPS row: correct as a general hazard (any slope guard *not*
+  using a fresh child would false-green), but this specific guard was
+  already safe on this axis.
+- New code (`gated_in_child`/`child_gated_run`): alone 237 B/commit,
+  adversarial 235 B/commit — same within 10 %, and within 10 % of
+  `scripts/memory-curve.sh`'s 237 B/commit (56's ticket, "For the M1
+  review" table). Guard still **red** against the 150 B/commit bar — this
+  ticket changed how it measures, not what it finds.
+
+**Bug found and fixed during this ticket** (cause, not symptom; costs
+nothing — caught before commit): `gated_in_child` first matched the child's
+mark line with `trim_start().starts_with(CHILD_MARK)`. cargo's own test
+harness prints `test heavy::child_gated_run ... ` with no trailing newline
+before the test body's `println!` runs, so the mark shares a line with that
+prefix and is never at the start. Every call failed with `NoReport`. Fixed
+to `contains`, matching `result_line` (this file's pre-57 sibling), which
+already handled this correctly via `split_once`.

@@ -1,0 +1,20 @@
+first paint 13.087916ms, G 50.168208ms, g 92µs, 100000 rows, provisional order: false, peak RSS at paint 28.0 MiB, after G 32.9 MiB, end 32.9 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
+footprint now: 9.0 MiB / peak 9.0 MiB after G, 9.0 MiB / peak 9.0 MiB at end (m1-the-graph/57)
+        0.06 real         0.06 user         0.01 sys
+            34586624  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                3233  page reclaims
+                   7  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                 266  involuntary context switches
+          1307529060  instructions retired
+           296611292  cycles elapsed
+             9552256  peak memory footprint

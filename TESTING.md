@@ -71,6 +71,23 @@ keys`), since whether layout keeps ahead of a held `PageDown` depends on
 build speed too. Peak RSS fails in both builds. Every milestone review runs both and reports the
 release numbers.
 
+**Slope guards measure each fixture in a child process** (m1-the-graph/57).
+`getrusage`'s peak and `graft_fixtures::footprint`'s peak are both lifetime
+maxima of the *process*, never of the work just done — fine for a ceiling
+test (`budgets_hold_* < 300 MB` can only over-report), wrong for a slope
+(100k peak minus 10k peak): measure both fixtures in the same test binary
+and whichever ran second's peak is reported for both, so a real regression
+can read as a 0 B/commit false green. `heavy::peak_rss_slope_per_commit_with_a_commit_graph`
+re-execs this test binary once per fixture (`budget_run::gated_in_child`,
+`heavy::child_gated_run`) so each peak is that child's own. Confirmed by
+running the guard alone and then straight after
+`heavy::budgets_hold_on_the_100k_fixture_without_a_commit_graph` in one
+invocation: 237 B/commit alone, 235 B/commit adversarial — same within 10%,
+and within 10% of `scripts/memory-curve.sh`'s 10k-cg/100k-cg cells (237
+B/commit, `.scratch/m1-the-graph/issues/56-memory-curve-acceptance.md`).
+The guard is still red (ADR-0026's bar is 150 B/commit): this ticket fixed
+how it measures, not what it finds.
+
 **Frame numbers depend on the CPU's power state** (m1/30c part b). On the
 build machine (Apple Silicon), a scroll paced at 60 Hz is light load, and
 the CPU stays in a slow state until a heavier burst: the first key that

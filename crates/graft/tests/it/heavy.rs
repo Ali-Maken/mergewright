@@ -65,8 +65,15 @@ const PEAK_RSS_SLOPE_LIMIT: u64 = 150;
 
 /// The memory curve's slope (m1-the-graph/56, ADR-0026): peak RSS on the
 /// 100k commit-graph fixture minus peak RSS on the 10k one, per commit,
-/// must stay under [`PEAK_RSS_SLOPE_LIMIT`]. A flat rendering set and
-/// handle-sized order state give ~60–80 B; `Oid`-keyed tables gave ~900.
+/// must stay under [`PEAK_RSS_SLOPE_LIMIT`].
+///
+/// Each fixture is measured in [`budget_run::gated_in_child`], a fresh
+/// process of its own (m1-the-graph/57): `getrusage`'s peak is a lifetime
+/// maximum of the *process*, so measuring both fixtures in this same test
+/// binary would report whichever fixture ran second's peak for both —
+/// m1-the-graph/56 found this guard reads 0 (a false green) run straight
+/// after the 100k no-commit-graph budget test, in the same binary, because
+/// both then share one process peak.
 #[test]
 fn peak_rss_slope_per_commit_with_a_commit_graph() {
     let small = Scale::of(10_000).with_commit_graph();
@@ -95,13 +102,12 @@ fn peak_rss_slope_per_commit_with_a_commit_graph() {
     );
 }
 
-/// Peak RSS of one budget run on `scale`, measured in a child of its own.
+/// Peak RSS of one gated run on `scale`, measured in a child of its own.
 fn peak_rss_of(scale: Scale) -> u64 {
     let repo = synthetic::borrow(scale).unwrap_or_else(|why| panic!("{why}"));
-    let line = result_line(&repo);
-    line.split_whitespace()
-        .find_map(|pair| pair.strip_prefix("peak_rss=")?.parse().ok())
-        .unwrap_or_else(|| panic!("no peak_rss in {line:?}"))
+    budget_run::gated_in_child(&repo)
+        .unwrap_or_else(|why| panic!("{why}"))
+        .peak_rss
 }
 
 /// The same history with commits sized after git/git (m1-the-graph/27d):
@@ -286,6 +292,35 @@ fn until_window_for(told: &mpsc::Receiver<HistoryUpdate>, request: u64) -> histo
             | HistoryUpdate::Started(_) => {}
         }
     }
+}
+
+/// Not a test of its own: the child side of [`budget_run::gated_in_child`]
+/// (m1-the-graph/57). Without [`budget_run::CHILD_REPO_ENV`] set — any
+/// ordinary run of the tier — there is nothing for it to measure and it
+/// returns at once.
+///
+/// Runs exactly what `budgets --gate` runs on the path it is given, then
+/// prints the one line [`budget_run::gated_in_child`] parses back.
+#[test]
+fn child_gated_run() {
+    let Some(repo) = std::env::var_os(budget_run::CHILD_REPO_ENV) else {
+        return;
+    };
+    let numbers = budget_run::run(Path::new(&repo)).unwrap_or_else(|why| panic!("{why}"));
+    let footprint_peak = numbers
+        .footprint_at_end
+        .unwrap_or_else(|why| panic!("{why}"))
+        .peak;
+    let footprint_after_g = numbers
+        .footprint_at_bottom
+        .unwrap_or_else(|why| panic!("{why}"))
+        .current;
+    println!(
+        "{} rss={} footprint_peak={footprint_peak} footprint_after_g={footprint_after_g} first_paint_ms={}",
+        budget_run::CHILD_MARK,
+        numbers.peak_rss,
+        numbers.first_paint.as_millis(),
+    );
 }
 
 /// Not a test of its own: the half of a budget test that runs in a fresh

@@ -53,6 +53,17 @@ fn peak() -> Result<u64, String> {
     graft_fixtures::peak_rss().map_err(|why| why.to_string())
 }
 
+/// This process's physical footprint right now, `<current MiB> / peak
+/// <peak MiB>` (m1-the-graph/57), or why it could not be read. Shares
+/// `budgets.rs`'s own formatting (`super::format_footprint`) so `--gate`
+/// and `--phases` report the same shape.
+fn footprint_now() -> String {
+    format!(
+        "footprint now: {}",
+        super::format_footprint(graft_fixtures::footprint())
+    )
+}
+
 /// Opens `repo` the way the history job does and prints each phase.
 pub fn run(repo: &Path) -> Result<(), String> {
     let never = || false;
@@ -116,6 +127,7 @@ pub fn run(repo: &Path) -> Result<(), String> {
         "total                  {:>9.2} ms",
         total.elapsed().as_secs_f64() * 1e3
     );
+    println!("{}", footprint_now());
 
     discriminators(&handle, &tips, &table)
 }
