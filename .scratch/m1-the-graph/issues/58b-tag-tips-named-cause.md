@@ -1,6 +1,6 @@
 # m1-the-graph/58b — Annotated tags at open: name what the 85 MiB holds, then peel inside the design (slope guard green or the floor named)
 
-Status: ready
+Status: partial (Phase A done; Phase B to file)
 Build with: **Opus** (high) — attribution across three candidate holders (OIDL pages, pack/idx pages per tag read, heap), a stop rule that needs honest judgment, and gix API navigation (`peeled`, cache-free handles); the bar is a number, so not Fable. 58's Sonnet pass mis-stated the per-tag arithmetic (13–19 KB is per *ref*; per tag it is ~80–130 KB) and skipped the 3× runs — this ticket must not.
 Needs: `gated_in_child` / `ChildPeak` and the slope guard on it (57); `graft_fixtures::footprint` (57); `KnownCommits` and `RepoHandle::ref_snapshot(&dyn KnownCommits)` (58).
 Blocked by: 58
@@ -110,3 +110,50 @@ One context targeted (stats struct, one decode path, one `peeled` branch, corpus
 
 ## For the user (only if the stop rule fires)
 The 10k/100k cg guard fixtures have a commit-graph but 66/650 **loose** refs — a state `git gc` never produces (gc writes the graph *and* packs refs; a fresh clone has `packed-refs` too). If the loose floor is > 150 while the packed copy is green: **recommend the guard's cg fixtures get `pack-refs`** (the repo gc makes; the design lever is git's own), with the loose number kept as a reported cell in the curve and in KNOWN_GAPS. Alternative: keep the loose fixture and the bar, red stays with a gap row. Bar unchanged either way.
+
+## Phase A result (2026-09-14, builder-opus)
+
+Instrumentation landed: `TipStats` on `RefSnapshot`; `--phases` prints `footprint +<MiB>` on every lap and the stats on `refs.ref_snapshot`. **Caveat for Phase B:** the pre-fix path counts `objects_read` as one per tag peel; the peel actually decodes the tag *and* its commit (2). Phase B's single-decode path makes the count exact.
+
+Fixtures (`target/58b/fixtures.txt`): 1M cg `synthetic-1000000-commit-graph-511a25b425758b13`, 100k cg `…-9a592fc3353d5ab5`.
+
+### Runs (release, `budgets --phases`, `refs.ref_snapshot` line; 3 runs each unless noted)
+| run | 1M cg RSS / footprint (MiB) | 100k cg RSS / footprint | raw |
+|---|---|---|---|
+| 1 as-is | 85.5, 85.6, 85.8 / 5.0, 5.0, 5.2 | 8.3, 8.3, 8.4 / 0.9 ×3 | `target/58b/run1-asis-{1M,100k}-{1,2,3}.txt` |
+| 2 unknown tips skipped (no tag read) | 34.7, 34.6, 34.6 / 4.4, 4.3, 4.3 | 4.0 ×3 / 0.7 ×3 | `run2-skiptags-*` |
+| 3 `handle_with_object_cache(0)` | 85.0 ×3 / 4.5 ×3 | 8.2 ×3 / 0.7–0.8 | `run3-cache0-*` |
+| 4 packed copy (`cp -c` + `pack-refs --all`), **pre-fix code** | 84.8–84.9 / 3.8–3.9 | 8.1–8.2 / 0.6–0.8 | `run4-packed-*`; copies kept at `target/58b/packed-{1M,100k}-cg` |
+
+Stats every run 1/3/4: 1M `refs=6498 known=5708 tags=790 find_header=790`; 100k `refs=650 known=567 tags=83 find_header=83`.
+- Run 1 reproduces 58 (85.5 / 8.3) within 1 %.
+- Run 3 flat: **no retained decode**. Phase B item 3 must not be done.
+- Run 4 flat: ref files are not the holder. Pre-fix code ignores `peeled`, so this is **not** the post-fix packed number; run 2 is its upper bound (no tag reads at all): **34.6 / 4.0 MiB**.
+- Run 5 (`git verify-pack -v`, `count-objects -v`; `target/58b/run5-verify-pack-1M.txt`): all objects packed (1 pack, 0 loose; 2,862,088 / 286,213 in pack). Tags 790 / 83, **none deltified** (depth 0). The delta-chain hypothesis (b) is wrong: a tag read is one idx lookup + one undeltified pack entry.
+
+### Holder table (vmmap per region, taken inside the process before and after `ref_snapshot`; `target/58b/vmmap-{1M,100k}-{asis,skip}-{before,after}.txt`, laps in `target/58b/vm-*.txt`)
+Mappings by size: commit-graph 57.2 M / 5.9 M, pack `.idx` 76.4 M / 7.8 M, `.pack` 221 M / 22 M. All mapped file pages are kept for the life of the handle.
+
+| holder | 1M cg | 100k cg | per | kept / transient |
+|---|---|---|---|---|
+| commit-graph pages (`handle_of` for the known tips; ≈ the whole OIDL chunk, 1M × 20 B = 19.1 MiB) | 19.1 | 1.9 | per open, ∝ commits | kept |
+| `.idx` pages from the pass's first object read (HEAD's peel; present with tags skipped) | 11.0 | 1.1 | per open, ≈ 14 % of the idx at both scales | kept |
+| `.idx` pages of tag reads (tag lookup + target-commit lookup) | 37.8 → **47.8 KB/tag** | 2.8 → **34.7 KB/tag** | per tag | kept |
+| `.pack` pages of tag reads (tag entry + target commit entry) | 12.6 → **16.3 KB/tag** | 1.3 → **16.2 KB/tag** | per tag | kept |
+| heap (footprint peak) | 5.0 (4.4 without tags) | 0.9 | per ref | transient |
+| **sum** | **85.5** (measured 85.5–85.8) | **8.1** (measured 8.3–8.4, −3 %) | | |
+
+**Cause:** the rise is mapped file pages, not heap: each annotated tag pays two object lookups (the tag, then the commit it peels to), ≈ 64 KB/tag at 1M and 51 KB/tag at 100k (≈ 4 and ≈ 3 16-KiB pages); the rest is the OIDL chunk for the table lookups and ~14 % of the `.idx` from the pass's first object read.
+
+Unexplained, not traced: why one object read faults ~14 % of the idx (≈ the size of one of its 4-byte-per-object tables). It is per open, not per tag. The walk's `first_chunk` reads commit objects anyway, so moving HEAD's read out of `ref_snapshot` would only move this peak. Not a Phase B item.
+
+**Loose-tag floor, estimate (not measured):** the design floor keeps one lookup and one pack entry per tag and drops the target-commit read. That is ≈ half the per-tag pages: ~25–32 KB/tag (≈ 2 pages). At 100k the tags now cost 4.1 MiB ≈ 43 B/commit. After item 2, ≈ 2.0 MiB ≈ 21 B/commit, which puts the guard at roughly 145–150 B/commit: **borderline**, so the stop rule may fire. Packed (item 1, no tag read) ≈ 0 B/commit: roughly 120–125. The 10k fixture's share (9 tags) is not subtracted in these estimates. The ticket's green condition, ≤ 5.7 MiB for `ref_snapshot` at 100k, has run 2 at 4.0 (packed post-fix bound) and loose after item 2 at ≈ 6.0 (est.).
+
+## Handoff: Phase B (next builder, Opus)
+- Done and committed: `TipStats` struct + `RefSnapshot::stats`, counted in the *old* path (`tip_of` in `crates/graft-git/src/repo.rs`); `--phases` footprint and stats (`crates/graft/examples/budgets/phases.rs`); MAP.md lines. Gates green.
+- Next, exactly:
+  1. `tip_of`: if `reference.inner.peeled` is `Some(id)` (gix 0.87.1 / gix-ref 0.67.1 fill it from the packed-refs `^` line: `raw.rs` `From<packed::Reference>`), count `tags += 1` and `peeled_packed += 1`, then judge `id` by the table (known → tip; unknown → the read path below). No object read.
+  2. Replace `find_header` + `peel_commit` for unknown `Object` targets with a loop: `self.repo.find_object(id)` (`objects_read += 1`). `Commit` → tip. `Tag` → `tags += 1`, `obj.to_tag_ref_iter().target_id()`; a known target → tip, else loop (tag-of-tag). Tree/blob → `None`. Map errors to `TipsError::Read`, including a missing object, as `peel_commit` did. Keep `peel_commit` only for symbolic refs.
+  3. Do **not** do item 3 (run 3 flat).
+  4. Tests and measurements as scoped. Packed copies for the phases runs are at `target/58b/packed-{1M,100k}-cg`. The guard's packed-copy slope needs 10k/100k copies of the guard's own fixtures, made by the guard's path.
+- Gotchas: the Bash tool's shell is zsh, so `for a in "100000 --commit-graph"` does not word-split (use `eval`); vmmap truncates paths, so identify mappings by size; one object read maps ~14 % of the idx per open, so don't attribute it to tags.

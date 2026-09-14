@@ -244,8 +244,10 @@ impl RepoHandle {
         let mut tips = Vec::new();
         let mut peeled = Vec::new();
         let mut peeled_cache = KnownTips::new();
+        let mut stats = TipStats::default();
         for reference in iter {
             let mut reference = reference.map_err(read)?;
+            stats.refs += 1;
             let target = match reference.target() {
                 gix::refs::TargetRef::Object(id) => RefTarget::Object(self.oid(id.as_bytes())?),
                 gix::refs::TargetRef::Symbolic(name) => {
@@ -253,7 +255,7 @@ impl RepoHandle {
                 }
             };
             let name = RefName::new(reference.name().as_bstr().to_vec()).map_err(malformed)?;
-            let tip = self.tip_of(&mut reference, &mut peeled_cache, known)?;
+            let tip = self.tip_of(&mut reference, &mut peeled_cache, known, &mut stats)?;
             if let Some(id) = tip {
                 tips.push(id);
                 peeled.push((name.clone(), id));
@@ -272,7 +274,12 @@ impl RepoHandle {
         peeled.sort_by(|left: &(RefName, Oid), right| left.0.cmp(&right.0));
         tips.sort_unstable();
         tips.dedup();
-        Ok(RefSnapshot { refs, tips, peeled })
+        Ok(RefSnapshot {
+            refs,
+            tips,
+            peeled,
+            stats,
+        })
     }
 
     /// Every ref that reaches a commit, with the commit it peels to, sorted
@@ -349,6 +356,7 @@ impl RepoHandle {
         reference: &mut gix::Reference<'_>,
         peeled_cache: &mut KnownTips,
         known_commits: &dyn KnownCommits,
+        stats: &mut TipStats,
     ) -> Result<Option<Oid>, TipsError> {
         let gix::refs::TargetRef::Object(target) = reference.target() else {
             return self.peel_commit(reference);
@@ -359,10 +367,17 @@ impl RepoHandle {
         }
         let id = self.oid(target.as_bytes())?;
         let tip = if known_commits.is_known_commit(id) {
+            stats.known += 1;
             Some(id)
         } else {
+            stats.find_header += 1;
             match self.repo.find_header(target) {
                 Ok(header) if header.kind() == gix::object::Kind::Commit => Some(id),
+                Ok(header) if header.kind() == gix::object::Kind::Tag => {
+                    stats.tags += 1;
+                    stats.objects_read += 1;
+                    self.peel_commit(reference)?
+                }
                 // Not a commit, or not readable this way: the full peel
                 // decides, and reports the failure if there is one.
                 Ok(_) | Err(_) => self.peel_commit(reference)?,
@@ -529,6 +544,29 @@ pub struct RefSnapshot {
     /// What [`RepoHandle::peeled_references`] returns: every ref that reaches
     /// a commit, with that commit, sorted by name.
     pub peeled: Vec<(RefName, Oid)>,
+    /// How the pass learned its tips (m1-the-graph/58b).
+    pub stats: TipStats,
+}
+
+/// How one ref-store pass learned its tips — what the table answered, what
+/// had to be read.
+///
+/// For the memory record (`budgets --phases`) and the corpus tests; never a
+/// decision input.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TipStats {
+    /// Refs enumerated.
+    pub refs: u32,
+    /// Tips the [`KnownCommits`] table answered without a read.
+    pub known: u32,
+    /// Annotated tag objects met (peeled from `packed-refs` or decoded).
+    pub tags: u32,
+    /// Tags resolved from a `packed-refs` peeled id: no object read.
+    pub peeled_packed: u32,
+    /// Objects decoded whole (tags, and targets the table does not know).
+    pub objects_read: u32,
+    /// Header-only reads.
+    pub find_header: u32,
 }
 
 /// One ref, as the ref store holds it.

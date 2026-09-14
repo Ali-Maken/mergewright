@@ -21,6 +21,10 @@ const SCREEN_ROWS: usize = 40;
 struct Clock {
     at: Instant,
     peak: u64,
+    /// Lifetime peak physical footprint at the last lap, or why it could not
+    /// be read. Anonymous (heap) pages only: a phase that raises RSS but not
+    /// this faulted in mapped file pages (m1-the-graph/58b).
+    footprint_peak: Result<u64, String>,
 }
 
 impl Clock {
@@ -28,6 +32,7 @@ impl Clock {
         Ok(Clock {
             at: Instant::now(),
             peak: peak()?,
+            footprint_peak: footprint_peak(),
         })
     }
 
@@ -37,16 +42,47 @@ impl Clock {
         let now = peak()?;
         // Tenths of a MiB in integers: no float cast to lose precision.
         let tenths = now.saturating_sub(self.peak) * 10 / (1024 * 1024);
+        let footprint_now = footprint_peak();
+        let footprint = match (&self.footprint_peak, &footprint_now) {
+            (Ok(before), Ok(after)) => {
+                let tenths = after.saturating_sub(*before) * 10 / (1024 * 1024);
+                format!("footprint +{:>4}.{} MiB", tenths / 10, tenths % 10)
+            }
+            (Err(why), _) | (_, Err(why)) => format!("footprint unreadable: {why}"),
+        };
         println!(
-            "{name:<22} {:>9.2} ms  peak RSS +{:>4}.{} MiB  {detail}",
+            "{name:<22} {:>9.2} ms  peak RSS +{:>4}.{} MiB  {footprint}  {detail}",
             took.as_secs_f64() * 1e3,
             tenths / 10,
             tenths % 10,
         );
         self.peak = now;
+        self.footprint_peak = footprint_now;
         self.at = Instant::now();
         Ok(took)
     }
+}
+
+/// The `refs.ref_snapshot` lap's detail: tips, and how the pass learned
+/// them (m1-the-graph/58b).
+fn snapshot_detail(snapshot: &graft_git::repo::RefSnapshot) -> String {
+    let stats = snapshot.stats;
+    format!(
+        "{} tips  refs={} known={} tags={} peeled_packed={} objects_read={} find_header={}",
+        snapshot.tips.len(),
+        stats.refs,
+        stats.known,
+        stats.tags,
+        stats.peeled_packed,
+        stats.objects_read,
+        stats.find_header
+    )
+}
+
+fn footprint_peak() -> Result<u64, String> {
+    graft_fixtures::footprint()
+        .map(|footprint| footprint.peak)
+        .map_err(|why| why.to_string())
 }
 
 fn peak() -> Result<u64, String> {
@@ -85,10 +121,7 @@ pub fn run(repo: &Path) -> Result<(), String> {
     let snapshot = handle
         .ref_snapshot(&*table)
         .map_err(|why| why.to_string())?;
-    clock.lap(
-        "refs.ref_snapshot",
-        &format!("{} refs, {} tips", snapshot.refs.len(), snapshot.tips.len()),
-    )?;
+    clock.lap("refs.ref_snapshot", &snapshot_detail(&snapshot))?;
     let branches =
         Branches::resolve_from(&handle, &snapshot.refs, None).map_err(|why| why.to_string())?;
     clock.lap("refs.resolve_from", &format!("{:?}", branches.chosen_by()))?;
