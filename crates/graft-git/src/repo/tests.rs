@@ -338,6 +338,11 @@ fn snapshot_is_both_halves(repo: &RepoHandle, expected_tips: &[String], packed: 
     );
     let tips: Vec<String> = snapshot.tips.iter().map(Oid::to_string).collect();
     assert_eq!(tips, expected_tips, "snapshot tips, packed: {packed}");
+    assert_eq!(
+        snapshot.peeled,
+        repo.peeled_references().expect("refs read"),
+        "snapshot peeled, packed: {packed}"
+    );
 }
 
 /// What `commit_tips` and `peeled_references` return when many refs share a

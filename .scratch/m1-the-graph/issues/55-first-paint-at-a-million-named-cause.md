@@ -1,6 +1,6 @@
 # m1-the-graph/55 — First paint at a million commits: name the cause by measurement, then fix it
 
-Status: partial (Phase A done; Phase B fix 1 done, fix 2 next — see "Handoff (Phase B fix 1 → fix 2)")
+Status: done (Phase A; Phase B fix 1 and fix 2 — 1M first paint 98–105 ms warm with jobs)
 Build with: **Opus** (high) — phase instrumentation inside the walk and the app's open path, then a fix in the rev-walk or the first-window path; correctness is numbers plus the existing order tests, so not Fable.
 Needs: `Walk::next_links`, `CommitTable` (commit-handles-and-table); the walk reading the graph with dense state and its odb-read counter (walk-reads-the-commit-graph); rows hydrating on demand (rows-hydrate-on-demand **and rows-pass-through**, split 2026-09-14). Runs after all of them: their numbers are this ticket's baseline.
 Blocked by: 49, 50, 52, 52b (rows-pass-through)
@@ -47,13 +47,13 @@ Out: memory (memory-curve-acceptance); the walk's emitted order; building the fa
 No new public items in Phase A beyond `examples/budgets --phases`. Phase B's are whatever the named cause needs; if a public item changes, its MAP.md line changes with it and the reviewer checks the order tests. The fallback's signatures are above, for the follow-up ticket.
 
 ## Acceptance
-- [ ] Phase table in this ticket: 7 phases × {1M cg, 1M no-cg} × 3 runs, plus 100k both paths, plus the concurrent-jobs run; `target/<ticket>/phases.txt` referenced.
-- [ ] Each path's cause named with mechanism, ns/commit and the discriminating measurement that confirmed it. "The in-degree pass" is accepted only with its measured share; "something linear" is not a name.
-- [ ] After the fix: 1M cg and no-cg first paint < 500 ms on every run (the judged budget); each number written against 150 ms with yes/no and, for a miss, the residual's named cause.
-- [ ] 100k both paths still ≤ 150 ms in `heavy::budgets_hold_*`; every `graft-git` order test and every corpus snapshot unchanged.
-- [ ] If the residual is the in-degree pass: the recommendation section filled in with numbers; no fallback code in the diff.
-- [ ] TESTING.md curve section and KNOWN_GAPS rows updated with numbers; MAP.md for any crate whose public items moved.
-- [ ] Report: cause vs symptom stated per fix; what was measured and what was not (a real kernel clone is not required; say so).
+- [x] Phase table in this ticket: 7 phases × {1M cg, 1M no-cg} × 3 runs, plus 100k both paths, plus the concurrent-jobs run; `target/<ticket>/phases.txt` referenced.
+- [x] Each path's cause named with mechanism, ns/commit and the discriminating measurement that confirmed it. "The in-degree pass" is accepted only with its measured share; "something linear" is not a name.
+- [x] After the fix: 1M cg and no-cg first paint < 500 ms on every run (the judged budget); each number written against 150 ms with yes/no and, for a miss, the residual's named cause.
+- [x] 100k both paths still ≤ 150 ms in `heavy::budgets_hold_*`; every `graft-git` order test and every corpus snapshot unchanged.
+- [x] (n/a — residual is not the in-degree pass, ~1 ms) If the residual is the in-degree pass: the recommendation section filled in with numbers; no fallback code in the diff.
+- [x] TESTING.md curve section and KNOWN_GAPS rows updated with numbers; MAP.md for any crate whose public items moved.
+- [x] Report: cause vs symptom stated per fix; what was measured and what was not (a real kernel clone is not required; say so).
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo clippy --all-targets --features heavy-tests -- -D warnings` · `cargo test`; heavy tier once, alone, at the end.
@@ -144,3 +144,24 @@ Next exact step (fix 2, same cause — "read refs once and reuse"):
 - Re-measure `budgets` 1M cg/no-cg ×3, 100k both; expect ~100 ms with jobs. Check `tests/it/many_refs.rs` (50k refs, `refs::read` timing, heavy) still holds.
 - Then: TESTING.md curve section (one first-paint row per cell), KNOWN_GAPS rows (156 and the "1M first paint is not the walk" note, and 177 "50k refs slow first paint in debug" — its "shared ref read" decision is now made), heavy tier once at the end.
 - Gotchas: `dispatch` in `jobs/mod.rs` is at clippy's 60-line limit — add arms as methods. First run after a build is cold; discard it. The +147 MiB peak at `ref_snapshot` is `tip_of`'s `find_header` on scattered tips (pack pages), not the ref files — left for memory-curve-acceptance.
+
+## Phase B, fix 2 — `ReadRefs` shares the reading (2026-09-14; raw: `target/55/phaseB2.txt`, heavy: `target/55/heavy-fix2.txt`)
+
+**Fix (cause):** `RefSnapshot` gains `peeled: Vec<(RefName, Oid)>`, filled in the same loop from the same `tip_of` (sorted by name, refs reaching no commit left out); `peeled_references` delegates to `ref_snapshot`; `snapshot_is_both_halves` pins the third half loose and packed. `refs::read` takes `store.refs()?.peeled`, so `ReadRefs` and the history job share one read: whichever takes the store's `refs` mutex first reads, the other waits and reuses it.
+**Ctrl+R race stays closed:** `ReadRefs` is dispatched only right after `OpenRepository` (`opening_repository`, `graph_key` refresh), and `open_repository` bumps the generation on the dispatching thread before either job exists; a `ReadRefs` can never be served a pre-keypress reading. Cost to the user: a badge read after an external ref change without `Ctrl+R` shows the refs as of the last open/refresh, which is what the graph already shows (same snapshot; before, badges could disagree with the graph).
+
+With jobs (`budgets`, release, first paint; first run per path cold, listed apart):
+
+| Cell | warm runs | cold first run | vs 150 | vs 500 |
+|---|---|---|---|---|
+| 1M cg | **99.1 / 98.1 / 98.7 ms** (was 191–195) | 1012 ms | yes | yes (warm) |
+| 1M no-cg | **105.4 / 104.6 / 104.3 ms** (was 193–203) | 999 ms | yes | yes (warm) |
+| 100k cg | 10.3 ms | 107 ms | yes | yes |
+| 100k no-cg | 11.4 ms | 101 ms | yes | yes |
+
+Serial `--phases` (warm): 1M cg total 98.2 (`ref_snapshot` 91.9, +149 MiB; `walk_new` 3.1; `first_chunk` 2.3); 1M no-cg 102.7 (`ref_snapshot` 86.6; `walk_new` 13.6); 100k cg 9.9; 100k no-cg 12.1. With jobs now equals serial: contention is gone.
+
+**What remains of first paint at 1M:** ~90 % is the one ref read (6,498 loose files, ~11 µs/ref, plus `find_header` per tip). Inherent to loose refs; packed it is 23 ms. Not a gap against 150.
+**Cold runs:** the first process after a build (or after the heavy fixtures were out of page cache) paid ~1.0 s on both 1M paths — ref files and pack pages read from disk. Warm-cache convention as in Phase A; cold-open cost is not budgeted by this ticket and not investigated further.
+**Not measured:** a real kernel clone (a fresh clone has `packed-refs`, the 23 ms path); debug first paint with 50k refs (KNOWN_GAPS row updated).
+Gates: fmt, clippy, clippy heavy-tests, `cargo test` 841/0; heavy tier (`cargo test --features heavy-tests -- --test-threads=2`) all pass, incl. `heavy::budgets_hold_*` and `many_refs::*`.

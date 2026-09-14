@@ -192,11 +192,11 @@ impl RepoHandle {
         Ok(self.ref_snapshot()?.tips)
     }
 
-    /// [`references`](Self::references) and [`commit_tips`](Self::commit_tips)
-    /// from one pass over the ref store.
+    /// [`references`](Self::references), [`commit_tips`](Self::commit_tips)
+    /// and [`peeled_references`](Self::peeled_references) from one pass over the ref store.
     ///
     /// Reading refs is one file per loose ref (~11 µs each): at 6,500 loose
-    /// refs a pass costs ~70 ms, and first paint used to pay it three times
+    /// refs a pass costs ~70 ms, and first paint used to pay it four times
     /// (m1-the-graph/55). Whoever needs both the refs and the tips reads them
     /// here, once. Each half is exactly what its own method returns.
     ///
@@ -219,6 +219,7 @@ impl RepoHandle {
 
         let mut refs = Vec::new();
         let mut tips = Vec::new();
+        let mut peeled = Vec::new();
         let mut known = KnownTips::new();
         for reference in iter {
             let mut reference = reference.map_err(read)?;
@@ -229,8 +230,12 @@ impl RepoHandle {
                 }
             };
             let name = RefName::new(reference.name().as_bstr().to_vec()).map_err(malformed)?;
+            let tip = self.tip_of(&mut reference, &mut known)?;
+            if let Some(id) = tip {
+                tips.push(id);
+                peeled.push((name.clone(), id));
+            }
             refs.push(RefEntry { name, target });
-            tips.extend(self.tip_of(&mut reference, &mut known)?);
         }
         // `HEAD` is not in the ref store's iteration, and on a detached
         // `HEAD` it is the only thing holding its commit. An unborn `HEAD`
@@ -241,9 +246,10 @@ impl RepoHandle {
         }
 
         refs.sort_by(|left, right| left.name.cmp(&right.name));
+        peeled.sort_by(|left: &(RefName, Oid), right| left.0.cmp(&right.0));
         tips.sort_unstable();
         tips.dedup();
-        Ok(RefSnapshot { refs, tips })
+        Ok(RefSnapshot { refs, tips, peeled })
     }
 
     /// Every ref that reaches a commit, with the commit it peels to, sorted
@@ -259,28 +265,7 @@ impl RepoHandle {
     /// [`TipsError`] if the ref store cannot be read or a ref cannot be
     /// peeled.
     pub fn peeled_references(&self) -> Result<Vec<(RefName, Oid)>, TipsError> {
-        let read = |source: Box<dyn std::error::Error + Send + Sync>| TipsError::Read {
-            git_dir: self.git_dir().to_path_buf(),
-            source,
-        };
-        let platform = self.repo.references().map_err(|why| read(Box::new(why)))?;
-        let iter = platform.all().map_err(|why| read(Box::new(why)))?;
-        let mut found = Vec::new();
-        let mut known = KnownTips::new();
-        for reference in iter {
-            let mut reference = reference.map_err(read)?;
-            let name = RefName::new(reference.name().as_bstr().to_vec()).map_err(|source| {
-                TipsError::Malformed {
-                    git_dir: self.git_dir().to_path_buf(),
-                    source,
-                }
-            })?;
-            if let Some(id) = self.tip_of(&mut reference, &mut known)? {
-                found.push((name, id));
-            }
-        }
-        found.sort_by(|left, right| left.0.cmp(&right.0));
-        Ok(found)
+        Ok(self.ref_snapshot()?.peeled)
     }
 
     /// The remote-tracking ref `branch` pulls from, as git's
@@ -505,6 +490,9 @@ pub struct RefSnapshot {
     /// What [`RepoHandle::commit_tips`] returns: sorted, deduplicated, `HEAD`
     /// included.
     pub tips: Vec<Oid>,
+    /// What [`RepoHandle::peeled_references`] returns: every ref that reaches
+    /// a commit, with that commit, sorted by name.
+    pub peeled: Vec<(RefName, Oid)>,
 }
 
 /// One ref, as the ref store holds it.

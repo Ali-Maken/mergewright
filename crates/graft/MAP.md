@@ -175,7 +175,7 @@ One line per public item. Update when a public item changes.
 - `RepoStore::new` (fn) — build a store for a path, with an optional forced branch.
 - `RepoStore::path` (fn) — the path Graft was pointed at.
 - `RepoStore::shared` (fn) — the shared open repository handle.
-- `RepoStore::refs` (fn) — the refs and their tips (`RefSnapshot`), read once, dropped by `refresh`; first paint's branches, seeds and walk tips share it.
+- `RepoStore::refs` (fn) — the refs and their tips (`RefSnapshot`), read once, dropped by `refresh`; first paint's branches, seeds, walk tips and `refs::read`'s badges share it.
 - `RepoStore::branches` (fn) — the repository's branches, resolved from `refs`.
 - `RepoStore::table` (fn) — the repository's one `Arc<CommitTable>`, opened once, kept across `refresh`.
 - `RepoStore::opens` (fn) — how many times the repository has been opened from scratch.

@@ -131,6 +131,15 @@ commands at once.
 
 Always peaks during `G`. What holds it (pack pages, `EmittedOrder`, `Topological.known`, `Included`): ticket m1-the-graph/46.
 
+First paint per cell (m1-the-graph/55, `target/release/examples/budgets <fixture>`, release, with jobs, warm cache; raw `target/55/phaseB2.txt`). Judged 500 ms, reported against 150 ms (ADR-0026):
+
+| Commits | small, no cg | small, cg | realistic, no cg |
+|---|---|---|---|
+| 100k | 11 ms | 10 ms | not re-measured |
+| 1M | **104–105 ms** (was 297–383) | **98–99 ms** (was 292–346) | not re-measured |
+
+~90 % of the 1M number is the one ref read (6,498 loose refs); `budgets --phases <fixture>` splits it by phase. The first run after a build is cold (~1.0 s at 1M): discard it.
+
 Not there yet: the performance budgets and the 300 MB peak-memory gate
 (M1 tickets 27 and 30). The measurement they will use —
 `graft_fixtures::measure` — is here and unit-tested; the assertions are

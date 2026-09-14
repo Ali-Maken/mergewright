@@ -76,7 +76,7 @@ One line per public item. Update when a public item changes.
 - `SharedRepo::git_dir` (fn) — the `.git` directory.
 - `TipsError` (enum) — why reading commit tips failed.
 - `RefEntry` (struct) — one ref: its name and target.
-- `RefSnapshot` (struct) — every ref (`refs`) and every commit they reach (`tips`), read in one pass.
+- `RefSnapshot` (struct) — every ref (`refs`), every commit they reach (`tips`) and each ref that reaches a commit with it (`peeled`), read in one pass.
 - `RefTarget` (enum) — what a ref points at.
 - `RefsError` (enum) — why reading references failed.
 - `HeadState` (enum) — where `HEAD` points: a branch, detached, or unborn.

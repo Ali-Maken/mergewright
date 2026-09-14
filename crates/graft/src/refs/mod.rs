@@ -159,9 +159,11 @@ impl AheadBehindCache {
 pub fn read(store: &RepoStore, cache: &AheadBehindCache) -> Result<RefBadges, String> {
     let repo = store.shared().map_err(|error| error.to_string())?;
     let handle = repo.handle();
-    let refs = handle
-        .peeled_references()
-        .map_err(|error| error.to_string())?;
+    // The store's one reading, shared with first paint's history job: a
+    // second pass over thousands of loose refs, on another worker at the
+    // same time, cost first paint ~90 ms at 1M commits (m1-the-graph/55).
+    let snapshot = store.refs().map_err(|error| error.to_string())?;
+    let refs = &snapshot.peeled;
     let head = handle.head().map_err(|error| error.to_string())?;
     let mut upstreams = HashMap::new();
     for (name, _) in refs
@@ -172,7 +174,7 @@ pub fn read(store: &RepoStore, cache: &AheadBehindCache) -> Result<RefBadges, St
             upstreams.insert(name.clone(), upstream);
         }
     }
-    badges(&refs, &head, &upstreams, |local, upstream| {
+    badges(refs, &head, &upstreams, |local, upstream| {
         cache.get_or_count(local, upstream, || count(&handle, local, upstream))
     })
 }
