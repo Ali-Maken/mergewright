@@ -271,6 +271,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-14 · user decision · no-cg heap bar: live heap slope ≤100 B/commit gated (measured 76), footprint (~140 B/commit, 155–158 MiB at 1M) reported with named floor under 300 MB → 63 filed (Sonnet, doc edits), 56c blocked by 63
 
 ## Open questions for the M1 checkpoint
+- **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.
 - **By eye (30b):** pixel graph goes blank for one frame on PgDn before rows arrive. User judges whether that's acceptable.
 - ~~Heavy tier build mode (30)~~ **Decided by user 2026-09-13:** frame budgets fail only under `--release`; debug records; release perf run in every milestone review (CLAUDE.md, ADR-0021 in 30c).
 - ~~Pinned tooltip after promotion (27c)~~ **User 2026-09-13:** correctness bug, fix in M1 → ticket 36, not carried to the review. Wheel scroll during a far search strands the search: still open.
