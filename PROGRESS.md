@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — ticket 61 · 85 tickets: 71 done, 7 ready, 4 partial, 1 split, 2 wontfix
+**Current step:** M1 The graph — paused (user away); next ticket 59b · 85 tickets: 72 done, 6 ready, 4 partial, 1 split, 2 wontfix
 
 ---
 
@@ -264,6 +264,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-14 · m1 slope-guard remainder · planner-fable · spec pass · 150 bar derived without pack .idx pages; 100k packed ≈ cg pages 56 + idx pages 68 + heap 31–35 B/commit; in-design cut ≤11 → still red; 1M cg peak after 58b 168–173 MiB; user question: split guard (heap ≤50 B/commit gated, peak RSS ≤200 gated, page floor named); specs drafted: slope-guard-bounds-heap-reports-pages (Sonnet, on yes), cg-slope-idx-pages-named-cause (Opus, on keep 150); 56 amended; 96k tokens
 - 2026-09-14 · user decision · slope bar: split check (heap ≤50 B/commit gated, peak RSS ≤200 gated, floor named) → 61 filed (Sonnet), 62 (keep 150) wontfix; recorded as ADR-0026 amendment by 61
 - 2026-09-14 · m1/59 phase A · opus · partial (e397a95) · no-cg budgets --phases + prototypes/heap-profile-59; 1M no-cg footprint 170 B/commit (gate 176); cause: interner 58 B + ~94 B freed transients kept in footprint (sort paged arrays 46, interner doubling 38, swap 10); live floor ~76 < bar 100; OS release frees 0 → fix is not allocating; Phase B est ~110, may miss 100; heavy budgets_hold not run; 139k tokens, no compaction; stopped at seam → split 59b (Opus)
+- 2026-09-14 · m1/61 · sonnet · done · heavy::slopes_per_commit_with_a_commit_graph replaces the RSS-only guard; 3× release: heap 29/31/29 B/commit (bar 50), RSS 167/169/167 (bar 200); tightening proof heap bar 20 → red at 26, reverted; ADR-0026 amended, TESTING.md, KNOWN_GAPS m1-58 closed; bar re-derived by user from named floor; 97k tokens, no compaction · user away: conductor paused after 61
 
 ## Open questions for the M1 checkpoint
 - **By eye (30b):** pixel graph goes blank for one frame on PgDn before rows arrive. User judges whether that's acceptable.
