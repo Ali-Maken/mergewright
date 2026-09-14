@@ -1,6 +1,6 @@
 # m1-the-graph/64 — Frames at a million commits: the scroll numbers ADR-0026 deferred
 
-Status: ready
+Status: done
 Build with: **Sonnet** (medium) — runs the existing `frames::` scroll harness at a new scale; the bar (16 ms p99 input to frame, PROMPT.md §1.2 / §6.3) and the harness already exist.
 Blocked by: none (56d done)
 
@@ -26,12 +26,40 @@ Out: no-cg 1M frames (that path is reported, not gated); any fix; any bar change
 New tests only; no public item changes. Calls: the existing `frames.rs` `check(tier, refs)` / `scroll(repo, tier, refs)` (generalise the fixture argument if needed, keeping the 100k tests' behaviour and output lines identical); `graft_fixtures::synthetic::Scale::{of, with_commit_graph}`.
 
 ## Acceptance
-- [ ] Two 1M tests exist, excluded from the normal heavy command, loud when their prerequisite is missing.
-- [ ] 3 release runs each, alone; numbers in the ticket; raw paths listed.
-- [ ] 100k `frames::` tests unchanged and green (one release run).
-- [ ] TESTING.md command, KNOWN_GAPS bullet, ADR-0026 clause.
-- [ ] Gates: fmt, clippy, clippy `--features heavy-tests`, `cargo test`.
-- [ ] Report: pass/fail + p99 per tier; paths only.
+- [x] Two 1M tests exist, excluded from the normal heavy command, loud when their prerequisite is missing.
+- [x] 3 release runs each, alone; numbers in the ticket; raw paths listed.
+- [x] 100k `frames::` tests unchanged and green (one release run).
+- [x] TESTING.md command, KNOWN_GAPS bullet, ADR-0026 clause.
+- [x] Gates: fmt, clippy, clippy `--features heavy-tests`, `cargo test`.
+- [x] Report: pass/fail + p99 per tier; paths only.
+
+## Result (2026-09-14)
+
+Both new tests pass on every release run, well under the 16 ms bar, no
+rows-on-hand misses. Mechanism chosen: no existing cargo-test mechanism fit
+(ADR-0018 bans `#[ignore]` for the heavy-tests gate; `scripts/memory-curve.sh`'s
+own manual-ness is "not wired into `cargo test`" at all, which doesn't fit a
+`#[test]` fn) — used an env var (`GRAFT_1M`) the test checks and fails loudly
+without, plus `--skip scrolling_the_1m_commit_graph_fixture` added to both
+standing TESTING.md commands so they stay green without opting in.
+
+3 release runs each, alone (raw: `target/64/{unicode,pixel}-run{1,2,3}.txt`):
+
+| Tier | Run | p50 (µs) | p99 (µs) | max (µs) |
+|---|---|---|---|---|
+| Unicode | 1 | 4,468 | 6,745 | 10,219 |
+| Unicode | 2 | 4,725 | 6,374 | 6,688 |
+| Unicode | 3 | 4,115 | 6,622 | 8,023 |
+| Pixel | 1 | 4,182 | 8,005 | 14,346 |
+| Pixel | 2 | 4,284 | 6,885 | 10,831 |
+| Pixel | 3 | 4,071 | 7,182 | 8,188 |
+
+`rows-on-hand`: 0 waited keys, every run, both tiers. 100k `frames::` +
+`heavy::budgets_hold*` release run (`target/64/release-100k-rerun.txt`): 10
+passed, 0 failed (one earlier run flaked on the pre-existing
+`fifty_thousand_refs_*_unicode` test — 2 keys over budget by ~20 ms under
+back-to-back release runs, the CPU power-state effect TESTING.md already
+documents; untouched by this ticket's diff, and green on immediate rerun).
 
 ## Size
 One context, under ~50k. Runs are minutes each; output goes to files.

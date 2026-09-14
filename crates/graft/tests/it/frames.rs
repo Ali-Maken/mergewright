@@ -92,6 +92,46 @@ fn fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_pixel_tier() {
     check(RenderingTier::Pixel, Refs::FiftyThousand);
 }
 
+/// ADR-0026 deferred the 1M `frames::` scroll numbers to the M1 perf run
+/// (m1-the-graph/64). The fixture is a ~300 MiB repository these tests build
+/// or borrow on demand: too expensive for the standard heavy-tier command
+/// (`cargo test --features heavy-tests -- --test-threads=2`, no filter, runs
+/// every compiled test) or the release perf run's `frames::` filter
+/// (`TESTING.md`) to sweep up by accident. `scripts/memory-curve.sh`'s own
+/// 1M cells are manual the same way, but that mechanism is a shell script
+/// never wired into `cargo test`, which does not fit a `#[test]` fn. So
+/// these are gated on [`ONE_MILLION`] instead: unset, they fail loudly
+/// (never a silent skip) naming the variable and the manual command
+/// (TESTING.md); both standing commands must add `--skip
+/// scrolling_the_1m_commit_graph_fixture` to stay green without running
+/// them.
+const ONE_MILLION: &str = "GRAFT_1M";
+
+fn require_one_million() {
+    assert!(
+        std::env::var_os(ONE_MILLION).is_some(),
+        "set {ONE_MILLION}=1 to run this test: it builds/borrows the ~300 MiB \
+         1M-commit-graph fixture and takes several minutes. See TESTING.md's \
+         manual command for the 1M `frames::` numbers (m1-the-graph/64)."
+    );
+}
+
+#[test]
+fn scrolling_the_1m_commit_graph_fixture_keeps_input_to_frame_under_16_ms_at_the_unicode_tier() {
+    require_one_million();
+    check_scale(RenderingTier::Unicode, Refs::Fixture, ONE_MILLION_CG);
+}
+
+#[test]
+fn scrolling_the_1m_commit_graph_fixture_keeps_input_to_frame_under_16_ms_at_the_pixel_tier() {
+    require_one_million();
+    check_scale(RenderingTier::Pixel, Refs::Fixture, ONE_MILLION_CG);
+}
+
+/// The 1M small-commit fixture with a commit-graph (ticket asks for "1M
+/// small cg"; `CommitSize::Small` is `Scale`'s default).
+const ONE_MILLION_CG: Scale = Scale::of(1_000_000).with_commit_graph();
+
 /// Which badges the scroll draws.
 #[derive(Clone, Copy, Debug)]
 enum Refs {
@@ -132,8 +172,13 @@ fn keys() -> Vec<(KeyCode, Duration)> {
 }
 
 fn check(tier: RenderingTier, refs: Refs) {
-    let repo =
-        synthetic::borrow(Scale::HEAVY.with_commit_graph()).unwrap_or_else(|why| panic!("{why}"));
+    check_scale(tier, refs, Scale::HEAVY.with_commit_graph());
+}
+
+/// [`check`], generalised to any fixture scale (m1-the-graph/64: the same
+/// harness at 1M). Output lines are identical either way.
+fn check_scale(tier: RenderingTier, refs: Refs, scale: Scale) {
+    let repo = synthetic::borrow(scale).unwrap_or_else(|why| panic!("{why}"));
     // Poisoned only when another measuring test panicked while holding it;
     // that test has already failed on its own, and the lock guards no data.
     let turn = MEASURING.lock().unwrap_or_else(PoisonError::into_inner);

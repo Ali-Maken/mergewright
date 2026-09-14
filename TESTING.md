@@ -51,17 +51,19 @@ One command (ADR-0018):
 ```sh
 # The 100k-commit repository, the budgets from tickets 27 and 30, and every
 # property test at 1,000 cases instead of 64.
-cargo test --features heavy-tests -- --test-threads=2
+cargo test --features heavy-tests -- --test-threads=2 --skip scrolling_the_1m_commit_graph_fixture
 ```
 
-The feature alone gates heavy tests; none is `#[ignore]`d.
+The feature alone gates heavy tests; none is `#[ignore]`d. The `--skip` above
+excludes the two 1M `frames::` tests (m1-the-graph/64): without it they run
+here too and fail loudly (see [Frames at a million](#frames-at-a-million)).
 
 **Then the release perf run** (ADR-0021), alone, after the command above:
 
 ```sh
 # Time budgets fail only here: input to frame (frames::, four tests) and
 # first paint (heavy::budgets_hold_*, the 50k-refs one included).
-cargo test --release -p graft --features heavy-tests --test it -- frames:: heavy::budgets_hold --test-threads=1 --nocapture
+cargo test --release -p graft --features heavy-tests --test it -- frames:: heavy::budgets_hold --test-threads=1 --nocapture --skip scrolling_the_1m_commit_graph_fixture
 ```
 
 In the debug run above those same tests measure and print their numbers
@@ -180,6 +182,37 @@ First paint per cell (m1-the-graph/55, `target/release/examples/budgets <fixture
 Every 1M cell's run 1 is cold (~0.7–1.0 s, over 500 ms); warm runs 2–3 are 88–112 ms, well under 150 ms. Cause suspected (page cache: the pack `.idx` and loose refs not resident after a build or another 1M cell's I/O), not proven — needs `sudo purge` between runs (KNOWN_GAPS).
 
 Not there yet: `cargo-fuzz` targets, land in M2.
+
+### Frames at a million (m1-the-graph/64)
+
+The `frames::` scroll harness (input-to-frame budget, `INPUT_TO_FRAME =
+16 ms`) at 1M commits, deferred by ADR-0026. Manual like the memory curve
+(the fixture is ~300 MiB) — but a `#[test]` fn, not a script, so it is
+excluded from both standing commands by `--skip
+scrolling_the_1m_commit_graph_fixture` (above) and gated inside the test on
+`GRAFT_1M`: unset, it fails loudly naming this command, never a silent skip.
+
+```sh
+GRAFT_1M=1 cargo test --release -p graft --features heavy-tests --test it -- scrolling_the_1m_commit_graph_fixture --test-threads=1 --nocapture
+```
+
+What right looks like: p99 ≤ 16 ms at both tiers on the 1M small
+commit-graph fixture, same as the 100k cells above. Release only (ADR-0021);
+debug records and prints without failing.
+
+3 runs each, release, alone, 2026-09-14:
+
+| Tier | Run | p50 (µs) | p99 (µs) | max (µs) | rows on hand | kitty bytes |
+|---|---|---|---|---|---|---|
+| Unicode | 1 | 4,468 | 6,745 | 10,219 | 0 waited | 0 |
+| Unicode | 2 | 4,725 | 6,374 | 6,688 | 0 waited | 0 |
+| Unicode | 3 | 4,115 | 6,622 | 8,023 | 0 waited | 0 |
+| Pixel | 1 | 4,182 | 8,005 | 14,346 | 0 waited | 192,996,821 |
+| Pixel | 2 | 4,284 | 6,885 | 10,831 | 0 waited | 192,996,821 |
+| Pixel | 3 | 4,071 | 7,182 | 8,188 | 0 waited | 192,996,821 |
+
+Both tiers pass on every run: p99 well under the 16 ms bar, no key drawn
+before its rows arrived. Raw output: `target/64/{unicode,pixel}-run{1,2,3}.txt`.
 
 ## Fixtures
 
