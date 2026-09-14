@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — paused (power cut); next: M1 review round 1 (opus), start 62fdaa5 · 89 tickets: 84 done, 1 partial, 2 split, 2 wontfix
+**Current step:** M1 The graph — M1 review round 1 (opus), start 62fdaa5 · 89 tickets: 84 done, 1 partial, 2 split, 2 wontfix
 
 ---
 
