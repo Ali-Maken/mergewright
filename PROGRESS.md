@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — ticket 52 · 77 tickets: 67 done, 7 ready, 1 partial, 1 split, 1 wontfix
+**Current step:** M1 The graph — ticket 52b · 77 tickets: 68 done, 6 ready, 1 partial, 1 split, 1 wontfix
 
 ---
 
@@ -245,6 +245,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-14 · m1/51d EmittedOrder growth slack · sonnet · done · cause fix: reserve_exact per streaming batch (and up front in from_handles); 100k 9 B/commit (was 10.37), 1M no-cg release 9 B/commit, peak RSS 481.2 MiB; 51 and 51c closed; for review: reserve_exact per batch may recopy the order each batch (quadratic) — check G time at 1M in the release perf run; 87k tokens
 - 2026-09-14 · m1/52 rows hydrate on demand · opus · partial (blocked on spec, no code) · merge lane identity comes from recover_branch_name(merge subject) in open_merge_lane, links carry handles only → layout can't pass through without reading merges; options (a) read merges only (~25% of git/git, breaks hydrated bound) vs (b) deferred LaneIdentity::Merge{merge,parent} resolved in Row::assemble (builder's pick; assemble and Lane API change) → planner-fable spec-only pass; 91k tokens, no compaction
 - 2026-09-14 · m1/52 spec amendment (merge lane identity) · fable · done · option (b): LaneIdentity::{Known, Merge{merge,parent}}, MergeNames::gather per materialised batch (reads bounded by open lanes), Row::assemble(shape, commit, &MergeNames, id_of) -> Result; Row.lanes unchanged, nothing visible changes; (a) rejected (reads ~25% of history each G); guard: builder stops if Lane.identity drives a layout decision; split: 52 = layout on links, all chunks materialised; 52b rows-pass-through (pass-through, fingerprint, rebuild hydrates, measurements, DESIGN §3.6), both Opus
+- 2026-09-14 · m1/52 layout on links, deferred merge identity · opus · done (one box open) · 836/836, gates pass; guard held (Lane.identity copied, never compared); open box: frames:: release check not run → M1 review release run; deviations for review: extend can't fail (no LayoutError), pull keeps limit, known_identities keyed by commit id, MergeNames keyed by (merge, parent) for octopus; 2 read-count checks in tests/it/streaming.rs changed to reads = hydrated + merge_reads (row checks unchanged); 83k tokens · COMPACTED (nothing left to split)
 
 ## Open questions for the M1 checkpoint
 - **By eye (30b):** pixel graph goes blank for one frame on PgDn before rows arrive. User judges whether that's acceptable.
