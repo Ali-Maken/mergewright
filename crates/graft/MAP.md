@@ -86,19 +86,22 @@ One line per public item. Update when a public item changes.
 ## update
 - `AppEvent` (enum) — events fed into `update`, including job products.
 - `Progress` (enum) — what a running job hands over before it ends.
-- `Task` (enum) — jobs identified so their results can be told apart from stray ones; `ReadRefs` reads the badges; `ReadWorkingTree` reads working-tree status counts; `PromoteHistory` sorts for ADR-0008 promotion; `Search` scans for `/`. `Progress::Search` carries one chunk's hits.
-- `Product` (enum) — what a job brought back; `Refs` carries `RefBadges` or why they failed; `WorkingTree` carries `WorkingTreeCounts` or why they failed; `TopologicalOrder` carries a sort's order.
+- `Task` (enum) — jobs identified so their results can be told apart from stray ones; `ReadRefs` reads the badges; `ReadWorkingTree` reads working-tree status counts; `PromoteHistory` sorts for ADR-0008 promotion; `Search` scans for `/`; `WriteCommitGraph`/`DeclineCommitGraph` the offer's jobs. `Progress::Search` carries one chunk's hits.
+- `Product` (enum) — what a job brought back; `Refs` carries `RefBadges` or why they failed; `WorkingTree` carries `WorkingTreeCounts` or why they failed; `TopologicalOrder` carries a sort's order; `CommitGraph(Result<Written, String>)` and `CommitGraphDeclined(Result<(), String>)` the offer's answers.
 - `GitCheck` (enum) — what running `git --version` found.
 - `AppState` (struct) — the whole app state.
 - `AppState::quit` (field) — set when Graft is leaving; terminal restored before reporting.
 - `AppState::harness` (field) — `Harness`: a `banner` pinned under the header (its rows come off `graph_rows` and the mouse row math) and `hand_back` keys that end the run with `Quit::HandedBack(key)`; never while the search prompt is open (m1-the-graph/35, 38).
-- `Harness` (struct) — `banner: Option<Banner>`, `hand_back: Vec<KeyCode>`, `clock: Clock`; `Default` asks for nothing (`Clock::Wall`). `banner_rows()` is the rows the banner takes, 0 without one.
+- `Harness` (struct) — `banner: Option<Banner>`, `hand_back: Vec<KeyCode>`, `clock: Clock`, `offer_commit_graph: bool`; `Default` asks for nothing (`Clock::Wall`, offer on; the gallery turns the offer off). `banner_rows()` is the rows the banner takes, 0 without one.
 - `Banner` (struct) — `title: String` (the view appends ` · <tier>` for the tier in force), `lines: Vec<String>`; `rows()` is `1 + lines.len()` (m1-the-graph/38).
 - `AppState::status` (field) — what the status line has to say.
 - `AppState::size` (field) — terminal's last reported size, in character cells.
 - `AppState::repo_path` (field) — repo path; starting point, filled in by `event_loop::run`.
 - `AppState::repository` (field) — repository facts once the opening job answers.
 - `AppState::system_git` (field) — system git check result once that job answers.
+- `AppState::commit_graph` (field) — `CommitGraphOffer`, decided when facts arrive (only from `NotNeeded`/`Offered`).
+- `AppState::commit_graph_line` (fn) — the offer's footer line, if shown (waits for the git check; no usable git → `NoGitToBuild`); `graph_rows` subtracts its row.
+- `CommitGraphOffer` (enum) — `NotNeeded`, `Offered` (`B` → `Command::WriteCommitGraph`, `X` → `Command::DeclineCommitGraph`), `Writing(Option<JobId>)`, `Written { commits }` (cleared by the next key), `Declining(Option<JobId>)`, `Declined`, `Failed` (problem line; no retry this run), `Suppressed`. Ids are `None` until `Started` (m1-the-graph/54).
 - `AppState::awaiting` (field) — job id whose result is still wanted; stale ones dropped.
 - `AppState::promoting` (field) — the topological sort still wanted; any other sort's order is dropped.
 - `AppState::search_prompt` (field) — the `/` prompt's typed text while open; every key but Ctrl-C is text.
@@ -140,6 +143,8 @@ One line per public item. Update when a public item changes.
 - `RepositoryFacts::bare` (field) — no working tree.
 - `RepositoryFacts::head` (field) — where `HEAD` points.
 - `RepositoryFacts::mailmap` (field) — the repository's resolved `.mailmap`, for the author chip.
+- `RepositoryFacts::commit_graph` (field) — `CommitGraphFact` (m1-the-graph/54).
+- `CommitGraphFact` (enum) — `Present { commits }`, `Absent { declined }`, `Unreadable(msg)` (shown as a problem, no offer).
 - `Head` (enum) — where `HEAD` points, one step before the sanitiser.
 - `facts` (fn) — read facts about an open repository.
 

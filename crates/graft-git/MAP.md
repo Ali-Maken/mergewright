@@ -3,6 +3,7 @@ One line per public item. Update when a public item changes.
 
 ## lib.rs
 - `branches` (mod) — choosing the default/integration branch among a repository's refs.
+- `commit_graph` (mod) — the commit-graph file: status, building it with system git, the offer's remembered decline (m1-the-graph/54).
 - `history` (mod) — rev-walks: chunked, ordered, resumable.
 - `mailmap` (mod) — `.mailmap` resolution, via gix's own parser.
 - `repo` (mod) — opening a repository and reading `HEAD`, refs and tips from it.
@@ -18,6 +19,16 @@ One line per public item. Update when a public item changes.
 - `Branches::chosen_by` (fn) — which rule in ADR-0001's chain chose the default branch.
 - `Branches::integration` (fn) — the refs treated as integration branches.
 - `BranchError` (enum) — why branch resolution failed.
+
+## commit_graph
+- `CommitGraphStatus` (enum) — `Present { commits }` or `Absent` (as the walk sees it: `core.commitGraph` respected).
+- `status` (fn) — read through gix; a corrupt file is `Err(Graph)`, never `Absent`.
+- `Written` (struct) — `commits` in the new file, `elapsed`.
+- `write` (fn) — blocking; runs `git --git-dir <common_dir> commit-graph write --reachable --no-progress`, never kills it, reads the file back.
+- `CommitGraphError` (enum) — `GitNotFound`, `Exited { status, stderr_first_line }` (raw), `Signalled`, `Io`, `Graph`; `Display` is the problem line.
+- `Offer` (enum) — `Undecided` or `Declined`.
+- `offer_state` (fn) — `<common_dir>/graft/commit-graph-offer` present = `Declined`.
+- `remember_declined` (fn) — write `declined\n` there, creating `graft/`.
 
 ## history
 - `CHUNK` (const) — commits per chunk a walk hands back at a time.

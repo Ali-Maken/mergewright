@@ -1,0 +1,82 @@
+# 120x40: the offer frame
+ graft /tmp/g54-120  10 commits
+  ●       [feature/three] three: in progress                                                             GF 7y   0683985
+◆─│─╮     [◆ main] Merge branch 'feature/two'                                                            GF 7y   5202e1c
+│ │ ●     [feature/two] two: finish                                                                      GF 7y   e30e870
+│ │ ●     two: start                                                                                     GF 7y   40034e4
+◉─│─│─╮   Merge branch 'feature/one'                                                                     GF 7y   3a97003
+│ │ │ ●   [feature/one] one: finish                                                                      GF 7y   fdb311f
+│ │ │ ●   one: start                                                                                     GF 7y   bba225a
+●─┴─╯ │   Add b.txt                                                                                      GF 7y   de95041
+●─────╯   Add a.txt                                                                                      GF 7y   21b16b9
+◇         Add a readme                                                                                   GF 7y   daa5167
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent  F focus  H stash  y sha  PgUp/PgDn page
+# 120x40: after B, the written frame
+ graft /tmp/g54-120  10 commits
+  ●       [feature/three] three: in progress                                                             GF 7y   0683985
+◆─│─╮     [◆ main] Merge branch 'feature/two'                                                            GF 7y   5202e1c
+│ │ ●     [feature/two] two: finish                                                                      GF 7y   e30e870
+│ │ ●     two: start                                                                                     GF 7y   40034e4
+◉─│─│─╮   Merge branch 'feature/one'                                                                     GF 7y   3a97003
+│ │ │ ●   [feature/one] one: finish                                                                      GF 7y   fdb311f
+│ │ │ ●   one: start                                                                                     GF 7y   bba225a
+●─┴─╯ │   Add b.txt                                                                                      GF 7y   de95041
+●─────╯   Add a.txt                                                                                      GF 7y   21b16b9
+◇         Add a readme                                                                                   GF 7y   daa5167
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ commit-graph written: 10 commits · the next open sorts at once
+ q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent  F focus  H stash  y sha  PgUp/PgDn page

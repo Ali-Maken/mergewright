@@ -510,6 +510,33 @@ impl<S: JobEvents> JobRunner<S> {
             }
         });
     }
+
+    /// Builds the commit-graph with system git off the loop's thread
+    /// (m1-the-graph/54).
+    fn write_commit_graph(&self) {
+        let repos = Arc::clone(&self.repos);
+        self.announce(Task::WriteCommitGraph, move |cancel| {
+            // Checked once, before git starts: a write not yet begun can be
+            // dropped (nothing is recorded, the next open offers again). Once
+            // git runs it is never cancelled nor killed — see
+            // `graft_git::commit_graph`.
+            if cancel.is_cancelled() {
+                return Outcome::Cancelled;
+            }
+            Outcome::Produced(Product::CommitGraph(write_commit_graph(&repos)))
+        });
+    }
+
+    /// Remembers the declined commit-graph offer off the loop's thread.
+    fn decline_commit_graph(&self) {
+        let repos = Arc::clone(&self.repos);
+        self.announce(Task::DeclineCommitGraph, move |cancel| {
+            if cancel.is_cancelled() {
+                return Outcome::Cancelled;
+            }
+            Outcome::Produced(Product::CommitGraphDeclined(decline_commit_graph(&repos)))
+        });
+    }
 }
 
 impl<S: JobEvents> Dispatch for JobRunner<S> {
@@ -539,6 +566,8 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
                 });
             }
             Command::PromoteHistory => self.promote_history(),
+            Command::WriteCommitGraph => self.write_commit_graph(),
+            Command::DeclineCommitGraph => self.decline_commit_graph(),
             Command::ReadHistory(order) => {
                 let repos = Arc::clone(&self.repos);
                 let sink = self.sink.clone();
@@ -581,6 +610,20 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             }
         }
     }
+}
+
+/// The work behind [`Command::WriteCommitGraph`]: git's own
+/// `commit-graph write`, through a handle on the store's repository.
+fn write_commit_graph(repos: &RepoStore) -> Result<graft_git::commit_graph::Written, String> {
+    let repo = repos.shared().map_err(|error| error.to_string())?;
+    graft_git::commit_graph::write(&repo.handle()).map_err(|error| error.to_string())
+}
+
+/// The work behind [`Command::DeclineCommitGraph`]: remember "never for this
+/// repository" in its common directory.
+fn decline_commit_graph(repos: &RepoStore) -> Result<(), String> {
+    let repo = repos.shared().map_err(|error| error.to_string())?;
+    graft_git::commit_graph::remember_declined(&repo.handle()).map_err(|error| error.to_string())
 }
 
 /// The work behind [`Command::OpenRepository`].

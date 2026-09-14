@@ -1,6 +1,6 @@
 # m1-the-graph/54 — Graft offers to build a missing commit-graph file
 
-Status: ready
+Status: done
 Build with: **Opus** (high) — a repository write through the system git binary, a child process inside a job, an `update` state machine with a failure path that must surface. Approach decided below; not Fable.
 Needs: none. Touches `update::Harness` like `dates-on-a-fixed-clock` does (one new field each): sequence after it, or merge the struct edit.
 Blocked by: 53, 52, 52b
@@ -84,16 +84,26 @@ One footer row, text-info colour, key letters in the hint accent, while `commit_
 A test holds every text under its breakpoint. `B`/`X` do nothing in any state but `Offered`. `Failed`: `problem` = `commit-graph write failed (exit 128): <stderr first line, sanitised>`; no retry this run; the next open offers again (nothing recorded). Decline failure: `problem` = `could not remember the choice: <io error>`, state back to `Offered`. Empty state: `None` — no line, no row taken (repos with a graph: the common case).
 
 ## Acceptance
-- [ ] `update` tests: facts `Absent{declined:false}` + git `Ok` → `Offered`; `B` → `Writing` + `Command::WriteCommitGraph`; `Product::CommitGraph(Ok)` → `Written{commits}`; next key → `NotNeeded`; `Product::CommitGraph(Err)` → `Failed`, `problem` holds the exit code and stderr line; `X` → `Declining` + command; `Ok` → `Declined`, line gone; `Err` → `Offered` + `problem`. `Present` → `NotNeeded`; `Absent{declined:true}` → `NotNeeded`; git not ok → `NoGitToBuild` line; `Harness.offer_commit_graph = false` → `Suppressed`, no line. `B`/`X` ignored in every other state.
-- [ ] Fast-tier integration, real git: `copy_into_temp(Shape::Linear)` → `status` = `Absent` → `write` → `Present{commits: 200}` and `git commit-graph verify` exits 0 in that repo. `offer_state` round-trip; through a linked worktree (`git worktree add`) the same file is seen. Unwritable `objects/info` (chmod; skip as root) → `write` = `Exited{..}` with a non-empty stderr line, no panic.
-- [ ] Every string from git or the file system passes the sanitiser before drawing.
-- [ ] No `let _ =`, no ignored `Result` on any path (the decline write included).
-- [ ] pty capture on a temp copy of `feature-branches`, 80×24 and 120×40: the offer frame, then `B`, then the written frame → `docs/shots/<ticket-number>-commit-graph-offer-{80,120}.txt`. Contents not printed; the user judges by eye.
-- [ ] ADR-0008 amended; KNOWN_GAPS rows as scoped; MAP.md × 3.
-- [ ] Report says: cause vs symptom n/a (new feature); what was observed in the pty run (the file appeared, `verify` passed) and what was not (a 1M write — memory-curve-acceptance).
+- [x] `update` tests: facts `Absent{declined:false}` + git `Ok` → `Offered`; `B` → `Writing` + `Command::WriteCommitGraph`; `Product::CommitGraph(Ok)` → `Written{commits}`; next key → `NotNeeded`; `Product::CommitGraph(Err)` → `Failed`, `problem` holds the exit code and stderr line; `X` → `Declining` + command; `Ok` → `Declined`, line gone; `Err` → `Offered` + `problem`. `Present` → `NotNeeded`; `Absent{declined:true}` → `NotNeeded`; git not ok → `NoGitToBuild` line; `Harness.offer_commit_graph = false` → `Suppressed`, no line. `B`/`X` ignored in every other state.
+- [x] Fast-tier integration, real git: `copy_into_temp(Shape::Linear)` → `status` = `Absent` → `write` → `Present{commits: 200}` and `git commit-graph verify` exits 0 in that repo. `offer_state` round-trip; through a linked worktree (`git worktree add`) the same file is seen. Unwritable `objects/info` (chmod; skip as root) → `write` = `Exited{..}` with a non-empty stderr line, no panic.
+- [x] Every string from git or the file system passes the sanitiser before drawing.
+- [x] No `let _ =`, no ignored `Result` on any path (the decline write included).
+- [x] pty capture on a temp copy of `feature-branches`, 80×24 and 120×40: the offer frame, then `B`, then the written frame → `docs/shots/<ticket-number>-commit-graph-offer-{80,120}.txt`. Contents not printed; the user judges by eye.
+- [x] ADR-0008 amended; KNOWN_GAPS rows as scoped; MAP.md × 3.
+- [x] Report says: cause vs symptom n/a (new feature); what was observed in the pty run (the file appeared, `verify` passed) and what was not (a 1M write — memory-curve-acceptance).
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test`
 
 ## Size
 One context, under ~80k tokens. Seam: (a) `graft-git::commit_graph` + facts + tests; (b) `update`/view/loop + capture. Stop at the seam with a handoff note rather than compacting.
+
+## NOTES (builder, Opus)
+- **Session compacted once** mid-ticket (after the code and tests, before clippy splits and the pty run). Nothing remains.
+- Deviations from the spec, for review:
+  - `CommitGraphOffer::Writing(Option<JobId>)` / `Declining(Option<JobId>)`, not `JobId`: the key press leaves `Offered` before `Started` delivers the id. `None` → id filled on `Started`.
+  - `status` uses gix `commit_graph_if_enabled()` (not `commit_graph()`), so `Absent` matches what the walk sees (`core.commitGraph` respected).
+  - Wide `Offered` wording ends "never here", not "never for this repo": the spec text was 125 cols, over the 120 breakpoint.
+- Clippy line/complexity limits met by splitting `update` → `update` + `answer` (+ `commit_graph_event`, `took_fact`), `core_event`'s job-ended guard → `side_job_ended`, B/X handled in `key_event` before `graph_key`, jobs dispatch arms → `JobRunner::write_commit_graph` / `decline_commit_graph`.
+- pty (release, temp copies of `feature-branches`, 80×24 and 120×40): offer line shown, `B` → written line, commit-graph file appeared, `git commit-graph verify` exit 0. Captures: `docs/shots/54-commit-graph-offer-{80,120}.txt` — user judges by eye. Script: `.scratch/m1-the-graph/pty-commit-graph-offer.py`.
+- Not observed: a 1M-commit write (time, memory) — left to memory-curve-acceptance. Decline (`X`) and failure paths verified by `update` and integration tests only, not in a pty.

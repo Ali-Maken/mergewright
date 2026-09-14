@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 
 pub mod branches;
+pub mod commit_graph;
 #[cfg(test)]
 mod fixture;
 pub mod history;

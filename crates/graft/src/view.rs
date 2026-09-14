@@ -183,6 +183,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
             graphics: None,
             notice: None,
             search: search_line(state),
+            commit_graph: state.commit_graph_line(),
             banner: Vec::new(),
         };
     };
@@ -213,6 +214,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         graphics: None,
         notice: None,
         search: search_line(state),
+        commit_graph: state.commit_graph_line(),
         banner: Vec::new(),
     }
 }
@@ -733,6 +735,7 @@ pub(crate) mod tests {
                 bare: false,
                 head,
                 mailmap: graft_git::mailmap::Mailmap::default(),
+                commit_graph: crate::repository::CommitGraphFact::Present { commits: 1 },
             }),
             ..AppState::default()
         }

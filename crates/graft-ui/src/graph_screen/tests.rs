@@ -81,6 +81,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
         graphics: None,
         notice: None,
         search: None,
+        commit_graph: None,
         banner: Vec::new(),
     }
 }
@@ -857,4 +858,57 @@ fn a_configured_cap_larger_than_the_screen_never_cuts_the_graph_column() {
     // The rail is the last drawn column: column (cap - 1), 2 cells wide.
     assert_eq!(rail_at, (cap - 1) * 2, "{screen:#?}");
     assert!(rail_at <= 40, "cut past the half-screen bound: {screen:#?}");
+}
+
+#[test]
+fn every_commit_graph_wording_fits_under_its_breakpoint() {
+    let lines = [
+        CommitGraphLine::Offered,
+        CommitGraphLine::NoGitToBuild,
+        CommitGraphLine::Writing,
+        CommitGraphLine::Written { commits: 1_000_000 },
+    ];
+    // Each wording holds from its breakpoint up; the narrowest from 80.
+    for (width, room) in [(120, 120), (100, 100), (80, 80)] {
+        for line in lines {
+            let text: String = commit_graph_segments(line, width)
+                .into_iter()
+                .map(|(text, _)| text)
+                .collect();
+            assert!(
+                UnicodeWidthStr::width(text.as_str()) <= room,
+                "{line:?} at {width}: {} cols: {text:?}",
+                UnicodeWidthStr::width(text.as_str())
+            );
+        }
+    }
+    let written: String =
+        commit_graph_segments(CommitGraphLine::Written { commits: 1_000_000 }, 120)
+            .into_iter()
+            .map(|(text, _)| text)
+            .collect();
+    assert_eq!(
+        written,
+        " commit-graph written: 1,000,000 commits · the next open sorts at once"
+    );
+    assert_eq!(grouped(200), "200");
+    assert_eq!(grouped(1_000), "1,000");
+}
+
+#[test]
+fn the_commit_graph_line_sits_above_the_hints_and_takes_a_graph_row() {
+    let rows = linear(30);
+    let mut shown = view(&rows, WalkView::Complete { rows: 30 }, 0);
+    let without = text(&draw(&shown, 80, 10));
+    shown.commit_graph = Some(CommitGraphLine::Offered);
+    let with = text(&draw(&shown, 80, 10));
+
+    assert_eq!(with[9], without[9], "the hints keep the bottom row");
+    assert!(
+        with[8].starts_with(" no commit-graph file · B build one · X never here"),
+        "{:?}",
+        with[8]
+    );
+    assert_eq!(with[7], without[7], "the rows above are unchanged");
+    assert_ne!(with[8], without[8], "one graph row gave way");
 }

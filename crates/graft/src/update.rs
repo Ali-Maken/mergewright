@@ -19,6 +19,8 @@ use graft_core::oid::Oid;
 use graft_git::history::Order;
 use graft_git::version::SystemGit;
 
+use graft_ui::graph_screen::CommitGraphLine;
+
 use crate::history::{History, HistoryUpdate, Motion, Phase, Promotion, RowRequest, View};
 use crate::repository::RepositoryFacts;
 use crate::search::{Search, SearchState};
@@ -81,6 +83,10 @@ pub enum Task {
     PromoteHistory,
     /// Search history for a query (`/`).
     Search,
+    /// Build the commit-graph with `git commit-graph write` (m1-the-graph/54).
+    WriteCommitGraph,
+    /// Remember "never for this repository" for the commit-graph offer.
+    DeclineCommitGraph,
 }
 
 /// What a job brought back.
@@ -101,6 +107,11 @@ pub enum Product {
     /// Every commit in strict topological order, for the walk on screen to
     /// promote to (ADR-0008).
     TopologicalOrder(std::sync::Arc<[graft_core::commit_handle::CommitHandle]>),
+    /// The commit-graph write finished, or why it failed (the error's
+    /// `Display`, git's own words in it, unsanitised).
+    CommitGraph(Result<graft_git::commit_graph::Written, String>),
+    /// The decline was remembered, or why it could not be.
+    CommitGraphDeclined(Result<(), String>),
 }
 
 /// What running `git --version` found.
@@ -142,6 +153,9 @@ pub struct AppState {
     pub repository: Option<RepositoryFacts>,
     /// What the system `git` turned out to be, once that job has answered.
     pub system_git: Option<GitCheck>,
+    /// Where Graft's offer to build a missing commit-graph file is
+    /// (m1-the-graph/54, ADR-0008).
+    pub commit_graph: CommitGraphOffer,
     /// The history job whose answer the screen is waiting for.
     ///
     /// One at a time, on purpose: asking again supersedes the previous ask,
@@ -238,15 +252,46 @@ impl AppState {
     /// Never zero, so a movement always has somewhere to go.
     #[must_use]
     pub fn graph_rows(&self) -> usize {
-        let chrome = CHROME_ROWS.saturating_add(self.harness.banner_rows());
+        let chrome = CHROME_ROWS
+            .saturating_add(self.harness.banner_rows())
+            .saturating_add(u16::from(self.commit_graph_line().is_some()));
         usize::from(self.size.rows.saturating_sub(chrome)).max(1)
+    }
+
+    /// The commit-graph offer's footer line, if it shows one. Waits for the
+    /// git check before offering, so the line never offers and then takes
+    /// it back.
+    #[must_use]
+    pub fn commit_graph_line(&self) -> Option<CommitGraphLine> {
+        match self.commit_graph {
+            CommitGraphOffer::Offered | CommitGraphOffer::Declining(_) => {
+                match self.system_git.as_ref()? {
+                    GitCheck::Ran(SystemGit::Supported(_)) => Some(CommitGraphLine::Offered),
+                    GitCheck::Ran(SystemGit::TooOld { .. }) | GitCheck::Unavailable(_) => {
+                        Some(CommitGraphLine::NoGitToBuild)
+                    }
+                }
+            }
+            CommitGraphOffer::Writing(_) => Some(CommitGraphLine::Writing),
+            CommitGraphOffer::Written { commits } => Some(CommitGraphLine::Written { commits }),
+            CommitGraphOffer::NotNeeded
+            | CommitGraphOffer::Declined
+            | CommitGraphOffer::Failed
+            | CommitGraphOffer::Suppressed => None,
+        }
+    }
+
+    /// The offer can be acted on: offered, with a git new enough to build.
+    fn commit_graph_actionable(&self) -> bool {
+        self.commit_graph_line() == Some(CommitGraphLine::Offered)
+            && self.commit_graph == CommitGraphOffer::Offered
     }
 }
 
 /// What a harness wrapping `event_loop::run` asks for (the graph gallery,
 /// m1-the-graph/35). The default asks for nothing, which is what the
 /// shipped binary passes.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Harness {
     /// Lines pinned under the header for the whole run: the gallery says
     /// which stop this is and what to look for (m1-the-graph/38). Each
@@ -262,6 +307,21 @@ pub struct Harness {
     /// stop or a snapshot test asks for `Fixed` instead, so its capture
     /// never drifts with real time.
     pub clock: Clock,
+    /// Offer to build a missing commit-graph file (m1-the-graph/54). `true`
+    /// in the shipped binary; the gallery sets `false`, because its corpus
+    /// is borrowed read-only.
+    pub offer_commit_graph: bool,
+}
+
+impl Default for Harness {
+    fn default() -> Self {
+        Harness {
+            banner: None,
+            hand_back: Vec::new(),
+            clock: Clock::default(),
+            offer_commit_graph: true,
+        }
+    }
 }
 
 impl Harness {
@@ -397,6 +457,42 @@ pub enum Command {
     /// Written by the loop itself, to the terminal, through the session's
     /// transport: it is output, not a job, and never reaches the job runner.
     CopyToClipboard(String),
+    /// Run `git commit-graph write --reachable` as a job (`B` on the offer).
+    /// Never cancelled once git starts (`graft_git::commit_graph`).
+    WriteCommitGraph,
+    /// Remember the user declined the commit-graph offer (`X`).
+    DeclineCommitGraph,
+}
+
+/// Where the offer to build a missing commit-graph file is (m1-the-graph/54).
+///
+/// The job ids are `None` from the key press until the runner announces the
+/// job: `B` and `X` must leave `Offered` at once, so a second press does not
+/// start a second job, and the id is not known until `Started`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CommitGraphOffer {
+    /// Nothing to offer: a commit-graph is there, the user declined before,
+    /// the facts are not in yet, or a written line was cleared.
+    #[default]
+    NotNeeded,
+    /// No commit-graph and no decline: `B` builds, `X` declines. The line
+    /// says there is no git to build with when the git check did not pass.
+    Offered,
+    /// `git commit-graph write` is running as this job.
+    Writing(Option<JobId>),
+    /// The write finished; cleared by the next key.
+    Written {
+        /// Commits the new file holds.
+        commits: u32,
+    },
+    /// The decline is being written as this job.
+    Declining(Option<JobId>),
+    /// Declined and remembered; no line.
+    Declined,
+    /// The write failed; the problem line says why. No retry this run.
+    Failed,
+    /// A harness asked for no offer (`Harness::offer_commit_graph`).
+    Suppressed,
 }
 
 /// Answer one event: the new state, and the work it wants done.
@@ -408,9 +504,27 @@ pub enum Command {
 pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
     let mut next = state.clone();
     let mut commands = Vec::new();
+    answer(&mut next, &mut commands, event);
+    // The commit-graph line costs a graph row: when it comes or goes, the
+    // viewport changed height, so ask for the rows that now fit.
+    if next.commit_graph_line().is_some() != state.commit_graph_line().is_some() {
+        show_rows(&mut next, &mut commands);
+    }
+    (next, commands)
+}
 
+/// The half of [`update`] that answers one event, before the viewport is
+/// squared with the commit-graph line.
+fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
     match event {
-        AppEvent::Core(event) => core_event(&mut next, &mut commands, event),
+        event @ (AppEvent::Started(_, Task::WriteCommitGraph | Task::DeclineCommitGraph)
+        | AppEvent::Produced(
+            _,
+            Product::CommitGraph(_) | Product::CommitGraphDeclined(_),
+        )) => {
+            commit_graph_event(next, event);
+        }
+        AppEvent::Core(event) => core_event(next, commands, event),
         AppEvent::Started(id, Task::ReadHistory) => {
             // The newest ask wins. Anything the previous walk was going to
             // say is now about a question nobody asked.
@@ -426,8 +540,8 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             }
             next.history = Some(history);
         }
-        AppEvent::Started(id, Task::PromoteHistory) => sort_started(&mut next, &mut commands, id),
-        AppEvent::Started(id, Task::Search) => search_started(&mut next, &mut commands, id),
+        AppEvent::Started(id, Task::PromoteHistory) => sort_started(next, commands, id),
+        AppEvent::Started(id, Task::Search) => search_started(next, commands, id),
         // Neither of these is waited on: their results are welcome whenever
         // they arrive, and there is nothing for `Esc` to cancel.
         AppEvent::Started(
@@ -435,13 +549,14 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
             Task::OpenRepository | Task::CheckSystemGit | Task::ReadRefs | Task::ReadWorkingTree,
         ) => {}
         AppEvent::Produced(id, Product::TopologicalOrder(order)) => {
-            sorted(&mut next, &mut commands, id, order);
+            sorted(next, commands, id, order);
         }
         AppEvent::Produced(_, Product::Repository(Ok(facts))) => {
             next.repository = Some(facts);
             // Whatever went wrong last time has been superseded by a
             // repository that opened.
             next.status = Status::Ready;
+            decide_commit_graph_offer(next);
         }
         AppEvent::Produced(_, Product::Repository(Err(failure))) => {
             if next.repository.is_none() {
@@ -456,35 +571,49 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
                 next.status = Status::Failed(failure);
             }
         }
-        AppEvent::Produced(_, Product::SystemGit(check)) => {
+        AppEvent::Produced(
+            _,
+            product @ (Product::SystemGit(_) | Product::Refs(_) | Product::WorkingTree(_)),
+        ) => took_fact(next, product),
+        AppEvent::Progress(id, Progress::History(update)) => {
+            walk_progress(next, commands, id, update);
+        }
+        AppEvent::Progress(id, Progress::Search(hits)) => {
+            search_progress(next, commands, id, hits);
+        }
+    }
+}
+
+/// A fact about the repository beside the graph arrived: the system git
+/// check, the refs, or the working tree counts. `answer` routes only those.
+fn took_fact(next: &mut AppState, product: Product) {
+    match product {
+        Product::SystemGit(check) => {
             next.system_git = Some(check);
         }
-        AppEvent::Produced(_, Product::Refs(Ok(refs))) => {
+        Product::Refs(Ok(refs)) => {
             next.refs = Some(refs);
         }
-        AppEvent::Produced(_, Product::Refs(Err(failure))) => {
+        Product::Refs(Err(failure)) => {
             // The graph still draws without badges; the reason goes on the
             // status line rather than leaving them silently missing.
             next.status = Status::Failed(failure);
         }
-        AppEvent::Produced(_, Product::WorkingTree(Ok(counts))) => {
+        Product::WorkingTree(Ok(counts)) => {
             next.working_tree = Some(counts);
         }
-        AppEvent::Produced(_, Product::WorkingTree(Err(failure))) => {
+        Product::WorkingTree(Err(failure)) => {
             // The graph still draws without the uncommitted row; the reason
             // goes on the status line rather than leaving it silently
             // missing.
             next.status = Status::Failed(failure);
         }
-        AppEvent::Progress(id, Progress::History(update)) => {
-            walk_progress(&mut next, &mut commands, id, update);
-        }
-        AppEvent::Progress(id, Progress::Search(hits)) => {
-            search_progress(&mut next, &mut commands, id, hits);
-        }
+        // Not a fact: `answer`'s pattern keeps these from arriving.
+        Product::Repository(_)
+        | Product::TopologicalOrder(_)
+        | Product::CommitGraph(_)
+        | Product::CommitGraphDeclined(_) => {}
     }
-
-    (next, commands)
 }
 
 /// One update from history job `id`, taken in if it is the walk on screen.
@@ -572,9 +701,9 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             }
         }
         event @ (Event::JobFailed(id, _) | Event::JobFinished(id) | Event::JobCancelled(id))
-            if searching(next, id) =>
+            if searching(next, id) || commit_graph_job(next, id) =>
         {
-            search_job_ended(next, event);
+            side_job_ended(next, event);
         }
         Event::JobFailed(id, failure) => {
             if next.awaiting == Some(id) {
@@ -638,12 +767,20 @@ fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     if matches!(next.status, Status::Copied { .. }) {
         next.status = Status::Ready;
     }
+    // So does the commit-graph written line.
+    if matches!(next.commit_graph, CommitGraphOffer::Written { .. }) {
+        next.commit_graph = CommitGraphOffer::NotNeeded;
+    }
     if is_peek_key(key) {
         next.peek = !next.peek;
         return;
     }
     if key.code != KeyCode::Escape {
         next.peek = false;
+    }
+    if let Some(command) = commit_graph_key(next, key) {
+        commands.push(command);
+        return;
     }
     graph_key(next, commands, key);
 }
@@ -1246,6 +1383,163 @@ fn is_refresh(key: KeyPress) -> bool {
     key.code == KeyCode::Char('r') && key.modifiers.control
 }
 
+/// Ask the walk for the rows the viewport now holds, if it needs any.
+fn show_rows(next: &mut AppState, commands: &mut Vec<Command>) {
+    let height = next.graph_rows();
+    if let Some(history) = next.history.as_mut()
+        && let Some(request) = history.show(height)
+        && let Some(id) = next.awaiting
+    {
+        commands.push(Command::ShowRows(id, request));
+    }
+}
+
+/// The repository's facts are in: decide whether to offer a commit-graph.
+/// Only from a state nothing has happened in yet — a refresh never re-offers
+/// after a write, a failure or a decline this run.
+fn decide_commit_graph_offer(next: &mut AppState) {
+    use crate::repository::CommitGraphFact;
+    if !matches!(
+        next.commit_graph,
+        CommitGraphOffer::NotNeeded | CommitGraphOffer::Offered
+    ) {
+        return;
+    }
+    let Some(facts) = &next.repository else {
+        return;
+    };
+    next.commit_graph = match &facts.commit_graph {
+        CommitGraphFact::Present { .. } | CommitGraphFact::Absent { declined: true } => {
+            CommitGraphOffer::NotNeeded
+        }
+        CommitGraphFact::Unreadable(why) => {
+            next.status = Status::Failed(why.clone());
+            CommitGraphOffer::NotNeeded
+        }
+        CommitGraphFact::Absent { declined: false } if next.harness.offer_commit_graph => {
+            CommitGraphOffer::Offered
+        }
+        CommitGraphFact::Absent { declined: false } => CommitGraphOffer::Suppressed,
+    };
+}
+
+/// `B` builds, `X` declines — only while the offer can be acted on.
+fn commit_graph_key(next: &mut AppState, key: KeyPress) -> Option<Command> {
+    if key.modifiers.control || key.modifiers.alt || !next.commit_graph_actionable() {
+        return None;
+    }
+    match key.code {
+        KeyCode::Char('B') => {
+            next.commit_graph = CommitGraphOffer::Writing(None);
+            Some(Command::WriteCommitGraph)
+        }
+        KeyCode::Char('X') => {
+            next.commit_graph = CommitGraphOffer::Declining(None);
+            Some(Command::DeclineCommitGraph)
+        }
+        _ => None,
+    }
+}
+
+/// The runner announced the write or decline job: remember its id.
+fn commit_graph_started(next: &mut AppState, id: JobId) {
+    next.commit_graph = match next.commit_graph {
+        CommitGraphOffer::Writing(None) => CommitGraphOffer::Writing(Some(id)),
+        CommitGraphOffer::Declining(None) => CommitGraphOffer::Declining(Some(id)),
+        other => other,
+    };
+}
+
+/// The write job answered.
+fn commit_graph_written(
+    next: &mut AppState,
+    id: JobId,
+    result: Result<graft_git::commit_graph::Written, String>,
+) {
+    if next.commit_graph != CommitGraphOffer::Writing(Some(id)) {
+        return;
+    }
+    next.commit_graph = match result {
+        Ok(written) => CommitGraphOffer::Written {
+            commits: written.commits,
+        },
+        Err(why) => {
+            next.status = Status::Failed(why);
+            CommitGraphOffer::Failed
+        }
+    };
+}
+
+/// The decline job answered.
+fn commit_graph_declined(next: &mut AppState, id: JobId, result: Result<(), String>) {
+    if next.commit_graph != CommitGraphOffer::Declining(Some(id)) {
+        return;
+    }
+    next.commit_graph = match result {
+        Ok(()) => CommitGraphOffer::Declined,
+        Err(why) => {
+            next.status = Status::Failed(format!("could not remember the choice: {why}"));
+            CommitGraphOffer::Offered
+        }
+    };
+}
+
+/// A commit-graph offer job was announced or answered; `answer` routes only
+/// those events here.
+fn commit_graph_event(next: &mut AppState, event: AppEvent) {
+    match event {
+        AppEvent::Started(id, _) => commit_graph_started(next, id),
+        AppEvent::Produced(id, Product::CommitGraph(result)) => {
+            commit_graph_written(next, id, result);
+        }
+        AppEvent::Produced(id, Product::CommitGraphDeclined(result)) => {
+            commit_graph_declined(next, id, result);
+        }
+        // Not an offer event: `answer`'s pattern keeps these from arriving.
+        AppEvent::Core(_) | AppEvent::Progress(..) | AppEvent::Produced(..) => {}
+    }
+}
+
+/// A search or a commit-graph job ended without the answer it was for;
+/// `core_event`'s guard routes only those here.
+fn side_job_ended(next: &mut AppState, event: Event) {
+    let (Event::JobFailed(id, _) | Event::JobFinished(id) | Event::JobCancelled(id)) = &event
+    else {
+        return;
+    };
+    if searching(next, *id) {
+        search_job_ended(next, event);
+    } else {
+        commit_graph_job_ended(next, event);
+    }
+}
+
+/// `id` is the commit-graph write or decline still wanted.
+fn commit_graph_job(next: &AppState, id: JobId) -> bool {
+    matches!(
+        next.commit_graph,
+        CommitGraphOffer::Writing(Some(job)) | CommitGraphOffer::Declining(Some(job)) if job == id
+    )
+}
+
+/// The write or decline job ended without answering: it broke, or it was
+/// dropped before git started (shutdown). A broken write is a failure the
+/// user is told about; one that never began leaves the offer standing.
+fn commit_graph_job_ended(next: &mut AppState, event: Event) {
+    let writing = matches!(next.commit_graph, CommitGraphOffer::Writing(_));
+    match event {
+        Event::JobFailed(id, failure) => {
+            next.status = Status::Failed(format!("{id} failed: {failure}"));
+            next.commit_graph = if writing {
+                CommitGraphOffer::Failed
+            } else {
+                CommitGraphOffer::Offered
+            };
+        }
+        _ => next.commit_graph = CommitGraphOffer::Offered,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use graft_core::event::Modifiers;
@@ -1785,6 +2079,7 @@ mod tests {
             bare: false,
             head: Head::Branch(branch.as_bytes().to_vec()),
             mailmap: graft_git::mailmap::Mailmap::default(),
+            commit_graph: crate::repository::CommitGraphFact::Present { commits: 1 },
         }
     }
 
@@ -1990,6 +2285,7 @@ mod tests {
             repo_path: PathBuf::from("/code/api"),
             repository: Some(facts("/code/api", "main")),
             system_git: None,
+            commit_graph: CommitGraphOffer::NotNeeded,
             awaiting: None,
             promoting: None,
             history: None,
@@ -2789,5 +3085,235 @@ mod tests {
         let (next, _) = update(&state, key(KeyCode::Char(']')));
         assert_eq!(next.quit, None);
         assert_eq!(next.search_prompt.as_deref(), Some("fox]"));
+    }
+
+    mod commit_graph_offer {
+        use super::*;
+        use crate::repository::CommitGraphFact;
+        use graft_git::commit_graph::Written;
+        use graft_git::version::GitVersion;
+        use std::time::Duration;
+
+        fn opened(fact: CommitGraphFact, git: GitCheck, harness: Harness) -> AppState {
+            let state = AppState {
+                harness,
+                ..AppState::default()
+            };
+            let mut repository = facts("/code/api", "main");
+            repository.commit_graph = fact;
+            let (state, _) = update(&state, AppEvent::Produced(job(1), Product::SystemGit(git)));
+            let (state, _) = update(
+                &state,
+                AppEvent::Produced(job(2), Product::Repository(Ok(repository))),
+            );
+            state
+        }
+
+        fn job(n: u64) -> JobId {
+            JobId::new(n)
+        }
+
+        fn supported() -> GitCheck {
+            GitCheck::Ran(SystemGit::Supported(GitVersion::MINIMUM))
+        }
+
+        fn offered() -> AppState {
+            opened(
+                CommitGraphFact::Absent { declined: false },
+                supported(),
+                Harness::default(),
+            )
+        }
+
+        #[test]
+        fn a_missing_file_with_a_usable_git_is_offered() {
+            let state = offered();
+            assert_eq!(state.commit_graph, CommitGraphOffer::Offered);
+            assert_eq!(state.commit_graph_line(), Some(CommitGraphLine::Offered));
+        }
+
+        #[test]
+        fn b_writes_and_the_written_line_lasts_one_key() {
+            let (writing, commands) = update(&offered(), key(KeyCode::Char('B')));
+            assert_eq!(writing.commit_graph, CommitGraphOffer::Writing(None));
+            assert_eq!(commands, vec![Command::WriteCommitGraph]);
+            let (again, commands) = update(&writing, key(KeyCode::Char('B')));
+            assert!(commands.is_empty(), "a second B starts nothing");
+
+            let (writing, _) = update(&again, AppEvent::Started(job(7), Task::WriteCommitGraph));
+            assert_eq!(
+                writing.commit_graph,
+                CommitGraphOffer::Writing(Some(job(7)))
+            );
+            let written = Written {
+                commits: 200,
+                elapsed: Duration::from_millis(5),
+            };
+            let (done, _) = update(
+                &writing,
+                AppEvent::Produced(job(7), Product::CommitGraph(Ok(written))),
+            );
+            assert_eq!(
+                done.commit_graph,
+                CommitGraphOffer::Written { commits: 200 }
+            );
+            assert_eq!(done.status, Status::Ready);
+
+            let (next, _) = update(&done, key(KeyCode::Char('j')));
+            assert_eq!(next.commit_graph, CommitGraphOffer::NotNeeded);
+            assert_eq!(next.commit_graph_line(), None);
+        }
+
+        #[test]
+        fn a_failed_write_puts_git_s_words_in_the_problem_line() {
+            let (writing, _) = update(&offered(), key(KeyCode::Char('B')));
+            let (writing, _) = update(&writing, AppEvent::Started(job(7), Task::WriteCommitGraph));
+            let why = "commit-graph write failed (exit 128): fatal: Unable to create lock";
+            let (failed, _) = update(
+                &writing,
+                AppEvent::Produced(job(7), Product::CommitGraph(Err(why.to_owned()))),
+            );
+            assert_eq!(failed.commit_graph, CommitGraphOffer::Failed);
+            assert_eq!(failed.commit_graph_line(), None);
+            let Status::Failed(problem) = &failed.status else {
+                panic!("{:?}", failed.status);
+            };
+            assert!(problem.contains("exit 128") && problem.contains("fatal: Unable"));
+            let (still, commands) = update(&failed, key(KeyCode::Char('B')));
+            assert!(commands.is_empty(), "no retry this run");
+            assert_eq!(still.commit_graph, CommitGraphOffer::Failed);
+        }
+
+        #[test]
+        fn x_declines_and_a_failed_decline_offers_again() {
+            let (declining, commands) = update(&offered(), key(KeyCode::Char('X')));
+            assert_eq!(declining.commit_graph, CommitGraphOffer::Declining(None));
+            assert_eq!(commands, vec![Command::DeclineCommitGraph]);
+            let (declining, _) = update(
+                &declining,
+                AppEvent::Started(job(8), Task::DeclineCommitGraph),
+            );
+
+            let (declined, _) = update(
+                &declining,
+                AppEvent::Produced(job(8), Product::CommitGraphDeclined(Ok(()))),
+            );
+            assert_eq!(declined.commit_graph, CommitGraphOffer::Declined);
+            assert_eq!(declined.commit_graph_line(), None);
+
+            let (refused, _) = update(
+                &declining,
+                AppEvent::Produced(
+                    job(8),
+                    Product::CommitGraphDeclined(Err("permission denied".to_owned())),
+                ),
+            );
+            assert_eq!(refused.commit_graph, CommitGraphOffer::Offered);
+            assert_eq!(
+                refused.status,
+                Status::Failed("could not remember the choice: permission denied".to_owned())
+            );
+        }
+
+        #[test]
+        fn nothing_is_offered_with_a_file_a_decline_or_a_harness_that_says_no() {
+            let present = opened(
+                CommitGraphFact::Present { commits: 5 },
+                supported(),
+                Harness::default(),
+            );
+            assert_eq!(present.commit_graph, CommitGraphOffer::NotNeeded);
+            let declined = opened(
+                CommitGraphFact::Absent { declined: true },
+                supported(),
+                Harness::default(),
+            );
+            assert_eq!(declined.commit_graph, CommitGraphOffer::NotNeeded);
+            let suppressed = opened(
+                CommitGraphFact::Absent { declined: false },
+                supported(),
+                Harness {
+                    offer_commit_graph: false,
+                    ..Harness::default()
+                },
+            );
+            assert_eq!(suppressed.commit_graph, CommitGraphOffer::Suppressed);
+            assert_eq!(suppressed.commit_graph_line(), None);
+        }
+
+        #[test]
+        fn without_a_usable_git_the_line_says_why_and_offers_nothing() {
+            for git in [
+                GitCheck::Unavailable("no git on PATH".to_owned()),
+                GitCheck::Ran(SystemGit::for_version(GitVersion {
+                    major: 2,
+                    minor: 30,
+                    patch: 0,
+                })),
+            ] {
+                let state = opened(
+                    CommitGraphFact::Absent { declined: false },
+                    git,
+                    Harness::default(),
+                );
+                assert_eq!(
+                    state.commit_graph_line(),
+                    Some(CommitGraphLine::NoGitToBuild)
+                );
+                for letter in ['B', 'X'] {
+                    let (_, commands) = update(&state, key(KeyCode::Char(letter)));
+                    assert!(commands.is_empty(), "{letter} with no git: {commands:?}");
+                }
+            }
+        }
+
+        #[test]
+        fn an_unreadable_file_is_a_problem_not_an_offer() {
+            let state = opened(
+                CommitGraphFact::Unreadable("commit-graph unreadable: bad signature".to_owned()),
+                supported(),
+                Harness::default(),
+            );
+            assert_eq!(state.commit_graph, CommitGraphOffer::NotNeeded);
+            assert_eq!(
+                state.status,
+                Status::Failed("commit-graph unreadable: bad signature".to_owned())
+            );
+        }
+
+        #[test]
+        fn b_and_x_do_nothing_outside_the_offer() {
+            let states = [
+                CommitGraphOffer::NotNeeded,
+                CommitGraphOffer::Writing(Some(job(3))),
+                CommitGraphOffer::Written { commits: 1 },
+                CommitGraphOffer::Declining(Some(job(3))),
+                CommitGraphOffer::Declined,
+                CommitGraphOffer::Failed,
+                CommitGraphOffer::Suppressed,
+            ];
+            for offer in states {
+                let state = AppState {
+                    commit_graph: offer,
+                    ..offered()
+                };
+                for letter in ['B', 'X'] {
+                    let (_, commands) = update(&state, key(KeyCode::Char(letter)));
+                    assert!(commands.is_empty(), "{letter} in {offer:?}: {commands:?}");
+                }
+            }
+        }
+
+        #[test]
+        fn the_line_costs_a_graph_row_while_shown() {
+            let mut state = offered();
+            state.size = Size {
+                columns: 80,
+                rows: 24,
+            };
+            let with = state.graph_rows();
+            state.commit_graph = CommitGraphOffer::Declined;
+            assert_eq!(state.graph_rows(), with + 1);
+        }
     }
 }

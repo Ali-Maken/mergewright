@@ -32,3 +32,11 @@ fast path is the common case and the one-time offer converts most of the
 rest. The heavy tier must exercise both paths against the 100k fixture
 (commit-graph deleted for the slow one), and promotion needs its own
 test: selection and scroll land on the same commits before and after.
+
+## Landed (m1-the-graph/54)
+
+- **System git builds it:** `git --git-dir <common_dir> commit-graph write --reachable --no-progress` (`graft_git::commit_graph::write`); gix has no writer.
+- **As a job,** offered on a footer line: `B` builds, `X` declines. Never automatic.
+- **Never cancelled or killed** once git starts: git writes through a `.lock` and renames; `SIGKILL` would strand the lock. On quit, the child finishes on its own.
+- **The decline lives in the common dir,** `<common_dir>/graft/commit-graph-offer`, not `--git-path`: the commit-graph belongs to the shared object store, so one decline covers every worktree. The one deviation from DESIGN.md §6.1's rule.
+- **Outside the undo journal, by name:** a commit-graph is a cache, not history; nothing to undo. The running session keeps its walk; the next open takes the fast path.

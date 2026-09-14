@@ -110,6 +110,10 @@ pub struct GraphView<'a> {
     /// The search prompt or the search's state, in the footer above a notice
     /// and under a problem; `None` when there is no search (m1-the-graph/26).
     pub search: Option<SearchLine>,
+    /// The commit-graph offer's footer line (m1-the-graph/54): directly above
+    /// the hints, below a notice. Costs one graph row while `Some`; `None`
+    /// for a repository with a commit-graph, the common case.
+    pub commit_graph: Option<CommitGraphLine>,
     /// Lines a harness pins under the header, above the rows, each fitted to
     /// the width: the gallery says which stop this is and what to look for
     /// (m1-the-graph/38). The first line is the title, drawn in the accent;
@@ -315,9 +319,12 @@ impl<'a> GraphScreen<'a> {
     /// drawn through (`None` while expanded).
     fn body_layout(&self, area: Rect) -> (Rect, &[GraphEntry<'a>], Option<Fold>) {
         let banner = self.banner_rows();
+        let offer = u16::from(self.view.commit_graph.is_some());
         let body = Rect {
             y: area.y.saturating_add(1).saturating_add(banner),
-            height: area.height.saturating_sub(CHROME_ROWS + banner),
+            height: area
+                .height
+                .saturating_sub(CHROME_ROWS.saturating_add(banner).saturating_add(offer)),
             ..area
         };
         let rows = &self.view.rows[..self.view.rows.len().min(usize::from(body.height))];
@@ -505,6 +512,91 @@ pub enum SearchLine {
     },
 }
 
+/// What the commit-graph offer's footer line says (m1-the-graph/54).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CommitGraphLine {
+    /// No commit-graph: `B` builds one, `X` declines for this repository.
+    Offered,
+    /// No commit-graph, and no usable git to build one with.
+    NoGitToBuild,
+    /// `git commit-graph write` is running.
+    Writing,
+    /// The write finished; the file holds this many commits.
+    Written {
+        /// Commits the new file holds.
+        commits: u32,
+    },
+}
+
+/// Wide enough for the commit-graph line's longest wording.
+const COMMIT_GRAPH_WIDE: usize = 120;
+/// Wide enough for its middle wording; below it, the shortest.
+const COMMIT_GRAPH_MEDIUM: usize = 100;
+
+/// The commit-graph line's text at `width`, as segments: `true` marks a key
+/// letter, drawn in the accent.
+fn commit_graph_segments(line: CommitGraphLine, width: usize) -> Vec<(String, bool)> {
+    let text = |words: &str| (words.to_owned(), false);
+    let key = |letter: &str| (letter.to_owned(), true);
+    let wide = width >= COMMIT_GRAPH_WIDE;
+    let narrow = width < COMMIT_GRAPH_MEDIUM;
+    match line {
+        CommitGraphLine::Offered if wide => vec![
+            text(" no commit-graph file: history sorts on every open · "),
+            key("B"),
+            // The spec's " never for this repo" made this line 125 columns;
+            // "never here" keeps it inside the 120 it is drawn at.
+            text(" build one (git commit-graph write --reachable) · "),
+            key("X"),
+            text(" never here"),
+        ],
+        CommitGraphLine::Offered if narrow => vec![
+            text(" no commit-graph file · "),
+            key("B"),
+            text(" build one · "),
+            key("X"),
+            text(" never here"),
+        ],
+        CommitGraphLine::Offered => vec![
+            text(" no commit-graph file · "),
+            key("B"),
+            text(" build one (git commit-graph write --reachable) · "),
+            key("X"),
+            text(" never here"),
+        ],
+        CommitGraphLine::NoGitToBuild if narrow => {
+            vec![text(" no commit-graph file · no git to build one")]
+        }
+        CommitGraphLine::NoGitToBuild => vec![text(
+            " no commit-graph file, and no git ≥ 2.38 on PATH to build one",
+        )],
+        CommitGraphLine::Writing if narrow => vec![text(" building the commit-graph…")],
+        CommitGraphLine::Writing => vec![text(
+            " building the commit-graph… (git commit-graph write --reachable)",
+        )],
+        CommitGraphLine::Written { .. } if narrow => {
+            vec![text(" commit-graph written · next open sorts at once")]
+        }
+        CommitGraphLine::Written { commits } => vec![text(&format!(
+            " commit-graph written: {} commits · the next open sorts at once",
+            grouped(commits)
+        ))],
+    }
+}
+
+/// `1000000` as `1,000,000`.
+fn grouped(number: u32) -> String {
+    let digits = number.to_string();
+    let mut out = String::with_capacity(digits.len() + digits.len() / 3);
+    for (index, digit) in digits.chars().enumerate() {
+        if index > 0 && (digits.len() - index).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(digit);
+    }
+    out
+}
+
 /// Every key the graph screen answers, in the order the footer drops them
 /// (PROMPT.md principle 4: the hint bar teaches the tool). Leaving, the
 /// status screen and the renderer first, then `+` while it applies
@@ -635,10 +727,40 @@ impl Widget for GraphScreen<'_> {
             let footer = Line::styled(fit(&text, width), foreground(self.theme, token));
             buf.set_line(area.x, area.bottom() - 1, &footer, area.width);
         }
+        if let Some(line) = self.view.commit_graph
+            && area.height > CHROME_ROWS
+        {
+            buf.set_line(
+                area.x,
+                area.bottom() - 2,
+                &self.commit_graph_line(line, width),
+                area.width,
+            );
+        }
     }
 }
 
 impl GraphScreen<'_> {
+    /// The commit-graph line, styled: info text, key letters in the accent.
+    /// Cut to one info-coloured run when even the breakpoint's wording does
+    /// not fit.
+    fn commit_graph_line(&self, line: CommitGraphLine, width: usize) -> Line<'static> {
+        let segments = commit_graph_segments(line, width);
+        let whole: String = segments.iter().map(|(text, _)| text.as_str()).collect();
+        if whole.width() > width {
+            return Line::styled(fit(&whole, width), foreground(self.theme, Token::Info));
+        }
+        Line::from(
+            segments
+                .into_iter()
+                .map(|(text, key)| {
+                    let token = if key { Token::Accent } else { Token::Info };
+                    Span::styled(text, foreground(self.theme, token))
+                })
+                .collect::<Vec<_>>(),
+        )
+    }
+
     /// The footer's text and token: a problem, a search line, a notice, the
     /// reveal (a truncated subject, named by hover or by peek), or — when
     /// none of those apply — the ordinary key hints.

@@ -50,7 +50,8 @@ size is measured — 1.6 KiB, the same on both.)
 | Gap | What's needed | Expiry |
 |---|---|---|
 | Unconditional snapshot cost on high-frequency index ops (R2-3) | Every stage/unstage fires the full §6.3 snapshot (status walk, untracked hashing, commit object, backup ref, two journal lines), and §6.8's manual-only retention lets backup refs pile up at keystroke rate. Off-thread, so no UI block — but measure on the heavy fixture in M2; if staging lags on untracked-heavy repos, propose scoping (e.g. skip untracked hashing for ops that provably can't touch untracked files) as an ADR, never silently | M2 |
-| Commit-graph offer plumbing unspecified (R2-4) | §3.2's "declined, remembered" flag has no stated home — put it in a file under `git rev-parse --git-path graft/…`, per §6.1's rule. And `git commit-graph write --reachable` is a repo write, which §6 says only `ops` may run: route the offer through `ops`, journaled as an ordinary non-undoable entry or explicitly exempted | M2 |
+| ~~Commit-graph offer plumbing unspecified (R2-4)~~ **Closed by m1-the-graph/54.** | The decline lives in `<common_dir>/graft/commit-graph-offer` (shared by every worktree; ADR-0008 "Landed"). The write runs system git as a job, outside the undo journal by name (a cache, not history), never killed | — | closed |
+| **The running session keeps its walk after a commit-graph write.** m1/54: `B` writes the file, but the walk on screen stays on the no-commit-graph path (date order, then promotion) until the next open | `Ctrl+R` refresh reopens the walk on the graph path | M2 |
 
 ## Prototype gaps (step 3 spike, 2026-09-12; revised at the step-3 fix)
 
@@ -224,7 +225,7 @@ place).
 | **Least-recently-used is the wrong policy once checkpoints pass `max_checkpoints`.** 64 checkpoints at 2,000 rows cover 128k rows; past that LRU can leave a long checkpoint-less stretch and a jump back replays hundreds of thousands of re-reads. m1/27: never reached on 100k or git/git (85,649), `g` after `G` ≈ 0.1 ms | Thin (keep spacing even). m1/30: 1M not measured (extrapolated), so still unreached | M1 review (1M claim) |
 | **`rows()` clones every row it returns.** A viewport's worth of `Row`s — each carrying a `Commit` with its message and identities — is copied out of the cache on every call. Cheap at 50 rows a frame; not free | Borrowed slices per chunk, or an iterator, once tickets 08 and 14 know what the renderers need | M1 ticket 08 |
 | **~~Promotion hands the app a swap to get right.~~ Closed by m1-the-graph/18**: `Views::promote` lays the promoted layout out to the anchor before swapping; uses `WalkSource::in_order` under `Included`, not `from_order`, so every view keeps its filtering. Checkpoints past the anchor are still cold after the swap | — | — |
-| **`Walk::full_topological` reads the whole range before it emits.** Measured: 200 reads before the first commit on the 200-commit linear fixture. That is the design (ADR-0008 — a background job), but on git/git it is 1.2M object reads per open until the commit-graph offer (R2-4) is accepted, and nothing caches the order between runs | The commit-graph offer (R2-4) | M2 |
+| **`Walk::full_topological` reads the whole range before it emits.** Measured: 200 reads before the first commit on the 200-commit linear fixture. That is the design (ADR-0008 — a background job), but on git/git it is 1.2M object reads per open until the commit-graph offer (R2-4) is accepted, and nothing caches the order between runs | The offer is built (m1/54); the residual is what remains when the user declines it (`X`) or has no git ≥ 2.38 | M2 |
 
 **History streams into the layout** (m1-the-graph/07, 2026-09-13).
 

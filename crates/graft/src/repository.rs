@@ -9,6 +9,7 @@
 use std::path::PathBuf;
 
 use graft_core::oid::Oid;
+use graft_git::commit_graph::{self, CommitGraphStatus, Offer};
 use graft_git::mailmap::Mailmap;
 use graft_git::repo::{HeadState, RepoHandle};
 
@@ -25,6 +26,28 @@ pub struct RepositoryFacts {
     /// The repository's resolved `.mailmap`, for the author chip
     /// (m1-the-graph/10).
     pub mailmap: Mailmap,
+    /// Whether history has a commit-graph to sort by, and whether the user
+    /// declined Graft's offer to build one (m1-the-graph/54, ADR-0008).
+    pub commit_graph: CommitGraphFact,
+}
+
+/// The commit-graph file, as the offer needs to know it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CommitGraphFact {
+    /// A commit-graph covering this many commits: nothing to offer.
+    Present {
+        /// Commits the file holds.
+        commits: u32,
+    },
+    /// No commit-graph; `declined` when the user said "never for this
+    /// repository".
+    Absent {
+        /// The decline file is there.
+        declined: bool,
+    },
+    /// The file, or the decline file, could not be read, and this is why.
+    /// Shown as a problem; nothing is offered.
+    Unreadable(String),
 }
 
 /// Where `HEAD` points — the three states a repository can be in, plus the one
@@ -76,8 +99,26 @@ pub fn facts(repository: &RepoHandle) -> Result<RepositoryFacts, String> {
             Err(error) => Head::Unreadable(error.to_string()),
         },
         mailmap: repository.mailmap(),
+        commit_graph: commit_graph_fact(repository),
     })
     // The handle is dropped here, on the worker thread that opened it.
+}
+
+/// What the commit-graph offer needs: the file's status, and the decline
+/// only when there is no file to speak of.
+fn commit_graph_fact(repository: &RepoHandle) -> CommitGraphFact {
+    match commit_graph::status(repository) {
+        Ok(CommitGraphStatus::Present { commits }) => CommitGraphFact::Present { commits },
+        Ok(CommitGraphStatus::Absent) => match commit_graph::offer_state(repository) {
+            Ok(offer) => CommitGraphFact::Absent {
+                declined: offer == Offer::Declined,
+            },
+            Err(error) => CommitGraphFact::Unreadable(format!(
+                "cannot read the commit-graph offer choice: {error}"
+            )),
+        },
+        Err(error) => CommitGraphFact::Unreadable(error.to_string()),
+    }
 }
 
 #[cfg(test)]
@@ -116,6 +157,10 @@ mod tests {
         assert_eq!(facts.path, expected);
         assert!(!facts.bare);
         assert_eq!(facts.head, Head::Unborn(b"main".to_vec()));
+        assert_eq!(
+            facts.commit_graph,
+            CommitGraphFact::Absent { declined: false }
+        );
     }
 
     #[test]

@@ -132,6 +132,8 @@ fn show(repo_path: PathBuf, banner: Banner, clock: graft::session::Clock) -> Res
             banner: Some(banner),
             hand_back: vec![NEXT, PREVIOUS],
             clock,
+            // The corpus is borrowed read-only: never offer to write to it.
+            offer_commit_graph: false,
         },
     };
     match event_loop::run(startup).map_err(|error| error.to_string())? {
