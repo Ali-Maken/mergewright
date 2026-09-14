@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — ticket 56d (then 28, review) · 88 tickets: 80 done, 2 ready, 2 partial, 2 split, 2 wontfix
+**Current step:** M1 The graph — ticket 64 (then 28, review) · 89 tickets: 82 done, 2 ready, 1 partial, 2 split, 2 wontfix
 
 ---
 
@@ -272,6 +272,8 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-14 · m1/63 · sonnet · done (aae6ba7) · ADR-0026 second amendment: no-cg live heap slope ≤100 B/commit (measured 76, counting allocator, gated at reviews — no test-suite guard) + 1M no-cg footprint reported with floor ~140 B/commit (155–158 MiB); TESTING.md, KNOWN_GAPS, 56c/56d text updated; no fresh profile (59b's prof files match 76/140); 80k tokens, no compaction
 - 2026-09-14 · m1/60 · sonnet · done (09cea9c) · checkpoints LRU → even grid (stride doubles at 64 cap; 16,000 at 1M, ticket's 16,384 was approximate); far jump at 1M 500,500 rows/1.39–1.46 s → 4,500 rows/13–15 ms; graft-graph tests 91→95; DESIGN §3.6, MAP, KNOWN_GAPS; git/git not available (no network) — 100k synthetic + prior git/git numbers used; cause fix; 70k tokens, no compaction
 - 2026-09-14 · m1/56c · sonnet · done (41badbf, dab6826) · 12-cell curve re-run ×3, offer pair re-taken; heavy tier release 691 passed / 0 failed / 2 ignored (target/56c/heavy-full.log); perf run 10/10 (target/56c/perf-run.log); `## Numbers` written, no verdicts; slope and live-heap numbers reused from 59b/61 raw; no 1M-scale `frames::` test exists (ADR-0026 deferred scroll numbers to it) → flagged to 56d/review; 160k tokens (over 80k target), no compaction
+- 2026-09-14 · m1/56d · fable · done (3612729) · verdicts from 56c: 1M cg RSS 173.5–183.7 MiB/300 pass; 100k/10k max 76.1 pass; no-cg live heap 76/100 pass, footprint 155–158 MiB reported (floor ~140), RSS 445–509 = footprint + pack; 1M first paint warm 88–112 ms pass, cold 710–1,032 reported (ADR-0027); slope heap 29–31/50, RSS 167–169/200 pass; far jumps 13–16 ms pass; offer 173 MiB after B pass; heavy 691/0; perf p99 ≤10/16 ms; 56 → done; ADR-0026 status line; open: sudo purge (user, checkpoint), 1M frames:: never measured → ticket 64; review file must carry the reported-cell table; 107k tokens (target 30k), no compaction
+- 2026-09-14 · conductor · filed 64 frames at a million (Sonnet): 1M cg `frames::` scroll tests, manual, fulfils ADR-0026's deferral; 28 blocked by 64
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.
