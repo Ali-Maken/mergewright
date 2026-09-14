@@ -387,6 +387,14 @@ pub fn topological_order(
         let chunk = walk
             .next_links(CHUNK, stop)
             .map_err(|error| error_chain(&error))?;
+        // Without a commit-graph the first chunk has read the whole range, so
+        // the count is known: size the order once instead of doubling it up
+        // to a million entries (m1-the-graph/59b). With one, `explorations`
+        // is only what has been read so far, and this reserves less.
+        // The count is only a size hint: one past `usize` (impossible on a
+        // 64-bit target) reserves nothing and the order still grows.
+        let explored = usize::try_from(walk.explorations()).unwrap_or(0);
+        order.reserve_exact(explored.saturating_sub(order.len()).max(chunk.links.len()));
         order.extend(chunk.links.iter().map(|link| link.commit));
         if chunk.stopped {
             return Ok(None);

@@ -350,3 +350,13 @@ entry is (CLAUDE.md).*
 - **Closed by m1-the-graph/61 (user decision, 2026-09-14, ADR-0026 amended):** the single 150 B/commit bar never held — after 58b it read 166 B/commit loose / 156 packed, and the remainder is mapped pages every hydration lookup needs (pack `.idx`, ~68 B/commit) plus the commit-graph's own pages (~56), not a per-commit read the design can remove. Re-derived into two bars in `heavy::slopes_per_commit_with_a_commit_graph`: **heap (footprint) slope ≤ 50 B/commit** (measured 29/31/29, three release runs alone) and **peak RSS slope ≤ 200 B/commit** (measured 167/169/167 loose; floor named at ADR-0026, ≈ commit-graph 56 + pack index ~68 + heap ~35 ≈ 160). Packed-ref slope not re-measured under the new bars (58b's 156/156/157 already sits under 200).
 - **Open, one line, expiry:** the pack `.idx` offset table's ~11 B/commit contribution (one whole 4 B/object table faulted on the first lookup, 58b, untraced) is not attributed to a cause. Expires if a future commit-graph-path regression needs that 11 B/commit back to explain a bar miss — then trace it instead of assuming heap.
 - Cost to the user: none on the no-cg path (header first, as before; a tag's commit is now header-read instead of decoded). On the cg path, a gc'd repo reads no tag objects at open, and loose tags are read once each. RSS on the cg path grows ~160 B/commit, 121 of it reclaimable mapped pages Graft does not control; Graft's own growth (~30 B/commit measured) is the tight, gated bar.
+
+## No-commit-graph footprint slope at 1M (m1-the-graph/59b)
+
+- **Open, finding for the user (bar not changed):** after 59b's three fixes the no-cg footprint slope is **138–140 B/commit** (`budgets --gate`, 3 fresh runs: 1M 155.1–155.8 MiB, 100k 36.0–36.2 MiB; was ~176), bar ≤ 100. Live heap slope is the named floor, **76 B/commit** (interner 58 + one order 8 + promoted 4 + rest); the other ~62 B/commit is freed transient memory macOS malloc keeps in the footprint.
+- Left, and why:
+  - Interner `by_prefix` map doubling (~17 MiB chain at 1M): paging it means several prefix maps searched in turn — a new structure, not ADR-0026's one prefix map. Not built.
+  - `Vec` → `Arc<[CommitHandle]>` copy in `graft::history::topological_order` (~4 MiB at 1M): building the `Arc` in place needs `unsafe` (`assume_init`) in a `forbid(unsafe_code)` crate, or `Views.promoted` changing shape across crates. Not built.
+  - Swapped-out order at promotion (~9 MiB): ADR-0008 by design.
+  - ~19 MiB retained in the date walk not attributed to a holder after the interner pages landed (prof: footprint − live 36 MiB after the walk, before and after 59b). Untraced.
+- Expires: when the user decides the no-cg bar (accept the ~140 floor-plus-retention, or fund a structure change above).

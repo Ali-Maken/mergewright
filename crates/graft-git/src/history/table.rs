@@ -222,8 +222,16 @@ impl std::fmt::Debug for CommitTable {
 struct Overflow {
     /// Bytes per id: 20 for SHA-1, 32 for SHA-256.
     hash_len: usize,
-    /// Every id's raw bytes, end to end: entry `i` is `bytes[i * hash_len..]`.
-    bytes: Vec<u8>,
+    /// Every id's raw bytes, end to end, [`IDS_PER_PAGE`] ids a page: entry
+    /// `i` is at `(i % IDS_PER_PAGE) * hash_len` in page `i / IDS_PER_PAGE`.
+    ///
+    /// Not one `Vec`: growing that to a million ids by doubling copies it
+    /// over and over, and on macOS the freed copies stay in the footprint
+    /// (m1-the-graph/59: ~32 MiB at 1M). A page is allocated at its full size
+    /// once and never moves.
+    pages: Vec<Vec<u8>>,
+    /// Ids stored.
+    len: usize,
     /// Entry index by the id's first eight bytes. The first id with a prefix
     /// lives here; a later one sharing it goes to `collided`.
     by_prefix: HashMap<u64, u32>,
@@ -235,14 +243,15 @@ impl Overflow {
     fn new(hash_len: usize) -> Self {
         Overflow {
             hash_len,
-            bytes: Vec::new(),
+            pages: Vec::new(),
+            len: 0,
             by_prefix: HashMap::new(),
             collided: HashMap::new(),
         }
     }
 
     fn len(&self) -> usize {
-        self.bytes.len() / self.hash_len
+        self.len
     }
 
     /// The entry holding `id`, if any.
@@ -261,7 +270,15 @@ impl Overflow {
         let Ok(stored) = u32::try_from(index) else {
             panic!("a repository of 2^32 commits or more has no handle for the last");
         };
-        self.bytes.extend_from_slice(id.as_bytes());
+        if index.is_multiple_of(IDS_PER_PAGE) {
+            self.pages
+                .push(Vec::with_capacity(IDS_PER_PAGE * self.hash_len));
+        }
+        let Some(page) = self.pages.last_mut() else {
+            unreachable!("a page was pushed for the first id of every page");
+        };
+        page.extend_from_slice(id.as_bytes());
+        self.len += 1;
         match self.by_prefix.entry(prefix(id)) {
             std::collections::hash_map::Entry::Vacant(slot) => {
                 slot.insert(stored);
@@ -283,8 +300,8 @@ impl Overflow {
     }
 
     fn stored(&self, index: usize) -> &[u8] {
-        let start = index * self.hash_len;
-        &self.bytes[start..start + self.hash_len]
+        let start = (index % IDS_PER_PAGE) * self.hash_len;
+        &self.pages[index / IDS_PER_PAGE][start..start + self.hash_len]
     }
 
     /// Heap bytes, capacity included. A `HashMap` entry costs its key and value
@@ -294,9 +311,13 @@ impl Overflow {
             let bucket = std::mem::size_of::<(K, V)>() + 1;
             map.capacity() * 8 / 7 * bucket
         }
-        self.bytes.capacity() + map(&self.by_prefix) + map(&self.collided)
+        let pages: usize = self.pages.iter().map(Vec::capacity).sum();
+        pages + map(&self.by_prefix) + map(&self.collided)
     }
 }
+
+/// Ids in one overflow page: 2¹⁶, 1.25 MiB of SHA-1 ids.
+const IDS_PER_PAGE: usize = 1 << 16;
 
 /// An id's first eight bytes, as the key the overflow is indexed by.
 fn prefix(id: &Oid) -> u64 {

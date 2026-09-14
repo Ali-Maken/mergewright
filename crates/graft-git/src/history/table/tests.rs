@@ -168,7 +168,8 @@ fn the_overflow_holds_sha256_ids_at_their_own_width() {
     }
     assert_eq!(handles, (0..40).map(CommitHandle).collect::<Vec<_>>());
     let overflow = table.overflow.read().expect("not poisoned");
-    assert_eq!(overflow.bytes.len(), 40 * Oid::MAX_BYTES);
+    let stored: usize = overflow.pages.iter().map(Vec::len).sum();
+    assert_eq!(stored, 40 * Oid::MAX_BYTES);
 }
 
 #[test]
