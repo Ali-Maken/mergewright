@@ -1,6 +1,6 @@
 # m1-the-graph/55 — First paint at a million commits: name the cause by measurement, then fix it
 
-Status: ready
+Status: partial (Phase A done; Phase B next)
 Build with: **Opus** (high) — phase instrumentation inside the walk and the app's open path, then a fix in the rev-walk or the first-window path; correctness is numbers plus the existing order tests, so not Fable.
 Needs: `Walk::next_links`, `CommitTable` (commit-handles-and-table); the walk reading the graph with dense state and its odb-read counter (walk-reads-the-commit-graph); rows hydrating on demand (rows-hydrate-on-demand **and rows-pass-through**, split 2026-09-14). Runs after all of them: their numbers are this ticket's baseline.
 Blocked by: 49, 50, 52, 52b (rows-pass-through)
@@ -60,3 +60,58 @@ No new public items in Phase A beyond `examples/budgets --phases`. Phase B's are
 
 ## Size
 One context, under ~80k tokens: 1M runs are ~10 s each. Seam between Phase A and Phase B; stop there with a handoff note rather than compacting.
+
+## Phase A — measured (2026-09-14, release, `budgets --phases`; raw: `target/55/phases.txt`)
+
+Serial, one thread, no jobs, warm cache. ms; RSS = rise in process peak.
+
+| Phase | 1M cg (3 runs) | 1M no-cg (3 runs) | 100k cg | 100k no-cg |
+|---|---|---|---|---|
+| `open` (`SharedRepo::open` + `facts`) | 0.3–2.3 | 0.3–3.0 | 3.5 | 0.9 |
+| `refs.references` | 68–120 | 66–68 (525 cold) | 53 (cold) | 53 (cold) |
+| `refs.commit_tips` | 83–85, **+145 MiB** | 83–91, +145 MiB | 8, +15 MiB | 60 |
+| `refs.resolve` (`Branches::resolve`) | 65–66 | 65–67 | 5.8 | 5.9 |
+| `refs.seeds_for` | 0.25 | 0.25 | 0.03 | 0.03 |
+| `table` (`CommitTable::open`) | 0.3 | 0.02–0.04 | 0.2 | 0.02 |
+| `walk_new` (`Walk::all_refs`) | 72–75, +53 MiB | 82–90 | 11.8 | 7.3 |
+| `first_link` (fresh walk) | 0.05–0.08 | 0.00 | 0.01 | 0.00 |
+| `first_chunk` (500 rows) | 2.2–2.3 | 1.7–3.2 | 3.2 | 2.1 |
+| `first_window` (40 rows) | 0.01 | 0.01 | 0.01 | 0.01 |
+| **total** | **291–347** | **299–300** (779 cold) | 85 | 130 |
+
+Refs: 6,498 at 1M, 650 at 100k (3,357 `refs/heads`, 3,141 `refs/tags` at 1M), **all loose files, no `packed-refs`**.
+
+With jobs (`budgets`, real `JobRunner` + `update`): 1M cg first paint **255 ms**, 1M no-cg **270 ms**. Contention adds nothing measurable: the history job alone does `resolve` + `references` + `all_refs` ≈ 65 + 68 + 75 = 208 ms serial; `ReadRefs` enumerates them a fourth time on another worker.
+
+Discriminators (same file):
+- `Walk::from_tips` with the tips already read: **1.0–1.35 ms** vs `walk_new` 72–79 ms. `all_refs` is ~98 % its own `commit_tips()`; the in-degree pass itself (6,497 graph reads) is ~1 ms.
+- `references()` called again right after: 72 ms. Nothing caches; each enumeration pays in full.
+- Same 1M cg repo, refs packed (`cp -c` clone + `git pack-refs --all`, `target/55/packed-1M-cg`): `references` **1.0 ms**, `resolve` 1.1, `commit_tips` 13–17, `walk_new` 5–6 (54 cold); serial total **24 ms**; **with jobs first paint 23 ms** (was 255). Same commits, same graph, same walk.
+
+### Named cause (both paths — the same one)
+
+**Loose-ref enumeration, repeated three times on the history job before the first window.** gix's `references().all()` opens and reads one file per loose ref: **~11 µs/ref** (72 ms / 6,498; 1.0 ms packed = 0.15 µs/ref). The first-paint path enumerates every ref in `Branches::resolve` (`RepoStore::branches` → `references()`), again in `history::stream` (`references()` for seeds), and again in `Walk::all_refs` (`commit_tips()`, which also `find_header`s each tip in the pack, ~2 µs/tip). ≈ 3 × 72 ms ≈ 210–230 ms of the 255–300 ms: **~85 % on cg, ~80 % on no-cg**; the rest is the first chunk (2 ms), the job hops and `commit_tips`' header lookups.
+
+It is **per ref, not per commit**: the fixture script adds one ref every ~154 commits, which is why it looked linear in history (1M → 290 ns/commit, 100k → ~800 ns/commit cold; per ref it is flat, ~33–45 µs/ref across the three enumerations). The in-degree/sort hypothesis (ADR-0026) is refuted again: the whole pass is ~1 ms.
+
+Secondary, memory (not this ticket's budget, named for memory-curve-acceptance): `commit_tips` raises peak RSS by **145 MiB at 1M**, `walk_new` by 53 MiB — `find_header` on 6,497 scattered tips faults in pack/index pages (mapped, counted in RSS). That is the unexplained "RSS at first paint 162–219 MiB"; it is present packed too (145.6 MiB), so it is the header lookups, not the ref files.
+
+Realism: `git clone` writes `packed-refs`, so a fresh kernel clone takes the 23 ms path; thousands of **loose** refs are what a repo has after many fetches between `gc`s. Not measured on a real kernel clone.
+
+### Hypotheses ranked
+1. Repeated loose-ref enumeration — **confirmed** (packed: 255 → 23 ms).
+2. `commit_tips` header lookup per tip — minor for time (~13 ms packed), major for RSS (+145 MiB).
+3. `Branches::resolve` rule 5 (first-parent merge count) — **not run**: fixture has `main`; chosen by `InitDefaultBranch`; its 65 ms is only its `references()` call.
+4. Strict-topo in-degree pass — **refuted**: ~1 ms.
+5. First `advance` of 500 rows — 2 ms; not a cause. Sizing it to the viewport is not worth doing for time.
+
+## Handoff (Phase A → Phase B)
+
+Done: `budgets --phases` (`crates/graft/examples/budgets/phases.rs`, wired in `budgets.rs`); table and cause above; no source outside the example touched.
+
+Next exact step, Phase B (fix the cause: read refs once on the first-paint path; emitted order untouched):
+- One ref enumeration serves `Branches::resolve`, `seeds_for` and the walk's tips. Shape to decide (a public item changes, MAP.md with it): e.g. `RepoStore` reads `peeled`/`references` once and caches it next to `branches` (it already caches `Branches` and the table); `Branches::resolve_from(handle, &refs, override)`; `history::stream` calls `Walk::from_tips(handle, order, &tips, table)` with tips derived from that one reading instead of `Walk::all_refs`. Tips need peeling (tags → commits): either `commit_tips` returns refs + tips from one pass, or derive tips from one `peeled_references()` pass plus `HEAD` (check `commit_tips`' dedup/sort and detached-`HEAD` semantics — tips must be byte-identical or the order tests move).
+- Expected: 1M ≈ 72 (one enumeration) + ~15 (headers) + ~5 ≈ 90–100 ms with jobs, under 150 on both paths. `ReadRefs` still enumerates once more on its own worker (concurrent, not on the history job's path); leave it.
+- Re-measure with `target/release/examples/budgets --phases <fixture>` and plain `budgets <fixture>` (fixtures: `target/fixtures/synthetic-1000000-commit-graph-511a25b425758b13`, `…-no-commit-graph-8ac5be635bb9d262`, `synthetic-100000-commit-graph-0fb9210ab6ca6ac4`, `…-no-commit-graph-024d506de281597a`).
+- Gotchas: first run after a build is cold (`references` 120–525 ms) — discard or report separately; `budgets <repo> | head -1` panics on broken pipe after printing (harmless, redirect instead); the ~145 MiB RSS at `commit_tips` is header lookups, not refs — a fix that keeps `find_header` per tip keeps it.
+- Not for this ticket: the RSS rise; the provisional-paint fallback (not needed — the in-degree pass is ~1 ms).

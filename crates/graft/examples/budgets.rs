@@ -11,15 +11,20 @@
 
 #[path = "../tests/it/budget_run.rs"]
 mod budget_run;
+#[path = "budgets/phases.rs"]
+mod phases;
 
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
-    let Some(repo) = std::env::args_os().nth(1).map(PathBuf::from) else {
-        eprintln!("usage: budgets <repository>");
+    let Some((want_phases, repo)) = arguments() else {
+        eprintln!("usage: budgets [--phases] <repository>");
         return ExitCode::FAILURE;
     };
+    if want_phases {
+        return run_phases(&repo);
+    }
     let numbers = match budget_run::run(&repo) {
         Ok(numbers) => numbers,
         Err(why) => {
@@ -71,6 +76,27 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+/// `--phases`: first paint cut into phases, serially (m1-the-graph/55).
+fn run_phases(repo: &std::path::Path) -> ExitCode {
+    match phases::run(repo) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(why) => {
+            eprintln!("budgets --phases: {why}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// `[--phases] <repository>`: whether to print phases, and the repository.
+fn arguments() -> Option<(bool, PathBuf)> {
+    let mut args: Vec<_> = std::env::args_os().skip(1).collect();
+    let want_phases = args.first().is_some_and(|arg| arg == "--phases");
+    if want_phases {
+        args.remove(0);
+    }
+    args.first().map(|repo| (want_phases, PathBuf::from(repo)))
 }
 
 fn mib(bytes: u64) -> String {
