@@ -3,7 +3,7 @@
 Status: ready
 Build with: **Opus** (high) — attribution needs judgment (which holder, at which stage, by how much) and the fix is inside the walk's topological sort in `graft-git`; the bar is a number, so it is not a Fable ticket.
 Needs: `graft_fixtures::footprint` and `budgets --gate` / `--phases` footprint lines (guards-measure-in-a-child).
-Blocked by: 57
+Blocked by: 57, 58b
 
 ## The finding
 

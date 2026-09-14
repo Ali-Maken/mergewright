@@ -1,6 +1,6 @@
 # m1-the-graph/58 — Tips are checked against the id table, not header-parsed (slope guard green)
 
-Status: partial — fix implemented and gated, slope guard still red (166 vs 150), see Acceptance and KNOWN_GAPS.md
+Status: partial — fix implemented and gated, slope guard still red (166 vs 150); the residual (annotated tags) continues in `58b-tag-tips-named-cause.md` (spec-only pass, planner-fable, 2026-09-14; ordered before 59). See Acceptance and KNOWN_GAPS.md
 Build with: **Sonnet** (medium) — the approach is decided below; one trait, two signatures, two callers; the guard's number judges it.
 Needs: `gated_in_child` / `ChildPeak` and the slope guard on it (guards-measure-in-a-child); `graft_fixtures::footprint`.
 Blocked by: 57

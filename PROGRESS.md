@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — ticket 58 · 81 tickets: 72 done, 5 ready, 2 partial, 1 split, 1 wontfix
+**Current step:** M1 The graph — ticket 58b · 82 tickets: 72 done, 6 ready, 2 partial, 2 split, 1 wontfix
 
 ---
 
@@ -258,6 +258,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-14 · m1/57 guards measure in a child · sonnet · done · graft_fixtures::footprint(), gated_in_child/ChildPeak; slope guard alone 237, adversarial 235 B/commit (old code 237/238); footprint within 1.2%, RSS within 0.3% of /usr/bin/time -l; guard still red vs 150 (→ 58); pre-57 code already re-exec'd per fixture, so the predicted false green didn't reproduce (recorded for 56); fixed own bug pre-commit (starts_with vs contains on child's line; cause); capture docs/shots/57-footprint-vs-time-l.txt; 145k tokens, no compaction
 - 2026-09-14 · user decisions · — · accepted · §6.3 first paint timed warm, one `sudo purge` cold check by the user at the checkpoint (ADR-0027, added to 28's scope); offer keys B/X as specified
 - 2026-09-14 · m1/58 tips from the table · sonnet · partial · cause fix: KnownCommits trait, table-known tips never header-read; slope guard 237 → 166 B/commit (bar 150, still red, stable); 1M ref_snapshot rise 147 → 85.5 MiB; residual named: annotated tags (~12–13% of refs at every scale) sit outside CommitTable and still pay header+peel, 13–19 KB/tag; 3× 1M averaging not done (single runs); tag fix → planner-fable spec-only pass; 85k tokens, no compaction
+- 2026-09-14 · M1 spec pass 3 (58 residual) · fable · done · filed 58b tag-tips-named-cause (Opus; 85 MiB likely mapped pages not heap — footprint peaks 37 MiB for whole 1M cg run; phase A holder table: footprint delta, tags-skipped, cache-free, packed copy, verify-pack chain depth; phase B in design: packed-refs peeled ids, one decode per unknown tip without find_header, cache-free handle only if measured; then 3× guard and 3× 1M runs); before 59; user decision only if loose-ref floor stays >150: pack-refs on cg guard fixtures (recommended), bar unchanged
 
 ## Open questions for the M1 checkpoint
 - **By eye (30b):** pixel graph goes blank for one frame on PgDn before rows arrive. User judges whether that's acceptable.

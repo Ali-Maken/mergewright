@@ -3,7 +3,7 @@
 Status: partial (seam: measurements and code done; **blocked on the four findings tickets below**, then re-run, docs, heavy full run, perf run)
 Build with: **Fable** (high) — the standing acceptance ticket: it decides what "memory tracks the viewport" looks like in numbers and writes the checklist that proves it.
 Needs: every other ticket of this group (commit-handles-and-table, walk-reads-the-commit-graph, order-and-inclusion-on-handles, rows-hydrate-on-demand, **rows-pass-through** — split from 52 on 2026-09-14), plus **first-paint-at-a-million-named-cause** (its first-paint numbers and named cause are what the checklist reports) and **commit-graph-offer** (the end-to-end below accepts the offer on the 1M no-cg fixture); **and, from the spec-only pass 2 (2026-09-14): guards-measure-in-a-child, tips-from-the-table, no-cg-heap-named-cause, checkpoints-thin-not-lru** (their numbers are what the checklist reports; the curve is re-run after them).
-Blocked by: 49, 50, 51, 51b, 51c, 51d, 52, 52b, 53, 54, 55, 57, 58, 59, 60
+Blocked by: 49, 50, 51, 51b, 51c, 51d, 52, 52b, 53, 54, 55, 57, 58, 58b, 59, 60
 
 Amended 2026-09-14 (planner-fable, spec-only pass) with the user's condition on approving ADR-0026: wherever memory is **reported rather than failed** (1M without a commit-graph), the numbers must be visible in the milestone review file and in KNOWN_GAPS.md — not only in a results file.
 
