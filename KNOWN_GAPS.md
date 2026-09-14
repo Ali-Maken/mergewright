@@ -353,10 +353,11 @@ entry is (CLAUDE.md).*
 
 ## No-commit-graph footprint slope at 1M (m1-the-graph/59b)
 
-- **Open, finding for the user (bar not changed):** after 59b's three fixes the no-cg footprint slope is **138–140 B/commit** (`budgets --gate`, 3 fresh runs: 1M 155.1–155.8 MiB, 100k 36.0–36.2 MiB; was ~176), bar ≤ 100. Live heap slope is the named floor, **76 B/commit** (interner 58 + one order 8 + promoted 4 + rest); the other ~62 B/commit is freed transient memory macOS malloc keeps in the footprint.
+- **verdict: 56d.** After 59b's three fixes the no-cg footprint slope is **138–140 B/commit** (`budgets --gate`, 3 fresh runs: 1M 155.1–155.8 MiB, 100k 36.0–36.2 MiB; was ~176). Live heap slope is the named floor, **76 B/commit** (interner 58 + one order 8 + promoted 4 + rest); the other ~62 B/commit is freed transient memory macOS malloc keeps in the footprint.
+- **Bar re-derived (m1-the-graph/63, user decision 2026-09-14):** the single ≤ 100 B/commit bar is split — **live heap ≤ 100 B/commit, gated** (measured 76, under bar) and **footprint at 1M: reported, floor named** (~140, not gated further; ADR-0026 amended). This row's expiry tracks the live bar, not the footprint number against 100.
 - Left, and why:
   - Interner `by_prefix` map doubling (~17 MiB chain at 1M): paging it means several prefix maps searched in turn — a new structure, not ADR-0026's one prefix map. Not built.
   - `Vec` → `Arc<[CommitHandle]>` copy in `graft::history::topological_order` (~4 MiB at 1M): building the `Arc` in place needs `unsafe` (`assume_init`) in a `forbid(unsafe_code)` crate, or `Views.promoted` changing shape across crates. Not built.
   - Swapped-out order at promotion (~9 MiB): ADR-0008 by design.
   - ~19 MiB retained in the date walk not attributed to a holder after the interner pages landed (prof: footprint − live 36 MiB after the walk, before and after 59b). Untraced.
-- Expires: when the user decides the no-cg bar (accept the ~140 floor-plus-retention, or fund a structure change above).
+- Expires: when the live heap slope regresses above 100 B/commit (gated at reviews), or the user decides to fund a structure change to cut the ~62 B/commit retained above the floor.

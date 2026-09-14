@@ -9,13 +9,13 @@ Split from 56 (conductor, 2026-09-14). **No cargo, no runs, no source.** If a nu
 ## Read first (only these)
 - `56c-memory-curve-runs.md` `## Numbers` (all).
 - `56-memory-curve-acceptance.md`: "Acceptance", "For the M1 review" (the pass-1 table), "Spec-only pass 2" findings table and "For the user", "Spec-only pass 3".
-- ADR-0026: "Decision (design)", "The gate at 1M" including the amendment (61), "User decisions on approval". ADR-0027 (first paint warm).
+- ADR-0026: "Decision (design)", "The gate at 1M" including the amendments (61; no-cg heap), "User decisions on approval". ADR-0027 (first paint warm).
 - DESIGN.md §3.1 and §3.6 (what the design says holds memory) — to judge whether the numbers show the design holding, not only each number under its bar.
 - 59b's result section (the no-cg floor, if it stopped).
 
 ## Scope
 In:
-1. A verdict per budget: pass/fail, the number, the bar, and one line on whether it shows the design holding (which holder the design names, whether the numbers agree). A miss names its holder from 56c/59b's tables and goes to the conductor for the user — never re-derived here.
+1. A verdict per budget: pass/fail, the number, the bar, and one line on whether it shows the design holding (which holder the design names, whether the numbers agree). A miss names its holder from 56c/59b's tables and goes to the conductor for the user — never re-derived here. The no-cg heap verdict is on the **live** number (≤ 100 B/commit, gated) — the footprint number is reported beside its named floor (~140) in the same line, not judged pass/fail.
 2. `## For the M1 review` in 56 rewritten from 56c's numbers (same columns, plus `checkpoint stride` and `heap B/commit`; pass-1 table kept as "before the findings tickets"). The M1 review file must reproduce it: say so in the report.
 3. KNOWN_GAPS rows marked `verdict: 56d`: write each verdict/expiry sentence (closed, or open with expiry and who decides).
 4. ADR-0026 status line: "Landed: m1/49–61", the slope guard's heap and RSS numbers as the user decided, the no-cg heap number or the floor finding.

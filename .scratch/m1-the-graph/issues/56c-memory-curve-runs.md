@@ -17,12 +17,12 @@ In:
 1. Remaining item 1: full curve re-run (`scripts/memory-curve.sh 10000 100000 1000000`, release, 3 runs, 12 cells) → regenerate `docs/shots/m1-memory-curve.txt`; far jumps (rows/2, 9·rows/10) on both 1M fixtures; offer pair only if the offer line or its numbers changed.
 2. Remaining item 5: heavy tier full run once, alone (`cargo test --release --features heavy-tests -- --test-threads=2`), then the release perf run (ADR-0021) with the 1M `frames::` scroll numbers. Report a red test with its output path; don't touch it.
 3. **`## Numbers` section in this ticket** — the one input 56d reads. One table per group, every number with its unit and the path of the raw file it came from:
-   - curve cells: peak RSS (3 runs), footprint peak and after `G`, heap B/commit, first paint (run 1 and warm), `G` time, odb objects during `G`, `overflow_len`, pack size, checkpoint stride;
+   - curve cells: peak RSS (3 runs), footprint peak and after `G`, heap B/commit, first paint (run 1 and warm), `G` time, odb objects during `G`, `overflow_len`, pack size, checkpoint stride, **live heap after `g` (100k, 1M) and its slope** (copy from 59's `target/59/prof-{100k,1M}-run{1,2,3}.txt` and 59b's `target/59b/prof-{1M,100k}.txt`; if `prototypes/heap-profile-59` still builds, one fresh run each to `target/56c/prof-{100k,1M}.txt`, ≈30 s total);
    - far jumps: time and rows replayed at 500k and ~900k, both 1M fixtures;
    - slope guard: heap and RSS slopes;
    - heavy tier: pass/fail count, names of any red tests;
    - perf run: each `frames::` budget number next to its bar.
-   Bars go in a column **copied from TESTING.md/ADR-0026 as written**, never computed or changed.
+   Bars go in a column **copied from TESTING.md/ADR-0026 as written**, never computed or changed; the no-cg heap row's bar column reads "live ≤ 100 (ADR-0026 amendment 2); footprint: reported, floor ~140".
 4. Remaining items 3–4, mechanical parts only: KNOWN_GAPS rows listed in 56's item 3 get their **numbers** updated (leave each row's verdict/expiry sentence to 56d; mark it `verdict: 56d`); TESTING.md curve table replaced with the new numbers; DESIGN.md §3.1/§3.6 one sentence each with the after numbers.
 5. Context guard: all run output to `target/56c/` and `docs/shots/`; never paste curves or logs into your context beyond the numbers you copy.
 

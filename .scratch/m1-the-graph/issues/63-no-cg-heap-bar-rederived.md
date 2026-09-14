@@ -1,6 +1,6 @@
 # m1-the-graph/63 — No-commit-graph heap bound: re-derive into live heap (gated) and footprint (reported, floor named)
 
-Status: ready
+Status: done
 Build with: **Sonnet** (medium) — doc edits with the text given here; the decision is the user's, the derivation is this spec's. No runs beyond one optional 30 s profile.
 Needs: none (59b's numbers, `prototypes/heap-profile-59`).
 Blocked by: none — user took the recommendation (live heap slope ≤100 B/commit gated; footprint reported with named floor), 2026-09-14. Use that date.
@@ -50,10 +50,13 @@ Out: any run at 1M beyond item 4's optional profile; any code; any other bar; th
 None. The load-bearing text is item 1's two bullets; copy their numbers from 59/59b, never recompute.
 
 ## Acceptance
-- [ ] ADR-0026 amendment paragraph present, in 61's form, numbers traceable to 59/59b raw paths.
-- [ ] TESTING.md and KNOWN_GAPS.md say the same two bars and the same floor as the ADR (grep both for `76` and `140`).
-- [ ] 56c and 56d edited as items 4–5, nothing else in them changed.
-- [ ] Report: cause or symptom — this is neither, it is a bar named to what it measures; what it costs the user: the no-cg 1M footprint number is now judged by eye against its floor at reviews, not by a bar.
+- [x] ADR-0026 amendment paragraph present, in 61's form, numbers traceable to 59/59b raw paths.
+- [x] TESTING.md and KNOWN_GAPS.md say the same two bars and the same floor as the ADR (grep both for `76` and `140`).
+- [x] 56c and 56d edited as items 4–5, nothing else in them changed.
+- [x] Report: cause or symptom — this is neither, it is a bar named to what it measures; what it costs the user: the no-cg 1M footprint number is now judged by eye against its floor at reviews, not by a bar.
+
+## Result (2026-09-14, Sonnet)
+Doc-only, as scoped. No fresh profile run needed: existing `target/59b/prof-{100k,1M}.txt` already gives 76/140 exactly, so item 4's optional run was skipped (data already matched, no contradiction to record). Edited: ADR-0026 (second amendment after 61's), TESTING.md (no-cg heap paragraph after the curve table), KNOWN_GAPS.md (59b section: verdict → `56d`, re-derivation line, expiry retargeted to the live bar), 56c (`Scope` item 3: added the live-heap curve cell + bar column text), 56d (`Read first` and `Scope` item 1). No code, no other bar touched. Gates: fmt/clippy/test all pass (no code changes).
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test` (no code changes expected; run them anyway). No heavy tier.

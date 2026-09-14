@@ -56,6 +56,13 @@ This is not a loosening of 300 MB: it says what the number covers at 1M and name
 
 `heavy::slopes_per_commit_with_a_commit_graph` (m1-the-graph/61) replaces the single-bar guard. Not gated further: the pack `.idx` offset table's ~11 B/commit (untraced, 58b) — see KNOWN_GAPS.
 
+**Amended (user, 2026-09-14): the no-commit-graph heap bound.** After m1-the-graph/59/59b the single ≤ 100 B/commit bar above reads **138–140 B/commit** footprint at 1M (was ~176), and the design cannot cut it further without a second structure this ADR forbids or `unsafe` in a `forbid(unsafe_code)` crate. Of the 138–140: **76 B/commit is live heap** after `g` — interner 58 + one order 8 + promoted 4 + rest ~7 — which is what Graft itself allocates and holds, under this ADR's own ~100 estimate. The remaining **~62 B/commit is freed memory the allocator retains** in the process's footprint, not reclaimable on request (`malloc_zone_pressure_relief` returns 0): the sort's dense arrays (freed when the sort ends), the interner's `by_prefix` doubling chain (~17 MiB), the order's `Vec`→`Arc` copy (~4 MiB), the swapped-out order (~9 MiB, ADR-0008), and ~19 MiB of date-walk churn untraced. Same split as 61's: a bar sitting on its floor, divided into one per thing it covers, floor named.
+
+- **Live heap slope ≤ 100 B/commit, gated at reviews.** What Graft allocates on this path; measured with `prototypes/heap-profile-59` at 100k and 1M, the 100k → 1M slope; measured **76**, against this ADR's ~100 estimate.
+- **Footprint at 1M without a commit-graph: reported, floor named.** ~140 B/commit = 76 live + ~62 allocator-retained; measured 155–158 MiB at 1M. The existing "footprint under 300 MB at 1M" stays.
+
+Not gated further: the four retained parts above with their MiB (by_prefix chain ~17, order copy ~4, swapped-out order ~9, untraced date-walk churn ~19) — see KNOWN_GAPS.
+
 ## Scope: M1
 
 Land before the M1 checkpoint (five tickets, three on Opus, one Sonnet, the acceptance on Fable). Why not defer: the handle table and the `CommitSource` shape are structural — M2's detail pane ("contained in", the reachability index KNOWN_GAPS names) wants exactly the commit-graph-position table, and Mistake Radar scans the same walk; retrofitting after M2 touches every consumer twice. Cost to the user: M2's daily-value work starts about five tickets later. He does not open 1M-commit repos daily; he named the curve and the Linux kernel is PROMPT's own manual check, so a 3× miss on the record at the "performance budgets" milestone is worse than the delay. Deferred with a named expiry: the no-graph pack-page residual (M2, the offer); the 1M `frames::` scroll numbers (M1 review's release perf run, once the curve passes).

@@ -161,6 +161,8 @@ commands at once.
 
 Always peaks during `G`. What holds it (pack pages, `EmittedOrder`, `Topological.known`, `Included`): ticket m1-the-graph/46.
 
+**Without a commit-graph the 1M cell asserts two bars, not one** (m1-the-graph/59/59b/63, user decision 2026-09-14, ADR-0026 amended): **live heap slope ≤ 100 B/commit, gated at reviews** — read from `prototypes/heap-profile-59` at 100k and 1M (manual, not part of the curve script); measured **76 B/commit** (interner 58 + one order 8 + promoted 4 + rest) — and **footprint at 1M: reported, floor named** — read from this table's `no cg` cell; measured **~140 B/commit** (76 live + ~62 allocator-retained memory, freed but kept in the process's footprint), against the existing "footprint under 300 MB at 1M". The floor is not gated further: see KNOWN_GAPS.
+
 First paint per cell (m1-the-graph/55, `target/release/examples/budgets <fixture>`, release, with jobs, warm cache; raw `target/55/phaseB2.txt`). Judged 500 ms, reported against 150 ms (ADR-0026):
 
 | Commits | small, no cg | small, cg | realistic, no cg |
