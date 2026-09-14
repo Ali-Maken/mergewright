@@ -1,6 +1,6 @@
 # m1-the-graph/56c — Memory curve acceptance: the runs, the numbers, the mechanical doc edits
 
-Status: ready
+Status: done (per session log; builder left status stale — conductor, 2026-09-14)
 Build with: **Sonnet** (medium) — runs existing commands and writes their numbers down; no verdicts. User decision 2026-09-14: 56's remainder split so Fable only judges (56d).
 Blocked by: 59b, 60, 63 (58b, 61 done)
 

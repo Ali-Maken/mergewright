@@ -1,6 +1,6 @@
 # m1-the-graph/60 — Checkpoints thin to an even grid instead of LRU eviction
 
-Status: ready
+Status: done (per session log; builder left status stale — conductor, 2026-09-14)
 Build with: **Sonnet** (medium) — a cache policy with one exact invariant and tests that state it; the approach is decided below; no interface change.
 Needs: none (independent of the memory tickets; `budgets`' existing `far_jump` reports the 1M number).
 Blocked by: none
