@@ -29,12 +29,14 @@ In:
 Out: pass/fail verdicts, the `## For the M1 review` section, ADR-0026's status line, acceptance boxes in 56, any fix, any bar.
 
 ## Acceptance
-- [ ] `docs/shots/m1-memory-curve.txt` regenerated, 12 cells × 3 runs.
-- [ ] `## Numbers` complete as scoped, every row with a raw path; bars copied verbatim.
-- [ ] Heavy tier run once alone and release perf run done; results in `## Numbers`.
-- [ ] KNOWN_GAPS numbers, TESTING.md table, DESIGN.md sentences updated; verdict sentences left for 56d.
-- [ ] Gates (56's list) green. A 1M fixture too slow or large: stop, say so with the number.
-- [ ] Report: paths only; no verdicts.
+- [x] `docs/shots/m1-memory-curve.txt` regenerated, 12 cells × 3 runs.
+- [x] `## Numbers` complete as scoped, every row with a raw path; bars copied verbatim.
+- [x] Heavy tier run once alone and release perf run done; results in `## Numbers`.
+- [x] KNOWN_GAPS numbers, TESTING.md table, DESIGN.md sentences updated; verdict sentences left for 56d.
+- [x] Gates (56's list) green. A 1M fixture too slow or large: stop, say so with the number.
+- [x] Report: paths only; no verdicts.
+
+Status: done.
 
 ## Size
 One context, under ~60k. Runs ~15–25 min wall, all to files.
