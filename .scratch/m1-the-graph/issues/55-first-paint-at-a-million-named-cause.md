@@ -2,8 +2,8 @@
 
 Status: ready
 Build with: **Opus** (high) — phase instrumentation inside the walk and the app's open path, then a fix in the rev-walk or the first-window path; correctness is numbers plus the existing order tests, so not Fable.
-Needs: `Walk::next_links`, `CommitTable` (commit-handles-and-table); the walk reading the graph with dense state and its odb-read counter (walk-reads-the-commit-graph); rows hydrating on demand (rows-hydrate-on-demand). Runs after all three: their numbers are this ticket's baseline.
-Blocked by: 49, 50, 52
+Needs: `Walk::next_links`, `CommitTable` (commit-handles-and-table); the walk reading the graph with dense state and its odb-read counter (walk-reads-the-commit-graph); rows hydrating on demand (rows-hydrate-on-demand **and rows-pass-through**, split 2026-09-14). Runs after all of them: their numbers are this ticket's baseline.
+Blocked by: 49, 50, 52, 52b (rows-pass-through)
 
 Why (user, 2026-09-14, ADR-0026 "User decisions on approval"): "The 1M first-screen miss gets its own ticket with a named cause, not just a number in a report." m1/46 measured 292–383 ms at 1M (100k: 26–85). ADR-0026 *names* the commit-graph path's in-degree pass as the likely cause; that is a hypothesis. **Both paths miss by about the same amount** (cg 292–346, no-cg 297–383), and the no-cg path has no in-degree pass before its date-order first window — so at least part of the cause is common to both paths and unnamed. This ticket names it by measurement, fixes what the design allows, and re-measures.
 

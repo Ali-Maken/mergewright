@@ -3,7 +3,7 @@
 Status: ready
 Build with: **Opus** (high) — a repository write through the system git binary, a child process inside a job, an `update` state machine with a failure path that must surface. Approach decided below; not Fable.
 Needs: none. Touches `update::Harness` like `dates-on-a-fixed-clock` does (one new field each): sequence after it, or merge the struct edit.
-Blocked by: 53, 52
+Blocked by: 53, 52, 52b
 
 Why (user, 2026-09-14, ADR-0026 "User decisions on approval" 2): "When a repo has no commit-graph file, Graft offers to build one, as ADR-0008 already promised. The fallback path must not be silent." Pulled forward from M2 (KNOWN_GAPS R2-4).
 

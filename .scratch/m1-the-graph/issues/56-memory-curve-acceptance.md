@@ -2,14 +2,14 @@
 
 Status: ready
 Build with: **Fable** (high) — the standing acceptance ticket: it decides what "memory tracks the viewport" looks like in numbers and writes the checklist that proves it.
-Needs: every other ticket of this group (commit-handles-and-table, walk-reads-the-commit-graph, order-and-inclusion-on-handles, rows-hydrate-on-demand), plus **first-paint-at-a-million-named-cause** (its first-paint numbers and named cause are what the checklist reports) and **commit-graph-offer** (the end-to-end below accepts the offer on the 1M no-cg fixture).
-Blocked by: 49, 50, 51, 51b, 51c, 51d, 52, 53, 54, 55
+Needs: every other ticket of this group (commit-handles-and-table, walk-reads-the-commit-graph, order-and-inclusion-on-handles, rows-hydrate-on-demand, **rows-pass-through** — split from 52 on 2026-09-14), plus **first-paint-at-a-million-named-cause** (its first-paint numbers and named cause are what the checklist reports) and **commit-graph-offer** (the end-to-end below accepts the offer on the 1M no-cg fixture).
+Blocked by: 49, 50, 51, 51b, 51c, 51d, 52, 52b (rows-pass-through), 53, 54, 55
 
 Amended 2026-09-14 (planner-fable, spec-only pass) with the user's condition on approving ADR-0026: wherever memory is **reported rather than failed** (1M without a commit-graph), the numbers must be visible in the milestone review file and in KNOWN_GAPS.md — not only in a results file.
 
 ## Read first
 - ADR-0026 (all; "The gate at 1M" is what this ticket proves; "User decisions on approval" are the conditions)
-- Ticket 46 "Curve" and "What holds memory at 1M" tables (the before); the measurement sections of the four design tickets above (the after, per piece); first-paint-at-a-million-named-cause "Acceptance" (the numbers and the named cause); commit-graph-offer "New UI" (what the offer line reads)
+- Ticket 46 "Curve" and "What holds memory at 1M" tables (the before); the measurement sections of the design tickets above (the after, per piece; the `G` odb-read and RSS numbers are in rows-pass-through); first-paint-at-a-million-named-cause "Acceptance" (the numbers and the named cause); commit-graph-offer "New UI" (what the offer line reads)
 - PROMPT.md §1.2 "Incremental and virtualized", §6.3 "Performance budgets", §7.1 heavy tier
 - TESTING.md "The heavy tier" and "Memory curve to a million commits (m1/46)"; KNOWN_GAPS.md rows "The 300 MB budget fails at a million commits", "No-cg `EmittedOrder` holds twice the table", "No heavy-tier guard on the memory curve's slope", "First paint at 1M commits is 292–383 ms", "The emitted order grows with history", "Least-recently-used is the wrong policy once checkpoints pass `max_checkpoints`", "Commit-graph offer plumbing unspecified (R2-4)" (closed by commit-graph-offer; confirm)
 - `crates/graft-fixtures/MAP.md` (`synthetic`, `measure`, `peak_rss`); `scripts/memory-curve.sh`
@@ -29,7 +29,7 @@ In:
 Out: any fix. A cell that misses is reported with the holder attribution (`prototypes/heap-profile-27b`, `owners.py`) and goes back to the conductor; this ticket does not tune.
 
 ## Signatures
-None new. Calls: `graft_fixtures::synthetic::Scale::{of, with_commit_graph, with_realistic_commits}`, `graft_fixtures::peak_rss`, `examples/budgets` (and its `--phases`), `StreamingLayout::work` (replayed rows), `CommitTable::overflow_len`, `graft_git::commit_graph::status` (the after-write count).
+None new. Calls: `graft_fixtures::synthetic::Scale::{of, with_commit_graph, with_realistic_commits}`, `graft_fixtures::peak_rss`, `examples/budgets` (and its `--phases`), `StreamingLayout::work` (replayed rows, `hydrated`, `merge_reads`), `CommitTable::overflow_len`, `graft_git::commit_graph::status` (the after-write count).
 
 ## Acceptance
 - [ ] `docs/shots/m1-memory-curve.txt` committed: 10k / 100k / 1M × {small no-cg, small cg, realistic no-cg, realistic cg}, 3 runs each, the columns above.

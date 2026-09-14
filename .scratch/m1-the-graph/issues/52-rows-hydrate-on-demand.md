@@ -1,84 +1,125 @@
-# m1-the-graph/52 — Rows hydrate on demand: the layout lays out links, reads commits only near the viewport
+# m1-the-graph/52 — The layout lays out links: `RowShape`, deferred merge-lane identity, `Row::assemble`
 
-Status: blocked (spec question, see Handoff)
-Build with: **Opus** (high) — the streaming layout's core semantics (pass-through, materialisation, rebuild fingerprints); correctness is judged by determinism tests and the memory curve, so not Fable.
-Needs: `Link`, `Parents`, `CommitHandle` (core); `CommitSource::{links, handle_of, id_of}`, `Walk::next_links` (commit-handles-and-table); `EmittedOrder` on handles, `Lane.waiting_for: CommitHandle` (order-and-inclusion-on-handles); the walk yielding links from the graph (walk-reads-the-commit-graph) for the cg-path numbers.
+Status: ready
+Build with: **Opus** (high) — the layout's core seam (links in, shapes out, one assembly step) with a deferred identity threaded through the cursor; judged by the existing snapshots staying byte-identical, so not Fable.
+Needs: `Link`, `Parents`, `CommitHandle` (core); `CommitSource::{links, handle_of, id_of}`, `Walk::next_links` (commit-handles-and-table); `EmittedOrder` on handles, `Lane.waiting_for: CommitHandle` (order-and-inclusion-on-handles).
 Blocked by: 49, 50, 51, 51b, 51c, 51d
 
+**Amended 2026-09-14 (planner-fable, spec-only pass on the merge-lane identity gap).** The ticket was split: this one is the "layout lays out links" half and keeps every chunk materialised, so behaviour is unchanged and every snapshot stays green; `rows-pass-through` (52b) adds the pass-through, the rebuild that hydrates, the shape fingerprint and the measurements. The old handoff note is kept at the end for the record.
+
+## Decision: merge-lane identity is deferred, not read during layout
+
+`LayoutCursor::open_merge_lane` names a merge lane from `recover_branch_name(merge.subject())`, which only a commit read has. Chosen: **option (b)**. `Lane.identity` and `RowShape.lanes` hold a `LaneIdentity` that is either `Known(BranchIdentity)` or `Merge { merge, parent }` (the two handles that name it). `Row::assemble` resolves `Merge` through a `MergeNames` map gathered once per materialised batch: merges already in the batch cost nothing, merges whose lane opened above the batch cost one read each — bounded by lanes open at the batch's first row, never by history. `Row.lanes` stays `Option<BranchIdentity>`, so snapshots, `Fold`, `Ancestry` and raster do not change. The user sees the same colours; nothing in this decision is visible.
+
+Why not (a) read merges during pass-through: git/git is ~25 % merges, 1M would read ~250k objects and their pack pages on every `G` — that is ADR-0026 item 4's "no commit object is read" given back. (c) subjects from the commit-graph: it has none.
+
+**Guard:** the spec assumes a lane's identity is paint-only — carried into `Row.lanes`, never compared for a layout decision. If, reading `layout.rs`, `Lane.identity` is compared for column reuse, seeding or `known_identities` matching, **stop and hand off**: deferring it would change layout, and that needs a different design.
+
 ## Read first
-- ADR-0026 "Decision" item 4, "Options considered → Churn", "What it costs"
-- DESIGN.md §3.6 (streaming, row cache with eviction, checkpoints, cold deep jump)
-- Ticket 46 table rows mapped pages, `RepoNodes::node`, allocator retained; ticket 27b "Headline: RSS is not heap"
-- `crates/graft-graph/MAP.md` (`layout`, `layout::stream`, `layout::source`, `row`), `crates/graft/MAP.md` (`history::source`, `history` `serve`/`Views`)
+- This ticket's "Decision" and "Signatures" (above/below); ADR-0026 "Decision" item 4, "What it costs"
+- DESIGN.md §3.6 (streaming, row cache, checkpoints) — for what `StreamingLayout` does today, not to change it here
+- `crates/graft-graph/MAP.md` (`lane`, `row`, `merge_name`, `layout`, `layout::source`, `layout::stream`, `inclusion`), `crates/graft/MAP.md` (`history::source`)
+- Ticket 49's amended Signatures (`Walk::next_links`, `LinkChunk`)
 
 ## Scope
 In:
-- `CommitSource::pull` yields `Link`s (handles, parents as the view shows them). `read` takes handles and returns whole `Commit`s in the same order. `Included` trims parents in `pull` and `links`.
-- `LayoutCursor::extend` takes links and returns `RowShape`s (no `Commit`). `Row::assemble` builds a `Row` from a shape and its commit; `commit.parents` is set to the shape's outgoing parent ids in order (the view's trimmed parents, exactly what rows hold today), so snapshots do not move.
-- `StreamingLayout::advance` **materialises** (reads commits, assembles rows, caches the chunk) only chunks intersecting `viewport ± buffer_rows`; every other chunk **passes through**: cursor advanced, order noted, checkpoints taken, a fingerprint computed over the shapes (row count + hash of lane/incoming/outgoing/lanes), nothing read from the odb. `rows(range)` over a passed-through range rebuilds from the nearest checkpoint (replaying `links`), materialises only the chunks asked for, and checks the fingerprint (`RebuildDiffers` on mismatch, as today).
-- `Resident` gains `passed_through` (rows laid out never materialised); `Work` gains `hydrated` (commits read) and `links_read`.
-- `graft::history::WalkSource` implements the new `pull`/`read` (`next_links`; `read` through `read_commit` or a batched equivalent); `serve`'s `Views` unchanged in shape.
-- MAP.md for `graft-graph` and `graft`; DESIGN.md §3.6 amended in one paragraph (what a pass-through chunk is; what a rebuild reads).
+- `CommitSource::pull` yields `Link`s (handles, parents as the view shows them); `read` takes handles and returns whole `Commit`s in the same order. `Included` trims parents in `pull` and `links`; `read` passes through untouched (the shape supplies the trimmed parents at assembly).
+- `HandleLookup` gains `id_of` (the blanket impl forwards to `CommitSource::id_of`). `LayoutCursor::new` resolves `known_branches` to handles so `extend` matches known identities by handle.
+- `LaneIdentity` in `lane`; `Lane.identity: LaneIdentity`. `open_merge_lane` stores `Merge { merge, parent }` and reads nothing. Every other identity the cursor computes today stays `Known` (`of_name`, `of_short_sha(id_of(..))`).
+- `LayoutCursor::extend` takes links and returns `RowShape`s (no `Commit`). `RowShape.lanes: Vec<Option<LaneIdentity>>`.
+- `MergeNames::gather` + `Row::assemble` in `row`: `commit.parents := shape.outgoing`'s parent ids in order (the view's trimmed parents, exactly what rows hold today); `lanes` resolved to `Option<BranchIdentity>`. The identity rule is byte-for-byte today's: `recover_branch_name(subject).map(of_name)` else `of_short_sha(id_of(parent))`.
+- `StreamingLayout` materialises **every** chunk as today, but through the new path: `extend` → shapes; `read` the chunk's handles; `MergeNames::gather` (chunk commits on hand, the rest read); `assemble` each. Same for the rebuild-from-checkpoint path. `Work` gains `hydrated` (commits read for rows) and `merge_reads` (commits read only to name a lane).
+- `layout()` (slice form) keeps its signature: it has every commit on hand, so `gather` reads nothing.
+- `graft::history::WalkSource` implements `pull` (`next_links`, the amendment in ticket 49) and `read` (`read_commit` per handle; a batched read is 52b's if the numbers want it). `serve`/`Views` unchanged.
+- MAP.md for `graft-graph` (`lane`, `row`, `layout`, `layout::source`, `layout::stream`, `inclusion`) and `graft` (`history::source`).
 
-Out: the walk's internals; the table; the strip cache; search (still reads whole commits, ADR-0026 Consequences).
+Out: pass-through, viewport-bound materialisation, fingerprint over shapes, `Resident.passed_through`, `Work.links_read`, measurements, DESIGN.md §3.6 — all 52b. The walk's internals; the table; the strip cache; search.
 
 ## Signatures
 ```rust
+// graft-graph::lane
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum LaneIdentity {
+    Known(BranchIdentity),
+    Merge { merge: CommitHandle, parent: CommitHandle },   // named by the merge's subject; resolved at assembly, never during layout
+}
+impl LaneIdentity {
+    pub fn known(self) -> Option<BranchIdentity>;   // `Known` only
+}
+pub struct Lane { pub index: usize, pub identity: LaneIdentity, pub waiting_for: CommitHandle, pub reserved: bool }
+
 // graft-graph::layout::source
 pub struct Pull { pub links: Vec<Link>, pub done: bool, pub stopped: bool }
 pub trait CommitSource {
     fn pull(&mut self, stop: &dyn Fn() -> bool) -> Result<Pull, /* existing error type */>;
     fn links(&mut self, commits: &[CommitHandle]) -> Result<Vec<Link>, /* existing */>;
-    fn read(&mut self, commits: &[CommitHandle]) -> Result<Vec<Commit>, /* existing */>;   // whole commits, same order
+    fn read(&mut self, commits: &[CommitHandle]) -> Result<Vec<Commit>, /* existing */>;   // whole commits, same order as asked
     fn handle_of(&self, id: &Oid) -> Option<CommitHandle>;
     fn id_of(&self, handle: CommitHandle) -> Oid;
 }
-// graft-graph::row
-pub struct RowShape { pub commit: CommitHandle, pub lane: usize, pub incoming: Vec<usize>, pub outgoing: Vec<(usize, CommitHandle)>, pub lanes: Vec<Option<BranchIdentity>> }
-impl Row {
-    pub fn assemble(shape: RowShape, commit: Commit, id_of: &dyn Fn(CommitHandle) -> Oid) -> Row;   // commit.parents := outgoing parents' ids, in order
-}
-// graft-graph::layout
-impl LayoutCursor {
-    pub fn extend(&mut self, links: &[Link], order: &mut EmittedOrder) -> Result<Vec<RowShape>, LayoutError>;
-}
-// graft-graph::layout::stream
-impl<S: CommitSource> StreamingLayout<S> {
-    pub fn advance(&mut self, budget: usize, stop: &dyn Fn() -> bool) -> Result<Advance, StreamError>;   // signature unchanged; materialises only near the viewport (set_viewport)
-    pub fn rows(&mut self, range: Range<usize>) -> Result<Vec<Row>, StreamError>;                         // unchanged; rebuild path hydrates the range
-}
-pub struct Resident { /* existing */ pub passed_through: usize }
-pub struct Work { /* existing */ pub hydrated: usize, pub links_read: usize }
-pub fn fingerprint(shapes: &[RowShape]) -> Fingerprint;   // pub(crate) is fine; named so the test can call it
-```
 
-**Amended 2026-09-14 (planner-fable, spec-only pass on 49's seam-(b) question):** `Walk::next_links(limit, stop) -> LinkChunk { links, done, stopped }` (ticket 49, amended Signatures). `WalkSource::pull` calls `next_links` with the same `limit` it passes to `next_chunk` today and maps `LinkChunk` to `Pull` field for field (`links`, `done`, `stopped`); no translation, no `more`.
+// graft-graph::layout
+pub trait HandleLookup {
+    fn handle_of(&self, id: Oid) -> CommitHandle;
+    fn id_of(&self, handle: CommitHandle) -> Oid;   // new; blanket impl forwards to CommitSource::id_of
+}
+impl LayoutCursor {
+    pub fn new(seeds: &Seeds, handles: &impl HandleLookup) -> Self;   // unchanged; known_branches resolved to handles here
+    pub fn extend(&mut self, links: &[Link], handles: &impl HandleLookup, order: &mut EmittedOrder) -> Result<Vec<RowShape>, LayoutError>;
+}
+
+// graft-graph::row
+pub struct RowShape {
+    pub commit: CommitHandle,
+    pub lane: usize,
+    pub incoming: Vec<usize>,
+    pub outgoing: Vec<(usize, CommitHandle)>,
+    pub lanes: Vec<Option<LaneIdentity>>,
+}
+pub struct MergeNames { /* HashMap<CommitHandle, BranchIdentity>; reads: usize */ }
+impl MergeNames {
+    /// Names every distinct `Merge { merge, .. }` in `shapes[..].lanes`. `commits[i]` is `shapes[i].commit`'s
+    /// commit (same length, same order); a merge on hand there costs nothing, the rest go to `read` in one batch.
+    pub fn gather<E>(
+        shapes: &[RowShape],
+        commits: &[Commit],
+        read: impl FnMut(&[CommitHandle]) -> Result<Vec<Commit>, E>,
+        id_of: impl Fn(CommitHandle) -> Oid,
+    ) -> Result<Self, E>;
+    pub fn reads(&self) -> usize;   // commits `gather` had to read (not on hand)
+    pub fn resolve(&self, identity: LaneIdentity) -> Result<BranchIdentity, AssembleError>;
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AssembleError { MergeNotGathered { merge: CommitHandle } }
+impl Row {
+    /// `commit.parents` := the shape's outgoing parents' ids, in order; `lanes` resolved through `names`.
+    pub fn assemble(shape: RowShape, commit: Commit, names: &MergeNames, id_of: &dyn Fn(CommitHandle) -> Oid) -> Result<Row, AssembleError>;
+}
+
+// graft-graph::layout::stream
+pub enum StreamError { /* existing */ Assemble(AssembleError) }
+pub struct Work { /* existing */ pub hydrated: usize, pub merge_reads: usize }
+// `advance`, `rows`, `from_order`, `set_viewport`: signatures unchanged; every chunk still materialised.
+
+// graft-graph::layout
+pub enum LayoutError { /* existing */ Assemble(AssembleError) }   // `layout()` signature unchanged
+```
+`WalkSource::pull` calls `next_links` with the `limit` it passes to `next_chunk` today and maps `LinkChunk` to `Pull` field for field.
 
 ## Acceptance
-- [ ] Determinism: on every corpus shape and the 5k synthetic pair, `rows(0..n)` after a cold `advance` to the end (viewport at the top, so all but the first chunks pass through) equals the rows of a layout that materialised everything — same `Row`s, field by field; every rebuilt chunk's fingerprint matches its pass-through fingerprint.
-- [ ] `Work.hydrated` after a cold `G` on the 100k fixture with the viewport at the top ≤ `2 × chunk_rows + buffer_rows` (only what the screen asked for); `links_read` ≥ the replay length.
-- [ ] Every existing `graft-graph` test and every corpus snapshot green, unchanged.
-- [ ] `graft::history` tests green; `frames::` rows-on-hand check still passes in release (a `PageDown` at the frontier must not wait on a rebuild: the materialisation window covers the viewport plus a screen either side, matching `History::outstanding`'s ask policy).
-- [ ] Measured and written in the ticket (release, `examples/budgets`, 3 runs): git/git cg and no-cg peak RSS (was 219–226 MiB), `G` time; 1M cg peak RSS and odb objects read during `G` (expected: only the chunks shown).
-- [ ] MAP.md and DESIGN.md §3.6 updated.
+- [ ] Every existing `graft-graph` test and every corpus snapshot green, **unchanged** (`Row`s field by field, `lanes` included): the proof that a deferred identity resolves to today's identity.
+- [ ] `layout()` over a slice ≡ `StreamingLayout` rows over the same order, field by field, on every corpus shape and the 5k synthetic pair (the test that exists today, on the new path).
+- [ ] New test, `layout::stream::tests`: a merge whose lane stays open across a chunk boundary (`chunk_rows` small). The chunk holding the merge assembles with `MergeNames::reads() == 0`; the next chunk assembles with `reads() == 1`; both chunks' `lanes` equal `layout()`'s. `Work.merge_reads` counts it.
+- [ ] New test, `row`: `assemble` with a `Merge` identity missing from `names` → `Err(MergeNotGathered)`; nothing panics.
+- [ ] `graft::history` tests green; `frames::` rows-on-hand check still passes in release.
+- [ ] The guard above checked and stated in the report: `Lane.identity` is never compared for a layout decision (say where you looked).
+- [ ] MAP.md for both crates updated; no `unwrap_or_default`/`let _` on a read result.
 
 ## Gates
-`cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo clippy --all-targets --features heavy-tests -- -D warnings` · `cargo test`; heavy tier once, alone, at the end.
+`cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo clippy --all-targets --features heavy-tests -- -D warnings` · `cargo test`.
 
 ## Size
-One context, under ~80k tokens. Seam: (a) `graft-graph` (`Pull`/`RowShape`/`extend`/pass-through/`rows` rebuild) with tests; (b) `graft::history::WalkSource` + measurements. Stop at the seam with a handoff note rather than compacting.
+One context, under ~80k tokens. Seam if needed: (a) `lane`/`row`/`layout` (`LaneIdentity`, `RowShape`, `MergeNames`, `assemble`, `extend` on links, `layout()`); (b) `layout::source`/`inclusion`/`layout::stream`/`WalkSource` (the trait change and the materialise path). Stop at the seam with a handoff note rather than compacting.
 
-## Handoff (2026-09-14, builder-opus): blocked on a spec gap, no code changed
-
-**What's wrong:** `LayoutCursor::open_merge_lane` (layout.rs ~l.393) sets a merge lane's identity from `recover_branch_name(commit.subject())`, falling back to `of_short_sha(parent)`. The subject is in the commit **message**, and only a commit read (`read`) gets it. `Link` has handles only. The identity lives in `Lane.identity` and is copied into every later row's `lanes` while that lane stays open. So:
-- a passed-through chunk can't compute `RowShape.lanes` (or the next lane state) without reading every **merge** commit in it;
-- a materialised chunk far below needs the subjects of old merges whose lanes are still open.
-Other id-derived identities are fine: `known_identities.get(id)` and `of_short_sha(id)` both work through `id_of`. The subject is the only thing that needs a read.
-
-**Options (planner-fable or user to choose):**
-- (a) Pass-through reads merge commits only, through `read`, counted as `hydrated`. Simplest. Fails the stated `hydrated ≤ 2×chunk_rows + buffer_rows` bound on merge-heavy history (git/git has about 25% merges), so the acceptance would need restating. Costs the user pack pages for every merge during `G`.
-- (b) **Recommended.** Deferred merge identity. `Lane.identity` and `RowShape.lanes` hold `LaneIdentity::{Known(BranchIdentity), Merge { merge: CommitHandle, parent: CommitHandle }}`. The fingerprint hashes the deferred form, which stays deterministic. `Row::assemble` resolves it, reading at most one commit per distinct merge lane in the rows asked for (bounded by lanes on screen, cached per call). `Row.lanes` stays `Option<BranchIdentity>`, so snapshots, fold and raster don't change. Cost: `assemble` needs a resolver (`&mut dyn FnMut(CommitHandle) -> Commit subject`), so its signature changes from the spec. `Lane` becomes public API change.
-- (c) Get subjects through `links`/`pull`. Not possible: the commit-graph has no messages.
-
-**Next step once decided:** seam (a) as the Scope says, with `RowShape.lanes` typed per the choice. Read-first already done: source.rs, stream.rs, cache.rs, checkpoint.rs, layout.rs, row.rs. Callers of `extend`/`next`/`read`: `inclusion.rs`, `layout/tests.rs`, `layout/stream/tests.rs`, `graft::history::source`.
-**Gotcha:** `RowCache` fingerprints `&[Row]` today. Pass-through needs a `Fingerprint` over shapes, so evicted chunks should fingerprint shapes too (one kind, one check).
+## Handoff (2026-09-14, builder-opus, kept for the record): the gap that led to the decision above
+`LayoutCursor::open_merge_lane` (layout.rs ~l.393) sets a merge lane's identity from `recover_branch_name(commit.subject())`, falling back to `of_short_sha(parent)`; the subject needs a commit read, `Link` has handles only, and the identity is copied into every later row's `lanes` while the lane stays open. Other identities work through `id_of`. Read-first already done by that builder: source.rs, stream.rs, cache.rs, checkpoint.rs, layout.rs, row.rs. Callers of `extend`/`next`/`read`: `inclusion.rs`, `layout/tests.rs`, `layout/stream/tests.rs`, `graft::history::source`. Gotcha carried to 52b: `RowCache` fingerprints `&[Row]` today; pass-through needs one fingerprint kind over shapes.
