@@ -334,8 +334,7 @@ entry is (CLAUDE.md).*
 - Heavy-tier tests for the table and `next_links` (5k pair; 100k overflow ≤ 60 B/commit) are written, not run by the builder; they run in the milestone review.
 - **~~1M first paint is not the walk~~ Closed by m1-the-graph/55:** it was loose-ref enumeration (4 passes over 6,498 refs); now one shared read, 1M first paint 98–105 ms warm with jobs.
 
-## m1-the-graph/58 — tips checked against the id table (58b: tags peeled; guard still red, not because of tags)
-- **Slope guard red: 166/167/166 B/commit** on the guard's loose-ref cg fixtures, against ADR-0026's 150 B bar (unchanged). **The `pack-refs --all` copies are red too: 156/156/157.** Measured 3× each in m1-the-graph/58b; raw in `target/58b/guard-{loose,packed}-*.txt`.
+## m1-the-graph/58 — tips checked against the id table (58b: tags peeled; guard re-derived into two bars) — closed m1-the-graph/61
 - **58b fixed the tag reads:**
   - a packed tag resolves from its peeled line with no object read;
   - a loose tag costs one whole read, with its target judged by the table;
@@ -348,5 +347,6 @@ entry is (CLAUDE.md).*
   | packed | 33.9 MiB | 3.8 MiB |
 
   Loose-tag floor: 51 KB per tag at 1M, 41 KB at 100k. It is worth only ~10 B/commit in the whole-process slope, because the walk's `first_chunk` faults the same target-commit pages later.
-- **Open, for the user/planner:** packing refs does not make the guard green, so the remaining ~6 B/commit above the bar sits in the commit-graph/pack pages that `walk_new` (+3.4 MiB at 100k) and `first_chunk` (+5.3 MiB) fault, not in refs. Choices: find those pages in a new ticket, or re-derive ADR-0026's 150 from those phases. The bar and the fixtures are unchanged.
-- Cost to the user: none on the no-cg path (header first, as before; a tag's commit is now header-read instead of decoded). On the cg path, a gc'd repo reads no tag objects at open, and loose tags are read once each.
+- **Closed by m1-the-graph/61 (user decision, 2026-09-14, ADR-0026 amended):** the single 150 B/commit bar never held — after 58b it read 166 B/commit loose / 156 packed, and the remainder is mapped pages every hydration lookup needs (pack `.idx`, ~68 B/commit) plus the commit-graph's own pages (~56), not a per-commit read the design can remove. Re-derived into two bars in `heavy::slopes_per_commit_with_a_commit_graph`: **heap (footprint) slope ≤ 50 B/commit** (measured 29/31/29, three release runs alone) and **peak RSS slope ≤ 200 B/commit** (measured 167/169/167 loose; floor named at ADR-0026, ≈ commit-graph 56 + pack index ~68 + heap ~35 ≈ 160). Packed-ref slope not re-measured under the new bars (58b's 156/156/157 already sits under 200).
+- **Open, one line, expiry:** the pack `.idx` offset table's ~11 B/commit contribution (one whole 4 B/object table faulted on the first lookup, 58b, untraced) is not attributed to a cause. Expires if a future commit-graph-path regression needs that 11 B/commit back to explain a bar miss — then trace it instead of assuming heap.
+- Cost to the user: none on the no-cg path (header first, as before; a tag's commit is now header-read instead of decoded). On the cg path, a gc'd repo reads no tag objects at open, and loose tags are read once each. RSS on the cg path grows ~160 B/commit, 121 of it reclaimable mapped pages Graft does not control; Graft's own growth (~30 B/commit measured) is the tight, gated bar.

@@ -58,56 +58,82 @@ fn budgets_hold_on_the_100k_fixture_with_a_commit_graph() {
     check(Scale::HEAVY.with_commit_graph(), true);
 }
 
-/// ADR-0026's slope guard: peak RSS may rise by at most this much per
-/// commit between the 10k and 100k commit-graph fixtures. Before the
-/// handle table it rose 0.85–0.93 KiB per commit (m1-the-graph/46).
-const PEAK_RSS_SLOPE_LIMIT: u64 = 150;
+/// B/commit Graft itself allocates on the commit-graph path, 10k cg → 100k cg
+/// (footprint peak, anonymous pages). User decision 2026-09-14, ADR-0026 amended
+/// (m1-the-graph/61): the 150 B single bar counted graph pages and heap but not
+/// the pack index every object read needs, so it sat on its own floor and
+/// flapped. Split in two: this is the bar on what Graft allocates.
+const HEAP_SLOPE_BAR_BYTES: u64 = 50;
 
-/// The memory curve's slope (m1-the-graph/56, ADR-0026): peak RSS on the
-/// 100k commit-graph fixture minus peak RSS on the 10k one, per commit,
-/// must stay under [`PEAK_RSS_SLOPE_LIMIT`].
+/// B/commit of peak RSS on the same path: commit-graph pages (~56) + pack index
+/// pages (~68 on these fixtures) + heap (~35). Floor ≈ 166 loose (156 packed); a
+/// per-commit object read (m1-the-graph/58's 237) fails it. User decision
+/// 2026-09-14, ADR-0026 amended (m1-the-graph/61).
+const RSS_SLOPE_BAR_BYTES: u64 = 200;
+
+/// One pair of child runs (m1-the-graph/57's [`budget_run::gated_in_child`] on
+/// the 10k cg and 100k cg fixtures), two slopes: heap ([`HEAP_SLOPE_BAR_BYTES`])
+/// and peak RSS ([`RSS_SLOPE_BAR_BYTES`]). Replaces
+/// `peak_rss_slope_per_commit_with_a_commit_graph` (m1-the-graph/61): the old
+/// single bar (150 B/commit peak RSS) never accounted for the pack index's
+/// mapped pages, which every hydration lookup touches regardless of design —
+/// see ADR-0026's amendment for the holder table.
 ///
-/// Each fixture is measured in [`budget_run::gated_in_child`], a fresh
-/// process of its own (m1-the-graph/57): `getrusage`'s peak is a lifetime
-/// maximum of the *process*, so measuring both fixtures in this same test
+/// Each fixture is measured in its own child process (m1-the-graph/57):
+/// `getrusage`'s peak and `graft_fixtures::footprint`'s peak are both lifetime
+/// maxima of the *process*, so measuring both fixtures in this same test
 /// binary would report whichever fixture ran second's peak for both —
-/// m1-the-graph/56 found this guard reads 0 (a false green) run straight
+/// m1-the-graph/56 found the old guard read 0 (a false green) run straight
 /// after the 100k no-commit-graph budget test, in the same binary, because
 /// both then share one process peak.
 #[test]
-fn peak_rss_slope_per_commit_with_a_commit_graph() {
+fn slopes_per_commit_with_a_commit_graph() {
     let small = Scale::of(10_000).with_commit_graph();
     let large = Scale::HEAVY.with_commit_graph();
     let (small_peak, large_peak) = {
         let turn = MEASURING.lock().unwrap_or_else(PoisonError::into_inner);
-        let pair = (peak_rss_of(small), peak_rss_of(large));
+        let pair = (child_peak_of(small), child_peak_of(large));
         drop(turn);
         pair
     };
     let commits = u64::from(large.commits() - small.commits());
-    let rise = large_peak.saturating_sub(small_peak);
-    let slope = rise.div_ceil(commits);
+    let heap_rise = large_peak
+        .footprint_peak
+        .saturating_sub(small_peak.footprint_peak);
+    let heap_slope = heap_rise.div_ceil(commits);
+    let rss_rise = large_peak.peak_rss.saturating_sub(small_peak.peak_rss);
+    let rss_slope = rss_rise.div_ceil(commits);
     println!(
-        "peak RSS {} MiB at {} and {} MiB at {}: slope {slope} B/commit against {PEAK_RSS_SLOPE_LIMIT}",
-        small_peak / (1024 * 1024),
+        "heap {} / {} MiB at {} / {}: slope {heap_slope} B/commit against {HEAP_SLOPE_BAR_BYTES}; \
+         peak RSS {} / {} MiB: slope {rss_slope} B/commit against {RSS_SLOPE_BAR_BYTES}",
+        small_peak.footprint_peak / (1024 * 1024),
+        large_peak.footprint_peak / (1024 * 1024),
         small.name(),
-        large_peak / (1024 * 1024),
         large.name(),
+        small_peak.peak_rss / (1024 * 1024),
+        large_peak.peak_rss / (1024 * 1024),
     );
     assert!(
-        slope <= PEAK_RSS_SLOPE_LIMIT,
-        "peak RSS rises {slope} B per commit between {} and {}, over the {PEAK_RSS_SLOPE_LIMIT} B ADR-0026 allows",
+        heap_slope <= HEAP_SLOPE_BAR_BYTES,
+        "heap (footprint) rises {heap_slope} B per commit between {} and {}, over the \
+         {HEAP_SLOPE_BAR_BYTES} B/commit bar (user, 2026-09-14, ADR-0026 amended)",
+        small.name(),
+        large.name()
+    );
+    assert!(
+        rss_slope <= RSS_SLOPE_BAR_BYTES,
+        "peak RSS rises {rss_slope} B per commit between {} and {}, over the \
+         {RSS_SLOPE_BAR_BYTES} B/commit bar (user, 2026-09-14, ADR-0026 amended)",
         small.name(),
         large.name()
     );
 }
 
-/// Peak RSS of one gated run on `scale`, measured in a child of its own.
-fn peak_rss_of(scale: Scale) -> u64 {
+/// One gated run's peak footprint and peak RSS on `scale`, measured in a
+/// child of its own.
+fn child_peak_of(scale: Scale) -> budget_run::ChildPeak {
     let repo = synthetic::borrow(scale).unwrap_or_else(|why| panic!("{why}"));
-    budget_run::gated_in_child(&repo)
-        .unwrap_or_else(|why| panic!("{why}"))
-        .peak_rss
+    budget_run::gated_in_child(&repo).unwrap_or_else(|why| panic!("{why}"))
 }
 
 /// The same history with commits sized after git/git (m1-the-graph/27d):

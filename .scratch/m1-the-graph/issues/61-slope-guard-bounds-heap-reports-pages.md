@@ -1,6 +1,6 @@
 # m1-the-graph/61 — The slope guard bounds what Graft allocates; mapped pages get a bar derived from their named floor
 
-Status: ready
+Status: done (2026-09-14, builder-sonnet)
 Build with: **Sonnet** (medium) — the child harness already returns both peaks (`ChildPeak.footprint_peak`, `.peak_rss`); this ticket moves one assertion, adds one, and writes the decision down. The numbers are the user's, not the builder's.
 Needs: `budget_run::gated_in_child` / `ChildPeak` (57); the guard `heavy::peak_rss_slope_per_commit_with_a_commit_graph` (56, 57).
 Blocked by: none — user took the recommendation (split check: heap ≤50, RSS ≤200 B/commit), 2026-09-14. Use that date in the constants and the ADR-0026 amendment.
@@ -73,12 +73,12 @@ fn slopes_per_commit_with_a_commit_graph();
 Calls: `budget_run::gated_in_child(&Path) -> Result<ChildPeak, ChildError>` and its fields `peak_rss`, `footprint_peak`; `graft_fixtures::synthetic::Scale::{of, with_commit_graph}` for the fixtures, exactly as the old guard did. No public item changes; no MAP.md line changes (the test is not public API; `examples/budgets` untouched).
 
 ## Acceptance
-- [ ] `heavy::slopes_per_commit_with_a_commit_graph` exists, the old name gone; both slopes and both peaks in the message; bars as constants with the user's date.
-- [ ] 3 runs alone, release: heap slope ≤ 50 all three (expected 31–35); RSS slope ≤ 200 all three (expected ~166); numbers in the ticket, raw paths listed.
-- [ ] Tightening proof for the heap bar recorded (bar 20 → red, message quoted, reverted).
-- [ ] ADR-0026 amendment paragraph; TESTING.md paragraph; KNOWN_GAPS "m1-the-graph/58" section closed as scoped.
-- [ ] Heavy clippy green (`--features heavy-tests`); fast gates green.
-- [ ] Report: "neither cause nor symptom — a bar re-derived by the user from the named floor"; what it costs the user: RSS on the cg path grows ~160 B/commit, 121 of it reclaimable mapped pages, accepted and written down; Graft's own growth (~35 B/commit) is now the tight bar. Paths only.
+- [x] `heavy::slopes_per_commit_with_a_commit_graph` exists, the old name gone; both slopes and both peaks in the message; bars as constants with the user's date.
+- [x] 3 runs alone, release: heap slope ≤ 50 all three (measured **29, 31, 29** B/commit); RSS slope ≤ 200 all three (measured **167, 169, 167** B/commit); raw: `target/61/guard-{1,2,3}.txt`.
+- [x] Tightening proof for the heap bar recorded: bar 20 → red (heap slope 26 B/commit measured that run), message `"heap (footprint) rises 26 B per commit between synthetic-10000-commit-graph and synthetic-100000-commit-graph, over the 20 B/commit bar (user, 2026-09-14, ADR-0026 amended)"`, reverted to 50; raw `target/61/tighten-heap-20.txt`.
+- [x] ADR-0026 amendment paragraph; TESTING.md paragraph; KNOWN_GAPS "m1-the-graph/58" section closed as scoped.
+- [x] Heavy clippy green (`--features heavy-tests`); fast gates green.
+- [x] Report: "neither cause nor symptom — a bar re-derived by the user from the named floor"; what it costs the user: RSS on the cg path grows ~160–169 B/commit, most of it reclaimable mapped pages, accepted and written down; Graft's own growth (~29–31 B/commit measured) is now the tight, gated bar. Paths only.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo clippy --all-targets --features heavy-tests -- -D warnings` · `cargo test`; heavy: the guard ×3 alone, release.

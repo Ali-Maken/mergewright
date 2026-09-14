@@ -77,7 +77,7 @@ maxima of the *process*, never of the work just done — fine for a ceiling
 test (`budgets_hold_* < 300 MB` can only over-report), wrong for a slope
 (100k peak minus 10k peak): measure both fixtures in the same test binary
 and whichever ran second's peak is reported for both, so a real regression
-can read as a 0 B/commit false green. `heavy::peak_rss_slope_per_commit_with_a_commit_graph`
+can read as a 0 B/commit false green. `heavy::slopes_per_commit_with_a_commit_graph`
 re-execs this test binary once per fixture (`budget_run::gated_in_child`,
 `heavy::child_gated_run`) so each peak is that child's own. Confirmed by
 running the guard alone and then straight after
@@ -85,8 +85,21 @@ running the guard alone and then straight after
 invocation: 237 B/commit alone, 235 B/commit adversarial — same within 10%,
 and within 10% of `scripts/memory-curve.sh`'s 10k-cg/100k-cg cells (237
 B/commit, `.scratch/m1-the-graph/issues/56-memory-curve-acceptance.md`).
-The guard is still red (ADR-0026's bar is 150 B/commit): this ticket fixed
-how it measures, not what it finds.
+
+**The guard asserts two bars, not one** (m1-the-graph/61, user decision
+2026-09-14, ADR-0026 amended): **heap (footprint) slope ≤ 50 B/commit** —
+what Graft itself allocates on this path (order, bitsets, promoted, malloc
+slack) — and **peak RSS slope ≤ 200 B/commit**, whose floor is named: commit-
+graph pages (~56 B/commit, the walk and the id table's own file) plus pack
+`.idx` pages (~68 B/commit on these fixtures — every hydration lookup goes
+through gix's reader, ADR-0011) plus heap (~35), for a floor of ≈ 160
+(measured 166 loose / 156 packed with refs). The single 150 B/commit bar
+conflated these: it counted graph pages and heap but not the pack index every
+object read needs, so it sat on its own floor and flapped without catching
+anything. The RSS bar still catches a real per-commit object read (58's 237
+B/commit fails it); the heap bar is the tight one, since 121 of the ~156-166
+B/commit are clean file-backed pages the kernel reclaims first under
+pressure.
 
 **Frame numbers depend on the CPU's power state** (m1/30c part b). On the
 build machine (Apple Silicon), a scroll paced at 60 Hz is light load, and
