@@ -169,6 +169,43 @@ fn screen_at(stream: &mut StreamingLayout<WalkSource<'_>>, top: usize, shape: Sh
         .unwrap_or_else(|why| panic!("{shape}: reading rows {top}..{}: {why}", top + HEIGHT))
 }
 
+/// What the linear shape's scroll down and back cost: reads, rebuilds and
+/// pass-throughs, counted.
+fn assert_linear_work(stream: &StreamingLayout<WalkSource<'_>>, rows: usize) {
+    let shape = Shape::Linear;
+    let resident = stream.resident();
+    let work = stream.work();
+    assert!(
+        work.chunks_rebuilt > 0,
+        "{shape}: the scroll back rebuilt evicted chunks"
+    );
+    // Rows are hydrated by handle: every row the layout built, the
+    // first time and on each rebuild, plus any merge read only to
+    // name a lane, went through read_commit.
+    assert_eq!(
+        stream.source().reads,
+        work.hydrated + work.merge_reads,
+        "{shape}: every read went through read_commit"
+    );
+    // Chunks that passed through were laid out without a read; the
+    // scroll then materialised every one of them.
+    assert!(
+        work.hydrated < work.commits_pulled + work.commits_reread,
+        "{shape}: not every row laid out was read"
+    );
+    assert_eq!(resident.passed_through, 0, "{shape}: every row was shown");
+    assert_eq!(
+        work.links_read,
+        work.commits_pulled + work.commits_reread,
+        "{shape}"
+    );
+    assert!(work.commits_reread > 0, "{shape}");
+    eprintln!(
+        "{shape}: {} rows, {} pulled, {} reread, {} chunks rebuilt, {} checkpoints kept",
+        rows, work.commits_pulled, work.commits_reread, work.chunks_rebuilt, resident.checkpoints,
+    );
+}
+
 #[test]
 fn every_shape_streams_through_a_small_cache_as_the_whole_layout_would() {
     for_each_shape(|shape, dir| {
@@ -180,6 +217,13 @@ fn every_shape_streams_through_a_small_cache_as_the_whole_layout_would() {
         let mut stream = StreamingLayout::new(source, seeds, SMALL);
         advance_to_the_end(&mut stream, shape);
         assert_eq!(stream.expected_rows(), Some(whole.len()), "{shape}");
+        let below_the_window = whole
+            .len()
+            .saturating_sub(SMALL.chunk_rows + SMALL.buffer_rows);
+        assert!(
+            stream.resident().passed_through >= below_the_window,
+            "{shape}: rows past the top's window pass through unread"
+        );
 
         // Down through the history a screen at a time, then back to the top:
         // every screen is the slice of the whole layout, whether its chunk
@@ -209,32 +253,7 @@ fn every_shape_streams_through_a_small_cache_as_the_whole_layout_would() {
             "{shape}: every commit walked once"
         );
         if shape == Shape::Linear {
-            assert!(
-                work.chunks_rebuilt > 0,
-                "{shape}: the scroll back rebuilt evicted chunks"
-            );
-            // Rows are hydrated by handle: every row the layout built, the
-            // first time and on each rebuild, plus any merge read only to
-            // name a lane, went through read_commit.
-            assert_eq!(
-                stream.source().reads,
-                work.hydrated + work.merge_reads,
-                "{shape}: every read went through read_commit"
-            );
-            assert_eq!(
-                work.hydrated,
-                work.commits_pulled + work.commits_reread,
-                "{shape}: each row read once per build"
-            );
-            assert!(work.commits_reread > 0, "{shape}");
-            eprintln!(
-                "{shape}: {} rows, {} pulled, {} reread, {} chunks rebuilt, {} checkpoints kept",
-                whole.len(),
-                work.commits_pulled,
-                work.commits_reread,
-                work.chunks_rebuilt,
-                resident.checkpoints,
-            );
+            assert_linear_work(&stream, whole.len());
         }
     });
 }

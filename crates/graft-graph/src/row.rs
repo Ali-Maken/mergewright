@@ -52,7 +52,7 @@ pub struct Row {
 /// One commit laid out, before its commit is read: what
 /// [`LayoutCursor::extend`](crate::layout::LayoutCursor::extend) produces
 /// from links (ADR-0026 item 4). [`Row::assemble`] pairs it with the commit.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct RowShape {
     /// The commit this row draws.
     pub commit: CommitHandle,

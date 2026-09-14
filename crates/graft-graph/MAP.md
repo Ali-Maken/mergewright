@@ -23,7 +23,7 @@ One line per public item. Update when a public item changes.
 - `Row::lanes` (field) — identity drawn in each column on this row; `None` where no edge; trailing `None`s trimmed.
 - `Row::marker` (field) — Mistake Radar kind; always `None` from `graph`.
 - `Row::assemble` (fn) — `assemble(shape, commit, &names, id_of)`: a shape plus its whole commit → `Row` (parents from the shape, merge lanes resolved); `Err(AssembleError)` if a merge lane was not gathered.
-- `RowShape` (struct) — a row before hydration: `commit` handle, `lane`, `incoming`, `outgoing: (column, CommitHandle)`, `lanes: Option<LaneIdentity>`.
+- `RowShape` (struct) — a row before hydration: `commit` handle, `lane`, `incoming`, `outgoing: (column, CommitHandle)`, `lanes: Option<LaneIdentity>`; `Hash` (the chunk fingerprint hashes shapes).
 - `MergeNames` (struct) — merge-lane names for one batch, keyed by (merge, parent); `gather(shapes, commits, read, id_of)` reads only merges not on hand, in one batch; `reads`, `resolve`.
 - `AssembleError` (enum) — `MergeNotGathered { merge }`.
 
@@ -93,20 +93,23 @@ One line per public item. Update when a public item changes.
 - `StreamError` (enum) — why streaming could not go on; `Assemble` when a row could not be assembled.
 - `Advance` (struct) — one advance: `rows_emitted`, `done`, `stopped`.
 - `Anchor` (struct) — selected `commit` and its viewport `offset`.
-- `Resident` (struct) — held rows, chunks, checkpoints and their byte estimates.
-- `Work` (struct) — pulls, re-reads (links re-served), replayed rows, rebuilt chunks, `hydrated` (commits read for rows), `merge_reads` (commits read only to name a lane).
+- `Resident` (struct) — held rows, chunks, checkpoints and their byte estimates; `passed_through` (rows laid out, never materialised).
+- `Work` (struct) — pulls, re-reads (links re-served), replayed rows, rebuilt chunks, `hydrated` (commits read for rows), `merge_reads` (commits read only to name a lane), `links_read` (links the source served).
 - `StreamingLayout` (struct) — chunked layout with a bounded resident set.
 - `StreamingLayout::new` (fn) — stream a walk.
 - `StreamingLayout::from_order` (fn) — `from_order(source, order: Vec<CommitHandle>, seeds, config)`; lay out a known order (ADR-0026: handles in, not ids).
-- `StreamingLayout::advance` (fn) — lay out up to a budget of rows past the frontier.
+- `StreamingLayout::advance` (fn) — lay out up to a budget of rows past the frontier; reads commits only for chunks meeting viewport ± `buffer_rows`, the rest pass through (shapes fingerprinted, nothing read).
 - `StreamingLayout::set_viewport` / `viewport` (fn) — rows on screen.
-- `StreamingLayout::rows` (fn) — rows in a range, rebuilding evicted chunks.
+- `StreamingLayout::rows` (fn) — rows in a range, rebuilding chunks not held (evicted or passed through) from the nearest checkpoint; every replayed chunk checked against its shape fingerprint, only the asked-for chunks read.
 - `StreamingLayout::is_resident`, `rows_emitted`, `expected_rows`, `is_done`, `row_of`, `id_at` (fn) — queries.
 - `StreamingLayout::reanchor` (fn) — viewport that keeps an anchor's offset.
 - `StreamingLayout::resident`, `checkpoint_rows`, `work`, `source`, `config` (fn) — introspection.
 - `StreamingLayout::source_mut` (fn) — the source, mutably.
 - `StreamingLayout::truncate` (fn) — forget rows from a row on (chunks cut, later checkpoints dropped, order truncated), frontier replayed to it; returns `Invalidated`.
 - `Invalidated` (struct) — `from_row`, `chunks`, `checkpoints` a truncate threw away.
+
+## layout::cache (pub(crate))
+- `fingerprint` (fn) — `fingerprint(&[RowShape]) -> Fingerprint` (row count + hash of shapes); what a pass-through leaves and a rebuild must match.
 
 ## raster
 - `rasterise` (fn) — a `Strip` in, a premultiplied `core::RasterFrame` out; pure, no cache; background never painted (ADR-0003). Folded edges: a tail from the node's right edge, half a band toward `Toward`, alpha fading to 0 short of the next column's centre.

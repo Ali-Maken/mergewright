@@ -264,6 +264,9 @@ fn folding_invalidates_only_the_rows_from_the_merge_down() {
     );
     let view_seeds = source.seeds().clone();
     let mut layout = StreamingLayout::new(source, view_seeds, small());
+    // The whole history on screen: every chunk is materialised as it is laid
+    // out, so any rebuild below is one the reinclude caused.
+    layout.set_viewport(0..42);
     let original = all_rows(&mut layout);
     assert_eq!(original.len(), 42);
     let merge_row = layout.row_of(oid(19)).expect("the merge is laid out");

@@ -833,6 +833,19 @@ When `active.len()` (lanes open and not `reserved`) exceeds `graph.max_lanes`:
   stateful, so the walk must still pass *through* everything above the
   viewport — but passing through means advancing the `LayoutCursor` and
   letting the rows be evicted, not retaining them.
+- **Pass-through chunks (m1-the-graph/52b, ADR-0026 item 4):** `advance`
+  reads commits only for chunks meeting `[viewport_top − buffer,
+  viewport_bottom + buffer]` (plus the rest of a chunk already held at the
+  frontier). Every other chunk *passes through*: the cursor lays its links
+  out into `RowShape`s, the order and checkpoints are recorded, and a
+  fingerprint of the shapes (row count + hash; merge lane identities hash
+  their handles) is kept — no commit object is read. Eviction keeps the same
+  fingerprint and drops the rows. `rows(range)` over a chunk not held
+  replays links from the nearest checkpoint, checks every replayed chunk's
+  shapes against its fingerprint (`RebuildDiffers` otherwise), and reads
+  commits only for the chunks asked for — each run of adjacent ones as one
+  batch, plus one read per merge lane open at the run's first row that the
+  run does not contain.
 - **Checkpoints** make deep jumps (search hit at row 900,000) cheap: every
   `checkpoint_every` rows (default 2,000) the streaming layout keeps a
   clone of the `LayoutCursor` — lane state only, about 1.6 KiB whatever

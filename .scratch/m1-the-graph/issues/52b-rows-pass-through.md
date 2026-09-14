@@ -1,6 +1,6 @@
 # m1-the-graph/52b — Rows hydrate on demand: chunks off screen pass through, a rebuild hydrates only what is asked
 
-Status: ready
+Status: partial — seam (a) done, seam (b) measurements remain (handoff below)
 Build with: **Opus** (high) — the streaming layout's pass-through and rebuild semantics; correctness is judged by determinism tests and the memory curve, so not Fable.
 Needs: everything ticket 52 exposes (`RowShape`, `LaneIdentity`, `MergeNames`, `Row::assemble`, `LayoutCursor::extend` on links, `CommitSource::{pull, read}`, `Work.{hydrated, merge_reads}`).
 Blocked by: 52
@@ -51,3 +51,25 @@ pub fn fingerprint(shapes: &[RowShape]) -> Fingerprint;   // pub(crate) is fine;
 
 ## Size
 One context, under ~80k tokens. Seam: (a) pass-through + fingerprint + rebuild with tests; (b) measurements + DESIGN.md. Stop at the seam with a handoff note rather than compacting.
+
+## Handoff (2026-09-14, builder-opus, seam (a) done)
+
+Done (seam a):
+- `layout::cache`: fingerprint over `&[RowShape]` (`fingerprint`, running per growing frontier chunk); every chunk laid out keeps `LaidOut { print, materialised }`; eviction drops rows only; `check` / `admit` split; `renote` restores a chunk cut back by `truncate`.
+- `StreamingLayout::advance`: materialises a frontier batch only if it starts a chunk meeting viewport ± `buffer_rows`, or continues a held chunk; otherwise passes through.
+- `rows` → `rebuild(wanted chunks)`: one replay from the nearest checkpoint, every replayed chunk fingerprint-checked, adjacent wanted chunks materialised as one batch (`admit_run`).
+- `Resident.passed_through`, `Work.links_read`; `RowShape: Hash`. MAP.md + DESIGN.md §3.6 paragraph.
+- Tests: determinism on the 5k pair vs materialise-everything and `layout()` (odd budget 37, partial chunks pass through); cold jump hydrated ≤ 2×chunk+buffer; deep read merge_reads ≤ merge lanes open at the row. Corpus test asserts pass-through then 0 after the scroll.
+
+Existing tests changed (premise removed by this ticket, not regressions):
+- `stream::tests` Forgetful: rewrote commit messages on re-read; a shape fingerprint cannot see a message. Now re-served links drop parents.
+- `inclusion::tests::folding_invalidates_only_the_rows_from_the_merge_down`: viewport set over all 42 rows so "nothing kept was rebuilt" still isolates the reinclude.
+- `tests/it/streaming.rs` linear: `hydrated == pulled + reread` → `hydrated <` that, `passed_through == 0` after scroll; body moved to `assert_linear_work` (clippy too_many_lines).
+
+Spec conflict to resolve: acceptance wants `merge_reads == 0` on cold G with the viewport at the top, but frontier chunks are materialised one pull at a time, and the existing test `a_merge_lane_open_across_a_chunk_boundary_is_named_with_one_read` (must stay unchanged) expects 1 read across a frontier chunk boundary. So a merge lane crossing chunk 0→1 or 1→2 costs one read. Not changed; measure and decide (carrying names across contiguous frontier batches would make it 0 and break that test).
+
+Next (seam b), exact steps:
+1. `crates/graft/tests/it/budget_run.rs` `Numbers` has no `Work`; `serve` never exposes the layout. To report hydrated/merge_reads/links_read for `G`, extend `order_bytes`-style direct drive (it repeats `Views::new` setup) or add a counter at `WalkSource::read` in `crates/graft/src/history/source.rs`.
+2. Release, alone, 3 runs each: `cargo run --release -p graft --example budgets -- ~/.cache/graft/git-git.git` (cg and no-cg: check how 46/51 toggled the commit-graph — see `scripts/memory-curve.sh`); 1M cg via `scripts/memory-curve.sh 1000000` (builds a ~350 MiB fixture under target/fixtures, heavy).
+3. Record peak RSS (was 219–226 MiB git/git), G time, 1M cg RSS + objects read during G into this ticket. Batch `WalkSource::read` only if per-handle reads show in G.
+4. `frames::` rows-on-hand check in release (`crates/graft/tests/it/frames.rs`, heavy tier) and the heavy tier once at the end.

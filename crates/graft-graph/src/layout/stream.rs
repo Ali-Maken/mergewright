@@ -151,6 +151,9 @@ pub struct Resident {
     pub frontier_bytes: usize,
     /// Approximate bytes of the emitted order (ids and their rows).
     pub order_bytes: usize,
+    /// Rows laid out whose commits were never read: chunks that passed
+    /// through outside the viewport's window and have not been asked for.
+    pub passed_through: usize,
 }
 
 /// How much work the layout has done, for tests and benchmarks that want to
@@ -170,6 +173,8 @@ pub struct Work {
     pub hydrated: usize,
     /// Commits read only to name a merge lane opened above their batch.
     pub merge_reads: usize,
+    /// Links the source served, pulled from the walk or re-served by handle.
+    pub links_read: usize,
 }
 
 /// A graph laid out a chunk at a time, with a bounded resident set.
@@ -292,9 +297,17 @@ impl<S: CommitSource> StreamingLayout<S> {
             let shapes = self
                 .frontier
                 .extend(&pull.links, &self.source, &mut self.order);
-            let rows = materialise(&mut self.source, &mut self.work, shapes)?;
-            emitted += rows.len();
-            self.cache.push_frontier(start, rows);
+            emitted += shapes.len();
+            self.cache.note(start, &shapes);
+            let chunk = start / self.config.chunk_rows;
+            let offset = start % self.config.chunk_rows;
+            let continues_held = self.cache.held_len(chunk) == Some(offset);
+            if continues_held || (offset == 0 && self.materialises(chunk)) {
+                let rows = materialise(&mut self.source, &mut self.work, shapes)?;
+                self.cache.push_frontier(start, rows);
+            }
+            // Otherwise the chunk passes through: lane state, order and its
+            // fingerprint moved on; no commit was read.
             // A checkpoint at the very end of history would never be
             // resumed from: nothing lies past it.
             let reached = self.frontier.rows_emitted();
@@ -337,6 +350,7 @@ impl<S: CommitSource> StreamingLayout<S> {
 
         let pull = self.source.pull(limit, stop).map_err(StreamError::Source)?;
         self.work.commits_pulled += pull.links.len();
+        self.work.links_read += pull.links.len();
         let mut fresh = HashMap::with_capacity(pull.links.len());
         for (offset, link) in pull.links.iter().enumerate() {
             let again = start + offset;
@@ -357,6 +371,17 @@ impl<S: CommitSource> StreamingLayout<S> {
         Ok(pull)
     }
 
+    /// Whether `chunk`'s rows are read when the frontier lays it out: it
+    /// meets the viewport widened by `buffer_rows` either way — the rows a
+    /// scroll of a screen or so asks for next.
+    fn materialises(&self, chunk: usize) -> bool {
+        let chunk_rows = self.config.chunk_rows;
+        let top = self.viewport.start.saturating_sub(self.config.buffer_rows);
+        let bottom = self.viewport.end.saturating_add(self.config.buffer_rows);
+        let first = chunk * chunk_rows;
+        first < bottom && first + chunk_rows > top
+    }
+
     /// Tells the layout which rows are on screen, so it knows what to keep.
     pub fn set_viewport(&mut self, rows: Range<usize>) {
         self.viewport = rows;
@@ -370,7 +395,8 @@ impl<S: CommitSource> StreamingLayout<S> {
     }
 
     /// The rows in `rows`, as far as the frontier has reached, rebuilding
-    /// evicted chunks from the nearest checkpoint on the way.
+    /// chunks not held — evicted or passed through — from the nearest
+    /// checkpoint on the way. Only the chunks asked for are materialised.
     ///
     /// # Errors
     ///
@@ -383,11 +409,16 @@ impl<S: CommitSource> StreamingLayout<S> {
             return Ok(Vec::new());
         }
         let chunk_rows = self.config.chunk_rows;
+        let wanted = start / chunk_rows..(end - 1) / chunk_rows + 1;
+        let missing: Vec<usize> = wanted
+            .clone()
+            .filter(|&chunk| !self.cache.contains(chunk))
+            .collect();
+        if let (Some(&first), Some(&last)) = (missing.first(), missing.last()) {
+            self.rebuild(first..last + 1)?;
+        }
         let mut out = Vec::with_capacity(end - start);
-        for chunk in start / chunk_rows..=(end - 1) / chunk_rows {
-            if !self.cache.contains(chunk) {
-                self.rebuild(chunk)?;
-            }
+        for chunk in wanted {
             let chunk_start = chunk * chunk_rows;
             let low = start.max(chunk_start) - chunk_start;
             let high = end.min(chunk_start + chunk_rows) - chunk_start;
@@ -408,35 +439,64 @@ impl<S: CommitSource> StreamingLayout<S> {
         self.cache.contains(row / self.config.chunk_rows)
     }
 
-    /// Rebuilds `chunk` by replaying from the nearest checkpoint at or before
-    /// it. Every chunk replayed on the way is admitted too — they are the
-    /// ones the protected window keeps anyway — and every checkpoint passed
-    /// is recorded again if it had been evicted.
-    fn rebuild(&mut self, chunk: usize) -> Result<(), StreamError<S::Error>> {
+    /// Rebuilds the chunks in `wanted` by replaying from the nearest
+    /// checkpoint at or before the first. Every chunk replayed is checked
+    /// against its fingerprint; only the wanted ones not held are
+    /// materialised, each run of adjacent ones as one batch so a merge lane
+    /// crossing between them is named once. Every checkpoint passed is
+    /// recorded again if it had been evicted.
+    fn rebuild(&mut self, wanted: Range<usize>) -> Result<(), StreamError<S::Error>> {
         let chunk_rows = self.config.chunk_rows;
-        let end = ((chunk + 1) * chunk_rows).min(self.frontier.rows_emitted());
+        let reached = self.frontier.rows_emitted();
+        let end = (wanted.end * chunk_rows).min(reached);
         let (mut row, mut cursor) = self
             .checkpoints
-            .nearest_at_or_before(chunk * chunk_rows)
+            .nearest_at_or_before(wanted.start * chunk_rows)
             .unwrap_or_else(|| (0, self.base.clone()));
         let handles = self.order.handles(row..end).to_vec();
         let links = links_exactly(&mut self.source, &mut self.work, &handles)?;
         self.work.rows_replayed += links.len();
 
+        // A run of adjacent chunks to materialise: their first index and the
+        // shapes laid out for them, in order.
+        let mut run: Option<(usize, Vec<RowShape>)> = None;
         for batch in links.chunks(chunk_rows) {
             let shapes = cursor.extend(batch, &self.source, &mut self.order);
-            let rows = materialise(&mut self.source, &mut self.work, shapes)?;
             let index = row / chunk_rows;
-            if !self.cache.contains(index) {
-                self.work.chunks_rebuilt += 1;
-            }
             self.cache
-                .admit(index, rows)
+                .check(index, &shapes)
                 .map_err(|Differs { start, end }| StreamError::RebuildDiffers { start, end })?;
+            if wanted.contains(&index) && !self.cache.contains(index) {
+                run.get_or_insert_with(|| (index, Vec::new()))
+                    .1
+                    .extend(shapes);
+            } else if let Some((first, shapes)) = run.take() {
+                self.admit_run(first, shapes)?;
+            }
             row += batch.len();
-            if self.checkpoints.is_due(row) && row < self.frontier.rows_emitted() {
+            if self.checkpoints.is_due(row) && row < reached {
                 self.checkpoints.record(row, cursor.clone());
             }
+        }
+        if let Some((first, shapes)) = run {
+            self.admit_run(first, shapes)?;
+        }
+        Ok(())
+    }
+
+    /// Materialises a run of adjacent chunks starting at `first` as one
+    /// batch and admits each chunk's rows.
+    fn admit_run(
+        &mut self,
+        first: usize,
+        shapes: Vec<RowShape>,
+    ) -> Result<(), StreamError<S::Error>> {
+        let rows = materialise(&mut self.source, &mut self.work, shapes)?;
+        let mut rows = rows.into_iter();
+        for (offset, len) in rows_per_chunk(rows.len(), self.config.chunk_rows).enumerate() {
+            self.work.chunks_rebuilt += 1;
+            self.cache
+                .admit(first + offset, rows.by_ref().take(len).collect());
         }
         Ok(())
     }
@@ -520,6 +580,7 @@ impl<S: CommitSource> StreamingLayout<S> {
             checkpoint_bytes: self.checkpoints.approximate_bytes(),
             frontier_bytes: self.frontier.approximate_bytes(),
             order_bytes: self.order.approximate_bytes(),
+            passed_through: self.cache.passed_through(),
         }
     }
 
@@ -580,8 +641,15 @@ impl<S: CommitSource> StreamingLayout<S> {
         let links = links_exactly(&mut self.source, &mut self.work, &handles)?;
         self.work.rows_replayed += links.len();
         // The replayed rows are the ones the cache still holds before `row`;
-        // only the cursor they leave behind is wanted, so nothing is read.
-        let _replayed = cursor.extend(&links, &self.source, &mut self.order);
+        // only the cursor they leave behind is wanted, so nothing is read —
+        // except the shapes of the chunk cut back, whose fingerprint resumes.
+        let replayed = cursor.extend(&links, &self.source, &mut self.order);
+        let chunk_rows = self.config.chunk_rows;
+        if !row.is_multiple_of(chunk_rows) {
+            let cut = row / chunk_rows;
+            self.cache
+                .renote(cut, &replayed[cut * chunk_rows - start..]);
+        }
         self.order.truncate(row);
         self.frontier = cursor;
         self.done = false;
@@ -640,6 +708,11 @@ fn materialise<S: CommitSource>(
         .collect()
 }
 
+/// The lengths of the chunks `rows` rows fill, `chunk_rows` at a time.
+fn rows_per_chunk(rows: usize, chunk_rows: usize) -> impl Iterator<Item = usize> {
+    (0..rows.div_ceil(chunk_rows)).map(move |chunk| (rows - chunk * chunk_rows).min(chunk_rows))
+}
+
 /// Reads `handles` from `source` and checks it returned exactly them, in
 /// order.
 fn read_exactly<S: CommitSource>(
@@ -674,6 +747,7 @@ fn links_exactly<S: CommitSource>(
 ) -> Result<Vec<Link>, StreamError<S::Error>> {
     let links = source.links(handles).map_err(StreamError::Source)?;
     work.commits_reread += links.len();
+    work.links_read += links.len();
     if links.len() != handles.len() {
         return Err(StreamError::ShortRead {
             asked: handles.len(),

@@ -382,29 +382,31 @@ fn an_evicted_chunk_rebuilds_identically_when_scrolled_back_to() {
     );
 }
 
-/// A source that hands back a different commit on every read after a
-/// commit's first. The ids match, so only the fingerprint can catch it.
+/// A source whose walk is honest but whose re-served links drop every
+/// parent. The handles match, so only the fingerprint can catch it.
 struct Forgetful(VecSource, std::collections::HashSet<CommitHandle>);
 
 impl CommitSource for Forgetful {
     type Error = Infallible;
 
     fn pull(&mut self, limit: usize, stop: &dyn Fn() -> bool) -> Result<Pull, Infallible> {
-        self.0.pull(limit, stop)
+        let pull = self.0.pull(limit, stop)?;
+        self.1.extend(pull.links.iter().map(|link| link.commit));
+        Ok(pull)
     }
 
     fn read(&mut self, handles: &[CommitHandle]) -> Result<Vec<Commit>, Infallible> {
-        let mut commits = self.0.read(handles)?;
-        for (&handle, commit) in handles.iter().zip(&mut commits) {
-            if !self.1.insert(handle) {
-                commit.message = b"rewritten".to_vec();
-            }
-        }
-        Ok(commits)
+        self.0.read(handles)
     }
 
     fn links(&mut self, commits: &[CommitHandle]) -> Result<Vec<Link>, Infallible> {
-        self.0.links(commits)
+        let mut links = self.0.links(commits)?;
+        for link in &mut links {
+            if self.1.contains(&link.commit) {
+                link.parents = graft_core::commit_handle::Parents::None;
+            }
+        }
+        Ok(links)
     }
 
     fn handle_of(&self, id: &Oid) -> Option<CommitHandle> {
@@ -715,6 +717,144 @@ fn a_merge_lane_open_across_a_chunk_boundary_is_named_with_one_read() {
     let rows = streaming.rows(0..4).expect("an in-memory source");
     assert_eq!(rows, whole, "deferred names resolve to today's identities");
     assert_eq!(rows[2].lanes[1], Some(BranchIdentity::of_name(b"topic")));
+}
+
+// ---- rows hydrate on demand (m1-the-graph/52b) --------------------------
+
+/// The 5k synthetic pair: a history in topological order, and the same
+/// commits in jittered commit-date order.
+fn five_thousand_pair() -> [(Vec<Commit>, Seeds); 2] {
+    let commits = history(5_000, 11);
+    let seeds = seeds_for(&commits);
+    let skewed = skewed_by_date(&commits, 600, 11);
+    [(commits, seeds.clone()), (skewed, seeds)]
+}
+
+#[test]
+fn chunks_passed_through_rebuild_to_the_rows_a_layout_materialising_everything_gives() {
+    for (walk, seeds) in five_thousand_pair() {
+        let total = walk.len();
+        let whole = layout(&walk, seeds.clone());
+
+        let mut everything =
+            StreamingLayout::new(VecSource::new(walk.clone()), seeds.clone(), small());
+        everything.set_viewport(0..total);
+        advance_all(&mut everything);
+        assert_eq!(everything.resident().passed_through, 0);
+        let materialised = everything.rows(0..total).expect("an in-memory source");
+
+        // Viewport at the top, advanced in odd budgets so chunks pass through
+        // a part at a time.
+        let mut streaming = StreamingLayout::new(VecSource::new(walk), seeds, small());
+        streaming.set_viewport(0..40);
+        while !streaming.is_done() {
+            streaming.advance(37, &never).expect("an in-memory source");
+        }
+        let config = small();
+        let window = config.chunk_rows + config.buffer_rows;
+        assert_eq!(streaming.resident().passed_through, total - window);
+        assert_eq!(
+            streaming.work().hydrated,
+            window,
+            "only the top's window was read"
+        );
+
+        let rows = streaming
+            .rows(0..total)
+            .expect("every rebuilt chunk matches its fingerprint");
+        assert_eq!(rows, materialised, "field by field, lanes included");
+        assert_eq!(rows, whole);
+        assert_eq!(streaming.resident().passed_through, 0);
+    }
+}
+
+#[test]
+fn a_cold_jump_with_the_viewport_at_the_top_reads_only_the_top() {
+    let config = small();
+    for (walk, seeds) in five_thousand_pair() {
+        let mut streaming = StreamingLayout::new(VecSource::new(walk), seeds, config);
+        streaming.set_viewport(0..40);
+        advance_all(&mut streaming);
+        let work = streaming.work();
+        assert!(
+            work.hydrated <= 2 * config.chunk_rows + config.buffer_rows,
+            "{work:?}"
+        );
+        assert_eq!(work.links_read, work.commits_pulled);
+        eprintln!("cold jump, viewport at the top: {work:?}");
+
+        let bottom = streaming.rows_emitted() - 40;
+        streaming.set_viewport(bottom..bottom + 40);
+        streaming
+            .rows(bottom..bottom + 40)
+            .expect("an in-memory source");
+        let work = streaming.work();
+        assert!(work.links_read - work.commits_pulled >= work.rows_replayed);
+        assert!(work.rows_replayed <= config.checkpoint_every + config.chunk_rows);
+    }
+}
+
+#[test]
+fn a_deep_read_names_only_the_merge_lanes_open_at_its_first_row() {
+    let config = StreamConfig {
+        chunk_rows: 50,
+        checkpoint_every: 200,
+        max_checkpoints: 64,
+        resident_chunks: 4,
+        buffer_rows: 0,
+    };
+    let deep = 3_000;
+    for (walk, seeds) in five_thousand_pair() {
+        // The merge lanes open at `deep`, from the shapes themselves.
+        let mut source = VecSource::new(walk.clone());
+        let handles: Vec<CommitHandle> = walk
+            .iter()
+            .map(|commit| source.handle_of(&commit.id).expect("interned"))
+            .collect();
+        let links = source
+            .links(&handles[..=deep])
+            .expect("an in-memory source");
+        let mut cursor = LayoutCursor::new(seeds.clone(), &source);
+        let shapes = cursor.extend(&links, &source, &mut EmittedOrder::new());
+        let mut open: Vec<CommitHandle> = shapes[deep]
+            .lanes
+            .iter()
+            .flatten()
+            .filter_map(|identity| match *identity {
+                crate::lane::LaneIdentity::Merge { merge, .. } => Some(merge),
+                crate::lane::LaneIdentity::Known(_) => None,
+            })
+            .collect();
+        open.sort_unstable();
+        open.dedup();
+
+        let mut streaming = StreamingLayout::new(source, seeds, config);
+        streaming.set_viewport(0..10);
+        advance_all(&mut streaming);
+        let before = streaming.work();
+        streaming.set_viewport(deep..deep + 10);
+        streaming
+            .rows(deep..deep + 10)
+            .expect("an in-memory source");
+        let after = streaming.work();
+
+        assert_eq!(
+            after.hydrated - before.hydrated,
+            config.chunk_rows,
+            "one chunk read"
+        );
+        assert!(
+            after.merge_reads - before.merge_reads <= open.len(),
+            "{} merge reads, {} merge lanes open at row {deep}",
+            after.merge_reads - before.merge_reads,
+            open.len()
+        );
+        eprintln!(
+            "deep read: {} merge reads, {} merge lanes open",
+            after.merge_reads - before.merge_reads,
+            open.len()
+        );
+    }
 }
 
 // ---- contracts -----------------------------------------------------------
