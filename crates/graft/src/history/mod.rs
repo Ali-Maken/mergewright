@@ -316,15 +316,18 @@ pub fn stream(
     stop: &dyn Fn() -> bool,
     report: &mut dyn FnMut(HistoryUpdate) -> Delivery,
 ) -> Result<Ended, String> {
+    // One read of the refs serves the branches, the seeds and the walk's
+    // tips: at thousands of loose refs each read is tens of milliseconds, and
+    // reading them three times was most of first paint (m1-the-graph/55).
+    let refs = store.refs().map_err(|error| error.to_string())?;
     let branches = store.branches().map_err(|error| error.to_string())?;
     let repo = store.shared().map_err(|error| error.to_string())?;
     let handle = repo.handle();
-    let refs = handle.references().map_err(|error| error.to_string())?;
-    let seeds = seeds_for(&refs, &branches);
+    let seeds = seeds_for(&refs.refs, &branches);
 
     let table = store.table().map_err(|error| error.to_string())?;
-    let walk =
-        Walk::all_refs(&handle, order, Arc::clone(&table)).map_err(|error| error.to_string())?;
+    let walk = Walk::from_tips(&handle, order, &refs.tips, Arc::clone(&table))
+        .map_err(|error| error.to_string())?;
     let facts = WalkFacts {
         requested: walk.requested_order(),
         order: walk.order_in_force(),
@@ -349,7 +352,7 @@ pub fn stream(
         }
         let walk = match started.take() {
             Some(walk) => walk,
-            None => Walk::all_refs(handle, order, Arc::clone(&table))?,
+            None => Walk::from_tips(handle, order, &refs.tips, Arc::clone(&table))?,
         };
         Ok(WalkSource::new(handle, walk))
     };

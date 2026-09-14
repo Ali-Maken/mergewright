@@ -482,6 +482,18 @@ impl<S: JobEvents> JobRunner<S> {
 }
 
 impl<S: JobEvents> JobRunner<S> {
+    /// Opens (or, on `Ctrl+R`, re-opens) the repository. The refresh runs
+    /// here, on the dispatching thread, not in the job: the jobs that read
+    /// refs are dispatched right after and may start first on another
+    /// worker, and must not be served refs read before it (m1-the-graph/55).
+    fn open_repository(&self) {
+        self.repos.refresh();
+        self.announce(
+            Task::OpenRepository,
+            open_repository(Arc::clone(&self.repos)),
+        );
+    }
+
     /// Sorts the whole range topologically off the loop's thread, for a walk
     /// whose order is provisional (ADR-0008).
     fn promote_history(&self) {
@@ -503,12 +515,7 @@ impl<S: JobEvents> JobRunner<S> {
 impl<S: JobEvents> Dispatch for JobRunner<S> {
     fn dispatch(&self, command: Command) {
         match command {
-            Command::OpenRepository => {
-                self.announce(
-                    Task::OpenRepository,
-                    open_repository(Arc::clone(&self.repos)),
-                );
-            }
+            Command::OpenRepository => self.open_repository(),
             Command::CheckSystemGit => {
                 self.announce(Task::CheckSystemGit, check_system_git());
             }
@@ -583,14 +590,14 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
 /// `update` does. Only the first one pays: after that the store hands out a
 /// handle onto a repository that is already open.
 ///
-/// This is also what `Ctrl+R` re-runs, so it is where anything derived from
-/// refs — the default branch, ADR-0001 — is thrown away and worked out again.
+/// This is also what `Ctrl+R` re-runs; dispatching it is where anything
+/// derived from refs — the refs read, the default branch (ADR-0001) — is
+/// marked stale, before the jobs that read them start.
 fn open_repository(store: Arc<RepoStore>) -> Work {
     Box::new(move |cancel| {
         if cancel.is_cancelled() {
             return Outcome::Cancelled;
         }
-        store.refresh();
         // Whether it opened or not is the answer, and both halves go back the
         // same way: "not a repository" is what the user asked about.
         let facts = store

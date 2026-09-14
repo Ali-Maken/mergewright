@@ -64,19 +64,24 @@ pub fn run(repo: &Path) -> Result<(), String> {
     facts(&handle)?;
     clock.lap("open", "")?;
 
-    let refs = handle.references().map_err(|why| why.to_string())?;
-    clock.lap("refs.references", &format!("{} refs", refs.len()))?;
-    let tips = handle.commit_tips().map_err(|why| why.to_string())?;
-    clock.lap("refs.commit_tips", &format!("{} tips", tips.len()))?;
-    let branches = Branches::resolve(&handle, None).map_err(|why| why.to_string())?;
-    clock.lap("refs.resolve", &format!("{:?}", branches.chosen_by()))?;
-    let seeds = seeds_for(&refs, &branches);
+    // The history job's path since Phase B: one read of the refs serves the
+    // branches, the seeds and the walk's tips.
+    let snapshot = handle.ref_snapshot().map_err(|why| why.to_string())?;
+    clock.lap(
+        "refs.ref_snapshot",
+        &format!("{} refs, {} tips", snapshot.refs.len(), snapshot.tips.len()),
+    )?;
+    let branches =
+        Branches::resolve_from(&handle, &snapshot.refs, None).map_err(|why| why.to_string())?;
+    clock.lap("refs.resolve_from", &format!("{:?}", branches.chosen_by()))?;
+    let seeds = seeds_for(&snapshot.refs, &branches);
     clock.lap("refs.seeds_for", "")?;
+    let tips = snapshot.tips;
 
     let table = Arc::new(CommitTable::open(&handle).map_err(|why| why.to_string())?);
     clock.lap("table", &format!("graph {}", table.graph_count()))?;
 
-    let walk = Walk::all_refs(&handle, Order::Topological, Arc::clone(&table))
+    let walk = Walk::from_tips(&handle, Order::Topological, &tips, Arc::clone(&table))
         .map_err(|why| why.to_string())?;
     clock.lap(
         "walk_new",

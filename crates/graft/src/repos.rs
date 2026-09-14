@@ -16,13 +16,13 @@
 //! of history and is far too slow to ask twice.
 
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use graft_core::ref_name::RefName;
 use graft_git::branches::{BranchError, Branches};
 use graft_git::history::{CommitTable, TableError};
-use graft_git::repo::{OpenError, SharedRepo};
+use graft_git::repo::{OpenError, RefSnapshot, SharedRepo, TipsError};
 
 /// The open repository, and what has been worked out about it once.
 pub struct RepoStore {
@@ -30,7 +30,16 @@ pub struct RepoStore {
     /// The user's `graph.default_branch`, if they set one (ADR-0001 rule 1).
     override_branch: Option<RefName>,
     open: Mutex<Option<Arc<SharedRepo>>>,
-    branches: Mutex<Option<Arc<Branches>>>,
+    /// The refs and their tips, read once per open or refresh: at thousands
+    /// of loose refs a read is tens of milliseconds, and first paint needs it
+    /// for the branches, the seeds and the walk (m1-the-graph/55).
+    refs: Mutex<Option<(u64, Arc<RefSnapshot>)>>,
+    branches: Mutex<Option<(u64, Arc<Branches>)>>,
+    /// Bumped by [`refresh`](Self::refresh); a cached reading from an older
+    /// generation is read again. A counter rather than clearing the caches,
+    /// so `refresh` never waits on a read in progress, and a read that
+    /// started before it cannot be served after it.
+    generation: AtomicU64,
     /// The repository's one id table (ADR-0026): every walk and source hands
     /// out handles from it, so a handle means the same commit in every job.
     table: Mutex<Option<Arc<CommitTable>>>,
@@ -52,7 +61,9 @@ impl RepoStore {
             path,
             override_branch,
             open: Mutex::new(None),
+            refs: Mutex::new(None),
             branches: Mutex::new(None),
+            generation: AtomicU64::new(0),
             table: Mutex::new(None),
             opens: AtomicUsize::new(0),
         }
@@ -81,6 +92,26 @@ impl RepoStore {
         Ok(repo)
     }
 
+    /// Every ref and every commit they reach, read the first time it is
+    /// asked for and kept until [`refresh`](Self::refresh).
+    ///
+    /// # Errors
+    /// [`StoreError`] if the repository cannot be opened or its refs cannot be
+    /// read. A failure is not remembered.
+    pub fn refs(&self) -> Result<Arc<RefSnapshot>, StoreError> {
+        let repo = self.shared()?;
+        let generation = self.generation.load(Ordering::Acquire);
+        let mut cached = lock(&self.refs);
+        if let Some((read_at, refs)) = cached.as_ref()
+            && *read_at == generation
+        {
+            return Ok(Arc::clone(refs));
+        }
+        let refs = Arc::new(repo.handle().ref_snapshot()?);
+        *cached = Some((generation, Arc::clone(&refs)));
+        Ok(refs)
+    }
+
     /// Which branch owns lane 0, and which branches sit beside it (ADR-0001).
     ///
     /// Worked out once and kept. Called from a job, never from `update`: rule
@@ -91,15 +122,21 @@ impl RepoStore {
     /// read.
     pub fn branches(&self) -> Result<Arc<Branches>, StoreError> {
         let repo = self.shared()?;
+        let generation = self.generation.load(Ordering::Acquire);
         let mut cached = lock(&self.branches);
-        if let Some(branches) = cached.as_ref() {
+        if let Some((read_at, branches)) = cached.as_ref()
+            && *read_at == generation
+        {
             return Ok(Arc::clone(branches));
         }
-        let resolved = Arc::new(Branches::resolve(
+        // Locks `refs` inside `branches`; nothing locks them the other way.
+        let refs = self.refs()?;
+        let resolved = Arc::new(Branches::resolve_from(
             &repo.handle(),
+            &refs.refs,
             self.override_branch.as_ref(),
         )?);
-        *cached = Some(Arc::clone(&resolved));
+        *cached = Some((generation, Arc::clone(&resolved)));
         Ok(resolved)
     }
 
@@ -134,9 +171,14 @@ impl RepoStore {
     ///
     /// What `Ctrl+R` means for the cached parts: the open repository stays
     /// open — `gix` re-reads refs and objects from disk anyway — but the
-    /// default branch is a conclusion drawn from refs that may have moved.
+    /// default branch is a conclusion drawn from refs that may have moved,
+    /// and the refs read are the refs that may have moved.
+    ///
+    /// Takes no lock, so the loop's thread may call it: it must run before
+    /// the jobs that read refs are dispatched, or a job could be served the
+    /// reading from before it.
     pub fn refresh(&self) {
-        *lock(&self.branches) = None;
+        self.generation.fetch_add(1, Ordering::AcqRel);
     }
 }
 
@@ -156,6 +198,9 @@ pub enum StoreError {
     /// The repository could not be opened.
     #[error(transparent)]
     Open(#[from] OpenError),
+    /// It opened, but its refs could not be read.
+    #[error(transparent)]
+    Refs(#[from] TipsError),
     /// It opened, but ADR-0001's question could not be answered.
     #[error(transparent)]
     Branches(#[from] BranchError),
@@ -270,6 +315,24 @@ mod tests {
         );
         assert_eq!(*before, *after, "nothing moved, so it is the same answer");
         assert_eq!(store.opens(), 1, "the repository was not re-opened");
+    }
+
+    /// m1-the-graph/55: first paint needs the refs for the branches, the
+    /// seeds and the walk's tips; at thousands of loose refs each read is
+    /// tens of milliseconds, so they are read once and shared.
+    #[test]
+    fn the_refs_are_read_once_and_shared_until_a_refresh() {
+        let store = store(Shape::FeatureBranches);
+
+        let first = store.refs().expect("the fixture's refs can be read");
+        store.branches().expect("the fixture's refs can be read");
+        let second = store.refs().expect("the fixture's refs can be read");
+        assert!(Arc::ptr_eq(&first, &second), "branches reuse the reading");
+
+        store.refresh();
+        let after = store.refs().expect("the fixture's refs can be read");
+        assert!(!Arc::ptr_eq(&first, &after), "a refresh reads them again");
+        assert_eq!(*first, *after, "nothing moved, so it is the same answer");
     }
 
     /// One store, many worker threads: the whole reason `SharedRepo` exists.

@@ -1,6 +1,6 @@
 # m1-the-graph/55 — First paint at a million commits: name the cause by measurement, then fix it
 
-Status: partial (Phase A done; Phase B next)
+Status: partial (Phase A done; Phase B fix 1 done, fix 2 next — see "Handoff (Phase B fix 1 → fix 2)")
 Build with: **Opus** (high) — phase instrumentation inside the walk and the app's open path, then a fix in the rev-walk or the first-window path; correctness is numbers plus the existing order tests, so not Fable.
 Needs: `Walk::next_links`, `CommitTable` (commit-handles-and-table); the walk reading the graph with dense state and its odb-read counter (walk-reads-the-commit-graph); rows hydrating on demand (rows-hydrate-on-demand **and rows-pass-through**, split 2026-09-14). Runs after all of them: their numbers are this ticket's baseline.
 Blocked by: 49, 50, 52, 52b (rows-pass-through)
@@ -115,3 +115,32 @@ Next exact step, Phase B (fix the cause: read refs once on the first-paint path;
 - Re-measure with `target/release/examples/budgets --phases <fixture>` and plain `budgets <fixture>` (fixtures: `target/fixtures/synthetic-1000000-commit-graph-511a25b425758b13`, `…-no-commit-graph-8ac5be635bb9d262`, `synthetic-100000-commit-graph-0fb9210ab6ca6ac4`, `…-no-commit-graph-024d506de281597a`).
 - Gotchas: first run after a build is cold (`references` 120–525 ms) — discard or report separately; `budgets <repo> | head -1` panics on broken pipe after printing (harmless, redirect instead); the ~145 MiB RSS at `commit_tips` is header lookups, not refs — a fix that keeps `find_header` per tip keeps it.
 - Not for this ticket: the RSS rise; the provisional-paint fallback (not needed — the in-degree pass is ~1 ms).
+
+## Phase B, fix 1 — refs read once on the history job (2026-09-14; raw: `target/55/phaseB.txt`)
+
+**Fix (cause):** `RepoHandle::ref_snapshot` reads the ref store once and returns `references()` and `commit_tips()` exactly (same iteration, same `tip_of`, same `HEAD`/sort/dedup; `commit_tips` now delegates to it; test pins both halves loose and packed). `RepoStore::refs` caches it; `RepoStore::branches` uses `Branches::resolve_from(handle, &refs, override)`; `history::stream` takes seeds and `Walk::from_tips(…, &refs.tips, …)` from it (the second view too). Emitted order untouched: tips are byte-identical by construction; all order and snapshot tests pass unchanged.
+**Refresh race closed with it:** `refresh` is now a lock-free generation bump, called when `OpenRepository` is *dispatched* (loop thread), not inside the job. Before, a history job starting ahead of the open job on another worker could get pre-`Ctrl+R` branches; with refs cached it would also have got stale tips. Cost to the user: none measured; `Ctrl+R` never serves refs from before the keypress.
+
+Serial `--phases`, release, warm (first run per path discarded):
+
+| Phase | 1M cg (3) | 1M no-cg (3) | 100k cg | 100k no-cg |
+|---|---|---|---|---|
+| `refs.ref_snapshot` | 91–94, +147 MiB | 84–89, +147 MiB | 102 (cold) | 109 (cold) |
+| `refs.resolve_from` | 0.08 | 0.08 | 0.01 | 0.02 |
+| `walk_new` (`from_tips`) | 3.0–3.3 | 13.4–13.6 | 8.1 | 1.9 |
+| **total** | **97–101** (was 291–347) | **100–105** (was 299–300) | 114 (cold) | 114 (cold) |
+
+With jobs (`budgets`, first paint): 1M cg **191–195 ms** (was 255), 1M no-cg **193–203 ms** (was 270), 100k cg 20.5, 100k no-cg 21.1. Against 500 (judged): pass every run. Against 150: **miss**, residual named below.
+
+**Residual named (discriminator, same file):** `ReadRefs` (`refs::read` → `peeled_references`) enumerates all 6,498 loose refs and `find_header`s 6,497 tips on another worker *concurrently* with the history job's read. Disabled (temporary local edit, reverted, not committed): 1M cg **98 / 98 ms**, no-cg **104 / 103 ms** (cold first runs 146 / 452 discarded). So the ~90 ms residual is contention with the fourth enumeration, not the history path.
+
+## Handoff (Phase B fix 1 → fix 2)
+
+Done and committed: fix 1 above, MAP.md (graft-git: `RefSnapshot`, `ref_snapshot`, `resolve_from`; graft: `RepoStore::refs`, `refresh`, `StoreError::Refs`), `phases.rs` mirrors the new path. Gates: fmt, clippy, clippy heavy-tests, `cargo test` 841/0.
+
+Next exact step (fix 2, same cause — "read refs once and reuse"):
+- Add `peeled: Vec<(RefName, Oid)>` to `RefSnapshot`, filled in the same loop from `tip_of` (sorted by name, refs with no commit left out — exactly `peeled_references`); make `peeled_references` delegate; extend `snapshot_is_both_halves` in `graft-git/src/repo/tests.rs`.
+- `refs::read` (`crates/graft/src/refs/mod.rs:159`) takes `store.refs()?.peeled` instead of `handle.peeled_references()`. It then waits on the store's `refs` mutex while the history job reads (or vice versa): one read total.
+- Re-measure `budgets` 1M cg/no-cg ×3, 100k both; expect ~100 ms with jobs. Check `tests/it/many_refs.rs` (50k refs, `refs::read` timing, heavy) still holds.
+- Then: TESTING.md curve section (one first-paint row per cell), KNOWN_GAPS rows (156 and the "1M first paint is not the walk" note, and 177 "50k refs slow first paint in debug" — its "shared ref read" decision is now made), heavy tier once at the end.
+- Gotchas: `dispatch` in `jobs/mod.rs` is at clippy's 60-line limit — add arms as methods. First run after a build is cold; discard it. The +147 MiB peak at `ref_snapshot` is `tip_of`'s `find_header` on scattered tips (pack pages), not the ref files — left for memory-curve-acceptance.

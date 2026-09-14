@@ -86,13 +86,28 @@ impl Branches {
         handle: &RepoHandle,
         override_name: Option<&RefName>,
     ) -> Result<Self, BranchError> {
-        let refs = handle.references()?;
+        Branches::resolve_from(handle, &handle.references()?, override_name)
+    }
+
+    /// [`resolve`](Self::resolve) over refs the caller has already read —
+    /// every ref, as [`RepoHandle::references`] returns them — so a caller
+    /// that needs the refs anyway does not read the ref store twice
+    /// (m1-the-graph/55). `handle` is still read: rule 3's config, rule 5's
+    /// history.
+    ///
+    /// # Errors
+    /// [`BranchError`] if a commit on a first-parent chain cannot be read.
+    pub fn resolve_from(
+        handle: &RepoHandle,
+        refs: &[RefEntry],
+        override_name: Option<&RefName>,
+    ) -> Result<Self, BranchError> {
         let locals: Vec<&RefEntry> = refs
             .iter()
             .filter(|entry| entry.name.as_bytes().starts_with(HEADS))
             .collect();
 
-        let (default, chosen) = match pick(handle, &refs, &locals, override_name)? {
+        let (default, chosen) = match pick(handle, refs, &locals, override_name)? {
             Some((name, chosen)) => (Some(name), Some(chosen)),
             None => (None, None),
         };

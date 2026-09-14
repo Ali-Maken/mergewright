@@ -175,11 +175,12 @@ One line per public item. Update when a public item changes.
 - `RepoStore::new` (fn) — build a store for a path, with an optional forced branch.
 - `RepoStore::path` (fn) — the path Graft was pointed at.
 - `RepoStore::shared` (fn) — the shared open repository handle.
-- `RepoStore::branches` (fn) — the repository's branches.
+- `RepoStore::refs` (fn) — the refs and their tips (`RefSnapshot`), read once, dropped by `refresh`; first paint's branches, seeds and walk tips share it.
+- `RepoStore::branches` (fn) — the repository's branches, resolved from `refs`.
 - `RepoStore::table` (fn) — the repository's one `Arc<CommitTable>`, opened once, kept across `refresh`.
 - `RepoStore::opens` (fn) — how many times the repository has been opened from scratch.
-- `RepoStore::refresh` (fn) — mark cached conclusions (e.g. default branch) stale.
-- `StoreError` (enum) — why the store could not answer (open, branches, id table).
+- `RepoStore::refresh` (fn) — mark cached refs and conclusions (e.g. default branch) stale.
+- `StoreError` (enum) — why the store could not answer (open, refs, branches, id table).
 
 ## cli
 - `Invocation` (enum) — what the user asked for.

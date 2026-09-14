@@ -13,6 +13,7 @@ One line per public item. Update when a public item changes.
 - `Chosen` (enum) — how the default branch was chosen (ADR-0001's fallback chain).
 - `Branches` (struct) — a repository's refs, resolved into a default and an integration set.
 - `Branches::resolve` (fn) — work out the default branch and integration refs from a repo's refs.
+- `Branches::resolve_from` (fn) — `resolve` over refs the caller already read (no second ref-store read).
 - `Branches::default_branch` (fn) — the chosen default branch, if any.
 - `Branches::chosen_by` (fn) — which rule in ADR-0001's chain chose the default branch.
 - `Branches::integration` (fn) — the refs treated as integration branches.
@@ -64,6 +65,7 @@ One line per public item. Update when a public item changes.
 - `RepoHandle::head` (fn) — where `HEAD` points.
 - `RepoHandle::references` (fn) — every ref in the repository.
 - `RepoHandle::commit_tips` (fn) — every branch/tag tip commit.
+- `RepoHandle::ref_snapshot` (fn) — `references` and `commit_tips` from one pass over the ref store.
 - `RepoHandle::peeled_references` (fn) — every ref that reaches a commit, with that commit (tags peeled).
 - `RepoHandle::upstream` (fn) — the remote-tracking ref a branch pulls from, per its config.
 - `SharedRepo` (struct) — the `Send`, expensive-to-open half of a repository; hands out `RepoHandle`s.
@@ -74,6 +76,7 @@ One line per public item. Update when a public item changes.
 - `SharedRepo::git_dir` (fn) — the `.git` directory.
 - `TipsError` (enum) — why reading commit tips failed.
 - `RefEntry` (struct) — one ref: its name and target.
+- `RefSnapshot` (struct) — every ref (`refs`) and every commit they reach (`tips`), read in one pass.
 - `RefTarget` (enum) — what a ref points at.
 - `RefsError` (enum) — why reading references failed.
 - `HeadState` (enum) — where `HEAD` points: a branch, detached, or unborn.

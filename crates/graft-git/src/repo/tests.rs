@@ -327,6 +327,19 @@ fn ahead_behind_counts_the_ref_states_branches() {
     );
 }
 
+/// m1-the-graph/55: the one-pass reading is exactly `references` and the
+/// expected tips.
+fn snapshot_is_both_halves(repo: &RepoHandle, expected_tips: &[String], packed: bool) {
+    let snapshot = repo.ref_snapshot().expect("refs read");
+    assert_eq!(
+        snapshot.refs,
+        repo.references().expect("refs read"),
+        "snapshot refs, packed: {packed}"
+    );
+    let tips: Vec<String> = snapshot.tips.iter().map(Oid::to_string).collect();
+    assert_eq!(tips, expected_tips, "snapshot tips, packed: {packed}");
+}
+
 /// What `commit_tips` and `peeled_references` return when many refs share a
 /// commit and some refs name no commit at all — loose, then packed with
 /// git's peeled lines. Pins the answer so reading refs faster cannot change it
@@ -381,6 +394,7 @@ fn refs_sharing_commits_or_naming_no_commit_peel_the_same_loose_or_packed() {
             .map(hex)
             .collect();
         assert_eq!(tips, expected_tips, "tips, packed: {packed}");
+        snapshot_is_both_halves(&repo, &expected_tips, packed);
         let peeled: Vec<(String, String)> = repo
             .peeled_references()
             .expect("refs read")

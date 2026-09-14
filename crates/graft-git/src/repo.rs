@@ -189,7 +189,27 @@ impl RepoHandle {
     /// [`TipsError`] if the ref store cannot be read, or a ref cannot be
     /// peeled for a reason other than not naming a commit.
     pub fn commit_tips(&self) -> Result<Vec<Oid>, TipsError> {
+        Ok(self.ref_snapshot()?.tips)
+    }
+
+    /// [`references`](Self::references) and [`commit_tips`](Self::commit_tips)
+    /// from one pass over the ref store.
+    ///
+    /// Reading refs is one file per loose ref (~11 µs each): at 6,500 loose
+    /// refs a pass costs ~70 ms, and first paint used to pay it three times
+    /// (m1-the-graph/55). Whoever needs both the refs and the tips reads them
+    /// here, once. Each half is exactly what its own method returns.
+    ///
+    /// # Errors
+    /// [`TipsError`] if the ref store cannot be read, holds a name or an id
+    /// git's own rules reject, or a ref cannot be peeled for a reason other
+    /// than not naming a commit.
+    pub fn ref_snapshot(&self) -> Result<RefSnapshot, TipsError> {
         let read = |source: Box<dyn std::error::Error + Send + Sync>| TipsError::Read {
+            git_dir: self.git_dir().to_path_buf(),
+            source,
+        };
+        let malformed = |source| TipsError::Malformed {
             git_dir: self.git_dir().to_path_buf(),
             source,
         };
@@ -197,10 +217,19 @@ impl RepoHandle {
         let platform = self.repo.references().map_err(|why| read(Box::new(why)))?;
         let iter = platform.all().map_err(|why| read(Box::new(why)))?;
 
+        let mut refs = Vec::new();
         let mut tips = Vec::new();
         let mut known = KnownTips::new();
         for reference in iter {
             let mut reference = reference.map_err(read)?;
+            let target = match reference.target() {
+                gix::refs::TargetRef::Object(id) => RefTarget::Object(self.oid(id.as_bytes())?),
+                gix::refs::TargetRef::Symbolic(name) => {
+                    RefTarget::Symbolic(RefName::new(name.as_bstr().to_vec()).map_err(malformed)?)
+                }
+            };
+            let name = RefName::new(reference.name().as_bstr().to_vec()).map_err(malformed)?;
+            refs.push(RefEntry { name, target });
             tips.extend(self.tip_of(&mut reference, &mut known)?);
         }
         // `HEAD` is not in the ref store's iteration, and on a detached
@@ -211,9 +240,10 @@ impl RepoHandle {
             tips.push(self.oid(id.as_bytes())?);
         }
 
+        refs.sort_by(|left, right| left.name.cmp(&right.name));
         tips.sort_unstable();
         tips.dedup();
-        Ok(tips)
+        Ok(RefSnapshot { refs, tips })
     }
 
     /// Every ref that reaches a commit, with the commit it peels to, sorted
@@ -464,6 +494,17 @@ pub enum TipsError {
         /// Which invariant the value broke.
         source: graft_core::error::Error,
     },
+}
+
+/// Every ref and every commit they reach, read in one pass
+/// ([`RepoHandle::ref_snapshot`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RefSnapshot {
+    /// What [`RepoHandle::references`] returns: every ref, sorted by name.
+    pub refs: Vec<RefEntry>,
+    /// What [`RepoHandle::commit_tips`] returns: sorted, deduplicated, `HEAD`
+    /// included.
+    pub tips: Vec<Oid>,
 }
 
 /// One ref, as the ref store holds it.
