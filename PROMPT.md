@@ -94,7 +94,7 @@ The layout engine is a **pure library crate** with no terminal code, so it can b
   - The default branch is a repo's main line of history: the branch everything else grows out of and merges back into. Detect it by this **ordered** precedence, resolved once per repo and cached: (1) `origin/HEAD` if it resolves, (2) `init.defaultBranch` from git config, (3) the first existing of `main`, `master`, (4) otherwise the branch with the most first-parent merge targets. Always overridable per repo in config.
   - An **integration branch** is a long-lived branch that collects work but is not the default branch, such as `develop` or a `release/*` line. It gets a stable lane adjacent to lane 0 and never competes for lane 0.
 - **Lane reuse.** A lane freed when a branch ends can be reused, but never on the same row that frees it, so the picture stays unambiguous.
-- **Compact output.** Keep line crossings and total graph width to a minimum. When too many branches run in parallel, compress them behind a `+N` indicator that expands on demand.
+- **Compact output.** Keep line crossings and total graph width to a minimum. When too many branches run in parallel, fold the lowest-priority lanes behind a rail column; the header names the exact count (`+N lanes`) and `+` expands every fold on demand (ADR-0022, ADR-0025).
 - **Invariants,** enforced with property tests:
   - every parent edge is drawn
   - no edge passes through a node it isn't connected to
@@ -131,7 +131,7 @@ The layout engine is a **pure library crate** with no terminal code, so it can b
 - Selecting a commit highlights its ancestry path and dims unrelated lanes.
 - The detail pane shows which branches and tags contain it ("Contained in: main, release/2.1").
 
-**Hover** shows a tooltip with the full message, parents and containing branches. Everything in a tooltip must also be reachable without hover.
+**Hover** (no tooltip, ADR-0023) reveals a row's full subject in the footer when the graph column has truncated it; `Enter` on the cursor row gives the same reveal without a mouse. The full message, parents and containing branches live in the detail pane (M2), and `y` copies the selected commit's SHA.
 
 **Folding**
 

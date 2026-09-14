@@ -8,35 +8,60 @@ the versioning scheme are decided in M8.
 
 ## [Unreleased]
 
-### M1 — The graph (in progress)
+### M1 — The graph
 
-Nothing user-visible yet. What exists so far is the ground the graph is
-tested on.
+Graft draws its commit graph. Nothing here has been confirmed by eye in a
+real terminal yet — see README's "What has actually been watched" and
+`TESTING.md`'s manual checklist, still **not run**.
 
 #### Added
 
+- **The commit graph itself**: lanes, merge curves, refs and relative dates
+  for the current branch's ancestry, across pixel (Kitty), Unicode and ASCII
+  rendering tiers chosen from M0's capability probe (or forced by
+  `graph.renderer`). `j`/`k` scroll, `1` toggles first-parent-only view.
+- **Folding beyond the lane cap**: the cap follows terminal width
+  (8/10/12 lanes) and is a priority-ordered budget, not a set of vetoes
+  (ADR-0022, ADR-0025); lanes over the cap fold behind a `⋮` rail, with the
+  exact count in the header (`+N lanes`).
+- **No hover tooltip** (ADR-0023): `Enter` on a truncated row reveals its
+  full subject in the footer; `y` copies the selected commit's SHA. Full
+  message, parents and containing branches move to a detail pane in M2.
+- **Pixel-tier ancestry emphasis is alpha-only** (ADR-0024): ancestry
+  highlighting never changes stroke width, so lane geometry is stable under
+  focus.
 - **A scripted fixture corpus** for the fast tier: one small repository per
   history and ref shape, built by `git fast-import` with a fixed identity and
   clock, so the same shape has the same object ids on every machine. Built
   once into `target/fixtures/` and cached under a digest of the generator, so
   changing the generator rebuilds and nothing goes stale.
 - **A heavy test tier**, off by default and run only at milestone reviews. It
-  builds a **100,000-commit** repository (2 s, 35 MB) — and the same history
-  with a commit-graph, as a separate fixture, because ADR-0008 makes
+  builds a **100,000-** and **1,000,000-commit** repository — and the same
+  history with a commit-graph, as a separate fixture, because ADR-0008 makes
   first-paint order depend on having one — and raises `proptest` from 64 cases
   to 1,000. `cargo test` still runs zero of it: heavy tests are `#[ignore]`d
   *and* behind the `heavy-tests` feature, so a default build does not compile
-  them.
+  them. Frame and memory budgets pass at 1M commits (KNOWN_GAPS.md 56d/64);
+  first paint is measured warm, with one cold check left for the user
+  (ADR-0027).
 - **A peak-memory measurement** (`getrusage`, ADR-0015) for the 300 MB gate
-  PROMPT.md §7.1 asks for. The measurement is here and unit-tested; the
-  assertion that uses it is still to come.
+  PROMPT.md §7.1 asks for, now gating the heavy tier.
 - **`scripts/clone-git-git.sh`**, which caches `git/git` outside the
   repository for manual testing — 85,649 commits in 42 MB, because
   `--filter=tree:0` leaves the trees on the server. Run by hand; no test ever
   touches it.
+- **The Graph Gallery** (`cargo run -p graft --example gallery`): walks 24
+  named fixture shapes with a banner describing what each shows or differs.
+- **`scripts/m1-checkpoint.sh`**: the milestone's manual checkpoint. Opens one
+  named scenario (`git-git`, `criss-cross`, `foxtrot`, `octopus`) or lists
+  them, building the fixture corpus or cloning `git/git` as needed; exits
+  non-zero with a clear message on any missing prerequisite (no network,
+  a fixture that won't build) rather than skipping silently.
 - **[`TESTING.md`](TESTING.md)**: the three tiers and their exact commands,
-  what each costs, how to build and delete the fixtures, and the manual
-  terminal checklist with its pass conditions.
+  what each costs, how to build and delete the fixtures, the manual terminal
+  checklist (pixel and Unicode tiers, tmux, SSH, two verdicts per terminal —
+  a pass condition and a "reads well" judgement left blank for the user), and
+  the ADR-0027 cold-first-paint check.
 
 ### M0 — Foundations (2026-09-12)
 

@@ -437,6 +437,8 @@ and any redo prompt should lead with.
 | `Space` (on a merge) | Fold its merged branch into it / unfold (PROMPT.md §1.3; m1/15) |
 | `1` | Toggle first-parent view (m1/15) |
 | `H` | Hide / show the stash in the graph (m1/15) |
+| `Enter` (on the cursor row, when its subject is truncated) | Peek: reveal the full subject in the footer; a second `Enter` closes it (ADR-0023, m1/41 — no hover tooltip; this is the mouse-free route to the same reveal) |
+| `y` | Copy the selected commit's SHA to the clipboard (OSC 52) (ADR-0023, m1/45) |
 
 ### 2.4 Working tree / staging (detail pane)
 
@@ -557,8 +559,12 @@ A separate screen (no repo is open yet), with its own small vocabulary:
 - Divider drags resize panes; sizes are remembered per repo.
 - Drag a branch badge onto a commit or another branch to open Merge
   into…/Rebase onto…/Reset to here/Cherry-pick, each behind a Ghost Preview.
-- Hover shows the same tooltip content that's reachable without a mouse
-  (PROMPT.md §1.3); nothing is mouse-only.
+- In the graph pane, hovering a row whose subject is truncated reveals the
+  full subject in the footer, the same reveal `Enter` gives without a mouse
+  (§2.3); moving off the row restores the hint bar. There is no tooltip
+  (ADR-0023 — supersedes this section's "same tooltip content" and PROMPT.md
+  §1.3's hover line): the full message, parents and containing branches live
+  in the detail pane, M2.
 - Mouse capture never sends `XTSHIFTESCAPE` with `n=1` — `Shift`+drag stays
   the terminal's native text selection, never captured by Graft (ADR-worthy
   rule already fixed by PROMPT.md §3; noted here because it constrains how
@@ -699,9 +705,9 @@ lane vacated while processing row N only becomes available starting row
 N+1's allocation step.
 
 **5. Compaction.** If the number of concurrently open lanes exceeds
-`graph.max_lanes` (default 8), fold the least-recently-touched non-reserved
-lanes behind a single `+N` column (§3.5) rather than growing the graph
-wider.
+`graph.max_lanes` (unset: 8 lanes under 100 columns, 10 at 100–159, 12 at
+160+, ADR-0022), fold columns into a rail (§3.5) rather than growing the
+graph wider.
 
 ### 3.3 Pseudocode
 
@@ -778,23 +784,45 @@ and resumed.
   matching) runs as a separate, bounded, off-thread pass over the visible
   window and attaches cross-references rather than a marker on layout itself.
 
-### 3.5 Compaction (`+N`)
+### 3.5 Compaction (the fold rail)
 
-When `active.len()` (lanes open and not `reserved`) exceeds `graph.max_lanes`:
+**The cap is a budget, admitted by priority, not a set of vetoes**
+(ADR-0025 — supersedes this section's original "never fold lane 0, a
+reserved lane, or the selection's ancestry path"; a set of vetoes has no
+upper bound, and a merge-train selection can pin the whole graph). `Fold::plan`
+draws at most `max_lanes` columns, rail included, admitting columns in
+priority order until the budget is spent:
 
-- Rank open, non-reserved lanes by how long it's been since a row last used
-  them (least-recently-touched first).
-- Fold enough of the least-recently-touched lanes into one `+N` marker column
-  to bring the row's width back under the limit, but never fold: lane 0, any
-  reserved integration lane, or a lane on the ancestry path of the currently
-  selected commit (so selecting a commit never causes its own lane to
-  disappear behind a `+N`).
-- The `+N` column renders as a single glyph carrying a count; `Enter` (or a
-  click) on it temporarily re-expands the folded lanes for the rows where
-  they're relevant, without changing anyone else's column assignment.
-- This is a rendering-time decision, not a layout-time one: the underlying
-  `Row` data keeps every lane's real column so expanding `+N` is instant and
-  never re-runs layout.
+1. lane 0 (always fits: the cap is ≥ 2);
+2. any column holding a node in the window — the one class that may still
+   exceed the budget, since a row without its node isn't a graph (residual,
+   logged in KNOWN_GAPS, not built for M1);
+3. the selected commit's own column;
+4. reserved integration lanes;
+5. the selection's ancestry thread's columns;
+6. everything else.
+
+Within a class, least-recently-touched folds first. A column open in no row
+is dropped, not counted, before ranking. `graph.max_lanes` is clamped to
+what the screen can hold at its width (unset: 8/10/12 across the §1
+breakpoints, ADR-0022).
+
+**A folded column is a stub, not a curve to a marker** (ADR-0022): the gap
+cell right of a kept node draws `▾` (an outgoing edge — the folded branch
+continues below) or `▴` (incoming — it forked here), in the folded branch's
+identity colour; several folded edges on one row share the first edge's
+colour. Nothing crosses a kept lane to reach the fold, and nothing ends in
+open space. A folded thread is still legible by its stub colour, not lost.
+
+**The marker column is a rail (`⋮`), not a counter.** The fold count moves
+to the header (`+N lanes`, after the filter words), shown only while
+something folds; N is exact — every column open somewhere in the window and
+not drawn. `+` expands and collapses every fold at once; a click on the rail
+to expand one row is not built (ADR-0022).
+
+This is a rendering-time decision, not a layout-time one: the underlying
+`Row` data keeps every lane's real column, so expanding `+` is instant and
+never re-runs layout.
 
 ### 3.6 Incremental, streaming and virtualized layout
 
@@ -1170,7 +1198,10 @@ one thread the selected commit sits on.
 - **Shows:** full-strength lane colour and detail text on the selected
   commit's ancestor/descendant path; every other row keeps its shape (lanes
   don't disappear — the graph's topology stays legible) but drops to a
-  low-saturation, dimmed render. The mockup stands in for that dimming the
+  low-saturation, dimmed render. In the pixel tier this dimming is alpha
+  only, never a wider or heavier stroke on the on-thread rows (ADR-0024:
+  a heavier stroke read as the graph's default state, not a highlight,
+  since the cursor's own ancestry is often lane 0's full length). The mockup stands in for that dimming the
   same way §1.7's ghost nodes stand in for a lower alpha: `·` marks columns
   that would render muted, not blank. This is a deliberately different
   visual vocabulary from Ghost Preview's dashed `┊`/`┈` (§1.7) — a faded row
@@ -1443,9 +1474,10 @@ prototype (PROGRESS.md step 3) or early milestones should validate against a
 real terminal and real fixtures, adjusting here (and in an ADR, if the answer
 changes something PROMPT.md fixed) rather than in code comments:
 
-- **`graph.max_lanes` default of 8** before compaction kicks in (§3.5) — pick
-  the real default from how `git/git`'s history actually looks at typical
-  terminal widths, not a guess.
+- ~~**`graph.max_lanes` default of 8** before compaction kicks in (§3.5)~~ —
+  resolved against `git/git` and a many-lanes fixture: unset means 8 lanes
+  under 100 columns, 10 at 100–159, 12 at 160+ (ADR-0022); the cap is a
+  budget admitted by priority, not a set of vetoes (ADR-0025).
 - **Checkpoint interval of 2,000 rows** (§3.6) trades memory against jump
   latency; tune it against the heavy tier's 100k-commit fixture once that
   exists.

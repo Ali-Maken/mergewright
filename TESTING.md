@@ -181,6 +181,23 @@ First paint per cell (m1-the-graph/55, `target/release/examples/budgets <fixture
 
 Every 1M cell's run 1 is cold (~0.7–1.0 s, over 500 ms); warm runs 2–3 are 88–112 ms, well under 150 ms. Cause suspected (page cache: the pack `.idx` and loose refs not resident after a build or another 1M cell's I/O), not proven — needs `sudo purge` between runs (KNOWN_GAPS).
 
+**Cold first paint, manual (ADR-0027).** Only `sudo purge` can empty macOS's
+page cache; no test can drive it. Run once, at the M1 checkpoint:
+
+```sh
+sudo purge
+scripts/memory-curve.sh 1000000
+```
+
+Read run 1's `first paint` line for the `1000000 small cg` cell (the
+`docs/shots/m1-memory-curve.txt` it writes) and compare it to the ~1.0 s cold
+number above; runs 2–3 in the same invocation should fall back to the warm
+88–112 ms range, confirming the difference is the page cache and not Graft.
+
+| Check | Time | Matches the ~1.0 s cold number? | Notes |
+|---|---|---|---|
+| First paint, 1M commit-graph fixture, straight after `sudo purge` | not run | | |
+
 Not there yet: `cargo-fuzz` targets, land in M2.
 
 ### Frames at a million (m1-the-graph/64)
@@ -372,24 +389,43 @@ that fades out to its right; the rightmost graph column is a faint dotted
 line; no number is drawn in the graph; no curve crosses other lanes to reach
 the dotted line.
 
+**Two verdicts per terminal** (user, 2026-09-13). *Pass* is the condition
+above — correct graph, or a clean fallback, never a broken screen. *Reads
+well* is separate and is the user's alone: is the shape of history obvious
+at a glance, the M1 promise (`docs/design-notes/m1-the-graph.md` if present,
+else PROMPT.md §7.2/§9). Leave every *Reads well* cell **blank** — a builder
+or reviewer never fills it in.
+
+| Terminal | Version | Pass | Reads well | Notes |
+|---|---|---|---|---|
+| Ghostty | | not run | | |
+| Kitty | | not run | | |
+| WezTerm | | not run | | |
+| iTerm2 | | not run | | |
+
 ### Unicode tier — must look deliberate
 
 **This is the default tier** (ADR-0016: Kitty → Unicode → iTerm2 → Sixel →
-ASCII). Every terminal here except a Kitty-protocol one draws it, including
-the two the graph is read in most days.
+ASCII). Every terminal here except a Kitty-protocol one draws it.
 
-| Terminal | Version | Result | Notes |
-|---|---|---|---|
-| Zed terminal | | not run | |
-| VS Code terminal | | not run | |
-| Terminal.app | | not run | |
-| Alacritty | | not run | |
+**Zed and VS Code first — the user's daily terminals.** He lives in these
+two day to day; every other row in this table matters for coverage, but
+these two are the ones that decide whether M1 shipped something usable.
 
-Pass: box-drawing characters line up into continuous lanes, nothing is a
+| Terminal | Version | Pass | Reads well | Notes |
+|---|---|---|---|---|
+| Zed terminal (daily) | | not run | | |
+| VS Code terminal (daily) | | not run | | |
+| Terminal.app | | not run | | |
+| Alacritty | | not run | | |
+
+*Pass*: box-drawing characters line up into continuous lanes, nothing is a
 replacement glyph or a tofu box, and no character is double-width where a
-single-width one was assumed. "Looks deliberate" is the bar: a reasonable
-person seeing only this tier should think it was designed, not that
-something failed. This is the tier most people will actually live in.
+single-width one was assumed. "Looks deliberate" is the bar for *pass*: a
+reasonable person seeing only this tier should think it was designed, not
+that something failed. *Reads well* (blank for the user, as above): is the
+shape of history obvious at a glance. This is the tier most people will
+actually live in.
 
 ### Does a pixel tier beat Unicode here?
 

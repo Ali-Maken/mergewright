@@ -131,6 +131,14 @@ impl Shape {
             Shape::NonUtf8RefName => "non-utf8-ref-name",
         }
     }
+
+    /// The shape whose [`Shape::name`] is `name`, or `None`.
+    pub fn from_name(name: &str) -> Option<Shape> {
+        Shape::ALL
+            .iter()
+            .copied()
+            .find(|shape| shape.name() == name)
+    }
 }
 
 impl std::fmt::Display for Shape {

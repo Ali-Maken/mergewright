@@ -13,10 +13,41 @@ design in [`DESIGN.md`](DESIGN.md), the milestone order in
 
 ## Where this is
 
-**M0 Foundations is the only finished milestone.** Graft opens a repository,
-shows a handful of facts about it on one screen, and quits cleanly. It does
-not draw a graph, a diff or a file list, and it never writes to a repository.
-M1 builds the graph.
+**M0 Foundations and M1 The graph are built.** Graft opens a repository and
+draws its commit graph — lanes, merges, refs, relative dates — across three
+rendering tiers, with a fixture corpus and a heavy tier proving it holds up
+at 1M commits. It still does not show a diff or a file list, and it never
+writes to a repository. **M1's manual checkpoint (`TESTING.md`, `scripts/
+m1-checkpoint.sh`) has not been run by the user yet** — see "What has
+actually been watched" below before trusting any of this by eye.
+
+### What M1 actually does
+
+- Draws the commit graph for the current branch and its ancestry: lanes,
+  merge curves, refs (branches, tags, `HEAD`), relative commit dates, and the
+  commit's first line — across three rendering tiers (pixel/Kitty, Unicode,
+  ASCII), auto-selected from M0's capability probe or forced by
+  `graph.renderer`.
+- Lane assignment keeps a branch in one column end to end; the lane cap
+  follows terminal width (8/10/12 lanes under 100/100–159/160+ columns) and
+  is a priority-ordered budget, not a hard veto (ADR-0022, ADR-0025) — lanes
+  beyond the cap fold behind a `⋮` rail, with the exact count in the header
+  (`+N lanes`).
+- `j`/`k` scroll, `1` toggles first-parent-only view, `Enter` reveals a
+  truncated row's full subject in the footer (no tooltip — ADR-0023), `y`
+  copies the selected commit's SHA.
+- Pixel tier: ancestry-path emphasis under focus is alpha only, never a
+  stroke-width change (ADR-0024), so lane geometry never shifts as you move
+  the cursor.
+- Holds a 1M-commit fixture inside PROMPT.md §7.1's frame and memory budgets
+  (`docs/reviews/`, `KNOWN_GAPS.md`'s 56d/64 entries have the numbers); first
+  paint is measured warm, with one cold check (`sudo purge`) left for the
+  user (ADR-0027, TESTING.md).
+- `cargo run -p graft --example gallery` walks 24 named fixture shapes with a
+  banner per stop; `scripts/m1-checkpoint.sh <scenario>` opens one scenario
+  (`git-git`, `criss-cross`, `foxtrot`, `octopus`, or `list`) directly,
+  cloning `git/git` or building the fixture corpus as needed and exiting
+  non-zero with a clear message if it can't.
 
 ### What M0 actually does
 
@@ -55,6 +86,15 @@ silent-terminal fallback, so the tier, cell size, theme and colour depth on
 that screen are what Graft assumes when nothing answers — not what your
 terminal said. Running the steps below, and the probe example, in a terminal
 you actually use is the check that has not been done.
+
+**The same is true of the graph.** Everything above about lanes, merges,
+folding and tier behaviour is proven by unit, snapshot and bare-pty tests
+against scripted replies — never by a human looking at a real Ghostty, Kitty,
+WezTerm, iTerm2, Terminal.app, Alacritty, Zed or VS Code terminal, with or
+without tmux or SSH in the way. `TESTING.md`'s manual matrix and
+`scripts/m1-checkpoint.sh` exist to make that check quick; neither has been
+run yet. Every "reads well" and by-eye result in `TESTING.md` reads **not
+run** until you run it.
 
 ## Build and run
 
