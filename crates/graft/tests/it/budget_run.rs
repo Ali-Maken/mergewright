@@ -17,12 +17,14 @@ use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
 
-use graft::history::{History, Phase};
+use graft::history::{History, Phase, View, Views, WalkSource, seeds_for};
 use graft::jobs::{Dispatch, JobRunner, Shutdown};
 use graft::repos::RepoStore;
 use graft::update::{AppEvent, AppState, Command, Size, update};
+use graft_core::commit_handle::CommitHandle;
 use graft_core::event::{Event, KeyCode, KeyPress};
-use graft_git::history::Order;
+use graft_git::history::{Order, Walk};
+use graft_graph::layout::StreamConfig;
 
 /// How long one step may take before the run is declared hung. Far above
 /// any budget: it turns a hang into a named failure, it is not a threshold.
@@ -118,6 +120,54 @@ pub fn run(repo: &Path) -> Result<Numbers, String> {
 
 fn peak() -> Result<u64, String> {
     graft_fixtures::peak_rss().map_err(|why| why.to_string())
+}
+
+/// `EmittedOrder`'s approximate bytes once every commit is laid out, and the
+/// commit count it was measured over (m1-the-graph/51c, 51's last box).
+///
+/// `history::stream`'s own `Views` never leaves it — `serve` reports only
+/// `HistoryUpdate`, no resident-set numbers — so this repeats its setup
+/// (`Walk::all_refs`, `WalkSource`, `Views::new`) to drive a layout directly
+/// and read `StreamingLayout::resident().order_bytes` off it, rather than
+/// adding a new update variant through the job pool for one number.
+pub fn order_bytes(repo: &Path) -> Result<(usize, usize), String> {
+    let store = RepoStore::new(repo.to_path_buf(), None);
+    let branches = store.branches().map_err(|why| why.to_string())?;
+    let shared = store.shared().map_err(|why| why.to_string())?;
+    let handle = shared.handle();
+    let refs = handle.references().map_err(|why| why.to_string())?;
+    let seeds = seeds_for(&refs, &branches);
+    let table = store.table().map_err(|why| why.to_string())?;
+    let walk = Walk::all_refs(&handle, Order::Topological, Arc::clone(&table))
+        .map_err(|why| why.to_string())?;
+
+    let mut started = Some(walk);
+    let handle_ref = &handle;
+    let open = move |promoted: Option<&Arc<[CommitHandle]>>| {
+        if let Some(order) = promoted {
+            return Ok(WalkSource::in_order(
+                handle_ref,
+                Arc::clone(&table),
+                Arc::clone(order),
+            ));
+        }
+        let walk = match started.take() {
+            Some(walk) => walk,
+            None => Walk::all_refs(handle_ref, Order::Topological, Arc::clone(&table))?,
+        };
+        Ok(WalkSource::new(handle_ref, walk))
+    };
+    let mut views = Views::new(seeds, StreamConfig::default(), Box::new(open));
+    let layout = views
+        .layout(&View::default())
+        .map_err(|why| why.to_string())?;
+    let stop = || false;
+    while !layout.is_done() {
+        layout
+            .advance(usize::MAX, &stop)
+            .map_err(|why| why.to_string())?;
+    }
+    Ok((layout.resident().order_bytes, layout.rows_emitted()))
 }
 
 /// A started job pool, the events it reports, and the state before any.

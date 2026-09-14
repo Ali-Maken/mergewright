@@ -20,24 +20,35 @@ fn main() -> ExitCode {
         eprintln!("usage: budgets <repository>");
         return ExitCode::FAILURE;
     };
-    match budget_run::run(&repo) {
-        Ok(numbers) => {
+    let numbers = match budget_run::run(&repo) {
+        Ok(numbers) => numbers,
+        Err(why) => {
+            eprintln!("budgets: {why}");
+            return ExitCode::FAILURE;
+        }
+    };
+    println!(
+        "first paint {:?}, G {:?}, g {:?}, {} rows, provisional order: {}, peak RSS at paint {} MiB, after G {} MiB, end {} MiB, overflow_len {} (m1-the-graph/51b 2x check)",
+        numbers.first_paint,
+        numbers.bottom,
+        numbers.top,
+        numbers.rows,
+        numbers.provisional,
+        mib(numbers.rss_at_paint),
+        mib(numbers.rss_at_bottom),
+        mib(numbers.peak_rss),
+        numbers.overflow_len,
+    );
+    match budget_run::order_bytes(&repo) {
+        Ok((bytes, commits)) => {
+            let per_commit = bytes.div_ceil(commits.max(1));
             println!(
-                "first paint {:?}, G {:?}, g {:?}, {} rows, provisional order: {}, peak RSS at paint {} MiB, after G {} MiB, end {} MiB, overflow_len {} (m1-the-graph/51b 2x check)",
-                numbers.first_paint,
-                numbers.bottom,
-                numbers.top,
-                numbers.rows,
-                numbers.provisional,
-                mib(numbers.rss_at_paint),
-                mib(numbers.rss_at_bottom),
-                mib(numbers.peak_rss),
-                numbers.overflow_len,
+                "EmittedOrder: {bytes} B total over {commits} commits, {per_commit} B/commit (m1-the-graph/51c)"
             );
             ExitCode::SUCCESS
         }
         Err(why) => {
-            eprintln!("budgets: {why}");
+            eprintln!("budgets: EmittedOrder bytes: {why}");
             ExitCode::FAILURE
         }
     }

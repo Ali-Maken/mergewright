@@ -153,6 +153,30 @@ fn the_table_and_the_order_stay_at_the_commit_count_after_g_and_after_promotion(
     });
 }
 
+/// ADR-0026's handle-based `EmittedOrder` (`Vec<CommitHandle>` row → handle
+/// plus a dense `Vec<u32>` reverse lookup) against the design's own bound:
+/// the DESIGN.md §3.1 estimate this replaces was ~90 B/commit
+/// (m1-the-graph/51, 51's last acceptance box).
+#[test]
+fn emitted_order_bytes_stay_under_ten_per_commit_at_100k() {
+    const LIMIT_PER_COMMIT: usize = 10;
+
+    let repo = synthetic::borrow(Scale::HEAVY).unwrap_or_else(|why| panic!("{why}"));
+    let (bytes, commits) =
+        crate::budget_run::order_bytes(&repo).unwrap_or_else(|why| panic!("{why}"));
+    assert_eq!(
+        commits,
+        Scale::HEAVY.commits() as usize,
+        "every commit laid out"
+    );
+    let per_commit = bytes.div_ceil(commits);
+    println!("EmittedOrder at 100k: {bytes} B total, {per_commit} B/commit (m1-the-graph/51c)");
+    assert!(
+        bytes <= LIMIT_PER_COMMIT * commits,
+        "EmittedOrder is {per_commit} B/commit, over the {LIMIT_PER_COMMIT} B/commit bound"
+    );
+}
+
 /// Sends one `RowRequest` for `0..commits` (with or without a promotion) and
 /// waits for its answer, asserting every row it asked for landed.
 #[allow(
