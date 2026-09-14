@@ -201,6 +201,12 @@ impl crate::repo::KnownCommits for CommitTable {
     fn is_known_commit(&self, id: Oid) -> bool {
         self.handle_of(&id).is_some()
     }
+
+    /// With a commit-graph the table holds every commit the graph was
+    /// written for; without one it holds nothing yet at ref time.
+    fn covers_the_graph(&self) -> bool {
+        self.has_commit_graph()
+    }
 }
 
 impl std::fmt::Debug for CommitTable {

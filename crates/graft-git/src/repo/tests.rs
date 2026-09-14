@@ -331,6 +331,7 @@ fn ahead_behind_counts_the_ref_states_branches() {
 /// expected tips.
 fn snapshot_is_both_halves(repo: &RepoHandle, expected_tips: &[String], packed: bool) {
     let snapshot = repo.ref_snapshot(&()).expect("refs read");
+    stats_with_nothing_known_are_exact(repo, packed);
     assert_eq!(
         snapshot.refs,
         repo.references().expect("refs read"),
@@ -368,8 +369,7 @@ fn refs_sharing_commits_or_naming_no_commit_peel_the_same_loose_or_packed() {
     ] {
         fixture.git(&["update-ref", ref_name, target]);
     }
-    fixture.git(&["tag", "-a", "-m", "release", "release", &parent]);
-    fixture.git(&["tag", "-a", "-m", "a tree", "tree-tag", &tree]);
+    annotated_tags(&fixture, &parent, &tree);
     fixture.git(&["symbolic-ref", "refs/heads/alias", "refs/heads/older"]);
 
     let hex = |id: &Oid| id.to_string();
@@ -380,6 +380,7 @@ fn refs_sharing_commits_or_naming_no_commit_peel_the_same_loose_or_packed() {
         ("refs/heads/twin-a".to_owned(), head.clone()),
         ("refs/heads/twin-b".to_owned(), head.clone()),
         ("refs/remotes/origin/twin-a".to_owned(), head.clone()),
+        ("refs/tags/outer".to_owned(), parent.clone()),
         ("refs/tags/release".to_owned(), parent.clone()),
     ])
     .into_iter()
@@ -413,6 +414,48 @@ fn refs_sharing_commits_or_naming_no_commit_peel_the_same_loose_or_packed() {
             packed,
         );
     }
+}
+
+/// `release` on `parent`, `tree-tag` on `tree`, and `outer`, a tag of the
+/// `release` tag: git peels it through both (m1-the-graph/58b).
+fn annotated_tags(fixture: &Fixture, parent: &str, tree: &str) {
+    fixture.git(&["tag", "-a", "-m", "release", "release", parent]);
+    fixture.git(&["tag", "-a", "-m", "a tree", "tree-tag", tree]);
+    let release_tag = fixture.rev_parse("refs/tags/release");
+    fixture.git(&["tag", "-a", "-m", "outer", "outer", &release_tag]);
+}
+
+/// m1-the-graph/58b: what one pass reads for the corpus above with nothing
+/// known.
+fn stats_with_nothing_known_are_exact(repo: &RepoHandle, packed: bool) {
+    // Seven distinct objects: two commits, a tree, a blob, three tags.
+    // With nothing known each is header-read once; the tree and the
+    // blob are then read whole, and so are the tags unless packed-refs
+    // already peeled them (m1-the-graph/58b).
+    let stats = repo.ref_snapshot(&()).expect("refs read").stats;
+    let expected = if packed {
+        TipStats {
+            refs: 11,
+            known: 0,
+            tags: 3,
+            peeled_packed: 3,
+            objects_read: 2,
+            find_header: 4,
+        }
+    } else {
+        TipStats {
+            refs: 11,
+            known: 0,
+            tags: 3,
+            peeled_packed: 0,
+            objects_read: 5,
+            find_header: 7,
+        }
+    };
+    assert_eq!(
+        stats, expected,
+        "stats with nothing known, packed: {packed}"
+    );
 }
 
 /// `peeled_references`, as `(ref name text, commit hex)` pairs.
@@ -458,4 +501,20 @@ fn assert_same_with_a_commit_graph_table(
         expected_peeled,
         "peeled refs with the table, packed: {packed}"
     );
+    // m1-the-graph/58b: the table answers both commits, so no header is
+    // read. Loose, each tag object is read once, whole, and its target
+    // judged by the table: objects read = tags + the tree and the blob.
+    // Packed, every tag resolves from its peeled line and only the tree and
+    // the blob are read — no tag object at all.
+    let stats = repo.ref_snapshot(&table).expect("refs read").stats;
+    assert_eq!(stats.find_header, 0, "packed: {packed}");
+    assert_eq!(stats.known, 2, "packed: {packed}");
+    assert_eq!(stats.tags, 3, "packed: {packed}");
+    if packed {
+        assert_eq!(stats.peeled_packed, stats.tags);
+        assert_eq!(stats.objects_read, 2);
+    } else {
+        assert_eq!(stats.peeled_packed, 0);
+        assert_eq!(stats.objects_read, stats.tags + 2);
+    }
 }

@@ -30,6 +30,14 @@ type KnownTips = std::collections::HashMap<gix::ObjectId, Option<Oid>>;
 pub trait KnownCommits {
     /// Whether `id` is already known to be a commit.
     fn is_known_commit(&self, id: Oid) -> bool;
+
+    /// Whether this knows (nearly) every commit the refs reach, so an id it
+    /// does not know is most likely a tag, a tree or a blob: the caller then
+    /// reads it whole at once instead of its header first
+    /// (m1-the-graph/58b). Changes what is read, never the answer.
+    fn covers_the_graph(&self) -> bool {
+        false
+    }
 }
 
 impl KnownCommits for () {
@@ -341,16 +349,11 @@ impl RepoHandle {
     /// The commit `reference` reaches, or `None` if it reaches none.
     ///
     /// Big repositories hold tens of thousands of refs naming far fewer
-    /// commits — a branch and its remote-tracking ref usually agree — so a
-    /// ref pointing straight at an object is answered once per object, from
-    /// `peeled_cache`. `known_commits` is asked first: an id it already
-    /// recognises is a commit, no object read at all (ADR-0026,
-    /// m1-the-graph/58). Otherwise the object's header says whether it is a
-    /// commit without reading the commit: 30d measured reading every one as
-    /// 3/4 of the graph's first paint on 50k refs. Everything else (a
-    /// symbolic ref, a tag, a tree, a blob, a header that cannot be read)
-    /// goes through [`peel_commit`](Self::peel_commit), which gives the
-    /// answer and the errors this always gave.
+    /// commits — a branch and its remote-tracking ref usually agree — so each
+    /// object is judged once per pass, from `peeled_cache`. A packed tag's
+    /// `packed-refs` peeled line (`^<id>`) already names what it peels to, so
+    /// the tag object is never read (m1-the-graph/58b). Symbolic refs go
+    /// through [`peel_commit`](Self::peel_commit).
     fn tip_of(
         &self,
         reference: &mut gix::Reference<'_>,
@@ -365,25 +368,83 @@ impl RepoHandle {
         if let Some(tip) = peeled_cache.get(&target) {
             return Ok(*tip);
         }
-        let id = self.oid(target.as_bytes())?;
-        let tip = if known_commits.is_known_commit(id) {
-            stats.known += 1;
-            Some(id)
-        } else {
-            stats.find_header += 1;
-            match self.repo.find_header(target) {
-                Ok(header) if header.kind() == gix::object::Kind::Commit => Some(id),
-                Ok(header) if header.kind() == gix::object::Kind::Tag => {
-                    stats.tags += 1;
-                    stats.objects_read += 1;
-                    self.peel_commit(reference)?
-                }
-                // Not a commit, or not readable this way: the full peel
-                // decides, and reports the failure if there is one.
-                Ok(_) | Err(_) => self.peel_commit(reference)?,
+        // git writes a peeled line only for a ref naming a tag object; the
+        // comparison guards a writer that repeats the target.
+        let tip = match reference.inner.peeled.filter(|peeled| *peeled != target) {
+            Some(peeled) => {
+                stats.tags += 1;
+                stats.peeled_packed += 1;
+                self.commit_at(peeled, peeled_cache, known_commits, stats)?
             }
+            None => self.commit_at(target, peeled_cache, known_commits, stats)?,
         };
         peeled_cache.insert(target, tip);
+        Ok(tip)
+    }
+
+    /// The commit object `id` reaches through any chain of tags, or `None`
+    /// if the chain ends on a tree or a blob.
+    ///
+    /// Each id is asked of `known_commits` first: one it recognises is a
+    /// commit, no object read at all (ADR-0026, m1-the-graph/58). Otherwise
+    /// the object is read once, whole — the decode says its kind and, for a
+    /// tag, its target, which is judged the same way. Where the table does
+    /// not [cover the graph](KnownCommits::covers_the_graph), most unknown ids
+    /// are commits, so the header is read first and a commit ends there
+    /// without its body: 30d measured reading every tip whole as 3/4 of the
+    /// graph's first paint on 50k refs.
+    fn commit_at(
+        &self,
+        mut id: gix::ObjectId,
+        peeled_cache: &mut KnownTips,
+        known_commits: &dyn KnownCommits,
+        stats: &mut TipStats,
+    ) -> Result<Option<Oid>, TipsError> {
+        let mut chain = Vec::new();
+        let tip = loop {
+            if let Some(tip) = peeled_cache.get(&id) {
+                break *tip;
+            }
+            let oid = self.oid(id.as_bytes())?;
+            if known_commits.is_known_commit(oid) {
+                stats.known += 1;
+                break Some(oid);
+            }
+            chain.push(id);
+            if !known_commits.covers_the_graph() {
+                stats.find_header += 1;
+                // A header that cannot be read is not answered here: the
+                // whole read below reports why.
+                if let Ok(header) = self.repo.find_header(id)
+                    && header.kind() == gix::object::Kind::Commit
+                {
+                    break Some(oid);
+                }
+            }
+            stats.objects_read += 1;
+            let object = self.repo.find_object(id).map_err(|why| TipsError::Read {
+                git_dir: self.git_dir().to_path_buf(),
+                source: Box::new(why),
+            })?;
+            match object.kind {
+                gix::object::Kind::Commit => break Some(oid),
+                gix::object::Kind::Tag => {
+                    stats.tags += 1;
+                    id = object
+                        .to_tag_ref_iter()
+                        .target_id()
+                        .map_err(|why| TipsError::Read {
+                            git_dir: self.git_dir().to_path_buf(),
+                            source: Box::new(why),
+                        })?;
+                }
+                // A tag on a tree or a blob: legal, and not a tip.
+                gix::object::Kind::Tree | gix::object::Kind::Blob => break None,
+            }
+        };
+        for judged in chain {
+            peeled_cache.insert(judged, tip);
+        }
         Ok(tip)
     }
 

@@ -78,7 +78,7 @@ One line per public item. Update when a public item changes.
 - `RepoHandle::commit_tips` (fn, takes `&dyn KnownCommits`) — every branch/tag tip commit; a tip the table already knows is a commit is never header-read (m1-the-graph/58).
 - `RepoHandle::ref_snapshot` (fn, takes `&dyn KnownCommits`) — `references` and `commit_tips` from one pass over the ref store.
 - `RepoHandle::peeled_references` (fn, takes `&dyn KnownCommits`) — every ref that reaches a commit, with that commit (tags peeled).
-- `KnownCommits` (trait) — `is_known_commit(&self, id: Oid) -> bool`, a free check a tip can be skipped past without reading its object. `()` always answers `false` (today's header-parse-everything path); `graft_git::history::CommitTable` answers from its handle table.
+- `KnownCommits` (trait) — `is_known_commit(&self, id: Oid) -> bool`, a free check a tip can be skipped past without reading its object; provided `covers_the_graph(&self) -> bool` (default `false`): when true an unknown tip is read whole at once, no header first (m1-the-graph/58b). `()` answers `false` to both (header-first path); `graft_git::history::CommitTable` answers from its handle table and covers the graph when it has a commit-graph.
 - `RepoHandle::upstream` (fn) — the remote-tracking ref a branch pulls from, per its config.
 - `SharedRepo` (struct) — the `Send`, expensive-to-open half of a repository; hands out `RepoHandle`s.
 - `SharedRepo::OBJECT_CACHE_BYTES` (const) — object cache size a `SharedRepo` opens with.
@@ -88,7 +88,7 @@ One line per public item. Update when a public item changes.
 - `SharedRepo::git_dir` (fn) — the `.git` directory.
 - `TipsError` (enum) — why reading commit tips failed.
 - `RefEntry` (struct) — one ref: its name and target.
-- `RefSnapshot` (struct) — every ref (`refs`), every commit they reach (`tips`) and each ref that reaches a commit with it (`peeled`), read in one pass. `stats` says how the pass learned its tips (m1-the-graph/58b).
+- `RefSnapshot` (struct) — every ref (`refs`), every commit they reach (`tips`) and each ref that reaches a commit with it (`peeled`), read in one pass. `stats` says how the pass learned its tips (m1-the-graph/58b): a packed tag resolves from its `packed-refs` peeled line with no read; any other unknown object is read once, whole (header first only when the table does not cover the graph).
 - `TipStats` (struct) — `refs`, `known`, `tags`, `peeled_packed`, `objects_read`, `find_header` for one ref-store pass; for `budgets --phases` and the corpus tests, never a decision input.
 - `RefTarget` (enum) — what a ref points at.
 - `RefsError` (enum) — why reading references failed.
