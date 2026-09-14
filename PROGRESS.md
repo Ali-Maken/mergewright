@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — ticket 54 · 77 tickets: 70 done, 4 ready, 1 partial, 1 split, 1 wontfix
+**Current step:** M1 The graph — ticket 56 · 77 tickets: 71 done, 3 ready, 1 partial, 1 split, 1 wontfix
 
 ---
 
@@ -252,6 +252,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-14 · m1/55 first paint at 1M, phase A · opus · partial (2300f72) · `budgets --phases` added; cause named, same both paths: 6,498 loose refs enumerated 3× before first window (Branches::resolve, stream, all_refs commit_tips), ~11 µs/ref ≈ 80–85% of first paint; packed-refs copy paints in 23 ms vs 255 ms; in-degree ~1 ms (refuted), first 500-row chunk 2 ms; fallback not needed; phase B: read refs once and reuse (public items change), expect ~90–100 ms; also named: commit_tips header lookups +145 MiB peak RSS; 118k tokens, no compaction
 - 2026-09-14 · m1/55 phase B fix 1 · opus · partial (dc90967) · cause fix: first paint reads refs once (RefSnapshot/ref_snapshot, Branches::resolve_from, refs cache with refresh generation); 1M serial 97–105 ms (was 291–347), with jobs cg 191–195 / no-cg 193–203 ms (was 255/270), 100k 21 ms; passes 500, misses 150; leftover ~90 ms named: ReadRefs job re-reads every ref concurrently (off: 98–104 ms); also fixed Ctrl+R race (history could get pre-refresh refs; user cost none); +147 MiB peak stays in KNOWN_GAPS; fix 2 next: ReadRefs reuses the snapshot (continuation 2 of 2); 112k tokens, no compaction
 - 2026-09-14 · m1/55 fix 2 · opus · done (042416f) · cause fix: one ref read shared by history and ReadRefs jobs (RefSnapshot.peeled); Ctrl+R race stays closed; badges always match graph refs; 1M warm first paint with jobs cg 98–99 ms, no-cg 104–105 ms, 100k 10–11 ms (under 150 every warm run; fallback moot); cold first run ~1.0 s on both 1M paths (page cache), not investigated → review; remaining ~90% is the single loose-ref read of 6,498 refs; heavy tier pass; not measured: real kernel clone, debug 50k-ref first paint; 83k tokens, no compaction
+- 2026-09-14 · m1/54 commit-graph offer · opus · done (6b4d1c8) · footer offer, B builds via git commit-graph write, X declines (remembered); ADR-0008 amended; 857/857; pty release on feature-branches copies at 80×24 and 120×40: offer shown, B wrote the file, git commit-graph verify exit 0; captures docs/shots/54-commit-graph-offer-{80,120}.txt for user's eye; not seen: 1M write (→ 56), X and failure paths tests only; deviations for review: Writing/Declining hold Option<JobId>, commit_graph_if_enabled() for Absent, wide text trimmed to fit 120 cols; offer keys B/X as specified (conductor withdrew Esc suggestion: Esc already has four meanings); 68k tokens · COMPACTED (nothing left)
 
 ## Open questions for the M1 checkpoint
 - **By eye (30b):** pixel graph goes blank for one frame on PgDn before rows arrive. User judges whether that's acceptable.
