@@ -18,7 +18,7 @@ use graft_graph::layout::stream::{StreamConfig, StreamingLayout};
 /// Rows on the first screen at 120×40, as `budget_run` sizes it.
 const SCREEN_ROWS: usize = 40;
 
-struct Clock {
+pub(super) struct Clock {
     at: Instant,
     peak: u64,
     /// Lifetime peak physical footprint at the last lap, or why it could not
@@ -28,7 +28,7 @@ struct Clock {
 }
 
 impl Clock {
-    fn start() -> Result<Self, String> {
+    pub(super) fn start() -> Result<Self, String> {
         Ok(Clock {
             at: Instant::now(),
             peak: peak()?,
@@ -37,7 +37,7 @@ impl Clock {
     }
 
     /// Prints the phase since the last lap and starts the next.
-    fn lap(&mut self, name: &str, detail: &str) -> Result<Duration, String> {
+    pub(super) fn lap(&mut self, name: &str, detail: &str) -> Result<Duration, String> {
         let took = self.at.elapsed();
         let now = peak()?;
         // Tenths of a MiB in integers: no float cast to lose precision.

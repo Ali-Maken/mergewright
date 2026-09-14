@@ -1,6 +1,6 @@
 # m1-the-graph/59 — No-commit-graph heap at 1M: name the holder, then fix what the design allows
 
-Status: ready
+Status: partial (Phase A done; Phase B to file — seam)
 Build with: **Opus** (high) — attribution needs judgment (which holder, at which stage, by how much) and the fix is inside the walk's topological sort in `graft-git`; the bar is a number, so it is not a Fable ticket.
 Needs: `graft_fixtures::footprint` and `budgets --gate` / `--phases` footprint lines (guards-measure-in-a-child).
 Blocked by: 57, 58b
@@ -49,3 +49,54 @@ None new and public in Phase A beyond `budgets --phases` output lines. Phase B c
 
 ## Size
 Two contexts at most, seam after Phase A (see above); each under ~80k. 1M no-cg runs are ~10 s each; output to files.
+
+## Phase A result (2026-09-14, Opus)
+
+Instrument: `budgets --phases` continues without a commit-graph through `crates/graft/examples/budgets/no_cg.rs` (the app's `RepoStore` + `Views` path, serial, no jobs). Live heap split: `prototypes/heap-profile-59` (counting global allocator + `malloc_zone_statistics` + `malloc_zone_pressure_relief` discriminator). Release, 3 runs each, fixtures `synthetic-100000-no-commit-graph-ba5bf1dd41fcee03` and `synthetic-1000000-no-commit-graph-d5f8e6a5494a9ead` (the curve's). Raw: `target/59/phases-{100k,1M}-run{1,2,3}.txt`, `target/59/prof-{100k,1M}-run{1,2,3}.txt`, `target/59/prof-{100k,1M}-relief.txt`.
+
+Serial reproduction matches the gate: footprint after `g` **36.0–36.1 MiB (100k) / 182.4–182.8 MiB (1M)** → **170 B/commit** (gate read ~176). Runs agree to ±0.5 MiB. `overflow_len == commits` after `G` and after promotion at both sizes.
+
+Stage footprint rise (3 runs identical to 0.3 MiB): 100k / 1M
+
+| stage | 100k | 1M | time 1M |
+|---|---|---|---|
+| open + first paint | +0.3 | +1.5 | 0.1 s |
+| date walk to end | +27.4 | +115.0 | 2.51–2.54 s |
+| `topological_order` | +3.5 | +44.8 | 2.21–2.25 s |
+| promote swap (both layouts) | +0.5 | +8.5 | 2.8 s |
+| `g` | 0 | 0 | — |
+
+Live heap (counting allocator) vs footprint, after `g`: 100k live 27.0 / footprint 35.4–35.8; 1M live 92.5 / footprint 181.1. Malloc zone: 1M `in_use` 94.5, `allocated` 148–152.
+
+### Holder table, 1M no-cg (slope 100k → 1M, B/commit)
+
+| holder | MiB at 1M | B/commit (slope) | peaks in | kept / transient |
+|---|---|---|---|---|
+| Interner (`CommitTable` overflow: 20 B ids in a doubling `Vec` + `HashMap<u64,u32>`) | 54.0 | 58 | date walk | kept |
+| `EmittedOrder` (one; old one freed at swap) | 7.6 | 8 | date walk / swap | kept |
+| `Views.promoted` `Arc<[CommitHandle]>` | 3.8 | 4 | sort | kept |
+| Rest live (checkpoints, `Included`, gix object cache full at both sizes, rows) | ~27 | 7 | — | kept |
+| **Live heap subtotal** | 92.5 | **76** | | |
+| Freed in the date walk, still in footprint (interner's doubling reallocs: `Vec` chain ~32 MiB + map chain ~17 MiB; interner live peak 106 vs 90 kept) | ~37 | 38 | date walk | transient, **retained** |
+| Freed by the sort, still in footprint (`Paged<Parents>` 24 B + `Paged<i64>` 8 + `Paged<u32>` 4 = 36 B/commit, plus `order` `Vec` doubling and the `Vec` → `Arc<[_]>` copy ~8) | ~42 | 46 | sort (live peak 130.6) | transient, **retained** |
+| Freed at the swap, still in footprint (old layout's order, new order's growth) | ~9.5 | 10 | swap (live peak 107) | transient, **retained** |
+| **Sum** | 181 | **170** | | measured 170; unexplained < 5 B/commit |
+
+**Cause, one line:** without a commit-graph the peak is the interner (58 B/commit) plus ~94 B/commit of transient allocations — the sort's dense per-handle arrays, the interner's doubling copies, the order `Vec`→`Arc` copy and the swapped-out order — which are freed but never leave the process's footprint.
+
+Discriminator: `malloc_zone_pressure_relief` after the date walk, after the sort and at the end returns **0.0 MiB** and the footprint does not move; after dropping every view (live 75.5 MiB) footprint stays 181.1. So the retained part is not reclaimable free pages malloc would hand back on request: it is dirty free space inside malloc regions (zone `allocated − in_use` ≈ 55 MiB) plus ~50 MiB outside the default zone's accounting (suspect: freed large-allocation cache). Not proven which; the fix does not depend on it — **don't allocate the transient**, not "free it better".
+
+**Design floor** (interner + one order + promoted + bitsets/rest): **~76 B/commit** live — under the 100 B bar, so Phase B is on (stop rule does not fire). Everything above the floor is transient that the design allows to shrink.
+
+**Heavy-tier no-cg slope guard (follow-up, not built):** 100k's 303 B/commit regime is the object cache (flat 16 MiB, full by 100k) plus the interner's doubling position; a guard would need 1M-vs-100k or a live-heap reading, not RSS at 10k/100k.
+
+## Handoff → Phase B (file as its own ticket on this spec)
+
+Next steps in order of yield (the table's, not the spec's guess):
+1. **Sort arrays, 36 → ~16 B/commit:** `Range.parents` as CSR (`offsets: Paged<u32>` + parents in `Paged`-style pages of `CommitHandle`, octopus included) in `crates/graft-git/src/history/topological.rs` (`Sorted`/`Range`, lines ~291–430). `time` stays `i64` unless the order tests allow narrower (don't guess). Keep `Paged` (no doubling); page size is fine.
+2. **Order `Vec` → `Arc` copy:** `graft::history::topological_order` (`crates/graft/src/history/mod.rs` ~371) extends a `Vec` then `order.into()` copies. Reserve from the walk's range size once the range is read (expose the count internally, e.g. `Walk` knows `Range` size after the first `next_links`), or build the `Arc<[_]>` without the intermediate. ~8 B/commit.
+3. **Interner doubling, ~38 B/commit retained:** `Overflow.bytes: Vec<u8>` → pages (as `Paged`, 2¹⁶ ids a page), no copy chain; `by_prefix` map doubling (~17 MiB chain) is the harder one — a paged/segmented table would be a new structure, check it is still "one table" under ADR-0026 before doing it, else leave and record.
+4. Swapped-out order (~10) is ADR-0008 by design; leave.
+Estimate after 1–3: 170 − (≈20 + 8 + 32) ≈ 110 B/commit — **may still miss 100** because retention is by region, not by allocation; measure after each step with `budgets --phases` (1M ≈ 25 s) and `prototypes/heap-profile-59` before the curve runs.
+
+Gotchas: in the app the promotion sort runs concurrently with the date walk (job pool), so `table.len()` is not final when the sort starts — don't size from it. `malloc_zone_pressure_relief`/`madvise` in graft would be a symptom fix and needs `unsafe` in a `forbid(unsafe_code)` crate: not allowed. Order tests (`graft-git` corpus, `graft` promotion) are the guard for 1.

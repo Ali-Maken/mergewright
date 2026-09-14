@@ -16,6 +16,8 @@
 
 #[path = "../tests/it/budget_run.rs"]
 mod budget_run;
+#[path = "budgets/no_cg.rs"]
+mod no_cg;
 #[path = "budgets/phases.rs"]
 mod phases;
 
@@ -129,7 +131,7 @@ fn counters(repo: &Path) -> ExitCode {
 
 /// `--phases`: first paint cut into phases, serially (m1-the-graph/55).
 fn run_phases(repo: &std::path::Path) -> ExitCode {
-    match phases::run(repo) {
+    match phases::run(repo).and_then(|()| no_cg::run(repo)) {
         Ok(()) => ExitCode::SUCCESS,
         Err(why) => {
             eprintln!("budgets --phases: {why}");
