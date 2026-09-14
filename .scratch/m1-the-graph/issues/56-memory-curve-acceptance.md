@@ -2,12 +2,14 @@
 
 Status: partial (seam: measurements and code done; **blocked on the four findings tickets below**, then re-run, docs, heavy full run, perf run)
 Build with: **Fable** (high) — the standing acceptance ticket: it decides what "memory tracks the viewport" looks like in numbers and writes the checklist that proves it.
-Needs: every other ticket of this group (commit-handles-and-table, walk-reads-the-commit-graph, order-and-inclusion-on-handles, rows-hydrate-on-demand, **rows-pass-through** — split from 52 on 2026-09-14), plus **first-paint-at-a-million-named-cause** (its first-paint numbers and named cause are what the checklist reports) and **commit-graph-offer** (the end-to-end below accepts the offer on the 1M no-cg fixture); **and, from the spec-only pass 2 (2026-09-14): guards-measure-in-a-child, tips-from-the-table, no-cg-heap-named-cause, checkpoints-thin-not-lru** (their numbers are what the checklist reports; the curve is re-run after them).
-Blocked by: 49, 50, 51, 51b, 51c, 51d, 52, 52b, 53, 54, 55, 57, 58, 58b, 59, 60
+Needs: every other ticket of this group (commit-handles-and-table, walk-reads-the-commit-graph, order-and-inclusion-on-handles, rows-hydrate-on-demand, **rows-pass-through** — split from 52 on 2026-09-14), plus **first-paint-at-a-million-named-cause** (its first-paint numbers and named cause are what the checklist reports) and **commit-graph-offer** (the end-to-end below accepts the offer on the 1M no-cg fixture); **and, from the spec-only pass 2 (2026-09-14): guards-measure-in-a-child, tips-from-the-table, no-cg-heap-named-cause, checkpoints-thin-not-lru** (their numbers are what the checklist reports; the curve is re-run after them); **and, from spec-only pass 3 (2026-09-14): the slope-guard ticket the user's bar decision selects** (`slope-guard-bounds-heap-reports-pages` or `cg-slope-idx-pages-named-cause`; the guard's final shape and numbers are what the checklist reports).
+Blocked by: 49, 50, 51, 51b, 51c, 51d, 52, 52b, 53, 54, 55, 57, 58, 58b, 59, 60, and the pass-3 slope ticket (conductor numbers it)
 
 Amended 2026-09-14 (planner-fable, spec-only pass) with the user's condition on approving ADR-0026: wherever memory is **reported rather than failed** (1M without a commit-graph), the numbers must be visible in the milestone review file and in KNOWN_GAPS.md — not only in a results file.
 
 Amended 2026-09-14 (planner-fable, **spec-only pass 2**, on this ticket's findings): see "Spec-only pass 2" at the end — the rulings per finding, the tickets they became, and the remaining work re-sequenced behind them. The Handoff's "Remaining" list is superseded by that section.
+
+Amended 2026-09-14 (planner-fable, **spec-only pass 3**, on 58b's stop rule): see "Spec-only pass 3" at the end — the slope guard's remainder is named as design pages; the bar goes to the user.
 
 ## Read first
 - ADR-0026 (all; "The gate at 1M" is what this ticket proves; "User decisions on approval" are the conditions)
@@ -16,6 +18,7 @@ Amended 2026-09-14 (planner-fable, **spec-only pass 2**, on this ticket's findin
 - TESTING.md "The heavy tier" and "Memory curve to a million commits (m1/46)"; KNOWN_GAPS.md rows "The 300 MB budget fails at a million commits", "No-cg `EmittedOrder` holds twice the table", "No heavy-tier guard on the memory curve's slope", "First paint at 1M commits is 292–383 ms", "The emitted order grows with history", "Least-recently-used is the wrong policy once checkpoints pass `max_checkpoints`", "Commit-graph offer plumbing unspecified (R2-4)" (closed by commit-graph-offer; confirm)
 - `crates/graft-fixtures/MAP.md` (`synthetic`, `measure`, `peak_rss`); `scripts/memory-curve.sh`
 - **Pass 2:** the four findings tickets' result sections (their numbers are the after-after), and "Spec-only pass 2" below
+- **Pass 3:** the filed slope ticket's result section, and "Spec-only pass 3" below
 
 ## Scope
 In:
@@ -40,7 +43,7 @@ None new. Calls: `graft_fixtures::synthetic::Scale::{of, with_commit_graph, with
 - [ ] 1M no-cg: heap after `G` ≤ 100 B/commit, footprint < 300 MB; RSS reported next to the fixture's pack size. **(Pass 2: from `budgets --gate`'s `footprint now` lines, fresh processes, peak and after-`G` both reported; the bar is on peak — no-cg-heap-named-cause makes it pass or reports the design floor to the user.)**
 - [ ] 1M first paint: < 500 ms on every run; the number written against 150 ms with a yes/no and the named cause of any residual. **(Pass 2: warm runs are the number judged; run 1 is reported beside it with the gap row below — user decision.)**
 - [x] The offer end-to-end: `docs/shots/m1-memory-curve-offer.txt` committed; the same repository's post-write curve cell meets the gate; write time recorded.
-- [ ] Slope guard in the heavy tier, seen failing by tightening, passing at 150 B/commit; heavy tier 100 % green run once, alone. **(Pass 2: child-measured; green after tips-from-the-table; "seen failing" is satisfied by the recorded 237 B/commit red, no tightening needed.)**
+- [ ] Slope guard in the heavy tier, seen failing, passing at its bar; heavy tier 100 % green run once, alone. **(Pass 3 supersedes pass 2's "green after tips-from-the-table": after 58b the guard reads 166 loose / 156 packed against 150, and the remainder is named as design pages (commit-graph + pack index) plus ~35 B/commit heap. The bar is the user's decision: recommended split — heap ≤ 50, RSS ≤ 200 — built by `slope-guard-bounds-heap-reports-pages`; or 150 kept and `cg-slope-idx-pages-named-cause` reports its floor. "Seen failing" is the recorded 237 (RSS) and the heap bar's tightening in that ticket. TESTING.md's "slope ≤ 150 B/commit" line above becomes whatever the user decided; a red guard is reported with its floor, never loosened here.)**
 - [x] The 1M jump measurements written (`g` after `G`, `Find` to ~900k: time, rows replayed). **(Pass 2: re-run after checkpoints-thin-not-lru; the 500k jump joins the table.)**
 - [ ] KNOWN_GAPS.md's reported-cell row holds the numbers themselves; `## For the M1 review` section written; TESTING.md, DESIGN.md updated as scoped; ADR-0026 status line updated to what the user decided.
 - [ ] Report: paths only, plus one line per budget: pass/fail and the number; one line saying the review file must carry the reported-cell table.
@@ -111,10 +114,17 @@ The user's standing words: "If 300 MB doesn't survive a million commits, that's 
 1. Re-run `scripts/memory-curve.sh 10000 100000 1000000` in full (release, 3 runs, 12 cells; footprint now from `budgets --gate`'s own `footprint now` lines, `time -l` beside it) → regenerate `docs/shots/m1-memory-curve.txt`. Re-run the far jumps (rows/2, 9·rows/10) on both 1M fixtures. Re-take the offer pair only if the offer line or its numbers changed.
 2. Rewrite "For the M1 review" from the re-run (same columns; add `checkpoint stride` and `heap B/commit` columns; keep the pass-1 table above as "before the findings tickets").
 3. KNOWN_GAPS.md as the Handoff list says, with these changes: the slope row closes with its before/after numbers and the child-measurement note; the LRU row is closed by checkpoints-thin-not-lru (confirm); the no-cg heap row carries no-cg-heap-named-cause's holder table summary and the final B/commit (or the design-floor finding, expiry "user decision at the M1 checkpoint"); the cold first-paint row as finding 4 says; the counters row as finding 5 says (harness-only, and the lifetime-max reading the old guard gave in the wrong order, from guards-measure-in-a-child).
-4. TESTING.md, DESIGN.md §3.1/§3.6, ADR-0026 status line as scoped (ADR: add "Landed: m1/49–56 plus the four findings tickets", the slope guard's final number, the no-cg heap number or the floor finding).
-5. Heavy tier full run once, alone (`cargo test --features heavy-tests -- --test-threads=2`): **expect all green**, the slope guard included; anything red is reported, never loosened. Then the release perf run (ADR-0021), with the 1M `frames::` scroll numbers ADR-0026 deferred to it.
+4. TESTING.md, DESIGN.md §3.1/§3.6, ADR-0026 status line as scoped (ADR: add "Landed: m1/49–56 plus the four findings tickets", the slope guard's final numbers **(pass 3: heap and RSS, as the user decided; the amendment paragraph itself is the slope ticket's)**, the no-cg heap number or the floor finding).
+5. Heavy tier full run once, alone (`cargo test --features heavy-tests -- --test-threads=2`): **expect all green once the pass-3 slope ticket has landed**; if the user kept 150 and `cg-slope-idx-pages-named-cause` stopped red, the guard is reported red with its named floor — never loosened here. Then the release perf run (ADR-0021), with the 1M `frames::` scroll numbers ADR-0026 deferred to it.
 6. Tick the boxes honestly; report paths only.
 
 **For the user (through the conductor):**
 - Finding 4: accept the warm-cache convention for §6.3's first-paint budgets with cold reported beside it (recommend yes — the disk is paid once by any tool; Graft's own work is what the number holds), and say whether he will run the `sudo purge` check once at the checkpoint (recommend yes: two numbers close the row).
 - Finding 2: no decision yet; if no-cg-heap-named-cause reports the design floor above 100 B/commit, the bar comes to him with the table (recommend holding the bar until then).
+- **Pass 3, the slope bar:** see below.
+
+## Spec-only pass 3 (2026-09-14, planner-fable): the slope guard after 58b
+
+58b's stop rule fired: 166 B/commit loose, 156 packed, every avoidable read gone. The remainder is named from 58b's laps and mapping sizes (table in `slope-guard-bounds-heap-reports-pages.md` "The finding"): commit-graph pages ~56 B/commit (the design), pack-index pages ~68 on these fixtures (every object lookup's path; the 100k index's sha table is smaller than the first chunk's 1,500 lookups, so it saturates), heap ~31–35 (footprint slope; ADR expected ~20). ADR-0026's 150 was derived without the pack index. The design cannot cut it inside ADR-0011; the one untraced item is ≤ ~11 B/commit.
+
+**User question:** re-derive the guard into two bars — **heap (footprint) ≤ 50 B/commit, gated; peak RSS ≤ 200 B/commit, gated, floor named (~166 loose)** — recommended; or keep 150 and file `cg-slope-idx-pages-named-cause` (Opus), expected to end red at ~155 with a gap row. Not a loosening of 300 MB; fixtures unchanged. 59 (no-cg heap, footprint bar 100) is unaffected either way and stays ordered after 58b.
