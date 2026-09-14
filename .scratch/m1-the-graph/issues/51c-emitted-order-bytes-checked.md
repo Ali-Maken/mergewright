@@ -1,6 +1,6 @@
 # m1-the-graph/51c — EmittedOrder bytes at 100k, printed and checked (51's last box)
 
-Status: done, over the bar — see Numbers and cause. Named and stopped, not fixed. 51's box left unticked for the conductor.
+Status: done — measured and cause named (over bar: growth slack); fix in 51d
 Build with: **Sonnet** (medium) — remainder of 51 (conductor split). Escalates to Opus on a second failure.
 Needs: `EmittedOrder::approximate_bytes` (51 seam a).
 Blocked by: 51b

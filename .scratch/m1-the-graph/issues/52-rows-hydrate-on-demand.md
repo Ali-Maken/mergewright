@@ -3,7 +3,7 @@
 Status: ready
 Build with: **Opus** (high) — the streaming layout's core semantics (pass-through, materialisation, rebuild fingerprints); correctness is judged by determinism tests and the memory curve, so not Fable.
 Needs: `Link`, `Parents`, `CommitHandle` (core); `CommitSource::{links, handle_of, id_of}`, `Walk::next_links` (commit-handles-and-table); `EmittedOrder` on handles, `Lane.waiting_for: CommitHandle` (order-and-inclusion-on-handles); the walk yielding links from the graph (walk-reads-the-commit-graph) for the cg-path numbers.
-Blocked by: 49, 50, 51, 51b, 51c
+Blocked by: 49, 50, 51, 51b, 51c, 51d
 
 ## Read first
 - ADR-0026 "Decision" item 4, "Options considered → Churn", "What it costs"

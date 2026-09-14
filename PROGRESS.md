@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — ticket 51c · 75 tickets: 64 done, 8 ready, 1 partial, 2 split, 1 wontfix
+**Current step:** M1 The graph — ticket 51d · 76 tickets: 65 done, 8 ready, 1 partial, 2 split, 1 wontfix
 
 ---
 
@@ -241,6 +241,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-14 · m1/50 walk reads the commit-graph · opus · done · 1M cg release ×3: walk odb reads 0, G 3.57 s (was 4.0), peak RSS 646–650 MiB (was 933), first paint 261–327 ms; no-cg sort 38.3 B/commit; heavy 97/97, 100k budgets 5/5 both paths; first-paint hypothesis refuted (sort 3 ms to first emission, 6,498 reads) → cause elsewhere, ticket 55; deviations for review: frontier keeps only overflow nodes, node_from_graph returns Result, node_from_object takes repo+table, paged arrays; 159k tokens, no compaction; builder ended turn 3× while waiting on heavy run (conductor nudged)
 - 2026-09-14 · m1/51 order and inclusion on handles · sonnet · partial → split · seam (a) done (graft-graph EmittedOrder, Lane, LayoutCursor, StreamingLayout, Included on handles; graft-graph 113/113); HEAD red: 6 graft::history promotion tests fail since f063a33 (seed tip has no handle before pull), root cause in handoff; deviations for review: Included keeps private sequence Vec<CommitHandle> (4 B/commit, walk order), from_order keeps seeds/Result; remainder (seam b, 6 failures, 2× check, graft MAP) → 51b, Sonnet; 168k tokens · COMPACTED
 - 2026-09-14 · m1/51b promoted order on handles · sonnet · done · Promote/Views/WalkSource on handles; HEAD green again; cause of the 6 failures: test-helper misread Window.done, not production code (cost to user: none); 2× check: overflow_len == commit count at 100k and 1M; 51's approximate_bytes ≤10 B/commit box left open (conductor's split text excluded it) → 51c, Sonnet; builder ended turn 3× while waiting on heavy run; 147k+ tokens · continuation after 51's COMPACTED
+- 2026-09-14 · m1/51c EmittedOrder bytes checked · sonnet · done (over bar, stopped) · 100k 10.37 B/commit, 1M no-cg release 10.70 B/commit, peak RSS 482.4 MiB (was 646–650 with cg after 50); cause: Vec push-doubling capacity slack (~30% over 8 B layout), not extra state; heavy test red at the bar; bar kept → 51d bounds growth slack (Sonnet); 126k tokens
 
 ## Open questions for the M1 checkpoint
 - **By eye (30b):** pixel graph goes blank for one frame on PgDn before rows arrive. User judges whether that's acceptable.
