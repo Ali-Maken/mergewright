@@ -21,6 +21,7 @@ In:
 - KNOWN_GAPS sweep: every M1-owned row closed, or re-owned to a named later milestone with a reason. No row silently carried.
 - The heavy-code clippy line (`--features heavy-tests`) added to `.claude/agents/reviewer.md`'s checks; closes that KNOWN_GAPS row.
 - README and CHANGELOG say what M1 actually does.
+- **Cold first paint check (ADR-0027, user 2026-09-14):** TESTING.md's manual checklist gets one row: run `sudo purge`, then first paint on the 1M commit-graph fixture; record the time and whether it matches the ~1.0 s cold number. Result slot left for the user.
 - **Spec edits for accepted ADRs** (conductor, 2026-09-14): PROMPT.md §1.3 and DESIGN.md still describe the hover tooltip and pin (ADR-0023), "ancestry path never folds" in DESIGN §3.5 (ADR-0025), the fold marker/count and lane cap (ADR-0022) and stroke emphasis (ADR-0024). Edit those sections to match the ADRs, citing each; ADR text itself stays as record.
 
 Out:
