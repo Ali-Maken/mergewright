@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — ticket 52b · 77 tickets: 68 done, 6 ready, 1 partial, 1 split, 1 wontfix
+**Current step:** M1 The graph — ticket 55 · 77 tickets: 69 done, 5 ready, 1 partial, 1 split, 1 wontfix
 
 ---
 
@@ -248,6 +248,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-14 · m1/52 layout on links, deferred merge identity · opus · done (one box open) · 836/836, gates pass; guard held (Lane.identity copied, never compared); open box: frames:: release check not run → M1 review release run; deviations for review: extend can't fail (no LayoutError), pull keeps limit, known_identities keyed by commit id, MergeNames keyed by (merge, parent) for octopus; 2 read-count checks in tests/it/streaming.rs changed to reads = hydrated + merge_reads (row checks unchanged); 83k tokens · COMPACTED (nothing left to split)
 - 2026-09-14 · m1/52b rows pass through · opus · partial · part (a) done (71a7f89): off-screen chunks laid out without reads, rows() re-lays from checkpoint reading only asked chunks; 5k pair rows match full read, cold jump reads ≤ 2×chunk+buffer; 839/839, gates pass; 3 tests updated (their assumption removed, not bug fixes); part (b) left: release RSS/G measurements, frames:: release, heavy tier; spec conflict: acceptance merge_reads==0 after cold G vs a_merge_lane_open_across_a_chunk_boundary expects 1 → planner-fable; 132k tokens, no compaction
 - 2026-09-14 · m1/52b spec amendment (merge_reads bound) · fable · done · test right, bound wrong: merge_reads ≤ distinct Merge identities open at each materialised chunk's first row (after the first); pass-through adds zero (hydrated/merge_reads same at end as at window fill, new stream test); git/git vs 1M merge_reads compared for same viewport
+- 2026-09-14 · m1/52b continuation (part b) · opus · done (5911633) · pass-through adds zero reads; merge reads hit per-chunk bound exactly (3/3, 9/9 on 5k); release heavy 29/29 incl. frames::; git/git cg RSS 223→46 MiB, G 0.53→0.14 s; git/git no-cg RSS 220→98 MiB, G 0.85→0.80 s; 1M cg RSS 238–241 MiB, G 0.51 s; hydrated 1500 on both; merge_reads 288 git/git vs 1 at 1M (tracks top-of-history merge lanes); reads not batched (1,788 reads in 138 ms G, unprofiled); 1M first paint 263 ms, before G → 55; 96k tokens, no compaction; 55 dispatched before 54 while user's offer-dismiss answer is pending
 
 ## Open questions for the M1 checkpoint
 - **By eye (30b):** pixel graph goes blank for one frame on PgDn before rows arrive. User judges whether that's acceptable.
