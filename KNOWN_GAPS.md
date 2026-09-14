@@ -334,8 +334,19 @@ entry is (CLAUDE.md).*
 - Heavy-tier tests for the table and `next_links` (5k pair; 100k overflow ≤ 60 B/commit) are written, not run by the builder; they run in the milestone review.
 - **~~1M first paint is not the walk~~ Closed by m1-the-graph/55:** it was loose-ref enumeration (4 passes over 6,498 refs); now one shared read, 1M first paint 98–105 ms warm with jobs.
 
-## m1-the-graph/58 — tips checked against the id table
-- **Slope guard still red: 166 B/commit against the 150 B bar** (was 237 before this fix; ticket's own expectation was 80–100). Named cause: with a commit-graph, `commit_tips`/`ref_snapshot` now skip the header read for any tip the table already knows is a commit, but **annotated tags are never in the table** (it holds commit handles only) — a tag ref still costs a header read + peel, exactly as before. Measured directly: the 10k/100k/1M cg fixtures each carry ~12–13% annotated-tag refs (10k: 9/66, 100k: 83/650, 1M: 790/6498), and `ref_snapshot`'s peak-RSS rise per tip is consistent across scales (≈13–19 KB/tip: 1.2 MiB/65 at 10k, 8.3 MiB/649 at 100k, 85.5 MiB/6497 at 1M) — the residual scales with ref count, not commit count, matching a per-ref (tag) cost rather than a per-commit one.
-- Cost to the user: none on the no-cg path (unchanged); on the cg path, one pack-page fault per annotated tag instead of per every tip (down from 237→166 B/commit; real, partial win). The 1M `ref_snapshot` phase fell 147→85.5 MiB.
-- Fixing this fully (a table that also recognizes tag objects, or peels tags into the graph at generation time) is out of this ticket's scope (`Signatures`/`Scope` name only `CommitTable::handle_of` = commits; the ADR-0026 table is commit-handles-only by design) and out of scope to invent unasked. Left for the user/planner to decide: extend the id table to cover peeled tag targets, or accept 166 as the real number and move the bar.
-- Measurements were single runs (not the ticket's 3x), given time budget; `budgets --phases` 1M cg captured after-only (before-fix number taken from ticket 55/56's historical record: 147 MiB) — a literal before/after 1M diff (revert + re-run) was not done.
+## m1-the-graph/58 — tips checked against the id table (58b: tags peeled; guard still red, not because of tags)
+- **Slope guard red: 166/167/166 B/commit** on the guard's loose-ref cg fixtures, against ADR-0026's 150 B bar (unchanged). **The `pack-refs --all` copies are red too: 156/156/157.** Measured 3× each in m1-the-graph/58b; raw in `target/58b/guard-{loose,packed}-*.txt`.
+- **58b fixed the tag reads:**
+  - a packed tag resolves from its peeled line with no object read;
+  - a loose tag costs one whole read, with its target judged by the table;
+  - `find_header` is 0 on the cg path.
+- `ref_snapshot` lap after 58b:
+
+  | fixture | 1M | 100k |
+  |---|---|---|
+  | loose | 74.0 MiB (was 85.5) | 7.1 MiB (was 8.3) |
+  | packed | 33.9 MiB | 3.8 MiB |
+
+  Loose-tag floor: 51 KB per tag at 1M, 41 KB at 100k. It is worth only ~10 B/commit in the whole-process slope, because the walk's `first_chunk` faults the same target-commit pages later.
+- **Open, for the user/planner:** packing refs does not make the guard green, so the remaining ~6 B/commit above the bar sits in the commit-graph/pack pages that `walk_new` (+3.4 MiB at 100k) and `first_chunk` (+5.3 MiB) fault, not in refs. Choices: find those pages in a new ticket, or re-derive ADR-0026's 150 from those phases. The bar and the fixtures are unchanged.
+- Cost to the user: none on the no-cg path (header first, as before; a tag's commit is now header-read instead of decoded). On the cg path, a gc'd repo reads no tag objects at open, and loose tags are read once each.

@@ -1,6 +1,6 @@
 # m1-the-graph/58b — Annotated tags at open: name what the 85 MiB holds, then peel inside the design (slope guard green or the floor named)
 
-Status: partial (Phase A done; Phase B to file)
+Status: done — stop rule fired (guard red loose AND packed; remainder is not tags)
 Build with: **Opus** (high) — attribution across three candidate holders (OIDL pages, pack/idx pages per tag read, heap), a stop rule that needs honest judgment, and gix API navigation (`peeled`, cache-free handles); the bar is a number, so not Fable. 58's Sonnet pass mis-stated the per-tag arithmetic (13–19 KB is per *ref*; per tag it is ~80–130 KB) and skipped the 3× runs — this ticket must not.
 Needs: `gated_in_child` / `ChildPeak` and the slope guard on it (57); `graft_fixtures::footprint` (57); `KnownCommits` and `RepoHandle::ref_snapshot(&dyn KnownCommits)` (58).
 Blocked by: 58
@@ -92,8 +92,8 @@ impl RepoHandle {
 Calls: `CommitTable::handle_of` through `KnownCommits`; gix `Reference::peeled` (the `^` line); `SharedRepo::handle_with_object_cache(0)` (Phase B item 3 only); `graft_fixtures::{footprint, peak_rss}`; `gated_in_child`.
 
 ## Acceptance
-- [ ] Phase A holder table at 1M cg and 100k cg (3 runs each), sums within 10 % of the measured `ref_snapshot` rise; footprint delta on the line; runs 1–5 in the ticket with raw paths; cause named in one line; the loose-tag floor named in pages per tag and B/commit at 100k.
-- [ ] `TipStats` on `RefSnapshot`, printed by `--phases`; MAP.md lines.
+- [x] Phase A holder table at 1M cg and 100k cg (3 runs each), sums within 10 % of the measured `ref_snapshot` rise; footprint delta on the line; runs 1–5 in the ticket with raw paths; cause named in one line; the loose-tag floor named in pages per tag and B/commit at 100k.
+- [x] `TipStats` on `RefSnapshot`, printed by `--phases`; MAP.md lines.
 - [ ] Phase B items 1 and 2 landed (3 only with its measured cause); `find_header == 0` on the cg path; corpus tests as scoped, green; `tips`/`peeled` identical loose vs packed, `()` vs table.
 - [ ] `heavy::peak_rss_slope_per_commit_with_a_commit_graph` run 3 times alone: **≤ 150 B/commit all three**, numbers in the ticket — **or** the stop rule: if after items 1–3 the guard is still red and Phase A's table shows the remainder is the loose-tag floor (one decode's pages per annotated tag) plus the OIDL pages, **stop and report**: the slope (3 runs), the floor per tag, and the packed-copy slope beside it. No bar, no fixture change here.
 - [ ] `budgets --phases` 1M cg, 3 runs: `ref_snapshot` rise before/after in the ticket (before = this ticket's run 1, not 58's record).
@@ -157,3 +157,53 @@ Unexplained, not traced: why one object read faults ~14 % of the idx (≈ the si
   3. Do **not** do item 3 (run 3 flat).
   4. Tests and measurements as scoped. Packed copies for the phases runs are at `target/58b/packed-{1M,100k}-cg`. The guard's packed-copy slope needs 10k/100k copies of the guard's own fixtures, made by the guard's path.
 - Gotchas: the Bash tool's shell is zsh, so `for a in "100000 --commit-graph"` does not word-split (use `eval`); vmmap truncates paths, so identify mappings by size; one object read maps ~14 % of the idx per open, so don't attribute it to tags.
+
+## Phase B result (2026-09-14, builder-opus)
+
+Code: `bfa9b8f`. Items 1 and 2 landed; item 3 not done (Phase A run 3 flat).
+- **Item 1:** a ref whose gix `Reference::inner.peeled` is `Some` (packed-refs `^` line) resolves to that id with no object read; the id is judged by the table like any tip.
+- **Item 2:** `commit_at` loop: table first; else one whole `find_object` (commit → tip, tag → judge its target, tree/blob → none). Every id judged goes into the per-pass cache, so a shared tag target is read at most once. `find_header` is 0 on the cg path.
+- **One addition not in the spec:** `KnownCommits::covers_the_graph(&self) -> bool`, a provided method, default `false`; `CommitTable` returns `has_commit_graph()`. Without it, the `()`/no-cg path would decode every commit tip whole, which is the 30d regression. When it is `false` the header is read first, as before. It changes what is read, never the answer.
+- **`objects_read` undercount fixed:** every whole read is counted. At 1M loose: 790 = tags, 0 other.
+- **Corpus test** (`refs_sharing_commits_or_naming_no_commit_peel_the_same_loose_or_packed`): added a tag-of-tag (`outer` → `release` → parent). Exact `TipStats` for `()` loose/packed: 7/4 headers, 5/2 reads, tags 3, peeled 0/3. With the table: `find_header == 0`, `known == 2`; loose `objects_read == tags + 2` (tree, blob); packed `peeled_packed == tags` and `objects_read == 2` (tree and blob only, no tag object read). Tips and peeled are identical loose vs packed, and `()` vs table.
+
+### Measured (release, raw in `target/58b/`)
+`budgets --phases`, `refs.ref_snapshot` lap, 3 runs each (`after-{1M,100k,packed-1M,packed-100k}-{1,2,3}.txt`):
+
+| fixture | before (run 1) RSS / footprint | after RSS / footprint | stats after |
+|---|---|---|---|
+| 1M cg loose | 85.5–85.8 / 5.0–5.2 | **73.9–74.2** / 4.5–4.7 | known=6497 tags=790 peeled_packed=0 objects_read=790 find_header=0 |
+| 100k cg loose | 8.3–8.4 / 0.9 | **7.1** / 0.7–0.8 | known=649 tags=83 objects_read=83 find_header=0 |
+| 1M cg packed copy | 84.8–84.9 (pre-fix) | **33.8–33.9** / 3.2–3.3 | peeled_packed=790 objects_read=0 |
+| 100k cg packed copy | 8.1–8.2 (pre-fix) | **3.8** / 0.5–0.6 | peeled_packed=83 objects_read=0 |
+
+**Slope guard, 3 runs alone:**
+- loose fixtures: **166, 167, 166 B/commit** (peaks 12 / 27 MiB), `guard-loose-{1,2,3}.txt`.
+- **reported:** `pack-refs --all` copies swapped in for the 10k and 100k cg fixtures, originals restored after: **157, 156, 156** (12 / 26 MiB), `guard-packed-{1,2,3}.txt`.
+
+**Why the guard did not move on the loose fixtures:** the pages leave `ref_snapshot` but are faulted later anyway. At 100k, `ref_snapshot` fell 1.2 MiB and `first_chunk` rose 1.0 MiB (8.3/4.3 before, 7.1/5.3 after; `run1-asis-100k-1.txt` vs `after-100k-1.txt`). The tag targets are walk tips, and the first chunk reads those commits, touching the idx and pack pages the old peel had touched. The process peak fell only 0.2 MiB.
+
+**Loose-tag floor** (after minus packed): 1M (74.0 − 33.9) / 790 = **51 KB/tag** (≈ 3 16-KiB pages); 100k (7.1 − 3.8) / 83 = **41 KB/tag** (≈ 2.5 pages). In the whole-process slope it is worth **~10 B/commit** (loose 166 vs packed 156), not the ~35 B/commit the lap alone suggests.
+
+**Stop rule, finding for the user:** the ticket's premise does not hold. Packing refs (git's own lever) removes every tag read and the guard is **still red at 156**. So the remainder is not the loose-tag floor. At 100k, per the laps: OIDL pages for `handle_of` (~1.9 MiB, Phase A), idx pages from the first object read (~1.1 MiB), `walk_new` +3.4 MiB, `first_chunk` +5.3 MiB. The recommendation in "For the user" (pack the guard's fixtures) would **not** make it green. Nothing was changed in the bar or the fixtures. For the planner: name the ~6 B/commit above the bar on the packed path, in `walk_new`/`first_chunk` pages, or re-derive ADR-0026's 150 from those phases.
+
+`scripts/memory-curve.sh --repo`, 3 runs each (`target/58b/58b-1M-{small,realistic}-cg.txt`):
+
+| cell | peak RSS at paint | after G | footprint | first paint 1/2/3 | G 1/2/3 |
+|---|---|---|---|---|---|
+| 1M small cg | 128.1 / 127.7 / 127.9 MiB | 168.0 / 167.5 / 169.2 | 36.3 / 35.8 / 37.5 | 134 / 87 / 89 ms | 554 / 504 / 566 ms |
+| 1M realistic cg | 129.0 / 128.7 / 128.7 MiB | 172.5 / 173.1 / 170.6 | 40.8 / 41.4 / 38.9 | 818 / 86 / 86 ms | 545 / 507 / 509 ms |
+
+Run 1 first paint is cold (ADR-0027 times warm).
+
+`budgets_hold_*`, release, once (`target/58b/budgets-hold.txt`): all 5 pass (the four plus 50k refs). 100k cg peak 28.1 MiB; realistic cg 32.2; no-cg 74.0; realistic no-cg 80.8; 50k refs 113.8.
+
+Gates: fmt, clippy (with and without `heavy-tests`), `cargo test` 858/858.
+
+### Acceptance (Phase B)
+- [x] Items 1 and 2 landed; item 3 not done (no measured cause); `find_header == 0` on the cg path; corpus tests green; tips/peeled identical.
+- [x] Slope guard ×3: **red, 166/167/166**. Stop rule fired, with the packed copy red too (156/156/157); finding above.
+- [x] `budgets --phases` 1M cg ×3, before/after in the table.
+- [x] memory-curve 1M small/realistic cg ×3.
+- [x] Packed-copy guard slope ×3, reported.
+- [x] KNOWN_GAPS "m1-the-graph/58" rewritten as the finding.
