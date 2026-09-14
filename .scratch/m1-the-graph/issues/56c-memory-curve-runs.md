@@ -2,7 +2,7 @@
 
 Status: ready
 Build with: **Sonnet** (medium) — runs existing commands and writes their numbers down; no verdicts. User decision 2026-09-14: 56's remainder split so Fable only judges (56d).
-Blocked by: 59b, 60 (58b, 61 done)
+Blocked by: 59b, 60, 63 (58b, 61 done)
 
 Split from 56 (conductor, 2026-09-14) along "Spec-only pass 2 → Remaining here". Scope and commands are 56's, unchanged; only who does which part moved. **This ticket records numbers; it never says pass/fail on a budget** — 56d does.
 

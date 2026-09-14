@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — planner-fable on no-cg heap floor (59b) · 87 tickets: 77 done, 4 ready, 2 partial, 2 split, 2 wontfix
+**Current step:** M1 The graph — ticket 63 (then 60, 56c, 56d, 28) · 88 tickets: 77 done, 5 ready, 2 partial, 2 split, 2 wontfix
 
 ---
 
@@ -267,6 +267,8 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-14 · m1/61 · sonnet · done · heavy::slopes_per_commit_with_a_commit_graph replaces the RSS-only guard; 3× release: heap 29/31/29 B/commit (bar 50), RSS 167/169/167 (bar 200); tightening proof heap bar 20 → red at 26, reverted; ADR-0026 amended, TESTING.md, KNOWN_GAPS m1-58 closed; bar re-derived by user from named floor; 97k tokens, no compaction · user away: conductor paused after 61
 - 2026-09-14 · user decision · 56 remainder split for tokens: 56c (Sonnet: curve re-run, heavy tier, perf run, `## Numbers`, mechanical doc numbers) → 56d (Fable: verdicts from numbers + ADR-0026/DESIGN §3.1/§3.6, review section, KNOWN_GAPS verdicts, ADR status; no runs); tickets filed, no build started (user away, resumes later)
 - 2026-09-14 · m1/59b · opus · done, stop rule fired (a82748a) · sort parents CSR, interner ids paged, order sized once — cause fixes; 1M no-cg heap slope 176→138–140 B/commit (bar 100); 1M after g 182.6→158.0 MiB; live floor 76 B/commit unchanged, ~62 freed-but-retained by the process; interner pages saved 4 MiB not 32; not built: by_prefix paging (not ADR-0026's one table), Vec→Arc copy (needs unsafe); ~19 MiB date-walk retention untraced; topological_order 2.21→~2.3 s, G 5.32–5.38 s; 859/859, heavy budgets_hold 5/5; 99k tokens, no compaction → planner-fable
+- 2026-09-14 · m1 no-cg heap floor · planner-fable · spec pass 4 · no in-design ticket reaches ≤100 (fix ticket honest estimate 115–125); remainder allocator retention, sort arrays/ADR-0008 swap by design, paged by_prefix = second table, rest needs unsafe; 47k tokens
+- 2026-09-14 · user decision · no-cg heap bar: live heap slope ≤100 B/commit gated (measured 76), footprint (~140 B/commit, 155–158 MiB at 1M) reported with named floor under 300 MB → 63 filed (Sonnet, doc edits), 56c blocked by 63
 
 ## Open questions for the M1 checkpoint
 - **By eye (30b):** pixel graph goes blank for one frame on PgDn before rows arrive. User judges whether that's acceptable.
