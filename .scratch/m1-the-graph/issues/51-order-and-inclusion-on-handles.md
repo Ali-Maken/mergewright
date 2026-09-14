@@ -1,6 +1,6 @@
 # m1-the-graph/51 — Order, inclusion and the promoted order on handles
 
-Status: split — seam (a) done (f063a33); remainder (seam b) in 51b
+Status: split — seam (a) done (f063a33); seam (b) done in 51b (67ff2ac); approximate_bytes box in 51c
 Build with: **Sonnet** (medium) — a key-type substitution across `graft-graph` and `graft::history`, held by property tests, the corpus snapshots and the promotion tests. Escalates to Opus on a second failure.
 Needs: `CommitHandle`, `HandleSet` (core), `CommitSource::{handle_of, id_of}` (commit-handles-and-table).
 Blocked by: 49

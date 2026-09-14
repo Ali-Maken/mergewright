@@ -1,6 +1,6 @@
 # m1-the-graph/51b — Promoted order on handles (51's seam b)
 
-Status: ready
+Status: done (67ff2ac) — 51's approximate_bytes box split to 51c
 Build with: **Sonnet** (medium) — remainder of 51, same scope and model (split by conductor after compaction). Escalates to Opus on a second failure.
 Needs: `CommitHandle`, `HandleSet` (core), `CommitSource::{handle_of, id_of}`, 51 seam (a) (f063a33).
 Blocked by: 51
