@@ -39,11 +39,14 @@ pub fn fingerprint(shapes: &[RowShape]) -> Fingerprint;   // pub(crate) is fine;
 
 ## Acceptance
 - [ ] Determinism: on every corpus shape and the 5k synthetic pair, `rows(0..n)` after a cold `advance` to the end (viewport at the top, so all but the first chunks pass through) equals the rows of a layout that materialised everything — same `Row`s, field by field, `lanes` included; every rebuilt chunk's fingerprint matches its pass-through fingerprint.
-- [ ] `Work.hydrated` after a cold `G` on the 100k fixture with the viewport at the top ≤ `2 × chunk_rows + buffer_rows`; `Work.merge_reads == 0` for that run (every merge lane open in the top chunks opened inside them); `links_read` ≥ the replay length.
+- [ ] `Work.hydrated` after a cold `G` on the 100k fixture with the viewport at the top ≤ `2 × chunk_rows + buffer_rows`; `links_read` ≥ the replay length.
+- [ ] **Amended 2026-09-14 (planner-fable, spec-only pass; replaces `merge_reads == 0`).** `merge_reads` is bounded by lanes, not history. Two checks:
+  1. For the cold-`G` run above: `merge_reads` ≤ Σ over every materialised chunk after the first of the distinct `Merge` identities open in that chunk's first row (52's rule: a merge lane opened above a batch costs one read; frontier chunks are separate batches). `a_merge_lane_open_across_a_chunk_boundary_is_named_with_one_read` stays exactly as it is. Carrying names across contiguous frontier batches is **out**.
+  2. Pass-through reads nothing: on the 5k pair with a small `chunk_rows` and the viewport at the top, `Work.hydrated` and `Work.merge_reads` after `advance` to the end **equal** the same counters of a second layout advanced only far enough to materialise the viewport window (the stretch of passed-through chunks after the window adds zero to both). Assert it in a `stream::tests` test.
 - [ ] After `rows(r)` deep in a passed-through stretch: `merge_reads` for that call ≤ the count of distinct `Merge` identities in row `r.start`'s lanes (bounded by lanes, not history); assert it in a test on the 5k pair with a small `chunk_rows`.
 - [ ] Every existing `graft-graph` test and every corpus snapshot green, unchanged.
 - [ ] `graft::history` tests green; `frames::` rows-on-hand check still passes in release (a `PageDown` at the frontier must not wait on a rebuild: the materialisation window covers the viewport plus a screen either side, matching `History::outstanding`'s ask policy).
-- [ ] Measured and written in the ticket (release, `examples/budgets`, 3 runs): git/git cg and no-cg peak RSS (was 219–226 MiB), `G` time; 1M cg peak RSS and odb objects read during `G` (expected: only the chunks shown plus `merge_reads`).
+- [ ] Measured and written in the ticket (release, `examples/budgets`, 3 runs): git/git cg and no-cg peak RSS (was 219–226 MiB), `G` time; 1M cg peak RSS and odb objects read during `G` (expected: only the chunks shown plus `merge_reads`, which must not grow with the fixture: compare git/git's and 1M's `merge_reads` for the same viewport and say so).
 - [ ] MAP.md and DESIGN.md §3.6 updated.
 
 ## Gates
@@ -67,6 +70,7 @@ Existing tests changed (premise removed by this ticket, not regressions):
 - `tests/it/streaming.rs` linear: `hydrated == pulled + reread` → `hydrated <` that, `passed_through == 0` after scroll; body moved to `assert_linear_work` (clippy too_many_lines).
 
 Spec conflict to resolve: acceptance wants `merge_reads == 0` on cold G with the viewport at the top, but frontier chunks are materialised one pull at a time, and the existing test `a_merge_lane_open_across_a_chunk_boundary_is_named_with_one_read` (must stay unchanged) expects 1 read across a frontier chunk boundary. So a merge lane crossing chunk 0→1 or 1→2 costs one read. Not changed; measure and decide (carrying names across contiguous frontier batches would make it 0 and break that test).
+**Resolved 2026-09-14 (planner-fable): the test was right, the `== 0` bound was wrong. See the amended Acceptance bullet: per-boundary lane bound plus "pass-through adds zero" equality check; the test stays unchanged.**
 
 Next (seam b), exact steps:
 1. `crates/graft/tests/it/budget_run.rs` `Numbers` has no `Work`; `serve` never exposes the layout. To report hydrated/merge_reads/links_read for `G`, extend `order_bytes`-style direct drive (it repeats `Views::new` setup) or add a counter at `WalkSource::read` in `crates/graft/src/history/source.rs`.
