@@ -101,22 +101,23 @@ fn counters(repo: &Path) -> ExitCode {
         }
     }
     // A `Find` after a cold `G`, half way down and nine tenths of the way
-    // down: 64 LRU checkpoints × 2,000 rows anchor only the last 128k rows
-    // laid out, so past that the middle may have no checkpoint near
-    // (m1-the-graph/56, KNOWN_GAPS "Least-recently-used is the wrong policy").
+    // down: checkpoints thin to an even grid rather than evicting
+    // least-recently-used (m1-the-graph/60), so any jump replays at most one
+    // stride's worth of links, wherever in history it lands.
     for (name, at) in [
         ("half way", (|rows| rows / 2) as fn(usize) -> usize),
         ("nine tenths", |rows| rows / 10 * 9),
     ] {
         match budget_run::far_jump(repo, at) {
             Ok(jump) => println!(
-                "far jump {name}, to row {} of {}: {:?}, replayed {} rows, {} chunks rebuilt, hydrated {} (m1-the-graph/56)",
+                "far jump {name}, to row {} of {}: {:?}, replayed {} rows, {} chunks rebuilt, hydrated {}, checkpoint stride {} (m1-the-graph/56, 60)",
                 jump.row,
                 jump.rows,
                 jump.took,
                 jump.rows_replayed,
                 jump.chunks_rebuilt,
                 jump.hydrated,
+                jump.checkpoint_stride,
             ),
             Err(why) => {
                 eprintln!("budgets: far jump {name}: {why}");

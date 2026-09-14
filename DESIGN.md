@@ -859,9 +859,11 @@ When `active.len()` (lanes open and not `reserved`) exceeds `graph.max_lanes`:
   walk). No checkpoint is taken at the very end of history — nothing would
   resume from it. Checkpoints are pure functions of the commit sequence up
   to that point, so they're cache-only (bounded at `max_checkpoints`,
-  default 64, least recently used evicted; a rebuild that needed an
-  evicted one replays from the one before and re-records it on the way)
-  and always rebuildable — nothing about them needs to be durable.
+  default 64: past the cap the stride doubles and every checkpoint off the
+  new, sparser grid is dropped, so spacing stays even across all of
+  history instead of clumping near wherever was visited last — at 1M rows
+  16,000 apart, m1-the-graph/60) and always rebuildable — nothing about
+  them needs to be durable.
 - **A cold deep jump is a background job.** `G` on a freshly opened repo,
   or a search hit far past the frontier, still needs the walk to advance
   that far before the target row can exist. That is `advance` called in

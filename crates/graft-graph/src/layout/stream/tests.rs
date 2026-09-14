@@ -1132,3 +1132,172 @@ proptest! {
         prop_assert_eq!(&all, &whole);
     }
 }
+
+// ---- checkpoints thin to an even grid (m1-the-graph/60) ------------------
+
+/// `count` commits, first-parent only, no merges: a linear chain, so a jump
+/// replays exactly one link per row.
+fn linear(count: usize) -> Vec<Commit> {
+    (0..count)
+        .map(|index| {
+            let parents = if index + 1 < count {
+                vec![oid_for((index + 1) as u64, 0)]
+            } else {
+                Vec::new()
+            };
+            let seconds = 2_000_000_000 - i64::try_from(index).expect("a small index") * 60;
+            Commit {
+                id: oid_for(index as u64, 0),
+                parents,
+                author: identity_at(seconds),
+                committer: identity_at(seconds),
+                message: format!("commit {index}").into_bytes(),
+            }
+        })
+        .collect()
+}
+
+/// The invariant (m1-the-graph/60): the held checkpoints are exactly the
+/// multiples of the current stride short of the frontier, and never more
+/// than the cap.
+fn assert_checkpoint_invariant<S: CommitSource<Error = Infallible>>(
+    streaming: &StreamingLayout<S>,
+    max_checkpoints: usize,
+) {
+    let stride = streaming.checkpoint_stride();
+    let frontier = streaming.rows_emitted();
+    // A row on the grid is due as it is passed, including the frontier
+    // itself right after `advance` reaches it — except at the very end of
+    // history, where nothing resumes from a checkpoint anyway.
+    let bound = if streaming.is_done() {
+        frontier.saturating_sub(1)
+    } else {
+        frontier
+    };
+    let expected: Vec<usize> = (1..=bound / stride).map(|k| k * stride).collect();
+    let held = streaming.checkpoint_rows();
+    assert_eq!(
+        held, expected,
+        "held checkpoints must be exactly the grid short of row {frontier} at stride {stride}"
+    );
+    assert!(
+        held.len() <= max_checkpoints,
+        "{} checkpoints held, cap {max_checkpoints}",
+        held.len()
+    );
+}
+
+#[test]
+fn checkpoints_thin_to_an_even_grid_as_history_grows() {
+    let commits = linear(1_000);
+    let config = StreamConfig {
+        chunk_rows: 10,
+        checkpoint_every: 10,
+        max_checkpoints: 8,
+        resident_chunks: 1_000,
+        buffer_rows: 0,
+    };
+    let mut streaming = stream(&commits, config);
+    streaming.set_viewport(0..10);
+    loop {
+        let advance = streaming.advance(7, &never).expect("an in-memory source");
+        assert_checkpoint_invariant(&streaming, config.max_checkpoints);
+        if advance.done {
+            break;
+        }
+    }
+    assert_eq!(
+        streaming.checkpoint_stride(),
+        160,
+        "10 -> 20 -> 40 -> 80 -> 160 as 1,000 rows pass 8 checkpoints four times over"
+    );
+}
+
+/// Below the cap, nothing ever thins: a jump replays from the checkpoint at
+/// the original `checkpoint_every`, exactly as before this ticket.
+#[test]
+fn under_the_cap_the_stride_never_changes() {
+    let commits = linear(1_000);
+    let config = small(); // checkpoint_every: 400, max_checkpoints: 64
+    let mut streaming = stream(&commits, config);
+    streaming.set_viewport(0..10);
+    advance_all(&mut streaming);
+    assert_eq!(streaming.checkpoint_stride(), config.checkpoint_every);
+    assert_checkpoint_invariant(&streaming, config.max_checkpoints);
+}
+
+/// A jump to rows evicted from both the row cache and the checkpoint grid
+/// replays at most one stride's worth of links plus one chunk — not the
+/// whole history back to row 0.
+#[test]
+fn a_jump_after_thinning_replays_at_most_one_stride_plus_a_chunk() {
+    let commits = linear(1_000);
+    let config = StreamConfig {
+        chunk_rows: 10,
+        checkpoint_every: 10,
+        max_checkpoints: 8,
+        resident_chunks: 2,
+        buffer_rows: 0,
+    };
+    let mut streaming = stream(&commits, config);
+    streaming.set_viewport(0..10);
+    advance_all(&mut streaming);
+    assert_eq!(streaming.checkpoint_stride(), 160);
+
+    // Scroll far away so row 500's chunk is evicted from the row cache.
+    streaming.set_viewport(990..1_000);
+    streaming
+        .rows(990..1_000)
+        .expect("an in-memory source, everything laid out");
+    assert!(!streaming.is_resident(500));
+
+    let before = streaming.work().rows_replayed;
+    streaming.set_viewport(500..510);
+    let rows = streaming
+        .rows(500..510)
+        .expect("an in-memory source, everything laid out");
+    assert_eq!(rows.len(), 10);
+    let replayed = streaming.work().rows_replayed - before;
+    let bound = streaming.checkpoint_stride() + config.chunk_rows;
+    assert!(
+        replayed <= bound,
+        "jump to row 500 replayed {replayed} rows, bound {bound} \
+         (one stride of {} plus one chunk of {})",
+        streaming.checkpoint_stride(),
+        config.chunk_rows
+    );
+}
+
+/// `truncate` drops checkpoints past the cut and keeps the grid invariant;
+/// the stride itself never shrinks back down, even though the truncated
+/// layout now holds fewer checkpoints than the cap allows.
+#[test]
+fn truncate_keeps_the_grid_invariant_and_never_shrinks_the_stride() {
+    let commits = linear(1_000);
+    let config = StreamConfig {
+        chunk_rows: 10,
+        checkpoint_every: 10,
+        max_checkpoints: 8,
+        resident_chunks: 1_000,
+        buffer_rows: 0,
+    };
+    let mut streaming = stream(&commits, config);
+    streaming.set_viewport(0..10);
+    advance_all(&mut streaming);
+    assert_checkpoint_invariant(&streaming, config.max_checkpoints);
+    let stride_before = streaming.checkpoint_stride();
+    assert_eq!(stride_before, 160);
+
+    streaming.truncate(430).expect("an in-memory source");
+    assert_checkpoint_invariant(&streaming, config.max_checkpoints);
+    assert_eq!(
+        streaming.checkpoint_stride(),
+        stride_before,
+        "the stride does not shrink just because truncate left the grid sparser"
+    );
+
+    streaming.set_viewport(0..430);
+    advance_all(&mut streaming);
+    assert_checkpoint_invariant(&streaming, config.max_checkpoints);
+    assert_eq!(streaming.checkpoint_stride(), stride_before);
+}

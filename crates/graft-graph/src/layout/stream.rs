@@ -38,7 +38,8 @@ pub struct StreamConfig {
     /// Rows between checkpoints. A multiple of `chunk_rows`, so a checkpoint
     /// always falls on a chunk boundary.
     pub checkpoint_every: usize,
-    /// How many checkpoints to keep before the least recently used goes.
+    /// How many checkpoints to keep on the grid before the stride doubles
+    /// (m1-the-graph/60: an even grid, never least-recently-used).
     pub max_checkpoints: usize,
     /// How many chunks may stay resident outside the protected window.
     pub resident_chunks: usize,
@@ -588,6 +589,13 @@ impl<S: CommitSource> StreamingLayout<S> {
     #[must_use]
     pub fn checkpoint_rows(&self) -> Vec<usize> {
         self.checkpoints.rows()
+    }
+
+    /// Rows between kept checkpoints: `checkpoint_every`, doubled each time
+    /// the cap was reached (m1-the-graph/60).
+    #[must_use]
+    pub fn checkpoint_stride(&self) -> usize {
+        self.checkpoints.stride()
     }
 
     /// How much work has been done so far.

@@ -382,12 +382,17 @@ pub struct FarJump {
     pub chunks_rebuilt: usize,
     /// Commits read to assemble the screen.
     pub hydrated: usize,
+    /// Rows between kept checkpoints at the time of the jump
+    /// (m1-the-graph/60: the grid's stride, doubled each time
+    /// `max_checkpoints` was reached).
+    pub checkpoint_stride: usize,
 }
 
 /// Lays out all of `repo` as [`cold_jump`] does, then asks for one screen
 /// at `at(rows)` — a `Find` deep into history — and reads what the layout
-/// had to replay to serve it (ADR-0026: `max_checkpoints` × `checkpoint_rows`
-/// cover 128k rows; past that LRU may leave a checkpoint-less stretch).
+/// had to replay to serve it. The checkpoints thin to an even grid rather
+/// than evicting least-recently-used, so a jump anywhere in history replays
+/// at most one stride's worth of links (m1-the-graph/60).
 #[allow(
     dead_code,
     reason = "measured by examples/budgets.rs only; no test asserts on it yet (the 1M jump is a review-time number)"
@@ -419,6 +424,7 @@ pub fn far_jump(repo: &Path, at: impl FnOnce(usize) -> usize) -> Result<FarJump,
             rows_replayed: after.rows_replayed - before.rows_replayed,
             chunks_rebuilt: after.chunks_rebuilt - before.chunks_rebuilt,
             hydrated: after.hydrated - before.hydrated,
+            checkpoint_stride: layout.checkpoint_stride(),
         })
     })
 }

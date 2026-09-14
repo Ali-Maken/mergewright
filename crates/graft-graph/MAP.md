@@ -104,6 +104,7 @@ One line per public item. Update when a public item changes.
 - `StreamingLayout::is_resident`, `rows_emitted`, `expected_rows`, `is_done`, `row_of`, `id_at` (fn) — queries.
 - `StreamingLayout::reanchor` (fn) — viewport that keeps an anchor's offset.
 - `StreamingLayout::resident`, `checkpoint_rows`, `work`, `source`, `config` (fn) — introspection.
+- `StreamingLayout::checkpoint_stride` (fn) — rows between kept checkpoints; doubles each time `max_checkpoints` was reached (m1-the-graph/60), never shrinks.
 - `StreamingLayout::source_mut` (fn) — the source, mutably.
 - `StreamingLayout::truncate` (fn) — forget rows from a row on (chunks cut, later checkpoints dropped, order truncated), frontier replayed to it; returns `Invalidated`.
 - `Invalidated` (struct) — `from_row`, `chunks`, `checkpoints` a truncate threw away.
