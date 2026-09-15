@@ -1,6 +1,30 @@
 # m1-the-graph/73b — Review M1: split graft-ui graph_column and terminal under the 400-line rule
 
-Status: ready
+Status: done
+
+## Report
+
+- `crates/graft-ui/src/graph_column/mod.rs`: 583 → 325 non-test lines. Split
+  off two new private submodules: `geometry.rs` (192 lines: `Cell`, `Owner`,
+  `BLANK`, `row_cells`, `Geometry`, `Sides` — the per-row edge geometry) and
+  `style.rs` (87 lines: `lane_x`, `off_thread`, `on_thread`,
+  `dashes_odd_columns`, `dashed`, `to_ascii` — colour/dash/ASCII-tier
+  helpers). `mod.rs` keeps the module doc, public types (`NodeKind`,
+  `RowPaint`, `GraphLine`, `GraphColumn`) and the `Widget` impl. Cross-file
+  items marked `pub(super)` (including `Cell`/`Owner` fields, since `render`
+  reads them directly); public API unchanged, so `graft-ui/MAP.md` needed no
+  edit. `tests.rs` needed one added import (`BranchIdentity`, previously
+  reached transitively via `mod.rs`'s own `use`).
+- `crates/graft/src/terminal.rs`: checked and **not split**. Total file is
+  591 lines (what the M1 review's "400–600" bucket flagged), but its tests
+  are one inline `#[cfg(test)] mod tests { ... }` block; non-test lines
+  (before that block) are 331 — already under the 400 non-test-line bar this
+  ticket's acceptance criteria and PROMPT.md 6.2 actually set. Splitting it
+  anyway would be scope creep with no rule violation to fix, so left as is.
+- Gates: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
+  `cargo clippy --all-targets --features heavy-tests -- -D warnings`,
+  `cargo test` all green. No test changed except the one import; no snapshot
+  diffs (`git status` clean of `.snap` files).
 Build with: **Sonnet** (medium) — mechanical moves along existing seams; no behaviour change.
 Blocked by: 73a
 

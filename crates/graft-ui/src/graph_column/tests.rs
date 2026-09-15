@@ -1,6 +1,7 @@
 use graft_core::capabilities::ColorDepth;
 use graft_core::commit::{Commit, Identity, Timestamp};
 use graft_core::oid::Oid;
+use graft_graph::identity::BranchIdentity;
 use graft_graph::layout::layout;
 use graft_graph::seeds::{BranchSeed, Seeds};
 use ratatui::style::Color;
