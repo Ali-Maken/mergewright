@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
+use graft_core::commit::Commit;
 use graft_core::oid::Oid;
 use graft_fixtures::Shape;
 
@@ -770,7 +771,7 @@ fn links_in_batches(walk: &mut Walk<'_>, limit: usize) -> Vec<graft_core::commit
 }
 
 /// Every commit a walk produces in batches of `limit`, as whole commits.
-fn commits_in_batches(walk: &mut Walk<'_>, limit: usize) -> Vec<super::Commit> {
+fn commits_in_batches(walk: &mut Walk<'_>, limit: usize) -> Vec<Commit> {
     let mut commits = Vec::new();
     loop {
         let chunk = walk.next_chunk(limit, &never).expect("the walk reads");

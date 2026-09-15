@@ -1,0 +1,133 @@
+//! Reading a commit whole, and the small free functions that only need a
+//! [`node`](super::node): hydrating one from its object, first-parent merge
+//! counting for ADR-0001, and [`WalkError`] itself.
+
+use std::sync::Arc;
+
+use graft_core::commit::{Commit, Identity, Timestamp};
+use graft_core::commit_handle::{CommitHandle, HandleSet};
+use graft_core::oid::Oid;
+
+use super::node::{self, NodeError, Nodes, RepoNodes};
+use super::table::CommitTable;
+use crate::repo::{RepoHandle, TipsError};
+
+/// Reads one commit whole, by id.
+///
+/// The streaming layout rebuilds evicted rows by re-reading commits it has
+/// already emitted (DESIGN.md §3.6); this is that read. It is the same object
+/// read a walk does for the commits it emits, so a commit read back is
+/// identical to the one the walk produced.
+///
+/// # Errors
+/// [`WalkError`] if the commit cannot be read or decoded.
+pub fn read_commit(handle: &RepoHandle, id: Oid) -> Result<Commit, WalkError> {
+    hydrate(handle.gix(), id)
+}
+
+/// The walk's tips as handles, each interned once.
+pub(super) fn handles(nodes: &impl Nodes, tips: &[Oid]) -> Vec<CommitHandle> {
+    tips.iter().map(|tip| nodes.handle(tip)).collect()
+}
+
+/// Reads the whole commit object for one emitted id.
+///
+/// Only emitted commits are hydrated. Exploration works on [`node`]s, which
+/// come out of the commit-graph without touching the object database at all
+/// when there is one — so the cost of a walk is roughly the cost of what it
+/// shows, not of what it had to look at.
+pub(super) fn hydrate(repo: &gix::Repository, id: Oid) -> Result<Commit, WalkError> {
+    let commit = node::find_commit(repo, id)?;
+    let unreadable = |source: gix::objs::decode::Error| NodeError::Unreadable {
+        id,
+        source: Box::new(source),
+    };
+
+    let parents = commit
+        .parent_ids()
+        .map(|parent| {
+            Oid::from_bytes(parent.as_bytes()).map_err(|source| NodeError::Malformed { id, source })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let author = identity(commit.author().map_err(unreadable)?, id)?;
+    let committer = identity(commit.committer().map_err(unreadable)?, id)?;
+    let message = commit.message_raw().map_err(unreadable)?.to_vec();
+
+    Ok(Commit {
+        id,
+        parents,
+        author,
+        committer,
+        message,
+    })
+}
+
+/// How many merges lie on a commit's first-parent chain.
+///
+/// ADR-0001's last-resort rule for the default branch is "the branch that is
+/// the target of the most first-parent merges", which is this counted once
+/// per branch tip. It works on [`node`]s rather than whole commits — no
+/// message, no tree, no signature — because the answer only needs each
+/// commit's parent count, and on a repository with a commit-graph file that
+/// costs no object reads at all.
+///
+/// # Errors
+/// [`WalkError`] if a commit on the chain cannot be read.
+pub fn first_parent_merges(handle: &RepoHandle, tip: Oid) -> Result<usize, WalkError> {
+    let table = CommitTable::open(handle).map_err(|source| WalkError::CommitGraph {
+        source: Box::new(source),
+    })?;
+    let nodes = RepoNodes::new(handle.gix(), Arc::new(table));
+
+    let mut merges = 0;
+    let mut seen = HandleSet::new();
+    let mut at = Some(nodes.handle(&tip));
+    while let Some(commit) = at {
+        // A first-parent chain cannot revisit a commit in a well-formed
+        // repository, but a corrupt one must not spin here for ever.
+        if !seen.insert(commit) {
+            break;
+        }
+        let node = nodes.node(commit)?;
+        if node.parents.len() > 1 {
+            merges += 1;
+        }
+        at = node.parents.first();
+    }
+    Ok(merges)
+}
+
+/// One side of git's author/committer pair, as plain bytes.
+fn identity(signature: gix::actor::SignatureRef<'_>, id: Oid) -> Result<Identity, NodeError> {
+    let time = signature.time().map_err(|source| NodeError::Unreadable {
+        id,
+        source: Box::new(source),
+    })?;
+    Ok(Identity {
+        name: signature.name.to_vec(),
+        email: signature.email.to_vec(),
+        when: Timestamp {
+            seconds: time.seconds,
+            offset_seconds: time.offset,
+        },
+    })
+}
+
+/// Why a walk could not run.
+#[derive(Debug, thiserror::Error)]
+pub enum WalkError {
+    /// The refs the walk starts from could not be read.
+    #[error(transparent)]
+    Tips(#[from] TipsError),
+    /// A commit could not be read.
+    #[error(transparent)]
+    Commit(#[from] NodeError),
+    /// The commit-graph file exists but could not be opened. Not the same as
+    /// there being none: a corrupt one is worth reporting.
+    #[error("cannot read the commit-graph file: {source}")]
+    CommitGraph {
+        /// What `gix` said. Boxed to keep `WalkError` small.
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
+}
