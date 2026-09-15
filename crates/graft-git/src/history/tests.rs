@@ -522,6 +522,87 @@ fn a_commits_fields_survive_the_walk() {
     );
 }
 
+/// A repository whose every commit shares one timestamp, with branches and
+/// merges and no commit-graph file (m1-the-graph/67).
+///
+/// Plain `git` in this crate's fixtures pins both dates to `FIXED_DATE`, so
+/// the tie is exact, as it is in history written by a script, a rebase or
+/// `git am`. The corpus cannot hold this shape: `fast-import` streams there
+/// carry strictly increasing times.
+fn tied_dates() -> tempfile::TempDir {
+    let dir = tempfile::tempdir().expect("a temporary directory");
+    let path = dir.path();
+    let git = |args: &[&str]| {
+        graft_fixtures::git::run(path, args).expect("git builds the tied-dates fixture");
+    };
+    let commit = |message: &str| git(&["commit", "-q", "--allow-empty", "-m", message]);
+    let merge =
+        |branch: &str, message: &str| git(&["merge", "-q", "--no-ff", "-m", message, branch]);
+
+    graft_fixtures::git::init_repo(path).expect("git init");
+    commit("initial");
+    commit("main: set up");
+    git(&["branch", "topic"]);
+    git(&["branch", "side"]);
+    for round in 1..=3 {
+        commit(&format!("main: work before merge {round}"));
+        git(&["checkout", "-q", "topic"]);
+        commit(&format!("topic: change {round}a"));
+        commit(&format!("topic: change {round}b"));
+        git(&["checkout", "-q", "main"]);
+        merge("topic", &format!("merge topic {round}"));
+    }
+    git(&["checkout", "-q", "side"]);
+    commit("side: one");
+    merge("main", "side: catch up with main");
+    commit("side: two");
+    git(&["checkout", "-q", "main"]);
+    commit("main: after the merges");
+    dir
+}
+
+/// Panics naming the first parent that comes out before one of its children.
+fn assert_children_before_parents(what: &str, commits: &[graft_core::commit::Commit]) {
+    let row: HashMap<Oid, usize> = commits
+        .iter()
+        .enumerate()
+        .map(|(row, commit)| (commit.id, row))
+        .collect();
+    for (child_row, commit) in commits.iter().enumerate() {
+        for parent in &commit.parents {
+            let parent_row = row[parent];
+            assert!(
+                child_row < parent_row,
+                "{what}: parent {parent} (row {parent_row}) is above its child {} (row {child_row})",
+                commit.id,
+            );
+        }
+    }
+}
+
+#[test]
+fn tied_dates_never_put_a_parent_above_its_child_before_or_after_promotion() {
+    let fixture = tied_dates();
+    let shared = SharedRepo::open(fixture.path()).expect("the fixture opens");
+    let handle = shared.handle();
+
+    // First paint: no commit-graph, so the provisional date walk.
+    let mut walk =
+        Walk::all_refs(&handle, Order::Topological, table(&handle)).expect("the walk starts");
+    assert!(walk.is_provisional());
+    let first = walk.next_chunk(CHUNK, &never).expect("the commits read");
+    assert!(first.done, "the whole fixture fits in the first chunk");
+    assert_children_before_parents("first chunk", &first.commits);
+
+    // Promotion: the full topological walk ADR-0008's background job runs.
+    let tips = handle.commit_tips(&()).expect("the refs read");
+    let mut sort = Walk::full_topological(&handle, &tips, table(&handle)).expect("the walk starts");
+    let promoted = sort.next_chunk(CHUNK, &never).expect("the commits read");
+    assert!(promoted.done);
+    assert_eq!(promoted.commits.len(), first.commits.len());
+    assert_children_before_parents("after promotion", &promoted.commits);
+}
+
 // ---------------------------------------------------------------------------
 // In-memory graphs: the questions the corpus cannot answer.
 // ---------------------------------------------------------------------------
@@ -594,6 +675,30 @@ fn the_topological_walk_holds_a_commit_until_every_child_is_out() {
     assert_eq!(
         topological(&nodes, &[oid(0x01), oid(0x02)]),
         vec![oid(0x01), oid(0x02), oid(0x0c)],
+    );
+}
+
+#[test]
+fn a_date_walk_holds_a_tied_parent_until_its_unseen_child_is_out() {
+    // One second throughout. The tip's parents are 0x01 and 0x0e, and 0x0e is
+    // also a child of 0x01; the smaller id alone would emit 0x01 first, above
+    // a child the walk has not reached yet (m1-the-graph/67).
+    let nodes = graph(&[
+        (0x0f, &[0x01, 0x0e], 5, 3),
+        (0x0e, &[0x01], 5, 2),
+        (0x01, &[], 5, 1),
+    ]);
+    let tips = [oid(0x0f), oid(0x0e)];
+    assert_eq!(
+        dated(&nodes, &tips, Follow::AllParents),
+        vec![oid(0x0f), oid(0x0e), oid(0x01)],
+    );
+    // First parent only: 0x0f's edge to 0x0e is not followed, so the smaller
+    // id goes first, but 0x01 still waits for both of its first-parent
+    // children (before the fix it came out between them).
+    assert_eq!(
+        dated(&nodes, &tips, Follow::FirstParentOnly),
+        vec![oid(0x0e), oid(0x0f), oid(0x01)],
     );
 }
 
