@@ -11,6 +11,7 @@
 //! below is a plain function call over plain data.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use graft_core::capabilities::RenderingTier;
 use graft_core::event::{Event, KeyCode, KeyPress, Modifiers, MouseButton, MouseInput, MouseKind};
@@ -169,8 +170,10 @@ pub struct AppState {
     /// The history walk the screen shows: its rows so far and where it is.
     /// `None` until one has been asked for.
     pub history: Option<History>,
-    /// The refs on each commit, once the refs job has answered.
-    pub refs: Option<crate::refs::RefBadges>,
+    /// The refs on each commit, once the refs job has answered. Shared, not
+    /// owned: every event clones the state, and a repository with 50k refs
+    /// made copying them the dearest part of a frame (m1-the-graph/69).
+    pub refs: Option<Arc<crate::refs::RefBadges>>,
     /// The working tree's staged/unstaged/untracked counts, once that job
     /// has answered. `None` until then, and while it fails: a failed read
     /// goes on the status line rather than showing a stale count.
@@ -592,7 +595,7 @@ fn took_fact(next: &mut AppState, product: Product) {
             next.system_git = Some(check);
         }
         Product::Refs(Ok(refs)) => {
-            next.refs = Some(refs);
+            next.refs = Some(Arc::new(refs));
         }
         Product::Refs(Err(failure)) => {
             // The graph still draws without badges; the reason goes on the
@@ -814,7 +817,7 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         copy_selected_sha(next, commands);
     } else if let Some(change) = view_change(key) {
         let height = next.graph_rows();
-        let stash = next.refs.as_ref().and_then(crate::refs::RefBadges::stash);
+        let stash = next.refs.as_deref().and_then(crate::refs::RefBadges::stash);
         if let Some(history) = next.history.as_mut()
             && let Some(view) = change.apply(history, stash)
             && let Some(request) = history.change_view(view, height)
@@ -1753,6 +1756,25 @@ mod tests {
         assert_eq!(full.history.map(|h| h.view), Some(View::default()));
     }
 
+    /// Every event clones the state (`update` returns a new one), so a large
+    /// immutable part must be shared by that clone, never copied: with 50k
+    /// refs a copy and its drop cost a millisecond a frame (m1-the-graph/69).
+    #[test]
+    fn the_next_state_shares_the_ref_badges_instead_of_copying_them() {
+        let (state, _) = update(
+            &AppState::default(),
+            AppEvent::Produced(
+                JobId::new(3),
+                Product::Refs(Ok(crate::refs::RefBadges::default())),
+            ),
+        );
+        let (next, _) = update(&state, key(KeyCode::Char('j')));
+
+        let before = state.refs.as_ref().expect("the refs answer was taken");
+        let after = next.refs.as_ref().expect("the badges carried over");
+        assert!(Arc::ptr_eq(before, after), "the badges were copied");
+    }
+
     #[test]
     fn capital_h_hides_the_stash_and_shows_it_again() {
         let id = JobId::new(7);
@@ -1774,7 +1796,7 @@ mod tests {
         )
         .expect("badges");
         assert_eq!(badges.stash(), Some(stash));
-        state.refs = Some(badges);
+        state.refs = Some(Arc::new(badges));
 
         let (hidden, commands) = update(&state, key(KeyCode::Char('H')));
         assert_eq!(

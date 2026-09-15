@@ -90,7 +90,7 @@ fn a_strip_whose_rows_or_row_above_have_not_arrived_is_left_out() {
 #[test]
 fn the_uncommitted_row_sits_on_head_in_its_strip() {
     let mut state = state(history_of(3, 0), 20);
-    state.refs = Some(refs_with_head(Some(oid(3))));
+    state.refs = Some(std::sync::Arc::new(refs_with_head(Some(oid(3)))));
     state.working_tree = Some(counts(1, 0, 0));
 
     let rows = pixel_rows(&state, MAX_LANES, STRIP_ROWS);

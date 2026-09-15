@@ -107,7 +107,7 @@ One line per public item. Update when a public item changes.
 - `AppState::search_prompt` (field) — the `/` prompt's typed text while open; every key but Ctrl-C is text.
 - `AppState::search` (field) — the running or finished search, its footer line; Esc cancels a running one (restoring the selection), then closes it.
 - `AppState::history` (field) — the history walk shown on screen, if one was asked for.
-- `AppState::refs` (field) — refs on each commit, once the refs job answers.
+- `AppState::refs` (field) — `Option<Arc<RefBadges>>`: refs on each commit, once the refs job answers; shared so the per-event state clone never copies them (m1-the-graph/69).
 - `AppState::working_tree` (field) — working-tree status counts, once that job answers.
 - `AppState::screen` (field) — which screen is on show; graph by default.
 - `AppState::lanes_expanded` (field) — `+` pressed: lanes draw unfolded; a view flag, the rows are untouched.

@@ -288,6 +288,27 @@ fn print_details(tier: RenderingTier, refs: Refs, run: &Run, idle: &[Duration]) 
     );
 }
 
+/// Prints what one `update`'s copy of the state costs: a clone of `state`
+/// and dropping the state it replaces, which every event pays (`update`
+/// clones, the loop drops the old one). Recorded, not asserted
+/// (m1-the-graph/69 profiled the 50k-ref frames with it).
+fn print_state_clone(tier: RenderingTier, refs: Refs, state: &AppState) {
+    const LAPS: u32 = 64;
+    let mut laps: Vec<Duration> = (0..LAPS)
+        .map(|_| {
+            let started = Instant::now();
+            drop(state.clone());
+            started.elapsed()
+        })
+        .collect();
+    laps.sort();
+    println!(
+        "frames: tier={tier:?} refs={refs:?} state_clone_and_drop_us (recorded, not asserted): laps={LAPS} p50={} max={}",
+        laps[laps.len() / 2].as_micros(),
+        laps.last().map_or(0, Duration::as_micros),
+    );
+}
+
 /// What one scroll measured.
 struct Run {
     /// Per key, in [`keys`] order: due time → the key's own frame.
@@ -321,8 +342,9 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs) -> Result<Run, String> {
     };
     state = budget_run::pump_until(&jobs, &events, state, ready)?;
     if let Refs::FiftyThousand = refs {
-        state.refs = Some(fifty_thousand(&state)?);
+        state.refs = Some(Arc::new(fifty_thousand(&state)?));
     }
+    print_state_clone(tier, refs, &state);
 
     let mut session = Session::settle(&Loaded::default(), capabilities(tier));
     let sink = Sink::default();

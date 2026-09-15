@@ -385,7 +385,7 @@ fn visible_rows<'a>(
     // on how many rows are shown below it.
     let top_row = history.visible(1).first();
     let dirty = state.working_tree.filter(|counts| !counts.is_clean());
-    let uncommitted = dirty.filter(|_| head_is_topmost(state.refs.as_ref(), top_row));
+    let uncommitted = dirty.filter(|_| head_is_topmost(state.refs.as_deref(), top_row));
     // The virtual row takes one of the viewport's rows when it draws:
     // `History::visible` knows nothing about it.
     let height = if uncommitted.is_some() {
@@ -406,7 +406,7 @@ fn visible_rows<'a>(
                         row,
                         index == history.cursor,
                         mailmap,
-                        state.refs.as_ref(),
+                        state.refs.as_deref(),
                         now,
                     );
                     if let Some(thread) = thread {
@@ -433,7 +433,7 @@ pub(crate) fn uncommitted_shown(state: &AppState) -> bool {
     };
     let top_row = history.visible(1).first();
     let dirty = state.working_tree.is_some_and(|counts| !counts.is_clean());
-    dirty && head_is_topmost(state.refs.as_ref(), top_row)
+    dirty && head_is_topmost(state.refs.as_deref(), top_row)
 }
 
 /// Is `HEAD` the topmost visible row? The uncommitted row attaches only
@@ -1107,7 +1107,7 @@ pub(crate) mod tests {
     fn state_with_head_and_counts(counts: graft_git::status::WorkingTreeCounts) -> AppState {
         AppState {
             history: Some(history_of(3, 0)),
-            refs: Some(refs_with_head(Some(oid(3)))),
+            refs: Some(std::sync::Arc::new(refs_with_head(Some(oid(3))))),
             working_tree: Some(counts),
             size: Size {
                 columns: 60,
@@ -1200,7 +1200,7 @@ pub(crate) mod tests {
         // HEAD points at a commit that is not row 0 of what is on screen —
         // scrolled down, say. The row must not draw beside the wrong commit.
         let mut state = state_with_head_and_counts(counts(1, 0, 0));
-        state.refs = Some(refs_with_head(Some(oid(1))));
+        state.refs = Some(std::sync::Arc::new(refs_with_head(Some(oid(1)))));
 
         let view = graph_view(&state, state.harness.clock.now_seconds());
 
@@ -1213,7 +1213,7 @@ pub(crate) mod tests {
         // No commits at all yet, so nothing else could be "on top" of it.
         let state = AppState {
             history: Some(history_of(0, 0)),
-            refs: Some(refs_with_head(None)),
+            refs: Some(std::sync::Arc::new(refs_with_head(None))),
             working_tree: Some(counts(2, 0, 0)),
             size: Size {
                 columns: 60,

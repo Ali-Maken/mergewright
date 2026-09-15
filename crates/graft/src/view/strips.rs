@@ -174,7 +174,7 @@ pub fn pixel_rows(state: &AppState, max_lanes: usize, strip_rows: usize) -> Pixe
     // The same facts, asked the same way, as `visible_rows`.
     let top_row = history.visible(1).first();
     let dirty = state.working_tree.is_some_and(|counts| !counts.is_clean());
-    let uncommitted = dirty && head_is_topmost(state.refs.as_ref(), top_row);
+    let uncommitted = dirty && head_is_topmost(state.refs.as_deref(), top_row);
     let height = state.graph_rows().saturating_sub(usize::from(uncommitted));
 
     let ranges = strip_ranges(history.top..history.top + height, &on_hand, strip_rows);
@@ -334,7 +334,7 @@ struct Painter<'a> {
 
 impl Painter<'_> {
     fn row(&self, index: usize, row: &Row) -> PaintedRow {
-        let refs = self.state.refs.as_ref();
+        let refs = self.state.refs.as_deref();
         // HEAD wins over the stash, as in `row_entry`.
         let ring = if refs.and_then(RefBadges::head) == Some(row.commit.id) {
             Ring::Head
