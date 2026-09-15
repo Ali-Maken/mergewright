@@ -1,6 +1,6 @@
 # m1-the-graph/72 — Review M1: split history and view under the 400-line rule
 
-Status: ready
+Status: split → 72a…
 Build with: **Sonnet** (medium) — mechanical moves along existing seams; no behaviour change.
 Blocked by: 65, 66, 67, 68, 69, 71
 

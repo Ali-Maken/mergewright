@@ -1,6 +1,6 @@
 # m1-the-graph/76 — Review M1: split graft-term under the 400-line rule
 
-Status: ready
+Status: split → 76a…
 Build with: **Sonnet** (medium) — mechanical moves along existing seams; no behaviour change.
 Blocked by: 65, 66, 67, 68, 69, 75
 

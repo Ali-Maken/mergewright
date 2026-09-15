@@ -1,6 +1,6 @@
 # m1-the-graph/74 — Review M1: split graft-git under the 400-line rule
 
-Status: ready
+Status: split → 74a…
 Build with: **Sonnet** (medium) — mechanical moves along existing seams; no behaviour change.
 Blocked by: 65, 66, 67, 68, 69, 73
 
