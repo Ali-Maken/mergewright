@@ -5,15 +5,17 @@
 use std::collections::HashMap;
 use std::convert::Infallible;
 
-use graft_core::commit::{Identity, Timestamp};
+use graft_core::commit::{Commit, Identity, Timestamp};
 use graft_core::commit_handle::{CommitHandle, Link};
 use proptest::prelude::*;
 
 use super::*;
 use crate::identity::BranchIdentity;
 use crate::layout::layout;
+use crate::layout::source::{CommitSource, Pull};
 use crate::layout::tests::Handles;
-use crate::seeds::BranchSeed;
+use crate::row::RowShape;
+use crate::seeds::{BranchSeed, Seeds};
 
 // ---- a generated history -------------------------------------------------
 

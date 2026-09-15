@@ -1,6 +1,6 @@
 # m1-the-graph/75a — Review M1: split graft-graph layout stream under the 400-line rule
 
-Status: ready
+Status: done
 Build with: **Sonnet** (medium) — mechanical moves along existing seams; no behaviour change.
 Blocked by: 74b
 
@@ -16,10 +16,13 @@ In: split crates/graft-graph/src/layout/stream.rs (777), along existing concerns
 Out: behaviour changes, renames of public items, anything outside the named files' crates.
 
 ## Acceptance
-- [ ] Named files split; each new file ≤400 non-test lines.
-- [ ] No test changed except import paths; all gates green; no snapshot changes.
-- [ ] MAP.md (and ARCHITECTURE.md if needed) updated.
-- [ ] Report: before/after line counts; any file still over 400 in these crates.
+- [x] Named files split; each new file ≤400 non-test lines.
+- [x] No test changed except import paths; all gates green; no snapshot changes.
+- [x] MAP.md (and ARCHITECTURE.md if needed) updated. (Neither needed a change: module path `layout::stream` and all public re-exports unchanged.)
+- [x] Report: before/after line counts; any file still over 400 in these crates.
+
+## Result
+`layout/stream.rs` (777) → `layout/stream/{mod.rs (206), advance.rs (200), viewport.rs (209), introspect.rs (109), materialise.rs (110)}`. No file in graft-graph now over 400 non-test lines. `stream/tests.rs` needed explicit imports restored (`Commit`, `CommitSource`, `Pull`, `RowShape`, `Seeds`) since it relied on `use super::*` transitively pulling them through the old single-file module.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo clippy --all-targets --features heavy-tests -- -D warnings` · `cargo test`
