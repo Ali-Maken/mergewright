@@ -4,7 +4,7 @@ Status: done
 Build with: **Sonnet** (medium) — mechanical moves along existing seams; no behaviour change.
 Blocked by: 65, 66, 67, 68, 69
 
-From the M1 review round 1, "M1" (PROMPT.md 6.2: files over 400 non-test lines). Split into 70–74, one crate area each, after the fix tickets so moves don't conflict with fixes.
+From the M1 review round 1, "M1" (PROMPT.md 6.2: files over 400 non-test lines). Split into 70–76, one crate area each, after the fix tickets so moves don't conflict with fixes.
 
 ## Read first
 - docs/reviews/m1-the-graph.md "M1" only; PROMPT.md §6.1–6.2; ARCHITECTURE.md crate map section.

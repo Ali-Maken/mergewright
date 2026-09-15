@@ -4,15 +4,15 @@ Status: ready
 Build with: **Sonnet** (medium) — mechanical moves along existing seams; no behaviour change.
 Blocked by: 65, 66, 67, 68, 69, 71
 
-From the M1 review round 1, "M1" (PROMPT.md 6.2: files over 400 non-test lines). Split into 70–74, one crate area each, after the fix tickets so moves don't conflict with fixes.
+From the M1 review round 1, "M1" (PROMPT.md 6.2: files over 400 non-test lines). Split into 70–76, one crate area each, after the fix tickets so moves don't conflict with fixes.
 
 ## Read first
 - docs/reviews/m1-the-graph.md "M1" only; PROMPT.md §6.1–6.2; ARCHITECTURE.md crate map section.
 - The `codebase-design` skill (module changes).
-- The crate MAP.md files for: crates/graft/src/history/mod.rs (~700), crates/graft/src/view.rs (704).
+- The crate MAP.md files for: crates/graft/src/history/mod.rs (~713), crates/graft/src/history/scroll.rs (495), crates/graft/src/view.rs (704), crates/graft/src/config/mod.rs (431).
 
 ## Scope
-In: split crates/graft/src/history/mod.rs (~700), crates/graft/src/view.rs (704), along existing concerns. Each resulting file ≤400 non-test lines, one concern per file. Pure moves plus the visibility changes they need; public API unchanged unless a MAP.md line must move. Update MAP.md, and ARCHITECTURE.md if structure changes. Before finishing, list every file in these crates over 400 non-test lines (`wc`-based, tests excluded) and fix the ones this ticket names; list the rest in the report.
+In: split crates/graft/src/history/mod.rs (~713), crates/graft/src/history/scroll.rs (495), crates/graft/src/view.rs (704), crates/graft/src/config/mod.rs (431), along existing concerns. Each resulting file ≤400 non-test lines, one concern per file. Pure moves plus the visibility changes they need; public API unchanged unless a MAP.md line must move. Update MAP.md, and ARCHITECTURE.md if structure changes. Before finishing, list every file in these crates over 400 non-test lines (`wc`-based, tests excluded) and fix the ones this ticket names; list the rest in the report.
 Out: behaviour changes, renames of public items, anything outside the named files' crates.
 
 ## Acceptance
