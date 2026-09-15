@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — fix round 1: 67 (opus) building, then 68–74, review round 2 · 99 tickets: 86 done, 8 ready, 1 partial, 2 split, 2 wontfix
+**Current step:** M1 The graph — fix round 1: 68 (opus) building, then 69–74, review round 2 · 99 tickets: 87 done, 7 ready, 1 partial, 2 split, 2 wontfix
 
 ---
 
@@ -281,6 +281,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-15 · m1/65 wheel scroll strands search · sonnet · done (2a7ee9c) · cause fix: History::scroll now withdraws jump/seeking like select_at/seek; test red→green; KNOWN_GAPS row closed; ~60k tokens, no compaction
 - 2026-09-15 · conductor · paused after 65 — user: pause, going to sleep; resume at 66
 - 2026-09-15 · m1/66 piped stdout waits for history · sonnet · done (0818c58) · cause fix: headless_settled used is_none_or → history None counted settled; now is_some_and; open-failure exits via Quit::Fatal (regression test added); KNOWN_GAPS row closed; ~40k tokens, no compaction
+- 2026-09-15 · m1/67 tied dates parent above child · opus · done (91c025c) · cause fix: date walk takes the whole tie class at the frontier's newest date, orders children first (tie-break alone couldn't: parent emitted before an unseen same-date child); 2 tests red on old walk; 1M no-cg warm first paint 103 → 104–125 ms, G 5.27–5.50 → 5.31–5.47 s; residual in closed row: backwards clocks misorder until promotion, one-date repo reads whole tie class before first paint (round-2 reviewer to weigh big same-second rebases); ~70k tokens, no compaction
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.
