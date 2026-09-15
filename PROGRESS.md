@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — fix round 1: 77 (sonnet) building, then review round 2 · 114 tickets: 103 done, 1 ready, 1 partial, 7 split, 2 wontfix
+**Current step:** M1 The graph — M1 review round 2 (opus), since 1b828ca · 114 tickets: 104 done, 1 partial, 7 split, 2 wontfix
 
 ---
 
@@ -300,6 +300,8 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-15 · m1/75c split raster, inclusion, synthetic · sonnet · done (183b31c) · raster 654 → 300 + pen 271, geometry 119; inclusion 436 → 196 + included 253; synthetic 678 → 340 + scale 138, history 219; pure moves, public paths kept, no snapshot diffs, gates green; no compaction
 - 2026-09-15 · m1/76a split graft-term decode + detect · sonnet · done (eaec05e) · decode.rs 451 → decode/{mod 258, csi 147, mouse 68}; detect/mod.rs 413 → mod 262, tier 85, fallback 84; public names unchanged, gates green; ~65k tokens, no compaction
 - 2026-09-15 · m1/76b split graft-term kitty.rs · sonnet · done (c3b4fb8) · kitty.rs 448 → kitty/{mod 245, encode 182, reply 40}; public paths unchanged, gates green; workspace sweep: 1 file still >400 non-test, crates/graft/examples/kitty_check.rs 469 (dev example; round-2 reviewer to say if 6.2 covers examples); no compaction
+- 2026-09-15 · m1/77 stderr write errors swallowed · sonnet · done (e8f3389) · cause fix: report_stalled_jobs now returns io::Result folded into run() (write failure → exit FAILURE); finish's restore-failure write kept best-effort with explicit match + comment (primary error already returned); _to(writer) seams, 4 FailingWriter tests; 6 other swallow sites listed, not fixed: crash.rs:122,156, main.rs:82, event_loop/redetect.rs:85, jobs/runner.rs:91,227; ~40k tokens, no compaction
+- 2026-09-15 · conductor · fix round 1 complete (65–77); M1 review round 2 (opus) dispatched, range 1b828ca..HEAD
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.
