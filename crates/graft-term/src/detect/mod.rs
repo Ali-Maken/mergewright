@@ -30,9 +30,11 @@
 //! is never re-decided.
 
 mod environment;
+mod fallback;
 mod probe;
 mod redetect;
 mod reply;
+mod tier;
 mod tmux;
 mod tty;
 
@@ -40,12 +42,14 @@ use std::io;
 use std::time::{Duration, Instant};
 
 use graft_core::capabilities::{
-    Capabilities, CellSize, CellSizeSource, PixelProtocol, ProbeOutcome, RenderingTier, Rgb,
-    Supported, Theme, ThemeHint, ThemeSource, TmuxStatus,
+    Capabilities, CellSize, CellSizeSource, ProbeOutcome, RenderingTier, Supported, Theme,
+    ThemeHint, ThemeSource, TmuxStatus,
 };
 
 pub use environment::Environment;
+use fallback::{answered, cell_size, theme};
 pub use redetect::{remeasure_cell_size, requery_theme};
+use tier::{Graphics, tier};
 use tmux::{TmuxProbe, through_tmux};
 pub use tty::TtyHost;
 
@@ -208,167 +212,12 @@ pub fn detect(environment: &Environment, host: &mut dyn TerminalHost) -> Capabil
     }
 }
 
-/// What the terminal can draw, once tmux has had its say.
-struct Graphics {
-    kitty: Supported,
-    sixel: Supported,
-    /// Whether image-protocol bytes reach a terminal that can act on them at
-    /// all. False inside a tmux that will not pass them through, which is the
-    /// whole point of §4.3: no image tier is attempted on a hope.
-    reaches_the_terminal: bool,
-}
-
-impl Graphics {
-    /// Graphics as a direct probe round found them.
-    fn from(replies: &probe::ProbeReplies) -> Self {
-        Self {
-            kitty: supported(replies.fenced().then_some(replies.kitty_graphics)),
-            sixel: supported(replies.sixel()),
-            reaches_the_terminal: true,
-        }
-    }
-
-    /// Graphics ruled out because nothing gets through to the terminal.
-    fn blocked() -> Self {
-        Self {
-            kitty: Supported::Silent,
-            sixel: Supported::Silent,
-            reaches_the_terminal: false,
-        }
-    }
-}
-
-/// The tier tables of DESIGN.md §4.2, plus §4.3's tmux rule.
-///
-/// Two answers, decided separately because they are two questions. The
-/// *protocol* is the best image transport this terminal can be reached
-/// through — Kitty, then iTerm2, then Sixel — and is reported whatever tier
-/// is chosen, because it is a fact about the terminal and because
-/// `graph.renderer = "pixel"` needs to know what to force.
-///
-/// The *tier* follows ADR-0016's order: **Kitty → Unicode → iTerm2 → Sixel →
-/// ASCII**. Unicode is not a fallback here; it is the default for every
-/// terminal without the Kitty protocol, because the terminals this graph is
-/// read in most days have no image protocol at all. iTerm2 takes the tier
-/// only where the alternative is ASCII, which it plainly beats; moving it
-/// above Unicode needs a `TESTING.md` checklist row saying it beats that too,
-/// and a new ADR. Sixel never takes the tier: there is no encoder behind it
-/// (ADR-0016), so a Sixel-only terminal draws text like one with no protocol.
-fn tier(
-    environment: &Environment,
-    graphics: &Graphics,
-    iterm2_images: bool,
-) -> (RenderingTier, Option<PixelProtocol>) {
-    let protocol = if graphics.kitty == Supported::Yes {
-        Some(PixelProtocol::Kitty)
-    } else if iterm2_images {
-        Some(PixelProtocol::Iterm2)
-    } else if graphics.sixel == Supported::Yes {
-        Some(PixelProtocol::Sixel)
-    } else {
-        None
-    };
-
-    let tier = match protocol {
-        Some(PixelProtocol::Kitty) => RenderingTier::Pixel,
-        // §4.3 is explicit that a tmux without passthrough settles on the
-        // Unicode tier, so it does not drop further on a missing `COLORTERM`:
-        // tmux draws box-drawing characters whatever its colour depth.
-        _ if environment.tmux.is_some() || environment.has_truecolor() => RenderingTier::Unicode,
-        // No truecolor and no tmux: the choice is between pixels and `|`/`*`,
-        // and an image protocol wins that one — when Graft has an encoder
-        // for it.
-        Some(PixelProtocol::Iterm2) => RenderingTier::Pixel,
-        // Sixel is reported but never drawn: ADR-0016 keeps no Sixel encoder,
-        // so a pixel tier here would be a tier with nothing behind it. With
-        // no truecolor, the text tier the table leaves is ASCII.
-        Some(PixelProtocol::Sixel) | None => RenderingTier::Ascii,
-    };
-    (tier, protocol)
-}
-
-/// The cell-size fallback chain of DESIGN.md §4.1 step 3, in order: what the
-/// terminal reported, what the kernel knows, and finally a flagged guess.
-fn cell_size(replies: &probe::ProbeReplies, host: &mut dyn TerminalHost) -> CellSize {
-    measured_cell_size(replies, host).unwrap_or(CellSize {
-        width: ASSUMED_CELL_SIZE.0,
-        height: ASSUMED_CELL_SIZE.1,
-        source: CellSizeSource::Assumed,
-    })
-}
-
-/// The two measured rungs of the chain: the terminal's reply, then the
-/// kernel. `None` when neither measured anything, which leaves the caller to
-/// decide what to assume — the default at startup, the last value on resize.
-fn measured_cell_size(
-    replies: &probe::ProbeReplies,
-    host: &mut dyn TerminalHost,
-) -> Option<CellSize> {
-    if let Some((width, height)) = replies.cell_size {
-        return Some(CellSize {
-            width,
-            height,
-            source: CellSizeSource::Reported,
-        });
-    }
-    let (width, height) = host.window_pixels().and_then(WindowPixels::cell_size)?;
-    Some(CellSize {
-        width,
-        height,
-        source: CellSizeSource::WindowSize,
-    })
-}
-
-/// The light/dark hint from the reported background, or dark flagged as the
-/// assumption it is (DESIGN.md §4.1 step 3).
-fn theme(background: Option<Rgb>) -> ThemeHint {
-    background.map_or(
-        ThemeHint {
-            theme: Theme::Dark,
-            source: ThemeSource::Assumed,
-        },
-        reported_theme,
-    )
-}
-
-/// The hint a reported background gives.
-fn reported_theme(background: Rgb) -> ThemeHint {
-    ThemeHint {
-        theme: if is_light(background) {
-            Theme::Light
-        } else {
-            Theme::Dark
-        },
-        source: ThemeSource::Background(background),
-    }
-}
-
-/// Whether a background reads as light. Rec. 709 luma against a mid threshold:
-/// this only ever picks one of two themes, so the extra accuracy of a full
-/// sRGB-linearised luminance would change nothing but the arithmetic.
-fn is_light(color: Rgb) -> bool {
-    let luma = 0.2126 * f32::from(color.red)
-        + 0.7152 * f32::from(color.green)
-        + 0.0722 * f32::from(color.blue);
-    luma > 127.5
-}
-
 /// A yes/no query's answer, keeping "nothing came back" distinct from "no".
 fn supported(answer: Option<bool>) -> Supported {
     match answer {
         Some(true) => Supported::Yes,
         Some(false) => Supported::No,
         None => Supported::Silent,
-    }
-}
-
-/// As [`supported`], but silence only counts as an answer when the round was
-/// fenced: an unfenced round proves nothing about anything.
-fn answered(outcome: &ProbeOutcome, answer: Option<bool>) -> Supported {
-    match (outcome, answer) {
-        (_, Some(state)) => supported(Some(state)),
-        (ProbeOutcome::Answered, None) => Supported::No,
-        (_, None) => Supported::Silent,
     }
 }
 

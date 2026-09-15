@@ -18,8 +18,18 @@
 //! still one reply. [`Decoder::flush`] is the mux saying "nothing more is
 //! coming": whatever is held is read as keys, which is how a lone `Esc` press
 //! is told apart from the start of a sequence.
+//!
+//! Split across three files by concern: this one is the escape-sequence
+//! framing (deciding what kind of thing is starting and where it ends);
+//! [`csi`] reads `CSI` sequences into keys; [`mouse`] turns a button code
+//! into a [`MouseInput`](graft_core::event::MouseInput).
 
-use graft_core::event::{Event, KeyCode, KeyPress, Modifiers, MouseButton, MouseInput, MouseKind};
+mod csi;
+mod mouse;
+
+use graft_core::event::{Event, KeyCode, KeyPress, Modifiers};
+
+use csi::csi;
 
 const ESCAPE: u8 = 0x1b;
 const BELL: u8 = 0x07;
@@ -44,7 +54,7 @@ pub struct Decoder {
 }
 
 /// What reading one item at the front of the buffer found.
-enum Step {
+pub(super) enum Step {
     /// An item (or nothing worth reporting) and how many bytes it used.
     Took(Option<Decoded>, usize),
     /// The buffer ends mid-item: wait for more bytes, or a flush.
@@ -127,20 +137,20 @@ fn finished_or(flushing: bool, item: Option<Decoded>, used: usize) -> Step {
     }
 }
 
-fn alt() -> Modifiers {
+pub(super) fn alt() -> Modifiers {
     Modifiers {
         alt: true,
         ..Modifiers::NONE
     }
 }
 
-fn key(code: KeyCode, modifiers: Modifiers) -> Decoded {
+pub(super) fn key(code: KeyCode, modifiers: Modifiers) -> Decoded {
     Decoded::Event(Event::Key(KeyPress { code, modifiers }))
 }
 
 /// One key that is not an escape sequence: a control byte or a UTF-8
 /// character. `prefix` bytes (an `Alt` escape) were already used.
-fn plain(bytes: &[u8], modifiers: Modifiers, prefix: usize, flushing: bool) -> Step {
+pub(super) fn plain(bytes: &[u8], modifiers: Modifiers, prefix: usize, flushing: bool) -> Step {
     let first = bytes[0];
     let control = |character: u8| {
         let modifiers = Modifiers {
@@ -206,7 +216,7 @@ fn ss3(bytes: &[u8]) -> Step {
     Step::Took(code.map(|code| key(code, Modifiers::NONE)), 3)
 }
 
-fn cursor_key(final_byte: u8) -> Option<KeyCode> {
+pub(super) fn cursor_key(final_byte: u8) -> Option<KeyCode> {
     Some(match final_byte {
         b'A' => KeyCode::Up,
         b'B' => KeyCode::Down,
@@ -240,211 +250,8 @@ fn string_sequence(bytes: &[u8], bell_ends: bool) -> Step {
     Step::Unfinished
 }
 
-fn reply(bytes: &[u8], length: usize) -> Step {
+pub(super) fn reply(bytes: &[u8], length: usize) -> Step {
     Step::Took(Some(Decoded::Reply(bytes[..length].to_vec())), length)
-}
-
-/// `ESC [`: a key, mouse report, paste, focus change or reply.
-fn csi(bytes: &[u8]) -> Step {
-    let mut end = 2;
-    while matches!(bytes.get(end), Some(0x30..=0x3f)) {
-        end += 1;
-    }
-    let params = &bytes[2..end];
-    while matches!(bytes.get(end), Some(0x20..=0x2f)) {
-        end += 1;
-    }
-    let intermediates = &bytes[2 + params.len()..end];
-    let final_byte = match bytes.get(end) {
-        None => return Step::Unfinished,
-        Some(&byte @ 0x40..=0x7e) => byte,
-        // A control byte where the final byte belongs: this was never a CSI,
-        // so `ESC [` was `Alt+[` and what follows decodes on its own.
-        Some(_) => return plain(&bytes[1..], alt(), 1, true),
-    };
-    let length = end + 1;
-
-    if params.first() == Some(&b'?') || final_byte == b't' || !intermediates.is_empty() {
-        return reply(bytes, length);
-    }
-    match (params, final_byte) {
-        (b"200", b'~') => paste(bytes, length),
-        (b"", b'M') => legacy_mouse(bytes),
-        (b"", b'I') => Step::Took(Some(Decoded::Event(Event::FocusGained)), length),
-        (b"", b'O') => Step::Took(Some(Decoded::Event(Event::FocusLost)), length),
-        _ if params.first() == Some(&b'<') => {
-            Step::Took(sgr_mouse(&params[1..], final_byte), length)
-        }
-        _ => Step::Took(csi_key(params, final_byte), length),
-    }
-}
-
-fn paste(bytes: &[u8], start: usize) -> Step {
-    let body = &bytes[start..];
-    match body
-        .windows(PASTE_END.len())
-        .position(|window| window == PASTE_END)
-    {
-        Some(end) => {
-            let text = String::from_utf8_lossy(&body[..end]).into_owned();
-            Step::Took(
-                Some(Decoded::Event(Event::Paste(text))),
-                start + end + PASTE_END.len(),
-            )
-        }
-        None => Step::Unfinished,
-    }
-}
-
-/// The numbers in one `;`-separated field, split on `:`. Empty or
-/// non-numeric sub-fields read as `None`.
-fn field(params: &[u8], index: usize) -> Vec<Option<u32>> {
-    params
-        .split(|&byte| byte == b';')
-        .nth(index)
-        .map(|field| {
-            field
-                .split(|&byte| byte == b':')
-                .map(|part| std::str::from_utf8(part).ok()?.parse().ok())
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
-fn number(params: &[u8], index: usize) -> Option<u32> {
-    field(params, index).first().copied().flatten()
-}
-
-/// The xterm / kitty modifier parameter: one plus a bit mask.
-fn modifiers(parameter: Option<u32>) -> Modifiers {
-    let bits = parameter.unwrap_or(1).saturating_sub(1);
-    Modifiers {
-        shift: bits & 1 != 0,
-        alt: bits & 2 != 0,
-        control: bits & 4 != 0,
-        command: bits & 8 != 0,
-    }
-}
-
-fn csi_key(params: &[u8], final_byte: u8) -> Option<Decoded> {
-    let held = modifiers(number(params, 1));
-    let code = match final_byte {
-        b'~' => tilde_key(number(params, 0)?)?,
-        b'P'..=b'S' => KeyCode::Function(final_byte - b'P' + 1),
-        b'Z' => KeyCode::BackTab,
-        b'u' => return kitty_key(params),
-        other => cursor_key(other)?,
-    };
-    Some(key(code, held))
-}
-
-fn tilde_key(number: u32) -> Option<KeyCode> {
-    Some(match number {
-        1 | 7 => KeyCode::Home,
-        2 => KeyCode::Insert,
-        3 => KeyCode::Delete,
-        4 | 8 => KeyCode::End,
-        5 => KeyCode::PageUp,
-        6 => KeyCode::PageDown,
-        11..=15 => KeyCode::Function(u8::try_from(number - 10).ok()?),
-        17..=21 => KeyCode::Function(u8::try_from(number - 11).ok()?),
-        23..=26 => KeyCode::Function(u8::try_from(number - 12).ok()?),
-        _ => return None,
-    })
-}
-
-/// `CSI codepoint ; modifiers:event u`, the kitty keyboard protocol. A
-/// release (event 3) is dropped: every Graft binding fires on the way down.
-fn kitty_key(params: &[u8]) -> Option<Decoded> {
-    let codepoint = number(params, 0)?;
-    let second = field(params, 1);
-    let mut held = modifiers(second.first().copied().flatten());
-    if second.get(1).copied().flatten() == Some(3) {
-        return None;
-    }
-    let code = match codepoint {
-        27 => KeyCode::Escape,
-        13 => KeyCode::Enter,
-        9 => KeyCode::Tab,
-        127 => KeyCode::Backspace,
-        // The protocol's private-use range: lock keys, keypad, media keys and
-        // bare modifiers. None has a binding anywhere in Graft.
-        57_344..=63_743 => return None,
-        _ => {
-            let character = char::from_u32(codepoint)?;
-            if held.shift {
-                KeyCode::Char(character.to_uppercase().next()?)
-            } else {
-                if character.is_uppercase() {
-                    held.shift = true;
-                }
-                KeyCode::Char(character)
-            }
-        }
-    };
-    Some(key(code, held))
-}
-
-/// `CSI < button ; column ; row M|m`, 1-based coordinates.
-fn sgr_mouse(params: &[u8], final_byte: u8) -> Option<Decoded> {
-    let button = number(params, 0)?;
-    let column = number(params, 1)?;
-    let row = number(params, 2)?;
-    Some(mouse(button, column, row, final_byte == b'm'))
-}
-
-/// `CSI M b x y`, each byte offset by 32 and coordinates 1-based.
-fn legacy_mouse(bytes: &[u8]) -> Step {
-    let Some(&[button, column, row]) = bytes.get(3..6) else {
-        return Step::Unfinished;
-    };
-    let decoded = Some(mouse(
-        u32::from(button.saturating_sub(32)),
-        u32::from(column.saturating_sub(32)),
-        u32::from(row.saturating_sub(32)),
-        false,
-    ));
-    Step::Took(decoded, 6)
-}
-
-fn mouse(code: u32, column: u32, row: u32, released: bool) -> Decoded {
-    let button = match code & 3 {
-        1 => MouseButton::Middle,
-        2 => MouseButton::Right,
-        // 3 is "no button": a release in the legacy encoding, or motion.
-        _ => MouseButton::Left,
-    };
-    let no_button = code & 3 == 3;
-    let kind = if code & 64 != 0 {
-        match code & 3 {
-            0 => MouseKind::ScrollUp,
-            1 => MouseKind::ScrollDown,
-            2 => MouseKind::ScrollLeft,
-            _ => MouseKind::ScrollRight,
-        }
-    } else if code & 32 != 0 {
-        if no_button {
-            MouseKind::Moved
-        } else {
-            MouseKind::Drag(button)
-        }
-    } else if released || no_button {
-        MouseKind::Up(button)
-    } else {
-        MouseKind::Down(button)
-    };
-    let cell = |value: u32| u16::try_from(value.saturating_sub(1)).unwrap_or(u16::MAX);
-    Decoded::Event(Event::Mouse(MouseInput {
-        kind,
-        column: cell(column),
-        row: cell(row),
-        modifiers: Modifiers {
-            shift: code & 4 != 0,
-            alt: code & 8 != 0,
-            control: code & 16 != 0,
-            command: false,
-        },
-    }))
 }
 
 #[cfg(test)]

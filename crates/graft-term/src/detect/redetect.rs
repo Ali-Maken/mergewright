@@ -17,7 +17,8 @@ use std::time::{Duration, Instant};
 
 use graft_core::capabilities::{CellSize, CellSizeSource, ThemeHint};
 
-use super::{TerminalHost, measured_cell_size, probe, reported_theme};
+use super::fallback::{measured_cell_size, reported_theme};
+use super::{TerminalHost, probe};
 
 /// Re-ask the cell size after a resize: `CSI 16 t`, then `TIOCGWINSZ`, then
 /// `previous`'s numbers marked [`CellSizeSource::Assumed`].

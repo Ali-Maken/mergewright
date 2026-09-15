@@ -8,7 +8,7 @@
 use std::collections::VecDeque;
 use std::io;
 
-use graft_core::capabilities::ColorDepth;
+use graft_core::capabilities::{ColorDepth, PixelProtocol, Rgb};
 
 use super::environment::version;
 use super::*;
