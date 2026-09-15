@@ -154,11 +154,13 @@ the driver that hands each laid-out chunk to the UI thread
 `graft-graph/tests/it/streaming.rs` sits on that crate's dev-dependency edge
 to `git`, which ADR-0006's rule does not count.
 
-Inside `graph`, `layout.rs` is the cursor (lane state, one row at a time) and
-`layout/` holds what streams it: `order` (the emitted commit ids — the one
-structure that grows with history), `source` (the trait above), `cache`
-(chunked rows, eviction, fingerprints), `checkpoint` (cursor snapshots) and
-`stream` (`StreamingLayout`, the one type callers see).
+Inside `graph`, `layout.rs` is the cursor's own file — its state and public,
+checkpoint-facing API (`new`, `extend`, `rows_emitted`, `active_lanes`) — and
+`layout/` holds what streams it and its internals: `assign_row` (deciding one
+row's lane, edges and columns — the algorithm itself), `order` (the emitted
+commit ids — the one structure that grows with history), `source` (the trait
+above), `cache` (chunked rows, eviction, fingerprints), `checkpoint` (cursor
+snapshots) and `stream` (`StreamingLayout`, the one type callers see).
 
 ### `fixtures`: test-only, outside the table
 

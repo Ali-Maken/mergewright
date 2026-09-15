@@ -11,6 +11,7 @@
 //! later in the sequence, which is the precondition `extend` documents.
 
 use crate::layout::tests::extend_rows;
+use crate::seeds::BranchSeed;
 use std::collections::{BTreeSet, HashMap};
 
 use proptest::prelude::*;

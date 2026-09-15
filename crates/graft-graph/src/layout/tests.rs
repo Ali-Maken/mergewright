@@ -1,6 +1,9 @@
 use graft_core::commit::{Identity, Timestamp};
 use graft_core::commit_handle::{CommitHandle, Link};
 
+use crate::lane::LaneIdentity;
+use crate::seeds::BranchSeed;
+
 use super::*;
 
 pub(crate) fn oid(byte: u8) -> Oid {
