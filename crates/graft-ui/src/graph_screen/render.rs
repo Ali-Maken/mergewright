@@ -1,0 +1,329 @@
+//! Drawing: the [`Widget`] entry point, the rows, and their badges.
+
+use graft_core::capabilities::ColorDepth;
+use graft_graph::fold::Fold;
+use ratatui::buffer::Buffer;
+use ratatui::layout::Rect;
+use ratatui::style::{Modifier, Style};
+use ratatui::text::Line;
+use ratatui::widgets::Widget;
+use unicode_width::UnicodeWidthStr;
+
+use super::layout::{Columns, graph_width};
+use super::{Badge, BadgeKind, CHROME_ROWS, GraphEntry, GraphScreen, Icons, SUBJECT_GAP, badges};
+use crate::fit::fit;
+use crate::graph_column::{GraphColumn, GraphLine, RowPaint};
+use crate::paint::{color, foreground};
+use crate::theme::Token;
+
+impl Widget for GraphScreen<'_> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        if area.is_empty() {
+            // A pty that has not been sized yet (ADR-0012).
+            return;
+        }
+        let width = usize::from(area.width);
+        let (body, rows, applied) = self.body_layout(area);
+        let folded_lanes = applied.as_ref().map_or(0, Fold::folded_count);
+        buf.set_line(
+            area.x,
+            area.y,
+            &self.header(width, folded_lanes),
+            area.width,
+        );
+        for (offset, line) in self.view.banner.iter().enumerate() {
+            let y = area
+                .y
+                .saturating_add(1)
+                .saturating_add(u16::try_from(offset).unwrap_or(u16::MAX));
+            if y >= area.bottom() {
+                break;
+            }
+            let token = if offset == 0 {
+                Token::Accent
+            } else {
+                Token::Info
+            };
+            let styled = Line::styled(
+                fit(&format!(" {line}"), width),
+                foreground(self.theme, token),
+            );
+            buf.set_line(area.x, y, &styled, area.width);
+        }
+
+        // Planned over exactly the rows drawn, expanded or not: the hint
+        // has to know whether there is anything to collapse.
+        let fold = self
+            .view
+            .compaction
+            .plan(rows.iter().map(|entry| &*entry.line.row));
+        if body.height > 0 {
+            self.body(body, rows, applied.as_ref(), buf);
+        }
+
+        if area.height > 1 {
+            let (text, token) = self.footer_line(body, rows, applied.as_ref(), &fold, width);
+            let footer = Line::styled(fit(&text, width), foreground(self.theme, token));
+            buf.set_line(area.x, area.bottom() - 1, &footer, area.width);
+        }
+        if let Some(line) = self.view.commit_graph
+            && area.height > CHROME_ROWS
+        {
+            buf.set_line(
+                area.x,
+                area.bottom() - 2,
+                &self.commit_graph_line(line, width),
+                area.width,
+            );
+        }
+    }
+}
+
+impl GraphScreen<'_> {
+    /// The rows: graph, the reserved marker slot, the subject, and — when
+    /// there is room — the author chip, the relative date and the short SHA.
+    fn body(&self, area: Rect, rows: &[GraphEntry<'_>], fold: Option<&Fold>, buf: &mut Buffer) {
+        let graph_width = graph_width(area, rows, fold);
+        // At the pixel tier the cells stay blank: text drawn there would sit
+        // on top of the terminal's images.
+        if !self.view.pixel {
+            let graph_lines: Vec<GraphLine<'_>> =
+                rows.iter().map(|entry| entry.line.clone()).collect();
+            let mut column = GraphColumn::new(&graph_lines, self.theme).ascii(self.view.ascii);
+            if let Some(fold) = fold {
+                column = column.through(fold);
+            }
+            column.render(
+                Rect {
+                    width: graph_width,
+                    ..area
+                },
+                buf,
+            );
+        }
+
+        let columns = Columns::compute(area, graph_width);
+        for (entry, y) in rows.iter().zip(area.top()..) {
+            self.draw_row(entry, y, area, &columns, buf);
+        }
+    }
+
+    /// One row's text columns: highlight/dim first, then the marker slot,
+    /// the subject, and whichever trailing columns fit.
+    fn draw_row(
+        &self,
+        entry: &GraphEntry<'_>,
+        y: u16,
+        area: Rect,
+        columns: &Columns,
+        buf: &mut Buffer,
+    ) {
+        let (style, trailing_style, palette16_edge) = self.row_emphasis(entry, y, area, buf);
+
+        let (glyph, glyph_style) = if entry.line.row.marker.is_some() {
+            ("! ", style)
+        } else if palette16_edge {
+            (
+                "▏ ",
+                foreground(self.theme, Token::Accent).add_modifier(Modifier::BOLD),
+            )
+        } else {
+            ("  ", style)
+        };
+        draw_cell(
+            buf,
+            columns.marker_x,
+            y,
+            columns.marker_width,
+            glyph,
+            glyph_style,
+        );
+        let taken = self.draw_badges(entry, y, columns, style, buf);
+        draw_cell(
+            buf,
+            columns.subject_x + taken,
+            y,
+            columns.subject_width - taken,
+            entry.subject.as_str(),
+            style,
+        );
+        let author_style = trailing_style.fg(color(self.theme.branch(entry.author.identity)));
+        draw_cell(
+            buf,
+            columns.author_x,
+            y,
+            columns.author_width,
+            entry.author.initials.as_str(),
+            author_style,
+        );
+        draw_cell(
+            buf,
+            columns.when_x,
+            y,
+            columns.when_width,
+            &entry.when,
+            trailing_style,
+        );
+        draw_cell(
+            buf,
+            columns.sha_x,
+            y,
+            columns.sha_width,
+            &entry.sha,
+            trailing_style,
+        );
+    }
+
+    /// The text style, the trailing-column style, and whether the row falls
+    /// back to the Palette16 rule instead of a background fill: `Highlighted`
+    /// paints bold and, where the terminal can show it, a raised background;
+    /// `Dimmed` paints faint; anything else is plain.
+    ///
+    /// At [`ColorDepth::Palette16`], `bg`/`surface`/`surface-raised` collapse
+    /// to the same index (KNOWN_GAPS.md M0), so the raised background step
+    /// would paint nothing a viewer can see — the marker slot's rule
+    /// (DESIGN.md §4.6) carries the highlight there instead, so the
+    /// background step is skipped rather than drawn for nothing. `NO_COLOR`
+    /// ([`ColorDepth::None`]) has no background step either, so it takes the
+    /// same rule — uncoloured, its shape alone marks the row.
+    fn row_emphasis(
+        &self,
+        entry: &GraphEntry<'_>,
+        y: u16,
+        area: Rect,
+        buf: &mut Buffer,
+    ) -> (Style, Style, bool) {
+        let mut style = foreground(self.theme, Token::Text);
+        let mut trailing_style = foreground(self.theme, Token::TextMuted);
+        let highlighted = entry.line.paint == RowPaint::Highlighted;
+        let palette16_edge = highlighted
+            && matches!(
+                self.theme.color_depth(),
+                ColorDepth::Palette16 | ColorDepth::None
+            );
+
+        if highlighted {
+            style = style.add_modifier(Modifier::BOLD);
+            trailing_style = trailing_style.add_modifier(Modifier::BOLD);
+            if !palette16_edge {
+                let raised = color(self.theme.token(Token::SurfaceRaised));
+                buf.set_style(
+                    Rect {
+                        y,
+                        height: 1,
+                        ..area
+                    },
+                    Style::new().bg(raised),
+                );
+            }
+        } else if entry.line.paint == RowPaint::Dimmed {
+            style = style.add_modifier(Modifier::DIM);
+            trailing_style = trailing_style.add_modifier(Modifier::DIM);
+        }
+
+        (style, trailing_style, palette16_edge)
+    }
+}
+
+impl GraphScreen<'_> {
+    /// The row's ref badges, left of the subject, and how many cells they
+    /// took (their trailing gap included).
+    ///
+    /// Badges never take more than half the subject column: at 80 columns a
+    /// commit with a pile of refs still says what it is. What does not fit is
+    /// cut with `…` rather than pushing the subject off the row.
+    fn draw_badges(
+        &self,
+        entry: &GraphEntry<'_>,
+        y: u16,
+        columns: &Columns,
+        style: Style,
+        buf: &mut Buffer,
+    ) -> u16 {
+        if entry.badges.is_empty() {
+            return 0;
+        }
+        let icons = self.view.icons;
+        let texts: Vec<String> = entry.badges.iter().map(|badge| badge.text(icons)).collect();
+        let separator = badges::separator(icons);
+        let taken = badges_width(entry, icons, columns);
+        // Room for the badges themselves; the gap after them stays blank.
+        let room = taken.saturating_sub(SUBJECT_GAP);
+
+        let mut x = columns.subject_x;
+        let end = columns.subject_x + room;
+        for (index, (badge, text)) in entry.badges.iter().zip(&texts).enumerate() {
+            if index > 0 {
+                let gap = u16::try_from(separator.width()).unwrap_or(u16::MAX);
+                x = x.saturating_add(gap).min(end);
+            }
+            let width = u16::try_from(text.width()).unwrap_or(u16::MAX).min(end - x);
+            if width == 0 {
+                break;
+            }
+            draw_cell(buf, x, y, width, text, style.patch(self.badge_style(badge)));
+            x += width;
+        }
+        taken
+    }
+
+    /// The colour and weight one badge draws in: branches and remotes in
+    /// their lane's colour, so a badge and its line read as one thing.
+    fn badge_style(&self, badge: &Badge) -> Style {
+        match &badge.kind {
+            BadgeKind::Branch {
+                identity, current, ..
+            } => {
+                let style = Style::new().fg(color(self.theme.branch(*identity)));
+                if *current {
+                    style.add_modifier(Modifier::BOLD)
+                } else {
+                    style
+                }
+            }
+            BadgeKind::Remote { identity } => Style::new().fg(color(self.theme.branch(*identity))),
+            BadgeKind::Tag => foreground(self.theme, Token::Warning),
+            BadgeKind::Head => foreground(self.theme, Token::Accent).add_modifier(Modifier::BOLD),
+            BadgeKind::Stash => foreground(self.theme, Token::Info),
+        }
+    }
+}
+
+/// Cells a row's badges take from the subject column's left edge, the
+/// trailing gap included — half the subject column at most. The same sum
+/// [`GraphScreen::draw_badges`] draws to, so it and the footer reveal's
+/// truncation check ([`subject_truncated`]) always agree on where the
+/// subject itself actually starts.
+fn badges_width(entry: &GraphEntry<'_>, icons: Icons, columns: &Columns) -> u16 {
+    if entry.badges.is_empty() {
+        return 0;
+    }
+    let texts: Vec<String> = entry.badges.iter().map(|badge| badge.text(icons)).collect();
+    let separator = badges::separator(icons);
+    let wanted = texts.iter().map(|text| text.width()).sum::<usize>()
+        + separator.width() * (texts.len() - 1)
+        + usize::from(SUBJECT_GAP);
+    let budget = columns.subject_width / 2;
+    u16::try_from(wanted).unwrap_or(u16::MAX).min(budget)
+}
+
+/// Whether `entry`'s subject needed a `…` to fit the subject column it is
+/// actually drawn into — badges' share subtracted first, the same as
+/// [`GraphScreen::draw_badges`]. What the footer reveal
+/// ([`GraphView::reveal`]) and the peek hint (`reveal_hint`) key off.
+pub(super) fn subject_truncated(entry: &GraphEntry<'_>, icons: Icons, columns: &Columns) -> bool {
+    let taken = badges_width(entry, icons, columns);
+    let available = usize::from(columns.subject_width.saturating_sub(taken));
+    super::layout::text_width(entry.subject.as_str()) > available
+}
+
+/// Draws `text`, clamped and padded to exactly `width` cells, at `(x, y)`.
+/// Does nothing when `width` is zero — the column has dropped for this
+/// area's size.
+fn draw_cell(buf: &mut Buffer, x: u16, y: u16, width: u16, text: &str, style: Style) {
+    if width == 0 {
+        return;
+    }
+    let text = fit(text, usize::from(width));
+    buf.set_stringn(x, y, text, usize::from(width), style);
+}

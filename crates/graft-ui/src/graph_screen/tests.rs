@@ -9,10 +9,17 @@ use graft_graph::seeds::Seeds;
 use graft_term::sanitize_line;
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
+use ratatui::layout::Rect;
+use ratatui::style::Modifier;
+use unicode_width::UnicodeWidthStr;
 
+use super::footer::{HINTS, commit_graph_segments, grouped, key_hints};
+use super::layout::walk_text;
 use super::*;
+use crate::graph_column::{GraphColumn, RowPaint};
+use crate::paint::color;
 use crate::test_support::{terminal, wide_history};
-use crate::theme::ThemeKind;
+use crate::theme::{Theme, ThemeKind, Token};
 
 fn oid(byte: u8) -> Oid {
     Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is a valid oid length")
