@@ -8,7 +8,7 @@ Leaves runnable: yes — git/git peak RSS under 300 MB with real margin, with an
 Why: 27b landed fix B (no cg RSS 305 → 290–294, footprint 204 → 173; cg 255 → 223–226). 6–10 MiB margin isn't enough. C hung on a race that 27c fixes.
 
 ## Read first
-- Ticket 27b: "Handoff (what remains)" item 2, "Continuation 1" (measurements table, fixes, Next steps 2–5). Measurement script `target/27b/meas.sh`.
+- Ticket 27b: "Handoff (what remains)" item 2, "Continuation 1" (measurements table, fixes, Next steps 2–5). Measurement script `target/27b/meas.sh` → `docs/perf/27b.txt` § `target/27b/meas.sh`.
 - Ticket 27 "Results" table (to update)
 - `crates/graft-git/MAP.md`, `crates/graft/MAP.md`
 
@@ -38,7 +38,7 @@ Under ~80k tokens. Seam: (a) C + D + A′ measured, (b) heavy-tier guard + table
 
 ## Result, part (a): C + D measured (2026-09-13, builder-opus)
 
-Release, `examples/budgets` on git/git (85,649 commits), each run alone, 3 runs per cell. RSS = `getrusage` peak (the gate); footprint = `/usr/bin/time -l`. No cg = `target/27b/nocg.git` (commit-graph removed). Script `target/27b/meas.sh`, raw `target/27b/meas/summary.txt` (labels `before`, `B`, `C27d`, `D`); 27c's own C runs in `target/27c/nocg-run*.txt`.
+Release, `examples/budgets` on git/git (85,649 commits), each run alone, 3 runs per cell. RSS = `getrusage` peak (the gate); footprint = `/usr/bin/time -l`. No cg = `target/27b/nocg.git` (commit-graph removed, see `docs/perf/27b.txt` § `target/27b/nocg.git` for regeneration). Script `target/27b/meas.sh`, raw `target/27b/meas/summary.txt` (labels `before`, `B`, `C27d`, `D`) → `docs/perf/27b.txt` §§ `target/27b/meas.sh`, `target/27b/meas/summary.txt`; 27c's own C runs in `target/27c/nocg-run*.txt`.
 
 | Fix | no cg RSS | no cg footprint | no cg G | cg RSS | cg footprint | cg G |
 |---|---|---|---|---|---|---|
@@ -59,7 +59,7 @@ Release, `examples/budgets` on git/git (85,649 commits), each run alone, 3 runs 
 
 **Proven to fail by tightening:** `PEAK_RSS_LIMIT` at 125 MiB → realistic no-cg fails "peak RSS 130 MiB is over the 125 MiB budget" (cg passed, under 125). Reverted.
 
-**What it does and does not catch** (debug, no cg, each alone, `target/27b/meas/*-nocg-*.log`):
+**What it does and does not catch** (debug, no cg, each alone, `target/27b/meas/*-nocg-*.log` → `docs/perf/27b.txt` § `target/27b/meas/*-nocg-*.log`):
 
 | 100k fixture | C+D reverted | C+D landed | delta |
 |---|---|---|---|

@@ -90,7 +90,7 @@ Measured: release, `examples/budgets`, each run alone, 3 runs. RSS = getrusage p
 | Repo | peak RSS | was | G | was | hydrated | merge_reads (bound) | links_read |
 |---|---|---|---|---|---|---|---|
 | git/git cg (85,649) | 45.6-46.6 MiB | 223.6-225.3 | 138-144 ms | 0.53-0.54 s | 1500 | 288 (288) | 85,649 |
-| git/git no cg (`target/27b/nocg.git`) | 97.2-98.3 MiB | 219.1-221.5 | 792-815 ms | 0.85-0.86 s | 1500 | 288 (288) | 85,649 |
+| git/git no cg (`target/27b/nocg.git`, regen: `docs/perf/27b.txt` § `target/27b/nocg.git`) | 97.2-98.3 MiB | 219.1-221.5 | 792-815 ms | 0.85-0.86 s | 1500 | 288 (288) | 85,649 |
 | 1M cg synthetic | 238.2-240.9 MiB | — | 507-514 ms | — | 1500 | 1 (1) | 1,000,000 |
 
 - Commits read from the odb during a cold G = `hydrated + merge_reads`: 1,788 on git/git, 1,501 at 1M. Neither grows with history: `hydrated` is the window (identical at 85k and 1M), `merge_reads` equals the merge lanes open at the window's chunk starts (git/git's top is merge-heavy, 288; the synthetic fixture's top has one). It follows the topology at the top, not the fixture size.

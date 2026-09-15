@@ -42,7 +42,7 @@ One context, under ~80k tokens. Seam if it grows: (a) profile + finding + first 
 
 ## Profile finding (2026-09-13, builder-opus)
 
-Tool: `prototypes/heap-profile-27b` (outside the workspace, no deps): `budget_run.rs` plus a counting global allocator (live and peak heap), a sampler writing `ms heap MiB rss MiB` to a file, and an optional self-`SIGSTOP` (a live-heap MiB threshold as arg 2, or `STOP_AT_TOP=1`) so `vmmap`, `heap` and `malloc_history` can run on the paused process. Build it with its own `Cargo.lock` copied from the root, `cargo build --release --offline`. Raw outputs were in `target/27b/`, which is not committed.
+Tool: `prototypes/heap-profile-27b` (outside the workspace, no deps): `budget_run.rs` plus a counting global allocator (live and peak heap), a sampler writing `ms heap MiB rss MiB` to a file, and an optional self-`SIGSTOP` (a live-heap MiB threshold as arg 2, or `STOP_AT_TOP=1`) so `vmmap`, `heap` and `malloc_history` can run on the paused process. Build it with its own `Cargo.lock` copied from the root, `cargo build --release --offline`. Raw outputs were in `target/27b/`, which is not committed (summarised at `docs/perf/27b.txt` § `target/27b/prof2/hwm.txt`, `target/27b/prof2/run.log`).
 
 Headline: **RSS is not heap.** git/git without a commit-graph, release, before any change:
 
@@ -96,9 +96,9 @@ Gotchas: one heavy job at a time; `prototypes/` profile builds need `--offline` 
 
 ## Continuation 1 (2026-09-13, builder-opus)
 
-**Churn attribution.** `MallocStackLogging=malloc` (not `1`) gives full mode; `malloc_history <pid> -highWaterMark -callTree -invert -consolidateAllBySymbol` works. No cg, high water 149 MiB, **cumulative allocated 1.77 GB** (5.2M allocs). High-water holders match the table above: `Row.lanes` 36.8M; the promotion `hydrate` gix cache; stream `Dated` cache 14.6M; `Topological::discover`. Per-site churn totals were not extracted (`-allEvents` too large). Raw: `target/27b/prof2/hwm.txt`.
+**Churn attribution.** `MallocStackLogging=malloc` (not `1`) gives full mode; `malloc_history <pid> -highWaterMark -callTree -invert -consolidateAllBySymbol` works. No cg, high water 149 MiB, **cumulative allocated 1.77 GB** (5.2M allocs). High-water holders match the table above: `Row.lanes` 36.8M; the promotion `hydrate` gix cache; stream `Dated` cache 14.6M; `Topological::discover`. Per-site churn totals were not extracted (`-allEvents` too large). Raw: `target/27b/prof2/hwm.txt` → `docs/perf/27b.txt` § `target/27b/prof2/hwm.txt`.
 
-**Measurements** (release, 3 runs, `examples/budgets`; RSS = `getrusage` peak, footprint = `time -l`; script `target/27b/meas.sh`, raw `target/27b/meas/summary.txt`):
+**Measurements** (release, 3 runs, `examples/budgets`; RSS = `getrusage` peak, footprint = `time -l`; script `target/27b/meas.sh`, raw `target/27b/meas/summary.txt` → `docs/perf/27b.txt` §§ `target/27b/meas.sh`, `target/27b/meas/summary.txt`):
 
 | | no cg RSS | no cg footprint | no cg G | cg RSS | cg footprint | cg G |
 |---|---|---|---|---|---|---|

@@ -24,7 +24,7 @@ Before 59. Smaller (one seam at most); closes the only red heavy test; its `--ph
 ## Read first
 - This spec, whole.
 - `.scratch/m1-the-graph/issues/58-tips-from-the-table.md`: "The finding, and the ruling" (lines 8–16) and Acceptance lines 60–67 (the measured residual).
-- `.scratch/m1-the-graph/issues/55-first-paint-at-a-million-named-cause.md` lines 82–99: refs all loose at 1M; the packed-copy discriminator (`target/55/packed-1M-cg`); "+145 MiB … present packed too" (the ref files are not the holder).
+- `.scratch/m1-the-graph/issues/55-first-paint-at-a-million-named-cause.md` lines 82–99: refs all loose at 1M; the packed-copy discriminator (`target/55/packed-1M-cg`, regen: `docs/perf/55.txt` § `target/55/packed-1M-cg`); "+145 MiB … present packed too" (the ref files are not the holder).
 - `.scratch/m1-the-graph/issues/57-guards-measure-in-a-child.md` "Result" (footprint vs `time -l`; how the guard runs).
 - `.scratch/m1-the-graph/issues/56-memory-curve-acceptance.md` "For the M1 review" table (the 1M cg cells: footprint 36.8–38.1 MiB is the heap ceiling this ticket reasons from).
 - ADR-0026 "Decision (design)" item 1; "The gate at 1M" slope bullet.
@@ -43,7 +43,7 @@ Before 59. Smaller (one seam at most); closes the only red heavy test; its `--ph
   1. as-is (the baseline this ticket starts from; must reproduce 58's 85.5 / 8.3 MiB within 10 %);
   2. tag refs skipped (temporary local edit, reverted): the rise without any tag read = the OIDL/table cost;
   3. `ref_snapshot` on `handle_with_object_cache(0)` (temporary): the retained-decode test — expect no change if the rise is pages;
-  4. the packed copy (`target/55/packed-1M-cg` if it still exists, else `cp -c` the 1M cg fixture + `git pack-refs --all`): the rise when peeled ids are available — this is the post-fix expectation for a gc'd repo, measured before writing the fix;
+  4. the packed copy (`target/55/packed-1M-cg` if it still exists, else `cp -c` the 1M cg fixture + `git pack-refs --all`; regen notes: `docs/perf/55.txt` § `target/55/packed-1M-cg`): the rise when peeled ids are available — this is the post-fix expectation for a gc'd repo, measured before writing the fix;
   5. `git verify-pack -v <pack.idx> | awk '$2=="tag"'` on the 100k and 1M cg fixtures: are the tags packed or loose, and their delta-chain depth (count, mean, max); plus `git count-objects -v`.
 - **Holder table** (like ADR-0026's): holder — OIDL pages / idx pages / pack pages of tag reads / heap — MiB at 1M and 100k, per tag or per ref, kept or transient. Must sum within 10 % of the measured rise at both scales; if arithmetic will not close it, `vmmap`/`footprint` per region on the paused process (report what was used). Name the cause in one line.
 - **Seam.** Past ~45k tokens after the table: stop with a handoff (table, cause, the Phase B item list); the conductor files Phase B on this spec.
@@ -115,23 +115,23 @@ The 10k/100k cg guard fixtures have a commit-graph but 66/650 **loose** refs —
 
 Instrumentation landed: `TipStats` on `RefSnapshot`; `--phases` prints `footprint +<MiB>` on every lap and the stats on `refs.ref_snapshot`. **Caveat for Phase B:** the pre-fix path counts `objects_read` as one per tag peel; the peel actually decodes the tag *and* its commit (2). Phase B's single-decode path makes the count exact.
 
-Fixtures (`target/58b/fixtures.txt`): 1M cg `synthetic-1000000-commit-graph-511a25b425758b13`, 100k cg `…-9a592fc3353d5ab5`.
+Fixtures (`target/58b/fixtures.txt` → `docs/perf/58b.txt` § `target/58b/fixtures.txt`): 1M cg `synthetic-1000000-commit-graph-511a25b425758b13`, 100k cg `…-9a592fc3353d5ab5`.
 
 ### Runs (release, `budgets --phases`, `refs.ref_snapshot` line; 3 runs each unless noted)
 | run | 1M cg RSS / footprint (MiB) | 100k cg RSS / footprint | raw |
 |---|---|---|---|
-| 1 as-is | 85.5, 85.6, 85.8 / 5.0, 5.0, 5.2 | 8.3, 8.3, 8.4 / 0.9 ×3 | `target/58b/run1-asis-{1M,100k}-{1,2,3}.txt` |
+| 1 as-is | 85.5, 85.6, 85.8 / 5.0, 5.0, 5.2 | 8.3, 8.3, 8.4 / 0.9 ×3 | `target/58b/run1-asis-{1M,100k}-{1,2,3}.txt` → `docs/perf/58b.txt` § `target/58b/run{1-4}-{asis,skiptags,cache0,packed}-{1M,100k}-{1,2,3}.txt` |
 | 2 unknown tips skipped (no tag read) | 34.7, 34.6, 34.6 / 4.4, 4.3, 4.3 | 4.0 ×3 / 0.7 ×3 | `run2-skiptags-*` |
 | 3 `handle_with_object_cache(0)` | 85.0 ×3 / 4.5 ×3 | 8.2 ×3 / 0.7–0.8 | `run3-cache0-*` |
-| 4 packed copy (`cp -c` + `pack-refs --all`), **pre-fix code** | 84.8–84.9 / 3.8–3.9 | 8.1–8.2 / 0.6–0.8 | `run4-packed-*`; copies kept at `target/58b/packed-{1M,100k}-cg` |
+| 4 packed copy (`cp -c` + `pack-refs --all`), **pre-fix code** | 84.8–84.9 / 3.8–3.9 | 8.1–8.2 / 0.6–0.8 | `run4-packed-*`; copies kept at `target/58b/packed-{1M,100k}-cg` (regen: `docs/perf/58b.txt` § `target/58b/packed-{1M,100k}-cg`) |
 
 Stats every run 1/3/4: 1M `refs=6498 known=5708 tags=790 find_header=790`; 100k `refs=650 known=567 tags=83 find_header=83`.
 - Run 1 reproduces 58 (85.5 / 8.3) within 1 %.
 - Run 3 flat: **no retained decode**. Phase B item 3 must not be done.
 - Run 4 flat: ref files are not the holder. Pre-fix code ignores `peeled`, so this is **not** the post-fix packed number; run 2 is its upper bound (no tag reads at all): **34.6 / 4.0 MiB**.
-- Run 5 (`git verify-pack -v`, `count-objects -v`; `target/58b/run5-verify-pack-1M.txt`): all objects packed (1 pack, 0 loose; 2,862,088 / 286,213 in pack). Tags 790 / 83, **none deltified** (depth 0). The delta-chain hypothesis (b) is wrong: a tag read is one idx lookup + one undeltified pack entry.
+- Run 5 (`git verify-pack -v`, `count-objects -v`; `target/58b/run5-verify-pack-1M.txt` → `docs/perf/58b.txt` § `target/58b/run5-verify-pack-1M.txt`): all objects packed (1 pack, 0 loose; 2,862,088 / 286,213 in pack). Tags 790 / 83, **none deltified** (depth 0). The delta-chain hypothesis (b) is wrong: a tag read is one idx lookup + one undeltified pack entry.
 
-### Holder table (vmmap per region, taken inside the process before and after `ref_snapshot`; `target/58b/vmmap-{1M,100k}-{asis,skip}-{before,after}.txt`, laps in `target/58b/vm-*.txt`)
+### Holder table (vmmap per region, taken inside the process before and after `ref_snapshot`; `target/58b/vmmap-{1M,100k}-{asis,skip}-{before,after}.txt`, laps in `target/58b/vm-*.txt` → `docs/perf/58b.txt` §§ `target/58b/vm-{1M,100k}-{asis,skip}.txt`, `target/58b/vmmap-{1M,100k}-{asis,skip}-{before,after}.txt`)
 Mappings by size: commit-graph 57.2 M / 5.9 M, pack `.idx` 76.4 M / 7.8 M, `.pack` 221 M / 22 M. All mapped file pages are kept for the life of the handle.
 
 | holder | 1M cg | 100k cg | per | kept / transient |
@@ -155,7 +155,7 @@ Unexplained, not traced: why one object read faults ~14 % of the idx (≈ the si
   1. `tip_of`: if `reference.inner.peeled` is `Some(id)` (gix 0.87.1 / gix-ref 0.67.1 fill it from the packed-refs `^` line: `raw.rs` `From<packed::Reference>`), count `tags += 1` and `peeled_packed += 1`, then judge `id` by the table (known → tip; unknown → the read path below). No object read.
   2. Replace `find_header` + `peel_commit` for unknown `Object` targets with a loop: `self.repo.find_object(id)` (`objects_read += 1`). `Commit` → tip. `Tag` → `tags += 1`, `obj.to_tag_ref_iter().target_id()`; a known target → tip, else loop (tag-of-tag). Tree/blob → `None`. Map errors to `TipsError::Read`, including a missing object, as `peel_commit` did. Keep `peel_commit` only for symbolic refs.
   3. Do **not** do item 3 (run 3 flat).
-  4. Tests and measurements as scoped. Packed copies for the phases runs are at `target/58b/packed-{1M,100k}-cg`. The guard's packed-copy slope needs 10k/100k copies of the guard's own fixtures, made by the guard's path.
+  4. Tests and measurements as scoped. Packed copies for the phases runs are at `target/58b/packed-{1M,100k}-cg` (regen: `docs/perf/58b.txt` § `target/58b/packed-{1M,100k}-cg`). The guard's packed-copy slope needs 10k/100k copies of the guard's own fixtures, made by the guard's path.
 - Gotchas: the Bash tool's shell is zsh, so `for a in "100000 --commit-graph"` does not word-split (use `eval`); vmmap truncates paths, so identify mappings by size; one object read maps ~14 % of the idx per open, so don't attribute it to tags.
 
 ## Phase B result (2026-09-14, builder-opus)
@@ -167,7 +167,7 @@ Code: `bfa9b8f`. Items 1 and 2 landed; item 3 not done (Phase A run 3 flat).
 - **`objects_read` undercount fixed:** every whole read is counted. At 1M loose: 790 = tags, 0 other.
 - **Corpus test** (`refs_sharing_commits_or_naming_no_commit_peel_the_same_loose_or_packed`): added a tag-of-tag (`outer` → `release` → parent). Exact `TipStats` for `()` loose/packed: 7/4 headers, 5/2 reads, tags 3, peeled 0/3. With the table: `find_header == 0`, `known == 2`; loose `objects_read == tags + 2` (tree, blob); packed `peeled_packed == tags` and `objects_read == 2` (tree and blob only, no tag object read). Tips and peeled are identical loose vs packed, and `()` vs table.
 
-### Measured (release, raw in `target/58b/`)
+### Measured (release, raw in `target/58b/` → `docs/perf/58b.txt` § `target/58b/after-{1M,100k}-{1,2,3}.txt and after-packed-{1M,100k}-{1,2,3}.txt`)
 `budgets --phases`, `refs.ref_snapshot` lap, 3 runs each (`after-{1M,100k,packed-1M,packed-100k}-{1,2,3}.txt`):
 
 | fixture | before (run 1) RSS / footprint | after RSS / footprint | stats after |
@@ -178,8 +178,8 @@ Code: `bfa9b8f`. Items 1 and 2 landed; item 3 not done (Phase A run 3 flat).
 | 100k cg packed copy | 8.1–8.2 (pre-fix) | **3.8** / 0.5–0.6 | peeled_packed=83 objects_read=0 |
 
 **Slope guard, 3 runs alone:**
-- loose fixtures: **166, 167, 166 B/commit** (peaks 12 / 27 MiB), `guard-loose-{1,2,3}.txt`.
-- **reported:** `pack-refs --all` copies swapped in for the 10k and 100k cg fixtures, originals restored after: **157, 156, 156** (12 / 26 MiB), `guard-packed-{1,2,3}.txt`.
+- loose fixtures: **166, 167, 166 B/commit** (peaks 12 / 27 MiB), `guard-loose-{1,2,3}.txt` → `docs/perf/58b.txt` § `target/58b/guard-{loose,packed}-{1,2,3}.txt`.
+- **reported:** `pack-refs --all` copies swapped in for the 10k and 100k cg fixtures, originals restored after: **157, 156, 156** (12 / 26 MiB), `guard-packed-{1,2,3}.txt` → `docs/perf/58b.txt` § `target/58b/guard-{loose,packed}-{1,2,3}.txt`.
 
 **Why the guard did not move on the loose fixtures:** the pages leave `ref_snapshot` but are faulted later anyway. At 100k, `ref_snapshot` fell 1.2 MiB and `first_chunk` rose 1.0 MiB (8.3/4.3 before, 7.1/5.3 after; `run1-asis-100k-1.txt` vs `after-100k-1.txt`). The tag targets are walk tips, and the first chunk reads those commits, touching the idx and pack pages the old peel had touched. The process peak fell only 0.2 MiB.
 
@@ -187,7 +187,7 @@ Code: `bfa9b8f`. Items 1 and 2 landed; item 3 not done (Phase A run 3 flat).
 
 **Stop rule, finding for the user:** the ticket's premise does not hold. Packing refs (git's own lever) removes every tag read and the guard is **still red at 156**. So the remainder is not the loose-tag floor. At 100k, per the laps: OIDL pages for `handle_of` (~1.9 MiB, Phase A), idx pages from the first object read (~1.1 MiB), `walk_new` +3.4 MiB, `first_chunk` +5.3 MiB. The recommendation in "For the user" (pack the guard's fixtures) would **not** make it green. Nothing was changed in the bar or the fixtures. For the planner: name the ~6 B/commit above the bar on the packed path, in `walk_new`/`first_chunk` pages, or re-derive ADR-0026's 150 from those phases.
 
-`scripts/memory-curve.sh --repo`, 3 runs each (`target/58b/58b-1M-{small,realistic}-cg.txt`):
+`scripts/memory-curve.sh --repo`, 3 runs each (`target/58b/58b-1M-{small,realistic}-cg.txt` → `docs/perf/58b.txt` § `target/58b/58b-1M-{small,realistic}-cg.txt`):
 
 | cell | peak RSS at paint | after G | footprint | first paint 1/2/3 | G 1/2/3 |
 |---|---|---|---|---|---|
@@ -196,7 +196,7 @@ Code: `bfa9b8f`. Items 1 and 2 landed; item 3 not done (Phase A run 3 flat).
 
 Run 1 first paint is cold (ADR-0027 times warm).
 
-`budgets_hold_*`, release, once (`target/58b/budgets-hold.txt`): all 5 pass (the four plus 50k refs). 100k cg peak 28.1 MiB; realistic cg 32.2; no-cg 74.0; realistic no-cg 80.8; 50k refs 113.8.
+`budgets_hold_*`, release, once (`target/58b/budgets-hold.txt` → `docs/perf/58b.txt` § `target/58b/budgets-hold.txt`): all 5 pass (the four plus 50k refs). 100k cg peak 28.1 MiB; realistic cg 32.2; no-cg 74.0; realistic no-cg 80.8; 50k refs 113.8.
 
 Gates: fmt, clippy (with and without `heavy-tests`), `cargo test` 858/858.
 

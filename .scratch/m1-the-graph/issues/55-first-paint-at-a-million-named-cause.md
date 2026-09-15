@@ -61,7 +61,7 @@ No new public items in Phase A beyond `examples/budgets --phases`. Phase B's are
 ## Size
 One context, under ~80k tokens: 1M runs are ~10 s each. Seam between Phase A and Phase B; stop there with a handoff note rather than compacting.
 
-## Phase A — measured (2026-09-14, release, `budgets --phases`; raw: `target/55/phases.txt`)
+## Phase A — measured (2026-09-14, release, `budgets --phases`; raw: `target/55/phases.txt` → `docs/perf/55.txt` § `target/55/phases.txt`)
 
 Serial, one thread, no jobs, warm cache. ms; RSS = rise in process peak.
 
@@ -86,7 +86,7 @@ With jobs (`budgets`, real `JobRunner` + `update`): 1M cg first paint **255 ms**
 Discriminators (same file):
 - `Walk::from_tips` with the tips already read: **1.0–1.35 ms** vs `walk_new` 72–79 ms. `all_refs` is ~98 % its own `commit_tips()`; the in-degree pass itself (6,497 graph reads) is ~1 ms.
 - `references()` called again right after: 72 ms. Nothing caches; each enumeration pays in full.
-- Same 1M cg repo, refs packed (`cp -c` clone + `git pack-refs --all`, `target/55/packed-1M-cg`): `references` **1.0 ms**, `resolve` 1.1, `commit_tips` 13–17, `walk_new` 5–6 (54 cold); serial total **24 ms**; **with jobs first paint 23 ms** (was 255). Same commits, same graph, same walk.
+- Same 1M cg repo, refs packed (`cp -c` clone + `git pack-refs --all`, `target/55/packed-1M-cg`, regen: `docs/perf/55.txt` § `target/55/packed-1M-cg`): `references` **1.0 ms**, `resolve` 1.1, `commit_tips` 13–17, `walk_new` 5–6 (54 cold); serial total **24 ms**; **with jobs first paint 23 ms** (was 255). Same commits, same graph, same walk.
 
 ### Named cause (both paths — the same one)
 
@@ -116,7 +116,7 @@ Next exact step, Phase B (fix the cause: read refs once on the first-paint path;
 - Gotchas: first run after a build is cold (`references` 120–525 ms) — discard or report separately; `budgets <repo> | head -1` panics on broken pipe after printing (harmless, redirect instead); the ~145 MiB RSS at `commit_tips` is header lookups, not refs — a fix that keeps `find_header` per tip keeps it.
 - Not for this ticket: the RSS rise; the provisional-paint fallback (not needed — the in-degree pass is ~1 ms).
 
-## Phase B, fix 1 — refs read once on the history job (2026-09-14; raw: `target/55/phaseB.txt`)
+## Phase B, fix 1 — refs read once on the history job (2026-09-14; raw: `target/55/phaseB.txt` → `docs/perf/55.txt` § `target/55/phaseB.txt`)
 
 **Fix (cause):** `RepoHandle::ref_snapshot` reads the ref store once and returns `references()` and `commit_tips()` exactly (same iteration, same `tip_of`, same `HEAD`/sort/dedup; `commit_tips` now delegates to it; test pins both halves loose and packed). `RepoStore::refs` caches it; `RepoStore::branches` uses `Branches::resolve_from(handle, &refs, override)`; `history::stream` takes seeds and `Walk::from_tips(…, &refs.tips, …)` from it (the second view too). Emitted order untouched: tips are byte-identical by construction; all order and snapshot tests pass unchanged.
 **Refresh race closed with it:** `refresh` is now a lock-free generation bump, called when `OpenRepository` is *dispatched* (loop thread), not inside the job. Before, a history job starting ahead of the open job on another worker could get pre-`Ctrl+R` branches; with refs cached it would also have got stale tips. Cost to the user: none measured; `Ctrl+R` never serves refs from before the keypress.
@@ -145,7 +145,7 @@ Next exact step (fix 2, same cause — "read refs once and reuse"):
 - Then: TESTING.md curve section (one first-paint row per cell), KNOWN_GAPS rows (156 and the "1M first paint is not the walk" note, and 177 "50k refs slow first paint in debug" — its "shared ref read" decision is now made), heavy tier once at the end.
 - Gotchas: `dispatch` in `jobs/mod.rs` is at clippy's 60-line limit — add arms as methods. First run after a build is cold; discard it. The +147 MiB peak at `ref_snapshot` is `tip_of`'s `find_header` on scattered tips (pack pages), not the ref files — left for memory-curve-acceptance.
 
-## Phase B, fix 2 — `ReadRefs` shares the reading (2026-09-14; raw: `target/55/phaseB2.txt`, heavy: `target/55/heavy-fix2.txt`)
+## Phase B, fix 2 — `ReadRefs` shares the reading (2026-09-14; raw: `target/55/phaseB2.txt`, heavy: `target/55/heavy-fix2.txt` → `docs/perf/55.txt` §§ `target/55/phaseB2.txt`, `target/55/heavy-fix2.txt`)
 
 **Fix (cause):** `RefSnapshot` gains `peeled: Vec<(RefName, Oid)>`, filled in the same loop from the same `tip_of` (sorted by name, refs reaching no commit left out); `peeled_references` delegates to `ref_snapshot`; `snapshot_is_both_halves` pins the third half loose and packed. `refs::read` takes `store.refs()?.peeled`, so `ReadRefs` and the history job share one read: whichever takes the store's `refs` mutex first reads, the other waits and reuses it.
 **Ctrl+R race stays closed:** `ReadRefs` is dispatched only right after `OpenRepository` (`opening_repository`, `graph_key` refresh), and `open_repository` bumps the generation on the dispatching thread before either job exists; a `ReadRefs` can never be served a pre-keypress reading. Cost to the user: a badge read after an external ref change without `Ctrl+R` shows the refs as of the last open/refresh, which is what the graph already shows (same snapshot; before, badges could disagree with the graph).

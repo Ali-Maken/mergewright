@@ -1,0 +1,92 @@
+# Evidence summary for m1-the-graph/27b (and 27d, 52b which cite the same target/27b/ files).
+# Trimmed from target/27b/ (deleted 2026-09-15, CLAUDE.md "Measurement never runs in a helper's context" /
+# evidence-dir cleanup) to summary lines only. Full ticket narrative with all numbers is already inline in
+# the tickets; this file exists so path citations still resolve to something real.
+
+## target/27b/meas.sh
+Script (verbatim), used for the before/B/C/D measurement passes on git/git (85,649 commits):
+
+    #!/bin/bash
+    # usage: meas.sh <label>  — 3 runs each nocg and cg; appends summary lines
+    cd /Users/devuser/dev/sandbox/gitter
+    L=$1; CG=$(scripts/clone-git-git.sh --where); NOCG=target/27b/nocg.git
+    for which in nocg cg; do
+      R=$NOCG; [ $which = cg ] && R=$CG
+      for i in 1 2 3; do
+        out=$( { /usr/bin/time -l target/release/examples/budgets "$R"; } 2>&1 )
+        fp=$(echo "$out" | awk '/peak memory footprint/ {printf "%.1f", $1/1048576}')
+        line=$(echo "$out" | grep '^first paint' | sed -E 's/.*first paint ([^,]*), G ([^,]*),.*end ([0-9.]+) MiB/paint \1 G \2 rss \3/')
+        echo "$L $which run$i: $line footprint $fp" | tee -a target/27b/meas/summary.txt
+      done
+    done
+
+## target/27b/meas/summary.txt (full — 26 lines)
+before nocg run1: paint 26.006875ms G 1.267008709s rss 306.7 footprint 205.7
+before nocg run2: paint 13.07775ms G 1.258973792s rss 303.7 footprint 202.8
+before nocg run3: paint 12.779417ms G 1.261341833s rss 304.7 footprint 203.4
+before cg run1: paint 48.409666ms G 536.269291ms rss 255.3 footprint 159.0
+before cg run2: paint 47.547166ms G 536.617834ms rss 255.5 footprint 159.8
+before cg run3: paint 47.63475ms G 541.350167ms rss 255.8 footprint 162.6
+B nocg run1: paint 27.857583ms G 1.265138167s rss 294.4 footprint 174.2
+B nocg run2: paint 13.072166ms G 1.2498775s rss 291.3 footprint 173.6
+B nocg run3: paint 13.036791ms G 1.249289291s rss 290.3 footprint 173.1
+B cg run1: paint 88.634ms G 572.126333ms rss 223.7 footprint 131.9
+B cg run2: paint 39.810542ms G 534.727708ms rss 222.6 footprint 129.7
+B cg run3: paint 39.49375ms G 540.679042ms rss 225.7 footprint 130.8
+C nocg run1:  footprint 161.9
+C nocg run2:  footprint 152.6
+C27d nocg run1: paint 29.267833ms G 870.642667ms rss 249.2 footprint 163.8
+C27d nocg run2: paint 12.555709ms G 859.89525ms rss 248.8 footprint 154.2
+C27d nocg run3: paint 12.74875ms G 868.764416ms rss 250.4 footprint 161.8
+C27d cg run1: paint 88.666041ms G 556.638917ms rss 223.1 footprint 132.8
+C27d cg run2: paint 38.794042ms G 518.990167ms rss 225.6 footprint 130.2
+C27d cg run3: paint 39.041083ms G 523.540875ms rss 225.9 footprint 131.0
+D nocg run1: paint 29.192291ms G 856.772084ms rss 221.5 footprint 142.2
+D nocg run2: paint 12.620416ms G 848.32875ms rss 219.1 footprint 141.5
+D nocg run3: paint 13.038625ms G 846.421083ms rss 220.0 footprint 142.3
+D cg run1: paint 39.324459ms G 529.73275ms rss 225.3 footprint 132.4
+D cg run2: paint 39.466709ms G 536.42475ms rss 223.6 footprint 130.5
+D cg run3: paint 39.337833ms G 525.027541ms rss 225.0 footprint 132.6
+
+## target/27b/meas/*-nocg-*.log (cited by 27d "What it does and does not catch" table)
+small-nocg-now.log (C+D landed, small 100k fixture, no cg):
+  synthetic-100000-no-commit-graph: peak_rss=127188992 (121.3 MiB)
+real-nocg-now.log (C+D landed, realistic 100k fixture, no cg):
+  synthetic-100000-realistic-no-commit-graph: peak_rss=136953856 (130.6 MiB)
+fixture-nocg-noCD.log (C+D reverted, small 100k fixture, no cg):
+  synthetic-100000-no-commit-graph: peak_rss=151371776 (144.4 MiB)
+realistic_fixture-nocg-noCD.log (C+D reverted, realistic 100k fixture, no cg):
+  synthetic-100000-realistic-no-commit-graph: peak_rss=165036032 (157.4 MiB)
+(All: all 1 heavy test passed each run; these are the raw numbers behind 27d's 144.4/121.3 small,
+157.4/130.6 realistic, 290.3-294.4/219.1-221.5 git/git rows.)
+
+## target/27b/prof2/hwm.txt (malloc_history -highWaterMark -callTree -invert -consolidateAllBySymbol; 452K raw, header + totals only below)
+  High water mark of allocated heap + VM memory: 149.1 MB  at malloc stack log record index  5,689,885
+     Current total allocated heap + VM memory:  78.7 MB  at malloc stack log record index 10,232,800
+  Cumulative total allocated heap + VM memory:  1.77 GB
+            Total heap + VM memory operations: 10,232,800  allocations:  5,166,244  deallocations:  5,066,556
+  Call graph top: 223903 (149M) << TOTAL >>
+    223618 (130M) _malloc_zone_malloc_instrumented_or_legacy (in libsystem_malloc.dylib)
+(Per-site churn breakdown for Row.lanes/hydrate/Dated cache/Topological::discover, already quoted with
+exact MiB figures in ticket 27b's "Continuation 1" section, came from this file; -allEvents was too large
+to extract further, per the ticket.)
+
+## target/27b/prof2/run.log (full — 3 lines)
+MARK paint: live 5 MiB, heap peak 5 MiB, rss peak 25 MiB
+MARK bottom: live 78 MiB, heap peak 149 MiB, rss peak 298 MiB
+STOPPING pid 63575 at top
+
+## target/27b/nocg.git — not a summary file, a git repo copy (git/git clone with objects/info/commit-graph
+removed), used as the "no cg" fixture by meas.sh and by 27d's guard logs. Regenerate:
+`scripts/clone-git-git.sh --where` then `rm <clone>/.git/objects/info/commit-graph`.
+
+## target/27b/prof, target/27b/prof2 (dir) — prof/ was a build copy of the already-committed prototype
+prototypes/heap-profile-27b (src differs only in incidental edits made while iterating; the tracked
+source is canonical). prof2/ held hwm.txt and run.log (summarized above) plus its own target/ build output.
+
+## Other raw files in target/27b/ (calltree-nocg-peak.txt, heap-nocg-peak.txt, hwm-bysize.txt, hwm-inv.txt,
+vmmap-nocg-peak.txt, series-{cg,nocg}.txt, rss-nocg-*.txt, tree*.txt, msl.log, paused*.log): exploratory
+malloc_history/vmmap/sampler output feeding the "Live heap at the peak" table in ticket 27b — not path-cited
+by any ticket. hwm-bysize.txt / hwm-inv.txt: malloc stack logging was in lite mode, so -highWaterMark refused
+("Can't show high water mark when target process is run in lite mode of malloc stack logging.").
+Regenerate via the ticket's "Profile finding" tool description if needed again.

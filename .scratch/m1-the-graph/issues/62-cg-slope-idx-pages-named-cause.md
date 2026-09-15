@@ -2,7 +2,7 @@
 
 Status: wontfix — user chose the split check (61), 2026-09-14. Kept as record; the untraced idx offset-table read stays an open line in KNOWN_GAPS via 61.
 Build with: **Opus** (high) — attribution by vmmap region across four holders and a trace into gix's index loading; a stop rule that needs honest judgment; the bar is a number, so not Fable.
-Needs: `budget_run::gated_in_child` / `ChildPeak` (57); `budgets --phases` laps with footprint (57, 58b); the packed copies at `target/58b/packed-{1M,100k}-cg` if they still exist.
+Needs: `budget_run::gated_in_child` / `ChildPeak` (57); `budgets --phases` laps with footprint (57, 58b); the packed copies at `target/58b/packed-{1M,100k}-cg` if they still exist (they don't; regen notes: `docs/perf/58b.txt` § `target/58b/packed-{1M,100k}-cg`).
 Blocked by: the user's decision; 58b (done).
 
 ## What the planner expects, said up front
