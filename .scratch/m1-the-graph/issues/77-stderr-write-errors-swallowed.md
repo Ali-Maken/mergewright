@@ -1,6 +1,6 @@
 # m1-the-graph/77 — `.unwrap_or(())` swallows stderr write errors in event_loop startup
 
-Status: ready
+Status: done
 Build with: **Sonnet** (medium) — two call sites and a decision recorded in a comment.
 Blocked by: 76b
 
@@ -15,8 +15,20 @@ In: for each site decide: propagate (preferably — exit status reflects a faile
 Out: anything else.
 
 ## Acceptance
-- [ ] Both sites handled or justified in a comment; test covers the failing writer.
-- [ ] Report: cause or symptom; what it costs the user; other sites found.
+- [x] Both sites handled or justified in a comment; test covers the failing writer.
+- [x] Report: cause or symptom; what it costs the user; other sites found.
+
+## Notes
+- `report_stalled_jobs` now returns `io::Result<()>`; its write failure is
+  folded into `run`'s return so it turns into `ExitCode::FAILURE` (propagate).
+- `finish`'s restore-failure write stays best-effort: `loop_error` is
+  returned regardless, so a failed write only loses an extra detail, not the
+  failure itself (justified, explicit `match`, comment explains why).
+- Both split into `_to(writer, ...)` variants for testability; tests in
+  `startup.rs` use a `FailingWriter`.
+- Other swallow sites found, not fixed (out of scope): `crash.rs:122`,
+  `main.rs:82`, `event_loop/redetect.rs:85`, `jobs/runner.rs:91,227`
+  (`.unwrap_or(())`); `terminal.rs:326`, `crash.rs:156` (`let _ = write...`).
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo clippy --all-targets --features heavy-tests -- -D warnings` · `cargo test`

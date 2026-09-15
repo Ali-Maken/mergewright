@@ -160,8 +160,11 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     // Restore explicitly rather than leaving it to `Drop`, so a restore
     // failure can be returned instead of merely printed.
     let restored = session.restore();
-    report_stalled_jobs(shutdown);
-    finish(outcome, restored)
+    let stalled_report = report_stalled_jobs(shutdown);
+    // `finish` already picks which of two possible errors the process exits
+    // on; a failure to report stalled jobs is folded in afterwards so it
+    // still turns into `ExitCode::FAILURE` (main.rs) instead of vanishing.
+    finish(outcome, restored).and_then(|exit| stalled_report.map(|()| exit))
 }
 
 /// This run is done reading (ticket m1-the-graph/35c). A key typed from here
@@ -185,6 +188,16 @@ fn hand_back_input(
 /// The loop's outcome, unless putting the terminal back failed: a terminal
 /// left in raw mode is never reported silently.
 fn finish(outcome: io::Result<Exit>, restored: io::Result<()>) -> io::Result<Exit> {
+    finish_to(&mut io::stderr(), outcome, restored)
+}
+
+/// [`finish`], writing the restore-failure detail to `stderr` instead of the
+/// real one — the seam a failing writer is plugged into in tests.
+fn finish_to(
+    stderr: &mut impl Write,
+    outcome: io::Result<Exit>,
+    restored: io::Result<()>,
+) -> io::Result<Exit> {
     match (outcome, restored) {
         (Ok(exit), Ok(())) => Ok(exit),
         (Ok(_), Err(restore_error)) => Err(restore_error),
@@ -192,14 +205,19 @@ fn finish(outcome: io::Result<Exit>, restored: io::Result<()>) -> io::Result<Exi
         (Err(loop_error), Err(restore_error)) => {
             // Both went wrong. The loop's failure is the one worth returning,
             // but a terminal left in raw mode must never be silent.
-            let mut stderr = io::stderr();
-            writeln!(
+            match writeln!(
                 stderr,
                 "graft: could not restore the terminal: {restore_error}"
             )
             .and_then(|()| stderr.flush())
-            // Nothing sensible is left to do if even stderr is gone.
-            .unwrap_or(());
+            {
+                // Both outcomes are handled the same way, deliberately:
+                // `loop_error` is returned below either way, so the run
+                // already exits non-zero. This write is only a best-effort
+                // extra detail about `restore_error`; losing it when stderr
+                // itself is gone loses detail, not the failure.
+                Ok(()) | Err(_) => {}
+            }
             Err(loop_error)
         }
     }
@@ -210,19 +228,86 @@ fn finish(outcome: io::Result<Exit>, restored: io::Result<()>) -> io::Result<Exi
 ///
 /// Rare, and a bug when it happens: it means a job did not check its
 /// cancellation token often enough. Printing it is the only way anyone finds
-/// out, since by this point there is no screen left to put it on.
-fn report_stalled_jobs(shutdown: Shutdown) {
+/// out, since by this point there is no screen left to put it on — so a
+/// failure to print it is propagated rather than dropped: the caller folds it
+/// into the run's outcome, and the exit status is the only signal left that
+/// something was lost.
+fn report_stalled_jobs(shutdown: Shutdown) -> io::Result<()> {
+    report_stalled_jobs_to(&mut io::stderr(), shutdown)
+}
+
+/// [`report_stalled_jobs`], writing to `stderr` instead of the real one — the
+/// seam a failing writer is plugged into in tests.
+fn report_stalled_jobs_to(stderr: &mut impl Write, shutdown: Shutdown) -> io::Result<()> {
     let Shutdown::Stalled { workers } = shutdown else {
-        return;
+        return Ok(());
     };
 
-    let mut stderr = io::stderr();
-    // Nothing sensible is left to do if even stderr is gone, and the exit is
-    // otherwise a normal one.
     writeln!(
         stderr,
         "graft: {workers} background job(s) did not stop in time and were abandoned"
     )
     .and_then(|()| stderr.flush())
-    .unwrap_or(());
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io;
+
+    use super::{Exit, Shutdown, finish_to, report_stalled_jobs_to};
+
+    /// A writer whose every write fails, standing in for a closed stderr.
+    struct FailingWriter;
+
+    impl io::Write for FailingWriter {
+        fn write(&mut self, _buf: &[u8]) -> io::Result<usize> {
+            Err(io::Error::other("stderr is gone"))
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Err(io::Error::other("stderr is gone"))
+        }
+    }
+
+    #[test]
+    fn report_stalled_jobs_propagates_a_failing_writer() {
+        let shutdown = Shutdown::Stalled { workers: 2 };
+
+        let result = report_stalled_jobs_to(&mut FailingWriter, shutdown);
+
+        assert!(result.is_err(), "a failing writer must not be swallowed");
+    }
+
+    #[test]
+    fn report_stalled_jobs_clean_shutdown_never_writes() {
+        // `FailingWriter` would fail the call if `Clean` reached the write at
+        // all, so this also proves the early return is taken.
+        let result = report_stalled_jobs_to(&mut FailingWriter, Shutdown::Clean);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn finish_with_failing_writer_still_returns_the_loop_error() {
+        let loop_error = io::Error::other("loop failed");
+        let restore_error = io::Error::other("restore failed");
+
+        // Both the run and the restore failed, and even the stderr note about
+        // the restore failure fails to write: the loop's error must still be
+        // the one returned, per the comment in `finish_to`.
+        let result = finish_to(&mut FailingWriter, Err(loop_error), Err(restore_error));
+
+        let err = result.expect_err("both inputs were errors");
+        assert_eq!(err.to_string(), "loop failed");
+    }
+
+    #[test]
+    fn finish_reports_restore_failure_when_loop_succeeded() {
+        let restore_error = io::Error::other("restore failed");
+
+        let result = finish_to(&mut io::sink(), Ok(Exit::Quit), Err(restore_error));
+
+        let err = result.expect_err("restore failed");
+        assert_eq!(err.to_string(), "restore failed");
+    }
 }
