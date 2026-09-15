@@ -427,15 +427,20 @@ fn run_headless(
     Ok(Exit::Quit)
 }
 
-/// Whether the headless loop has seen enough to print: the walk has left
-/// `Streaming`, one way or another. `None` (no history asked for yet, which
-/// never actually happens — `opening_repository` always asks) would loop
-/// forever, so it counts as settled too rather than hanging.
+/// Whether the headless loop has seen enough to print: history exists and
+/// its walk has left `Streaming`, one way or another.
+///
+/// `None` (before `Task::ReadHistory`'s `Started` event has been handled) is
+/// not settled — counting it as settled printed an "opening…" frame with no
+/// rows before the repository ever opened (M1 review, M4). This cannot spin
+/// forever: a repository that fails to open sets `Quit::Fatal` before this is
+/// checked again, and `run_headless`'s wake loop itself ends (breaking out
+/// rather than looping) once its wake source is exhausted.
 fn headless_settled(state: &AppState) -> bool {
     state
         .history
         .as_ref()
-        .is_none_or(|history| !matches!(history.phase, Phase::Streaming))
+        .is_some_and(|history| !matches!(history.phase, Phase::Streaming))
 }
 
 /// Renders one frame into a backend nothing writes escape bytes to, and
@@ -1318,6 +1323,47 @@ mod tests {
         .expect("writing to memory cannot fail");
 
         assert_eq!(exit, Exit::Quit);
+    }
+
+    /// The state Graft starts in, before `Task::ReadHistory`'s `Started`
+    /// event arrives: `history` is `None`. `headless_settled` must not count
+    /// this as settled, or `graft repo | cat` prints an "opening…" frame with
+    /// no rows and exits 0 before the walk has said anything (M1 review,
+    /// M4, `KNOWN_GAPS.md:181`).
+    #[test]
+    fn headless_is_not_settled_before_history_exists() {
+        assert!(!headless_settled(&AppState::default()));
+    }
+
+    #[test]
+    fn headless_is_not_settled_while_history_is_streaming() {
+        let state = AppState {
+            history: Some(crate::history::History::started()),
+            ..AppState::default()
+        };
+        assert!(!headless_settled(&state));
+    }
+
+    #[test]
+    fn headless_is_settled_once_history_completes() {
+        let mut history = crate::history::History::started();
+        history.phase = Phase::Complete;
+        let state = AppState {
+            history: Some(history),
+            ..AppState::default()
+        };
+        assert!(headless_settled(&state));
+    }
+
+    #[test]
+    fn headless_is_settled_when_the_walk_fails() {
+        let mut history = crate::history::History::started();
+        history.phase = Phase::Failed("disk read error".to_string());
+        let state = AppState {
+            history: Some(history),
+            ..AppState::default()
+        };
+        assert!(headless_settled(&state));
     }
 
     #[test]
