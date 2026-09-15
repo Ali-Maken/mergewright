@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — fix round 1: 74b (sonnet) building, then 75a–76b, 77, review round 2 · 114 tickets: 97 done, 7 ready, 1 partial, 7 split, 2 wontfix
+**Current step:** M1 The graph — fix round 1: 75a (sonnet) building, then 75b–76b, 77, review round 2 · 114 tickets: 98 done, 6 ready, 1 partial, 7 split, 2 wontfix
 
 ---
 
@@ -294,6 +294,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-15 · m1/73a split graft-ui graph_screen · sonnet · done (64570bc) · graph_screen/mod.rs 1,130 → mod 331, layout 291, footer 230, render 329; tests imports only; max_lanes_for path kept by re-export; no snapshot diffs; gates green; ~95k tokens (over target), no compaction
 - 2026-09-15 · m1/73b split graft-ui graph_column · sonnet · done (fd5b46a) · graph_column/mod.rs 583 → mod 325, geometry 192, style 87; terminal.rs already 331 non-test (not split); API unchanged, no snapshot diffs, gates green; no compaction
 - 2026-09-15 · m1/74a split graft-git repo.rs · sonnet · done (0a3766d) · repo.rs 805 → repo/{mod 310, refs 205, peel 138, types 104, shared 94}; pure move, public paths via re-exports, no snapshot diffs, gates green; ~65k tokens, no compaction
+- 2026-09-15 · m1/74b split graft-git history · sonnet · done (ccbd105) · history/mod.rs 516 → mod 45 + walk 362, read 133; topological 503 → 270 + sorted 263; no snapshot diffs, gates green; note: a `super::Commit` re-export in history was removed (tests now import graft_core::commit::Commit) — round-2 reviewer to confirm no public path lost; ~65k tokens, no compaction
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.
