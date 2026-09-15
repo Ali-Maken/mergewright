@@ -178,6 +178,9 @@ struct Replay {
     /// back, so nothing may ever use one of these again.
     retired: BTreeSet<usize>,
     reserved: BTreeSet<usize>,
+    /// Reserved columns whose tip no row has reached yet: nothing is drawn
+    /// down them, so a node they converge on bends no edge in from them.
+    unreached: BTreeSet<usize>,
 }
 
 impl Replay {
@@ -195,6 +198,7 @@ impl Replay {
         Replay {
             live,
             retired: BTreeSet::new(),
+            unreached: reserved.clone(),
             reserved,
         }
     }
@@ -251,7 +255,7 @@ impl Replay {
         let expected_incoming: Vec<usize> = connected
             .iter()
             .copied()
-            .filter(|&column| column != row.lane)
+            .filter(|&column| column != row.lane && !self.unreached.contains(&column))
             .collect();
         prop_assert_eq!(
             &row.incoming,
@@ -261,6 +265,7 @@ impl Replay {
         );
         for column in &connected {
             self.live.remove(column);
+            self.unreached.remove(column);
         }
         Ok(())
     }
@@ -459,6 +464,24 @@ fn check_lanes_stay_put(commits: &[Commit], seeds: &Seeds) -> Result<(), TestCas
     Ok(())
 }
 
+/// Every edge a row bends into its node comes down a column the row draws:
+/// each `incoming` column holds a lane in `lanes`. An incoming column with
+/// no lane above it is a `─` into nothing (m1-the-graph/68).
+pub(crate) fn check_incoming_in_lanes(rows: &[Row]) -> Result<(), TestCaseError> {
+    for row in rows {
+        for &column in &row.incoming {
+            prop_assert!(
+                row.lanes.get(column).copied().flatten().is_some(),
+                "row {} bends column {} in, but draws no lane there: {:?}",
+                row.commit.id,
+                column,
+                row
+            );
+        }
+    }
+    Ok(())
+}
+
 /// The same commits and seeds produce byte-identical rows, however the
 /// commits are chunked across `extend` calls.
 fn check_deterministic(
@@ -556,6 +579,11 @@ proptest! {
         check_deterministic(&history.commits, &history.seeds(), &chunk_sizes)?;
     }
 
+    #[test]
+    fn every_incoming_column_is_a_lane_the_row_draws(history in history()) {
+        check_incoming_in_lanes(&layout(&history.commits, history.seeds()))?;
+    }
+
     /// Every invariant above, on what a view draws: first-parent view,
     /// folded merges and hidden stashes switched on (ticket m1/15).
     #[test]
@@ -568,6 +596,7 @@ proptest! {
         check_lane_zero(&commits, &seeds)?;
         check_lanes_stay_put(&commits, &seeds)?;
         check_deterministic(&commits, &seeds, &chunk_sizes)?;
+        check_incoming_in_lanes(&layout(&commits, seeds.clone()))?;
         if follow == Follow::FirstParent {
             let rows = layout(&commits, seeds);
             prop_assert!(

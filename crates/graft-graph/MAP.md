@@ -18,7 +18,7 @@ One line per public item. Update when a public item changes.
 - `Row` (struct) — one laid-out commit.
 - `Row::commit` (field) — the commit drawn.
 - `Row::lane` (field) — the commit's own column.
-- `Row::incoming` (field) — lanes closing into the node, ascending.
+- `Row::incoming` (field) — lanes closing into the node, ascending; every one is a `Some` in `lanes` (a reserved lane never drawn above its tip closes with no edge, m1-the-graph/68).
 - `Row::outgoing` (field) — one `(column, parent)` per parent, first parent first.
 - `Row::lanes` (field) — identity drawn in each column on this row; `None` where no edge; trailing `None`s trimmed.
 - `Row::marker` (field) — Mistake Radar kind; always `None` from `graph`.

@@ -131,6 +131,13 @@ fn picture(shape: Shape, dir: &Path) -> String {
         "{shape}: layout() and LayoutCursor disagree"
     );
     for (row, commit) in rows.iter().zip(&commits) {
+        for &column in &row.incoming {
+            assert!(
+                row.lanes.get(column).copied().flatten().is_some(),
+                "{shape}: row {} bends column {column} in with no lane above it",
+                commit.id
+            );
+        }
         let targets: Vec<Oid> = row.outgoing.iter().map(|&(_, target)| target).collect();
         assert_eq!(
             targets, commit.parents,

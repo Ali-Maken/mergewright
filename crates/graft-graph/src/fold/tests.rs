@@ -430,6 +430,14 @@ proptest! {
             for &(c, _) in &drawn.row.outgoing { prop_assert!(Some(c) != rail); }
             for &c in &drawn.row.incoming { prop_assert!(Some(c) != rail); }
             prop_assert!(drawn.row.lanes.len() <= fold.kept().len());
+            // Every kept incoming edge comes down a lane the drawn row draws
+            // (m1-the-graph/68): no `─` into an empty column.
+            for &c in &drawn.row.incoming {
+                prop_assert!(
+                    drawn.row.lanes.get(c).copied().flatten().is_some(),
+                    "drawn column {} bends in with no lane above it", c
+                );
+            }
             if let Some(rail) = rail {
                 prop_assert_eq!(drawn.row.lanes.get(rail).copied().flatten(), None);
             }

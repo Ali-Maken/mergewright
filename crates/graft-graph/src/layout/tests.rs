@@ -174,12 +174,37 @@ fn reserved_integration_lane_never_reused_via_convergence() {
     assert_eq!(rows[1].lane, 0);
     assert_eq!(
         rows[1].incoming,
-        vec![1],
-        "develop's reserved lane converges here"
+        Vec::<usize>::new(),
+        "develop's reserved lane converges here, but was never drawn above \
+         its tip, so it bends no edge in (m1-the-graph/68)"
     );
     assert_eq!(
         rows[2].lane, 2,
         "neither reserved lane (0 or 1) is ever handed back for reuse"
+    );
+}
+
+/// m1-the-graph/68, the minimal case: an integration branch whose tip is the
+/// default branch's tip. Its reserved lane was never drawn — nothing sits
+/// above its tip — so it bends nothing into the node: no `─` into a column
+/// the row draws no lane in.
+#[test]
+fn a_reserved_lane_closing_at_its_own_tip_bends_no_edge_in() {
+    let commits = [commit(1, &[], 100, b"main and develop tip")];
+    let seeds = Seeds {
+        default_branch: Some(seed(1, BranchIdentity::of_name(b"main"))),
+        integration_branches: vec![seed(1, BranchIdentity::of_name(b"develop"))],
+        ..Seeds::default()
+    };
+
+    let rows = layout(&commits, seeds);
+
+    assert_eq!(rows[0].lane, 0);
+    assert_eq!(rows[0].lanes.len(), 1, "only main's column is drawn");
+    assert_eq!(
+        rows[0].incoming,
+        Vec::<usize>::new(),
+        "develop's lane was never drawn, so nothing bends in from it"
     );
 }
 

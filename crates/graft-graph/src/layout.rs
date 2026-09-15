@@ -360,13 +360,20 @@ impl LayoutCursor {
         let own = self.active[lane].as_ref().map(|entry| entry.identity);
         set_column(&mut lanes, lane, own);
 
+        // Every other lane waiting for this commit closes here. Only a lane
+        // drawn above this row bends in: a reserved lane whose tip is this
+        // very commit was never drawn (it is not in `lanes`), so it closes
+        // without an edge — else the row names a column with nothing above
+        // it (m1-the-graph/68).
         let mut closing = Vec::new();
-        let mut incoming: Vec<usize> = found
-            .into_iter()
-            .filter(|&candidate| candidate != lane)
-            .collect();
-        for &candidate in &incoming {
+        let mut incoming = Vec::new();
+        for candidate in found.into_iter().filter(|&candidate| candidate != lane) {
             self.close_lane(candidate, &mut closing);
+            if self.unreached.contains(&candidate) {
+                self.unreached.retain(|&column| column != candidate);
+            } else {
+                incoming.push(candidate);
+            }
         }
         incoming.sort_unstable();
 
