@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — round-2 fixes: 79 (sonnet) building, then checkpoint (AUTHORSHIP, M2 design pass, report) · 116 tickets: 105 done, 1 ready, 1 partial, 7 split, 2 wontfix
+**Current step:** M1 The graph — checkpoint: AUTHORSHIP regen (sonnet), then M2 design pass (planner-fable), report · 116 tickets: 106 done, 1 partial, 7 split, 2 wontfix
 
 ---
 
@@ -304,6 +304,8 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-15 · conductor · fix round 1 complete (65–77); M1 review round 2 (opus) dispatched, range 1b828ca..HEAD
 - 2026-09-15 · M1 review round 2 · opus · 0 critical / 1 major / 5 minor (923a9a9) · round-1 majors all closed at cause; splits 70–76b pure moves (line-set diff); gates pass, test 21.0 s, heavy pass 177 s, perf 10/10 ×3, Unicode 50k max 5.35–5.50 ms (was 14.5), 1M frames p99 pixel 8.7 / Unicode 8.5 ms · major: update purity guard scans only mod.rs after split (70) → filed 78 (with m3 runner.rs:91 comment); m1 kitty_check.rs 469 → filed 79; m2 tie class unbounded, m4 GRAFT_1M guards red when unset (ADR-0018), m5 past-due rows, m6 target/ 33 GB → user at checkpoint; last round, no round 3
 - 2026-09-15 · m1/78 update purity guard scans every file · sonnet · done (8861fc4) · cause fix: joined-then-split_once dropped 6 of 7 files; now read_dir over update/ (minus tests.rs), strips only mod.rs's test tail; red proof target/m1-78/red_proof.txt (Instant::now in commit_graph.rs caught, reverted); runner.rs:91 comment fixed; ~35k tokens, no compaction
+- 2026-09-15 · m1/79 split kitty_check example · sonnet · done (31bbf60) · examples/kitty_check.rs 469 → kitty_check/{main 61, driver 275, terminal 157}; builds and runs (no-args usage error unchanged); real-terminal flow not exercised; gates green; ~35k tokens, no compaction
+- 2026-09-15 · conductor · M1 review fixes complete (65–79); checkpoint started: AUTHORSHIP regen dispatched; asked user about cleanup (cargo clean + prototypes/*/target + old evidence dirs ≈36 GB; 17 MB docs/shots/09-graph-screen.txt)
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.
