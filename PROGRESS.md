@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — checkpoint: AUTHORSHIP regen (sonnet), then M2 design pass (planner-fable), report · 116 tickets: 106 done, 1 partial, 7 split, 2 wontfix
+**Current step:** M1 The graph — checkpoint: cleanup (evidence summaries, capture trim, git gc), then M2 design pass (planner-fable), report · 116 tickets: 106 done, 1 partial, 7 split, 2 wontfix
 
 ---
 
@@ -306,6 +306,8 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-15 · m1/78 update purity guard scans every file · sonnet · done (8861fc4) · cause fix: joined-then-split_once dropped 6 of 7 files; now read_dir over update/ (minus tests.rs), strips only mod.rs's test tail; red proof target/m1-78/red_proof.txt (Instant::now in commit_graph.rs caught, reverted); runner.rs:91 comment fixed; ~35k tokens, no compaction
 - 2026-09-15 · m1/79 split kitty_check example · sonnet · done (31bbf60) · examples/kitty_check.rs 469 → kitty_check/{main 61, driver 275, terminal 157}; builds and runs (no-args usage error unchanged); real-terminal flow not exercised; gates green; ~35k tokens, no compaction
 - 2026-09-15 · conductor · M1 review fixes complete (65–79); checkpoint started: AUTHORSHIP regen dispatched; asked user about cleanup (cargo clean + prototypes/*/target + old evidence dirs ≈36 GB; 17 MB docs/shots/09-graph-screen.txt)
+- 2026-09-15 · M1 AUTHORSHIP regen · sonnet · done (e14c2a3) · M1 builds Opus ~50+, Sonnet ~45+, Fable 9; compacted 07,10,11,12,12b,14,17,18,19,26,27,35a,41,47,48,51,52,54,70,71; escalations none; log silent on round-1/2 review file paths
+- 2026-09-15 · user · cleanup before M2: build output + prototypes/*/target removed, one 1M fixture per kind kept; cited evidence in target/{27b,58b,55} → trimmed summaries, raw dumps go; trim docs/shots/09-graph-screen.txt; git gc · CLAUDE.md rules added: captures ≤200 KB, no raw streams; size tickets from M1 compaction evidence; quiet gates; measurement via script to docs/perf/<ticket>.txt; hard stop 40 tool calls / ~100k tokens · M2 plan: map every PROMPT §8 M2 item to a ticket, name gaps; ends with Fable acceptance ticket; graft-ops MAP.md when next touched
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.

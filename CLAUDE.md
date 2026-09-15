@@ -34,6 +34,7 @@
 - **Who writes them (M2 onward):** `planner-fable` writes every ticket spec in its design pass (see Models). The conductor **files and sequences** them: numbering, dependency order, `Blocked by:`, `Status:`. It does not re-decide scope, signatures or `Build with`. A spec the conductor thinks is wrong goes back to `planner-fable` or to the user; the conductor doesn't edit it.
 - **`/to-tickets` is not used for any milestone with a Fable spec pass** (M2 onward). It drafted M0 and M1 only.
 - **Size:** each ticket finishes inside one context, target **under 80k tokens**. Compaction means the ticket was too big: the helper says so in its report, the conductor splits the remainder into new tickets.
+- **Size from evidence, not intuition** (user, 2026-09-15). M1's session log records its compactions and tickets that ran 93k–200k against the 80k target. `planner-fable` reads those entries first, says what made them overrun, and sizes the milestone's tickets from that. A ticket that can't be made to fit says so when it is written, not mid-build.
 - **Splitting a remainder:** the conductor cuts along the seams in the builder's handoff note and keeps the original scope, signatures and model. If the split needs a new decision (a new signature, a scope change, another model), it goes to `planner-fable` as a spec-only pass for those tickets.
 - **Each ticket states:** scope in/out; acceptance criteria; the **exact sections** to read (never a whole document); the **exact signatures** the work must expose and call; its `Build with` line.
 - **Interface-first grouping:** the first ticket of a group defines the traits and stubs; the rest fill them in.
@@ -94,6 +95,9 @@
 
 - **Scouts:** builders delegate exploration to a Sonnet or Haiku scout (Agent tool, `Explore` with `model: haiku` or `sonnet`) that returns a summary of one page or less, instead of reading source into their own context.
 - **MAP.md:** every crate keeps `crates/<crate>/MAP.md`, one line per public item. Any ticket changing a public item updates it. Builders read MAP.md before source. A crate without one gets it from the next ticket that touches the crate.
+- **Quiet gates** (user, 2026-09-15): builders run `cargo test --quiet`, `cargo clippy --all-targets --message-format=short -- -D warnings`, `cargo build --quiet`. Full output only on failure, and only the failing part.
+- **Measurement never runs in a helper's context** (user, 2026-09-15): perf runs, benchmarks, heavy-tier runs and memory curves run from a script that writes results to `docs/perf/<ticket>.txt`; the helper reads the summary lines only.
+- **Hard stop at 40 tool calls or ~100k tokens** (user, 2026-09-15): the helper commits at the next clean point, writes a handoff note in the ticket, reports `partial`, and the conductor splits the rest. The 80k sizing target stands.
 
 ### Checkpoint policy
 
@@ -116,6 +120,7 @@
 - **A status field must never read as an error when nothing is wrong.** Name and render status by its state: `gfx ok` / `gfx: <error>`, or show the field only when there is something to report. A permanently-visible `GFX_ERROR:` label trains the user to ignore it, which is how a real error gets missed.
 - **Green gates are not evidence.** `fmt`/`clippy`/`test` passing means the code compiles and your own tests agree with you. It does not mean the thing works. Say what you actually verified and how, and what you couldn't. Never claim behaviour you didn't observe.
 - **Visual results are judged by eye, by the user.** Green gates are not evidence for how something looks. Any ticket whose result is visual ends by capturing what it actually renders — a pty capture committed under `docs/shots/` — and its report names the capture and says the user judges it by eye. No builder or reviewer ticks "looks right".
+- **Captures stay small** (user, 2026-09-15): anything committed under `docs/shots/` is trimmed to what shows the point, **hard cap 200 KB per file**. Raw terminal streams are never committed: a larger capture is summarised in the committed file and the raw one stays untracked under `target/`. The repo may be published.
 - **Tests must be laptop-safe** (PROMPT.md 7.1). Builders run only the fast tier (`cargo test`). The heavy tier, fuzzing and benchmarks run only in milestone reviews. **Every milestone review includes the release perf run** (frame budgets fail only under `--release`; debug records without failing — user, 2026-09-13, ADR-0021).
 - **One heavy job at a time:** never run two cargo commands or test suites at once. Never generate large fixtures outside the heavy tier.
 
