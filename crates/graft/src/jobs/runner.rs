@@ -1,0 +1,362 @@
+//! [`JobRunner`]: the pool as callers see it — start it, submit or dispatch
+//! work, cancel a job, shut it down.
+
+use std::collections::HashMap;
+use std::io;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::mpsc::Sender;
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
+
+use graft_core::event::Event;
+use graft_core::job::{JobFailure, JobId};
+
+use super::MAX_WORKERS;
+use super::kinds::{
+    check_system_git, decline_commit_graph, open_repository, read_history, search,
+    write_commit_graph,
+};
+use super::pool::{Alive, Assignment, Live, Shutdown, Worker};
+use super::types::{Cancel, Dispatch, JobEvents, Outcome, Work};
+use crate::history;
+use crate::history::RowRequest;
+use crate::repos::RepoStore;
+use crate::update::{AppEvent, Command, Product, Task};
+
+/// The pool: a queue, a few threads, and a table of what is still running.
+///
+/// Not `Sync`, and that is the design: one thread — the UI thread — owns the
+/// runner and hands work to it. Everything shared with the workers is behind
+/// the channel.
+pub struct JobRunner<S: JobEvents> {
+    next_id: AtomicU64,
+    queue: Sender<Assignment>,
+    live: Arc<Live>,
+    alive: Arc<Alive>,
+    workers: Vec<JoinHandle<()>>,
+    /// Kept so the runner can report a job it could not even start.
+    sink: S,
+    /// The repository every job reads from, opened at most once for the whole
+    /// run (`crate::repos`).
+    repos: Arc<RepoStore>,
+    /// Where each live history job takes its row requests from. Dropping a
+    /// sender is what ends that job once it is idle, so a cancelled walk
+    /// releases its worker instead of waiting for requests forever.
+    row_requests: Mutex<HashMap<JobId, Sender<RowRequest>>>,
+    /// Ahead/behind counts every refs job shares, so a refresh walks only
+    /// the branches whose tips moved.
+    pub(super) ahead_behind: Arc<crate::refs::AheadBehindCache>,
+}
+
+impl<S: JobEvents> JobRunner<S> {
+    /// Start a pool of `workers` threads, reporting results to `sink`.
+    ///
+    /// `workers` is clamped to at least one and at most [`MAX_WORKERS`]: a pool
+    /// of none would accept jobs and never run them, and a pool of fifty would
+    /// be a laptop with no battery left (PROMPT.md §7.1).
+    pub fn start(sink: S, workers: usize, repos: Arc<RepoStore>) -> io::Result<Self> {
+        let (queue, receiver) = std::sync::mpsc::channel();
+        // `mpsc` has one receiver, and every worker needs to take from the same
+        // queue, so the receiver itself is the thing they share. The lock is
+        // held only across `recv` — never while a job runs.
+        let receiver = Arc::new(Mutex::new(receiver));
+        let live = Arc::new(Live::default());
+        let alive = Arc::new(Alive::default());
+
+        let mut handles = Vec::new();
+        for number in 0..workers.clamp(1, MAX_WORKERS) {
+            let worker = Worker {
+                queue: Arc::clone(&receiver),
+                live: Arc::clone(&live),
+                alive: Arc::clone(&alive),
+                sink: sink.clone(),
+            };
+            alive.started();
+            match thread::Builder::new()
+                .name(format!("graft-job-{number}"))
+                .spawn(move || worker.run())
+            {
+                Ok(handle) => handles.push(handle),
+                Err(error) => {
+                    alive.stopped();
+                    // A half-sized pool would work, and would quietly be slower
+                    // forever. Better to fail where the cause is still visible:
+                    // drop the queue so the workers that did start end, and let
+                    // the caller say so.
+                    drop(queue);
+                    for handle in handles {
+                        // These threads are idle in `recv` and end as soon as
+                        // the queue is dropped, so this cannot hang.
+                        handle.join().unwrap_or(());
+                    }
+                    return Err(error);
+                }
+            }
+        }
+
+        Ok(Self {
+            next_id: AtomicU64::new(1),
+            queue,
+            live,
+            alive,
+            workers: handles,
+            sink,
+            repos,
+            row_requests: Mutex::new(HashMap::new()),
+            ahead_behind: Arc::default(),
+        })
+    }
+
+    /// Start a pool sized for this machine.
+    pub fn with_default_size(sink: S, repos: Arc<RepoStore>) -> io::Result<Self> {
+        let parallelism = thread::available_parallelism().map_or(1, std::num::NonZero::get);
+        Self::start(sink, parallelism.min(MAX_WORKERS), repos)
+    }
+
+    /// How many worker threads this pool is running.
+    #[must_use]
+    pub fn worker_count(&self) -> usize {
+        self.workers.len()
+    }
+
+    /// Queue some work, and return the id its result will carry.
+    ///
+    /// Returns as soon as the work is on the queue: the caller is the UI
+    /// thread, and it has a frame to draw.
+    pub fn submit(&self, work: impl FnOnce(&Cancel) -> Outcome + Send + 'static) -> JobId {
+        self.queue_job(None, |_| Box::new(work))
+    }
+
+    /// Queue some work and tell the loop, before it is queued, which id the
+    /// result will carry.
+    ///
+    /// The announcement goes down the same channel as the result and is sent
+    /// first, so the loop always learns the id before it learns the answer.
+    /// Without that, `Esc` could not cancel a walk that has not come back
+    /// yet: there would be nothing to name.
+    fn announce(
+        &self,
+        task: Task,
+        work: impl FnOnce(&Cancel) -> Outcome + Send + 'static,
+    ) -> JobId {
+        self.queue_job(Some(task), |_| Box::new(work))
+    }
+
+    /// Queue the work `build` makes once it knows the job's id — which work
+    /// that reports progress needs, because every progress event carries it.
+    fn queue_job(&self, task: Option<Task>, build: impl FnOnce(JobId) -> Work) -> JobId {
+        let id = JobId::new(self.next_id.fetch_add(1, Ordering::Relaxed));
+        let work = build(id);
+        let cancel = Cancel::new();
+        self.live.register(id, cancel.clone());
+
+        if let Some(task) = task {
+            // The announcement is deliberately not acted on either way. If
+            // the loop has already finished, the job is still queued: the
+            // worker that picks it up finds the same dead channel, and that
+            // is the one place stopping the rest belongs. Deciding it twice,
+            // in two places, is how the two come to disagree.
+            self.sink.deliver(AppEvent::Started(id, task));
+        }
+
+        if let Err(undelivered) = self.queue.send(Assignment { id, cancel, work }) {
+            // Every worker has gone, so this job can never run. Dropping it
+            // quietly is exactly the failure that ships: the screen would wait
+            // for something that is never coming.
+            drop(undelivered);
+            self.live.finish(id);
+            self.sink.deliver(AppEvent::Core(Event::JobFailed(
+                id,
+                JobFailure::Failed("the job runner has stopped".to_owned()),
+            )));
+        }
+
+        id
+    }
+
+    /// Ask a job to stop.
+    ///
+    /// Cooperative: a job that has not started yet is dropped without running,
+    /// and one that is running stops at its next check. An id that is already
+    /// finished or was never issued is a no-op — its result event is already on
+    /// its way, and `update` decides what a result it no longer wants means.
+    pub fn cancel(&self, id: JobId) {
+        self.live.cancel(id);
+    }
+
+    /// The row-request senders, locked.
+    fn row_requests(&self) -> MutexGuard<'_, HashMap<JobId, Sender<RowRequest>>> {
+        // A poisoned lock is safe to take over: every change to the map is a
+        // single insert, remove or clear, none of which can leave it half-done.
+        self.row_requests
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Stop the pool: cancel everything, then wait up to `grace` for the
+    /// workers to notice.
+    ///
+    /// Consumes the runner, because a pool that has been shut down must not be
+    /// able to accept another job. Never blocks indefinitely — the terminal
+    /// cannot be restored until this returns, so a job that ignores its token
+    /// costs `grace` and then is abandoned rather than waited on forever.
+    #[must_use]
+    pub fn shutdown(self, grace: Duration) -> Shutdown {
+        self.row_requests().clear();
+        self.live.cancel_all();
+        // Dropping the queue is what ends a worker that is idle: its `recv`
+        // fails, and it stops.
+        drop(self.queue);
+
+        let still_busy = self.alive.wait_for_all(grace);
+        if still_busy > 0 {
+            // The handles are dropped rather than joined, which detaches those
+            // threads. They hold nothing but their own job and a channel handle,
+            // so the worst they can do is finish and find nobody listening.
+            return Shutdown::Stalled {
+                workers: still_busy,
+            };
+        }
+
+        for handle in self.workers {
+            // Every worker has already reached the end of its body, so this
+            // returns at once. A worker that panicked outside a job is a bug in
+            // this module rather than in a job; there is nothing to recover, and
+            // the pool is being torn down anyway.
+            handle.join().unwrap_or(());
+        }
+        Shutdown::Clean
+    }
+}
+
+impl<S: JobEvents> JobRunner<S> {
+    /// Opens (or, on `Ctrl+R`, re-opens) the repository. The refresh runs
+    /// here, on the dispatching thread, not in the job: the jobs that read
+    /// refs are dispatched right after and may start first on another
+    /// worker, and must not be served refs read before it (m1-the-graph/55).
+    fn open_repository(&self) {
+        self.repos.refresh();
+        self.announce(
+            Task::OpenRepository,
+            open_repository(Arc::clone(&self.repos)),
+        );
+    }
+
+    /// Sorts the whole range topologically off the loop's thread, for a walk
+    /// whose order is provisional (ADR-0008).
+    fn promote_history(&self) {
+        let repos = Arc::clone(&self.repos);
+        self.announce(Task::PromoteHistory, move |cancel| {
+            let stop = || cancel.is_cancelled();
+            if stop() {
+                return Outcome::Cancelled;
+            }
+            match history::topological_order(&repos, &stop) {
+                Ok(Some(order)) => Outcome::Produced(Product::TopologicalOrder(order)),
+                Ok(None) => Outcome::Cancelled,
+                Err(message) => Outcome::Failed(message),
+            }
+        });
+    }
+
+    /// Builds the commit-graph with system git off the loop's thread
+    /// (m1-the-graph/54).
+    fn write_commit_graph(&self) {
+        let repos = Arc::clone(&self.repos);
+        self.announce(Task::WriteCommitGraph, move |cancel| {
+            // Checked once, before git starts: a write not yet begun can be
+            // dropped (nothing is recorded, the next open offers again). Once
+            // git runs it is never cancelled nor killed — see
+            // `graft_git::commit_graph`.
+            if cancel.is_cancelled() {
+                return Outcome::Cancelled;
+            }
+            Outcome::Produced(Product::CommitGraph(write_commit_graph(&repos)))
+        });
+    }
+
+    /// Remembers the declined commit-graph offer off the loop's thread.
+    fn decline_commit_graph(&self) {
+        let repos = Arc::clone(&self.repos);
+        self.announce(Task::DeclineCommitGraph, move |cancel| {
+            if cancel.is_cancelled() {
+                return Outcome::Cancelled;
+            }
+            Outcome::Produced(Product::CommitGraphDeclined(decline_commit_graph(&repos)))
+        });
+    }
+}
+
+impl<S: JobEvents> Dispatch for JobRunner<S> {
+    fn dispatch(&self, command: Command) {
+        match command {
+            Command::OpenRepository => self.open_repository(),
+            Command::CheckSystemGit => {
+                self.announce(Task::CheckSystemGit, check_system_git());
+            }
+            Command::ReadRefs => {
+                let repos = Arc::clone(&self.repos);
+                let cache = Arc::clone(&self.ahead_behind);
+                self.announce(Task::ReadRefs, move |cancel| {
+                    if cancel.is_cancelled() {
+                        return Outcome::Cancelled;
+                    }
+                    Outcome::Produced(Product::Refs(crate::refs::read(&repos, &cache)))
+                });
+            }
+            Command::ReadWorkingTree => {
+                let repos = Arc::clone(&self.repos);
+                self.announce(Task::ReadWorkingTree, move |cancel| {
+                    if cancel.is_cancelled() {
+                        return Outcome::Cancelled;
+                    }
+                    Outcome::Produced(Product::WorkingTree(crate::working_tree::read(&repos)))
+                });
+            }
+            Command::PromoteHistory => self.promote_history(),
+            Command::WriteCommitGraph => self.write_commit_graph(),
+            Command::DeclineCommitGraph => self.decline_commit_graph(),
+            Command::ReadHistory(order) => {
+                let repos = Arc::clone(&self.repos);
+                let sink = self.sink.clone();
+                let (asks, requests) = std::sync::mpsc::channel();
+                // Registered before `update` can see the job has started: the
+                // announcement travels through the loop's queue, and this runs
+                // on the loop's own thread before it reads that queue again.
+                let id = self.queue_job(Some(Task::ReadHistory), |id| {
+                    read_history(repos, order, requests, sink, id)
+                });
+                self.row_requests().insert(id, asks);
+            }
+            Command::ShowRows(id, request) => {
+                let mut row_requests = self.row_requests();
+                // No sender means the job was cancelled or has ended; its answer
+                // would be dropped as stale anyway, so there is nobody to tell.
+                if let Some(asks) = row_requests.get(&id)
+                    && asks.send(request).is_err()
+                {
+                    // The job has ended on its own (it failed, or found the loop
+                    // gone). Its failure is reported through its own outcome.
+                    row_requests.remove(&id);
+                }
+            }
+            Command::Search(query) => {
+                let repos = Arc::clone(&self.repos);
+                let sink = self.sink.clone();
+                // The id names the search on screen; `update` tells a
+                // superseded one apart by the order searches start in.
+                self.queue_job(Some(Task::Search), |id| search(repos, query, sink, id));
+            }
+            Command::CancelJob(id) => {
+                self.row_requests().remove(&id);
+                self.cancel(id);
+            }
+            // The loop writes this to the terminal itself (`event_loop`);
+            // reaching here is a routing bug, not a runtime condition.
+            Command::CopyToClipboard(_) => {
+                unreachable!("CopyToClipboard is terminal output, never a job")
+            }
+        }
+    }
+}

@@ -203,6 +203,10 @@ One line per public item. Update when a public item changes.
 - `status_view` (fn) — build a `StatusView` from session and app state.
 
 ## event_loop
+Internal split (m1-the-graph/71, public paths unchanged): `startup` (terminal
+setup, `run`), `headless` (no-tty path, `run_headless`), `running` (the frame
+loop, `pump`/`pump_with`), plus the pre-existing `graphics`, `redetect`,
+`row_clear` — all private, re-exported from `mod.rs` where still public.
 - `input` (mod) — input reader thread and event translation.
 - `signals` (mod) — signal watcher thread.
 - `Exit` (enum) — why the loop stopped: `Quit`, `HandedBack(KeyCode)` (a `Harness::hand_back` key), `Signal(i32)`, `Fatal(String)`.
@@ -225,6 +229,10 @@ One line per public item. Update when a public item changes.
 - `spawn_reader` (fn) — forward the input mux's `Inputs` into the loop's wakes, on a thread of its own.
 
 ## jobs
+Internal split (m1-the-graph/71, public paths unchanged): `types` (`Outcome`,
+`Work`, `Cancel`, `JobEvents`, `Delivery`, `Dispatch`), `pool` (`Shutdown`,
+plus the private queue/worker bookkeeping), `kinds` (the work behind each
+command), `runner` (`JobRunner`) — re-exported from `mod.rs`.
 - `MAX_WORKERS` (const) — worker thread cap (PROMPT.md §7.1).
 - `SHUTDOWN_GRACE` (const) — how long shutdown waits before abandoning workers.
 - `Outcome` (enum) — how a job ended, as the job itself sees it.

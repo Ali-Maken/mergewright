@@ -1,6 +1,15 @@
 # m1-the-graph/71 — Review M1: split event_loop and jobs under the 400-line rule
 
-Status: ready
+Status: done
+
+## Result
+- event_loop/mod.rs: 1787 (766 non-test) → mod.rs 210, startup.rs 228, headless.rs 116, running.rs 275 (all non-test, all ≤400); tests moved verbatim to tests.rs (1028 lines).
+- jobs/mod.rs: 803 → mod.rs 94, types.rs 108, pool.rs 198, kinds.rs 129, runner.rs 359 (all ≤400); jobs/tests.rs (already external, 581 lines) untouched.
+- All gates green: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo clippy --all-targets --features heavy-tests -- -D warnings`, `cargo test` (full workspace, 0 failures).
+- Public API unchanged: `event_loop::{run, pump}`, `jobs::{JobRunner, Outcome, Work, Cancel, JobEvents, Delivery, Dispatch, Shutdown, MAX_WORKERS, SHUTDOWN_GRACE}` all still resolve at the same paths via `pub use`.
+- MAP.md updated (event_loop, jobs sections) to note the internal split; ARCHITECTURE.md not touched — no crate-boundary change.
+- Files still over 400 non-test lines in crates/graft/src (out of scope for this ticket): view.rs (704), history/mod.rs (713), history/scroll.rs (495), config/mod.rs (431).
+- Pre-existing observation, not fixed (out of scope, pure-move ticket): `event_loop/startup.rs`'s `finish()` and `report_stalled_jobs()` swallow a stderr-write failure with `.unwrap_or(())`, moved verbatim from the original file.
 Build with: **Sonnet** (medium) — mechanical moves along existing seams; no behaviour change.
 Blocked by: 65, 66, 67, 68, 69, 70
 
