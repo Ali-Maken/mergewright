@@ -1,18 +1,23 @@
 //! The product source, seeds and streaming driver, on the fixture corpus.
 
 use std::path::Path;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 
 use graft_core::commit::Commit;
 use graft_core::commit_handle::CommitHandle;
+use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
 use graft_fixtures::Shape;
 use graft_git::branches::Branches;
 use graft_git::history::{CHUNK, CommitTable, Order, Walk};
 use graft_git::repo::{RefTarget, RepoHandle};
 use graft_graph::layout::{CommitSource, StreamConfig, StreamingLayout, layout};
-use graft_graph::{BranchIdentity, Row, Seeds};
+use graft_graph::{BranchIdentity, Follow, Inclusion, Row, Seeds};
+
+use crate::jobs::Delivery;
+use crate::repos::RepoStore;
 
 use super::*;
 

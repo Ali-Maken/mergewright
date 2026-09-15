@@ -1,6 +1,6 @@
 # m1-the-graph/72a — Review M1: split graft history module under the 400-line rule
 
-Status: ready
+Status: done
 Build with: **Sonnet** (medium) — mechanical moves along existing seams; no behaviour change.
 Blocked by: 71
 
@@ -26,3 +26,11 @@ Out: behaviour changes, renames of public items, anything outside the named file
 
 ## Size
 One context, under ~80k tokens. Near it, stop at a clean seam with a handoff note.
+
+## Report
+- mod.rs (713) -> mod.rs (40 facade) + state.rs (277) + stream.rs (123) + views.rs (324).
+- scroll.rs (495) -> scroll/mod.rs (30 facade, Motion) + scroll/apply.rs (234) + scroll/query.rs (251).
+- All new/changed files ≤400 non-test lines. No other file in crates/graft over 400 was touched.
+- Public API unchanged (same items re-exported from history::mod); MAP.md needed no change (documents by item, not file). ARCHITECTURE.md has no per-file references to update.
+- tests.rs import list extended (Arc, Oid, Follow, Inclusion, Delivery, RepoStore) since `use super::*` no longer pulls them transitively through mod.rs; no test logic changed.
+- Gates: fmt --check, clippy --all-targets -D warnings, clippy --all-targets --features heavy-tests -D warnings, cargo test (317 tests) all green.
