@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — fix round 1: 72b (sonnet) building, then 72c–76b, 77, review round 2 · 114 tickets: 92 done, 12 ready, 1 partial, 7 split, 2 wontfix
+**Current step:** M1 The graph — fix round 1: 72c (sonnet) building, then 73a–76b, 77, review round 2 · 114 tickets: 93 done, 11 ready, 1 partial, 7 split, 2 wontfix
 
 ---
 
@@ -289,6 +289,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-15 · m1/71 split event_loop + jobs · sonnet · done (3cf7a3c) · event_loop 766 non-test → mod 210, startup 228, headless 116, running 275; jobs 803 → mod 94, types 108, pool 198, kinds 129, runner 359; API unchanged, MAP.md updated, gates green; found pre-existing `.unwrap_or(())` stderr swallow in startup finish()/report_stalled_jobs() (moved verbatim) · COMPACTED
 - 2026-09-15 · conductor · 70 and 71 both compacted → split tickets too big: 72–76 split to one big file (or two small) per ticket: 72a history mod+scroll, 72b view, 72c config, 73a graph_screen, 73b graph_column+terminal, 74a repo, 74b git history+topological, 75a stream, 75b layout, 75c raster+inclusion+synthetic, 76a decode+detect, 76b kitty; filed 77 stderr swallow (Sonnet); all sequential
 - 2026-09-15 · m1/72a split graft history module · sonnet · done (a78cdb8) · history/mod.rs 713 → mod 40 + state 277, stream 123, views 324; scroll.rs 495 → scroll/{mod 30, apply 234, query 251}; API unchanged, tests.rs imports only; gates green; no compaction
+- 2026-09-15 · m1/72b split view.rs · sonnet · done (fbfe91b) · view.rs 704 → view/{mod, frame, rows, entries, status, tests}; snapshots moved to view/snapshots/ (path only); API unchanged, cross-file items pub(super)/pub(crate); MAP.md updated; gates green; ~75k tokens, no compaction
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.
