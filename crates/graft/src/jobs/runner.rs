@@ -87,7 +87,10 @@ impl<S: JobEvents> JobRunner<S> {
                     drop(queue);
                     for handle in handles {
                         // These threads are idle in `recv` and end as soon as
-                        // the queue is dropped, so this cannot hang.
+                        // the queue is dropped, so this cannot hang. `Err`
+                        // means the worker panicked; `crash::install`'s hook
+                        // already reported that to the user, so there is
+                        // nothing left to do with it here.
                         handle.join().unwrap_or(());
                     }
                     return Err(error);
