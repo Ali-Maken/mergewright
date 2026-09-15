@@ -1,6 +1,6 @@
 # m1-the-graph/75c — Review M1: split graft-graph raster, inclusion and graft-fixtures synthetic under the 400-line rule
 
-Status: ready
+Status: done
 Build with: **Sonnet** (medium) — mechanical moves along existing seams; no behaviour change.
 Blocked by: 75b
 
@@ -26,3 +26,17 @@ Out: behaviour changes, renames of public items, anything outside the named file
 
 ## Size
 One context, under ~80k tokens. Near it, stop at a clean seam with a handoff note.
+
+## Result
+
+Before (non-test lines):
+- `crates/graft-graph/src/raster.rs`: 654
+- `crates/graft-graph/src/inclusion.rs`: 436 (all non-test; `mod tests;` is external)
+- `crates/graft-fixtures/src/synthetic.rs`: 678 (no test module)
+
+After:
+- `raster.rs` 300 (rasterise entry, types, constants); new `raster/pen.rs` 271 (`Pen`'s drawing methods — `pub(super)` on `new`/`column`/`row`); new `raster/geometry.rs` 119 (line/arc/paint/pixel helpers, `pub(super)`). `raster/node.rs`'s import of `eraser`/`paint` updated to `super::geometry::{eraser, paint}`.
+- `inclusion.rs` 196 (`Follow`, `Inclusion`, `Frontier`, `seeds_for`/`apply`/`kept_parents`/`drawn_link`); new `inclusion/included.rs` 253 (`Included<S>` + `reinclude`), re-exported via `pub use included::{Included, reinclude};` so the public path is unchanged. `inclusion/tests.rs`'s `use super::*` lost the `CommitSource`/`Pull`/`StreamingLayout`/`Invalidated` imports that used to live in `inclusion.rs`; added them explicitly.
+- `synthetic.rs` 340 (orchestration: `ensure`/`borrow`/`build`/etc., `Report`, `SyntheticError`, `git_error`/`io_error`); new `synthetic/scale.rs` 138 (`CommitGraph`, `CommitSize`, `Scale`; fields made `pub(super)` for the parent's field access); new `synthetic/history.rs` 219 (`History` + commit-message generators, `pub(super)` on the struct/`new`/`write`). All re-exported the same way (`pub use scale::{CommitGraph, CommitSize, Scale};`), so `lib.rs`'s `pub use synthetic::{CommitGraph, Scale};` is untouched.
+
+No file in these three crates/paths is over 400 non-test lines afterward. No behaviour change, no public path change, no snapshot change.

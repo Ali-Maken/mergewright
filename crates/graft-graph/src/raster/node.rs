@@ -4,7 +4,8 @@
 
 use tiny_skia::{FillRule, PathBuilder, Pixmap, Rect, Stroke, StrokeDash, Transform};
 
-use super::{Ink, eraser, paint};
+use super::Ink;
+use super::geometry::{eraser, paint};
 use crate::row::Row;
 
 /// How a commit's node is drawn.
