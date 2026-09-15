@@ -1,0 +1,324 @@
+//! The graph's own keys: movement, view changes and the toggles that are not
+//! the search prompt or the commit-graph offer (those are `search` and
+//! `commit_graph`).
+
+use graft_core::capabilities::RenderingTier;
+use graft_core::event::{KeyCode, KeyPress, Modifiers};
+use graft_core::oid::Oid;
+use graft_git::history::Order;
+
+use crate::history::{History, Motion, View};
+use graft_graph::Follow;
+
+use super::events::{Command, CommitGraphOffer};
+use super::state::{AppState, Quit, Status};
+
+/// The half of [`super::core_event`] that answers a key.
+///
+/// `Enter` (the peek key) and `Esc` handle the peek themselves — `Enter`
+/// toggles it, `Esc` clears it before anything else (`escape_key`). Every
+/// other key clears a peek left on: it is a one-shot, not a mode
+/// (ADR-0023).
+pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
+    // The copy notice lasts until the next key, whatever that key does.
+    if matches!(next.status, Status::Copied { .. }) {
+        next.status = Status::Ready;
+    }
+    // So does the commit-graph written line.
+    if matches!(next.commit_graph, CommitGraphOffer::Written { .. }) {
+        next.commit_graph = CommitGraphOffer::NotNeeded;
+    }
+    if is_peek_key(key) {
+        next.peek = !next.peek;
+        return;
+    }
+    if key.code != KeyCode::Escape {
+        next.peek = false;
+    }
+    if let Some(command) = super::commit_graph::commit_graph_key(next, key) {
+        commands.push(command);
+        return;
+    }
+    graph_key(next, commands, key);
+}
+
+/// The graph's own keys, once [`key_event`] has settled the peek.
+fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
+    if is_quit(key) {
+        next.quit = Some(Quit::Requested);
+    } else if is_refresh(key) {
+        // The walk on screen would otherwise sit waiting for row
+        // requests that now go to its replacement.
+        if let Some(id) = next.awaiting.take() {
+            commands.push(Command::CancelJob(id));
+        }
+        if let Some(id) = next.promoting.take() {
+            commands.push(Command::CancelJob(id));
+        }
+        commands.push(Command::OpenRepository);
+        commands.push(Command::ReadHistory(Order::Topological));
+        commands.push(Command::ReadRefs);
+        commands.push(Command::ReadWorkingTree);
+    } else if is_screen_toggle(key) {
+        next.screen = next.screen.toggled();
+    } else if is_lane_toggle(key) {
+        next.lanes_expanded = !next.lanes_expanded;
+    } else if is_focus_toggle(key) {
+        next.focus = !next.focus;
+    } else if is_tier_cycle(key) {
+        cycle_tier(next, commands);
+    } else if is_copy_key(key) {
+        copy_selected_sha(next, commands);
+    } else if let Some(change) = view_change(key) {
+        let height = next.graph_rows();
+        let stash = next.refs.as_deref().and_then(crate::refs::RefBadges::stash);
+        if let Some(history) = next.history.as_mut()
+            && let Some(view) = change.apply(history, stash)
+            && let Some(request) = history.change_view(view, height)
+            && let Some(id) = next.awaiting
+        {
+            commands.push(Command::ShowRows(id, request));
+        }
+    } else if let Some(motion) = motion_for(key) {
+        let height = next.graph_rows();
+        if let Some(history) = next.history.as_mut()
+            && let Some(request) = history.move_cursor(motion, height)
+            && let Some(id) = next.awaiting
+        {
+            commands.push(Command::ShowRows(id, request));
+        }
+    } else if key.code == KeyCode::Escape {
+        escape_key(next, commands);
+    }
+}
+
+/// `Esc`: clears a peek if one is on — the lightest thing on screen, so it
+/// goes first — else backs a `G` still walking out first, then leaves Focus
+/// mode, then cancels the walk (m1-the-graph/17, ADR-0023, DESIGN.md §2.2).
+fn escape_key(next: &mut AppState, commands: &mut Vec<Command>) {
+    if next.peek {
+        next.peek = false;
+        return;
+    }
+    let height = next.graph_rows();
+    // A search still running: stop it and put the selection back.
+    if next
+        .search
+        .as_ref()
+        .is_some_and(|search| matches!(search.state, crate::search::SearchState::Running { .. }))
+    {
+        super::search::cancel_search(next, commands);
+        return;
+    }
+    // A `G` still walking is what `Esc` backs out of first; the
+    // walk itself goes on serving the rows already on screen.
+    if let Some(id) = next.awaiting
+        && let Some(history) = next.history.as_mut()
+        && let Some(request) = history.withdraw_jump(height)
+    {
+        commands.push(Command::ShowRows(id, request));
+        return;
+    }
+    // Then a finished search's line.
+    if next.search.take().is_some() {
+        return;
+    }
+    // Then Focus mode: leaving it is not a reason to stop the walk.
+    if next.focus {
+        next.focus = false;
+        return;
+    }
+    // Then a topological sort still running: the rows stay in the order they
+    // are in, and the screen says that order is provisional. Once the order
+    // has been handed to the walk it is no longer the sort's to cancel.
+    if next.promoting.is_some() {
+        super::history::give_up_promotion(next, commands);
+        return;
+    }
+    // Stop waiting first, then ask the job to stop. The order
+    // matters: a job that finishes between the two lines still
+    // sends its result, and it has to find nobody waiting for it.
+    if let Some(id) = next.awaiting.take() {
+        commands.push(Command::CancelJob(id));
+        super::history::set_phase(next, crate::history::Phase::Cancelled);
+    }
+}
+
+/// The movement a key asks for, if it is one (DESIGN.md §2.2): vim keys and
+/// arrows, a screen at a time, and the ends.
+fn motion_for(key: KeyPress) -> Option<Motion> {
+    if key.modifiers.control || key.modifiers.alt {
+        return None;
+    }
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Some(Motion::Down(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Motion::Up(1)),
+        KeyCode::PageDown => Some(Motion::PageDown),
+        KeyCode::PageUp => Some(Motion::PageUp),
+        KeyCode::Char('g') | KeyCode::Home => Some(Motion::Top),
+        KeyCode::Char('G') | KeyCode::End => Some(Motion::Bottom),
+        _ => None,
+    }
+}
+
+/// The two keys that mean "leave" (DESIGN.md §2.2).
+///
+/// `Ctrl+C` is here as well as `q` because a terminal application that ignores
+/// it feels broken, and because raw mode means the terminal no longer turns it
+/// into a signal on Graft's behalf.
+fn is_quit(key: KeyPress) -> bool {
+    let plain_q = key.code == KeyCode::Char('q') && !key.modifiers.control && !key.modifiers.alt;
+    let control_c = key.code == KeyCode::Char('c') && key.modifiers.control;
+    plain_q || control_c
+}
+
+/// `F2`: swap between the graph and the status screen. Not one of DESIGN.md
+/// §2.2–§2.3's keys, which are all taken; the status screen is a diagnostic.
+fn is_screen_toggle(key: KeyPress) -> bool {
+    key.code == KeyCode::Function(2) && !key.modifiers.control && !key.modifiers.alt
+}
+
+/// `+` expands the lanes folded behind `+N`, and folds them again
+/// (DESIGN.md §3.5).
+/// `F`: Focus mode on the selected commit (DESIGN.md §2.3, §5.2).
+fn is_focus_toggle(key: KeyPress) -> bool {
+    key.code == KeyCode::Char('F') && !key.modifiers.control && !key.modifiers.alt
+}
+
+fn is_lane_toggle(key: KeyPress) -> bool {
+    key.code == KeyCode::Char('+') && !key.modifiers.control && !key.modifiers.alt
+}
+
+/// `F3` pressed: the next tier down, and from ASCII back to the tier the
+/// terminal settled on — never above it. The history's row requests follow.
+fn cycle_tier(next: &mut AppState, commands: &mut Vec<Command>) {
+    let top = next.settled_tier.unwrap_or(RenderingTier::Unicode);
+    let lower = match next.tier() {
+        RenderingTier::Pixel => Some(RenderingTier::Unicode),
+        RenderingTier::Unicode => Some(RenderingTier::Ascii),
+        RenderingTier::Ascii => None,
+    };
+    // Back at the top the override clears, so the footer has nothing extra
+    // to say (`graft::view`). On an ASCII-only terminal that is every press.
+    next.renderer_override = lower.filter(|&tier| tier != top);
+    let tier = next.tier();
+    let height = next.graph_rows();
+    if let Some(history) = next.history.as_mut() {
+        // Off pixels, requests stop padding to whole strips; back on, they
+        // pad again.
+        history.strip_rows = strip_rows_for(tier);
+        if let Some(request) = history.show(height)
+            && let Some(id) = next.awaiting
+        {
+            commands.push(Command::ShowRows(id, request));
+        }
+    }
+}
+
+/// Rows per history request at `tier`: whole pixel strips at the pixel tier
+/// (`History::strip_rows`), exactly the viewport otherwise.
+pub(in crate::update) fn strip_rows_for(tier: RenderingTier) -> Option<usize> {
+    (tier == RenderingTier::Pixel).then_some(graft_graph::raster::cache::STRIP_ROWS)
+}
+
+/// `F3`: cycle the renderer tier — pixels, Unicode, ASCII, then back to the
+/// terminal's own tier — and say so (DESIGN.md §4.2 — config wins over
+/// detection, and a key press wins the same way over both; tickets
+/// m1-the-graph/19, 24d, 33). Not one of DESIGN.md's keymap, like `F2`.
+fn is_tier_cycle(key: KeyPress) -> bool {
+    key.code == KeyCode::Function(3) && !key.modifiers.control && !key.modifiers.alt
+}
+
+/// `y`: copy the selected commit's full SHA (vim's yank; ADR-0023).
+fn is_copy_key(key: KeyPress) -> bool {
+    key.code == KeyCode::Char('y') && !key.modifiers.control && !key.modifiers.alt
+}
+
+/// `y` on a selected row: ask the loop to send the full SHA to the
+/// terminal's clipboard and say so in the footer. No selected row, nothing.
+/// A failure on the status line stays: it is never dropped for a notice.
+fn copy_selected_sha(next: &mut AppState, commands: &mut Vec<Command>) {
+    let Some(row) = next.history.as_ref().and_then(|history| history.selected()) else {
+        return;
+    };
+    let sha = row.commit.id.to_string();
+    let short = sha.chars().take(7).collect();
+    commands.push(Command::CopyToClipboard(sha));
+    if !matches!(next.status, Status::Failed(_)) {
+        next.status = Status::Copied { short };
+    }
+}
+
+/// `Enter`: peek the cursor row's full subject — the keyboard's route to the
+/// content a hover shows (DESIGN.md §2.15, PROMPT.md §1.3, ADR-0023). Free
+/// on the graph pane: DESIGN.md §2.3 binds it only on a sidebar row, which
+/// m1 has none of.
+fn is_peek_key(key: KeyPress) -> bool {
+    key.code == KeyCode::Enter && key.modifiers == Modifiers::NONE
+}
+
+/// A key that changes which history is shown (PROMPT.md §1.3). DESIGN.md
+/// §2.3 assigns none of these; they are recorded there.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ViewChange {
+    /// `Space` on a merge: fold its merged branch into it, or unfold it.
+    Fold,
+    /// `1`: the first-parent view, or back to every parent.
+    FirstParent,
+    /// `H`: hide the stash, or show it again.
+    Stashes,
+}
+
+impl ViewChange {
+    /// The view after this change, or `None` where it does nothing: `Space`
+    /// off a merge, `H` with no stash.
+    fn apply(self, history: &History, stash: Option<Oid>) -> Option<View> {
+        let mut view = history.view.clone();
+        match self {
+            ViewChange::Fold => {
+                let commit = &history.selected()?.commit;
+                // A folded merge is drawn with one parent, so it is known
+                // by the fold, not by its parents.
+                if !view.inclusion.folded.remove(&commit.id) {
+                    if commit.parents.len() < 2 {
+                        return None;
+                    }
+                    view.inclusion.folded.insert(commit.id);
+                }
+            }
+            ViewChange::FirstParent => {
+                view.follow = match view.follow {
+                    Follow::AllParents => Follow::FirstParent,
+                    Follow::FirstParent => Follow::AllParents,
+                };
+            }
+            ViewChange::Stashes => {
+                if view.inclusion.hidden_stashes.is_empty() {
+                    view.inclusion.hidden_stashes.insert(stash?);
+                } else {
+                    view.inclusion.hidden_stashes.clear();
+                }
+            }
+        }
+        Some(view)
+    }
+}
+
+/// The view change a key asks for, if it is one.
+fn view_change(key: KeyPress) -> Option<ViewChange> {
+    if key.modifiers.control || key.modifiers.alt {
+        return None;
+    }
+    match key.code {
+        KeyCode::Char(' ') => Some(ViewChange::Fold),
+        KeyCode::Char('1') => Some(ViewChange::FirstParent),
+        KeyCode::Char('H') => Some(ViewChange::Stashes),
+        _ => None,
+    }
+}
+
+/// Manual refresh (DESIGN.md §2.1): re-read the repository now, rather than
+/// waiting for whatever would have noticed on its own.
+fn is_refresh(key: KeyPress) -> bool {
+    key.code == KeyCode::Char('r') && key.modifiers.control
+}
