@@ -4,8 +4,12 @@
 //! the environment `default_path` reads is injected.
 
 use std::ffi::OsString;
-use std::path::Path;
+use std::fs;
+use std::path::{Path, PathBuf};
 
+use graft_core::capabilities::RenderingTier;
+use graft_core::ref_name::RefName;
+use graft_ui::theme::ThemeKind;
 use tempfile::TempDir;
 
 use super::*;

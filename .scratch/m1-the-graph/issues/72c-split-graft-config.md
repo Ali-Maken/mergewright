@@ -1,6 +1,6 @@
 # m1-the-graph/72c — Review M1: split graft config under the 400-line rule
 
-Status: ready
+Status: done
 Build with: **Sonnet** (medium) — mechanical moves along existing seams; no behaviour change.
 Blocked by: 72b
 

@@ -149,6 +149,11 @@ One line per public item. Update when a public item changes.
 - `facts` (fn) — read facts about an open repository.
 
 ## config
+Internal split (m1-the-graph/72c, public paths unchanged): `types` (`Config`,
+`Ui`, `Graph` and their value enums — `ThemeChoice`, `RendererChoice`,
+`IconSet`), `load` (`Loaded`, `ConfigWarning`, `ConfigError`, `load`,
+`load_from`, `default_path` and the parsing internals), both re-exported from
+`mod.rs`.
 - `Config` (struct) — the config file's settings.
 - `Config::ui` (field) — `[ui]`: how Graft looks.
 - `Config::graph` (field) — `[graph]`: how history is drawn.
