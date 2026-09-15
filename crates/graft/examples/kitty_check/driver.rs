@@ -1,83 +1,24 @@
-//! Real-terminal check of the Kitty image commands Graft sends
-//! (m1-the-graph/24d, ADR-0012). Run it *inside* the terminal under test —
-//! a pty capture proves nothing about what the terminal does with the bytes.
-//!
-//! ```text
-//! kitty_check <report> <capture>
-//! ```
-//!
-//! Drives `graft_term::kitty::KittyImages` — the encoder the app uses —
-//! through the pixel tier's lifecycle, every command at `q=1`:
-//!
-//! 1. first frame: transmit two strips and place them;
-//! 2. scroll: the same uploads re-cropped (no transmit);
-//! 3. resize: rows erased one by one (the app's resize clear since
-//!    m1-the-graph/25), then a frame that only re-places — no transmit;
-//! 4. status screen: `hide` every placement;
-//! 5. F3 away from pixels frees every upload, F3 back transmits afresh under
-//!    new ids and places (m1-the-graph/33);
-//! 6. controls: a missing id must ENOENT; a full `ESC[2J` then placements
-//!    only shows whether the clear freed the uploads;
-//! 7. exit: `free_all`.
-//!
-//! After each step a DA1 query (`CSI c`) fences the replies: everything the
-//! terminal says about images before the DA1 answer belongs to that step.
-//! With `q=1` the terminal answers only failures, so zero replies is a pass —
-//! and the DA1 answer proves the terminal was listening. The strips are
-//! synthetic lane stripes, not a rasterised history: this checks the
-//! protocol, not the picture (the user judges that by eye).
-//!
-//! Writes a plain-text report to `<report>`, every byte sent to `<capture>`,
-//! and a decoded, human-readable summary of those bytes to `<capture>.txt`.
+//! Builds the command bytes for each step of the pixel-tier lifecycle and
+//! drives them through `terminal::run_step`. See `main` for the check's
+//! shape and `terminal` for how a step is sent, fenced and decoded.
 
 use std::fmt::Write as _;
-use std::io::{self, Read, Write};
+use std::io::{self, Write};
 use std::sync::Arc;
-use std::sync::mpsc::{self, Receiver};
-use std::time::{Duration, Instant};
+use std::sync::mpsc::Receiver;
 
 use graft_core::raster::RasterFrame;
-use graft_term::kitty::{self, CellRect, KittyImages, Place};
+use graft_term::kitty::{CellRect, KittyImages, Place};
+
+use crate::terminal::{Step, run_step, spawn_stdin};
 
 /// Rows per synthetic strip, and the pixels of one cell.
 const ROWS: usize = 8;
 const CELL: (u32, u32) = (8, 16);
 /// Lane columns per strip: two cells per lane, three lanes.
 const COLUMNS: u32 = 6;
-/// How long a step may wait for the DA1 answer before counting as silent.
-const FENCE_DEADLINE: Duration = Duration::from_secs(3);
 
-fn main() -> io::Result<()> {
-    let mut args = std::env::args().skip(1);
-    let (Some(report_path), Some(capture_path)) = (args.next(), args.next()) else {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "usage: kitty_check <report> <capture>",
-        ));
-    };
-
-    crossterm::terminal::enable_raw_mode()?;
-    let outcome = check();
-    let restored = crossterm::terminal::disable_raw_mode();
-    let (report, capture) = outcome?;
-    restored?;
-
-    std::fs::write(&report_path, &report)?;
-    std::fs::write(&capture_path, &capture)?;
-    std::fs::write(format!("{capture_path}.txt"), decode(&capture))?;
-    Ok(())
-}
-
-/// One step's name, the bytes it sent, and what the terminal answered.
-struct Step {
-    name: &'static str,
-    transmits: usize,
-    placements: usize,
-    replies: Vec<kitty::GraphicsReply>,
-    fenced: bool,
-}
-
-fn check() -> io::Result<(String, Vec<u8>)> {
+pub(crate) fn check() -> io::Result<(String, Vec<u8>)> {
     let input = spawn_stdin();
     let mut stdout = io::stdout().lock();
     let mut capture = Vec::new();
@@ -239,87 +180,6 @@ fn frame(images: &mut KittyImages, strips: &[Arc<RasterFrame>; 2], scroll: usize
     out
 }
 
-/// Send `out`, fence it with DA1, and collect the image replies before the
-/// DA1 answer.
-fn run_step(
-    name: &'static str,
-    out: &[u8],
-    stdout: &mut impl Write,
-    input: &Receiver<Vec<u8>>,
-    capture: &mut Vec<u8>,
-) -> io::Result<Step> {
-    let text = String::from_utf8_lossy(out);
-    let transmits = text.matches("a=t,").count();
-    let placements = text.matches("a=p,").count();
-    stdout.write_all(out)?;
-    stdout.write_all(b"\x1b[c")?;
-    stdout.flush()?;
-    capture.extend_from_slice(out);
-    capture.extend_from_slice(b"\x1b[c");
-
-    let deadline = Instant::now() + FENCE_DEADLINE;
-    let mut heard = Vec::new();
-    let fenced = loop {
-        if da1_answer(&heard) {
-            break true;
-        }
-        let Some(left) = deadline.checked_duration_since(Instant::now()) else {
-            break false;
-        };
-        match input.recv_timeout(left) {
-            Ok(bytes) => heard.extend_from_slice(&bytes),
-            Err(mpsc::RecvTimeoutError::Timeout) => break false,
-            Err(mpsc::RecvTimeoutError::Disconnected) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "stdin closed before the DA1 answer",
-                ));
-            }
-        }
-    };
-    Ok(Step {
-        name,
-        transmits,
-        placements,
-        replies: kitty::replies(&heard),
-        fenced,
-    })
-}
-
-/// Whether `bytes` hold a DA1 answer, `CSI ? … c`.
-fn da1_answer(bytes: &[u8]) -> bool {
-    bytes.windows(3).enumerate().any(|(start, window)| {
-        window == b"\x1b[?"
-            && bytes[start + 3..]
-                .iter()
-                .find(|byte| !(byte.is_ascii_digit() || **byte == b';'))
-                == Some(&b'c')
-    })
-}
-
-/// Read stdin on a thread, handing each chunk over as it arrives.
-fn spawn_stdin() -> Receiver<Vec<u8>> {
-    let (sender, receiver) = mpsc::channel();
-    std::thread::spawn(move || {
-        let mut stdin = io::stdin();
-        let mut chunk = [0u8; 4096];
-        loop {
-            match stdin.read(&mut chunk) {
-                Ok(count) if count > 0 => {
-                    if sender.send(chunk[..count].to_vec()).is_err() {
-                        // The main thread is gone: nobody left to hand to.
-                        return;
-                    }
-                }
-                // End of input or a read error: dropping the sender is what
-                // reports it, as the waiting step's `Disconnected` error.
-                Ok(_) | Err(_) => return,
-            }
-        }
-    });
-    receiver
-}
-
 /// A strip of three coloured lane stripes, each row a slightly different
 /// shade so a wrong crop shows. `seed` offsets the hues between strips.
 fn stripes(seed: u8) -> RasterFrame {
@@ -412,58 +272,4 @@ fn report(steps: &[Step], control: &Step, cleared: &Step) -> String {
     )
     .ok();
     text
-}
-
-/// The capture made readable: one line per escape sequence, image payloads
-/// replaced by their length.
-fn decode(bytes: &[u8]) -> String {
-    let mut text = String::new();
-    let mut index = 0;
-    while index < bytes.len() {
-        if bytes[index..].starts_with(b"\x1b_G") {
-            let end = find(bytes, index, b"\x1b\\").unwrap_or(bytes.len());
-            let body = String::from_utf8_lossy(&bytes[index + 3..end]);
-            let (control, payload) = body.split_once(';').unwrap_or((&body, ""));
-            writeln!(text, "APC G {control}  [payload {} bytes]", payload.len()).ok();
-            index = (end + 2).min(bytes.len());
-        } else if bytes[index] == 0x1b {
-            let end = sequence_end(bytes, index);
-            let shown: String = bytes[index + 1..end]
-                .iter()
-                .map(|&byte| char::from(byte))
-                .collect();
-            writeln!(text, "ESC {shown}").ok();
-            index = end;
-        } else {
-            let end = find(bytes, index, b"\x1b").unwrap_or(bytes.len());
-            writeln!(
-                text,
-                "text {:?}",
-                String::from_utf8_lossy(&bytes[index..end])
-            )
-            .ok();
-            index = end;
-        }
-    }
-    text
-}
-
-fn find(bytes: &[u8], from: usize, needle: &[u8]) -> Option<usize> {
-    bytes[from..]
-        .windows(needle.len())
-        .position(|window| window == needle)
-        .map(|at| from + at)
-}
-
-/// One past the end of the non-APC escape at `start`: CSI up to its final
-/// byte, anything else two bytes.
-fn sequence_end(bytes: &[u8], start: usize) -> usize {
-    if bytes.get(start + 1) == Some(&b'[') {
-        bytes[start + 2..]
-            .iter()
-            .position(|byte| (0x40..=0x7e).contains(byte))
-            .map_or(bytes.len(), |at| start + 3 + at)
-    } else {
-        (start + 2).min(bytes.len())
-    }
 }
