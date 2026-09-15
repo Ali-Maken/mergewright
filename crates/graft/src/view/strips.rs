@@ -16,7 +16,8 @@ use graft_graph::raster::{Emphasis, Marker, RasterRow, Ring, Strip, Stub};
 use graft_graph::row::Row;
 use graft_graph::{Fold, Kin};
 
-use super::{Thread, head_is_topmost, keep_for, thread, uncommitted_row};
+use super::entries::{Thread, head_is_topmost, thread, uncommitted_row};
+use super::rows::keep_for;
 use crate::history::History;
 use crate::refs::RefBadges;
 use crate::session::Session;

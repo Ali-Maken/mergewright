@@ -195,6 +195,11 @@ One line per public item. Update when a public item changes.
 - `parse` (fn) — parse an arbitrary argument list.
 
 ## view
+Internal split (m1-the-graph/72b, public paths unchanged): `frame` (tier/screen
+pick, `view`/`view_with_graphics`/`tier_in_force`/`draws_pixels`), `rows`
+(`graph_view` and its assembly), `entries` (building each `GraphEntry`,
+`uncommitted_shown`), `status` (`status_view`) — plus the pre-existing
+`strips`, all re-exported from `mod.rs`.
 - `view` (fn) — draw the current state to a frame: the graph screen, or the status screen.
 - `view_with_graphics` (fn) — `view`, plus the gfx status in the header at the pixel tier; returns the graph rect the images go in, `None` when no pixels this frame.
 - `tier_in_force` (fn) — the graph's tier from `Session` + `AppState`: F3's override, else the session's (m1-the-graph/33).
