@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — M1 review round 2 (opus), since 1b828ca · 114 tickets: 104 done, 1 partial, 7 split, 2 wontfix
+**Current step:** M1 The graph — round-2 fixes: 78 (sonnet) building, then 79, then checkpoint (AUTHORSHIP, M2 design pass, report) · 116 tickets: 104 done, 2 ready, 1 partial, 7 split, 2 wontfix
 
 ---
 
@@ -302,10 +302,12 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-15 · m1/76b split graft-term kitty.rs · sonnet · done (c3b4fb8) · kitty.rs 448 → kitty/{mod 245, encode 182, reply 40}; public paths unchanged, gates green; workspace sweep: 1 file still >400 non-test, crates/graft/examples/kitty_check.rs 469 (dev example; round-2 reviewer to say if 6.2 covers examples); no compaction
 - 2026-09-15 · m1/77 stderr write errors swallowed · sonnet · done (e8f3389) · cause fix: report_stalled_jobs now returns io::Result folded into run() (write failure → exit FAILURE); finish's restore-failure write kept best-effort with explicit match + comment (primary error already returned); _to(writer) seams, 4 FailingWriter tests; 6 other swallow sites listed, not fixed: crash.rs:122,156, main.rs:82, event_loop/redetect.rs:85, jobs/runner.rs:91,227; ~40k tokens, no compaction
 - 2026-09-15 · conductor · fix round 1 complete (65–77); M1 review round 2 (opus) dispatched, range 1b828ca..HEAD
+- 2026-09-15 · M1 review round 2 · opus · 0 critical / 1 major / 5 minor (923a9a9) · round-1 majors all closed at cause; splits 70–76b pure moves (line-set diff); gates pass, test 21.0 s, heavy pass 177 s, perf 10/10 ×3, Unicode 50k max 5.35–5.50 ms (was 14.5), 1M frames p99 pixel 8.7 / Unicode 8.5 ms · major: update purity guard scans only mod.rs after split (70) → filed 78 (with m3 runner.rs:91 comment); m1 kitty_check.rs 469 → filed 79; m2 tie class unbounded, m4 GRAFT_1M guards red when unset (ADR-0018), m5 past-due rows, m6 target/ 33 GB → user at checkpoint; last round, no round 3
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.
 - Re-date past-due KNOWN_GAPS rows (M1 review M4, non-bugs): key order under pty (:262), gallery gaps (:316–321), ref-states HEAD (:177), 50k-refs debug first paint (:178), git/git headroom (:152–153), 30h idle prefetch what-ifs.
+- **Round 2 (docs/reviews/m1-the-graph-round-2.md):** m2 tie class unbounded (one-date 1M no-cg repo ≈5 s first paint): accept, or cap + provisional? · m4 `GRAFT_1M` guards fail when unset, perf command red as written: `heavy-1m` feature (ADR-0018 amendment) or `--skip` in docs? · m5 more rows dated "M1 review" (50k debug first paint, walk holds worker, Esc during sort, promotion silent, folded merge plain, long path notice, highlight bold/dim, idle prefetch) · m6 `target/` 33 GB > 20: `cargo clean` after checkpoint?
 
 - **By eye (30b):** pixel graph goes blank for one frame on PgDn before rows arrive. User judges whether that's acceptable.
 - ~~Heavy tier build mode (30)~~ **Decided by user 2026-09-13:** frame budgets fail only under `--release`; debug records; release perf run in every milestone review (CLAUDE.md, ADR-0021 in 30c).
