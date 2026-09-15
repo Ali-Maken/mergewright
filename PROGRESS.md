@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — fix round 1: 73b (sonnet) building, then 74a–76b, 77, review round 2 · 114 tickets: 95 done, 9 ready, 1 partial, 7 split, 2 wontfix
+**Current step:** M1 The graph — fix round 1: 74a (sonnet) building, then 74b–76b, 77, review round 2 · 114 tickets: 96 done, 8 ready, 1 partial, 7 split, 2 wontfix
 
 ---
 
@@ -292,6 +292,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-15 · m1/72b split view.rs · sonnet · done (fbfe91b) · view.rs 704 → view/{mod, frame, rows, entries, status, tests}; snapshots moved to view/snapshots/ (path only); API unchanged, cross-file items pub(super)/pub(crate); MAP.md updated; gates green; ~75k tokens, no compaction
 - 2026-09-15 · m1/72c split graft config · sonnet · done (9d00cf2) · config/mod.rs 431 → mod 48, types 177, load 224; API unchanged, MAP.md updated, gates green; ~35k tokens, no compaction
 - 2026-09-15 · m1/73a split graft-ui graph_screen · sonnet · done (64570bc) · graph_screen/mod.rs 1,130 → mod 331, layout 291, footer 230, render 329; tests imports only; max_lanes_for path kept by re-export; no snapshot diffs; gates green; ~95k tokens (over target), no compaction
+- 2026-09-15 · m1/73b split graft-ui graph_column · sonnet · done (fd5b46a) · graph_column/mod.rs 583 → mod 325, geometry 192, style 87; terminal.rs already 331 non-test (not split); API unchanged, no snapshot diffs, gates green; no compaction
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.
