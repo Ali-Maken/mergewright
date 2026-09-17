@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M2 · spec-only: `?` help screen in or out of M2 (planner-fable) → then 11
+**Current step:** M2 building · 11 compare-two-commits (sonnet)
 
 ---
 
@@ -364,6 +364,8 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-18 · m2/10b filed · conductor · group-2 remainder (`<`/`>` dispatch, drag, wheel regions, layout.rs + RepoStore::common_dir, pane_size into compute, save/load on resize, hints, capture); scope = ticket 10's NOTES list verbatim, same model; 23 now blocked by 10b
 - 2026-09-18 · m2/10b detail-resize-and-persistence · sonnet · partial (5ae38ac) · `<`/`>` + clamps/no-ops, effective_layout two-step compute, PaneSize persistence (layout.rs, RepoStore::common_dir, SaveLayout command, startup load); 1055 tests, gates green; capture docs/shots/m2-detail-keys-resize.txt 873 B (user by eye) · left: divider drag, wheel over files/diff (no hit-test dispatch), pane hints + `?` help, Map guard (ticket 19) · harness: 138 calls / ~68k, 3.5× past the stop — cause: read source directly instead of scouting (its own report) · harness-forced summary mid-ticket (not self-compacted)
 - 2026-09-18 · m2/10b continuation 1 · sonnet · partial (1556de9) · divider drag (Down/Drag/Up cycle, SaveLayout, no resize after Up), wheel over files/body routed by hit-test (no fall-through to graph scroll), `<> resize` hint via generalized `key_hints`; 358 graft + 13 graft-ui pass, gates green · corrected the previous leg's wrong claim that no footer-hint infra existed · update/ purity guard forced plain-u16 pane geometry (even doc-comment prose naming ratatui trips the grep) · left: `?` help screen (no infra anywhere), capture not regenerated · self-reported ~35 calls this leg; **harness: 161 calls / ~116k** for the agent · COMPACTED once (harness)
+- 2026-09-18 · M2 spec fix `?` help · fable · done · **deferred to M8**, no new ticket: PROMPT §8 already owns keybinding help + remapping, DESIGN §1.16 makes the overlay the §2 keymap table filtered to the focused pane, so an M2 list would be rewritten; the `?` line was a slip in the group-2 list, never in the note's New UI · cost: until M8, keys the 80-col footer can't fit (Space 1 H x w W v [ ] <> L M O) are learned from README/TESTING.md, `?` unbound · note + KNOWN_GAPS updated (M1 footer-keys row re-owned M1 → M8); for M8: overlay geometry lives in graft-ui, `update` keeps only the shown flag + focused pane (purity guard)
+- 2026-09-18 · m2/10b closed · conductor · Status done; `?` → M8, capture refresh → ticket 23's gallery (both in KNOWN_GAPS)
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.

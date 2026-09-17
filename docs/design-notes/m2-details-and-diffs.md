@@ -196,6 +196,7 @@ visible). `Policy` must be `Clone` (a derive, not a shape change).
 | Keymap: `x` mark for compare; `Tab` = Graph→Files→Diff; `<`/`>` shrink/grow the pane on the focused divider (ADR-0028; was `Ctrl+arrows`, which macOS takes); `L` load the rest of a truncated diff; `Enter` opens the pane and drops the peek (ADR-0023) | DESIGN §2.2/2.3/2.5 | four new letters plus one bracket pair; `+`/`-` stay off (`+` unfolds lanes) |
 | `Ctrl+R` after `B` rebinds the commit table and restarts the walk on the graph path, re-anchored on the selection; `Written` footer hints `Ctrl+R to use it`; no automatic restart | KNOWN_GAPS row 54 | the user asks; an unasked restart mid-scroll is worse than a hint |
 | KNOWN_GAPS expiries: snapshot-cost row (52) and older-stash badges (175) → M3 (no staging or stash list exists in M2); `full_topological` residual (227) → not planned | KNOWN_GAPS.md | honest owners |
+| **`?` help overlay (DESIGN §1.16) is not built in M2; no footer ever shows `? help` until it exists** | DESIGN §1.1–1.3 mockups' `? help` footer hint | keys off the footer (`Space` `1` `H` `x` `w W v [ ]` `<>`) are learned from README/TESTING.md until M8 (spec fix 2026-09-18, below) |
 
 ## New UI
 
@@ -248,6 +249,8 @@ Text glyphs at every tier in M2 (Proposed above).
 **Overview strip (`O`)** — as DESIGN §5.3; fixed here: one column, the graph area's rightmost column in every layout (narrow: the screen edge; wide/medium with the pane shown: just left of the detail divider); bucket = `ceil(rows_total / strip_rows)` with `rows_total = Window::laid_out` (honestly incomplete while streaming); priority when a bucket holds several: `⚠` > `ⓘ` > `◆` search > `●` HEAD > `◉` merge > `█` viewport (only where nothing else drew) > `┆`; ASCII `! i * o + # :`; blank past the last bucket;
 merges and radar known for resident rows only; not drawn while Map view is shown (no restore state needed); off by default, `O` flips it; click on the strip selects its bucket's first row.
 
+**`?` help overlay:** not in M2 (spec fix 2026-09-18, below). Nothing in M2 draws one or hints at one.
+
 ## §8 coverage map
 
 | Item | Ticket slug(s) |
@@ -272,6 +275,7 @@ merges and radar known for resident rows only; not drawn while Map view is shown
 | KG 52, 175, 227 | **uncovered by design** — expiries moved by `docs-sweep` (Proposed changes) |
 | PROMPT §4 "image diffs in the pixel tier" | **uncovered** → KNOWN_GAPS row by `docs-sweep`, M8 polish |
 | DESIGN §5.1 remote rows, cross-branch elbows, pixel curve, mouse | **uncovered by design** → KNOWN_GAPS rows by `docs-sweep`, M8 polish |
+| DESIGN §1.16 `?` help overlay (was in `detail-keys-and-focus` group 2 / 10b) | **uncovered by design** → M8 (spec fix 2026-09-18); KNOWN_GAPS rows 199 and m2/10b re-owned |
 | README/CHANGELOG for M2 | `docs-sweep` |
 | Acceptance | `acceptance-details-and-radar` (Fable; planned as two contexts) |
 
@@ -312,3 +316,5 @@ Nothing else in PROMPT §8 M2 or the M1 deferrals is without a slug. **24 ticket
 **Spec fix (2026-09-17, ADR-0028):** detail-pane resize keys are `<`/`>` (shrink/grow the pane on the focused divider), not `Ctrl+arrows`; the stored size is per orientation (`PaneSize { right_columns, below_rows }`), since a column count from `Right` means nothing as a row count in `Below`. Only `detail-keys-and-focus` changes.
 
 **Spec fix (2026-09-17, working-tree row):** 06 shipped `DetailSpec::WorkingTree` with no way to select the row it belongs to (KNOWN_GAPS m2/06). Options: (a) defer to M3 — leaves a visible dead end in M2 (a row `Enter` ignores) and dead `WorkingTree` code, and M3's `space`/`d` on that row would need the same selection anyway; (b) make the virtual row a `History` row — shifts every row index; (c) a one-bit selection beside `History`'s cursor, M1's placement rule kept. **(c)**, one Sonnet ticket (`working-tree-row-selectable`), ~150 lines in `graft` only. Cost accepted: the row is reachable only while HEAD is the top visible history row (M1's rule), so with a newer branch above HEAD the user scrolls HEAD to the top first — a KNOWN_GAPS row for M3 to decide whether to pin the row above HEAD wherever it sits. Fable build count unchanged (1 + acceptance). Touched specs: `detail-pane-frame` (`UNCOMMITTED` header from `selected_spec()`), `compare-two-commits` (`x` no-op on the row; live compare keeps the base), `context-actions-menu` (`for_working_tree()`, `oid: Option<Oid>`), `acceptance-details-and-radar` (one TESTING.md entry, no gallery stop).
+
+**Spec fix (2026-09-18, `?` help): deferred to M8, no new ticket.** 10b's group-2 line "`?` help" was a slip of mine: it named a screen this note never designed, and two builders confirmed no help surface exists. Options: (a) build DESIGN §1.16 now as a hand-typed key list per screen; (b) M8. **(b)**: PROMPT §8 already puts "keybinding help and remapping" in M8, and §1.16 defines the overlay as the §2 keymap table *filtered to the focused pane* — that table is the remapping data structure M8 builds, so (a) is a throwaway list rewritten in M8, in a read-only milestone already at 25 tickets with two partials. Cost: until M8 the keys the 80-column footer can't fit (`Space` `1` `H` `x` `w W v [ ]` `<>` `L` `M` `O`) are learned from README/TESTING.md; the acceptance ticket's TESTING.md entries carry them. Rule while the gap stands: **no footer or mockup-derived hint shows `? help`** (none does today, checked against `docs/shots/`, README, TESTING.md); `?` stays unbound rather than bound to nothing. Touched: `detail-keys-and-focus`/10b's `?` line closes as deferred; KNOWN_GAPS rows 199 ("M1, with the help overlay") and m2/10b re-owned to M8. For M8's designer: `crates/graft/src/update/` has a purity guard that rejects any mention of ratatui or `graft_ui` types in that module, doc comments included (10b hit it) — the overlay's geometry and widget live in `graft-ui` (`help_overlay`, sibling of `map_screen`); `update` holds only a `help_shown: bool`-shaped state and the focused-pane id, and the keymap table itself sits in `graft-core` or `graft-ui`, never in `update`.

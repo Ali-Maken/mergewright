@@ -1,6 +1,6 @@
 # detail-resize-and-persistence: `<`/`>`, divider drag, wheel regions, saved pane size
 
-Status: partial (see NOTES, continuation 2) — keyboard resize, persistence, drag, wheel and the `<> resize` hint all done; `?` help screen and the capture refresh remain, tracked in KNOWN_GAPS
+Status: done — `<`/`>`, drag, wheel, persistence, footer hint all landed (5ae38ac, 1556de9). `?` help deferred to M8 (planner-fable, 2026-09-18: PROMPT §8 owns keybinding help/remapping; DESIGN §1.16 overlay is the §2 keymap table — an M2 hand-typed list would be rewritten). Capture refresh for the hint/drag state left to ticket 23's gallery; KNOWN_GAPS holds both.
 Blocked by: 10
 Build with: Sonnet — same model and scope as `10-detail-keys-and-focus`, split at that ticket's own named seam (group 2). No new decisions; signatures were fixed by the 2026-09-17 spec pass (ADR-0028).
 Needs: `detail-keys-and-focus` (`detail_key`, `scroll_body`, the pure `resize_pane`/`set_pane_cells`/`PaneSize`/`stepped` and the `RIGHT_MIN`/`BELOW_MIN`/`GRAPH_MIN_COLUMNS`/`GRAPH_MIN_ROWS`/`RESIZE_STEP` consts, all already in `update/detail.rs` and unused until wired), `detail-pane-frame` (`DetailLayout::compute`'s `override_cells`, `DetailAreas`)
