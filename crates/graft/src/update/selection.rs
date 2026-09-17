@@ -98,6 +98,18 @@ pub fn reconcile(state: &mut AppState, cursor_before: usize) -> bool {
 /// pinned, a pane already showing a `Compare` (e.g. from the context menu,
 /// `context-actions-menu`) does not follow the cursor at all.
 pub fn follow_selection(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) -> Vec<Command> {
+    let mut commands = followed(state, next_id);
+    // `update` calls this at the tail of every event, so this is the one
+    // place that sees whatever the pane ended up about -- a moved cursor, a
+    // fresh `Enter`, a context-menu open or a close. `probe_evil` is
+    // idempotent, so calling it every time asks for nothing new.
+    commands.extend(state.detail.probe_evil(&state.radar.policy, next_id));
+    commands
+}
+
+/// `follow_selection` without the evil-merge probe: what the pane itself
+/// does about a moved cursor.
+fn followed(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) -> Vec<Command> {
     if !state.detail.shown {
         return Vec::new();
     }

@@ -82,7 +82,10 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         // The detail pane names its jobs itself, before they start.
         event @ AppEvent::Produced(
             _,
-            Product::Files(_) | Product::FileDiff(..) | Product::ContainedIn(..),
+            Product::Files(_)
+            | Product::FileDiff(..)
+            | Product::ContainedIn(..)
+            | Product::EvilProbe(..),
         ) => {
             detail::detail_event(next, commands, event);
         }
@@ -97,7 +100,8 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             | Task::ListFiles { .. }
             | Task::FileDiff { .. }
             | Task::ContainedIn { .. }
-            | Task::RadarContext { .. },
+            | Task::RadarContext { .. }
+            | Task::EvilProbe { .. },
         ) => {}
         AppEvent::Produced(id, Product::RadarContext(result)) => {
             radar::context_landed(next, id, result);
@@ -113,17 +117,7 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             commit_graph::decide_commit_graph_offer(next);
         }
         AppEvent::Produced(_, Product::Repository(Err(failure))) => {
-            if next.repository.is_none() {
-                // Nothing was ever opened, so there is no screen to show this
-                // on and nothing for the user to do with Graft. Leaving, with
-                // the reason, beats an empty screen with an error in a corner.
-                next.quit = Some(Quit::Fatal(failure));
-            } else {
-                // A refresh of a repository that is already open failed — the
-                // directory went away mid-run, say. The screen still has
-                // something to show, so this goes on the status line.
-                next.status = Status::Failed(failure);
-            }
+            repository_open_failed(next, failure);
         }
         AppEvent::Produced(
             _,
@@ -187,7 +181,23 @@ fn took_fact(next: &mut AppState, product: Product) {
         | Product::Files(_)
         | Product::FileDiff(..)
         | Product::ContainedIn(..)
-        | Product::RadarContext(_) => {}
+        | Product::RadarContext(_)
+        | Product::EvilProbe(..) => {}
+    }
+}
+
+/// A repository failed to open, or to re-open.
+fn repository_open_failed(next: &mut AppState, failure: String) {
+    if next.repository.is_none() {
+        // Nothing was ever opened, so there is no screen to show this on and
+        // nothing for the user to do with Graft. Leaving, with the reason,
+        // beats an empty screen with an error in a corner.
+        next.quit = Some(Quit::Fatal(failure));
+    } else {
+        // A refresh of a repository that is already open failed — the
+        // directory went away mid-run, say. The screen still has something to
+        // show, so this goes on the status line.
+        next.status = Status::Failed(failure);
     }
 }
 

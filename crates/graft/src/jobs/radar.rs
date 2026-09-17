@@ -11,6 +11,7 @@ use graft_core::ref_name::RefName;
 use graft_git::history::{CommitTable, first_parent_chain, previous_tips};
 use graft_git::repo::RepoHandle;
 use graft_git::run::Stop;
+use graft_ops::mistake_radar::probes::{EvilVerdict, probe_evil_merge};
 
 /// How many of the default branch's previous reflog tips are kept: enough
 /// for the force-push probe to recognise a recent rewrite, not so many a
@@ -53,6 +54,14 @@ pub fn run_radar_context(
         default_chain,
         previous_default_tips,
     }))
+}
+
+/// The work behind [`Command::EvilProbe`](crate::update::Command::EvilProbe).
+///
+/// Never a `Result`: `EvilVerdict::NotCheckable` already carries every
+/// reason the check could not run (`graft_ops::mistake_radar::probes`).
+pub fn run_evil_probe(repo: &RepoHandle, merge: Oid, stop: &dyn Stop) -> EvilVerdict {
+    probe_evil_merge(repo, merge, stop)
 }
 
 #[cfg(test)]

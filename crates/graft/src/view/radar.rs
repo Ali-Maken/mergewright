@@ -10,6 +10,7 @@
 
 use graft_core::mistake_radar::MistakeRadarKind;
 use graft_core::oid::Oid;
+use graft_ops::mistake_radar::probes::{EvilVerdict, finding_from_evil};
 use graft_ops::mistake_radar::rules::{classify_commit, classify_refs};
 use graft_ops::mistake_radar::{
     BranchFacts, CommitFacts, Evidence, Finding, HeadFacts, RepoFacts, Risk, UpstreamFacts,
@@ -134,6 +135,13 @@ pub fn findings_for(state: &AppState, id: Oid, parents: &[Oid], subject: &str) -
             .into_iter()
             .filter(|finding| finding.at == id),
     );
+    // The evil-merge probe (`m2-details-and-diffs/14`) answers for the open
+    // commit only, so its verdict counts only when `id` is that commit.
+    if let Loading::Ready(verdict @ EvilVerdict::Evil { .. }) = &state.detail.evil
+        && state.detail.evil_at == Some(id)
+    {
+        findings.extend(finding_from_evil(id, verdict, &state.radar.policy));
+    }
     findings
 }
 
@@ -177,7 +185,23 @@ pub fn radar_lines_for(
             .is_some()
         && context_ready
     {
-        lines.push(RadarLine::EvilUnchecked);
+        let verdict = if state.detail.evil_at == Some(id) {
+            Some(&state.detail.evil)
+        } else {
+            None
+        };
+        match verdict {
+            Some(Loading::Pending(_)) => lines.push(RadarLine::EvilChecking),
+            Some(Loading::Ready(EvilVerdict::Clean)) => lines.push(RadarLine::EvilClean),
+            Some(Loading::Ready(EvilVerdict::NotCheckable(reason))) => {
+                lines.push(RadarLine::EvilNotCheckable(sanitize_line(reason)));
+            }
+            // Already a finding line, from `findings_for`.
+            Some(Loading::Ready(EvilVerdict::Evil { .. })) => {}
+            Some(Loading::Idle | Loading::Failed(_)) | None => {
+                lines.push(RadarLine::EvilUnchecked);
+            }
+        }
     }
     lines
 }
@@ -264,6 +288,87 @@ mod tests {
             policy: Policy::default(),
         };
         state
+    }
+
+    /// The pane's evil line follows the probe: unchecked before it starts,
+    /// checking while it runs, and the verdict once it answers.
+    #[test]
+    fn the_evil_line_follows_the_probe_through_each_loading_state() {
+        let merge = oid(7);
+        let parents = [oid(1), oid(2)];
+        let mut state = ready_state(&[oid(1)], Vec::new());
+        state.detail.evil_at = Some(merge);
+
+        let evil_line = |state: &AppState| {
+            radar_lines_for(state, merge, &parents, "merge")
+                .into_iter()
+                .find(|line| !matches!(line, RadarLine::Finding { .. }))
+        };
+
+        assert!(matches!(evil_line(&state), Some(RadarLine::EvilUnchecked)));
+
+        state.detail.evil = Loading::Pending(graft_core::job::JobId::new(1));
+        assert!(matches!(evil_line(&state), Some(RadarLine::EvilChecking)));
+
+        state.detail.evil = Loading::Ready(EvilVerdict::Clean);
+        assert!(matches!(evil_line(&state), Some(RadarLine::EvilClean)));
+
+        state.detail.evil = Loading::Ready(EvilVerdict::NotCheckable("octopus merge".into()));
+        assert!(matches!(
+            evil_line(&state),
+            Some(RadarLine::EvilNotCheckable(reason)) if reason.as_ref() == "octopus merge"
+        ));
+    }
+
+    /// An `Evil` verdict is one finding and no second line: the finding line
+    /// already says it.
+    #[test]
+    fn an_evil_verdict_is_one_finding_and_no_separate_evil_line() {
+        let merge = oid(7);
+        let parents = [oid(1), oid(2)];
+        let mut state = ready_state(&[oid(1)], Vec::new());
+        state.detail.evil_at = Some(merge);
+        state.detail.evil = Loading::Ready(EvilVerdict::Evil {
+            files: vec![b"evil.txt".to_vec()],
+        });
+
+        let findings = findings_for(&state, merge, &parents, "merge");
+        assert_eq!(
+            findings
+                .iter()
+                .filter(|finding| finding.kind == MistakeRadarKind::EvilMerge)
+                .count(),
+            1
+        );
+        let lines = radar_lines_for(&state, merge, &parents, "merge");
+        assert!(
+            !lines.iter().any(|line| matches!(
+                line,
+                RadarLine::EvilUnchecked | RadarLine::EvilClean | RadarLine::EvilChecking
+            )),
+            "the finding line stands alone, got {lines:?}"
+        );
+        assert!(lines.iter().any(|line| matches!(
+            line,
+            RadarLine::Finding { title, .. } if title.as_ref() == "evil merge"
+        )));
+    }
+
+    /// The verdict belongs to the commit the pane is open on, and to no
+    /// other row.
+    #[test]
+    fn another_rows_evil_line_ignores_the_open_commits_verdict() {
+        let mut state = ready_state(&[oid(1)], Vec::new());
+        state.detail.evil_at = Some(oid(7));
+        state.detail.evil = Loading::Ready(EvilVerdict::Clean);
+
+        let lines = radar_lines_for(&state, oid(8), &[oid(1), oid(2)], "another merge");
+        assert!(matches!(lines.last(), Some(RadarLine::EvilUnchecked)));
+        assert!(
+            findings_for(&state, oid(8), &[oid(1), oid(2)], "another merge")
+                .iter()
+                .all(|finding| finding.kind != MistakeRadarKind::EvilMerge)
+        );
     }
 
     #[test]

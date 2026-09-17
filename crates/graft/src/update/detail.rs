@@ -10,9 +10,12 @@ use std::sync::Arc;
 
 use graft_core::event::{KeyCode, KeyPress, Modifiers};
 use graft_core::job::JobId;
+use graft_core::mistake_radar::MistakeRadarKind;
 use graft_core::oid::Oid;
 use graft_git::contained::Contained;
 use graft_git::diff::{DiffOptions, DiffSpec, FileList};
+use graft_ops::mistake_radar::Policy;
+use graft_ops::mistake_radar::probes::EvilVerdict;
 use graft_term::sanitize::{sanitize_line, sanitize_path_bytes};
 use graft_ui::detail::{ContainedIn, DetailFocus, DiffMode, DiffView, FileListView, LineKindView};
 use graft_ui::detail_pane::DetailLayout;
@@ -28,6 +31,9 @@ pub const LOCAL_JOB_BIT: u64 = 1 << 63;
 const DIFF_CACHE: usize = 8;
 /// "Contained in" answers kept for stepping back through commits.
 const CONTAINED_CACHE: usize = 64;
+/// Evil-merge verdicts kept for stepping back through merges. A merge's tree
+/// is immutable, so a verdict never goes stale and a refresh keeps them.
+const EVIL_CACHE: usize = 16;
 /// Lines of one file's diff read before it is cut short (`L` loads the rest).
 const MAX_LINES: usize = 5_000;
 /// `PageUp`/`PageDown` step, in rows, for the files list and the diff body.
@@ -243,6 +249,16 @@ pub struct DetailState {
     pub diff_cache: Bounded<DiffKey, Arc<DiffView>>,
     /// Recent "contained in" answers, whatever the selection now is.
     pub contained: Bounded<Oid, ContainedIn>,
+    /// The open commit's evil-merge verdict (`m2-details-and-diffs/14`).
+    /// Tied to `spec`, not to an oid of its own: `probe_evil` sets it in the
+    /// same step that sets `spec`, and every other spec leaves it `Idle`.
+    pub evil: Loading<EvilVerdict>,
+    /// Verdicts already probed this session, so revisiting a merge is free.
+    pub evil_cache: Bounded<Oid, EvilVerdict>,
+    /// Which commit `evil` is about; `None` when nothing is being probed.
+    /// `spec` alone cannot say so: the probe outlives none of it, but it does
+    /// start one step later, and `view::radar` asks per row.
+    pub evil_at: Option<Oid>,
     /// Context and whitespace options for every read.
     pub options: DiffOptions,
     /// Unified or side by side.
@@ -281,6 +297,9 @@ impl Default for DetailState {
             diff: Loading::Idle,
             diff_cache: Bounded::new(DIFF_CACHE),
             contained: Bounded::new(CONTAINED_CACHE),
+            evil: Loading::Idle,
+            evil_cache: Bounded::new(EVIL_CACHE),
+            evil_at: None,
             options: DiffOptions::default(),
             mode: DiffMode::default(),
             word_tint: true,
@@ -343,6 +362,72 @@ impl DetailState {
             Some(spec) if self.shown => self.load(spec, next_id),
             Some(_) | None => Vec::new(),
         }
+    }
+
+    /// Start (or answer from cache) the evil-merge probe for whatever the
+    /// pane is now about.
+    ///
+    /// Idempotent: called once at the tail of every `update`
+    /// (`super::selection::follow_selection`), so it must be free to call
+    /// when nothing moved. A probe already running or answered for this same
+    /// commit is left alone; anything else cancels it.
+    ///
+    /// Separate from `open`/`follow`/`load` on purpose: the decision needs
+    /// the Mistake Radar's policy, which lives on `AppState::radar`, not on
+    /// the pane, and threading a `&Policy` through `load`'s sixteen call
+    /// sites would buy nothing.
+    ///
+    /// Nothing is probed when the pane is hidden, when it is about a compare
+    /// or the working tree, or when the evil-merge kind is off: a probe is a
+    /// `git` spawn, and nothing would read its answer.
+    pub fn probe_evil(
+        &mut self,
+        policy: &Policy,
+        next_id: &mut impl FnMut() -> JobId,
+    ) -> Vec<Command> {
+        let wanted = match self.spec {
+            Some(DetailSpec::Commit(oid))
+                if self.shown && policy.severity(MistakeRadarKind::EvilMerge).is_some() =>
+            {
+                Some(oid)
+            }
+            _ => None,
+        };
+        // Already running or answered for this very commit: nothing to do.
+        if self.evil_at == wanted
+            && !matches!(self.evil, Loading::Idle | Loading::Failed(_))
+            && wanted.is_some()
+        {
+            return Vec::new();
+        }
+        let mut commands = Vec::new();
+        if let Loading::Pending(id) = self.evil {
+            commands.push(Command::CancelJob(id));
+        }
+        self.evil = Loading::Idle;
+        self.evil_at = wanted;
+        let Some(oid) = wanted else {
+            return commands;
+        };
+        if let Some(verdict) = self.evil_cache.get(&oid) {
+            self.evil = Loading::Ready(verdict.clone());
+            return commands;
+        }
+        let id = next_id();
+        self.evil = Loading::Pending(id);
+        commands.push(Command::EvilProbe(id, oid));
+        commands
+    }
+
+    /// An evil-merge verdict arrived; one for a probe already superseded is
+    /// dropped. The verdict is cached whichever it is: a merge's tree cannot
+    /// change, so even `NotCheckable` will not read differently next time.
+    pub fn evil_probed(&mut self, id: JobId, oid: Oid, verdict: EvilVerdict) {
+        if self.evil != Loading::Pending(id) {
+            return;
+        }
+        self.evil_cache.insert(oid, verdict.clone());
+        self.evil = Loading::Ready(verdict);
     }
 
     /// Ask for `spec`'s file list, dropping whatever was pending.
@@ -643,6 +728,9 @@ pub(super) fn detail_event(next: &mut AppState, commands: &mut Vec<Command>, eve
         AppEvent::Produced(_, Product::ContainedIn(oid, result)) => {
             detail.contained_arrived(oid, result);
         }
+        AppEvent::Produced(id, Product::EvilProbe(oid, verdict)) => {
+            detail.evil_probed(id, oid, verdict);
+        }
         // Starts, and anything `answer` did not route here.
         AppEvent::Started(..)
         | AppEvent::Produced(..)
@@ -885,6 +973,116 @@ mod tests {
     }
 
     /// `toggle_compare`'s first branch: no base yet pins one, no command.
+    /// A commit spec probes once; the same merge asked about again is
+    /// answered from the cache without a second `git` spawn.
+    #[test]
+    fn a_commit_spec_probes_once_and_a_revisit_is_a_cache_hit() {
+        let mut detail = DetailState::default();
+        let policy = Policy::default();
+        let mut counter = 0;
+        let mut ids = || next_id_from(&mut counter);
+
+        detail.shown = true;
+        detail.spec = Some(DetailSpec::Commit(oid(1)));
+        let commands = detail.probe_evil(&policy, &mut ids);
+        let [Command::EvilProbe(id, probed)] = commands.as_slice() else {
+            panic!("a fresh merge asks for one probe, got {commands:?}");
+        };
+        assert_eq!(*probed, oid(1));
+        assert_eq!(detail.evil, Loading::Pending(*id));
+
+        detail.evil_probed(*id, oid(1), EvilVerdict::Clean);
+        assert_eq!(detail.evil, Loading::Ready(EvilVerdict::Clean));
+
+        // Away to another commit, then back.
+        detail.spec = Some(DetailSpec::Commit(oid(2)));
+        let away = detail.probe_evil(&policy, &mut ids);
+        assert!(matches!(away.as_slice(), [Command::EvilProbe(..)]));
+        detail.spec = Some(DetailSpec::Commit(oid(1)));
+        let back = detail.probe_evil(&policy, &mut ids);
+        assert!(
+            back.iter()
+                .all(|command| !matches!(command, Command::EvilProbe(..))),
+            "a cached verdict asks for nothing, got {back:?}"
+        );
+        assert_eq!(detail.evil, Loading::Ready(EvilVerdict::Clean));
+    }
+
+    /// Moving off a merge before its probe answers cancels it, and the late
+    /// answer changes nothing.
+    #[test]
+    fn moving_off_a_pending_probe_cancels_it_and_drops_its_late_answer() {
+        let mut detail = DetailState::default();
+        let policy = Policy::default();
+        let mut counter = 0;
+        let mut ids = || next_id_from(&mut counter);
+
+        detail.shown = true;
+        detail.spec = Some(DetailSpec::Commit(oid(1)));
+        let first = detail.probe_evil(&policy, &mut ids);
+        let [Command::EvilProbe(stale, _)] = first.as_slice() else {
+            panic!("expected one probe, got {first:?}");
+        };
+        let stale = *stale;
+
+        detail.spec = Some(DetailSpec::Commit(oid(2)));
+        let moved = detail.probe_evil(&policy, &mut ids);
+        assert!(
+            moved.contains(&Command::CancelJob(stale)),
+            "the superseded probe is cancelled, got {moved:?}"
+        );
+
+        detail.evil_probed(stale, oid(1), EvilVerdict::Evil { files: vec![] });
+        assert!(
+            matches!(detail.evil, Loading::Pending(id) if id != stale),
+            "the stale answer is dropped, leaving the newer probe pending"
+        );
+        assert!(detail.evil_cache.get(&oid(1)).is_none());
+    }
+
+    /// Nothing is probed with the evil-merge kind off, with the pane hidden,
+    /// or on a spec that is not one commit.
+    #[test]
+    fn no_probe_with_the_kind_off_the_pane_hidden_or_a_compare_spec() {
+        let mut counter = 0;
+        let mut ids = || next_id_from(&mut counter);
+        let mut off = Policy::default();
+        off.set(MistakeRadarKind::EvilMerge, None);
+
+        let mut detail = DetailState {
+            shown: true,
+            spec: Some(DetailSpec::Commit(oid(1))),
+            ..DetailState::default()
+        };
+        assert_eq!(detail.probe_evil(&off, &mut ids), Vec::new());
+        assert_eq!(detail.evil, Loading::Idle);
+
+        let policy = Policy::default();
+        detail.shown = false;
+        assert_eq!(detail.probe_evil(&policy, &mut ids), Vec::new());
+
+        detail.shown = true;
+        detail.spec = Some(DetailSpec::Compare {
+            base: oid(1),
+            head: oid(2),
+        });
+        assert_eq!(detail.probe_evil(&policy, &mut ids), Vec::new());
+        detail.spec = Some(DetailSpec::WorkingTree);
+        assert_eq!(detail.probe_evil(&policy, &mut ids), Vec::new());
+        assert_eq!(detail.evil, Loading::Idle);
+    }
+
+    /// A refresh keeps the verdicts: a merge's tree is immutable, so no
+    /// answer can go stale.
+    #[test]
+    fn a_refresh_keeps_the_evil_cache() {
+        let mut detail = DetailState::default();
+        let mut counter = 0;
+        detail.evil_cache.insert(oid(1), EvilVerdict::Clean);
+        let _ = detail.refresh(&mut || next_id_from(&mut counter));
+        assert_eq!(detail.evil_cache.get(&oid(1)), Some(&EvilVerdict::Clean));
+    }
+
     #[test]
     fn toggle_compare_with_no_base_pins_one_and_emits_nothing() {
         let mut state = super::super::state::AppState::default();

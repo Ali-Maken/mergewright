@@ -93,6 +93,12 @@ pub enum Task {
         /// The default branch itself.
         default_ref: graft_core::ref_name::RefName,
     },
+    /// Is the open merge's recorded resolution what merging its parents
+    /// gives? (`jobs::radar::run_evil_probe`.)
+    EvilProbe {
+        /// The merge being checked.
+        merge: graft_core::oid::Oid,
+    },
 }
 
 /// What a job brought back.
@@ -141,6 +147,12 @@ pub enum Product {
     /// The Mistake Radar's default-branch context, or why it could not be
     /// read.
     RadarContext(Result<std::sync::Arc<crate::jobs::radar::RadarContext>, String>),
+    /// One merge's evil-merge verdict. Never a `Result`: "could not check"
+    /// is one of the verdict's own three answers, not a failure.
+    EvilProbe(
+        graft_core::oid::Oid,
+        graft_ops::mistake_radar::probes::EvilVerdict,
+    ),
 }
 
 /// What running `git --version` found.
@@ -226,6 +238,8 @@ pub enum Command {
     /// `update` chose: the default branch's tip and the branch itself, as
     /// `update` last knew them.
     RadarContext(JobId, graft_core::oid::Oid, graft_core::ref_name::RefName),
+    /// Probe one merge for an evil resolution, under an id `update` chose.
+    EvilProbe(JobId, graft_core::oid::Oid),
 }
 
 /// Where the offer to build a missing commit-graph file is (m1-the-graph/54).

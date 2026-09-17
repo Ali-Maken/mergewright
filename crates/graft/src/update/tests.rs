@@ -2007,9 +2007,19 @@ fn enter_opens_the_pane_on_the_selected_commit_and_asks_for_its_files() {
             .any(|c| matches!(c, Command::ContainedIn(_, oid) if *oid == selected))
     );
 
+    // `Enter` also starts the evil-merge probe (m2-details-and-diffs/14);
+    // closing the pane cancels it, because nothing would read its answer.
+    let probe = commands
+        .iter()
+        .find_map(|c| match c {
+            Command::EvilProbe(id, oid) if *oid == selected => Some(*id),
+            _ => None,
+        })
+        .expect("the open commit is probed once");
+
     let (again, commands) = update(&opened, key(KeyCode::Escape));
     assert!(!again.detail.shown);
-    assert!(commands.is_empty(), "{commands:?}");
+    assert_eq!(commands, vec![Command::CancelJob(probe)], "{commands:?}");
 }
 
 #[test]
@@ -2273,10 +2283,17 @@ fn a_click_on_the_divider_starts_a_drag_and_up_ends_it() {
         columns: 200,
         rows: 50,
     };
-    // The current selection is already "followed": no `follow_selection`
-    // fetch fires behind the click and confuses the command assertions
-    // below.
+    // The current selection is already "followed", and its evil-merge probe
+    // already answered (m2-details-and-diffs/14): no `follow_selection`
+    // fetch or probe fires behind the click and confuses the command
+    // assertions below.
     state.detail.spec = state.selected_spec();
+    if let Some(crate::update::detail::DetailSpec::Commit(oid)) = state.detail.spec {
+        state.detail.evil_at = Some(oid);
+        state.detail.evil = Loading::Ready(
+            graft_ops::mistake_radar::probes::EvilVerdict::NotCheckable("not a merge".into()),
+        );
+    }
     // Right layout, 42% of 200 = 84 columns; the divider sits at column
     // 200 - 84 = 116, the pane's first column.
     let down = core(Event::Mouse(MouseInput {

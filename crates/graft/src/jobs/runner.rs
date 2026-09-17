@@ -27,6 +27,7 @@ use crate::history::RowRequest;
 use crate::jobs::radar::RadarContext;
 use crate::repos::RepoStore;
 use crate::update::{AppEvent, Command, Product, Task};
+use graft_ops::mistake_radar::probes::EvilVerdict;
 
 /// The Mistake Radar's context job: reads the default branch's tip and
 /// table from the store `run_radar_context` needs and joins any open error
@@ -41,6 +42,17 @@ fn radar_context(
     let handle = repo.handle();
     let table = repos.table().map_err(|error| error.to_string())?;
     super::radar::run_radar_context(&handle, &table, default_tip, default_ref, stop)
+}
+
+/// The evil-merge probe: opens the repository the probe needs and reports an
+/// open failure as the verdict's own `NotCheckable`, because "could not
+/// check" is an answer the pane shows, not an error to report elsewhere.
+fn evil_probe(repos: &RepoStore, merge: Oid, stop: &Cancel) -> EvilVerdict {
+    let repo = match repos.shared() {
+        Ok(repo) => repo,
+        Err(error) => return EvilVerdict::NotCheckable(error.to_string()),
+    };
+    super::radar::run_evil_probe(&repo.handle(), merge, stop)
 }
 
 /// The pool: a queue, a few threads, and a table of what is still running.
@@ -192,6 +204,12 @@ impl<S: JobEvents> JobRunner<S> {
                 let repos = Arc::clone(&self.repos);
                 self.detail_job(id, Task::ContainedIn { oid }, move |cancel| {
                     Product::ContainedIn(oid, super::detail::read_contained(&repos, oid, cancel))
+                });
+            }
+            Command::EvilProbe(id, merge) => {
+                let repos = Arc::clone(&self.repos);
+                self.detail_job(id, Task::EvilProbe { merge }, move |cancel| {
+                    Product::EvilProbe(merge, evil_probe(&repos, merge, cancel))
                 });
             }
             Command::RadarContext(id, default_tip, default_ref) => {
@@ -446,7 +464,8 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             command @ (Command::ListFiles(..)
             | Command::ReadFileDiff(..)
             | Command::ContainedIn(..)
-            | Command::RadarContext(..)) => {
+            | Command::RadarContext(..)
+            | Command::EvilProbe(..)) => {
                 self.dispatch_detail(command);
             }
             Command::CancelJob(id) => {
