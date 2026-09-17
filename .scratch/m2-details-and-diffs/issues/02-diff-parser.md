@@ -1,9 +1,8 @@
 # diff-parser: unified-diff and file-list parsers, line pairing, fuzz targets
 
-Status: ready
+Status: done
 Blocked by: none
 
-Status: draft
 Build with: Sonnet — pure byte parsing with git's own output as the oracle; mechanical once the shapes are fixed here.
 Needs: none (pure; `diff-reads` calls these)
 
@@ -49,12 +48,16 @@ pub fn pairs(hunk: &Hunk) -> Vec<Pair>;
 
 ## Acceptance
 
-- [ ] Fixture round-trip: for every `Shape` in `Shape::ALL` and every commit in it (hermetic `git log --format=%H`), `parse_unified(git diff-tree -p -M -C --no-color --no-ext-diff --root <sha>)` is `Ok`, and per file the count of `Added`/`Removed` lines equals `--numstat` (binary files excluded). One test, loops over shapes.
-- [ ] Hand-written cases (`tests/diff_cases.rs`, input strings ≤ 40 lines each): rename with hunks; copy; mode-only change (no hunks); binary; new file; deleted file; `\ No newline`; CRLF line kept with `\r`; quoted non-UTF-8 path unquoted to the right bytes; a hunk heading with `@@` inside it; two files in one stream; hunk count mismatch → `ParseError { line }`.
-- [ ] `parse_file_list` on the `unicode-names` and `non-utf8-path` fixtures gives paths byte-equal to `git ls-tree -r -z` names.
-- [ ] `pairs`: proptest (`proptest_cases`) — ranges within `lines`, no two pairs overlap, every `Removed`/`Added` line lies in exactly one pair's range or is unpaired; `Context` never inside a range.
-- [ ] `cargo fuzz build` succeeds once (command and its last line in the report); `fuzz/` excluded from the workspace; `cargo test --quiet` time unchanged within noise.
-- [ ] MAP.md: `diff` section, one line per public item.
+- [x] Fixture round-trip: for every `Shape` in `Shape::ALL` and every commit in it (hermetic `git log --format=%H`), `parse_unified(git diff-tree -p -M -C --no-color --no-ext-diff --root <sha>)` is `Ok`, and per file the count of `Added`/`Removed` lines equals `--numstat` (binary files excluded). One test, loops over shapes. (`tests/it/diff_fixture.rs::parse_unified_matches_numstat_for_every_shape`)
+- [x] Hand-written cases (`tests/diff_cases.rs`, input strings ≤ 40 lines each): rename with hunks; copy; mode-only change (no hunks); binary; new file; deleted file; `\ No newline`; CRLF line kept with `\r`; quoted non-UTF-8 path unquoted to the right bytes; a hunk heading with `@@` inside it; two files in one stream; hunk count mismatch → `ParseError { line }`. (`tests/it/diff_cases.rs`)
+- [x] `parse_file_list` on the `unicode-names` and `non-utf8-path` fixtures gives paths byte-equal to `git ls-tree -r -z` names. (`tests/it/diff_fixture.rs::parse_file_list_paths_match_ls_tree_for_unicode_and_non_utf8_names`)
+- [x] `pairs`: proptest (`proptest_cases`) — ranges within `lines`, no two pairs overlap, every `Removed`/`Added` line lies in exactly one pair's range or is unpaired; `Context` never inside a range. (`src/diff/pairs.rs::tests::properties`)
+- [x] `cargo fuzz build` succeeds once (command and its last line in the report); `fuzz/` excluded from the workspace; `cargo test --quiet` time unchanged within noise. Ran `cd fuzz && cargo +nightly fuzz build` → `Finished \`release\` profile [optimized + debuginfo] target(s) in 1m 53s`. `cargo build --workspace --quiet` confirms `fuzz/` isn't pulled in (0 `graft-fuzz` entries in the root `Cargo.lock`).
+- [x] MAP.md: `diff` section, one line per public item.
+
+### Notes
+
+While writing the hand-written cases, found and fixed a real parser bug (not a test bug): a trailing `\ No newline at end of file` marker on a hunk's very last line was never consumed, because the body loop in `fill_hunk_body` stops as soon as both `old_lines`/`new_lines` counts are reached, and that marker isn't counted in either. Fixed with `consume_trailing_no_newline_marker`, called once after the main loop. Covered by `diff_cases::no_newline_at_eof_marks_the_line_before_it`.
 
 ## Gates
 

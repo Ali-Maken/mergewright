@@ -1581,6 +1581,7 @@ dependencies = [
  "gix",
  "graft-core",
  "graft-fixtures",
+ "proptest",
  "tempfile",
  "thiserror",
 ]

@@ -4,6 +4,7 @@ One line per public item. Update when a public item changes.
 ## lib.rs
 - `branches` (mod) — choosing the default/integration branch among a repository's refs.
 - `contained` (mod) — which branches, remotes and tags contain a commit, via `git for-each-ref --contains` (m2/01).
+- `diff` (mod) — pure parsers for git's diff output: unified patches, `--raw`/`--numstat` file lists, hunk pairing (m2/02).
 - `commit_graph` (mod) — the commit-graph file: status, building it with system git, the offer's remembered decline (m1-the-graph/54).
 - `history` (mod) — rev-walks: chunked, ordered, resumable.
 - `mailmap` (mod) — `.mailmap` resolution, via gix's own parser.
@@ -35,6 +36,22 @@ One line per public item. Update when a public item changes.
 ## contained
 - `Contained` (struct) — `branches`, `remotes`, `tags` (short names as bytes: `main`, `origin/main`, `v1.0`), capped 200 per class; `more` counts the rest. Symrefs (`origin/HEAD`) left out.
 - `contained_in` (fn) — one `for-each-ref --contains <oid>` over heads/remotes/tags through `run`; an id naming no commit is git's `Exited`.
+
+## diff
+- `FileStatus` (enum) — `Added`, `Deleted`, `Modified`, `Renamed { similarity }`, `Copied { similarity }`, `TypeChanged`, `Unmerged`, `Untracked`.
+- `FileEntry` (struct) — `path`, `old_path` (renames/copies only), `status`, `added`/`removed` line counts (`None` for binary).
+- `FileList` (struct) — `files`, plus the total `added`/`removed` across them.
+- `LineKind` (enum) — `Context`, `Added`, `Removed`.
+- `DiffLine` (struct) — `kind`, `text`, `old_no`/`new_no`, `no_newline_at_eof`.
+- `Hunk` (struct) — `old_start`/`old_lines`/`new_start`/`new_lines`, `heading`, `lines`.
+- `BinaryNote` (enum) — `Differ` (`Binary files ... differ`) or `Patch` (`GIT binary patch`, body skipped).
+- `Truncated` (struct) — `shown_lines`/`total_lines`, set by a caller that cut a diff short (never by `parse_unified` itself).
+- `FileDiff` (struct) — `entry`, `hunks`, `binary`, `truncated`, `old_mode`/`new_mode`.
+- `ParseError` (struct) — `line` (1-indexed where known), `what`.
+- `parse_unified` (fn) — parses `git diff-tree -p -M -C --no-color --no-ext-diff` output (one or many files); pure, no `git` spawn, a `cargo-fuzz` target.
+- `parse_file_list` (fn) — joins `diff-tree --raw -z` with `--numstat -z` (same trailing args, `--no-commit-id`) into one `FileList`; pure, a `cargo-fuzz` target.
+- `Pair` (struct) — `removed`/`added` index ranges into one hunk's `lines`.
+- `pairs` (fn) — splits a hunk's removed/added runs into side-by-side `Pair`s, index-wise, `min(len)` per run.
 
 ## history
 - `CHUNK` (const) — commits per chunk a walk hands back at a time.

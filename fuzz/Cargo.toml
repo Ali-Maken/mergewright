@@ -1,0 +1,33 @@
+[package]
+name = "graft-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+# Standalone: not a member of the root workspace (its `members = ["crates/*"]`
+# glob does not reach here) and this empty table stops cargo from walking up
+# and trying to fold it into that workspace anyway. See fuzz/README.md.
+[workspace]
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.graft-git]
+path = "../crates/graft-git"
+
+[[bin]]
+name = "parse_unified"
+path = "fuzz_targets/parse_unified.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_file_list"
+path = "fuzz_targets/parse_file_list.rs"
+test = false
+doc = false
+bench = false

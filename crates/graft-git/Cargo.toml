@@ -84,3 +84,7 @@ graft-fixtures.workspace = true
 # Repository fixtures are built by real `git` commands in a temporary
 # directory: tiny ones, per PROMPT.md §7.1's fast tier.
 tempfile = "3.27.0"
+# Property tests for `diff::pairs` (PROMPT.md §7.1 mandates `proptest`, capped
+# at 64 fast-tier cases). Default features off: `fork`/`timeout` would pull in
+# a process-spawning harness this pure function never needs.
+proptest = { version = "1", default-features = false, features = ["std", "bit-set"] }
