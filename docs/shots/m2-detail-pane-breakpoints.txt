@@ -1,0 +1,142 @@
+=== 160x40 Right (commit, diff focus) ===
+COMMIT a1b2c3d                                                                                                                                                  
+Rui Mehdi · 2026-09-13 14:02 +0500 · 2 min ago                                                                                                                 
+parents 9f8e7d6 · diff vs first parent                                                                                                                          
+Contained in: main                                                                                                                                              
+                                                                                                                                                                
+M src/auth/token.rs                                                                                                                                       +12 −4
+A src/auth/session.rs                                                                                                                                      +3 −0
+M assets/logo.png                                                                                                                                            bin
+  @@ -40,7 +40,15 @@ fn refresh()                                                                                                                               
+  let token = self.cache;                                                                                                                                       
+- if token.is_expired() {                                                                                                                                       
++ if token.is_expired()                                                                                                                                         
++     && !refreshing {                                                                                                                                          
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+
+=== 120x30 Below (commit, files focus) ===
+COMMIT a1b2c3d · Rui Mehdi · 2026-09-13 14:02 +0500 · 2 min ago · parents 9f8e7d6 · diff vs first parent · Contained i…
+Fix token refresh race                                                                                                  
+M src/auth/token.rs     +12 −4  @@ -40,7 +40,15 @@ fn refresh()                                                         
+A src/auth/session.rs    +3 −0  let token = self.cache;                                                                 
+M assets/logo.png          bin- if token.is_expired() {                                                                 
+                              + if token.is_expired()                                                                   
+                              +     && !refreshing {                                                                    
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+
+=== 80x24 Tab (commit, files focus, detail shown) ===
+COMMIT a1b2c3d                                                                  
+Rui Mehdi · 2026-09-13 14:02 +0500 · 2 min ago · parents 9f8e7d6 · diff vs fir…
+Fix token refresh race                                                          
+M src/auth/token.rs                                                       +12 −4
+A src/auth/session.rs                                                      +3 −0
+M assets/logo.png                                                            bin
+  @@ -40,7 +40,15 @@ fn refresh()                                               
+  let token = self.cache;                                                       
+- if token.is_expired() {                                                       
++ if token.is_expired()                                                         
++     && !refreshing {                                                          
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+
+=== 160x40 Right (UNCOMMITTED header) ===
+UNCOMMITTED · 2 staged 1 unstaged 3 untracked                                                                                                                   
+diff vs HEAD a1b2c3d                                                                                                                                            
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+M src/auth/token.rs                                                                                                                                       +12 −4
+A src/auth/session.rs                                                                                                                                      +3 −0
+M assets/logo.png                                                                                                                                            bin
+  @@ -40,7 +40,15 @@ fn refresh()                                                                                                                               
+  let token = self.cache;                                                                                                                                       
+- if token.is_expired() {                                                                                                                                       
++ if token.is_expired()                                                                                                                                         
++     && !refreshing {                                                                                                                                          
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+                                                                                                                                                                
+
