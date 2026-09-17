@@ -1,0 +1,32 @@
+# m2-evil-merge.txt: TestBackend capture (not a pty), 100x16. Fixture:
+# capture_m2_evil_merge in crates/graft/src/view/tests.rs (#[ignore]d, run
+# by hand to regenerate). Three synthetic commits: a merge (0303030) over
+# two parents, opened in the detail pane, with the evil-merge probe's
+# verdict injected as Evil { files: ["src/config.rs"] } — the verdict a
+# real `git show --remerge-diff` would give for a resolution the merge
+# invented.
+#
+# Judge by eye:
+# - Merge row's marker: a ⚠ beside the merge glyph, and no marker on the
+#   two ordinary rows.
+# - Detail pane header: the radar line reads "evil merge" — one line, the
+#   finding. No "evil merge: unchecked", "checking" or "clean" beside it.
+# - The pane body reads "reading…": no file-list job runs in a capture, so
+#   the diff never arrives. Only the header line is what this shot is about.
+#
+" graft 3 commits                                                                                    "
+"◉─╮ ⚠ Merge branch 'feature'                                                         TE 57y  0303030"
+"● │   Ship the release notes                                                         TE 57y  0202020"
+"◇─╯   Start the feature branch                                                       TE 57y  0101010"
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+" q quit  F2 status  F3 renderer  <> resize  / search  j/k move  Space fold  1 first-parent  F focus "
+"COMMIT 0303030 · Test <test@example.invalid> · 1970-01-01 00:00 +0000 · 57y · parents 0202020, 0101…"
+"Merge branch 'feature' · evil merge                                                                 "
+"                              reading…                                                              "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "

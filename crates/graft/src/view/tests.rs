@@ -58,7 +58,6 @@ pub(crate) fn history_of(count: u8, cursor: usize) -> History {
     use graft_core::commit::{Commit, Identity, Timestamp};
     use graft_graph::layout::layout;
     use graft_graph::seeds::Seeds;
-
     let oid = |byte: u8| Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes");
     let commits: Vec<Commit> = (1..=count)
         .rev()
@@ -849,4 +848,128 @@ fn an_opened_compare_draws_its_own_header_not_the_cursor_commit() {
         "the pane's own compare spec, not the cursor's commit: {screen}"
     );
     assert!(!screen.contains("COMMIT"), "{screen}");
+}
+
+/// Three synthetic commits — a merge over two parents — with an empty
+/// default chain, so the only Mistake Radar finding the capture can show is
+/// the evil-merge one.
+#[cfg(test)]
+fn evil_merge_state() -> AppState {
+    use crate::update::detail::Loading;
+    use crate::update::radar::RadarState;
+    use graft_core::commit::{Commit, Identity, Timestamp};
+    use graft_graph::layout::layout;
+    use graft_graph::seeds::Seeds;
+    use graft_ops::mistake_radar::Policy;
+
+    let who = |seconds| Identity {
+        name: b"Test".to_vec(),
+        email: b"test@example.invalid".to_vec(),
+        when: Timestamp {
+            seconds,
+            offset_seconds: 0,
+        },
+    };
+    let commit = |id: u8, parents: Vec<Oid>, message: &str| Commit {
+        id: oid(id),
+        parents,
+        author: who(i64::from(id)),
+        committer: who(i64::from(id)),
+        message: message.as_bytes().to_vec(),
+    };
+    let commits = vec![
+        commit(3, vec![oid(2), oid(1)], "Merge branch 'feature'"),
+        commit(2, vec![oid(1)], "Ship the release notes"),
+        commit(1, Vec::new(), "Start the feature branch"),
+    ];
+    let rows = layout(&commits, Seeds::default());
+    let history = History {
+        window: Some(crate::history::Window {
+            request: 0,
+            first: 0,
+            laid_out: rows.len(),
+            done: true,
+            rows: rows.into(),
+            promoted: false,
+        }),
+        rows: 3,
+        phase: Phase::Complete,
+        cursor: 0,
+        reanchor: None,
+        ..History::started()
+    };
+    AppState {
+        history: Some(history),
+        repo_path: std::path::PathBuf::from("/code/api"),
+        size: Size {
+            columns: 100,
+            rows: 16,
+        },
+        radar: RadarState {
+            // An empty default chain: no foxtrot or backward finding, so the
+            // capture shows the evil-merge line and nothing else.
+            context: Loading::Ready(std::sync::Arc::new(crate::jobs::radar::RadarContext {
+                default_chain: std::collections::HashSet::new(),
+                previous_default_tips: Vec::new(),
+            })),
+            policy: Policy::default(),
+        },
+        ..AppState::default()
+    }
+}
+
+/// Regenerates `docs/shots/m2-evil-merge.txt` (m2-details-and-diffs/14).
+///
+/// `#[ignore]`d: it writes a file. Run it by hand with
+/// `cargo test -p graft --lib capture_m2_evil_merge -- --ignored`.
+#[test]
+#[ignore = "writes docs/shots/m2-evil-merge.txt; run by hand to regenerate"]
+fn capture_m2_evil_merge() {
+    use crate::update::detail::Loading;
+    use crate::update::{AppEvent, update};
+    use graft_core::event::{Event, KeyCode, KeyPress};
+    use graft_ops::mistake_radar::probes::EvilVerdict;
+
+    let merge = oid(3);
+    let state = evil_merge_state();
+    // `Enter` opens the pane on the merge and asks for the probe; the
+    // verdict itself is injected, because a capture runs no `git`.
+    let (mut opened, _) = update(
+        &state,
+        AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Enter))),
+    );
+    assert_eq!(opened.detail.evil_at, Some(merge), "the merge is probed");
+    assert!(matches!(opened.detail.evil, Loading::Pending(_)));
+    opened.detail.evil = Loading::Ready(EvilVerdict::Evil {
+        files: vec![b"src/config.rs".to_vec()],
+    });
+
+    let screen = draw(&opened, 100, 16);
+    assert!(screen.contains("evil merge"), "{screen}");
+    let header = "\
+# m2-evil-merge.txt: TestBackend capture (not a pty), 100x16. Fixture:
+# capture_m2_evil_merge in crates/graft/src/view/tests.rs (#[ignore]d, run
+# by hand to regenerate). Three synthetic commits: a merge (0303030) over
+# two parents, opened in the detail pane, with the evil-merge probe's
+# verdict injected as Evil { files: [\"src/config.rs\"] } — the verdict a
+# real `git show --remerge-diff` would give for a resolution the merge
+# invented.
+#
+# Judge by eye:
+# - Merge row's marker: a ⚠ beside the merge glyph, and no marker on the
+#   two ordinary rows.
+# - Detail pane header: the radar line reads \"evil merge\" — one line, the
+#   finding. No \"evil merge: unchecked\", \"checking\" or \"clean\" beside it.
+# - The pane body reads \"reading…\": no file-list job runs in a capture, so
+#   the diff never arrives. Only the header line is what this shot is about.
+#
+";
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m2-evil-merge.txt"
+        ),
+        format!("{header}{screen}"),
+    )
+    .expect("docs/shots is writable");
 }

@@ -1,11 +1,7 @@
 # radar-probe-evil-merge: is the selected merge's resolution honest?
 
-Status: partial — the probe seam is done and committed (`b8e0aa7`); the
-`jobs`/`update`/`view` wiring, its tests and the capture remain. See
-**Handoff (session 1)** at the bottom.
+Status: done (session 1 `b8e0aa7`, session 2 `c423679` + the capture).
 Blocked by: 01, 04, 13, 13b
-
-Status: draft
 Build with: Opus — a git subprocess whose exit/stderr shape decides three outcomes (clean/evil/not-checkable); getting that classification wrong is a silent correctness bug, not a style one.
 Needs: `git-runner` (`GitInvocation`, `GitArg`, `RunError`, `Stop`), `mistake-radar-detection` (`EvilVerdict`, `finding_from_evil`, `Policy`), `radar-context-and-markers` (`RadarLine::EvilUnchecked`/`EvilChecking`/`EvilClean`/`EvilNotCheckable` already rendered by `detail_pane.rs`; `findings_for`'s extension point; `DetailState`/`Bounded` pattern)
 
@@ -51,14 +47,14 @@ pub fn run_evil_probe(repo: &RepoHandle, merge: Oid, stop: &dyn Stop) -> EvilVer
 
 ## Acceptance
 
-- [ ] `probe_evil_merge` on the `evil` fixture's merge → `Evil { files }` non-empty; on a clean merge (any other merge fixture) → `Clean`; on a non-merge commit → `NotCheckable("not a merge")`.
-- [ ] Opening the `evil` merge's detail pane: one `Command::EvilProbe`; revisiting it in the same session is a cache hit, no second command.
-- [ ] Moving off the merge before the probe answers cancels it (`Command::Cancel`); its late `Product::EvilProbe` changes nothing (stale by id).
-- [ ] `findings_for` on the evil merge, once `evil` is `Ready(Evil{..})`, includes one `EvilMerge` finding; `radar_lines_for` shows no separate `EvilUnchecked`/`EvilClean` line alongside it.
-- [ ] `radar_lines_for` on a clean merge: `EvilChecking` while pending, `EvilClean` once answered.
-- [ ] `[radar] evil = off`: no probe is ever issued, `radar_lines_for` has no evil-related line at all.
-- [ ] MAP.md: `graft-ops` (`probes::probe_evil_merge`), `graft` (`jobs::radar`, `update::detail` additions).
-- [ ] Capture at `docs/shots/m2-evil-merge.txt`, ≤ 200 KB; user judges by eye.
+- [x] `probe_evil_merge` on the `evil` fixture's merge → `Evil { files }` non-empty; on a clean merge (any other merge fixture) → `Clean`; on a non-merge commit → `NotCheckable("not a merge")`.
+- [x] Opening the `evil` merge's detail pane: one `Command::EvilProbe`; revisiting it in the same session is a cache hit, no second command.
+- [x] Moving off the merge before the probe answers cancels it (`Command::Cancel`); its late `Product::EvilProbe` changes nothing (stale by id).
+- [x] `findings_for` on the evil merge, once `evil` is `Ready(Evil{..})`, includes one `EvilMerge` finding; `radar_lines_for` shows no separate `EvilUnchecked`/`EvilClean` line alongside it.
+- [x] `radar_lines_for` on a clean merge: `EvilChecking` while pending, `EvilClean` once answered.
+- [x] `[radar] evil = off`: no probe is ever issued, `radar_lines_for` has no evil-related line at all.
+- [x] MAP.md: `graft-ops` (`probes::probe_evil_merge`), `graft` (`jobs::radar`, `update::detail` additions).
+- [x] Capture at `docs/shots/m2-evil-merge.txt`, ≤ 200 KB; user judges by eye.
 
 ## Gates
 
@@ -160,3 +156,48 @@ untouched otherwise):
 The ticket's own named seam. Session hit the 40-tool-call hard stop with the
 probe committed and green; the remainder is six files across two crates plus
 a pty capture, which is its own context.
+
+## Disclosed deviations (session 2)
+
+1. **`Command::Cancel` is really `Command::CancelJob`** — the ticket's name
+   does not exist. Used the real one.
+2. **No `Policy` threaded through `load`/`open`/`follow`.** Added
+   `DetailState::probe_evil(&mut self, &Policy, next_id) -> Vec<Command>`
+   instead, as the handoff proposed: the policy lives on `AppState::radar`,
+   not on the pane, and sixteen call sites would have carried a parameter
+   only three of them use.
+3. **One call site, not three.** `update::selection::follow_selection` runs
+   at the tail of *every* `update` (`update/mod.rs`), so it already sees
+   whatever the pane ended up about — an `Enter`, a moved cursor, a
+   context-menu `Open details` or a close. Calling `probe_evil` there alone
+   is the whole rule in one place. That made it idempotent by necessity: a
+   probe already running or answered for the same commit is left alone,
+   otherwise every key press would cancel and restart it and the probe would
+   never finish.
+4. **`DetailState::evil_at: Option<Oid>` added** (the handoff said to use
+   `spec` instead). Idempotence needs to know which commit the current
+   verdict is about, and `spec` changes one step before the probe does.
+   `view::radar` matches rows against `evil_at`, which is exact.
+5. **Closing the pane cancels a running probe** (`CancelJob`), so nothing
+   spawns `git` for a pane nobody is looking at. Two existing tests asserted
+   "Escape emits nothing" / "a divider click emits nothing"; both were
+   amended, and say why.
+6. **The capture is a `TestBackend` capture, not a pty** — the pattern every
+   other m2 shot uses (`docs/shots/m2-marker-column.txt`), regenerated by
+   `capture_m2_evil_merge` in `crates/graft/src/view/tests.rs`
+   (`#[ignore]`d). The verdict is injected: a capture runs no `git`.
+
+## Verified (session 2)
+
+- `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
+  `cargo test` — all green (28 test binaries, 407 in `graft`'s lib).
+- Ran, not inspected: the four new `update::detail` tests (probe once, cache
+  hit, cancel-on-move, stale answer dropped, nothing probed with the kind
+  off / pane hidden / a compare spec, refresh keeps the cache) and the three
+  new `view::radar` tests (each `Loading` state's line, `Evil` is one
+  finding and no second line, another row ignores the open commit's
+  verdict).
+- **Not verified:** no real `git` probe was run end to end through the job
+  runner — the runner arm is code-reviewed only. The capture's verdict is
+  injected, so the pane's evil line has never been drawn from a live probe.
+  `docs/shots/m2-evil-merge.txt` (2.5 KB) is judged by eye by the user.
