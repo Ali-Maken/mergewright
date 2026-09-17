@@ -466,6 +466,13 @@ pub(super) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
             commands.extend(detail.move_files_cursor(-1, ids));
             true
         }
+        KeyCode::Char('v') if plain && detail.shown && detail.focus != DetailFocus::Graph => {
+            detail.mode = match detail.mode {
+                DiffMode::Unified => DiffMode::SideBySide,
+                DiffMode::SideBySide => DiffMode::Unified,
+            };
+            true
+        }
         _ => false,
     }
 }
@@ -486,6 +493,26 @@ mod tests {
         assert_eq!(map.get(&3), Some(&"c"));
         map.clear();
         assert_eq!(map.get(&3), None);
+    }
+
+    #[test]
+    fn v_toggles_side_by_side_and_back_but_is_ignored_from_graph_focus() {
+        let mut state = super::super::state::AppState::default();
+        state.detail.shown = true;
+        state.detail.focus = DetailFocus::Diff;
+        let mut commands = Vec::new();
+        let key = KeyPress::plain(KeyCode::Char('v'));
+
+        assert!(detail_key(&mut state, &mut commands, key));
+        assert_eq!(state.detail.mode, DiffMode::SideBySide);
+        assert!(commands.is_empty());
+
+        assert!(detail_key(&mut state, &mut commands, key));
+        assert_eq!(state.detail.mode, DiffMode::Unified);
+
+        state.detail.focus = DetailFocus::Graph;
+        assert!(!detail_key(&mut state, &mut commands, key));
+        assert_eq!(state.detail.mode, DiffMode::Unified);
     }
 
     #[test]

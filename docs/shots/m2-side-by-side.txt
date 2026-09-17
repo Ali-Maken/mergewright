@@ -1,0 +1,32 @@
+m2-side-by-side.txt: unified vs side-by-side renderers over the same two-hunk fixture (fake data, ColorDepth::TrueColor rendered without ANSI codes).
+One 2-removed/2-added paired run plus an unpaired removed and an unpaired added line, bracketed by context, across two hunks. Judge by eye.
+
+=== 72x13 side-by-side: paired run, unpaired lines, two hunks ===
+@@ -1,6 +1,6 @@
+  1   ctx head                     │  1   ctx head
+  2 - old a                        │  2 + new a
+  3 - old b                        │  3 + new b
+  4 - old c                        │
+                                   │  4 + new d
+  5   ctx tail                     │  5   ctx tail
+@@ -20,3 +21,3 @@ fn retry()
+ 20   let n = 0;                   │ 21   let n = 0;
+ 21 - return n;                    │ 22 + return Ok(n);
+
+
+
+
+=== 40x13 unified, same fixture ===
+@@ -1,6 +1,6 @@
+  1   1   ctx head
+  2     - old a
+  3     - old b
+      2 + new a
+      3 + new b
+  4     - old c
+      4 + new d
+  5   5   ctx tail
+@@ -20,3 +21,3 @@ fn retry()
+ 20  21   let n = 0;
+ 21     - return n;
+     22 + return Ok(n);

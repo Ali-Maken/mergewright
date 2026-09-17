@@ -621,3 +621,138 @@ fn crlf_line_shows_the_glyph_after_the_text_outside_the_gutter() {
         .collect::<String>();
     assert!(row1.trim_end().ends_with("self.cache;\u{240D}"), "{row1:?}");
 }
+
+fn side_line(
+    kind: LineKindView,
+    old_no: Option<u32>,
+    new_no: Option<u32>,
+    text: &str,
+    pair: Option<u32>,
+) -> LineView {
+    LineView {
+        kind,
+        old_no,
+        new_no,
+        text: sanitize_line(text),
+        words: vec![],
+        syntax: vec![],
+        pair,
+    }
+}
+
+fn half_text(buffer: &Buffer, y: u16, x0: u16, width: u16) -> String {
+    (x0..x0 + width)
+        .map(|x| buffer[(x, y)].symbol().to_string())
+        .collect()
+}
+
+/// A hunk with one 2-removed/2-added paired run, plus an unpaired removed and
+/// an unpaired added line, bracketed by context.
+fn side_by_side_hunk() -> HunkView {
+    HunkView {
+        heading: sanitize_line("@@ -1,6 +1,6 @@"),
+        lines: vec![
+            side_line(LineKindView::Context, Some(1), Some(1), "ctx head", None),
+            side_line(LineKindView::Removed, Some(2), None, "old a", Some(3)),
+            side_line(LineKindView::Removed, Some(3), None, "old b", Some(4)),
+            side_line(LineKindView::Added, None, Some(2), "new a", Some(1)),
+            side_line(LineKindView::Added, None, Some(3), "new b", Some(2)),
+            side_line(LineKindView::Removed, Some(4), None, "old c", None),
+            side_line(LineKindView::Added, None, Some(4), "new d", None),
+            side_line(LineKindView::Context, Some(5), Some(5), "ctx tail", None),
+        ],
+    }
+}
+
+#[test]
+fn paired_rows_share_a_screen_row_and_unpaired_rows_leave_a_blank_half() {
+    let theme = theme(ColorDepth::TrueColor);
+    let hunks = vec![side_by_side_hunk()];
+    let area = Rect::new(0, 0, 41, 8);
+    let mut buffer = Buffer::empty(area);
+    let total = diff_body_side_by_side(&hunks, 0, area, &mut buffer, &theme, true);
+    // heading + ctx + 2 paired rows + unpaired-removed row + unpaired-added row + ctx = 7
+    assert_eq!(total, 7);
+
+    let left_width = 20;
+    let right_x = 21;
+    let right_width = 20;
+
+    // Row 1: the leading context line, mirrored on both halves.
+    assert!(half_text(&buffer, 1, 0, left_width).starts_with("  1   ctx head"));
+    assert!(half_text(&buffer, 1, right_x, right_width).starts_with("  1   ctx head"));
+
+    // Rows 2-3: the paired removed/added run, aligned row for row.
+    assert!(half_text(&buffer, 2, 0, left_width).starts_with("  2 - old a"));
+    assert!(half_text(&buffer, 2, right_x, right_width).starts_with("  2 + new a"));
+    assert!(half_text(&buffer, 3, 0, left_width).starts_with("  3 - old b"));
+    assert!(half_text(&buffer, 3, right_x, right_width).starts_with("  3 + new b"));
+
+    // Row 4: an unpaired removed line — right half stays blank, not shifted.
+    assert!(half_text(&buffer, 4, 0, left_width).starts_with("  4 - old c"));
+    assert_eq!(
+        half_text(&buffer, 4, right_x, right_width),
+        " ".repeat(usize::from(right_width))
+    );
+
+    // Row 5: an unpaired added line — left half stays blank.
+    assert_eq!(
+        half_text(&buffer, 5, 0, left_width),
+        " ".repeat(usize::from(left_width))
+    );
+    assert!(half_text(&buffer, 5, right_x, right_width).starts_with("  4 + new d"));
+
+    // Row 6: the trailing context line, mirrored again.
+    assert!(half_text(&buffer, 6, 0, left_width).starts_with("  5   ctx tail"));
+    assert!(half_text(&buffer, 6, right_x, right_width).starts_with("  5   ctx tail"));
+}
+
+#[test]
+fn word_tint_syntax_and_palette16_match_diff_bodys_look() {
+    use crate::syntax::{SyntaxRole, SyntaxSpan};
+
+    let mut view = commit_view();
+    let BodyView::Diff(diff) = &mut view.body else {
+        panic!("expected a diff body");
+    };
+    let diff = std::sync::Arc::make_mut(diff);
+    #[allow(clippy::single_range_in_vec_init)]
+    let words = vec![0..2]; // "if" on the added line, same fixture as diff_body's test
+    diff.hunks[0].lines[2].words = words;
+    diff.hunks[0].lines[0].syntax = vec![SyntaxSpan {
+        range: 0..3, // "let"
+        role: SyntaxRole::Keyword,
+    }];
+
+    let true_color = theme(ColorDepth::TrueColor);
+    let area = Rect::new(0, 0, 60, 5);
+    let mut buffer = Buffer::empty(area);
+    let _rows = diff_body_side_by_side(&diff.hunks, 0, area, &mut buffer, &true_color, true);
+
+    // Row 2 is the removed/added pair; the tinted word sits on the right
+    // half's added line, same colour `diff_body`'s equivalent test asserts.
+    let tinted = buffer[(36, 2)].bg;
+    assert_eq!(tinted, ratatui::style::Color::Rgb(0x5D, 0xB8, 0x7A)); // Token::Added, full strength
+
+    // Row 1 is the context line, mirrored on the left half; the keyword span
+    // paints the same accent `diff_body` uses for `SyntaxRole::Keyword`.
+    let keyword_fg = buffer[(6, 1)].fg;
+    assert_eq!(
+        keyword_fg,
+        foreground(&true_color, Token::Accent).fg.unwrap()
+    );
+
+    // 16-colour fallback: no backgrounds anywhere, same rule as `diff_body`.
+    let theme16 = theme(ColorDepth::Palette16);
+    let mut buffer16 = Buffer::empty(area);
+    let _rows = diff_body_side_by_side(&diff.hunks, 0, area, &mut buffer16, &theme16, true);
+    for x in 0..area.width {
+        for y in 0..area.height {
+            assert_eq!(
+                buffer16[(x, y)].bg,
+                ratatui::style::Color::Reset,
+                "({x},{y}) carries a background"
+            );
+        }
+    }
+}
