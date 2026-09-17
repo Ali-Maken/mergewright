@@ -27,7 +27,7 @@ use crate::history::RowRequest;
 use crate::jobs::radar::RadarContext;
 use crate::repos::RepoStore;
 use crate::update::{AppEvent, Command, Product, Task};
-use graft_ops::mistake_radar::probes::EvilVerdict;
+use graft_ops::mistake_radar::probes::{EvilVerdict, ForcePushVerdict};
 
 /// The Mistake Radar's context job: reads the default branch's tip and
 /// table from the store `run_radar_context` needs and joins any open error
@@ -53,6 +53,20 @@ fn evil_probe(repos: &RepoStore, merge: Oid, stop: &Cancel) -> EvilVerdict {
         Err(error) => return EvilVerdict::NotCheckable(error.to_string()),
     };
     super::radar::run_evil_probe(&repo.handle(), merge, stop)
+}
+
+/// The force-push probe, with the same open-failure rule as [`evil_probe`].
+fn force_push_probe(
+    repos: &RepoStore,
+    branch: &str,
+    current: Oid,
+    stop: &Cancel,
+) -> ForcePushVerdict {
+    let repo = match repos.shared() {
+        Ok(repo) => repo,
+        Err(error) => return ForcePushVerdict::NotCheckable(error.to_string()),
+    };
+    super::radar::run_force_push_probe(&repo.handle(), branch, current, stop)
 }
 
 /// The pool: a queue, a few threads, and a table of what is still running.
@@ -210,6 +224,17 @@ impl<S: JobEvents> JobRunner<S> {
                 let repos = Arc::clone(&self.repos);
                 self.detail_job(id, Task::EvilProbe { merge }, move |cancel| {
                     Product::EvilProbe(merge, evil_probe(&repos, merge, cancel))
+                });
+            }
+            Command::ForcePushProbe(id, branch, current) => {
+                let repos = Arc::clone(&self.repos);
+                let task = Task::ForcePushProbe {
+                    branch: branch.clone(),
+                    current,
+                };
+                self.detail_job(id, task, move |cancel| {
+                    let verdict = force_push_probe(&repos, &branch, current, cancel);
+                    Product::ForcePushProbe(branch, verdict)
                 });
             }
             Command::RadarContext(id, default_tip, default_ref) => {
@@ -465,7 +490,8 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             | Command::ReadFileDiff(..)
             | Command::ContainedIn(..)
             | Command::RadarContext(..)
-            | Command::EvilProbe(..)) => {
+            | Command::EvilProbe(..)
+            | Command::ForcePushProbe(..)) => {
                 self.dispatch_detail(command);
             }
             Command::CancelJob(id) => {

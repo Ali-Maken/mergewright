@@ -5,17 +5,21 @@
 //! Pure, like every other `update` module: no I/O happens here. The context
 //! itself is read by `jobs::radar::run_radar_context`, off the loop's thread.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use graft_core::job::JobId;
+use graft_core::mistake_radar::MistakeRadarKind;
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
 use graft_ops::mistake_radar::Policy;
+use graft_ops::mistake_radar::probes::ForcePushVerdict;
 
 use crate::jobs::radar::RadarContext;
+use crate::refs::Upstream;
 
 use super::detail::Loading;
-use super::events::Command;
+use super::events::{AppEvent, Command, Product};
 use super::state::AppState;
 
 /// The Mistake Radar's state: the default-branch context, once the job that
@@ -30,6 +34,11 @@ pub struct RadarState {
     /// Which kinds report, and how loudly: `[radar]` config's policy,
     /// starting from `Policy::default()` (PROMPT.md §1.4, every kind on).
     pub policy: Policy,
+    /// One force-push verdict per upstream-tracked local branch, by short
+    /// name: `Pending` while its probe runs, `Ready` once it answered.
+    /// Asked for once the context lands, thrown away by a refresh — a fetch
+    /// is exactly when a remote's history can have been rewritten.
+    pub force_push: HashMap<String, Loading<ForcePushVerdict>>,
 }
 
 /// The default branch's shorthand name and its tip, purely from facts
@@ -75,6 +84,23 @@ pub fn request_context(
     commands.push(Command::RadarContext(id, default_tip, default_ref));
 }
 
+/// Routes the two products the radar owns to the function that lands each.
+///
+/// One arm in `update::answer`, so the radar's own event handling stays in
+/// this module rather than spreading across the dispatcher.
+pub fn radar_event(state: &mut AppState, event: AppEvent) {
+    match event {
+        AppEvent::Produced(id, Product::RadarContext(result)) => {
+            context_landed(state, id, result);
+        }
+        AppEvent::Produced(_, Product::ForcePushProbe(branch, verdict)) => {
+            force_push_probed(state, branch, verdict);
+        }
+        // `answer`'s pattern routes only the two above here.
+        other => debug_assert!(false, "not a radar event: {other:?}"),
+    }
+}
+
 /// The radar context job answered. A result for any id but the one being
 /// waited on is stale — the default branch's tip moved since it was asked
 /// for — and is dropped, the same rule `update::detail`'s jobs use.
@@ -88,12 +114,75 @@ pub fn context_landed(state: &mut AppState, id: JobId, result: Result<Arc<RadarC
     };
 }
 
+/// Asks, once, for one force-push probe per upstream-tracked branch.
+///
+/// Called at the tail of every `update`, beside [`request_context`], and
+/// idempotent: a branch already in `force_push` — pending or answered — is
+/// not asked about again, so the first `update` after the context lands is
+/// the only one that pushes commands. Gated on the context being `Ready`
+/// because nothing shows a radar finding before that, and on the kind being
+/// on, so a repository with `force_pushed = "off"` spawns no `git` at all.
+///
+/// The count is the repository's own upstream-tracked branch count: a few
+/// dozen at worst, each one small spawn, so there is no further cap.
+pub fn request_force_push_probes(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut dyn FnMut() -> JobId,
+) {
+    if !matches!(state.radar.context, Loading::Ready(_)) {
+        return;
+    }
+    if state
+        .radar
+        .policy
+        .severity(MistakeRadarKind::ForcePushedRemote)
+        .is_none()
+    {
+        return;
+    }
+    let Some(refs) = state.refs.as_deref() else {
+        return;
+    };
+    // Collected first: the rest of this borrows `state` mutably.
+    let tracked: Vec<(String, Oid)> = refs
+        .branches()
+        .filter(|(_, _, _, upstream)| !matches!(upstream, Upstream::None))
+        .filter_map(|(tip, name, _, _)| Some((std::str::from_utf8(name).ok()?.to_owned(), tip)))
+        .collect();
+    for (branch, tip) in tracked {
+        if state.radar.force_push.contains_key(&branch) {
+            continue;
+        }
+        let id = next_id();
+        state
+            .radar
+            .force_push
+            .insert(branch.clone(), Loading::Pending(id));
+        commands.push(Command::ForcePushProbe(id, branch, tip));
+    }
+}
+
+/// One branch's force-push probe answered.
+///
+/// Kept whatever its id: unlike the detail pane's jobs these are not tied to
+/// the selection, and a verdict for a branch is a verdict for that branch.
+pub fn force_push_probed(state: &mut AppState, branch: String, verdict: ForcePushVerdict) {
+    state
+        .radar
+        .force_push
+        .insert(branch, Loading::Ready(verdict));
+}
+
 /// A manual refresh (`Ctrl+R`) throws the context away: the default branch's
 /// tip may have moved, and a stale chain would misclassify a foxtrot merge
 /// against a tip that is no longer real. [`request_context`] asks for a
 /// fresh one once the refreshed refs land.
 pub fn reset_for_refresh(state: &mut AppState) {
     state.radar.context = Loading::Idle;
+    // A refresh usually follows a fetch, which is when a remote's history
+    // can have been rewritten under us: every verdict has to be asked again.
+    state.radar.force_push.clear();
 }
 
 #[cfg(test)]

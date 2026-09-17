@@ -99,6 +99,14 @@ pub enum Task {
         /// The merge being checked.
         merge: graft_core::oid::Oid,
     },
+    /// Did the remote this branch tracks rewrite its history?
+    /// (`jobs::radar::run_force_push_probe`.)
+    ForcePushProbe {
+        /// The local branch, short (`main`).
+        branch: String,
+        /// The remote-tracking ref's tip as `update` last knew it.
+        current: graft_core::oid::Oid,
+    },
 }
 
 /// What a job brought back.
@@ -153,6 +161,10 @@ pub enum Product {
         graft_core::oid::Oid,
         graft_ops::mistake_radar::probes::EvilVerdict,
     ),
+    /// One branch's force-push verdict, by branch name. Never a `Result`,
+    /// for the same reason [`Product::EvilProbe`] is not: "could not check"
+    /// is one of the verdict's own answers.
+    ForcePushProbe(String, graft_ops::mistake_radar::probes::ForcePushVerdict),
 }
 
 /// What running `git --version` found.
@@ -240,6 +252,11 @@ pub enum Command {
     RadarContext(JobId, graft_core::oid::Oid, graft_core::ref_name::RefName),
     /// Probe one merge for an evil resolution, under an id `update` chose.
     EvilProbe(JobId, graft_core::oid::Oid),
+    /// Probe one branch's upstream for a rewrite, under an id `update`
+    /// chose: the branch's short name and the tip it stood at. The
+    /// remote-tracking ref itself is resolved by the job, from config
+    /// `update` cannot read.
+    ForcePushProbe(JobId, String, graft_core::oid::Oid),
 }
 
 /// Where the offer to build a missing commit-graph file is (m1-the-graph/54).

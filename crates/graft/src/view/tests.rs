@@ -913,6 +913,7 @@ fn evil_merge_state() -> AppState {
                 previous_default_tips: Vec::new(),
             })),
             policy: Policy::default(),
+            force_push: std::collections::HashMap::new(),
         },
         ..AppState::default()
     }

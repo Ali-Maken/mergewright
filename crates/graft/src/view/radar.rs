@@ -10,7 +10,9 @@
 
 use graft_core::mistake_radar::MistakeRadarKind;
 use graft_core::oid::Oid;
-use graft_ops::mistake_radar::probes::{EvilVerdict, finding_from_evil};
+use graft_ops::mistake_radar::probes::{
+    EvilVerdict, ForcePushVerdict, finding_from_evil, findings_from_force_push,
+};
 use graft_ops::mistake_radar::rules::{classify_commit, classify_refs};
 use graft_ops::mistake_radar::{
     BranchFacts, CommitFacts, Evidence, Finding, HeadFacts, RepoFacts, Risk, UpstreamFacts,
@@ -142,6 +144,21 @@ pub fn findings_for(state: &AppState, id: Oid, parents: &[Oid], subject: &str) -
     {
         findings.extend(finding_from_evil(id, verdict, &state.radar.policy));
     }
+    // A force-push verdict belongs to a branch, and shows at the tip that
+    // branch stands on. `finding.at` is the verdict's own `current`, so a
+    // branch that moved since its probe answered contributes nothing here
+    // rather than marking the wrong row.
+    for branch in &branches {
+        if branch.tip != id {
+            continue;
+        }
+        if let Some(Loading::Ready(verdict)) = state.radar.force_push.get(branch.name) {
+            findings.extend(
+                findings_from_force_push(verdict, &state.radar.policy)
+                    .filter(|finding| finding.at == id),
+            );
+        }
+    }
     findings
 }
 
@@ -200,6 +217,27 @@ pub fn radar_lines_for(
             Some(Loading::Ready(EvilVerdict::Evil { .. })) => {}
             Some(Loading::Idle | Loading::Failed(_)) | None => {
                 lines.push(RadarLine::EvilUnchecked);
+            }
+        }
+    }
+    // A `NotCheckable` force-push verdict never becomes a finding, so the
+    // only way the pane can say the check did not run is this line.
+    if state
+        .radar
+        .policy
+        .severity(MistakeRadarKind::ForcePushedRemote)
+        .is_some()
+        && context_ready
+    {
+        for branch in branch_facts(state) {
+            if branch.tip != id {
+                continue;
+            }
+            if let Some(Loading::Ready(ForcePushVerdict::NotCheckable(reason))) =
+                state.radar.force_push.get(branch.name)
+            {
+                lines.push(RadarLine::ForcePushNotCheckable(sanitize_line(reason)));
+                break;
             }
         }
     }
@@ -286,6 +324,7 @@ mod tests {
                 previous_default_tips,
             })),
             policy: Policy::default(),
+            force_push: std::collections::HashMap::new(),
         };
         state
     }

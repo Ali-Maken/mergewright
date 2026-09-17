@@ -11,7 +11,9 @@ use graft_core::ref_name::RefName;
 use graft_git::history::{CommitTable, first_parent_chain, previous_tips};
 use graft_git::repo::RepoHandle;
 use graft_git::run::Stop;
-use graft_ops::mistake_radar::probes::{EvilVerdict, probe_evil_merge};
+use graft_ops::mistake_radar::probes::{
+    EvilVerdict, ForcePushVerdict, probe_evil_merge, probe_force_push,
+};
 
 /// How many of the default branch's previous reflog tips are kept: enough
 /// for the force-push probe to recognise a recent rewrite, not so many a
@@ -62,6 +64,30 @@ pub fn run_radar_context(
 /// reason the check could not run (`graft_ops::mistake_radar::probes`).
 pub fn run_evil_probe(repo: &RepoHandle, merge: Oid, stop: &dyn Stop) -> EvilVerdict {
     probe_evil_merge(repo, merge, stop)
+}
+
+/// The work behind
+/// [`Command::ForcePushProbe`](crate::update::Command::ForcePushProbe).
+///
+/// Resolves the remote-tracking ref here rather than in `update`: which ref
+/// a branch pulls from is config, and `update` reads nothing from disk. A
+/// branch whose upstream has gone (or was never there) is `NotCheckable`,
+/// not an error — the same rule the verdict follows everywhere else.
+pub fn run_force_push_probe(
+    repo: &RepoHandle,
+    branch: &str,
+    current: Oid,
+    stop: &dyn Stop,
+) -> ForcePushVerdict {
+    let local = match RefName::new(format!("refs/heads/{branch}").into_bytes()) {
+        Ok(name) => name,
+        Err(error) => return ForcePushVerdict::NotCheckable(error.to_string()),
+    };
+    match repo.upstream(&local) {
+        Ok(Some(remote_ref)) => probe_force_push(repo, branch, &remote_ref, current, stop),
+        Ok(None) => ForcePushVerdict::NotCheckable("no upstream".into()),
+        Err(error) => ForcePushVerdict::NotCheckable(error.to_string()),
+    }
 }
 
 #[cfg(test)]
