@@ -51,19 +51,21 @@ One command (ADR-0018):
 ```sh
 # The 100k-commit repository, the budgets from tickets 27 and 30, and every
 # property test at 1,000 cases instead of 64.
-cargo test --features heavy-tests -- --test-threads=2 --skip scrolling_the_1m_commit_graph_fixture
+cargo test --features heavy-tests -- --test-threads=2
 ```
 
-The feature alone gates heavy tests; none is `#[ignore]`d. The `--skip` above
-excludes the two 1M `frames::` tests (m1-the-graph/64): without it they run
-here too and fail loudly (see [Frames at a million](#frames-at-a-million)).
+The feature alone gates heavy tests; none is `#[ignore]`d. The two 1M
+`frames::` tests (m1-the-graph/64) compile only behind the separate
+`heavy-1m` feature (ADR-0018 amendment, m1-the-graph/80), so the command
+above never reaches them (see [Frames at a
+million](#frames-at-a-million)).
 
 **Then the release perf run** (ADR-0021), alone, after the command above:
 
 ```sh
 # Time budgets fail only here: input to frame (frames::, four tests) and
 # first paint (heavy::budgets_hold_*, the 50k-refs one included).
-cargo test --release -p graft --features heavy-tests --test it -- frames:: heavy::budgets_hold --test-threads=1 --nocapture --skip scrolling_the_1m_commit_graph_fixture
+cargo test --release -p graft --features heavy-tests --test it -- frames:: heavy::budgets_hold --test-threads=1 --nocapture
 ```
 
 In the debug run above those same tests measure and print their numbers
@@ -205,12 +207,12 @@ Not there yet: `cargo-fuzz` targets, land in M2.
 The `frames::` scroll harness (input-to-frame budget, `INPUT_TO_FRAME =
 16 ms`) at 1M commits, deferred by ADR-0026. Manual like the memory curve
 (the fixture is ~300 MiB) — but a `#[test]` fn, not a script, so it is
-excluded from both standing commands by `--skip
-scrolling_the_1m_commit_graph_fixture` (above) and gated inside the test on
-`GRAFT_1M`: unset, it fails loudly naming this command, never a silent skip.
+gated behind the `heavy-1m` cargo feature (ADR-0018 amendment,
+m1-the-graph/80) instead: both standing commands above build `heavy-tests`
+alone, so the two 1M tests are never even compiled into them.
 
 ```sh
-GRAFT_1M=1 cargo test --release -p graft --features heavy-tests --test it -- scrolling_the_1m_commit_graph_fixture --test-threads=1 --nocapture
+cargo test --release -p graft --features heavy-1m --test it -- scrolling_the_1m_commit_graph_fixture --test-threads=1 --nocapture
 ```
 
 What right looks like: p99 ≤ 16 ms at both tiers on the 1M small

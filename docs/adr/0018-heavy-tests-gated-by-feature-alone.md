@@ -37,3 +37,28 @@ heavy tests to be both ignored and feature-gated.
 - **Code changed.** m1-the-graph/31 removed `#[ignore]` from the four
   generator tests in `crates/graft-fixtures/tests/it/heavy.rs`; the
   `heavy-tests` feature is now the only gate.
+
+## Amendment (2026-09-17, m1-the-graph/80)
+
+The two `frames::` tests on the ~300 MiB 1M-commit fixture
+(`crates/graft/tests/it/frames.rs`, m1-the-graph/64) had been gated on an
+environment variable instead of a feature: unset, they **failed**
+rather than being skipped, so the documented release perf command
+(`cargo test --release --features heavy-tests …`) reported "2 failed" on
+every run (round-2 review Minor m4). A test gates on a build feature, never
+on the environment — the same reasoning as the decision above, applied to
+the one case it didn't yet cover.
+
+- **`heavy-1m` is a second feature**, on the `graft` crate, that implies
+  `heavy-tests` (`heavy-1m = ["heavy-tests"]`). It is never in any
+  `default` list.
+- The two 1M tests are `#[cfg(feature = "heavy-1m")]`. Under plain
+  `heavy-tests` they do not exist to `cargo test`, so the standard heavy-tier
+  and release-perf commands need no `--skip` to stay green. The old
+  environment-variable gate and its read are removed.
+- Commands:
+  ```sh
+  cargo test --features heavy-tests -- --test-threads=2                                    # heavy tier, no 1M
+  cargo test --release -p graft --features heavy-tests --test it -- frames:: heavy::budgets_hold --test-threads=1 --nocapture   # release perf, no 1M
+  cargo test --release -p graft --features heavy-1m --test it -- scrolling_the_1m_commit_graph_fixture --test-threads=1 --nocapture   # adds the 1M frames tests
+  ```

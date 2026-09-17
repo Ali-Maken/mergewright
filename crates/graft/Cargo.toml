@@ -71,6 +71,12 @@ unicode-width = "0.2"
 # `cargo test --features heavy-tests` at the workspace root reaches every
 # crate that uses it.
 heavy-tests = ["graft-fixtures/heavy-tests"]
+# The two `frames::` tests on the ~300 MiB 1M-commit fixture (ADR-0018
+# amendment, 2026-09-17): too expensive for the standard heavy-tier command
+# to sweep up by accident, so they compile only behind this feature, never
+# `#[ignore]`d. Implies `heavy-tests` so `--features heavy-1m` alone is
+# enough. Never in `default`.
+heavy-1m = ["heavy-tests"]
 
 [lints]
 workspace = true

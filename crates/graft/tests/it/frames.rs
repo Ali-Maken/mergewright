@@ -100,36 +100,25 @@ fn fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_pixel_tier() {
 /// (`TESTING.md`) to sweep up by accident. `scripts/memory-curve.sh`'s own
 /// 1M cells are manual the same way, but that mechanism is a shell script
 /// never wired into `cargo test`, which does not fit a `#[test]` fn. So
-/// these are gated on [`ONE_MILLION`] instead: unset, they fail loudly
-/// (never a silent skip) naming the variable and the manual command
-/// (TESTING.md); both standing commands must add `--skip
-/// scrolling_the_1m_commit_graph_fixture` to stay green without running
-/// them.
-const ONE_MILLION: &str = "GRAFT_1M";
-
-fn require_one_million() {
-    assert!(
-        std::env::var_os(ONE_MILLION).is_some(),
-        "set {ONE_MILLION}=1 to run this test: it builds/borrows the ~300 MiB \
-         1M-commit-graph fixture and takes several minutes. See TESTING.md's \
-         manual command for the 1M `frames::` numbers (m1-the-graph/64)."
-    );
-}
-
+/// these compile only behind the `heavy-1m` feature (ADR-0018 amendment,
+/// 2026-09-17, m1-the-graph/80): unset, the standard heavy-tier command
+/// never sees them; `--features heavy-1m` (implies `heavy-tests`) runs them,
+/// per TESTING.md's manual command.
+#[cfg(feature = "heavy-1m")]
 #[test]
 fn scrolling_the_1m_commit_graph_fixture_keeps_input_to_frame_under_16_ms_at_the_unicode_tier() {
-    require_one_million();
     check_scale(RenderingTier::Unicode, Refs::Fixture, ONE_MILLION_CG);
 }
 
+#[cfg(feature = "heavy-1m")]
 #[test]
 fn scrolling_the_1m_commit_graph_fixture_keeps_input_to_frame_under_16_ms_at_the_pixel_tier() {
-    require_one_million();
     check_scale(RenderingTier::Pixel, Refs::Fixture, ONE_MILLION_CG);
 }
 
 /// The 1M small-commit fixture with a commit-graph (ticket asks for "1M
 /// small cg"; `CommitSize::Small` is `Scale`'s default).
+#[cfg(feature = "heavy-1m")]
 const ONE_MILLION_CG: Scale = Scale::of(1_000_000).with_commit_graph();
 
 /// Which badges the scroll draws.
