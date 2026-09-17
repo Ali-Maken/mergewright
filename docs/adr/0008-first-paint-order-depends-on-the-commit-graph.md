@@ -40,3 +40,9 @@ test: selection and scroll land on the same commits before and after.
 - **Never cancelled or killed** once git starts: git writes through a `.lock` and renames; `SIGKILL` would strand the lock. On quit, the child finishes on its own.
 - **The decline lives in the common dir,** `<common_dir>/graft/commit-graph-offer`, not `--git-path`: the commit-graph belongs to the shared object store, so one decline covers every worktree. The one deviation from DESIGN.md §6.1's rule.
 - **Outside the undo journal, by name:** a commit-graph is a cache, not history; nothing to undo. The running session keeps its walk; the next open takes the fast path.
+
+## Amendment (m1-the-graph/67, user 2026-09-17): the no-commit-graph date walk emits a whole tie class at once
+
+The commit-date first paint (line 16 above) is not commit-by-commit when dates tie: `history::simple::Dated::next` must take the whole class of commits sharing the frontier's newest date, reading down through same-dated parents, before it can emit any of them children-first (fixed by m1-the-graph/67, which also closed a parent-above-child bug for tied dates). On distinct dates the class is one commit and the walk streams as described above; nothing changes there.
+
+**Cost:** a repo where every commit shares one date (fast-import with a fixed timestamp, some mirrors) makes the whole visible range one class, so first paint becomes the full walk instead of a small frontier — measured ≈5.3 s on the 1M no-commit-graph fixture (`docs/reviews/m1-the-graph-round-2.md` "m2", `target/m1-67/after.txt`). **Accepted, not capped** (user, 2026-09-17): a cap would emit a provisional order for an unseen tie class, which hides the cost behind a wrong picture rather than showing it. The 150 ms budget's meaning (line 24) now further depends on tie density, not only on graph presence.
