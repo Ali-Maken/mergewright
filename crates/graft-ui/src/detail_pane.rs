@@ -1,22 +1,26 @@
 //! The detail pane's regions, breakpoints and states.
 //!
 //! Draws a [`DetailView`] (`crate::detail`, view-model only) beside, below or
-//! in place of the graph, per DESIGN.md §1.1-1.3's breakpoints. This is the
-//! *plain* diff renderer: [`diff_body`] paints one row per line, sign glyph
-//! and soft background only, no gutter, no pinned heading, no word/syntax
-//! tint. `diff-widget` (m2-details-and-diffs) replaces its body under the
-//! same signature.
+//! in place of the graph, per DESIGN.md §1.1-1.3's breakpoints. [`diff_body`]
+//! (`diff-widget`, m2-details-and-diffs/08) is the real unified diff
+//! renderer: gutter, soft/word backgrounds, syntax fg, a pinned hunk heading,
+//! `␍`, and a truncation footer.
 //!
-//! Deviation from the ticket's literal signature: [`DetailPane`] also carries
-//! `theme` (not listed in the ticket's `Signatures` block). Without it the
-//! widget has no colour source at render time — every other widget in this
-//! crate (`GraphScreen`, `StatusScreen`) is handed a `&Theme` the same way.
-//! Reported as a spec gap rather than silently worked around.
+//! Deviations from the ticket's literal signatures, both reported as spec
+//! gaps rather than silently worked around:
+//! - [`DetailPane`] also carries `theme` (07's gap): every other widget in
+//!   this crate is handed a `&Theme` the same way, and there is no other
+//!   colour source at render time.
+//! - [`diff_body`] takes a `truncated: Option<(usize, usize)>` the ticket's
+//!   signature didn't list: the truncation footer it must draw is
+//!   [`crate::detail::DiffView`]'s field, not the hunks', and there is no
+//!   other way to hand it over under the same argument list.
 
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Style;
 use ratatui::widgets::Widget;
+use unicode_width::UnicodeWidthChar;
 
 use graft_core::capabilities::ColorDepth;
 use graft_term::sanitize::SanitizedText;
@@ -167,48 +171,113 @@ enum DiffRow<'a> {
     Line(&'a LineView),
 }
 
+/// One row per hunk heading, then its content lines. A `HunkHeading`-kind
+/// line inside `hunk.lines` (real assembled diffs put one at `lines[0]`,
+/// `crates/graft/src/jobs/detail.rs`) is dropped here rather than drawn a
+/// second time: `hunk.heading` already stands for it, and [`pin_heading`]
+/// and [`gutter_width`] both key off this same filtered shape.
 fn flatten(hunks: &[HunkView]) -> Vec<DiffRow<'_>> {
     let mut rows = Vec::new();
     for hunk in hunks {
         rows.push(DiffRow::Heading(&hunk.heading));
-        rows.extend(hunk.lines.iter().map(DiffRow::Line));
+        rows.extend(
+            hunk.lines
+                .iter()
+                .filter(|line| line.kind != LineKindView::HunkHeading)
+                .map(DiffRow::Line),
+        );
     }
     rows
 }
 
-/// Draw `hunks` from content row `top`, plainly: one screen row per line,
-/// sign glyph and kind soft background only, text fit to width. No gutter
-/// numbers, no pinned heading, no word/syntax tint, no `␍`, no truncation
-/// footer — `diff-widget` replaces this function's body under the same
-/// signature to add those. Returns the total content rows, for scroll
-/// clamping.
+/// Gutter width: the widest old/new line number across every hunk, min 3.
+fn gutter_width(hunks: &[HunkView]) -> usize {
+    let widest = hunks
+        .iter()
+        .flat_map(|hunk| &hunk.lines)
+        .filter(|line| line.kind != LineKindView::HunkHeading)
+        .flat_map(|line| [line.old_no, line.new_no])
+        .flatten()
+        .max()
+        .unwrap_or(0);
+    widest.to_string().len().max(3)
+}
+
+/// The hunk heading to pin at the body's top row, when `top` lands inside
+/// that hunk's own lines rather than on its heading row (which is already
+/// visible at row 0 in that case — normal scroll resumes).
+fn pin_heading<'a>(hunks: &'a [HunkView], rows: &[DiffRow<'a>], top: usize) -> Option<&'a SanitizedText> {
+    if matches!(rows.get(top), None | Some(DiffRow::Heading(_))) {
+        return None;
+    }
+    let mut consumed = 0usize;
+    for hunk in hunks {
+        let hunk_rows = 1 + hunk
+            .lines
+            .iter()
+            .filter(|line| line.kind != LineKindView::HunkHeading)
+            .count();
+        if top < consumed + hunk_rows {
+            return Some(&hunk.heading);
+        }
+        consumed += hunk_rows;
+    }
+    None
+}
+
+/// Draw `hunks` from content row `top`: gutter numbers, sign cell, soft
+/// added/removed background, a stronger background over changed words,
+/// syntax foreground, a pinned hunk heading, and — when `truncated` is
+/// `Some((shown, total))` — a `… N more lines · L load all` footer row.
+/// Returns the total content rows including that footer, for scroll
+/// clamping. At [`ColorDepth::Palette16`] or under `NO_COLOR`
+/// ([`ColorDepth::None`]): sign glyph plus bold (added) / dim (removed)
+/// only, no backgrounds, no syntax or word tint (m1/12c rule).
 #[must_use]
 pub fn diff_body(
     hunks: &[HunkView],
     top: usize,
+    truncated: Option<(usize, usize)>,
     area: Rect,
     buf: &mut Buffer,
     theme: &Theme,
     focused: bool,
 ) -> usize {
     let rows = flatten(hunks);
+    let total = rows.len() + usize::from(truncated.is_some());
     if area.width == 0 || area.height == 0 {
-        return rows.len();
+        return total;
     }
-    let palette16 = theme.color_depth() == ColorDepth::Palette16;
+
+    let gutter = gutter_width(hunks);
+    let palette16 = matches!(
+        theme.color_depth(),
+        ColorDepth::Palette16 | ColorDepth::None
+    );
     let style_ctx = DiffRowStyle { focused, palette16 };
-    for (offset, row) in rows
-        .iter()
-        .skip(top)
-        .take(usize::from(area.height))
-        .enumerate()
-    {
-        let y = area
-            .y
-            .saturating_add(u16::try_from(offset).unwrap_or(u16::MAX));
-        draw_diff_row(row, area.x, y, area.width, buf, theme, style_ctx);
+
+    let pinned = pin_heading(hunks, &rows, top);
+    let mut used: u16 = 0;
+    if let Some(heading) = pinned {
+        draw_heading(heading, area.x, area.y, area.width, buf, theme);
+        used = 1;
     }
-    rows.len()
+    let content_top = top.saturating_add(usize::from(pinned.is_some()));
+    let remaining = area.height.saturating_sub(used);
+
+    for offset in 0..remaining {
+        let idx = content_top.saturating_add(usize::from(offset));
+        let y = area.y.saturating_add(used).saturating_add(offset);
+        if let Some(row) = rows.get(idx) {
+            draw_diff_row(row, gutter, area.x, y, area.width, buf, theme, style_ctx);
+        } else if idx == rows.len() {
+            if let Some((shown, of_total)) = truncated {
+                draw_truncation_row(shown, of_total, area.x, y, area.width, buf, theme);
+            }
+        }
+    }
+
+    total
 }
 
 /// The flags [`draw_diff_row`] needs beyond the row itself and the theme,
@@ -217,12 +286,14 @@ pub fn diff_body(
 struct DiffRowStyle {
     /// The diff region has the keys.
     focused: bool,
-    /// The 16-colour rule is in force: bold/dim, no background tint.
+    /// The 16-colour rule (or `NO_COLOR`) is in force: bold/dim, no
+    /// background, no syntax or word tint.
     palette16: bool,
 }
 
 fn draw_diff_row(
     row: &DiffRow<'_>,
+    gutter: usize,
     x: u16,
     y: u16,
     width: u16,
@@ -230,40 +301,186 @@ fn draw_diff_row(
     theme: &Theme,
     style_ctx: DiffRowStyle,
 ) {
-    let (sign, kind_token, text) = match row {
-        DiffRow::Heading(heading) => (' ', None, heading.as_str().to_string()),
-        DiffRow::Line(line) => {
-            let (sign, token) = match line.kind {
-                LineKindView::Added => ('+', Some(Token::Added)),
-                LineKindView::Removed => ('-', Some(Token::Removed)),
-                LineKindView::Context | LineKindView::HunkHeading => (' ', None),
-            };
-            (sign, token, line.text.as_str().to_string())
-        }
-    };
+    match row {
+        DiffRow::Heading(heading) => draw_heading(heading, x, y, width, buf, theme),
+        DiffRow::Line(line) => draw_line_row(line, gutter, x, y, width, buf, theme, style_ctx),
+    }
+}
 
-    let style = if !style_ctx.focused || matches!(row, DiffRow::Heading(_)) {
-        foreground(theme, Token::TextMuted)
-    } else if let Some(token) = kind_token {
-        if style_ctx.palette16 {
-            let modifier = if token == Token::Added {
-                ratatui::style::Modifier::BOLD
-            } else {
-                ratatui::style::Modifier::DIM
-            };
-            foreground(theme, token).add_modifier(modifier)
-        } else {
-            Style::new()
-                .fg(color(theme.token(Token::Text)))
-                .bg(color(theme.token(token)))
-        }
-    } else {
-        foreground(theme, Token::Text)
-    };
-
-    let line = format!("{sign} {text}");
-    let fitted = fit(&line, usize::from(width));
+fn draw_heading(heading: &SanitizedText, x: u16, y: u16, width: u16, buf: &mut Buffer, theme: &Theme) {
+    let style = foreground(theme, Token::TextMuted);
+    let fitted = fit(heading.as_str(), usize::from(width));
     buf.set_stringn(x, y, fitted, usize::from(width), style);
+}
+
+fn draw_truncation_row(
+    shown: usize,
+    total: usize,
+    x: u16,
+    y: u16,
+    width: u16,
+    buf: &mut Buffer,
+    theme: &Theme,
+) {
+    let style = foreground(theme, Token::TextMuted);
+    let more = total.saturating_sub(shown);
+    let text = format!("\u{2026} {more} more lines \u{b7} L load all");
+    let fitted = fit(&text, usize::from(width));
+    buf.set_stringn(x, y, fitted, usize::from(width), style);
+}
+
+/// One diff line: `{old:>gutter} {new:>gutter} {sign}{text}`, the gutter
+/// blank on whichever side has no number for this line.
+fn draw_line_row(
+    line: &LineView,
+    gutter: usize,
+    x: u16,
+    y: u16,
+    width: u16,
+    buf: &mut Buffer,
+    theme: &Theme,
+    style_ctx: DiffRowStyle,
+) {
+    let (sign, kind_token) = match line.kind {
+        LineKindView::Added => ('+', Some(Token::Added)),
+        LineKindView::Removed => ('-', Some(Token::Removed)),
+        LineKindView::Context | LineKindView::HunkHeading => (' ', None),
+    };
+
+    let old = line.old_no.map_or(String::new(), |number| number.to_string());
+    let new = line.new_no.map_or(String::new(), |number| number.to_string());
+    let prefix = format!("{old:>gutter$} {new:>gutter$} ");
+    let prefix_cells = u16::try_from(prefix.chars().count()).unwrap_or(u16::MAX);
+    let prefix_fits = prefix_cells.min(width);
+    buf.set_stringn(
+        x,
+        y,
+        &prefix,
+        usize::from(prefix_fits),
+        foreground(theme, Token::TextMuted),
+    );
+    if prefix_fits >= width {
+        return;
+    }
+
+    // `usize::MAX` never falls inside a real word or syntax range, so this
+    // gives the sign cell the row's base colour without matching either.
+    let sign_style = line_style_at(line, usize::MAX, theme, style_ctx, kind_token);
+    let sign_x = x + prefix_fits;
+    buf.set_stringn(sign_x, y, sign.to_string(), 1, sign_style);
+    if prefix_fits.saturating_add(1) >= width {
+        return;
+    }
+    // A space between sign and text, in the sign's style: the soft/strong
+    // background reads as one continuous bar under sign and text alike.
+    buf.set_stringn(sign_x + 1, y, " ", 1, sign_style);
+
+    let text_x = sign_x.saturating_add(2);
+    let drawn = prefix_fits.saturating_add(2);
+    if drawn >= width {
+        return;
+    }
+    let text_width = width - drawn;
+    draw_styled_text(buf, text_x, y, text_width, line.text.as_str(), sign_style, |index| {
+        line_style_at(line, index, theme, style_ctx, kind_token)
+    });
+}
+
+/// The style for one char of `line`'s text (or, at `char_index ==
+/// usize::MAX`, for its sign cell): word tint over the syntax/kind
+/// foreground, which is itself over the row's soft background — reversed at
+/// [`DiffRowStyle::palette16`], where none of that exists.
+fn line_style_at(
+    line: &LineView,
+    char_index: usize,
+    theme: &Theme,
+    style_ctx: DiffRowStyle,
+    kind_token: Option<Token>,
+) -> Style {
+    if !style_ctx.focused {
+        return foreground(theme, Token::TextMuted);
+    }
+    if style_ctx.palette16 {
+        let base = foreground(theme, Token::Text);
+        return match kind_token {
+            Some(Token::Added) => base.add_modifier(ratatui::style::Modifier::BOLD),
+            Some(Token::Removed) => base.add_modifier(ratatui::style::Modifier::DIM),
+            _ => base,
+        };
+    }
+
+    let word_tinted = line.words.iter().any(|range| range.contains(&char_index));
+    if let (true, Some(token)) = (word_tinted, kind_token) {
+        // The word background wins over syntax; `Bg` on `Added`/`Removed` is
+        // exactly the pairing `theme::chrome` already guarantees >= 4.5:1
+        // contrast for, in every theme.
+        return Style::new()
+            .fg(color(theme.token(Token::Bg)))
+            .bg(color(theme.token(token)));
+    }
+
+    let role = line
+        .syntax
+        .iter()
+        .find(|span| span.range.contains(&char_index))
+        .map(|span| span.role);
+    let fg = role.map_or_else(
+        || theme.token(kind_token.unwrap_or(Token::Text)),
+        |role| theme.syntax(role),
+    );
+    let mut style = Style::new().fg(color(fg));
+    if kind_token.is_some() {
+        style = style.bg(color(theme.token(Token::Surface)));
+    }
+    style
+}
+
+/// `text` drawn cell by cell so [`line_style_at`] can style each char, fit
+/// to `width` (cut with `…`, padded with `default_style` spaces). Combining
+/// marks are dropped rather than stacked on their base — `fit` does that for
+/// whole-line text; a diff line only needs one cell per visible character to
+/// stay aligned with its gutter and word ranges.
+fn draw_styled_text(
+    buf: &mut Buffer,
+    x: u16,
+    y: u16,
+    width: u16,
+    text: &str,
+    default_style: Style,
+    mut style_at: impl FnMut(usize) -> Style,
+) {
+    let mut col: u16 = 0;
+    let mut cut = false;
+    for (index, character) in text.chars().enumerate() {
+        let Some(cells) = character.width() else {
+            continue;
+        };
+        if cells == 0 {
+            continue;
+        }
+        let cells = u16::try_from(cells).unwrap_or(1);
+        if col + cells > width {
+            cut = true;
+            break;
+        }
+        buf.set_stringn(
+            x + col,
+            y,
+            character.to_string(),
+            usize::from(cells),
+            style_at(index),
+        );
+        col += cells;
+    }
+    if cut && width > 0 {
+        let at = col.min(width - 1);
+        buf.set_stringn(x + at, y, "…", 1, default_style);
+        col = at + 1;
+    }
+    while col < width {
+        buf.set_stringn(x + col, y, " ", 1, default_style);
+        col += 1;
+    }
 }
 
 /// The detail pane widget: header, files and body, drawn for one frame.
@@ -599,7 +816,15 @@ fn render_body(view: &DetailView, area: Rect, theme: &Theme, buf: &mut Buffer) {
                     muted,
                 );
             } else {
-                let _rows = diff_body(&diff.hunks, view.body_top, area, buf, theme, focused);
+                let _rows = diff_body(
+                    &diff.hunks,
+                    view.body_top,
+                    diff.truncated,
+                    area,
+                    buf,
+                    theme,
+                    focused,
+                );
             }
         }
     }
