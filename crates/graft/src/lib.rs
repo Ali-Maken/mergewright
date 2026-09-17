@@ -16,6 +16,7 @@ pub mod event_loop;
 pub mod history;
 pub mod jobs;
 pub mod layout;
+pub mod map;
 pub mod refs;
 pub mod repos;
 pub mod repository;
