@@ -8,10 +8,12 @@
 
 pub mod branches;
 pub mod commit_graph;
+pub mod contained;
 #[cfg(test)]
 mod fixture;
 pub mod history;
 pub mod mailmap;
 pub mod repo;
+pub mod run;
 pub mod status;
 pub mod version;

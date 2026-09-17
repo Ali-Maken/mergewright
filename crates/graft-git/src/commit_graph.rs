@@ -163,7 +163,7 @@ pub fn write(repo: &RepoHandle) -> Result<Written, CommitGraphError> {
 }
 
 /// The first non-empty line of git's stderr, lossily decoded, trimmed.
-fn first_line(stderr: &[u8]) -> String {
+pub(crate) fn first_line(stderr: &[u8]) -> String {
     String::from_utf8_lossy(stderr)
         .lines()
         .map(str::trim)

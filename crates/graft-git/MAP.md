@@ -3,9 +3,11 @@ One line per public item. Update when a public item changes.
 
 ## lib.rs
 - `branches` (mod) — choosing the default/integration branch among a repository's refs.
+- `contained` (mod) — which branches, remotes and tags contain a commit, via `git for-each-ref --contains` (m2/01).
 - `commit_graph` (mod) — the commit-graph file: status, building it with system git, the offer's remembered decline (m1-the-graph/54).
 - `history` (mod) — rev-walks: chunked, ordered, resumable.
 - `mailmap` (mod) — `.mailmap` resolution, via gix's own parser.
+- `run` (mod) — the typed runner for system `git`: typed args, byte paths, stdin, kill-on-stop, output cap (m2/01).
 - `repo` (mod) — opening a repository and reading `HEAD`, refs and tips from it.
 - `status` (mod) — counting staged, unstaged and untracked working-tree changes.
 - `version` (mod) — running and classifying the system `git` binary's version.
@@ -29,6 +31,10 @@ One line per public item. Update when a public item changes.
 - `Offer` (enum) — `Undecided` or `Declined`.
 - `offer_state` (fn) — `<common_dir>/graft/commit-graph-offer` present = `Declined`.
 - `remember_declined` (fn) — write `declined\n` there, creating `graft/`.
+
+## contained
+- `Contained` (struct) — `branches`, `remotes`, `tags` (short names as bytes: `main`, `origin/main`, `v1.0`), capped 200 per class; `more` counts the rest. Symrefs (`origin/HEAD`) left out.
+- `contained_in` (fn) — one `for-each-ref --contains <oid>` over heads/remotes/tags through `run`; an id naming no commit is git's `Exited`.
 
 ## history
 - `CHUNK` (const) — commits per chunk a walk hands back at a time.
@@ -96,6 +102,18 @@ One line per public item. Update when a public item changes.
 - `OpenError` (enum) — why opening a repository failed.
 - `OpenError::path` (fn) — the path that failed to open.
 - `HeadError` (enum) — why reading `HEAD` failed.
+
+## run
+- `GitInvocation` (struct) — `git -C <workdir or git_dir> --no-pager <args>`; env adds `GIT_TERMINAL_PROMPT=0`, `LC_ALL=C`, `GIT_OPTIONAL_LOCKS=0`, user config kept.
+- `GitInvocation::new` / `arg` / `args` (fn) — build from typed args; the first `Path` gets a `--` before it if none was added.
+- `GitInvocation::stdin` (fn) — bytes fed from their own thread; without it stdin is null.
+- `GitInvocation::output_cap` (fn) — max bytes kept per stream (default 64 MiB); past it the child is killed, output cut to the cap, `truncated`, still `Ok`.
+- `GitInvocation::run` (fn) — spawn, drain stdout/stderr concurrently, poll `Stop` every ≤ 50 ms; on stop kill + reap, `Err(Stopped)`.
+- `GitInvocation::command_line` (fn) — `git <args>` shell-quoted, lossy UTF-8, without `-C`/`--no-pager`; display only.
+- `GitArg` (enum) — `Flag`, `Count` (`-U3`), `Oid` (full hex), `Ref`/`Path` (raw bytes), `Separator`, `Word` (caller-built, never a path or ref).
+- `Stop` (trait) — `should_stop(&self) -> bool`, `Sync`; impls for `AtomicBool` (Relaxed load) and `()` (never). The walk's stop is a `&dyn Fn() -> bool`, no type of its own, so no impl.
+- `GitOutput` (struct) — `stdout`, `stderr`, `truncated`.
+- `RunError` (enum) — `GitNotFound`, `Spawn(io)`, `Stopped`, `Exited { status, stderr_first_line, command }`, `Signalled { command }`; `Display` is one line.
 
 ## status
 - `WorkingTreeCounts` (struct) — how many files are staged, unstaged and untracked.

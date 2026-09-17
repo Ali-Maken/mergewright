@@ -1,9 +1,8 @@
 # git-runner: typed system-git runner, first read through it
 
-Status: ready
+Status: done
 Blocked by: none
 
-Status: draft
 Build with: Opus — process control (kill on stop, output cap, pipe draining without deadlock) is concurrency work; every M3–M6 write goes through this type.
 Needs: none
 
@@ -66,16 +65,16 @@ If the walk's existing stop flag has its own type, implement `Stop` for it here 
 
 ## Acceptance
 
-- [ ] `GitInvocation::new(&h).arg(Flag("rev-parse")).arg(Flag("HEAD")).run(&())` on `borrow(Shape::Linear)` returns the same id `RepoHandle::head` resolves to.
-- [ ] Non-zero exit (`rev-parse --verify nonesuch`) → `Exited { status: 128, stderr_first_line: "fatal: …", command }`; `command` contains `rev-parse --verify nonesuch`.
-- [ ] A `Stop` that answers true from its second poll ends `git log -p --all --no-color` on `Shape::ManyLanes` with `Err(Stopped)` and no zombie (`try_wait` in the test says exited).
-- [ ] `output_cap(1024)` on the same log → `Ok`, `truncated == true`, `stdout.len() < 1024 + 65_536`.
-- [ ] `stdin(b"hello\n")` + `hash-object --stdin` → the blob id git prints for it.
-- [ ] `GitArg::Path` with the `non-utf8-path` fixture's path bytes reaches git unchanged (`ls-files -z -- <path>` echoes the same bytes). Skipped on APFS with the fixture's own skip.
-- [ ] `contained_in(Shape::RefStates tip-of-main)` lists `main` under branches and nothing under tags; a tag-only commit lists its tag; `more == 0`.
-- [ ] `contained_in` on the `unborn` case of ref-states (no commits) → `Ok` with all lists empty, not an error.
-- [ ] No `Command::new("git")` outside `run.rs` and the existing `commit_graph` path (a `rg` line in the ticket report).
-- [ ] MAP.md: `run` and `contained` sections added.
+- [x] `GitInvocation::new(&h).arg(Flag("rev-parse")).arg(Flag("HEAD")).run(&())` on `borrow(Shape::Linear)` returns the same id `RepoHandle::head` resolves to.
+- [x] Non-zero exit (`rev-parse --verify nonesuch`) → `Exited { status: 128, stderr_first_line: "fatal: …", command }`; `command` contains `rev-parse --verify nonesuch`.
+- [x] A `Stop` that answers true from its second poll ends `git log -p --all --no-color` on `Shape::ManyLanes` with `Err(Stopped)` and no zombie (`try_wait` in the test says exited).
+- [x] `output_cap(1024)` on the same log → `Ok`, `truncated == true`, `stdout.len() < 1024 + 65_536`.
+- [x] `stdin(b"hello\n")` + `hash-object --stdin` → the blob id git prints for it.
+- [x] `GitArg::Path` with the `non-utf8-path` fixture's path bytes reaches git unchanged (`ls-files -z -- <path>` echoes the same bytes). Skipped on APFS with the fixture's own skip.
+- [x] `contained_in(Shape::RefStates tip-of-main)` lists `main` under branches and nothing under tags; a tag-only commit lists its tag; `more == 0`.
+- [x] `contained_in` on the `unborn` case of ref-states (no commits) → `Ok` with all lists empty, not an error.
+- [x] No `Command::new("git")` outside `run.rs` and the existing `commit_graph` path (a `rg` line in the ticket report).
+- [x] MAP.md: `run` and `contained` sections added.
 
 ## Gates
 
@@ -84,3 +83,12 @@ If the walk's existing stop flag has its own type, implement `Stop` for it here 
 ## Size
 
 One crate, two new files (~350 lines + ~150 tests). Fits: ≤ 20 tool calls, under 80k. Don't open `walk.rs`/`history.rs`; MAP.md says what `RepoHandle` offers.
+
+## Notes (builder, 2026-09-17)
+
+- `Shape::ManyLanes` does not exist in the corpus; stop/cap tests use `Shape::Linear` (200 commits; `log -p` is well past 1 KiB, and the stop answers on its second poll deterministically).
+- No-zombie check is a unit test in `run.rs` (`supervise` takes `&mut Child`, test asserts `try_wait` is `Some`); the public `run` can't expose the child.
+- Non-UTF-8 path: the path lives only in `latin1`'s tree, so `ls-tree -z --name-only refs/heads/latin1 -- caf\xe9.txt` echoes it (not `ls-files`, whose index never has it). No APFS skip needed for `NonUtf8Path`.
+- Unborn: tested on `UnbornBranch`; a no-commit repo has no id to ask about — see KNOWN_GAPS m2/01.
+- `rg` for git spawns in `src`: `run.rs`, `commit_graph.rs`, plus pre-existing `version.rs` (logged in KNOWN_GAPS) and test-only `fixture.rs`, `repo/tests.rs`, `graft/src/repository.rs` (cfg(test)).
+- Output cap applies per stream (stdout and stderr each), stdout cut to exactly the cap.
