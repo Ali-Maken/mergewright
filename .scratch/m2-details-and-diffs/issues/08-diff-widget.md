@@ -1,9 +1,8 @@
 # diff-widget: the real unified diff renderer — gutter, tints, pinned heading, word tint, syntax, truncation
 
-Status: ready
+Status: done
 Blocked by: 03, 06, 07
 
-Status: draft
 Build with: Sonnet — fills in a function `detail-pane-frame` already gave a signature; judged by the capture.
 Needs: `detail-pane-frame` (`diff_body`'s signature, `DetailAreas`, `Theme`), `detail-model-and-jobs` (`HunkView`, `LineView`, `LineKindView`), `syntax-highlighting` (`SyntaxRole`, `Theme::syntax`, `SyntaxSpan`)
 
@@ -32,14 +31,14 @@ from `detail-pane-frame`. Internal helpers it may add are private (`fn gutter_wi
 
 ## Acceptance
 
-- [ ] Gutter width matches the widest old/new line number in the hunks (min 3); a line missing one side leaves that gutter half blank.
-- [ ] A word-tinted range shows a visibly stronger background than the surrounding added/removed soft bg in the snapshot buffer's styled cells (assert on `Buffer::cell(..).style()`, not just text).
-- [ ] Syntax foreground differs from `Plain` for at least one span on a `.rs` fixture with a keyword.
-- [ ] Scrolling `top` past a hunk's own heading row keeps that heading pinned on the body's first row until the next heading would be visible anyway (assert the pinned text at two different `top` values within the same hunk).
-- [ ] Truncated fixture ends with the `… N more lines · L load all` row; non-truncated does not.
-- [ ] A CRLF line (`no_newline_at_eof: false`, sanitised text ending `␍`) shows the glyph after the text, outside the gutter.
-- [ ] `Theme::color_depth() == Palette16` (or `NO_COLOR` theme) fixture: no cell in the diff area carries a non-default background; added/removed are bold/dim only.
-- [ ] Capture at `docs/shots/m2-diff-widget.txt`, ≤ 200 KB; user judges by eye.
+- [x] Gutter width matches the widest old/new line number in the hunks (min 3); a line missing one side leaves that gutter half blank.
+- [x] A word-tinted range shows a visibly stronger background than the surrounding added/removed soft bg in the snapshot buffer's styled cells (assert on `Buffer::cell(..).style()`, not just text).
+- [x] Syntax foreground differs from `Plain` for at least one span on a `.rs` fixture with a keyword.
+- [x] Scrolling `top` past a hunk's own heading row keeps that heading pinned on the body's first row until the next heading would be visible anyway (assert the pinned text at two different `top` values within the same hunk).
+- [x] Truncated fixture ends with the `… N more lines · L load all` row; non-truncated does not.
+- [x] A CRLF line (`no_newline_at_eof: false`, sanitised text ending `␍`) shows the glyph after the text, outside the gutter.
+- [x] `Theme::color_depth() == Palette16` (or `NO_COLOR` theme) fixture: no cell in the diff area carries a non-default background; added/removed are bold/dim only.
+- [x] Capture at `docs/shots/m2-diff-widget.txt`, ≤ 200 KB; user judges by eye.
 
 ## Gates
 
@@ -48,3 +47,11 @@ from `detail-pane-frame`. Internal helpers it may add are private (`fn gutter_wi
 ## Size
 
 One crate, one file's function body (~200 lines) + tests (~200). ≤ 22 tool calls. Read `detail-pane-frame`'s MAP.md entry and the plain version's shape before touching it, not the whole file if it has grown past `detail_pane`'s docstring section.
+
+## Notes
+
+- Spec deviation: `diff_body` gained a `truncated: Option<(usize, usize)>` parameter beyond the literal signature above — `DiffView::truncated` had no other way to reach the row loop for the footer row. Documented in `detail_pane.rs`'s module doc and `MAP.md`, following ticket 07's precedent for reporting signature deviations instead of working around them silently.
+- No new `Token` variants added. Soft bg = `Token::Surface`; strong word-tint bg = full-strength `Token::Added`/`Token::Removed` with `Token::Bg` forced as fg (chrome.rs's documented ≥4.5:1 contrast guarantee covers this combination).
+- Fixed a latent double-heading bug in `flatten()`: real assembled hunks put a `HunkHeading`-kind line at `lines[0]` in addition to `HunkView.heading`; now filtered out consistently in `flatten`, `gutter_width`, `pin_heading`.
+- Ran full-workspace `cargo test --quiet` and `cargo clippy --all-targets --message-format=short -- -D warnings` (not just `-p graft-ui`) — both clean, 0 failures/warnings.
+- Session was compacted once, mid-ticket, after the core implementation and tests were already complete and passing at `-p graft-ui` scope. Remaining work after the compaction (full-workspace gates, MAP.md, capture, this note, commit) is now done too.

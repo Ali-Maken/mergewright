@@ -393,7 +393,7 @@ fn diff_body_returns_the_total_content_rows() {
     let theme = theme(ColorDepth::TrueColor);
     let area = Rect::new(0, 0, 40, 2);
     let mut buffer = Buffer::empty(area);
-    let total = diff_body(&diff.hunks, 0, area, &mut buffer, &theme, true);
+    let total = diff_body(&diff.hunks, 0, None, area, &mut buffer, &theme, true);
     assert_eq!(total, 5); // one heading + four lines
 }
 
@@ -406,8 +406,218 @@ fn palette16_diff_lines_use_bold_dim_and_no_background() {
     let theme = theme(ColorDepth::Palette16);
     let area = Rect::new(0, 0, 40, 5);
     let mut buffer = Buffer::empty(area);
-    let _rows = diff_body(&diff.hunks, 0, area, &mut buffer, &theme, true);
-    // rows: 0 heading, 1 context, 2 removed, 3 added, 4 added
-    let added_cell = &buffer[(0, 3)];
-    assert_eq!(added_cell.bg, ratatui::style::Color::Reset);
+    let _rows = diff_body(&diff.hunks, 0, None, area, &mut buffer, &theme, true);
+    // rows: 0 heading, 1 context, 2 removed, 3 added, 4 added. Gutter is
+    // "old new " (3 + 1 + 3 + 1 = 8 cells) before the sign cell.
+    for x in 0..area.width {
+        for y in 0..area.height {
+            assert_eq!(
+                buffer[(x, y)].bg,
+                ratatui::style::Color::Reset,
+                "({x},{y}) carries a background"
+            );
+        }
+    }
+    let sign_cell = &buffer[(8, 3)];
+    assert!(
+        sign_cell.modifier.contains(ratatui::style::Modifier::BOLD),
+        "{sign_cell:?}"
+    );
+    let removed_sign = &buffer[(8, 2)];
+    assert!(
+        removed_sign
+            .modifier
+            .contains(ratatui::style::Modifier::DIM),
+        "{removed_sign:?}"
+    );
+}
+
+#[test]
+fn no_color_theme_also_drops_backgrounds_and_tint() {
+    let theme = theme(ColorDepth::None);
+    let view = commit_view();
+    let BodyView::Diff(diff) = &view.body else {
+        panic!("expected a diff body");
+    };
+    let area = Rect::new(0, 0, 40, 5);
+    let mut buffer = Buffer::empty(area);
+    let _rows = diff_body(&diff.hunks, 0, None, area, &mut buffer, &theme, true);
+    for x in 0..area.width {
+        for y in 0..area.height {
+            assert_eq!(buffer[(x, y)].bg, ratatui::style::Color::Reset);
+        }
+    }
+}
+
+#[test]
+fn gutter_width_matches_the_widest_line_number() {
+    let view = commit_view();
+    let BodyView::Diff(diff) = &view.body else {
+        panic!("expected a diff body");
+    };
+    // Fixture's widest number is 42 (two digits), so gutter stays at the
+    // min-3 floor: "old new " is 3 + 1 + 3 + 1 = 8 cells.
+    assert_eq!(gutter_width(&diff.hunks), 3);
+}
+
+#[test]
+fn a_line_missing_one_side_leaves_that_gutter_half_blank() {
+    let theme = theme(ColorDepth::TrueColor);
+    let view = commit_view();
+    let BodyView::Diff(diff) = &view.body else {
+        panic!("expected a diff body");
+    };
+    let area = Rect::new(0, 0, 40, 5);
+    let mut buffer = Buffer::empty(area);
+    let _rows = diff_body(&diff.hunks, 0, None, area, &mut buffer, &theme, true);
+    let screen = (0..area.width)
+        .map(|x| buffer[(x, 2)].symbol().to_string())
+        .collect::<String>();
+    // Row 2 is the removed line: old_no 41, new_no None.
+    assert!(screen.starts_with(" 41     -"), "{screen:?}");
+}
+
+#[test]
+fn word_tint_is_a_stronger_background_than_the_soft_row_background() {
+    let mut view = commit_view();
+    let BodyView::Diff(diff) = &mut view.body else {
+        panic!("expected a diff body");
+    };
+    let diff = std::sync::Arc::make_mut(diff);
+    #[allow(clippy::single_range_in_vec_init)] // one word range is the point of the test
+    let words = vec![0..2]; // "if" on the added line
+    diff.hunks[0].lines[2].words = words;
+    let theme = theme(ColorDepth::TrueColor);
+    let area = Rect::new(0, 0, 40, 5);
+    let mut buffer = Buffer::empty(area);
+    let _rows = diff_body(&diff.hunks, 0, None, area, &mut buffer, &theme, true);
+    // Gutter "old new " = 8 cells, sign + space = 2, so text starts at 10.
+    let tinted = buffer[(10, 3)].bg;
+    let plain = buffer[(15, 3)].bg;
+    assert_ne!(tinted, plain, "word tint should stand out from the row bg");
+    assert_eq!(tinted, ratatui::style::Color::Rgb(0x5D, 0xB8, 0x7A)); // Token::Added, full strength
+    assert_eq!(plain, ratatui::style::Color::Rgb(0x1B, 0x1E, 0x24)); // Token::Surface, soft
+}
+
+#[test]
+fn syntax_role_paints_a_keyword_differently_from_plain_text() {
+    use crate::syntax::{SyntaxRole, SyntaxSpan};
+
+    let mut view = commit_view();
+    let BodyView::Diff(diff) = &mut view.body else {
+        panic!("expected a diff body");
+    };
+    let diff = std::sync::Arc::make_mut(diff);
+    diff.hunks[0].lines[0].syntax = vec![SyntaxSpan {
+        range: 0..3, // "let"
+        role: SyntaxRole::Keyword,
+    }];
+    let theme = theme(ColorDepth::TrueColor);
+    let area = Rect::new(0, 0, 40, 5);
+    let mut buffer = Buffer::empty(area);
+    let _rows = diff_body(&diff.hunks, 0, None, area, &mut buffer, &theme, true);
+    // Row 1 is the context line "let token = self.cache;"; text starts at
+    // gutter(8) + sign/space(2) = 10.
+    let keyword_fg = buffer[(10, 1)].fg;
+    let plain_fg = buffer[(16, 1)].fg; // inside "token", past the keyword span
+    assert_ne!(keyword_fg, plain_fg);
+    assert_eq!(keyword_fg, foreground(&theme, Token::Accent).fg.unwrap());
+}
+
+#[test]
+fn scrolling_within_a_hunk_pins_its_heading_until_the_next_one_shows() {
+    let theme = theme(ColorDepth::TrueColor);
+    let view = commit_view();
+    let BodyView::Diff(diff) = &view.body else {
+        panic!("expected a diff body");
+    };
+    let area = Rect::new(0, 0, 40, 2);
+
+    // top = 1 (context row) and top = 2 (removed row): both still inside
+    // the one hunk, both must pin the same heading text at row 0.
+    for top in [1, 2] {
+        let mut buffer = Buffer::empty(area);
+        let _rows = diff_body(&diff.hunks, top, None, area, &mut buffer, &theme, true);
+        let row0 = (0..area.width)
+            .map(|x| buffer[(x, 0)].symbol().to_string())
+            .collect::<String>();
+        assert!(row0.contains("@@ -40,7 +40,15 @@"), "top={top}: {row0:?}");
+    }
+
+    // top = 0 lands exactly on the heading row: it's naturally visible, no
+    // pin needed, so scrolling one row further away from it draws normal
+    // content, not a duplicate heading.
+    let mut buffer = Buffer::empty(area);
+    let _rows = diff_body(&diff.hunks, 0, None, area, &mut buffer, &theme, true);
+    let row0 = (0..area.width)
+        .map(|x| buffer[(x, 0)].symbol().to_string())
+        .collect::<String>();
+    assert!(row0.contains("@@ -40,7 +40,15 @@"), "{row0:?}");
+    let row1 = (0..area.width)
+        .map(|x| buffer[(x, 1)].symbol().to_string())
+        .collect::<String>();
+    assert!(!row1.contains("@@"), "{row1:?}");
+}
+
+#[test]
+fn truncated_diff_ends_with_the_more_lines_footer() {
+    let theme = theme(ColorDepth::TrueColor);
+    let view = commit_view();
+    let BodyView::Diff(diff) = &view.body else {
+        panic!("expected a diff body");
+    };
+    let area = Rect::new(0, 0, 40, 6);
+    let mut buffer = Buffer::empty(area);
+    let total = diff_body(
+        &diff.hunks,
+        0,
+        Some((5, 105)),
+        area,
+        &mut buffer,
+        &theme,
+        true,
+    );
+    assert_eq!(total, 6); // 5 real rows + the footer
+    let footer = (0..area.width)
+        .map(|x| buffer[(x, 5)].symbol().to_string())
+        .collect::<String>();
+    assert!(
+        footer.contains("\u{2026} 100 more lines \u{b7} L load all"),
+        "{footer:?}"
+    );
+}
+
+#[test]
+fn a_non_truncated_diff_has_no_footer_row() {
+    let theme = theme(ColorDepth::TrueColor);
+    let view = commit_view();
+    let BodyView::Diff(diff) = &view.body else {
+        panic!("expected a diff body");
+    };
+    let area = Rect::new(0, 0, 40, 6);
+    let mut buffer = Buffer::empty(area);
+    let total = diff_body(&diff.hunks, 0, None, area, &mut buffer, &theme, true);
+    assert_eq!(total, 5);
+    let last_row = (0..area.width)
+        .map(|x| buffer[(x, 4)].symbol().to_string())
+        .collect::<String>();
+    assert!(!last_row.contains("more lines"), "{last_row:?}");
+}
+
+#[test]
+fn crlf_line_shows_the_glyph_after_the_text_outside_the_gutter() {
+    let theme = theme(ColorDepth::TrueColor);
+    let mut view = commit_view();
+    let BodyView::Diff(diff) = &mut view.body else {
+        panic!("expected a diff body");
+    };
+    let diff = std::sync::Arc::make_mut(diff);
+    diff.hunks[0].lines[0].text = sanitize_line("let token = self.cache;\u{240D}");
+    let area = Rect::new(0, 0, 40, 5);
+    let mut buffer = Buffer::empty(area);
+    let _rows = diff_body(&diff.hunks, 0, None, area, &mut buffer, &theme, true);
+    let row1 = (0..area.width)
+        .map(|x| buffer[(x, 1)].symbol().to_string())
+        .collect::<String>();
+    assert!(row1.trim_end().ends_with("self.cache;\u{240D}"), "{row1:?}");
 }

@@ -46,7 +46,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-
 - `DetailLayout::compute` (fn) — picks the breakpoint for a size and focus; `override_cells` replaces the percentage, still clamped to the minimum.
 - `DetailAreas` (struct) — `header`, `files`, `body` rects for one layout.
 - `detail_areas` (fn) — splits a pane rect into `DetailAreas`, capping the files region to what `files_count` needs.
-- `diff_body` (fn) — plain diff body: sign glyph, soft background, no gutter/tint; returns total content rows for scroll clamping. `diff-widget` replaces its body under the same signature.
+- `diff_body(hunks, top, truncated, area, buf, theme, focused)` (fn) — full diff body: right-aligned old/new gutter (width = widest number, min 3), sign cell, soft `Surface` bg on added/removed rows, stronger `Added`/`Removed` bg on word-tinted ranges (fg forced to `Bg` for contrast), syntax-role fg elsewhere, hunk heading pinned to the top row while scrolling within its hunk, trailing `␍` glyph, and a muted "… N more lines · L load all" footer row when `truncated: Some((shown, total))`. At `Palette16`/`None`: no backgrounds/tint, sign+bold(added)/dim(removed) only. Returns total content rows (real rows + footer) for scroll clamping. Deviation: adds a `truncated: Option<(usize, usize)>` param beyond the ticket's literal signature — reported as a spec gap, not silently worked around (see module doc).
 - `DetailPane` (struct, `Widget`) — `view`, `layout`, `theme`; draws header, files and body for one frame.
 
 ## diff_words

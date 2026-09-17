@@ -1,0 +1,11 @@
+=== 72x10 diff-widget: syntax, word tint, truncation, CRLF ===
+@@ -40,7 +40,15 @@ fn refresh()
+ 40  40   let token = self.cache;␍
+ 41     - if token.is_expired() {
+     41 + if token.is_expired()
+     42 +     && !refreshing {
+… 37 more lines · L load all
+
+
+
+

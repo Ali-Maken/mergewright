@@ -206,7 +206,11 @@ fn gutter_width(hunks: &[HunkView]) -> usize {
 /// The hunk heading to pin at the body's top row, when `top` lands inside
 /// that hunk's own lines rather than on its heading row (which is already
 /// visible at row 0 in that case — normal scroll resumes).
-fn pin_heading<'a>(hunks: &'a [HunkView], rows: &[DiffRow<'a>], top: usize) -> Option<&'a SanitizedText> {
+fn pin_heading<'a>(
+    hunks: &'a [HunkView],
+    rows: &[DiffRow<'a>],
+    top: usize,
+) -> Option<&'a SanitizedText> {
     if matches!(rows.get(top), None | Some(DiffRow::Heading(_))) {
         return None;
     }
@@ -259,7 +263,12 @@ pub fn diff_body(
     let pinned = pin_heading(hunks, &rows, top);
     let mut used: u16 = 0;
     if let Some(heading) = pinned {
-        draw_heading(heading, area.x, area.y, area.width, buf, theme);
+        let slot = RowSlot {
+            x: area.x,
+            y: area.y,
+            width: area.width,
+        };
+        draw_heading(heading, slot, buf, theme);
         used = 1;
     }
     let content_top = top.saturating_add(usize::from(pinned.is_some()));
@@ -267,13 +276,15 @@ pub fn diff_body(
 
     for offset in 0..remaining {
         let idx = content_top.saturating_add(usize::from(offset));
-        let y = area.y.saturating_add(used).saturating_add(offset);
+        let slot = RowSlot {
+            x: area.x,
+            y: area.y.saturating_add(used).saturating_add(offset),
+            width: area.width,
+        };
         if let Some(row) = rows.get(idx) {
-            draw_diff_row(row, gutter, area.x, y, area.width, buf, theme, style_ctx);
-        } else if idx == rows.len() {
-            if let Some((shown, of_total)) = truncated {
-                draw_truncation_row(shown, of_total, area.x, y, area.width, buf, theme);
-            }
+            draw_diff_row(row, gutter, slot, buf, theme, style_ctx);
+        } else if let (true, Some((shown, of_total))) = (idx == rows.len(), truncated) {
+            draw_truncation_row(shown, of_total, slot, buf, theme);
         }
     }
 
@@ -291,42 +302,41 @@ struct DiffRowStyle {
     palette16: bool,
 }
 
-fn draw_diff_row(
-    row: &DiffRow<'_>,
-    gutter: usize,
+/// One screen row's position and width, bundled so drawing a row doesn't
+/// need three separate `u16` arguments (clippy's argument-count limit).
+#[derive(Clone, Copy)]
+struct RowSlot {
     x: u16,
     y: u16,
     width: u16,
+}
+
+fn draw_diff_row(
+    row: &DiffRow<'_>,
+    gutter: usize,
+    slot: RowSlot,
     buf: &mut Buffer,
     theme: &Theme,
     style_ctx: DiffRowStyle,
 ) {
     match row {
-        DiffRow::Heading(heading) => draw_heading(heading, x, y, width, buf, theme),
-        DiffRow::Line(line) => draw_line_row(line, gutter, x, y, width, buf, theme, style_ctx),
+        DiffRow::Heading(heading) => draw_heading(heading, slot, buf, theme),
+        DiffRow::Line(line) => draw_line_row(line, gutter, slot, buf, theme, style_ctx),
     }
 }
 
-fn draw_heading(heading: &SanitizedText, x: u16, y: u16, width: u16, buf: &mut Buffer, theme: &Theme) {
+fn draw_heading(heading: &SanitizedText, slot: RowSlot, buf: &mut Buffer, theme: &Theme) {
     let style = foreground(theme, Token::TextMuted);
-    let fitted = fit(heading.as_str(), usize::from(width));
-    buf.set_stringn(x, y, fitted, usize::from(width), style);
+    let fitted = fit(heading.as_str(), usize::from(slot.width));
+    buf.set_stringn(slot.x, slot.y, fitted, usize::from(slot.width), style);
 }
 
-fn draw_truncation_row(
-    shown: usize,
-    total: usize,
-    x: u16,
-    y: u16,
-    width: u16,
-    buf: &mut Buffer,
-    theme: &Theme,
-) {
+fn draw_truncation_row(shown: usize, total: usize, slot: RowSlot, buf: &mut Buffer, theme: &Theme) {
     let style = foreground(theme, Token::TextMuted);
     let more = total.saturating_sub(shown);
     let text = format!("\u{2026} {more} more lines \u{b7} L load all");
-    let fitted = fit(&text, usize::from(width));
-    buf.set_stringn(x, y, fitted, usize::from(width), style);
+    let fitted = fit(&text, usize::from(slot.width));
+    buf.set_stringn(slot.x, slot.y, fitted, usize::from(slot.width), style);
 }
 
 /// One diff line: `{old:>gutter} {new:>gutter} {sign}{text}`, the gutter
@@ -334,21 +344,24 @@ fn draw_truncation_row(
 fn draw_line_row(
     line: &LineView,
     gutter: usize,
-    x: u16,
-    y: u16,
-    width: u16,
+    slot: RowSlot,
     buf: &mut Buffer,
     theme: &Theme,
     style_ctx: DiffRowStyle,
 ) {
+    let RowSlot { x, y, width } = slot;
     let (sign, kind_token) = match line.kind {
         LineKindView::Added => ('+', Some(Token::Added)),
         LineKindView::Removed => ('-', Some(Token::Removed)),
         LineKindView::Context | LineKindView::HunkHeading => (' ', None),
     };
 
-    let old = line.old_no.map_or(String::new(), |number| number.to_string());
-    let new = line.new_no.map_or(String::new(), |number| number.to_string());
+    let old = line
+        .old_no
+        .map_or(String::new(), |number| number.to_string());
+    let new = line
+        .new_no
+        .map_or(String::new(), |number| number.to_string());
     let prefix = format!("{old:>gutter$} {new:>gutter$} ");
     let prefix_cells = u16::try_from(prefix.chars().count()).unwrap_or(u16::MAX);
     let prefix_fits = prefix_cells.min(width);
@@ -381,9 +394,15 @@ fn draw_line_row(
         return;
     }
     let text_width = width - drawn;
-    draw_styled_text(buf, text_x, y, text_width, line.text.as_str(), sign_style, |index| {
-        line_style_at(line, index, theme, style_ctx, kind_token)
-    });
+    draw_styled_text(
+        buf,
+        text_x,
+        y,
+        text_width,
+        line.text.as_str(),
+        sign_style,
+        |index| line_style_at(line, index, theme, style_ctx, kind_token),
+    );
 }
 
 /// The style for one char of `line`'s text (or, at `char_index ==
