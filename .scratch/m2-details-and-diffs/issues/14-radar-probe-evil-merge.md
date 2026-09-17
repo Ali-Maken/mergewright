@@ -1,6 +1,8 @@
 # radar-probe-evil-merge: is the selected merge's resolution honest?
 
-Status: ready
+Status: partial — the probe seam is done and committed (`b8e0aa7`); the
+`jobs`/`update`/`view` wiring, its tests and the capture remain. See
+**Handoff (session 1)** at the bottom.
 Blocked by: 01, 04, 13, 13b
 
 Status: draft
@@ -65,3 +67,96 @@ pub fn run_evil_probe(repo: &RepoHandle, merge: Oid, stop: &dyn Stop) -> EvilVer
 ## Size
 
 Two crates in substance (`graft-ops` ~60 lines, `graft` ~140: jobs ~30, update ~60, view ~50). Tests ~160. ≤ 22 tool calls. Named seam if tight: commit `probe_evil_merge` + its fixture tests first (self-contained, no app dependency); the `update`/`view` wiring is the remainder.
+
+## Handoff (session 1, partial)
+
+Done, committed at `b8e0aa7` (gates green for `graft-ops`; workspace
+untouched otherwise):
+
+- `crates/graft-ops/src/mistake_radar/probes.rs`: `probe_evil_merge` exactly
+  as specified, plus four fixture tests. **Verified by running them**, not
+  by inspection: `Shape::EvilMerge`'s tip → `Evil { files: ["evil.txt"] }`;
+  `Shape::FoxtrotMerge`'s tip → `Clean`; `Shape::OctopusMerge`'s tip →
+  `NotCheckable("octopus merge")`; the evil merge's first parent →
+  `NotCheckable("not a merge")`. Local git is 2.54, so the
+  "git too old for `--remerge-diff`" arm is code-reviewed, not observed.
+- `crates/graft-ops/MAP.md`: one line for `probe_evil_merge`.
+
+### Remaining, in order
+
+1. `crates/graft/src/update/events.rs`: `Task::EvilProbe { merge: Oid }`,
+   `Product::EvilProbe(Oid, EvilVerdict)`, `Command::EvilProbe(JobId, Oid)`.
+2. `crates/graft/src/jobs/radar.rs`: `run_evil_probe` (thin wrapper, mirror
+   `run_radar_context`). `crates/graft/src/jobs/runner.rs`: a
+   `Command::EvilProbe` arm in `dispatch_detail` (copy the
+   `Command::ContainedIn` arm at ~line 191, via a `repos`-opening helper like
+   `radar_context` at line 34), and add `Command::EvilProbe(..)` to the
+   routing list at ~line 448.
+3. `crates/graft/src/update/detail.rs`:
+   - `DetailState` + `pub evil: Loading<EvilVerdict>`, `pub evil_cache:
+     Bounded<Oid, EvilVerdict>` (`const EVIL_CACHE: usize = 16`), both in
+     `Default`.
+   - **`load`/`open`/`follow` cannot see the policy** (they are `DetailState`
+     methods; the policy lives on `AppState::radar`). Don't thread a param
+     through all 16 call sites. Add instead:
+     `pub fn probe_evil(&mut self, policy: &Policy, next_id: &mut impl
+     FnMut() -> JobId) -> Vec<Command>` — reads `self.spec`/`self.shown`;
+     returns `Command::CancelJob(old)` + `Idle` when the pane is hidden, the
+     spec is not `DetailSpec::Commit`, or `policy.severity(EvilMerge)` is
+     `None`; `evil_cache` hit → `Ready` with no command; miss → cancel any
+     prior pending, `Pending(id)` + `Command::EvilProbe(id, oid)`.
+     `state.detail.probe_evil(&state.radar.policy, next_id)` borrow-checks
+     (disjoint fields, two-phase borrow).
+   - `pub fn evil_probed(&mut self, id, oid, verdict)` — `return` unless
+     `self.evil == Loading::Pending(id)`; else cache + `Ready`.
+   - `refresh` must **not** clear `evil_cache`: a merge's tree is immutable,
+     so the verdict can never go stale.
+   - Call `probe_evil` right after the three sites that can land on a commit:
+     `detail.rs` ~line 714 (the `Enter` arm — add `radar` to the
+     `let AppState { detail, local_jobs, .. } = next;` destructure),
+     `selection.rs:121` (`follow_selection`'s tail; wrap the existing body so
+     every return path also gets the cancel), `context_menu.rs:138`
+     (`OpenDetails`). The two `Compare` paths never probe.
+   - A `Product::EvilProbe` arm beside `Product::ContainedIn` at
+     `detail.rs:643` (it needs the job id, which that arm currently drops).
+4. `crates/graft/src/update/mod.rs`: route `Product::EvilProbe(..)` into
+   `detail::detail_event` (~line 85), add `Task::EvilProbe { .. }` to the
+   ignored-`Started` list (~line 100), and `Product::EvilProbe(..)` to
+   `took_fact`'s not-a-fact arm (~line 190).
+5. `crates/graft/src/view/radar.rs`: the two cited seams. Guard both on
+   "this is the open commit": `matches!(state.detail.spec,
+   Some(DetailSpec::Commit(o)) if o == id)` — there is no `evil_at` field, so
+   the spec is what ties the verdict to a commit.
+   - `findings_for`: on `Ready(Evil { .. })`, push
+     `finding_from_evil(id, verdict, &state.radar.policy)`.
+   - `radar_lines_for`: inside the existing `if parents.len() >= 2 && …
+     EvilMerge on … && context_ready` block, match `state.detail.evil`
+     first: `Pending` → `EvilChecking`, `Ready(Clean)` → `EvilClean`,
+     `Ready(NotCheckable(r))` → `EvilNotCheckable(sanitize_line(r))`,
+     `Ready(Evil{..})` → push nothing (`findings_for` already emitted the
+     line), `Idle`/`Failed` → today's `EvilUnchecked`.
+6. Tests: `update` (cache hit/miss/cancel/stale-drop, `[radar] evil = off`
+   issues nothing), `view::radar` (one per `Loading` state). MAP.md for
+   `graft` (`jobs::radar::run_evil_probe`, `update::detail`'s two fields and
+   two methods, the three `events.rs` variants).
+7. Capture `docs/shots/m2-evil-merge.txt` (≤200 KB): a pty script under
+   `.scratch/m2-details-and-diffs/`, modelled on
+   `.scratch/m1-the-graph/pty-gallery.py`, driving the real binary against
+   `Shape::EvilMerge`'s fixture, merge row selected, detail pane open,
+   `⚠ evil merge` on the header's radar line. The user judges it by eye.
+
+### Gotchas
+
+- The ticket text says `Command::Cancel(JobId)`; the real name is
+  **`Command::CancelJob`**.
+- `Policy` is `Clone`, not `Copy` — pass `&Policy`.
+- `update/detail.rs` is scanned whole by the purity guard
+  (`update_cannot_reach_the_world` in `update/tests.rs`): no `GitInvocation`,
+  no `Stop`, no thread or clock in there — `Loading`/`Bounded`/`Command`
+  plumbing only.
+
+### Why this stopped here
+
+The ticket's own named seam. Session hit the 40-tool-call hard stop with the
+probe committed and green; the remainder is six files across two crates plus
+a pty capture, which is its own context.
