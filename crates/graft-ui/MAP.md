@@ -5,6 +5,7 @@ One line per public item. Update when a public item changes.
 - `diff_words` (mod) — word-level highlighting inside a paired diff line.
 - `fit` (mod) — clamp text to an exact cell width.
 - `graph_column` (mod) — the Unicode-tier graph column widget.
+- `detail` (mod) — the detail pane's view-model types, no drawing (m2-details-and-diffs/06).
 - `graph_screen` (mod) — the graph screen Graft opens on: header, rows, key hints (every graph key, F3 included; narrow widths drop whole hints from the right, m1-the-graph/33; `y sha` added in 45).
 - `graph_screen::badges` (mod) — ref badges: kinds, tracking state, plain/Nerd Font text.
 - `graph_screen::columns` (mod) — pure formatting for the author initials, relative date and short SHA.
@@ -12,6 +13,31 @@ One line per public item. Update when a public item changes.
 - `status_screen` (mod) — the status screen view and widget.
 - `syntax` (mod) — line-level syntax highlighting (`syntect`) over sanitised text.
 - `theme` (mod) — theme kinds, tokens, and colour resolution.
+
+## detail
+View-model types for the detail pane (m2-details-and-diffs/06); no widget. Every string is `SanitizedText`.
+- `Subject` (enum) — `None`, `Commit { sha }`, `Compare { base, head }`, `WorkingTree { staged, unstaged, untracked }`.
+- `DetailHeader` (struct) — subject, summary, author, dates, committer, co-authors, parents, against, contained, radar lines.
+- `ContainedIn` (enum) — `NotAsked`, `Checking`, `Known { branches, tags, more }`, `Failed`.
+- `RadarLine` (enum) — a finding (`Severity`, title) or the evil-merge / force-push states.
+- `FileStatusView` (enum) — added, deleted, modified, renamed, copied, type-changed, unmerged, untracked.
+- `FileRowKind` (enum) — `Message { lines }`, `Dir { collapsed }`, `File { status, added, removed }`.
+- `FileRow` (struct) — depth, name, kind, `entry` (index into the git list; `None` for message/dir).
+- `FileListView` (struct) — rows, cursor, top, totals, `message` (the `✉` row's body lines).
+- `FileListView::visible` (fn) — rows not under a collapsed dir, with their indices.
+- `FileListView::toggle_dir` (fn) — collapse or expand a dir row.
+- `FileListView::move_cursor` (fn) — move among visible rows, clamped.
+- `FileListView::selected_entry` (fn) — the cursor row's git entry, if a file.
+- `LineKindView` (enum) — `Context`, `Added`, `Removed`, `HunkHeading`.
+- `LineView` (struct) — kind, old/new numbers, text, word ranges, `SyntaxSpan`s, `pair` (index of its partner line).
+- `HunkView` (struct) — heading and lines.
+- `DiffMode` (enum) — `Unified`, `SideBySide`.
+- `DiffOptionsView` (struct) — context, ignore_whitespace, word_tint; `Default`.
+- `DiffView` (struct) — path, old path, status, hunks, `binary`, `truncated`, `untracked`.
+- `BodyView` (enum) — `Empty`, `Message`, `Loading`, `Failed`, `Diff(Arc<DiffView>)`.
+- `DetailFocus` (enum) — `Graph`, `Files`, `Diff`.
+- `DetailView` (struct) — everything the pane draws: header, files, body, body_top, focus, mode, options, explain.
+- `ExplainView` (struct) — the explain panel's title, severity, paragraphs, sketch (built by `explain-panel`).
 
 ## diff_words
 - `WordSpans` (struct) — `removed`/`added`: per-line char ranges that changed against the paired line on the other side.

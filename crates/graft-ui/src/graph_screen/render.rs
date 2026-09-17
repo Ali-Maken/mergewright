@@ -310,7 +310,7 @@ fn badges_width(entry: &GraphEntry<'_>, icons: Icons, columns: &Columns) -> u16 
 /// Whether `entry`'s subject needed a `…` to fit the subject column it is
 /// actually drawn into — badges' share subtracted first, the same as
 /// [`GraphScreen::draw_badges`]. What the footer reveal
-/// ([`GraphView::reveal`]) and the peek hint (`reveal_hint`) key off.
+/// ([`GraphView::reveal`]) keys off.
 pub(super) fn subject_truncated(entry: &GraphEntry<'_>, icons: Icons, columns: &Columns) -> bool {
     let taken = badges_width(entry, icons, columns);
     let available = usize::from(columns.subject_width.saturating_sub(taken));

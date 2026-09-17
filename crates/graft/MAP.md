@@ -86,8 +86,8 @@ One line per public item. Update when a public item changes.
 ## update
 - `AppEvent` (enum) — events fed into `update`, including job products.
 - `Progress` (enum) — what a running job hands over before it ends.
-- `Task` (enum) — jobs identified so their results can be told apart from stray ones; `ReadRefs` reads the badges; `ReadWorkingTree` reads working-tree status counts; `PromoteHistory` sorts for ADR-0008 promotion; `Search` scans for `/`; `WriteCommitGraph`/`DeclineCommitGraph` the offer's jobs. `Progress::Search` carries one chunk's hits.
-- `Product` (enum) — what a job brought back; `Refs` carries `RefBadges` or why they failed; `WorkingTree` carries `WorkingTreeCounts` or why they failed; `TopologicalOrder` carries a sort's order; `CommitGraph(Result<Written, String>)` and `CommitGraphDeclined(Result<(), String>)` the offer's answers.
+- `Task` (enum) — jobs identified so their results can be told apart from stray ones; `ReadRefs` reads the badges; `ReadWorkingTree` reads working-tree status counts; `PromoteHistory` sorts for ADR-0008 promotion; `Search` scans for `/`; `WriteCommitGraph`/`DeclineCommitGraph` the offer's jobs. `Progress::Search` carries one chunk's hits; `ListFiles { spec }`, `FileDiff { key }`, `ContainedIn { oid }` the detail pane's reads.
+- `Product` (enum) — what a job brought back; `Refs` carries `RefBadges` or why they failed; `WorkingTree` carries `WorkingTreeCounts` or why they failed; `TopologicalOrder` carries a sort's order; `CommitGraph(Result<Written, String>)` and `CommitGraphDeclined(Result<(), String>)` the offer's answers; `Files(Result<(Arc<FileListView>, Arc<FileList>), String>)`, `FileDiff(DiffKey, Result<Arc<DiffView>, String>)`, `ContainedIn(Oid, Result<Contained, String>)` the detail pane's answers.
 - `GitCheck` (enum) — what running `git --version` found.
 - `AppState` (struct) — the whole app state.
 - `AppState::quit` (field) — set when Graft is leaving; terminal restored before reporting.
@@ -112,8 +112,9 @@ One line per public item. Update when a public item changes.
 - `AppState::screen` (field) — which screen is on show; graph by default.
 - `AppState::lanes_expanded` (field) — `+` pressed: lanes draw unfolded; a view flag, the rows are untouched.
 - `AppState::focus` (field) — Focus mode (`F`; `Esc` leaves it before cancelling anything): rows off the selection's thread fade; paint only.
-- `AppState::hover` (field) — the absolute row under the pointer, set by mouse movement; drives the footer reveal when set and the cursor row isn't peeking (m1-the-graph/41, ADR-0023).
-- `AppState::peek` (field) — `Enter` toggles a one-shot reveal of the cursor row's subject in the footer; any other key clears it, `Esc` clears it before anything else (m1-the-graph/41, ADR-0023).
+- `AppState::hover` (field) — the absolute row under the pointer, set by mouse movement; drives the footer reveal when set (m1-the-graph/41). The `Enter` peek is gone: `Enter` opens the detail pane (ADR-0023).
+- `AppState::detail` (field) — `DetailState`, the detail pane; hidden by default (m2-details-and-diffs/06).
+- `AppState::local_jobs` (field) — `LocalJobs`, ids for the jobs `update` names itself (the detail pane's reads).
 - `AppState::renderer_override` (field) — the tier-drop key (`F3`) forced this tier for the rest of the run, or `None` for whatever `Session::settle` decided (m1-the-graph/19).
 - `AppState::settled_tier` (field) — `Session::settle`'s tier, copied in at loop start; `None` without a session (m1-the-graph/24d).
 - `AppState::tier` (fn) — tier in force: F3's override, else settled, else Unicode. F3 (`cycle_tier`) cycles Pixel→Unicode→Ascii→settled tier, never above it; back at the top the override clears. History pads to strips only at Pixel (m1-the-graph/33).
@@ -125,10 +126,30 @@ One line per public item. Update when a public item changes.
 - `Size` (struct) — terminal size in character cells.
 - `Size::columns` (field) — width in character cells.
 - `Size::rows` (field) — height in character cells.
-- `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows; `ReadRefs` reads refs and ahead/behind off the loop's thread; `ReadWorkingTree` reads working-tree status counts off the loop's thread; `PromoteHistory` sorts a provisional walk's range topologically; `Search(Query)` starts a search job. `CopyToClipboard(String)` is terminal output the loop writes itself (through the session's tmux transport; a write error ends the loop), never dispatched to jobs (m1-the-graph/45).
+- `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows; `ReadRefs` reads refs and ahead/behind off the loop's thread; `ReadWorkingTree` reads working-tree status counts off the loop's thread; `PromoteHistory` sorts a provisional walk's range topologically; `Search(Query)` starts a search job. `ListFiles(JobId, DiffSpec, DiffOptions)`, `ReadFileDiff(JobId, DiffKey, FileEntry)`, `ContainedIn(JobId, Oid)` run the detail pane's reads under ids `update` chose (`CancelJob` stops them). `CopyToClipboard(String)` is terminal output the loop writes itself (through the session's tmux transport; a write error ends the loop), never dispatched to jobs (m1-the-graph/45).
 - `CHROME_ROWS` (const) — screen rows that are not the graph without a harness banner; `graft_ui::graph_screen::CHROME_ROWS`. `AppState::graph_rows` adds `Harness::banner_rows`.
 - `AppState::graph_rows` (fn) — history rows the graph pane shows at the current size; never zero.
 - `update` (fn) — the pure state transition function.
+
+## update::detail
+The detail pane's state and transitions; pure (no I/O, no clock). Drawing is `detail-pane-frame`'s.
+- `LOCAL_JOB_BIT` (const) — top bit of every id `update` issues itself, so it never meets a runner-issued id.
+- `LocalJobs` (struct) — `next_id`: hands out `LOCAL_JOB_BIT` ids.
+- `DetailSpec` (enum) — `Commit(Oid)`, `Compare { base, head }`, `WorkingTree`; `diff_spec` maps it to git's `DiffSpec`.
+- `Loading<T>` (enum) — `Idle`, `Pending(JobId)`, `Ready(T)`, `Failed(String)`.
+- `DiffKey` (struct) — spec, entry, options, max_lines: one file's diff; the diff cache's key.
+- `Bounded<K, V>` (struct) — small map that evicts its oldest entry when full; `new`, `get`, `insert`, `clear`.
+- `DetailState` (struct) — spec, shown, focus, files (`Loading` of view + git list), diff, `diff_cache` (8), `contained` (64), options, mode, word_tint, max_lines (5,000), body_top.
+- `DetailState::open` (fn) — shows the pane on a spec, cancels a pending list, asks for files (and contained-in once per oid).
+- `DetailState::close` (fn) — hides the pane, focus back to the graph.
+- `DetailState::selected_entry` (fn) — the files cursor's git entry, if any.
+- `DetailState::follow` (fn) — selection moved while shown: re-open on the new spec, keeping focus.
+- `DetailState::refresh` (fn) — `Ctrl+R`: clears both caches, re-asks the spec.
+- `DetailState::files_arrived` (fn) — stale-dropped by id; `Ok` → `Ready`, cursor 0, first diff asked (or the message shown).
+- `DetailState::move_files_cursor` (fn) — `j`/`k` on the files list: cache hit → `Ready`, else cancel + `ReadFileDiff`.
+- `DetailState::diff_arrived` (fn) — stale-dropped by id; `Ok` cached + `Ready`, `Err` → `Failed`.
+- `DetailState::contained_arrived` (fn) — cached whatever the selection now is.
+- `DetailState::cycle_focus` (fn) — `Tab`/`Shift+Tab`: Graph→Files→Diff→Graph while shown.
 
 ## search
 - `Query` (struct) — a case-insensitive literal needle; `parse` (None when blank), `text`, `matches(id, subject, author, body)` (sha prefix only when all hex).
@@ -243,6 +264,7 @@ Internal split (m1-the-graph/71, public paths unchanged): `types` (`Outcome`,
 `Work`, `Cancel`, `JobEvents`, `Delivery`, `Dispatch`), `pool` (`Shutdown`,
 plus the private queue/worker bookkeeping), `kinds` (the work behind each
 command), `runner` (`JobRunner`) — re-exported from `mod.rs`.
+- `detail` (private mod) — the detail pane's reads: `assemble_files(&FileList, Option<&[u8]>) -> FileListView` (path tree, `✉` row when the body has a non-trailer line) and `assemble_diff(&FileDiff, word_tint) -> DiffView` (sanitise, pairs, word spans, syntax, CRLF → `␍`), both pure; `read_files`/`read_file_diff`/`read_contained` run them on a worker with the job's `Cancel` as the git `Stop`. The runner queues them under `update`'s ids (`queue_as`).
 - `MAX_WORKERS` (const) — worker thread cap (PROMPT.md §7.1).
 - `SHUTDOWN_GRACE` (const) — how long shutdown waits before abandoning workers.
 - `Outcome` (enum) — how a job ended, as the job itself sees it.

@@ -1,9 +1,8 @@
 # detail-model-and-jobs: detail state, its jobs and the view-model types, no drawing
 
-Status: partial
+Status: done
 Blocked by: 01, 02, 03, 05
 
-Status: draft
 Build with: Opus — cancellation, stale-product rules and the update-purity guard are where a wrong shape becomes structural for six pass-2 tickets.
 Needs: `git-runner` (`Stop`, `contained_in`, `Contained`), `diff-reads` (`DiffSpec`, `DiffOptions`, `list_files`, `file_diff`, `DiffError`), `diff-parser` (`FileList`, `FileEntry`, `FileDiff`, `pairs`), `syntax-highlighting` (`language_for_path`, `language_for_first_line`, `highlight`, `word_spans`, `SyntaxSpan`)
 
@@ -85,15 +84,15 @@ pub fn assemble_files(list: &FileList, message: Option<&[u8]>) -> FileListView; 
 
 ## Acceptance
 
-- [ ] `update` tests (fixture `Shape::FeatureBranches`, no jobs run): `Enter` on a row → `detail.shown`, `focus == Files`, one `Command::ListFiles` with that row's id; `j` on the graph while shown → `Cancel(old)` + a new `ListFiles`; `Esc` → hidden, no command; a second `Enter` on the same row while shown → no new command.
-- [ ] Stale drop: `Product::Files` with an id that is not `detail.files`'s pending id changes nothing.
-- [ ] `Product::Files(Ok)` → `files == Ready`, `cursor == 0`, exactly one `ReadFileDiff` (or none when row 0 is `✉` and the body shows the message); `k`/`j` across files issue diffs and hit the cache on the way back (second visit → no command).
-- [ ] `assemble_files` on a list with `a/b/c.rs`, `a/d.rs`, `e.rs` gives rows `a/`, `b/`, `c.rs`, `d.rs`, `e.rs` with depths 0,1,2,1,0; with a two-line body the first row is `Message { lines: 2 }`; a body that is only `Signed-off-by:` gives no message row; `toggle_dir` hides `b/`'s children from `visible()`.
-- [ ] `assemble_diff` on a hand-built `FileDiff` (one hunk, two paired lines): `HunkHeading` first, `pair` set on both, `words` non-empty on the changed word, `syntax` non-empty for a `.rs` path, an ESC byte in a line arrives as the sanitiser's replacement, a CRLF line ends in `␍`.
-- [ ] Jobs test with the pool (fixture temp copy): `Command::ListFiles` → `Product::Files(Ok)` with the fixture's file count; `Command::ReadFileDiff` → `Product::FileDiff(Ok)`; `Command::ContainedIn` → `Product::ContainedIn(Ok)` naming `main`; `Cancel` on a running `FileDiff` for `git-git`-sized input is not tested here (no heavy tier) — the runner's own stop test covers it.
-- [ ] Purity guard passes for `update/detail.rs`; edge test passes (ui has no git/ops import: `SyntaxSpan` and `Severity` come from ui/core).
-- [ ] `peek` removed (or the seam reported); the M1 hover reveal test still passes.
-- [ ] MAP.md: `graft` (update/detail, jobs/detail, `AppState::detail`, `Command`/`Task`/`Product` lines amended) and `graft-ui` (`detail` section).
+- [x] `update` tests (fixture `Shape::FeatureBranches`, no jobs run): `Enter` on a row → `detail.shown`, `focus == Files`, one `Command::ListFiles` with that row's id; `j` on the graph while shown → `Cancel(old)` + a new `ListFiles`; `Esc` → hidden, no command; a second `Enter` on the same row while shown → no new command.
+- [x] Stale drop: `Product::Files` with an id that is not `detail.files`'s pending id changes nothing.
+- [x] `Product::Files(Ok)` → `files == Ready`, `cursor == 0`, exactly one `ReadFileDiff` (or none when row 0 is `✉` and the body shows the message); `k`/`j` across files issue diffs and hit the cache on the way back (second visit → no command).
+- [x] `assemble_files` on a list with `a/b/c.rs`, `a/d.rs`, `e.rs` gives rows `a/`, `b/`, `c.rs`, `d.rs`, `e.rs` with depths 0,1,2,1,0; with a two-line body the first row is `Message { lines: 2 }`; a body that is only `Signed-off-by:` gives no message row; `toggle_dir` hides `b/`'s children from `visible()`.
+- [x] `assemble_diff` on a hand-built `FileDiff` (one hunk, two paired lines): `HunkHeading` first, `pair` set on both, `words` non-empty on the changed word, `syntax` non-empty for a `.rs` path, an ESC byte in a line arrives as the sanitiser's replacement, a CRLF line ends in `␍`.
+- [x] Jobs test with the pool (fixture temp copy): `Command::ListFiles` → `Product::Files(Ok)` with the fixture's file count; `Command::ReadFileDiff` → `Product::FileDiff(Ok)`; `Command::ContainedIn` → `Product::ContainedIn(Ok)` naming `main`; `Cancel` on a running `FileDiff` for `git-git`-sized input is not tested here (no heavy tier) — the runner's own stop test covers it.
+- [x] Purity guard passes for `update/detail.rs`; edge test passes (ui has no git/ops import: `SyntaxSpan` and `Severity` come from ui/core).
+- [x] `peek` removed (or the seam reported); the M1 hover reveal test still passes.
+- [x] MAP.md: `graft` (update/detail, jobs/detail, `AppState::detail`, `Command`/`Task`/`Product` lines amended) and `graft-ui` (`detail` section).
 
 ## Gates
 
@@ -123,3 +122,13 @@ Deviations from spec (say so at review):
 - Update tests use `merge_on_screen`, not `Shape::FeatureBranches` (update tests build no fixture repos).
 - WorkingTree `Enter` not wired (no working-tree row id found within budget).
 - Runner always computes word spans (`assemble_diff(.., true)`); `DetailState::word_tint` is the widget's switch.
+
+## Continuation 1 (builder-opus, 2026-09-17; no compaction)
+
+Closed the handoff list:
+1. clippy `too_many_lines`: `dispatch` → `read_refs`/`read_working_tree`/`read_history` methods; `answer` → `history_started`. `dispatch_detail`'s catch-all is now `unreachable!` (routing bug), not a silent `_ => {}`.
+2. Pool test `jobs::tests::the_detail_reads_come_back_as_products` on a `FeatureBranches` temp copy: `ListFiles` count equals `git diff --name-only main^1 main`; `ReadFileDiff` entry 0 `Ok`; `ContainedIn` names `main`.
+3. MAP.md: graft (`update::detail` section, jobs `detail` line, `AppState::detail`/`local_jobs`, Task/Product/Command amended, peek line removed); graft-ui (`detail` section + lib line).
+4. graft-ui peek hint removed (`reveal_hint`, `PRE_REVEAL_HINTS`, its test; `key_hints` lost the `reveal` arg); comments no longer mention a peek.
+
+Not done, recorded in KNOWN_GAPS (m2/06): WorkingTree `Enter` (the uncommitted row is view-synthesised, not a cursor position); no `Enter` footer hint until the pane draws.

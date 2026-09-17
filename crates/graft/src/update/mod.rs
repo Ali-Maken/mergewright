@@ -63,21 +63,7 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             commit_graph::commit_graph_event(next, event);
         }
         AppEvent::Core(event) => core_event(next, commands, event),
-        AppEvent::Started(id, Task::ReadHistory) => {
-            // The newest ask wins. Anything the previous walk was going to
-            // say is now about a question nobody asked.
-            next.awaiting = Some(id);
-            let mut history = History::started();
-            history.strip_rows = keys::strip_rows_for(next.tier());
-            // A refresh keeps what the user folded, hid or switched to.
-            if let Some(previous) = &next.history {
-                history.view = previous.view.clone();
-            }
-            if let Some(request) = history.show(next.graph_rows()) {
-                commands.push(Command::ShowRows(id, request));
-            }
-            next.history = Some(history);
-        }
+        AppEvent::Started(id, Task::ReadHistory) => history_started(next, commands, id),
         AppEvent::Started(id, Task::PromoteHistory) => history::sort_started(next, commands, id),
         AppEvent::Started(id, Task::Search) => search::search_started(next, commands, id),
         // The detail pane names its jobs itself, before they start.
@@ -133,6 +119,23 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             search::search_progress(next, commands, id, hits);
         }
     }
+}
+
+/// A history walk started: it replaces whatever walk came before.
+fn history_started(next: &mut AppState, commands: &mut Vec<Command>, id: graft_core::job::JobId) {
+    // The newest ask wins. Anything the previous walk was going to
+    // say is now about a question nobody asked.
+    next.awaiting = Some(id);
+    let mut history = History::started();
+    history.strip_rows = keys::strip_rows_for(next.tier());
+    // A refresh keeps what the user folded, hid or switched to.
+    if let Some(previous) = &next.history {
+        history.view = previous.view.clone();
+    }
+    if let Some(request) = history.show(next.graph_rows()) {
+        commands.push(Command::ShowRows(id, request));
+    }
+    next.history = Some(history);
 }
 
 /// A fact about the repository beside the graph arrived: the system git

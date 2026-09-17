@@ -11,7 +11,6 @@ use super::layout::{Columns, graph_width, text_width};
 use super::render::subject_truncated;
 use super::{CommitGraphLine, GraphEntry, GraphScreen, SearchLine};
 use crate::fit::fit;
-use crate::graph_column::RowPaint;
 use crate::paint::foreground;
 use crate::theme::Token;
 
@@ -37,7 +36,7 @@ impl GraphScreen<'_> {
     }
 
     /// The footer's text and token: a problem, a search line, a notice, the
-    /// reveal (a truncated subject, named by hover or by peek), or — when
+    /// reveal (a truncated subject, named by hover), or — when
     /// none of those apply — the ordinary key hints.
     pub(super) fn footer_line(
         &self,
@@ -47,9 +46,8 @@ impl GraphScreen<'_> {
         fold: &Fold,
         width: usize,
     ) -> (String, Token) {
-        // Same columns the body just drew through: the reveal and the peek
-        // hint must agree with the body on which subjects the `…` actually
-        // landed on.
+        // Same columns the body just drew through: the reveal must agree
+        // with the body on which subjects the `…` actually landed on.
         let columns = Columns::compute(body, graph_width(body, rows, applied));
         let reveal_subject = self
             .view
@@ -57,10 +55,6 @@ impl GraphScreen<'_> {
             .and_then(|index| rows.get(index))
             .filter(|entry| subject_truncated(entry, self.view.icons, &columns))
             .map(|entry| entry.subject.as_str().to_owned());
-        let cursor_truncated = rows
-            .iter()
-            .find(|entry| entry.line.paint == RowPaint::Highlighted)
-            .is_some_and(|entry| subject_truncated(entry, self.view.icons, &columns));
 
         match (&self.view.problem, &self.view.search, &self.view.notice) {
             (Some(problem), _, _) => (format!(" {problem}"), Token::Warning),
@@ -73,11 +67,7 @@ impl GraphScreen<'_> {
             (None, None, None) => match &reveal_subject {
                 Some(subject) => (format!(" {subject}"), Token::Text),
                 None => (
-                    key_hints(
-                        expand_hint(fold, self.view.compaction.expanded),
-                        reveal_hint(cursor_truncated),
-                        width,
-                    ),
+                    key_hints(expand_hint(fold, self.view.compaction.expanded), width),
                     Token::TextMuted,
                 ),
             },
@@ -158,13 +148,11 @@ pub(super) fn grouped(number: u32) -> String {
 /// (PROMPT.md principle 4: the hint bar teaches the tool). Leaving, the
 /// status screen and the renderer first, then `+` while it applies
 /// ([`LEADING_HINTS`] of these come before it), then search and movement
-/// ([`PRE_REVEAL_HINTS`] of these come before the reveal hint), then the
-/// reveal hint while there is something to peek, then the rest of the
-/// actions: a narrow terminal drops whole hints from the right, and the
-/// hint that comes and goes matters more than the movement keys that are
-/// always there. `n`/`N` live on the search line, where they work. `Enter`
-/// has no permanent hint (ADR-0023): it peeks a truncated subject, which
-/// [`reveal_hint`] names only while the cursor row needs it.
+/// and movement, then the rest of the actions: a narrow terminal drops whole
+/// hints from the right, and the hint that comes and goes matters more than
+/// the movement keys that are always there. `n`/`N` live on the search line,
+/// where they work. `Enter` opens the detail pane (ADR-0023); its hint comes
+/// with the pane (`detail-pane-frame`), not before it draws.
 pub(super) const HINTS: [&str; 13] = [
     "q quit",
     "F2 status",
@@ -182,10 +170,6 @@ pub(super) const HINTS: [&str; 13] = [
 ];
 /// How many of [`HINTS`] come before the lane-expansion hint.
 const LEADING_HINTS: usize = 3;
-/// How many more of [`HINTS`], after the lane-expansion hint, come before
-/// the reveal hint: `/ search` and `j/k move`, so `⏎ full subject` sits
-/// where `Enter pin` used to.
-const PRE_REVEAL_HINTS: usize = 2;
 
 /// The hint for the lane-expansion key, shown only while there is something
 /// to expand or collapse.
@@ -197,25 +181,15 @@ fn expand_hint(fold: &Fold, expanded: bool) -> Option<&'static str> {
     }
 }
 
-/// The hint for `Enter`'s one-shot peek, shown only while the cursor row's
-/// subject is cut with `…` — a hint with nothing to do is noise, the same
-/// reasoning as [`expand_hint`].
-fn reveal_hint(cursor_subject_truncated: bool) -> Option<&'static str> {
-    cursor_subject_truncated.then_some("⏎ full subject")
-}
-
 /// The footer's key hints within `width` columns: as many whole hints as
 /// fit, dropped from the right, never one cut in half.
-pub(super) fn key_hints(expand: Option<&str>, reveal: Option<&str>, width: usize) -> String {
-    let (leading, after_leading) = HINTS.split_at(LEADING_HINTS);
-    let (pre_reveal, rest) = after_leading.split_at(PRE_REVEAL_HINTS);
+pub(super) fn key_hints(expand: Option<&str>, width: usize) -> String {
+    let (leading, rest) = HINTS.split_at(LEADING_HINTS);
     let mut line = String::new();
     for hint in leading
         .iter()
         .copied()
         .chain(expand)
-        .chain(pre_reveal.iter().copied())
-        .chain(reveal)
         .chain(rest.iter().copied())
     {
         let separator = if line.is_empty() { " " } else { "  " };

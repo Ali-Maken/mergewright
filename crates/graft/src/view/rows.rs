@@ -130,8 +130,7 @@ pub(crate) fn order_notice(history: &History) -> Option<OrderNotice> {
 }
 
 /// Which of `rows` the footer reveals in full, if any (ADR-0023): the
-/// hovered row, else the cursor row while a peek is on, else none. `hover`
-/// and the cursor are absolute history row numbers; `rows` is indexed from
+/// hovered row, else none. `hover` is an absolute history row number; `rows` is indexed from
 /// the top of the viewport, offset by one when the uncommitted row draws
 /// above it (`visible_rows`) — the same arithmetic, so the two never
 /// disagree about which row is which. `None` when the row named is not

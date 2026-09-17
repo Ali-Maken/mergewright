@@ -175,8 +175,9 @@ impl<S: JobEvents> JobRunner<S> {
                     Product::ContainedIn(oid, super::detail::read_contained(&repos, oid, cancel))
                 });
             }
-            // `dispatch` routes only the three above here.
-            _ => {}
+            // `dispatch` routes only the three above here; anything else is a
+            // routing bug, not a runtime condition.
+            other => unreachable!("not a detail command: {other:?}"),
         }
     }
 
@@ -343,6 +344,42 @@ impl<S: JobEvents> JobRunner<S> {
             Outcome::Produced(Product::CommitGraphDeclined(decline_commit_graph(&repos)))
         });
     }
+    /// Reads the refs off the loop's thread.
+    fn read_refs(&self) {
+        let repos = Arc::clone(&self.repos);
+        let cache = Arc::clone(&self.ahead_behind);
+        self.announce(Task::ReadRefs, move |cancel| {
+            if cancel.is_cancelled() {
+                return Outcome::Cancelled;
+            }
+            Outcome::Produced(Product::Refs(crate::refs::read(&repos, &cache)))
+        });
+    }
+
+    /// Reads the working tree's counts off the loop's thread.
+    fn read_working_tree(&self) {
+        let repos = Arc::clone(&self.repos);
+        self.announce(Task::ReadWorkingTree, move |cancel| {
+            if cancel.is_cancelled() {
+                return Outcome::Cancelled;
+            }
+            Outcome::Produced(Product::WorkingTree(crate::working_tree::read(&repos)))
+        });
+    }
+
+    /// Starts the history walk and keeps the channel its row requests go down.
+    fn read_history(&self, order: graft_git::history::Order) {
+        let repos = Arc::clone(&self.repos);
+        let sink = self.sink.clone();
+        let (asks, requests) = std::sync::mpsc::channel();
+        // Registered before `update` can see the job has started: the
+        // announcement travels through the loop's queue, and this runs
+        // on the loop's own thread before it reads that queue again.
+        let id = self.queue_job(Some(Task::ReadHistory), |id| {
+            read_history(repos, order, requests, sink, id)
+        });
+        self.row_requests().insert(id, asks);
+    }
 }
 
 impl<S: JobEvents> Dispatch for JobRunner<S> {
@@ -352,40 +389,12 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::CheckSystemGit => {
                 self.announce(Task::CheckSystemGit, check_system_git());
             }
-            Command::ReadRefs => {
-                let repos = Arc::clone(&self.repos);
-                let cache = Arc::clone(&self.ahead_behind);
-                self.announce(Task::ReadRefs, move |cancel| {
-                    if cancel.is_cancelled() {
-                        return Outcome::Cancelled;
-                    }
-                    Outcome::Produced(Product::Refs(crate::refs::read(&repos, &cache)))
-                });
-            }
-            Command::ReadWorkingTree => {
-                let repos = Arc::clone(&self.repos);
-                self.announce(Task::ReadWorkingTree, move |cancel| {
-                    if cancel.is_cancelled() {
-                        return Outcome::Cancelled;
-                    }
-                    Outcome::Produced(Product::WorkingTree(crate::working_tree::read(&repos)))
-                });
-            }
+            Command::ReadRefs => self.read_refs(),
+            Command::ReadWorkingTree => self.read_working_tree(),
             Command::PromoteHistory => self.promote_history(),
             Command::WriteCommitGraph => self.write_commit_graph(),
             Command::DeclineCommitGraph => self.decline_commit_graph(),
-            Command::ReadHistory(order) => {
-                let repos = Arc::clone(&self.repos);
-                let sink = self.sink.clone();
-                let (asks, requests) = std::sync::mpsc::channel();
-                // Registered before `update` can see the job has started: the
-                // announcement travels through the loop's queue, and this runs
-                // on the loop's own thread before it reads that queue again.
-                let id = self.queue_job(Some(Task::ReadHistory), |id| {
-                    read_history(repos, order, requests, sink, id)
-                });
-                self.row_requests().insert(id, asks);
-            }
+            Command::ReadHistory(order) => self.read_history(order),
             Command::ShowRows(id, request) => {
                 let mut row_requests = self.row_requests();
                 // No sender means the job was cancelled or has ended; its answer

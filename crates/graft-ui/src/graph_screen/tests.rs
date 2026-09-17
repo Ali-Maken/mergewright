@@ -662,32 +662,6 @@ fn no_reveal_shows_the_ordinary_hints() {
     assert!(footer.contains("move"), "{screen:#?}");
 }
 
-/// `⏎ full subject` only advertises the peek while the cursor row itself is
-/// the one that needs it — not while some other row is truncated.
-#[test]
-fn the_peek_hint_names_itself_only_when_the_cursor_row_is_truncated() {
-    let rows = linear_with_subject(3, LONG_SUBJECT);
-    let truncated_cursor = view(&rows, WalkView::Complete { rows: 3 }, 0);
-    let other_cursor = view(&rows, WalkView::Complete { rows: 3 }, 1);
-
-    let with_hint = text(&draw(&truncated_cursor, 90, 6));
-    let without_hint = text(&draw(&other_cursor, 90, 6));
-    assert!(
-        with_hint
-            .last()
-            .expect("a footer row")
-            .contains("full subject"),
-        "{with_hint:#?}"
-    );
-    assert!(
-        !without_hint
-            .last()
-            .expect("a footer row")
-            .contains("full subject"),
-        "{without_hint:#?}"
-    );
-}
-
 /// Escape sequences in a subject render inert in the reveal, the same as
 /// everywhere else repository text crosses into the view (17's fixture).
 #[test]
@@ -785,7 +759,7 @@ fn the_footer_lists_every_graph_key_dropping_whole_hints_when_narrow() {
 
 #[test]
 fn the_expand_hint_keeps_its_place_after_the_renderer() {
-    let line = key_hints(Some("+ expand lanes"), None, 200);
+    let line = key_hints(Some("+ expand lanes"), 200);
     assert!(
         line.starts_with(" q quit  F2 status  F3 renderer  + expand lanes  / search"),
         "{line}"

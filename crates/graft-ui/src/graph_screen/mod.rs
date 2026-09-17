@@ -86,8 +86,7 @@ pub struct GraphView<'a> {
     /// first-parent graph is never mistaken for the whole one.
     pub filters: Filters,
     /// The row whose full subject the footer reveals in place of the key
-    /// hints: an index into [`GraphView::rows`], from a hover, or from the
-    /// cursor while `Enter`'s one-shot peek is on (ADR-0023). `None` shows
+    /// hints: an index into [`GraphView::rows`], from a hover. `None` shows
     /// the ordinary hints. A row whose subject was not cut with `…` draws
     /// nothing extra even when named here — nothing to reveal.
     pub reveal: Option<usize>,

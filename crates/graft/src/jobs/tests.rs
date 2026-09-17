@@ -580,3 +580,80 @@ fn ahead_behind_is_counted_on_a_worker_never_the_loops_thread() {
     );
     assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
 }
+
+/// What the job `id` brought back, past its own start announcement: the
+/// detail pane's jobs run under ids `update` chose, so they are told apart
+/// by id, not by task.
+fn product_of(events: &Receiver<AppEvent>, id: JobId) -> Product {
+    loop {
+        match next_report(events) {
+            AppEvent::Started(started, _) if started == id => {}
+            AppEvent::Produced(produced, product) if produced == id => return product,
+            other => panic!("expected job {id:?} to answer, got {other:?}"),
+        }
+    }
+}
+
+/// A writable copy of the feature-branches fixture, `main`'s tip, and how
+/// many files that tip changes against its first parent (git's own count).
+fn feature_branches_main() -> (graft_fixtures::Scratch, graft_core::oid::Oid, usize) {
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::FeatureBranches);
+    let git = |args: &[&str]| {
+        let out = graft_fixtures::git::run(scratch.path(), args).expect("git runs on the fixture");
+        String::from_utf8(out).expect("git prints utf-8 here")
+    };
+    let oid = graft_core::oid::Oid::from_hex(git(&["rev-parse", "main"]).trim())
+        .expect("main names a commit");
+    let files = git(&["diff", "--name-only", "main^1", "main"])
+        .lines()
+        .count();
+    assert!(files > 0, "the fixture's main tip must change a file");
+    (scratch, oid, files)
+}
+
+/// The detail pane's three reads, end to end on the pool, over a writable
+/// copy of a corpus fixture: the file list, one file's diff, and the refs
+/// that contain the commit.
+#[test]
+fn the_detail_reads_come_back_as_products() {
+    use crate::update::detail::{DetailSpec, DiffKey, LocalJobs};
+
+    let (scratch, oid, expected_files) = feature_branches_main();
+    let (runner, events, _store) = runner_at(scratch.path(), 1);
+    let mut ids = LocalJobs::default();
+    let spec = DetailSpec::Commit(oid);
+    let options = graft_git::diff::DiffOptions::default();
+
+    let list_id = ids.next_id();
+    runner.dispatch(Command::ListFiles(list_id, spec.diff_spec(), options));
+    let Product::Files(Ok((view, list))) = product_of(&events, list_id) else {
+        panic!("the file list must read");
+    };
+    assert_eq!(view.files as usize, expected_files);
+    assert_eq!(list.files.len(), expected_files);
+
+    let diff_id = ids.next_id();
+    let key = DiffKey {
+        spec,
+        entry: 0,
+        options,
+        max_lines: 5_000,
+    };
+    runner.dispatch(Command::ReadFileDiff(diff_id, key, list.files[0].clone()));
+    let Product::FileDiff(got, Ok(_)) = product_of(&events, diff_id) else {
+        panic!("the first file's diff must read");
+    };
+    assert_eq!(got, key);
+
+    let contained_id = ids.next_id();
+    runner.dispatch(Command::ContainedIn(contained_id, oid));
+    let Product::ContainedIn(got, Ok(contained)) = product_of(&events, contained_id) else {
+        panic!("the containing refs must read");
+    };
+    assert_eq!(got, oid);
+    assert!(
+        contained.branches.iter().any(|b| b.as_slice() == b"main"),
+        "main contains its own tip, got {contained:?}"
+    );
+    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+}
