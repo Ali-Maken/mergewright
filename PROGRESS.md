@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — checkpoint: awaiting user: resize keys choice, 2 sliding gaps, by-eye checks report; M2 (23 tickets filed) held until then · M1 117 tickets: 107 done, 1 partial, 7 split, 2 wontfix
+**Current step:** M1 approved 2026-09-17 · awaiting user: which gallery stops needed the shows: line; resize keys; KG :178/:180; go for M2 (23 tickets filed, .scratch/m2-details-and-diffs/issues/)
 
 ---
 
@@ -53,7 +53,7 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 | ✓ | Milestone | Build with (per ticket, CLAUDE.md standing rules) | Review | CHECKPOINT: what you test |
 |---|---|---|---|---|
 | [x] | M0 Foundations | Opus | Opus | Opens a repo; quitting leaves the terminal clean |
-| [ ] | **M1 The graph** | per ticket's `Build with` line | Opus | `git/git` and the merge-mistake fixtures: is the history shape obvious at a glance? |
+| [x] | **M1 The graph** | per ticket's `Build with` line | Opus | `git/git` and the merge-mistake fixtures: is the history shape obvious at a glance? |
 | [ ] | M2 Details and diffs (read-only) | per ticket; Fable: Mistake Radar detection | Fable | Diffs look right; bad merges get flagged |
 | [ ] | M3 Working tree, undo and stash (write) | per ticket; Fable: undo per-kind inverse | Fable | Stage a hunk, commit, undo it, stash and unstash, then try to lose work |
 | [ ] | M4 Remotes (write) | per ticket | Fable | Fetch, pull and push on a real remote; wrong password |
@@ -323,6 +323,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-17 · m1/80 filed · conductor · 1M tests behind heavy-1m feature (round-2 m4)
 - 2026-09-17 · m1/80 · sonnet · done · `heavy-1m` feature (implies `heavy-tests`, never default) on `crates/graft`; two 1M `frames::` tests now `#[cfg(feature = "heavy-1m")]`, old env-var read removed; TESTING.md/ADR-0018 amendment updated, `--skip scrolling_the_1m_commit_graph_fixture` dropped from both standing commands (compiled out under plain `heavy-tests`); gates pass, no compaction
 - 2026-09-17 · m1/80 records · conductor · restored past log/AUTHORSHIP/ADR-0026/KNOWN_GAPS wording 80 had reworded to empty the GRAFT_1M grep (ticket's grep scope was the conductor's error: history records keep what was true then)
+- 2026-09-17 · user · by-eye checks done: stepping fast, pixel rendering clean, no stutter; shapes readable but not instant — needed the gallery shows: line at some stops (stops not yet named); everything else right · M1 approved
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.
