@@ -1,11 +1,34 @@
 # syntax-highlighting: syntax roles and word-diff spans over sanitised text
 
-Status: ready
+Status: done
 Blocked by: none
 
-Status: draft
 Build with: Sonnet — two pure functions over `&str` with fixed inputs and outputs; the library choices are made here.
 Needs: none (pure; `detail-model-and-jobs` and `diff-widget` call these)
+
+## Notes (build report)
+
+- `crates/graft-ui/src/syntax.rs`: `syntect` 5.3.0, `default-syntaxes` +
+  `regex-fancy`, no `onig`/default themes. `Language` holds `&'static
+  SyntaxReference` directly (the `SyntaxSet` lives in a `OnceLock`, so the
+  reference is `'static` — no name-based re-lookup needed). Role mapping
+  scans the scope stack **bottom-up** (outermost first), not top-down: a
+  comment/string pushes its own inner scope for the delimiter alone
+  (`punctuation.definition.comment.rust`), and top-down matching split one
+  comment into two spans in testing. Bottom-up fixed it and matches the
+  acceptance criteria exactly.
+- `crates/graft-ui/src/diff_words.rs`: `similar` 3.2.0, default features
+  (`tokenize_words` fully partitions the line including whitespace runs, so
+  a char cursor over `iter_all_changes()` gives exact char ranges). "No
+  common word" pairs (full replacement) return empty spans on both sides.
+- `Theme::syntax` added to `theme/mod.rs`.
+- Build time (clean, `cargo build -p graft-ui --quiet`, deps included):
+  before ~4.2s, after ~7.1s (syntect's cost, as expected — PROMPT.md names
+  this trade-off).
+- Gates: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
+  `cargo test` (workspace, 308+ tests incl. this crate's 130), `cargo build
+  --quiet`, edge test (`graft::tests::it::dependency_edges`) all pass.
+- No compaction.
 
 ## Read first
 

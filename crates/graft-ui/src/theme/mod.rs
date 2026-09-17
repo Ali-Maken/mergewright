@@ -43,6 +43,8 @@ use graft_core::capabilities::{
 };
 use graft_graph::identity::BranchIdentity;
 
+use crate::syntax::SyntaxRole;
+
 /// The number of chrome tokens PROMPT.md §5 names, lanes excluded.
 const TOKEN_COUNT: usize = 11;
 
@@ -303,6 +305,31 @@ impl Theme {
     #[must_use]
     pub fn branch(&self, identity: BranchIdentity) -> TokenColor {
         self.lanes[identity.slot(LANE_COUNT)]
+    }
+
+    /// The colour for one [`SyntaxRole`], from the same tokens as everything
+    /// else — a diff's syntax colouring is chrome, not a second palette.
+    ///
+    /// At [`ColorDepth::Palette16`] and under `NO_COLOR` (`ColorDepth::None`)
+    /// every role collapses to `Token::Text`: the sign column already carries
+    /// added/removed, and a 16-colour terminal doesn't have enough distinct
+    /// hues left over to also tell nine syntax roles apart (m1-the-graph/12c
+    /// rule).
+    #[must_use]
+    pub fn syntax(&self, role: SyntaxRole) -> TokenColor {
+        if matches!(self.depth, ColorDepth::Palette16 | ColorDepth::None) {
+            return self.token(Token::Text);
+        }
+
+        self.token(match role {
+            SyntaxRole::Plain | SyntaxRole::Function => Token::Text,
+            SyntaxRole::Comment | SyntaxRole::Punctuation | SyntaxRole::Attribute => {
+                Token::TextMuted
+            }
+            SyntaxRole::Keyword => Token::Accent,
+            SyntaxRole::String | SyntaxRole::Number => Token::Info,
+            SyntaxRole::Type => Token::Warning,
+        })
     }
 }
 

@@ -6,11 +6,13 @@
 //! Depends on `graph`, `term` and `core`.
 #![forbid(unsafe_code)]
 
+pub mod diff_words;
 pub mod fit;
 pub mod graph_column;
 pub mod graph_screen;
 pub mod paint;
 pub mod status_screen;
+pub mod syntax;
 pub mod theme;
 
 #[cfg(test)]

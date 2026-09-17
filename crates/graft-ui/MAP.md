@@ -2,6 +2,7 @@
 One line per public item. Update when a public item changes.
 
 ## lib.rs
+- `diff_words` (mod) — word-level highlighting inside a paired diff line.
 - `fit` (mod) — clamp text to an exact cell width.
 - `graph_column` (mod) — the Unicode-tier graph column widget.
 - `graph_screen` (mod) — the graph screen Graft opens on: header, rows, key hints (every graph key, F3 included; narrow widths drop whole hints from the right, m1-the-graph/33; `y sha` added in 45).
@@ -9,7 +10,12 @@ One line per public item. Update when a public item changes.
 - `graph_screen::columns` (mod) — pure formatting for the author initials, relative date and short SHA.
 - `paint` (mod) — token-to-style helpers for widgets.
 - `status_screen` (mod) — the status screen view and widget.
+- `syntax` (mod) — line-level syntax highlighting (`syntect`) over sanitised text.
 - `theme` (mod) — theme kinds, tokens, and colour resolution.
+
+## diff_words
+- `WordSpans` (struct) — `removed`/`added`: per-line char ranges that changed against the paired line on the other side.
+- `word_spans` (fn) — word-diff (`similar`) `removed[i]` against `added[i]`; extra lines get empty `Vec`s; a pair sharing no word gets no spans on either side.
 
 ## fit
 - `MAX_MARKS` (const) — combining marks kept per base character.
@@ -116,6 +122,14 @@ One line per public item. Update when a public item changes.
 - `StatusScreen` (struct) — the status screen, ready to render.
 - `StatusScreen::new` (fn) — draw `view` in `theme`.
 
+## syntax
+- `SyntaxRole` (enum) — a highlighted token's category: `Plain`, `Comment`, `String`, `Keyword`, `Type`, `Function`, `Number`, `Punctuation`, `Attribute`.
+- `Language` (struct) — a resolved `syntect` syntax; opaque.
+- `language_for_path` (fn) — the language a path's extension or exact file name (`Makefile`, `Dockerfile`) implies.
+- `language_for_first_line` (fn) — the language a shebang or modeline implies, for extension-less files.
+- `SyntaxSpan` (struct) — one highlighted run: a half-open, ascending, non-overlapping **char** range and its `SyntaxRole`.
+- `highlight` (fn) — highlight every line of a file in one language; parser state carries across lines; past 5,000 lines or a 4,000+ char line, every line comes back `Plain`; never panics.
+
 ## theme
 - `LANE_COUNT` (const) — number of lane hues; lanes beyond reuse them.
 - `Token` (enum) — a chrome colour role.
@@ -134,3 +148,4 @@ One line per public item. Update when a public item changes.
 - `Theme::raster_lanes` (fn) — truecolor lane hues for the pixel tier at any depth; one muted hue when colour is off.
 - `Theme::raster_muted` (fn) — the unreduced `text-muted` hue, for a pixel `+N` marker.
 - `Theme::branch` (fn) — the colour a branch identity draws in, independent of column.
+- `Theme::syntax` (fn) — the colour for a `syntax::SyntaxRole`, from the chrome tokens; collapses to `Token::Text` at `Palette16` and under `NO_COLOR`.
