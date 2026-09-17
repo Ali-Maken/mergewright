@@ -100,13 +100,15 @@ Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-
 - `SearchLine` (enum) — `Prompt(text)` draws ` /text_`; `Status{text, failed}` draws the search's line, warning-coloured only when failed.
 - `GraphView::graphics` (field) — `gfx ok` / `gfx: <message>` in the header while pixels are drawn; `None` otherwise.
 - `GraphView::detail_shown` (field) — the detail pane is on screen; the footer adds a `<> resize` hint only then, since that's the only time its divider exists to drag (`detail-resize-and-persistence`).
+- `GraphView::compare_footer` (field) — the pinned compare base's footer line (`compare base <sha> — move, x again clears`); same footer slot as `search`/`notice` (m2-details-and-diffs/11).
 - `GraphicsStatus` (enum) — `Ok` or `Failed(SanitizedText)`: what the terminal said about the graph images.
 - `Filters` (struct) — `first_parent`, `folded` (merge count), `stash_hidden`, `focused` (Focus mode on); `Filters::text` is the header's words, empty for none.
 - `Compaction` (struct) — `max_lanes` (the resolved cap for this frame, see `max_lanes_for`), `expanded` (the `+` key), `keep` (`graft_graph::fold::Keep`: selected column, reserved integration lanes, the selection's thread — budget priorities, not vetoes, ADR-0025).
 - `Compaction::at` (fn) — collapsed, `Keep::default()`.
 - `lanes_that_fit` (fn) — the most lane columns, rail included, the graph column can hold at a screen width; never below 2 (m1-the-graph/44).
 - `max_lanes_for` (fn) — `graph.max_lanes` if configured, else 8/10/12 by the width breakpoint (`< 100`, `100..160`, `160+`), then clamped to `lanes_that_fit` so a configured number larger than the screen never cuts the rail (ADR-0022, ADR-0025; m1-the-graph/44).
-- `GraphEntry` (struct) — one row: `line`, `badges`, sanitised `subject`, `author` chip, `when`, `sha`.
+- `GraphEntry` (struct) — one row: `line`, `badges`, sanitised `subject`, `author` chip, `when`, `sha`, `compare_marked`.
+- `GraphEntry::compare_marked` (field) — this row is the pinned base of a live compare; draws the accent `▏` left rule (m2-details-and-diffs/11).
 - `AuthorChip` (struct) — an author's chip: sanitised `initials` and the `identity` that colours it.
 - `OrderNotice` (enum) — header notice: `Sorting` (date order while sorting) or `Provisional` (sort stopped; order stays).
 - `WalkView` (enum) — walk state for the header: opening, reading, jumping, complete, cancelled, failed.

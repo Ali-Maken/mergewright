@@ -28,7 +28,14 @@ use crate::update::detail::{DetailSpec, DetailState, Loading};
 /// The detail pane's view model for this frame.
 #[must_use]
 pub fn detail_view(state: &AppState) -> DetailView {
-    let header = match state.selected_spec() {
+    // The pane's own `spec` (`update::detail::DetailState::open`/`follow`) is
+    // what is actually loaded and shown; it can differ from the cursor's own
+    // spec while a compare base is pinned (`AppState::compare_base`,
+    // m2-details-and-diffs/11) — `selected_spec` never names `Compare`, so a
+    // pinned compare's header would otherwise redraw as a plain commit every
+    // frame. Nothing is open yet (`spec: None`) only before the pane's first
+    // load, when `selected_spec` is exactly what will be asked for.
+    let header = match state.detail.spec.or_else(|| state.selected_spec()) {
         Some(DetailSpec::WorkingTree) => working_tree_header(state),
         Some(DetailSpec::Commit(oid)) => commit_header(state, oid),
         Some(DetailSpec::Compare { base, head }) => compare_header(base, head),

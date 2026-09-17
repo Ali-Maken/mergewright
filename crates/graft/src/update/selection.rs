@@ -86,11 +86,33 @@ pub fn reconcile(state: &mut AppState, cursor_before: usize) -> bool {
 }
 
 /// After any event: a shown pane follows the selection, the working-tree row
-/// included. A no-op while hidden, on a pinned compare (`DetailSpec::Compare`
-/// does not follow the cursor), or when the selection did not change
+/// included. A no-op while hidden, or when the selection did not change
 /// (`DetailState::follow`'s own check).
+///
+/// While a compare base is pinned (`AppState::compare_base`,
+/// m2-details-and-diffs/11), the cursor moving onto another commit opens a
+/// fresh `DetailSpec::Compare` against it instead of `Commit`; onto the
+/// working-tree row it follows to `WorkingTree` as usual, the base kept
+/// (`x` is a no-op there — `update::keys`); back onto the base's own row it
+/// does nothing (comparing a commit with itself is not a spec). With no base
+/// pinned, a pane already showing a `Compare` (e.g. from the context menu,
+/// `context-actions-menu`) does not follow the cursor at all.
 pub fn follow_selection(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) -> Vec<Command> {
-    if !state.detail.shown || matches!(state.detail.spec, Some(DetailSpec::Compare { .. })) {
+    if !state.detail.shown {
+        return Vec::new();
+    }
+    if let Some(base) = state.compare_base {
+        let spec = match state.selected_spec() {
+            Some(DetailSpec::Commit(oid)) if oid != base.oid => DetailSpec::Compare {
+                base: base.oid,
+                head: oid,
+            },
+            Some(spec @ DetailSpec::WorkingTree) => spec,
+            _ => return Vec::new(),
+        };
+        return state.detail.follow(spec, next_id);
+    }
+    if matches!(state.detail.spec, Some(DetailSpec::Compare { .. })) {
         return Vec::new();
     }
     let Some(spec) = state.selected_spec() else {
@@ -275,6 +297,52 @@ mod tests {
         graft_core::oid::Oid::from_bytes(&[1u8; 20]).unwrap()
     }
 
+    fn identity() -> graft_core::commit::Identity {
+        graft_core::commit::Identity {
+            name: b"Test".to_vec(),
+            email: b"test@example.invalid".to_vec(),
+            when: graft_core::commit::Timestamp {
+                seconds: 0,
+                offset_seconds: 0,
+            },
+        }
+    }
+
+    fn commit_row(byte: u8) -> graft_graph::Row {
+        graft_graph::Row {
+            commit: graft_core::commit::Commit {
+                id: graft_core::oid::Oid::from_bytes(&[byte; 20]).unwrap(),
+                parents: Vec::new(),
+                author: identity(),
+                committer: identity(),
+                message: b"a commit".to_vec(),
+            },
+            lane: 0,
+            incoming: Vec::new(),
+            outgoing: Vec::new(),
+            lanes: Vec::new(),
+            marker: None,
+        }
+    }
+
+    /// `shown_state` with a two-row window on hand (rows 0 and 1, distinct
+    /// commits), so `selected_spec` names a real commit as the cursor moves
+    /// — what the compare-follow tests below need
+    /// (m2-details-and-diffs/11).
+    fn state_with_rows() -> AppState {
+        let mut state = shown_state();
+        let history = state.history.as_mut().expect("shown_state sets one");
+        history.window = Some(crate::history::Window {
+            request: 1,
+            first: 0,
+            rows: vec![commit_row(1), commit_row(2)].into(),
+            laid_out: 2,
+            done: false,
+            promoted: false,
+        });
+        state
+    }
+
     #[test]
     fn follow_selection_follows_onto_the_working_tree_row() {
         let mut state = detail_shown_state();
@@ -299,5 +367,110 @@ mod tests {
         });
         assert!(commands.is_empty());
         assert_eq!(state.detail.spec, None);
+    }
+
+    /// While a base is pinned, moving the cursor opens a fresh `Compare`
+    /// against the new row each time — never `Commit`
+    /// (m2-details-and-diffs/11).
+    #[test]
+    fn follow_selection_opens_a_fresh_compare_as_the_cursor_moves() {
+        let mut state = state_with_rows();
+        let mut ids = 0u64;
+        let mut next_id = || {
+            ids += 1;
+            JobId::new(super::super::detail::LOCAL_JOB_BIT | ids)
+        };
+        let base_oid = commit_row(1).commit.id;
+        state
+            .detail
+            .open(DetailSpec::Commit(base_oid), &mut next_id);
+        state.compare_base = Some(super::super::detail::CompareBase {
+            oid: base_oid,
+            row: 0,
+        });
+        state.history.as_mut().unwrap().cursor = 1;
+
+        let commands = follow_selection(&mut state, &mut next_id);
+
+        assert!(!commands.is_empty());
+        assert_eq!(
+            state.detail.spec,
+            Some(DetailSpec::Compare {
+                base: base_oid,
+                head: commit_row(2).commit.id,
+            })
+        );
+        assert_eq!(
+            state.compare_base,
+            Some(super::super::detail::CompareBase {
+                oid: base_oid,
+                row: 0
+            }),
+            "the base stays set as the compare follows"
+        );
+    }
+
+    /// Onto the working-tree row, a pinned base is left alone and the pane
+    /// follows to `WorkingTree` as usual (m2-details-and-diffs/11).
+    #[test]
+    fn follow_selection_onto_the_working_tree_row_keeps_the_base() {
+        let mut state = state_with_rows();
+        let mut ids = 0u64;
+        let mut next_id = || {
+            ids += 1;
+            JobId::new(super::super::detail::LOCAL_JOB_BIT | ids)
+        };
+        let base_oid = commit_row(1).commit.id;
+        state
+            .detail
+            .open(DetailSpec::Commit(base_oid), &mut next_id);
+        state.compare_base = Some(super::super::detail::CompareBase {
+            oid: base_oid,
+            row: 0,
+        });
+        state.on_working_tree = true;
+
+        let commands = follow_selection(&mut state, &mut next_id);
+
+        assert!(!commands.is_empty());
+        assert_eq!(state.detail.spec, Some(DetailSpec::WorkingTree));
+        assert!(state.compare_base.is_some(), "the base stays set");
+    }
+
+    /// Back onto the base's own row, there is nothing to compare it with:
+    /// no command, no spec change (m2-details-and-diffs/11).
+    #[test]
+    fn follow_selection_back_onto_the_base_row_does_nothing() {
+        let mut state = state_with_rows();
+        let mut ids = 0u64;
+        let mut next_id = || {
+            ids += 1;
+            JobId::new(super::super::detail::LOCAL_JOB_BIT | ids)
+        };
+        let base_oid = commit_row(1).commit.id;
+        let head_oid = commit_row(2).commit.id;
+        state.detail.open(
+            DetailSpec::Compare {
+                base: base_oid,
+                head: head_oid,
+            },
+            &mut next_id,
+        );
+        state.compare_base = Some(super::super::detail::CompareBase {
+            oid: base_oid,
+            row: 0,
+        });
+        state.history.as_mut().unwrap().cursor = 0;
+
+        let commands = follow_selection(&mut state, &mut next_id);
+
+        assert!(commands.is_empty());
+        assert_eq!(
+            state.detail.spec,
+            Some(DetailSpec::Compare {
+                base: base_oid,
+                head: head_oid,
+            })
+        );
     }
 }

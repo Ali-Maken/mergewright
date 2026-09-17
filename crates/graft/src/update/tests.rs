@@ -466,6 +466,141 @@ fn y_sends_the_sha_but_keeps_a_failure_on_screen() {
     assert_eq!(next.status, state.status);
 }
 
+/// `x` on the selected row pins it as a compare base (m2-details-and-diffs/11):
+/// no command yet, nothing to open until a second row is picked.
+#[test]
+fn x_on_a_row_with_no_base_pins_it_and_sends_nothing() {
+    let (state, _) = merge_on_screen(JobId::new(40), 0);
+    let plain_id = Oid::from_bytes(&[1; Oid::SHA1_BYTES]).expect("20 bytes is an oid");
+    let (next, commands) = update(&state, key(KeyCode::Char('x')));
+    assert!(commands.is_empty(), "{commands:?}");
+    assert_eq!(
+        next.compare_base.map(|base| base.oid),
+        Some(plain_id),
+        "row 0 is the plain commit"
+    );
+}
+
+/// `x` again on the same row clears the pinned base.
+#[test]
+fn x_on_the_same_row_again_clears_the_base() {
+    let (state, _) = merge_on_screen(JobId::new(41), 0);
+    let (pinned, _) = update(&state, key(KeyCode::Char('x')));
+    let (cleared, commands) = update(&pinned, key(KeyCode::Char('x')));
+    assert!(commands.is_empty(), "{commands:?}");
+    assert_eq!(cleared.compare_base, None);
+}
+
+/// `x` on a second row opens the compare and keeps the base pinned, so the
+/// pane can keep following the cursor.
+#[test]
+fn x_on_a_different_row_opens_the_compare_and_keeps_the_base() {
+    let (mut state, merge_id) = merge_on_screen(JobId::new(42), 0);
+    state.focus = true;
+    let (pinned, _) = update(&state, key(KeyCode::Char('x')));
+    let base_id = pinned.compare_base.map(|base| base.oid);
+
+    let (moved, _) = update(&pinned, key(KeyCode::Char('j')));
+    let (opened, commands) = update(&moved, key(KeyCode::Char('x')));
+
+    assert!(!commands.is_empty(), "opening a compare asks for its diff");
+    assert_eq!(opened.compare_base.map(|base| base.oid), base_id);
+    assert!(opened.detail.shown);
+    assert_eq!(
+        opened.detail.spec,
+        Some(DetailSpec::Compare {
+            base: base_id.expect("pinned above"),
+            head: merge_id,
+        })
+    );
+}
+
+/// `x` on the working-tree row is a no-op: a base can only be a commit.
+#[test]
+fn x_on_the_working_tree_row_is_a_no_op() {
+    let (mut state, _) = merge_on_screen(JobId::new(43), 0);
+    state.on_working_tree = true;
+    let (next, commands) = update(&state, key(KeyCode::Char('x')));
+    assert!(commands.is_empty(), "{commands:?}");
+    assert_eq!(next.compare_base, None);
+}
+
+/// `Esc` clears a pinned base and, when the pane is open, closes it in the
+/// same press (ADR-0023's existing `Escape` order).
+#[test]
+fn esc_clears_a_pinned_base_and_closes_the_open_pane() {
+    let (state, _) = merge_on_screen(JobId::new(44), 0);
+    let (pinned, _) = update(&state, key(KeyCode::Char('x')));
+    let (moved, _) = update(&pinned, key(KeyCode::Char('j')));
+    let (opened, _) = update(&moved, key(KeyCode::Char('x')));
+    assert!(opened.detail.shown);
+
+    let (closed, _) = update(&opened, key(KeyCode::Escape));
+    assert_eq!(closed.compare_base, None);
+    assert!(!closed.detail.shown);
+}
+
+/// `Shift`+click on a second row does the same as `x`.
+#[test]
+fn shift_click_on_a_second_row_opens_the_compare() {
+    let (mut state, merge_id) = merge_on_screen(JobId::new(45), 0);
+    state.size = Size {
+        columns: 80,
+        rows: 5,
+    };
+    let (pinned, _) = update(&state, key(KeyCode::Char('x')));
+
+    let click = core(Event::Mouse(MouseInput {
+        kind: MouseKind::Down(MouseButton::Left),
+        column: 10,
+        row: HEADER_ROWS + 1,
+        modifiers: Modifiers {
+            shift: true,
+            ..Modifiers::NONE
+        },
+    }));
+    let (next, commands) = update(&pinned, click);
+    assert!(!commands.is_empty(), "opening a compare asks for its diff");
+    assert!(next.detail.shown);
+    assert_eq!(
+        next.detail.spec,
+        Some(DetailSpec::Compare {
+            base: pinned.compare_base.expect("pinned above").oid,
+            head: merge_id,
+        })
+    );
+}
+
+/// `Ctrl`+click does the same as `Shift`+click.
+#[test]
+fn ctrl_click_on_a_second_row_opens_the_compare() {
+    let (mut state, merge_id) = merge_on_screen(JobId::new(46), 0);
+    state.size = Size {
+        columns: 80,
+        rows: 5,
+    };
+    let (pinned, _) = update(&state, key(KeyCode::Char('x')));
+
+    let click = core(Event::Mouse(MouseInput {
+        kind: MouseKind::Down(MouseButton::Left),
+        column: 10,
+        row: HEADER_ROWS + 1,
+        modifiers: Modifiers {
+            control: true,
+            ..Modifiers::NONE
+        },
+    }));
+    let (next, commands) = update(&pinned, click);
+    assert!(!commands.is_empty(), "opening a compare asks for its diff");
+    assert_eq!(
+        next.detail.spec,
+        Some(DetailSpec::Compare {
+            base: pinned.compare_base.expect("pinned above").oid,
+            head: merge_id,
+        })
+    );
+}
+
 /// Moving the selection inside the rows on hand asks the history job for
 /// nothing: the thread and its fade are worked out from those rows, so a
 /// selection change makes no layout or walk call.
@@ -714,6 +849,7 @@ fn the_same_event_always_gives_the_same_answer() {
         search_prompt: None,
         search: None,
         on_working_tree: false,
+        compare_base: None,
     };
 
     let first = update(&state, key(KeyCode::Char('q')));

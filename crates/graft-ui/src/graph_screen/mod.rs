@@ -109,6 +109,12 @@ pub struct GraphView<'a> {
     /// The search prompt or the search's state, in the footer above a notice
     /// and under a problem; `None` when there is no search (m1-the-graph/26).
     pub search: Option<SearchLine>,
+    /// The pinned compare base's footer line (`x`, m2-details-and-diffs/11):
+    /// `"compare base <sha> — move, x again clears"`, in the same footer
+    /// slot as [`GraphView::search`]/[`GraphView::notice`] — stacked under
+    /// both, above the revealed subject and the key hints. `None` while no
+    /// base is pinned.
+    pub compare_footer: Option<SanitizedText>,
     /// The commit-graph offer's footer line (m1-the-graph/54): directly above
     /// the hints, below a notice. Costs one graph row while `Some`; `None`
     /// for a repository with a commit-graph, the common case.
@@ -227,6 +233,9 @@ pub struct GraphEntry<'a> {
     /// hex drawn from a fixed digit alphabet is safe as-is
     /// (`graft_core::oid::Oid`'s own doc comment).
     pub sha: String,
+    /// This row is the pinned compare base (`x`, m2-details-and-diffs/11):
+    /// draws the accent `▏` left rule. At most one row is ever `true`.
+    pub compare_marked: bool,
 }
 
 /// An author's chip: two initials, coloured by the author's identity.

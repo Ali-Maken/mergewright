@@ -66,6 +66,8 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         cycle_tier(next, commands);
     } else if is_copy_key(key) {
         copy_selected_sha(next, commands);
+    } else if is_compare_key(key) {
+        toggle_compare_selected(next, commands);
     } else if let Some(change) = view_change(key) {
         let height = next.graph_rows();
         let stash = next.refs.as_deref().and_then(crate::refs::RefBadges::stash);
@@ -252,6 +254,33 @@ fn copy_selected_sha(next: &mut AppState, commands: &mut Vec<Command>) {
     if !matches!(next.status, Status::Failed(_)) {
         next.status = Status::Copied { short };
     }
+}
+
+/// `x`: mark the selected row as a compare base, or complete/clear a compare
+/// against it (`compare-two-commits`, m2-details-and-diffs/11).
+fn is_compare_key(key: KeyPress) -> bool {
+    key.code == KeyCode::Char('x') && !key.modifiers.control && !key.modifiers.alt
+}
+
+/// `x` on the selected row: `super::detail::toggle_compare`'s three
+/// branches. A no-op on the uncommitted-changes row — no `oid` there to
+/// compare from (design note, "Working tree row selected").
+fn toggle_compare_selected(next: &mut AppState, commands: &mut Vec<Command>) {
+    if next.on_working_tree {
+        return;
+    }
+    let Some((row, oid)) = next.history.as_ref().and_then(|history| {
+        history
+            .selected()
+            .map(|selected| (history.cursor, selected.commit.id))
+    }) else {
+        return;
+    };
+    let mut local_jobs = next.local_jobs;
+    commands.extend(super::detail::toggle_compare(next, row, oid, &mut || {
+        local_jobs.next_id()
+    }));
+    next.local_jobs = local_jobs;
 }
 
 /// A key that changes which history is shown (PROMPT.md §1.3). DESIGN.md

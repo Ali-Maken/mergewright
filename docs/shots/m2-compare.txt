@@ -1,0 +1,22 @@
+# m2-compare.txt: TestBackend capture (not a pty), 140x14, trailing blank
+# rows trimmed. Fixture: 5 synthetic commits (history_of(5, 3) in
+# crates/graft/src/view/tests.rs). Sequence: cursor starts on row 3 (commit
+# 0202020); `x` pins it as the compare base; `k` `k` moves the cursor up to
+# row 1 (commit 0404040); `x` again opens the compare against the pinned
+# base (m2-details-and-diffs/11).
+# Judge by eye: row 4 (commit 0202020) carries the accent `▏` left rule —
+# the pinned base, not the cursor (cursor/highlight background isn't
+# visible in plain text). The footer reads the pinned base's wording. The
+# pane header below it reads the base and the new head. `␛[31m` is the
+# sanitizer's visible placeholder for the fixture's embedded escape byte,
+# not a rendering bug.
+
+ graft 5 commits
+●   Commit 5␛[31m                                                                                                            TE 57y  0505050
+●   Commit 4␛[31m                                                                                                            TE 57y  0404040
+●   Commit 3␛[31m                                                                                                            TE 57y  0303030
+● ▏ Commit 2␛[31m                                                                                                            TE 57y  0202020
+ compare base 0202020 — move, x again clears
+COMPARE 0202020 → 0404040
+
+                              reading…

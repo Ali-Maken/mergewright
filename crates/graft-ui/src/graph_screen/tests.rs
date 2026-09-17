@@ -75,6 +75,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
                     },
                     when: "2h".to_owned(),
                     sha: short_sha(&row.commit.id.to_string(), usize::from(SHA_WIDTH)),
+                    compare_marked: false,
                 }
             })
             .collect(),
@@ -88,6 +89,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
         graphics: None,
         notice: None,
         search: None,
+        compare_footer: None,
         commit_graph: None,
         banner: Vec::new(),
         detail_shown: false,

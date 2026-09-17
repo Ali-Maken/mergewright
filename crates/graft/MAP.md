@@ -117,6 +117,7 @@ One line per public item. Update when a public item changes.
 - `AppState::detail` (field) — `DetailState`, the detail pane; hidden by default (m2-details-and-diffs/06).
 - `AppState::local_jobs` (field) — `LocalJobs`, ids for the jobs `update` names itself (the detail pane's reads).
 - `AppState::on_working_tree` (field) — the uncommitted-changes row's one-bit selection, beside `History`'s cursor rather than a position of it (m2-details-and-diffs/06b); rules in `update::selection`.
+- `AppState::compare_base` (field) — `Option<update::detail::CompareBase>`, the pinned base of a live compare (`x`, m2-details-and-diffs/11); set/cleared by `update::detail::toggle_compare`, followed by `update::selection::follow_selection`.
 - `AppState::uncommitted_row_shown` (fn) — does the working-tree row draw this frame: a dirty tree and `HEAD` topmost (m1-the-graph/12b); `view::entries::uncommitted_shown` and `view::strips` both delegate to it.
 - `AppState::selected_spec` (fn) — the `DetailSpec` the cursor now names: `WorkingTree` on the flag, else the history cursor's commit.
 - `AppState::renderer_override` (field) — the tier-drop key (`F3`) forced this tier for the rest of the run, or `None` for whatever `Session::settle` decided (m1-the-graph/19).
@@ -139,13 +140,15 @@ One line per public item. Update when a public item changes.
 The uncommitted-changes row's one-bit selection: pure rules for setting, clearing and following `AppState::on_working_tree` (m2-details-and-diffs/06b).
 - `move_from_graph` (fn) — a graph motion key, before `History::move_cursor` sees it: sets or clears the flag, returns the motion still left for `History` (or `None`).
 - `reconcile` (fn) — called once at the end of every event with the history cursor's value from the start of it; clears the flag when the row stopped showing or the cursor moved under it; returns whether it cleared.
-- `follow_selection` (fn) — a shown, non-`Compare` pane follows the selection onto or off the working-tree row.
+- `follow_selection` (fn) — a shown, non-`Compare` pane follows the selection onto or off the working-tree row; while `AppState::compare_base` is pinned it instead follows the cursor as a live compare against that base (fresh `head` each move, base kept), a no-op back on the base's own row (m2-details-and-diffs/11).
 
 ## update::detail
 The detail pane's state and transitions; pure (no I/O, no clock). Drawing is `detail-pane-frame`'s.
 - `LOCAL_JOB_BIT` (const) — top bit of every id `update` issues itself, so it never meets a runner-issued id.
 - `LocalJobs` (struct) — `next_id`: hands out `LOCAL_JOB_BIT` ids.
 - `DetailSpec` (enum) — `Commit(Oid)`, `Compare { base, head }`, `WorkingTree`; `diff_spec` maps it to git's `DiffSpec`.
+- `CompareBase` (struct) — `oid`, `row`: a pinned compare base (`x`, m2-details-and-diffs/11); `AppState::compare_base` holds it.
+- `toggle_compare` (fn) — `x` on a row, or `Shift`/`Ctrl`+click on a second one: no base pins one (no command); the same `oid` again clears it (no command); a different `oid` opens `DetailSpec::Compare` and keeps the base pinned.
 - `Loading<T>` (enum) — `Idle`, `Pending(JobId)`, `Ready(T)`, `Failed(String)`.
 - `DiffKey` (struct) — spec, entry, options, max_lines: one file's diff; the diff cache's key.
 - `Bounded<K, V>` (struct) — small map that evicts its oldest entry when full; `new`, `get`, `insert`, `clear`.

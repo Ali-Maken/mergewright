@@ -309,8 +309,15 @@ fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mouse: MouseInp
                 return;
             }
             if let Some(row) = graph_row_at(next, mouse.row) {
-                next.on_working_tree = false;
-                select_row(next, commands, row);
+                if mouse.modifiers.shift || mouse.modifiers.control {
+                    // Same as `x` on that row (`compare-two-commits`,
+                    // m2-details-and-diffs/11): no separate click-only path,
+                    // and no change to the selection itself.
+                    toggle_compare_at(next, commands, row);
+                } else {
+                    next.on_working_tree = false;
+                    select_row(next, commands, row);
+                }
             } else if next.uncommitted_row_shown() && mouse.row == rows_above_graph(next) {
                 // The first body row while the working-tree row is shown:
                 // `graph_row_at` returns `None` for it (offset 0, displaced
@@ -571,6 +578,26 @@ fn select_row(next: &mut AppState, commands: &mut Vec<Command>, row: usize) {
     {
         commands.push(Command::ShowRows(id, request));
     }
+}
+
+/// `Shift`/`Ctrl`+click on a row: `detail::toggle_compare`'s three branches,
+/// same as `x` on it (`compare-two-commits`, m2-details-and-diffs/11). `row`
+/// need not be laid out under the cursor — it is whatever `graph_row_at`
+/// named, independent of the selection.
+fn toggle_compare_at(next: &mut AppState, commands: &mut Vec<Command>, row: usize) {
+    let Some(oid) = next
+        .history
+        .as_ref()
+        .and_then(|history| history.row_at(row))
+        .map(|selected| selected.commit.id)
+    else {
+        return;
+    };
+    let mut local_jobs = next.local_jobs;
+    commands.extend(detail::toggle_compare(next, row, oid, &mut || {
+        local_jobs.next_id()
+    }));
+    next.local_jobs = local_jobs;
 }
 
 /// The absolute history row a screen row names, if it names a row at all:

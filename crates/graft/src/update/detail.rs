@@ -115,6 +115,48 @@ impl DetailSpec {
     }
 }
 
+/// A pinned base for a live compare (`x`, m2-details-and-diffs/11): the row
+/// stays marked (`graft_ui::graph_screen::GraphEntry::compare_marked`) and
+/// the pane follows the cursor as `head` — a fresh `DetailSpec::Compare`
+/// against `oid` each time it moves — until cleared.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CompareBase {
+    /// The base side of the compare: what every `head` is measured against.
+    pub oid: Oid,
+    /// The absolute history row `oid` is on, for `GraphEntry::compare_marked`.
+    pub row: usize,
+}
+
+/// `x` on a graph row, or `Shift`/`Ctrl`+click on a second row
+/// (m2-details-and-diffs/11): no base yet pins one, no command; the same
+/// `oid` again clears it, no command; a different `oid` opens the compare
+/// and **keeps** the base, so the compare stays live as the cursor moves
+/// (`update::selection::follow_selection`).
+pub fn toggle_compare(
+    state: &mut AppState,
+    row: usize,
+    oid: Oid,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    match state.compare_base {
+        None => {
+            state.compare_base = Some(CompareBase { oid, row });
+            Vec::new()
+        }
+        Some(base) if base.oid == oid => {
+            state.compare_base = None;
+            Vec::new()
+        }
+        Some(base) => state.detail.open(
+            DetailSpec::Compare {
+                base: base.oid,
+                head: oid,
+            },
+            next_id,
+        ),
+    }
+}
+
 /// A value a job is fetching.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub enum Loading<T> {
@@ -632,6 +674,15 @@ pub(super) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
         }
         return true;
     }
+    // `Esc` clears a pinned compare base (m2-details-and-diffs/11) before
+    // anything else `Esc` already does, closing the pane in the same press
+    // when it is shown (ADR-0023's own `Escape if detail.shown` arm below).
+    if key.code == KeyCode::Escape && next.compare_base.take().is_some() {
+        if next.detail.shown {
+            next.detail.close();
+        }
+        return true;
+    }
     let AppState {
         detail, local_jobs, ..
     } = next;
@@ -815,6 +866,117 @@ fn diff_content_len_of(detail: &DetailState) -> usize {
 mod tests {
     use super::*;
     use graft_ui::detail::{FileRow, FileRowKind, FileStatusView, HunkView, LineView};
+
+    fn oid(byte: u8) -> Oid {
+        Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is an oid")
+    }
+
+    fn next_id_from(counter: &mut u64) -> JobId {
+        *counter += 1;
+        JobId::new(LOCAL_JOB_BIT | *counter)
+    }
+
+    /// `toggle_compare`'s first branch: no base yet pins one, no command.
+    #[test]
+    fn toggle_compare_with_no_base_pins_one_and_emits_nothing() {
+        let mut state = super::super::state::AppState::default();
+        let mut ids = 0u64;
+        let commands = toggle_compare(&mut state, 0, oid(1), &mut || next_id_from(&mut ids));
+        assert!(commands.is_empty());
+        assert_eq!(
+            state.compare_base,
+            Some(CompareBase {
+                oid: oid(1),
+                row: 0
+            })
+        );
+    }
+
+    /// `toggle_compare`'s second branch: the same oid again clears it, no
+    /// command.
+    #[test]
+    fn toggle_compare_on_the_same_oid_clears_it_and_emits_nothing() {
+        let mut state = super::super::state::AppState::default();
+        let mut ids = 0u64;
+        toggle_compare(&mut state, 0, oid(1), &mut || next_id_from(&mut ids));
+        let commands = toggle_compare(&mut state, 0, oid(1), &mut || next_id_from(&mut ids));
+        assert!(commands.is_empty());
+        assert_eq!(state.compare_base, None);
+    }
+
+    /// `toggle_compare`'s third branch: a different oid opens the compare
+    /// and keeps the base set.
+    #[test]
+    fn toggle_compare_on_a_different_oid_opens_compare_and_keeps_the_base() {
+        let mut state = super::super::state::AppState::default();
+        let mut ids = 0u64;
+        toggle_compare(&mut state, 0, oid(1), &mut || next_id_from(&mut ids));
+        let commands = toggle_compare(&mut state, 1, oid(2), &mut || next_id_from(&mut ids));
+        assert!(!commands.is_empty());
+        assert_eq!(
+            state.detail.spec,
+            Some(DetailSpec::Compare {
+                base: oid(1),
+                head: oid(2)
+            })
+        );
+        assert_eq!(
+            state.compare_base,
+            Some(CompareBase {
+                oid: oid(1),
+                row: 0
+            }),
+            "the base stays live as the cursor moves"
+        );
+    }
+
+    /// `Esc` clears a pinned base and closes the pane in the same press
+    /// (ADR-0023's existing `Escape` order, m2-details-and-diffs/11).
+    #[test]
+    fn escape_clears_a_pinned_base_and_closes_the_pane_in_one_press() {
+        let mut state = super::super::state::AppState {
+            compare_base: Some(CompareBase {
+                oid: oid(1),
+                row: 0,
+            }),
+            ..Default::default()
+        };
+        state.detail.shown = true;
+        let mut commands = Vec::new();
+
+        assert!(detail_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Escape)
+        ));
+
+        assert_eq!(state.compare_base, None);
+        assert!(!state.detail.shown);
+    }
+
+    /// `Esc` clears a pinned base even while the pane never opened (`x`
+    /// pins a base with no command, so the pane can be hidden the whole
+    /// time).
+    #[test]
+    fn escape_clears_a_pinned_base_while_the_pane_is_hidden() {
+        let mut state = super::super::state::AppState {
+            compare_base: Some(CompareBase {
+                oid: oid(1),
+                row: 0,
+            }),
+            ..Default::default()
+        };
+        let mut commands = Vec::new();
+
+        assert!(detail_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Escape)
+        ));
+
+        assert_eq!(state.compare_base, None);
+        assert!(!state.detail.shown);
+    }
 
     /// An empty, valid diff — enough for the option/scroll keys to act on.
     fn empty_diff_view() -> DiffView {

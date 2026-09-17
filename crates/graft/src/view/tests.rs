@@ -1,7 +1,7 @@
 use graft_core::capabilities::RenderingTier;
 use graft_core::oid::Oid;
 use graft_git::version::{GitVersion, SystemGit};
-use graft_term::sanitize_line;
+use graft_term::{SanitizedText, sanitize_line};
 use graft_ui::graph_column::{NodeKind, RowPaint};
 use graft_ui::graph_screen::WalkView;
 use graft_ui::status_screen::{HeadView, TierSource};
@@ -777,4 +777,76 @@ fn on_working_tree_highlights_the_virtual_row_and_not_heads() {
     );
     assert_eq!(view.rows[0].line.node, NodeKind::Uncommitted);
     assert_eq!(view.rows[0].line.paint, RowPaint::Highlighted);
+}
+
+#[test]
+fn a_pinned_compare_base_marks_exactly_its_row_and_fills_the_footer() {
+    let history = history_of(5, 1);
+    let base_oid = history.row_at(2).expect("row 2 is laid out").commit.id;
+    let state = AppState {
+        history: Some(history),
+        compare_base: Some(crate::update::detail::CompareBase {
+            oid: base_oid,
+            row: 2,
+        }),
+        size: Size {
+            columns: 60,
+            rows: 7,
+        },
+        ..AppState::default()
+    };
+
+    let view = graph_view(&state, state.harness.clock.now_seconds());
+    let marked: Vec<usize> = view
+        .rows
+        .iter()
+        .enumerate()
+        .filter(|(_, entry)| entry.compare_marked)
+        .map(|(index, _)| index)
+        .collect();
+    assert_eq!(marked, vec![2], "only the pinned row is marked");
+
+    let short = graft_ui::graph_screen::short_sha(&base_oid.to_string(), 7);
+    assert_eq!(
+        view.compare_footer.as_ref().map(SanitizedText::as_str),
+        Some(format!("compare base {short} — move, x again clears").as_str())
+    );
+
+    let screen = draw(&state, 60, 7);
+    assert!(screen.contains("compare base"), "{screen}");
+}
+
+/// An opened live compare draws its own header (`COMPARE base → head`), not
+/// the cursor's plain-commit header: `detail_view` (m2-details-and-diffs/11)
+/// must read the pane's own `DetailState::spec`, since `AppState::selected_spec`
+/// never names `Compare` and the two disagree once a base is pinned.
+#[test]
+fn an_opened_compare_draws_its_own_header_not_the_cursor_commit() {
+    use crate::update::{AppEvent, update};
+    use graft_core::event::{Event, KeyCode, KeyPress};
+
+    let key = |code| AppEvent::Core(Event::Key(KeyPress::plain(code)));
+    let state = AppState {
+        history: Some(history_of(5, 3)),
+        size: Size {
+            columns: 140,
+            rows: 14,
+        },
+        ..AppState::default()
+    };
+
+    // Cursor starts on row 3; `x` pins it as the base.
+    let (pinned, _) = update(&state, key(KeyCode::Char('x')));
+    // Move up two rows onto row 1, then `x` opens the compare and keeps
+    // the base pinned.
+    let (moved, _) = update(&pinned, key(KeyCode::Char('k')));
+    let (moved, _) = update(&moved, key(KeyCode::Char('k')));
+    let (opened, _) = update(&moved, key(KeyCode::Char('x')));
+
+    let screen = draw(&opened, 140, 14);
+    assert!(
+        screen.contains("COMPARE"),
+        "the pane's own compare spec, not the cursor's commit: {screen}"
+    );
+    assert!(!screen.contains("COMMIT"), "{screen}");
 }

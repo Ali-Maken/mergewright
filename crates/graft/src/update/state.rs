@@ -113,6 +113,11 @@ pub struct AppState {
     /// while [`AppState::uncommitted_row_shown`] holds — `selection::reconcile`
     /// clears it the moment that stops being so.
     pub on_working_tree: bool,
+    /// The pinned base of a live compare (`x`, m2-details-and-diffs/11):
+    /// `None` while nothing is pinned. Set by `super::detail::toggle_compare`
+    /// and read by `super::selection::follow_selection` to keep the compare
+    /// live as the cursor moves.
+    pub compare_base: Option<super::detail::CompareBase>,
 }
 
 /// The screens Graft can show.

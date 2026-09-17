@@ -4,10 +4,11 @@
 use graft_graph::Ancestry;
 use graft_graph::fold::Keep;
 use graft_graph::row::Row;
-use graft_term::{sanitize_line, sanitize_path};
+use graft_term::{SanitizedText, sanitize_line, sanitize_path};
 use graft_ui::graph_column::RowPaint;
 use graft_ui::graph_screen::{
-    Compaction, Filters, GraphEntry, GraphView, OrderNotice, SearchLine, WalkView,
+    Compaction, Filters, GraphEntry, GraphView, OrderNotice, SHA_WIDTH, SearchLine, WalkView,
+    short_sha,
 };
 use std::collections::BTreeSet;
 
@@ -47,6 +48,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
             graphics: None,
             notice: None,
             search: search_line(state),
+            compare_footer: compare_footer_line(state),
             commit_graph: state.commit_graph_line(),
             banner: Vec::new(),
             detail_shown: state.detail.shown,
@@ -79,6 +81,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         graphics: None,
         notice: None,
         search: search_line(state),
+        compare_footer: compare_footer_line(state),
         commit_graph: state.commit_graph_line(),
         banner: Vec::new(),
         detail_shown: state.detail.shown,
@@ -114,6 +117,17 @@ fn search_line(state: &AppState) -> Option<SearchLine> {
         text: sanitize_line(&search.line()),
         failed: matches!(search.state, crate::search::SearchState::Failed(_)),
     })
+}
+
+/// The footer's compare-pin line, worded exactly as the design note's
+/// "Compare (`x`)" bullet (m2-details-and-diffs/11): shown while a compare
+/// base is pinned, in the same footer slot as [`search_line`]'s line.
+fn compare_footer_line(state: &AppState) -> Option<SanitizedText> {
+    let base = state.compare_base?;
+    Some(sanitize_line(&format!(
+        "compare base {} — move, x again clears",
+        short_sha(&base.oid.to_string(), usize::from(SHA_WIDTH))
+    )))
 }
 
 /// What the header says about the order the rows are in (ADR-0008): nothing

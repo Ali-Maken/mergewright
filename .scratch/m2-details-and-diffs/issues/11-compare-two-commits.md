@@ -1,9 +1,8 @@
 # compare-two-commits: `x` marks a base, the pane follows the cursor as a live compare
 
-Status: ready
-Blocked by: 06, 06b, 07
+Status: done
 
-Status: draft
+Blocked by: 06, 06b, 07
 Build with: Sonnet — a state machine over signatures already typed (`DetailSpec::Compare`, `DetailState::open`); testable transition table.
 Needs: `detail-model-and-jobs` (`DetailSpec::Compare`, `DetailState::open`, `Subject::Compare` already rendered by `detail-pane-frame`), `detail-pane-frame` (header renders `Subject::Compare`, files/body reuse unchanged), `working-tree-row-selectable` (`AppState::on_working_tree`, `AppState::selected_spec`, `follow_selection`)
 
@@ -45,15 +44,28 @@ pub fn toggle_compare(state: &mut AppState, row: usize, oid: Oid, next_id: &mut 
 
 ## Acceptance
 
-- [ ] `x` on an unmarked row sets `compare_base`, emits no command; `x` again on the same row clears it, emits no command.
-- [ ] `x` on a different row while a base is set opens `DetailSpec::Compare { base, head }` and keeps `compare_base` set.
-- [ ] Moving the cursor (`j`/`k`) while a base is set opens a fresh `Compare` against the new row each time, not `Commit`.
-- [ ] Moving onto the working-tree row while a base is set opens `WorkingTree`, keeps the base; `x` there changes nothing and emits nothing.
-- [ ] `Shift+click`/`Ctrl+click` on a second row behaves exactly as `x` would on it.
-- [ ] `Esc` clears `compare_base` and closes the pane in one press, matching ADR-0023's existing `Esc` order.
-- [ ] `compare_marked` is true on exactly the base row; `compare_footer` reads `compare base <sha> — move, x again clears`.
-- [ ] MAP.md: `graft-ui` (`GraphEntry`/`GraphView` lines amended), `graft` (`update/detail` additions).
-- [ ] Capture at `docs/shots/m2-compare.txt`, ≤ 200 KB; user judges by eye.
+- [x] `x` on an unmarked row sets `compare_base`, emits no command; `x` again on the same row clears it, emits no command.
+- [x] `x` on a different row while a base is set opens `DetailSpec::Compare { base, head }` and keeps `compare_base` set.
+- [x] Moving the cursor (`j`/`k`) while a base is set opens a fresh `Compare` against the new row each time, not `Commit`.
+- [x] Moving onto the working-tree row while a base is set opens `WorkingTree`, keeps the base; `x` there changes nothing and emits nothing.
+- [x] `Shift+click`/`Ctrl+click` on a second row behaves exactly as `x` would on it.
+- [x] `Esc` clears `compare_base` and closes the pane in one press, matching ADR-0023's existing `Esc` order.
+- [x] `compare_marked` is true on exactly the base row; `compare_footer` reads `compare base <sha> — move, x again clears`.
+- [x] MAP.md: `graft-ui` (`GraphEntry`/`GraphView` lines amended), `graft` (`update/detail` additions).
+- [x] Capture at `docs/shots/m2-compare.txt`, ≤ 200 KB; user judges by eye.
+
+## Notes (2026-09-18)
+
+- Fixed a pre-existing bug surfaced by this ticket: `view::detail::detail_view` read
+  `AppState::selected_spec()` for the pane header, which never names `Compare`; a
+  pinned compare's header silently redrew as the cursor's plain commit. Now reads
+  `AppState::detail.spec` (falls back to `selected_spec()` before anything opens).
+  See KNOWN_GAPS.md m2-details-and-diffs/11.
+- The capture's pane header shows `COMPARE <base> → <head>` only, no `· N files
+  +A −B`: that text was `compare-mode`'s scope per `compare_header`'s own doc
+  comment, not this ticket's. Logged in KNOWN_GAPS.md.
+- 2026-09-17 spec fix honoured: `x` is a no-op on the working-tree row; a live
+  compare follows it to `WorkingTree` and keeps the base.
 
 ## Gates
 

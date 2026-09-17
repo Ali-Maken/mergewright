@@ -36,8 +36,8 @@ impl GraphScreen<'_> {
     }
 
     /// The footer's text and token: a problem, a search line, a notice, the
-    /// reveal (a truncated subject, named by hover), or — when
-    /// none of those apply — the ordinary key hints.
+    /// pinned compare base's line, the reveal (a truncated subject, named by
+    /// hover), or — when none of those apply — the ordinary key hints.
     pub(super) fn footer_line(
         &self,
         body: Rect,
@@ -56,15 +56,21 @@ impl GraphScreen<'_> {
             .filter(|entry| subject_truncated(entry, self.view.icons, &columns))
             .map(|entry| entry.subject.as_str().to_owned());
 
-        match (&self.view.problem, &self.view.search, &self.view.notice) {
-            (Some(problem), _, _) => (format!(" {problem}"), Token::Warning),
-            (None, Some(SearchLine::Prompt(typed)), _) => (format!(" /{typed}_"), Token::Info),
-            (None, Some(SearchLine::Status { text, failed }), _) => (
+        match (
+            &self.view.problem,
+            &self.view.search,
+            &self.view.notice,
+            &self.view.compare_footer,
+        ) {
+            (Some(problem), _, _, _) => (format!(" {problem}"), Token::Warning),
+            (None, Some(SearchLine::Prompt(typed)), _, _) => (format!(" /{typed}_"), Token::Info),
+            (None, Some(SearchLine::Status { text, failed }), _, _) => (
                 format!(" {text}"),
                 if *failed { Token::Warning } else { Token::Info },
             ),
-            (None, None, Some(notice)) => (format!(" {notice}"), Token::Info),
-            (None, None, None) => {
+            (None, None, Some(notice), _) => (format!(" {notice}"), Token::Info),
+            (None, None, None, Some(compare)) => (format!(" {compare}"), Token::Accent),
+            (None, None, None, None) => {
                 if let Some(subject) = &reveal_subject {
                     (format!(" {subject}"), Token::Text)
                 } else {

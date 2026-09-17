@@ -96,6 +96,7 @@ pub(super) fn visible_rows<'a>(
                     let mut entry = row_entry(
                         row,
                         index == history.cursor && !state.on_working_tree,
+                        state.compare_base.is_some_and(|base| base.row == index),
                         mailmap,
                         state.refs.as_deref(),
                         now,
@@ -140,6 +141,10 @@ fn uncommitted_entry<'a>(head_row: Option<&Row>, counts: WorkingTreeCounts) -> G
         },
         when: String::new(),
         sha: String::new(),
+        // The compare base is always a commit row (`toggle_compare`'s `oid`
+        // comes from `History::selected`/`row_at`); the working-tree row can
+        // never be marked.
+        compare_marked: false,
     }
 }
 
@@ -200,10 +205,12 @@ fn uncommitted_subject(counts: WorkingTreeCounts) -> String {
 /// One row's [`GraphEntry`]: the graph cells, the sanitised subject, and the
 /// author/date/SHA columns m1-the-graph/10 adds — the author's identity
 /// resolved through `mailmap` first, so two identities mapped to one person
-/// share a chip and a colour.
+/// share a chip and a colour. `compare_marked` is the pinned compare base's
+/// row (`x`, m2-details-and-diffs/11).
 fn row_entry<'a>(
     row: &'a graft_graph::row::Row,
     highlighted: bool,
+    compare_marked: bool,
     mailmap: Option<&graft_git::mailmap::Mailmap>,
     refs: Option<&RefBadges>,
     now: i64,
@@ -241,6 +248,7 @@ fn row_entry<'a>(
         },
         when: relative_date(row.commit.date().seconds, now),
         sha: short_sha(&row.commit.id.to_string(), usize::from(SHA_WIDTH)),
+        compare_marked,
     }
 }
 

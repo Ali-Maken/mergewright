@@ -122,7 +122,11 @@ impl GraphScreen<'_> {
 
         let (glyph, glyph_style) = if entry.line.row.marker.is_some() {
             ("! ", style)
-        } else if palette16_edge {
+        } else if entry.compare_marked || palette16_edge {
+            // The pinned compare base (`x`, m2-details-and-diffs/11) draws
+            // the same accent `▏` the Palette16 fallback uses, unconditional
+            // of colour depth: it is a mark the user set, not a substitute
+            // for a background this terminal can't show.
             (
                 "▏ ",
                 foreground(self.theme, Token::Accent).add_modifier(Modifier::BOLD),
