@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M2 building · 10 detail-keys-and-focus (sonnet)
+**Current step:** M2 building · 10b detail-resize-and-persistence (sonnet)
 
 ---
 
@@ -360,6 +360,8 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-17 · user · M3 design-pass brief filed above (4-property operations, write seam ops vs app, milestones as daily loops, best-in-class ADR per milestone, 4 product gaps). ADRs written and **approved before any M3 ticket is built**; M2 untouched, no scope change
 - 2026-09-17 · m2/08 diff-widget · sonnet · done (4f89257) · detail_pane diff_body rewrite +9 tests; workspace green; capture docs/shots/m2-diff-widget.txt 265 B 72×10 (user by eye); fixed latent double-heading in flatten() for assembled hunks; no new Token variants (soft/strong bg from existing tokens + chrome contrast) · deviation for reviewer: `diff_body` gained `truncated: Option<(usize, usize)>` (only path to the footer row) · harness: 76 calls / ~71k, 1.9× past the stop — **no cause in the report** · COMPACTED (once, mid-ticket)
 - 2026-09-18 · m2/09 side-by-side-view · sonnet · done (a08a703) · diff_body_side_by_side + `v` toggle; 3 widget tests (row alignment paired/unpaired, word-tint bg / syntax fg / palette16 fallback match diff_body) + toggle test (no-op when focus==Graph); capture docs/shots/m2-side-by-side.txt 1.1 KB via a temp test, removed after (user by eye; builder verified structure only) · builder self-reported ~34 calls, within budget, no compaction; **harness: 77 calls / ~142k** — self-reports are not reliable, log the harness figures only
+- 2026-09-18 · m2/10 detail-keys-and-focus · sonnet · partial (9da5263) · group 1 done: movement/focus/toggle keys (Enter-on-Diff no-op bug fixed, PgUp/PgDn/g/G, scroll_body, Space folds Dir, w/[/]/L re-issue ReadFileDiff), `[diff]` config wired at startup; 346 tests (+7), gates green · stopped at the ticket's own named seam · deviation for reviewer: `W` flips `word_tint` directly — `graft_git::DiffOptions` has no such field (display-only per `DiffOptionsView`); moving it into the git-level type is a graft-git change, out of scope · harness: 158 calls / ~167k · COMPACTED (once) → remainder filed as 10b
+- 2026-09-18 · m2/10b filed · conductor · group-2 remainder (`<`/`>` dispatch, drag, wheel regions, layout.rs + RepoStore::common_dir, pane_size into compute, save/load on resize, hints, capture); scope = ticket 10's NOTES list verbatim, same model; 23 now blocked by 10b
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.

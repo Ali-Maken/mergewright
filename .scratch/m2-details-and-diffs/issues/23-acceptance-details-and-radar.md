@@ -1,7 +1,7 @@
 # acceptance-details-and-radar: M2's acceptance ticket — the gallery's "details and radar" stops, TESTING.md, captures
 
 Status: ready
-Blocked by: 01, 02, 03, 04, 05, 06, 06b, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22
+Blocked by: 01, 02, 03, 04, 05, 06, 06b, 07, 10b, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22
 
 Status: draft
 Build with: Fable — defining what good looks like for the promise is a decision, not plumbing (CLAUDE.md, acceptance-ticket rule). Doesn't count against the milestone's Fable build expectation.
