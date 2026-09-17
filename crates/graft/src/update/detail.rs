@@ -587,13 +587,41 @@ pub(super) fn detail_event(next: &mut AppState, commands: &mut Vec<Command>, eve
     }
 }
 
+/// The pane's actual layout for `size`: the breakpoint's kind first (the
+/// percentage default), then that kind's saved override, if any, folded back
+/// in. Two steps because which override applies depends on the kind the
+/// first step already picked (`PaneSize::for_layout`).
+#[must_use]
+pub fn effective_layout(
+    focus: DetailFocus,
+    pane_size: &PaneSize,
+    size: (u16, u16),
+) -> DetailLayout {
+    let kind = DetailLayout::compute(size.0, size.1, focus, None);
+    let override_cells = pane_size.for_layout(&kind);
+    DetailLayout::compute(size.0, size.1, focus, override_cells)
+}
+
 /// The pane's keys, answered before the graph's. `true` when the key was the pane's.
 pub(super) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    let plain = key.modifiers == Modifiers::NONE;
+    // `<`/`>` (ADR-0028): the focused divider, whichever region has focus,
+    // whenever the pane is shown — the pane being shown is what makes the
+    // divider exist. A no-op (nothing changes, no command) in the `Tab`
+    // layout, hidden, or against a bound: `resize_pane` says so itself.
+    if plain && next.detail.shown && matches!(key.code, KeyCode::Char('<' | '>')) {
+        let grow = key.code == KeyCode::Char('>');
+        let size = (next.size.columns, next.size.rows);
+        let layout = effective_layout(next.detail.focus, &next.detail.pane_size, size);
+        if next.detail.resize_pane(&layout, grow, size) {
+            commands.push(Command::SaveLayout(next.detail.pane_size));
+        }
+        return true;
+    }
     let AppState {
         detail, local_jobs, ..
     } = next;
     let ids = &mut || local_jobs.next_id();
-    let plain = key.modifiers == Modifiers::NONE;
     match key.code {
         KeyCode::Enter if plain && detail.shown && detail.focus == DetailFocus::Diff => {
             // Diff already has focus: Enter has nothing further to open.
@@ -785,6 +813,141 @@ mod tests {
             truncated: None,
             untracked: false,
         }
+    }
+
+    #[test]
+    fn angle_keys_resize_the_right_pane_and_leave_below_alone() {
+        let mut state = super::super::state::AppState::default();
+        state.detail.shown = true;
+        state.detail.focus = DetailFocus::Files;
+        state.size = super::super::state::Size {
+            columns: 200,
+            rows: 50,
+        };
+        let mut commands = Vec::new();
+
+        assert!(detail_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Char('>'))
+        ));
+
+        let grown = state.detail.pane_size.right_columns.expect("resized once");
+        assert!(grown > 0);
+        assert_eq!(state.detail.pane_size.below_rows, None);
+        assert_eq!(commands, vec![Command::SaveLayout(state.detail.pane_size)]);
+
+        commands.clear();
+        assert!(detail_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Char('<'))
+        ));
+        let shrunk = state.detail.pane_size.right_columns.expect("still set");
+        assert_eq!(shrunk, grown - RESIZE_STEP);
+    }
+
+    #[test]
+    fn angle_keys_resize_rows_in_the_below_layout() {
+        let mut state = super::super::state::AppState::default();
+        state.detail.shown = true;
+        state.detail.focus = DetailFocus::Files;
+        state.size = super::super::state::Size {
+            columns: 120,
+            rows: 50,
+        };
+        let mut commands = Vec::new();
+
+        assert!(detail_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Char('>'))
+        ));
+
+        assert!(state.detail.pane_size.below_rows.is_some());
+        assert_eq!(state.detail.pane_size.right_columns, None);
+    }
+
+    #[test]
+    fn angle_keys_are_a_no_op_in_the_tab_layout() {
+        let mut state = super::super::state::AppState::default();
+        state.detail.shown = true;
+        state.detail.focus = DetailFocus::Files;
+        state.size = super::super::state::Size {
+            columns: 80,
+            rows: 50,
+        };
+        let mut commands = Vec::new();
+
+        assert!(detail_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Char('>'))
+        ));
+
+        assert_eq!(state.detail.pane_size, PaneSize::default());
+        assert!(commands.is_empty());
+    }
+
+    #[test]
+    fn angle_keys_are_a_no_op_with_the_pane_hidden() {
+        let mut state = super::super::state::AppState::default();
+        state.detail.shown = false;
+        state.size = super::super::state::Size {
+            columns: 200,
+            rows: 50,
+        };
+        let mut commands = Vec::new();
+
+        assert!(!detail_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Char('>'))
+        ));
+        assert_eq!(state.detail.pane_size, PaneSize::default());
+        assert!(commands.is_empty());
+    }
+
+    #[test]
+    fn plus_and_minus_never_resize_the_pane() {
+        let mut state = super::super::state::AppState::default();
+        state.detail.shown = true;
+        state.detail.focus = DetailFocus::Files;
+        state.size = super::super::state::Size {
+            columns: 200,
+            rows: 50,
+        };
+        let mut commands = Vec::new();
+
+        detail_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Char('+')),
+        );
+        detail_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Char('-')),
+        );
+
+        assert_eq!(state.detail.pane_size, PaneSize::default());
+    }
+
+    #[test]
+    fn set_pane_cells_and_for_layout_round_trip() {
+        let size = (200, 50);
+        let layout = DetailLayout::compute(size.0, size.1, DetailFocus::Files, None);
+        let mut state = DetailState {
+            shown: true,
+            ..DetailState::default()
+        };
+
+        assert!(state.set_pane_cells(&layout, 60, size));
+        assert_eq!(
+            state.pane_size.for_layout(&layout),
+            state.pane_size.right_columns
+        );
+        assert_eq!(state.pane_size.right_columns, Some(60));
     }
 
     #[test]

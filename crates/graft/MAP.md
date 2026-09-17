@@ -10,6 +10,7 @@ One line per public item. Update when a public item changes.
 - `search` (mod) — `/` search over commit subject, author, sha prefix and body (m1-the-graph/26).
 - `jobs` (mod) — background job runner.
 - `refs` (mod) — refs on each commit and ahead/behind, for the ref badges.
+- `layout` (mod) — the detail pane's saved split, `<common_dir>/graft/layout` (m2-details-and-diffs/10b, ADR-0028).
 - `repos` (mod) — repository store, opened once and cached.
 - `repository` (mod) — facts about one open repository.
 - `session` (mod) — startup and per-run session state.
@@ -129,7 +130,7 @@ One line per public item. Update when a public item changes.
 - `Size` (struct) — terminal size in character cells.
 - `Size::columns` (field) — width in character cells.
 - `Size::rows` (field) — height in character cells.
-- `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows; `ReadRefs` reads refs and ahead/behind off the loop's thread; `ReadWorkingTree` reads working-tree status counts off the loop's thread; `PromoteHistory` sorts a provisional walk's range topologically; `Search(Query)` starts a search job. `ListFiles(JobId, DiffSpec, DiffOptions)`, `ReadFileDiff(JobId, DiffKey, FileEntry)`, `ContainedIn(JobId, Oid)` run the detail pane's reads under ids `update` chose (`CancelJob` stops them). `CopyToClipboard(String)` is terminal output the loop writes itself (through the session's tmux transport; a write error ends the loop), never dispatched to jobs (m1-the-graph/45).
+- `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows; `ReadRefs` reads refs and ahead/behind off the loop's thread; `ReadWorkingTree` reads working-tree status counts off the loop's thread; `PromoteHistory` sorts a provisional walk's range topologically; `Search(Query)` starts a search job. `ListFiles(JobId, DiffSpec, DiffOptions)`, `ReadFileDiff(JobId, DiffKey, FileEntry)`, `ContainedIn(JobId, Oid)` run the detail pane's reads under ids `update` chose (`CancelJob` stops them). `CopyToClipboard(String)` is terminal output the loop writes itself (through the session's tmux transport; a write error ends the loop), never dispatched to jobs (m1-the-graph/45). `SaveLayout(PaneSize)` is written to disk by the loop itself (`crate::layout::save_split`); a failure is expected and non-fatal (m2-details-and-diffs/10b).
 - `CHROME_ROWS` (const) — screen rows that are not the graph without a harness banner; `graft_ui::graph_screen::CHROME_ROWS`. `AppState::graph_rows` adds `Harness::banner_rows`.
 - `AppState::graph_rows` (fn) — history rows the graph pane shows at the current size; never zero.
 - `update` (fn) — the pure state transition function.
@@ -149,7 +150,10 @@ The detail pane's state and transitions; pure (no I/O, no clock). Drawing is `de
 - `DiffKey` (struct) — spec, entry, options, max_lines: one file's diff; the diff cache's key.
 - `Bounded<K, V>` (struct) — small map that evicts its oldest entry when full; `new`, `get`, `insert`, `clear`.
 - `DetailState` (struct) — spec, shown, focus, files (`Loading` of view + git list), diff, `diff_cache` (8), `contained` (64), options, mode, word_tint, max_lines (5,000), body_top, `pane_size` (`PaneSize`, per-orientation, ADR-0028).
-- `PaneSize` (struct) — `right_columns`/`below_rows: Option<u16>`; `for_layout(&DetailLayout)` picks the orientation's value, `None` for `Tab`. Persistence (`layout.rs`) and the resize keys' arithmetic (`resize_pane`/`set_pane_cells`) are the ticket-10 remainder — see its handoff note.
+- `PaneSize` (struct) — `right_columns`/`below_rows: Option<u16>`; `for_layout(&DetailLayout)` picks the orientation's value, `None` for `Tab`. Persisted via `crate::layout::load_split`/`save_split` (m2-details-and-diffs/10b).
+- `effective_layout` (fn) — the pane's actual `DetailLayout` for a screen size: breakpoint kind first, then that kind's `PaneSize` override folded back in (two-step compute, `view/frame.rs` and `detail_key` both use it).
+- `DetailState::resize_pane` (fn) — `<`/`>` (ADR-0028): steps the focused divider by 4 cells, clamped to the pane's and the graph's minimums; `false` (no change, no command) in `Tab`, hidden, or at a bound.
+- `DetailState::set_pane_cells` (fn) — divider drag: sets the orientation's cells straight from the pointer, same clamps and no-op cases as `resize_pane`.
 - `DetailState::set_options` (fn) — new `DiffOptions`, re-shows the cursor's diff (cache hit or `ReadFileDiff`). Backs `w`/`[`/`]`.
 - `DetailState::load_all` (fn) — `max_lines = usize::MAX`, re-shows the cursor's diff. Backs `L`.
 - `DetailState::scroll_body` (fn) — clamps `body_top` by a signed delta against the diff's line count. Backs `j`/`k`/PageUp/PageDown/`g`/`G` on the diff body.
@@ -225,6 +229,7 @@ Internal split (m1-the-graph/72c, public paths unchanged): `types` (`Config`,
 - `RepoStore::branches` (fn) — the repository's branches, resolved from `refs`.
 - `RepoStore::table` (fn) — the repository's one `Arc<CommitTable>`, opened once, kept across `refresh`.
 - `RepoStore::opens` (fn) — how many times the repository has been opened from scratch.
+- `RepoStore::common_dir` (fn) — the repository's common directory, shared by every worktree; where `crate::layout`'s split file lives (m2-details-and-diffs/10b).
 - `RepoStore::refresh` (fn) — mark cached refs and conclusions (e.g. default branch) stale.
 - `StoreError` (enum) — why the store could not answer (open, refs, branches, id table).
 

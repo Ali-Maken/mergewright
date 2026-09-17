@@ -393,3 +393,10 @@ Every budget in 56's checklist passes on 56c's numbers (`docs/shots/m1-memory-cu
 ## m2-details-and-diffs/06b — working-tree row reach (2026-09-17)
 
 - **The uncommitted row appears only while `HEAD` is the top visible history row (m1-the-graph/12b); with a newer branch above `HEAD` the user scrolls `HEAD` to the top to reach it.** Owner: M3 working tree — it decides whether to pin the row above `HEAD` wherever `HEAD` sits.
+
+## m2-details-and-diffs/10b — detail pane resize: pointer input and hints (2026-09-18)
+
+- **Divider drag is not implemented.** `<`/`>` and persistence are done; mouse-down-and-drag on the `Right`/`Below` divider would call the already-built `DetailState::set_pane_cells`, but no mouse-drag dispatch exists yet in `update`. Expiry: a follow-up ticket wiring mouse events to `set_pane_cells`.
+- **Mouse wheel over the files/diff regions does not scroll them.** Needs hit-testing (`DetailLayout`/`DetailAreas`) mirroring `graph_row_at` in `update/mod.rs` to tell which region the pointer is over before routing the scroll. Expiry: same follow-up ticket as the drag gap.
+- **No pane resize hint (`<> resize`) and no `?` help screen.** Investigated: there is no hints footer or help-screen infrastructure anywhere in the codebase yet (`w W v [ ]` never appears as a rendered string; no `?` key handler). Adding `<> resize` alone would mean inventing that infrastructure from scratch, out of this ticket's slice. Expiry: whichever ticket first builds a hints/help surface should include this.
+- **Map-view no-op guard for resize not added.** `Screen` has no `Map` variant until ticket 19 (per 10b's own "Out" note); `<`/`>` are already no-ops in `Tab`/hidden, so this closes automatically once `Map` exists and needs the same guard added explicitly then.

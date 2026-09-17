@@ -4,6 +4,7 @@
 //! asserted in a test.
 
 use std::io::{self, Write};
+use std::path::Path;
 
 use graft_core::event::{Event, KeyCode, KeyPress};
 use graft_graph::raster::cache::Flush;
@@ -50,6 +51,7 @@ where
         session,
         state,
         &mut Graphics::new(NoReplies),
+        None,
     )
 }
 
@@ -62,6 +64,7 @@ pub(super) fn pump_with<B, W, D, R>(
     session: &mut Session,
     state: AppState,
     graphics: &mut Graphics<R>,
+    common_dir: Option<&Path>,
 ) -> io::Result<Exit>
 where
     B: Backend<Error = io::Error> + Write,
@@ -69,7 +72,7 @@ where
     D: Dispatch,
     R: GraphicsReplies,
 {
-    let exit = frames(terminal, wakes, jobs, session, state, graphics);
+    let exit = frames(terminal, wakes, jobs, session, state, graphics, common_dir);
     let released = release(terminal, graphics);
     // When the loop itself failed, its error is the one to report; a free
     // that fails too failed writing to the same broken terminal.
@@ -84,6 +87,7 @@ fn frames<B, W, D, R>(
     session: &mut Session,
     mut state: AppState,
     graphics: &mut Graphics<R>,
+    common_dir: Option<&Path>,
 ) -> io::Result<Exit>
 where
     B: Backend<Error = io::Error> + Write,
@@ -135,6 +139,15 @@ where
             let command = match command {
                 Command::CopyToClipboard(text) => {
                     write_clipboard(terminal, session, &text)?;
+                    continue;
+                }
+                Command::SaveLayout(split) => {
+                    if let Some(common_dir) = common_dir {
+                        // Best-effort (`crate::layout`'s module doc): a
+                        // missing or unwritable `graft` directory is the
+                        // expected case here, not a failure worth surfacing.
+                        drop(crate::layout::save_split(common_dir, &split));
+                    }
                     continue;
                 }
                 command => command,

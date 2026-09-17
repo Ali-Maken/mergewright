@@ -107,13 +107,23 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
 
     let (mut wakes, sender) = ChannelWakes::new();
     let signals = signals::watch(sender.clone())?;
+    // Cloned before `repos` moves into the pool: the common directory (the
+    // detail-pane split lives under it, `crate::layout`) is wanted once more
+    // below, at startup and on every resize.
+    let common_dir = repos.common_dir().ok();
     let jobs = JobRunner::with_default_size(sender.clone(), repos)?;
     let redetector = start_redetector(&environment, &mux, &settled, &sender)?;
     let resizes = signals::watch_resizes(sender.clone(), redetector.clone())?;
     let forwarder = input::spawn_reader(inputs, sender, redetector)?;
 
-    let (mut terminal, state) =
-        terminal_and_state(&jobs, &repo_path, &settled, harness, config.config.diff)?;
+    let (mut terminal, state) = terminal_and_state(
+        &jobs,
+        &repo_path,
+        &settled,
+        harness,
+        config.config.diff,
+        common_dir.as_deref(),
+    )?;
     let mut graphics =
         Graphics::new(mux.waiter()).with_transport(Transport::for_tmux(&settled.capabilities.tmux));
     let outcome = pump_with(
@@ -123,6 +133,7 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
         &mut settled,
         state,
         &mut graphics,
+        common_dir.as_deref(),
     );
     let outcome = hand_back_input(&mux, forwarder, wakes, outcome);
     // Dropped before the restore so that its own teardown (it shows the cursor
@@ -240,13 +251,17 @@ fn report_stalled_jobs_to(stderr: &mut impl Write, shutdown: Shutdown) -> io::Re
 /// first resize), plus the harness banner, the tier the probe settled on, and
 /// `[diff]`'s startup values into the pane's live options — same fields the
 /// `w`/`[`/`]`/`W` keys change afterwards, just seeded once instead of left
-/// at `DetailState::default()`'s.
+/// at `DetailState::default()`'s. `common_dir` seeds the detail pane's saved
+/// split (ADR-0028, `crate::layout::load_split`); `None` when the repository
+/// could not be opened for it, in which case the pane starts at its
+/// percentage default like a first run would.
 fn terminal_and_state(
     jobs: &impl jobs::Dispatch,
     repo_path: &std::path::Path,
     settled: &Session,
     harness: crate::update::Harness,
     diff: Diff,
+    common_dir: Option<&std::path::Path>,
 ) -> io::Result<(Terminal<RowClear<CrosstermBackend<io::Stdout>>>, AppState)> {
     let terminal = Terminal::new(RowClear(CrosstermBackend::new(io::stdout())))?;
     let size = terminal.size()?;
@@ -262,6 +277,11 @@ fn terminal_and_state(
         ignore_whitespace: diff.ignore_whitespace,
     };
     state.detail.word_tint = diff.word_tint;
+    if let Some(common_dir) = common_dir
+        && let Some(pane_size) = crate::layout::load_split(common_dir)
+    {
+        state.detail.pane_size = pane_size;
+    }
     Ok((terminal, state))
 }
 

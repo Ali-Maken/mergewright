@@ -1,0 +1,23 @@
+m2-details-and-diffs/10b: detail pane resized narrower with `<` (ADR-0028)
+
+Right layout, screen 160x20: default width is 42% of 160 = 67 columns;
+three `<` presses (RESIZE_STEP=4 each) land at 55 (55 = clamp(67-12, 48, 160-40)).
+Pane rendered at its actual resized width (55 cols), right-aligned as
+`view/frame.rs::split_for_detail` places it.
+
+COMMIT a1b2c3d
+Rui Mehdi · 2026-09-13 14:02 +0500 · 2 min ago
+parents 9f8e7d6 · diff vs first parent
+Contained in: main
+
+M src/auth/token.rs                              +12 −4
+A src/auth/session.rs                             +3 −0
+M assets/logo.png                                    bin
+@@ -40,7 +40,15 @@ fn refresh()
+ 40  40   let token = self.cache;
+ 41     - if token.is_expired() {
+     41 + if token.is_expired()
+     42 +     && !refreshing {
+
+Narrow tab strip (<100 cols), Detail tab active:
+Graph  [Detail]

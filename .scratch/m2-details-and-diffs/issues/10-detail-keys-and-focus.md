@@ -66,15 +66,15 @@ pub fn save_split(common_dir: &std::path::Path, split: &PaneSize) -> std::io::Re
 - [x] `Esc` closes the pane (no Explain panel exists yet — `explain-panel` ticket's seam; plain close).
 - [x] `w`/`W`/`[`/`]`/`L` each change exactly the intended `DiffOptions` field and issue one `ReadFileDiff`; repeating the same toggle is a normal cache hit (no command) after the first round-trip.
 - [x] `Space` on a `Dir` row toggles it and only it.
-- [ ] `<`/`>` in `Right` move `right_columns` by −4/+4 and leave `below_rows` alone; in `Below` move `below_rows` by −4/+4 and leave `right_columns` alone; both clamped to the layout's minimum (48/8) and to the graph's minimum (40 columns / 6 rows); a press at a bound returns false and changes nothing.
-- [ ] `<`/`>` are a no-op (false, state unchanged, no command, no footer notice) in the `Tab` layout, with the pane hidden, and with the Map view shown; they work with focus on `Graph` as well as `Files`/`Diff`.
-- [ ] `+`/`-` and `Ctrl+arrows` do not resize anything (`+` still unfolds lanes with the pane shown).
-- [ ] `PaneSize::for_layout` returns the matching orientation's value and `None` for `Tab`; `view::detail` passes it as `override_cells`.
+- [x] `<`/`>` in `Right` move `right_columns` by −4/+4 and leave `below_rows` alone; in `Below` move `below_rows` by −4/+4 and leave `right_columns` alone; both clamped to the layout's minimum (48/8) and to the graph's minimum (40 columns / 6 rows); a press at a bound returns false and changes nothing.
+- [x] `<`/`>` are a no-op (false, state unchanged, no command, no footer notice) in the `Tab` layout and with the pane hidden. (Map view: out of scope, no `Screen::Map` exists yet — see 10b's Out note and KNOWN_GAPS.) They work with focus on `Graph` as well as `Files`/`Diff`.
+- [x] `+`/`-` and `Ctrl+arrows` do not resize anything (`+` still unfolds lanes with the pane shown).
+- [x] `PaneSize::for_layout` returns the matching orientation's value and `None` for `Tab`; `view::detail` (`effective_layout`, called from `view/frame.rs`) passes it as `override_cells`.
 - [x] `[diff]` config: unset uses defaults (3, false, true); set values parse; MAP.md/config tests updated.
-- [ ] `layout.rs` round-trips both values in a temp dir; a missing file returns `None` without error; a file with only `right=` leaves `below_rows` `None`.
-- [ ] Pane hints at ≥ 100 columns include `<> resize`; `?` help lists it.
-- [ ] MAP.md: `graft` (`update/detail` methods and `PaneSize`, `config::Diff`, `layout`).
-- [ ] Capture at `docs/shots/m2-detail-keys-resize.txt`, ≤ 200 KB; user judges by eye.
+- [x] `layout.rs` round-trips both values in a temp dir; a missing file returns `None` without error; a file with only `right=` leaves `below_rows` `None`.
+- [ ] Pane hints at ≥ 100 columns include `<> resize`; `?` help lists it. **Deferred — no hints footer or `?` help screen exists anywhere in the codebase yet; see KNOWN_GAPS m2-details-and-diffs/10b.**
+- [x] MAP.md: `graft` (`update/detail` methods and `PaneSize`, `config::Diff`, `layout`).
+- [x] Capture at `docs/shots/m2-detail-keys-resize.txt`, ≤ 200 KB; user judges by eye.
 
 ## Gates
 

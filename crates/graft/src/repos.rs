@@ -170,6 +170,21 @@ impl RepoStore {
         self.opens.load(Ordering::Acquire)
     }
 
+    /// The repository's common directory: shared by every worktree, so this
+    /// is where a setting that means the same thing everywhere (the detail
+    /// pane's split, `crate::layout`) belongs — never a per-worktree
+    /// `--git-path` (`graft_git::commit_graph`'s module doc has the same
+    /// call for the commit-graph offer).
+    ///
+    /// # Errors
+    /// [`OpenError`] if the repository cannot be opened. In practice this
+    /// path is only asked for after `run` already opened the repository once
+    /// (`crate::event_loop::startup::run`), so the error is expected never to
+    /// fire; callers still handle it rather than assume that.
+    pub fn common_dir(&self) -> Result<PathBuf, OpenError> {
+        Ok(self.shared()?.handle().common_dir().to_path_buf())
+    }
+
     /// Forget what was worked out, so the next job reads it again.
     ///
     /// What `Ctrl+R` means for the cached parts: the open repository stays

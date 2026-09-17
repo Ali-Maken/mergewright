@@ -6,6 +6,7 @@ use graft_core::job::JobId;
 
 use crate::history::RowRequest;
 use crate::repository::RepositoryFacts;
+use crate::update::detail::PaneSize;
 use graft_git::history::Order;
 use graft_git::version::SystemGit;
 
@@ -190,6 +191,11 @@ pub enum Command {
     /// Written by the loop itself, to the terminal, through the session's
     /// transport: it is output, not a job, and never reaches the job runner.
     CopyToClipboard(String),
+    /// Persist the detail pane's split (ADR-0028: `<`/`>` or a divider drag
+    /// changed it). Written by the loop itself, to `<common_dir>/graft/
+    /// layout` (`crate::layout::save_split`); a failure is expected and
+    /// non-fatal (see that module's doc), never dispatched to jobs.
+    SaveLayout(PaneSize),
     /// Run `git commit-graph write --reachable` as a job (`B` on the offer).
     /// Never cancelled once git starts (`graft_git::commit_graph`).
     WriteCommitGraph,

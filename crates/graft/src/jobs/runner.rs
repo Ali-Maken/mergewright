@@ -428,6 +428,11 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::CopyToClipboard(_) => {
                 unreachable!("CopyToClipboard is terminal output, never a job")
             }
+            // The loop writes this to disk itself (`event_loop::running`);
+            // reaching here is a routing bug, not a runtime condition.
+            Command::SaveLayout(_) => {
+                unreachable!("SaveLayout is written by the loop, never a job")
+            }
         }
     }
 }

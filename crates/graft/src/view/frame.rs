@@ -112,7 +112,11 @@ fn render_graph_with_detail(
     area: Rect,
     pixels: bool,
 ) -> Option<Rect> {
-    let layout = DetailLayout::compute(area.width, area.height, state.detail.focus, None);
+    let layout = crate::update::detail::effective_layout(
+        state.detail.focus,
+        &state.detail.pane_size,
+        (area.width, area.height),
+    );
     let view = detail_view(state);
     let (graph_area, pane_area) = split_for_detail(frame, session, layout, area);
 
