@@ -1,9 +1,8 @@
 # mistake-radar-detection: the classification rules, their evidence and their explanations
 
-Status: ready
+Status: done
 Blocked by: none
 
-Status: draft
 Build with: Fable (signature) — CLAUDE.md names M2's Mistake Radar detection a signature ticket; the rules are the product.
 Needs: none (pure; `radar-context-and-markers`, the three `radar-probe-*` tickets and `explain-panel` call these)
 
@@ -102,3 +101,14 @@ pub fn findings_from_duplicates(d: &Duplicates, policy: &Policy) -> Vec<Finding>
 ## Size
 
 Two crates (core ~40 lines; ops ~450 lines) + tests (~250, the matrix test reads facts through `graft_git::read_commit` and `RepoHandle::references`/`peeled_references` — MAP.md lines 56, 77, 80 — never the walk). Fits under 80k: ≤ 25 tool calls. If the fixture-facts helper needs more than ~80 lines, stop and report `partial` with `facts_for` as the seam rather than reading `graft-git` source.
+
+## Built (2026-09-17, builder-fable)
+
+- `graft-core::mistake_radar`: `Severity`, all seven `MistakeRadarKind`s, `ALL`, `default_severity`, `name`.
+- `graft-ops::mistake_radar` (`mod.rs`, `rules.rs`, `explain.rs`, `probes.rs`): facts structs, `Policy`, `Finding`/`Evidence`/`Risk`; `merged_branch_from_subject`, `classify_commit`, `classify_refs`; `explain`; probe verdict types and `finding(s)_from_*`.
+- Fixture matrix: `crates/graft-ops/tests/it/mistake_radar.rs` walks every corpus shape; foxtrot/backward/accidental-pull each yield exactly one finding on the right tip, every other shape none; ref shapes as the fixture tables say.
+- `crates/graft-ops/MAP.md` created; `crates/graft-core/MAP.md` updated.
+
+NOTES:
+- **Rule refinement vs the spec (reported, not silent):** rule B as written ("subject names the default while on the default chain → foxtrot") would also flag the accidental-pull fixture, contradicting the acceptance matrix. Built rule: a default-naming subject is foxtrot only when it says the merge was made elsewhere (`into y`, y ≠ default, or a bare local `Merge branch 'main'`); the made-on-default forms (`of <url>`, `remote-tracking 'origin/main'`, `into main`) are accidental-pull; pull-request subjects never count; `previous_default_tips` (reflog) still catches a pushed pull-merge. Gap logged in KNOWN_GAPS.md.
+- Context compacted once mid-ticket (after the first clippy run). Nothing remains: gates green, matrix green, committed.

@@ -46,7 +46,10 @@ One line per public item. Update when a public item changes.
 - `JobFailure` (enum) — why a job produced no result: failed or panicked.
 
 ## mistake_radar
-- `MistakeRadarKind` (enum) — a row's Mistake Radar classification.
+- `MistakeRadarKind` (enum) — the seven PROMPT §1.4 kinds: `BackwardMerge`, `FoxtrotMerge`, `AccidentalPullMerge`, `EvilMerge`, `DuplicateCommit`, `ForcePushedRemote`, `RiskyState`.
+- `MistakeRadarKind::ALL` (const) — every kind, in declaration order (`graft-ops::mistake_radar::Policy` indexes by it).
+- `MistakeRadarKind::default_severity` / `name` (fn) — PROMPT §1.4's severity table; the kebab-case config/CLI name.
+- `Severity` (enum) — `Info` < `Warning`; how loudly a finding is shown.
 
 ## oid
 - `Oid` (struct) — a git object id, 20 or 32 bytes inline; `SHA1_BYTES` / `MAX_BYTES` (const).

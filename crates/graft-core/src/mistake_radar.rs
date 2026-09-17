@@ -1,40 +1,109 @@
-//! What kind of unusual history shape a row sits on.
+//! What the Mistake Radar can find, and how loudly it says so.
 //!
-//! PROMPT.md §1.4 lists seven patterns the Mistake Radar looks for. Five of
-//! them are a classification of one row, decided once and attached to
-//! `graft-graph`'s `Row::marker` as `graph` lays it out: `graph` never
-//! computes them itself (it has no access to `ops`, which owns the detection
-//! logic), but the type they produce has to live somewhere both `graph` and
-//! `ops` can see without either depending on the other (ADR-0007) — here.
+//! PROMPT.md §1.4 lists seven patterns. Each is a [`MistakeRadarKind`]; each
+//! has a default [`Severity`] from that table. The detection rules live in
+//! `graft-ops::mistake_radar` (they need facts about the repository); this
+//! module only names the kinds so that `ops`, `ui` and `app` agree on them
+//! without depending on each other (ADR-0007).
 //!
-//! The other two rows in that table are not a per-row classification and so
-//! are not variants of this type: duplicate commits are a bounded, off-thread
-//! pass over the visible window that attaches a cross-reference rather than a
-//! marker on layout itself (DESIGN.md §3.4), and risky state is a banner over
-//! the whole view, not a property of any one row.
+//! Since M2 the radar is a paint-time lens: `app` classifies each row it has
+//! on hand, and `graph`'s `Row::marker` is not what carries the result
+//! (design note m2-details-and-diffs, Proposed changes row 1).
 
-/// A row's classification under the Mistake Radar, once `ops` has computed
-/// it.
-///
-/// Always [`None`] on a `Row` `graph` produces: `graph` lays out the graph
-/// and nothing more, and never calls into `ops`.
+/// How much attention a finding asks for. PROMPT.md §1.4's two columns:
+/// `Info` is worth knowing, `Warning` is worth acting on.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+pub enum Severity {
+    /// Worth knowing; some teams do this on purpose.
+    Info,
+    /// Worth acting on; history or work is at risk.
+    Warning,
+}
+
+/// One of the seven patterns PROMPT.md §1.4 asks the radar to find.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum MistakeRadarKind {
-    /// A merge whose first parent is not the branch that was checked out —
-    /// history recorded backward relative to what actually happened.
+    /// The default branch merged *into* a feature branch.
     BackwardMerge,
-    /// A merge that looks like a rebase or fast-forward was intended, but a
-    /// real merge commit was made instead.
+    /// A merge on the default branch whose first parent is not that branch's
+    /// previous tip, so its first-parent history was rewritten (usually by
+    /// pulling on the default branch and then pushing).
     FoxtrotMerge,
-    /// A merge that only exists because `git pull` was run with a local
-    /// branch that had diverged, rather than the update being rebased in.
+    /// `Merge branch 'x' of <remote>`: a branch merged with its own remote
+    /// copy, which is what `git pull` without rebase leaves behind.
     AccidentalPullMerge,
-    /// A merge whose parents are not actually related the way a merge
-    /// implies — the graph equivalent of a merge commit with unrelated
-    /// histories forced together.
+    /// A merge that introduces changes found in neither parent.
     EvilMerge,
-    /// A remote-tracking ref whose commit no longer appears on the branch it
-    /// tracks: evidence of a force-push, though not something that can be
-    /// checked with certainty from history alone.
+    /// The same patch-id on several branches, left behind by cherry-picks or
+    /// rebases.
+    DuplicateCommit,
+    /// A remote-tracking tip that is not a descendant of its previous value.
     ForcePushedRemote,
+    /// Detached HEAD, unpushed commits on the default branch, or a branch
+    /// with no upstream: a state, not a commit.
+    RiskyState,
+}
+
+impl MistakeRadarKind {
+    /// Every kind, in PROMPT.md §1.4's order.
+    pub const ALL: [Self; 7] = [
+        Self::BackwardMerge,
+        Self::FoxtrotMerge,
+        Self::AccidentalPullMerge,
+        Self::EvilMerge,
+        Self::DuplicateCommit,
+        Self::ForcePushedRemote,
+        Self::RiskyState,
+    ];
+
+    /// The severity PROMPT.md §1.4 gives this kind before any config.
+    pub fn default_severity(self) -> Severity {
+        match self {
+            Self::FoxtrotMerge | Self::EvilMerge | Self::ForcePushedRemote => Severity::Warning,
+            Self::BackwardMerge
+            | Self::AccidentalPullMerge
+            | Self::DuplicateCommit
+            | Self::RiskyState => Severity::Info,
+        }
+    }
+
+    /// The kind's name as config spells it: kebab-case, e.g. `foxtrot-merge`
+    /// for `[radar] foxtrot-merge = off`.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::BackwardMerge => "backward-merge",
+            Self::FoxtrotMerge => "foxtrot-merge",
+            Self::AccidentalPullMerge => "accidental-pull-merge",
+            Self::EvilMerge => "evil-merge",
+            Self::DuplicateCommit => "duplicate-commit",
+            Self::ForcePushedRemote => "force-pushed-remote",
+            Self::RiskyState => "risky-state",
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn all_lists_each_kind_once_and_names_are_distinct() {
+        let mut names: Vec<&str> = MistakeRadarKind::ALL.iter().map(|k| k.name()).collect();
+        names.sort_unstable();
+        names.dedup();
+        assert_eq!(names.len(), MistakeRadarKind::ALL.len());
+    }
+
+    #[test]
+    fn default_severities_follow_prompt_1_4() {
+        use MistakeRadarKind::*;
+        assert_eq!(FoxtrotMerge.default_severity(), Severity::Warning);
+        assert_eq!(EvilMerge.default_severity(), Severity::Warning);
+        assert_eq!(ForcePushedRemote.default_severity(), Severity::Warning);
+        assert_eq!(BackwardMerge.default_severity(), Severity::Info);
+        assert_eq!(AccidentalPullMerge.default_severity(), Severity::Info);
+        assert_eq!(DuplicateCommit.default_severity(), Severity::Info);
+        assert_eq!(RiskyState.default_severity(), Severity::Info);
+        assert!(Severity::Info < Severity::Warning);
+    }
 }

@@ -10,5 +10,17 @@ publish.workspace = true
 graft-core.workspace = true
 graft-git.workspace = true
 
+[features]
+# Forwards the heavy tier to the fixtures, as `graft-git` does, so one
+# `cargo test --features heavy-tests` at the workspace root reaches every
+# crate that borrows the corpus.
+heavy-tests = ["graft-fixtures/heavy-tests"]
+
 [lints]
 workspace = true
+
+[dev-dependencies]
+# The named fixture corpus (m1-the-graph/01): the Mistake Radar matrix test
+# classifies every commit of every shape. A dev-dependency only, so it is
+# not an internal dependency edge (ADR-0006).
+graft-fixtures.workspace = true
