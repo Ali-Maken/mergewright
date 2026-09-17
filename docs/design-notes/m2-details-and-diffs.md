@@ -96,7 +96,7 @@ pub struct RepoFacts<'a> { pub default_branch: Option<&'a str>, pub remotes: &'a
 pub enum UpstreamFacts { None, InSync, Apart { ahead: u32, behind: u32 } }
 pub struct BranchFacts<'a> { pub name: &'a str, pub tip: Oid, pub is_default: bool, pub upstream: UpstreamFacts }
 pub enum HeadFacts<'a> { Branch(&'a str), Detached(Oid), Unborn }
-pub struct Policy;   // Option<Severity> per kind; Default = PROMPT §1.4
+pub struct Policy;   // Option<Severity> per kind; Default = PROMPT §1.4; Clone (map-view-data carries one into its job)
 pub struct Finding { pub kind: MistakeRadarKind, pub severity: Severity, pub at: Oid, pub evidence: Evidence }
 pub enum Evidence { Foxtrot { merge: Oid, first_parent: Oid, real_tip: Oid, branch: String }, Backward { merge: Oid, default_tip: Oid, into: Option<String> },
     AccidentalPull { merge: Oid, branch: String, remote: String }, Risk(Risk), Evil { files: Vec<Vec<u8>> }, Duplicate { copies: Vec<Oid> }, ForcePushed { remote_ref: String, previous: Oid, current: Oid } }
@@ -115,10 +115,20 @@ pub enum DetailSpec { Commit(Oid), Compare { base: Oid, head: Oid }, WorkingTree
 pub enum Loading<T> { Idle, Pending(JobId), Ready(T), Failed(String) }
 pub struct DetailState { pub spec: Option<DetailSpec>, pub shown: bool, pub focus: DetailFocus, pub files: Loading<Arc<FileListView>>, pub diff: Loading<Arc<DiffView>>,
     pub diff_cache: Bounded<DiffKey, Arc<DiffView>> /* 8 */, pub contained: Bounded<Oid, ContainedIn> /* 64 */, pub options: DiffOptions, pub mode: DiffMode, pub word_tint: bool, pub max_lines: usize, pub body_top: usize }
-// Task::{ListFiles, FileDiff, ContainedIn, RadarContext, RadarProbe}; Product::{Files, FileDiff, ContainedIn, RadarContext, Probe}; Command::{ListFiles, ReadFileDiff, ContainedIn, Cancel(JobId), …}
+// Task::{ListFiles, FileDiff, ContainedIn, RadarContext, RadarProbe, Map}; Product::{Files, FileDiff, ContainedIn, RadarContext, Probe, Map}; Command::{ListFiles, ReadFileDiff, ContainedIn, BuildMap, Cancel(JobId), …}
 pub fn assemble_diff(diff: &FileDiff, word_tint: bool) -> DiffView;   // job thread: sanitise → pairs → word_spans → highlight
-// app::map (pass 2)  MapData { branches: Vec<MapBranch { name, identity, tip, counts: Vec<u32>, is_current, merged_into: Option<(bucket, row)>, marks }>, from, to, buckets }
-// graft-ui::overview_strip (pass 2)  StripMarks { rows_total, viewport: Range<usize>, marks: Vec<(usize, StripMark)> }; StripMark { Merge, Radar(Severity), SearchHit, Head(char) }
+
+// graft (app)::map + jobs::map + update::map (map-view-data, pass 2c) — one bounded date walk per local branch into fixed buckets; no lanes
+pub struct MapRequest { pub buckets: usize, pub clock: Clock, pub policy: Policy, pub previous_default_tips: Vec<Oid> }
+pub enum MapMark { Tag(Vec<u8>), Radar(Severity) }
+pub struct MapBranch { pub name: RefName, pub identity: BranchIdentity, pub tip: Oid, pub tip_date: i64, pub counts: Vec<u32>, pub is_current: bool, pub is_default: bool, pub merged_into: Option<(usize, usize)>, pub marks: Vec<(usize, MapMark)>, pub complete: bool }
+pub struct MapData { pub branches: Vec<MapBranch>, pub more: usize, pub from: i64, pub to: i64, pub buckets: usize, pub complete: bool }
+pub fn build_map(store: &RepoStore, req: &MapRequest, progress: &mut dyn FnMut(u32, u32), stop: &dyn Stop) -> Result<MapData, MapError>;
+pub struct MapState { pub shown: bool, pub data: Loading<Arc<MapData>>, pub progress: Option<(u32, u32)>, pub selected: usize }   // AppState::map
+// graft-ui::map_screen (map-view-screen)  MapView { title_branch, span_days, rows: Vec<MapRowView>, max_count, buckets, selected, more, complete, status: MapStatus, ascii }; MapScreen widget; ramp_glyph(count, max, ascii)
+// graft-ui::overview_strip (overview-strip)  StripMarks { rows_total, viewport: Range<usize>, marks: Vec<(usize, StripMark)> }; StripMark { Merge, Radar(Severity), SearchHit, Head }; cell_for / row_for_cell; OverviewStrip widget; AppState::strip_shown
+// graft::repos (refresh-reopens-walk)  RepoStore::refresh(&mut self) -> Result<Refreshed { table_rebound: bool }, StoreError>
+// graft::update::Harness (acceptance)  + prelude: Vec<KeyPress>
 ```
 
 Callers: `jobs::detail` runs `list_files`/`file_diff`, then `assemble_diff` on the job
@@ -126,11 +136,20 @@ thread and hands back one `Arc<DiffView>`; `view::rows` calls `classify_commit` 
 visible row against `AppState::radar` (default-chain handles + ref facts, one job) and
 fills `GraphEntry::marker`; `update` asks `explain` on `.`→Explain; `view::detail`
 builds `DetailView`; trailers (`Co-authored-by`) are parsed in the app assembler.
+`jobs::map` runs `build_map` (which computes its own default chain through
+`first_parent_chain`, so the map never waits on the radar context); `view::map` and
+`view::strip` assemble the two new views from `AppState` alone.
 
 **Signature fix (pass 2b):** `RadarLine` gains `EvilNotCheckable(SanitizedText)`.
 The original enum had no way to show an evil-merge probe's `NotCheckable` verdict
 (octopus merge, git too old, remerge failed) — only `ForcePushNotCheckable`
 existed, which is worded for the wrong probe. `radar-probe-evil-merge` needs it.
+
+**Signature fixes (pass 2c):** `StripMark::Head(char)` → `StripMark::Head` — M1's
+graph column draws no lane letters (`graft-ui` MAP.md `GraphLine`), so the `char`
+had nothing to carry. `MapBranch` gains `tip_date`, `is_default` and `complete`,
+`MapData` gains `more` and `complete` (the 200-row and 50,000-commit caps must be
+visible). `Policy` must be `Clone` (a derive, not a shape change).
 
 ## Hard-to-reverse choices
 
@@ -166,8 +185,10 @@ existed, which is worded for the wrong probe. `radar-probe-evil-merge` needs it.
 | Word and syntax spans computed on sanitised text in `ui`; `git` keeps line pairing only | DESIGN §8.2 `WordDiff` in `git` | byte offsets survive sanitising (`�`/`␛` change lengths); ui gains `similar` + `syntect` |
 | "Contained in" through the git binary | PROMPT Technology "gix for reads" | one spawn per selection, off-thread, cached |
 | Map view draws text glyphs at every tier in M2; pixel curve deferred | DESIGN §5.1 tiers | a toggle the user reaches rarely; Unicode is the daily view |
+| Map view rows are local branches only; a remote never collapses into its upstream's row; the merge elbow marks merges into the default branch only, at the tip's own bucket | DESIGN §5.1 "Shows" | one walk per local branch, no merge-commit search; remotes and cross-branch merges are M8 polish gap rows |
 | No `[ Fix… ]` in the Explain panel until M5 | DESIGN §1.8 | nothing implies Fix exists |
 | Keymap: `x` mark for compare; `Tab` = Graph→Files→Diff; `Ctrl+←/→` (`Ctrl+↑/↓` medium) resize; `L` load the rest of a truncated diff; `Enter` opens the pane and drops the peek (ADR-0023) | DESIGN §2.2/2.3/2.5 | four new letters |
+| `Ctrl+R` after `B` rebinds the commit table and restarts the walk on the graph path, re-anchored on the selection; `Written` footer hints `Ctrl+R to use it`; no automatic restart | KNOWN_GAPS row 54 | the user asks; an unasked restart mid-scroll is worse than a hint |
 | KNOWN_GAPS expiries: snapshot-cost row (52) and older-stash badges (175) → M3 (no staging or stash list exists in M2); `full_topological` residual (227) → not planned | KNOWN_GAPS.md | honest owners |
 
 ## New UI
@@ -208,13 +229,14 @@ footer `Esc close`. The main graph fades every row not in `Explanation::highligh
 **Context actions (`.`, right-click):** popup list anchored under the row (bottom-left of the graph when no room): `Explain` (marked rows), `Copy SHA`,
 `Compare with this (x)`, `Open details`. `j/k/Enter/Esc`, click. Width = longest item + 4, `surface-raised` bg, accent cursor.
 
-**Map view (`M`)** — as DESIGN §5.1; fixed here: rows = local branches (current first, then default, then by tip date), one column per bucket, `buckets = width − 24`, time span = oldest tip… now, clamped;
-Unicode `▁▂▃▄▅▆▇█` by count/max, ASCII ` .:-=+*#%@`, colour = branch identity; `●╮` at the bucket its tip merged into another row; tag/radar marks over the bucket;
-`▸` + `NOW` for the current branch. `↑↓` select, `Enter` → `History::seek(tip)` in the normal graph, `M`/`Esc` back. Empty: `no local branches`. Loading: `building map… n/N branches`; `Esc` cancels.
+**Map view (`M`)** — as DESIGN §5.1; fixed here: rows = local branches (current first, then default, then by tip date; cap 200, `+N more` in the footer), one column per bucket, `buckets = max(10, width − 24)`, time span = oldest tip… now, clamped to 1 day…366 days;
+Unicode `▁▂▃▄▅▆▇█` by count/max (a non-zero count never blank), ASCII ` .:-=+*#%@`, colour = branch identity; the default row counts every commit in the span, any other row only commits off the default first-parent chain (a merged branch keeps its bars);
+`●╮` (ASCII `o\`) at the tip's bucket when the tip is reachable from the default tip; tag marks `┴` + `[tag]` and radar marks `⚠`/`ⓘ` over the bucket; `▸` + ` ●` and the `NOW` header for the current branch; ` (active)` on a row whose tip is in the newest bucket; ` · partial` in `warning` when a cap was hit.
+Header `MAP · <branch> · last N days|months` / `BRANCH … NOW`; footer `↑↓ select  ⏎ zoom to commits  M/Esc back`. `↑↓` select, `Enter` → `History::seek(tip)` in the normal graph, `M`/`Esc` back (data discarded). Empty: `no local branches`. Loading: `building map… n/N branches`, `Esc cancels`. Failed: the line in `warning`. Resize re-requests. No mouse in M2 (gap row).
 Text glyphs at every tier in M2 (Proposed above).
 
-**Overview strip (`O`)** — as DESIGN §5.3; fixed here: bucket = `rows_total / strip_rows`; priority when a bucket holds several: `⚠` > `ⓘ` > `◆` > `●` > `◉` > `┆`; `█` over the viewport's buckets wins
-only where nothing else is; merges and radar known for resident rows only; hides under Map view, restored after. Sits left of the detail divider (wide/medium) or at the right edge (narrow).
+**Overview strip (`O`)** — as DESIGN §5.3; fixed here: one column, the graph area's rightmost column in every layout (narrow: the screen edge; wide/medium with the pane shown: just left of the detail divider); bucket = `ceil(rows_total / strip_rows)` with `rows_total = Window::laid_out` (honestly incomplete while streaming); priority when a bucket holds several: `⚠` > `ⓘ` > `◆` search > `●` HEAD > `◉` merge > `█` viewport (only where nothing else drew) > `┆`; ASCII `! i * o + # :`; blank past the last bucket;
+merges and radar known for resident rows only; not drawn while Map view is shown (no restore state needed); off by default, `O` flips it; click on the strip selects its bucket's first row.
 
 ## §8 coverage map
 
@@ -232,13 +254,17 @@ only where nothing else is; merges and radar known for resident rows only; hides
 | Map view (M1 deferral) | `map-view-data`, `map-view-screen` |
 | Overview strip (M1 deferral) | `overview-strip` |
 | KG 54 refresh reopens walk after `B` | `refresh-reopens-walk` |
-| KG 127 `cargo-fuzz` targets | `diff-parser` (p1) |
-| KG 197/246/247 contained-in, body, parents | `git-runner`, `detail-model-and-jobs` (p1), `detail-pane-frame` |
-| KG 326 Copy SHA under `.` | `context-actions-menu` |
-| KG 375 bare `cargo run --` sweep | `docs-sweep` |
-| KG 52, 175, 227 | **uncovered by design** — expiries move (Proposed changes) |
-| PROMPT §4 "image diffs in the pixel tier" | **uncovered** → KNOWN_GAPS row, M8 polish |
-| Acceptance | `acceptance-details-and-radar` (Fable) |
+| KG 127 `cargo-fuzz` targets | `diff-parser` (p1); row closed by `docs-sweep` |
+| KG 197/246/247 contained-in, body, parents | `git-runner`, `detail-model-and-jobs` (p1), `detail-pane-frame`; rows closed by `docs-sweep` |
+| KG 326 Copy SHA under `.` | `context-actions-menu`; row closed by `docs-sweep` |
+| KG 375 bare `cargo run --` sweep | `docs-sweep` (sweep, not `default-members`) |
+| KG 52, 175, 227 | **uncovered by design** — expiries moved by `docs-sweep` (Proposed changes) |
+| PROMPT §4 "image diffs in the pixel tier" | **uncovered** → KNOWN_GAPS row by `docs-sweep`, M8 polish |
+| DESIGN §5.1 remote rows, cross-branch elbows, pixel curve, mouse | **uncovered by design** → KNOWN_GAPS rows by `docs-sweep`, M8 polish |
+| README/CHANGELOG for M2 | `docs-sweep` |
+| Acceptance | `acceptance-details-and-radar` (Fable; planned as two contexts) |
+
+Nothing else in PROMPT §8 M2 or the M1 deferrals is without a slug. **23 tickets.**
 
 ## Genuinely risky tickets
 
@@ -260,7 +286,12 @@ only where nothing else is; merges and radar known for resident rows only; hides
 `radar-probe-duplicates` (S: `log --all -n 500 -p` piped as stdin into `patch-id --stable` via `GitInvocation::stdin`, groups, "checked newest 500") ·
 `explain-panel` (S: `ExplainView` from `explain`, the evidence sketch, `DetailState::explain_requested` consumed, graph highlight/fade, `Esc` priority).
 
-**Pass 2c (remaining, one line each):**
-`map-view-data` (S: per-branch bucket walk job, cancelable) · `map-view-screen` (S: widget, keys, snapshot, capture) · `overview-strip` (S: marks assembly + widget + `O`) ·
-`refresh-reopens-walk` (S: KG 54) · `docs-sweep` (S: README/CHANGELOG, bare `cargo run --`, KNOWN_GAPS expiries, image-diff gap row) ·
-`acceptance-details-and-radar` (F: gallery M2 stops, TESTING.md "Details and diffs", `docs/shots/m2-*`).
+**Pass 2c (written):**
+`map-view-data` (S: `graft::map` — `MapData`/`build_map`, one date walk per local branch, default-chain exclusion, caps; `jobs::map`; `update::map` with `M`/`Esc`/`↑↓`/`Enter`/resize) ·
+`map-view-screen` (S: `graft-ui::map_screen` — `MapView`/`MapScreen`/`ramp_glyph`; `view::map`; frame swap; captures) ·
+`overview-strip` (S: `graft-ui::overview_strip` — `StripMarks`/`cell_for`/`row_for_cell`/widget; `view::strip`; `AppState::strip_shown` + `O`; the graph area's last column; click) ·
+`refresh-reopens-walk` (S: `RepoStore::refresh -> Refreshed { table_rebound }`, walk restart re-anchored on the selection, `Written` footer hint; closes KG 54) ·
+`docs-sweep` (S: bare `cargo run --` → `-p graft` in README/TESTING/clone script, KG closures and expiries, five new gap rows, README/CHANGELOG M2 entries) ·
+`acceptance-details-and-radar` (F: `Harness::prelude`, gallery `--group details` with 19 stops, TESTING.md "Details and diffs", `docs/shots/m2-*` at 160×40/100×30/80×24, matrix; **two contexts by design** — (a) harness + group, (b) entries + captures).
+
+**Can't fit under 80k:** only `acceptance-details-and-radar`, and it says so with its seam; the conductor files part (b) when (a) hands off.
