@@ -10,6 +10,9 @@
 
 use graft_core::mistake_radar::MistakeRadarKind;
 use graft_core::oid::Oid;
+use graft_git::history::read_commit;
+use graft_git::repo::RepoHandle;
+use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 
 use super::{Evidence, Finding, Policy};
 
@@ -55,6 +58,58 @@ pub struct Duplicates {
     pub window: u32,
     /// Whether the window covered every visible ref, or was cut short.
     pub complete: bool,
+}
+
+/// Is `merge`'s recorded resolution what merging its parents gives?
+///
+/// One `git show --remerge-diff --name-only` spawn: git re-merges the two
+/// parents in memory and diffs that against what was committed. An empty
+/// diff is a clean merge; every line is a file the merge changed beyond
+/// combining its sides.
+///
+/// Never a `Result`: "could not check" is one of the three answers the pane
+/// shows, not a failure to report elsewhere. Anything that stops the check —
+/// an unreadable commit, an octopus merge, a git too old to know
+/// `--remerge-diff` — comes back as `NotCheckable` with the reason, because
+/// absence of evidence is not a clean bill (PROMPT.md §1.4).
+pub fn probe_evil_merge(repo: &RepoHandle, merge: Oid, stop: &dyn Stop) -> EvilVerdict {
+    let commit = match read_commit(repo, merge) {
+        Ok(commit) => commit,
+        Err(error) => return EvilVerdict::NotCheckable(error.to_string()),
+    };
+    match commit.parents.len() {
+        // A single-parent commit has nothing to re-merge.
+        0 | 1 => return EvilVerdict::NotCheckable("not a merge".into()),
+        2 => {}
+        // `--remerge-diff` re-merges two sides; git itself refuses more.
+        _ => return EvilVerdict::NotCheckable("octopus merge".into()),
+    }
+    let output = GitInvocation::new(repo)
+        .arg(GitArg::Word("show".into()))
+        .arg(GitArg::Flag("--remerge-diff"))
+        .arg(GitArg::Flag("--format="))
+        .arg(GitArg::Flag("--name-only"))
+        .arg(GitArg::Oid(merge))
+        .run(stop);
+    match output {
+        Ok(output) => {
+            let files: Vec<Vec<u8>> = output
+                .stdout
+                .split(|byte| *byte == b'\n')
+                .filter(|line| !line.is_empty())
+                .map(<[u8]>::to_vec)
+                .collect();
+            if files.is_empty() {
+                EvilVerdict::Clean
+            } else {
+                EvilVerdict::Evil { files }
+            }
+        }
+        // Only reached when the probe is called outside a job: the job
+        // runner drops a cancelled job's product before `update` sees it.
+        Err(RunError::Stopped) => EvilVerdict::NotCheckable("cancelled".into()),
+        Err(error) => EvilVerdict::NotCheckable(error.to_string()),
+    }
 }
 
 /// An evil-merge finding on `merge`, when the verdict is `Evil` and the
@@ -154,6 +209,56 @@ mod tests {
         let mut off = Policy::default();
         off.set(MistakeRadarKind::DuplicateCommit, None);
         assert!(findings_from_duplicates(&d, &off).is_empty());
+    }
+
+    /// A fixture's checked-out tip (the merge, in every merge shape) and that
+    /// tip's first parent (a plain commit).
+    fn tip_and_parent(shape: graft_fixtures::Shape) -> (RepoHandle, Oid, Oid) {
+        let repo = RepoHandle::open(&graft_fixtures::borrow(shape)).expect("the fixture opens");
+        let graft_git::repo::HeadState::Branch(branch) =
+            repo.head().expect("the fixture's HEAD reads")
+        else {
+            panic!("every merge fixture is checked out on a branch");
+        };
+        let peeled = repo
+            .peeled_references(&())
+            .expect("the fixture's refs read");
+        let tip = peeled
+            .iter()
+            .find(|(name, _)| *name == branch)
+            .map(|&(_, id)| id)
+            .expect("the checked-out branch has a tip");
+        let merge = read_commit(&repo, tip).expect("the tip reads");
+        let parent = *merge.parents.first().expect("the tip has a parent");
+        (repo, tip, parent)
+    }
+
+    #[test]
+    fn the_evil_fixture_names_the_file_the_merge_invented() {
+        let (repo, merge, parent) = tip_and_parent(graft_fixtures::Shape::EvilMerge);
+        let EvilVerdict::Evil { files } = probe_evil_merge(&repo, merge, &()) else {
+            panic!("the evil fixture's merge is evil");
+        };
+        assert_eq!(files, vec![b"evil.txt".to_vec()]);
+        assert_eq!(
+            probe_evil_merge(&repo, parent, &()),
+            EvilVerdict::NotCheckable("not a merge".into())
+        );
+    }
+
+    #[test]
+    fn a_merge_that_only_combines_its_sides_is_clean() {
+        let (repo, merge, _) = tip_and_parent(graft_fixtures::Shape::FoxtrotMerge);
+        assert_eq!(probe_evil_merge(&repo, merge, &()), EvilVerdict::Clean);
+    }
+
+    #[test]
+    fn an_octopus_merge_is_not_checkable() {
+        let (repo, merge, _) = tip_and_parent(graft_fixtures::Shape::OctopusMerge);
+        assert_eq!(
+            probe_evil_merge(&repo, merge, &()),
+            EvilVerdict::NotCheckable("octopus merge".into())
+        );
     }
 
     #[test]
