@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — checkpoint: report sent, awaiting user OK for M2 (23 tickets filed in .scratch/m2-details-and-diffs/issues/) · M1 116 tickets: 106 done, 1 partial, 7 split, 2 wontfix
+**Current step:** M1 The graph — checkpoint follow-ups: m1/80 (1M tests behind feature, sonnet); awaiting user: Ctrl+arrows choice, 2 sliding gaps, by-eye checks; M2 build held until user reports · M1 117 tickets: 106 done, 1 partial, 7 split, 2 wontfix, 1 ready
 
 ---
 
@@ -316,6 +316,11 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-17 · user · resumed (continue)
 - 2026-09-17 · M2 design pass 2c · fable · done · 6 specs: map-view-data, map-view-screen, overview-strip, refresh-reopens-walk, docs-sweep (sonnet), acceptance-details-and-radar (fable, two contexts by design: seam a harness+gallery / b TESTING+captures); note §8 map → 23 slugs; uncovered → KNOWN_GAPS M8: image diffs, Map view mouse/pixel curve/remote rows/cross-branch elbows, strip default-on config; signature fixes StripMark::Head, MapBranch/MapData fields, Policy: Clone, RepoStore::refresh -> Result
 - 2026-09-17 · M2 specs filed · conductor · 01–23 numbered, Status ready, Blocked by from Needs · models: Opus 01,06,14,15 · Fable 04 (signature), 23 (acceptance) · Sonnet rest
+- 2026-09-17 · user · M2 departures approved (no unchecked glyph, text-only Map view, no Fix… until M5); keys x/L/Ctrl+arrows/Tab to confirm no collision; 2a same-date: accept, record cause; 2b 1M tests behind feature (ADR-0018); 2c re-date overdue gaps, ≥2 pushes → ticket or won't-fix; shrink user-37 png, no cap exception; user does by-eye checks in one sitting; don't build M2 until reported
+- 2026-09-17 · user-37 png · conductor · done (5cdc6c2) · 1.15 MB → 197 KB, 1400 px 64 colours, full width kept (cited +54, lane 0, 1d, card legible)
+- 2026-09-17 · keys check · conductor · Tab = same verb (next pane), x and L free, Ctrl+arrows free in app but macOS takes them (Spaces/Mission Control) → asked user
+- 2026-09-17 · 2a cause + gap re-date · sonnet · done (7e11f58) · cause in KNOWN_GAPS :190 + ADR-0008 amendment; 18 rows re-dated to M7/M8; sliding → user: :178 50k-refs debug first paint (2×, rec won't-fix), :180 layout advance on idle (4×, rec ticket M7)
+- 2026-09-17 · m1/80 filed · conductor · 1M tests behind heavy-1m feature (round-2 m4)
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.
