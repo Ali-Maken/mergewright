@@ -76,6 +76,29 @@ renderer = \"pixel\"
 }
 
 #[test]
+fn diff_section_is_read_and_defaults_without_a_file() {
+    let dir = TempDir::new().expect("temp dir");
+    let defaults = load_from(&dir.path().join("config.toml")).expect("missing file loads");
+    assert_eq!(defaults.config.diff, Diff::default());
+    assert_eq!(defaults.config.diff.context, 3);
+    assert!(!defaults.config.diff.ignore_whitespace);
+    assert!(defaults.config.diff.word_tint);
+
+    let (_dir, path) =
+        config_file("[diff]\ncontext = 8\nignore_whitespace = true\nword_tint = false\n");
+    let loaded = load_from(&path).expect("valid file loads");
+    assert_eq!(
+        loaded.config.diff,
+        Diff {
+            context: 8,
+            ignore_whitespace: true,
+            word_tint: false,
+        }
+    );
+    assert_eq!(loaded.warnings, []);
+}
+
+#[test]
 fn keys_the_file_omits_keep_their_defaults() {
     let (_dir, path) = config_file("[ui]\ntheme = \"light\"\n");
     let loaded = load_from(&path).expect("partial file loads");

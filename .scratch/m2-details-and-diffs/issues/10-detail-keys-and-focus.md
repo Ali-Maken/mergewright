@@ -1,9 +1,7 @@
 # detail-keys-and-focus: the pane's own keys, mouse regions, resize and its config
 
-Status: ready
+Status: partial — group 1 (movement/focus/toggle keys + [diff] config) done; group 2 (resize/persistence/mouse/hints/capture) split to a new ticket, see NOTES
 Blocked by: 06, 07
-
-Status: draft
 Build with: Sonnet — mechanical key/config wiring over signatures `detail-model-and-jobs` and `detail-pane-frame` already gave; each transition is individually testable.
 Needs: `detail-model-and-jobs` (`DetailState`, `DetailFocus`, `DiffOptions`, `DetailSpec`, `Command::ReadFileDiff`/`ListFiles`, `FileListView::toggle_dir`/`move_cursor`), `detail-pane-frame` (`DetailLayout::compute`'s `override_cells`, `DetailAreas` for hit-testing)
 
@@ -64,15 +62,15 @@ pub fn save_split(common_dir: &std::path::Path, split: &PaneSize) -> std::io::Re
 
 ## Acceptance
 
-- [ ] `Tab`/`Shift+Tab` cycle in order and wrap; `Enter` moves `Files→Diff` only.
-- [ ] `Esc` closes the pane (no Explain in this ticket's scope, or closes Explain first if that seam is already there — state which).
-- [ ] `w`/`W`/`[`/`]`/`L` each change exactly the intended `DiffOptions` field and issue one `ReadFileDiff`; repeating the same toggle is a normal cache hit (no command) after the first round-trip.
-- [ ] `Space` on a `Dir` row toggles it and only it.
+- [x] `Tab`/`Shift+Tab` cycle in order and wrap; `Enter` moves `Files→Diff` only.
+- [x] `Esc` closes the pane (no Explain panel exists yet — `explain-panel` ticket's seam; plain close).
+- [x] `w`/`W`/`[`/`]`/`L` each change exactly the intended `DiffOptions` field and issue one `ReadFileDiff`; repeating the same toggle is a normal cache hit (no command) after the first round-trip.
+- [x] `Space` on a `Dir` row toggles it and only it.
 - [ ] `<`/`>` in `Right` move `right_columns` by −4/+4 and leave `below_rows` alone; in `Below` move `below_rows` by −4/+4 and leave `right_columns` alone; both clamped to the layout's minimum (48/8) and to the graph's minimum (40 columns / 6 rows); a press at a bound returns false and changes nothing.
 - [ ] `<`/`>` are a no-op (false, state unchanged, no command, no footer notice) in the `Tab` layout, with the pane hidden, and with the Map view shown; they work with focus on `Graph` as well as `Files`/`Diff`.
 - [ ] `+`/`-` and `Ctrl+arrows` do not resize anything (`+` still unfolds lanes with the pane shown).
 - [ ] `PaneSize::for_layout` returns the matching orientation's value and `None` for `Tab`; `view::detail` passes it as `override_cells`.
-- [ ] `[diff]` config: unset uses defaults (3, false, true); set values parse; MAP.md/config tests updated.
+- [x] `[diff]` config: unset uses defaults (3, false, true); set values parse; MAP.md/config tests updated.
 - [ ] `layout.rs` round-trips both values in a temp dir; a missing file returns `None` without error; a file with only `right=` leaves `below_rows` `None`.
 - [ ] Pane hints at ≥ 100 columns include `<> resize`; `?` help lists it.
 - [ ] MAP.md: `graft` (`update/detail` methods and `PaneSize`, `config::Diff`, `layout`).
@@ -85,3 +83,77 @@ pub fn save_split(common_dir: &std::path::Path, split: &PaneSize) -> std::io::Re
 ## Size
 
 This is three concerns in one crate (keys/focus/scroll; resize+persistence; `[diff]` config) and is the pass's next-largest ticket after `detail-model-and-jobs`. Named seam: if the movement/focus/toggle keys (first bullet group) plus `[diff]` config pass 70% of budget, stop there, commit, and report `partial` with resize (`<`/`>`, drag, `PaneSize`) + `layout.rs` persistence as the remainder — `DetailLayout::compute` already accepts `override_cells`, so the split is clean. Target ≤ 30 tool calls for the full ticket, ~25 for the seam above.
+
+## NOTES (builder-sonnet, 2026-09-18, partial — stopped at the named seam)
+
+Session was compacted once mid-ticket (context ran long from exploration
+before the seam boundary). Splitting the remainder into a new ticket per
+CLAUDE.md.
+
+**Done, gated, committed** (group 1 — movement/focus/toggle keys + `[diff]` config):
+- `detail_key` (`crates/graft/src/update/detail.rs`): Enter no-op fixed on
+  `Diff` focus (was falling through to the graph's open-and-reset-focus arm);
+  `PgUp`/`PgDn`/`g`/`G` added for Files and Diff; `j`/`k`/↑/↓/PgUp/PgDn/`g`/`G`
+  scroll the diff body via new `scroll_body`; `Space` on a `Dir` row folds it
+  (`FileListView::toggle_dir`); `w`/`[`/`]`/`L` re-issue `ReadFileDiff` via
+  `set_options`/`load_all`; `W` toggles `word_tint` directly (see deviation
+  below). Split into `files_key`/`diff_key`/`diff_option_key` to stay under
+  clippy's cognitive-complexity/line-count limits.
+- `[diff]` config: `crates/graft/src/config/types.rs` (`Diff` struct, manual
+  `Default`), `config/mod.rs` (export), `config/load.rs` (`SCHEMA` entry).
+  Wired into `DetailState::options`/`word_tint` at startup via
+  `event_loop::startup::terminal_and_state` (folded `opening_repository` +
+  terminal setup + config seed into one function to stay under the 60-line
+  clippy limit on `run`).
+- Tests: 6 new in `update/detail.rs` (Enter-on-Diff no-op, `[`/`]` step,
+  `w`/`W`, `L`, `Space` fold, `g`/`G` on the diff body) + 1 in
+  `config/tests.rs` (`[diff]` parse + defaults). 346 tests pass (was 339).
+- MAP.md updated: `graft`'s `update::detail` and `config` sections.
+- Gates: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
+  `cargo test`, `cargo build` all green.
+
+**Deviation (flagged, not silently done):** the ticket's `w`/`W`/`[`/`]`
+bullet says each "re-issues `ReadFileDiff` with the new `DiffOptions`" —
+but `graft_git::diff::DiffOptions` has no `word_tint` field (it's a
+git-query option; `word_tint` is display-only, per
+`graft_ui::detail::DiffOptionsView`). `W` is implemented as a direct
+`DetailState::word_tint` flip with no command and no cache-key change — the
+diff already in hand re-renders with the new tint. `w`/`[`/`]` do issue
+`ReadFileDiff` as specced. If `word_tint` should live in the git-level
+`DiffOptions` after all, that's a `graft-git` type change out of this
+ticket's scope — flag to `planner-fable` if wrong.
+
+**Not done — remainder for a new ticket** (group 2, resize + persistence,
+per this ticket's own named seam):
+- `<`/`>` key dispatch in `detail_key` (the pure `resize_pane`/`set_pane_cells`
+  methods, `PaneSize`, `stepped` helper, and the `RIGHT_MIN`/`BELOW_MIN`/
+  `GRAPH_MIN_COLUMNS`/`GRAPH_MIN_ROWS`/`RESIZE_STEP` consts already exist in
+  `update/detail.rs` from before this session's compaction — they're unused
+  dead code from the dispatch's point of view until wired in).
+- Divider drag (mouse) → `set_pane_cells`.
+- Mouse wheel over the files/diff regions (region hit-testing via
+  `DetailLayout`/`DetailAreas`, mirroring `graph_row_at`'s pattern in
+  `update/mod.rs`) — not started at all, keyboard-only in this partial.
+- `crates/graft/src/layout.rs` (new file): `load_split`/`save_split`,
+  `<common_dir>/graft/layout` format. Needs a `common_dir()` accessor on
+  `RepoStore` (`crates/graft/src/repos.rs`) first — none exists yet; the
+  precedent (`repo.common_dir()` off a `git2`/`gix` handle) is in
+  `graft-git/src/commit_graph.rs`.
+- Wiring `pane_size` into `view/frame.rs::render_graph_with_detail`'s
+  `DetailLayout::compute` call (currently hardcoded `None` for
+  `override_cells`) — needs the two-step compute (layout kind first, then
+  the orientation's stored value, then the real layout) noted in this
+  ticket's Signatures section.
+- A synchronous save-on-resize `Command` + `event_loop/running.rs` handling
+  (mirror the `CopyToClipboard` precedent) calling `layout::save_split`.
+- Startup: `layout::load_split(common_dir)` → `DetailState.pane_size`.
+- Pane hints (`<> resize` next to `w W v [ ]`) and `?` help — not located/
+  added; likely a `graph_screen`/footer hints module, not `detail_pane.rs`.
+- Capture at `docs/shots/m2-detail-keys-resize.txt` — not produced (depends
+  on resize actually working).
+- Map-view no-op guard for resize: moot for now — `Screen` enum
+  (`update/state.rs`) has no `Map` variant yet (ticket 19 introduces it);
+  implement resize without that guard, ticket 19 or a resize-ticket revisit
+  adds it when Map view exists.
+
+Acceptance checklist below marked against this split.

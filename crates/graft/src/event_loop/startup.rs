@@ -18,12 +18,13 @@ use super::redetect::Redetector;
 use super::row_clear::RowClear;
 use super::running::pump_with;
 use super::{ChannelWakes, Exit, Wake, input, opening_repository, signals};
+use crate::config::Diff;
 use crate::crash;
 use crate::jobs::{self, JobRunner, Shutdown};
 use crate::repos::RepoStore;
 use crate::session::{Session, Startup};
 use crate::terminal::{SessionOptions, TerminalSession};
-use crate::update::Size;
+use crate::update::{AppState, Size};
 
 /// Start the re-query worker (DESIGN.md §4.5), knowing what startup settled.
 ///
@@ -111,26 +112,8 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     let resizes = signals::watch_resizes(sender.clone(), redetector.clone())?;
     let forwarder = input::spawn_reader(inputs, sender, redetector)?;
 
-    // Resizes clear row by row: a whole-screen clear frees Kitty image data
-    // in Ghostty, and every resize would retransmit the viewport (ADR-0012).
-    let mut terminal = Terminal::new(RowClear(CrosstermBackend::new(io::stdout())))?;
-    // The first frame and the first row request are both sized from this. A
-    // terminal sends no resize at startup, so without it the graph would ask
-    // for, and draw, a single row until the window changed size.
-    let size = terminal.size()?;
-    let mut state = opening_repository(
-        &jobs,
-        &repo_path,
-        Size {
-            columns: size.width,
-            rows: size.height,
-        },
-    );
-    // Its own waiter: every waiter gets a copy of each reply, so the
-    // redetector's rounds and the images' error replies never steal from
-    // each other (and each ignores the other's kind).
-    state.settled_tier = Some(settled.rendering.tier);
-    state.harness = harness;
+    let (mut terminal, state) =
+        terminal_and_state(&jobs, &repo_path, &settled, harness, config.config.diff)?;
     let mut graphics =
         Graphics::new(mux.waiter()).with_transport(Transport::for_tmux(&settled.capabilities.tmux));
     let outcome = pump_with(
@@ -248,6 +231,38 @@ fn report_stalled_jobs_to(stderr: &mut impl Write, shutdown: Shutdown) -> io::Re
         "graft: {workers} background job(s) did not stop in time and were abandoned"
     )
     .and_then(|()| stderr.flush())
+}
+
+/// The terminal (resizes cleared row by row: a whole-screen clear frees Kitty
+/// image data in Ghostty, and every resize would retransmit the viewport,
+/// ADR-0012) and the first frame's `AppState`: `opening_repository`'s shell,
+/// sized from the terminal's own report (nothing else knows it before the
+/// first resize), plus the harness banner, the tier the probe settled on, and
+/// `[diff]`'s startup values into the pane's live options — same fields the
+/// `w`/`[`/`]`/`W` keys change afterwards, just seeded once instead of left
+/// at `DetailState::default()`'s.
+fn terminal_and_state(
+    jobs: &impl jobs::Dispatch,
+    repo_path: &std::path::Path,
+    settled: &Session,
+    harness: crate::update::Harness,
+    diff: Diff,
+) -> io::Result<(Terminal<RowClear<CrosstermBackend<io::Stdout>>>, AppState)> {
+    let terminal = Terminal::new(RowClear(CrosstermBackend::new(io::stdout())))?;
+    let size = terminal.size()?;
+    let size = Size {
+        columns: size.width,
+        rows: size.height,
+    };
+    let mut state = opening_repository(jobs, repo_path, size);
+    state.settled_tier = Some(settled.rendering.tier);
+    state.harness = harness;
+    state.detail.options = graft_git::diff::DiffOptions {
+        context: diff.context,
+        ignore_whitespace: diff.ignore_whitespace,
+    };
+    state.detail.word_tint = diff.word_tint;
+    Ok((terminal, state))
 }
 
 #[cfg(test)]

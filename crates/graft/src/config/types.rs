@@ -19,6 +19,8 @@ pub struct Config {
     pub ui: Ui,
     /// `[graph]`: how history is drawn.
     pub graph: Graph,
+    /// `[diff]`: the detail pane's diff options at startup.
+    pub diff: Diff,
 }
 
 /// `[ui]`.
@@ -50,6 +52,30 @@ pub struct Graph {
     /// sense.
     #[serde(deserialize_with = "lane_limit", default)]
     pub max_lanes: Option<usize>,
+}
+
+/// `[diff]`: the detail pane's diff options — context, whitespace and word
+/// tint — the same three fields `w`/`[`/`]`/`W` change at runtime
+/// (`update/detail.rs::DetailState::options`/`word_tint`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(default)]
+pub struct Diff {
+    /// `diff.context`: lines of context around each change.
+    pub context: u8,
+    /// `diff.ignore_whitespace`: whitespace-only changes hidden.
+    pub ignore_whitespace: bool,
+    /// `diff.word_tint`: changed words tinted inside paired lines.
+    pub word_tint: bool,
+}
+
+impl Default for Diff {
+    fn default() -> Self {
+        Self {
+            context: 3,
+            ignore_whitespace: false,
+            word_tint: true,
+        }
+    }
 }
 
 /// The lane cap under 100 columns when `graph.max_lanes` is unset — the

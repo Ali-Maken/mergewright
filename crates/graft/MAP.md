@@ -148,7 +148,11 @@ The detail pane's state and transitions; pure (no I/O, no clock). Drawing is `de
 - `Loading<T>` (enum) — `Idle`, `Pending(JobId)`, `Ready(T)`, `Failed(String)`.
 - `DiffKey` (struct) — spec, entry, options, max_lines: one file's diff; the diff cache's key.
 - `Bounded<K, V>` (struct) — small map that evicts its oldest entry when full; `new`, `get`, `insert`, `clear`.
-- `DetailState` (struct) — spec, shown, focus, files (`Loading` of view + git list), diff, `diff_cache` (8), `contained` (64), options, mode, word_tint, max_lines (5,000), body_top.
+- `DetailState` (struct) — spec, shown, focus, files (`Loading` of view + git list), diff, `diff_cache` (8), `contained` (64), options, mode, word_tint, max_lines (5,000), body_top, `pane_size` (`PaneSize`, per-orientation, ADR-0028).
+- `PaneSize` (struct) — `right_columns`/`below_rows: Option<u16>`; `for_layout(&DetailLayout)` picks the orientation's value, `None` for `Tab`. Persistence (`layout.rs`) and the resize keys' arithmetic (`resize_pane`/`set_pane_cells`) are the ticket-10 remainder — see its handoff note.
+- `DetailState::set_options` (fn) — new `DiffOptions`, re-shows the cursor's diff (cache hit or `ReadFileDiff`). Backs `w`/`[`/`]`.
+- `DetailState::load_all` (fn) — `max_lines = usize::MAX`, re-shows the cursor's diff. Backs `L`.
+- `DetailState::scroll_body` (fn) — clamps `body_top` by a signed delta against the diff's line count. Backs `j`/`k`/PageUp/PageDown/`g`/`G` on the diff body.
 - `DetailState::open` (fn) — shows the pane on a spec, cancels a pending list, asks for files (and contained-in once per oid).
 - `DetailState::close` (fn) — hides the pane, focus back to the graph.
 - `DetailState::selected_entry` (fn) — the files cursor's git entry, if any.
@@ -187,6 +191,8 @@ Internal split (m1-the-graph/72c, public paths unchanged): `types` (`Config`,
 - `Config` (struct) — the config file's settings.
 - `Config::ui` (field) — `[ui]`: how Graft looks.
 - `Config::graph` (field) — `[graph]`: how history is drawn.
+- `Config::diff` (field) — `[diff]`: the detail pane's diff options at startup (m2-details-and-diffs/10).
+- `Diff` (struct) — `[diff]` section: `context: u8` (default 3), `ignore_whitespace: bool` (default false), `word_tint: bool` (default true); loaded into `DetailState::options`/`word_tint` by `event_loop::startup::terminal_and_state`.
 - `Ui` (struct) — `[ui]` section.
 - `Ui::theme` (field) — `ui.theme`.
 - `Ui::icons` (field) — `ui.icons`.

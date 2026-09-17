@@ -14,7 +14,8 @@ use graft_core::oid::Oid;
 use graft_git::contained::Contained;
 use graft_git::diff::{DiffOptions, DiffSpec, FileList};
 use graft_term::sanitize::{sanitize_line, sanitize_path_bytes};
-use graft_ui::detail::{ContainedIn, DetailFocus, DiffMode, DiffView, FileListView};
+use graft_ui::detail::{ContainedIn, DetailFocus, DiffMode, DiffView, FileListView, LineKindView};
+use graft_ui::detail_pane::DetailLayout;
 
 use super::events::{AppEvent, Command, Product};
 use super::state::AppState;
@@ -29,6 +30,59 @@ const DIFF_CACHE: usize = 8;
 const CONTAINED_CACHE: usize = 64;
 /// Lines of one file's diff read before it is cut short (`L` loads the rest).
 const MAX_LINES: usize = 5_000;
+/// `PageUp`/`PageDown` step, in rows, for the files list and the diff body.
+const PAGE_STEP: isize = 10;
+/// `]`'s and `[`'s ceiling on context lines: past this, more context stops
+/// changing what most diffs show.
+const MAX_CONTEXT: u8 = 20;
+
+/// `<`/`>` (ADR-0028) move the focused divider by this many cells per press.
+const RESIZE_STEP: u16 = 4;
+/// The pane's own minimum, mirrored from `graft_ui::detail_pane::DetailLayout`
+/// (private there): 42% of a 160-column screen never goes below this.
+const RIGHT_MIN: u16 = 48;
+/// The pane's own minimum in the stacked layout.
+const BELOW_MIN: u16 = 8;
+/// The graph never shrinks below this many columns for the pane's sake.
+const GRAPH_MIN_COLUMNS: u16 = 40;
+/// The graph never shrinks below this many rows for the pane's sake.
+const GRAPH_MIN_ROWS: u16 = 6;
+
+/// The detail pane's size, remembered per orientation (ADR-0028): a column
+/// count set side by side means nothing as a row count once the window
+/// narrows into the stacked layout, so the two never share one field.
+/// `None` in either field means "the percentage default", not zero.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct PaneSize {
+    /// `Right` layout's divider position, in columns.
+    pub right_columns: Option<u16>,
+    /// `Below` layout's divider position, in rows.
+    pub below_rows: Option<u16>,
+}
+
+impl PaneSize {
+    /// The value for `layout`'s orientation; `None` for `Tab`, which has no
+    /// divider to remember a size for.
+    #[must_use]
+    pub fn for_layout(&self, layout: &DetailLayout) -> Option<u16> {
+        match layout {
+            DetailLayout::Right { .. } => self.right_columns,
+            DetailLayout::Below { .. } => self.below_rows,
+            DetailLayout::Tab { .. } => None,
+        }
+    }
+}
+
+/// `current` stepped by [`RESIZE_STEP`] toward `grow`, clamped to `[min,
+/// max]`. A press already at a bound returns `current` unchanged.
+fn stepped(current: u16, grow: bool, min: u16, max: u16) -> u16 {
+    let moved = if grow {
+        current.saturating_add(RESIZE_STEP)
+    } else {
+        current.saturating_sub(RESIZE_STEP)
+    };
+    moved.clamp(min.min(max), max)
+}
 
 /// What the pane is about.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -157,6 +211,9 @@ pub struct DetailState {
     pub max_lines: usize,
     /// First body line on screen.
     pub body_top: usize,
+    /// The pane's size, per orientation (ADR-0028); `<common_dir>/graft/layout`
+    /// at startup, written on every resize.
+    pub pane_size: PaneSize,
 }
 
 impl Default for DetailState {
@@ -175,6 +232,7 @@ impl Default for DetailState {
             word_tint: true,
             max_lines: MAX_LINES,
             body_top: 0,
+            pane_size: PaneSize::default(),
         }
     }
 }
@@ -384,6 +442,113 @@ impl DetailState {
             (DetailFocus::Diff, true) | (DetailFocus::Files, false) => DetailFocus::Graph,
         };
     }
+
+    /// `w`/`[`/`]`: new context/whitespace options, re-reading the current
+    /// file under them. Cached identically to any other options change — no
+    /// new mechanism (`show_cursor` already keys the cache on `self.options`).
+    pub fn set_options(
+        &mut self,
+        options: DiffOptions,
+        next_id: &mut impl FnMut() -> JobId,
+    ) -> Vec<Command> {
+        self.options = options;
+        self.show_cursor(next_id)
+    }
+
+    /// `L`: read the whole of the current file, past [`MAX_LINES`].
+    pub fn load_all(&mut self, next_id: &mut impl FnMut() -> JobId) -> Vec<Command> {
+        self.max_lines = usize::MAX;
+        self.show_cursor(next_id)
+    }
+
+    /// `j`/`k`/`PgUp`/`PgDn`/`g`/`G`/wheel in the `Diff` region: move
+    /// `body_top` by `delta` lines, clamped to `[0, content_len - 1]`.
+    /// `isize::MIN`/`isize::MAX` jump to the top/bottom (`saturating_add_signed`
+    /// already clamps at the ends).
+    pub fn scroll_body(&mut self, delta: isize, content_len: usize) {
+        let max = content_len.saturating_sub(1);
+        self.body_top = self.body_top.saturating_add_signed(delta).min(max);
+    }
+
+    /// `<` (`grow = false`) / `>` (`grow = true`) on the focused divider
+    /// (ADR-0028): the layout's one divider, columns in `Right`, rows in
+    /// `Below`. No-op — `false`, nothing changed — in `Tab` (no divider),
+    /// while the pane is hidden, or already at a bound. `size` is the
+    /// terminal's (columns, rows).
+    pub fn resize_pane(&mut self, layout: &DetailLayout, grow: bool, size: (u16, u16)) -> bool {
+        if !self.shown {
+            return false;
+        }
+        match *layout {
+            DetailLayout::Tab { .. } => false,
+            DetailLayout::Right { columns } => {
+                let max = size.0.saturating_sub(GRAPH_MIN_COLUMNS).max(RIGHT_MIN);
+                let next = stepped(columns, grow, RIGHT_MIN, max);
+                if next == columns {
+                    return false;
+                }
+                self.pane_size.right_columns = Some(next);
+                true
+            }
+            DetailLayout::Below { rows } => {
+                let max = size.1.saturating_sub(GRAPH_MIN_ROWS).max(BELOW_MIN);
+                let next = stepped(rows, grow, BELOW_MIN, max);
+                if next == rows {
+                    return false;
+                }
+                self.pane_size.below_rows = Some(next);
+                true
+            }
+        }
+    }
+
+    /// Divider drag: set the orientation's cells straight from the pointer,
+    /// same clamps and no-op cases as [`Self::resize_pane`].
+    pub fn set_pane_cells(&mut self, layout: &DetailLayout, cells: u16, size: (u16, u16)) -> bool {
+        if !self.shown {
+            return false;
+        }
+        match *layout {
+            DetailLayout::Tab { .. } => false,
+            DetailLayout::Right { columns } => {
+                let max = size.0.saturating_sub(GRAPH_MIN_COLUMNS).max(RIGHT_MIN);
+                let next = cells.clamp(RIGHT_MIN, max);
+                if next == columns {
+                    return false;
+                }
+                self.pane_size.right_columns = Some(next);
+                true
+            }
+            DetailLayout::Below { rows } => {
+                let max = size.1.saturating_sub(GRAPH_MIN_ROWS).max(BELOW_MIN);
+                let next = cells.clamp(BELOW_MIN, max);
+                if next == rows {
+                    return false;
+                }
+                self.pane_size.below_rows = Some(next);
+                true
+            }
+        }
+    }
+}
+
+/// Content rows [`graft_ui::detail_pane::diff_body`] draws for `view`: one
+/// heading row per hunk plus its non-heading lines, plus a truncation-footer
+/// row when the diff was cut short. Mirrors that widget's private row count
+/// so `scroll_body` clamps to what will actually be on screen.
+fn diff_content_len(view: &DiffView) -> usize {
+    let lines: usize = view
+        .hunks
+        .iter()
+        .map(|hunk| {
+            1 + hunk
+                .lines
+                .iter()
+                .filter(|line| line.kind != LineKindView::HunkHeading)
+                .count()
+        })
+        .sum();
+    lines + usize::from(view.truncated.is_some())
 }
 
 /// Hands out ids for jobs `update` names itself (see [`LOCAL_JOB_BIT`]).
@@ -430,6 +595,10 @@ pub(super) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
     let ids = &mut || local_jobs.next_id();
     let plain = key.modifiers == Modifiers::NONE;
     match key.code {
+        KeyCode::Enter if plain && detail.shown && detail.focus == DetailFocus::Diff => {
+            // Diff already has focus: Enter has nothing further to open.
+            true
+        }
         KeyCode::Enter if plain && detail.shown && detail.focus == DetailFocus::Files => {
             detail.focus = DetailFocus::Diff;
             true
@@ -456,30 +625,167 @@ pub(super) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
             detail.cycle_focus(false);
             true
         }
-        KeyCode::Char('j') | KeyCode::Down
-            if detail.shown && detail.focus == DetailFocus::Files =>
-        {
+        _ if detail.shown && detail.focus == DetailFocus::Files => {
+            files_key(detail, commands, ids, key.code, plain)
+        }
+        _ if detail.shown && detail.focus == DetailFocus::Diff => {
+            diff_key(detail, commands, ids, key.code, plain)
+        }
+        _ => false,
+    }
+}
+
+/// Keys active with the files list focused: cursor movement, paging, home/end
+/// and `Space` to fold or unfold a directory row.
+fn files_key(
+    detail: &mut DetailState,
+    commands: &mut Vec<Command>,
+    ids: &mut impl FnMut() -> JobId,
+    code: KeyCode,
+    plain: bool,
+) -> bool {
+    match code {
+        KeyCode::Char('j') | KeyCode::Down => {
             commands.extend(detail.move_files_cursor(1, ids));
             true
         }
-        KeyCode::Char('k') | KeyCode::Up if detail.shown && detail.focus == DetailFocus::Files => {
+        KeyCode::Char('k') | KeyCode::Up => {
             commands.extend(detail.move_files_cursor(-1, ids));
             true
         }
-        KeyCode::Char('v') if plain && detail.shown && detail.focus != DetailFocus::Graph => {
+        KeyCode::PageDown => {
+            commands.extend(detail.move_files_cursor(PAGE_STEP, ids));
+            true
+        }
+        KeyCode::PageUp => {
+            commands.extend(detail.move_files_cursor(-PAGE_STEP, ids));
+            true
+        }
+        KeyCode::Char('g') if plain => {
+            commands.extend(detail.move_files_cursor(isize::MIN, ids));
+            true
+        }
+        KeyCode::Char('G') if plain => {
+            commands.extend(detail.move_files_cursor(isize::MAX, ids));
+            true
+        }
+        KeyCode::Char(' ') if plain => {
+            if let Loading::Ready(files) = &mut detail.files {
+                let cursor = files.cursor;
+                Arc::make_mut(files).toggle_dir(cursor);
+            }
+            true
+        }
+        _ => diff_option_key(detail, commands, ids, code, plain),
+    }
+}
+
+/// Keys active with the diff body focused: scrolling, plus the same
+/// view-option keys `files_key` falls back to (both panes share them).
+fn diff_key(
+    detail: &mut DetailState,
+    commands: &mut Vec<Command>,
+    ids: &mut impl FnMut() -> JobId,
+    code: KeyCode,
+    plain: bool,
+) -> bool {
+    let delta = match code {
+        KeyCode::Char('j') | KeyCode::Down => Some(1),
+        KeyCode::Char('k') | KeyCode::Up => Some(-1),
+        KeyCode::PageDown => Some(PAGE_STEP),
+        KeyCode::PageUp => Some(-PAGE_STEP),
+        KeyCode::Char('g') if plain => Some(isize::MIN),
+        KeyCode::Char('G') if plain => Some(isize::MAX),
+        _ => None,
+    };
+    if let Some(delta) = delta {
+        let len = diff_content_len_of(detail);
+        detail.scroll_body(delta, len);
+        return true;
+    }
+    diff_option_key(detail, commands, ids, code, plain)
+}
+
+/// View-option keys shared by both the files and diff panes (anywhere the
+/// pane is shown and not focused on the graph): mode, whitespace, context and
+/// the full-file load.
+fn diff_option_key(
+    detail: &mut DetailState,
+    commands: &mut Vec<Command>,
+    ids: &mut impl FnMut() -> JobId,
+    code: KeyCode,
+    plain: bool,
+) -> bool {
+    if !plain {
+        return false;
+    }
+    match code {
+        KeyCode::Char('v') => {
             detail.mode = match detail.mode {
                 DiffMode::Unified => DiffMode::SideBySide,
                 DiffMode::SideBySide => DiffMode::Unified,
             };
             true
         }
+        KeyCode::Char('w') => {
+            let mut options = detail.options;
+            options.ignore_whitespace = !options.ignore_whitespace;
+            commands.extend(detail.set_options(options, ids));
+            true
+        }
+        // `word_tint` has no place in `graft_git::diff::DiffOptions` (a
+        // git-query option, not a display one) — `W` flips it directly and
+        // re-renders from the diff already in hand, no re-fetch.
+        KeyCode::Char('W') => {
+            detail.word_tint = !detail.word_tint;
+            true
+        }
+        KeyCode::Char('[') => {
+            let mut options = detail.options;
+            options.context = options.context.saturating_sub(1);
+            commands.extend(detail.set_options(options, ids));
+            true
+        }
+        KeyCode::Char(']') => {
+            let mut options = detail.options;
+            options.context = options.context.saturating_add(1).min(MAX_CONTEXT);
+            commands.extend(detail.set_options(options, ids));
+            true
+        }
+        KeyCode::Char('L') => {
+            commands.extend(detail.load_all(ids));
+            true
+        }
         _ => false,
+    }
+}
+
+/// The diff body's current length, for [`DetailState::scroll_body`]'s clamp;
+/// `0` while nothing is loaded, so a scroll key is a harmless no-op then.
+fn diff_content_len_of(detail: &DetailState) -> usize {
+    match &detail.diff {
+        Loading::Ready(diff) => diff_content_len(diff),
+        Loading::Idle | Loading::Pending(_) | Loading::Failed(_) => 0,
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use graft_ui::detail::{FileRow, FileRowKind, FileStatusView, HunkView, LineView};
+
+    /// An empty, valid diff — enough for the option/scroll keys to act on.
+    fn empty_diff_view() -> DiffView {
+        DiffView {
+            path: sanitize_line("f"),
+            old_path: None,
+            status: FileStatusView::Modified,
+            hunks: Vec::new(),
+            binary: None,
+            truncated: None,
+            untracked: false,
+        }
+    }
 
     #[test]
     fn bounded_forgets_its_oldest_entry_and_replaces_in_place() {
@@ -525,5 +831,167 @@ mod tests {
         assert_eq!(state.focus, DetailFocus::Graph);
         state.cycle_focus(false);
         assert_eq!(state.focus, DetailFocus::Diff);
+    }
+
+    #[test]
+    fn enter_is_a_no_op_once_diff_already_has_focus() {
+        let mut state = super::super::state::AppState::default();
+        state.detail.shown = true;
+        state.detail.focus = DetailFocus::Diff;
+        let mut commands = Vec::new();
+        let key = KeyPress::plain(KeyCode::Enter);
+
+        assert!(detail_key(&mut state, &mut commands, key));
+        assert_eq!(state.detail.focus, DetailFocus::Diff);
+        assert!(commands.is_empty());
+    }
+
+    #[test]
+    fn bracket_keys_step_context_and_reissue_read_file_diff() {
+        let mut state = super::super::state::AppState::default();
+        state.detail.shown = true;
+        state.detail.focus = DetailFocus::Diff;
+        state.detail.diff = Loading::Ready(Arc::new(empty_diff_view()));
+        let mut commands = Vec::new();
+
+        assert!(detail_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Char(']'))
+        ));
+        assert_eq!(
+            state.detail.options.context,
+            DiffOptions::default().context + 1
+        );
+
+        commands.clear();
+        assert!(detail_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Char('['))
+        ));
+        assert_eq!(state.detail.options.context, DiffOptions::default().context);
+    }
+
+    #[test]
+    fn w_toggles_ignore_whitespace_and_capital_w_toggles_word_tint_locally() {
+        let mut state = super::super::state::AppState::default();
+        state.detail.shown = true;
+        state.detail.focus = DetailFocus::Diff;
+        state.detail.diff = Loading::Ready(Arc::new(empty_diff_view()));
+        let mut commands = Vec::new();
+
+        assert!(detail_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Char('w'))
+        ));
+        assert!(state.detail.options.ignore_whitespace);
+
+        let before = state.detail.word_tint;
+        commands.clear();
+        assert!(detail_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Char('W'))
+        ));
+        assert_eq!(state.detail.word_tint, !before);
+        assert!(
+            commands.is_empty(),
+            "W is a local display toggle, no re-fetch"
+        );
+    }
+
+    #[test]
+    fn capital_l_loads_the_full_file() {
+        let mut state = super::super::state::AppState::default();
+        state.detail.shown = true;
+        state.detail.focus = DetailFocus::Diff;
+        state.detail.diff = Loading::Ready(Arc::new(empty_diff_view()));
+        state.detail.max_lines = MAX_LINES;
+        let mut commands = Vec::new();
+
+        assert!(detail_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Char('L'))
+        ));
+        assert_eq!(state.detail.max_lines, usize::MAX);
+    }
+
+    #[test]
+    fn space_folds_a_directory_row_in_the_files_list() {
+        let mut state = super::super::state::AppState::default();
+        state.detail.shown = true;
+        state.detail.focus = DetailFocus::Files;
+        let mut files = FileListView::default();
+        files.rows.push(FileRow {
+            depth: 0,
+            name: sanitize_line("src/"),
+            kind: FileRowKind::Dir { collapsed: false },
+            entry: None,
+        });
+        files.rows.push(FileRow {
+            depth: 1,
+            name: sanitize_line("lib.rs"),
+            kind: FileRowKind::File {
+                status: FileStatusView::Modified,
+                added: Some(1),
+                removed: Some(1),
+            },
+            entry: Some(0),
+        });
+        files.cursor = 0;
+        state.detail.files = Loading::Ready(Arc::new(files));
+        let mut commands = Vec::new();
+
+        assert!(detail_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Char(' '))
+        ));
+        let Loading::Ready(files) = &state.detail.files else {
+            unreachable!()
+        };
+        assert_eq!(files.rows[0].kind, FileRowKind::Dir { collapsed: true });
+    }
+
+    #[test]
+    fn g_and_capital_g_jump_the_diff_body_to_its_ends() {
+        let mut state = super::super::state::AppState::default();
+        state.detail.shown = true;
+        state.detail.focus = DetailFocus::Diff;
+        state.detail.diff = Loading::Ready(Arc::new(DiffView {
+            hunks: vec![HunkView {
+                heading: sanitize_line("@@ -1,3 +1,3 @@"),
+                lines: (0..5)
+                    .map(|_| LineView {
+                        kind: LineKindView::Context,
+                        old_no: None,
+                        new_no: None,
+                        text: sanitize_line(""),
+                        words: Vec::new(),
+                        syntax: Vec::new(),
+                        pair: None,
+                    })
+                    .collect(),
+            }],
+            ..empty_diff_view()
+        }));
+        let mut commands = Vec::new();
+
+        assert!(detail_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Char('G'))
+        ));
+        assert!(state.detail.body_top > 0);
+
+        assert!(detail_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Char('g'))
+        ));
+        assert_eq!(state.detail.body_top, 0);
     }
 }

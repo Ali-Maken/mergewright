@@ -280,6 +280,7 @@ mod tests {
                     renderer,
                     ..Graph::default()
                 },
+                ..Config::default()
             },
             ..Loaded::default()
         }
