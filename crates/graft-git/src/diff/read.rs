@@ -45,7 +45,7 @@ pub enum DiffSpec {
 }
 
 /// How to run a diff: how much context, and whether to ignore whitespace.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DiffOptions {
     /// Unchanged lines kept around a change, each side.
     pub context: u8,

@@ -150,6 +150,60 @@ impl<S: JobEvents> JobRunner<S> {
     /// that reports progress needs, because every progress event carries it.
     fn queue_job(&self, task: Option<Task>, build: impl FnOnce(JobId) -> Work) -> JobId {
         let id = JobId::new(self.next_id.fetch_add(1, Ordering::Relaxed));
+        self.queue_as(id, task, build)
+    }
+
+    /// The detail pane's reads (`dispatch` routes only those here).
+    fn dispatch_detail(&self, command: Command) {
+        match command {
+            Command::ListFiles(id, spec, options) => {
+                let repos = Arc::clone(&self.repos);
+                self.detail_job(id, Task::ListFiles { spec }, move |cancel| {
+                    Product::Files(super::detail::read_files(&repos, spec, options, cancel))
+                });
+            }
+            Command::ReadFileDiff(id, key, entry) => {
+                let repos = Arc::clone(&self.repos);
+                self.detail_job(id, Task::FileDiff { key }, move |cancel| {
+                    let result = super::detail::read_file_diff(&repos, &key, &entry, cancel);
+                    Product::FileDiff(key, result)
+                });
+            }
+            Command::ContainedIn(id, oid) => {
+                let repos = Arc::clone(&self.repos);
+                self.detail_job(id, Task::ContainedIn { oid }, move |cancel| {
+                    Product::ContainedIn(oid, super::detail::read_contained(&repos, oid, cancel))
+                });
+            }
+            // `dispatch` routes only the three above here.
+            _ => {}
+        }
+    }
+
+    /// Queue one of the detail pane's reads under `update`'s id. A job
+    /// stopped part way reports `Cancelled`, never its half-read product.
+    fn detail_job(
+        &self,
+        id: JobId,
+        task: Task,
+        read: impl FnOnce(&Cancel) -> Product + Send + 'static,
+    ) {
+        self.queue_as(id, Some(task), |_| {
+            Box::new(move |cancel: &Cancel| {
+                let product = read(cancel);
+                if cancel.is_cancelled() {
+                    Outcome::Cancelled
+                } else {
+                    Outcome::Produced(product)
+                }
+            })
+        });
+    }
+
+    /// Queue a job under an id `update` already chose (the detail pane's,
+    /// `update::detail::LOCAL_JOB_BIT` set), so it can cancel or drop the
+    /// job's answer before the job has even started.
+    fn queue_as(&self, id: JobId, task: Option<Task>, build: impl FnOnce(JobId) -> Work) -> JobId {
         let work = build(id);
         let cancel = Cancel::new();
         self.live.register(id, cancel.clone());
@@ -350,6 +404,11 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
                 // The id names the search on screen; `update` tells a
                 // superseded one apart by the order searches start in.
                 self.queue_job(Some(Task::Search), |id| search(repos, query, sink, id));
+            }
+            command @ (Command::ListFiles(..)
+            | Command::ReadFileDiff(..)
+            | Command::ContainedIn(..)) => {
+                self.dispatch_detail(command);
             }
             Command::CancelJob(id) => {
                 self.row_requests().remove(&id);

@@ -423,17 +423,6 @@ fn hover_names_the_row_under_the_pointer() {
     assert_eq!(hovered.hover, Some(1), "hover names the row under it");
 }
 
-/// `Enter` peeks the cursor row without needing the mouse (ADR-0023).
-#[test]
-fn enter_toggles_a_peek_on_the_cursor_row_without_the_mouse() {
-    let id = JobId::new(23);
-    let (state, _) = merge_on_screen(id, 1);
-    assert!(!state.peek);
-
-    let (opened, _) = update(&state, key(KeyCode::Enter));
-    assert!(opened.peek, "Enter turns the peek on");
-}
-
 /// `y` on the selected row copies its full SHA and says what was sent
 /// (ADR-0023 decision 4).
 #[test]
@@ -475,65 +464,6 @@ fn y_sends_the_sha_but_keeps_a_failure_on_screen() {
     let (next, commands) = update(&state, key(KeyCode::Char('y')));
     assert_eq!(commands.len(), 1, "{commands:?}");
     assert_eq!(next.status, state.status);
-}
-
-#[test]
-fn hovering_another_row_does_not_touch_a_peek() {
-    let id = JobId::new(23);
-    let (state, _) = merge_on_screen(id, 1);
-    let (opened, _) = update(&state, key(KeyCode::Enter));
-    assert!(opened.peek);
-
-    let hover = core(Event::Mouse(MouseInput {
-        kind: MouseKind::Moved,
-        column: 5,
-        row: HEADER_ROWS,
-        modifiers: Modifiers::NONE,
-    }));
-    let (hovered, _) = update(&opened, hover);
-    assert!(hovered.peek, "the peek is untouched by a hover elsewhere");
-}
-
-/// Any key other than `Enter` clears the peek — a one-shot, not a mode.
-#[test]
-fn moving_the_cursor_clears_the_peek() {
-    let id = JobId::new(23);
-    let (state, _) = merge_on_screen(id, 1);
-    let (opened, _) = update(&state, key(KeyCode::Enter));
-    assert!(opened.peek);
-
-    let (moved, _) = update(&opened, key(KeyCode::Char('j')));
-    assert!(!moved.peek, "j clears a peek left on");
-}
-
-#[test]
-fn enter_again_closes_the_peek() {
-    let id = JobId::new(23);
-    let (state, _) = merge_on_screen(id, 1);
-    let (opened, _) = update(&state, key(KeyCode::Enter));
-    assert!(opened.peek);
-
-    let (closed, _) = update(&opened, key(KeyCode::Enter));
-    assert!(!closed.peek);
-}
-
-#[test]
-fn esc_clears_the_peek_before_anything_else() {
-    let id = JobId::new(23);
-    let (state, _) = merge_on_screen(id, 1);
-    let (opened, _) = update(&state, key(KeyCode::Enter));
-    assert!(opened.peek);
-
-    let (closed, commands) = update(&opened, key(KeyCode::Escape));
-    assert!(!closed.peek);
-    assert!(
-        commands.is_empty(),
-        "clearing the peek asks nothing of the walk"
-    );
-    assert_eq!(
-        closed.awaiting, opened.awaiting,
-        "the walk itself is untouched"
-    );
 }
 
 /// Moving the selection inside the rows on hand asks the history job for
@@ -777,7 +707,8 @@ fn the_same_event_always_gives_the_same_answer() {
         lanes_expanded: false,
         focus: false,
         hover: None,
-        peek: false,
+        detail: DetailState::default(),
+        local_jobs: LocalJobs::default(),
         renderer_override: None,
         settled_tier: None,
         search_prompt: None,
@@ -1836,4 +1767,203 @@ mod commit_graph_offer {
         state.commit_graph = CommitGraphOffer::Declined;
         assert_eq!(state.graph_rows(), with + 1);
     }
+}
+
+// --- The detail pane (m2-details-and-diffs/06, ADR-0023) ---
+
+use std::sync::Arc as DetailArc;
+
+use graft_git::diff::{DiffOptions, FileEntry, FileList, FileStatus};
+use graft_term::sanitize::sanitize_line;
+use graft_ui::detail::{DetailFocus, DiffView, FileListView, FileRow, FileRowKind, FileStatusView};
+
+use super::detail::{DetailSpec, DetailState, LOCAL_JOB_BIT, Loading, LocalJobs};
+
+fn list_commands(commands: &[Command]) -> Vec<(JobId, graft_git::diff::DiffSpec)> {
+    commands
+        .iter()
+        .filter_map(|c| match c {
+            Command::ListFiles(id, spec, _) => Some((*id, *spec)),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Two files, flat, as a files job would hand them back.
+fn two_files() -> (DetailArc<FileListView>, DetailArc<FileList>) {
+    let entry = |path: &str| FileEntry {
+        path: path.into(),
+        old_path: None,
+        status: FileStatus::Modified,
+        added: Some(1),
+        removed: Some(1),
+    };
+    let row = |name: &str, index| FileRow {
+        depth: 0,
+        name: sanitize_line(name),
+        kind: FileRowKind::File {
+            status: FileStatusView::Modified,
+            added: Some(1),
+            removed: Some(1),
+        },
+        entry: Some(index),
+    };
+    let view = FileListView {
+        rows: vec![row("a.rs", 0), row("b.rs", 1)],
+        files: 2,
+        added: 2,
+        removed: 2,
+        ..FileListView::default()
+    };
+    let list = FileList {
+        files: vec![entry("a.rs"), entry("b.rs")],
+        added: 2,
+        removed: 2,
+    };
+    (DetailArc::new(view), DetailArc::new(list))
+}
+
+fn diff_of(path: &str) -> DetailArc<DiffView> {
+    DetailArc::new(DiffView {
+        path: sanitize_line(path),
+        old_path: None,
+        status: FileStatusView::Modified,
+        hunks: Vec::new(),
+        binary: None,
+        truncated: None,
+        untracked: false,
+    })
+}
+
+#[test]
+fn enter_opens_the_pane_on_the_selected_commit_and_asks_for_its_files() {
+    let (state, _) = merge_on_screen(JobId::new(23), 0);
+    let selected = super::detail::selected_commit(&state).expect("row 0 has arrived");
+    let (opened, commands) = update(&state, key(KeyCode::Enter));
+    assert!(opened.detail.shown);
+    assert_eq!(opened.detail.focus, DetailFocus::Files);
+    let lists = list_commands(&commands);
+    assert_eq!(lists.len(), 1, "{commands:?}");
+    assert_eq!(
+        lists[0].1,
+        graft_git::diff::DiffSpec::Commit {
+            commit: selected,
+            against: None
+        }
+    );
+    assert_ne!(
+        lists[0].0.raw() & LOCAL_JOB_BIT,
+        0,
+        "update names the job itself"
+    );
+    assert!(
+        commands
+            .iter()
+            .any(|c| matches!(c, Command::ContainedIn(_, oid) if *oid == selected))
+    );
+
+    let (again, commands) = update(&opened, key(KeyCode::Escape));
+    assert!(!again.detail.shown);
+    assert!(commands.is_empty(), "{commands:?}");
+}
+
+#[test]
+fn a_second_enter_on_the_same_row_asks_nothing() {
+    let (state, _) = merge_on_screen(JobId::new(23), 0);
+    let (opened, _) = update(&state, key(KeyCode::Enter));
+    let (mut graph, _) = update(&opened, key(KeyCode::Tab));
+    graph.detail.focus = DetailFocus::Graph;
+    let (again, commands) = update(&graph, key(KeyCode::Enter));
+    assert!(again.detail.shown);
+    assert!(commands.is_empty(), "{commands:?}");
+}
+
+#[test]
+fn moving_the_graph_selection_while_shown_cancels_and_reloads() {
+    let (state, _) = merge_on_screen(JobId::new(23), 0);
+    let (mut opened, first) = update(&state, key(KeyCode::Enter));
+    let old = list_commands(&first)[0].0;
+    opened.detail.focus = DetailFocus::Graph;
+    let (moved, commands) = update(&opened, key(KeyCode::Char('j')));
+    assert!(commands.contains(&Command::CancelJob(old)), "{commands:?}");
+    assert_eq!(list_commands(&commands).len(), 1, "{commands:?}");
+    assert_ne!(moved.detail.files, opened.detail.files);
+
+    let (mut hidden, _) = update(&state, key(KeyCode::Char('j')));
+    hidden.detail = DetailState::default();
+    let (_, commands) = update(&hidden, key(KeyCode::Char('k')));
+    assert!(
+        list_commands(&commands).is_empty(),
+        "a hidden pane costs nothing"
+    );
+}
+
+#[test]
+fn a_stale_file_list_changes_nothing() {
+    let (state, _) = merge_on_screen(JobId::new(23), 0);
+    let (opened, _) = update(&state, key(KeyCode::Enter));
+    let old_answer = AppEvent::Produced(
+        JobId::new(LOCAL_JOB_BIT | 0x3e7),
+        Product::Files(Ok(two_files())),
+    );
+    let (next, commands) = update(&opened, old_answer);
+    assert_eq!(next.detail, opened.detail);
+    assert!(commands.is_empty(), "{commands:?}");
+}
+
+#[test]
+fn files_arriving_ask_for_the_first_diff_and_revisits_hit_the_cache() {
+    let (state, _) = merge_on_screen(JobId::new(23), 0);
+    let (opened, first) = update(&state, key(KeyCode::Enter));
+    let id = list_commands(&first)[0].0;
+    let (listed, commands) = update(
+        &opened,
+        AppEvent::Produced(id, Product::Files(Ok(two_files()))),
+    );
+    let Loading::Ready(files) = &listed.detail.files else {
+        panic!("files ready")
+    };
+    assert_eq!(files.cursor, 0);
+    let reads: Vec<_> = commands
+        .iter()
+        .filter_map(|c| match c {
+            Command::ReadFileDiff(id, key, _) => Some((*id, *key)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(reads.len(), 1, "{commands:?}");
+    let (first_id, first_key) = reads[0];
+    assert_eq!(first_key.entry, 0);
+    assert_eq!(first_key.options, DiffOptions::default());
+    let (shown, _) = update(
+        &listed,
+        AppEvent::Produced(first_id, Product::FileDiff(first_key, Ok(diff_of("a.rs")))),
+    );
+    assert!(matches!(shown.detail.diff, Loading::Ready(_)));
+
+    let (down, commands) = update(&shown, key(KeyCode::Char('j')));
+    assert!(
+        commands
+            .iter()
+            .any(|c| matches!(c, Command::ReadFileDiff(_, key, _) if key.entry == 1)),
+        "{commands:?}"
+    );
+    let (back, commands) = update(&down, key(KeyCode::Char('k')));
+    assert!(
+        !commands
+            .iter()
+            .any(|c| matches!(c, Command::ReadFileDiff(..))),
+        "{commands:?}"
+    );
+    assert!(
+        matches!(back.detail.diff, Loading::Ready(_)),
+        "cache hit shows at once"
+    );
+
+    let (diff_focus, _) = update(&back, key(KeyCode::Enter));
+    assert_eq!(diff_focus.detail.focus, DetailFocus::Diff);
+    assert!(
+        matches!(back.detail.spec, Some(DetailSpec::Commit(_))),
+        "spec kept"
+    );
 }

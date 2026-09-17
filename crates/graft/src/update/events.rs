@@ -69,6 +69,21 @@ pub enum Task {
     WriteCommitGraph,
     /// Remember "never for this repository" for the commit-graph offer.
     DeclineCommitGraph,
+    /// The detail pane's changed-file list.
+    ListFiles {
+        /// What was listed.
+        spec: graft_git::diff::DiffSpec,
+    },
+    /// One file's diff for the detail pane.
+    FileDiff {
+        /// Which diff.
+        key: super::detail::DiffKey,
+    },
+    /// Which refs contain a commit.
+    ContainedIn {
+        /// The commit asked about.
+        oid: graft_core::oid::Oid,
+    },
 }
 
 /// What a job brought back.
@@ -94,6 +109,26 @@ pub enum Product {
     CommitGraph(Result<graft_git::commit_graph::Written, String>),
     /// The decline was remembered, or why it could not be.
     CommitGraphDeclined(Result<(), String>),
+    /// The detail pane's file tree and the git list behind it, or why not.
+    Files(
+        Result<
+            (
+                std::sync::Arc<graft_ui::detail::FileListView>,
+                std::sync::Arc<graft_git::diff::FileList>,
+            ),
+            String,
+        >,
+    ),
+    /// One file's assembled diff, or why not.
+    FileDiff(
+        super::detail::DiffKey,
+        Result<std::sync::Arc<graft_ui::detail::DiffView>, String>,
+    ),
+    /// The refs containing a commit, or why not.
+    ContainedIn(
+        graft_core::oid::Oid,
+        Result<graft_git::contained::Contained, String>,
+    ),
 }
 
 /// What running `git --version` found.
@@ -160,6 +195,16 @@ pub enum Command {
     WriteCommitGraph,
     /// Remember the user declined the commit-graph offer (`X`).
     DeclineCommitGraph,
+    /// List the files a diff touches, under an id `update` chose.
+    ListFiles(
+        JobId,
+        graft_git::diff::DiffSpec,
+        graft_git::diff::DiffOptions,
+    ),
+    /// Read and assemble one file's diff, under an id `update` chose.
+    ReadFileDiff(JobId, super::detail::DiffKey, graft_git::diff::FileEntry),
+    /// Ask which refs contain a commit, under an id `update` chose.
+    ContainedIn(JobId, graft_core::oid::Oid),
 }
 
 /// Where the offer to build a missing commit-graph file is (m1-the-graph/54).

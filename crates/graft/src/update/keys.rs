@@ -3,7 +3,7 @@
 //! `commit_graph`).
 
 use graft_core::capabilities::RenderingTier;
-use graft_core::event::{KeyCode, KeyPress, Modifiers};
+use graft_core::event::{KeyCode, KeyPress};
 use graft_core::oid::Oid;
 use graft_git::history::Order;
 
@@ -15,10 +15,7 @@ use super::state::{AppState, Quit, Status};
 
 /// The half of [`super::core_event`] that answers a key.
 ///
-/// `Enter` (the peek key) and `Esc` handle the peek themselves — `Enter`
-/// toggles it, `Esc` clears it before anything else (`escape_key`). Every
-/// other key clears a peek left on: it is a one-shot, not a mode
-/// (ADR-0023).
+/// The detail pane answers its keys first (`Enter` opens it, ADR-0023).
 pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     // The copy notice lasts until the next key, whatever that key does.
     if matches!(next.status, Status::Copied { .. }) {
@@ -28,12 +25,8 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     if matches!(next.commit_graph, CommitGraphOffer::Written { .. }) {
         next.commit_graph = CommitGraphOffer::NotNeeded;
     }
-    if is_peek_key(key) {
-        next.peek = !next.peek;
+    if super::detail::detail_key(next, commands, key) {
         return;
-    }
-    if key.code != KeyCode::Escape {
-        next.peek = false;
     }
     if let Some(command) = super::commit_graph::commit_graph_key(next, key) {
         commands.push(command);
@@ -42,11 +35,15 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     graph_key(next, commands, key);
 }
 
-/// The graph's own keys, once [`key_event`] has settled the peek.
+/// The graph's own keys, once the detail pane has passed on the key.
 fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     if is_quit(key) {
         next.quit = Some(Quit::Requested);
     } else if is_refresh(key) {
+        let AppState {
+            detail, local_jobs, ..
+        } = &mut *next;
+        commands.extend(detail.refresh(&mut || local_jobs.next_id()));
         // The walk on screen would otherwise sit waiting for row
         // requests that now go to its replacement.
         if let Some(id) = next.awaiting.take() {
@@ -92,14 +89,9 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     }
 }
 
-/// `Esc`: clears a peek if one is on — the lightest thing on screen, so it
-/// goes first — else backs a `G` still walking out first, then leaves Focus
+/// `Esc` (once the detail pane is closed): backs a `G` still walking out first, then leaves Focus
 /// mode, then cancels the walk (m1-the-graph/17, ADR-0023, DESIGN.md §2.2).
 fn escape_key(next: &mut AppState, commands: &mut Vec<Command>) {
-    if next.peek {
-        next.peek = false;
-        return;
-    }
     let height = next.graph_rows();
     // A search still running: stop it and put the selection back.
     if next
@@ -247,14 +239,6 @@ fn copy_selected_sha(next: &mut AppState, commands: &mut Vec<Command>) {
     if !matches!(next.status, Status::Failed(_)) {
         next.status = Status::Copied { short };
     }
-}
-
-/// `Enter`: peek the cursor row's full subject — the keyboard's route to the
-/// content a hover shows (DESIGN.md §2.15, PROMPT.md §1.3, ADR-0023). Free
-/// on the graph pane: DESIGN.md §2.3 binds it only on a sidebar row, which
-/// m1 has none of.
-fn is_peek_key(key: KeyPress) -> bool {
-    key.code == KeyCode::Enter && key.modifiers == Modifiers::NONE
 }
 
 /// A key that changes which history is shown (PROMPT.md §1.3). DESIGN.md

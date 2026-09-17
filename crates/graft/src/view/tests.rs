@@ -345,11 +345,10 @@ fn a_reveal_renders_an_escape_sequence_inert() {
     assert!(screen.contains("A very long subject"), "{screen}");
 }
 
-/// Hover and the keyboard peek both point at the same absolute row, so
-/// both routes name the identical row in `reveal` (m1-the-graph/17,
-/// ADR-0023) — the acceptance criterion this proves.
+/// A hover names its row in `reveal` (m1-the-graph/17); `Enter` opens the
+/// detail pane now, so the hover is the only reveal (ADR-0023).
 #[test]
-fn hover_and_peek_name_the_same_reveal_row() {
+fn hover_names_the_reveal_row() {
     let history = history_of(4, 2);
     let base = AppState {
         history: Some(history),
@@ -359,25 +358,20 @@ fn hover_and_peek_name_the_same_reveal_row() {
         },
         ..AppState::default()
     };
-
-    // The keyboard peeks the current selection (cursor).
-    let keyboard = AppState {
-        peek: true,
-        ..base.clone()
-    };
-    // A hover over that same row sets the identical absolute index.
     let hover = AppState {
         hover: Some(2),
         ..base.clone()
     };
-
-    let from_keyboard = graph_view(&keyboard, keyboard.harness.clock.now_seconds())
-        .reveal
-        .expect("row 2 has arrived");
-    let from_hover = graph_view(&hover, hover.harness.clock.now_seconds())
-        .reveal
-        .expect("row 2 has arrived");
-    assert_eq!(from_keyboard, from_hover);
+    assert_eq!(
+        graph_view(&base, base.harness.clock.now_seconds()).reveal,
+        None
+    );
+    assert!(
+        graph_view(&hover, hover.harness.clock.now_seconds())
+            .reveal
+            .is_some(),
+        "row 2 has arrived and is revealed"
+    );
 }
 
 /// Refs whose `HEAD` resolves to `head`, or is unborn when `head` is

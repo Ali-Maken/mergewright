@@ -138,11 +138,7 @@ pub(crate) fn order_notice(history: &History) -> Option<OrderNotice> {
 /// actually on screen (scrolled past, or the uncommitted row itself, which
 /// has no subject to reveal).
 fn reveal_index(state: &AppState, history: &History, rows: &[GraphEntry<'_>]) -> Option<usize> {
-    let absolute = match (state.hover, state.peek) {
-        (Some(row), _) => row,
-        (None, true) => history.cursor,
-        (None, false) => return None,
-    };
+    let absolute = state.hover?;
     let offset = usize::from(uncommitted_shown(state));
     let index = offset + absolute.checked_sub(history.top)?;
     (index < rows.len()).then_some(index)

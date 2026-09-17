@@ -90,11 +90,10 @@ pub struct AppState {
     /// full in place of the key hints (`graft_ui::graph_screen::graph_view`
     /// turns this into `GraphView::reveal`).
     pub hover: Option<usize>,
-    /// `Enter`'s one-shot peek (ADR-0023): while set, the cursor row's
-    /// subject reveals in the footer the same way a hover does, without
-    /// needing the mouse. `Enter` toggles it; any other key, or moving the
-    /// cursor, clears it; `Esc` clears it before anything else.
-    pub peek: bool,
+    /// The detail pane (ADR-0023: `Enter` opens it); hidden by default.
+    pub detail: super::detail::DetailState,
+    /// Ids for the jobs `update` names itself (the detail pane's).
+    pub local_jobs: super::detail::LocalJobs,
     /// The tier-drop key (`F3`) forced this tier for the rest of the run, or
     /// `None` for whatever `Session::settle` decided. A view-time override
     /// like `lanes_expanded` — the rows are untouched, only how they draw

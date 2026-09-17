@@ -69,6 +69,7 @@ use crate::update::{AppEvent, Command, GitCheck, Product, Progress, Task};
 #[cfg(test)]
 mod tests;
 
+mod detail;
 mod kinds;
 mod pool;
 mod runner;

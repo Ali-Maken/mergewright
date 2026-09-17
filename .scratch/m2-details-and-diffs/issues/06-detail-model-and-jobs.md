@@ -1,6 +1,6 @@
 # detail-model-and-jobs: detail state, its jobs and the view-model types, no drawing
 
-Status: ready
+Status: partial
 Blocked by: 01, 02, 03, 05
 
 Status: draft
@@ -102,3 +102,24 @@ pub fn assemble_files(list: &FileList, message: Option<&[u8]>) -> FileListView; 
 ## Size
 
 Two crates: ui types (~180 lines, no logic beyond `FileListView` methods), app (`update/detail.rs` ~250, `jobs/detail.rs` ~220), tests (~250). This is the milestone's largest ticket; it fits only if the builder reads `jobs` and `update` through MAP.md plus one scout summary of `jobs/kinds` (how a `Task` is run and a `Product` delivered) and of `update/keys.rs`'s `Enter`/`Esc` arms — never those files whole. ≤ 30 tool calls. If `assemble_diff` plus the jobs wiring passes 60 % of the budget before `update/detail.rs` starts, stop, commit the ui types + jobs, and report `partial` with `update/detail.rs` as the seam.
+
+## Handoff (builder-opus, 2026-09-17, stopped at 40-call hard stop; no compaction)
+
+Done (commit below): `graft-ui::detail` types + FileListView methods + tests; `update/detail.rs` (DetailSpec, Loading, DiffKey, Bounded, DetailState transitions, LocalJobs, detail_key, follow_selection, detail_event); `jobs/detail.rs` (assemble_files, assemble_diff, read_* runners, `impl Stop for Cancel`); runner `queue_as` + `dispatch_detail` + `detail_job`; Task/Product/Command variants; peek removed (state, keys, view/rows reveal, 5 update tests, view test now hover-only). `cargo test` 987 passed / 0 failed; fmt clean.
+
+Left:
+1. **clippy fails, 2 findings** (`too_many_lines`): `jobs/runner.rs:349` `dispatch` 62/60 and `update/mod.rs:56` `answer` 65/60. Next step: move the three `Command::ListFiles|ReadFileDiff|ContainedIn` arms out of `dispatch` behind one `command @ (...)` arm already calling `dispatch_detail` (check formatting didn't expand it), and in `answer` fold the detail `Produced` arm + detail `Task` names into one call (e.g. route `AppEvent::Started`/`Produced` for detail through a helper before the `match`, keeping exhaustiveness with a `=> {}` arm).
+2. Jobs test with the pool on a fixture temp copy (ListFiles → Files(Ok) count; ReadFileDiff → FileDiff(Ok); ContainedIn names `main`). Not written.
+3. MAP.md: `graft` (update/detail, jobs/detail, AppState::detail/local_jobs, Task/Product/Command lines, peek line removed) and `graft-ui` (`detail` section). Not written.
+4. graft-ui footer still has a peek hint (`graph_screen/footer.rs:40,50,162,166,200`, test `the_peek_hint_names_itself_only_when_the_cursor_row_is_truncated`): now wording a key that opens the pane. Seam for `detail-keys-and-focus` or a small follow-up.
+
+Deviations from spec (say so at review):
+- Job ids: runner issues ids, so `update` ids carry `LOCAL_JOB_BIT` (1<<63) via `AppState::local_jobs: LocalJobs`; runner `queue_as(id, ..)` accepts them.
+- `Command::Cancel(JobId)` not added: existing `Command::CancelJob` reused.
+- `Product::Files` carries `(Arc<FileListView>, Arc<FileList>)`; `DetailState::list` added — `ReadFileDiff` needs the `FileEntry`, which ui types can't hold.
+- `FileListView::message: Vec<SanitizedText>` added — the `✉` row's body had nowhere to live.
+- `Task::ListFiles { spec: DiffSpec }`; runner reads the commit body for `DiffSpec::Commit`.
+- `DiffOptions` gained `Hash` derive in graft-git (DiffKey derives Hash).
+- Update tests use `merge_on_screen`, not `Shape::FeatureBranches` (update tests build no fixture repos).
+- WorkingTree `Enter` not wired (no working-tree row id found within budget).
+- Runner always computes word spans (`assemble_diff(.., true)`); `DetailState::word_tint` is the widget's switch.

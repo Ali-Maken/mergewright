@@ -18,6 +18,7 @@
 //! own file.
 
 mod commit_graph;
+pub mod detail;
 mod events;
 mod history;
 mod keys;
@@ -41,6 +42,7 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
     let mut next = state.clone();
     let mut commands = Vec::new();
     answer(&mut next, &mut commands, event);
+    detail::follow_selection(detail::selected_commit(state), &mut next, &mut commands);
     // The commit-graph line costs a graph row: when it comes or goes, the
     // viewport changed height, so ask for the rows that now fit.
     if next.commit_graph_line().is_some() != state.commit_graph_line().is_some() {
@@ -78,11 +80,24 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         }
         AppEvent::Started(id, Task::PromoteHistory) => history::sort_started(next, commands, id),
         AppEvent::Started(id, Task::Search) => search::search_started(next, commands, id),
-        // Neither of these is waited on: their results are welcome whenever
-        // they arrive, and there is nothing for `Esc` to cancel.
+        // The detail pane names its jobs itself, before they start.
+        event @ AppEvent::Produced(
+            _,
+            Product::Files(_) | Product::FileDiff(..) | Product::ContainedIn(..),
+        ) => {
+            detail::detail_event(next, commands, event);
+        }
+        // Not waited on by start: welcome whenever they arrive (the detail
+        // pane named its jobs itself, before they started).
         AppEvent::Started(
             _,
-            Task::OpenRepository | Task::CheckSystemGit | Task::ReadRefs | Task::ReadWorkingTree,
+            Task::OpenRepository
+            | Task::CheckSystemGit
+            | Task::ReadRefs
+            | Task::ReadWorkingTree
+            | Task::ListFiles { .. }
+            | Task::FileDiff { .. }
+            | Task::ContainedIn { .. },
         ) => {}
         AppEvent::Produced(id, Product::TopologicalOrder(order)) => {
             history::sorted(next, commands, id, order);
@@ -148,7 +163,10 @@ fn took_fact(next: &mut AppState, product: Product) {
         Product::Repository(_)
         | Product::TopologicalOrder(_)
         | Product::CommitGraph(_)
-        | Product::CommitGraphDeclined(_) => {}
+        | Product::CommitGraphDeclined(_)
+        | Product::Files(_)
+        | Product::FileDiff(..)
+        | Product::ContainedIn(..) => {}
     }
 }
 

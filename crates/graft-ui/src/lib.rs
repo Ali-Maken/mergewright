@@ -6,6 +6,7 @@
 //! Depends on `graph`, `term` and `core`.
 #![forbid(unsafe_code)]
 
+pub mod detail;
 pub mod diff_words;
 pub mod fit;
 pub mod graph_column;
