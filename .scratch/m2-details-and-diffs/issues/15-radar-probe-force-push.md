@@ -1,7 +1,7 @@
 # radar-probe-force-push: did a tracked remote rewrite history under us?
 
 Status: ready
-Blocked by: 01, 04, 13
+Blocked by: 01, 04, 13, 13b
 
 Status: draft
 Build with: Opus — an ancestry check (`merge-base --is-ancestor`) whose exit code is the whole answer; a wrong mapping of exit codes to `ForcePushVerdict` is a silent false positive/negative, not a style bug.

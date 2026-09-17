@@ -1,7 +1,7 @@
 # overview-strip: the one-column whole-history strip — marks assembly, widget, `O`
 
 Status: ready
-Blocked by: 04, 07, 13, 18
+Blocked by: 04, 07, 13, 13b, 18
 
 Status: draft
 Build with: Sonnet — a bucketed lookup over rows already on hand and a one-column widget; the priority order and glyphs are fixed in the note, judged by tests and the capture.

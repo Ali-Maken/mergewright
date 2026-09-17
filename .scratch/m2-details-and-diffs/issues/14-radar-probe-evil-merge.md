@@ -1,7 +1,7 @@
 # radar-probe-evil-merge: is the selected merge's resolution honest?
 
 Status: ready
-Blocked by: 01, 04, 13
+Blocked by: 01, 04, 13, 13b
 
 Status: draft
 Build with: Opus — a git subprocess whose exit/stderr shape decides three outcomes (clean/evil/not-checkable); getting that classification wrong is a silent correctness bug, not a style one.

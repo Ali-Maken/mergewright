@@ -1,7 +1,7 @@
 # map-view-data: the Map view's per-branch bucket counts, as a cancellable job, plus its state and keys — no drawing
 
 Status: ready
-Blocked by: 01, 04, 06, 13
+Blocked by: 01, 04, 06, 13, 13b
 
 Status: draft
 Build with: Sonnet — one bounded walk per branch into fixed buckets, wired through the job pattern `jobs::detail` already set; every rule below is decided, every transition testable.

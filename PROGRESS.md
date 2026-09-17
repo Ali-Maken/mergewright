@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M2 building · 13 radar-context-and-markers (sonnet)
+**Current step:** M2 building · 13b radar-wiring (sonnet)
 
 ---
 
@@ -369,6 +369,8 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-18 · m2/11 compare-two-commits · sonnet · done (3c25820) · `x` mark + compare pane, 9/9 acceptance; 375 tests, gates green; capture docs/shots/m2-compare.txt 1.5 KB TestBackend not pty (user by eye) · cause fix: `view::detail` read `selected_spec()` for the header, which never names Compare — a pinned compare redrew as plain COMMIT every frame; now reads `detail.spec` (KG) · gap: header omits "· N files +A −B" (compare_header's own scope, not this ticket)
   · said it did not hit the stop; **harness: 218 calls / ~149k** — highest of M2, self-report wrong again
 - 2026-09-18 · m2/12 context-actions-menu · sonnet · done · graft-ui context_menu.rs + graft update/context_menu.rs; 387 graft + 13 graft-ui, gates + purity guard green; capture docs/shots/m2-context-menu.txt 1.9 KB, menu with/without Explain (user by eye) · deviations for reviewer: OpenDetails builds DetailSpec from the `oid` param (type mismatch with `selected_spec()`, and right-click can target a non-cursor row); Widget has no theme per the exact signature, so the caller paints the background in view/frame.rs · Explain is a stub flag (explain-panel consumes it, per spec) · claimed "stayed under the 40-call hard stop"; **harness: 154 calls / ~112k** — third wrong self-report · COMPACTED (once; resumed, fixed a leftover compile break from pre-compaction edits, reran gates from scratch)
+- 2026-09-18 · m2/13 radar-context-and-markers · sonnet · partial (86a926d seam, a5fa84e handoff) · done: graft-git `first_parent_chain`/`previous_tips`/`ReflogError`, `[radar]` config, graft-ui `MarkerView`/`GraphEntry::marker`/`GraphView::marker_column` + ⚠/ⓘ (ASCII !/i) glyphs; graft view placeholders only, not real wiring; 390+ tests, gates green · deviations for reviewer: `Radar::policy(self)` not `(&self)` (clippy, 7-byte Copy); marker column always reserved, not conditional, to keep ticket 11's compare accent · harness: 177 calls / ~139k · COMPACTED (once) → remainder split into 13b (job, state, facts, marker truth) and 13c (detail-pane radar lines + capture)
+- 2026-09-18 · m2/13b + 13c filed · conductor · scope = ticket 13's handoff list, items 1–4/7 and 5–6; same model; 14, 15, 16, 18, 20 now blocked by 13b, 17 by 13b + 13c, 23 by both
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.

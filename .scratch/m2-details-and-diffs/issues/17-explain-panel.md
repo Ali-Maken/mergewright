@@ -1,7 +1,7 @@
 # explain-panel: turn a marked commit's finding into a read-only explanation
 
 Status: ready
-Blocked by: 04, 07, 10, 12, 13
+Blocked by: 04, 07, 10, 12, 13, 13b, 13c
 
 Status: draft
 Build with: Sonnet — assembling and rendering data `explain()`/`findings_for` already produce; no new rule, judged by the capture and the transition tests.
