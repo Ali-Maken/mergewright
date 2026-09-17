@@ -64,13 +64,18 @@ impl GraphScreen<'_> {
                 if *failed { Token::Warning } else { Token::Info },
             ),
             (None, None, Some(notice)) => (format!(" {notice}"), Token::Info),
-            (None, None, None) => match &reveal_subject {
-                Some(subject) => (format!(" {subject}"), Token::Text),
-                None => (
-                    key_hints(expand_hint(fold, self.view.compaction.expanded), width),
-                    Token::TextMuted,
-                ),
-            },
+            (None, None, None) => {
+                if let Some(subject) = &reveal_subject {
+                    (format!(" {subject}"), Token::Text)
+                } else {
+                    let mut extra = Vec::new();
+                    extra.extend(expand_hint(fold, self.view.compaction.expanded));
+                    // Only while the pane is on screen: no divider to drag
+                    // otherwise (ADR-0028).
+                    extra.extend(self.view.detail_shown.then_some("<> resize"));
+                    (key_hints(&extra, width), Token::TextMuted)
+                }
+            }
         }
     }
 }
@@ -182,14 +187,16 @@ fn expand_hint(fold: &Fold, expanded: bool) -> Option<&'static str> {
 }
 
 /// The footer's key hints within `width` columns: as many whole hints as
-/// fit, dropped from the right, never one cut in half.
-pub(super) fn key_hints(expand: Option<&str>, width: usize) -> String {
+/// fit, dropped from the right, never one cut in half. `extra` (lane-fold,
+/// pane-resize) is spliced in right after the leading hints, in the order
+/// given.
+pub(super) fn key_hints(extra: &[&str], width: usize) -> String {
     let (leading, rest) = HINTS.split_at(LEADING_HINTS);
     let mut line = String::new();
     for hint in leading
         .iter()
         .copied()
-        .chain(expand)
+        .chain(extra.iter().copied())
         .chain(rest.iter().copied())
     {
         let separator = if line.is_empty() { " " } else { "  " };

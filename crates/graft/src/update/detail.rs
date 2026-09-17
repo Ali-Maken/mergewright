@@ -214,6 +214,11 @@ pub struct DetailState {
     /// The pane's size, per orientation (ADR-0028); `<common_dir>/graft/layout`
     /// at startup, written on every resize.
     pub pane_size: PaneSize,
+    /// A divider drag is in progress: set by a `Down` on the seam, cleared by
+    /// `Up` (whichever button — a second button going down mid-drag must not
+    /// leave this stuck `true`). Never persisted; a fresh run always starts
+    /// with no drag in flight.
+    pub dragging: bool,
 }
 
 impl Default for DetailState {
@@ -233,6 +238,7 @@ impl Default for DetailState {
             max_lines: MAX_LINES,
             body_top: 0,
             pane_size: PaneSize::default(),
+            dragging: false,
         }
     }
 }
@@ -468,6 +474,14 @@ impl DetailState {
     pub fn scroll_body(&mut self, delta: isize, content_len: usize) {
         let max = content_len.saturating_sub(1);
         self.body_top = self.body_top.saturating_add_signed(delta).min(max);
+    }
+
+    /// Wheel over the diff region: same move as [`Self::scroll_body`], with
+    /// the content length looked up from whatever diff is currently loaded
+    /// (`0` while none is, which clamps `body_top` straight back to `0`).
+    pub fn scroll_body_by(&mut self, delta: isize) {
+        let len = diff_content_len_of(self);
+        self.scroll_body(delta, len);
     }
 
     /// `<` (`grow = false`) / `>` (`grow = true`) on the focused divider

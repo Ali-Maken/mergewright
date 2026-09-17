@@ -93,6 +93,58 @@ fn percent(cells: u16, pct: u32) -> u16 {
     u16::try_from(u32::from(cells) * pct / 100).unwrap_or(u16::MAX)
 }
 
+/// `area` split into the graph rectangle and the pane rectangle for
+/// `layout`, either of which is `None` in `Tab` mode (only the shown side
+/// gets space). Pure geometry — no drawing — so both the frame that draws
+/// from it (`view/frame.rs::split_for_detail`, which also renders the `Tab`
+/// strip this doesn't know about) and mouse hit-testing (`update/mod.rs`,
+/// divider drag and wheel routing, `detail-resize-and-persistence`) split
+/// the pane the same way.
+#[must_use]
+pub fn split_area(layout: DetailLayout, area: Rect) -> (Option<Rect>, Option<Rect>) {
+    match layout {
+        DetailLayout::Right { columns } => {
+            let columns = columns.min(area.width);
+            let graph_area = Rect {
+                width: area.width - columns,
+                ..area
+            };
+            let pane_area = Rect {
+                x: area.x + graph_area.width,
+                width: columns,
+                ..area
+            };
+            (Some(graph_area), Some(pane_area))
+        }
+        DetailLayout::Below { rows } => {
+            let rows = rows.min(area.height);
+            let graph_area = Rect {
+                height: area.height - rows,
+                ..area
+            };
+            let pane_area = Rect {
+                y: area.y + graph_area.height,
+                height: rows,
+                ..area
+            };
+            (Some(graph_area), Some(pane_area))
+        }
+        DetailLayout::Tab { shown } => {
+            let strip = 1.min(area.height);
+            let content = Rect {
+                y: area.y + strip,
+                height: area.height - strip,
+                ..area
+            };
+            if shown {
+                (None, Some(content))
+            } else {
+                (Some(content), None)
+            }
+        }
+    }
+}
+
 /// The pane's three regions: header (fixed rows), files (a list) and body
 /// (message or diff).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

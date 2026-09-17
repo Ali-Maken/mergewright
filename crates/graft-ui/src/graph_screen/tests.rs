@@ -90,6 +90,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
         search: None,
         commit_graph: None,
         banner: Vec::new(),
+        detail_shown: false,
     }
 }
 
@@ -759,7 +760,7 @@ fn the_footer_lists_every_graph_key_dropping_whole_hints_when_narrow() {
 
 #[test]
 fn the_expand_hint_keeps_its_place_after_the_renderer() {
-    let line = key_hints(Some("+ expand lanes"), 200);
+    let line = key_hints(&["+ expand lanes"], 200);
     assert!(
         line.starts_with(" q quit  F2 status  F3 renderer  + expand lanes  / search"),
         "{line}"

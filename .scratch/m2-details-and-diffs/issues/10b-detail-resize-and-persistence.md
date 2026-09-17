@@ -1,6 +1,6 @@
 # detail-resize-and-persistence: `<`/`>`, divider drag, wheel regions, saved pane size
 
-Status: partial (see NOTES) — keyboard resize + persistence done; drag/wheel/hints deferred
+Status: partial (see NOTES, continuation 2) — keyboard resize, persistence, drag, wheel and the `<> resize` hint all done; `?` help screen and the capture refresh remain, tracked in KNOWN_GAPS
 Blocked by: 10
 Build with: Sonnet — same model and scope as `10-detail-keys-and-focus`, split at that ticket's own named seam (group 2). No new decisions; signatures were fixed by the 2026-09-17 spec pass (ADR-0028).
 Needs: `detail-keys-and-focus` (`detail_key`, `scroll_body`, the pure `resize_pane`/`set_pane_cells`/`PaneSize`/`stepped` and the `RIGHT_MIN`/`BELOW_MIN`/`GRAPH_MIN_COLUMNS`/`GRAPH_MIN_ROWS`/`RESIZE_STEP` consts, all already in `update/detail.rs` and unused until wired), `detail-pane-frame` (`DetailLayout::compute`'s `override_cells`, `DetailAreas`)
@@ -45,3 +45,26 @@ Deferred to KNOWN_GAPS (not done, explicit ticket scope items):
 Ran long: read source directly for exact signatures instead of scouting throughout (flagged per standing rules). Did not hit the 40-tool-call/100k-token hard stop, but the session was compaction-summarized once mid-ticket by the harness (context ran out, not a self-triggered compact); resumed via the harness's summary and completed to a clean state without redoing verified work.
 
 Status: partial — mouse drag/wheel and hints/help are the remainder. No further code seam needed for a follow-up ticket beyond what's listed above (drag/wheel hit-testing; hints/help infrastructure design).
+
+## NOTES (2026-09-18, continuation 2 — builder-sonnet)
+
+Picked up the remainder above (divider drag, wheel routing, `<> resize` hint). Resumed from a harness-summarized context (the previous continuation of this same session compacted; noted per standing rules).
+
+Done:
+- `DetailState::dragging` (bool, not persisted) + `DetailState::scroll_body_by` (wheel-scale wrapper over `scroll_body`, looks up the current diff's content length) in `crates/graft/src/update/detail.rs`.
+- `crates/graft/src/update/mod.rs`: `mouse_event` rewritten — `Down(Left)` on the divider starts a drag (swallows the click, no row selection underneath); `Drag(Left)` while dragging calls the new `drag_divider` → `DetailState::set_pane_cells` → `Command::SaveLayout`; `Up` (any button) always clears `dragging`. Wheel is routed by the new `detail_hit`/`wheel` through a `DetailHit` (`Divider`/`Files`/`Body`): `Files` moves the files cursor, `Body` scrolls the diff body, `Divider`/`None` falls through to the existing graph-viewport scroll.
+  - **Purity constraint hit and fixed:** `update/` is grepped by an automated test (`update::tests::update_cannot_reach_the_world`) for any mention of the view crate's rendering library, including inside doc comments. The first draft reused `graft_ui::detail_pane::split_area`/`detail_areas` (both `Rect`-based) — failed the purity test. Reimplemented as plain `u16` arithmetic (`Bounds`, `detail_split`, `detail_hit_areas`, `percent_of`) mirroring `graft_ui::detail_pane`'s geometry exactly, same pattern already used for `RIGHT_MIN`/`BELOW_MIN` in `detail.rs`. Also had to reword a doc comment that named the library literally in prose — the grep matches doc comments too.
+  - `DetailHit::Divider`'s hit zone is the pane's first column/row (no rendered divider glyph exists anywhere to grab instead) — documented as a deliberate choice, not a rendered seam.
+- `graft_ui::detail_pane::split_area` (new pure fn) factored out of `view/frame.rs::split_for_detail`, used by the real frame draw; `update/mod.rs`'s `detail_split` mirrors it rather than calling it (purity, above).
+- Footer hint: `graph_screen/footer.rs`'s `key_hints` generalized from `Option<&str>` to `&[&str]` so more than one conditional hint can be spliced in (lane-fold + resize); `GraphView::detail_shown` (new field) gates `<> resize`. All `GraphView` literal construction sites updated (`view/rows.rs` ×2, `graph_screen/tests.rs`, `graft-ui/tests/support/screen.rs`).
+- 3 new tests in `update/tests.rs`: full divider drag/drop cycle (`Down`→`Drag`→`Up`, `pane_size`/`SaveLayout`/`dragging` lifecycle, and that further drag motion after `Up` is a no-op); wheel-over-files moves the files cursor and leaves the graph viewport alone; wheel-over-the-pane-body never falls through to the graph scroll. Needed `state.detail.spec = state.selected_spec()` primed in the fixtures — otherwise `selection::follow_selection` (which runs after every event) fires its own `ListFiles`/`ContainedIn` commands and confuses the assertions; not a bug, just how the fixture needs to be built.
+- MAP.md updated: `graft-ui/MAP.md` (`split_area`, `GraphView::detail_shown`), `graft/MAP.md` (`DetailState::scroll_body_by`, `DetailState::dragging`).
+- KNOWN_GAPS.md's `10b` entry rewritten: drag/wheel/hint gaps closed; also corrected the previous continuation's claim that "no hints footer infrastructure exists" — it did (`key_hints`/`HINTS`/`expand_hint`), just single-slot; generalized it instead of inventing a parallel one.
+- Gates: `cargo fmt --check`, `cargo clippy --all-targets --message-format=short -- -D warnings`, `cargo test --quiet --workspace`, `cargo build --quiet --workspace --all-targets` all pass.
+
+Not done (KNOWN_GAPS, `m2-details-and-diffs/10b`):
+- `?` help screen: still no `?`-key handler or help-overlay surface anywhere. Confirmed again, independently. Needs its own ticket (DESIGN.md §1.16).
+- `docs/shots/m2-detail-keys-resize.txt` capture not regenerated even though the `<> resize` hint changes what's on screen while the pane is shown — ran out of budget for a pty capture this session.
+- Map-view no-op guard: still correctly out of scope (no `Map` screen variant yet, ticket 19).
+
+Used a scout for locating code where reasonable (this continuation reused the previous continuation's file/line map rather than re-reading source cold); read source directly for the exact geometry math and the purity-test fallout, which a scout summary could not have carried the precision needed for (mirroring arithmetic bug-for-bug). Compacted once, mid-ticket, by the harness (noted here per standing rules) — the conductor should treat the remainder (`?` help, capture) as split-off work if it wants it in this milestone, not a new redo of what's above.

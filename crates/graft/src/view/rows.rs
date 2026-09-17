@@ -49,6 +49,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
             search: search_line(state),
             commit_graph: state.commit_graph_line(),
             banner: Vec::new(),
+            detail_shown: state.detail.shown,
         };
     };
 
@@ -80,6 +81,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         search: search_line(state),
         commit_graph: state.commit_graph_line(),
         banner: Vec::new(),
+        detail_shown: state.detail.shown,
     }
 }
 

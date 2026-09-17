@@ -119,6 +119,10 @@ pub struct GraphView<'a> {
     /// the rest in the info colour. Every line costs a graph row. Empty in
     /// the shipped binary.
     pub banner: Vec<SanitizedText>,
+    /// The detail pane is on screen: the footer adds a `<> resize` hint,
+    /// since that is the only time its divider exists to drag
+    /// (`detail-resize-and-persistence`).
+    pub detail_shown: bool,
 }
 
 /// What the terminal said about the graph images, named by state: `gfx ok`

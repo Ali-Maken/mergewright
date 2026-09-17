@@ -147,51 +147,14 @@ fn split_for_detail(
     layout: DetailLayout,
     area: Rect,
 ) -> (Option<Rect>, Option<Rect>) {
-    match layout {
-        DetailLayout::Right { columns } => {
-            let columns = columns.min(area.width);
-            let graph_area = Rect {
-                width: area.width - columns,
-                ..area
-            };
-            let pane_area = Rect {
-                x: area.x + graph_area.width,
-                width: columns,
-                ..area
-            };
-            (Some(graph_area), Some(pane_area))
-        }
-        DetailLayout::Below { rows } => {
-            let rows = rows.min(area.height);
-            let graph_area = Rect {
-                height: area.height - rows,
-                ..area
-            };
-            let pane_area = Rect {
-                y: area.y + graph_area.height,
-                height: rows,
-                ..area
-            };
-            (Some(graph_area), Some(pane_area))
-        }
-        DetailLayout::Tab { shown } => {
-            let strip = Rect {
-                height: 1.min(area.height),
-                ..area
-            };
-            let content = Rect {
-                y: area.y + strip.height,
-                height: area.height - strip.height,
-                ..area
-            };
-            draw_tab_strip(frame, strip, shown, &session.theme);
-            if shown {
-                (None, Some(content))
-            } else {
-                (Some(content), None)
-            }
-        }
+    if let DetailLayout::Tab { shown } = layout {
+        let strip = Rect {
+            height: 1.min(area.height),
+            ..area
+        };
+        draw_tab_strip(frame, strip, shown, &session.theme);
     }
+    graft_ui::detail_pane::split_area(layout, area)
 }
 
 /// The narrow tier's tab strip: `[Graph] Detail` or `Graph [Detail]`,

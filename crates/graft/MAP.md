@@ -157,6 +157,8 @@ The detail pane's state and transitions; pure (no I/O, no clock). Drawing is `de
 - `DetailState::set_options` (fn) — new `DiffOptions`, re-shows the cursor's diff (cache hit or `ReadFileDiff`). Backs `w`/`[`/`]`.
 - `DetailState::load_all` (fn) — `max_lines = usize::MAX`, re-shows the cursor's diff. Backs `L`.
 - `DetailState::scroll_body` (fn) — clamps `body_top` by a signed delta against the diff's line count. Backs `j`/`k`/PageUp/PageDown/`g`/`G` on the diff body.
+- `DetailState::scroll_body_by` (fn) — same move as `scroll_body`, content length looked up from whatever diff is currently loaded. Backs the mouse wheel over the diff body (`detail-resize-and-persistence`).
+- `DetailState::dragging` (field) — a divider drag is in progress: set by a mouse `Down` on the seam, cleared by `Up`. Never persisted (`detail-resize-and-persistence`).
 - `DetailState::open` (fn) — shows the pane on a spec, cancels a pending list, asks for files (and contained-in once per oid).
 - `DetailState::close` (fn) — hides the pane, focus back to the graph.
 - `DetailState::selected_entry` (fn) — the files cursor's git entry, if any.

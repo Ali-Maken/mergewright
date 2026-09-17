@@ -30,6 +30,7 @@ pub use events::{AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progres
 pub use state::{AppState, Banner, CHROME_ROWS, Harness, Quit, Screen, Size, Status};
 
 use graft_core::event::{Event, MouseButton, MouseInput, MouseKind};
+use graft_ui::detail_pane::DetailLayout;
 
 use crate::history::{History, Phase};
 
@@ -297,9 +298,16 @@ const WHEEL_LINES: isize = 3;
 /// The half of [`core_event`] that answers the mouse (DESIGN.md §2.15).
 fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mouse: MouseInput) {
     match mouse.kind {
-        MouseKind::ScrollUp => scroll(next, commands, -WHEEL_LINES),
-        MouseKind::ScrollDown => scroll(next, commands, WHEEL_LINES),
+        MouseKind::ScrollUp => wheel(next, commands, mouse.column, mouse.row, -WHEEL_LINES),
+        MouseKind::ScrollDown => wheel(next, commands, mouse.column, mouse.row, WHEEL_LINES),
         MouseKind::Down(MouseButton::Left) => {
+            if matches!(
+                detail_hit(next, mouse.column, mouse.row),
+                Some(DetailHit::Divider)
+            ) {
+                next.detail.dragging = true;
+                return;
+            }
             if let Some(row) = graph_row_at(next, mouse.row) {
                 next.on_working_tree = false;
                 select_row(next, commands, row);
@@ -311,10 +319,235 @@ fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mouse: MouseInp
                 next.on_working_tree = true;
             }
         }
+        MouseKind::Drag(MouseButton::Left) if next.detail.dragging => {
+            drag_divider(next, commands, mouse.column, mouse.row);
+        }
+        MouseKind::Up(_) => next.detail.dragging = false,
         // Any-motion reporting (`terminal.rs`) is what makes this arrive with
         // no button held — hover, not a drag.
         MouseKind::Moved => next.hover = graph_row_at(next, mouse.row),
         _ => {}
+    }
+}
+
+/// A screen rectangle in the four plain numbers a `Rect` would carry.
+/// `update` mirrors the pane's geometry rather than depending on the view
+/// crate's rendering library to compute it: the module must stay pure enough
+/// to run with no terminal at all, and `update/tests.rs` checks this
+/// literally by grepping the module's source for that library's name.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Bounds {
+    x: u16,
+    y: u16,
+    width: u16,
+    height: u16,
+}
+
+impl Bounds {
+    fn contains(self, column: u16, row: u16) -> bool {
+        column >= self.x
+            && column < self.x + self.width
+            && row >= self.y
+            && row < self.y + self.height
+    }
+}
+
+/// `size`'s graph rectangle and pane rectangle for `layout`, either of which
+/// is absent in `Tab` mode: mirrors `graft_ui::detail_pane::split_area`,
+/// which `view/frame.rs::split_for_detail` draws from — same split, so a
+/// click or wheel notch lands exactly where the pixel is.
+fn detail_split(layout: DetailLayout, size: (u16, u16)) -> (Option<Bounds>, Option<Bounds>) {
+    match layout {
+        DetailLayout::Right { columns } => {
+            let columns = columns.min(size.0);
+            let graph_width = size.0 - columns;
+            let graph = Bounds {
+                x: 0,
+                y: 0,
+                width: graph_width,
+                height: size.1,
+            };
+            let pane = Bounds {
+                x: graph_width,
+                y: 0,
+                width: columns,
+                height: size.1,
+            };
+            (Some(graph), Some(pane))
+        }
+        DetailLayout::Below { rows } => {
+            let rows = rows.min(size.1);
+            let graph_height = size.1 - rows;
+            let graph = Bounds {
+                x: 0,
+                y: 0,
+                width: size.0,
+                height: graph_height,
+            };
+            let pane = Bounds {
+                x: 0,
+                y: graph_height,
+                width: size.0,
+                height: rows,
+            };
+            (Some(graph), Some(pane))
+        }
+        DetailLayout::Tab { shown } => {
+            let strip = 1.min(size.1);
+            let content = Bounds {
+                x: 0,
+                y: strip,
+                width: size.0,
+                height: size.1 - strip,
+            };
+            if shown {
+                (None, Some(content))
+            } else {
+                (Some(content), None)
+            }
+        }
+    }
+}
+
+/// `cells * pct / 100`, saturating rather than overflowing for any `u16`.
+/// Mirrors the private `percent` in `graft_ui::detail_pane`.
+fn percent_of(cells: u16, pct: u32) -> u16 {
+    u16::try_from(u32::from(cells) * pct / 100).unwrap_or(u16::MAX)
+}
+
+/// `pane`'s files rectangle and body rectangle for `layout`, `files_count`
+/// capping how much of the files region a `Right`/`Tab` pane actually needs:
+/// mirrors `graft_ui::detail_pane::detail_areas`.
+fn detail_hit_areas(pane: Bounds, layout: DetailLayout, files_count: usize) -> (Bounds, Bounds) {
+    let header_rows: u16 = match layout {
+        DetailLayout::Right { .. } => 5,
+        DetailLayout::Below { .. } => 2,
+        DetailLayout::Tab { .. } => 3,
+    };
+    let header_height = header_rows.min(pane.height);
+    let rest = Bounds {
+        y: pane.y + header_height,
+        height: pane.height - header_height,
+        ..pane
+    };
+    if matches!(layout, DetailLayout::Below { .. }) {
+        let files_width = 30.min(rest.width);
+        let files = Bounds {
+            width: files_width,
+            ..rest
+        };
+        let body = Bounds {
+            x: rest.x + files_width,
+            width: rest.width - files_width,
+            ..rest
+        };
+        (files, body)
+    } else {
+        let cap = percent_of(rest.height, 40);
+        let files_height = cap
+            .min(u16::try_from(files_count).unwrap_or(u16::MAX))
+            .min(rest.height);
+        let files = Bounds {
+            height: files_height,
+            ..rest
+        };
+        let body = Bounds {
+            y: rest.y + files_height,
+            height: rest.height - files_height,
+            ..rest
+        };
+        (files, body)
+    }
+}
+
+/// Where a screen point lands over the detail pane, when it is shown. `None`
+/// when the pane is hidden or the point isn't over it (including the graph
+/// side of a `Right` or `Below` layout, and the pane's header).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DetailHit {
+    /// The pane's near edge: the first column (`Right`) or row (`Below`) of
+    /// the pane. There is no drawn border to grab — nothing paints a glyph
+    /// on this cell — so this is a deliberate choice of hit zone rather than
+    /// a rendered seam; dragging from here maps straight onto
+    /// `set_pane_cells` with no jump (`size - point` reads back the pane's
+    /// current cell count right at this column/row). `Tab` has no divider:
+    /// nothing to drag.
+    Divider,
+    /// Inside the file list.
+    Files,
+    /// Inside the message or diff body.
+    Body,
+}
+
+fn detail_hit(state: &AppState, column: u16, row: u16) -> Option<DetailHit> {
+    if !state.detail.shown {
+        return None;
+    }
+    let size = (state.size.columns, state.size.rows);
+    let layout = detail::effective_layout(state.detail.focus, &state.detail.pane_size, size);
+    match layout {
+        DetailLayout::Right { columns } => {
+            let divider = size.0.saturating_sub(columns.min(size.0));
+            if divider < size.0 && column == divider {
+                return Some(DetailHit::Divider);
+            }
+        }
+        DetailLayout::Below { rows } => {
+            let divider = size.1.saturating_sub(rows.min(size.1));
+            if divider < size.1 && row == divider {
+                return Some(DetailHit::Divider);
+            }
+        }
+        DetailLayout::Tab { .. } => {}
+    }
+    let (_, pane) = detail_split(layout, size);
+    let pane = pane?;
+    if !pane.contains(column, row) {
+        return None;
+    }
+    let files_count = match &state.detail.files {
+        detail::Loading::Ready(files) => files.visible().count(),
+        _ => 0,
+    };
+    let (files, body) = detail_hit_areas(pane, layout, files_count);
+    if files.contains(column, row) {
+        Some(DetailHit::Files)
+    } else if body.contains(column, row) {
+        Some(DetailHit::Body)
+    } else {
+        None
+    }
+}
+
+/// The wheel: over the files or diff region of a shown detail pane, it
+/// scrolls that region instead (`lines` already carries the direction);
+/// everywhere else, it scrolls the graph viewport as before.
+fn wheel(next: &mut AppState, commands: &mut Vec<Command>, column: u16, row: u16, lines: isize) {
+    match detail_hit(next, column, row) {
+        Some(DetailHit::Files) => {
+            let AppState {
+                detail, local_jobs, ..
+            } = next;
+            commands.extend(detail.move_files_cursor(lines, &mut || local_jobs.next_id()));
+        }
+        Some(DetailHit::Body) => next.detail.scroll_body_by(lines),
+        Some(DetailHit::Divider) | None => scroll(next, commands, lines),
+    }
+}
+
+/// A `Drag(Left)` while [`AppState::detail`]'s divider is held: set the
+/// pane's cells straight from the pointer's column (`Right`) or row
+/// (`Below`). No-op past a bound or in `Tab`, same as the keyboard resize.
+fn drag_divider(next: &mut AppState, commands: &mut Vec<Command>, column: u16, row: u16) {
+    let size = (next.size.columns, next.size.rows);
+    let layout = detail::effective_layout(next.detail.focus, &next.detail.pane_size, size);
+    let cells = match layout {
+        DetailLayout::Right { .. } => size.0.saturating_sub(column),
+        DetailLayout::Below { .. } => size.1.saturating_sub(row),
+        DetailLayout::Tab { .. } => return,
+    };
+    if next.detail.set_pane_cells(&layout, cells, size) {
+        commands.push(Command::SaveLayout(next.detail.pane_size));
     }
 }
 
