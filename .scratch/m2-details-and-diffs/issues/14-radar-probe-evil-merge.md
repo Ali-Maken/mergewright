@@ -1,5 +1,8 @@
 # radar-probe-evil-merge: is the selected merge's resolution honest?
 
+Status: ready
+Blocked by: 01, 04, 13
+
 Status: draft
 Build with: Opus — a git subprocess whose exit/stderr shape decides three outcomes (clean/evil/not-checkable); getting that classification wrong is a silent correctness bug, not a style one.
 Needs: `git-runner` (`GitInvocation`, `GitArg`, `RunError`, `Stop`), `mistake-radar-detection` (`EvilVerdict`, `finding_from_evil`, `Policy`), `radar-context-and-markers` (`RadarLine::EvilUnchecked`/`EvilChecking`/`EvilClean`/`EvilNotCheckable` already rendered by `detail_pane.rs`; `findings_for`'s extension point; `DetailState`/`Bounded` pattern)

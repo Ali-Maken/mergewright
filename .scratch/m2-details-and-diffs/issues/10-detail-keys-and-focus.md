@@ -1,5 +1,8 @@
 # detail-keys-and-focus: the pane's own keys, mouse regions, resize and its config
 
+Status: ready
+Blocked by: 06, 07
+
 Status: draft
 Build with: Sonnet — mechanical key/config wiring over signatures `detail-model-and-jobs` and `detail-pane-frame` already gave; each transition is individually testable.
 Needs: `detail-model-and-jobs` (`DetailState`, `DetailFocus`, `DiffOptions`, `DetailSpec`, `Command::ReadFileDiff`/`ListFiles`, `FileListView::toggle_dir`/`move_cursor`), `detail-pane-frame` (`DetailLayout::compute`'s `override_cells`, `DetailAreas` for hit-testing)

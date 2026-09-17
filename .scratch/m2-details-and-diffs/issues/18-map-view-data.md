@@ -1,5 +1,8 @@
 # map-view-data: the Map view's per-branch bucket counts, as a cancellable job, plus its state and keys — no drawing
 
+Status: ready
+Blocked by: 01, 04, 06, 13
+
 Status: draft
 Build with: Sonnet — one bounded walk per branch into fixed buckets, wired through the job pattern `jobs::detail` already set; every rule below is decided, every transition testable.
 Needs: `git-runner` (`Stop`), `detail-model-and-jobs` (`Loading<T>`, the `jobs::detail` Task/Product/Command pattern and its `Cancel`→`Stop` adapter), `radar-context-and-markers` (`first_parent_chain`, `RadarState::policy`, `RadarContext::previous_default_tips`), `mistake-radar-detection` (`classify_commit`, `CommitFacts`, `RepoFacts`, `Policy`, `Severity`)

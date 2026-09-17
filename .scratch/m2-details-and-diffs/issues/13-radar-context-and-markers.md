@@ -1,5 +1,8 @@
 # radar-context-and-markers: default-chain facts, the marker column, and the pane's radar line
 
+Status: ready
+Blocked by: 01, 04, 06, 07
+
 Status: draft
 Build with: Sonnet — wiring an already-decided rule set into jobs/view/config; every transition is testable, no rule is invented here.
 Needs: `mistake-radar-detection` (`Severity`, `MistakeRadarKind`, `Policy`, `CommitFacts`, `RepoFacts`, `UpstreamFacts`, `BranchFacts`, `HeadFacts`, `Finding`, `Evidence`, `Risk`, `classify_commit`, `classify_refs`), `git-runner` (`Stop`), `detail-model-and-jobs` (`Loading<T>`, `Bounded<K,V>`, `AppState::detail` pattern, `jobs::detail` as the pattern for a new `jobs::radar`, `RadarLine`, `DetailHeader::radar`, `view::detail_view`), `detail-pane-frame` (`DetailPane` widget, `view::detail_view`, `AppState::repository`/history row access)

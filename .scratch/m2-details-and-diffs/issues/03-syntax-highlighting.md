@@ -1,5 +1,8 @@
 # syntax-highlighting: syntax roles and word-diff spans over sanitised text
 
+Status: ready
+Blocked by: none
+
 Status: draft
 Build with: Sonnet — two pure functions over `&str` with fixed inputs and outputs; the library choices are made here.
 Needs: none (pure; `detail-model-and-jobs` and `diff-widget` call these)

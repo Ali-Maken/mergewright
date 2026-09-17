@@ -1,5 +1,8 @@
 # refresh-reopens-walk: `Ctrl+R` reopens the walk on the commit-graph path after `B` wrote one (KNOWN_GAPS row 54)
 
+Status: ready
+Blocked by: none
+
 Status: draft
 Build with: Sonnet — a rebind on refresh with one decision already made here (rebind the table, restart the walk, re-anchor the selection); testable end to end on a fixture.
 Needs: none from M2 (M1 code only: `RepoStore`, `CommitTable`, `commit_graph::status`, `History`, `CommitGraphLine`)

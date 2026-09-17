@@ -1,5 +1,8 @@
 # radar-probe-duplicates: cherry-picked/duplicate commits in the newest 500
 
+Status: ready
+Blocked by: 01, 04, 13
+
 Status: draft
 Build with: Sonnet — one pipeline of two typed git calls into a grouping function; every step is independently testable against a fixture.
 Needs: `git-runner` (`GitInvocation`, `GitArg::stdin`, `RunError`, `Stop`), `mistake-radar-detection` (`Duplicates`, `findings_from_duplicates`, `Policy`), `radar-context-and-markers` (`RadarState`/`jobs::radar` pattern, `findings_for`'s extension point)

@@ -1,5 +1,8 @@
 # radar-probe-force-push: did a tracked remote rewrite history under us?
 
+Status: ready
+Blocked by: 01, 04, 13
+
 Status: draft
 Build with: Opus — an ancestry check (`merge-base --is-ancestor`) whose exit code is the whole answer; a wrong mapping of exit codes to `ForcePushVerdict` is a silent false positive/negative, not a style bug.
 Needs: `git-runner` (`GitInvocation`, `GitArg`, `RunError`, `Stop`), `mistake-radar-detection` (`ForcePushVerdict`, `findings_from_force_push`, `Policy`), `radar-context-and-markers` (`previous_tips`, `RadarLine::ForcePushNotCheckable`, `findings_for`'s extension point, `RadarState`/`jobs::radar` pattern)

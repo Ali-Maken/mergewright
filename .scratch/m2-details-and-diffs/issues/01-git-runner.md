@@ -1,5 +1,8 @@
 # git-runner: typed system-git runner, first read through it
 
+Status: ready
+Blocked by: none
+
 Status: draft
 Build with: Opus — process control (kill on stop, output cap, pipe draining without deadlock) is concurrency work; every M3–M6 write goes through this type.
 Needs: none

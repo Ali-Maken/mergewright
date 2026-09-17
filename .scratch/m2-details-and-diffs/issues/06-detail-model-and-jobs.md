@@ -1,5 +1,8 @@
 # detail-model-and-jobs: detail state, its jobs and the view-model types, no drawing
 
+Status: ready
+Blocked by: 01, 02, 03, 05
+
 Status: draft
 Build with: Opus — cancellation, stale-product rules and the update-purity guard are where a wrong shape becomes structural for six pass-2 tickets.
 Needs: `git-runner` (`Stop`, `contained_in`, `Contained`), `diff-reads` (`DiffSpec`, `DiffOptions`, `list_files`, `file_diff`, `DiffError`), `diff-parser` (`FileList`, `FileEntry`, `FileDiff`, `pairs`), `syntax-highlighting` (`language_for_path`, `language_for_first_line`, `highlight`, `word_spans`, `SyntaxSpan`)

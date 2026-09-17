@@ -1,5 +1,8 @@
 # context-actions-menu: `.` / right-click popup — Copy SHA, Compare, Open details, (Explain stub)
 
+Status: ready
+Blocked by: 06, 11
+
 Status: draft
 Build with: Sonnet — a small popup widget plus dispatch to actions other tickets already implement; judged by the capture and the transition tests.
 Needs: `detail-model-and-jobs` (`DetailSpec::Commit`, `DetailState::open`), `compare-two-commits` (`toggle_compare`), M1's existing `Command::CopyToClipboard`/`Status::Copied` (see `crates/graft/MAP.md` `update` section)

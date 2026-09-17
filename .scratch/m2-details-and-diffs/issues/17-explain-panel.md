@@ -1,5 +1,8 @@
 # explain-panel: turn a marked commit's finding into a read-only explanation
 
+Status: ready
+Blocked by: 04, 07, 10, 12, 13
+
 Status: draft
 Build with: Sonnet — assembling and rendering data `explain()`/`findings_for` already produce; no new rule, judged by the capture and the transition tests.
 Needs: `mistake-radar-detection` (`explain`, `Explanation`), `radar-context-and-markers` (`findings_for`, `RadarState`), `context-actions-menu` (`DetailState::explain_requested`, already landed), `detail-pane-frame` (`DetailPane`, `view::detail_view`, and whatever it used to resolve commit facts — parents/subject — for `AppState.detail.spec`'s oid; report `partial` inheriting its gap rather than adding a new git read if that lookup was itself left unresolved), `detail-keys-and-focus` (the `Esc` arm, already landed with an interim `focus = Graph; shown = false` in place of an Explain-priority branch)

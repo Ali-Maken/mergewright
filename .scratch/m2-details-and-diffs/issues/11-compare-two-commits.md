@@ -1,5 +1,8 @@
 # compare-two-commits: `x` marks a base, the pane follows the cursor as a live compare
 
+Status: ready
+Blocked by: 06, 07
+
 Status: draft
 Build with: Sonnet — a state machine over signatures already typed (`DetailSpec::Compare`, `DetailState::open`); testable transition table.
 Needs: `detail-model-and-jobs` (`DetailSpec::Compare`, `DetailState::open`, `Subject::Compare` already rendered by `detail-pane-frame`), `detail-pane-frame` (header renders `Subject::Compare`, files/body reuse unchanged)

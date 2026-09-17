@@ -1,5 +1,8 @@
 # diff-reads: file list and one file's diff from git, with truncation and cancellation
 
+Status: ready
+Blocked by: 01, 02
+
 Status: draft
 Build with: Sonnet — composes `git-runner` and `diff-parser`; the decisions (which git command, what truncation means) are made here in the spec.
 Needs: `git-runner` (`GitInvocation`, `GitArg`, `Stop`, `RunError`), `diff-parser` (`parse_unified`, `parse_file_list`, `FileDiff`, `FileList`, `Truncated`)

@@ -1,5 +1,8 @@
 # acceptance-details-and-radar: M2's acceptance ticket — the gallery's "details and radar" stops, TESTING.md, captures
 
+Status: ready
+Blocked by: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22
+
 Status: draft
 Build with: Fable — defining what good looks like for the promise is a decision, not plumbing (CLAUDE.md, acceptance-ticket rule). Doesn't count against the milestone's Fable build expectation.
 Needs: `git-runner`, `diff-parser`, `diff-reads`, `syntax-highlighting`, `mistake-radar-detection`, `detail-model-and-jobs`, `detail-pane-frame`, `diff-widget`, `side-by-side-view`, `detail-keys-and-focus`, `compare-two-commits`, `context-actions-menu`, `radar-context-and-markers`, `radar-probe-evil-merge`, `radar-probe-force-push`, `radar-probe-duplicates`, `explain-panel`, `map-view-data`, `map-view-screen`, `overview-strip`, `refresh-reopens-walk`, `docs-sweep` — every other M2 ticket; a `partial` among them is walked as far as it got and its gap is a stop that says so.

@@ -1,5 +1,8 @@
 # mistake-radar-detection: the classification rules, their evidence and their explanations
 
+Status: ready
+Blocked by: none
+
 Status: draft
 Build with: Fable (signature) — CLAUDE.md names M2's Mistake Radar detection a signature ticket; the rules are the product.
 Needs: none (pure; `radar-context-and-markers`, the three `radar-probe-*` tickets and `explain-panel` call these)

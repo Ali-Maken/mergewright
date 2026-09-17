@@ -1,5 +1,8 @@
 # diff-widget: the real unified diff renderer — gutter, tints, pinned heading, word tint, syntax, truncation
 
+Status: ready
+Blocked by: 03, 06, 07
+
 Status: draft
 Build with: Sonnet — fills in a function `detail-pane-frame` already gave a signature; judged by the capture.
 Needs: `detail-pane-frame` (`diff_body`'s signature, `DetailAreas`, `Theme`), `detail-model-and-jobs` (`HunkView`, `LineView`, `LineKindView`), `syntax-highlighting` (`SyntaxRole`, `Theme::syntax`, `SyntaxSpan`)

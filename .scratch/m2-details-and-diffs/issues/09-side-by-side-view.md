@@ -1,5 +1,8 @@
 # side-by-side-view: `v` toggles a two-column diff over the same LineView data
 
+Status: ready
+Blocked by: 02, 06, 08
+
 Status: draft
 Build with: Sonnet — a second renderer over data `diff-widget` already produces; judged by the capture.
 Needs: `diff-widget` (`diff_body`'s look and helpers to mirror: gutter, tints, syntax, `␍`), `detail-model-and-jobs` (`LineView::pair`, `DiffMode`, `DetailState.mode`), `diff-parser` (`Pair`, `pairs` — for the shape `pair` indices key on)

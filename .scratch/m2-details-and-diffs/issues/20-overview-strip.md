@@ -1,5 +1,8 @@
 # overview-strip: the one-column whole-history strip — marks assembly, widget, `O`
 
+Status: ready
+Blocked by: 04, 07, 13, 18
+
 Status: draft
 Build with: Sonnet — a bucketed lookup over rows already on hand and a one-column widget; the priority order and glyphs are fixed in the note, judged by tests and the capture.
 Needs: `radar-context-and-markers` (`marker_for`, `MarkerView`), `mistake-radar-detection` (`Severity`), `detail-pane-frame` (`view::frame`'s graph/pane split — the strip takes the graph area's last column), `map-view-data` (`AppState::map.shown` — the strip is not drawn while it is true)

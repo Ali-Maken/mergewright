@@ -1,5 +1,8 @@
 # detail-pane-frame: the detail pane's regions, breakpoints and states — no diff rendering yet
 
+Status: ready
+Blocked by: 06
+
 Status: draft
 Build with: Sonnet — layout math and widget composition; judged by the capture, not a design decision.
 Needs: `detail-model-and-jobs` (`DetailView`, `DetailHeader`, `Subject`, `ContainedIn`, `RadarLine`, `FileListView`, `FileRow`, `FileRowKind`, `FileStatusView`, `BodyView`, `HunkView`, `LineView`, `LineKindView`, `DetailFocus`, `DiffMode`, `DiffOptionsView`, `AppState::detail`, `AppState::repository`/history row access)

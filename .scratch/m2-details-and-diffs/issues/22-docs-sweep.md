@@ -1,5 +1,8 @@
 # docs-sweep: README/CHANGELOG for M2, the bare `cargo run --` sweep (KG 375), KNOWN_GAPS expiries and the new gap rows
 
+Status: ready
+Blocked by: 17, 19, 20, 21
+
 Status: draft
 Build with: Sonnet — documentation edits with every target line named below; no code.
 Needs: every M2 feature ticket that lands before it (the README/CHANGELOG describe what shipped; run this after `explain-panel`, `map-view-screen`, `overview-strip`, `refresh-reopens-walk`, before the acceptance ticket)

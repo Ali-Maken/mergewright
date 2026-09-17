@@ -1,5 +1,8 @@
 # diff-parser: unified-diff and file-list parsers, line pairing, fuzz targets
 
+Status: ready
+Blocked by: none
+
 Status: draft
 Build with: Sonnet — pure byte parsing with git's own output as the oracle; mechanical once the shapes are fixed here.
 Needs: none (pure; `diff-reads` calls these)

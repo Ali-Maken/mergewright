@@ -1,5 +1,8 @@
 # map-view-screen: the Map view widget, its view assembly, frame wiring and capture
 
+Status: ready
+Blocked by: 04, 07, 18
+
 Status: draft
 Build with: Sonnet — a widget over data `map-view-data` already produces, with every glyph, column and state worded in the note; judged by snapshots and the capture.
 Needs: `map-view-data` (`MapData`, `MapBranch`, `MapMark`, `MapState`, `AppState::map`), `mistake-radar-detection` (`Severity`), `detail-pane-frame` (`view::frame`'s split of graph/pane areas — the map replaces the graph area, the pane stays where it is)
