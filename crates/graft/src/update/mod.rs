@@ -23,6 +23,7 @@ mod events;
 mod history;
 mod keys;
 mod search;
+mod selection;
 mod state;
 
 pub use events::{AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, Task};
@@ -41,8 +42,16 @@ use crate::history::{History, Phase};
 pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
     let mut next = state.clone();
     let mut commands = Vec::new();
+    let cursor_before = state.history.as_ref().map_or(0, |history| history.cursor);
     answer(&mut next, &mut commands, event);
-    detail::follow_selection(detail::selected_commit(state), &mut next, &mut commands);
+    selection::reconcile(&mut next, cursor_before);
+    // `local_jobs` borrowed out for the closure: `follow_selection` also
+    // wants `&mut next`, and the two can't overlap.
+    let mut local_jobs = next.local_jobs;
+    commands.extend(selection::follow_selection(&mut next, &mut || {
+        local_jobs.next_id()
+    }));
+    next.local_jobs = local_jobs;
     // The commit-graph line costs a graph row: when it comes or goes, the
     // viewport changed height, so ask for the rows that now fit.
     if next.commit_graph_line().is_some() != state.commit_graph_line().is_some() {
@@ -292,7 +301,14 @@ fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mouse: MouseInp
         MouseKind::ScrollDown => scroll(next, commands, WHEEL_LINES),
         MouseKind::Down(MouseButton::Left) => {
             if let Some(row) = graph_row_at(next, mouse.row) {
+                next.on_working_tree = false;
                 select_row(next, commands, row);
+            } else if next.uncommitted_row_shown() && mouse.row == rows_above_graph(next) {
+                // The first body row while the working-tree row is shown:
+                // `graph_row_at` returns `None` for it (offset 0, displaced
+                // by the virtual row), so this is the one case its offset
+                // math does not already cover.
+                next.on_working_tree = true;
             }
         }
         // Any-motion reporting (`terminal.rs`) is what makes this arrive with
@@ -325,9 +341,9 @@ fn select_row(next: &mut AppState, commands: &mut Vec<Command>, row: usize) {
 }
 
 /// The absolute history row a screen row names, if it names a row at all:
-/// `None` over the header, the footer, the uncommitted-changes row (nothing
-/// selectable there — `d` already reaches it directly), or a row below what
-/// has laid out so far.
+/// `None` over the header, the footer, the uncommitted-changes row (selected
+/// through the flag, not a `History` row — see `mouse_event`), or a row
+/// below what has laid out so far.
 fn graph_row_at(state: &AppState, screen_row: u16) -> Option<usize> {
     let history = state.history.as_ref()?;
     let offset = usize::from(screen_row.checked_sub(rows_above_graph(state))?);

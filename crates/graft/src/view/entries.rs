@@ -63,8 +63,10 @@ pub(super) fn visible_rows<'a>(
     // uncommitted row attaches depends only on what is at the very top, not
     // on how many rows are shown below it.
     let top_row = history.visible(1).first();
-    let dirty = state.working_tree.filter(|counts| !counts.is_clean());
-    let uncommitted = dirty.filter(|_| head_is_topmost(state.refs.as_deref(), top_row));
+    let uncommitted = state
+        .uncommitted_row_shown()
+        .then_some(state.working_tree)
+        .flatten();
     // The virtual row takes one of the viewport's rows when it draws:
     // `History::visible` knows nothing about it.
     let height = if uncommitted.is_some() {
@@ -72,8 +74,18 @@ pub(super) fn visible_rows<'a>(
     } else {
         state.graph_rows()
     };
+    // While the cursor rests on the virtual row (`AppState::on_working_tree`),
+    // the highlight moves onto it and off the history cursor's row —
+    // `move_from_graph` never moves `History::cursor` when it sets the flag,
+    // so the two would otherwise both read as "the cursor's row" at once.
     uncommitted
-        .map(|counts| uncommitted_entry(top_row, counts))
+        .map(|counts| {
+            let mut entry = uncommitted_entry(top_row, counts);
+            if state.on_working_tree {
+                entry.line.paint = RowPaint::Highlighted;
+            }
+            entry
+        })
         .into_iter()
         .chain(
             history
@@ -83,7 +95,7 @@ pub(super) fn visible_rows<'a>(
                 .map(|(row, index)| {
                     let mut entry = row_entry(
                         row,
-                        index == history.cursor,
+                        index == history.cursor && !state.on_working_tree,
                         mailmap,
                         state.refs.as_deref(),
                         now,
@@ -107,31 +119,7 @@ pub(super) fn visible_rows<'a>(
 /// way, off the same state.
 #[must_use]
 pub(crate) fn uncommitted_shown(state: &AppState) -> bool {
-    let Some(history) = &state.history else {
-        return false;
-    };
-    let top_row = history.visible(1).first();
-    let dirty = state.working_tree.is_some_and(|counts| !counts.is_clean());
-    dirty && head_is_topmost(state.refs.as_deref(), top_row)
-}
-
-/// Is `HEAD` the topmost visible row? The uncommitted row attaches only
-/// then (PROMPT.md §1.3): otherwise it would draw beside a commit it is not
-/// actually on top of, once the viewport has scrolled.
-///
-/// `refs` unresolved (the job has not answered yet) reads as "no": showing
-/// the row and then possibly retracting it once the answer arrives would
-/// flicker, and a clean-looking first frame is the safer guess.
-pub(super) fn head_is_topmost(refs: Option<&RefBadges>, top: Option<&Row>) -> bool {
-    let Some(refs) = refs else {
-        return false;
-    };
-    match refs.head() {
-        // An unborn branch has no commit for the row to sit on top of, so
-        // it is trivially the topmost thing there is.
-        None => true,
-        Some(head_id) => top.is_some_and(|row| row.commit.id == head_id),
-    }
+    state.uncommitted_row_shown()
 }
 
 /// The uncommitted-changes row's [`GraphEntry`]: `head_row` — `HEAD`'s row,

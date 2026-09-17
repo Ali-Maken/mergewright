@@ -387,5 +387,9 @@ Every budget in 56's checklist passes on 56c's numbers (`docs/shots/m1-memory-cu
 
 ## m2-details-and-diffs/06 — detail model seams (2026-09-17)
 
-- **`Enter` on the uncommitted-changes row does not open `DetailSpec::WorkingTree`.** That row is synthesised by `view` (`view/entries.rs::uncommitted_row`), not a position of `History`'s cursor, so `update` has nothing selected to open. Wiring it means making the virtual row selectable in the cursor model (`History::selected`/`select_at`, mouse row math, `j`/`k` at the top) — beyond this ticket's "nothing else moves". `DetailSpec::WorkingTree` and its `ListFiles` path exist. Expiry: `detail-keys-and-focus` or a small spec-only follow-up from `planner-fable` (it decides whether the cursor may rest on the virtual row).
+- ~~**`Enter` on the uncommitted-changes row does not open `DetailSpec::WorkingTree`.**~~ Closed by `m2-details-and-diffs/06b`: the row is now selectable through `AppState::on_working_tree`, a one-bit flag beside `History`'s cursor rather than a position of it (`update::selection`); `Enter` opens `DetailSpec::WorkingTree` through `AppState::selected_spec`.
 - **No footer hint for `Enter` yet.** The peek hint (`⏎ full subject`) was removed with the peek; a `⏎ details` hint would advertise a pane that does not draw until `detail-pane-frame`. Expiry: `detail-pane-frame`.
+
+## m2-details-and-diffs/06b — working-tree row reach (2026-09-17)
+
+- **The uncommitted row appears only while `HEAD` is the top visible history row (m1-the-graph/12b); with a newer branch above `HEAD` the user scrolls `HEAD` to the top to reach it.** Owner: M3 working tree — it decides whether to pin the row above `HEAD` wherever `HEAD` sits.

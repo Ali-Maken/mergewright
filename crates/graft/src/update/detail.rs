@@ -422,15 +422,6 @@ pub(super) fn detail_event(next: &mut AppState, commands: &mut Vec<Command>, eve
     }
 }
 
-/// The commit under the graph cursor.
-pub(super) fn selected_commit(state: &AppState) -> Option<Oid> {
-    state
-        .history
-        .as_ref()
-        .and_then(|history| history.selected())
-        .map(|row| row.commit.id)
-}
-
 /// The pane's keys, answered before the graph's. `true` when the key was the pane's.
 pub(super) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
     let AppState {
@@ -444,13 +435,13 @@ pub(super) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
             true
         }
         KeyCode::Enter if plain => {
-            let Some(oid) = selected_commit(next) else {
+            let Some(spec) = next.selected_spec() else {
                 return false;
             };
             let AppState {
                 detail, local_jobs, ..
             } = next;
-            commands.extend(detail.open(DetailSpec::Commit(oid), &mut || local_jobs.next_id()));
+            commands.extend(detail.open(spec, &mut || local_jobs.next_id()));
             true
         }
         KeyCode::Escape if detail.shown => {
@@ -476,31 +467,6 @@ pub(super) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
             true
         }
         _ => false,
-    }
-}
-
-/// After any event: a shown pane follows the graph selection.
-pub(super) fn follow_selection(
-    before: Option<Oid>,
-    next: &mut AppState,
-    commands: &mut Vec<Command>,
-) {
-    if !next.detail.shown
-        || matches!(
-            next.detail.spec,
-            Some(DetailSpec::Compare { .. } | DetailSpec::WorkingTree)
-        )
-    {
-        return;
-    }
-    let Some(now) = selected_commit(next) else {
-        return;
-    };
-    if before != Some(now) {
-        let AppState {
-            detail, local_jobs, ..
-        } = next;
-        commands.extend(detail.follow(DetailSpec::Commit(now), &mut || local_jobs.next_id()));
     }
 }
 

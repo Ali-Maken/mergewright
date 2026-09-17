@@ -108,6 +108,11 @@ pub struct AppState {
     pub search_prompt: Option<String>,
     /// The search on screen, running or finished, until `Esc` closes it.
     pub search: Option<crate::search::Search>,
+    /// The cursor rests on the uncommitted-changes row, not on a `History`
+    /// row (`update::selection`, m2-details-and-diffs/06b). `true` only
+    /// while [`AppState::uncommitted_row_shown`] holds — `selection::reconcile`
+    /// clears it the moment that stops being so.
+    pub on_working_tree: bool,
 }
 
 /// The screens Graft can show.
@@ -178,6 +183,54 @@ impl AppState {
     pub(in crate::update) fn commit_graph_actionable(&self) -> bool {
         self.commit_graph_line() == Some(CommitGraphLine::Offered)
             && self.commit_graph == CommitGraphOffer::Offered
+    }
+
+    /// Does the uncommitted-changes row draw at the top of the viewport this
+    /// frame? m1-the-graph/12b's attachment rule, moved here so both `view`
+    /// (drawing it) and `update::selection` (selecting it) read one
+    /// predicate: refs answered, working-tree counts on hand and dirty, and
+    /// the topmost visible row is `HEAD` (or `HEAD` is unborn).
+    ///
+    /// Refs unresolved (the job has not answered yet) reads as "no": showing
+    /// the row and then possibly retracting it once the answer arrives would
+    /// flicker, and a clean-looking first frame is the safer guess.
+    #[must_use]
+    pub fn uncommitted_row_shown(&self) -> bool {
+        let Some(counts) = self.working_tree else {
+            return false;
+        };
+        if counts.is_clean() {
+            return false;
+        }
+        let Some(history) = &self.history else {
+            return false;
+        };
+        let Some(refs) = self.refs.as_deref() else {
+            return false;
+        };
+        match refs.head() {
+            // An unborn branch has no commit for the row to sit on top of, so
+            // it is trivially the topmost thing there is.
+            None => true,
+            Some(head_id) => history
+                .visible(1)
+                .first()
+                .is_some_and(|row| row.commit.id == head_id),
+        }
+    }
+
+    /// What `Enter` opens, and what a shown pane follows: the working-tree
+    /// row while the cursor rests on it, else the commit under `History`'s
+    /// cursor, else nothing (no history yet).
+    #[must_use]
+    pub fn selected_spec(&self) -> Option<super::detail::DetailSpec> {
+        if self.on_working_tree {
+            return Some(super::detail::DetailSpec::WorkingTree);
+        }
+        self.history
+            .as_ref()
+            .and_then(crate::history::History::selected)
+            .map(|row| super::detail::DetailSpec::Commit(row.commit.id))
     }
 }
 

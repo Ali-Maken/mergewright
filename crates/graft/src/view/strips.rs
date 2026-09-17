@@ -16,7 +16,7 @@ use graft_graph::raster::{Emphasis, Marker, RasterRow, Ring, Strip, Stub};
 use graft_graph::row::Row;
 use graft_graph::{Fold, Kin};
 
-use super::entries::{Thread, head_is_topmost, thread, uncommitted_row};
+use super::entries::{Thread, thread, uncommitted_row};
 use super::rows::keep_for;
 use crate::history::History;
 use crate::refs::RefBadges;
@@ -172,10 +172,9 @@ pub fn pixel_rows(state: &AppState, max_lanes: usize, strip_rows: usize) -> Pixe
     let first = history.window.as_ref().map_or(0, |window| window.first);
     let on_hand = first..first + window_rows.len();
 
-    // The same facts, asked the same way, as `visible_rows`.
+    // The same predicate `visible_rows` reads (`AppState::uncommitted_row_shown`).
     let top_row = history.visible(1).first();
-    let dirty = state.working_tree.is_some_and(|counts| !counts.is_clean());
-    let uncommitted = dirty && head_is_topmost(state.refs.as_deref(), top_row);
+    let uncommitted = state.uncommitted_row_shown();
     let height = state.graph_rows().saturating_sub(usize::from(uncommitted));
 
     let ranges = strip_ranges(history.top..history.top + height, &on_hand, strip_rows);

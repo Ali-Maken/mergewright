@@ -115,6 +115,9 @@ One line per public item. Update when a public item changes.
 - `AppState::hover` (field) — the absolute row under the pointer, set by mouse movement; drives the footer reveal when set (m1-the-graph/41). The `Enter` peek is gone: `Enter` opens the detail pane (ADR-0023).
 - `AppState::detail` (field) — `DetailState`, the detail pane; hidden by default (m2-details-and-diffs/06).
 - `AppState::local_jobs` (field) — `LocalJobs`, ids for the jobs `update` names itself (the detail pane's reads).
+- `AppState::on_working_tree` (field) — the uncommitted-changes row's one-bit selection, beside `History`'s cursor rather than a position of it (m2-details-and-diffs/06b); rules in `update::selection`.
+- `AppState::uncommitted_row_shown` (fn) — does the working-tree row draw this frame: a dirty tree and `HEAD` topmost (m1-the-graph/12b); `view::entries::uncommitted_shown` and `view::strips` both delegate to it.
+- `AppState::selected_spec` (fn) — the `DetailSpec` the cursor now names: `WorkingTree` on the flag, else the history cursor's commit.
 - `AppState::renderer_override` (field) — the tier-drop key (`F3`) forced this tier for the rest of the run, or `None` for whatever `Session::settle` decided (m1-the-graph/19).
 - `AppState::settled_tier` (field) — `Session::settle`'s tier, copied in at loop start; `None` without a session (m1-the-graph/24d).
 - `AppState::tier` (fn) — tier in force: F3's override, else settled, else Unicode. F3 (`cycle_tier`) cycles Pixel→Unicode→Ascii→settled tier, never above it; back at the top the override clears. History pads to strips only at Pixel (m1-the-graph/33).
@@ -130,6 +133,12 @@ One line per public item. Update when a public item changes.
 - `CHROME_ROWS` (const) — screen rows that are not the graph without a harness banner; `graft_ui::graph_screen::CHROME_ROWS`. `AppState::graph_rows` adds `Harness::banner_rows`.
 - `AppState::graph_rows` (fn) — history rows the graph pane shows at the current size; never zero.
 - `update` (fn) — the pure state transition function.
+
+## update::selection
+The uncommitted-changes row's one-bit selection: pure rules for setting, clearing and following `AppState::on_working_tree` (m2-details-and-diffs/06b).
+- `move_from_graph` (fn) — a graph motion key, before `History::move_cursor` sees it: sets or clears the flag, returns the motion still left for `History` (or `None`).
+- `reconcile` (fn) — called once at the end of every event with the history cursor's value from the start of it; clears the flag when the row stopped showing or the cursor moved under it; returns whether it cleared.
+- `follow_selection` (fn) — a shown, non-`Compare` pane follows the selection onto or off the working-tree row.
 
 ## update::detail
 The detail pane's state and transitions; pure (no I/O, no clock). Drawing is `detail-pane-frame`'s.

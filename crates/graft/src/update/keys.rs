@@ -77,15 +77,24 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
             commands.push(Command::ShowRows(id, request));
         }
     } else if let Some(motion) = motion_for(key) {
-        let height = next.graph_rows();
-        if let Some(history) = next.history.as_mut()
-            && let Some(request) = history.move_cursor(motion, height)
-            && let Some(id) = next.awaiting
-        {
-            commands.push(Command::ShowRows(id, request));
-        }
+        move_cursor(next, commands, motion);
     } else if key.code == KeyCode::Escape {
         escape_key(next, commands);
+    }
+}
+
+/// A graph motion key: the working-tree row's flag (`update::selection`)
+/// sees it first, then whatever motion is left goes to `History`.
+fn move_cursor(next: &mut AppState, commands: &mut Vec<Command>, motion: Motion) {
+    let Some(motion) = super::selection::move_from_graph(next, motion) else {
+        return;
+    };
+    let height = next.graph_rows();
+    if let Some(history) = next.history.as_mut()
+        && let Some(request) = history.move_cursor(motion, height)
+        && let Some(id) = next.awaiting
+    {
+        commands.push(Command::ShowRows(id, request));
     }
 }
 
@@ -227,9 +236,13 @@ fn is_copy_key(key: KeyPress) -> bool {
 }
 
 /// `y` on a selected row: ask the loop to send the full SHA to the
-/// terminal's clipboard and say so in the footer. No selected row, nothing.
-/// A failure on the status line stays: it is never dropped for a notice.
+/// terminal's clipboard and say so in the footer. No selected row, nothing;
+/// on the uncommitted-changes row there is no SHA to copy, so also nothing —
+/// no command, no status change (a hint is not needed).
 fn copy_selected_sha(next: &mut AppState, commands: &mut Vec<Command>) {
+    if next.on_working_tree {
+        return;
+    }
     let Some(row) = next.history.as_ref().and_then(|history| history.selected()) else {
         return;
     };

@@ -713,6 +713,7 @@ fn the_same_event_always_gives_the_same_answer() {
         settled_tier: None,
         search_prompt: None,
         search: None,
+        on_working_tree: false,
     };
 
     let first = update(&state, key(KeyCode::Char('q')));
@@ -1838,7 +1839,12 @@ fn diff_of(path: &str) -> DetailArc<DiffView> {
 #[test]
 fn enter_opens_the_pane_on_the_selected_commit_and_asks_for_its_files() {
     let (state, _) = merge_on_screen(JobId::new(23), 0);
-    let selected = super::detail::selected_commit(&state).expect("row 0 has arrived");
+    let selected = state
+        .history
+        .as_ref()
+        .and_then(|history| history.selected())
+        .map(|row| row.commit.id)
+        .expect("row 0 has arrived");
     let (opened, commands) = update(&state, key(KeyCode::Enter));
     assert!(opened.detail.shown);
     assert_eq!(opened.detail.focus, DetailFocus::Files);
@@ -1966,4 +1972,153 @@ fn files_arriving_ask_for_the_first_diff_and_revisits_hit_the_cache() {
         matches!(back.detail.spec, Some(DetailSpec::Commit(_))),
         "spec kept"
     );
+}
+
+/// [`merge_on_screen`] plus a dirty tree and `HEAD` at row 0 — the
+/// uncommitted-changes row is shown, cursor at the top, nothing selected on
+/// it yet.
+fn dirty_on_screen(id: JobId) -> AppState {
+    let (mut state, _) = merge_on_screen(id, 0);
+    let head_id = state
+        .history
+        .as_ref()
+        .and_then(History::selected)
+        .map(|row| row.commit.id)
+        .expect("row 0 has arrived");
+    state.working_tree = Some(graft_git::status::WorkingTreeCounts {
+        staged: 1,
+        unstaged: 1,
+        untracked: 1,
+    });
+    let badges = crate::refs::badges(
+        &[],
+        &graft_git::repo::HeadState::Detached(head_id),
+        &std::collections::HashMap::new(),
+        |_, _| unreachable!("no branches on this fixture to count"),
+    )
+    .expect("no refs to fail reading");
+    state.refs = Some(Arc::new(badges));
+    state
+}
+
+#[test]
+fn k_from_the_top_row_selects_the_working_tree_row_and_asks_history_for_nothing() {
+    let state = dirty_on_screen(JobId::new(40));
+    let (next, commands) = update(&state, key(KeyCode::Char('k')));
+    assert!(next.on_working_tree);
+    assert_eq!(next.history.as_ref().map(|history| history.cursor), Some(0));
+    assert!(commands.is_empty(), "{commands:?}");
+}
+
+#[test]
+fn enter_on_the_working_tree_row_opens_the_pane_on_it() {
+    let mut state = dirty_on_screen(JobId::new(41));
+    state.on_working_tree = true;
+    let (opened, commands) = update(&state, key(KeyCode::Enter));
+    assert!(opened.detail.shown);
+    assert_eq!(opened.detail.focus, DetailFocus::Files);
+    let lists = list_commands(&commands);
+    assert_eq!(lists.len(), 1, "{commands:?}");
+    assert_eq!(lists[0].1, graft_git::diff::DiffSpec::WorkingTreeVsHead);
+    assert!(
+        !commands
+            .iter()
+            .any(|c| matches!(c, Command::ContainedIn(..))),
+        "the working tree is not a commit to ask branch containment about: {commands:?}"
+    );
+}
+
+#[test]
+fn j_off_the_row_with_the_pane_shown_follows_to_heads_row() {
+    let mut state = dirty_on_screen(JobId::new(42));
+    state.on_working_tree = true;
+    let (mut opened, _) = update(&state, key(KeyCode::Enter));
+    opened.detail.focus = DetailFocus::Graph;
+    let (moved, commands) = update(&opened, key(KeyCode::Char('j')));
+    assert!(!moved.on_working_tree);
+    let lists = list_commands(&commands);
+    assert_eq!(lists.len(), 1, "{commands:?}");
+    assert_eq!(
+        lists[0].1,
+        graft_git::diff::DiffSpec::Commit {
+            commit: state
+                .history
+                .as_ref()
+                .and_then(History::selected)
+                .map(|row| row.commit.id)
+                .expect("row 0"),
+            against: None
+        }
+    );
+}
+
+#[test]
+fn a_clean_tree_while_shown_clears_the_flag_and_follows_off_it() {
+    let mut state = dirty_on_screen(JobId::new(43));
+    state.on_working_tree = true;
+    let (opened, _) = update(&state, key(KeyCode::Enter));
+    let (clean, commands) = update(
+        &opened,
+        AppEvent::Produced(
+            JobId::new(1),
+            Product::WorkingTree(Ok(graft_git::status::WorkingTreeCounts {
+                staged: 0,
+                unstaged: 0,
+                untracked: 0,
+            })),
+        ),
+    );
+    assert!(!clean.on_working_tree);
+    let lists = list_commands(&commands);
+    assert_eq!(lists.len(), 1, "{commands:?}");
+    assert!(matches!(
+        lists[0].1,
+        graft_git::diff::DiffSpec::Commit { .. }
+    ));
+}
+
+#[test]
+fn y_on_the_working_tree_row_is_a_no_op() {
+    let mut state = dirty_on_screen(JobId::new(44));
+    state.on_working_tree = true;
+    let (next, commands) = update(&state, key(KeyCode::Char('y')));
+    assert!(commands.is_empty(), "{commands:?}");
+    assert_eq!(next.status, state.status);
+}
+
+#[test]
+fn a_click_on_the_first_body_row_selects_the_working_tree_row() {
+    let mut state = dirty_on_screen(JobId::new(45));
+    state.size = Size {
+        columns: 80,
+        rows: 5,
+    };
+    let click = core(Event::Mouse(MouseInput {
+        kind: MouseKind::Down(MouseButton::Left),
+        column: 10,
+        row: HEADER_ROWS,
+        modifiers: Modifiers::NONE,
+    }));
+    let (next, _) = update(&state, click);
+    assert!(next.on_working_tree);
+    assert_eq!(next.history.as_ref().map(|history| history.cursor), Some(0));
+}
+
+#[test]
+fn a_click_one_row_lower_selects_the_top_history_row_and_clears_the_flag() {
+    let mut state = dirty_on_screen(JobId::new(46));
+    state.on_working_tree = true;
+    state.size = Size {
+        columns: 80,
+        rows: 5,
+    };
+    let click = core(Event::Mouse(MouseInput {
+        kind: MouseKind::Down(MouseButton::Left),
+        column: 10,
+        row: HEADER_ROWS + 1,
+        modifiers: Modifiers::NONE,
+    }));
+    let (next, _) = update(&state, click);
+    assert!(!next.on_working_tree);
+    assert_eq!(next.history.as_ref().map(|history| history.cursor), Some(0));
 }

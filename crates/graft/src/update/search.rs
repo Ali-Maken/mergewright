@@ -151,6 +151,9 @@ fn step_search(next: &mut AppState, commands: &mut Vec<Command>, forward: bool) 
     let Some(target) = search.step(forward) else {
         return;
     };
+    // A hit moves the history cursor, not the working-tree row: leave it
+    // before asking `History` to seek.
+    next.on_working_tree = false;
     let Some(history) = next.history.as_mut() else {
         return;
     };

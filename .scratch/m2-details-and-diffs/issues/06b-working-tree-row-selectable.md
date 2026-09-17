@@ -1,6 +1,6 @@
 # working-tree-row-selectable: the cursor can rest on the uncommitted-changes row, so `Enter` there opens `DetailSpec::WorkingTree`
 
-Status: ready
+Status: done
 Blocked by: 06
 Build with: Sonnet — the selection rules are fixed below; every transition is a unit test on `update`. Nothing here decides an approach.
 Needs: `detail-model-and-jobs` (`DetailSpec::WorkingTree`, `DetailState::open`, `DetailState::follow`, `AppState::detail`)
@@ -79,3 +79,11 @@ pub fn follow_selection(state: &mut AppState, next_id: &mut impl FnMut() -> JobI
 ## Size
 
 One crate. `update/selection.rs` ~90 lines, `AppState` +~25, `keys.rs` +~25 (arms, not a restructure), `view/entries.rs` +~15, tests ~150. ≤ 22 tool calls. Seam for a `partial`: ship `AppState` fields/methods + `selection.rs` + the key arms with tests, and leave the click arm + view highlight + capture as the remainder.
+
+## Notes (built)
+
+All acceptance boxes met. `AppState::on_working_tree` + `uncommitted_row_shown`/`selected_spec`; `update::selection::{move_from_graph, reconcile, follow_selection}` (14 unit tests, exact transition table); `keys.rs` motion/Enter/y arms and the click-to-row arm; `view/entries.rs` swaps `RowPaint::Highlighted`; `view/strips.rs` reads the same `uncommitted_row_shown` predicate. 7 new integration tests in `update/tests.rs` (Enter→WorkingTree ListFiles no ContainedIn, follow off/onto the row, clean-tree reconcile+follow, `y` no-op, both click cases) plus 1 in `view/tests.rs` (exactly one `Highlighted` row, the virtual one). Purity guard (`update_cannot_reach_the_world`) auto-picked up `selection.rs`, green. MAP.md and KNOWN_GAPS.md updated per spec.
+
+Capture: `docs/shots/m2-working-tree-row.txt` (real `feature-branches` fixture, HEAD detached onto row 0 so the attachment rule holds, dirtied 1/1/1). `TestBackend::to_string()` carries no style at all (no ANSI in its buffer — same limitation m1/12b's own captures note), so `RowPaint::Highlighted`'s `Modifier::BOLD` would not otherwise show in a plain-text diff between the two frames; each frame is additionally labelled with the screen row the buffer says is bold, confirming it moves from row 2 (HEAD) to row 1 (the virtual row) after `k`. The one-off Rust binary that made it was thrown away after running, per the prototype-skill's "throwaway, findings not the tool" principle — not committed.
+
+Session compacted once, mid-ticket (context ran out while the ticket's core logic and unit tests were already done; resumed to finish integration tests, view test, MAP.md, KNOWN_GAPS.md, and the capture).

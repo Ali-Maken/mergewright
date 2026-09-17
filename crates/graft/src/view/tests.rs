@@ -756,3 +756,25 @@ fn a_search_line_with_an_escape_sequence_renders_inert() {
     assert!(!screen.contains('\x1b'), "{screen}");
     assert!(screen.contains(" /x"), "{screen}");
 }
+
+#[test]
+fn on_working_tree_highlights_the_virtual_row_and_not_heads() {
+    let mut state = state_with_head_and_counts(counts(1, 0, 0));
+    state.on_working_tree = true;
+
+    let view = graph_view(&state, state.harness.clock.now_seconds());
+
+    let highlighted: Vec<_> = view
+        .rows
+        .iter()
+        .filter(|entry| entry.line.paint == RowPaint::Highlighted)
+        .collect();
+    assert_eq!(
+        highlighted.len(),
+        1,
+        "{:?}",
+        view.rows.iter().map(|e| e.line.paint).collect::<Vec<_>>()
+    );
+    assert_eq!(view.rows[0].line.node, NodeKind::Uncommitted);
+    assert_eq!(view.rows[0].line.paint, RowPaint::Highlighted);
+}
