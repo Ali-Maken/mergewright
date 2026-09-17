@@ -12,6 +12,9 @@ use std::time::Duration;
 use graft_core::event::Event;
 use graft_core::job::{JobFailure, JobId};
 
+use graft_core::oid::Oid;
+use graft_core::ref_name::RefName;
+
 use super::MAX_WORKERS;
 use super::kinds::{
     check_system_git, decline_commit_graph, open_repository, read_history, search,
@@ -21,8 +24,24 @@ use super::pool::{Alive, Assignment, Live, Shutdown, Worker};
 use super::types::{Cancel, Dispatch, JobEvents, Outcome, Work};
 use crate::history;
 use crate::history::RowRequest;
+use crate::jobs::radar::RadarContext;
 use crate::repos::RepoStore;
 use crate::update::{AppEvent, Command, Product, Task};
+
+/// The Mistake Radar's context job: reads the default branch's tip and
+/// table from the store `run_radar_context` needs and joins any open error
+/// to the same error string every other detail job reports.
+fn radar_context(
+    repos: &RepoStore,
+    default_tip: Oid,
+    default_ref: &RefName,
+    stop: &Cancel,
+) -> Result<Arc<RadarContext>, String> {
+    let repo = repos.shared().map_err(|error| error.to_string())?;
+    let handle = repo.handle();
+    let table = repos.table().map_err(|error| error.to_string())?;
+    super::radar::run_radar_context(&handle, &table, default_tip, default_ref, stop)
+}
 
 /// The pool: a queue, a few threads, and a table of what is still running.
 ///
@@ -175,7 +194,17 @@ impl<S: JobEvents> JobRunner<S> {
                     Product::ContainedIn(oid, super::detail::read_contained(&repos, oid, cancel))
                 });
             }
-            // `dispatch` routes only the three above here; anything else is a
+            Command::RadarContext(id, default_tip, default_ref) => {
+                let repos = Arc::clone(&self.repos);
+                let task = Task::RadarContext {
+                    default_tip,
+                    default_ref: default_ref.clone(),
+                };
+                self.detail_job(id, task, move |cancel| {
+                    Product::RadarContext(radar_context(&repos, default_tip, &default_ref, cancel))
+                });
+            }
+            // `dispatch` routes only the ones above here; anything else is a
             // routing bug, not a runtime condition.
             other => unreachable!("not a detail command: {other:?}"),
         }
@@ -416,7 +445,8 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             }
             command @ (Command::ListFiles(..)
             | Command::ReadFileDiff(..)
-            | Command::ContainedIn(..)) => {
+            | Command::ContainedIn(..)
+            | Command::RadarContext(..)) => {
                 self.dispatch_detail(command);
             }
             Command::CancelJob(id) => {

@@ -66,8 +66,14 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         commit_graph: state.commit_graph_line(),
         banner: Vec::new(),
         detail_shown: state.detail.shown,
-        // Wired to `AppState::radar` in the ticket's remainder.
-        marker_column: false,
+        // `visible_rows` (just above) has already set `radar_column_seen`
+        // for any row it built with a marker, so reading it here also
+        // covers this frame's own findings, not just earlier ones
+        // (`AppState::radar_column_seen`, m2-details-and-diffs/13b).
+        marker_column: matches!(
+            state.radar.context,
+            crate::update::detail::Loading::Ready(_)
+        ) && state.radar_column_seen.get(),
     }
 }
 
@@ -97,10 +103,14 @@ fn opening_view(
         commit_graph: state.commit_graph_line(),
         banner: Vec::new(),
         detail_shown: state.detail.shown,
-        // Wired to `AppState::radar` in the ticket's remainder
-        // (`update`/`view::radar`); no context exists yet to have found a
-        // finding.
-        marker_column: false,
+        // No history has arrived yet, so the radar context is never `Ready`
+        // here — `state.history` is `None`, which `radar::request_context`
+        // requires before it asks for one. Sticky findings from an earlier
+        // repository never apply: a fresh `AppState` is fresh state.
+        marker_column: matches!(
+            state.radar.context,
+            crate::update::detail::Loading::Ready(_)
+        ) && state.radar_column_seen.get(),
     }
 }
 

@@ -851,6 +851,8 @@ fn the_same_event_always_gives_the_same_answer() {
         on_working_tree: false,
         compare_base: None,
         context_menu: None,
+        radar: crate::update::radar::RadarState::default(),
+        radar_column_seen: std::cell::Cell::new(false),
     };
 
     let first = update(&state, key(KeyCode::Char('q')));

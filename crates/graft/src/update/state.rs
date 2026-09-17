@@ -124,6 +124,16 @@ pub struct AppState {
     /// for the uncommitted-changes row) and the menu itself. `None` while
     /// closed.
     pub context_menu: Option<(usize, ContextMenu)>,
+    /// The Mistake Radar's own state: the default-branch context it needs
+    /// before it can find anything, and the policy `[radar]` config resolved
+    /// to (`update::radar`, m2-details-and-diffs/13).
+    pub radar: super::radar::RadarState,
+    /// Sticky once a row's marker has been `Some` this session: the marker
+    /// column keeps showing even after the row that earned it scrolls
+    /// off-screen and is evicted from `History::rows`'s window
+    /// (`view::rows`, m2-details-and-diffs/13b). Set from `view::entries`,
+    /// which is the only writer; everything else only reads it.
+    pub radar_column_seen: std::cell::Cell<bool>,
 }
 
 /// The screens Graft can show.

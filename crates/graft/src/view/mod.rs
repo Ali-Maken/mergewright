@@ -17,6 +17,7 @@
 mod detail;
 mod entries;
 mod frame;
+pub(crate) mod radar;
 mod rows;
 mod status;
 

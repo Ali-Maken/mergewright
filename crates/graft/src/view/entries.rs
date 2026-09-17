@@ -94,6 +94,7 @@ pub(super) fn visible_rows<'a>(
                 .zip(history.top..)
                 .map(|(row, index)| {
                     let mut entry = row_entry(
+                        state,
                         row,
                         index == history.cursor && !state.on_working_tree,
                         state.compare_base.is_some_and(|base| base.row == index),
@@ -210,6 +211,7 @@ fn uncommitted_subject(counts: WorkingTreeCounts) -> String {
 /// share a chip and a colour. `compare_marked` is the pinned compare base's
 /// row (`x`, m2-details-and-diffs/11).
 fn row_entry<'a>(
+    state: &AppState,
     row: &'a graft_graph::row::Row,
     highlighted: bool,
     compare_marked: bool,
@@ -240,10 +242,19 @@ fn row_entry<'a>(
     let badges = refs.map_or_else(Vec::new, |refs| {
         refs.on(row.commit.id).iter().map(badge_view).collect()
     });
+    let subject = String::from_utf8_lossy(row.commit.subject());
+    let marker = super::radar::marker_for(state, row.commit.id, &row.commit.parents, &subject);
+    if marker.is_some() {
+        // Sticky: once a finding has been seen this session, the marker
+        // column keeps drawing even after the row that earned it scrolls
+        // off-screen and `History::rows`'s window evicts it
+        // (`AppState::radar_column_seen`, `view::rows::graph_view`).
+        state.radar_column_seen.set(true);
+    }
     GraphEntry {
         badges,
         line,
-        subject: sanitize_line(&String::from_utf8_lossy(row.commit.subject())),
+        subject: sanitize_line(&subject),
         author: AuthorChip {
             initials: sanitize_line(&initials(&String::from_utf8_lossy(&name))),
             identity: BranchIdentity::of_name(&email),
@@ -251,8 +262,7 @@ fn row_entry<'a>(
         when: relative_date(row.commit.date().seconds, now),
         sha: short_sha(&row.commit.id.to_string(), usize::from(SHA_WIDTH)),
         compare_marked,
-        // Wired to `view::radar::marker_for` in the ticket's remainder.
-        marker: None,
+        marker,
     }
 }
 

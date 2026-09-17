@@ -50,7 +50,7 @@ pub enum Progress {
 ///
 /// Only enough to tell the one job whose result the screen waits for from the
 /// ones that simply land when they land.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Task {
     /// Open the repository and read what the status line shows.
     OpenRepository,
@@ -84,6 +84,14 @@ pub enum Task {
     ContainedIn {
         /// The commit asked about.
         oid: graft_core::oid::Oid,
+    },
+    /// The Mistake Radar's default-branch context: its first-parent chain
+    /// and previous tips (`update::radar`).
+    RadarContext {
+        /// The default branch's tip when this was asked for.
+        default_tip: graft_core::oid::Oid,
+        /// The default branch itself.
+        default_ref: graft_core::ref_name::RefName,
     },
 }
 
@@ -130,6 +138,9 @@ pub enum Product {
         graft_core::oid::Oid,
         Result<graft_git::contained::Contained, String>,
     ),
+    /// The Mistake Radar's default-branch context, or why it could not be
+    /// read.
+    RadarContext(Result<std::sync::Arc<crate::jobs::radar::RadarContext>, String>),
 }
 
 /// What running `git --version` found.
@@ -211,6 +222,10 @@ pub enum Command {
     ReadFileDiff(JobId, super::detail::DiffKey, graft_git::diff::FileEntry),
     /// Ask which refs contain a commit, under an id `update` chose.
     ContainedIn(JobId, graft_core::oid::Oid),
+    /// Read the Mistake Radar's default-branch context, under an id
+    /// `update` chose: the default branch's tip and the branch itself, as
+    /// `update` last knew them.
+    RadarContext(JobId, graft_core::oid::Oid, graft_core::ref_name::RefName),
 }
 
 /// Where the offer to build a missing commit-graph file is (m1-the-graph/54).

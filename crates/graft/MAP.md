@@ -119,6 +119,8 @@ One line per public item. Update when a public item changes.
 - `AppState::on_working_tree` (field) — the uncommitted-changes row's one-bit selection, beside `History`'s cursor rather than a position of it (m2-details-and-diffs/06b); rules in `update::selection`.
 - `AppState::compare_base` (field) — `Option<update::detail::CompareBase>`, the pinned base of a live compare (`x`, m2-details-and-diffs/11); set/cleared by `update::detail::toggle_compare`, followed by `update::selection::follow_selection`.
 - `AppState::context_menu` (field) — `Option<(usize, graft_ui::context_menu::ContextMenu)>`: the `.`/right-click popup, if one is open; row is `update::context_menu::WORKING_TREE_ROW` for the uncommitted-changes row (`context-actions-menu`, m2-details-and-diffs/12).
+- `AppState::radar` (field) — `update::radar::RadarState`: the Mistake Radar's default-branch context and `[radar]` policy (m2-details-and-diffs/13, 13b).
+- `AppState::radar_column_seen` (field) — `Cell<bool>`, sticky once any row's marker has been `Some` this session; keeps the marker column showing after the row scrolls off-screen (m2-details-and-diffs/13b).
 - `AppState::uncommitted_row_shown` (fn) — does the working-tree row draw this frame: a dirty tree and `HEAD` topmost (m1-the-graph/12b); `view::entries::uncommitted_shown` and `view::strips` both delegate to it.
 - `AppState::selected_spec` (fn) — the `DetailSpec` the cursor now names: `WorkingTree` on the flag, else the history cursor's commit.
 - `AppState::renderer_override` (field) — the tier-drop key (`F3`) forced this tier for the rest of the run, or `None` for whatever `Session::settle` decided (m1-the-graph/19).
@@ -148,6 +150,13 @@ The `.`/right-click popup: opening it, its own keys, and carrying out whatever i
 - `open_for_history_row`/`open_for_working_tree`/`open_selected` (fns) — open the menu for a given row, the working-tree row, or whatever the cursor now names. `marked` is hardcoded `false` until `radar-context-and-markers` sets `GraphEntry::marker`.
 - `context_menu_key` (fn) — the menu's own keys while open (`j`/`k` move, `Enter` dispatches and closes, anything else including `Esc` closes without acting); modal, so `key_event` returns as soon as this reports `true`.
 - `apply_context_action` (fn) — `(state, action, row, oid: Option<Oid>, next_id) -> Vec<Command>`; `oid` is `None` only for the working-tree row, where `CopySha`/`CompareWithThis`/`Explain` are unreachable (`debug_assert!`, no command).
+
+## update::radar
+The Mistake Radar's own state: pure, no I/O (m2-details-and-diffs/13, 13b).
+- `RadarState` (struct) — `context: Loading<Arc<jobs::radar::RadarContext>>`, `policy: graft_ops::mistake_radar::Policy` (`Policy::default()` until `[radar]` config is threaded in — see KNOWN_GAPS.md).
+- `request_context` (fn) — `(state, commands, next_id)`; asks for the radar context once the default branch's tip is known on `state` and nothing is already `Pending`/`Ready`. Called at the end of every `update`, which covers both startup and refresh: neither knows the tip until the refs job answers.
+- `context_landed` (fn) — `(state, id, result)`; lands `jobs::radar::run_radar_context`'s answer, dropping it if `id` is stale.
+- `reset_for_refresh` (fn) — throws the context back to `Idle` on a manual refresh (`r`), so a stale chain is never classified against a tip that moved.
 
 ## update::detail
 The detail pane's state and transitions; pure (no I/O, no clock). Drawing is `detail-pane-frame`'s.
@@ -264,6 +273,7 @@ pick, `view`/`view_with_graphics`/`tier_in_force`/`draws_pixels`), `rows`
 `uncommitted_shown`), `status` (`status_view`), `detail` (`detail_view`,
 m2-details-and-diffs/07) — plus the pre-existing `strips`, all re-exported
 from `mod.rs`.
+- `radar` (`pub(crate)` mod) — turns `AppState`'s facts into `graft-ops::mistake_radar::Finding`s and those into a marker/detail lines (m2-details-and-diffs/13b). `branch_facts`, `head_facts`, `repo_facts` (fns) — pure fact adapters from `AppState`/`RadarContext`. `findings_for(state, id, parents, subject) -> Vec<Finding>` — empty until `state.radar.context` is `Ready`. `marker_for(...) -> Option<graft_ui::graph_screen::MarkerView>` — highest-severity finding. `radar_lines_for(...) -> Vec<graft_ui::detail::RadarLine>` — one line per finding plus a conditional `EvilUnchecked`; wired into the detail pane by ticket 13c, not yet called from `view`.
 - `view` (fn) — draw the current state to a frame: the graph screen, or the status screen.
 - `view_with_graphics` (fn) — `view`, plus the gfx status in the header at the pixel tier; returns the graph rect the images go in, `None` when no pixels this frame. When `state.detail.shown`, splits the frame with `graft_ui::detail_pane::DetailLayout` and draws `DetailPane` beside/below/instead of the graph screen (`Tab` draws one side full width behind a `[Graph] Detail` strip; the graph's pixel rect is `None` while it is off screen).
 - `detail_view` (fn) — assemble a `graft_ui::detail::DetailView` from `AppState`: header from the selected row's hydrated commit (author/committer/parents in full; co-authors parsed from `Co-authored-by:` message trailers), or from `AppState::working_tree`'s counts for the uncommitted row; body is the commit message when the files cursor is on `✉ message`, else the diff under it, tracking `DetailState::files`/`diff`'s loading state.
@@ -303,6 +313,9 @@ Internal split (m1-the-graph/71, public paths unchanged): `types` (`Outcome`,
 `Work`, `Cancel`, `JobEvents`, `Delivery`, `Dispatch`), `pool` (`Shutdown`,
 plus the private queue/worker bookkeeping), `kinds` (the work behind each
 command), `runner` (`JobRunner`) — re-exported from `mod.rs`.
+- `radar` (`pub(crate)` mod) — the Mistake Radar's context job (m2-details-and-diffs/13, 13b).
+  - `RadarContext` (struct) — `default_chain: HashSet<Oid>` (the default branch's first-parent ancestry), `previous_default_tips: Vec<Oid>` (its reflog history, newest first, capped).
+  - `run_radar_context` (fn) — `(repo, table, default_tip, default_ref, stop) -> Result<Arc<RadarContext>, String>`; the work behind `Command::RadarContext`, dispatched by `JobRunner::dispatch_detail`.
 - `detail` (private mod) — the detail pane's reads: `assemble_files(&FileList, Option<&[u8]>) -> FileListView` (path tree, `✉` row when the body has a non-trailer line) and `assemble_diff(&FileDiff, word_tint) -> DiffView` (sanitise, pairs, word spans, syntax, CRLF → `␍`), both pure; `read_files`/`read_file_diff`/`read_contained` run them on a worker with the job's `Cancel` as the git `Stop`. The runner queues them under `update`'s ids (`queue_as`).
 - `MAX_WORKERS` (const) — worker thread cap (PROMPT.md §7.1).
 - `SHUTDOWN_GRACE` (const) — how long shutdown waits before abandoning workers.

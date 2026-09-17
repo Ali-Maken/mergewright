@@ -23,6 +23,7 @@ pub mod detail;
 mod events;
 mod history;
 mod keys;
+pub mod radar;
 mod search;
 mod selection;
 mod state;
@@ -53,6 +54,7 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
     commands.extend(selection::follow_selection(&mut next, &mut || {
         local_jobs.next_id()
     }));
+    radar::request_context(&mut next, &mut commands, &mut || local_jobs.next_id());
     next.local_jobs = local_jobs;
     // The commit-graph line costs a graph row: when it comes or goes, the
     // viewport changed height, so ask for the rows that now fit.
@@ -94,8 +96,12 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             | Task::ReadWorkingTree
             | Task::ListFiles { .. }
             | Task::FileDiff { .. }
-            | Task::ContainedIn { .. },
+            | Task::ContainedIn { .. }
+            | Task::RadarContext { .. },
         ) => {}
+        AppEvent::Produced(id, Product::RadarContext(result)) => {
+            radar::context_landed(next, id, result);
+        }
         AppEvent::Produced(id, Product::TopologicalOrder(order)) => {
             history::sorted(next, commands, id, order);
         }
@@ -180,7 +186,8 @@ fn took_fact(next: &mut AppState, product: Product) {
         | Product::CommitGraphDeclined(_)
         | Product::Files(_)
         | Product::FileDiff(..)
-        | Product::ContainedIn(..) => {}
+        | Product::ContainedIn(..)
+        | Product::RadarContext(_) => {}
     }
 }
 

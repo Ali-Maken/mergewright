@@ -54,6 +54,22 @@ impl RefBadges {
     pub fn stash(&self) -> Option<Oid> {
         self.stash
     }
+
+    /// Every local branch: its tip, shorthand name, whether `HEAD` is on it,
+    /// and its upstream (`view::radar::branch_facts`). Order is not
+    /// meaningful.
+    pub fn branches(&self) -> impl Iterator<Item = (Oid, &[u8], bool, &Upstream)> {
+        self.by_commit.iter().flat_map(|(&id, labels)| {
+            labels.iter().filter_map(move |label| match label {
+                RefLabel::Branch {
+                    name,
+                    current,
+                    upstream,
+                } => Some((id, name.as_slice(), *current, upstream)),
+                _ => None,
+            })
+        })
+    }
 }
 
 /// One ref on a commit, before sanitising.

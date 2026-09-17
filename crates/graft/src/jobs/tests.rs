@@ -68,9 +68,9 @@ fn next_event(events: &Receiver<AppEvent>) -> Event {
 /// The announcement a dispatched command makes before its job can finish, and
 /// the id it named. It is what lets the application know which job it is
 /// waiting for while the job is still running.
-fn next_started(events: &Receiver<AppEvent>, expected: Task) -> JobId {
+fn next_started(events: &Receiver<AppEvent>, expected: &Task) -> JobId {
     match next_report(events) {
-        AppEvent::Started(id, task) if task == expected => id,
+        AppEvent::Started(id, task) if &task == expected => id,
         other => panic!("expected {expected:?} to be announced, got {other:?}"),
     }
 }
@@ -391,7 +391,7 @@ fn opening_a_repository_reports_what_it_found() {
 
     runner.dispatch(Command::OpenRepository);
 
-    next_started(&events, Task::OpenRepository);
+    next_started(&events, &Task::OpenRepository);
     match next_report(&events) {
         AppEvent::Produced(_, Product::Repository(Ok(facts))) => {
             assert!(!facts.bare, "this repository has a working tree");
@@ -408,7 +408,7 @@ fn a_path_that_is_not_a_repository_comes_back_as_an_answer() {
 
     runner.dispatch(Command::OpenRepository);
 
-    next_started(&events, Task::OpenRepository);
+    next_started(&events, &Task::OpenRepository);
     match next_report(&events) {
         AppEvent::Produced(_, Product::Repository(Err(message))) => {
             assert!(!message.is_empty(), "a refusal must say why");
@@ -425,11 +425,11 @@ fn two_jobs_share_one_open_repository() {
     let (runner, events, store) = runner_at(&this_repository(), 1);
 
     runner.dispatch(Command::OpenRepository);
-    next_started(&events, Task::OpenRepository);
+    next_started(&events, &Task::OpenRepository);
     next_report(&events);
 
     runner.dispatch(Command::ReadHistory(Order::CommitDate));
-    next_started(&events, Task::ReadHistory);
+    next_started(&events, &Task::ReadHistory);
     next_report(&events);
 
     assert_eq!(
@@ -448,7 +448,7 @@ fn checking_the_system_git_reports_either_way() {
 
     runner.dispatch(Command::CheckSystemGit);
 
-    next_started(&events, Task::CheckSystemGit);
+    next_started(&events, &Task::CheckSystemGit);
     match next_report(&events) {
         AppEvent::Produced(_, Product::SystemGit(check)) => match check {
             GitCheck::Ran(_) => {}
@@ -515,7 +515,7 @@ fn a_history_job_answers_row_requests_until_cancelled() {
     let (runner, events, _store) = runner_at(&dir, 1);
 
     runner.dispatch(Command::ReadHistory(Order::Topological));
-    let id = next_started(&events, Task::ReadHistory);
+    let id = next_started(&events, &Task::ReadHistory);
     let asked = history::RowRequest {
         id: 1,
         wanted: history::Wanted::Rows(190..usize::MAX),
@@ -561,7 +561,7 @@ fn ahead_behind_is_counted_on_a_worker_never_the_loops_thread() {
 
     runner.dispatch(Command::ReadRefs);
 
-    next_started(&events, Task::ReadRefs);
+    next_started(&events, &Task::ReadRefs);
     match next_report(&events) {
         AppEvent::Produced(_, Product::Refs(Ok(refs))) => {
             assert!(refs.head().is_some(), "HEAD is on `main`, which has a tip");

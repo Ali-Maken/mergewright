@@ -95,6 +95,11 @@ fn refresh_key(next: &mut AppState, commands: &mut Vec<Command>) {
     commands.push(Command::ReadHistory(Order::Topological));
     commands.push(Command::ReadRefs);
     commands.push(Command::ReadWorkingTree);
+    // The default branch's tip may have moved: a stale chain would
+    // misclassify a foxtrot merge against a tip that is no longer real.
+    // `radar::request_context` asks for a fresh one once the refreshed refs
+    // land.
+    super::radar::reset_for_refresh(next);
 }
 
 /// A graph motion key: the working-tree row's flag (`update::selection`)
