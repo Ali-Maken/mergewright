@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 approved 2026-09-17 · awaiting user: which gallery stops needed the shows: line; resize keys; KG :178/:180; go for M2 (23 tickets filed, .scratch/m2-details-and-diffs/issues/)
+**Current step:** M1 approved 2026-09-17 · awaiting user: resize keys; KG :178/:180; go for M2 (23 tickets filed, .scratch/m2-details-and-diffs/issues/)
 
 ---
 
@@ -324,6 +324,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-17 · m1/80 · sonnet · done · `heavy-1m` feature (implies `heavy-tests`, never default) on `crates/graft`; two 1M `frames::` tests now `#[cfg(feature = "heavy-1m")]`, old env-var read removed; TESTING.md/ADR-0018 amendment updated, `--skip scrolling_the_1m_commit_graph_fixture` dropped from both standing commands (compiled out under plain `heavy-tests`); gates pass, no compaction
 - 2026-09-17 · m1/80 records · conductor · restored past log/AUTHORSHIP/ADR-0026/KNOWN_GAPS wording 80 had reworded to empty the GRAFT_1M grep (ticket's grep scope was the conductor's error: history records keep what was true then)
 - 2026-09-17 · user · by-eye checks done: stepping fast, pixel rendering clean, no stutter; shapes readable but not instant — needed the gallery shows: line at some stops (stops not yet named); everything else right · M1 approved
+- 2026-09-17 · user · shows:-line stops: "some of them, well forget it" — not pursued; no gap filed
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.
