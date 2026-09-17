@@ -118,6 +118,12 @@ pub struct DetailState { pub spec: Option<DetailSpec>, pub shown: bool, pub focu
 // Task::{ListFiles, FileDiff, ContainedIn, RadarContext, RadarProbe, Map}; Product::{Files, FileDiff, ContainedIn, RadarContext, Probe, Map}; Command::{ListFiles, ReadFileDiff, ContainedIn, BuildMap, Cancel(JobId), …}
 pub fn assemble_diff(diff: &FileDiff, word_tint: bool) -> DiffView;   // job thread: sanitise → pairs → word_spans → highlight
 
+// graft (app)::update + update::selection (working-tree-row-selectable, spec fix 2026-09-17) — the selection may rest on the virtual uncommitted row; History's cursor model is untouched
+// AppState: + pub on_working_tree: bool;  impl AppState { pub fn uncommitted_row_shown(&self) -> bool; pub fn selected_spec(&self) -> Option<DetailSpec>; }   // Enter opens selected_spec(); the pane follows it
+pub fn move_from_graph(state: &mut AppState, motion: Motion) -> Option<Motion>;   // virtual-row rules first; the motion History still applies, or None
+pub fn reconcile(state: &mut AppState, cursor_before: usize) -> bool;            // end of every update: flag off when the row is gone or the history cursor moved
+pub fn follow_selection(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) -> Vec<Command>;
+
 // graft (app)::map + jobs::map + update::map (map-view-data, pass 2c) — one bounded date walk per local branch into fixed buckets; no lanes
 pub struct MapRequest { pub buckets: usize, pub clock: Clock, pub policy: Policy, pub previous_default_tips: Vec<Oid> }
 pub enum MapMark { Tag(Vec<u8>), Radar(Severity) }
@@ -217,7 +223,11 @@ visible). `Policy` must be `Clone` (a derive, not a shape change).
   Side-by-side: two halves, own gutters, `pairs()` alignment, unpaired lines blank on the other side, `│` between.
 - **Compare (`x`):** `x` on row A marks it (accent `▏` left rule on that row; footer `compare base a1b2c3d — move, x again clears`); the pane follows the cursor:
   `COMPARE a1b2c3d → 7f6e5d4 · 14 files +120 −33`, files = `git diff-tree base head`. `Shift`/`Ctrl`+click a second row does the same. `Esc`/`x` on the base clears.
-- **Working tree row selected:** `UNCOMMITTED · 2 staged 1 unstaged 1 untracked`, one diff vs HEAD (read-only; staging is M3).
+- **Working tree row selected:** `UNCOMMITTED · 2 staged 1 unstaged 1 untracked` (a zero count omitted) / `diff vs HEAD a1b2c3d`, no author, date, contained or radar lines; one diff vs HEAD (read-only; staging is M3).
+  **Reaching it** (`working-tree-row-selectable`): the row stays where m1/12b put it — above HEAD, only while HEAD is the top visible history row (or unborn) and the tree is dirty. The selection is a flag beside `History`'s cursor (`AppState::on_working_tree`), never a history row:
+  `k`/`↑` from the top visible row (cursor on HEAD) lands on it, the highlight moves up, HEAD's row un-highlights; `j`/`↓` returns to HEAD; `PgDn`/`G` leave it and move as usual; `k`/`PgUp`/`g` on it do nothing at the very top, else scroll up with the row leaving alongside HEAD;
+  a click on its screen row selects it. It clears itself whenever the row is no longer shown (tree clean after `Ctrl+R`, HEAD moved, wheel scrolled HEAD off the top) or the history cursor moved (search hit, click, `G`), and the pane follows to HEAD's commit.
+  On it: `Enter` opens the working-tree diff; `y` copies nothing; `x` is a no-op and a live compare shows the working tree with the base kept; `.` lists `Open details` only; Focus mode never fades it.
 
 **Marker column** (graph screen): 2 cells between the graph column and badges, present only while the repo has any finding
 (stable within a session, never shifts on scroll). `⚠` in `warning`, `ⓘ` in `info`; ASCII `!`/`i`; a marked row's footer hint gains `. explain`.
@@ -243,6 +253,7 @@ merges and radar known for resident rows only; not drawn while Map view is shown
 | Item | Ticket slug(s) |
 |---|---|
 | Commit detail pane | `git-runner` (contained-in), `detail-model-and-jobs` (p1), `detail-pane-frame`, `detail-keys-and-focus` |
+| Working-tree row → `DetailSpec::WorkingTree` (PROMPT §1.3 virtual row, §5 "diff against the working tree") | `working-tree-row-selectable` (reach it), `detail-pane-frame` (`UNCOMMITTED` header) |
 | File tree | `detail-model-and-jobs` (p1, tree assembly), `detail-pane-frame` |
 | Unified diff | `git-runner`, `diff-parser`, `diff-reads` (p1), `diff-widget` |
 | Side-by-side | `diff-parser` (`pairs`, p1), `side-by-side-view` |
@@ -264,7 +275,7 @@ merges and radar known for resident rows only; not drawn while Map view is shown
 | README/CHANGELOG for M2 | `docs-sweep` |
 | Acceptance | `acceptance-details-and-radar` (Fable; planned as two contexts) |
 
-Nothing else in PROMPT §8 M2 or the M1 deferrals is without a slug. **23 tickets.**
+Nothing else in PROMPT §8 M2 or the M1 deferrals is without a slug. **24 tickets** (23 + `working-tree-row-selectable`).
 
 ## Genuinely risky tickets
 
@@ -294,6 +305,10 @@ Nothing else in PROMPT §8 M2 or the M1 deferrals is without a slug. **23 ticket
 `docs-sweep` (S: bare `cargo run --` → `-p graft` in README/TESTING/clone script, KG closures and expiries, five new gap rows, README/CHANGELOG M2 entries) ·
 `acceptance-details-and-radar` (F: `Harness::prelude`, gallery `--group details` with 19 stops, TESTING.md "Details and diffs", `docs/shots/m2-*` at 160×40/100×30/80×24, matrix; **two contexts by design** — (a) harness + group, (b) entries + captures).
 
+**Spec-only pass (2026-09-17, written):** `working-tree-row-selectable` (S: `AppState::on_working_tree` + `uncommitted_row_shown`/`selected_spec`, `update::selection` rules, key/click arms, highlight; Needs `detail-model-and-jobs`; goes before `detail-pane-frame`, `compare-two-commits`, `context-actions-menu`, whose Needs now name it).
+
 **Can't fit under 80k:** only `acceptance-details-and-radar`, and it says so with its seam; the conductor files part (b) when (a) hands off.
 
 **Spec fix (2026-09-17, ADR-0028):** detail-pane resize keys are `<`/`>` (shrink/grow the pane on the focused divider), not `Ctrl+arrows`; the stored size is per orientation (`PaneSize { right_columns, below_rows }`), since a column count from `Right` means nothing as a row count in `Below`. Only `detail-keys-and-focus` changes.
+
+**Spec fix (2026-09-17, working-tree row):** 06 shipped `DetailSpec::WorkingTree` with no way to select the row it belongs to (KNOWN_GAPS m2/06). Options: (a) defer to M3 — leaves a visible dead end in M2 (a row `Enter` ignores) and dead `WorkingTree` code, and M3's `space`/`d` on that row would need the same selection anyway; (b) make the virtual row a `History` row — shifts every row index; (c) a one-bit selection beside `History`'s cursor, M1's placement rule kept. **(c)**, one Sonnet ticket (`working-tree-row-selectable`), ~150 lines in `graft` only. Cost accepted: the row is reachable only while HEAD is the top visible history row (M1's rule), so with a newer branch above HEAD the user scrolls HEAD to the top first — a KNOWN_GAPS row for M3 to decide whether to pin the row above HEAD wherever it sits. Fable build count unchanged (1 + acceptance). Touched specs: `detail-pane-frame` (`UNCOMMITTED` header from `selected_spec()`), `compare-two-commits` (`x` no-op on the row; live compare keeps the base), `context-actions-menu` (`for_working_tree()`, `oid: Option<Oid>`), `acceptance-details-and-radar` (one TESTING.md entry, no gallery stop).

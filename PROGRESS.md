@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M2 · spec-only pass: working-tree row selectable (planner-fable) → then 07
+**Current step:** M2 building · 06b working-tree-row-selectable (sonnet)
 
 ---
 
@@ -337,6 +337,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-17 · m2/05 diff-reads · sonnet · done (8b2498d) · graft-git diff/read.rs, 10 oracle tests vs real git; cause fix: `--raw --numstat -z` emits all raw then all numstat (not interleaved), split rewritten; oracle uses `git show --numstat` (diff-tree skips merges); TooLarge not separately tested (runner pass-through) · harness: 94 calls / ~87k, ignored the explicit hard-stop brief · COMPACTED (once, mid-investigation; nothing remains)
 - 2026-09-17 · m2/06 detail-model-and-jobs · opus · partial (1394cf7) · stopped at 40 calls (harness: 36 calls / ~167k, over the 100k token stop), no compaction · 987 tests pass, clippy red (2 too_many_lines: runner dispatch, update answer) · left: clippy fixes, pool test on fixture, MAP.md graft + graft-ui, peek hint in footer · deviations for reviewer: LOCAL_JOB_BIT on ids (runner issues own ids), existing CancelJob reused, Product::Files carries FileList, FileListView::message added, DiffOptions: Hash, WorkingTree Enter not wired
 - 2026-09-17 · m2/06 continuation 1 · opus · done (be0b7f7) · dispatch split (no allow), pool test on FeatureBranches copy (file count = git, diff Ok, ContainedIn main), peek hint removed, MAP.md graft + graft-ui; 987 pass, gates green · WorkingTree Enter unwired: uncommitted row is synthesized in view, cursor can't land on it; no M2 spec owns it → spec-only pass · 36 calls / ~98k, no compaction
+- 2026-09-17 · M2 spec fix working-tree row · fable · done · in M2: new sonnet spec (`AppState::on_working_tree` flag beside History cursor, `selected_spec()`, `update::selection::{move_from_graph, reconcile, follow_selection}`; k from top reaches it, j returns, click selects, self-clears); placement stays m1/12b, pinning → KG for M3; 07/11/12/23 gained one scope item each; note updated; Fable builds unchanged · filed as 06b (Blocked by 06; 07, 11, 12, 23 now blocked by 06b)
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.

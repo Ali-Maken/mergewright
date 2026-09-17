@@ -1,18 +1,18 @@
 # compare-two-commits: `x` marks a base, the pane follows the cursor as a live compare
 
 Status: ready
-Blocked by: 06, 07
+Blocked by: 06, 06b, 07
 
 Status: draft
 Build with: Sonnet — a state machine over signatures already typed (`DetailSpec::Compare`, `DetailState::open`); testable transition table.
-Needs: `detail-model-and-jobs` (`DetailSpec::Compare`, `DetailState::open`, `Subject::Compare` already rendered by `detail-pane-frame`), `detail-pane-frame` (header renders `Subject::Compare`, files/body reuse unchanged)
+Needs: `detail-model-and-jobs` (`DetailSpec::Compare`, `DetailState::open`, `Subject::Compare` already rendered by `detail-pane-frame`), `detail-pane-frame` (header renders `Subject::Compare`, files/body reuse unchanged), `working-tree-row-selectable` (`AppState::on_working_tree`, `AppState::selected_spec`, `follow_selection`)
 
 ## Read first
 
-- `docs/design-notes/m2-details-and-diffs.md` — New UI "Compare (`x`)" bullet in full
+- `docs/design-notes/m2-details-and-diffs.md` — New UI "Compare (`x`)" bullet in full; "Working tree row selected" bullet (what `x` and a live compare do on that row)
 - `PROMPT.md` §4 Comparing
 - `crates/graft-ui/MAP.md` — `graph_screen` (`GraphView::search`/`GraphView::notice` as the pattern for a new footer line; `GraphEntry` fields)
-- `crates/graft/MAP.md` — `update` section (`AppState`, `History::selected`/`select_at`, mouse/click handling pattern already used for row selection)
+- `crates/graft/MAP.md` — `update` section (`AppState`, `AppState::on_working_tree`, `AppState::selected_spec`, `History::selected`/`select_at`, mouse/click handling pattern already used for row selection), `update::selection` (`follow_selection`)
 
 ## Scope
 
@@ -22,13 +22,13 @@ In:
   - `compare_base == None` → set `Some(CompareBase { oid, row })`, no command (footer/mark now show).
   - `compare_base == Some(b)` and `oid == b.oid` → clear it, no command (row un-marks).
   - `compare_base == Some(b)` and `oid != b.oid` → call `detail.open(DetailSpec::Compare { base: b.oid, head: oid }, next_id)`, **keep** `compare_base` set (the compare stays live as the cursor moves).
-- Selection-move handling in `update/detail.rs` (the "selection moves while shown" arm `detail-model-and-jobs` wrote): while `compare_base.is_some()`, moving the cursor calls `toggle_compare`'s third branch (open `Compare` against the new row) instead of `open(Commit(new_id))`. This is one conditional added to that existing arm — cite its exact location as the seam if it has grown to depend on more than `compare_base`.
-- `crates/graft/src/update/keys.rs`: `x` on a graph row → `toggle_compare`. `Shift+click`/`Ctrl+click` on a second row → same as `x` on that row (both branches share `toggle_compare`, no separate click-only path). `Esc` while `compare_base.is_some()` clears it before anything else `Esc` already does (closing the pane, ADR-0023) — cite the exact `Esc` arm.
+- Selection-move handling in `update/detail.rs` / `update/selection.rs` (the follow path `detail-model-and-jobs` wrote and `working-tree-row-selectable` routes through `follow_selection`): while `compare_base.is_some()` and `selected_spec()` is `Some(Commit(id))`, moving the cursor calls `toggle_compare`'s third branch (open `Compare` against the new row) instead of `open(Commit(id))`. On the working-tree row (`selected_spec()` is `WorkingTree`) the pane follows `WorkingTree` as usual and the base stays set — no compare against the working tree in M2. This is one conditional added to that existing path — cite its exact location as the seam if it has grown to depend on more than `compare_base`.
+- `crates/graft/src/update/keys.rs`: `x` on a graph row → `toggle_compare`; `x` on the working-tree row → no-op (no command, `compare_base` unchanged). `Shift+click`/`Ctrl+click` on a second row → same as `x` on that row (both branches share `toggle_compare`, no separate click-only path). `Esc` while `compare_base.is_some()` clears it before anything else `Esc` already does (closing the pane, ADR-0023) — cite the exact `Esc` arm.
 - `view::rows` (or wherever `GraphEntry` is assembled): `compare_marked` true for the row at `compare_base.row`; `compare_footer` worded exactly as the New UI bullet: `compare base a1b2c3d — move, x again clears`.
-- Tests: `toggle_compare`'s three branches; selection-move override while a base is set; `Esc` clearing it; footer wording; `compare_marked` on exactly one row. MAP.md lines (`graft-ui`, `graft`).
+- Tests: `toggle_compare`'s three branches; selection-move override while a base is set; the working-tree row leaving the base set and following `WorkingTree`; `x` on the working-tree row a no-op; `Esc` clearing it; footer wording; `compare_marked` on exactly one row. MAP.md lines (`graft-ui`, `graft`).
 - Capture: two rows, one marked, footer showing, pane header reading `COMPARE a1b2c3d → 7f6e5d4 · N files +A −B`, to `docs/shots/m2-compare.txt`, ≤ 200 KB.
 
-Out: the working-tree row's own diff-vs-HEAD (already `DetailSpec::WorkingTree`, `detail-model-and-jobs`), the context-menu's "Compare with this" entry (`context-actions-menu`, calls `toggle_compare` too — that ticket's job, not this one's).
+Out: the working-tree row's own diff-vs-HEAD (already `DetailSpec::WorkingTree`, `detail-model-and-jobs`; reached by `working-tree-row-selectable`), comparing a commit against the working tree (not in M2), the context-menu's "Compare with this" entry (`context-actions-menu`, calls `toggle_compare` too — that ticket's job, not this one's).
 
 ## Signatures
 
@@ -48,6 +48,7 @@ pub fn toggle_compare(state: &mut AppState, row: usize, oid: Oid, next_id: &mut 
 - [ ] `x` on an unmarked row sets `compare_base`, emits no command; `x` again on the same row clears it, emits no command.
 - [ ] `x` on a different row while a base is set opens `DetailSpec::Compare { base, head }` and keeps `compare_base` set.
 - [ ] Moving the cursor (`j`/`k`) while a base is set opens a fresh `Compare` against the new row each time, not `Commit`.
+- [ ] Moving onto the working-tree row while a base is set opens `WorkingTree`, keeps the base; `x` there changes nothing and emits nothing.
 - [ ] `Shift+click`/`Ctrl+click` on a second row behaves exactly as `x` would on it.
 - [ ] `Esc` clears `compare_base` and closes the pane in one press, matching ADR-0023's existing `Esc` order.
 - [ ] `compare_marked` is true on exactly the base row; `compare_footer` reads `compare base <sha> — move, x again clears`.
@@ -60,4 +61,4 @@ pub fn toggle_compare(state: &mut AppState, row: usize, oid: Oid, next_id: &mut 
 
 ## Size
 
-Two crates: `graft-ui` (~20 lines, two fields + footer draw), `graft` (~90 lines: `toggle_compare`, the selection-move conditional, key wiring). Tests ~120. ≤ 22 tool calls.
+Two crates: `graft-ui` (~20 lines, two fields + footer draw), `graft` (~95 lines: `toggle_compare`, the selection-move conditional, key wiring). Tests ~130. ≤ 22 tool calls.
