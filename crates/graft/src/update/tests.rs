@@ -850,6 +850,7 @@ fn the_same_event_always_gives_the_same_answer() {
         search: None,
         on_working_tree: false,
         compare_base: None,
+        context_menu: None,
     };
 
     let first = update(&state, key(KeyCode::Char('q')));

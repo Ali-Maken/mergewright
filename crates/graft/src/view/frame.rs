@@ -6,7 +6,9 @@ use graft_term::SanitizedText;
 use graft_term::sanitize_line;
 use graft_ui::detail_pane::{DetailLayout, DetailPane};
 use graft_ui::graph_screen::{GraphScreen, GraphView, GraphicsStatus, max_lanes_for};
+use graft_ui::paint::color;
 use graft_ui::status_screen::StatusScreen;
+use graft_ui::theme::{Theme, Token};
 use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::Style;
@@ -85,13 +87,16 @@ pub fn view_with_graphics(
             screen.pixel = pixels;
             screen.graphics = pixels.then(|| graphics.clone());
 
-            if !state.detail.shown {
+            let graph = if state.detail.shown {
+                render_graph_with_detail(session, state, frame, &screen, area, pixels)
+            } else {
                 let widget = GraphScreen::new(&screen, &session.theme);
                 let graph = pixels.then(|| widget.graph_area(area));
                 frame.render_widget(widget, area);
-                return graph;
-            }
-            render_graph_with_detail(session, state, frame, &screen, area, pixels)
+                graph
+            };
+            draw_context_menu(state, frame, area, &session.theme);
+            graph
         }
         Screen::Status => {
             let screen = status_view(session, state);
@@ -177,6 +182,35 @@ fn draw_tab_strip(
         theme.token(graft_ui::theme::Token::TextMuted),
     ));
     frame.buffer_mut().set_string(area.x, area.y, text, style);
+}
+
+/// Draws the `.`/right-click popup on top of the graph, when one is open
+/// (`context-actions-menu`, m2-details-and-diffs/12). The widget itself only
+/// paints labels and the reversed cursor row — no theme in its signature —
+/// so the `SurfaceRaised` background is this caller's job, painted on the
+/// buffer before the widget renders over it.
+fn draw_context_menu(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) {
+    let Some((row, menu)) = state.context_menu.as_ref() else {
+        return;
+    };
+    let Some((x, y, width, height)) = crate::update::context_menu_area(state, *row, menu) else {
+        return;
+    };
+    let rect = Rect {
+        x,
+        y,
+        width,
+        height,
+    }
+    .intersection(area);
+    if rect.is_empty() {
+        return;
+    }
+    frame.buffer_mut().set_style(
+        rect,
+        Style::new().bg(color(theme.token(Token::SurfaceRaised))),
+    );
+    frame.render_widget(menu, rect);
 }
 
 /// The footer's notice: `y`'s copy line until the next key, else `F3`'s

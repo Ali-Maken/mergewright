@@ -6,6 +6,7 @@
 //! Depends on `graph`, `term` and `core`.
 #![forbid(unsafe_code)]
 
+pub mod context_menu;
 pub mod detail;
 pub mod detail_pane;
 pub mod diff_words;

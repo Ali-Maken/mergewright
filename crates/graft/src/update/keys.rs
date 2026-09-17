@@ -25,6 +25,11 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     if matches!(next.commit_graph, CommitGraphOffer::Written { .. }) {
         next.commit_graph = CommitGraphOffer::NotNeeded;
     }
+    // A menu open (`.`/right-click, m2-details-and-diffs/12) is modal: its
+    // own keys win over the detail pane's and the graph's alike.
+    if super::context_menu::context_menu_key(next, commands, key) {
+        return;
+    }
     if super::detail::detail_key(next, commands, key) {
         return;
     }
@@ -40,22 +45,7 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     if is_quit(key) {
         next.quit = Some(Quit::Requested);
     } else if is_refresh(key) {
-        let AppState {
-            detail, local_jobs, ..
-        } = &mut *next;
-        commands.extend(detail.refresh(&mut || local_jobs.next_id()));
-        // The walk on screen would otherwise sit waiting for row
-        // requests that now go to its replacement.
-        if let Some(id) = next.awaiting.take() {
-            commands.push(Command::CancelJob(id));
-        }
-        if let Some(id) = next.promoting.take() {
-            commands.push(Command::CancelJob(id));
-        }
-        commands.push(Command::OpenRepository);
-        commands.push(Command::ReadHistory(Order::Topological));
-        commands.push(Command::ReadRefs);
-        commands.push(Command::ReadWorkingTree);
+        refresh_key(next, commands);
     } else if is_screen_toggle(key) {
         next.screen = next.screen.toggled();
     } else if is_lane_toggle(key) {
@@ -68,6 +58,8 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         copy_selected_sha(next, commands);
     } else if is_compare_key(key) {
         toggle_compare_selected(next, commands);
+    } else if is_context_menu_key(key) {
+        super::context_menu::open_selected(next);
     } else if let Some(change) = view_change(key) {
         let height = next.graph_rows();
         let stash = next.refs.as_deref().and_then(crate::refs::RefBadges::stash);
@@ -83,6 +75,26 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     } else if key.code == KeyCode::Escape {
         escape_key(next, commands);
     }
+}
+
+/// `r`: refresh the repository from disk, cancelling whatever walk was
+/// already in flight — it would otherwise sit waiting for row requests that
+/// now go to its replacement.
+fn refresh_key(next: &mut AppState, commands: &mut Vec<Command>) {
+    let AppState {
+        detail, local_jobs, ..
+    } = &mut *next;
+    commands.extend(detail.refresh(&mut || local_jobs.next_id()));
+    if let Some(id) = next.awaiting.take() {
+        commands.push(Command::CancelJob(id));
+    }
+    if let Some(id) = next.promoting.take() {
+        commands.push(Command::CancelJob(id));
+    }
+    commands.push(Command::OpenRepository);
+    commands.push(Command::ReadHistory(Order::Topological));
+    commands.push(Command::ReadRefs);
+    commands.push(Command::ReadWorkingTree);
 }
 
 /// A graph motion key: the working-tree row's flag (`update::selection`)
@@ -260,6 +272,12 @@ fn copy_selected_sha(next: &mut AppState, commands: &mut Vec<Command>) {
 /// against it (`compare-two-commits`, m2-details-and-diffs/11).
 fn is_compare_key(key: KeyPress) -> bool {
     key.code == KeyCode::Char('x') && !key.modifiers.control && !key.modifiers.alt
+}
+
+/// `.`: open the context menu for the selected row (`context-actions-menu`,
+/// m2-details-and-diffs/12).
+fn is_context_menu_key(key: KeyPress) -> bool {
+    key.code == KeyCode::Char('.') && !key.modifiers.control && !key.modifiers.alt
 }
 
 /// `x` on the selected row: `super::detail::toggle_compare`'s three

@@ -18,6 +18,7 @@
 //! own file.
 
 mod commit_graph;
+mod context_menu;
 pub mod detail;
 mod events;
 mod history;
@@ -297,6 +298,18 @@ const WHEEL_LINES: isize = 3;
 
 /// The half of [`core_event`] that answers the mouse (DESIGN.md §2.15).
 fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mouse: MouseInput) {
+    // A menu open (`.`/right-click, m2-details-and-diffs/12) is modal: any
+    // button down either dispatches (inside it) or closes it (outside), and
+    // nothing else this click would have done happens in the same press.
+    if let Some((row, menu)) = next.context_menu.clone() {
+        if matches!(
+            mouse.kind,
+            MouseKind::Down(MouseButton::Left | MouseButton::Right)
+        ) {
+            context_menu_click(next, commands, row, &menu, mouse.column, mouse.row);
+        }
+        return;
+    }
     match mouse.kind {
         MouseKind::ScrollUp => wheel(next, commands, mouse.column, mouse.row, -WHEEL_LINES),
         MouseKind::ScrollDown => wheel(next, commands, mouse.column, mouse.row, WHEEL_LINES),
@@ -324,6 +337,15 @@ fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mouse: MouseInp
                 // by the virtual row), so this is the one case its offset
                 // math does not already cover.
                 next.on_working_tree = true;
+            }
+        }
+        MouseKind::Down(MouseButton::Right) => {
+            // Reuses the graph's existing click-to-row mapping, not a new
+            // one (`context-actions-menu`, m2-details-and-diffs/12).
+            if let Some(row) = graph_row_at(next, mouse.row) {
+                context_menu::open_for_history_row(next, row);
+            } else if next.uncommitted_row_shown() && mouse.row == rows_above_graph(next) {
+                context_menu::open_for_working_tree(next);
             }
         }
         MouseKind::Drag(MouseButton::Left) if next.detail.dragging => {
@@ -617,6 +639,101 @@ fn graph_row_at(state: &AppState, screen_row: u16) -> Option<usize> {
     };
     let absolute = history.top + offset;
     (absolute < history.rows).then_some(absolute)
+}
+
+/// The graph's own rectangle, whatever the detail pane is doing: mirrors
+/// `detail_hit`'s split, but the graph side rather than the pane
+/// (`context-actions-menu`, m2-details-and-diffs/12).
+fn context_menu_graph_bounds(state: &AppState) -> Option<Bounds> {
+    let size = (state.size.columns, state.size.rows);
+    if state.detail.shown {
+        let layout = detail::effective_layout(state.detail.focus, &state.detail.pane_size, size);
+        detail_split(layout, size).0
+    } else {
+        Some(Bounds {
+            x: 0,
+            y: 0,
+            width: size.0,
+            height: size.1,
+        })
+    }
+}
+
+/// Where a `ContextMenu` opened on `row` draws: anchored bottom-left of the
+/// row, or the graph's own bottom-left when there is no room below (design
+/// note, "Context actions"). `view::frame` renders from this exact rectangle
+/// too, so a click and a pixel always agree.
+pub(crate) fn context_menu_area(
+    state: &AppState,
+    row: usize,
+    menu: &graft_ui::context_menu::ContextMenu,
+) -> Option<(u16, u16, u16, u16)> {
+    context_menu_bounds(state, row, menu)
+        .map(|bounds| (bounds.x, bounds.y, bounds.width, bounds.height))
+}
+
+/// [`context_menu_area`]'s own `Bounds` shape, kept private so callers stay
+/// on the plain tuple.
+fn context_menu_bounds(
+    state: &AppState,
+    row: usize,
+    menu: &graft_ui::context_menu::ContextMenu,
+) -> Option<Bounds> {
+    let graph = context_menu_graph_bounds(state)?;
+    let width = menu.width().min(graph.width.max(1));
+    let height = u16::try_from(menu.items.len())
+        .unwrap_or(u16::MAX)
+        .min(graph.height.max(1));
+    let anchor = if row == context_menu::WORKING_TREE_ROW {
+        rows_above_graph(state)
+    } else {
+        let history = state.history.as_ref()?;
+        if row < history.top {
+            return None;
+        }
+        let mut offset = row - history.top;
+        if crate::view::uncommitted_shown(state) {
+            offset += 1;
+        }
+        rows_above_graph(state).saturating_add(u16::try_from(offset).unwrap_or(u16::MAX))
+    };
+    let below = anchor.saturating_add(1);
+    let y = if below.saturating_add(height) <= graph.y + graph.height {
+        below
+    } else {
+        (graph.y + graph.height).saturating_sub(height)
+    };
+    Some(Bounds {
+        x: graph.x,
+        y,
+        width,
+        height,
+    })
+}
+
+/// A button down while a menu is open: dispatch the item under it, or close
+/// it without acting when the click landed outside — either way the menu is
+/// gone after this press.
+fn context_menu_click(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    row: usize,
+    menu: &graft_ui::context_menu::ContextMenu,
+    column: u16,
+    screen_row: u16,
+) {
+    next.context_menu = None;
+    let Some(area) = context_menu_bounds(next, row, menu) else {
+        return;
+    };
+    if !area.contains(column, screen_row) {
+        return;
+    }
+    let index = usize::from(screen_row - area.y);
+    let Some(item) = menu.items.get(index) else {
+        return;
+    };
+    commands.extend(context_menu::dispatch(next, row, item.action));
 }
 
 /// Ask the walk for the rows the viewport now holds, if it needs any.

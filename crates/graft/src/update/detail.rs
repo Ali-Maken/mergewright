@@ -261,6 +261,13 @@ pub struct DetailState {
     /// leave this stuck `true`). Never persisted; a fresh run always starts
     /// with no drag in flight.
     pub dragging: bool,
+    /// `Explain` chosen from the context menu on a marked row
+    /// (`context-actions-menu`, m2-details-and-diffs/12): the row's `Oid`,
+    /// until `explain-panel` reads it, builds `DetailView.explain` from it,
+    /// and clears it. Not otherwise wired here -- no row is ever marked yet
+    /// (`radar-context-and-markers` sets `GraphEntry::marker`), so nothing in
+    /// this crate reads it back yet either.
+    pub explain_requested: Option<Oid>,
 }
 
 impl Default for DetailState {
@@ -281,6 +288,7 @@ impl Default for DetailState {
             body_top: 0,
             pane_size: PaneSize::default(),
             dragging: false,
+            explain_requested: None,
         }
     }
 }

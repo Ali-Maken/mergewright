@@ -118,6 +118,7 @@ One line per public item. Update when a public item changes.
 - `AppState::local_jobs` (field) — `LocalJobs`, ids for the jobs `update` names itself (the detail pane's reads).
 - `AppState::on_working_tree` (field) — the uncommitted-changes row's one-bit selection, beside `History`'s cursor rather than a position of it (m2-details-and-diffs/06b); rules in `update::selection`.
 - `AppState::compare_base` (field) — `Option<update::detail::CompareBase>`, the pinned base of a live compare (`x`, m2-details-and-diffs/11); set/cleared by `update::detail::toggle_compare`, followed by `update::selection::follow_selection`.
+- `AppState::context_menu` (field) — `Option<(usize, graft_ui::context_menu::ContextMenu)>`: the `.`/right-click popup, if one is open; row is `update::context_menu::WORKING_TREE_ROW` for the uncommitted-changes row (`context-actions-menu`, m2-details-and-diffs/12).
 - `AppState::uncommitted_row_shown` (fn) — does the working-tree row draw this frame: a dirty tree and `HEAD` topmost (m1-the-graph/12b); `view::entries::uncommitted_shown` and `view::strips` both delegate to it.
 - `AppState::selected_spec` (fn) — the `DetailSpec` the cursor now names: `WorkingTree` on the flag, else the history cursor's commit.
 - `AppState::renderer_override` (field) — the tier-drop key (`F3`) forced this tier for the rest of the run, or `None` for whatever `Session::settle` decided (m1-the-graph/19).
@@ -142,6 +143,12 @@ The uncommitted-changes row's one-bit selection: pure rules for setting, clearin
 - `reconcile` (fn) — called once at the end of every event with the history cursor's value from the start of it; clears the flag when the row stopped showing or the cursor moved under it; returns whether it cleared.
 - `follow_selection` (fn) — a shown, non-`Compare` pane follows the selection onto or off the working-tree row; while `AppState::compare_base` is pinned it instead follows the cursor as a live compare against that base (fresh `head` each move, base kept), a no-op back on the base's own row (m2-details-and-diffs/11).
 
+## update::context_menu
+The `.`/right-click popup: opening it, its own keys, and carrying out whatever it dispatches (`context-actions-menu`, m2-details-and-diffs/12).
+- `open_for_history_row`/`open_for_working_tree`/`open_selected` (fns) — open the menu for a given row, the working-tree row, or whatever the cursor now names. `marked` is hardcoded `false` until `radar-context-and-markers` sets `GraphEntry::marker`.
+- `context_menu_key` (fn) — the menu's own keys while open (`j`/`k` move, `Enter` dispatches and closes, anything else including `Esc` closes without acting); modal, so `key_event` returns as soon as this reports `true`.
+- `apply_context_action` (fn) — `(state, action, row, oid: Option<Oid>, next_id) -> Vec<Command>`; `oid` is `None` only for the working-tree row, where `CopySha`/`CompareWithThis`/`Explain` are unreachable (`debug_assert!`, no command).
+
 ## update::detail
 The detail pane's state and transitions; pure (no I/O, no clock). Drawing is `detail-pane-frame`'s.
 - `LOCAL_JOB_BIT` (const) — top bit of every id `update` issues itself, so it never meets a runner-issued id.
@@ -153,6 +160,7 @@ The detail pane's state and transitions; pure (no I/O, no clock). Drawing is `de
 - `DiffKey` (struct) — spec, entry, options, max_lines: one file's diff; the diff cache's key.
 - `Bounded<K, V>` (struct) — small map that evicts its oldest entry when full; `new`, `get`, `insert`, `clear`.
 - `DetailState` (struct) — spec, shown, focus, files (`Loading` of view + git list), diff, `diff_cache` (8), `contained` (64), options, mode, word_tint, max_lines (5,000), body_top, `pane_size` (`PaneSize`, per-orientation, ADR-0028).
+- `DetailState::explain_requested` (field) — `Option<Oid>`: `Explain` chosen from the context menu on a marked row (`context-actions-menu`, m2-details-and-diffs/12); read and cleared by `explain-panel`. Unreachable in this build (no row can be marked yet).
 - `PaneSize` (struct) — `right_columns`/`below_rows: Option<u16>`; `for_layout(&DetailLayout)` picks the orientation's value, `None` for `Tab`. Persisted via `crate::layout::load_split`/`save_split` (m2-details-and-diffs/10b).
 - `effective_layout` (fn) — the pane's actual `DetailLayout` for a screen size: breakpoint kind first, then that kind's `PaneSize` override folded back in (two-step compute, `view/frame.rs` and `detail_key` both use it).
 - `DetailState::resize_pane` (fn) — `<`/`>` (ADR-0028): steps the focused divider by 4 cells, clamped to the pane's and the graph's minimums; `false` (no change, no command) in `Tab`, hidden, or at a bound.

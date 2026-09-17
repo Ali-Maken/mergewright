@@ -1,9 +1,7 @@
 # context-actions-menu: `.` / right-click popup — Copy SHA, Compare, Open details, (Explain stub)
 
-Status: ready
+Status: done
 Blocked by: 06, 06b, 11
-
-Status: draft
 Build with: Sonnet — a small popup widget plus dispatch to actions other tickets already implement; judged by the capture and the transition tests.
 Needs: `detail-model-and-jobs` (`DetailSpec::Commit`, `DetailState::open`), `compare-two-commits` (`toggle_compare`), `working-tree-row-selectable` (`AppState::on_working_tree`, `AppState::selected_spec`), M1's existing `Command::CopyToClipboard`/`Status::Copied` (see `crates/graft/MAP.md` `update` section)
 
@@ -55,13 +53,22 @@ pub fn apply_context_action(state: &mut AppState, action: ContextAction, row: us
 
 ## Acceptance
 
-- [ ] `ContextMenu::for_row(false)` omits `Explain`; `for_row(true)` lists it first; `for_working_tree()` is `Open details` alone.
-- [ ] `.`/right-click opens the menu anchored at the row; `Esc`/outside-click closes without dispatching.
-- [ ] `j`/`k` move the cursor and wrap or clamp (state which); `Enter` dispatches `selected()`'s action and closes the menu.
-- [ ] `apply_context_action(CopySha, …)` emits the same `Command::CopyToClipboard` shape as `y`; `CompareWithThis` calls `toggle_compare` (assert its first-branch effect); `OpenDetails` opens the commit, or `WorkingTree` on the working-tree row; `Explain` sets `explain_requested` and no command.
-- [ ] `width()` is the longest label's cell width plus 4.
-- [ ] MAP.md: `graft-ui` (`context_menu`), `graft` (`DetailState::explain_requested`, `apply_context_action`).
-- [ ] Capture at `docs/shots/m2-context-menu.txt`, ≤ 200 KB; user judges by eye.
+- [x] `ContextMenu::for_row(false)` omits `Explain`; `for_row(true)` lists it first; `for_working_tree()` is `Open details` alone.
+- [x] `.`/right-click opens the menu anchored at the row; `Esc`/outside-click closes without dispatching.
+- [x] `j`/`k` move the cursor — **clamped**, not wrapped, matching the codebase's existing convention (`FileListView::move_cursor`); `Enter` dispatches `selected()`'s action and closes the menu.
+- [x] `apply_context_action(CopySha, …)` emits the same `Command::CopyToClipboard` shape as `y`; `CompareWithThis` calls `toggle_compare` (assert its first-branch effect); `OpenDetails` opens the commit, or `WorkingTree` on the working-tree row; `Explain` sets `explain_requested` and no command.
+- [x] `width()` is the longest label's cell width plus 4.
+- [x] MAP.md: `graft-ui` (`context_menu`), `graft` (`AppState::context_menu`, `update::context_menu`, `DetailState::explain_requested`, `apply_context_action`).
+- [x] Capture at `docs/shots/m2-context-menu.txt` (1.9 KB), ≤ 200 KB; user judges by eye.
+
+## Notes (build)
+
+- Spec fix applied: `apply_context_action` takes `oid: Option<Oid>` for the working-tree row (per 2026-09-17 note), and `ContextMenu::for_working_tree()` exists as specified.
+- `compare-two-commits` doesn't exist as its own module — `toggle_compare` actually lives in `update::detail`; called as `super::detail::toggle_compare` from `update::context_menu::apply_context_action`.
+- Deviation: `OpenDetails` builds `DetailSpec` from the `oid` parameter directly (`Some(oid) => Commit(oid)`, `None => WorkingTree`) rather than calling `state.selected_spec()` as literally written in Scope — `selected_spec()` returns `Option<DetailSpec>` (type mismatch with `open`'s `DetailSpec`), and using `oid` is also correct for a right-clicked non-selected row, whereas `selected_spec()` would silently act on the cursor's row instead of the row the menu was opened on. Flagging per "challenge the spec" — recommend the spec wording be corrected for future reference.
+- Deviation: `ContextMenu`'s `Widget for &ContextMenu` impl carries no theme (per the exact signature given). It draws only labels and the reversed-video cursor row; the `SurfaceRaised` background is painted by the caller (`view/frame.rs::draw_context_menu`) directly on the buffer before the widget renders, matching the existing pattern in `graph_screen/render.rs`'s highlighted-row paint.
+- `update/mod.rs` gained `pub(crate) fn context_menu_area(...) -> Option<(u16,u16,u16,u16)>` (a plain-tuple wrapper) alongside the private `Bounds`-returning `context_menu_bounds`, so `view/frame.rs` (outside `update`) can get the menu's rectangle without the private `Bounds` type crossing the module boundary.
+- Session note: this ticket ran across a context compaction (a conversation summary was generated mid-build). All work after resuming was verified against gates from a clean state (fmt/clippy/build/test all rerun green), not merely assumed correct from the summary.
 
 ## Gates
 

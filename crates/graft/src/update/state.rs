@@ -8,6 +8,7 @@ use graft_core::capabilities::RenderingTier;
 use graft_core::event::KeyCode;
 use graft_core::job::JobId;
 
+use graft_ui::context_menu::ContextMenu;
 use graft_ui::graph_screen::CommitGraphLine;
 
 use crate::history::History;
@@ -118,6 +119,11 @@ pub struct AppState {
     /// and read by `super::selection::follow_selection` to keep the compare
     /// live as the cursor moves.
     pub compare_base: Option<super::detail::CompareBase>,
+    /// The `.`/right-click popup (`context-actions-menu`,
+    /// m2-details-and-diffs/12): the row it opened on (`update::context_menu::WORKING_TREE_ROW`
+    /// for the uncommitted-changes row) and the menu itself. `None` while
+    /// closed.
+    pub context_menu: Option<(usize, ContextMenu)>,
 }
 
 /// The screens Graft can show.
