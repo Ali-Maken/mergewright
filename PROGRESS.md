@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M2 building · 01 git-runner (opus)
+**Current step:** M2 building · 02 diff-parser (sonnet)
 
 ---
 
@@ -330,6 +330,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-17 · user · resize keys: `<`/`>` resize the focused divider (horizontal side-by-side, vertical stacked); not `+`/`-` (`+` = unfold lanes); Alt+arrows fallback only if awkward → spec-only pass · KG :178 won't-fix · KG :180 → M7 ticket incl. cause of 17–18 ms key (M7 design pass note added) · M2 go, straight through
 - 2026-09-17 · M2 spec fix resize keys · fable · done · `<`/`>` on the layout's one divider (no-op in Tab/hidden/Map); no collision (DESIGN keymap, TESTING, notes, specs, source); note + spec 10 + ADR-0028; also persisted size per orientation (`PaneSize { right_columns, below_rows }`, `load_split -> Option<PaneSize>`), ticket 10 only
 - 2026-09-17 · conductor · M2 start 183c6ca
+- 2026-09-17 · m2/01 git-runner · opus · done (0da1e4e) · 891 tests (+13), real git + fixtures; spec diffs: Linear not ManyLanes, ls-tree for non-UTF-8, UnbornBranch (missing id → Exited 129, KG); version.rs pre-existing Command::new("git") → KG; symrefs excluded from contained_in · ~25 calls / ~95k, no compaction
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.
