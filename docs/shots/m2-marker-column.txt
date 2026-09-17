@@ -1,0 +1,26 @@
+# m2-marker-column.txt: TestBackend capture (not a pty), 100x16. Fixture:
+# capture_m2_marker_column in crates/graft/src/view/tests.rs (#[ignore]d,
+# run manually to regenerate). 3 synthetic commits: a merge (0909090) with
+# two parents — one on the default chain (real_tip, 0202020) and one off it
+# (foxtrot_side, 0101010) — which is exactly a foxtrot merge. Cursor opens
+# on the merge row.
+#
+# Judge by eye:
+# - Marker column: the merge row's graph glyph carries a ⚠ next to the
+#   merge glyph (◉─╮ ⚠), the two non-merge rows carry none.
+# - Detail pane header (COMMIT / summary line): both radar lines for the
+#   merge show, not just the first — "foxtrot merge" (the Finding) and
+#   "evil merge: unchecked" (the EvilUnchecked line), joined with " · " in
+#   the one reserved radar-line slot (m2-details-and-diffs/13c).
+
+ graft /code/api  3 commits                                                                         
+◉─╮ ⚠ Merge branch 'main' into feature                                               RM 57y  0909090
+│ ◇   Ship the release notes                                                         RM 57y  0202020
+◇     Start the feature branch                                                       RM 57y  0101010
+                                                                                                    
+                                                                                                    
+                                                                                                    
+ q quit  F2 status  F3 renderer  <> resize  / search  j/k move  Space fold  1 first-parent  F focus 
+COMMIT 0909090 · Rui Mehdi <test@example.invalid> · 1970-01-01 00:00 +0000 · 57y · parents 0101010…
+Merge branch 'main' into feature · foxtrot merge · evil merge: unchecked                            
+                              select a commit                                                       

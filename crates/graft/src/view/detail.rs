@@ -1,10 +1,11 @@
 //! Assembling the detail pane's view model from `AppState` (ARCHITECTURE.md).
 //!
 //! Pure, like the rest of `view`: no I/O, just reshaping what `update` already
-//! keeps into what `graft_ui::detail_pane` draws. `header.radar` stays empty
-//! here — `radar-context-and-markers` wires it — and `explain` stays `None`
-//! for the same reason (no ticket has put an explain panel in `AppState`
-//! yet).
+//! keeps into what `graft_ui::detail_pane` draws. `header.radar` comes from
+//! `view::radar::radar_lines_for` (`m2-details-and-diffs/13c`) for a selected
+//! commit; the other subjects (`Compare`, `WorkingTree`, none selected) carry
+//! no radar line. `explain` stays `None` — no ticket has put an explain panel
+//! in `AppState` yet.
 //!
 //! `Commit` carries an author and a committer identity and its parents in
 //! full, so the header's author/committer/parents lines are never a gap.
@@ -110,6 +111,8 @@ fn commit_header(state: &AppState, oid: Oid) -> DetailHeader {
         .get(&oid)
         .cloned()
         .unwrap_or_default();
+    let subject_text = String::from_utf8_lossy(commit.subject());
+    let radar = super::radar::radar_lines_for(state, oid, &commit.parents, &subject_text);
     DetailHeader {
         subject: Subject::Commit {
             sha: sanitize_line(&sha),
@@ -129,7 +132,7 @@ fn commit_header(state: &AppState, oid: Oid) -> DetailHeader {
         parents,
         against: None,
         contained,
-        radar: Vec::new(),
+        radar,
     }
 }
 

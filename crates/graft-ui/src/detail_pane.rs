@@ -943,9 +943,24 @@ fn radar_text(line: &RadarLine) -> String {
         RadarLine::EvilUnchecked => "evil merge: unchecked".to_string(),
         RadarLine::EvilChecking => "evil merge: checking\u{2026}".to_string(),
         RadarLine::EvilClean => "evil merge: clean".to_string(),
-        RadarLine::EvilNotCheckable(reason) => format!("evil merge: {}", reason.as_str()),
-        RadarLine::ForcePushNotCheckable(reason) => format!("force-push: {}", reason.as_str()),
+        RadarLine::EvilNotCheckable(reason) => {
+            format!("evil merge: not checkable \u{2014} {}", reason.as_str())
+        }
+        RadarLine::ForcePushNotCheckable(reason) => {
+            format!("force-pushed: not checkable \u{2014} {}", reason.as_str())
+        }
     }
+}
+
+/// All of the header's radar lines, joined into the one slot the header
+/// layouts reserve for them (`header_lines`) — every [`RadarLine`] the pane
+/// carries shows, not just the first (`m2-details-and-diffs/13c`).
+fn radar_lines_text(lines: &[RadarLine]) -> String {
+    lines
+        .iter()
+        .map(radar_text)
+        .collect::<Vec<_>>()
+        .join(" \u{b7} ")
 }
 
 /// The author line: `name <email> · date · relative`, plus `committed by`
@@ -1022,7 +1037,7 @@ fn header_lines(view: &DetailView) -> [String; 5] {
         ContainedIn::Failed(message) => format!("Contained in: {}", message.as_str()),
     };
 
-    let radar_line = header.radar.first().map(radar_text).unwrap_or_default();
+    let radar_line = radar_lines_text(&header.radar);
 
     [title, author_line, parents_line, contained_line, radar_line]
 }

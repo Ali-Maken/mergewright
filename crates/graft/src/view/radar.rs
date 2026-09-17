@@ -153,10 +153,7 @@ pub fn marker_for(state: &AppState, id: Oid, parents: &[Oid], subject: &str) -> 
 /// the context is ready — the seam `radar-probe-evil-merge` looks at its own
 /// `Loading<EvilVerdict>` first and only falls back to this line when that
 /// is `Idle`.
-// Called by `view::detail_pane` from ticket 13c (`m2-details-and-diffs/13c`,
-// out of 13b's scope): nothing in this ticket draws the detail pane's radar
-// lines yet.
-#[allow(dead_code)]
+// Called by `view::detail::commit_header` (`m2-details-and-diffs/13c`).
 #[must_use]
 pub fn radar_lines_for(
     state: &AppState,

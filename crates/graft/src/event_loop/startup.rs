@@ -18,7 +18,7 @@ use super::redetect::Redetector;
 use super::row_clear::RowClear;
 use super::running::pump_with;
 use super::{ChannelWakes, Exit, Wake, input, opening_repository, signals};
-use crate::config::Diff;
+use crate::config::{Diff, Radar};
 use crate::crash;
 use crate::jobs::{self, JobRunner, Shutdown};
 use crate::repos::RepoStore;
@@ -122,6 +122,7 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
         &settled,
         harness,
         config.config.diff,
+        config.config.radar,
         common_dir.as_deref(),
     )?;
     let mut graphics =
@@ -254,13 +255,17 @@ fn report_stalled_jobs_to(stderr: &mut impl Write, shutdown: Shutdown) -> io::Re
 /// at `DetailState::default()`'s. `common_dir` seeds the detail pane's saved
 /// split (ADR-0028, `crate::layout::load_split`); `None` when the repository
 /// could not be opened for it, in which case the pane starts at its
-/// percentage default like a first run would.
+/// percentage default like a first run would. `[radar]`'s startup values seed
+/// `AppState.radar.policy` the same way `[diff]` seeds the pane's diff
+/// options — `Policy::default()` otherwise (m2-details-and-diffs/13c;
+/// `KNOWN_GAPS` m2-details-and-diffs/13b).
 fn terminal_and_state(
     jobs: &impl jobs::Dispatch,
     repo_path: &std::path::Path,
     settled: &Session,
     harness: crate::update::Harness,
     diff: Diff,
+    radar: Radar,
     common_dir: Option<&std::path::Path>,
 ) -> io::Result<(Terminal<RowClear<CrosstermBackend<io::Stdout>>>, AppState)> {
     let terminal = Terminal::new(RowClear(CrosstermBackend::new(io::stdout())))?;
@@ -272,11 +277,7 @@ fn terminal_and_state(
     let mut state = opening_repository(jobs, repo_path, size);
     state.settled_tier = Some(settled.rendering.tier);
     state.harness = harness;
-    state.detail.options = graft_git::diff::DiffOptions {
-        context: diff.context,
-        ignore_whitespace: diff.ignore_whitespace,
-    };
-    state.detail.word_tint = diff.word_tint;
+    seed_config(&mut state, diff, radar);
     if let Some(common_dir) = common_dir
         && let Some(pane_size) = crate::layout::load_split(common_dir)
     {
@@ -285,11 +286,29 @@ fn terminal_and_state(
     Ok((terminal, state))
 }
 
+/// Seeds `state` with `[diff]`'s and `[radar]`'s startup values — the pane's
+/// live diff options and `AppState.radar.policy` — split out of
+/// `terminal_and_state` so it is testable without a real terminal
+/// (m2-details-and-diffs/13c; `KNOWN_GAPS` m2-details-and-diffs/13b).
+fn seed_config(state: &mut AppState, diff: Diff, radar: Radar) {
+    state.detail.options = graft_git::diff::DiffOptions {
+        context: diff.context,
+        ignore_whitespace: diff.ignore_whitespace,
+    };
+    state.detail.word_tint = diff.word_tint;
+    state.radar.policy = radar.policy();
+}
+
 #[cfg(test)]
 mod tests {
     use std::io;
 
-    use super::{Exit, Shutdown, finish_to, report_stalled_jobs_to};
+    use graft_core::mistake_radar::MistakeRadarKind;
+
+    use super::{
+        AppState, Diff, Exit, Radar, Shutdown, finish_to, report_stalled_jobs_to, seed_config,
+    };
+    use crate::config::RadarSetting;
 
     /// A writer whose every write fails, standing in for a closed stderr.
     struct FailingWriter;
@@ -320,6 +339,37 @@ mod tests {
         let result = report_stalled_jobs_to(&mut FailingWriter, Shutdown::Clean);
 
         assert!(result.is_ok());
+    }
+
+    /// `KNOWN_GAPS` m2-details-and-diffs/13b: `[radar]` config was never
+    /// threaded into `AppState.radar.policy`, so it had no effect. A
+    /// non-default setting must change what the policy reports.
+    #[test]
+    fn a_non_default_radar_setting_reaches_app_state_policy() {
+        let mut default_state = AppState::default();
+        seed_config(&mut default_state, Diff::default(), Radar::default());
+        assert_eq!(
+            default_state.radar.policy,
+            graft_ops::mistake_radar::Policy::default(),
+            "an all-default [radar] section must leave the default policy in effect"
+        );
+
+        let mut state = AppState::default();
+        let radar = Radar {
+            foxtrot: RadarSetting::Off,
+            ..Radar::default()
+        };
+        seed_config(&mut state, Diff::default(), radar);
+
+        assert_eq!(
+            state.radar.policy.severity(MistakeRadarKind::FoxtrotMerge),
+            None,
+            "[radar] foxtrot = off must turn the finding off on AppState.radar.policy"
+        );
+        assert_ne!(
+            state.radar.policy, default_state.radar.policy,
+            "a non-default [radar] setting must change what the policy reports"
+        );
     }
 
     #[test]

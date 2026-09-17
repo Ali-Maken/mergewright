@@ -756,3 +756,74 @@ fn word_tint_syntax_and_palette16_match_diff_bodys_look() {
         }
     }
 }
+
+#[test]
+fn radar_text_covers_every_variant() {
+    use graft_core::mistake_radar::Severity;
+
+    assert_eq!(
+        radar_text(&RadarLine::Finding {
+            severity: Severity::Warning,
+            title: sanitize_line("foxtrot merge"),
+        }),
+        "foxtrot merge"
+    );
+    assert_eq!(
+        radar_text(&RadarLine::EvilUnchecked),
+        "evil merge: unchecked"
+    );
+    assert_eq!(
+        radar_text(&RadarLine::EvilChecking),
+        "evil merge: checking\u{2026}"
+    );
+    assert_eq!(radar_text(&RadarLine::EvilClean), "evil merge: clean");
+    assert_eq!(
+        radar_text(&RadarLine::EvilNotCheckable(sanitize_line("octopus merge"))),
+        "evil merge: not checkable \u{2014} octopus merge"
+    );
+    assert_eq!(
+        radar_text(&RadarLine::ForcePushNotCheckable(sanitize_line(
+            "no remote-tracking reflog"
+        ))),
+        "force-pushed: not checkable \u{2014} no remote-tracking reflog"
+    );
+}
+
+#[test]
+fn radar_lines_text_joins_every_line_not_just_the_first() {
+    use graft_core::mistake_radar::Severity;
+
+    let lines = vec![
+        RadarLine::Finding {
+            severity: Severity::Warning,
+            title: sanitize_line("foxtrot merge"),
+        },
+        RadarLine::EvilUnchecked,
+    ];
+    assert_eq!(
+        radar_lines_text(&lines),
+        "foxtrot merge \u{b7} evil merge: unchecked"
+    );
+    assert_eq!(radar_lines_text(&[]), "");
+}
+
+#[test]
+fn header_shows_every_radar_line_in_the_right_layout() {
+    use graft_core::mistake_radar::Severity;
+
+    let mut view = commit_view();
+    view.header.radar = vec![
+        RadarLine::Finding {
+            severity: Severity::Warning,
+            title: sanitize_line("foxtrot merge"),
+        },
+        RadarLine::EvilUnchecked,
+    ];
+    let layout = DetailLayout::compute(160, 40, DetailFocus::Graph, None);
+    let terminal = draw(&view, layout, 160, 40);
+    let rows = text(&terminal);
+    // The header's radar row (index 4 of the five canonical lines) carries
+    // both lines joined, not just the finding.
+    assert!(rows[4].contains("foxtrot merge"));
+    assert!(rows[4].contains("evil merge: unchecked"));
+}
