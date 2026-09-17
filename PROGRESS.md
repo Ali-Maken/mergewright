@@ -328,6 +328,7 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-17 · user · by-eye checks done: stepping fast, pixel rendering clean, no stutter; shapes readable but not instant — needed the gallery shows: line at some stops (stops not yet named); everything else right · M1 approved
 - 2026-09-17 · user · shows:-line stops: "some of them, well forget it" — not pursued; no gap filed
 - 2026-09-17 · user · resize keys: `<`/`>` resize the focused divider (horizontal side-by-side, vertical stacked); not `+`/`-` (`+` = unfold lanes); Alt+arrows fallback only if awkward → spec-only pass · KG :178 won't-fix · KG :180 → M7 ticket incl. cause of 17–18 ms key (M7 design pass note added) · M2 go, straight through
+- 2026-09-17 · M2 spec fix resize keys · fable · done · `<`/`>` on the layout's one divider (no-op in Tab/hidden/Map); no collision (DESIGN keymap, TESTING, notes, specs, source); note + spec 10 + ADR-0028; also persisted size per orientation (`PaneSize { right_columns, below_rows }`, `load_split -> Option<PaneSize>`), ticket 10 only
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.

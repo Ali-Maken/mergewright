@@ -187,7 +187,7 @@ visible). `Policy` must be `Clone` (a derive, not a shape change).
 | Map view draws text glyphs at every tier in M2; pixel curve deferred | DESIGN §5.1 tiers | a toggle the user reaches rarely; Unicode is the daily view |
 | Map view rows are local branches only; a remote never collapses into its upstream's row; the merge elbow marks merges into the default branch only, at the tip's own bucket | DESIGN §5.1 "Shows" | one walk per local branch, no merge-commit search; remotes and cross-branch merges are M8 polish gap rows |
 | No `[ Fix… ]` in the Explain panel until M5 | DESIGN §1.8 | nothing implies Fix exists |
-| Keymap: `x` mark for compare; `Tab` = Graph→Files→Diff; `Ctrl+←/→` (`Ctrl+↑/↓` medium) resize; `L` load the rest of a truncated diff; `Enter` opens the pane and drops the peek (ADR-0023) | DESIGN §2.2/2.3/2.5 | four new letters |
+| Keymap: `x` mark for compare; `Tab` = Graph→Files→Diff; `<`/`>` shrink/grow the pane on the focused divider (ADR-0028; was `Ctrl+arrows`, which macOS takes); `L` load the rest of a truncated diff; `Enter` opens the pane and drops the peek (ADR-0023) | DESIGN §2.2/2.3/2.5 | four new letters plus one bracket pair; `+`/`-` stay off (`+` unfolds lanes) |
 | `Ctrl+R` after `B` rebinds the commit table and restarts the walk on the graph path, re-anchored on the selection; `Written` footer hints `Ctrl+R to use it`; no automatic restart | KNOWN_GAPS row 54 | the user asks; an unasked restart mid-scroll is worse than a hint |
 | KNOWN_GAPS expiries: snapshot-cost row (52) and older-stash badges (175) → M3 (no staging or stash list exists in M2); `full_topological` residual (227) → not planned | KNOWN_GAPS.md | honest owners |
 
@@ -209,7 +209,7 @@ visible). `Policy` must be `Clone` (a derive, not a shape change).
 - **Keys:** `Enter` on a graph row → focus Files; `Tab`/`Shift+Tab` cycle Graph→Files→Diff; `Esc` → back to Graph (closes Explain first);
   `j/k ↑↓` move (files: loads that file's diff; body: scroll), `PgUp/PgDn/g/G`, wheel in each region; `Enter` on a file → focus Diff;
   `Space` folds a dir; `w` ignore-whitespace, `W` word tint, `v` unified/side-by-side, `[`/`]` context 0–20 (each `w`/`[`/`]` re-reads the file, options are per session and in `[diff]` config);
-  `L` loads the rest past `max_lines` (5,000); `y` copies the SHA anywhere; divider drag, `Ctrl+←/→` (`Ctrl+↑/↓` medium) resize in 4-cell steps, remembered in `<common_dir>/graft/layout`.
+  `L` loads the rest past `max_lines` (5,000); `y` copies the SHA anywhere; divider drag, `<`/`>` shrink/grow the pane in 4-cell steps on the **focused divider** — the layout's one divider: columns in `Right`, rows in `Below`; a no-op in the `Tab` layout, with the pane hidden or the Map shown (ADR-0028) — remembered per orientation in `<common_dir>/graft/layout`; hints list `<> resize` at ≥ 100 columns.
 - **States:** no selection → `select a commit` muted; loading → header from the row at once, files `reading…`; error → `git diff-tree: <first stderr line>` in `warning`, hints stay;
   binary → `binary · 12 KiB → 13 KiB`; truncated → `… 4,120 more lines · L load all`; untracked file under the working-tree spec → `untracked · no diff yet (M3)`.
 - **Diff lines:** gutter `old new` numbers (width from the last line number, min 3), sign cell, text. `added`/`removed` soft bg, changed words a stronger bg (`W`), syntax roles as fg, hunk heading `@@ … @@ fn refresh()` in `text-muted`
@@ -295,3 +295,5 @@ Nothing else in PROMPT §8 M2 or the M1 deferrals is without a slug. **23 ticket
 `acceptance-details-and-radar` (F: `Harness::prelude`, gallery `--group details` with 19 stops, TESTING.md "Details and diffs", `docs/shots/m2-*` at 160×40/100×30/80×24, matrix; **two contexts by design** — (a) harness + group, (b) entries + captures).
 
 **Can't fit under 80k:** only `acceptance-details-and-radar`, and it says so with its seam; the conductor files part (b) when (a) hands off.
+
+**Spec fix (2026-09-17, ADR-0028):** detail-pane resize keys are `<`/`>` (shrink/grow the pane on the focused divider), not `Ctrl+arrows`; the stored size is per orientation (`PaneSize { right_columns, below_rows }`), since a column count from `Right` means nothing as a row count in `Below`. Only `detail-keys-and-focus` changes.
