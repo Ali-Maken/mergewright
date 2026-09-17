@@ -44,6 +44,9 @@ pub enum RunError { GitNotFound, Spawn(io::Error), Stopped, Exited { status: i32
 // graft-git::contained (git-runner)
 pub struct Contained { pub branches: Vec<Vec<u8>>, pub remotes: Vec<Vec<u8>>, pub tags: Vec<Vec<u8>>, pub more: usize }
 pub fn contained_in(repo: &RepoHandle, commit: Oid, stop: &dyn Stop) -> Result<Contained, RunError>;   // for-each-ref --contains
+// graft-git::history (radar-context-and-markers, pass 2) — first-parent chain and a ref's own reflog, both in-memory gix, no spawn
+pub fn first_parent_chain(repo: &RepoHandle, table: &Arc<CommitTable>, tip: Oid, stop: &dyn Stop) -> Result<Vec<CommitHandle>, WalkError>;
+pub fn previous_tips(repo: &RepoHandle, refname: &RefName, cap: usize) -> Result<Vec<Oid>, ReflogError>;   // old values, newest first, deduped, capped; no reflog = Ok(vec![])
 
 // graft-git::diff (diff-parser: types + parsers + pairs; diff-reads: DiffSpec/DiffOptions/list_files/file_diff)
 pub enum DiffSpec { Commit { commit: Oid, against: Option<Oid> }, Range { base: Oid, head: Oid }, WorkingTreeVsHead }
@@ -61,8 +64,6 @@ pub fn list_files(repo: &RepoHandle, spec: &DiffSpec, opts: &DiffOptions, stop: 
 pub fn file_diff(repo: &RepoHandle, spec: &DiffSpec, entry: &FileEntry, opts: &DiffOptions, max_lines: usize, stop: &dyn Stop) -> Result<FileDiff, DiffError>;
 pub struct Pair { pub removed: Range<usize>, pub added: Range<usize> }   // index ranges into hunk.lines; side-by-side and word diff both key on it
 pub fn pairs(hunk: &Hunk) -> Vec<Pair>;
-// graft-git::history (radar-context-and-markers, pass 2)
-pub fn first_parent_chain(repo: &RepoHandle, table: &Arc<CommitTable>, tip: Oid, stop: &dyn Stop) -> Result<Vec<CommitHandle>, WalkError>;
 
 // graft-ui::syntax + diff_words (syntax-highlighting; syntect + similar, on sanitised &str, char-index spans)
 pub enum SyntaxRole { Plain, Comment, String, Keyword, Type, Function, Number, Punctuation, Attribute }
@@ -77,7 +78,7 @@ pub fn word_spans(removed: &[&str], added: &[&str]) -> WordSpans;
 pub struct DetailView { pub header: DetailHeader, pub files: Option<Arc<FileListView>>, pub body: BodyView, pub body_top: usize, pub focus: DetailFocus, pub mode: DiffMode, pub options: DiffOptionsView, pub explain: Option<ExplainView> }
 pub enum Subject { None, Commit { sha: SanitizedText }, Compare { base: SanitizedText, head: SanitizedText }, WorkingTree { staged: u32, unstaged: u32, untracked: u32 } }
 pub enum ContainedIn { NotAsked, Checking, Known { branches: Vec<SanitizedText>, tags: Vec<SanitizedText>, more: usize }, Failed(SanitizedText) }
-pub enum RadarLine { Finding { severity: Severity, title: SanitizedText }, EvilUnchecked, EvilChecking, EvilClean, ForcePushNotCheckable(SanitizedText) }
+pub enum RadarLine { Finding { severity: Severity, title: SanitizedText }, EvilUnchecked, EvilChecking, EvilClean, EvilNotCheckable(SanitizedText), ForcePushNotCheckable(SanitizedText) }
 pub enum FileRowKind { Message { lines: usize }, Dir { collapsed: bool }, File { status: FileStatusView, added: Option<u32>, removed: Option<u32> } }
 pub enum BodyView { Empty(SanitizedText), Message { lines: Vec<SanitizedText> }, Loading(SanitizedText), Failed(SanitizedText), Diff(Arc<DiffView>) }
 pub struct DiffView { pub path: SanitizedText, pub old_path: Option<SanitizedText>, pub status: FileStatusView, pub hunks: Vec<HunkView>, pub binary: Option<SanitizedText>, pub truncated: Option<(usize, usize)>, pub untracked: bool }
@@ -125,6 +126,11 @@ thread and hands back one `Arc<DiffView>`; `view::rows` calls `classify_commit` 
 visible row against `AppState::radar` (default-chain handles + ref facts, one job) and
 fills `GraphEntry::marker`; `update` asks `explain` on `.`→Explain; `view::detail`
 builds `DetailView`; trailers (`Co-authored-by`) are parsed in the app assembler.
+
+**Signature fix (pass 2b):** `RadarLine` gains `EvilNotCheckable(SanitizedText)`.
+The original enum had no way to show an evil-merge probe's `NotCheckable` verdict
+(octopus merge, git too old, remerge failed) — only `ForcePushNotCheckable`
+existed, which is worded for the wrong probe. `radar-probe-evil-merge` needs it.
 
 ## Hard-to-reverse choices
 
@@ -246,17 +252,15 @@ only where nothing else is; merges and radar known for resident rows only; hides
 
 **Pass 1 (written):** `git-runner` (O) · `diff-parser` (S) · `diff-reads` (S) · `syntax-highlighting` (S) · `mistake-radar-detection` (F sig) · `detail-model-and-jobs` (O).
 
-**Pass 2 (remaining, one line each):**
-`detail-pane-frame` (S: `DetailLayout::compute`, header/files/body widgets at 3 breakpoints, states, `view::detail_view`, snapshots + capture) ·
-`diff-widget` (S: unified lines, gutter, tints, pinned heading, word tint, syntax fg, `␍`, truncation line, capture) ·
-`side-by-side-view` (S: `v`, two halves over `LineView::pair`) ·
-`detail-keys-and-focus` (S: `Tab`/`Enter`/`Esc`/`j`/`k`/wheel in each region, `w W [ ] L`, resize + per-repo split file, `[diff]` config) ·
-`compare-two-commits` (S: `x`, Shift/Ctrl+click, `DiffSpec::Range`, base-row rule, header/footer) ·
-`radar-context-and-markers` (S: `first_parent_chain` in git, `RadarContext` job incl. default-branch reflog tips, per-row `classify_commit` in view, marker column, `[radar]` config, pane radar line incl. "not checkable" wording) ·
-`radar-probe-evil-merge` (O: `git show --remerge-diff --format=` for the selected merge, cache, unchecked/checking/clean) ·
-`radar-probe-force-push` (O: remote-tracking reflog via gix, `merge-base --is-ancestor`, `NotCheckable` on empty reflog) ·
-`radar-probe-duplicates` (S: `log --all -n 500 -p` → `patch-id --stable` via stdin, groups, "checked newest 500") ·
-`context-actions-menu` (S: `.`/right-click popup, Copy SHA) · `explain-panel` (S: `ExplainView` from `explain`, sketch, graph highlight) ·
+**Pass 2a (written):** `detail-pane-frame` (S) · `diff-widget` (S) · `side-by-side-view` (S) · `detail-keys-and-focus` (S) · `compare-two-commits` (S) · `context-actions-menu` (S).
+
+**Pass 2b (written):** `radar-context-and-markers` (S: `first_parent_chain`/`previous_tips` in git, `RadarContext` job, `view::radar` facts + `findings_for`/`marker_for`/`radar_lines_for`, marker column, `[radar]` config, pane radar line rendering) ·
+`radar-probe-evil-merge` (O: `probe_evil_merge` — `git show --remerge-diff --format= --name-only`, `Bounded` cache, unchecked/checking/clean/not-checkable) ·
+`radar-probe-force-push` (O: remote-tracking reflog via `previous_tips`, `merge-base --is-ancestor` via `git-runner`, `NotCheckable` on an empty reflog) ·
+`radar-probe-duplicates` (S: `log --all -n 500 -p` piped as stdin into `patch-id --stable` via `GitInvocation::stdin`, groups, "checked newest 500") ·
+`explain-panel` (S: `ExplainView` from `explain`, the evidence sketch, `DetailState::explain_requested` consumed, graph highlight/fade, `Esc` priority).
+
+**Pass 2c (remaining, one line each):**
 `map-view-data` (S: per-branch bucket walk job, cancelable) · `map-view-screen` (S: widget, keys, snapshot, capture) · `overview-strip` (S: marks assembly + widget + `O`) ·
 `refresh-reopens-walk` (S: KG 54) · `docs-sweep` (S: README/CHANGELOG, bare `cargo run --`, KNOWN_GAPS expiries, image-diff gap row) ·
 `acceptance-details-and-radar` (F: gallery M2 stops, TESTING.md "Details and diffs", `docs/shots/m2-*`).

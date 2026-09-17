@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M1 The graph — checkpoint: M2 design pass 2b (planner-fable), then file specs, report · 116 tickets: 106 done, 1 partial, 7 split, 2 wontfix
+**Current step:** M1 The graph — checkpoint: PAUSED (user changing login); next M2 design pass 2c (planner-fable: map-view-data, map-view-screen, overview-strip, refresh-reopens-walk, docs-sweep, acceptance-details-and-radar), then file specs, report · 116 tickets: 106 done, 1 partial, 7 split, 2 wontfix
 
 ---
 
@@ -311,6 +311,8 @@ Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too 
 - 2026-09-15 · M1 checkpoint cleanup · sonnet · done (99ae658) · docs/perf/{27b,55,58b}.txt (6.2/3.6/5.7 KB), 6 ticket citations repointed, target/{27b,55,58b} deleted; 09-graph-screen.txt 17.6 MB → 10 KB; user-37 png 1.1 MB left (no pngquant/oxipng; sips grew it) · ran 55 tool calls / ~150k, over the new 40-call stop
 - 2026-09-17 · M2 design pass 1 · fable · done · note + 6 interface-first specs (git-runner opus, diff-parser sonnet, diff-reads sonnet, syntax-highlighting sonnet, mistake-radar-detection fable signature, detail-model-and-jobs opus); 23 tickets total, 17 left for pass 2; Proposed changes vs DESIGN listed in note; uncovered: pixel-tier image diffs → M8; can't-fit risk detail-model-and-jobs · ran 97 tool calls / ~110k, over the 40-call stop
 - 2026-09-17 · M2 design pass 2a · fable · done · 6 specs, all sonnet: detail-pane-frame, diff-widget, side-by-side-view, detail-keys-and-focus (can't-fit risk, seam named: keys/focus/config vs resize+persistence), compare-two-commits, context-actions-menu (Explain sets DetailState::explain_requested for explain-panel); no note edits · 11 left for pass 2b
+- 2026-09-17 · M2 design pass 2b · fable · done · 5 specs: radar-context-and-markers sonnet, radar-probe-evil-merge opus, radar-probe-force-push opus, radar-probe-duplicates sonnet, explain-panel sonnet; partial seams named in 4; note fix: added RadarLine::EvilNotCheckable, Tickets section restructured · 6 left for pass 2c
+- 2026-09-17 · user · pause after 2b (changing login); resume with continue → pass 2c
 
 ## Open questions for the M1 checkpoint
 - **For the M1 review brief (conductor, 2026-09-14, user asked "no memory leaks?"):** memory work so far measured single passes only. Reviewer runs a repeat-cycle leak check: 1M cg and 1M no-cg fixtures, ≥50 cycles of `G`/`g` + `Ctrl+R` + a far `Find`, footprint sampled per cycle; flat after warm-up = no leak, any per-cycle rise is a Major with its holder named. Also: grep for `forbid(unsafe_code)` coverage and `Arc` cycles/caches that never shrink.
