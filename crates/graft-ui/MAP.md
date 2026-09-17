@@ -50,7 +50,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-
 - `detail_areas` (fn) — splits a pane rect into `DetailAreas`, capping the files region to what `files_count` needs.
 - `diff_body(hunks, top, truncated, area, buf, theme, focused)` (fn) — full diff body: right-aligned old/new gutter (width = widest number, min 3), sign cell, soft `Surface` bg on added/removed rows, stronger `Added`/`Removed` bg on word-tinted ranges (fg forced to `Bg` for contrast), syntax-role fg elsewhere, hunk heading pinned to the top row while scrolling within its hunk, trailing `␍` glyph, and a muted "… N more lines · L load all" footer row when `truncated: Some((shown, total))`. At `Palette16`/`None`: no backgrounds/tint, sign+bold(added)/dim(removed) only. Returns total content rows (real rows + footer) for scroll clamping. Deviation: adds a `truncated: Option<(usize, usize)>` param beyond the ticket's literal signature — reported as a spec gap, not silently worked around (see module doc).
 - `diff_body_side_by_side(hunks, top, area, buf, theme, focused)` (fn) — the `v`-toggled two-column diff over the same `HunkView` data: old numbers/text left, new right, `│` rule between (plain at `Palette16`/`None`); `LineView::pair` keeps a removed/added run aligned row for row, an unpaired line leaves the other half blank (never shifted); hunk heading pins full-width above both halves; word tint, syntax fg, `␍`, 16-colour fallback match `diff_body` (m2-details-and-diffs/09).
-- `DetailPane` (struct, `Widget`) — `view`, `layout`, `theme`; draws header, files and body for one frame.
+- `DetailPane` (struct, `Widget`) — `view`, `layout`, `theme`; draws header, files and body for one frame. When `view.explain` is `Some`, the files+body area (`detail_areas().files.union(.body)`) draws the Explain panel instead, at every breakpoint: severity glyph + title, wrapped paragraphs, a blank line, the sketch verbatim, `Esc close` (m2-details-and-diffs/17).
 
 ## diff_words
 - `WordSpans` (struct) — `removed`/`added`: per-line char ranges that changed against the paired line on the other side.
@@ -101,6 +101,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-
 - `SearchLine` (enum) — `Prompt(text)` draws ` /text_`; `Status{text, failed}` draws the search's line, warning-coloured only when failed.
 - `GraphView::graphics` (field) — `gfx ok` / `gfx: <message>` in the header while pixels are drawn; `None` otherwise.
 - `GraphView::detail_shown` (field) — the detail pane is on screen; the footer adds a `<> resize` hint only then, since that's the only time its divider exists to drag (`detail-resize-and-persistence`).
+- Footer hints add `. explain` whenever the cursor row (`RowPaint::Highlighted`) carries a `GraphEntry::marker` (m2-details-and-diffs/17).
 - `GraphView::compare_footer` (field) — the pinned compare base's footer line (`compare base <sha> — move, x again clears`); same footer slot as `search`/`notice` (m2-details-and-diffs/11).
 - `GraphicsStatus` (enum) — `Ok` or `Failed(SanitizedText)`: what the terminal said about the graph images.
 - `Filters` (struct) — `first_parent`, `folded` (merge count), `stash_hidden`, `focused` (Focus mode on); `Filters::text` is the header's words, empty for none.

@@ -11,6 +11,7 @@ use super::layout::{Columns, graph_width, text_width};
 use super::render::subject_truncated;
 use super::{CommitGraphLine, GraphEntry, GraphScreen, SearchLine};
 use crate::fit::fit;
+use crate::graph_column::RowPaint;
 use crate::paint::foreground;
 use crate::theme::Token;
 
@@ -79,6 +80,10 @@ impl GraphScreen<'_> {
                     // Only while the pane is on screen: no divider to drag
                     // otherwise (ADR-0028).
                     extra.extend(self.view.detail_shown.then_some("<> resize"));
+                    // The cursor row's own hint, only when it is marked
+                    // (`m2-details-and-diffs/17`, design note "Marker
+                    // column").
+                    extra.extend(cursor_marked(rows).then_some(". explain"));
                     (key_hints(&extra, width), Token::TextMuted)
                 }
             }
@@ -181,6 +186,14 @@ pub(super) const HINTS: [&str; 13] = [
 ];
 /// How many of [`HINTS`] come before the lane-expansion hint.
 const LEADING_HINTS: usize = 3;
+
+/// Whether the cursor row (the one painted [`RowPaint::Highlighted`]) has a
+/// Mistake Radar marker — the `. explain` hint's own condition.
+fn cursor_marked(rows: &[GraphEntry<'_>]) -> bool {
+    rows.iter()
+        .find(|entry| entry.line.paint == RowPaint::Highlighted)
+        .is_some_and(|entry| entry.marker.is_some())
+}
 
 /// The hint for the lane-expansion key, shown only while there is something
 /// to expand or collapse.

@@ -4,8 +4,8 @@
 //! keeps into what `graft_ui::detail_pane` draws. `header.radar` comes from
 //! `view::radar::radar_lines_for` (`m2-details-and-diffs/13c`) for a selected
 //! commit; the other subjects (`Compare`, `WorkingTree`, none selected) carry
-//! no radar line. `explain` stays `None` — no ticket has put an explain panel
-//! in `AppState` yet.
+//! no radar line. `explain` comes straight from `AppState::detail::explain`
+//! (`m2-details-and-diffs/17`): `update::detail::open_explain` sets it.
 //!
 //! `Commit` carries an author and a committer identity and its parents in
 //! full, so the header's author/committer/parents lines are never a gap.
@@ -58,7 +58,7 @@ pub fn detail_view(state: &AppState) -> DetailView {
             ignore_whitespace: state.detail.options.ignore_whitespace,
             word_tint: state.detail.word_tint,
         },
-        explain: None,
+        explain: state.detail.explain.clone(),
     }
 }
 

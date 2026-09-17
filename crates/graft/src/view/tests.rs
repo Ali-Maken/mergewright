@@ -97,6 +97,43 @@ pub(crate) fn history_of(count: u8, cursor: usize) -> History {
     }
 }
 
+/// Explain's fade (`m2-details-and-diffs/17`) dims every row outside
+/// `explain_highlight`, including the cursor row itself — it always wins
+/// over the ordinary highlight/Focus-mode paint while open.
+#[test]
+fn explain_open_fades_rows_outside_its_highlight() {
+    let mut state = AppState {
+        history: Some(history_of(3, 0)),
+        size: Size {
+            columns: 60,
+            rows: 5,
+        },
+        ..AppState::default()
+    };
+    state.detail.explain = Some(graft_ui::detail::ExplainView {
+        title: sanitize_line("FOXTROT MERGE"),
+        severity: graft_core::mistake_radar::Severity::Info,
+        paragraphs: Vec::new(),
+        sketch: Vec::new(),
+    });
+    state.detail.explain_highlight = vec![oid(2)];
+
+    let view = graph_view(&state, state.harness.clock.now_seconds());
+
+    assert_eq!(view.rows.len(), 3);
+    assert_eq!(
+        view.rows[0].line.paint,
+        RowPaint::Dimmed,
+        "cursor row (oid 3), off the highlight, fades too"
+    );
+    assert_ne!(
+        view.rows[1].line.paint,
+        RowPaint::Dimmed,
+        "oid 2 is the explanation's own highlight"
+    );
+    assert_eq!(view.rows[2].line.paint, RowPaint::Dimmed, "oid 1 fades");
+}
+
 #[test]
 fn graft_opens_on_the_graph_with_the_cursor_row_highlighted() {
     let state = AppState {
@@ -1151,6 +1188,147 @@ fn capture_m2_force_push() {
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m2-force-push.txt"
+        ),
+        format!("{header}{screen}"),
+    )
+    .expect("docs/shots is writable");
+}
+
+/// The `main` history [`foxtrot_explain_state`] draws: a root, its real
+/// tip, and a merge (`0303030`) whose *first* parent is the root, not the
+/// tip — with `walk.default_branch` set to `main`, which `repo_facts`
+/// needs before `classify_commit` will name anything a foxtrot.
+#[cfg(test)]
+fn foxtrot_explain_history() -> History {
+    use crate::history::WalkFacts;
+    use graft_core::commit::{Commit, Identity, Timestamp};
+    use graft_core::ref_name::RefName;
+    use graft_git::history::Order;
+    use graft_graph::layout::layout;
+    use graft_graph::seeds::Seeds;
+
+    let who = |seconds| Identity {
+        name: b"Test".to_vec(),
+        email: b"test@example.invalid".to_vec(),
+        when: Timestamp {
+            seconds,
+            offset_seconds: 0,
+        },
+    };
+    let commit = |id: u8, parents: Vec<Oid>, message: &str| Commit {
+        id: oid(id),
+        parents,
+        author: who(i64::from(id)),
+        committer: who(i64::from(id)),
+        message: message.as_bytes().to_vec(),
+    };
+    let commits = vec![
+        commit(3, vec![oid(1), oid(2)], "Merge branch 'feature'"),
+        commit(2, vec![oid(1)], "Ship the release notes"),
+        commit(1, Vec::new(), "Start the feature branch"),
+    ];
+    let rows = layout(&commits, Seeds::default());
+    let mut history = History {
+        window: Some(crate::history::Window {
+            request: 0,
+            first: 0,
+            laid_out: rows.len(),
+            done: true,
+            rows: rows.into(),
+            promoted: false,
+        }),
+        rows: 3,
+        phase: Phase::Complete,
+        cursor: 0,
+        reanchor: None,
+        ..History::started()
+    };
+    history.walk = Some(WalkFacts {
+        requested: Order::Topological,
+        order: Order::Topological,
+        default_branch: Some(RefName::new(b"refs/heads/main".to_vec()).expect("a valid ref name")),
+        integration: std::sync::Arc::from([]),
+    });
+    history
+}
+
+/// `foxtrot_explain_history`'s state: `state.radar.context` ready, with a
+/// default chain of exactly the merge and its real tip — the two facts
+/// `classify_commit`'s `Foxtrot` rule needs beyond `default_branch` itself
+/// (`crates/graft-ops/src/mistake_radar/rules.rs`).
+#[cfg(test)]
+fn foxtrot_explain_state() -> AppState {
+    use crate::jobs::radar::RadarContext;
+    use crate::update::detail::Loading;
+    use crate::update::radar::RadarState;
+    use graft_ops::mistake_radar::Policy;
+
+    AppState {
+        history: Some(foxtrot_explain_history()),
+        repo_path: std::path::PathBuf::from("/code/api"),
+        size: Size {
+            columns: 100,
+            rows: 16,
+        },
+        radar: RadarState {
+            context: Loading::Ready(std::sync::Arc::new(RadarContext {
+                default_chain: [oid(3), oid(2)].into_iter().collect(),
+                previous_default_tips: Vec::new(),
+            })),
+            policy: Policy::default(),
+            force_push: std::collections::HashMap::new(),
+            duplicates: Loading::Idle,
+            duplicate_findings: std::collections::HashMap::new(),
+        },
+        ..AppState::default()
+    }
+}
+
+#[test]
+#[ignore = "writes docs/shots/m2-explain-panel.txt; run by hand to regenerate"]
+fn capture_m2_explain_panel() {
+    use crate::update::detail::{LOCAL_JOB_BIT, open_explain};
+    use graft_core::job::JobId;
+
+    let merge = oid(3);
+    let mut state = foxtrot_explain_state();
+    state.detail.explain_requested = Some(merge);
+    let mut counter: u64 = 0;
+    let _ = open_explain(&mut state, &mut || {
+        counter += 1;
+        JobId::new(LOCAL_JOB_BIT | counter)
+    });
+    assert!(state.detail.explain.is_some(), "a foxtrot finding exists");
+
+    let screen = draw(&state, 160, 24);
+    assert!(screen.contains("FOXTROT MERGE"), "{screen}");
+    assert!(screen.contains("Esc close"), "{screen}");
+    let header = "\
+# m2-explain-panel.txt: TestBackend capture (not a pty), 160x24 — wide
+# enough for the `Right` breakpoint, so the pane's full height shows the
+# sketch and the footer without scrolling. Fixture:
+# capture_m2_explain_panel in crates/graft/src/view/tests.rs (#[ignore]d,
+# run by hand to regenerate). Three synthetic commits: a root (0101010), its
+# real branch tip (0202020), and a merge (0303030) whose first parent is
+# the root, not the tip — classify_commit's Foxtrot shape. `open_explain`
+# is called directly (as the context-actions-menu's `Explain` choice would
+# call it) to open the pane on the merge with the panel already showing.
+#
+# Judge by eye:
+# - The merge row (0303030) carries a warning marker.
+# - The pane shows FOXTROT MERGE, its paragraphs, a 5-line sketch (label,
+#   connector, label, connector, label) and \"Esc close\", replacing the
+#   files+body area.
+# - `view::entries`'s Explain fade (every row outside the explanation's
+#   highlight dims) is a colour-only effect — this plain-text capture
+#   cannot show it; `explain_open_fades_rows_outside_its_highlight`
+#   (crates/graft/src/view/tests.rs) is what proves that behaviour.
+#
+";
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m2-explain-panel.txt"
         ),
         format!("{header}{screen}"),
     )

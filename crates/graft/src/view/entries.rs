@@ -104,9 +104,20 @@ pub(super) fn visible_rows<'a>(
                     );
                     if let Some(thread) = thread {
                         entry.line.thread = Some(thread.lit(index).clone());
-                        if state.focus && thread.kin(index) == Kin::Unrelated {
+                    }
+                    // The Explain panel's fade (`m2-details-and-diffs/17`) is
+                    // independent of Focus mode and always wins while open:
+                    // every row outside `Explanation::highlight` fades, on
+                    // its own id, not the selection's ancestry.
+                    if state.detail.explain.is_some() {
+                        if !state.detail.explain_highlight.contains(&row.commit.id) {
                             entry.line.paint = RowPaint::Dimmed;
                         }
+                    } else if let Some(thread) = thread
+                        && state.focus
+                        && thread.kin(index) == Kin::Unrelated
+                    {
+                        entry.line.paint = RowPaint::Dimmed;
                     }
                     entry
                 }),

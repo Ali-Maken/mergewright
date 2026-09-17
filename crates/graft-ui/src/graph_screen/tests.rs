@@ -908,3 +908,43 @@ fn the_commit_graph_line_sits_above_the_hints_and_takes_a_graph_row() {
     assert_eq!(with[7], without[7], "the rows above are unchanged");
     assert_ne!(with[8], without[8], "one graph row gave way");
 }
+
+/// `. explain` (`m2-details-and-diffs/17`) is the cursor row's own hint: it
+/// shows only when the row painted [`RowPaint::Highlighted`] carries a
+/// marker, never for a marker elsewhere or no marker at all.
+#[test]
+fn the_explain_hint_shows_only_on_a_marked_cursor_row() {
+    let rows = linear(2);
+
+    let plain = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    let plain_screen = text(&draw(&plain, 80, 5));
+    assert!(
+        !plain_screen[4].contains(". explain"),
+        "{:?}",
+        plain_screen[4]
+    );
+
+    // The marker on the *other* row (index 1, off the cursor at index 0)
+    // must not turn the hint on.
+    let mut marked_elsewhere = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    marked_elsewhere.rows[1].marker = Some(MarkerView {
+        severity: Severity::Warning,
+    });
+    let elsewhere_screen = text(&draw(&marked_elsewhere, 80, 5));
+    assert!(
+        !elsewhere_screen[4].contains(". explain"),
+        "{:?}",
+        elsewhere_screen[4]
+    );
+
+    let mut marked_cursor = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    marked_cursor.rows[0].marker = Some(MarkerView {
+        severity: Severity::Warning,
+    });
+    let cursor_screen = text(&draw(&marked_cursor, 80, 5));
+    assert!(
+        cursor_screen[4].contains(". explain"),
+        "{:?}",
+        cursor_screen[4]
+    );
+}

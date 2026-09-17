@@ -1,9 +1,7 @@
 # explain-panel: turn a marked commit's finding into a read-only explanation
 
-Status: ready
+Status: done
 Blocked by: 04, 07, 10, 12, 13, 13b, 13c
-
-Status: draft
 Build with: Sonnet — assembling and rendering data `explain()`/`findings_for` already produce; no new rule, judged by the capture and the transition tests.
 Needs: `mistake-radar-detection` (`explain`, `Explanation`), `radar-context-and-markers` (`findings_for`, `RadarState`), `context-actions-menu` (`DetailState::explain_requested`, already landed), `detail-pane-frame` (`DetailPane`, `view::detail_view`, and whatever it used to resolve commit facts — parents/subject — for `AppState.detail.spec`'s oid; report `partial` inheriting its gap rather than adding a new git read if that lookup was itself left unresolved), `detail-keys-and-focus` (the `Esc` arm, already landed with an interim `focus = Graph; shown = false` in place of an Explain-priority branch)
 
@@ -49,14 +47,23 @@ pub fn build_sketch(evidence: &[(Oid, String)], short: impl Fn(Oid) -> String) -
 
 ## Acceptance
 
-- [ ] `.` → `Explain` on the foxtrot fixture's merge opens the pane on it and sets `detail.explain` with `title == "FOXTROT MERGE"`, two-ish paragraphs, a 5-line sketch in evidence order.
-- [ ] `build_sketch` on the foxtrot fixture's `Explanation.evidence`: exact 5 lines, connectors alternating `──╮`/`──╯`.
-- [ ] `Esc` while Explain is open closes only Explain (pane stays, on the same commit); a second `Esc` then closes the pane (matches `detail-keys-and-focus`'s existing order otherwise).
-- [ ] `graph_view` with Explain open fades every row not in `explain_highlight`; with Explain closed, fading reverts to `F`'s existing ancestry rule, untouched.
-- [ ] The cursor row's hints show `. explain` only when `marker.is_some()` for that row.
-- [ ] A stale `explain_requested` (no finding found) clears the flag and sets no `explain` view, without error.
-- [ ] MAP.md: `graft` (`update/detail` additions, `view/explain`), `graft-ui` (`detail_pane`, `graph_screen` hint line).
-- [ ] Capture at `docs/shots/m2-explain-panel.txt`, ≤ 200 KB; user judges by eye.
+- [x] `.` → `Explain` on the foxtrot fixture's merge opens the pane on it and sets `detail.explain` with `title == "FOXTROT MERGE"`, two-ish paragraphs, a 5-line sketch in evidence order.
+- [x] `build_sketch` on the foxtrot fixture's `Explanation.evidence`: exact 5 lines, connectors alternating `──╮`/`──╯`.
+- [x] `Esc` while Explain is open closes only Explain (pane stays, on the same commit); a second `Esc` then closes the pane (matches `detail-keys-and-focus`'s existing order otherwise).
+- [x] `graph_view` with Explain open fades every row not in `explain_highlight`; with Explain closed, fading reverts to `F`'s existing ancestry rule, untouched.
+- [x] The cursor row's hints show `. explain` only when `marker.is_some()` for that row.
+- [x] A stale `explain_requested` (no finding found) clears the flag and sets no `explain` view, without error.
+- [x] MAP.md: `graft` (`update/detail` additions, `view/explain`), `graft-ui` (`detail_pane`, `graph_screen` hint line).
+- [x] Capture at `docs/shots/m2-explain-panel.txt`, ≤ 200 KB; user judges by eye.
+
+## Deviations from spec
+
+- `open_explain`'s `(parents, subject)` lookup reuses `view::detail::commit_header`'s existing path, which resolves facts for whatever oid is currently selected/open — not an arbitrary oid. This is fine in practice (a marked row is always the cursor row: Explain is only reachable from the context-actions menu on the selected commit), but it is an inherited constraint, not a general-purpose oid→facts lookup. Documented here rather than silently generalised or left implicit.
+- No `[ Fix… ]` button — out of scope per the ticket, deferred to M5.
+
+## Notes
+
+- Compaction occurred once mid-ticket (context ran long across `update`/`view`/`graft-ui` wiring plus tests). All remaining work after compaction was: writing the transition/fade/hint tests, the `foxtrot_explain_state`/`foxtrot_explain_history` fixture and its capture test, fixing three clippy lints (`if_then_some_else_none`-style bool-to-int, `assigning_clones`, two `too_many_lines` splits — `detail_key`→`escape_priority`, `foxtrot_explain_state`→`foxtrot_explain_history`), updating both crates' MAP.md, running the capture, and this closeout. No scope was lost or changed by the compaction.
 
 ## Gates
 

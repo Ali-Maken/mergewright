@@ -58,6 +58,9 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
     radar::request_context(&mut next, &mut commands, &mut || local_jobs.next_id());
     radar::request_force_push_probes(&mut next, &mut commands, &mut || local_jobs.next_id());
     radar::request_duplicates_probe(&mut next, &mut commands, &mut || local_jobs.next_id());
+    commands.extend(detail::open_explain(&mut next, &mut || {
+        local_jobs.next_id()
+    }));
     next.local_jobs = local_jobs;
     // The commit-graph line costs a graph row: when it comes or goes, the
     // viewport changed height, so ask for the rows that now fit.

@@ -17,8 +17,12 @@ use graft_git::diff::{DiffOptions, DiffSpec, FileList};
 use graft_ops::mistake_radar::Policy;
 use graft_ops::mistake_radar::probes::EvilVerdict;
 use graft_term::sanitize::{sanitize_line, sanitize_path_bytes};
-use graft_ui::detail::{ContainedIn, DetailFocus, DiffMode, DiffView, FileListView, LineKindView};
+use graft_ui::detail::{
+    ContainedIn, DetailFocus, DiffMode, DiffView, ExplainView, FileListView, LineKindView,
+};
 use graft_ui::detail_pane::DetailLayout;
+
+use crate::history::History;
 
 use super::events::{AppEvent, Command, Product};
 use super::state::AppState;
@@ -279,11 +283,14 @@ pub struct DetailState {
     pub dragging: bool,
     /// `Explain` chosen from the context menu on a marked row
     /// (`context-actions-menu`, m2-details-and-diffs/12): the row's `Oid`,
-    /// until `explain-panel` reads it, builds `DetailView.explain` from it,
-    /// and clears it. Not otherwise wired here -- no row is ever marked yet
-    /// (`radar-context-and-markers` sets `GraphEntry::marker`), so nothing in
-    /// this crate reads it back yet either.
+    /// until `open_explain` reads it, builds `DetailView.explain` from it,
+    /// and clears it (`m2-details-and-diffs/17`).
     pub explain_requested: Option<Oid>,
+    /// The open Explain panel, when there is one (`m2-details-and-diffs/17`).
+    pub explain: Option<ExplainView>,
+    /// The commits `Explanation::highlight` named: the graph fades every
+    /// other row while `explain` is `Some` (`m2-details-and-diffs/17`).
+    pub explain_highlight: Vec<Oid>,
 }
 
 impl Default for DetailState {
@@ -308,6 +315,8 @@ impl Default for DetailState {
             pane_size: PaneSize::default(),
             dragging: false,
             explain_requested: None,
+            explain: None,
+            explain_highlight: Vec::new(),
         }
     }
 }
@@ -681,6 +690,65 @@ impl DetailState {
     }
 }
 
+/// Answers `explain_requested`, if there is one this tick
+/// (`m2-details-and-diffs/17`): opens the pane on that commit, then resolves
+/// the finding it was marked for and turns it into `DetailState::explain`.
+///
+/// The `(parents, subject)` lookup is exactly `view::detail::commit_header`'s
+/// own — the selected row filtered by id — not a second one: a marked row is
+/// always the row a context menu was opened on, which is the selection.
+/// Nothing to explain (the marker's finding is stale, e.g. policy changed
+/// underneath) clears `explain_requested` and leaves `explain` alone rather
+/// than erroring.
+pub fn open_explain(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) -> Vec<Command> {
+    let Some(oid) = state.detail.explain_requested.take() else {
+        return Vec::new();
+    };
+    let commands = state.detail.open(DetailSpec::Commit(oid), next_id);
+    let facts = state
+        .history
+        .as_ref()
+        .and_then(History::selected)
+        .filter(|row| row.commit.id == oid)
+        .map(|row| {
+            (
+                row.commit.parents.clone(),
+                String::from_utf8_lossy(row.commit.subject()).into_owned(),
+            )
+        });
+    let Some((parents, subject)) = facts else {
+        return commands;
+    };
+    let Some(finding) = crate::view::radar::findings_for(state, oid, &parents, &subject)
+        .into_iter()
+        .next()
+    else {
+        return commands;
+    };
+    let short = |o: Oid| {
+        graft_ui::graph_screen::short_sha(
+            &o.to_string(),
+            usize::from(graft_ui::graph_screen::SHA_WIDTH),
+        )
+    };
+    let explanation = graft_ops::mistake_radar::explain::explain(&finding, &short);
+    state
+        .detail
+        .explain_highlight
+        .clone_from(&explanation.highlight);
+    let mut view = crate::view::build_explain_view(&explanation);
+    view.severity = finding.severity;
+    state.detail.explain = Some(view);
+    commands
+}
+
+/// Close the Explain panel, keeping the pane itself open on the same commit
+/// (`Esc`'s first press while Explain is open, `m2-details-and-diffs/17`).
+pub fn close_explain(state: &mut AppState) {
+    state.detail.explain = None;
+    state.detail.explain_highlight.clear();
+}
+
 /// Content rows [`graft_ui::detail_pane::diff_body`] draws for `view`: one
 /// heading row per hunk plus its non-heading lines, plus a truncation-footer
 /// row when the diff was cut short. Mirrors that widget's private row count
@@ -754,6 +822,29 @@ pub fn effective_layout(
     DetailLayout::compute(size.0, size.1, focus, override_cells)
 }
 
+/// `Esc`'s two priority arms, answered before anything else `Esc` does:
+/// closing the Explain panel first (`m2-details-and-diffs/17`, the pane
+/// stays, on the same commit), then clearing a pinned compare base
+/// (`m2-details-and-diffs/11`, closing the pane in the same press when it
+/// is shown — ADR-0023's own `Escape if detail.shown` arm, further down
+/// [`detail_key`]). `true` when either one answered the key.
+fn escape_priority(next: &mut AppState, key: KeyPress) -> bool {
+    if key.code != KeyCode::Escape {
+        return false;
+    }
+    if next.detail.explain.is_some() {
+        close_explain(next);
+        return true;
+    }
+    if next.compare_base.take().is_some() {
+        if next.detail.shown {
+            next.detail.close();
+        }
+        return true;
+    }
+    false
+}
+
 /// The pane's keys, answered before the graph's. `true` when the key was the pane's.
 pub(super) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
     let plain = key.modifiers == Modifiers::NONE;
@@ -770,13 +861,7 @@ pub(super) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
         }
         return true;
     }
-    // `Esc` clears a pinned compare base (m2-details-and-diffs/11) before
-    // anything else `Esc` already does, closing the pane in the same press
-    // when it is shown (ADR-0023's own `Escape if detail.shown` arm below).
-    if key.code == KeyCode::Escape && next.compare_base.take().is_some() {
-        if next.detail.shown {
-            next.detail.close();
-        }
+    if escape_priority(next, key) {
         return true;
     }
     let AppState {
@@ -970,6 +1055,123 @@ mod tests {
     fn next_id_from(counter: &mut u64) -> JobId {
         *counter += 1;
         JobId::new(LOCAL_JOB_BIT | *counter)
+    }
+
+    /// `history_of(3, 0)` with a ready, empty radar context, so
+    /// `findings_for` can run without a real repository: `AppState` for
+    /// the `open_explain`/`close_explain`/Esc-priority tests
+    /// (`m2-details-and-diffs/17`).
+    fn state_with_duplicate_finding(mark: Oid, copy: Oid) -> AppState {
+        let mut state = AppState {
+            history: Some(crate::view::tests::history_of(3, 0)),
+            ..AppState::default()
+        };
+        state.radar.context = Loading::Ready(Arc::new(crate::jobs::radar::RadarContext {
+            default_chain: std::collections::HashSet::new(),
+            previous_default_tips: Vec::new(),
+        }));
+        state.radar.duplicate_findings.insert(
+            mark,
+            graft_ops::mistake_radar::Finding {
+                kind: MistakeRadarKind::DuplicateCommit,
+                severity: graft_core::mistake_radar::Severity::Warning,
+                at: mark,
+                evidence: graft_ops::mistake_radar::Evidence::Duplicate { copies: vec![copy] },
+            },
+        );
+        state
+    }
+
+    /// `open_explain` on a marked, selected commit resolves its finding,
+    /// opens the pane on it, and fills `explain`/`explain_highlight`.
+    #[test]
+    fn open_explain_resolves_the_selected_rows_finding() {
+        let cursor = oid(3); // `history_of(3, 0)`'s cursor row.
+        let mut state = state_with_duplicate_finding(cursor, oid(9));
+        state.detail.explain_requested = Some(cursor);
+        let mut counter = 0;
+
+        let _ = open_explain(&mut state, &mut || next_id_from(&mut counter));
+
+        assert_eq!(state.detail.explain_requested, None);
+        assert_eq!(state.detail.spec, Some(DetailSpec::Commit(cursor)));
+        let explain = state.detail.explain.expect("a finding was found");
+        assert!(!explain.title.as_str().is_empty());
+        assert!(!state.detail.explain_highlight.is_empty());
+    }
+
+    /// A stale request — the marked commit no longer has a finding — opens
+    /// the pane (the commit is still real) but leaves `explain` alone
+    /// rather than erroring.
+    #[test]
+    fn open_explain_with_no_finding_opens_the_pane_but_not_explain() {
+        let cursor = oid(3);
+        let mut state = AppState {
+            history: Some(crate::view::tests::history_of(3, 0)),
+            ..AppState::default()
+        };
+        state.radar.context = Loading::Ready(Arc::new(crate::jobs::radar::RadarContext {
+            default_chain: std::collections::HashSet::new(),
+            previous_default_tips: Vec::new(),
+        }));
+        state.detail.explain_requested = Some(cursor);
+        let mut counter = 0;
+
+        let _ = open_explain(&mut state, &mut || next_id_from(&mut counter));
+
+        assert_eq!(state.detail.explain_requested, None);
+        assert_eq!(state.detail.spec, Some(DetailSpec::Commit(cursor)));
+        assert!(state.detail.explain.is_none());
+    }
+
+    /// Nothing requested this tick: a no-op, no commands.
+    #[test]
+    fn open_explain_with_nothing_requested_is_a_no_op() {
+        let mut state = AppState::default();
+        let mut counter = 0;
+
+        let commands = open_explain(&mut state, &mut || next_id_from(&mut counter));
+
+        assert!(commands.is_empty());
+        assert!(state.detail.explain.is_none());
+    }
+
+    /// `close_explain` clears the view and the highlight, and nothing else.
+    #[test]
+    fn close_explain_clears_the_view_and_highlight() {
+        let mut state = state_with_duplicate_finding(oid(3), oid(9));
+        state.detail.explain_requested = Some(oid(3));
+        let mut counter = 0;
+        let _ = open_explain(&mut state, &mut || next_id_from(&mut counter));
+        assert!(state.detail.explain.is_some());
+
+        close_explain(&mut state);
+
+        assert!(state.detail.explain.is_none());
+        assert!(state.detail.explain_highlight.is_empty());
+    }
+
+    /// `Esc` closes Explain first, on its own, leaving the pane open on the
+    /// same commit; a second `Esc` then falls through to closing the pane.
+    #[test]
+    fn escape_closes_explain_before_anything_else_esc_does() {
+        let mut state = state_with_duplicate_finding(oid(3), oid(9));
+        state.detail.explain_requested = Some(oid(3));
+        let mut counter = 0;
+        let mut commands = Vec::new();
+        let _ = open_explain(&mut state, &mut || next_id_from(&mut counter));
+        assert!(state.detail.explain.is_some());
+        state.detail.shown = true;
+
+        let handled = detail_key(&mut state, &mut commands, KeyPress::plain(KeyCode::Escape));
+
+        assert!(handled);
+        assert!(state.detail.explain.is_none(), "first Esc closes Explain");
+        assert!(state.detail.shown, "the pane itself stays open");
+
+        let handled_again = detail_key(&mut state, &mut commands, KeyPress::plain(KeyCode::Escape));
+        assert!(handled_again);
+        assert!(!state.detail.shown, "second Esc closes the pane");
     }
 
     /// `toggle_compare`'s first branch: no base yet pins one, no command.

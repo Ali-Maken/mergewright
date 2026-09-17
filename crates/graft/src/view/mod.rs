@@ -16,6 +16,7 @@
 
 mod detail;
 mod entries;
+pub(crate) mod explain;
 mod frame;
 pub(crate) mod radar;
 mod rows;
@@ -28,6 +29,7 @@ pub(crate) mod tests;
 
 pub use detail::detail_view;
 pub(crate) use entries::uncommitted_shown;
+pub(crate) use explain::build_explain_view;
 pub use frame::{draws_pixels, tier_in_force, view, view_with_graphics};
 pub use rows::graph_view;
 pub use status::status_view;
