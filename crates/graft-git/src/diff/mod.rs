@@ -8,10 +8,12 @@
 
 mod file_list;
 mod pairs;
+mod read;
 mod unified;
 
 pub use file_list::parse_file_list;
 pub use pairs::{Pair, pairs};
+pub use read::{DiffError, DiffOptions, DiffSpec, file_diff, list_files};
 pub use unified::parse_unified;
 
 /// How a file changed between the two sides of a diff.
