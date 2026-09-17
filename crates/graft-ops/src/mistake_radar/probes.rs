@@ -10,7 +10,8 @@
 
 use graft_core::mistake_radar::MistakeRadarKind;
 use graft_core::oid::Oid;
-use graft_git::history::read_commit;
+use graft_core::ref_name::RefName;
+use graft_git::history::{previous_tips, read_commit};
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 
@@ -109,6 +110,67 @@ pub fn probe_evil_merge(repo: &RepoHandle, merge: Oid, stop: &dyn Stop) -> EvilV
         // runner drops a cancelled job's product before `update` sees it.
         Err(RunError::Stopped) => EvilVerdict::NotCheckable("cancelled".into()),
         Err(error) => EvilVerdict::NotCheckable(error.to_string()),
+    }
+}
+
+/// Did `remote_ref` move to `current` without descending from where the
+/// reflog last saw it?
+///
+/// Two reads: the remote-tracking ref's reflog for where it pointed before,
+/// then one `git merge-base --is-ancestor <previous> <current>` spawn whose
+/// exit code is the whole answer — 0 means the new tip descends from the old
+/// one (an ordinary fetch), 1 means it does not (the remote was rewritten).
+/// Any other exit, or no reflog at all, is `NotCheckable`: a fresh clone has
+/// nothing to compare against, and absence of evidence is not a clean bill
+/// (PROMPT.md §1.4).
+///
+/// `current` is passed in rather than read here so the verdict is about the
+/// same tip the caller classified; re-reading the ref could answer about a
+/// tip that landed after.
+pub fn probe_force_push(
+    repo: &RepoHandle,
+    _branch: &str,
+    remote_ref: &RefName,
+    current: Oid,
+    stop: &dyn Stop,
+) -> ForcePushVerdict {
+    let tips = match previous_tips(repo, remote_ref, 1) {
+        Ok(tips) => tips,
+        Err(error) => return ForcePushVerdict::NotCheckable(error.to_string()),
+    };
+    let Some(previous) = tips.first().copied() else {
+        return ForcePushVerdict::NotCheckable("no remote-tracking reflog".into());
+    };
+    let output = GitInvocation::new(repo)
+        .arg(GitArg::Word("merge-base".into()))
+        .arg(GitArg::Flag("--is-ancestor"))
+        .arg(GitArg::Oid(previous))
+        .arg(GitArg::Oid(current))
+        .run(stop);
+    match output {
+        // Exit 0: the old tip is an ancestor of the new one, so the remote
+        // only moved forward.
+        Ok(_) => ForcePushVerdict::Clean,
+        // Exit 1 is `merge-base --is-ancestor`'s "no", not a failure.
+        Err(RunError::Exited { status: 1, .. }) => ForcePushVerdict::Rewritten {
+            remote_ref: short_remote_ref(remote_ref),
+            previous,
+            current,
+        },
+        // Only reached when the probe is called outside a job: the job
+        // runner drops a cancelled job's product before `update` sees it.
+        Err(RunError::Stopped) => ForcePushVerdict::NotCheckable("cancelled".into()),
+        Err(error) => ForcePushVerdict::NotCheckable(error.to_string()),
+    }
+}
+
+/// `refs/remotes/origin/main` as `origin/main`, which is what the pane and
+/// the explanation show. Anything else is left as it is.
+fn short_remote_ref(remote_ref: &RefName) -> String {
+    let text = String::from_utf8_lossy(remote_ref.as_bytes());
+    match text.strip_prefix("refs/remotes/") {
+        Some(short) => short.to_owned(),
+        None => text.into_owned(),
     }
 }
 
@@ -304,6 +366,75 @@ mod tests {
         assert_eq!(
             findings_from_force_push(&ForcePushVerdict::Clean, &Policy::default()),
             None
+        );
+    }
+
+    /// A writable copy of the trivial fixture with its remote-tracking
+    /// reflog turned on, plus two commits: an older one and the tip.
+    fn tracked() -> (graft_fixtures::Scratch, RepoHandle, Oid, Oid) {
+        let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+        graft_fixtures::git::run(scratch.path(), &["config", "core.logAllRefUpdates", "true"])
+            .expect("the copy takes config");
+        let older = rev_parse(&scratch, "HEAD~2");
+        let tip = rev_parse(&scratch, "HEAD");
+        let repo = RepoHandle::open(scratch.path()).expect("the copy opens");
+        (scratch, repo, older, tip)
+    }
+
+    fn rev_parse(scratch: &graft_fixtures::Scratch, rev: &str) -> Oid {
+        let out = graft_fixtures::git::run(scratch.path(), &["rev-parse", rev])
+            .expect("the fixture resolves the revision");
+        Oid::from_hex(String::from_utf8_lossy(&out).trim()).expect("git printed hex")
+    }
+
+    fn move_ref(scratch: &graft_fixtures::Scratch, refname: &str, to: Oid) {
+        graft_fixtures::git::run(scratch.path(), &["update-ref", refname, &to.to_string()])
+            .expect("the ref moves");
+    }
+
+    fn origin_main() -> RefName {
+        RefName::new("refs/remotes/origin/main").expect("a valid ref name")
+    }
+
+    #[test]
+    fn a_remote_ref_that_moved_off_its_old_tip_was_rewritten() {
+        let (scratch, repo, older, tip) = tracked();
+        // The remote was at the tip, then came back holding an older commit:
+        // the new tip does not descend from the old one.
+        move_ref(&scratch, "refs/remotes/origin/main", tip);
+        move_ref(&scratch, "refs/remotes/origin/main", older);
+
+        assert_eq!(
+            probe_force_push(&repo, "main", &origin_main(), older, &()),
+            ForcePushVerdict::Rewritten {
+                remote_ref: "origin/main".into(),
+                previous: tip,
+                current: older,
+            }
+        );
+    }
+
+    #[test]
+    fn a_remote_ref_that_only_moved_forward_is_clean() {
+        let (scratch, repo, older, tip) = tracked();
+        move_ref(&scratch, "refs/remotes/origin/main", older);
+        move_ref(&scratch, "refs/remotes/origin/main", tip);
+
+        assert_eq!(
+            probe_force_push(&repo, "main", &origin_main(), tip, &()),
+            ForcePushVerdict::Clean
+        );
+    }
+
+    #[test]
+    fn a_remote_ref_with_only_its_creation_entry_is_not_checkable() {
+        let (scratch, repo, _older, tip) = tracked();
+        move_ref(&scratch, "refs/remotes/origin/fresh", tip);
+        let fresh = RefName::new("refs/remotes/origin/fresh").expect("a valid ref name");
+
+        assert_eq!(
+            probe_force_push(&repo, "fresh", &fresh, tip, &()),
+            ForcePushVerdict::NotCheckable("no remote-tracking reflog".into())
         );
     }
 }

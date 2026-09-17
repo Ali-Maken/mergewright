@@ -29,6 +29,7 @@ One line per public item. Update when a public item changes.
 - `ForcePushVerdict` (enum) — `NotCheckable(String)`, `Clean`, `Rewritten { remote_ref, previous, current }`.
 - `Duplicates` (struct) — patch-id `groups`, the `window` looked at, `complete`.
 - `probe_evil_merge` (fn) — one `git show --remerge-diff --name-only` spawn; non-merge/octopus/unreadable/`git` too old → `NotCheckable(reason)`, empty diff → `Clean`, else `Evil { files }` (m2-details-and-diffs/14).
+- `probe_force_push` (fn) — `(repo, branch, remote_ref, current, stop)`; the remote-tracking ref's last reflog value against `current` through one `git merge-base --is-ancestor` spawn: exit 0 → `Clean`, exit 1 → `Rewritten`, empty reflog or any other failure → `NotCheckable(reason)` (m2-details-and-diffs/15).
 - `finding_from_evil` (fn) — `Evil` → an `EvilMerge` finding on the merge; else `None`.
 - `findings_from_force_push` (fn) — `Rewritten` → a `ForcePushedRemote` finding at `current`; `NotCheckable` and `Clean` → `None`.
 - `findings_from_duplicates` (fn) — one `DuplicateCommit` finding per copy, `copies` = the rest of its group.
