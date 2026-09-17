@@ -97,6 +97,26 @@ impl Radar { pub fn policy(&self) -> Policy; }
 - [ ] MAP.md: `graft-git` (`history`), `graft` (`jobs::radar`, `update::radar`, `view::radar`, `config::Radar`), `graft-ui` (`graph_screen`, `detail_pane`).
 - [ ] Capture at `docs/shots/m2-marker-column.txt`, ≤ 200 KB; user judges by eye.
 
+## Handoff (session 1, partial)
+
+Done, committed at `86a926d`:
+- `crates/graft-git/src/history/read.rs`+`mod.rs`: `first_parent_chain`, `previous_tips`, `ReflogError`, tests, MAP.md.
+- `crates/graft/src/config`: `Radar`, `RadarSetting`, `Radar::policy` (note: `policy(self)` not `policy(&self)` — clippy `trivially_copy_pass_by_ref` on the 7-byte `Copy` struct), SCHEMA entry, re-exports, tests, MAP.md.
+- `crates/graft-ui`: `MarkerView`, `GraphEntry::marker`, `GraphView::marker_column`; `render.rs`'s `marker_glyph` draws `⚠`/`ⓘ` (ASCII `!`/`i` via `view.ascii`) in the existing marker slot, gated on `marker_column && entry.marker.is_some()`. Column width stays **always reserved** (not conditional on `marker_column`) — it already carries the pinned-compare accent (`compare_marked`, ticket 11); making it conditional would move every later column when no finding exists yet. Stability ("never shifts on scroll") holds either way since width never changes. Updated the old `the_marker_slot_is_the_same_width_empty_or_filled` test (used to key off `Row::marker`, which M2's design note retires) to use the new fields; fixed a latent byte-vs-char-offset bug in that test's column check (only visible once a multi-byte glyph was involved).
+- `crates/graft/src/view/{rows,entries}.rs`: placeholder fields only (`marker: None`, `marker_column: false`) so `graft` compiles against the new `graft-ui` shapes — **not real wiring**.
+- All MAP.md updated (graft-git, graft-ui, graft::config). Gates green (fmt/clippy/test, whole workspace).
+
+Remaining (next session):
+1. `crates/graft/src/jobs/radar.rs` — `RadarContext`, `run_radar_context`, `Task`/`Product`/`Command::RadarContext`.
+2. `crates/graft/src/update/radar.rs` — `RadarState`, `AppState::radar`, dispatch `Command::RadarContext` at both `Command::ReadRefs` sites (startup + refresh — cite via scout, don't guess).
+3. `crates/graft/src/view/radar.rs` — `branch_facts`, `head_facts`, `repo_facts`, `findings_for`, `marker_for`, `radar_lines_for`; wire `view::rows.rs`/`entries.rs`'s placeholders to call these instead of hardcoded `None`/`false`.
+4. `marker_column`'s real truth (Scope: `Ready` context + any finding, OR `AppState::radar_column_seen: Cell<bool>` sticky bit if `History::rows` evicts off-screen rows — check that first).
+5. `crates/graft-ui/src/detail_pane.rs`: radar line rendering for all six `RadarLine` variants (currently likely still a no-op/first-only — not touched this session).
+6. Capture at `docs/shots/m2-marker-column.txt` (≤200KB).
+7. Tests for 1–4 (fixture-based + hand-built `AppState` slice per ticket's Tests section).
+
+Gotcha: budget for this ticket ran far over the ~32-call target by the time the seam alone was gated and committed (multiple clippy/test iterations). Size the remainder as its own ticket(s) rather than assuming it fits in what's left of one context.
+
 ## Gates
 
 `cargo fmt --check` · `cargo test --quiet` · `cargo clippy --all-targets --message-format=short -- -D warnings` · `cargo build --quiet` · purity guard (`update/radar.rs`: no I/O; `view/radar.rs`: no I/O beyond the `Cell` write if needed).
