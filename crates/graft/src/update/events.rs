@@ -107,6 +107,12 @@ pub enum Task {
         /// The remote-tracking ref's tip as `update` last knew it.
         current: graft_core::oid::Oid,
     },
+    /// The Mistake Radar's duplicate-commit probe: patch-ids over the
+    /// newest commits (`jobs::radar::run_duplicates_probe`).
+    DuplicatesProbe {
+        /// How many commits back the probe looked.
+        window: u32,
+    },
 }
 
 /// What a job brought back.
@@ -165,6 +171,8 @@ pub enum Product {
     /// for the same reason [`Product::EvilProbe`] is not: "could not check"
     /// is one of the verdict's own answers.
     ForcePushProbe(String, graft_ops::mistake_radar::probes::ForcePushVerdict),
+    /// The duplicate-commit probe's groups, or why it could not run.
+    DuplicatesProbe(Result<std::sync::Arc<graft_ops::mistake_radar::probes::Duplicates>, String>),
 }
 
 /// What running `git --version` found.
@@ -257,6 +265,9 @@ pub enum Command {
     /// remote-tracking ref itself is resolved by the job, from config
     /// `update` cannot read.
     ForcePushProbe(JobId, String, graft_core::oid::Oid),
+    /// Probe the newest `window` commits for shared patch-ids, under an id
+    /// `update` chose.
+    DuplicatesProbe(JobId, u32),
 }
 
 /// Where the offer to build a missing commit-graph file is (m1-the-graph/54).

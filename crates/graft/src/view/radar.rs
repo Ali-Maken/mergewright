@@ -159,6 +159,11 @@ pub fn findings_for(state: &AppState, id: Oid, parents: &[Oid], subject: &str) -
             );
         }
     }
+    // The duplicates probe answers for the whole window at once; its
+    // findings are already indexed by commit (`update::radar`).
+    if let Some(finding) = state.radar.duplicate_findings.get(&id) {
+        findings.push(finding.clone());
+    }
     findings
 }
 
@@ -325,6 +330,8 @@ mod tests {
             })),
             policy: Policy::default(),
             force_push: std::collections::HashMap::new(),
+            duplicates: Loading::Idle,
+            duplicate_findings: std::collections::HashMap::new(),
         };
         state
     }

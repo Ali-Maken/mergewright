@@ -12,8 +12,8 @@ use graft_core::job::JobId;
 use graft_core::mistake_radar::MistakeRadarKind;
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
-use graft_ops::mistake_radar::Policy;
-use graft_ops::mistake_radar::probes::ForcePushVerdict;
+use graft_ops::mistake_radar::probes::{Duplicates, ForcePushVerdict, findings_from_duplicates};
+use graft_ops::mistake_radar::{Finding, Policy};
 
 use crate::jobs::radar::RadarContext;
 use crate::refs::Upstream;
@@ -39,6 +39,16 @@ pub struct RadarState {
     /// Asked for once the context lands, thrown away by a refresh — a fetch
     /// is exactly when a remote's history can have been rewritten.
     pub force_push: HashMap<String, Loading<ForcePushVerdict>>,
+    /// The duplicate-commit probe's groups, over the newest 500 commits.
+    /// Asked for once the context lands, thrown away by a refresh, like
+    /// [`RadarState::force_push`] — but one repo-wide job, not one per
+    /// branch.
+    pub duplicates: Loading<Arc<Duplicates>>,
+    /// One `DuplicateCommit` finding per copy, by that commit's id, rebuilt
+    /// whole each time [`RadarState::duplicates`] lands
+    /// (`probes::findings_from_duplicates`). The probe itself is
+    /// policy-blind; this is where `[radar] duplicate = off` takes effect.
+    pub duplicate_findings: HashMap<Oid, Finding>,
 }
 
 /// The default branch's shorthand name and its tip, purely from facts
@@ -96,7 +106,10 @@ pub fn radar_event(state: &mut AppState, event: AppEvent) {
         AppEvent::Produced(_, Product::ForcePushProbe(branch, verdict)) => {
             force_push_probed(state, branch, verdict);
         }
-        // `answer`'s pattern routes only the two above here.
+        AppEvent::Produced(id, Product::DuplicatesProbe(result)) => {
+            duplicates_probed(state, id, result);
+        }
+        // `answer`'s pattern routes only the three above here.
         other => debug_assert!(false, "not a radar event: {other:?}"),
     }
 }
@@ -174,6 +187,57 @@ pub fn force_push_probed(state: &mut AppState, branch: String, verdict: ForcePus
         .insert(branch, Loading::Ready(verdict));
 }
 
+/// How many of the newest commits the duplicates probe looks at
+/// (design note m2-details-and-diffs, hard-to-reverse choice 2). No config
+/// key: PROMPT.md does not ask for one.
+const DUPLICATES_WINDOW: u32 = 500;
+
+/// Asks, once, for the duplicates probe over the newest
+/// [`DUPLICATES_WINDOW`] commits.
+///
+/// Called at the tail of every `update`, beside [`request_context`] and
+/// [`request_force_push_probes`], gated on the context being `Ready` (the
+/// same reason force-push waits) and idempotent: once `duplicates` leaves
+/// `Idle` it is not asked for again until [`reset_for_refresh`] clears it.
+/// Unlike the force-push probe this is not gated on the `duplicate` kind
+/// being on — the probe itself is policy-blind (cheap enough not to skip
+/// the `git` calls), and only [`duplicates_probed`] applies the policy.
+pub fn request_duplicates_probe(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut dyn FnMut() -> JobId,
+) {
+    if !matches!(state.radar.context, Loading::Ready(_)) {
+        return;
+    }
+    if !matches!(state.radar.duplicates, Loading::Idle) {
+        return;
+    }
+    let id = next_id();
+    state.radar.duplicates = Loading::Pending(id);
+    commands.push(Command::DuplicatesProbe(id, DUPLICATES_WINDOW));
+}
+
+/// The duplicates probe answered. `duplicate_findings` is rebuilt whole from
+/// the fresh groups, indexed by each finding's own commit, so
+/// `view::radar::findings_for` can look a row up by id.
+pub fn duplicates_probed(state: &mut AppState, id: JobId, result: Result<Arc<Duplicates>, String>) {
+    if state.radar.duplicates != Loading::Pending(id) {
+        return;
+    }
+    match result {
+        Ok(duplicates) => {
+            state.radar.duplicate_findings =
+                findings_from_duplicates(&duplicates, &state.radar.policy)
+                    .into_iter()
+                    .map(|finding| (finding.at, finding))
+                    .collect();
+            state.radar.duplicates = Loading::Ready(duplicates);
+        }
+        Err(failure) => state.radar.duplicates = Loading::Failed(failure),
+    }
+}
+
 /// A manual refresh (`Ctrl+R`) throws the context away: the default branch's
 /// tip may have moved, and a stale chain would misclassify a foxtrot merge
 /// against a tip that is no longer real. [`request_context`] asks for a
@@ -183,6 +247,8 @@ pub fn reset_for_refresh(state: &mut AppState) {
     // A refresh usually follows a fetch, which is when a remote's history
     // can have been rewritten under us: every verdict has to be asked again.
     state.radar.force_push.clear();
+    state.radar.duplicates = Loading::Idle;
+    state.radar.duplicate_findings.clear();
 }
 
 #[cfg(test)]
@@ -394,5 +460,107 @@ mod tests {
             state.radar.force_push.is_empty(),
             "a fetch is when a remote can have been rewritten"
         );
+    }
+
+    #[test]
+    fn duplicates_are_asked_for_once_the_context_lands_and_only_once() {
+        let mut state = state_with_a_tracked_branch(oid(1));
+        let mut commands = Vec::new();
+        let mut ids = 0;
+        let mut next_id = || {
+            ids += 1;
+            JobId::new(ids)
+        };
+        request_duplicates_probe(&mut state, &mut commands, &mut next_id);
+        assert_eq!(commands, vec![Command::DuplicatesProbe(JobId::new(1), 500)]);
+        assert_eq!(state.radar.duplicates, Loading::Pending(JobId::new(1)));
+
+        commands.clear();
+        request_duplicates_probe(&mut state, &mut commands, &mut next_id);
+        assert!(commands.is_empty(), "already asked");
+    }
+
+    #[test]
+    fn nothing_is_asked_for_duplicates_before_the_context_lands() {
+        let mut state = state_with_a_tracked_branch(oid(1));
+        state.radar.context = Loading::Idle;
+        let mut commands = Vec::new();
+        request_duplicates_probe(&mut state, &mut commands, &mut || JobId::new(1));
+        assert!(commands.is_empty(), "no context yet");
+    }
+
+    #[test]
+    fn a_duplicates_answer_populates_one_finding_per_copy() {
+        let mut state = state_with_a_tracked_branch(oid(1));
+        let mut commands = Vec::new();
+        request_duplicates_probe(&mut state, &mut commands, &mut || JobId::new(9));
+
+        let duplicates = Duplicates {
+            groups: vec![vec![oid(5), oid(6)]],
+            window: 500,
+            complete: true,
+        };
+        duplicates_probed(&mut state, JobId::new(9), Ok(Arc::new(duplicates)));
+
+        assert!(matches!(state.radar.duplicates, Loading::Ready(_)));
+        assert_eq!(state.radar.duplicate_findings.len(), 2);
+        assert!(state.radar.duplicate_findings.contains_key(&oid(5)));
+        assert!(state.radar.duplicate_findings.contains_key(&oid(6)));
+    }
+
+    #[test]
+    fn the_duplicate_kind_off_leaves_findings_empty_though_the_probe_ran() {
+        let mut state = state_with_a_tracked_branch(oid(1));
+        state
+            .radar
+            .policy
+            .set(MistakeRadarKind::DuplicateCommit, None);
+        let mut commands = Vec::new();
+        request_duplicates_probe(&mut state, &mut commands, &mut || JobId::new(9));
+        assert_eq!(
+            commands,
+            vec![Command::DuplicatesProbe(JobId::new(9), 500)],
+            "the probe is policy-blind: it runs even with the kind off"
+        );
+
+        let duplicates = Duplicates {
+            groups: vec![vec![oid(5), oid(6)]],
+            window: 500,
+            complete: true,
+        };
+        duplicates_probed(&mut state, JobId::new(9), Ok(Arc::new(duplicates)));
+        assert!(matches!(state.radar.duplicates, Loading::Ready(_)));
+        assert!(state.radar.duplicate_findings.is_empty());
+    }
+
+    #[test]
+    fn a_stale_duplicates_answer_is_dropped_and_a_refresh_clears_the_rest() {
+        let mut state = state_with_a_tracked_branch(oid(1));
+        state.radar.duplicates = Loading::Pending(JobId::new(2));
+        duplicates_probed(
+            &mut state,
+            JobId::new(1),
+            Ok(Arc::new(Duplicates {
+                groups: Vec::new(),
+                window: 500,
+                complete: true,
+            })),
+        );
+        assert_eq!(state.radar.duplicates, Loading::Pending(JobId::new(2)));
+
+        duplicates_probed(
+            &mut state,
+            JobId::new(2),
+            Ok(Arc::new(Duplicates {
+                groups: vec![vec![oid(1), oid(2)]],
+                window: 500,
+                complete: true,
+            })),
+        );
+        assert_eq!(state.radar.duplicate_findings.len(), 2);
+
+        reset_for_refresh(&mut state);
+        assert_eq!(state.radar.duplicates, Loading::Idle);
+        assert!(state.radar.duplicate_findings.is_empty());
     }
 }

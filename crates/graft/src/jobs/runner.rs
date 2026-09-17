@@ -27,7 +27,7 @@ use crate::history::RowRequest;
 use crate::jobs::radar::RadarContext;
 use crate::repos::RepoStore;
 use crate::update::{AppEvent, Command, Product, Task};
-use graft_ops::mistake_radar::probes::{EvilVerdict, ForcePushVerdict};
+use graft_ops::mistake_radar::probes::{Duplicates, EvilVerdict, ForcePushVerdict};
 
 /// The Mistake Radar's context job: reads the default branch's tip and
 /// table from the store `run_radar_context` needs and joins any open error
@@ -67,6 +67,18 @@ fn force_push_probe(
         Err(error) => return ForcePushVerdict::NotCheckable(error.to_string()),
     };
     super::radar::run_force_push_probe(&repo.handle(), branch, current, stop)
+}
+
+/// The duplicates probe, with the same open-failure rule as [`evil_probe`],
+/// reported as an error since [`Duplicates`] has no `NotCheckable` slot of
+/// its own (the pane renders it as "duplicates: not checked — <line>").
+fn duplicates_probe(
+    repos: &RepoStore,
+    window: u32,
+    stop: &Cancel,
+) -> Result<Arc<Duplicates>, String> {
+    let repo = repos.shared().map_err(|error| error.to_string())?;
+    super::radar::run_duplicates_probe(&repo.handle(), window, stop)
 }
 
 /// The pool: a queue, a few threads, and a table of what is still running.
@@ -245,6 +257,12 @@ impl<S: JobEvents> JobRunner<S> {
                 };
                 self.detail_job(id, task, move |cancel| {
                     Product::RadarContext(radar_context(&repos, default_tip, &default_ref, cancel))
+                });
+            }
+            Command::DuplicatesProbe(id, window) => {
+                let repos = Arc::clone(&self.repos);
+                self.detail_job(id, Task::DuplicatesProbe { window }, move |cancel| {
+                    Product::DuplicatesProbe(duplicates_probe(&repos, window, cancel))
                 });
             }
             // `dispatch` routes only the ones above here; anything else is a
@@ -491,7 +509,8 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             | Command::ContainedIn(..)
             | Command::RadarContext(..)
             | Command::EvilProbe(..)
-            | Command::ForcePushProbe(..)) => {
+            | Command::ForcePushProbe(..)
+            | Command::DuplicatesProbe(..)) => {
                 self.dispatch_detail(command);
             }
             Command::CancelJob(id) => {

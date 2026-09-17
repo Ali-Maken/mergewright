@@ -855,12 +855,9 @@ fn an_opened_compare_draws_its_own_header_not_the_cursor_commit() {
 /// the evil-merge one.
 #[cfg(test)]
 fn evil_merge_state() -> AppState {
-    use crate::update::detail::Loading;
-    use crate::update::radar::RadarState;
     use graft_core::commit::{Commit, Identity, Timestamp};
     use graft_graph::layout::layout;
     use graft_graph::seeds::Seeds;
-    use graft_ops::mistake_radar::Policy;
 
     let who = |seconds| Identity {
         name: b"Test".to_vec(),
@@ -905,17 +902,28 @@ fn evil_merge_state() -> AppState {
             columns: 100,
             rows: 16,
         },
-        radar: RadarState {
-            // An empty default chain: no foxtrot or backward finding, so the
-            // capture shows the evil-merge line and nothing else.
-            context: Loading::Ready(std::sync::Arc::new(crate::jobs::radar::RadarContext {
-                default_chain: std::collections::HashSet::new(),
-                previous_default_tips: Vec::new(),
-            })),
-            policy: Policy::default(),
-            force_push: std::collections::HashMap::new(),
-        },
+        radar: radar_state_with_empty_default_chain(),
         ..AppState::default()
+    }
+}
+
+/// A `RadarState` with an empty default chain: no foxtrot or backward
+/// finding, so a capture built on it shows only whatever else it sets up
+/// (the evil-merge line, in [`evil_merge_state`]).
+#[cfg(test)]
+fn radar_state_with_empty_default_chain() -> crate::update::radar::RadarState {
+    use crate::update::detail::Loading;
+    use graft_ops::mistake_radar::Policy;
+
+    crate::update::radar::RadarState {
+        context: Loading::Ready(std::sync::Arc::new(crate::jobs::radar::RadarContext {
+            default_chain: std::collections::HashSet::new(),
+            previous_default_tips: Vec::new(),
+        })),
+        policy: Policy::default(),
+        force_push: std::collections::HashMap::new(),
+        duplicates: Loading::Idle,
+        duplicate_findings: std::collections::HashMap::new(),
     }
 }
 
@@ -1026,6 +1034,83 @@ fn force_push_state() -> (AppState, Oid) {
     );
 
     (state, tip)
+}
+
+/// Regenerates `docs/shots/m2-duplicate-commit.txt` (m2-details-and-diffs/16).
+///
+/// `#[ignore]`d: it writes a file. Run it by hand with
+/// `cargo test -p graft --lib capture_m2_duplicate_commit -- --ignored`.
+/// The state `capture_m2_duplicate_commit` draws: three synthetic commits,
+/// with the middle one (0202020) carrying a `DuplicateCommit` finding whose
+/// copy is the tip (0303030) — the finding a real duplicates probe would
+/// give after finding two commits share a patch-id; injected, because a
+/// capture runs no `git`.
+fn duplicate_commit_state() -> (AppState, Oid) {
+    use graft_core::mistake_radar::{MistakeRadarKind, Severity};
+    use graft_ops::mistake_radar::{Evidence, Finding};
+
+    let duplicate = oid(2);
+    let mut state = evil_merge_state();
+    // The duplicate stands on the ordinary commit, not the merge: this shot
+    // is about the duplicate-commit line, so no evil-merge line shares the
+    // header.
+    state
+        .history
+        .as_mut()
+        .expect("the fixture has history")
+        .cursor = 1;
+    state.radar.duplicate_findings.insert(
+        duplicate,
+        Finding {
+            kind: MistakeRadarKind::DuplicateCommit,
+            severity: Severity::Info,
+            at: duplicate,
+            evidence: Evidence::Duplicate {
+                copies: vec![oid(3)],
+            },
+        },
+    );
+
+    (state, duplicate)
+}
+
+#[test]
+#[ignore = "writes docs/shots/m2-duplicate-commit.txt; run by hand to regenerate"]
+fn capture_m2_duplicate_commit() {
+    use crate::update::{AppEvent, update};
+    use graft_core::event::{Event, KeyCode, KeyPress};
+
+    let (state, _duplicate) = duplicate_commit_state();
+    let (opened, _) = update(
+        &state,
+        AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Enter))),
+    );
+    let screen = draw(&opened, 100, 16);
+    assert!(screen.contains("duplicate commit"), "{screen}");
+    let header = "\
+# m2-duplicate-commit.txt: TestBackend capture (not a pty), 100x16. Fixture:
+# capture_m2_duplicate_commit in crates/graft/src/view/tests.rs (#[ignore]d,
+# run by hand to regenerate). Three synthetic commits; the middle one
+# (0202020) is opened in the detail pane, with a DuplicateCommit finding
+# injected as Evidence::Duplicate { copies: [0303030] } — the finding a
+# real duplicates probe would give after two commits shared a patch-id.
+#
+# Judge by eye:
+# - The middle row (0202020) carries a ⚠ marker; the other two rows carry
+#   none.
+# - Detail pane header: the radar line reads \"duplicate commit\".
+# - The pane body reads \"reading…\": no file-list job runs in a capture, so
+#   the diff never arrives. Only the header line is what this shot is about.
+#
+";
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m2-duplicate-commit.txt"
+        ),
+        format!("{header}{screen}"),
+    )
+    .expect("docs/shots is writable");
 }
 
 #[test]

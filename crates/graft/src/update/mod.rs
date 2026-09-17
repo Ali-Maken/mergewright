@@ -35,6 +35,7 @@ use graft_core::event::{Event, MouseButton, MouseInput, MouseKind};
 use graft_ui::detail_pane::DetailLayout;
 
 use crate::history::{History, Phase};
+use crate::repository::RepositoryFacts;
 
 /// Answer one event: the new state, and the work it wants done.
 ///
@@ -56,6 +57,7 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
     }));
     radar::request_context(&mut next, &mut commands, &mut || local_jobs.next_id());
     radar::request_force_push_probes(&mut next, &mut commands, &mut || local_jobs.next_id());
+    radar::request_duplicates_probe(&mut next, &mut commands, &mut || local_jobs.next_id());
     next.local_jobs = local_jobs;
     // The commit-graph line costs a graph row: when it comes or goes, the
     // viewport changed height, so ask for the rows that now fit.
@@ -103,22 +105,20 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             | Task::ContainedIn { .. }
             | Task::RadarContext { .. }
             | Task::EvilProbe { .. }
-            | Task::ForcePushProbe { .. },
+            | Task::ForcePushProbe { .. }
+            | Task::DuplicatesProbe { .. },
         ) => {}
-        event @ AppEvent::Produced(_, Product::RadarContext(_) | Product::ForcePushProbe(..)) => {
+        event @ AppEvent::Produced(
+            _,
+            Product::RadarContext(_) | Product::ForcePushProbe(..) | Product::DuplicatesProbe(_),
+        ) => {
             radar::radar_event(next, event);
         }
 
         AppEvent::Produced(id, Product::TopologicalOrder(order)) => {
             history::sorted(next, commands, id, order);
         }
-        AppEvent::Produced(_, Product::Repository(Ok(facts))) => {
-            next.repository = Some(facts);
-            // Whatever went wrong last time has been superseded by a
-            // repository that opened.
-            next.status = Status::Ready;
-            commit_graph::decide_commit_graph_offer(next);
-        }
+        AppEvent::Produced(_, Product::Repository(Ok(facts))) => repository_opened(next, facts),
         AppEvent::Produced(_, Product::Repository(Err(failure))) => {
             repository_open_failed(next, failure);
         }
@@ -133,6 +133,15 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             search::search_progress(next, commands, id, hits);
         }
     }
+}
+
+/// The repository opened, or re-opened on a refresh.
+fn repository_opened(next: &mut AppState, facts: RepositoryFacts) {
+    next.repository = Some(facts);
+    // Whatever went wrong last time has been superseded by a repository
+    // that opened.
+    next.status = Status::Ready;
+    commit_graph::decide_commit_graph_offer(next);
 }
 
 /// A history walk started: it replaces whatever walk came before.
@@ -186,7 +195,8 @@ fn took_fact(next: &mut AppState, product: Product) {
         | Product::ContainedIn(..)
         | Product::RadarContext(_)
         | Product::EvilProbe(..)
-        | Product::ForcePushProbe(..) => {}
+        | Product::ForcePushProbe(..)
+        | Product::DuplicatesProbe(_) => {}
     }
 }
 

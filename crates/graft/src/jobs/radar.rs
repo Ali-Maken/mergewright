@@ -12,7 +12,7 @@ use graft_git::history::{CommitTable, first_parent_chain, previous_tips};
 use graft_git::repo::RepoHandle;
 use graft_git::run::Stop;
 use graft_ops::mistake_radar::probes::{
-    EvilVerdict, ForcePushVerdict, probe_evil_merge, probe_force_push,
+    Duplicates, EvilVerdict, ForcePushVerdict, probe_duplicates, probe_evil_merge, probe_force_push,
 };
 
 /// How many of the default branch's previous reflog tips are kept: enough
@@ -88,6 +88,21 @@ pub fn run_force_push_probe(
         Ok(None) => ForcePushVerdict::NotCheckable("no upstream".into()),
         Err(error) => ForcePushVerdict::NotCheckable(error.to_string()),
     }
+}
+
+/// The work behind
+/// [`Command::DuplicatesProbe`](crate::update::Command::DuplicatesProbe).
+///
+/// # Errors
+/// Any of the probe's three `git` spawns failing, joined to one line.
+pub fn run_duplicates_probe(
+    repo: &RepoHandle,
+    window: u32,
+    stop: &dyn Stop,
+) -> Result<Arc<Duplicates>, String> {
+    probe_duplicates(repo, window, stop)
+        .map(Arc::new)
+        .map_err(|error| error.to_string())
 }
 
 #[cfg(test)]

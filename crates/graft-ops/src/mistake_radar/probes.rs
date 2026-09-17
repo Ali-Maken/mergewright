@@ -8,6 +8,8 @@
 //! clean bill (PROMPT.md §1.4). The pane says "not checkable in this repo"
 //! from the verdict itself.
 
+use std::collections::{HashMap, HashSet};
+
 use graft_core::mistake_radar::MistakeRadarKind;
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
@@ -172,6 +174,98 @@ fn short_remote_ref(remote_ref: &RefName) -> String {
         Some(short) => short.to_owned(),
         None => text.into_owned(),
     }
+}
+
+/// A hex line's `Oid`, tolerant of a trailing newline; anything else is
+/// dropped by the caller rather than failing the whole probe.
+fn parse_oid(bytes: &[u8]) -> Option<Oid> {
+    Oid::from_hex(std::str::from_utf8(bytes).ok()?.trim()).ok()
+}
+
+/// Commits sharing a patch-id, among the newest `window` commits reachable
+/// from any ref.
+///
+/// Three `git` spawns: `log --format=%H` names the window itself (and
+/// whether it covers the whole history, from whether fewer than `window`
+/// commits came back); `log -p` gives their patches; `patch-id --stable`
+/// reads those patches from `stdin` and folds each to a stable id, printing
+/// `"<patch-id> <sha>"` per line. Grouping those lines by patch-id and
+/// dropping groups of one is what makes a duplicate: two commits with no
+/// ancestry between them that made the same change. A merge's patch is
+/// empty and never appears in `patch-id`'s output — expected, not an error,
+/// since an empty patch cannot repeat with anything.
+///
+/// Groups, and the commits within them, are ordered by `log`'s own order
+/// (newest first) for determinism.
+///
+/// # Errors
+/// Any of the three spawns failing.
+pub fn probe_duplicates(
+    repo: &RepoHandle,
+    window: u32,
+    stop: &dyn Stop,
+) -> Result<Duplicates, RunError> {
+    let log_output = GitInvocation::new(repo)
+        .arg(GitArg::Word("log".into()))
+        .arg(GitArg::Flag("--all"))
+        .arg(GitArg::Count("-n", window))
+        .arg(GitArg::Flag("--format=%H"))
+        .run(stop)?;
+    let oids: Vec<Oid> = log_output
+        .stdout
+        .split(|byte| *byte == b'\n')
+        .filter(|line| !line.is_empty())
+        .filter_map(parse_oid)
+        .collect();
+    let complete = oids.len() < window as usize;
+
+    let patches = GitInvocation::new(repo)
+        .arg(GitArg::Word("log".into()))
+        .arg(GitArg::Flag("--all"))
+        .arg(GitArg::Count("-n", window))
+        .arg(GitArg::Flag("-p"))
+        .run(stop)?
+        .stdout;
+
+    let ids_output = GitInvocation::new(repo)
+        .arg(GitArg::Word("patch-id".into()))
+        .arg(GitArg::Flag("--stable"))
+        .stdin(patches)
+        .run(stop)?;
+
+    // Only oids from the window count: `patch-id` can print entries for
+    // objects outside it in principle, and this keeps the probe answering
+    // strictly about the window it says it looked at.
+    let known: HashSet<Oid> = oids.iter().copied().collect();
+    let mut by_patch_id: HashMap<&str, Vec<Oid>> = HashMap::new();
+    let ids_text = String::from_utf8_lossy(&ids_output.stdout);
+    for line in ids_text.lines() {
+        let mut parts = line.split_whitespace();
+        let (Some(patch_id), Some(sha)) = (parts.next(), parts.next()) else {
+            continue;
+        };
+        let Some(oid) = Oid::from_hex(sha).ok().filter(|oid| known.contains(oid)) else {
+            continue;
+        };
+        by_patch_id.entry(patch_id).or_default().push(oid);
+    }
+
+    let position: HashMap<Oid, usize> = oids.iter().enumerate().map(|(i, &oid)| (oid, i)).collect();
+    let mut groups: Vec<Vec<Oid>> = by_patch_id
+        .into_values()
+        .filter(|group| group.len() >= 2)
+        .map(|mut group| {
+            group.sort_by_key(|oid| position[oid]);
+            group
+        })
+        .collect();
+    groups.sort_by_key(|group| group.iter().map(|oid| position[oid]).min());
+
+    Ok(Duplicates {
+        groups,
+        window,
+        complete,
+    })
 }
 
 /// An evil-merge finding on `merge`, when the verdict is `Evil` and the
@@ -424,6 +518,33 @@ mod tests {
             probe_force_push(&repo, "main", &origin_main(), tip, &()),
             ForcePushVerdict::Clean
         );
+    }
+
+    #[test]
+    fn the_cherry_picked_duplicate_is_found_in_its_own_group() {
+        let repo = RepoHandle::open(&graft_fixtures::borrow(
+            graft_fixtures::Shape::CherryPickDuplicates,
+        ))
+        .expect("the fixture opens");
+        let d = probe_duplicates(&repo, 500, &()).expect("the probe runs");
+        assert_eq!(d.window, 500);
+        assert!(d.complete, "4 commits is well under the window");
+        assert_eq!(
+            d.groups.len(),
+            1,
+            "one pair shares a patch-id: {:?}",
+            d.groups
+        );
+        assert_eq!(d.groups[0].len(), 2);
+    }
+
+    #[test]
+    fn a_fixture_with_no_repeated_content_has_no_groups() {
+        let repo = RepoHandle::open(&graft_fixtures::borrow(graft_fixtures::Shape::Trivial))
+            .expect("the fixture opens");
+        let d = probe_duplicates(&repo, 500, &()).expect("the probe runs");
+        assert_eq!(d.groups, Vec::<Vec<Oid>>::new());
+        assert!(d.complete);
     }
 
     #[test]

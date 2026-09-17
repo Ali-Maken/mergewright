@@ -1,9 +1,7 @@
 # radar-probe-duplicates: cherry-picked/duplicate commits in the newest 500
 
-Status: ready
+Status: done
 Blocked by: 01, 04, 13, 13b
-
-Status: draft
 Build with: Sonnet — one pipeline of two typed git calls into a grouping function; every step is independently testable against a fixture.
 Needs: `git-runner` (`GitInvocation`, `GitArg::stdin`, `RunError`, `Stop`), `mistake-radar-detection` (`Duplicates`, `findings_from_duplicates`, `Policy`), `radar-context-and-markers` (`RadarState`/`jobs::radar` pattern, `findings_for`'s extension point)
 
@@ -51,13 +49,18 @@ pub fn run_duplicates_probe(repo: &RepoHandle, window: u32, stop: &dyn Stop) -> 
 
 ## Acceptance
 
-- [ ] `probe_duplicates` on `cherry-pick-duplicates` returns the fixture's known group(s), `complete: true`.
-- [ ] `probe_duplicates` on a fixture with no repeated content returns `groups: vec![]`.
-- [ ] `Product::RadarContext(Ok)` triggers exactly one `DuplicatesProbe`; its answer populates `duplicate_findings` with one entry per copy.
-- [ ] `findings_for` on a duplicate commit's id includes its `DuplicateCommit` finding, listing the other copies (via `Evidence::Duplicate`).
-- [ ] `[radar] duplicate = off`: `findings_from_duplicates` (called from `mistake-radar-detection`, unchanged here) yields nothing, so `duplicate_findings` stays empty even though the probe still ran (the probe itself is policy-blind; only its findings are policy-gated — cheap enough not to skip the git calls, and simpler than threading policy into the probe).
-- [ ] MAP.md: `graft-ops` (`probes::probe_duplicates`), `graft` (`jobs::radar`, `update::radar` additions).
-- [ ] Capture at `docs/shots/m2-duplicate-commit.txt`, ≤ 200 KB; user judges by eye.
+- [x] `probe_duplicates` on `cherry-pick-duplicates` returns the fixture's known group(s), `complete: true`. (`the_cherry_picked_duplicate_is_found_in_its_own_group`, `crates/graft-ops/src/mistake_radar/probes.rs`)
+- [x] `probe_duplicates` on a fixture with no repeated content returns `groups: vec![]`. (`a_fixture_with_no_repeated_content_has_no_groups`)
+- [x] `Product::RadarContext(Ok)` triggers exactly one `DuplicatesProbe`; its answer populates `duplicate_findings` with one entry per copy. (`duplicates_are_asked_for_once_the_context_lands_and_only_once`, `nothing_is_asked_for_duplicates_before_the_context_lands`, `a_duplicates_answer_populates_one_finding_per_copy`, `crates/graft/src/update/radar.rs`)
+- [x] `findings_for` on a duplicate commit's id includes its `DuplicateCommit` finding, listing the other copies (via `Evidence::Duplicate`). (wired in `crates/graft/src/view/radar.rs::findings_for`; exercised by the capture below)
+- [x] `[radar] duplicate = off`: `findings_from_duplicates` yields nothing, so `duplicate_findings` stays empty even though the probe still ran. (`the_duplicate_kind_off_leaves_findings_empty_though_the_probe_ran`)
+- [x] MAP.md: `graft-ops` (`probes::probe_duplicates`), `graft` (`jobs::radar`, `update::radar` additions, `view::radar` extension note).
+- [x] Capture at `docs/shots/m2-duplicate-commit.txt`, 2444 B (≤ 200 KB); user judges by eye.
+
+## Deviations (disclosed, not silent)
+
+- **Trigger wiring:** spec says "`Product::RadarContext(Ok(_))` also emits one `Command::DuplicatesProbe(id, 500)`". Implemented as `request_duplicates_probe`, an idempotent tail call inside `update()` (gated on `radar.context` being `Ready` and `radar.duplicates` being `Idle`), matching ticket 15's `request_force_push_probes` shape — not a literal match arm on `Product::RadarContext`, because `next_id` (needed to build the `Command`) is only available at `update`'s tail, not inside the event match. Functionally equivalent: fires exactly once per context landing, verified by `nothing_is_asked_for_duplicates_before_the_context_lands` / `duplicates_are_asked_for_once_the_context_lands_and_only_once`.
+- **Capture severity marker:** the ticket's capture line asks for a pane header showing `⚠ duplicate commit`. `DuplicateCommit`'s severity is `Info` by design (PROMPT §1.4, `graft-core::mistake_radar::MistakeRadarKind::default_severity`, unlike `EvilMerge`/`ForcePushedRemote` which are `Warning`), so under the real default policy the marker is `ⓘ`, not `⚠` — the capture uses the real default severity rather than forcing `Warning` to match the ticket's literal glyph. The pane header text itself reads "duplicate commit" (no inline icon in the header line, same as the evil-merge and force-push captures); the icon only ever appears beside the graph row's marker glyph. Filed as-is rather than silently complying with a glyph that would misrepresent the shipped severity.
 
 ## Gates
 
