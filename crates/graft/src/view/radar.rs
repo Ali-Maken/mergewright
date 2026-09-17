@@ -461,4 +461,77 @@ mod tests {
         let parents = [oid(3), oid(2)];
         assert!(findings_for(&state, oid(9), &parents, "Sync up").is_empty());
     }
+
+    /// A `Rewritten` verdict on a branch's tip is one finding at that tip,
+    /// and no separate line: the finding line already says it.
+    #[test]
+    fn a_rewritten_remote_is_a_finding_at_the_branchs_tip() {
+        let tip = oid(1);
+        let mut state = ready_state(&[tip], Vec::new());
+        state.radar.force_push.insert(
+            "main".to_owned(),
+            Loading::Ready(ForcePushVerdict::Rewritten {
+                remote_ref: "origin/main".to_owned(),
+                previous: oid(9),
+                current: tip,
+            }),
+        );
+
+        let findings = findings_for(&state, tip, &[], "tip");
+        assert_eq!(findings.len(), 1, "one force-push finding: {findings:?}");
+        assert_eq!(findings[0].kind, MistakeRadarKind::ForcePushedRemote);
+        assert_eq!(findings[0].at, tip);
+
+        // Another row on the same branch's history gets nothing.
+        assert!(findings_for(&state, oid(5), &[], "older").is_empty());
+
+        let lines = radar_lines_for(&state, tip, &[], "tip");
+        assert!(
+            lines.iter().all(|line| matches!(
+                line,
+                RadarLine::Finding { title, .. } if title.as_ref() == "force-pushed remote"
+            )),
+            "no extra line beside the finding: {lines:?}"
+        );
+    }
+
+    /// A `NotCheckable` verdict is never a finding — absence of evidence is
+    /// not a clean bill — but the pane still says the check did not run.
+    #[test]
+    fn a_not_checkable_verdict_is_a_line_and_never_a_finding() {
+        let tip = oid(1);
+        let mut state = ready_state(&[tip], Vec::new());
+        state.radar.force_push.insert(
+            "main".to_owned(),
+            Loading::Ready(ForcePushVerdict::NotCheckable(
+                "no remote-tracking reflog".to_owned(),
+            )),
+        );
+
+        assert!(findings_for(&state, tip, &[], "tip").is_empty());
+        let lines = radar_lines_for(&state, tip, &[], "tip");
+        assert!(
+            matches!(
+                lines.as_slice(),
+                [RadarLine::ForcePushNotCheckable(reason)]
+                    if reason.as_ref() == "no remote-tracking reflog"
+            ),
+            "one not-checkable line: {lines:?}"
+        );
+
+        // With the kind off the pane says nothing at all.
+        state
+            .radar
+            .policy
+            .set(MistakeRadarKind::ForcePushedRemote, None);
+        assert!(radar_lines_for(&state, tip, &[], "tip").is_empty());
+
+        // A pending probe has nothing to say yet either.
+        state.radar.policy = Policy::default();
+        state.radar.force_push.insert(
+            "main".to_owned(),
+            Loading::Pending(graft_core::job::JobId::new(1)),
+        );
+        assert!(radar_lines_for(&state, tip, &[], "tip").is_empty());
+    }
 }

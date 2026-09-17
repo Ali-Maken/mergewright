@@ -293,4 +293,106 @@ mod tests {
         reset_for_refresh(&mut state);
         assert_eq!(state.radar.context, Loading::Idle);
     }
+
+    /// `main` tracks `origin/main`; `solo` has no upstream.
+    fn state_with_a_tracked_branch(tip: Oid) -> AppState {
+        let mut state = state_with_default_branch(None);
+        let head = HeadState::Branch(ref_name("main"));
+        let remote = RefName::new(b"refs/remotes/origin/main".to_vec()).expect("a valid ref name");
+        let mut upstreams = HashMap::new();
+        upstreams.insert(ref_name("main"), remote.clone());
+        let refs = crate::refs::badges(
+            &[
+                (ref_name("main"), tip),
+                (ref_name("solo"), oid(4)),
+                (remote, oid(3)),
+            ],
+            &head,
+            &upstreams,
+            |_, _| {
+                Ok(graft_git::history::AheadBehind {
+                    ahead: 1,
+                    behind: 1,
+                })
+            },
+        )
+        .expect("badges builds from plain data");
+        state.refs = Some(Arc::new(refs));
+        state.radar.context = Loading::Ready(Arc::new(RadarContext {
+            default_chain: HashSet::new(),
+            previous_default_tips: Vec::new(),
+        }));
+        state
+    }
+
+    #[test]
+    fn one_probe_per_tracked_branch_and_only_once() {
+        let mut state = state_with_a_tracked_branch(oid(1));
+        let mut commands = Vec::new();
+        let mut ids = 0;
+        let mut next_id = || {
+            ids += 1;
+            JobId::new(ids)
+        };
+        request_force_push_probes(&mut state, &mut commands, &mut next_id);
+        assert_eq!(
+            commands,
+            vec![Command::ForcePushProbe(
+                JobId::new(1),
+                "main".to_owned(),
+                oid(1)
+            )],
+            "`solo` has no upstream, so nothing is asked about it"
+        );
+        assert_eq!(
+            state.radar.force_push.get("main"),
+            Some(&Loading::Pending(JobId::new(1)))
+        );
+
+        commands.clear();
+        request_force_push_probes(&mut state, &mut commands, &mut next_id);
+        assert!(commands.is_empty(), "already asked");
+    }
+
+    #[test]
+    fn nothing_is_asked_before_the_context_lands_or_with_the_kind_off() {
+        let mut state = state_with_a_tracked_branch(oid(1));
+        state.radar.context = Loading::Idle;
+        let mut commands = Vec::new();
+        request_force_push_probes(&mut state, &mut commands, &mut || JobId::new(1));
+        assert!(commands.is_empty(), "no context yet");
+
+        let mut state = state_with_a_tracked_branch(oid(1));
+        state
+            .radar
+            .policy
+            .set(MistakeRadarKind::ForcePushedRemote, None);
+        request_force_push_probes(&mut state, &mut commands, &mut || JobId::new(1));
+        assert!(commands.is_empty(), "the kind is off: no `git` at all");
+        assert!(state.radar.force_push.is_empty());
+    }
+
+    #[test]
+    fn a_verdict_lands_under_its_branch_and_a_refresh_asks_again() {
+        let mut state = state_with_a_tracked_branch(oid(1));
+        let mut commands = Vec::new();
+        request_force_push_probes(&mut state, &mut commands, &mut || JobId::new(1));
+
+        let verdict = ForcePushVerdict::Rewritten {
+            remote_ref: "origin/main".to_owned(),
+            previous: oid(3),
+            current: oid(1),
+        };
+        force_push_probed(&mut state, "main".to_owned(), verdict.clone());
+        assert_eq!(
+            state.radar.force_push.get("main"),
+            Some(&Loading::Ready(verdict))
+        );
+
+        reset_for_refresh(&mut state);
+        assert!(
+            state.radar.force_push.is_empty(),
+            "a fetch is when a remote can have been rewritten"
+        );
+    }
 }

@@ -1,9 +1,7 @@
 # radar-probe-force-push: did a tracked remote rewrite history under us?
 
-Status: ready
+Status: done
 Blocked by: 01, 04, 13, 13b
-
-Status: draft
 Build with: Opus — an ancestry check (`merge-base --is-ancestor`) whose exit code is the whole answer; a wrong mapping of exit codes to `ForcePushVerdict` is a silent false positive/negative, not a style bug.
 Needs: `git-runner` (`GitInvocation`, `GitArg`, `RunError`, `Stop`), `mistake-radar-detection` (`ForcePushVerdict`, `findings_from_force_push`, `Policy`), `radar-context-and-markers` (`previous_tips`, `RadarLine::ForcePushNotCheckable`, `findings_for`'s extension point, `RadarState`/`jobs::radar` pattern)
 
@@ -46,11 +44,11 @@ pub fn run_force_push_probe(repo: &RepoHandle, branch: &str, remote_ref: &RefNam
 
 ## Acceptance
 
-- [ ] `probe_force_push` on a fabricated rewritten remote-tracking ref → `Rewritten{..}`; on a fast-forwarded one → `Clean`; on a branch whose remote-tracking ref has no reflog entry → `NotCheckable("no remote-tracking reflog")`.
-- [ ] `RadarContext` landing triggers exactly one `ForcePushProbe` per upstream-tracked branch, none for branches without an upstream.
-- [ ] A `Rewritten` verdict on a branch's tip yields one `ForcePushedRemote` finding at that commit; a `NotCheckable` verdict yields no finding but does yield a `RadarLine::ForcePushNotCheckable` line when that tip is selected.
-- [ ] MAP.md: `graft-ops` (`probes::probe_force_push`), `graft` (`jobs::radar`, `update::radar` additions).
-- [ ] Capture at `docs/shots/m2-force-push.txt`, ≤ 200 KB; user judges by eye.
+- [x] `probe_force_push` on a fabricated rewritten remote-tracking ref → `Rewritten{..}`; on a fast-forwarded one → `Clean`; on a branch whose remote-tracking ref has no reflog entry → `NotCheckable("no remote-tracking reflog")`.
+- [x] `RadarContext` landing triggers exactly one `ForcePushProbe` per upstream-tracked branch, none for branches without an upstream.
+- [x] A `Rewritten` verdict on a branch's tip yields one `ForcePushedRemote` finding at that commit; a `NotCheckable` verdict yields no finding but does yield a `RadarLine::ForcePushNotCheckable` line when that tip is selected.
+- [x] MAP.md: `graft-ops` (`probes::probe_force_push`), `graft` (`jobs::radar`, `update::radar` additions).
+- [x] Capture at `docs/shots/m2-force-push.txt`, ≤ 200 KB; user judges by eye.
 
 ## Gates
 
@@ -59,3 +57,47 @@ pub fn run_force_push_probe(repo: &RepoHandle, branch: &str, remote_ref: &RefNam
 ## Size
 
 Two crates in substance (`graft-ops` ~50 lines, `graft` ~130: jobs ~30, update ~50, view ~50). Tests ~150 (the fabricated-rewrite fixture setup is the fiddly part — budget it first). ≤ 22 tool calls. Named seam: `probe_force_push` + its two fixture cases fit alone; the trigger/map/view wiring is the remainder if the fixture fabrication runs long.
+
+## Deviations from the spec (disclosed)
+
+1. **`Command`/`Task::ForcePushProbe` carry no `RefName`.** `update` cannot
+   resolve a branch's remote-tracking ref: `refs::Upstream` carries only the
+   ahead/behind counts and (when in sync) the remote's name, and the real
+   mapping is `branch.<name>.merge` config — a disk read, which the purity
+   guard forbids in `update/`. So the command is
+   `ForcePushProbe(JobId, String, Oid)` and `jobs::radar::run_force_push_probe`
+   resolves the ref through `RepoHandle::upstream` before calling
+   `probe_force_push`, whose signature is exactly as specified. No upstream →
+   `NotCheckable("no upstream")`.
+2. **The trigger is a tail call, not `context_landed`.** `next_id` exists only
+   at the tail of `update` (that is where `request_context` already lives);
+   `answer`, where products land, has no id source. `request_force_push_probes`
+   fires on the first `update` after the context is `Ready` and is idempotent,
+   which is the same observable behaviour the spec asked for, and the shape
+   ticket 14 used.
+3. **`force_push` is `HashMap<String, Loading<ForcePushVerdict>>`**, not
+   `HashMap<String, ForcePushVerdict>`: `Pending` is what makes the trigger
+   idempotent without a second field. Verdicts still land unconditionally.
+4. **`reset_for_refresh` clears the map.** Not in the spec, but a refresh
+   follows a fetch, which is exactly when a remote can have been rewritten.
+5. **`probe_force_push` shortens the ref** to `origin/main` rather than using
+   the raw `refs/remotes/origin/main`, because `ForcePushVerdict::Rewritten`'s
+   `remote_ref` field is documented as the short form.
+6. **`branch` is unused inside `probe_force_push`** (`_branch`): the signature
+   is kept as specified, but the verdict names the remote ref, not the branch.
+7. Probes are skipped entirely when `[radar] force_pushed = "off"`, so that
+   setting spawns no `git`.
+
+## What was actually verified
+
+- `probe_force_push` ran against three fabricated repositories (a writable
+  copy of `Shape::Trivial`, `refs/remotes/origin/*` moved with `update-ref`):
+  a rewound remote → `Rewritten`, a fast-forwarded one → `Clean`, a
+  creation-only reflog → `NotCheckable("no remote-tracking reflog")`.
+- The trigger, the map insert, the refresh reset and both view outcomes were
+  verified by unit tests on synthetic state — no live repository.
+- **Not verified against a real force-pushed remote.** The app was not run
+  against a repository whose upstream had actually been rewritten, so
+  `RepoHandle::upstream`'s resolution is exercised only by its own tests.
+- The capture is `docs/shots/m2-force-push.txt` (2.8 KB, TestBackend, 100x16,
+  verdict injected). **The user judges it by eye.**

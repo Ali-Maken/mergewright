@@ -1,0 +1,35 @@
+# m2-force-push.txt: TestBackend capture (not a pty), 100x16. Fixture:
+# capture_m2_force_push in crates/graft/src/view/tests.rs (#[ignore]d, run
+# by hand to regenerate). Three synthetic commits; `main` stands on the
+# middle one (0202020), which is opened in the detail pane, with the
+# force-push probe's verdict injected as Rewritten { remote_ref:
+# "origin/main", previous: 0909090, current: 0202020 } — the verdict a real
+# `git merge-base --is-ancestor` would give after the remote was rewritten
+# under us. `main` tracks `origin/main`, two commits apart each way — what a
+# rewritten remote leaves behind.
+#
+# Judge by eye:
+# - The `main` row (0202020) carries a ⚠ marker; the other two rows carry
+#   none.
+# - Detail pane header: the radar line reads "force-pushed remote".
+# - No "force-push: not checkable" line beside it: a verdict that became a
+#   finding never also says the check did not run.
+# - The pane body reads "reading…": no file-list job runs in a capture, so
+#   the diff never arrives. Only the header line is what this shot is about.
+#
+" graft 3 commits                                                                                    "
+"◉─╮   Merge branch 'feature'                                                         TE 57y  0303030"
+"◆ │ ⚠ [◆ main ↑2 ↓2] Ship the release notes                                          TE 57y  0202020"
+"◇─╯   Start the feature branch                                                       TE 57y  0101010"
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+" q quit  F2 status  F3 renderer  <> resize  / search  j/k move  Space fold  1 first-parent  F focus "
+"COMMIT 0202020 · Test <test@example.invalid> · 1970-01-01 00:00 +0000 · 57y · parents 0101010 · dif…"
+"Ship the release notes · force-pushed remote                                                        "
+"                              reading…                                                              "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "
+"                                                                                                    "

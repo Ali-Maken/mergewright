@@ -974,3 +974,100 @@ fn capture_m2_evil_merge() {
     )
     .expect("docs/shots is writable");
 }
+
+/// Regenerates `docs/shots/m2-force-push.txt` (m2-details-and-diffs/15).
+///
+/// `#[ignore]`d: it writes a file. Run it by hand with
+/// `cargo test -p graft --lib capture_m2_force_push -- --ignored`.
+/// The state `capture_m2_force_push` draws: three synthetic commits, `main`
+/// on the middle one tracking `origin/main`, and the force-push verdict a
+/// rewritten remote would give — injected, because a capture runs no `git`.
+fn force_push_state() -> (AppState, Oid) {
+    use crate::update::detail::Loading;
+    use graft_core::ref_name::RefName;
+    use graft_git::repo::HeadState;
+    use graft_ops::mistake_radar::probes::ForcePushVerdict;
+
+    let tip = oid(2);
+    let mut state = evil_merge_state();
+    // `main` stands on the ordinary commit, not the merge: this shot is
+    // about the force-push line, so no evil-merge line shares the header.
+    state
+        .history
+        .as_mut()
+        .expect("the fixture has history")
+        .cursor = 1;
+    let main = RefName::new(b"refs/heads/main".to_vec()).expect("a valid ref name");
+    let origin_main = RefName::new(b"refs/remotes/origin/main".to_vec()).expect("a valid ref name");
+    let mut upstreams = std::collections::HashMap::new();
+    upstreams.insert(main.clone(), origin_main.clone());
+    let refs = crate::refs::badges(
+        &[(main.clone(), tip), (origin_main, oid(9))],
+        &HeadState::Branch(main),
+        &upstreams,
+        |_, _| {
+            Ok(graft_git::history::AheadBehind {
+                ahead: 2,
+                behind: 2,
+            })
+        },
+    )
+    .expect("plain data always builds");
+    state.refs = Some(std::sync::Arc::new(refs));
+    // The verdict a real `git merge-base --is-ancestor` would give after the
+    // remote was rewritten; a capture runs no `git`.
+    state.radar.force_push.insert(
+        "main".to_owned(),
+        Loading::Ready(ForcePushVerdict::Rewritten {
+            remote_ref: "origin/main".to_owned(),
+            previous: oid(9),
+            current: tip,
+        }),
+    );
+
+    (state, tip)
+}
+
+#[test]
+#[ignore = "writes docs/shots/m2-force-push.txt; run by hand to regenerate"]
+fn capture_m2_force_push() {
+    use crate::update::{AppEvent, update};
+    use graft_core::event::{Event, KeyCode, KeyPress};
+
+    let (state, _tip) = force_push_state();
+    let (opened, _) = update(
+        &state,
+        AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Enter))),
+    );
+    let screen = draw(&opened, 100, 16);
+    assert!(screen.contains("force-pushed remote"), "{screen}");
+    let header = "\
+# m2-force-push.txt: TestBackend capture (not a pty), 100x16. Fixture:
+# capture_m2_force_push in crates/graft/src/view/tests.rs (#[ignore]d, run
+# by hand to regenerate). Three synthetic commits; `main` stands on the
+# middle one (0202020), which is opened in the detail pane, with the
+# force-push probe's verdict injected as Rewritten { remote_ref:
+# \"origin/main\", previous: 0909090, current: 0202020 } — the verdict a real
+# `git merge-base --is-ancestor` would give after the remote was rewritten
+# under us. `main` tracks `origin/main`, two commits apart each way — what a
+# rewritten remote leaves behind.
+#
+# Judge by eye:
+# - The `main` row (0202020) carries a ⚠ marker; the other two rows carry
+#   none.
+# - Detail pane header: the radar line reads \"force-pushed remote\".
+# - No \"force-push: not checkable\" line beside it: a verdict that became a
+#   finding never also says the check did not run.
+# - The pane body reads \"reading…\": no file-list job runs in a capture, so
+#   the diff never arrives. Only the header line is what this shot is about.
+#
+";
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m2-force-push.txt"
+        ),
+        format!("{header}{screen}"),
+    )
+    .expect("docs/shots is writable");
+}
