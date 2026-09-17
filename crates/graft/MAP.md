@@ -233,10 +233,12 @@ Internal split (m1-the-graph/72c, public paths unchanged): `types` (`Config`,
 Internal split (m1-the-graph/72b, public paths unchanged): `frame` (tier/screen
 pick, `view`/`view_with_graphics`/`tier_in_force`/`draws_pixels`), `rows`
 (`graph_view` and its assembly), `entries` (building each `GraphEntry`,
-`uncommitted_shown`), `status` (`status_view`) — plus the pre-existing
-`strips`, all re-exported from `mod.rs`.
+`uncommitted_shown`), `status` (`status_view`), `detail` (`detail_view`,
+m2-details-and-diffs/07) — plus the pre-existing `strips`, all re-exported
+from `mod.rs`.
 - `view` (fn) — draw the current state to a frame: the graph screen, or the status screen.
-- `view_with_graphics` (fn) — `view`, plus the gfx status in the header at the pixel tier; returns the graph rect the images go in, `None` when no pixels this frame.
+- `view_with_graphics` (fn) — `view`, plus the gfx status in the header at the pixel tier; returns the graph rect the images go in, `None` when no pixels this frame. When `state.detail.shown`, splits the frame with `graft_ui::detail_pane::DetailLayout` and draws `DetailPane` beside/below/instead of the graph screen (`Tab` draws one side full width behind a `[Graph] Detail` strip; the graph's pixel rect is `None` while it is off screen).
+- `detail_view` (fn) — assemble a `graft_ui::detail::DetailView` from `AppState`: header from the selected row's hydrated commit (author/committer/parents in full; co-authors parsed from `Co-authored-by:` message trailers), or from `AppState::working_tree`'s counts for the uncommitted row; body is the commit message when the files cursor is on `✉ message`, else the diff under it, tracking `DetailState::files`/`diff`'s loading state.
 - `tier_in_force` (fn) — the graph's tier from `Session` + `AppState`: F3's override, else the session's (m1-the-graph/33).
 - `draws_pixels` (fn) — graph screen, pixel tier (override else session), Kitty or iTerm2 protocol — or no acked protocol at all (forced `pixel` attempts Kitty, m1-the-graph/24d).
 - `graph_view(state, now_seconds)` (fn) — build a `GraphView` from the history window, cursor and status; the selection's `Ancestry` over the window lights lanes, fades rows in Focus mode, and weighs its columns as a fold priority — not a veto (ADR-0025). `now_seconds` (m1-the-graph/53) is the instant every row's date is fitted against; callers pass `state.harness.clock.now_seconds()`.

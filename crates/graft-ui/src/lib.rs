@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 
 pub mod detail;
+pub mod detail_pane;
 pub mod diff_words;
 pub mod fit;
 pub mod graph_column;

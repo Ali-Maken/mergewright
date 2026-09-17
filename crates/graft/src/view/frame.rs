@@ -4,14 +4,17 @@
 use graft_core::capabilities::{PixelProtocol, RenderingTier};
 use graft_term::SanitizedText;
 use graft_term::sanitize_line;
-use graft_ui::graph_screen::{GraphScreen, GraphicsStatus, max_lanes_for};
+use graft_ui::detail_pane::{DetailLayout, DetailPane};
+use graft_ui::graph_screen::{GraphScreen, GraphView, GraphicsStatus, max_lanes_for};
 use graft_ui::status_screen::StatusScreen;
 use ratatui::Frame;
 use ratatui::layout::Rect;
+use ratatui::style::Style;
 
 use crate::session::Session;
 use crate::update::{AppState, Screen, Status};
 
+use super::detail::detail_view;
 use super::rows::graph_view;
 use super::status::status_view;
 
@@ -81,10 +84,14 @@ pub fn view_with_graphics(
             screen.banner = banner_lines(state, tier);
             screen.pixel = pixels;
             screen.graphics = pixels.then(|| graphics.clone());
-            let widget = GraphScreen::new(&screen, &session.theme);
-            let graph = pixels.then(|| widget.graph_area(area));
-            frame.render_widget(widget, area);
-            graph
+
+            if !state.detail.shown {
+                let widget = GraphScreen::new(&screen, &session.theme);
+                let graph = pixels.then(|| widget.graph_area(area));
+                frame.render_widget(widget, area);
+                return graph;
+            }
+            render_graph_with_detail(session, state, frame, &screen, area, pixels)
         }
         Screen::Status => {
             let screen = status_view(session, state);
@@ -92,6 +99,117 @@ pub fn view_with_graphics(
             None
         }
     }
+}
+
+/// The graph screen split with the detail pane, per [`DetailLayout`]:
+/// side by side (`Right`), stacked (`Below`), or one full-width tab at a
+/// time behind a `[Graph] Detail` strip (`Tab`).
+fn render_graph_with_detail(
+    session: &Session,
+    state: &AppState,
+    frame: &mut Frame,
+    screen: &GraphView<'_>,
+    area: Rect,
+    pixels: bool,
+) -> Option<Rect> {
+    let layout = DetailLayout::compute(area.width, area.height, state.detail.focus, None);
+    let view = detail_view(state);
+    let (graph_area, pane_area) = split_for_detail(frame, session, layout, area);
+
+    if let Some(pane_area) = pane_area {
+        frame.render_widget(
+            DetailPane {
+                view: &view,
+                layout: &layout,
+                theme: &session.theme,
+            },
+            pane_area,
+        );
+    }
+
+    let graph_area = graph_area?;
+    let widget = GraphScreen::new(screen, &session.theme);
+    let graph = pixels.then(|| widget.graph_area(graph_area));
+    frame.render_widget(widget, graph_area);
+    graph
+}
+
+/// `layout`'s graph rectangle and pane rectangle, either of which is absent
+/// in `Tab` mode: only the shown side draws. Also draws the tab strip, since
+/// only this function knows the divide between the strip and its content.
+fn split_for_detail(
+    frame: &mut Frame,
+    session: &Session,
+    layout: DetailLayout,
+    area: Rect,
+) -> (Option<Rect>, Option<Rect>) {
+    match layout {
+        DetailLayout::Right { columns } => {
+            let columns = columns.min(area.width);
+            let graph_area = Rect {
+                width: area.width - columns,
+                ..area
+            };
+            let pane_area = Rect {
+                x: area.x + graph_area.width,
+                width: columns,
+                ..area
+            };
+            (Some(graph_area), Some(pane_area))
+        }
+        DetailLayout::Below { rows } => {
+            let rows = rows.min(area.height);
+            let graph_area = Rect {
+                height: area.height - rows,
+                ..area
+            };
+            let pane_area = Rect {
+                y: area.y + graph_area.height,
+                height: rows,
+                ..area
+            };
+            (Some(graph_area), Some(pane_area))
+        }
+        DetailLayout::Tab { shown } => {
+            let strip = Rect {
+                height: 1.min(area.height),
+                ..area
+            };
+            let content = Rect {
+                y: area.y + strip.height,
+                height: area.height - strip.height,
+                ..area
+            };
+            draw_tab_strip(frame, strip, shown, &session.theme);
+            if shown {
+                (None, Some(content))
+            } else {
+                (Some(content), None)
+            }
+        }
+    }
+}
+
+/// The narrow tier's tab strip: `[Graph] Detail` or `Graph [Detail]`,
+/// bracketing whichever side is on screen.
+fn draw_tab_strip(
+    frame: &mut Frame,
+    area: Rect,
+    detail_shown: bool,
+    theme: &graft_ui::theme::Theme,
+) {
+    if area.height == 0 || area.width == 0 {
+        return;
+    }
+    let text = if detail_shown {
+        "Graph  [Detail]"
+    } else {
+        "[Graph]  Detail"
+    };
+    let style = Style::default().fg(graft_ui::paint::color(
+        theme.token(graft_ui::theme::Token::TextMuted),
+    ));
+    frame.buffer_mut().set_string(area.x, area.y, text, style);
 }
 
 /// The footer's notice: `y`'s copy line until the next key, else `F3`'s

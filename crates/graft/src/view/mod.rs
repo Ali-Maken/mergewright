@@ -14,6 +14,7 @@
 //! builds the graph view model, [`entries`] builds its rows, and [`status`]
 //! builds the status screen's view model.
 
+mod detail;
 mod entries;
 mod frame;
 mod rows;
@@ -24,6 +25,7 @@ pub mod strips;
 #[cfg(test)]
 pub(crate) mod tests;
 
+pub use detail::detail_view;
 pub(crate) use entries::uncommitted_shown;
 pub use frame::{draws_pixels, tier_in_force, view, view_with_graphics};
 pub use rows::graph_view;

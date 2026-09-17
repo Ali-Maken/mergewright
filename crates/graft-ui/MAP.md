@@ -6,6 +6,7 @@ One line per public item. Update when a public item changes.
 - `fit` (mod) — clamp text to an exact cell width.
 - `graph_column` (mod) — the Unicode-tier graph column widget.
 - `detail` (mod) — the detail pane's view-model types, no drawing (m2-details-and-diffs/06).
+- `detail_pane` (mod) — the detail pane's layout and widget: breakpoints, regions, plain diff body (m2-details-and-diffs/07).
 - `graph_screen` (mod) — the graph screen Graft opens on: header, rows, key hints (every graph key, F3 included; narrow widths drop whole hints from the right, m1-the-graph/33; `y sha` added in 45).
 - `graph_screen::badges` (mod) — ref badges: kinds, tracking state, plain/Nerd Font text.
 - `graph_screen::columns` (mod) — pure formatting for the author initials, relative date and short SHA.
@@ -38,6 +39,15 @@ View-model types for the detail pane (m2-details-and-diffs/06); no widget. Every
 - `DetailFocus` (enum) — `Graph`, `Files`, `Diff`.
 - `DetailView` (struct) — everything the pane draws: header, files, body, body_top, focus, mode, options, explain.
 - `ExplainView` (struct) — the explain panel's title, severity, paragraphs, sketch (built by `explain-panel`).
+
+## detail_pane
+Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-and-diffs/07). No I/O; `Theme` is the only extra it needs over the ticket's literal signature (undocumented deviation, see module doc).
+- `DetailLayout` (enum) — `Right { columns }` (160+ cols), `Below { rows }` (100-159), `Tab { shown }` (<100).
+- `DetailLayout::compute` (fn) — picks the breakpoint for a size and focus; `override_cells` replaces the percentage, still clamped to the minimum.
+- `DetailAreas` (struct) — `header`, `files`, `body` rects for one layout.
+- `detail_areas` (fn) — splits a pane rect into `DetailAreas`, capping the files region to what `files_count` needs.
+- `diff_body` (fn) — plain diff body: sign glyph, soft background, no gutter/tint; returns total content rows for scroll clamping. `diff-widget` replaces its body under the same signature.
+- `DetailPane` (struct, `Widget`) — `view`, `layout`, `theme`; draws header, files and body for one frame.
 
 ## diff_words
 - `WordSpans` (struct) — `removed`/`added`: per-line char ranges that changed against the paired line on the other side.

@@ -1,9 +1,8 @@
 # detail-pane-frame: the detail pane's regions, breakpoints and states — no diff rendering yet
 
-Status: ready
+Status: done
 Blocked by: 06, 06b
 
-Status: draft
 Build with: Sonnet — layout math and widget composition; judged by the capture, not a design decision.
 Needs: `detail-model-and-jobs` (`DetailView`, `DetailHeader`, `Subject`, `ContainedIn`, `RadarLine`, `FileListView`, `FileRow`, `FileRowKind`, `FileStatusView`, `BodyView`, `HunkView`, `LineView`, `LineKindView`, `DetailFocus`, `DiffMode`, `DiffOptionsView`, `AppState::detail`, `AppState::repository`/history row access), `working-tree-row-selectable` (`AppState::selected_spec`, `AppState::on_working_tree`, `AppState::working_tree` counts for the `UNCOMMITTED` header)
 
@@ -48,14 +47,14 @@ pub fn detail_view(state: &AppState) -> DetailView;
 
 ## Acceptance
 
-- [ ] `DetailLayout::compute`: 160/159/99 wide give `Right`/`Below`/`Tab`; `Tab`'s `shown` follows `focus != Graph`; `override_cells` replaces the percentage, still clamped to the min (48/8).
-- [ ] `detail_areas`: `Right`/`Tab` stack (files above body, header above both); `Below` splits files|body horizontally beside a 2-line header; files height/width never exceeds its cap even with `files_count` huge, never negative with `files_count == 0`.
-- [ ] Snapshot: each `BodyView` state (`Empty`, `Message`, `Loading`, `Failed`, `Diff`) renders its exact wording from the New UI "States" bullet.
-- [ ] Snapshot: focused region's title paints accent, the other two `text-muted`.
-- [ ] Snapshot: `Subject::WorkingTree { 2, 1, 1 }` reads `UNCOMMITTED · 2 staged 1 unstaged 1 untracked` / `diff vs HEAD a1b2c3d`, no author or contained line; `detail_view` builds it when `on_working_tree` is set (an `update`-level test with `working_tree` counts on hand).
-- [ ] `diff_body` on a two-hunk fixture draws one row per line with the right sign glyph and soft bg per `LineKindView`, no gutter numbers (this ticket's plain version).
-- [ ] MAP.md: `graft-ui` (`detail_pane`), `graft` (`view::detail`).
-- [ ] Capture at `docs/shots/m2-detail-pane-breakpoints.txt`, ≤ 200 KB; user judges by eye.
+- [x] `DetailLayout::compute`: 160/159/99 wide give `Right`/`Below`/`Tab`; `Tab`'s `shown` follows `focus != Graph`; `override_cells` replaces the percentage, still clamped to the min (48/8).
+- [x] `detail_areas`: `Right`/`Tab` stack (files above body, header above both); `Below` splits files|body horizontally beside a 2-line header; files height/width never exceeds its cap even with `files_count` huge, never negative with `files_count == 0`.
+- [x] Snapshot: each `BodyView` state (`Empty`, `Message`, `Loading`, `Failed`, `Diff`) renders its exact wording from the New UI "States" bullet.
+- [x] Snapshot: focused region's title paints accent, the other two `text-muted`.
+- [x] Snapshot: `Subject::WorkingTree { 2, 1, 1 }` reads `UNCOMMITTED · 2 staged 1 unstaged 1 untracked` / `diff vs HEAD a1b2c3d`, no author or contained line; `detail_view` builds it when `on_working_tree` is set (an `update`-level test with `working_tree` counts on hand).
+- [x] `diff_body` on a two-hunk fixture draws one row per line with the right sign glyph and soft bg per `LineKindView`, no gutter numbers (this ticket's plain version).
+- [x] MAP.md: `graft-ui` (`detail_pane`), `graft` (`view::detail`).
+- [x] Capture at `docs/shots/m2-detail-pane-breakpoints.txt`, ≤ 200 KB; user judges by eye.
 
 ## Gates
 
@@ -64,3 +63,35 @@ pub fn detail_view(state: &AppState) -> DetailView;
 ## Size
 
 Two crates: `graft-ui` (`detail_pane.rs` ~270 lines: layout math ~60, widget ~210), `graft` (`view/detail.rs` ~100). Tests + snapshots ~230. ≤ 30 tool calls. If `detail_view`'s header assembly hits a data gap (commit facts the graph doesn't already carry), stop there, ship the widget + layout with a hand-built `DetailView` in tests, and report `partial` naming exactly which header field is missing and where it would come from.
+
+
+## Status notes (builder-sonnet, 2026-09-17)
+
+Done. Deviations from the literal signatures, both reported rather than
+silently applied:
+- `DetailPane` carries a third field, `pub theme: &'a Theme` — the widget
+  cannot resolve colours without one; every other widget in the crate
+  (`GraphScreen`, `StatusScreen`) is handed a `&Theme` the same way.
+- `detail_areas`/`render_header` take `DetailLayout` by value, not
+  `&DetailLayout` (clippy: it's `Copy`, 4 bytes, cheaper by value); the
+  ticket's literal `DetailPane` field stays `&'a DetailLayout`.
+
+`detail_view`'s header assembly hit no data gap: `Commit` carries author,
+committer and parents in full, so those header lines are never blank for a
+real commit. Co-authors are not a separate field, but `Co-authored-by:`
+trailers are plain text already inside `commit.message`, so `detail_view`
+parses them itself (no git call) rather than leaving the line blank.
+
+Wired into `view::frame::view_with_graphics` (`render_graph_with_detail`,
+`split_for_detail`, `draw_tab_strip`): `Right`/`Below` split the frame and
+draw both; `Tab` draws one full width behind a `[Graph] Detail` text strip
+and returns no pixel rect while the graph is off screen.
+
+Capture: `docs/shots/m2-detail-pane-breakpoints.txt` (19 KB), generated by a
+one-off `#[ignore]` test in `detail_pane/tests.rs`, run once and removed —
+not part of the committed suite.
+
+Verified: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
+`cargo test` all green across the workspace (338 `graft` tests, 148 `graft-ui`
+tests). Not verified: how the pane actually looks in a real terminal —
+capture is TestBackend text, user judges by eye per CLAUDE.md.
