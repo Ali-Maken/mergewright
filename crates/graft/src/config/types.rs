@@ -4,7 +4,9 @@
 //! 400-line rule; [`super::load`] is what turns a file on disk into these.
 
 use graft_core::capabilities::RenderingTier;
+use graft_core::mistake_radar::{MistakeRadarKind, Severity};
 use graft_core::ref_name::RefName;
+use graft_ops::mistake_radar::Policy;
 use graft_ui::theme::ThemeKind;
 use serde::Deserialize;
 
@@ -21,6 +23,8 @@ pub struct Config {
     pub graph: Graph,
     /// `[diff]`: the detail pane's diff options at startup.
     pub diff: Diff,
+    /// `[radar]`: the Mistake Radar's per-kind severity overrides.
+    pub radar: Radar,
 }
 
 /// `[ui]`.
@@ -76,6 +80,73 @@ impl Default for Diff {
             word_tint: true,
         }
     }
+}
+
+/// `[radar]`: one [`RadarSetting`] per Mistake Radar kind (PROMPT.md §1.4),
+/// keyed by its kebab-case name (`graft_ops::mistake_radar::MistakeRadarKind::name`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(default)]
+pub struct Radar {
+    /// `radar.foxtrot`.
+    pub foxtrot: RadarSetting,
+    /// `radar.backward`.
+    pub backward: RadarSetting,
+    /// `radar.accidental-pull`.
+    #[serde(rename = "accidental-pull")]
+    pub accidental_pull: RadarSetting,
+    /// `radar.evil`.
+    pub evil: RadarSetting,
+    /// `radar.duplicate`.
+    pub duplicate: RadarSetting,
+    /// `radar.force-pushed`.
+    #[serde(rename = "force-pushed")]
+    pub force_pushed: RadarSetting,
+    /// `radar.risky-state`.
+    #[serde(rename = "risky-state")]
+    pub risky_state: RadarSetting,
+}
+
+impl Radar {
+    /// The [`Policy`] this section describes: [`Policy::default`] with only
+    /// the keys this config actually sets overridden.
+    #[must_use]
+    pub fn policy(self) -> Policy {
+        let mut policy = Policy::default();
+        let settings = [
+            (MistakeRadarKind::FoxtrotMerge, self.foxtrot),
+            (MistakeRadarKind::BackwardMerge, self.backward),
+            (MistakeRadarKind::AccidentalPullMerge, self.accidental_pull),
+            (MistakeRadarKind::EvilMerge, self.evil),
+            (MistakeRadarKind::DuplicateCommit, self.duplicate),
+            (MistakeRadarKind::ForcePushedRemote, self.force_pushed),
+            (MistakeRadarKind::RiskyState, self.risky_state),
+        ];
+        for (kind, setting) in settings {
+            match setting {
+                RadarSetting::Default => {}
+                RadarSetting::Off => policy.set(kind, None),
+                RadarSetting::Info => policy.set(kind, Some(Severity::Info)),
+                RadarSetting::Warning => policy.set(kind, Some(Severity::Warning)),
+            }
+        }
+        policy
+    }
+}
+
+/// One kind's `[radar]` setting: follow the default, turn it off, or force a
+/// severity.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum RadarSetting {
+    /// PROMPT.md §1.4's severity for the kind, unchanged.
+    #[default]
+    Default,
+    /// The kind never yields a finding.
+    Off,
+    /// Reports as [`Severity::Info`], however loud the default is.
+    Info,
+    /// Reports as [`Severity::Warning`], however quiet the default is.
+    Warning,
 }
 
 /// The lane cap under 100 columns when `graph.max_lanes` is unset — the

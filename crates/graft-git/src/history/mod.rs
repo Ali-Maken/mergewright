@@ -37,7 +37,9 @@ mod walk;
 
 pub use divergence::{AheadBehind, ahead_behind};
 pub use node::NodeError;
-pub use read::{WalkError, first_parent_merges, read_commit};
+pub use read::{
+    ReflogError, WalkError, first_parent_chain, first_parent_merges, previous_tips, read_commit,
+};
 pub use table::{CommitTable, TableError};
 pub use walk::{CHUNK, Chunk, LinkChunk, Order, Walk};
 

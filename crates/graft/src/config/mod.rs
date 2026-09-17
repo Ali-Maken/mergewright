@@ -42,7 +42,10 @@ mod tests;
 mod types;
 
 pub use load::{ConfigError, ConfigWarning, Loaded, default_path, load, load_from};
-pub use types::{Config, DEFAULT_MAX_LANES, Diff, Graph, IconSet, RendererChoice, ThemeChoice, Ui};
+pub use types::{
+    Config, DEFAULT_MAX_LANES, Diff, Graph, IconSet, Radar, RadarSetting, RendererChoice,
+    ThemeChoice, Ui,
+};
 
 #[cfg(test)]
 use load::{load_at, path_in_environment};

@@ -145,6 +145,8 @@ fn uncommitted_entry<'a>(head_row: Option<&Row>, counts: WorkingTreeCounts) -> G
         // comes from `History::selected`/`row_at`); the working-tree row can
         // never be marked.
         compare_marked: false,
+        // Uncommitted changes have no commit id for `view::radar` to key on.
+        marker: None,
     }
 }
 
@@ -249,6 +251,8 @@ fn row_entry<'a>(
         when: relative_date(row.commit.date().seconds, now),
         sha: short_sha(&row.commit.id.to_string(), usize::from(SHA_WIDTH)),
         compare_marked,
+        // Wired to `view::radar::marker_for` in the ticket's remainder.
+        marker: None,
     }
 }
 

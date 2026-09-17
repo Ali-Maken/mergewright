@@ -201,14 +201,18 @@ The detail pane's state and transitions; pure (no I/O, no clock). Drawing is `de
 
 ## config
 Internal split (m1-the-graph/72c, public paths unchanged): `types` (`Config`,
-`Ui`, `Graph` and their value enums — `ThemeChoice`, `RendererChoice`,
-`IconSet`), `load` (`Loaded`, `ConfigWarning`, `ConfigError`, `load`,
-`load_from`, `default_path` and the parsing internals), both re-exported from
-`mod.rs`.
+`Ui`, `Graph`, `Radar` and their value enums — `ThemeChoice`, `RendererChoice`,
+`IconSet`, `RadarSetting`), `load` (`Loaded`, `ConfigWarning`, `ConfigError`,
+`load`, `load_from`, `default_path` and the parsing internals), both
+re-exported from `mod.rs`.
 - `Config` (struct) — the config file's settings.
 - `Config::ui` (field) — `[ui]`: how Graft looks.
 - `Config::graph` (field) — `[graph]`: how history is drawn.
 - `Config::diff` (field) — `[diff]`: the detail pane's diff options at startup (m2-details-and-diffs/10).
+- `Config::radar` (field) — `[radar]`: Mistake Radar per-kind severity overrides (m2-details-and-diffs/13).
+- `Radar` (struct) — `[radar]` section: one `RadarSetting` per `MistakeRadarKind` (`foxtrot`, `backward`, `accidental_pull`, `evil`, `duplicate`, `force_pushed`, `risky_state`).
+- `Radar::policy` (fn) — the `graft_ops::mistake_radar::Policy` this section describes: `Policy::default()` with only the set keys overridden.
+- `RadarSetting` (enum) — `Default`/`Off`/`Info`/`Warning` for one Mistake Radar kind.
 - `Diff` (struct) — `[diff]` section: `context: u8` (default 3), `ignore_whitespace: bool` (default false), `word_tint: bool` (default true); loaded into `DetailState::options`/`word_tint` by `event_loop::startup::terminal_and_state`.
 - `Ui` (struct) — `[ui]` section.
 - `Ui::theme` (field) — `ui.theme`.

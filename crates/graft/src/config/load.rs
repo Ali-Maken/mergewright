@@ -195,6 +195,18 @@ fn parse(path: &Path, text: &str) -> Result<Loaded, ConfigError> {
 const SCHEMA: &[(&str, &[&str])] = &[
     ("diff", &["context", "ignore_whitespace", "word_tint"]),
     ("graph", &["default_branch", "max_lanes", "renderer"]),
+    (
+        "radar",
+        &[
+            "foxtrot",
+            "backward",
+            "accidental-pull",
+            "evil",
+            "duplicate",
+            "force-pushed",
+            "risky-state",
+        ],
+    ),
     ("ui", &["icons", "theme"]),
 ];
 

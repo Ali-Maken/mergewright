@@ -1,16 +1,21 @@
 //! Reading a commit whole, and the small free functions that only need a
 //! [`node`](super::node): hydrating one from its object, first-parent merge
-//! counting for ADR-0001, and [`WalkError`] itself.
+//! counting for ADR-0001, the default branch's first-parent chain and a
+//! ref's own reflog for the Mistake Radar (`radar-context-and-markers`), and
+//! [`WalkError`] itself.
 
 use std::sync::Arc;
 
+use gix::bstr::BStr;
 use graft_core::commit::{Commit, Identity, Timestamp};
 use graft_core::commit_handle::{CommitHandle, HandleSet};
 use graft_core::oid::Oid;
+use graft_core::ref_name::RefName;
 
 use super::node::{self, NodeError, Nodes, RepoNodes};
 use super::table::CommitTable;
 use crate::repo::{RepoHandle, TipsError};
+use crate::run::Stop;
 
 /// Reads one commit whole, by id.
 ///
@@ -96,6 +101,104 @@ pub fn first_parent_merges(handle: &RepoHandle, tip: Oid) -> Result<usize, WalkE
         at = node.parents.first();
     }
     Ok(merges)
+}
+
+/// The default branch's first-parent chain, from `tip` to the root, as
+/// handles into `table`.
+///
+/// Reuses the per-handle node reads [`first_parent_merges`] walks with,
+/// rather than hydrating whole commits: the Mistake Radar only needs each
+/// commit's identity and parent, never its message or signature. A shallow
+/// or root commit with no parent simply ends the chain.
+///
+/// `stop` is polled once per commit, the same plain flag check
+/// [`crate::run::GitInvocation::run`]'s process loop makes — no timer, since
+/// this walk never spawns a process to kill.
+///
+/// # Errors
+/// [`WalkError`] if a commit on the chain cannot be read.
+pub fn first_parent_chain(
+    repo: &RepoHandle,
+    table: &Arc<CommitTable>,
+    tip: Oid,
+    stop: &dyn Stop,
+) -> Result<Vec<CommitHandle>, WalkError> {
+    let nodes = RepoNodes::new(repo.gix(), Arc::clone(table));
+    let mut chain = Vec::new();
+    let mut seen = HandleSet::new();
+    let mut at = Some(nodes.handle(&tip));
+    while let Some(commit) = at {
+        if stop.should_stop() {
+            break;
+        }
+        // A first-parent chain cannot revisit a commit in a well-formed
+        // repository, but a corrupt one must not spin here for ever.
+        if !seen.insert(commit) {
+            break;
+        }
+        chain.push(commit);
+        let node = nodes.node(commit)?;
+        at = node.parents.first();
+    }
+    Ok(chain)
+}
+
+/// A ref's own reflog: its previous tips, newest first, deduped, capped at
+/// `cap` entries.
+///
+/// A ref with no reflog at all — never checked out, or the repository has
+/// `core.logAllRefUpdates` off — is `Ok(vec![])`, not an error: it simply has
+/// no history to report, which is a normal state for the Mistake Radar's
+/// force-push probe to see.
+///
+/// # Errors
+/// [`ReflogError`] if the ref exists but its reflog cannot be read.
+pub fn previous_tips(
+    repo: &RepoHandle,
+    refname: &RefName,
+    cap: usize,
+) -> Result<Vec<Oid>, ReflogError> {
+    let gix_repo = repo.gix();
+    let name = BStr::new(refname.as_bytes());
+    let reference = match gix_repo.find_reference(name) {
+        Ok(reference) => reference,
+        Err(gix::reference::find::existing::Error::NotFound { .. }) => return Ok(vec![]),
+        Err(source) => return Err(ReflogError::Unreadable(source.to_string())),
+    };
+    let mut platform = reference.log_iter();
+    let Some(entries) = platform
+        .rev()
+        .map_err(|source| ReflogError::Unreadable(source.to_string()))?
+    else {
+        return Ok(vec![]);
+    };
+
+    let mut tips = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for entry in entries {
+        if tips.len() >= cap {
+            break;
+        }
+        let line = entry.map_err(|source| ReflogError::Unreadable(source.to_string()))?;
+        let previous = line.previous_oid;
+        if previous.is_null() {
+            continue;
+        }
+        let oid = Oid::from_bytes(previous.as_bytes())
+            .map_err(|source| ReflogError::Unreadable(source.to_string()))?;
+        if seen.insert(oid) {
+            tips.push(oid);
+        }
+    }
+    Ok(tips)
+}
+
+/// Why a ref's reflog could not be read.
+#[derive(Debug, thiserror::Error)]
+pub enum ReflogError {
+    /// `gix` could not read the ref or its reflog.
+    #[error("{0}")]
+    Unreadable(String),
 }
 
 /// One side of git's author/committer pair, as plain bytes.

@@ -377,3 +377,50 @@ fn a_lane_limit_with_no_room_for_the_marker_is_refused() {
     let (_dir, path) = config_file("[graph]\nmax_lanes = \"many\"\n");
     assert!(matches!(load_error(&path), ConfigError::Parse { .. }));
 }
+
+#[test]
+fn radar_settings_parse_off_info_and_warning_for_all_seven_keys() {
+    let (_dir, path) = config_file(
+        "\
+[radar]
+foxtrot = \"off\"
+backward = \"info\"
+accidental-pull = \"warning\"
+evil = \"off\"
+duplicate = \"info\"
+force-pushed = \"warning\"
+risky-state = \"off\"
+",
+    );
+    let loaded = load_from(&path).expect("all seven radar keys parse");
+    assert_eq!(loaded.warnings, []);
+
+    let radar = loaded.config.radar;
+    assert_eq!(radar.foxtrot, RadarSetting::Off);
+    assert_eq!(radar.backward, RadarSetting::Info);
+    assert_eq!(radar.accidental_pull, RadarSetting::Warning);
+    assert_eq!(radar.evil, RadarSetting::Off);
+    assert_eq!(radar.duplicate, RadarSetting::Info);
+    assert_eq!(radar.force_pushed, RadarSetting::Warning);
+    assert_eq!(radar.risky_state, RadarSetting::Off);
+}
+
+#[test]
+fn an_unrecognised_radar_key_is_a_config_warning_not_a_load_failure() {
+    let (_dir, path) = config_file("[radar]\nfoxtrot = \"off\"\nfotxrot = \"off\"\n");
+    let loaded = load_from(&path).expect("an unrecognised key still loads");
+    assert_eq!(
+        loaded.warnings,
+        [ConfigWarning::UnknownKey {
+            path: "radar.fotxrot".to_owned()
+        }]
+    );
+}
+
+#[test]
+fn default_radar_config_reproduces_the_default_policy() {
+    assert_eq!(
+        Radar::default().policy(),
+        graft_ops::mistake_radar::Policy::default()
+    );
+}

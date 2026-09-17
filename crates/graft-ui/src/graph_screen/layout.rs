@@ -242,6 +242,13 @@ pub(super) struct Columns {
 }
 
 impl Columns {
+    // The slot is always reserved, `marker_column` or not: it already
+    // carries the pinned-compare-base accent (`GraphEntry::compare_marked`,
+    // m2-details-and-diffs/11), so collapsing it to zero width pre-finding
+    // would move every later column out from under that feature. Stability
+    // ("never shifts on scroll", m2-details-and-diffs.md) is met either way
+    // — the width never changes at all; `marker_column` instead gates which
+    // *glyph* the slot may draw (`GraphScreen::draw_row`).
     pub(super) fn compute(area: Rect, graph_width: u16) -> Self {
         let marker_x = area.x + graph_width.min(area.width);
         let marker_width = MARKER_WIDTH.min(area.width.saturating_sub(graph_width));

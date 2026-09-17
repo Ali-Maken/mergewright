@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 
 use graft_core::capabilities::ColorDepth;
 use graft_core::commit::{Commit, Identity, Timestamp};
+use graft_core::mistake_radar::Severity;
 use graft_core::oid::Oid;
 use graft_graph::layout::layout;
 use graft_graph::row::Row;
@@ -76,6 +77,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
                     when: "2h".to_owned(),
                     sha: short_sha(&row.commit.id.to_string(), usize::from(SHA_WIDTH)),
                     compare_marked: false,
+                    marker: None,
                 }
             })
             .collect(),
@@ -93,6 +95,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
         commit_graph: None,
         banner: Vec::new(),
         detail_shown: false,
+        marker_column: false,
     }
 }
 
@@ -281,15 +284,24 @@ fn the_marker_slot_is_the_same_width_empty_or_filled() {
     let empty = view(&rows, WalkView::Complete { rows: 2 }, 0);
     let empty_screen = text(&draw(&empty, 120, 5));
 
-    let mut marked = rows.clone();
-    marked[0].marker = Some(graft_core::mistake_radar::MistakeRadarKind::EvilMerge);
-    let filled = view(&marked, WalkView::Complete { rows: 2 }, 0);
+    // Since M2 the marker is painted, not laid out (`Row::marker` stays
+    // unset): `GraphEntry::marker`/`GraphView::marker_column` carry it.
+    let mut filled = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    filled.rows[0].marker = Some(MarkerView {
+        severity: Severity::Warning,
+    });
+    filled.marker_column = true;
     let filled_screen = text(&draw(&filled, 120, 5));
 
     // Whether or not row 0 carries a marker, the subject starts at the same
     // column: the marker glyph and its neighbour's blank both take
     // `MARKER_WIDTH` cells, so later columns never shift.
-    let subject_at = |line: &str| line.find("Commit").expect("the subject is drawn");
+    // A char index, not `str::find`'s byte offset: `⚠` is multi-byte, so a
+    // byte offset would report a shift that isn't there in cells.
+    let subject_at = |line: &str| {
+        let byte = line.find("Commit").expect("the subject is drawn");
+        line[..byte].chars().count()
+    };
     assert_eq!(subject_at(&empty_screen[1]), subject_at(&filled_screen[1]));
     assert_ne!(empty_screen[1], filled_screen[1]);
 }

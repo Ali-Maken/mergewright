@@ -45,6 +45,7 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
                 when: relative_date(line.row.commit.date().seconds, NOW),
                 sha: short_sha(&line.row.commit.id.to_string(), 7),
                 compare_marked: false,
+                marker: None,
             })
             .collect(),
         icons: Icons::Plain,
@@ -61,5 +62,6 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
         commit_graph: None,
         banner: Vec::new(),
         detail_shown: false,
+        marker_column: false,
     }
 }

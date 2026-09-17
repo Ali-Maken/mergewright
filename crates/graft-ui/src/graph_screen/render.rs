@@ -1,6 +1,7 @@
 //! Drawing: the [`Widget`] entry point, the rows, and their badges.
 
 use graft_core::capabilities::ColorDepth;
+use graft_core::mistake_radar::Severity;
 use graft_graph::fold::Fold;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
@@ -120,8 +121,8 @@ impl GraphScreen<'_> {
     ) {
         let (style, trailing_style, palette16_edge) = self.row_emphasis(entry, y, area, buf);
 
-        let (glyph, glyph_style) = if entry.line.row.marker.is_some() {
-            ("! ", style)
+        let (glyph, glyph_style) = if let Some((glyph, token)) = self.marker_glyph(entry) {
+            (glyph, foreground(self.theme, token))
         } else if entry.compare_marked || palette16_edge {
             // The pinned compare base (`x`, m2-details-and-diffs/11) draws
             // the same accent `▏` the Palette16 fallback uses, unconditional
@@ -176,6 +177,25 @@ impl GraphScreen<'_> {
             &entry.sha,
             trailing_style,
         );
+    }
+
+    /// The marker slot's glyph and colour token for this row's Mistake Radar
+    /// marker, or `None` when there is none to draw — either the row carries
+    /// no finding, or the column has not yet earned its keep this session
+    /// (`GraphView::marker_column`). ASCII (`!`/`i`) mirrors the same
+    /// `view.ascii` switch the graph column itself draws with, rather than a
+    /// second one (badges have none to mirror: they carry no ASCII form).
+    fn marker_glyph(&self, entry: &GraphEntry<'_>) -> Option<(&'static str, Token)> {
+        if !self.view.marker_column {
+            return None;
+        }
+        let marker = entry.marker?;
+        Some(match (marker.severity, self.view.ascii) {
+            (Severity::Warning, false) => ("⚠ ", Token::Warning),
+            (Severity::Warning, true) => ("! ", Token::Warning),
+            (Severity::Info, false) => ("ⓘ ", Token::TextMuted),
+            (Severity::Info, true) => ("i ", Token::TextMuted),
+        })
     }
 
     /// The text style, the trailing-column style, and whether the row falls

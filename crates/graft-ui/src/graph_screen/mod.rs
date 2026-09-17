@@ -23,6 +23,7 @@ mod render;
 #[cfg(test)]
 mod tests;
 
+use graft_core::mistake_radar::Severity;
 use graft_graph::fold::{Fold, Keep};
 use graft_graph::identity::BranchIdentity;
 use graft_graph::row::Row;
@@ -129,6 +130,20 @@ pub struct GraphView<'a> {
     /// since that is the only time its divider exists to drag
     /// (`detail-resize-and-persistence`).
     pub detail_shown: bool,
+    /// The marker column draws: `app` has seen a Mistake Radar finding this
+    /// session, on a row or on a ref (`view::radar`). Sticky once true — the
+    /// column never appears and disappears as the same session scrolls
+    /// (`docs/design-notes/m2-details-and-diffs.md`, marker column).
+    pub marker_column: bool,
+}
+
+/// A Mistake Radar marker, painted on a row rather than laid out with it
+/// (`docs/design-notes/m2-details-and-diffs.md`, hard-to-reverse choice 2):
+/// only the severity the glyph and its colour need.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MarkerView {
+    /// How loud the marker draws: `⚠`/warning colour, or `ⓘ`/muted.
+    pub severity: Severity,
 }
 
 /// What the terminal said about the graph images, named by state: `gfx ok`
@@ -236,6 +251,10 @@ pub struct GraphEntry<'a> {
     /// This row is the pinned compare base (`x`, m2-details-and-diffs/11):
     /// draws the accent `▏` left rule. At most one row is ever `true`.
     pub compare_marked: bool,
+    /// The Mistake Radar marker for this commit, painted in the marker
+    /// column (`view::radar::marker_for`, m2-details-and-diffs/13). `None`
+    /// on almost every row.
+    pub marker: Option<MarkerView>,
 }
 
 /// An author's chip: two initials, coloured by the author's identity.

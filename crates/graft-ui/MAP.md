@@ -108,8 +108,11 @@ Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-
 - `Compaction::at` (fn) — collapsed, `Keep::default()`.
 - `lanes_that_fit` (fn) — the most lane columns, rail included, the graph column can hold at a screen width; never below 2 (m1-the-graph/44).
 - `max_lanes_for` (fn) — `graph.max_lanes` if configured, else 8/10/12 by the width breakpoint (`< 100`, `100..160`, `160+`), then clamped to `lanes_that_fit` so a configured number larger than the screen never cuts the rail (ADR-0022, ADR-0025; m1-the-graph/44).
-- `GraphEntry` (struct) — one row: `line`, `badges`, sanitised `subject`, `author` chip, `when`, `sha`, `compare_marked`.
+- `GraphEntry` (struct) — one row: `line`, `badges`, sanitised `subject`, `author` chip, `when`, `sha`, `compare_marked`, `marker`.
 - `GraphEntry::compare_marked` (field) — this row is the pinned base of a live compare; draws the accent `▏` left rule (m2-details-and-diffs/11).
+- `GraphEntry::marker` (field) — `Option<MarkerView>`: this row's Mistake Radar marker, painted at draw time (`view::radar::marker_for`, m2-details-and-diffs/13).
+- `MarkerView` (struct) — a marker's `severity`, all a paint-time lens needs; draws `⚠`/`ⓘ` (ASCII `!`/`i`) in the marker slot, only while `GraphView::marker_column` and only in the row's colour token.
+- `GraphView::marker_column` (field) — the marker slot may draw a glyph this session: sticky once a finding is known, never toggles off on scroll (m2-details-and-diffs/13).
 - `AuthorChip` (struct) — an author's chip: sanitised `initials` and the `identity` that colours it.
 - `OrderNotice` (enum) — header notice: `Sorting` (date order while sorting) or `Provisional` (sort stopped; order stays).
 - `WalkView` (enum) — walk state for the header: opening, reading, jumping, complete, cancelled, failed.

@@ -21,8 +21,11 @@ use graft_fixtures::Shape;
 use super::node::{MapNodes, Nodes};
 use super::simple::{Dated, Follow};
 use super::topological::Topological;
-use super::{CHUNK, Chunk, CommitTable, Order, Walk, WalkError, read_commit};
-use crate::repo::SharedRepo;
+use super::{
+    CHUNK, Chunk, CommitTable, Order, Walk, WalkError, first_parent_chain, previous_tips,
+    read_commit,
+};
+use crate::repo::{RepoHandle, SharedRepo};
 
 /// The repository's id table, as the app shares it.
 fn table(handle: &crate::repo::RepoHandle) -> Arc<CommitTable> {
@@ -897,6 +900,92 @@ fn a_link_walk_asked_to_stop_says_so_and_resumes() {
             .map(|link| table.id_of(link.commit)),
     );
     assert_eq!(walked, expected, "a stopped walk resumes where it stopped");
+}
+
+#[test]
+fn first_parent_chain_on_the_foxtrot_fixture_is_the_default_branchs_chain_root_last() {
+    let path = graft_fixtures::borrow(Shape::FoxtrotMerge);
+    let shared = SharedRepo::open(&path).expect("the fixture opens");
+    let handle = shared.handle();
+    let table = table(&handle);
+
+    let expected = rev_list(&path, &["--first-parent", "refs/heads/main"]);
+    let tip = *expected.first().expect("main has commits");
+
+    let chain =
+        first_parent_chain(&handle, &table, tip, &()).expect("the first-parent chain reads");
+    let ids: Vec<Oid> = chain.iter().map(|handle| table.id_of(*handle)).collect();
+
+    assert_eq!(ids, expected);
+}
+
+#[test]
+fn first_parent_chain_on_a_linear_fixture_matches_the_whole_history() {
+    let path = graft_fixtures::borrow(Shape::Linear);
+    let shared = SharedRepo::open(&path).expect("the fixture opens");
+    let handle = shared.handle();
+    let table = table(&handle);
+
+    let expected = rev_list(&path, &["--first-parent", "refs/heads/main"]);
+    let tip = *expected.first().expect("main has commits");
+
+    let chain =
+        first_parent_chain(&handle, &table, tip, &()).expect("the first-parent chain reads");
+    let ids: Vec<Oid> = chain.iter().map(|handle| table.id_of(*handle)).collect();
+
+    assert_eq!(ids, expected);
+}
+
+#[test]
+fn previous_tips_returns_the_reflogs_old_values_newest_first_deduped() {
+    let fixture = crate::fixture::Fixture::with_two_commits();
+    fixture.commit("third");
+
+    let first = Oid::from_hex(fixture.rev_parse("HEAD~2").trim()).expect("git printed hex");
+    let second = Oid::from_hex(fixture.rev_parse("HEAD~1").trim()).expect("git printed hex");
+    let third = Oid::from_hex(fixture.rev_parse("HEAD").trim()).expect("git printed hex");
+
+    fixture.git(&[
+        "update-ref",
+        "-m",
+        "move 1",
+        "refs/heads/main",
+        &first.to_string(),
+    ]);
+    fixture.git(&[
+        "update-ref",
+        "-m",
+        "move 2",
+        "refs/heads/main",
+        &second.to_string(),
+    ]);
+    fixture.git(&[
+        "update-ref",
+        "-m",
+        "move 3",
+        "refs/heads/main",
+        &third.to_string(),
+    ]);
+
+    let repo = RepoHandle::open(fixture.root()).expect("the fixture opens");
+    let refname = graft_core::ref_name::RefName::new("refs/heads/main").expect("a valid ref name");
+
+    let tips = previous_tips(&repo, &refname, 10).expect("the reflog reads");
+
+    assert_eq!(tips, vec![second, first, third]);
+}
+
+#[test]
+fn previous_tips_on_a_fresh_branch_with_only_its_creation_entry_is_empty() {
+    let fixture = crate::fixture::Fixture::with_two_commits();
+    fixture.git(&["branch", "fresh"]);
+
+    let repo = RepoHandle::open(fixture.root()).expect("the fixture opens");
+    let refname = graft_core::ref_name::RefName::new("refs/heads/fresh").expect("a valid ref name");
+
+    let tips = previous_tips(&repo, &refname, 10).expect("a creation-only reflog is not an error");
+
+    assert_eq!(tips, Vec::new());
 }
 
 #[cfg(feature = "heavy-tests")]

@@ -83,6 +83,9 @@ One line per public item. Update when a public item changes.
 - `TableError` (enum) — why the table could not open: the commit-graph directory and gix's error.
 - `read_commit` (fn) — read one commit whole, by id.
 - `first_parent_merges` (fn) — how many merges lie on a commit's first-parent chain.
+- `first_parent_chain` (fn) — a tip's first-parent commits, root last, honouring `Stop` (m2-details-and-diffs/13, Mistake Radar's default-branch chain).
+- `previous_tips` (fn) — a ref's own reflog, old values newest-first, deduped and capped; `Ok(vec![])` when the ref has no reflog (m2-details-and-diffs/13).
+- `ReflogError` (enum) — why `previous_tips` could not read the reflog.
 - `AheadBehind` (struct) — commits only a branch has (`ahead`) and only its upstream has (`behind`).
 - `AheadBehind::in_sync` (fn) — neither side has a commit the other lacks.
 - `ahead_behind` (fn) — count how far a branch tip and its upstream tip have drifted apart.

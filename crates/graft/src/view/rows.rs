@@ -33,26 +33,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         Status::Failed(message) => Some(sanitize_line(message)),
     };
     let Some(history) = &state.history else {
-        return GraphView {
-            location,
-            problem,
-            walk: WalkView::Opening,
-            rows: Vec::new(),
-            icons: graft_ui::graph_screen::Icons::default(),
-            compaction: Compaction::at(crate::config::DEFAULT_MAX_LANES),
-            filters: Filters::default(),
-            reveal: None,
-            order: None,
-            ascii: false,
-            pixel: false,
-            graphics: None,
-            notice: None,
-            search: search_line(state),
-            compare_footer: compare_footer_line(state),
-            commit_graph: state.commit_graph_line(),
-            banner: Vec::new(),
-            detail_shown: state.detail.shown,
-        };
+        return opening_view(state, location, problem);
     };
 
     let walk = walk_view(history);
@@ -85,6 +66,41 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         commit_graph: state.commit_graph_line(),
         banner: Vec::new(),
         detail_shown: state.detail.shown,
+        // Wired to `AppState::radar` in the ticket's remainder.
+        marker_column: false,
+    }
+}
+
+/// The view before any history has arrived: the header says so, and there is
+/// nothing else to show.
+fn opening_view(
+    state: &AppState,
+    location: Option<SanitizedText>,
+    problem: Option<SanitizedText>,
+) -> GraphView<'_> {
+    GraphView {
+        location,
+        problem,
+        walk: WalkView::Opening,
+        rows: Vec::new(),
+        icons: graft_ui::graph_screen::Icons::default(),
+        compaction: Compaction::at(crate::config::DEFAULT_MAX_LANES),
+        filters: Filters::default(),
+        reveal: None,
+        order: None,
+        ascii: false,
+        pixel: false,
+        graphics: None,
+        notice: None,
+        search: search_line(state),
+        compare_footer: compare_footer_line(state),
+        commit_graph: state.commit_graph_line(),
+        banner: Vec::new(),
+        detail_shown: state.detail.shown,
+        // Wired to `AppState::radar` in the ticket's remainder
+        // (`update`/`view::radar`); no context exists yet to have found a
+        // finding.
+        marker_column: false,
     }
 }
 
