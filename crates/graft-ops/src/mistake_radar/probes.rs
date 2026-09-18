@@ -160,7 +160,9 @@ pub fn probe_evil_merge(repo: &RepoHandle, merge: Oid, stop: &dyn Stop) -> EvilV
 /// the other side changed, and a hand-resolved rename/modify conflict looked
 /// evil. So each side is read with rename detection on, and a rename
 /// `old -> new` carries the verdict across: if `old` was changed by both
-/// sides, `new` is too. The cost is the blind spot widening the same way —
+/// sides, `new` is too. **Only a rename** — a copy is a new file, and letting
+/// one carry the verdict would exempt every file copied from a contested one.
+/// The cost is the blind spot widening the same way —
 /// an evil edit to the post-rename path lands in `Resolved` — which is the
 /// direction the probe already errs in for every file both sides touched.
 fn split_remerge_files(
@@ -231,11 +233,13 @@ fn merge_base(
 
 /// What one side of a merge did to the tree since the merge base.
 struct SideChanges {
-    /// Every path the side touched, both ends of a rename or copy included,
-    /// so a path is present under whichever name the other side knows it by.
+    /// Every path the side touched, both ends of a **rename** included, so a
+    /// path is present under whichever name the other side knows it by. A
+    /// copy's source is not one of them: copying a file does not change it.
     changed: HashSet<Vec<u8>>,
-    /// `(old, new)` for each rename or copy, so [`split_remerge_files`] can
-    /// carry "both sides changed this" from the old name to the new one.
+    /// `(old, new)` for each **rename**, so [`split_remerge_files`] can carry
+    /// "both sides changed this" from the old name to the new one. Copies are
+    /// never listed here — see [`changed_paths`].
     renames: Vec<(Vec<u8>, Vec<u8>)>,
 }
 
@@ -244,6 +248,14 @@ struct SideChanges {
 /// go into `changed`. Detection off (the earlier shape) named both ends too,
 /// but lost which was which, and the pairing is what makes a rename conflict
 /// explainable.
+///
+/// **Copies are not renames.** `-C` is not passed, but `diff.renames = copies`
+/// in a repository's own config turns copy detection on regardless, so `C`
+/// arrives here and is read as what it is: an *added* file whose content came
+/// from somewhere. Only its new path counts as touched, and it never becomes a
+/// rename pair. Treating a copy as a rename made every file copied from a file
+/// both sides had changed immune to the probe — git/git's `c1ab07b8` copied a
+/// contested `README.md` and its evil edit went unreported.
 fn changed_paths(
     repo: &RepoHandle,
     from: Oid,
@@ -254,7 +266,6 @@ fn changed_paths(
         .arg(GitArg::Word("diff-tree".into()))
         .arg(GitArg::Flag("-r"))
         .arg(GitArg::Flag("-M"))
-        .arg(GitArg::Flag("-C"))
         .arg(GitArg::Flag("--name-status"))
         .arg(GitArg::Flag("-z"))
         .arg(GitArg::Oid(from))
@@ -281,13 +292,25 @@ fn changed_paths(
         if i + wanted > tokens.len() {
             return Err("diff-tree named a status with no path after it".to_owned());
         }
-        if two_ends {
-            let (old, new) = (tokens[i].to_vec(), tokens[i + 1].to_vec());
-            changed.insert(old.clone());
-            changed.insert(new.clone());
-            renames.push((old, new));
-        } else {
-            changed.insert(tokens[i].to_vec());
+        match status.first() {
+            // A rename is one file under a new name: the side touched both
+            // ends, and the pair carries the verdict across in the caller.
+            Some(b'R') => {
+                let (old, new) = (tokens[i].to_vec(), tokens[i + 1].to_vec());
+                changed.insert(old.clone());
+                changed.insert(new.clone());
+                renames.push((old, new));
+            }
+            // A copy is a *new* file. The side touched only the copy; the
+            // source is named because that is where the content came from,
+            // and it is in `changed` already if the side really changed it.
+            // Never a rename pair: see `changed_paths`.
+            Some(b'C') => {
+                changed.insert(tokens[i + 1].to_vec());
+            }
+            _ => {
+                changed.insert(tokens[i].to_vec());
+            }
         }
         i += wanted;
     }
@@ -853,6 +876,73 @@ mod tests {
                 files: vec![b"renamed.txt".to_vec()]
             },
             "the rename's two ends are one file, so the conflict explains it"
+        );
+    }
+
+    /// A copy is not a rename. One side copies a file both sides are editing,
+    /// then the merge quietly edits the copy — which only that one side ever
+    /// touched, so it is exactly the evil edit the probe exists to catch.
+    /// Carrying "both sides changed it" across a copy made every file copied
+    /// from a contested file immune; this is the shape that caught it, taken
+    /// from git/git's own `c1ab07b8` (`gitk-git/README.md`, a 100% copy of a
+    /// `README.md` both sides had modified).
+    #[test]
+    fn an_evil_edit_to_a_copied_file_is_still_evil() {
+        let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+        let path = scratch.path().to_path_buf();
+        let git = |args: &[&str]| {
+            graft_fixtures::git::run(&path, args)
+                .unwrap_or_else(|error| panic!("git {args:?} runs: {error}"))
+        };
+        // Long enough that git's copy detection finds the copy.
+        let body = |first: &str| {
+            let mut text = String::from(first);
+            for line in 2..=40 {
+                text.push_str(&format!("\nline {line}"));
+            }
+            text.push('\n');
+            text
+        };
+        git(&["config", "user.name", "Fixture"]);
+        git(&["config", "user.email", "fixture@example.invalid"]);
+        std::fs::write(path.join("readme.txt"), body("line 1")).expect("the base file is written");
+        git(&["add", "readme.txt"]);
+        git(&["commit", "-m", "Add the file that gets copied"]);
+
+        git(&["checkout", "-b", "side"]);
+        std::fs::create_dir(path.join("sub")).expect("the subdirectory is created");
+        std::fs::write(path.join("sub/readme.txt"), body("line 1")).expect("the copy is written");
+        std::fs::write(path.join("readme.txt"), body("their first line"))
+            .expect("the side's edit is written");
+        git(&["add", "-A"]);
+        git(&["commit", "-m", "Copy it into sub/ and edit line 1"]);
+        git(&["checkout", "-"]);
+        std::fs::write(path.join("readme.txt"), body("my first line"))
+            .expect("our edit is written");
+        git(&["commit", "-am", "Edit line 1 where it was"]);
+
+        assert!(
+            graft_fixtures::git::run(&path, &["merge", "side"]).is_err(),
+            "the merge must conflict for this test to prove anything"
+        );
+        std::fs::write(path.join("readme.txt"), body("resolved by hand"))
+            .expect("the resolution is written");
+        // The evil edit: a file only `side` ever touched, changed in the merge.
+        std::fs::write(path.join("sub/readme.txt"), body("smuggled into the merge"))
+            .expect("the evil edit is written");
+        git(&["add", "-A"]);
+        git(&["commit", "-m", "Merge branch 'side'"]);
+
+        let head = String::from_utf8(git(&["rev-parse", "HEAD"])).expect("git prints hex");
+        let merge = Oid::from_hex(head.trim()).expect("a full object id");
+        let repo = RepoHandle::open(&path).expect("the scratch repository opens");
+
+        assert_eq!(
+            probe_evil_merge(&repo, merge, &()),
+            EvilVerdict::Evil {
+                files: vec![b"sub/readme.txt".to_vec()]
+            },
+            "only `side` touched the copy, so the merge's edit to it is unexplained"
         );
     }
 }

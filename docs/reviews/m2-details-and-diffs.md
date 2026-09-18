@@ -771,3 +771,48 @@ group. Retaking needs `pyte`, which is not importable in this environment,
 so no new capture was taken and none was faked. TESTING.md now says all of
 this in place of the old assertion. **The user judges stop 8 by eye on the
 next walk.**
+
+## Fixes, round 1f (2026-09-19, builder-opus)
+
+**Confirmed: round 1e over-narrowed the evil-merge probe.** After 1e the audit
+found **no** evil merge in 60 real git/git merges (7 → 0, where 1c gave 7 → 1).
+The cause: 1e read each side with `-M -C` and treated an `R` and a `C` record
+the same — both ends into the side's changed set, both pushed as a pair that
+carries "both sides changed it" from the old path to the new. **A rename is one
+file under a new name; a copy is a new file.** So any file copied from a file
+both sides had changed became immune to the probe.
+
+Observed on the real case, not inferred: for `c1ab07b8` (git/git),
+`git diff-tree -r -M -C --name-status <base> <^1>` prints
+`C100  README.md  gitk-git/README.md`, and both sides print `M README.md`. The
+copy carried `README.md`'s "both sides" property to `gitk-git/README.md`, which
+side B never touched — so the one genuine evil merge in the window went unsaid.
+
+**Fix (cause), in `changed_paths`/`split_remerge_files` and mirrored in
+`scripts/m2-fix-1c-evil-audit.sh`:** `-C` is no longer passed, and a `C` record
+(which a repo's own `diff.renames = copies` can still produce) is read as what
+it is — an added file. Only its new path counts as touched; it is never a
+rename pair. `R` is unchanged, so round 1e's rename fix stands.
+
+**Verified:**
+- New unit test `an_evil_edit_to_a_copied_file_is_still_evil`, built to
+  `c1ab07b8`'s shape: red before the fix (`Resolved`), green after (`Evil`).
+- Round 1c's `a_hand_resolved_conflict_is_not_an_evil_merge` and round 1e's
+  `a_hand_resolved_rename_conflict_is_not_an_evil_merge` both still pass.
+- The **Rust probe itself**, run once against the real `c1ab07b8` in
+  `~/.cache/graft/git-git.git` from a throwaway test (since removed):
+  `Evil { files: ["gitk-git/README.md"] }`.
+- `scripts/m2-fix-1c-evil-audit.sh 60`, in `docs/perf/m2-review-fix-1c.txt`:
+  **7 → 1**, back to 1c's number with 1e's rename fix still in. The survivor is
+  `c1ab07b8` / `gitk-git/README.md` — the same merge and the same file 1c
+  judged genuinely evil.
+- Gates: `cargo fmt --check`, `cargo clippy --all-targets -D warnings`,
+  `cargo test` (1218 passed, 0 failed, 9 ignored), `cargo build`.
+
+**Cost to the user:** none. Dropping `-C` removes copy detection work from two
+`diff-tree` spawns per non-clean merge. The probe's stated blind spot is
+unchanged: an evil edit inside a file both sides changed still lands in
+`Resolved`.
+
+**Still worth saying:** 1 warning in 60 merges is a low rate, but it is the
+rate 1c measured and judged, not a probe that finds nothing.

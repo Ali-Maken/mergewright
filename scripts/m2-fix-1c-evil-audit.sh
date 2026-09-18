@@ -8,9 +8,12 @@
 #
 # The rule below mirrors `split_remerge_files` in graft-ops and must be kept
 # in step with it. Since review round 1e that includes renames: each side is
-# read with `-M -C --name-status`, both ends of a rename count as touched,
-# and a rename carries "both sides changed it" from the old name to the new
-# one. Paths are read from tab-separated `--name-status` rather than `-z`,
+# read with `-M --name-status`, both ends of a rename count as touched, and a
+# rename carries "both sides changed it" from the old name to the new one.
+# Round 1f: a copy (`C`) does not. A rename is one file under a new name; a
+# copy is a new file, and carrying the property across one exempted every file
+# copied from a file both sides had changed. Paths are read from
+# tab-separated `--name-status` rather than `-z`,
 # which is safe for git/git's own paths (no tabs, no newlines).
 #
 # This walks real merges in the git/git clone (scripts/clone-git-git.sh) with
@@ -34,12 +37,14 @@ clean=0
 not_checkable=0
 
 # One side of a merge, as `C<path>` lines (every path it touched, both ends
-# of a rename included) and `R<old><TAB><new>` lines (its renames and copies).
+# of a rename included) and `R<old><TAB><new>` lines (its renames only).
+# A copy's source is not touched by the copy, and its pair never carries.
 side_changes() {
 	git -C "$repo" -c core.quotePath=false \
-		diff-tree -r -M -C --name-status "$1" "$2" |
+		diff-tree -r -M --name-status "$1" "$2" |
 		awk -F'\t' '
-			$1 ~ /^[RC]/ { print "C" $2; print "C" $3; print "R" $2 "\t" $3; next }
+			$1 ~ /^R/ { print "C" $2; print "C" $3; print "R" $2 "\t" $3; next }
+			$1 ~ /^C/ { print "C" $3; next }
 			{ print "C" $2 }'
 }
 
