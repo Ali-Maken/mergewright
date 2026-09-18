@@ -84,3 +84,148 @@ impl MapState { pub fn open(&mut self, req: MapRequest, next_id: &mut impl FnMut
 ## Size
 
 One crate: `map.rs` ~230 lines, `jobs/map.rs` ~50, `update/map.rs` ~110, tests ~200. ≤ 26 tool calls. Named seam: commit `map.rs` + its fixture tests first; if the job + update wiring then passes 70 % of budget before the resize/`Enter` arms are done, stop and report `partial` with `update/map.rs`'s remaining arms as the remainder.
+
+## Status: partial — handoff at the named seam
+
+`map.rs` is done, committed (`a9aae80`), gates green (`cargo fmt --check`,
+`cargo clippy --all-targets --message-format=short -- -D warnings`,
+`cargo build --quiet`, `cargo test -p graft --quiet map::` — 5/5 pass).
+Stopping here per this ticket's own named seam and CLAUDE.md's 40-tool-call
+hard stop: research to re-verify every signature after a mid-ticket
+compaction (see below) used most of the budget before any code was written.
+
+**What I actually verified, and how:**
+- `build_map` against real fixture repos (`graft_fixtures::borrow`), not
+  mocks: `Shape::FeatureBranches` (row order, `merged_into`, per-row counts),
+  `Shape::Tags` (tag mark bucket), `Shape::FoxtrotMerge` (one `Radar(Warning)`
+  mark), `Shape::UnbornBranch` (no current row, no panic), and a `Stop`
+  that fires after the first chunk (`Err(MapError::Stopped)`).
+- `cargo clippy --all-targets -- -D warnings` and `cargo fmt --check` clean
+  for the whole `graft` crate, not just `map.rs`.
+- I did **not** verify the `more`/`branches.is_empty()` half of the
+  `Shape::UnbornBranch` acceptance bullet (an actually-empty repo, zero
+  local branches) — `Shape::UnbornBranch` per its own doc comment has
+  `main`/`other` branches, one unborn; I did not find or build a
+  zero-branch fixture. Whoever picks up `update/map.rs` should check
+  whether a separate empty-repo case is needed or the bullet's wording is
+  loose.
+- I did **not** run the heavy tier, benchmarks, or anything against a large
+  real-world repository — `MAX_COMMITS_PER_ROW`'s cap path is exercised
+  only by reading the code, not by a fixture large enough to hit it.
+
+**Disclosed deviations from the spec's literal prose (not from its
+signatures):**
+- Default chain is built as `HashSet<Oid>` (via `table.id_of` over the
+  `Vec<CommitHandle>` `first_parent_chain` returns), not `HandleSet`. This
+  matches `jobs::radar::run_radar_context`'s own pattern and is what
+  `CommitFacts`/`RepoFacts` need (`Oid`-keyed `.contains()`); the ticket's
+  prose says "→ HandleSet" but no signature in the Signatures block commits
+  to that type, so this is a construction choice, not a signature change.
+- `Walk::from_tips` is called with `Order::CommitDate` (the ticket's prose
+  says `Order::Date`, which doesn't exist — confirmed against
+  `graft-git/src/history/walk.rs`).
+- `next_chunk` takes `stop: &dyn Fn() -> bool`, not `&dyn Stop`; `build_map`
+  itself takes `stop: &dyn Stop` per its own required signature, so
+  `walk_branch` adapts with `&|| stop.should_stop()`.
+- Every function is kept under clippy's 60-line default via extra private
+  helpers not named in the ticket's Signatures block (`local_branches`,
+  `tag_targets_of`, `local_tip_dates`, `sort_and_cap_locals`, `time_span`,
+  `build_default_chain`, `RowAccum`/`RowAccum::record`, `RowContext`,
+  `build_row`, `build_rows`). None of these are `pub`; the module's public
+  surface is exactly the Signatures block.
+
+**Remaining work (exact next steps):**
+1. `crates/graft/src/jobs/map.rs` — new file. Shape it like
+   `crates/graft/src/jobs/kinds.rs`'s `search` (the progress-reporting
+   template: `sink.deliver(AppEvent::Progress(id, Progress::Search(hits)))`)
+   rather than `jobs::detail`'s `detail_job` wrapper — `detail_job` swallows
+   a stopped run into `Outcome::Cancelled`, but this ticket's acceptance
+   bullet says explicitly "the job's product is an `Err` line" when `Stop`
+   fires, so `Product::Map(Err(map_error.to_string()))` should be delivered
+   directly rather than being turned into a cancelled outcome. Calls
+   `map::build_map(&handle_from(&store), &req, &mut |done, total|
+   sink.deliver(AppEvent::Progress(id, Progress::Map { done, total })),
+   cancel)` and delivers `AppEvent::Produced(id, Product::Map(result))` at
+   the end, `result: Result<Arc<MapData>, String>`.
+2. `crates/graft/src/update/events.rs` — add four variants:
+   `Task::Map`, `Product::Map(Result<Arc<MapData>, String>)`,
+   `Progress::Map { done: u32, total: u32 }`, `Command::BuildMap(JobId,
+   MapRequest)`. Mirror `Task::Detail`/`Product::Detail`/etc.'s exact style
+   (doc comments, derive list) already in the file.
+3. `crates/graft/src/jobs/runner.rs` — add `command @ Command::BuildMap(..)
+   => self.dispatch_map(command),` to the top-level `dispatch()` match, and
+   a `dispatch_map` method mirroring `dispatch_detail`, using `queue_as`
+   (not `queue_job`) since `update::map::MapState::open` pre-allocates the
+   `JobId` via `LocalJobs::next_id()`.
+4. `crates/graft/src/jobs/mod.rs` — add `mod map;` (check the exact
+   visibility `radar`'s module declaration uses and match it).
+5. `crates/graft/src/update/state.rs` — add `pub map: super::map::MapState,`
+   to `AppState`, following the doc-comment style of the existing
+   `pub radar: super::radar::RadarState,` field. `MapState` needs a manual
+   (non-derived) `Default` impl, per `DetailState`'s pattern in
+   `update/detail.rs` (its `data: Loading<_>` field can't derive `Default`
+   sensibly against the ticket's exact-field list, and `selected: usize`
+   should start at 0, `shown: false`, `progress: None`).
+6. `crates/graft/src/update/map.rs` — new file. `MapState::open` allocates a
+   `JobId` via the passed-in `next_id`, sets `shown = true`, `data =
+   Loading::Pending(id)`, returns `vec![Command::BuildMap(id, req)]`.
+   `MapState::close` returns a `Cancel` command if `data` is `Pending`,
+   resets state, returns `vec![]` or `[Command::CancelJob(id)]` as
+   appropriate. `MapState::selected_tip` reads `data`'s `Ready` value's
+   `branches[selected].tip`. Needs a `map_event`-style landing function
+   (mirroring `detail.rs`'s pattern) called from `update/mod.rs`'s
+   `answer()` for `Product::Map`/`Progress::Map`, plus key handling: `M` key
+   (guard: not while search prompt open, not while
+   `detail.focus != DetailFocus::Graph`) building the request per the
+   ticket's exact rules (`buckets = max(10, columns - 24)`, `policy =
+   state.radar.policy.clone()`, `previous_default_tips` from
+   `state.radar.context` when `Ready` else `vec![]`, `remotes`/
+   `default_branch` derived the way `view::radar::repo_facts` does — see
+   that function, already read, for the exact pattern to replicate inside
+   `update/map.rs` since it must stay `update`-pure, no drawing, no direct
+   `view` import needed, just the same derivation logic inline). `Esc`/`M`
+   again → `close()`. Arrow/`j`/`k` → move `selected` clamped to
+   `branches.len()`. `Enter` → `close()` then whatever `History::seek`'s
+   existing `Find`-request path is (grep `update/` for `History::seek` or
+   the existing `Find` command usage in `commit_graph.rs`/`keys.rs` before
+   writing this arm — I did not re-locate that exact call site after the
+   compaction). Resize (existing resize event/arm in `update/mod.rs`) while
+   `state.map.shown` → cancel the running job (if any) and re-issue
+   `BuildMap` with a recomputed `buckets`.
+7. `crates/graft/src/update/mod.rs` — `pub mod map;`, routing arms in
+   `answer()` for the new `Task`/`Product`/`Progress` variants, `Task::Map`
+   added to the "welcomed whenever" Started-events ignore-list (mirroring
+   how `Task::Detail`/`Task::Radar` are already listed there).
+8. `crates/graft/src/update/keys.rs` — wire the `M` key into the
+   `graph_key`/dispatch chain the same way the file's existing
+   `is_*`-predicate + handler-function pattern works (read
+   `crates/graft/src/update/keys.rs` again, lines up to ~240, for the exact
+   chain: `context_menu_key` → `detail::detail_key` →
+   `commit_graph::commit_graph_key` → `graph_key`).
+9. Run the purity guard (`update/tests.rs`, ~lines 1410–1434: literal
+   substring search for `print!`/`println!`/`eprint!`/`eprintln!`/
+   `crossterm`/`ratatui` over `update`'s source) once `update/map.rs`
+   exists — it must not contain any of those substrings, including in
+   comments.
+10. Write the `update`-level tests named in the Acceptance section's last
+    bullet (`M` → shown + one `BuildMap`; `M`/`Esc` → hidden + `Cancel`;
+    `Product::Map(Ok)` → `Ready`; `Enter` on row 1 → hidden + a `Find`
+    request; resize while shown → `Cancel` + new `BuildMap`).
+11. Update `crates/graft/MAP.md` with one-line entries for every new public
+    item: `map` module's `MAX_ROWS`, `MAX_COMMITS_PER_ROW`, `MapRequest`,
+    `MapMark`, `MapBranch`, `MapData` (+ `bucket_of`/`max_count`),
+    `MapError`, `build_map`; `update::map`'s `MapState` and `AppState::map`;
+    the four new `Task`/`Product`/`Progress`/`Command` variants.
+12. Full gates again (`cargo fmt --check`, `cargo test --quiet`, `cargo
+    clippy --all-targets --message-format=short -- -D warnings`, `cargo
+    build --quiet`), commit as
+    `m2-details-and-diffs-18: <summary>` (a second commit — do not amend
+    `a9aae80`), and set `Status: done` above once every acceptance bullet
+    is checked off (or leave whichever remain unchecked with a note why).
+
+I compacted mid-ticket once (during the research/verification phase, before
+any file was written) and hit the 40-tool-call guidance again finishing
+`map.rs` alone (clippy's 60-line function limit required several rounds of
+splitting `build_map`/`walk_branch` into smaller functions). Whoever
+resumes this should expect `jobs/map.rs` + `update/map.rs` + wiring +
+tests to be its own full ticket-sized unit of work, not a quick finish.

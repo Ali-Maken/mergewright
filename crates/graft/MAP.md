@@ -11,6 +11,7 @@ One line per public item. Update when a public item changes.
 - `jobs` (mod) — background job runner.
 - `refs` (mod) — refs on each commit and ahead/behind, for the ref badges.
 - `layout` (mod) — the detail pane's saved split, `<common_dir>/graft/layout` (m2-details-and-diffs/10b, ADR-0028).
+- `map` (mod) — the Map view's per-branch bucket counts: pure data, no drawing (m2-details-and-diffs/18).
 - `repos` (mod) — repository store, opened once and cached.
 - `repository` (mod) — facts about one open repository.
 - `session` (mod) — startup and per-run session state.
@@ -19,6 +20,18 @@ One line per public item. Update when a public item changes.
 - `view` (mod) — draws state to a frame.
 - `examples/gallery` (dev-only example, not in the binary) — walks every test repo with `]`/`[`, grouped as a progression; a three-line banner under the header names the stop, group, keys and tier, then `shows:` and `differs:` (m1-the-graph/38); `--list` prints the same lines, `--matrix` writes `docs/shots/35-coverage-matrix.txt` (m1-the-graph/35). Its pure half is `tests/it/gallery.rs`, included by `#[path]`; `Entry::clock()` (m1-the-graph/53) says which clock each stop views its dates at — `Fixed(graft_fixtures::CORPUS_NOW)` for a corpus shape, `Wall` for a real repository — and `show` passes it into the `Harness`.
 - `examples/budgets` (dev-only example) — `budgets <repo>` times first paint, G, g, RSS through the real jobs (`tests/it/budget_run.rs`); `budgets --phases <repo>` (m1-the-graph/55, `examples/budgets/phases.rs`) times first paint phase by phase on one thread with no jobs, plus discriminator laps. Each phase prints its peak-RSS and footprint rise; `refs.ref_snapshot` also prints `TipStats` (m1-the-graph/58b). Without a commit-graph `--phases` continues through `examples/budgets/no_cg.rs` (m1-the-graph/59): open, first paint, date walk to end, `topological_order`, promote swap, `g`, each with footprint, interner, order and resident bytes.
+
+## map
+The Map view's per-branch bucket counts (m2-details-and-diffs/18): one bounded walk per local branch into fixed time buckets, built fresh on toggle-on and discarded on toggle-off. No drawing — that is `view::map`, a later ticket.
+- `MAX_ROWS` (const, `usize = 200`) — rows drawn before the rest collapse into `MapData::more`.
+- `MAX_COMMITS_PER_ROW` (const, `usize = 50_000`) — a row's walk cap; past it the row and `MapData` are `complete = false`.
+- `MapRequest { buckets, clock, policy, previous_default_tips }` — what `build_map` is asked to build.
+- `MapMark` (enum) — `Tag(Vec<u8>)` or `Radar(Severity)`, one mark per bucket per row (Radar: loudest wins).
+- `MapBranch { name, identity, tip, tip_date, counts, is_current, is_default, merged_into, marks, complete }` — one row.
+- `MapData { branches, more, from, to, buckets, complete }` — every row plus the shared time span.
+- `MapData::bucket_of(date) -> usize`, `MapData::max_count() -> u32`.
+- `MapError` (enum) — `Store`/`Walk`/`Read`/`Stopped`; one-line `Display`.
+- `build_map(store, req, progress, stop) -> Result<MapData, MapError>` — local branches only (M2); default-branch merges only.
 
 ## history
 - `Wanted::Find { commit, rows, fallback }` — lay out until `commit` has a row, answer around it (search's far hit); `fallback` when the walk ends without it.
