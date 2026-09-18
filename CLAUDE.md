@@ -19,6 +19,7 @@ name chosen in M8. Don't publish, register or tag anything public under it.
 | Tickets | Local markdown, per `docs/agents/issue-tracker.md`. |
 | `KNOWN_GAPS.md` | Open items, **broken and unverified marked apart**. Closed rows: `docs/gaps/closed.md`. |
 | `docs/field-notes.md` | What the user hit in real use. One line, dated, no ceremony. Feeds the next design pass. |
+| `TESTING.md` "Times I left" | Every reach for the shell (ADR-0033). The only measurement of the promise. Conductor groups repeats at every checkpoint. |
 | `docs/reviews/` | Milestone reviews. |
 | `docs/design-notes/` | One note per milestone, by `planner-fable`. |
 | `docs/AUTHORSHIP.md` | Who designed/specified/built/reviewed each milestone. From the session logs; conductor regenerates every checkpoint; facts from the log only. |
@@ -128,7 +129,7 @@ Everything else the conductor decides: grouping, order, models, splits, escalati
 - **Visual results are judged by eye, by the user.** Green gates aren't evidence for how something looks. Any ticket with a visual result ends with a pty capture committed under `docs/shots/`; report names the capture, says the user judges it by eye. No builder or reviewer ticks "looks right".
 - **Captures can't prove colour** (M2 evidence, ADR-0029). The pty pipeline records pyte character grids with **no colour attributes**, so no capture in this repo can show a colour-only change. Colour work ships **unverified** and says so — don't claim a capture verified it.
 - **Unverified is not broken.** `KNOWN_GAPS.md` marks both, apart. Something that shipped with nothing able to prove it belongs there, so the user knows it was already suspect rather than wondering.
-- **The user's daily use is a test tier, not a fallback** (ADR-0029). The fast tier covers logic on fixtures we invented; heavy and perf cover scale at review; the acceptance walk covers the promise along a path someone scripted. Only real use reaches how it looks, repo shapes nobody made a fixture for, and sequences nobody thought to try. What it finds goes in `docs/field-notes.md` the day it's noticed, so it survives the session.
+- **The user's daily use is a test tier, not a fallback** (ADR-0029), and it starts the day M3 lands, not after M6 (ADR-0030). The fast tier covers logic on fixtures we invented; heavy and perf cover scale at review; the acceptance walk covers the promise along a path someone scripted. Only real use reaches how it looks, repo shapes nobody made a fixture for, and sequences nobody thought to try. What it finds goes in `docs/field-notes.md` the day it's noticed, so it survives the session.
 - **Captures stay small** (user, 2026-09-15): anything under `docs/shots/` trimmed to what shows the point, **hard cap 200 KB per file**. Raw terminal streams never committed: summarise in the committed file, keep the raw one untracked under `target/`. Repo may be published.
 - **Tests must be laptop-safe** (PROMPT.md 7.1). Builders run only the fast tier (`cargo test`). Heavy tier, fuzzing, benchmarks run only in milestone reviews. **Every milestone review includes the release perf run** (frame budgets fail only under `--release`; debug records without failing — user, 2026-09-13, ADR-0021).
 - **One heavy job at a time:** never run two cargo commands or test suites at once. Never generate large fixtures outside the heavy tier.

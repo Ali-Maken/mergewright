@@ -4,9 +4,9 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M2 done, at the checkpoint (2026-09-19). Awaiting the user's `continue` and their answers to the two product-preference questions from the M3 brief (points 4 and 5).
+**Current step:** M3 design pass (2026-09-19). M2 is done and closed; the user's three checkpoint answers are ADR-0030 to ADR-0033.
 
-**On `continue`:** dispatch `planner-fable` for the M3 design pass — it writes the brief's five points as ADRs (points 1 and 2 the conductor decides; 4 and 5 carry the user's answers), then `docs/design-notes/m3-working-tree-undo-and-stash.md` and the **group** specs into `.scratch/m3-working-tree-undo-and-stash/issues/`, grouped by shared files per ADR-0029. First milestone under the new rules: one stop, groups not tickets, one review round per group, turns logged from the harness.
+**M3 must be daily-usable the day it lands** (ADR-0030) — the user starts using Graft for real work then, and those findings shape M5 and M6 while they are still being designed. `docs/field-notes.md` and TESTING.md's "Times I left" start collecting from that day.
 
 
 ## Phase A: Setup and decisions
@@ -60,8 +60,8 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 | [ ] | M4 Remotes (write) | per group | Fable | Fetch, pull and push on a real remote; wrong password |
 | [ ] | M5 Merge, rebase, reset, Ghost Preview (write) | per group; Fable: Ghost Preview planning | Fable | Every history change is previewed and can be undone |
 | [ ] | M6 Conflict resolver (write) | per group; Fable: conflict and operation state machine | Fable | Resolve a real conflict; kill mid-rebase, relaunch |
-| [ ] | M7 Power tools (read-only) | per group | Fable | Interactive rebase, blame, line history, reflog |
-| [ ] | M8 Polish, **final name**, ship (read-only) | per group; Fable: architecture pass over MAP.md files | Fable | Pick the name (below), then a fresh install and the first-run tour |
+| [ ] | M7 Power tools (read-only) — **conditional, judged on real use** (ADR-0030) | per group | Fable | Interactive rebase, blame, line history, reflog, **branch-dependency + chain rebase** (ADR-0032) |
+| [ ] | M8 Polish, **final name**, ship (read-only) — **conditional** (ADR-0030) | per group; Fable: architecture pass over MAP.md files | Fable | Pick the name (below), then a fresh install and the first-run tour |
 
 **Who designs, specifies, builds and reviews; ticket size, context, checkpoints:** CLAUDE.md, "Standing rules". Not restated here. Fable's share was raised for M2 onward on 2026-09-13; M1 keeps its tickets and its Opus review. Record of who did what: `docs/AUTHORSHIP.md`.
 
@@ -69,7 +69,13 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 
 ## M3 design pass brief — ADRs the user approves before any M3 ticket is built (user, 2026-09-17)
 
-Filed during M2; **does not change M2's scope**. At the M2 checkpoint, before M3's design note and tickets, `planner-fable` writes these as ADRs; the user approves them; only then do M3 tickets get written.
+**Answered at the M2 checkpoint, 2026-09-19.** Points 3, 4 and 5 are now decided and written up:
+**ADR-0030** (order is M3 → M4 → M5 → M6; remotes are daily, not "after"; M7/M8 conditional on real use; the user's daily use starts the day M3 lands),
+**ADR-0031** (the journal answers whole-repo-state-at-a-time from day one; the time machine appears in M5 behind Ghost Preview),
+**ADR-0032** (branch dependency + chain rebase, not Graphite, M7, conditional),
+**ADR-0033** ("Times I left" — the promise is measured).
+Points 1 and 2 (the four-property operation shape, and the `ops`/`app` seam) are the conductor's to decide with `planner-fable`, per the user's 2026-09-19 instruction that implementation is not his to approve.
+The original text stands below as the brief's reasoning.
 
 1. **Every write operation defined by four properties.** In `ops`, one uniform shape per operation (merge, rebase, reset, discard, amend, stash drop, checkout, push): preconditions and what it refuses; the typed git invocation(s); what it changes — refs, index, working tree — which determines the snapshot; and its inverse. Undo follows from the definition instead of being added alongside it; every operation testable without a screen. Use-case idea from clean architecture, **without its ceremony**: the crate graph already enforces direction — no abstract interface per action, no cross-layer mappers. Same treatment for screens: data rendered, keys accepted, focus/empty/error states, commands emitted.
 2. **The write seam: what is `ops`, what stays `app`.** Decide before M3's tickets what moves into `ops` (operations, undo journal, Ghost Preview planning) and the rule that keeps `app` wiring rather than deciding. Also: how failure paths get tested — rejected hooks, auth failures, interrupted rebase, an error mid-write — since temp repos cover the happy path and those are where work is lost. (Conductor, 2026-09-17: user's figures were app 24,315 / ops 1,940 and "ops has no MAP.md"; measured now, `src` only: graft 19,378, graft-ops 1,590, and **graft-ops/MAP.md exists** since m2/04. The imbalance stands; the MAP.md line is closed.)

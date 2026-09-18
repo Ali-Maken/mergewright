@@ -23,6 +23,27 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 
+## Times I left
+
+Every time you leave Graft for the shell, one line here. **This is the only
+measurement of the promise** — the fast tier, the heavy tier and the acceptance
+walk all test paths we already thought of; a reach for the shell marks the thing
+nobody specified. See [ADR-0033](docs/adr/0033-times-i-left.md).
+
+One line: date · what you wanted · what you ran instead. Half a line beats a
+forgotten one. Don't triage as you write — the conductor groups repeats at each
+checkpoint, and a reason appearing three times is a design gap, not a feature
+request.
+
+Entries stay after they're fixed, with the commit that closed them, so the trend
+stays visible.
+
+| Date | What I wanted | What I ran instead | Closed by |
+|---|---|---|---|
+| | | | |
+
+_(empty until M3 lands — M0–M2 are read-only and there was nothing to leave for)_
+
 ## The fast tier
 
 ```sh
