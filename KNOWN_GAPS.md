@@ -440,3 +440,30 @@ unfocused diff body looks wrong in a real terminal, this is why — report it in
 
 **Closing it needs one of:** a capture path that carries SGR attributes, or the
 user looking at it once and saying.
+
+---
+
+### `map.rs` `build_default_chain` still holds `HashSet<Oid>`
+**Expiry: M7.** Broken (mild). Found by housekeeping/02, 2026-09-18, not fixed —
+out of that ticket's scope.
+
+Same ADR-0026 breach the radar's default chain had: 33-byte Oids where a
+`HandleSet` bit would do. **Transient and Map-view only**, so it never showed in
+the heap-slope guard, which measures the steady state. It will cost on a large
+repo the moment the Map view is opened.
+
+**Fix:** the same shape as `92c35ac` — `HandleSet` plus the commit table.
+
+### The frame gate asserts on the max of 420 keys, so one outlier fails it
+**Expiry: M7.** Unverified-adjacent: the gate passes today, but it is fragile by
+construction. Found by housekeeping/02, 2026-09-18.
+
+A single slow key out of 420 fails the whole gate. Under load **both** a baseline
+and a patched build spike over 9 ms — six interleaved A/B runs showed the tail is
+machine noise, not the code under test. A gate that fails on the worst sample
+will eventually fail for reasons nothing in the diff caused, which trains us to
+re-run it until it passes — the exact habit that hides a real regression.
+
+**Fix:** assert on a percentile (p99) with the max recorded, not asserted.
+Pairs with M7's existing ticket for the unexplained 17–18 ms release key
+(PROGRESS.md, user 2026-09-17) — same measurement path, same investigation.
