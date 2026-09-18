@@ -1,6 +1,6 @@
 # map-view-data: the Map view's per-branch bucket counts, as a cancellable job, plus its state and keys — no drawing
 
-Status: ready
+Status: done — a9aae80 + 4d06053 (map.rs) and 94dcf9f (jobs/update wiring, continuation 1). Top line corrected by the conductor 2026-09-18.
 Blocked by: 01, 04, 06, 13, 13b
 
 Status: done

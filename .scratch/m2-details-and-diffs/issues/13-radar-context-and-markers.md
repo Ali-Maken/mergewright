@@ -1,6 +1,6 @@
 # radar-context-and-markers: default-chain facts, the marker column, and the pane's radar line
 
-Status: ready
+Status: done — landed 86a926d; its remainder was split to 13b (wiring) and 13c (detail lines), both done. Top line corrected by the conductor 2026-09-18.
 Blocked by: 01, 04, 06, 07
 
 Status: draft
