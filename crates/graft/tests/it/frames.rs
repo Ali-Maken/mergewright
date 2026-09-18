@@ -97,6 +97,28 @@ fn fifty_thousand_refs_keep_input_to_frame_under_16_ms_with_the_detail_pane_open
     check(RenderingTier::Unicode, Refs::FiftyThousand, Pane::Open);
 }
 
+/// M2 review M9, round 1b: round 1a's pane-open test never actually scrolled
+/// the diff body — `Enter` leaves focus on Files, and the scroll's `j`/
+/// `PageDown`/`PageUp` moved the file cursor instead. `Tab` before the
+/// scroll moves focus to Diff, so this is the case round 1a's test missed.
+#[test]
+fn fifty_thousand_refs_keep_input_to_frame_under_16_ms_scrolling_the_diff() {
+    check(
+        RenderingTier::Unicode,
+        Refs::FiftyThousand,
+        Pane::DiffScroll,
+    );
+}
+
+/// M2 review M9, round 1b: no frame test covered the Map view (`M`) at all.
+/// Run on the same 50k-ref fixture as the pane-open test, since the Map
+/// view's cost is walking every tracked branch (`crate::map`) — the same
+/// ref count C1 made cheap for the graph and the radar.
+#[test]
+fn fifty_thousand_refs_keep_input_to_frame_under_16_ms_with_the_map_view_open() {
+    check(RenderingTier::Unicode, Refs::FiftyThousand, Pane::Map);
+}
+
 #[test]
 fn fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_pixel_tier() {
     check(RenderingTier::Pixel, Refs::FiftyThousand, Pane::Closed);
@@ -156,6 +178,14 @@ enum Pane {
     Closed,
     /// `Enter` before the scroll: every frame after it draws the pane.
     Open,
+    /// `Enter` then `Tab`: focus lands on the Diff region, so the scroll
+    /// below moves `body_top` through the diff body every frame instead of
+    /// the file list (review M9 round 1b: nothing measured diff scrolling).
+    DiffScroll,
+    /// `M` before the scroll: the Map view over the branch list, on the
+    /// same 50k-ref fixture `Refs::FiftyThousand` builds (review M9 round
+    /// 1b: nothing measured a Map-view frame).
+    Map,
 }
 
 /// The scroll: down a line at a time, down a page at a time far past the
@@ -164,6 +194,8 @@ fn script(pane: Pane) -> Vec<KeyCode> {
     let mut keys = match pane {
         Pane::Closed => Vec::new(),
         Pane::Open => vec![KeyCode::Enter],
+        Pane::DiffScroll => vec![KeyCode::Enter, KeyCode::Tab],
+        Pane::Map => vec![KeyCode::Char('M')],
     };
     keys.extend(vec![KeyCode::Char('j'); 120]);
     keys.extend(vec![KeyCode::PageDown; 240]);

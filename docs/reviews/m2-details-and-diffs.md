@@ -221,3 +221,97 @@ a 50 B/commit bar, and was 69 B/commit before this fix
 (`docs/perf/m2-review-fix-1a-baseline-slope.txt`). The review never saw it
 because its heavy tier was killed before reaching that test. It is a
 separate finding and needs its own ticket.
+
+## Fixes, round 1b (2026-09-18, builder-sonnet)
+
+The reviewer's findings above are untouched; this records what changed
+against M1, M2, M5 and M9's remainder. Numbers: `docs/perf/m2-review-fix-1b.txt`.
+
+**M1 — fixed at the cause.** `line_style_at` computed `word_tinted` from
+`line.words` alone; no code path read `DiffOptionsView.word_tint` or
+`DetailState::word_tint`, so `W` changed a field nothing consumed. Fixed by
+threading the flag in: `diff_body` and `render_diff_body` now take a
+`DiffFocus { focused, word_tint }` (bundled into one struct — a fifth bare
+bool would have pushed `diff_body` over clippy's 7-argument limit), and
+`line_style_at` gates the words branch on `style_ctx.word_tint`. `W` now
+turns the tint off; the default (`word_tint: true`) keeps today's on-by-default
+look. Verified with a new unit test,
+`word_tint_false_leaves_the_word_at_the_plain_row_background`
+(`crates/graft-ui/src/detail_pane/tests.rs`), asserting the word's cell and
+a plain cell on the same row get the same background when the flag is off.
+
+*What it costs the user:* none — the default behaviour is unchanged; `W`
+now does what its help text always claimed.
+
+*Caption stale, not fixed (out of scope):* gallery stop 4
+(`crates/graft/tests/it/gallery.rs`, "word tint" stop) still describes the
+old always-on behaviour ("stop 1 with W: only the changed words darken");
+same wording problem the reviewer flagged for TESTING.md under Minor 15.
+Left for whoever picks up Minor 15, since fixing one without the other
+leaves them contradicting each other.
+
+**M2 — fixed at the cause.** `line_style_at` early-returned `TextMuted` for
+every character when `!focused`, so the whole diff body went one flat
+colour until `Tab` reached the Diff region. Removed that branch; diff-line
+colour (added/removed/context) no longer depends on focus. Focus now shows
+on the gutter only, via a new `gutter_style` helper (accent when focused,
+muted otherwise) — there is no separate "Diff" region title to carry the
+cue instead, so the gutter is the one focus indicator left. Verified with a
+new unit test, `unfocused_diff_body_keeps_its_added_removed_colour`, which
+renders the same hunk focused and unfocused and asserts the body's
+foreground colour is identical and not `TextMuted`, while the gutter's
+colour still differs between the two.
+
+*What it costs the user:* the Diff region no longer has a full-body dimmed
+state; the only unfocused cue left is the gutter. If that turns out to be
+too subtle in practice, the next visual pass should say so — this is a
+judgement call, not something the diff or the tests can settle by
+themselves (flagged for the user, not silently decided).
+
+**M5 — fixed at the cause.** Nothing reset `DetailState::max_lines` after
+`load_all` (`L`) set it to `usize::MAX`, so the cap stayed off for the rest
+of the session. Reset to `MAX_LINES` in two places: `load()` (new
+commit/spec selected) and `move_files_cursor()` (cursor actually moves to a
+different file), both in `crates/graft/src/update/detail.rs`. Verified with
+a new unit test, `moving_the_file_cursor_resets_load_all`, which sets
+`max_lines` as if `L` had just been pressed, moves the file cursor, and
+asserts the cap is back to `MAX_LINES`.
+
+*What it costs the user:* `L` now applies to the file it was pressed on
+only, matching the reviewer's expected behaviour; a large file two files
+over no longer inherits an unrelated load-all.
+
+**M9 — remainder covered.** Added `Pane::DiffScroll` (`Enter`, `Tab`, then
+the scroll — round 1a's pane-open test left focus on Files, so its
+scroll moved the file cursor, not the diff) and `Pane::Map` (`M`, then the
+scroll, on the same 50k-ref fixture) to
+`crates/graft/tests/it/frames.rs`, plus one test each:
+`fifty_thousand_refs_keep_input_to_frame_under_16_ms_scrolling_the_diff`
+and `..._with_the_map_view_open`. Both pass under the 16 ms budget in
+release: DiffScroll p50 6.3 ms / max 8.8 ms, Map p50 5.7 ms / max 8.8 ms
+(`docs/perf/m2-review-fix-1b.txt`).
+
+**Visual captures.** Regenerated the gallery captures that exercise M1 and
+M2 (`.scratch/m2-details-and-diffs/pty-gallery-m2.py`): stop 1
+(`m2-01-feature-branches-enter`, the baseline M2 was about — Enter, no
+Tab) at 80x24 unicode/ascii, 100x30 unicode and 160x40 unicode; stop 4
+(`m2-04-feature-branches-enter-w`, the `W` toggle M1 was about) at 80x24
+and 160x40 unicode. All five files are byte-identical to what was already
+committed, and that is expected, not a null result: the gallery's captures
+are `pyte.Screen` character grids (`text()` in the pty script joins
+`screen.buffer[y][x].data`), which carry no colour attributes, so a
+colour-only fix cannot show up in them. They still confirm the fix did not
+change what's drawn structurally (row layout, text, truncation markers).
+Confirming the colours themselves — the actual point of M1 and M2 — needs
+a real terminal; that was not done here. Recorded plainly rather than
+implied by "captures refreshed": no capture in this repo's pipeline can
+currently show a colour-only fix, and that gap applies to any future
+colour-only finding, not just this one.
+
+**Numbers** (`docs/perf/m2-review-fix-1b.txt`): fast tier 36 s, all green.
+Heavy tier 112 s, exit 101 for the same pre-existing failure round 1a
+documented and did not cause or fix,
+`heavy::slopes_per_commit_with_a_commit_graph` (76 B/commit against the 50
+B/commit bar) — confirmed by reading `target/m2-fix-perf-1b/heavy-tier.log`,
+not assumed. Release perf 80 s, 13 passed, 0 failed, including the two new
+frame tests.

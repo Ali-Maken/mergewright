@@ -393,7 +393,18 @@ fn diff_body_returns_the_total_content_rows() {
     let theme = theme(ColorDepth::TrueColor);
     let area = Rect::new(0, 0, 40, 2);
     let mut buffer = Buffer::empty(area);
-    let total = diff_body(&diff.hunks, 0, None, area, &mut buffer, &theme, true);
+    let total = diff_body(
+        &diff.hunks,
+        0,
+        None,
+        area,
+        &mut buffer,
+        &theme,
+        DiffFocus {
+            focused: true,
+            word_tint: true,
+        },
+    );
     assert_eq!(total, 5); // one heading + four lines
 }
 
@@ -406,7 +417,18 @@ fn palette16_diff_lines_use_bold_dim_and_no_background() {
     let theme = theme(ColorDepth::Palette16);
     let area = Rect::new(0, 0, 40, 5);
     let mut buffer = Buffer::empty(area);
-    let _rows = diff_body(&diff.hunks, 0, None, area, &mut buffer, &theme, true);
+    let _rows = diff_body(
+        &diff.hunks,
+        0,
+        None,
+        area,
+        &mut buffer,
+        &theme,
+        DiffFocus {
+            focused: true,
+            word_tint: true,
+        },
+    );
     // rows: 0 heading, 1 context, 2 removed, 3 added, 4 added. Gutter is
     // "old new " (3 + 1 + 3 + 1 = 8 cells) before the sign cell.
     for x in 0..area.width {
@@ -441,7 +463,18 @@ fn no_color_theme_also_drops_backgrounds_and_tint() {
     };
     let area = Rect::new(0, 0, 40, 5);
     let mut buffer = Buffer::empty(area);
-    let _rows = diff_body(&diff.hunks, 0, None, area, &mut buffer, &theme, true);
+    let _rows = diff_body(
+        &diff.hunks,
+        0,
+        None,
+        area,
+        &mut buffer,
+        &theme,
+        DiffFocus {
+            focused: true,
+            word_tint: true,
+        },
+    );
     for x in 0..area.width {
         for y in 0..area.height {
             assert_eq!(buffer[(x, y)].bg, ratatui::style::Color::Reset);
@@ -469,7 +502,18 @@ fn a_line_missing_one_side_leaves_that_gutter_half_blank() {
     };
     let area = Rect::new(0, 0, 40, 5);
     let mut buffer = Buffer::empty(area);
-    let _rows = diff_body(&diff.hunks, 0, None, area, &mut buffer, &theme, true);
+    let _rows = diff_body(
+        &diff.hunks,
+        0,
+        None,
+        area,
+        &mut buffer,
+        &theme,
+        DiffFocus {
+            focused: true,
+            word_tint: true,
+        },
+    );
     let screen = (0..area.width)
         .map(|x| buffer[(x, 2)].symbol().to_string())
         .collect::<String>();
@@ -490,13 +534,108 @@ fn word_tint_is_a_stronger_background_than_the_soft_row_background() {
     let theme = theme(ColorDepth::TrueColor);
     let area = Rect::new(0, 0, 40, 5);
     let mut buffer = Buffer::empty(area);
-    let _rows = diff_body(&diff.hunks, 0, None, area, &mut buffer, &theme, true);
+    let _rows = diff_body(
+        &diff.hunks,
+        0,
+        None,
+        area,
+        &mut buffer,
+        &theme,
+        DiffFocus {
+            focused: true,
+            word_tint: true,
+        },
+    );
     // Gutter "old new " = 8 cells, sign + space = 2, so text starts at 10.
     let tinted = buffer[(10, 3)].bg;
     let plain = buffer[(15, 3)].bg;
     assert_ne!(tinted, plain, "word tint should stand out from the row bg");
     assert_eq!(tinted, ratatui::style::Color::Rgb(0x5D, 0xB8, 0x7A)); // Token::Added, full strength
     assert_eq!(plain, ratatui::style::Color::Rgb(0x1B, 0x1E, 0x24)); // Token::Surface, soft
+}
+
+#[test]
+fn word_tint_false_leaves_the_word_at_the_plain_row_background() {
+    // Review M1 (m2-details-and-diffs round 1b): `W` used to flip a flag
+    // nothing read. `word_tint: false` must now actually turn the tint off.
+    let mut view = commit_view();
+    let BodyView::Diff(diff) = &mut view.body else {
+        panic!("expected a diff body");
+    };
+    let diff = std::sync::Arc::make_mut(diff);
+    #[allow(clippy::single_range_in_vec_init)]
+    let words = vec![0..2]; // "if" on the added line
+    diff.hunks[0].lines[2].words = words;
+    let theme = theme(ColorDepth::TrueColor);
+    let area = Rect::new(0, 0, 40, 5);
+    let mut buffer = Buffer::empty(area);
+    let _rows = diff_body(
+        &diff.hunks,
+        0,
+        None,
+        area,
+        &mut buffer,
+        &theme,
+        DiffFocus {
+            focused: true,
+            word_tint: false,
+        },
+    );
+    let word_cell = buffer[(10, 3)].bg;
+    let plain = buffer[(15, 3)].bg;
+    assert_eq!(
+        word_cell, plain,
+        "word_tint: false should paint the word like any other cell on the line"
+    );
+}
+
+#[test]
+fn unfocused_diff_body_keeps_its_added_removed_colour() {
+    // Review M2 (m2-details-and-diffs round 1b): the body used to draw all
+    // `text-muted` until `Tab` reached the Diff region. Focus is now shown
+    // on the gutter only; the body keeps its colour either way.
+    let view = commit_view();
+    let BodyView::Diff(diff) = &view.body else {
+        panic!("expected a diff body");
+    };
+    let theme = theme(ColorDepth::TrueColor);
+    let area = Rect::new(0, 0, 40, 5);
+
+    let mut focused_buf = Buffer::empty(area);
+    let _rows = diff_body(
+        &diff.hunks,
+        0,
+        None,
+        area,
+        &mut focused_buf,
+        &theme,
+        DiffFocus {
+            focused: true,
+            word_tint: true,
+        },
+    );
+    let mut unfocused_buf = Buffer::empty(area);
+    let _rows = diff_body(
+        &diff.hunks,
+        0,
+        None,
+        area,
+        &mut unfocused_buf,
+        &theme,
+        DiffFocus {
+            focused: false,
+            word_tint: true,
+        },
+    );
+    // Row 2 is the removed line's sign+text; its fg must match focused or
+    // not (the added/removed colour, not `text-muted`).
+    assert_eq!(focused_buf[(10, 2)].fg, unfocused_buf[(10, 2)].fg);
+    assert_ne!(
+        unfocused_buf[(10, 2)].fg,
+        foreground(&theme, Token::TextMuted).fg.unwrap()
+    );
+    // The gutter is the one place focus still shows.
+    assert_ne!(focused_buf[(0, 2)].fg, unfocused_buf[(0, 2)].fg);
 }
 
 #[test]
@@ -515,7 +654,18 @@ fn syntax_role_paints_a_keyword_differently_from_plain_text() {
     let theme = theme(ColorDepth::TrueColor);
     let area = Rect::new(0, 0, 40, 5);
     let mut buffer = Buffer::empty(area);
-    let _rows = diff_body(&diff.hunks, 0, None, area, &mut buffer, &theme, true);
+    let _rows = diff_body(
+        &diff.hunks,
+        0,
+        None,
+        area,
+        &mut buffer,
+        &theme,
+        DiffFocus {
+            focused: true,
+            word_tint: true,
+        },
+    );
     // Row 1 is the context line "let token = self.cache;"; text starts at
     // gutter(8) + sign/space(2) = 10.
     let keyword_fg = buffer[(10, 1)].fg;
@@ -537,7 +687,18 @@ fn scrolling_within_a_hunk_pins_its_heading_until_the_next_one_shows() {
     // the one hunk, both must pin the same heading text at row 0.
     for top in [1, 2] {
         let mut buffer = Buffer::empty(area);
-        let _rows = diff_body(&diff.hunks, top, None, area, &mut buffer, &theme, true);
+        let _rows = diff_body(
+            &diff.hunks,
+            top,
+            None,
+            area,
+            &mut buffer,
+            &theme,
+            DiffFocus {
+                focused: true,
+                word_tint: true,
+            },
+        );
         let row0 = (0..area.width)
             .map(|x| buffer[(x, 0)].symbol().to_string())
             .collect::<String>();
@@ -548,7 +709,18 @@ fn scrolling_within_a_hunk_pins_its_heading_until_the_next_one_shows() {
     // pin needed, so scrolling one row further away from it draws normal
     // content, not a duplicate heading.
     let mut buffer = Buffer::empty(area);
-    let _rows = diff_body(&diff.hunks, 0, None, area, &mut buffer, &theme, true);
+    let _rows = diff_body(
+        &diff.hunks,
+        0,
+        None,
+        area,
+        &mut buffer,
+        &theme,
+        DiffFocus {
+            focused: true,
+            word_tint: true,
+        },
+    );
     let row0 = (0..area.width)
         .map(|x| buffer[(x, 0)].symbol().to_string())
         .collect::<String>();
@@ -575,7 +747,10 @@ fn truncated_diff_ends_with_the_more_lines_footer() {
         area,
         &mut buffer,
         &theme,
-        true,
+        DiffFocus {
+            focused: true,
+            word_tint: true,
+        },
     );
     assert_eq!(total, 6); // 5 real rows + the footer
     let footer = (0..area.width)
@@ -596,7 +771,18 @@ fn a_non_truncated_diff_has_no_footer_row() {
     };
     let area = Rect::new(0, 0, 40, 6);
     let mut buffer = Buffer::empty(area);
-    let total = diff_body(&diff.hunks, 0, None, area, &mut buffer, &theme, true);
+    let total = diff_body(
+        &diff.hunks,
+        0,
+        None,
+        area,
+        &mut buffer,
+        &theme,
+        DiffFocus {
+            focused: true,
+            word_tint: true,
+        },
+    );
     assert_eq!(total, 5);
     let last_row = (0..area.width)
         .map(|x| buffer[(x, 4)].symbol().to_string())
@@ -615,7 +801,18 @@ fn crlf_line_shows_the_glyph_after_the_text_outside_the_gutter() {
     diff.hunks[0].lines[0].text = sanitize_line("let token = self.cache;\u{240D}");
     let area = Rect::new(0, 0, 40, 5);
     let mut buffer = Buffer::empty(area);
-    let _rows = diff_body(&diff.hunks, 0, None, area, &mut buffer, &theme, true);
+    let _rows = diff_body(
+        &diff.hunks,
+        0,
+        None,
+        area,
+        &mut buffer,
+        &theme,
+        DiffFocus {
+            focused: true,
+            word_tint: true,
+        },
+    );
     let row1 = (0..area.width)
         .map(|x| buffer[(x, 1)].symbol().to_string())
         .collect::<String>();
@@ -670,7 +867,7 @@ fn paired_rows_share_a_screen_row_and_unpaired_rows_leave_a_blank_half() {
     let hunks = vec![side_by_side_hunk()];
     let area = Rect::new(0, 0, 41, 8);
     let mut buffer = Buffer::empty(area);
-    let total = diff_body_side_by_side(&hunks, 0, area, &mut buffer, &theme, true);
+    let total = diff_body_side_by_side(&hunks, 0, area, &mut buffer, &theme, true, true);
     // heading + ctx + 2 paired rows + unpaired-removed row + unpaired-added row + ctx = 7
     assert_eq!(total, 7);
 
@@ -727,7 +924,7 @@ fn word_tint_syntax_and_palette16_match_diff_bodys_look() {
     let true_color = theme(ColorDepth::TrueColor);
     let area = Rect::new(0, 0, 60, 5);
     let mut buffer = Buffer::empty(area);
-    let _rows = diff_body_side_by_side(&diff.hunks, 0, area, &mut buffer, &true_color, true);
+    let _rows = diff_body_side_by_side(&diff.hunks, 0, area, &mut buffer, &true_color, true, true);
 
     // Row 2 is the removed/added pair; the tinted word sits on the right
     // half's added line, same colour `diff_body`'s equivalent test asserts.
@@ -745,7 +942,7 @@ fn word_tint_syntax_and_palette16_match_diff_bodys_look() {
     // 16-colour fallback: no backgrounds anywhere, same rule as `diff_body`.
     let theme16 = theme(ColorDepth::Palette16);
     let mut buffer16 = Buffer::empty(area);
-    let _rows = diff_body_side_by_side(&diff.hunks, 0, area, &mut buffer16, &theme16, true);
+    let _rows = diff_body_side_by_side(&diff.hunks, 0, area, &mut buffer16, &theme16, true, true);
     for x in 0..area.width {
         for y in 0..area.height {
             assert_eq!(

@@ -444,6 +444,10 @@ impl DetailState {
         self.files = Loading::Pending(id);
         self.list = None;
         self.body_top = 0;
+        // Review M5 (m2-details-and-diffs round 1b): `L` applies to the file
+        // it was pressed on, not to every file read for the rest of the
+        // session.
+        self.max_lines = MAX_LINES;
         commands.push(Command::ListFiles(id, spec.diff_spec(), self.options));
         if let DetailSpec::Commit(oid) = spec
             && self.contained.get(&oid).is_none()
@@ -505,6 +509,9 @@ impl DetailState {
         if files.cursor == before {
             Vec::new()
         } else {
+            // Review M5: `L` (load all) is per file; moving off it resets
+            // the cap for whatever the cursor lands on next.
+            self.max_lines = MAX_LINES;
             self.show_cursor(next_id)
         }
     }
@@ -1649,6 +1656,48 @@ mod tests {
             KeyPress::plain(KeyCode::Char('L'))
         ));
         assert_eq!(state.detail.max_lines, usize::MAX);
+    }
+
+    #[test]
+    fn moving_the_file_cursor_resets_load_all() {
+        // Review M5 (m2-details-and-diffs round 1b): `L` used to stick for
+        // the rest of the session; it must apply only to the file it was
+        // pressed on.
+        let mut state = super::super::state::AppState::default();
+        state.detail.shown = true;
+        state.detail.focus = DetailFocus::Files;
+        state.detail.max_lines = usize::MAX; // as if `L` was just pressed
+        let mut files = FileListView::default();
+        files.rows.push(FileRow {
+            depth: 0,
+            name: sanitize_line("a.rs"),
+            kind: FileRowKind::File {
+                status: FileStatusView::Modified,
+                added: Some(1),
+                removed: Some(1),
+            },
+            entry: Some(0),
+        });
+        files.rows.push(FileRow {
+            depth: 0,
+            name: sanitize_line("b.rs"),
+            kind: FileRowKind::File {
+                status: FileStatusView::Modified,
+                added: Some(1),
+                removed: Some(1),
+            },
+            entry: Some(1),
+        });
+        files.cursor = 0;
+        state.detail.files = Loading::Ready(Arc::new(files));
+        let mut commands = Vec::new();
+
+        assert!(detail_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Char('j'))
+        ));
+        assert_eq!(state.detail.max_lines, MAX_LINES);
     }
 
     #[test]

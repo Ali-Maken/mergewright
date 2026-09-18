@@ -298,7 +298,7 @@ pub fn diff_body(
     area: Rect,
     buf: &mut Buffer,
     theme: &Theme,
-    focused: bool,
+    focus: DiffFocus,
 ) -> usize {
     let rows = flatten(hunks);
     let total = rows.len() + usize::from(truncated.is_some());
@@ -311,7 +311,11 @@ pub fn diff_body(
         theme.color_depth(),
         ColorDepth::Palette16 | ColorDepth::None
     );
-    let style_ctx = DiffRowStyle { focused, palette16 };
+    let style_ctx = DiffRowStyle {
+        focused: focus.focused,
+        palette16,
+        word_tint: focus.word_tint,
+    };
 
     let pinned = pin_heading(hunks, &rows, top);
     let mut used: u16 = 0;
@@ -485,7 +489,7 @@ fn draw_side_line(
         y,
         &prefix,
         usize::from(prefix_fits),
-        foreground(theme, Token::TextMuted),
+        gutter_style(style_ctx, theme),
     );
     if prefix_fits >= width {
         return;
@@ -532,6 +536,7 @@ pub fn diff_body_side_by_side(
     buf: &mut Buffer,
     theme: &Theme,
     focused: bool,
+    word_tint: bool,
 ) -> usize {
     let rows = flatten_side_by_side(hunks);
     let total = rows.len();
@@ -539,7 +544,7 @@ pub fn diff_body_side_by_side(
         return total;
     }
 
-    let columns = SideColumns::new(hunks, area, theme, focused);
+    let columns = SideColumns::new(hunks, area, theme, focused, word_tint);
     let pinned = pin_heading_side(hunks, &rows, top);
     let mut used: u16 = 0;
     if let Some(heading) = pinned {
@@ -579,7 +584,7 @@ struct SideColumns {
 }
 
 impl SideColumns {
-    fn new(hunks: &[HunkView], area: Rect, theme: &Theme, focused: bool) -> Self {
+    fn new(hunks: &[HunkView], area: Rect, theme: &Theme, focused: bool, word_tint: bool) -> Self {
         let palette16 = matches!(
             theme.color_depth(),
             ColorDepth::Palette16 | ColorDepth::None
@@ -592,7 +597,11 @@ impl SideColumns {
         Self {
             old_gutter: gutter_width_side(hunks, true),
             new_gutter: gutter_width_side(hunks, false),
-            style_ctx: DiffRowStyle { focused, palette16 },
+            style_ctx: DiffRowStyle {
+                focused,
+                palette16,
+                word_tint,
+            },
             left_width,
             right_width,
             divider_x,
@@ -664,15 +673,43 @@ fn draw_side_row(
     }
 }
 
+/// [`diff_body`]/[`diff_body_side_by_side`]'s two independent flags,
+/// bundled into one parameter to keep both functions under clippy's
+/// argument-count limit.
+#[derive(Clone, Copy, Debug)]
+pub struct DiffFocus {
+    /// The diff region has the keys (`Tab`); see [`DiffRowStyle::focused`]
+    /// for what this does and does not change.
+    pub focused: bool,
+    /// Changed words get the stronger tint background (`W`).
+    pub word_tint: bool,
+}
+
 /// The flags [`draw_diff_row`] needs beyond the row itself and the theme,
 /// bundled to keep the function under clippy's argument-count limit.
 #[derive(Clone, Copy)]
 struct DiffRowStyle {
-    /// The diff region has the keys.
+    /// The diff region has the keys. Marks focus on the gutter only
+    /// (`gutter_style`); line/word/syntax colour never depends on it
+    /// (m2-details-and-diffs review, M2: a body dimmed to `text-muted`
+    /// until `Tab` reached it was unreadable by default).
     focused: bool,
     /// The 16-colour rule (or `NO_COLOR`) is in force: bold/dim, no
     /// background, no syntax or word tint.
     palette16: bool,
+    /// Changed words get the stronger tint background (`W`, review M1: the
+    /// flag used to reach nothing past the view model).
+    word_tint: bool,
+}
+
+/// The gutter's line-number colour: accent when this region has the keys,
+/// muted otherwise. The only focus cue left on the diff body (M2 fix).
+fn gutter_style(style_ctx: DiffRowStyle, theme: &Theme) -> Style {
+    if style_ctx.focused {
+        foreground(theme, Token::Accent)
+    } else {
+        foreground(theme, Token::TextMuted)
+    }
 }
 
 /// One screen row's position and width, bundled so drawing a row doesn't
@@ -743,7 +780,7 @@ fn draw_line_row(
         y,
         &prefix,
         usize::from(prefix_fits),
-        foreground(theme, Token::TextMuted),
+        gutter_style(style_ctx, theme),
     );
     if prefix_fits >= width {
         return;
@@ -789,9 +826,6 @@ fn line_style_at(
     style_ctx: DiffRowStyle,
     kind_token: Option<Token>,
 ) -> Style {
-    if !style_ctx.focused {
-        return foreground(theme, Token::TextMuted);
-    }
     if style_ctx.palette16 {
         let base = foreground(theme, Token::Text);
         return match kind_token {
@@ -801,7 +835,8 @@ fn line_style_at(
         };
     }
 
-    let word_tinted = line.words.iter().any(|range| range.contains(&char_index));
+    let word_tinted =
+        style_ctx.word_tint && line.words.iter().any(|range| range.contains(&char_index));
     if let (true, Some(token)) = (word_tinted, kind_token) {
         // The word background wins over syntax; `Bg` on `Added`/`Removed` is
         // exactly the pairing `theme::chrome` already guarantees >= 4.5:1
@@ -1217,40 +1252,59 @@ fn render_body(view: &DetailView, area: Rect, theme: &Theme, buf: &mut Buffer) {
                 draw_line(buf, area, offset, line.as_str(), text_style);
             }
         }
-        BodyView::Diff(diff) => {
-            if diff.untracked {
-                draw_line(buf, area, 0, "untracked \u{b7} no diff yet (M3)", muted);
-            } else if let Some(binary) = &diff.binary {
-                draw_line(
-                    buf,
-                    area,
-                    0,
-                    &format!("binary \u{b7} {}", binary.as_str()),
-                    muted,
-                );
-            } else {
-                let _rows = match view.mode {
-                    DiffMode::Unified => diff_body(
-                        &diff.hunks,
-                        view.body_top,
-                        diff.truncated,
-                        area,
-                        buf,
-                        theme,
-                        focused,
-                    ),
-                    DiffMode::SideBySide => diff_body_side_by_side(
-                        &diff.hunks,
-                        view.body_top,
-                        area,
-                        buf,
-                        theme,
-                        focused,
-                    ),
-                };
-            }
-        }
+        BodyView::Diff(diff) => render_diff_body(view, diff, focused, area, theme, buf, muted),
     }
+}
+
+/// The [`BodyView::Diff`] arm of [`render_body`], split out to keep that
+/// function under clippy's line-count limit.
+fn render_diff_body(
+    view: &DetailView,
+    diff: &crate::detail::DiffView,
+    focused: bool,
+    area: Rect,
+    theme: &Theme,
+    buf: &mut Buffer,
+    muted: Style,
+) {
+    if diff.untracked {
+        draw_line(buf, area, 0, "untracked \u{b7} no diff yet (M3)", muted);
+        return;
+    }
+    if let Some(binary) = &diff.binary {
+        draw_line(
+            buf,
+            area,
+            0,
+            &format!("binary \u{b7} {}", binary.as_str()),
+            muted,
+        );
+        return;
+    }
+    let focus = DiffFocus {
+        focused,
+        word_tint: view.options.word_tint,
+    };
+    let _rows = match view.mode {
+        DiffMode::Unified => diff_body(
+            &diff.hunks,
+            view.body_top,
+            diff.truncated,
+            area,
+            buf,
+            theme,
+            focus,
+        ),
+        DiffMode::SideBySide => diff_body_side_by_side(
+            &diff.hunks,
+            view.body_top,
+            area,
+            buf,
+            theme,
+            focus.focused,
+            focus.word_tint,
+        ),
+    };
 }
 
 /// The Explain panel: title (severity glyph + `title`, severity colour),
