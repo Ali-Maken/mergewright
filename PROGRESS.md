@@ -4,27 +4,10 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** PAUSED at the user's request, 2026-09-18, after M2 review fix round 1c (`ca120c0`).
+**Current step:** M2 done, at the checkpoint (2026-09-19). Awaiting the user's `continue` and their answers to the two product-preference questions from the M3 brief (points 4 and 5).
 
-**Queue on resume, in order:**
-1. `housekeeping/02-heap-slope` (opus) — the red gate. M2 is not done over it (user, 2026-09-18). Measure where the bytes go, then get under the 50 B/commit bar or bring the user an ADR arguing the bar with evidence; a bar change needs the user's approval before it lands.
-2. M2 review fix round 1d (sonnet) — M7 (ARCHITECTURE.md not updated for M2, PROMPT 6.1), M8 (files far over the ~400-line rule, PROMPT 6.2), and review Minor 15 (TESTING.md and gallery stop 4's caption still describe the old always-on word tint).
-3. `reviewer` round 2 (fable) from `183c6ca` — **the second and last of the two allowed rounds.**
-4. M2 checkpoint: regenerate `docs/AUTHORSHIP.md` from `docs/log/m2.md`, report the per-ticket tool-call and token figures with causes (user asked for the figures, not an impression), then the M3 design pass — `planner-fable` writes the M3 brief's five points as ADRs, **the user approves them before any M3 ticket is built**, and proposes the rewritten milestone promises and where each of the four product gaps lands.
+**On `continue`:** dispatch `planner-fable` for the M3 design pass — it writes the brief's five points as ADRs (points 1 and 2 the conductor decides; 4 and 5 carry the user's answers), then `docs/design-notes/m3-working-tree-undo-and-stash.md` and the **group** specs into `.scratch/m3-working-tree-undo-and-stash/issues/`, grouped by shared files per ADR-0029. First milestone under the new rules: one stop, groups not tickets, one review round per group, turns logged from the harness.
 
-**For the checkpoint, unresolved and needing the user:**
-- `W` (word tint) and the unfocused diff body are fixed and unit-tested but **visually unverified**: `pty-gallery-m2.py` captures are pyte character grids with no colour attributes, so no capture in this repo can prove a colour-only change. The project's way of proving visual work has a hole in it.
-- CLAUDE.md reached 15,841 B, not the 10 KB the diet ticket targeted; going lower means dropping requirements, which is the user's call.
-
----
-
-Finished milestones' logs archived to `docs/log/` (housekeeping/01,
-2026-09-18): [M0](docs/log/m0.md), [M1](docs/log/m1.md). The current
-milestone's log lives at [docs/log/m2.md](docs/log/m2.md) (moved there in
-housekeeping/01 continuation 1, 2026-09-18, to hit this file's size target —
-see that file's header). This file keeps the plan and the current step only.
-
----
 
 ## Phase A: Setup and decisions
 
@@ -72,7 +55,7 @@ see that file's header). This file keeps the plan and the current step only.
 |---|---|---|---|---|
 | [x] | M0 Foundations | Opus | Opus | Opens a repo; quitting leaves the terminal clean |
 | [x] | **M1 The graph** | per ticket's `Build with` line | Opus | `git/git` and the merge-mistake fixtures: is the history shape obvious at a glance? |
-| [ ] | M2 Details and diffs (read-only) | per ticket; Fable: Mistake Radar detection | Fable | Diffs look right; bad merges get flagged |
+| [x] | M2 Details and diffs (read-only) | per ticket; Fable: Mistake Radar detection | Fable | Diffs look right; bad merges get flagged |
 | [ ] | M3 Working tree, undo and stash (write) | per group; Fable: undo per-kind inverse | Fable | Stage a hunk, commit, undo it, stash and unstash, then try to lose work |
 | [ ] | M4 Remotes (write) | per group | Fable | Fetch, pull and push on a real remote; wrong password |
 | [ ] | M5 Merge, rebase, reset, Ghost Preview (write) | per group; Fable: Ghost Preview planning | Fable | Every history change is previewed and can be undone |
