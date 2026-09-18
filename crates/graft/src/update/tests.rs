@@ -2501,3 +2501,36 @@ fn wheel_over_the_pane_never_scrolls_the_graph_underneath_it() {
         "wheel over the diff body must not fall through to the graph scroll"
     );
 }
+
+/// m2-details-and-diffs/23: a harness prelude waits for the first window and
+/// the refs answer, then feeds one key per settled state: its `Enter` opens
+/// the pane on row 0, not on nothing, and the `j` after it waits for the
+/// file list that `Enter` asked for.
+#[test]
+fn the_prelude_waits_for_the_window_and_the_refs_and_then_opens_row_0() {
+    let walk = JobId::new(4);
+    let mut state = awaiting(walk);
+    state.harness.prelude = vec![
+        KeyPress::plain(KeyCode::Enter),
+        KeyPress::plain(KeyCode::Char('j')),
+    ];
+    let (state, _) = update(&state, sized(80, 12));
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(
+            JobId::new(9),
+            Product::Refs(Ok(crate::refs::RefBadges::default())),
+        ),
+    );
+    assert!(!state.detail.shown, "no window yet: nothing to open on");
+    assert_eq!(state.harness.prelude.len(), 2, "both keys still waiting");
+
+    let (state, _) = update(&state, rows_for(walk, 2, 0..30, 500));
+    assert!(state.detail.shown, "Enter was fed once the window landed");
+    assert!(state.detail.spec.is_some(), "the pane is on a real row");
+    assert!(
+        matches!(state.detail.files, detail::Loading::Pending(_)),
+        "Enter asked for row 0's files"
+    );
+    assert_eq!(state.harness.prelude.len(), 1, "j waits for the file list");
+}

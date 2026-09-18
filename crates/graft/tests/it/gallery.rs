@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 
 use graft::session::Clock;
 use graft::update::Banner;
+use graft_core::event::{KeyCode, KeyPress};
 use graft_fixtures::Shape;
 
 /// One stop of the gallery.
@@ -19,6 +20,11 @@ pub struct Entry {
     /// reads as a progression (one lane, merges, quirks, refs and badges,
     /// text, real repos).
     pub group: &'static str,
+    /// Keys the harness presses before the first frame, in order
+    /// (m2-details-and-diffs/23): `Enter` opens the pane on the top row,
+    /// `x j j` marks a compare. Empty for every M1 stop. Fed by
+    /// `update::prelude` only once the window and the refs are on hand.
+    pub prelude: Vec<KeyPress>,
     /// Where the repository comes from.
     pub source: Source,
     /// What right looks like at this stop, in one line under 70 cells so an
@@ -233,6 +239,7 @@ pub fn entries() -> Vec<Entry> {
         .map(|&(shape, group, shows, differs)| Entry {
             name: shape.name(),
             group,
+            prelude: Vec::new(),
             source: Source::Shape(shape),
             shows,
             differs,
@@ -242,6 +249,7 @@ pub fn entries() -> Vec<Entry> {
     all.push(Entry {
         name: "graft-self",
         group: REAL,
+        prelude: Vec::new(),
         source: Source::Workspace,
         shows: "this checkout: one lane, ● everywhere but ◆ at HEAD and ◇ at the bottom",
         differs: "a real repo with no merges: stop 2's shape, real subjects and dates",
@@ -250,6 +258,7 @@ pub fn entries() -> Vec<Entry> {
     all.push(Entry {
         name: "synthetic-100k",
         group: REAL,
+        prelude: Vec::new(),
         source: Source::Synthetic100k,
         shows: "100k commits: paints at once; lanes fold behind +N; j and G never stall",
         differs: "size is the test, the shape is synthetic; needs the heavy tier built",
@@ -258,6 +267,7 @@ pub fn entries() -> Vec<Entry> {
     all.push(Entry {
         name: "git-git",
         group: REAL,
+        prelude: Vec::new(),
         source: Source::GitGit,
         shows: "master straight in lane 0 throughout; ◉ merges curve in; [tag: v2.x.y]",
         differs: "stop 3's shapes at real scale; needs scripts/clone-git-git.sh first",
@@ -278,15 +288,333 @@ fn stems(shape: Shape) -> &'static [&'static str] {
     }
 }
 
+/// Which progression the gallery walks (m2-details-and-diffs/23).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Group {
+    /// M1's: the shape of history, one repository per stop, no keys pressed.
+    Graph,
+    /// M2's: the detail pane and the Mistake Radar, each stop a repository
+    /// plus the keys that open what it shows.
+    Details,
+}
+
+impl Group {
+    /// The word `--group` takes and `--list` heads each progression with.
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            Group::Graph => "graph",
+            Group::Details => "details",
+        }
+    }
+
+    /// The group `--group <word>` names, if any.
+    #[must_use]
+    pub fn parse(word: &str) -> Option<Group> {
+        [Group::Graph, Group::Details]
+            .into_iter()
+            .find(|group| group.name() == word)
+    }
+}
+
+/// One progression's stops in walking order.
+pub fn stops(group: Group) -> Vec<Entry> {
+    match group {
+        Group::Graph => entries(),
+        Group::Details => details(),
+    }
+}
+
+const ENTER: KeyPress = KeyPress::plain(KeyCode::Enter);
+const TAB: KeyPress = KeyPress::plain(KeyCode::Tab);
+
+/// A printable key.
+const fn ch(c: char) -> KeyPress {
+    KeyPress::plain(KeyCode::Char(c))
+}
+
+/// `/`, the query, `Enter`: a search the next key waits for.
+fn search(query: &str) -> Vec<KeyPress> {
+    let mut keys = vec![ch('/')];
+    keys.extend(query.chars().map(ch));
+    keys.push(ENTER);
+    keys
+}
+
+/// The subject stop 18 searches for: a release merge on `git/git`'s master
+/// whose tree runs to 805 files (`git diff-tree --name-only 03d05937a^
+/// 03d05937a | wc -l`). The tagged commit itself ("Git 2.41-rc0") sits
+/// below the merge, so the search's first hit going down is the merge.
+pub const GIT_GIT_RELEASE_MERGE: &str = "v2.41.0-rc0";
+
+const PANE: &str = "the pane";
+const RADAR: &str = "radar";
+const MAP_AND_STRIP: &str = "map and strip";
+
+/// The "details and radar" progression (m2-details-and-diffs/23): the pane
+/// on one merge, five ways; every radar kind the corpus can raise, and the
+/// one it cannot; text edge cases in the files tree; the Map view and the
+/// strip; then the same on a real repository and on `git/git`. Each stop's
+/// `shows` names what the fixture (ticket 01) and the design note's New UI
+/// say must be on screen; TESTING.md "Details and diffs" has the long form.
+#[allow(clippy::too_many_lines, reason = "a table of 19 stops, like CORPUS")]
+fn details() -> Vec<Entry> {
+    let shape = |name: &str| {
+        Shape::ALL
+            .iter()
+            .copied()
+            .find(|shape| shape.name() == name)
+            .map_or_else(|| panic!("no corpus shape named {name}"), Source::Shape)
+    };
+    let stop = |name: &'static str,
+                group: &'static str,
+                prelude: Vec<KeyPress>,
+                source: Source,
+                shows: &'static str,
+                differs: &'static str| Entry {
+        name,
+        group,
+        prelude,
+        source,
+        shows,
+        differs,
+        stems: &[],
+    };
+    vec![
+        stop(
+            "feature-branches",
+            PANE,
+            vec![ENTER],
+            shape("feature-branches"),
+            "pane on Merge branch 'feature/two': header, files tree, first diff",
+            "the baseline pane; every stop up to 5 changes one thing from here",
+        ),
+        stop(
+            "feature-branches",
+            PANE,
+            vec![ENTER, ch('j')],
+            shape("feature-branches"),
+            "files cursor on the second file: its diff replaces the first's",
+            "j inside Files swaps the body only; the header and graph row stay",
+        ),
+        stop(
+            "feature-branches",
+            PANE,
+            vec![ENTER, TAB, ch('v')],
+            shape("feature-branches"),
+            "side-by-side: two halves with own gutters, │ between, unpaired blank",
+            "stop 1's diff split in two; Tab moved focus to the body first",
+        ),
+        stop(
+            "feature-branches",
+            PANE,
+            vec![ENTER, ch('W')],
+            shape("feature-branches"),
+            "word tint: the changed words carry a stronger bg inside changed lines",
+            "stop 1 with W: only the changed words darken; lines keep the soft tint",
+        ),
+        stop(
+            "feature-branches",
+            PANE,
+            vec![ch('x'), ch('j'), ch('j')],
+            shape("feature-branches"),
+            "▏ on the marked base row; pane reads COMPARE a → b · N files +N −N",
+            "no COMMIT header: two rows compared; the base stays marked as j moves",
+        ),
+        stop(
+            "foxtrot-merge",
+            RADAR,
+            vec![],
+            shape("foxtrot-merge"),
+            "⚠ in the marker column on the foxtrot merge; footer gains . explain",
+            "the first marker: a column appears between the graph and the badges",
+        ),
+        stop(
+            "foxtrot-merge",
+            RADAR,
+            vec![ch('.'), ENTER],
+            shape("foxtrot-merge"),
+            "Explain: ⚠ FOXTROT MERGE, paragraphs, 5-line sketch; other rows fade",
+            "the panel replaces files and body; Esc closes it before the pane",
+        ),
+        stop(
+            "backward-merge",
+            RADAR,
+            vec![],
+            shape("backward-merge"),
+            "⚠ backward merge on feature's tip merge; main's two rows unmarked",
+            "stop 6's mirror: same subjects, the marker sits on feature's row",
+        ),
+        stop(
+            "accidental-pull-merge",
+            RADAR,
+            vec![],
+            shape("accidental-pull-merge"),
+            "ⓘ on 'Merge branch main of https://…': info colour, not warning",
+            "the only ⓘ the graph alone raises: no probe, no tree read",
+        ),
+        stop(
+            "evil-merge",
+            RADAR,
+            vec![ENTER],
+            shape("evil-merge"),
+            "pane radar line: unchecked → checking… → ⚠ evil merge · evil.txt",
+            "no marker until the probe answers: evil is a tree fact, not a shape",
+        ),
+        stop(
+            "cherry-pick-duplicates",
+            RADAR,
+            vec![],
+            shape("cherry-pick-duplicates"),
+            "ⓘ duplicate commit on both 'Fix the greeting' rows when the probe lands",
+            "two rows marked for one finding; the column appears when it lands",
+        ),
+        stop(
+            "ref-states",
+            RADAR,
+            vec![],
+            shape("ref-states"),
+            "no marker column: ahead tracks origin/ahead and is not the default",
+            "the negative control: classify_refs flags only unpushed-on-default",
+        ),
+        stop(
+            "unicode-names",
+            TEXT,
+            vec![ENTER],
+            shape("unicode-names"),
+            "the CJK path in the files tree; the letter and +N −N columns aligned",
+            "wide glyphs in the tree: the right-aligned counts must not drift",
+        ),
+        stop(
+            "non-utf8-path",
+            TEXT,
+            vec![ENTER],
+            shape("non-utf8-path"),
+            "the Latin-1 path shows one � in the tree; its diff still loads",
+            "one bad byte, one �: the tree's other entries are untouched",
+        ),
+        stop(
+            "feature-branches",
+            MAP_AND_STRIP,
+            vec![ch('M')],
+            shape("feature-branches"),
+            "Map view: 4 branch rows, elbows on the two merged, ▸ main … ●",
+            "no graph: one row per local branch, bars per bucket; M or Esc back",
+        ),
+        stop(
+            "feature-branches",
+            MAP_AND_STRIP,
+            vec![ch('O')],
+            shape("feature-branches"),
+            "strip at the right edge: ◉ twice, ● at the top, █ over the viewport",
+            "one column added to stop 3's graph; O again removes it",
+        ),
+        stop(
+            "graft-self",
+            REAL,
+            vec![ENTER],
+            Source::Workspace,
+            "a real commit: Contained in: main, a ✉ message row, syntax colours",
+            "real repo: syntax roles tint the diff; the corpus stops are plain",
+        ),
+        stop(
+            "git-git",
+            REAL,
+            {
+                let mut keys = search(GIT_GIT_RELEASE_MERGE);
+                keys.push(ENTER);
+                keys
+            },
+            Source::GitGit,
+            "Merge tag 'v2.41.0-rc0': an 805-file tree; first diff in budget; L",
+            "scale: the search lands the merge, Enter opens it; … L on a long diff",
+        ),
+        stop(
+            "git-git",
+            REAL,
+            vec![ch('O')],
+            Source::GitGit,
+            "strip honestly incomplete: buckets below the walked range are blank",
+            "stop 16's strip at 85k rows: it grows as the walk lands, never at once",
+        ),
+    ]
+}
+
+/// The prelude as the banner spells it: `Enter Tab v`; a search folds into
+/// one word, `/v2.41.0-rc0⏎`, so the title stays under the width.
+pub fn keys_label(prelude: &[KeyPress]) -> String {
+    let mut words = Vec::new();
+    let mut keys = prelude.iter().peekable();
+    while let Some(key) = keys.next() {
+        let word = match key.code {
+            KeyCode::Char('/') => {
+                let mut typed = String::from("/");
+                for next in keys.by_ref() {
+                    match next.code {
+                        KeyCode::Char(c) => typed.push(c),
+                        _ => break,
+                    }
+                }
+                typed.push('⏎');
+                typed
+            }
+            KeyCode::Char(c) => c.to_string(),
+            KeyCode::Enter => "Enter".to_string(),
+            KeyCode::Tab => "Tab".to_string(),
+            KeyCode::Escape => "Esc".to_string(),
+            other => format!("{other:?}"),
+        };
+        words.push(word);
+    }
+    words.join(" ")
+}
+
+/// The stem of a details stop's capture files: `m2-<nn>-<name>[-<keys>]`,
+/// keys lowercased and punctuation named, so part (b)'s files and the
+/// matrix agree (`m2-07-foxtrot-merge-dot-enter`).
+// Read by the tests now; part (b) gives the example a `--stems` flag for
+// its capture script, until which the example build has no caller.
+#[cfg_attr(not(test), allow(dead_code))]
+pub fn capture_stem(entry: &Entry, index: usize) -> String {
+    let mut stem = format!("m2-{:02}-{}", index + 1, entry.name);
+    let mut keys = entry.prelude.iter();
+    while let Some(key) = keys.next() {
+        let word = match key.code {
+            KeyCode::Char('/') => {
+                // The typed query and its Enter are one word.
+                for next in keys.by_ref() {
+                    if next.code == KeyCode::Enter {
+                        break;
+                    }
+                }
+                "search".to_string()
+            }
+            KeyCode::Char('.') => "dot".to_string(),
+            KeyCode::Char(c) => c.to_ascii_lowercase().to_string(),
+            KeyCode::Enter => "enter".to_string(),
+            KeyCode::Tab => "tab".to_string(),
+            other => format!("{other:?}").to_ascii_lowercase(),
+        };
+        stem.push('-');
+        stem.push_str(&word);
+    }
+    stem
+}
+
 /// The banner's title: where the user is and how to move on. The run
 /// appends ` · <tier>` (`view::banner_lines`); [`TIER_SUFFIX`] reserves it.
+/// A stop with a prelude names its keys where a plain stop names its group.
 pub fn title(entry: &Entry, index: usize, total: usize) -> String {
+    let label = if entry.prelude.is_empty() {
+        entry.group.to_string()
+    } else {
+        keys_label(&entry.prelude)
+    };
     format!(
-        "gallery {}/{} {} · {} · {KEYS}",
+        "gallery {}/{} {} · {label} · {KEYS}",
         index + 1,
         total,
-        entry.name,
-        entry.group
+        entry.name
     )
 }
 
@@ -660,6 +988,12 @@ mod tests {
             &names[names.len() - 3..],
             &["graft-self", "synthetic-100k", "git-git"]
         );
+        concrete_and_fits(&all);
+    }
+
+    /// Every finding is concrete, and every banner line fits 80 columns
+    /// with the tier suffix; both groups hold to it.
+    fn concrete_and_fits(all: &[Entry]) {
         for (index, entry) in all.iter().enumerate() {
             for text in [entry.shows, entry.differs] {
                 let lower = text.to_ascii_lowercase();
@@ -688,6 +1022,62 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// m2-details-and-diffs/23: the details group is the ticket's 19 stops
+    /// in its order, each concrete and fitting, its keys spelled in the
+    /// title and folded into a capture stem; the graph group is untouched.
+    #[test]
+    fn the_details_group_walks_the_19_stops_with_their_keys_and_fits() {
+        let all = stops(Group::Details);
+        assert_eq!(all.len(), 19);
+        concrete_and_fits(&all);
+        let names: Vec<&str> = all.iter().map(|entry| entry.name).collect();
+        assert_eq!(
+            names,
+            [
+                "feature-branches",
+                "feature-branches",
+                "feature-branches",
+                "feature-branches",
+                "feature-branches",
+                "foxtrot-merge",
+                "foxtrot-merge",
+                "backward-merge",
+                "accidental-pull-merge",
+                "evil-merge",
+                "cherry-pick-duplicates",
+                "ref-states",
+                "unicode-names",
+                "non-utf8-path",
+                "feature-branches",
+                "feature-branches",
+                "graft-self",
+                "git-git",
+                "git-git",
+            ]
+        );
+        assert_eq!(
+            title(&all[2], 2, 19),
+            "gallery 3/19 feature-branches · Enter Tab v · ] next [ back q quit"
+        );
+        assert_eq!(
+            title(&all[5], 5, 19),
+            "gallery 6/19 foxtrot-merge · radar · ] next [ back q quit",
+            "no prelude: the group stands where the keys would"
+        );
+        assert_eq!(keys_label(&all[17].prelude), "/v2.41.0-rc0⏎ Enter");
+        assert_eq!(capture_stem(&all[6], 6), "m2-07-foxtrot-merge-dot-enter");
+        assert_eq!(capture_stem(&all[17], 17), "m2-18-git-git-search-enter");
+        assert_eq!(capture_stem(&all[15], 15), "m2-16-feature-branches-o");
+        assert_eq!(
+            listing(&stops(Group::Graph)),
+            listing(&entries()),
+            "the graph group is M1's, byte for byte"
+        );
+        assert!(listing(&all).starts_with("\nthe pane\n 1 feature-branches\n"));
+        assert_eq!(Group::parse("details"), Some(Group::Details));
+        assert_eq!(Group::parse("pane"), None);
     }
 
     #[test]

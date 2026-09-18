@@ -29,17 +29,18 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use gallery::{
-    Availability, banner, coverage_matrix, entries, listing, missing_page, resolve, roots,
+    Availability, Entry, Group, banner, coverage_matrix, listing, missing_page, resolve, roots,
+    stops,
 };
 use graft::event_loop::{self, Exit};
 use graft::session::Startup;
 use graft::terminal::{SessionOptions, TerminalSession};
-use graft::update::{Banner, Harness};
+use graft::update::Harness;
 use graft_core::event::KeyCode;
 
 const NEXT: KeyCode = KeyCode::Char(']');
 const PREVIOUS: KeyCode = KeyCode::Char('[');
-const USAGE: &str = "usage: gallery [--start <repo> | --list | --matrix]";
+const USAGE: &str = "usage: gallery [--group graph|details] [--start <repo> | --list | --matrix]";
 
 /// Where the walk goes after a stop.
 enum Step {
@@ -50,11 +51,24 @@ enum Step {
 
 fn main() -> ExitCode {
     let workspace = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    let mut args: Vec<String> = std::env::args().skip(1).collect();
+    // `--group` first, before whatever else the line says; the default
+    // stays M1's so its checklist does not move.
+    let mut group = Group::Graph;
+    if args.first().map(String::as_str) == Some("--group") {
+        let Some(chosen) = args.get(1).and_then(|word| Group::parse(word)) else {
+            eprintln!("{USAGE}");
+            return ExitCode::FAILURE;
+        };
+        group = chosen;
+        args.drain(..2);
+    }
+    let all = stops(group);
     let start = match args.first().map(String::as_str) {
         None => 0,
         Some("--list") => {
-            print!("{}", listing(&entries()));
+            print!("{}", listing(&stops(Group::Graph)));
+            print!("{}", listing(&stops(Group::Details)));
             return ExitCode::SUCCESS;
         }
         Some("--matrix") => return write_matrix(&workspace),
@@ -63,8 +77,13 @@ fn main() -> ExitCode {
                 eprintln!("{USAGE}");
                 return ExitCode::FAILURE;
             };
-            let Some(index) = entries().iter().position(|entry| entry.name == name) else {
-                eprintln!("gallery: no stop named {name}; --list has them");
+            // A details name repeats (five feature-branches stops): the
+            // first is the one `--start` means; `]` reaches the rest.
+            let Some(index) = all.iter().position(|entry| entry.name == name) else {
+                eprintln!(
+                    "gallery: no stop named {name} in the {} group; --list has them",
+                    group.name()
+                );
                 return ExitCode::FAILURE;
             };
             index
@@ -74,7 +93,7 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    match walk(start, &workspace) {
+    match walk(start, &all, &workspace) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("gallery: {error}");
@@ -101,15 +120,12 @@ fn write_matrix(workspace: &Path) -> ExitCode {
 }
 
 /// Walk the stops from `index` until the user quits.
-fn walk(mut index: usize, workspace: &Path) -> Result<(), String> {
-    let all = entries();
+fn walk(mut index: usize, all: &[Entry], workspace: &Path) -> Result<(), String> {
     let roots = roots(workspace);
     loop {
         let entry = &all[index];
         let step = match resolve(entry, workspace, &roots) {
-            Availability::Ready(path) => {
-                show(path, banner(entry, index, all.len()), entry.clock())?
-            }
+            Availability::Ready(path) => show(path, entry, index, all.len())?,
             Availability::Missing { build_with } => {
                 show_missing(&missing_page(entry, index, all.len(), &build_with))?
             }
@@ -123,15 +139,16 @@ fn walk(mut index: usize, workspace: &Path) -> Result<(), String> {
 }
 
 /// Run Graft on one repository until a step key or `q`.
-fn show(repo_path: PathBuf, banner: Banner, clock: graft::session::Clock) -> Result<Step, String> {
+fn show(repo_path: PathBuf, entry: &Entry, index: usize, total: usize) -> Result<Step, String> {
     let config = graft::config::load().map_err(|error| error.to_string())?;
     let startup = Startup {
         repo_path,
         config,
         harness: Harness {
-            banner: Some(banner),
+            banner: Some(banner(entry, index, total)),
             hand_back: vec![NEXT, PREVIOUS],
-            clock,
+            prelude: entry.prelude.clone(),
+            clock: entry.clock(),
             // The corpus is borrowed read-only: never offer to write to it.
             offer_commit_graph: false,
         },

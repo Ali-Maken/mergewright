@@ -24,6 +24,7 @@ mod events;
 mod history;
 mod keys;
 pub mod map;
+mod prelude;
 pub mod radar;
 mod search;
 mod selection;
@@ -50,26 +51,38 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
     let mut commands = Vec::new();
     let cursor_before = state.history.as_ref().map_or(0, |history| history.cursor);
     answer(&mut next, &mut commands, event);
-    selection::reconcile(&mut next, cursor_before);
-    // `local_jobs` borrowed out for the closure: `follow_selection` also
-    // wants `&mut next`, and the two can't overlap.
-    let mut local_jobs = next.local_jobs;
-    commands.extend(selection::follow_selection(&mut next, &mut || {
-        local_jobs.next_id()
-    }));
-    radar::request_context(&mut next, &mut commands, &mut || local_jobs.next_id());
-    radar::request_force_push_probes(&mut next, &mut commands, &mut || local_jobs.next_id());
-    radar::request_duplicates_probe(&mut next, &mut commands, &mut || local_jobs.next_id());
-    commands.extend(detail::open_explain(&mut next, &mut || {
-        local_jobs.next_id()
-    }));
-    next.local_jobs = local_jobs;
+    settle(&mut next, &mut commands, cursor_before);
+    // The harness's prelude (m2-details-and-diffs/23): each key gets the
+    // same follow-up a real key does, so one that starts a job leaves the
+    // rest waiting for the answer; `take_next` hands out nothing until then.
+    while let Some(key) = prelude::take_next(&mut next) {
+        let cursor_before = next.history.as_ref().map_or(0, |history| history.cursor);
+        answer(&mut next, &mut commands, AppEvent::Core(Event::Key(key)));
+        settle(&mut next, &mut commands, cursor_before);
+    }
     // The commit-graph line costs a graph row: when it comes or goes, the
     // viewport changed height, so ask for the rows that now fit.
     if next.commit_graph_line().is_some() != state.commit_graph_line().is_some() {
         show_rows(&mut next, &mut commands);
     }
     (next, commands)
+}
+
+/// What follows every answered event: the selection reconciled with the
+/// cursor, the pane and the radar asking for what they now need.
+fn settle(next: &mut AppState, commands: &mut Vec<Command>, cursor_before: usize) {
+    selection::reconcile(next, cursor_before);
+    // `local_jobs` borrowed out for the closure: `follow_selection` also
+    // wants `&mut next`, and the two can't overlap.
+    let mut local_jobs = next.local_jobs;
+    commands.extend(selection::follow_selection(next, &mut || {
+        local_jobs.next_id()
+    }));
+    radar::request_context(next, commands, &mut || local_jobs.next_id());
+    radar::request_force_push_probes(next, commands, &mut || local_jobs.next_id());
+    radar::request_duplicates_probe(next, commands, &mut || local_jobs.next_id());
+    commands.extend(detail::open_explain(next, &mut || local_jobs.next_id()));
+    next.local_jobs = local_jobs;
 }
 
 /// The half of [`update`] that answers one event, before the viewport is

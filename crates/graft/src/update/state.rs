@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use graft_core::capabilities::RenderingTier;
-use graft_core::event::KeyCode;
+use graft_core::event::{KeyCode, KeyPress};
 use graft_core::job::JobId;
 
 use graft_ui::context_menu::ContextMenu;
@@ -276,6 +276,12 @@ pub struct Harness {
     /// to the next repository). Not consulted while the search prompt is
     /// open, where every printable key is text.
     pub hand_back: Vec<KeyCode>,
+    /// Keys pressed for the user before the first frame, in order
+    /// (m2-details-and-diffs/23): a gallery stop opens the pane or marks a
+    /// compare with them. Fed one at a time by `update::prelude`, each only
+    /// once the first window and the refs answer are on hand and nothing an
+    /// earlier key started is still in flight. Empty in the shipped binary.
+    pub prelude: Vec<KeyPress>,
     /// The instant every relative date on screen is drawn against
     /// (m1-the-graph/53). `Wall` for the shipped binary; a gallery corpus
     /// stop or a snapshot test asks for `Fixed` instead, so its capture
@@ -292,6 +298,7 @@ impl Default for Harness {
         Harness {
             banner: None,
             hand_back: Vec::new(),
+            prelude: Vec::new(),
             clock: Clock::default(),
             offer_commit_graph: true,
         }
