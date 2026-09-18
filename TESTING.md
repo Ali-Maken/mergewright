@@ -882,12 +882,6 @@ identity.
   No fixture has a rewritten remote; `docs/shots/m2-force-push.txt` is still
   the only evidence, and it is a TestBackend capture. Nothing in this walk
   implies otherwise.
-- **The Explain panel is unreachable by keys.** The `.` menu never lists
-  `Explain` (`update/context_menu.rs` opens every history row with
-  `marked = false`), so stop 7 shows the menu without it. The panel exists
-  (`docs/shots/m2-explain-panel.txt`, opened by a direct call) but a user
-  cannot open it. "A bad merge is flagged" holds; "and explained" does not
-  yet. Listed in KNOWN_GAPS for the M2 review.
 - **No corpus commit changes two files**, so the file-cursor stop (2) shows
   `j` doing nothing rather than the second file's diff; stop 18 (git/git)
   is where a multi-file tree is seen.
@@ -958,9 +952,11 @@ ASCII: `! i + * o # :`.
    into feature` (row 0, `[◆ main]`) and `ⓘ` on `feature: work` (`[feature]`,
    no upstream); `Advance main` and `Add the base` unmarked. No pane. Footer
    has `. explain`.
-7. **foxtrot-merge · .** — a three-item menu over the graph: `Copy SHA`,
-   `Compare with this`, `Open details`. **`Explain` is absent** — that is
-   the gap, not a pass. `Esc` closes the menu.
+7. **foxtrot-merge · .** — a four-item menu over the graph, `Explain`
+   leading: `Explain`, `Copy SHA`, `Compare with this`, `Open details`.
+   The cursor row has a finding (stop 6's `⚠`), so `open_for_history_row`
+   asks `view::radar::findings_for` and lists `Explain` first
+   (m2-details-and-diffs/24). `Esc` closes the menu.
 8. **backward-merge** — `ⓘ` on `Merge branch 'main' into feature` (`◉`,
    `[feature]`); `Advance main` (`[◆ main]`) and `Add the base` unmarked.
    The severity is info, not warning: the marker is `ⓘ`, not `⚠`.

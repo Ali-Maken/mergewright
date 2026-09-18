@@ -434,8 +434,8 @@ fn details() -> Vec<Entry> {
             RADAR,
             vec![ch('.')],
             shape("foxtrot-merge"),
-            "the . menu on the ⚠ merge: Copy SHA, Compare with this, Open details",
-            "Explain is NOT in the menu (KNOWN_GAPS): the panel has no route yet",
+            "the . menu on the ⚠ merge: Explain, Copy SHA, Compare, Open details",
+            "Explain leads: this row has a finding (stop 6's own ⚠), so it lists",
         ),
         stop(
             "backward-merge",

@@ -2,13 +2,13 @@ details gallery stop 7/19: m2-07-foxtrot-merge-dot, unicode tier, 160x40
 
  graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/foxtrot-merge  4 commits
  gallery 7/19 foxtrot-merge · . · ] next [ back q quit · unicode
- shows: the . menu on the ⚠ merge: Copy SHA, Compare with this, Open details
- differs: Explain is NOT in the menu (KNOWN_GAPS): the panel has no route yet
+ shows: the . menu on the ⚠ merge: Explain, Copy SHA, Compare, Open details
+ differs: Explain leads: this row has a finding (stop 6's own ⚠), so it lists
 ◆─╮ ⚠ [◆ main] Merge branch 'main' into feature                                                                                                  GF 2d   84cc93e
- Copy SHA            re: work                                                                                                                    GF 2d   8fa6bfc
- Compare with this                                                                                                                               GF 2d   18ca7c9
- Open details                                                                                                                                    GF 2d   68d5d19
-
+ Explain             re: work                                                                                                                    GF 2d   8fa6bfc
+ Copy SHA                                                                                                                                        GF 2d   18ca7c9
+ Compare with this                                                                                                                               GF 2d   68d5d19
+ Open details
 
 
 

@@ -17,12 +17,25 @@ use super::state::{AppState, Status};
 /// instead), so this is never a real row index.
 pub(super) const WORKING_TREE_ROW: usize = usize::MAX;
 
-/// `.`/right-click on a commit row: open its menu. `marked` is hardcoded
-/// `false` — no row can be marked yet (`radar-context-and-markers` is what
-/// sets `GraphEntry::marker`), so `Explain` never shows in this ticket's own
-/// build. That is expected, not a hidden failure.
+/// `.`/right-click on a commit row: open its menu. `marked` asks the same
+/// source of truth the marker column asks (`view::radar::findings_for`,
+/// `view/entries.rs`) rather than a second, hand-maintained flag — a row
+/// with at least one finding lists `Explain`.
 pub(super) fn open_for_history_row(next: &mut AppState, row: usize) {
-    let marked = false;
+    let marked = next
+        .history
+        .as_ref()
+        .and_then(|history| history.row_at(row))
+        .is_some_and(|entry| {
+            let subject = String::from_utf8_lossy(entry.commit.subject());
+            !crate::view::radar::findings_for(
+                next,
+                entry.commit.id,
+                &entry.commit.parents,
+                &subject,
+            )
+            .is_empty()
+        });
     next.context_menu = Some((row, ContextMenu::for_row(marked)));
 }
 
@@ -173,10 +186,79 @@ mod tests {
         }
     }
 
+    /// `history_of(3, 0)`'s cursor row, with a ready radar context and a
+    /// duplicate-commit finding pinned to `mark` — the same fixture shape
+    /// `update::detail`'s explain tests use, so this menu and that panel
+    /// agree on what "marked" means.
+    fn state_with_finding_at(mark: Oid) -> AppState {
+        let mut state = AppState {
+            history: Some(crate::view::tests::history_of(3, 0)),
+            ..AppState::default()
+        };
+        state.radar.context = crate::update::detail::Loading::Ready(std::sync::Arc::new(
+            crate::jobs::radar::RadarContext {
+                default_chain: std::collections::HashSet::new(),
+                previous_default_tips: Vec::new(),
+            },
+        ));
+        state.radar.duplicate_findings.insert(
+            mark,
+            graft_ops::mistake_radar::Finding {
+                kind: graft_core::mistake_radar::MistakeRadarKind::DuplicateCommit,
+                severity: graft_core::mistake_radar::Severity::Warning,
+                at: mark,
+                evidence: graft_ops::mistake_radar::Evidence::Duplicate {
+                    copies: vec![oid(9)],
+                },
+            },
+        );
+        state
+    }
+
     #[test]
-    fn open_for_history_row_never_lists_explain_yet() {
+    fn open_for_history_row_lists_explain_when_the_row_has_a_finding() {
+        let mark = oid(3); // `history_of(3, 0)`'s row 0.
+        let mut state = state_with_finding_at(mark);
+
+        open_for_history_row(&mut state, 0);
+
+        let (row, menu) = state.context_menu.expect("menu opened");
+        assert_eq!(row, 0);
+        assert!(
+            menu.items
+                .iter()
+                .any(|item| item.action == ContextAction::Explain),
+            "the row under the cursor has a finding, same source `marker_for` reads"
+        );
+    }
+
+    #[test]
+    fn open_for_history_row_omits_explain_on_an_unflagged_row() {
+        // A ready radar context with no finding anywhere: `findings_for`
+        // returns empty for every row, so `Explain` never lists.
+        let mut state = state_with_finding_at(oid(99)); // no row is `oid(99)`.
+
+        open_for_history_row(&mut state, 0);
+
+        let (row, menu) = state.context_menu.expect("menu opened");
+        assert_eq!(row, 0);
+        assert!(
+            !menu
+                .items
+                .iter()
+                .any(|item| item.action == ContextAction::Explain),
+            "no finding at this row"
+        );
+    }
+
+    #[test]
+    fn open_for_history_row_omits_explain_without_a_ready_radar_context() {
+        // No `History` at all: `row_at` finds nothing, so `marked` is
+        // `false` rather than panicking or guessing.
         let mut state = AppState::default();
+
         open_for_history_row(&mut state, 3);
+
         let (row, menu) = state.context_menu.expect("menu opened");
         assert_eq!(row, 3);
         assert!(
@@ -184,7 +266,7 @@ mod tests {
                 .items
                 .iter()
                 .any(|item| item.action == ContextAction::Explain),
-            "no row can be marked until radar-context-and-markers lands"
+            "no history means no row to look a finding up on"
         );
     }
 

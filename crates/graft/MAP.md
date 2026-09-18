@@ -162,7 +162,7 @@ The uncommitted-changes row's one-bit selection: pure rules for setting, clearin
 
 ## update::context_menu
 The `.`/right-click popup: opening it, its own keys, and carrying out whatever it dispatches (`context-actions-menu`, m2-details-and-diffs/12).
-- `open_for_history_row`/`open_for_working_tree`/`open_selected` (fns) — open the menu for a given row, the working-tree row, or whatever the cursor now names. `marked` is hardcoded `false` until `radar-context-and-markers` sets `GraphEntry::marker`.
+- `open_for_history_row`/`open_for_working_tree`/`open_selected` (fns) — open the menu for a given row, the working-tree row, or whatever the cursor now names. `marked` asks `view::radar::findings_for` for the row under the cursor — the same source of truth the marker column reads (`explain-reachable-from-the-menu`, m2-details-and-diffs/24) — not a hand-maintained flag.
 - `context_menu_key` (fn) — the menu's own keys while open (`j`/`k` move, `Enter` dispatches and closes, anything else including `Esc` closes without acting); modal, so `key_event` returns as soon as this reports `true`.
 - `apply_context_action` (fn) — `(state, action, row, oid: Option<Oid>, next_id) -> Vec<Command>`; `oid` is `None` only for the working-tree row, where `CopySha`/`CompareWithThis`/`Explain` are unreachable (`debug_assert!`, no command).
 

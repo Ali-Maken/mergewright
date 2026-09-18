@@ -439,7 +439,6 @@ What the details gallery revealed, verified under a pty (captures
 
 | Gap | What's needed | Expiry |
 |---|---|---|
-| **`Explain` is not in the `.` menu, so the Explain panel is unreachable by keys.** `update/context_menu.rs::open_selected` opens every history row with `marked = false` (ticket 13's own build said "no row can be marked yet"); 13b/13c wired the markers but not this flag. Stop 7 shows `Copy SHA / Compare with this / Open details`. The promise's "and explained" half fails until this is wired. | Pass the row's finding into `ContextMenu::for_row`; a test that a `⚠` row's menu lists `Explain` first. | M2 review |
 | **No corpus commit changes two files**, so stop 2 (`Enter j`) shows `j` inert and no fixture exercises the file cursor. | A `two-file-commit` shape (or a second file on `feature-branches`' merges), then re-point stop 2. | M2 review |
 | **The force-push probe (ticket 15) has no gallery stop and was never run against a real rewritten remote.** `docs/shots/m2-force-push.txt` is a TestBackend capture. | A fixture with a remote whose branch was rewritten (needs a bare remote in the corpus), and a stop. | M2 review |
 | **The gallery banner is hidden at < 100 columns when the `Detail` tab is up**, and the Map view draws no banner at any size. The 80x24 captures name their stop only in their first line. | Draw the banner (or its title line) in the tab-strip and map layouts. | M2 review |

@@ -2,10 +2,13 @@
 # 5 synthetic commits (history_of(5, 1) in crates/graft/src/view/tests.rs),
 # cursor on row 1 (commit 0404040). `AppState.context_menu` set directly
 # (`ContextMenu::for_row(marked)`) rather than through `.`/right-click, since
-# this is what the menu draws, not how it opens. `marked: true` is faked
-# straight in the fixture: no row can really be marked until
-# `radar-context-and-markers` sets `GraphEntry::marker`
-# (m2-details-and-diffs/12).
+# this is what the menu draws, not how it opens. `marked: true`/`false` are
+# still passed straight into the fixture here to show both renderings side
+# by side; since m2-details-and-diffs/24, `.`/right-click itself computes
+# `marked` from `view::radar::findings_for` for the row under the cursor —
+# the same source of truth the marker column reads
+# (`update::context_menu::open_for_history_row`) — instead of a hardcoded
+# `false`, so a flagged commit's menu now really does lead with Explain.
 # Judge by eye: the menu is anchored directly under the cursor row, painted
 # over the rows below it (the widget draws only labels and the cursor row's
 # reverse-video, invisible in plain text; the `SurfaceRaised` background is
