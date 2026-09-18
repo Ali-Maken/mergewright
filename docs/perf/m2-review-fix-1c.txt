@@ -1,0 +1,10 @@
+m2 review fix 1c — evil-merge probe, before and after (M6)
+repository: /Users/devuser/.cache/graft/git-git.git
+merges walked (two-parent, newest first): 60
+date: 2026-09-18T05:03:13Z
+
+clean (empty remerge diff, unchanged by the fix): 53
+old check: EVIL MERGE warnings                  : 7
+new check: EVIL MERGE warnings                  : 1
+new check: hand-resolved conflicts, no warning  : 6
+new check: not checkable (no merge base)        : 0

@@ -140,8 +140,16 @@ pub fn list_files(
     parse_file_list(&raw, &numstat).map_err(DiffError::Parse)
 }
 
-/// The working tree against `HEAD`: tracked changes from `diff-index`, plus
-/// untracked files from `ls-files` (no line counts for those).
+/// The working tree against `HEAD`: tracked changes from `git diff HEAD`,
+/// plus untracked files from `ls-files` (no line counts for those).
+///
+/// Porcelain `diff`, not plumbing `diff-index`, on purpose. `diff-index`
+/// trusts the index's stat cache: a tracked file whose mtime moved without
+/// its content changing (a branch switch, an editor save, a build) is
+/// reported as modified with a `0 0` numstat, so the pane listed files the
+/// user never touched. `diff` refreshes the stat cache in memory first and
+/// compares content, and `GIT_OPTIONAL_LOCKS=0` (set on every invocation)
+/// keeps that refresh from writing the index. The output shape is the same.
 fn list_files_working_tree(
     repo: &RepoHandle,
     opts: DiffOptions,
@@ -150,7 +158,7 @@ fn list_files_working_tree(
     ensure_head(repo)?;
 
     let mut invocation = GitInvocation::new(repo).args([
-        GitArg::Flag("diff-index"),
+        GitArg::Flag("diff"),
         GitArg::Flag("--no-color"),
         GitArg::Flag("--no-ext-diff"),
         GitArg::Flag("-M"),

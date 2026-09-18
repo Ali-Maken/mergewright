@@ -23,7 +23,7 @@ View-model types for the detail pane (m2-details-and-diffs/06); no widget. Every
 - `Subject` (enum) — `None`, `Commit { sha }`, `Compare { base, head }`, `WorkingTree { staged, unstaged, untracked }`.
 - `DetailHeader` (struct) — subject, summary, author, dates, committer, co-authors, parents, against, contained, radar lines.
 - `ContainedIn` (enum) — `NotAsked`, `Checking`, `Known { branches, tags, more }`, `Failed`.
-- `RadarLine` (enum) — a finding (`Severity`, title) or the evil-merge / force-push states.
+- `RadarLine` (enum) — a finding (`Severity`, title) or the evil-merge / force-push states, including `EvilResolved { files }` ("evil merge: clean (N files hand-resolved)").
 - `FileStatusView` (enum) — added, deleted, modified, renamed, copied, type-changed, unmerged, untracked.
 - `FileRowKind` (enum) — `Message { lines }`, `Dir { collapsed }`, `File { status, added, removed }`.
 - `FileRow` (struct) — depth, name, kind, `entry` (index into the git list; `None` for message/dir).

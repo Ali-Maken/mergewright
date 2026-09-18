@@ -25,7 +25,7 @@ One line per public item. Update when a public item changes.
 - `explain` (fn) — a finding to plain English, commits named through the caller's `short`.
 
 ## mistake_radar::probes
-- `EvilVerdict` (enum) — `Clean`, `Evil { files }`, `NotCheckable(String)`.
+- `EvilVerdict` (enum) — `Clean`, `Resolved { files }` (the remerge diff differs only in files both sides changed: a hand-resolved conflict, never a finding), `Evil { files }` (files only one side, or neither, touched since the merge base), `NotCheckable(String)`.
 - `ForcePushVerdict` (enum) — `NotCheckable(String)`, `Clean`, `Rewritten { remote_ref, previous, current }`.
 - `Duplicates` (struct) — patch-id `groups`, the `window` looked at, `complete`.
 - `probe_evil_merge` (fn) — one `git show --remerge-diff --name-only` spawn; non-merge/octopus/unreadable/`git` too old → `NotCheckable(reason)`, empty diff → `Clean`, else `Evil { files }` (m2-details-and-diffs/14).

@@ -55,7 +55,7 @@ One line per public item. Update when a public item changes.
 - `DiffSpec` (enum) — what two sides to diff: `Commit { commit, against }` (first parent when `against` is `None`, `--root` when there is none), `Range { base, head }`, `WorkingTreeVsHead`.
 - `DiffOptions` (struct) — `context` (default 3), `ignore_whitespace` (default `false`).
 - `DiffError` (enum) — `Run(RunError)`, `Parse(ParseError)`, `TooLarge { bytes }` (64 MiB output cap), `NoHead`; `Display` is one line.
-- `list_files` (fn) — one `diff-tree`/`diff-index --raw --numstat -z` spawn (plus `ls-files --others` for untracked, working tree only) split and joined via `parse_file_list`.
+- `list_files` (fn) — one `diff-tree`/`diff --raw --numstat -z` spawn (plus `ls-files --others` for untracked, working tree only) split and joined via `parse_file_list`. The working tree uses porcelain `diff HEAD`, not `diff-index`: `diff` refreshes the stat cache in memory, so a touched-but-unchanged file is not listed.
 - `file_diff` (fn) — one file's patch via `diff-tree`/`diff-index -p -U<context>`, parsed with `parse_unified`; truncates to whole hunks at `max_lines` (`usize::MAX`: no cap); an `Untracked` entry returns a hunk-less `FileDiff` with no spawn.
 
 ## history

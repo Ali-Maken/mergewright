@@ -24,7 +24,18 @@ use super::{Evidence, Finding, Policy};
 pub enum EvilVerdict {
     /// The merge's tree is what merging its parents gives.
     Clean,
-    /// The merge changed files beyond combining its parents.
+    /// The merge's tree differs from a clean re-merge, but only in files
+    /// both sides changed since the merge base — where git could have
+    /// raised a conflict. That is what an ordinary hand-resolved conflict
+    /// looks like, so it is not a finding.
+    Resolved {
+        /// The files that differ from the clean re-merge and that both
+        /// sides changed, as paths in the repository.
+        files: Vec<Vec<u8>>,
+    },
+    /// The merge changed files that only one side, or neither, had touched
+    /// since the merge base: no conflict could have arisen there, so the
+    /// edit came from the merge itself.
     Evil {
         /// The files whose content matches neither parent nor the clean
         /// merge, as paths in the repository.
@@ -70,6 +81,26 @@ pub struct Duplicates {
 /// diff is a clean merge; every line is a file the merge changed beyond
 /// combining its sides.
 ///
+/// A non-empty remerge diff is **not** the same as an evil merge: it is
+/// also what every hand-resolved conflict leaves behind, which is ordinary
+/// work on any busy repository. So the differing files are split by a test
+/// git semantics make exact in one direction — a conflict can only arise in
+/// a file *both* sides changed since the merge base. Files only one side
+/// (or neither) touched could not have conflicted, so a difference there
+/// came from the merge itself: [`EvilVerdict::Evil`]. The rest is
+/// [`EvilVerdict::Resolved`], which is never a finding.
+///
+/// What this cannot tell apart, and deliberately stays quiet about: a file
+/// both sides changed. A real evil edit hidden inside a conflict
+/// resolution, and a merge that re-resolved cleanly-mergeable both-side
+/// edits, both land in `Resolved`. Warning on those would fire on ordinary
+/// work, which is how a real warning gets ignored; `explain` says so in
+/// the pane rather than the check guessing.
+///
+/// Splitting costs three more spawns (`merge-base`, then one `diff-tree`
+/// per side) and only for a merge whose remerge diff is non-empty; a clean
+/// merge still costs the one spawn.
+///
 /// Never a `Result`: "could not check" is one of the three answers the pane
 /// shows, not a failure to report elsewhere. Anything that stops the check —
 /// an unreadable commit, an octopus merge, a git too old to know
@@ -105,7 +136,7 @@ pub fn probe_evil_merge(repo: &RepoHandle, merge: Oid, stop: &dyn Stop) -> EvilV
             if files.is_empty() {
                 EvilVerdict::Clean
             } else {
-                EvilVerdict::Evil { files }
+                split_remerge_files(repo, [commit.parents[0], commit.parents[1]], files, stop)
             }
         }
         // Only reached when the probe is called outside a job: the job
@@ -113,6 +144,100 @@ pub fn probe_evil_merge(repo: &RepoHandle, merge: Oid, stop: &dyn Stop) -> EvilV
         Err(RunError::Stopped) => EvilVerdict::NotCheckable("cancelled".into()),
         Err(error) => EvilVerdict::NotCheckable(error.to_string()),
     }
+}
+
+/// Splits the files a remerge diff named into the ones a conflict explains
+/// and the ones it cannot. See [`probe_evil_merge`] for why the merge base
+/// is the dividing line.
+///
+/// Without a merge base there is nothing to measure "both sides changed it"
+/// against, so the answer is `NotCheckable` with the reason, never a guess
+/// either way: absence of evidence is not a clean bill, and it is not a
+/// warning either (PROMPT.md §1.4).
+fn split_remerge_files(
+    repo: &RepoHandle,
+    parents: [Oid; 2],
+    files: Vec<Vec<u8>>,
+    stop: &dyn Stop,
+) -> EvilVerdict {
+    let base = match merge_base(repo, parents, stop) {
+        Ok(Some(base)) => base,
+        Ok(None) => return EvilVerdict::NotCheckable("the parents share no history".into()),
+        Err(reason) => return EvilVerdict::NotCheckable(reason),
+    };
+    let mut both = match changed_paths(repo, base, parents[0], stop) {
+        Ok(paths) => paths,
+        Err(reason) => return EvilVerdict::NotCheckable(reason),
+    };
+    let other = match changed_paths(repo, base, parents[1], stop) {
+        Ok(paths) => paths,
+        Err(reason) => return EvilVerdict::NotCheckable(reason),
+    };
+    both.retain(|path| other.contains(path));
+
+    let (resolved, invented): (Vec<Vec<u8>>, Vec<Vec<u8>>) =
+        files.into_iter().partition(|path| both.contains(path));
+    if invented.is_empty() {
+        EvilVerdict::Resolved { files: resolved }
+    } else {
+        EvilVerdict::Evil { files: invented }
+    }
+}
+
+/// The best common ancestor of two parents, or `None` when they share no
+/// history (`merge-base` exits 1 and prints nothing).
+fn merge_base(
+    repo: &RepoHandle,
+    parents: [Oid; 2],
+    stop: &dyn Stop,
+) -> Result<Option<Oid>, String> {
+    let output = GitInvocation::new(repo)
+        .arg(GitArg::Word("merge-base".into()))
+        .arg(GitArg::Oid(parents[0]))
+        .arg(GitArg::Oid(parents[1]))
+        .run(stop);
+    let output = match output {
+        Ok(output) => output,
+        Err(RunError::Exited { status: 1, .. }) => return Ok(None),
+        Err(RunError::Stopped) => return Err("cancelled".into()),
+        Err(error) => return Err(error.to_string()),
+    };
+    let text = String::from_utf8_lossy(&output.stdout);
+    let Some(line) = text.lines().next() else {
+        return Ok(None);
+    };
+    Oid::from_hex(line.trim())
+        .map(Some)
+        .map_err(|error| error.to_string())
+}
+
+/// The paths that differ between two trees, rename detection off so every
+/// path a side touched is named literally on both ends.
+fn changed_paths(
+    repo: &RepoHandle,
+    from: Oid,
+    to: Oid,
+    stop: &dyn Stop,
+) -> Result<HashSet<Vec<u8>>, String> {
+    let output = GitInvocation::new(repo)
+        .arg(GitArg::Word("diff-tree".into()))
+        .arg(GitArg::Flag("-r"))
+        .arg(GitArg::Flag("--no-renames"))
+        .arg(GitArg::Flag("--name-only"))
+        .arg(GitArg::Flag("-z"))
+        .arg(GitArg::Oid(from))
+        .arg(GitArg::Oid(to))
+        .run(stop)
+        .map_err(|error| match error {
+            RunError::Stopped => "cancelled".to_owned(),
+            other => other.to_string(),
+        })?;
+    Ok(output
+        .stdout
+        .split(|byte| *byte == 0)
+        .filter(|path| !path.is_empty())
+        .map(<[u8]>::to_vec)
+        .collect())
 }
 
 /// Did `remote_ref` move to `current` without descending from where the
@@ -281,7 +406,9 @@ pub fn finding_from_evil(merge: Oid, v: &EvilVerdict, policy: &Policy) -> Option
                 files: files.clone(),
             },
         }),
-        EvilVerdict::Clean | EvilVerdict::NotCheckable(_) => None,
+        // `Resolved` is a hand-resolved conflict: ordinary work, never a
+        // finding.
+        EvilVerdict::Clean | EvilVerdict::Resolved { .. } | EvilVerdict::NotCheckable(_) => None,
     }
 }
 
@@ -556,6 +683,61 @@ mod tests {
         assert_eq!(
             probe_force_push(&repo, "fresh", &fresh, tip, &()),
             ForcePushVerdict::NotCheckable("no remote-tracking reflog".into())
+        );
+    }
+
+    /// The common case on any busy repository: a merge whose conflicts were
+    /// resolved by hand. Its remerge diff is non-empty — which is what the
+    /// probe used to call evil — but both sides changed the file, so a
+    /// conflict explains the difference and nothing is flagged.
+    #[test]
+    fn a_hand_resolved_conflict_is_not_an_evil_merge() {
+        let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+        let path = scratch.path().to_path_buf();
+        let shared = path.join("shared.txt");
+        let git = |args: &[&str]| {
+            graft_fixtures::git::run(&path, args)
+                .unwrap_or_else(|error| panic!("git {args:?} runs: {error}"))
+        };
+        git(&["config", "user.name", "Fixture"]);
+        git(&["config", "user.email", "fixture@example.invalid"]);
+        std::fs::write(&shared, "0\n").expect("the shared file is written");
+        git(&["add", "shared.txt"]);
+        git(&["commit", "-m", "Add the shared file"]);
+        git(&["checkout", "-b", "side"]);
+        std::fs::write(&shared, "theirs\n").expect("the side's edit is written");
+        git(&["commit", "-am", "Their edit"]);
+        git(&["checkout", "-"]);
+        std::fs::write(&shared, "mine\n").expect("our edit is written");
+        git(&["commit", "-am", "My edit"]);
+
+        assert!(
+            graft_fixtures::git::run(&path, &["merge", "side"]).is_err(),
+            "the merge must conflict for this test to prove anything"
+        );
+        std::fs::write(&shared, "resolved by hand\n").expect("the resolution is written");
+        git(&["add", "shared.txt"]);
+        git(&["commit", "-m", "Merge branch 'side'"]);
+
+        let head = String::from_utf8(git(&["rev-parse", "HEAD"])).expect("git prints hex");
+        let merge = Oid::from_hex(head.trim()).expect("a full object id");
+        let repo = RepoHandle::open(&path).expect("the scratch repository opens");
+
+        assert_eq!(
+            probe_evil_merge(&repo, merge, &()),
+            EvilVerdict::Resolved {
+                files: vec![b"shared.txt".to_vec()]
+            }
+        );
+        assert_eq!(
+            finding_from_evil(
+                merge,
+                &EvilVerdict::Resolved {
+                    files: vec![b"shared.txt".to_vec()]
+                },
+                &Policy::default()
+            ),
+            None
         );
     }
 }

@@ -107,6 +107,13 @@ pub enum RadarLine {
     EvilChecking,
     /// The merge carries no changes of its own.
     EvilClean,
+    /// The merge differs from a clean re-merge only in files both sides
+    /// changed: a hand-resolved conflict, not a mistake. Shown so the pane
+    /// does not read as "nothing happened here" when something did.
+    EvilResolved {
+        /// How many files the resolution touched.
+        files: usize,
+    },
     /// The evil-merge probe could not run, and why.
     EvilNotCheckable(SanitizedText),
     /// The force-push probe could not run, and why.

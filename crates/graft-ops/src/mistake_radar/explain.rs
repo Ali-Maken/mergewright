@@ -155,16 +155,20 @@ fn evil(merge: Oid, files: &[Vec<u8>], short: Short) -> Explanation {
         title: "EVIL MERGE".into(),
         paragraphs: vec![
             format!(
-                "This merge changes {} file{plural} in ways found in neither parent: \
-                 {listed}.",
+                "This merge changes {} file{plural} that only one side, or neither, had \
+                 touched since the merge base: {listed}. No conflict could have arisen \
+                 there, so the edit came from the merge itself.",
                 files.len()
             ),
             "Those edits do not show in a diff against either parent, so a revert or a \
-             rebase of the merge silently loses or duplicates them."
+             rebase of the merge silently loses or duplicates them. Files both sides \
+             changed are not listed: a hand-resolved conflict looks the same there, so \
+             the check stays quiet rather than warn on ordinary work."
                 .into(),
             format!(
-                "`git show --remerge-diff {}` shows exactly what the merge added. If the \
-                 edits were meant, a separate commit after the merge keeps them visible.",
+                "`git show --remerge-diff {}` shows exactly what the merge added, the \
+                 files both sides changed included. If the edits were meant, a separate \
+                 commit after the merge keeps them visible.",
                 short(merge)
             ),
         ],

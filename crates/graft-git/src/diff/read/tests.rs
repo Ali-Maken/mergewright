@@ -477,3 +477,45 @@ fn non_utf8_path_round_trips_through_git_arg_path() {
     assert_eq!(diff.entry.path, b"caf\xe9.txt");
     assert!(!diff.hunks.is_empty());
 }
+
+/// `diff-index` is plumbing: it trusts the index's stat cache and never
+/// refreshes it, so a tracked file whose mtime moved without its content
+/// changing — a branch switch, an editor save, a build — came back as `M`
+/// with a `0 0` numstat while the pane's header (from `git status`, which
+/// does refresh) said nothing was unstaged. The plumbing assertion is the
+/// point of the test: without it the setup could silently stop being
+/// stat-dirty and the test would pass for the wrong reason.
+#[test]
+fn a_touched_but_unchanged_file_is_not_listed_as_modified() {
+    let scratch = graft_fixtures::copy_into_temp(Shape::Linear);
+    let shared = SharedRepo::open(scratch.path()).expect("the fixture opens");
+    let handle = shared.handle();
+
+    let tracked = scratch.path().join("log.txt");
+    let content = std::fs::read(&tracked).expect("the tracked file reads");
+    std::fs::write(&tracked, &content).expect("the same bytes go back with a new mtime");
+
+    let plumbing = graft_fixtures::git::run(scratch.path(), &["diff-index", "--raw", "HEAD"])
+        .expect("git diff-index runs");
+    assert!(
+        !plumbing.is_empty(),
+        "the file is not stat-dirty, so this test would prove nothing"
+    );
+
+    let list = list_files(
+        &handle,
+        &DiffSpec::WorkingTreeVsHead,
+        &DiffOptions::default(),
+        &(),
+    )
+    .expect("list_files succeeds");
+    let listed: Vec<String> = list
+        .files
+        .iter()
+        .map(|e| String::from_utf8_lossy(&e.path).into_owned())
+        .collect();
+    assert!(
+        list.files.is_empty(),
+        "nothing changed, yet the pane would list {listed:?}"
+    );
+}

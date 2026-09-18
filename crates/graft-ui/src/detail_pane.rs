@@ -985,6 +985,10 @@ fn radar_text(line: &RadarLine) -> String {
         RadarLine::EvilUnchecked => "evil merge: unchecked".to_string(),
         RadarLine::EvilChecking => "evil merge: checking\u{2026}".to_string(),
         RadarLine::EvilClean => "evil merge: clean".to_string(),
+        RadarLine::EvilResolved { files } => {
+            let plural = if *files == 1 { "" } else { "s" };
+            format!("evil merge: clean ({files} file{plural} hand-resolved)")
+        }
         RadarLine::EvilNotCheckable(reason) => {
             format!("evil merge: not checkable \u{2014} {}", reason.as_str())
         }

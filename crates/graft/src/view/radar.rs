@@ -161,6 +161,9 @@ pub fn radar_lines_for(
         match verdict {
             Some(Loading::Pending(_)) => lines.push(RadarLine::EvilChecking),
             Some(Loading::Ready(EvilVerdict::Clean)) => lines.push(RadarLine::EvilClean),
+            Some(Loading::Ready(EvilVerdict::Resolved { files })) => {
+                lines.push(RadarLine::EvilResolved { files: files.len() });
+            }
             Some(Loading::Ready(EvilVerdict::NotCheckable(reason))) => {
                 lines.push(RadarLine::EvilNotCheckable(sanitize_line(reason)));
             }

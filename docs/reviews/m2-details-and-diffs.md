@@ -315,3 +315,102 @@ documented and did not cause or fix,
 B/commit bar) — confirmed by reading `target/m2-fix-perf-1b/heavy-tier.log`,
 not assumed. Release perf 80 s, 13 passed, 0 failed, including the two new
 frame tests.
+
+## Fixes, round 1c (2026-09-18, builder-opus)
+
+The reviewer's findings above are untouched; this records what changed
+against M4 and M6, the two git-semantics findings. Numbers:
+`docs/perf/m2-review-fix-1c.txt`.
+
+**M4 — fixed at the cause.** `list_files_working_tree` ran plumbing `git
+diff-index`, which trusts the index's stat cache and never refreshes it, so
+a tracked file whose mtime moved without its content changing (a branch
+switch, an editor save, a build) came back as `M` with a `0 0` numstat while
+the pane's header — from `git status`, which does refresh — said nothing was
+unstaged. Swapped to porcelain `git diff --raw --numstat -z -M -C HEAD`:
+same output shape, but it refreshes the stat cache in memory and compares
+content. `GIT_OPTIONAL_LOCKS=0` is already on every `GitInvocation`, so the
+refresh never writes the index. Dropping the `0 0` entries instead would
+have hidden the symptom and still mis-sorted a real binary change.
+
+*Verified:* a new test,
+`a_touched_but_unchanged_file_is_not_listed_as_modified`
+(`crates/graft-git/src/diff/read/tests.rs`), on a writable copy of the
+`Linear` corpus fixture: it writes a tracked file's own bytes back, asserts
+`git diff-index --raw HEAD` still names it (without that assertion the test
+would pass for the wrong reason if the setup stopped being stat-dirty), and
+asserts `list_files(WorkingTreeVsHead)` lists nothing.
+
+*What it costs the user:* nothing lost. `git diff` is porcelain, so it obeys
+the user's `diff.*` config where `diff-index` did not; `--no-color`,
+`--no-ext-diff` and explicit `-M -C` already pin everything that would
+change the parsed output.
+
+**M6 — fixed at the cause; detection narrowed, and Explain says what it
+cannot see.** `--remerge-diff` being non-empty is not evidence of an evil
+merge: it is also exactly what a hand-resolved conflict leaves behind.
+
+The dividing line is a git semantic that is exact in one direction: a
+conflict can only arise in a file *both* sides changed since the merge base.
+So when the remerge diff is non-empty, `probe_evil_merge` now computes the
+merge base and each side's changed paths (`merge-base`, then one `diff-tree
+-r --no-renames --name-only -z` per side) and splits the named files:
+
+- a file at most one side touched could not have conflicted, so the merge
+  invented the edit — `EvilVerdict::Evil`, still a Warning;
+- everything else — `EvilVerdict::Resolved`, a new variant that is never a
+  finding. The pane shows it as `evil merge: clean (N files hand-resolved)`
+  (`RadarLine::EvilResolved`), so the line reports the fact without reading
+  as a problem;
+- no merge base (unrelated histories) — `NotCheckable` with the reason, not
+  a guess in either direction.
+
+Cost: three extra `git` spawns, and only for a merge whose remerge diff is
+non-empty. A clean merge still costs the one spawn it always did, and the
+verdict is cached per commit as before.
+
+*What the check still cannot distinguish, stated in Explain rather than
+guessed at:* a file both sides changed. A real evil edit hidden inside a
+conflict resolution lands in `Resolved` and is not flagged. The `EVIL MERGE`
+explanation now says so in full — "Files both sides changed are not listed:
+a hand-resolved conflict looks the same there, so the check stays quiet
+rather than warn on ordinary work" — and points at `git show
+--remerge-diff`, which shows those files too. Three paragraphs still (the
+explain test caps it at three); the first now says *why* the listed files
+could not have conflicted.
+
+*Why narrowed rather than downgraded to Info:* an Info finding still puts a
+radar marker on every conflict-resolved merge in the graph, which on a busy
+repository is most merges. That is the same "trains the user to ignore it"
+failure one severity down. A false negative the explanation admits to is
+honest; a marker on ordinary work is not.
+
+*Verified, two ways.*
+1. A new test, `a_hand_resolved_conflict_is_not_an_evil_merge`
+   (`crates/graft-ops/src/mistake_radar/probes.rs`), builds a real conflict
+   in a writable copy of the `Trivial` fixture — both sides edit
+   `shared.txt`, the merge is asserted to actually fail, the conflict is
+   resolved by hand — and asserts `Resolved { files: ["shared.txt"] }` and
+   no finding. `the_evil_fixture_names_the_file_the_merge_invented` still
+   passes: `evil.txt` is in neither parent, so it is still `Evil`.
+2. Against real history, independently of Graft's Rust:
+   `scripts/m2-fix-1c-evil-audit.sh 60` over the 60 newest two-parent merges
+   of the git/git clone (`~/.cache/graft/git-git.git`). 53 clean either way;
+   the old check warned on 7, the new one warns on 1. The 6 that fell away
+   are hand-resolved conflicts. The 1 that remains is
+   `c1ab07b8 Merge branch 'master' of https://github.com/j6t/gitk`, which
+   changes `gitk-git/README.md` although neither side touched it since the
+   base — a genuine evil merge, not an artefact of the narrowing. Counts in
+   `docs/perf/m2-review-fix-1c.txt`.
+
+*Not observed:* nothing here was judged by eye. The pane's new
+`evil merge: clean (N files hand-resolved)` line has no capture — the
+gallery's pyte grids carry no colour, but this is a text change, so it is
+capturable; it simply was not, because no gallery stop lands on a
+conflict-resolved merge and the corpus has no such shape. Adding one is a
+fixture change, out of this round's scope.
+
+*Gates:* `cargo fmt --check`, `cargo clippy --all-targets -D warnings` and
+`cargo test` (fast tier) all pass — 28 test binaries green, 0 failed. No
+heavy tier or release perf run this round: nothing here touches the frame
+path.
