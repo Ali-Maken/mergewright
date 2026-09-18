@@ -8,6 +8,16 @@ Every entry names an **expiry**: the milestone that closes it, or "not planned".
 
 ---
 
+
+**Closed rows moved to [`docs/gaps/closed.md`](docs/gaps/closed.md)**
+(housekeeping/01, 2026-09-18): nothing deleted, only split by
+open/closed status. See also that file's own back-link.
+
+
+**Closed rows moved to [`docs/gaps/closed.md`](docs/gaps/closed.md)**
+(housekeeping/01, 2026-09-18): nothing deleted, only split by
+open/closed status. See also that file's own back-link.
+
 ## Deferred stretch goals (agreed at step 1, 2026-09-11)
 
 These were in the original scope list and were cut before any code was written.
@@ -278,8 +288,6 @@ entry is (CLAUDE.md).*
 
 ## m1-the-graph/24d — flush, F3, Ghostty check
 - ~~Retransmit after a clear uses new ids~~ — moot since m1-the-graph/25: nothing calls `forget_uploads` any more (resize keeps uploads). Still true if a future caller does. Original note: **Retransmit after a clear uses new ids; the old ones are never freed.** `forget_uploads` drops Graft's record, so the next frame sends `i=1002…` and `free_all` on exit frees only those. Ghostty frees image data on the clear itself (ADR-0012), so nothing leaks there; a Kitty-protocol terminal that keeps data across `ESC[2J` holds the old uploads until it exits. Seen in `docs/shots/24d-kitty-check.esc.txt`.
-- ~~A resize re-rasterises every strip~~ closed by m1-the-graph/25 (loop no longer flushes on resize; the layout hash carries lane columns). Original: (`Flush::Resize`) though strip pixels depend on cell size and theme, not window size. Cost unmeasured; frame-budget ticket (25/30).
-- ~~A size change ratatui notices before the SIGWINCH wake~~ closed by m1-the-graph/25: its clear is row-by-row (`RowClear`), uploads survive. Original: **A size change ratatui notices before the SIGWINCH wake** clears the screen with no `forget_uploads`: that frame's placements ENOENT, `gfx:` shows the error, and the next wake retransmits. Self-healing, not observed.
 - **The real-Ghostty check drives the encoder with synthetic strips** (`examples/kitty_check.rs`), not the app: it proves Ghostty accepts Graft's transmit/crop/clear/hide/free commands at `q=1` with zero errors. Whether the app's history strips look right is the user's by-eye check.
 
 ## m1-the-graph/25 — iTerm2, resize frames
@@ -323,7 +331,6 @@ entry is (CLAUDE.md).*
 | **The "not available" page understands only `]`, `[`, `q`**; an escape sequence is skipped, a lone `Esc` swallows the next key | Reuse the input mux instead of raw byte reads | Not planned |
 
 ## m1-the-graph/45 — `y` copies the SHA
-- ~~**Copy SHA under `.` context actions: M2+ (menu not built).**~~ **Closed by `m2-details-and-diffs/12` (`context-actions-menu`, `Status: done`).** `.` (or right-click) opens the popup with `Copy SHA` beside `Explain`/`Compare with this`/`Open details`; `y` stays as the direct-key route.
 - **Whether the clipboard got it is unknown to Graft.** OSC 52 has no reply; the notice says what was sent. Terminals with OSC 52 off (some VS Code/Zed settings, tmux without `allow-passthrough` or `set-clipboard`) silently drop it. Paste in Ghostty/Zed/VS Code/tmux is a user by-eye check, not yet done.
 - **Inside tmux the request is wrapped in DCS passthrough, like images (ticket spec).** tmux's own `set-clipboard on` path (unwrapped OSC 52) is not used; with passthrough off the copy is dropped. Open whether to send unwrapped inside tmux instead.
 - **`y` while a failure is on the status line** still sends the SHA but shows no notice: the failure is never replaced by a notice.
@@ -331,24 +338,6 @@ entry is (CLAUDE.md).*
 ## m1-the-graph/49 — commit handles and the id table
 - `graft::history::WalkSource::links` reads each commit whole to get its parents (`read_commit`). Nothing calls it on a hot path yet (`pull`/`read` still hand out whole commits); the hydrate-on-demand ticket should take parents from the walk, as `Walk::next_links` does.
 - Heavy-tier tests for the table and `next_links` (5k pair; 100k overflow ≤ 60 B/commit) are written, not run by the builder; they run in the milestone review.
-- **~~1M first paint is not the walk~~ Closed by m1-the-graph/55:** it was loose-ref enumeration (4 passes over 6,498 refs); now one shared read, 1M first paint 98–105 ms warm with jobs.
-
-## m1-the-graph/58 — tips checked against the id table (58b: tags peeled; guard re-derived into two bars) — closed m1-the-graph/61
-- **58b fixed the tag reads:**
-  - a packed tag resolves from its peeled line with no object read;
-  - a loose tag costs one whole read, with its target judged by the table;
-  - `find_header` is 0 on the cg path.
-- `ref_snapshot` lap after 58b:
-
-  | fixture | 1M | 100k |
-  |---|---|---|
-  | loose | 74.0 MiB (was 85.5) | 7.1 MiB (was 8.3) |
-  | packed | 33.9 MiB | 3.8 MiB |
-
-  Loose-tag floor: 51 KB per tag at 1M, 41 KB at 100k. It is worth only ~10 B/commit in the whole-process slope, because the walk's `first_chunk` faults the same target-commit pages later.
-- **Closed by m1-the-graph/61 (user decision, 2026-09-14, ADR-0026 amended):** the single 150 B/commit bar never held — after 58b it read 166 B/commit loose / 156 packed, and the remainder is mapped pages every hydration lookup needs (pack `.idx`, ~68 B/commit) plus the commit-graph's own pages (~56), not a per-commit read the design can remove. Re-derived into two bars in `heavy::slopes_per_commit_with_a_commit_graph`: **heap (footprint) slope ≤ 50 B/commit** (measured 29/31/29, three release runs alone) and **peak RSS slope ≤ 200 B/commit** (measured 167/169/167 loose; floor named at ADR-0026, ≈ commit-graph 56 + pack index ~68 + heap ~35 ≈ 160). Packed-ref slope not re-measured under the new bars (58b's 156/156/157 already sits under 200).
-- **Open, one line, expiry:** the pack `.idx` offset table's ~11 B/commit contribution (one whole 4 B/object table faulted on the first lookup, 58b, untraced) is not attributed to a cause. Expires if a future commit-graph-path regression needs that 11 B/commit back to explain a bar miss — then trace it instead of assuming heap.
-- Cost to the user: none on the no-cg path (header first, as before; a tag's commit is now header-read instead of decoded). On the cg path, a gc'd repo reads no tag objects at open, and loose tags are read once each. RSS on the cg path grows ~160 B/commit, 121 of it reclaimable mapped pages Graft does not control; Graft's own growth (~30 B/commit measured) is the tight, gated bar.
 
 ## No-commit-graph footprint slope at 1M (m1-the-graph/59b)
 
@@ -367,7 +356,6 @@ entry is (CLAUDE.md).*
 Every budget in 56's checklist passes on 56c's numbers (`docs/shots/m1-memory-curve.txt`, `target/56c/`). Three things are reported, not proven, and each names whose call it is.
 
 - **Cold first paint at 1M is ~0.7–1.0 s (ADR-0027).** Run 1 of every 1M cell in 56c's re-run: no-cg 997–1,032 ms, cg 710–790 ms; runs 2–3 are 88–112 ms on every path, under 150. The budget is judged warm (ADR-0027, user decision). Evidence the cost is the page cache and not Graft: the offer copy, written seconds earlier, painted in 124 ms on its run 1; 55's just-built fixture painted in 134 ms. Not proven: only `sudo purge` empties the cache on macOS. **Expiry: the user runs one `budgets --gate` first paint straight after `sudo purge` on the 1M fixture at the M1 checkpoint (TESTING.md manual checklist), or accepts the warm convention as final.** User.
-- **~~The 1M `frames::` scroll numbers ADR-0026 deferred to the perf run were never measured.~~ Closed by m1-the-graph/64.** Two tests next to the 100k ones (`scrolling_the_1m_commit_graph_fixture_keeps_input_to_frame_under_16_ms_at_the_{unicode,pixel}_tier`), manual (`GRAFT_1M=1`, TESTING.md), on the 1M small commit-graph fixture: release, 3 runs each, alone — Unicode p99 6.37–6.75 ms, Pixel p99 6.89–8.01 ms, both well under 16 ms, no key drawn before its rows arrived on any run (`target/64/`). PROMPT.md §1.2's 60 fps at 1M+ is now measured at frame granularity, not just the worker-side jump numbers 56c had.
 - **`examples/budgets`'s counters hold 4× the app path (harness only).** `order_bytes`, `cold_jump` and `far_jump` lay history out again through `direct_layout`: 100k cg 124 MiB process max RSS vs 33 MiB for the gated path, 1M cg 997 vs 240 (56 pass 1). `--gate` keeps them out of every gate and out of `scripts/memory-curve.sh`'s RSS/footprint cells; the counters run is a separate process. Related: `ru_maxrss` is a lifetime maximum, so any guard that measured two fixtures in one process read a false green in the wrong order — fixed by m1-the-graph/57 (guards measure each fixture in a fresh child). **Expiry: not planned** — the harness is not the app, and the gated path is what every number in this file reports.
 
 ## m1-the-graph/28 — bare `cargo run --` is ambiguous at the workspace root (2026-09-14)
@@ -389,7 +377,6 @@ Every budget in 56's checklist passes on 56c's numbers (`docs/shots/m1-memory-cu
 
 ## m2-details-and-diffs/06 — detail model seams (2026-09-17)
 
-- ~~**`Enter` on the uncommitted-changes row does not open `DetailSpec::WorkingTree`.**~~ Closed by `m2-details-and-diffs/06b`: the row is now selectable through `AppState::on_working_tree`, a one-bit flag beside `History`'s cursor rather than a position of it (`update::selection`); `Enter` opens `DetailSpec::WorkingTree` through `AppState::selected_spec`.
 - **No footer hint for `Enter` yet.** The peek hint (`⏎ full subject`) was removed with the peek; a `⏎ details` hint would advertise a pane that does not draw until `detail-pane-frame`. Expiry: `detail-pane-frame`.
 
 ## m2-details-and-diffs/06b — working-tree row reach (2026-09-17)
@@ -398,9 +385,6 @@ Every budget in 56's checklist passes on 56c's numbers (`docs/shots/m1-memory-cu
 
 ## m2-details-and-diffs/10b — detail pane resize: pointer input and hints (2026-09-18)
 
-- ~~Divider drag is not implemented~~ closed (continuation 1): `Down` on the seam starts a drag, `Drag` calls `DetailState::set_pane_cells` and persists via `Command::SaveLayout`, `Up` (any button) ends it.
-- ~~Mouse wheel over the files/diff regions does not scroll them~~ closed (continuation 1): `update/mod.rs::detail_hit` hit-tests the pointer against the pane's files/body/divider regions (plain `u16` math mirroring `graft_ui::detail_pane::split_area`/`detail_areas` — `update` can't depend on the view crate's rendering library, so it can't call them directly) and routes the wheel accordingly.
-- ~~No pane resize hint (`<> resize`)~~ closed (continuation 1): the previous builder's claim that no hints-footer infrastructure existed was wrong — `graph_screen/footer.rs` already had `key_hints`/`HINTS`/`expand_hint` (the lane-fold hint). Generalized `key_hints` to take `&[&str]` instead of `Option<&str>` so the footer can splice in more than one conditional hint; `<> resize` now shows beside the lane-fold hint whenever `GraphView::detail_shown`.
 - **No `?` help screen — deferred to M8 by decision (planner-fable, 2026-09-18; design note M2 "Spec fix (2026-09-18, `?` help")).** Confirmed (again): no `?`-key handler or help-overlay surface exists anywhere in the codebase. It was never in M2's design note; 10b's line naming it was a slip. DESIGN.md §1.16 defines the overlay as the §2 keymap table filtered to the focused pane, and that table is what M8's "keybinding help and remapping" (PROMPT.md §8) builds — a hand-typed M2 list would be rewritten there. Cost while open: `Space` `1` `H` `x` `w W v [ ]` `<>` `L` `M` `O` are learned from README/TESTING.md; `?` stays unbound and no footer shows `? help`. For M8's builder: `crates/graft/src/update/`'s purity guard rejects any mention of ratatui/`graft_ui` types in that module, doc comments included, so the overlay's geometry and widget live in `graft-ui` and `update` keeps only a shown/hidden flag and the focused-pane id. Pairs with the M1 row "The fold, first-parent and stash keys are not in the footer". Expiry: **M8**.
 - **Map-view no-op guard for resize not added.** `Screen` has no `Map` variant until ticket 19 (per 10b's own "Out" note); `<`/`>` are already no-ops in `Tab`/hidden, so this closes automatically once `Map` exists and needs the same guard added explicitly then.
 - **`docs/shots/m2-detail-keys-resize.txt` capture not regenerated.** The `<> resize` footer hint changes what's on screen while the pane is shown; the ticket asked for the capture to be refreshed but this session's budget ran out before a pty capture could be taken. Expiry: next detail-pane ticket, or a dedicated capture-refresh pass.
