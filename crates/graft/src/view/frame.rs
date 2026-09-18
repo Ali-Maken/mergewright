@@ -7,12 +7,15 @@ use graft_term::sanitize_line;
 use graft_ui::detail_pane::{DetailLayout, DetailPane};
 use graft_ui::graph_screen::{GraphScreen, GraphView, GraphicsStatus, max_lanes_for};
 use graft_ui::map_screen::MapScreen;
+use graft_ui::overview_strip::{OverviewStrip, StripMarks};
 use graft_ui::paint::color;
 use graft_ui::status_screen::StatusScreen;
 use graft_ui::theme::{Theme, Token};
 use ratatui::Frame;
+use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Style;
+use ratatui::widgets::Widget;
 
 use crate::session::Session;
 use crate::update::{AppState, Screen, Status};
@@ -109,13 +112,13 @@ pub fn view_with_graphics(
             screen.pixel = pixels;
             screen.graphics = pixels.then(|| graphics.clone());
 
+            let marks = state.strip_shown.then(|| super::strip::strip_marks(state));
+            let strip = marks.as_ref().map(|marks| (marks, screen.ascii));
+
             let graph = if state.detail.shown {
-                render_graph_with_detail(session, state, frame, &screen, area, pixels)
+                render_graph_with_detail(session, state, frame, &screen, area, pixels, strip)
             } else {
-                let widget = GraphScreen::new(&screen, &session.theme);
-                let graph = pixels.then(|| widget.graph_area(area));
-                frame.render_widget(widget, area);
-                graph
+                render_graph_screen(frame, &session.theme, &screen, area, pixels, strip)
             };
             draw_context_menu(state, frame, area, &session.theme);
             graph
@@ -138,6 +141,7 @@ fn render_graph_with_detail(
     screen: &GraphView<'_>,
     area: Rect,
     pixels: bool,
+    strip: Option<(&StripMarks, bool)>,
 ) -> Option<Rect> {
     let layout = crate::update::detail::effective_layout(
         state.detail.focus,
@@ -159,10 +163,60 @@ fn render_graph_with_detail(
     }
 
     let graph_area = graph_area?;
-    let widget = GraphScreen::new(screen, &session.theme);
-    let graph = pixels.then(|| widget.graph_area(graph_area));
-    frame.render_widget(widget, graph_area);
-    graph
+    render_graph_screen(frame, &session.theme, screen, graph_area, pixels, strip)
+}
+
+/// Draws `screen`'s [`GraphScreen`] into `area`, carving the strip's column
+/// off first when `strip` is `Some` (never combined with `pixels`, DESIGN
+/// §5.3: no strip at the pixel tier).
+///
+/// `Columns::compute` (`graph_screen/layout.rs`) lays the trailing
+/// sha/when/author columns out right-to-left from `area.right()`, so simply
+/// narrowing `area` before handing it to `GraphScreen` would shift those
+/// columns left by one cell — breaking the promise that they stay put
+/// whether or not the strip is shown. Instead: draw `GraphScreen` into a
+/// scratch buffer sized to the *undiminished* `area` (so those columns land
+/// exactly where they would with the strip off), copy every column but the
+/// last into the real buffer, and paint the strip into the column that copy
+/// skipped.
+fn render_graph_screen(
+    frame: &mut Frame,
+    theme: &Theme,
+    screen: &GraphView<'_>,
+    area: Rect,
+    pixels: bool,
+    strip: Option<(&StripMarks, bool)>,
+) -> Option<Rect> {
+    let widget = GraphScreen::new(screen, theme);
+    let Some((marks, ascii)) = strip.filter(|_| !pixels && area.width > 1) else {
+        let graph = pixels.then(|| widget.graph_area(area));
+        frame.render_widget(widget, area);
+        return graph;
+    };
+
+    let mut scratch = Buffer::empty(area);
+    widget.render(area, &mut scratch);
+
+    let strip_x = area.right() - 1;
+    let buf = frame.buffer_mut();
+    for y in area.top()..area.bottom() {
+        for x in area.left()..strip_x {
+            buf[(x, y)] = scratch[(x, y)].clone();
+        }
+    }
+    let strip_area = Rect {
+        x: strip_x,
+        y: area.y,
+        width: 1,
+        height: area.height,
+    };
+    OverviewStrip {
+        marks,
+        theme,
+        ascii,
+    }
+    .render(strip_area, buf);
+    None
 }
 
 /// The Map screen split with the detail pane: the same [`DetailLayout`] the

@@ -1397,6 +1397,61 @@ fn detail_pane_keeps_its_area_when_the_map_view_is_open() {
     );
 }
 
+/// `O` (`AppState::strip_shown`, `overview-strip`, m2-details-and-diffs/20):
+/// the graph screen loses its last column to the strip, but every other
+/// column — including the subject/author/date/SHA columns `Columns::compute`
+/// lays out right-to-left from `area.right()` — starts in exactly the same
+/// screen column as it does with the strip off. Only the last cell of the
+/// last such column (whatever `area.right()`'s rightmost cell held) is
+/// sacrificed to the strip's glyph.
+// `TestBackend::to_string()` (`buffer_view`) wraps each row in a literal
+// `"…"` pair; strip that framing before comparing cell content.
+fn row_cells(line: &str) -> &str {
+    line.strip_prefix('"')
+        .and_then(|line| line.strip_suffix('"'))
+        .unwrap_or(line)
+}
+
+#[test]
+fn strip_narrows_the_graph_column_without_moving_the_trailing_columns() {
+    let mut state = AppState {
+        history: Some(history_of(20, 0)),
+        size: Size {
+            columns: 80,
+            rows: 24,
+        },
+        ..AppState::default()
+    };
+
+    let off = draw(&state, 80, 24);
+    state.strip_shown = true;
+    let on = draw(&state, 80, 24);
+
+    let off_lines: Vec<&str> = off.lines().collect();
+    let on_lines: Vec<&str> = on.lines().collect();
+    assert_eq!(off_lines.len(), on_lines.len(), "same row count");
+
+    for (row, (off_line, on_line)) in off_lines.iter().zip(&on_lines).enumerate() {
+        let off_chars: Vec<char> = row_cells(off_line).chars().collect();
+        let on_chars: Vec<char> = row_cells(on_line).chars().collect();
+        assert_eq!(
+            off_chars.len(),
+            on_chars.len(),
+            "row {row} is the same width on and off"
+        );
+        let last = off_chars.len().saturating_sub(1);
+        assert_eq!(
+            &off_chars[..last],
+            &on_chars[..last],
+            "row {row}: every column but the last stays put ({off_line:?} vs {on_line:?})"
+        );
+    }
+    assert!(
+        on.contains('┆') || on.contains('█') || on.contains('●') || on.contains('◉'),
+        "the strip drew a glyph in the freed column: {on}"
+    );
+}
+
 /// Regenerates `docs/shots/m2-map-view.txt` (m2-details-and-diffs/19).
 ///
 /// `#[ignore]`d: it writes a file. Run it by hand with
@@ -1526,6 +1581,124 @@ fn capture_m2_map_view_loading() {
             "/../../docs/shots/m2-map-view-loading.txt"
         ),
         format!("{header}{screen}"),
+    )
+    .expect("docs/shots is writable");
+}
+
+/// Two feature branches, each merged into `main`, `main`'s tip as `HEAD`:
+/// mirrors `graft_fixtures::Shape::FeatureBranches`'s shape without a real
+/// checkout (`view::strip::tests::feature_branches_state`'s twin — this
+/// module cannot see that private `#[cfg(test)]` item, so it is rebuilt
+/// here rather than shared).
+fn strip_capture_state() -> AppState {
+    use graft_core::commit::{Commit, Identity, Timestamp};
+    use graft_graph::layout::layout;
+    use graft_graph::seeds::Seeds;
+
+    fn who(seconds: i64) -> Identity {
+        Identity {
+            name: b"Test".to_vec(),
+            email: b"test@example.invalid".to_vec(),
+            when: Timestamp {
+                seconds,
+                offset_seconds: 0,
+            },
+        }
+    }
+    fn commit(id: u8, parents: Vec<Oid>, message: &str) -> Commit {
+        Commit {
+            id: oid(id),
+            parents,
+            author: who(i64::from(id)),
+            committer: who(i64::from(id)),
+            message: message.as_bytes().to_vec(),
+        }
+    }
+
+    let commits = vec![
+        commit(9, vec![oid(8), oid(4)], "Merge branch 'topic-b'"),
+        commit(8, vec![oid(7)], "topic-b work"),
+        commit(7, vec![oid(4)], "topic-b start"),
+        commit(4, vec![oid(3), oid(2)], "Merge branch 'topic-a'"),
+        commit(3, vec![oid(1)], "topic-a work"),
+        commit(2, vec![oid(1)], "topic-a start"),
+        commit(1, Vec::new(), "root"),
+    ];
+    let rows = layout(&commits, Seeds::default());
+    let row_count = rows.len();
+    let history = History {
+        window: Some(crate::history::Window {
+            request: 0,
+            first: 0,
+            laid_out: rows.len(),
+            done: true,
+            rows: rows.into(),
+            promoted: false,
+        }),
+        rows: row_count,
+        phase: Phase::Complete,
+        cursor: 0,
+        reanchor: None,
+        ..History::started()
+    };
+    AppState {
+        history: Some(history),
+        refs: Some(std::sync::Arc::new(refs_with_head(Some(oid(9))))),
+        size: Size {
+            columns: 80,
+            rows: 24,
+        },
+        strip_shown: true,
+        ..AppState::default()
+    }
+}
+
+/// Regenerates `docs/shots/m2-overview-strip.txt` (m2-details-and-diffs/20).
+///
+/// `#[ignore]`d: it writes a file. Run it by hand with
+/// `cargo test -p graft --lib capture_m2_overview_strip -- --ignored`.
+#[test]
+#[ignore = "writes docs/shots/m2-overview-strip.txt; run by hand to regenerate"]
+fn capture_m2_overview_strip() {
+    let state = strip_capture_state();
+    let unicode = draw(&state, 80, 24);
+    assert!(unicode.contains('●') || unicode.contains('◉'), "{unicode}");
+
+    let mut ascii_state = state.clone();
+    ascii_state.renderer_override = Some(RenderingTier::Ascii);
+    let ascii = draw(&ascii_state, 80, 24);
+    assert!(ascii.contains('*') || ascii.contains('o'), "{ascii}");
+
+    let header = "\
+# m2-overview-strip.txt: TestBackend capture (not a pty), 80x24. Fixture:
+# capture_m2_overview_strip in crates/graft/src/view/tests.rs (#[ignore]d,
+# run by hand to regenerate). Seven synthetic commits mirroring
+# graft_fixtures::Shape::FeatureBranches: two feature branches each merged
+# into main, main's tip (0909090) is HEAD. `strip_shown = true` (as `O`
+# would set it). First block is the Unicode tier, second is ASCII
+# (`F3`/`renderer_override`). The strip is bucketed over the whole 24-row
+# screen (header and footer included), not just the 7 history rows, so a
+# history this short only lights a handful of cells — the rest read as
+# `█`/`#` (on screen) or blank (past `rows_total`).
+#
+# Judge by eye:
+# - The graph column is one cell narrower than an ordinary capture; the
+#   rightmost screen column carries the strip instead.
+# - Row 0 (the header row): `●`/`*` — HEAD's row (0909090, also a merge;
+#   HEAD outranks merge in the priority order).
+# - Row 10: `◉`/`o` — the other merge (0404040), proportionally mapped
+#   further down since 7 rows spread thin over 24 cells.
+# - Rows 1-9ish: `█`/`#`, the rows currently on screen.
+# - The last couple of rows before the footer: blank — past `rows_total`.
+#
+";
+    let combined = format!("{header}\n=== unicode ===\n{unicode}\n=== ascii ===\n{ascii}");
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m2-overview-strip.txt"
+        ),
+        combined,
     )
     .expect("docs/shots is writable");
 }

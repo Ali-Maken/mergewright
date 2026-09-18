@@ -359,6 +359,18 @@ fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mouse: MouseInp
         MouseKind::ScrollUp => wheel(next, commands, mouse.column, mouse.row, -WHEEL_LINES),
         MouseKind::ScrollDown => wheel(next, commands, mouse.column, mouse.row, WHEEL_LINES),
         MouseKind::Down(MouseButton::Left) => {
+            if let Some(bounds) = strip_bounds(next)
+                && bounds.contains(mouse.column, mouse.row)
+            {
+                let marks = crate::view::strip::strip_marks(next);
+                let row = graft_ui::overview_strip::row_for_cell(
+                    &marks,
+                    bounds.height,
+                    mouse.row - bounds.y,
+                );
+                select_row(next, commands, row);
+                return;
+            }
             if matches!(
                 detail_hit(next, mouse.column, mouse.row),
                 Some(DetailHit::Divider)
@@ -702,6 +714,27 @@ fn context_menu_graph_bounds(state: &AppState) -> Option<Bounds> {
             height: size.1,
         })
     }
+}
+
+/// The overview strip's own one-column rectangle, while it is shown
+/// (`overview-strip`, m2-details-and-diffs/20): the graph bounds' last
+/// column, mirroring `view::frame::render_graph_screen`'s carve-out. `None`
+/// while `AppState::strip_shown` is off or the map is shown — the strip
+/// draws in neither case.
+fn strip_bounds(state: &AppState) -> Option<Bounds> {
+    if !state.strip_shown || state.map.shown {
+        return None;
+    }
+    let graph = context_menu_graph_bounds(state)?;
+    if graph.width == 0 {
+        return None;
+    }
+    Some(Bounds {
+        x: graph.x + graph.width - 1,
+        y: graph.y,
+        width: 1,
+        height: graph.height,
+    })
 }
 
 /// Where a `ContextMenu` opened on `row` draws: anchored bottom-left of the

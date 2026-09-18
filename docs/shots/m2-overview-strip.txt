@@ -1,0 +1,73 @@
+# m2-overview-strip.txt: TestBackend capture (not a pty), 80x24. Fixture:
+# capture_m2_overview_strip in crates/graft/src/view/tests.rs (#[ignore]d,
+# run by hand to regenerate). Seven synthetic commits mirroring
+# graft_fixtures::Shape::FeatureBranches: two feature branches each merged
+# into main, main's tip (0909090) is HEAD. `strip_shown = true` (as `O`
+# would set it). First block is the Unicode tier, second is ASCII
+# (`F3`/`renderer_override`). The strip is bucketed over the whole 24-row
+# screen (header and footer included), not just the 7 history rows, so a
+# history this short only lights a handful of cells — the rest read as
+# `█`/`#` (on screen) or blank (past `rows_total`).
+#
+# Judge by eye:
+# - The graph column is one cell narrower than an ordinary capture; the
+#   rightmost screen column carries the strip instead.
+# - Row 0 (the header row): `●`/`*` — HEAD's row (0909090, also a merge;
+#   HEAD outranks merge in the priority order).
+# - Row 10: `◉`/`o` — the other merge (0404040), proportionally mapped
+#   further down since 7 rows spread thin over 24 cells.
+# - Rows 1-9ish: `█`/`#`, the rows currently on screen.
+# - The last couple of rows before the footer: blank — past `rows_total`.
+#
+
+=== unicode ===
+" graft 7 commits                                                               ●"
+"◆─╮     [HEAD] Merge branch 'topic-b'                               57y  090909█"
+"● │     topic-b work                                                57y  080808█"
+"● │     topic-b start                                               57y  070707█"
+"◉─┴─╮   Merge branch 'topic-a'                                      57y  040404█"
+"●   │   topic-a work                                                57y  030303█"
+"│   ●   topic-a start                                               57y  020202█"
+"◇───╯   root                                                        57y  010101█"
+"                                                                               █"
+"                                                                               █"
+"                                                                               ◉"
+"                                                                               █"
+"                                                                               █"
+"                                                                               █"
+"                                                                               █"
+"                                                                               █"
+"                                                                               █"
+"                                                                               █"
+"                                                                               █"
+"                                                                               █"
+"                                                                               █"
+"                                                                                "
+"                                                                                "
+" q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent "
+
+=== ascii ===
+" graft 7 commits                                                               *"
+"*-\     [HEAD] Merge branch 'topic-b'                               57y  090909#"
+"* |     topic-b work                                                57y  080808#"
+"* |     topic-b start                                               57y  070707#"
+"*-+-\   Merge branch 'topic-a'                                      57y  040404#"
+"*   |   topic-a work                                                57y  030303#"
+"|   *   topic-a start                                               57y  020202#"
+"*---/   root                                                        57y  010101#"
+"                                                                               #"
+"                                                                               #"
+"                                                                               o"
+"                                                                               #"
+"                                                                               #"
+"                                                                               #"
+"                                                                               #"
+"                                                                               #"
+"                                                                               #"
+"                                                                               #"
+"                                                                               #"
+"                                                                               #"
+"                                                                               #"
+"                                                                                "
+"                                                                                "
+" renderer: ascii (F3 cycles)                                                    "

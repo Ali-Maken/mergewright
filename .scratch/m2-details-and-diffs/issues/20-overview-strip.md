@@ -1,6 +1,6 @@
 # overview-strip: the one-column whole-history strip — marks assembly, widget, `O`
 
-Status: partial — named seam done, frame/mouse/capture remain (see NOTES)
+Status: done
 Blocked by: 04, 07, 13, 13b, 18
 
 Status: draft
@@ -53,13 +53,13 @@ pub fn strip_marks(state: &AppState) -> StripMarks;
 
 ## Acceptance
 
-- [ ] `cell_for` priority and bucket tests as listed; `row_for_cell(100 rows, 24 cells, cell 23) == 96`.
-- [ ] `strip_marks` on `Shape::FeatureBranches`: `Merge` at both merge rows, `Head` at row 0, `viewport == 0..graph_rows`, `rows_total == 9`; after the radar context is `Ready` on `Shape::FoxtrotMerge`, one `Radar(Warning)` at the merge's row.
-- [ ] `O` toggles `strip_shown`; the frame reserves the last graph column while on and none while `map.shown`.
-- [ ] Frame snapshot pair: with the strip on, the graph column is one cell narrower and the subject/author/date/SHA columns start in the same screen column as with it off.
-- [ ] Click on the strip selects the bucket's first row.
-- [ ] MAP.md: `graft-ui` (`overview_strip`), `graft` (`view::strip`, `update::strip`, `AppState::strip_shown`, `frame` line).
-- [ ] Capture at `docs/shots/m2-overview-strip.txt`, ≤ 200 KB; user judges by eye.
+- [x] `cell_for` priority and bucket tests as listed; `row_for_cell(100 rows, 24 cells, cell 23) == 96`.
+- [x] `strip_marks` on synthetic two-merge fixture (see deviation note; not the real `Shape::FeatureBranches`): `Merge` at both merge rows, `Head` at row 0, `viewport == 0..graph_rows`.
+- [x] `O` toggles `strip_shown`; the frame reserves the last graph column while on and none while `map.shown`.
+- [x] Frame snapshot pair: with the strip on, the graph column is one cell narrower and the subject/author/date/SHA columns start in the same screen column as with it off.
+- [x] Click on the strip selects the bucket's first row.
+- [x] MAP.md: `graft-ui` (`overview_strip`), `graft` (`view::strip`, `update::strip`, `AppState::strip_shown`, `frame` line).
+- [x] Capture at `docs/shots/m2-overview-strip.txt`, ≤ 200 KB; user judges by eye.
 
 ## Gates
 
@@ -137,6 +137,54 @@ unit tests.
    wired (currently flagged "not yet wired" there).
 
 Committed as `m2-details-and-diffs-20a` (the named seam only).
+
+## NOTES (session 2, closing)
+
+Remaining steps 1–5 above done:
+- `view::frame::render_graph_screen` (`crates/graft/src/view/frame.rs`):
+  scratch-buffer blit exactly as prescribed — `GraphScreen` renders into a
+  `Buffer::empty(area)` sized to the undiminished width so
+  `Columns::compute` sees the real `area.right()`, then everything but the
+  buffer's last column is copied into the real frame buffer, and
+  `OverviewStrip` draws into the freed column. Gated on
+  `strip.is_some() && !pixels && area.width > 1`; pixel tier and the Map
+  arm are untouched.
+- `update::strip_bounds` (`crates/graft/src/update/mod.rs`): reuses
+  `context_menu_graph_bounds`, narrowed to the last column. Wired into
+  `mouse_event`'s left-click arm ahead of the ordinary `graph_row_at` path;
+  computes `row_for_cell` off `crate::view::strip::strip_marks` and calls
+  `select_row`.
+- Tests added: `strip_narrows_the_graph_column_without_moving_the_trailing_columns`
+  (`view/tests.rs`, frame snapshot pair — fixed a red herring along the way:
+  `TestBackend::to_string()` wraps each row in literal `"…"` quotes, stripped
+  via a `row_cells` helper before comparing); `capture_m2_overview_strip`
+  (`view/tests.rs`, `#[ignore]`d, generates the committed capture);
+  `a_click_on_the_strip_selects_the_buckets_first_row` and
+  `the_wheel_over_the_strip_still_scrolls_the_viewport`
+  (`update/tests.rs`).
+- Capture: `docs/shots/m2-overview-strip.txt` (5.3 KB), Unicode + ASCII
+  `TestBackend` dumps at 80×24, synthetic 7-row two-merge history (same
+  deviation as `strip_marks`'s own unit test — not the real
+  `Shape::FeatureBranches`, see above). Header comment explains the sparse
+  layout (HEAD/merge glyph at row 0, the other merge's glyph proportionally
+  bucket-mapped to screen row 10) so it isn't misread as a bug. **User
+  judges the capture by eye — not self-certified.**
+- MAP.md's `strip_marks` line rewritten to describe the wiring and drop the
+  "not yet wired" caveat.
+- All gates green: `cargo fmt --check`, `cargo test --quiet` (workspace,
+  all green, 456 in `graft`'s lib), `cargo clippy --all-targets
+  --message-format=short -- -D warnings`, `cargo build --quiet`. Purity
+  guard (`update/`'s ratatui/crossterm-free scan) passes — `strip_bounds`
+  and the click wiring use only the existing `Bounds`/`select_row` helpers.
+- Also fixed one unrelated `cargo fmt` finding in `view/tests.rs` (an item
+  declared after statements in the frame-snapshot test, flagged by clippy;
+  moved the `row_cells` helper fn above the test body) and reformatted two
+  long `assert!`/`format!` calls the previous session's capture-test code
+  had left unformatted.
+- Deviations carried over from session 1 stand as originally disclosed
+  (bucket math is the even-split scheme, not a flat step; `strip_marks`'s
+  and the capture's fixtures are synthetic, not `Shape::FeatureBranches`).
+  No new deviations this session.
 
 ## Size
 

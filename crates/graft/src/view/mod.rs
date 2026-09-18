@@ -22,7 +22,7 @@ mod map;
 pub(crate) mod radar;
 mod rows;
 mod status;
-mod strip;
+pub(crate) mod strip;
 
 pub mod strips;
 
