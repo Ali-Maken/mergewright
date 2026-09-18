@@ -10,28 +10,21 @@
 
 use graft_core::mistake_radar::MistakeRadarKind;
 use graft_core::oid::Oid;
-use graft_ops::mistake_radar::probes::{
-    EvilVerdict, ForcePushVerdict, finding_from_evil, findings_from_force_push,
-};
-use graft_ops::mistake_radar::rules::{classify_commit, classify_refs};
-use graft_ops::mistake_radar::{
-    BranchFacts, CommitFacts, Evidence, Finding, HeadFacts, RepoFacts, Risk, UpstreamFacts,
-};
+use graft_ops::mistake_radar::probes::{EvilVerdict, finding_from_evil};
+use graft_ops::mistake_radar::rules::classify_commit;
+use graft_ops::mistake_radar::{CommitFacts, Evidence, Finding, RepoFacts, Risk};
 use graft_term::sanitize::sanitize_line;
 use graft_ui::detail::RadarLine;
 use graft_ui::graph_screen::MarkerView;
 
 use crate::jobs::radar::RadarContext;
-use crate::refs::Upstream;
-use crate::repository::Head;
 use crate::update::AppState;
 use crate::update::detail::Loading;
 
-/// The two fact adapters the radar's rules read `AppState` through. They
-/// live in `update::radar`, which is what builds the ref-derived findings —
-/// once per refs answer, not once per painted row (M2 review C1) — and are
-/// re-exported here because this is where every reader looks for them.
-pub use crate::update::radar::{branch_facts, head_facts};
+// The two fact adapters the rules read `AppState` through — `branch_facts`
+// and `head_facts` — moved to `update::radar` in M2's review fix: they are
+// O(refs), and the findings they feed are now built there once per refs
+// answer rather than once per painted row (C1).
 
 /// The repository-wide facts `classify_commit` needs, from `ctx` and the
 /// default branch's name already on `state`.
@@ -220,6 +213,7 @@ fn title_for(finding: &Finding) -> String {
 mod tests {
     use graft_core::mistake_radar::Severity;
     use graft_ops::mistake_radar::Policy;
+    use graft_ops::mistake_radar::probes::ForcePushVerdict;
     use std::collections::HashMap;
     use std::collections::HashSet;
 
@@ -276,7 +270,11 @@ mod tests {
             force_push: std::collections::HashMap::new(),
             duplicates: Loading::Idle,
             duplicate_findings: std::collections::HashMap::new(),
+            ..Default::default()
         };
+        // The ref-derived findings are built by `update`, once per refs
+        // answer (M2 review C1); a state assembled by hand builds them here.
+        crate::update::radar::refresh_ref_findings(&mut state);
         state
     }
 
@@ -419,14 +417,16 @@ mod tests {
     fn a_rewritten_remote_is_a_finding_at_the_branchs_tip() {
         let tip = oid(1);
         let mut state = ready_state(&[tip], Vec::new());
-        state.radar.force_push.insert(
+        crate::update::radar::force_push_probed(
+            &mut state,
             "main".to_owned(),
-            Loading::Ready(ForcePushVerdict::Rewritten {
+            ForcePushVerdict::Rewritten {
                 remote_ref: "origin/main".to_owned(),
                 previous: oid(9),
                 current: tip,
-            }),
+            },
         );
+        crate::update::radar::refresh_ref_findings(&mut state);
 
         let findings = findings_for(&state, tip, &[], "tip");
         assert_eq!(findings.len(), 1, "one force-push finding: {findings:?}");
@@ -452,12 +452,12 @@ mod tests {
     fn a_not_checkable_verdict_is_a_line_and_never_a_finding() {
         let tip = oid(1);
         let mut state = ready_state(&[tip], Vec::new());
-        state.radar.force_push.insert(
+        crate::update::radar::force_push_probed(
+            &mut state,
             "main".to_owned(),
-            Loading::Ready(ForcePushVerdict::NotCheckable(
-                "no remote-tracking reflog".to_owned(),
-            )),
+            ForcePushVerdict::NotCheckable("no remote-tracking reflog".to_owned()),
         );
+        crate::update::radar::refresh_ref_findings(&mut state);
 
         assert!(findings_for(&state, tip, &[], "tip").is_empty());
         let lines = radar_lines_for(&state, tip, &[], "tip");
@@ -483,6 +483,10 @@ mod tests {
             "main".to_owned(),
             Loading::Pending(graft_core::job::JobId::new(1)),
         );
+        // Overwriting an answer by hand is not something the update path
+        // does, so the stamp is bumped here as `force_push_probed` would.
+        state.radar.force_push_revision += 1;
+        crate::update::radar::refresh_ref_findings(&mut state);
         assert!(radar_lines_for(&state, tip, &[], "tip").is_empty());
     }
 }

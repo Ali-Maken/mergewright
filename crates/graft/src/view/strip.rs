@@ -7,6 +7,9 @@
 //! incomplete while a repo is still streaming (DESIGN.md §5.3 "Cost") —
 //! never a claim about rows it hasn't seen.
 
+use std::collections::HashSet;
+
+use graft_core::oid::Oid;
 use graft_ui::overview_strip::{StripMark, StripMarks};
 
 use crate::update::AppState;
@@ -29,6 +32,14 @@ pub fn strip_marks(state: &AppState) -> StripMarks {
 
     let mut marks = Vec::new();
     let head = state.refs.as_ref().and_then(|refs| refs.head());
+    // Once per frame, not once per row: a search that matches thousands of
+    // commits used to be compared against every resident row (M2 review
+    // M10). One hit is one commit, so a set answers the same question.
+    let hits: HashSet<Oid> = state.search.as_ref().map_or_else(HashSet::new, |search| {
+        (0..search.hits())
+            .filter_map(|index| search.hit(index))
+            .collect()
+    });
 
     if let Some(window) = &history.window {
         for (offset, row) in window.rows.iter().enumerate() {
@@ -36,7 +47,10 @@ pub fn strip_marks(state: &AppState) -> StripMarks {
             if row.commit.parents.len() >= 2 {
                 marks.push((at, StripMark::Merge));
             }
-            let subject = String::from_utf8_lossy(&row.commit.message);
+            // `subject()` borrows the message it is already holding; the
+            // whole message was being decoded here for a rule that only
+            // reads the first line.
+            let subject = String::from_utf8_lossy(row.commit.subject());
             if let Some(marker) =
                 super::radar::marker_for(state, row.commit.id, &row.commit.parents, &subject)
             {
@@ -45,12 +59,8 @@ pub fn strip_marks(state: &AppState) -> StripMarks {
             if Some(row.commit.id) == head {
                 marks.push((at, StripMark::Head));
             }
-            if let Some(search) = &state.search {
-                for index in 0..search.hits() {
-                    if search.hit(index) == Some(row.commit.id) {
-                        marks.push((at, StripMark::SearchHit));
-                    }
-                }
+            if hits.contains(&row.commit.id) {
+                marks.push((at, StripMark::SearchHit));
             }
         }
     }

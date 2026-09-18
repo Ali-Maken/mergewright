@@ -961,6 +961,7 @@ fn radar_state_with_empty_default_chain() -> crate::update::radar::RadarState {
         force_push: std::collections::HashMap::new(),
         duplicates: Loading::Idle,
         duplicate_findings: std::collections::HashMap::new(),
+        ..Default::default()
     }
 }
 
@@ -1279,6 +1280,7 @@ fn foxtrot_explain_state() -> AppState {
             force_push: std::collections::HashMap::new(),
             duplicates: Loading::Idle,
             duplicate_findings: std::collections::HashMap::new(),
+            ..Default::default()
         },
         ..AppState::default()
     }

@@ -391,15 +391,12 @@ impl DetailState {
     /// `git` spawn, and nothing would read its answer.
     pub fn probe_evil(
         &mut self,
+        selected: Option<Oid>,
         policy: &Policy,
         next_id: &mut impl FnMut() -> JobId,
     ) -> Vec<Command> {
-        let wanted = match self.spec {
-            Some(DetailSpec::Commit(oid))
-                if self.shown && policy.severity(MistakeRadarKind::EvilMerge).is_some() =>
-            {
-                Some(oid)
-            }
+        let wanted = match selected {
+            Some(oid) if policy.severity(MistakeRadarKind::EvilMerge).is_some() => Some(oid),
             _ => None,
         };
         // Already running or answered for this very commit: nothing to do.
@@ -1184,9 +1181,7 @@ mod tests {
         let mut counter = 0;
         let mut ids = || next_id_from(&mut counter);
 
-        detail.shown = true;
-        detail.spec = Some(DetailSpec::Commit(oid(1)));
-        let commands = detail.probe_evil(&policy, &mut ids);
+        let commands = detail.probe_evil(Some(oid(1)), &policy, &mut ids);
         let [Command::EvilProbe(id, probed)] = commands.as_slice() else {
             panic!("a fresh merge asks for one probe, got {commands:?}");
         };
@@ -1197,11 +1192,9 @@ mod tests {
         assert_eq!(detail.evil, Loading::Ready(EvilVerdict::Clean));
 
         // Away to another commit, then back.
-        detail.spec = Some(DetailSpec::Commit(oid(2)));
-        let away = detail.probe_evil(&policy, &mut ids);
+        let away = detail.probe_evil(Some(oid(2)), &policy, &mut ids);
         assert!(matches!(away.as_slice(), [Command::EvilProbe(..)]));
-        detail.spec = Some(DetailSpec::Commit(oid(1)));
-        let back = detail.probe_evil(&policy, &mut ids);
+        let back = detail.probe_evil(Some(oid(1)), &policy, &mut ids);
         assert!(
             back.iter()
                 .all(|command| !matches!(command, Command::EvilProbe(..))),
@@ -1219,16 +1212,13 @@ mod tests {
         let mut counter = 0;
         let mut ids = || next_id_from(&mut counter);
 
-        detail.shown = true;
-        detail.spec = Some(DetailSpec::Commit(oid(1)));
-        let first = detail.probe_evil(&policy, &mut ids);
+        let first = detail.probe_evil(Some(oid(1)), &policy, &mut ids);
         let [Command::EvilProbe(stale, _)] = first.as_slice() else {
             panic!("expected one probe, got {first:?}");
         };
         let stale = *stale;
 
-        detail.spec = Some(DetailSpec::Commit(oid(2)));
-        let moved = detail.probe_evil(&policy, &mut ids);
+        let moved = detail.probe_evil(Some(oid(2)), &policy, &mut ids);
         assert!(
             moved.contains(&Command::CancelJob(stale)),
             "the superseded probe is cancelled, got {moved:?}"
@@ -1242,36 +1232,31 @@ mod tests {
         assert!(detail.evil_cache.get(&oid(1)).is_none());
     }
 
-    /// Nothing is probed with the evil-merge kind off, with the pane hidden,
-    /// or on a spec that is not one commit.
+    /// Nothing is probed with the evil-merge kind off or with nothing
+    /// selected — but a hidden pane is no longer a reason not to probe: the
+    /// probe follows the selection so a selected evil merge is flagged in
+    /// the graph (M2 review M3).
     #[test]
-    fn no_probe_with_the_kind_off_the_pane_hidden_or_a_compare_spec() {
+    fn no_probe_with_the_kind_off_or_nothing_selected_but_a_hidden_pane_still_probes() {
         let mut counter = 0;
         let mut ids = || next_id_from(&mut counter);
         let mut off = Policy::default();
         off.set(MistakeRadarKind::EvilMerge, None);
 
-        let mut detail = DetailState {
-            shown: true,
-            spec: Some(DetailSpec::Commit(oid(1))),
-            ..DetailState::default()
-        };
-        assert_eq!(detail.probe_evil(&off, &mut ids), Vec::new());
+        let mut detail = DetailState::default();
+        assert_eq!(detail.probe_evil(Some(oid(1)), &off, &mut ids), Vec::new());
         assert_eq!(detail.evil, Loading::Idle);
 
         let policy = Policy::default();
-        detail.shown = false;
-        assert_eq!(detail.probe_evil(&policy, &mut ids), Vec::new());
-
-        detail.shown = true;
-        detail.spec = Some(DetailSpec::Compare {
-            base: oid(1),
-            head: oid(2),
-        });
-        assert_eq!(detail.probe_evil(&policy, &mut ids), Vec::new());
-        detail.spec = Some(DetailSpec::WorkingTree);
-        assert_eq!(detail.probe_evil(&policy, &mut ids), Vec::new());
+        assert_eq!(detail.probe_evil(None, &policy, &mut ids), Vec::new());
         assert_eq!(detail.evil, Loading::Idle);
+
+        assert!(!detail.shown, "the pane is closed");
+        let probes = detail.probe_evil(Some(oid(1)), &policy, &mut ids);
+        assert!(
+            matches!(probes.as_slice(), [Command::EvilProbe(_, at)] if *at == oid(1)),
+            "a closed pane still probes the selected merge, got {probes:?}"
+        );
     }
 
     /// A refresh keeps the verdicts: a merge's tree is immutable, so no

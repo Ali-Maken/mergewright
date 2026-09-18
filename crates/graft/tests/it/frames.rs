@@ -74,22 +74,32 @@ const REFS: usize = 50_000;
 
 #[test]
 fn scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_unicode_tier() {
-    check(RenderingTier::Unicode, Refs::Fixture);
+    check(RenderingTier::Unicode, Refs::Fixture, Pane::Closed);
 }
 
 #[test]
 fn scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_pixel_tier() {
-    check(RenderingTier::Pixel, Refs::Fixture);
+    check(RenderingTier::Pixel, Refs::Fixture, Pane::Closed);
 }
 
 #[test]
 fn fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_unicode_tier() {
-    check(RenderingTier::Unicode, Refs::FiftyThousand);
+    check(RenderingTier::Unicode, Refs::FiftyThousand, Pane::Closed);
+}
+
+/// M2 review M9: M2 put the detail pane, its diff and the Mistake Radar on
+/// the frame path, and none of the frame tests looked at them. This is the
+/// 50,000-ref scroll with the pane open on the selected commit, so every
+/// frame draws the header, the radar's lines and the file list beside the
+/// graph.
+#[test]
+fn fifty_thousand_refs_keep_input_to_frame_under_16_ms_with_the_detail_pane_open() {
+    check(RenderingTier::Unicode, Refs::FiftyThousand, Pane::Open);
 }
 
 #[test]
 fn fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_pixel_tier() {
-    check(RenderingTier::Pixel, Refs::FiftyThousand);
+    check(RenderingTier::Pixel, Refs::FiftyThousand, Pane::Closed);
 }
 
 /// ADR-0026 deferred the 1M `frames::` scroll numbers to the M1 perf run
@@ -107,13 +117,23 @@ fn fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_pixel_tier() {
 #[cfg(feature = "heavy-1m")]
 #[test]
 fn scrolling_the_1m_commit_graph_fixture_keeps_input_to_frame_under_16_ms_at_the_unicode_tier() {
-    check_scale(RenderingTier::Unicode, Refs::Fixture, ONE_MILLION_CG);
+    check_scale(
+        RenderingTier::Unicode,
+        Refs::Fixture,
+        ONE_MILLION_CG,
+        Pane::Closed,
+    );
 }
 
 #[cfg(feature = "heavy-1m")]
 #[test]
 fn scrolling_the_1m_commit_graph_fixture_keeps_input_to_frame_under_16_ms_at_the_pixel_tier() {
-    check_scale(RenderingTier::Pixel, Refs::Fixture, ONE_MILLION_CG);
+    check_scale(
+        RenderingTier::Pixel,
+        Refs::Fixture,
+        ONE_MILLION_CG,
+        Pane::Closed,
+    );
 }
 
 /// The 1M small-commit fixture with a commit-graph (ticket asks for "1M
@@ -130,10 +150,22 @@ enum Refs {
     FiftyThousand,
 }
 
+/// Whether the detail pane is open while the scroll runs.
+#[derive(Clone, Copy, Debug)]
+enum Pane {
+    Closed,
+    /// `Enter` before the scroll: every frame after it draws the pane.
+    Open,
+}
+
 /// The scroll: down a line at a time, down a page at a time far past the
 /// first layout chunks, then back up a page at a time.
-fn script() -> Vec<KeyCode> {
-    let mut keys = vec![KeyCode::Char('j'); 120];
+fn script(pane: Pane) -> Vec<KeyCode> {
+    let mut keys = match pane {
+        Pane::Closed => Vec::new(),
+        Pane::Open => vec![KeyCode::Enter],
+    };
+    keys.extend(vec![KeyCode::Char('j'); 120]);
     keys.extend(vec![KeyCode::PageDown; 240]);
     keys.extend(vec![KeyCode::PageUp; 60]);
     keys
@@ -154,35 +186,39 @@ fn idle_wakes() -> Vec<KeyCode> {
 }
 
 /// Every key the run presses, with the pause before it.
-fn keys() -> Vec<(KeyCode, Duration)> {
-    let scroll = script().into_iter().map(|key| (key, TICK));
+fn keys(pane: Pane) -> Vec<(KeyCode, Duration)> {
+    let scroll = script(pane).into_iter().map(|key| (key, TICK));
     let idle = idle_wakes().into_iter().map(|key| (key, IDLE));
     scroll.chain(idle).collect()
 }
 
-fn check(tier: RenderingTier, refs: Refs) {
-    check_scale(tier, refs, Scale::HEAVY.with_commit_graph());
+fn check(tier: RenderingTier, refs: Refs, pane: Pane) {
+    check_scale(tier, refs, Scale::HEAVY.with_commit_graph(), pane);
 }
 
 /// [`check`], generalised to any fixture scale (m1-the-graph/64: the same
 /// harness at 1M). Output lines are identical either way.
-fn check_scale(tier: RenderingTier, refs: Refs, scale: Scale) {
+fn check_scale(tier: RenderingTier, refs: Refs, scale: Scale, pane: Pane) {
     let repo = synthetic::borrow(scale).unwrap_or_else(|why| panic!("{why}"));
     // Poisoned only when another measuring test panicked while holding it;
     // that test has already failed on its own, and the lock guards no data.
     let turn = MEASURING.lock().unwrap_or_else(PoisonError::into_inner);
-    let run = scroll(&repo, tier, refs).unwrap_or_else(|why| panic!("{why}"));
+    let run = scroll(&repo, tier, refs, pane).unwrap_or_else(|why| panic!("{why}"));
     drop(turn);
 
-    assert_eq!(run.latencies.len(), keys().len(), "every key got a frame");
-    let (scrolled, idle) = run.latencies.split_at(script().len());
+    assert_eq!(
+        run.latencies.len(),
+        keys(pane).len(),
+        "every key got a frame"
+    );
+    let (scrolled, idle) = run.latencies.split_at(script(pane).len());
     let mut sorted = scrolled.to_vec();
     sorted.sort();
     // Rank rounded down; a few hundred samples.
     let at = |percent: usize| sorted[(sorted.len() - 1) * percent / 100];
     let slowest = sorted.last().copied().unwrap_or_default();
     println!(
-        "frames: tier={tier:?} refs={refs:?} keys={} p50_us={} p99_us={} max_us={} kitty_commands={} bytes={}",
+        "frames: tier={tier:?} refs={refs:?} pane={pane:?} keys={} p50_us={} p99_us={} max_us={} kitty_commands={} bytes={}",
         sorted.len(),
         at(50).as_micros(),
         at(99).as_micros(),
@@ -196,6 +232,19 @@ fn check_scale(tier: RenderingTier, refs: Refs, scale: Scale) {
         RenderingTier::Pixel => assert!(run.kitty_commands > 0, "the pixel tier drew no images"),
         _ => assert_eq!(run.kitty_commands, 0, "a text tier sent images"),
     }
+    judge(tier, refs, pane, &run, scrolled, sorted.len());
+}
+
+/// Release enforces the input-to-frame budget, debug records it
+/// (ADR-0021). `total` is how many keys the scroll pressed.
+fn judge(
+    tier: RenderingTier,
+    refs: Refs,
+    pane: Pane,
+    run: &Run,
+    scrolled: &[Duration],
+    total: usize,
+) {
     let late: Vec<_> = scrolled
         .iter()
         .enumerate()
@@ -208,13 +257,13 @@ fn check_scale(tier: RenderingTier, refs: Refs, scale: Scale) {
         // PageDown at 60 Hz is a question of how fast the worker runs, and
         // debug code runs it 2-5x slower.
         println!(
-            "frames: tier={tier:?} refs={refs:?} debug build, budget recorded not asserted: {} of {} keys at or over {INPUT_TO_FRAME:?}: {}",
+            "frames: tier={tier:?} refs={refs:?} pane={pane:?} debug build, budget recorded not asserted: {} of {} keys at or over {INPUT_TO_FRAME:?}: {}",
             late.len(),
-            sorted.len(),
+            total,
             late.join(", ")
         );
         println!(
-            "frames: tier={tier:?} refs={refs:?} debug build, rows on hand recorded not asserted: {} of {} keys drawn before their rows arrived: {}",
+            "frames: tier={tier:?} refs={refs:?} pane={pane:?} debug build, rows on hand recorded not asserted: {} of {} keys drawn before their rows arrived: {}",
             run.waited.len(),
             run.latencies.len(),
             run.waited.join(", ")
@@ -233,7 +282,7 @@ fn check_scale(tier: RenderingTier, refs: Refs, scale: Scale) {
         late.is_empty(),
         "{} of {} keys missed the {INPUT_TO_FRAME:?} input-to-frame budget at {tier:?} with {refs:?} refs: {}",
         late.len(),
-        sorted.len(),
+        total,
         late.join(", ")
     );
 }
@@ -317,7 +366,7 @@ struct Run {
     by_trigger: Vec<(String, usize, Counts)>,
 }
 
-fn scroll(repo: &Path, tier: RenderingTier, refs: Refs) -> Result<Run, String> {
+fn scroll(repo: &Path, tier: RenderingTier, refs: Refs, pane: Pane) -> Result<Run, String> {
     let (jobs, events, mut state) = budget_run::open(repo)?;
     state.settled_tier = Some(tier);
     // The screen ready to scroll: rows on hand and the refs job answered, so
@@ -350,7 +399,7 @@ fn scroll(repo: &Path, tier: RenderingTier, refs: Refs) -> Result<Run, String> {
         asked: Mutex::default(),
     };
     let initial = state.clone();
-    let mut wakes = Paced::new(&events, keys(), &watching, sink.clone());
+    let mut wakes = Paced::new(&events, keys(pane), &watching, sink.clone());
     let exit = pump(&mut terminal, &mut wakes, &watching, &mut session, state)
         .map_err(|why| format!("the loop failed: {why}"))?;
     if !matches!(exit, Exit::Quit) {
@@ -832,7 +881,7 @@ impl<'a, D> Paced<'a, D> {
     /// script's key, a window of rows, or another job event.
     /// `counted[i]` is `written[i]` parsed.
     fn written_by_trigger(&self, counted: &[Counts]) -> Vec<(String, usize, Counts)> {
-        let keys = keys();
+        let keys = &self.keys;
         let mut groups: Vec<(String, usize, Counts)> = Vec::new();
         for (index, handed) in self.handed.iter().enumerate() {
             let (Some(before), Some(after)) = (counted.get(index), counted.get(index + 1)) else {
@@ -921,7 +970,7 @@ impl<'a, D> Paced<'a, D> {
     /// frame was drawn from. The text tiers draw exactly those rows; the
     /// pixel tier's strips widen them (`History::drawn`), not checked here.
     fn waited(&self, mut state: AppState) -> Vec<String> {
-        let keys = keys();
+        let keys = &self.keys;
         let mut waited = Vec::new();
         for (handed, event) in self.handed.iter().zip(&self.replay) {
             state = update(&state, event.clone()).0;

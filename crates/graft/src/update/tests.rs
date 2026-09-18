@@ -167,10 +167,21 @@ fn merge_on_screen(id: JobId, cursor: usize) -> (AppState, Oid) {
 
 /// The view the last `ShowRows` asks for.
 fn asked_view(commands: &[Command]) -> View {
-    match commands {
-        [Command::ShowRows(_, request)] => request.view.clone(),
-        other => panic!("expected one row request, got {other:?}"),
-    }
+    // The evil-merge probe rides along on any event while the cursor rests
+    // on a merge (M2 review M3), so the row request is picked out rather
+    // than expected to be the only command.
+    let mut rows = commands.iter().filter_map(|command| match command {
+        Command::ShowRows(_, request) => Some(request.view.clone()),
+        _ => None,
+    });
+    let view = rows
+        .next()
+        .unwrap_or_else(|| panic!("expected one row request, got {commands:?}"));
+    assert!(
+        rows.next().is_none(),
+        "expected one row request, got {commands:?}"
+    );
+    view
 }
 
 #[test]
@@ -2101,19 +2112,35 @@ fn enter_opens_the_pane_on_the_selected_commit_and_asks_for_its_files() {
             .any(|c| matches!(c, Command::ContainedIn(_, oid) if *oid == selected))
     );
 
-    // `Enter` also starts the evil-merge probe (m2-details-and-diffs/14);
-    // closing the pane cancels it, because nothing would read its answer.
-    let probe = commands
-        .iter()
-        .find_map(|c| match c {
-            Command::EvilProbe(id, oid) if *oid == selected => Some(*id),
-            _ => None,
-        })
-        .expect("the open commit is probed once");
+    // The evil-merge probe follows the selection, not the pane (M2 review
+    // M3): row 0 here is an ordinary commit, so opening the pane on it asks
+    // for no probe, and closing the pane cancels nothing.
+    assert!(
+        !commands.iter().any(|c| matches!(c, Command::EvilProbe(..))),
+        "an ordinary commit is not probed: {commands:?}"
+    );
 
     let (again, commands) = update(&opened, key(KeyCode::Escape));
     assert!(!again.detail.shown);
-    assert_eq!(commands, vec![Command::CancelJob(probe)], "{commands:?}");
+    assert!(commands.is_empty(), "{commands:?}");
+}
+
+/// M2 review M3: the probe follows the selection, so the merge the cursor
+/// rests on is probed with the pane closed — that is what puts the `⚠` on
+/// the graph row rather than only inside the pane.
+#[test]
+fn the_selected_merge_is_probed_with_the_pane_closed() {
+    let (state, merge) = merge_on_screen(JobId::new(41), 1);
+    assert!(!state.detail.shown, "the pane starts closed");
+    let (next, commands) = update(&state, key(KeyCode::Char(' ')));
+    assert!(!next.detail.shown, "folding does not open the pane");
+    assert!(
+        commands
+            .iter()
+            .any(|c| matches!(c, Command::EvilProbe(_, oid) if *oid == merge)),
+        "the selected merge is probed: {commands:?}"
+    );
+    assert_eq!(next.detail.evil_at, Some(merge));
 }
 
 #[test]

@@ -156,3 +156,58 @@ Verdict: the promise holds on the fixtures and small repositories once M1–M3 a
 | Fuzz `parse_unified` (`-max_total_time=60 -rss_limit_mb=1024`) | 693,819 runs in 61 s, no crash, RSS 660 MB |
 | Fuzz `parse_file_list` (same) | 671,299 runs in 61 s, no crash, RSS 552 MB |
 | Bench `graft-ui --bench row_render` (`--warm-up-time 1 --measurement-time 3`) | GraphColumn render 15.65 µs (M1: 15.1 µs, +3.6 %, under the 10 % bar), RSS 90 MB. `cargo bench -p graft-ui` without `--bench` fails: the `--lib` libtest target rejects criterion flags; TESTING.md's command should name the bench. `graft-graph` benches not rerun: no M2 change in that crate |
+
+## Fixes, round 1a (2026-09-18, builder-opus)
+
+The reviewer's findings above are untouched; this records what changed
+against each of the cost-and-scheduling ones. Numbers: `docs/perf/m2-review-fix-1a.txt`.
+
+**C1 — fixed at the cause, two separate costs.**
+
+1. *Per frame.* `view::radar::findings_for` called `branch_facts` and
+   `classify_refs` for every row, so each frame walked every ref once per
+   row. The ref-derived findings are the same for the whole frame, so
+   `update::radar::refresh_ref_findings` now works them out once, at the
+   tail of `update`, into `RadarState::ref_findings`,
+   `force_push_findings` and `force_push_not_checkable` (by commit), and a
+   row looks itself up. The rebuild is skipped unless a stamp changed:
+   `refs` and `context` by `Arc::ptr_eq`, plus `HEAD`, the default branch,
+   `force_push_revision` and the policy. `branch_facts`/`head_facts` moved
+   from `view::radar` to `update::radar` (the only caller now), which keeps
+   `update` from depending on `view`.
+2. *Per update.* `request_force_push_probes` asked one `ForcePushProbe`,
+   and its `git` spawn, per upstream-tracked branch: 25,000 jobs on the
+   50k-ref fixture. It now asks only about branches that could be on
+   screen — the branch `HEAD` is on and the branches on resident rows,
+   found by `RefBadges::on` hash lookup, never by walking the refs — and at
+   most `MAX_FORCE_PUSH_PROBES` (32) per session.
+
+   *What it costs the user:* a force-push verdict now appears for branches
+   they can see, not for every branch at once. A branch first seen after 32
+   others have been probed is not probed until `Ctrl+R` clears the map. A
+   `Rewritten` badge on a branch that has never been on screen is the one
+   thing lost; the marker appears as soon as the branch is scrolled to.
+
+**M3 — fixed at the cause.** `DetailState::probe_evil` took the pane's own
+spec, so nothing was probed with the pane closed. It now takes
+`selected: Option<Oid>`, and `selection::follow_selection` passes the
+selected merge whether or not the pane is open, so a selected evil merge is
+flagged on the graph row. Cost: one `git` probe per selected merge even
+when the pane is closed, cached by commit as before.
+
+**M9 — partly covered.** Added: `frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_with_the_detail_pane_open`
+(the 50k-ref scroll with the pane open, so every frame draws the header,
+the radar lines and the file list), and a unit test that 100 tracked
+branches off screen cost one probe. Not covered: a Map-view frame test and
+a diff-scroll frame test — left for round 2.
+
+**M10 — fixed at the cause.** `strip_marks` collects the search hits into a
+`HashSet<Oid>` once per frame and tests each row against it, instead of
+scanning the hit list per row.
+
+**M11 — judged, not done as suggested.** Once C1's ref walk became a map
+lookup, the pane's residual per-frame cost is a few small allocations for
+one commit, so the suggested `detail_header: Option<Arc<DetailHeader>>`
+cache was not added: a cache with its own invalidation is a real cost in
+code, and the new pane-open frame test is how we would know it was needed.
+If that test shows the header on the hot path, the cache goes in then.

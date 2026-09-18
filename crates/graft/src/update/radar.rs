@@ -95,15 +95,15 @@ impl RefFindings {
     /// Would a rebuild produce the same maps? Cheap by construction: no
     /// field here costs more than a pointer or a short name to compare.
     fn same_as(&self, other: &Self) -> bool {
-        fn same_arc<T>(one: &Option<Arc<T>>, two: &Option<Arc<T>>) -> bool {
+        fn same_arc<T>(one: Option<&Arc<T>>, two: Option<&Arc<T>>) -> bool {
             match (one, two) {
                 (None, None) => true,
                 (Some(one), Some(two)) => Arc::ptr_eq(one, two),
                 _ => false,
             }
         }
-        same_arc(&self.refs, &other.refs)
-            && same_arc(&self.context, &other.context)
+        same_arc(self.refs.as_ref(), other.refs.as_ref())
+            && same_arc(self.context.as_ref(), other.context.as_ref())
             && self.head == other.head
             && self.default_branch == other.default_branch
             && self.force_push_revision == other.force_push_revision
@@ -183,6 +183,13 @@ pub fn head_facts(state: &AppState) -> HeadFacts<'_> {
 /// frame (C1). The refs change once per refs answer, so the findings are
 /// built once per refs answer too, and a frame is a hash lookup.
 pub fn refresh_ref_findings(state: &mut AppState) {
+    // Nothing is findable before the context lands, and a context thrown
+    // away takes the maps with it (`reset_for_refresh`), so there is never
+    // anything stale to clear here: leaving early keeps an event that
+    // changed nothing from changing anything.
+    if !matches!(state.radar.context, Loading::Ready(_)) {
+        return;
+    }
     let now = RefFindings {
         refs: state.refs.clone(),
         context: match &state.radar.context {
@@ -236,7 +243,7 @@ fn ref_findings_now(state: &AppState) -> (ByCommit, ByCommit, HashMap<Oid, Strin
         let Some(Loading::Ready(verdict)) = state.radar.force_push.get(branch.name) else {
             continue;
         };
-        for finding in findings_from_force_push(verdict, &state.radar.policy)
+        if let Some(finding) = findings_from_force_push(verdict, &state.radar.policy)
             .filter(|finding| finding.at == branch.tip)
         {
             force_push.entry(finding.at).or_default().push(finding);
@@ -502,12 +509,13 @@ pub fn reset_for_refresh(state: &mut AppState) {
     // A refresh usually follows a fetch, which is when a remote's history
     // can have been rewritten under us: every verdict has to be asked again.
     state.radar.force_push.clear();
-    state.radar.force_push_revision = state.radar.force_push_revision.wrapping_add(1);
     state.radar.duplicates = Loading::Idle;
     state.radar.duplicate_findings.clear();
-    // The maps themselves are rebuilt at the tail of this same `update`;
-    // clearing `built_from` is what makes that rebuild happen rather than
-    // leaving last refresh's findings on screen.
+    // The ref-derived maps go with the context they were built against;
+    // `refresh_ref_findings` fills them again once a fresh context lands.
+    state.radar.ref_findings.clear();
+    state.radar.force_push_findings.clear();
+    state.radar.force_push_not_checkable.clear();
     state.radar.built_from = None;
 }
 
@@ -678,6 +686,62 @@ mod tests {
         commands.clear();
         request_force_push_probes(&mut state, &mut commands, &mut next_id);
         assert!(commands.is_empty(), "already asked");
+    }
+
+    /// M2 review C1 and M9: the probes are bounded by what could be seen,
+    /// not by the repository's refs — 200 tracked branches off-screen cost
+    /// one probe, for the branch `HEAD` is on.
+    #[test]
+    fn probes_are_bounded_by_what_is_on_screen_not_by_the_ref_count() {
+        let mut state = state_with_many_tracked_branches(100);
+        let mut commands = Vec::new();
+        let mut ids = 0;
+        let mut next_id = || {
+            ids += 1;
+            JobId::new(ids)
+        };
+        request_force_push_probes(&mut state, &mut commands, &mut next_id);
+        assert_eq!(
+            commands.len(),
+            1,
+            "only `HEAD`'s branch could be seen: {commands:?}"
+        );
+        assert!(state.radar.force_push.len() <= MAX_FORCE_PUSH_PROBES);
+    }
+
+    /// `main` at `tip` tracking `origin/main`, plus `count` other tracked
+    /// branches pointing nowhere the window reaches.
+    fn state_with_many_tracked_branches(count: usize) -> AppState {
+        let mut state = state_with_default_branch(None);
+        let head = HeadState::Branch(ref_name("main"));
+        let mut refs = Vec::new();
+        let mut upstreams = HashMap::new();
+        for index in 0..=count {
+            let (local, remote) = if index == 0 {
+                ("main".to_owned(), "origin/main".to_owned())
+            } else {
+                (format!("b{index}"), format!("origin/b{index}"))
+            };
+            let remote_name = RefName::new(format!("refs/remotes/{remote}").into_bytes())
+                .expect("a valid ref name");
+            let index = u8::try_from(index).expect("a small test fixture");
+            refs.push((ref_name(&local), oid(index + 1)));
+            refs.push((remote_name.clone(), oid(index + 128)));
+            upstreams.insert(ref_name(&local), remote_name);
+        }
+        let badges = crate::refs::badges(&refs, &head, &upstreams, |_, _| {
+            Ok(graft_git::history::AheadBehind {
+                ahead: 1,
+                behind: 1,
+            })
+        })
+        .expect("badges builds from plain data");
+        state.refs = Some(Arc::new(badges));
+        state.radar.context = Loading::Ready(Arc::new(RadarContext {
+            default_chain: HashSet::new(),
+            previous_default_tips: Vec::new(),
+        }));
+        state
     }
 
     #[test]

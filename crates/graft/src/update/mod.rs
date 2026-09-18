@@ -81,6 +81,11 @@ fn settle(next: &mut AppState, commands: &mut Vec<Command>, cursor_before: usize
     radar::request_context(next, commands, &mut || local_jobs.next_id());
     radar::request_force_push_probes(next, commands, &mut || local_jobs.next_id());
     radar::request_duplicates_probe(next, commands, &mut || local_jobs.next_id());
+    // Last of the radar's work: the findings the refs carry, rebuilt only
+    // when the refs, `HEAD`, the default branch, the context or the policy
+    // moved — so a frame looks a row up instead of walking every ref
+    // (M2 review C1).
+    radar::refresh_ref_findings(next);
     commands.extend(detail::open_explain(next, &mut || local_jobs.next_id()));
     next.local_jobs = local_jobs;
 }

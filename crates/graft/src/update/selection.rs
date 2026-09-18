@@ -100,11 +100,37 @@ pub fn reconcile(state: &mut AppState, cursor_before: usize) -> bool {
 pub fn follow_selection(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) -> Vec<Command> {
     let mut commands = followed(state, next_id);
     // `update` calls this at the tail of every event, so this is the one
-    // place that sees whatever the pane ended up about -- a moved cursor, a
+    // place that sees whatever the cursor ended up on -- a moved cursor, a
     // fresh `Enter`, a context-menu open or a close. `probe_evil` is
     // idempotent, so calling it every time asks for nothing new.
-    commands.extend(state.detail.probe_evil(&state.radar.policy, next_id));
+    //
+    // The probe follows the *selection*, not the pane (M2 review M3):
+    // PROMPT.md §1.4 asks for the selected merge, and a merge the cursor is
+    // on has to carry its marker whether or not the pane is open. Only a
+    // merge is probed: the verdict is about what a merge's tree did to its
+    // parents, and asking about an ordinary commit would spawn `git` for an
+    // answer that is always "clean".
+    let selected = selected_merge(state);
+    commands.extend(
+        state
+            .detail
+            .probe_evil(selected, &state.radar.policy, next_id),
+    );
     commands
+}
+
+/// The commit under the cursor, when it is a merge: what the evil-merge
+/// probe is asked about. `None` on the working-tree row, on an ordinary
+/// commit, or before any history has landed.
+fn selected_merge(state: &AppState) -> Option<graft_core::oid::Oid> {
+    if state.on_working_tree {
+        return None;
+    }
+    let row = state
+        .history
+        .as_ref()
+        .and_then(crate::history::History::selected)?;
+    (row.commit.parents.len() >= 2).then_some(row.commit.id)
 }
 
 /// `follow_selection` without the evil-merge probe: what the pane itself
