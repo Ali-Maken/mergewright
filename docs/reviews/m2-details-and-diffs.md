@@ -560,3 +560,119 @@ M7/Minor 15 for one re-review pass) and stopping partway would have left
 `docs/reviews/m2-details-and-diffs.md` describing a mix of split and
 unsplit files, which is worse than one long round. Nothing here was
 rushed to fit a number.
+
+## Round 2 (2026-09-18, reviewer, Fable high)
+
+Range `183c6ca..d994f38`; the fix rounds themselves are `6a9c579..HEAD`
+(51 files, +6,524 / −5,067). Read in the CLAUDE.md order: stat, MAP.md
+files, then the five fix commits' diffs crate by crate; whole files opened
+only to confirm a finding. Nothing under `docs/shots/` was written by this
+round; two throwaway repositories under `/tmp` were used to check git
+behaviour (git 2.54.0, Apple).
+
+**0 Critical, 3 Major, 17 Minor.** The Critical is gone. Two of the four
+git-semantics fixes (M4, M6) each fixed the symptom and rest on a claim that
+is false on this machine; M3 is fixed in code and contradicted by the
+acceptance docs. Nothing blocks the milestone; the three Majors are all
+narrow and cheap.
+
+### Gates (this round)
+
+| Check | Result |
+|---|---|
+| `cargo fmt --check` | pass |
+| `cargo clippy --all-targets -- -D warnings` | pass (cached, 0.2 s, RSS 95 MB) |
+| `cargo clippy --all-targets --features heavy-tests -- -D warnings` | pass, 4.6 s, RSS 495 MB |
+| `cargo test` (fast tier) | pass, **24.3 s** wall (was 21 s), RSS 350 MB, **1209 passed / 0 failed / 9 ignored** |
+| Fuzz `parse_unified` (45 s, its file was split in 1d) | 521,642 runs, no crash, RSS 664 MB |
+| Heavy tier, release perf, benches | **not rerun** (conductor); latest on record `docs/perf/housekeeping-02.txt`: heavy tier exit 0 in 161 s, release perf exit 0 in 83 s, heap slope 31.5 B/commit (bar 50). Round 1b: worst frame 9.6 ms of 16 with the pane open, diff scrolling and Map on the 50k-ref fixture |
+
+Fast tier, 5 slowest: 7.76 s `diff_fixture::parse_unified_matches_numstat_for_every_shape` (was 6.42),
+5.99 s `layout::stream::tests::scrolling_the_whole_history_keeps_the_resident_set_bounded`,
+3.30 s `corpus::two_builds_produce_the_same_object_ids`, 1.18 s `corpus::a_second_build_in_the_same_place_is_a_no_op`,
+0.92 s `raster_pixels::reports_per_strip_cost`. `target/` 12 GB (was 9.8).
+
+`unwrap()`/`expect()` outside tests: none new (every hit in the post-review
+diff is inside an inline `#[cfg(test)]` module). No new `let _ =`. The
+`unreachable!` in `resolve_sides` moved to `read/raw.rs` (Minor 1 stands).
+Every new string reaching `ui` is sanitised: `NotCheckable` reasons via
+`sanitize_line`, Explain paragraphs via `view::explain`, `EvilResolved`
+carries a count.
+
+### Did the fixes fix it?
+
+| Finding | Verdict | Notes |
+|---|---|---|
+| C1 | **confirmed** | `refresh_ref_findings` rebuilds three maps only when the stamp (`refs`/`context` by `Arc::ptr_eq`, `HEAD`, default branch, `force_push_revision`, policy) changes; a row is a hash lookup. Probes bounded to `HEAD`'s branch plus resident rows, 32 per session; `probes_are_bounded_by_what_is_on_screen_not_by_the_ref_count` covers it. Numbers above. Residual: `force_push_candidates` still walks the resident window on every `update` (R2 Minor 16). |
+| M1 `W` | **confirmed in code** | `line_style_at` gates the words branch on `DiffRowStyle::word_tint`, fed from `DiffOptionsView.word_tint`; `word_tint_false_leaves_the_word_at_the_plain_row_background`. Colour unverified by construction (KNOWN_GAPS "Unverified"); not ticked, not failed. |
+| M2 unfocused body | **confirmed in code** | `!focused → TextMuted` early return removed; focus now on the gutter (`gutter_style`); `unfocused_diff_body_keeps_its_added_removed_colour`. Same unverified status. |
+| M3 evil probe follows selection | **fixed, new problem** | `probe_evil(selected, …)` from `selected_merge(state)` regardless of `shown`; the view reads `evil_at` without `shown`. Unit-tested only; never observed. TESTING.md stop 8 and `gallery.rs:145` now assert the opposite (R2 Major 3). |
+| M4 stat-dirty files | **fixed, new problem** | The listing is right and tested. The claim it rests on — `GIT_OPTIONAL_LOCKS=0` keeps `git diff` from writing the index — is false (R2 Major 1). |
+| M5 `L` sticks | **confirmed** | `max_lines = MAX_LINES` in `load()` and `move_files_cursor()`; `moving_the_file_cursor_resets_load_all`. |
+| M6 evil false positives | **narrowed, new problem** | Hand-resolved *content* conflicts are `Resolved` and silent (tested, and 7 → 1 on git/git's 60 newest merges). The dividing line is wrong for renames: a hand-resolved rename/modify conflict is still `Evil` (R2 Major 2). The false negative is disclosed in Explain and the probe's doc, nowhere in KNOWN_GAPS.md or TESTING.md (R2 Minor 2). |
+| M7 ARCHITECTURE.md | **partly** | The `graph::Row` claim is fixed and three "where to start" bullets are right. Still undocumented: the typed runner `git::run` (every M2 spawn goes through it), `git::contained`, the `LOCAL_JOB_BIT` id split, the `update/` purity guard (R2 Minor 12). |
+| M8 file sizes | **confirmed, with caveats** | 7 of the 8 named files are under 400 non-test lines; `diff/unified.rs` is 417 and the note says all are under (R2 Minor 9). Public `pub` sets are identical before and after every split except `ramp_glyph` (R2 Minor 6); several `pub(super)` items widened to `pub(crate)` (R2 Minor 7). Boundaries judged under "Round 1d" below. |
+| M9 tests | **partly** | Three frame tests (pane open, diff scroll, Map) on the 50k-ref fixture, heavy-gated; probe-count, stat-dirty, `W` style and unfocused-colour unit tests. Still nothing on: the force-push probe against a real rewrite (accepted gap, user 2026-09-18), `Resolved` in the pane, the pane-closed evil marker. |
+| M10 strip | **confirmed** | `HashSet<Oid>` of hits once per frame; `subject()` instead of decoding the message. Residual: the set is rebuilt every frame (R2 Minor 5). |
+| M11 | **won't-fix (user)** | Recorded at `6eab12b`; the pane-open frame test is the tripwire. |
+
+### Major
+
+#### R2 Major 1. Porcelain `git diff` writes `.git/index` regardless of `GIT_OPTIONAL_LOCKS=0`; the M4 fix's central claim is false
+
+- **Where:** `crates/graft-git/src/diff/read.rs:148-166` (`list_files_working_tree`, `git diff --raw --numstat -z -M -C HEAD`), doc comment at `:150-157`; `crates/graft-git/src/run.rs:12` ("a read never takes the index lock from under the user's own git"); review round 1c above.
+- **What:** verified twice in a throwaway repository on git 2.54.0: `touch f.txt`, copy `.git/index`, run the exact command with `GIT_OPTIONAL_LOCKS=0` *and* `--no-optional-locks` — the listing is empty (correct) **and `.git/index` is rewritten** (`cmp` differs; `git diff-index --raw HEAD` goes from 1 entry to 0). `git diff`'s `refresh_index_quietly` takes `index.lock` non-blocking and writes if it gets it; only `git status` honours the optional-locks switch. With `index.lock` already held the write is skipped and the listing is still correct — so the correct output never depended on the write, only `diff.autoRefreshIndex`'s in-memory `skip_stat_unmatch` did.
+- **Why it matters:** M2 is a read-only milestone and Graft now writes the user's index (stat cache only — no content at risk) on every working-tree listing: selecting the working-tree row, every `Ctrl+R`, every re-follow. It briefly holds `index.lock`; a `git commit`/`git add` the user runs at that instant fails with "index.lock exists". The runner's module doc, the function's doc and the round-1c note all state the opposite. A viewer that writes the repository is exactly what `GIT_OPTIONAL_LOCKS` exists to prevent.
+- **Fix (cause):** go back to plumbing `diff-index --raw --numstat -z -M -C HEAD` and drop entries that are `M`, same mode on both sides, new oid all zeros, numstat `0 0` — `--numstat` is computed from content, so `0 0` is exactly "identical after conversion"; mode changes keep differing modes and binaries print `- -`, so nothing real is lost. Add to the M4 test: the index bytes are unchanged after `list_files`. Fix the two doc comments either way.
+
+#### R2 Major 2. A hand-resolved rename conflict is still an `EVIL MERGE`
+
+- **Where:** `crates/graft-ops/src/mistake_radar/probes.rs` `split_remerge_files` (partition on "path in both sides' `diff-tree --no-renames --name-only` sets"), `changed_paths` (`--no-renames` on purpose).
+- **What:** the invariant "a conflict can only arise in a file both sides changed since the base" is true for paths git *reports*, not for paths the remerge diff *names*. Built in a throwaway repository: base has `foo`; side A `git mv foo bar` and edits line 1; side B edits line 1 of `foo`; `git merge` conflicts in `bar`; resolved by hand. `git show --remerge-diff --name-only` names `bar`; side A's set is `{foo, bar}`, side B's is `{foo}`; `bar` is not in both → `EvilVerdict::Evil { files: ["bar"] }`, `⚠ EVIL MERGE`, and Explain says "no conflict could have arisen there" about the file that did conflict. Rename/rename (both sides rename `foo` differently, one name kept) fails the same way. Merges after a file move are ordinary work on any repository that refactors.
+- **Why it matters:** it is the failure M6 was about — a warning on ordinary work — surviving on a common shape, and the new Explain text now asserts a falsehood in that case. The git/git audit of 60 merges did not happen to contain one.
+- **Fix (cause):** compute each side's set with rename detection (`diff-tree -r -M --name-status -z`) and put **both** names of an `R` entry in that side's set, so the post-rename path counts as "changed by both" whenever its pre-rename path was; keep `--no-renames` out. Add the rename/modify case beside `a_hand_resolved_conflict_is_not_an_evil_merge`, and rerun `scripts/m2-fix-1c-evil-audit.sh` with the same change in the shell so the two agree.
+
+#### R2 Major 3. The M3 fix was never observed, and the acceptance walk now asserts the opposite
+
+- **Where:** `TESTING.md:704-708` (graph stop 8, "Nothing on screen marks the merge as evil … this stop is the control"), `crates/graft/tests/it/gallery.rs:145` ("the control: evil is a tree fact (M2), so it must look like stop 3"), `docs/shots/35-evil-merge-{ascii,unicode}.txt` (0 `⚠`, M1 era), `docs/shots/m2-10-evil-merge-enter-*.txt` (last regenerated at `71d28ab`, before the review).
+- **What:** since round 1a the selected merge is probed with the pane closed and the marker is painted from `evil_at` alone; the gallery runs the real job runner with the radar on and the cursor lands on the merge at stop 8. So stop 8 now shows `⚠` — the "control" text tells the user that is wrong. No capture after the fix exists in either group. This round tried to take one with the M1 pty script into `target/` and could not: `pty-gallery.py` no longer walks the current gallery ("footer never appeared within 60 s"), so the M1 procedure TESTING.md still points at is dead too.
+- **Why it matters:** CLAUDE.md's acceptance rule — a checklist saying concretely what right looks like — is now wrong at the stop that demonstrates the second half of the promise; the only evidence for the fix is a unit test that a `Command::EvilProbe` is emitted.
+- **Fix:** rewrite stop 8 (graph group) and its caption to expect `⚠` on row 0 after the probe lands (stop 10 keeps the pane); regenerate `35-evil-merge-*` and `m2-10-*` with the M2 script; either repair `pty-gallery.py` or point TESTING.md's M1 walk at `pty-gallery-m2.py`.
+
+### Minor
+
+1. `crates/graft-ui/src/detail_pane/header.rs:55` — `evil merge: clean (N files hand-resolved)`: `clean` is `EvilVerdict::Clean`'s word ("the tree is what merging its parents gives"), and this verdict is the case where it is not. Say what was found: `evil merge: none found · N hand-resolved files not checked`.
+2. The `Resolved` false negative is disclosed only inside the Explain paragraph and the probe's doc comment. CLAUDE.md puts open items in `KNOWN_GAPS.md`; TESTING.md's radar section should also say a both-sides evil edit is not flagged. One row, expiry when rename-aware sets land.
+3. `probes.rs` `merge_base` — takes the first line of `git merge-base`; with criss-cross history there are several bases and the recursive/ort strategy merges against a virtual one, so a path "changed by one side" against the first base can be both-changed against the real base (or vice versa). Not reproduced; note it in the doc comment or use `--all` and union the sides' sets over every base.
+4. `update/selection.rs` `selected_merge` → `probe_evil` on every cursor move: holding `j` through git/git (a merge every few rows on the default view) spawns a `git show --remerge-diff` — a full in-memory merge — per merge row and kills it ≤50 ms later; the 16-entry `evil_cache` thrashes. Spec-compliant ("only the selected merge") and the reviewer's own suggestion, but the cost was not stated in round 1a. Probe when the cursor rests (the next tick after a move with no further move), not on the move.
+5. `view/strip.rs:38-42` — the `HashSet<Oid>` of search hits is rebuilt every frame the strip is shown: O(hits) allocation per frame, which for a search matching most of git/git is the cost M10 moved rather than removed. Cache it beside the search result (rebuild when `state.search` changes).
+6. `crates/graft-ui/src/map_screen/render.rs` — `ramp_glyph` went `pub` → `pub(crate)`; `crates/graft-ui/MAP.md:151` still lists it as a public item while `:152` says "now `pub(crate)`", and the 1d note claims no public signature changed. Pick one: restore `pub` or drop the MAP.md line.
+7. Visibility widened where narrowing would do: `detail_key`/`detail_event` `pub(super)` → `pub(crate)` (`update/detail.rs:25-27`); 23 `pub(crate)` items in `detail_pane/*` (17 in `line_render.rs`), 11 in `map/{walk,rows}.rs`, 11 in `unified/primitives.rs`, 11 consts in `update/detail/state.rs` — every one reachable crate-wide when only the parent module needs it. `pub(super)` throughout, as `run/exec.rs` and `diff/read/raw.rs` already do.
+8. `crates/graft/src/update/detail/{state,ops}.rs` — the seam is "the struct" versus "its `impl`" (`ops.rs`: 20 methods spanning file loading, the evil probe, focus/options, scrolling and pane resizing, 395 lines). That is a cut, not a boundary. Split `ops.rs` by concern: `loading.rs` (`open`/`close`/`load`/`files_arrived`/`show_cursor`/`diff_arrived`/`contained_arrived`/`cancel_pending`), `evil.rs` (`probe_evil`/`evil_probed`), `pane.rs` (`cycle_focus`/`set_options`/`load_all`/`scroll_*`/`resize_pane`/`set_pane_cells`). Same shape in `detail_pane/line_render.rs`: draw helpers, `DiffRow`/`RowSlot`/`DiffRowStyle` types and style functions in one 17-item file, with `percent` off in `layout.rs`.
+9. `crates/graft-git/src/diff/unified.rs` — 417 non-test lines after the split; the 1d note says `wc -l` confirmed every file under 400. `ops.rs` 395 and `map_screen/render.rs` 393 are at the edge.
+10. `detail_pane/side_by_side.rs` `diff_body_side_by_side(…, focused: bool, word_tint: bool)` beside `diff_body(…, focus: DiffFocus)` — the struct was introduced to avoid two bare bools and then one of the two callers kept them. Pass `DiffFocus` to both.
+11. `crates/graft/src/update/tests.rs:1480-1557` purity guard. It is recursive now and scans 20 files; **nothing slipped while it was blind**, because no subdirectory ever existed under `update/` in a committed tree before `9982783` (`183c6ca` and `9982783^` are both flat) — the 1d note's "the earlier round that produced `update/detail/*.rs`" is wrong; the blind window lived only inside that builder's working copy. Residue: the floor is `>= 7` against 20 real files (assert the list, or `>= 20`, so a broken walk fails loudly); the substring check misses `use std::{time, thread}` and `core::time`; the comment "every other file is pure end to end and is kept whole" is false — six files (`context_menu`, `detail`, `map`, `selection`, `radar`, `strip`) carry inline `#[cfg(test)]` modules the guard also scans (safe direction: a test mentioning `Instant` trips it).
+12. `ARCHITECTURE.md` — M7's residue: no mention of `git::run` (the typed runner every M2 spawn uses, and where `GIT_OPTIONAL_LOCKS`/`LC_ALL` are set), `git::contained`, the `LOCAL_JOB_BIT` split of job ids, or the `update/` purity guard as a stated rule.
+13. `crates/graft-git/src/run.rs:12` and `diff/read.rs:155` — both state that a read never takes the index lock / never writes the index. False for `git diff` (Major 1); fix the text with the code.
+14. `crates/graft/src/jobs/radar.rs` `impl PartialEq for RadarContext` — tables compared by `Arc::ptr_eq`, so two `of_ids` contexts with identical members are unequal, and `Eq` promises more than delivered. Say so in the doc, or compare the chain by ids when the tables differ.
+15. `scripts/m2-fix-1c-evil-audit.sh` re-implements the probe's rule in shell. Fine as evidence once; it will drift from `split_remerge_files` the first time the rule changes (Major 2 changes it). Either keep the two in step in the script's header or have the audit call the Rust probe.
+16. `update/radar.rs:397` `force_push_candidates` walks the resident window (`refs.on(id)` per row, allocating a `Vec`) on every `update`, including key repeat, even after the 32-probe cap is reached before the loop (the early return at `:375` covers only that case once the map is full). Stamp it on the window's generation like `refresh_ref_findings`, or return early when nothing new could be resident.
+17. Fast tier is 24 s (was 21); `parse_unified_matches_numstat_for_every_shape` grew 6.4 → 7.8 s. Under the 7.1 budget; watch it in M3.
+
+### Round 1a–1d code, reviewed for the first time
+
+- **`92c35ac` (ADR-0026 handles):** sound. `RadarContext` holds a `HandleSet` plus the history's own `Arc<CommitTable>`, so `on_default_chain(&Oid)` is `handle_of` + a bit test and a rebuilt table cannot alias the handles; `of_ids` gives tests and `context_menu` a self-contained table; `HandleSet: PartialEq` handles trailing zero words from `remove`. Slope 76 → 31.5 B/commit measured outside any helper's context. Minor 14 is the one rough edge.
+- **`9982783` splits, boundaries judged:** good — `run/exec.rs` (child-process plumbing under `GitInvocation`), `diff/read/raw.rs` (revision resolution and raw/numstat splitting), `diff/unified/primitives.rs` (byte parsers under the grammar), `map/{walk,rows}.rs`, `update/{geometry,mouse}.rs` (where a click landed / what it does), `map_screen/render.rs`. Weak — `update/detail/{state,ops}.rs` and `detail_pane/line_render.rs` (Minor 8). `pub` sets identical for every file but `ramp_glyph` (Minor 6); visibility otherwise widened rather than narrowed (Minor 7). The purity guard fix is right and the history claim around it is wrong (Minor 11).
+- **`32845d3` (C1/M3/M10):** as tabled above; `RefFindings::same_as` is the right shape for the stamp.
+- **`f52e1b2` (M1/M2/M5):** as tabled; Minor 10.
+- **`ca120c0` (M4/M6):** Majors 1 and 2; the two new tests are the right tests for what they claim, they just do not claim the thing that is false.
+
+### Does the promise hold?
+
+*"Details and diffs, and bad merges get flagged and explained."*
+
+- **Details and diffs:** yes. `Enter`, files, unified and side-by-side, compare, working tree, three breakpoints, from the graph; the diff arrives in colour and `W` does something (by test — colour itself is unverified by construction, KNOWN_GAPS). At 50k refs the frame stays under 10 ms with the pane open, the diff scrolling and the Map up; the heap slope is under its bar. The one wart is that reading the working tree writes the index (Major 1).
+- **Bad merges flagged and explained:** foxtrot, backward, accidental-pull and duplicates — flagged in the graph from the corpus and explained, unchanged since round 1. Evil merges — flagged for the selected merge with the pane closed (in code; unobserved, and the acceptance walk says otherwise, Major 3); hand-resolved content conflicts no longer warn, hand-resolved rename conflicts still do (Major 2); a both-sides evil edit is not flagged, and Explain says so. Force-push — bounded to what is on screen, never seen firing (accepted gap).
+- **At scale:** now holds on the numbers on record.
+
+Verdict: **the promise holds** on the fixtures and on real repositories of any size the tests reach, with two narrow false claims (index write, rename conflicts) and one contradicted acceptance stop to close. No Critical; M2 can ship on the fixes above.
