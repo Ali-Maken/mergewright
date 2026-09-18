@@ -1,0 +1,10 @@
+## context-cost run (BEFORE housekeeping/01, reconstructed from git HEAD:CLAUDE.md): 2026-09-18T04:19:05Z
+CLAUDE.md (pre-trim, git HEAD)                                            17579 bytes  ~   4394 tokens
+.claude/agents/builder-sonnet.md                                           2554 bytes  ~    638 tokens
+TOTAL                                                           20133 bytes  ~   5033 tokens
+
+## context-cost run: 2026-09-18T04:19:11Z
+CLAUDE.md                                                                 17392 bytes  ~   4348 tokens
+.claude/agents/builder-sonnet.md                                           2554 bytes  ~    638 tokens
+TOTAL                                                           19946 bytes  ~   4986 tokens
+

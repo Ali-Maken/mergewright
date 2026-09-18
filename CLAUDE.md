@@ -1,5 +1,9 @@
 # Graft: rules for Claude
 
+The reasoning behind these rules lives in [`docs/rules-rationale.md`](docs/rules-rationale.md)
+(nothing auto-loads it). Every rule below keeps its full normative text, date
+and attribution — only the "why" moved out.
+
 "Graft" is only a **codename**: the name is taken by another Git GUI. The real name gets chosen in M8. Don't publish, register or tag anything public under this name.
 
 ## Where things live
@@ -34,7 +38,7 @@
 - **Who writes them (M2 onward):** `planner-fable` writes every ticket spec in its design pass (see Models). The conductor **files and sequences** them: numbering, dependency order, `Blocked by:`, `Status:`. It does not re-decide scope, signatures or `Build with`. A spec the conductor thinks is wrong goes back to `planner-fable` or to the user; the conductor doesn't edit it.
 - **`/to-tickets` is not used for any milestone with a Fable spec pass** (M2 onward). It drafted M0 and M1 only.
 - **Size:** each ticket finishes inside one context, target **under 80k tokens**. Compaction means the ticket was too big: the helper says so in its report, the conductor splits the remainder into new tickets.
-- **Size from evidence, not intuition** (user, 2026-09-15). M1's session log records its compactions and tickets that ran 93k–200k against the 80k target. `planner-fable` reads those entries first, says what made them overrun, and sizes the milestone's tickets from that. A ticket that can't be made to fit says so when it is written, not mid-build.
+- **Size from evidence, not intuition** (user, 2026-09-15; see rules-rationale for M1's numbers). `planner-fable` reads the M1 session log's compaction/overrun entries first, says what made them overrun, and sizes the milestone's tickets from that. A ticket that can't be made to fit says so when it is written, not mid-build.
 - **Splitting a remainder:** the conductor cuts along the seams in the builder's handoff note and keeps the original scope, signatures and model. If the split needs a new decision (a new signature, a scope change, another model), it goes to `planner-fable` as a spec-only pass for those tickets.
 - **Each ticket states:** scope in/out; acceptance criteria; the **exact sections** to read (never a whole document); the **exact signatures** the work must expose and call; its `Build with` line.
 - **Interface-first grouping:** the first ticket of a group defines the traits and stubs; the rest fill them in.
@@ -82,7 +86,7 @@
   1. the ticket doesn't decide the approach;
   2. a wrong choice becomes structural for later tickets;
   3. correctness can't be judged from the diff or the tests.
-- **Expect one or two Fable builds per milestone, signature tickets included.** If a plan wants three or more, the conductor says so: the design is usually underspecified and needs another design pass, not more Fable builds. Escalation redos (below) don't count; they aren't planned. **The acceptance ticket doesn't count either:** it is standing, like the M8 architecture pass.
+- **Expect one or two Fable builds per milestone, signature tickets included.** If a plan wants three or more, the conductor says so (rules-rationale has why). Escalation redos (below) don't count; they aren't planned. **The acceptance ticket doesn't count either:** it is standing, like the M8 architecture pass.
 - **Escalation beats prediction:**
   - Sonnet ticket fails twice → Opus.
   - Opus ticket stalls twice (`failed` or `partial` without progress), or a review finds its design wrong → redo that ticket on `builder-fable`.
@@ -113,11 +117,12 @@
 - **Ask the user** (through the conductor) before changing the spec or cutting scope. Record agreed changes as ADRs.
 - **Architecture and readability are hard rules** (PROMPT.md 6.1 and 6.2). Read `ARCHITECTURE.md` before adding or moving modules, use the `codebase-design` skill when you do, and update `ARCHITECTURE.md` if the structure changes. Never add a dependency that breaks the crate rules.
 - **Keep your context lean:** read what you need, not everything.
-- **Context window:** `CLAUDE_CODE_AUTO_COMPACT_WINDOW` is `200000` in `.claude/settings.json`, raised from 150000 on 2026-09-12. Builders were compacting mid-ticket; losing the prompt cache and re-reading the same files costs more than the larger window does. Keeping your context lean still matters — the cap is headroom, not an allowance.
+- **Context window:** `CLAUDE_CODE_AUTO_COMPACT_WINDOW` is `200000` in `.claude/settings.json`, raised from 150000 on 2026-09-12. Keeping your context lean still matters — the cap is headroom, not an allowance.
+- **Builders never read `PROGRESS.md` or `KNOWN_GAPS.md`** (housekeeping/01, 2026-09-18): those belong to the conductor. A builder's findings go in its ticket.
 - **If you compact mid-ticket, say so in your report.** The conductor logs it in PROGRESS.md's session log and splits the remainder into new tickets.
 - **Fix the cause, not the symptom.** When something fails, find out why before changing anything. No workaround, retry loop, sleep, hardcoded special case or disabled test without the user's OK. If the root cause is out of scope: stop, say what it is, and ask — don't route around it and log a gap. **Every fix report says which it is — cause or symptom — and what it costs the user** (user, 2026-09-13).
-- **Never swallow an error.** A hidden failure doesn't go away; it ships. No ignored `Result`, no `let _ =`, no `unwrap_or_default()` standing in for a real failure, no empty `Err(_) => {}` arm, no catch-all that logs and carries on. Every error is handled, propagated, or surfaced to the user. If you genuinely must ignore one, say in a comment why it's safe.
-- **A status field must never read as an error when nothing is wrong.** Name and render status by its state: `gfx ok` / `gfx: <error>`, or show the field only when there is something to report. A permanently-visible `GFX_ERROR:` label trains the user to ignore it, which is how a real error gets missed.
+- **Never swallow an error.** No ignored `Result`, no `let _ =`, no `unwrap_or_default()` standing in for a real failure, no empty `Err(_) => {}` arm, no catch-all that logs and carries on. Every error is handled, propagated, or surfaced to the user. If you genuinely must ignore one, say in a comment why it's safe.
+- **A status field must never read as an error when nothing is wrong.** Name and render status by its state: `gfx ok` / `gfx: <error>`, or show the field only when there is something to report.
 - **Green gates are not evidence.** `fmt`/`clippy`/`test` passing means the code compiles and your own tests agree with you. It does not mean the thing works. Say what you actually verified and how, and what you couldn't. Never claim behaviour you didn't observe.
 - **Visual results are judged by eye, by the user.** Green gates are not evidence for how something looks. Any ticket whose result is visual ends by capturing what it actually renders — a pty capture committed under `docs/shots/` — and its report names the capture and says the user judges it by eye. No builder or reviewer ticks "looks right".
 - **Captures stay small** (user, 2026-09-15): anything committed under `docs/shots/` is trimmed to what shows the point, **hard cap 200 KB per file**. Raw terminal streams are never committed: a larger capture is summarised in the committed file and the raw one stays untracked under `target/`. The repo may be published.
@@ -145,9 +150,9 @@ The Matt Pocock plugin's skills are **banned by default**. Only these are allowe
 
 If you think you need a banned skill: **stop and ask the user** (through the conductor). Don't use it, and don't work around it silently.
 
-Why the two that keep getting reached for:
-- `prototype` builds HTML prototypes. Questions about terminal rendering are answered only by a binary running in a real terminal. Keep its principles — throwaway, minimal, findings recorded as an ADR — not the skill.
-- `wayfinder` (and `to-spec`) would create a second plan. The plan already exists: `PROMPT.md` is the spec, `DESIGN.md` the design, `PROGRESS.md` the plan.
+The two that keep getting reached for anyway — `prototype` and `wayfinder` —
+stay banned; see `docs/rules-rationale.md` for why. Keep `prototype`'s
+principles (throwaway, minimal, findings recorded as an ADR), not the skill.
 
 Some allowed skills aren't in the Skill tool's listing. They are installed; read the SKILL.md directly:
 `~/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/engineering/<name>/SKILL.md`
