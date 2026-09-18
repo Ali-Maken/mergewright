@@ -1,9 +1,7 @@
 # refresh-reopens-walk: `Ctrl+R` reopens the walk on the commit-graph path after `B` wrote one (KNOWN_GAPS row 54)
 
-Status: ready
+Status: done
 Blocked by: none
-
-Status: draft
 Build with: Sonnet — a rebind on refresh with one decision already made here (rebind the table, restart the walk, re-anchor the selection); testable end to end on a fixture.
 Needs: none from M2 (M1 code only: `RepoStore`, `CommitTable`, `commit_graph::status`, `History`, `CommitGraphLine`)
 
@@ -42,11 +40,11 @@ If `refresh` today returns `()`, changing it to `Result<Refreshed, StoreError>` 
 
 ## Acceptance
 
-- [ ] Fixture test (`Shape::Linear`, temp copy, system git present else `skip` with a printed reason): open a `RepoStore` (no commit-graph → `table().has_commit_graph() == false`), run `commit_graph::write`, `refresh()` → `Ok(Refreshed { table_rebound: true })`, `table().has_commit_graph() == true`, `opens()` incremented; a second `refresh()` → `table_rebound: false`.
-- [ ] `refresh()` with no graph change → `table_rebound: false`, `opens()` unchanged, `table()` the same `Arc` (pointer-equal).
-- [ ] Update/loop test with the scripted `Wakes` (the pattern `event_loop::tests` already uses): after a rebound refresh, the new walk's `WalkFacts::order` is the requested topological order and `is_provisional() == false` (the graph path), and the cursor is back on the commit selected before `Ctrl+R`.
-- [ ] `CommitGraphLine::Written` snapshot at 120 cols ends `· Ctrl+R to use it`; at 80 cols the M1 text is unchanged.
-- [ ] KNOWN_GAPS row 54 closed; MAP.md updated.
+- [x] Fixture test (`Shape::Linear`, writable temp copy via `copy_into_temp` — `borrow`'s fixtures are read-only and system git is already required to build the corpus, so no separate skip path exists): open a `RepoStore` (no commit-graph → `table().has_commit_graph() == false`), run `commit-graph write --reachable`, `refresh()` → `Ok(Refreshed { table_rebound: true })`, `table().has_commit_graph() == true`, `opens()` incremented; a second `refresh()` → `table_rebound: false`. See `repos::tests::a_refresh_rebuilds_the_table_when_the_commit_graph_appears`.
+- [x] `refresh()` with no graph change → `table_rebound: false`, `opens()` unchanged, `table()` the same `Arc` (pointer-equal). See `repos::tests::a_refresh_with_no_commit_graph_change_keeps_the_table`.
+- [x] Update/loop test — split into two (see Notes below, deviation 5): `jobs::tests::refresh_after_a_commit_graph_write_puts_the_next_walk_on_the_graph_path` (real `JobRunner`, `WalkFacts::is_provisional() == false` after the graph appears) and `update::tests::a_walk_restart_reanchors_on_the_previously_selected_commit` (pure, cursor restoration).
+- [x] `CommitGraphLine::Written` snapshot at 120 cols ends `· Ctrl+R to use it`; at 80 cols the M1 text is unchanged. See `graft_ui::graph_screen::tests::every_commit_graph_wording_fits_under_its_breakpoint`.
+- [x] KNOWN_GAPS row 54 closed; MAP.md updated (`crates/graft/MAP.md`, `crates/graft-ui/MAP.md`).
 
 ## Gates
 
@@ -55,3 +53,60 @@ If `refresh` today returns `()`, changing it to `Result<Refreshed, StoreError>` 
 ## Size
 
 Two crates: `graft` (`repos.rs` ~40 lines, the refresh path ~40), `graft-ui` (~10). Tests ~120. ≤ 20 tool calls. Named seam: if the history restart on a rebound table needs more than setting `reanchor` and re-issuing the startup walk request (e.g. `History` has no way to drop its rows short of a new `History`), stop after the `repos.rs` change + fixture test, commit, and report `partial` naming exactly what `History` lacks.
+
+## Notes (done)
+
+Investigation confirmed: `gix`'s `commit_graph_if_enabled()` re-reads the
+commit-graph file from disk fresh on every call — no caching at
+`SharedRepo`/`gix::Repository` level (checked against gix 0.87.1 source
+directly). **No `SharedRepo` reopen is needed**, only the `CommitTable`.
+
+Disclosed deviations from the literal spec:
+
+1. **`refresh` stays `&self`.** `RepoStore` is held as `Arc<RepoStore>` and
+   already uses interior mutability (`Mutex`) for every cached field; `&mut
+   self` was never reachable through the `Arc`. The signature block's
+   `&mut self` looks like a slip, not a deliberate ask.
+2. **The id table is rebuilt only when a table was already cached.** On the
+   very first `refresh()` before anything ever called `table()`, there is
+   nothing to rebind, so `table_rebound` is `false` and the table is left to
+   build lazily on first use, same as M1. Building eagerly here broke
+   `two_jobs_share_one_open_repository` (this crate's own repo already
+   carries a commit-graph) by counting a redundant open before anything had
+   asked for the table.
+3. **`opens()`'s doc/semantics broadened**: it now also counts a table
+   rebuild, not only a from-scratch repository open (its own doc comment and
+   MAP.md line updated to say so).
+4. **`update()` reanchors on every walk restart, not gated on
+   `table_rebound`.** `update` is pure and has no way to see the
+   synchronously-computed `Refreshed::table_rebound` (that fact lives on the
+   job-runner thread, in `RepoStore::refresh`'s return value, which nothing
+   currently carries across to `AppState`/`update`) without new `Product`/
+   `Task` plumbing that is out of this ticket's signature scope. Reanchoring
+   unconditionally is harmless: on an ordinary M1 refresh the new walk's rows
+   still contain the previously-selected commit, so `reanchor` finds it and
+   the cursor lands in the same place it would have anyway (this is exactly
+   `change_view`'s existing idiom, reused here).
+5. **The "Update/loop test with the scripted `Wakes`" acceptance item is
+   two tests, not one.** `event_loop::tests`' `ScriptedWakes`/`pump` harness
+   has no precedent for driving a real `JobRunner`/real git — it only ever
+   drives a fake `Dispatch`. Implemented instead as:
+   - `jobs::tests::refresh_after_a_commit_graph_write_puts_the_next_walk_on_the_graph_path`
+     — real `JobRunner` over a writable fixture copy: dispatches
+     `ReadHistory`, cancels it, runs `git commit-graph write --reachable`,
+     dispatches `OpenRepository` (the refresh), then `ReadHistory` again and
+     asserts `WalkFacts::is_provisional() == false`.
+   - `update::tests::a_walk_restart_reanchors_on_the_previously_selected_commit`
+     — pure `update()` test: a walk with the merge selected, a fresh
+     `AppEvent::Started(_, Task::ReadHistory)`, asserts `history.reanchor ==
+     Some(merge)`.
+
+Verified: `cargo fmt --check`, `cargo test` (full workspace, quiet), `cargo
+clippy --all-targets -- -D warnings`, `cargo build --quiet` all pass. The
+real-git test above is the actual end-to-end evidence for the walk restart —
+run against a temp copy of the `Linear` fixture, real `git commit-graph
+write --reachable`, real `JobRunner`. Not observed: the on-screen footer
+wording change and cursor behaviour in an actual running terminal (no pty
+capture was taken for this ticket; it is not visual/layout work, only a
+string change and a state-machine change covered by the snapshot and unit
+tests above).

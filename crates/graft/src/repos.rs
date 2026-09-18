@@ -21,6 +21,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use graft_core::ref_name::RefName;
 use graft_git::branches::{BranchError, Branches};
+use graft_git::commit_graph::{self, CommitGraphError, CommitGraphStatus};
 use graft_git::history::{CommitTable, TableError};
 use graft_git::repo::{OpenError, RefSnapshot, SharedRepo, TipsError};
 
@@ -43,7 +44,9 @@ pub struct RepoStore {
     /// The repository's one id table (ADR-0026): every walk and source hands
     /// out handles from it, so a handle means the same commit in every job.
     table: Mutex<Option<Arc<CommitTable>>>,
-    /// How many times the repository has actually been discovered and opened.
+    /// How many times the repository has actually been discovered and opened,
+    /// plus every time [`refresh`](Self::refresh) rebuilt the id table for a
+    /// changed commit-graph.
     ///
     /// Kept because "the handle outlives the job" is not something a type
     /// signature can promise — only a count can — and a test asserts it stays
@@ -146,9 +149,11 @@ impl RepoStore {
     /// The repository's id table, opened the first time it is asked for and
     /// shared from then on.
     ///
-    /// Kept across [`refresh`](Self::refresh): a handle is stable for the
-    /// process's life, and a commit made since the table opened simply
-    /// interns past the commit-graph.
+    /// Usually kept across [`refresh`](Self::refresh): a handle is stable for
+    /// the process's life, and a commit made since the table opened simply
+    /// interns past the commit-graph. `refresh` rebuilds it — and every
+    /// handle changes — only when the commit-graph's presence changed
+    /// (m1-the-graph/54).
     ///
     /// # Errors
     /// [`StoreError`] if the repository cannot be opened or its commit-graph
@@ -164,7 +169,8 @@ impl RepoStore {
         Ok(table)
     }
 
-    /// How many times the repository has been opened from scratch.
+    /// How many times the repository has been opened from scratch, or its id
+    /// table rebuilt for a changed commit-graph.
     #[must_use]
     pub fn opens(&self) -> usize {
         self.opens.load(Ordering::Acquire)
@@ -192,12 +198,52 @@ impl RepoStore {
     /// default branch is a conclusion drawn from refs that may have moved,
     /// and the refs read are the refs that may have moved.
     ///
-    /// Takes no lock, so the loop's thread may call it: it must run before
-    /// the jobs that read refs are dispatched, or a job could be served the
-    /// reading from before it.
-    pub fn refresh(&self) {
+    /// It also checks the commit-graph: `gix` reads that file fresh from disk
+    /// on every call (confirmed against its source; nothing in `SharedRepo`
+    /// or `gix::Repository` caches its absence), so nothing there needs
+    /// reopening. What *is* cached is [`table`](Self::table)'s `CommitTable`,
+    /// which is built once and, until now, kept for the process's life even
+    /// after `B` writes a commit-graph file the running walk never picks up
+    /// (m1-the-graph/54). When the file's presence changed since the table
+    /// was built, a new one is opened and swapped in.
+    ///
+    /// Takes no lock beyond the ones it needs, so the loop's thread may call
+    /// it: it must run before the jobs that read refs are dispatched, or a
+    /// job could be served the reading from before it.
+    ///
+    /// # Errors
+    /// [`StoreError`] if the repository cannot be opened or, when a rebuild
+    /// is needed, its commit-graph cannot be read for the new table.
+    pub fn refresh(&self) -> Result<Refreshed, StoreError> {
         self.generation.fetch_add(1, Ordering::AcqRel);
+
+        let repo = self.shared()?;
+        let handle = repo.handle();
+        let has_graph_now = !matches!(commit_graph::status(&handle)?, CommitGraphStatus::Absent);
+
+        let mut cached = lock(&self.table);
+        // No table yet: nothing to rebind, and it is not built here either —
+        // the first `table()` call still pays for that, same as M1.
+        let table_rebound = cached
+            .as_ref()
+            .is_some_and(|table| table.has_commit_graph() != has_graph_now);
+        if table_rebound {
+            let table = Arc::new(CommitTable::open(&handle)?);
+            *cached = Some(table);
+            self.opens.fetch_add(1, Ordering::Release);
+        }
+
+        Ok(Refreshed { table_rebound })
     }
+}
+
+/// What [`RepoStore::refresh`] found and did.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Refreshed {
+    /// `true` when the commit-graph's presence changed since the id table
+    /// was last built, so a new [`CommitTable`] replaced it: any walk still
+    /// reading through the old one is on the wrong path and must restart.
+    pub table_rebound: bool,
 }
 
 impl std::fmt::Debug for RepoStore {
@@ -225,6 +271,9 @@ pub enum StoreError {
     /// It opened, but its commit-graph could not be read for the id table.
     #[error(transparent)]
     Table(#[from] TableError),
+    /// It opened, but its commit-graph's status could not be read on refresh.
+    #[error(transparent)]
+    CommitGraph(#[from] CommitGraphError),
 }
 
 /// A poisoned lock here is recovered from rather than propagated.
@@ -258,7 +307,7 @@ mod tests {
         let store = store(Shape::Linear);
 
         let first = store.table().expect("the table opens");
-        store.refresh();
+        store.refresh().expect("the fixture is a repository");
         let second = store.table().expect("the table opens");
 
         assert!(
@@ -324,7 +373,7 @@ mod tests {
         let store = store(Shape::FeatureBranches);
         let before = store.branches().expect("the fixture's refs can be read");
 
-        store.refresh();
+        store.refresh().expect("the fixture is a repository");
         let after = store.branches().expect("the fixture's refs can be read");
 
         assert!(
@@ -347,7 +396,7 @@ mod tests {
         let second = store.refs().expect("the fixture's refs can be read");
         assert!(Arc::ptr_eq(&first, &second), "branches reuse the reading");
 
-        store.refresh();
+        store.refresh().expect("the fixture is a repository");
         let after = store.refs().expect("the fixture's refs can be read");
         assert!(!Arc::ptr_eq(&first, &after), "a refresh reads them again");
         assert_eq!(*first, *after, "nothing moved, so it is the same answer");
@@ -375,5 +424,56 @@ mod tests {
             assert!(!bare, "the fixture has a working tree");
         }
         assert_eq!(store.opens(), 1);
+    }
+
+    /// m1-the-graph/54: `B` writes a commit-graph file behind the store's
+    /// back (as it does — a separate `git` process, not through `RepoStore`).
+    /// `refresh` must notice and rebuild the table, so the walk that reads it
+    /// next is on the graph path; a second refresh with nothing changed must
+    /// not rebuild again.
+    #[test]
+    fn a_refresh_rebuilds_the_table_when_the_commit_graph_appears() {
+        let scratch = graft_fixtures::copy_into_temp(Shape::Linear);
+        let store = RepoStore::new(scratch.path().to_path_buf(), None);
+
+        let before = store.table().expect("the table opens without a graph");
+        assert!(!before.has_commit_graph(), "no graph written yet");
+        assert_eq!(store.opens(), 1, "one open for the repository");
+
+        graft_fixtures::git::run(scratch.path(), &["commit-graph", "write", "--reachable"])
+            .expect("git can write a commit-graph for this fixture");
+
+        let refreshed = store.refresh().expect("refresh can read the new status");
+        assert!(refreshed.table_rebound, "the graph's presence changed");
+        assert_eq!(
+            store.opens(),
+            2,
+            "the rebuild counts alongside the repository open"
+        );
+
+        let after = store.table().expect("the table opens");
+        assert!(!Arc::ptr_eq(&before, &after), "a new table replaced it");
+        assert!(after.has_commit_graph(), "the new table is graph-backed");
+
+        let again = store.refresh().expect("refresh can read the status again");
+        assert!(!again.table_rebound, "nothing changed the second time");
+        assert_eq!(store.opens(), 2, "no further rebuild");
+        let still = store.table().expect("the table opens");
+        assert!(Arc::ptr_eq(&after, &still), "kept, since nothing changed");
+    }
+
+    /// The common case: a refresh where the commit-graph's presence has not
+    /// changed rebuilds nothing, exactly like an M1 refresh.
+    #[test]
+    fn a_refresh_with_no_commit_graph_change_keeps_the_table() {
+        let store = store(Shape::Linear);
+        let before = store.table().expect("the table opens without a graph");
+
+        let refreshed = store.refresh().expect("refresh can read the status");
+
+        assert!(!refreshed.table_rebound, "no commit-graph appeared");
+        assert_eq!(store.opens(), 1, "no rebuild happened");
+        let after = store.table().expect("the table opens");
+        assert!(Arc::ptr_eq(&before, &after), "the same table is kept");
     }
 }

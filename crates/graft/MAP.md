@@ -301,11 +301,12 @@ re-exported from `mod.rs`.
 - `RepoStore::shared` (fn) — the shared open repository handle.
 - `RepoStore::refs` (fn) — the refs and their tips (`RefSnapshot`), read once, dropped by `refresh`; first paint's branches, seeds, walk tips and `refs::read`'s badges share it.
 - `RepoStore::branches` (fn) — the repository's branches, resolved from `refs`.
-- `RepoStore::table` (fn) — the repository's one `Arc<CommitTable>`, opened once, kept across `refresh`.
-- `RepoStore::opens` (fn) — how many times the repository has been opened from scratch.
+- `RepoStore::table` (fn) — the repository's one `Arc<CommitTable>`, opened once, usually kept across `refresh` (rebuilt only when the commit-graph's presence changed).
+- `RepoStore::opens` (fn) — how many times the repository has been opened from scratch, or its id table rebuilt for a changed commit-graph.
 - `RepoStore::common_dir` (fn) — the repository's common directory, shared by every worktree; where `crate::layout`'s split file lives (m2-details-and-diffs/10b).
-- `RepoStore::refresh` (fn) — mark cached refs and conclusions (e.g. default branch) stale.
-- `StoreError` (enum) — why the store could not answer (open, refs, branches, id table).
+- `RepoStore::refresh` (fn) — mark cached refs and conclusions (e.g. default branch) stale; returns `Result<Refreshed, StoreError>`, rebinding the id table to a new `CommitTable` when the commit-graph's presence changed since it was built (m2-details-and-diffs/21, m1-the-graph/54).
+- `Refreshed` (struct) — `refresh`'s report: `table_rebound: bool`, true when a new id table replaced the old one.
+- `StoreError` (enum) — why the store could not answer (open, refs, branches, id table, commit-graph status).
 
 ## cli
 - `Invocation` (enum) — what the user asked for.

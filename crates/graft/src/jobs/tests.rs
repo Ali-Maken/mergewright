@@ -554,6 +554,74 @@ fn a_history_job_answers_row_requests_until_cancelled() {
     assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
 }
 
+/// m1-the-graph/54, closed by m2-details-and-diffs/21: a walk started after
+/// `Ctrl+R` rebuilt the id table for a freshly-written commit-graph is on
+/// the graph path at once — no more provisional order, no promotion job.
+///
+/// This is the end-to-end half of the ticket's "Update/loop test": the pure
+/// reanchor mechanism (`history_started` setting `History::reanchor`) is
+/// covered separately in `update::tests`, since driving real git through
+/// `event_loop`'s scripted-`Wakes` harness has no precedent — that harness
+/// only ever drives a fake `Dispatch`, never a real `JobRunner`.
+#[test]
+fn refresh_after_a_commit_graph_write_puts_the_next_walk_on_the_graph_path() {
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Linear);
+    let (runner, events, _store) = runner_at(scratch.path(), 1);
+
+    // Before: no commit-graph, so a topological order is provisional.
+    runner.dispatch(Command::ReadHistory(Order::Topological));
+    let id = next_started(&events, &Task::ReadHistory);
+    let before = loop {
+        match next_report(&events) {
+            AppEvent::Progress(from, Progress::History(history::HistoryUpdate::Started(facts))) => {
+                assert_eq!(from, id);
+                break facts;
+            }
+            AppEvent::Progress(_, Progress::History(_)) => {}
+            other => panic!("expected the walk to start, got {other:?}"),
+        }
+    };
+    assert!(before.is_provisional(), "no commit-graph yet");
+    runner.dispatch(Command::CancelJob(id));
+    assert_eq!(
+        next_report(&events),
+        AppEvent::Core(Event::JobCancelled(id))
+    );
+
+    graft_fixtures::git::run(scratch.path(), &["commit-graph", "write", "--reachable"])
+        .expect("git can write a commit-graph for this fixture");
+
+    // `Ctrl+R`'s command: the synchronous refresh rebinds the table before
+    // the next `ReadHistory` is dispatched, same as `keys::refresh_key`.
+    runner.dispatch(Command::OpenRepository);
+    next_started(&events, &Task::OpenRepository);
+    next_report(&events);
+
+    runner.dispatch(Command::ReadHistory(Order::Topological));
+    let id = next_started(&events, &Task::ReadHistory);
+    let after = loop {
+        match next_report(&events) {
+            AppEvent::Progress(from, Progress::History(history::HistoryUpdate::Started(facts))) => {
+                assert_eq!(from, id);
+                break facts;
+            }
+            AppEvent::Progress(_, Progress::History(_)) => {}
+            other => panic!("expected the walk to start, got {other:?}"),
+        }
+    };
+    assert!(
+        !after.is_provisional(),
+        "the freshly-written commit-graph is used at once, no promotion needed"
+    );
+
+    runner.dispatch(Command::CancelJob(id));
+    assert_eq!(
+        next_report(&events),
+        AppEvent::Core(Event::JobCancelled(id))
+    );
+    assert_eq!(runner.shutdown(PATIENCE), Shutdown::Clean);
+}
+
 #[test]
 fn ahead_behind_is_counted_on_a_worker_never_the_loops_thread() {
     let dir = graft_fixtures::borrow(graft_fixtures::Shape::RefStates);

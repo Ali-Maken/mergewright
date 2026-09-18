@@ -163,9 +163,15 @@ fn history_started(next: &mut AppState, commands: &mut Vec<Command>, id: graft_c
     next.awaiting = Some(id);
     let mut history = History::started();
     history.strip_rows = keys::strip_rows_for(next.tier());
-    // A refresh keeps what the user folded, hid or switched to.
+    // A refresh keeps what the user folded, hid or switched to, and puts the
+    // cursor back on the commit it was on — including a `Ctrl+R` that
+    // rebuilt the id table for a commit-graph the walk had not picked up yet
+    // (m1-the-graph/54): `update` cannot see that the table was rebound
+    // without new cross-thread plumbing, so every walk restart reanchors,
+    // the same as `change_view` already does.
     if let Some(previous) = &next.history {
         history.view = previous.view.clone();
+        history.reanchor = previous.selected().map(|row| row.commit.id);
     }
     if let Some(request) = history.show(next.graph_rows()) {
         commands.push(Command::ShowRows(id, request));

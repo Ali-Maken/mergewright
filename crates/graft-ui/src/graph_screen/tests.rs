@@ -885,7 +885,7 @@ fn every_commit_graph_wording_fits_under_its_breakpoint() {
             .collect();
     assert_eq!(
         written,
-        " commit-graph written: 1,000,000 commits · the next open sorts at once"
+        " commit-graph written: 1,000,000 commits · the next open sorts at once · Ctrl+R to use it"
     );
     assert_eq!(grouped(200), "200");
     assert_eq!(grouped(1_000), "1,000");

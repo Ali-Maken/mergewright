@@ -202,6 +202,36 @@ fn space_off_a_merge_changes_nothing() {
     assert_eq!(next.history, state.history);
 }
 
+/// m2-details-and-diffs/21 (m1-the-graph/54): a walk restart — `Ctrl+R`'s
+/// among them — puts the cursor back on the commit it was on, the same
+/// `reanchor` idiom `change_view` already uses. `update` cannot tell a
+/// rebound table (a rebuilt id table on a changed commit-graph) apart from
+/// an ordinary M1 refresh — that fact is only known on the job-runner thread
+/// (`RepoStore::refresh`'s `Refreshed`) — so every restart reanchors.
+#[test]
+fn a_walk_restart_reanchors_on_the_previously_selected_commit() {
+    let id = JobId::new(7);
+    let (state, merge) = merge_on_screen(id, 1);
+    assert_eq!(
+        state
+            .history
+            .as_ref()
+            .and_then(History::selected)
+            .map(|row| row.commit.id),
+        Some(merge),
+        "the merge is selected before the restart"
+    );
+
+    let next_id = JobId::new(8);
+    let (restarted, _) = update(&state, AppEvent::Started(next_id, Task::ReadHistory));
+
+    assert_eq!(
+        restarted.history.as_ref().map(|history| history.reanchor),
+        Some(Some(merge)),
+        "the new walk is told to land back on the commit that was selected"
+    );
+}
+
 #[test]
 fn one_switches_to_first_parent_view_from_the_top_and_back() {
     let id = JobId::new(6);

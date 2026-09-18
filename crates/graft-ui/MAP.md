@@ -99,7 +99,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-
 - `GraphView::search` (field) — the search footer line (`SearchLine`): below `problem`, above `notice`; `None` when no search.
 - `GraphView::banner` (field) — `Vec<SanitizedText>` drawn under the header, above the rows, each fitted to the width (first line accent, rest info); each line costs a body row, so `graph_area` moves down with it; empty in the shipped binary (m1-the-graph/38).
 - `GraphView::commit_graph` (field) — `Option<CommitGraphLine>`: one footer row above the hints, below a notice; takes a graph row while `Some` (m1-the-graph/54).
-- `CommitGraphLine` (enum) — `Offered`, `NoGitToBuild`, `Writing`, `Written { commits }`; wording per width (≥120, 100–119, <100), key letters in the accent.
+- `CommitGraphLine` (enum) — `Offered`, `NoGitToBuild`, `Writing`, `Written { commits }`; wording per width (≥120, 100–119, <100), key letters in the accent. `Written` at ≥100 cols adds ` · Ctrl+R to use it` (m2-details-and-diffs/21).
 - `SearchLine` (enum) — `Prompt(text)` draws ` /text_`; `Status{text, failed}` draws the search's line, warning-coloured only when failed.
 - `GraphView::graphics` (field) — `gfx ok` / `gfx: <message>` in the header while pixels are drawn; `None` otherwise.
 - `GraphView::detail_shown` (field) — the detail pane is on screen; the footer adds a `<> resize` hint only then, since that's the only time its divider exists to drag (`detail-resize-and-persistence`).

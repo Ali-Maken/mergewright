@@ -383,8 +383,20 @@ impl<S: JobEvents> JobRunner<S> {
     /// here, on the dispatching thread, not in the job: the jobs that read
     /// refs are dispatched right after and may start first on another
     /// worker, and must not be served refs read before it (m1-the-graph/55).
+    ///
+    /// A refresh failure (the repository disappeared, or its commit-graph
+    /// could not be read while checking whether it changed) is not swallowed:
+    /// it is reported through the same `Product::Repository` the job below
+    /// would otherwise produce, so it reaches the status line exactly as an
+    /// open failure does.
     fn open_repository(&self) {
-        self.repos.refresh();
+        if let Err(error) = self.repos.refresh() {
+            let message = error.to_string();
+            self.announce(Task::OpenRepository, move |_| {
+                Outcome::Produced(Product::Repository(Err(message)))
+            });
+            return;
+        }
         self.announce(
             Task::OpenRepository,
             open_repository(Arc::clone(&self.repos)),

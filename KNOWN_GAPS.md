@@ -51,7 +51,7 @@ size is measured — 1.6 KiB, the same on both.)
 |---|---|---|
 | Unconditional snapshot cost on high-frequency index ops (R2-3) | Every stage/unstage fires the full §6.3 snapshot (status walk, untracked hashing, commit object, backup ref, two journal lines), and §6.8's manual-only retention lets backup refs pile up at keystroke rate. Off-thread, so no UI block — but measure on the heavy fixture in M2; if staging lags on untracked-heavy repos, propose scoping (e.g. skip untracked hashing for ops that provably can't touch untracked files) as an ADR, never silently | M2 |
 | ~~Commit-graph offer plumbing unspecified (R2-4)~~ **Closed by m1-the-graph/54.** | The decline lives in `<common_dir>/graft/commit-graph-offer` (shared by every worktree; ADR-0008 "Landed"). The write runs system git as a job, outside the undo journal by name (a cache, not history), never killed | — | closed |
-| **The running session keeps its walk after a commit-graph write.** m1/54: `B` writes the file, but the walk on screen stays on the no-commit-graph path (date order, then promotion) until the next open | `Ctrl+R` refresh reopens the walk on the graph path | M2 |
+| ~~The running session keeps its walk after a commit-graph write.~~ **Closed by m2-details-and-diffs/21.** | `RepoStore::refresh` compares `commit_graph::status` against the cached table's `has_commit_graph()`; on a change it opens a new `CommitTable` and reports `Refreshed { table_rebound: true }`. `Ctrl+R`'s walk restart reanchors on the previously-selected commit. The footer's `Written` line now says " · Ctrl+R to use it" | — | closed |
 
 ## Prototype gaps (step 3 spike, 2026-09-12; revised at the step-3 fix)
 

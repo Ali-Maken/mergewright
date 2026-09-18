@@ -141,7 +141,7 @@ pub(super) fn commit_graph_segments(line: CommitGraphLine, width: usize) -> Vec<
             vec![text(" commit-graph written · next open sorts at once")]
         }
         CommitGraphLine::Written { commits } => vec![text(&format!(
-            " commit-graph written: {} commits · the next open sorts at once",
+            " commit-graph written: {} commits · the next open sorts at once · Ctrl+R to use it",
             grouped(commits)
         ))],
     }
