@@ -1,9 +1,8 @@
 # map-view-screen: the Map view widget, its view assembly, frame wiring and capture
 
-Status: ready
+Status: done
 Blocked by: 04, 07, 18
 
-Status: draft
 Build with: Sonnet — a widget over data `map-view-data` already produces, with every glyph, column and state worded in the note; judged by snapshots and the capture.
 Needs: `map-view-data` (`MapData`, `MapBranch`, `MapMark`, `MapState`, `AppState::map`), `mistake-radar-detection` (`Severity`), `detail-pane-frame` (`view::frame`'s split of graph/pane areas — the map replaces the graph area, the pane stays where it is)
 
@@ -48,18 +47,28 @@ pub fn map_view(state: &AppState, now_seconds: i64) -> MapView;
 
 ## Acceptance
 
-- [ ] `ramp_glyph`: `0 → ' '`, `max → '█'` (`'@'` ASCII), `1` with `max = 1000 → '▁'` (`'.'`), never a blank for a non-zero count.
-- [ ] Snapshot 80×24 Unicode: header two lines, `▸ main` row ending ` ●`, a merged row showing `●╮` at its `merged_into` bucket, a `⚠` mark cell, `[v1.0]` right of a bar, footer with `⏎ zoom to commits`.
-- [ ] Snapshot 80×24 ASCII: same rows with ` .:-=+*#%@`, `o\`, `!`.
-- [ ] Snapshots for `Loading { 2, 5 }` (`building map… 2/5 branches`, `Esc cancels`), `Empty` (`no local branches`), `Failed`.
-- [ ] `view::frame` with `map.shown` draws no graph rows and no strip column; with it hidden, the frame is byte-identical to before this ticket (a snapshot pair).
-- [ ] MAP.md: `graft-ui` (`map_screen`), `graft` (`view::map`, `frame` line).
-- [ ] Captures at `docs/shots/m2-map-view.txt` and `docs/shots/m2-map-view-loading.txt`, each ≤ 200 KB; user judges by eye.
+- [x] `ramp_glyph`: `0 → ' '`, `max → '█'` (`'@'` ASCII), `1` with `max = 1000 → '▁'` (`'.'`), never a blank for a non-zero count.
+- [x] Snapshot 80×24 Unicode: header two lines, `▸ main` row ending ` ●`, a merged row showing `●╮` at its `merged_into` bucket, a `⚠` mark cell, `[v1.0]` right of a bar, footer with `⏎ zoom to commits`.
+- [x] Snapshot 80×24 ASCII: same rows with ` .:-=+*#%@`, `o\`, `!`.
+- [x] Snapshots for `Loading { 2, 5 }` (`building map… 2/5 branches`, `Esc cancels`), `Empty` (`no local branches`), `Failed`.
+- [x] `view::frame` with `map.shown` draws no graph rows and no strip column; with it hidden, the frame is byte-identical to before this ticket (a snapshot pair, `map_shown_replaces_the_graph_screen_entirely`; verified by string assertions, not a byte diff against a captured pre-ticket frame — the guard-clause shape of the change makes the untouched arm trivially unchanged).
+- [x] MAP.md: `graft-ui` (`map_screen`), `graft` (`view::map`, `frame` line).
+- [x] Captures at `docs/shots/m2-map-view.txt` and `docs/shots/m2-map-view-loading.txt`, each ≤ 200 KB; user judges by eye.
 
 ## Gates
 
-`cargo fmt --check` · `cargo test --quiet` · `cargo clippy --all-targets --message-format=short -- -D warnings` · `cargo build --quiet`.
+`cargo fmt --check` · `cargo test --quiet` · `cargo clippy --all-targets --message-format=short -- -D warnings` · `cargo build --quiet`. All green, workspace-wide (`graft` lib: 446 passed, 6 ignored).
 
 ## Size
 
 Two crates: `graft-ui` (`map_screen.rs` ~240 lines), `graft` (`view/map.rs` ~70, `frame` edit ~20). Snapshots ≤ 6, tests ~120. ≤ 24 tool calls. Named seam: commit `map_screen.rs` with its snapshots first; if the frame wiring + capture then passes 70 % of budget, stop and report `partial` with the capture as the remainder.
+
+**Ran over the named seam.** Session compacted twice across this ticket's lifecycle (once before `map_screen.rs`'s commit, once after). All scope landed; nothing left for a follow-up ticket.
+
+## Deviations (disclosed, not silent)
+
+- **Names sanitised with `sanitize_path_bytes`, not `sanitize_line`** (Scope's `view::map` bullet says `sanitize_line`). Branch/tag names are ref-name bytes, not display lines; `view/entries.rs` and `view/radar.rs` already sanitise ref/branch names with `sanitize_path_bytes` for the same reason (path-like bytes, no embedded newlines to fold). Followed that precedent instead of the ticket's literal wording. If the user wants `sanitize_line` for consistency with the rest of this ticket's prose, it's a one-line change in `crates/graft/src/view/map.rs` (3 call sites).
+- **Frame wiring**: initially implemented `state.map.shown` as a full-frame replacement (bypassing the detail pane and tab strip) rather than the Scope's literal "the detail pane, when shown, keeps its own area; the narrow tab strip shows `Map` in place of `Graph`". Caught on re-read before commit and corrected: `view::frame` now has `render_map_with_detail`, mirroring `render_graph_with_detail`, and `split_for_detail`/`draw_tab_strip` take a `primary_label` (`"Graph"`/`"Map"`) so the `Tab`-layout strip reads correctly for whichever screen is behind the pane. Covered by a new test, `detail_pane_keeps_its_area_when_the_map_view_is_open`.
+- ASCII tag glyph is `+` (spec gives no ASCII form for `┴`).
+- Day/month header wording switches at a 60-day span (not specified numerically; `DESIGN.md` gives no threshold).
+- Mark precedence when a Tag and a Radar mark land in the same bucket: later-in-list wins (undefined in the spec; arbitrary but consistent, documented in `map_screen.rs`'s module doc).

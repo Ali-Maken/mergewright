@@ -11,6 +11,7 @@ One line per public item. Update when a public item changes.
 - `graph_screen` (mod) — the graph screen Graft opens on: header, rows, key hints (every graph key, F3 included; narrow widths drop whole hints from the right, m1-the-graph/33; `y sha` added in 45).
 - `graph_screen::badges` (mod) — ref badges: kinds, tracking state, plain/Nerd Font text.
 - `graph_screen::columns` (mod) — pure formatting for the author initials, relative date and short SHA.
+- `map_screen` (mod) — the Map view widget: `MapView`/`MapRowView`/`MapMarkView`/`MapStatus`/`MapScreen`, `ramp_glyph` (m2-details-and-diffs/19).
 - `paint` (mod) — token-to-style helpers for widgets.
 - `status_screen` (mod) — the status screen view and widget.
 - `syntax` (mod) — line-level syntax highlighting (`syntect`) over sanitised text.
@@ -134,6 +135,18 @@ Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-
 - `relative_date(then, now)` (fn) — how long ago `then` was relative to `now` (both Unix seconds), in short form (`"2m"`, `"3h"`, `"2d"`, `"2w"`, `"2mo"`, `"1y"`), rounding to match `git log --date=relative`'s cascade exactly (m1-the-graph/48) — units below "now" never read `1`, only years can; `then > now` reads `"future"` (m1-the-graph/53).
 - `absolute_date` (fn) — a commit's recorded date in its own offset, `"2026-09-13 14:02 +0500"` (Hinnant's `civil_from_days`, integer-only, no date/time crate) (m1-the-graph/34).
 - `short_sha` (fn) — the first N hex characters of a full object id.
+
+## map_screen
+The Map view (`M`, DESIGN.md §5.1): one row per local branch, a density
+sparkline against a shared time axis (m2-details-and-diffs/19). Owns no
+state or I/O; `view::map::map_view` (crate `graft`) builds its input from
+`map::MapData`.
+- `MapMarkView` (enum) — `Tag(SanitizedText)` or `Radar(Severity)`: a mark on one bucket, sanitised for drawing.
+- `MapRowView` (struct) — one branch's row: `name`, `identity`, `counts`, `is_current`, `merged_into`, `marks`, `active`, `complete`.
+- `MapStatus` (enum) — `Loading { done, total }`, `Empty`, `Failed(SanitizedText)`, `Ready`: what draws instead of, or with, the rows.
+- `MapView` (struct) — everything the screen draws: `title_branch`, `span_days`, `rows`, `max_count`, `buckets`, `selected`, `more`, `complete`, `status`, `ascii`.
+- `MapScreen` (struct) — `view`, `theme`; `Widget::render` draws the header (branch/span, then `BRANCH`/`NOW`), rows (prefix, name, bar, marks, elbow, tag annotations, current/active suffix), the state body, and the footer.
+- `ramp_glyph(count, max, ascii)` (fn) — the density glyph for a bucket: blank only at `count == 0`, otherwise the ramp's ceiling-rounded level (never a false blank for a nonzero count).
 
 ## paint
 - `color` (fn) — resolve a `TokenColor` to a ratatui `Color`.

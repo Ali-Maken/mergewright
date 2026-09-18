@@ -1,0 +1,34 @@
+# m2-map-view-loading.txt: TestBackend capture (not a pty), 80x24. Fixture:
+# capture_m2_map_view_loading in crates/graft/src/view/tests.rs (#[ignore]d,
+# run by hand to regenerate). `state.map.progress = Some((2, 5))`, no build
+# landed yet.
+#
+# Judge by eye:
+# - Header still draws ("MAP · ...").
+# - Body: one centred line, "building map… 2/5 branches".
+# - Footer: "Esc cancels", not the usual key hints.
+#
+"MAP ·  · last 1 day                                                             "
+"  BRANCH             NOW                                                        "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                           building map… 2/5 branches                           "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"Esc cancels                                                                     "

@@ -1334,3 +1334,198 @@ fn capture_m2_explain_panel() {
     )
     .expect("docs/shots is writable");
 }
+
+/// `state.map.shown` (`map-view-screen`, m2-details-and-diffs/19): the Map
+/// view replaces the lane graph — no graph rows, no strip column — and the
+/// graph path draws exactly as it did before this ticket when the Map view
+/// is closed. The detail pane, when open, keeps its own area either way
+/// (`detail_pane_keeps_its_area_when_the_map_view_is_open` below).
+#[test]
+fn map_shown_replaces_the_graph_screen_entirely() {
+    let mut state = AppState {
+        history: Some(history_of(3, 0)),
+        size: Size {
+            columns: 60,
+            rows: 8,
+        },
+        ..AppState::default()
+    };
+
+    let hidden = draw(&state, 60, 8);
+    assert!(!hidden.contains("MAP ·"), "{hidden}");
+
+    state.map.shown = true;
+    let shown = draw(&state, 60, 8);
+    assert!(shown.contains("MAP ·"), "{shown}");
+    assert!(
+        !shown.contains("Commit 2"),
+        "the graph's rows do not draw under the Map view: {shown}"
+    );
+}
+
+/// `state.map.shown` with `state.detail.shown` (`map-view-screen`,
+/// m2-details-and-diffs/19): the detail pane keeps its own area instead of
+/// the Map view taking the whole frame, and the narrow tier's tab strip
+/// reads `Map` where it otherwise reads `Graph`.
+#[test]
+fn detail_pane_keeps_its_area_when_the_map_view_is_open() {
+    use graft_ui::detail::DetailFocus;
+
+    let mut state = AppState {
+        history: Some(history_of(3, 0)),
+        size: Size {
+            columns: 90,
+            rows: 24,
+        },
+        ..AppState::default()
+    };
+    state.map.shown = true;
+    state.detail.shown = true;
+    state.detail.focus = DetailFocus::Files;
+
+    // Narrow width (< the `Below` breakpoint): `Tab` layout, so the strip
+    // draws and only the focused side's content follows it.
+    let shown = draw(&state, 90, 24);
+    assert!(
+        shown.contains("[Detail]"),
+        "the tab strip reads Map beside Detail: {shown}"
+    );
+    assert!(shown.contains("Map"), "{shown}");
+    assert!(
+        !shown.contains("MAP ·"),
+        "Files focus shows the pane, not the Map body: {shown}"
+    );
+}
+
+/// Regenerates `docs/shots/m2-map-view.txt` (m2-details-and-diffs/19).
+///
+/// `#[ignore]`d: it writes a file. Run it by hand with
+/// `cargo test -p graft --lib capture_m2_map_view -- --ignored`.
+#[test]
+#[ignore = "writes docs/shots/m2-map-view.txt; run by hand to regenerate"]
+#[allow(clippy::too_many_lines)] // one hand-built fixture plus its capture header, not logic
+fn capture_m2_map_view() {
+    use crate::map::{MapBranch, MapData, MapMark};
+    use crate::update::detail::Loading;
+    use graft_core::mistake_radar::Severity;
+    use graft_core::ref_name::RefName;
+    use graft_graph::identity::BranchIdentity;
+
+    fn branch(name: &str, byte: u8, current: bool, default: bool, tip_date: i64) -> MapBranch {
+        MapBranch {
+            name: RefName::new(format!("refs/heads/{name}")).expect("a valid ref name"),
+            identity: BranchIdentity::of_name(&[byte]),
+            tip: oid(byte),
+            tip_date,
+            counts: vec![0, 1, 2, 7, 0, 0, 3, 0, 1, 0],
+            is_current: current,
+            is_default: default,
+            merged_into: None,
+            marks: Vec::new(),
+            complete: true,
+        }
+    }
+
+    const DAY: i64 = 86_400;
+    let mut main = branch("main", 1, true, true, 9 * DAY);
+    let mut feature = branch("feature/auth", 2, false, false, 6 * DAY);
+    feature.counts = vec![0, 0, 3, 4, 0, 0, 0, 0, 0, 0];
+    feature.merged_into = Some((0, 3));
+    let mut release = branch("release/2.3", 3, false, false, 9 * DAY);
+    release.counts = vec![0, 0, 0, 0, 0, 0, 0, 1, 2, 0];
+    release.marks = vec![
+        (7, MapMark::Tag(b"v1.0".to_vec())),
+        (8, MapMark::Radar(Severity::Warning)),
+    ];
+    main.counts = vec![0, 1, 2, 7, 0, 0, 3, 0, 1, 4];
+
+    let data = MapData {
+        branches: vec![main, feature, release],
+        more: 2,
+        from: 0,
+        to: 10 * DAY,
+        buckets: 10,
+        complete: false,
+    };
+
+    let mut state = AppState {
+        size: Size {
+            columns: 80,
+            rows: 24,
+        },
+        ..AppState::default()
+    };
+    state.map.shown = true;
+    state.map.data = Loading::Ready(std::sync::Arc::new(data));
+
+    let screen = draw(&state, 80, 24);
+    assert!(screen.contains("MAP ·"), "{screen}");
+    let header = "\
+# m2-map-view.txt: TestBackend capture (not a pty), 80x24. Fixture:
+# capture_m2_map_view in crates/graft/src/view/tests.rs (#[ignore]d, run by
+# hand to regenerate). Three synthetic branches: main (current, tip in the
+# newest bucket), feature/auth (merged into main's row, elbow at bucket 3),
+# release/2.3 (a v1.0 tag and a Warning radar mark), plus 2 more local
+# branches beyond the row cap (footer's \"+2 more\"), and complete: false
+# (footer's \" · partial\").
+#
+# Judge by eye:
+# - Header: \"MAP · main · last N days|months\", second line \"BRANCH ... NOW\".
+# - main's row: `\u{25b8}` prefix, bar ending in its tallest bucket, trailing ` \u{25cf}`.
+# - feature/auth's row: bar ends in an elbow (`\u{25cf}\u{256e}`) at bucket 3.
+# - release/2.3's row: a `\u{2534}` mark with `[v1.0]` after the bar, a `\u{26a0}` mark
+#   one bucket later.
+# - Footer: `+2 more` and ` · partial`, both present.
+#
+";
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m2-map-view.txt"
+        ),
+        format!("{header}{screen}"),
+    )
+    .expect("docs/shots is writable");
+}
+
+/// Regenerates `docs/shots/m2-map-view-loading.txt` (m2-details-and-diffs/19).
+///
+/// `#[ignore]`d: it writes a file. Run it by hand with
+/// `cargo test -p graft --lib capture_m2_map_view_loading -- --ignored`.
+#[test]
+#[ignore = "writes docs/shots/m2-map-view-loading.txt; run by hand to regenerate"]
+fn capture_m2_map_view_loading() {
+    let mut state = AppState {
+        size: Size {
+            columns: 80,
+            rows: 24,
+        },
+        ..AppState::default()
+    };
+    state.map.shown = true;
+    state.map.data = crate::update::detail::Loading::Pending(graft_core::job::JobId::new(1));
+    state.map.progress = Some((2, 5));
+
+    let screen = draw(&state, 80, 24);
+    assert!(screen.contains("building map"), "{screen}");
+    let header = "\
+# m2-map-view-loading.txt: TestBackend capture (not a pty), 80x24. Fixture:
+# capture_m2_map_view_loading in crates/graft/src/view/tests.rs (#[ignore]d,
+# run by hand to regenerate). `state.map.progress = Some((2, 5))`, no build
+# landed yet.
+#
+# Judge by eye:
+# - Header still draws (\"MAP · ...\").
+# - Body: one centred line, \"building map… 2/5 branches\".
+# - Footer: \"Esc cancels\", not the usual key hints.
+#
+";
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m2-map-view-loading.txt"
+        ),
+        format!("{header}{screen}"),
+    )
+    .expect("docs/shots is writable");
+}

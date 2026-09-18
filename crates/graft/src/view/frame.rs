@@ -6,6 +6,7 @@ use graft_term::SanitizedText;
 use graft_term::sanitize_line;
 use graft_ui::detail_pane::{DetailLayout, DetailPane};
 use graft_ui::graph_screen::{GraphScreen, GraphView, GraphicsStatus, max_lanes_for};
+use graft_ui::map_screen::MapScreen;
 use graft_ui::paint::color;
 use graft_ui::status_screen::StatusScreen;
 use graft_ui::theme::{Theme, Token};
@@ -17,6 +18,7 @@ use crate::session::Session;
 use crate::update::{AppState, Screen, Status};
 
 use super::detail::detail_view;
+use super::map::map_view;
 use super::rows::graph_view;
 use super::status::status_view;
 
@@ -74,6 +76,26 @@ pub fn view_with_graphics(
     let pixels = draws_pixels(session, state);
 
     match state.screen {
+        Screen::Graph if state.map.shown => {
+            let tier = tier_in_force(session, state);
+            let mut screen = map_view(state, state.harness.clock.now_seconds());
+            screen.ascii = tier == RenderingTier::Ascii;
+
+            let graph = if state.detail.shown {
+                render_map_with_detail(session, state, frame, &screen, area)
+            } else {
+                frame.render_widget(
+                    MapScreen {
+                        view: &screen,
+                        theme: &session.theme,
+                    },
+                    area,
+                );
+                None
+            };
+            draw_context_menu(state, frame, area, &session.theme);
+            graph
+        }
         Screen::Graph => {
             let mut screen = graph_view(state, state.harness.clock.now_seconds());
             screen.icons = session.icons;
@@ -123,7 +145,7 @@ fn render_graph_with_detail(
         (area.width, area.height),
     );
     let view = detail_view(state);
-    let (graph_area, pane_area) = split_for_detail(frame, session, layout, area);
+    let (graph_area, pane_area) = split_for_detail(frame, session, layout, area, "Graph");
 
     if let Some(pane_area) = pane_area {
         frame.render_widget(
@@ -143,40 +165,87 @@ fn render_graph_with_detail(
     graph
 }
 
-/// `layout`'s graph rectangle and pane rectangle, either of which is absent
-/// in `Tab` mode: only the shown side draws. Also draws the tab strip, since
-/// only this function knows the divide between the strip and its content.
+/// The Map screen split with the detail pane: the same [`DetailLayout`] the
+/// graph uses, so opening the detail pane while `state.map.shown` neither
+/// hides the pane nor gives the map the whole frame back
+/// (`map-view-screen`, m2-details-and-diffs/19). Its tab strip reads `Map`
+/// where the graph's reads `Graph`.
+fn render_map_with_detail(
+    session: &Session,
+    state: &AppState,
+    frame: &mut Frame,
+    screen: &graft_ui::map_screen::MapView,
+    area: Rect,
+) -> Option<Rect> {
+    let layout = crate::update::detail::effective_layout(
+        state.detail.focus,
+        &state.detail.pane_size,
+        (area.width, area.height),
+    );
+    let view = detail_view(state);
+    let (map_area, pane_area) = split_for_detail(frame, session, layout, area, "Map");
+
+    if let Some(pane_area) = pane_area {
+        frame.render_widget(
+            DetailPane {
+                view: &view,
+                layout: &layout,
+                theme: &session.theme,
+            },
+            pane_area,
+        );
+    }
+
+    let map_area = map_area?;
+    frame.render_widget(
+        MapScreen {
+            view: screen,
+            theme: &session.theme,
+        },
+        map_area,
+    );
+    None
+}
+
+/// `layout`'s primary rectangle (graph or map) and pane rectangle, either of
+/// which is absent in `Tab` mode: only the shown side draws. Also draws the
+/// tab strip, since only this function knows the divide between the strip
+/// and its content. `primary_label` is `"Graph"` or `"Map"`, whichever
+/// screen this frame is drawing behind the detail pane.
 fn split_for_detail(
     frame: &mut Frame,
     session: &Session,
     layout: DetailLayout,
     area: Rect,
+    primary_label: &str,
 ) -> (Option<Rect>, Option<Rect>) {
     if let DetailLayout::Tab { shown } = layout {
         let strip = Rect {
             height: 1.min(area.height),
             ..area
         };
-        draw_tab_strip(frame, strip, shown, &session.theme);
+        draw_tab_strip(frame, strip, shown, primary_label, &session.theme);
     }
     graft_ui::detail_pane::split_area(layout, area)
 }
 
-/// The narrow tier's tab strip: `[Graph] Detail` or `Graph [Detail]`,
-/// bracketing whichever side is on screen.
+/// The narrow tier's tab strip: `[Graph] Detail` or `Graph [Detail]`
+/// (`[Map] Detail` / `Map [Detail]` when `state.map.shown`), bracketing
+/// whichever side is on screen.
 fn draw_tab_strip(
     frame: &mut Frame,
     area: Rect,
     detail_shown: bool,
+    primary_label: &str,
     theme: &graft_ui::theme::Theme,
 ) {
     if area.height == 0 || area.width == 0 {
         return;
     }
     let text = if detail_shown {
-        "Graph  [Detail]"
+        format!("{primary_label}  [Detail]")
     } else {
-        "[Graph]  Detail"
+        format!("[{primary_label}]  Detail")
     };
     let style = Style::default().fg(graft_ui::paint::color(
         theme.token(graft_ui::theme::Token::TextMuted),
