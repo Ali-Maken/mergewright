@@ -44,6 +44,13 @@ pub enum Progress {
     History(crate::history::HistoryUpdate),
     /// A search read another chunk of history and found these commits.
     Search(std::sync::Arc<[graft_core::oid::Oid]>),
+    /// The Map view finished another row's walk (`crate::map`).
+    Map {
+        /// Rows finished so far.
+        done: u32,
+        /// Rows the view is building in total.
+        total: u32,
+    },
 }
 
 /// What a job was started to do.
@@ -113,6 +120,8 @@ pub enum Task {
         /// How many commits back the probe looked.
         window: u32,
     },
+    /// The Map view's per-branch bucket counts (`crate::map`, `M`).
+    Map,
 }
 
 /// What a job brought back.
@@ -173,6 +182,10 @@ pub enum Product {
     ForcePushProbe(String, graft_ops::mistake_radar::probes::ForcePushVerdict),
     /// The duplicate-commit probe's groups, or why it could not run.
     DuplicatesProbe(Result<std::sync::Arc<graft_ops::mistake_radar::probes::Duplicates>, String>),
+    /// The Map view's per-branch bucket counts, or why it could not be built
+    /// (`crate::map`). A `Stop` firing mid-walk is one more line here, the
+    /// same as any other failure — not folded into a silent cancellation.
+    Map(Result<std::sync::Arc<crate::map::MapData>, String>),
 }
 
 /// What running `git --version` found.
@@ -268,6 +281,9 @@ pub enum Command {
     /// Probe the newest `window` commits for shared patch-ids, under an id
     /// `update` chose.
     DuplicatesProbe(JobId, u32),
+    /// Build the Map view's per-branch bucket counts, under an id `update`
+    /// chose (`M`, `update::map`).
+    BuildMap(JobId, crate::map::MapRequest),
 }
 
 /// Where the offer to build a missing commit-graph file is (m1-the-graph/54).

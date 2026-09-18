@@ -26,7 +26,7 @@ use crate::history;
 use crate::history::RowRequest;
 use crate::jobs::radar::RadarContext;
 use crate::repos::RepoStore;
-use crate::update::{AppEvent, Command, Product, Task};
+use crate::update::{AppEvent, Command, Product, Progress, Task};
 use graft_ops::mistake_radar::probes::{Duplicates, EvilVerdict, ForcePushVerdict};
 
 /// The Mistake Radar's context job: reads the default branch's tip and
@@ -470,6 +470,23 @@ impl<S: JobEvents> JobRunner<S> {
         });
         self.row_requests().insert(id, asks);
     }
+
+    /// Builds the Map view's per-branch bucket counts, under an id `update`
+    /// already chose (`update::map::MapState::open`, mirroring the detail
+    /// pane's own jobs — see `queue_as`'s doc).
+    fn build_map(&self, id: JobId, req: crate::map::MapRequest) {
+        let repos = Arc::clone(&self.repos);
+        let sink = self.sink.clone();
+        self.queue_as(id, Some(Task::Map), |id| {
+            Box::new(move |cancel: &Cancel| {
+                let mut report = |done, total| {
+                    sink.deliver(AppEvent::Progress(id, Progress::Map { done, total }));
+                };
+                let product = super::map::build_map(&repos, &req, &mut report, cancel);
+                Outcome::Produced(Product::Map(product))
+            })
+        });
+    }
 }
 
 impl<S: JobEvents> Dispatch for JobRunner<S> {
@@ -513,6 +530,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             | Command::DuplicatesProbe(..)) => {
                 self.dispatch_detail(command);
             }
+            Command::BuildMap(id, req) => self.build_map(id, req),
             Command::CancelJob(id) => {
                 self.row_requests().remove(&id);
                 self.cancel(id);

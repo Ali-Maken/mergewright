@@ -71,6 +71,7 @@ mod tests;
 
 mod detail;
 mod kinds;
+mod map;
 mod pool;
 pub(crate) mod radar;
 mod runner;

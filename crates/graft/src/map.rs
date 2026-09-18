@@ -56,7 +56,12 @@ const SKEW_TOLERANCE_SECONDS: i64 = 36 * 3_600;
 const CHUNK_LIMIT: usize = 500;
 
 /// What the Map view job is asked to build.
-#[derive(Clone, Debug)]
+///
+/// `PartialEq`/`Eq` added beyond the ticket's own signature (a derive, not a
+/// signature change, ticket 18's own allowance for `Policy: Clone`): every
+/// field already has both, and [`crate::update::Command`] derives them over
+/// its whole enum, so `Command::BuildMap` needs them here too.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MapRequest {
     /// Columns in every row's sparkline: the width the view has to draw in.
     pub buckets: usize,

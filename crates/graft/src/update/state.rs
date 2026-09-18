@@ -134,6 +134,9 @@ pub struct AppState {
     /// (`view::rows`, m2-details-and-diffs/13b). Set from `view::entries`,
     /// which is the only writer; everything else only reads it.
     pub radar_column_seen: std::cell::Cell<bool>,
+    /// The Map view (`M`, DESIGN.md §5.1, m2-details-and-diffs/18): hidden
+    /// until pressed, built fresh each time and thrown away on close.
+    pub map: super::map::MapState,
 }
 
 /// The screens Graft can show.

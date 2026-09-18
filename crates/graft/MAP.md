@@ -100,8 +100,8 @@ The Map view's per-branch bucket counts (m2-details-and-diffs/18): one bounded w
 ## update
 - `AppEvent` (enum) — events fed into `update`, including job products.
 - `Progress` (enum) — what a running job hands over before it ends.
-- `Task` (enum) — jobs identified so their results can be told apart from stray ones; `ReadRefs` reads the badges; `ReadWorkingTree` reads working-tree status counts; `PromoteHistory` sorts for ADR-0008 promotion; `Search` scans for `/`; `WriteCommitGraph`/`DeclineCommitGraph` the offer's jobs. `Progress::Search` carries one chunk's hits; `ListFiles { spec }`, `FileDiff { key }`, `ContainedIn { oid }` the detail pane's reads; `EvilProbe { merge }` the open merge's evil-merge check.
-- `Product` (enum) — what a job brought back; `Refs` carries `RefBadges` or why they failed; `WorkingTree` carries `WorkingTreeCounts` or why they failed; `TopologicalOrder` carries a sort's order; `CommitGraph(Result<Written, String>)` and `CommitGraphDeclined(Result<(), String>)` the offer's answers; `Files(Result<(Arc<FileListView>, Arc<FileList>), String>)`, `FileDiff(DiffKey, Result<Arc<DiffView>, String>)`, `ContainedIn(Oid, Result<Contained, String>)` the detail pane's answers; `EvilProbe(Oid, EvilVerdict)` one merge's evil-merge verdict (never a `Result` — `NotCheckable` is one of the verdict's own answers).
+- `Task` (enum) — jobs identified so their results can be told apart from stray ones; `ReadRefs` reads the badges; `ReadWorkingTree` reads working-tree status counts; `PromoteHistory` sorts for ADR-0008 promotion; `Search` scans for `/`; `WriteCommitGraph`/`DeclineCommitGraph` the offer's jobs. `Progress::Search` carries one chunk's hits; `ListFiles { spec }`, `FileDiff { key }`, `ContainedIn { oid }` the detail pane's reads; `EvilProbe { merge }` the open merge's evil-merge check; `Map` the Map view's build (m2-details-and-diffs/18), announced under `update`'s own id like the detail pane's own jobs.
+- `Product` (enum) — what a job brought back; `Refs` carries `RefBadges` or why they failed; `WorkingTree` carries `WorkingTreeCounts` or why they failed; `TopologicalOrder` carries a sort's order; `CommitGraph(Result<Written, String>)` and `CommitGraphDeclined(Result<(), String>)` the offer's answers; `Files(Result<(Arc<FileListView>, Arc<FileList>), String>)`, `FileDiff(DiffKey, Result<Arc<DiffView>, String>)`, `ContainedIn(Oid, Result<Contained, String>)` the detail pane's answers; `EvilProbe(Oid, EvilVerdict)` one merge's evil-merge verdict (never a `Result` — `NotCheckable` is one of the verdict's own answers); `Map(Result<Arc<MapData>, String>)` the Map view's build, or why not — a `Stop` firing is one more line here, not a silent cancellation.
 - `GitCheck` (enum) — what running `git --version` found.
 - `AppState` (struct) — the whole app state.
 - `AppState::quit` (field) — set when Graft is leaving; terminal restored before reporting.
@@ -134,6 +134,7 @@ The Map view's per-branch bucket counts (m2-details-and-diffs/18): one bounded w
 - `AppState::context_menu` (field) — `Option<(usize, graft_ui::context_menu::ContextMenu)>`: the `.`/right-click popup, if one is open; row is `update::context_menu::WORKING_TREE_ROW` for the uncommitted-changes row (`context-actions-menu`, m2-details-and-diffs/12).
 - `AppState::radar` (field) — `update::radar::RadarState`: the Mistake Radar's default-branch context and `[radar]` policy (m2-details-and-diffs/13, 13b).
 - `AppState::radar_column_seen` (field) — `Cell<bool>`, sticky once any row's marker has been `Some` this session; keeps the marker column showing after the row scrolls off-screen (m2-details-and-diffs/13b).
+- `AppState::map` (field) — `update::map::MapState`: the Map view's visibility and its build, if any (m2-details-and-diffs/18).
 - `AppState::uncommitted_row_shown` (fn) — does the working-tree row draw this frame: a dirty tree and `HEAD` topmost (m1-the-graph/12b); `view::entries::uncommitted_shown` and `view::strips` both delegate to it.
 - `AppState::selected_spec` (fn) — the `DetailSpec` the cursor now names: `WorkingTree` on the flag, else the history cursor's commit.
 - `AppState::renderer_override` (field) — the tier-drop key (`F3`) forced this tier for the rest of the run, or `None` for whatever `Session::settle` decided (m1-the-graph/19).
@@ -147,7 +148,7 @@ The Map view's per-branch bucket counts (m2-details-and-diffs/18): one bounded w
 - `Size` (struct) — terminal size in character cells.
 - `Size::columns` (field) — width in character cells.
 - `Size::rows` (field) — height in character cells.
-- `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows; `ReadRefs` reads refs and ahead/behind off the loop's thread; `ReadWorkingTree` reads working-tree status counts off the loop's thread; `PromoteHistory` sorts a provisional walk's range topologically; `Search(Query)` starts a search job. `ListFiles(JobId, DiffSpec, DiffOptions)`, `ReadFileDiff(JobId, DiffKey, FileEntry)`, `ContainedIn(JobId, Oid)`, `EvilProbe(JobId, Oid)` run the detail pane's reads under ids `update` chose (`CancelJob` stops them). `CopyToClipboard(String)` is terminal output the loop writes itself (through the session's tmux transport; a write error ends the loop), never dispatched to jobs (m1-the-graph/45). `SaveLayout(PaneSize)` is written to disk by the loop itself (`crate::layout::save_split`); a failure is expected and non-fatal (m2-details-and-diffs/10b).
+- `Command` (enum) — effects `update` asks the loop to carry out; `ShowRows(JobId, RowRequest)` asks a history job for rows; `ReadRefs` reads refs and ahead/behind off the loop's thread; `ReadWorkingTree` reads working-tree status counts off the loop's thread; `PromoteHistory` sorts a provisional walk's range topologically; `Search(Query)` starts a search job. `ListFiles(JobId, DiffSpec, DiffOptions)`, `ReadFileDiff(JobId, DiffKey, FileEntry)`, `ContainedIn(JobId, Oid)`, `EvilProbe(JobId, Oid)` run the detail pane's reads under ids `update` chose (`CancelJob` stops them). `CopyToClipboard(String)` is terminal output the loop writes itself (through the session's tmux transport; a write error ends the loop), never dispatched to jobs (m1-the-graph/45). `SaveLayout(PaneSize)` is written to disk by the loop itself (`crate::layout::save_split`); a failure is expected and non-fatal (m2-details-and-diffs/10b). `BuildMap(JobId, MapRequest)` runs the Map view's build under an id `update` chose itself, like the detail pane's own jobs (m2-details-and-diffs/18).
 - `CHROME_ROWS` (const) — screen rows that are not the graph without a harness banner; `graft_ui::graph_screen::CHROME_ROWS`. `AppState::graph_rows` adds `Harness::banner_rows`.
 - `AppState::graph_rows` (fn) — history rows the graph pane shows at the current size; never zero.
 - `update` (fn) — the pure state transition function.
@@ -178,6 +179,18 @@ The Mistake Radar's own state: pure, no I/O (m2-details-and-diffs/13, 13b).
 - `request_context` (fn) — `(state, commands, next_id)`; asks for the radar context once the default branch's tip is known on `state` and nothing is already `Pending`/`Ready`. Called at the end of every `update`, which covers both startup and refresh: neither knows the tip until the refs job answers.
 - `context_landed` (fn) — `(state, id, result)`; lands `jobs::radar::run_radar_context`'s answer, dropping it if `id` is stale.
 - `reset_for_refresh` (fn) — `Ctrl+R` throws the context, every force-push verdict and the duplicates probe away: a fetch is when a remote can have been rewritten (m2-details-and-diffs/15, 16).
+
+## update::map
+The Map view's own state and keys (`M`); built fresh on open, thrown away on close — cheap enough to redo every time. No drawing here — `view::map`, a later ticket, draws whatever `MapState::data` holds (m2-details-and-diffs/18).
+- `MapState` (struct) — `shown: bool`, `data: Loading<Arc<crate::map::MapData>>`, `progress: Option<(u32, u32)>` (done, total rows), `selected: usize` (row under the cursor).
+- `MapState::open` (fn) — `(&mut self, req: MapRequest, next_id: &mut impl FnMut() -> JobId) -> Vec<Command>`: shows the view, resets selection/progress, returns one `Command::BuildMap` under an id `next_id` hands out.
+- `MapState::close` (fn) — `(&mut self) -> Vec<Command>`: hides the view and discards the data either way; a still-`Pending` build gets a `Command::CancelJob`.
+- `MapState::selected_tip` (fn) — `(&self) -> Option<Oid>`: the selected row's tip commit, once `data` is `Ready`.
+- `buckets_for` (fn) — `(columns: u16) -> usize`: `max(10, columns − 24)`.
+- `request` (fn) — `(state: &AppState) -> MapRequest`: `buckets` off the terminal's columns, `clock`/`policy` off `AppState`, `previous_default_tips` from the radar context if `Ready` else empty; `build_map` derives `default_branch`/`remotes` itself from the `RepoStore`, so `MapRequest` carries none of that.
+- `map_key` (fn, `pub(super)`) — `(next, commands, key) -> bool`: `M` opens (only on the graph screen, detail focus on the graph); while shown, `M`/`Esc` close (cancelling a pending build), `↑`/`↓`/`j`/`k` move the selection, `Enter` seeks the graph to the selected row's tip and closes the view (`seek_selected`, via `History::seek`); `true` when the key was this view's to answer.
+- `map_event` (fn, `pub(super)`) — routes `Product::Map`/`Progress::Map` to `MapState::produced`/`progressed`, dropping a stale id.
+- `resized` (fn, `pub(super)`) — while shown, cancels the running build and opens a new one sized for the new width.
 
 ## update::detail
 The detail pane's state and transitions; pure (no I/O, no clock). Drawing is `detail-pane-frame`'s.
@@ -344,6 +357,7 @@ Internal split (m1-the-graph/71, public paths unchanged): `types` (`Outcome`,
 `Work`, `Cancel`, `JobEvents`, `Delivery`, `Dispatch`), `pool` (`Shutdown`,
 plus the private queue/worker bookkeeping), `kinds` (the work behind each
 command), `runner` (`JobRunner`) — re-exported from `mod.rs`.
+- `map` (private mod) — the Map view's job (m2-details-and-diffs/18): `build_map(repos, req, progress, stop) -> Result<Arc<MapData>, String>` runs `crate::map::build_map` and stringifies its error; `JobRunner::build_map` dispatches `Command::BuildMap` under `update`'s own id (`queue_as`, mirroring the detail pane's jobs), reporting `Progress::Map { done, total }` per finished row.
 - `radar` (`pub(crate)` mod) — the Mistake Radar's context job (m2-details-and-diffs/13, 13b).
   - `RadarContext` (struct) — `default_chain: HashSet<Oid>` (the default branch's first-parent ancestry), `previous_default_tips: Vec<Oid>` (its reflog history, newest first, capped).
   - `run_evil_probe` (fn) — `(repo, merge, stop) -> EvilVerdict`; the work behind `Command::EvilProbe`, dispatched by `JobRunner::dispatch_detail`.

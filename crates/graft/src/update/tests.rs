@@ -853,6 +853,7 @@ fn the_same_event_always_gives_the_same_answer() {
         context_menu: None,
         radar: crate::update::radar::RadarState::default(),
         radar_column_seen: std::cell::Cell::new(false),
+        map: crate::update::map::MapState::default(),
     };
 
     let first = update(&state, key(KeyCode::Char('q')));

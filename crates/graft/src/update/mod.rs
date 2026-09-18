@@ -23,6 +23,7 @@ pub mod detail;
 mod events;
 mod history;
 mod keys;
+pub mod map;
 pub mod radar;
 mod search;
 mod selection;
@@ -95,8 +96,7 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         ) => {
             detail::detail_event(next, commands, event);
         }
-        // Not waited on by start: welcome whenever they arrive (the detail
-        // pane named its jobs itself, before they started).
+        // Not waited on by start: welcome whenever they arrive.
         AppEvent::Started(
             _,
             Task::OpenRepository
@@ -109,7 +109,8 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             | Task::RadarContext { .. }
             | Task::EvilProbe { .. }
             | Task::ForcePushProbe { .. }
-            | Task::DuplicatesProbe { .. },
+            | Task::DuplicatesProbe { .. }
+            | Task::Map,
         ) => {}
         event @ AppEvent::Produced(
             _,
@@ -117,14 +118,10 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         ) => {
             radar::radar_event(next, event);
         }
-
         AppEvent::Produced(id, Product::TopologicalOrder(order)) => {
             history::sorted(next, commands, id, order);
         }
-        AppEvent::Produced(_, Product::Repository(Ok(facts))) => repository_opened(next, facts),
-        AppEvent::Produced(_, Product::Repository(Err(failure))) => {
-            repository_open_failed(next, failure);
-        }
+        AppEvent::Produced(_, Product::Repository(result)) => repository_answer(next, result),
         AppEvent::Produced(
             _,
             product @ (Product::SystemGit(_) | Product::Refs(_) | Product::WorkingTree(_)),
@@ -135,6 +132,17 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         AppEvent::Progress(id, Progress::Search(hits)) => {
             search::search_progress(next, commands, id, hits);
         }
+        event @ (AppEvent::Produced(_, Product::Map(_))
+        | AppEvent::Progress(_, Progress::Map { .. })) => map::map_event(next, event),
+    }
+}
+
+/// The repository opened, or failed to — `answer` routes only
+/// [`Product::Repository`] here.
+fn repository_answer(next: &mut AppState, result: Result<RepositoryFacts, String>) {
+    match result {
+        Ok(facts) => repository_opened(next, facts),
+        Err(failure) => repository_open_failed(next, failure),
     }
 }
 
@@ -199,7 +207,8 @@ fn took_fact(next: &mut AppState, product: Product) {
         | Product::RadarContext(_)
         | Product::EvilProbe(..)
         | Product::ForcePushProbe(..)
-        | Product::DuplicatesProbe(_) => {}
+        | Product::DuplicatesProbe(_)
+        | Product::Map(_) => {}
     }
 }
 
@@ -242,6 +251,7 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             {
                 commands.push(Command::ShowRows(id, request));
             }
+            map::resized(next, commands);
         }
         event @ (Event::JobFailed(id, _) | Event::JobFinished(id) | Event::JobCancelled(id))
             if search::searching(next, id) || commit_graph::commit_graph_job(next, id) =>
