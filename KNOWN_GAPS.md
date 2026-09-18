@@ -403,3 +403,19 @@ What the details gallery revealed, verified under a pty (captures
   `docs/perf/m2-review-fix-1a.txt`, `docs/perf/m2-review-fix-1a-baseline-slope.txt`.
   Needs its own ticket: find what holds per-commit state beyond the layout
   window.
+
+### The Mistake Radar's force-push probe is no longer exhaustive
+
+**Expiry: M7.** Behaviour change, user-registered 2026-09-18 (M2 review fix
+round 1a, `32845d3`/`6437790`).
+
+Force-push verdicts are computed only for branches seen in the visible window
+this session, and at most 32 of them. A force-push on a branch you never
+scrolled to goes **unflagged** — the Radar no longer covers every tracked
+branch. This was the price of C1: unbounded per-branch probing made the heavy
+tier time out at 1275 s (now 91 s) and stalled the release perf run.
+
+The user asked for this to be visible here, not only in a commit message. M7
+should decide whether an exhaustive background sweep earns its cost, or whether
+32-per-session is the honest permanent answer — and, if it stays, whether the
+UI should say so rather than letting silence read as "no force-push found".
