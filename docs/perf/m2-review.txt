@@ -1,0 +1,61 @@
+M2 review gates, 2026-09-18 07:56
+
+fmt --check: exit 0, 0 s, peak rss 56 MB
+clippy --all-targets -D warnings: exit 0, 1 s, peak rss 91 MB
+cargo test (fast tier): exit 0, 21 s, peak rss 336 MB
+fast tier totals: 1201 passed, 0 failed, 9 ignored
+
+fast tier, 5 slowest tests (libtest --report-time):
+6.421 diff_fixture::parse_unified_matches_numstat_for_every_shape
+5.926 layout::stream::tests::scrolling_the_whole_history_keeps_the_resident_set_bounded
+2.955 corpus::two_builds_produce_the_same_object_ids
+1.132 corpus::a_second_build_in_the_same_place_is_a_no_op
+0.884 raster_pixels::reports_per_strip_cost
+clippy --all-targets --features heavy-tests -D warnings: exit 0, 18 s, peak rss 436 MB
+
+heavy tier (--features heavy-tests --test-threads=2): exit 101, 1275 s, peak rss 564 MB
+heavy tier totals: 463 passed, 0 failed, 7 ignored
+
+release perf run (ADR-0021):
+release perf: exit 101, 604 s, peak rss 532 MB
+test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_pixel_tier ... refs: 50000 refs, badges() 5.699375ms, 25000 lookups 522.875µs (20 ns each), 25180 labels found
+frames: tier=Pixel refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=12
+  process didn't exit successfully: `/Users/devuser/dev/sandbox/gitter/target/release/deps/it-8f3aee7a97191f7f 'frames::' 'heavy::budgets_hold' --test-threads=1 --nocapture` (signal: 15, SIGTERM: termination signal)
+             3612194  page reclaims
+
+target/ size: 9.8G
+
+release perf, rerun skipping the two 50k-ref frame tests (they no longer finish; see review):
+exit 0
+       52.96 real        17.31 user        20.71 sys
+           278953984  maximum resident set size
+test frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_pixel_tier ... frames: tier=Pixel refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=5
+frames: tier=Pixel refs=Fixture keys=420 p50_us=4623 p99_us=8316 max_us=10311 kitty_commands=49050 bytes=193030266
+frames: tier=Pixel refs=Fixture idle_prefetch_us (per frame; recorded, not asserted): frames=700 p50=410 p99=4656 max=5660 total=782449 over_1ms=303 over_2ms=148
+test frames::scrolling_the_100k_fixture_keeps_input_to_frame_under_16_ms_at_the_unicode_tier ... frames: tier=Unicode refs=Fixture state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=3
+frames: tier=Unicode refs=Fixture keys=420 p50_us=6260 p99_us=8201 max_us=9413 kitty_commands=0 bytes=1822858
+frames: tier=Unicode refs=Fixture idle_prefetch_us (per frame; recorded, not asserted): frames=702 p50=0 p99=2 max=29 total=343 over_1ms=0 over_2ms=0
+test frames::the_sink_counts_after_the_run_what_parsing_each_write_counted_during_it ... ok
+test heavy::budgets_hold_on_the_100k_fixture_with_50k_refs ... synthetic-100000-refs50000-commit-graph (commit-graph): first_paint_us=38750 bottom_ms=51 top_ms=0 rows=100000 provisional=false rss_at_p
+test heavy::budgets_hold_on_the_100k_fixture_with_a_commit_graph ... synthetic-100000-commit-graph (commit-graph): first_paint_us=85957 bottom_ms=55 top_ms=0 rows=100000 provisional=false rss_at_paint
+test heavy::budgets_hold_on_the_100k_fixture_without_a_commit_graph ... synthetic-100000-no-commit-graph (no commit-graph): first_paint_us=15029 bottom_ms=474 top_ms=0 rows=100000 provisional=true rss
+test heavy::budgets_hold_on_the_100k_realistic_fixture_with_a_commit_graph ... synthetic-100000-realistic-commit-graph (commit-graph): first_paint_us=13277 bottom_ms=50 top_ms=0 rows=100000 provisiona
+test heavy::budgets_hold_on_the_100k_realistic_fixture_without_a_commit_graph ... synthetic-100000-realistic-no-commit-graph (no commit-graph): first_paint_us=15102 bottom_ms=522 top_ms=0 rows=100000 
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 25 filtered out; finished in 52.87s
+            64832208  peak memory footprint
+
+fuzz (60 s each, rss cap 1024 MB):
+fuzz parse_unified: exit 0
+Done 693819 runs in 61 second(s)
+           660340736  maximum resident set size
+fuzz parse_file_list: exit 0
+Done 671299 runs in 61 second(s)
+           551829504  maximum resident set size
+
+benches (graft-ui, warm-up 1 s, measure 3 s):
+bench graft-ui: exit 101
+fuzzbench done
+bench graft-ui rerun, --bench row_render (the --lib target rejects criterion flags):
+exit 0
+ time: [15.616 µs 15.648 µs 15.684 µs] 
+            90226688  maximum resident set size
