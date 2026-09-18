@@ -1,0 +1,26 @@
+details gallery stop 10/19: m2-10-evil-merge-enter, unicode tier, 80x24
+
+Graph  [Detail]
+COMMIT cc1103b
+Graft Fixture <fixture@example.invalid> · 2020-01-01 00:03 +0000 · 2d · parents…
+Merge branch 'alpha' · evil merge
+A alpha.txt                                                                +1 −0
+A evil.txt                                                                 +1 −0
+
+      1 + a
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

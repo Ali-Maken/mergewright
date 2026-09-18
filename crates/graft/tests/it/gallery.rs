@@ -386,16 +386,16 @@ fn details() -> Vec<Entry> {
             PANE,
             vec![ENTER],
             shape("feature-branches"),
-            "pane on Merge branch 'feature/two': header, files tree, first diff",
-            "the baseline pane; every stop up to 5 changes one thing from here",
+            "pane on three: in progress (row 0): header, A three.txt +1 −0, 1 + a",
+            "the baseline pane; the merge is row 1: j then Enter opens it instead",
         ),
         stop(
             "feature-branches",
             PANE,
             vec![ENTER, ch('j')],
             shape("feature-branches"),
-            "files cursor on the second file: its diff replaces the first's",
-            "j inside Files swaps the body only; the header and graph row stay",
+            "j inside Files on a one-file commit: nothing moves; header and diff stay",
+            "no corpus commit has two files (KNOWN_GAPS): the stop shows j is inert",
         ),
         stop(
             "feature-branches",
@@ -416,9 +416,9 @@ fn details() -> Vec<Entry> {
         stop(
             "feature-branches",
             PANE,
-            vec![ch('x'), ch('j'), ch('j')],
+            vec![ch('x'), ch('j'), ch('j'), ch('x')],
             shape("feature-branches"),
-            "▏ on the marked base row; pane reads COMPARE a → b · N files +N −N",
+            "pane header COMPARE 0683985 → e30e870 (no counts yet); ▏ on the base row",
             "no COMMIT header: two rows compared; the base stays marked as j moves",
         ),
         stop(
@@ -427,15 +427,15 @@ fn details() -> Vec<Entry> {
             vec![],
             shape("foxtrot-merge"),
             "⚠ in the marker column on the foxtrot merge; footer gains . explain",
-            "the first marker: a column appears between the graph and the badges",
+            "the first ⚠: ⓘ (no upstream) sat on branch tips since stop 1",
         ),
         stop(
             "foxtrot-merge",
             RADAR,
-            vec![ch('.'), ENTER],
+            vec![ch('.')],
             shape("foxtrot-merge"),
-            "Explain: ⚠ FOXTROT MERGE, paragraphs, 5-line sketch; other rows fade",
-            "the panel replaces files and body; Esc closes it before the pane",
+            "the . menu on the ⚠ merge: Copy SHA, Compare with this, Open details",
+            "Explain is NOT in the menu (KNOWN_GAPS): the panel has no route yet",
         ),
         stop(
             "backward-merge",
@@ -458,7 +458,7 @@ fn details() -> Vec<Entry> {
             RADAR,
             vec![ENTER],
             shape("evil-merge"),
-            "pane radar line: unchecked → checking… → ⚠ evil merge · evil.txt",
+            "pane subject row gains · evil merge when the tree probe lands (live git)",
             "no marker until the probe answers: evil is a tree fact, not a shape",
         ),
         stop(
@@ -467,7 +467,7 @@ fn details() -> Vec<Entry> {
             vec![],
             shape("cherry-pick-duplicates"),
             "ⓘ duplicate commit on both 'Fix the greeting' rows when the probe lands",
-            "two rows marked for one finding; the column appears when it lands",
+            "topic's ⓘ is no upstream; the two fix rows share one finding",
         ),
         stop(
             "ref-states",
@@ -514,7 +514,7 @@ fn details() -> Vec<Entry> {
             REAL,
             vec![ENTER],
             Source::Workspace,
-            "a real commit: Contained in: main, a ✉ message row, syntax colours",
+            "real commit: Contained in: main; ✉ row only if the message has a body",
             "real repo: syntax roles tint the diff; the corpus stops are plain",
         ),
         stop(
@@ -526,8 +526,8 @@ fn details() -> Vec<Entry> {
                 keys
             },
             Source::GitGit,
-            "Merge tag 'v2.41.0-rc0': an 805-file tree; first diff in budget; L",
-            "scale: the search lands the merge, Enter opens it; … L on a long diff",
+            "Merge tag 'v2.41.0-rc0': 805 files, ✉ message (24 lines), first diff",
+            "scale: search lands the merge, Enter opens it; j to a long file, L",
         ),
         stop(
             "git-git",
@@ -571,10 +571,9 @@ pub fn keys_label(prelude: &[KeyPress]) -> String {
 
 /// The stem of a details stop's capture files: `m2-<nn>-<name>[-<keys>]`,
 /// keys lowercased and punctuation named, so part (b)'s files and the
-/// matrix agree (`m2-07-foxtrot-merge-dot-enter`).
+/// matrix agree (`m2-07-foxtrot-merge-dot`).
 // Read by the tests now; part (b) gives the example a `--stems` flag for
 // its capture script, until which the example build has no caller.
-#[cfg_attr(not(test), allow(dead_code))]
 pub fn capture_stem(entry: &Entry, index: usize) -> String {
     let mut stem = format!("m2-{:02}-{}", index + 1, entry.name);
     let mut keys = entry.prelude.iter();
@@ -740,7 +739,7 @@ enum Tier {
 
 const TIERS: [Tier; 4] = [Tier::Pixel, Tier::Unicode, Tier::Ascii, Tier::Layout];
 const THEMES: [&str; 2] = ["dark", "light"];
-const SIZES: [&str; 3] = ["80x24", "120x40", "200x60"];
+const SIZES: [&str; 5] = ["80x24", "100x30", "120x40", "160x40", "200x60"];
 
 /// One snapshot or capture file, read from its name and where it sits.
 struct Evidence {
@@ -860,6 +859,51 @@ pub fn coverage_matrix(workspace: &Path) -> String {
                     .chain(entry.stems.iter())
                     .any(|stem| file.name.contains(stem))
             })
+            .collect();
+        for tier in TIERS {
+            for theme in THEMES {
+                if tier == Tier::Layout && theme == "light" {
+                    continue;
+                }
+                out.push_str(&format!("  {:<22}", cell(&mine, tier, theme)));
+            }
+        }
+        out.push('\n');
+    }
+    out.push_str(&details_matrix(&evidence));
+    out
+}
+
+/// The details group's table (m2-details-and-diffs/23): one row per stop,
+/// keyed by its capture stem, so `m2-<nn>-<stop>-<keys>-<WxH>-<tier>.txt`
+/// files land on their own stop and nowhere else. Same cells as above.
+fn details_matrix(evidence: &[Evidence]) -> String {
+    let all = stops(Group::Details);
+    let stems: Vec<String> = all
+        .iter()
+        .enumerate()
+        .map(|(index, entry)| capture_stem(entry, index))
+        .collect();
+    let width = stems.iter().map(String::len).max().unwrap_or(0).max(4);
+    let mut out = String::new();
+    out.push_str("\nDetails coverage: stop × tier × theme, with sizes (m2-details-and-diffs/23)\n");
+    out.push_str("Files docs/shots/m2-<nn>-<stop>-<keys>-<WxH>-<tier>.txt, matched by stem;\n");
+    out.push_str("the pane lives at 160x40, so a stop without a 160x40 capture is a gap.\n\n");
+    out.push_str(&format!("{:width$}", "stop"));
+    for tier in TIERS {
+        for theme in THEMES {
+            if tier == Tier::Layout && theme == "light" {
+                continue;
+            }
+            out.push_str(&format!("  {:<22}", format!("{}/{theme}", tier_name(tier))));
+        }
+    }
+    out.push('\n');
+    for stem in &stems {
+        out.push_str(&format!("{stem:width$}"));
+        let mine: Vec<&Evidence> = evidence
+            .iter()
+            .filter(|file| file.name.starts_with(stem.as_str()))
             .collect();
         for tier in TIERS {
             for theme in THEMES {
@@ -1067,7 +1111,7 @@ mod tests {
             "no prelude: the group stands where the keys would"
         );
         assert_eq!(keys_label(&all[17].prelude), "/v2.41.0-rc0⏎ Enter");
-        assert_eq!(capture_stem(&all[6], 6), "m2-07-foxtrot-merge-dot-enter");
+        assert_eq!(capture_stem(&all[6], 6), "m2-07-foxtrot-merge-dot");
         assert_eq!(capture_stem(&all[17], 17), "m2-18-git-git-search-enter");
         assert_eq!(capture_stem(&all[15], 15), "m2-16-feature-branches-o");
         assert_eq!(

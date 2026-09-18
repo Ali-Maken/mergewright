@@ -1,0 +1,42 @@
+details gallery stop 9/19: m2-09-accidental-pull-merge, unicode tier, 160x40
+
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/accidental-pull-merge  4 commits
+ gallery 9/19 accidental-pull-merge · radar · ] next [ back q quit · unicode
+ shows: ⓘ on 'Merge branch main of https://…': info colour, not warning
+ differs: the only ⓘ the graph alone raises: no probe, no tree read
+◆─╮ ⓘ [◆ main] Merge branch 'main' of https://example.invalid/graft.git into main                                                                GF 2d   3222407
+● │   My commit                                                                                                                                  GF 2d   abd2097
+│ ●   [origin/main] Their commit                                                                                                                 GF 2d   781b8cc
+◇─╯   Add the base                                                                                                                               GF 2d   68d5d19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  F3 renderer  . explain  / search  j/k move  Space fold  1 first-parent  F focus  H stash  y sha  PgUp/PgDn page  g/G top/bottom

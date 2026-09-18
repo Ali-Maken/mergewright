@@ -1,0 +1,32 @@
+details gallery stop 15/19: m2-15-feature-branches-m, unicode tier, 100x30
+
+MAP · main · last 1 day
+  BRANCH                                                                                      NOW
+▸ main               █                                                                            ●
+  feature/three      ▁
+  feature/two        ●╮
+  feature/one        ●╮
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+↑↓ select  ⏎ zoom to commits  M/Esc back

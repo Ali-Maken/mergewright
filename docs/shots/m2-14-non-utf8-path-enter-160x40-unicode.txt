@@ -1,0 +1,42 @@
+details gallery stop 14/19: m2-14-non-utf8-path-enter, unicode tier, 160x40
+
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/non-utf8-path  COMMIT 16151d4
+ gallery 14/19 non-utf8-path · Enter · ] next [ back q quit · unicode                        Graft Fixture <fixture@example.invalid> · 2020-01-01 00:01 +0000 ·…
+ shows: the Latin-1 path shows one � in the tree; its diff still loads                       parents 7e00915 · diff vs first parent
+ differs: one bad byte, one �: the tree's other entries are untouched                        Contained in: latin1
+  ● ⓘ [latin1] Add a Latin-1 path                                                2d   16151d4no upstream (latin1)
+◆─╯   [◆ main] Add a readme                                                      2d   7e00915A caf�.txt                                                    +1 −0
+
+                                                                                                   1 + latin-1 path
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  F3 renderer  <> resize  . explain  / search  j/k move  Space fold

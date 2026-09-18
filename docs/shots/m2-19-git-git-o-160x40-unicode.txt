@@ -1,0 +1,42 @@
+details gallery stop 19/19: m2-19-git-git-o, unicode tier, 160x40
+
+ graft /Users/devuser/.cache/graft/git-git.git  140 rows so far  +26 lanes                                                                                 ⓘ
+ gallery 19/19 git-git · O · ] next [ back q quit · unicode                                                                                                    ◉
+ shows: strip honestly incomplete: buckets below the walked range are blank                                                                                    ◉
+ differs: stop 16's strip at 85k rows: it grows as the walk lands, never at once                                                                               ◉
+◉─╮                   ⋮ ⓘ [next] Merge branch 'jk/ci-use-system-asciidoctor' into next                                                           JC 6d   848ec2◉
+│ │ ◉▾                ⋮ ⓘ [seen] Merge branch 'js/rust-in-windows-ci' into seen                                                                  JC 6d   a184f4◉
+│ │ ◉▾                ⋮   Merge branch 'ap/var-broken-down-idents' into seen                                                                     JC 6d   01c5fa◉
+│ │ ◉▾                ⋮   Merge branch 'ks/history-commit-leakfix' into seen                                                                     JC 6d   2c03a6◉
+│ │ ◉▾                ⋮   Merge branch 'ps/ref-storage-format' into seen                                                                         JC 6d   37f625ⓘ
+│ │ ◉▾                ⋮   Merge branch 'jc/rust-cargo-build-target' into seen                                                                    JC 6d   9b27d4◉
+│ │ ◉▾                ⋮   Merge branch 'tc/push-force-if-includes-fixes' into seen                                                               JC 6d   aeac75◉
+│ │ ◉▾                ⋮   Merge branch 'tb/rerere-lock-grace' into seen                                                                          JC 6d   bc3ed9◉
+│ │ ◉▾                ⋮   Merge branch 'as/push-force-if-includes-no-reflog' into seen                                                           JC 6d   37cba8◉
+│ │ ◉▾                ⋮   Merge branch 'mm/diff-process-hunks' into seen                                                                         JC 6d   49433a◉
+│ │ ◉▾                ⋮   Merge branch 'cc/early-scan-options' into seen                                                                         JC 6d   161b15◉
+│ │ ◉▾                ⋮   Merge branch 'tc/last-modified-bloom' into seen                                                                        JC 6d   9a7d54◉
+│ │ ◉▾                ⋮   Merge branch 'll/doc-pushcert-if-asked' into seen                                                                      JC 6d   9e3f1e◉
+│ │ ◉▾                ⋮   Merge branch 'jc/checkout-refactor' into seen                                                                          JC 6d   8b26a3◉
+│ │ ◉▾                ⋮   Merge branch 'fz/rebase-autosquash-empty' into seen                                                                    JC 6d   bd7b13┆
+│ │ ◉▾                ⋮   Merge branch 'ws/squelch-svn-migrate' into seen                                                                        JC 6d   ceeb10┆
+│ │ ◉▾                ⋮   Merge branch 'hn/history-squash' into seen                                                                             JC 6d   6b7797ⓘ
+│ │ ◉▾                ⋮   Merge branch 'kh/format-rev-more-options' into seen                                                                    JC 6d   65a165┆
+│ │ ◉▾                ⋮   Merge branch 'gg/http-ssl-verify-status' into seen                                                                     JC 6d   c5f147ⓘ
+│ │ ◉▾                ⋮   Merge branch 'cc/lazy-fetch-trusted-bit' into seen                                                                     JC 6d   f7b526◉
+│ │ ◉▾                ⋮   Merge branch 'ty/repo-config-cleanups' into seen                                                                       JC 6d   0922e3●
+│ │ ◉▾                ⋮   Merge branch 'bc/restrict-hex-to-lowercase' into seen                                                                  JC 6d   6b8525┆
+│ │ ◉▾                ⋮   Merge branch 'pz/fetch-submodule-errors-config' into seen                                                              JC 6d   65e650┆
+│ │ ◉▾                ⋮   Merge branch 'kj/repo-info-more-path-keys' into seen                                                                   JC 6d   743733┆
+│ │ ◉▾                ⋮   Merge branch 'ds/trace2-tolerate-failed-timestamp' into seen                                                           JC 6d   c29cd6┆
+│ │ ◉▾                ⋮   Merge branch 'mm/line-log-limited-ops' into seen                                                                       JC 6d   2c4c10┆
+│ │ ◉▾                ⋮   Merge branch 'tb/midx-incremental-custom-base' into seen                                                               JC 6d   cd97bb◉
+│ │ ◉─╮               ⋮   Merge branch 'ec/commit-fixup-options' into seen                                                                       JC 6d   9a22aa┆
+│ │ ◉─│─╮             ⋮ ⓘ [jch] Merge branch 'jc/cocci-free-updates' into jch                                                                    JC 6d   af9ee5┆
+│ │ ◉─│─│─╮           ⋮   Merge branch 'hn/range-diff-matched-only' into jch                                                                     JC 6d   f656ad┆
+│ │ ◉─│─│─│─╮         ⋮   Merge branch 'pp/midx-write-skip-empty' into jch                                                                       JC 6d   be1ae0┆
+│ │ ◉─│─│─│─│─╮       ⋮   Merge branch 'jk/merge-ll-tempfile-cleanup' into jch                                                                   JC 6d   9ce770┆
+│ │ ◉─│─│─│─│─│─╮     ⋮   Merge branch 'ta/command-list-guides-sync-lint' into jch                                                               JC 6d   8542c9┆
+│ │ ◉─│─│─│─│─│─│─╮   ⋮   Merge branch 'ps/odb-pluggable-fsck' into jch                                                                          JC 6d   b27e9d┆
+│ │ ◉─│─│─│─│─│─│─│─╮ ⋮   Merge branch 'ps/odb-alternates-at-creation' into jch                                                                  JC 6d   35deb2┆
+ q quit  F2 status  F3 renderer  + expand lanes  . explain  / search  j/k move  Space fold  1 first-parent  F focus  H stash  y sha  PgUp/PgDn page            ◉

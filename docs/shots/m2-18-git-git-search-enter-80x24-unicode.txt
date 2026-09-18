@@ -1,0 +1,26 @@
+details gallery stop 18/19: m2-18-git-git-search-enter, unicode tier, 80x24
+
+Graph  [Detail]
+COMMIT 03d0593
+Jiang Xin <worldhello.net@gmail.com> · 2023-05-16 10:19 +0800 · 3y · parents f6…
+Merge tag 'v2.41.0-rc0' · backward merge · evil merge: clean
+✉ message (24 lines)
+M .mailmap                                                                 +1 −0
+▾ Documentation/
+  M .gitignore                                                             +0 −1
+  M CodingGuidelines                                                       +6 −2
+  M Makefile                                                              +6 −17
+  M MyFirstContribution.txt                                                +8 −8
+  ▾ RelNotes/
+Git 2.41-rc0
+
+* tag 'v2.41.0-rc0': (508 commits)
+  Git 2.41-rc0
+  t5583: fix shebang line
+  merge-tree: load default git config
+  fetch: introduce machine-parseable "porcelain" output format
+  fetch: move option related variables into main function
+  fetch: lift up parsing of "fetch.output" config variable
+  fetch: introduce `display_format` enum
+  fetch: refactor calculation of the display table width
+  fetch: print left-hand side when fetching HEAD:foo

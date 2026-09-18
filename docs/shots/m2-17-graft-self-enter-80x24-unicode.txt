@@ -1,0 +1,26 @@
+details gallery stop 17/19: m2-17-graft-self-enter, unicode tier, 80x24
+
+Graph  [Detail]
+COMMIT ca5796c
+Ali-Maken <116688264+Ali-Maken@users.noreply.github.com> · 2026-09-18 07:09 +0500 · 28m · parents …
+progress: m2/23 log figures
+M PROGRESS.md                                                              +1 −1
+Append `· COMPACTED` when the helper compacted mid-ticket: that ticket was too
+385 385   - 2026-09-18 · m2/20 continuation 1 · sonnet · done (f336ee0) · frame…
+386 386   - 2026-09-18 · m2/21 refresh-reopens-walk · sonnet · done (1d45e26) ·…
+387 387   - 2026-09-18 · m2/22 docs-sweep · sonnet · done (docs only, no code) …
+388     - - 2026-09-18 · m2/23 acceptance-details-and-radar · fable · partial a…
+    388 + - 2026-09-18 · m2/23 acceptance-details-and-radar · fable · partial a…
+389 389
+390 390   ## Open questions for the M1 checkpoint
+391 391   - **For the M1 review brief (conductor, 2026-09-14, user asked "no me…
+
+
+
+
+
+
+
+
+
+

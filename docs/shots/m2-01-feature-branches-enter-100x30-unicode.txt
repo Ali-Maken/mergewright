@@ -1,0 +1,32 @@
+details gallery stop 1/19: m2-01-feature-branches-enter, unicode tier, 100x30
+
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/feature-branches  10 …
+ gallery 1/19 feature-branches · Enter · ] next [ back q quit · unicode
+ shows: pane on three: in progress (row 0): header, A three.txt +1 −0, 1 + a
+ differs: the baseline pane; the merge is row 1: j then Enter opens it instead
+  ●     ⓘ [feature/three] three: in progress                                         GF 2d   0683985
+◆─│─╮     [◆ main] Merge branch 'feature/two'                                        GF 2d   5202e1c
+│ │ ●   ⓘ [feature/two] two: finish                                                  GF 2d   e30e870
+│ │ ●     two: start                                                                 GF 2d   40034e4
+◉─│─│─╮   Merge branch 'feature/one'                                                 GF 2d   3a97003
+│ │ │ ● ⓘ [feature/one] one: finish                                                  GF 2d   fdb311f
+│ │ │ ●   one: start                                                                 GF 2d   bba225a
+●─┴─╯ │   Add b.txt                                                                  GF 2d   de95041
+●─────╯   Add a.txt                                                                  GF 2d   21b16b9
+◇         Add a readme                                                               GF 2d   daa5167
+
+
+
+ q quit  F2 status  F3 renderer  <> resize  . explain  / search  j/k move  Space fold
+COMMIT 0683985 · Graft Fixture <fixture@example.invalid> · 2020-01-01 00:09 +0000 · 2d · parents de…
+three: in progress · no upstream (feature/three)
+A three.txt              +1 −0
+                                    1 + a
+
+
+
+
+
+
+
+

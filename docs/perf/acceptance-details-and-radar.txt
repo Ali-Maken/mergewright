@@ -1,0 +1,5 @@
+m2-details-and-diffs/23: stop 18 first-diff latency, informational (no gate).
+Measured by .scratch/m2-details-and-diffs/pty-gallery-m2.py: seconds from the stop's first frame to its last repaint (screen quiet for 3 s after it).
+
+stop 18 git-git 160x40 unicode: last repaint 3.29 s after the stop's first frame (search /v2.41.0-rc0, Enter, 805-file list, first diff; debug build under a pty, wall clock)
+stop 18 git-git 80x24 unicode: last repaint 3.31 s after the stop's first frame (search /v2.41.0-rc0, Enter, 805-file list, first diff; debug build under a pty, wall clock)

@@ -1,0 +1,26 @@
+details gallery stop 13/19: m2-13-unicode-names-enter, unicode tier, 80x24
+
+Graph  [Detail]
+COMMIT e26412c
+Ünïcödé Fixture <unicode@example.invalid> · 2020-01-01 00:04 +0000 · 2d · paren…
+ветка: первый коммит · no upstream (ветка)
+A документ.txt                                                             +1 −0
+
+      1 + содержимое
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

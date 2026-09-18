@@ -1,0 +1,26 @@
+details gallery stop 14/19: m2-14-non-utf8-path-enter, unicode tier, 80x24
+
+Graph  [Detail]
+COMMIT 16151d4
+Graft Fixture <fixture@example.invalid> · 2020-01-01 00:01 +0000 · 2d · parents…
+Add a Latin-1 path · no upstream (latin1)
+A caf�.txt                                                                 +1 −0
+
+      1 + latin-1 path
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

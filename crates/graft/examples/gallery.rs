@@ -8,6 +8,8 @@
 //! cargo run -p graft --example gallery -- --list   # the stops, in order
 //! cargo run -p graft --example gallery -- --matrix # coverage matrix, also
 //!                                                  # written to docs/shots/
+//! cargo run -p graft --example gallery -- --group details          # M2's stops
+//! cargo run -p graft --example gallery -- --stems  # details capture stems
 //! ```
 //!
 //! Inside: `]` next repository, `[` previous, `q` quit; every graph key and
@@ -29,8 +31,8 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use gallery::{
-    Availability, Entry, Group, banner, coverage_matrix, listing, missing_page, resolve, roots,
-    stops,
+    Availability, Entry, Group, banner, capture_stem, coverage_matrix, listing, missing_page,
+    resolve, roots, stops,
 };
 use graft::event_loop::{self, Exit};
 use graft::session::Startup;
@@ -40,7 +42,8 @@ use graft_core::event::KeyCode;
 
 const NEXT: KeyCode = KeyCode::Char(']');
 const PREVIOUS: KeyCode = KeyCode::Char('[');
-const USAGE: &str = "usage: gallery [--group graph|details] [--start <repo> | --list | --matrix]";
+const USAGE: &str =
+    "usage: gallery [--group graph|details] [--start <repo> | --list | --matrix | --stems]";
 
 /// Where the walk goes after a stop.
 enum Step {
@@ -72,6 +75,14 @@ fn main() -> ExitCode {
             return ExitCode::SUCCESS;
         }
         Some("--matrix") => return write_matrix(&workspace),
+        Some("--stems") => {
+            // `<nn> <stem>` per details stop: the capture script's file
+            // names and the matrix's row keys come from the same function.
+            for (index, entry) in stops(Group::Details).iter().enumerate() {
+                println!("{:02} {}", index + 1, capture_stem(entry, index));
+            }
+            return ExitCode::SUCCESS;
+        }
         Some("--start") => {
             let Some(name) = args.get(1) else {
                 eprintln!("{USAGE}");

@@ -431,3 +431,16 @@ today, not a stub.
 | **Map view shows local branches only; a remote does not collapse into its upstream's row (DESIGN §5.1).** `build_map` walks one date range per local branch (`MapRequest`/`build_map`); a branch's remote-tracking ref never merges into its local row or appears on its own | Fold a branch's upstream into its row, or list untracked remotes separately, per DESIGN §5.1 "Shows" | M8 polish |
 | **Map view's merge elbow marks only merges into the default branch, at the tip's own bucket.** `MapBranch::merged_into` is computed by `build_map` only against the default branch's first-parent chain; a merge of one feature branch into another draws no elbow | A cross-branch merge search (DESIGN §5.1's fuller "Shows"), a one walk-per-local-branch cost the design note weighed against and declined for M2 | Not planned unless asked |
 | **The compare pane header never shows `· N files +A −B` (m2-details-and-diffs/11's gap row named a `compare-mode` ticket that does not exist in M2's list — dangling reference, corrected here).** `crates/graft/src/view/detail.rs::compare_header` builds `Subject::Compare` with base/head SHAs only; `DetailState::files`' counts are never read into it | Wire `DetailState::files`'s `FileListView` totals into `compare_header` | M8 polish |
+
+## M2 acceptance walk (m2-details-and-diffs/23, 2026-09-18)
+
+What the details gallery revealed, verified under a pty (captures
+`docs/shots/m2-*`); owner **M2 review** unless a ticket is named.
+
+| Gap | What's needed | Expiry |
+|---|---|---|
+| **`Explain` is not in the `.` menu, so the Explain panel is unreachable by keys.** `update/context_menu.rs::open_selected` opens every history row with `marked = false` (ticket 13's own build said "no row can be marked yet"); 13b/13c wired the markers but not this flag. Stop 7 shows `Copy SHA / Compare with this / Open details`. The promise's "and explained" half fails until this is wired. | Pass the row's finding into `ContextMenu::for_row`; a test that a `⚠` row's menu lists `Explain` first. | M2 review |
+| **No corpus commit changes two files**, so stop 2 (`Enter j`) shows `j` inert and no fixture exercises the file cursor. | A `two-file-commit` shape (or a second file on `feature-branches`' merges), then re-point stop 2. | M2 review |
+| **The force-push probe (ticket 15) has no gallery stop and was never run against a real rewritten remote.** `docs/shots/m2-force-push.txt` is a TestBackend capture. | A fixture with a remote whose branch was rewritten (needs a bare remote in the corpus), and a stop. | M2 review |
+| **The gallery banner is hidden at < 100 columns when the `Detail` tab is up**, and the Map view draws no banner at any size. The 80x24 captures name their stop only in their first line. | Draw the banner (or its title line) in the tab-strip and map layouts. | M2 review |
+| **Coverage matrix gaps for the details rows:** no pixel-tier, no light-theme and no ASCII captures except stops 1, 6, 7, 15, 16 at 80x24; no 100x30 except those five. The pane's pixel/light rendering is judged only by eye. | Pixel captures need a Kitty-protocol pty harness (M1's raster shots came from the widget, not a pty). | M2 review |

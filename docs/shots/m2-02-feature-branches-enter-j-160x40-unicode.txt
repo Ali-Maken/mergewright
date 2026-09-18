@@ -1,0 +1,42 @@
+details gallery stop 2/19: m2-02-feature-branches-enter-j, unicode tier, 160x40
+
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/feature-branch…COMMIT 0683985
+ gallery 2/19 feature-branches · Enter j · ] next [ back q quit · unicode                    Graft Fixture <fixture@example.invalid> · 2020-01-01 00:09 +0000 ·…
+ shows: j inside Files on a one-file commit: nothing moves; header and diff stay             parents de95041 · diff vs first parent
+ differs: no corpus commit has two files (KNOWN_GAPS): the stop shows j is inert             Contained in: feature/three
+  ●     ⓘ [feature/three] three: in progress                                     2d   0683985no upstream (feature/three)
+◆─│─╮     [◆ main] Merge branch 'feature/two'                                    2d   5202e1cA three.txt                                                   +1 −0
+│ │ ●   ⓘ [feature/two] two: finish                                              2d   e30e870
+│ │ ●     two: start                                                             2d   40034e4      1 + a
+◉─│─│─╮   Merge branch 'feature/one'                                             2d   3a97003
+│ │ │ ● ⓘ [feature/one] one: finish                                              2d   fdb311f
+│ │ │ ●   one: start                                                             2d   bba225a
+●─┴─╯ │   Add b.txt                                                              2d   de95041
+●─────╯   Add a.txt                                                              2d   21b16b9
+◇         Add a readme                                                           2d   daa5167
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  F3 renderer  <> resize  . explain  / search  j/k move  Space fold

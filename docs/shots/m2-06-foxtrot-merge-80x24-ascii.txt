@@ -1,0 +1,26 @@
+details gallery stop 6/19: m2-06-foxtrot-merge, ascii tier, 80x24
+
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/f…
+ gallery 6/19 foxtrot-merge · radar · ] next [ back q quit · ascii
+ shows: ⚠ in the marker column on the foxtrot merge; footer gains . explain
+ differs: the first ⚠: ⓘ (no upstream) sat on branch tips since stop 1
+*-\ ! [◆ main] Merge branch 'main' into feature                     2d   84cc93e
+* | i [feature] feature: work                                       2d   8fa6bfc
+| *   Advance main                                                  2d   18ca7c9
+*-/   Add the base                                                  2d   68d5d19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  F3 renderer  . explain  / search  j/k move  Space fold

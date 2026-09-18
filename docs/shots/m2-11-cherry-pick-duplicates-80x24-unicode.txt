@@ -1,0 +1,26 @@
+details gallery stop 11/19: m2-11-cherry-pick-duplicates, unicode tier, 80x24
+
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/c…
+ gallery 11/19 cherry-pick-duplicates · radar · ] next [ back q quit · unicode
+ shows: ⓘ duplicate commit on both 'Fix the greeting' rows when the probe lands
+ differs: topic's ⓘ is no upstream; the two fix rows share one finding
+  ● ⓘ [topic] topic: unrelated work                                 2d   3fb661a
+  ● ⓘ Fix the greeting (cherry picked)                              2d   c0f7180
+◆ │ ⓘ [◆ main] Fix the greeting                                     2d   9a9350a
+◇─╯   Add the greeting                                              2d   fc8069b
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  F3 renderer  . explain  / search  j/k move  Space fold

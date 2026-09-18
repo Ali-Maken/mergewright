@@ -1,0 +1,26 @@
+details gallery stop 16/19: m2-16-feature-branches-o, unicode tier, 80x24
+
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/fⓘ
+ gallery 16/19 feature-branches · O · ] next [ back q quit · unicode           █
+ shows: strip at the right edge: ◉ twice, ● at the top, █ over the viewport    ●
+ differs: one column added to stop 3's graph; O again removes it               █
+  ●     ⓘ [feature/three] three: in progress                        2d   068398ⓘ
+◆─│─╮     [◆ main] Merge branch 'feature/two'                       2d   5202e1█
+│ │ ●   ⓘ [feature/two] two: finish                                 2d   e30e87█
+│ │ ●     two: start                                                2d   40034e█
+◉─│─│─╮   Merge branch 'feature/one'                                2d   3a9700█
+│ │ │ ● ⓘ [feature/one] one: finish                                 2d   fdb311◉
+│ │ │ ●   one: start                                                2d   bba225█
+●─┴─╯ │   Add b.txt                                                 2d   de9504█
+●─────╯   Add a.txt                                                 2d   21b16bⓘ
+◇         Add a readme                                              2d   daa516█
+                                                                               █
+                                                                               █
+                                                                               █
+                                                                               █
+                                                                               █
+                                                                               █
+                                                                               █
+                                                                               █
+
+ q quit  F2 status  F3 renderer  . explain  / search  j/k move  Space fold

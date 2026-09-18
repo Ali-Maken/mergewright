@@ -1,0 +1,26 @@
+details gallery stop 15/19: m2-15-feature-branches-m, ascii tier, 80x24
+
+MAP · main · last 1 day
+  BRANCH                                                                  NOW
+▸ main               @                                                        ●
+  feature/three      .
+  feature/two        o\
+  feature/one        o\
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+↑↓ select  ⏎ zoom to commits  M/Esc back

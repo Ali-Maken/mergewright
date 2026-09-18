@@ -1,9 +1,8 @@
 # acceptance-details-and-radar: M2's acceptance ticket — the gallery's "details and radar" stops, TESTING.md, captures
 
-Status: in progress — part (a) done 2026-09-18 (Fable); part (b) handed off below
+Status: done — part (a) and part (b) 2026-09-18 (Fable)
 Blocked by: 01, 02, 03, 04, 05, 06, 06b, 07, 10b, 13b, 13c, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22
 
-Status: draft
 Build with: Fable — defining what good looks like for the promise is a decision, not plumbing (CLAUDE.md, acceptance-ticket rule). Doesn't count against the milestone's Fable build expectation.
 Needs: `git-runner`, `diff-parser`, `diff-reads`, `syntax-highlighting`, `mistake-radar-detection`, `detail-model-and-jobs`, `working-tree-row-selectable`, `detail-pane-frame`, `diff-widget`, `side-by-side-view`, `detail-keys-and-focus`, `compare-two-commits`, `context-actions-menu`, `radar-context-and-markers`, `radar-probe-evil-merge`, `radar-probe-force-push`, `radar-probe-duplicates`, `explain-panel`, `map-view-data`, `map-view-screen`, `overview-strip`, `refresh-reopens-walk`, `docs-sweep` — every other M2 ticket; a `partial` among them is walked as far as it got and its gap is a stop that says so.
 
@@ -68,9 +67,9 @@ pub fn stops(group: Group) -> Vec<Entry>;   // Entry gains `prelude: Vec<KeyPres
 
 - [x] (a) `cargo run -p graft --example gallery -- --group details` walks the 19 stops with `]`/`[`; `--list` prints both groups; every banner line ≤ 80 columns (test); the M1 default group is untouched (its `--list` output byte-identical).
 - [x] (a) `Harness::prelude` feeds keys only after the first window + refs product (a scripted-`Wakes` test: `Enter` in the prelude opens the pane on row 0, not on nothing); default-empty in `main.rs`.
-- [ ] TESTING.md "Details and diffs": one concrete entry per stop plus the "Working-tree row" entry, a per-breakpoint block, the per-terminal lines; no entry reads "looks correct"/"renders fine" (grep).
-- [ ] Captures under `docs/shots/m2-*` per item 3, each ≤ 200 KB and each grep-verified to name its stop and one marker string; the matrix re-run and committed.
-- [ ] `docs/perf/acceptance-details-and-radar.txt` holds stop 18's first-diff latency line (informational; no gate).
+- [x] TESTING.md "Details and diffs": one concrete entry per stop plus the "Working-tree row" entry, a per-breakpoint block, the per-terminal lines; no entry reads "looks correct"/"renders fine" (grep).
+- [x] Captures under `docs/shots/m2-*` per item 3, each ≤ 200 KB and each grep-verified to name its stop and one marker string; the matrix re-run and committed.
+- [x] `docs/perf/acceptance-details-and-radar.txt` holds stop 18's first-diff latency line (informational; no gate).
 - [x] (a) Exact user commands in this ticket's Built section.
 - [ ] **By eye (user):** walks the `details` group in Ghostty and the VS Code terminal at ≥ 160 columns against TESTING.md. Unticked until the user does.
 
@@ -93,9 +92,19 @@ Over the 80k target if done in one go — M1's 35 needed a/b/c. **Planned as two
 - **Stop 12 (`ref-states`) is a negative control:** `ahead` tracks `origin/ahead` and isn't the default, `main` is level, so `classify_refs` raises nothing (it flags only unpushed-on-default and no-upstream). No ⓘ. `detached-head` would give the risky-state kind a positive stop; not added (ticket lists 19).
 - Not verified by eye or under a pty: the details group has only run through its tests and `--list`.
 
-## Handoff: part b (TESTING.md entries + pty script + captures + matrix)
+## Part b: what was built (2026-09-18, Fable)
 
-Not started. Exact next steps, same `Build with`:
+- **TESTING.md "Details and diffs"** (after "Graph gallery"): the walk, "What the walk proves and what it does not", "Reading the entries", 19 entries + "Working-tree row", per breakpoint, per terminal.
+- **`.scratch/m2-details-and-diffs/pty-gallery-m2.py`**: `python3 <script> <unicode|ascii> <WxH> [<nn>…]`; settles on a quiet screen, waits for the finding string at stops 5, 7, 10, 11. Two pyte gaps fixed in the script, not the app: no alternate screen (a run's `?1049h` left the previous stop's cells — the "stale pane" in the first pass) and APC/OSC/DCS strings printed as text (the Kitty graphics probe `Gi=31,s=1,…` in the frame). Raw streams under `target/pty-gallery-m2/`.
+- **49 captures** `docs/shots/m2-<nn>-<stop>-<keys>-<WxH>-<tier>.txt` (19 × 160x40, 19 × 80x24, 5 × 100x30, 5 × 80x24 ASCII), largest 7.1 KB; each grep-verified for its stop line and one marker string (37 of 49 carry the banner; the 12 at 80x24 with the Detail tab up or the Map view carry the stop only in line 1 — KNOWN_GAPS).
+- **`--stems`** on the example; `coverage_matrix` gains the details table (`SIZES` now knows 100x30 and 160x40); `docs/shots/35-coverage-matrix.txt` re-written.
+- **Perf:** `docs/perf/acceptance-details-and-radar.txt` — stop 18's last repaint 3.3 s after its first frame under a pty, debug build.
+- **Stops corrected from what the pty showed** (part (a) wrote them unverified): 1 opens on `three: in progress` (row 0; the merge is row 1); 2's `j` is inert (no two-file commit in the corpus); 5 is `x j j x` (the second `x` opens the compare; no `· N files`); 7 is `.` alone — **`Explain` is not in the menu** (`context_menu.rs` hardcodes `marked = false`), so the Explain panel is unreachable by keys; 10's verdict came from live git (`Merge branch 'alpha' · evil merge`), the first real run of ticket 14's job arm; 11 and 6 show `ⓘ` no-upstream markers on branch tips too; 17 has no `✉` row (one-line message). The force-push probe has no stop and was not exercised. All in KNOWN_GAPS.
+- Not done by me: judging by eye. The captures are pyte's view.
+
+## Handoff (as planned at the seam; superseded by part b above)
+
+Exact next steps, same `Build with`:
 
 1. **TESTING.md "Details and diffs"** after "Graph gallery": the command, keys, "Reading the entries", one entry per stop in `--list` order (long form of each `shows`/`differs` in `tests/it/gallery.rs::details`), the "Working-tree row" entry (no stop; captures `docs/shots/m2-working-tree-row.txt`, `m2-detail-pane-breakpoints.txt`), the per-breakpoint block, the per-terminal lines. Stop 12's entry says why there is no marker. Stops 10 and 15 (evil probe, force-push) — if the pty walk exercises the evil probe for real at stop 10 say so; the force-push probe has no stop, say so plainly.
 2. **`.scratch/m2-details-and-diffs/pty-gallery-m2.py`** from `.scratch/m1-the-graph/pty-gallery.py`: run `target/debug/examples/gallery --group details`, sizes 160×40 and 80×24 Unicode for all; 100×30 and 80×24 ASCII for stops 1, 6, 7, 15, 16. Wait for the settle after the prelude (stop 10: wait for `evil merge · evil.txt`; stop 18: search + files, give it 5 s). File names from `capture_stem` — add a `--stems` flag to the example printing `<nn> <stem>` per details stop (the `#[cfg_attr(not(test), allow(dead_code))]` on `capture_stem` comes off then). `run_headless` seeds neither `[diff]` nor `[radar]`; the gallery runs the interactive path (`event_loop::run`), which does, so a config file under `XDG_CONFIG_HOME` is honoured — verify the file name in `config/mod.rs::path_in_environment`.

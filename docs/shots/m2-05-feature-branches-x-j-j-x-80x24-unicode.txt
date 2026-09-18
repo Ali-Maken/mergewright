@@ -1,0 +1,26 @@
+details gallery stop 5/19: m2-05-feature-branches-x-j-j-x, unicode tier, 80x24
+
+Graph  [Detail]
+COMPARE 0683985 → e30e870
+
+
+D three.txt                                                                +0 −1
+A two.txt                                                                  +1 −0
+
+  1     - a
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

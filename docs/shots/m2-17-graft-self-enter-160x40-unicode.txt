@@ -1,0 +1,42 @@
+details gallery stop 17/19: m2-17-graft-self-enter, unicode tier, 160x40
+
+ graft /Users/devuser/dev/sandbox/gitter  140 rows so far                                COMMIT ca5796c
+ gallery 17/19 graft-self · Enter · ] next [ back q quit · unicode                           Ali-Maken <116688264+Ali-Maken@users.noreply.github.com> · 2026-09-18 07:09 +0500 · 2…
+ shows: real commit: Contained in: main; ✉ row only if the message has a body                parents d288023 · diff vs first parent
+ differs: real repo: syntax roles tint the diff; the corpus stops are plain                  Contained in: main
+◌   Uncommitted changes (3 unstaged, 18 untracked)
+◆   [◆ main] progress: m2/23 log figures                                         28m  ca5796cM PROGRESS.md                                                 +1 −1
+●   progress: m2/23 partial (a)                                                  28m  d288023Append `· COMPACTED` when the helper compacted mid-ticket: that ti…
+●   m2-details-and-diffs-23: part a — Harness::prelude, the details gallery gro… 28m  da8a67f385 385   - 2026-09-18 · m2/20 continuation 1 · sonnet · done (f33…
+●   progress: m2/22 done; tickets: 13 and 18 status lines corrected              44m  9448a2e386 386   - 2026-09-18 · m2/21 refresh-reopens-walk · sonnet · don…
+●   m2-details-and-diffs-22: docs sweep — README/CHANGELOG for M2, bare cargo r… 45m  77a79c9387 387   - 2026-09-18 · m2/22 docs-sweep · sonnet · done (docs on…
+●   progress: m2/21 done                                                         52m  45f9d1b388     - - 2026-09-18 · m2/23 acceptance-details-and-radar · fabl…
+●   m2-details-and-diffs-21: refresh reopens the walk on the commit-graph path   53m  1d45e26    388 + - 2026-09-18 · m2/23 acceptance-details-and-radar · fabl…
+●   progress: m2/20 done                                                         74m  178bb61389 389
+●   m2-details-and-diffs-20: wire the overview strip into frame + mouse, capture 74m  f336ee0390 390   ## Open questions for the M1 checkpoint
+●   progress: m2/20 log figures                                                  2h   8e94938391 391   - **For the M1 review brief (conductor, 2026-09-14, user…
+●   progress: m2/20 partial                                                      2h   da78848
+●   m2-details-and-diffs-20: overview strip marks assembly, widget, O toggle (n… 2h   0c88a75
+●   progress: m2/19 done                                                         2h   c96b044
+●   m2-details-and-diffs-19: wire the Map view into view::frame, add view::map,… 2h   3bf61a4
+●   m2-details-and-diffs-19: add the Map view widget (map_screen)                2h   127ca74
+●   progress: m2/18 log figures corrected                                        2h   1383aee
+●   progress: m2/18 done                                                         2h   53cf594
+●   m2-details-and-diffs-18: wire the Map view's job, update state and keys      2h   94dcf9f
+●   progress: m2/18 log figures                                                  3h   baed005
+●   progress: m2/18 partial                                                      3h   da3e5f9
+●   m2-details-and-diffs-18: MAP.md entries + handoff note for map.rs seam       3h   4d06053
+●   m2-details-and-diffs-18: Map view data model (map.rs)                        3h   a9aae80
+●   progress: m2/17 done                                                         3h   3e17c30
+●   m2-details-and-diffs-17: Explain panel for marked-commit findings            3h   0cabadf
+●   progress: m2/16 done                                                         3h   7697259
+●   m2-details-and-diffs-16: duplicate-commit probe, wiring, and the capture     3h   7e48c76
+●   progress: m2/15 log figures                                                  4h   b4a510e
+●   progress: m2/15 done                                                         4h   a40469e
+●   m2-details-and-diffs-15: force-push tests, the capture, and ticket 15 done   4h   a199a18
+●   m2-details-and-diffs-15: wire the force-push probe into jobs, update and th… 4h   2c55403
+●   m2-details-and-diffs-15: probe_force_push, the merge-base --is-ancestor che… 4h   cc638c7
+●   progress: m2/14 done                                                         4h   01c2fef
+●   m2-details-and-diffs-14: the evil-merge capture, and ticket 14 done          4h   d0ce201
+●   m2-details-and-diffs-14: wire the evil-merge probe into jobs, update and th… 4h   c423679
+ q quit  F2 status  F3 renderer  <> resize  / search  j/k move  Space fold  1 first-parent

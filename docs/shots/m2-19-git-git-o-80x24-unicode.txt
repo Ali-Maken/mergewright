@@ -1,0 +1,26 @@
+details gallery stop 19/19: m2-19-git-git-o, unicode tier, 80x24
+
+ graft /Users/devuser/.cache/graft/git-git.git  76 rows so far  +14 lanes  ⓘ
+ gallery 19/19 git-git · O · ] next [ back q quit · unicode                    ◉
+ shows: strip honestly incomplete: buckets below the walked range are blank    ◉
+ differs: stop 16's strip at 85k rows: it grows as the walk lands, never at onc◉
+◉─╮           ⋮ ⓘ [next] Merge branch 'jk/ci-use-system-asciidocto… 6d   848ec2◉
+│ │ ◉▾        ⋮ ⓘ [seen] Merge branch 'js/rust-in-windows-ci' into… 6d   a184f4◉
+│ │ ◉▾        ⋮   Merge branch 'ap/var-broken-down-idents' into se… 6d   01c5fa◉
+│ │ ◉▾        ⋮   Merge branch 'ks/history-commit-leakfix' into se… 6d   2c03a6◉
+│ │ ◉▾        ⋮   Merge branch 'ps/ref-storage-format' into seen    6d   37f625ⓘ
+│ │ ◉▾        ⋮   Merge branch 'jc/rust-cargo-build-target' into s… 6d   9b27d4◉
+│ │ ◉▾        ⋮   Merge branch 'tc/push-force-if-includes-fixes' i… 6d   aeac75◉
+│ │ ◉▾        ⋮   Merge branch 'tb/rerere-lock-grace' into seen     6d   bc3ed9◉
+│ │ ◉▾        ⋮   Merge branch 'as/push-force-if-includes-no-reflo… 6d   37cba8◉
+│ │ ◉▾        ⋮   Merge branch 'mm/diff-process-hunks' into seen    6d   49433a◉
+│ │ ◉▾        ⋮   Merge branch 'cc/early-scan-options' into seen    6d   161b15◉
+│ │ ◉▾        ⋮   Merge branch 'tc/last-modified-bloom' into seen   6d   9a7d54◉
+│ │ ◉▾        ⋮   Merge branch 'll/doc-pushcert-if-asked' into seen 6d   9e3f1e◉
+│ │ ◉▾        ⋮   Merge branch 'jc/checkout-refactor' into seen     6d   8b26a3◉
+│ │ ◉▾        ⋮   Merge branch 'fz/rebase-autosquash-empty' into s… 6d   bd7b13◉
+│ │ ◉─╮       ⋮   Merge branch 'ws/squelch-svn-migrate' into seen   6d   ceeb10┆
+│ │ ◉─│─╮     ⋮   Merge branch 'hn/history-squash' into seen        6d   6b7797┆
+│ │ ◉─│─│─╮   ⋮   Merge branch 'kh/format-rev-more-options' into s… 6d   65a165┆
+│ │ ◉─│─│─│─╮ ⋮   Merge branch 'gg/http-ssl-verify-status' into se… 6d   c5f147ⓘ
+ q quit  F2 status  F3 renderer  + expand lanes  . explain  / search  j/k move ┆

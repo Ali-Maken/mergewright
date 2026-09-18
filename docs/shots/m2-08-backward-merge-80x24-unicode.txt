@@ -1,0 +1,26 @@
+details gallery stop 8/19: m2-08-backward-merge, unicode tier, 80x24
+
+ graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/b…
+ gallery 8/19 backward-merge · radar · ] next [ back q quit · unicode
+ shows: ⚠ backward merge on feature's tip merge; main's two rows unmarked
+ differs: stop 6's mirror: same subjects, the marker sits on feature's row
+  ◉─╮ ⓘ [feature] Merge branch 'main' into feature                  2d   84cc93e
+  ● │   feature: work                                               2d   8fa6bfc
+◆─│─╯   [◆ main] Advance main                                       2d   18ca7c9
+◇─╯     Add the base                                                2d   68d5d19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  F3 renderer  . explain  / search  j/k move  Space fold

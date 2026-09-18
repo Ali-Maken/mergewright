@@ -838,3 +838,212 @@ the stop that failed if one did.
 
 Windows terminals (PROMPT.md, Mission; ADR-0005). Not tested, not
 supported in v1.
+
+## Details and diffs
+
+M2's acceptance ticket (m2-details-and-diffs/23). M2 promises that **what a
+commit changed is readable without leaving the graph, and a bad merge is
+flagged and explained**; the `details` gallery group is how a person checks
+that, one stop at a time, each stop a repository plus the keys the harness
+presses before its first frame.
+
+```sh
+cargo run -p graft --example gallery -- --group details                 # stop 1
+cargo run -p graft --example gallery -- --group details --start foxtrot-merge
+cargo run -p graft --example gallery -- --list                          # both groups
+cargo run -p graft --example gallery -- --stems                         # capture stems
+cargo run -p graft --example gallery -- --matrix                        # both tables
+```
+
+`]` next stop, `[` previous, `q` quit; the stop's keys are already pressed
+when its frame appears, and every Graft key works after that. The banner's
+first line names the keys where M1's names the group:
+`gallery 3/19 feature-branches · Enter Tab v · ] next [ back q quit · unicode`.
+Each stop restarts the run, so the prelude is pressed once per visit.
+
+Captures: `docs/shots/m2-<nn>-<stop>-<keys>-<WxH>-<tier>.txt`, every stop at
+160x40 and 80x24 Unicode, stops 1, 6, 7, 15, 16 also at 100x30 Unicode and
+80x24 ASCII (`.scratch/m2-details-and-diffs/pty-gallery-m2.py`). They are
+what pyte saw, not what a person saw: **the user judges by eye**. Two
+capture-side facts to know: at 80x24 the pane is a tab strip and the
+`Detail` tab hides the banner, so those files name their stop only in their
+first line; and the Map view (stop 15) draws no banner at any size — its
+`MAP · main · last 1 day` header and `M/Esc back` footer are the stop's
+identity.
+
+### What the walk proves and what it does not
+
+- **The evil-merge probe ran against live git here.** The gallery runs the
+  interactive path with the real job runner; stop 10's `· evil merge` came
+  from `git` reading the merge's trees, not from an injected verdict (ticket
+  14's own capture had one injected). This walk is the first live exercise
+  of that arm.
+- **The force-push probe (ticket 15) has no stop and was not exercised.**
+  No fixture has a rewritten remote; `docs/shots/m2-force-push.txt` is still
+  the only evidence, and it is a TestBackend capture. Nothing in this walk
+  implies otherwise.
+- **The Explain panel is unreachable by keys.** The `.` menu never lists
+  `Explain` (`update/context_menu.rs` opens every history row with
+  `marked = false`), so stop 7 shows the menu without it. The panel exists
+  (`docs/shots/m2-explain-panel.txt`, opened by a direct call) but a user
+  cannot open it. "A bad merge is flagged" holds; "and explained" does not
+  yet. Listed in KNOWN_GAPS for the M2 review.
+- **No corpus commit changes two files**, so the file-cursor stop (2) shows
+  `j` doing nothing rather than the second file's diff; stop 18 (git/git)
+  is where a multi-file tree is seen.
+- A compare's header carries no `· N files +A −B` yet (KNOWN_GAPS).
+
+### Reading the entries
+
+Fixture facts come from `crates/graft-fixtures/src/shapes/history.rs` and
+the M1 entries above; the fixture SHAs are stable (`0683985` is `three: in
+progress` in every build). "Row" counts from the top of the graph.
+
+**Marker column:** one cell between the graph and the badges, present only
+when some row on screen has a finding: `⚠` (ASCII `!`) a warning, `ⓘ`
+(ASCII `i`) information. The pane's subject row appends the finding's name
+after `·` (`Merge branch 'alpha' · evil merge`); a ref finding sits on the
+`Contained in:` line's row (`no upstream (feature/three)`). Branch tips
+without an upstream carry `ⓘ` from the first stop on: the marker column is
+not exclusive to merges.
+
+**Pane header, four lines at 160 columns:** `COMMIT <sha>`; author `<name>
+<email> · <date> · <age>`; `parents <sha>[, <sha>] · diff vs first parent`;
+`Contained in: <branches>`. A message with a body adds a `✉ message (N
+lines)` row (stop 18); a one-line message has no `✉` row (stop 17).
+
+**Files tree:** one row per file, `A`/`M`/`D`/`R`/`C`/`T` then the path,
+`+N −N` right-aligned (`bin` for binary); directories fold with `▾`. The
+highlighted row is the file whose diff is below.
+
+**Diff body:** gutter line number, sign (`+`/`-`/space), text; no `@@`
+heading for a single-hunk file. Side-by-side (`v`): two halves, `│` between,
+each with its own gutter; an unpaired side is blank. Word tint (`W`) is
+colour only: at 256 colours the changed words carry a stronger background
+inside a changed line; at 16 colours the whole line carries the tint and
+words do not differ. A capture cannot show either; judge in the terminal.
+
+**Compare:** `x` marks the base (`▏` on its row, footer `compare base <sha>
+— move, x again clears`); `x` on another row opens the pane with
+`COMPARE <base> → <head>` in place of `COMMIT`.
+
+**Strip (`O`):** one column at the right edge, one cell per bucket of rows,
+by priority `⚠` > `ⓘ` > `◆` search hit > `●` HEAD > `◉` merge > `█` rows on
+screen > `┆` rows off screen with nothing to mark; blank = not walked yet.
+ASCII: `! i + * o # :`.
+
+### The stops
+
+1. **feature-branches · Enter** — row 0 is `three: in progress` (feature/three's
+   tip sits above `Merge branch 'feature/two'`), so the pane opens on
+   `COMMIT 0683985`: `Graft Fixture <fixture@example.invalid> · 2020-01-01
+   00:09 +0000`, `parents de95041 · diff vs first parent`, `Contained in:
+   feature/three`, then `no upstream (feature/three)`. Files: one row,
+   `A three.txt +1 −0`, highlighted. Body: `1 + a`. Row 0 carries `ⓘ`; so do
+   `two: finish` and `one: finish` (no upstream). Footer has `. explain`.
+2. **feature-branches · Enter j** — the same pane as 1, byte for byte: one
+   file, so `j` inside Files has nowhere to go. Header, tree and body do not
+   move; the graph row stays on `three: in progress`.
+3. **feature-branches · Enter Tab v** — the body splits: `│` down the middle,
+   the left half blank (no old side for an added file), the right half
+   `1 + a` with its own gutter. Header and tree as in 1.
+4. **feature-branches · Enter W** — same text as 1; in the terminal the `a`
+   on the `+` line carries the stronger tint (256 colours). Nothing else
+   changes.
+5. **feature-branches · x j j x** — `x` on row 0, two `j`, `x` on `two: finish`:
+   the pane header reads `COMPARE 0683985 → e30e870` where `COMMIT` would
+   be; no author or parents lines; `▏` on row 0. No file count in the
+   header (KNOWN_GAPS).
+6. **foxtrot-merge** — the marker column shows `⚠` on `Merge branch 'main'
+   into feature` (row 0, `[◆ main]`) and `ⓘ` on `feature: work` (`[feature]`,
+   no upstream); `Advance main` and `Add the base` unmarked. No pane. Footer
+   has `. explain`.
+7. **foxtrot-merge · .** — a three-item menu over the graph: `Copy SHA`,
+   `Compare with this`, `Open details`. **`Explain` is absent** — that is
+   the gap, not a pass. `Esc` closes the menu.
+8. **backward-merge** — `ⓘ` on `Merge branch 'main' into feature` (`◉`,
+   `[feature]`); `Advance main` (`[◆ main]`) and `Add the base` unmarked.
+   The severity is info, not warning: the marker is `ⓘ`, not `⚠`.
+9. **accidental-pull-merge** — `ⓘ` on `Merge branch 'main' of
+   https://example.invalid/graft.git into main` (row 0, `[◆ main]`); `Their
+   commit` and `My commit` unmarked.
+10. **evil-merge · Enter** — `⚠` on `Merge branch 'alpha'` (row 0); the pane's
+    subject row reads `Merge branch 'alpha' · evil merge`, `parents 0631550,
+    bd20b78`, `Contained in: main`; files `A alpha.txt +1 −0` and
+    `A evil.txt +1 −0`. In the terminal the subject row passes through
+    `unchecked` and `checking…` first; the capture holds the last state.
+    `alpha: work` carries `ⓘ` (no upstream).
+11. **cherry-pick-duplicates** — `ⓘ` on both `Fix the greeting` (`[◆ main]`)
+    and `Fix the greeting (cherry picked)`; `topic: unrelated work` also
+    carries `ⓘ`, for no upstream, not for the duplicate. `Add the greeting`
+    unmarked.
+12. **ref-states** — no marker column at all: every branch has an upstream
+    (`main ⇄ origin`, `ahead`→`origin/ahead`, `behind`→`origin/behind`) and
+    `ahead: not pushed yet` is not on the default branch, which is the only
+    ahead state the radar flags. A negative control.
+13. **unicode-names · Enter** — the pane opens on `ветка: первый коммит`
+    (row 0); files `A документ.txt +1 −0` with `+1 −0` in the same column
+    as every other stop's counts; body `1 + содержимое`. The CJK badge rows
+    keep their SHA column aligned.
+14. **non-utf8-path · Enter** — `COMMIT` on `Add a Latin-1 path`, `Contained
+    in: latin1`; the tree reads `A caf�.txt +1 −0`, exactly one `�`; the body
+    loads (`1 + latin-1 path`).
+15. **feature-branches · M** — no graph, no banner: `MAP · main · last 1 day`,
+    a `BRANCH … NOW` header, then `▸ main` with `█` and `●` at the right,
+    `feature/three` with `▁`, `feature/two` and `feature/one` each `●╮`
+    (the elbow: merged into main). Footer `↑↓ select ⏎ zoom to commits
+    M/Esc back`. ASCII: `@` for `█`, `.` for `▁`, `o\` for `●╮`.
+16. **feature-branches · O** — a one-cell column at the right edge, rows 4
+    to 40: `█` over the rows on screen, `◉` twice (the two merges), `●` for
+    HEAD near the top, `ⓘ` where a no-upstream tip sits. The graph is
+    unchanged but one column narrower. `O` again removes it.
+17. **graft-self · Enter** — this checkout's HEAD: `COMMIT <sha>`, your name
+    and email, `parents <sha> · diff vs first parent`, `Contained in: main`
+    (more branches if any contain it); no `✉` row unless HEAD's message has
+    a body. Files are real paths with `M`; the body carries syntax colours
+    (Markdown or Rust roles) — colour only, judge in the terminal.
+18. **git-git · /v2.41.0-rc0⏎ Enter** — `scripts/clone-git-git.sh` first. The
+    search lands on `Merge tag 'v2.41.0-rc0'` (`1 match (1/1)` in the
+    footer), `Enter` opens it: `parents f66ad35, 0df2c18`, `Contained in:
+    bisect, jch, maint, master, next, seen, …`, `✉ message (24 lines)`, files
+    from `M .mailmap +1 −0` and a folded `▾ Documentation/`. Under a pty the
+    last repaint came 3.3 s after the first frame (`docs/perf/
+    acceptance-details-and-radar.txt`, debug build). Then `j` down to a long
+    file and `L`: the `… N more lines · L load all` row disappears and the
+    rest loads. (`L` on `.mailmap` does nothing: one line.)
+19. **git-git · O** — the strip on 85k rows: `◉` and `ⓘ` in the walked
+    buckets at the top, `┆` where rows exist without a mark, and blank
+    cells below the walked range that fill as the header's `N rows so far`
+    grows. Never all at once.
+
+**Working-tree row** (no stop: the fixtures are clean) — in a dirty checkout
+of graft itself, `k` from the top row lands on `Uncommitted changes (…)`,
+its highlight moves and HEAD's row un-highlights; `Enter` opens
+`UNCOMMITTED · N staged N unstaged N untracked` / `diff vs HEAD <sha>`, staged
+and unstaged files listed, an untracked file's body reads `untracked · no
+diff yet (M3)`; `j` returns to HEAD's commit and the pane follows. Captures:
+`docs/shots/m2-working-tree-row.txt` (graph),
+`docs/shots/m2-detail-pane-breakpoints.txt` (the `UNCOMMITTED` pane).
+
+### Per breakpoint
+
+Stop 1 at three sizes (`m2-01-feature-branches-enter-*`):
+
+- **160+ columns:** the pane is a right column from row 3 down; the graph
+  keeps its badges and SHAs; the banner stays on the left.
+- **100–159:** the pane sits **below** the graph: graph rows to about the
+  middle, then the header folded to one line (`COMMIT 0683985 · Graft
+  Fixture …`), tree and body under it. Banner still on top.
+- **< 100:** a tab strip `Graph  [Detail]` replaces both; the `Detail` tab
+  is the whole screen (`COMMIT`, author, `three: in progress · no upstream
+  (feature/three)`, tree, body) and the banner is not visible. `Tab` back
+  to `Graph` shows the banner and the marker column.
+
+### Per terminal: walk the details group
+
+Two lines added to the M1 procedure above: `cargo run -p graft --example
+gallery -- --group details`, then `]` through the 19 stops at ≥ 160 columns,
+checking each against its entry; at stop 10 wait for the subject row to
+settle on `· evil merge`; in a dirty checkout of graft itself press `k`,
+`Enter` at the top and check the "Working-tree row" entry. Record the result
+in the tier tables, naming the stop that failed if one did.
