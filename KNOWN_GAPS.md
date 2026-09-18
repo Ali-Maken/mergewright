@@ -6,6 +6,10 @@ summary may imply any of it exists.
 
 Every entry names an **expiry**: the milestone that closes it, or "not planned".
 
+**Broken and unverified are not the same thing** (ADR-0029). *Broken* is known
+wrong. *Unverified* shipped with nothing in this repo able to prove it either
+way — so if it looks off in real use, it was already suspect. Entries say which.
+
 ---
 
 
@@ -14,14 +18,6 @@ Every entry names an **expiry**: the milestone that closes it, or "not planned".
 open/closed status. See also that file's own back-link.
 
 
-**Closed rows moved to [`docs/gaps/closed.md`](docs/gaps/closed.md)**
-(housekeeping/01, 2026-09-18): nothing deleted, only split by
-open/closed status. See also that file's own back-link.
-
-
-**Closed rows moved to [`docs/gaps/closed.md`](docs/gaps/closed.md)**
-(housekeeping/01, 2026-09-18): nothing deleted, only split by
-open/closed status. See also that file's own back-link.
 
 ## Deferred stretch goals (agreed at step 1, 2026-09-11)
 
@@ -419,3 +415,28 @@ The user asked for this to be visible here, not only in a commit message. M7
 should decide whether an exhaustive background sweep earns its cost, or whether
 32-per-session is the honest permanent answer — and, if it stays, whether the
 UI should say so rather than letting silence read as "no force-push found".
+
+---
+
+## Unverified (shipped, nothing here can prove it)
+
+### Two M2 colour fixes were never seen by anything
+**Expiry: M3** (first milestone with a capture pipeline that could carry colour,
+or the user's eye, whichever comes first). Registered 2026-09-18, ADR-0029.
+
+The pty capture pipeline (`pty-gallery-m2.py`, pyte) records **character grids
+with no colour attributes**. A colour-only change is therefore invisible to every
+check this repo can run — captures included. Two M2 review fixes are in that
+state:
+
+- **`W` (word tint)** — review Major M1, fixed round 1b. Unit-tested; nothing
+  rendered it.
+- **The diff body drawn all `text-muted` unless the Diff region is focused** —
+  review Major M2, fixed round 1b. Same.
+
+Both pass their tests. Neither has been seen. If word-level diff tinting or the
+unfocused diff body looks wrong in a real terminal, this is why — report it in
+[`docs/field-notes.md`](docs/field-notes.md) rather than assuming it's new.
+
+**Closing it needs one of:** a capture path that carries SGR attributes, or the
+user looking at it once and saying.

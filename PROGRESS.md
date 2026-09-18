@@ -62,23 +62,23 @@ see that file's header). This file keeps the plan and the current step only.
 
 **What the conductor does for every milestone:**
 
-1. **Design and ticket specs:** `planner-fable` writes `docs/design-notes/<milestone>.md` (interfaces, hard-to-reverse choices, risky tickets, new UI; no code) **and every ticket spec** (scope, signatures, acceptance, Read first, `Build with`), in two passes past ~12 tickets. The conductor numbers and sequences them; it doesn't re-decide them. `/to-tickets` was used for M0 and M1 only.
-2. **Build:** each ticket goes to a fresh builder on its `Build with` model, which builds it test-first, reviews it and commits.
+1. **Design and group specs:** `planner-fable` writes `docs/design-notes/<milestone>.md` (interfaces, hard-to-reverse choices, risky work, new UI; no code) **and every group spec** (scope, the pieces inside, signatures, acceptance, Read first, `Build with`), in two passes past ~8 groups. The conductor numbers and sequences them; it doesn't re-decide them. `/to-tickets` was used for M0 and M1 only.
+2. **Build:** each **group** goes to one fresh builder on its `Build with` model, which builds its pieces test-first in one context, reviews and commits. Groups cluster by shared files (ADR-0029).
 3. **Stuck:** escalation per CLAUDE.md "Standing rules → Models".
-4. **Review:** `reviewer` checks the milestone from its diff and the MAP.md files (model in the table) and builders fix what it finds (at most 2 rounds).
-5. **CHECKPOINT:** you test the milestone, approve the next milestone's tickets (write milestones only) and type `continue`.
+4. **Review:** `reviewer` checks each group from its diff and the MAP.md files, **one round**; what's left goes to KNOWN_GAPS with an expiry, marked broken or unverified.
+5. **CHECKPOINT:** one stop per milestone (ADR-0029). You test it and type `continue`. **No ticket approval on any milestone** — the conductor stops unasked only for a visual result, unprovable-inverse work, a product preference, or a spec/scope change.
 
 | ✓ | Milestone | Build with (per ticket, CLAUDE.md standing rules) | Review | CHECKPOINT: what you test |
 |---|---|---|---|---|
 | [x] | M0 Foundations | Opus | Opus | Opens a repo; quitting leaves the terminal clean |
 | [x] | **M1 The graph** | per ticket's `Build with` line | Opus | `git/git` and the merge-mistake fixtures: is the history shape obvious at a glance? |
 | [ ] | M2 Details and diffs (read-only) | per ticket; Fable: Mistake Radar detection | Fable | Diffs look right; bad merges get flagged |
-| [ ] | M3 Working tree, undo and stash (write) | per ticket; Fable: undo per-kind inverse | Fable | Stage a hunk, commit, undo it, stash and unstash, then try to lose work |
-| [ ] | M4 Remotes (write) | per ticket | Fable | Fetch, pull and push on a real remote; wrong password |
-| [ ] | M5 Merge, rebase, reset, Ghost Preview (write) | per ticket; Fable: Ghost Preview planning | Fable | Every history change is previewed and can be undone |
-| [ ] | M6 Conflict resolver (write) | per ticket; Fable: conflict and operation state machine | Fable | Resolve a real conflict; kill mid-rebase, relaunch |
-| [ ] | M7 Power tools (read-only) | per ticket | Fable | Interactive rebase, blame, line history, reflog |
-| [ ] | M8 Polish, **final name**, ship (read-only) | per ticket; Fable: architecture pass over MAP.md files | Fable | Pick the name (below), then a fresh install and the first-run tour |
+| [ ] | M3 Working tree, undo and stash (write) | per group; Fable: undo per-kind inverse | Fable | Stage a hunk, commit, undo it, stash and unstash, then try to lose work |
+| [ ] | M4 Remotes (write) | per group | Fable | Fetch, pull and push on a real remote; wrong password |
+| [ ] | M5 Merge, rebase, reset, Ghost Preview (write) | per group; Fable: Ghost Preview planning | Fable | Every history change is previewed and can be undone |
+| [ ] | M6 Conflict resolver (write) | per group; Fable: conflict and operation state machine | Fable | Resolve a real conflict; kill mid-rebase, relaunch |
+| [ ] | M7 Power tools (read-only) | per group | Fable | Interactive rebase, blame, line history, reflog |
+| [ ] | M8 Polish, **final name**, ship (read-only) | per group; Fable: architecture pass over MAP.md files | Fable | Pick the name (below), then a fresh install and the first-run tour |
 
 **Who designs, specifies, builds and reviews; ticket size, context, checkpoints:** CLAUDE.md, "Standing rules". Not restated here. Fable's share was raised for M2 onward on 2026-09-13; M1 keeps its tickets and its Opus review. Record of who did what: `docs/AUTHORSHIP.md`.
 

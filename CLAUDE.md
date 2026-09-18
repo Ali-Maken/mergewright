@@ -17,7 +17,8 @@ name chosen in M8. Don't publish, register or tag anything public under it.
 | ADRs | Decision records, folder `docs/agents/domain.md` names (default `docs/adr/`). **PROMPT.md's `DECISIONS.md` → write an ADR instead.** |
 | `PROGRESS.md` | Plan + current step. Current milestone's log: `docs/log/<milestone>.md`, linked from here — don't inline it back. |
 | Tickets | Local markdown, per `docs/agents/issue-tracker.md`. |
-| `KNOWN_GAPS.md` | Open items. Closed rows: `docs/gaps/closed.md`. |
+| `KNOWN_GAPS.md` | Open items, **broken and unverified marked apart**. Closed rows: `docs/gaps/closed.md`. |
+| `docs/field-notes.md` | What the user hit in real use. One line, dated, no ceremony. Feeds the next design pass. |
 | `docs/reviews/` | Milestone reviews. |
 | `docs/design-notes/` | One note per milestone, by `planner-fable`. |
 | `docs/AUTHORSHIP.md` | Who designed/specified/built/reviewed each milestone. From the session logs; conductor regenerates every checkpoint; facts from the log only. |
@@ -38,8 +39,10 @@ name chosen in M8. Don't publish, register or tag anything public under it.
 
 - **Who writes them (M2 onward):** `planner-fable` writes every ticket spec in its design pass (see Models). Conductor **files and sequences**: numbering, dependency order, `Blocked by:`, `Status:`. It does not re-decide scope, signatures or `Build with`. A spec the conductor thinks wrong goes back to `planner-fable` or the user; conductor doesn't edit it.
 - **`/to-tickets` not used for any milestone with a Fable spec pass** (M2 onward). Drafted M0 and M1 only.
-- **Size:** each ticket finishes inside one context, target **under 80k tokens**. Compaction means the ticket was too big: helper says so in its report, conductor splits the remainder into new tickets.
-- **Size from evidence, not intuition** (user, 2026-09-15; rules-rationale has M1's numbers). `planner-fable` reads the M1 session log's compaction/overrun entries first, says what caused them, sizes the milestone's tickets from that. A ticket that can't be made to fit says so when written, not mid-build.
+- **Groups, not tickets** (ADR-0029, 2026-09-18). `planner-fable` writes **groups**: the unit one builder takes in one context, made of work that **shares files**, so the prefix is read once and later pieces ride a warm cache. Fine-grained steps live inside the group. **Decompose the work; don't decompose the context.** Splitting into more units does not save money — it duplicates the startup and saves nothing on turns.
+- **The metric is turns, not tokens** (ADR-0029). A helper's context is re-sent every turn, so cost ≈ turns × prefix, not context size. M2: mean 119 turns/run; turn reads ~57% of a run's cost, output ~40%, startup under a tenth. **The 80k token target is withdrawn** — it measured the wrong thing and pushed M2 to 28 tickets while the mean still came in at 114k on 33 of 33.
+- **Size:** a group must fit in one context. Each piece inside it **reports its turn count at its boundary**; a piece past **60 turns** commits, says why, and continues deliberately. Compaction means the group was too big: helper says so, conductor splits the remainder.
+- **What actually cuts turns:** a spec precise enough to shorten the write → test → fail → fix → test loop, and a scout for exploration instead of reading source into the builder's own context. `planner-fable` reads the previous milestone's log entries for turn counts and causes, and sizes from those.
 - **Splitting a remainder:** conductor cuts along the seams in the builder's handoff note, keeps original scope/signatures/model. A split needing a new decision (signature, scope change, model) goes to `planner-fable` as a spec-only pass.
 - **Each ticket states:** scope in/out; acceptance criteria; **exact sections** to read (never a whole document); **exact signatures** the work must expose/call; its `Build with` line.
 - **Interface-first grouping:** first ticket of a group defines traits/stubs; rest fill them in.
@@ -65,9 +68,9 @@ name chosen in M8. Don't publish, register or tag anything public under it.
 
 - **Design pass (M2 onward):** `planner-fable` reads only the relevant PROMPT.md/DESIGN.md sections and crate MAP.md files — never source — and writes:
   1. `docs/design-notes/<milestone>.md`, two pages max: the milestone's promise (one line); interfaces/data shapes introduced; 2–3 hard-to-reverse choices with a recommendation each; where it differs from DESIGN.md and why; genuinely risky tickets; new UI DESIGN.md doesn't already specify (layout, per-breakpoint content, hierarchy, interaction).
-  2. **Ticket specs**, straight into `.scratch/<milestone>/issues/` as unnumbered `<ticket-slug>.md` files: scope in/out, exact signatures, acceptance criteria, Read-first sections, `Build with` line, `Needs:` (signatures called from other tickets, for the conductor to derive order).
+  2. **Group specs**, straight into `.scratch/<milestone>/issues/` as unnumbered `<group-slug>.md` files: scope in/out, the pieces inside the group in order, exact signatures, acceptance criteria, Read-first sections, `Build with` line, `Needs:` (signatures called from other groups, for the conductor to derive order). Group by **shared files** (ADR-0029), so one builder reads the prefix once.
 
-  **More than ~12 tickets → two passes:** pass 1 writes the note + interface-first specs; pass 2 (fresh `planner-fable`, reads note + pass 1 specs, no source) writes the rest. No code — builders follow the note and spec.
+  **More than ~8 groups → two passes:** pass 1 writes the note + interface-first specs; pass 2 (fresh `planner-fable`, reads note + pass 1 specs, no source) writes the rest. No code — builders follow the note and spec.
 - **Signature tickets — Fable builds them regardless of the three tests**, because the code is the idea:
   - M2: Mistake Radar detection
   - M3: undo journal's per-kind inverse
@@ -88,14 +91,25 @@ name chosen in M8. Don't publish, register or tag anything public under it.
 - **MAP.md:** every crate keeps `crates/<crate>/MAP.md`, one line per public item. Any ticket changing a public item updates it. Builders read MAP.md before source. A crate without one gets it from the next ticket touching that crate.
 - **Quiet gates** (user, 2026-09-15): builders run `cargo test --quiet`, `cargo clippy --all-targets --message-format=short -- -D warnings`, `cargo build --quiet`. Full output only on failure, only the failing part.
 - **Measurement never runs in a helper's context** (user, 2026-09-15): perf runs, benchmarks, heavy-tier runs, memory curves run from a script writing to `docs/perf/<ticket>.txt`; helper reads summary lines only.
-- **Hard stop at 40 tool calls or ~100k tokens** (user, 2026-09-15): helper commits at the next clean point, writes a handoff note in the ticket, reports `partial`; conductor splits the rest. 80k sizing target stands.
+- **Turn budget** (ADR-0029, replaces the 40-call/100k stop of 2026-09-15, which was ignored 33 times out of 33): report the turn count at every piece boundary inside a group. Past **60 turns on one piece**, commit at the next clean point, say in the report what made it long, then continue deliberately. Past the context window's comfort, write a handoff note and report `partial`; the conductor splits the rest.
+- **Prefix is paid on every turn.** 60k of junk in the opening context is not read once, it is re-read once per turn. Read the named sections, not the documents.
 - **Builders never read `PROGRESS.md` or `KNOWN_GAPS.md`** (housekeeping/01, 2026-09-18): those belong to the conductor. A builder's findings go in its ticket.
 
 ### Checkpoint policy
 
-- **Read-only milestones (M1, M2, M7, M8):** build straight through, no ticket approval. Stop only if a Critical survives review, or at the end.
-- **Write milestones (M3, M4, M5, M6):** full gates and ticket approval.
-- **Checkpoint reports:** 15 lines max, telegraphic; say which model ran each ticket and whether anything compacted.
+**One stop per milestone, every milestone** (ADR-0029, user 2026-09-18: "for me to check after every 2 or 3 turns shouldn't be there, of course when I need to see, I can ask"). Write-milestone ticket approval is withdrawn. The gates don't change — they're the conductor's to run, not the user's to watch. State lives in files; the user reads `docs/log/<milestone>.md` whenever they want in.
+
+**The conductor stops unasked for exactly four things:**
+
+1. **A visual result.** Not deference — incapacity. No builder or reviewer ticks "looks right", and the capture pipeline can't prove colour (below).
+2. **Work that can't be put back** whose inverse is unproven. Never self-certified.
+3. **A product preference it can't infer** — batched into one list at the checkpoint, not trickled.
+4. **A spec change or scope cut.**
+
+Everything else the conductor decides: grouping, order, models, splits, escalation, what counts as done against PROMPT.md and these rules.
+
+- **Reviews: one round per group.** Reviewer reports to the conductor; remaining findings go to `KNOWN_GAPS.md` with an expiry milestone. A second round only for a surviving Critical.
+- **Checkpoint reports:** 15 lines max, telegraphic; which model ran each group, what compacted, and **turns per group plus the milestone total** (ADR-0029's test: M3's mean must be well under M2's 119, or the diagnosis was wrong).
 
 ## Rules for every agent
 
@@ -112,6 +126,9 @@ name chosen in M8. Don't publish, register or tag anything public under it.
 - **A status field must never read as an error when nothing is wrong.** Name/render status by its state (`gfx ok` / `gfx: <error>`), or show the field only when there's something to report.
 - **Green gates are not evidence** (rules-rationale has why). Say what you actually verified and how, and what you couldn't. Never claim behaviour you didn't observe.
 - **Visual results are judged by eye, by the user.** Green gates aren't evidence for how something looks. Any ticket with a visual result ends with a pty capture committed under `docs/shots/`; report names the capture, says the user judges it by eye. No builder or reviewer ticks "looks right".
+- **Captures can't prove colour** (M2 evidence, ADR-0029). The pty pipeline records pyte character grids with **no colour attributes**, so no capture in this repo can show a colour-only change. Colour work ships **unverified** and says so — don't claim a capture verified it.
+- **Unverified is not broken.** `KNOWN_GAPS.md` marks both, apart. Something that shipped with nothing able to prove it belongs there, so the user knows it was already suspect rather than wondering.
+- **The user's daily use is a test tier, not a fallback** (ADR-0029). The fast tier covers logic on fixtures we invented; heavy and perf cover scale at review; the acceptance walk covers the promise along a path someone scripted. Only real use reaches how it looks, repo shapes nobody made a fixture for, and sequences nobody thought to try. What it finds goes in `docs/field-notes.md` the day it's noticed, so it survives the session.
 - **Captures stay small** (user, 2026-09-15): anything under `docs/shots/` trimmed to what shows the point, **hard cap 200 KB per file**. Raw terminal streams never committed: summarise in the committed file, keep the raw one untracked under `target/`. Repo may be published.
 - **Tests must be laptop-safe** (PROMPT.md 7.1). Builders run only the fast tier (`cargo test`). Heavy tier, fuzzing, benchmarks run only in milestone reviews. **Every milestone review includes the release perf run** (frame budgets fail only under `--release`; debug records without failing — user, 2026-09-13, ADR-0021).
 - **One heavy job at a time:** never run two cargo commands or test suites at once. Never generate large fixtures outside the heavy tier.
