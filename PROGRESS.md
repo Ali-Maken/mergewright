@@ -4,7 +4,17 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M2 review fixes round 1c (opus: M4, M6)
+**Current step:** PAUSED at the user's request, 2026-09-18, after M2 review fix round 1c (`ca120c0`).
+
+**Queue on resume, in order:**
+1. `housekeeping/02-heap-slope` (opus) — the red gate. M2 is not done over it (user, 2026-09-18). Measure where the bytes go, then get under the 50 B/commit bar or bring the user an ADR arguing the bar with evidence; a bar change needs the user's approval before it lands.
+2. M2 review fix round 1d (sonnet) — M7 (ARCHITECTURE.md not updated for M2, PROMPT 6.1), M8 (files far over the ~400-line rule, PROMPT 6.2), and review Minor 15 (TESTING.md and gallery stop 4's caption still describe the old always-on word tint).
+3. `reviewer` round 2 (fable) from `183c6ca` — **the second and last of the two allowed rounds.**
+4. M2 checkpoint: regenerate `docs/AUTHORSHIP.md` from `docs/log/m2.md`, report the per-ticket tool-call and token figures with causes (user asked for the figures, not an impression), then the M3 design pass — `planner-fable` writes the M3 brief's five points as ADRs, **the user approves them before any M3 ticket is built**, and proposes the rewritten milestone promises and where each of the four product gaps lands.
+
+**For the checkpoint, unresolved and needing the user:**
+- `W` (word tint) and the unfocused diff body are fixed and unit-tested but **visually unverified**: `pty-gallery-m2.py` captures are pyte character grids with no colour attributes, so no capture in this repo can prove a colour-only change. The project's way of proving visual work has a hole in it.
+- CLAUDE.md reached 15,841 B, not the 10 KB the diet ticket targeted; going lower means dropping requirements, which is the user's call.
 
 ---
 
