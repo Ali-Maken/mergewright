@@ -27,60 +27,11 @@ use crate::repository::Head;
 use crate::update::AppState;
 use crate::update::detail::Loading;
 
-/// Every local branch `classify_refs` needs to know about, from the refs
-/// job's badges — `None` refs (not read yet) is no branches, not an error:
-/// there is nothing to find findings about before the first refs answer.
-#[must_use]
-pub fn branch_facts(state: &AppState) -> Vec<BranchFacts<'_>> {
-    let Some(refs) = state.refs.as_deref() else {
-        return Vec::new();
-    };
-    let default = state
-        .history
-        .as_ref()
-        .and_then(|history| history.walk.as_ref())
-        .and_then(|walk| walk.default_branch.as_ref());
-    refs.branches()
-        .filter_map(|(tip, name, _current, upstream)| {
-            let name = std::str::from_utf8(name).ok()?;
-            Some(BranchFacts {
-                name,
-                tip,
-                is_default: default.is_some_and(|default| default.shorthand() == name.as_bytes()),
-                upstream: upstream_facts(upstream),
-            })
-        })
-        .collect()
-}
-
-/// `refs::Upstream`, renamed to the shape `graft-ops` classifies on: no new
-/// read, the counts are already on hand.
-fn upstream_facts(upstream: &Upstream) -> UpstreamFacts {
-    match upstream {
-        Upstream::None => UpstreamFacts::None,
-        Upstream::InSync { .. } => UpstreamFacts::InSync,
-        Upstream::Apart(counts) => UpstreamFacts::Apart {
-            ahead: u32::try_from(counts.ahead).unwrap_or(u32::MAX),
-            behind: u32::try_from(counts.behind).unwrap_or(u32::MAX),
-        },
-    }
-}
-
-/// Where `HEAD` points, from the facts the open-repository job already read
-/// (`crate::repository::Head`) — an unreadable `HEAD` reads as unborn: there
-/// is nothing for the radar to say about a `HEAD` this state has already put
-/// on the status line as a problem.
-#[must_use]
-pub fn head_facts(state: &AppState) -> HeadFacts<'_> {
-    match state.repository.as_ref().map(|facts| &facts.head) {
-        Some(Head::Branch(name)) => match std::str::from_utf8(name) {
-            Ok(name) => HeadFacts::Branch(name),
-            Err(_) => HeadFacts::Unborn,
-        },
-        Some(Head::Detached(id)) => HeadFacts::Detached(*id),
-        Some(Head::Unborn(_) | Head::Unreadable(_)) | None => HeadFacts::Unborn,
-    }
-}
+/// The two fact adapters the radar's rules read `AppState` through. They
+/// live in `update::radar`, which is what builds the ref-derived findings —
+/// once per refs answer, not once per painted row (M2 review C1) — and are
+/// re-exported here because this is where every reader looks for them.
+pub use crate::update::radar::{branch_facts, head_facts};
 
 /// The repository-wide facts `classify_commit` needs, from `ctx` and the
 /// default branch's name already on `state`.
@@ -130,12 +81,17 @@ pub fn findings_for(state: &AppState, id: Oid, parents: &[Oid], subject: &str) -
     let mut findings: Vec<Finding> = classify_commit(&commit, &repo, &state.radar.policy)
         .into_iter()
         .collect();
-    let branches = branch_facts(state);
-    let head = head_facts(state);
+    // `classify_refs`'s answer is O(refs) to work out and the same for every
+    // row, so `update::radar::refresh_ref_findings` works it out once, when
+    // the refs move, and a row looks itself up (M2 review C1).
     findings.extend(
-        classify_refs(&branches, &head, &state.radar.policy)
+        state
+            .radar
+            .ref_findings
+            .get(&id)
             .into_iter()
-            .filter(|finding| finding.at == id),
+            .flatten()
+            .cloned(),
     );
     // The evil-merge probe (`m2-details-and-diffs/14`) answers for the open
     // commit only, so its verdict counts only when `id` is that commit.
@@ -144,21 +100,18 @@ pub fn findings_for(state: &AppState, id: Oid, parents: &[Oid], subject: &str) -
     {
         findings.extend(finding_from_evil(id, verdict, &state.radar.policy));
     }
-    // A force-push verdict belongs to a branch, and shows at the tip that
-    // branch stands on. `finding.at` is the verdict's own `current`, so a
-    // branch that moved since its probe answered contributes nothing here
-    // rather than marking the wrong row.
-    for branch in &branches {
-        if branch.tip != id {
-            continue;
-        }
-        if let Some(Loading::Ready(verdict)) = state.radar.force_push.get(branch.name) {
-            findings.extend(
-                findings_from_force_push(verdict, &state.radar.policy)
-                    .filter(|finding| finding.at == id),
-            );
-        }
-    }
+    // A force-push verdict belongs to a branch and shows at the tip that
+    // branch stands on; matching a verdict to a tip is another walk over the
+    // refs, so it happens in the same rebuild.
+    findings.extend(
+        state
+            .radar
+            .force_push_findings
+            .get(&id)
+            .into_iter()
+            .flatten()
+            .cloned(),
+    );
     // The duplicates probe answers for the whole window at once; its
     // findings are already indexed by commit (`update::radar`).
     if let Some(finding) = state.radar.duplicate_findings.get(&id) {
@@ -233,18 +186,9 @@ pub fn radar_lines_for(
         .severity(MistakeRadarKind::ForcePushedRemote)
         .is_some()
         && context_ready
+        && let Some(reason) = state.radar.force_push_not_checkable.get(&id)
     {
-        for branch in branch_facts(state) {
-            if branch.tip != id {
-                continue;
-            }
-            if let Some(Loading::Ready(ForcePushVerdict::NotCheckable(reason))) =
-                state.radar.force_push.get(branch.name)
-            {
-                lines.push(RadarLine::ForcePushNotCheckable(sanitize_line(reason)));
-                break;
-            }
-        }
+        lines.push(RadarLine::ForcePushNotCheckable(sanitize_line(reason)));
     }
     lines
 }

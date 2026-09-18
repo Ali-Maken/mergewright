@@ -12,11 +12,15 @@ use graft_core::job::JobId;
 use graft_core::mistake_radar::MistakeRadarKind;
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
-use graft_ops::mistake_radar::probes::{Duplicates, ForcePushVerdict, findings_from_duplicates};
-use graft_ops::mistake_radar::{Finding, Policy};
+use graft_ops::mistake_radar::probes::{
+    Duplicates, ForcePushVerdict, findings_from_duplicates, findings_from_force_push,
+};
+use graft_ops::mistake_radar::rules::classify_refs;
+use graft_ops::mistake_radar::{BranchFacts, Finding, HeadFacts, Policy, UpstreamFacts};
 
 use crate::jobs::radar::RadarContext;
-use crate::refs::Upstream;
+use crate::refs::{RefBadges, RefLabel, Upstream};
+use crate::repository::Head;
 
 use super::detail::Loading;
 use super::events::{AppEvent, Command, Product};
@@ -49,6 +53,201 @@ pub struct RadarState {
     /// (`probes::findings_from_duplicates`). The probe itself is
     /// policy-blind; this is where `[radar] duplicate = off` takes effect.
     pub duplicate_findings: HashMap<Oid, Finding>,
+    /// Every finding the refs themselves carry — `classify_refs`'s answer —
+    /// indexed by the commit it lands on. Rebuilt by
+    /// [`refresh_ref_findings`] only when the refs, `HEAD`, the default
+    /// branch, the context or the policy move, so drawing a row is a hash
+    /// lookup instead of a walk over every ref (M2 review C1).
+    pub ref_findings: HashMap<Oid, Vec<Finding>>,
+    /// The same, for the force-push verdicts: each `Rewritten` verdict's
+    /// finding at the tip its branch stands on.
+    pub force_push_findings: HashMap<Oid, Vec<Finding>>,
+    /// Why a branch tip's force-push check could not run, by tip — the
+    /// detail pane's `ForcePushNotCheckable` line, from the same rebuild.
+    pub force_push_not_checkable: HashMap<Oid, String>,
+    /// Bumped whenever a force-push verdict lands or they are all thrown
+    /// away: what tells [`refresh_ref_findings`] its inputs moved, without
+    /// comparing the verdict map itself.
+    pub force_push_revision: u64,
+    /// What the three maps above were built from; `None` until the first
+    /// rebuild. [`refresh_ref_findings`] is a no-op while it still holds.
+    pub built_from: Option<RefFindings>,
+}
+
+/// What the ref-derived findings depend on: everything `classify_refs` and
+/// the force-push verdicts read off `AppState`.
+///
+/// Compared by [`RefFindings::same_as`], which takes the two `Arc`s by
+/// pointer: a fresh refs answer is a fresh allocation, and the one it
+/// replaces is kept alive here for as long as the comparison can see it, so
+/// pointer equality cannot confuse two different answers.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RefFindings {
+    refs: Option<Arc<RefBadges>>,
+    context: Option<Arc<RadarContext>>,
+    head: Option<Head>,
+    default_branch: Option<RefName>,
+    force_push_revision: u64,
+    policy: Policy,
+}
+
+impl RefFindings {
+    /// Would a rebuild produce the same maps? Cheap by construction: no
+    /// field here costs more than a pointer or a short name to compare.
+    fn same_as(&self, other: &Self) -> bool {
+        fn same_arc<T>(one: &Option<Arc<T>>, two: &Option<Arc<T>>) -> bool {
+            match (one, two) {
+                (None, None) => true,
+                (Some(one), Some(two)) => Arc::ptr_eq(one, two),
+                _ => false,
+            }
+        }
+        same_arc(&self.refs, &other.refs)
+            && same_arc(&self.context, &other.context)
+            && self.head == other.head
+            && self.default_branch == other.default_branch
+            && self.force_push_revision == other.force_push_revision
+            && self.policy == other.policy
+    }
+}
+
+/// Every local branch `classify_refs` needs to know about, from the refs
+/// job's badges — `None` refs (not read yet) is no branches, not an error:
+/// there is nothing to find findings about before the first refs answer.
+///
+/// O(refs), which is why nothing on a frame calls it any more: only
+/// [`refresh_ref_findings`] does, and only when the refs themselves moved.
+#[must_use]
+pub fn branch_facts(state: &AppState) -> Vec<BranchFacts<'_>> {
+    let Some(refs) = state.refs.as_deref() else {
+        return Vec::new();
+    };
+    let default = default_branch(state);
+    refs.branches()
+        .filter_map(|(tip, name, _current, upstream)| {
+            let name = std::str::from_utf8(name).ok()?;
+            Some(BranchFacts {
+                name,
+                tip,
+                is_default: default.is_some_and(|default| default.shorthand() == name.as_bytes()),
+                upstream: upstream_facts(upstream),
+            })
+        })
+        .collect()
+}
+
+/// The default branch the walk resolved, once it has.
+fn default_branch(state: &AppState) -> Option<&RefName> {
+    state
+        .history
+        .as_ref()
+        .and_then(|history| history.walk.as_ref())
+        .and_then(|walk| walk.default_branch.as_ref())
+}
+
+/// `refs::Upstream`, renamed to the shape `graft-ops` classifies on: no new
+/// read, the counts are already on hand.
+fn upstream_facts(upstream: &Upstream) -> UpstreamFacts {
+    match upstream {
+        Upstream::None => UpstreamFacts::None,
+        Upstream::InSync { .. } => UpstreamFacts::InSync,
+        Upstream::Apart(counts) => UpstreamFacts::Apart {
+            ahead: u32::try_from(counts.ahead).unwrap_or(u32::MAX),
+            behind: u32::try_from(counts.behind).unwrap_or(u32::MAX),
+        },
+    }
+}
+
+/// Where `HEAD` points, from the facts the open-repository job already read
+/// (`crate::repository::Head`) — an unreadable `HEAD` reads as unborn: there
+/// is nothing for the radar to say about a `HEAD` this state has already put
+/// on the status line as a problem.
+#[must_use]
+pub fn head_facts(state: &AppState) -> HeadFacts<'_> {
+    match state.repository.as_ref().map(|facts| &facts.head) {
+        Some(Head::Branch(name)) => match std::str::from_utf8(name) {
+            Ok(name) => HeadFacts::Branch(name),
+            Err(_) => HeadFacts::Unborn,
+        },
+        Some(Head::Detached(id)) => HeadFacts::Detached(*id),
+        Some(Head::Unborn(_) | Head::Unreadable(_)) | None => HeadFacts::Unborn,
+    }
+}
+
+/// Rebuilds the ref-derived findings, but only when something they are made
+/// of moved.
+///
+/// Called at the tail of every `update`, beside the `request_*` functions.
+/// Before M2's review this work happened inside `view::radar::findings_for`,
+/// which every painted row and every strip mark calls: O(refs) per row per
+/// frame (C1). The refs change once per refs answer, so the findings are
+/// built once per refs answer too, and a frame is a hash lookup.
+pub fn refresh_ref_findings(state: &mut AppState) {
+    let now = RefFindings {
+        refs: state.refs.clone(),
+        context: match &state.radar.context {
+            Loading::Ready(context) => Some(Arc::clone(context)),
+            _ => None,
+        },
+        head: state.repository.as_ref().map(|facts| facts.head.clone()),
+        default_branch: default_branch(state).cloned(),
+        force_push_revision: state.radar.force_push_revision,
+        policy: state.radar.policy.clone(),
+    };
+    if state
+        .radar
+        .built_from
+        .as_ref()
+        .is_some_and(|before| before.same_as(&now))
+    {
+        return;
+    }
+    let (ref_findings, force_push_findings, not_checkable) = ref_findings_now(state);
+    state.radar.ref_findings = ref_findings;
+    state.radar.force_push_findings = force_push_findings;
+    state.radar.force_push_not_checkable = not_checkable;
+    state.radar.built_from = Some(now);
+}
+
+/// Findings by the commit they land on.
+type ByCommit = HashMap<Oid, Vec<Finding>>;
+
+/// The three maps [`refresh_ref_findings`] stores, from the state as it is
+/// right now. Empty until the context is `Ready`, the same gate
+/// `view::radar::findings_for` has always applied: nothing shows before the
+/// context that makes a foxtrot tellable from an ordinary merge lands.
+fn ref_findings_now(state: &AppState) -> (ByCommit, ByCommit, HashMap<Oid, String>) {
+    let mut by_commit: ByCommit = HashMap::new();
+    let mut force_push: ByCommit = HashMap::new();
+    let mut not_checkable: HashMap<Oid, String> = HashMap::new();
+    if !matches!(state.radar.context, Loading::Ready(_)) {
+        return (by_commit, force_push, not_checkable);
+    }
+    let branches = branch_facts(state);
+    let head = head_facts(state);
+    for finding in classify_refs(&branches, &head, &state.radar.policy) {
+        by_commit.entry(finding.at).or_default().push(finding);
+    }
+    // A force-push verdict belongs to a branch, and shows at the tip that
+    // branch stands on. `finding.at` is the verdict's own `current`, so a
+    // branch that moved since its probe answered contributes nothing rather
+    // than marking the wrong row.
+    for branch in &branches {
+        let Some(Loading::Ready(verdict)) = state.radar.force_push.get(branch.name) else {
+            continue;
+        };
+        for finding in findings_from_force_push(verdict, &state.radar.policy)
+            .filter(|finding| finding.at == branch.tip)
+        {
+            force_push.entry(finding.at).or_default().push(finding);
+        }
+        if let ForcePushVerdict::NotCheckable(reason) = verdict {
+            not_checkable
+                .entry(branch.tip)
+                .or_insert_with(|| reason.clone());
+        }
+    }
+    (by_commit, force_push, not_checkable)
 }
 
 /// The default branch's shorthand name and its tip, purely from facts
@@ -127,17 +326,29 @@ pub fn context_landed(state: &mut AppState, id: JobId, result: Result<Arc<RadarC
     };
 }
 
-/// Asks, once, for one force-push probe per upstream-tracked branch.
+/// The most branches one session ever probes for a force-pushed remote.
+///
+/// Each probe is a reflog read plus a `git merge-base --is-ancestor` spawn,
+/// so the count has to be bounded by what the user can see, not by the
+/// repository's branch count: M2's review found 50,000 tracked branches
+/// meant 50,000 jobs and up to 100,000 spawns, issued at the tail of an
+/// `update` (C1). Nothing above a couple of dozen can be on screen at once.
+pub const MAX_FORCE_PUSH_PROBES: usize = 32;
+
+/// Asks for a force-push probe for the tracked branches whose verdict could
+/// actually be seen, up to [`MAX_FORCE_PUSH_PROBES`] in a session.
 ///
 /// Called at the tail of every `update`, beside [`request_context`], and
 /// idempotent: a branch already in `force_push` — pending or answered — is
-/// not asked about again, so the first `update` after the context lands is
-/// the only one that pushes commands. Gated on the context being `Ready`
-/// because nothing shows a radar finding before that, and on the kind being
-/// on, so a repository with `force_pushed = "off"` spawns no `git` at all.
+/// not asked about again. Gated on the context being `Ready` because nothing
+/// shows a radar finding before that, and on the kind being on, so a
+/// repository with `force_pushed = "off"` spawns no `git` at all.
 ///
-/// The count is the repository's own upstream-tracked branch count: a few
-/// dozen at worst, each one small spawn, so there is no further cap.
+/// "Could be seen" is [`force_push_candidates`]: the branch `HEAD` is on and
+/// the branches standing on a resident row. A verdict only ever draws as a
+/// marker on a row, a strip mark for a row, or a line about the selected
+/// commit — all of which are rows this window holds. A branch that is not
+/// one of them is asked about when scrolling brings it in, until the cap.
 pub fn request_force_push_probes(
     state: &mut AppState,
     commands: &mut Vec<Command>,
@@ -154,18 +365,14 @@ pub fn request_force_push_probes(
     {
         return;
     }
-    let Some(refs) = state.refs.as_deref() else {
+    if state.radar.force_push.len() >= MAX_FORCE_PUSH_PROBES {
         return;
-    };
+    }
     // Collected first: the rest of this borrows `state` mutably.
-    let tracked: Vec<(String, Oid)> = refs
-        .branches()
-        .filter(|(_, _, _, upstream)| !matches!(upstream, Upstream::None))
-        .filter_map(|(tip, name, _, _)| Some((std::str::from_utf8(name).ok()?.to_owned(), tip)))
-        .collect();
-    for (branch, tip) in tracked {
-        if state.radar.force_push.contains_key(&branch) {
-            continue;
+    let wanted = force_push_candidates(state);
+    for (branch, tip) in wanted {
+        if state.radar.force_push.len() >= MAX_FORCE_PUSH_PROBES {
+            break;
         }
         let id = next_id();
         state
@@ -174,6 +381,53 @@ pub fn request_force_push_probes(
             .insert(branch.clone(), Loading::Pending(id));
         commands.push(Command::ForcePushProbe(id, branch, tip));
     }
+}
+
+/// The tracked branches worth probing right now, `HEAD`'s first: looked up
+/// by commit (`RefBadges::on`, one hash lookup) over the rows this window
+/// holds, never by walking every ref. The cost is the resident window's, so
+/// a repository with 50,000 refs pays the same as one with five.
+fn force_push_candidates(state: &AppState) -> Vec<(String, Oid)> {
+    let Some(refs) = state.refs.as_deref() else {
+        return Vec::new();
+    };
+    let mut wanted: Vec<(String, Oid)> = Vec::new();
+    let want_at = |id: Oid, wanted: &mut Vec<(String, Oid)>| {
+        for label in refs.on(id) {
+            let RefLabel::Branch { name, upstream, .. } = label else {
+                continue;
+            };
+            if matches!(upstream, Upstream::None) {
+                continue;
+            }
+            let Ok(name) = std::str::from_utf8(name) else {
+                continue;
+            };
+            if state.radar.force_push.contains_key(name) {
+                continue;
+            }
+            if wanted.iter().any(|(already, _)| already == name) {
+                continue;
+            }
+            wanted.push((name.to_owned(), id));
+        }
+    };
+    if let Some(head) = refs.head() {
+        want_at(head, &mut wanted);
+    }
+    if let Some(window) = state
+        .history
+        .as_ref()
+        .and_then(|history| history.window.as_ref())
+    {
+        for row in window.rows.iter() {
+            if wanted.len() >= MAX_FORCE_PUSH_PROBES {
+                break;
+            }
+            want_at(row.commit.id, &mut wanted);
+        }
+    }
+    wanted
 }
 
 /// One branch's force-push probe answered.
@@ -185,6 +439,7 @@ pub fn force_push_probed(state: &mut AppState, branch: String, verdict: ForcePus
         .radar
         .force_push
         .insert(branch, Loading::Ready(verdict));
+    state.radar.force_push_revision = state.radar.force_push_revision.wrapping_add(1);
 }
 
 /// How many of the newest commits the duplicates probe looks at
@@ -247,8 +502,13 @@ pub fn reset_for_refresh(state: &mut AppState) {
     // A refresh usually follows a fetch, which is when a remote's history
     // can have been rewritten under us: every verdict has to be asked again.
     state.radar.force_push.clear();
+    state.radar.force_push_revision = state.radar.force_push_revision.wrapping_add(1);
     state.radar.duplicates = Loading::Idle;
     state.radar.duplicate_findings.clear();
+    // The maps themselves are rebuilt at the tail of this same `update`;
+    // clearing `built_from` is what makes that rebuild happen rather than
+    // leaving last refresh's findings on screen.
+    state.radar.built_from = None;
 }
 
 #[cfg(test)]
