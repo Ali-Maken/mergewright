@@ -77,6 +77,7 @@ One line per public item. Update when a public item changes.
 - `Walk::next_links` (fn) — advance the walk and return its next `LinkChunk`: same commits and limit/stop semantics as `next_chunk`, parents as walked, interned (promotion).
 - `CommitTable` (struct) — one repository's id table: commit-graph positions, then an overflow interner (ADR-0026); `Send + Sync`.
 - `CommitTable::open` (fn) — bind the commit-graph if the repository has one `gix` will use.
+- `CommitTable::without_a_commit_graph` (fn) — a table with no graph behind it, for ids of the given hash length: for callers holding ids and no repository.
 - `CommitTable::has_commit_graph` / `graph_count` (fn) — whether a graph backs the low handles; how many.
 - `CommitTable::intern` / `handle_of` / `id_of` (fn) — handle for an id (appending once) / without appending / id for a handle (panics on a foreign one).
 - `CommitTable::len` / `is_empty` / `overflow_len` / `approximate_bytes` (fn) — entries; entries outside the graph; heap bytes (graph not counted).

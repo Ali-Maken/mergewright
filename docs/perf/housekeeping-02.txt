@@ -1,0 +1,146 @@
+# housekeeping/02: where the heap slope's bytes per commit went, and where they go now
+#
+# Cause, not symptom. `jobs::radar::RadarContext.default_chain` held the
+# default branch's whole first-parent chain as a `HashSet<Oid>`. An `Oid` is
+# 33 bytes; a hash set of them costs ~44 B per member once the table is
+# over-allocated, and the chain is as long as history. That is a direct
+# breach of ADR-0026's rule that every history-sized structure holds a u32
+# handle, never an `Oid` — M2's radar was written against the pre-ADR shape.
+# It is now a `HandleSet` (one bit per commit) over the repository's own
+# `CommitTable`, which the context holds so it can still answer about an
+# `Oid`.
+#
+# Measured, release, by the counting allocator in prototypes/heap-slope-hk02,
+# 10k cg vs 100k cg (the guard's own two fixtures):
+#
+#   footprint peak slope   69.9 -> 31.5 B/commit
+#   live heap slope        48.4 ->  5.2 B/commit
+#   the chain itself       43.3 ->  0.14 B/commit   (4,456,611 B -> 14,307 B at 100k)
+#
+#   4,456,448 B = 131,072 slots x 34 B (33-byte Oid + 1 control byte) for
+#   78,526 chain members: the accounting matches the structure exactly.
+#
+# What is left of the live slope: RefBadges 2.19, CommitTable 1.93,
+# RadarState::ref_findings 0.93 B/commit. The footprint peak is 26 B/commit
+# above the live total: transient walk arrays and allocator-retained pages,
+# the same residual ADR-0026 names.
+#
+# The gate: `cargo test --features heavy-tests` exits 0 (was 101 at 76
+# B/commit against the 50 B bar). The bar did not move and no test was
+# touched.
+#
+# Frame budgets: the release perf run's p50/p99 are unchanged (see the gates
+# section). One run of `frames::fifty_thousand_refs_..._unicode_tier` failed
+# on a single 16.3 ms frame out of 420; six interleaved A/B runs of that test
+# (target/hk02-gates/ab-*.log) put the tail in both builds — before 5.4/9.8/
+# 6.5 ms, after 6.5/5.8/5.3 ms — so the outlier is the max-based gate's own
+# variance under load, not this change. Not a claim that the tail is
+# harmless: it is a claim that this change did not cause it.
+
+## before — heap accounting, 2026-09-18 22:35, release, one process at a time
+# 10k cg: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-10000-commit-graph-a77b50bd4c9e50dc
+# 100k cg: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-commit-graph-73591869b9beea12
+# B/commit = (100k - 10k) / 90000. Live heap is measured by a counting
+# global allocator; each 'hold' row is the live bytes that structure freed
+# when dropped, in the order listed.
+
+structure                                             10k B       100k B   B/commit
+total/footprint_peak                                7946696     14238176      69.91
+total/footprint_now                                 7684552     14025160      70.45
+total/live_at_end                                    725173      5079149      48.38
+count/default_chain                                    7855        78526       0.79
+count/previous_default_tips                               0            0       0.00
+count/ref_findings                                       34          335       0.00
+count/force_push_findings                                 0            0       0.00
+count/duplicate_findings                                  0            0       0.00
+count/overflow_len                                        0            0       0.00
+count/table_bytes                                         0            0       0.00
+count/rows_in_window                                    152          152       0.00
+hold/radar.context (default_chain + previous tips)            0            0       0.00
+hold/radar.ref_findings                               10288        93588       0.93
+hold/radar.force_push_findings                            0            0       0.00
+hold/radar.force_push_not_checkable                       0            0       0.00
+hold/radar.duplicate_findings                             0            0       0.00
+hold/radar (the rest)                                557219      4456611      43.33
+hold/refs (RefBadges)                                 23967       221507       2.19
+hold/detail pane                                          0            0       0.00
+hold/map view                                             0            0       0.00
+hold/search                                               0            0       0.00
+hold/history (layout, order, cache, checkpoints)        76560        76778       0.00
+hold/the rest of AppState                              8266         8268       0.00
+hold/RepoStore (CommitTable)                          47642       221165       1.93
+total/live_unattributed                                9295         9296       0.00
+
+## after — heap accounting, 2026-09-18 22:41, release, one process at a time
+# 10k cg: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-10000-commit-graph-a77b50bd4c9e50dc
+# 100k cg: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-commit-graph-73591869b9beea12
+# B/commit = (100k - 10k) / 90000. Live heap is measured by a counting
+# global allocator; each 'hold' row is the live bytes that structure freed
+# when dropped, in the order listed.
+
+structure                                             10k B       100k B   B/commit
+total/footprint_peak                                7815648     10650104      31.49
+total/footprint_now                                 7586248     10437088      31.68
+total/live_at_end                                    170021       636845       5.19
+count/default_chain                                    7855        78526       0.79
+count/previous_default_tips                               0            0       0.00
+count/ref_findings                                       34          335       0.00
+count/force_push_findings                                 0            0       0.00
+count/duplicate_findings                                  0            0       0.00
+count/overflow_len                                        0            0       0.00
+count/table_bytes                                         0            0       0.00
+count/rows_in_window                                    152          152       0.00
+hold/radar.context (default_chain + previous tips)            0            0       0.00
+hold/radar.ref_findings                               10288        93588       0.93
+hold/radar.force_push_findings                            0            0       0.00
+hold/radar.force_push_not_checkable                       0            0       0.00
+hold/radar.duplicate_findings                             0            0       0.00
+hold/radar (the rest)                                  2067        14307       0.14
+hold/refs (RefBadges)                                 23967       221507       2.19
+hold/detail pane                                          0            0       0.00
+hold/map view                                             0            0       0.00
+hold/search                                               0            0       0.00
+hold/history (layout, order, cache, checkpoints)        76560        76778       0.00
+hold/the rest of AppState                              8266         8268       0.00
+hold/RepoStore (CommitTable)                          47642       221165       1.93
+total/live_unattributed                                9295         9296       0.00
+
+## gates after the fix, 2026-09-18 22:41
+fast-tier: exit 0, 29 s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+heavy-tier: exit 0, 161 s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+release-perf: exit 0, 83 s
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 72.74s
+frames: tier=Pixel refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=24
+frames: tier=Pixel refs=FiftyThousand pane=Closed keys=420 p50_us=4020 p99_us=6090 max_us=15483 kitty_commands=49299 bytes=193354895
+frames: tier=Pixel refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=820 p50=249 p99=6114 max=7947 total=1044704 over_1ms=305 over_2ms=260
+frames: tier=Pixel refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=7270 PageDown=7098 Char('k')=4261 PageUp=7012 Char('j')=6008
+frames: tier=Unicode refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=3
+frames: tier=Unicode refs=FiftyThousand pane=Closed keys=420 p50_us=3989 p99_us=5294 max_us=5619 kitty_commands=0 bytes=2137862
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=822 p50=0 p99=1 max=9 total=302 over_1ms=0 over_2ms=0
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=3502 PageDown=4304 Char('k')=3208 PageUp=4282 Char('j')=6631
+frames: tier=Unicode refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=5
+frames: tier=Unicode refs=FiftyThousand pane=DiffScroll keys=422 p50_us=4167 p99_us=5125 max_us=13159 kitty_commands=0 bytes=39220
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=501 p50=0 p99=1 max=7 total=204 over_1ms=0 over_2ms=0
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=5519 PageDown=5343 Char('k')=3018 PageUp=3124 Char('j')=2418
+frames: tier=Unicode refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=3
+frames: tier=Unicode refs=FiftyThousand pane=Open keys=421 p50_us=4331 p99_us=4853 max_us=5265 kitty_commands=0 bytes=36534
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=500 p50=0 p99=1 max=7 total=210 over_1ms=0 over_2ms=0
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=4654 PageDown=4412 Char('k')=4440 PageUp=4531 Char('j')=6500
+frames: tier=Unicode refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=3
+frames: tier=Unicode refs=FiftyThousand pane=Map keys=421 p50_us=3986 p99_us=4886 max_us=5355 kitty_commands=0 bytes=76577
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=696 p50=0 p99=1 max=7 total=220 over_1ms=0 over_2ms=0
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=6281 PageDown=6248 Char('k')=6114 PageUp=5980 Char('j')=6232
+frames: tier=Pixel refs=Fixture pane=Closed keys=420 p50_us=4073 p99_us=5731 max_us=9414 kitty_commands=49171 bytes=193040568
+frames: tier=Pixel refs=Fixture idle_prefetch_us (per frame; recorded, not asserted): frames=756 p50=446 p99=6173 max=8867 total=1038908 over_1ms=308 over_2ms=250
+frames: tier=Pixel refs=Fixture idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=5850 PageDown=5957 Char('k')=7128 PageUp=7312 Char('j')=7248
+frames: tier=Unicode refs=Fixture pane=Closed keys=420 p50_us=4116 p99_us=5375 max_us=12582 kitty_commands=0 bytes=1825154
+frames: tier=Unicode refs=Fixture idle_prefetch_us (per frame; recorded, not asserted): frames=758 p50=0 p99=1 max=7 total=306 over_1ms=0 over_2ms=0
+frames: tier=Unicode refs=Fixture idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=6826 PageDown=4376 Char('k')=6689 PageUp=5615 Char('j')=2700
+(full logs: target/hk02-gates, untracked)
+

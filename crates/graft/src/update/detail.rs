@@ -1070,10 +1070,10 @@ mod tests {
             history: Some(crate::view::tests::history_of(3, 0)),
             ..AppState::default()
         };
-        state.radar.context = Loading::Ready(Arc::new(crate::jobs::radar::RadarContext {
-            default_chain: std::collections::HashSet::new(),
-            previous_default_tips: Vec::new(),
-        }));
+        state.radar.context = Loading::Ready(Arc::new(crate::jobs::radar::RadarContext::of_ids(
+            [],
+            Vec::new(),
+        )));
         state.radar.duplicate_findings.insert(
             mark,
             graft_ops::mistake_radar::Finding {
@@ -1114,10 +1114,10 @@ mod tests {
             history: Some(crate::view::tests::history_of(3, 0)),
             ..AppState::default()
         };
-        state.radar.context = Loading::Ready(Arc::new(crate::jobs::radar::RadarContext {
-            default_chain: std::collections::HashSet::new(),
-            previous_default_tips: Vec::new(),
-        }));
+        state.radar.context = Loading::Ready(Arc::new(crate::jobs::radar::RadarContext::of_ids(
+            [],
+            Vec::new(),
+        )));
         state.detail.explain_requested = Some(cursor);
         let mut counter = 0;
 

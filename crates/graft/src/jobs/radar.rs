@@ -3,9 +3,9 @@
 //! and the only ones `view::radar`'s rules need that are not already sitting
 //! in `AppState` (refs, branches, `HEAD`).
 
-use std::collections::HashSet;
 use std::sync::Arc;
 
+use graft_core::commit_handle::HandleSet;
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
 use graft_git::history::{CommitTable, first_parent_chain, previous_tips};
@@ -21,16 +21,94 @@ use graft_ops::mistake_radar::probes::{
 const PREVIOUS_TIPS_CAP: usize = 20;
 
 /// The default branch's first-parent ancestry and its previous tips.
-#[derive(Debug, PartialEq, Eq)]
+///
+/// The chain is as long as history, so it is held the way ADR-0026 holds
+/// everything history-sized: one bit per commit in a [`HandleSet`], keyed by
+/// the [`CommitTable`] handle, not a `HashSet<Oid>`. A set of ids cost 44 B
+/// per commit on the chain (33-byte `Oid`, hashed, over-allocated) and was
+/// 43 of the heavy tier's 76 B/commit heap slope (housekeeping/02); the
+/// bitset costs an eighth of a byte. The table the handles belong to is held
+/// here too, so [`on_default_chain`](Self::on_default_chain) answers about an
+/// `Oid` — the only thing `view::radar` has — and a table rebuilt since
+/// cannot make these handles mean something else.
 pub struct RadarContext {
     /// Every commit on the default branch's first-parent chain, from its tip
-    /// to the root. `view::radar::findings_for` uses membership in this set
-    /// as `CommitFacts::on_default_chain`.
-    pub default_chain: HashSet<Oid>,
+    /// to the root, by handle in [`RadarContext::table`].
+    default_chain: HandleSet,
+    /// The table `default_chain`'s handles belong to.
+    table: Arc<CommitTable>,
     /// The default branch's previous reflog tips, newest first, deduped: a
     /// merge that carries one of these as a non-first parent has pushed it
     /// off the first-parent line (`Evidence::Backward`).
     pub previous_default_tips: Vec<Oid>,
+}
+
+impl RadarContext {
+    /// Whether `id` is on the default branch's first-parent chain — what
+    /// `view::radar` reads as `CommitFacts::on_default_chain`. A commit the
+    /// table has never seen is not on it.
+    #[must_use]
+    pub fn on_default_chain(&self, id: &Oid) -> bool {
+        self.table
+            .handle_of(id)
+            .is_some_and(|handle| self.default_chain.contains(handle))
+    }
+
+    /// How many commits are on the chain.
+    #[must_use]
+    pub fn chain_len(&self) -> usize {
+        self.default_chain.len()
+    }
+
+    /// A context over the ids given, interned into a table of its own: the
+    /// shape [`run_radar_context`] produces, for callers that hold ids rather
+    /// than a repository (tests, and `update::context_menu`'s probe).
+    #[must_use]
+    pub fn of_ids(
+        chain: impl IntoIterator<Item = Oid>,
+        previous_default_tips: Vec<Oid>,
+    ) -> RadarContext {
+        let mut default_chain = HandleSet::new();
+        let table = CommitTable::without_a_commit_graph(Oid::SHA1_BYTES);
+        for id in chain {
+            default_chain.insert(table.intern(&id));
+        }
+        RadarContext {
+            default_chain,
+            table: Arc::new(table),
+            previous_default_tips,
+        }
+    }
+}
+
+/// Two contexts are the same when they say the same thing about the same
+/// commits: the same chain in the same table, and the same previous tips.
+/// Handles only mean anything against their own table, so the tables are
+/// compared by identity.
+impl PartialEq for RadarContext {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.table, &other.table)
+            && self.default_chain == other.default_chain
+            && self.previous_default_tips == other.previous_default_tips
+    }
+}
+
+impl Eq for RadarContext {}
+
+/// The chain by size, not by member: a hundred thousand handles are not a
+/// debug line. [`CommitTable`] has no `Debug` of its own and needs none here.
+impl std::fmt::Debug for RadarContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RadarContext")
+            .field(
+                "default_chain",
+                &format_args!("{} commits", self.chain_len()),
+            )
+            .field("previous_default_tips", &self.previous_default_tips)
+            // `table` is left out on purpose: it is the repository's whole id
+            // table, shared by everything, and has no `Debug` of its own.
+            .finish_non_exhaustive()
+    }
 }
 
 /// The work behind [`Command::RadarContext`](crate::update::Command::RadarContext).
@@ -46,14 +124,15 @@ pub fn run_radar_context(
 ) -> Result<Arc<RadarContext>, String> {
     let chain =
         first_parent_chain(repo, table, default_tip, stop).map_err(|error| error.to_string())?;
-    let default_chain = chain
-        .into_iter()
-        .map(|handle| table.id_of(handle))
-        .collect();
+    let mut default_chain = HandleSet::new();
+    for handle in chain {
+        default_chain.insert(handle);
+    }
     let previous_default_tips =
         previous_tips(repo, default_ref, PREVIOUS_TIPS_CAP).map_err(|error| error.to_string())?;
     Ok(Arc::new(RadarContext {
         default_chain,
+        table: Arc::clone(table),
         previous_default_tips,
     }))
 }
@@ -144,7 +223,7 @@ mod tests {
 
         let context = run_radar_context(&handle, &table, default_tip, &default_ref, &NeverStop)
             .expect("the context reads");
-        assert!(context.default_chain.contains(&default_tip));
+        assert!(context.on_default_chain(&default_tip));
         assert_eq!(context.previous_default_tips, Vec::new());
     }
 }

@@ -62,13 +62,13 @@ pub fn findings_for(state: &AppState, id: Oid, parents: &[Oid], subject: &str) -
     let repo = repo_facts(state, context);
     let parents_on_default_chain: Vec<bool> = parents
         .iter()
-        .map(|parent| context.default_chain.contains(parent))
+        .map(|parent| context.on_default_chain(parent))
         .collect();
     let commit = CommitFacts {
         id,
         parents,
         subject,
-        on_default_chain: context.default_chain.contains(&id),
+        on_default_chain: context.on_default_chain(&id),
         parents_on_default_chain: &parents_on_default_chain,
     };
     let mut findings: Vec<Finding> = classify_commit(&commit, &repo, &state.radar.policy)
@@ -218,7 +218,6 @@ mod tests {
     use graft_ops::mistake_radar::Policy;
     use graft_ops::mistake_radar::probes::ForcePushVerdict;
     use std::collections::HashMap;
-    use std::collections::HashSet;
 
     use super::*;
     use crate::history::{History, WalkFacts};
@@ -265,10 +264,10 @@ mod tests {
             commit_graph: CommitGraphFact::Absent { declined: false },
         });
         state.radar = RadarState {
-            context: Loading::Ready(std::sync::Arc::new(RadarContext {
-                default_chain: chain.iter().copied().collect::<HashSet<_>>(),
+            context: Loading::Ready(std::sync::Arc::new(RadarContext::of_ids(
+                chain.iter().copied(),
                 previous_default_tips,
-            })),
+            ))),
             policy: Policy::default(),
             force_push: std::collections::HashMap::new(),
             duplicates: Loading::Idle,

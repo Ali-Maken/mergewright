@@ -85,3 +85,21 @@ proptest! {
         }
     }
 }
+
+/// Equality is by member, not by representation: `remove` leaves the word it
+/// cleared behind, so a set that once held a far-off handle holds more words
+/// than one that never did, with the same members.
+#[test]
+fn two_sets_with_the_same_members_are_equal_however_they_got_there() {
+    let mut grown = HandleSet::new();
+    grown.insert(h(1));
+    grown.insert(h(4_000));
+    grown.remove(h(4_000));
+    let mut plain = HandleSet::new();
+    plain.insert(h(1));
+    assert_eq!(grown, plain);
+    assert!(grown.approximate_bytes() > plain.approximate_bytes());
+
+    plain.insert(h(2));
+    assert_ne!(grown, plain);
+}

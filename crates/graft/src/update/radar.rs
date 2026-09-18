@@ -521,7 +521,7 @@ pub fn reset_for_refresh(state: &mut AppState) {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{HashMap, HashSet};
+    use std::collections::HashMap;
 
     use graft_git::history::Order;
     use graft_git::repo::HeadState;
@@ -599,20 +599,14 @@ mod tests {
         context_landed(
             &mut state,
             JobId::new(1),
-            Ok(Arc::new(RadarContext {
-                default_chain: HashSet::from([oid(1)]),
-                previous_default_tips: Vec::new(),
-            })),
+            Ok(Arc::new(RadarContext::of_ids([oid(1)], Vec::new()))),
         );
         assert_eq!(state.radar.context, Loading::Pending(JobId::new(2)));
 
         context_landed(
             &mut state,
             JobId::new(2),
-            Ok(Arc::new(RadarContext {
-                default_chain: HashSet::from([oid(1)]),
-                previous_default_tips: Vec::new(),
-            })),
+            Ok(Arc::new(RadarContext::of_ids([oid(1)], Vec::new()))),
         );
         assert!(matches!(state.radar.context, Loading::Ready(_)));
     }
@@ -620,10 +614,7 @@ mod tests {
     #[test]
     fn refresh_throws_the_context_away() {
         let mut state = state_with_default_branch(Some(oid(1)));
-        state.radar.context = Loading::Ready(Arc::new(RadarContext {
-            default_chain: HashSet::new(),
-            previous_default_tips: Vec::new(),
-        }));
+        state.radar.context = Loading::Ready(Arc::new(RadarContext::of_ids([], Vec::new())));
         reset_for_refresh(&mut state);
         assert_eq!(state.radar.context, Loading::Idle);
     }
@@ -652,10 +643,7 @@ mod tests {
         )
         .expect("badges builds from plain data");
         state.refs = Some(Arc::new(refs));
-        state.radar.context = Loading::Ready(Arc::new(RadarContext {
-            default_chain: HashSet::new(),
-            previous_default_tips: Vec::new(),
-        }));
+        state.radar.context = Loading::Ready(Arc::new(RadarContext::of_ids([], Vec::new())));
         state
     }
 
@@ -737,10 +725,7 @@ mod tests {
         })
         .expect("badges builds from plain data");
         state.refs = Some(Arc::new(badges));
-        state.radar.context = Loading::Ready(Arc::new(RadarContext {
-            default_chain: HashSet::new(),
-            previous_default_tips: Vec::new(),
-        }));
+        state.radar.context = Loading::Ready(Arc::new(RadarContext::of_ids([], Vec::new())));
         state
     }
 

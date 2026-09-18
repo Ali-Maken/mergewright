@@ -953,10 +953,9 @@ fn radar_state_with_empty_default_chain() -> crate::update::radar::RadarState {
     use graft_ops::mistake_radar::Policy;
 
     crate::update::radar::RadarState {
-        context: Loading::Ready(std::sync::Arc::new(crate::jobs::radar::RadarContext {
-            default_chain: std::collections::HashSet::new(),
-            previous_default_tips: Vec::new(),
-        })),
+        context: Loading::Ready(std::sync::Arc::new(
+            crate::jobs::radar::RadarContext::of_ids([], Vec::new()),
+        )),
         policy: Policy::default(),
         force_push: std::collections::HashMap::new(),
         duplicates: Loading::Idle,
@@ -1272,10 +1271,10 @@ fn foxtrot_explain_state() -> AppState {
             rows: 16,
         },
         radar: RadarState {
-            context: Loading::Ready(std::sync::Arc::new(RadarContext {
-                default_chain: [oid(3), oid(2)].into_iter().collect(),
-                previous_default_tips: Vec::new(),
-            })),
+            context: Loading::Ready(std::sync::Arc::new(RadarContext::of_ids(
+                [oid(3), oid(2)],
+                Vec::new(),
+            ))),
             policy: Policy::default(),
             force_push: std::collections::HashMap::new(),
             duplicates: Loading::Idle,

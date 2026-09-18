@@ -123,6 +123,8 @@ pub struct Link {
 /// set of the same handles would be tens of bytes per member.
 #[derive(Clone, Default, Debug)]
 pub struct HandleSet {
+    // (equality is hand-written below: `remove` can leave trailing zero
+    // words, so two equal sets need not hold equal `words`.)
     /// Bit `h % 64` of word `h / 64` is set when handle `h` is a member.
     words: Vec<u64>,
     /// How many bits are set, kept so `len` is not a scan.
@@ -195,6 +197,23 @@ impl HandleSet {
         (handle.index() / 64, 1 << (handle.0 % 64))
     }
 }
+
+/// Same members, whatever the two sets' word vectors look like:
+/// [`HandleSet::remove`] leaves the word it cleared in place, so a set that
+/// has held a high handle keeps words a set that never did does not have.
+impl PartialEq for HandleSet {
+    fn eq(&self, other: &Self) -> bool {
+        if self.len != other.len {
+            return false;
+        }
+        let words = self.words.len().max(other.words.len());
+        (0..words).all(|at| {
+            self.words.get(at).copied().unwrap_or(0) == other.words.get(at).copied().unwrap_or(0)
+        })
+    }
+}
+
+impl Eq for HandleSet {}
 
 #[cfg(test)]
 mod tests;

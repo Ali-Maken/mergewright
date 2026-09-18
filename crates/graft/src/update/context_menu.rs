@@ -196,10 +196,7 @@ mod tests {
             ..AppState::default()
         };
         state.radar.context = crate::update::detail::Loading::Ready(std::sync::Arc::new(
-            crate::jobs::radar::RadarContext {
-                default_chain: std::collections::HashSet::new(),
-                previous_default_tips: Vec::new(),
-            },
+            crate::jobs::radar::RadarContext::of_ids([], Vec::new()),
         ));
         state.radar.duplicate_findings.insert(
             mark,

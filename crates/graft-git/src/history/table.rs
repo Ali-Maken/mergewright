@@ -57,6 +57,17 @@ impl CommitTable {
         Ok(CommitTable::with_graph(graph, hash_len))
     }
 
+    /// A table with no commit-graph behind it, for ids of `hash_len` bytes:
+    /// every id it is given lands in the overflow interner.
+    ///
+    /// For callers that hold ids and no repository — the Mistake Radar's
+    /// context, built from a list of commits rather than from a walk
+    /// (`graft::jobs::radar::RadarContext::of_ids`).
+    #[must_use]
+    pub fn without_a_commit_graph(hash_len: usize) -> Self {
+        CommitTable::with_graph(None, hash_len)
+    }
+
     /// A table over `graph`, with an overflow for ids of `hash_len` bytes.
     pub(crate) fn with_graph(graph: Option<gix::commitgraph::Graph>, hash_len: usize) -> Self {
         let graph_count = graph
