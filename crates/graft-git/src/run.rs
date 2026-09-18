@@ -23,27 +23,27 @@
 //!   returned, cut to the cap, with `truncated` set. A capped read is still a
 //!   successful one.
 
-use std::ffi::OsString;
-use std::io::{self, Read, Write};
+use std::io::{self, Write};
 use std::path::Path;
-use std::process::{Child, ChildStderr, ChildStdout, Command, ExitStatus, Stdio};
+use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::thread;
 use std::time::Duration;
 
 use graft_core::oid::Oid;
 
+use exec::{Ending, Event, Pipe, apply, collect_rest, drain, kill, os_arg, shell_quote};
+
 use crate::repo::RepoHandle;
+
+mod exec;
 
 /// The longest the runner goes without asking [`Stop`].
 const POLL: Duration = Duration::from_millis(50);
 
 /// The default output cap: 64 MiB.
 const DEFAULT_CAP: usize = 64 * 1024 * 1024;
-
-/// How much one read from a pipe takes at a time.
-const READ_CHUNK: usize = 64 * 1024;
 
 /// One argument to git, typed by what it is.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -352,133 +352,6 @@ impl GitInvocation {
                 command: self.command_line(),
             },
         })
-    }
-}
-
-enum Ending {
-    Exited(ExitStatus, GitOutput),
-    Capped(GitOutput),
-}
-
-enum Pipe {
-    Out(ChildStdout),
-    Err(ChildStderr),
-}
-
-/// What a reader thread reports, once, when it stops reading.
-struct Event {
-    stdout: bool,
-    read: io::Result<(Vec<u8>, bool)>,
-}
-
-/// Reads one pipe to EOF or to `cap` on its own thread, then reports.
-fn drain(pipe: Pipe, cap: usize, events: Sender<Event>) {
-    thread::spawn(move || {
-        let (stdout, read) = match pipe {
-            Pipe::Out(mut out) => (true, read_capped(&mut out, cap)),
-            Pipe::Err(mut err) => (false, read_capped(&mut err, cap)),
-        };
-        if let Err(unwanted) = events.send(Event { stdout, read }) {
-            // The receiver is gone only when `run` has already returned
-            // (stopped or failed) and no longer wants this output.
-            drop(unwanted);
-        }
-    });
-}
-
-/// Reads up to `cap` bytes; `true` alongside if there was more.
-fn read_capped(pipe: &mut impl Read, cap: usize) -> io::Result<(Vec<u8>, bool)> {
-    let mut kept = Vec::new();
-    let mut chunk = vec![0; READ_CHUNK];
-    loop {
-        let n = match pipe.read(&mut chunk) {
-            Ok(0) => return Ok((kept, false)),
-            Ok(n) => n,
-            Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
-            Err(error) => return Err(error),
-        };
-        if kept.len() + n > cap {
-            kept.extend_from_slice(&chunk[..cap - kept.len()]);
-            return Ok((kept, true));
-        }
-        kept.extend_from_slice(&chunk[..n]);
-    }
-}
-
-fn apply(event: Event, output: &mut GitOutput) -> Result<(), RunError> {
-    let (bytes, capped) = event.read.map_err(RunError::Spawn)?;
-    if event.stdout {
-        output.stdout = bytes;
-    } else {
-        output.stderr = bytes;
-    }
-    output.truncated |= capped;
-    Ok(())
-}
-
-/// After a kill for the cap: gathers the other pipe, if it reports promptly.
-/// A grandchild git started (an external diff tool) can hold a pipe open
-/// past the kill; its output is then simply not collected.
-fn collect_rest(received: &Receiver<Event>, output: &mut GitOutput, mut open: usize) {
-    while open > 0 {
-        match received.recv_timeout(POLL) {
-            Ok(event) => {
-                open -= 1;
-                if let Err(error) = apply(event, output) {
-                    // The capped result is still good; the other pipe's read
-                    // failing after the kill is a consequence of the kill.
-                    drop(error);
-                }
-            }
-            Err(_) => return,
-        }
-    }
-}
-
-/// Kills and reaps the child. A child that already exited is only reaped.
-fn kill(child: &mut Child) -> Result<(), RunError> {
-    if let Err(error) = child.kill()
-        && child.try_wait().map_err(RunError::Spawn)?.is_none()
-    {
-        return Err(RunError::Spawn(error));
-    }
-    child.wait().map(drop).map_err(RunError::Spawn)
-}
-
-fn os_arg(argument: &GitArg) -> OsString {
-    match argument {
-        GitArg::Flag(flag) => OsString::from(flag),
-        GitArg::Count(flag, n) => OsString::from(format!("{flag}{n}")),
-        GitArg::Oid(oid) => OsString::from(oid.to_string()),
-        GitArg::Ref(bytes) | GitArg::Path(bytes) => os_bytes(bytes),
-        GitArg::Separator => OsString::from("--"),
-        GitArg::Word(word) => OsString::from(word),
-    }
-}
-
-#[cfg(unix)]
-fn os_bytes(bytes: &[u8]) -> OsString {
-    use std::os::unix::ffi::OsStringExt;
-    OsString::from_vec(bytes.to_vec())
-}
-
-#[cfg(not(unix))]
-fn os_bytes(bytes: &[u8]) -> OsString {
-    // Windows arguments are UTF-16; git for Windows reads paths as UTF-8.
-    OsString::from(String::from_utf8_lossy(bytes).into_owned())
-}
-
-/// Quotes `text` for a POSIX shell when it holds anything beyond the plainly
-/// safe characters.
-fn shell_quote(text: &str) -> String {
-    let plain = !text.is_empty()
-        && text
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b"-_./=:@%+,^~".contains(&b));
-    if plain {
-        text.to_owned()
-    } else {
-        format!("'{}'", text.replace('\'', r"'\''"))
     }
 }
 

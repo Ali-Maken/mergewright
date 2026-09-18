@@ -4,11 +4,21 @@ use graft_core::capabilities::ColorDepth;
 use graft_term::sanitize::sanitize_line;
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
+use ratatui::buffer::Buffer;
+use ratatui::layout::Rect;
 
+use super::header::{radar_lines_text, radar_text, title_style, title_text};
+use super::layout::percent;
+use super::unified::gutter_width;
 use super::*;
-use crate::detail::{DetailHeader, DiffMode, DiffOptionsView, DiffView, FileListView};
+use crate::detail::{
+    BodyView, ContainedIn, DetailFocus, DetailHeader, DetailView, DiffMode, DiffOptionsView,
+    DiffView, FileListView, FileRow, FileRowKind, FileStatusView, HunkView, LineKindView, LineView,
+    RadarLine, Subject,
+};
+use crate::paint::foreground;
 use crate::test_support::terminal;
-use crate::theme::ThemeKind;
+use crate::theme::{Theme, ThemeKind, Token};
 
 fn theme(depth: ColorDepth) -> Theme {
     Theme::new(ThemeKind::Dark, &terminal(depth, false))

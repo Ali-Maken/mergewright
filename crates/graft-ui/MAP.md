@@ -44,7 +44,7 @@ View-model types for the detail pane (m2-details-and-diffs/06); no widget. Every
 - `ExplainView` (struct) — the explain panel's title, severity, paragraphs, sketch (built by `explain-panel`).
 
 ## detail_pane
-Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-and-diffs/07). No I/O; `Theme` is the only extra it needs over the ticket's literal signature (undocumented deviation, see module doc).
+Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-and-diffs/07). No I/O; `Theme` is the only extra it needs over the ticket's literal signature (undocumented deviation, see module doc). Split into files, public items unchanged (m2 review M8): `layout.rs` (breakpoints, `DetailAreas`), `line_render.rs` (row-drawing helpers shared by both diff bodies), `unified.rs` (`diff_body`), `side_by_side.rs` (`diff_body_side_by_side`), `header.rs`, `files.rs`, `body.rs` (`DetailPane` widget, Explain panel).
 - `DetailLayout` (enum) — `Right { columns }` (160+ cols), `Below { rows }` (100-159), `Tab { shown }` (<100).
 - `DetailLayout::compute` (fn) — picks the breakpoint for a size and focus; `override_cells` replaces the percentage, still clamped to the minimum.
 - `split_area(layout, area)` (fn) — `area` split into the graph rect and the pane rect for `layout` (`None` for whichever side `Tab` hides); pure geometry, shared by `view/frame.rs`'s draw and mirrored (plain `u16` math, not this fn) by `update/mod.rs`'s mouse hit-testing, which cannot depend on this crate's rendering library (`detail-resize-and-persistence`).
@@ -149,6 +149,7 @@ state or I/O; `view::map::map_view` (crate `graft`) builds its input from
 - `MapView` (struct) — everything the screen draws: `title_branch`, `span_days`, `rows`, `max_count`, `buckets`, `selected`, `more`, `complete`, `status`, `ascii`.
 - `MapScreen` (struct) — `view`, `theme`; `Widget::render` draws the header (branch/span, then `BRANCH`/`NOW`), rows (prefix, name, bar, marks, elbow, tag annotations, current/active suffix), the state body, and the footer.
 - `ramp_glyph(count, max, ascii)` (fn) — the density glyph for a bucket: blank only at `count == 0`, otherwise the ramp's ceiling-rounded level (never a false blank for a nonzero count).
+- Split into files, public items unchanged (m2 review M8): `render.rs` has `MapScreen`'s `Widget` impl and every draw helper (`ramp_glyph` included, now `pub(crate)`); this file keeps the view model types and `MapScreen` itself.
 
 ## overview_strip
 The overview strip (`O`, DESIGN.md §5.3): one column, the whole history

@@ -410,8 +410,8 @@ fn details() -> Vec<Entry> {
             PANE,
             vec![ENTER, ch('W')],
             shape("feature-branches"),
-            "word tint: the changed words carry a stronger bg inside changed lines",
-            "stop 1 with W: only the changed words darken; lines keep the soft tint",
+            "word tint off: W drops the changed words' stronger bg, line colour stays",
+            "stop 1 with W: word tint (default on) toggled off; judge in a terminal",
         ),
         stop(
             "feature-branches",

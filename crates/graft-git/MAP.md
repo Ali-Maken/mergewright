@@ -57,6 +57,7 @@ One line per public item. Update when a public item changes.
 - `DiffError` (enum) — `Run(RunError)`, `Parse(ParseError)`, `TooLarge { bytes }` (64 MiB output cap), `NoHead`; `Display` is one line.
 - `list_files` (fn) — one `diff-tree`/`diff --raw --numstat -z` spawn (plus `ls-files --others` for untracked, working tree only) split and joined via `parse_file_list`. The working tree uses porcelain `diff HEAD`, not `diff-index`: `diff` refreshes the stat cache in memory, so a touched-but-unchanged file is not listed.
 - `file_diff` (fn) — one file's patch via `diff-tree`/`diff-index -p -U<context>`, parsed with `parse_unified`; truncates to whole hunks at `max_lines` (`usize::MAX`: no cap); an `Untracked` entry returns a hunk-less `FileDiff` with no spawn.
+- Split into files, public items unchanged (m2 review M8): `unified.rs`'s byte-level primitives (numbers, percentages, quoted-path unquoting) moved to `unified/primitives.rs`; `read.rs`'s revision-resolution and raw/numstat splitting (`Sides`, `resolve_sides`, `first_parent`, `split_raw_and_numstat`) moved to `read/raw.rs`.
 
 ## history
 - `CHUNK` (const) — commits per chunk a walk hands back at a time.
@@ -140,6 +141,7 @@ One line per public item. Update when a public item changes.
 - `Stop` (trait) — `should_stop(&self) -> bool`, `Sync`; impls for `AtomicBool` (Relaxed load) and `()` (never). The walk's stop is a `&dyn Fn() -> bool`, no type of its own, so no impl.
 - `GitOutput` (struct) — `stdout`, `stderr`, `truncated`.
 - `RunError` (enum) — `GitNotFound`, `Spawn(io)`, `Stopped`, `Exited { status, stderr_first_line, command }`, `Signalled { command }`; `Display` is one line.
+- Split into files, public items unchanged (m2 review M8): `exec.rs` is the child-process machinery `GitInvocation::spawn`/`supervise` are built on — pipe draining on their own threads, kill/reap, `GitArg` → `OsString`/shell-quoted text; this file keeps the types and `GitInvocation`'s own methods.
 
 ## status
 - `WorkingTreeCounts` (struct) — how many files are staged, unstaged and untracked.

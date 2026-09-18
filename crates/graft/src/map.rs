@@ -9,22 +9,25 @@
 //! merge elbow (`MapBranch::merged_into`) only ever points at the default
 //! branch's row — the design note's `map-view-data` deferrals (remote rows,
 //! merges into a non-default branch) are M8 polish gaps, not bugs here.
+//!
+//! Split into files (m2 review M8, public items unchanged): [`walk`] is the
+//! per-branch bounded walk (refs, span, default chain, `walk_branch`);
+//! [`rows`] is the layer above it, one row per local branch; this file keeps
+//! the public data shapes and [`build_map`], the entry point that wires the
+//! two together.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::sync::Arc;
+mod rows;
+mod walk;
 
-use graft_core::mistake_radar::Severity;
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
-use graft_git::history::{CommitTable, Order, Walk, WalkError, first_parent_chain, read_commit};
 use graft_git::repo::HeadState;
 use graft_git::run::Stop;
-use graft_graph::identity::BranchIdentity;
-use graft_ops::mistake_radar::rules::classify_commit;
-use graft_ops::mistake_radar::{CommitFacts, Policy, RepoFacts};
+use graft_ops::mistake_radar::{Policy, RepoFacts};
 
 use crate::repos::{RepoStore, StoreError};
 use crate::session::Clock;
+use rows::RowContext;
 
 /// Rows drawn before the rest collapse into the footer's `+N more`
 /// (DESIGN.md §5.1: cap 200).
@@ -52,7 +55,7 @@ const SECONDS_PER_DAY: i64 = 24 * 3_600;
 /// not a reason to cut a row's history short.
 const SKEW_TOLERANCE_SECONDS: i64 = 36 * 3_600;
 
-/// Commits asked for per [`Walk::next_chunk`] call.
+/// Commits asked for per [`graft_git::history::Walk::next_chunk`] call.
 const CHUNK_LIMIT: usize = 500;
 
 /// What the Map view job is asked to build.
@@ -84,7 +87,7 @@ pub enum MapMark {
     /// (`v1.0`, not `refs/tags/v1.0`).
     Tag(Vec<u8>),
     /// The loudest Mistake Radar finding among this bucket's commits.
-    Radar(Severity),
+    Radar(graft_core::mistake_radar::Severity),
 }
 
 /// One row: a local branch's density sparkline.
@@ -93,7 +96,7 @@ pub struct MapBranch {
     /// The branch's full ref name (`refs/heads/main`).
     pub name: RefName,
     /// Lane colour, the same identity the main graph's lanes use.
-    pub identity: BranchIdentity,
+    pub identity: graft_graph::identity::BranchIdentity,
     /// The branch's tip commit.
     pub tip: Oid,
     /// The tip commit's committer date.
@@ -164,7 +167,7 @@ pub enum MapError {
     /// read.
     Store(StoreError),
     /// A branch's walk failed.
-    Walk(WalkError),
+    Walk(graft_git::history::WalkError),
     /// A tip commit could not be read for its date.
     Read(String),
     /// `stop` fired before the walk finished.
@@ -188,7 +191,7 @@ impl std::error::Error for MapError {}
 /// equal-width columns and clamped to `0..buckets` either side of the span
 /// (a commit dated before `from`, or after `to`, still lands in a real
 /// bucket rather than being dropped).
-fn bucket_index(date: i64, from: i64, to: i64, buckets: usize) -> usize {
+pub(crate) fn bucket_index(date: i64, from: i64, to: i64, buckets: usize) -> usize {
     if buckets == 0 {
         return 0;
     }
@@ -196,346 +199,6 @@ fn bucket_index(date: i64, from: i64, to: i64, buckets: usize) -> usize {
     let offset = (date - from).clamp(0, span);
     let bucket = (offset * i64::try_from(buckets).unwrap_or(i64::MAX)) / span;
     usize::try_from(bucket).unwrap_or(0).min(buckets - 1)
-}
-
-fn under(name: &RefName, prefix: &[u8]) -> bool {
-    name.as_bytes().starts_with(prefix)
-}
-
-/// Local branches (`refs/heads/*`) and the default branch's tip among them,
-/// if it has one.
-fn local_branches(
-    refs: &graft_git::repo::RefSnapshot,
-    default_ref: Option<&RefName>,
-) -> (Vec<(RefName, Oid)>, Option<Oid>) {
-    let locals: Vec<(RefName, Oid)> = refs
-        .peeled
-        .iter()
-        .filter(|(name, _)| under(name, b"refs/heads/"))
-        .map(|(name, oid)| (name.clone(), *oid))
-        .collect();
-    let default_tip = default_ref
-        .and_then(|name| locals.iter().find(|(n, _)| n == name))
-        .map(|(_, oid)| *oid);
-    (locals, default_tip)
-}
-
-/// Tags (`refs/tags/*`), by their short name and peeled commit.
-fn tag_targets_of(refs: &graft_git::repo::RefSnapshot) -> Vec<(Vec<u8>, Oid)> {
-    refs.peeled
-        .iter()
-        .filter(|(name, _)| under(name, b"refs/tags/"))
-        .map(|(name, oid)| (name.shorthand().to_vec(), *oid))
-        .collect()
-}
-
-/// Every local branch's tip commit date, read one `read_commit` at a time
-/// (DESIGN.md §5.1's row order needs every tip's date before any row can be
-/// sorted).
-fn local_tip_dates(
-    handle: &graft_git::repo::RepoHandle,
-    locals: &[(RefName, Oid)],
-    stop: &dyn Stop,
-) -> Result<HashMap<RefName, i64>, MapError> {
-    let mut tip_dates = HashMap::with_capacity(locals.len());
-    for (name, oid) in locals {
-        if stop.should_stop() {
-            return Err(MapError::Stopped);
-        }
-        let commit =
-            read_commit(handle, *oid).map_err(|error| MapError::Read(error.to_string()))?;
-        tip_dates.insert(name.clone(), commit.committer.when.seconds);
-    }
-    Ok(tip_dates)
-}
-
-/// Row order: current branch first, then the default, then the rest by tip
-/// date newest-first, capped at [`MAX_ROWS`]; the rest are only counted.
-fn sort_and_cap_locals(
-    mut locals: Vec<(RefName, Oid)>,
-    current_ref: Option<&RefName>,
-    default_ref: Option<&RefName>,
-    tip_dates: &HashMap<RefName, i64>,
-) -> (Vec<(RefName, Oid)>, usize) {
-    let more = locals.len().saturating_sub(MAX_ROWS);
-    locals.sort_by(|(a_name, a_oid), (b_name, b_oid)| {
-        let a_current = current_ref == Some(a_name);
-        let b_current = current_ref == Some(b_name);
-        let a_default = default_ref == Some(a_name);
-        let b_default = default_ref == Some(b_name);
-        b_current
-            .cmp(&a_current)
-            .then_with(|| b_default.cmp(&a_default))
-            .then_with(|| tip_dates[b_name].cmp(&tip_dates[a_name]))
-            .then_with(|| a_oid.cmp(b_oid))
-    });
-    locals.truncate(MAX_ROWS);
-    (locals, more)
-}
-
-/// The span every row's buckets share: `to` is `req`'s clock, `from` is the
-/// oldest tip date, clamped to `[MIN_SPAN_DAYS, MAX_SPAN_DAYS]` before `to`.
-fn time_span(tip_dates: &HashMap<RefName, i64>, to: i64) -> (i64, i64) {
-    let earliest_tip = tip_dates.values().copied().min().unwrap_or(to);
-    let from = earliest_tip.clamp(
-        to - MAX_SPAN_DAYS * SECONDS_PER_DAY,
-        to - MIN_SPAN_DAYS * SECONDS_PER_DAY,
-    );
-    (from, to)
-}
-
-/// The default branch's first-parent chain, as the set of [`Oid`]s on it —
-/// what every other row's walk skips, and what marks a commit
-/// `on_default_chain` for the Mistake Radar.
-fn build_default_chain(
-    handle: &graft_git::repo::RepoHandle,
-    table: &Arc<CommitTable>,
-    default_tip: Option<Oid>,
-    stop: &dyn Stop,
-) -> Result<HashSet<Oid>, MapError> {
-    match default_tip {
-        Some(tip) => {
-            let handles = first_parent_chain(handle, table, tip, stop).map_err(MapError::Walk)?;
-            Ok(handles
-                .into_iter()
-                .map(|handle| table.id_of(handle))
-                .collect())
-        }
-        None => Ok(HashSet::new()),
-    }
-}
-
-/// One row's finished walk: its bucket counts, marks, completeness, and the
-/// set of commits it visited (default row only — `merged_into` reads it).
-struct RowWalk {
-    counts: Vec<u32>,
-    marks: Vec<(usize, MapMark)>,
-    complete: bool,
-    visited: HashSet<Oid>,
-}
-
-/// A row's walk in progress: the accumulators [`walk_branch`] fills one
-/// chunk at a time, split out so the per-commit body reads as one thing
-/// instead of adding another 30 lines to the walk's own loop.
-struct RowAccum<'a> {
-    buckets: usize,
-    from: i64,
-    to: i64,
-    is_default: bool,
-    default_chain: &'a HashSet<Oid>,
-    tag_targets: &'a [(Vec<u8>, Oid)],
-    repo_facts: &'a RepoFacts<'a>,
-    policy: &'a Policy,
-    counts: Vec<u32>,
-    radar_best: BTreeMap<usize, Severity>,
-    marks: Vec<(usize, MapMark)>,
-    visited: HashSet<Oid>,
-    commits_seen: usize,
-}
-
-impl RowAccum<'_> {
-    /// Fold one commit in. Returns `false` once [`MAX_COMMITS_PER_ROW`] is
-    /// exceeded, telling the caller to stop the walk early.
-    fn record(&mut self, commit: &graft_core::commit::Commit) -> bool {
-        self.visited.insert(commit.id);
-        let on_chain = self.default_chain.contains(&commit.id);
-        if !self.is_default && on_chain {
-            // A merged branch keeps the bars it had before its merge:
-            // commits also reachable from the default branch's first-parent
-            // chain are the default row's to count.
-            return true;
-        }
-        self.commits_seen += 1;
-        if self.commits_seen > MAX_COMMITS_PER_ROW {
-            return false;
-        }
-        let bucket = bucket_index(
-            commit.committer.when.seconds,
-            self.from,
-            self.to,
-            self.buckets,
-        );
-        self.counts[bucket] += 1;
-        for (name, oid) in self.tag_targets {
-            if *oid == commit.id {
-                self.marks.push((bucket, MapMark::Tag(name.clone())));
-            }
-        }
-        let parents_on_default_chain: Vec<bool> = commit
-            .parents
-            .iter()
-            .map(|parent| self.default_chain.contains(parent))
-            .collect();
-        let subject = String::from_utf8_lossy(commit.subject());
-        let facts = CommitFacts {
-            id: commit.id,
-            parents: &commit.parents,
-            subject: subject.as_ref(),
-            on_default_chain: on_chain,
-            parents_on_default_chain: &parents_on_default_chain,
-        };
-        if let Some(finding) = classify_commit(&facts, self.repo_facts, self.policy) {
-            self.radar_best
-                .entry(bucket)
-                .and_modify(|severity| *severity = (*severity).max(finding.severity))
-                .or_insert(finding.severity);
-        }
-        true
-    }
-}
-
-/// Walk one branch's tip into buckets. `is_default` counts every commit in
-/// the span; every other row skips commits on `default_chain` (a merged
-/// branch keeps the bars it had before its merge).
-#[allow(clippy::too_many_arguments)]
-fn walk_branch(
-    store_repo: &graft_git::repo::RepoHandle,
-    table: &Arc<CommitTable>,
-    tip: Oid,
-    buckets: usize,
-    from: i64,
-    to: i64,
-    is_default: bool,
-    default_chain: &HashSet<Oid>,
-    tag_targets: &[(Vec<u8>, Oid)],
-    repo_facts: &RepoFacts<'_>,
-    policy: &Policy,
-    stop: &dyn Stop,
-) -> Result<RowWalk, MapError> {
-    let mut walk = Walk::from_tips(store_repo, Order::CommitDate, &[tip], Arc::clone(table))
-        .map_err(MapError::Walk)?;
-    let mut accum = RowAccum {
-        buckets,
-        from,
-        to,
-        is_default,
-        default_chain,
-        tag_targets,
-        repo_facts,
-        policy,
-        counts: vec![0u32; buckets.max(1)],
-        radar_best: BTreeMap::new(),
-        marks: Vec::new(),
-        visited: HashSet::new(),
-        commits_seen: 0,
-    };
-    let mut complete = true;
-
-    'walk: loop {
-        let chunk = walk
-            .next_chunk(CHUNK_LIMIT, &|| stop.should_stop())
-            .map_err(MapError::Walk)?;
-        if chunk.stopped {
-            return Err(MapError::Stopped);
-        }
-        for commit in &chunk.commits {
-            if !accum.record(commit) {
-                complete = false;
-                break 'walk;
-            }
-        }
-        if chunk.done {
-            break;
-        }
-        // Dated well before the span even under `CommitDate` order's own
-        // skew (`Shape::SkewedDates`): the rest of this branch's history is
-        // off the front of the window, so counting it further would only
-        // ever land in bucket 0.
-        if chunk
-            .commits
-            .last()
-            .is_some_and(|oldest| oldest.committer.when.seconds < from - SKEW_TOLERANCE_SECONDS)
-        {
-            break;
-        }
-    }
-
-    let mut marks = accum.marks;
-    for (bucket, severity) in accum.radar_best {
-        marks.push((bucket, MapMark::Radar(severity)));
-    }
-
-    Ok(RowWalk {
-        counts: accum.counts,
-        marks,
-        complete,
-        visited: accum.visited,
-    })
-}
-
-/// What every row's walk shares, gathered once by [`build_map`] before the
-/// per-branch loop.
-struct RowContext<'a> {
-    handle: &'a graft_git::repo::RepoHandle,
-    table: &'a Arc<CommitTable>,
-    current_ref: Option<&'a RefName>,
-    default_chain: &'a HashSet<Oid>,
-    tag_targets: &'a [(Vec<u8>, Oid)],
-    repo_facts: &'a RepoFacts<'a>,
-    policy: &'a Policy,
-    from: i64,
-    to: i64,
-    buckets: usize,
-}
-
-/// One branch's row: its walk, its `merged_into` elbow, and (for the default
-/// row only) the set of commits its walk visited, which the caller keeps as
-/// `default_visited` for every later row's `merged_into` check.
-#[allow(clippy::too_many_arguments)]
-fn build_row(
-    ctx: &RowContext<'_>,
-    name: &RefName,
-    tip: Oid,
-    tip_date: i64,
-    is_default: bool,
-    default_row_index: Option<usize>,
-    default_visited: &HashSet<Oid>,
-    stop: &dyn Stop,
-) -> Result<(MapBranch, HashSet<Oid>), MapError> {
-    let row = walk_branch(
-        ctx.handle,
-        ctx.table,
-        tip,
-        ctx.buckets,
-        ctx.from,
-        ctx.to,
-        is_default,
-        ctx.default_chain,
-        ctx.tag_targets,
-        ctx.repo_facts,
-        ctx.policy,
-        stop,
-    )?;
-    let merged_into = if is_default {
-        None
-    } else if default_visited.contains(&tip) {
-        default_row_index.map(|row_index| {
-            (
-                row_index,
-                bucket_index(tip_date, ctx.from, ctx.to, ctx.buckets),
-            )
-        })
-    } else {
-        None
-    };
-    let branch = MapBranch {
-        name: name.clone(),
-        identity: BranchIdentity::of_name(name.shorthand()),
-        tip,
-        tip_date,
-        counts: row.counts,
-        is_current: ctx.current_ref == Some(name),
-        is_default,
-        merged_into,
-        marks: row.marks,
-        complete: row.complete,
-    };
-    let visited = if is_default {
-        row.visited
-    } else {
-        HashSet::new()
-    };
-    Ok((branch, visited))
 }
 
 /// Build the Map view's data: one bounded walk per local branch
@@ -565,20 +228,20 @@ pub fn build_map(
         Ok(HeadState::Detached(_)) | Err(_) => None,
     };
 
-    let (locals, default_tip) = local_branches(&refs, default_ref.as_ref());
+    let (locals, default_tip) = walk::local_branches(&refs, default_ref.as_ref());
 
-    let tip_dates = local_tip_dates(&handle, &locals, stop)?;
-    let (locals, more) = sort_and_cap_locals(
+    let tip_dates = walk::local_tip_dates(&handle, &locals, stop)?;
+    let (locals, more) = walk::sort_and_cap_locals(
         locals,
         current_ref.as_ref(),
         default_ref.as_ref(),
         &tip_dates,
     );
 
-    let (from, to) = time_span(&tip_dates, req.clock.now_seconds());
-    let default_chain = build_default_chain(&handle, &table, default_tip, stop)?;
+    let (from, to) = walk::time_span(&tip_dates, req.clock.now_seconds());
+    let default_chain = walk::build_default_chain(&handle, &table, default_tip, stop)?;
 
-    let tag_targets = tag_targets_of(&refs);
+    let tag_targets = walk::tag_targets_of(&refs);
 
     let default_branch_str = default_ref
         .as_ref()
@@ -602,7 +265,7 @@ pub fn build_map(
         buckets: req.buckets,
     };
 
-    let (result_branches, overall_complete) = build_rows(
+    let (result_branches, overall_complete) = rows::build_rows(
         &rows,
         &locals,
         default_ref.as_ref(),
@@ -619,52 +282,6 @@ pub fn build_map(
         buckets: req.buckets,
         complete: overall_complete,
     })
-}
-
-/// Every row, in order: [`build_row`] once per local branch, feeding
-/// `default_visited` forward from the default row (which always sorts
-/// before any row that could be merged into it) to every row after it.
-#[allow(clippy::too_many_arguments)]
-fn build_rows(
-    rows: &RowContext<'_>,
-    locals: &[(RefName, Oid)],
-    default_ref: Option<&RefName>,
-    tip_dates: &HashMap<RefName, i64>,
-    progress: &mut dyn FnMut(u32, u32),
-    stop: &dyn Stop,
-) -> Result<(Vec<MapBranch>, bool), MapError> {
-    let total = u32::try_from(locals.len()).unwrap_or(u32::MAX);
-    let mut result_branches = Vec::with_capacity(locals.len());
-    let mut default_row_index: Option<usize> = None;
-    let mut default_visited: HashSet<Oid> = HashSet::new();
-    let mut overall_complete = true;
-
-    for (index, (name, tip)) in locals.iter().enumerate() {
-        if stop.should_stop() {
-            return Err(MapError::Stopped);
-        }
-        let is_default = default_ref == Some(name);
-        let tip_date = tip_dates[name];
-        let (branch, visited) = build_row(
-            rows,
-            name,
-            *tip,
-            tip_date,
-            is_default,
-            default_row_index,
-            &default_visited,
-            stop,
-        )?;
-        overall_complete &= branch.complete;
-        if is_default {
-            default_row_index = Some(index);
-            default_visited = visited;
-        }
-        result_branches.push(branch);
-        progress(u32::try_from(index + 1).unwrap_or(u32::MAX), total);
-    }
-
-    Ok((result_branches, overall_complete))
 }
 
 #[cfg(test)]

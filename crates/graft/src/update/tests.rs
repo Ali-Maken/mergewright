@@ -8,6 +8,8 @@ use graft_git::history::Order;
 use graft_git::version::SystemGit;
 use graft_graph::{Follow, Row};
 
+use super::geometry::HEADER_ROWS;
+use super::mouse::WHEEL_LINES;
 use super::*;
 use std::ops::Range;
 use std::path::PathBuf;
@@ -1468,44 +1470,60 @@ fn a_walk_that_ends_without_finishing_says_how() {
 /// this one) and fails if anything that talks to the outside (a file, a
 /// clock, a thread, a terminal) has been imported or called. A reviewer
 /// would have to notice; the test cannot help noticing.
+///
+/// Walks the directory tree rather than a hand-kept file list, so a new
+/// `update/**/*.rs` file is included automatically instead of silently
+/// skipped — a file inside a submodule directory (`update/detail/*.rs`) is
+/// exactly as much `update`'s code as one directly under `update/`, and must
+/// be scanned too (m2-details-and-diffs review M8: `detail.rs` and `mod.rs`
+/// split into subdirectories after this test was written).
+fn update_sources(dir: &std::path::Path) -> Vec<String> {
+    let mut sources = Vec::new();
+    let mut dirs = vec![dir.to_path_buf()];
+    while let Some(dir) = dirs.pop() {
+        for entry in std::fs::read_dir(&dir).expect("update/ exists") {
+            let path = entry.expect("readable dir entry").path();
+            if path.is_dir() {
+                dirs.push(path);
+                continue;
+            }
+            if path.extension().and_then(|ext| ext.to_str()) != Some("rs") {
+                continue;
+            }
+            let name = path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .expect("utf-8 file name")
+                .to_owned();
+            if name == "tests.rs" {
+                continue;
+            }
+            let contents = std::fs::read_to_string(&path)
+                .unwrap_or_else(|error| panic!("reading {}: {error}", path.display()));
+            // `mod.rs` names its own test module at the very end; strip that
+            // file's tail, the same way a single-file module used to strip
+            // its `#[cfg(test)]`. Every other file is pure end to end and is
+            // kept whole — stripping used to happen only after joining every
+            // file, which threw away everything past `mod.rs`'s own marker.
+            let contents = if name == "mod.rs" {
+                contents
+                    .split_once("#[cfg(test)]")
+                    .expect("mod.rs declares the test module")
+                    .0
+                    .to_owned()
+            } else {
+                contents
+            };
+            sources.push(contents);
+        }
+    }
+    sources
+}
+
 #[test]
 fn update_cannot_reach_the_world() {
-    // Scan the directory rather than a hand-kept file list, so a new
-    // `update/*.rs` file is included automatically instead of silently
-    // skipped.
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/src/update");
-    let mut sources = Vec::new();
-    for entry in std::fs::read_dir(dir).expect("update/ exists") {
-        let path = entry.expect("readable dir entry").path();
-        if path.extension().and_then(|ext| ext.to_str()) != Some("rs") {
-            continue;
-        }
-        let name = path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .expect("utf-8 file name")
-            .to_owned();
-        if name == "tests.rs" {
-            continue;
-        }
-        let contents = std::fs::read_to_string(&path)
-            .unwrap_or_else(|error| panic!("reading {}: {error}", path.display()));
-        // `mod.rs` names its own test module at the very end; strip that
-        // file's tail, the same way a single-file module used to strip its
-        // `#[cfg(test)]`. Every other file is pure end to end and is kept
-        // whole — stripping used to happen only after joining every file,
-        // which threw away everything past `mod.rs`'s own marker.
-        let contents = if name == "mod.rs" {
-            contents
-                .split_once("#[cfg(test)]")
-                .expect("mod.rs declares the test module")
-                .0
-                .to_owned()
-        } else {
-            contents
-        };
-        sources.push(contents);
-    }
+    let sources = update_sources(std::path::Path::new(dir));
     assert!(
         sources.len() >= 7,
         "expected every non-test file under update/, found {}: \

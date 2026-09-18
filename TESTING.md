@@ -912,10 +912,12 @@ highlighted row is the file whose diff is below.
 
 **Diff body:** gutter line number, sign (`+`/`-`/space), text; no `@@`
 heading for a single-hunk file. Side-by-side (`v`): two halves, `│` between,
-each with its own gutter; an unpaired side is blank. Word tint (`W`) is
-colour only: at 256 colours the changed words carry a stronger background
-inside a changed line; at 16 colours the whole line carries the tint and
-words do not differ. A capture cannot show either; judge in the terminal.
+each with its own gutter; an unpaired side is blank. Word tint is colour
+only, on by default: at 256 colours the changed words carry a stronger
+background inside a changed line; at 16 colours the whole line carries the
+tint and words do not differ. `W` toggles it off (line colour — added,
+removed, context — is unaffected either way); pressing it again turns it
+back on. A capture cannot show either state; judge in the terminal.
 
 **Compare:** `x` marks the base (`▏` on its row, footer `compare base <sha>
 — move, x again clears`); `x` on another row opens the pane with
@@ -941,9 +943,10 @@ ASCII: `! i + * o # :`.
 3. **feature-branches · Enter Tab v** — the body splits: `│` down the middle,
    the left half blank (no old side for an added file), the right half
    `1 + a` with its own gutter. Header and tree as in 1.
-4. **feature-branches · Enter W** — same text as 1; in the terminal the `a`
-   on the `+` line carries the stronger tint (256 colours). Nothing else
-   changes.
+4. **feature-branches · Enter W** — same text as 1; in the terminal `W`
+   turns the word tint off: the `a` on the `+` line loses its stronger
+   background and reads like the rest of the line (256 colours). The
+   line's own added/removed colour is unaffected; nothing else changes.
 5. **feature-branches · x j j x** — `x` on row 0, two `j`, `x` on `two: finish`:
    the pane header reads `COMPARE 0683985 → e30e870` where `COMMIT` would
    be; no author or parents lines; `▏` on row 0. No file count in the

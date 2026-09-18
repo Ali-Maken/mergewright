@@ -60,6 +60,22 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   superset).
 - **Changing a screen or a keybinding** → `ui` for the widget, `app` for the
   key-to-`Command` mapping. Start at `DESIGN.md` §1–§2.
+- **Changing the detail pane, a diff view or the Explain panel** →
+  `ui::detail_pane` for the widget (header, file list, unified and
+  side-by-side diff bodies, the Explain panel's own render), `app::view::detail`
+  for its view model, `app::update::detail` for state, keys and mouse hit
+  areas. A diff itself is read and parsed in `git::diff`
+  (m2-details-and-diffs).
+- **Changing the Map view or the overview strip** → `ui::map_screen` /
+  `ui::overview_strip` for the widgets, `app::map` for the per-branch bucket
+  walk, `app::view::map` / `app::view::strip` for their view models,
+  `app::update::map` for the Map view's keys (m2-details-and-diffs/18–20).
+- **Changing what the Mistake Radar detects, or one of its background jobs**
+  → `ops::mistake_radar` for detection itself (`rules`, `probes`, `explain`);
+  `app::jobs::radar` for the jobs that run off the UI thread (`RadarContext`,
+  the force-push and duplicate-commit probes); `app::update::radar` /
+  `app::view::radar` for the state that holds their answers and the per-row
+  lookup a frame reads (m2-details-and-diffs/13–17).
 - **Adding a new kind of `Command` or wiring a new job** → `app`. It's the
   only crate allowed to see every other crate, and `update` and the job
   runner both live there.
@@ -203,9 +219,16 @@ other both need the same shape. The full list and reasoning is `DESIGN.md`
 
 - `Commit`, `Oid`, `CommitId`, `RefName` — produced by `git`, consumed by
   `graph`, `ops` and `ui`.
-- `MistakeRadarKind` — produced by `ops::MistakeRadar`, attached to a
-  `graph::Row` as plain input data (`graph` never calls into `ops`), rendered
-  by `ui`.
+- `MistakeRadarKind` — the finding kind `ops::mistake_radar` detects
+  (`rules::classify_commit`/`classify_refs`, `probes`). **Not** attached to a
+  `graph::Row`: `graph` never calls into `ops` and carries no radar data at
+  all. `app::update::radar`/`app::view::radar` classify each row live,
+  against a `RadarContext` — the default branch's first-parent ancestry as a
+  `HandleSet` over its own `Arc<CommitTable>` (ADR-0026, housekeeping/02) —
+  that a background job (`app::jobs::radar::run_radar_context`) builds once
+  per refresh; `AppState.radar` caches the per-commit lookup so a frame's
+  marker/detail-line read is O(1) per row, not a walk (M2 review C1). `ui`
+  only ever sees the finished `Finding`s, as a marker or a detail line.
 - `Capabilities`, `RenderingTier` — detected by `term`, consumed by `graph`'s
   renderer choice and `ui`'s diagnostics.
 - `RasterFrame` — `graph`'s pixel renderer output; `term` encodes it into

@@ -32,6 +32,7 @@ The Map view's per-branch bucket counts (m2-details-and-diffs/18): one bounded w
 - `MapData::bucket_of(date) -> usize`, `MapData::max_count() -> u32`.
 - `MapError` (enum) — `Store`/`Walk`/`Read`/`Stopped`; one-line `Display`.
 - `build_map(store, req, progress, stop) -> Result<MapData, MapError>` — local branches only (M2); default-branch merges only.
+- Split into files, public items unchanged (m2 review M8): `walk.rs` (refs, span, default chain, `walk_branch`/`RowWalk`, one bounded walk per branch), `rows.rs` (`RowContext`, `build_row`/`build_rows`, one row per local branch); this file keeps the public data shapes and `build_map`, the entry point wiring the two together.
 
 ## history
 - `Wanted::Find { commit, rows, fallback }` — lay out until `commit` has a row, answer around it (search's far hit); `fallback` when the walk ends without it.
@@ -98,6 +99,7 @@ The Map view's per-branch bucket counts (m2-details-and-diffs/18): one bounded w
 - `TerminalRestorer::restore` (fn) — put every applied mode back; idempotent.
 
 ## update
+Split into files, public items unchanged (m2 review M8): `mod.rs` keeps only the dispatcher (`update`, `answer`, `core_event`); `geometry.rs` is the pure screen geometry a mouse event needs (`Bounds`, the detail pane's hit-testing, `context_menu_area`); `mouse.rs` is what a mouse event does once `geometry` says where it landed.
 - `AppEvent` (enum) — events fed into `update`, including job products.
 - `Progress` (enum) — what a running job hands over before it ends.
 - `Task` (enum) — jobs identified so their results can be told apart from stray ones; `ReadRefs` reads the badges; `ReadWorkingTree` reads working-tree status counts; `PromoteHistory` sorts for ADR-0008 promotion; `Search` scans for `/`; `WriteCommitGraph`/`DeclineCommitGraph` the offer's jobs. `Progress::Search` carries one chunk's hits; `ListFiles { spec }`, `FileDiff { key }`, `ContainedIn { oid }` the detail pane's reads; `EvilProbe { merge }` the open merge's evil-merge check; `Map` the Map view's build (m2-details-and-diffs/18), announced under `update`'s own id like the detail pane's own jobs.
@@ -205,7 +207,7 @@ The overview strip's only key (`O`, m2-details-and-diffs/20); no other state.
 - `strip_key` (fn, `pub(super)`) — `(next, key) -> bool`: `O` on the graph screen (plain, detail focus on the graph, map not shown) flips `AppState::strip_shown`; `true` once handled.
 
 ## update::detail
-The detail pane's state and transitions; pure (no I/O, no clock). Drawing is `detail-pane-frame`'s.
+The detail pane's state and transitions; pure (no I/O, no clock). Drawing is `detail-pane-frame`'s. Split into files, public items unchanged (m2 review M8): `state.rs` (`DetailState` and its caches, `PaneSize`, `DetailSpec`, `Loading`, `DiffKey`, `Bounded`), `ops.rs` (`impl DetailState`), `control.rs` (`LocalJobs`, `detail_event`, `effective_layout`, `open_explain`/`close_explain`, the diff-length helpers), `keys.rs` (`detail_key` and its region-local key maps).
 - `LOCAL_JOB_BIT` (const) — top bit of every id `update` issues itself, so it never meets a runner-issued id.
 - `LocalJobs` (struct) — `next_id`: hands out `LOCAL_JOB_BIT` ids.
 - `DetailSpec` (enum) — `Commit(Oid)`, `Compare { base, head }`, `WorkingTree`; `diff_spec` maps it to git's `DiffSpec`.

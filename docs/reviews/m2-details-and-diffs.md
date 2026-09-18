@@ -414,3 +414,149 @@ fixture change, out of this round's scope.
 `cargo test` (fast tier) all pass — 28 test binaries green, 0 failed. No
 heavy tier or release perf run this round: nothing here touches the frame
 path.
+
+## Fixes, round 1d (2026-09-18, builder-sonnet)
+
+The reviewer's findings above are untouched; this round is M7, M8 and
+Minor 15 — the last before re-review. No git-semantics or runtime behaviour
+changed: every fix here is either documentation or a pure file split with
+public signatures held fixed. Full gates, no heavy tier or perf run
+(nothing here touches the frame path or a hot loop).
+
+**M7 — fixed at the cause.** `ARCHITECTURE.md`'s "Shared types" table still
+described the M1-era design: `MistakeRadarKind` "attached to a `graph::Row`
+as plain input data". M2 never built that — Mistake Radar classification
+lives entirely in `app` (`update::radar`/`view::radar`), against a
+`RadarContext` a background job builds once per refresh, and `graph` never
+sees a finding at all. Rewrote that entry to say what M2 actually built,
+including commit `92c35ac`'s move of the radar's default-branch chain onto
+a `HandleSet` over its own `Arc<CommitTable>` (ADR-0026, housekeeping/02) —
+the current tree, not the review's snapshot. Also added three "Where to
+start reading" bullets M2 introduced no entry for: the detail pane/diff
+views/Explain panel, the Map view/overview strip, and the Mistake Radar's
+detection vs. its background jobs — each naming the crate and module a
+change would actually touch, the same shape as the existing bullets.
+
+*Verified:* read against `crates/graft-ops/MAP.md` and the relevant
+sections of `crates/graft/MAP.md` (`update::radar`, `view::radar`,
+`jobs::radar`, `map`) — not source, per the ticket's read-first rule. No
+code changed; this is a documentation-only fix, so there is nothing to
+gate beyond the fixes below (same `cargo fmt`/`clippy`/`test` run covers
+the whole round).
+
+**M8 — fixed at the cause; all 8 files split, none needed a design
+decision.** Every file the review named was a single-responsibility file
+that had grown past the ~400-line rule by accretion, not by mixing
+unrelated concerns — each split follows a seam the file's own structure
+already implied (a byte-parsing layer under a grammar layer, a walk layer
+under a row-building layer, view-model types under their drawing code,
+child-process plumbing under `GitInvocation`'s own methods). None of the
+eight needed a new interface or a behaviour change; every public path,
+signature and doc comment is unchanged, only relocated. `codebase-design`
+skill's language: each split moves an *internal* seam that already existed
+inside the file's own code into a file boundary — no new seam was invented.
+
+- `crates/graft-ui/src/detail_pane.rs` (1330 → 43 non-test lines) → `body.rs`
+  (`DetailPane` widget, Explain panel), `header.rs`, `files.rs`,
+  `layout.rs`, `line_render.rs`, `unified.rs`, `side_by_side.rs`.
+- `crates/graft/src/update/detail.rs` (1045 → 31) → `detail/state.rs`
+  (`DetailState` and its caches), `detail/ops.rs` (`impl DetailState`),
+  `detail/control.rs` (`LocalJobs`, `detail_event`, `effective_layout`,
+  `open_explain`/`close_explain`), `detail/keys.rs` (`detail_key`).
+- `crates/graft/src/update/mod.rs` (846 → 366) → `geometry.rs` (pure screen
+  geometry a mouse event needs), `mouse.rs` (what a mouse event does once
+  `geometry` says where it landed).
+- `crates/graft/src/map.rs` (669 → 286) → `map/walk.rs` (refs, span, default
+  chain, `walk_branch`/`RowWalk`, one bounded walk per branch), `map/rows.rs`
+  (`RowContext`, `build_row`/`build_rows`, one row per local branch).
+- `crates/graft-git/src/diff/unified.rs` (558 → 415) →
+  `unified/primitives.rs` (numbers, percentages, quoted-path unquoting — no
+  header or hunk grammar).
+- `crates/graft-ui/src/map_screen.rs` (507 → 126) → `map_screen/render.rs`
+  (`MapScreen`'s `Widget` impl and every draw helper).
+- `crates/graft-git/src/run.rs` (484 → 358) → `run/exec.rs` (the
+  child-process machinery `spawn`/`supervise` are built on: pipe draining,
+  kill/reap, `GitArg` → `OsString`/shell-quoted text).
+- `crates/graft-git/src/diff/read.rs` (457 → 316) → `read/raw.rs` (revision
+  resolution and raw/numstat splitting: `Sides`, `resolve_sides`,
+  `first_parent`, `split_raw_and_numstat`).
+
+*A real gap this uncovered, fixed alongside it:* `update`'s purity guard
+(`update_cannot_reach_the_world`, `crates/graft/src/update/tests.rs`) reads
+its own source with `std::fs::read_dir` on `update/` directly — not
+recursive. Splitting `update/detail.rs` and `update/mod.rs` into
+subdirectory files (this round's fix, and the earlier round that produced
+`update/detail/*.rs`) put four files — `detail/state.rs`, `detail/ops.rs`,
+`detail/control.rs`, `detail/keys.rs` — outside that scan entirely: the
+test kept passing, but it was no longer checking them for `ratatui`,
+`std::io`, threads or a clock. A green gate was not evidence the guard
+still covered the module (rules-rationale's point exactly). Fixed at the
+cause: the scan now walks subdirectories, still skipping every `tests.rs`
+wherever it sits. Extracted into a helper (`update_sources`) rather than
+inlining the walk, since the walk plus the assertions together tripped
+clippy's line-count lint. *What it costs the user:* nothing — this closes
+a silent coverage gap the file splits opened; no behaviour changed.
+
+*Verified, per split:* `cargo build -p <crate> --quiet`, then
+`cargo clippy -p <crate> --all-targets --message-format=short -- -D
+warnings`, then `cargo test -p <crate> --quiet`, comparing pass counts
+against the pre-split baseline (`graft-ui` 186+1+2+1+2+1, `graft` 466+14,
+`graft-git` 134+49) — identical every time, so no test lost coverage and
+none newly failed. `wc -l` confirms every non-test file landed under 400
+lines. After all eight splits, `cargo fmt` reflowed a handful of import
+lists and one over-long signature (pre-existing formatting drift as well
+as new splits); `cargo fmt --check`, `cargo clippy --all-targets -D
+warnings` and `cargo test --quiet` then ran clean across the whole
+workspace in one pass (every crate, not just the eight touched) — 466+0
+(graft), 134+49 (graft-git), 186+1+2+1+2+1 (graft-ui), 97/97, 29+2 ignored,
+31, 2, 150, 2 (doctests) — 0 failed anywhere. Each crate's `MAP.md` got a
+one-line note per split; no public item's line changed, since none of the
+signatures moved.
+
+*Not run:* the heavy tier, fuzzing, benchmarks, or a release perf run —
+none of these files are on a hot path this round touches, and the ticket
+excludes them explicitly.
+
+**Minor 15 — fixed at the cause.** `TESTING.md`'s "Diff body" paragraph and
+gallery stop 4's two captions (`crates/graft/tests/it/gallery.rs`) still
+described word tint as always-on with `W` doing nothing observable — the
+wording from before round 1b's fix (M1 above) made `W` actually toggle it.
+Rewrote both to say what the code now does: word tint is on by default,
+`W` turns it off (line colour — added/removed/context — unaffected either
+way), pressing it again turns it back on. Stop 4's caption no longer claims
+`W` is what makes the words darken; it says `W` removes the darkening.
+
+*Verified:* read against round 1b's own description of the fix (above) and
+`crates/graft-ui/src/detail_pane/tests.rs`'s
+`word_tint_false_leaves_the_word_at_the_plain_row_background` (name only,
+not the body — this round did not need to read the test itself to confirm
+the direction the flag now runs). The new captions also had to fit
+`concrete_and_fits`'s per-line cell-width budget (79 cells including the
+`"shows: "`/`"differs: "` prefix) — took four rewrites to land both lines
+under it. `cargo test -p graft --test it
+gallery::tests::the_details_group_walks_the_19_stops_with_their_keys_and_fits`
+passes; no snapshot depends on the caption text, so nothing else needed
+re-running. Not judged by eye: this is a caption/doc wording fix, not a
+rendering change.
+
+*What it costs the user:* nothing — the two docs now agree with each other
+and with the code; no behaviour changed anywhere in this round.
+
+*Gates:* `cargo fmt --check`, `cargo clippy --all-targets --message-format
+short -- -D warnings`, `cargo test --quiet` and `cargo build --quiet`, all
+run workspace-wide (not just the touched crates) after every file split —
+all pass, 0 failed. The `update` purity guard specifically re-run and
+confirmed green after being made recursive. No heavy tier, no release perf
+run, per the ticket's scope.
+
+*Turn count:* this round ran long — 8 file splits across 4 crates, each
+needing its own read/write/build/clippy/test cycle, plus the purity-guard
+fix the splits themselves uncovered. The session compacted once before
+this round started (context handed off via summary, per CLAUDE.md); from
+resumption to this write-up was on the order of 90 tool calls, well past
+the old 60-turn flag. Per ADR-0029 this is reported rather than used to
+cut the work short: the ticket was one coherent unit (all 8 M8 files plus
+M7/Minor 15 for one re-review pass) and stopping partway would have left
+`docs/reviews/m2-details-and-diffs.md` describing a mix of split and
+unsplit files, which is worse than one long round. Nothing here was
+rushed to fit a number.
