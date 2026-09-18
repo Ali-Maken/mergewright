@@ -416,6 +416,52 @@ should decide whether an exhaustive background sweep earns its cost, or whether
 32-per-session is the honest permanent answer — and, if it stays, whether the
 UI should say so rather than letting silence read as "no force-push found".
 
+## M2 review round 2: Minor findings left open (2026-09-19)
+
+17 Minors from the round-2 review (`docs/reviews/m2-details-and-diffs.md`,
+`## Round 2` → `### Minor`). Round 1e fixed the round's three Majors only.
+Minor 13 (false "never writes/takes the index lock" doc comments on
+`run.rs`/`diff/read.rs`) was fixed as a side effect of round 1e's Major-1 fix
+— not listed below. The other 16 are still open. None of these duplicate the
+two rows already filed under "Unverified" (the two colour fixes) or
+housekeeping/02's two rows (`map.rs` `HashSet<Oid>`, the frame-gate max) —
+cross-referenced below where they touch the same code.
+
+### Mistake Radar: evil-merge probe and its text
+
+| Finding | Broken/unverified | What a user notices | Expiry |
+|---|---|---|---|
+| Pane header reads `evil merge: clean (N files hand-resolved)` for a merge with unchecked files — `clean` is `EvilVerdict::Clean`'s word ("nothing wrong found"), not "not checked". `crates/graft-ui/src/detail_pane/header.rs:55` | Broken | A hand-resolved merge with real files skipped reads as reassuring, not "we didn't check this" | M8 polish |
+| The both-sides-touched blind spot (a file both sides edited, resolved by hand, can hide a real evil edit inside the resolution) is disclosed only in the Explain paragraph and a doc comment, not in TESTING.md's radar section | Broken (docs) | Has to open Explain on the exact merge to learn the Radar can miss this kind of evil merge | M8 polish |
+| `merge_base` (`crates/graft-ops/src/mistake_radar/probes.rs`) takes only the first line of `git merge-base`; criss-cross history can have several bases, so "changed by one side" is judged against a base the real (recursive/ort) merge didn't use | Unverified — not reproduced | On unusual branch topology only, a merge could be wrongly cleared or wrongly flagged evil; no case has shown this yet | M7 |
+| Selecting the cursor's way through a merge-dense history spawns one full `git show --remerge-diff` per merge row, killed ≤50 ms later when the cursor moves on again; the 16-entry probe cache thrashes | Broken | Holding `j`/`k` down through a history like git/git's (a merge every few rows) causes brief hitches from throwaway git spawns | M7 |
+| `update/radar.rs::force_push_candidates` walks the resident window and allocates a `Vec` on every `update`, including key repeat, even once the 32-probe session cap is already full | Broken | Small extra per-keystroke cost that keeps paying after force-push probing has already maxed out for the session | M7 |
+| `RadarContext`'s `PartialEq`/`Eq` compares its tables by `Arc::ptr_eq`; two contexts with identical members but different table instances compare unequal, though `Eq` promises they'd be treated the same | Broken | Not directly visible; risks extra radar recompute when two logically-identical contexts are treated as different | M7 |
+| `scripts/m2-fix-1c-evil-audit.sh` reimplements the evil-merge rule in shell; already drifted once (round 1c's rule vs round 1e's rename-aware fix) and nothing keeps the two in step | Broken | No user impact; the audit's numbers can go silently stale the next time the probe's rule changes | not planned |
+
+### Overview strip
+
+| Finding | Broken/unverified | What a user notices | Expiry |
+|---|---|---|---|
+| `view/strip.rs`'s search-hit `HashSet` is rebuilt every frame the strip is shown — M10's round-1a fix moved the per-row cost of the old scan to a per-frame allocation, it didn't remove it | Broken | On a repo where a search matches most of history, the overview strip can still cost noticeably every frame it's shown | M7 |
+
+### Code health: visibility, file boundaries, docs (M8's architecture pass)
+
+None of these are user-facing; `planner-fable`'s M8 pass already reads every
+`MAP.md`/`ARCHITECTURE.md`, so it's the natural owner.
+
+- `ramp_glyph` (`crates/graft-ui/src/map_screen/render.rs`) went `pub` → `pub(crate)` in round 1d's split, but `crates/graft-ui/MAP.md:151-152` still lists it as public and separately notes it's now `pub(crate)` — the two lines disagree. Broken.
+- Round 1d's splits widened visibility instead of narrowing it: `detail_key`/`detail_event` and roughly 46 further items across `detail_pane/*` (17 in `line_render.rs`), `map/{walk,rows}.rs`, `unified/primitives.rs` and `update/detail/state.rs` are `pub(crate)` when only their parent module needs them (`pub(super)`, as `run/exec.rs` and `diff/read/raw.rs` already do). Broken.
+- `update/detail/{state,ops}.rs`'s split cuts "the struct" from "its `impl`", not along a real boundary — `ops.rs` (395 lines) mixes file loading, the evil probe, focus/options and pane resizing. `detail_pane/line_render.rs` has the same shape (17 unrelated items in one file). Broken.
+- `crates/graft-git/src/diff/unified.rs` is 417 non-test lines; round 1d's own note claimed every split file was under 400. Broken (contradicts the record that closed it).
+- `detail_pane/side_by_side.rs`'s `diff_body_side_by_side` still takes two bare bools (`focused`, `word_tint`) instead of the `DiffFocus` struct that was introduced specifically so `diff_body` wouldn't need them. Broken (inconsistency).
+- The `update/` purity guard (`crates/graft/src/update/tests.rs:1480-1557`): its file-count floor is `>= 7` against 20 real files (a broken directory walk could pass silently), its substring check misses `use std::{time, thread}` and `core::time`, and its own comment claiming "every other file is pure end to end" is false for six files that carry inline `#[cfg(test)]` modules. Broken — the safety net has real holes, though round 1d's own fix (making the scan recursive) is confirmed sound.
+- `ARCHITECTURE.md` still doesn't document `git::run` (the typed runner every M2 git spawn goes through), `git::contained`, the `LOCAL_JOB_BIT` job-id split, or the `update/` purity guard as a stated rule. Broken (docs debt).
+
+### Test suite: watch, not yet a failure
+
+- Fast tier grew 21 s → 24.3 s across the fix rounds, and its single slowest test (`diff_fixture::parse_unified_matches_numstat_for_every_shape`) grew 6.42 s → 7.76 s. The reviewer called it still under budget. Unverified (a trend, not yet a breach) — watch it doesn't cross the laptop-safe budget as M3 adds its own tests. Expiry: M3.
+
 ---
 
 ## Unverified (shipped, nothing here can prove it)

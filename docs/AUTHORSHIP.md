@@ -62,6 +62,46 @@ Escalations: none recorded. The two `failed` runs (30f's first attempt, 30h's fi
 - **Fixes for round 1**, all closed before round 2: 65 wheel-scroll-strands-search (Sonnet), 66 piped-stdout (Sonnet), 67 tied-dates (Opus), 68 incoming-edge-outside-lanes (Opus), 69 AppState-clone (Opus), and the over-400-line splits 70, 71, 72a, 72b, 72c, 73a, 73b, 74a, 74b, 75a, 75b, 75c, 76a, 76b, 77 (all Sonnet).
 - **Fixes for round 2**: 78 update-purity-guard (Sonnet), 79 split-kitty_check-example (Sonnet).
 
-## M2–M8
+## M2 Details and diffs
 
-M2: design pass next (planner-fable).
+M2 is the first milestone under the 2026-09-13 standing rules (`planner-fable`
+designs and specs; conductor files/sequences; models routed per ticket; Fable
+reviews).
+
+| Role | Model | Detail |
+|---|---|---|
+| Designed | Fable | `docs/design-notes/m2-details-and-diffs.md`, three passes (1, 2a, 2b, 2c) plus later spec-only fixes: resize keys (`<`/`>`), the working-tree row (filed as 06b), and deferring `?` help to M8. 23 tickets total. |
+| Specified | Fable, filed by conductor | Ticket specs from the design passes above, unnumbered in `.scratch/m2-details-and-diffs/issues/`; conductor numbered 01–23 and set `Blocked by` from `Needs`. Conductor-filed splits/remainders (not spec passes): 06b (from a spec-only pass), 10b, 13b, 13c, and ticket 24 (found by 23's acceptance walk). |
+| Built | see table below | |
+| Reviewed | Fable | M1 was the Opus exception; M2 review and both rounds ran on Fable. |
+
+### M2 builds
+
+| Model | Tickets |
+|---|---|
+| Opus | 01 (done), 06 (partial → continuation done), 14 (partial → continuation done), 15 (done), housekeeping/02 heap-slope (done) |
+| Fable | 04 (signature, done, COMPACTED once), 23 (partial at its own planned seam, part a → continuation part b done) |
+| Sonnet | 02 (done, COMPACTED — self-described, ticket finished), 03 (done), 05 (done, COMPACTED), 06b (done, COMPACTED), 07 (done, COMPACTED), 08 (done, COMPACTED), 09 (done), 10 (partial → split 10b), 10b (partial → continuation done), 11 (done), 12 (done, COMPACTED), 13 (partial → split 13b/13c), 13b (done, COMPACTED), 13c (done, COMPACTED), 16 (done, COMPACTED), 17 (done, COMPACTED), 18 (partial → continuation done, COMPACTED), 19 (done, COMPACTED twice), 20 (partial → continuation done), 21 (done), 22 (done, docs only), 24 (done); also 2a cause + gap re-date, m1/80 (1M-tests behind `heavy-1m` feature), housekeeping/01 context-diet (done, two legs) |
+| Conductor (not a build) | user-37 PNG shrink, keys collision check, filing/numbering, ticket-24 discovery routing |
+
+**Hard-stop overruns:** the user decided (2026-09-17) not to move overrunning Sonnet tickets to Opus — the work finished correctly — but to log the harness's own tool-call/token figures on every line rather than a builder's self-report. The log records repeated cases where a builder's self-reported call count understated the harness figure (06b, 09, 11, 12, 18, 20, 21, and round-1d's fix, the worst at self-reported "~90+" against a harness 286). No escalations were made for this reason; it is a logging-accuracy finding, not a model-choice one.
+
+**Compacted:** 02 (self-described only, ticket finished), 03 (no compaction despite being over the stop), 04, 05, 06b, 07, 08, 12, 13, 13b, 13c, 16, 17, 18, 19 (twice), housekeeping/01 (no compaction in its continuation), and review round 1a, 1d.
+
+### Review and fix rounds
+
+- **Review round 1** — Fable. **1 Critical, 11 Major, 16 Minor.** C1: Mistake Radar cost scaled with ref count, per frame and per update; heavy tier and release perf both stalled and were killed. Promise judged to hold on fixtures/small repos once M1–M3 fixed; C1 blocked the milestone.
+- **Fix round 1a** — Opus. Fixed C1 at the cause (ref-findings cache + bounded force-push probes, 32/session) and M3, partly covered M9; found a pre-existing heap-slope regression (76 B/commit vs the 50 B bar) not caused by this fix, filed as `housekeeping/02`.
+- **`housekeeping/01` context-diet** — Sonnet. Not a review fix; cut DESIGN.md/KNOWN_GAPS/PROGRESS.md/CLAUDE.md size (context-cost work), between fix rounds.
+- **Fix round 1b** — Sonnet. Fixed M1 (`W` word-tint did nothing) and M2 (diff body flattened to one colour when unfocused) at the cause; added M9's remaining frame tests.
+- **`housekeeping/02` heap slope** — Opus. Fixed the round-1a-found regression at the cause (`RadarContext.default_chain` `HashSet<Oid>` → `HandleSet`, restoring ADR-0026): slope 69.9 → 31.5 B/commit; filed two new out-of-scope findings (`map.rs`'s own `HashSet<Oid>`, and the frame gate asserting on max rather than p99) rather than fixing them.
+- **Fix round 1c** — Opus. Fixed M4 (working-tree listing read plumbing, not porcelain, to avoid the index write) and M6 (narrowed evil-merge false positives to files both sides actually changed) at the cause.
+- **Fix round 1d** — Sonnet, COMPACTED. Synced ARCHITECTURE.md, split 8 over-400-line files across three crates, fixed Minor 15's stale caption, and found/fixed a real regression in the `update/` purity guard (its directory scan had gone non-recursive after an earlier split, so it stopped checking `update/detail/*.rs`).
+- **Review round 2** — Fable. **0 Critical, 3 Major, 17 Minor. Promise holds.** **Reverses round 1c's M4 fix and that round's own report of it**: `git diff --no-optional-locks` still rewrites `.git/index` on this git (only `git status` honours the optional-locks switch), verified in throwaway repos — the "costs the user nothing" claim was wrong. Two further Majors: M6's rename/modify conflicts still false-positive as evil (the both-sides-touched invariant fails under renames), and the M3 evil-marker fix was never observed — TESTING.md and the gallery caption assert the opposite of what the code now does.
+- **Fix round 1e** — Opus. Fixed all three round-2 Majors at the cause, each verified against a throwaway git-2.54 repo before coding: M4 back to `diff-index` plumbing with a stepped raw/numstat join (asserts `.git/index` bytes unchanged, not just a claim about flags); M6 rename-aware sets (`diff-tree -r -M -C --name-status`, both rename endpoints carried into the intersection); M3's TESTING.md/gallery text corrected and a new pane-closed marker test added, though the capture itself stays stale (pyte not importable in this environment).
+
+Five fix rounds total (1a–1e) plus the `housekeeping/01` and `housekeeping/02` tickets, interleaved between them.
+
+## M3–M8
+
+M3: design pass next (planner-fable).
