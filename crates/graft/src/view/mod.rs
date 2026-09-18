@@ -22,6 +22,7 @@ mod map;
 pub(crate) mod radar;
 mod rows;
 mod status;
+mod strip;
 
 pub mod strips;
 
@@ -35,6 +36,7 @@ pub use frame::{draws_pixels, tier_in_force, view, view_with_graphics};
 pub use map::map_view;
 pub use rows::graph_view;
 pub use status::status_view;
+pub use strip::strip_marks;
 
 // Only `update::tests` calls this outside `rows` itself.
 #[cfg(test)]

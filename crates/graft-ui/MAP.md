@@ -12,6 +12,7 @@ One line per public item. Update when a public item changes.
 - `graph_screen::badges` (mod) — ref badges: kinds, tracking state, plain/Nerd Font text.
 - `graph_screen::columns` (mod) — pure formatting for the author initials, relative date and short SHA.
 - `map_screen` (mod) — the Map view widget: `MapView`/`MapRowView`/`MapMarkView`/`MapStatus`/`MapScreen`, `ramp_glyph` (m2-details-and-diffs/19).
+- `overview_strip` (mod) — the one-column whole-history strip: `StripMark`/`StripMarks`/`StripCell`, `cell_for`/`row_for_cell`, `OverviewStrip` widget (m2-details-and-diffs/20).
 - `paint` (mod) — token-to-style helpers for widgets.
 - `status_screen` (mod) — the status screen view and widget.
 - `syntax` (mod) — line-level syntax highlighting (`syntect`) over sanitised text.
@@ -147,6 +148,17 @@ state or I/O; `view::map::map_view` (crate `graft`) builds its input from
 - `MapView` (struct) — everything the screen draws: `title_branch`, `span_days`, `rows`, `max_count`, `buckets`, `selected`, `more`, `complete`, `status`, `ascii`.
 - `MapScreen` (struct) — `view`, `theme`; `Widget::render` draws the header (branch/span, then `BRANCH`/`NOW`), rows (prefix, name, bar, marks, elbow, tag annotations, current/active suffix), the state body, and the footer.
 - `ramp_glyph(count, max, ascii)` (fn) — the density glyph for a bucket: blank only at `count == 0`, otherwise the ramp's ceiling-rounded level (never a false blank for a nonzero count).
+
+## overview_strip
+The overview strip (`O`, DESIGN.md §5.3): one column, the whole history
+bucketed onto the screen's height (m2-details-and-diffs/20). Owns no
+state or I/O; `view::strip::strip_marks` (crate `graft`) builds its input.
+- `StripMark` (enum) — `Merge`, `Radar(Severity)`, `SearchHit`, `Head`: one thing worth marking about a row.
+- `StripMarks` (struct) — `rows_total`, `viewport`, `marks: Vec<(usize, StripMark)>` — what the widget draws from.
+- `StripCell` (enum) — `Blank`, `Rail`, `Viewport`, `Merge`, `Head`, `SearchHit`, `Radar(Severity)`: one cell, already resolved to a priority.
+- `cell_for(marks, height, cell)` (fn) — the highest-priority mark in `cell`'s bucket; blank once the bucket starts past `rows_total`.
+- `row_for_cell(marks, height, cell)` (fn) — the first row of `cell`'s bucket, for the click.
+- `OverviewStrip` (struct) — `marks`, `theme`, `ascii`; `Widget::render` draws one glyph per cell, Unicode or ASCII.
 
 ## paint
 - `color` (fn) — resolve a `TokenColor` to a ratatui `Color`.

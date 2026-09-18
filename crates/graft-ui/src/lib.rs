@@ -14,6 +14,7 @@ pub mod fit;
 pub mod graph_column;
 pub mod graph_screen;
 pub mod map_screen;
+pub mod overview_strip;
 pub mod paint;
 pub mod status_screen;
 pub mod syntax;

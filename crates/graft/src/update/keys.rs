@@ -36,6 +36,9 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     if super::map::map_key(next, commands, key) {
         return;
     }
+    if super::strip::strip_key(next, key) {
+        return;
+    }
     if let Some(command) = super::commit_graph::commit_graph_key(next, key) {
         commands.push(command);
         return;

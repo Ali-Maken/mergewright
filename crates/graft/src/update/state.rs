@@ -137,6 +137,10 @@ pub struct AppState {
     /// The Map view (`M`, DESIGN.md §5.1, m2-details-and-diffs/18): hidden
     /// until pressed, built fresh each time and thrown away on close.
     pub map: super::map::MapState,
+    /// The overview strip (`O`, DESIGN.md §5.3, m2-details-and-diffs/20):
+    /// off until asked (no config default, M8 polish). Drawn only while
+    /// this holds and [`super::map::MapState::shown`] does not.
+    pub strip_shown: bool,
 }
 
 /// The screens Graft can show.

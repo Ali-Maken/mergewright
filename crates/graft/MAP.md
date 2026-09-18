@@ -135,6 +135,7 @@ The Map view's per-branch bucket counts (m2-details-and-diffs/18): one bounded w
 - `AppState::radar` (field) — `update::radar::RadarState`: the Mistake Radar's default-branch context and `[radar]` policy (m2-details-and-diffs/13, 13b).
 - `AppState::radar_column_seen` (field) — `Cell<bool>`, sticky once any row's marker has been `Some` this session; keeps the marker column showing after the row scrolls off-screen (m2-details-and-diffs/13b).
 - `AppState::map` (field) — `update::map::MapState`: the Map view's visibility and its build, if any (m2-details-and-diffs/18).
+- `AppState::strip_shown` (field) — `bool`, off until `O` asked (no config default, M8 polish); the overview strip draws only while this holds and `map.shown` does not (m2-details-and-diffs/20).
 - `AppState::uncommitted_row_shown` (fn) — does the working-tree row draw this frame: a dirty tree and `HEAD` topmost (m1-the-graph/12b); `view::entries::uncommitted_shown` and `view::strips` both delegate to it.
 - `AppState::selected_spec` (fn) — the `DetailSpec` the cursor now names: `WorkingTree` on the flag, else the history cursor's commit.
 - `AppState::renderer_override` (field) — the tier-drop key (`F3`) forced this tier for the rest of the run, or `None` for whatever `Session::settle` decided (m1-the-graph/19).
@@ -191,6 +192,10 @@ The Map view's own state and keys (`M`); built fresh on open, thrown away on clo
 - `map_key` (fn, `pub(super)`) — `(next, commands, key) -> bool`: `M` opens (only on the graph screen, detail focus on the graph); while shown, `M`/`Esc` close (cancelling a pending build), `↑`/`↓`/`j`/`k` move the selection, `Enter` seeks the graph to the selected row's tip and closes the view (`seek_selected`, via `History::seek`); `true` when the key was this view's to answer.
 - `map_event` (fn, `pub(super)`) — routes `Product::Map`/`Progress::Map` to `MapState::produced`/`progressed`, dropping a stale id.
 - `resized` (fn, `pub(super)`) — while shown, cancels the running build and opens a new one sized for the new width.
+
+## update::strip
+The overview strip's only key (`O`, m2-details-and-diffs/20); no other state.
+- `strip_key` (fn, `pub(super)`) — `(next, key) -> bool`: `O` on the graph screen (plain, detail focus on the graph, map not shown) flips `AppState::strip_shown`; `true` once handled.
 
 ## update::detail
 The detail pane's state and transitions; pure (no I/O, no clock). Drawing is `detail-pane-frame`'s.
@@ -314,8 +319,10 @@ Internal split (m1-the-graph/72b, public paths unchanged): `frame` (tier/screen
 pick, `view`/`view_with_graphics`/`tier_in_force`/`draws_pixels`), `rows`
 (`graph_view` and its assembly), `entries` (building each `GraphEntry`,
 `uncommitted_shown`), `status` (`status_view`), `detail` (`detail_view`,
-m2-details-and-diffs/07), `map` (`map_view`, m2-details-and-diffs/19) — plus
-the pre-existing `strips`, all re-exported from `mod.rs`.
+m2-details-and-diffs/07), `map` (`map_view`, m2-details-and-diffs/19), `strip`
+(`strip_marks`, m2-details-and-diffs/20) — plus the pre-existing `strips`,
+all re-exported from `mod.rs`.
+- `strip_marks(state) -> graft_ui::overview_strip::StripMarks` — the overview strip's marks over the rows `state.history` holds now: `Merge` on a row with 2+ parents, `Radar(sev)` from `view::radar::marker_for` (already gated on the radar context being `Ready`), `Head` on `RefBadges::head()`'s row, `SearchHit` for each search hit landing on a resident row. `rows_total` is `History::rows`, `viewport` is `top..top+graph_rows`. Empty when there is no history yet. **Not yet wired into `frame`**: `view::frame` doesn't reserve the strip's column or draw `OverviewStrip` yet (m2-details-and-diffs/20 remainder — see the ticket's handoff note).
 - `radar` (`pub(crate)` mod) — turns `AppState`'s facts into `graft-ops::mistake_radar::Finding`s and those into a marker/detail lines (m2-details-and-diffs/13b). `branch_facts`, `head_facts`, `repo_facts` (fns) — pure fact adapters from `AppState`/`RadarContext`. `findings_for(state, id, parents, subject) -> Vec<Finding>` — empty until `state.radar.context` is `Ready`. `marker_for(...) -> Option<graft_ui::graph_screen::MarkerView>` — highest-severity finding. `radar_lines_for(...) -> Vec<graft_ui::detail::RadarLine>` — one line per finding plus, on a merge with the kind on, the evil-merge line that `DetailState::evil` says (`EvilChecking`/`EvilClean`/`EvilNotCheckable`, nothing extra when the verdict is already a finding, `EvilUnchecked` when unprobed); called by `view::detail::commit_header` (m2-details-and-diffs/13c). A branch tip whose force-push verdict is `Rewritten` also yields a `ForcePushedRemote` finding, and one whose verdict is `NotCheckable` yields `RadarLine::ForcePushNotCheckable` (m2-details-and-diffs/15). A commit in `state.radar.duplicate_findings` also yields its `DuplicateCommit` finding (m2-details-and-diffs/16).
 - `view` (fn) — draw the current state to a frame: the graph screen, or the status screen.
 - `view_with_graphics` (fn) — `view`, plus the gfx status in the header at the pixel tier; returns the graph rect the images go in, `None` when no pixels this frame. When `state.detail.shown`, splits the frame with `graft_ui::detail_pane::DetailLayout` and draws `DetailPane` beside/below/instead of the graph screen (`Tab` draws one side full width behind a `[Graph] Detail` strip; the graph's pixel rect is `None` while it is off screen). When `state.map.shown`, the `Screen::Graph` arm renders `graft_ui::map_screen::MapScreen` instead — no graph rows, no detail split, no pixels (m2-details-and-diffs/19); with `map.shown` false the arm is unchanged from before that ticket.

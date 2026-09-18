@@ -1,6 +1,6 @@
 # overview-strip: the one-column whole-history strip — marks assembly, widget, `O`
 
-Status: ready
+Status: partial — named seam done, frame/mouse/capture remain (see NOTES)
 Blocked by: 04, 07, 13, 13b, 18
 
 Status: draft
@@ -64,6 +64,79 @@ pub fn strip_marks(state: &AppState) -> StripMarks;
 ## Gates
 
 `cargo fmt --check` · `cargo test --quiet` · `cargo clippy --all-targets --message-format=short -- -D warnings` · `cargo build --quiet` · purity guard (`update/strip.rs`).
+
+## NOTES (handoff, first session)
+
+Named seam done and committed: `crates/graft-ui/src/overview_strip.rs`
+(`StripMark`, `StripMarks`, `StripCell`, `cell_for`, `row_for_cell`,
+`OverviewStrip` widget, 7 tests), `crates/graft/src/view/strip.rs`
+(`strip_marks`, 3 tests), `crates/graft/src/update/strip.rs`
+(`AppState::strip_shown` + `strip_key` for `O`, 4 tests). All gates green
+(fmt/clippy/test/purity guard). MAP.md updated for both crates.
+
+**Deviation from the ticket's bucket-math description, disclosed:** the
+Scope section describes the bucket as a flat `ceil(rows_total / height)`
+step. A flat step doesn't satisfy the acceptance criterion
+`row_for_cell(100 rows, 24 cells, cell 23) == 96` (a flat 5-row step gives
+`23*5 = 115`, past `rows_total`, which is wrong). Implemented instead as
+the standard "split N rows into K buckets as evenly as possible" scheme:
+`bucket_start(cell) = ceil(cell * rows_total / height)`. This satisfies the
+literal acceptance test exactly (`96..100`) and still reports the flat
+`ceil(rows_total/height)` as `bucket_size` (kept, `#[cfg(test)]`-only now,
+for documentation/tests). Flag this trade-off to the user/planner if a
+future ticket depends on the flat-step reading.
+
+**Deviation on `strip_marks`'s test:** the ticket's acceptance criterion
+names `Shape::FeatureBranches` (`graft_fixtures`) with `rows_total == 9`.
+Building that shape means a real on-disk checkout + walk, too heavy for
+this module's pure unit tests (and no existing `view`/`update` test uses a
+real `Shape` fixture — they hand-build `Commit`/`layout()` fixtures
+instead, e.g. `view::tests`'s capture tests). Used a synthetic two-merge
+history via `graft_graph::layout::layout` instead (7 rows, not 9), which
+still proves the same behaviour (two merges found, `Head` at row 0,
+correct viewport). If the literal fixture numbers matter, redo this test
+against the real `Shape::FeatureBranches` via `graft_fixtures::borrow` (see
+`crates/graft/src/history/tests.rs` for the disk-fixture pattern) —
+heavier, likely belongs in an integration test rather than `view::strip`'s
+unit tests.
+
+**Remaining (not started), exact next steps:**
+1. `crates/graft-ui/src/graph_screen/layout.rs`'s `Columns::compute`
+   allocates the trailing sha/when/author columns **right-to-left from
+   `area.right()`** (lines ~252-292). Narrowing the `Rect` passed to
+   `GraphScreen` by 1 column (to carve out the strip) shifts those columns
+   left by 1 — which violates this ticket's acceptance criterion ("the
+   subject/author/date/SHA columns start in the same screen column as with
+   it off"). Resolve by drawing `GraphScreen` into a `Buffer` sized to the
+   *undiminished* width (so `Columns::compute` sees the original
+   `area.right()`) and then only blit/copy all but that buffer's last
+   column into the real buffer, painting the strip into the freed column —
+   do this in `view::frame`'s `Screen::Graph` arm and inside
+   `render_graph_with_detail` (`crates/graft/src/view/frame.rs`), gated on
+   `state.strip_shown && !state.map.shown` (never in the Map arm/pixel
+   tier: ticket's Out list, DESIGN §5.3 "none" for pixel). `GraphScreen`'s
+   own `graph_area`/pixel rect follow from the narrower drawable region,
+   nothing else moves — confirm with the frame snapshot pair test.
+2. `crates/graft/src/update/mod.rs`: add `strip_bounds(state) -> Option<Bounds>`,
+   reusing `context_menu_graph_bounds` + `rows_above_graph` +
+   `state.graph_rows()`, narrowed to the last column. In `mouse_event`'s
+   `MouseKind::Down(MouseButton::Left)` arm, check `strip_bounds` (with
+   `Bounds::contains`, both axes) before/alongside the existing
+   `graph_row_at` path; on a hit, call
+   `History::select_at(graft_ui::overview_strip::row_for_cell(&strip_marks(state), height, cell), state.graph_rows())`.
+   Wheel-on-strip: confirm it already falls through to `scroll()` (add a
+   test rather than new code, unless it doesn't).
+3. Frame snapshot pair test (strip on/off, 80×24): graph column narrower by
+   one cell, other columns unmoved. Click test: click on strip selects the
+   bucket's first row.
+4. Capture: `Shape::FeatureBranches`, 80×24, `O` pressed, Unicode + ASCII,
+   to `docs/shots/m2-overview-strip.txt` (≤ 200 KB) — mirror
+   `map-view-screen`'s capture route (gallery harness, else `TestBackend`
+   dump of the real frame via `view::frame::view`).
+5. Update `crates/graft/MAP.md`'s `frame` line/`view::strip` note once
+   wired (currently flagged "not yet wired" there).
+
+Committed as `m2-details-and-diffs-20a` (the named seam only).
 
 ## Size
 

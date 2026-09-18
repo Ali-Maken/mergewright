@@ -28,6 +28,7 @@ pub mod radar;
 mod search;
 mod selection;
 mod state;
+mod strip;
 
 pub use events::{AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, Task};
 pub use state::{AppState, Banner, CHROME_ROWS, Harness, Quit, Screen, Size, Status};
