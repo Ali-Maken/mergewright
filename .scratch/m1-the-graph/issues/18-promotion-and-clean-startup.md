@@ -9,7 +9,7 @@ Why: ADR-0008's promotion exists in `graph` only. Doing the swap wrong moves the
 
 ## Read first
 - ADR-0008
-- DESIGN.md §3.6 (the promotion paragraphs only)
+- docs/design/03-graph-layout-algorithm.md §3.6 (the promotion paragraphs only)
 - KNOWN_GAPS.md rows "ADR-0008's promotion is built in `graph`, not in the app", "Promotion hands the app a swap to get right", "The not-a-repo path flashes the alternate screen", "The corpus cannot tell date order and topological order apart"
 - Code: `from_order` in `crates/graft-graph/src/layout/stream.rs`, 07's streaming module, the app's session entry point in `crates/graft/src/`
 

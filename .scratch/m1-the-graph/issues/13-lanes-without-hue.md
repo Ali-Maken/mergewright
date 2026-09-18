@@ -9,7 +9,7 @@ Why: six hues cannot carry twelve lanes, and `NO_COLOR` carries none. One second
 
 ## Read first
 - PROMPT.md §1.2 (colour rules only) and §5
-- DESIGN.md §4.6
+- docs/design/04-terminal-capability-detection.md §4.6
 - KNOWN_GAPS.md M0 rows "Twelve lanes collapse to six at 16 colours", "The lane palette is argued, not seen", "Colour depth is inferred from environment strings, not terminfo"
 - Code: `crates/graft-ui/src/theme/`, 08's widget
 

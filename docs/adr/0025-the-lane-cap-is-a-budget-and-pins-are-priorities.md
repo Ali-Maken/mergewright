@@ -2,7 +2,7 @@
 
 Status: **Accepted** (user, 2026-09-13; planner-fable, spec-only pass after
 ticket 39).
-Changes DESIGN.md §3.5's "never fold … a lane on the ancestry path of the
+Changes docs/design/03-graph-layout-algorithm.md §3.5's "never fold … a lane on the ancestry path of the
 currently selected commit". ADR-0022 said the fold ranking was unchanged; this
 is why it is a new ADR, not an addendum.
 

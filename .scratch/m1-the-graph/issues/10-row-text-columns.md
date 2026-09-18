@@ -9,7 +9,7 @@ Why: the graph column alone doesn't say what happened. This is also where repo t
 
 ## Read first
 - PROMPT.md §1.3 (the column list only)
-- DESIGN.md §1.1, §1.2, §1.3 (which columns each width keeps)
+- docs/design/01-view-mockups.md §1.1, §1.2 and §1.3 (which columns each width keeps)
 - ARCHITECTURE.md: the rule that repo text reaches `ui` only as `term::SanitizedText` (grep `SanitizedText`)
 - Code: public API and existing tests of `crates/graft-term/src/sanitize/`, 09's graph screen
 

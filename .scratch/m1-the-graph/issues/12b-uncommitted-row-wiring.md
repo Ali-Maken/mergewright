@@ -10,7 +10,7 @@ Split from 12 after it compacted. 12's "Notes (handoff, first attempt)" section 
 ## Read first
 - Ticket 12: Scope, Acceptance, and Notes steps **1–4 and 7** only
 - PROMPT.md §1.3 (uncommitted changes paragraph only)
-- DESIGN.md §1.1 (the mockup's top row only)
+- docs/design/01-view-mockups.md §1.1 (the mockup's top row only)
 - `crates/graft/MAP.md`, `crates/graft-ui/MAP.md`, `crates/graft-core/MAP.md` before any source
 - Code: `crates/graft/src/refs/mod.rs` (template), then only the lines 12's notes name
 
@@ -18,7 +18,7 @@ Split from 12 after it compacted. 12's "Notes (handoff, first attempt)" section 
 In:
 - 12 notes step 1–3: `Task::ReadWorkingTree`, `Command::ReadWorkingTree`, `Product::WorkingTree(Result<WorkingTreeCounts, String>)`, `AppState.working_tree`, dispatched on open and on Ctrl+R; errors reach the status line.
 - 12 notes step 4: the virtual row above HEAD on HEAD's lane with staged / unstaged / untracked counts; absent when clean. Choose (a) or (b) after reading `graft-core`'s `Commit`. If (a), the sentinel commit must never reach anything but drawing (no ref comparisons, no selection target, no search). Say which you chose and why in the ticket.
-- Attachment rule, including unborn branch; check it against DESIGN.md §1.1 and record the decision in the ticket.
+- Attachment rule, including unborn branch; check it against docs/design/01-view-mockups.md §1.1 and record the decision in the ticket.
 Out:
 - 16-colour separators (12c). Staging (M3). Lane identity at 16 colours (13).
 
@@ -55,7 +55,7 @@ change this made to `graft-ui` (see its MAP.md).
 
 **Attachment rule.** Show the row when `history`'s topmost visible commit id
 equals `refs.head()`, or when `refs.head()` is `None` (unborn branch) — this
-matches DESIGN.md §1.1's mockup, which always draws it at the very top with
+matches docs/design/01-view-mockups.md §1.1's mockup, which always draws it at the very top with
 no scroll condition attached. Added one case the ticket notes didn't spell
 out: while `refs` itself hasn't loaded yet (`None`, i.e. right after opening,
 before the refs job answers), the row is *not* shown. Showing it and then

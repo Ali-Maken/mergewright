@@ -9,7 +9,7 @@ Why: 30's heavy `frames::` tests measured pixel frames writing 0.3–0.9 MB and 
 
 ## Read first
 - Ticket 30 "Handoff (what remains)" item 1 and Gotchas; its results table
-- DESIGN.md §3.8 (strip cache and transmit paragraphs only); ADR for transmit-once strips if one exists (grep docs/adr for "strip")
+- docs/design/03-graph-layout-algorithm.md §3.8 (strip cache and transmit paragraphs only); ADR for transmit-once strips if one exists (grep docs/adr for "strip")
 - `crates/graft-term/MAP.md`, `crates/graft-graph/MAP.md`, `crates/graft/MAP.md`; scouts for source
 
 ## Scope

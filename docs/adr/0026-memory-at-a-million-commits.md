@@ -77,7 +77,7 @@ The no-graph run's one hash table had 2^22 buckets against the graph run's 2^21:
 - `CommitSource` changes shape (`pull` yields links; `links`, `read`, `handle_of`, `id_of`); `Walk` grows `next_links`; `next_ids`/`IdChunk` (27c) go.
 - Search (`search::scan`) still reads every commit whole — it matches on messages, so it must; a 1M search touches the pack once, off-thread. Unchanged, noted.
 - `Row.lanes` sized to the widest column ever seen (4.5 KB/row on git/git, 27b) is flat in history and stays as it is.
-- DESIGN.md §3.1 `EmittedOrder` (~90 B/commit) and §3.2 walker_state, §3.6 "re-reading their commits from the retained order" are amended by the acceptance ticket once the numbers are in.
+- docs/design/03-graph-layout-algorithm.md §3.1 `EmittedOrder` (~90 B/commit) and §3.2 walker_state, §3.6 "re-reading their commits from the retained order" are amended by the acceptance ticket once the numbers are in.
 
 ## User decisions on approval (2026-09-14)
 

@@ -7,7 +7,7 @@ Blocked by: 01
 Why: ticket 11 draws repo-derived strings (branch name, repo path); ARCHITECTURE.md makes `SanitizedText` the only way those cross into `ui`, so injection is a compile error. Small, pure, security-critical.
 
 ## Read first
-- DESIGN.md §8.2, the `term::sanitize` / `SanitizedText` paragraphs (the exact character classes to strip)
+- docs/design/08-architecture.md §8.2, the `term::sanitize` / `SanitizedText` paragraphs (the exact character classes to strip)
 - PROMPT.md §6.3 Security
 - ARCHITECTURE.md (the SanitizedText boundary rule)
 
@@ -16,7 +16,7 @@ Why: ticket 11 draws repo-derived strings (branch name, repo path); ARCHITECTURE
 
 ## Scope
 In:
-- Strip/replace exactly the classes DESIGN.md §8.2 lists: C0/C1 controls except `\n`/`\t` (handled as §8.2 says), `ESC` itself, bidi override/isolate chars (U+202A–202E, U+2066–2069), zero-width/invisible formatting chars (U+200B–200F, U+2060, …). Where §8.2 leaves the replacement policy open, pick one visible policy (e.g. U+FFFD) and document it in the doc comment.
+- Strip/replace exactly the classes docs/design/08-architecture.md §8.2 lists: C0/C1 controls except `\n`/`\t` (handled as §8.2 says), `ESC` itself, bidi override/isolate chars (U+202A–202E, U+2066–2069), zero-width/invisible formatting chars (U+200B–200F, U+2060, …). Where §8.2 leaves the replacement policy open, pick one visible policy (e.g. U+FFFD) and document it in the doc comment.
 - `SanitizedText`: derefs/displays as `&str`; constructor private to the crate.
 - Non-UTF-8 inputs: provide a lossy entry point for `OsStr`/bytes (paths are not always UTF-8 — PROMPT.md §6.3).
 
@@ -37,7 +37,7 @@ Out:
 `crates/graft-term/src/sanitize/`. Four entry points, one loop behind them:
 
 - `sanitize(&str)` — multi-line text (commit bodies, diff hunks). `\n` and
-  `\t` pass through for the widget to lay out, per DESIGN.md §8.2.
+  `\t` pass through for the widget to lay out, per docs/design/08-architecture.md §8.2.
 - `sanitize_line(&str)` — anything drawn on one line. Replaces `\n` and `\t`
   as well: a file name may legally contain either, and drawn raw in a status
   row a newline scrolls the screen and a tab jumps the cursor.

@@ -8,7 +8,7 @@ Why: M0 must pick and apply a theme (from the OSC 11 hint ticket 04 provides) so
 
 ## Read first
 - PROMPT.md §5 (tokens, themes, colour depth, NO_COLOR, lane-palette independence)
-- DESIGN.md §4.6
+- docs/design/04-terminal-capability-detection.md §4.6
 - ADR-0003 (OSC 11 is a light/dark hint, never a paint colour)
 
 ## Goal
@@ -20,7 +20,7 @@ In:
 - Dark, light and high-contrast themes.
 - Lane palette: one fixed, theme-independent, colourblind-safe 12-hue set (start from a published colourblind-safe palette; document the source and choice in a comment). Themes restyle chrome only; a theme cannot touch lane hues.
 - `Theme::select(override: Option<...>, hint: core theme hint) -> Theme`: override wins; unknown hint → dark.
-- `NO_COLOR` (from `Capabilities`): chrome tokens collapse to no-colour per DESIGN.md §4.6. (Graph shape/pattern redundancy is M1.)
+- `NO_COLOR` (from `Capabilities`): chrome tokens collapse to no-colour per docs/design/04-terminal-capability-detection.md §4.6. (Graph shape/pattern redundancy is M1.)
 - Colour-depth mapping: pure fn truecolor → nearest 256/16 palette entry by perceptual distance (Lab/OKLab), not per-channel rounding (PROMPT.md §5).
 
 Out:

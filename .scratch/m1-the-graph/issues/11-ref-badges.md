@@ -9,7 +9,7 @@ Why: badges are what answer "what is going on here".
 
 ## Read first
 - PROMPT.md §1.3 (ref badges paragraph only)
-- DESIGN.md §1.1 (badges in the wide mockup) and §8.2 (grep `Branches`)
+- docs/design/01-view-mockups.md §1.1 (badges in the wide mockup) and docs/design/08-architecture.md §8.2 (grep `Branches`)
 - KNOWN_GAPS.md M0 row "`ui.icons` has no consumer"
 - Code: `crates/graft-git/src/branches/`, 10's row widget, the M0 job runner's public API
 

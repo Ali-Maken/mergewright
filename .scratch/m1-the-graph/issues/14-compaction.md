@@ -9,7 +9,7 @@ Why: a graph twelve lanes wide on an 80-column terminal fails the checkpoint que
 
 ## Read first
 - PROMPT.md §1.2 ("Compact output" only)
-- DESIGN.md §3.5, §3.7, and §1.3 (the 80×24 width it has to survive)
+- docs/design/03-graph-layout-algorithm.md §3.5 and §3.7 and docs/design/01-view-mockups.md §1.3 (the 80×24 width it has to survive)
 - ADR-0017 (proptest case counts)
 - Code: public API of `crates/graft-graph/src/layout.rs`; `layout/tests/properties.rs` (the proptest pattern); 08's widget
 

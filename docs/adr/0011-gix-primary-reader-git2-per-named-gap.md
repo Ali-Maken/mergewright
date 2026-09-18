@@ -1,6 +1,6 @@
 # gix is the only full reader; git2 fills named gaps
 
-DESIGN.md §8.2 originally specified the `git` crate's `RepoReader` seam
+docs/design/08-architecture.md §8.2 originally specified the `git` crate's `RepoReader` seam
 with two complete adapters — `gix` and a `git2` fallback covering the
 whole read surface (status, rev-walk, diff, blame). The justification was
 design-shaped ("two adapters make a real seam"), not product-shaped:
@@ -19,7 +19,7 @@ implementation.
 ## Consequences
 
 - `git2` enters `Cargo.toml` with the first named gap, not before.
-- The reader seam stays private to `git` (DESIGN.md §8.4): callers never
+- The reader seam stays private to `git` (docs/design/08-architecture.md §8.4): callers never
   see which library answered a read.
 - Each `git2`-backed function needs the same fixture tests as its `gix`
   neighbours — the cost is per gap, not per surface.

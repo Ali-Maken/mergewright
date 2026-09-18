@@ -3,7 +3,7 @@
 Status: **Accepted** (user, 2026-09-13, judged from the file). Was: Proposed (planner-fable, 2026-09-13, evaluating the user's own
 proposal; needs the user's approval at the M1 graph design checkpoint).
 Supersedes **ADR-0020**. Changes PROMPT.md §1.3 ("**Hover** shows a tooltip
-with the full message, parents and containing branches"), DESIGN.md §2.15's
+with the full message, parents and containing branches"), docs/design/02-keymap.md §2.15's
 hover line and §2.3's `Enter` (m1-the-graph/17, 34).
 
 ## Context
@@ -42,14 +42,14 @@ The proposal is right, for reasons beyond the bugs:
 3. **`Enter` peeks, one-shot.** On a cursor row with a truncated subject,
    `Enter` shows the same footer line; any other key clears it. This keeps
    the reveal reachable without a mouse (PROMPT.md §5). M2 rebinds `Enter`
-   to open the detail pane (DESIGN.md §2.2 "drill in") and drops the peek.
+   to open the detail pane (docs/design/02-keymap.md §2.2 "drill in") and drops the peek.
 4. **`y` copies the full SHA** of the selected commit to the terminal
    clipboard through OSC 52 (`ESC ] 52 ; c ; base64 ESC \`, wrapped for
    tmux by `Transport`). The footer says `<short sha>… → clipboard (osc 52)`
    until the next key. Graft cannot observe whether the terminal honoured
    the sequence, so the notice says what Graft sent, not that it worked.
    Copy SHA is also listed under `.` context actions once that menu exists
-   (M2+), per DESIGN.md §2.1. `y` is free in §2.2/§2.3; vim's yank and
+   (M2+), per docs/design/02-keymap.md §2.1. `y` is free in §2.2/§2.3; vim's yank and
    lazygit's `y` make it the expected key.
 5. **Ticket 36 is wontfix**: no pin, no pinned state to re-key.
 
@@ -57,7 +57,7 @@ The proposal is right, for reasons beyond the bugs:
 
 - PROMPT.md §1.3's hover sentence is replaced by: "Hovering a truncated
   subject reveals it in the hint bar; the detail pane holds the full
-  message, parents and containing branches." DESIGN.md §2.15 hover line
+  message, parents and containing branches." docs/design/02-keymap.md §2.15 hover line
   likewise; §2.3 `Enter` → "peek (M1) / open details (M2)"; §2.3 gains `y`.
 - KNOWN_GAPS: the pinned-tooltip row closes; the "contained in" row points
   at the detail pane; the pty-assertion suggestion no longer reads the

@@ -7,7 +7,7 @@ Blocked by: 49
 
 ## Read first
 - ADR-0026 "Decision" item 3, "Options considered → Pack pages, `Topological.known`", "The gate at 1M" (first-paint paragraph)
-- ADR-0008; DESIGN.md §3.2 step 2 (both paths)
+- ADR-0008; docs/design/03-graph-layout-algorithm.md §3.2 step 2 (both paths)
 - Ticket 27b "Fix B (landed)" and ticket 46 table rows `Topological::discover`, `Dated::push`, `RepoNodes::node`, mapped pages
 - `crates/graft-git/MAP.md` (`history`); a scout summarises `history/topological.rs` and the dated walk (one page: what `discover` reads per commit, when it first emits on the cg path, what `seen` holds).
 

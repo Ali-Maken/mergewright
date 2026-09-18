@@ -1,107 +1,95 @@
 # Graft: rules for Claude
 
-The reasoning behind these rules lives in [`docs/rules-rationale.md`](docs/rules-rationale.md)
-(nothing auto-loads it). Every rule below keeps its full normative text, date
-and attribution — only the "why" moved out.
+Why behind these rules: [`docs/rules-rationale.md`](docs/rules-rationale.md)
+(not auto-loaded). Every rule here keeps its normative text, date and
+attribution — only the "why" moved out.
 
-"Graft" is only a **codename**: the name is taken by another Git GUI. The real name gets chosen in M8. Don't publish, register or tag anything public under this name.
+"Graft" is only a **codename**: the name is taken by another Git GUI. Real
+name chosen in M8. Don't publish, register or tag anything public under it.
 
 ## Where things live
 
 | File | Purpose |
 |---|---|
-| `PROMPT.md` | The product spec. The note above its first `---` is for humans. |
-| `DESIGN.md` | The approved design (exists after step 2). |
-| `CONTEXT.md` | The glossary from `/grill-with-docs`. Use its terms everywhere. |
-| ADRs | Decision records, in the folder `docs/agents/domain.md` names (default `docs/adr/`). **Wherever PROMPT.md says `DECISIONS.md`, write an ADR instead.** |
-| `PROGRESS.md` | The plan and the current step. |
-| Tickets | Local markdown, wherever `docs/agents/issue-tracker.md` says. |
-| `KNOWN_GAPS.md` | Anything unfinished or stubbed. |
+| `PROMPT.md` | Product spec (note above first `---`: for humans). |
+| `DESIGN.md` | Approved design; index into `docs/design/`. |
+| `CONTEXT.md` | Glossary from `/grill-with-docs`. Use its terms everywhere. |
+| ADRs | Decision records, folder `docs/agents/domain.md` names (default `docs/adr/`). **PROMPT.md's `DECISIONS.md` → write an ADR instead.** |
+| `PROGRESS.md` | Plan + current step. Current milestone's log: `docs/log/<milestone>.md`, linked from here — don't inline it back. |
+| Tickets | Local markdown, per `docs/agents/issue-tracker.md`. |
+| `KNOWN_GAPS.md` | Open items. Closed rows: `docs/gaps/closed.md`. |
 | `docs/reviews/` | Milestone reviews. |
-| `docs/design-notes/` | One design note per milestone, by `planner-fable`. |
-| `docs/AUTHORSHIP.md` | Which model designed, specified, built and reviewed each milestone. Generated from PROGRESS.md's session log; the conductor regenerates it at every milestone checkpoint. Facts from the log only. |
+| `docs/design-notes/` | One note per milestone, by `planner-fable`. |
+| `docs/AUTHORSHIP.md` | Who designed/specified/built/reviewed each milestone. From the session logs; conductor regenerates every checkpoint; facts from the log only. |
 
 ## How work runs
 
-- The user runs `/conduct` in a main session on **Opus**. The conductor hands every piece of work to a fresh helper in `.claude/agents/` and stops at checkpoints.
-- **Who designs, specifies, builds and reviews; ticket size, context and checkpoints:** see **Standing rules** below (set 2026-09-13, every remaining milestone). They replace the 2026-09-12 cost-control routing.
-  `xhigh` is not automatic: the conductor dispatches `builder-opus-xhigh` only when the user asks for it on a specific ticket.
-- **The one exception is step 1** (`/grill-with-docs`), which runs in the main session because it needs the user.
+- User runs `/conduct` in a main session on **Opus**. Conductor hands every piece of work to a fresh helper in `.claude/agents/`, stops at checkpoints.
+- **Who designs/specifies/builds/reviews; ticket size, context, checkpoints:** see **Standing rules** below (set 2026-09-13, every remaining milestone). Replaces the 2026-09-12 cost-control routing.
+  `xhigh` not automatic: conductor dispatches `builder-opus-xhigh` only when the user asks for it on a specific ticket.
+- **Exception: step 1** (`/grill-with-docs`) runs in the main session — needs the user.
 - Do only the next unchecked step. Never start a new milestone without the user's OK at a checkpoint.
 
 ## Standing rules (every remaining milestone, set 2026-09-13; Fable's share raised for M2 onward)
 
-**M1 is grandfathered:** its existing tickets, `Build with` lines and Opus review stay as they are. Everything below marked "M2 onward" applies from M2.
+**M1 is grandfathered:** its tickets, `Build with` lines and Opus review stay as-is. Everything marked "M2 onward" applies from M2.
 
 ### Tickets
 
-- **Who writes them (M2 onward):** `planner-fable` writes every ticket spec in its design pass (see Models). The conductor **files and sequences** them: numbering, dependency order, `Blocked by:`, `Status:`. It does not re-decide scope, signatures or `Build with`. A spec the conductor thinks is wrong goes back to `planner-fable` or to the user; the conductor doesn't edit it.
-- **`/to-tickets` is not used for any milestone with a Fable spec pass** (M2 onward). It drafted M0 and M1 only.
-- **Size:** each ticket finishes inside one context, target **under 80k tokens**. Compaction means the ticket was too big: the helper says so in its report, the conductor splits the remainder into new tickets.
-- **Size from evidence, not intuition** (user, 2026-09-15; see rules-rationale for M1's numbers). `planner-fable` reads the M1 session log's compaction/overrun entries first, says what made them overrun, and sizes the milestone's tickets from that. A ticket that can't be made to fit says so when it is written, not mid-build.
-- **Splitting a remainder:** the conductor cuts along the seams in the builder's handoff note and keeps the original scope, signatures and model. If the split needs a new decision (a new signature, a scope change, another model), it goes to `planner-fable` as a spec-only pass for those tickets.
-- **Each ticket states:** scope in/out; acceptance criteria; the **exact sections** to read (never a whole document); the **exact signatures** the work must expose and call; its `Build with` line.
-- **Interface-first grouping:** the first ticket of a group defines the traits and stubs; the rest fill them in.
-- **Every milestone ends with an acceptance ticket** (set 2026-09-13, from M1's ticket 35). It builds the means to judge the milestone's **promise**, not just its tests: one command that walks the scenarios, a `TESTING.md` checklist saying concretely what right looks like for each (never "looks correct"), and captures under `docs/shots/`. The milestone isn't done until that ticket is. It is built on `builder-fable`: defining what good means is a decision, not plumbing. It comes last in the ticket order, before the review. Its captures go straight to files; the builder reports paths, not capture contents.
-  - **Promises** (each design note names its milestone's promise, so the acceptance ticket has something concrete to prove): M1 "the shape of history is obvious at a glance"; M3 "you cannot lose work"; M5 "you see the result before you confirm"; M6 "a real conflict is resolvable without leaving the app". `planner-fable` names the others in their design notes.
+- **Who writes them (M2 onward):** `planner-fable` writes every ticket spec in its design pass (see Models). Conductor **files and sequences**: numbering, dependency order, `Blocked by:`, `Status:`. It does not re-decide scope, signatures or `Build with`. A spec the conductor thinks wrong goes back to `planner-fable` or the user; conductor doesn't edit it.
+- **`/to-tickets` not used for any milestone with a Fable spec pass** (M2 onward). Drafted M0 and M1 only.
+- **Size:** each ticket finishes inside one context, target **under 80k tokens**. Compaction means the ticket was too big: helper says so in its report, conductor splits the remainder into new tickets.
+- **Size from evidence, not intuition** (user, 2026-09-15; rules-rationale has M1's numbers). `planner-fable` reads the M1 session log's compaction/overrun entries first, says what caused them, sizes the milestone's tickets from that. A ticket that can't be made to fit says so when written, not mid-build.
+- **Splitting a remainder:** conductor cuts along the seams in the builder's handoff note, keeps original scope/signatures/model. A split needing a new decision (signature, scope change, model) goes to `planner-fable` as a spec-only pass.
+- **Each ticket states:** scope in/out; acceptance criteria; **exact sections** to read (never a whole document); **exact signatures** the work must expose/call; its `Build with` line.
+- **Interface-first grouping:** first ticket of a group defines traits/stubs; rest fill them in.
+- **Every milestone ends with an acceptance ticket** (set 2026-09-13, from M1 ticket 35): builds the means to judge the milestone's **promise**, not just tests — one command walking the scenarios, a `TESTING.md` checklist saying concretely what right looks like per scenario (never "looks correct"), captures under `docs/shots/`. Not done till this ticket is. `builder-fable`; last in order, before review. Captures go straight to files — builder reports paths, not contents.
+  - **Promises:** M1 "the shape of history is obvious at a glance"; M3 "you cannot lose work"; M5 "you see the result before you confirm"; M6 "a real conflict is resolvable without leaving the app". `planner-fable` names the rest in their design notes.
 
 ### Models
 
-**Fable decides, specifies and reviews; Opus conducts and builds; Sonnet builds the mechanical work.**
+**Fable decides, specifies and reviews; Opus conducts and builds; Sonnet builds mechanical work.**
 
 | Work | Who | Model, effort |
 |---|---|---|
-| **Design pass + ticket specs** at the start of every milestone | `planner-fable` | Fable, high |
-| Filing and sequencing the specs (numbers, order, blocked-by) | the conductor | Opus |
+| **Design pass + ticket specs**, start of every milestone | `planner-fable` | Fable, high |
+| Filing/sequencing specs (numbers, order, blocked-by) | conductor | Opus |
 | **Signature tickets** (list below) | `builder-fable` | Fable, high |
-| **Acceptance ticket**, last ticket of every milestone | `builder-fable` | Fable, high |
-| A ticket that passes all three Fable tests (below) | `builder-fable` | Fable, high |
+| **Acceptance ticket**, last of every milestone | `builder-fable` | Fable, high |
+| Ticket passing all three Fable tests (below) | `builder-fable` | Fable, high |
 | Concurrency, terminal protocols, git writes, undo, conflicts | `builder-opus` | Opus, high |
-| Everything mechanical: wiring, config, docs, plain widgets, tests, renames | `builder-sonnet` | Sonnet, medium |
+| Mechanical: wiring, config, docs, plain widgets, tests, renames | `builder-sonnet` | Sonnet, medium |
 | Reviews, **every milestone from M2** (M1: Opus) | `reviewer` | Fable, high |
-| **M8 architecture pass** (MAP.md files and public interfaces, never source) | `planner-fable` | Fable, high |
+| **M8 architecture pass** (MAP.md + public interfaces, never source) | `planner-fable` | Fable, high |
 | Debugging | `debugger` | Fable |
 
-- **Design pass (M2 onward):** `planner-fable` reads only the relevant PROMPT.md and DESIGN.md sections and the crate MAP.md files — never source — and writes two things:
-  1. `docs/design-notes/<milestone>.md`, two pages max, covering:
-     - **the milestone's promise**, one line (see Tickets → acceptance ticket)
-     - the interfaces and data shapes the milestone introduces
-     - the two or three hard-to-reverse choices, each with a recommendation
-     - where it would differ from DESIGN.md, and why
-     - which tickets are genuinely risky
-     - **new UI** the milestone introduces that DESIGN.md doesn't already specify: screen layout, what each pane shows at each breakpoint, visual hierarchy, interaction
-  2. **The ticket specs**, straight into `.scratch/<milestone>/issues/` as unnumbered `<ticket-slug>.md` files. Each has scope in/out, exact signatures, acceptance criteria, Read-first sections (the note's included), the `Build with` line, and `Needs:` (the signatures it calls from other tickets, so the conductor can derive the order).
+- **Design pass (M2 onward):** `planner-fable` reads only the relevant PROMPT.md/DESIGN.md sections and crate MAP.md files — never source — and writes:
+  1. `docs/design-notes/<milestone>.md`, two pages max: the milestone's promise (one line); interfaces/data shapes introduced; 2–3 hard-to-reverse choices with a recommendation each; where it differs from DESIGN.md and why; genuinely risky tickets; new UI DESIGN.md doesn't already specify (layout, per-breakpoint content, hierarchy, interaction).
+  2. **Ticket specs**, straight into `.scratch/<milestone>/issues/` as unnumbered `<ticket-slug>.md` files: scope in/out, exact signatures, acceptance criteria, Read-first sections, `Build with` line, `Needs:` (signatures called from other tickets, for the conductor to derive order).
 
-  **More than about twelve tickets → two passes**, never one oversized context: pass 1 writes the note and the interface-first specs; pass 2, a fresh `planner-fable`, reads the note and pass 1's specs (no source) and writes the rest.
-
-  No code. Builders follow the note and the spec.
-- **Signature tickets — Fable builds them, whatever the three tests say**, because the code is the idea:
+  **More than ~12 tickets → two passes:** pass 1 writes the note + interface-first specs; pass 2 (fresh `planner-fable`, reads note + pass 1 specs, no source) writes the rest. No code — builders follow the note and spec.
+- **Signature tickets — Fable builds them regardless of the three tests**, because the code is the idea:
   - M2: Mistake Radar detection
-  - M3: the undo journal's per-kind inverse
+  - M3: undo journal's per-kind inverse
   - M5: Ghost Preview planning
-  - M6: the conflict and operation state machine
+  - M6: conflict and operation state machine
 
-  The spec marks them `Build with: Fable (signature)`.
-- **Any other ticket goes to Fable only when all three hold:**
-  1. the ticket doesn't decide the approach;
-  2. a wrong choice becomes structural for later tickets;
-  3. correctness can't be judged from the diff or the tests.
-- **Expect one or two Fable builds per milestone, signature tickets included.** If a plan wants three or more, the conductor says so (rules-rationale has why). Escalation redos (below) don't count; they aren't planned. **The acceptance ticket doesn't count either:** it is standing, like the M8 architecture pass.
-- **Escalation beats prediction:**
-  - Sonnet ticket fails twice → Opus.
-  - Opus ticket stalls twice (`failed` or `partial` without progress), or a review finds its design wrong → redo that ticket on `builder-fable`.
-  - Fable fails too → `debugger`.
-- Each ticket's `Build with` line names its model; the conductor follows it.
-- **Reviewer efficiency (M2 onward):** the conductor logs `M<n> start <hash>` in the session log when it dispatches the milestone's first ticket. The reviewer reads, in order: `git diff --stat <start>..HEAD`, the crate MAP.md files, then the diff itself (`git diff <start>..HEAD`, crate by crate). It opens a whole source file only to confirm a finding. It never reads the whole codebase, and reads only the PROMPT.md and DESIGN.md sections the milestone covers.
-- **M8 architecture pass:** a standing M8 ticket, `.scratch/m8-polish-and-ship/issues/fable-architecture-pass.md`. `planner-fable` reads every `crates/*/MAP.md` and ARCHITECTURE.md, never source, and writes `docs/reviews/m8-architecture.md`. It's a review, not a build: it doesn't count against the Fable build expectation. M8's spec pass files its other tickets around it.
+  Spec marks them `Build with: Fable (signature)`.
+- **Any other ticket goes to Fable only when all three hold:** 1) doesn't decide the approach; 2) a wrong choice becomes structural for later tickets; 3) correctness can't be judged from diff or tests.
+- **Expect one or two Fable builds per milestone, signature tickets included.** Three-plus → conductor flags it (rules-rationale has why). Escalation redos don't count; acceptance ticket doesn't count either (standing, like the M8 pass).
+- **Escalation beats prediction:** Sonnet ticket fails twice → Opus. Opus ticket stalls twice (`failed`/`partial` without progress), or review finds its design wrong → redo on `builder-fable`. Fable fails too → `debugger`.
+- Each ticket's `Build with` line names its model; conductor follows it.
+- **Reviewer efficiency (M2 onward):** conductor logs `M<n> start <hash>` in the session log at the milestone's first ticket. Reviewer reads, in order: `git diff --stat <start>..HEAD`, crate MAP.md files, then the diff itself (`git diff <start>..HEAD`, crate by crate). Opens a whole source file only to confirm a finding. Never reads the whole codebase; only the PROMPT.md/DESIGN.md sections the milestone covers.
+- **M8 architecture pass:** standing ticket `.scratch/m8-polish-and-ship/issues/fable-architecture-pass.md`. `planner-fable` reads every `crates/*/MAP.md` and ARCHITECTURE.md, never source, writes `docs/reviews/m8-architecture.md`. A review, not a build — doesn't count against the Fable build expectation. M8's spec pass files its other tickets around it.
 
 ### Context
 
-- **Scouts:** builders delegate exploration to a Sonnet or Haiku scout (Agent tool, `Explore` with `model: haiku` or `sonnet`) that returns a summary of one page or less, instead of reading source into their own context.
-- **MAP.md:** every crate keeps `crates/<crate>/MAP.md`, one line per public item. Any ticket changing a public item updates it. Builders read MAP.md before source. A crate without one gets it from the next ticket that touches the crate.
-- **Quiet gates** (user, 2026-09-15): builders run `cargo test --quiet`, `cargo clippy --all-targets --message-format=short -- -D warnings`, `cargo build --quiet`. Full output only on failure, and only the failing part.
-- **Measurement never runs in a helper's context** (user, 2026-09-15): perf runs, benchmarks, heavy-tier runs and memory curves run from a script that writes results to `docs/perf/<ticket>.txt`; the helper reads the summary lines only.
-- **Hard stop at 40 tool calls or ~100k tokens** (user, 2026-09-15): the helper commits at the next clean point, writes a handoff note in the ticket, reports `partial`, and the conductor splits the rest. The 80k sizing target stands.
+- **Scouts:** builders delegate exploration to a Sonnet/Haiku scout (Agent tool, `Explore`, `model: haiku`/`sonnet`) returning a summary ≤1 page, instead of reading source into their own context.
+- **MAP.md:** every crate keeps `crates/<crate>/MAP.md`, one line per public item. Any ticket changing a public item updates it. Builders read MAP.md before source. A crate without one gets it from the next ticket touching that crate.
+- **Quiet gates** (user, 2026-09-15): builders run `cargo test --quiet`, `cargo clippy --all-targets --message-format=short -- -D warnings`, `cargo build --quiet`. Full output only on failure, only the failing part.
+- **Measurement never runs in a helper's context** (user, 2026-09-15): perf runs, benchmarks, heavy-tier runs, memory curves run from a script writing to `docs/perf/<ticket>.txt`; helper reads summary lines only.
+- **Hard stop at 40 tool calls or ~100k tokens** (user, 2026-09-15): helper commits at the next clean point, writes a handoff note in the ticket, reports `partial`; conductor splits the rest. 80k sizing target stands.
+- **Builders never read `PROGRESS.md` or `KNOWN_GAPS.md`** (housekeeping/01, 2026-09-18): those belong to the conductor. A builder's findings go in its ticket.
 
 ### Checkpoint policy
 
@@ -115,51 +103,48 @@ and attribution — only the "why" moved out.
 - **Rust code is done only when** `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test` all pass.
 - **Commit** after each ticket. Never push or force.
 - **Ask the user** (through the conductor) before changing the spec or cutting scope. Record agreed changes as ADRs.
-- **Architecture and readability are hard rules** (PROMPT.md 6.1 and 6.2). Read `ARCHITECTURE.md` before adding or moving modules, use the `codebase-design` skill when you do, and update `ARCHITECTURE.md` if the structure changes. Never add a dependency that breaks the crate rules.
+- **Architecture and readability are hard rules** (PROMPT.md 6.1, 6.2). Read `ARCHITECTURE.md` before adding/moving modules, use the `codebase-design` skill when you do, update `ARCHITECTURE.md` if structure changes. Never add a dependency that breaks the crate rules.
 - **Keep your context lean:** read what you need, not everything.
-- **Context window:** `CLAUDE_CODE_AUTO_COMPACT_WINDOW` is `200000` in `.claude/settings.json`, raised from 150000 on 2026-09-12. Keeping your context lean still matters — the cap is headroom, not an allowance.
-- **Builders never read `PROGRESS.md` or `KNOWN_GAPS.md`** (housekeeping/01, 2026-09-18): those belong to the conductor. A builder's findings go in its ticket.
-- **If you compact mid-ticket, say so in your report.** The conductor logs it in PROGRESS.md's session log and splits the remainder into new tickets.
-- **Fix the cause, not the symptom.** When something fails, find out why before changing anything. No workaround, retry loop, sleep, hardcoded special case or disabled test without the user's OK. If the root cause is out of scope: stop, say what it is, and ask — don't route around it and log a gap. **Every fix report says which it is — cause or symptom — and what it costs the user** (user, 2026-09-13).
-- **Never swallow an error.** No ignored `Result`, no `let _ =`, no `unwrap_or_default()` standing in for a real failure, no empty `Err(_) => {}` arm, no catch-all that logs and carries on. Every error is handled, propagated, or surfaced to the user. If you genuinely must ignore one, say in a comment why it's safe.
-- **A status field must never read as an error when nothing is wrong.** Name and render status by its state: `gfx ok` / `gfx: <error>`, or show the field only when there is something to report.
-- **Green gates are not evidence.** `fmt`/`clippy`/`test` passing means the code compiles and your own tests agree with you. It does not mean the thing works. Say what you actually verified and how, and what you couldn't. Never claim behaviour you didn't observe.
-- **Visual results are judged by eye, by the user.** Green gates are not evidence for how something looks. Any ticket whose result is visual ends by capturing what it actually renders — a pty capture committed under `docs/shots/` — and its report names the capture and says the user judges it by eye. No builder or reviewer ticks "looks right".
-- **Captures stay small** (user, 2026-09-15): anything committed under `docs/shots/` is trimmed to what shows the point, **hard cap 200 KB per file**. Raw terminal streams are never committed: a larger capture is summarised in the committed file and the raw one stays untracked under `target/`. The repo may be published.
-- **Tests must be laptop-safe** (PROMPT.md 7.1). Builders run only the fast tier (`cargo test`). The heavy tier, fuzzing and benchmarks run only in milestone reviews. **Every milestone review includes the release perf run** (frame budgets fail only under `--release`; debug records without failing — user, 2026-09-13, ADR-0021).
+- **Context window:** `CLAUDE_CODE_AUTO_COMPACT_WINDOW` is `200000` in `.claude/settings.json`, raised from 150000 on 2026-09-12 (rules-rationale has why). Lean context still matters — the cap is headroom, not an allowance.
+- **If you compact mid-ticket, say so in your report.** Conductor logs it in the session log and splits the remainder into new tickets.
+- **Fix the cause, not the symptom.** Find out why before changing anything. No workaround, retry loop, sleep, hardcoded special case or disabled test without the user's OK. Root cause out of scope → stop, say what it is, ask; don't route around it and log a gap. **Every fix report says which it is — cause or symptom — and what it costs the user** (user, 2026-09-13).
+- **Never swallow an error.** No ignored `Result`, no `let _ =`, no `unwrap_or_default()` standing in for a real failure, no empty `Err(_) => {}` arm, no catch-all that logs and carries on. Every error handled, propagated or surfaced to the user. Must ignore one genuinely → say in a comment why it's safe.
+- **A status field must never read as an error when nothing is wrong.** Name/render status by its state (`gfx ok` / `gfx: <error>`), or show the field only when there's something to report.
+- **Green gates are not evidence** (rules-rationale has why). Say what you actually verified and how, and what you couldn't. Never claim behaviour you didn't observe.
+- **Visual results are judged by eye, by the user.** Green gates aren't evidence for how something looks. Any ticket with a visual result ends with a pty capture committed under `docs/shots/`; report names the capture, says the user judges it by eye. No builder or reviewer ticks "looks right".
+- **Captures stay small** (user, 2026-09-15): anything under `docs/shots/` trimmed to what shows the point, **hard cap 200 KB per file**. Raw terminal streams never committed: summarise in the committed file, keep the raw one untracked under `target/`. Repo may be published.
+- **Tests must be laptop-safe** (PROMPT.md 7.1). Builders run only the fast tier (`cargo test`). Heavy tier, fuzzing, benchmarks run only in milestone reviews. **Every milestone review includes the release perf run** (frame budgets fail only under `--release`; debug records without failing — user, 2026-09-13, ADR-0021).
 - **One heavy job at a time:** never run two cargo commands or test suites at once. Never generate large fixtures outside the heavy tier.
 
 ## Agent skills
 
 ### Which skills to use
 
-The Matt Pocock plugin's skills are **banned by default**. Only these are allowed, and only for what the "When" column says:
+Matt Pocock plugin skills are **banned by default**. Only these allowed, only for what "When" says:
 
 | Skill | Allowed for |
 |---|---|
-| `to-tickets` | M0 and M1 only (done). **Not used from M2:** `planner-fable` writes the ticket specs. |
+| `to-tickets` | M0 and M1 only (done). Not used from M2: `planner-fable` writes ticket specs. |
 | `implement` | Building a ticket. |
 | `tdd` | Test-first work inside a ticket. |
 | `code-review` | Reviewing a finished ticket or milestone. |
 | `diagnosing-bugs` | **`debugger` agent only.** Not builders. |
-| `codebase-design` | Module changes only (adding or moving modules). |
+| `codebase-design` | Module changes only (adding/moving modules). |
 | `handoff` | Mid-ticket handover only. |
 | `improve-codebase-architecture` | After M2, M5 and M7 only. |
 
 **Every other skill in that plugin is banned**, `prototype` and `wayfinder` included.
 
-If you think you need a banned skill: **stop and ask the user** (through the conductor). Don't use it, and don't work around it silently.
+Think you need a banned skill: **stop and ask the user** (through the conductor). Don't use it, don't work around it silently.
 
-The two that keep getting reached for anyway — `prototype` and `wayfinder` —
-stay banned; see `docs/rules-rationale.md` for why. Keep `prototype`'s
-principles (throwaway, minimal, findings recorded as an ADR), not the skill.
+`prototype` and `wayfinder` keep getting reached for anyway and stay banned (rules-rationale has why). Keep `prototype`'s principles — throwaway, minimal, findings as an ADR — not the skill.
 
-Some allowed skills aren't in the Skill tool's listing. They are installed; read the SKILL.md directly:
+Some allowed skills aren't in the Skill tool's listing. They're installed; read the SKILL.md directly:
 `~/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.2.3/skills/engineering/<name>/SKILL.md`
 
 ### Issue tracker
 
-Local markdown: tickets live as files under `.scratch/<milestone-slug>/issues/NN-<slug>.md`. There is no remote. See `docs/agents/issue-tracker.md`.
+Local markdown: tickets live as files under `.scratch/<milestone-slug>/issues/NN-<slug>.md`. No remote. See `docs/agents/issue-tracker.md`.
 
 ### Domain docs
 
@@ -189,4 +174,4 @@ Write for a human who wants to understand and use it quickly. Structure it howev
 
 ## Challenge the spec
 
-PROMPT.md is the brief, not gospel. If you see a better approach, or think part of it is wrong, say so. Put it in a **Proposed changes** section (in DESIGN.md, or in your report) with the reasons and trade-offs. Don't silently comply and don't silently deviate. The user approves or rejects at the next checkpoint; approved changes become ADRs and spec edits.
+PROMPT.md is the brief, not gospel. See a better approach, or think part of it's wrong: say so. Put it in a **Proposed changes** section (DESIGN.md, or your report) with reasons and trade-offs. Don't silently comply, don't silently deviate. User approves/rejects at the next checkpoint; approved changes become ADRs and spec edits.

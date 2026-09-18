@@ -9,7 +9,7 @@ Why: first-parent view is the clean "what landed on main" history; folding is ho
 
 ## Read first
 - PROMPT.md §1.3 ("Folding" only)
-- DESIGN.md §3.6 (last bullet), §3.2 (steps 1 and 3)
+- docs/design/03-graph-layout-algorithm.md §3.6 (last bullet), §3.2 (steps 1 and 3)
 - Code: public APIs of `crates/graft-graph/src/layout.rs` (`layout_chunk`), `layout/stream.rs`, `layout/cache.rs`, `layout/checkpoint.rs`
 
 ## Scope
@@ -27,7 +27,7 @@ Out:
 - [x] Fold then unfold returns rows equal to the original (property test).
 - [x] The §1.2 invariant property tests pass with each predicate switched on.
 - [x] Toggling never invalidates the cache wholesale: the invalidated set is asserted and written into this ticket (graph level; not yet reachable from a key).
-- [x] A key for each toggle: `Space` (fold/unfold the merge under the cursor), `1` (first-parent view), `H` (hide/show the stash). Recorded in DESIGN.md §2.3.
+- [x] A key for each toggle: `Space` (fold/unfold the merge under the cursor), `1` (first-parent view), `H` (hide/show the stash). Recorded in docs/design/02-keymap.md §2.3.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo test` (fast tier only)
@@ -54,7 +54,7 @@ Verified: 72 graft-graph lib tests incl. 3 directed inclusion tests, 2 proptests
 **Next (15b), exact steps:**
 1. `app::history::stream` (crates/graft/src/history/mod.rs:227): wrap `WalkSource` in `Included::new(source, seeds, follow, inclusion)` and build `StreamingLayout::new(included, included.seeds().clone(), ..)`. Stash ids: `RefBadges::stash` / refs/stash reflog (the walk already includes `refs/stash`, graft-git repo.rs:187). First-parent: either `Follow::FirstParent` over the same walk, or graft-git's `Order::FirstParent` walk (history/mod.rs:149) — keep one layout per Follow.
 2. Add a request on the history channel (beside `RowRequest`) carrying a new `Inclusion`; `serve` calls `inclusion::reinclude` and re-answers the current window (re-find selection by commit id).
-3. Keys in `update.rs` (next to `is_lane_toggle`, ~line 424): fold/unfold selected merge, first-parent toggle, stash toggle — check DESIGN.md §2.3 for the assigned keys first. Footer hints in `graft-ui/src/graph_screen/mod.rs` `expand_hint` (~263).
+3. Keys in `update.rs` (next to `is_lane_toggle`, ~line 424): fold/unfold selected merge, first-parent toggle, stash toggle — check docs/design/02-keymap.md §2.3 for the assigned keys first. Footer hints in `graft-ui/src/graph_screen/mod.rs` `expand_hint` (~263).
 4. Pty captures under `docs/shots/15-*` (reuse the 14 approach: release binary, pyte, 80x24): folded/unfolded merge, first-parent, stashes hidden.
 
 Gotchas: `Included` must be laid out from `included.seeds()`, not the original seeds. `reinclude` re-reads from the walk's top to the change (gap logged, ticket 27). The KNOWN_GAPS `incoming`-not-in-`lanes` row does not affect this work (inclusion only removes commits/parents before layout); left logged.

@@ -9,7 +9,7 @@ detecting a Mistake Radar pattern, replaying a journal entry, probing a
 terminal — every one of those stays in the crate that owns it (`graph`,
 `git`, `ops`, `term`, `ui`), never in `core`. A type belongs in `core` for
 exactly one reason: two crates that may not depend on each other (siblings
-under DESIGN.md §8.1's layering, such as `graph` and `git`, or `graph` and
+under docs/design/08-architecture.md §8.1's layering, such as `graph` and `git`, or `graph` and
 `ops`) both need the same shape, and `core` is the only place below both of
 them.
 
@@ -22,7 +22,7 @@ one crate nothing can avoid depending on.
 
 ## Consequences
 
-Checked against DESIGN.md §8.2's existing placements, every current `core`
+Checked against docs/design/08-architecture.md §8.2's existing placements, every current `core`
 type already holds under this rule: `Oid`/`CommitId`, `Commit`, `RefName`/
 `WalkStrategy`, `MistakeRadarKind`, `RenderingTier`/`Capabilities`,
 `RasterFrame`, `JournalEntry`/`OperationKind`, and `JobId`/`Event` are all

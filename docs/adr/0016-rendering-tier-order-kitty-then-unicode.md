@@ -6,7 +6,7 @@ terminal that is not running the Kitty graphics protocol. iTerm2 and Sixel
 sit *below* Unicode and are chosen only where they demonstrably beat it —
 today that means only where the alternative is ASCII.
 
-This overrides the approved DESIGN.md §4.2, which said Kitty > iTerm2 >
+This overrides the approved docs/design/04-terminal-capability-detection.md §4.2, which said Kitty > iTerm2 >
 Sixel and treated Unicode as what you get when no image protocol answers.
 `KNOWN_GAPS.md` recorded the conflict at the step-3 fix and required an ADR
 before anything was built on either order; this is it.
@@ -78,7 +78,7 @@ for anyone who wants it. Nothing is hidden, and nothing is chosen on a hope.
 
 ## The escape hatch stays in both directions
 
-`graph.renderer` still wins over detection (DESIGN.md §4.2, last row).
+`graph.renderer` still wins over detection (docs/design/04-terminal-capability-detection.md §4.2, last row).
 A user who prefers iTerm2 pixels sets `renderer = "pixel"` and gets them;
 a Kitty user who dislikes the pixel graph sets `renderer = "unicode"`. The
 order decided here is the *default*, which is the only thing a detection
@@ -86,7 +86,7 @@ rule can ever be.
 
 ## Consequences
 
-- DESIGN.md §4.2's table is rewritten around this order, and §4.3's "falls
+- docs/design/04-terminal-capability-detection.md §4.2's table is rewritten around this order, and §4.3's "falls
   back to the Unicode tier" becomes "settles on": inside tmux without
   passthrough, Unicode is the ordinary answer, not a consolation.
 - `detect::tier` picks the pixel tier for Kitty, for iTerm2/Sixel only over

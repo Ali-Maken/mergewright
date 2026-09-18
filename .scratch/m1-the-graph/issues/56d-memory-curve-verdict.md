@@ -10,7 +10,7 @@ Split from 56 (conductor, 2026-09-14). **No cargo, no runs, no source.** If a nu
 - `56c-memory-curve-runs.md` `## Numbers` (all).
 - `56-memory-curve-acceptance.md`: "Acceptance", "For the M1 review" (the pass-1 table), "Spec-only pass 2" findings table and "For the user", "Spec-only pass 3".
 - ADR-0026: "Decision (design)", "The gate at 1M" including the amendments (61; no-cg heap), "User decisions on approval". ADR-0027 (first paint warm).
-- DESIGN.md §3.1 and §3.6 (what the design says holds memory) — to judge whether the numbers show the design holding, not only each number under its bar.
+- docs/design/03-graph-layout-algorithm.md §3.1 and §3.6 (what the design says holds memory) — to judge whether the numbers show the design holding, not only each number under its bar.
 - 59b's result section (the no-cg floor, if it stopped).
 
 ## Scope
@@ -31,7 +31,7 @@ Out: runs, fixes, bars, TESTING.md/DESIGN.md number edits (56c's).
 
 ## Result (2026-09-14, builder-fable)
 
-Judged from 56c's `## Numbers` only; no runs, no source, no raw logs. Every number needed was present and added up (footprint slope 138–140, live 76, RSS − footprint ≈ pack size, far-jump rows = row mod stride + one chunk). Beyond the two rows 56c marked `verdict: 56d`, three stale KNOWN_GAPS rows that 56's item 3 named (2× `EmittedOrder`, no slope guard, order ~90 B/commit) were closed with 56c's numbers, and the three rows 56 owed but no ticket had written (cold first paint / ADR-0027, the missing 1M `frames::` numbers, the counters harness) were added as one section. One fidelity note: DESIGN.md §3.1/§3.6 cite "9–12 B/commit (m1-the-graph/56c)" for the order, but 56c's `## Numbers` carries no order-bytes column — the figure is pass 1's counters run; 59b's profile (order 8 B/commit live) corroborates it, and no bar sits on it.
+Judged from 56c's `## Numbers` only; no runs, no source, no raw logs. Every number needed was present and added up (footprint slope 138–140, live 76, RSS − footprint ≈ pack size, far-jump rows = row mod stride + one chunk). Beyond the two rows 56c marked `verdict: 56d`, three stale KNOWN_GAPS rows that 56's item 3 named (2× `EmittedOrder`, no slope guard, order ~90 B/commit) were closed with 56c's numbers, and the three rows 56 owed but no ticket had written (cold first paint / ADR-0027, the missing 1M `frames::` numbers, the counters harness) were added as one section. One fidelity note: docs/design/03-graph-layout-algorithm.md §3.1/§3.6 cite "9–12 B/commit (m1-the-graph/56c)" for the order, but 56c's `## Numbers` carries no order-bytes column — the figure is pass 1's counters run; 59b's profile (order 8 B/commit live) corroborates it, and no bar sits on it.
 
 ## Size
 One context, target under ~30k tokens.

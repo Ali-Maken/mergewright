@@ -11,7 +11,7 @@ Conductor decision (2026-09-13): this is a latent bug, not a behaviour change. T
 
 ## Read first
 - Ticket 27b "Continuation 1", Fix C paragraph and "Next steps"
-- DESIGN.md §3.6 promotion paragraph; ADR-0008 (decision and consequences)
+- docs/design/03-graph-layout-algorithm.md §3.6 promotion paragraph; ADR-0008 (decision and consequences)
 - `crates/graft/MAP.md`; then, via scout, `graft/src/history/scroll.rs` `promoted()` and `graft/src/update.rs` around `Motion::Bottom` and `seek_landed`
 
 ## Scope

@@ -8,7 +8,7 @@ Leaves runnable: yes — the status screen shows rows laid out so far and the hi
 Why: 06 built `StreamingLayout` and the `CommitSource` seam, but the product has no source, no seed builder, and `app::history::read` still drains the whole walk in one lump. Every screen after this reads from here.
 
 ## Read first
-- DESIGN.md §3.6 and §8.3 only
+- docs/design/03-graph-layout-algorithm.md §3.6 and docs/design/08-architecture.md §8.3 only
 - ADR-0001 (default-branch detection, rule 1) and ADR-0008
 - KNOWN_GAPS.md M1 rows: "History arrives in one lump, not a stream", "`graph.default_branch` is not a config key", "The app's seed builder does not exist yet", "`CommitSource` has no implementation in the product"
 - Code: `crates/graft-graph/src/layout/source.rs`, the public API of `layout/stream.rs`, `crates/graft-git/src/history/mod.rs`, the app's history module in `crates/graft/src/`, and `crates/graft-graph/tests/it/streaming.rs` (the test source to mirror)

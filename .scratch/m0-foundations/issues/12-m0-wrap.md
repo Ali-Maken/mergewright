@@ -92,4 +92,4 @@ not been seen doing, and that the four **M0 review** rows are the checkpoint's
 job, not a builder's.
 
 Also added item 4 to PROGRESS.md's "Open for the M0 checkpoint": the
-DESIGN.md §4.2–§4.4 detection deviations need an ADR + spec edit, or a fix.
+docs/design/04-terminal-capability-detection.md §4.2–§4.4 detection deviations need an ADR + spec edit, or a fix.

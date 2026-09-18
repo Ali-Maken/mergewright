@@ -17,7 +17,7 @@ Why not (a) read merges during pass-through: git/git is ~25 % merges, 1M would r
 
 ## Read first
 - This ticket's "Decision" and "Signatures" (above/below); ADR-0026 "Decision" item 4, "What it costs"
-- DESIGN.md §3.6 (streaming, row cache, checkpoints) — for what `StreamingLayout` does today, not to change it here
+- docs/design/03-graph-layout-algorithm.md §3.6 (streaming, row cache, checkpoints) — for what `StreamingLayout` does today, not to change it here
 - `crates/graft-graph/MAP.md` (`lane`, `row`, `merge_name`, `layout`, `layout::source`, `layout::stream`, `inclusion`), `crates/graft/MAP.md` (`history::source`)
 - Ticket 49's amended Signatures (`Walk::next_links`, `LinkChunk`)
 
@@ -33,7 +33,7 @@ In:
 - `graft::history::WalkSource` implements `pull` (`next_links`, the amendment in ticket 49) and `read` (`read_commit` per handle; a batched read is 52b's if the numbers want it). `serve`/`Views` unchanged.
 - MAP.md for `graft-graph` (`lane`, `row`, `layout`, `layout::source`, `layout::stream`, `inclusion`) and `graft` (`history::source`).
 
-Out: pass-through, viewport-bound materialisation, fingerprint over shapes, `Resident.passed_through`, `Work.links_read`, measurements, DESIGN.md §3.6 — all 52b. The walk's internals; the table; the strip cache; search.
+Out: pass-through, viewport-bound materialisation, fingerprint over shapes, `Resident.passed_through`, `Work.links_read`, measurements, docs/design/03-graph-layout-algorithm.md §3.6 — all 52b. The walk's internals; the table; the strip cache; search.
 
 ## Signatures
 ```rust

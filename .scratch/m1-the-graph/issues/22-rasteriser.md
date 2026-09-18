@@ -11,7 +11,7 @@ Why: the spike drew chunky straight segments. The pixel tier is only worth havin
 
 ## Read first
 - PROMPT.md §1.1 (the pixel tier paragraph) and §7.2 item 3
-- DESIGN.md §3.8 (the paragraphs about `RasterFrame`, not the cache)
+- docs/design/03-graph-layout-algorithm.md §3.8 (the paragraphs about `RasterFrame`, not the cache)
 - ADR-0003 (transparency) and ADR-0012 (spike findings only)
 - Code: public API of `crates/graft-graph/src/layout.rs`; grep `RasterFrame` for any existing type; 14's fold description
 
@@ -38,7 +38,7 @@ Out:
 One context, under ~80k tokens. Read only what "Read first" names. If you compact, say so in your report; if a second compaction is coming, stop at a clean seam with a handoff note.
 
 ## Notes (builder, 2026-09-13)
-- API: `graft_graph::raster::rasterise(&Strip) -> Result<core::raster::RasterFrame, RasterError>`. `RasterFrame` added to `core` (DESIGN.md §8.2). `tiny-skia` 0.12, `simd` off so snapshot bytes do not depend on the CPU's code path.
+- API: `graft_graph::raster::rasterise(&Strip) -> Result<core::raster::RasterFrame, RasterError>`. `RasterFrame` added to `core` (docs/design/08-architecture.md §8.2). `tiny-skia` 0.12, `simd` off so snapshot bytes do not depend on the CPU's code path.
 - Snapshots: `tests/it/snapshots/it__raster__raster-{foxtrot,criss-cross,octopus}-merge.snap`, alpha/slot text art at 8×16.
 - Curves proven on pixels: `a_fork_is_an_antialiased_curve_not_an_elbow` (arc centroid moves monotonically across ≥3 x positions; partial alpha present).
 - Render time: 32 rows × 5 lanes at 17×37, Apple M5, 24 GB: median 1.38 ms release, 13.4 ms debug.

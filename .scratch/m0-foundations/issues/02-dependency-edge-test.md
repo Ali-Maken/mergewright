@@ -4,10 +4,10 @@ Status: done
 Build with: Sonnet
 Blocked by: 01
 
-Why: ADR-0006 / DESIGN.md §8.5 — Cargo rejects cycles but not a stray acyclic edge (`ui → git` compiles fine and breaks the layering). This test makes erosion fail the fast tier.
+Why: ADR-0006 / docs/design/08-architecture.md §8.5 — Cargo rejects cycles but not a stray acyclic edge (`ui → git` compiles fine and breaks the layering). This test makes erosion fail the fast tier.
 
 ## Read first
-- DESIGN.md §8.5 and ADR-0006
+- docs/design/08-architecture.md §8.5 and ADR-0006
 - ARCHITECTURE.md crate table (the edge set to assert)
 
 ## Goal

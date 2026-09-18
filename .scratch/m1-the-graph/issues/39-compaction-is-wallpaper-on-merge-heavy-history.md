@@ -11,7 +11,7 @@ Finding (user gallery walk, 2026-09-13, git/git, `docs/shots/user-37-git-git-pix
 ## Read first
 - `docs/design-notes/m1-the-graph.md`: "What the screenshot says", "Interfaces and data shapes" (graft-graph::fold, graft-ui lines), decision 1, "New UI" table
 - `docs/adr/0022-…` (Decision 1–2, Consequences)
-- DESIGN.md §3.5 (what this supersedes; the ranking rule, which stays)
+- docs/design/03-graph-layout-algorithm.md §3.5 (what this supersedes; the ranking rule, which stays)
 - Ticket 14 "NOTES" (the rule, the tests, the shots to compare against)
 - `crates/graft-graph/MAP.md` (fold, row, raster, raster::cache), `crates/graft-ui/MAP.md` (graph_column, graph_screen), `crates/graft/MAP.md` (view, view::strips); scouts for source
 

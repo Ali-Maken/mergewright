@@ -9,7 +9,7 @@ Builders run one at a time; the order below respects every `Blocked by`.
 | 01 | [workspace-scaffold](issues/01-workspace-scaffold.md) | Workspace, 7 crates, lint/format/parallelism config | — |
 | 02 | [dependency-edge-test](issues/02-dependency-edge-test.md) | Fast-tier `cargo metadata` edge-set assertion (ADR-0006) | 01 |
 | 03 | [terminal-session-and-panic-hook](issues/03-terminal-session-and-panic-hook.md) | RAII setup/teardown + panic hook with crash report | 01 |
-| 04 | [capability-detection](issues/04-capability-detection.md) | `term::detect` per DESIGN.md §4; tier decision (largest ticket) | 01 |
+| 04 | [capability-detection](issues/04-capability-detection.md) | `term::detect` per docs/design/04-terminal-capability-detection.md §4; tier decision (largest ticket) | 01 |
 | 05 | [sanitizer](issues/05-sanitizer.md) | `term::sanitize` → `SanitizedText` newtype | 01 |
 | 06 | [theme-tokens](issues/06-theme-tokens.md) | Tokens, 3 themes, lane palette, depth mapping | 04 |
 | 07 | [config](issues/07-config.md) | TOML config: `ui.theme`, `graph.renderer`, `ui.icons` | 04, 06 |

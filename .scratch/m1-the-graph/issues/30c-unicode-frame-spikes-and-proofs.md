@@ -9,7 +9,7 @@ Why: 30 measured Unicode input-to-frame spikes of 32–41 ms (debug) at layout-c
 
 ## Read first
 - Ticket 30 "Handoff" items 2–4 and NOTES (the debug vs release question); results table
-- DESIGN.md §3.6 (background advance paragraph); ADR-0008
+- docs/design/03-graph-layout-algorithm.md §3.6 (background advance paragraph); ADR-0008
 - `crates/graft-graph/MAP.md`, `crates/graft/MAP.md`; scouts for source
 
 ## Scope

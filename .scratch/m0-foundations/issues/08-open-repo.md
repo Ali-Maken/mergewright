@@ -8,7 +8,7 @@ Why: "opens a repo" is the checkpoint test's first half.
 
 ## Read first
 - ADR-0011 (gix-primary; git2 only per named gap — do not add git2 here)
-- ARCHITECTURE.md (`git` crate row) and DESIGN.md §8.2 (`RepoHandle`, `core` identity types)
+- ARCHITECTURE.md (`git` crate row) and docs/design/08-architecture.md §8.2 (`RepoHandle`, `core` identity types)
 - PROMPT.md Technology ("Reading the repo", "Writing to the repo": version ≥ 2.38) and §6.3 Robustness (empty repos, detached HEAD, worktrees, non-UTF-8 paths)
 
 ## Goal
@@ -16,9 +16,9 @@ Why: "opens a repo" is the checkpoint test's first half.
 
 ## Scope
 In:
-- `graft-core`: minimal `Oid` and `RefName` (per DESIGN.md §8.2; expand in M1, don't design ahead).
+- `graft-core`: minimal `Oid` and `RefName` (per docs/design/08-architecture.md §8.2; expand in M1, don't design ahead).
 - `RepoHandle::open(path)` using gix discovery (walks up from the given dir). Exposes: workdir path, git-dir path, and HEAD state as an enum — on branch (`RefName`), detached (`Oid`), unborn (empty repo).
-- Errors: `NotARepo` distinguishable from I/O errors (drives the exit message in ticket 11; the designed first-run screen of DESIGN.md §1.15 is a later milestone).
+- Errors: `NotARepo` distinguishable from I/O errors (drives the exit message in ticket 11; the designed first-run screen of docs/design/01-view-mockups.md §1.15 is a later milestone).
 - Paths as `PathBuf`/`OsStr` end to end — no lossy `String` in the API (non-UTF-8 paths, PROMPT.md §6.3).
 - System git version: run `git --version` (std::process, typed args, `GIT_TERMINAL_PROMPT=0`), parse, return a warning value when < 2.38. Keep it a tiny function — the full typed `GitInvocation` builder is a later milestone.
 

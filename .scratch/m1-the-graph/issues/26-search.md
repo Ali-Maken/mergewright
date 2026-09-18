@@ -9,7 +9,7 @@ Why: PROMPT.md §8 lists search in M1, and on a big repo it is the only way to r
 
 ## Read first
 - PROMPT.md §8, the M1 row only; §6.3 "Security" (two bullets)
-- DESIGN.md §2.2 (the `/` row only), §3.6 (the checkpoint and deep-jump paragraphs only)
+- docs/design/02-keymap.md §2.2 (the `/` row only), docs/design/03-graph-layout-algorithm.md §3.6 (the checkpoint and deep-jump paragraphs only)
 - CONTEXT.md — "job"
 - ARCHITECTURE.md "The layout and the walk: `graph::CommitSource`"
 - Code: `MAP.md` of `graft-graph`, `graft-git`, `graft`; then 16's selection API

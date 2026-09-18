@@ -7,7 +7,7 @@ Blocked by: 04, 05
 Why: two hard budgets live here — first paint in 150 ms and memory that grows with the viewport, not with history. **This ticket is also the one KNOWN_GAPS.md marks REQUIRED (R2-1):** post-promotion checkpoint state on the no-commit-graph path is undefined, and the naive reading costs 100+ MB of checkpoints on the 100k fixture, busting the 300 MB gate.
 
 ## Read first
-- DESIGN.md §3.6 (all of it), §3.2 step 2's promotion paragraph, §3.1's `LayoutCursor`
+- docs/design/03-graph-layout-algorithm.md §3.6 (all of it), §3.2 step 2's promotion paragraph, §3.1's `LayoutCursor`
 - KNOWN_GAPS.md, "REQUIRED M1 TICKET — R2-1" (read it twice; the fix is named there)
 - ADR-0008 (first-paint order depends on the commit graph)
 
@@ -20,7 +20,7 @@ In:
 - A chunked row cache keyed by row range, LRU-evicted outside `[viewport_top − buffer, viewport_bottom + buffer]`. Never an append-only buffer. A rebuilt chunk must be identical to the evicted one — layout is deterministic, so assert that.
 - Checkpoints: snapshot `LayoutCursor` every N rows (start at 2,000), cache-only, bounded, LRU, always rebuildable. A deep jump resumes from the nearest earlier checkpoint.
 - A cold deep jump is a cancellable background job with progress, never a UI-thread stall.
-- **Promotion (R2-1).** After the background topo walk completes, retain the emitted order as a compact commit-id list; post-promotion `walker_state` is an **index into that list**, so checkpoints stay small on both paths. Write the one or two sentences into DESIGN.md §3.2/§3.6 that say so, and implement it. Selection and scroll anchor are re-found by commit id, never by row index.
+- **Promotion (R2-1).** After the background topo walk completes, retain the emitted order as a compact commit-id list; post-promotion `walker_state` is an **index into that list**, so checkpoints stay small on both paths. Write the one or two sentences into docs/design/03-graph-layout-algorithm.md §3.2/§3.6 that say so, and implement it. Selection and scroll anchor are re-found by commit id, never by row index.
 - Until promotion, the order is provisional and the app can say so (the notice itself is ticket 10's).
 
 Out:
@@ -54,7 +54,7 @@ after them). What was actually observed, all in the fast tier:
   selected commit to the same offset with 0 walk pulls.
 - **R2-1:** per-checkpoint bytes measured at 1,578 (10k rows) and 1,694
   (40k rows), identical on the `new` (walk) and `from_order` (promoted)
-  paths — O(1) in remaining history. DESIGN.md §3.1/§3.2/§3.6 updated.
+  paths — O(1) in remaining history. docs/design/03-graph-layout-algorithm.md §3.1/§3.2/§3.6 updated.
 - `graft-graph/tests/it/streaming.rs`: every corpus shape streamed through a
   2-chunk cache over a real `Walk` equals `layout()`; linear: 200 walked
   once, 704 re-read over 76 rebuilds, 4 checkpoints kept. Promotion on

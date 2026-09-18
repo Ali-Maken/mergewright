@@ -10,7 +10,7 @@ Why: 27 measured git/git (85,649 commits, release) at **300.5–305.9 MiB withou
 ## Read first
 - Ticket 27: "Results", "Decisions", "Handoff (what remains)" and "Suspects" — **the suspects are unmeasured**
 - PROMPT.md §1.2 (the two budget bullets), §6.3 "Performance budgets"
-- DESIGN.md §3.6 (budget and memory paragraphs only); ADR-0008, ADR-0015, ADR-0018
+- docs/design/03-graph-layout-algorithm.md §3.6 (budget and memory paragraphs only); ADR-0008, ADR-0015, ADR-0018
 - `MAP.md` of `graft-git`, `graft-graph`, `graft`
 - Scouts (Explore, haiku/sonnet) for source beyond a few lines.
 

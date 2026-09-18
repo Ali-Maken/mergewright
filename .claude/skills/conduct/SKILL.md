@@ -15,6 +15,7 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
 
 - **Don't read source code, diffs or large files yourself.** Read only:
   - CLAUDE.md and PROGRESS.md
+  - the current milestone's session log, `docs/log/<milestone>.md` (linked from PROGRESS.md; housekeeping/01 continuation 1 moved the live log out of PROGRESS.md)
   - the ticket list
   - design notes and review files
   - `git log --oneline -10` and `git status --short`
@@ -31,7 +32,7 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
 - **After each helper returns:**
   - tick the box in PROGRESS.md
   - update **Current step**
-  - add a one-line Session log entry (format at the top of PROGRESS.md's Session log). If the helper compacted, end the line with `· COMPACTED`.
+  - add a one-line entry to the current milestone's live log, `docs/log/<milestone>.md` (format at the top of that file's Session log; not PROGRESS.md, which only points to it). If the helper compacted, end the line with `· COMPACTED`.
   - commit: `git commit -am "progress: <what>"`
 - **You file tickets; you don't decide them** (M2 onward). Scope, signatures and `Build with` come from `planner-fable`'s specs. If one looks wrong, send it back to `planner-fable` or ask the user; don't edit it.
 - **Never** push, force anything or skip a failing gate.
@@ -50,16 +51,16 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
       - M8: file the standing `fable-architecture-pass.md` ticket with the rest.
       - **Stop and tell the user** if the plan wants three or more Fable builds (signature tickets count; escalation redos and the acceptance ticket don't), or the note would differ from DESIGN.md (a Proposed change; tickets follow DESIGN.md until approved).
       - Ticket approval: only where the checkpoint policy requires it.
-   2. **Build each ticket in dependency order,** dispatching per its `Build with` line whenever it's unblocked. When dispatching the milestone's first ticket, add `M<n> start <hash>` (current HEAD) to the session log: the reviewer diffs from it.
+   2. **Build each ticket in dependency order,** dispatching per its `Build with` line whenever it's unblocked. When dispatching the milestone's first ticket, add `M<n> start <hash>` (current HEAD) to the milestone's live log (`docs/log/<milestone>.md`): the reviewer diffs from it.
       - `done` → next ticket.
       - **Compacted** → log `· COMPACTED`. If work remains, split the remainder into new tickets along the handoff note's seams, keeping scope, signatures and model, and build those, not the oversized ticket. A split that needs a new decision goes to `planner-fable` as a spec-only pass. Write milestones: the user approves the split tickets at the next stop.
       - `partial` → a fresh builder on the same model continues from the handoff note. **At most 2 continuations per ticket**; a third `partial` → stop and ask the user whether to split.
       - `failed` / stalled → escalate per CLAUDE.md "Standing rules → Models → Escalation". Log the escalation.
       - The debugger fails too → stop and ask the user.
-   3. **Review:** once every ticket is done, send the milestone to `reviewer` with the milestone's start hash from the session log (it reads the diff and MAP.md files first; CLAUDE.md "Reviewer efficiency").
+   3. **Review:** once every ticket is done, send the milestone to `reviewer` with the milestone's start hash from its live log (`docs/log/<milestone>.md`; it reads the diff and MAP.md files first; CLAUDE.md "Reviewer efficiency").
       - Critical or Major issues → send them to a builder (grouped sensibly), then run `reviewer` again. **At most 2 rounds.**
       - Still open after that → stop or carry on per the checkpoint policy; anything left that doesn't stop the milestone goes to KNOWN_GAPS.md.
-   4. **Milestone checkpoint:** regenerate `docs/AUTHORSHIP.md` from the session log (facts from the log only) and commit it. Do 4.1 for the next milestone, then stop and report (limits: CLAUDE.md "Checkpoint policy"):
+   4. **Milestone checkpoint:** regenerate `docs/AUTHORSHIP.md` from the session logs (`docs/log/*.md`; facts from the log only) and commit it. Do 4.1 for the next milestone, then stop and report (limits: CLAUDE.md "Checkpoint policy"):
       ```
       M<n> done. <one-line result>
       Built: <3–5 one-line bullets>

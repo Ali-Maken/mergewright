@@ -12,7 +12,7 @@ Why: the user's "the 8-lane default is wrong for merge-heavy history" (2026-09-1
 - `docs/design-notes/m1-the-graph.md`: decision 1 item 3, "Interfaces" (`max_lanes_for`, `Graph::max_lanes`)
 - `docs/adr/0022-…` Decision 3 and the config bullet under Consequences
 - `docs/adr/0025-…` Decision 3 only (the clamp)
-- DESIGN.md §1.1–1.3 headings only (the three breakpoints: <100, 100–159, 160+)
+- docs/design/01-view-mockups.md §1.1–1.3 headings only (the three breakpoints: <100, 100–159, 160+)
 - Ticket 14 "NOTES" (config key rules: `< 2` is a parse error)
 - Ticket 24c notes (`body_layout` + `graph_width`: where the graph column's width bound lives)
 - `crates/graft/MAP.md` (config, session, view::graph_view, view::strips), `crates/graft-ui/MAP.md` (graph_screen: `AUTHOR_BREAKPOINT`, `Compaction`); scouts for source

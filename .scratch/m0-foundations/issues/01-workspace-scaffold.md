@@ -9,7 +9,7 @@ Why: nothing else can build without the workspace; the lint/parallelism config i
 ## Read first (keep context lean)
 - ARCHITECTURE.md (whole file — it is one page)
 - PROMPT.md §7.1 (laptop-safe limits) and the Technology section
-- DESIGN.md §8.1 only if the crate table alone is unclear
+- docs/design/08-architecture.md §8.1 only if the crate table alone is unclear
 
 ## Goal
 A Cargo workspace matching ARCHITECTURE.md's crate map, with the lint, format and parallelism config every later ticket relies on. No behaviour yet.

@@ -8,7 +8,7 @@ Leaves runnable: yes — keys typed during startup are no longer eaten.
 Why: detection reads the fd itself today, so typeahead during the probe is lost, and 21 and 24 both need terminal replies routed while the app runs.
 
 ## Read first
-- DESIGN.md §4.1 and §4.5
+- docs/design/04-terminal-capability-detection.md §4.1 and §4.5
 - KNOWN_GAPS.md M0 row "The probe eats typeahead"
 - Code: `crates/graft-term/src/detect/` (how it reads replies now), the event loop's input source in `crates/graft/src/event_loop/`, M0's pty test harness
 

@@ -9,7 +9,7 @@ Split from 12 after it compacted. Closes KNOWN_GAPS.md M0 row "Dark chrome flatt
 
 ## Read first
 - Ticket 12: Scope (the Palette16 bullet), Notes steps **5–6** only
-- DESIGN.md §4.6
+- docs/design/04-terminal-capability-detection.md §4.6
 - KNOWN_GAPS.md M0 row "Dark chrome flattens at 16 colours"
 - `crates/graft-ui/MAP.md` before source; then `theme/mod.rs` and `graph_screen/mod.rs` `draw_row`
 

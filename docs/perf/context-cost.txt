@@ -8,3 +8,8 @@ CLAUDE.md                                                                 17392 
 .claude/agents/builder-sonnet.md                                           2554 bytes  ~    638 tokens
 TOTAL                                                           19946 bytes  ~   4986 tokens
 
+## context-cost run: 2026-09-18T04:29:44Z
+CLAUDE.md                                                                 15841 bytes  ~   3960 tokens
+.claude/agents/builder-sonnet.md                                           2554 bytes  ~    638 tokens
+TOTAL                                                           18395 bytes  ~   4598 tokens
+

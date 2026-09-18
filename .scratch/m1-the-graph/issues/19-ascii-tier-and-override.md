@@ -9,7 +9,7 @@ Why: a user must always be able to force or drop a tier, and piped output must n
 
 ## Read first
 - PROMPT.md §1.1 (the ASCII tier paragraph only)
-- DESIGN.md §4.2 and §4.6
+- docs/design/04-terminal-capability-detection.md §4.2 and §4.6
 - ADR-0016
 - Code: 08's widget and 13's shape channel, `crates/graft-term/src/detect/` (tier decision, public API only), the config module
 

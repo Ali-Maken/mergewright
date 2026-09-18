@@ -9,7 +9,7 @@ Why: M1/06 built checkpoints, eviction and promotion but measured only an in-mem
 
 ## Read first
 - PROMPT.md §1.2 (the two budget bullets), §6.3 "Performance budgets", §7.1 "Heavy tier" bullets
-- DESIGN.md §3.6 (the budget and memory paragraphs only)
+- docs/design/03-graph-layout-algorithm.md §3.6 (the budget and memory paragraphs only)
 - ADR-0008 (decision and consequences), ADR-0015, ADR-0018
 - KNOWN_GAPS.md rows: "No budget in the spec has ever been measured", "The heavy tier is a harness", "The emitted order grows with history", "Nothing has been measured on the 100k fixture", "Least-recently-used is the wrong policy"
 - TESTING.md "The heavy tier" and "Getting `git/git`"

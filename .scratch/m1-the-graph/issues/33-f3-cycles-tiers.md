@@ -18,11 +18,11 @@ In:
 - F3 cycles: top → next lower → … → ASCII → top. **Top = the tier the terminal settled on** (detection or `graph.renderer` override), never higher. On a Unicode-only terminal F3 toggles Unicode ↔ ASCII; on ASCII-only it does nothing.
 - Re-entering pixels works: uploads are sent again (don't trust old ids — free them on leaving, or `forget_uploads` and free), strips padded again (`strip_rows`), `gfx` status back.
 - Footer names the current tier, e.g. `renderer: unicode (F3 cycles)`; nothing extra shown at the top tier.
-- **Hint bar (PROMPT.md principle 4, line 198; DESIGN.md §1.16):** every graph key that works now appears in 09's footer hints, F3 included. User saw no F3 hint in Ghostty. Check which graph keys are missing from the footer (Space, 1, H, +, F, F2, F3, Enter, /, n/N) and how it drops keys at narrow widths; add the missing ones in the same drop order.
+- **Hint bar (PROMPT.md principle 4, line 198; docs/design/01-view-mockups.md §1.16):** every graph key that works now appears in 09's footer hints, F3 included. User saw no F3 hint in Ghostty. Check which graph keys are missing from the footer (Space, 1, H, +, F, F2, F3, Enter, /, n/N) and how it drops keys at narrow widths; add the missing ones in the same drop order.
 - Rename `drop_tier` / `is_tier_drop` to match (update MAP.md).
 
 Out:
-- The `?` context help overlay (DESIGN.md §1.16): M8 "keybinding help and remapping".
+- The `?` context help overlay (docs/design/01-view-mockups.md §1.16): M8 "keybinding help and remapping".
 
 ## Acceptance
 - [x] Tests: Pixel→Unicode→Ascii→Pixel; Unicode-top cycle; Ascii-only no-op; re-entering Pixel transmits again and places, no leaked ids (every uploaded id freed by exit).

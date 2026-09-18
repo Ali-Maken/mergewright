@@ -7,13 +7,13 @@ Blocked by: 01
 Why: the tier decision drives everything the UI draws; M0 must detect and display it so M1 can build renderers on top. Biggest M0 ticket — stop early with a handoff note rather than rush.
 
 ## Read first
-- DESIGN.md §4 (all of it — this ticket implements it)
+- docs/design/04-terminal-capability-detection.md §4 (all of it — this ticket implements it)
 - ADR-0012 ("What worked": probe chain, Kitty round-trip detection; "What didn't": probe/typeahead conflict)
 - `prototypes/graph-spike/` probe code as a working reference — throwaway quality; adapt ideas, don't copy blindly
-- DESIGN.md §8.2 for which types land in `graft-core`
+- docs/design/08-architecture.md §8.2 for which types land in `graft-core`
 
 ## Goal
-`graft-term`: `Capabilities::detect(...)` implementing DESIGN.md §4.1–§4.4 — env hints, batched active queries with a deadline, per-query fallback with provenance, tmux handling, and the §4.2 tier decision.
+`graft-term`: `Capabilities::detect(...)` implementing docs/design/04-terminal-capability-detection.md §4.1–§4.4 — env hints, batched active queries with a deadline, per-query fallback with provenance, tmux handling, and the §4.2 tier decision.
 
 ## Scope
 In:
@@ -48,7 +48,7 @@ Out:
 
 ## Deviations from the letter of the spec (flag at the checkpoint)
 
-1. **`Capabilities::detect(...)` is a free function, `graft_term::detect::detect(...)`.** `Capabilities` lives in `graft-core` (DESIGN.md §8.2) and Rust cannot put an inherent `impl` on a foreign type — and ADR-0007 forbids the behaviour living in `core` anyway. Same call, different spelling.
+1. **`Capabilities::detect(...)` is a free function, `graft_term::detect::detect(...)`.** `Capabilities` lives in `graft-core` (docs/design/08-architecture.md §8.2) and Rust cannot put an inherent `impl` on a foreign type — and ADR-0007 forbids the behaviour living in `core` anyway. Same call, different spelling.
 2. **Detection takes the environment as a value, not from `std::env`.** `Environment::from_process()` reads the variables once; everything below is a pure decision over that value, which is what makes the tier table testable without `unsafe { set_var }`.
 3. **Inside tmux, `iterm2_images` is false unless the passthrough re-probe answered.** tmux blocks `OSC 1337` the same way it blocks the Kitty protocol, so an env hint that survives into tmux would otherwise promise images that never draw.
 4. **A tmux session with no reachable protocol gets Unicode even when §4.2's table would say ASCII** (e.g. no `COLORTERM`). §4.3 is the more specific rule and says so explicitly.

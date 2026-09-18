@@ -9,7 +9,7 @@ Why: the rest of the retired performance ticket (16, text in 35bec3e). Split fro
 
 ## Read first
 - PROMPT.md §1.2 (the 60 fps bullet), §6.3 "Performance budgets" and the 50k-refs bullet, §7.1 "Benchmarks" bullet
-- DESIGN.md §3.8 (the 16 ms frame budget paragraphs only)
+- docs/design/03-graph-layout-algorithm.md §3.8 (the 16 ms frame budget paragraphs only)
 - KNOWN_GAPS.md rows "50k+ refs in the sidebar and ref badges (review N4)", "Resize frame busts the frame budget"
 - 25's measured resize numbers; 27's results table
 - Code: `MAP.md` of `graft-graph`, `graft-ui`, `graft`
@@ -117,7 +117,7 @@ Done (committed, gates green): criterion benches `crates/graft-graph/benches/hot
 
 Next, in order (each is its own ticket-sized piece):
 1. **Pixel frame cost**: find why a one-row scroll frame writes ~336 KB / ~84 Kitty commands (expected: place existing ids, ≤1 new strip). Start by counting transmits vs placements per frame in `frames.rs` (the `Sink` can split on `a=t` vs `a=p`). Fix the cause, re-run.
-2. **Unicode chunk-boundary spikes**: background advance ahead of the viewport (DESIGN.md §3.6) or a smaller `chunk_rows`; decide with the benches (`StreamingLayout::advance/one chunk`).
+2. **Unicode chunk-boundary spikes**: background advance ahead of the viewport (docs/design/03-graph-layout-algorithm.md §3.6) or a smaller `chunk_rows`; decide with the benches (`StreamingLayout::advance/one chunk`).
 3. **Threshold-tightening proof** for each heavy assertion (acceptance box) once they pass.
 4. **Benches run once** (`cargo bench -p graft-graph -p graft-ui -- --warm-up-time 1 --measurement-time 3`), numbers into this table.
 5. **50k refs, real read**: `refs::read` does one `RepoHandle::upstream` per branch; not measured on a real repo with 50k refs (only the pure `badges`, 1.35 s debug). Generate one in the heavy tier (packed-refs + `[branch]` config sections) and time it.

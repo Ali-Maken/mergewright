@@ -20,7 +20,7 @@ Considered and not taken: a two-tier policy (a thinned global grid plus a dense 
 **Invariant (test it):** at every moment, `checkpoint_rows()` is exactly the multiples of `checkpoint_stride()` in `(0, frontier)` minus the end-of-history exclusion, and `len ≤ max_checkpoints`.
 
 ## Read first
-- DESIGN.md §3.6 lines 849–864 (checkpoints: what they are, LRU today) and 865–870 (a cold deep jump is a background job)
+- docs/design/03-graph-layout-algorithm.md §3.6 lines 849–864 (checkpoints: what they are, LRU today) and 865–870 (a cold deep jump is a background job)
 - `.scratch/m1-the-graph/issues/56-memory-curve-acceptance.md` line 76 (the measurement and the seam) and "Spec-only pass 2" (finding 3)
 - KNOWN_GAPS.md row "Least-recently-used is the wrong policy once checkpoints pass `max_checkpoints`" (line ~225)
 - `crates/graft-graph/MAP.md` `layout::stream` (`StreamConfig`, `Resident`, `Work`, `StreamingLayout::{rows, checkpoint_rows, truncate, work}`) and `layout::cache`
@@ -32,7 +32,7 @@ In:
 - `StreamingLayout::checkpoint_stride()` for tests and `budgets`.
 - Fast-tier tests with a small config (e.g. `checkpoint_every = 10`, `max_checkpoints = 8`, a linear source of 1,000 links): the invariant after every advance; stride ends at 160; `rows(500..510)` with everything evicted replays ≤ stride + one chunk (from `Work`); `truncate` keeps the invariant; the existing rebuild/fingerprint tests untouched.
 - `budgets` prints `checkpoint stride` with its far-jump lines.
-- DESIGN.md §3.6 lines 861–863: replace "least recently used evicted; a rebuild that needed an evicted one replays from the one before and re-records it on the way" with one sentence on the grid (stride doubles when full, spacing stays even across all of history; at 1M rows 16k apart). Nothing else in DESIGN.md.
+- docs/design/03-graph-layout-algorithm.md §3.6 lines 861–863: replace "least recently used evicted; a rebuild that needed an evicted one replays from the one before and re-records it on the way" with one sentence on the grid (stride doubles when full, spacing stays even across all of history; at 1M rows 16k apart). Nothing else in DESIGN.md.
 - MAP.md lines (`layout::cache`, `checkpoint_stride`).
 
 Out: `resident_chunks`/`buffer_rows` policy, the cg/no-cg question, background advance (KNOWN_GAPS row stays), any two-tier band.

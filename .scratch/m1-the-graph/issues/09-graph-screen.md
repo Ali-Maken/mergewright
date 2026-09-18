@@ -8,7 +8,7 @@ Leaves runnable: yes — `graft <repo>` opens on a scrollable graph. The first t
 Why: after this the app stops being a status screen.
 
 ## Read first
-- DESIGN.md §1.1–§1.3 (where the graph pane sits; ignore detail-pane content), §2.2, §2.3 (scroll keys only), §3.6 (the virtualization paragraphs)
+- docs/design/01-view-mockups.md §1.1–§1.3 (where the graph pane sits; ignore detail-pane content), docs/design/02-keymap.md §2.2, §2.3 (scroll keys only), docs/design/03-graph-layout-algorithm.md §3.6 (the virtualization paragraphs)
 - PROMPT.md §6.3
 - KNOWN_GAPS.md M1 rows "`git/git` is 85,649 commits and nothing reads it yet", "Nothing reads `AppState::history`"
 - Code: `crates/graft/src/event_loop/`, `crates/graft-ui/src/status_screen/`, 07's streaming module, 08's widget
@@ -43,7 +43,7 @@ Split at a clean seam: too big for one context. No compaction.
 
 **Remains (09b), exact next steps:**
 1. `graft-ui`: new `graph_screen` module — header line (sanitised path, walk phase / `laying out… N rows` while `History::jump` is set, `Esc cancels`), rows: `GraphColumn` + one plain subject column (`sanitize_line` on `Commit::subject()`, `fit`), cursor row `RowPaint::Highlighted`, footer key hints. Takes a view struct built in `graft::view` from `History::visible(state.graph_rows())`. Must fit `CHROME_ROWS`.
-2. `AppState` screen toggle (graph default; status screen from a key — suggest `F2`, since `Tab`/`s`/`i` are taken in DESIGN.md §2.2–2.3) and `view` dispatch.
+2. `AppState` screen toggle (graph default; status screen from a key — suggest `F2`, since `Tab`/`s`/`i` are taken in docs/design/02-keymap.md §2.2–2.3) and `view` dispatch.
 3. insta snapshots at 80×24, 120×40, 200×60 (corpus shape via `graft-ui/tests/support/corpus.rs`).
 4. pty capture to `docs/shots/09-graph-screen.txt`; open `git/git` under a pty, record time to first graph frame; write the Zed/VS Code command.
 - Gotcha: the status screen's row count now means rows laid out as far as asked (≈ 2 screens at startup), not the whole walk.
@@ -70,4 +70,4 @@ cargo run --release -- ~/.cache/graft/git-git.git
 ```
 Keys: `j`/`k` or arrows, `PgUp`/`PgDn`, `g`/`G`, `Esc` backs out of a `G`, `F2` status screen, `q` quits.
 
-**Not done here, on purpose:** layout advancing in the background between frames (DESIGN.md §3.6). This ticket's scope is viewport-driven requests; sizing a background walk on git/git needs ticket 27's numbers. KNOWN_GAPS row kept, owner ticket 27.
+**Not done here, on purpose:** layout advancing in the background between frames (docs/design/03-graph-layout-algorithm.md §3.6). This ticket's scope is viewport-driven requests; sizing a background walk on git/git needs ticket 27's numbers. KNOWN_GAPS row kept, owner ticket 27.

@@ -7,7 +7,7 @@ Blocked by: 53
 
 ## Read first
 - ADR-0026 (all; "Decision" items 1–2 are this ticket)
-- DESIGN.md §3.1 (`EmittedOrder`, `walker_state`), §8.2 (`core` holds plain data; `git`/`graph` are siblings)
+- docs/design/03-graph-layout-algorithm.md §3.1 (`EmittedOrder`, `walker_state`), docs/design/08-architecture.md §8.2 (`core` holds plain data; `git`/`graph` are siblings)
 - `crates/graft-core/MAP.md` (`oid`), `crates/graft-git/MAP.md` (`history`, `repo`), `crates/graft-graph/MAP.md` (`layout::source`, `layout::order`), `crates/graft/MAP.md` (`history::source`)
 - Ticket 46 "What holds memory at 1M" table (the sizes this replaces). Scouts for source.
 

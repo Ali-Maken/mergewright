@@ -11,7 +11,7 @@ Why: ADR-0023 removes the tooltip, which was the only place the full SHA appeare
 ## Read first
 - `docs/design-notes/m1-the-graph.md`: decision 2 (item 4), "New UI: Copied notice", "Interfaces" graft-term and graft::update lines
 - `docs/adr/0023-…` Decision 4
-- DESIGN.md §2.1 (rare verbs behind `.`), §2.2–2.3 (`y` is unassigned)
+- docs/design/02-keymap.md §2.1 (rare verbs behind `.`), §2.2–2.3 (`y` is unassigned)
 - `crates/graft-term/MAP.md` (tmux: `Transport`, `tmux_passthrough`), `crates/graft/MAP.md` (update: `Command`, `Status`, `AppState::status`; event_loop: `pump`, how Kitty bytes reach stdout); scouts for source
 
 ## Scope

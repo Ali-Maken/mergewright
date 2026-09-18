@@ -10,7 +10,7 @@ Why: the user works in the Zed and VS Code terminals, which have no image protoc
 ## Read first
 - PROMPT.md §1.1 (the Unicode tier paragraph) and §1.2 (colour rules only)
 - PROMPT.md §5
-- DESIGN.md §1.3 (the narrow mockup's graph column) and §3.1
+- docs/design/01-view-mockups.md §1.3 (the narrow mockup's graph column) and docs/design/03-graph-layout-algorithm.md §3.1
 - ADR-0016
 - KNOWN_GAPS.md M1 row "A `Row` carries a lane index and no identity"; M0 row "Sanitising does not cover look-alikes, width, or the invisibles…"
 - Code: public items of `crates/graft-graph/src/layout.rs` (`Row`, `Lane`), `crates/graft-ui/src/theme/` (lane palette)

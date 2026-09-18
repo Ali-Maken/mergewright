@@ -4,11 +4,11 @@ Status: done
 Build with: Sonnet
 Blocked by: 04, 06
 
-Why: the tier and theme overrides in DESIGN.md §4.2/§5 need somewhere to live; PROMPT.md fixes the mechanism (TOML + serde) and the path.
+Why: the tier and theme overrides in docs/design/04-terminal-capability-detection.md §4.2 / docs/design/05-visualization.md §5 need somewhere to live; PROMPT.md fixes the mechanism (TOML + serde) and the path.
 
 ## Read first
 - PROMPT.md Technology section ("Config:" line) and §5 (`ui.icons`)
-- DESIGN.md §4.2 (`graph.renderer` override semantics)
+- docs/design/04-terminal-capability-detection.md §4.2 (`graph.renderer` override semantics)
 
 ## Goal
 `graft` (app): load `${XDG_CONFIG_HOME:-~/.config}/graft/config.toml` into a typed `Config` with serde.

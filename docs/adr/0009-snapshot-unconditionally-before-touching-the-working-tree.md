@@ -1,6 +1,6 @@
 # Snapshot unconditionally before anything that rewrites the working tree
 
-DESIGN.md §6.3's snapshot originally fired only for overtly destructive
+docs/design/06-undo-journal-design.md §6.3's snapshot originally fired only for overtly destructive
 operations (discard, forced checkout, `reset --hard`, stash drop, clean),
 and §6.7's pre-undo guard compared ref OIDs only. That combination loses
 work: undoing a merge or rebase restores the pre-op working tree, and an

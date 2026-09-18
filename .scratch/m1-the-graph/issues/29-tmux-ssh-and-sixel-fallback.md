@@ -8,7 +8,7 @@ Leaves runnable: yes — inside tmux the graph is pixels when passthrough answer
 Why: the retired pixel-protocols ticket (14, text in 35bec3e) owned tmux passthrough, SSH and the Sixel-only gap. The re-scope pointed 24 and 25 at "26" for them, which was never written.
 
 ## Read first
-- DESIGN.md §4.3, §4.4
+- docs/design/04-terminal-capability-detection.md §4.3 and §4.4
 - ADR-0014 §4 and §5 only; ADR-0016 (the Sixel paragraphs only)
 - KNOWN_GAPS.md rows "tmux passthrough and SSH untested", "No Sixel encoder is planned", "Sixel and plain-text rendering tiers unproven"
 - Code: `MAP.md` of `graft-term`; 24's placement layer; `detect::tier`
@@ -16,7 +16,7 @@ Why: the retired pixel-protocols ticket (14, text in 35bec3e) owned tmux passthr
 ## Scope
 In:
 - tmux: wrap Kitty and iTerm2 sequences in the DCS passthrough; keep ADR-0014's "pixel fails closed inside tmux unless the re-probe answered"; otherwise Unicode.
-- SSH: detection over SSH where env vars lie — the longer probe window (DESIGN.md §4.4) and a clean fallback.
+- SSH: detection over SSH where env vars lie — the longer probe window (docs/design/04-terminal-capability-detection.md §4.4) and a clean fallback.
 - Sixel-only terminal with no truecolor: ADR-0016 keeps no Sixel encoder, so `detect::tier` must not select a pixel tier with nothing behind it. Make it fall to Unicode (or ASCII) explicitly, and say which.
 - Fill TESTING.md's tmux and SSH rows with the exact commands.
 

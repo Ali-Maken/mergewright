@@ -7,7 +7,7 @@ Blocked by: 01
 Why: the layout engine is pure and takes commits in; something has to produce them, in the right order, off the UI thread, cancellably, without re-opening the repository on every read. Three M0 gaps close here: the handle that dies with its job, the untouched `gix` feature set, and the job nothing ever cancels.
 
 ## Read first
-- DESIGN.md §3.2 step 2 (walk strategies and the commit-graph split) and ADR-0008
+- docs/design/03-graph-layout-algorithm.md §3.2 step 2 (walk strategies and the commit-graph split) and ADR-0008
 - ADR-0001 (default-branch precedence), ADR-0011 (`gix` primary, `git2` per named gap)
 - KNOWN_GAPS.md M0 rows: "The repository handle does not outlive the job", "`gix` is compiled with almost no features", "Nothing cancels a job yet"
 - `crates/graft-git/src/repo/` and `crates/graft/src/jobs/` as they stand

@@ -9,7 +9,7 @@ Why: the user's daily pixel terminal is Ghostty. The spike proved it works — a
 
 ## Read first
 - ADR-0012, including its Correction
-- DESIGN.md §4.2
+- docs/design/04-terminal-capability-detection.md §4.2
 - CLAUDE.md, the status-field rule
 - Code: the Kitty code in `prototypes/graph-spike/` (reference only), 20's reply-waiter API, 23's cache API, 19's renderer override
 

@@ -11,7 +11,7 @@ Budgets (ADR-0026, accepted): 1M is judged against §6.3's kernel-class **500 ms
 
 ## Read first
 - ADR-0026 "Context" (first-paint sentence), "The gate at 1M" (first-paint bullet — the provisional-paint option "a later decision, flagged here, not taken"), "User decisions on approval"
-- ADR-0008 (all); DESIGN.md §3.2 step 2 (both bullets; "This path is what meets the 150 ms first paint")
+- ADR-0008 (all); docs/design/03-graph-layout-algorithm.md §3.2 step 2 (both bullets; "This path is what meets the 150 ms first paint")
 - Ticket 46 "Curve" table (first paint and "RSS at first paint" columns), ticket 27 lines 54–64 (what `budget_run` times and excludes), ticket 50 "Acceptance" (the first-paint finding it wrote, the odb counter)
 - KNOWN_GAPS rows "First paint at 1M commits is 292–383 ms", "The first `advance` is a full 500-row chunk"
 - `crates/graft-git/MAP.md` (`history`, `branches`, `repo`), `crates/graft/MAP.md` (`repos`, `repository`, `history` `stream`/`serve`, `refs`, `jobs`), `crates/graft-graph/MAP.md` (`layout::stream`)
@@ -27,7 +27,7 @@ Budgets (ADR-0026, accepted): 1M is judged against §6.3's kernel-class **500 ms
 ### Phase B — fix what the design allows, re-measure
 - Anything the first window does not need moves after it or into a job that already exists (refs/branch work, counting, the working-tree read), or is bounded (the first `advance` sized to the viewport plus `buffer_rows`, then the usual chunk). Same emitted order, same rows: every order and snapshot test unchanged.
 - Re-measure 1M cg and no-cg (3 runs each) and 100k both paths; write before/after in this ticket, TESTING.md's curve section (one row: first paint per cell), and close or rewrite the two KNOWN_GAPS rows with the numbers.
-- **If the named cause on the cg path is the strict-topo in-degree pass itself** (inherent to emitting strict order before the oldest tip's generation) and 1M cg is still over 150 ms after everything else is fixed: **do not build the fallback.** Write the number, the cost per commit, and the recommendation below into the ticket and stop. It changes DESIGN.md §3.2's sentence "This path is what meets the 150 ms first paint" and needs the user's OK at the checkpoint.
+- **If the named cause on the cg path is the strict-topo in-degree pass itself** (inherent to emitting strict order before the oldest tip's generation) and 1M cg is still over 150 ms after everything else is fixed: **do not build the fallback.** Write the number, the cost per commit, and the recommendation below into the ticket and stop. It changes docs/design/03-graph-layout-algorithm.md §3.2's sentence "This path is what meets the 150 ms first paint" and needs the user's OK at the checkpoint.
 
 ### Pre-decided design for the fallback (built only on the user's OK, as its own ticket)
 Date-order provisional paint plus promotion on the commit-graph path too — ADR-0008's no-cg machinery, already built (`WalkFacts::is_provisional`, `OrderNotice::Sorting`, `PromoteHistory`, `Views::promote`), gated by a deterministic count, never by elapsed time:

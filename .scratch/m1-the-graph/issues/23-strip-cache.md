@@ -8,7 +8,7 @@ Leaves runnable: yes — cache with direct tests; still no pixels on screen unti
 Why: a scroll frame must rasterise at most one new strip, or the 16 ms budget is gone.
 
 ## Read first
-- DESIGN.md §3.8 (all of it)
+- docs/design/03-graph-layout-algorithm.md §3.8 (all of it)
 - Code: 22's rasteriser API, 21's resize/theme events
 
 ## Scope

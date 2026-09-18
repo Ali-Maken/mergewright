@@ -9,7 +9,7 @@ Why: the spike spent 32–41 ms per resize retransmitting the whole viewport aga
 
 ## Read first
 - ADR-0012 (the iTerm2 and resize findings only)
-- DESIGN.md §3.8 (the 16 ms frame budget paragraphs)
+- docs/design/03-graph-layout-algorithm.md §3.8 (the 16 ms frame budget paragraphs)
 - Code: 24's placement layer, 23's cache API, 21's resize event
 
 ## Scope
@@ -50,7 +50,7 @@ Not verified:
 - No one has looked at the iTerm2 output in a real iTerm2 (installed, but the builder cannot see the screen).
 - An actual Ghostty window resize was not driven (the clear path was). If Ghostty drops uploads on a real resize, `q=1` ENOENT retransmits next wake.
 
-Proposed change: DESIGN.md §3.8 lists terminal resize as a wholesale strip flush. The key already carries lane columns, so the flush is unnecessary; propose dropping resize from that list (`Flush::Resize` left in the API, unused by the app).
+Proposed change: docs/design/03-graph-layout-algorithm.md §3.8 lists terminal resize as a wholesale strip flush. The key already carries lane columns, so the flush is unnecessary; propose dropping resize from that list (`Flush::Resize` left in the API, unused by the app).
 
 User command (iTerm2 ≥ 3.5; forces the pixel tier, since iTerm2 with truecolor settles on Unicode by ADR-0016):
 

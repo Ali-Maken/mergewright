@@ -89,7 +89,7 @@ rounds cost 400 ms locally, 1 s over SSH.
 had missed: `tmux -V`. Its deadline was 2 s, which made the real worst case
 ~2.4 s. It is now the local probe budget, 200 ms, so the worst case before
 the first frame is 600 ms locally and 1.2 s over SSH, and only inside tmux.
-DESIGN.md §4.4 carries the current numbers.)
+docs/design/04-terminal-capability-detection.md §4.4 carries the current numbers.)
 
 Sharing one budget across both rounds would mean a slow first round leaves the
 second too little time to get an answer, and a passthrough that works would be
@@ -100,7 +100,7 @@ in the rare case for a correct answer in it.
 
 ## Consequences
 
-DESIGN.md §4.2, §4.3, §4.4 and §8.2 are edited to match, each change marked
+docs/design/04-terminal-capability-detection.md §4.2, §4.3 and §4.4 and docs/design/08-architecture.md §8.2 are edited to match, each change marked
 with this ADR's number. The code is unchanged. A reader who wants the reasons
 comes here; a reader who wants the current design reads DESIGN.md and finds
 only one story.

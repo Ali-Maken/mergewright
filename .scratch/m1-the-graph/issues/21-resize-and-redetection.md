@@ -8,7 +8,7 @@ Leaves runnable: yes — resizing and switching the terminal's theme are picked 
 Why: the pixel tier needs a trustworthy cell size after every resize, and a theme switched while Graft was in the background should not leave it painting the old one.
 
 ## Read first
-- DESIGN.md §4.5
+- docs/design/04-terminal-capability-detection.md §4.5
 - ADR-0012 (the tiny-terminal and text-budget findings only)
 - Code: 20's reply-waiter API, the cell-size provenance type in `crates/graft-term/src/detect/`, the SIGWINCH path in the event loop
 

@@ -8,7 +8,7 @@ Leaves runnable: yes — selecting a commit lights up its ancestry; `F` turns it
 Why: "where did this commit come from" should be answered by looking, not by reading.
 
 ## Read first
-- DESIGN.md §5.2 and §2.3 (selection keys only)
+- docs/design/05-visualization.md §5.2 and docs/design/02-keymap.md §2.3 (selection keys only)
 - Code: 08's paint attribute, 09's cursor, 14's protected-set parameter, public API of `crates/graft-graph/src/layout/stream.rs`
 
 ## Scope
@@ -43,6 +43,6 @@ One context, under ~80k tokens. Read only what "Read first" names. If you compac
 - Tests: 6 ancestry (incl. fold integration), thread paint, `F`/`Esc`, no-request selection change, eviction round trip, reanchor. Snapshots `selection__criss-cross-{truecolor,16}-{highlight,focus}`.
 - Shots: `docs/shots/16-*` (plain frame + bold/dim map). The user judges them by eye.
 
-**Judgement calls.** "Highlight" = bold thread and dim other lanes, always on while something is selected. "Focus" = that plus faded rows. DESIGN.md §5.2 asks for low-saturation colour; this is bold/dim only (KNOWN_GAPS).
+**Judgement calls.** "Highlight" = bold thread and dim other lanes, always on while something is selected. "Focus" = that plus faded rows. docs/design/05-visualization.md §5.2 asks for low-saturation colour; this is bold/dim only (KNOWN_GAPS).
 
 **Gaps.** `1` keeps the selection only within the first two screens of the other view (KNOWN_GAPS row updated). Thread limited to the window. Bold/dim only.

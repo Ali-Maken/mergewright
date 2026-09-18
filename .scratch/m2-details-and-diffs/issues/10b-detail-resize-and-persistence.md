@@ -63,7 +63,7 @@ Done:
 - Gates: `cargo fmt --check`, `cargo clippy --all-targets --message-format=short -- -D warnings`, `cargo test --quiet --workspace`, `cargo build --quiet --workspace --all-targets` all pass.
 
 Not done (KNOWN_GAPS, `m2-details-and-diffs/10b`):
-- `?` help screen: still no `?`-key handler or help-overlay surface anywhere. Confirmed again, independently. Needs its own ticket (DESIGN.md §1.16).
+- `?` help screen: still no `?`-key handler or help-overlay surface anywhere. Confirmed again, independently. Needs its own ticket (docs/design/01-view-mockups.md §1.16).
 - `docs/shots/m2-detail-keys-resize.txt` capture not regenerated even though the `<> resize` hint changes what's on screen while the pane is shown — ran out of budget for a pty capture this session.
 - Map-view no-op guard: still correctly out of scope (no `Map` screen variant yet, ticket 19).
 

@@ -9,7 +9,7 @@ Why: "what have I not committed" is a daily question, and at 16 colours the pane
 
 ## Read first
 - PROMPT.md §1.3 (uncommitted changes paragraph only)
-- DESIGN.md §1.1 (the mockup's top row) and §4.6
+- docs/design/01-view-mockups.md §1.1 (the mockup's top row) and docs/design/04-terminal-capability-detection.md §4.6
 - KNOWN_GAPS.md M0 row "Dark chrome flattens at 16 colours"
 - Code: `crates/graft-ui/src/theme/` (depth mapping), any existing status read in `crates/graft-git/src/` (grep `status`), 10's row widget
 
@@ -112,7 +112,7 @@ session (do not re-derive, use directly):
    vec![(lane, head_row.commit.id)]` so the connector line draws down into
    HEAD, `incoming: vec![]`), then override subject/author/when/sha in
    `GraphEntry` to be blank/summary-text only (author/when/sha columns stay
-   blank per DESIGN.md §1.1's mockup — only the glyph + a summary subject
+   blank per docs/design/01-view-mockups.md §1.1's mockup — only the glyph + a summary subject
    line render). This reuses all of `GraphColumn`'s existing connector-line
    math for free but fabricates a `Commit`.
    (b) add a separate `GraphView.uncommitted: Option<UncommittedRow>` field

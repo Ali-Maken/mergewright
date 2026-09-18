@@ -1,7 +1,7 @@
 # Folded edges are stubs, the count leaves the rows, the lane cap follows width
 
 Status: **Accepted** (user, 2026-09-13, judged from the file). Was: Proposed (planner-fable, 2026-09-13; needs the user's approval at
-the M1 graph design checkpoint). Supersedes DESIGN.md §3.5's third and fourth
+the M1 graph design checkpoint). Supersedes docs/design/03-graph-layout-algorithm.md §3.5's third and fourth
 bullets and the "default 8" in §3.2 step 5; rewords PROMPT.md §1.2 "compress
 them behind a `+N` indicator that expands on demand".
 
@@ -43,7 +43,7 @@ What a fold *draws* changes:
    folded, no rail and no count (a status field shows only when there is
    something to report).
 3. **The cap follows width.** `graph.max_lanes` unset means: 8 lanes under
-   100 columns, 10 at 100–159, 12 at 160 and above — DESIGN.md §1's
+   100 columns, 10 at 100–159, 12 at 160 and above — docs/design/01-view-mockups.md §1's
    breakpoints. The ceiling is 12 because the lane palette has 12 hues;
    past that, colour stops telling lanes apart, so more lanes add width
    without meaning. An explicit `graph.max_lanes = N` holds at every width.
@@ -63,11 +63,11 @@ a pinned column or a column with a node in the window) is unchanged.
 - The header count is the text tier's fold (visible rows). The pixel tier
   plans one fold across every strip drawn (KNOWN_GAPS); the two may differ
   by a lane or two at strip edges. Accepted; the header is the screen's.
-- Clicking the rail to expand (DESIGN.md §3.5) is not built; `+` is. Logged
+- Clicking the rail to expand (docs/design/03-graph-layout-algorithm.md §3.5) is not built; `+` is. Logged
   in KNOWN_GAPS by ticket 39.
 - Config: `Graph::max_lanes` becomes `Option<usize>`; `DEFAULT_MAX_LANES`
   (8) is the narrow-width value. Values below 2 stay a parse error.
-- The curve label (merged branch name, DESIGN.md §3.4) has no room on a
+- The curve label (merged branch name, docs/design/03-graph-layout-algorithm.md §3.4) has no room on a
   stub. The label is recovered from the merge's subject, which sits on the
   same row, so nothing is lost on a folded edge.
 

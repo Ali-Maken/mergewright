@@ -5,10 +5,10 @@ Build with: **Sonnet** (medium) — event plumbing over existing selection
 Blocked by: 16
 Leaves runnable: yes — wheel scrolls, click selects, hover shows a tooltip.
 
-Why: mouse is first-class (DESIGN.md §2.15), and everything the mouse shows must also be reachable from the keyboard.
+Why: mouse is first-class (docs/design/02-keymap.md §2.15), and everything the mouse shows must also be reachable from the keyboard.
 
 ## Read first
-- DESIGN.md §2.15 and §2.3 (the tooltip key, if listed)
+- docs/design/02-keymap.md §2.15 and §2.3 (the tooltip key, if listed)
 - Code: the event loop's input handling in `crates/graft/src/event_loop/`, 16's selection, the pty harness M0 used for termios checks
 
 ## Scope
@@ -37,7 +37,7 @@ after it, I resumed by writing the tests, running the gates, adding the
 was left unfinished — the ticket is complete — but flagging per CLAUDE.md.
 
 Design/judgement calls made and not pre-specified in DESIGN.md:
-- **Keyboard tooltip key: `Enter`.** DESIGN.md §2.3 only reserves it for a
+- **Keyboard tooltip key: `Enter`.** docs/design/02-keymap.md §2.3 only reserves it for a
   sidebar row, which M1 has none of. Free on the graph pane.
 - **Wheel moves the viewport only** (`History::scroll`, changes `top`, not
   `cursor`) — distinct from `j`/`k`, matching every other terminal pager.

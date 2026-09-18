@@ -11,7 +11,7 @@ Finding (ticket 39 notes, KNOWN_GAPS "A selection on a merge train pins its whol
 ## Read first
 - `docs/adr/0025-…` (all of it; short)
 - `docs/adr/0022-…` Decision 2–3 (the rail, the count, the cap)
-- DESIGN.md §3.5 (what this changes: the "ancestry path" bullet), §5.2 first two bullets (the thread is a paint-time lens)
+- docs/design/03-graph-layout-algorithm.md §3.5 (what this changes: the "ancestry path" bullet), docs/design/05-visualization.md §5.2 first two bullets (the thread is a paint-time lens)
 - Ticket 14 "NOTES" line 42 (the current rank: untouched-first, earliest last touch, ties rightmost; dropped columns)
 - Ticket 16 notes lines 39–41 (`Ancestry`, how thread columns reach `Compaction.pinned`)
 - Ticket 39 "NOTES" (the fold's output shape; the captures and script `docs/shots/39-capture.py`)

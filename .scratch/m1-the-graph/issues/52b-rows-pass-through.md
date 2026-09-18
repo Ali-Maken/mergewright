@@ -10,7 +10,7 @@ Split out of 52 on 2026-09-14 (planner-fable, spec-only pass): 52 made the layou
 ## Read first
 - Ticket 52 "Decision" (why merge identity is deferred; the bound on `merge_reads`) and "Signatures"
 - ADR-0026 "Decision" item 4, "Options considered → Churn", "What it costs"
-- DESIGN.md §3.6 (streaming, row cache with eviction, checkpoints, cold deep jump)
+- docs/design/03-graph-layout-algorithm.md §3.6 (streaming, row cache with eviction, checkpoints, cold deep jump)
 - Ticket 46 table rows mapped pages, `RepoNodes::node`, allocator retained; ticket 27b "Headline: RSS is not heap"
 - `crates/graft-graph/MAP.md` (`layout::stream`, `row`), `crates/graft/MAP.md` (`history` `serve`/`Views`, `History::outstanding`)
 
@@ -21,7 +21,7 @@ In:
 - `rows(range)` over a passed-through or evicted range rebuilds from the nearest checkpoint (replaying `links`), materialises only the chunks asked for, checks every rebuilt chunk's fingerprint (`RebuildDiffers` on mismatch, as today).
 - `Resident` gains `passed_through` (rows laid out never materialised); `Work` gains `links_read`.
 - `WalkSource::read` batched if the measurements below want it (one `read` per chunk should be a few ms; if per-handle `read_commit` shows in the `G` number, batch it and say so).
-- MAP.md for `graft-graph`; DESIGN.md §3.6 amended in one paragraph (what a pass-through chunk is; what a rebuild reads).
+- MAP.md for `graft-graph`; docs/design/03-graph-layout-algorithm.md §3.6 amended in one paragraph (what a pass-through chunk is; what a rebuild reads).
 
 Out: the walk's internals; the table; the strip cache; search (still reads whole commits, ADR-0026 Consequences); anything in 52.
 
@@ -47,7 +47,7 @@ pub fn fingerprint(shapes: &[RowShape]) -> Fingerprint;   // pub(crate) is fine;
 - [x] Every existing `graft-graph` test and every corpus snapshot green, unchanged.
 - [x] `graft::history` tests green; `frames::` rows-on-hand check still passes in release (a `PageDown` at the frontier must not wait on a rebuild: the materialisation window covers the viewport plus a screen either side, matching `History::outstanding`'s ask policy).
 - [x] Measured and written in the ticket (release, `examples/budgets`, 3 runs): git/git cg and no-cg peak RSS (was 219–226 MiB), `G` time; 1M cg peak RSS and odb objects read during `G` (expected: only the chunks shown plus `merge_reads`, which must not grow with the fixture: compare git/git's and 1M's `merge_reads` for the same viewport and say so).
-- [x] MAP.md and DESIGN.md §3.6 updated.
+- [x] MAP.md and docs/design/03-graph-layout-algorithm.md §3.6 updated.
 
 ## Gates
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo clippy --all-targets --features heavy-tests -- -D warnings` · `cargo test`; heavy tier once, alone, at the end.
@@ -61,7 +61,7 @@ Done (seam a):
 - `layout::cache`: fingerprint over `&[RowShape]` (`fingerprint`, running per growing frontier chunk); every chunk laid out keeps `LaidOut { print, materialised }`; eviction drops rows only; `check` / `admit` split; `renote` restores a chunk cut back by `truncate`.
 - `StreamingLayout::advance`: materialises a frontier batch only if it starts a chunk meeting viewport ± `buffer_rows`, or continues a held chunk; otherwise passes through.
 - `rows` → `rebuild(wanted chunks)`: one replay from the nearest checkpoint, every replayed chunk fingerprint-checked, adjacent wanted chunks materialised as one batch (`admit_run`).
-- `Resident.passed_through`, `Work.links_read`; `RowShape: Hash`. MAP.md + DESIGN.md §3.6 paragraph.
+- `Resident.passed_through`, `Work.links_read`; `RowShape: Hash`. MAP.md + docs/design/03-graph-layout-algorithm.md §3.6 paragraph.
 - Tests: determinism on the 5k pair vs materialise-everything and `layout()` (odd budget 37, partial chunks pass through); cold jump hydrated ≤ 2×chunk+buffer; deep read merge_reads ≤ merge lanes open at the row. Corpus test asserts pass-through then 0 after the scroll.
 
 Existing tests changed (premise removed by this ticket, not regressions):

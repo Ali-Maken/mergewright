@@ -7,7 +7,7 @@ Blocked by: 49
 
 ## Read first
 - ADR-0026 "Decision" item 2, "The 2× no-commit-graph `EmittedOrder`"
-- DESIGN.md §3.1 (`EmittedOrder`, `LayoutCursor`), §3.6 (checkpoints, rebuild, promotion paragraphs)
+- docs/design/03-graph-layout-algorithm.md §3.1 (`EmittedOrder`, `LayoutCursor`), §3.6 (checkpoints, rebuild, promotion paragraphs)
 - Ticket 46 table rows `EmittedOrder::note`, `Included`, `Views.promoted`
 - `crates/graft-graph/MAP.md` (`layout`, `layout::order`, `layout::stream`, `inclusion`), `crates/graft/MAP.md` (`history`: `Views`, `Promote`, `topological_order`, `Open`)
 

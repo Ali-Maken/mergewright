@@ -33,8 +33,7 @@ work on Linux and silently do nothing on the Mac the user lives on.
 
 ## Rejected
 
-- **`+`/`-`**: `+` is already "unfold every lane" on the graph (DESIGN.md
-  §3, TESTING.md); rebinding it while the pane is shown would make one key
+- **`+`/`-`**: `+` is already "unfold every lane" on the graph (docs/design/03-graph-layout-algorithm.md §3, TESTING.md); rebinding it while the pane is shown would make one key
   mean two things depending on state.
 - **`Ctrl+arrows`**: taken by macOS, above.
 - **`Alt+←/→`/`Alt+↑/↓`**: free (DESIGN.md uses `Alt+↑/↓` only inside the
@@ -45,7 +44,7 @@ work on Linux and silently do nothing on the Mac the user lives on.
 
 ## Consequences
 
-- `<`/`>` were unbound everywhere (DESIGN.md §2.2–2.5 keymap, M1 keys, every
+- `<`/`>` were unbound everywhere (docs/design/02-keymap.md §2.2–2.5 keymap, M1 keys, every
   M2 spec, source): no collision, no rebind.
 - The keys are listed with the pane's other key hints (`w W v [ ]`) and in
   `?` context help, since `<`/`>` for resize is not a convention users guess.

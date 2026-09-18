@@ -5,12 +5,12 @@ can't quietly erode. That's true but incomplete: cycle-rejection only stops
 `ui` from depending on something that depends back on `ui`. It does nothing
 about a direct, acyclic edge that still breaks the intended layering — `ui`
 adding `git` as a path dependency compiles cleanly, no cycle, and yet
-violates "`ui` never imports `git` or `ops`" (DESIGN.md §8.1). Cargo has no
+violates "`ui` never imports `git` or `ops`" (docs/design/08-architecture.md §8.1). Cargo has no
 opinion on layering, only on cycles, so the two checks aren't the same
 thing and only one of them is automatic today.
 
 Graft closes that gap with a fast-tier test, not a review habit: parse
-`cargo metadata`'s dependency graph and assert it matches DESIGN.md §8.1's
+`cargo metadata`'s dependency graph and assert it matches docs/design/08-architecture.md §8.1's
 edge set exactly — no more edges, no fewer. It lives in `app`'s test suite,
 since `app` is the only crate that already depends on everything it needs
 to inspect, and ships as an M0 ticket alongside the workspace scaffold.

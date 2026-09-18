@@ -13,7 +13,7 @@ geometry check. Both tiers were then confirmed to actually draw in a real
 terminal — Ghostty at the step-3 checkpoint, iTerm2 by the user on
 2026-09-12 (see the Correction and the iTerm2 section below).
 
-Decision: **the pixel-graph approach in DESIGN.md §3.8 stands.** Scrolling
+Decision: **the pixel-graph approach in docs/design/03-graph-layout-algorithm.md §3.8 stands.** Scrolling
 is a placement-crop on Kitty and a full re-send on iTerm2, and text/pixel
 alignment comes from placing images into a *cell* rectangle, not from
 pixel-perfect cell-size knowledge.
@@ -31,7 +31,7 @@ pixel-perfect cell-size knowledge.
   `a=p` with a source rect whose `y` moves by exactly `cell_h` per scroll
   step. Captured stream confirms: 168,000 RGBA bytes uploaded once, then
   five placements with `y = 0,20,40,60,40` for `j j j k`. This is
-  DESIGN.md §3.8's image-reuse idea working in miniature.
+  docs/design/03-graph-layout-algorithm.md §3.8's image-reuse idea working in miniature.
   ⚠ *Overstated — the capture proved the bytes were emitted, not that
   anything rendered. In Ghostty the pattern as written drew nothing. See
   Correction.*
@@ -47,7 +47,7 @@ pixel-perfect cell-size knowledge.
 - **Kitty detection by round-trip, not env.** A dummy `a=q` query fenced
   with DA1 (`CSI c`): if `ESC _ G` comes back before the DA1 reply, the
   tier is real. iTerm2 is the one tier detected by env alone
-  (`TERM_PROGRAM`), per DESIGN.md §4.1.
+  (`TERM_PROGRAM`), per docs/design/04-terminal-capability-detection.md §4.1.
 - Transparent RGBA canvas with overwrite (no blending): merge rings punch
   through to the terminal background, as ADR-0003 requires.
 - DEC 2026 synchronized-output brackets around every frame; placement
@@ -75,7 +75,7 @@ pixel-perfect cell-size knowledge.
 
 ## What M1 must do differently
 
-- Fixed-height strips with ids and LRU eviction (DESIGN.md §3.8), never
+- Fixed-height strips with ids and LRU eviction (docs/design/03-graph-layout-algorithm.md §3.8), never
   one whole-history image; the terminal retains every uploaded pixel.
 - One input-mux task owns stdin: probe replies routed to the prober,
   everything else preserved as key events. No typeahead loss.
@@ -217,7 +217,7 @@ climbing with the scroll. **Numbers that outlive their frame lie**; a
 measurement you cannot attribute to one frame is not a measurement.
 
 Retransmit-on-resize stays over budget (~32–41 ms) and is left alone here:
-it is one frame per resize, and M1's fixed-height strips (DESIGN.md §3.8)
+it is one frame per resize, and M1's fixed-height strips (docs/design/03-graph-layout-algorithm.md §3.8)
 change the shape of that cost anyway.
 
 ### Defect 2: `MAX_VIEW = 24`

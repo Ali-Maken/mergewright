@@ -78,7 +78,7 @@ Docs only, ~120 changed lines. ≤ 16 tool calls: open each file at the cited li
   rows.
 - DESIGN.md: touched only the two rows an existing ADR names (ADR-0023's
   consequence "§2.3 `Enter` → peek (M1) / open details (M2)"; ADR-0028's
-  "Changes ... DESIGN.md §2.2–2.5 keymap" for `<`/`>`). Left `x`, `Tab`, `L`
+  "Changes ... docs/design/02-keymap.md §2.2–2.5 keymap" for `<`/`>`). Left `x`, `Tab`, `L`
   and the rest of the design note's Proposed-changes keymap row alone — no
   ADR names them individually, per this ticket's own scope line.
 - `cargo test --quiet`: 460+ tests across the workspace, 0 failed, 7 ignored

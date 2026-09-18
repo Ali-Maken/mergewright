@@ -9,7 +9,7 @@ Split from 56 (conductor, 2026-09-14) along "Spec-only pass 2 → Remaining here
 ## Read first (only these)
 - `56-memory-curve-acceptance.md`: "Scope" (the command, the columns, the offer, the jumps, context guard), "Signatures", "Gates", "Spec-only pass 2 → Remaining here" items 1, 3, 4, 5.
 - Result sections of 59b, 60 and 61 (their numbers are what the re-run confirms).
-- TESTING.md "The heavy tier" and "Memory curve to a million commits (m1/46)"; DESIGN.md §3.1 `EmittedOrder` and `walker_state` lines, §3.6 the "grows with history" paragraph; ADR-0026 status line only.
+- TESTING.md "The heavy tier" and "Memory curve to a million commits (m1/46)"; docs/design/03-graph-layout-algorithm.md §3.1 `EmittedOrder` and `walker_state` lines, §3.6 the "grows with history" paragraph; ADR-0026 status line only.
 - `scripts/memory-curve.sh`; `crates/graft-fixtures/MAP.md`.
 
 ## Scope
@@ -23,7 +23,7 @@ In:
    - heavy tier: pass/fail count, names of any red tests;
    - perf run: each `frames::` budget number next to its bar.
    Bars go in a column **copied from TESTING.md/ADR-0026 as written**, never computed or changed; the no-cg heap row's bar column reads "live ≤ 100 (ADR-0026 amendment 2); footprint: reported, floor ~140".
-4. Remaining items 3–4, mechanical parts only: KNOWN_GAPS rows listed in 56's item 3 get their **numbers** updated (leave each row's verdict/expiry sentence to 56d; mark it `verdict: 56d`); TESTING.md curve table replaced with the new numbers; DESIGN.md §3.1/§3.6 one sentence each with the after numbers.
+4. Remaining items 3–4, mechanical parts only: KNOWN_GAPS rows listed in 56's item 3 get their **numbers** updated (leave each row's verdict/expiry sentence to 56d; mark it `verdict: 56d`); TESTING.md curve table replaced with the new numbers; docs/design/03-graph-layout-algorithm.md §3.1/§3.6 one sentence each with the after numbers.
 5. Context guard: all run output to `target/56c/` and `docs/shots/`; never paste curves or logs into your context beyond the numbers you copy.
 
 Out: pass/fail verdicts, the `## For the M1 review` section, ADR-0026's status line, acceptance boxes in 56, any fix, any bar.

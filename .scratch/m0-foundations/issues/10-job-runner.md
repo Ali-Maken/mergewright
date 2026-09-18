@@ -9,7 +9,7 @@ Why: "the UI thread never waits on a Job" (CONTEXT.md) is a structural promise; 
 ## Read first
 - CONTEXT.md ("Job") and ARCHITECTURE.md ("The shape")
 - PROMPT.md Technology ("Concurrency" line)
-- DESIGN.md §8.3
+- docs/design/08-architecture.md §8.3
 
 ## Goal
 `graft` (app): a worker pool executing `Command`s as cancellable `Job`s off the UI thread, reporting results back as `Event`s.
@@ -38,7 +38,7 @@ Out:
 - `crates/graft/src/jobs/mod.rs`: `JobRunner` (pool, FIFO channel queue, `MAX_WORKERS = 4`), `Cancel` token, `Outcome`, the `JobEvents` and `Dispatch` seams, and `shutdown(grace) -> Shutdown::{Clean, Stalled{workers}}` — a bounded `Condvar` wait, never a `join` that can hang. Every job ends in exactly one event; the five outcomes are tabulated in the module doc.
 - `crates/graft/src/crash.rs`: `catching()` — `catch_unwind` at the worker boundary with Graft's crash hook stood down for the duration, so a job's panic still writes a crash report but does **not** restore the terminal out from under a live screen. The report's path rides back in `JobFailure::Panicked { report }`.
 - `crates/graft-core`: `JobFailure` (`Failed(String)` / `Panicked { message, report }`) and a new `Event::JobCancelled`. Ticket 09's `JobFailed(JobId, core::error::Error)` could not carry a panic or a git error, and `core` may not name `git`/`ops` error types, so a failure crosses as rendered text.
-- `crates/graft/src/update.rs`: `AppState.repo_path`; `Ctrl+R` (DESIGN.md §2.1 manual refresh) emits `Command::OpenRepository`; job events reach the status line.
+- `crates/graft/src/update.rs`: `AppState.repo_path`; `Ctrl+R` (docs/design/02-keymap.md §2.1 manual refresh) emits `Command::OpenRepository`; job events reach the status line.
 - `crates/graft/src/event_loop/mod.rs`: dispatches every command from `update` to the runner and returns immediately, opens the cwd's repository at startup, shuts the pool down after the terminal is restored and reports a stalled worker on stderr.
 
 ## Verified
