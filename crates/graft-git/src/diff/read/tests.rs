@@ -519,3 +519,48 @@ fn a_touched_but_unchanged_file_is_not_listed_as_modified() {
         "nothing changed, yet the pane would list {listed:?}"
     );
 }
+
+/// M2 is a read-only milestone: listing the working tree must leave
+/// `.git/index` byte for byte as it was. Porcelain `git diff` does not —
+/// it refreshes the stat cache and writes the index, taking `index.lock`
+/// on the way, which can make the user's own `git commit` fail — and
+/// neither `GIT_OPTIONAL_LOCKS=0` nor `--no-optional-locks` stops it
+/// (only `git status` honours those). The index bytes are the assertion
+/// because they are the thing that must not change; the stat-dirty setup
+/// is what makes a refresh tempting in the first place.
+#[test]
+fn listing_the_working_tree_does_not_write_the_index() {
+    let scratch = graft_fixtures::copy_into_temp(Shape::Linear);
+    let shared = SharedRepo::open(scratch.path()).expect("the fixture opens");
+    let handle = shared.handle();
+
+    let tracked = scratch.path().join("log.txt");
+    let content = std::fs::read(&tracked).expect("the tracked file reads");
+    std::fs::write(&tracked, &content).expect("the same bytes go back with a new mtime");
+
+    let plumbing = graft_fixtures::git::run(scratch.path(), &["diff-index", "--raw", "HEAD"])
+        .expect("git diff-index runs");
+    assert!(
+        !plumbing.is_empty(),
+        "the file is not stat-dirty, so nothing would want to refresh the index"
+    );
+
+    let index = scratch.path().join(".git").join("index");
+    let before = std::fs::read(&index).expect("the index reads");
+
+    list_files(
+        &handle,
+        &DiffSpec::WorkingTreeVsHead,
+        &DiffOptions::default(),
+        &(),
+    )
+    .expect("list_files succeeds");
+
+    let after = std::fs::read(&index).expect("the index reads again");
+    assert!(
+        before == after,
+        "listing the working tree rewrote .git/index ({} bytes -> {} bytes)",
+        before.len(),
+        after.len()
+    );
+}

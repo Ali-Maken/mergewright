@@ -964,6 +964,42 @@ fn radar_state_with_empty_default_chain() -> crate::update::radar::RadarState {
     }
 }
 
+/// M2 review round 2, Major 3: the `⚠` on the graph row does not need the
+/// pane. Round 1a made the probe follow the selection with the pane closed;
+/// this is the other half — that the marker then paints on the merge's own
+/// row, and on no other. TESTING.md's graph stop 8 asserts exactly this, so
+/// it must rest on something observed rather than on a `Command` being
+/// emitted.
+#[test]
+fn the_evil_marker_paints_on_the_graph_row_with_the_pane_closed() {
+    use crate::update::detail::Loading;
+    use graft_ops::mistake_radar::probes::EvilVerdict;
+
+    let mut state = evil_merge_state();
+    assert!(!state.detail.shown, "the pane starts closed");
+    state.detail.evil_at = Some(oid(3));
+    state.detail.evil = Loading::Ready(EvilVerdict::Evil {
+        files: vec![b"evil.txt".to_vec()],
+    });
+
+    let screen = draw(&state, 100, 16);
+    let row = |subject: &str| {
+        screen
+            .lines()
+            .find(|line| line.contains(subject))
+            .unwrap_or_else(|| panic!("no row for {subject}:\n{screen}"))
+            .to_owned()
+    };
+    assert!(
+        row("Merge branch 'feature'").contains('⚠'),
+        "the merge row carries no marker:\n{screen}"
+    );
+    assert!(
+        !row("Ship the release notes").contains('⚠'),
+        "an ordinary row carries a marker:\n{screen}"
+    );
+}
+
 /// Regenerates `docs/shots/m2-evil-merge.txt` (m2-details-and-diffs/14).
 ///
 /// `#[ignore]`d: it writes a file. Run it by hand with

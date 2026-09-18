@@ -626,6 +626,12 @@ prints. They are what `.scratch/m1-the-graph/pty-gallery.py` and
 `pty-gallery-38.py` saw, not what a person saw: the user judges by eye
 (ticket 35's last box).
 
+**Stale, knowingly (M2 review round 2, Major 3):** `35-evil-merge-*` predates
+the Mistake Radar, so it shows no `⚠` where stop 8 above now says one
+appears; and `pty-gallery.py` no longer walks the gallery (its footer never
+arrives), so no M1 capture can be retaken until that script is repaired.
+Judge stop 8 by running the walk, not by that file.
+
 ### Reading the entries
 
 The fixture facts come from `crates/graft-fixtures/src/shapes/`: subjects,
@@ -703,10 +709,16 @@ Press `F3` at any stop: the text right of the graph must not move.
    itself never bends. `1`: main shows both its rows, unchanged.
 8. **evil-merge** — 4 commits, a normal merge: `Merge branch 'alpha'` (`◆`,
    `[◆ main]`) in lane 0, one curve in from `alpha: work` (`[alpha]`) in
-   alpha's colour, `Advance main` below in lane 0. Nothing on screen marks
-   the merge as evil (the extra `evil.txt` is a tree fact, Mistake Radar's
-   job in M2): this stop is the control for "an ordinary merge looks
-   ordinary".
+   alpha's colour, `Advance main` below in lane 0. The cursor starts on the
+   merge and the Mistake Radar probes the selected row with the pane closed,
+   so a `⚠` appears beside the merge's `◆` a moment after the stop paints:
+   the merge invented `evil.txt`, which neither side touched. No other row
+   carries a marker, and nothing else about the merge draws differently —
+   the shape is stop 3's. Stop 10 of the **details** walk opens the same
+   finding in the pane.
+
+   *Until round 1e the text here said nothing marks the merge, which was
+   true only before the probe followed the selection (M2 review round 1a).*
 9. **accidental-pull-merge** — 4 commits. The top row is a merge (`◆`,
    `[◆ main]`) whose subject starts `Merge branch 'main' of
    https://example.invalid/graft.git into main`; its curve comes from `Their
@@ -864,7 +876,12 @@ Each stop restarts the run, so the prelude is pressed once per visit.
 Captures: `docs/shots/m2-<nn>-<stop>-<keys>-<WxH>-<tier>.txt`, every stop at
 160x40 and 80x24 Unicode, stops 1, 6, 7, 15, 16 also at 100x30 Unicode and
 80x24 ASCII (`.scratch/m2-details-and-diffs/pty-gallery-m2.py`). They are
-what pyte saw, not what a person saw: **the user judges by eye**. Two
+what pyte saw, not what a person saw: **the user judges by eye**.
+`m2-10-evil-merge-enter-*` predates the probe following the selection (round
+1a): at 160x40 it already shows the `⚠` on the merge row, but with the pane
+**open**, which is the only case that ever worked; the pane-closed marker
+stop 8 now describes has no capture in either group. Retake both with the
+script above when the walk is next run. Two
 capture-side facts to know: at 80x24 the pane is a tab strip and the
 `Detail` tab hides the banner, so those files name their stop only in their
 first line; and the Map view (stop 15) draws no banner at any size — its

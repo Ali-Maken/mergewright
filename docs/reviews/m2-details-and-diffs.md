@@ -676,3 +676,98 @@ carries a count.
 - **At scale:** now holds on the numbers on record.
 
 Verdict: **the promise holds** on the fixtures and on real repositories of any size the tests reach, with two narrow false claims (index write, rename conflicts) and one contradicted acceptance stop to close. No Critical; M2 can ship on the fixes above.
+
+## Fixes, round 1e (2026-09-19, builder-opus)
+
+The reviewer's findings above are untouched; this round is the three Majors
+of Round 2. Full gates green (`cargo fmt --check`, `cargo clippy
+--all-targets -D warnings`, `cargo build`, `cargo test` — 1216 passed, 0
+failed, 9 ignored; was 1209). No heavy tier or perf run: nothing here is on
+the frame path, and round 2's figures stand.
+
+**Every git claim in this round was checked in a throwaway repository on
+git 2.54.0 (Apple) before any code changed**, which is what both earlier
+rounds skipped.
+
+**R2 Major 1 — fixed at the cause.** Confirmed the reviewer's finding first:
+with a stat-dirty file, `GIT_OPTIONAL_LOCKS=0 git --no-optional-locks diff
+--raw --numstat -z -M -C HEAD` leaves `.git/index` **changed** (`cmp`
+differs), while the same arguments to `diff-index` leave it **identical**.
+So `list_files_working_tree` is back on plumbing `diff-index --raw --numstat
+-z -M -C -r HEAD`, and Graft no longer writes the user's index or takes
+`index.lock` on a working-tree listing. Cost to the user: none — the listing
+is the same, and one class of "index.lock exists" failure in their own
+terminal is gone.
+
+The M4 bug it was meant to solve is filtered instead, but **not in the shape
+Round 2 proposed**: on this git, `--numstat` does not print a `0 0` record
+for a stat-dirty file, it prints *no record at all* (`--raw` names it,
+`--numstat` does not). A filter on `0 0` would therefore never have fired,
+and the positional raw/numstat join would have failed with a parse error —
+which is exactly what the first run of the existing test showed. So the two
+streams are now walked together in step (`join` in `diff/file_list.rs`), and
+the new `parse_worktree_file_list` drops a `--raw` record that has no
+`--numstat` record beside it *and* is shaped like the stat cache lying (`M`,
+one mode on both sides, all-zero new id). Every other gap is still a
+`ParseError`, and `parse_file_list` (tree-to-tree) accepts no gap at all.
+`-w` is unaffected: `diff-index -w` reads content itself, prints real ids,
+and still does not write the index (checked).
+
+*Verified:* `listing_the_working_tree_does_not_write_the_index` asserts the
+`.git/index` bytes are identical before and after `list_files` on a
+stat-dirty fixture — the thing that must not change, not a proxy for it.
+Round 1c's `a_touched_but_unchanged_file_is_not_listed_as_modified` still
+passes. Four parser tests cover the drop and the three things that must
+survive it (mode change, binary `- -`, a missing record for a real status is
+still an error). The two false doc comments (`run.rs`, `diff/read.rs`) now
+say what git does.
+
+**R2 Major 2 — fixed at the cause.** Reproduced first: base `foo`, side A
+renames it to `bar` and edits line 1, side B edits line 1 of `foo`; git
+conflicts in `bar`, resolved by hand. With `--no-renames` the sides' sets
+are `{foo, bar}` and `{foo}`, their intersection is `{foo}`, and the remerge
+diff names `bar` — hence `Evil { ["bar"] }`. Note that adding both names of
+a rename to each side's set is *not* enough on its own (`bar` is still
+outside the intersection): the rename has to carry the verdict. So
+`changed_paths` now reads each side with `diff-tree -r -M -C --name-status
+-z`, returns `SideChanges { changed, renames }`, and `split_remerge_files`
+intersects the two `changed` sets and then, for every rename `old -> new` on
+either side, adds `new` when `old` is in the intersection. Cost to the user:
+the probe's existing blind spot widens the same way — an evil edit to the
+post-rename path lands in `Resolved` — which is the direction it already
+errs in for every file both sides touched, and is documented on the
+function.
+
+*Verified:* new `a_hand_resolved_rename_conflict_is_not_an_evil_merge`
+builds that repository and asserts `Resolved { ["renamed.txt"] }`; it uses a
+40-line file because git's 50% similarity threshold does not find the rename
+in a 2-line one (the first attempt at the fixture produced modify/delete
+instead of a rename conflict, and would have proved nothing). Round 1c's
+`a_hand_resolved_conflict_is_not_an_evil_merge` and the fixture test
+`the_evil_fixture_names_the_file_the_merge_invented` both still pass.
+`scripts/m2-fix-1c-evil-audit.sh` carries the same rule in shell (checked
+against the rename repository by hand: it agrees). **Not rerun** — the audit
+spawns four git processes per merge over git/git and its header forbids
+running it from an agent's context, so the counts in
+`docs/perf/m2-review-fix-1c.txt` are still the old rule's and need a rerun.
+
+**R2 Major 3 — text corrected; one capture knowingly left stale.**
+TESTING.md graph stop 8 and `gallery.rs`'s caption said "nothing marks the
+merge"; they now say a `⚠` appears beside the merge's `◆` once the probe
+lands, that no other row carries one, and that the shape is otherwise stop
+3's. Before writing that, the claim was made observable: new
+`the_evil_marker_paints_on_the_graph_row_with_the_pane_closed` draws the
+state with the pane **closed** and an `Evil` verdict in, and asserts the
+`⚠` is on the merge's row and not on an ordinary one. That is the half
+round 1a never showed (its test only proved a `Command::EvilProbe` was
+emitted).
+
+*Captures, stale and labelled as such:* `35-evil-merge-{ascii,unicode}` have
+no `⚠` at all (M1 era) and cannot be retaken — `.scratch/m1-the-graph/
+pty-gallery.py` no longer walks the gallery, as the reviewer found.
+`m2-10-evil-merge-enter-160x40-unicode` does show the `⚠`, but with the pane
+open, which always worked; the pane-closed marker has no capture in either
+group. Retaking needs `pyte`, which is not importable in this environment,
+so no new capture was taken and none was faked. TESTING.md now says all of
+this in place of the old assertion. **The user judges stop 8 by eye on the
+next walk.**

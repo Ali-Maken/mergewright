@@ -141,8 +141,8 @@ const CORPUS: [(Shape, &str, &str, &str); 21] = [
     (
         Shape::EvilMerge,
         MERGES,
-        "an ordinary merge of alpha into main: ◆ in lane 0, one curve in",
-        "the control: evil is a tree fact (M2), so it must look like stop 3",
+        "◆ in lane 0, one curve in, and a ⚠ on the merge once the probe lands",
+        "the only graph stop with a ⚠; the radar probes the selected row",
     ),
     (
         Shape::AccidentalPullMerge,

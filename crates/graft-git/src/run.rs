@@ -9,8 +9,11 @@
 //!
 //! - **Environment.** The user's own, plus `GIT_TERMINAL_PROMPT=0` (never
 //!   block on a credential prompt nobody can see), `LC_ALL=C` (messages Graft
-//!   can match) and `GIT_OPTIONAL_LOCKS=0` (a read never takes the index lock
-//!   from under the user's own git). The user's config is kept on purpose:
+//!   can match) and `GIT_OPTIONAL_LOCKS=0`. That last one is a request, not
+//!   a guarantee: only `git status` honours it, and porcelain `git diff`
+//!   refreshes and rewrites `.git/index` regardless (verified on git 2.54).
+//!   Staying out of the user's index is the caller's job — read with
+//!   plumbing, which does not refresh. The user's config is kept on purpose:
 //!   their diff settings must apply.
 //! - **Pipes.** stdin is fed from its own thread and stdout and stderr are
 //!   drained on two more, so a child blocked writing one pipe can never

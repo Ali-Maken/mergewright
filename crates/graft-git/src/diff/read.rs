@@ -14,7 +14,7 @@ use raw::{ensure_head, resolve_sides, split_nul, split_raw_and_numstat, with_sid
 
 use super::{
     FileDiff, FileEntry, FileList, FileStatus, ParseError, Truncated, parse_file_list,
-    parse_unified,
+    parse_unified, parse_worktree_file_list,
 };
 use crate::repo::RepoHandle;
 use crate::run::{GitArg, GitInvocation, RunError, Stop};
@@ -144,16 +144,16 @@ pub fn list_files(
     parse_file_list(&raw, &numstat).map_err(DiffError::Parse)
 }
 
-/// The working tree against `HEAD`: tracked changes from `git diff HEAD`,
-/// plus untracked files from `ls-files` (no line counts for those).
+/// The working tree against `HEAD`: tracked changes from `git diff-index
+/// HEAD`, plus untracked files from `ls-files` (no line counts for those).
 ///
-/// Porcelain `diff`, not plumbing `diff-index`, on purpose. `diff-index`
-/// trusts the index's stat cache: a tracked file whose mtime moved without
-/// its content changing (a branch switch, an editor save, a build) is
-/// reported as modified with a `0 0` numstat, so the pane listed files the
-/// user never touched. `diff` refreshes the stat cache in memory first and
-/// compares content, and `GIT_OPTIONAL_LOCKS=0` (set on every invocation)
-/// keeps that refresh from writing the index. The output shape is the same.
+/// Plumbing `diff-index`, not porcelain `diff`, on purpose: `git diff`
+/// rewrites `.git/index` to refresh the stat cache, taking `index.lock`
+/// while it does, and neither `GIT_OPTIONAL_LOCKS=0` nor
+/// `--no-optional-locks` stops it (verified on git 2.54; only `git status`
+/// honours the switch). A viewer must not make the user's own `git commit`
+/// fail, so the listing is read with plumbing and the stat cache's lies are
+/// filtered out afterwards — see [`parse_worktree_file_list`].
 fn list_files_working_tree(
     repo: &RepoHandle,
     opts: DiffOptions,
@@ -162,11 +162,12 @@ fn list_files_working_tree(
     ensure_head(repo)?;
 
     let mut invocation = GitInvocation::new(repo).args([
-        GitArg::Flag("diff"),
+        GitArg::Flag("diff-index"),
         GitArg::Flag("--no-color"),
         GitArg::Flag("--no-ext-diff"),
         GitArg::Flag("-M"),
         GitArg::Flag("-C"),
+        GitArg::Flag("-r"),
         GitArg::Flag("-z"),
         GitArg::Flag("--raw"),
         GitArg::Flag("--numstat"),
@@ -180,7 +181,7 @@ fn list_files_working_tree(
         return Err(DiffError::TooLarge { bytes: OUTPUT_CAP });
     }
     let (raw, numstat) = split_raw_and_numstat(&output.stdout);
-    let mut list = parse_file_list(&raw, &numstat).map_err(DiffError::Parse)?;
+    let mut list = parse_worktree_file_list(&raw, &numstat).map_err(DiffError::Parse)?;
 
     let untracked = GitInvocation::new(repo)
         .args([

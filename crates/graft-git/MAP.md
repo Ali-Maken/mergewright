@@ -50,12 +50,13 @@ One line per public item. Update when a public item changes.
 - `ParseError` (struct) — `line` (1-indexed where known), `what`.
 - `parse_unified` (fn) — parses `git diff-tree -p -M -C --no-color --no-ext-diff` output (one or many files); pure, no `git` spawn, a `cargo-fuzz` target.
 - `parse_file_list` (fn) — joins `diff-tree --raw -z` with `--numstat -z` (same trailing args, `--no-commit-id`) into one `FileList`; pure, a `cargo-fuzz` target.
+- `parse_worktree_file_list` (fn) — the same join for `diff-index` against the working tree: drops the `--raw` records `--numstat` has no record for (`M`, one mode, all-zero new id) — the index's stat cache lying. Pure.
 - `Pair` (struct) — `removed`/`added` index ranges into one hunk's `lines`.
 - `pairs` (fn) — splits a hunk's removed/added runs into side-by-side `Pair`s, index-wise, `min(len)` per run.
 - `DiffSpec` (enum) — what two sides to diff: `Commit { commit, against }` (first parent when `against` is `None`, `--root` when there is none), `Range { base, head }`, `WorkingTreeVsHead`.
 - `DiffOptions` (struct) — `context` (default 3), `ignore_whitespace` (default `false`).
 - `DiffError` (enum) — `Run(RunError)`, `Parse(ParseError)`, `TooLarge { bytes }` (64 MiB output cap), `NoHead`; `Display` is one line.
-- `list_files` (fn) — one `diff-tree`/`diff --raw --numstat -z` spawn (plus `ls-files --others` for untracked, working tree only) split and joined via `parse_file_list`. The working tree uses porcelain `diff HEAD`, not `diff-index`: `diff` refreshes the stat cache in memory, so a touched-but-unchanged file is not listed.
+- `list_files` (fn) — one `diff-tree`/`diff-index --raw --numstat -z` spawn (plus `ls-files --others` for untracked, working tree only) split and joined via `parse_file_list`/`parse_worktree_file_list`. The working tree uses plumbing `diff-index`: porcelain `git diff` rewrites `.git/index`, which a read must not do (M2 review round 2). A touched-but-unchanged file is filtered out in the join instead.
 - `file_diff` (fn) — one file's patch via `diff-tree`/`diff-index -p -U<context>`, parsed with `parse_unified`; truncates to whole hunks at `max_lines` (`usize::MAX`: no cap); an `Untracked` entry returns a hunk-less `FileDiff` with no spawn.
 - Split into files, public items unchanged (m2 review M8): `unified.rs`'s byte-level primitives (numbers, percentages, quoted-path unquoting) moved to `unified/primitives.rs`; `read.rs`'s revision-resolution and raw/numstat splitting (`Sides`, `resolve_sides`, `first_parent`, `split_raw_and_numstat`) moved to `read/raw.rs`.
 

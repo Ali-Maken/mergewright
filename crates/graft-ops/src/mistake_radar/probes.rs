@@ -154,6 +154,15 @@ pub fn probe_evil_merge(repo: &RepoHandle, merge: Oid, stop: &dyn Stop) -> EvilV
 /// against, so the answer is `NotCheckable` with the reason, never a guess
 /// either way: absence of evidence is not a clean bill, and it is not a
 /// warning either (PROMPT.md §1.4).
+///
+/// **Renames cross the dividing line.** A remerge diff names the path the
+/// merge produced; when one side renamed the file, that path is not the one
+/// the other side changed, and a hand-resolved rename/modify conflict looked
+/// evil. So each side is read with rename detection on, and a rename
+/// `old -> new` carries the verdict across: if `old` was changed by both
+/// sides, `new` is too. The cost is the blind spot widening the same way —
+/// an evil edit to the post-rename path lands in `Resolved` — which is the
+/// direction the probe already errs in for every file both sides touched.
 fn split_remerge_files(
     repo: &RepoHandle,
     parents: [Oid; 2],
@@ -165,15 +174,24 @@ fn split_remerge_files(
         Ok(None) => return EvilVerdict::NotCheckable("the parents share no history".into()),
         Err(reason) => return EvilVerdict::NotCheckable(reason),
     };
-    let mut both = match changed_paths(repo, base, parents[0], stop) {
+    let ours = match changed_paths(repo, base, parents[0], stop) {
         Ok(paths) => paths,
         Err(reason) => return EvilVerdict::NotCheckable(reason),
     };
-    let other = match changed_paths(repo, base, parents[1], stop) {
+    let theirs = match changed_paths(repo, base, parents[1], stop) {
         Ok(paths) => paths,
         Err(reason) => return EvilVerdict::NotCheckable(reason),
     };
-    both.retain(|path| other.contains(path));
+    let mut both: HashSet<Vec<u8>> = ours
+        .changed
+        .intersection(&theirs.changed)
+        .cloned()
+        .collect();
+    for (old, new) in ours.renames.iter().chain(theirs.renames.iter()) {
+        if both.contains(old) {
+            both.insert(new.clone());
+        }
+    }
 
     let (resolved, invented): (Vec<Vec<u8>>, Vec<Vec<u8>>) =
         files.into_iter().partition(|path| both.contains(path));
@@ -211,19 +229,33 @@ fn merge_base(
         .map_err(|error| error.to_string())
 }
 
-/// The paths that differ between two trees, rename detection off so every
-/// path a side touched is named literally on both ends.
+/// What one side of a merge did to the tree since the merge base.
+struct SideChanges {
+    /// Every path the side touched, both ends of a rename or copy included,
+    /// so a path is present under whichever name the other side knows it by.
+    changed: HashSet<Vec<u8>>,
+    /// `(old, new)` for each rename or copy, so [`split_remerge_files`] can
+    /// carry "both sides changed this" from the old name to the new one.
+    renames: Vec<(Vec<u8>, Vec<u8>)>,
+}
+
+/// The paths that differ between two trees, with rename detection **on**:
+/// `--name-status -z` prints `R090\0old\0new\0` for a rename, and both names
+/// go into `changed`. Detection off (the earlier shape) named both ends too,
+/// but lost which was which, and the pairing is what makes a rename conflict
+/// explainable.
 fn changed_paths(
     repo: &RepoHandle,
     from: Oid,
     to: Oid,
     stop: &dyn Stop,
-) -> Result<HashSet<Vec<u8>>, String> {
+) -> Result<SideChanges, String> {
     let output = GitInvocation::new(repo)
         .arg(GitArg::Word("diff-tree".into()))
         .arg(GitArg::Flag("-r"))
-        .arg(GitArg::Flag("--no-renames"))
-        .arg(GitArg::Flag("--name-only"))
+        .arg(GitArg::Flag("-M"))
+        .arg(GitArg::Flag("-C"))
+        .arg(GitArg::Flag("--name-status"))
         .arg(GitArg::Flag("-z"))
         .arg(GitArg::Oid(from))
         .arg(GitArg::Oid(to))
@@ -232,12 +264,34 @@ fn changed_paths(
             RunError::Stopped => "cancelled".to_owned(),
             other => other.to_string(),
         })?;
-    Ok(output
+
+    let tokens: Vec<&[u8]> = output
         .stdout
         .split(|byte| *byte == 0)
-        .filter(|path| !path.is_empty())
-        .map(<[u8]>::to_vec)
-        .collect())
+        .filter(|token| !token.is_empty())
+        .collect();
+    let mut changed = HashSet::new();
+    let mut renames = Vec::new();
+    let mut i = 0;
+    while i < tokens.len() {
+        let status = tokens[i];
+        i += 1;
+        let two_ends = matches!(status.first(), Some(b'R' | b'C'));
+        let wanted = if two_ends { 2 } else { 1 };
+        if i + wanted > tokens.len() {
+            return Err("diff-tree named a status with no path after it".to_owned());
+        }
+        if two_ends {
+            let (old, new) = (tokens[i].to_vec(), tokens[i + 1].to_vec());
+            changed.insert(old.clone());
+            changed.insert(new.clone());
+            renames.push((old, new));
+        } else {
+            changed.insert(tokens[i].to_vec());
+        }
+        i += wanted;
+    }
+    Ok(SideChanges { changed, renames })
 }
 
 /// Did `remote_ref` move to `current` without descending from where the
@@ -738,6 +792,67 @@ mod tests {
                 &Policy::default()
             ),
             None
+        );
+    }
+
+    /// The same shape one step harder: one side renames the file *and*
+    /// edits it, the other edits it where it was. git conflicts in the new
+    /// name; the remerge diff names the new name; only the old name is in
+    /// both sides' changed sets. Counting a rename's two ends as one file
+    /// is what keeps this off the radar — before it, an ordinary merge
+    /// after a file move said `EVIL MERGE`.
+    #[test]
+    fn a_hand_resolved_rename_conflict_is_not_an_evil_merge() {
+        let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+        let path = scratch.path().to_path_buf();
+        let git = |args: &[&str]| {
+            graft_fixtures::git::run(&path, args)
+                .unwrap_or_else(|error| panic!("git {args:?} runs: {error}"))
+        };
+        // Long enough that git's default 50% similarity finds the rename.
+        let body = |first: &str| {
+            let mut text = String::from(first);
+            for line in 2..=40 {
+                text.push_str(&format!("\nline {line}"));
+            }
+            text.push('\n');
+            text
+        };
+        git(&["config", "user.name", "Fixture"]);
+        git(&["config", "user.email", "fixture@example.invalid"]);
+        std::fs::write(path.join("moved.txt"), body("line 1")).expect("the base file is written");
+        git(&["add", "moved.txt"]);
+        git(&["commit", "-m", "Add the file that moves"]);
+
+        git(&["checkout", "-b", "side"]);
+        git(&["mv", "moved.txt", "renamed.txt"]);
+        std::fs::write(path.join("renamed.txt"), body("their first line"))
+            .expect("the side's edit is written");
+        git(&["add", "renamed.txt"]);
+        git(&["commit", "-m", "Move it and edit line 1"]);
+        git(&["checkout", "-"]);
+        std::fs::write(path.join("moved.txt"), body("my first line")).expect("our edit is written");
+        git(&["commit", "-am", "Edit line 1 where it was"]);
+
+        assert!(
+            graft_fixtures::git::run(&path, &["merge", "side"]).is_err(),
+            "the merge must conflict for this test to prove anything"
+        );
+        std::fs::write(path.join("renamed.txt"), body("resolved by hand"))
+            .expect("the resolution is written");
+        git(&["add", "-A"]);
+        git(&["commit", "-m", "Merge branch 'side'"]);
+
+        let head = String::from_utf8(git(&["rev-parse", "HEAD"])).expect("git prints hex");
+        let merge = Oid::from_hex(head.trim()).expect("a full object id");
+        let repo = RepoHandle::open(&path).expect("the scratch repository opens");
+
+        assert_eq!(
+            probe_evil_merge(&repo, merge, &()),
+            EvilVerdict::Resolved {
+                files: vec![b"renamed.txt".to_vec()]
+            },
+            "the rename's two ends are one file, so the conflict explains it"
         );
     }
 }

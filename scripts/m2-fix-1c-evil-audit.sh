@@ -6,6 +6,13 @@
 # at most one side since the merge base, because a conflict — and so a hand
 # resolution — needs both sides to have touched the path.
 #
+# The rule below mirrors `split_remerge_files` in graft-ops and must be kept
+# in step with it. Since review round 1e that includes renames: each side is
+# read with `-M -C --name-status`, both ends of a rename count as touched,
+# and a rename carries "both sides changed it" from the old name to the new
+# one. Paths are read from tab-separated `--name-status` rather than `-z`,
+# which is safe for git/git's own paths (no tabs, no newlines).
+#
 # This walks real merges in the git/git clone (scripts/clone-git-git.sh) with
 # plain git, independently of Graft's Rust, and writes the counts to
 # docs/perf/m2-review-fix-1c.txt. Never run from an agent's context: it
@@ -26,6 +33,16 @@ resolved=0
 clean=0
 not_checkable=0
 
+# One side of a merge, as `C<path>` lines (every path it touched, both ends
+# of a rename included) and `R<old><TAB><new>` lines (its renames and copies).
+side_changes() {
+	git -C "$repo" -c core.quotePath=false \
+		diff-tree -r -M -C --name-status "$1" "$2" |
+		awk -F'\t' '
+			$1 ~ /^[RC]/ { print "C" $2; print "C" $3; print "R" $2 "\t" $3; next }
+			{ print "C" $2 }'
+}
+
 merges="$(git -C "$repo" log --merges --max-parents=2 --min-parents=2 \
 	--format=%H -n "$count" HEAD)"
 
@@ -44,9 +61,18 @@ for merge in $merges; do
 		not_checkable=$((not_checkable + 1))
 		continue
 	fi
+	ours="$(side_changes "$base" "$p1")"
+	theirs="$(side_changes "$base" "$p2")"
 	both="$(comm -12 \
-		<(git -C "$repo" diff-tree -r --no-renames --name-only "$base" "$p1" | sort) \
-		<(git -C "$repo" diff-tree -r --no-renames --name-only "$base" "$p2" | sort))"
+		<(printf '%s\n' "$ours" | sed -n 's/^C//p' | sort -u) \
+		<(printf '%s\n' "$theirs" | sed -n 's/^C//p' | sort -u))"
+	while IFS="$(printf '\t')" read -r old new; do
+		[ -n "$old" ] || continue
+		if printf '%s\n' "$both" | grep -Fxq -- "$old"; then
+			both="$both
+$new"
+		fi
+	done < <(printf '%s\n%s\n' "$ours" "$theirs" | sed -n 's/^R//p')
 	invented="$(comm -23 <(printf '%s\n' "$files" | sort -u) <(printf '%s\n' "$both" | sort -u))"
 	if [ -n "$invented" ]; then
 		new_evil=$((new_evil + 1))
