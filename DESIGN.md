@@ -437,7 +437,7 @@ and any redo prompt should lead with.
 | `Space` (on a merge) | Fold its merged branch into it / unfold (PROMPT.md §1.3; m1/15) |
 | `1` | Toggle first-parent view (m1/15) |
 | `H` | Hide / show the stash in the graph (m1/15) |
-| `Enter` (on the cursor row, when its subject is truncated) | Peek: reveal the full subject in the footer; a second `Enter` closes it (ADR-0023, m1/41 — no hover tooltip; this is the mouse-free route to the same reveal) |
+| `Enter` (on a graph row) | Open the detail pane on that commit (peek (M1) → open details (M2), ADR-0023, m2-details-and-diffs/10) |
 | `y` | Copy the selected commit's SHA to the clipboard (OSC 52) (ADR-0023, m1/45) |
 
 ### 2.4 Working tree / staging (detail pane)
@@ -460,6 +460,7 @@ and any redo prompt should lead with.
 | `W` | Toggle word-diff granularity |
 | `v` | Toggle unified / side-by-side |
 | `[` / `]` | Decrease / increase context lines |
+| `<` / `>` | Shrink / grow the detail pane on the focused divider, 4 cells a step; no-op with no divider shown (ADR-0028, m2-details-and-diffs/10b) |
 
 ### 2.6 Conflict resolver
 

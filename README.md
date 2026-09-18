@@ -49,6 +49,28 @@ actually been watched" below before trusting any of this by eye.
   cloning `git/git` or building the fixture corpus as needed and exiting
   non-zero with a clear message if it can't.
 
+### What M2 actually does
+
+- `Enter` on a graph row opens the detail pane: a file tree and a unified
+  diff. `v` switches to side-by-side, `W` tints changed words, `w` ignores
+  whitespace, `[`/`]` shrink/grow diff context (0–20), `Tab`/`Shift+Tab`
+  cycle focus Graph → Files → Diff, `Esc` closes the pane.
+- `x` on a row marks it as a compare base; the pane then follows the cursor
+  showing that commit against the base instead of the commit alone.
+- `.` (or right-click) opens a context-actions menu on the row: `Explain`
+  (marked rows only), `Copy SHA`, `Compare with this`, `Open details`.
+- `M` opens the Map view — one bar per local branch, bucketed by date, with
+  tag and Mistake Radar marks. `O` toggles an overview strip along the
+  graph's edge showing merges, radar findings, search hits and the viewport.
+- Mistake Radar flags a marked row with `⚠` (warning) or `ⓘ` (info) in a
+  dedicated column; `.` → `Explain` on a marked row shows why, with the
+  relevant commits highlighted and the rest of the graph faded.
+- `[radar]` config: `foxtrot`, `backward`, `accidental-pull`, `evil`,
+  `duplicate`, `force-pushed`, `risky-state`, each left at its PROMPT.md
+  §1.4 default or forced to `"off"`/`"info"`/`"warning"`. `[diff]` config:
+  `context` (integer), `ignore_whitespace`, `word_tint` (booleans) — the
+  same options `w`/`[`/`]`/`W` change for the running session.
+
 ### What M0 actually does
 
 - Opens a repository from a path or the current directory — including from a
@@ -111,7 +133,7 @@ cargo build
 Run it on any repository you have:
 
 ```sh
-cargo run -- ~/code/some-repo
+cargo run -p graft -- ~/code/some-repo
 ```
 
 You should get a screen like this, and nothing else:
@@ -143,9 +165,9 @@ q  quit
 Then try the two other paths:
 
 ```sh
-cargo run -- /tmp        # graft: /tmp is not inside a git repository   (exit 1)
-cargo run -- --help      # usage, exit 0
-NO_COLOR=1 cargo run -- .   # same screen, no colour; the theme line says so
+cargo run -p graft -- /tmp        # graft: /tmp is not inside a git repository   (exit 1)
+cargo run -p graft -- --help      # usage, exit 0
+NO_COLOR=1 cargo run -p graft -- .   # same screen, no colour; the theme line says so
 ```
 
 With no path, Graft opens the current directory.

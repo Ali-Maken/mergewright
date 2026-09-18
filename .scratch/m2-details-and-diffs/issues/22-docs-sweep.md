@@ -1,6 +1,6 @@
 # docs-sweep: README/CHANGELOG for M2, the bare `cargo run --` sweep (KG 375), KNOWN_GAPS expiries and the new gap rows
 
-Status: ready
+Status: done
 Blocked by: 17, 19, 20, 21
 
 Status: draft
@@ -52,3 +52,35 @@ None for code; `cargo test --quiet` once to be sure no doc-test or `include_str!
 ## Size
 
 Docs only, ~120 changed lines. ≤ 16 tool calls: open each file at the cited lines, never whole (`TESTING.md` is 800+ lines; `KNOWN_GAPS.md` 370+). No seam expected.
+
+## Notes (2026-09-18)
+
+- Line numbers had drifted since the spec was written (README/TESTING.md grew a
+  few lines): swept by `rg 'cargo run --'` rather than the exact line numbers
+  cited, same target lines otherwise (README 114/146-148; TESTING.md 323, 350,
+  438, 469, 505, 508, 512, 517, and the second `cargo run` on the SSH line 522;
+  `scripts/clone-git-git.sh` 78). Acceptance's `rg` check passes; the only
+  remaining `cargo run --` hits are `scripts/m1-checkpoint.sh`'s `-p`-scoped
+  calls, as the spec predicted.
+- **Ticket-status discovery, not this ticket's doing:** tickets 13
+  (`radar-context-and-markers`) and 18 (`map-view-data`) carry a top-line
+  `Status: ready` even though both were built and committed
+  (`86a926d`, `a9aae80`/`4d06053`/`94dcf9f`) and their dependants (13b, 13c,
+  14-16, 19) are `done`. Treated as done for KG 197/246/247's closures and the
+  README key list, since the commits are real; the stale status line itself
+  is out of this ticket's scope to fix.
+- **Dangling reference found while closing rows, not invented behaviour:**
+  `m2-details-and-diffs/11`'s existing gap note pointed the "· N files +A −B"
+  fix at a ticket named `compare-mode`, which does not exist anywhere in M2's
+  ticket list (checked: no such file, not in the design note's ticket list).
+  Corrected that note to point at the new KNOWN_GAPS row instead of a phantom
+  ticket, and gave the gap a real owner (M8 polish) as one of the five new
+  rows.
+- DESIGN.md: touched only the two rows an existing ADR names (ADR-0023's
+  consequence "§2.3 `Enter` → peek (M1) / open details (M2)"; ADR-0028's
+  "Changes ... DESIGN.md §2.2–2.5 keymap" for `<`/`>`). Left `x`, `Tab`, `L`
+  and the rest of the design note's Proposed-changes keymap row alone — no
+  ADR names them individually, per this ticket's own scope line.
+- `cargo test --quiet`: 460+ tests across the workspace, 0 failed, 7 ignored
+  (heavy tier, expected). No `fmt`/`clippy` run — docs-only ticket, no source
+  touched.

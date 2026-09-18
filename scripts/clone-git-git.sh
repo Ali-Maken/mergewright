@@ -75,6 +75,6 @@ $CACHE
   refs     $refs
   on disk  $size
 
-  Open it with:  cargo run -- $CACHE
+  Open it with:  cargo run -p graft -- $CACHE
   Delete it with: rm -rf $CACHE
 SUMMARY

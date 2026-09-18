@@ -320,7 +320,7 @@ it.
 Open it with:
 
 ```sh
-cargo run -- "$(scripts/clone-git-git.sh --where)"
+cargo run -p graft -- "$(scripts/clone-git-git.sh --where)"
 ```
 
 **The Linux kernel** is manual-tier only and stays that way (PROMPT.md
@@ -347,7 +347,7 @@ never been run says **not run**, never "pass".
 
 ### What to do in each terminal
 
-1. `cargo run -- "$(scripts/clone-git-git.sh --where)"` — a real,
+1. `cargo run -p graft -- "$(scripts/clone-git-git.sh --where)"` — a real,
    merge-heavy history at a size where mistakes show.
 2. Let the first screen paint. Scroll with `j`/`k` for a few screens, then
    to the end.
@@ -435,7 +435,7 @@ This is the only thing that moves iTerm2 or Sixel above Unicode in ADR-0016's
 order. Run it per terminal, answer yes or no, and give the reason.
 
 1. Same repository, same window, same font size, no resizing between runs.
-2. `graph.renderer = "unicode"` in the config, `cargo run -- <repo>`. Look at
+2. `graph.renderer = "unicode"` in the config, `cargo run -p graft -- <repo>`. Look at
    it. Scroll a few screens.
 3. Change to `graph.renderer = "pixel"`, run again, look at the same screens.
 4. Answer: **is the pixel version better to look at, and does it lose
@@ -466,7 +466,7 @@ terminal.
    restart the terminal (the setting does not apply to open ones).
 2. `cargo run -p graft --example capability_probe` in that terminal. Record
    the `sixel` line and the `protocol` line verbatim.
-3. `graph.renderer = "pixel"` in the config, then `cargo run -- <repo>`.
+3. `graph.renderer = "pixel"` in the config, then `cargo run -p graft -- <repo>`.
    Scroll a few screens, resize the window, quit with `q`.
 
 | Question | Answer | Evidence |
@@ -502,24 +502,24 @@ REPO="$(scripts/clone-git-git.sh --where)"
 #    a pixel graph.
 tmux -L graft -f /dev/null new-session \; set -g allow-passthrough on
 cargo run -p graft --example capability_probe
-cargo run -- "$REPO"
+cargo run -p graft -- "$REPO"
 # b) still inside, split and run in the right-hand pane: pixels must land in
 #    that pane, not at the window's left edge. Ctrl-b %, then:
-cargo run -- "$REPO"
+cargo run -p graft -- "$REPO"
 # c) passthrough off (tmux's default): expect `tier Unicode`,
 #    `tmux PassthroughSilent { .. }`, a clean Unicode graph, no stray bytes.
 tmux kill-server -L graft; tmux -L graft -f /dev/null new-session
-cargo run -- "$REPO"
+cargo run -p graft -- "$REPO"
 
 # tmux (inside a Unicode terminal): Zed or VS Code terminal, passthrough on.
 # Expect `tier Unicode` and a Unicode graph — never ASCII.
 tmux -L graft -f /dev/null new-session \; set -g allow-passthrough on
-cargo run -- "$REPO"
+cargo run -p graft -- "$REPO"
 
 # SSH: needs a host with Rust and a Graft checkout (ssh localhost works:
 # System Settings > General > Sharing > Remote Login). Expect `ssh true`,
 # `budget 500ms`, and the tier the local terminal would get.
-ssh -t HOST 'cd ~/path/to/graft && cargo run -p graft --example capability_probe && cargo run -- "$(scripts/clone-git-git.sh --where)"'
+ssh -t HOST 'cd ~/path/to/graft && cargo run -p graft --example capability_probe && cargo run -p graft -- "$(scripts/clone-git-git.sh --where)"'
 
 # SSH inside tmux: start tmux (passthrough on) locally, then the SSH line
 # inside it. Expect `tier Pixel` only if the report says `tmux Passthrough`.

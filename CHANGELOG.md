@@ -8,6 +8,50 @@ the versioning scheme are decided in M8.
 
 ## [Unreleased]
 
+### M2 — Details and diffs
+
+What a commit changed is readable without leaving the graph, and a bad merge
+is flagged and explained.
+
+#### Added
+
+- **The detail pane**: `Enter` on a graph row opens a file tree and a unified
+  diff. `v` side-by-side, `W` word tint, `w` ignore whitespace, `[`/`]`
+  context (0–20), `Tab`/`Shift+Tab` cycle focus Graph → Files → Diff, `Esc`
+  closes it. Divider drag and `<`/`>` resize the pane; the size persists per
+  layout orientation.
+- **Compare (`x`)**: marks a row as the compare base; the pane then follows
+  the cursor showing the selected commit against that base.
+- **Context actions (`.`, right-click)**: a menu with `Explain` (marked rows),
+  `Copy SHA`, `Compare with this`, `Open details`.
+- **Map view (`M`)**: one bar per local branch bucketed by date, with tag and
+  Mistake Radar marks, `↑↓` to select and `Enter` to jump the graph to a
+  branch tip.
+- **Overview strip (`O`)**: a column along the graph's edge marking merges,
+  Mistake Radar findings, search hits and the current viewport.
+- **Mistake Radar**: backward merges, foxtrot merges, accidental pulls, evil
+  merges, duplicate commits, force-pushed remotes and risky repository state
+  are flagged with `⚠`/`ⓘ` in a marker column; `.` → `Explain` shows why,
+  with the relevant commits highlighted and the rest of the graph faded.
+  Configurable per kind under `[radar]`; diff options under `[diff]`.
+
+#### Changed
+
+- **`Enter` no longer peeks a truncated subject in the footer (ADR-0023)** —
+  it opens the detail pane instead; the footer peek is gone.
+- **A marker column** appears beside the graph, badges when the repository
+  has any Mistake Radar finding.
+- **`Ctrl+R` reopens the walk on the commit-graph path** after `B` writes a
+  commit-graph file, re-anchored on the current selection (closes
+  KNOWN_GAPS row 54).
+
+#### Known gaps
+
+See [`KNOWN_GAPS.md`](KNOWN_GAPS.md)'s M2 sections — including image diffs in
+the pixel tier, Map view's mouse and remote-branch handling, the overview
+strip's default, and the compare header's missing file/line counts, all
+owned by M8 polish unless noted otherwise.
+
 ### M1 — The graph
 
 Graft draws its commit graph. Nothing here has been confirmed by eye in a
