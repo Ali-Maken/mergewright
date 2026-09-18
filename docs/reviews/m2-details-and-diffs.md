@@ -211,3 +211,13 @@ one commit, so the suggested `detail_header: Option<Arc<DetailHeader>>`
 cache was not added: a cache with its own invalidation is a real cost in
 code, and the new pane-open frame test is how we would know it was needed.
 If that test shows the header on the hot path, the cache goes in then.
+
+**Numbers after the fix** (`docs/perf/m2-review-fix-1a.txt`): heavy tier
+91 s (was 1275 s and killed); release perf 59 s, 11 passed, worst frame
+9.6 ms against the 16 ms budget (was 604 s and killed). The heavy tier's
+exit code is still 101, for one failure this fix did not cause and did not
+fix: `heavy::slopes_per_commit_with_a_commit_graph` is 76 B/commit against
+a 50 B/commit bar, and was 69 B/commit before this fix
+(`docs/perf/m2-review-fix-1a-baseline-slope.txt`). The review never saw it
+because its heavy tier was killed before reaching that test. It is a
+separate finding and needs its own ticket.

@@ -5,3 +5,40 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
+heavy-tier: exit 101, 91 s
+test result: ok. 465 passed; 0 failed; 7 ignored; 0 measured; 0 filtered out; finished in 0.72s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: FAILED. 33 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 84.67s
+
+release-perf: exit 0, 59 s
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 52.41s
+
+frames: tier=Pixel refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=13
+frames: tier=Pixel refs=FiftyThousand pane=Closed keys=420 p50_us=5560 p99_us=8131 max_us=9607 kitty_commands=49301 bytes=193355025
+frames: tier=Pixel refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=820 p50=188 p99=4285 max=6850 total=699199 over_1ms=302 over_2ms=129
+frames: tier=Pixel refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=12306 PageDown=12130 Char('k')=12063 PageUp=8862 Char('j')=12125
+frames: tier=Unicode refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=6
+frames: tier=Unicode refs=FiftyThousand pane=Closed keys=420 p50_us=5694 p99_us=8727 max_us=9066 kitty_commands=0 bytes=2137862
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=822 p50=0 p99=1 max=21 total=238 over_1ms=0 over_2ms=0
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=10915 PageDown=11812 Char('k')=3653 PageUp=10111 Char('j')=8040
+frames: tier=Unicode refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=3
+frames: tier=Unicode refs=FiftyThousand pane=Open keys=421 p50_us=5255 p99_us=8816 max_us=9013 kitty_commands=0 bytes=36251
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=500 p50=0 p99=2 max=9 total=232 over_1ms=0 over_2ms=0
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=11493 PageDown=11470 Char('k')=5702 PageUp=11543 Char('j')=10062
+frames: tier=Pixel refs=Fixture pane=Closed keys=420 p50_us=5532 p99_us=8063 max_us=8396 kitty_commands=49169 bytes=193040348
+frames: tier=Pixel refs=Fixture idle_prefetch_us (per frame; recorded, not asserted): frames=754 p50=339 p99=4341 max=7018 total=712825 over_1ms=302 over_2ms=128
+frames: tier=Pixel refs=Fixture idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=12282 PageDown=6820 Char('k')=11513 PageUp=10566 Char('j')=9750
+frames: tier=Unicode refs=Fixture pane=Closed keys=420 p50_us=4863 p99_us=8707 max_us=9427 kitty_commands=0 bytes=1825154
+frames: tier=Unicode refs=Fixture idle_prefetch_us (per frame; recorded, not asserted): frames=758 p50=0 p99=2 max=6 total=221 over_1ms=0 over_2ms=0
+frames: tier=Unicode refs=Fixture idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=11856 PageDown=3780 Char('k')=6399 PageUp=6731 Char('j')=10041
+(full logs: target/m2-fix-perf, untracked)
+
+heavy tier's one failure, `heavy::slopes_per_commit_with_a_commit_graph`, is
+older than this fix: at 16f3ed1 (before it) the same test fails at 69 B/commit
+against the 50 B bar; after it, 76 B/commit. See
+docs/perf/m2-review-fix-1a-baseline-slope.txt. The M2 review never saw it: its
+heavy tier was killed on the 50k-ref frame tests before reaching it.
+
+Against the M2 review's numbers:
+  heavy tier   1275 s, killed  ->   91 s, completes (one pre-existing failure)
+  release perf  604 s, killed  ->   59 s, 11 passed, max frame 9.6 ms

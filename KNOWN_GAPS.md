@@ -443,3 +443,12 @@ What the details gallery revealed, verified under a pty (captures
 | **The force-push probe (ticket 15) has no gallery stop and was never run against a real rewritten remote.** `docs/shots/m2-force-push.txt` is a TestBackend capture. | A fixture with a remote whose branch was rewritten (needs a bare remote in the corpus), and a stop. | M2 review |
 | **The gallery banner is hidden at < 100 columns when the `Detail` tab is up**, and the Map view draws no banner at any size. The 80x24 captures name their stop only in their first line. | Draw the banner (or its title line) in the tab-strip and map layouts. | M2 review |
 | **Coverage matrix gaps for the details rows:** no pixel-tier, no light-theme and no ASCII captures except stops 1, 6, 7, 15, 16 at 80x24; no 100x30 except those five. The pane's pixel/light rendering is judged only by eye. | Pixel captures need a Kitty-protocol pty harness (M1's raster shots came from the widget, not a pty). | M2 review |
+
+- **Heap grows ~76 B per commit, against a 50 B/commit bar** (M2 review fix
+  1a, 2026-09-18). `heavy::slopes_per_commit_with_a_commit_graph` fails, so
+  the heavy tier still exits 101 even though it now completes in 91 s. Not
+  caused by the C1 fix: 69 B/commit at 16f3ed1, 76 B/commit after. Peak RSS
+  is 214 B/commit against 200. Numbers:
+  `docs/perf/m2-review-fix-1a.txt`, `docs/perf/m2-review-fix-1a-baseline-slope.txt`.
+  Needs its own ticket: find what holds per-commit state beyond the layout
+  window.

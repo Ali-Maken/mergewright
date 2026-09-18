@@ -1,0 +1,5 @@
+heavy::slopes_per_commit_with_a_commit_graph at 16f3ed1 (before the C1 fix)
+exit 101, 23 s
+heap 8 / 14 MiB at synthetic-10000-commit-graph / synthetic-100000-commit-graph: slope 69 B/commit against 50; peak RSS 20 / 38 MiB: slope 207 B/commit against 200
+heap (footprint) rises 69 B per commit between synthetic-10000-commit-graph and synthetic-100000-commit-graph, over the 50 B/commit bar (user, 2026-09-14, ADR-0026 amended)
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 32 filtered out; finished in 3.37s
