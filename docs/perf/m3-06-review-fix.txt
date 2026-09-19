@@ -5,3 +5,38 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
+heavy-tier: exit 0, 228 s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+release-perf: exit 0, 86 s
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 38 filtered out; finished in 73.15s
+
+frames: tier=Pixel refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=15
+frames: tier=Pixel refs=FiftyThousand pane=Closed keys=420 p50_us=4158 p99_us=7552 max_us=15772 kitty_commands=81531 bytes=323217736
+frames: tier=Pixel refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=821 p50=444 p99=5563 max=7247 total=1359104 over_1ms=387 over_2ms=363
+frames: tier=Pixel refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=9107 PageDown=4624 Char('k')=6808 PageUp=5300 Char('j')=7046
+frames: tier=Unicode refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=4
+frames: tier=Unicode refs=FiftyThousand pane=Closed keys=420 p50_us=4052 p99_us=5397 max_us=6433 kitty_commands=0 bytes=2070255
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=821 p50=0 p99=1 max=8 total=237 over_1ms=0 over_2ms=0
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=5496 PageDown=6863 Char('k')=2257 PageUp=2423 Char('j')=3081
+frames: tier=Unicode refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=4
+frames: tier=Unicode refs=FiftyThousand pane=DiffScroll keys=422 p50_us=3820 p99_us=4878 max_us=5203 kitty_commands=0 bytes=39261
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=502 p50=0 p99=1 max=34 total=218 over_1ms=0 over_2ms=0
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=5582 PageDown=6058 Char('k')=2333 PageUp=6607 Char('j')=6549
+frames: tier=Unicode refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=4
+frames: tier=Unicode refs=FiftyThousand pane=Open keys=421 p50_us=3678 p99_us=5097 max_us=5255 kitty_commands=0 bytes=36575
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=501 p50=0 p99=1 max=5 total=175 over_1ms=0 over_2ms=0
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=2012 PageDown=3361 Char('k')=4913 PageUp=5124 Char('j')=5690
+frames: tier=Unicode refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=13
+frames: tier=Unicode refs=FiftyThousand pane=Map keys=421 p50_us=3826 p99_us=4882 max_us=5097 kitty_commands=0 bytes=76618
+frames: tier=Unicode refs=FiftyThousand idle_prefetch_us (per frame; recorded, not asserted): frames=697 p50=0 p99=1 max=9 total=224 over_1ms=0 over_2ms=0
+frames: tier=Unicode refs=FiftyThousand idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=4138 PageDown=5384 Char('k')=6106 PageUp=1182 Char('j')=4921
+frames: tier=Pixel refs=Fixture pane=Closed keys=420 p50_us=3741 p99_us=5653 max_us=6233 kitty_commands=81389 bytes=322909855
+frames: tier=Pixel refs=Fixture idle_prefetch_us (per frame; recorded, not asserted): frames=749 p50=1409 p99=4039 max=4683 total=933032 over_1ms=385 over_2ms=279
+frames: tier=Pixel refs=Fixture idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=7478 PageDown=8854 Char('k')=6206 PageUp=8520 Char('j')=7275
+frames: tier=Unicode refs=Fixture pane=Closed keys=420 p50_us=3890 p99_us=5379 max_us=8989 kitty_commands=0 bytes=1765643
+frames: tier=Unicode refs=Fixture idle_prefetch_us (per frame; recorded, not asserted): frames=759 p50=0 p99=1 max=6 total=218 over_1ms=0 over_2ms=0
+frames: tier=Unicode refs=Fixture idle_wake_us (first key after 600ms idle; recorded, not asserted): Char('j')=6892 PageDown=6959 Char('k')=2606 PageUp=6951 Char('j')=5417
+(full logs: target/m3-06-fix-perf, untracked)
