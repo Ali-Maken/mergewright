@@ -78,10 +78,10 @@ impl RefBadges { pub fn stashes(&self) -> &[(Oid, usize)]; }   // every stash co
 
 ## Acceptance
 
-- [ ] Update tests: `u` emits `Command::Undo(_, false)`; `Product::Undone(Ok(..))` sets `Status::Done("undid: …")` and refreshes per `Applied::refresh`; `Err(Drift)` opens the confirm box whose consequence line contains `drift.explain()`, `→` `Enter` emits `Undo(_, true)`, `Enter` on Stop emits nothing; `Err(Nothing)` → `Status::Done("nothing to undo")`; `u` while a write is in flight emits nothing (`Busy`); `U` mirrors with `Redo`.
+- [x] Update tests: `u` emits `Command::Undo(_, false)`; `Product::Undone(Ok(..))` sets `Status::Done("undid: …")` and refreshes per `Applied::refresh`; `Err(Drift)` opens the confirm box whose consequence line contains `drift.explain()`, `→` `Enter` emits `Undo(_, true)`, `Enter` on Stop emits nothing; `Err(Nothing)` → `Status::Done("nothing to undo")`; `u` while a write is in flight emits nothing (`Busy`); `U` mirrors with `Redo`.
 - [ ] Journal browser: with three scripted entries `[A, B, Undo(B)]` the rows mark A `← u` and `Undo(B)` `← U`; `Space` on A shows its `commands`; `Enter` on B (not next) sets the M5 notice and emits nothing; `Enter` on A emits `Undo`; an Aborted entry with a backup reads `failed: <reason> · backup saved` and is marked `← u` when it is the next; an interrupted one reads `interrupted`; the footer notice shows once until `J`.
 - [ ] Stash overlay: `S` opens and emits `ReadStashes`; rows render from a scripted product; `Enter` emits `Operate(StashApply { index: sel, commit })` with the commit from the row (never an index alone); `d` → box → `StashDrop`; `s` opens the prompt, typing lands in `message`, `Tab` flips `staged_only`, `Enter` emits `StashPush { message: Some(..), include_untracked: true, staged_only }`; on a clean tree `Enter` emits nothing and the prompt's `refusal` reads `nothing to stash`.
-- [ ] **End-to-end on a `copy_into_temp` fixture through the real runner** (this is where the promise is first exercised by keys): (1) scripted untracked file with bytes `b"\x00\xff\n"` → `Enter` on the changes pane's untracked row … no: `d` → `→` → `Enter` (discard) → file gone → `u` → file bytes identical, journal has 3 entries (discard, undo) with the undo's `reverses` set. (2) stage a file, `c` … (commit is `commit-editor`'s; here: `Operate(Commit)` injected as a command) → `u` → `git rev-parse HEAD` is back, `git diff --cached --name-only` lists the file again → `U` → the commit is back. (3) `S` `s` type `wip` `Enter` → `git stash list` has one entry and the tree is clean → `u` → the tree is dirty again and `git stash list` is empty → `U` → stashed again → `Enter` (apply) → `u` → clean. (4) `d` on `stash@{0}` → drop → `u` → `git stash list` shows it.
+- [~] **End-to-end on a `copy_into_temp` fixture through the real runner** (this is where the promise is first exercised by keys): (1) scripted untracked file with bytes `b"\x00\xff\n"` → `Enter` on the changes pane's untracked row … no: `d` → `→` → `Enter` (discard) → file gone → `u` → file bytes identical, journal has 3 entries (discard, undo) with the undo's `reverses` set. (2) stage a file, `c` … (commit is `commit-editor`'s; here: `Operate(Commit)` injected as a command) → `u` → `git rev-parse HEAD` is back, `git diff --cached --name-only` lists the file again → `U` → the commit is back. (3) `S` `s` type `wip` `Enter` → `git stash list` has one entry and the tree is clean → `u` → the tree is dirty again and `git stash list` is empty → `U` → stashed again → `Enter` (apply) → `u` → clean. (4) `d` on `stash@{0}` → drop → `u` → `git stash list` shows it.
 - [ ] Focus: a scripted `FocusGained` emits `ReadWorkingTree`; a second within 500 ms emits nothing; none emit `ShowRows` or a history restart.
 - [ ] Every stash commit carries a `stash@{n}` badge on a fixture with two stashes; `H` hides both.
 - [ ] Captures from piece 7 exist, under 8 KB each; `← u` / `← U` marks and the expanded `$ git …` lines are visible in the grid.
@@ -93,3 +93,68 @@ impl RefBadges { pub fn stashes(&self) -> &[(Oid, usize)]; }   // every stash co
 ## Size
 
 ~1,200 lines + ~600 test. Seams: after piece 2 (undo works by key, no browser), after piece 3, after piece 4. If piece 4 (stash) is not reached in one context, stop there and say so — the conductor files it as its own group with this spec's piece 4–5 text verbatim.
+
+## NOTES
+
+### Progress
+
+Seam 1 (pieces 1 and 2) committed. Pieces 3–7 not started.
+
+### What was actually run for the ticked lines
+
+- *Update tests*: `crates/graft/src/update/undo.rs`, 14 tests — `u_asks_for_an_undo_and_says_so`,
+  `capital_u_asks_for_a_redo`, `u_while_a_write_is_running_asks_for_nothing`,
+  `a_finished_undo_says_what_it_undid_and_re_reads_the_working_tree`,
+  `an_undo_that_moved_refs_re_reads_everything`, `an_answer_for_another_job_is_dropped`,
+  `nothing_to_undo_is_an_answer_not_a_failure`, `a_failed_undo_stays_on_screen_past_its_own_refresh`,
+  `drift_opens_a_box_that_quotes_what_moved_and_answers_nothing_yet`,
+  `enter_on_stop_changes_nothing_and_enter_on_undo_forces`, `a_redo_drift_box_re_runs_the_redo`,
+  plus three for the interrupted notice.
+- *End-to-end*, parts (1) and (2) only, in `crates/graft/tests/it/undo_by_key.rs` over the real
+  job pool and real `git`: `u_brings_a_discarded_untracked_file_back_byte_for_byte` (discard an
+  untracked file holding `b"\x00\xff\n"`, `u`, read the file back off disk and compare bytes),
+  `u_takes_a_commit_back_and_capital_u_puts_it_again` (`git rev-parse HEAD` and
+  `git diff --cached --name-only` read out of git, not out of `AppState`),
+  `u_on_a_repository_nothing_has_written_says_there_is_nothing_to_undo`.
+  Parts (3) and (4) are stash and wait on piece 4.
+
+### Deviations from the spec
+
+- `jobs::undo::Undone` is a five-variant enum (`Done`/`Incomplete`/`Nothing`/`Drift`/`Failed`)
+  rather than the spec's `Result<Applied, UndoOutcome>`: a `Result` cannot carry
+  `RestoreError::AfterState`, which holds a real `Applied` — the undo happened. Mirrors
+  `jobs::operate::Operated`, which was changed for the same reason in group 04.
+- `undo::undone` takes the answering `JobId` as well, so an answer for a job that is no longer
+  the one in flight is dropped rather than overwriting the status line.
+- The status line says the entry's own description (`undo: stage src/a.rs`), not
+  `undid: <description>`: `InversePlan::description` already prefixes `undo:`/`redo:`, so the
+  spec's wording read `undid: undo: …`.
+- An undo failure is `Status::Sticky`, not `Status::Failed`: the refresh the failure itself asks
+  for would otherwise wipe the reason a moment after it appeared (m3/05 review Major 7).
+- The launch read calls `graft_ops::apply::recover_interrupted`, not `Journal::mark_interrupted`:
+  only the former seals the recovered entry's trees behind its backup ref (group 03's review fix).
+  It had no caller in `graft` before this.
+- `PendingConfirm::then` is now `ConfirmThen::{Operate, Undo}`; it was an `Operation`.
+- `Ctrl+R` re-reads the journal too — another Graft on the same worktree appends to it, and an
+  entry this run has not seen is one `u` would not offer to take back. This keeps
+  `Refresh::Everything` byte-identical to `Ctrl+R`, which m3/04 review M8 asked for.
+
+### A bug this found, fixed at the cause
+
+`u` straight after a commit answered under another job's name and vanished: `operating` cleared,
+status `Ready`, nothing said. Cause: a caller that borrows `local_jobs` out into a closure
+(`answer`, `settle`, every key handler) writes its **copy** back when the callee returns, so ids
+the callee minted from `state.local_jobs` were thrown away and the next mint reissued an id still
+in flight. `keys::refresh_key` and `operate::write_job_ended` both minted that way.
+Both now take a `next_id` closure, so one pass has one counter.
+Regression test: `operate::tests::a_refresh_never_mints_from_the_states_own_counter`.
+Cost to the user: none — no behaviour was wanted from the rewind. It was live before this ticket;
+it only ever collided detail-pane ids with each other, which the pane drops as stale.
+
+### For the conductor
+
+- `crates/graft/tests/it/app_harness.rs` is a shared harness. `changes_pane_writes.rs` and
+  `commit_editor_writes.rs` still carry their own older copies of the same `App`; folding them in
+  is not this group's scope.
+- `App::pump` prints each event under `GRAFT_TEST_TRACE=1`. It earned its keep finding the id
+  rewind above.

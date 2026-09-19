@@ -1,0 +1,510 @@
+//! `u`, `Ctrl+Z` and `U`: the keys the milestone's promise rests on
+//! (m3-working-tree-undo-and-stash/06, ADR-0002).
+//!
+//! Pure, like every other `update` module: the key becomes a
+//! [`Command::Undo`] and the job does the rest. What lives here is the part
+//! that decides — when a key is a no-op, what the drift guard asks, and what
+//! the status line says afterwards.
+//!
+//! The drift rail (DESIGN.md §6.7) is the one place undo stops to ask. `ops`
+//! compares the three things the entry recorded — refs, the index and the
+//! working tree — against what is there now, and refuses if any moved. That
+//! refusal reaches here as [`Undone::Drift`] and becomes the confirm box; a
+//! second, deliberate `Enter` on `[ Undo ]` re-runs the same key with
+//! `force`.
+
+use graft_core::job::JobId;
+use graft_ops::apply::Refresh;
+
+use super::confirm::{ConfirmThen, PendingConfirm};
+use super::events::Command;
+use super::state::{AppState, Status};
+use crate::jobs::undo::Undone;
+
+/// `u`/`Ctrl+Z` (`redo` false) and `U` (`redo` true).
+///
+/// Nothing while a write — including another undo — is already running:
+/// one at a time, and the status line is already saying what that one is
+/// (`update::operate::operation_in_flight`).
+pub fn undo_key(
+    state: &mut AppState,
+    redo: bool,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    launch(state, redo, false, next_id)
+}
+
+/// The same key again, past the drift guard: the user has read what moved
+/// and chosen `[ Undo ]`.
+pub(super) fn forced(
+    state: &mut AppState,
+    redo: bool,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    launch(state, redo, true, next_id)
+}
+
+fn launch(
+    state: &mut AppState,
+    redo: bool,
+    force: bool,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    if super::operate::operation_in_flight(state) {
+        return Vec::new();
+    }
+    let id = next_id();
+    state.operating = Some(id);
+    state.status = Status::Busy(if redo { "redo" } else { "undo" }.to_owned());
+    vec![if redo {
+        Command::Redo(id, force)
+    } else {
+        Command::Undo(id, force)
+    }]
+}
+
+/// An undo or redo job answered. Stale answers — a job that is not the one
+/// `AppState::operating` waits for — are dropped, exactly as
+/// `update::operate::operated` drops them.
+pub fn undone(
+    state: &mut AppState,
+    id: JobId,
+    outcome: Undone,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    if state.operating != Some(id) {
+        return Vec::new();
+    }
+    state.operating = None;
+    match outcome {
+        Undone::Done(applied) => {
+            // The entry's own description already reads `undo: stage
+            // src/a.rs` (`InversePlan::description`), so it is shown as it
+            // stands rather than prefixed into `undid: undo: …`.
+            state.status = Status::Done(applied.entry.description.clone());
+            refresh(state, applied.refresh, next_id)
+        }
+        Undone::Incomplete { applied, error } => {
+            state.status = Status::Sticky(format!(
+                "{} \u{2014} could not confirm it fully: {error}",
+                applied.entry.description
+            ));
+            refresh(state, applied.refresh, next_id)
+        }
+        // Not a failure: the journal simply has nothing in force to take
+        // back. Cleared by the next key, like any other acknowledgement.
+        Undone::Nothing(why) => {
+            state.status = Status::Done(why);
+            Vec::new()
+        }
+        Undone::Drift {
+            description,
+            drift,
+            redo,
+        } => {
+            state.confirm = Some(drift_box(&description, &drift, redo));
+            Vec::new()
+        }
+        Undone::Failed {
+            error,
+            refresh: what,
+        } => {
+            // Sticky, not `Failed`: an undo that ran part-way asks for a
+            // refresh of its own, and that refresh finishing would wipe the
+            // reason off the screen before it could be read (m3/05 review,
+            // Major 7).
+            state.status = Status::Sticky(error);
+            match what {
+                Some(what) => refresh(state, what, next_id),
+                None => Vec::new(),
+            }
+        }
+    }
+}
+
+/// The drift guard's box: what the operation was, what has moved since, and
+/// the safe answer under the cursor.
+///
+/// The consequence line is `drift.explain()` verbatim — `ops` names which of
+/// the three comparisons failed, and naming them again here would let the two
+/// wordings drift apart.
+fn drift_box(description: &str, drift: &graft_ops::undo::Drift, redo: bool) -> PendingConfirm {
+    let verb = if redo { "Redo" } else { "Undo" };
+    PendingConfirm {
+        view: graft_ui::confirm::ConfirmView::new(
+            format!("{verb} \u{201c}{description}\u{201d}?"),
+            vec![
+                format!("Since this {description}, {}.", drift.explain()),
+                "A backup is taken first, so this is itself undoable.".to_owned(),
+            ],
+            // No single git command to show: a restore is a plan of several,
+            // and the journal browser's `Space` is where they are listed.
+            format!("{} restores the recorded state", verb.to_lowercase()),
+        )
+        .with_labels("Stop", verb),
+        then: ConfirmThen::Undo { redo },
+    }
+}
+
+/// The footer's interrupted-entry line, until `J` has been pressed once.
+///
+/// Graft was killed — or the machine was — with an operation half-run. The
+/// launch read closes such an entry and seals its backup, so `u` can still
+/// take it back; the user is told it is there rather than left to find it.
+/// An entry whose after-state could not be read says so too: its `u`
+/// restores the whole working tree, which is not a thing to discover by
+/// pressing the key.
+#[must_use]
+pub fn interrupted_notice(state: &AppState) -> Option<String> {
+    if state.journal.notice_seen {
+        return None;
+    }
+    let super::detail::Loading::Ready(read) = &state.journal.entries else {
+        return None;
+    };
+    let first = read.interrupted.first()?;
+    let more = read.interrupted.len().saturating_sub(1);
+    let rest = if more == 0 {
+        String::new()
+    } else {
+        format!(" (and {more} more)")
+    };
+    let widest = if read.unreadable.is_empty() {
+        String::new()
+    } else {
+        " \u{b7} its state could not be read, so u restores the whole tree".to_owned()
+    };
+    Some(format!(
+        "an operation was interrupted: {first}{rest}{widest} \u{b7} J to inspect"
+    ))
+}
+
+/// Re-read what the restore changed — `update::operate`'s own two scopes,
+/// so an undo and the operation it reverses cannot refresh differently.
+fn refresh(
+    state: &mut AppState,
+    what: Refresh,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    // `refresh_scope` re-reads the journal itself: an undo journals an
+    // entry of its own, exactly as the operation it reverses did.
+    super::operate::refresh_scope(state, what, next_id)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use graft_core::event::{KeyCode, KeyPress};
+    use graft_core::journal::{
+        EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches,
+    };
+    use graft_ops::apply::Applied;
+    use graft_ui::confirm::Choice;
+
+    use super::*;
+    use crate::jobs::undo::JournalRead;
+    use crate::update::detail::Loading;
+    use crate::update::journal::JournalState;
+
+    fn ids() -> impl FnMut() -> JobId {
+        let mut next = 0;
+        move || {
+            next += 1;
+            JobId::new(next)
+        }
+    }
+
+    /// An `Applied` naming `description`, with `refresh` as its scope: the
+    /// two fields `undone` reads.
+    fn applied(description: &str, refresh: Refresh) -> Applied {
+        Applied {
+            entry: JournalEntry {
+                id: EntryId::new(1, [0; 10]),
+                at_unix_ms: 1,
+                kind: OperationKind::Undo,
+                description: description.to_owned(),
+                status: EntryStatus::Committed,
+                touches: Touches::default(),
+                head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+                head_after: None,
+                refs_before: std::collections::BTreeMap::new(),
+                refs_after: std::collections::BTreeMap::new(),
+                index_before: None,
+                index_after: None,
+                worktree_before: None,
+                worktree_after: None,
+                backup_ref: None,
+                pins: Vec::new(),
+                commands: Vec::new(),
+                reverses: None,
+            },
+            refresh,
+        }
+    }
+
+    fn drift() -> graft_ops::undo::Drift {
+        graft_ops::undo::Drift {
+            index: true,
+            ..graft_ops::undo::Drift::default()
+        }
+    }
+
+    #[test]
+    fn u_asks_for_an_undo_and_says_so() {
+        let mut state = AppState::default();
+        let commands = undo_key(&mut state, false, &mut ids());
+        assert_eq!(commands, vec![Command::Undo(JobId::new(1), false)]);
+        assert_eq!(state.operating, Some(JobId::new(1)));
+        assert_eq!(state.status, Status::Busy("undo".to_owned()));
+    }
+
+    #[test]
+    fn capital_u_asks_for_a_redo() {
+        let mut state = AppState::default();
+        let commands = undo_key(&mut state, true, &mut ids());
+        assert_eq!(commands, vec![Command::Redo(JobId::new(1), false)]);
+    }
+
+    #[test]
+    fn u_while_a_write_is_running_asks_for_nothing() {
+        let mut state = AppState {
+            operating: Some(JobId::new(4)),
+            ..AppState::default()
+        };
+        assert!(undo_key(&mut state, false, &mut ids()).is_empty());
+        // The running write keeps the slot: a second `u` must not steal it.
+        assert_eq!(state.operating, Some(JobId::new(4)));
+    }
+
+    #[test]
+    fn a_finished_undo_says_what_it_undid_and_re_reads_the_working_tree() {
+        let mut state = AppState {
+            operating: Some(JobId::new(2)),
+            ..AppState::default()
+        };
+        let commands = undone(
+            &mut state,
+            JobId::new(2),
+            Undone::Done(applied("undo: stage src/a.rs", Refresh::WorkingTree)),
+            &mut ids(),
+        );
+        assert_eq!(
+            state.status,
+            Status::Done("undo: stage src/a.rs".to_owned())
+        );
+        assert!(state.operating.is_none());
+        assert!(commands.contains(&Command::ReadWorkingTree), "{commands:?}");
+        assert!(
+            commands
+                .iter()
+                .any(|command| matches!(command, Command::ReadJournal(_))),
+            "the journal has a new entry of its own: {commands:?}"
+        );
+    }
+
+    #[test]
+    fn an_undo_that_moved_refs_re_reads_everything() {
+        let mut state = AppState {
+            operating: Some(JobId::new(2)),
+            ..AppState::default()
+        };
+        let commands = undone(
+            &mut state,
+            JobId::new(2),
+            Undone::Done(applied("undo: commit \"fix\"", Refresh::Everything)),
+            &mut ids(),
+        );
+        assert!(commands.contains(&Command::OpenRepository), "{commands:?}");
+        assert!(commands.contains(&Command::ReadRefs), "{commands:?}");
+    }
+
+    #[test]
+    fn an_answer_for_another_job_is_dropped() {
+        let mut state = AppState {
+            operating: Some(JobId::new(9)),
+            ..AppState::default()
+        };
+        let commands = undone(
+            &mut state,
+            JobId::new(2),
+            Undone::Done(applied("undo: stage a", Refresh::Everything)),
+            &mut ids(),
+        );
+        assert!(commands.is_empty());
+        assert_eq!(state.operating, Some(JobId::new(9)));
+        assert_eq!(state.status, Status::Ready);
+    }
+
+    #[test]
+    fn nothing_to_undo_is_an_answer_not_a_failure() {
+        let mut state = AppState {
+            operating: Some(JobId::new(2)),
+            ..AppState::default()
+        };
+        let commands = undone(
+            &mut state,
+            JobId::new(2),
+            Undone::Nothing("nothing to undo".to_owned()),
+            &mut ids(),
+        );
+        assert_eq!(state.status, Status::Done("nothing to undo".to_owned()));
+        assert!(commands.is_empty());
+    }
+
+    #[test]
+    fn a_failed_undo_stays_on_screen_past_its_own_refresh() {
+        let mut state = AppState {
+            operating: Some(JobId::new(2)),
+            ..AppState::default()
+        };
+        let commands = undone(
+            &mut state,
+            JobId::new(2),
+            Undone::Failed {
+                error: "refs/heads/main is not where it was".to_owned(),
+                refresh: None,
+            },
+            &mut ids(),
+        );
+        assert_eq!(
+            state.status,
+            Status::Sticky("refs/heads/main is not where it was".to_owned())
+        );
+        assert!(commands.is_empty(), "nothing ran: {commands:?}");
+    }
+
+    #[test]
+    fn drift_opens_a_box_that_quotes_what_moved_and_answers_nothing_yet() {
+        let mut state = AppState {
+            operating: Some(JobId::new(2)),
+            ..AppState::default()
+        };
+        let commands = undone(
+            &mut state,
+            JobId::new(2),
+            Undone::Drift {
+                description: "stage src/a.rs".to_owned(),
+                drift: drift(),
+                redo: false,
+            },
+            &mut ids(),
+        );
+        assert!(commands.is_empty(), "nothing runs until the user says so");
+        let pending = state.confirm.as_ref().expect("the drift box opened");
+        assert_eq!(pending.view.cursor, Choice::Cancel, "the safe choice first");
+        assert_eq!(pending.view.safe_label, "Stop");
+        assert_eq!(pending.view.confirm_label, "Undo");
+        assert!(
+            pending
+                .view
+                .message
+                .iter()
+                .any(|line| line.contains(&drift().explain())),
+            "the box says what ops said: {:?}",
+            pending.view.message
+        );
+        assert_eq!(pending.then, ConfirmThen::Undo { redo: false });
+    }
+
+    #[test]
+    fn enter_on_stop_changes_nothing_and_enter_on_undo_forces() {
+        let box_open = |cursor_on_undo: bool| {
+            let mut view = drift_box("stage src/a.rs", &drift(), false);
+            if cursor_on_undo {
+                view.view.toggle();
+            }
+            AppState {
+                confirm: Some(view),
+                ..AppState::default()
+            }
+        };
+
+        let mut stopped = box_open(false);
+        let mut commands = Vec::new();
+        assert!(super::super::confirm::confirm_key(
+            &mut stopped,
+            &mut commands,
+            KeyPress::plain(KeyCode::Enter),
+            &mut ids(),
+        ));
+        assert!(commands.is_empty(), "Stop does nothing: {commands:?}");
+        assert!(stopped.operating.is_none());
+
+        let mut forced = box_open(true);
+        let mut commands = Vec::new();
+        assert!(super::super::confirm::confirm_key(
+            &mut forced,
+            &mut commands,
+            KeyPress::plain(KeyCode::Enter),
+            &mut ids(),
+        ));
+        assert_eq!(commands, vec![Command::Undo(JobId::new(1), true)]);
+    }
+
+    #[test]
+    fn a_redo_drift_box_re_runs_the_redo() {
+        let mut state = AppState {
+            confirm: Some(drift_box("undo: commit \"fix\"", &drift(), true)),
+            ..AppState::default()
+        };
+        state
+            .confirm
+            .as_mut()
+            .expect("the box is open")
+            .view
+            .toggle();
+        let mut commands = Vec::new();
+        assert!(super::super::confirm::confirm_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Enter),
+            &mut ids(),
+        ));
+        assert_eq!(commands, vec![Command::Redo(JobId::new(1), true)]);
+    }
+
+    fn read(interrupted: &[&str], unreadable: &[&str]) -> JournalState {
+        JournalState {
+            entries: Loading::Ready(Arc::new(JournalRead {
+                entries: Vec::new(),
+                interrupted: interrupted.iter().map(|&s| s.to_owned()).collect(),
+                unreadable: unreadable.iter().map(|&s| s.to_owned()).collect(),
+            })),
+            ..JournalState::default()
+        }
+    }
+
+    #[test]
+    fn the_notice_names_the_interrupted_entry_until_it_has_been_seen() {
+        let mut state = AppState {
+            journal: read(&["commit \"fix\""], &[]),
+            ..AppState::default()
+        };
+        let notice = interrupted_notice(&state).expect("there is one to report");
+        assert!(notice.contains("commit \"fix\""), "{notice}");
+        assert!(notice.contains("J to inspect"), "{notice}");
+
+        state.journal.notice_seen = true;
+        assert_eq!(interrupted_notice(&state), None);
+    }
+
+    #[test]
+    fn a_clean_journal_has_no_notice() {
+        let state = AppState {
+            journal: read(&[], &[]),
+            ..AppState::default()
+        };
+        assert_eq!(interrupted_notice(&state), None);
+    }
+
+    #[test]
+    fn an_unreadable_after_state_says_undo_would_restore_everything() {
+        let state = AppState {
+            journal: read(&["stash pop"], &["stash pop: could not read HEAD"]),
+            ..AppState::default()
+        };
+        let notice = interrupted_notice(&state).expect("there is one to report");
+        assert!(notice.contains("restores the whole tree"), "{notice}");
+    }
+}

@@ -144,6 +144,10 @@ pub struct AppState {
     /// The Map view (`M`, DESIGN.md §5.1, m2-details-and-diffs/18): hidden
     /// until pressed, built fresh each time and thrown away on close.
     pub map: super::map::MapState,
+    /// The undo journal (`J`, ADR-0034, m3-working-tree-undo-and-stash/06):
+    /// read at launch whether or not the browser is open, because the
+    /// interrupted-entry notice depends on it.
+    pub journal: super::journal::JournalState,
     /// The overview strip (`O`, DESIGN.md §5.3, m2-details-and-diffs/20):
     /// off until asked (no config default, M8 polish). Drawn only while
     /// this holds and [`super::map::MapState::shown`] does not.

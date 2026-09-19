@@ -26,6 +26,7 @@ pub mod detail;
 mod events;
 mod geometry;
 mod history;
+pub mod journal;
 mod keys;
 pub mod map;
 mod mouse;
@@ -36,6 +37,7 @@ mod search;
 mod selection;
 mod state;
 mod strip;
+pub mod undo;
 
 pub use events::{AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, Task};
 pub(crate) use geometry::context_menu_area;
@@ -88,6 +90,7 @@ fn settle(next: &mut AppState, commands: &mut Vec<Command>, cursor_before: usize
     radar::request_context(next, commands, &mut || local_jobs.next_id());
     radar::request_force_push_probes(next, commands, &mut || local_jobs.next_id());
     radar::request_duplicates_probe(next, commands, &mut || local_jobs.next_id());
+    journal::request(next, commands, &mut || local_jobs.next_id());
     // Last of the radar's work: the findings the refs carry, rebuilt only
     // when the refs, `HEAD`, the default branch, the context or the policy
     // moved — so a frame looks a row up instead of walking every ref
@@ -142,6 +145,17 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         | AppEvent::Progress(_, Progress::Operating { .. })) => {
             operate_answer(next, commands, event);
         }
+        AppEvent::Produced(id, Product::Undone(outcome)) => {
+            let mut local_jobs = next.local_jobs;
+            commands.extend(undo::undone(next, id, *outcome, &mut || {
+                local_jobs.next_id()
+            }));
+            next.local_jobs = local_jobs;
+        }
+        AppEvent::Produced(id, product @ Product::Journal(_)) => {
+            let taken: bool = journal::journal_event(next, id, &product);
+            debug_assert!(taken, "the journal's own product");
+        }
         event @ AppEvent::Produced(
             _,
             Product::CommitTemplate(_)
@@ -174,6 +188,8 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::DuplicatesProbe { .. }
         | Task::Map
         | Task::Operate
+        | Task::Undo
+        | Task::ReadJournal
         | Task::ReadCommitTemplate
         | Task::ReadHeadMessage
         | Task::WriteCommitGraph
@@ -305,6 +321,8 @@ fn took_fact(next: &mut AppState, product: Product) {
         | Product::DuplicatesProbe(_)
         | Product::Map(_)
         | Product::Operated(_)
+        | Product::Undone(_)
+        | Product::Journal(_)
         | Product::CommitTemplate(_)
         | Product::HeadMessage(_)
         | Product::ExternalEditor(_)
@@ -358,21 +376,7 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
         {
             side_job_ended(next, event);
         }
-        Event::JobFailed(id, failure) => {
-            if next.awaiting == Some(id) {
-                next.awaiting = None;
-                history::set_phase(next, Phase::Failed(failure.to_string()));
-                history::give_up_promotion(next, commands);
-            }
-            if next.promoting == Some(id) {
-                history::give_up_promotion(next, commands);
-            }
-            // Surfaced, not swallowed: the user is told which job failed and
-            // why. A panicking job says so in the same place — it is still a
-            // failure, and the crash report's path rides along with it.
-            next.status = Status::Failed(format!("{id} failed: {failure}"));
-            commands.extend(operate::write_job_ended(next, id));
-        }
+        Event::JobFailed(id, failure) => job_failed(next, commands, id, &failure),
         Event::JobFinished(id) => {
             // A sort that finished without producing its order: nothing
             // will swap in, so the order stays provisional.
@@ -431,7 +435,38 @@ fn job_cancelled(next: &mut AppState, commands: &mut Vec<Command>, id: graft_cor
     if next.promoting == Some(id) {
         history::give_up_promotion(next, commands);
     }
-    commands.extend(operate::write_job_ended(next, id));
+    let mut local_jobs = next.local_jobs;
+    commands.extend(operate::write_job_ended(next, id, &mut || {
+        local_jobs.next_id()
+    }));
+    next.local_jobs = local_jobs;
+}
+
+/// A job failed: whatever was waiting on it stops waiting, the failure is
+/// put on the status line, and a write that died part-way is cleared.
+fn job_failed(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    id: graft_core::job::JobId,
+    failure: &dyn std::fmt::Display,
+) {
+    if next.awaiting == Some(id) {
+        next.awaiting = None;
+        history::set_phase(next, Phase::Failed(failure.to_string()));
+        history::give_up_promotion(next, commands);
+    }
+    if next.promoting == Some(id) {
+        history::give_up_promotion(next, commands);
+    }
+    // Surfaced, not swallowed: the user is told which job failed and why. A
+    // panicking job says so in the same place — it is still a failure, and
+    // the crash report's path rides along with it.
+    next.status = Status::Failed(format!("{id} failed: {failure}"));
+    let mut local_jobs = next.local_jobs;
+    commands.extend(operate::write_job_ended(next, id, &mut || {
+        local_jobs.next_id()
+    }));
+    next.local_jobs = local_jobs;
 }
 
 /// A search or a commit-graph job ended without the answer it was for;

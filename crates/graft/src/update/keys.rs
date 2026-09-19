@@ -4,6 +4,7 @@
 
 use graft_core::capabilities::RenderingTier;
 use graft_core::event::{KeyCode, KeyPress, Modifiers};
+use graft_core::job::JobId;
 use graft_core::oid::Oid;
 use graft_git::history::Order;
 
@@ -66,6 +67,18 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
         commands.push(Command::Suspend);
         return;
     }
+    // `u`, `Ctrl+Z` and `U` (ADR-0002, DESIGN.md §2.2): global, before any
+    // pane's own keys, because undo means the same thing wherever the
+    // cursor is. Not while a text field has focus — the commit editor is
+    // modal and has already claimed every key above.
+    if let Some(redo) = is_undo_key(key) {
+        let mut local_jobs = next.local_jobs;
+        commands.extend(super::undo::undo_key(next, redo, &mut || {
+            local_jobs.next_id()
+        }));
+        next.local_jobs = local_jobs;
+        return;
+    }
     // A failure on the status line is dismissed by `Esc` before `Esc` means
     // anything else (PROMPT.md §3, "errors stay until dismissed"). Without
     // this a write failure had no way off the screen at all
@@ -95,7 +108,9 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     if is_quit(key) {
         next.quit = Some(Quit::Requested);
     } else if is_refresh(key) {
-        refresh_key(next, commands);
+        let mut local_jobs = next.local_jobs;
+        refresh_key(next, commands, &mut || local_jobs.next_id());
+        next.local_jobs = local_jobs;
     } else if is_screen_toggle(key) {
         next.screen = next.screen.toggled();
     } else if is_lane_toggle(key) {
@@ -140,11 +155,22 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
 /// Also `super::operate`'s `Refresh::Everything`: a write that moved refs
 /// leaves exactly what `Ctrl+R` rebuilds stale, and two hand-written lists of
 /// what "everything" means drift (m3/04 review M8).
-pub(super) fn refresh_key(next: &mut AppState, commands: &mut Vec<Command>) {
-    let AppState {
-        detail, local_jobs, ..
-    } = &mut *next;
-    commands.extend(detail.refresh(&mut || local_jobs.next_id()));
+/// `next_id` rather than `next.local_jobs`: a caller that borrowed the
+/// counter out into a closure writes its copy back when it returns, so a
+/// callee minting from the state's own counter has its ids rewound and the
+/// next mint reissues an id still in flight — a job answering under another
+/// job's name (m3-working-tree-undo-and-stash/06). One counter per pass.
+pub(super) fn refresh_key(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    // The journal is part of "re-read the repository from disk": another
+    // Graft on the same worktree appends to it, and an entry this run has
+    // not seen is one `u` would not offer to take back
+    // (m3-working-tree-undo-and-stash/06).
+    commands.extend(next.journal.read(next_id));
+    commands.extend(next.detail.refresh(next_id));
     if let Some(id) = next.awaiting.take() {
         commands.push(Command::CancelJob(id));
     }
@@ -435,6 +461,24 @@ fn view_change(key: KeyPress) -> Option<ViewChange> {
         KeyCode::Char(' ') => Some(ViewChange::Fold),
         KeyCode::Char('1') => Some(ViewChange::FirstParent),
         KeyCode::Char('H') => Some(ViewChange::Stashes),
+        _ => None,
+    }
+}
+
+/// `u`/`Ctrl+Z` undo, `U` redo (DESIGN.md §2.2, ADR-0002). `Some(redo)` says
+/// which.
+///
+/// `Ctrl+Shift+Z` is not bound: many terminals collapse it to `Ctrl+Z`'s own
+/// bytes, so Graft cannot tell the two apart (§2.2's own note). `U` is the
+/// binding that works everywhere.
+fn is_undo_key(key: KeyPress) -> Option<bool> {
+    if key.modifiers.alt {
+        return None;
+    }
+    match key.code {
+        KeyCode::Char('u') if !key.modifiers.control => Some(false),
+        KeyCode::Char('U') if !key.modifiers.control => Some(true),
+        KeyCode::Char('z') if key.modifiers.control => Some(false),
         _ => None,
     }
 }

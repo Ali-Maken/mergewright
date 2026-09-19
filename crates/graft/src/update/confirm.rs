@@ -12,14 +12,31 @@ use graft_ui::confirm::{Choice, ConfirmView};
 use super::events::Command;
 use super::state::AppState;
 
-/// A confirm box waiting for an answer: what it shows, and the operation
-/// `Confirm` runs.
+/// A confirm box waiting for an answer: what it shows, and what `Confirm`
+/// does.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PendingConfirm {
     /// What the box draws.
     pub view: ConfirmView,
     /// What `Confirm` dispatches.
-    pub then: Operation,
+    pub then: ConfirmThen,
+}
+
+/// What a confirmed box goes on to do.
+///
+/// Two kinds, because the undo drift guard is not an [`Operation`]: `ops`
+/// plans an undo from the journal, not from a key, so there is nothing for
+/// `app` to hand over but "the same key again, forcing"
+/// (m3-working-tree-undo-and-stash/06).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ConfirmThen {
+    /// Run this write (`d` discard, stash drop).
+    Operate(Operation),
+    /// Re-run `u` (or `U`) past the drift rail the user has just read.
+    Undo {
+        /// `true` for `U`.
+        redo: bool,
+    },
 }
 
 /// The box's own keys, while it is open: `Left`/`Right`/`Tab` move between
@@ -42,10 +59,17 @@ pub fn confirm_key(
         }
         KeyCode::Enter => {
             let choice = pending.view.cursor;
-            let op = pending.then.clone();
+            let then = pending.then.clone();
             next.confirm = None;
             if choice == Choice::Confirm {
-                super::operate::launch(next, commands, op, next_id);
+                match then {
+                    ConfirmThen::Operate(op) => {
+                        super::operate::launch(next, commands, op, next_id);
+                    }
+                    ConfirmThen::Undo { redo } => {
+                        commands.extend(super::undo::forced(next, redo, next_id));
+                    }
+                }
             }
         }
         _ => next.confirm = None,
@@ -68,7 +92,7 @@ mod tests {
                 vec!["consequence".into()],
                 "git restore --worktree -- a.rs",
             ),
-            then: Operation::Discard(Target::Paths(vec!["a.rs".into()])),
+            then: ConfirmThen::Operate(Operation::Discard(Target::Paths(vec!["a.rs".into()]))),
         }
     }
 

@@ -137,6 +137,13 @@ pub enum Task {
     /// One working-tree write (stage, unstage, discard, …), under an id
     /// `update` chose (m3-working-tree-undo-and-stash/04).
     Operate,
+    /// `u`/`U`: take back the newest operation still in force, or put back
+    /// the newest undo (m3-working-tree-undo-and-stash/06). A write like any
+    /// other — it takes `AppState::operating` and journals its own entry.
+    Undo,
+    /// Read the undo journal, closing anything a previous run left open
+    /// (m3-working-tree-undo-and-stash/06).
+    ReadJournal,
 }
 
 /// What a job brought back.
@@ -235,6 +242,17 @@ pub enum Product {
     /// ran but left part of its after-state unread still carries the
     /// [`graft_ops::apply::Applied`] the caller refreshes from.
     Operated(Box<crate::jobs::operate::Operated>),
+    /// One undo or redo finished. Not a plain `Result` for the same reason
+    /// [`Product::Operated`] is not: a restore that ran but could not read
+    /// part of what it left behind still carries the
+    /// [`graft_ops::apply::Applied`] the caller refreshes from, and "nothing
+    /// to undo" and "the repository moved" are ordinary answers rather than
+    /// failures (m3-working-tree-undo-and-stash/06).
+    Undone(Box<crate::jobs::undo::Undone>),
+    /// The undo journal, newest entry last, or why it could not be read.
+    /// `Arc`: the journal browser holds it across frames, never copied per
+    /// event (m3-working-tree-undo-and-stash/06).
+    Journal(Result<std::sync::Arc<crate::jobs::undo::JournalRead>, String>),
 }
 
 /// What running `git --version` found.
@@ -338,6 +356,18 @@ pub enum Command {
     /// the key to the call (the seam rule, `crates/graft/tests/it/
     /// seam_rule.rs`, m3-working-tree-undo-and-stash/04).
     Operate(JobId, Box<graft_ops::operation::Operation>),
+    /// Take back the newest operation still in force (`u`), under an id
+    /// `update` chose. `true` forces past the drift guard — the user has
+    /// seen what moved and said go ahead (m3-working-tree-undo-and-stash/06).
+    Undo(JobId, bool),
+    /// Put back the newest undo still in force (`U`), otherwise exactly
+    /// [`Command::Undo`] (m3-working-tree-undo-and-stash/06).
+    Redo(JobId, bool),
+    /// Read the undo journal, under an id `update` chose. The job closes
+    /// anything a previous run left `Pending` before it answers, so the
+    /// browser never shows an entry that is waiting for a process that is
+    /// gone (m3-working-tree-undo-and-stash/06).
+    ReadJournal(JobId),
     /// Read `commit.template`'s file for the commit editor's empty body,
     /// under an id `update` chose (m3-working-tree-undo-and-stash/05).
     ReadCommitTemplate(JobId),

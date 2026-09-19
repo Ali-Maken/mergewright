@@ -445,6 +445,13 @@ fn footer_notice(state: &AppState, tier: RenderingTier) -> Option<SanitizedText>
         }
         Status::Ready | Status::Failed(_) | Status::Sticky(_) => {}
     }
+    // An operation a previous run left half-done. Louder than the renderer
+    // line and quieter than a failure — nothing is broken, but there is a
+    // backup waiting and the user should know before they press `u`
+    // (m3-working-tree-undo-and-stash/06).
+    if let Some(notice) = crate::update::undo::interrupted_notice(state) {
+        return Some(sanitize_line(&notice));
+    }
     // Only below the terminal's own tier: `F3` clears the override when it
     // cycles back to the top (m1-the-graph/33).
     state

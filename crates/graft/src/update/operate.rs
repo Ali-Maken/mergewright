@@ -19,7 +19,7 @@ use graft_ops::apply::Refresh;
 use graft_ops::operation::{Operation, PatchSide, Target};
 use graft_ui::detail::{BodyRow, DetailFocus, LineKindView, WorkingTreeSection};
 
-use super::confirm::PendingConfirm;
+use super::confirm::{ConfirmThen, PendingConfirm};
 use super::detail::{DetailSpec, Loading};
 use super::events::Command;
 use super::state::{AppState, Status};
@@ -32,16 +32,17 @@ use crate::jobs::operate::Operated;
 ///
 /// The working tree is re-read as well: a job that died part-way through a
 /// plan may have written before it did.
-pub(super) fn write_job_ended(state: &mut AppState, id: JobId) -> Vec<Command> {
+pub(super) fn write_job_ended(
+    state: &mut AppState,
+    id: JobId,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
     if state.operating != Some(id) {
         return Vec::new();
     }
     state.operating = None;
     let mut commands = vec![Command::ReadWorkingTree];
-    let AppState {
-        detail, local_jobs, ..
-    } = &mut *state;
-    commands.extend(detail.refresh(&mut || local_jobs.next_id()));
+    commands.extend(state.detail.refresh(next_id));
     commands
 }
 
@@ -423,11 +424,11 @@ pub fn request_discard_at_diff_cursor(next: &mut AppState) -> bool {
     );
     next.confirm = Some(PendingConfirm {
         view,
-        then: Operation::Discard(Target::Patch {
+        then: ConfirmThen::Operate(Operation::Discard(Target::Patch {
             path,
             patch: patch_bytes,
             side,
-        }),
+        })),
     });
     true
 }
@@ -546,7 +547,7 @@ pub fn request_discard(next: &mut AppState) -> bool {
     let view = graft_ui::confirm::ConfirmView::new(question, consequence, command);
     next.confirm = Some(PendingConfirm {
         view,
-        then: Operation::Discard(Target::Paths(vec![path])),
+        then: ConfirmThen::Operate(Operation::Discard(Target::Paths(vec![path]))),
     });
     true
 }
@@ -645,7 +646,7 @@ pub fn operated(
             // (m3-working-tree-undo-and-stash/05). A failure leaves both
             // alone: the message is what the user has to fix.
             super::commit_editor::committed(state);
-            refresh(state, applied.refresh, next_id)
+            refresh_scope(state, applied.refresh, next_id)
         }
         Operated::Incomplete { applied, error } => {
             state.status = Status::Sticky(format!(
@@ -656,7 +657,7 @@ pub fn operated(
             // open would invite a second commit of a message already
             // committed.
             super::commit_editor::committed(state);
-            refresh(state, applied.refresh, next_id)
+            refresh_scope(state, applied.refresh, next_id)
         }
         Operated::Failed {
             error,
@@ -670,7 +671,7 @@ pub fn operated(
             // re-read is; `None` is only the cases where nothing was written
             // (m3/04 review M1).
             match what {
-                Some(what) => refresh(state, what, next_id),
+                Some(what) => refresh_scope(state, what, next_id),
                 None => Vec::new(),
             }
         }
@@ -685,20 +686,25 @@ pub fn operated(
 /// (a second history walk started while the first still ran), the repository
 /// re-open and the Mistake Radar's default-branch reset, which goes stale the
 /// moment a commit moves the tip (m3/04 review M8).
-fn refresh(
+pub(super) fn refresh_scope(
     state: &mut AppState,
     what: Refresh,
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
     match what {
         Refresh::WorkingTree => {
-            let mut commands = vec![Command::ReadWorkingTree];
+            // Every write journals an entry — an aborted one too — so the
+            // browser and the interrupted notice are stale the moment one
+            // finishes (m3-working-tree-undo-and-stash/06). The
+            // `Everything` arm gets the same read through `refresh_key`.
+            let mut commands = state.journal.read(next_id);
+            commands.push(Command::ReadWorkingTree);
             commands.extend(state.detail.refresh(next_id));
             commands
         }
         Refresh::Everything => {
             let mut commands = Vec::new();
-            super::keys::refresh_key(state, &mut commands);
+            super::keys::refresh_key(state, &mut commands, next_id);
             commands
         }
     }
@@ -1096,10 +1102,10 @@ mod tests {
         assert!(
             matches!(
                 pending.then,
-                Operation::Discard(Target::Patch {
+                ConfirmThen::Operate(Operation::Discard(Target::Patch {
                     side: PatchSide::Worktree,
                     ..
-                })
+                }))
             ),
             "the working tree's own side is reversed: {:?}",
             pending.then
@@ -1316,7 +1322,7 @@ mod tests {
         assert_eq!(pending.view.command, "git clean -f -- new.txt");
         assert_eq!(
             pending.then,
-            Operation::Discard(Target::Paths(vec!["new.txt".into()]))
+            ConfirmThen::Operate(Operation::Discard(Target::Paths(vec!["new.txt".into()])))
         );
     }
 
@@ -1494,7 +1500,11 @@ mod tests {
             );
             let id = JobId::new(3);
             state.operating = Some(id);
-            let commands = write_job_ended(&mut state, if ended { id } else { JobId::new(9) });
+            let commands = write_job_ended(
+                &mut state,
+                if ended { id } else { JobId::new(9) },
+                &mut ids(),
+            );
             if ended {
                 assert_eq!(state.operating, None);
                 assert!(commands.contains(&Command::ReadWorkingTree), "{commands:?}");
@@ -1613,6 +1623,33 @@ mod tests {
         );
     }
 
+    /// The id rewind that made `u` after a commit answer under another
+    /// job's name (m3-working-tree-undo-and-stash/06): a caller borrows
+    /// `local_jobs` out into a closure and writes its copy back when the
+    /// callee returns, so any id the callee minted from the state's own
+    /// counter is thrown away and the next mint reissues an id still in
+    /// flight. Both refresh paths must mint from the closure only.
+    #[test]
+    fn a_refresh_never_mints_from_the_states_own_counter() {
+        let mut state = state_on(
+            "src/a.rs",
+            unstaged_entry("src/a.rs"),
+            WorkingTreeSection::Unstaged,
+        );
+        let before = state.local_jobs;
+
+        let mut commands = Vec::new();
+        crate::update::keys::refresh_key(&mut state, &mut commands, &mut ids());
+        assert!(!commands.is_empty(), "the refresh asked for something");
+        assert_eq!(state.local_jobs, before, "Ctrl+R's path");
+
+        let id = JobId::new(9);
+        state.operating = Some(id);
+        let commands = write_job_ended(&mut state, id, &mut ids());
+        assert!(!commands.is_empty(), "the ended write asked for something");
+        assert_eq!(state.local_jobs, before, "a write job that ended badly");
+    }
+
     #[test]
     fn operated_done_on_everything_emits_the_same_commands_as_ctrl_r() {
         // m3/04 review M8: `Everything` used to be a hand-written subset that
@@ -1638,7 +1675,7 @@ mod tests {
             WorkingTreeSection::Unstaged,
         );
         let mut after_ctrl_r = Vec::new();
-        crate::update::keys::refresh_key(&mut fresh, &mut after_ctrl_r);
+        crate::update::keys::refresh_key(&mut fresh, &mut after_ctrl_r, &mut ids());
 
         assert_eq!(after_write, after_ctrl_r, "{after_write:?}");
         assert!(

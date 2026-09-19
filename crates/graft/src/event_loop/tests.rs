@@ -718,6 +718,9 @@ fn a_command_from_update_reaches_the_job_runner() {
     assert_eq!(
         jobs.commands(),
         vec![
+            Command::ReadJournal(graft_core::job::JobId::new(
+                crate::update::detail::LOCAL_JOB_BIT | 1,
+            )),
             Command::OpenRepository,
             Command::ReadHistory(Order::Topological),
             Command::ReadRefs,

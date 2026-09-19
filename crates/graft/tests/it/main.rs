@@ -5,6 +5,7 @@
 //! `tests/it/` and are included from here as modules (PROMPT.md 7.1). Add a
 //! test by writing `tests/it/<area>.rs` and a `mod <area>;` line below.
 
+mod app_harness;
 #[cfg(feature = "heavy-tests")]
 mod budget_run;
 mod changes_pane_writes;
@@ -20,3 +21,4 @@ mod many_refs;
 mod not_a_repo;
 mod piped_stdout;
 mod seam_rule;
+mod undo_by_key;

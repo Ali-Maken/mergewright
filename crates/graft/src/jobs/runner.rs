@@ -538,6 +538,46 @@ impl<S: JobEvents> JobRunner<S> {
         self.row_requests().insert(id, asks);
     }
 
+    /// Runs one undo or redo, under an id `update` already chose
+    /// (m3-working-tree-undo-and-stash/06). A write like any other: it takes
+    /// `AppState::operating`, so the same `Progress::Operating` line names it
+    /// while it runs.
+    fn run_undo(&self, id: JobId, redo: bool, force: bool) {
+        let repos = Arc::clone(&self.repos);
+        let sink = self.sink.clone();
+        let description = if redo { "redo" } else { "undo" };
+        self.queue_as(id, Some(Task::Undo), move |id| {
+            Box::new(move |cancel: &Cancel| {
+                sink.deliver(AppEvent::Progress(
+                    id,
+                    Progress::Operating {
+                        description: description.to_owned(),
+                    },
+                ));
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::Undone(Box::new(super::undo::run_undo(
+                    &repos, redo, force, cancel,
+                ))))
+            })
+        });
+    }
+
+    /// Reads the undo journal, under an id `update` already chose. Closes
+    /// whatever a previous run left open before it answers.
+    fn read_journal(&self, id: JobId) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::ReadJournal), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::Journal(super::undo::read_journal(&repos, cancel)))
+            })
+        });
+    }
+
     /// Builds the Map view's per-branch bucket counts, under an id `update`
     /// already chose (`update::map::MapState::open`, mirroring the detail
     /// pane's own jobs — see `queue_as`'s doc).
@@ -601,6 +641,9 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::ReadCommitTemplate(id) => self.read_commit_template(id),
             Command::ReadHeadMessage(id) => self.read_head_message(id),
             Command::Operate(id, op) => self.operate(id, op),
+            Command::Undo(id, force) => self.run_undo(id, false, force),
+            Command::Redo(id, force) => self.run_undo(id, true, force),
+            Command::ReadJournal(id) => self.read_journal(id),
             Command::CancelJob(id) => {
                 self.row_requests().remove(&id);
                 self.cancel(id);

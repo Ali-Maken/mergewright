@@ -78,6 +78,7 @@ mod pool;
 pub(crate) mod radar;
 mod runner;
 mod types;
+pub(crate) mod undo;
 
 pub use pool::Shutdown;
 pub use runner::JobRunner;

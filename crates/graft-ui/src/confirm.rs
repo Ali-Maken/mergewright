@@ -38,10 +38,14 @@ pub struct ConfirmView {
     pub command: String,
     /// Which button the cursor is on. `Cancel` on open.
     pub cursor: Choice,
+    /// What the safe button says, without its brackets.
+    pub safe_label: String,
+    /// What the acting button says, without its brackets.
+    pub confirm_label: String,
 }
 
 impl ConfirmView {
-    /// A confirm box, cursor on `Cancel`.
+    /// A confirm box, cursor on `Cancel`, buttons `Cancel`/`Discard`.
     #[must_use]
     pub fn new(title: impl Into<String>, message: Vec<String>, command: impl Into<String>) -> Self {
         ConfirmView {
@@ -49,7 +53,19 @@ impl ConfirmView {
             message,
             command: command.into(),
             cursor: Choice::Cancel,
+            safe_label: "Cancel".to_owned(),
+            confirm_label: "Discard".to_owned(),
         }
+    }
+
+    /// The same box with its own button words: the undo drift guard asks
+    /// `[ Stop ]` / `[ Undo ]`, where "Discard" would name the opposite of
+    /// what the button does (m3-working-tree-undo-and-stash/06).
+    #[must_use]
+    pub fn with_labels(mut self, safe: impl Into<String>, confirm: impl Into<String>) -> Self {
+        self.safe_label = safe.into();
+        self.confirm_label = confirm.into();
+        self
     }
 
     /// Moves the cursor to the other button (there are only two).
@@ -84,6 +100,16 @@ pub fn confirm_area(area: Rect, view: &ConfirmView) -> Rect {
     }
 }
 
+/// One button: bracketed when the cursor is on it, spaced the same width
+/// when it is not, so the row does not shift as the cursor moves.
+fn button(label: &str, selected: bool) -> String {
+    if selected {
+        format!("[ {label} ]")
+    } else {
+        format!("  {label}  ")
+    }
+}
+
 /// The confirm box itself.
 pub struct Confirm<'a> {
     /// What to draw.
@@ -115,16 +141,11 @@ impl Widget for &Confirm<'_> {
         y = y.saturating_add(1);
         draw(&self.view.command, Style::default(), y);
         y = y.saturating_add(2);
-        let cancel = if self.view.cursor == Choice::Cancel {
-            "[ Cancel ]"
-        } else {
-            "  Cancel  "
-        };
-        let confirm = if self.view.cursor == Choice::Confirm {
-            "[ Discard ]"
-        } else {
-            "  Discard  "
-        };
+        let cancel = button(&self.view.safe_label, self.view.cursor == Choice::Cancel);
+        let confirm = button(
+            &self.view.confirm_label,
+            self.view.cursor == Choice::Confirm,
+        );
         draw(&format!("{cancel}   {confirm}"), Style::default(), y);
     }
 }

@@ -903,15 +903,29 @@ fn control_r_asks_for_the_repository_to_be_re_read() {
     assert_eq!(
         commands,
         vec![
+            // The journal is re-read too: another Graft on the same worktree
+            // can have appended to it (m3-working-tree-undo-and-stash/06).
+            Command::ReadJournal(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 1)),
             Command::OpenRepository,
             Command::ReadHistory(Order::Topological),
             Command::ReadRefs,
             Command::ReadWorkingTree,
         ]
     );
-    // Asking for work is all it does: the state is the job's to change,
-    // once the job comes back.
-    assert_eq!(next, state);
+    // Asking for work is all it does — apart from remembering which job the
+    // journal read is, so a stale answer can be dropped by id. Everything
+    // else is the jobs' to change, once they come back.
+    let expected = AppState {
+        journal: crate::update::journal::JournalState {
+            entries: crate::update::detail::Loading::Pending(JobId::new(
+                crate::update::detail::LOCAL_JOB_BIT | 1,
+            )),
+            ..state.journal.clone()
+        },
+        local_jobs: next.local_jobs,
+        ..state.clone()
+    };
+    assert_eq!(next, expected);
 }
 
 #[test]
@@ -960,6 +974,7 @@ fn the_same_event_always_gives_the_same_answer() {
         radar: crate::update::radar::RadarState::default(),
         radar_column_seen: std::cell::Cell::new(false),
         map: crate::update::map::MapState::default(),
+        journal: crate::update::journal::JournalState::default(),
         strip_shown: false,
         confirm: None,
         commit_editor: None,
@@ -990,7 +1005,12 @@ fn an_opened_repository_becomes_what_the_screen_shows() {
 
     assert_eq!(next.repository, Some(facts("/code/api", "main")));
     assert_eq!(next.status, Status::Ready);
-    assert!(commands.is_empty());
+    // One command: the launch read of the undo journal, which cannot run
+    // before the repository is open (m3-working-tree-undo-and-stash/06).
+    assert!(
+        matches!(commands.as_slice(), [Command::ReadJournal(_)]),
+        "{commands:?}"
+    );
 }
 
 #[test]
