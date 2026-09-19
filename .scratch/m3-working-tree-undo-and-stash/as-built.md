@@ -45,3 +45,23 @@ What changed in the shape:
 
 Also added: `PatchSide`/`PatchSideMismatch`, `StashScope` with `UnbornHead`/
 `NothingToStash`, and `--literal-pathspecs` on every invocation (verified 2.54).
+
+## Group 03 + its review fixes
+
+**Group 04 must handle this or it will drop errors on the floor:** a successful
+operation whose after-state cannot be read now returns `Err(ApplyError::AfterState)`
+**carrying the `Applied` value**. The operation did happen — the caller must
+surface the error *and* still refresh. `ApplyError::Journal` and
+`RestoreError::Journal` are struct variants now.
+
+| Was | Is | Why |
+|---|---|---|
+| `finish` sealed an after-commit only for worktree ops | Every backup an entry references is sealed and pinned | Index-only ops, a conflicted pop's after-state and the pre-amend commit hung off no ref; `gc` pruned them after 2 weeks / 30 days and undo then failed — weeks after the operation, with the entry still promising it could be undone |
+| `finish` `unwrap_or_default()` on refs | The read's error travels back | A failed read became a permanent `Incomplete` with the reason dropped |
+| Command-line parity for 6 of 9 kinds | All 9 (deviation 12 conceded) | — |
+| Deviation 15 | `None` still recorded, but the reason travels (`ApplyError::AfterState`) | — |
+
+Proof of the sealing fix: 4 tests run `reflog expire --expire-unreachable=now
+--all && gc --prune=now` between the operation and the undo (stage, amend,
+commit→undo→redo, conflicted pop). All 4 fail against the old rule, pass against
+the new one. The same bug was found and fixed in `recover_interrupted`.
