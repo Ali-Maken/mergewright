@@ -6,6 +6,7 @@
 //! test by writing `tests/it/<area>.rs` and a `mod <area>;` line below.
 
 mod app_harness;
+mod askpass_mode;
 #[cfg(feature = "heavy-tests")]
 mod budget_run;
 mod changes_pane_writes;
