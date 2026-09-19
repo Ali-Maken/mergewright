@@ -168,7 +168,7 @@ fn push_plans() {
     assert_eq!(
         lines(&Operation::Push(both)),
         [format!(
-            "git push --progress -u --force-with-lease=refs/heads/main:{} --force-if-includes \
+            "git push --progress -u --force-with-lease=refs/heads/main:{} \
              origin refs/heads/main:refs/heads/main",
             "ab".repeat(20)
         )]
@@ -347,6 +347,48 @@ fn push_refusals() {
     assert_eq!(push.check(&untracked), Ok(()));
 }
 
+/// The lease's `expected` must be the tracking ref's tip (oid 7 in
+/// `facts()`): anything else — fetched since, never fetched, or a target
+/// the upstream does not name — is refused before git runs.
+#[test]
+fn a_lease_must_match_the_fetched_tracking_tip() {
+    let leased = |expected: Oid| {
+        Operation::Push(PushParams {
+            lease: Some(Lease { expected }),
+            ..push_params()
+        })
+    };
+    let stale = Err(Refusal::LeaseStale {
+        remote_side: "origin/main".to_owned(),
+    });
+    assert_eq!(leased(oid(7)).check(&facts()), Ok(()));
+    assert_eq!(leased(oid(8)).check(&facts()), stale);
+    let never_fetched = RepoFacts {
+        upstream: Some(TrackedUpstream {
+            tracking_tip: None,
+            ..upstream()
+        }),
+        ..facts()
+    };
+    assert_eq!(leased(oid(7)).check(&never_fetched), stale);
+    let no_upstream = RepoFacts {
+        upstream: None,
+        ..facts()
+    };
+    assert_eq!(leased(oid(7)).check(&no_upstream), stale);
+    let elsewhere = Operation::Push(PushParams {
+        remote_branch: "refs/heads/other".to_owned(),
+        lease: Some(Lease { expected: oid(7) }),
+        ..push_params()
+    });
+    assert_eq!(
+        elsewhere.check(&facts()),
+        Err(Refusal::LeaseStale {
+            remote_side: "origin/other".to_owned(),
+        })
+    );
+}
+
 #[test]
 fn refusal_text_is_the_design_notes() {
     assert_eq!(
@@ -373,4 +415,12 @@ fn refusal_text_is_the_design_notes() {
     );
     assert!(Refusal::UpstreamChanged.explain().contains("press p again"));
     assert!(!Refusal::BranchChanged.explain().is_empty());
+    assert_eq!(
+        Refusal::LeaseStale {
+            remote_side: "origin/main".to_owned()
+        }
+        .explain(),
+        "force-push refused: origin/main is not where the box said \
+         (fetched since, or never fetched) · f to fetch, then look"
+    );
 }

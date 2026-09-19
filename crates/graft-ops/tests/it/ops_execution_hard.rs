@@ -55,8 +55,8 @@ fn parity(build: fn(&TempRepo), make: fn(&TempRepo) -> Operation) {
 
     let handle = a.open();
     let never = Never;
-    let facts =
-        facts::read_facts(&handle, crate::support::git_version(), &never).expect("the facts read");
+    let facts = facts::read_facts(&handle, crate::support::git_version(), &never, false)
+        .expect("the facts read");
     let plan = op.plan(&facts);
     run(&a, op, NOW);
 

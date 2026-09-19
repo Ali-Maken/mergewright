@@ -548,6 +548,94 @@ fn lease_push_refused_when_stale() {
     );
 }
 
+/// The case git's own lease cannot catch: their commit was **fetched** after
+/// the box read `expected`, so the tracking ref moved but nobody looked.
+/// `check` refuses before git runs; nothing is journaled and the remote keeps
+/// their commit (m4/04 review, M1).
+#[test]
+fn lease_push_refused_before_git_when_fetched_since() {
+    let remote = local();
+    let pushed = pushed_then_amended(&remote);
+    let theirs = remote.commit_on_remote("theirs").unwrap();
+    git(&remote, remote.work(), &["fetch", "-q", "origin"]);
+    assert_eq!(
+        ref_value(&remote, remote.work(), &tracking(&remote)),
+        Some(theirs.clone()),
+        "the tracking ref is at their commit"
+    );
+    let op = Operation::Push(PushParams {
+        lease: Some(Lease {
+            expected: oid(&pushed),
+        }),
+        ..push(&remote)
+    });
+
+    let result = run_in(remote.work(), &op, NOW);
+
+    let Err(ApplyError::Refused(Refusal::LeaseStale { remote_side })) = result else {
+        panic!("a lease behind the tracking ref is refused: {result:?}");
+    };
+    assert_eq!(remote_side, format!("origin/{}", remote.default_branch()));
+    assert!(
+        entries(remote.work()).is_empty(),
+        "a refusal journals nothing"
+    );
+    assert_eq!(
+        git(&remote, remote.bare(), &["rev-parse", &branch(&remote)]),
+        theirs,
+        "the remote is unchanged"
+    );
+}
+
+/// A pull that finds nothing to do is journaled (its fetch ran) but is
+/// transparent to `u`, like a fetch: `next_undo` stays on the commit, and
+/// `u` undoes the commit (m4/04 review, M3).
+#[test]
+fn an_up_to_date_pull_is_transparent_to_undo() {
+    let remote = local();
+    let commit = commit_through_apply(&remote, "local.txt", NOW);
+    let before = git(&remote, remote.work(), &["rev-parse", "HEAD"]);
+
+    let pulled = run_in(remote.work(), &pull(&remote), NOW + 10)
+        .unwrap_or_else(|why| panic!("{}", why.explain()));
+
+    assert_eq!(pulled.entry.kind, OperationKind::Pull);
+    assert_eq!(pulled.entry.status, EntryStatus::Committed);
+    let journal = entries(remote.work());
+    assert_eq!(journal.last().map(|e| &e.id), Some(&pulled.entry.id));
+    assert_eq!(next_undo(&journal).map(|e| &e.id), Some(&commit.id));
+
+    let undone = undo_in(remote.work(), NOW + 20);
+    assert_eq!(undone.entry.reverses.as_ref(), Some(&commit.id));
+    assert_ne!(
+        git(&remote, remote.work(), &["rev-parse", "HEAD"]),
+        before,
+        "one u undid the commit"
+    );
+}
+
+/// A remote section Graft cannot read (a non-UTF-8 URL) blocks only the
+/// operations that read remotes: a commit still goes through, a fetch is
+/// refused with the reason (m4/04 review, M2).
+#[test]
+fn a_non_utf8_remote_url_does_not_block_a_commit() {
+    let remote = local();
+    let config = remote.work().join(".git/config");
+    let mut bytes = std::fs::read(&config).unwrap();
+    bytes.extend_from_slice(b"[remote \"odd\"]\n\turl = /srv/\xff\xfe.git\n");
+    std::fs::write(&config, bytes).unwrap();
+
+    let commit = commit_through_apply(&remote, "local.txt", NOW);
+    assert_eq!(commit.kind, OperationKind::Commit);
+    assert_eq!(commit.status, EntryStatus::Committed);
+
+    let fetched = run_in(remote.work(), &fetch_all(), NOW + 10);
+    assert!(
+        matches!(fetched, Err(ApplyError::Facts(_))),
+        "a remote operation still reports the unreadable config: {fetched:?}"
+    );
+}
+
 #[test]
 fn fetch_does_not_empty_redo() {
     let remote = local();
@@ -750,7 +838,8 @@ fn cancel_mid_fetch_is_clean() {
         ApplyError::Remote {
             entry: entry.clone(),
             failure,
-            stderr_tail: vec![]
+            stderr_tail: vec![],
+            names: Box::new(fetch_all().remote_names().expect("a fetch has names")),
         }
         .explain()
         .ends_with("fetch all remotes cancelled")

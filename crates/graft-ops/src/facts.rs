@@ -70,10 +70,17 @@ impl FactsError {
 
 /// Everything `check`, `plan` and `touches` need, read in one pass: the
 /// remotes and `HEAD`'s upstream come from config, no spawn.
+///
+/// `with_remotes` is [`crate::operation::Operation::is_remote`]: only fetch,
+/// pull and push read the remotes and upstream. For every other operation
+/// they are left empty and `None`, so a remote section git's config holds
+/// but Graft cannot read (a non-UTF-8 name or URL) never blocks a stage, a
+/// commit or a stash (m4/04 review, M2).
 pub fn read_facts(
     repo: &RepoHandle,
     git: GitVersion,
     stop: &dyn Stop,
+    with_remotes: bool,
 ) -> Result<RepoFacts, FactsError> {
     if stop.should_stop() {
         return Err(FactsError::Stopped);
@@ -84,10 +91,15 @@ pub fn read_facts(
     // `status::read` already reports a bare repository as empty.
     let status = graft_git::status::read(repo, stop)?;
     let stashes = graft_git::stash::list(repo, stop)?;
-    let remotes = graft_git::remote::list(repo)?;
-    let upstream = match &head {
-        HeadRef::Branch(branch) => graft_git::remote::upstream_of(repo, branch)?,
-        HeadRef::Detached(_) | HeadRef::Unborn(_) => None,
+    let (remotes, upstream) = if with_remotes {
+        let remotes = graft_git::remote::list(repo)?;
+        let upstream = match &head {
+            HeadRef::Branch(branch) => graft_git::remote::upstream_of(repo, branch)?,
+            HeadRef::Detached(_) | HeadRef::Unborn(_) => None,
+        };
+        (remotes, upstream)
+    } else {
+        (Vec::new(), None)
     };
     Ok(RepoFacts {
         bare,
