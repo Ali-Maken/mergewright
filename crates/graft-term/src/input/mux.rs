@@ -290,6 +290,12 @@ fn read_until_done(
             break;
         }
     }
+    // The reader's last act. `Gate::pause` waits for the reader to park; a
+    // reader that has ended will never park, and without this the wait could
+    // only time out — which it used to answer `Ok` to, not knowing the
+    // difference between a reader that had gone and one that was slow
+    // (m3/05 review, Major 6).
+    gate.reader_finished();
 }
 
 /// Send each decoded item where it goes.

@@ -144,6 +144,14 @@ pub struct CommitEditorView<'a> {
     /// Why `[ Commit ]` would do nothing, if it would: drawn beside the
     /// dimmed button, and repeated on the title row.
     pub refusal: Option<SanitizedText>,
+
+    /// Why the last write failed, while it is still worth saying: a
+    /// pre-commit hook's refusal, an amend whose `HEAD` could not be read, an
+    /// `$EDITOR` that would not start. It takes the footer row, because a
+    /// reason the user cannot read is the same as no reason at all — and a
+    /// rejected commit is an ordinary day, not an edge case
+    /// (m3/05 review, Major 1).
+    pub status: Option<SanitizedText>,
     /// A commit is running: the button is dimmed and every key but `Esc` is
     /// ignored.
     pub busy: bool,
@@ -192,11 +200,21 @@ impl Widget for &CommitEditorScreen<'_> {
         // The footer and the options row sit at the bottom; the body takes
         // whatever is left between the subject and them.
         let footer_row = area.bottom() - 1;
+        // A failure takes the footer from the key hints, the way the graph
+        // screen's `problem` does: the hints are still discoverable, the
+        // reason a commit was refused is not (m3/05 review, Major 1).
+        let (footer, token) = match &self.view.status {
+            Some(status) => (
+                format!("{} — esc dismisses", status.as_str()),
+                Token::Warning,
+            ),
+            None => (FOOTER.to_owned(), Token::TextMuted),
+        };
         buf.set_string(
             area.x,
             footer_row,
-            fit(FOOTER, width),
-            foreground(self.theme, Token::TextMuted),
+            fit(&footer, width),
+            foreground(self.theme, token),
         );
         if area.height == 2 {
             return;

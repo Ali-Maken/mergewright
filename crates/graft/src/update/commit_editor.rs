@@ -388,6 +388,15 @@ fn open_editor_key(
     }
     match key.code {
         KeyCode::Escape => {
+            // The same rule the graph screen follows (`keys.rs`): `Esc`
+            // dismisses a failure before it means anything else. The editor
+            // draws the reason on its footer, so without this the only way
+            // to read a rejected commit's message and then get rid of it
+            // would be to close the editor (m3/05 review, Major 1).
+            if matches!(state.status, Status::Failed(_) | Status::WriteFailed(_)) {
+                state.status = Status::Ready;
+                return Vec::new();
+            }
             close(state);
             return Vec::new();
         }
@@ -462,6 +471,37 @@ fn edit_outside(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) -> Ve
 }
 
 /// Run `f` over the open editor; a no-op when there is none.
+/// A bracketed paste, into whichever text field has focus.
+///
+/// `true` when the editor took it, which it does whenever it is open: the
+/// editor is modal, so a paste arriving while it is up is meant for it even
+/// when the focus is on a toggle and there is nowhere to put the text.
+///
+/// The fields do the deciding about newlines — the subject drops them
+/// because it is one line, the body keeps them — so pasting a whole commit
+/// message into the body arrives with its paragraphs intact.
+///
+/// Graft turns bracketed paste *on*, so before this the user's paste into
+/// the editor did nothing whatsoever (m3/05 review, Major 3).
+pub fn paste(state: &mut AppState, text: &str) -> bool {
+    if state.commit_editor.is_none() || state.operating.is_some() {
+        return false;
+    }
+    with_editor(state, |editor| match editor.focus {
+        Field::Subject => editor.subject.insert_str(text),
+        Field::Body => editor.body.insert_str(text),
+        // A toggle or the button has focus: there is no text field to put
+        // this in. Claimed all the same, so it cannot fall through to a
+        // screen the user cannot see.
+        Field::Amend
+        | Field::SignOff
+        | Field::NoVerify
+        | Field::AllowEmpty
+        | Field::CommitButton => {}
+    });
+    true
+}
+
 fn with_editor(state: &mut AppState, f: impl FnOnce(&mut CommitEditor)) {
     if let Some(editor) = state.commit_editor.as_mut() {
         f(editor);

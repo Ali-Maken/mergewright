@@ -204,7 +204,8 @@ Seam rule: builds a `graft_ops::operation::Operation` and a
 - `open` (fn) — `c`/`a` from the graph or the changes pane: takes back `AppState::commit_draft` when there is one, else a fresh editor plus the jobs for `commit.template` and, on an amend, `HEAD`'s message.
 - `head_message_arrived` / `template_arrived` (fn) — fill an editor still waiting, dropping an answer for an editor that has since closed; the template never overwrites text the user typed first.
 - `editor_returned` (fn) — `$EDITOR`'s answer, accepted only while `AppState::external_editor` still names that job.
-- `editor_key` (fn) — the editor's whole key map: text into whichever field has focus, `Tab`/`Shift+Tab` and `←`/`→` for focus, `Space` on an option, `Enter` on `[ Commit ]`, `Ctrl+Enter` anywhere (ADR-0034: the button is the way that always works, `Ctrl+Enter` the shortcut where the terminal reports it), `Ctrl+E` for `$EDITOR`, `Ctrl+S` for a sign-off trailer, `Esc` to put the draft aside.
+- `paste` (fn) — `(&mut AppState, &str) -> bool`; a bracketed paste into whichever text field has focus (the subject drops newlines, the body keeps them). `true` whenever the editor is open, because it is modal. Before this the editor dropped every paste, though Graft turns bracketed paste on (m3/05 review M3).
+- `editor_key` (fn) — the editor's whole key map: text into whichever field has focus, `Tab`/`Shift+Tab` and `←`/`→` for focus, `Space` on an option, `Enter` on `[ Commit ]`, `Ctrl+Enter` anywhere (ADR-0034: the button is the way that always works, `Ctrl+Enter` the shortcut where the terminal reports it), `Ctrl+E` for `$EDITOR`, `Ctrl+S` for a sign-off trailer, `Esc` to dismiss a failure if one is showing and otherwise put the draft aside — the two-stage `Esc` the graph screen has (m3/05 review M1).
 - `committed` (fn) — a commit that landed: closes the editor and drops the draft.
 - `strip_comments` (fn) — drop `#` lines from what an editor or a template gave back, the way `git commit` does.
 
@@ -361,6 +362,7 @@ re-exported from `mod.rs`.
 - `RepoStore::table` (fn) — the repository's one `Arc<CommitTable>`, opened once, usually kept across `refresh` (rebuilt only when the commit-graph's presence changed).
 - `RepoStore::opens` (fn) — how many times the repository has been opened from scratch, or its id table rebuilt for a changed commit-graph.
 - `RepoStore::common_dir` (fn) — the repository's common directory, shared by every worktree; where `crate::layout`'s split file lives (m2-details-and-diffs/10b).
+- `RepoStore::workdir` (fn) — the working tree's root, `None` for a bare repository. Every porcelain path is relative to it, so anything handed to another program is joined onto it first (m3/05 review M2).
 - `RepoStore::refresh` (fn) — mark cached refs and conclusions (e.g. default branch) stale; returns `Result<Refreshed, StoreError>`, rebinding the id table to a new `CommitTable` when the commit-graph's presence changed since it was built (m2-details-and-diffs/21, m1-the-graph/54).
 - `Refreshed` (struct) — `refresh`'s report: `table_rebound: bool`, true when a new id table replaced the old one.
 - `StoreError` (enum) — why the store could not answer (open, refs, branches, id table, commit-graph status).
@@ -391,7 +393,7 @@ all re-exported from `mod.rs`.
 - `draws_pixels` (fn) — graph screen, pixel tier (override else session), Kitty or iTerm2 protocol — or no acked protocol at all (forced `pixel` attempts Kitty, m1-the-graph/24d).
 - `graph_view(state, now_seconds)` (fn) — build a `GraphView` from the history window, cursor and status; the selection's `Ancestry` over the window lights lanes, fades rows in Focus mode, and weighs its columns as a fold priority — not a veto (ADR-0025). `now_seconds` (m1-the-graph/53) is the instant every row's date is fitted against; callers pass `state.harness.clock.now_seconds()`.
 - `status_view` (fn) — build a `StatusView` from session and app state.
-- `commit_editor_view` (fn) — build a `graft_ui::commit_editor::CommitEditorView` from `AppState`: title (`COMMIT ── ⎇ <branch> ── N files staged`, or `AMEND <short> ── …`), the field halves, the option ticks, and `refusal` — the preview of why `[ Commit ]` is dimmed (nothing staged, empty subject, or a merge/rebase/cherry-pick in progress naming the shell command). The refusal is a preview only; `Operation::check` is the decision (m3-working-tree-undo-and-stash/05).
+- `commit_editor_view` (fn) — build a `graft_ui::commit_editor::CommitEditorView` from `AppState`, including `status` (the same `Status` reading the graph footer's `problem` uses, so a hook's refusal is readable without closing the editor — m3/05 review M1): title (`COMMIT ── ⎇ <branch> ── N files staged`, or `AMEND <short> ── …`), the field halves, the option ticks, and `refusal` — the preview of why `[ Commit ]` is dimmed (nothing staged, empty subject, or a merge/rebase/cherry-pick in progress naming the shell command). The refusal is a preview only; `Operation::check` is the decision (m3-working-tree-undo-and-stash/05).
 
 ## event_loop
 Internal split (m1-the-graph/71, public paths unchanged): `startup` (terminal
@@ -417,10 +419,10 @@ breaks the user's terminal after Graft is gone, so every path here restores
 newest-first and re-enters the same modes, or ends the loop saying it could
 not.
 - `Outside` (struct) — what the loop needs to reach outside itself: `common_dir` and an optional `Handover`. `None` in the headless and test loops, which have no terminal to give away.
-- `Handover` (struct) — `session`, `mux`, `git_dir`; `edit_message` (write the message to `graft/COMMIT_EDITMSG`, run `$EDITOR`, read back what was saved), `edit_file` (open a path, on a line where the editor takes one), `suspend` (`SIGTSTP` and back).
+- `Handover` (struct) — `session`, `mux`, `git_dir`, `workdir` (the working tree's root: the directory `$EDITOR` is started in, and what a porcelain path is joined onto — m3/05 review M2); `edit_message` (write the message to `graft/COMMIT_EDITMSG`, run `$EDITOR`, read back what was saved), `edit_file` (open a path, on a line where the editor takes one), `suspend` (`SIGTSTP` and back).
 - `run_outside_terminal` (fn) — pauses the input mux **first** so the reader thread stops consuming stdin (`InputMux::hold` only detaches the listener — the thread keeps reading, and `$EDITOR` would race Graft for keystrokes), then suspends the session, runs the closure, and re-enters both. A failure to re-enter is `OutsideError::Reenter`, which ends the loop rather than drawing into a terminal Graft no longer owns.
 - `OutsideError` (enum) — `Restore` (could not give the terminal away; nothing ran) and `Reenter` (could not take it back).
-- `editor_command` (fn) — the `std::process::Command` for a `GIT_EDITOR` string plus an optional line, per editor family: `+N` (vim/nvim/vi/nano/emacs/emacsclient/micro/hx/helix), `--goto path:N` (code/code-insiders/codium/cursor/windsurf), `path:N` (zed/zeditor), and no line argument for anything unrecognised — a wrong flag would open a file named after it.
+- `editor_command` (fn) — `(git_editor, path, line, workdir) -> Command`. `path` is made absolute against `workdir`, which also becomes the command's directory (m3/05 review M2). A `GIT_EDITOR` carrying shell syntax (`'"$`\;&|<>()*?[`) is run as `sh -c '<editor> "$@"' <editor> <args>`, the way git runs it — a quoted path with a space in it used to be split mid-word (m3/05 review M5). The line argument goes per editor family: `+N` (vim/nvim/vi/nano/emacs/emacsclient/micro/hx/helix), `--goto path:N` (code/code-insiders/codium/cursor/windsurf), `path:N` (zed/zeditor), and no line argument for anything unrecognised — a wrong flag would open a file named after it.
 - `stop_this_process` (fn) — `SIGTSTP` to Graft's own process group, so the shell's job control takes over exactly as it would for any other program.
 
 ## event_loop::signals

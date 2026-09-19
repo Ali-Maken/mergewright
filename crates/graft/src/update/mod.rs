@@ -405,9 +405,16 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
         }
         Event::JobCancelled(id) => job_cancelled(next, commands, id),
         Event::Mouse(mouse) => mouse::mouse_event(next, commands, mouse),
+        Event::Paste(text) => {
+            // The commit editor is the only thing that takes a paste so far.
+            // A paste arriving anywhere else is not an error and there is
+            // nothing to report: the user pasted at a screen with no text
+            // field on it.
+            let _taken: bool = commit_editor::paste(next, &text);
+        }
         // Nothing is bound to these yet. They reach `update` so that the
         // tickets that need them have somewhere obvious to add the handling.
-        Event::Paste(_) | Event::FocusGained | Event::FocusLost => {}
+        Event::FocusGained | Event::FocusLost => {}
     }
 }
 

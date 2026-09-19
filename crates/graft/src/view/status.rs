@@ -25,11 +25,20 @@ pub fn status_view(session: &Session, state: &AppState) -> StatusView {
         repository: state.repository.as_ref().map(repository_view),
         rendering: session.rendering,
         notes: notes(session, state),
-        problem: match &state.status {
-            Status::Ready | Status::Copied { .. } | Status::Busy(_) | Status::Done(_) => None,
-            Status::Failed(message) | Status::WriteFailed(message) => Some(sanitize_line(message)),
-        },
+        problem: problem(&state.status),
         history: state.history.as_ref().map(history_view),
+    }
+}
+
+/// The one reading of [`Status`] that is a problem worth putting in front of
+/// the user: a failure, read or write. Every screen that shows one — the
+/// graph footer, the status screen, the commit editor — asks here, so the
+/// three cannot drift apart (m3/05 review).
+#[must_use]
+pub(crate) fn problem(status: &Status) -> Option<SanitizedText> {
+    match status {
+        Status::Ready | Status::Copied { .. } | Status::Busy(_) | Status::Done(_) => None,
+        Status::Failed(message) | Status::WriteFailed(message) => Some(sanitize_line(message)),
     }
 }
 

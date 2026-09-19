@@ -42,6 +42,7 @@ fn view<'a>(focus: Field, refusal: Option<&str>) -> CommitEditorView<'a> {
         ],
         focus,
         refusal: refusal.map(sanitize_line),
+        status: None,
         busy: false,
     }
 }
@@ -152,4 +153,57 @@ fn arrows_move_between_the_options_and_stop_at_the_ends() {
         Some(Field::AllowEmpty)
     );
     assert_eq!(Field::Subject.sibling_option(true), None);
+}
+
+/// Major 1 of the m3/05 review: a pre-commit hook refusing a commit is an
+/// ordinary day. The reason has to be *on the editor*, because the editor is
+/// what the user is looking at when it lands.
+#[test]
+fn a_refused_commits_reason_is_drawn_on_the_editor_not_only_behind_it() {
+    let mut view = view(Field::Subject, None);
+    view.status = Some(sanitize_line("pre-commit: 3 files would be reformatted"));
+
+    let grid = draw(&view, 80, 24);
+
+    assert!(
+        grid.contains("pre-commit: 3 files would be reformatted"),
+        "the hook's words are in the character grid:\n{grid}"
+    );
+    assert!(
+        grid.contains("esc dismisses"),
+        "and the way to get rid of them:\n{grid}"
+    );
+}
+
+#[test]
+fn the_key_hints_come_back_once_there_is_nothing_to_report() {
+    let grid = draw(&view(Field::Subject, None), 80, 24);
+
+    assert!(grid.contains("esc cancel"), "the footer hints:\n{grid}");
+    assert!(
+        !grid.contains("esc dismisses"),
+        "and no phantom failure:\n{grid}"
+    );
+}
+
+/// The failure takes the footer row from the hints rather than a row of its
+/// own, so nothing the editor draws moves when one arrives.
+#[test]
+fn a_failure_costs_the_editor_no_rows() {
+    let quiet = draw(&view(Field::Subject, None), 80, 24);
+    let mut loud = view(Field::Subject, None);
+    loud.status = Some(sanitize_line("hook said no"));
+    let loud = draw(&loud, 80, 24);
+
+    let rows = |grid: &str| grid.lines().count();
+    assert_eq!(rows(&quiet), rows(&loud));
+    let subject_row = |grid: &str| {
+        grid.lines()
+            .position(|line| line.contains("teach the editor to commit"))
+    };
+    assert_eq!(
+        subject_row(&quiet),
+        subject_row(&loud),
+        "the subject did not move"
+    );
 }

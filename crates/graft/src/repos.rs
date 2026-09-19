@@ -191,6 +191,21 @@ impl RepoStore {
         Ok(self.shared()?.handle().common_dir().to_path_buf())
     }
 
+    /// The root of the working tree, or `None` for a bare repository.
+    ///
+    /// Every path git's porcelain names is relative to this, so anything
+    /// Graft hands to another program — `$EDITOR`, above all — is joined
+    /// onto it first. Graft's own process directory is wherever the user
+    /// happened to be standing when they typed `graft ~/code/api`
+    /// (m3/05 review, Major 2).
+    ///
+    /// # Errors
+    /// [`OpenError`] if the repository cannot be opened — the same story as
+    /// [`Self::common_dir`], which this sits beside.
+    pub fn workdir(&self) -> Result<Option<PathBuf>, OpenError> {
+        Ok(self.shared()?.handle().workdir().map(Path::to_path_buf))
+    }
+
     /// Forget what was worked out, so the next job reads it again.
     ///
     /// What `Ctrl+R` means for the cached parts: the open repository stays

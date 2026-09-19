@@ -49,6 +49,13 @@ struct GateState {
     paused: bool,
     /// The reader has seen `paused` and is waiting on the condvar.
     parked: bool,
+    /// The reader's loop has ended: there is nothing left to park.
+    ///
+    /// Without this, [`Gate::pause`] could not tell a reader that had gone
+    /// from a reader that was simply slow, and answered `Ok` to both — the
+    /// second being exactly the race the gate exists to prevent
+    /// (m3/05 review, Major 6).
+    finished: bool,
 }
 
 /// What woke the reader up.
@@ -79,24 +86,33 @@ impl Gate {
 
     /// Stop the reader touching the terminal, and wait until it has stopped.
     ///
+    /// Returns only once the reader is parked or has ended. Those are the
+    /// two states in which the terminal is nobody else's, and they are the
+    /// only two this answers `Ok` to.
+    ///
     /// # Errors
-    /// The reader could not be woken. The caller must not hand the terminal
-    /// over: the reader is still on it.
+    /// The reader could not be woken, or it neither parked nor ended within
+    /// [`PARK_TIMEOUT`]. Either way the caller must not hand the terminal
+    /// over: a reader that is still on it will eat the keys the user types
+    /// at their editor. This used to answer `Ok` on the timeout, on the
+    /// assumption that a reader which had not answered must have exited —
+    /// true for a closed terminal, and false for a loaded machine
+    /// (m3/05 review, Major 6).
     pub(super) fn pause(&self) -> io::Result<()> {
         self.lock().paused = true;
         self.wake()?;
         let mut state = self.lock();
-        while !state.parked {
+        while !(state.parked || state.finished) {
             let (next, timed_out) = self
                 .changed
                 .wait_timeout(state, PARK_TIMEOUT)
                 .unwrap_or_else(PoisonError::into_inner);
             state = next;
-            if timed_out.timed_out() {
-                // The reader is not answering — it has most likely already
-                // ended, because the terminal closed its input. Not an error
-                // to report: there is then nothing left to race with.
-                break;
+            if timed_out.timed_out() && !(state.parked || state.finished) {
+                return Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "the input reader did not let go of the terminal",
+                ));
             }
         }
         Ok(())
@@ -131,6 +147,18 @@ impl Gate {
                 .unwrap_or_else(PoisonError::into_inner);
         }
         state.parked = false;
+    }
+
+    /// The reader's side: its loop has ended and it will never park again.
+    ///
+    /// Called once, as the reader thread's last act, so that a [`pause`]
+    /// waiting on a reader that is already gone stops waiting rather than
+    /// timing out into a guess.
+    ///
+    /// [`pause`]: Self::pause
+    pub(super) fn reader_finished(&self) {
+        self.lock().finished = true;
+        self.changed.notify_all();
     }
 
     /// The reader's side: is the gate shut right now? Checked after `poll`
@@ -245,5 +273,56 @@ pub(super) fn drain(fd: RawFd) {
         if count < sink.len() {
             return;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+    use std::thread;
+
+    use super::*;
+
+    /// Major 6 of the m3/05 review. `pause` used to answer `Ok` on the park
+    /// timeout, assuming a reader that had not answered must have exited.
+    /// A reader that is merely slow gives the same silence — and then the
+    /// editor and Graft share the user's keystrokes, which is the one thing
+    /// the gate exists to prevent.
+    #[test]
+    fn a_reader_that_never_parks_is_a_refusal_not_a_shrug() {
+        let (gate, _read) = Gate::new().expect("a pipe");
+
+        let refused = gate.pause().expect_err("no reader ever parked");
+
+        assert_eq!(refused.kind(), io::ErrorKind::TimedOut);
+    }
+
+    /// And a reader that has ended is not a failure: there is nothing left
+    /// to race with, so the hand-over goes ahead.
+    #[test]
+    fn a_reader_that_has_ended_lets_the_terminal_go() {
+        let (gate, _read) = Gate::new().expect("a pipe");
+        gate.reader_finished();
+
+        gate.pause().expect("nothing is holding the terminal");
+    }
+
+    /// The ordinary path: a live reader parks and `pause` returns at once.
+    #[test]
+    fn a_live_reader_parks_and_the_pause_comes_straight_back() {
+        let (gate, _read) = Gate::new().expect("a pipe");
+        let gate = Arc::new(gate);
+        let reader = Arc::clone(&gate);
+        let parked = thread::spawn(move || {
+            // The reader's loop: notice the gate is shut, park until it opens.
+            while !reader.is_paused() {
+                thread::yield_now();
+            }
+            reader.wait_while_paused();
+        });
+
+        gate.pause().expect("the reader parked");
+        gate.resume();
+        parked.join().expect("the reader thread finished");
     }
 }

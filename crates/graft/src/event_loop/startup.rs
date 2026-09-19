@@ -143,6 +143,9 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     // detail-pane split lives under it, `crate::layout`) is wanted once more
     // below, at startup and on every resize.
     let common_dir = repos.common_dir().ok();
+    // The worktree root, for the directory `$EDITOR` is started in and the
+    // root a porcelain path is joined onto (m3/05 review, Major 2).
+    let workdir = repos.workdir().ok().flatten();
     let jobs = JobRunner::with_default_size(sender.clone(), repos)?;
     let redetector = start_redetector(&environment, &mux, &settled, &sender)?;
     let resizes = signals::watch_resizes(sender.clone(), redetector.clone())?;
@@ -174,6 +177,7 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
                 // `crate::layout` already keeps Graft's files there, and the
                 // message file is written and read back within one key press.
                 git_dir: common_dir.as_deref(),
+                workdir: workdir.as_deref(),
             }),
         },
     );

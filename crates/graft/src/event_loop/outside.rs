@@ -19,6 +19,7 @@
 //! and it is idempotent. This module only says *when*, and guarantees the
 //! way back even if what ran in between panicked.
 
+use std::ffi::OsString;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -55,6 +56,15 @@ pub struct Handover<'a> {
     /// The repository's git directory: where `Ctrl+E`'s message file goes,
     /// and the directory `git var GIT_EDITOR` is asked in.
     pub git_dir: Option<&'a Path>,
+    /// The root of the working tree, or `None` for a bare repository.
+    ///
+    /// Two jobs, both about `e`. It is the directory the editor is started
+    /// in, the way git starts one, and it is what a porcelain path is joined
+    /// onto to make it absolute. Without it `graft ~/code/api` run from `~`
+    /// opened `~/src/main.rs` — a new empty buffer in vim, "file not found"
+    /// in code and zed, and a stray file if the user saved
+    /// (m3/05 review, Major 2).
+    pub workdir: Option<&'a Path>,
 }
 
 impl std::fmt::Debug for Handover<'_> {
@@ -112,8 +122,9 @@ impl Handover<'_> {
     /// Run the user's editor on `path` with the terminal to itself.
     fn open(&self, path: &Path, line: Option<u32>) -> Result<(), String> {
         let editor = self.git_editor()?;
+        let workdir = self.workdir;
         let status = run_outside_terminal(self.session, self.mux, || {
-            editor_command(&editor, path, line).status()
+            editor_command(&editor, path, line, workdir).status()
         })
         .map_err(|error| error.to_string())?;
 
@@ -207,10 +218,13 @@ impl std::error::Error for OutsideError {
 /// editor draws over), the input reader is paused so it is not racing the
 /// editor for keystrokes, `f` runs, and then everything goes back on.
 ///
-/// The way back is a [`Reenter`] guard rather than a straight line, so a
-/// panic inside `f` still re-enters the terminal before it unwinds — without
-/// it a panicking editor path would leave the alternate screen off and the
-/// panic hook drawing into the user's scrollback.
+/// The way back is a [`Reenter`] guard rather than a straight line, so that
+/// an early return or a panic inside `f` cannot skip it. On the panicking
+/// path the guard is not what saves the terminal — `TerminalSession`'s own
+/// `Drop` restores again as the stack unwinds, and the panic hook has
+/// already printed to the scrollback by then. What the guard buys is that
+/// there is exactly one way out of this function, so a future `?` inside it
+/// cannot leave the terminal handed over (m3/05 review, Minor 1).
 ///
 /// # Errors
 /// [`OutsideError::Restore`] when the terminal could not be given up, in
@@ -268,14 +282,23 @@ impl Reenter<'_> {
 
     /// The modes back on, the reader reading again, and a full redraw asked
     /// for — the editor has scribbled over every cell Graft thought it knew.
+    ///
+    /// **Modes first, reader second.** Between the two the terminal is
+    /// nobody's; a key typed in that window while raw mode is still off is
+    /// cooked and echoed, so the user sees their own keystroke printed over
+    /// the screen Graft is about to redraw (m3/05 review, Minor 1).
     fn reenter(&mut self) -> io::Result<()> {
-        self.mux.resume();
-        match self.suspended.take() {
+        let result = match self.suspended.take() {
             Some(suspended) => self.session.resume(suspended),
             // Only reachable if `finish` ran twice, which it cannot: it
             // takes `self` by value.
             None => Ok(()),
-        }
+        };
+        // The reader goes back on either way: leaving it parked after a
+        // failed resume would mean Graft never took another key, which is
+        // worse than a terminal whose modes are half back.
+        self.mux.resume();
+        result
     }
 }
 
@@ -297,10 +320,26 @@ impl Drop for Reenter<'_> {
 /// The command that opens `path` in `git_editor`, at `line` where the editor
 /// takes a line and Graft knows how to ask for it.
 ///
+/// `path` is made absolute against `workdir` first, and `workdir` becomes the
+/// command's directory. Every path Graft has to offer comes out of git's
+/// porcelain and is relative to the top of the working tree; Graft's own
+/// process directory is wherever the user was standing when they typed
+/// `graft ~/code/api`. Handing the editor a path relative to *that* opened
+/// an empty new buffer in vim and "file not found" in code and zed, and
+/// created a stray file if the user saved (m3/05 review, Major 2).
+///
 /// `git_editor` is what `git var GIT_EDITOR` printed, which is a **shell
-/// word list**, not a program name: `emacs -nw` and `code --wait` are both
-/// normal answers. The first word is the program and the rest are arguments
-/// that must survive, so they are kept in front of anything added here.
+/// command**, not a program name. Two shapes:
+///
+/// - A plain word list — `vim`, `emacs -nw`, `code --wait` — is split on
+///   whitespace and run directly. The first word is the program; the rest
+///   are arguments that must survive, so they stay in front of anything
+///   added here.
+/// - Anything carrying shell syntax is run by `sh`, which is what git does
+///   (`prepare_shell_cmd`). The common macOS `core.editor`
+///   `'/Applications/Sublime Text.app/…/subl' -w` is the case that matters:
+///   splitting it on whitespace gave "could not run `'/Applications/Sublime`"
+///   (m3/05 review, Major 5).
 ///
 /// The line flag is a per-editor table because there is no convention: the
 /// `+N` family is the vi lineage, VS Code wants `--goto file:line`, Zed takes
@@ -308,29 +347,70 @@ impl Drop for Reenter<'_> {
 /// which is right — a wrong flag would be passed through as a filename and
 /// the user would be editing a file called `+12`.
 #[must_use]
-pub fn editor_command(git_editor: &str, path: &Path, line: Option<u32>) -> Command {
-    let mut words = git_editor.split_whitespace();
-    let program = words.next().unwrap_or(git_editor);
-    let mut command = Command::new(program);
-    command.args(words);
+pub fn editor_command(
+    git_editor: &str,
+    path: &Path,
+    line: Option<u32>,
+    workdir: Option<&Path>,
+) -> Command {
+    let path = in_worktree(path, workdir);
+    let program = git_editor.split_whitespace().next().unwrap_or(git_editor);
+    let arguments = line_arguments(line_style(program), &path, line);
 
-    match (line, line_style(program)) {
-        (Some(line), LineStyle::Plus) => {
-            command.arg(format!("+{line}"));
-            command.arg(path);
-        }
-        (Some(line), LineStyle::Goto) => {
-            command.arg("--goto");
-            command.arg(suffixed(path, line));
-        }
-        (Some(line), LineStyle::Suffix) => {
-            command.arg(suffixed(path, line));
-        }
-        (Some(_), LineStyle::None) | (None, _) => {
-            command.arg(path);
-        }
+    let mut command = if needs_a_shell(git_editor) {
+        // `sh -c '<editor> "$@"' <editor> <arguments>`: `$0` is the editor
+        // string, so a failure `sh` reports names what the user configured.
+        let mut command = Command::new("/bin/sh");
+        command.arg("-c");
+        command.arg(format!("{git_editor} \"$@\""));
+        command.arg(git_editor);
+        command
+    } else {
+        let mut words = git_editor.split_whitespace();
+        let mut command = Command::new(words.next().unwrap_or(git_editor));
+        command.args(words);
+        command
+    };
+    command.args(arguments);
+    if let Some(root) = workdir {
+        command.current_dir(root);
     }
     command
+}
+
+/// `path` joined onto the working tree's root, unless it is already absolute
+/// or there is no root to join it onto (a bare repository).
+fn in_worktree(path: &Path, workdir: Option<&Path>) -> PathBuf {
+    match workdir {
+        Some(root) if path.is_relative() => root.join(path),
+        _ => path.to_path_buf(),
+    }
+}
+
+/// Characters that make a `GIT_EDITOR` a shell command rather than a word
+/// list. Git's own set (`prepare_shell_cmd`) also counts a space, which
+/// would send every `code --wait` through `sh` for nothing; these are the
+/// ones that actually change the meaning of the words.
+const SHELL_SYNTAX: &[char] = &[
+    '\'', '"', '$', '`', '\\', ';', '&', '|', '<', '>', '(', ')', '*', '?', '[', '\n', '\t',
+];
+
+fn needs_a_shell(git_editor: &str) -> bool {
+    git_editor.contains(SHELL_SYNTAX)
+}
+
+/// The file, and the line if this editor takes one.
+fn line_arguments(style: LineStyle, path: &Path, line: Option<u32>) -> Vec<OsString> {
+    match (line, style) {
+        (Some(line), LineStyle::Plus) => {
+            vec![OsString::from(format!("+{line}")), path.into()]
+        }
+        (Some(line), LineStyle::Goto) => {
+            vec![OsString::from("--goto"), suffixed(path, line).into()]
+        }
+        (Some(line), LineStyle::Suffix) => vec![suffixed(path, line).into()],
+        (Some(_), LineStyle::None) | (None, _) => vec![path.into()],
+    }
 }
 
 /// `path:line`, as VS Code and Zed want it. Lossy on a path that is not

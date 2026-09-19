@@ -1646,4 +1646,49 @@ mod tests {
             "{after_write:?}"
         );
     }
+    /// Major 2 of the m3/05 review: `e` had no test at all, though the
+    /// ticket's NOTES said it was tested.
+    #[test]
+    fn e_on_a_file_asks_for_that_files_porcelain_path() {
+        let state = state_with(
+            &[("src/a.rs".to_owned(), WorkingTreeSection::Unstaged)],
+            vec![unstaged_entry("src/a.rs")],
+            1,
+        );
+
+        let mut commands = Vec::new();
+        let handled = crate::update::detail::detail_key(
+            &mut state.clone(),
+            &mut commands,
+            graft_core::event::KeyPress {
+                code: graft_core::event::KeyCode::Char('e'),
+                modifiers: graft_core::event::Modifiers::default(),
+            },
+        );
+
+        assert!(handled, "`e` is the changes pane's key");
+        assert_eq!(
+            commands,
+            vec![Command::OpenExternalEditor {
+                path: PathBuf::from("src/a.rs"),
+                line: None,
+            }],
+            "the path is the porcelain's, relative to the worktree root — \
+             `Handover` is what joins it onto that root"
+        );
+    }
+
+    /// The cursor's line travels with it when the diff region has focus, so
+    /// the editor opens where the user was reading.
+    #[test]
+    fn e_in_the_diff_carries_the_cursors_new_side_line() {
+        let state = state_on_diff(WorkingTreeSection::Unstaged, one_pair_diff(), 3);
+
+        let target = edit_target(&state).expect("a file is under the cursor");
+        assert_eq!(target.0, PathBuf::from("src/a.rs"));
+        assert!(
+            target.1.is_some(),
+            "the added line has a new-side number: {target:?}"
+        );
+    }
 }

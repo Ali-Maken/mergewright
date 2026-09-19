@@ -27,8 +27,25 @@ fn spelled(command: &Command) -> Vec<String> {
     words
 }
 
+/// With no working tree — the path stays as it is given, so the existing
+/// table assertions read the way they always did.
 fn opened(editor: &str, line: Option<u32>) -> Vec<String> {
-    spelled(&editor_command(editor, &PathBuf::from("src/main.rs"), line))
+    spelled(&editor_command(
+        editor,
+        &PathBuf::from("src/main.rs"),
+        line,
+        None,
+    ))
+}
+
+/// And with one, which is every real run.
+fn opened_in(editor: &str, line: Option<u32>, workdir: &str) -> Command {
+    editor_command(
+        editor,
+        &PathBuf::from("src/main.rs"),
+        line,
+        Some(Path::new(workdir)),
+    )
 }
 
 #[test]
@@ -182,5 +199,82 @@ fn the_input_reader_is_reading_again_afterwards() {
         graft_core::event::Event::Key(graft_core::event::KeyPress::plain(
             graft_core::event::KeyCode::Char('a')
         )),
+    );
+}
+
+/// Major 2 of the m3/05 review. `graft ~/code/api` run from `~` used to open
+/// `~/src/main.rs`: an empty new buffer in vim, "file not found" in code and
+/// zed, and a stray file the moment the user saved.
+#[test]
+fn a_porcelain_path_is_joined_onto_the_worktree_not_graft_s_own_directory() {
+    let command = opened_in("vim", Some(12), "/home/u/code/api");
+
+    assert_eq!(
+        spelled(&command),
+        ["vim", "+12", "/home/u/code/api/src/main.rs"]
+    );
+    assert_eq!(
+        command.get_current_dir(),
+        Some(Path::new("/home/u/code/api")),
+        "and the editor starts where git would start one"
+    );
+}
+
+#[test]
+fn an_absolute_path_is_left_alone() {
+    let command = editor_command(
+        "vim",
+        Path::new("/tmp/graft/COMMIT_EDITMSG"),
+        None,
+        Some(Path::new("/home/u/code/api")),
+    );
+
+    assert_eq!(spelled(&command), ["vim", "/tmp/graft/COMMIT_EDITMSG"]);
+}
+
+/// Major 5. The common macOS `core.editor`: a quoted path with a space in
+/// it. Split on whitespace it became "could not run `'/Applications/Sublime`".
+#[test]
+fn a_quoted_editor_path_is_run_by_a_shell_the_way_git_runs_it() {
+    let editor = "'/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl' -w";
+    let command = opened_in(editor, None, "/repo");
+
+    assert_eq!(
+        spelled(&command),
+        [
+            "/bin/sh",
+            "-c",
+            &format!("{editor} \"$@\""),
+            editor,
+            "/repo/src/main.rs",
+        ],
+        "the words the user wrote reach the shell whole"
+    );
+}
+
+/// A word list with no shell syntax in it is still run directly — a shell
+/// per keystroke for `code --wait` would buy nothing.
+#[test]
+fn a_plain_word_list_is_not_handed_to_a_shell() {
+    assert_eq!(
+        spelled(&opened_in("code --wait", Some(9), "/repo")),
+        ["code", "--wait", "--goto", "/repo/src/main.rs:9"]
+    );
+    assert_eq!(
+        spelled(&opened_in("emacs -nw", None, "/repo")),
+        ["emacs", "-nw", "/repo/src/main.rs"]
+    );
+}
+
+/// The line style still comes off the first word, shell or no shell.
+#[test]
+fn the_shell_form_keeps_its_editors_line_style() {
+    let command = opened_in("code --wait --new-window $EXTRA", Some(3), "/repo");
+    let words = spelled(&command);
+
+    assert_eq!(words[0], "/bin/sh");
+    assert!(
+        words.contains(&"--goto".to_owned()) && words.contains(&"/repo/src/main.rs:3".to_owned()),
+        "{words:?}"
     );
 }

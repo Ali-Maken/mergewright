@@ -13,7 +13,7 @@ use graft_ui::graph_screen::{
 use std::collections::BTreeSet;
 
 use crate::history::{History, Phase, Promotion, WalkFacts};
-use crate::update::{AppState, Status};
+use crate::update::AppState;
 
 use super::entries::{Thread, thread, uncommitted_shown, visible_rows};
 
@@ -28,10 +28,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         .repository
         .as_ref()
         .map(|facts| sanitize_path(&facts.path));
-    let problem = match &state.status {
-        Status::Ready | Status::Copied { .. } | Status::Busy(_) | Status::Done(_) => None,
-        Status::Failed(message) | Status::WriteFailed(message) => Some(sanitize_line(message)),
-    };
+    let problem = super::status::problem(&state.status);
     let Some(history) = &state.history else {
         return opening_view(state, location, problem);
     };

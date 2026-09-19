@@ -548,3 +548,121 @@ fn a_commit_that_failed_keeps_the_editor_and_the_message() {
     };
     assert!(said.contains("pre-commit hook"), "{said}");
 }
+
+/// Major 3 of the m3/05 review. Graft turns bracketed paste *on*, and the
+/// editor dropped every paste on the floor — pasting a commit message into
+/// it did nothing at all.
+#[test]
+fn a_paste_lands_in_the_subject() {
+    let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
+
+    let (pasted, _) = update(
+        &open,
+        AppEvent::Core(Event::Paste("teach the editor to paste".to_owned())),
+    );
+
+    let editor = pasted.commit_editor.as_ref().expect("still open");
+    assert_eq!(editor.subject.text(), "teach the editor to paste");
+}
+
+/// The subject is one line, so a pasted message's newlines go; the body
+/// keeps them, which is the whole point of pasting a message into it.
+#[test]
+fn the_subject_flattens_a_paste_and_the_body_keeps_its_lines() {
+    let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
+    let (into_subject, _) = update(&open, AppEvent::Core(Event::Paste("one\ntwo".to_owned())));
+    assert_eq!(
+        into_subject
+            .commit_editor
+            .as_ref()
+            .expect("open")
+            .subject
+            .text(),
+        "onetwo",
+        "a newline is not typable in a one-line field"
+    );
+
+    let (on_body, _) = update(&open, key(KeyCode::Tab));
+    let (into_body, _) = update(
+        &on_body,
+        AppEvent::Core(Event::Paste(
+            "why this change\n\nand what it costs".to_owned(),
+        )),
+    );
+    assert_eq!(
+        into_body.commit_editor.as_ref().expect("open").body.text(),
+        "why this change\n\nand what it costs"
+    );
+}
+
+/// A paste with no editor open changes nothing and panics on nothing.
+#[test]
+fn a_paste_with_no_editor_open_is_ignored() {
+    let quiet = ready(&["a.rs"]);
+
+    let (after, commands) = update(
+        &quiet,
+        AppEvent::Core(Event::Paste("nowhere to put this".to_owned())),
+    );
+
+    assert!(after.commit_editor.is_none());
+    assert!(commands.is_empty(), "{commands:?}");
+}
+
+/// Major 1 of the m3/05 review. A hook's refusal used to reach `AppState`
+/// and stop there: the editor drew no status, so a rejected commit looked
+/// like nothing had happened.
+#[test]
+fn a_refused_commits_reason_reaches_the_editors_own_view() {
+    let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
+    let open = typed(&open, "subject");
+    let (running, _) = update(&open, control(KeyCode::Enter));
+    let id = running.operating.expect("a write is in flight");
+
+    let (after, _) = update(
+        &running,
+        AppEvent::Produced(
+            id,
+            Product::Operated(Box::new(crate::jobs::operate::Operated::Failed {
+                error: "pre-commit hook: 1 file would be reformatted".to_owned(),
+                refresh: None,
+            })),
+        ),
+    );
+
+    let view = crate::view::commit_editor_view(&after).expect("the editor is still open");
+    let said = view
+        .status
+        .expect("the reason is on the editor")
+        .to_string();
+    assert!(said.contains("pre-commit hook"), "{said}");
+}
+
+/// And `Esc` dismisses it without closing the editor — the same two-stage
+/// `Esc` the graph screen has, so the message can be read and then got rid
+/// of without throwing the typed subject away.
+#[test]
+fn esc_dismisses_the_reason_first_and_closes_the_editor_second() {
+    let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
+    let open = typed(&open, "subject");
+    let (running, _) = update(&open, control(KeyCode::Enter));
+    let id = running.operating.expect("a write is in flight");
+    let (failed, _) = update(
+        &running,
+        AppEvent::Produced(
+            id,
+            Product::Operated(Box::new(crate::jobs::operate::Operated::Failed {
+                error: "pre-commit hook said no".to_owned(),
+                refresh: None,
+            })),
+        ),
+    );
+
+    let (dismissed, _) = update(&failed, key(KeyCode::Escape));
+    assert_eq!(dismissed.status, Status::Ready, "the reason is gone");
+    let editor = dismissed.commit_editor.as_ref().expect("the editor stayed");
+    assert_eq!(editor.subject.text(), "subject", "and so did the message");
+
+    let (closed, _) = update(&dismissed, key(KeyCode::Escape));
+    assert!(closed.commit_editor.is_none(), "the second Esc closes it");
+}
