@@ -339,7 +339,7 @@ pub fn stage_at_diff_cursor(
         return stage_selected(next, commands, next_id);
     }
     if let Some(reason) = side_by_side_refusal(next, "stage") {
-        next.status = Status::WriteFailed(reason);
+        next.status = Status::Sticky(reason);
         return true;
     }
     let Some(path) = selected_path(next) else {
@@ -357,7 +357,7 @@ pub fn stage_at_diff_cursor(
     let patch_bytes = match patch_for(next, &unit, direction, verb) {
         Ok(bytes) => bytes,
         Err(reason) => {
-            next.status = Status::WriteFailed(reason);
+            next.status = Status::Sticky(reason);
             return true;
         }
     };
@@ -389,7 +389,7 @@ pub fn request_discard_at_diff_cursor(next: &mut AppState) -> bool {
         return request_discard(next);
     }
     if let Some(reason) = side_by_side_refusal(next, "discard") {
-        next.status = Status::WriteFailed(reason);
+        next.status = Status::Sticky(reason);
         return true;
     }
     let Some(path) = selected_path(next) else {
@@ -403,7 +403,7 @@ pub fn request_discard_at_diff_cursor(next: &mut AppState) -> bool {
     let patch_bytes = match patch_for(next, &unit, PatchDirection::Reverse, "discard") {
         Ok(bytes) => bytes,
         Err(reason) => {
-            next.status = Status::WriteFailed(reason);
+            next.status = Status::Sticky(reason);
             return true;
         }
     };
@@ -648,7 +648,7 @@ pub fn operated(
             refresh(state, applied.refresh, next_id)
         }
         Operated::Incomplete { applied, error } => {
-            state.status = Status::WriteFailed(format!(
+            state.status = Status::Sticky(format!(
                 "{} \u{2014} could not confirm it fully: {error}",
                 applied.entry.description
             ));
@@ -662,7 +662,7 @@ pub fn operated(
             error,
             refresh: what,
         } => {
-            state.status = Status::WriteFailed(error);
+            state.status = Status::Sticky(error);
             // A failure is not proof the screen is still true: `ApplyError::Git`
             // means git ran part-way and journaled the entry `Aborted`, so the
             // file list, the diff bytes and the header counts describe a
@@ -1061,7 +1061,7 @@ mod tests {
         );
         assert!(commands.is_empty(), "nothing is written");
         assert_eq!(state.operating, None);
-        let Status::WriteFailed(text) = &state.status else {
+        let Status::Sticky(text) = &state.status else {
             panic!(
                 "expected a failure on the status line, got {:?}",
                 state.status
@@ -1423,7 +1423,7 @@ mod tests {
             assert!(stage_at_diff_cursor(&mut state, &mut commands, &mut ids()));
             assert!(commands.is_empty(), "{commands:?}");
             assert_eq!(state.operating, None);
-            let Status::WriteFailed(said) = &state.status else {
+            let Status::Sticky(said) = &state.status else {
                 panic!("expected a refusal, got {:?}", state.status);
             };
             assert!(said.contains("press v"), "{said}");
@@ -1432,7 +1432,7 @@ mod tests {
             state.detail.mode = graft_ui::detail::DiffMode::SideBySide;
             assert!(request_discard_at_diff_cursor(&mut state));
             assert!(state.confirm.is_none());
-            let Status::WriteFailed(said) = &state.status else {
+            let Status::Sticky(said) = &state.status else {
                 panic!("expected a refusal, got {:?}", state.status);
             };
             assert!(said.contains("press v"), "{said}");
@@ -1560,7 +1560,7 @@ mod tests {
             "a working-tree failure must not restart the walk: {commands:?}"
         );
         assert_eq!(state.operating, None);
-        assert_eq!(state.status, Status::WriteFailed("boom".into()));
+        assert_eq!(state.status, Status::Sticky("boom".into()));
     }
 
     #[test]
@@ -1585,7 +1585,7 @@ mod tests {
         );
         assert!(commands.is_empty(), "{commands:?}");
         assert_eq!(state.operating, None);
-        assert_eq!(state.status, Status::WriteFailed("nothing to do".into()));
+        assert_eq!(state.status, Status::Sticky("nothing to do".into()));
     }
 
     #[test]

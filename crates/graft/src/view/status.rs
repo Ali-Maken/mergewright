@@ -38,7 +38,7 @@ pub fn status_view(session: &Session, state: &AppState) -> StatusView {
 pub(crate) fn problem(status: &Status) -> Option<SanitizedText> {
     match status {
         Status::Ready | Status::Copied { .. } | Status::Busy(_) | Status::Done(_) => None,
-        Status::Failed(message) | Status::WriteFailed(message) => Some(sanitize_line(message)),
+        Status::Failed(message) | Status::Sticky(message) => Some(sanitize_line(message)),
     }
 }
 

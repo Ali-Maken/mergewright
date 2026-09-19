@@ -89,10 +89,47 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   lookup a frame reads (m2-details-and-diffs/13–17).
 - **Adding a new kind of `Command` or wiring a new job** → `app`. It's the
   only crate allowed to see every other crate, and `update` and the job
-  runner both live there.
+  runner both live there. **Three commands are the exception: they are
+  carried out by the frame loop itself, never by a job** — see the hand-over
+  rule below.
+- **Running another program in Graft's terminal** (`$EDITOR`, a `SIGTSTP`
+  suspend) → `app::event_loop::outside`. See the hand-over rule below.
 - **Anything that needs the open repository from a job** → `app/src/repos.rs`.
   It owns the one open repository for the run; see the seam below before
   opening one yourself.
+
+## Handing the terminal over
+
+`Ctrl+E`, `e` and `Ctrl+Z` run another program — the user's editor, or the
+shell they suspended to — inside the terminal Graft is drawing on. Their
+three commands (`EditCommitMessage`, `OpenExternalEditor`, `Suspend`) are the
+only ones **carried out by the frame loop rather than queued as jobs**, and
+that is not a shortcut: the job pool's threads do not own the session or the
+input mux, and only the thread that owns both can give the terminal up. A job
+that tried would leave two readers on one file descriptor and the user's
+keystrokes split between Graft and their editor.
+
+The rule is `run_outside_terminal(session, mux, f)` in
+`app::event_loop::outside`:
+
+1. `InputMux::pause` first, and refuse the whole hand-over if it will not
+   stop — a reader still on the terminal is worse than no editor.
+2. `TerminalSession::suspend`: every mode Graft turned on, back off, in the
+   reverse order, alt screen last so the editor draws over the shell.
+3. Run `f`.
+4. Re-enter through a guard, so no path out of the function can skip it:
+   modes back first, then the reader, then a full redraw — the editor has
+   scribbled over every cell Graft thought it knew.
+
+The loop answers with `Product::ExternalEditor` / `Product::HandedOver`, so
+`update` sees the outcome as it sees any other product and stays pure.
+
+**The one git spawn this path needs** — `git var GIT_EDITOR` — goes through
+`git::editor::git_editor`, not a bare `Command::new("git")`, so it gets the
+fixed environment, the output cap and the stop policy every other git spawn
+gets. It lives in `git` rather than `app` because `seam_rule.rs` allows a
+`GitInvocation` under `app/src` only inside `jobs/`, and this one has to run
+on the frame thread.
 
 ## The crates
 

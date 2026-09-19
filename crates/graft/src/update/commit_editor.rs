@@ -268,7 +268,7 @@ pub fn head_message_arrived(state: &mut AppState, id: JobId, message: Result<Str
         }
         // Not swallowed: `a` did nothing, and the user is told why — an
         // unborn `HEAD` is the common reason.
-        Err(why) => state.status = Status::WriteFailed(format!("amend: {why}")),
+        Err(why) => state.status = Status::Sticky(format!("amend: {why}")),
     }
 }
 
@@ -334,7 +334,7 @@ pub fn editor_returned(state: &mut AppState, id: JobId, result: Result<String, S
         Ok(text) => editor.load_message(strip_comments(&text).trim_end_matches('\n')),
         // The old text is still in the fields: nothing was thrown away, and
         // the reason says so.
-        Err(why) => state.status = Status::WriteFailed(why),
+        Err(why) => state.status = Status::Sticky(why),
     }
 }
 
@@ -393,7 +393,7 @@ fn open_editor_key(
             // draws the reason on its footer, so without this the only way
             // to read a rejected commit's message and then get rid of it
             // would be to close the editor (m3/05 review, Major 1).
-            if matches!(state.status, Status::Failed(_) | Status::WriteFailed(_)) {
+            if matches!(state.status, Status::Failed(_) | Status::Sticky(_)) {
                 state.status = Status::Ready;
                 return Vec::new();
             }

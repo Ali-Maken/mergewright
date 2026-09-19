@@ -430,18 +430,24 @@ pub enum Status {
     /// (`JobFinished`) or `Esc` dismisses it; a failure is never dropped on
     /// the floor.
     Failed(String),
-    /// A **write** the user asked for failed, and this is what it said: a
-    /// hook that rejected a commit, a patch git would not apply, a discard
-    /// that ran part-way.
+    /// **A failure that must outlive the refresh it triggers**, and this is
+    /// what it said: a hook that rejected a commit, a patch git would not
+    /// apply, a discard that ran part-way, an amend whose `HEAD` message
+    /// could not be read, an `$EDITOR` that would not start.
     ///
     /// Apart from [`Status::Failed`] because the two are stale for different
-    /// reasons. A read failure is superseded by the next read that works, so
-    /// `JobFinished` clears it. A write failure is not: the refresh the
-    /// failure itself triggers finishes a moment later, and clearing on that
-    /// wiped a rejected hook's message off the screen before the user could
-    /// read it (m3/04 review, `KNOWN_GAPS.md`). It stays until `Esc`
-    /// (m3-working-tree-undo-and-stash/05).
-    WriteFailed(String),
+    /// reasons. A read that failed on its own is superseded by the next read
+    /// that works, so `JobFinished` clears it. One of these is not: the
+    /// refresh the failure itself triggers finishes a moment later, and
+    /// clearing on that wiped a rejected hook's message off the screen
+    /// before the user could read it (m3/04 review, `KNOWN_GAPS.md`). It
+    /// stays until `Esc` (m3-working-tree-undo-and-stash/05).
+    ///
+    /// It was called `WriteFailed`, which named the commonest case rather
+    /// than the rule and then read as a lie at the three sites that use it
+    /// for a failed *read* (m3/05 review, Major 7). What it means is
+    /// "sticky": dismissed by hand, never by a later job.
+    Sticky(String),
     /// `y` sent the selected commit's SHA to the terminal's clipboard
     /// request (OSC 52); `short` is its first seven hex digits. Says what
     /// Graft sent, not that the clipboard has it: nothing comes back to

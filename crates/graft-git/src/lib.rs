@@ -10,6 +10,7 @@ pub mod branches;
 pub mod commit_graph;
 pub mod contained;
 pub mod diff;
+pub mod editor;
 #[cfg(test)]
 mod fixture;
 pub mod history;

@@ -157,22 +157,13 @@ impl Handover<'_> {
     /// git's.
     fn git_editor(&self) -> Result<String, String> {
         let dir = self.repository()?;
-        let output = Command::new("git")
-            .current_dir(dir)
-            .args(["var", "GIT_EDITOR"])
-            .output()
-            .map_err(|error| format!("could not run git: {error}"))?;
-        if !output.status.success() {
-            return Err(format!(
-                "git var GIT_EDITOR: {}",
-                String::from_utf8_lossy(&output.stderr).trim()
-            ));
-        }
-        let editor = String::from_utf8_lossy(&output.stdout).trim().to_owned();
-        if editor.is_empty() {
-            return Err("git var GIT_EDITOR named no editor".to_owned());
-        }
-        Ok(editor)
+        // Through `graft_git`, not a bare `Command::new("git")`. Every other
+        // git spawn in the program goes through `run` — fixed environment,
+        // output cap, stop policy — and this one was invisible to all three
+        // and to the seam guard besides (m3/05 review, Major 8). It still
+        // runs on this thread: only the thread holding the terminal can hand
+        // it over, and it is about to block on the editor regardless.
+        graft_git::editor::git_editor(dir).map_err(|error| error.to_string())
     }
 
     fn repository(&self) -> Result<&Path, String> {

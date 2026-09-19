@@ -197,7 +197,7 @@ fn commit_editor_answer(next: &mut AppState, event: AppEvent) {
         // `e`'s file, or `Ctrl+Z`'s suspend: nothing came back but whether
         // the terminal handover worked, and a failure is the user's to see.
         AppEvent::Produced(_, Product::HandedOver(Err(why))) => {
-            next.status = Status::WriteFailed(why);
+            next.status = Status::Sticky(why);
         }
         AppEvent::Produced(_, Product::HandedOver(Ok(()))) => {}
         other => debug_assert!(false, "not the commit editor's: {other:?}"),
@@ -399,7 +399,7 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             // message off the screen before it could be read. A read
             // failure is the only one a later success makes stale
             // (m3/04 review gap, m3-working-tree-undo-and-stash/05).
-            if !matches!(next.status, Status::Busy(_) | Status::WriteFailed(_)) {
+            if !matches!(next.status, Status::Busy(_) | Status::Sticky(_)) {
                 next.status = Status::Ready;
             }
         }

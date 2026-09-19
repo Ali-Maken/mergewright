@@ -8,6 +8,7 @@ One line per public item. Update when a public item changes.
 - `commit_graph` (mod) — the commit-graph file: status, building it with system git, the offer's remembered decline (m1-the-graph/54).
 - `history` (mod) — rev-walks: chunked, ordered, resumable.
 - `mailmap` (mod) — `.mailmap` resolution, via gix's own parser.
+- `editor` (mod) — `git_editor(directory) -> Result<String, EditorError>`: `git var GIT_EDITOR` through `run`, so the app's terminal hand-over does not need a bare `git` spawn of its own (m3/05 review M8). `EditorError` is `Run(RunError)` or `NoEditor`. The answer is a shell command, not a program name.
 - `run` (mod) — the typed runner for system `git`: typed args, byte paths, stdin, kill-on-stop, output cap (m2/01).
 - `repo` (mod) — opening a repository and reading `HEAD`, refs and tips from it.
 - `stash` (mod) — the stash list, from `refs/stash`'s own reflog (m3/01).

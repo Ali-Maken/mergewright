@@ -443,7 +443,7 @@ fn footer_notice(state: &AppState, tier: RenderingTier) -> Option<SanitizedText>
         Status::Copied { short } => {
             return Some(sanitize_line(&format!("{short}… → clipboard (osc 52)")));
         }
-        Status::Ready | Status::Failed(_) | Status::WriteFailed(_) => {}
+        Status::Ready | Status::Failed(_) | Status::Sticky(_) => {}
     }
     // Only below the terminal's own tier: `F3` clears the override when it
     // cycles back to the top (m1-the-graph/33).

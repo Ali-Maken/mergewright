@@ -70,9 +70,7 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     // anything else (PROMPT.md §3, "errors stay until dismissed"). Without
     // this a write failure had no way off the screen at all
     // (m3/04 review gap, m3-working-tree-undo-and-stash/05).
-    if key.code == KeyCode::Escape
-        && matches!(next.status, Status::Failed(_) | Status::WriteFailed(_))
-    {
+    if key.code == KeyCode::Escape && matches!(next.status, Status::Failed(_) | Status::Sticky(_)) {
         next.status = Status::Ready;
         return;
     }
@@ -330,7 +328,7 @@ fn copy_selected_sha(next: &mut AppState, commands: &mut Vec<Command>) {
     let sha = row.commit.id.to_string();
     let short = sha.chars().take(7).collect();
     commands.push(Command::CopyToClipboard(sha));
-    if !matches!(next.status, Status::Failed(_) | Status::WriteFailed(_)) {
+    if !matches!(next.status, Status::Failed(_) | Status::Sticky(_)) {
         next.status = Status::Copied { short };
     }
 }
