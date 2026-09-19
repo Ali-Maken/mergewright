@@ -2124,7 +2124,8 @@ fn capture_m3_confirm_discard() {
 # Judge by eye:
 # - The box says what goes, in plain words, and counts the lines.
 # - It shows the exact git command it will run.
-# - `Keep` — the safe choice — is the one under the cursor, not `Discard`.
+# - `[ Cancel ]` — the safe choice — is the one under the cursor, in
+#   brackets; `Discard` beside it is not.
 # - The pane behind it is still readable; the box does not cover the file it
 #   is asking about.
 #
@@ -2133,6 +2134,57 @@ fn capture_m3_confirm_discard() {
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m3-confirm-discard.txt"
+        ),
+        format!("{header}{screen}"),
+    )
+    .expect("docs/shots is writable");
+}
+
+/// Regenerates `docs/shots/m3-confirm-delete-untracked.txt`: the whole-file
+/// discard box, whose consequence line is now per class (m3/04 review M6).
+#[test]
+#[ignore = "writes docs/shots/m3-confirm-delete-untracked.txt; run by hand to regenerate"]
+fn capture_m3_confirm_delete_untracked() {
+    use crate::update::detail::Loading;
+    use graft_ui::detail::DetailFocus;
+
+    let mut state = changes_pane_state(120, 40);
+    state.detail.focus = DetailFocus::Files;
+    let Loading::Ready(files) = &state.detail.files else {
+        panic!("the fixture's list is ready");
+    };
+    let mut view = (**files).clone();
+    view.cursor = view
+        .rows
+        .iter()
+        .position(|row| row.name.as_str() == "notes.md")
+        .expect("notes.md has a row");
+    state.detail.files = Loading::Ready(std::sync::Arc::new(view));
+    assert!(
+        crate::update::operate::request_discard(&mut state),
+        "the box opens on the untracked file under the cursor"
+    );
+    let screen = draw(&state, 120, 40);
+    let header = "\
+# m3-confirm-delete-untracked.txt: TestBackend capture (not a pty), 120x40,
+# no colour recorded. Fixture: capture_m3_confirm_delete_untracked in
+# crates/graft/src/view/tests.rs (#[ignore]d, run by hand to regenerate).
+# `d` pressed with the files list focused and the cursor on notes.md, which
+# is untracked.
+#
+# Judge by eye:
+# - The box uses the word `Delete`, in the question and in the consequence:
+#   `git clean -f` removes the file, it does not just undo an edit.
+# - It says a backup is kept and that `u` undoes it.
+# - It shows the exact git command it will run.
+# - `[ Cancel ]` — the safe choice — is the one under the cursor, in
+#   brackets; `Discard` beside it is not.
+#
+";
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m3-confirm-delete-untracked.txt"
         ),
         format!("{header}{screen}"),
     )

@@ -1,0 +1,54 @@
+# m3-confirm-delete-untracked.txt: TestBackend capture (not a pty), 120x40,
+# no colour recorded. Fixture: capture_m3_confirm_delete_untracked in
+# crates/graft/src/view/tests.rs (#[ignore]d, run by hand to regenerate).
+# `d` pressed with the files list focused and the cursor on notes.md, which
+# is untracked.
+#
+# Judge by eye:
+# - The box uses the word `Delete`, in the question and in the consequence:
+#   `git clean -f` removes the file, it does not just undo an edit.
+# - It says a backup is kept and that `u` undoes it.
+# - It shows the exact git command it will run.
+# - `[ Cancel ]` — the safe choice — is the one under the cursor, in
+#   brackets; `Discard` beside it is not.
+#
+" graft 3 commits                                                                                                        "
+"◌   Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                             "
+"◆   [HEAD] Commit 3␛[31m                                                                                 TE 57y  0303030"
+"●   Commit 2␛[31m                                                                                        TE 57y  0202020"
+"◇   Commit 1␛[31m                                                                                        TE 57y  0101010"
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                            Delete notes.md?                                                                            "
+"                            Deletes the file from the working tree.                                                     "
+"                            Graft keeps a backup first, so `u` can undo it afterwards.                                  "
+"                                                                                                                        "
+"                            git clean -f -- notes.md                                                                    "
+"                                                                                                                        "
+"                            [ Cancel ]     Discard                                                                      "
+" q quit  F2 status  F3 renderer  <> resize  space stage  d discard  / search  j/k move  Space fold  1 first-parent      "
+"UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
+"diff vs HEAD 0303030                                                                                                    "
+"STAGED (1)                    fn routes()                                                                               "
+"  ▾ src/                       18  18       let mut app = Router::new();                                                "
+"    ▾ auth/                    19     -     app.get("/health", health);                                                 "
+"      M token.rs        +12 −4     19▎+     app.get("/health", health);                                                 "
+"UNSTAGED (2)                       20 +     app.get("/ready", ready);                                                   "
+"  ▾ src/                       20  21       app                                                                         "
+"    ▾ api/                     21  22   }                                                                               "
+"      M routes.rs        +3 −2fn ready()                                                                                "
+"    ▾ auth/                    44  45   async fn ready() -> Json<Status> {                                              "
+"      M token.rs         +2 −0 45     -     Json(Status::Ok)                                                            "
+"UNTRACKED (1)                      46 +     Json(Status::from(&state))                                                  "
+"  ? notes.md             +0 −0 46  47   }                                                                               "
+"                                                                                                                        "
+"                                                                                                                        "

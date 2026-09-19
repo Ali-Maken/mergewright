@@ -7,7 +7,8 @@
 # Judge by eye:
 # - The box says what goes, in plain words, and counts the lines.
 # - It shows the exact git command it will run.
-# - `Keep` — the safe choice — is the one under the cursor, not `Discard`.
+# - `[ Cancel ]` — the safe choice — is the one under the cursor, in
+#   brackets; `Discard` beside it is not.
 # - The pane behind it is still readable; the box does not cover the file it
 #   is asking about.
 #

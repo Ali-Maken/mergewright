@@ -551,9 +551,12 @@ fn discard_consequence(entry: &StatusEntry, counts: Option<(u32, u32)>) -> Vec<S
         None => String::new(),
     };
     if entry.untracked {
+        // An untracked file has no diff against the index, so the list often
+        // reports no lines at all. "0 lines" would read as a fact; silence is
+        // the truth.
         let size = match counts {
-            Some((added, _)) => format!(" \u{2014} {added} lines"),
-            None => String::new(),
+            Some((added, _)) if added > 0 => format!(" \u{2014} {added} lines"),
+            Some(_) | None => String::new(),
         };
         return vec![format!("Deletes the file from the working tree{size}.")];
     }
