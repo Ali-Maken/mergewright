@@ -9,7 +9,7 @@ use crate::update::events::Command;
 use crate::update::state::AppState;
 
 use super::control::{diff_content_len_of, effective_layout};
-use super::state::{DetailState, Loading};
+use super::state::{DetailSpec, DetailState, Loading};
 
 /// `PageUp`/`PageDown` step, in rows, for the files list and the diff body.
 const PAGE_STEP: isize = 10;
@@ -59,6 +59,9 @@ pub(crate) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
     if escape_priority(next, key) {
         return true;
     }
+    if changes_pane_write_key(next, commands, key, plain) {
+        return true;
+    }
     let AppState {
         detail, local_jobs, ..
     } = next;
@@ -102,6 +105,39 @@ pub(crate) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
         }
         _ => false,
     }
+}
+
+/// Write keys on the changes pane's file list (m3-working-tree-undo-and-
+/// stash/04), tried before the ordinary files keys in [`files_key`]: a write
+/// that cannot apply (no write in flight already, a file row under the
+/// cursor) falls through to `Space`'s other meaning, folding a directory.
+/// `d` and `Ctrl+A` have no other meaning here, so they are safe to answer
+/// unconditionally once the pane is on the changes pane's files.
+fn changes_pane_write_key(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    key: KeyPress,
+    plain: bool,
+) -> bool {
+    if !(next.detail.shown
+        && next.detail.focus == DetailFocus::Files
+        && next.detail.spec == Some(DetailSpec::WorkingTree))
+    {
+        return false;
+    }
+    let mut local_jobs = next.local_jobs;
+    let mut ids = || local_jobs.next_id();
+    let handled = if plain && matches!(key.code, KeyCode::Char(' ' | 's')) {
+        super::super::operate::stage_selected(next, commands, &mut ids)
+    } else if plain && key.code == KeyCode::Char('d') {
+        super::super::operate::request_discard(next)
+    } else if key.code == KeyCode::Char('a') && key.modifiers == Modifiers::CONTROL {
+        super::super::operate::stage_all(next, commands, &mut ids)
+    } else {
+        false
+    };
+    next.local_jobs = local_jobs;
+    handled
 }
 
 /// Keys active with the files list focused: cursor movement, paging, home/end

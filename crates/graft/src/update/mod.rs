@@ -19,6 +19,7 @@
 //! dispatcher: `update`, `answer` and `core_event`.
 
 mod commit_graph;
+pub mod confirm;
 mod context_menu;
 pub mod detail;
 mod events;
@@ -27,6 +28,7 @@ mod history;
 mod keys;
 pub mod map;
 mod mouse;
+pub mod operate;
 mod prelude;
 pub mod radar;
 mod search;
@@ -115,9 +117,7 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             | Product::FileDiff(..)
             | Product::ContainedIn(..)
             | Product::EvilProbe(..),
-        ) => {
-            detail::detail_event(next, commands, event);
-        }
+        ) => detail::detail_event(next, commands, event),
         // Not waited on by start: welcome whenever they arrive.
         AppEvent::Started(
             _,
@@ -132,14 +132,13 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             | Task::EvilProbe { .. }
             | Task::ForcePushProbe { .. }
             | Task::DuplicatesProbe { .. }
-            | Task::Map,
+            | Task::Map
+            | Task::Operate,
         ) => {}
         event @ AppEvent::Produced(
             _,
             Product::RadarContext(_) | Product::ForcePushProbe(..) | Product::DuplicatesProbe(_),
-        ) => {
-            radar::radar_event(next, event);
-        }
+        ) => radar::radar_event(next, event),
         AppEvent::Produced(id, Product::TopologicalOrder(order)) => {
             history::sorted(next, commands, id, order);
         }
@@ -156,6 +155,31 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         }
         event @ (AppEvent::Produced(_, Product::Map(_))
         | AppEvent::Progress(_, Progress::Map { .. })) => map::map_event(next, event),
+        event @ (AppEvent::Produced(_, Product::Operated(_))
+        | AppEvent::Progress(_, Progress::Operating { .. })) => {
+            operate_answer(next, commands, event);
+        }
+    }
+}
+
+/// The two events an operate job can send: a running write's description
+/// (`Progress::Operating`), and its answer (`Product::Operated`). Split out
+/// of [`answer`] to keep that match within the line budget.
+fn operate_answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
+    match event {
+        AppEvent::Produced(id, Product::Operated(outcome)) => {
+            let mut local_jobs = next.local_jobs;
+            commands.extend(operate::operated(next, id, *outcome, &mut || {
+                local_jobs.next_id()
+            }));
+            next.local_jobs = local_jobs;
+        }
+        AppEvent::Progress(id, Progress::Operating { description })
+            if next.operating == Some(id) =>
+        {
+            next.status = Status::Busy(description);
+        }
+        _ => {}
     }
 }
 
@@ -215,8 +239,8 @@ fn took_fact(next: &mut AppState, product: Product) {
             // status line rather than leaving them silently missing.
             next.status = Status::Failed(failure);
         }
-        Product::WorkingTree(Ok(counts)) => {
-            next.working_tree = Some(counts);
+        Product::WorkingTree(Ok(status)) => {
+            next.working_tree = Some(status);
         }
         Product::WorkingTree(Err(failure)) => {
             // The graph still draws without the uncommitted row; the reason
@@ -236,7 +260,8 @@ fn took_fact(next: &mut AppState, product: Product) {
         | Product::EvilProbe(..)
         | Product::ForcePushProbe(..)
         | Product::DuplicatesProbe(_)
-        | Product::Map(_) => {}
+        | Product::Map(_)
+        | Product::Operated(_) => {}
     }
 }
 

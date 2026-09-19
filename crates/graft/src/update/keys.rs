@@ -25,6 +25,18 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     if matches!(next.commit_graph, CommitGraphOffer::Written { .. }) {
         next.commit_graph = CommitGraphOffer::NotNeeded;
     }
+    // The confirm box (`d` discard, m3-working-tree-undo-and-stash/04) is
+    // modal, and wins even over the context menu: a menu key opened it, but
+    // it never opens one back over itself, so there is no ordering conflict
+    // — only whether it is `Some`.
+    {
+        let mut local_jobs = next.local_jobs;
+        let opened = super::confirm::confirm_key(next, commands, key, &mut || local_jobs.next_id());
+        next.local_jobs = local_jobs;
+        if opened {
+            return;
+        }
+    }
     // A menu open (`.`/right-click, m2-details-and-diffs/12) is modal: its
     // own keys win over the detail pane's and the graph's alike.
     if super::context_menu::context_menu_key(next, commands, key) {

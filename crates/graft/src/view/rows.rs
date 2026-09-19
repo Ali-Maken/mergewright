@@ -29,7 +29,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         .as_ref()
         .map(|facts| sanitize_path(&facts.path));
     let problem = match &state.status {
-        Status::Ready | Status::Copied { .. } => None,
+        Status::Ready | Status::Copied { .. } | Status::Busy(_) | Status::Done(_) => None,
         Status::Failed(message) => Some(sanitize_line(message)),
     };
     let Some(history) = &state.history else {

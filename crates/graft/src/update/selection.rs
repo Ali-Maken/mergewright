@@ -162,7 +162,9 @@ fn followed(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) -> Vec<Co
 #[cfg(test)]
 mod tests {
     use graft_core::job::JobId;
-    use graft_git::status::WorkingTreeCounts;
+    use std::sync::Arc;
+
+    use graft_git::status::{Change, StatusEntry, WorkingTreeStatus};
 
     use super::*;
     use crate::history::{History, Motion};
@@ -170,12 +172,42 @@ mod tests {
     use crate::update::detail::DetailSpec;
     use crate::update::state::{AppState, Harness, Size};
 
-    fn counts() -> WorkingTreeCounts {
-        WorkingTreeCounts {
-            staged: 2,
-            unstaged: 1,
-            untracked: 1,
-        }
+    fn counts() -> Arc<WorkingTreeStatus> {
+        Arc::new(WorkingTreeStatus {
+            entries: vec![
+                StatusEntry {
+                    path: "staged.txt".into(),
+                    original_path: None,
+                    staged: Some(Change::Modified),
+                    unstaged: None,
+                    untracked: false,
+                    unmerged: false,
+                    submodule: false,
+                },
+                StatusEntry {
+                    path: "unstaged.txt".into(),
+                    original_path: None,
+                    staged: None,
+                    unstaged: Some(Change::Modified),
+                    untracked: false,
+                    unmerged: false,
+                    submodule: false,
+                },
+                StatusEntry {
+                    path: "untracked.txt".into(),
+                    original_path: None,
+                    staged: None,
+                    unstaged: None,
+                    untracked: true,
+                    unmerged: false,
+                    submodule: false,
+                },
+            ],
+        })
+    }
+
+    fn clean() -> Arc<WorkingTreeStatus> {
+        Arc::new(WorkingTreeStatus::default())
     }
 
     /// A state with refs answered, `HEAD` at row 0, and a dirty tree — the
@@ -213,11 +245,7 @@ mod tests {
     #[test]
     fn up_one_from_the_top_row_scrolls_as_in_m1_when_the_row_is_hidden() {
         let mut state = shown_state();
-        state.working_tree = Some(WorkingTreeCounts {
-            staged: 0,
-            unstaged: 0,
-            untracked: 0,
-        });
+        state.working_tree = Some(clean());
         let motion = move_from_graph(&mut state, Motion::Up(1));
         assert!(!state.on_working_tree);
         assert_eq!(motion, Some(Motion::Up(1)));
@@ -285,11 +313,7 @@ mod tests {
     fn reconcile_clears_when_the_tree_goes_clean() {
         let mut state = shown_state();
         state.on_working_tree = true;
-        state.working_tree = Some(WorkingTreeCounts {
-            staged: 0,
-            unstaged: 0,
-            untracked: 0,
-        });
+        state.working_tree = Some(clean());
         assert!(reconcile(&mut state, 0));
         assert!(!state.on_working_tree);
     }

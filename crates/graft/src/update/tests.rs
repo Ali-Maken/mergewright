@@ -943,6 +943,7 @@ fn the_same_event_always_gives_the_same_answer() {
         history: None,
         refs: None,
         working_tree: None,
+        operating: None,
         screen: Screen::Graph,
         lanes_expanded: false,
         focus: false,
@@ -960,6 +961,7 @@ fn the_same_event_always_gives_the_same_answer() {
         radar_column_seen: std::cell::Cell::new(false),
         map: crate::update::map::MapState::default(),
         strip_shown: false,
+        confirm: None,
     };
 
     let first = update(&state, key(KeyCode::Char('q')));
@@ -2273,11 +2275,37 @@ fn dirty_on_screen(id: JobId) -> AppState {
         .and_then(History::selected)
         .map(|row| row.commit.id)
         .expect("row 0 has arrived");
-    state.working_tree = Some(graft_git::status::WorkingTreeCounts {
-        staged: 1,
-        unstaged: 1,
-        untracked: 1,
-    });
+    state.working_tree = Some(std::sync::Arc::new(graft_git::status::WorkingTreeStatus {
+        entries: vec![
+            graft_git::status::StatusEntry {
+                path: "staged.txt".into(),
+                original_path: None,
+                staged: Some(graft_git::status::Change::Modified),
+                unstaged: None,
+                untracked: false,
+                unmerged: false,
+                submodule: false,
+            },
+            graft_git::status::StatusEntry {
+                path: "unstaged.txt".into(),
+                original_path: None,
+                staged: None,
+                unstaged: Some(graft_git::status::Change::Modified),
+                untracked: false,
+                unmerged: false,
+                submodule: false,
+            },
+            graft_git::status::StatusEntry {
+                path: "untracked.txt".into(),
+                original_path: None,
+                staged: None,
+                unstaged: None,
+                untracked: true,
+                unmerged: false,
+                submodule: false,
+            },
+        ],
+    }));
     let badges = crate::refs::badges(
         &[],
         &graft_git::repo::HeadState::Detached(head_id),
@@ -2349,11 +2377,9 @@ fn a_clean_tree_while_shown_clears_the_flag_and_follows_off_it() {
         &opened,
         AppEvent::Produced(
             JobId::new(1),
-            Product::WorkingTree(Ok(graft_git::status::WorkingTreeCounts {
-                staged: 0,
-                unstaged: 0,
-                untracked: 0,
-            })),
+            Product::WorkingTree(Ok(std::sync::Arc::new(
+                graft_git::status::WorkingTreeStatus::default(),
+            ))),
         ),
     );
     assert!(!clean.on_working_tree);

@@ -51,6 +51,12 @@ pub enum Progress {
         /// Rows the view is building in total.
         total: u32,
     },
+    /// A working-tree write started running, described in the words the
+    /// journal and the status line both use (`Operation::describe`).
+    Operating {
+        /// What is running, e.g. `"stage src/a.rs"`.
+        description: String,
+    },
 }
 
 /// What a job was started to do.
@@ -122,6 +128,9 @@ pub enum Task {
     },
     /// The Map view's per-branch bucket counts (`crate::map`, `M`).
     Map,
+    /// One working-tree write (stage, unstage, discard, …), under an id
+    /// `update` chose (m3-working-tree-undo-and-stash/04).
+    Operate,
 }
 
 /// What a job brought back.
@@ -136,9 +145,11 @@ pub enum Product {
     /// The refs on each commit and how far each branch is from its
     /// upstream, or why they could not be read.
     Refs(Result<crate::refs::RefBadges, String>),
-    /// The working tree's staged/unstaged/untracked counts, or why they
-    /// could not be read.
-    WorkingTree(Result<graft_git::status::WorkingTreeCounts, String>),
+    /// The working tree's full status (staged/unstaged/untracked, one entry
+    /// per changed path), or why it could not be read. `Arc`: shared with
+    /// the changes pane's file list, never copied per event
+    /// (m3-working-tree-undo-and-stash/04, mirroring `Product::Refs`).
+    WorkingTree(Result<std::sync::Arc<graft_git::status::WorkingTreeStatus>, String>),
     /// Every commit in strict topological order, for the walk on screen to
     /// promote to (ADR-0008).
     TopologicalOrder(std::sync::Arc<[graft_core::commit_handle::CommitHandle]>),
@@ -186,6 +197,11 @@ pub enum Product {
     /// (`crate::map`). A `Stop` firing mid-walk is one more line here, the
     /// same as any other failure — not folded into a silent cancellation.
     Map(Result<std::sync::Arc<crate::map::MapData>, String>),
+    /// One working-tree write finished. Not a plain `Result`: see
+    /// [`crate::jobs::operate::Operated`]'s doc for why an operation that
+    /// ran but left part of its after-state unread still carries the
+    /// [`graft_ops::apply::Applied`] the caller refreshes from.
+    Operated(Box<crate::jobs::operate::Operated>),
 }
 
 /// What running `git --version` found.
@@ -284,6 +300,11 @@ pub enum Command {
     /// Build the Map view's per-branch bucket counts, under an id `update`
     /// chose (`M`, `update::map`).
     BuildMap(JobId, crate::map::MapRequest),
+    /// Run one working-tree write, under an id `update` chose: `ops` decides
+    /// what it does (checks, plans, journals, snapshots); `app` only wires
+    /// the key to the call (the seam rule, `crates/graft/tests/it/
+    /// seam_rule.rs`, m3-working-tree-undo-and-stash/04).
+    Operate(JobId, Box<graft_ops::operation::Operation>),
 }
 
 /// Where the offer to build a missing commit-graph file is (m1-the-graph/54).

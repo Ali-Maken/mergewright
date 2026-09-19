@@ -180,9 +180,13 @@ fn working_tree_header(state: &AppState) -> DetailHeader {
         });
     DetailHeader {
         subject: Subject::WorkingTree {
-            staged: counts.map_or(0, |c| u32::try_from(c.staged).unwrap_or(u32::MAX)),
-            unstaged: counts.map_or(0, |c| u32::try_from(c.unstaged).unwrap_or(u32::MAX)),
-            untracked: counts.map_or(0, |c| u32::try_from(c.untracked).unwrap_or(u32::MAX)),
+            staged: counts.map_or(0, |c| u32::try_from(c.staged().count()).unwrap_or(u32::MAX)),
+            unstaged: counts.map_or(0, |c| {
+                u32::try_from(c.unstaged().count()).unwrap_or(u32::MAX)
+            }),
+            untracked: counts.map_or(0, |c| {
+                u32::try_from(c.untracked().count()).unwrap_or(u32::MAX)
+            }),
         },
         summary: sanitize_line("Uncommitted changes"),
         author: sanitize_line(""),
@@ -235,7 +239,9 @@ mod tests {
     use crate::update::Size;
     use crate::view::tests::{counts, history_of, oid};
 
-    fn state_on_working_tree(counts: graft_git::status::WorkingTreeCounts) -> AppState {
+    fn state_on_working_tree(
+        counts: std::sync::Arc<graft_git::status::WorkingTreeStatus>,
+    ) -> AppState {
         AppState {
             history: Some(history_of(3, 0)),
             working_tree: Some(counts),

@@ -435,7 +435,9 @@ pub(crate) fn oid(byte: u8) -> Oid {
 
 /// `state` with a 3-commit history (newest is `oid(3)`) and `HEAD`
 /// attached to the newest commit.
-fn state_with_head_and_counts(counts: graft_git::status::WorkingTreeCounts) -> AppState {
+fn state_with_head_and_counts(
+    counts: std::sync::Arc<graft_git::status::WorkingTreeStatus>,
+) -> AppState {
     AppState {
         history: Some(history_of(3, 0)),
         refs: Some(std::sync::Arc::new(refs_with_head(Some(oid(3))))),
@@ -448,16 +450,51 @@ fn state_with_head_and_counts(counts: graft_git::status::WorkingTreeCounts) -> A
     }
 }
 
+/// A synthetic working-tree status with `staged` staged entries, `unstaged`
+/// unstaged (tracked) entries and `untracked` untracked entries — each on
+/// its own made-up path, distinct so `WorkingTreeStatus::entry` can find any
+/// one of them by path in a test that needs to.
 pub(crate) fn counts(
     staged: usize,
     unstaged: usize,
     untracked: usize,
-) -> graft_git::status::WorkingTreeCounts {
-    graft_git::status::WorkingTreeCounts {
-        staged,
-        unstaged,
-        untracked,
+) -> std::sync::Arc<graft_git::status::WorkingTreeStatus> {
+    use graft_git::status::{Change, StatusEntry, WorkingTreeStatus};
+    let mut entries = Vec::new();
+    for i in 0..staged {
+        entries.push(StatusEntry {
+            path: format!("staged-{i}.txt").into(),
+            original_path: None,
+            staged: Some(Change::Modified),
+            unstaged: None,
+            untracked: false,
+            unmerged: false,
+            submodule: false,
+        });
     }
+    for i in 0..unstaged {
+        entries.push(StatusEntry {
+            path: format!("unstaged-{i}.txt").into(),
+            original_path: None,
+            staged: None,
+            unstaged: Some(Change::Modified),
+            untracked: false,
+            unmerged: false,
+            submodule: false,
+        });
+    }
+    for i in 0..untracked {
+        entries.push(StatusEntry {
+            path: format!("untracked-{i}.txt").into(),
+            original_path: None,
+            staged: None,
+            unstaged: None,
+            untracked: true,
+            unmerged: false,
+            submodule: false,
+        });
+    }
+    std::sync::Arc::new(WorkingTreeStatus { entries })
 }
 
 #[test]

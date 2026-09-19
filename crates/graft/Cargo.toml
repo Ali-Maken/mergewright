@@ -25,6 +25,10 @@ graft-ops.workspace = true
 graft-term.workspace = true
 graft-ui.workspace = true
 thiserror.workspace = true
+# One journal entry id's random half (`graft_core::journal::EntryId`,
+# ADR-0010's ULID). Already in the lock file at this version through other
+# crates' transitive deps, so naming it directly adds no new version.
+getrandom = "0.3"
 # The drawing half of the loop (PROMPT.md Technology). Defaults off because
 # they pull `underline-color`, `scrolling-regions` and the palette crates;
 # `std` and the crossterm 0.29 backend are all the view needs, and the backend

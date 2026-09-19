@@ -6,6 +6,7 @@ One line per public item. Update when a public item changes.
 - `fit` (mod) — clamp text to an exact cell width.
 - `graph_column` (mod) — the Unicode-tier graph column widget.
 - `context_menu` (mod) — the `.`/right-click popup: `ContextAction`, `MenuItem`, `ContextMenu` (`for_row`, `for_working_tree`, `move_cursor` clamped, `selected`, `width`); no theme carried, so its `Widget` impl draws only labels and the reversed cursor row, the background painted by the caller (m2-details-and-diffs/12).
+- `confirm` (mod) — the discard confirm box: `Choice` (`Cancel`/`Confirm`), `ConfirmView` (`new(title, message, command)` — opens with `Cancel` under the cursor, the safe default; `toggle`), `Confirm<'a>` widget (no theme carried, like `context_menu`: draws the title bold, the consequence in plain words, the exact `git` command it will run, then `[ Cancel ]   Discard` buttons), `confirm_area`/`confirm_rows` centre-and-clamp sizing helpers (never exceed the frame) (m3-working-tree-undo-and-stash/04).
 - `detail` (mod) — the detail pane's view-model types, no drawing (m2-details-and-diffs/06).
 - `detail_pane` (mod) — the detail pane's layout and widget: breakpoints, regions, plain diff body (m2-details-and-diffs/07).
 - `graph_screen` (mod) — the graph screen Graft opens on: header, rows, key hints (every graph key, F3 included; narrow widths drop whole hints from the right, m1-the-graph/33; `y sha` added in 45).

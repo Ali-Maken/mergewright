@@ -65,7 +65,7 @@ pub(super) fn visible_rows<'a>(
     let top_row = history.visible(1).first();
     let uncommitted = state
         .uncommitted_row_shown()
-        .then_some(state.working_tree)
+        .then(|| state.working_tree.as_ref().map(|status| status.counts()))
         .flatten();
     // The virtual row takes one of the viewport's rows when it draws:
     // `History::visible` knows nothing about it.

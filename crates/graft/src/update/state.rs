@@ -69,10 +69,17 @@ pub struct AppState {
     /// owned: every event clones the state, and a repository with 50k refs
     /// made copying them the dearest part of a frame (m1-the-graph/69).
     pub refs: Option<Arc<crate::refs::RefBadges>>,
-    /// The working tree's staged/unstaged/untracked counts, once that job
-    /// has answered. `None` until then, and while it fails: a failed read
-    /// goes on the status line rather than showing a stale count.
-    pub working_tree: Option<graft_git::status::WorkingTreeCounts>,
+    /// The working tree's full status, once that job has answered. `None`
+    /// until then, and while it fails: a failed read goes on the status line
+    /// rather than showing a stale count. Shared, not owned — the changes
+    /// pane's file list is built from the same `Arc` rather than a copy
+    /// (m3-working-tree-undo-and-stash/04, mirroring `AppState::refs`).
+    pub working_tree: Option<Arc<graft_git::status::WorkingTreeStatus>>,
+    /// The working-tree write whose answer the screen is waiting for
+    /// (`Space`/`s`/`Ctrl+A`/`d` on the changes pane). One at a time: every
+    /// other write key is a no-op while this is `Some`
+    /// (m3-working-tree-undo-and-stash/04).
+    pub operating: Option<JobId>,
     /// Which screen is on show. The graph, unless the user asked for the
     /// status screen — the only place tier and cell size are shown.
     pub screen: Screen,
@@ -141,6 +148,11 @@ pub struct AppState {
     /// off until asked (no config default, M8 polish). Drawn only while
     /// this holds and [`super::map::MapState::shown`] does not.
     pub strip_shown: bool,
+    /// The confirmation box (`d` discard, PROMPT.md §3 "destructive
+    /// actions"): `None` while closed. Modal, like the context menu — its
+    /// own keys answer first and nothing else sees them
+    /// (m3-working-tree-undo-and-stash/04).
+    pub confirm: Option<super::confirm::PendingConfirm>,
 }
 
 /// The screens Graft can show.
@@ -224,12 +236,24 @@ impl AppState {
     /// flicker, and a clean-looking first frame is the safer guess.
     #[must_use]
     pub fn uncommitted_row_shown(&self) -> bool {
-        let Some(counts) = self.working_tree else {
+        let Some(status) = self.working_tree.as_deref() else {
             return false;
         };
-        if counts.is_clean() {
-            return false;
-        }
+        !status.is_clean() && self.uncommitted_row_attached()
+    }
+
+    /// Does the row sit on top of `HEAD`'s own lane this frame (the
+    /// m1-the-graph/12b attachment rule): attached only while `HEAD` (or an
+    /// unborn branch) is the topmost visible row.
+    ///
+    /// The design note for m3-working-tree-undo-and-stash/04 asks for the
+    /// row to pin to row 0 with a lone `◌` even when `HEAD` scrolls off the
+    /// top; that repaint of `view::entries` is out of this session's scope
+    /// (see the ticket's NOTES) — `uncommitted_row_shown` still hides the
+    /// row exactly as M2 did, so the known limitation
+    /// (`KNOWN_GAPS.md`, m2/06b) is unchanged, not widened.
+    #[must_use]
+    pub fn uncommitted_row_attached(&self) -> bool {
         let Some(history) = &self.history else {
             return false;
         };
@@ -237,8 +261,6 @@ impl AppState {
             return false;
         };
         match refs.head() {
-            // An unborn branch has no commit for the row to sit on top of, so
-            // it is trivially the topmost thing there is.
             None => true,
             Some(head_id) => history
                 .visible(1)
@@ -376,6 +398,12 @@ pub enum Status {
         /// The SHA's first seven hex digits.
         short: String,
     },
+    /// A working-tree write is running: `<description>…`
+    /// (m3-working-tree-undo-and-stash/04).
+    Busy(String),
+    /// A working-tree write finished, in the journal's own words (`stage
+    /// src/a.rs`). Cleared by the next key, like `Copied`.
+    Done(String),
 }
 
 /// A terminal size in character cells.

@@ -458,14 +458,37 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
-    /// Reads the working tree's counts off the loop's thread.
+    /// Reads the working tree's full status off the loop's thread.
     fn read_working_tree(&self) {
         let repos = Arc::clone(&self.repos);
         self.announce(Task::ReadWorkingTree, move |cancel| {
             if cancel.is_cancelled() {
                 return Outcome::Cancelled;
             }
-            Outcome::Produced(Product::WorkingTree(crate::working_tree::read(&repos)))
+            Outcome::Produced(Product::WorkingTree(
+                crate::working_tree::read(&repos, cancel).map(Arc::new),
+            ))
+        });
+    }
+
+    /// Runs one working-tree write, under an id `update` already chose
+    /// (m3-working-tree-undo-and-stash/04): the runner reports
+    /// [`Progress::Operating`] as soon as the job starts, then `ops::apply`
+    /// does the rest — the seam rule (`tests/it/seam_rule.rs`).
+    fn operate(&self, id: JobId, op: Box<graft_ops::operation::Operation>) {
+        let repos = Arc::clone(&self.repos);
+        let sink = self.sink.clone();
+        let description = op.describe();
+        self.queue_as(id, Some(Task::Operate), move |id| {
+            Box::new(move |cancel: &Cancel| {
+                sink.deliver(AppEvent::Progress(id, Progress::Operating { description }));
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::Operated(Box::new(super::operate::run_operation(
+                    &repos, &op, cancel,
+                ))))
+            })
         });
     }
 
@@ -543,6 +566,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
                 self.dispatch_detail(command);
             }
             Command::BuildMap(id, req) => self.build_map(id, req),
+            Command::Operate(id, op) => self.operate(id, op),
             Command::CancelJob(id) => {
                 self.row_requests().remove(&id);
                 self.cancel(id);
