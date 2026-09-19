@@ -1220,10 +1220,17 @@ mod tests {
             unstaged_entry("src/a.rs"),
             WorkingTreeSection::Unstaged,
         );
-        state.operating = Some(JobId::new(9));
+        // The first `Space` launched the write and said so; the second must
+        // change nothing, and the line it left standing is what tells the
+        // user why (m3/04 review M3).
         let mut commands = Vec::new();
-        assert!(!stage_selected(&mut state, &mut commands, &mut ids()));
-        assert!(commands.is_empty());
+        assert!(stage_selected(&mut state, &mut commands, &mut ids()));
+        assert_eq!(state.status, Status::Busy("stage src/a.rs".into()));
+
+        let mut again = Vec::new();
+        assert!(!stage_selected(&mut state, &mut again, &mut ids()));
+        assert!(again.is_empty());
+        assert_eq!(state.status, Status::Busy("stage src/a.rs".into()));
     }
 
     #[test]

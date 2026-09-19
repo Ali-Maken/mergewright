@@ -73,8 +73,8 @@ pub struct DiffFocus { pub focused: bool, pub word_tint: bool, pub cursor: Optio
 
 ## Acceptance
 
-- [x] `assemble_working_tree` on a status with 2 staged, 1 unstaged, 1 untracked, 1 both → sections `STAGED (3)`, `UNSTAGED (2)`, `UNTRACKED (1)` with the "both" file under two sections; an empty status → one row `nothing to commit — working tree clean`.
-- [x] Update tests (pure, scripted `Product`s): `Space` on an UNSTAGED file emits `Command::Operate(_, Stage(Paths([p])))`; on a STAGED file `Unstage`; on a section row every file of it; `Ctrl+A` all unstaged+untracked; a second `Space` while the job is pending emits nothing and `Status::Busy`; `Product::Operated(Ok(WorkingTree))` emits `ReadWorkingTree` and no history restart; `Ok(Everything)` emits the `Ctrl+R` commands; `Err` sets `Status::Failed` and still refreshes. **Not done: `Esc` clears `Failed`** — see NOTES.
+- [x] `assemble_working_tree` on a status with 2 staged, 1 unstaged, 1 untracked, 1 both → sections `STAGED (3)`, `UNSTAGED (2)`, `UNTRACKED (1)` with the "both" file under two sections. **Deviation, ticked for what is built:** an empty status is an empty list plus a body message (`view/detail.rs:215-223`), not a list *row* saying `nothing to commit — working tree clean`. The words the user reads are close but not the spec's.
+- [x] Update tests (pure, scripted `Product`s): `Space` on an UNSTAGED file emits `Command::Operate(_, Stage(Paths([p])))`; on a STAGED file `Unstage`; on a section row every file of it; `Ctrl+A` all unstaged+untracked (`stage_all_skips_the_paths_git_add_would_refuse`, with a staged deletion and an unmerged path present); a second `Space` while the job is pending emits nothing and `Status::Busy` (`stage_selected_is_a_noop_while_a_write_is_already_running`, which now asserts the line); `Product::Operated(Ok(WorkingTree))` emits `ReadWorkingTree` and no history restart (`operated_done_refreshes_the_working_tree_without_restarting_the_walk`); `Ok(Everything)` emits the `Ctrl+R` commands (`operated_done_on_everything_emits_the_same_commands_as_ctrl_r`, compared against `refresh_key` itself); `Err` sets `Status::Failed` and still refreshes (`operated_failed_part_way_reports_the_error_and_still_refreshes`). **Not done: `Esc` clears `Failed`** — see NOTES.
 - [x] Diff focus: cursor on a hunk heading + `Space` → `Target::Patch` whose bytes equal `hunk_patch(raw, h, WholeHunk)`; on a `+` line → `Lines([i])`; on a context line → the enclosing hunk.
 - [x] `d` opens the box with `selected == Safe`; `Enter` closes it with no command; `→` `Enter` emits `Operate(Discard(..))`; `Esc` closes; keys under the box never reach the pane (a `j` while open moves nothing).
 - [x] One real-runner test on a `copy_into_temp` fixture with a scripted unstaged edit: `Space` → the job runs → `git diff --cached --name-only` lists the file; `d` → `→` → `Enter` on an untracked file → the file is gone, `git for-each-ref refs/graft/backup` has one ref, the journal file has two lines. (The undo of it is `undo-and-stash-ui`'s test; here only the write.)
@@ -83,6 +83,115 @@ pub struct DiffFocus { pub focused: bool, pub word_tint: bool, pub cursor: Optio
 - [x] Captures listed in piece 7 exist; report their paths; the user judges by eye. (Sizes 3.0 / 6.0 / 8.9 / 5.6 KB — the 160x48 one is over the spec's 8 KB line, far under CLAUDE.md's 200 KB cap. Left whole: trimming it would cut the wide breakpoint's point, which is that nothing is elided.)
 
 ## NOTES
+
+### Session 4 (builder-opus) — review fixes, one round
+
+`docs/reviews/m3-04-changes-pane.md`: **C1 and every Major fixed** (M1–M8).
+Minors not fixed except where a Major touched them; they stay for the
+conductor to file.
+
+**C1 — the pinned heading hid the line cursor** (cause). `diff_body` skips the
+pin when `focus.cursor == Some(top)`. The fix is in the widget because the
+widget owns the pin: `update/` cannot know whether a heading will be pinned,
+it has only a row count. Test
+`the_pinned_heading_never_hides_the_line_cursors_own_row` asserts the cursor
+glyph is in the drawn buffer **on a row carrying body row 2's own text**, not
+that an index is in range; it was run against the old code first and fails
+there (`the cursor row was not drawn at all`). Costs the user one row of hunk
+context, on the topmost row only, while the cursor sits there.
+
+**M1 — `Operated::Failed` did not refresh** (cause). `Operated::Failed` is now
+`{ error, refresh: Option<Refresh> }`, and the scope is decided where the
+knowledge is: `ApplyError::Git` carries the journal entry, so `touches.refs`
+says `WorkingTree` or `Everything`, exactly as a successful `Applied` decides
+it. `None` only for `Refused`/`Facts`/`Snapshot`, whose own doc comments say
+nothing was written. The test that pinned "no refresh" is replaced.
+
+**M2 — `Ctrl+A`** (cause). `staged_by_stage_all` keeps `unstaged.is_some() ||
+untracked`, and skips `unmerged`. Costs the user: `Ctrl+A` no longer stages a
+conflicted path (deliberate — `git add` there marks it resolved with the
+markers still inside; resolving belongs to M6).
+
+**M3 — `Busy`/`Done` undrawn** (cause). Two halves: `operate::launch` sets
+`Status::Busy(op.describe())` at **key** time, not when the job thread starts,
+and `view::frame::footer_notice` draws `Busy` as `<description>…` and `Done`
+as `<description> ✓`. `keys.rs` clears `Done` on the next key, which its doc
+comment already claimed. `JobFinished` no longer wipes a `Busy` line.
+
+**M4 — `operating` never cleared** (cause). `operate::write_job_ended` runs
+from both `JobFailed` and `JobCancelled`, clears `operating` when the id
+matches, and re-reads the working tree — a job that died part-way may have
+written.
+
+**M5 — side by side wrote unseen** (cause). `stage_at_diff_cursor` and
+`request_discard_at_diff_cursor` refuse in `DiffMode::SideBySide` with
+`side by side has no line cursor — press v for the unified view to stage a
+hunk`. Drawing a cursor on a paired row was the other option; it was rejected
+because a paired row is two lines, and `Space` would still have to pick one.
+Costs the user: hunk staging needs `v` first. Whole-file staging from the
+files list is unaffected, and so is an untracked file's `Space`, which is a
+whole-file write with a visible row behind it.
+
+**M6 — discard consequence** (cause). `discard_consequence` branches on the
+`StatusEntry`: untracked says the file is deleted, staged+unstaged says both
+changes go back to HEAD, otherwise which side it comes back from. Counts come
+from the pane's own file list. The untracked line omits the count when the
+list has none rather than printing `0 lines`. Whether `d` on an UNSTAGED row
+of a staged+unstaged file *should* mean worktree-only is still a spec
+question for `planner-fable` — the box now says truthfully what happens.
+
+**M7 — both cursors reset** (cause). `DetailState::kept_cursor` /
+`KeptCursor { path, section, position, body }`; `refresh` notes it,
+`files_arrived` puts it back. Same path in the same section wins; failing
+that the cursor stays in that section at the same place down it, because a
+file that has just moved to STAGED is the one row whose `Space` means the
+opposite write. Only a section that has gone leaves the fresh list's cursor.
+**Approximation, deliberate:** the line cursor comes back by row index, not by
+(hunk, line) identity — after a stage the hunk it named no longer exists. It
+is restored only when the file matched, and `body_top` follows it so it is on
+screen.
+
+**M8 — `Everything` ≠ `Ctrl+R`** (cause). `keys::refresh_key` is
+`pub(super)` and `refresh` calls it, so there is one definition of
+"everything". `operated_done_on_everything_emits_the_same_commands_as_ctrl_r`
+compares the two command lists directly, so they cannot drift again.
+
+**Acceptance ticks corrected.** Four of the five lines the review's M9 table
+called dishonest are now **earned** — built and named to a test in the
+acceptance line itself (`Err` refreshes, `Ctrl+A`, the second `Space` and
+`Busy`, both `Ok` scopes). The fifth (`empty status → one row`) stays ticked
+with the deviation written into the line: what is built is an empty list plus
+a body message, not a list row, and the wording is close but not the spec's.
+Nothing was ticked that was not run.
+
+**Captures.** `docs/shots/m3-confirm-delete-untracked.txt` is new (5.6 KB):
+the whole-file box on an untracked file, where the words changed most.
+`m3-confirm-discard.txt`'s screen is byte-identical after all these fixes;
+only its "judge by eye" note changed, which named a `Keep` button that does
+not exist. The three `m3-changes-pane-*` captures are unchanged. No capture
+carries colour — the user judges all of them by eye.
+
+**Not fixed, for KNOWN_GAPS (conductor's file):**
+- *Broken (small):* `Esc` still does not clear a `Status::Failed` line
+  (session 3's deviation, unchanged).
+- *Broken (small):* Minor 7 survives — a `Status::Failed` from a write whose
+  refresh scope was `Everything` is still wiped when that history walk
+  finishes. Narrowing `JobFinished`'s reset to spare it broke
+  `a_job_that_worked_clears_a_stale_failure`, whose premise is the opposite;
+  telling the two apart needs the status line to know which job set it, which
+  is a shape change, not a fix. Only `ApplyError::Journal` reaches it from
+  this group's operations; commit/amend (group 05) makes it ordinary.
+- *Unfixed minors:* 1 (`ConfirmView` fields are `String`, not `SanitizedText`),
+  2 (two sources of truth for the pane; `d` on a disagreement still returns
+  `false` silently), 3 (any unbound key closes the box), 4 (box geometry and
+  the `Discard` label — the untracked box now asks "Delete…?" over a button
+  that says `Discard`), 5 (`run_operation`'s clock fallback; `system_git()`
+  per write), 6, 9.
+- *Unverified:* how the pane and both boxes look. Captures carry no colour and
+  nothing here proves one.
+- *Unverified:* the M5 refusal, the M6 wording and the M7 cursor restore are
+  proved by unit tests over scripted state; none is driven from a key press to
+  a real repository.
 
 ### Session 3 (builder-opus) — closed
 
