@@ -450,10 +450,12 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 **Expiry: M7.** Unverified-adjacent — passes today but fragile by construction. Found by housekeeping/02. A single slow key fails the whole gate; six interleaved A/B runs showed baseline and patched both spike over 9 ms under load — machine noise, not the code under test. Asserting on the worst sample trains re-running until green, hiding real regressions. **Fix:** assert on p99, record the max. Pairs with M7's 17–18 ms release-key ticket — same measurement path.
 | M4/02 | Askpass socket has no peer-credential check; the 0700 dir is the only guard | unverified | M8 |
 | M4/02 | SSH askpass and SSH/forge auth-failure strings not exercised; full git→helper→app path is group 06 (G5b) | unverified | M4 |
-| M4/01 review | HungRemote wake-up race can drop a real connection instead of holding it; check under group 05's esc_cancels_hung_fetch | unverified | M4 |
+| M4/01 review | HungRemote wake-up race — closed by teardown fix (accepted-after-stop is dropped unanswered) | closed | M4 |
 | M4/02 review | Askpass write_reply has no write timeout; close()'s join could hang on it | unverified | M4 |
 | M4/02 review | Remote-controlled text (prompts, failure reasons) is unsanitised in graft-git; group 06 must pass it through term::sanitize | unverified | M4 |
 | M4/02 review | RunError::Spawn mislabels a poisoned-sink error; WouldOverwrite multi-path parsing tested on one file only | broken (label) / unverified | M5 |
 | M4/03 | Main red at 0ba9203..(g03 fix): app snapshot every_graph_renderer_config_value_draws_as_it_says fails on footer hint placement | broken | M4 |
 | M4/04 review | 9 Minors in docs/reviews/m4-04-ops-remote-operations.md not yet triaged (fix builder takes what shares its files) | unverified | M4 |
 | M4/03 | Remote footer hints appear only at ≥156 cols; at 80/120 the user never sees f/p/P in the footer | unverified (visual, user's eye) | M4 |
+| M4/02 | Askpass `serve` waits on its handler with a 20 ms poll (pre-existing from group 02; review missed it). Rule 2 bans poll loops without the user's OK — replace with a channel/condvar, or the user OKs it | broken (rule) | M4 |
+| M4/fix | Thread-teardown fix unverified on Linux; HungRemote failed-wake path untested | unverified | M8 |
