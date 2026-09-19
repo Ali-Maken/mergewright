@@ -461,3 +461,8 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M4/fix | Thread-teardown fix unverified on Linux; HungRemote failed-wake path untested | unverified | M8 |
 | M4/05 | Push box truncates the long lease command (graft-ui wrap) | broken | M4 |
 | M4/05 | Real ssh/https remotes not exercised by key paths | unverified | M4 (acceptance) |
+| M4/04 fix | Lease push to any branch other than HEAD's upstream is always refused | broken (limitation) | M5 |
+| M4/04 fix | New fix tests not run red against the old code first; review Minor 1 untested | unverified | M4 |
+| M4/05 review | `remote_event` re-match has a `_ => {}` catch-all (rule 3) | broken | M4 |
+| M4/05 review | `env::args()` panics on non-UTF-8 argv in askpass mode | broken | M5 |
+| M4/05 review | 11 Minors in docs/reviews/m4-05-remote-keys.md not yet triaged | unverified | M4 |
