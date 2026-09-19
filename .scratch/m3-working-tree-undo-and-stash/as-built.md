@@ -28,3 +28,20 @@ stash reflog). The headline ones:
 
 Verified against **git 2.54 only**. The project's stated minimum is 2.38 — see
 the KNOWN_GAPS row.
+
+## Group 02 review fixes, `e490b34`
+
+Rules 9–15 in the ticket's `## NOTES`, plus a revised group-03 contract —
+**group 03 reads that section, not the original spec text, for the contract.**
+What changed in the shape:
+
+| Was | Is | Why |
+|---|---|---|
+| `took_effect(Aborted) = worktree_before.is_some()` | Aborted is in force only with a backup *and* a recorded change, or an unknown after-state. `Committed` stays always in force | An operation that failed changing nothing shadowed `next_undo`; an aborted undo mis-aimed the next `u` |
+| Undo of `StashPush` always emits `StashDrop` | Reflog step only when `refs/stash` actually moved; an unrecorded side → `Incomplete` | `stash push` with nothing to save exits 0, so undo dropped the user's *previous* stash |
+| `InversePlan` has no pins | `InversePlan.pins` | Redo of an undone stash push depended on the object surviving gc |
+| Deviation 5, "a field never recorded cannot drift" | Replaced with `Drift.unknown` | The reviewer judged it a regression; argued in the ticket |
+| Seam rule in ARCHITECTURE.md, unenforced | `crates/graft/tests/it/seam_rule.rs`, 2 tests | A rule with no test is a comment |
+
+Also added: `PatchSide`/`PatchSideMismatch`, `StashScope` with `UnbornHead`/
+`NothingToStash`, and `--literal-pathspecs` on every invocation (verified 2.54).
