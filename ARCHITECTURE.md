@@ -35,7 +35,11 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   `git`. Reads are `gix`-primary; `git2` backs single named gaps only
   (ADR-0011), never a second full adapter.
 - **Changing what a write operation does, or how undo works** → `ops`. Start
-  at `DESIGN.md` §6.
+  at `DESIGN.md` §6, then `graft-ops/src/operation.rs` (one enum, four
+  properties: `check`, `plan`, `touches`, and `undo::inverse`). **The seam
+  rule: `ops` decides, `app` wires.** `app` never builds a `GitInvocation` for
+  a write, never touches the journal file, never chooses a snapshot; a key
+  becomes an `Operation` and `ops` does the rest.
 - **Changing terminal detection or an image protocol** → `term`. Start at
   `DESIGN.md` §4, then `graft-term/src/detect/`: `environment` reads the env
   vars, `probe` writes the queries, `reply` parses what comes back, `tmux`

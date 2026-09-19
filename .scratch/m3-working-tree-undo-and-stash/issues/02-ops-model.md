@@ -1,6 +1,6 @@
 # ops-model: the operation shape, the journal entry, and the per-kind inverse
 
-Status: ready
+Status: done
 Blocked by: 01-git-reads-and-patches
 Build with: Fable (signature) — CLAUDE.md names M3's "undo journal's per-kind inverse" a signature ticket; the entry shape (ADR-0031) and the four-property operation (brief point 1) are the same idea, so they live in one group.
 Needs: none (pure; no git process, no clock). `git-reads-and-patches` supplies `WorkingTreeStatus`, `StashEntry`, `InProgress`, `GitVersion` — until it lands, define `RepoFacts` over those names and let the conductor order that group first, or stub the three types locally under `#[cfg(test)]` and say so.
@@ -101,15 +101,15 @@ pub fn drift(entry: &JournalEntry, now: &RepoStateNow) -> Drift;
 
 ## Acceptance
 
-- [ ] `plan` table test: every kind × the arm-relevant facts → the exact `command_line()` strings listed under "The rules" (e.g. `git commit -F - --signoff`, `git stash push -u -m "wip"`, `git restore --staged --worktree --source=HEAD -- src/a.rs`, `git rm --cached --quiet -- a` on an unborn head).
-- [ ] `check` table test: each `Refusal` variant reachable by one fact change from a passing baseline; `Stage` is allowed mid-rebase, `Commit` is not; `StashApply` refuses when a touched path is dirty and passes when the dirty path is elsewhere.
-- [ ] Journal round-trip: three entries rendered as pending+outcome lines, parsed back `==` the originals; a file whose last line is torn parses the rest; an outcome line for an unknown id is `OutcomeWithoutPending`.
-- [ ] Cursor: `[A, B, Undo(B)]` → `next_undo = A`, `next_redo = Undo(B)`; `[A, B, Undo(B), C]` → `next_undo = C`, `next_redo = None`; `[A, B, Undo(B), Redo(B)]` → `next_undo = B`; `[Aborted(no backup)]` → `NothingToUndo`; `[Aborted(with backup)]` → it.
-- [ ] `inverse` table test per kind: the exact `steps` vectors (commit: `UpdateRef` CAS + `RestoreIndex`; discard: index + worktree restores; stash push: restores + `StashDrop`; stash drop: `StashStore`; the redo of an undone stash pop is `StashDrop(pins[0])` after the generic steps).
-- [ ] `state_at`: entries at t=10, 20, 30 touching `refs/heads/main`; `state_at(25)` = entry 20's after-state; `state_at(5)` = `None`; a ref touched only at t=30 reads its `refs_before` at 25.
-- [ ] `drift`: a moved ref, a changed index tree and a changed worktree tree each set exactly their field; `explain` names them (`"the index changed"`).
-- [ ] Every `Refusal::explain` is a sentence a person can act on; the mid-operation one names `git rebase --continue` / `--abort`.
-- [ ] MAP.md updated for core and ops; edge test passes (ops → git, core only; serde is external).
+- [x] `plan` table test: every kind × the arm-relevant facts → the exact `command_line()` strings listed under "The rules" (e.g. `git commit -F - --signoff`, `git stash push -u -m "wip"`, `git restore --staged --worktree --source=HEAD -- src/a.rs`, `git rm --cached --quiet -- a` on an unborn head).
+- [x] `check` table test: each `Refusal` variant reachable by one fact change from a passing baseline; `Stage` is allowed mid-rebase, `Commit` is not; `StashApply` refuses when a touched path is dirty and passes when the dirty path is elsewhere.
+- [x] Journal round-trip: three entries rendered as pending+outcome lines, parsed back `==` the originals; a file whose last line is torn parses the rest; an outcome line for an unknown id is `OutcomeWithoutPending`.
+- [x] Cursor: `[A, B, Undo(B)]` → `next_undo = A`, `next_redo = Undo(B)`; `[A, B, Undo(B), C]` → `next_undo = C`, `next_redo = None`; `[A, B, Undo(B), Redo(B)]` → `next_undo = B`; `[Aborted(no backup)]` → `NothingToUndo`; `[Aborted(with backup)]` → it.
+- [x] `inverse` table test per kind: the exact `steps` vectors (commit: `UpdateRef` CAS + `RestoreIndex`; discard: index + worktree restores; stash push: restores + `StashDrop`; stash drop: `StashStore`; the redo of an undone stash pop is `StashDrop(pins[0])` after the generic steps).
+- [x] `state_at`: entries at t=10, 20, 30 touching `refs/heads/main`; `state_at(25)` = entry 20's after-state; `state_at(5)` = `None`; a ref touched only at t=30 reads its `refs_before` at 25.
+- [x] `drift`: a moved ref, a changed index tree and a changed worktree tree each set exactly their field; `explain` names them (`"the index changed"`).
+- [x] Every `Refusal::explain` is a sentence a person can act on; the mid-operation one names `git rebase --continue` / `--abort`.
+- [x] MAP.md updated for core and ops; edge test passes (ops → git, core only; serde is external).
 
 ## Gates
 
@@ -118,3 +118,23 @@ pub fn drift(entry: &JournalEntry, now: &RepoStateNow) -> Drift;
 ## Size
 
 Core ~120 lines; ops ~700 (operation 350, journal 200, undo 150) + ~500 test. Pure, no fixtures. Named seams: after piece 2 (operation), after piece 3 (journal). A piece past 60 turns commits and says why.
+
+## NOTES (builder-fable, 2026-09-19)
+
+Built in four commits at the named seams (core → operation → journal → undo), then MAP.md/ARCHITECTURE. No compaction. 47 new tests (4 core, 19 operation, 11 journal, 13 undo); gates green.
+
+**Git behaviour verified in a throwaway repo (git 2.54, scripts under `target/verify-ops-model*.sh`, untracked):** `rm --cached --quiet` unstages on an unborn head while `restore --staged` fails there; `commit -F -` and `--amend -F -` (reword with nothing staged) work; `restore --staged --worktree --source=HEAD` handles a staged modify, a staged **new** file (removes it) and a staged rename (both paths); `restore --worktree` handles unstaged modify/delete; `clean -f -- <dir>` removes a named untracked directory (git: `-d` is irrelevant with a pathspec); `stash push -u/--staged/-m`, `apply --index`, `pop --index`, `drop`, `store -m` all work; a stash commit's subject is byte-identical to its reflog message and `stash store -m <subject>` re-lists it identically; dropping the last stash deletes `refs/stash`; a failed `stash pop` keeps its entry; `update-ref` CAS with the zero id works.
+
+**Rules decided here that differ from the spec text (say so, per the spec):**
+1. `parse` returns `Parsed { entries, torn_tail }`, not `Vec<JournalEntry>`: a torn last line is reported, not swallowed. `render_*` return `Result` (`StillPending`, serde). `JournalError` gains `DuplicateOutcome`, `StillPending`.
+2. `refs/stash` never gets an `UpdateRef`: the reflog is the stash list, and `update-ref` would add a reflog entry instead of removing one. `StashStore`/`StashDrop` carry only `commit` and are defined idempotent by commit (store = no-op if the reflog has it; drop = no-op if absent), so an `Aborted` pop (git keeps the entry) undoes correctly. `StashStore` has no `message`: the executor uses the commit's subject (verified equal). `pins` live on the pending line (known before the op; the backup ref must point at them).
+3. `UpdateRef` emitted only where before ≠ after. `refs_after` missing a key of `refs_before` → `NotInvertible::Incomplete { field }` (new variant) — the executor must record `refs_after` on abort too. Missing after-**tree** → `PathScope::Everything` (new variant) from the before tree, so an op that died before its after-state could be read is still undoable.
+4. `inverse(entry, original)`: for `Undo`/`Redo` entries `original` is the **root operation** (`journal::root_operation` follows the chain); `reverses` always names the entry directly reversed (Redo → the Undo).
+5. `drift`: a field never recorded cannot drift (the snapshot is the guarantee, ADR-0009).
+6. `clean -f` always, never `-fd`: with `--untracked-files=all` status never lists a directory, so `check` refuses a directory path; with a pathspec `-d` is irrelevant anyway.
+7. Discard on an unborn head: `rm --cached --quiet -- <staged>` then `clean -f -- <staged ∪ untracked>` (no `HEAD` to restore from). A rename's `original_path` joins every pathspec.
+8. `graft_git::run::command_line(&[GitArg])` extracted as a free fn (the method delegates) so `Invocation::command_line` shares the runner's quoting.
+
+**For the execution group (03):** outcome line must carry `refs_after` for every key of `refs_before`, `head_after`, and the trees it could read, on success **and** abort; `Everything` scope means "restore the whole tree from the backup"; `Step` order is refs → `HEAD` → index → worktree → stash reflog.
+
+**KNOWN_GAPS candidates (conductor's file):** `StashStore` re-lists a restored stash at `stash@{0}` even if it was `stash@{2}` when popped/dropped (git has no insert-at-index); `StashList`'s `commit` pin catches the reorder. Multi-line stash messages: reflog keeps one line; restore uses the subject only.

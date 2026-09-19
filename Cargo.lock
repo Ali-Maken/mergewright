@@ -1630,6 +1630,7 @@ dependencies = [
  "graft-git",
  "serde",
  "serde_json",
+ "thiserror",
 ]
 
 [[package]]
