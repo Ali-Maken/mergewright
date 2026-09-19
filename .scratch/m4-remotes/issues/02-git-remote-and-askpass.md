@@ -1,6 +1,6 @@
 # git-remote-and-askpass: remote reads, failure and progress parsing, the streaming stderr drain, and the askpass socket
 
-Status: draft
+Status: done
 Build with: Opus — taking the planner's recommendation: a second drain mode in graft-git's runner plus a Unix-socket server whose shutdown order matters. Concurrency, not wiring.
 Crates: graft-git
 Needs: none (graft-fixtures' `LocalRemote` is nice-to-have for one test; if graft-fixtures depends on graft-git, use `graft_git::fixture::Fixture::bare_repo()` instead and say so)
@@ -67,17 +67,17 @@ pub fn respond(socket: &Path, prompt: &str, out: &mut dyn Write) -> Result<(), R
 
 Every tick names its verifying test inline, at tick time (ADR-0035).
 
-- [ ] `list` on a `LocalRemote`/bare-backed clone returns `origin` with the bare's URL; on a repo with no remotes returns `Ok(vec![])` — `remote::tests::list_names_origin_first`, `list_is_empty_without_remotes`
-- [ ] `upstream_of("refs/heads/main")` yields `origin`/`refs/heads/main`/`refs/remotes/origin/main`/the tip; a branch without `branch.*.merge` → `Ok(None)` — `upstream_of_reads_config_and_tip`, `upstream_of_is_none_without_tracking`
-- [ ] Every `RemoteFailure` variant has a test built from real git stderr bytes naming the git version — `failure::tests::<variant>_from_real_stderr` (10 tests)
-- [ ] `parse_progress` accepts the eight documented segment shapes and rejects a ref-update line and a `hint:` line — `progress::tests::*`
-- [ ] A real `fetch --progress` through `on_stderr_line` yields progress segments and an unchanged `GitOutput.stderr` — `run::tests::stderr_sink_sees_progress_and_capture_is_whole`
-- [ ] Segment splitting survives arbitrary read boundaries — `run::tests::segments_reassemble_across_reads` (proptest over split points, case count from `graft_fixtures::proptest_cases` if available, else 64 fixed)
-- [ ] Askpass round trip, cancel, and server drop while a client waits — `askpass::tests::{round_trip, cancelled_answers_status_1, drop_unblocks_waiting_client}`
-- [ ] Socket dir is `0700`, removed after `close` — `askpass::tests::socket_dir_is_private_and_removed`
-- [ ] `GitInvocation::askpass` sets the four variables and leaves `GIT_TERMINAL_PROMPT=0` — `run::tests::askpass_env_is_set`
-- [ ] `Secret` never appears in `{:?}` — `askpass::tests::secret_debug_is_redacted`
-- [ ] MAP.md updated for `remote`, `run`, `run/askpass`
+- [x] `list` on a bare-backed clone returns `origin` with the bare's URL; on a repo with no remotes returns `Ok(vec![])` — `remote::tests::list_names_origin_first`, `remote::tests::list_is_empty_without_remotes` (plus `list_skips_a_remote_with_no_url`). `Fixture::bare_repo()` used, not `LocalRemote` (held by the concurrent G1 builder).
+- [x] `upstream_of("refs/heads/main")` yields `origin`/`refs/heads/main`/`refs/remotes/origin/main`/the tip; a branch without `branch.*.merge` → `Ok(None)` — `remote::tests::upstream_of_reads_config_and_tip`, `remote::tests::upstream_of_is_none_without_tracking` (plus `upstream_of_is_none_when_the_refspec_does_not_map_the_branch`, `upstream_of_follows_a_non_standard_refspec`)
+- [x] Every `RemoteFailure` variant has a test built from real git stderr bytes naming the git version (2.54.0 Apple Git-157, in the file header) — `remote::failure::tests::{auth_failed, non_fast_forward, stale_info, remote_rejected, no_such_remote, unreachable, not_fast_forward, would_overwrite, cancelled, other}_from_real_stderr` (10), plus `no_such_remote_from_a_real_http_404`. **Not real:** `auth_failed_from_documented_ssh_and_forge_stderr` (publickey, host key, "Invalid username or password") — no SSH server or forge in the fast tier; marked in the test.
+- [x] `parse_progress` accepts the eight documented segment shapes and rejects a ref-update line and a `hint:` line — `remote::progress::tests::{accepts_the_documented_shapes, rejects_a_ref_update_line, rejects_a_hint_and_an_error, brief_prefers_percent_then_counts_then_phase, brief_never_passes_32_characters}`
+- [x] A real `fetch --progress` through `on_stderr_line` yields progress segments and an unchanged `GitOutput.stderr` — `run::tests::stderr_sink_sees_progress_and_capture_is_whole`
+- [x] Segment splitting survives arbitrary read boundaries — `run::exec::tests::segments_reassemble_across_reads` (proptest, `graft_fixtures::proptest_cases()`; lives in `exec.rs` where the splitter is), plus `a_capped_stream_shows_the_sink_only_the_kept_bytes`
+- [x] Askpass round trip, cancel, and server drop while a client waits — `run::askpass::tests::{round_trip, cancelled_answers_status_1, drop_unblocks_waiting_client}` (30/30 under `--stress-count 30`)
+- [x] Socket dir is `0700`, removed after `close` — `run::askpass::tests::socket_dir_is_private_and_removed` (plus `dropping_without_close_removes_the_dir_too`)
+- [x] `GitInvocation::askpass` sets the four variables and leaves `GIT_TERMINAL_PROMPT=0` — `run::tests::askpass_env_is_set` (read back from the child: `git -c alias.showenv=!env showenv`); `run::tests::askpass_leaves_a_credential_free_remote_alone` (file:// ls-remote, handler never called)
+- [x] `Secret` never appears in `{:?}` — `run::askpass::tests::secret_debug_is_redacted`; password absent from invocation Debug, command line, child env, git stderr, server Debug after a real exchange — `run::tests::the_password_never_reaches_the_invocation`
+- [x] MAP.md updated for `remote`, `run`, `run/askpass` — `crates/graft-git/MAP.md` (no test; doc)
 
 ## Gates
 
@@ -86,3 +86,22 @@ Every tick names its verifying test inline, at tick time (ADR-0035).
 ## Size
 
 One context. Brownfield in `run.rs`/`exec.rs` — send a scout (haiku/sonnet, ≤ 1 page) for `exec.rs`'s drain threads before touching them; report whether you did. Stop seam: after piece 4 (parsers + sink land without askpass); pieces 5–6 in a handoff note.
+
+## NOTES (builder, 2026-09-20)
+
+Built in one context, no compaction. Commits: `4bc3619` (reads + parsers), `ffc7a55` (stderr sink), `11742b0` (askpass), then MAP/ticket/leak test.
+
+**Scout:** one Sonnet `Explore` for `RepoHandle::upstream`/`reference`, `Fixture` API, gix remote/refspec APIs. `run.rs`/`exec.rs` read directly — they were the edit targets, a summary cannot be edited against.
+
+**Verified in a throwaway repo (git 2.54.0 Apple Git-157):** (a) stderr of fetch-first/non-ff/stale-lease pushes, hook-declined push, ff-only diverged, ff-only over tracked and untracked dirt, no such remote, unresolved host, refused HTTP/SSH, HTTP 401 without user / with user / wrong askpass answer, HTTP 404 — all pasted into `remote/failure/tests.rs`. (b) `GIT_ASKPASS` at a path containing spaces (`dir with space/ask me.sh`) is exec'd correctly; the prompt arrives as argv[1]; `GIT_TERMINAL_PROMPT=0` does not stop askpass.
+
+**Deviations from the spec (say if wrong):**
+1. `Secret` zeroing is safe code (`clear` + `resize(capacity, 0)` + `black_box`), not `ptr::write_volatile`: `lib.rs` has `#![forbid(unsafe_code)]`. Zero-after-drop not tested (needs `unsafe`); `wipe_zeroes_the_whole_allocation` tests the wipe on a live buffer instead.
+2. Classifier additions from real stderr: `Failed to connect to <h> port` (curl's refused wording — git 2.54 never printed "Connection refused" for HTTP) → `Unreachable`; `repository '<url>' not found` (HTTP 404) → `NoSuchRemote`; untracked-file overwrite → `WouldOverwrite`; `Operation timed out`, `Could not resolve proxy` → `Unreachable`. **Dropped** bare `unable to access '<url>'` as an `Unreachable` trigger: it prefixes 403s and TLS errors too, which would be misnamed; it now only supplies the target URL. Those cases land in `Other` verbatim.
+3. `Other.first_line` = first `fatal:`/`error:` line, else first non-progress line — a push's first line is `To <url>`, which says nothing.
+4. `list`: a remote with no `url` is skipped (not an `Err`) — the spec said both "skipped" and "reason in `RemoteError::Config`"; skipping matches what git can use.
+5. Askpass handler runs on a detached per-ask thread so shutdown never waits on a user; after shutdown that thread lives until `ask` returns (G5b's handler must return `None` on job cancel).
+
+**Could not verify:** SSH askpass (`SSH_ASKPASS`, `SSH_ASKPASS_REQUIRE=force`) — no SSH server in tests; SSH/forge auth-failure strings (documented, not captured); the full git → helper → app path (the helper is the graft binary, G5b).
+
+**For KNOWN_GAPS (conductor):** unverified — SSH askpass and SSH/forge auth strings; askpass server relies on the 0700 dir for who may connect (no peer-credential check: needs `libc`, which graft-git lacks).

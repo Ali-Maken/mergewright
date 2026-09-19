@@ -15,6 +15,7 @@ pub mod editor;
 mod fixture;
 pub mod history;
 pub mod mailmap;
+pub mod remote;
 pub mod repo;
 pub mod run;
 pub mod stash;
