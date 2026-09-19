@@ -1,6 +1,6 @@
 # ui-credential-prompt-and-hints: masked text field, the credential prompt widget, a wrapping confirm consequence, remote footer hints
 
-Status: draft
+Status: done
 Build with: Sonnet — taking the planner's recommendation: plain widgets with TestBackend snapshots, no state, no I/O.
 Crates: graft-ui
 Needs: none
@@ -45,12 +45,12 @@ pub fn confirm_rows(view: &ConfirmView, width: u16) -> u16;   // grows with the 
 
 Every tick names its verifying test inline, at tick time (ADR-0035).
 
-- [ ] A masked field draws `•` per char, never the text, cursor column = char index — `text_input::tests::masked_field_draws_bullets_only`
-- [ ] Credential prompt at 80×24 and 160×48 matches the note's mockup in structure (title, prompt line, field, note, footer) — `credential_prompt::tests::{masked_80x24, username_160x48}`; too-small message at 30×5 — `too_small_draws_one_line`
-- [ ] Nothing drawn outside `credential_area` at any size — `credential_prompt::tests::stays_inside_its_rect` (proptest over sizes 1..200 × 1..60)
-- [ ] Confirm consequence wraps to ≤ 4 lines and the buttons never overlap the frame's footer row at 120×40 — `confirm::tests::{long_message_wraps, buttons_stay_above_footer_at_120}`
-- [ ] Footer shows `f fetch  p pull  P push` at 160 and 120 columns — `graph_screen::tests::remote_hints_at_wide_and_medium`
-- [ ] MAP.md updated (`text_input`, `credential_prompt`, `confirm`, `graph_screen`)
+- [x] A masked field draws `•` per char, never the text, cursor column = char index — `text_input::tests::masked_field_draws_bullets_only` (also `masked_field_at_the_ascii_tier_draws_stars`, `debug_redacts_a_masked_fields_text`)
+- [x] Credential prompt at 80×24 and 160×48 matches the note's mockup in structure (title, prompt line, field, note, footer) — `credential_prompt::tests::{masked_80x24, username_160x48}`; too-small message at 30×5 — `too_small_draws_one_line`
+- [x] Nothing drawn outside `credential_area` at any size — `credential_prompt::tests::stays_inside_its_rect` (proptest over sizes 1..200 × 1..60)
+- [x] Confirm consequence wraps to ≤ 4 lines and the buttons never overlap the frame's footer row at 120×40 — `confirm::tests::{long_message_wraps, buttons_stay_above_footer_at_120}` (also `message_caps_at_four_lines_with_ellipsis`)
+- [x] Footer shows `f fetch  p pull  P push` at 160 and 120 columns — `graph_screen::tests::remote_hints_at_wide_and_medium`
+- [x] MAP.md updated (`text_input`, `credential_prompt`, `confirm`, `graph_screen`)
 
 ## Gates
 
@@ -59,3 +59,36 @@ Every tick names its verifying test inline, at tick time (ADR-0035).
 ## Size
 
 One context; four small pieces in one crate. Scout `text_input.rs`, `confirm.rs`, `graph_screen/footer.rs` first (one haiku run, ≤ 1 page) and say so.
+
+## NOTES
+
+Continuation session (rate-limit handoff): the previous builder had left the
+code uncommitted with no ticks. This session verified the existing work
+(did not rewrite it), ran the gates, added the capture, ticked acceptance,
+and committed.
+
+- Scout: not re-run this session (the ticket's own note says the original
+  builder scouted `text_input.rs`/`confirm.rs`/`graph_screen/footer.rs`
+  before writing; this session read the diff directly instead — `git diff
+  --stat` plus targeted reads — since the code was already written and the
+  job was to verify it, not design it).
+- Footer hints at 120/200 cols: `f fetch  p pull  P push` sit right after
+  `u undo`; at 200 cols this pushes `Ctrl+R refresh` off the right edge
+  (existing drop-from-the-right rule); at 80 cols the new hints bump
+  `j/k move  Space fold` off — recorded in the new capture file. Placement
+  is right after `u undo`, before `/ search` (not literally after `S
+  stash`/before `J journal` as the ticket's scope line 23 first sketched) —
+  MAP.md's `graph_screen` line explains why: it holds the hints inside the
+  fixed-position part of the hint list, ahead of the dynamic `extra` splice,
+  so they don't get pushed around by screen-specific extra hints. This is a
+  placement deviation from the literal scope text, not from the acceptance
+  criterion (which only pins the widths, not the exact neighbours) — flagging
+  it since CLAUDE.md says say, don't silently deviate.
+- Added `credential_prompt::tests::capture_for_docs_shots` (`#[ignore]`d,
+  same convention as the M3 stash capture) and generated
+  `docs/shots/m4-credential-prompt-and-hints.txt` from it plus the literal
+  footer-hints snapshot files — judge by eye per that file's header.
+- Colour unverified (TestBackend records no colour attributes, per CLAUDE.md
+  rule 5) — masking is proven as character content, not colour.
+- Out of scope, confirmed still out: key handling/state for
+  `CredentialPrompt` (owned by the app layer, ticket G5b).

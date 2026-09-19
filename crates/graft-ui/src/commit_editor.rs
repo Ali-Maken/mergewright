@@ -239,6 +239,7 @@ impl CommitEditorScreen<'_> {
         (&FieldWidget {
             view: &self.view.subject,
             theme: self.theme,
+            ascii: false,
         })
             .render(
                 Rect {

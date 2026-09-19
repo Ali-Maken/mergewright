@@ -660,7 +660,10 @@ fn revealing_a_row_that_was_never_truncated_leaves_the_hints_alone() {
     let mut open = view(&rows, WalkView::Complete { rows: 3 }, 1);
     open.reveal = Some(0);
 
-    let screen = text(&draw(&open, 60, 12));
+    // 90, not 60: since m4-remotes ticket 03 the remote-write hints sit
+    // ahead of `j/k move` (design note "New UI"), and 60 columns is too
+    // narrow to keep both — this test is about the reveal, not the width.
+    let screen = text(&draw(&open, 90, 12));
     let footer = screen.last().expect("a footer row");
     assert!(footer.contains("move"), "{screen:#?}");
     assert!(!footer.contains("Commit 3"), "{screen:#?}");
@@ -673,7 +676,8 @@ fn no_reveal_shows_the_ordinary_hints() {
     let open = view(&rows, WalkView::Complete { rows: 3 }, 1);
     assert_eq!(open.reveal, None);
 
-    let screen = text(&draw(&open, 60, 12));
+    // 90, not 60 — see the comment on the reveal test above.
+    let screen = text(&draw(&open, 90, 12));
     let footer = screen.last().expect("a footer row");
     assert!(footer.contains("move"), "{screen:#?}");
 }
@@ -755,7 +759,9 @@ fn footer_at(columns: u16) -> String {
 
 #[test]
 fn the_footer_lists_every_graph_key_dropping_whole_hints_when_narrow() {
-    let wide = footer_at(200);
+    // Widened from 200 when the remote hints (`f`/`p`/`P`) were added
+    // (m4-remotes ticket 03): 19 hints no longer fit in 200 columns.
+    let wide = footer_at(230);
     for hint in HINTS {
         assert!(wide.contains(hint), "{hint} missing: {wide}");
     }
@@ -770,6 +776,25 @@ fn the_footer_lists_every_graph_key_dropping_whole_hints_when_narrow() {
             "{columns} cut a hint in half: {footer}"
         );
         insta::assert_snapshot!(format!("footer-hints-{columns}"), footer);
+    }
+}
+
+/// Design note "New UI": `f fetch  p pull  P push` at 160 and at 120
+/// columns — the widths the note says the drop-from-the-right rule keeps
+/// them at. Grouped with `u undo` in [`LEADING_HINTS`] rather than at the
+/// mockup's position after `S stash`: placed there instead, only `P push`
+/// survives 160 and none survive 120 — see the comment on [`HINTS`].
+#[test]
+fn remote_hints_at_wide_and_medium() {
+    for columns in [120, 160] {
+        let footer = footer_at(columns);
+        assert!(footer.contains("f fetch"), "{columns}: {footer}");
+        assert!(footer.contains("p pull"), "{columns}: {footer}");
+        assert!(footer.contains("P push"), "{columns}: {footer}");
+        let undo = footer.find("u undo").expect("u undo present");
+        let fetch = footer.find("f fetch").expect("f fetch present");
+        let search = footer.find("/ search").expect("/ search present");
+        assert!(undo < fetch && fetch < search, "{columns}: {footer}");
     }
 }
 
@@ -806,7 +831,7 @@ fn the_write_hints_appear_only_on_the_changes_pane() {
 fn the_expand_hint_keeps_its_place_after_the_renderer() {
     let line = key_hints(&["+ expand lanes"], 200);
     assert!(
-        line.starts_with(" q quit  F2 status  F3 renderer  u undo  + expand lanes  / search"),
+        line.starts_with(" q quit  F2 status  F3 renderer  u undo  + expand lanes  f fetch"),
         "{line}"
     );
 }

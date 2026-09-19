@@ -406,7 +406,14 @@ impl TextArea {
 
 /// A single-line field as it is drawn: the label, the text, where the cursor
 /// is, the length guide and the counter.
-#[derive(Clone, Debug)]
+///
+/// `masked` does not change `text`: the field still holds what was typed, so
+/// the caller (a credential prompt) can read it back. Masking is entirely a
+/// drawing decision, made once, in [`FieldWidget`] — never by a caller
+/// deciding what string to hand the widget (CLAUDE.md, m4-remotes design
+/// note choice 2's "must never" list: the secret must never reach a draw
+/// path except through this one gate).
+#[derive(Clone)]
 pub struct FieldView<'a> {
     /// The name shown ahead of the text (`Subject`).
     pub label: &'a str,
@@ -414,12 +421,56 @@ pub struct FieldView<'a> {
     pub text: SanitizedText,
     /// The cursor's **character** index, when this field has focus.
     pub cursor: Option<usize>,
-    /// Cells from the start of the text region to the length guide.
+    /// Cells from the start of the text region to the length guide. Ignored
+    /// while `masked`: a guide would still leak the exact typed length.
     pub guide_at: Option<u16>,
-    /// `(typed, limit)` for the `12/50` counter.
+    /// `(typed, limit)` for the `12/50` counter. Ignored while `masked`: a
+    /// counter is the length in digits, which is exactly what masking hides.
     pub counter: Option<(usize, usize)>,
     /// Draws the label bold and the cursor reversed.
     pub focused: bool,
+    /// A password or passphrase field: every character draws as a mask
+    /// glyph (`•`, or `*` at the ASCII tier), never the real text, in any
+    /// render path. Default `false`.
+    pub masked: bool,
+}
+
+impl std::fmt::Debug for FieldView<'_> {
+    /// Redacts `text` while `masked`: a `{:?}` in a log line must not leak a
+    /// password any more readily than the screen does (CLAUDE.md choice 2).
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut out = f.debug_struct("FieldView");
+        out.field("label", &self.label);
+        if self.masked {
+            out.field("text", &"<redacted>");
+        } else {
+            out.field("text", &self.text);
+        }
+        out.field("cursor", &self.cursor)
+            .field("guide_at", &self.guide_at)
+            .field("counter", &self.counter)
+            .field("focused", &self.focused)
+            .field("masked", &self.masked)
+            .finish()
+    }
+}
+
+/// The mask glyph for one character: `•` at the Unicode tier, `*` at the
+/// ASCII one (design note "New UI", credential prompt).
+const MASK_GLYPH: char = '•';
+const MASK_GLYPH_ASCII: char = '*';
+
+/// What a field actually draws for its text: the text itself, or one mask
+/// glyph per character while `masked` — the single place that decision is
+/// made, so every draw path (this widget, and the credential prompt's own
+/// field row) goes through it rather than each deciding for itself.
+#[must_use]
+pub fn display_text(view: &FieldView<'_>, ascii: bool) -> String {
+    if !view.masked {
+        return view.text.as_str().to_owned();
+    }
+    let glyph = if ascii { MASK_GLYPH_ASCII } else { MASK_GLYPH };
+    glyph.to_string().repeat(view.text.as_str().chars().count())
 }
 
 /// [`FieldView`] drawn into one row.
@@ -429,11 +480,29 @@ pub struct FieldWidget<'a> {
     pub view: &'a FieldView<'a>,
     /// Colours.
     pub theme: &'a Theme,
+    /// Draw the mask glyph as `*` instead of `•` (the ASCII renderer tier).
+    /// Ignored while the field is not `masked`.
+    pub ascii: bool,
 }
 
 /// Cells the label column takes, including its trailing gap. Fixed so the
 /// subject's text starts in the same column as the body's lines.
 pub const LABEL_WIDTH: u16 = 9;
+
+/// The counter's `n/limit` text and whether it is over, and the cells its
+/// column takes trailing space included. `None` throughout while masked: a
+/// counter is the typed length in digits, which is exactly what masking
+/// hides (CLAUDE.md choice 2's "must never").
+fn counter_column(view: &FieldView<'_>) -> (Option<(String, bool)>, u16) {
+    let counter = (!view.masked)
+        .then_some(view.counter)
+        .flatten()
+        .map(|(typed, limit)| (format!("{typed}/{limit}"), typed > limit));
+    let width = counter
+        .as_ref()
+        .map_or(0, |(text, _)| u16::try_from(cells(text) + 1).unwrap_or(0));
+    (counter, width)
+}
 
 impl Widget for &FieldWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
@@ -452,13 +521,11 @@ impl Widget for &FieldWidget<'_> {
             self.theme,
         );
 
-        let counter = self.view.counter.map(|(typed, limit)| {
-            let over = typed > limit;
-            (format!("{typed}/{limit}"), over)
-        });
-        let counter_width = counter
-            .as_ref()
-            .map_or(0, |(text, _)| u16::try_from(cells(text) + 1).unwrap_or(0));
+        // A guide marks an exact column past a set number of characters,
+        // which would tell an onlooker something about a masked field's
+        // length that the mask glyphs are drawn to hide.
+        let guide_at = (!self.view.masked).then_some(self.view.guide_at).flatten();
+        let (counter, counter_width) = counter_column(self.view);
 
         let text_x = area.x + label_width;
         let Some(text_width) = area
@@ -469,6 +536,7 @@ impl Widget for &FieldWidget<'_> {
             return;
         };
 
+        let shown = display_text(self.view, self.ascii);
         draw_line(
             buf,
             Rect {
@@ -477,9 +545,9 @@ impl Widget for &FieldWidget<'_> {
                 width: text_width,
                 height: 1,
             },
-            self.view.text.as_str(),
+            &shown,
             self.view.cursor,
-            self.view.guide_at,
+            guide_at,
             self.theme,
         );
 
@@ -617,7 +685,12 @@ fn draw_label(
 /// Long text scrolls horizontally by the smallest amount that keeps the
 /// cursor on screen, worked out here from the cursor and the width for the
 /// same reason the body's top line is: a stored offset would go stale.
-fn draw_line(
+///
+/// `pub(crate)`: [`credential_prompt`](crate::credential_prompt) draws its
+/// own field row (no [`LABEL_WIDTH`] column to spare) but still needs this
+/// module's scroll-and-cursor placement, so it calls in rather than
+/// reimplementing it.
+pub(crate) fn draw_line(
     buf: &mut Buffer,
     area: Rect,
     text: &str,
