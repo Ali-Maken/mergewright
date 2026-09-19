@@ -183,7 +183,7 @@ fn an_unknown_key_warns_and_the_rest_still_loads() {
 theme = \"dark\"
 icns = \"nerd\"
 
-[keys]
+[nokeys]
 quit = \"q\"
 ",
     );
@@ -195,7 +195,7 @@ quit = \"q\"
         loaded.warnings,
         [
             ConfigWarning::UnknownKey {
-                path: "keys".to_owned()
+                path: "nokeys".to_owned()
             },
             ConfigWarning::UnknownKey {
                 path: "ui.icns".to_owned()
@@ -423,4 +423,18 @@ fn default_radar_config_reproduces_the_default_policy() {
         Radar::default().policy(),
         graft_ops::mistake_radar::Policy::default()
     );
+}
+
+#[test]
+fn keys_suspend_on_ctrl_z_parses_and_defaults_off() {
+    let (_dir, path) = config_file("[keys]\nsuspend_on_ctrl_z = true\n");
+    let loaded = load_from(&path).expect("the key parses");
+    assert_eq!(loaded.warnings, []);
+    assert!(loaded.config.keys.suspend_on_ctrl_z);
+
+    // ADR-0002: `Ctrl+Z` is undo unless the user says otherwise, so a config
+    // that never mentions `[keys]` must leave it alone.
+    let (_dir, path) = config_file("[ui]\ntheme = \"dark\"\n");
+    let loaded = load_from(&path).expect("a config without [keys] loads");
+    assert!(!loaded.config.keys.suspend_on_ctrl_z);
 }

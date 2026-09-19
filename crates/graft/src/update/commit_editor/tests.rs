@@ -519,3 +519,32 @@ fn ctrl_z_suspends_only_when_the_config_says_so() {
     let (_, commands) = update(&asked, control(KeyCode::Char('z')));
     assert!(commands.contains(&Command::Suspend), "{commands:?}");
 }
+
+/// A pre-commit hook that says no is the common way a commit fails, and the
+/// worst possible answer is an editor that closed with the message gone.
+#[test]
+fn a_commit_that_failed_keeps_the_editor_and_the_message() {
+    let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
+    let open = typed(&open, "subject");
+    let (running, _) = update(&open, control(KeyCode::Enter));
+    let id = running.operating.expect("a write is in flight");
+
+    let (after, _) = update(
+        &running,
+        AppEvent::Produced(
+            id,
+            Product::Operated(Box::new(crate::jobs::operate::Operated::Failed {
+                error: "pre-commit hook: 1 file would be reformatted".to_owned(),
+                refresh: None,
+            })),
+        ),
+    );
+
+    let editor = after.commit_editor.as_ref().expect("still open");
+    assert_eq!(editor.subject.text(), "subject");
+    assert!(after.operating.is_none(), "the write is over");
+    let Status::WriteFailed(said) = &after.status else {
+        panic!("expected the reason, got {:?}", after.status);
+    };
+    assert!(said.contains("pre-commit hook"), "{said}");
+}
