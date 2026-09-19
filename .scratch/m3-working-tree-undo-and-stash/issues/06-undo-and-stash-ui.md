@@ -79,12 +79,13 @@ impl RefBadges { pub fn stashes(&self) -> &[(Oid, usize)]; }   // every stash co
 ## Acceptance
 
 - [x] Update tests: `u` emits `Command::Undo(_, false)`; `Product::Undone(Ok(..))` sets `Status::Done("undid: …")` and refreshes per `Applied::refresh`; `Err(Drift)` opens the confirm box whose consequence line contains `drift.explain()`, `→` `Enter` emits `Undo(_, true)`, `Enter` on Stop emits nothing; `Err(Nothing)` → `Status::Done("nothing to undo")`; `u` while a write is in flight emits nothing (`Busy`); `U` mirrors with `Redo`.
-- [x] Journal browser: with three scripted entries `[A, B, Undo(B)]` the rows mark A `← u` and `Undo(B)` `← U`; `Space` on A shows its `commands`; `Enter` on B (not next) sets the M5 notice and emits nothing; `Enter` on A emits `Undo`; an Aborted entry with a backup reads `failed: <reason> · backup saved` and is marked `← u` when it is the next; an interrupted one reads `interrupted`; the footer notice shows once until `J`.
+- [x] Journal browser: with three scripted entries `[A, B, Undo(B)]` the rows mark A `← u` and `Undo(B)` `← U`; `Space` on A shows its `commands`; `Enter` on B (not next) sets the M5 notice and emits nothing; `Enter` on A emits `Undo`; an Aborted entry with a backup reads `failed: <reason> · backup saved` and is marked `← u` when it is the next (`view::journal::tests::an_aborted_entry_leads_with_gits_first_line_and_keeps_the_rest_for_space`); an interrupted one reads `interrupted` — proved on the shape the real path produces by `view::journal::tests::an_entry_recovery_closed_is_marked_interrupted_not_failed` and end to end over a torn journal by `tests/it/undo_by_key.rs::an_interrupted_operation_is_announced_until_j_and_its_row_says_interrupted`; the notice shows until `J` and survives every re-read (same test).
 - [x] Stash overlay: `S` opens and emits `ReadStashes`; rows render from a scripted product; `Enter` emits `Operate(StashApply { index: sel, commit })` with the commit from the row (never an index alone); `d` → box → `StashDrop`; `s` opens the prompt, typing lands in `message`, `Tab` flips `staged_only`, `Enter` emits `StashPush { message: Some(..), include_untracked: true, staged_only }`; on a clean tree `Enter` emits nothing and the prompt's `refusal` reads `nothing to stash`.
-- [x] **End-to-end on a `copy_into_temp` fixture through the real runner** (this is where the promise is first exercised by keys): (1) scripted untracked file with bytes `b"\x00\xff\n"` → `Enter` on the changes pane's untracked row … no: `d` → `→` → `Enter` (discard) → file gone → `u` → file bytes identical, journal has 3 entries (discard, undo) with the undo's `reverses` set. (2) stage a file, `c` … (commit is `commit-editor`'s; here: `Operate(Commit)` injected as a command) → `u` → `git rev-parse HEAD` is back, `git diff --cached --name-only` lists the file again → `U` → the commit is back. (3) `S` `s` type `wip` `Enter` → `git stash list` has one entry and the tree is clean → `u` → the tree is dirty again and `git stash list` is empty → `U` → stashed again → `Enter` (apply) → `u` → clean. (4) `d` on `stash@{0}` → drop → `u` → `git stash list` shows it.
+- [x] **End-to-end on a `copy_into_temp` fixture through the real runner** (this is where the promise is first exercised by keys): (1) scripted untracked file with bytes `b"\x00\xff\n"` → `Enter` on the changes pane's untracked row … no: `d` → `→` → `Enter` (discard) → file gone → `u` → file bytes identical, journal has **2** entries — the discard and its undo — with the undo's `reverses` naming the discard (`tests/it/undo_by_key.rs::u_brings_a_discarded_untracked_file_back_byte_for_byte`, read through `graft_ops::journal::Journal::open`). **The spec's “3” was wrong**: two operations, two entries. (2) stage a file, `c` … (commit is `commit-editor`'s; here: `Operate(Commit)` injected as a command) → `u` → `git rev-parse HEAD` is back, `git diff --cached --name-only` lists the file again → `U` → the commit is back. (3) `S` `s` type `wip` `Enter` → `git stash list` has one entry and the tree is clean → `u` → the tree is dirty again and `git stash list` is empty → `U` → stashed again → `Enter` (apply) → `u` → clean. (4) `d` on `stash@{0}` → drop → `u` → `git stash list` shows it.
 - [x] Focus: a scripted `FocusGained` emits `ReadWorkingTree`; a second within 500 ms emits nothing; none emit `ShowRows` or a history restart.
-- [x] Every stash commit carries a `stash@{n}` badge on a fixture with two stashes; `H` hides both.
-- [x] Captures from piece 7 exist (the 8 KB figure is a spec defect, see NOTES; the standing cap is 200 KB and the largest here is 8.7 KB); `← u` / `← U` marks and the expanded `$ git …` lines are visible in the grid.
+- [x] Every stash commit carries a `stash@{n}` badge on a fixture with two stashes (`tests/it/stash_by_key.rs::every_stash_entry_is_badged_on_a_real_repository`); `H` hides both (`update::tests::capital_h_hides_the_stash_and_shows_it_again`).
+- [x] Footer hint `u undo  S stash  J journal` — **`S stash` was never there**; the NOTES claimed M1's `H stash` covered it, but `H` hides stash commits in the graph and `S` opens the overlay. The footer now reads `… F focus  S stash  H hide stash  J journal` (`graft-ui` `graph_screen::tests::the_footer_lists_every_graph_key_dropping_whole_hints_when_narrow`, snapshots regenerated). At 80 columns the footer still drops from the right and stops after `Space fold`, so `S stash` is visible from about 120 columns.
+- [x] Captures from piece 7 exist (the 8 KB figure is a spec defect, see NOTES; the standing cap is 200 KB and the largest here is 9.1 KB); `← u`, `← U`, `undone` and `interrupted` are all in the 160×48 grid and the expanded `$ git …` lines with them — asserted before the file is written by `view::tests::capture_m3_journal`, and the capture's header says which row each mark belongs on. **The user judges these by eye; they carry no colour.**
 
 ## Gates
 
@@ -367,3 +368,84 @@ re-read it.
   character grids.
 - A stash restored by `u` re-lists at `stash@{0}`. The drop box says so in plain
   words before it runs, and the integration test asserts it.
+
+---
+
+## NOTES — review fixes (one pass, no re-review)
+
+Against `docs/reviews/m3-06-undo-and-stash-ui.md`: **2 Critical and 6 of 8
+Major fixed; Major 4 and the structural half of Major 5 are not.**
+
+### Fixed, and whether at the cause
+
+- **C1 — `u` in the stash prompt ran an undo.** Cause. `AppState::text_field_open()`
+  names every text field and both global arms in `keys.rs` (`u`/`U`/`Ctrl+Z`
+  and `Esc` on a failure) ask it first, so the next text field cannot repeat
+  this; the stash prompt is also modal in its own right, claiming
+  control-modified keys bar `Ctrl+C`, and applies the `Esc`-dismisses-a-failure
+  rule itself. Five tests through `update()` — the stash message, the commit
+  subject, the commit body, the search prompt, the predicate. Proved red.
+  Cost to the user: none. The behaviour that went away was a bug.
+- **C2 — the heavy tier did not compile.** Cause (the argument), symptom-level
+  for the process: a builder still cannot see a heavy-feature break from the
+  standard gate. The review asks for the heavy clippy line to be added to
+  CLAUDE.md's "Rust code is done only when" list — **that is the conductor's
+  file, not this pass's**, and it is the only thing that stops a third group
+  being bitten.
+- **M1 — the notice vanished on the first re-read.** Cause. Derived from the
+  journal's entries, not from what one read recovered. It also no longer
+  blinks off during a re-read (`JournalState::reading`), and `unreadable` is
+  merged across reads. **One deliberate deviation from the review's fix:** the
+  notice does *not* filter by `in_force`. `in_force` answers "can `u` reach
+  it", which is false exactly when the dead process left no backup — the case
+  the user most needs to be told about. It excludes only entries a later entry
+  reverses.
+- **M2 — `RowMark::Interrupted` unreachable.** Cause. `JournalEntry::is_interrupted()`
+  in `graft-core` accepts both `Pending` (what the file holds) and `Aborted`
+  with `INTERRUPTED` (what a reader is handed); `INTERRUPTED` moved to
+  `graft-core` so `ops` and the view match on one word. `summary` leads with
+  `interrupted` instead of `failed:`. Proved end to end over a real torn
+  journal, not a scripted status.
+- **M3 — a failed restore answered `refresh: None`.** Cause. Every
+  `UndoError::Restore` now asks for `Refresh::Everything`; only the arms where
+  `ops` never began ask for nothing. A narrower honest answer needs `ops` to
+  report how many steps ran — **not done, and it is an `ops` API change**.
+- **M6 — ARCHITECTURE.md.** Cause. One bullet naming the nine modules; the
+  `jobs::operate` MAP line corrected to "one of two".
+- **M7 — the e2e journal heuristic.** Cause. Reads the journal through
+  `graft_ops::journal::Journal::open` and asserts the count, the kinds and the
+  `reverses` link. The spec's "3 entries" was wrong; corrected to 2.
+- **M8 — no `S stash` hint.** Cause. `S stash` added, `H stash` → `H hide stash`.
+- **Minor 12 — no capture showed `← U`.** The capture fixture carries six
+  entries and the capture test asserts all four marks before writing.
+- Also, unasked: an entry under a minute old read `now ago`. It reads `now`.
+
+### Not fixed
+
+- **M4 — a forced undo is not pinned to the entry the box named.** Needs an
+  `ops` API change (`undo(ctx, force, aim)` plus an `UndoError::Aimed`), a
+  third field on `Command::Undo`/`Redo`, an `EntryId` on `Undone::Drift`, and
+  the two call sites. Not started: it would not have fitted in this pass with
+  the heavy tier and the release perf run still to run, and half of it in the
+  tree is worse than none. **Still UNVERIFIED in `KNOWN_GAPS`**, riding the
+  existing "two Graft processes" row.
+- **M5 — the copy-out/write-back pattern, at fourteen call sites.** The
+  refactor is not done. The guard the review asked for **is**:
+  `update::tests::no_local_job_id_is_ever_minted_twice` drives thirteen
+  presses and fails if any local id is handed out twice. Proved red by
+  dropping one write-back. So the class is now caught, but not prevented.
+
+### Minors not addressed
+
+1, 2 (partly — the list survives a re-read now; `Esc` on a *first* read still
+re-requests), 3, 4, 5, 6, 7, 8, 9, 10, 11, 13.
+
+### For KNOWN_GAPS (conductor's file — not edited here)
+
+- **BROKEN → closed:** C1, C2, M1, M2 (all four rows).
+- **UNVERIFIED, still open:** M4's cross-process aim.
+- **New, unverified:** the `u`/`U` footer hint and the drift box's wrapping
+  were not re-captured for colour; no capture in this repo can show colour.
+- **New, broken (small):** `Esc` on a journal read that has never landed
+  cancels it and `request` asks again at the next `settle` (review Minor 2's
+  second half). Churn, not data loss.
