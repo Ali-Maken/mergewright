@@ -467,3 +467,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M4/05 review | `env::args()` panics on non-UTF-8 argv in askpass mode | broken | M5 |
 | M4/05 review | 11 Minors in docs/reviews/m4-05-remote-keys.md not yet triaged | unverified | M4 |
 | M4/06 | Sanitisation of remote text is convention, not type-enforced; a third path could skip it. SSH credential path untested (HTTP only) | unverified | M5 |
+| M4/06 review | Typed password lives in a plain TextField String, cloned by update() on every event and freed unzeroed; only Answer/Secret zeroes. Fixing it means a zeroing masked field in graft-ui + no per-event clone | broken (limitation, user's call) | M5 |
+| M4/06 review | 9 Minors in docs/reviews/m4-06-credential-prompt-wiring.md not yet triaged | unverified | M4 |
