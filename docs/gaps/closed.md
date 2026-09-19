@@ -83,3 +83,11 @@ open rows in the same sections.
 | ~~`Esc` does not clear a failed status.~~ **Closed by `m3-working-tree-undo-and-stash/05`**: `Esc` clears it. Was an acceptance-criterion item group 04 ticked without building | `m3/04` | Closed m3-05 |
 
 | ~~Only the newest stash entry has a badge.~~ **Closed by `m3-working-tree-undo-and-stash/06`**: the reflog is read, so every stash entry is badged. Proved on a real repo through the real job pool by reading `git stash list` back | M2 | Closed m3-06 |
+
+## m1-the-graph/30d, /55 — 50k refs slow debug first paint (closed, Won't fix)
+
+~~50k refs slow the graph's first paint in debug builds.~~ **Won't fix (user, 2026-09-17).** 30d fixed the main cause (one header check per distinct ref target instead of reading every ref's commit object): first paint 160→57 ms release (budget 150 met), 800→494 ms debug (still over). m1-the-graph/55's shared `RefSnapshot` (serving resolve, seeds, walk tips, `refs::read`) likely helps further but debug was never re-measured. Release passes and only release timings gate (ADR-0021) — a gap only in an unshipped build isn't one.
+
+## m1-the-graph/28, m2-details-and-diffs/22 — bare `cargo run --` ambiguous at workspace root (closed)
+
+~~`cargo run --` at the workspace root fails (`graft-fixtures` has its own `src/main.rs`); must be `cargo run -p graft --`.~~ **Closed by `m2-details-and-diffs/22` (docs-sweep).** Every bare mention in README.md, TESTING.md and `scripts/clone-git-git.sh` now reads `-p graft`. Decision: fix the docs, not `[workspace] default-members` (that would change bare `cargo build`/`cargo test` everywhere). `CLAUDE.md`/`PROGRESS.md`'s non-command mentions left alone.

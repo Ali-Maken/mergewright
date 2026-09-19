@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M3 building, group 01 of 7 (2026-09-19). Design pass and specs are done (`.scratch/m3-working-tree-undo-and-stash/issues/`); the M3 start stop is answered — ADR-0034 records the six implementation deltas and the three scope cuts the user kept. M2 is closed; its checkpoint answers are ADR-0030 to ADR-0033.
+**Current step:** M3 building — groups 01–06 landed, group 06's review running, then the acceptance walk (07) and the M3 checkpoint. ADR-0034 records the M3 scope cuts the user kept; **ADR-0035** (from the M3 post-mortem) binds the M4 design pass: scout before brownfield specs, model chosen after the scout, brownfield groups sized to one pane, mockups read at the existing checkpoint, and acceptance ticks as a gate with a false tick ranked Critical.
 
 **M3 must be daily-usable the day it lands** (ADR-0030) — the user starts using Graft for real work then, and those findings shape M5 and M6 while they are still being designed. `docs/field-notes.md` and TESTING.md's "Times I left" start collecting from that day.
 
