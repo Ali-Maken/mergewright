@@ -51,6 +51,7 @@ use graft_core::job::JobId;
 
 use crate::history::{History, Phase};
 use crate::repository::RepositoryFacts;
+use credential::credential_needed;
 use remote::remote_event;
 
 /// Answer one event: the new state, and the work it wants done.
@@ -158,16 +159,14 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         event @ (AppEvent::Produced(_, Product::Map(_))
         | AppEvent::Progress(_, Progress::Map { .. })) => map::map_event(next, event),
         event @ (AppEvent::Produced(_, Product::Operated(_))
-        | AppEvent::Progress(_, Progress::Operating { .. })) => {
-            operate_answer(next, commands, event);
-        }
+        | AppEvent::Progress(
+            _,
+            Progress::Operating { .. } | Progress::CredentialNeeded { .. },
+        )) => operate_answer(next, commands, event),
         AppEvent::Produced(id, Product::Undone(done)) => undone_answer(next, commands, id, *done),
         AppEvent::Produced(id, product @ Product::Journal(_)) => journal_answer(next, id, &product),
         event @ (AppEvent::Produced(_, Product::Remotes(_))
         | AppEvent::Progress(_, Progress::RemoteProgress { .. })) => remote_event(next, event),
-        AppEvent::Progress(id, Progress::CredentialNeeded { prompt }) => {
-            credential::credential_needed(next, id, &prompt);
-        }
         event @ AppEvent::Produced(
             _,
             Product::CommitTemplate(_)
@@ -261,9 +260,11 @@ fn commit_editor_answer(next: &mut AppState, event: AppEvent) {
     }
 }
 
-/// The two events an operate job can send: a running write's description
-/// (`Progress::Operating`), and its answer (`Product::Operated`). Split out
-/// of [`answer`] to keep that match within the line budget.
+/// The events an operate job can send: a running write's description
+/// (`Progress::Operating`), git's credential question
+/// (`Progress::CredentialNeeded`, m4-remotes/06) and its answer
+/// (`Product::Operated`). Split out of [`answer`] to keep that match within
+/// the line budget.
 fn operate_answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
     match event {
         AppEvent::Produced(id, Product::Operated(outcome)) => {
@@ -281,6 +282,10 @@ fn operate_answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEv
             if next.operating == Some(id) && !matches!(next.status, Status::Busy(_)) =>
         {
             next.status = Status::Busy(description);
+        }
+        // git is waiting on an answer only the user has.
+        AppEvent::Progress(id, Progress::CredentialNeeded { prompt }) => {
+            credential_needed(next, id, &prompt);
         }
         _ => {}
     }

@@ -90,6 +90,7 @@ fn draw_journal(
     }
     draw_context_menu(state, frame, area, &session.theme);
     draw_confirm(state, frame, area, &session.theme);
+    draw_credential(state, frame, area, &session.theme);
     None
 }
 
@@ -112,6 +113,7 @@ fn draw_stash(session: &Session, state: &AppState, frame: &mut Frame, area: Rect
     }
     draw_context_menu(state, frame, area, &session.theme);
     draw_confirm(state, frame, area, &session.theme);
+    draw_credential(state, frame, area, &session.theme);
     None
 }
 
@@ -146,6 +148,7 @@ fn draw_map(session: &Session, state: &AppState, frame: &mut Frame, area: Rect) 
     };
     draw_context_menu(state, frame, area, &session.theme);
     draw_confirm(state, frame, area, &session.theme);
+    draw_credential(state, frame, area, &session.theme);
     graph
 }
 
@@ -240,11 +243,15 @@ pub fn view_with_graphics(
             };
             draw_context_menu(state, frame, area, &session.theme);
             draw_confirm(state, frame, area, &session.theme);
+            draw_credential(state, frame, area, &session.theme);
             graph
         }
         Screen::Status => {
             let screen = status_view(session, state);
             frame.render_widget(StatusScreen::new(&screen, &session.theme), area);
+            // A fetch started from the graph can ask for a password while
+            // the user is reading this screen: the question follows them.
+            draw_credential(state, frame, area, &session.theme);
             None
         }
     }
@@ -472,6 +479,29 @@ fn draw_confirm(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) 
         &graft_ui::confirm::Confirm {
             view: &pending.view,
         },
+        rect,
+    );
+}
+
+/// git's credential question, over everything — the confirm box included
+/// (m4-remotes/06). It is modal in the same way and one step further up:
+/// while it is open every key is the field's. Like the confirm box, the
+/// widget paints only its own text, so the raised background is this
+/// caller's job.
+fn draw_credential(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) {
+    let Some(view) = super::credential_view(state) else {
+        return;
+    };
+    let rect = graft_ui::credential_prompt::credential_area(area).intersection(area);
+    if rect.is_empty() {
+        return;
+    }
+    frame.buffer_mut().set_style(
+        rect,
+        Style::new().bg(color(theme.token(Token::SurfaceRaised))),
+    );
+    frame.render_widget(
+        &graft_ui::credential_prompt::CredentialPrompt { view: &view, theme },
         rect,
     );
 }

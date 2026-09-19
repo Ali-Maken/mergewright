@@ -2,6 +2,10 @@
 //! set and one argument, `graft` asks the running Graft over the socket,
 //! prints the answer for git and exits — 0 answered, 1 cancelled, 2 anything
 //! else — without touching the terminal.
+#![allow(
+    clippy::expect_used,
+    reason = "a test fixture that cannot be built has nothing to test; the panic names why"
+)]
 
 use std::path::PathBuf;
 use std::process::{Command, Output, Stdio};

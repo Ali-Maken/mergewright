@@ -2971,3 +2971,156 @@ fn capture_m4_remote_keys() {
     )
     .expect("docs/shots is writable");
 }
+
+/// A push running, with git's question open over it (m4-remotes/06).
+fn credential_state(columns: u16, rows: u16, prompt: &str) -> AppState {
+    use crate::jobs::remote::RemoteFacts;
+    use crate::update::detail::Loading;
+    use graft_git::remote::{Remote, TrackedUpstream};
+    use graft_ops::operation::{Operation, PushParams};
+
+    let id = graft_core::job::JobId::new(9);
+    let mut state = changes_pane_state(columns, rows);
+    state.remotes = Loading::Ready(std::sync::Arc::new(RemoteFacts {
+        remotes: vec![Remote {
+            name: "origin".to_owned(),
+            fetch_url: "http://user@127.0.0.1:8443/api.git".to_owned(),
+            push_url: None,
+        }],
+        head_branch: Some("refs/heads/main".to_owned()),
+        head_upstream: Some(TrackedUpstream {
+            remote: "origin".to_owned(),
+            remote_branch: "refs/heads/main".to_owned(),
+            tracking_ref: "refs/remotes/origin/main".to_owned(),
+            tracking_tip: None,
+        }),
+    }));
+    let push = Operation::Push(PushParams {
+        branch: "refs/heads/main".to_owned(),
+        remote: "origin".to_owned(),
+        remote_branch: "refs/heads/main".to_owned(),
+        set_upstream: false,
+        lease: None,
+    });
+    state.operating = Some(id);
+    state.remote.running = Some(crate::update::remote::Running {
+        id,
+        description: "push main → origin/main".to_owned(),
+        op: Some(push),
+    });
+    state.status = Status::Busy("push main → origin/main · esc cancels".to_owned());
+    crate::update::credential::credential_needed(&mut state, id, prompt);
+    state
+}
+
+/// Types `text` into the open prompt, the way a key would.
+fn type_into_prompt(state: &mut AppState, text: &str) {
+    state
+        .credential
+        .as_mut()
+        .expect("the prompt is open")
+        .field
+        .insert_str(text);
+}
+
+#[test]
+fn the_credential_prompt_draws_over_everything_and_masks_what_is_typed() {
+    let mut state = credential_state(120, 40, "Password for 'http://user@127.0.0.1:8443':");
+    type_into_prompt(&mut state, "hunter2");
+
+    let screen = draw(&state, 120, 40);
+
+    assert!(screen.contains("Credentials"), "{screen}");
+    assert!(screen.contains("127.0.0.1:8443"), "{screen}");
+    assert!(
+        screen.contains("Password for 'http://user@127.0.0.1:8443':"),
+        "{screen}"
+    );
+    assert!(screen.contains("•••••••"), "the field is masked: {screen}");
+    assert!(
+        !screen.contains("hunter2"),
+        "the typed password reached the screen: {screen}"
+    );
+    assert!(
+        screen.contains("typed here only") && screen.contains("never stored by Graft"),
+        "{screen}"
+    );
+    assert!(
+        screen.contains("esc cancel the push"),
+        "the footer names what Esc stops: {screen}"
+    );
+}
+
+#[test]
+fn a_username_ask_is_drawn_in_the_open() {
+    let mut state = credential_state(120, 40, "Username for 'https://github.com':");
+    type_into_prompt(&mut state, "alice");
+
+    let screen = draw(&state, 120, 40);
+
+    assert!(screen.contains("Credentials"), "{screen}");
+    assert!(screen.contains("alice"), "a username is not a secret");
+    assert!(!screen.contains('•'), "nothing to mask: {screen}");
+}
+
+#[test]
+fn gits_words_and_a_remote_failure_cannot_carry_an_escape_to_the_screen() {
+    // Remote-controlled text: git's prompt (a crafted URL) and the failure
+    // line `ops` worded from git's stderr (a hostile pre-receive hook). Both
+    // are drawn, and neither may put a control character in a cell
+    // (m4/02 review m5).
+    let hostile = "Password for 'http://u@h/\u{1b}[2J\u{7}\r':";
+    let screen = draw(&credential_state(120, 40, hostile), 120, 40);
+    assert!(!screen.contains('\u{1b}'), "{screen:?}");
+    assert!(!screen.contains('\u{7}'), "{screen:?}");
+
+    let mut failed = credential_state(120, 40, "Password for 'http://u@h':");
+    failed.credential = None;
+    failed.operating = None;
+    failed.status = Status::Sticky("push rejected: \u{1b}[31mhook said no\u{7}".to_owned());
+    let screen = draw(&failed, 120, 40);
+    assert!(screen.contains("hook said no"), "{screen}");
+    assert!(!screen.contains('\u{1b}'), "{screen:?}");
+    assert!(!screen.contains('\u{7}'), "{screen:?}");
+}
+
+/// Regenerates `docs/shots/m4-credential-prompt-in-app.txt` (m4-remotes/06):
+/// git's password question over the running push, and the username ask.
+#[test]
+#[ignore = "writes docs/shots/m4-credential-prompt-in-app.txt; run by hand to regenerate"]
+fn capture_m4_credential_prompt_in_app() {
+    let mut password = credential_state(120, 40, "Password for 'http://user@127.0.0.1:8443':");
+    type_into_prompt(&mut password, "hunter2");
+    let masked = draw(&password, 120, 40);
+
+    let mut username = credential_state(80, 24, "Username for 'http://127.0.0.1:8443':");
+    type_into_prompt(&mut username, "alice");
+    let plain = draw(&username, 80, 24);
+
+    let header = "\
+# m4-credential-prompt-in-app.txt: TestBackend captures (not a pty), no
+# colour recorded. Fixture: capture_m4_credential_prompt_in_app in
+# crates/graft/src/view/tests.rs (#[ignore]d, run by hand to regenerate).
+# The prompt as it appears *in the app*, over a running push — the widget on
+# its own is docs/shots/m4-credential-prompt-and-hints.txt.
+#
+# Judge by eye:
+# 1. 120x40, password ask with `hunter2` typed: the box is centred over the
+#    screen, the title names the host (not the user), git's own question is
+#    on the first line, the field shows seven `•` and no plaintext, the note
+#    says the answer is never stored, and the footer says what ⏎, ⌃U and Esc
+#    do — Esc naming the push it cancels. The line behind it still says the
+#    push is running.
+# 2. 80x24, username ask with `alice` typed: the same box, the answer in the
+#    open (a username is not a secret), no `•` anywhere.
+#
+";
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m4-credential-prompt-in-app.txt"
+        ),
+        format!("{header}=== 120x40 · password ===\n{masked}\n=== 80x24 · username ===\n{plain}"),
+    )
+    .expect("docs/shots is writable");
+}

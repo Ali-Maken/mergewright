@@ -183,6 +183,7 @@ impl<S: JobEvents> JobRunner<S> {
     /// For the integration tests: under `cargo test` `current_exe` is the
     /// test binary, which has no askpass mode, so the tests point this at
     /// `CARGO_BIN_EXE_graft`. The shipped binary never calls it.
+    #[must_use]
     pub fn with_askpass_helper(mut self, helper: std::path::PathBuf) -> Self {
         self.askpass_helper = Some(helper);
         self
@@ -575,9 +576,8 @@ impl<S: JobEvents> JobRunner<S> {
                     }
                 };
                 let brief_sink = Arc::clone(&sink);
-                let brief_say = say.clone();
                 let progress = move |brief: String| {
-                    brief_say(&brief_sink, Progress::RemoteProgress { brief });
+                    say(&brief_sink, Progress::RemoteProgress { brief });
                 };
                 // The credential question travels the same way the progress
                 // line does; the answer comes back through `waiting`.
@@ -601,6 +601,19 @@ impl<S: JobEvents> JobRunner<S> {
                 ))))
             })
         });
+    }
+
+    /// The user's answer to git's credential question, or their cancelling
+    /// of it (m4-remotes/06).
+    ///
+    /// A `false` from `answer_credential` is the job having ended while the
+    /// key was in flight: the answer is dropped there and then, zeroed, and
+    /// there is nobody left to tell.
+    fn credential(&self, id: JobId, answer: Option<crate::update::credential::Answer>) {
+        let _delivered: bool = self.answer_credential(
+            id,
+            answer.map(crate::update::credential::Answer::into_secret),
+        );
     }
 
     /// Starts the history walk and keeps the channel its row requests go down.
@@ -759,15 +772,8 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
                 self.row_requests().remove(&id);
                 self.cancel(id);
             }
-            // A `false` here is the job having ended while the key was in
-            // flight; the answer is dropped and zeroed, and there is nobody
-            // left to tell (`answer_credential`).
-            Command::AnswerCredential(id, answer) => {
-                let _answered = self.answer_credential(id, Some(answer.into_secret()));
-            }
-            Command::CancelCredential(id) => {
-                let _answered = self.answer_credential(id, None);
-            }
+            Command::AnswerCredential(id, answer) => self.credential(id, Some(answer)),
+            Command::CancelCredential(id) => self.credential(id, None),
             // The loop writes this to the terminal itself (`event_loop`);
             // reaching here is a routing bug, not a runtime condition.
             Command::CopyToClipboard(_) => {

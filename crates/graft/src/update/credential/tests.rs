@@ -13,14 +13,16 @@ const JOB: JobId = JobId::new(4);
 
 /// A push running under [`JOB`], with git's question open on screen.
 fn asking(prompt: &str) -> AppState {
-    let mut state = AppState::default();
-    state.operating = Some(JOB);
+    let mut state = AppState {
+        operating: Some(JOB),
+        status: Status::Busy("push main → origin/main · esc cancels".to_owned()),
+        ..AppState::default()
+    };
     state.remote.running = Some(Running {
         id: JOB,
         description: "push main → origin/main".to_owned(),
         op: None,
     });
-    state.status = Status::Busy("push main → origin/main · esc cancels".to_owned());
     credential_needed(&mut state, JOB, prompt);
     assert!(state.credential.is_some(), "the prompt opened");
     state
@@ -265,7 +267,10 @@ fn debug_redacts_secret() {
 fn a_second_ask_replaces_the_first_and_a_stale_one_is_ignored() {
     let mut state = asking("Username for 'https://github.com':");
     type_in(&mut state, "ali");
-    assert_eq!(state.credential.as_ref().expect("open").masked, false);
+    assert!(
+        !state.credential.as_ref().expect("open").masked,
+        "a username is typed in the open"
+    );
 
     // git asks for the password next, under the same job.
     credential_needed(&mut state, JOB, "Password for 'https://ali@github.com':");
@@ -274,14 +279,18 @@ fn a_second_ask_replaces_the_first_and_a_stale_one_is_ignored() {
     assert_eq!(prompt.field.text(), "", "the username is not left in it");
 
     // An ask from a job the screen is not waiting on opens nothing.
-    let mut other = AppState::default();
-    other.operating = Some(JobId::new(9));
+    let mut other = AppState {
+        operating: Some(JobId::new(9)),
+        ..AppState::default()
+    };
     credential_needed(&mut other, JOB, "Password for 'https://x':");
     assert!(other.credential.is_none());
 
     // Nor does one for a write the user has already asked to stop.
-    let mut stopping = AppState::default();
-    stopping.operating = Some(JOB);
+    let mut stopping = AppState {
+        operating: Some(JOB),
+        ..AppState::default()
+    };
     stopping.remote.cancelling = Some(JOB);
     credential_needed(&mut stopping, JOB, "Password for 'https://x':");
     assert!(stopping.credential.is_none());
