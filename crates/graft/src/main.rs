@@ -20,16 +20,12 @@ use graft::session::Startup;
 use graft::update::Harness;
 
 fn main() -> ExitCode {
-    // git runs Graft's own binary as its askpass helper during a fetch, pull
-    // or push (design note, choice 2), naming the socket in this variable.
-    // In that mode Graft must never touch the terminal the running Graft
-    // owns: it answers from the socket and exits. The in-app prompt that
-    // answers the socket is m4-remotes/06; until then every ask is
-    // cancelled, so git reports an authentication failure.
-    if let Some(socket) = std::env::var_os("GRAFT_ASKPASS_SOCKET") {
-        return askpass(&std::path::PathBuf::from(socket));
-    }
+    // Settled first, before any config load, terminal probe or log line: in
+    // askpass mode (git ran Graft's own binary as its credential helper during
+    // a fetch, pull or push — design note m4, choice 2) this process must
+    // never touch the terminal the running Graft owns.
     let repo_path = match cli::from_process() {
+        Ok(Invocation::Askpass { socket, prompt }) => return askpass(&socket, &prompt),
         Ok(Invocation::Open(path)) => path,
         Ok(Invocation::Usage(usage)) => {
             println!("{usage}");
@@ -91,22 +87,20 @@ fn report(message: &str) {
         .unwrap_or(());
 }
 
-/// Askpass mode: pass git's prompt (`argv[1]`) to the running Graft over
-/// `socket`, print its answer for git, exit. Cancelled, or Graft gone, is a
-/// non-zero exit: git then treats the credential as refused.
-fn askpass(socket: &std::path::Path) -> ExitCode {
-    // git always passes the prompt; asking with an empty one is still a
-    // question the running Graft can decline.
-    let prompt = std::env::args().nth(1).unwrap_or_default();
+/// Askpass mode: pass git's `prompt` to the running Graft over `socket`,
+/// print its answer for git, exit. The answer goes to stdout and nowhere
+/// else. Exit 0 answered, 1 cancelled, 2 anything else, with one line on
+/// stderr naming it (git shows it to no one and reports "could not read
+/// Password", which Graft classifies as an authentication failure).
+fn askpass(socket: &std::path::Path, prompt: &str) -> ExitCode {
+    use graft_git::run::askpass::{RespondError, respond};
     let mut out = io::stdout().lock();
-    match graft_git::run::askpass::respond(socket, &prompt, &mut out).and_then(|()| {
-        out.flush()
-            .map_err(graft_git::run::askpass::RespondError::Io)
-    }) {
+    match respond(socket, prompt, &mut out).and_then(|()| out.flush().map_err(RespondError::Io)) {
         Ok(()) => ExitCode::SUCCESS,
+        Err(RespondError::Cancelled) => ExitCode::from(1),
         Err(why) => {
             report(&why.to_string());
-            ExitCode::FAILURE
+            ExitCode::from(2)
         }
     }
 }

@@ -29,6 +29,12 @@ pub(super) fn take_next(next: &mut AppState) -> Option<KeyPress> {
 
 /// Nothing a prelude key would need is still on its way.
 fn settled(state: &AppState) -> bool {
+    // A credential prompt is a text field waiting for its next key: that is
+    // "ready", though the write that asked is still in flight — waiting for
+    // `operating` to clear would deadlock on the answer only a key can give.
+    if state.credential.is_some() {
+        return true;
+    }
     let window = state
         .history
         .as_ref()

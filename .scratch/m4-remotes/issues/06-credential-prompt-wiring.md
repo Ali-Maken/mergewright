@@ -1,6 +1,6 @@
 # credential-prompt-wiring: the askpass mode of the binary, the in-app prompt state and keys, secrets across the job pool, the wrong-password round trip
 
-Status: in progress
+Status: done
 Blocked by: 02 (done), 03, 05
 Build with: Opus — taking the planner's recommendation: a secret crossing three threads, and a field that must join `text_field_open()` (M3 group 06's Critical).
 Crates: graft
@@ -57,22 +57,47 @@ impl JobRunner { pub fn answer_credential(&self, id: JobId, answer: Option<Secre
 
 Every tick names its verifying test inline, at tick time (ADR-0035).
 
-- [ ] `graft` with `GRAFT_ASKPASS_SOCKET` set and one argument runs `respond` and exits 0/1/2 without touching the terminal — `tests/it/askpass_mode.rs::binary_answers_over_socket` (spawns `CARGO_BIN_EXE_graft` against an `AskPassServer` with a scripted handler; asserts stdout = secret + `\n`, exit 0; cancelled → exit 1, empty stdout)
-- [ ] `text_field_open()` is true while the prompt is open; `u`/`U`/`Ctrl+Z`/`f`/`p`/`P` typed there dispatch nothing — `update::credential::tests::prompt_is_modal_and_swallows_globals` (through `update()`)
-- [ ] Masking rule: `Password for …` and `Enter passphrase for key …` masked; `Username for …` and `Are you sure you want to continue connecting (yes/no…` unmasked — `is_masked_prompt_table`
-- [ ] `Enter` emits `AnswerCredential` with the typed bytes and clears the field; `Esc` emits `CancelCredential` + `CancelJob` — `enter_answers_and_clears`, `esc_cancels_the_operation`
-- [ ] `{:?}` of an `AppState` holding `hunter2` in the prompt does not contain `hunter2` — `debug_redacts_secret`
-- [ ] End to end over `HttpRemote`: `P`, `Enter`; wait for `Progress::CredentialNeeded`; type `wrong`, `Enter` → `Sticky` "authentication failed for 127.0.0.1:<port> · P to try again", `requests() == (0, ≥1)`; `P`, `Enter`, type the right password, `Enter` → bare's `main` == local, `requests().0 ≥ 1`; the journal file, the test's recorded status lines and every `Progress` text contain neither `wrong` nor the password — `tests/it/credential_by_key.rs::wrong_then_right_password_pushes`
-- [ ] `Esc` in the prompt mid-push: `operating` clears, entry `Aborted` `cancelled`, bare unchanged, `HttpRemote::requests().0 == 0` — `credential_by_key::esc_in_prompt_cancels_push`
-- [ ] Username-then-password: `url_anonymous` → two prompts in sequence (first unmasked, second masked), both answered, push succeeds — `credential_by_key::username_then_password`
-- [ ] An answer arriving after the job ended is dropped and `answer_credential` returns `false`; no panic — `jobs::askpass::tests::late_answer_is_dropped`
-- [ ] Cancelling the job unblocks a waiting `ask` with `None` within 200 ms — `jobs::askpass::tests::cancel_unblocks_ask`
-- [ ] `Harness::prelude` feeds the next key while the prompt is open — `update::tests::prelude_proceeds_into_credential_prompt`
-- [ ] MAP.md, ARCHITECTURE.md updated
+- [x] `graft` with `GRAFT_ASKPASS_SOCKET` set and one argument runs `respond` and exits 0/1/2 without touching the terminal — `tests/it/askpass_mode.rs::binary_answers_over_socket` (spawns `CARGO_BIN_EXE_graft` against a real `AskPassServer`: stdout = secret + `\n`, exit 0, empty stderr, prompt arrived verbatim), `binary_exits_1_with_nothing_on_stdout_when_cancelled`, `binary_exits_2_naming_the_error_when_graft_is_gone`; the mode's rule alone in `cli::tests::askpass_mode_needs_the_socket_and_exactly_one_argument`
+- [x] `text_field_open()` is true while the prompt is open; `u`/`U`/`Ctrl+Z`/`f`/`p`/`P` typed there dispatch nothing — `update::credential::tests::prompt_is_modal_and_swallows_globals` (through `update()`; also asserts `q`, `S` and `/` are inert)
+- [x] Masking rule: `Password for …` and `Enter passphrase for key …` masked; `Username for …` and `Are you sure you want to continue connecting (yes/no…` unmasked — `update::credential::tests::is_masked_prompt_table`
+- [x] `Enter` emits `AnswerCredential` with the typed bytes and clears the field; `Esc` emits `CancelCredential` + `CancelJob` — `update::credential::tests::enter_answers_and_clears`, `update::credential::tests::esc_cancels_the_operation` (asserts the exact command pair and the `· cancelling` status)
+- [x] `{:?}` of an `AppState` holding `hunter2` in the prompt does not contain `hunter2` — `update::credential::tests::debug_redacts_secret` (and the same for the `Command` carrying it away)
+- [x] End to end over `HttpRemote`: `P`, `Enter`; wait for `Progress::CredentialNeeded`; type `wrong`, `Enter` → `Sticky` "authentication failed … · P to try again", `requests() == (0, ≥1)`; `P`, `Enter`, type the right password, `Enter` → bare's `main` == local, `requests().0 ≥ 1`; the journal file, every recorded status line and every recorded event contain neither `wrong` nor the password — `tests/it/credential_by_key.rs::wrong_then_right_password_pushes`
+- [x] `Esc` in the prompt mid-push: `operating` clears, entry `Aborted` `cancelled`, bare unchanged, `HttpRemote::requests().0 == 0` — `credential_by_key::esc_in_prompt_cancels_push`
+- [x] Username-then-password: `url_anonymous` → two prompts in sequence (first unmasked, second masked), both answered, push succeeds — `credential_by_key::username_then_password`
+- [x] An answer arriving after the job ended is dropped and `answer_credential` returns `false`; no panic — `jobs::askpass::tests::late_answer_is_dropped`
+- [x] Cancelling the job unblocks a waiting `ask` with `None` within 200 ms — `jobs::askpass::tests::cancel_unblocks_ask` (also `an_already_cancelled_job_does_not_ask`)
+- [x] `Harness::prelude` feeds the next key while the prompt is open — `update::tests::prelude_proceeds_into_credential_prompt`
+- [x] MAP.md, ARCHITECTURE.md updated — `crates/graft/MAP.md` (§cli, §update, §update::credential, §jobs, §view), `ARCHITECTURE.md` "Changing the credential prompt"
+- [x] Every string git sends is sanitised before it is drawn (the G2 review's unenforced rail) — `update::credential::tests::gits_words_are_cleaned_before_they_are_kept` (the kept `SanitizedText`) and `view::tests::gits_words_and_a_remote_failure_cannot_carry_an_escape_to_the_screen` (no ESC/BEL in any drawn cell, prompt *or* `Status::Sticky` failure line)
+- [x] The prompt is drawn, judged by eye — `docs/shots/m4-credential-prompt-in-app.txt` (8.3 KB; 120x40 password over a running push, 80x24 username), from the `#[ignore]`d `view::tests::capture_m4_credential_prompt_in_app`
 
 ## Gates
 
 `cargo fmt --check` · `cargo clippy --all-targets --message-format=short -- -D warnings` · `cargo clippy --all-targets --features heavy-tests --message-format=short -- -D warnings` · `cargo nextest run -p graft` · `cargo test --doc -p graft`. Plus, once: `grep -rn "hunter2\|<test password>" target/nextest` finds nothing (the builder runs it, records it).
+
+## Notes
+
+Scout: yes — `Explore` (sonnet) over the askpass mode, `jobs/runner.rs` + `jobs/operate.rs`, and the overlay/key routing, before any edit.
+
+Gates, all workspace-wide (never `-p`, per CLAUDE.md): `cargo fmt --check` clean; `cargo clippy --all-targets -- -D warnings` clean; the same with `--features heavy-tests` clean; `cargo nextest run` **1787 passed, 0 failed, 22 skipped**; `cargo test --doc` clean. The one-off leak grep found the test password in no file the tests wrote (`target-g06/tmp`, `target-g06/fixtures`) and in no artefact but the compiled test binaries, which contain their own source literals — there is no `target/nextest` store in this layout, so the grep was run over the whole target dir instead, and that is what it found.
+
+Deviations from the ticket's signatures, all deliberate:
+
+1. **`Command::AnswerCredential(JobId, Answer)`, not `(JobId, Secret)`.** `Command` is `Clone + PartialEq + Eq` (every `update` test compares command vectors); `Secret` is deliberately none of those. `update::credential::Answer` is a newtype over `Arc<Secret>` with content equality and a `Answer(…)` `Debug`; `into_secret` unwraps the `Arc` when it is the last reference and copies otherwise, and both allocations zero on drop. Without this, either `Command` loses its derives or the secret gets cloned as a plain `Vec<u8>`.
+2. **No `AppState::askpass_helper`.** The helper path is a property of the process, not of the app state, and `Command::Operate` has 24 call sites that would all have had to carry it. Instead `JobRunner::with_askpass_helper(PathBuf)` overrides the default `current_exe()`; the integration test names `CARGO_BIN_EXE_graft` there. Same effect, one seam instead of twenty-four, and `AppState` never holds a path it does not use.
+3. **`credential_needed(&mut AppState, JobId, &str)`** — `&str`, not `String`; it sanitises into its own `SanitizedText` and never keeps the caller's buffer.
+4. **The prompt is closed by `close_if_orphaned` at the top of `settle`**, not by a hook on each way an operation can end. One place, so no exit path can leave a prompt that answers into a dead job.
+5. **`Ctrl+C` is not swallowed** — it falls through to quit. Everything else, `Tab` included, is.
+6. `Esc` routes through `update::remote::stop_write`, so the footer says `push main → origin/main · cancelling` rather than the prompt vanishing silently.
+
+Unverified (rule 5 and rule 1):
+
+- **Colour.** The capture is a `TestBackend` character grid with no colour attributes. The prompt's colours ship unverified.
+- **SSH.** Only the HTTP path is exercised end to end. `SSH_ASKPASS` is set by G2's hooks and the binary's mode is agnostic, but no test drives an SSH remote.
+- The capture is not a pty recording; it proves layout and masking, not what a real terminal draws.
+
+Found on the way, not in scope (for the milestone review, not fixed here): nothing in `app` forces a *new* remote-controlled string through `sanitize` — the two tests above pin the two paths that exist now, but the guarantee is by convention, not by type, once a third path appears. A `SanitizedText`-only field on the view models would close it.
 
 ## Size
 

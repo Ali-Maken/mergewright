@@ -15,6 +15,7 @@
 //! builds the status screen's view model.
 
 mod commit_editor;
+mod credential;
 mod detail;
 mod entries;
 pub(crate) mod explain;
@@ -33,6 +34,7 @@ pub mod strips;
 pub(crate) mod tests;
 
 pub use commit_editor::commit_editor_view;
+pub use credential::credential_view;
 pub use detail::detail_view;
 pub(crate) use entries::uncommitted_shown;
 pub(crate) use explain::build_explain_view;

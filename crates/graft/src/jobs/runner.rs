@@ -104,6 +104,14 @@ pub struct JobRunner<S: JobEvents> {
     /// Ahead/behind counts every refs job shares, so a refresh walks only
     /// the branches whose tips moved.
     pub(super) ahead_behind: Arc<crate::refs::AheadBehindCache>,
+    /// The credential questions waiting for the user (m4-remotes/06), by
+    /// job. `answer_credential` is the only way in.
+    waiting: super::askpass::Waiting,
+    /// The binary git runs as its askpass helper. `None` means Graft's own
+    /// (`current_exe`), which is right for the shipped binary and wrong
+    /// under `cargo test`, where `current_exe` is the test binary: the
+    /// integration tests point this at `CARGO_BIN_EXE_graft`.
+    askpass_helper: Option<std::path::PathBuf>,
 }
 
 impl<S: JobEvents> JobRunner<S> {
@@ -165,7 +173,35 @@ impl<S: JobEvents> JobRunner<S> {
             repos,
             row_requests: Mutex::new(HashMap::new()),
             ahead_behind: Arc::default(),
+            waiting: super::askpass::Waiting::default(),
+            askpass_helper: None,
         })
+    }
+
+    /// Run `helper` as git's askpass helper instead of Graft's own binary.
+    ///
+    /// For the integration tests: under `cargo test` `current_exe` is the
+    /// test binary, which has no askpass mode, so the tests point this at
+    /// `CARGO_BIN_EXE_graft`. The shipped binary never calls it.
+    #[must_use]
+    pub fn with_askpass_helper(mut self, helper: std::path::PathBuf) -> Self {
+        self.askpass_helper = Some(helper);
+        self
+    }
+
+    /// Hands the user's answer to the credential question job `id` is
+    /// waiting on; `None` is "the user cancelled".
+    ///
+    /// `false` when no question under `id` is waiting — the job ended while
+    /// the key was in flight. The answer is dropped there and then (a
+    /// `Secret` zeroes itself on drop), which is the whole handling: there
+    /// is nobody left to tell, and nothing to log, least of all this.
+    pub fn answer_credential(
+        &self,
+        id: JobId,
+        answer: Option<graft_git::run::askpass::Secret>,
+    ) -> bool {
+        self.waiting.answer(id, answer)
     }
 
     /// Start a pool sized for this machine.
@@ -511,6 +547,13 @@ impl<S: JobEvents> JobRunner<S> {
         let repos = Arc::clone(&self.repos);
         let sink = self.sink.clone();
         let description = op.describe();
+        let waiting = self.waiting.clone();
+        // Settled here, on the loop's thread, not inside the job: what git
+        // must run to ask is a fact about this process.
+        let helper = match self.askpass_helper.clone() {
+            Some(helper) => Ok(helper),
+            None => std::env::current_exe().map_err(|error| error.to_string()),
+        };
         self.queue_as(id, Some(Task::Operate), move |id| {
             Box::new(move |cancel: &Cancel| {
                 sink.deliver(AppEvent::Progress(id, Progress::Operating { description }));
@@ -521,25 +564,56 @@ impl<S: JobEvents> JobRunner<S> {
                 // status line (m4-remotes/05). The sink is `Send` but not
                 // `Sync`, and the hook is called from the executor's stderr
                 // thread, hence the lock.
-                let sink = std::sync::Mutex::new(sink);
-                let progress = move |brief: String| {
+                let sink = Arc::new(std::sync::Mutex::new(sink));
+                let say = move |sink: &std::sync::Mutex<S>, progress: Progress| {
                     // A poisoned lock means another progress call panicked;
                     // that panic is the job's failure and is reported as
                     // one. Dropping this one line of progress is safe.
                     if let Ok(sink) = sink.lock() {
-                        // `Delivery::LoopGone`: nobody is left to show it.
-                        let _delivery = sink
-                            .deliver(AppEvent::Progress(id, Progress::RemoteProgress { brief }));
+                        // `Delivery::NobodyListening`: nobody is left to
+                        // show it.
+                        let _delivery = sink.deliver(AppEvent::Progress(id, progress));
                     }
                 };
+                let brief_sink = Arc::clone(&sink);
+                let progress = move |brief: String| {
+                    say(&brief_sink, Progress::RemoteProgress { brief });
+                };
+                // The credential question travels the same way the progress
+                // line does; the answer comes back through `waiting`.
+                let askpass = Arc::new(super::askpass::ChannelAskPass::new(
+                    id,
+                    Box::new(move |prompt: String| {
+                        say(&sink, Progress::CredentialNeeded { prompt });
+                    }),
+                    waiting,
+                    cancel.clone(),
+                ));
                 Outcome::Produced(Product::Operated(Box::new(super::operate::run_operation(
                     &repos,
                     &op,
                     cancel,
-                    Box::new(progress),
+                    super::operate::Hooks {
+                        progress: Box::new(progress),
+                        askpass,
+                        helper,
+                    },
                 ))))
             })
         });
+    }
+
+    /// The user's answer to git's credential question, or their cancelling
+    /// of it (m4-remotes/06).
+    ///
+    /// A `false` from `answer_credential` is the job having ended while the
+    /// key was in flight: the answer is dropped there and then, zeroed, and
+    /// there is nobody left to tell.
+    fn credential(&self, id: JobId, answer: Option<crate::update::credential::Answer>) {
+        let _delivered: bool = self.answer_credential(
+            id,
+            answer.map(crate::update::credential::Answer::into_secret),
+        );
     }
 
     /// Starts the history walk and keeps the channel its row requests go down.
@@ -698,6 +772,8 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
                 self.row_requests().remove(&id);
                 self.cancel(id);
             }
+            Command::AnswerCredential(id, answer) => self.credential(id, Some(answer)),
+            Command::CancelCredential(id) => self.credential(id, None),
             // The loop writes this to the terminal itself (`event_loop`);
             // reaching here is a routing bug, not a runtime condition.
             Command::CopyToClipboard(_) => {

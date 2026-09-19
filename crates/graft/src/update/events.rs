@@ -63,6 +63,15 @@ pub enum Progress {
         /// e.g. `"receiving objects 45%"`.
         brief: String,
     },
+    /// A fetch, pull or push is waiting on git's credential question
+    /// (m4-remotes/06): open the prompt; the job blocks until
+    /// [`Command::AnswerCredential`] or [`Command::CancelCredential`] under
+    /// the same id, or until it is cancelled.
+    CredentialNeeded {
+        /// git's own words, raw — remote-reachable, sanitised before it is
+        /// kept (`update::credential`).
+        prompt: String,
+    },
 }
 
 /// What a job was started to do.
@@ -326,6 +335,13 @@ pub enum Command {
     /// Stop a job whose result is no longer wanted. Cooperative: a job that has
     /// not started is dropped, and a running one stops at its next check.
     CancelJob(JobId),
+    /// Hand the user's answer to the credential question job `JobId` is
+    /// waiting on (m4-remotes/06). Dropped, zeroed, if the job has ended.
+    AnswerCredential(JobId, super::credential::Answer),
+    /// Tell job `JobId`'s credential question that the user cancelled it.
+    /// `update` always sends [`Command::CancelJob`] beside it: an operation
+    /// is never left half-authenticated.
+    CancelCredential(JobId),
     /// Search history for a query off the loop's thread (`/`).
     Search(crate::search::Query),
     /// Ask the terminal to put this text on its clipboard (OSC 52, `y`).

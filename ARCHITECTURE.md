@@ -94,6 +94,13 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   (m3-working-tree-undo-and-stash/06). `app::jobs::undo` is the second module
   in `app` that opens the journal — through `ops`, never by hand, like
   `app::jobs::operate`.
+- **Changing the credential prompt** → `app::update::credential` for the
+  state, the modal keys and the `Answer` that carries the secret,
+  `app::jobs::askpass` for the waiting job's `AskPass`, `app::cli` for the
+  binary's askpass mode (`GRAFT_ASKPASS_SOCKET`), `app::view::credential` for
+  the view model and `ui::credential_prompt` for the widget. The protocol
+  itself — the socket, the `Secret`, the helper — is `git::run::askpass`, and
+  nothing in `app` speaks it by hand (m4-remotes/05–06).
 - **Changing what the Mistake Radar detects, or one of its background jobs**
   → `ops::mistake_radar` for detection itself (`rules`, `probes`, `explain`);
   `app::jobs::radar` for the jobs that run off the UI thread (`RadarContext`,

@@ -1054,6 +1054,7 @@ fn the_same_event_always_gives_the_same_answer() {
         last_focus_refresh: None,
         strip_shown: false,
         confirm: None,
+        credential: None,
         commit_editor: None,
         commit_draft: None,
         in_progress: None,
@@ -2815,6 +2816,65 @@ fn the_prelude_holds_a_key_while_a_write_is_in_flight() {
         "the write landed: J was fed"
     );
     assert!(state.journal.shown, "and it opened the journal browser");
+}
+
+/// m4-remotes/06: the one exception to the rule above. A credential prompt
+/// is a text field waiting for a key, and the write that asked for it *is*
+/// still in flight — a prelude that waited for `operating` to clear would
+/// deadlock, and the acceptance walk could never answer a password.
+#[test]
+fn prelude_proceeds_into_credential_prompt() {
+    let walk = JobId::new(4);
+    let mut state = awaiting(walk);
+    state.harness.prelude = vec![
+        KeyPress::plain(KeyCode::Char('p')),
+        KeyPress::plain(KeyCode::Enter),
+    ];
+    let (state, _) = update(&state, sized(80, 12));
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(
+            JobId::new(9),
+            Product::Refs(Ok(crate::refs::RefBadges::default())),
+        ),
+    );
+    let (state, _) = update(&state, rows_for(walk, 2, 0..30, 500));
+    let mut state = state;
+    let push = JobId::new(77);
+    state.operating = Some(push);
+
+    let (state, commands) = update(&state, working_tree_read(JobId::new(10)));
+    assert_eq!(state.harness.prelude.len(), 2, "a write is in flight");
+
+    // git asks; the prompt opens and the prelude starts feeding again.
+    let (state, commands_after) = update(
+        &state,
+        AppEvent::Progress(
+            push,
+            Progress::CredentialNeeded {
+                prompt: "Password for 'http://u@h':".to_owned(),
+            },
+        ),
+    );
+
+    assert!(
+        state.harness.prelude.is_empty(),
+        "both keys were fed into the prompt"
+    );
+    assert!(state.credential.is_none(), "Enter closed it");
+    let answered: Vec<_> = commands
+        .iter()
+        .chain(&commands_after)
+        .filter(|command| matches!(command, Command::AnswerCredential(..)))
+        .collect();
+    assert_eq!(
+        answered,
+        vec![&Command::AnswerCredential(
+            push,
+            crate::update::credential::Answer::new(b"p".to_vec())
+        )],
+        "the `p` landed in the field, not on the pull key, and Enter sent it"
+    );
 }
 
 /// Critical 1 of the m3/06 review: a global binding must never fire while a

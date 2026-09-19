@@ -17,7 +17,21 @@ pub enum Invocation {
     Open(PathBuf),
     /// Print this and exit successfully.
     Usage(&'static str),
+    /// Askpass mode: git (or ssh) ran Graft as its credential helper. Pass
+    /// `prompt` to the running Graft listening on `socket`, print its answer
+    /// for git, exit — never touching the terminal the running Graft owns.
+    Askpass {
+        /// The running Graft's socket, from `GRAFT_ASKPASS_SOCKET`.
+        socket: PathBuf,
+        /// git's question, its one argument (`Password for '…':`).
+        prompt: String,
+    },
 }
+
+/// The variable that names the running Graft's askpass socket. git passes it
+/// through to the helper; its presence is what selects askpass mode (design
+/// note m4, choice 2: an argument cannot ride in `GIT_ASKPASS` reliably).
+pub const ASKPASS_SOCKET_VAR: &str = "GRAFT_ASKPASS_SOCKET";
 
 /// What the arguments could not be made sense of.
 #[derive(Debug, thiserror::Error)]
@@ -48,7 +62,29 @@ usage: graft [<path>]
 /// # Errors
 /// [`CliError`], with a message that is ready to print.
 pub fn from_process() -> Result<Invocation, CliError> {
-    parse(env::args_os().skip(1))
+    let arguments: Vec<OsString> = env::args_os().skip(1).collect();
+    if let Some(askpass) = askpass(env::var_os(ASKPASS_SOCKET_VAR), &arguments) {
+        return Ok(askpass);
+    }
+    parse(arguments)
+}
+
+/// Askpass mode, when `socket` (the value of [`ASKPASS_SOCKET_VAR`]) is set
+/// and there is exactly one argument: git and ssh pass the prompt as the
+/// single argument. Anything else is an ordinary command line.
+///
+/// A prompt that is not valid UTF-8 is converted lossily: it is only ever
+/// shown to the user, and the answer does not depend on it.
+#[must_use]
+pub fn askpass(socket: Option<OsString>, arguments: &[OsString]) -> Option<Invocation> {
+    let socket = socket.filter(|socket| !socket.is_empty())?;
+    match arguments {
+        [prompt] => Some(Invocation::Askpass {
+            socket: PathBuf::from(socket),
+            prompt: prompt.to_string_lossy().into_owned(),
+        }),
+        _ => None,
+    }
 }
 
 /// Parse arguments that have already had the program name removed.
@@ -149,6 +185,25 @@ mod tests {
         let parsed = parse_words(&["--", "--help"]).expect("a directory may be called --help");
 
         assert_eq!(parsed, Invocation::Open(PathBuf::from("--help")));
+    }
+
+    #[test]
+    fn askpass_mode_needs_the_socket_and_exactly_one_argument() {
+        let socket = Some(OsString::from("/tmp/graft-askpass-1/ask.sock"));
+        let prompt = [OsString::from("Password for 'http://u@h':")];
+
+        assert_eq!(
+            askpass(socket.clone(), &prompt),
+            Some(Invocation::Askpass {
+                socket: PathBuf::from("/tmp/graft-askpass-1/ask.sock"),
+                prompt: "Password for 'http://u@h':".to_owned(),
+            })
+        );
+        assert_eq!(askpass(None, &prompt), None);
+        assert_eq!(askpass(Some(OsString::new()), &prompt), None);
+        assert_eq!(askpass(socket.clone(), &[]), None);
+        let two = [OsString::from("a"), OsString::from("b")];
+        assert_eq!(askpass(socket, &two), None);
     }
 
     #[test]
