@@ -10,6 +10,7 @@ One line per public item. Update when a public item changes.
 - `mailmap` (mod) — `.mailmap` resolution, via gix's own parser.
 - `run` (mod) — the typed runner for system `git`: typed args, byte paths, stdin, kill-on-stop, output cap (m2/01).
 - `repo` (mod) — opening a repository and reading `HEAD`, refs and tips from it.
+- `stash` (mod) — the stash list, from `refs/stash`'s own reflog (m3/01).
 - `state` (mod) — whether a merge, rebase, cherry-pick, revert or bisect is in progress (m3/01).
 - `status` (mod) — counting staged, unstaged and untracked working-tree changes.
 - `version` (mod) — running and classifying the system `git` binary's version.
@@ -150,6 +151,11 @@ One line per public item. Update when a public item changes.
 - `GitOutput` (struct) — `stdout`, `stderr`, `truncated`.
 - `RunError` (enum) — `GitNotFound`, `Spawn(io)`, `Stopped`, `Exited { status, stderr_first_line, command }`, `Signalled { command }`; `Display` is one line.
 - Split into files, public items unchanged (m2 review M8): `exec.rs` is the child-process machinery `GitInvocation::spawn`/`supervise` are built on — pipe draining on their own threads, kill/reap, `GitArg` → `OsString`/shell-quoted text; this file keeps the types and `GitInvocation`'s own methods.
+
+## stash
+- `StashEntry` (struct) — `index` (`0` newest), `commit`, `message` (git's own reflog message), `at`, `paths` (tracked changes plus, for `-u`/`-a`, the untracked-files commit's own paths) (m3/01).
+- `StashError` (enum) — `Stopped`, `Reflog` (the reflog itself could not be read), `Run` (a `diff-tree` spawn failed) (m3/01).
+- `list` (fn) — every stash entry, newest first, capped at 50; reads `refs/stash`'s reflog through `gix` (no `git stash list` spawn), one `diff-tree --name-only -r -z <stash>^ <stash>` spawn per entry plus a second (`--root <stash>^3`) when `gix` finds a third parent (the untracked-files commit); `Ok(vec![])` on a repository with no stashes (m3/01).
 
 ## state
 - `InProgress` (enum) — `Merge`, `Rebase`, `CherryPick`, `Revert`, `Bisect`; `name`/`continue_command`/`abort_command` (m3/01).

@@ -16,6 +16,7 @@ pub mod history;
 pub mod mailmap;
 pub mod repo;
 pub mod run;
+pub mod stash;
 pub mod state;
 pub mod status;
 pub mod version;
