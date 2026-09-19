@@ -115,10 +115,10 @@ One line per public item. Update when a public item changes.
 - `RepoHandle::is_bare` (fn) — no working tree.
 - `RepoHandle::mailmap` (fn) — the repository's resolved `.mailmap`.
 - `RepoHandle::head` (fn) — where `HEAD` points.
-- `RepoHandle::references` (fn) — every ref in the repository.
+- `RepoHandle::references` (fn) — every ref in the repository, Graft's own `refs/graft/**` included; not for anything drawn.
 - `RepoHandle::reference` (fn) — one ref by full name, unpeeled and unfollowed; `None` when absent. For a caller that asks about one or two names rather than the whole store (m3/03 review, M6).
 - `RepoHandle::commit_tips` (fn, takes `&dyn KnownCommits`) — every branch/tag tip commit; a tip the table already knows is a commit is never header-read (m1-the-graph/58).
-- `RepoHandle::ref_snapshot` (fn, takes `&dyn KnownCommits`) — `references` and `commit_tips` from one pass over the ref store.
+- `RepoHandle::ref_snapshot` (fn, takes `&dyn KnownCommits`) — `references` and `commit_tips` from one pass over the ref store, minus Graft's own refs: the repository as Graft draws it.
 - `RepoHandle::peeled_references` (fn, takes `&dyn KnownCommits`) — every ref that reaches a commit, with that commit (tags peeled).
 - `KnownCommits` (trait) — `is_known_commit(&self, id: Oid) -> bool`, a free check a tip can be skipped past without reading its object; provided `covers_the_graph(&self) -> bool` (default `false`): when true an unknown tip is read whole at once, no header first (m1-the-graph/58b). `()` answers `false` to both (header-first path); `graft_git::history::CommitTable` answers from its handle table and covers the graph when it has a commit-graph.
 - `RepoHandle::upstream` (fn) — the remote-tracking ref a branch pulls from, per its config.

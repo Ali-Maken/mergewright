@@ -2,7 +2,7 @@ m3 walk capture: m3-01-stage-file — scenario stage-file, keys k ⏎ Space, uni
 
 Graph  [Detail]
 UNCOMMITTED · 1 staged
-diff vs HEAD 51d27b7
+diff vs HEAD e1bcb55
 
 STAGED (1)
   M sample.txt                                                             +2 −2

@@ -1,7 +1,7 @@
 m3 walk capture: m3-04-commit-editor — scenario commit, keys k ⏎ c s h o u t Space t h r e e, unicode tier, 160x48
 
 COMMIT ── ⎇ main ── 1 file staged                                                            UNCOMMITTED · 1 staged
-                                                                                             diff vs HEAD 9ffcbae
+                                                                                             diff vs HEAD ad2e242
 ▸Subject shout three                                       ┊                            11/50
 
  Body

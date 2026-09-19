@@ -1,6 +1,6 @@
 m3 walk capture: m3-08-journal-after-unstage — scenario unstage-file, keys k ⏎ Space Esc J, unicode tier, 160x48
 
-UNDO JOURNAL · /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-JUCYAI
+UNDO JOURNAL · /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-OkphFw
 ▸ now       unstage sample.txt                           the index · backup saved                                                                           ← u
 
 

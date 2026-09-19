@@ -101,10 +101,59 @@ pub fn run_with_stdin_file(
     run_with_stdin(cwd, args, Some(stdin_file))
 }
 
+/// What a `git` child reads on its standard input.
+enum Input<'a> {
+    /// Nothing: `/dev/null`.
+    Nothing,
+    /// A file already on disk, as `fast-import`'s stream is.
+    File(&'a Path),
+    /// Bytes this process holds, staged through the same scratch directory
+    /// the output goes to — a pipe would have to be fed while the deadline
+    /// loop waits, and the two do not combine.
+    Bytes(&'a [u8]),
+}
+
 fn run_with_stdin(
     cwd: &Path,
     args: &[&str],
     stdin_file: Option<&Path>,
+) -> Result<Vec<u8>, GitError> {
+    run_built(hermetic, cwd, args, &Input::from(stdin_file))
+}
+
+impl<'a> From<Option<&'a Path>> for Input<'a> {
+    fn from(path: Option<&'a Path>) -> Self {
+        match path {
+            Some(path) => Input::File(path),
+            None => Input::Nothing,
+        }
+    }
+}
+
+/// Runs `git <args>` in `cwd` under [`isolated`] — the machine's config
+/// switched off, its clock and identity left alone — with the same 30 s
+/// deadline every other command here gets.
+///
+/// For a test whose commits must be dated now: pass `-c user.name=…` and
+/// `-c user.email=…` in `args`, because a nulled global config has no
+/// identity in it.
+///
+/// # Errors
+/// [`GitError`] if `git` cannot be started, outlives the deadline, or exits
+/// non-zero.
+pub fn run_isolated(cwd: &Path, args: &[&str], stdin: Option<&[u8]>) -> Result<Vec<u8>, GitError> {
+    let input = match stdin {
+        Some(bytes) => Input::Bytes(bytes),
+        None => Input::Nothing,
+    };
+    run_built(isolated, cwd, args, &input)
+}
+
+fn run_built(
+    build: fn(&Path, &[&str]) -> Command,
+    cwd: &Path,
+    args: &[&str],
+    stdin: &Input<'_>,
 ) -> Result<Vec<u8>, GitError> {
     let printed = args.join(" ");
     let fail = |source: io::Error| GitError::Io {
@@ -113,10 +162,6 @@ fn run_with_stdin(
         source,
     };
 
-    let stdin = match stdin_file {
-        Some(path) => Stdio::from(File::open(path).map_err(&fail)?),
-        None => Stdio::null(),
-    };
     // The child writes to files, not to pipes. A pipe would have to be
     // drained while the child runs, and this waits on a deadline instead of
     // blocking on a read — the two do not combine without a reader thread,
@@ -128,7 +173,17 @@ fn run_with_stdin(
     let out_path = sink.path().join("stdout");
     let err_path = sink.path().join("stderr");
 
-    let mut child = hermetic(cwd, args)
+    let stdin = match stdin {
+        Input::Nothing => Stdio::null(),
+        Input::File(path) => Stdio::from(File::open(path).map_err(&fail)?),
+        Input::Bytes(bytes) => {
+            let staged = sink.path().join("stdin");
+            std::fs::write(&staged, bytes).map_err(&fail)?;
+            Stdio::from(File::open(&staged).map_err(&fail)?)
+        }
+    };
+
+    let mut child = build(cwd, args)
         .stdin(stdin)
         .stdout(Stdio::from(File::create(&out_path).map_err(&fail)?))
         .stderr(Stdio::from(File::create(&err_path).map_err(&fail)?))
@@ -169,8 +224,40 @@ fn run_with_stdin(
     }
 }
 
-/// A `git` command with the whole outside world switched off.
+/// A `git` command with the whole outside world switched off: the machine's
+/// config, and its clock and identity too.
 fn hermetic(cwd: &Path, args: &[&str]) -> Command {
+    let mut command = isolated(cwd, args);
+    command
+        // A fixed identity and clock. Commits made by `fast-import` carry
+        // their own timestamps from the stream; these cover the few objects
+        // plain `git` creates — the stash commits, above all — so their ids
+        // are stable too.
+        .env("GIT_AUTHOR_NAME", IDENTITY_NAME)
+        .env("GIT_AUTHOR_EMAIL", IDENTITY_EMAIL)
+        .env("GIT_AUTHOR_DATE", FIXED_DATE)
+        .env("GIT_COMMITTER_NAME", IDENTITY_NAME)
+        .env("GIT_COMMITTER_EMAIL", IDENTITY_EMAIL)
+        .env("GIT_COMMITTER_DATE", FIXED_DATE);
+    command
+}
+
+/// A `git` command that cannot see the machine's configuration — and nothing
+/// more.
+///
+/// The isolation half of [`hermetic`], without its fixed clock and identity.
+/// A test that needs commits dated *now* (the acceptance walk, whose graph
+/// reads "now" for every row) must not inherit the corpus's 2021, but it must
+/// still be immune to a global `commit.gpgsign`, `core.hooksPath` or
+/// `status.showUntrackedFiles` — the difference between a suite that passes
+/// everywhere and one that passes on the machine that wrote it
+/// (PROMPT.md §7.1; m3-07 review, Major 1). Set your own identity with
+/// `-c user.name=…` in `args`.
+///
+/// The returned [`Command`] is unspawned, so the caller can add pipes, a
+/// stdin or more environment before running it.
+#[must_use]
+pub fn isolated(cwd: &Path, args: &[&str]) -> Command {
     let mut command = Command::new("git");
     command
         .args(args)
@@ -188,17 +275,7 @@ fn hermetic(cwd: &Path, args: &[&str]) -> Command {
         .env_remove("GIT_INDEX_FILE")
         .env_remove("GIT_COMMON_DIR")
         .env_remove("GIT_OBJECT_DIRECTORY")
-        .env_remove("GIT_ALTERNATE_OBJECT_DIRECTORIES")
-        // A fixed identity and clock. Commits made by `fast-import` carry
-        // their own timestamps from the stream; these cover the few objects
-        // plain `git` creates — the stash commits, above all — so their ids
-        // are stable too.
-        .env("GIT_AUTHOR_NAME", IDENTITY_NAME)
-        .env("GIT_AUTHOR_EMAIL", IDENTITY_EMAIL)
-        .env("GIT_AUTHOR_DATE", FIXED_DATE)
-        .env("GIT_COMMITTER_NAME", IDENTITY_NAME)
-        .env("GIT_COMMITTER_EMAIL", IDENTITY_EMAIL)
-        .env("GIT_COMMITTER_DATE", FIXED_DATE);
+        .env_remove("GIT_ALTERNATE_OBJECT_DIRECTORIES");
     command
 }
 

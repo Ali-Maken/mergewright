@@ -1110,8 +1110,18 @@ cargo run -p graft --example m3_walk -- --matrix            # rewrites docs/shot
 exit 1 on any failure. The same list runs in the fast tier as one test per
 scenario (`tests/it/m3_walk.rs`, `m3_walk::every_scenario::*`; slowest 1.4 s;
 the 22 alone take 4.6 s under nextest, and add 2–4 s to the whole tier). Every scenario
-ends with `git fsck --no-dangling` saying nothing but notices, and exactly one
-`refs/graft/backup/<worktree>/<id>` ref per journal entry that took a backup.
+ends with `git fsck --no-dangling` saying nothing but notices, exactly one
+`refs/graft/backup/<worktree>/<id>` ref per journal entry that took a backup,
+and **no backup commit drawn in the history window** — every row's subject is
+the user's, never a `graft <ulid> …` (m3-07 review, C1; the check is
+`no_bookkeeping_in_the_graph`, run after every scenario).
+
+The walk's own `git` runs under `graft_fixtures::git::run_isolated`, and each
+scenario's repository overrides the settings that would otherwise decide what
+a write means (`neutralise_global_config`): the 22 tests pass the same on a
+machine with `commit.gpgsign`, a global `core.hooksPath` or
+`status.showUntrackedFiles=no` set. Checked by running the tier with all
+three on.
 
 Captures: `docs/shots/m3-<nn>-<what>-<WxH>.txt`, nine visual results at
 80x24 and 160x48, Unicode tier
@@ -1185,6 +1195,12 @@ included) and every `stash list` line.
    file listed under both sections; `d` on the `UNSTAGED` row: **both** the
    index and the file read as HEAD's (a path discard restores both sides).
    `u`: index and file back.
+   **Current behaviour, under review — not an acceptance line.** The design
+   note has `d` discarding the same unit `Space` stages, so on an `UNSTAGED`
+   row it should leave the staged half alone; the confirm box says "in the
+   working tree" while the index is reset too. Nothing is lost (`u` puts it
+   all back, and this scenario proves it), but which of the two is right is
+   the user's call (m3-07 review, Major 2).
 9. **commit** — `c`, subject `shout three`, `Tab` to `[ Commit ]`, `Enter`:
    HEAD moved and `log -1 --format=%s` is `shout three`. `u`: HEAD is the
    old commit and `ls-files -s` holds the edited blob again (re-staged).

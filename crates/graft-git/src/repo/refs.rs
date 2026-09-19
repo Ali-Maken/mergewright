@@ -21,6 +21,11 @@ impl RepoHandle {
     /// points at: peeling costs an object read per tag, and the caller that
     /// needs the commit is the one that should pay for it.
     ///
+    /// *Every* ref means Graft's own too — `refs/graft/**` is in here. That
+    /// is what this method is for, and it is why nothing drawn on screen
+    /// should be built from it: use [`ref_snapshot`](Self::ref_snapshot),
+    /// which leaves Graft's bookkeeping out.
+    ///
     /// # Errors
     /// [`RefsError`] if the ref store cannot be read, or holds a name or an
     /// id that git's own rules reject.
@@ -131,6 +136,16 @@ impl RepoHandle {
     /// Pass `&()` where nothing already knows — every tip is header-parsed as
     /// before (m1-the-graph/58).
     ///
+    /// **Graft's own refs are left out.** This is the repository as Graft
+    /// *draws* it, and `refs/graft/**` — the undo journal's backup chains —
+    /// is bookkeeping the user never made
+    /// ([`RefName::is_graft_internal`]). Seeding the walk from them put two
+    /// synthetic commits above `HEAD` per undoable write, forever
+    /// (m3-07 review, C1). Whoever wants the ref store as it really is calls
+    /// [`references`](Self::references), which still answers for every ref;
+    /// undo and the journal read their backups by exact name through
+    /// [`reference`](Self::reference), which is untouched.
+    ///
     /// # Errors
     /// [`TipsError`] if the ref store cannot be read, holds a name or an id
     /// git's own rules reject, or a ref cannot be peeled for a reason other
@@ -155,6 +170,12 @@ impl RepoHandle {
         let mut stats = TipStats::default();
         for reference in iter {
             let mut reference = reference.map_err(read)?;
+            let name = RefName::new(reference.name().as_bstr().to_vec()).map_err(malformed)?;
+            // Before any work: peeling a backup chain costs object reads for
+            // a row that must never be drawn.
+            if name.is_graft_internal() {
+                continue;
+            }
             stats.refs += 1;
             let target = match reference.target() {
                 gix::refs::TargetRef::Object(id) => RefTarget::Object(self.oid(id.as_bytes())?),
@@ -162,7 +183,6 @@ impl RepoHandle {
                     RefTarget::Symbolic(RefName::new(name.as_bstr().to_vec()).map_err(malformed)?)
                 }
             };
-            let name = RefName::new(reference.name().as_bstr().to_vec()).map_err(malformed)?;
             let tip = self.tip_of(&mut reference, &mut peeled_cache, known, &mut stats)?;
             if let Some(id) = tip {
                 tips.push(id);

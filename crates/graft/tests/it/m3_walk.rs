@@ -20,10 +20,8 @@
 )]
 
 use std::collections::BTreeMap;
-use std::io::Write as _;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
-use std::process::{Command as Shell, Stdio};
 use std::sync::Arc;
 
 use graft::update::detail::Loading;
@@ -148,46 +146,25 @@ impl Marks {
 // ───────────────────────────── git, as evidence ─────────────────────────────
 
 /// Run git in `repo`; stdout on success, git's own stderr on failure.
+///
+/// This is the walk's *evidence*, so it must say the same thing on every
+/// machine. It runs under [`graft_fixtures::git::run_isolated`]: no global or
+/// system config, no ambient repository, `LC_ALL=C`, a 30 s deadline
+/// (PROMPT.md §7.1). Before that, a global `commit.gpgsign = true` failed the
+/// `commit` scenario — and with it all 22 fast-tier tests — on any machine
+/// that signs its commits (m3-07 review, Major 1); the same setting is what
+/// made `gpg` create a `~/.gnupg/` the suite had no business creating.
+///
+/// The **app** under test is untouched by this: it runs in-process with
+/// whatever config the user really has, which is the point of testing it.
 pub fn run_git(repo: &Path, args: &[&str]) -> Result<String, String> {
     run_git_with(repo, args, None)
 }
 
 fn run_git_with(repo: &Path, args: &[&str], stdin: Option<&[u8]>) -> Result<String, String> {
-    let mut command = Shell::new("git");
-    command.arg("-C").arg(repo).args(args);
-    command.stdin(if stdin.is_some() {
-        Stdio::piped()
-    } else {
-        Stdio::null()
-    });
-    let mut child = command
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|why| format!("git {args:?}: {why}"))?;
-    if let Some(bytes) = stdin {
-        child
-            .stdin
-            .take()
-            .ok_or("git's stdin was not piped")?
-            .write_all(bytes)
-            .map_err(|why| format!("git {args:?}: writing stdin: {why}"))?;
-    }
-    let out = child
-        .wait_with_output()
-        .map_err(|why| format!("git {args:?}: {why}"))?;
-    if out.status.success() {
-        Ok(String::from_utf8_lossy(&out.stdout).into_owned())
-    } else {
-        Err(format!(
-            "git {args:?} failed: {}",
-            String::from_utf8_lossy(&out.stderr).trim()
-        ))
-    }
-}
-
-/// Git as an identity the machine's config cannot change.
-fn run_git_as_graft(repo: &Path, args: &[&str]) -> Result<String, String> {
+    // A nulled global config has no identity in it, and half of these
+    // commands write an object. One spelling, on every command, rather than
+    // a second helper to forget.
     let mut full = vec![
         "-c",
         "user.name=Graft Test",
@@ -195,7 +172,60 @@ fn run_git_as_graft(repo: &Path, args: &[&str]) -> Result<String, String> {
         "user.email=test@example.invalid",
     ];
     full.extend_from_slice(args);
-    run_git(repo, &full)
+    graft_fixtures::git::run_isolated(repo, &full, stdin)
+        .map(|out| String::from_utf8_lossy(&out).into_owned())
+        .map_err(|why| format!("git {args:?} failed: {why}"))
+}
+
+/// Put the machine's global git config out of the **app's** reach, by
+/// overriding it where it counts in the scratch repository itself.
+///
+/// [`run_git`] isolates the walk's own spawns with `GIT_CONFIG_GLOBAL`, but
+/// the app under test runs in this process and its git children inherit this
+/// process's environment, so that lever does not reach them. Repository-local
+/// config does: it beats global for every key here.
+///
+/// The list is deliberately short and deliberately a list — these are the
+/// settings that make a *write* fail or mean something else, and each one was
+/// a way the 22 fast-tier tests could fail on a developer's machine and pass
+/// on the machine that wrote them (PROMPT.md §7.1; m3-07 review, Major 1).
+/// `commit.gpgsign` is the one that was actually proven: with it on, `git
+/// commit` calls `gpg`, which fails and — on a machine with no keyring —
+/// creates a `~/.gnupg/` that no test had any business creating.
+///
+/// An identity is set for the same reason in reverse: a machine with *no*
+/// `user.email` would fail every commit here.
+fn neutralise_global_config(repo: &Path) -> Result<(), String> {
+    let empty = git_path(repo, "graft-walk-empty")?;
+    std::fs::create_dir_all(&empty).map_err(|why| format!("{}: {why}", empty.display()))?;
+    let nothing = empty.join("nothing");
+    std::fs::write(&nothing, b"").map_err(|why| format!("{}: {why}", nothing.display()))?;
+    let empty = empty.to_str().ok_or("the scratch path is not UTF-8")?;
+    let nothing = nothing.to_str().ok_or("the scratch path is not UTF-8")?;
+    for (key, value) in [
+        // Signing: calls out to `gpg`, which the test has no key for.
+        ("commit.gpgsign", "false"),
+        ("tag.gpgsign", "false"),
+        // An identity the machine neither supplies nor overrides.
+        ("user.name", "Graft Test"),
+        ("user.email", "test@example.invalid"),
+        // A global hook would run on every commit here.
+        ("core.hooksPath", empty),
+        // Both change what `status` and the index report as untracked.
+        ("status.showUntrackedFiles", "normal"),
+        ("core.excludesFile", nothing),
+        // Line endings and attributes change the bytes this walk compares.
+        ("core.autocrlf", "false"),
+        ("core.safecrlf", "false"),
+        ("core.attributesFile", nothing),
+        // Nothing may repack or prune under a scenario that is counting
+        // objects, and no filesystem monitor may answer for the worktree.
+        ("gc.auto", "0"),
+        ("core.fsmonitor", "false"),
+    ] {
+        run_git(repo, &["config", "--local", key, value])?;
+    }
+    Ok(())
 }
 
 /// The blob id `content` would have.
@@ -369,6 +399,9 @@ pub fn run_scenario(scenario: &Scenario) -> Result<(), String> {
         .map_or_else(|| root.clone(), |sub| root.join(sub));
     let mut marks = Marks::default();
     let driven = catch_unwind(AssertUnwindSafe(|| -> Result<(), String> {
+        // Before the setup runs: a linked worktree it creates shares this
+        // config, and every command below is already a git write.
+        neutralise_global_config(&root)?;
         (scenario.setup)(&root)?;
         marks.before = git_truth(&repo)?;
         drive_app(&repo, &scenario.steps, &mut marks)
@@ -396,6 +429,7 @@ pub fn prepare_capture(scenario: &Scenario) -> Result<(graft_fixtures::Scratch, 
     let repo = scenario
         .open
         .map_or_else(|| root.clone(), |sub| root.join(sub));
+    neutralise_global_config(&root)?;
     (scenario.setup)(&root)?;
     if !capture.headless.is_empty() {
         drive_app(&repo, &capture.headless, &mut Marks::default())?;
@@ -414,12 +448,47 @@ fn panic_text(payload: &(dyn std::any::Any + Send)) -> String {
 /// Open the app on `repo`, run the steps, and always close the job pool.
 fn drive_app(repo: &Path, steps: &[Step], marks: &mut Marks) -> Result<(), String> {
     let (app, state) = App::open(repo);
-    let outcome = catch_unwind(AssertUnwindSafe(|| drive(&app, state, repo, steps, marks)));
+    let outcome = catch_unwind(AssertUnwindSafe(|| {
+        let state = drive(&app, state, repo, steps, marks)?;
+        no_bookkeeping_in_the_graph(&state)?;
+        Ok(state)
+    }));
     app.close();
     match outcome {
         Ok(result) => result.map(drop),
         Err(payload) => Err(format!("panicked: {}", panic_text(payload.as_ref()))),
     }
+}
+
+/// Nothing Graft wrote for itself is drawn as history (m3-07 review, C1).
+///
+/// Every undoable write leaves a backup chain under
+/// `refs/graft/backup/<worktree>/<ulid>`, kept indefinitely by design. They
+/// used to seed the history walk, which put two commits titled
+/// `graft <ulid> …` **above `HEAD`** per operation, forever — so a day's
+/// staging buried the branch the graph is about, and
+/// `docs/shots/m3-09-undo-drift-box-80x24.txt` recorded it.
+///
+/// Checked after every scenario rather than in one of them: the rule is
+/// about the whole app, and the scenarios that make backups are exactly the
+/// ones that would stop making them if this were opt-in.
+fn no_bookkeeping_in_the_graph(state: &AppState) -> Result<(), String> {
+    let Some(window) = state
+        .history
+        .as_ref()
+        .and_then(|history| history.window.as_ref())
+    else {
+        return Ok(()); // The scenario never drew history; nothing to judge.
+    };
+    let drawn: Vec<String> = window
+        .rows
+        .iter()
+        .map(|row| String::from_utf8_lossy(row.commit.subject()).into_owned())
+        .collect();
+    check(
+        !drawn.iter().any(|subject| subject.starts_with("graft ")),
+        || format!("a backup commit is drawn in the history window: {drawn:?}"),
+    )
 }
 
 fn drive(
@@ -551,10 +620,11 @@ fn focus_gained(app: &App, state: &AppState) -> Result<AppState, String> {
 
 /// `git fsck --no-dangling` says nothing but notices.
 fn fsck_clean(repo: &Path) -> Result<(), String> {
-    let out = Shell::new("git")
-        .arg("-C")
-        .arg(repo)
-        .args(["fsck", "--no-dangling", "--no-progress"])
+    // Not `run_git`: fsck's complaints come on stderr *and* it exits
+    // non-zero when it has any, so both streams are wanted whatever the
+    // status. Isolated all the same — a global `fsck.*` severity setting
+    // would otherwise decide what this test means.
+    let out = graft_fixtures::git::isolated(repo, &["fsck", "--no-dangling", "--no-progress"])
         .output()
         .map_err(|why| format!("git fsck: {why}"))?;
     let text = format!(
@@ -630,7 +700,7 @@ fn write(repo: &Path, name: &str, bytes: &[u8]) -> Result<(), String> {
 fn tracked(repo: &Path, name: &str, content: &str) -> Result<(), String> {
     write(repo, name, content.as_bytes())?;
     run_git(repo, &["add", name])?;
-    run_git_as_graft(repo, &["commit", "-q", "-m", &format!("add {name}")])?;
+    run_git(repo, &["commit", "-q", "-m", &format!("add {name}")])?;
     Ok(())
 }
 

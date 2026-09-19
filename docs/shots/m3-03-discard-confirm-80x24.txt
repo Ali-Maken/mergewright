@@ -2,7 +2,7 @@ m3 walk capture: m3-03-discard-confirm — scenario discard-tracked-unstaged, ke
 
 Graph  [Detail]
 UNCOMMITTED · 1 unstaged
-diff vs HEAD f2f2f1d
+diff vs HEAD 0538289
 
 UNSTAGED (1)
   M sample.txt                                                             +2 −2

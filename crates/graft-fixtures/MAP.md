@@ -22,5 +22,5 @@ Public items, one line each.
 - `Footprint` (struct) — `current`, `peak`, in bytes.
 - `MemoryError` (enum) — why memory could not be read.
 - `proptest_cases` (fn) — property-test case count for the tier in force.
-- `git` (mod) — running system git for fixture building; `GitError`.
+- `git` (mod) — running system git with the machine's config switched off; `GitError`. `run` / `run_with_stdin_file` (fixed identity and clock too, for reproducible objects), `run_isolated` (config off, clock and identity the caller's — for a test whose commits must be dated now), `isolated` (the unspawned `Command`, for a caller that needs its own pipes), `IDENTITY_NAME` / `IDENTITY_EMAIL` / `FIXED_DATE`.
 - `synthetic` (mod, `heavy-tests`) — large generated histories: `Scale` (`of`, `HEAVY`, `with_commit_graph`, `with_realistic_commits`, `with_refs` (50k-ref variant: packed branches + upstreams + `[branch]` sections), `commits`, `name`), `CommitGraph`, `CommitSize` (`Small` default, `Realistic` sized after git/git), `ensure`, `borrow`.

@@ -2,7 +2,7 @@ m3 walk capture: m3-02-stage-hunk — scenario stage-hunk, keys k ⏎ ⏎ Space,
 
 Graph  [Detail]
 UNCOMMITTED · 1 staged 1 unstaged
-diff vs HEAD 32ef7d2
+diff vs HEAD 69b33a1
 
 STAGED (1)
   M sample.txt                                                             +1 −1

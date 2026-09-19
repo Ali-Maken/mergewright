@@ -71,4 +71,5 @@ One line per public item. Update when a public item changes.
 - `RasterFrame::pixel` (fn) — the premultiplied RGBA at one pixel, `None` outside.
 
 ## ref_name
-- `RefName` (struct) — a git ref's full name; `new` / `as_bytes` / `shorthand` (fn).
+- `RefName` (struct) — a git ref's full name; `new` / `as_bytes` / `shorthand` / `is_graft_internal` (fn).
+- `GRAFT_INTERNAL` (const) — `refs/graft/`, the namespace Graft writes its own refs under.

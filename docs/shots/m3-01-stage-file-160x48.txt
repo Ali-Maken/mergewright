@@ -1,8 +1,8 @@
 m3 walk capture: m3-01-stage-file — scenario stage-file, keys k ⏎ Space, unicode tier, 160x48
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-M2tXE8  4 commits      UNCOMMITTED · 1 staged
-◌   Uncommitted changes (1 staged)                                                           diff vs HEAD a3191ac
-◆   [◆ main] add sample.txt                                                      now  a3191ac
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-TMtlqo  4 commits      UNCOMMITTED · 1 staged
+◌   Uncommitted changes (1 staged)                                                           diff vs HEAD 38f8f03
+◆   [◆ main] add sample.txt                                                      now  38f8f03
 ●   Correct the note                                                             7y   a82960b
 ●   Add the first note                                                           7y   fadcfb3
 ◇   Add a readme                                                                 7y   64ded19STAGED (1)

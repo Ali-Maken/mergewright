@@ -574,3 +574,66 @@ fn git_path_resolves_under_the_linked_worktrees_own_directory() {
         repo.git_dir(),
     );
 }
+
+/// C1 (m3-07 review): a backup chain used to be seeded into the history
+/// walk, drawing two synthetic commits above `HEAD` for every undoable
+/// write. `ref_snapshot` is the repository as Graft draws it, so Graft's own
+/// refs are not in it — while `references` and `reference`, which undo and
+/// the journal use, still answer for them.
+#[test]
+fn grafts_own_refs_are_not_drawn_but_are_still_readable() {
+    let fixture = Fixture::with_two_commits();
+    let head = fixture.rev_parse("HEAD");
+    let parent = fixture.rev_parse("HEAD~1");
+    let backup = "refs/graft/backup/main/01M2XA1AWED99JDS7KERF0V5X1";
+    // A backup chain's commits are reachable from nothing else: `parent` here
+    // stands in for the before-commit that only the backup ref holds.
+    fixture.git(&["update-ref", backup, &parent]);
+    fixture.git(&["update-ref", "refs/heads/kept", &head]);
+    let repo = RepoHandle::open(fixture.root()).expect("the repository opens");
+
+    let snapshot = repo.ref_snapshot(&()).expect("the ref store reads");
+
+    let drawn: Vec<String> = snapshot
+        .refs
+        .iter()
+        .map(|entry| String::from_utf8_lossy(entry.name.as_bytes()).into_owned())
+        .collect();
+    assert!(
+        !drawn.iter().any(|name| name.starts_with("refs/graft/")),
+        "a graft ref reached the drawn snapshot: {drawn:?}"
+    );
+    assert!(
+        drawn.iter().any(|name| name == "refs/heads/kept"),
+        "the user's own refs are still there: {drawn:?}"
+    );
+    let peeled: Vec<&RefName> = snapshot.peeled.iter().map(|(name, _)| name).collect();
+    assert!(
+        !peeled.iter().any(|name| name.is_graft_internal()),
+        "a graft ref reached the peeled pairs"
+    );
+    // The before-commit is reachable only from the backup ref, so if the
+    // walk were still seeded from it, this tip would be here.
+    let parent_id = Oid::from_hex(&parent).expect("a commit id");
+    assert!(
+        !snapshot.tips.contains(&parent_id),
+        "a backup-only commit is still seeding the walk"
+    );
+
+    // Undo's own path is untouched: by exact name, and in the full listing.
+    let by_name = repo
+        .reference(&name(backup))
+        .expect("the ref store reads")
+        .expect("the backup ref is still there");
+    assert_eq!(by_name, RefTarget::Object(parent_id));
+    let every: Vec<String> = repo
+        .references()
+        .expect("the ref store reads")
+        .iter()
+        .map(|entry| String::from_utf8_lossy(entry.name.as_bytes()).into_owned())
+        .collect();
+    assert!(
+        every.iter().any(|found| found == backup),
+        "`references` is the one that still says everything: {every:?}"
+    );
+}

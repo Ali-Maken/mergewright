@@ -1,8 +1,8 @@
 m3 walk capture: m3-02-stage-hunk — scenario stage-hunk, keys k ⏎ ⏎ Space, unicode tier, 160x48
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-pFPr1D  4 commits      UNCOMMITTED · 1 staged 1 unstaged
-◌   Uncommitted changes (1 staged, 1 unstaged)                                               diff vs HEAD 8f1b783
-◆   [◆ main] add sample.txt                                                      now  8f1b783
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-4Wu0wy  4 commits      UNCOMMITTED · 1 staged 1 unstaged
+◌   Uncommitted changes (1 staged, 1 unstaged)                                               diff vs HEAD 3c63c73
+◆   [◆ main] add sample.txt                                                      now  3c63c73
 ●   Correct the note                                                             7y   a82960b
 ●   Add the first note                                                           7y   fadcfb3
 ◇   Add a readme                                                                 7y   64ded19STAGED (1)
