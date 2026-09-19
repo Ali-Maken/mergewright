@@ -1,0 +1,42 @@
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_m3_changes_pane in crates/graft/src/view/tests.rs (#[ignore]d, run
+# by hand to regenerate). A scripted dirty tree: src/auth/token.rs staged and
+# edited again, src/api/routes.rs edited, notes.md untracked. The diff region
+# has focus and the line cursor is on the second added line of hunk 1.
+#
+# Judge by eye:
+# - Three section rows, STAGED (1) / UNSTAGED (2) / UNTRACKED (1), each with
+#   its files indented under it. src/auth/token.rs appears twice, once under
+#   STAGED and once under UNSTAGED: that is the point, not a duplicate.
+# - notes.md is a row at all (at 80x24 the list is short enough that it may
+#   sit below the fold — scroll it into view when judging that size). Before
+#   this milestone untracked files were invisible in this pane.
+# - The line cursor: a ▎ in the sign column of one diff row, and that row
+#   alone. It is what Space and d act on.
+# - The footer offers `space stage` and `d discard`.
+#
+=== 80x24 ===
+"Graph  [Detail]                                                                 "
+"UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                   "
+"diff vs HEAD 0303030                                                            "
+"                                                                                "
+"STAGED (1)                                                                      "
+"  ▾ src/                                                                        "
+"    ▾ auth/                                                                     "
+"      M token.rs                                                          +12 −4"
+"UNSTAGED (2)                                                                    "
+"  ▾ src/                                                                        "
+"    ▾ api/                                                                      "
+"      M routes.rs                                                          +3 −2"
+"fn routes()                                                                     "
+" 18  18       let mut app = Router::new();                                      "
+" 19     -     app.get("/health", health);                                       "
+"     19▎+     app.get("/health", health);                                       "
+"     20 +     app.get("/ready", ready);                                         "
+" 20  21       app                                                               "
+" 21  22   }                                                                     "
+"fn ready()                                                                      "
+" 44  45   async fn ready() -> Json<Status> {                                    "
+" 45     -     Json(Status::Ok)                                                  "
+"     46 +     Json(Status::from(&state))                                        "
+" 46  47   }                                                                     "

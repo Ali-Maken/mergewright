@@ -1776,3 +1776,315 @@ fn capture_m2_overview_strip() {
     )
     .expect("docs/shots is writable");
 }
+
+// m3-working-tree-undo-and-stash/04: the changes pane's captures. The user
+// judges these by eye; no test here ticks "looks right", and the pipeline
+// records no colour, so nothing in them can stand for a colour.
+
+/// One diff line, as `git diff` would have parsed it.
+fn diff_line(
+    kind: graft_git::diff::LineKind,
+    text: &str,
+    old_no: Option<u32>,
+    new_no: Option<u32>,
+) -> graft_git::diff::DiffLine {
+    graft_git::diff::DiffLine {
+        kind,
+        text: text.as_bytes().to_vec(),
+        old_no,
+        new_no,
+        no_newline_at_eof: false,
+    }
+}
+
+/// `src/api/routes.rs`'s two hunks.
+fn routes_hunks() -> Vec<graft_git::diff::Hunk> {
+    vec![routes_first_hunk(), routes_second_hunk()]
+}
+
+fn routes_first_hunk() -> graft_git::diff::Hunk {
+    use graft_git::diff::{Hunk, LineKind};
+    let line = diff_line;
+    Hunk {
+        old_start: 18,
+        old_lines: 5,
+        new_start: 18,
+        new_lines: 6,
+        heading: b"fn routes()".to_vec(),
+        lines: vec![
+            line(
+                LineKind::Context,
+                "    let mut app = Router::new();",
+                Some(18),
+                Some(18),
+            ),
+            line(
+                LineKind::Removed,
+                "    app.get(\"/health\", health);",
+                Some(19),
+                None,
+            ),
+            line(
+                LineKind::Added,
+                "    app.get(\"/health\", health);",
+                None,
+                Some(19),
+            ),
+            line(
+                LineKind::Added,
+                "    app.get(\"/ready\", ready);",
+                None,
+                Some(20),
+            ),
+            line(LineKind::Context, "    app", Some(20), Some(21)),
+            line(LineKind::Context, "}", Some(21), Some(22)),
+        ],
+    }
+}
+
+fn routes_second_hunk() -> graft_git::diff::Hunk {
+    use graft_git::diff::{Hunk, LineKind};
+    let line = diff_line;
+    Hunk {
+        old_start: 44,
+        old_lines: 4,
+        new_start: 45,
+        new_lines: 4,
+        heading: b"fn ready()".to_vec(),
+        lines: vec![
+            line(
+                LineKind::Context,
+                "async fn ready() -> Json<Status> {",
+                Some(44),
+                Some(45),
+            ),
+            line(LineKind::Removed, "    Json(Status::Ok)", Some(45), None),
+            line(
+                LineKind::Added,
+                "    Json(Status::from(&state))",
+                None,
+                Some(46),
+            ),
+            line(LineKind::Context, "}", Some(46), Some(47)),
+        ],
+    }
+}
+
+/// One file's diff, made by hand so the capture never depends on `git`.
+fn routes_diff() -> graft_git::diff::FileDiff {
+    use graft_git::diff::{FileDiff, FileEntry, FileStatus};
+    FileDiff {
+        entry: FileEntry {
+            path: b"src/api/routes.rs".to_vec(),
+            old_path: None,
+            status: FileStatus::Modified,
+            added: Some(3),
+            removed: Some(2),
+        },
+        hunks: routes_hunks(),
+        binary: None,
+        truncated: None,
+        old_mode: None,
+        new_mode: None,
+    }
+}
+
+/// The changes pane on a scripted dirty tree: one staged file, two unstaged,
+/// one untracked, the diff region focused with the line cursor on the added
+/// line of the first hunk.
+fn scripted_file_lists() -> (graft_git::diff::FileList, graft_git::diff::FileList) {
+    use graft_git::diff::{FileEntry, FileList, FileStatus};
+    let file = |path: &str, status: FileStatus, added: u32, removed: u32| FileEntry {
+        path: path.as_bytes().to_vec(),
+        old_path: None,
+        status,
+        added: Some(added),
+        removed: Some(removed),
+    };
+    (
+        FileList {
+            files: vec![file("src/auth/token.rs", FileStatus::Modified, 12, 4)],
+            added: 12,
+            removed: 4,
+        },
+        FileList {
+            files: vec![
+                file("src/api/routes.rs", FileStatus::Modified, 3, 2),
+                file("src/auth/token.rs", FileStatus::Modified, 2, 0),
+                file("notes.md", FileStatus::Untracked, 0, 0),
+            ],
+            added: 5,
+            removed: 2,
+        },
+    )
+}
+
+/// The same tree as [`scripted_file_lists`], as `git status` reports it:
+/// `src/auth/token.rs` is staged *and* edited again, so it has a row under
+/// two sections.
+fn scripted_status() -> graft_git::status::WorkingTreeStatus {
+    use graft_git::status::{Change, StatusEntry, WorkingTreeStatus};
+    let entry = |path: &str, staged: Option<Change>, unstaged: Option<Change>, untracked: bool| {
+        StatusEntry {
+            path: path.into(),
+            original_path: None,
+            staged,
+            unstaged,
+            untracked,
+            unmerged: false,
+            submodule: false,
+        }
+    };
+    WorkingTreeStatus {
+        entries: vec![
+            entry("notes.md", None, None, true),
+            entry("src/api/routes.rs", None, Some(Change::Modified), false),
+            entry(
+                "src/auth/token.rs",
+                Some(Change::Modified),
+                Some(Change::Modified),
+                false,
+            ),
+        ],
+    }
+}
+
+fn changes_pane_state(columns: u16, rows: u16) -> AppState {
+    use graft_ui::detail::DetailFocus;
+
+    let (staged, unstaged) = scripted_file_lists();
+    let (view, list) = crate::jobs::detail::assemble_working_tree(&staged, &unstaged);
+    let status = scripted_status();
+
+    let mut state = AppState {
+        history: Some(history_of(3, 0)),
+        refs: Some(std::sync::Arc::new(refs_with_head(Some(oid(3))))),
+        working_tree: Some(std::sync::Arc::new(status)),
+        on_working_tree: true,
+        size: Size { columns, rows },
+        ..AppState::default()
+    };
+    state.detail.shown = true;
+    state.detail.spec = Some(crate::update::detail::DetailSpec::WorkingTree);
+    state.detail.focus = DetailFocus::Diff;
+    // The cursor sits on `src/api/routes.rs`, under UNSTAGED — the file
+    // whose diff the body shows. Found by name rather than counted, because
+    // the list nests each path under its directories.
+    let mut view = view;
+    view.cursor = view
+        .rows
+        .iter()
+        .position(|row| row.name.as_str() == "routes.rs")
+        .expect("routes.rs has a row");
+    state.detail.files = crate::update::detail::Loading::Ready(std::sync::Arc::new(view));
+    state.detail.list = Some(std::sync::Arc::new(list));
+    let diff = routes_diff();
+    state.detail.diff = crate::update::detail::Loading::Ready(std::sync::Arc::new(
+        crate::jobs::detail::assemble_diff(&diff, false),
+    ));
+    state.detail.diff_raw = Some(std::sync::Arc::new(diff));
+    // Body row 3 is the second `+` line of the first hunk.
+    state.detail.body_cursor = 3;
+    state
+}
+
+const CHANGES_PANE_HEADER: &str = "\
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_m3_changes_pane in crates/graft/src/view/tests.rs (#[ignore]d, run
+# by hand to regenerate). A scripted dirty tree: src/auth/token.rs staged and
+# edited again, src/api/routes.rs edited, notes.md untracked. The diff region
+# has focus and the line cursor is on the second added line of hunk 1.
+#
+# Judge by eye:
+# - Three section rows, STAGED (1) / UNSTAGED (2) / UNTRACKED (1), each with
+#   its files indented under it. src/auth/token.rs appears twice, once under
+#   STAGED and once under UNSTAGED: that is the point, not a duplicate.
+# - notes.md is a row at all (at 80x24 the list is short enough that it may
+#   sit below the fold — scroll it into view when judging that size). Before
+#   this milestone untracked files were invisible in this pane.
+# - The line cursor: a ▎ in the sign column of one diff row, and that row
+#   alone. It is what Space and d act on.
+# - The footer offers `space stage` and `d discard`.
+#
+";
+
+/// The confirm box is modal: while it is open nothing behind it answers a
+/// key. A box the user cannot see would be a lock-up, so this checks it is
+/// actually painted — the widget and the state existed a commit before the
+/// draw did.
+#[test]
+fn the_confirm_box_is_drawn_over_everything_else() {
+    let mut state = changes_pane_state(120, 40);
+    assert!(crate::update::operate::request_discard_at_diff_cursor(
+        &mut state
+    ));
+    let screen = draw(&state, 120, 40);
+    assert!(
+        screen.contains("Discard this line of src/api/routes.rs?"),
+        "the question is on screen: {screen}"
+    );
+    assert!(
+        screen.contains("git apply -R -"),
+        "the exact command is on screen: {screen}"
+    );
+    assert!(
+        screen.contains("[ Cancel ]"),
+        "the safe choice is the one under the cursor: {screen}"
+    );
+}
+
+/// Regenerates the changes pane's three captures
+/// (m3-working-tree-undo-and-stash/04).
+#[test]
+#[ignore = "writes docs/shots/m3-changes-pane-*.txt; run by hand to regenerate"]
+fn capture_m3_changes_pane() {
+    for (columns, rows) in [(160_u16, 48_u16), (120, 40), (80, 24)] {
+        let state = changes_pane_state(columns, rows);
+        let screen = draw(&state, columns, rows);
+        assert!(screen.contains("STAGED"), "{screen}");
+        std::fs::write(
+            format!(
+                "{}/../../docs/shots/m3-changes-pane-{columns}x{rows}.txt",
+                env!("CARGO_MANIFEST_DIR")
+            ),
+            format!("{CHANGES_PANE_HEADER}=== {columns}x{rows} ===\n{screen}"),
+        )
+        .expect("docs/shots is writable");
+    }
+}
+
+/// Regenerates `docs/shots/m3-confirm-discard.txt`
+/// (m3-working-tree-undo-and-stash/04).
+#[test]
+#[ignore = "writes docs/shots/m3-confirm-discard.txt; run by hand to regenerate"]
+fn capture_m3_confirm_discard() {
+    let mut state = changes_pane_state(120, 40);
+    assert!(
+        crate::update::operate::request_discard_at_diff_cursor(&mut state),
+        "the box opens on the hunk under the cursor"
+    );
+    let screen = draw(&state, 120, 40);
+    let header = "\
+# m3-confirm-discard.txt: TestBackend capture (not a pty), 120x40, no colour
+# recorded. Fixture: capture_m3_confirm_discard in
+# crates/graft/src/view/tests.rs (#[ignore]d, run by hand to regenerate).
+# `d` pressed with the diff region focused and the line cursor on an added
+# line of src/api/routes.rs.
+#
+# Judge by eye:
+# - The box says what goes, in plain words, and counts the lines.
+# - It shows the exact git command it will run.
+# - `Keep` — the safe choice — is the one under the cursor, not `Discard`.
+# - The pane behind it is still readable; the box does not cover the file it
+#   is asking about.
+#
+";
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m3-confirm-discard.txt"
+        ),
+        format!("{header}{screen}"),
+    )
+    .expect("docs/shots is writable");
+}

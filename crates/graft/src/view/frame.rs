@@ -97,6 +97,7 @@ pub fn view_with_graphics(
                 None
             };
             draw_context_menu(state, frame, area, &session.theme);
+            draw_confirm(state, frame, area, &session.theme);
             graph
         }
         Screen::Graph => {
@@ -121,6 +122,7 @@ pub fn view_with_graphics(
                 render_graph_screen(frame, &session.theme, &screen, area, pixels, strip)
             };
             draw_context_menu(state, frame, area, &session.theme);
+            draw_confirm(state, frame, area, &session.theme);
             graph
         }
         Screen::Status => {
@@ -334,6 +336,31 @@ fn draw_context_menu(state: &AppState, frame: &mut Frame, area: Rect, theme: &Th
         Style::new().bg(color(theme.token(Token::SurfaceRaised))),
     );
     frame.render_widget(menu, rect);
+}
+
+/// Draws the discard confirm box over everything else, when one is open
+/// (m3-working-tree-undo-and-stash/04). It is modal — nothing behind it
+/// answers a key while it is up — so it is drawn last, after the context
+/// menu, and never under it. Like the context menu the widget paints only
+/// its own text, so the raised background is this caller's job.
+fn draw_confirm(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) {
+    let Some(pending) = state.confirm.as_ref() else {
+        return;
+    };
+    let rect = graft_ui::confirm::confirm_area(area, &pending.view).intersection(area);
+    if rect.is_empty() {
+        return;
+    }
+    frame.buffer_mut().set_style(
+        rect,
+        Style::new().bg(color(theme.token(Token::SurfaceRaised))),
+    );
+    frame.render_widget(
+        &graft_ui::confirm::Confirm {
+            view: &pending.view,
+        },
+        rect,
+    );
 }
 
 /// The footer's notice: `y`'s copy line until the next key, else `F3`'s
