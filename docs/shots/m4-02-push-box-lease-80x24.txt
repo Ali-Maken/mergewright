@@ -1,6 +1,6 @@
 m4 walk capture: m4-02-push-box-lease — scenario push-rejected-then-lease, keys P → ⏎ P, unicode tier, 80x24
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-RpAYVO/wor…
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-qIGljE/wor…
 ◆   ⓘ [◆ main ↑1 ↓1] amended                                        6y   68c13c4
 │ ● ⓘ [origin/main] Commit 200                                      7y   d5ae5fd
 ●─╯   Commit 199                                                    7y   13e6ab1
@@ -23,4 +23,4 @@ m4 walk capture: m4-02-push-box-lease — scenario push-rejected-then-lease, key
 ●     Commit 182                                                    7y   d212b3e
 ●     Commit 181                                                    7y   c8254c5
 ●     Commit 180                                                    7y   e95ccd4
- push rejected: origin/main has commits you don't · p to pull first, or P to fo…
+ push rejected: origin/main has moved · p pull first · P force with lease

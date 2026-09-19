@@ -132,8 +132,8 @@ password, a rejection or a hang**.
   commit **locally** and says `· origin/main still has it`; the remote is
   only ever moved by `P`.
 - **A rejected push** stays on the footer until `Esc`: `push rejected:
-  origin/main has commits you don't · p to pull first, or P to force with
-  lease`. The next `P` offers the lease box — `Force-push main →
+  origin/main has moved · p pull first · P force with lease` (short enough
+  that both keys are on screen at 80 columns). The next `P` offers the lease box — `Force-push main →
   origin/main?`, the tip it expects on the remote, `rewrites history for
   everyone who has …`, `--force-with-lease=…` in the command. If the remote
   moved again since your fetch it is refused: `push refused: origin/main

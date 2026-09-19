@@ -354,7 +354,7 @@ fn failures_are_worded_and_remembered() {
     let params = push_params(&state).expect("an upstream");
     let op = Operation::Push(params.clone());
     let mut after = state.clone();
-    let rejected = "push rejected: origin/main has commits you don't · p to pull first, or P to force with lease";
+    let rejected = "push rejected: origin/main has moved · p pull first · P force with lease";
     assert_eq!(
         remote_failed(&mut after, &op, &RemoteFailure::NonFastForward, rejected),
         Status::Sticky(rejected.to_owned())

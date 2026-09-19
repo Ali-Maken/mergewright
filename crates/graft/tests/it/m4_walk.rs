@@ -858,6 +858,23 @@ fn box_title_starts(state: &AppState, text: &str) -> Result<(), String> {
     })
 }
 
+/// Every text is on some line of the open box's message — the lines
+/// `TESTING.md` quotes, so a wording change fails the walk, not just the
+/// capture.
+fn box_message_contains(state: &AppState, texts: &[&str]) -> Result<(), String> {
+    let view = &state
+        .confirm
+        .as_ref()
+        .ok_or_else(|| format!("no box is open; status {:?}", state.status))?
+        .view;
+    for text in texts {
+        check(view.message.iter().any(|line| line.contains(text)), || {
+            format!("the box's message lacks `{text}`: {:?}", view.message)
+        })?;
+    }
+    Ok(())
+}
+
 fn no_box(state: &AppState) -> Result<(), String> {
     check(state.confirm.is_none(), || {
         format!(
@@ -1318,7 +1335,8 @@ fn push_plain() -> Scenario {
             vec![
                 key(ch('P')),
                 Step::See("the plain push box", |state| {
-                    box_title_starts(state, "Push ")
+                    box_title_starts(state, "Push ")?;
+                    box_message_contains(state, &["1 commit", "can't be undone from here"])
                 }),
                 Step::Confirm,
                 Step::Write("the push"),
@@ -1365,13 +1383,7 @@ fn push_sets_upstream() -> Scenario {
             Step::WaitFor(Wait::Ready),
             key(ch('P')),
             Step::See("the box says it sets the upstream", |state| {
-                let view = &state.confirm.as_ref().ok_or("no box")?.view;
-                check(
-                    view.message
-                        .iter()
-                        .any(|line| line.contains("sets upstream")),
-                    || format!("the box: {:?} / {:?}", view.title, view.message),
-                )
+                box_message_contains(state, &["sets upstream"])
             }),
             Step::Confirm,
             Step::Write("the push"),
@@ -1446,8 +1458,8 @@ fn push_rejected_then_lease() -> Scenario {
                     state,
                     &[
                         "push rejected: origin/",
-                        "has commits you don't",
-                        "p to pull first, or P to force with lease",
+                        "has moved",
+                        "p pull first · P force with lease",
                     ],
                 )
             }),
@@ -1455,7 +1467,14 @@ fn push_rejected_then_lease() -> Scenario {
             Step::WaitFor(Wait::Ready),
             key(ch('P')),
             Step::See("the lease box", |state| {
-                box_title_starts(state, "Force-push ")
+                box_title_starts(state, "Force-push ")?;
+                box_message_contains(
+                    state,
+                    &[
+                        "refused if origin moved since",
+                        "rewrites history for everyone who has",
+                    ],
+                )
             }),
             Step::Confirm,
             Step::Write("the lease push"),
@@ -1685,6 +1704,8 @@ fn username_then_password() -> Scenario {
 fn hangs_progress_and_undo() -> Vec<Scenario> {
     vec![
         hung_remote_esc_cancels(),
+        hung_remote_pull_esc_cancels(),
+        hung_remote_push_esc_cancels(),
         progress_reaches_the_footer(),
         u_never_touches_the_remote(),
         journal_rows(),
@@ -1711,19 +1732,93 @@ fn hung_remote_esc_cancels() -> Scenario {
             }),
             Step::Mark("cancelled"),
         ],
-        expect: |fixture, marks| {
-            let cancelled = marks.get("cancelled")?;
-            let entry = last_entry(cancelled)?;
-            check(entry.kind == OperationKind::Fetch, || {
-                format!("the last entry is {:?}", entry.kind)
-            })?;
-            aborted_cancelled(entry)?;
-            let left = locks(&fixture.work().join(".git"));
-            check(left.is_empty(), || format!("locks left: {left:?}"))?;
-            check(cancelled.hung_connections == Some(1), || {
-                format!("{:?} connections", cancelled.hung_connections)
-            })
-        },
+        expect: |fixture, marks| hung_cancel_expect(fixture, marks, OperationKind::Fetch),
+        capture: None,
+    }
+}
+
+/// What every cancelled hang must leave: the last entry is `kind` and
+/// `Aborted("cancelled")`, no `*.lock` under `.git`, the hung remote took
+/// exactly one connection, the bare has not moved, and nothing in the work
+/// clone moved — `HEAD`, the refs, the index (its bytes too) and every file
+/// are what they were before the key. A pull is the one that would write
+/// the index and the tree, so the same verdict covers all three.
+fn hung_cancel_expect(fixture: &Fixture, marks: &Marks, kind: OperationKind) -> Result<(), String> {
+    let cancelled = marks.get("cancelled")?;
+    let entry = last_entry(cancelled)?;
+    check(entry.kind == kind, || {
+        format!("the last entry is {:?}, not {kind:?}", entry.kind)
+    })?;
+    aborted_cancelled(entry)?;
+    let left = locks(&fixture.work().join(".git"));
+    check(left.is_empty(), || format!("locks left: {left:?}"))?;
+    check(cancelled.hung_connections == Some(1), || {
+        format!("{:?} connections", cancelled.hung_connections)
+    })?;
+    same_bare("a cancelled hang", &marks.before, cancelled)?;
+    let moved = diff_work(&marks.before.work, &cancelled.work);
+    check(moved.is_empty(), || {
+        format!("the work clone moved: {}", moved.join(" | "))
+    })?;
+    check(
+        cancelled.work.index_bytes == marks.before.work.index_bytes,
+        || ".git/index was rewritten".to_owned(),
+    )
+}
+
+/// `p` against the socket that never answers: the pull hangs at git's first
+/// request, `Esc` ends it, and the branch, index and tree are untouched.
+fn hung_remote_pull_esc_cancels() -> Scenario {
+    Scenario {
+        name: "hung-remote-pull-esc-cancels",
+        shape: Shape::Linear,
+        remote: RemoteKind::Hung,
+        setup: |_| Ok(()),
+        steps: vec![
+            Step::WaitFor(Wait::Ready),
+            key(ch('p')),
+            Step::See("the pull is running", |state| {
+                check(state.operating.is_some(), || "p queued nothing".to_owned())
+            }),
+            Step::WaitFor(Wait::Connected),
+            Step::Cancel("the cancelled pull"),
+            Step::See("the line says cancelled", |state| {
+                done_containing(state, "pull origin/main cancelled")
+            }),
+            Step::Mark("cancelled"),
+        ],
+        expect: |fixture, marks| hung_cancel_expect(fixture, marks, OperationKind::Pull),
+        capture: None,
+    }
+}
+
+/// `P` `⏎` against the socket that never answers, with a commit of ours to
+/// send: the push hangs at git's first request, `Esc` ends it, the bare has
+/// not moved and the commit is still ours to push.
+fn hung_remote_push_esc_cancels() -> Scenario {
+    Scenario {
+        name: "hung-remote-push-esc-cancels",
+        shape: Shape::Linear,
+        remote: RemoteKind::Hung,
+        setup: ours_locally,
+        steps: vec![
+            Step::WaitFor(Wait::Ready),
+            key(ch('P')),
+            Step::See("the plain push box", |state| {
+                box_title_starts(state, "Push ")
+            }),
+            Step::Confirm,
+            Step::See("the push is running", |state| {
+                check(state.operating.is_some(), || "P queued nothing".to_owned())
+            }),
+            Step::WaitFor(Wait::Connected),
+            Step::Cancel("the cancelled push"),
+            Step::See("the line says cancelled", |state| {
+                done_containing(state, "push main → origin/main cancelled")
+            }),
+            Step::Mark("cancelled"),
+        ],
+        expect: |fixture, marks| hung_cancel_expect(fixture, marks, OperationKind::Push),
         capture: None,
     }
 }
@@ -2076,6 +2171,8 @@ mod every_scenario {
         password_prompt_esc_cancels => "password-prompt-esc-cancels",
         username_then_password => "username-then-password",
         hung_remote_esc_cancels => "hung-remote-esc-cancels",
+        hung_remote_pull_esc_cancels => "hung-remote-pull-esc-cancels",
+        hung_remote_push_esc_cancels => "hung-remote-push-esc-cancels",
         progress_reaches_the_footer => "progress-reaches-the-footer",
         u_never_touches_the_remote => "u-never-touches-the-remote",
         journal_rows => "journal-rows",
@@ -2117,6 +2214,17 @@ mod every_scenario {
             assert_eq!(line.split('\t').count(), 5, "{line}");
             for secret in SECRETS {
                 assert!(!line.contains(secret), "--stems would print a secret");
+            }
+            // The committed capture files themselves: both sizes exist and
+            // neither holds a password (the pty script checks at write
+            // time; this checks what is in the repository).
+            for size in ["80x24", "160x48"] {
+                let path = workspace.join(format!("docs/shots/{}-{size}.txt", capture.stem));
+                let text = std::fs::read_to_string(&path)
+                    .unwrap_or_else(|why| panic!("{}: {why}", path.display()));
+                for secret in SECRETS {
+                    assert!(!text.contains(secret), "{} holds a secret", path.display());
+                }
             }
         }
     }

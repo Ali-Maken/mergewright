@@ -232,8 +232,12 @@ pub(crate) fn explain(
         _ => "P",
     };
     match failure {
+        // Shorter than the design note's "has commits you don't · p to pull
+        // first, or P to force with lease": at 80 columns that cut the `P`
+        // off the line whose point is the next key (m4 acceptance review
+        // M2). 57 characters plus the name; a 22-character name still fits.
         RemoteFailure::NonFastForward => format!(
-            "push rejected: {} has commits you don't · p to pull first, or P to force with lease",
+            "push rejected: {} has moved · p pull first · P force with lease",
             names.remote_side
         ),
         RemoteFailure::AuthFailed { target } => format!(

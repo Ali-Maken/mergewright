@@ -1096,9 +1096,7 @@ fn only_a_read_failure_is_cleared_when_the_repository_opens() {
         .status
     };
 
-    let sticky = Status::Sticky(
-        "push rejected: origin/main has commits you don't · p to pull first".to_owned(),
-    );
+    let sticky = Status::Sticky("push rejected: origin/main has moved · p pull first".to_owned());
     assert_eq!(opened(sticky.clone()), sticky, "a write's failure stays");
     assert_eq!(
         opened(Status::Failed("could not read the refs".to_owned())),
