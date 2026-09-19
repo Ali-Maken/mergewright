@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** M3 building — groups 01–06 landed, group 06's review running, then the acceptance walk (07) and the M3 checkpoint. ADR-0034 records the M3 scope cuts the user kept; **ADR-0035** (from the M3 post-mortem) binds the M4 design pass: scout before brownfield specs, model chosen after the scout, brownfield groups sized to one pane, mockups read at the existing checkpoint, and acceptance ticks as a gate with a false tick ranked Critical.
+**Current step:** **M3 checkpoint — awaiting the user.** All eight groups landed; the review's Critical (backup refs drawn as graph rows) is fixed at the cause and 11 captures regenerated. 35 M3 captures await the user's eye — the milestone is not done until they are judged. M4 is designed (`docs/design-notes/m4-remotes.md`, 7 groups in `.scratch/m4-remotes/issues/`, three waves, wave 1 fully parallel). M3 cost 25 runs / 3,133 turns / mean 125 — **ADR-0029's test failed** (it predicted well under M2's 119); compactions fell 23 → 3. ADR-0035 (scout) and ADR-0036 (parallel builders, concurrent reviews) are the replacements, both first tested in M4.
 
 **M3 must be daily-usable the day it lands** (ADR-0030) — the user starts using Graft for real work then, and those findings shape M5 and M6 while they are still being designed. `docs/field-notes.md` and TESTING.md's "Times I left" start collecting from that day.
 
@@ -56,7 +56,7 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 | [x] | M0 Foundations | Opus | Opus | Opens a repo; quitting leaves the terminal clean |
 | [x] | **M1 The graph** | per ticket's `Build with` line | Opus | `git/git` and the merge-mistake fixtures: is the history shape obvious at a glance? |
 | [x] | M2 Details and diffs (read-only) | per ticket; Fable: Mistake Radar detection | Fable | Diffs look right; bad merges get flagged |
-| [ ] | M3 Working tree, undo and stash (write) | per group; Fable: undo per-kind inverse | Fable | Stage a hunk, commit, undo it, stash and unstash, then try to lose work |
+| [x] | M3 Working tree, undo and stash (write) | per group; Fable: undo per-kind inverse | Fable | Stage a hunk, commit, undo it, stash and unstash, then try to lose work |
 | [ ] | M4 Remotes (write) | per group | Fable | Fetch, pull and push on a real remote; wrong password |
 | [ ] | M5 Merge, rebase, reset, Ghost Preview (write) | per group; Fable: Ghost Preview planning | Fable | Every history change is previewed and can be undone |
 | [ ] | M6 Conflict resolver (write) | per group; Fable: conflict and operation state machine | Fable | Resolve a real conflict; kill mid-rebase, relaunch |
