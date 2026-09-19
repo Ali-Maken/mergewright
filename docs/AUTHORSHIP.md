@@ -102,6 +102,63 @@ reviews).
 
 Five fix rounds total (1a–1e) plus the `housekeeping/01` and `housekeeping/02` tickets, interleaved between them.
 
-## M3–M8
+## M3 Working tree, undo and stash
 
-M3: design pass next (planner-fable).
+First milestone run fully under ADR-0029's groups model: 7 seams-first
+groups instead of numbered tickets, each sized to one builder's context.
+
+| Role | Model | Detail |
+|---|---|---|
+| Designed | Fable | M3 design pass: note + 7 group specs, seams-first (01 git-reads → sonnet, 02 ops-model → fable signature, 03 ops-execution → opus, 04 changes-pane → sonnet, 05 commit-editor → opus, 06 undo-and-stash-ui → opus, 07 acceptance → fable); 9 Proposed changes vs DESIGN.md. |
+| Specified | Fable | Same design pass wrote the 7 group specs, already numbered 01–07 with `Build with` set. The log does not record a separate conductor filing/numbering step for M3 (unlike M2's unnumbered-specs-then-conductor-numbers flow) — not stated, so not claimed here. |
+| Specified (scope/deltas) | Conductor, user-approved | M3 start-stop: user kept 3 scope cuts (hunk-staging in untracked → M7; `i` ignore → M7; commit during merge/rebase → M5); conductor took 6 implementation deltas. Both recorded as ADR-0034. |
+| Built | see table below | |
+| Reviewed | Fable | One review round per group, groups 01–06 (detail below). Group 07 (acceptance) has no separate review recorded in the log. |
+
+### M3 builds
+
+| Model | Groups/runs |
+|---|---|
+| Sonnet | 01-git-reads-and-patches (partial, pieces 1–3 of 8, 179 turns) → continuation 1 (done, pieces 4–8, 131 turns); 04-changes-pane (partial, whole-file stage/unstage + Ctrl+A + discard only, 290 turns — escalated to Opus by the conductor as a substantive stall, not a spec change); housekeeping: KNOWN_GAPS split/compress (done) |
+| Fable | 02-ops-model (signature ticket, done, 59 turns, no compaction); 02-ops-model review fixes (done, 78 turns); 07-acceptance walk (done, 76 turns, COMPACTED once — 22 scenarios, all green) |
+| Opus | 01-git-reads-and-patches review fixes (done, 64 turns); 03-ops-execution (done, 87 turns); 03-ops-execution review fixes (done, 95 turns); 04-changes-pane continuation (**failed** — Opus session rate limit, not a code failure; seam 1 already landed clean, `bc4886a`); 04-changes-pane continuation 2 (done, 168 turns); 04-changes-pane review round (done, 148 turns); 05-commit-editor (done, 306 turns, COMPACTED); 05-commit-editor review fixes (done, 123 turns); 06-undo-and-stash-ui (partial, 269 turns, COMPACTED — journal/undo/redo/drift done, stash overlay not); 06 stash-overlay remainder (done, 163 turns) |
+| builder-opus (named) | group 06 review fixes (**partial** — C1, C2 and most majors fixed at cause; M4 and M5's 14-site refactor not fixed, filed as gaps instead of a second round, per one-round-per-group; 187 turns) |
+| general-purpose, unpinned (out of band) | naming research (user-requested) — ran on **Opus**, not the Sonnet this class of work is routed to: conductor omitted `model:`. Found and logged same milestone as a "model-routing leak" (127,775 tokens / 38 calls); rule added to CLAUDE.md and the conduct skill to always pass `model:` for unnamed agents. |
+| Conductor (not a build) | snapshot cost run (`docs/perf/m3-snapshot.txt`); CLAUDE.md trim + ADR-0035/0036 binding; M3 post-mortem → ADR-0035 |
+
+**Group totals** (harness turn figures, ADR-0029):
+
+- Group 01: 3 runs, 374 turns. `.scratch/m3-working-tree-undo-and-stash/as-built.md` written here — every later group reads it.
+- Group 02: 3 runs, 176 turns.
+- Group 03: 3 runs, 216 turns.
+- Group 04: closed once after the build phase — 4 runs (1 rate-limited), 748 turns, escalated sonnet → opus after run 1 — then again after the review round: **6 runs (1 rate-limited), 941 turns total — the milestone's worst by far**.
+- Group 05: 3 runs, 484 turns, 1 compaction.
+- Group 06: build phase closed at 3 runs, 432 turns, 1 compaction. The review-fix round (builder-opus, partial) has no further "closed" line in the log — remainder filed as gaps rather than a second round.
+- Group 07 (acceptance): 1 run, 76 turns, 1 compaction; not tallied as a "group closed" line.
+
+### Review and fix rounds
+
+- **Group 01** — Fable: 1 Critical / 5 Major / 9 Minor. C1 + all majors fixed at cause by Opus; minors untriaged.
+- **Group 02** — Fable: 2 Critical / 7 Major / 8 Minor. Both criticals lost work (aborted no-op counted as in force; undo of an empty stash push dropped the previous stash). Fixed by Fable: C1, C2, M1–M4, M6, M7; M5 deferred to group 03; 6 minors untriaged.
+- **Group 03** — Fable: 1 Critical / 6 Major / 11 Minor. C1: after-commits hung off no ref, so `gc` could prune an entry's backup and undo failed weeks later — verified by prune in a throwaway repo. Fixed by Opus at cause (C1 + M1–M6 + 11 minors); same bug found and fixed in `recover_interrupted`, which the review had missed.
+- **Group 04** — Fable: 1 Critical / 9 Major / 9 Minor. C1: scrolling hid the diff cursor under the pinned `@@` heading, so keys acted on an invisible row. **Four acceptance ticks were false** (on top of two the builder self-corrected) — logged as the honesty rule failing twice in one group. Fixed by Opus: C1 + M1–M8 at cause; `operating` now cleared on job failure/cancel; 4 of 5 over-ticked lines re-earned with tests named inline, the 5th ticked with its deviation written into the line.
+- **Group 05** — Fable: 0 Critical / 8 Major / 14 Minor; ticks judged honest (all 39 named tests exist). Top findings: hook-rejection text had nowhere to draw while the editor was open; `e` opened `$EDITOR` on a porcelain-relative path with no `current_dir`. Fixed by Opus: all 8 majors at cause, including the **index.lock verdict** — measured true via a C harness sweeping kill timing across a real 20k-file `git commit` (SIGKILL stranded 43/267 mid-flight locks; SIGTERM 6/288); `exec::kill` now SIGTERM → 2s grace → SIGKILL.
+- **Group 06** — Fable: 2 Critical / 8 Major / 13 Minor. C1: `is_undo_key` fired before the stash-message `edit` field consumed the keystroke, so typing "update" in a stash message triggered a journaled undo. C2: a 4-arg call to `badges` in `tests/it/frames.rs` meant the heavy tier and release perf never compiled for this group. Fixed by builder-opus (partial): C1, C2 and most majors at cause; M4 and M5's 14-site refactor filed as gaps, not fixed — no second round, per one-round-per-group.
+- **Group 07 acceptance walk** — builder-fable, done: 22 scenarios, all green, exit 0; a deliberately broken expectation observed to fail (exit 1); 18 captures. No separate review round recorded in the log.
+
+**Escalation:** 04-changes-pane, Sonnet → Opus, conductor-driven — 290 turns on whole-file staging alone judged a stall in substance, and hunk/line staging is a git-write path CLAUDE.md routes to Opus regardless. Not a spec change.
+
+**Failed run (infrastructure, not a build):** 04-changes-pane continuation, Opus — session rate limit, not a code failure; already-committed work (seam 1) was clean.
+
+**Compacted:** 05-commit-editor (build), 06-undo-and-stash-ui (build), 07-acceptance walk.
+
+### Attribution corrections (commit titles are wrong; the log is right)
+
+Cause: conductor and a running builder shared one `.git/index` while a helper was mid-run. Fixed going forward by ADR-0036 (no conductor staging while a helper runs). History not rewritten — the corrections below are what AUTHORSHIP.md follows instead of the commit titles.
+
+- **`ace834e`**, titled as a conductor rules-docs commit ("rules: docs follow the context"), also swept up **builder** work left uncommitted in the tree: `crates/graft/src/jobs/undo.rs` (+69), `ARCHITECTURE.md`, and the three `MAP.md` files (`crates/graft`, `crates/graft-core`, `crates/graft-ui`). The log attributes this content to a builder, not the conductor, but does not name which builder run it came from — left unstated here rather than guessed.
+- **`6d6098d`**, titled as a builder fix landing in `m3-06-fixes`, also swept in **conductor** work: `scripts/toolchain-bench.sh`. Per the log this file is conductor work, not `builder-opus`'s group 06 review-fixes work that the commit title otherwise describes.
+
+## M4–M8
+
+M4: design pass next (planner-fable).
