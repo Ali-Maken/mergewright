@@ -202,10 +202,9 @@ exists.
 | **No commit message history** — the editor starts empty every time; no recall of recent messages | M3 design note, deferral | M7 |
 | **Cannot stash only selected files** — `S` stashes everything | M3 design note, deferral | M7 |
 | **Cannot create a branch from a stash** | M3 design note, deferral | M5 |
-| **No file watcher** — the working tree refreshes on focus-gain and on demand, not when a file changes underneath. An external edit is invisible until you come back to the window | M3 design note, deferral (`notify` not wired) | M4 |
+| **No file watcher** — the working tree refreshes on focus-gain and on demand, not when a file changes underneath. An external edit is invisible until you come back to the window | M3 design note, deferral (`notify` not wired) | M7 |
 | **No action to clear undo backups** — the journal's backup refs accumulate; nothing in the UI prunes them | M3 design note, deferral | M8 |
 | **UNVERIFIED: `Ctrl+Enter` to commit is indistinguishable from `Enter` outside the kitty keyboard protocol** — hence `Tab` to `[ Commit ]` as the real path (ADR-0034). The kitty path itself is untested in a real terminal | `m3-working-tree-undo-and-stash/05`, ADR-0034 | Standing — only a real terminal can close it |
-| **`gallery --matrix` overwrites `docs/shots/35-coverage-matrix.txt` without the working-tree table** — run `m3_walk --matrix` after it, or the table is silently dropped. Fix = teach `coverage_matrix` the third table | `m3-working-tree-undo-and-stash/07` (finding 3) | M4 |
 | **UNVERIFIED: the pinned uncommitted row with `HEAD` below the top row** — `k` from the top reaches it in 17 of 22 walk scenarios, all with `HEAD` topmost. The scrolled case is untested | `m2/06b`, narrowed by `m3-working-tree-undo-and-stash/07` (finding 5) | M4 |
 | **Stash internals are still drawn in the graph** — `index on main:` and `untracked files on main:` rows reach the walk through `refs/stash` parents, one level below the `refs/graft/**` fix. UNVERIFIED whether M2's design intended stash commits to be visible | `m3-working-tree-undo-and-stash/08` fix round | M4 — decide intent first |
 | **Capture headers carry `/var/folders/…` scratch paths** — machine-specific noise in committed captures. The obvious fix breaks TESTING.md's "what pyte saw" contract, so it needs a decision, not a patch | `m3-working-tree-undo-and-stash/07` review (Minor 7) | M4 |
@@ -474,3 +473,14 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M4/07 | Ctrl+R race leaves an old history job uncancelled (found by the acceptance walk) | broken | M5 |
 | M4/07 | Auth failure line shows the full URL, not host:port | broken (cosmetic) | M5 |
 | M4/07 | Walk cannot cover SSH, TLS, a real credential helper, colour, 120x40 or real terminals — the user's eye and daily use are the tier for those | unverified | M5 |
+| M4 | Clone a repository — not in M4 | unverified by design (not broken) | M8 |
+| M4 | Add, rename or remove a remote — not in M4 | unverified by design (not broken) | M7 |
+| M4 | Pull with merge or rebase (M4 pulls fast-forward only) | unverified by design (not broken) | M5 |
+| M4 | Fetch one named remote rather than all | unverified by design (not broken) | M7 |
+| M4 | Stall notice or timeout on a slow remote (Esc is the only way out) | unverified by design (not broken) | M7 |
+| M4 | `q` confirming while an operation runs | unverified by design (not broken) | M8 |
+| M4 | SSH askpass env is set but unverified (HTTP is the proven path) | unverified | M5 (first field note) |
+| M4 | Remote footer hints only fit at ≥156 columns; at 80/120 they are absent | unverified by design (user's eye) | M5 |
+| M4/07 | Push box draws no frame (acceptance finding 3) | broken | M5 |
+| M4/07 | At 80 cols the rejection hint cuts to `or P to fo…` and the journal push row to `not undoa…` (finding 4) | broken | M5 |
+| M4/07 | `last_rejected_push` is memory-only: a restart loses the lease offer (finding 5) | broken | M5 |
