@@ -17,6 +17,7 @@ One line per public item. Update when a public item changes.
 - `paint` (mod) — token-to-style helpers for widgets.
 - `status_screen` (mod) — the status screen view and widget.
 - `syntax` (mod) — line-level syntax highlighting (`syntect`) over sanitised text.
+- `text_input` (mod) — the commit editor's (and later the stash prompt's) text entry: `TextField`, `TextArea`, `FieldView`/`FieldWidget`, `AreaView`/`AreaWidget` (m3-working-tree-undo-and-stash/05).
 - `theme` (mod) — theme kinds, tokens, and colour resolution.
 
 ## detail
@@ -224,3 +225,18 @@ state or I/O; `view::strip::strip_marks` (crate `graft`) builds its input.
 - `Theme::raster_muted` (fn) — the unreduced `text-muted` hue, for a pixel `+N` marker.
 - `Theme::branch` (fn) — the colour a branch identity draws in, independent of column.
 - `Theme::syntax` (fn) — the colour for a `syntax::SyntaxRole`, from the chrome tokens; collapses to `Token::Text` at `Palette16` and under `NO_COLOR`.
+
+## text_input
+Text entry (m3-working-tree-undo-and-stash/05). The state halves are pure —
+no width, no theme — and the cursor is a **character** index, so a wide
+character or a combining mark is never cut in half. Horizontal and vertical
+scrolling are worked out at draw time from the cursor rather than stored, so
+no offset can go stale behind a resize.
+- `GUIDE` (const) — `┊`, the length-guide glyph (column 50 for a subject, 72 for a body).
+- `LABEL_WIDTH` (const) — cells the `Subject`/`Body` label column takes, so both text regions start in the same column.
+- `TextField` (struct) — one editable line. `new`, `text`, `cursor`, `len`, `is_empty`, `insert`, `insert_str` (a bracketed paste; control characters, newlines included, are refused at the door so the cursor index can never disagree with the sanitiser), `backspace`, `delete`, `left`, `right`, `home`, `end`, `word_left`, `word_right`.
+- `TextArea` (struct) — several editable lines, always at least one. `new`, `text` (joins with `\n`; round-trips `new`), `lines`, `cursor`, `is_empty`, `insert`, `insert_str` (`\n` and `\r\n` break the line), `newline`, `backspace` (joins upwards at a line start), `delete` (pulls the next line up at a line end), `up`, `down`, `left`, `right`, `home`, `end`, `word_left`, `word_right`, `append_line` (a line of its own at the end, cursor after it; on an empty area it becomes the first line, never a blank one followed by it).
+- `FieldView` (struct) — `label`, `text`, `cursor` (character index), `guide_at`, `counter` (`(typed, limit)`; drawn in `Warning` past the limit), `focused`.
+- `FieldWidget` (struct) — `view`, `theme`; `Widget` over one row: label, text, guide, right-aligned counter.
+- `AreaView` (struct) — `label`, `lines`, `cursor` (`(line, character)`), `guide_at`, `focused`.
+- `AreaWidget` (struct) — `view`, `theme`; `Widget` over the rows it is given: the label row, then as many lines as fit, scrolled so the cursor's line is always one of them.

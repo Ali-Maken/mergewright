@@ -19,6 +19,7 @@ pub mod overview_strip;
 pub mod paint;
 pub mod status_screen;
 pub mod syntax;
+pub mod text_input;
 pub mod theme;
 
 #[cfg(test)]
