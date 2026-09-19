@@ -313,6 +313,134 @@ fn http_remote_frees_its_port_on_drop() {
     assert!(port_is_closed(port), "port {port} still accepts after drop");
 }
 
+/// Whether a process with this pid still exists (a zombie counts).
+fn process_exists(pid: &str) -> bool {
+    std::process::Command::new("kill")
+        .args(["-0", pid])
+        .stderr(Stdio::null())
+        .status()
+        .expect("kill(1) runs")
+        .success()
+}
+
+/// Waits up to `bound` for `done`; whether it came true.
+fn eventually(bound: Duration, mut done: impl FnMut() -> bool) -> bool {
+    let started = Instant::now();
+    while !done() {
+        if started.elapsed() > bound {
+            return false;
+        }
+        thread::sleep(Duration::from_millis(10));
+    }
+    true
+}
+
+/// The wedged listener the old teardown could only warn about: a push whose
+/// `pre-receive` hook never returns holds the listener inside
+/// `http-backend` → `receive-pack` → hook. Drop kills the backend's whole
+/// process group, joins the listener, and frees the port — or panics, which
+/// fails this test.
+#[test]
+fn http_remote_drop_ends_a_wedged_backend() {
+    let remote = local();
+    let scratch = Scratch::empty("http-wedged").unwrap();
+    let pid_file = scratch.path().join("hook.pid");
+    let hook = remote.bare().join("hooks").join("pre-receive");
+    fs::create_dir_all(hook.parent().unwrap()).unwrap();
+    // Written then renamed, so the test never reads a half-written pid. The
+    // `sleep` is the wedge: a child of the hook, not `exec`ed, so killing the
+    // backend alone would leave it holding the pipes.
+    fs::write(
+        &hook,
+        format!(
+            "#!/bin/sh\necho $$ > '{0}.tmp'\nmv '{0}.tmp' '{0}'\nsleep 3600\n",
+            pid_file.display()
+        ),
+    )
+    .unwrap();
+    fs::set_permissions(&hook, fs::Permissions::from_mode(0o755)).unwrap();
+    remote.commit_locally("wedges the hook").unwrap();
+
+    let http = HttpRemote::serve(remote.bare(), USER, PASSWORD).unwrap();
+    let port = http.port();
+    let right = askpass(scratch.path(), PASSWORD);
+    let mut push = hermetic_command(
+        remote.home(),
+        remote.work(),
+        &["push", "-q", &http.url(), "HEAD"],
+    )
+    .env("GIT_TERMINAL_PROMPT", "0")
+    .env("GIT_ASKPASS", &right)
+    .stdin(Stdio::null())
+    .stdout(Stdio::null())
+    .stderr(Stdio::null())
+    .spawn()
+    .unwrap();
+
+    assert!(
+        eventually(Duration::from_secs(10), || pid_file.exists()),
+        "the pre-receive hook never ran"
+    );
+    let hook_pid = fs::read_to_string(&pid_file).unwrap().trim().to_owned();
+    assert!(process_exists(&hook_pid), "the hook is running");
+
+    let started = Instant::now();
+    drop(http);
+    let dropped_in = started.elapsed();
+
+    assert!(
+        dropped_in < Duration::from_secs(2),
+        "drop took {dropped_in:?}"
+    );
+    assert!(port_is_closed(port), "port {port} still accepts after drop");
+    // Killed with its group; gone once its new parent reaps it.
+    assert!(
+        eventually(Duration::from_secs(5), || !process_exists(&hook_pid)),
+        "the hook {hook_pid} outlived the fixture"
+    );
+    // The push lost its server; it fails rather than hangs. Killed only if
+    // it somehow still runs, so the test cannot leave it behind.
+    if !eventually(Duration::from_secs(5), || {
+        push.try_wait().unwrap().is_some()
+    }) {
+        push.kill().unwrap();
+    }
+    assert!(
+        !push.wait().unwrap().success(),
+        "the push cannot have landed"
+    );
+}
+
+/// Drop no longer connects to its own port to wake the listener (a connect
+/// that could fail and strand the thread): it unparks a listener that never
+/// blocks. So it returns promptly, and the listener is gone with the port.
+#[test]
+fn hung_remote_drop_joins_its_listener_promptly() {
+    let hung = HungRemote::listen().unwrap();
+    let port = hung.port();
+    let held = TcpStream::connect(("127.0.0.1", port)).unwrap();
+    assert!(
+        eventually(Duration::from_secs(5), || hung.connections() == 1),
+        "the connection was held"
+    );
+
+    let started = Instant::now();
+    drop(hung);
+    let dropped_in = started.elapsed();
+
+    assert!(
+        dropped_in < Duration::from_secs(1),
+        "drop took {dropped_in:?}"
+    );
+    assert!(port_is_closed(port), "port {port} still accepts after drop");
+    let mut buf = [0u8; 1];
+    let read = (&held).read(&mut buf);
+    assert!(
+        matches!(read, Ok(0) | Err(_)),
+        "the held stream was closed: {read:?}"
+    );
+}
+
 #[test]
 fn hung_remote_blocks_then_dies_on_sigterm() {
     let hung = HungRemote::listen().unwrap();

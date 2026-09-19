@@ -39,8 +39,20 @@ const ANSWER_MAX: u32 = 64 * 1024;
 /// How long the server waits for a connected helper to send its prompt.
 const PROMPT_WAIT: Duration = Duration::from_secs(5);
 
-/// How often the listener, waiting on a handler, looks for a shutdown.
+/// How often the listener, idle or waiting on a handler, looks for a
+/// shutdown. Also the longest a helper's connection waits in the backlog
+/// before it is accepted. A shutdown itself is not polled for: it unparks an
+/// idle listener at once.
 const SHUTDOWN_POLL: Duration = Duration::from_millis(20);
+
+/// How long the server waits to hand its answer to a helper that has stopped
+/// reading. Bounds the one write in the exchange, so `close` never waits on a
+/// stuck helper for longer than this.
+#[cfg(not(test))]
+const REPLY_WAIT: Duration = Duration::from_secs(5);
+/// Short in tests, so the stuck-helper test does not wait five seconds.
+#[cfg(test)]
+const REPLY_WAIT: Duration = Duration::from_millis(300);
 
 const ANSWER: u8 = 0;
 const CANCELLED: u8 = 1;
@@ -142,6 +154,17 @@ impl AskPassServer {
                 return Err(error);
             }
         };
+        // Non-blocking, so the listener never sits in an `accept` that only a
+        // new connection can end: shutdown then needs no wake-up connection,
+        // which could fail and strand the thread.
+        if let Err(error) = listener.set_nonblocking(true) {
+            // As for a failed bind: the cleanup's own failure, if any, is the
+            // error the caller needs more (a socket or directory left behind).
+            drop(listener);
+            std::fs::remove_file(&socket)?;
+            std::fs::remove_dir(&dir)?;
+            return Err(error);
+        }
         let stop = Arc::new(AtomicBool::new(false));
         let thread = {
             let stop = Arc::clone(&stop);
@@ -195,15 +218,13 @@ impl AskPassServer {
                 first = Some(error);
             }
         };
-        // Wake the listener out of `accept`. If even that fails the thread
-        // cannot be woken, so it is left detached rather than joined forever;
-        // it exits at its next connection.
-        let woke = UnixStream::connect(&self.socket).map(drop);
-        let could_wake = woke.is_ok();
-        note(woke);
-        if let Some(thread) = self.thread.take()
-            && could_wake
-        {
+        // Nothing the listener does blocks without a bound — `accept` is
+        // non-blocking, the prompt read and the reply write have timeouts,
+        // the handler is waited on in `SHUTDOWN_POLL` steps — so this join
+        // always returns. Unparking makes an idle listener see `stop` now
+        // rather than at its next poll.
+        if let Some(thread) = self.thread.take() {
+            thread.thread().unpark();
             note(
                 thread
                     .join()
@@ -254,13 +275,20 @@ fn private_dir() -> io::Result<PathBuf> {
 }
 
 /// The listener thread: one connection at a time (git asks one question at a
-/// time), until shut down.
+/// time), until shut down. `listener` is non-blocking: with nothing to accept
+/// the thread parks for `SHUTDOWN_POLL`, and a shutdown unparks it.
 fn listen(listener: &UnixListener, handler: &Arc<dyn AskPass>, stop: &AtomicBool) {
-    for stream in listener.incoming() {
-        if stop.load(Ordering::SeqCst) {
-            return;
-        }
-        match stream {
+    while !stop.load(Ordering::SeqCst) {
+        let accepted = listener.accept().and_then(|(stream, _)| {
+            // An accepted socket inherits `O_NONBLOCK` on macOS; the exchange
+            // wants blocking reads and writes, bounded by their timeouts.
+            stream.set_nonblocking(false)?;
+            Ok(stream)
+        });
+        match accepted {
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                thread::park_timeout(SHUTDOWN_POLL);
+            }
             Ok(stream) => {
                 if let Err(error) = serve(stream, handler, stop) {
                     // One helper's broken exchange (it hung up, sent a bad
@@ -273,8 +301,10 @@ fn listen(listener: &UnixListener, handler: &Arc<dyn AskPass>, stop: &AtomicBool
             Err(error) => {
                 // `accept` failing (out of descriptors, say) is likewise
                 // the waiting helper's failure, which it sees as a refused
-                // or dropped connection.
+                // or dropped connection. Parked as when idle, so a lasting
+                // failure does not spin this thread.
                 drop(error);
+                thread::park_timeout(SHUTDOWN_POLL);
             }
         }
     }
@@ -287,6 +317,7 @@ fn listen(listener: &UnixListener, handler: &Arc<dyn AskPass>, stop: &AtomicBool
 /// cancelled — and its answer is dropped, and so zeroed, unsent.
 fn serve(mut stream: UnixStream, handler: &Arc<dyn AskPass>, stop: &AtomicBool) -> io::Result<()> {
     stream.set_read_timeout(Some(PROMPT_WAIT))?;
+    stream.set_write_timeout(Some(REPLY_WAIT))?;
     let prompt = read_prompt(&mut stream)?;
     let (answered, answer) = mpsc::channel();
     let handler = Arc::clone(handler);

@@ -219,3 +219,82 @@ fn wipe_zeroes_the_whole_allocation() {
     assert_eq!(bytes.len(), bytes.capacity());
     assert!(bytes.iter().all(|&b| b == 0));
 }
+
+/// Runs `close` on its own thread, so a close that hangs fails this test
+/// after `bound` instead of hanging the test binary.
+fn close_within(server: AskPassServer, bound: Duration) -> io::Result<()> {
+    let (done, closed) = mpsc::channel();
+    thread::spawn(move || done.send(server.close()));
+    closed
+        .recv_timeout(bound)
+        .expect("close returned within the bound, not stuck on its listener")
+}
+
+/// The stuck path the old shutdown had: the socket file gone, so no
+/// connection could ever wake a listener blocked in `accept`. The listener
+/// still ends — its clone of the handler is dropped — and the missing file is
+/// reported, not hidden.
+#[test]
+fn close_ends_the_listener_even_when_its_socket_file_is_gone() {
+    let handler = Fixed::new(None);
+    let server = server(handler.clone());
+    std::fs::remove_file(server.socket_path()).expect("the socket file is removed");
+
+    let closed = close_within(server, Duration::from_secs(5));
+
+    assert!(
+        matches!(&closed, Err(error) if error.kind() == io::ErrorKind::NotFound),
+        "the missing socket is reported: {closed:?}"
+    );
+    assert_eq!(
+        Arc::strong_count(&handler),
+        1,
+        "the listener thread ended and dropped its handler"
+    );
+}
+
+/// Answers every prompt with far more than a socket buffer holds, and says
+/// when it has been asked.
+struct Huge {
+    asked: Mutex<Sender<()>>,
+}
+
+impl AskPass for Huge {
+    fn ask(&self, _prompt: &str) -> Option<Secret> {
+        self.asked
+            .lock()
+            .expect("test lock")
+            .send(())
+            .expect("the test is waiting");
+        Some(Secret::new(vec![b'x'; 8 * 1024 * 1024]))
+    }
+}
+
+/// A helper that asks and then never reads: the reply write fills the socket
+/// buffer and blocks. Once the handler has answered, `serve` writes whatever
+/// the stop flag says, so the listener is in (or about to be in) that write
+/// when `close` runs. The write timeout ends it; `close` returns and the
+/// listener ends.
+#[test]
+fn a_helper_that_stops_reading_cannot_hang_close() {
+    let (asked_tx, asked) = mpsc::channel();
+    let handler: Arc<dyn AskPass> = Arc::new(Huge {
+        asked: Mutex::new(asked_tx),
+    });
+    let server = server(Arc::clone(&handler));
+    let mut raw = UnixStream::connect(server.socket_path()).expect("connects");
+    raw.write_all(&3u32.to_be_bytes()).expect("writes");
+    raw.write_all(b"Pw:").expect("writes");
+    asked
+        .recv_timeout(Duration::from_secs(5))
+        .expect("the handler was asked");
+
+    let closed = close_within(server, Duration::from_secs(5));
+
+    // `close` returning at all is the proof: it joins the listener. (The
+    // handler's count is no witness here — the detached ask thread holds a
+    // clone of its own until it has returned.)
+    closed.expect("closes cleanly");
+    // Held open until here, so the write could never finish on its own.
+    drop(raw);
+}

@@ -7,21 +7,25 @@
 
 use std::fmt;
 use std::io::{self, Write};
+use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::{self, JoinHandle};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use tiny_http::{Header, Request, Response, Server};
 
 use super::{hermetic_command, run_git};
 
-/// How long [`Drop`] waits for the listener thread before giving up on it.
+/// How long [`Drop`] waits for the listener thread, after ending any
+/// `http-backend` it is running, before declaring the teardown failed.
 ///
-/// A test's teardown must never hang: past this the thread is left to finish
-/// on its own and the fact is reported on stderr.
+/// A test's teardown must never hang, and must never quietly leave a thread
+/// behind either: past this, drop panics (the test fails, saying why) rather
+/// than return with the thread still running.
 const STOP_BOUND: Duration = Duration::from_secs(2);
 
 /// The one repository path the server answers for.
@@ -38,6 +42,11 @@ const REPO_PATH: &str = "/repo.git";
 pub struct HttpRemote {
     server: Arc<Server>,
     thread: Option<JoinHandle<()>>,
+    /// Disconnects when the listener thread ends, however it ends: the one
+    /// sender lives in the thread. In a `Mutex` only so the fixture stays
+    /// `Sync`.
+    stopped: Mutex<Receiver<()>>,
+    running: Arc<Mutex<Running>>,
     port: u16,
     user: String,
     counters: Arc<Counters>,
@@ -66,6 +75,43 @@ struct Counters {
     gzipped: AtomicUsize,
 }
 
+/// The `http-backend` the listener is waiting on, so [`Drop`] can end it.
+///
+/// The backend runs in its own process group, and the whole group is killed:
+/// `http-backend` hands a push to `receive-pack`, which runs the repository's
+/// hooks, and each of them holds the output pipe the listener reads to EOF.
+#[derive(Debug, Default)]
+struct Running {
+    /// Set by `Drop`: a backend started after this is killed at once.
+    stopping: bool,
+    /// The running backend's process group id (its pid).
+    group: Option<u32>,
+}
+
+/// `SIGKILL` to every process in `group`. Through `kill(1)`: this crate keeps
+/// its one `unsafe` site for `getrusage` (ADR-0015).
+fn kill_group(group: u32) -> Result<(), String> {
+    let output = Command::new("kill")
+        .args(["-KILL", "--", &format!("-{group}")])
+        .stdin(Stdio::null())
+        .output()
+        .map_err(|error| format!("could not run kill: {error}"))?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "kill -KILL -{group}: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ))
+    }
+}
+
+/// A poisoned lock only means a panic elsewhere already failed the test;
+/// the two fields are still sound.
+fn lock(running: &Mutex<Running>) -> std::sync::MutexGuard<'_, Running> {
+    running.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
 /// Everything the listener thread needs to answer a request.
 struct Backend {
     /// The directory holding the bare repository: `GIT_PROJECT_ROOT`.
@@ -77,6 +123,7 @@ struct Backend {
     user: String,
     home: PathBuf,
     counters: Arc<Counters>,
+    running: Arc<Mutex<Running>>,
 }
 
 impl HttpRemote {
@@ -115,6 +162,7 @@ impl HttpRemote {
             .port();
         let server = Arc::new(server);
         let counters = Arc::new(Counters::default());
+        let running = Arc::new(Mutex::new(Running::default()));
         let backend = Backend {
             project_root: project_root.to_path_buf(),
             repo_name: repo_name.to_string_lossy().into_owned(),
@@ -125,11 +173,16 @@ impl HttpRemote {
             user: user.to_owned(),
             home: home.path().to_path_buf(),
             counters: Arc::clone(&counters),
+            running: Arc::clone(&running),
         };
         let listening = Arc::clone(&server);
+        let (finished, stopped) = mpsc::channel::<()>();
         let thread = thread::Builder::new()
             .name(format!("http-remote-{port}"))
             .spawn(move || {
+                // Owned here so it drops — disconnecting `stopped` — when the
+                // thread ends, by returning or by unwinding.
+                let _finished = finished;
                 // Ends when `Drop` calls `unblock`: `recv` then returns an
                 // error and the iterator stops.
                 for request in listening.incoming_requests() {
@@ -140,6 +193,8 @@ impl HttpRemote {
         Ok(HttpRemote {
             server,
             thread: Some(thread),
+            stopped: Mutex::new(stopped),
+            running,
             port,
             user: user.to_owned(),
             counters,
@@ -193,19 +248,38 @@ impl Drop for HttpRemote {
         let Some(thread) = self.thread.take() else {
             return;
         };
-        let started = Instant::now();
-        while !thread.is_finished() {
-            if started.elapsed() >= STOP_BOUND {
-                // Nothing to return an error to from `drop`, and waiting
-                // longer would hang the test's teardown — the one thing this
-                // fixture must never do. Say so where the test output shows.
-                eprintln!(
-                    "HttpRemote on port {}: listener thread still busy after {STOP_BOUND:?}; left running",
+        // The listener may be inside a request, waiting on an `http-backend`
+        // that will never finish (a hung hook, say). End it; no backend
+        // started from here on survives either.
+        let killed = {
+            let mut running = lock(&self.running);
+            running.stopping = true;
+            running.group.take().map(kill_group)
+        };
+        let stopped = self
+            .stopped
+            .get_mut()
+            .unwrap_or_else(PoisonError::into_inner);
+        match stopped.recv_timeout(STOP_BOUND) {
+            Err(RecvTimeoutError::Disconnected) => {}
+            Ok(()) => unreachable!("the listener thread never sends, it only disconnects"),
+            Err(RecvTimeoutError::Timeout) => {
+                // Stuck even with its backend killed: something outside the
+                // backend's process group holds the request open. Returning
+                // would leave the thread (and its port) running for the rest
+                // of the test binary, silently. Fail the test instead — unless
+                // it is already failing, where a second panic would abort.
+                let message = format!(
+                    "HttpRemote on port {}: listener thread still running {STOP_BOUND:?} \
+                     after its backend was killed ({killed:?}); teardown failed",
                     self.port
                 );
-                return;
+                if thread::panicking() {
+                    eprintln!("{message}");
+                    return;
+                }
+                panic!("{message}");
             }
-            thread::sleep(Duration::from_millis(5));
         }
         if thread.join().is_err() {
             eprintln!("HttpRemote on port {}: listener thread panicked", self.port);
@@ -306,13 +380,40 @@ impl Backend {
             command.env("HTTP_GIT_PROTOCOL", value);
         }
 
-        parse_cgi(&run_backend(&mut command, body)?)
+        parse_cgi(&self.run_backend(&mut command, body)?)
+    }
+
+    /// Runs `http-backend` with `body` on its stdin and returns its stdout.
+    /// The backend gets its own process group, recorded in `running` while
+    /// it runs, so `Drop` can kill it and everything it started.
+    fn run_backend(&self, command: &mut Command, body: Vec<u8>) -> io::Result<Vec<u8>> {
+        let child = command.process_group(0).spawn()?;
+        {
+            let mut running = lock(&self.running);
+            if running.stopping {
+                // `Drop` came between the spawn and here: it found nothing
+                // to kill, so this does. The wait below then returns. If the
+                // kill failed, `Drop`'s bounded wait is what notices: this
+                // line only says why.
+                if let Err(error) = kill_group(child.id()) {
+                    eprintln!("HttpRemote: {error}");
+                }
+            } else {
+                running.group = Some(child.id());
+            }
+        }
+        let output = feed_and_wait(child, body);
+        // Between the reap above and this line a `Drop` could still kill
+        // the group id; for it to name another process, the pid would have
+        // to be reused as a group leader in that window. Accepted in a test
+        // fixture.
+        lock(&self.running).group = None;
+        output
     }
 }
 
-/// Runs `http-backend` with `body` on its stdin and returns its stdout.
-fn run_backend(command: &mut Command, body: Vec<u8>) -> io::Result<Vec<u8>> {
-    let mut child = command.spawn()?;
+/// Feeds `body` to the child's stdin and waits for it to exit.
+fn feed_and_wait(mut child: std::process::Child, body: Vec<u8>) -> io::Result<Vec<u8>> {
     let mut stdin = child
         .stdin
         .take()
