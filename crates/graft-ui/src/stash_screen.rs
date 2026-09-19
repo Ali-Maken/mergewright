@@ -271,6 +271,7 @@ impl StashScreen<'_> {
         FieldWidget {
             view: &prompt.message,
             theme: self.theme,
+            ascii: false,
         }
         .render(
             Rect {
@@ -517,6 +518,7 @@ mod tests {
             guide_at: None,
             counter: None,
             focused: true,
+            masked: false,
         };
         let mut screen = view(Vec::new(), StashStatus::Empty);
         screen.prompt = Some(StashPromptView {
@@ -543,6 +545,7 @@ mod tests {
             guide_at: None,
             counter: None,
             focused: true,
+            masked: false,
         };
         let mut screen = view(Vec::new(), StashStatus::Empty);
         screen.prompt = Some(StashPromptView {

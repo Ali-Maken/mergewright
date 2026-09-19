@@ -9,6 +9,7 @@
 pub mod commit_editor;
 pub mod confirm;
 pub mod context_menu;
+pub mod credential_prompt;
 pub mod detail;
 pub mod detail_pane;
 pub mod diff_words;

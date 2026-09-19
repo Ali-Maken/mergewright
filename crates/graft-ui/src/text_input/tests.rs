@@ -200,11 +200,13 @@ fn a_field_draws_its_label_guide_and_counter() {
         guide_at: Some(50),
         counter: Some((21, 50)),
         focused: true,
+        masked: false,
     };
     let lines = rows(80, 1, |area, buf| {
         (&FieldWidget {
             view: &view,
             theme: &theme,
+            ascii: false,
         })
             .render(area, buf);
     });
@@ -233,11 +235,13 @@ fn a_field_scrolls_so_the_cursor_stays_on_screen() {
         guide_at: None,
         counter: None,
         focused: true,
+        masked: false,
     };
     let lines = rows(40, 1, |area, buf| {
         (&FieldWidget {
             view: &view,
             theme: &theme,
+            ascii: false,
         })
             .render(area, buf);
     });
@@ -275,4 +279,98 @@ fn an_area_scrolls_so_the_cursor_line_stays_on_screen() {
     assert_eq!(lines[0], "▸Body");
     assert!(lines[1].ends_with("line7"), "{lines:?}");
     assert!(lines[3].ends_with("line9"), "{lines:?}");
+}
+
+/// CLAUDE.md choice 2's "must never": the secret must not reach a draw path
+/// except through the mask. Checks the *absence* of the secret's characters
+/// in the rendered buffer, not merely the presence of bullets — a widget
+/// that drew both would still pass a presence-only check.
+#[test]
+fn masked_field_draws_bullets_only() {
+    let theme = theme();
+    let secret = "hunter2";
+    // Blank label: the label column may legitimately share letters with the
+    // secret ("Password" has an 'r', an 'e', an 'o'...), and this test must
+    // not confuse that with a leak.
+    let view = FieldView {
+        label: "",
+        text: sanitize_line(secret),
+        cursor: Some(secret.chars().count()),
+        guide_at: Some(50),
+        counter: Some((secret.chars().count(), 50)),
+        focused: true,
+        masked: true,
+    };
+    let lines = rows(80, 1, |area, buf| {
+        (&FieldWidget {
+            view: &view,
+            theme: &theme,
+            ascii: false,
+        })
+            .render(area, buf);
+    });
+    let drawn = &lines[0];
+    assert_eq!(
+        drawn.chars().filter(|c| *c == '•').count(),
+        secret.chars().count(),
+        "one bullet per character: {drawn:?}"
+    );
+    for character in secret.chars() {
+        assert!(
+            !drawn.contains(character),
+            "secret character {character:?} leaked into the buffer: {drawn:?}"
+        );
+    }
+    // A guide and a counter both name the typed length; masking hides it.
+    assert!(!drawn.contains(GUIDE), "{drawn:?}");
+    assert!(!drawn.contains('/'), "a counter leaked: {drawn:?}");
+}
+
+/// The ASCII renderer tier draws `*` instead of `•` (design note "New UI").
+#[test]
+fn masked_field_at_the_ascii_tier_draws_stars() {
+    let theme = theme();
+    let view = FieldView {
+        label: "Password",
+        text: sanitize_line("secret"),
+        cursor: Some(6),
+        guide_at: None,
+        counter: None,
+        focused: true,
+        masked: true,
+    };
+    let lines = rows(80, 1, |area, buf| {
+        (&FieldWidget {
+            view: &view,
+            theme: &theme,
+            ascii: true,
+        })
+            .render(area, buf);
+    });
+    assert_eq!(lines[0].chars().filter(|c| *c == '*').count(), 6);
+    assert_eq!(lines[0].chars().filter(|c| *c == '•').count(), 0);
+}
+
+/// `{:?}` on a masked field must not print the typed text: a log line leaks
+/// a password as readily as the screen does (CLAUDE.md choice 2).
+#[test]
+fn debug_redacts_a_masked_fields_text() {
+    let view = FieldView {
+        label: "Password",
+        text: sanitize_line("hunter2"),
+        cursor: Some(7),
+        guide_at: None,
+        counter: None,
+        focused: true,
+        masked: true,
+    };
+    let printed = format!("{view:?}");
+    assert!(!printed.contains("hunter2"), "{printed}");
+    assert!(printed.contains("<redacted>"), "{printed}");
+
+    let unmasked = FieldView {
+        masked: false,
+        ..view
+    };
+    assert!(format!("{unmasked:?}").contains("hunter2"));
 }

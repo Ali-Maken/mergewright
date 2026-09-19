@@ -176,11 +176,24 @@ pub(super) fn grouped(number: u32) -> String {
 /// the movement keys that are always there. `n`/`N` live on the search line,
 /// where they work. `Enter` opens the detail pane (ADR-0023); its hint comes
 /// with the pane (`detail-pane-frame`), not before it draws.
-pub(super) const HINTS: [&str; 16] = [
+pub(super) const HINTS: [&str; 19] = [
     "q quit",
     "F2 status",
     "F3 renderer",
     "u undo",
+    // Remote writes (design note "New UI", DESIGN.md §2.14): `f`/`p`/`P` are
+    // otherwise unclaimed at the graph-screen level (m4 scout, "Key
+    // routing"). Right after [`LEADING_HINTS`] — ahead of the lane-expand
+    // and pane `extra` hints splice in, so those still take priority over
+    // the remote keys when both are in play (`the_expand_hint_keeps_its_
+    // place_after_the_renderer`), but ahead of search and movement, which
+    // is what the design note's "the drop-from-the-right rule keeps them
+    // at ≥120 cols" needs: placed where the mockup shows them instead
+    // (after `H hide stash`, before `J journal`), they only survive from
+    // 145 columns (`graph_screen::tests::remote_hints_at_wide_and_medium`).
+    "f fetch",
+    "p pull",
+    "P push",
     "/ search",
     "j/k move",
     "Space fold",
@@ -198,10 +211,13 @@ pub(super) const HINTS: [&str; 16] = [
     "g/G top/bottom",
     "Ctrl+R refresh",
 ];
-/// How many of [`HINTS`] come before the lane-expansion hint. `u undo` is
+/// How many of [`HINTS`] come before the lane-expansion hint (and the other
+/// contextual `extra` hints, which splice in right after these). `u undo` is
 /// among them: the milestone's promise is that work cannot be lost, and the
 /// key that keeps it must survive a narrow terminal dropping hints from the
-/// right (m3-working-tree-undo-and-stash/06).
+/// right (m3-working-tree-undo-and-stash/06). The remote-write keys sit
+/// just after, not inside, this group: `extra` still outranks them
+/// (m4-remotes ticket 03).
 const LEADING_HINTS: usize = 4;
 
 /// Whether the cursor row (the one painted [`RowPaint::Highlighted`]) has a
