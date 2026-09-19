@@ -1,7 +1,7 @@
 # credential-prompt-wiring: the askpass mode of the binary, the in-app prompt state and keys, secrets across the job pool, the wrong-password round trip
 
 Status: draft
-Build with: <!-- recommendation: Opus — a secret crossing three threads (askpass listener → job → update → runner), a modal text field that must join `text_field_open()` (M3 06 C1), a second entry mode in `main`. Concurrency and a safety rail. Conductor sets after the scout. -->
+Build with: Opus — taking the planner's recommendation: a secret crossing three threads, and a field that must join `text_field_open()` (M3 group 06's Critical).
 Crates: graft
 Needs: `remote-keys` — `Operated`, `update::remote`, `jobs/operate.rs` hooks, `Progress::RemoteProgress`; `git-remote-and-askpass` — `graft_git::run::askpass::{AskPass, AskPassServer, Secret, respond, RespondError}`; `ui-credential-prompt-and-hints` — `graft_ui::credential_prompt::{CredentialView, CredentialPrompt, credential_area, MIN_COLUMNS, MIN_ROWS}`, `FieldView.masked`. Tests: `graft_fixtures::remote::HttpRemote`.
 

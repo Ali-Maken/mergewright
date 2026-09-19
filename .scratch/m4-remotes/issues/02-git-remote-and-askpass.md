@@ -1,7 +1,7 @@
 # git-remote-and-askpass: remote reads, failure and progress parsing, the streaming stderr drain, and the askpass socket
 
 Status: draft
-Build with: <!-- recommendation: Opus — brownfield in graft-git's runner (a second drain mode beside the child supervisor) plus a Unix-socket server thread whose shutdown order matters; the parsers alone would be Sonnet. Conductor sets after the scout. -->
+Build with: Opus — taking the planner's recommendation: a second drain mode in graft-git's runner plus a Unix-socket server whose shutdown order matters. Concurrency, not wiring.
 Crates: graft-git
 Needs: none (graft-fixtures' `LocalRemote` is nice-to-have for one test; if graft-fixtures depends on graft-git, use `graft_git::fixture::Fixture::bare_repo()` instead and say so)
 

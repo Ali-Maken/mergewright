@@ -1,7 +1,7 @@
 # ops-remote-operations: Fetch, Pull and Push as operations — plan, check, journal meaning, undo transparency, streaming + askpass through `apply`
 
 Status: draft
-Build with: <!-- recommendation: Opus — git writes against a remote, journal semantics that M5 builds on; every rule is stated below and testable against real remotes, so not Fable. Conductor sets after the scout. -->
+Build with: Opus — taking the planner's recommendation: git writes against a remote plus journal semantics M5 builds on.
 Crates: graft-ops, graft-core
 Needs: `git-remote-and-askpass` — `graft_git::remote::{Remote, TrackedUpstream, list, upstream_of, RemoteFailure, classify_failure, RemoteProgress, parse_progress}`, `GitInvocation::{on_stderr_line, askpass}`, `run::askpass::{AskPass, AskPassServer, Secret}`. Tests use `graft_fixtures::remote::{LocalRemote, HttpRemote}` from `remote-fixtures` (graft-fixtures is already a dev-dependency).
 

@@ -1,7 +1,7 @@
 # ui-credential-prompt-and-hints: masked text field, the credential prompt widget, a wrapping confirm consequence, remote footer hints
 
 Status: draft
-Build with: <!-- recommendation: Sonnet — plain widgets in graft-ui with TestBackend snapshot tests; no state, no I/O. Conductor sets after the scout of `text_input.rs`, `confirm.rs`, `graph_screen/footer.rs`. -->
+Build with: Sonnet — taking the planner's recommendation: plain widgets with TestBackend snapshots, no state, no I/O.
 Crates: graft-ui
 Needs: none
 
