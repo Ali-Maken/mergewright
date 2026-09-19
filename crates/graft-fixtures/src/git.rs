@@ -102,7 +102,7 @@ pub fn run_with_stdin_file(
 }
 
 /// What a `git` child reads on its standard input.
-enum Input<'a> {
+pub(crate) enum Input<'a> {
     /// Nothing: `/dev/null`.
     Nothing,
     /// A file already on disk, as `fast-import`'s stream is.
@@ -149,8 +149,13 @@ pub fn run_isolated(cwd: &Path, args: &[&str], stdin: Option<&[u8]>) -> Result<V
     run_built(isolated, cwd, args, &input)
 }
 
-fn run_built(
-    build: fn(&Path, &[&str]) -> Command,
+/// Runs the command `build` makes, to completion or the deadline.
+///
+/// `pub(crate)` so the remote fixtures can add their own environment (a
+/// `HOME` of their own, an askpass) and still get the deadline and the
+/// file-backed output.
+pub(crate) fn run_built(
+    build: impl FnOnce(&Path, &[&str]) -> Command,
     cwd: &Path,
     args: &[&str],
     stdin: &Input<'_>,
@@ -226,7 +231,7 @@ fn run_built(
 
 /// A `git` command with the whole outside world switched off: the machine's
 /// config, and its clock and identity too.
-fn hermetic(cwd: &Path, args: &[&str]) -> Command {
+pub(crate) fn hermetic(cwd: &Path, args: &[&str]) -> Command {
     let mut command = isolated(cwd, args);
     command
         // A fixed identity and clock. Commits made by `fast-import` carry

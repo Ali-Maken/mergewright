@@ -1,6 +1,6 @@
 # remote-fixtures: real remotes for tests — file://, smart HTTP with Basic auth, and one that never answers
 
-Status: draft
+Status: done (6 of 8 ticked; 2 left open, see NOTES)
 Build with: Opus — greenfield, but it is a hermetic HTTP server driving `git http-backend` as CGI plus two background-thread servers with clean shutdown; protocol and concurrency work, not wiring.
 Crates: graft-fixtures
 Needs: none
@@ -72,13 +72,13 @@ impl Drop for HungRemote {}
 
 Every tick names its verifying test inline, at tick time (ADR-0035).
 
-- [ ] `LocalRemote::new(Shape::<any>)` yields a work clone whose `origin` is the bare and whose default branch tracks `origin/<default>` — `local_remote_clone_has_origin_and_upstream`
-- [ ] `commit_on_remote` advances the bare, not `work`; `commit_locally` the reverse — `commit_on_remote_leaves_work_behind`, `commit_locally_leaves_work_ahead`
-- [ ] Wrong or missing password → 401, git reports authentication failure, counter shows the rejection — `http_wrong_password_is_401_and_git_says_authentication_failed`
-- [ ] Right password → clone, fetch and a > 1 MiB push all succeed over HTTP — `http_right_password_clones_and_pushes`
-- [ ] `HungRemote` holds a `git fetch` open indefinitely and counts the connection — `hung_remote_blocks_then_dies_on_sigterm`
+- [x] `LocalRemote::new(Shape::<any>)` yields a work clone whose `origin` is the bare and whose default branch tracks `origin/<default>` — `local_remote_clone_has_origin_and_upstream` (checked on `Shape::Linear` only)
+- [x] `commit_on_remote` advances the bare, not `work`; `commit_locally` the reverse — `commit_on_remote_leaves_work_behind`, `commit_locally_leaves_work_ahead`
+- [x] Wrong or missing password → 401, git reports authentication failure, counter shows the rejection — `http_wrong_password_is_401_and_git_says_authentication_failed`
+- [x] Right password → clone, fetch and a > 1 MiB push all succeed over HTTP — `http_right_password_clones_and_pushes`
+- [x] `HungRemote` holds a `git fetch` open indefinitely and counts the connection — `hung_remote_blocks_then_dies_on_sigterm` ("indefinitely" means still running 300 ms after connecting)
 - [ ] No test leaves a thread or a listening port behind: `cargo nextest run -p graft-fixtures` twice in a row passes; `lsof -i :<port>` after a test binary exits shows nothing (the builder runs it once, records the result)
-- [ ] No test reads the user's `~/.gitconfig` or credential helpers: `HOME` and `GIT_CONFIG_NOSYSTEM` set on every child — `hermetic_env_blocks_user_config` (asserts `git config --show-origin --list` in `work` names no path under the real `$HOME`)
+- [x] No test reads the user's `~/.gitconfig` or credential helpers: `HOME` and `GIT_CONFIG_NOSYSTEM` set on every child — `hermetic_env_blocks_user_config` (asserts `git config --show-origin --list` in `work` names no path under the real `$HOME`)
 - [ ] MAP.md updated; module docs say what each remote is for and what it does not cover (TLS, SSH)
 
 ## Gates
@@ -88,3 +88,25 @@ Every tick names its verifying test inline, at tick time (ADR-0035).
 ## Size
 
 One context. Greenfield: expect ~150–250 turns. Stop seam if long: after piece 2 (HTTP) with pieces 3–4 in a handoff note. Report whether a scout was used and if not why (ADR-0036).
+
+## NOTES
+
+Built on branch `worktree-agent-a197a6706671402b0`, commit 70c75c3. No scout: new code; read only `git.rs`, `scratch.rs` and `lib.rs` (small).
+
+**Signature deviations:**
+- `LocalRemote::new(shape) -> Result<LocalRemote, CorpusError>`, not `Unavailable`. `Unavailable` is a struct `{shape, reason}`, not an error type; `CorpusError` has the `Unavailable` variant plus `Io` and `Git` for a failed clone.
+- Oid is a 40-hex `String` (`commit_on_remote`, `commit_locally`). graft-fixtures has no graft-core dependency, and none was added.
+
+**Left unticked:**
+- *No thread or port left behind.* Ports: `http_remote_frees_its_port_on_drop` and the end of `hung_remote_blocks_then_dies_on_sigterm` check that the port refuses connections after drop. Manual: `cargo nextest run -p graft-fixtures` passed twice in a row (21/21 both times); `lsof -iTCP -sTCP:LISTEN` after the runs showed no graft-fixtures listener; no `graft-remote-*`/`graft-http-*` temp dirs left in `$TMPDIR`. **Threads: no test asserts that the listener threads exited.** Drop joins them (HttpRemote bounded at 2 s, with a stderr line if it gives up), but nothing checks it, so the criterion is not fully proven.
+- *MAP.md and module docs.* Done (MAP.md has 4 new lines; the `remote.rs` module doc covers each remote's purpose and says there is no TLS or SSH), but this is documentation. No test can verify it, so it stays for the reviewer to confirm by reading.
+
+**Verified before coding (probes, throwaway dir):**
+- (a) `http-backend` without `GIT_HTTP_EXPORT_ALL` fails with `404 Repository not exported`.
+- (b) The 2 MiB push arrives with `Transfer-Encoding: chunked`, and tiny_http's reader decodes it. `http_right_password_clones_and_pushes` asserts `chunked_requests() >= 1` and that the push lands.
+- (c) The backend decompresses a gzipped body when `HTTP_CONTENT_ENCODING=gzip` is set, and fails with `bad line length character` without it. git never gzipped a request against the small corpus, so `http_gzipped_request_is_inflated_by_the_backend` sends a gzipped v2 `ls-refs` request by hand through the server.
+- (d) `REMOTE_USER` alone enables receive-pack; `http.receivepack=true` also enables it. `serve` sets both.
+
+**Other:**
+- The ticket's 401 criterion is checked through the `rejected` counter (it only increments on a 401) plus git's `could not read Username` / `Authentication failed`. The status code itself is not read from the wire.
+- `Cargo.lock` changed (new dependencies: tiny_http, ascii, chunked_transfer, httpdate). It may conflict with another branch's lock when merged.

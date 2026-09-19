@@ -68,6 +68,7 @@ mod filesystem;
 pub mod git;
 mod memory;
 mod permissions;
+pub mod remote;
 mod scratch;
 mod shape;
 mod shapes;
