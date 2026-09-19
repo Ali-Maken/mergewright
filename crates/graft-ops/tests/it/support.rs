@@ -28,10 +28,8 @@ impl TempRepo {
     pub fn init() -> TempRepo {
         static NEXT: AtomicU64 = AtomicU64::new(0);
         let unique = NEXT.fetch_add(1, Ordering::Relaxed);
-        let path = std::env::temp_dir().join(format!(
-            "graft-ops-exec-{}-{unique}",
-            std::process::id()
-        ));
+        let path =
+            std::env::temp_dir().join(format!("graft-ops-exec-{}-{unique}", std::process::id()));
         if path.exists() {
             std::fs::remove_dir_all(&path).expect("an old scratch clears");
         }
@@ -86,7 +84,9 @@ impl TempRepo {
             "git {args:?} failed: {}",
             String::from_utf8_lossy(&output.stderr)
         );
-        String::from_utf8_lossy(&output.stdout).trim_end().to_owned()
+        String::from_utf8_lossy(&output.stdout)
+            .trim_end()
+            .to_owned()
     }
 
     /// Run `git`, returning `Err(stderr)` instead of panicking.
@@ -98,9 +98,13 @@ impl TempRepo {
             .output()
             .unwrap_or_else(|why| panic!("git runs: {why}"));
         if output.status.success() {
-            Ok(String::from_utf8_lossy(&output.stdout).trim_end().to_owned())
+            Ok(String::from_utf8_lossy(&output.stdout)
+                .trim_end()
+                .to_owned())
         } else {
-            Err(String::from_utf8_lossy(&output.stderr).trim_end().to_owned())
+            Err(String::from_utf8_lossy(&output.stderr)
+                .trim_end()
+                .to_owned())
         }
     }
 
