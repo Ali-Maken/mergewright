@@ -1,0 +1,25 @@
+# toolchain before/after — 2026-09-19T16:34:22Z
+# rustc 1.98.1 (48a229cea 2026-09-01)
+# Darwin arm64, 10 cores, build jobs = 4
+# nextest 0.9.145, sccache 0.18.0
+
+## warm, before (cargo test, no sccache)
+before build                           0.1 s
+before clippy                          0.2 s
+before test                           36.2 s
+
+## warm, after (cargo nextest + sccache)
+after build                            0.1 s
+after clippy                           0.4 s
+after nextest                         16.7 s
+after doctests                         5.0 s
+
+# sccache after the warm run:
+#   Compile requests                      9
+#   Compile requests executed             0
+#   Cache hits                            0
+#   Cache misses                          0
+#   Cache hits rate                       -
+#   Max cache size                       10 GiB
+
+## cold build: not measured (pass --cold)

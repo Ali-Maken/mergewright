@@ -73,3 +73,45 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
 5. Keep going until something makes you stop.
 
 When the user says **"continue"**, start again at step 1 of the loop.
+
+---
+
+Moved out of CLAUDE.md on 2026-09-19 (conductor-only; builders were paying for it on every turn).
+
+## Models
+
+**Fable decides, specifies and reviews; Opus conducts and builds; Sonnet builds mechanical work.**
+
+| Work | Who | Model |
+|---|---|---|
+| Design pass + group specs, start of every milestone | `planner-fable` | Fable, high |
+| Filing/sequencing specs; merging parallel branches | conductor | Opus |
+| **Signature tickets** — M2 Mistake Radar, M3 undo inverse, M5 Ghost Preview, M6 conflict state machine | `builder-fable` | Fable, high |
+| Acceptance ticket, last of every milestone | `builder-fable` | Fable, high |
+| Concurrency, terminal protocols, git writes, undo, conflicts | `builder-opus` | Opus, high |
+| Mechanical: wiring, config, plain widgets, tests, renames | `builder-sonnet` | Sonnet, medium |
+| Reviews, every milestone from M2 | `reviewer` | Fable, high |
+| Debugging | `debugger` | Fable |
+| Research, standalone docs, summarising, scouting | unnamed agent — **pass `model:` explicitly** | Sonnet or Haiku |
+
+- **An agent with no definition file inherits the conductor's model (Opus).** Never dispatch `general-purpose` or `Explore` without naming the model.
+- **Docs follow the context, not the table.** Docs a ticket produces — MAP.md, ARCHITECTURE.md, ticket NOTES — are written by that ticket's own builder, whatever its model. **Standalone** doc work goes to Sonnet.
+- **Any other ticket goes to Fable only when all three hold:** doesn't decide the approach; a wrong choice becomes structural; correctness can't be judged from diff or tests. Expect one or two Fable builds per milestone.
+- **Escalation beats prediction.** Sonnet fails twice → Opus. Opus stalls twice, or review finds its design wrong → `builder-fable`. Fable fails too → `debugger`. `xhigh` only when the user asks for it on a named ticket.
+
+## Checkpoint policy
+
+**One stop per milestone.** State lives in files; the user reads `docs/log/<milestone>.md` whenever they want in.
+
+**The conductor stops unasked for exactly four things:**
+
+1. **A visual result** — incapacity, not deference.
+2. **Work that can't be put back** whose inverse is unproven. Never self-certified.
+3. **A product preference it can't infer** — batched into one list, not trickled.
+4. **A spec change or scope cut.**
+
+Everything else the conductor decides: grouping, order, models, splits, escalation, done-ness.
+
+**Reviews: one round per group.** Critical or Major → one builder fixes them, then move on. Everything left goes to `KNOWN_GAPS.md` with an expiry milestone. A second round only for a surviving Critical.
+
+**Checkpoint report:** 15 lines max, telegraphic. Which model ran each group, what compacted, turns per group and the total — **the conductor takes turn counts from the harness; no agent reports its own.**

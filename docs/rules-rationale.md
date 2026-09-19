@@ -130,3 +130,49 @@ diff and the existing map. Two prefixes to save the cheap half of one.
 The inverse holds for standalone doc work: there is no warm context to ride, so
 the cheaper model is simply cheaper. That is why the KNOWN_GAPS split went to
 Sonnet correctly and the naming research went to Opus by mistake.
+
+## The 2026-09-19 cut: what was deleted and why
+
+CLAUDE.md went 1,723 bytes (2026-09-11) → 21,374 (2026-09-19), 12.4x in eight
+days, 53 rules, alongside 36 ADRs. Every helper re-reads it on every turn, so at
+~5,340 tokens it cost roughly 13M tokens across M3's ~2,500 turns. The file had
+become the single largest line item in the thing it was written to economise.
+
+It is now ~6 KB. The full prior text is in git (`ba34451:CLAUDE.md`).
+
+### Deleted outright: every self-counting rule
+
+A rule that asks an agent to count something about itself is unenforceable by
+construction — an agent cannot observe its own turn count, token use or context
+size. The evidence, all of it from this project:
+
+| Rule | Outcome |
+|---|---|
+| 40 tool calls / 100k tokens, then stop | ignored 33 of 33 runs |
+| 80k token target per ticket | ignored 33 of 33; mean came in at 114k |
+| Commit and explain past 60 turns | 14 of 20 M3 runs passed 60 |
+| Hard stop at 150 turns on one group | never once triggered by its own agent |
+| "Never report the count itself" | the conductor still logged a wrong figure 3x |
+
+These were not disobedience and hardening them further would not have worked.
+The measurement belongs where it can actually be taken: the harness reports
+turns and tokens, and the conductor logs that figure. Nothing asks an agent to
+introspect any more.
+
+What survived from the same area is a different shape — **observable by the
+agent and checkable in its report**: "say whether you used a scout", "say if you
+compacted", "name the verifying test for each tick". Those work. The first two
+fired correctly on their first outing, in M3 group 06's fix round.
+
+### Moved here, not deleted
+
+The turns-not-tokens cost model (ADR-0029), the M2/M3 figures, why brownfield
+groups are sized smaller (ADR-0035), why mockups are approved before code
+exists, why a false tick outranks any turn count, and why Opus builders still
+write their own docs. All still binding as rationale; none of it needs to sit in
+a file that is re-read on every turn.
+
+### No ADR per incident
+
+36 ADRs in 8 days, several of them autopsies of a single mistake. An ADR records
+a decision that constrains future work. An incident goes in the milestone log.
