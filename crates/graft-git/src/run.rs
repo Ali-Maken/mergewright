@@ -43,6 +43,7 @@ use exec::{Ending, Event, Pipe, apply, collect_rest, drain, kill, os_arg, shell_
 
 use crate::repo::RepoHandle;
 
+pub mod askpass;
 mod exec;
 
 /// The longest the runner goes without asking [`Stop`].
@@ -237,6 +238,22 @@ impl GitInvocation {
     pub fn env(mut self, key: impl Into<OsString>, value: impl Into<OsString>) -> Self {
         self.env.push((key.into(), value.into()));
         self
+    }
+
+    /// Routes git's (and ssh's) credential prompts to `server`: sets
+    /// `GIT_ASKPASS` and `SSH_ASKPASS` to its helper, `SSH_ASKPASS_REQUIRE`
+    /// to `force` (ssh asks through it even with a terminal), and
+    /// `GRAFT_ASKPASS_SOCKET` to its socket, so the helper knows it is in
+    /// askpass mode and where to call. `GIT_TERMINAL_PROMPT=0` stays: git
+    /// asks the helper, never the terminal. Only these four variables are
+    /// added; no credential ever travels in the environment or the arguments,
+    /// and the user's own credential helpers still run first.
+    #[must_use]
+    pub fn askpass(self, server: &askpass::AskPassServer) -> Self {
+        self.env("GIT_ASKPASS", server.helper())
+            .env("GRAFT_ASKPASS_SOCKET", server.socket_path())
+            .env("SSH_ASKPASS", server.helper())
+            .env("SSH_ASKPASS_REQUIRE", "force")
     }
 
     /// Adds one argument. The first [`GitArg::Path`] gets a `--` before it if
@@ -517,6 +534,75 @@ mod tests {
             seen.iter().map(Vec::as_slice).collect::<Vec<_>>(),
             "the sink saw exactly the captured stderr, in order, minus separators"
         );
+    }
+
+    /// Counts the asks; never expects one.
+    struct Counting(AtomicUsize);
+
+    impl askpass::AskPass for Counting {
+        fn ask(&self, _prompt: &str) -> Option<askpass::Secret> {
+            self.0.fetch_add(1, Ordering::SeqCst);
+            None
+        }
+    }
+
+    fn askpass_server() -> (Arc<Counting>, askpass::AskPassServer) {
+        let handler = Arc::new(Counting(AtomicUsize::new(0)));
+        let server = askpass::AskPassServer::spawn(
+            std::path::PathBuf::from("/opt/graft helper"),
+            handler.clone(),
+        )
+        .expect("the askpass server starts");
+        (handler, server)
+    }
+
+    /// Read back from the child itself: a git alias running `env` shows the
+    /// environment git hands the programs it starts, askpass included.
+    #[test]
+    fn askpass_env_is_set() {
+        let (_handler, server) = askpass_server();
+        let repo = Fixture::empty_repo();
+        let output = GitInvocation::in_directory(repo.root())
+            .args([
+                GitArg::Flag("-c"),
+                GitArg::Flag("alias.showenv=!env"),
+                GitArg::Flag("showenv"),
+            ])
+            .askpass(&server)
+            .run(&())
+            .expect("git runs the alias");
+        let env = String::from_utf8(output.stdout).expect("UTF-8 env");
+        let socket = server.socket_path().to_str().expect("UTF-8 socket path");
+        for line in [
+            "GIT_ASKPASS=/opt/graft helper".to_owned(),
+            "SSH_ASKPASS=/opt/graft helper".to_owned(),
+            "SSH_ASKPASS_REQUIRE=force".to_owned(),
+            format!("GRAFT_ASKPASS_SOCKET={socket}"),
+            "GIT_TERMINAL_PROMPT=0".to_owned(),
+        ] {
+            assert!(env.lines().any(|seen| seen == line), "{line} in:\n{env}");
+        }
+        server.close().expect("closes cleanly");
+    }
+
+    /// A remote that needs no credentials never reaches the helper: askpass
+    /// only adds a way to answer, it changes nothing else.
+    #[test]
+    fn askpass_leaves_a_credential_free_remote_alone() {
+        let (handler, server) = askpass_server();
+        let (bare, into) = remote_with_objects(1);
+        let url = format!("file://{}", bare.root().to_str().expect("UTF-8"));
+        let output = GitInvocation::in_directory(into.root())
+            .args([GitArg::Flag("ls-remote"), GitArg::Word(url)])
+            .askpass(&server)
+            .run(&())
+            .expect("ls-remote over file:// works");
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains("refs/heads/main"),
+            "{output:?}"
+        );
+        assert_eq!(handler.0.load(Ordering::SeqCst), 0, "nothing was asked");
+        server.close().expect("closes cleanly");
     }
 
     #[test]
