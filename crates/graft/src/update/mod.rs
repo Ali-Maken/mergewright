@@ -33,6 +33,7 @@ mod mouse;
 pub mod operate;
 mod prelude;
 pub mod radar;
+pub mod remote;
 mod search;
 mod selection;
 pub mod stash;
@@ -92,6 +93,7 @@ fn settle(next: &mut AppState, commands: &mut Vec<Command>, cursor_before: usize
     radar::request_force_push_probes(next, commands, &mut || local_jobs.next_id());
     radar::request_duplicates_probe(next, commands, &mut || local_jobs.next_id());
     journal::request(next, commands, &mut || local_jobs.next_id());
+    remote::request_at_launch(next, commands, &mut || local_jobs.next_id());
     // Last of the radar's work: the findings the refs carry, rebuilt only
     // when the refs, `HEAD`, the default branch, the context or the policy
     // moved — so a frame looks a row up instead of walking every ref
@@ -159,6 +161,12 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             undone_answer(next, commands, id, *outcome);
         }
         AppEvent::Produced(id, product @ Product::Journal(_)) => journal_answer(next, id, &product),
+        AppEvent::Produced(id, Product::Remotes(result)) => {
+            remote::remotes_arrived(next, id, result);
+        }
+        AppEvent::Progress(id, Progress::RemoteProgress { brief }) => {
+            remote::remote_progress(next, id, &brief);
+        }
         event @ AppEvent::Produced(
             _,
             Product::CommitTemplate(_)
@@ -221,6 +229,7 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::Undo
         | Task::ReadJournal
         | Task::ReadStashes
+        | Task::ReadRemotes
         | Task::ReadCommitTemplate
         | Task::ReadHeadMessage
         | Task::WriteCommitGraph
@@ -263,8 +272,12 @@ fn operate_answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEv
             }));
             next.local_jobs = local_jobs;
         }
+        // `launch` already put the write's words on the line; this only
+        // restores them if something else took the line meanwhile. It never
+        // overwrites a `Busy` — that would wipe a remote write's
+        // `· esc cancels`, its progress, or `Esc`'s `cancelling`.
         AppEvent::Progress(id, Progress::Operating { description })
-            if next.operating == Some(id) =>
+            if next.operating == Some(id) && !matches!(next.status, Status::Busy(_)) =>
         {
             next.status = Status::Busy(description);
         }
@@ -284,9 +297,15 @@ fn repository_answer(next: &mut AppState, result: Result<RepositoryFacts, String
 /// The repository opened, or re-opened on a refresh.
 fn repository_opened(next: &mut AppState, facts: RepositoryFacts) {
     next.repository = Some(facts);
-    // Whatever went wrong last time has been superseded by a repository
-    // that opened.
-    next.status = Status::Ready;
+    // A read failure from last time has been superseded by a repository
+    // that opened. Nothing else is: a write's `Sticky` failure stays until
+    // `Esc` (PROMPT.md §3), and the refresh that very failure asked for is
+    // what lands here — clearing it wiped `push rejected: …` before it could
+    // be read (m4-remotes/05). A running write's `Busy` and a finished
+    // one's `Done` are the write's line, not the repository's.
+    if matches!(next.status, Status::Failed(_)) {
+        next.status = Status::Ready;
+    }
     commit_graph::decide_commit_graph_offer(next);
 }
 
@@ -355,6 +374,7 @@ fn took_fact(next: &mut AppState, product: Product) {
         | Product::Undone(_)
         | Product::Journal(_)
         | Product::Stashes(_)
+        | Product::Remotes(_)
         | Product::CommitTemplate(_)
         | Product::HeadMessage(_)
         | Product::ExternalEditor(_)
@@ -504,9 +524,14 @@ fn job_cancelled(next: &mut AppState, commands: &mut Vec<Command>, id: graft_cor
         history::give_up_promotion(next, commands);
     }
     let mut local_jobs = next.local_jobs;
-    commands.extend(operate::write_job_ended(next, id, &mut || {
-        local_jobs.next_id()
-    }));
+    // The write `Esc` stopped: the answer the user asked for. Any other
+    // cancelled write (shutdown) is cleared as before.
+    match remote::cancelled(next, id, &mut || local_jobs.next_id()) {
+        Some(refresh) => commands.extend(refresh),
+        None => commands.extend(operate::write_job_ended(next, id, &mut || {
+            local_jobs.next_id()
+        })),
+    }
     next.local_jobs = local_jobs;
 }
 

@@ -76,6 +76,7 @@ mod map;
 pub(crate) mod operate;
 mod pool;
 pub(crate) mod radar;
+pub(crate) mod remote;
 mod runner;
 mod stash;
 mod types;

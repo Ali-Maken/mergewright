@@ -80,6 +80,14 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
         undo_key(next, commands, redo);
         return;
     }
+    // `Esc` while a write runs stops it — any write, not only a remote one
+    // (design note, choice 4). Before the panes and overlays: their `Esc`
+    // closes a view, and a hung fetch must never need two keys to stop.
+    // The confirm box, the menu and the editor have already had the key;
+    // a text field keeps its own `Esc` (`cancel_operating` asks).
+    if key.code == KeyCode::Escape && super::remote::cancel_operating(next, commands) {
+        return;
+    }
     // A failure on the status line is dismissed by `Esc` before `Esc` means
     // anything else (PROMPT.md §3, "errors stay until dismissed"). Without
     // this a write failure had no way off the screen at all
@@ -177,6 +185,8 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
             local_jobs.next_id()
         }));
         next.local_jobs = local_jobs;
+    } else if let Some(remote) = is_remote_key(key) {
+        remote_key(next, commands, remote);
     } else if let Some(change) = view_change(key) {
         let height = next.graph_rows();
         let stashes: Vec<Oid> = next.refs.as_deref().map_or_else(Vec::new, |refs| {
@@ -194,6 +204,42 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     } else if key.code == KeyCode::Escape {
         escape_key(next, commands);
     }
+}
+
+/// The three remote keys (`docs/design/02-keymap.md` §2.3).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RemoteKey {
+    /// `f`.
+    Fetch,
+    /// `p`.
+    Pull,
+    /// `P`.
+    Push,
+}
+
+/// `f` fetch, `p` pull, `P` push — plain keys only.
+fn is_remote_key(key: KeyPress) -> Option<RemoteKey> {
+    if key.modifiers.alt || key.modifiers.control {
+        return None;
+    }
+    match key.code {
+        KeyCode::Char('f') => Some(RemoteKey::Fetch),
+        KeyCode::Char('p') => Some(RemoteKey::Pull),
+        KeyCode::Char('P') => Some(RemoteKey::Push),
+        _ => None,
+    }
+}
+
+/// One remote key, with `local_jobs` borrowed out for the closure.
+fn remote_key(next: &mut AppState, commands: &mut Vec<Command>, remote: RemoteKey) {
+    let mut local_jobs = next.local_jobs;
+    let mut next_id = || local_jobs.next_id();
+    let _claimed: bool = match remote {
+        RemoteKey::Fetch => super::remote::fetch_key(next, commands, &mut next_id),
+        RemoteKey::Pull => super::remote::pull_key(next, commands, &mut next_id),
+        RemoteKey::Push => super::remote::push_key(next),
+    };
+    next.local_jobs = local_jobs;
 }
 
 /// `r`: refresh the repository from disk, cancelling whatever walk was
@@ -232,6 +278,7 @@ pub(super) fn refresh_key(
     commands.push(Command::OpenRepository);
     commands.push(Command::ReadHistory(Order::Topological));
     commands.push(Command::ReadRefs);
+    super::remote::request(next, commands, next_id);
     commands.push(Command::ReadWorkingTree);
     // The default branch's tip may have moved: a stale chain would
     // misclassify a foxtrot merge against a tip that is no longer real.

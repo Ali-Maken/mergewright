@@ -55,7 +55,9 @@ fn launch(
     }
     let id = next_id();
     state.operating = Some(id);
-    state.status = Status::Busy(if redo { "redo" } else { "undo" }.to_owned());
+    let words = if redo { "redo" } else { "undo" };
+    state.status = Status::Busy(words.to_owned());
+    super::remote::launched(state, id, words.to_owned(), None);
     vec![if redo {
         Command::Redo(id, force)
     } else {
@@ -81,7 +83,11 @@ pub fn undone(
             // The entry's own description already reads `undo: stage
             // src/a.rs` (`InversePlan::description`), so it is shown as it
             // stands rather than prefixed into `undid: undo: …`.
-            state.status = Status::Done(applied.entry.description.clone());
+            // `u` passes over a push (design note, choice 1), so a commit
+            // taken back here may still be on the remote: say so, or the
+            // graph's `origin/main` badge reads as a bug.
+            let still_there = super::remote::pushed_since(state, &applied.entry);
+            state.status = Status::Done(format!("{}{still_there}", applied.entry.description));
             refresh(state, applied.refresh, next_id)
         }
         Undone::Incomplete { applied, error } => {

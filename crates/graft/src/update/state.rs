@@ -151,6 +151,14 @@ pub struct AppState {
     /// The stash overlay as this run has read it, and its own cursor
     /// (m3-working-tree-undo-and-stash/06).
     pub stash: super::stash::StashState,
+    /// The configured remotes, `HEAD`'s branch and its upstream: what `f`,
+    /// `p` and `P` decide from (m4-remotes/05). Read with the refs; a
+    /// re-read keeps the last answer on screen until the new one lands
+    /// (`RemoteState::reading` holds the id in flight).
+    pub remotes: super::detail::Loading<std::sync::Arc<crate::jobs::remote::RemoteFacts>>,
+    /// The remote keys' own state: the read in flight, the write they
+    /// launched, and the last rejected push (m4-remotes/05).
+    pub remote: super::remote::RemoteState,
     /// When the last focus-gained refresh ran, Unix milliseconds. A
     /// terminal reports focus in pairs and in bursts, and every report is a
     /// working-tree read (m3-working-tree-undo-and-stash/06).

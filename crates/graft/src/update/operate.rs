@@ -61,7 +61,9 @@ pub(super) fn launch(
 ) {
     let id = next_id();
     next.operating = Some(id);
-    next.status = Status::Busy(op.describe());
+    next.status = Status::Busy(super::remote::busy_text(&op));
+    let remote = op.is_remote().then(|| op.clone());
+    super::remote::launched(next, id, op.describe(), remote);
     commands.push(Command::Operate(id, Box::new(op)));
 }
 
@@ -644,9 +646,21 @@ pub fn operated(
         return Vec::new();
     }
     state.operating = None;
+    // A write that finished before `Esc`'s stop reached it answers here as
+    // usual; the cancel it outran is over.
+    state.remote.cancelling = None;
+    let remote_op = state
+        .remote
+        .running
+        .as_ref()
+        .filter(|running| running.id == id)
+        .and_then(|running| running.op.clone());
     match outcome {
         Operated::Done(applied) => {
-            state.status = Status::Done(applied.entry.description.clone());
+            let done = remote_op
+                .as_ref()
+                .and_then(|op| super::remote::remote_done(state, op));
+            state.status = Status::Done(done.unwrap_or_else(|| applied.entry.description.clone()));
             // The write the editor was open for landed, so the editor and
             // the draft behind it are about a commit that now exists
             // (m3-working-tree-undo-and-stash/05). A failure leaves both
@@ -668,8 +682,14 @@ pub fn operated(
         Operated::Failed {
             error,
             refresh: what,
+            remote,
         } => {
-            state.status = Status::Sticky(error);
+            state.status = match (&remote_op, &remote) {
+                (Some(op), Some(failure)) => {
+                    super::remote::remote_failed(state, op, failure, &error)
+                }
+                _ => Status::Sticky(error),
+            };
             // A failure is not proof the screen is still true: `ApplyError::Git`
             // means git ran part-way and journaled the entry `Aborted`, so the
             // file list, the diff bytes and the header counts describe a
@@ -1560,6 +1580,7 @@ mod tests {
             Operated::Failed {
                 error: "boom".into(),
                 refresh: Some(Refresh::WorkingTree),
+                remote: None,
             },
             &mut ids(),
         );
@@ -1586,6 +1607,7 @@ mod tests {
             Operated::Failed {
                 error: "boom".into(),
                 refresh: Some(Refresh::WorkingTree),
+                remote: None,
             },
             &mut ids(),
         );
@@ -1617,6 +1639,7 @@ mod tests {
             Operated::Failed {
                 error: "nothing to do".into(),
                 refresh: None,
+                remote: None,
             },
             &mut ids(),
         );
