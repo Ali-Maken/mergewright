@@ -91,6 +91,7 @@ fn prompt(state: &AppState) -> Option<StashPromptView<'_>> {
             guide_at: None,
             counter: None,
             focused: true,
+            masked: false,
         },
         staged_only: open.staged_only,
         refusal: crate::update::stash::save_refusal(state).map(sanitize),

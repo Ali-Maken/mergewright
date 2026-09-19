@@ -28,6 +28,7 @@ pub fn commit_editor_view(state: &AppState) -> Option<CommitEditorView<'static>>
             guide_at: u16::try_from(SUBJECT_LIMIT).ok(),
             counter: Some((editor.subject.len(), SUBJECT_LIMIT)),
             focused: editor.focus == Field::Subject,
+            masked: false,
         },
         body: AreaView {
             label: Field::Body.label(),
