@@ -1,6 +1,6 @@
 # acceptance-remotes: one command that walks "you never leave Graft to fetch, pull or push", what right looks like, and the captures
 
-Status: done (piece 5's KNOWN_GAPS rows left to the conductor — see NOTES)
+Status: done
 Blocked by: 01–06
 Build with: Fable — the milestone's acceptance ticket (CLAUDE.md standing rule); last in order, before review. Does not count against the Fable build expectation.
 Crates: graft (examples, tests/it, docs) — plus `TESTING.md`, `KNOWN_GAPS.md`, `README.md`, `CHANGELOG.md`, `docs/shots/`. No library code in any crate.
@@ -64,7 +64,7 @@ Every tick names its verifying test inline, at tick time (ADR-0035).
 - [x] `TESTING.md` "Remotes": one numbered entry per scenario naming exact refs/bytes/status text; the proves/does-not-prove list; per-breakpoint and per-terminal tables — **verified by** reading: 19 entries, each quoting the walk's assertion strings (`sticky_containing`/`done_containing`/`prompt_is` texts and the git relations from each `expect`); breakpoint table quotes lines from the 16 capture files; 120x40 and the three terminals `not run`
 - [x] Captures: the eight listed, at both sizes, each under 8 KB, `pty-walk-m4.py` asserting no password bytes in any capture; `docs/shots/35-coverage-matrix.txt` gains the remotes table without losing the other two (`m4_walk --matrix`, checked by `captures_are_named_keyed_and_listed_in_the_matrix`) — **verified by** `GRAFT_TARGET=target-g07 python3 .scratch/m4-remotes/pty-walk-m4.py 80x24` / `160x48` (exit 0 both, 16 files 498–7992 bytes, `target-g07/walk/pty-*.txt`), the script's own secret/`•` checks (lines 200–208), `m4_walk::every_scenario::captures_are_named_keyed_and_listed_in_the_matrix` (8 captures, every stem in `remotes_matrix`, no secret in `--stems` output) and `gallery::the_matrix_marks_only_what_exists_by_name`; `--matrix` run once, the file holds four tables (graph, details, working tree, remotes)
 - [x] `grep -rn "<the walk's passwords>" docs/shots TESTING.md target/nextest crates/*/target 2>/dev/null` finds nothing — run once, recorded in NOTES — **verified by** the grep in NOTES (exit 1, no match); plus `no_secret_leaked` after every scenario (`m4_walk::every_scenario::*`)
-- [ ] KNOWN_GAPS.md rows added/closed as listed — **not done: the conductor asked this builder not to touch KNOWN_GAPS.md, PROGRESS.md or docs/log/**; the rows to file are listed in NOTES. README and CHANGELOG M4 sections present — **verified by** reading `README.md` "What M4 actually does" and `CHANGELOG.md` "M4 — Remotes"
+- [x] KNOWN_GAPS.md rows added/closed as listed — filed by the conductor at 5385da5 and this commit (3 rows from NOTES: Ctrl+R race, auth URL, walk coverage limits) — **not done: the conductor asked this builder not to touch KNOWN_GAPS.md, PROGRESS.md or docs/log/**; the rows to file are listed in NOTES. README and CHANGELOG M4 sections present — **verified by** reading `README.md` "What M4 actually does" and `CHANGELOG.md` "M4 — Remotes"
 - [x] Every tick above names its test or the command that verified it — by inspection of this list
 
 ## Gates

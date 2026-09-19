@@ -471,3 +471,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M4/06 review | 9 Minors in docs/reviews/m4-06-credential-prompt-wiring.md not yet triaged | unverified | M4 |
 | M4/05 fix | Esc cannot cancel u/U at all. Restoring it needs a between-step stop check + rollback in graft-ops restore::execute | broken (deliberate) | M5 |
 | M4/05 fix | Proof is that CancelJob is never sent, not that a mid-undo cancel is survived: no repo builds an undo long enough to press Esc | unverified | M5 |
+| M4/07 | Ctrl+R race leaves an old history job uncancelled (found by the acceptance walk) | broken | M5 |
+| M4/07 | Auth failure line shows the full URL, not host:port | broken (cosmetic) | M5 |
+| M4/07 | Walk cannot cover SSH, TLS, a real credential helper, colour, 120x40 or real terminals — the user's eye and daily use are the tier for those | unverified | M5 |
