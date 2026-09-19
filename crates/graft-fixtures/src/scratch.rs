@@ -24,6 +24,13 @@ impl Scratch {
         self.dir.path()
     }
 
+    /// An empty scratch directory, for a fixture that builds its own
+    /// contents (the remotes).
+    pub(crate) fn empty(prefix: &str) -> Result<Self, io::Error> {
+        let dir = TempDir::with_prefix(format!("graft-{prefix}-"))?;
+        Ok(Scratch { dir })
+    }
+
     pub(crate) fn from(source: &Path, prefix: &str) -> Result<Self, io::Error> {
         let dir = TempDir::with_prefix(format!("graft-{prefix}-"))?;
         copy_tree(source, dir.path())?;

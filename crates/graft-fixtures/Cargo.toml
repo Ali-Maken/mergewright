@@ -22,6 +22,12 @@ tempfile = "3.27.0"
 # measured with (PROMPT.md 7.1 names the call). One `unsafe` site, ADR-0015.
 libc = "0.2"
 
+# Smart HTTP for the remote fixtures (`remote::HttpRemote`): a blocking,
+# thread-per-connection server in front of `git http-backend`. No async
+# runtime, no TLS. A normal dependency, not a dev-dependency, because other
+# crates' tests call it — this whole crate is dev-only.
+tiny_http = "0.12.0"
+
 # The heavy tier (PROMPT.md 7.1): the synthetic repository of 100k commits and
 # every test that reads it. Off by default, so a fast-tier `cargo test` cannot
 # compile — let alone run — anything that generates a fixture that large.
