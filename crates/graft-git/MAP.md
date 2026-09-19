@@ -27,7 +27,7 @@ One line per public item. Update when a public item changes.
 - `CommitGraphStatus` (enum) — `Present { commits }` or `Absent` (as the walk sees it: `core.commitGraph` respected).
 - `status` (fn) — read through gix; a corrupt file is `Err(Graph)`, never `Absent`.
 - `Written` (struct) — `commits` in the new file, `elapsed`.
-- `write` (fn) — blocking; runs `git --git-dir <common_dir> commit-graph write --reachable --no-progress`, never kills it, reads the file back.
+- `write` (fn) — blocking; runs `git -C <common_dir> commit-graph write --reachable --no-progress` through `run` with `&()` (never kills it, m3/01), reads the file back.
 - `CommitGraphError` (enum) — `GitNotFound`, `Exited { status, stderr_first_line }` (raw), `Signalled`, `Io`, `Graph`; `Display` is the problem line.
 - `Offer` (enum) — `Undecided` or `Declined`.
 - `offer_state` (fn) — `<common_dir>/graft/commit-graph-offer` present = `Declined`.
@@ -134,6 +134,7 @@ One line per public item. Update when a public item changes.
 ## run
 - `GitInvocation` (struct) — `git -C <workdir or git_dir> --no-pager <args>`; env adds `GIT_TERMINAL_PROMPT=0`, `LC_ALL=C`, `GIT_OPTIONAL_LOCKS=0`, user config kept.
 - `GitInvocation::new` / `arg` / `args` (fn) — build from typed args; the first `Path` gets a `--` before it if none was added.
+- `GitInvocation::env` (fn) — adds one variable to the child's environment, after the fixed ones (`GIT_INDEX_FILE`, `GIT_AUTHOR_*`, …); a later call for the same key overrides an earlier one (m3/01).
 - `GitInvocation::stdin` (fn) — bytes fed from their own thread; without it stdin is null.
 - `GitInvocation::output_cap` (fn) — max bytes kept per stream (default 64 MiB); past it the child is killed, output cut to the cap, `truncated`, still `Ok`.
 - `GitInvocation::run` (fn) — spawn, drain stdout/stderr concurrently, poll `Stop` every ≤ 50 ms; on stop kill + reap, `Err(Stopped)`.
@@ -156,5 +157,5 @@ One line per public item. Update when a public item changes.
 - `SystemGit` (enum) — the system git, classified against `GitVersion::MINIMUM`.
 - `SystemGit::for_version` (fn) — classify a found version against the minimum.
 - `SystemGit::version` (fn) — the version found.
-- `system_git` (fn) — run `git --version` and classify what it printed.
+- `system_git` (fn) — run `git --version` through `run` (its own deadline `Stop`, since `run` has no built-in timeout) and classify what it printed (m3/01).
 - `VersionError` (enum) — why finding the system git failed.

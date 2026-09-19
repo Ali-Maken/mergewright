@@ -26,6 +26,7 @@
 //!   returned, cut to the cap, with `truncated` set. A capped read is still a
 //!   successful one.
 
+use std::ffi::OsString;
 use std::io::{self, Write};
 use std::path::Path;
 use std::process::{Child, Command, ExitStatus, Stdio};
@@ -140,6 +141,10 @@ pub struct GitInvocation {
     args: Vec<GitArg>,
     stdin: Option<Vec<u8>>,
     cap: usize,
+    /// Extra environment variables, added after the fixed ones in
+    /// [`spawn`](Self::spawn). A later entry for the same key overrides an
+    /// earlier one, as [`Command::env`] does.
+    env: Vec<(OsString, OsString)>,
 }
 
 impl GitInvocation {
@@ -151,13 +156,29 @@ impl GitInvocation {
         Self::in_directory(directory)
     }
 
-    fn in_directory(directory: &Path) -> Self {
+    /// A command with no arguments yet, run in `directory` directly — for git
+    /// surfaces with no open [`RepoHandle`] yet (`git --version`, at
+    /// startup) or that need a directory a handle does not give
+    /// (`--git-dir` on the common directory, so a commit-graph write reaches
+    /// every worktree's shared object store).
+    pub(crate) fn in_directory(directory: &Path) -> Self {
         Self {
             directory: directory.to_path_buf(),
             args: Vec::new(),
             stdin: None,
             cap: DEFAULT_CAP,
+            env: Vec::new(),
         }
+    }
+
+    /// Adds one variable to the child's environment, after the fixed ones
+    /// (`GIT_TERMINAL_PROMPT`, `LC_ALL`, `GIT_OPTIONAL_LOCKS`): `GIT_INDEX_FILE`,
+    /// `GIT_AUTHOR_*` and the like. A later call for the same key overrides an
+    /// earlier one.
+    #[must_use]
+    pub fn env(mut self, key: impl Into<OsString>, value: impl Into<OsString>) -> Self {
+        self.env.push((key.into(), value.into()));
+        self
     }
 
     /// Adds one argument. The first [`GitArg::Path`] gets a `--` before it if
@@ -235,6 +256,11 @@ impl GitInvocation {
             .env("GIT_TERMINAL_PROMPT", "0")
             .env("LC_ALL", "C")
             .env("GIT_OPTIONAL_LOCKS", "0")
+            .envs(
+                self.env
+                    .iter()
+                    .map(|(key, value)| (key.as_os_str(), value.as_os_str())),
+            )
             .stdin(if self.stdin.is_some() {
                 Stdio::piped()
             } else {

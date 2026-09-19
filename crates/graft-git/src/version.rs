@@ -6,14 +6,16 @@
 //! not a refusal — but it has to be a warning the user actually sees, because
 //! the failure it predicts arrives much later and looks like a Graft bug.
 //!
-//! This is deliberately the whole of the git-running surface for M0. The typed
-//! `GitInvocation` builder every real operation goes through — arguments as
-//! values, never a joined shell string — arrives with the first write.
+//! Runs through [`GitInvocation`] like every other git spawn from M3 on
+//! (m2-details-and-diffs/01): arguments as values, never a joined shell
+//! string.
 
 use std::fmt;
 use std::io;
-use std::process::{Command, Output, Stdio};
+use std::path::Path;
 use std::time::{Duration, Instant};
+
+use crate::run::{GitArg, GitInvocation, RunError, Stop};
 
 /// How long `git --version` may take before Graft gives up on it.
 ///
@@ -21,6 +23,29 @@ use std::time::{Duration, Instant};
 /// startup: a `git` wedged on a stale network mount must leave Graft with a
 /// version it cannot determine, not with a window that never appears.
 const DEADLINE: Duration = Duration::from_secs(10);
+
+/// A [`Stop`] that says stop once [`DEADLINE`] has passed, checked on
+/// [`GitInvocation::run`]'s own poll (at least every 50 ms) — no separate
+/// timer thread.
+struct Deadline {
+    started: Instant,
+    limit: Duration,
+}
+
+impl Deadline {
+    fn starting_now(limit: Duration) -> Self {
+        Self {
+            started: Instant::now(),
+            limit,
+        }
+    }
+}
+
+impl Stop for Deadline {
+    fn should_stop(&self) -> bool {
+        self.started.elapsed() >= self.limit
+    }
+}
 
 /// A `major.minor.patch` git version.
 ///
@@ -102,64 +127,62 @@ impl SystemGit {
 
 /// Runs `git --version` and classifies what it printed.
 ///
+/// Goes through [`GitInvocation`], in the current directory: there is no
+/// open repository yet at startup, and `--version` reads none. Its own
+/// [`Deadline`] stands in for [`Stop`] — `GitInvocation` has no built-in
+/// timeout, only cancellation, and a wedged `git` here must not hang
+/// startup.
+///
 /// # Errors
 /// [`VersionError`] if git is not on the `PATH`, could not be run, did not
 /// finish within [`DEADLINE`], exited non-zero, or printed something this
 /// function cannot read as a version.
 pub fn system_git() -> Result<SystemGit, VersionError> {
-    let output = run_git_version()?;
-
-    if !output.status.success() {
-        return Err(VersionError::Failed {
-            status: output.status.to_string(),
-            stderr: String::from_utf8_lossy(&output.stderr).trim().to_owned(),
-        });
-    }
+    let deadline = Deadline::starting_now(DEADLINE);
+    let invocation = GitInvocation::in_directory(Path::new(".")).arg(GitArg::Flag("--version"));
+    let output = invocation
+        .run(&deadline)
+        .map_err(run_error_to_version_error)?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     parse_version(&stdout).map(SystemGit::for_version)
 }
 
-/// Runs `git --version`, giving up at [`DEADLINE`].
-fn run_git_version() -> Result<Output, VersionError> {
-    let mut child = Command::new("git")
-        // A typed argument, not a joined shell string (PROMPT.md Technology).
-        .arg("--version")
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        // `--version` never asks for credentials, but an ambient askpass or a
-        // terminal prompt would turn a version check into a hang.
-        .env("GIT_TERMINAL_PROMPT", "0")
-        .env("LC_ALL", "C")
-        .spawn()
-        .map_err(|source| VersionError::Spawn { source })?;
-
-    let started = Instant::now();
-    loop {
-        let exited = child
-            .try_wait()
-            .map_err(|source| VersionError::Spawn { source })?;
-        if exited.is_some() {
-            break;
-        }
-        if started.elapsed() >= DEADLINE {
-            // Best effort: if the kill or the reap fails the child is beyond
-            // our reach anyway, and the timeout is still the right answer.
-            let killed = child.kill().and_then(|()| child.wait().map(drop));
-            return Err(VersionError::Timeout {
-                after: DEADLINE,
-                kill: killed.err(),
-            });
-        }
-        // Both pipes are read below. `git --version` prints one short line,
-        // far less than a pipe buffer, so neither can fill while we wait.
-        std::thread::sleep(Duration::from_millis(2));
+/// Reads [`RunError`] into the shape `system_git`'s callers already know.
+/// `--version` never asks for credentials or reads config, so the only
+/// failures `GitInvocation` can produce here are git missing, unstartable,
+/// stopped (the deadline) or exiting non-zero — never `Signalled`, since
+/// nothing but the deadline ever kills it and the deadline reads as
+/// `Stopped`.
+fn run_error_to_version_error(error: RunError) -> VersionError {
+    match error {
+        RunError::GitNotFound => VersionError::Spawn {
+            source: io::Error::new(
+                io::ErrorKind::NotFound,
+                "git is not installed, or not on the PATH",
+            ),
+        },
+        RunError::Spawn(source) => VersionError::Spawn { source },
+        RunError::Stopped => VersionError::Timeout {
+            after: DEADLINE,
+            // `GitInvocation::run` already killed and reaped the child
+            // before returning `Stopped`; a kill that failed instead
+            // surfaces as `RunError::Spawn`, above.
+            kill: None,
+        },
+        RunError::Exited {
+            status,
+            stderr_first_line,
+            ..
+        } => VersionError::Failed {
+            status: format!("exit code {status}"),
+            stderr: stderr_first_line,
+        },
+        RunError::Signalled { .. } => VersionError::Failed {
+            status: "killed by a signal".to_owned(),
+            stderr: String::new(),
+        },
     }
-
-    child
-        .wait_with_output()
-        .map_err(|source| VersionError::Spawn { source })
 }
 
 /// Reads the version out of `git --version`'s output.

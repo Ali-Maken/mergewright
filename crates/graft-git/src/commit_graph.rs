@@ -24,10 +24,10 @@
 use std::fmt;
 use std::io;
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use crate::repo::RepoHandle;
+use crate::run::{GitArg, GitInvocation, RunError};
 
 /// Whether the repository has a commit-graph the walk will use.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -118,39 +118,27 @@ pub fn status(repo: &RepoHandle) -> Result<CommitGraphStatus, CommitGraphError> 
     }
 }
 
-/// Runs `git --git-dir <common_dir> commit-graph write --reachable
-/// --no-progress` and waits for it, then reads the new file back.
+/// Runs `git -C <common_dir> commit-graph write --reachable --no-progress`
+/// through [`GitInvocation`] and waits for it, then reads the new file back.
 ///
-/// Blocking: a job's work. Never kills the child (module doc).
+/// Blocking: a job's work. Never kills the child (module doc) — run with
+/// `&()`, the [`Stop`](crate::run::Stop) that never says stop.
 ///
 /// # Errors
 /// [`CommitGraphError`]: git missing, exiting non-zero or signalled; the file
 /// unreadable afterwards; or a write that "succeeded" and left no file.
 pub fn write(repo: &RepoHandle) -> Result<Written, CommitGraphError> {
     let started = Instant::now();
-    let output = Command::new("git")
-        .arg("--git-dir")
-        .arg(repo.common_dir())
-        .args(["commit-graph", "write", "--reachable", "--no-progress"])
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .map_err(|error| match error.kind() {
-            io::ErrorKind::NotFound => CommitGraphError::GitNotFound(error),
-            _ => CommitGraphError::Io(error),
-        })?;
+    let invocation = GitInvocation::in_directory(repo.common_dir()).args([
+        GitArg::Flag("commit-graph"),
+        GitArg::Flag("write"),
+        GitArg::Flag("--reachable"),
+        GitArg::Flag("--no-progress"),
+    ]);
+    invocation
+        .run(&())
+        .map_err(run_error_to_commit_graph_error)?;
     let elapsed = started.elapsed();
-
-    if !output.status.success() {
-        return Err(match output.status.code() {
-            Some(status) => CommitGraphError::Exited {
-                status,
-                stderr_first_line: first_line(&output.stderr),
-            },
-            None => CommitGraphError::Signalled,
-        });
-    }
 
     match status(repo)? {
         CommitGraphStatus::Present { commits } => Ok(Written { commits, elapsed }),
@@ -159,6 +147,31 @@ pub fn write(repo: &RepoHandle) -> Result<Written, CommitGraphError> {
         CommitGraphStatus::Absent => Err(CommitGraphError::Graph(
             "git wrote a commit-graph but it is not in use (is core.commitGraph off?)".to_owned(),
         )),
+    }
+}
+
+/// Reads [`RunError`] into the shape `write`'s callers already know.
+/// `RunError::Stopped` cannot occur here: `write` runs with `&()`, which
+/// never asks for a stop.
+fn run_error_to_commit_graph_error(error: RunError) -> CommitGraphError {
+    match error {
+        RunError::GitNotFound => CommitGraphError::GitNotFound(io::Error::new(
+            io::ErrorKind::NotFound,
+            "git is not installed, or not on the PATH",
+        )),
+        RunError::Spawn(source) => CommitGraphError::Io(source),
+        RunError::Stopped => CommitGraphError::Io(io::Error::other(
+            "write was stopped, which never asks to be",
+        )),
+        RunError::Exited {
+            status,
+            stderr_first_line,
+            ..
+        } => CommitGraphError::Exited {
+            status,
+            stderr_first_line,
+        },
+        RunError::Signalled { .. } => CommitGraphError::Signalled,
     }
 }
 
