@@ -120,12 +120,12 @@ fn summary(entry: &JournalEntry) -> String {
             }
             let remote = tracking.split('/').next().unwrap_or("the remote");
             parts.push(format!("not undoable \u{2014} {remote} has it"));
-            return with_failure(entry, parts);
+            return with_failure(entry, &parts);
         }
         OperationKind::Fetch => {
             parts.push("remote-tracking refs".to_owned());
             parts.push("not undoable".to_owned());
-            return with_failure(entry, parts);
+            return with_failure(entry, &parts);
         }
         _ => {}
     }
@@ -159,7 +159,7 @@ fn summary(entry: &JournalEntry) -> String {
 
 /// A push or fetch row that failed says so first, and nothing else: an
 /// aborted push sent nothing, so "origin has it" would be false.
-fn with_failure(entry: &JournalEntry, parts: Vec<String>) -> String {
+fn with_failure(entry: &JournalEntry, parts: &[String]) -> String {
     if entry.is_interrupted() {
         return "interrupted".to_owned();
     }
@@ -291,6 +291,23 @@ mod tests {
         );
     }
 
+    /// A remote entry: `refs` touched, no index, no tree, no backup.
+    fn remote_entry(
+        n: i64,
+        kind: OperationKind,
+        description: &str,
+        refs: Vec<String>,
+    ) -> JournalEntry {
+        let mut entry = entry(n, kind, description);
+        entry.touches = Touches {
+            refs,
+            index: false,
+            worktree: false,
+        };
+        entry.backup_ref = None;
+        entry
+    }
+
     /// Push, Fetch and Pull rows in the design note's words (New UI,
     /// "Journal browser rows"). `← u` falls on the pull — the newest
     /// undoable entry — never on the push or fetch newer than it; that mark
@@ -304,37 +321,25 @@ mod tests {
             index: true,
             worktree: true,
         };
-        let mut push = entry(2, OperationKind::Push, "push main → origin/main");
-        push.touches = Touches {
-            refs: vec![tracking.clone()],
-            index: false,
-            worktree: false,
-        };
-        push.backup_ref = None;
+        let mut push = remote_entry(
+            2,
+            OperationKind::Push,
+            "push main → origin/main",
+            vec![tracking.clone()],
+        );
         let a1 = graft_core::oid::Oid::from_hex("a1b2c3d4e5f60718293a4b5c6d7e8f9012345678")
             .expect("40 hex digits");
         let nine = graft_core::oid::Oid::from_hex("9f8e7d6c5b4a39281706f5e4d3c2b1a098765432")
             .expect("40 hex digits");
         push.refs_before.insert(tracking.clone(), Some(a1));
         push.refs_after.insert(tracking, Some(nine));
-        let mut unrecorded = entry(
+        let unrecorded = remote_entry(
             3,
             OperationKind::Push,
             "push topic → origin/topic (set upstream)",
+            Vec::new(),
         );
-        unrecorded.touches = Touches {
-            refs: Vec::new(),
-            index: false,
-            worktree: false,
-        };
-        unrecorded.backup_ref = None;
-        let mut fetch = entry(4, OperationKind::Fetch, "fetch all remotes");
-        fetch.touches = Touches {
-            refs: Vec::new(),
-            index: false,
-            worktree: false,
-        };
-        fetch.backup_ref = None;
+        let fetch = remote_entry(4, OperationKind::Fetch, "fetch all remotes", Vec::new());
         let state = state_with(vec![pull, push, unrecorded, fetch]);
         let view = journal_view(&state, 10);
         let rows: Vec<(&str, &str, RowMark)> = view

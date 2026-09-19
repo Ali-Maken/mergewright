@@ -34,13 +34,14 @@ fn with_facts(
     head_branch: Option<&str>,
     head_upstream: Option<TrackedUpstream>,
 ) -> AppState {
-    let mut state = AppState::default();
-    state.remotes = Loading::Ready(Arc::new(RemoteFacts {
-        remotes,
-        head_branch: head_branch.map(str::to_owned),
-        head_upstream,
-    }));
-    state
+    AppState {
+        remotes: Loading::Ready(Arc::new(RemoteFacts {
+            remotes,
+            head_branch: head_branch.map(str::to_owned),
+            head_upstream,
+        })),
+        ..AppState::default()
+    }
 }
 
 fn press(state: &AppState, key: KeyPress) -> (AppState, Vec<Command>) {
@@ -104,6 +105,13 @@ fn pull_with_an_upstream_launches_it() {
     assert_eq!(again.operating, Some(id));
 }
 
+/// One box's title, consequence lines and command, exactly.
+fn assert_box(view: &ConfirmView, title: &str, message: &[&str], command: &str) {
+    assert_eq!(view.title, title);
+    assert_eq!(view.message, message);
+    assert_eq!(view.command, command);
+}
+
 /// The push box's title, consequence and command, exactly, for the three
 /// shapes: an upstream, none (`-u`), and the lease after a rejection.
 #[test]
@@ -119,14 +127,11 @@ fn push_box_text_table() {
     let params = push_params(&state).expect("an upstream to push to");
     assert!(!params.set_upstream && params.lease.is_none());
     let view = push_box(&params, Some(2), Some(ours));
-    assert_eq!(view.title, "Push main → origin/main");
-    assert_eq!(
-        view.message,
-        ["2 commits · can't be undone from here — origin keeps what you send"]
-    );
-    assert_eq!(
-        view.command,
-        "git push --progress origin refs/heads/main:refs/heads/main"
+    assert_box(
+        &view,
+        "Push main → origin/main",
+        &["2 commits · can't be undone from here — origin keeps what you send"],
+        "git push --progress origin refs/heads/main:refs/heads/main",
     );
     assert_eq!(
         (view.safe_label.as_str(), view.confirm_label.as_str()),
@@ -143,15 +148,11 @@ fn push_box_text_table() {
     assert_eq!(params.remote, "origin");
     assert_eq!(params.remote_branch, "refs/heads/main");
     assert!(params.set_upstream);
-    let view = push_box(&params, None, Some(ours));
-    assert_eq!(view.title, "Push main → origin/main");
-    assert_eq!(
-        view.message,
-        ["sets upstream · can't be undone from here — origin keeps what you send"]
-    );
-    assert_eq!(
-        view.command,
-        "git push --progress -u origin refs/heads/main:refs/heads/main"
+    assert_box(
+        &push_box(&params, None, Some(ours)),
+        "Push main → origin/main",
+        &["sets upstream · can't be undone from here — origin keeps what you send"],
+        "git push --progress -u origin refs/heads/main:refs/heads/main",
     );
 
     // 3. The same push after a non-fast-forward rejection: the lease box.
@@ -169,19 +170,16 @@ fn push_box_text_table() {
         })
     );
     let view = push_box(&params, Some(1), Some(ours));
-    assert_eq!(view.title, "Force-push main → origin/main?");
-    assert_eq!(
-        view.message,
-        [
+    assert_box(
+        &view,
+        "Force-push main → origin/main?",
+        &[
             "origin/main 9f8e7d6 → a1b2c3d · refused if origin moved since your fetch (lease)",
             "rewrites history for everyone who has 9f8e7d6",
-        ]
-    );
-    assert_eq!(
-        view.command,
-        format!(
+        ],
+        &format!(
             "git push --progress --force-with-lease=refs/heads/main:{THEIRS} --force-if-includes origin refs/heads/main:refs/heads/main"
-        )
+        ),
     );
     assert_eq!(view.confirm_label, "Force push");
 }

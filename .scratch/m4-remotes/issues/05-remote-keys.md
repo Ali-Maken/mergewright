@@ -1,6 +1,6 @@
 # remote-keys: `f` / `p` / `P`, the push box, `Esc` cancels a running write, live progress, plain-English failures, remote facts in `AppState`
 
-Status: in progress
+Status: done
 Blocked by: 04
 Build with: Opus — taking the planner's recommendation: key routing, job plumbing and cancel wiring through the pool.
 Crates: graft
@@ -60,20 +60,20 @@ pub enum Operated { Done(Applied), Incomplete { .. }, Failed { error: String, re
 
 Every tick names its verifying test inline, at tick time (ADR-0035). Key-to-repo tests read git, never `AppState`, for repository facts.
 
-- [ ] `f` after `commit_on_remote`: tracking ref moves, badge reads `main ↓1` (via the refs product), status ends `fetched`, journal has a `Fetch` entry — `remote_by_key::fetch_key_moves_tracking_ref`
-- [ ] `p`: `main` == tracking tip, file bytes updated; `u` → `main` back, bytes back, tracking ref unchanged; `U` → forward — `remote_by_key::pull_then_undo_redo`
-- [ ] `p` with no upstream / detached HEAD: no command, status text per the note — `update::remote::tests::pull_refusals_are_words_not_commands`
-- [ ] `P` opens the box with the note's exact title/consequence/command for: upstream present; no upstream (sets upstream); lease after rejection — `update::remote::tests::push_box_text_table` (3 cases)
-- [ ] `P` → `Enter`: bare's `main` == local; `u` undoes the **commit** locally, status ends `origin/main still has it`, bare unchanged; `U` restores — `remote_by_key::push_then_undo_is_local_only`
-- [ ] `P` after `commit_on_remote` → `Sticky` "push rejected: origin/main has commits you don't · p to pull first, or P to force with lease"; `P` → lease box → `Enter` → (after a local amend) bare's `main` == local; without the amend (stale) → `Sticky` names `stale lease` and bare unchanged — `remote_by_key::rejected_then_lease_push`, `remote_by_key::stale_lease_refused`
-- [ ] `Esc` during `f` against `HungRemote`: `operating` clears within 5 s, journal entry `Aborted` with `cancelled`, status `fetch all remotes cancelled`, no `.git/**/*.lock`, `HungRemote::connections() == 1` — `remote_by_key::esc_cancels_hung_fetch`
-- [ ] `Esc` during a local `commit` (a pre-commit hook `sleep 5`) cancels it the same way — `remote_by_key::esc_cancels_local_write`
-- [ ] `Status::Busy` text during a fetch contained a `RemoteProgress.brief` at least once (record every status the harness saw) — `remote_by_key::progress_reaches_the_status_line`
-- [ ] `u`, `U`, `Ctrl+Z`, `f`, `p`, `P` typed while the push box is open change nothing but the box (M3 06 C1's shape) — `update::remote::tests::box_is_modal`
-- [ ] Journal browser rows for Push/Fetch/Pull read exactly as the note says, no `← u` on Push/Fetch — `view::journal::tests::remote_rows`
-- [ ] Radar `RepoFacts.remotes` is the real list — `view::radar::tests::remotes_come_from_facts`
-- [ ] A `Product::Remotes` under a stale id is dropped — `update::tests::stale_remotes_dropped`
-- [ ] MAP.md, ARCHITECTURE.md updated
+- [x] `f` after `commit_on_remote`: tracking ref moves, badge reads `main ↓1` (via the refs product), status ends `fetched`, journal has a `Fetch` entry — `remote_by_key::fetch_key_moves_tracking_ref`
+- [x] `p`: `main` == tracking tip, file bytes updated; `u` → `main` back, bytes back, tracking ref unchanged; `U` → forward — `remote_by_key::pull_then_undo_redo`
+- [x] `p` with no upstream / detached HEAD: no command, status text per the note — `update::remote::tests::pull_refusals_are_words_not_commands`
+- [x] `P` opens the box with the note's exact title/consequence/command for: upstream present; no upstream (sets upstream); lease after rejection — `update::remote::tests::push_box_text_table` (3 cases)
+- [x] `P` → `Enter`: bare's `main` == local; `u` undoes the **commit** locally, status ends `origin/main still has it`, bare unchanged; `U` restores — `remote_by_key::push_then_undo_is_local_only`
+- [x] `P` after `commit_on_remote` → `Sticky` "push rejected: origin/main has commits you don't · p to pull first, or P to force with lease"; `P` → lease box → `Enter` → (after a local amend) bare's `main` == local; without the amend (stale) → `Sticky` names `stale lease` and bare unchanged — `remote_by_key::rejected_then_lease_push`, `remote_by_key::stale_lease_refused`
+- [x] `Esc` during `f` against `HungRemote`: `operating` clears within 5 s, journal entry `Aborted` with `cancelled`, status `fetch all remotes cancelled`, no `.git/**/*.lock`, `HungRemote::connections() == 1` — `remote_by_key::esc_cancels_hung_fetch`
+- [x] `Esc` during a local `commit` (a pre-commit hook `sleep 5`) cancels it the same way — `remote_by_key::esc_cancels_local_write`
+- [x] `Status::Busy` text during a fetch contained a `RemoteProgress.brief` at least once (record every status the harness saw) — `remote_by_key::progress_reaches_the_status_line`
+- [x] `u`, `U`, `Ctrl+Z`, `f`, `p`, `P` typed while the push box is open change nothing but the box (M3 06 C1's shape) — `update::remote::tests::box_is_modal`
+- [x] Journal browser rows for Push/Fetch/Pull read exactly as the note says, no `← u` on Push/Fetch — `view::journal::tests::remote_rows`
+- [x] Radar `RepoFacts.remotes` is the real list — `view::radar::tests::remotes_come_from_facts`
+- [x] A `Product::Remotes` under a stale id is dropped — `update::tests::stale_remotes_dropped`
+- [x] MAP.md, ARCHITECTURE.md updated — docs, no test; checked by reading the diff
 
 ## Gates
 
@@ -82,3 +82,32 @@ Every tick names its verifying test inline, at tick time (ADR-0035). Key-to-repo
 ## Size
 
 One context; brownfield — **scout first** (sonnet, ≤ 1 page each): `update/keys.rs` routing order and free keys, `jobs/pool.rs` cancel semantics, `update/operate.rs::launch`/`operated`, `tests/it/undo_by_key.rs` harness helpers. Report whether you did. Stop seam: after piece 3 (keys + cancel, no progress/failure wording) with 4–7 in a handoff note. Past 150 turns: stop, `partial`, handoff.
+
+## NOTES
+
+**Compacted once mid-ticket.** Remaining after the compaction was: `tests/it/remote_by_key.rs`, MAP.md, ARCHITECTURE.md, gates, capture, this ticket. All done in the second context; nothing left over.
+
+Scouts: two Sonnet scouts (key routing + pool cancel semantics; operate/undo/harness).
+
+Verified by running (not only gates): the 8 `remote_by_key` tests pass on real `git` against `LocalRemote`/`HungRemote`, three consecutive runs, 8/8 each, no flake of `esc_cancels_hung_fetch` seen. `esc_cancels_local_write` first passed vacuously-then-failed: `Esc` landed before the pool started the job, so nothing ran and nothing was journaled. The test now waits for the hook to write a marker file (it is inside `git commit`) before `Esc`.
+
+Deviations from the Signatures block, each deliberate:
+- `push_params -> Result<PushParams, String>` (not `&'static str`): the several-remotes refusal names the branch.
+- `push_box(params, ahead, local_tip)`: the lease box names the tip it sends (`9f8e7d6 → a1b2c3d`).
+- `remote_failed(state, op, failure, explained)`: reuses ops' `ApplyError::explain()` wording rather than restating it here.
+- `repo_facts(state, ctx, remotes)` + `view::radar::remote_names`.
+- `RemoteState` also holds `reading`, `running`, `cancelling`.
+- The launch read runs from `update::settle` once the repository has opened, not from the event loop's startup list.
+- Only remote operations get ` · esc cancels`; local writes stay as M3 worded them, though `Esc` stops them too.
+- `Busy("<desc> · cancelling")` without `…`: the footer adds it. And the footer now draws a line ending in `ESC_HINT` with no trailing `…` (design note wording) — `view::tests::a_remote_write_ends_in_its_hint`.
+- `repository_opened` no longer resets a `Sticky` status to Ready: the refresh after a failed push was wiping the rejection line the next `P` depends on. It clears `Failed` only.
+- The commit editor's own `Esc` goes through `update::remote::stop_write`, so a slow commit stops the same way.
+- `main.rs` gained askpass mode (`GRAFT_ASKPASS_SOCKET` set → `run::askpass::respond`, exit). Without it git would launch the TUI as its askpass helper. G5b owns the prompt itself.
+- Lease acceptance setup: the *succeeding* lease uses an amended, already-pushed commit (rejected as non-fast-forward, then the lease holds because the tracking tip is current). After `commit_on_remote` with no fetch the lease is always stale — that is `stale_lease_refused`.
+
+Unverified / for the user's eye:
+- `docs/shots/m4-remote-keys.txt` (TestBackend, not pty; no colour): the lease box and the fetch footer. The box truncates the long `--force-with-lease=…` command at its width (`…9f8e7d6c…`) — graft-ui's box, not changed here.
+- Real network remotes (ssh/https with credentials) not exercised; askpass answers `None` until G5b.
+
+Known failing, not mine: `view::tests::every_graph_renderer_config_value_draws_as_it_says` (another builder's snapshot; not accepted, `.snap.new` deleted).
+

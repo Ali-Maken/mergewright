@@ -3031,12 +3031,12 @@ fn stale_remotes_dropped() {
         })
     };
     let mut state = AppState::default();
-    let (stale, fresh) = (JobId::new(7), JobId::new(8));
+    let (old_id, fresh) = (JobId::new(7), JobId::new(8));
     state.remote.reading = Some(fresh);
     state.remotes = detail::Loading::Pending(fresh);
     let (next, _) = update(
         &state,
-        AppEvent::Produced(stale, Product::Remotes(Ok(facts("refs/heads/old")))),
+        AppEvent::Produced(old_id, Product::Remotes(Ok(facts("refs/heads/old")))),
     );
     assert_eq!(
         next.remotes,

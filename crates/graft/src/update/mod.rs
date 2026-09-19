@@ -50,6 +50,7 @@ use graft_core::job::JobId;
 
 use crate::history::{History, Phase};
 use crate::repository::RepositoryFacts;
+use remote::remote_event;
 
 /// Answer one event: the new state, and the work it wants done.
 ///
@@ -157,16 +158,10 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         | AppEvent::Progress(_, Progress::Operating { .. })) => {
             operate_answer(next, commands, event);
         }
-        AppEvent::Produced(id, Product::Undone(outcome)) => {
-            undone_answer(next, commands, id, *outcome);
-        }
+        AppEvent::Produced(id, Product::Undone(done)) => undone_answer(next, commands, id, *done),
         AppEvent::Produced(id, product @ Product::Journal(_)) => journal_answer(next, id, &product),
-        AppEvent::Produced(id, Product::Remotes(result)) => {
-            remote::remotes_arrived(next, id, result);
-        }
-        AppEvent::Progress(id, Progress::RemoteProgress { brief }) => {
-            remote::remote_progress(next, id, &brief);
-        }
+        event @ (AppEvent::Produced(_, Product::Remotes(_))
+        | AppEvent::Progress(_, Progress::RemoteProgress { .. })) => remote_event(next, event),
         event @ AppEvent::Produced(
             _,
             Product::CommitTemplate(_)

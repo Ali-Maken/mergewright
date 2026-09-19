@@ -188,21 +188,27 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     } else if let Some(remote) = is_remote_key(key) {
         remote_key(next, commands, remote);
     } else if let Some(change) = view_change(key) {
-        let height = next.graph_rows();
-        let stashes: Vec<Oid> = next.refs.as_deref().map_or_else(Vec::new, |refs| {
-            refs.stashes().iter().map(|&(commit, _)| commit).collect()
-        });
-        if let Some(history) = next.history.as_mut()
-            && let Some(view) = change.apply(history, &stashes)
-            && let Some(request) = history.change_view(view, height)
-            && let Some(id) = next.awaiting
-        {
-            commands.push(Command::ShowRows(id, request));
-        }
+        apply_view_change(next, commands, change);
     } else if let Some(motion) = motion_for(key) {
         move_cursor(next, commands, motion);
     } else if key.code == KeyCode::Escape {
         escape_key(next, commands);
+    }
+}
+
+/// A view key (order, filter, stash visibility): asks the history job for
+/// the rows the changed view shows.
+fn apply_view_change(next: &mut AppState, commands: &mut Vec<Command>, change: ViewChange) {
+    let height = next.graph_rows();
+    let stashes: Vec<Oid> = next.refs.as_deref().map_or_else(Vec::new, |refs| {
+        refs.stashes().iter().map(|&(commit, _)| commit).collect()
+    });
+    if let Some(history) = next.history.as_mut()
+        && let Some(view) = change.apply(history, &stashes)
+        && let Some(request) = history.change_view(view, height)
+        && let Some(id) = next.awaiting
+    {
+        commands.push(Command::ShowRows(id, request));
     }
 }
 

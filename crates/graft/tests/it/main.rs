@@ -21,6 +21,7 @@ mod m3_walk;
 mod many_refs;
 mod not_a_repo;
 mod piped_stdout;
+mod remote_by_key;
 mod seam_rule;
 mod stash_by_key;
 mod undo_by_key;

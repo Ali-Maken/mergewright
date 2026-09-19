@@ -326,6 +326,27 @@ fn a_running_write_and_a_finished_one_both_say_so_in_the_footer() {
     assert!(screen.contains("stage src/a.rs \u{2713}"), "{screen}");
 }
 
+/// A remote write's line ends in its key hint, drawn as the design note
+/// words it — no `…` after `esc cancels` (m4-remotes/05).
+#[test]
+fn a_remote_write_ends_in_its_hint() {
+    let running = AppState {
+        history: Some(history_of(5, 1)),
+        status: Status::Busy("fetch all remotes · receiving 45% · esc cancels".to_owned()),
+        size: Size {
+            columns: 60,
+            rows: 5,
+        },
+        ..AppState::default()
+    };
+    let screen = draw(&running, 60, 5);
+    assert!(
+        screen.contains("fetch all remotes · receiving 45% · esc cancels "),
+        "{screen}"
+    );
+    assert!(!screen.contains("esc cancels\u{2026}"), "{screen}");
+}
+
 /// A history like [`history_of`], but the newest row's subject is
 /// `subject` verbatim instead of `"Commit N\x1b[31m"` — for forcing a
 /// reveal to actually show something.
@@ -2883,6 +2904,70 @@ fn capture_m3_undo_drift() {
             "/../../docs/shots/m3-undo-drift.txt"
         ),
         format!("{DRIFT_HEADER}=== 120x32 ===\n{screen}"),
+    )
+    .expect("docs/shots is writable");
+}
+
+/// Regenerates `docs/shots/m4-remote-keys.txt` (m4-remotes/05): the lease
+/// push box `P` opens after a rejection, then the footer while a fetch runs.
+#[test]
+#[ignore = "writes docs/shots/m4-remote-keys.txt; run by hand to regenerate"]
+fn capture_m4_remote_keys() {
+    use crate::jobs::remote::RemoteFacts;
+    use crate::update::detail::Loading;
+    use graft_git::remote::{Remote, TrackedUpstream};
+
+    let mut state = changes_pane_state(120, 40);
+    state.remotes = Loading::Ready(std::sync::Arc::new(RemoteFacts {
+        remotes: vec![Remote {
+            name: "origin".to_owned(),
+            fetch_url: "git@example.invalid:team/api.git".to_owned(),
+            push_url: None,
+        }],
+        head_branch: Some("refs/heads/main".to_owned()),
+        head_upstream: Some(TrackedUpstream {
+            remote: "origin".to_owned(),
+            remote_branch: "refs/heads/main".to_owned(),
+            tracking_ref: "refs/remotes/origin/main".to_owned(),
+            tracking_tip: Some(
+                Oid::from_hex("9f8e7d6c5b4a39281706f5e4d3c2b1a098765432").expect("40 hex digits"),
+            ),
+        }),
+    }));
+    state.remote.last_rejected_push =
+        Some(crate::update::remote::push_params(&state).expect("an upstream to push to"));
+    assert!(
+        crate::update::remote::push_key(&mut state),
+        "P opens the box"
+    );
+    let push_box = draw(&state, 120, 40);
+
+    state.confirm = None;
+    state.operating = Some(graft_core::job::JobId::new(9));
+    state.status =
+        Status::Busy("fetch all remotes · Receiving objects 45% · esc cancels".to_owned());
+    let fetching = draw(&state, 120, 40);
+
+    let header = "\
+# m4-remote-keys.txt: TestBackend capture (not a pty), 120x40, no colour
+# recorded. Fixture: capture_m4_remote_keys in crates/graft/src/view/tests.rs
+# (#[ignore]d, run by hand to regenerate). Two screens.
+#
+# 1. `P` after git refused a push as not a fast-forward: the lease box.
+#    Judge by eye: it names the tip it expects (9f8e7d6) and the one it
+#    sends, says it is refused if origin moved since the fetch, says whose
+#    history it rewrites, shows the exact git command, and `[ Cancel ]` is
+#    under the cursor with `Force push` beside it.
+# 2. The footer while `f` runs: the operation, git's own progress, and how
+#    to stop it (`esc cancels`).
+#
+";
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m4-remote-keys.txt"
+        ),
+        format!("{header}{push_box}\n# ---- 2. while `f` runs ----\n\n{fetching}"),
     )
     .expect("docs/shots is writable");
 }

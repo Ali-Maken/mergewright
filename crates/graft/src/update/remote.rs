@@ -18,7 +18,7 @@ use graft_ui::confirm::ConfirmView;
 
 use super::confirm::{ConfirmThen, PendingConfirm};
 use super::detail::Loading;
-use super::events::Command;
+use super::events::{AppEvent, Command, Product, Progress};
 use super::state::{AppState, Status};
 use crate::jobs::remote::RemoteFacts;
 use crate::refs::Upstream;
@@ -80,11 +80,17 @@ pub(super) fn launched(
     });
 }
 
+/// The key hint a running remote write's status line ends with. The footer
+/// draws a line ending in it as it is, without the `…` it gives every other
+/// busy line: the hint is not the part still in progress (design note, New
+/// UI, "Footer while a remote write runs").
+pub const ESC_HINT: &str = " · esc cancels";
+
 /// What the status line says while `op` runs. A remote write says `Esc`
 /// stops it: it is the one kind that can hang (design note, choice 4).
 pub(super) fn busy_text(op: &Operation) -> String {
     if op.is_remote() {
-        format!("{} · esc cancels", op.describe())
+        format!("{}{ESC_HINT}", op.describe())
     } else {
         op.describe()
     }
@@ -122,6 +128,20 @@ pub(super) fn request_at_launch(
 /// The remote facts arrived. A stale answer — not the read in flight — is
 /// dropped. A branch change forgets the last rejected push: the lease it
 /// would offer is about another branch.
+/// Routes the remote facts and a remote write's progress, the two events
+/// [`super::update`] hands this module.
+pub(super) fn remote_event(state: &mut AppState, event: AppEvent) {
+    match event {
+        AppEvent::Produced(id, Product::Remotes(result)) => remotes_arrived(state, id, result),
+        AppEvent::Progress(id, Progress::RemoteProgress { brief }) => {
+            remote_progress(state, id, &brief);
+        }
+        // The caller routes only the two above here; any other event is
+        // someone else's and has nothing to do in this module.
+        _ => {}
+    }
+}
+
 pub(super) fn remotes_arrived(
     state: &mut AppState,
     id: JobId,
@@ -255,32 +275,31 @@ pub fn push_params(state: &AppState) -> Result<PushParams, String> {
     let Some(branch) = &facts.head_branch else {
         return Err("HEAD is detached — check out a branch first".to_owned());
     };
-    let mut params = match &facts.head_upstream {
-        Some(upstream) => PushParams {
+    let mut params = if let Some(upstream) = &facts.head_upstream {
+        PushParams {
             branch: branch.clone(),
             remote: upstream.remote.clone(),
             remote_branch: upstream.remote_branch.clone(),
             set_upstream: false,
             lease: None,
-        },
-        None => {
-            let remote = match facts.remotes.iter().find(|remote| remote.name == "origin") {
-                Some(origin) => origin,
-                None if facts.remotes.len() == 1 => &facts.remotes[0],
-                None => {
-                    return Err(format!(
-                        "several remotes and no upstream — set one: git push -u <remote> {}",
-                        short_branch(branch)
-                    ));
-                }
-            };
-            PushParams {
-                branch: branch.clone(),
-                remote: remote.name.clone(),
-                remote_branch: branch.clone(),
-                set_upstream: true,
-                lease: None,
+        }
+    } else {
+        let remote = match facts.remotes.iter().find(|remote| remote.name == "origin") {
+            Some(origin) => origin,
+            None if facts.remotes.len() == 1 => &facts.remotes[0],
+            None => {
+                return Err(format!(
+                    "several remotes and no upstream — set one: git push -u <remote> {}",
+                    short_branch(branch)
+                ));
             }
+        };
+        PushParams {
+            branch: branch.clone(),
+            remote: remote.name.clone(),
+            remote_branch: branch.clone(),
+            set_upstream: true,
+            lease: None,
         }
     };
     let rejected = state
@@ -375,12 +394,24 @@ pub fn push_box(params: &PushParams, ahead: Option<usize>, local_tip: Option<Oid
 /// confirm box or the menu is open — their `Esc` is their own. A second
 /// `Esc` while the first is being honoured does nothing more.
 pub fn cancel_operating(state: &mut AppState, commands: &mut Vec<Command>) -> bool {
+    if state.operating.is_none()
+        || state.text_field_open()
+        || state.confirm.is_some()
+        || state.context_menu.is_some()
+    {
+        return false;
+    }
+    stop_write(state, commands)
+}
+
+/// Ask the running write to stop, and say so — [`cancel_operating`]'s
+/// work, without its guard, for the one modal that owns a running write:
+/// the commit editor, whose `Esc` while its commit runs means this.
+/// `false` when no write runs.
+pub(super) fn stop_write(state: &mut AppState, commands: &mut Vec<Command>) -> bool {
     let Some(id) = state.operating else {
         return false;
     };
-    if state.text_field_open() || state.confirm.is_some() || state.context_menu.is_some() {
-        return false;
-    }
     if state.remote.cancelling == Some(id) {
         return true;
     }
@@ -433,10 +464,7 @@ pub fn remote_progress(state: &mut AppState, id: JobId, brief: &str) {
     } else {
         brief.to_owned()
     };
-    state.status = Status::Busy(format!(
-        "{} · {brief} · esc cancels",
-        running_words(state, id)
-    ));
+    state.status = Status::Busy(format!("{} · {brief}{ESC_HINT}", running_words(state, id)));
 }
 
 /// `receiving objects 45%` → `receiving 45%`: the phase's first word and the
