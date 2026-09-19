@@ -13,6 +13,7 @@ graft-git.workspace = true
 # its lines. Nothing else in this crate serialises.
 serde.workspace = true
 serde_json.workspace = true
+thiserror.workspace = true
 
 [features]
 # Forwards the heavy tier to the fixtures, as `graft-git` does, so one
