@@ -14,7 +14,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use super::{GitArg, RunError};
+use super::{GitArg, RunError, StderrSink};
 
 /// How much one read from a pipe takes at a time.
 const READ_CHUNK: usize = 64 * 1024;
@@ -35,12 +35,15 @@ pub(super) struct Event {
     read: io::Result<(Vec<u8>, bool)>,
 }
 
-/// Reads one pipe to EOF or to `cap` on its own thread, then reports.
-pub(super) fn drain(pipe: Pipe, cap: usize, events: Sender<Event>) {
+/// Reads one pipe to EOF or to `cap` on its own thread, then reports. With a
+/// `sink`, stderr is also handed over segment by segment as it arrives (see
+/// [`Segments`]); the sink runs on this thread.
+pub(super) fn drain(pipe: Pipe, cap: usize, events: Sender<Event>, sink: Option<StderrSink>) {
     thread::spawn(move || {
-        let (stdout, read) = match pipe {
-            Pipe::Out(mut out) => (true, read_capped(&mut out, cap)),
-            Pipe::Err(mut err) => (false, read_capped(&mut err, cap)),
+        let (stdout, read) = match (pipe, sink) {
+            (Pipe::Out(mut out), _) => (true, read_capped(&mut out, cap, &mut |_| {})),
+            (Pipe::Err(mut err), None) => (false, read_capped(&mut err, cap, &mut |_| {})),
+            (Pipe::Err(mut err), Some(sink)) => (false, read_segmented(&mut err, cap, &sink)),
         };
         if let Err(unwanted) = events.send(Event { stdout, read }) {
             // The receiver is gone only when `run` has already returned
@@ -50,8 +53,33 @@ pub(super) fn drain(pipe: Pipe, cap: usize, events: Sender<Event>) {
     });
 }
 
-/// Reads up to `cap` bytes; `true` alongside if there was more.
-fn read_capped(pipe: &mut impl Read, cap: usize) -> io::Result<(Vec<u8>, bool)> {
+/// [`read_capped`], feeding every kept byte through [`Segments`] to `sink`.
+fn read_segmented(
+    pipe: &mut impl Read,
+    cap: usize,
+    sink: &StderrSink,
+) -> io::Result<(Vec<u8>, bool)> {
+    let mut sink = sink.0.lock().map_err(|_| {
+        // A sink that panicked on an earlier run of this (cloned) invocation.
+        // That panic already failed that run; this one says so rather than
+        // calling a closure whose state is now unknown.
+        io::Error::other("the stderr sink panicked on an earlier run")
+    })?;
+    let mut segments = Segments::default();
+    let read = read_capped(pipe, cap, &mut |bytes| {
+        segments.feed(bytes, &mut |segment| (*sink)(segment));
+    });
+    segments.finish(&mut |segment| (*sink)(segment));
+    read
+}
+
+/// Reads up to `cap` bytes; `true` alongside if there was more. Every kept
+/// chunk is shown to `on_chunk` as it arrives, in order.
+fn read_capped(
+    pipe: &mut impl Read,
+    cap: usize,
+    on_chunk: &mut dyn FnMut(&[u8]),
+) -> io::Result<(Vec<u8>, bool)> {
     let mut kept = Vec::new();
     let mut chunk = vec![0; READ_CHUNK];
     loop {
@@ -62,10 +90,50 @@ fn read_capped(pipe: &mut impl Read, cap: usize) -> io::Result<(Vec<u8>, bool)> 
             Err(error) => return Err(error),
         };
         if kept.len() + n > cap {
-            kept.extend_from_slice(&chunk[..cap - kept.len()]);
+            let room = cap - kept.len();
+            on_chunk(&chunk[..room]);
+            kept.extend_from_slice(&chunk[..room]);
             return Ok((kept, true));
         }
+        on_chunk(&chunk[..n]);
         kept.extend_from_slice(&chunk[..n]);
+    }
+}
+
+/// Splits a byte stream into the segments git writes between `\r` and `\n`
+/// — a progress line redrawn in place is a run of `\r`-ended segments —
+/// carrying a partial segment across reads. Empty segments (the `\n` after a
+/// `\r`, say) are not emitted.
+#[derive(Default)]
+pub(super) struct Segments {
+    partial: Vec<u8>,
+}
+
+impl Segments {
+    /// Emits every segment `bytes` completes; keeps the unfinished tail.
+    pub(super) fn feed(&mut self, bytes: &[u8], emit: &mut dyn FnMut(&[u8])) {
+        let mut rest = bytes;
+        while let Some(at) = rest.iter().position(|&b| b == b'\r' || b == b'\n') {
+            if self.partial.is_empty() {
+                if at > 0 {
+                    emit(&rest[..at]);
+                }
+            } else {
+                self.partial.extend_from_slice(&rest[..at]);
+                emit(&self.partial);
+                self.partial.clear();
+            }
+            rest = &rest[at + 1..];
+        }
+        self.partial.extend_from_slice(rest);
+    }
+
+    /// At end of stream: emits what is left, if anything.
+    pub(super) fn finish(&mut self, emit: &mut dyn FnMut(&[u8])) {
+        if !self.partial.is_empty() {
+            emit(&self.partial);
+            self.partial.clear();
+        }
     }
 }
 
@@ -287,6 +355,97 @@ mod tests {
         assert!(
             child.try_wait().expect("try_wait").is_some(),
             "the child has been reaped"
+        );
+    }
+
+    /// A reader that hands out `bytes` in pieces cut at `cuts`, one per read.
+    struct Scripted<'a> {
+        pieces: std::collections::VecDeque<&'a [u8]>,
+    }
+
+    impl<'a> Scripted<'a> {
+        fn new(bytes: &'a [u8], cuts: &[usize]) -> Self {
+            let mut cuts: Vec<usize> = cuts.iter().map(|c| c % (bytes.len() + 1)).collect();
+            cuts.sort_unstable();
+            let mut pieces = std::collections::VecDeque::new();
+            let mut from = 0;
+            for cut in cuts.into_iter().chain([bytes.len()]) {
+                pieces.push_back(&bytes[from..cut]);
+                from = cut;
+            }
+            Self { pieces }
+        }
+    }
+
+    impl Read for Scripted<'_> {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            // An empty piece would read as EOF; skip them.
+            while let Some(piece) = self.pieces.pop_front() {
+                if !piece.is_empty() {
+                    buf[..piece.len()].copy_from_slice(piece);
+                    return Ok(piece.len());
+                }
+            }
+            Ok(0)
+        }
+    }
+
+    /// Real stderr shape from `git fetch --progress` on git 2.54.0: `\n`-ended
+    /// lines, `\r`-redrawn progress, `remote:` padding, no final separator.
+    const FETCH_STDERR: &[u8] = b"remote: Enumerating objects: 90, done.        \n\
+remote: Counting objects:   1% (1/90)        \rremote: Counting objects:   2% (2/90)        \r\
+remote: Counting objects: 100% (90/90), done.        \n\
+Receiving objects:  45% (41/90)\rReceiving objects: 100% (90/90), 7.10 KiB | 7.10 MiB/s, done.\n\
+From /tmp/t/bare\n * branch            main       -> FETCH_HEAD";
+
+    fn segments_of(reader: &mut impl Read) -> (Vec<Vec<u8>>, Vec<u8>) {
+        let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let into = std::sync::Arc::clone(&seen);
+        let sink = StderrSink(std::sync::Arc::new(std::sync::Mutex::new(Box::new(
+            move |segment: &[u8]| into.lock().expect("test lock").push(segment.to_vec()),
+        ))));
+        let (kept, capped) = read_segmented(reader, usize::MAX, &sink).expect("reads");
+        assert!(!capped);
+        let segments = seen.lock().expect("test lock").clone();
+        (segments, kept)
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(
+            graft_fixtures::proptest_cases()
+        ))]
+
+        #[test]
+        fn segments_reassemble_across_reads(
+            cuts in proptest::collection::vec(0usize..FETCH_STDERR.len() + 1, 0..12)
+        ) {
+            let (whole, _) = segments_of(&mut Scripted::new(FETCH_STDERR, &[]));
+            let (split, kept) = segments_of(&mut Scripted::new(FETCH_STDERR, &cuts));
+            proptest::prop_assert_eq!(&split, &whole);
+            proptest::prop_assert_eq!(kept.as_slice(), FETCH_STDERR);
+            proptest::prop_assert_eq!(whole.len(), 8);
+            proptest::prop_assert_eq!(
+                whole.last().map(Vec::as_slice),
+                Some(&b" * branch            main       -> FETCH_HEAD"[..]),
+                "the unterminated tail is flushed at EOF"
+            );
+        }
+    }
+
+    #[test]
+    fn a_capped_stream_shows_the_sink_only_the_kept_bytes() {
+        let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let into = std::sync::Arc::clone(&seen);
+        let sink = StderrSink(std::sync::Arc::new(std::sync::Mutex::new(Box::new(
+            move |segment: &[u8]| into.lock().expect("test lock").push(segment.to_vec()),
+        ))));
+        let (kept, capped) =
+            read_segmented(&mut Scripted::new(b"one\ntwo\nthree\n", &[]), 6, &sink).expect("reads");
+        assert!(capped);
+        assert_eq!(kept, b"one\ntw");
+        assert_eq!(
+            *seen.lock().expect("test lock"),
+            vec![b"one".to_vec(), b"tw".to_vec()]
         );
     }
 

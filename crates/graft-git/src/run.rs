@@ -27,11 +27,13 @@
 //!   successful one.
 
 use std::ffi::OsString;
+use std::fmt;
 use std::io::{self, Write};
 use std::path::Path;
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
@@ -145,6 +147,22 @@ pub struct GitInvocation {
     /// [`spawn`](Self::spawn). A later entry for the same key overrides an
     /// earlier one, as [`Command::env`] does.
     env: Vec<(OsString, OsString)>,
+    /// Where stderr segments go as they arrive, if anywhere.
+    stderr_sink: Option<StderrSink>,
+}
+
+/// The closure [`GitInvocation::on_stderr_line`] was given, shared so the
+/// invocation stays `Clone` (clones share one sink) and `&self` can run it.
+#[derive(Clone)]
+pub(crate) struct StderrSink(Arc<Mutex<StderrFn>>);
+
+/// What [`GitInvocation::on_stderr_line`] takes.
+type StderrFn = Box<dyn FnMut(&[u8]) + Send>;
+
+impl fmt::Debug for StderrSink {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("StderrSink(…)")
+    }
 }
 
 /// `git <args>` as a person would type it: the text behind
@@ -190,7 +208,25 @@ impl GitInvocation {
             stdin: None,
             cap: DEFAULT_CAP,
             env: Vec::new(),
+            stderr_sink: None,
         }
+    }
+
+    /// Hands git's stderr to `sink` as it arrives, one segment at a time: the
+    /// bytes between `\r`/`\n` separators (a progress line git redraws in
+    /// place is one segment per redraw), separators left out, empty segments
+    /// skipped, order kept, a partial segment carried across pipe reads and
+    /// flushed at EOF. [`GitOutput::stderr`] is still the whole stream, under
+    /// the same cap; the sink sees exactly the kept bytes.
+    ///
+    /// The sink runs on the runner's stderr drain thread, not the caller's:
+    /// it must be quick and must not block on the thread that called
+    /// [`run`](Self::run). After a stop, `run` may return while the drain
+    /// thread is still delivering the last segments.
+    #[must_use]
+    pub fn on_stderr_line(mut self, sink: StderrFn) -> Self {
+        self.stderr_sink = Some(StderrSink(Arc::new(Mutex::new(sink))));
+        self
     }
 
     /// Adds one variable to the child's environment, after the fixed ones
@@ -301,7 +337,7 @@ impl GitInvocation {
         let mut open = 0;
         for pipe in [stdout, stderr].into_iter().flatten() {
             open += 1;
-            drain(pipe, self.cap, events.clone());
+            drain(pipe, self.cap, events.clone(), self.stderr_sink.clone());
         }
         drop(events);
 
@@ -398,6 +434,7 @@ mod tests {
     use graft_fixtures::Shape;
 
     use super::*;
+    use crate::fixture::Fixture;
 
     /// Says stop from its second poll on.
     struct SecondPoll(AtomicUsize);
@@ -424,6 +461,61 @@ mod tests {
         assert!(
             child.try_wait().expect("try_wait").is_some(),
             "the child has exited and been reaped"
+        );
+    }
+
+    /// A bare remote holding `commits` commits of one new file each (three
+    /// objects apiece), and an empty repository to fetch it into.
+    fn remote_with_objects(commits: usize) -> (Fixture, Fixture) {
+        let work = Fixture::empty_repo();
+        for n in 0..commits {
+            std::fs::write(work.root().join(format!("f{n}")), format!("{n}\n"))
+                .expect("a fixture file writes");
+            work.git(&["add", "."]);
+            work.git(&["commit", "--quiet", "-m", &format!("c{n}")]);
+        }
+        let bare = Fixture::bare_repo();
+        let bare_path = bare.root().to_str().expect("UTF-8 fixture path");
+        work.git(&["push", "--quiet", bare_path, "main"]);
+        (bare, Fixture::empty_repo())
+    }
+
+    #[test]
+    fn stderr_sink_sees_progress_and_capture_is_whole() {
+        let (bare, into) = remote_with_objects(20);
+        let seen = Arc::new(Mutex::new(Vec::<Vec<u8>>::new()));
+        let sink_seen = Arc::clone(&seen);
+        let output = GitInvocation::in_directory(into.root())
+            .args([
+                GitArg::Flag("fetch"),
+                GitArg::Flag("--progress"),
+                GitArg::Word(bare.root().to_str().expect("UTF-8").to_owned()),
+                GitArg::Flag("main"),
+            ])
+            .on_stderr_line(Box::new(move |segment| {
+                sink_seen
+                    .lock()
+                    .expect("the test's own lock")
+                    .push(segment.to_vec());
+            }))
+            .run(&())
+            .expect("the fetch succeeds");
+
+        let seen = seen.lock().expect("the test's own lock").clone();
+        assert!(
+            seen.iter()
+                .any(|segment| crate::remote::parse_progress(segment).is_some()),
+            "at least one progress segment: {seen:?}"
+        );
+        let from_capture: Vec<&[u8]> = output
+            .stderr
+            .split(|&b| b == b'\r' || b == b'\n')
+            .filter(|segment| !segment.is_empty())
+            .collect();
+        assert_eq!(
+            from_capture,
+            seen.iter().map(Vec::as_slice).collect::<Vec<_>>(),
+            "the sink saw exactly the captured stderr, in order, minus separators"
         );
     }
 
