@@ -367,11 +367,14 @@ pub fn editor_key(
     }
     // While the commit runs the screen is not the user's to change: the text
     // on it is what is being written. `Esc` cancels the job.
-    if let Some(running) = state.operating {
+    if state.operating.is_some() {
+        let mut commands = Vec::new();
         if key.code == KeyCode::Escape {
-            return Some(vec![Command::CancelJob(running)]);
+            // The same stop every write gets (m4-remotes/05): the line says
+            // `cancelling`, and the cancelled answer reads `cancelled`.
+            let _stopping: bool = super::remote::stop_write(state, &mut commands);
         }
-        return Some(Vec::new());
+        return Some(commands);
     }
     Some(open_editor_key(state, key, next_id))
 }

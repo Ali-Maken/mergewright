@@ -4,8 +4,12 @@
 //! `crates/graft/tests/it/seam_rule.rs`): `ops` decides what a write does,
 //! `app` only wires the key to the call.
 
+use std::sync::Arc;
+
+use graft_git::remote::{RemoteFailure, RemoteProgress};
+use graft_git::run::askpass::{AskPass, Secret};
 use graft_git::version::system_git;
-use graft_ops::apply::{self, Applied, ApplyError, Context, Refresh};
+use graft_ops::apply::{self, Applied, ApplyError, Context, Refresh, RemoteHooks};
 use graft_ops::journal::{Journal, journal_path};
 use graft_ops::operation::Operation;
 
@@ -51,7 +55,52 @@ pub enum Operated {
         /// from bytes that no longer describe the repository
         /// (m3/04 review M1).
         refresh: Option<Refresh>,
+        /// Why a fetch, pull or push failed, as git's stderr said it
+        /// ([`ApplyError::Remote`]); `None` for every other failure. `app`
+        /// reads it to decide what the next `P` offers — a rejected push
+        /// turns the next box into the lease variant (m4-remotes/05).
+        remote: Option<RemoteFailure>,
     },
+}
+
+/// The credential answer until the in-app prompt lands (m4-remotes/06):
+/// every question is cancelled, so git reports an authentication failure
+/// rather than hanging or asking on a terminal Graft has taken over.
+struct NoAskPass;
+
+impl AskPass for NoAskPass {
+    fn ask(&self, _prompt: &str) -> Option<Secret> {
+        None
+    }
+}
+
+/// Where a remote operation's progress goes: one `brief` line at a time.
+pub(super) type ProgressSink = Box<dyn Fn(String) + Send + Sync>;
+
+/// The hooks a remote operation runs with: progress to `progress`, and
+/// Graft's own binary as the askpass helper. `None` for a local operation.
+///
+/// When Graft cannot name its own binary, the operation still runs, headless
+/// — no progress, no questions — and the reason goes out as the one progress
+/// line it will get, so the status line says why credentials cannot be asked
+/// rather than failing later with no explanation.
+fn remote_hooks(op: &Operation, progress: ProgressSink) -> Option<RemoteHooks> {
+    if !op.is_remote() {
+        return None;
+    }
+    match std::env::current_exe() {
+        Ok(helper) => Some(RemoteHooks {
+            progress: Box::new(move |seen: RemoteProgress| progress(seen.brief())),
+            askpass: Arc::new(NoAskPass),
+            helper,
+        }),
+        Err(error) => {
+            progress(format!(
+                "no askpass helper: {error} \u{2014} credentials cannot be asked"
+            ));
+            None
+        }
+    }
 }
 
 /// What a failed [`apply::apply`] leaves stale on screen.
@@ -90,6 +139,7 @@ fn nothing_ran(error: &impl std::fmt::Display) -> Operated {
     Operated::Failed {
         error: error.to_string(),
         refresh: None,
+        remote: None,
     }
 }
 
@@ -97,8 +147,14 @@ fn nothing_ran(error: &impl std::fmt::Display) -> Operated {
 ///
 /// Opens the system `git`, the journal file and a fresh [`Context`] every
 /// call — one context per operation, since a context carries the one clock
-/// reading and random half that name its entry.
-pub(super) fn run_operation(repos: &RepoStore, op: &Operation, cancel: &Cancel) -> Operated {
+/// reading and random half that name its entry. A fetch, pull or push gets
+/// [`RemoteHooks`]: its progress goes to `progress`, one brief at a time.
+pub(super) fn run_operation(
+    repos: &RepoStore,
+    op: &Operation,
+    cancel: &Cancel,
+    progress: ProgressSink,
+) -> Operated {
     let repo = match repos.shared() {
         Ok(repo) => repo,
         Err(error) => return nothing_ran(&error),
@@ -130,6 +186,7 @@ pub(super) fn run_operation(repos: &RepoStore, op: &Operation, cancel: &Cancel) 
         Ok(ctx) => ctx,
         Err(error) => return nothing_ran(&error),
     };
+    ctx.remote = remote_hooks(op, progress);
     match apply::apply(&mut ctx, op) {
         Ok(applied) => Operated::Done(applied),
         Err(ApplyError::AfterState { applied, unread }) => Operated::Incomplete {
@@ -142,9 +199,14 @@ pub(super) fn run_operation(repos: &RepoStore, op: &Operation, cancel: &Cancel) 
         },
         Err(error) => {
             let refresh = refresh_after_failure(&error);
+            let remote = match &error {
+                ApplyError::Remote { failure, .. } => Some(failure.clone()),
+                _ => None,
+            };
             Operated::Failed {
                 error: error.to_string(),
                 refresh,
+                remote,
             }
         }
     }

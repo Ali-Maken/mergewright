@@ -20,6 +20,7 @@ use ratatui::style::Style;
 use ratatui::widgets::Widget;
 
 use crate::session::Session;
+use crate::update::remote::ESC_HINT;
 use crate::update::{AppState, Screen, Status};
 
 use super::detail::detail_view;
@@ -486,6 +487,9 @@ fn footer_notice(state: &AppState, tier: RenderingTier) -> Option<SanitizedText>
         // A write is running. The only acknowledgement `Space` gives, and the
         // only thing that says why the other write keys do nothing meanwhile
         // (m3/04 review M3).
+        Status::Busy(description) if description.ends_with(ESC_HINT) => {
+            return Some(sanitize_line(description));
+        }
         Status::Busy(description) => {
             return Some(sanitize_line(&format!("{description}…")));
         }

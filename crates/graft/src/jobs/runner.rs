@@ -517,8 +517,26 @@ impl<S: JobEvents> JobRunner<S> {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
+                // A fetch, pull or push streams git's progress lines to the
+                // status line (m4-remotes/05). The sink is `Send` but not
+                // `Sync`, and the hook is called from the executor's stderr
+                // thread, hence the lock.
+                let sink = std::sync::Mutex::new(sink);
+                let progress = move |brief: String| {
+                    // A poisoned lock means another progress call panicked;
+                    // that panic is the job's failure and is reported as
+                    // one. Dropping this one line of progress is safe.
+                    if let Ok(sink) = sink.lock() {
+                        // `Delivery::LoopGone`: nobody is left to show it.
+                        let _delivery = sink
+                            .deliver(AppEvent::Progress(id, Progress::RemoteProgress { brief }));
+                    }
+                };
                 Outcome::Produced(Product::Operated(Box::new(super::operate::run_operation(
-                    &repos, &op, cancel,
+                    &repos,
+                    &op,
+                    cancel,
+                    Box::new(progress),
                 ))))
             })
         });
@@ -592,6 +610,22 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
+    /// Reads the remote facts `f`/`p`/`P` decide from, under an id `update`
+    /// already chose (m4-remotes/05).
+    fn read_remotes(&self, id: JobId) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::ReadRemotes), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::Remotes(super::remote::read_remotes(
+                    &repos, cancel,
+                )))
+            })
+        });
+    }
+
     /// Builds the Map view's per-branch bucket counts, under an id `update`
     /// already chose (`update::map::MapState::open`, mirroring the detail
     /// pane's own jobs — see `queue_as`'s doc).
@@ -659,6 +693,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::Redo(id, force) => self.run_undo(id, true, force),
             Command::ReadJournal(id) => self.read_journal(id),
             Command::ReadStashes(id) => self.read_stashes(id),
+            Command::ReadRemotes(id) => self.read_remotes(id),
             Command::CancelJob(id) => {
                 self.row_requests().remove(&id);
                 self.cancel(id);

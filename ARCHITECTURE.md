@@ -47,6 +47,10 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   `crates/graft/tests/it/seam_rule.rs`: `GitInvocation` under `graft/src/`
   only inside `jobs/` (reads); the journal's `render_*` and the inverse's
   `Step::`/`PathScope::` constructors nowhere in `app`.
+- **Changing fetch, pull or push** → `graft/src/update/remote.rs` for the
+  keys, the push box, `Esc` and the status-line words;
+  `graft/src/jobs/remote.rs` for the remote facts read; `ops::operation` for
+  what actually runs.
 - **Changing terminal detection or an image protocol** → `term`. Start at
   `DESIGN.md` §4, then `graft-term/src/detect/`: `environment` reads the env
   vars, `probe` writes the queries, `reply` parses what comes back, `tmux`

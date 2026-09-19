@@ -29,10 +29,14 @@ use crate::update::detail::Loading;
 /// The repository-wide facts `classify_commit` needs, from `ctx` and the
 /// default branch's name already on `state`.
 ///
-/// `remotes` is always empty: nothing in `graft-ops::mistake_radar`'s rules
-/// reads it today (reserved for a probe that will).
+/// `remotes` are the configured remotes' names, from [`remote_names`]
+/// (m4-remotes/05); empty until the remote facts are first read.
 #[must_use]
-pub fn repo_facts<'a>(state: &'a AppState, ctx: &'a RadarContext) -> RepoFacts<'a> {
+pub fn repo_facts<'a>(
+    state: &'a AppState,
+    ctx: &'a RadarContext,
+    remotes: &'a [&'a str],
+) -> RepoFacts<'a> {
     let default_branch = state
         .history
         .as_ref()
@@ -41,8 +45,22 @@ pub fn repo_facts<'a>(state: &'a AppState, ctx: &'a RadarContext) -> RepoFacts<'
         .and_then(|name| std::str::from_utf8(name.shorthand()).ok());
     RepoFacts {
         default_branch,
-        remotes: &[],
+        remotes,
         previous_default_tips: &ctx.previous_default_tips,
+    }
+}
+
+/// The configured remotes' names, `origin` first, as the last remote facts
+/// read said; empty before that read lands.
+#[must_use]
+pub fn remote_names(state: &AppState) -> Vec<&str> {
+    match &state.remotes {
+        Loading::Ready(facts) => facts
+            .remotes
+            .iter()
+            .map(|remote| remote.name.as_str())
+            .collect(),
+        Loading::Idle | Loading::Pending(_) | Loading::Failed(_) => Vec::new(),
     }
 }
 
@@ -59,7 +77,8 @@ pub fn findings_for(state: &AppState, id: Oid, parents: &[Oid], subject: &str) -
     let Loading::Ready(context) = &state.radar.context else {
         return Vec::new();
     };
-    let repo = repo_facts(state, context);
+    let remotes = remote_names(state);
+    let repo = repo_facts(state, context, &remotes);
     let parents_on_default_chain: Vec<bool> = parents
         .iter()
         .map(|parent| context.on_default_chain(parent))
@@ -279,6 +298,30 @@ mod tests {
         // answer (M2 review C1); a state assembled by hand builds them here.
         crate::update::radar::refresh_ref_findings(&mut state);
         state
+    }
+
+    /// `RepoFacts.remotes` is the list the remote facts read, `origin`
+    /// first — not the `&[]` it was before M4 (m4-remotes/05).
+    #[test]
+    fn remotes_come_from_facts() {
+        let mut state = ready_state(&[oid(1)], Vec::new());
+        let remote = |name: &str| graft_git::remote::Remote {
+            name: name.to_owned(),
+            fetch_url: format!("file:///{name}.git"),
+            push_url: None,
+        };
+        assert!(remote_names(&state).is_empty(), "nothing read yet");
+        state.remotes = Loading::Ready(std::sync::Arc::new(crate::jobs::remote::RemoteFacts {
+            remotes: vec![remote("origin"), remote("upstream")],
+            head_branch: Some("refs/heads/main".to_owned()),
+            head_upstream: None,
+        }));
+        let Loading::Ready(context) = &state.radar.context else {
+            unreachable!("ready_state builds a ready context");
+        };
+        let names = remote_names(&state);
+        let facts = repo_facts(&state, context, &names);
+        assert_eq!(facts.remotes, ["origin", "upstream"]);
     }
 
     /// The pane's evil line follows the probe: unchecked before it starts,

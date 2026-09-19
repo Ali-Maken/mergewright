@@ -57,6 +57,12 @@ pub enum Progress {
         /// What is running, e.g. `"stage src/a.rs"`.
         description: String,
     },
+    /// A fetch, pull or push reported how far it has got: git's own
+    /// progress line, shortened (`RemoteProgress::brief`, m4-remotes/05).
+    RemoteProgress {
+        /// e.g. `"receiving objects 45%"`.
+        brief: String,
+    },
 }
 
 /// What a job was started to do.
@@ -147,6 +153,8 @@ pub enum Task {
     /// Read the stash list for the `S` overlay
     /// (m3-working-tree-undo-and-stash/06).
     ReadStashes,
+    /// Read the configured remotes and `HEAD`'s upstream (m4-remotes/05).
+    ReadRemotes,
 }
 
 /// What a job brought back.
@@ -260,6 +268,9 @@ pub enum Product {
     /// `Arc` for the same reason as [`Product::Journal`]: the overlay holds
     /// it across frames (m3-working-tree-undo-and-stash/06).
     Stashes(Result<std::sync::Arc<Vec<graft_git::stash::StashEntry>>, String>),
+    /// The remotes, `HEAD`'s branch and its upstream, or why they could not
+    /// be read (m4-remotes/05).
+    Remotes(Result<std::sync::Arc<crate::jobs::remote::RemoteFacts>, String>),
 }
 
 /// What running `git --version` found.
@@ -379,6 +390,9 @@ pub enum Command {
     /// `S` overlay opens and again after every write, because any of them
     /// may have moved `refs/stash` (m3-working-tree-undo-and-stash/06).
     ReadStashes(JobId),
+    /// Read the remote facts `f`/`p`/`P` decide from, under an id `update`
+    /// chose. Asked for wherever the refs are (m4-remotes/05).
+    ReadRemotes(JobId),
     /// Read `commit.template`'s file for the commit editor's empty body,
     /// under an id `update` chose (m3-working-tree-undo-and-stash/05).
     ReadCommitTemplate(JobId),

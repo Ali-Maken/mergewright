@@ -972,6 +972,8 @@ fn control_r_asks_for_the_repository_to_be_re_read() {
             Command::OpenRepository,
             Command::ReadHistory(Order::Topological),
             Command::ReadRefs,
+            // The remote facts, beside the refs (m4-remotes/05).
+            Command::ReadRemotes(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 2)),
             Command::ReadWorkingTree,
         ]
     );
@@ -985,6 +987,13 @@ fn control_r_asks_for_the_repository_to_be_re_read() {
             )),
             reading: Some(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 1)),
             ..state.journal.clone()
+        },
+        remotes: crate::update::detail::Loading::Pending(JobId::new(
+            crate::update::detail::LOCAL_JOB_BIT | 2,
+        )),
+        remote: crate::update::remote::RemoteState {
+            reading: Some(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 2)),
+            ..crate::update::remote::RemoteState::default()
         },
         local_jobs: next.local_jobs,
         ..state.clone()
@@ -1040,6 +1049,8 @@ fn the_same_event_always_gives_the_same_answer() {
         map: crate::update::map::MapState::default(),
         journal: crate::update::journal::JournalState::default(),
         stash: crate::update::stash::StashState::default(),
+        remotes: detail::Loading::Idle,
+        remote: crate::update::remote::RemoteState::default(),
         last_focus_refresh: None,
         strip_shown: false,
         confirm: None,
@@ -1071,10 +1082,14 @@ fn an_opened_repository_becomes_what_the_screen_shows() {
 
     assert_eq!(next.repository, Some(facts("/code/api", "main")));
     assert_eq!(next.status, Status::Ready);
-    // One command: the launch read of the undo journal, which cannot run
-    // before the repository is open (m3-working-tree-undo-and-stash/06).
+    // Two commands: the launch reads of the undo journal and the remote
+    // facts, which cannot run before the repository is open
+    // (m3-working-tree-undo-and-stash/06, m4-remotes/05).
     assert!(
-        matches!(commands.as_slice(), [Command::ReadJournal(_)]),
+        matches!(
+            commands.as_slice(),
+            [Command::ReadJournal(_), Command::ReadRemotes(_)]
+        ),
         "{commands:?}"
     );
 }
@@ -3001,4 +3016,40 @@ fn local_job_ids(rendered: &str) -> Vec<u64> {
         rest = &rest[end..];
     }
     found
+}
+
+/// `Product::Remotes` under any id but the read in flight is dropped: a
+/// slow answer from before a refresh must not replace a newer one
+/// (m4-remotes/05).
+#[test]
+fn stale_remotes_dropped() {
+    let facts = |branch: &str| {
+        Arc::new(crate::jobs::remote::RemoteFacts {
+            remotes: Vec::new(),
+            head_branch: Some(branch.to_owned()),
+            head_upstream: None,
+        })
+    };
+    let mut state = AppState::default();
+    let (old_id, fresh) = (JobId::new(7), JobId::new(8));
+    state.remote.reading = Some(fresh);
+    state.remotes = detail::Loading::Pending(fresh);
+    let (next, _) = update(
+        &state,
+        AppEvent::Produced(old_id, Product::Remotes(Ok(facts("refs/heads/old")))),
+    );
+    assert_eq!(
+        next.remotes,
+        detail::Loading::Pending(fresh),
+        "the stale answer is dropped"
+    );
+    let (next, _) = update(
+        &next,
+        AppEvent::Produced(fresh, Product::Remotes(Ok(facts("refs/heads/main")))),
+    );
+    assert_eq!(
+        next.remotes,
+        detail::Loading::Ready(facts("refs/heads/main"))
+    );
+    assert_eq!(next.remote.reading, None);
 }
