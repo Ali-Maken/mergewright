@@ -15,6 +15,7 @@ pub mod diff_words;
 pub mod fit;
 pub mod graph_column;
 pub mod graph_screen;
+pub mod journal_screen;
 pub mod map_screen;
 pub mod overview_strip;
 pub mod paint;

@@ -25,6 +25,7 @@ One line per public item. Update when a public item changes.
 - `render_pending` / `render_outcome` (fn) — the bytes to append, newline included; `render_outcome` refuses a `Pending` entry (m3/02).
 - `JournalError` (enum) — `Json { line, what }`, `TornTail { line }`, `DuplicatePending`, `OutcomeWithoutPending`, `DuplicateOutcome`, `StillPending`, `Io` (for the execution group's file handle) (m3/02).
 - `in_force` (fn) — the entry took effect and no later in-force entry has `reverses == Some(id)`. `Committed` always took effect; `Aborted` only with a backup (`worktree_before`) **and** a recorded after-field that differs from before, or a touched field never recorded after (unknown ≠ unchanged). A failure that changed nothing — hook-rejected commit, an undo whose CAS refused — is not in force, so it never shadows `next_undo` and never marks its target reversed (m3/02 review fix, C1).
+- `in_force_all` (fn) — one flag per entry, in journal order: what `in_force` answers for every entry in one walk, for the journal browser's row marks (m3-working-tree-undo-and-stash/06).
 - `next_undo` (fn) — newest in-force entry whose kind is not `Undo`/`Redo` (m3/02).
 - `next_redo` (fn) — newest in-force `Undo` with no in-force operation newer than it (a new operation after an undo empties redo, §6.5) (m3/02).
 - `root_operation` (fn) — follows an `Undo`/`Redo` entry's `reverses` chain to the operation at its root; what `undo::inverse` takes as `original` (m3/02).

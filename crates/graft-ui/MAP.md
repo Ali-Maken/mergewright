@@ -13,6 +13,7 @@ One line per public item. Update when a public item changes.
 - `graph_screen` (mod) — the graph screen Graft opens on: header, rows, key hints (every graph key, F3 included; narrow widths drop whole hints from the right, m1-the-graph/33; `y sha` added in 45).
 - `graph_screen::badges` (mod) — ref badges: kinds, tracking state, plain/Nerd Font text.
 - `graph_screen::columns` (mod) — pure formatting for the author initials, relative date and short SHA.
+- `journal_screen` (mod) — the undo journal browser (`J`): `RowMark`/`JournalRowView`/`JournalStatus`/`JournalView`/`JournalScreen` (m3-working-tree-undo-and-stash/06).
 - `map_screen` (mod) — the Map view widget: `MapView`/`MapRowView`/`MapMarkView`/`MapStatus`/`MapScreen`, `ramp_glyph` (m2-details-and-diffs/19).
 - `overview_strip` (mod) — the one-column whole-history strip: `StripMark`/`StripMarks`/`StripCell`, `cell_for`/`row_for_cell`, `OverviewStrip` widget (m2-details-and-diffs/20).
 - `paint` (mod) — token-to-style helpers for widgets.
@@ -141,6 +142,19 @@ Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-
 - `relative_date(then, now)` (fn) — how long ago `then` was relative to `now` (both Unix seconds), in short form (`"2m"`, `"3h"`, `"2d"`, `"2w"`, `"2mo"`, `"1y"`), rounding to match `git log --date=relative`'s cascade exactly (m1-the-graph/48) — units below "now" never read `1`, only years can; `then > now` reads `"future"` (m1-the-graph/53).
 - `absolute_date` (fn) — a commit's recorded date in its own offset, `"2026-09-13 14:02 +0500"` (Hinnant's `civil_from_days`, integer-only, no date/time crate) (m1-the-graph/34).
 - `short_sha` (fn) — the first N hex characters of a full object id.
+
+## journal_screen
+The undo journal browser (`J`, DESIGN.md §1.10): every write this repository
+has taken, newest first (m3-working-tree-undo-and-stash/06). An overlay over
+the graph area, like `map_screen`: no state, no I/O, and
+`view::journal::journal_view` (crate `graft`) builds its input. Every
+field-relevant fact is in the text, because a capture carries no colour and
+neither does a `NO_COLOR` terminal.
+- `RowMark` (enum) — `None`, `NextUndo`, `NextRedo`, `Interrupted`, `Undone`; `label` (fn) draws them as `← u`, `← U`, `interrupted`, `undone` and the empty string.
+- `JournalRowView` (struct) — `age`, `description`, `summary`, `mark`, `commands` (the Command Log, drawn while expanded), `failure` (the whole reason, same), `expanded`.
+- `JournalStatus` (enum) — `Loading`, `Empty` (`nothing yet — every write lands here and u takes it back`), `Failed(SanitizedText)`, `Ready`.
+- `JournalView` (struct) — `location`, `rows` (newest first), `selected`, `status`.
+- `JournalScreen` (struct) — `view`, `theme`; `Widget`: header row, rows (cursor row painted to the right edge, mark right-aligned, expanded rows' `$ git …` lines under them), footer. Draws nothing outside its `Rect` at any size.
 
 ## map_screen
 The Map view (`M`, DESIGN.md §5.1): one row per local branch, a density

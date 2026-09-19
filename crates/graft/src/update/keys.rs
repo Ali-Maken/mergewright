@@ -72,11 +72,7 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     // cursor is. Not while a text field has focus — the commit editor is
     // modal and has already claimed every key above.
     if let Some(redo) = is_undo_key(key) {
-        let mut local_jobs = next.local_jobs;
-        commands.extend(super::undo::undo_key(next, redo, &mut || {
-            local_jobs.next_id()
-        }));
-        next.local_jobs = local_jobs;
+        undo_key(next, commands, redo);
         return;
     }
     // A failure on the status line is dismissed by `Esc` before `Esc` means
@@ -93,6 +89,9 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     if super::map::map_key(next, commands, key) {
         return;
     }
+    if journal_key(next, commands, key) {
+        return;
+    }
     if super::strip::strip_key(next, key) {
         return;
     }
@@ -101,6 +100,24 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
         return;
     }
     graph_key(next, commands, key);
+}
+
+/// `u`/`U`, with `local_jobs` borrowed out for the closure the way every
+/// other call site here does it.
+fn undo_key(next: &mut AppState, commands: &mut Vec<Command>, redo: bool) {
+    let mut local_jobs = next.local_jobs;
+    commands.extend(super::undo::undo_key(next, redo, &mut || {
+        local_jobs.next_id()
+    }));
+    next.local_jobs = local_jobs;
+}
+
+/// The journal browser's keys, the same way.
+fn journal_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    let mut local_jobs = next.local_jobs;
+    let claimed = super::journal::journal_key(next, commands, key, &mut || local_jobs.next_id());
+    next.local_jobs = local_jobs;
+    claimed
 }
 
 /// The graph's own keys, once the detail pane has passed on the key.

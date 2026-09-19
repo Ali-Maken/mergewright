@@ -196,6 +196,14 @@ fn in_force_flags(entries: &[JournalEntry]) -> Vec<bool> {
     flags
 }
 
+/// One flag per entry, in the journal's own order: the browser marks every
+/// row at once, and asking [`in_force`] per row would walk the journal once
+/// per row (m3-working-tree-undo-and-stash/06).
+#[must_use]
+pub fn in_force_all(entries: &[JournalEntry]) -> Vec<bool> {
+    in_force_flags(entries)
+}
+
 fn is_operation(entry: &JournalEntry) -> bool {
     !matches!(entry.kind, OperationKind::Undo | OperationKind::Redo)
 }

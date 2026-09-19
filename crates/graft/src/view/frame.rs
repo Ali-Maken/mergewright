@@ -6,6 +6,7 @@ use graft_term::SanitizedText;
 use graft_term::sanitize_line;
 use graft_ui::detail_pane::{DetailLayout, DetailPane};
 use graft_ui::graph_screen::{GraphScreen, GraphView, GraphicsStatus, max_lanes_for};
+use graft_ui::journal_screen::JournalScreen;
 use graft_ui::map_screen::MapScreen;
 use graft_ui::overview_strip::{OverviewStrip, StripMarks};
 use graft_ui::paint::color;
@@ -21,6 +22,7 @@ use crate::session::Session;
 use crate::update::{AppState, Screen, Status};
 
 use super::detail::detail_view;
+use super::journal::journal_view;
 use super::map::map_view;
 use super::rows::graph_view;
 use super::status::status_view;
@@ -59,6 +61,33 @@ pub fn draws_pixels(session: &Session, state: &AppState) -> bool {
             session.capabilities.pixel_protocol,
             Some(PixelProtocol::Kitty | PixelProtocol::Iterm2) | None
         )
+}
+
+/// The undo journal browser in the graph's area, with the confirm box over
+/// it — `Enter` on the next-undo row can open the drift guard without the
+/// browser having closed first (m3-working-tree-undo-and-stash/06).
+///
+/// Never returns a pixel rectangle: like the Map view, the overlay replaces
+/// the graph, so there is no graph to draw pixels into.
+fn draw_journal(
+    session: &Session,
+    state: &AppState,
+    frame: &mut Frame,
+    area: Rect,
+) -> Option<Rect> {
+    let screen = journal_view(state, state.harness.clock.now_seconds());
+    let widget = JournalScreen {
+        view: &screen,
+        theme: &session.theme,
+    };
+    if state.detail.shown {
+        render_overlay_with_detail(session, state, frame, widget, area, "Journal");
+    } else {
+        frame.render_widget(widget, area);
+    }
+    draw_context_menu(state, frame, area, &session.theme);
+    draw_confirm(state, frame, area, &session.theme);
+    None
 }
 
 /// The Map view in the graph's area, with the context menu and the confirm
@@ -161,6 +190,7 @@ pub fn view_with_graphics(
             draw_commit_editor(session, state, frame, area)
         }
         Screen::Graph if state.map.shown => draw_map(session, state, frame, area),
+        Screen::Graph if state.journal.shown => draw_journal(session, state, frame, area),
         Screen::Graph => {
             let mut screen = graph_view(state, state.harness.clock.now_seconds());
             screen.icons = session.icons;
