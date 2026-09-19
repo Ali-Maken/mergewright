@@ -2453,8 +2453,52 @@ fn journal_entry(
     }
 }
 
-/// The journal browser's own state: four entries, the newest of them a
-/// commit `u` would take back, and one that failed with its backup kept.
+/// A commit a previous run died in the middle of: recovery closes it as
+/// `Aborted { "interrupted" }`, and it has no before-tree to restore, so it
+/// carries the warning mark rather than the undo arrow.
+fn torn_commit(touches: graft_core::journal::Touches) -> graft_core::journal::JournalEntry {
+    use graft_core::journal::{EntryStatus, OperationKind};
+
+    let mut torn = journal_entry(
+        40 * 60,
+        OperationKind::Commit,
+        "commit \"WIP on refresh\"",
+        touches,
+        &["git commit -F -"],
+    );
+    torn.status = EntryStatus::Aborted {
+        reason: graft_core::journal::INTERRUPTED.to_owned(),
+    };
+    torn.worktree_before = None;
+    torn.head_after = None;
+    torn.backup_ref = None;
+    torn
+}
+
+/// The undo of `commit`. As the newest entry it is what `U` would put back,
+/// and the commit under it then reads `undone`. Without this row no capture
+/// showed the redo mark or `undone` at all (m3/06 review, Minor 12).
+fn undo_of(commit: &graft_core::journal::JournalEntry) -> graft_core::journal::JournalEntry {
+    use graft_core::journal::{OperationKind, Touches};
+
+    let mut undo = journal_entry(
+        60,
+        OperationKind::Undo,
+        "undo: commit \"Add OAuth provider\"",
+        Touches {
+            refs: vec!["refs/heads/main".to_owned()],
+            index: true,
+            worktree: false,
+        },
+        &["git update-ref refs/heads/main 1f3b9c2 8a7d4e1"],
+    );
+    undo.reverses = Some(commit.id.clone());
+    undo
+}
+
+/// The journal browser's own state: six entries carrying every mark the
+/// browser has — the next undo, the next redo, an entry already undone, one
+/// interrupted by a dead process, and one that failed with its backup kept.
 fn journal_entries() -> Vec<graft_core::journal::JournalEntry> {
     use graft_core::journal::{EntryStatus, OperationKind, Touches};
 
@@ -2483,23 +2527,7 @@ fn journal_entries() -> Vec<graft_core::journal::JournalEntry> {
     discard.status = EntryStatus::Aborted {
         reason: "error: unable to unlink 'src/auth/refresh_test.rs': Permission denied".to_owned(),
     };
-    // A commit a previous run died in the middle of: recovery closes it as
-    // `Aborted { "interrupted" }`, and it has no before-tree to restore, so
-    // it carries the warning mark rather than the undo arrow.
-    let mut torn = journal_entry(
-        40 * 60,
-        OperationKind::Commit,
-        "commit \"WIP on refresh\"",
-        refs_and_index.clone(),
-        &["git commit -F -"],
-    );
-    torn.status = EntryStatus::Aborted {
-        reason: graft_core::journal::INTERRUPTED.to_owned(),
-    };
-    torn.worktree_before = None;
-    torn.head_after = None;
-    torn.backup_ref = None;
-
+    let torn = torn_commit(refs_and_index.clone());
     let commit = journal_entry(
         2 * 60,
         OperationKind::Commit,
@@ -2507,22 +2535,7 @@ fn journal_entries() -> Vec<graft_core::journal::JournalEntry> {
         refs_and_index,
         &["git commit -F -"],
     );
-    // The undo of that commit: the newest entry, so it is what `U` would put
-    // back, and the commit under it reads `undone`. Without this row no
-    // capture showed the redo mark or `undone` at all (m3/06 review, Minor
-    // 12).
-    let mut undo = journal_entry(
-        60,
-        OperationKind::Undo,
-        "undo: commit \"Add OAuth provider\"",
-        Touches {
-            refs: vec!["refs/heads/main".to_owned()],
-            index: true,
-            worktree: false,
-        },
-        &["git update-ref refs/heads/main 1f3b9c2 8a7d4e1"],
-    );
-    undo.reverses = Some(commit.id.clone());
+    let undo = undo_of(&commit);
 
     vec![
         journal_entry(
