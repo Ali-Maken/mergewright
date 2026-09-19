@@ -230,27 +230,62 @@ fn close_within(server: AskPassServer, bound: Duration) -> io::Result<()> {
         .expect("close returned within the bound, not stuck on its listener")
 }
 
-/// The stuck path the old shutdown had: the socket file gone, so no
-/// connection could ever wake a listener blocked in `accept`. The listener
-/// still ends — its clone of the handler is dropped — and the missing file is
-/// reported, not hidden.
+/// The wake-up connect fails with the socket file still there (its directory
+/// made unsearchable). `close` says so — it does not claim the listener
+/// ended — and leaves the socket in place, so the listener can still be
+/// woken. A helper connecting after that, while the server is stopping, is
+/// closed unanswered (review 01's race: a connection accepted during
+/// shutdown), and its connection is what ends the listener.
 #[test]
-fn close_ends_the_listener_even_when_its_socket_file_is_gone() {
-    let handler = Fixed::new(None);
+fn a_failed_wake_is_reported_and_a_late_helper_is_never_answered() {
+    let handler = Fixed::new(Some(b"must-not-be-sent"));
     let server = server(handler.clone());
-    std::fs::remove_file(server.socket_path()).expect("the socket file is removed");
+    let socket = server.socket_path().to_owned();
+    let dir = socket.parent().expect("a directory").to_owned();
+    std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o000))
+        .expect("the directory is made unsearchable");
 
     let closed = close_within(server, Duration::from_secs(5));
 
+    std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700))
+        .expect("the directory is searchable again");
+    let error = closed.expect_err("a failed wake is an error");
+    assert_eq!(error.kind(), io::ErrorKind::PermissionDenied, "{error}");
     assert!(
-        matches!(&closed, Err(error) if error.kind() == io::ErrorKind::NotFound),
-        "the missing socket is reported: {closed:?}"
+        error.to_string().contains("still running"),
+        "the error says the listener was not stopped: {error}"
+    );
+    assert!(
+        socket.exists(),
+        "the socket is left so it can still be woken"
     );
     assert_eq!(
         Arc::strong_count(&handler),
-        1,
-        "the listener thread ended and dropped its handler"
+        2,
+        "the listener is still running, as the error said"
     );
+
+    let mut out = Vec::new();
+    let late = respond(&socket, "Password:", &mut out);
+    assert!(
+        matches!(late, Err(RespondError::Io(_))),
+        "a helper reaching a stopping server gets EOF: {late:?}"
+    );
+    assert!(out.is_empty(), "no answer reached git");
+    assert!(
+        handler.prompts.lock().expect("test lock").is_empty(),
+        "the user was never asked"
+    );
+    let started = Instant::now();
+    while Arc::strong_count(&handler) > 1 {
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "the listener did not end on the late connection"
+        );
+        thread::sleep(Duration::from_millis(10));
+    }
+    std::fs::remove_file(&socket).expect("the test removes the socket");
+    std::fs::remove_dir(&dir).expect("the test removes the directory");
 }
 
 /// Answers every prompt with far more than a socket buffer holds, and says

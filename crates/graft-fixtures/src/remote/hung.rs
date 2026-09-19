@@ -5,7 +5,6 @@ use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
 
 /// A loopback port where every connection is accepted, held open, and never
 /// read from or written to — a server that has hung, or a network that
@@ -30,7 +29,6 @@ impl HungRemote {
     pub fn listen() -> io::Result<HungRemote> {
         let listener = TcpListener::bind("127.0.0.1:0")?;
         let address = listener.local_addr()?;
-        listener.set_nonblocking(true)?;
         let held = Arc::new(Mutex::new(Vec::new()));
         let stopping = Arc::new(AtomicBool::new(false));
         let thread = {
@@ -65,32 +63,26 @@ impl HungRemote {
     }
 }
 
-/// How long the idle listener parks before looking for a connection again.
-/// `Drop` does not wait on it: it unparks the thread.
-const ACCEPT_POLL: Duration = Duration::from_millis(10);
-
 /// The listener thread: accept, keep the stream, repeat — until `Drop`
-/// raises `stopping` and unparks it.
+/// raises `stopping` and connects once to wake the `accept`.
 ///
-/// `listener` is non-blocking, so the thread never sits in an `accept` only a
-/// new connection could end. (It used to, and `Drop` woke it by connecting;
-/// when that connect failed the thread was stranded for the life of the test
-/// binary.) Every connection accepted before `stopping` is seen is held, so
-/// none is dropped by a teardown racing it.
+/// `stopping` is checked after every `accept`. Whatever is accepted once it
+/// is set — the wake-up, or a real client that connected in the same moment
+/// and was queued ahead of it — is closed, not held. Nothing can count it
+/// any more: `connections` needs the fixture, and it is being dropped.
 fn accept_and_hold(listener: &TcpListener, held: &Mutex<Vec<TcpStream>>, stopping: &AtomicBool) {
-    while !stopping.load(Ordering::SeqCst) {
-        match listener.accept() {
-            Ok((stream, _)) => lock(held).push(stream),
-            Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
-                thread::park_timeout(ACCEPT_POLL);
-            }
+    for stream in listener.incoming() {
+        if stopping.load(Ordering::SeqCst) {
+            drop(stream);
+            return;
+        }
+        match stream {
+            Ok(stream) => lock(held).push(stream),
             Err(error) => {
                 // A failed `accept` (the client reset before it completed)
                 // costs this fixture nothing: the listener is still good and
-                // the test counts only connections that were held. Parked as
-                // when idle, so a lasting failure does not spin.
+                // the test counts only connections that were held.
                 eprintln!("HungRemote: accept failed: {error}");
-                thread::park_timeout(ACCEPT_POLL);
             }
         }
     }
@@ -108,10 +100,25 @@ impl Drop for HungRemote {
         let Some(thread) = self.thread.take() else {
             return;
         };
-        // The thread never blocks without a bound, so this join always
-        // returns; unparking makes it see `stopping` now. It drops the
-        // listener as it returns, which frees the port.
-        thread.thread().unpark();
+        // Wake the blocked `accept` while the listener is still open; the
+        // thread sees `stopping` and returns, dropping the listener (which
+        // frees the port). The thread does nothing else, so once woken the
+        // join returns.
+        if let Err(error) = TcpStream::connect(self.address) {
+            // Unwoken, the thread would sit in `accept` for the rest of the
+            // test binary. Fail the test rather than leave it silently —
+            // unless it is already failing, where a second panic aborts.
+            let message = format!(
+                "HungRemote on {}: could not wake the listener ({error}); \
+                 its thread is still running",
+                self.address
+            );
+            if thread::panicking() {
+                eprintln!("{message}");
+                return;
+            }
+            panic!("{message}");
+        }
         if thread.join().is_err() {
             eprintln!("HungRemote on {}: listener thread panicked", self.address);
         }

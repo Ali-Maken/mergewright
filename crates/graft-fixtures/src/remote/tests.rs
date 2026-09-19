@@ -411,9 +411,9 @@ fn http_remote_drop_ends_a_wedged_backend() {
     );
 }
 
-/// Drop no longer connects to its own port to wake the listener (a connect
-/// that could fail and strand the thread): it unparks a listener that never
-/// blocks. So it returns promptly, and the listener is gone with the port.
+/// Drop wakes the listener while it is still open, joins it, and closes the
+/// held streams: it returns promptly, and the listener is gone with the port.
+/// (A failed wake panics in drop; loopback gives no way to make it fail here.)
 #[test]
 fn hung_remote_drop_joins_its_listener_promptly() {
     let hung = HungRemote::listen().unwrap();
