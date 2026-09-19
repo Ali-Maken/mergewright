@@ -51,6 +51,12 @@ impl HungRemote {
         format!("http://{}/repo.git", self.address)
     }
 
+    /// The port listened on.
+    #[cfg(test)]
+    pub(crate) fn port(&self) -> u16 {
+        self.address.port()
+    }
+
     /// Connections accepted and held so far.
     pub fn connections(&self) -> usize {
         lock(&self.held).len()
@@ -59,9 +65,15 @@ impl HungRemote {
 
 /// The listener thread: accept, keep the stream, repeat — until `Drop`
 /// raises `stopping` and connects once to wake the `accept`.
+///
+/// `stopping` is checked after every `accept`. Whatever is accepted once it
+/// is set — the wake-up, or a real client that connected in the same moment
+/// and was queued ahead of it — is closed, not held. Nothing can count it
+/// any more: `connections` needs the fixture, and it is being dropped.
 fn accept_and_hold(listener: &TcpListener, held: &Mutex<Vec<TcpStream>>, stopping: &AtomicBool) {
     for stream in listener.incoming() {
         if stopping.load(Ordering::SeqCst) {
+            drop(stream);
             return;
         }
         match stream {
@@ -88,23 +100,27 @@ impl Drop for HungRemote {
         let Some(thread) = self.thread.take() else {
             return;
         };
-        // Wake the blocked `accept` so the thread sees `stopping` and returns,
-        // dropping the listener with it.
-        match TcpStream::connect(self.address) {
-            Ok(_) => {
-                if thread.join().is_err() {
-                    eprintln!("HungRemote on {}: listener thread panicked", self.address);
-                }
+        // Wake the blocked `accept` while the listener is still open; the
+        // thread sees `stopping` and returns, dropping the listener (which
+        // frees the port). The thread does nothing else, so once woken the
+        // join returns.
+        if let Err(error) = TcpStream::connect(self.address) {
+            // Unwoken, the thread would sit in `accept` for the rest of the
+            // test binary. Fail the test rather than leave it silently —
+            // unless it is already failing, where a second panic aborts.
+            let message = format!(
+                "HungRemote on {}: could not wake the listener ({error}); \
+                 its thread is still running",
+                self.address
+            );
+            if thread::panicking() {
+                eprintln!("{message}");
+                return;
             }
-            Err(error) => {
-                // Without the wake-up the thread would block forever in
-                // `accept`; joining it would hang the test's teardown. It is
-                // left behind and the reason reported.
-                eprintln!(
-                    "HungRemote on {}: could not wake the listener ({error}); left running",
-                    self.address
-                );
-            }
+            panic!("{message}");
+        }
+        if thread.join().is_err() {
+            eprintln!("HungRemote on {}: listener thread panicked", self.address);
         }
         for stream in lock(&self.held).drain(..) {
             if let Err(error) = stream.shutdown(Shutdown::Both) {

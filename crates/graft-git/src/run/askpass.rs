@@ -42,6 +42,15 @@ const PROMPT_WAIT: Duration = Duration::from_secs(5);
 /// How often the listener, waiting on a handler, looks for a shutdown.
 const SHUTDOWN_POLL: Duration = Duration::from_millis(20);
 
+/// How long the server waits to hand its answer to a helper that has stopped
+/// reading. Bounds the one write in the exchange, so `close` never waits on a
+/// stuck helper for longer than this.
+#[cfg(not(test))]
+const REPLY_WAIT: Duration = Duration::from_secs(5);
+/// Short in tests, so the stuck-helper test does not wait five seconds.
+#[cfg(test)]
+const REPLY_WAIT: Duration = Duration::from_millis(300);
+
 const ANSWER: u8 = 0;
 const CANCELLED: u8 = 1;
 
@@ -176,17 +185,39 @@ impl AskPassServer {
     /// dropping, which cannot report a failure.
     ///
     /// # Errors
-    /// The first step that failed; later steps are still attempted.
+    /// The listener could not be woken: it is still running, and the socket
+    /// and directory are left in place (removing the socket would make it
+    /// unwakeable for good). Otherwise the first step that failed; later
+    /// steps are still attempted.
     pub fn close(mut self) -> io::Result<()> {
         self.shutdown()
     }
 
+    /// Order matters: stop flag, wake, join, and only then remove the socket
+    /// file — removing it first would leave no way to wake the listener.
     fn shutdown(&mut self) -> io::Result<()> {
         if self.closed {
             return Ok(());
         }
         self.closed = true;
         self.stop.store(true, Ordering::SeqCst);
+        let Some(thread) = self.thread.take() else {
+            return Ok(());
+        };
+        // Wake the listener out of its blocking `accept`; it sees `stop` and
+        // returns. Everything it can be doing instead is bounded (prompt read
+        // and reply write have timeouts; a blocked handler is abandoned at
+        // the next `SHUTDOWN_POLL`), so once woken the join returns.
+        if let Err(error) = UnixStream::connect(&self.socket) {
+            return Err(io::Error::new(
+                error.kind(),
+                format!(
+                    "could not wake the askpass listener at {}: {error}; \
+                     its thread is still running and the socket is left in place",
+                    self.socket.display()
+                ),
+            ));
+        }
         let mut first: Option<io::Error> = None;
         let mut note = |result: io::Result<()>| {
             if let Err(error) = result
@@ -195,21 +226,11 @@ impl AskPassServer {
                 first = Some(error);
             }
         };
-        // Wake the listener out of `accept`. If even that fails the thread
-        // cannot be woken, so it is left detached rather than joined forever;
-        // it exits at its next connection.
-        let woke = UnixStream::connect(&self.socket).map(drop);
-        let could_wake = woke.is_ok();
-        note(woke);
-        if let Some(thread) = self.thread.take()
-            && could_wake
-        {
-            note(
-                thread
-                    .join()
-                    .map_err(|_| io::Error::other("the askpass listener panicked")),
-            );
-        }
+        note(
+            thread
+                .join()
+                .map_err(|_| io::Error::other("the askpass listener panicked")),
+        );
         note(std::fs::remove_file(&self.socket));
         note(std::fs::remove_dir(&self.dir));
         first.map_or(Ok(()), Err)
@@ -219,10 +240,14 @@ impl AskPassServer {
 impl Drop for AskPassServer {
     fn drop(&mut self) {
         if let Err(error) = self.shutdown() {
-            // Safe to ignore here, and only here: `close` is the path that
-            // reports. What can fail is removing an empty 0700 directory in
-            // the temp dir (or its socket), which exposes nothing and costs
-            // the user nothing they would see; drop has no one to tell.
+            // Drop has no one to tell — `close` is the path that reports, and
+            // callers that can act on a failure use it. What is lost here:
+            // either an empty 0700 directory (or its socket) left in the temp
+            // dir, which exposes nothing; or, if the wake-up connect failed
+            // (descriptors exhausted), one idle listener thread blocked in
+            // `accept` on that private socket for the rest of the process.
+            // It holds no credential and answers nothing: `stop` is set, so
+            // any later connection is closed unanswered.
             drop(error);
         }
     }
@@ -255,9 +280,15 @@ fn private_dir() -> io::Result<PathBuf> {
 
 /// The listener thread: one connection at a time (git asks one question at a
 /// time), until shut down.
+///
+/// `stop` is checked after every `accept`. Whatever was accepted once it is
+/// set — the shutdown's wake-up, or a real helper that connected in the same
+/// moment and was queued ahead of it — is dropped unanswered: the helper sees
+/// EOF and fails, it is never given an answer by a server that is closing.
 fn listen(listener: &UnixListener, handler: &Arc<dyn AskPass>, stop: &AtomicBool) {
     for stream in listener.incoming() {
         if stop.load(Ordering::SeqCst) {
+            drop(stream);
             return;
         }
         match stream {
@@ -287,7 +318,12 @@ fn listen(listener: &UnixListener, handler: &Arc<dyn AskPass>, stop: &AtomicBool
 /// cancelled — and its answer is dropped, and so zeroed, unsent.
 fn serve(mut stream: UnixStream, handler: &Arc<dyn AskPass>, stop: &AtomicBool) -> io::Result<()> {
     stream.set_read_timeout(Some(PROMPT_WAIT))?;
+    stream.set_write_timeout(Some(REPLY_WAIT))?;
     let prompt = read_prompt(&mut stream)?;
+    if stop.load(Ordering::SeqCst) {
+        // Shut down while the prompt was arriving: do not ask the user.
+        return stream.shutdown(std::net::Shutdown::Both);
+    }
     let (answered, answer) = mpsc::channel();
     let handler = Arc::clone(handler);
     // Detached, not scoped: a scope would make shutdown wait for a handler
