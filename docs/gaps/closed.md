@@ -84,6 +84,15 @@ open rows in the same sections.
 
 | ~~Only the newest stash entry has a badge.~~ **Closed by `m3-working-tree-undo-and-stash/06`**: the reflog is read, so every stash entry is badged. Proved on a real repo through the real job pool by reading `git stash list` back | M2 | Closed m3-06 |
 
+## `graft-ops` was empty (M0 row, closed by M2/M3 build-out)
+
+~~`graft-ops` is empty — a crate doc comment and nothing else.~~ **Closed.** M2's Mistake Radar detection and M3's write operations, snapshot/restore and undo journal filled it: `operation.rs` (433 lines), `restore.rs` (701), `snapshot.rs` (380), `undo.rs` (462), plus the mistake-radar probes. Found stale (row still said "M3" as if unstarted) while shrinking KNOWN_GAPS.md, 2026-09-19 — M3 is in progress but this crate is already substantially built.
+
+## m2-details-and-diffs/11, /13b — fixed within the ticket (closed)
+
+- ~~`detail_view` read `AppState::selected_spec()` for the pane header, which never names `Compare`~~ — a pinned compare's header silently redrew as the cursor's plain commit every frame. **Fixed in `m2-details-and-diffs/11`**: reads `AppState::detail.spec` instead (what `DetailState::open`/`follow` actually set).
+- ~~`[radar]`'s startup values never reached `AppState.radar.policy`~~ — **Resolved in `m2-details-and-diffs/13c`**: `event_loop::startup::seed_config` now seeds it, same as `[diff]`. Tested (`a_non_default_radar_setting_reaches_app_state_policy`). `run_headless` still doesn't seed `[diff]`/`[radar]` — pre-existing asymmetry, left alone.
+
 ## m1-the-graph/30d, /55 — 50k refs slow debug first paint (closed, Won't fix)
 
 ~~50k refs slow the graph's first paint in debug builds.~~ **Won't fix (user, 2026-09-17).** 30d fixed the main cause (one header check per distinct ref target instead of reading every ref's commit object): first paint 160→57 ms release (budget 150 met), 800→494 ms debug (still over). m1-the-graph/55's shared `RefSnapshot` (serving resolve, seeds, walk tips, `refs::read`) likely helps further but debug was never re-measured. Release passes and only release timings gate (ADR-0021) — a gap only in an unshipped build isn't one.

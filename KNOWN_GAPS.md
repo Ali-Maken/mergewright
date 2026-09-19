@@ -96,38 +96,20 @@ default tier rather than a fallback. What is left is evidence, not decisions.
 
 ## M0 gaps
 
-**What M0 has been seen doing** (swept at m0/12, revised at the M0 checkpoint,
-2026-09-12). Everything M0 built was first exercised under a *bare pty* — a
-`pty.fork` or `script -q /dev/null` with no emulator behind it — and by unit,
-snapshot and property tests. That proved the bytes Graft writes and the
-decisions it makes from scripted replies, but not a single pixel.
+**What M0 has been seen doing** (swept at m0/12, revised at the M0 checkpoint). Everything was first exercised under a *bare pty* (no emulator) plus unit/snapshot/property tests — proves the bytes Graft writes, not a single pixel.
 
-**That is no longer the whole story: the user ran M0 in a real terminal at the
-M0 checkpoint and approved it.** Observed by eye, not inferred: the status
-screen showed the repo, HEAD on `main`, the **pixel** tier via the Kitty
-protocol, cell size **17x37**, a **dark** theme taken from the terminal's own
-background, and **truecolor**. The capability probe was answered in **367 µs**
-— three orders of magnitude inside the 200 ms budget. `q` exited clean. So
-detection, the `detected` wording, the theme hint and the colour depth are all
-now confirmed against a real emulator, and the two rows that used to sit here
-saying otherwise are gone.
-
-Still unseen: any emulator other than the user's daily one, tmux, SSH, and the
-16-colour and ASCII fallback paths — nobody has watched those degrade. The
-six DESIGN.md divergences were **confirmed by the user at the checkpoint**:
-keep the code, amend the document, as recorded in ADR-0014.
+**The user then ran M0 in a real terminal at the checkpoint and approved it.** Confirmed by eye: repo, HEAD on `main`, **pixel** tier (Kitty protocol), cell size 17x37, **dark** theme from the terminal's own background, **truecolor**; probe answered in 367 µs (budget 200 ms); `q` exited clean. Detection, wording, theme hint and colour depth are confirmed against a real emulator. Still unseen: any other emulator, tmux, SSH, 16-colour/ASCII fallback. Six DESIGN.md divergences **confirmed by the user**: keep the code, amend the doc (ADR-0014).
 
 | Gap | What's needed | Expiry |
 |---|---|---|
-| **No real terminal has been seen *answering* the capability probe.** m0/04's evidence is: 46 unit tests against scripted replies, plus one run in a bare pty (`script -q /dev/null`) which proved the six queries go out in the right order with `DA1` last, and that a silent terminal times out at 201 ms against the 200 ms budget and falls back per query. What is **not** verified: any real emulator's replies, the tier they produce, `TIOCGWINSZ`-derived cell size, `OSC 11` theme, tmux passthrough, and SSH. `cargo run -p graft --example capability_probe` prints the full report; run it in Ghostty, iTerm2, Kitty, WezTerm, Terminal.app, the Zed and VS Code terminals, inside tmux >= 3.3 with `allow-passthrough on`, inside tmux 3.2, and over SSH | The manual runs above, at the M0 checkpoint. Any terminal that answers differently from the fixtures is a bug in the parser or the tier table, not a gap to live with | **M0 review** |
-| **Sanitising does not cover look-alikes, width, or the invisibles that are not `Cf`.** `term::sanitize` neutralises controls, bidi and Unicode's whole format category. Width is handled at draw time since m1-the-graph/08: `ui::fit::fit` lays text into an exact cell count, never splits a wide character, and keeps at most two combining marks per base. Still passing through `sanitize`: homoglyphs (Cyrillic `а` for Latin `a`), East Asian *ambiguous*-width characters (which `fit` counts as one cell; a CJK-locale terminal may draw two), and the invisible characters that are *not* `Cf` — the variation selectors U+FE00–U+FE0F and U+E0100–U+E01EF (the current hidden-payload channel) and the Hangul fillers. None of them can drive the terminal; replacing the variation selectors would corrupt ordinary emoji and CJK text, which is why they are kept. The `Cf` ranges are also spelled out as literals, pinned to Unicode 16.0, because nothing in the dependency set answers character-property questions: a Unicode revision that adds a format character is not picked up until someone refreshes the list, and no test would notice | Whether Graft ever flags confusables or a variation-selector run in a ref name is a policy call with real false positives — needs the user's decision, not a builder's | M1 checkpoint — open question, see m1-the-graph/28's report; not decided by this ticket |
-| **The lane palette is argued, not seen.** The twelve hues were selected numerically — max-min worst-case OKLab distance under normal vision plus Machado 2009 protan/deutan/tritan simulation, floors 0.18 adjacent / 0.055 any pair — and checked by eye only as flat swatches in an image, never as thin graph lines in a terminal, and never by anyone with a colour-vision deficiency | Re-owned: m1/13 prepared the commands (ticket 13, Notes) but only the user can look. Judge criss-cross and foxtrot in Zed and VS Code at truecolor, 16 colours and `NO_COLOR` | M1 checkpoint (user, by eye) |
-| **Non-UTF-8 paths are typed for, not tested.** `RepoHandle`'s API is `Path`/`PathBuf` end to end and never converts to `String`, so a repository at a path that is not valid UTF-8 should open — but no test proves it. APFS and HFS+ reject such filenames, so the fixture cannot be created on the machine m0/08 was built on (PROMPT.md §6.3) | A heavy-tier test on Linux (ext4/tmpfs accept arbitrary bytes) that opens a repository under a non-UTF-8 path and checks the reported workdir round-trips byte for byte. Same for a branch name that is not UTF-8, which `RefName` already stores as bytes | M1 heavy tier |
-| **M0's screen has only been seen in a synthetic pty.** m0/11 drove the real binary through a `pty.fork` at 100x30, and m0/12 re-walked the README's demo steps the same way: `graft .` shows the workdir, `HEAD main`, the tier and theme lines and exits 0 on `q` with the alternate screen left and every mode popped; `graft /tmp` exits 1 with the line above; `graft --help` prints usage and exits 0; `SIGINT` kills it by signal with the terminal restored; under `NO_COLOR=1` the only SGR left is the reset (`ESC[m`, `ESC[0m`) with no colour parameters at all, and the theme line reads `no colour (NO_COLOR)`. Nothing answered the probe in either pty, so the tier shown was the silent-terminal fallback and no real emulator's rendering of this screen has been seen | The M0 checkpoint: run it in Ghostty, iTerm2 and the Zed/VS Code terminals and look at it | **M0 review** |
-| **A panicking job's crash report is unproven on the real hook.** The suppression path is covered from both ends — `catching` marks the thread (`crash` unit tests) and a panicking job becomes `Event::JobFailed(_, Panicked { .. })` while the pool keeps working (`jobs` tests) — but no test installs Graft's real panic hook, so the hook's early return (write the report, do *not* restore the terminal, hand the path back) has been reviewed and never executed. Installing it would set a process-wide hook and write into `$XDG_STATE_HOME` for every other test in the binary | The M0 review: panic a job by hand in a real terminal, check the screen survives and the status line names a report file that exists | **M0 review** |
-| **`graft-ops` is empty.** A crate doc comment and nothing else: no types, no functions, no tests. It exists so ARCHITECTURE.md's crate map and m0/02's dependency-edge test are real from the start. (`graft-graph` was in this row too until m1-the-graph/05 filled it with the layout engine; the renderers are still to come) | `ops` fills up in M3 (write operations and the undo journal). Until then, a green `cargo test` on the workspace says nothing about it | M3 |
-| **No `criterion` benchmarks exist; no CI.** Heavy tier, 100k fixture, `getrusage` and 1,000-case `proptest` exist (m1/02); budget *assertions* were added later by tickets 27/30/61 (peak RSS, first paint, frame gates — see their own rows/closed.md). ~~`cargo-fuzz` targets~~ closed by `m2-details-and-diffs/02` (`fuzz_targets/parse_unified.rs`, `parse_file_list.rs`). No CI: PROMPT.md §7 item 6 makes it conditional on a GitHub repo, which this isn't | — | Not planned (CI only; no GitHub repo) |
-| **Sanitising strips the emoji joiner (U+200D), so a multi-part emoji breaks into its pieces** in a commit subject or branch name. A family or a profession emoji renders as two or three separate glyphs. Direct consequence of taking all of Unicode `Cf` (ADR-0014), which the user confirmed — the joiner is a format character, and telling it apart from a hostile one means special-casing emoji sequences | Raised and accepted by the user at the M0 checkpoint, 2026-09-12: cosmetic, and the safety trade is the right way round. **Revisit only if it annoys him in daily use** — not scheduled work | Not planned; revisit on user's say-so |
+| **No real terminal has been seen answering the capability probe.** Evidence: 46 unit tests on scripted replies + one bare-pty run (proves query order/timeout only). Unverified: any real emulator's replies/tier, `TIOCGWINSZ` cell size, `OSC 11` theme, tmux passthrough, SSH. `cargo run -p graft --example capability_probe` prints the report | Manual runs in Ghostty, iTerm2, Kitty, WezTerm, Terminal.app, Zed/VS Code, tmux ≥3.3 (passthrough on), tmux 3.2, SSH | **M0 review** |
+| **Sanitising doesn't cover look-alikes, width, or non-`Cf` invisibles.** `term::sanitize` handles controls/bidi/`Cf`; width is handled separately at draw time (m1/08). Still passes: homoglyphs, East Asian ambiguous-width chars, variation selectors (hidden-payload channel) and Hangul fillers — none can drive the terminal, and removing variation selectors would corrupt real emoji/CJK. `Cf` ranges are literals pinned to Unicode 16.0 (no dependency answers property questions; a Unicode revision adding a format char goes unnoticed) | Whether to flag confusables/variation-selector runs is a policy call with real false positives — user decision | M1 checkpoint — open question |
+| **The lane palette is argued, not seen.** Twelve hues chosen numerically (max-min OKLab distance + Machado 2009 CVD simulation, floors 0.18/0.055); checked only as flat swatches, never as thin graph lines, never by anyone with a colour-vision deficiency | m1/13 prepared the commands; only the user can judge criss-cross/foxtrot in Zed/VS Code at truecolor, 16-colour, `NO_COLOR` | M1 checkpoint (user, by eye) |
+| **Non-UTF-8 paths typed for, not tested** — `RepoHandle` is `Path`/`PathBuf` end to end, but APFS/HFS+ reject such filenames so the fixture can't be built here | A heavy-tier Linux test (ext4/tmpfs) opening a non-UTF-8 path, round-tripping byte for byte; same for a non-UTF-8 branch name (`RefName` already stores bytes) | M1 heavy tier |
+| **M0's screen only seen in a synthetic pty** (m0/11-12 drove the real binary at 100x30: `graft .`, `graft /tmp`, `--help`, `SIGINT`, `NO_COLOR=1` all behave correctly). Nothing answered the probe in either pty, so only the silent-terminal fallback tier has been seen rendered | Run it in Ghostty, iTerm2, Zed/VS Code and look | **M0 review** |
+| **A panicking job's crash report unproven on the real hook.** Suppression covered from both ends (`crash`/`jobs` unit tests), but no test installs Graft's real process-wide panic hook — its early return (write report, don't restore terminal) reviewed, never executed | Panic a job by hand in a real terminal; check the screen survives and the status line names a real report file | **M0 review** |
+| **No `criterion` benchmarks exist; no CI.** Heavy tier, 100k fixture, `getrusage`, 1,000-case `proptest` exist (m1/02); budget *assertions* added later (tickets 27/30/61 — see closed.md). ~~`cargo-fuzz` targets~~ closed by `m2-details-and-diffs/02`. No CI (PROMPT.md §7 item 6, no GitHub repo) | — | Not planned (CI only) |
+| **Sanitising strips the emoji joiner (U+200D)** — multi-part emoji (family, profession) break into separate glyphs. Direct consequence of taking all of Unicode `Cf` (ADR-0014, user-confirmed: telling the joiner apart from a hostile format char needs special-casing emoji sequences) | User accepted at M0 checkpoint: cosmetic, safety trade is the right way round | Not planned; revisit only if it annoys him in daily use |
 
 
 ## M1 gaps
@@ -197,15 +179,15 @@ place).
 
 | Gap | What is missing | Closed by |
 |---|---|---|
-| **`rows()` clones every row it returns.** A viewport's worth of `Row`s — each carrying a `Commit` with its message and identities — is copied out of the cache on every call. Cheap at 50 rows a frame; not free | Borrowed slices per chunk, or an iterator, once tickets 08 and 14 know what the renderers need | M1 ticket 08 |
-| **`Walk::full_topological` reads the whole range before it emits.** Measured: 200 reads before the first commit on the 200-commit linear fixture. That is the design (ADR-0008 — a background job), but on git/git it is 1.2M object reads per open until the commit-graph offer (R2-4) is accepted, and nothing caches the order between runs | The offer is built (m1/54); the residual is what remains when the user declines it (`X`) or has no git ≥ 2.38 | Not planned (m2-details-and-diffs/22): the offer is built and the residual is the user's own decline, not an unbuilt feature |
+| **`rows()` clones every row it returns** (a viewport's `Row`s copied out of the cache each call). Cheap at 50 rows/frame; not free | Borrowed slices/iterator once tickets 08/14 know renderer needs | M1 ticket 08 |
+| **`Walk::full_topological` reads the whole range before emitting** (design, ADR-0008 — a background job; 1.2M object reads per open on git/git until the commit-graph offer is accepted, nothing caches order between runs) | Offer is built (m1/54); residual is the user's own decline | Not planned (m2-details-and-diffs/22) |
 
 **History streams into the layout** (m1-the-graph/07, 2026-09-13).
 
 | Gap | What would close it | Owner |
 |---|---|---|
-| **`AppState` keeps every row it is sent.** `History::chunks` is an append-only list of `Arc<[Row]>`, so the UI side grows with history — the thing DESIGN.md §3.6 says the row cache must never be. The layout's own cache evicts on the worker, but the copies already sent stay. Fine on the corpus; not on git/git. Same order of memory as the one-lump `Arc<[Commit]>` it replaces | The graph screen asks the layout for its viewport's rows instead of keeping all of them — a long-lived layout the UI can query between frames (tickets 08/14), measured in ticket 27 | M1 tickets 08, 27 |
-| **Rows laid out after `Esc` inside the interrupted chunk are dropped, not shown.** `lay_out` stops reporting once `stop` is set, and `update` ignores any chunk after `Esc`, so the count freezes at the last whole chunk that landed — by design, but the layout on the worker has laid out a few more rows nobody sees | Nothing needed unless resume-after-cancel is wanted | — |
+| **`AppState` keeps every row it's sent** — `History::chunks` is append-only `Arc<[Row]>`, growing with history (DESIGN.md §3.6 says the row cache must never do this). Fine on the corpus, not on git/git | The graph screen queries a long-lived layout for its viewport instead (tickets 08/14), measured in 27 | M1 tickets 08, 27 |
+| **Rows laid out after `Esc` inside the interrupted chunk are dropped, not shown** (by design; count freezes at the last whole chunk) | Nothing needed unless resume-after-cancel is wanted | — |
 
 ## Scheduled interim states
 
@@ -215,25 +197,25 @@ exists.
 
 | Gap | Created by | Expiry |
 |---|---|---|
-| **The journal browser has no status line while it is open.** The same defect the stash overlay fixed with `StashView::notice`: a failure or refusal raised while the browser is open has nowhere to draw. `u` is the key the whole milestone rests on, so a silent refusal there is worse than elsewhere | `m3-working-tree-undo-and-stash/06` | Group 07 acceptance walk, or M5 — it is a ten-line fix following the stash overlay's pattern |
-| **UNVERIFIED: no capture in this repo proves any colour, anywhere in M3.** The pty pipeline records pyte character grids with no colour attributes (ADR-0029). Every colour decision in the changes pane, the commit editor, the stash overlay and the journal browser ships judged by no one but the user's eye | M3, all visual groups | Standing. Only the user can close it, at the checkpoint |
-| **UNVERIFIED, and not closable from here: ~2% of cancels that land inside git's index-write window can still strand a lock.** The SIGKILL case is fixed and measured (below); what remains is a race *inside git itself* — `create_tempfile` opens the lock file before marking it active, so a signal in that gap leaves the file with no cleanup handler registered. This is the same race the user's own `Ctrl+C` on a git command runs, so it is not a defect Graft introduced and not one Graft can close. Recorded so nobody re-diagnoses it | `m3-working-tree-undo-and-stash/05` review round | Not planned. Revisit only if a field note reports a stranded lock |
-| **BROKEN: `strip_comments` hardcodes `#` and ignores `core.commentChar`.** A user who has set `core.commentChar` to something else gets their real message lines stripped, or comment lines kept, in the commit message | `m3-working-tree-undo-and-stash/05` review round (Minor 8) | M4, or sooner if a field note hits it |
-| **`GIT_EDITOR` is resolved on the UI thread at editor open, not as a job.** Doing it properly needs a new Command/Product pair, an AppState field and a two-step for `e`, which fires before any editor opens — recorded rather than half-built. A slow `git var GIT_EDITOR` therefore blocks the UI briefly | `m3-working-tree-undo-and-stash/05` review round (M8 second half, Minor 9) | M4 or M5, whichever next touches the job runner |
-| **UNVERIFIED: a real `$EDITOR` on a real terminal.** The suspend/resume path is proved by transcript order, a panic guard and a mux test — real evidence, but not the thing itself. PROMPT.md principle 8 says a wrong restore breaks the user's terminal, so this is the one M3 path whose failure mode is "your shell is now broken". The group also found the spec's own suggestion (`InputMux::hold()`) does **not** stop the reader thread, so `$EDITOR` would have raced Graft for keypresses; a self-pipe `Gate` replaces it | `m3-working-tree-undo-and-stash/05` | The M3 acceptance group (07) pty job — and the user's first real commit through `$EDITOR` |
-| **UNVERIFIED: GPG/SSH commit signing while the editor holds the terminal.** A pinentry program wanting the tty during a signed commit has not been tried. PROMPT.md treats signing as already covered, but nothing here has exercised it against the suspend path | `m3-working-tree-undo-and-stash/05` | M4 or the first field note; `docs/field-notes.md` decides |
-| **README has no M3 section, so `[keys] suspend_on_ctrl_z` (ADR-0002) is undocumented.** The config key is parsed and works; nothing tells the user it exists | `m3-working-tree-undo-and-stash/05` | M8 docs pass, or the acceptance group if it writes user-facing text |
-| **The untracked-file confirm box asks "Delete notes.md?" over a button labelled `Discard`.** The question and the button disagree about what is about to happen, on the one box whose whole job is to be unambiguous before destroying something | `m3-working-tree-undo-and-stash/04` review round | Group 06 (it owns the last confirm-box pass) or the acceptance walk, whichever reaches it first |
-| **UNVERIFIED: the busy/done status, the per-class discard wording and the kept cursor are proved only by unit tests over scripted state — none key-to-repo.** They were four of the acceptance lines this group ticked without having built them, so they are the lines least entitled to the benefit of the doubt | `m3-working-tree-undo-and-stash/04` review round | The M3 acceptance group (07) |
-| **UNVERIFIED: hunk *unstage* and hunk *discard* have no key-to-repo test.** Hunk *stage* was proved end to end against real git (index takes the first hunk, worktree keeps the second). The other two directions are covered only below the key layer, and `PatchDirection::Reverse` is exactly where group 01's review found the original bug | `m3-working-tree-undo-and-stash/04` | The M3 acceptance group (07) |
-| **UNVERIFIED: the confirm box's git command string is hand-written, not taken from `Operation::plan`.** The box shows the user "the exact command" — but for a patch operation that text is composed in the view, so it can drift from what is actually run. The point of showing a command is that it is the one that will execute | `m3-working-tree-undo-and-stash/04` | M5 (Ghost Preview shows planned commands for real; it must source them from `plan`) |
-| **Redo of an undone conflicted `stash pop` restores the conflict markers with a clean index** (M5a). The files come back with their `<<<<<<<` markers exactly as they were, but the index is not left in the unmerged state git would have put it in. Content is intact; what is lost is git's own "you are mid-conflict" flag, so `git status` reads it as ordinary modified files | `m3-working-tree-undo-and-stash/03` | M6, the conflict resolver — it owns unmerged-index state |
-| **UNVERIFIED: two Graft processes open on the same worktree.** The journal is a file and nothing arbitrates between instances. Not tested, not designed against. Likely on a machine where the user leaves one open per project and opens a second by habit | `m3-working-tree-undo-and-stash/03` | M4 or the first field note that reports it; `docs/field-notes.md` decides |
-| **UNVERIFIED: every git-behaviour claim under M3 was proved against git 2.54 only; the stated minimum is 2.38.** Groups 01 and 02 verified their invocations in throwaway repos and byte-compared the results — real evidence, but on one version. `restore --source=HEAD` on a staged rename, `stash store -m`, `clean -f` with a pathspec and `update-ref` CAS are the ones most likely to have moved between 2.38 and 2.54. Nothing has been run on 2.38 | `m3-working-tree-undo-and-stash/01`, `/02` | The M3 review: run the ops test suite against git 2.38, or raise the documented minimum to what was actually tested — not left as an assumption either way |
-| **A stash restored by undo re-lists at `stash@{0}`, not where it was.** Pop or drop `stash@{2}`, press `u`, and the stash comes back at the top of the list. Git has no insert-at-index for the stash reflog, so the entry cannot be put back in place. The commit is unchanged and `StashList`'s `commit` pin notices the reorder, so nothing is lost — the order is wrong, not the content | `m3-working-tree-undo-and-stash/02` | M7, if real use finds it confusing; `docs/field-notes.md` decides |
-| **A multi-line stash message survives undo as its first line only.** The stash reflog keeps one line, so restore uses the subject. Content is untouched; the description shortens | `m3-working-tree-undo-and-stash/02` | Not planned — record the full message in the journal entry if anyone asks |
-| **Single-line stage and discard are refused on a hunk that ends a file with no trailing newline.** `PatchError::NoNewlineBoundary`. The whole hunk still stages and discards, byte-proved both directions. This is a deliberate refusal, not a silent failure: the alternative found in the group 01 review was `git apply --cached` exiting 0 and fusing two lines into one, i.e. wrong content in the index with no error. **Not broken — a narrowed feature with a visible message** | `m3-working-tree-undo-and-stash/01` review fix (`b47ae51`) | M7, if real use hits it; `docs/field-notes.md` decides |
-| **No in-app conflict resolver.** M5 can produce conflicts through merge, rebase and cherry-pick before M6 builds the three-pane resolver. M5 must detect the conflicted state, list the conflicting files, offer the user's configured `git mergetool` or `$EDITOR`, and keep the operation banner with Continue / Skip / Abort available. M5 must not claim conflict resolution works | M5 | **M6** |
+| **The journal browser has no status line while it's open** — same defect `StashView::notice` fixed for the stash overlay; a failure while browsing has nowhere to draw. `u` is the key the milestone rests on | `m3-working-tree-undo-and-stash/06` | Group 07 acceptance walk or M5 — ten-line fix, same pattern as the stash overlay |
+| **UNVERIFIED: no capture in this repo proves any colour, anywhere in M3** (pty pipeline records pyte grids with no colour, ADR-0029). Every colour decision in the changes pane, commit editor, stash overlay, journal browser ships judged by the user's eye only | M3, all visual groups | Standing — only the user, at the checkpoint |
+| **UNVERIFIED, not closable from here: ~2% of cancels landing inside git's own index-write window can still strand a lock.** SIGKILL case is fixed/measured (below); this remainder is a race inside git itself (`create_tempfile` opens the lock before marking it active) — the same race a user's own `Ctrl+C` on git hits. Not a Graft defect, not Graft's to close | `m3-working-tree-undo-and-stash/05` review round | Not planned; revisit only on a field-note report |
+| **BROKEN: `strip_comments` hardcodes `#`, ignores `core.commentChar`** — a user with a different setting gets real message lines stripped or comment lines kept | `m3-working-tree-undo-and-stash/05` review (Minor 8) | M4, sooner on a field note |
+| **`GIT_EDITOR` resolved on the UI thread at editor open, not as a job** — a slow `git var GIT_EDITOR` blocks the UI briefly. Proper fix needs a new Command/Product pair + AppState field + two-step for `e` | `m3-working-tree-undo-and-stash/05` review (Minor 9) | M4 or M5, next job-runner touch |
+| **UNVERIFIED: a real `$EDITOR` on a real terminal.** Suspend/resume proved by transcript order, panic guard, mux test — not the thing itself. Wrong restore breaks the user's terminal (PROMPT.md principle 8). Found: spec's suggested `InputMux::hold()` does **not** stop the reader thread (would race `$EDITOR` for keys); a self-pipe `Gate` replaces it | `m3-working-tree-undo-and-stash/05` | M3 acceptance group (07) pty job, and the user's first real `$EDITOR` commit |
+| **UNVERIFIED: GPG/SSH commit signing while the editor holds the terminal** — a pinentry program wanting the tty during a signed commit untried | `m3-working-tree-undo-and-stash/05` | M4 or first field note |
+| **README has no M3 section — `[keys] suspend_on_ctrl_z` (ADR-0002) undocumented** (works, just unmentioned) | `m3-working-tree-undo-and-stash/05` | M8 docs pass, or acceptance group |
+| **The untracked-file confirm box asks "Delete notes.md?" over a button labelled `Discard`** — question and button disagree on the one box meant to be unambiguous | `m3-working-tree-undo-and-stash/04` review | Group 06 or acceptance walk, whichever's first |
+| **UNVERIFIED: busy/done status, per-class discard wording, kept cursor — proved only by unit tests on scripted state, none key-to-repo.** Four acceptance lines ticked without real proof | `m3-working-tree-undo-and-stash/04` review | M3 acceptance group (07) |
+| **UNVERIFIED: hunk *unstage*/*discard* have no key-to-repo test** (stage direction proved end to end; `PatchDirection::Reverse` is exactly where group 01's review found the original bug) | `m3-working-tree-undo-and-stash/04` | M3 acceptance group (07) |
+| **UNVERIFIED: the confirm box's git command string is hand-written, not from `Operation::plan`** — can drift from what actually runs | `m3-working-tree-undo-and-stash/04` | M5 (Ghost Preview must source planned commands from `plan`) |
+| **Redo of an undone conflicted `stash pop` restores markers with a clean index** (content intact; git's "mid-conflict" flag lost, `git status` reads ordinary modified) | `m3-working-tree-undo-and-stash/03` | M6, conflict resolver owns unmerged-index state |
+| **UNVERIFIED: two Graft processes open on the same worktree** — journal is a file, nothing arbitrates between instances; not tested/designed against | `m3-working-tree-undo-and-stash/03` | M4 or first field note |
+| **UNVERIFIED: every M3 git-behaviour claim proved on git 2.54 only; stated minimum is 2.38.** `restore --source=HEAD` on a staged rename, `stash store -m`, `clean -f` with a pathspec, `update-ref` CAS most likely to have moved | `m3-working-tree-undo-and-stash/01`, `/02` | M3 review: run against 2.38, or raise the documented minimum to match what's tested |
+| **A stash restored by undo re-lists at `stash@{0}`, not where it was** — git has no insert-at-index for the stash reflog. Content/commit unchanged, order wrong | `m3-working-tree-undo-and-stash/02` | M7 if real use finds it confusing |
+| **A multi-line stash message survives undo as its first line only** (reflog keeps one line; content untouched, description shortens) | `m3-working-tree-undo-and-stash/02` | Not planned |
+| **Single-line stage/discard refused on a hunk ending a file with no trailing newline** (`PatchError::NoNewlineBoundary`; whole-hunk stage/discard still works, byte-proved). Deliberate refusal — `git apply --cached` alternative silently fuses lines with no error. **Not broken — narrowed feature, visible message** | `m3-working-tree-undo-and-stash/01` review fix (`b47ae51`) | M7 if real use hits it |
+| **No in-app conflict resolver.** M5 can produce conflicts (merge/rebase/cherry-pick) before M6 builds the resolver; M5 must detect conflict state, list files, offer configured `git mergetool`/`$EDITOR`, keep the operation banner (Continue/Skip/Abort). Must not claim resolution works | M5 | **M6** |
 
 ---
 
@@ -245,132 +227,121 @@ entry is (CLAUDE.md).*
 
 | Gap | What would close it | When |
 |---|---|---|
-| **A reply split by more than 50 ms is misread as keys.** `SEQUENCE_TIMEOUT` (50 ms) is one constant: over a slow SSH link a reply whose bytes arrive further apart than that is flushed as `Alt+[` and characters, and the probe sees no reply. Not observed; local splits land within a millisecond | Hold an unfinished reply-shaped sequence (`ESC [ ?`, `ESC ]`, `ESC _`, `ESC P`) up to the open waiter's deadline instead of 50 ms, measured over a real SSH session. **Ticket 21 did not fix this and adds exposure:** resize and focus re-queries go through the same decoder mid-session, so a split reply is delivered to `update` as keys (e.g. `Alt+[`, then `6;40;20t` typed into the graph) while the user is working, not just during startup | M1 heavy tier |
-| **A re-query reply that arrives after its deadline can be taken for the next round's.** `detect::redetect` discards waiting bytes before each round, but a late reply landing *during* the next round is parsed as its answer (its fence ends the read early). Needs a reply later than the 200/500 ms budget; not observed | Tag rounds (e.g. a distinct `DECRQM` per round as the fence) if it is ever seen | when seen |
-| **Key order under a pty is proven by unit test only.** The pty check proves arrival (F2 ×2 and ×3 during the probe land on the right screen) but its selection detector cannot see the cursor row, so `jjjk` during the probe was not verified on screen. Order is covered by `input::mux::tests` over a socket pair | A pty assertion on the cursor row (e.g. read the selected commit from the footer's `Enter` peek reveal) | M8 (polish and ship): pty coverage fits the pre-ship test-hygiene sweep |
-| **Decoder covers xterm, SS3, kitty `CSI u`, SGR and X10 mouse.** Not covered: urxvt `1015` mouse (`CSI b;x;y M` without `<`), which crossterm's `EnableMouseCapture` also turns on; terminals that prefer SGR (`1006`) never send it | Decode `1015` if a supported terminal is found sending it | when seen |
+| **A reply split by more than 50 ms is misread as keys** (`SEQUENCE_TIMEOUT`; over slow SSH a late-arriving reply flushes as `Alt+[` + chars). Not observed locally. **Ticket 21 adds exposure:** resize/focus re-queries share the decoder mid-session, so a split reply could type into the graph while the user works, not just at startup | Hold an unfinished reply-shaped sequence to the open waiter's deadline instead of 50 ms, measured over real SSH | M1 heavy tier |
+| **A re-query reply arriving after its deadline can be taken for the next round's** (`detect::redetect` discards waiting bytes per round, but a late reply mid-round is parsed as its answer). Needs a reply later than the 200/500 ms budget; not observed | Tag rounds (e.g. distinct `DECRQM` per round) if seen | when seen |
+| **Key order under a pty proven by unit test only** — pty check proves arrival, not on-screen order (selection detector can't see cursor row); order covered by socket-pair unit tests | A pty assertion on the cursor row | M8: pty coverage sweep |
+| **Decoder covers xterm/SS3/kitty `CSI u`/SGR/X10 mouse, not urxvt `1015`** (which crossterm's `EnableMouseCapture` also turns on); SGR-preferring terminals never send it | Decode `1015` if seen | when seen |
 
 ## m1-the-graph/22 — rasteriser
-- Node style is defined twice: `graft_ui::graph_column::NodeKind` (Unicode glyphs) and `graft_graph::raster::Ring` (pixels), same six variants. `ui` depends on `graph`, so `NodeKind` could become `Ring` (or map to it); left for the pixel-output wiring ticket (24) to decide.
-- `CELLS_PER_LANE` (= 2) is declared in both `graft-ui` and `graft-graph::raster`; they must agree or pixels drift from text. Same fix: `ui` re-uses `graph`'s.
-- Strip cache (m1/23) has no owner yet: nothing calls `StripCache::flush` on 21's resize / theme re-query / re-detection events. Wiring lands with the pixel output (24). Until then the key alone (theme colours, cell size, width in the layout hash) already keeps stale strips from being hit.
-- The raster tests copy the 12 lane hues from `graft-ui/src/theme/lanes.rs` (`graph` cannot see `ui`). Palette colour does not affect any assertion except the snapshot's slot letters.
-- Pixel shots are rendered at the 17×37 cell only; how they look at other cell sizes (e.g. 8×16 on a small font) is unjudged.
-- Render time measured on the fast tier only: 32 rows × 5 lanes at 17×37, Apple M5, median 1.38 ms release / 13.4 ms debug. Wide strips (many lanes) unmeasured; the frame-budget ticket (30) owns it.
-
+- Node style defined twice (`graft_ui::graph_column::NodeKind` Unicode glyphs, `graft_graph::raster::Ring` pixels, same 6 variants) — could unify; left for ticket 24.
+- `CELLS_PER_LANE` (=2) declared in both `graft-ui` and `graft-graph::raster` — must agree or pixels drift from text.
+- Strip cache (m1/23) has no flush owner yet on resize/theme/re-detection events; wiring lands with ticket 24. Cache key alone already prevents stale hits.
+- Raster tests copy the 12 lane hues from `graft-ui` (`graph` can't see `ui`) — doesn't affect assertions beyond snapshot slot letters.
+- Pixel shots rendered at 17×37 cell only; other cell sizes (e.g. 8×16) unjudged.
+- Render time: fast tier only, 32 rows × 5 lanes @17×37, M5, median 1.38 ms release / 13.4 ms debug. Wide strips unmeasured (ticket 30 owns it).
 
 ## m1-the-graph/24c — Kitty draw and replies
-- **Pixel column width comes from the text tier's fold** (visible rows), while strips are rasterised through one fold across every strip drawn (`pixel_rows`). 24d places each strip across its own lane columns (`placed_columns`), so a narrower strip is no longer stretched; a strip *wider* than the column is still squeezed into it (`Place` has no column crop).
-- **Replies are drained only on a wake.** A `q=1` error reply arriving with no key, resize or job result after it waits for the next wake to be shown and retransmitted. The mux has no wake for replies.
-- **A panic leaves uploads in the terminal.** `free_all` runs on every loop exit (quit, signal, error), not from the panic hook.
-- `STRIPS_KEPT` (16) is fixed for both the strip cache and uploads, not sized from the viewport (`StripCache::capacity_for`).
+- **Pixel column width comes from the text tier's fold, strips rasterised through one fold across every strip** — 24d places each strip on its own lane columns so narrower strips aren't stretched; a strip *wider* than its column is still squeezed (no column crop).
+- **Replies drained only on a wake** — a `q=1` error with no following key/resize/job result waits for the next wake to show/retransmit; mux has no wake for replies.
+- **A panic leaves uploads in the terminal** — `free_all` runs on every loop exit except the panic hook.
+- `STRIPS_KEPT` (16) fixed for both strip cache and uploads, not sized from viewport.
 
 ## m1-the-graph/24d — flush, F3, Ghostty check
-- ~~Retransmit after a clear uses new ids~~ — moot since m1-the-graph/25: nothing calls `forget_uploads` any more (resize keeps uploads). Still true if a future caller does. Original note: **Retransmit after a clear uses new ids; the old ones are never freed.** `forget_uploads` drops Graft's record, so the next frame sends `i=1002…` and `free_all` on exit frees only those. Ghostty frees image data on the clear itself (ADR-0012), so nothing leaks there; a Kitty-protocol terminal that keeps data across `ESC[2J` holds the old uploads until it exits. Seen in `docs/shots/24d-kitty-check.esc.txt`.
-- **The real-Ghostty check drives the encoder with synthetic strips** (`examples/kitty_check.rs`), not the app: it proves Ghostty accepts Graft's transmit/crop/clear/hide/free commands at `q=1` with zero errors. Whether the app's history strips look right is the user's by-eye check.
+- ~~Retransmit after a clear uses new ids, old ones never freed~~ — moot since 25 (`forget_uploads` no longer called; resize keeps uploads). Still true if a future caller does. Ghostty frees image data on clear itself (ADR-0012); a Kitty-protocol terminal that keeps data across `ESC[2J` holds old uploads until exit.
+- **The real-Ghostty check drives the encoder with synthetic strips** (`examples/kitty_check.rs`), not the app — proves Ghostty accepts transmit/crop/clear/hide/free at `q=1` with zero errors. Whether the app's real strips look right is the user's by-eye check.
 
 ## m1-the-graph/25 — iTerm2, resize frames
-- **iTerm2 tier not seen by eye.** Byte stream pinned by tests and a pty capture (`docs/shots/25-iterm2-capture.*`); no one has looked at Graft's iTerm2 output in a real iTerm2 yet. `doNotMoveCursor=1` is iTerm2 ≥3.5; older iTerm2 may move the cursor after a band (band on the last row could scroll).
-- **Resize frame measured without the terminal.** Release, in-memory backend: Kitty resize frame 0.30 ms, iTerm2 0.25 ms (first frames 8.8 / 4.2 ms). Write back-pressure and the terminal's own work excluded; iTerm2 still writes every band's bytes per frame (~tens of KB). Real-terminal bench: M1 performance pass (30).
-- **Real Ghostty window resize not driven.** The row-erase path was checked in Ghostty (`docs/shots/25-kitty-resize-check-report.txt`); an actual window resize was not. If Ghostty drops uploads on a real resize, `q=1` ENOENT replies retransmit on the next wake (self-healing, shows `gfx:` once).
-- **iTerm2 erases the graph cells every frame** (`ECH` over last frame's rects, then re-send). Inside the synchronized update, so no flicker expected; unverified in iTerm2.
-- **`Flush::Resize` is now unused by the app** (kept in `graft-graph` API). DESIGN.md §3.8 still lists resize as a wholesale flush; the key already covers it. Proposed change in 25's report.
-
+- **iTerm2 tier not seen by eye** — byte stream pinned by tests/pty capture only. `doNotMoveCursor=1` is iTerm2 ≥3.5; older iTerm2 may move the cursor after a band.
+- **Resize frame measured without a terminal**: release in-memory, Kitty 0.30 ms / iTerm2 0.25 ms (first frames 8.8/4.2 ms) — excludes pty back-pressure and terminal's own work. 25-era Ghostty resize bench (32–41 ms) is the only real-terminal number.
+- **Real Ghostty window resize not driven** — row-erase path checked, not an actual window resize. If Ghostty drops uploads on resize, `q=1` ENOENT self-heals on next wake.
+- **iTerm2 erases graph cells every frame** (`ECH` then re-send, inside synchronized update — no flicker expected, unverified).
+- **`Flush::Resize` now unused by the app** (kept in `graft-graph` API); DESIGN.md §3.8 still lists resize as a wholesale flush.
 
 ## m1-the-graph/26 — search
-- **Only the current hit is marked** (the selection moves to it); other hits' rows are not highlighted.
-- **A hit hidden by the view** (first-parent or folded history) is counted but not selectable; the line says "(not in this view)".
-- **Search walks history again on its own job** (a second walk alongside the history walk), not the rows the history job already read. 100k no-match scan measured under a pty; see `docs/shots/26-search-typing.txt`.
+- **Only the current hit is marked**; other hits' rows aren't highlighted.
+- **A hit hidden by the view** (first-parent/folded) is counted but not selectable — "(not in this view)".
+- **Search walks history again on its own job**, not the rows the history job already read. 100k no-match scan measured under a pty.
 - **`n` before the first hit arrives does nothing** (no queued step).
 
 ## m1-the-graph/32 — wheel scroll
-- **The wheel scrolls until only the oldest commit is left on screen** (`top` stops at the last row), where `G` fills a page. This was ticket 17's clamp and 32 keeps it. It's open whether the wheel should stop when the last row reaches the bottom.
+- **The wheel scrolls until only the oldest commit is on screen** (`top` stops at the last row; ticket 17's clamp). Open: should it stop when the last row reaches the bottom instead.
 
 ## m1-the-graph/30 — frame budgets and scale (part 1)
-- **Idle-wake keys can miss 16 ms at 50k refs (release).** The first key after 600 ms idle is printed, not asserted (ADR-0021, user's decision in m1-the-graph/30c): over the 7 counted release runs of m1-the-graph/30f, 14 of 140 idle-wake keys took over 16 ms, all at 50k refs, max 19.1 ms; the 100k-fixture ones stayed under. Cause named but not removed: the CPU's slow power state on the first burst after idle (ADR-0021 caveat). The scrolled keys pass 7 of 7 (worst 14.6 ms). Open: the user's by-eye check of the first key after a pause, at the gallery re-walk.
-- **1M+ commits is extrapolated, never observed.** PROMPT.md §1.2's "60 fps on 1M+" has no measurement: no 1M repository was available and the heavy fixture is 100k. Nothing may report a 1M number until one is run by hand.
-- **Frames measured without a terminal.** The in-memory backend leaves out pty write back-pressure and the terminal's own parse/paint; the 25-era Ghostty resize bench (32–41 ms) is the only real-terminal number.
-
-- **Pixel strips rasterised again after eviction (m1-the-graph/30b):** cause 2 fixed (strips wait for the cursor's row). Still, 43 of 556 strip misses in the release 100k pixel frames run re-rasterise a strip whose inputs didn't change, because it was evicted (StripCache or Kitty unplaced capacity too small for a PageUp return). Each costs a ~434 KB retransmit. Not tuned. Also: on a page key whose cursor row isn't on hand, the graph shows blank for one frame. Not yet judged by eye.
+- **Idle-wake keys can miss 16 ms at 50k refs (release)** — printed, not asserted (ADR-0021/30c): 14 of 140 idle-wake keys over 16 ms across 7 runs, all at 50k refs, max 19.1 ms (100k fixture stayed under). Cause named, not removed: CPU's slow power state after idle. Scrolled keys pass 7/7. Open: user's by-eye check at the gallery re-walk.
+- **1M+ commits extrapolated, never observed** — PROMPT.md §1.2's "60 fps on 1M+" unmeasured; no 1M repo available, heavy fixture is 100k.
+- **Frames measured without a terminal** — in-memory backend excludes pty back-pressure/terminal paint; 25-era Ghostty resize bench (32–41 ms) is the only real-terminal number.
+- **Pixel strips rasterised again after eviction (30b)**: cause 2 fixed (strips wait for cursor row); still 43/556 strip misses in the release 100k run re-rasterise unchanged-input strips evicted by too-small cache/unplaced capacity, ~434 KB retransmit each, not tuned. Also: blank graph for one frame on a page key whose cursor row isn't on hand — not judged by eye.
 
 ## m1-the-graph/35 — graph gallery (part a: command + matrix)
 
-`docs/shots/35-coverage-matrix.txt` (regenerate: `cargo run -p graft --example gallery -- --matrix`) reads file names only, so it shows what is *named*, not what a file happens to contain. Gaps it shows, with owners:
+`docs/shots/35-coverage-matrix.txt` (regen: `cargo run -p graft --example gallery -- --matrix`) shows what's *named*, not file contents.
 
 | Gap | What is missing | Owner |
 |---|---|---|
-| **Light theme: nothing named `light` for any repo.** `10-row-columns.txt` holds light captures, but its name does not say so, and no `.snap` renders the graph in light (`graph_column` asserts dark == light bytes and snapshots dark) | A light-theme snapshot per shape, or a name that says light on the captures that have it | M8 (polish and ship): gallery-naming fix fits the pre-ship sweep |
-| **Pixel evidence for 3 shapes only** (foxtrot, criss-cross, octopus raster buffers and PNGs); 17 shapes and every real repo have none | Raster snapshots for the shapes whose picture differs (orphan root, cherry-pick twins, tags, unicode names) | M8 (polish and ship): pairs with :315/:317/:318's gallery-coverage sweep |
-| **ASCII evidence for 3 shapes only**, none for the real repos | ASCII snapshots for the same set, or a statement that ASCII shares the Unicode layout so the 3 suffice | M8 (polish and ship): pairs with :316/:318's gallery-coverage sweep |
-| **Sizes are not in snapshot names** (`?` in nearly every cell); only `graph_screen__feature-branches-{80x24,120x40,200x60}` names its size, so §7.2 item 3's three sizes are provably covered for one shape | Put the size in every screen snapshot's name, or add the three sizes for the merge shapes | M8 (polish and ship): pairs with :316/:317's gallery-coverage sweep |
-| **`graft-self`, `synthetic-100k`, `git-git`: captures only** (`docs/shots/35-<repo>-{unicode,ascii}.txt`, 80x24, from 35c), no snapshot (by rule: no test may touch a heavy repo) | Nothing more planned; the captures are the evidence, judged by eye | — |
-| **`non-utf8-ref-name`: no graph**, the APFS skip (ticket 01). The matrix counts its two 35c captures, but both show the gallery's `not available` page, not a graph | A Linux heavy-tier run | M1 heavy tier (existing row) |
-| **The gallery restarts the run at every step**: terminal restored, alternate screen re-entered, capabilities re-probed, so each `]` blinks. (The key loss this row first reported — one stdin reader thread per run, ~every other `]` lost from stop 3 on — is fixed in 35c: `InputMux::on_stdin` is one reader per process, each run gets a fresh `Inputs`, and `run` calls `mux.hold()` when its loop ends so a key typed during the blink reaches the next stop.) | Split `run` into terminal setup and a per-repo loop | Not planned for M1; the gallery is a test harness |
-| **Idle prefetch (30h) costs CPU after every pixel frame with idle time, mostly not rasterising**: release, per frame p50/p99/max: 100k fixture refs 0.8/4.6/6.7 ms; 50k refs 3.3/5.1/5.6 ms (429 of 697 frames over 1 ms; `target/30h/release-frames.txt`). Each look runs `update` twice and `pixel_rows` twice even when every strip is cached. The 50k-ref clone (~1 ms each) is fixed by m1-the-graph/69 (`Arc<RefBadges>`): per frame p50 now 0.6 ms at both ref counts, p99 4.9–6.6 ms, max 7.4–9.1 ms, about 303 of 697 frames over 1 ms (`target/m1-69/after-*.txt`). What remains is the what-ifs themselves | Skip the what-ifs when the window, cursor and cache are unchanged since the last prefetch | 30f seam 4 or M7 (perf hardening): idle-CPU cost fits the hardening pass |
-| **The "not available" page understands only `]`, `[`, `q`**; an escape sequence is skipped, a lone `Esc` swallows the next key | Reuse the input mux instead of raw byte reads | Not planned |
+| **Light theme: nothing named `light` for any repo** (`10-row-columns.txt` holds light captures unnamed as such; no `.snap` renders light) | A light-theme snapshot per shape, or naming fix | M8: gallery-naming fix |
+| **Pixel evidence for 3 shapes only** (foxtrot, criss-cross, octopus); 17 shapes + every real repo have none | Raster snapshots for shapes whose picture differs | M8: gallery-coverage sweep |
+| **ASCII evidence for 3 shapes only**, none for real repos | ASCII snapshots for the same set, or a note that ASCII shares Unicode layout | M8: gallery-coverage sweep |
+| **Sizes not in snapshot names** (only `feature-branches` names its size) | Put size in every screen snapshot's name | M8: gallery-coverage sweep |
+| **`graft-self`/`synthetic-100k`/`git-git`: captures only, no snapshot** (rule: no test touches a heavy repo) | Nothing planned; captures are the evidence, judged by eye | — |
+| **`non-utf8-ref-name`: no graph** (APFS skip, ticket 01) — matrix counts two captures, both the "not available" page | A Linux heavy-tier run | M1 heavy tier (existing row) |
+| **The gallery restarts the run at every step** (terminal restored/re-probed, each `]` blinks). Key-loss bug this row first found is fixed in 35c (one stdin reader per process, `mux.hold()` on loop end) | Split `run` into terminal setup + per-repo loop | Not planned; gallery is a test harness |
+| **Idle prefetch (30h) costs CPU after every pixel frame with idle time, mostly not rasterising**: release p50/p99/max 100k refs 0.8/4.6/6.7 ms, 50k refs 3.3/5.1/5.6 ms. `update`+`pixel_rows` run twice even when fully cached. 50k-ref clone cost fixed by m1-69 (`Arc<RefBadges>`): p50 now 0.6 ms both, p99 4.9–6.6 ms. What-ifs themselves remain the cost | Skip what-ifs when window/cursor/cache unchanged since last prefetch | 30f seam 4 or M7: hardening pass |
+| **The "not available" page understands only `]`/`[`/`q`**; an escape sequence is skipped, a lone `Esc` swallows the next key | Reuse the input mux instead of raw byte reads | Not planned |
 
 ## m1-the-graph/45 — `y` copies the SHA
-- **Whether the clipboard got it is unknown to Graft.** OSC 52 has no reply; the notice says what was sent. Terminals with OSC 52 off (some VS Code/Zed settings, tmux without `allow-passthrough` or `set-clipboard`) silently drop it. Paste in Ghostty/Zed/VS Code/tmux is a user by-eye check, not yet done.
-- **Inside tmux the request is wrapped in DCS passthrough, like images (ticket spec).** tmux's own `set-clipboard on` path (unwrapped OSC 52) is not used; with passthrough off the copy is dropped. Open whether to send unwrapped inside tmux instead.
-- **`y` while a failure is on the status line** still sends the SHA but shows no notice: the failure is never replaced by a notice.
+- **Whether the clipboard got it is unknown to Graft** — OSC 52 has no reply. Terminals with it off (some VS Code/Zed, tmux without passthrough/set-clipboard) silently drop it. Paste-in-terminal by-eye check not done.
+- **Inside tmux the request is wrapped in DCS passthrough, like images** — tmux's own unwrapped `set-clipboard on` path unused; open whether to send unwrapped inside tmux.
+- **`y` while a failure is on the status line** still sends the SHA but shows no notice — failure is never replaced.
 
 ## m1-the-graph/49 — commit handles and the id table
-- `graft::history::WalkSource::links` reads each commit whole to get its parents (`read_commit`). Nothing calls it on a hot path yet (`pull`/`read` still hand out whole commits); the hydrate-on-demand ticket should take parents from the walk, as `Walk::next_links` does.
-- Heavy-tier tests for the table and `next_links` (5k pair; 100k overflow ≤ 60 B/commit) are written, not run by the builder; they run in the milestone review.
+- `graft::history::WalkSource::links` reads each commit whole for its parents; nothing on a hot path calls it yet — the hydrate-on-demand ticket should take parents from the walk instead, as `Walk::next_links` does.
+- Heavy-tier tests for the table and `next_links` (5k pair; 100k overflow ≤60 B/commit) written, run in the milestone review only.
 
 ## No-commit-graph footprint slope at 1M (m1-the-graph/59b)
 
-- **verdict: 56d.** After 59b's three fixes the no-cg footprint slope is **138–140 B/commit** (`budgets --gate`, 3 fresh runs: 1M 155.1–155.8 MiB, 100k 36.0–36.2 MiB; was ~176; m1-the-graph/56c's full curve re-run, `docs/shots/m1-memory-curve.txt`, 2026-09-14, confirms within rounding: 1M small footprint 154.8–155.6 MiB, 100k small 35.5–36.0 MiB). Live heap slope is the named floor, **76 B/commit** (`prototypes/heap-profile-59`, `target/59b/prof-{100k,1M}.txt`: 1M live-after-`g` 92.5 MiB, 100k 27.0 MiB; interner 58 + one order 8 + promoted 4 + rest); the other ~62 B/commit is freed transient memory macOS malloc keeps in the footprint.
-- **Verdict (m1-the-graph/56d, 2026-09-14): live heap 76 B/commit ≤ 100 — pass; footprint 155–158 MiB at 1M reported beside its ~140 B/commit floor, under the 300 MB footprint line. The design holds: the one unavoidable table (the interner, 58 of the 76) is what ADR-0026 said would grow; the retained ~62 is allocator slack, not a second structure.** Open only as the four retained parts below; expiry as the last line says.
-- **Bar re-derived (m1-the-graph/63, user decision 2026-09-14):** the single ≤ 100 B/commit bar is split — **live heap ≤ 100 B/commit, gated** (measured 76, under bar) and **footprint at 1M: reported, floor named** (~140, not gated further; ADR-0026 amended). This row's expiry tracks the live bar, not the footprint number against 100.
-- Left, and why:
-  - Interner `by_prefix` map doubling (~17 MiB chain at 1M): paging it means several prefix maps searched in turn — a new structure, not ADR-0026's one prefix map. Not built.
-  - `Vec` → `Arc<[CommitHandle]>` copy in `graft::history::topological_order` (~4 MiB at 1M): building the `Arc` in place needs `unsafe` (`assume_init`) in a `forbid(unsafe_code)` crate, or `Views.promoted` changing shape across crates. Not built.
-  - Swapped-out order at promotion (~9 MiB): ADR-0008 by design.
-  - ~19 MiB retained in the date walk not attributed to a holder after the interner pages landed (prof: footprint − live 36 MiB after the walk, before and after 59b). Untraced.
-- Expires: when the live heap slope regresses above 100 B/commit (gated at reviews), or the user decides to fund a structure change to cut the ~62 B/commit retained above the floor.
+- **Verdict (56d): no-cg footprint slope 138–140 B/commit** (`docs/shots/m1-memory-curve.txt`: 1M footprint 154.8–155.8 MiB, 100k 35.5–36.2 MiB). **Live heap floor 76 B/commit** (interner 58 + order 8 + promoted 4 + rest); the other ~62 B/commit is freed transient memory macOS malloc keeps in the footprint. **Bar (m1-63, user decision):** live heap ≤100 B/commit gated (76, passes); footprint at 1M reported only, floor named (~140, not gated; ADR-0026 amended).
+- Retained-and-why: interner `by_prefix` map doubling (~17 MiB at 1M, paging needs a new structure); `Vec`→`Arc<[CommitHandle]>` copy in `topological_order` (~4 MiB, needs `unsafe` in a `forbid(unsafe_code)` crate); swapped-out order at promotion (~9 MiB, ADR-0008 by design); ~19 MiB in the date walk untraced. None built.
+- Expires: when the live heap slope regresses above 100 B/commit (gated at reviews), or the user funds cutting the ~62 B/commit retained above the floor.
 
 ## m1-the-graph/56d — memory-curve verdict: what stays open (2026-09-14)
 
-Every budget in 56's checklist passes on 56c's numbers (`docs/shots/m1-memory-curve.txt`, `target/56c/`). Three things are reported, not proven, and each names whose call it is.
+Every budget in 56's checklist passes (`docs/shots/m1-memory-curve.txt`). Two things reported, not proven:
 
-- **Cold first paint at 1M is ~0.7–1.0 s (ADR-0027).** Run 1 of every 1M cell in 56c's re-run: no-cg 997–1,032 ms, cg 710–790 ms; runs 2–3 are 88–112 ms on every path, under 150. The budget is judged warm (ADR-0027, user decision). Evidence the cost is the page cache and not Graft: the offer copy, written seconds earlier, painted in 124 ms on its run 1; 55's just-built fixture painted in 134 ms. Not proven: only `sudo purge` empties the cache on macOS. **Expiry: the user runs one `budgets --gate` first paint straight after `sudo purge` on the 1M fixture at the M1 checkpoint (TESTING.md manual checklist), or accepts the warm convention as final.** User.
-- **`examples/budgets`'s counters hold 4× the app path (harness only).** `order_bytes`, `cold_jump` and `far_jump` lay history out again through `direct_layout`: 100k cg 124 MiB process max RSS vs 33 MiB for the gated path, 1M cg 997 vs 240 (56 pass 1). `--gate` keeps them out of every gate and out of `scripts/memory-curve.sh`'s RSS/footprint cells; the counters run is a separate process. Related: `ru_maxrss` is a lifetime maximum, so any guard that measured two fixtures in one process read a false green in the wrong order — fixed by m1-the-graph/57 (guards measure each fixture in a fresh child). **Expiry: not planned** — the harness is not the app, and the gated path is what every number in this file reports.
+- **Cold first paint at 1M ~0.7–1.0 s (ADR-0027).** Run 1: no-cg 997–1,032 ms, cg 710–790 ms; runs 2–3, 88–112 ms (under 150). Budget judged warm by user decision (ADR-0027). Evidence the cost is page cache, not Graft: a just-written 1M fixture painted in 124–134 ms on its first run. Not proven: only `sudo purge` empties macOS's cache. **Expiry: user runs one gated first-paint straight after `sudo purge` at the M1 checkpoint, or accepts the warm convention as final.** User.
+- **`examples/budgets`'s counters (harness only) hold 4× the app path** (lay history out again via `direct_layout`: 100k cg 124 MiB vs 33 MiB gated). `--gate` excludes them from every real gate/curve cell. **Not planned** — harness isn't the app.
 
 ## m2-details-and-diffs/01 — git spawns outside the runner (2026-09-17)
 
-- `contained_in` on a repository with no commits: the spec asked for `Ok` with empty lists, but with no commits there is no id to ask about, and an id naming no commit makes git exit 129 — returned as `Exited`, not hidden as "contained nowhere". Tested instead on `UnbornBranch` (HEAD unborn, other branches with commits): `Ok`. Callers only ask for a selected commit, which exists. Expiry: the detail-model ticket that calls `contained_in`, if it needs otherwise.
+- `contained_in` on a repository with no commits: spec asked for `Ok`+empty; with no commits git exits 129, returned as `Exited` not hidden. Tested on `UnbornBranch` instead: `Ok`. Callers only ask for an existing selected commit. Expiry: whichever detail-model ticket calling `contained_in` needs otherwise.
 
 ## m2-details-and-diffs/04 — Mistake Radar rule limits (2026-09-17)
 
-- **A pushed pull-merge on `main` reads as accidental-pull (info), not foxtrot (warning), in a clone without a remote-tracking reflog.** The rule keeps `Merge branch 'main' of <url>` on the default chain as accidental-pull, because the merge was made on `main` itself and the fixture matrix needs it that way; once pushed, the *remote's* first-parent line is the rewritten one, and the only fact that shows it is `RepoFacts::previous_default_tips` (the `origin/main` reflog), which a fresh clone lacks. Expiry: `radar-context-and-markers` fills `previous_default_tips` from the reflog; a remote-default-chain fact (`refs/remotes/origin/main`'s first parents) would close the fresh-clone case and is a one-rule addition.
-- **Rule A (a non-first parent already on the default chain) is unreachable through `git merge`.** Kept because the spec lists it and it is one comparison; only hand-built commits (`commit-tree`) produce it. Not a bug; noted so nobody looks for a fixture.
-- **`NoUpstream` is fixture-covered only through `foxtrot-merge`'s `feature`; `UnpushedOnDefault` has no fixture at all.** `ref-states` gives every branch an upstream and its `ahead` branch is not the default, so `classify_refs` returns `[]` for it. Unit tests cover both paths. Expiry: the M2 acceptance ticket, if it wants a shape with `main` ahead of `origin/main`.
+- **A pushed pull-merge on `main` reads as accidental-pull (info), not foxtrot (warning), in a clone without a remote-tracking reflog** — the only fact that would show it (`RepoFacts::previous_default_tips`) is absent from a fresh clone. Expiry: `radar-context-and-markers` fills it from the reflog; one-rule addition.
+- **Rule A (non-first parent already on default chain) unreachable through `git merge`** — only hand-built commits (`commit-tree`) produce it. Not a bug; noted so nobody looks for a fixture.
+- **`UnpushedOnDefault` has no fixture** (`NoUpstream` covered only via foxtrot-merge's `feature`). Unit tests cover both paths. Expiry: M2 acceptance ticket, if it wants `main` ahead of `origin/main`.
 
 ## m2-details-and-diffs/06 — detail model seams (2026-09-17)
 
-- **No footer hint for `Enter` yet.** The peek hint (`⏎ full subject`) was removed with the peek; a `⏎ details` hint would advertise a pane that does not draw until `detail-pane-frame`. Expiry: `detail-pane-frame`.
+- **No footer hint for `Enter` yet** — a `⏎ details` hint would advertise a pane that doesn't draw until `detail-pane-frame`. Expiry: `detail-pane-frame`.
 
 ## m2-details-and-diffs/06b — working-tree row reach (2026-09-17)
 
-- **The uncommitted row appears only while `HEAD` is the top visible history row (m1-the-graph/12b); with a newer branch above `HEAD` the user scrolls `HEAD` to the top to reach it.** Owner: M3 working tree — it decides whether to pin the row above `HEAD` wherever `HEAD` sits.
+- **The uncommitted row appears only while `HEAD` is the top visible history row** — with a newer branch above `HEAD` the user scrolls to reach it. Owner: M3 working tree decides whether to pin the row wherever `HEAD` sits.
 
 ## m2-details-and-diffs/10b — detail pane resize: pointer input and hints (2026-09-18)
 
-- **No `?` help screen — deferred to M8 by decision (planner-fable, 2026-09-18; design note M2 "Spec fix (2026-09-18, `?` help")).** Confirmed (again): no `?`-key handler or help-overlay surface exists anywhere in the codebase. It was never in M2's design note; 10b's line naming it was a slip. DESIGN.md §1.16 defines the overlay as the §2 keymap table filtered to the focused pane, and that table is what M8's "keybinding help and remapping" (PROMPT.md §8) builds — a hand-typed M2 list would be rewritten there. Cost while open: `Space` `1` `H` `x` `w W v [ ]` `<>` `L` `M` `O` are learned from README/TESTING.md; `?` stays unbound and no footer shows `? help`. For M8's builder: `crates/graft/src/update/`'s purity guard rejects any mention of ratatui/`graft_ui` types in that module, doc comments included, so the overlay's geometry and widget live in `graft-ui` and `update` keeps only a shown/hidden flag and the focused-pane id. Pairs with the M1 row "The fold, first-parent and stash keys are not in the footer". Expiry: **M8**.
-- **Map-view no-op guard for resize not added.** `Screen` has no `Map` variant until ticket 19 (per 10b's own "Out" note); `<`/`>` are already no-ops in `Tab`/hidden, so this closes automatically once `Map` exists and needs the same guard added explicitly then.
-- **`docs/shots/m2-detail-keys-resize.txt` capture not regenerated.** The `<> resize` footer hint changes what's on screen while the pane is shown; the ticket asked for the capture to be refreshed but this session's budget ran out before a pty capture could be taken. Expiry: next detail-pane ticket, or a dedicated capture-refresh pass.
+- **No `?` help screen — deferred to M8 by decision** (planner-fable, 2026-09-18). No handler/overlay exists anywhere; 10b's mention of it was a slip, never in M2's design note. DESIGN.md §1.16 defines it as M8's keymap table filtered to the focused pane. Cost while open: `Space 1 H x w W v [ ] <> L M O` learned only from README/TESTING.md, `?` unbound. For M8: overlay geometry/widget must live in `graft-ui` (the `update/` purity guard rejects ratatui/`graft_ui` mentions there). Pairs with the M1 footer-keys row. Expiry: **M8**.
+- **Map-view no-op guard for resize not added** — `Screen` has no `Map` variant until ticket 19; closes automatically once `Map` exists and gets the guard explicitly.
+- **`docs/shots/m2-detail-keys-resize.txt` capture not regenerated** after the `<> resize` footer hint changed what's on screen. Expiry: next detail-pane ticket or a capture-refresh pass.
 
 ## m2-details-and-diffs/11 — compare two commits (2026-09-18)
 
-- **A compare's pane header never shows file/line counts (`· N files +A −B`).** `crates/graft/src/view/detail.rs::compare_header` builds `Subject::Compare` only — its own doc comment already says "header-only per this ticket's scope (`compare-mode` fills in the rest)", a decision from an earlier ticket (`detail-model-and-jobs`), not this one. Ticket 11's design-note text illustrates the fuller header, but wiring `DetailState::files`' counts into `compare_header` is what's left. `docs/shots/m2-compare.txt`'s capture reflects the header as it actually renders today (`COMPARE <base> → <head>`, no counts). **No ticket named `compare-mode` exists in M2's ticket list — the reference is dangling; see the "M2 docs-sweep" gap row below for the real owner.**
-- **Fixed in this ticket, not a gap, noted for the session log:** `crates/graft/src/view/detail.rs::detail_view` was reading `AppState::selected_spec()` for the pane header, which never names `Compare` — a pinned compare's header silently redrew as the cursor's plain commit every frame. Changed to read `AppState::detail.spec` (falling back to `selected_spec()` before anything has opened), since that field is what `DetailState::open`/`follow` actually set and is what the pane is showing. Pre-existing bug, invisible before this ticket because `detail.spec` and `selected_spec()` never disagreed until `Compare` could diverge from the cursor.
+- **A compare's pane header never shows file/line counts (`· N files +A −B`).** `compare_header` builds `Subject::Compare` with base/head SHAs only, by design from an earlier ticket. Wiring `DetailState::files`' counts in is what's left. **The gap row that named a `compare-mode` ticket to own this was dangling — no such ticket exists in M2's list; real owner is the "M2 docs-sweep" row below.**
 
 ## m2-details-and-diffs/13b — radar wiring (2026-09-18)
 
-- **Resolved in `m2-details-and-diffs/13c`.** `event_loop::startup::seed_config` now sets `AppState.radar.policy = radar.policy()` from `[radar]`'s startup values, the same place `[diff]` seeds the pane's diff options; `terminal_and_state` takes the `Radar` config and passes it through. Tested by `startup::tests::a_non_default_radar_setting_reaches_app_state_policy`: `[radar] foxtrot = off` measurably changes `AppState.radar.policy` (`severity(FoxtrotMerge)` becomes `None`, and the policy differs from the all-default one). `run_headless` still does not seed either `[diff]` or `[radar]` — pre-existing asymmetry, left alone rather than introducing new behaviour there.
-- **`RefBadges::branches()`, `crates/graft/src/refs/mod.rs`, added this ticket though not in 13b's file list.** Needed so `view::radar::branch_facts` can resolve a branch's tip purely from `AppState.refs` — nothing else exposed a name→tip iterator. Not a scope creep in effect (the ticket's own item 3 needs `branch_facts`), just a file the spec didn't name.
-- **`Task` lost its `Copy` derive** (`crates/graft/src/update/events.rs`) because `Task::RadarContext` carries a `RefName` (not `Copy`). `jobs/tests.rs`'s `next_started` helper now takes `&Task` instead of `Task` to keep clippy quiet about the now-more-expensive copy; the eight call sites were updated to pass `&Task::...`.
+- **`RefBadges::branches()` added this ticket, not in 13b's file list** — needed so `view::radar::branch_facts` can resolve a branch's tip purely from `AppState.refs`.
+- **`Task` lost its `Copy` derive** (`Task::RadarContext` carries a non-`Copy` `RefName`) — `jobs/tests.rs`'s `next_started` now takes `&Task`; eight call sites updated.
 
 ## M2 docs-sweep — new rows (m2-details-and-diffs/22, 2026-09-18)
 
@@ -383,142 +354,78 @@ today, not a stub.
 |---|---|---|
 | **PROMPT §4 image diffs in the pixel tier are not built.** M2 shows `binary · <old> → <new>` for images (the same binary-file line as any other binary), never a rendered before/after image in the Kitty/iTerm2 tier | A pixel-tier image-diff renderer; PROMPT §4's own scope | M8 polish |
 | **Map view has no mouse interaction and no pixel-tier density curve.** `map_screen` draws text glyphs (`▁▂▃▄▅▆▇█`/ASCII ramp) at every tier, including Kitty (design note's Proposed changes); clicking a row or bucket does nothing — only `↑↓`/`Enter`/`Esc` | Mouse hit-testing on `MapScreen`'s rows/buckets; a pixel density curve for the pixel tier | M8 polish |
-| **Overview strip defaults to off; no `[ui]` config key starts it on.** `AppState::strip_shown` starts `false` every session; `O` toggles it for that run only, and there is no `[ui].overview_strip` (or similar) key to make it start shown | An `[ui]` startup key read the same way `[diff]`/`[radar]` seed their state at startup | M8 polish |
-| **Map view shows local branches only; a remote does not collapse into its upstream's row (DESIGN §5.1).** `build_map` walks one date range per local branch (`MapRequest`/`build_map`); a branch's remote-tracking ref never merges into its local row or appears on its own | Fold a branch's upstream into its row, or list untracked remotes separately, per DESIGN §5.1 "Shows" | M8 polish |
-| **Map view's merge elbow marks only merges into the default branch, at the tip's own bucket.** `MapBranch::merged_into` is computed by `build_map` only against the default branch's first-parent chain; a merge of one feature branch into another draws no elbow | A cross-branch merge search (DESIGN §5.1's fuller "Shows"), a one walk-per-local-branch cost the design note weighed against and declined for M2 | Not planned unless asked |
-| **The compare pane header never shows `· N files +A −B` (m2-details-and-diffs/11's gap row named a `compare-mode` ticket that does not exist in M2's list — dangling reference, corrected here).** `crates/graft/src/view/detail.rs::compare_header` builds `Subject::Compare` with base/head SHAs only; `DetailState::files`' counts are never read into it | Wire `DetailState::files`'s `FileListView` totals into `compare_header` | M8 polish |
+| **Overview strip defaults to off; no `[ui]` config key starts it on** (`O` toggles per-run only) | An `[ui]` startup key, seeded like `[diff]`/`[radar]` | M8 polish |
+| **Map view shows local branches only; a remote doesn't collapse into its upstream's row (DESIGN §5.1)** — `build_map` walks one range per local branch | Fold upstream into its row, or list untracked remotes separately | M8 polish |
+| **Map view's merge elbow marks only merges into the default branch's first-parent chain** — a feature-into-feature merge draws no elbow | A cross-branch merge search (design note weighed and declined this cost for M2) | Not planned unless asked |
+| **The compare pane header never shows `· N files +A −B`** (`compare_header` builds base/head SHAs only). Note: 11's gap row named a `compare-mode` ticket that doesn't exist in M2 — dangling reference, corrected here | Wire `DetailState::files`'s totals into `compare_header` | M8 polish |
 
 ## M2 acceptance walk (m2-details-and-diffs/23, 2026-09-18)
 
-What the details gallery revealed, verified under a pty (captures
-`docs/shots/m2-*`); owner **M2 review** unless a ticket is named.
+Gallery findings under pty (`docs/shots/m2-*`); owner **M2 review** unless named.
 
 | Gap | What's needed | Expiry |
 |---|---|---|
-| **No corpus commit changes two files**, so stop 2 (`Enter j`) shows `j` inert and no fixture exercises the file cursor. | A `two-file-commit` shape (or a second file on `feature-branches`' merges), then re-point stop 2. | M2 review |
-| **The force-push probe (ticket 15) has no gallery stop and was never run against a real rewritten remote.** `docs/shots/m2-force-push.txt` is a TestBackend capture. | A fixture with a remote whose branch was rewritten (needs a bare remote in the corpus), and a stop. | M2 review |
-| **The gallery banner is hidden at < 100 columns when the `Detail` tab is up**, and the Map view draws no banner at any size. The 80x24 captures name their stop only in their first line. | Draw the banner (or its title line) in the tab-strip and map layouts. | M2 review |
-| **Coverage matrix gaps for the details rows:** no pixel-tier, no light-theme and no ASCII captures except stops 1, 6, 7, 15, 16 at 80x24; no 100x30 except those five. The pane's pixel/light rendering is judged only by eye. | Pixel captures need a Kitty-protocol pty harness (M1's raster shots came from the widget, not a pty). | M2 review |
+| **No corpus commit changes two files** — stop 2 (`Enter j`) shows `j` inert, no fixture exercises the file cursor | A `two-file-commit` shape | M2 review |
+| **Force-push probe (ticket 15) has no gallery stop**, never run against a real rewritten remote (capture is TestBackend) | A fixture with a rewritten-branch remote, and a stop | M2 review |
+| **Gallery banner hidden at <100 cols when `Detail` tab is up; Map view draws no banner at any size** | Draw the banner/title line in tab-strip and map layouts | M2 review |
+| **Coverage matrix gaps for details rows**: no pixel-tier/light-theme/ASCII except stops 1,6,7,15,16 at 80x24; no 100x30 except those five | Pixel captures need a Kitty-protocol pty harness | M2 review |
 
-- **Heap grows ~76 B per commit, against a 50 B/commit bar** (M2 review fix
-  1a, 2026-09-18). `heavy::slopes_per_commit_with_a_commit_graph` fails, so
-  the heavy tier still exits 101 even though it now completes in 91 s. Not
-  caused by the C1 fix: 69 B/commit at 16f3ed1, 76 B/commit after. Peak RSS
-  is 214 B/commit against 200. Numbers:
-  `docs/perf/m2-review-fix-1a.txt`, `docs/perf/m2-review-fix-1a-baseline-slope.txt`.
-  Needs its own ticket: find what holds per-commit state beyond the layout
-  window.
+- **Heap grows ~76 B/commit against a 50 B/commit bar** (M2 review fix 1a). `heavy::slopes_per_commit_with_a_commit_graph` still fails (heavy tier exits 101, completes in 91 s). Not caused by the C1 fix (69→76 B/commit). Peak RSS 214 B/commit against 200. Needs its own ticket: find what holds per-commit state beyond the layout window.
 
 ### The Mistake Radar's force-push probe is no longer exhaustive
-
-**Expiry: M7.** Behaviour change, user-registered 2026-09-18 (M2 review fix
-round 1a, `32845d3`/`6437790`).
-
-Force-push verdicts are computed only for branches seen in the visible window
-this session, and at most 32 of them. A force-push on a branch you never
-scrolled to goes **unflagged** — the Radar no longer covers every tracked
-branch. This was the price of C1: unbounded per-branch probing made the heavy
-tier time out at 1275 s (now 91 s) and stalled the release perf run.
-
-The user asked for this to be visible here, not only in a commit message. M7
-should decide whether an exhaustive background sweep earns its cost, or whether
-32-per-session is the honest permanent answer — and, if it stays, whether the
-UI should say so rather than letting silence read as "no force-push found".
+**Expiry: M7.** Behaviour change (M2 review fix 1a, user-registered 2026-09-18). Force-push verdicts computed only for branches seen in the visible window, capped at 32/session — a branch never scrolled to goes **unflagged**. Price of fixing C1 (unbounded probing timed the heavy tier out at 1275 s, now 91 s). M7 decides: fund an exhaustive background sweep, or keep 32-per-session and say so in the UI instead of silence reading as "no force-push found".
 
 ## M2 review round 2: Minor findings left open (2026-09-19)
 
-17 Minors from the round-2 review (`docs/reviews/m2-details-and-diffs.md`,
-`## Round 2` → `### Minor`). Round 1e fixed the round's three Majors only.
-Minor 13 (false "never writes/takes the index lock" doc comments on
-`run.rs`/`diff/read.rs`) was fixed as a side effect of round 1e's Major-1 fix
-— not listed below. The other 16 are still open. None of these duplicate the
-two rows already filed under "Unverified" (the two colour fixes) or
-housekeeping/02's two rows (`map.rs` `HashSet<Oid>`, the frame-gate max) —
-cross-referenced below where they touch the same code.
+16 open Minors from round 2 (`docs/reviews/m2-details-and-diffs.md`). Round 1e fixed the three Majors and (as a side effect) Minor 13. Not duplicated with the "Unverified" colour rows or housekeeping/02's two rows below.
 
 ### Mistake Radar: evil-merge probe and its text
 
 | Finding | Broken/unverified | What a user notices | Expiry |
 |---|---|---|---|
-| Pane header reads `evil merge: clean (N files hand-resolved)` for a merge with unchecked files — `clean` is `EvilVerdict::Clean`'s word ("nothing wrong found"), not "not checked". `crates/graft-ui/src/detail_pane/header.rs:55` | Broken | A hand-resolved merge with real files skipped reads as reassuring, not "we didn't check this" | M8 polish |
-| The both-sides-touched blind spot (a file both sides edited, resolved by hand, can hide a real evil edit inside the resolution) is disclosed only in the Explain paragraph and a doc comment, not in TESTING.md's radar section | Broken (docs) | Has to open Explain on the exact merge to learn the Radar can miss this kind of evil merge | M8 polish |
-| `merge_base` (`crates/graft-ops/src/mistake_radar/probes.rs`) takes only the first line of `git merge-base`; criss-cross history can have several bases, so "changed by one side" is judged against a base the real (recursive/ort) merge didn't use | Unverified — not reproduced | On unusual branch topology only, a merge could be wrongly cleared or wrongly flagged evil; no case has shown this yet | M7 |
-| Selecting the cursor's way through a merge-dense history spawns one full `git show --remerge-diff` per merge row, killed ≤50 ms later when the cursor moves on again; the 16-entry probe cache thrashes | Broken | Holding `j`/`k` down through a history like git/git's (a merge every few rows) causes brief hitches from throwaway git spawns | M7 |
-| `update/radar.rs::force_push_candidates` walks the resident window and allocates a `Vec` on every `update`, including key repeat, even once the 32-probe session cap is already full | Broken | Small extra per-keystroke cost that keeps paying after force-push probing has already maxed out for the session | M7 |
-| `RadarContext`'s `PartialEq`/`Eq` compares its tables by `Arc::ptr_eq`; two contexts with identical members but different table instances compare unequal, though `Eq` promises they'd be treated the same | Broken | Not directly visible; risks extra radar recompute when two logically-identical contexts are treated as different | M7 |
-| `scripts/m2-fix-1c-evil-audit.sh` reimplements the evil-merge rule in shell; already drifted once (round 1c's rule vs round 1e's rename-aware fix) and nothing keeps the two in step | Broken | No user impact; the audit's numbers can go silently stale the next time the probe's rule changes | not planned |
+| Pane header reads `evil merge: clean (N files hand-resolved)` for unchecked files — `clean` means "nothing wrong found", not "not checked" (`detail_pane/header.rs:55`) | Broken | Reassuring reading when it shouldn't be | M8 polish |
+| Both-sides-touched blind spot (hand-resolved file both sides edited can hide a real evil edit) disclosed only in the Explain paragraph, not TESTING.md | Broken (docs) | Must open Explain on the exact merge to learn this | M8 polish |
+| `merge_base` takes only the first line of `git merge-base`; criss-cross history can have several bases, judged against one the real merge didn't use | Unverified — not reproduced | Rare topology: merge could be wrongly cleared/flagged | M7 |
+| Merge-dense history: `j`/`k` spawns one full `git show --remerge-diff` per row, killed ≤50 ms later; 16-entry probe cache thrashes | Broken | Brief hitches holding `j`/`k` through e.g. git/git-like history | M7 |
+| `force_push_candidates` allocates a `Vec` every `update` (incl. key repeat) even once the 32-probe cap is full | Broken | Small extra per-keystroke cost after cap is maxed | M7 |
+| `RadarContext`'s `Eq` compares tables by `Arc::ptr_eq` — identical contents, different instances compare unequal | Broken | Not directly visible; extra radar recompute risk | M7 |
+| `scripts/m2-fix-1c-evil-audit.sh` reimplements the evil-merge rule in shell, already drifted once | Broken | None; audit numbers can go stale | not planned |
 
 ### Overview strip
 
 | Finding | Broken/unverified | What a user notices | Expiry |
 |---|---|---|---|
-| `view/strip.rs`'s search-hit `HashSet` is rebuilt every frame the strip is shown — M10's round-1a fix moved the per-row cost of the old scan to a per-frame allocation, it didn't remove it | Broken | On a repo where a search matches most of history, the overview strip can still cost noticeably every frame it's shown | M7 |
+| `view/strip.rs`'s search-hit `HashSet` rebuilt every frame the strip is shown (M2 fix moved the cost, didn't remove it) | Broken | Noticeable per-frame cost when a search matches most of history | M7 |
 
-### Code health: visibility, file boundaries, docs (M8's architecture pass)
+### Code health: visibility, file boundaries, docs (owned by M8's architecture pass)
 
-None of these are user-facing; `planner-fable`'s M8 pass already reads every
-`MAP.md`/`ARCHITECTURE.md`, so it's the natural owner.
+Not user-facing.
 
-- `ramp_glyph` (`crates/graft-ui/src/map_screen/render.rs`) went `pub` → `pub(crate)` in round 1d's split, but `crates/graft-ui/MAP.md:151-152` still lists it as public and separately notes it's now `pub(crate)` — the two lines disagree. Broken.
-- Round 1d's splits widened visibility instead of narrowing it: `detail_key`/`detail_event` and roughly 46 further items across `detail_pane/*` (17 in `line_render.rs`), `map/{walk,rows}.rs`, `unified/primitives.rs` and `update/detail/state.rs` are `pub(crate)` when only their parent module needs them (`pub(super)`, as `run/exec.rs` and `diff/read/raw.rs` already do). Broken.
-- `update/detail/{state,ops}.rs`'s split cuts "the struct" from "its `impl`", not along a real boundary — `ops.rs` (395 lines) mixes file loading, the evil probe, focus/options and pane resizing. `detail_pane/line_render.rs` has the same shape (17 unrelated items in one file). Broken.
-- `crates/graft-git/src/diff/unified.rs` is 417 non-test lines; round 1d's own note claimed every split file was under 400. Broken (contradicts the record that closed it).
-- `detail_pane/side_by_side.rs`'s `diff_body_side_by_side` still takes two bare bools (`focused`, `word_tint`) instead of the `DiffFocus` struct that was introduced specifically so `diff_body` wouldn't need them. Broken (inconsistency).
-- The `update/` purity guard (`crates/graft/src/update/tests.rs:1480-1557`): its file-count floor is `>= 7` against 20 real files (a broken directory walk could pass silently), its substring check misses `use std::{time, thread}` and `core::time`, and its own comment claiming "every other file is pure end to end" is false for six files that carry inline `#[cfg(test)]` modules. Broken — the safety net has real holes, though round 1d's own fix (making the scan recursive) is confirmed sound.
-- `ARCHITECTURE.md` still doesn't document `git::run` (the typed runner every M2 git spawn goes through), `git::contained`, the `LOCAL_JOB_BIT` job-id split, or the `update/` purity guard as a stated rule. Broken (docs debt).
+- `ramp_glyph` went `pub`→`pub(crate)` but `graft-ui/MAP.md:151-152` still lists it public and disagrees with itself. Broken.
+- Round 1d's splits widened visibility instead of narrowing: `detail_key`/`detail_event` + ~46 items across `detail_pane/*`, `map/{walk,rows}.rs`, `unified/primitives.rs`, `update/detail/state.rs` are `pub(crate)` when `pub(super)` would do. Broken.
+- `update/detail/{state,ops}.rs` splits struct from impl, not along a real boundary — `ops.rs` (395 lines) mixes unrelated concerns; `detail_pane/line_render.rs` same shape. Broken.
+- `graft-git/src/diff/unified.rs` is 417 non-test lines; round 1d claimed every split file under 400. Broken (contradicts its own record).
+- `side_by_side.rs`'s `diff_body_side_by_side` still takes two bare bools instead of the `DiffFocus` struct introduced to replace them. Broken (inconsistency).
+- `update/` purity guard (`tests.rs:1480-1557`): file-count floor `>=7` vs 20 real files (a broken walk could pass silently); substring check misses `use std::{time, thread}`/`core::time`; claims "every other file pure end to end" — false for six files with inline `#[cfg(test)]`. Broken, real holes (the recursive-scan fix itself is sound).
+- `ARCHITECTURE.md` doesn't document `git::run`, `git::contained`, `LOCAL_JOB_BIT`, or the `update/` purity guard as a stated rule. Broken (docs debt).
 
 ### Test suite: watch, not yet a failure
-
-- Fast tier grew 21 s → 24.3 s across the fix rounds, and its single slowest test (`diff_fixture::parse_unified_matches_numstat_for_every_shape`) grew 6.42 s → 7.76 s. The reviewer called it still under budget. Unverified (a trend, not yet a breach) — watch it doesn't cross the laptop-safe budget as M3 adds its own tests. Expiry: M3.
+- Fast tier grew 21→24.3 s, slowest test 6.42→7.76 s. Still under budget (reviewer). Unverified trend — watch it doesn't cross the laptop-safe budget as M3 adds tests. Expiry: M3.
 
 ---
 
 ## Unverified (shipped, nothing here can prove it)
 
 ### Two M2 colour fixes were never seen by anything
-**Expiry: M3** (first milestone with a capture pipeline that could carry colour,
-or the user's eye, whichever comes first). Registered 2026-09-18, ADR-0029.
+**Expiry: M3** (first capture pipeline that can carry colour, or the user's eye). ADR-0029: pty pipeline records character grids with **no colour attributes** — colour-only changes are invisible to every check this repo can run.
 
-The pty capture pipeline (`pty-gallery-m2.py`, pyte) records **character grids
-with no colour attributes**. A colour-only change is therefore invisible to every
-check this repo can run — captures included. Two M2 review fixes are in that
-state:
+- **`W` (word tint)** — review Major M1, fixed round 1b. Unit-tested; never rendered.
+- **Diff body all `text-muted` unless the Diff region is focused** — review Major M2, fixed round 1b. Same.
 
-- **`W` (word tint)** — review Major M1, fixed round 1b. Unit-tested; nothing
-  rendered it.
-- **The diff body drawn all `text-muted` unless the Diff region is focused** —
-  review Major M2, fixed round 1b. Same.
-
-Both pass their tests. Neither has been seen. If word-level diff tinting or the
-unfocused diff body looks wrong in a real terminal, this is why — report it in
-[`docs/field-notes.md`](docs/field-notes.md) rather than assuming it's new.
-
-**Closing it needs one of:** a capture path that carries SGR attributes, or the
-user looking at it once and saying.
-
----
+Both pass tests, neither seen. If word-level diff tinting or the unfocused diff body looks wrong in a real terminal, report it in `docs/field-notes.md` rather than assuming it's new. **Closes with:** a capture path carrying SGR attributes, or the user looking once and saying.
 
 ### `map.rs` `build_default_chain` still holds `HashSet<Oid>`
-**Expiry: M7.** Broken (mild). Found by housekeeping/02, 2026-09-18, not fixed —
-out of that ticket's scope.
-
-Same ADR-0026 breach the radar's default chain had: 33-byte Oids where a
-`HandleSet` bit would do. **Transient and Map-view only**, so it never showed in
-the heap-slope guard, which measures the steady state. It will cost on a large
-repo the moment the Map view is opened.
-
-**Fix:** the same shape as `92c35ac` — `HandleSet` plus the commit table.
+**Expiry: M7.** Broken (mild). Found by housekeeping/02, out of that ticket's scope. Same ADR-0026 breach the radar's default chain had (33-byte Oids where a `HandleSet` bit would do). Transient, Map-view only — never showed in the steady-state heap-slope guard; costs on a large repo once Map view opens. **Fix:** same shape as `92c35ac` (`HandleSet` + commit table).
 
 ### The frame gate asserts on the max of 420 keys, so one outlier fails it
-**Expiry: M7.** Unverified-adjacent: the gate passes today, but it is fragile by
-construction. Found by housekeeping/02, 2026-09-18.
-
-A single slow key out of 420 fails the whole gate. Under load **both** a baseline
-and a patched build spike over 9 ms — six interleaved A/B runs showed the tail is
-machine noise, not the code under test. A gate that fails on the worst sample
-will eventually fail for reasons nothing in the diff caused, which trains us to
-re-run it until it passes — the exact habit that hides a real regression.
-
-**Fix:** assert on a percentile (p99) with the max recorded, not asserted.
-Pairs with M7's existing ticket for the unexplained 17–18 ms release key
-(PROGRESS.md, user 2026-09-17) — same measurement path, same investigation.
+**Expiry: M7.** Unverified-adjacent — passes today but fragile by construction. Found by housekeeping/02. A single slow key fails the whole gate; six interleaved A/B runs showed baseline and patched both spike over 9 ms under load — machine noise, not the code under test. Asserting on the worst sample trains re-running until green, hiding real regressions. **Fix:** assert on p99, record the max. Pairs with M7's 17–18 ms release-key ticket — same measurement path.
