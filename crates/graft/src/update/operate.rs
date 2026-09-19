@@ -13,10 +13,11 @@
 use std::path::{Path, PathBuf};
 
 use graft_core::job::JobId;
+use graft_git::diff::{PatchDirection, PatchError, Selection};
 use graft_git::status::StatusEntry;
 use graft_ops::apply::Refresh;
-use graft_ops::operation::{Operation, Target};
-use graft_ui::detail::WorkingTreeSection;
+use graft_ops::operation::{Operation, PatchSide, Target};
+use graft_ui::detail::{BodyRow, LineKindView, WorkingTreeSection};
 
 use super::confirm::PendingConfirm;
 use super::detail::Loading;
@@ -118,6 +119,258 @@ pub fn stage_selected(
     next.operating = Some(id);
     commands.push(Command::Operate(id, Box::new(op)));
     true
+}
+
+/// What the diff region's line cursor names: a hunk of the file on show, and
+/// how much of it.
+struct DiffUnit {
+    /// Index into the raw [`FileDiff`]'s hunks — the same index the drawn
+    /// [`graft_ui::detail::DiffView`] uses.
+    hunk: usize,
+    /// The whole hunk, or the one changed line under the cursor.
+    selection: Selection,
+    /// `true` when the cursor named one line rather than the hunk; only the
+    /// wording of the status line and the confirm box differs.
+    one_line: bool,
+}
+
+/// The unit under the diff cursor: the whole hunk on a `@@` heading or on a
+/// context line, that one line on a `+`/`−` line. `None` off the changes
+/// pane, on the truncation footer, or before a diff has arrived.
+///
+/// The line index it builds is into the **raw** hunk: `assemble_hunk` puts
+/// the heading at `HunkView::lines[0]` and copies git's lines after it
+/// one for one, so a drawn line `i` is raw line `i - 1`.
+fn diff_unit(state: &AppState) -> Option<DiffUnit> {
+    let cursor = state.detail.body_cursor()?;
+    let Loading::Ready(view) = &state.detail.diff else {
+        return None;
+    };
+    match view.body_row(cursor)? {
+        BodyRow::Heading { hunk } => Some(DiffUnit {
+            hunk,
+            selection: Selection::WholeHunk,
+            one_line: false,
+        }),
+        BodyRow::Line { hunk, line } => {
+            let kind = view.hunks.get(hunk)?.lines.get(line)?.kind;
+            let whole = DiffUnit {
+                hunk,
+                selection: Selection::WholeHunk,
+                one_line: false,
+            };
+            match kind {
+                // A context line belongs to its hunk and to nothing smaller:
+                // `Space` on one means the hunk around it.
+                LineKindView::Context | LineKindView::HunkHeading => Some(whole),
+                LineKindView::Added | LineKindView::Removed => Some(DiffUnit {
+                    hunk,
+                    selection: Selection::Lines(vec![line.checked_sub(1)?]),
+                    one_line: true,
+                }),
+            }
+        }
+        BodyRow::Truncation => None,
+    }
+}
+
+/// Which way `graft_ops` will apply a patch cut from `section`, and which
+/// diff it was cut from. Staging reads the worktree side forward; unstaging
+/// and discarding both reverse what is already there.
+const fn patch_direction(section: WorkingTreeSection) -> (PatchDirection, PatchSide) {
+    match section {
+        WorkingTreeSection::Staged => (PatchDirection::Reverse, PatchSide::Index),
+        WorkingTreeSection::Unstaged | WorkingTreeSection::Untracked => {
+            (PatchDirection::Forward, PatchSide::Worktree)
+        }
+    }
+}
+
+/// Why a patch could not be built, in words that say what to do instead.
+/// Never a silent no-op: the key is answered and the status line carries the
+/// reason (design note, "Changes pane").
+fn patch_reason(verb: &str, error: &PatchError) -> String {
+    match error {
+        // The one refusal a user meets in ordinary work: the last line of a
+        // file with no trailing newline cannot be moved on its own without
+        // stranding git's `\ No newline at end of file` marker.
+        PatchError::NoNewlineBoundary { .. } => format!(
+            "{verb}: this file has no newline at the end, so that line cannot go on its own — put the cursor on the hunk's @@ line to {verb} the whole hunk"
+        ),
+        PatchError::Binary => {
+            format!("{verb}: a binary file has no hunks — {verb} the whole file from the list")
+        }
+        PatchError::NotAChangedLine { .. } => {
+            format!("{verb}: that line is unchanged; there is nothing on it to {verb}")
+        }
+        PatchError::NothingSelected => format!("{verb}: nothing under the cursor to {verb}"),
+        PatchError::NoSuchHunk { .. } | PatchError::NoSuchLine { .. } => {
+            format!("{verb}: the diff on screen is out of date — Ctrl+R re-reads it")
+        }
+    }
+}
+
+/// The patch bytes for the unit under the diff cursor, or the reason there
+/// are none, already worded for the status line.
+fn patch_for(
+    state: &AppState,
+    unit: &DiffUnit,
+    direction: PatchDirection,
+    verb: &str,
+) -> Result<Vec<u8>, String> {
+    let raw = state
+        .detail
+        .diff_raw
+        .as_ref()
+        .ok_or_else(|| format!("{verb}: the diff is still loading"))?;
+    graft_git::diff::hunk_patch(raw, unit.hunk, &unit.selection, direction)
+        .map_err(|error| patch_reason(verb, &error))
+}
+
+/// `Space`/`s` with the diff region focused: stage or unstage the hunk or
+/// line under the line cursor. Direction comes from the file's section, the
+/// same rule the file list follows.
+///
+/// Untracked files stage whole (ADR-0034): git has no index side to cut a
+/// patch against, so `Space` there means the file.
+///
+/// `false` only when there is nothing to act on at all; a patch that cannot
+/// be built answers the key and says why in the status line, because a key
+/// that silently does nothing is worse than a refusal.
+pub fn stage_at_diff_cursor(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    next_id: &mut impl FnMut() -> JobId,
+) -> bool {
+    if operation_in_flight(next) {
+        return false;
+    }
+    let Some(section) = next.detail.selected_section() else {
+        return false;
+    };
+    if section == WorkingTreeSection::Untracked {
+        return stage_selected(next, commands, next_id);
+    }
+    let Some(path) = selected_path(next) else {
+        return false;
+    };
+    let Some(unit) = diff_unit(next) else {
+        return false;
+    };
+    let verb = if section == WorkingTreeSection::Staged {
+        "unstage"
+    } else {
+        "stage"
+    };
+    let (direction, side) = patch_direction(section);
+    let patch_bytes = match patch_for(next, &unit, direction, verb) {
+        Ok(bytes) => bytes,
+        Err(reason) => {
+            next.status = Status::Failed(reason);
+            return true;
+        }
+    };
+    let target = Target::Patch {
+        path,
+        patch: patch_bytes,
+        side,
+    };
+    let op = if section == WorkingTreeSection::Staged {
+        Operation::Unstage(target)
+    } else {
+        Operation::Stage(target)
+    };
+    let id = next_id();
+    next.operating = Some(id);
+    commands.push(Command::Operate(id, Box::new(op)));
+    true
+}
+
+/// `d` with the diff region focused: the confirm box for discarding the hunk
+/// or line under the line cursor. An untracked file has no hunks to discard
+/// one of, so it falls back to the whole-file box (ADR-0034).
+pub fn request_discard_at_diff_cursor(next: &mut AppState) -> bool {
+    if operation_in_flight(next) {
+        return false;
+    }
+    let Some(section) = next.detail.selected_section() else {
+        return false;
+    };
+    if section == WorkingTreeSection::Untracked {
+        return request_discard(next);
+    }
+    let Some(path) = selected_path(next) else {
+        return false;
+    };
+    let Some(unit) = diff_unit(next) else {
+        return false;
+    };
+    // A discard always reverses what is on disk, whichever side it came from.
+    let (_, side) = patch_direction(section);
+    let patch_bytes = match patch_for(next, &unit, PatchDirection::Reverse, "discard") {
+        Ok(bytes) => bytes,
+        Err(reason) => {
+            next.status = Status::Failed(reason);
+            return true;
+        }
+    };
+    let counts = patch_counts(&patch_bytes);
+    let unit_word = if unit.one_line { "line" } else { "hunk" };
+    let shown = path.display();
+    let view = graft_ui::confirm::ConfirmView::new(
+        format!("Discard this {unit_word} of {shown}?"),
+        vec![
+            format!(
+                "{} added / {} removed lines go back to how they were.",
+                counts.0, counts.1
+            ),
+            "Graft keeps a backup first, so `u` can undo it afterwards.".to_string(),
+        ],
+        discard_patch_command(side),
+    );
+    next.confirm = Some(PendingConfirm {
+        view,
+        then: Operation::Discard(Target::Patch {
+            path,
+            patch: patch_bytes,
+            side,
+        }),
+    });
+    true
+}
+
+/// Added and removed line counts of a built patch, read back off its own
+/// body so the confirm box can only ever name what the patch actually
+/// carries. The `+++`/`---` header lines are skipped.
+fn patch_counts(patch: &[u8]) -> (usize, usize) {
+    let mut added = 0;
+    let mut removed = 0;
+    let mut in_hunk = false;
+    for line in patch.split(|byte| *byte == b'\n') {
+        if line.starts_with(b"@@") {
+            in_hunk = true;
+            continue;
+        }
+        if !in_hunk {
+            continue;
+        }
+        match line.first() {
+            Some(b'+') => added += 1,
+            Some(b'-') => removed += 1,
+            _ => {}
+        }
+    }
+    (added, removed)
+}
+
+/// The command the confirm box shows for a patch discard: exactly what
+/// `graft_ops::operation::stage::plan_discard` runs — the working tree first,
+/// then the index when the hunk came from the index.
+fn discard_patch_command(side: PatchSide) -> String {
+    match side {
+        PatchSide::Worktree => "git apply -R -".to_string(),
+        PatchSide::Index => "git apply -R -  &&  git apply --cached -R -".to_string(),
+    }
 }
 
 /// `Ctrl+A`: stage every path `AppState::working_tree` lists — staged,
@@ -250,7 +503,7 @@ mod tests {
     use std::sync::Arc;
 
     use graft_core::job::JobId;
-    use graft_git::diff::{FileEntry, FileList, FileStatus};
+    use graft_git::diff::{DiffLine, FileDiff, FileEntry, FileList, FileStatus, Hunk, LineKind};
     use graft_git::status::{Change, StatusEntry, WorkingTreeStatus};
     use graft_ui::detail::{DetailFocus, FileListView, FileRow, FileRowKind, FileStatusView};
 
@@ -385,6 +638,274 @@ mod tests {
             next += 1;
             id
         }
+    }
+
+    fn line(kind: LineKind, text: &str, old_no: Option<u32>, new_no: Option<u32>) -> DiffLine {
+        DiffLine {
+            kind,
+            text: text.as_bytes().to_vec(),
+            old_no,
+            new_no,
+            no_newline_at_eof: false,
+        }
+    }
+
+    /// `src/a.rs` with one hunk: a context line, a `-`/`+` pair, a context
+    /// line. Body rows: `0` the `@@` heading, `1` context, `2` the removed
+    /// line, `3` the added line, `4` context.
+    fn one_pair_diff() -> FileDiff {
+        FileDiff {
+            entry: FileEntry {
+                path: b"src/a.rs".to_vec(),
+                old_path: None,
+                status: FileStatus::Modified,
+                added: Some(1),
+                removed: Some(1),
+            },
+            hunks: vec![Hunk {
+                old_start: 1,
+                old_lines: 3,
+                new_start: 1,
+                new_lines: 3,
+                heading: Vec::new(),
+                lines: vec![
+                    line(LineKind::Context, "one", Some(1), Some(1)),
+                    line(LineKind::Removed, "old", Some(2), None),
+                    line(LineKind::Added, "new", None, Some(2)),
+                    line(LineKind::Context, "two", Some(3), Some(3)),
+                ],
+            }],
+            binary: None,
+            truncated: None,
+            old_mode: None,
+            new_mode: None,
+        }
+    }
+
+    /// `src/a.rs` whose only line changed and whose file ends without a
+    /// newline on both sides — the shape `hunk_patch` refuses a single-line
+    /// selection on.
+    fn no_trailing_newline_diff() -> FileDiff {
+        let mut removed = line(LineKind::Removed, "old", Some(1), None);
+        removed.no_newline_at_eof = true;
+        let mut added = line(LineKind::Added, "new", None, Some(1));
+        added.no_newline_at_eof = true;
+        FileDiff {
+            hunks: vec![Hunk {
+                old_start: 1,
+                old_lines: 1,
+                new_start: 1,
+                new_lines: 1,
+                heading: Vec::new(),
+                lines: vec![removed, added],
+            }],
+            ..one_pair_diff()
+        }
+    }
+
+    /// The changes pane with the diff region focused, `diff` on show and the
+    /// line cursor on body row `cursor`.
+    fn state_on_diff(section: WorkingTreeSection, diff: FileDiff, cursor: usize) -> AppState {
+        let path = String::from_utf8(diff.entry.path.clone()).expect("a test path is utf-8");
+        let entry = match section {
+            WorkingTreeSection::Staged => staged_entry(&path),
+            WorkingTreeSection::Unstaged => unstaged_entry(&path),
+            WorkingTreeSection::Untracked => untracked_entry(&path),
+        };
+        let mut state = state_on(&path, entry, section);
+        state.detail.focus = DetailFocus::Diff;
+        let view = crate::jobs::detail::assemble_diff(&diff, false);
+        state.detail.diff = Loading::Ready(Arc::new(view));
+        state.detail.diff_raw = Some(Arc::new(diff));
+        state.detail.body_cursor = cursor;
+        state
+    }
+
+    /// The `Target::Patch` the one queued command carries.
+    fn queued_patch(commands: &[Command]) -> (&PathBuf, &Vec<u8>, PatchSide) {
+        let [Command::Operate(_, op)] = commands else {
+            panic!("expected exactly one Operate, got {commands:?}");
+        };
+        let (Operation::Stage(target) | Operation::Unstage(target) | Operation::Discard(target)) =
+            &**op
+        else {
+            panic!("expected a stage/unstage/discard");
+        };
+        let Target::Patch { path, patch, side } = target else {
+            panic!("expected a patch target, got {target:?}");
+        };
+        (path, patch, *side)
+    }
+
+    #[test]
+    fn space_on_a_hunk_heading_stages_the_whole_hunk() {
+        let diff = one_pair_diff();
+        let mut state = state_on_diff(WorkingTreeSection::Unstaged, diff.clone(), 0);
+        let mut commands = Vec::new();
+        assert!(stage_at_diff_cursor(&mut state, &mut commands, &mut ids()));
+        let (target_path, patch, side) = queued_patch(&commands);
+        assert_eq!(target_path, &PathBuf::from("src/a.rs"));
+        assert_eq!(side, PatchSide::Worktree);
+        assert_eq!(
+            patch,
+            &graft_git::diff::hunk_patch(&diff, 0, &Selection::WholeHunk, PatchDirection::Forward)
+                .expect("the whole hunk always builds")
+        );
+    }
+
+    #[test]
+    fn space_on_an_added_line_stages_that_line_alone() {
+        let diff = one_pair_diff();
+        // Body row 3 is the `+` line; raw hunk line 2.
+        let mut state = state_on_diff(WorkingTreeSection::Unstaged, diff.clone(), 3);
+        let mut commands = Vec::new();
+        assert!(stage_at_diff_cursor(&mut state, &mut commands, &mut ids()));
+        let (_, patch, _) = queued_patch(&commands);
+        assert_eq!(
+            patch,
+            &graft_git::diff::hunk_patch(
+                &diff,
+                0,
+                &Selection::Lines(vec![2]),
+                PatchDirection::Forward
+            )
+            .expect("one added line builds")
+        );
+    }
+
+    #[test]
+    fn space_on_a_context_line_stages_the_hunk_around_it() {
+        let diff = one_pair_diff();
+        // Body row 1 is the leading context line.
+        let mut state = state_on_diff(WorkingTreeSection::Unstaged, diff.clone(), 1);
+        let mut commands = Vec::new();
+        assert!(stage_at_diff_cursor(&mut state, &mut commands, &mut ids()));
+        let (_, patch, _) = queued_patch(&commands);
+        assert_eq!(
+            patch,
+            &graft_git::diff::hunk_patch(&diff, 0, &Selection::WholeHunk, PatchDirection::Forward)
+                .expect("the whole hunk always builds")
+        );
+    }
+
+    #[test]
+    fn a_hunk_under_staged_unstages_in_reverse_against_the_index() {
+        let diff = one_pair_diff();
+        let mut state = state_on_diff(WorkingTreeSection::Staged, diff.clone(), 0);
+        let mut commands = Vec::new();
+        assert!(stage_at_diff_cursor(&mut state, &mut commands, &mut ids()));
+        let [Command::Operate(_, op)] = commands.as_slice() else {
+            panic!("expected one Operate");
+        };
+        assert!(
+            matches!(&**op, Operation::Unstage(_)),
+            "the STAGED section unstages: {op:?}"
+        );
+        let (_, patch, side) = queued_patch(&commands);
+        assert_eq!(side, PatchSide::Index);
+        assert_eq!(
+            patch,
+            &graft_git::diff::hunk_patch(&diff, 0, &Selection::WholeHunk, PatchDirection::Reverse)
+                .expect("the whole hunk always builds")
+        );
+    }
+
+    /// The one refusal a user meets in ordinary work. It must read as a
+    /// refusal with a way out, never as a key that did nothing.
+    #[test]
+    fn a_single_line_at_a_missing_final_newline_is_refused_in_words() {
+        // Body row 2 is the `+` line of a file with no trailing newline.
+        let mut state = state_on_diff(WorkingTreeSection::Unstaged, no_trailing_newline_diff(), 2);
+        let mut commands = Vec::new();
+        assert!(
+            stage_at_diff_cursor(&mut state, &mut commands, &mut ids()),
+            "the key is answered, not ignored"
+        );
+        assert!(commands.is_empty(), "nothing is written");
+        assert_eq!(state.operating, None);
+        let Status::Failed(text) = &state.status else {
+            panic!(
+                "expected a failure on the status line, got {:?}",
+                state.status
+            );
+        };
+        assert!(
+            text.contains("no newline at the end") && text.contains("whole hunk"),
+            "the reason names the cause and the way out: {text}"
+        );
+    }
+
+    #[test]
+    fn the_whole_hunk_still_stages_where_a_single_line_cannot() {
+        let mut state = state_on_diff(WorkingTreeSection::Unstaged, no_trailing_newline_diff(), 0);
+        let mut commands = Vec::new();
+        assert!(stage_at_diff_cursor(&mut state, &mut commands, &mut ids()));
+        assert_eq!(commands.len(), 1, "the heading row still writes");
+    }
+
+    #[test]
+    fn d_in_the_diff_region_confirms_before_discarding_the_hunk() {
+        let mut state = state_on_diff(WorkingTreeSection::Unstaged, one_pair_diff(), 0);
+        assert!(request_discard_at_diff_cursor(&mut state));
+        let pending = state.confirm.expect("confirm box opened");
+        assert_eq!(pending.view.cursor, graft_ui::confirm::Choice::Cancel);
+        assert!(
+            pending.view.title.as_str().contains("hunk of src/a.rs"),
+            "the question names what goes: {:?}",
+            pending.view.title
+        );
+        assert_eq!(pending.view.command, "git apply -R -");
+        assert!(
+            matches!(
+                pending.then,
+                Operation::Discard(Target::Patch {
+                    side: PatchSide::Worktree,
+                    ..
+                })
+            ),
+            "the working tree's own side is reversed: {:?}",
+            pending.then
+        );
+    }
+
+    #[test]
+    fn d_on_one_line_names_the_line_and_counts_it() {
+        // Body row 3, the `+` line.
+        let mut state = state_on_diff(WorkingTreeSection::Unstaged, one_pair_diff(), 3);
+        assert!(request_discard_at_diff_cursor(&mut state));
+        let pending = state.confirm.expect("confirm box opened");
+        assert!(
+            pending.view.title.as_str().contains("line of src/a.rs"),
+            "{:?}",
+            pending.view.title
+        );
+        let said: Vec<String> = pending
+            .view
+            .message
+            .iter()
+            .map(|line| line.as_str().to_string())
+            .collect();
+        assert!(
+            said.iter()
+                .any(|line| line.starts_with("1 added / 0 removed")),
+            "the consequence counts the lines actually in the patch: {said:?}"
+        );
+    }
+
+    /// ADR-0034: untracked files have no index side to cut a hunk against,
+    /// so the diff region's `Space` means the whole file there.
+    #[test]
+    fn space_in_an_untracked_files_diff_stages_the_whole_file() {
+        let mut state = state_on_diff(WorkingTreeSection::Untracked, one_pair_diff(), 0);
+        let mut commands = Vec::new();
+        assert!(stage_at_diff_cursor(&mut state, &mut commands, &mut ids()));
+        let [Command::Operate(_, op)] = commands.as_slice() else {
+            panic!("expected one Operate");
+        };
+        assert_eq!(
+            **op,
+            Operation::Stage(Target::Paths(vec!["src/a.rs".into()]))
+        );
     }
 
     #[test]

@@ -62,6 +62,10 @@ pub(crate) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
     if changes_pane_write_key(next, commands, key, plain) {
         return true;
     }
+    // The diff region's line cursor scrolls only as far as it must to stay in
+    // view, so it needs the region's height; read it before `next` is split
+    // up below.
+    let body_rows = super::super::geometry::diff_body_rows(next);
     let AppState {
         detail, local_jobs, ..
     } = next;
@@ -101,36 +105,49 @@ pub(crate) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
             files_key(detail, commands, ids, key.code, plain)
         }
         _ if detail.shown && detail.focus == DetailFocus::Diff => {
-            diff_key(detail, commands, ids, key.code, plain)
+            diff_key(detail, commands, ids, key.code, plain, body_rows)
         }
         _ => false,
     }
 }
 
-/// Write keys on the changes pane's file list (m3-working-tree-undo-and-
-/// stash/04), tried before the ordinary files keys in [`files_key`]: a write
-/// that cannot apply (no write in flight already, a file row under the
-/// cursor) falls through to `Space`'s other meaning, folding a directory.
-/// `d` and `Ctrl+A` have no other meaning here, so they are safe to answer
-/// unconditionally once the pane is on the changes pane's files.
+/// Write keys on the changes pane (m3-working-tree-undo-and-stash/04), tried
+/// before the ordinary region keys in [`files_key`]/[`diff_key`].
+///
+/// Which region has focus decides what the key acts on, and nothing else
+/// does: in the file list `Space`/`s`/`d` mean the whole file (or every file
+/// of a section heading), in the diff region they mean the hunk or line under
+/// the line cursor. A write that cannot apply (one already in flight, no file
+/// row under the cursor) falls through to `Space`'s other meaning, folding a
+/// directory. `d` and `Ctrl+A` have no other meaning on this pane.
 fn changes_pane_write_key(
     next: &mut AppState,
     commands: &mut Vec<Command>,
     key: KeyPress,
     plain: bool,
 ) -> bool {
-    if !(next.detail.shown
-        && next.detail.focus == DetailFocus::Files
-        && next.detail.spec == Some(DetailSpec::WorkingTree))
-    {
+    if !(next.detail.shown && next.detail.spec == Some(DetailSpec::WorkingTree)) {
         return false;
     }
+    let in_diff = match next.detail.focus {
+        DetailFocus::Files => false,
+        DetailFocus::Diff => true,
+        DetailFocus::Graph => return false,
+    };
     let mut local_jobs = next.local_jobs;
     let mut ids = || local_jobs.next_id();
     let handled = if plain && matches!(key.code, KeyCode::Char(' ' | 's')) {
-        super::super::operate::stage_selected(next, commands, &mut ids)
+        if in_diff {
+            super::super::operate::stage_at_diff_cursor(next, commands, &mut ids)
+        } else {
+            super::super::operate::stage_selected(next, commands, &mut ids)
+        }
     } else if plain && key.code == KeyCode::Char('d') {
-        super::super::operate::request_discard(next)
+        if in_diff {
+            super::super::operate::request_discard_at_diff_cursor(next)
+        } else {
+            super::super::operate::request_discard(next)
+        }
     } else if key.code == KeyCode::Char('a') && key.modifiers == Modifiers::CONTROL {
         super::super::operate::stage_all(next, commands, &mut ids)
     } else {
@@ -193,6 +210,7 @@ fn diff_key(
     ids: &mut impl FnMut() -> JobId,
     code: KeyCode,
     plain: bool,
+    body_rows: usize,
 ) -> bool {
     let delta = match code {
         KeyCode::Char('j') | KeyCode::Down => Some(1),
@@ -205,7 +223,15 @@ fn diff_key(
     };
     if let Some(delta) = delta {
         let len = diff_content_len_of(detail);
-        detail.scroll_body(delta, len);
+        // On the changes pane the cursor leads and the view follows — the
+        // cursor is what `Space` and `d` act on, so it must be the thing that
+        // moves. Everywhere else the diff is read-only and `j`/`k` still
+        // just scroll.
+        if detail.spec == Some(DetailSpec::WorkingTree) {
+            detail.move_body_cursor(delta, len, body_rows);
+        } else {
+            detail.scroll_body(delta, len);
+        }
         return true;
     }
     diff_option_key(detail, commands, ids, code, plain)

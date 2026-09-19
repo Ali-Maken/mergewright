@@ -154,6 +154,28 @@ fn detail_hit_areas(pane: Bounds, layout: DetailLayout, files_count: usize) -> (
     }
 }
 
+/// How many rows the diff body has on screen right now, `0` while the pane
+/// is hidden or its size is not known yet. The diff region's line cursor
+/// needs it to scroll only as far as it must to stay in view
+/// (`DetailState::move_body_cursor`), and `0` is exactly the "height
+/// unknown" case that call falls back on.
+pub(super) fn diff_body_rows(state: &AppState) -> usize {
+    if !state.detail.shown {
+        return 0;
+    }
+    let size = (state.size.columns, state.size.rows);
+    let layout = detail::effective_layout(state.detail.focus, &state.detail.pane_size, size);
+    let Some(pane) = detail_split(layout, size).1 else {
+        return 0;
+    };
+    let files_count = match &state.detail.files {
+        detail::Loading::Ready(files) => files.visible().count(),
+        _ => 0,
+    };
+    let (_, body) = detail_hit_areas(pane, layout, files_count);
+    usize::from(body.height)
+}
+
 /// Where a screen point lands over the detail pane, when it is shown. `None`
 /// when the pane is hidden or the point isn't over it (including the graph
 /// side of a `Right` or `Below` layout, and the pane's header).
