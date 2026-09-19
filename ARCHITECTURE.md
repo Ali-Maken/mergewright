@@ -36,7 +36,11 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   (ADR-0011), never a second full adapter.
 - **Changing what a write operation does, or how undo works** → `ops`. Start
   at `DESIGN.md` §6, then `graft-ops/src/operation.rs` (one enum, four
-  properties: `check`, `plan`, `touches`, and `undo::inverse`). **The seam
+  properties: `check`, `plan`, `touches`, and `undo::inverse`). The
+  execution half is `apply.rs` (the §6.2 protocol: read, check, back up,
+  journal, run, journal again), `snapshot.rs` (both trees from one copy of
+  the index — never the real one), `restore.rs` (the inverse's steps) and
+  `undo/execute.rs` (the §6.7 drift rail in front of them). **The seam
   rule: `ops` decides, `app` wires.** `app` never builds a `GitInvocation` for
   a write, never touches the journal file, never chooses a snapshot; a key
   becomes an `Operation` and `ops` does the rest. Guarded by

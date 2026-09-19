@@ -360,7 +360,7 @@ pub(crate) fn begin(
         head_after: None,
         refs_before,
         refs_after: BTreeMap::default(),
-        index_before: backup.map(|taken| taken.index_tree),
+        index_before: backup.and_then(|taken| taken.index_tree),
         index_after: None,
         worktree_before: backup.map(|taken| taken.worktree_tree),
         worktree_after: None,
@@ -424,7 +424,7 @@ pub(crate) fn finish(
         let label = format!("{} after: {}", kind_name(entry.kind), entry.description);
         let sealed = snapshot::commit_trees(
             ctx.repo,
-            index_after,
+            Some(index_after),
             worktree_after,
             &entry.id,
             &label,

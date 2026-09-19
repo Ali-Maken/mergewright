@@ -13,6 +13,7 @@ use graft_core::journal::JournalEntry;
 use crate::apply::{Applied, Context};
 use crate::facts::{self, FactsError};
 use crate::restore::{self, RestoreError};
+use crate::snapshot::SnapshotError;
 use crate::undo::{Drift, InversePlan, NotInvertible, drift, plan_redo, plan_undo};
 
 /// Why an undo or redo did not happen.
@@ -74,8 +75,24 @@ fn reverse(
             names.push(name.clone());
         }
     }
-    let now = facts::read_state_now(ctx.repo, &ctx.scratch.clone(), &names, ctx.stop)
-        .map_err(UndoError::Facts)?;
+    let now = match facts::read_state_now(ctx.repo, &ctx.scratch.clone(), &names, ctx.stop) {
+        Ok(now) => now,
+        // An unmerged index — what a stash pop that hit a conflict leaves —
+        // has no tree, so it cannot equal the one the entry recorded. That
+        // is drift of the loudest kind, and the comparison has nothing to
+        // add to it. The restore itself copes: its backup keeps the working
+        // tree, conflict markers and all.
+        Err(FactsError::Snapshot(SnapshotError::Unmerged)) => {
+            if force {
+                return restore::execute(ctx, &plan).map_err(UndoError::Restore);
+            }
+            return Err(UndoError::Drift(Drift {
+                index: true,
+                ..Drift::default()
+            }));
+        }
+        Err(other) => return Err(UndoError::Facts(other)),
+    };
 
     let moved = drift(&target, &now);
     if !moved.is_clean() && !force {

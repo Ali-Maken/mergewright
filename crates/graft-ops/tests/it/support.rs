@@ -4,6 +4,11 @@
 //! Nothing here trusts a return value: an operation is judged by what `git`
 //! says the repository holds afterwards (PROMPT.md §7.2 item 4).
 
+// Helpers, not `#[test]` functions, so `clippy.toml`'s "expect is fine in
+// tests" does not reach them. It is fine here for the same reason: a
+// scaffold that cannot build the repository has to stop the test loudly,
+// and there is no caller to hand an error to.
+#![allow(clippy::expect_used, clippy::unwrap_used)]
 #![allow(dead_code)]
 
 use std::path::{Path, PathBuf};

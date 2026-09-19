@@ -39,11 +39,15 @@ pub enum SnapshotScope {
     Full,
 }
 
-/// One snapshot: the two trees and the commit that holds them.
+/// One snapshot: the trees and the commit that holds them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Snapshot {
-    /// The staged state.
-    pub index_tree: Oid,
+    /// The staged state — `None` when the index is unmerged, which has no
+    /// tree at all (`git write-tree` refuses one). The working tree is still
+    /// captured, so no file content is lost; only the stage-2/3 entries of a
+    /// half-finished merge are, and they are already recorded in the entry
+    /// this snapshot belongs to as "unknown".
+    pub index_tree: Option<Oid>,
     /// Tracked working-tree content plus untracked files.
     pub worktree_tree: Oid,
     /// `{ index/ → index_tree, worktree/ → worktree_tree }`, committed.
@@ -68,6 +72,9 @@ pub enum SnapshotError {
         /// What it printed, first line, lossy.
         printed: String,
     },
+    /// The index holds unmerged paths, which have no tree.
+    #[error("the index has unmerged paths, which cannot be written as a tree")]
+    Unmerged,
     /// The caller asked to stop.
     #[error("stopped")]
     Stopped,
@@ -134,7 +141,14 @@ pub fn take(
     stop: &dyn Stop,
 ) -> Result<Snapshot, SnapshotError> {
     let temp = TempIndex::copied_from(repo, scratch)?;
-    let index_tree = write_tree(repo, temp.path(), stop)?;
+    // An unmerged index has no tree, and that must not stop the backup: the
+    // working tree is where the user's work is, and `add -A` over the copy
+    // resolves the conflict there (verified, git 2.54).
+    let index_tree = match write_tree(repo, temp.path(), stop) {
+        Ok(tree) => Some(tree),
+        Err(SnapshotError::Unmerged) => None,
+        Err(why) => return Err(why),
+    };
     add_all(repo, temp.path(), stop)?;
     let worktree_tree = write_tree(repo, temp.path(), stop)?;
     drop(temp);
@@ -155,7 +169,7 @@ pub fn take(
 /// after-snapshot, whose parent is the before-commit.
 pub fn commit_trees(
     repo: &RepoHandle,
-    index_tree: Oid,
+    index_tree: Option<Oid>,
     worktree_tree: Oid,
     id: &EntryId,
     label: &str,
@@ -233,7 +247,14 @@ fn write_tree(repo: &RepoHandle, index: &Path, stop: &dyn Stop) -> Result<Oid, S
         .env("GIT_INDEX_FILE", index)
         .arg(GitArg::Flag("write-tree"))
         .run(stop)
-        .map_err(stopped)?;
+        .map_err(|why| match &why {
+            // `<path>: unmerged (<oid>)` is git's own first line here, and
+            // the only way `write-tree` fails that the caller can work with.
+            RunError::Exited {
+                stderr_first_line, ..
+            } if stderr_first_line.contains("unmerged") => SnapshotError::Unmerged,
+            _other => stopped(why),
+        })?;
     oid_from(&output.stdout, "write-tree")
 }
 
@@ -254,12 +275,15 @@ fn add_all(repo: &RepoHandle, index: &Path, stop: &dyn Stop) -> Result<(), Snaps
 /// `git mktree` over the two-entry listing.
 fn mktree(
     repo: &RepoHandle,
-    index_tree: Oid,
+    index_tree: Option<Oid>,
     worktree_tree: Oid,
     stop: &dyn Stop,
 ) -> Result<Oid, SnapshotError> {
-    let listing =
-        format!("040000 tree {index_tree}\tindex\n040000 tree {worktree_tree}\tworktree\n");
+    let mut listing = String::new();
+    if let Some(index_tree) = index_tree {
+        listing.push_str(&format!("040000 tree {index_tree}\tindex\n"));
+    }
+    listing.push_str(&format!("040000 tree {worktree_tree}\tworktree\n"));
     let output = GitInvocation::new(repo)
         .arg(GitArg::Flag("mktree"))
         .stdin(listing.into_bytes())

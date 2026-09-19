@@ -1,6 +1,6 @@
 # ops-execution: snapshots, the apply protocol, restore, undo and redo — proven byte-for-byte on fixtures
 
-Status: ready
+Status: done
 Blocked by: 01-git-reads-and-patches, 02-ops-model
 Build with: Opus — git writes and the undo path (CLAUDE.md routes both to Opus); correctness is judged by the byte-for-byte tests here, so not Fable.
 Needs: `ops-model` (`Operation`, `RepoFacts`, `Refusal`, `JournalEntry`, `parse`/`render_*`, `next_undo`/`next_redo`, `inverse`/`plan_undo`/`plan_redo`, `drift`, `Step`), `git-reads-and-patches` (`status::read`, `stash::list`, `state::in_progress`, `RepoHandle::{git_path, worktree_name}`, `GitInvocation::env`, `version::system_git`).
@@ -90,20 +90,20 @@ pub fn redo(ctx: &mut Context, force: bool) -> Result<Applied, UndoError>;
 
 All on `copy_into_temp` fixtures with `GIT_CONFIG_GLOBAL=/dev/null` (the fixtures runner already does), each asserting **repository state by reading git**, never by trusting the return value:
 
-- [ ] **Parity, every kind:** for each `Operation` kind, apply on copy A while the test runs the plan's `command_line()` on copy B; `for-each-ref`, `ls-files -s` and `status --porcelain=v2` are byte-identical between A and B (backup refs excluded).
-- [ ] **Undo restores exactly, every kind:** snapshot (`for-each-ref` sans `refs/graft`, `ls-files -s`, every worktree file's bytes incl. untracked) before the op equals the snapshot after `apply` + `undo`. Redo then equals the post-op snapshot. Then undo again.
-- [ ] **The PROMPT §3 test verbatim:** create an untracked file with binary bytes (`[0, 255, 10, 13]…`), `Discard` it, `undo`, bytes come back exactly; the same with an **unstaged edit to a tracked file** (note change 1) and with a **staged + unstaged** file (both index and worktree bytes).
-- [ ] **Path scoping:** after `Discard(a.rs)` the user creates `new.txt`; `undo` restores `a.rs` and leaves `new.txt` untouched.
-- [ ] **Failed midway is recoverable:** a `StashPop` whose `git` fails (simulate with a stash whose apply conflicts after the precondition passes — scripted by editing a touched file *between* `read_facts` and the run via a test hook on `Context`, or by a hook-free stash scripted to conflict) leaves an `Aborted` entry with `worktree_before`; `undo` restores the pre-pop tree.
-- [ ] **Crash between Pending and outcome:** write a Pending line by hand, `Journal::open` reports it in `unresolved()`, `mark_interrupted` appends the Aborted line, and `undo` of it restores the backup.
-- [ ] **CAS guard:** move the branch with `git update-ref` after a `Commit`; `undo` returns `UndoError::Drift` naming the ref; with `force` it returns `RestoreError::RefMoved` and touches nothing else.
-- [ ] **Drift guard:** edit a file after a `Commit`; `undo` returns `Drift { worktree: true }`; `force` proceeds and the undo entry's own backup holds the edit.
-- [ ] **ADR-0010 linked worktree:** `git worktree add`, apply a `Stage` there; the journal lands under `.git/worktrees/<name>/graft/undo-journal.jsonl`, the main worktree's journal has no entry, the backup ref is `refs/graft/backup/<name>/<ulid>`.
-- [ ] **Stash inverses:** push → undo (stash list back to N, tree back), pop → undo (`stash@{0}` is the popped commit again, tree back), drop → undo (entry back; its commit was reachable via the backup ref throughout — assert `git cat-file -e` after a `git gc --prune=now` between drop and undo).
-- [ ] **Unborn head:** first commit on a fresh `git init` copy; undo deletes the branch, HEAD is unborn again, index restored.
-- [ ] **Index bytes:** `apply(Stage)` is the *only* thing that changes `.git/index`; `read_facts` and `take` leave it byte-identical.
-- [ ] Backup commit: `git ls-tree <commit>` shows exactly `index` and `worktree` trees; a worktree-touching op's ref points at an after-commit whose parent is the before-commit.
-- [ ] `docs/perf/m3-snapshot.txt` script exists; not run by the builder.
+- [x] **Parity, every kind:** for each `Operation` kind, apply on copy A while the test runs the plan's `command_line()` on copy B; `for-each-ref`, `ls-files -s` and `status --porcelain=v2` are byte-identical between A and B (backup refs excluded).
+- [x] **Undo restores exactly, every kind:** snapshot (`for-each-ref` sans `refs/graft`, `ls-files -s`, every worktree file's bytes incl. untracked) before the op equals the snapshot after `apply` + `undo`. Redo then equals the post-op snapshot. Then undo again.
+- [x] **The PROMPT §3 test verbatim:** create an untracked file with binary bytes (`[0, 255, 10, 13]…`), `Discard` it, `undo`, bytes come back exactly; the same with an **unstaged edit to a tracked file** (note change 1) and with a **staged + unstaged** file (both index and worktree bytes).
+- [x] **Path scoping:** after `Discard(a.rs)` the user creates `new.txt`; `undo` restores `a.rs` and leaves `new.txt` untouched.
+- [x] **Failed midway is recoverable:** a `StashPop` whose `git` fails (simulate with a stash whose apply conflicts after the precondition passes — scripted by editing a touched file *between* `read_facts` and the run via a test hook on `Context`, or by a hook-free stash scripted to conflict) leaves an `Aborted` entry with `worktree_before`; `undo` restores the pre-pop tree.
+- [x] **Crash between Pending and outcome:** write a Pending line by hand, `Journal::open` reports it in `unresolved()`, `mark_interrupted` appends the Aborted line, and `undo` of it restores the backup.
+- [x] **CAS guard:** move the branch with `git update-ref` after a `Commit`; `undo` returns `UndoError::Drift` naming the ref; with `force` it returns `RestoreError::RefMoved` and touches nothing else.
+- [x] **Drift guard:** edit a file after a `Commit`; `undo` returns `Drift { worktree: true }`; `force` proceeds and the undo entry's own backup holds the edit.
+- [x] **ADR-0010 linked worktree:** `git worktree add`, apply a `Stage` there; the journal lands under `.git/worktrees/<name>/graft/undo-journal.jsonl`, the main worktree's journal has no entry, the backup ref is `refs/graft/backup/<name>/<ulid>`.
+- [x] **Stash inverses:** push → undo (stash list back to N, tree back), pop → undo (`stash@{0}` is the popped commit again, tree back), drop → undo (entry back; its commit was reachable via the backup ref throughout — assert `git cat-file -e` after a `git gc --prune=now` between drop and undo).
+- [x] **Unborn head:** first commit on a fresh `git init` copy; undo deletes the branch, HEAD is unborn again, index restored.
+- [x] **Index bytes:** `apply(Stage)` is the *only* thing that changes `.git/index`; `read_facts` and `take` leave it byte-identical.
+- [x] Backup commit: `git ls-tree <commit>` shows exactly `index` and `worktree` trees; a worktree-touching op's ref points at an after-commit whose parent is the before-commit.
+- [x] `docs/perf/m3-snapshot.txt` script exists; not run by the builder.
 
 ## Gates
 
@@ -112,3 +112,107 @@ All on `copy_into_temp` fixtures with `GIT_CONFIG_GLOBAL=/dev/null` (the fixture
 ## Size
 
 ~900 lines (journal file 120, snapshot 200, facts 100, apply 220, restore 260) + ~700 test. Seams: after piece 2 (snapshots + journal file, testable alone), after piece 4 (apply without undo), after piece 5. Each piece commits; a piece past 60 turns says why. Scout for `RepoHandle::references` and `head` usage rather than reading `repo.rs`.
+
+## NOTES
+
+Built on git **2.54.0 (Apple Git-157)**, macOS (Darwin 27.0.0). Every "verify
+first" in the spec was checked in a throwaway repo on that version. **2.38,
+the project's stated minimum, is unproven** — nothing here was run against it.
+
+Gates: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`,
+`cargo test --workspace` all green. `graft-ops`'s `it` binary: **49 passed, 0
+failed**; whole fast tier **~42 s** wall (KNOWN_GAPS line 463 recorded 24 s;
+still far under the 3-minute budget).
+
+### Deviations from the spec text, and why
+
+1. **`Snapshot.index_tree` is `Option<Oid>`, not `Oid`.** An unmerged index has
+   no tree — `git write-tree` refuses it — so a conflicting `stash pop` made
+   the after-state read, the drift read *and* the undo's own backup all fail:
+   undo of a failed pop was impossible, which is exactly the case the design
+   note's Proposed change 2 names. Fixed at the cause: `SnapshotError::Unmerged`,
+   `take` falls back to a **worktree-only** backup (the `add -A` over the index
+   copy resolves the conflict, so the conflicted working tree, markers and all,
+   is still captured), `commit_trees`/`mktree` take `Option`, and
+   `undo::reverse` reads an unmerged index as `Drift { index: true }` — forcing
+   past it works. Verified beforehand in a throwaway repo that `add -A` over
+   the copy resolves the stages and that `update-index --index-info` clears them.
+2. **Pins force a backup** even when `touches` is refs-only. `StashDrop`'s
+   `touches` is `{["refs/stash"]}`, so `scope` says `None` — but then nothing
+   keeps the dropped stash commit alive and the acceptance criterion
+   (survive `git gc --prune=now`) cannot hold. `begin` takes a backup when
+   `scope == Full || !pins.is_empty()`.
+3. **`update-ref` "must not exist" uses git's empty old value (`""`), not an
+   all-zero id.** Hash-length independent (sha256 repos). Note the asymmetry
+   written into `restore.rs`: with `-d`, `""` means *no* expectation, so a
+   delete step must always carry `Some(expect)`.
+4. **`StashGone` was repurposed.** Contract rule 2 makes `StashDrop` a no-op
+   when the reflog lacks the commit, so "gone" can no longer mean that;
+   it now means the stash **commit object itself** is unreadable.
+5. **`Journal::open` truncates a torn last line** rather than only reporting
+   it. Otherwise the next append splices onto it and every later parse refuses
+   the whole file. `torn_tail()` still reports the line number.
+6. **`mark_interrupted` takes the recovered after-state.** Closing a crashed
+   entry with no after-fields would leave it `Incomplete` and in force for
+   ever; reading the repository now keeps the restore narrow when it is
+   readable (`recovery_that_can_read_the_repository_keeps_the_restore_narrow`)
+   and honestly `None` when it is not.
+7. **`append_outcome` writes the file first, then swaps the held copy**, so a
+   failed write never leaves the two disagreeing.
+8. **`take` uses one index copy for both trees** (`write-tree`, then `add -A`,
+   then `write-tree`), not two. Keeps git's stat cache: **15 ms against 236 ms**
+   for a fresh `read-tree` on 5,000 files, same tree bytes.
+9. **`restore_worktree` classifies paths four ways** (tracked → `restore
+   --source`; untracked but in the tree → temp index + `checkout-index`;
+   untracked and absent from the tree → `clean -f`), because `restore
+   --worktree` cannot create a path git does not track.
+10. **`RestoreIndex` is `update-index --index-info`**, never `read-tree` on the
+    real index — a `read-tree` would blow away the stat cache and the paths
+    outside the scope.
+11. **`ApplyError::Git` boxes the entry** (`Box<JournalEntry>`); clippy's
+    `result_large_err` otherwise.
+12. **Parity covers 6 of 9 kinds** — stage, unstage, discard, discard-untracked,
+    commit, stash push. `Amend`, `StashApply`, `StashPop`, `StashDrop` are
+    covered by round-trip and inverse tests but not by the A/B command-line
+    parity harness. Filed below.
+13. **Parity compares `%(refname) %(tree)`, not `%(objectname)`.** Two copies
+    committing a second apart hold different commit ids; the content is what
+    parity is about. (Caught as a flake under `--workspace`.)
+14. **`support.rs` and `ops_execution_hard.rs` carry file-scoped
+    `#![allow(clippy::expect_used, clippy::unwrap_used)]`** with a written
+    reason: `clippy.toml`'s test allowance only reaches `#[test]` functions,
+    not plain helpers.
+15. **A field that could not be read is recorded as `None`**, with a comment at
+    each site saying why that is the honest record and not a swallowed error:
+    `drift` reports it as `unknown`, which is *not* clean, so the restore
+    widens and the user is asked first.
+
+### `PathScope::Everything` — reached
+
+`an_entry_with_no_after_state_restores_the_whole_tree_after_asking` builds an
+entry whose outcome has no after-tree (the crash-mid-write shape), then undoes
+it: `drift` reports `unknown`, the undo refuses, forcing it restores the whole
+tree from the backup. `scoped_paths` for `Everything` + the index side takes
+the **union** of the backup tree's paths and what is tracked now (no "now"
+tree, so an unmerged index is fine); the worktree side diffs against a fresh
+`worktree_tree`. The KNOWN_GAPS "unverified" line for `Everything` can close.
+
+### Stash reflog facts, now in-tree
+
+The four M5 facts that were only ever proved by untracked scripts under
+`target/` are tests in `ops_execution_hard.rs`:
+`a_stash_commits_subject_is_its_reflog_message`,
+`storing_a_commit_the_reflog_already_holds_below_the_top_duplicates_it`,
+`dropping_the_last_stash_removes_the_ref_entirely`, `a_failed_pop_keeps_its_entry`.
+
+### For KNOWN_GAPS (conductor's file — not touched)
+
+- **Unverified:** git 2.38–2.53. Every behaviour here was proved on 2.54 only.
+- **Unverified:** `Amend`, `StashApply`, `StashPop`, `StashDrop` have no
+  command-line parity test (deviation 12).
+- **Unverified:** `docs/perf/m3-snapshot.txt` — `scripts/m3-snapshot-cost.sh`
+  is written and committed but **not run** (measurement never runs in a
+  builder's context). The 15 ms/236 ms figure above is from a throwaway
+  5,000-file repo, not the heavy fixture.
+- **Close:** `PathScope::Everything` unreached-by-any-fixture.
+- Nothing is **broken**.

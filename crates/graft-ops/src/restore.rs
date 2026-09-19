@@ -475,12 +475,18 @@ fn scoped_paths(
 ) -> Result<Vec<Vec<u8>>, RestoreError> {
     let (from, to) = match scope {
         PathScope::ChangedBetween { from, to } => (*from, *to),
+        // The index side takes the union of the backup's paths and every
+        // path the index tracks now, rather than a diff: an unmerged index
+        // has no tree to diff against, and this is exactly the case
+        // `Everything` exists for — an operation that died mid-merge.
+        PathScope::Everything if matches!(side, Side::Index) => {
+            let mut union: BTreeSet<Vec<u8>> = tree_paths(ctx, tree, commands)?;
+            union.extend(tracked_now_all(ctx, commands)?);
+            return Ok(union.into_iter().collect());
+        }
         PathScope::Everything => {
-            let now = match side {
-                Side::Index => snapshot::index_tree(ctx.repo, &ctx.scratch, ctx.stop),
-                Side::Worktree => snapshot::worktree_tree(ctx.repo, &ctx.scratch, ctx.stop),
-            }
-            .map_err(RestoreError::Snapshot)?;
+            let now = snapshot::worktree_tree(ctx.repo, &ctx.scratch, ctx.stop)
+                .map_err(RestoreError::Snapshot)?;
             (tree, now)
         }
     };
@@ -497,6 +503,33 @@ fn scoped_paths(
     ];
     let output = run(ctx, args, None, commands)?;
     Ok(split_nul(&output))
+}
+
+/// Every path a tree holds.
+fn tree_paths(
+    ctx: &mut Context<'_>,
+    tree: Oid,
+    commands: &mut Vec<String>,
+) -> Result<BTreeSet<Vec<u8>>, RestoreError> {
+    let args = vec![
+        GitArg::Flag("ls-tree"),
+        GitArg::Flag("-r"),
+        GitArg::Flag("--name-only"),
+        GitArg::Flag("-z"),
+        GitArg::Oid(tree),
+    ];
+    let output = run(ctx, args, None, commands)?;
+    Ok(split_nul(&output).into_iter().collect())
+}
+
+/// Every path the index tracks, unmerged ones included.
+fn tracked_now_all(
+    ctx: &mut Context<'_>,
+    commands: &mut Vec<String>,
+) -> Result<BTreeSet<Vec<u8>>, RestoreError> {
+    let args = vec![GitArg::Flag("ls-files"), GitArg::Flag("-z")];
+    let output = run(ctx, args, None, commands)?;
+    Ok(split_nul(&output).into_iter().collect())
 }
 
 /// `<mode> <oid>` for each of `paths` the tree holds.

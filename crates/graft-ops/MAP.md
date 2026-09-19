@@ -42,6 +42,45 @@ One line per public item. Update when a public item changes.
 - `Drift` (struct) — `refs: Vec<(name, recorded, now)>`, `head`, `index`, `worktree`, `unknown: Vec<&str>` (`"HEAD"`, `"the index"`, `"the working tree"`: touched, never recorded after, restored whole); `is_clean` is false when anything moved **or** anything is unknown; `explain` (`refs/heads/main moved; the index changed`, `the working tree's state after the operation was never recorded; undo restores all of it`) (m3/02, unknown added in the review fix, M1).
 - `drift` (fn) — §6.7's three comparisons against the entry's after-state, plus `unknown` for every touched field with no after-value: unknown is not clean, so the confirm rail fires exactly where the restore is widest (m3/02 review fix, replaces "a field never recorded cannot drift").
 
+## journal (file handle)
+- `Journal` (struct) — the open journal file and the entries read from it; `open` (creates `<git-path graft>/` and the file, parses, and **cuts off a torn last line** so the next append is not spliced onto it), `path`, `entries`, `torn_tail` (the cut line's number, nothing lost by it), `append_pending`/`append_outcome` (one `O_APPEND` write plus `fsync`; file first, held copy second), `unresolved`, `mark_interrupted(id, after)` (m3/03).
+- `journal_path` (fn) — `git rev-parse --git-path graft/undo-journal.jsonl`: per-worktree by git's own layout (ADR-0010) (m3/03).
+
+## snapshot
+- `SnapshotScope` (enum) — `None` or `Full`; hard choice 3's one knob (m3/03).
+- `scope` (fn) — `Full` whenever the operation touches the index or the working tree, `None` otherwise (ADR-0009: unconditional) (m3/03).
+- `Snapshot` (struct) — `index_tree: Option<Oid>` (`None` when the index is unmerged, which has no tree), `worktree_tree`, `commit` (m3/03).
+- `index_tree` (fn) — the staged state as a tree, from a **copy** of `.git/index` (`SnapshotError::Unmerged` on a half-finished merge). Never `write-tree` on the real index (m3/03).
+- `worktree_tree` (fn) — the same copy plus `add -A`: tracked working-tree content *and* untracked files, in one tree. The copy carries git's stat cache, so only stat-dirty files re-hash — 15 ms against 236 ms for a fresh `read-tree` on 5,000 files (git 2.54) (m3/03).
+- `take` (fn) — both trees from one index copy, `mktree` into `{ index/, worktree/ }`, `commit-tree` with a fixed `graft` identity and `parents` (the pins), `update-ref refs/graft/backup/<worktree>/<ulid>` (m3/03).
+- `commit_trees` (fn) — the same join and commit without touching a ref; the after-snapshot uses it with the before-commit as parent (m3/03).
+- `move_backup_ref` (fn) — point a backup ref at another commit (m3/03).
+- `backup_ref_name` (fn) — `refs/graft/backup/<worktree>/<ulid>` (ADR-0010 + its Correction) (m3/03).
+- `SnapshotError` (enum) — `Run`, `Io`, `NotAnOid { what, printed }`, `Unmerged`, `Stopped` (m3/03).
+
+## facts
+- `read_facts` (fn) — `RepoFacts` in one pass: bare, `HEAD`, in-progress, status, stashes, the git version. Read once, before anything is written, so `check`/`plan`/`touches` see one picture (m3/03).
+- `head_ref` (fn) — `HEAD` as the journal records it (m3/03).
+- `read_refs` (fn) — the current value of each named ref, `None` for one that is absent; follows a symbolic ref (m3/03).
+- `read_state_now` (fn) — §6.7's three comparisons read fresh: `HEAD`, the named refs, the index tree and the worktree tree (m3/03).
+- `FactsError` (enum) — `Status`, `Head`, `Refs`, `Stash`, `State`, `Snapshot`, `NonUtf8Ref` (a ref name the journal cannot record as text; never mangled silently), `Stopped`; `explain` (m3/03).
+
+## apply
+- `Context` (struct) — one operation's world: `repo`, `git`, `worktree`, `scratch`, `journal`, `now_unix_ms`, `random`, `stop`; `open`, `next_id`. One context per operation (and per undo, itself an operation) (m3/03).
+- `Refresh` (enum) — `WorkingTree` or `Everything` (a ref moved, so the graph too) (m3/03).
+- `Applied` (struct) — the entry as written, and what to re-read (m3/03).
+- `ApplyError` (enum) — `Refused(Refusal)` (nothing written, nothing journaled), `Facts`, `Snapshot`, `Journal` (a write Graft cannot record is a write it must not make), `Git { entry: Box<JournalEntry>, error, recoverable }`, `Stopped`; `explain` adds ` · u restores the backup` when recoverable (m3/03).
+- `apply` (fn) — DESIGN.md §6.2: `read_facts` → `check` → before-state + backup + `Pending` line → run the plan → after-state (on abort as much as on success) + outcome line. A backup is taken when `scope` says `Full` **or** the operation has pins, since a pin's whole purpose is surviving `gc` (m3/03).
+- `recover_interrupted` (fn) — close every entry left `Pending` by a previous run as `interrupted`, recording the repository as it stands now; run at launch. An unreadable repository closes the entry with no after-state, which widens the inverse to the whole tree and makes `drift` say so (m3/03).
+
+## restore
+- `RestoreError` (enum) — `RefMoved { name }` (a compare-and-swap refused, before any file was touched), `StashGone { commit }`, `Run`, `Facts`, `Snapshot`, `Journal`, `Stopped`; `explain` (m3/03).
+- `execute` (fn) — run an `InversePlan`, journaled as its own entry with its own fresh backup (§6.4). `UpdateRef` compare-and-swaps (an absent expected side is git's empty old value, not an all-zero id of a guessed hash length); `SetHead` is `symbolic-ref` or `update-ref --no-deref`; `RestoreIndex` is `update-index --index-info`, never `read-tree` on the real index; `RestoreWorktree` splits the paths four ways (tracked → `restore --source`, untracked-and-in-the-tree → a temporary index plus `checkout-index`, untracked-and-absent → `clean -f`); `StashStore` scans the reflog first (git's own `stash store` duplicates a commit already at `stash@{1}`) and uses the commit's subject, which is byte-identical to git's reflog message; `StashDrop` is a no-op when the reflog lacks the commit, which is what makes an aborted pop undo correctly (m3/03).
+
+## undo (execution half)
+- `UndoError` (enum) — `Nothing(NotInvertible)`, `Drift(Drift)`, `Restore`, `Facts`; `explain` (m3/03).
+- `undo` / `redo` (fn) — plan the inverse, read the repository now, compare (§6.7), and run it. An unmerged index — what a stash pop that conflicted leaves — has no tree and so reads as index drift; forcing past it still works, because the restore's own backup keeps the working tree, conflict markers and all (m3/03).
+
 ## mistake_radar
 - `CommitFacts` (struct) — what the rules know about one commit: `id`, `parents`, `subject`, `on_default_chain`, `parents_on_default_chain`.
 - `RepoFacts` (struct) — `default_branch`, `remotes`, `previous_default_tips` (reflog tips of the default branch or its remote copy).
