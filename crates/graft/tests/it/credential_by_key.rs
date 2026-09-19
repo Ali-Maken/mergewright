@@ -277,7 +277,10 @@ fn push_answering(
     let state = drive(app, state, what, &mut script, seen, |state| {
         state.operating.is_none()
     });
-    assert!(script.is_empty(), "{what}: git asked for the password");
+    assert!(
+        script.is_empty(),
+        "{what}: git never asked for the password"
+    );
     state
 }
 
