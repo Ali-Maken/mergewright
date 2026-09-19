@@ -518,3 +518,59 @@ fn assert_same_with_a_commit_graph_table(
         assert_eq!(stats.objects_read, stats.tags + 2);
     }
 }
+
+#[test]
+fn worktree_name_is_main_in_the_main_worktree() {
+    let fixture = Fixture::with_two_commits();
+    let repo = RepoHandle::open(fixture.root()).expect("a fixture repository opens");
+    assert_eq!(repo.worktree_name(), "main");
+}
+
+#[test]
+fn worktree_name_is_the_linked_worktrees_own_name() {
+    let fixture = Fixture::with_two_commits();
+    let worktree = fixture.root().join("linked");
+    fixture.git(&["worktree", "add", "-b", "side", "linked"]);
+    let repo = RepoHandle::open(&worktree).expect("a linked worktree opens");
+    assert_eq!(repo.worktree_name(), "linked");
+}
+
+#[test]
+fn git_path_resolves_under_the_git_directory_in_the_main_worktree() {
+    let fixture = Fixture::with_two_commits();
+    let repo = RepoHandle::open(fixture.root()).expect("a fixture repository opens");
+    let resolved = repo
+        .git_path(Path::new("graft/undo-journal.jsonl"))
+        .expect("git rev-parse --git-path runs");
+    assert!(resolved.is_absolute(), "{}", resolved.display());
+    assert_eq!(resolved.file_name().unwrap(), "undo-journal.jsonl");
+    let graft_dir = resolved.parent().expect("a parent directory");
+    assert_eq!(graft_dir.file_name().unwrap(), "graft");
+    assert_same_path(
+        graft_dir.parent().expect("the git directory"),
+        repo.git_dir(),
+    );
+}
+
+#[test]
+fn git_path_resolves_under_the_linked_worktrees_own_directory() {
+    let fixture = Fixture::with_two_commits();
+    let worktree = fixture.root().join("linked");
+    fixture.git(&["worktree", "add", "-b", "side", "linked"]);
+    let repo = RepoHandle::open(&worktree).expect("a linked worktree opens");
+
+    let resolved = repo
+        .git_path(Path::new("graft/undo-journal.jsonl"))
+        .expect("git rev-parse --git-path runs");
+
+    assert!(resolved.is_absolute(), "{}", resolved.display());
+    assert_eq!(resolved.file_name().unwrap(), "undo-journal.jsonl");
+    let graft_dir = resolved.parent().expect("a parent directory");
+    assert_eq!(graft_dir.file_name().unwrap(), "graft");
+    // A linked worktree's own git dir, not the common one: `graft/` under it
+    // is per-worktree, exactly like `worktree_name`'s own split.
+    assert_same_path(
+        graft_dir.parent().expect("the git directory"),
+        repo.git_dir(),
+    );
+}

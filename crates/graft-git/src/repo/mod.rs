@@ -21,6 +21,8 @@ use std::path::{Path, PathBuf};
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
 
+use crate::run::{GitArg, GitInvocation, RunError};
+
 mod peel;
 mod refs;
 mod shared;
@@ -171,6 +173,52 @@ impl RepoHandle {
     /// one out would put `gix` in every caller's signature (ADR-0011).
     pub(crate) fn gix(&self) -> &gix::Repository {
         &self.repo
+    }
+
+    /// Where a Graft-owned file lives under this worktree's `git_path`:
+    /// `git rev-parse --git-path <relative>`, resolved to an absolute path.
+    ///
+    /// On the main worktree git prints a path relative to `-C`, which is
+    /// joined against [`workdir`](Self::workdir) (or [`git_dir`](Self::git_dir)
+    /// when bare); on a linked worktree it already prints absolute (verified
+    /// on git 2.54). `--git-path` cannot be built from a [`GitArg::Path`] —
+    /// that variant's automatic `--` insertion breaks the invocation — so
+    /// this passes it as two [`GitArg::Word`]s instead.
+    ///
+    /// # Errors
+    /// [`RunError`] if `git` could not be run or exited non-zero.
+    pub fn git_path(&self, relative: &Path) -> Result<PathBuf, RunError> {
+        let output = GitInvocation::new(self)
+            .args([
+                GitArg::Flag("rev-parse"),
+                GitArg::Word("--git-path".to_owned()),
+                GitArg::Word(relative.to_string_lossy().into_owned()),
+            ])
+            .run(&())?;
+        let text = String::from_utf8_lossy(&output.stdout);
+        let printed = Path::new(text.trim());
+        Ok(if printed.is_absolute() {
+            printed.to_path_buf()
+        } else {
+            self.workdir()
+                .unwrap_or_else(|| self.git_dir())
+                .join(printed)
+        })
+    }
+
+    /// This worktree's name: `"main"` on the main worktree (where
+    /// [`git_dir`](Self::git_dir) and [`common_dir`](Self::common_dir) are
+    /// the same directory), else the last component of `git_dir` —
+    /// `<main>/.git/worktrees/<name>`, the name `git worktree add` was given.
+    #[must_use]
+    pub fn worktree_name(&self) -> String {
+        if self.git_dir() == self.common_dir() {
+            return "main".to_owned();
+        }
+        self.git_dir().file_name().map_or_else(
+            || "main".to_owned(),
+            |name| name.to_string_lossy().into_owned(),
+        )
     }
 }
 

@@ -10,6 +10,7 @@ One line per public item. Update when a public item changes.
 - `mailmap` (mod) — `.mailmap` resolution, via gix's own parser.
 - `run` (mod) — the typed runner for system `git`: typed args, byte paths, stdin, kill-on-stop, output cap (m2/01).
 - `repo` (mod) — opening a repository and reading `HEAD`, refs and tips from it.
+- `state` (mod) — whether a merge, rebase, cherry-pick, revert or bisect is in progress (m3/01).
 - `status` (mod) — counting staged, unstaged and untracked working-tree changes.
 - `version` (mod) — running and classifying the system `git` binary's version.
 
@@ -117,6 +118,8 @@ One line per public item. Update when a public item changes.
 - `RepoHandle::peeled_references` (fn, takes `&dyn KnownCommits`) — every ref that reaches a commit, with that commit (tags peeled).
 - `KnownCommits` (trait) — `is_known_commit(&self, id: Oid) -> bool`, a free check a tip can be skipped past without reading its object; provided `covers_the_graph(&self) -> bool` (default `false`): when true an unknown tip is read whole at once, no header first (m1-the-graph/58b). `()` answers `false` to both (header-first path); `graft_git::history::CommitTable` answers from its handle table and covers the graph when it has a commit-graph.
 - `RepoHandle::upstream` (fn) — the remote-tracking ref a branch pulls from, per its config.
+- `RepoHandle::git_path` (fn) — `git rev-parse --git-path <relative>`, resolved to an absolute path (main worktree: joined against `workdir`/`git_dir`; linked worktree: already absolute) (m3/01).
+- `RepoHandle::worktree_name` (fn) — `"main"` when `git_dir == common_dir`, else the last component of `git_dir` (m3/01).
 - `SharedRepo` (struct) — the `Send`, expensive-to-open half of a repository; hands out `RepoHandle`s.
 - `SharedRepo::OBJECT_CACHE_BYTES` (const) — object cache size a `SharedRepo` opens with.
 - `SharedRepo::open` (fn) — open the repository at `path`.
@@ -147,6 +150,10 @@ One line per public item. Update when a public item changes.
 - `GitOutput` (struct) — `stdout`, `stderr`, `truncated`.
 - `RunError` (enum) — `GitNotFound`, `Spawn(io)`, `Stopped`, `Exited { status, stderr_first_line, command }`, `Signalled { command }`; `Display` is one line.
 - Split into files, public items unchanged (m2 review M8): `exec.rs` is the child-process machinery `GitInvocation::spawn`/`supervise` are built on — pipe draining on their own threads, kill/reap, `GitArg` → `OsString`/shell-quoted text; this file keeps the types and `GitInvocation`'s own methods.
+
+## state
+- `InProgress` (enum) — `Merge`, `Rebase`, `CherryPick`, `Revert`, `Bisect`; `name`/`continue_command`/`abort_command` (m3/01).
+- `in_progress` (fn) — a plain fs check under `RepoHandle::git_dir` for `MERGE_HEAD`, `rebase-merge/`, `rebase-apply/`, `CHERRY_PICK_HEAD`, `REVERT_HEAD`, `BISECT_LOG`; no `git` spawn (m3/01).
 
 ## status
 - `WorkingTreeCounts` (struct) — how many files are staged, unstaged and untracked.
