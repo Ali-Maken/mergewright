@@ -125,6 +125,7 @@ Everything else the conductor decides: grouping, order, models, splits, escalati
 - **Acceptance ticks are a gate** (ADR-0035): every tick **names its verifying test inline, at tick time** — a tick with no test named is not a tick. The reviewer spot-checks a sample per group and reports how many it checked and how many held. **A false tick is a Critical**, whatever its size.
 - **Rust code is done only when** `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test` all pass.
 - **Commit** after each ticket. Never push or force.
+- **The conductor stages only its own paths** — never `git add -A`, never `git commit -am`, while any builder is running. A builder's tree is live; a blanket stage commits its half-finished work under the conductor's message and misattributes it.
 - **Ask the user** (through the conductor) before changing the spec or cutting scope. Record agreed changes as ADRs.
 - **Architecture and readability are hard rules** (PROMPT.md 6.1, 6.2). Read `ARCHITECTURE.md` before adding/moving modules, use `codebase-design` when you do, update it if structure changes. Never add a dependency that breaks the crate rules.
 - **Keep your context lean:** read what you need, not everything.
