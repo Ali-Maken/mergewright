@@ -17,13 +17,14 @@ use graft_git::run::Stop;
 use graft_term::sanitize::{SanitizedText, sanitize_line, sanitize_path_bytes};
 use graft_ui::detail::{
     DiffView, FileListView, FileRow, FileRowKind, FileStatusView, HunkView, LineKindView, LineView,
+    WorkingTreeSection,
 };
 use graft_ui::diff_words::word_spans;
 use graft_ui::syntax::{highlight, language_for_first_line, language_for_path};
 
 use super::Cancel;
 use crate::repos::RepoStore;
-use crate::update::detail::DiffKey;
+use crate::update::detail::{DetailSpec, DiffKey};
 
 /// Trailer keys that never make a body worth a `✉ message` row.
 const TRAILERS: [&str; 3] = ["signed-off-by:", "co-authored-by:", "reviewed-by:"];
@@ -35,6 +36,12 @@ impl Stop for Cancel {
 }
 
 /// List a spec's changed files, with the commit body for a single commit.
+///
+/// The changes pane is the one spec read twice: `Staged` (index against
+/// `HEAD`) and `Unstaged` (working tree against the index, untracked files
+/// included) are what the three sections *are*, and one
+/// `WorkingTreeVsHead` read could tell neither apart nor list an untracked
+/// file at all.
 pub(super) fn read_files(
     repos: &RepoStore,
     spec: DiffSpec,
@@ -43,6 +50,14 @@ pub(super) fn read_files(
 ) -> Result<(Arc<FileListView>, Arc<FileList>), String> {
     let repo = repos.shared().map_err(|error| error.to_string())?;
     let handle = repo.handle();
+    if spec == DiffSpec::WorkingTreeVsHead {
+        let staged =
+            list_files(&handle, &DiffSpec::Staged, &options, stop).map_err(|e| e.to_string())?;
+        let unstaged =
+            list_files(&handle, &DiffSpec::Unstaged, &options, stop).map_err(|e| e.to_string())?;
+        let (view, list) = assemble_working_tree(&staged, &unstaged);
+        return Ok((Arc::new(view), Arc::new(list)));
+    }
     let list = list_files(&handle, &spec, &options, stop).map_err(|e| e.to_string())?;
     let message = match spec {
         DiffSpec::Commit { commit: id, .. } => Some(
@@ -59,15 +74,30 @@ pub(super) fn read_files(
     Ok((Arc::new(view), Arc::new(list)))
 }
 
-/// Read and assemble one file's diff.
+/// The git diff one changes-pane row shows: a STAGED row is the index
+/// against `HEAD`, anything else is the working tree against the index.
+/// Every other spec has one diff and no sections.
+#[must_use]
+pub fn diff_spec_for(spec: DetailSpec, section: Option<WorkingTreeSection>) -> DiffSpec {
+    match section {
+        Some(WorkingTreeSection::Staged) => DiffSpec::Staged,
+        Some(WorkingTreeSection::Unstaged | WorkingTreeSection::Untracked) => DiffSpec::Unstaged,
+        None => spec.diff_spec(),
+    }
+}
+
+/// Read and assemble one file's diff, handing back both the drawable view
+/// model and the raw diff it was built from: `graft_git::diff::hunk_patch`
+/// needs git's own bytes to build a stage or discard patch, and the view
+/// model has been sanitised past the point of reversing.
 pub(super) fn read_file_diff(
     repos: &RepoStore,
     key: &DiffKey,
     entry: &FileEntry,
     stop: &Cancel,
-) -> Result<Arc<DiffView>, String> {
+) -> Result<(Arc<DiffView>, Arc<FileDiff>), String> {
     let repo = repos.shared().map_err(|error| error.to_string())?;
-    let spec = key.spec.diff_spec();
+    let spec = diff_spec_for(key.spec, key.section);
     let diff = file_diff(
         &repo.handle(),
         &spec,
@@ -78,7 +108,8 @@ pub(super) fn read_file_diff(
     )
     .map_err(|e| e.to_string())?;
     // Word spans are always worked out; whether they tint is the widget's call.
-    Ok(Arc::new(assemble_diff(&diff, true)))
+    let view = assemble_diff(&diff, true);
+    Ok((Arc::new(view), Arc::new(diff)))
 }
 
 /// Which refs contain a commit.
@@ -137,7 +168,21 @@ pub fn assemble_files(list: &FileList, message: Option<&[u8]>) -> FileListView {
         }
     }
 
-    let mut order: Vec<usize> = (0..list.files.len()).collect();
+    push_tree(
+        &mut view,
+        list,
+        &(0..list.files.len()).collect::<Vec<_>>(),
+        0,
+    );
+    view
+}
+
+/// `indices` of `list`, in path order, pushed onto `view` as a directory
+/// tree (directories first-seen, paths in byte order) starting at `base`
+/// depth. Shared by the commit pane's flat list and the changes pane's
+/// per-section ones, so a section's files nest exactly as a commit's do.
+fn push_tree(view: &mut FileListView, list: &FileList, indices: &[usize], base: u8) {
+    let mut order: Vec<usize> = indices.to_vec();
     order.sort_by(|&a, &b| list.files[a].path.cmp(&list.files[b].path));
 
     let mut open_dirs: Vec<String> = Vec::new();
@@ -156,7 +201,7 @@ pub fn assemble_files(list: &FileList, message: Option<&[u8]>) -> FileListView {
         open_dirs.truncate(shared);
         for dir in &dirs[shared..] {
             view.rows.push(FileRow {
-                depth: depth(open_dirs.len()),
+                depth: base.saturating_add(depth(open_dirs.len())),
                 name: sanitize_line(&format!("{dir}/")),
                 kind: FileRowKind::Dir { collapsed: false },
                 entry: None,
@@ -164,7 +209,7 @@ pub fn assemble_files(list: &FileList, message: Option<&[u8]>) -> FileListView {
             open_dirs.push((*dir).to_owned());
         }
         view.rows.push(FileRow {
-            depth: depth(dirs.len()),
+            depth: base.saturating_add(depth(dirs.len())),
             name: sanitize_line(file),
             kind: FileRowKind::File {
                 status: status_view(entry.status),
@@ -174,7 +219,81 @@ pub fn assemble_files(list: &FileList, message: Option<&[u8]>) -> FileListView {
             entry: u32::try_from(index).ok(),
         });
     }
-    view
+}
+
+/// The changes pane's file list: `STAGED`, `UNSTAGED` and `UNTRACKED`
+/// sections, each over its own files as a directory tree, plus the one
+/// merged [`FileList`] every row's `entry` indexes into
+/// (m3-working-tree-undo-and-stash/04).
+///
+/// A file that is both staged and unstaged appears **twice** — once in each
+/// section — because it is two different changes, and staging the second
+/// does not undo the first. The merged list holds it twice too, so the two
+/// rows read two different diffs.
+///
+/// An empty tree gets no section rows at all, just the `nothing to commit`
+/// message, so the pane does not print three empty headings.
+#[must_use]
+pub fn assemble_working_tree(staged: &FileList, unstaged: &FileList) -> (FileListView, FileList) {
+    let untracked = |entry: &&FileEntry| entry.status == FileStatus::Untracked;
+    let by_section: [(WorkingTreeSection, Vec<FileEntry>); 3] = [
+        (WorkingTreeSection::Staged, staged.files.clone()),
+        (
+            WorkingTreeSection::Unstaged,
+            unstaged
+                .files
+                .iter()
+                .filter(|entry| !untracked(entry))
+                .cloned()
+                .collect(),
+        ),
+        (
+            WorkingTreeSection::Untracked,
+            unstaged.files.iter().filter(untracked).cloned().collect(),
+        ),
+    ];
+
+    let mut merged = FileList {
+        files: Vec::new(),
+        added: staged.added.saturating_add(unstaged.added),
+        removed: staged.removed.saturating_add(unstaged.removed),
+    };
+    let mut sections: Vec<(WorkingTreeSection, Vec<usize>)> = Vec::new();
+    for (section, files) in by_section {
+        if files.is_empty() {
+            continue;
+        }
+        let start = merged.files.len();
+        merged.files.extend(files);
+        sections.push((section, (start..merged.files.len()).collect()));
+    }
+
+    let mut view = FileListView {
+        files: u32::try_from(merged.files.len()).unwrap_or(u32::MAX),
+        added: merged.added,
+        removed: merged.removed,
+        ..FileListView::default()
+    };
+    for (section, indices) in &sections {
+        view.rows.push(FileRow {
+            depth: 0,
+            name: sanitize_line(section.title()),
+            kind: FileRowKind::Section {
+                section: *section,
+                count: indices.len(),
+            },
+            entry: None,
+        });
+        push_tree(&mut view, &merged, indices, 1);
+    }
+    // The cursor starts on the first file, not on a heading: opening the
+    // pane should show a diff, and `Space` on a heading means "all of it".
+    view.cursor = view
+        .rows
+        .iter()
+        .position(|row| row.entry.is_some())
+        .unwrap_or(0);
+    (view, merged)
 }
 
 fn depth(levels: usize) -> u8 {
@@ -430,5 +549,150 @@ mod tests {
             "CRLF shows as ␍"
         );
         assert!(!view.untracked);
+    }
+}
+
+#[cfg(test)]
+mod working_tree_tests {
+    use graft_ui::detail::WorkingTreeSection::{Staged, Unstaged, Untracked};
+
+    use super::*;
+
+    fn file(path: &str, status: FileStatus) -> FileEntry {
+        FileEntry {
+            path: path.into(),
+            old_path: None,
+            status,
+            added: Some(1),
+            removed: Some(1),
+        }
+    }
+
+    fn list(files: Vec<FileEntry>) -> FileList {
+        let added = files.len() as u64;
+        FileList {
+            files,
+            added,
+            removed: added,
+        }
+    }
+
+    /// Every row as `(name, depth, section)` — the shape the pane draws.
+    fn rows(view: &FileListView) -> Vec<(&str, u8, Option<WorkingTreeSection>)> {
+        view.rows
+            .iter()
+            .enumerate()
+            .map(|(index, row)| (row.name.as_str(), row.depth, view.section_at(index)))
+            .collect()
+    }
+
+    #[test]
+    fn three_sections_count_their_own_files_and_a_shared_path_is_in_two() {
+        // `both.rs` is staged *and* changed again since: two changes, two rows.
+        let staged = list(vec![
+            file("both.rs", FileStatus::Modified),
+            file("s1.rs", FileStatus::Added),
+        ]);
+        let unstaged = list(vec![
+            file("both.rs", FileStatus::Modified),
+            file("u1.rs", FileStatus::Modified),
+            file("new.txt", FileStatus::Untracked),
+        ]);
+        let (view, merged) = assemble_working_tree(&staged, &unstaged);
+        assert_eq!(
+            rows(&view),
+            vec![
+                ("STAGED", 0, Some(Staged)),
+                ("both.rs", 1, Some(Staged)),
+                ("s1.rs", 1, Some(Staged)),
+                ("UNSTAGED", 0, Some(Unstaged)),
+                ("both.rs", 1, Some(Unstaged)),
+                ("u1.rs", 1, Some(Unstaged)),
+                ("UNTRACKED", 0, Some(Untracked)),
+                ("new.txt", 1, Some(Untracked)),
+            ]
+        );
+        let counts: Vec<usize> = view
+            .rows
+            .iter()
+            .filter_map(|row| match row.kind {
+                FileRowKind::Section { count, .. } => Some(count),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(counts, vec![2, 2, 1]);
+        assert_eq!(merged.files.len(), 5, "every row indexes its own entry");
+        // The cursor opens on a file, never on a heading.
+        assert_eq!(view.cursor, 1);
+        assert_eq!(view.selected_section(), Some(Staged));
+    }
+
+    #[test]
+    fn an_untracked_file_is_a_row_of_its_own_section_not_an_unstaged_one() {
+        let unstaged = list(vec![file("new.txt", FileStatus::Untracked)]);
+        let (view, _) = assemble_working_tree(&list(Vec::new()), &unstaged);
+        assert_eq!(
+            rows(&view),
+            vec![
+                ("UNTRACKED", 0, Some(Untracked)),
+                ("new.txt", 1, Some(Untracked))
+            ]
+        );
+    }
+
+    #[test]
+    fn an_empty_section_gets_no_heading_and_a_clean_tree_gets_no_rows() {
+        let (view, merged) = assemble_working_tree(&list(Vec::new()), &list(Vec::new()));
+        assert!(view.rows.is_empty(), "{:?}", view.rows);
+        assert!(merged.files.is_empty());
+    }
+
+    #[test]
+    fn a_sections_entries_are_its_own_and_stop_at_the_next_heading() {
+        let staged = list(vec![file("a.rs", FileStatus::Modified)]);
+        let unstaged = list(vec![
+            file("b.rs", FileStatus::Modified),
+            file("c.rs", FileStatus::Modified),
+        ]);
+        let (view, _) = assemble_working_tree(&staged, &unstaged);
+        assert_eq!(view.section_entries(0), vec![0]);
+        assert_eq!(view.section_entries(2), vec![1, 2]);
+        // A file row is not a section row: asking is safe and answers empty.
+        assert!(view.section_entries(1).is_empty());
+    }
+
+    #[test]
+    fn files_nest_under_their_section_one_level_deeper() {
+        let unstaged = list(vec![file("src/a/b.rs", FileStatus::Modified)]);
+        let (view, _) = assemble_working_tree(&list(Vec::new()), &unstaged);
+        assert_eq!(
+            rows(&view),
+            vec![
+                ("UNSTAGED", 0, Some(Unstaged)),
+                ("src/", 1, Some(Unstaged)),
+                ("a/", 2, Some(Unstaged)),
+                ("b.rs", 3, Some(Unstaged)),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_staged_row_reads_the_index_and_every_other_row_the_working_tree() {
+        assert_eq!(
+            diff_spec_for(DetailSpec::WorkingTree, Some(Staged)),
+            DiffSpec::Staged
+        );
+        assert_eq!(
+            diff_spec_for(DetailSpec::WorkingTree, Some(Unstaged)),
+            DiffSpec::Unstaged
+        );
+        assert_eq!(
+            diff_spec_for(DetailSpec::WorkingTree, Some(Untracked)),
+            DiffSpec::Unstaged
+        );
+        let commit = DetailSpec::Commit(
+            graft_core::oid::Oid::from_bytes(&[7; 20]).expect("20 bytes is an oid"),
+        );
+        assert_eq!(diff_spec_for(commit, None), commit.diff_spec());
     }
 }

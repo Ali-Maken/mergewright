@@ -2088,8 +2088,8 @@ fn two_files() -> (DetailArc<FileListView>, DetailArc<FileList>) {
     (DetailArc::new(view), DetailArc::new(list))
 }
 
-fn diff_of(path: &str) -> DetailArc<DiffView> {
-    DetailArc::new(DiffView {
+fn diff_of(path: &str) -> (DetailArc<DiffView>, DetailArc<graft_git::diff::FileDiff>) {
+    let view = DetailArc::new(DiffView {
         path: sanitize_line(path),
         old_path: None,
         status: FileStatusView::Modified,
@@ -2097,7 +2097,22 @@ fn diff_of(path: &str) -> DetailArc<DiffView> {
         binary: None,
         truncated: None,
         untracked: false,
-    })
+    });
+    let raw = DetailArc::new(graft_git::diff::FileDiff {
+        entry: graft_git::diff::FileEntry {
+            path: path.as_bytes().to_vec(),
+            old_path: None,
+            status: graft_git::diff::FileStatus::Modified,
+            added: Some(0),
+            removed: Some(0),
+        },
+        hunks: Vec::new(),
+        binary: None,
+        truncated: None,
+        old_mode: None,
+        new_mode: None,
+    });
+    (view, raw)
 }
 
 #[test]

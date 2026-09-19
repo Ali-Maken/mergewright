@@ -24,6 +24,10 @@ pub struct DiffFocus {
     pub focused: bool,
     /// Changed words get the stronger tint background (`W`).
     pub word_tint: bool,
+    /// The line cursor's body row, when the body has one
+    /// (m3-working-tree-undo-and-stash/04): the row `Space` and `d` act on.
+    /// Only the changes pane sets it; a commit's diff has no cursor.
+    pub cursor: Option<usize>,
 }
 
 /// The flags [`draw_diff_row`] needs beyond the row itself and the theme,
@@ -41,16 +45,38 @@ pub(crate) struct DiffRowStyle {
     /// Changed words get the stronger tint background (`W`, review M1: the
     /// flag used to reach nothing past the view model).
     pub(crate) word_tint: bool,
+    /// This row is the line cursor's (m3-working-tree-undo-and-stash/04):
+    /// `\u{258e}` in the cell left of the sign, and the whole row bold.
+    ///
+    /// The marker goes beside the sign rather than over it because the sign
+    /// is what says whether the row would be added or removed — the very
+    /// thing the reader needs before pressing `Space`. Bold alone would not
+    /// do: a capture records characters, not attributes, so without a glyph
+    /// no capture could ever show where the cursor is.
+    pub(crate) cursor: bool,
+}
+
+/// The glyph marking the line cursor's row.
+pub(crate) const CURSOR_GLYPH: char = '\u{258e}';
+
+/// `style` with the cursor row's bold added, when this is that row.
+pub(crate) fn with_cursor(style: Style, style_ctx: DiffRowStyle) -> Style {
+    if style_ctx.cursor {
+        style.add_modifier(ratatui::style::Modifier::BOLD)
+    } else {
+        style
+    }
 }
 
 /// The gutter's line-number colour: accent when this region has the keys,
 /// muted otherwise. The only focus cue left on the diff body (M2 fix).
 pub(crate) fn gutter_style(style_ctx: DiffRowStyle, theme: &Theme) -> Style {
-    if style_ctx.focused {
+    let base = if style_ctx.focused {
         foreground(theme, Token::Accent)
     } else {
         foreground(theme, Token::TextMuted)
-    }
+    };
+    with_cursor(base, style_ctx)
 }
 
 /// One screen row's position and width, bundled so drawing a row doesn't
@@ -78,19 +104,48 @@ pub(crate) fn draw_diff_row(
     style_ctx: DiffRowStyle,
 ) {
     match row {
-        DiffRow::Heading(heading) => draw_heading(heading, slot, buf, theme),
+        DiffRow::Heading(heading) => draw_heading_row(heading, slot, buf, theme, style_ctx),
         DiffRow::Line(line) => draw_line_row(line, gutter, slot, buf, theme, style_ctx),
     }
 }
 
+/// A hunk heading drawn plainly: the pinned copy at the body's top row,
+/// which is never the cursor's.
 pub(crate) fn draw_heading(
     heading: &SanitizedText,
     slot: RowSlot,
     buf: &mut Buffer,
     theme: &Theme,
 ) {
-    let style = foreground(theme, Token::TextMuted);
-    let fitted = fit(heading.as_str(), usize::from(slot.width));
+    draw_heading_row(
+        heading,
+        slot,
+        buf,
+        theme,
+        DiffRowStyle {
+            focused: false,
+            palette16: false,
+            word_tint: false,
+            cursor: false,
+        },
+    );
+}
+
+/// A hunk heading in its own row, marked when the cursor is on it.
+fn draw_heading_row(
+    heading: &SanitizedText,
+    slot: RowSlot,
+    buf: &mut Buffer,
+    theme: &Theme,
+    style_ctx: DiffRowStyle,
+) {
+    let style = with_cursor(foreground(theme, Token::TextMuted), style_ctx);
+    let text = if style_ctx.cursor {
+        format!("{CURSOR_GLYPH}{}", heading.as_str())
+    } else {
+        heading.as_str().to_owned()
+    };
+    let fitted = fit(&text, usize::from(slot.width));
     buf.set_stringn(slot.x, slot.y, fitted, usize::from(slot.width), style);
 }
 
@@ -131,7 +186,10 @@ pub(crate) fn draw_line_row(
     let new = line
         .new_no
         .map_or(String::new(), |number| number.to_string());
-    let prefix = format!("{old:>gutter$} {new:>gutter$} ");
+    // The prefix's trailing space is the cell left of the sign: the cursor's
+    // marker goes there, so `+`/`-` stays readable (see [`DiffRowStyle::cursor`]).
+    let marker = if style_ctx.cursor { CURSOR_GLYPH } else { ' ' };
+    let prefix = format!("{old:>gutter$} {new:>gutter$}{marker}");
     let prefix_cells = u16::try_from(prefix.chars().count()).unwrap_or(u16::MAX);
     let prefix_fits = prefix_cells.min(width);
     buf.set_stringn(
@@ -179,6 +237,20 @@ pub(crate) fn draw_line_row(
 /// foreground, which is itself over the row's soft background — reversed at
 /// [`DiffRowStyle::palette16`], where none of that exists.
 pub(crate) fn line_style_at(
+    line: &LineView,
+    char_index: usize,
+    theme: &Theme,
+    style_ctx: DiffRowStyle,
+    kind_token: Option<Token>,
+) -> Style {
+    with_cursor(
+        base_line_style_at(line, char_index, theme, style_ctx, kind_token),
+        style_ctx,
+    )
+}
+
+/// [`line_style_at`] without the cursor row's bold.
+fn base_line_style_at(
     line: &LineView,
     char_index: usize,
     theme: &Theme,

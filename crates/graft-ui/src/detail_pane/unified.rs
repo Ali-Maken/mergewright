@@ -106,6 +106,7 @@ pub fn diff_body(
         focused: focus.focused,
         palette16,
         word_tint: focus.word_tint,
+        cursor: false,
     };
 
     let pinned = pin_heading(hunks, &rows, top);
@@ -130,6 +131,10 @@ pub fn diff_body(
             width: area.width,
         };
         if let Some(row) = rows.get(idx) {
+            let style_ctx = DiffRowStyle {
+                cursor: focus.cursor == Some(idx),
+                ..style_ctx
+            };
             draw_diff_row(row, gutter, slot, buf, theme, style_ctx);
         } else if let (true, Some((shown, of_total))) = (idx == rows.len(), truncated) {
             draw_truncation_row(shown, of_total, slot, buf, theme);

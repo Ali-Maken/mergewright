@@ -168,10 +168,20 @@ pub enum Product {
             String,
         >,
     ),
-    /// One file's assembled diff, or why not.
+    /// One file's diff: the drawable view model and the raw diff git
+    /// parsed, or why not. The raw one is what `hunk_patch` builds a
+    /// stage/discard patch from (m3-working-tree-undo-and-stash/04) — the
+    /// view model has been sanitised and cannot be turned back into bytes
+    /// git would accept.
     FileDiff(
         super::detail::DiffKey,
-        Result<std::sync::Arc<graft_ui::detail::DiffView>, String>,
+        Result<
+            (
+                std::sync::Arc<graft_ui::detail::DiffView>,
+                std::sync::Arc<graft_git::diff::FileDiff>,
+            ),
+            String,
+        >,
     ),
     /// The refs containing a commit, or why not.
     ContainedIn(

@@ -26,6 +26,9 @@ fn status_letter(status: FileStatusView) -> char {
 fn file_row_text(row: &FileRow, width: usize) -> String {
     let indent = "  ".repeat(usize::from(row.depth));
     let (left, right) = match &row.kind {
+        FileRowKind::Section { count, .. } => {
+            (format!("{} ({count})", row.name.as_str()), String::new())
+        }
         FileRowKind::Message { lines } => {
             (format!("\u{2709} message ({lines} lines)"), String::new())
         }

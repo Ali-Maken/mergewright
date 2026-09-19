@@ -7,9 +7,11 @@ use std::sync::Arc;
 
 use graft_core::job::JobId;
 use graft_core::oid::Oid;
-use graft_git::diff::{DiffOptions, DiffSpec, FileList};
+use graft_git::diff::{DiffOptions, DiffSpec, FileDiff, FileList};
 use graft_ops::mistake_radar::probes::EvilVerdict;
-use graft_ui::detail::{ContainedIn, DetailFocus, DiffMode, DiffView, ExplainView, FileListView};
+use graft_ui::detail::{
+    ContainedIn, DetailFocus, DiffMode, DiffView, ExplainView, FileListView, WorkingTreeSection,
+};
 use graft_ui::detail_pane::DetailLayout;
 
 use crate::update::events::Command;
@@ -166,6 +168,13 @@ pub struct DiffKey {
     pub spec: DetailSpec,
     /// Index into the spec's git file list.
     pub entry: u32,
+    /// Which changes-pane group the row is in
+    /// (m3-working-tree-undo-and-stash/04). This is not decoration: it picks
+    /// the diff git is asked for — `Staged` reads the index against `HEAD`,
+    /// the other two read the working tree against the index — so the same
+    /// path staged *and* unstaged caches two different diffs. `None` for
+    /// every spec but the working tree's.
+    pub section: Option<WorkingTreeSection>,
     /// Context and whitespace options.
     pub options: DiffOptions,
     /// Lines read before cutting short.
@@ -227,8 +236,15 @@ pub struct DetailState {
     pub list: Option<Arc<FileList>>,
     /// The diff under the files cursor.
     pub diff: Loading<Arc<DiffView>>,
-    /// Recent diffs, newest last.
-    pub diff_cache: Bounded<DiffKey, Arc<DiffView>>,
+    /// The same diff as git parsed it, before the view model
+    /// (m3-working-tree-undo-and-stash/04): `graft_git::diff::hunk_patch`
+    /// builds a stage/discard patch from these bytes, never from the
+    /// sanitised, syntax-highlighted [`DiffView`]. Always in step with
+    /// `diff` — both come from one `Product::FileDiff`.
+    pub diff_raw: Option<Arc<FileDiff>>,
+    /// Recent diffs, newest last: the drawable view and the raw diff the
+    /// patch builder needs, cached together so they can never drift apart.
+    pub diff_cache: Bounded<DiffKey, (Arc<DiffView>, Arc<FileDiff>)>,
     /// Recent "contained in" answers, whatever the selection now is.
     pub contained: Bounded<Oid, ContainedIn>,
     /// The open commit's evil-merge verdict (`m2-details-and-diffs/14`).
@@ -251,6 +267,12 @@ pub struct DetailState {
     pub max_lines: usize,
     /// First body line on screen.
     pub body_top: usize,
+    /// The diff region's line cursor: a row of the flattened diff body
+    /// (`graft_ui::detail::DiffView::body_row`), which `Space` and `d` act
+    /// on in the changes pane. Kept on every spec so `j`/`k` in the diff
+    /// region always means the same thing; only the changes pane draws it
+    /// and only the changes pane writes from it.
+    pub body_cursor: usize,
     /// The pane's size, per orientation (ADR-0028); `<common_dir>/graft/layout`
     /// at startup, written on every resize.
     pub pane_size: PaneSize,
@@ -280,6 +302,7 @@ impl Default for DetailState {
             files: Loading::Idle,
             list: None,
             diff: Loading::Idle,
+            diff_raw: None,
             diff_cache: Bounded::new(DIFF_CACHE),
             contained: Bounded::new(CONTAINED_CACHE),
             evil: Loading::Idle,
@@ -290,6 +313,7 @@ impl Default for DetailState {
             word_tint: true,
             max_lines: MAX_LINES,
             body_top: 0,
+            body_cursor: 0,
             pane_size: PaneSize::default(),
             dragging: false,
             explain_requested: None,

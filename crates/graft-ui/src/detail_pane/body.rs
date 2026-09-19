@@ -106,6 +106,7 @@ fn render_diff_body(
     let focus = DiffFocus {
         focused,
         word_tint: view.options.word_tint,
+        cursor: view.body_cursor,
     };
     let _rows = match view.mode {
         DiffMode::Unified => diff_body(

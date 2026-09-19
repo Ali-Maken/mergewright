@@ -141,9 +141,44 @@ pub enum FileStatusView {
     Untracked,
 }
 
+/// Which of the changes pane's three groups a working-tree row is in
+/// (m3-working-tree-undo-and-stash/04). Membership is not a label: it decides
+/// which diff the row shows (`Staged` → index against `HEAD`, the other two →
+/// working tree against the index) and which way a write goes — a row under
+/// `Staged` unstages, anything else stages.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum WorkingTreeSection {
+    /// In the index, waiting to be committed.
+    Staged,
+    /// Changed in the working tree, not in the index.
+    Unstaged,
+    /// Not tracked by git at all.
+    Untracked,
+}
+
+impl WorkingTreeSection {
+    /// The section heading's word, as the pane prints it.
+    #[must_use]
+    pub fn title(self) -> &'static str {
+        match self {
+            Self::Staged => "STAGED",
+            Self::Unstaged => "UNSTAGED",
+            Self::Untracked => "UNTRACKED",
+        }
+    }
+}
+
 /// What a row of the file list is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FileRowKind {
+    /// A changes-pane group heading (`STAGED (2)`); the files of that group
+    /// follow it at a greater depth. `FileRow::name` carries the word.
+    Section {
+        /// Which group this heads.
+        section: WorkingTreeSection,
+        /// Files under it.
+        count: usize,
+    },
     /// The `✉ message` entry: the commit body, `lines` long.
     Message {
         /// Body lines.
@@ -249,6 +284,45 @@ impl FileListView {
     pub fn selected_entry(&self) -> Option<u32> {
         self.rows.get(self.cursor).and_then(|row| row.entry)
     }
+
+    /// Which changes-pane group `row` is in: the nearest
+    /// [`FileRowKind::Section`] at or above it. `None` on a list with no
+    /// section rows at all — every list but the changes pane's.
+    #[must_use]
+    pub fn section_at(&self, row: usize) -> Option<WorkingTreeSection> {
+        self.rows
+            .get(..=row)?
+            .iter()
+            .rev()
+            .find_map(|row| match row.kind {
+                FileRowKind::Section { section, .. } => Some(section),
+                _ => None,
+            })
+    }
+
+    /// The group the cursor is in.
+    #[must_use]
+    pub fn selected_section(&self) -> Option<WorkingTreeSection> {
+        self.section_at(self.cursor)
+    }
+
+    /// Every git file-list index under the section row at `row`, in row
+    /// order. Empty for any other kind of row, so a caller can ask without
+    /// checking first.
+    #[must_use]
+    pub fn section_entries(&self, row: usize) -> Vec<u32> {
+        if !matches!(
+            self.rows.get(row).map(|r| r.kind),
+            Some(FileRowKind::Section { .. })
+        ) {
+            return Vec::new();
+        }
+        self.rows[row + 1..]
+            .iter()
+            .take_while(|r| !matches!(r.kind, FileRowKind::Section { .. }))
+            .filter_map(|r| r.entry)
+            .collect()
+    }
 }
 
 /// What kind of line a diff line is.
@@ -342,6 +416,77 @@ pub struct DiffView {
     pub untracked: bool,
 }
 
+/// What a row of the drawn diff body is
+/// (m3-working-tree-undo-and-stash/04). The body is a flat list of rows —
+/// one heading per hunk, then that hunk's lines — and the diff cursor
+/// indexes it. This is the same flattening `detail_pane::diff_body` draws,
+/// so a cursor row and a drawn row are always the same row.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BodyRow {
+    /// A hunk's `@@` heading.
+    Heading {
+        /// Index into [`DiffView::hunks`].
+        hunk: usize,
+    },
+    /// One content line of a hunk.
+    Line {
+        /// Index into [`DiffView::hunks`].
+        hunk: usize,
+        /// Index into that [`HunkView::lines`] — the heading `LineView` at
+        /// `lines[0]` is never addressed, so this is always `>= 1`.
+        line: usize,
+    },
+    /// The "… N more lines · L load all" footer.
+    Truncation,
+}
+
+impl DiffView {
+    /// Content lines of one hunk: its `lines` without the `HunkHeading` the
+    /// assembler puts at `lines[0]` (which `heading` already stands for).
+    fn content_lines(hunk: &HunkView) -> impl Iterator<Item = (usize, &LineView)> {
+        hunk.lines
+            .iter()
+            .enumerate()
+            .filter(|(_, line)| line.kind != LineKindView::HunkHeading)
+    }
+
+    /// How many rows the body draws: one heading plus its content lines per
+    /// hunk, plus the truncation footer when there is one.
+    #[must_use]
+    pub fn body_len(&self) -> usize {
+        let lines: usize = self
+            .hunks
+            .iter()
+            .map(|hunk| 1 + Self::content_lines(hunk).count())
+            .sum();
+        lines + usize::from(self.truncated.is_some())
+    }
+
+    /// What body row `row` is, or `None` past the end.
+    #[must_use]
+    pub fn body_row(&self, row: usize) -> Option<BodyRow> {
+        let mut left = row;
+        for (index, hunk) in self.hunks.iter().enumerate() {
+            if left == 0 {
+                return Some(BodyRow::Heading { hunk: index });
+            }
+            left -= 1;
+            let mut lines = Self::content_lines(hunk);
+            let count = Self::content_lines(hunk).count();
+            if left < count {
+                let (line, _) = lines.nth(left)?;
+                return Some(BodyRow::Line { hunk: index, line });
+            }
+            left -= count;
+        }
+        if left == 0 && self.truncated.is_some() {
+            Some(BodyRow::Truncation)
+        } else {
+            None
+        }
+    }
+}
+
 /// What the pane's body shows.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BodyView {
@@ -383,6 +528,10 @@ pub struct DetailView {
     pub body: BodyView,
     /// First body line on screen.
     pub body_top: usize,
+    /// The line cursor's body row, when the body has one: the changes pane's
+    /// diff region, where `Space` and `d` act on the row under it
+    /// (m3-working-tree-undo-and-stash/04). `None` everywhere else.
+    pub body_cursor: Option<usize>,
     /// Which region has the keys.
     pub focus: DetailFocus,
     /// Unified or side by side.

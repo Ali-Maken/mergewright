@@ -51,6 +51,7 @@ pub fn detail_view(state: &AppState) -> DetailView {
         files,
         body: body_view(&state.detail),
         body_top: state.detail.body_top,
+        body_cursor: state.detail.body_cursor(),
         focus: state.detail.focus,
         mode: state.detail.mode,
         options: DiffOptionsView {
@@ -210,6 +211,16 @@ fn body_view(detail: &DetailState) -> BodyView {
         Loading::Pending(_) => BodyView::Loading(sanitize_line("reading…")),
         Loading::Failed(message) => {
             BodyView::Failed(sanitize_line(&format!("git diff-tree: {message}")))
+        }
+        Loading::Ready(files) if files.rows.is_empty() => {
+            // The changes pane on a clean tree: not an error, and not
+            // "select a file" either — there is nothing to select
+            // (design note, "Changes pane").
+            let empty = match detail.spec {
+                Some(DetailSpec::WorkingTree) => "nothing to commit — working tree clean",
+                _ => "no changes",
+            };
+            BodyView::Empty(sanitize_line(empty))
         }
         Loading::Ready(files) => {
             let on_message = files

@@ -10,7 +10,7 @@ use crate::update::state::AppState;
 
 use super::LOCAL_JOB_BIT;
 use super::state::{DetailSpec, DetailState, Loading, PaneSize};
-use graft_ui::detail::{DetailFocus, DiffView, LineKindView};
+use graft_ui::detail::{DetailFocus, DiffView};
 use graft_ui::detail_pane::DetailLayout;
 
 /// Hands out ids for jobs `update` names itself (see [`LOCAL_JOB_BIT`]).
@@ -128,21 +128,9 @@ pub fn close_explain(state: &mut AppState) {
 
 /// Content rows [`graft_ui::detail_pane::diff_body`] draws for `view`: one
 /// heading row per hunk plus its non-heading lines, plus a truncation-footer
-/// row when the diff was cut short. Mirrors that widget's private row count
-/// so `scroll_body` clamps to what will actually be on screen.
+/// row when the diff was cut short.
 pub(crate) fn diff_content_len(view: &DiffView) -> usize {
-    let lines: usize = view
-        .hunks
-        .iter()
-        .map(|hunk| {
-            1 + hunk
-                .lines
-                .iter()
-                .filter(|line| line.kind != LineKindView::HunkHeading)
-                .count()
-        })
-        .sum();
-    lines + usize::from(view.truncated.is_some())
+    view.body_len()
 }
 
 /// The diff body's current length, for [`DetailState::scroll_body`]'s clamp;

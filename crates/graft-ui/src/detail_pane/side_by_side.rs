@@ -269,6 +269,12 @@ impl SideColumns {
                 focused,
                 palette16,
                 word_tint,
+                // The side-by-side body pairs two unified rows into one, so
+                // a unified body-row cursor has no row here to sit on. `v`
+                // and the line cursor are exclusive: the changes pane's
+                // `Space`/`d` say so rather than acting unseen
+                // (m3-working-tree-undo-and-stash/04 NOTES).
+                cursor: false,
             },
             left_width,
             right_width,

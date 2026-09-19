@@ -165,6 +165,7 @@ fn commit_view() -> DetailView {
             untracked: false,
         })),
         body_top: 0,
+        body_cursor: None,
         focus: DetailFocus::Diff,
         mode: DiffMode::Unified,
         options: DiffOptionsView {
@@ -413,6 +414,7 @@ fn diff_body_returns_the_total_content_rows() {
         DiffFocus {
             focused: true,
             word_tint: true,
+            cursor: None,
         },
     );
     assert_eq!(total, 5); // one heading + four lines
@@ -437,6 +439,7 @@ fn palette16_diff_lines_use_bold_dim_and_no_background() {
         DiffFocus {
             focused: true,
             word_tint: true,
+            cursor: None,
         },
     );
     // rows: 0 heading, 1 context, 2 removed, 3 added, 4 added. Gutter is
@@ -483,6 +486,7 @@ fn no_color_theme_also_drops_backgrounds_and_tint() {
         DiffFocus {
             focused: true,
             word_tint: true,
+            cursor: None,
         },
     );
     for x in 0..area.width {
@@ -522,6 +526,7 @@ fn a_line_missing_one_side_leaves_that_gutter_half_blank() {
         DiffFocus {
             focused: true,
             word_tint: true,
+            cursor: None,
         },
     );
     let screen = (0..area.width)
@@ -554,6 +559,7 @@ fn word_tint_is_a_stronger_background_than_the_soft_row_background() {
         DiffFocus {
             focused: true,
             word_tint: true,
+            cursor: None,
         },
     );
     // Gutter "old new " = 8 cells, sign + space = 2, so text starts at 10.
@@ -589,6 +595,7 @@ fn word_tint_false_leaves_the_word_at_the_plain_row_background() {
         DiffFocus {
             focused: true,
             word_tint: false,
+            cursor: None,
         },
     );
     let word_cell = buffer[(10, 3)].bg;
@@ -622,6 +629,7 @@ fn unfocused_diff_body_keeps_its_added_removed_colour() {
         DiffFocus {
             focused: true,
             word_tint: true,
+            cursor: None,
         },
     );
     let mut unfocused_buf = Buffer::empty(area);
@@ -635,6 +643,7 @@ fn unfocused_diff_body_keeps_its_added_removed_colour() {
         DiffFocus {
             focused: false,
             word_tint: true,
+            cursor: None,
         },
     );
     // Row 2 is the removed line's sign+text; its fg must match focused or
@@ -674,6 +683,7 @@ fn syntax_role_paints_a_keyword_differently_from_plain_text() {
         DiffFocus {
             focused: true,
             word_tint: true,
+            cursor: None,
         },
     );
     // Row 1 is the context line "let token = self.cache;"; text starts at
@@ -707,6 +717,7 @@ fn scrolling_within_a_hunk_pins_its_heading_until_the_next_one_shows() {
             DiffFocus {
                 focused: true,
                 word_tint: true,
+                cursor: None,
             },
         );
         let row0 = (0..area.width)
@@ -729,6 +740,7 @@ fn scrolling_within_a_hunk_pins_its_heading_until_the_next_one_shows() {
         DiffFocus {
             focused: true,
             word_tint: true,
+            cursor: None,
         },
     );
     let row0 = (0..area.width)
@@ -760,6 +772,7 @@ fn truncated_diff_ends_with_the_more_lines_footer() {
         DiffFocus {
             focused: true,
             word_tint: true,
+            cursor: None,
         },
     );
     assert_eq!(total, 6); // 5 real rows + the footer
@@ -791,6 +804,7 @@ fn a_non_truncated_diff_has_no_footer_row() {
         DiffFocus {
             focused: true,
             word_tint: true,
+            cursor: None,
         },
     );
     assert_eq!(total, 5);
@@ -821,6 +835,7 @@ fn crlf_line_shows_the_glyph_after_the_text_outside_the_gutter() {
         DiffFocus {
             focused: true,
             word_tint: true,
+            cursor: None,
         },
     );
     let row1 = (0..area.width)

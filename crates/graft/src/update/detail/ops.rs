@@ -9,11 +9,11 @@ use graft_core::job::JobId;
 use graft_core::mistake_radar::MistakeRadarKind;
 use graft_core::oid::Oid;
 use graft_git::contained::Contained;
-use graft_git::diff::{DiffOptions, FileList};
+use graft_git::diff::{DiffOptions, FileDiff, FileList};
 use graft_ops::mistake_radar::Policy;
 use graft_ops::mistake_radar::probes::EvilVerdict;
 use graft_term::sanitize::{sanitize_line, sanitize_path_bytes};
-use graft_ui::detail::{ContainedIn, DetailFocus, DiffView, FileListView};
+use graft_ui::detail::{ContainedIn, DetailFocus, DiffView, FileListView, WorkingTreeSection};
 use graft_ui::detail_pane::DetailLayout;
 
 use crate::update::events::Command;
@@ -146,6 +146,7 @@ impl DetailState {
         self.files = Loading::Pending(id);
         self.list = None;
         self.body_top = 0;
+        self.body_cursor = 0;
         // Review M5 (m2-details-and-diffs round 1b): `L` applies to the file
         // it was pressed on, not to every file read for the rest of the
         // session.
@@ -224,7 +225,9 @@ impl DetailState {
             commands.push(Command::CancelJob(id));
         }
         self.diff = Loading::Idle;
+        self.diff_raw = None;
         self.body_top = 0;
+        self.body_cursor = 0;
         let (Some(spec), Some(entry), Some(list)) = (self.spec, self.selected_entry(), &self.list)
         else {
             return commands;
@@ -238,11 +241,13 @@ impl DetailState {
         let key = DiffKey {
             spec,
             entry,
+            section: self.selected_section(),
             options: self.options,
             max_lines: self.max_lines,
         };
-        if let Some(diff) = self.diff_cache.get(&key) {
-            self.diff = Loading::Ready(Arc::clone(diff));
+        if let Some((view, raw)) = self.diff_cache.get(&key) {
+            self.diff = Loading::Ready(Arc::clone(view));
+            self.diff_raw = Some(Arc::clone(raw));
         } else {
             let id = next_id();
             self.diff = Loading::Pending(id);
@@ -251,18 +256,79 @@ impl DetailState {
         commands
     }
 
-    /// A diff arrived; stale ones are dropped, good ones cached.
-    pub fn diff_arrived(&mut self, id: JobId, key: DiffKey, result: Result<Arc<DiffView>, String>) {
+    /// A diff arrived; stale ones are dropped, good ones cached. The raw
+    /// `FileDiff` rides alongside the drawable one: `hunk_patch` needs git's
+    /// own bytes, and caching the two together is what stops them drifting.
+    pub fn diff_arrived(
+        &mut self,
+        id: JobId,
+        key: DiffKey,
+        result: Result<(Arc<DiffView>, Arc<FileDiff>), String>,
+    ) {
         if self.diff != Loading::Pending(id) {
             return;
         }
-        self.diff = match result {
-            Ok(diff) => {
-                self.diff_cache.insert(key, Arc::clone(&diff));
-                Loading::Ready(diff)
+        match result {
+            Ok((view, raw)) => {
+                self.diff_cache
+                    .insert(key, (Arc::clone(&view), Arc::clone(&raw)));
+                self.diff = Loading::Ready(view);
+                self.diff_raw = Some(raw);
             }
-            Err(failure) => Loading::Failed(failure),
+            Err(failure) => {
+                self.diff = Loading::Failed(failure);
+                self.diff_raw = None;
+            }
+        }
+    }
+
+    /// Which changes-pane group the files cursor is in; `None` off the
+    /// changes pane, or before its list has arrived.
+    #[must_use]
+    pub fn selected_section(&self) -> Option<WorkingTreeSection> {
+        match &self.files {
+            Loading::Ready(files) => files.selected_section(),
+            Loading::Idle | Loading::Pending(_) | Loading::Failed(_) => None,
+        }
+    }
+
+    /// The diff region's line cursor, clamped to the diff on show, or `None`
+    /// when there is no diff to put a cursor in. Only the changes pane draws
+    /// it (`DetailSpec::WorkingTree`): a commit's diff is read-only, and a
+    /// marker there would promise a write that is not on offer.
+    #[must_use]
+    pub fn body_cursor(&self) -> Option<usize> {
+        if self.spec != Some(DetailSpec::WorkingTree) {
+            return None;
+        }
+        let Loading::Ready(diff) = &self.diff else {
+            return None;
         };
+        let last = diff.body_len().checked_sub(1)?;
+        Some(self.body_cursor.min(last))
+    }
+
+    /// `j`/`k`/`PgUp`/`PgDn`/`g`/`G` in the diff region: move the line cursor
+    /// by `delta` rows, clamped, and scroll `body_top` just enough to keep it
+    /// on screen — the cursor leads, the view follows (design note, "Changes
+    /// pane"). `rows` is the body region's height, `0` when it is not known
+    /// yet, which leaves the old scroll-by-line behaviour intact.
+    pub fn move_body_cursor(&mut self, delta: isize, content_len: usize, rows: usize) {
+        let last = content_len.saturating_sub(1);
+        self.body_cursor = self
+            .body_cursor
+            .min(last)
+            .saturating_add_signed(delta)
+            .min(last);
+        if rows == 0 {
+            self.scroll_body(delta, content_len);
+            return;
+        }
+        if self.body_cursor < self.body_top {
+            self.body_top = self.body_cursor;
+        } else if self.body_cursor >= self.body_top + rows {
+            self.body_top = self.body_cursor.saturating_sub(rows - 1);
+        }
     }
 
     /// A "contained in" answer arrived; kept whatever the selection now is.

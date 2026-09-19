@@ -704,6 +704,7 @@ fn the_detail_reads_come_back_as_products() {
     let key = DiffKey {
         spec,
         entry: 0,
+        section: None,
         options,
         max_lines: 5_000,
     };
