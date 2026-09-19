@@ -1054,6 +1054,7 @@ fn the_same_event_always_gives_the_same_answer() {
         last_focus_refresh: None,
         strip_shown: false,
         confirm: None,
+        credential: None,
         commit_editor: None,
         commit_draft: None,
         in_progress: None,

@@ -172,6 +172,12 @@ pub struct AppState {
     /// own keys answer first and nothing else sees them
     /// (m3-working-tree-undo-and-stash/04).
     pub confirm: Option<super::confirm::PendingConfirm>,
+    /// git's question for the running fetch, pull or push — a username,
+    /// password, passphrase or host-key answer (m4-remotes/06): `None` while
+    /// nothing is asked. Modal, drawn over everything, and a text field: it
+    /// is in [`AppState::text_field_open`]. Its `Debug` never prints what was
+    /// typed.
+    pub credential: Option<super::credential::CredentialPrompt>,
     /// The commit editor (`c`, `a`): `None` while closed. Modal like the
     /// confirm box — while it is open every key is the editor's, bar `Ctrl+C`
     /// (m3-working-tree-undo-and-stash/05).
@@ -444,7 +450,10 @@ impl AppState {
     /// naming every field instead. **A new text field belongs in this list.**
     #[must_use]
     pub fn text_field_open(&self) -> bool {
-        self.search_prompt.is_some() || self.commit_editor.is_some() || self.stash.prompt.is_some()
+        self.search_prompt.is_some()
+            || self.commit_editor.is_some()
+            || self.stash.prompt.is_some()
+            || self.credential.is_some()
     }
 }
 

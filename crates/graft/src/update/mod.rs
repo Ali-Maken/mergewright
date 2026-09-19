@@ -22,6 +22,7 @@ pub mod commit_editor;
 mod commit_graph;
 pub mod confirm;
 mod context_menu;
+pub mod credential;
 pub mod detail;
 mod events;
 mod geometry;
@@ -83,6 +84,8 @@ pub fn update(state: &AppState, event: AppEvent) -> (AppState, Vec<Command>) {
 /// What follows every answered event: the selection reconciled with the
 /// cursor, the pane and the radar asking for what they now need.
 fn settle(next: &mut AppState, commands: &mut Vec<Command>, cursor_before: usize) {
+    // However the write ended, its question goes with it.
+    credential::close_if_orphaned(next);
     selection::reconcile(next, cursor_before);
     // `local_jobs` borrowed out for the closure: `follow_selection` also
     // wants `&mut next`, and the two can't overlap.
@@ -162,6 +165,9 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         AppEvent::Produced(id, product @ Product::Journal(_)) => journal_answer(next, id, &product),
         event @ (AppEvent::Produced(_, Product::Remotes(_))
         | AppEvent::Progress(_, Progress::RemoteProgress { .. })) => remote_event(next, event),
+        AppEvent::Progress(id, Progress::CredentialNeeded { prompt }) => {
+            credential::credential_needed(next, id, &prompt);
+        }
         event @ AppEvent::Produced(
             _,
             Product::CommitTemplate(_)
@@ -399,6 +405,13 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
         // A handed-back key is checked next, before any graph binding, so
         // a harness can claim a key whatever the graph would do with it.
         Event::Key(key) => {
+            // The credential prompt before anything, the search prompt
+            // included: it opens by itself over whatever was on screen, and
+            // a password typed while the search prompt happened to be open
+            // must land in the credential field, not the search.
+            if credential::credential_key(next, commands, key) {
+                return;
+            }
             if next.search_prompt.is_some() || !next.harness.hand_back.contains(&key.code) {
                 if !search::search_key(next, commands, key) {
                     keys::key_event(next, commands, key);
@@ -457,11 +470,13 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
         Event::JobCancelled(id) => job_cancelled(next, commands, id),
         Event::Mouse(mouse) => mouse::mouse_event(next, commands, mouse),
         Event::Paste(text) => {
-            // The commit editor is the only thing that takes a paste so far.
-            // A paste arriving anywhere else is not an error and there is
-            // nothing to report: the user pasted at a screen with no text
-            // field on it.
-            let _taken: bool = commit_editor::paste(next, &text);
+            // The credential prompt, over everything, first; then the
+            // commit editor. A paste arriving anywhere else is not an error
+            // and there is nothing to report: the user pasted at a screen
+            // with no text field on it.
+            if !credential::credential_paste(next, &text) {
+                let _taken: bool = commit_editor::paste(next, &text);
+            }
         }
         Event::FocusGained => focus_gained(next, commands),
         // Nothing is bound to this one. It reaches `update` so that the

@@ -4,10 +4,11 @@
 //! `crates/graft/tests/it/seam_rule.rs`): `ops` decides what a write does,
 //! `app` only wires the key to the call.
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use graft_git::remote::{RemoteFailure, RemoteProgress};
-use graft_git::run::askpass::{AskPass, Secret};
+use graft_git::run::askpass::AskPass;
 use graft_git::version::system_git;
 use graft_ops::apply::{self, Applied, ApplyError, Context, Refresh, RemoteHooks};
 use graft_ops::journal::{Journal, journal_path};
@@ -63,35 +64,41 @@ pub enum Operated {
     },
 }
 
-/// The credential answer until the in-app prompt lands (m4-remotes/06):
-/// every question is cancelled, so git reports an authentication failure
-/// rather than hanging or asking on a terminal Graft has taken over.
-struct NoAskPass;
-
-impl AskPass for NoAskPass {
-    fn ask(&self, _prompt: &str) -> Option<Secret> {
-        None
-    }
-}
-
 /// Where a remote operation's progress goes: one `brief` line at a time.
 pub(super) type ProgressSink = Box<dyn Fn(String) + Send + Sync>;
 
-/// The hooks a remote operation runs with: progress to `progress`, and
-/// Graft's own binary as the askpass helper. `None` for a local operation.
+/// What a remote operation needs from the app: where its progress goes, who
+/// answers git's credential questions, and which binary git runs as the
+/// askpass helper.
+pub(super) struct Hooks {
+    /// One `RemoteProgress::brief` line at a time.
+    pub progress: ProgressSink,
+    /// The user's prompt (`jobs::askpass::ChannelAskPass`).
+    pub askpass: Arc<dyn AskPass>,
+    /// Graft's own binary, or why it could not be named.
+    pub helper: Result<PathBuf, String>,
+}
+
+/// The hooks a remote operation runs with. `None` for a local operation.
 ///
-/// When Graft cannot name its own binary, the operation still runs, headless
-/// — no progress, no questions — and the reason goes out as the one progress
-/// line it will get, so the status line says why credentials cannot be asked
-/// rather than failing later with no explanation.
-fn remote_hooks(op: &Operation, progress: ProgressSink) -> Option<RemoteHooks> {
+/// When Graft cannot name the binary git must run to ask, the operation
+/// still runs, headless — no progress, no questions — and the reason goes
+/// out as the one progress line it will get, so the status line says why
+/// credentials cannot be asked rather than failing later with no
+/// explanation.
+fn remote_hooks(op: &Operation, hooks: Hooks) -> Option<RemoteHooks> {
     if !op.is_remote() {
         return None;
     }
-    match std::env::current_exe() {
+    let Hooks {
+        progress,
+        askpass,
+        helper,
+    } = hooks;
+    match helper {
         Ok(helper) => Some(RemoteHooks {
             progress: Box::new(move |seen: RemoteProgress| progress(seen.brief())),
-            askpass: Arc::new(NoAskPass),
+            askpass,
             helper,
         }),
         Err(error) => {
@@ -153,7 +160,7 @@ pub(super) fn run_operation(
     repos: &RepoStore,
     op: &Operation,
     cancel: &Cancel,
-    progress: ProgressSink,
+    hooks: Hooks,
 ) -> Operated {
     let repo = match repos.shared() {
         Ok(repo) => repo,
@@ -186,7 +193,7 @@ pub(super) fn run_operation(
         Ok(ctx) => ctx,
         Err(error) => return nothing_ran(&error),
     };
-    ctx.remote = remote_hooks(op, progress);
+    ctx.remote = remote_hooks(op, hooks);
     match apply::apply(&mut ctx, op) {
         Ok(applied) => Operated::Done(applied),
         Err(ApplyError::AfterState { applied, unread }) => Operated::Incomplete {
