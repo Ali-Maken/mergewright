@@ -282,6 +282,15 @@ impl AppState {
             .and_then(crate::history::History::selected)
             .map(|row| super::detail::DetailSpec::Commit(row.commit.id))
     }
+
+    /// The pane on screen is the changes pane — the only place the write
+    /// keys mean anything (m3-working-tree-undo-and-stash/04). The footer
+    /// offers them exactly here, so a key is never hinted where it does
+    /// nothing.
+    #[must_use]
+    pub fn on_changes_pane(&self) -> bool {
+        self.detail.shown && self.detail.spec == Some(super::detail::DetailSpec::WorkingTree)
+    }
 }
 
 /// What a harness wrapping `event_loop::run` asks for (the graph gallery,

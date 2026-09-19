@@ -130,6 +130,11 @@ pub struct GraphView<'a> {
     /// since that is the only time its divider exists to drag
     /// (`detail-resize-and-persistence`).
     pub detail_shown: bool,
+    /// The pane on screen is the changes pane (the working tree, not a
+    /// commit): the footer adds the keys that write
+    /// (m3-working-tree-undo-and-stash/04). They mean nothing anywhere else,
+    /// so they are never offered anywhere else.
+    pub changes_pane: bool,
     /// The marker column draws: `app` has seen a Mistake Radar finding this
     /// session, on a row or on a ref (`view::radar`). Sticky once true — the
     /// column never appears and disappears as the same session scrolls

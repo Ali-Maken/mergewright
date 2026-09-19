@@ -95,6 +95,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
         commit_graph: None,
         banner: Vec::new(),
         detail_shown: false,
+        changes_pane: false,
         marker_column: false,
     }
 }
@@ -770,6 +771,35 @@ fn the_footer_lists_every_graph_key_dropping_whole_hints_when_narrow() {
         );
         insta::assert_snapshot!(format!("footer-hints-{columns}"), footer);
     }
+}
+
+/// m3-working-tree-undo-and-stash/04: the write keys are hinted on the
+/// changes pane and nowhere else, so the footer never offers a key that does
+/// nothing where the cursor is.
+#[test]
+fn the_write_hints_appear_only_on_the_changes_pane() {
+    let rows = linear(3);
+    let mut view = view(&rows, WalkView::Complete { rows: 3 }, 0);
+
+    let quiet = text(&draw(&view, 200, 8));
+    let quiet_footer = quiet.last().expect("a footer row").clone();
+    assert!(
+        !quiet_footer.contains("space stage") && !quiet_footer.contains("d discard"),
+        "{quiet_footer}"
+    );
+
+    view.detail_shown = true;
+    view.changes_pane = true;
+    let open = text(&draw(&view, 200, 8));
+    let open_footer = open.last().expect("a footer row").clone();
+    assert!(
+        open_footer.contains("space stage") && open_footer.contains("d discard"),
+        "{open_footer}"
+    );
+    // Ahead of the movement keys, so a narrow terminal keeps them.
+    let stage = open_footer.find("space stage").expect("the hint is there");
+    let movement = open_footer.find("j/k move").expect("the movement hint");
+    assert!(stage < movement, "{open_footer}");
 }
 
 #[test]

@@ -126,6 +126,7 @@ Split into files, public items unchanged (m2 review M8): `mod.rs` keeps only the
 - `AppState::refs` (field) — `Option<Arc<RefBadges>>`: refs on each commit, once the refs job answers; shared so the per-event state clone never copies them (m1-the-graph/69).
 - `AppState::working_tree` (field) — `Option<Arc<graft_git::status::WorkingTreeStatus>>`, full working-tree status once that job answers (m3-working-tree-undo-and-stash/04): shared so the changes pane, the header counts and the uncommitted row read the same `Arc` rather than three copies.
 - `AppState::operating` (field) — `Option<JobId>`, the working-tree write the screen is waiting for (`Space`/`s`/`Ctrl+A`/`d`); every other write key is a no-op while it is `Some` (m3-working-tree-undo-and-stash/04).
+- `AppState::on_changes_pane` (fn) — `(&AppState) -> bool`; the pane is shown and its spec is `DetailSpec::WorkingTree` — the only place the write keys mean anything, and so the only place the footer hints them (m3-working-tree-undo-and-stash/04).
 - `AppState::confirm` (field) — `Option<update::confirm::PendingConfirm>`, the discard confirm box; modal like the context menu (m3-working-tree-undo-and-stash/04).
 - `AppState::screen` (field) — which screen is on show; graph by default.
 - `AppState::lanes_expanded` (field) — `+` pressed: lanes draw unfolded; a view flag, the rows are untouched.

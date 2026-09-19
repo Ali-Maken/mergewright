@@ -62,6 +62,7 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
         commit_graph: None,
         banner: Vec::new(),
         detail_shown: false,
+        changes_pane: false,
         marker_column: false,
     }
 }

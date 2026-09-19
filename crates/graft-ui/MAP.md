@@ -105,6 +105,7 @@ Draws a `detail::DetailView` beside, below or in place of the graph (m2-details-
 - `SearchLine` (enum) — `Prompt(text)` draws ` /text_`; `Status{text, failed}` draws the search's line, warning-coloured only when failed.
 - `GraphView::graphics` (field) — `gfx ok` / `gfx: <message>` in the header while pixels are drawn; `None` otherwise.
 - `GraphView::detail_shown` (field) — the detail pane is on screen; the footer adds a `<> resize` hint only then, since that's the only time its divider exists to drag (`detail-resize-and-persistence`).
+- `GraphView::changes_pane` (field) — the pane on screen is the changes pane; the footer adds `space stage` and `d discard`, ahead of the movement keys so a narrow terminal keeps them. Never set for a commit's pane: the keys do nothing there (m3-working-tree-undo-and-stash/04).
 - Footer hints add `. explain` whenever the cursor row (`RowPaint::Highlighted`) carries a `GraphEntry::marker` (m2-details-and-diffs/17).
 - `GraphView::compare_footer` (field) — the pinned compare base's footer line (`compare base <sha> — move, x again clears`); same footer slot as `search`/`notice` (m2-details-and-diffs/11).
 - `GraphicsStatus` (enum) — `Ok` or `Failed(SanitizedText)`: what the terminal said about the graph images.

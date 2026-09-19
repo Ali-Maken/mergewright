@@ -80,6 +80,13 @@ impl GraphScreen<'_> {
                     // Only while the pane is on screen: no divider to drag
                     // otherwise (ADR-0028).
                     extra.extend(self.view.detail_shown.then_some("<> resize"));
+                    // The keys that write, only on the pane that can write
+                    // (m3-working-tree-undo-and-stash/04). They sit ahead of
+                    // the movement keys so a narrow terminal keeps them.
+                    if self.view.changes_pane {
+                        extra.push("space stage");
+                        extra.push("d discard");
+                    }
                     // The cursor row's own hint, only when it is marked
                     // (`m2-details-and-diffs/17`, design note "Marker
                     // column").
