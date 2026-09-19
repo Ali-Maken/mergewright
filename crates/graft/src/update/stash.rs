@@ -21,7 +21,7 @@ use graft_ui::text_input::TextField;
 use super::confirm::{ConfirmThen, PendingConfirm};
 use super::detail::Loading;
 use super::events::{Command, Product};
-use super::state::AppState;
+use super::state::{AppState, Status};
 
 /// The save prompt (`s`): the message being typed and the scope.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -150,6 +150,17 @@ pub(super) fn stash_key(
     key: KeyPress,
     next_id: &mut impl FnMut() -> JobId,
 ) -> bool {
+    // The save prompt is modal the way the commit editor is: it claims every
+    // key, control-modified ones included, so that nothing typed at it can
+    // reach a binding underneath. `Ctrl+C` is the one exception — it is how
+    // the app is left, and no pane claims it (m3/06 review, Critical 1).
+    if next.stash.shown && next.stash.prompt.is_some() {
+        if key.code == KeyCode::Char('c') && key.modifiers.control {
+            return false;
+        }
+        prompt_key(next, commands, key, next_id);
+        return true;
+    }
     if key.modifiers.control || key.modifiers.alt {
         return false;
     }
@@ -176,10 +187,6 @@ fn shown_key(
     key: KeyPress,
     next_id: &mut impl FnMut() -> JobId,
 ) -> bool {
-    if next.stash.prompt.is_some() {
-        prompt_key(next, commands, key, next_id);
-        return true;
-    }
     // `Tab` belongs to the detail pane's focus cycle, always: an overlay
     // that swallowed it would be one the user could never `Tab` out of
     // (m3-working-tree-undo-and-stash/06).
@@ -322,8 +329,25 @@ fn prompt_key(
     key: KeyPress,
     next_id: &mut impl FnMut() -> JobId,
 ) {
+    // A control- or alt-modified key is not text: swallowed, never inserted
+    // as its bare letter and never passed on.
+    if key.modifiers.control || key.modifiers.alt {
+        return;
+    }
     match key.code {
-        KeyCode::Escape => next.stash.prompt = None,
+        KeyCode::Escape => {
+            // The rule `keys.rs` and the commit editor both follow: `Esc`
+            // dismisses a failure before it means anything else, so a refused
+            // save can be read and then cleared without losing the message
+            // that was typed. The prompt applies it here rather than letting
+            // the global arm run, because a global arm that fires while a
+            // text field is open is Critical 1 of the m3/06 review.
+            if matches!(next.status, Status::Failed(_) | Status::Sticky(_)) {
+                next.status = Status::Ready;
+            } else {
+                next.stash.prompt = None;
+            }
+        }
         KeyCode::Tab | KeyCode::BackTab => {
             if let Some(prompt) = next.stash.prompt.as_mut() {
                 prompt.staged_only = !prompt.staged_only;

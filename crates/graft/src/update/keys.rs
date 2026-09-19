@@ -70,17 +70,26 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     }
     // `u`, `Ctrl+Z` and `U` (ADR-0002, DESIGN.md §2.2): global, before any
     // pane's own keys, because undo means the same thing wherever the
-    // cursor is. Not while a text field has focus — the commit editor is
-    // modal and has already claimed every key above.
-    if let Some(redo) = is_undo_key(key) {
+    // cursor is. **Never while a text field is open** — `text_field_open`
+    // names all of them, because relying on "the editor is modal and claimed
+    // it above" is exactly what let the stash prompt turn a typed `u` into a
+    // journaled undo (m3/06 review, Critical 1).
+    if !next.text_field_open()
+        && let Some(redo) = is_undo_key(key)
+    {
         undo_key(next, commands, redo);
         return;
     }
     // A failure on the status line is dismissed by `Esc` before `Esc` means
     // anything else (PROMPT.md §3, "errors stay until dismissed"). Without
     // this a write failure had no way off the screen at all
-    // (m3/04 review gap, m3-working-tree-undo-and-stash/05).
-    if key.code == KeyCode::Escape && matches!(next.status, Status::Failed(_) | Status::Sticky(_)) {
+    // (m3/04 review gap, m3-working-tree-undo-and-stash/05). An open text
+    // field gets its `Esc` first and applies this rule itself, so that a
+    // field can never be shut by a key its own handler never saw.
+    if !next.text_field_open()
+        && key.code == KeyCode::Escape
+        && matches!(next.status, Status::Failed(_) | Status::Sticky(_))
+    {
         next.status = Status::Ready;
         return;
     }

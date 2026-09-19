@@ -424,6 +424,20 @@ impl AppState {
     pub fn should_quit(&self) -> bool {
         self.quit.is_some()
     }
+
+    /// Is a text field taking the keyboard right now?
+    ///
+    /// Every global binding — `u`, `U`, `Ctrl+Z`, `Esc` on a failure — asks
+    /// this before it fires. A letter typed into a field must reach the
+    /// field, not a keybinding: spelling `update` as a stash message once
+    /// launched an undo at the `u` (m3/06 review, Critical 1). Structural
+    /// ordering was the old answer and it broke the moment a fourth text
+    /// field was added below the undo check, so the rule is a predicate
+    /// naming every field instead. **A new text field belongs in this list.**
+    #[must_use]
+    pub fn text_field_open(&self) -> bool {
+        self.search_prompt.is_some() || self.commit_editor.is_some() || self.stash.prompt.is_some()
+    }
 }
 
 /// What the status line has to say.
