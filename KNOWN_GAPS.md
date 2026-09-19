@@ -455,3 +455,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M4/02 review | Remote-controlled text (prompts, failure reasons) is unsanitised in graft-git; group 06 must pass it through term::sanitize | unverified | M4 |
 | M4/02 review | RunError::Spawn mislabels a poisoned-sink error; WouldOverwrite multi-path parsing tested on one file only | broken (label) / unverified | M5 |
 | M4/03 | Main red at 0ba9203..(g03 fix): app snapshot every_graph_renderer_config_value_draws_as_it_says fails on footer hint placement | broken | M4 |
+| M4/04 review | 9 Minors in docs/reviews/m4-04-ops-remote-operations.md not yet triaged (fix builder takes what shares its files) | unverified | M4 |
+| M4/03 | Remote footer hints appear only at ≥156 cols; at 80/120 the user never sees f/p/P in the footer | unverified (visual, user's eye) | M4 |
