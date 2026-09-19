@@ -2,13 +2,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use graft_core::journal::{JournalEntry, OperationKind};
-use graft_git::remote::RemoteFailure;
+use graft_git::remote::{RemoteFailure, TrackedUpstream};
 use graft_git::run::askpass::{AskPass, Secret};
 
 use super::{RemoteHooks, explain, remote_invocation, short};
 use crate::apply::ApplyError;
-use crate::journal::tests::{MAIN, committed};
-use crate::operation::Invocation;
+use crate::journal::tests::committed;
+use crate::operation::{FetchParams, Invocation, Operation, PullParams, PushParams, RemoteNames};
 
 fn entry(kind: OperationKind, description: &str) -> JournalEntry {
     let mut entry = committed(1, kind, 1, 2);
@@ -17,6 +17,41 @@ fn entry(kind: OperationKind, description: &str) -> JournalEntry {
         entry.touches.refs.clear();
     }
     entry
+}
+
+fn push_op(branch: &str, remote: &str) -> Operation {
+    Operation::Push(PushParams {
+        branch: format!("refs/heads/{branch}"),
+        remote: remote.to_owned(),
+        remote_branch: format!("refs/heads/{branch}"),
+        set_upstream: false,
+        lease: None,
+    })
+}
+
+fn pull_op(branch: &str, remote: &str) -> Operation {
+    Operation::Pull(PullParams {
+        branch: format!("refs/heads/{branch}"),
+        upstream: TrackedUpstream {
+            remote: remote.to_owned(),
+            remote_branch: format!("refs/heads/{branch}"),
+            tracking_ref: format!("refs/remotes/{remote}/{branch}"),
+            tracking_tip: None,
+        },
+    })
+}
+
+fn fetch_op(remote: &str) -> Operation {
+    Operation::Fetch(FetchParams {
+        remote: Some(remote.to_owned()),
+        prune: false,
+    })
+}
+
+/// The entry `apply` would journal for `op`, and the names it would carry.
+fn journaled(op: &Operation) -> (JournalEntry, RemoteNames) {
+    let names = op.remote_names().expect("a remote operation has names");
+    (entry(op.kind(), &op.describe()), names)
 }
 
 fn every_failure() -> Vec<RemoteFailure> {
@@ -48,10 +83,10 @@ fn every_failure() -> Vec<RemoteFailure> {
 
 /// The operation each failure belongs to, and the words its line must use
 /// (design note, "Failure line").
-fn case(failure: &RemoteFailure) -> (JournalEntry, &'static [&'static str]) {
-    let push = || entry(OperationKind::Push, "push main → origin/main");
-    let pull = || entry(OperationKind::Pull, "pull origin/main");
-    let fetch = || entry(OperationKind::Fetch, "fetch origin");
+fn case(failure: &RemoteFailure) -> (Operation, &'static [&'static str]) {
+    let push = || push_op("main", "origin");
+    let pull = || pull_op("main", "origin");
+    let fetch = || fetch_op("origin");
     match failure {
         RemoteFailure::AuthFailed { .. } => (
             push(),
@@ -108,11 +143,13 @@ fn explain_names_each_failure() {
         "fatal: Could not resolve host: github.com".to_owned(),
     ];
     for failure in every_failure() {
-        let (entry, words) = case(&failure);
+        let (op, words) = case(&failure);
+        let (entry, names) = journaled(&op);
         let error = ApplyError::Remote {
             entry: Box::new(entry.clone()),
             failure: failure.clone(),
             stderr_tail: tail.clone(),
+            names: Box::new(names.clone()),
         };
         let line = error.explain();
         for word in words {
@@ -120,7 +157,7 @@ fn explain_names_each_failure() {
         }
         // `Display` and `explain` are one text.
         assert_eq!(error.to_string(), line);
-        assert_eq!(explain(&entry, &failure, &tail), line);
+        assert_eq!(explain(&entry, &failure, &tail, &names), line);
         assert!(
             !short(&failure).is_empty(),
             "{failure:?} has a short reason"
@@ -133,15 +170,36 @@ fn short_reason_for_cancel_is_the_word() {
     assert_eq!(short(&RemoteFailure::Cancelled), "cancelled");
 }
 
+/// The names come from the params, not from re-reading the description: a
+/// refname may hold `→` (git forbids only space, `~^:?*[\` and control
+/// bytes) and a remote name may hold `/` (m4/04 review, M4).
 #[test]
-fn pull_names_its_branch_from_touches() {
-    let pull = entry(OperationKind::Pull, "pull origin/main");
-    assert_eq!(pull.touches.refs, [MAIN]);
-    let line = explain(&pull, &RemoteFailure::NotFastForward, &[]);
+fn names_survive_arrows_and_slashes() {
+    let (entry, names) = journaled(&push_op("a→b", "team/origin"));
+    assert_eq!(entry.description, "push a→b → team/origin/a→b");
+    let line = explain(&entry, &RemoteFailure::NonFastForward, &[], &names);
     assert!(
-        line.starts_with("pull stopped: main and origin/main"),
+        line.starts_with("push rejected: team/origin/a→b has commits you don't"),
         "{line}"
     );
+
+    let (entry, names) = journaled(&pull_op("x→y", "team/origin"));
+    let line = explain(&entry, &RemoteFailure::NotFastForward, &[], &names);
+    assert!(
+        line.starts_with("pull stopped: x→y and team/origin/x→y diverged"),
+        "{line}"
+    );
+
+    let (entry, names) = journaled(&fetch_op("team/origin"));
+    let line = explain(
+        &entry,
+        &RemoteFailure::Unreachable {
+            target: "h".to_owned(),
+        },
+        &[],
+        &names,
+    );
+    assert_eq!(line, "team/origin unreachable: h");
 }
 
 struct Panics;

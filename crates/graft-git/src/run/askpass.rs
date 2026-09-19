@@ -24,9 +24,9 @@ use std::io::{self, Read, Write};
 use std::os::unix::fs::DirBuilderExt;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::sync::mpsc::{self, RecvTimeoutError};
+use std::sync::mpsc::{self, Sender};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -38,9 +38,6 @@ const ANSWER_MAX: u32 = 64 * 1024;
 
 /// How long the server waits for a connected helper to send its prompt.
 const PROMPT_WAIT: Duration = Duration::from_secs(5);
-
-/// How often the listener, waiting on a handler, looks for a shutdown.
-const SHUTDOWN_POLL: Duration = Duration::from_millis(20);
 
 /// How long the server waits to hand its answer to a helper that has stopped
 /// reading. Bounds the one write in the exchange, so `close` never waits on a
@@ -115,7 +112,7 @@ pub struct AskPassServer {
     dir: PathBuf,
     socket: PathBuf,
     helper: PathBuf,
-    stop: Arc<AtomicBool>,
+    shared: Arc<Shared>,
     thread: Option<JoinHandle<()>>,
     /// Set once the directory and socket are gone, so drop after `close`
     /// does nothing.
@@ -151,18 +148,18 @@ impl AskPassServer {
                 return Err(error);
             }
         };
-        let stop = Arc::new(AtomicBool::new(false));
+        let shared = Arc::new(Shared::default());
         let thread = {
-            let stop = Arc::clone(&stop);
+            let shared = Arc::clone(&shared);
             thread::Builder::new()
                 .name("graft-askpass".to_owned())
-                .spawn(move || listen(&listener, &handler, &stop))?
+                .spawn(move || listen(&listener, &handler, &shared))?
         };
         Ok(AskPassServer {
             dir,
             socket,
             helper,
-            stop,
+            shared,
             thread: Some(thread),
             closed: false,
         })
@@ -200,14 +197,14 @@ impl AskPassServer {
             return Ok(());
         }
         self.closed = true;
-        self.stop.store(true, Ordering::SeqCst);
+        self.shared.stop();
         let Some(thread) = self.thread.take() else {
             return Ok(());
         };
         // Wake the listener out of its blocking `accept`; it sees `stop` and
         // returns. Everything it can be doing instead is bounded (prompt read
-        // and reply write have timeouts; a blocked handler is abandoned at
-        // the next `SHUTDOWN_POLL`), so once woken the join returns.
+        // and reply write have timeouts; a wait on a blocked handler was just
+        // ended by `Shared::stop`), so once woken the join returns.
         if let Err(error) = UnixStream::connect(&self.socket) {
             return Err(io::Error::new(
                 error.kind(),
@@ -285,15 +282,15 @@ fn private_dir() -> io::Result<PathBuf> {
 /// set — the shutdown's wake-up, or a real helper that connected in the same
 /// moment and was queued ahead of it — is dropped unanswered: the helper sees
 /// EOF and fails, it is never given an answer by a server that is closing.
-fn listen(listener: &UnixListener, handler: &Arc<dyn AskPass>, stop: &AtomicBool) {
+fn listen(listener: &UnixListener, handler: &Arc<dyn AskPass>, shared: &Shared) {
     for stream in listener.incoming() {
-        if stop.load(Ordering::SeqCst) {
+        if shared.stopped() {
             drop(stream);
             return;
         }
         match stream {
             Ok(stream) => {
-                if let Err(error) = serve(stream, handler, stop) {
+                if let Err(error) = serve(stream, handler, shared) {
                     // One helper's broken exchange (it hung up, sent a bad
                     // frame) is that helper's failure: it exits non-zero and
                     // git reports the credential as unreadable. The server
@@ -311,45 +308,121 @@ fn listen(listener: &UnixListener, handler: &Arc<dyn AskPass>, stop: &AtomicBool
     }
 }
 
+/// What the listener thread shares with the server that owns it.
+#[derive(Default)]
+struct Shared {
+    /// Set once by shutdown; never cleared.
+    stop: AtomicBool,
+    /// The exchange waiting on its handler, if one is: shutdown sends it
+    /// [`Wake::Stop`], so it returns at once rather than whenever the handler
+    /// does. `serve` checks `stop` and registers here under one lock, so a
+    /// shutdown cannot fall between the check and the registration.
+    waiting: Mutex<Option<Sender<Wake>>>,
+}
+
+impl Shared {
+    fn stopped(&self) -> bool {
+        self.stop.load(Ordering::SeqCst)
+    }
+
+    /// Set `stop`, then wake the exchange waiting on its handler, if any.
+    fn stop(&self) {
+        self.stop.store(true, Ordering::SeqCst);
+        if let Some(waiting) = self.waiting().take()
+            && let Err(unheard) = waiting.send(Wake::Stop)
+        {
+            // Safe to ignore: the exchange already ended (its answer came
+            // first), so there is no one left to wake.
+            drop(unheard);
+        }
+    }
+
+    /// The slot. A poisoned lock still holds a whole `Option<Sender>` — the
+    /// only writes are `take` and a plain assignment — so it is used as is.
+    fn waiting(&self) -> MutexGuard<'_, Option<Sender<Wake>>> {
+        self.waiting.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+}
+
+/// What ends an exchange's wait on its handler.
+enum Wake {
+    /// The handler answered (`None`: the user cancelled).
+    Answer(Option<Secret>),
+    /// The server is shutting down.
+    Stop,
+    /// The handler panicked before answering.
+    Panicked,
+}
+
+/// The handler thread's end of an exchange: sends the answer once or, if the
+/// thread unwinds first, [`Wake::Panicked`] from `Drop` — the listener is
+/// never left waiting on a handler that is gone.
+struct Reply(Option<Sender<Wake>>);
+
+impl Reply {
+    fn send(mut self, answer: Option<Secret>) {
+        if let Some(wake) = self.0.take()
+            && let Err(unwanted) = wake.send(Wake::Answer(answer))
+        {
+            // The listener stopped waiting (shutdown): drop the answer,
+            // which zeroes it.
+            drop(unwanted);
+        }
+    }
+}
+
+impl Drop for Reply {
+    fn drop(&mut self) {
+        if let Some(wake) = self.0.take()
+            && let Err(unheard) = wake.send(Wake::Panicked)
+        {
+            // Safe to ignore: the listener stopped waiting (shutdown).
+            drop(unheard);
+        }
+    }
+}
+
 /// One exchange. The handler runs on its own thread so a shutdown is noticed
-/// while it blocks: the helper's connection is then dropped (it sees EOF and
-/// fails) and the listener returns. The handler thread finishes whenever the
-/// handler returns — the app's handler returns `None` once the job is
-/// cancelled — and its answer is dropped, and so zeroed, unsent.
-fn serve(mut stream: UnixStream, handler: &Arc<dyn AskPass>, stop: &AtomicBool) -> io::Result<()> {
+/// while it blocks: the wait is one blocking `recv`, ended by the answer or
+/// by shutdown's [`Wake::Stop`], whichever comes first. On a stop the
+/// helper's connection is dropped (it sees EOF and fails) and the listener
+/// returns. The handler thread finishes whenever the handler returns — the
+/// app's handler returns `None` once the job is cancelled — and its answer
+/// is dropped, and so zeroed, unsent.
+fn serve(mut stream: UnixStream, handler: &Arc<dyn AskPass>, shared: &Shared) -> io::Result<()> {
     stream.set_read_timeout(Some(PROMPT_WAIT))?;
     stream.set_write_timeout(Some(REPLY_WAIT))?;
     let prompt = read_prompt(&mut stream)?;
-    if stop.load(Ordering::SeqCst) {
-        // Shut down while the prompt was arriving: do not ask the user.
-        return stream.shutdown(std::net::Shutdown::Both);
+    let (wake, woken) = mpsc::channel();
+    {
+        let mut waiting = shared.waiting();
+        if shared.stopped() {
+            // Shut down while the prompt was arriving: do not ask the user.
+            return stream.shutdown(std::net::Shutdown::Both);
+        }
+        *waiting = Some(wake.clone());
     }
-    let (answered, answer) = mpsc::channel();
     let handler = Arc::clone(handler);
+    let reply = Reply(Some(wake));
     // Detached, not scoped: a scope would make shutdown wait for a handler
     // that may be blocked on a user who has gone.
-    thread::Builder::new()
+    let spawned = thread::Builder::new()
         .name("graft-askpass-ask".to_owned())
         .spawn(move || {
-            let reply = handler.ask(&prompt);
-            if let Err(unwanted) = answered.send(reply) {
-                // The listener stopped waiting (shutdown): drop the answer,
-                // which zeroes it.
-                drop(unwanted);
-            }
-        })?;
-    loop {
-        match answer.recv_timeout(SHUTDOWN_POLL) {
-            Ok(reply) => return write_reply(&mut stream, reply.as_ref()),
-            Err(RecvTimeoutError::Timeout) if stop.load(Ordering::SeqCst) => {
-                // The helper sees EOF and exits non-zero; git gives up.
-                return stream.shutdown(std::net::Shutdown::Both);
-            }
-            Err(RecvTimeoutError::Timeout) => {}
-            Err(RecvTimeoutError::Disconnected) => {
-                return Err(io::Error::other("the askpass handler panicked"));
-            }
-        }
+            let answer = handler.ask(&prompt);
+            reply.send(answer);
+        });
+    let outcome = spawned.map(|_| woken.recv());
+    // The exchange is over either way: shutdown has nothing left to wake.
+    shared.waiting().take();
+    match outcome? {
+        Ok(Wake::Answer(answer)) => write_reply(&mut stream, answer.as_ref()),
+        // The helper sees EOF and exits non-zero; git gives up.
+        Ok(Wake::Stop) => stream.shutdown(std::net::Shutdown::Both),
+        Ok(Wake::Panicked) => Err(io::Error::other("the askpass handler panicked")),
+        // The slot held a sender until the line above, so this cannot
+        // happen; reported rather than assumed.
+        Err(mpsc::RecvError) => Err(io::Error::other("the askpass wait lost every sender")),
     }
 }
 

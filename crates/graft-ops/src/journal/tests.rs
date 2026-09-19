@@ -421,6 +421,27 @@ fn a_pull_is_undone_like_any_operation() {
     assert_eq!(next_undo(&entries), Some(&pull));
 }
 
+/// A `Committed` pull whose after equals its before on every field (git's
+/// "Already up to date.") is passed over by `u` and does not end a redo
+/// branch; the inverse refuses it (m4/04 review, M3).
+#[test]
+fn a_pull_that_moved_nothing_is_transparent() {
+    let commit = committed(10, OperationKind::Commit, 1, 2);
+    let still = committed(20, OperationKind::Pull, 2, 2);
+    assert!(!super::undoable(&still));
+    let entries = vec![commit.clone(), still.clone()];
+    assert_eq!(next_undo(&entries), Some(&commit));
+    assert_eq!(
+        crate::undo::inverse(&still, None),
+        Err(crate::undo::NotInvertible::NotUndoable(OperationKind::Pull))
+    );
+
+    let undo_commit = reversal(30, OperationKind::Undo, &commit);
+    let after_undo = committed(40, OperationKind::Pull, 1, 1);
+    let entries = vec![commit, undo_commit.clone(), after_undo];
+    assert_eq!(next_redo(&entries), Some(&undo_commit));
+}
+
 #[test]
 fn a_fetch_or_push_after_an_undo_keeps_redo() {
     let a = committed(10, OperationKind::Commit, 1, 2);

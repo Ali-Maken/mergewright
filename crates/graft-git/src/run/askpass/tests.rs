@@ -333,3 +333,41 @@ fn a_helper_that_stops_reading_cannot_hang_close() {
     // Held open until here, so the write could never finish on its own.
     drop(raw);
 }
+
+/// Panics on the first prompt, answers the rest.
+struct PanicsOnce {
+    asked: AtomicU32,
+}
+
+impl AskPass for PanicsOnce {
+    fn ask(&self, _prompt: &str) -> Option<Secret> {
+        assert!(
+            self.asked.fetch_add(1, Ordering::SeqCst) > 0,
+            "the first prompt panics (on purpose)"
+        );
+        Some(Secret::new(b"second".to_vec()))
+    }
+}
+
+/// The wait on the handler is one blocking `recv`, not a poll: a handler
+/// that unwinds must still end it (through `Reply`'s drop), or the listener
+/// would wait forever. The helper gets an error; the next prompt is answered.
+#[test]
+fn a_panicking_handler_fails_its_helper_and_the_server_carries_on() {
+    let server = server(Arc::new(PanicsOnce {
+        asked: AtomicU32::new(0),
+    }));
+
+    let mut out = Vec::new();
+    let first = respond(server.socket_path(), "Password:", &mut out);
+    assert!(
+        matches!(first, Err(RespondError::Io(_))),
+        "the helper whose handler panicked gets an error: {first:?}"
+    );
+    assert!(out.is_empty(), "no answer reached git");
+
+    let mut out = Vec::new();
+    respond(server.socket_path(), "Password:", &mut out).expect("the next prompt is answered");
+    assert_eq!(out, b"second\n");
+    server.close().expect("closes cleanly");
+}

@@ -7,8 +7,7 @@
 //! it always has.
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, RecvTimeoutError, Sender};
+use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
@@ -18,7 +17,7 @@ use graft_git::run::askpass::{AskPass, AskPassServer};
 use graft_git::run::{GitInvocation, RunError};
 
 use super::{AfterState, Context};
-use crate::operation::Invocation;
+use crate::operation::{Invocation, RemoteNames};
 
 /// What a remote operation needs from the app: somewhere to show progress
 /// and someone to answer a credential prompt. `Context.remote = None` is
@@ -48,10 +47,6 @@ type Sink = Box<dyn FnMut(&[u8]) + Send>;
 
 /// The least time between two progress calls.
 const PROGRESS_EVERY: Duration = Duration::from_millis(100);
-
-/// How long the forwarding thread waits before checking whether the child
-/// has exited.
-const FORWARD_POLL: Duration = Duration::from_millis(50);
 
 /// How many trailing stderr segments an error carries.
 const TAIL: usize = 8;
@@ -99,6 +94,12 @@ pub(crate) fn run(
                     Some(server)
                 }
                 Err(error) => {
+                    // git never started because its credential prompt could
+                    // not: say which, or the line blames git (review Minor 1).
+                    let error = std::io::Error::new(
+                        error.kind(),
+                        format!("askpass: the credential prompt's socket could not open: {error}"),
+                    );
                     return Err(Failed {
                         error: RunError::Spawn(error),
                         segments: Vec::new(),
@@ -109,14 +110,14 @@ pub(crate) fn run(
         None => None,
     };
 
-    let exited = AtomicBool::new(false);
     let result = std::thread::scope(|scope| {
         if let Some(hooks) = hooks {
-            let exited = &exited;
-            scope.spawn(move || forward(receiver, &*hooks.progress, exited));
+            scope.spawn(move || forward(receiver, &*hooks.progress));
         }
         let result = git.run(ctx.stop);
-        exited.store(true, Ordering::SeqCst);
+        // The sink, and with it the last progress sender, lives in `git`:
+        // dropping it here is what ends `forward` (review Minor 3).
+        drop(git);
         result
     });
     // The child has exited: nothing can ask for a password any more.
@@ -125,7 +126,6 @@ pub(crate) fn run(
     {
         cleanup.push(AfterState::AskPass(error));
     }
-    drop(git);
 
     result.map(|_| ()).map_err(|error| Failed {
         error,
@@ -159,24 +159,15 @@ fn sink(segments: Arc<Mutex<Vec<Vec<u8>>>>, progress: Option<Sender<RemoteProgre
     })
 }
 
-/// Hand progress to the app's callback until the child has exited and the
-/// queue is empty.
-#[expect(
-    clippy::needless_pass_by_value,
-    reason = "moved into the forwarding thread: a `Receiver` is not `Sync`, so it cannot be lent"
-)]
+/// Hand progress to the app's callback until the sink is dropped (the
+/// invocation is over) and the queue is empty. A blocking loop: it ends on
+/// the channel closing, never on a timer.
 fn forward(
     receiver: mpsc::Receiver<RemoteProgress>,
     progress: &(dyn Fn(RemoteProgress) + Send + Sync),
-    exited: &AtomicBool,
 ) {
-    loop {
-        match receiver.recv_timeout(FORWARD_POLL) {
-            Ok(parsed) => progress(parsed),
-            Err(RecvTimeoutError::Timeout) if exited.load(Ordering::SeqCst) => return,
-            Err(RecvTimeoutError::Timeout) => {}
-            Err(RecvTimeoutError::Disconnected) => return,
-        }
+    for parsed in receiver {
+        progress(parsed);
     }
 }
 
@@ -233,8 +224,8 @@ pub(crate) fn explain(
     entry: &JournalEntry,
     failure: &RemoteFailure,
     stderr_tail: &[String],
+    names: &RemoteNames,
 ) -> String {
-    let names = Names::of(entry);
     let retry = match entry.kind {
         OperationKind::Fetch => "f",
         OperationKind::Pull => "p",
@@ -278,55 +269,6 @@ pub(crate) fn explain(
         RemoteFailure::Cancelled => format!("{} cancelled", entry.description),
         RemoteFailure::Other { first_line } => {
             format!("{} failed: {first_line}", entry.description)
-        }
-    }
-}
-
-/// The names a failure line uses, read back from the entry's description
-/// (`push main → origin/main`, `pull origin/main`, `fetch origin`) — the
-/// text `Operation::describe` wrote, so the two stay one choice.
-struct Names {
-    /// `main`.
-    local: String,
-    /// `origin/main`.
-    remote_side: String,
-    /// `origin`, or `the remote` when the description names none.
-    remote: String,
-}
-
-impl Names {
-    fn of(entry: &JournalEntry) -> Self {
-        let text = entry.description.as_str();
-        let (local, remote_side) = match entry.kind {
-            OperationKind::Push => {
-                let after_verb = text.split_once(' ').map_or(text, |(_, rest)| rest);
-                let (local, rest) = after_verb.split_once(" → ").unwrap_or((after_verb, ""));
-                let remote_side = rest.split(" (").next().unwrap_or(rest);
-                (local.to_owned(), remote_side.to_owned())
-            }
-            OperationKind::Pull => {
-                let remote_side = text.strip_prefix("pull ").unwrap_or(text);
-                let local = entry.touches.refs.first().map_or("the branch", |name| {
-                    name.strip_prefix("refs/heads/").unwrap_or(name)
-                });
-                (local.to_owned(), remote_side.to_owned())
-            }
-            _ => (
-                String::new(),
-                text.strip_prefix("fetch ").unwrap_or(text).to_owned(),
-            ),
-        };
-        let remote = match remote_side.split_once('/') {
-            Some((remote, _)) => remote.to_owned(),
-            None if remote_side.is_empty() || remote_side == "all remotes" => {
-                "the remote".to_owned()
-            }
-            None => remote_side.clone(),
-        };
-        Self {
-            local,
-            remote_side,
-            remote,
         }
     }
 }

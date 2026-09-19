@@ -56,12 +56,64 @@ pub struct PushParams {
     pub lease: Option<Lease>,
 }
 
-/// `--force-with-lease=<remote_branch>:<expected> --force-if-includes`: the
-/// remote branch is overwritten only if it is still at `expected`.
+/// `--force-with-lease=<remote_branch>:<expected>`: the remote branch is
+/// overwritten only if it is still at `expected`.
+///
+/// Two checks guard it. Before git runs, `check` refuses
+/// [`Refusal::LeaseStale`] unless `expected` is the local tracking ref's tip
+/// — the number the force-push box showed — so work fetched since the box
+/// was read, but never looked at, is not overwritten. Then git's own
+/// compare-and-swap refuses if the remote moved since the last fetch.
+/// (`--force-if-includes` is not used: git makes it a no-op alongside an
+/// explicit `<refname>:<expect>`, m4/04 review M1.)
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Lease {
     /// Where the remote branch must still be.
     pub expected: Oid,
+}
+
+/// The names a remote operation's failure line uses, taken from its params
+/// — never read back out of its description, which a refname containing
+/// `→` or ` (` would garble (m4/04 review, M4).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RemoteNames {
+    /// The local branch, short: `main`. Empty for a fetch.
+    pub local: String,
+    /// The branch on the remote as the user knows it: `origin/main`. For a
+    /// fetch, the remote's name or `all remotes`.
+    pub remote_side: String,
+    /// The remote: `origin`, or `the remote` for a fetch of all of them.
+    pub remote: String,
+}
+
+pub(super) fn names_of_fetch(params: &FetchParams) -> RemoteNames {
+    RemoteNames {
+        local: String::new(),
+        remote_side: params
+            .remote
+            .clone()
+            .unwrap_or_else(|| "all remotes".to_owned()),
+        remote: params
+            .remote
+            .clone()
+            .unwrap_or_else(|| "the remote".to_owned()),
+    }
+}
+
+pub(super) fn names_of_pull(params: &PullParams) -> RemoteNames {
+    RemoteNames {
+        local: short_branch(&params.branch).to_owned(),
+        remote_side: short_tracking(&params.upstream.tracking_ref).to_owned(),
+        remote: params.upstream.remote.clone(),
+    }
+}
+
+pub(super) fn names_of_push(params: &PushParams) -> RemoteNames {
+    RemoteNames {
+        local: short_branch(&params.branch).to_owned(),
+        remote_side: format!("{}/{}", params.remote, short_branch(&params.remote_branch)),
+        remote: params.remote.clone(),
+    }
 }
 
 /// `main` from `refs/heads/main`; anything else unchanged.
@@ -97,29 +149,6 @@ pub(super) fn describe_push(params: &PushParams) -> String {
         (false, true) => format!("push {target} (set upstream)"),
         (true, false) => format!("force-push {target} (with lease)"),
         (true, true) => format!("force-push {target} (with lease, set upstream)"),
-    }
-}
-
-/// The remote refusals' sentences, in the design note's words.
-/// `Refusal::explain` hands only these here; any other refusal goes back to
-/// it, so the answer is the same whichever of the two is called.
-pub(super) fn explain(refusal: &Refusal) -> String {
-    match refusal {
-        Refusal::DetachedHead => "HEAD is detached — check out a branch first".to_owned(),
-        Refusal::NoRemote => {
-            "no remote — add one in the shell: git remote add origin <url>".to_owned()
-        }
-        Refusal::NoSuchRemote { name } => format!("no remote named '{name}'"),
-        Refusal::NoUpstream { branch } => {
-            format!("{branch} has no upstream — P pushes and sets one")
-        }
-        Refusal::UpstreamChanged => {
-            "the branch's upstream changed since it was read — press p again".to_owned()
-        }
-        Refusal::BranchChanged => {
-            "HEAD moved to another branch since it was read — look again".to_owned()
-        }
-        other => other.explain(),
     }
 }
 
@@ -175,10 +204,32 @@ pub(super) fn check_push(params: &PushParams, facts: &RepoFacts) -> Result<(), R
     if params.branch != branch {
         return Err(Refusal::BranchChanged);
     }
+    if let Some(lease) = params.lease {
+        check_lease(lease, params, facts)?;
+    }
     Ok(())
 }
 
-fn remote_invocation(args: Vec<GitArg>) -> Invocation {
+/// The lease's `expected` must be the local tracking ref's tip for the
+/// branch being overwritten. The tip is known only through `HEAD`'s
+/// upstream; a push elsewhere, or one never fetched, has nothing to compare
+/// against, and is refused the same way rather than trusted.
+fn check_lease(lease: Lease, params: &PushParams, facts: &RepoFacts) -> Result<(), Refusal> {
+    let fetched = facts
+        .upstream
+        .as_ref()
+        .filter(|up| up.remote == params.remote && up.remote_branch == params.remote_branch)
+        .and_then(|up| up.tracking_tip);
+    if fetched == Some(lease.expected) {
+        Ok(())
+    } else {
+        Err(Refusal::LeaseStale {
+            remote_side: format!("{}/{}", params.remote, short_branch(&params.remote_branch)),
+        })
+    }
+}
+
+fn remote_step(args: Vec<GitArg>) -> Invocation {
     Invocation {
         args,
         stdin: None,
@@ -195,14 +246,14 @@ pub(super) fn plan_fetch(params: &FetchParams) -> Vec<Invocation> {
         None => args.push(GitArg::Flag("--all")),
         Some(name) => args.push(GitArg::Word(name.clone())),
     }
-    vec![remote_invocation(args)]
+    vec![remote_step(args)]
 }
 
 /// Fetch the upstream's remote, then fast-forward onto the tracking ref. The
 /// merge is local (`remote: false`): it is the step that can refuse over a
 /// dirty file or diverged branches, and it runs only if the fetch succeeded.
 pub(super) fn plan_pull(params: &PullParams) -> Vec<Invocation> {
-    let fetch = remote_invocation(vec![
+    let fetch = remote_step(vec![
         GitArg::Flag("fetch"),
         GitArg::Flag("--progress"),
         GitArg::Word(params.upstream.remote.clone()),
@@ -226,13 +277,12 @@ pub(super) fn plan_push(params: &PushParams) -> Vec<Invocation> {
             "--force-with-lease={}:{}",
             params.remote_branch, lease.expected
         )));
-        args.push(GitArg::Flag("--force-if-includes"));
     }
     args.push(GitArg::Word(params.remote.clone()));
     args.push(GitArg::Ref(
         format!("{}:{}", params.branch, params.remote_branch).into_bytes(),
     ));
-    vec![remote_invocation(args)]
+    vec![remote_step(args)]
 }
 
 /// The tracking ref a push moves, when the facts know it: the head branch's

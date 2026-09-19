@@ -178,7 +178,7 @@ fn push_box_text_table() {
             "rewrites history for everyone who has 9f8e7d6",
         ],
         &format!(
-            "git push --progress --force-with-lease=refs/heads/main:{THEIRS} --force-if-includes origin refs/heads/main:refs/heads/main"
+            "git push --progress --force-with-lease=refs/heads/main:{THEIRS} origin refs/heads/main:refs/heads/main"
         ),
     );
     assert_eq!(view.confirm_label, "Force push");

@@ -24,7 +24,7 @@ use graft_git::version::GitVersion;
 
 use crate::facts::{self, FactsError};
 use crate::journal::{Journal, JournalError};
-use crate::operation::{Invocation, Operation, Refusal};
+use crate::operation::{Invocation, Operation, Refusal, RemoteNames};
 use crate::snapshot::{self, SnapshotError, SnapshotScope};
 use crate::undo::RepoStateNow;
 
@@ -100,7 +100,7 @@ pub enum ApplyError {
     /// A fetch, pull or push failed. The entry is journaled `Aborted` with
     /// the failure's short text; `failure` is what the whole of git's stderr
     /// said (a stop is `Cancelled`).
-    #[error("{}", remote::explain(.entry, .failure, .stderr_tail))]
+    #[error("{}", remote::explain(.entry, .failure, .stderr_tail, .names))]
     Remote {
         /// The entry, with whatever after-state could be read.
         entry: Box<JournalEntry>,
@@ -108,6 +108,9 @@ pub enum ApplyError {
         failure: RemoteFailure,
         /// git's last few stderr segments, for a detail view.
         stderr_tail: Vec<String>,
+        /// The branch and remote the failure line names, from the
+        /// operation's params (`Operation::remote_names`).
+        names: Box<RemoteNames>,
     },
 }
 
@@ -183,7 +186,8 @@ impl ApplyError {
                 entry,
                 failure,
                 stderr_tail,
-            } => remote::explain(entry, failure, stderr_tail),
+                names,
+            } => remote::explain(entry, failure, stderr_tail, names),
             other => other.to_string(),
         }
     }
@@ -280,7 +284,8 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     if ctx.stop.should_stop() {
         return Err(ApplyError::Stopped);
     }
-    let facts = facts::read_facts(ctx.repo, ctx.git, ctx.stop).map_err(ApplyError::Facts)?;
+    let facts = facts::read_facts(ctx.repo, ctx.git, ctx.stop, op.is_remote())
+        .map_err(ApplyError::Facts)?;
     op.check(&facts).map_err(ApplyError::Refused)?;
     let touches = op.touches(&facts);
     let plan = op.plan(&facts);
@@ -296,7 +301,7 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
         None,
     )?;
 
-    let PlanRun { failure, cleanup } = run_plan(ctx, &plan, op.is_remote());
+    let PlanRun { failure, cleanup } = run_plan(ctx, &plan, op.remote_names().as_ref());
     let status = match &failure {
         None => EntryStatus::Committed,
         Some(failed) => EntryStatus::Aborted {
@@ -359,27 +364,40 @@ struct PlanRun {
 /// The invocation that failed.
 struct PlanFailure {
     error: RunError,
-    /// For a remote operation: what the whole of git's stderr said, and its
-    /// last few segments.
-    remote: Option<(RemoteFailure, Vec<String>)>,
+    /// For a remote operation: what went wrong in its terms.
+    remote: Option<RemoteFailed>,
+}
+
+/// A remote operation's failure: what the whole of git's stderr said, its
+/// last few segments, and the operation's names for the failure line.
+struct RemoteFailed {
+    failure: RemoteFailure,
+    stderr_tail: Vec<String>,
+    names: Box<RemoteNames>,
 }
 
 impl PlanFailure {
     /// The entry's `Aborted` reason.
     fn reason(&self) -> String {
         match &self.remote {
-            Some((failure, _)) => remote::short(failure),
+            Some(failed) => remote::short(&failed.failure),
             None => reason_for(&self.error),
         }
     }
 
     /// The error `apply` returns, the entry journaled.
     fn into_error(self, entry: JournalEntry) -> ApplyError {
-        if let Some((failure, stderr_tail)) = self.remote {
+        if let Some(RemoteFailed {
+            failure,
+            stderr_tail,
+            names,
+        }) = self.remote
+        {
             return ApplyError::Remote {
                 entry: Box::new(entry),
                 failure,
                 stderr_tail,
+                names,
             };
         }
         let recoverable = entry.worktree_before.is_some();
@@ -405,24 +423,25 @@ fn with_cleanup(reason: String, cleanup: &[AfterState]) -> String {
 /// The order is the operation's own: group 02 puts the step that can fail
 /// first, so a failure leaves the least behind it. A remote operation's
 /// invocations go through `remote::run`, which keeps their stderr; a local
-/// operation's run exactly as before.
-fn run_plan(ctx: &Context<'_>, plan: &[Invocation], is_remote: bool) -> PlanRun {
+/// operation's run exactly as before. `names` is `Some` exactly for a remote
+/// operation (`Operation::remote_names`).
+fn run_plan(ctx: &Context<'_>, plan: &[Invocation], names: Option<&RemoteNames>) -> PlanRun {
     let mut cleanup = Vec::new();
     for invocation in plan {
         let mut git = GitInvocation::new(ctx.repo).args(invocation.args.iter().cloned());
         if let Some(bytes) = &invocation.stdin {
             git = git.stdin(bytes.clone());
         }
-        let failure = if is_remote {
+        let failure = if let Some(names) = names {
             remote::run(ctx, git, invocation, &mut cleanup)
                 .err()
-                .map(|failed| {
-                    let failure = remote::failure_of(&failed.error, &failed.segments);
-                    let tail = remote::tail(&failed.segments);
-                    PlanFailure {
-                        error: failed.error,
-                        remote: Some((failure, tail)),
-                    }
+                .map(|failed| PlanFailure {
+                    remote: Some(RemoteFailed {
+                        failure: remote::failure_of(&failed.error, &failed.segments),
+                        stderr_tail: remote::tail(&failed.segments),
+                        names: Box::new(names.clone()),
+                    }),
+                    error: failed.error,
                 })
         } else {
             git.run(ctx.stop).err().map(|error| PlanFailure {

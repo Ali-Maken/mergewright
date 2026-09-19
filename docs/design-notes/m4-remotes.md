@@ -65,7 +65,7 @@ pub enum Operation { …, Fetch(FetchParams), Pull(PullParams), Push(PushParams)
 pub struct FetchParams { pub remote: Option<String> /* None = --all */, pub prune: bool }
 pub struct PullParams { pub branch: String /* full */, pub upstream: TrackedUpstream }
 pub struct PushParams { pub branch: String, pub remote: String, pub remote_branch: String, pub set_upstream: bool, pub lease: Option<Lease> }
-pub struct Lease { pub expected: Oid }        // --force-with-lease=<remote_branch>:<expected> --force-if-includes
+pub struct Lease { pub expected: Oid }        // --force-with-lease=<remote_branch>:<expected> (2026-09-20: --force-if-includes dropped, a no-op beside an explicit expect; Graft checks the fetched tip itself — review m4-04)
 impl Operation { pub fn is_remote(&self) -> bool; pub fn preview(&self) -> Option<Vec<String>>; }  // command lines needing no facts (remote ops only): the push box
 pub struct Invocation { …, pub remote: bool }  pub struct RepoFacts { …, pub remotes: Vec<Remote>, pub upstream: Option<TrackedUpstream> }
 pub enum Refusal { …, DetachedHead, NoRemote, NoSuchRemote { name: String }, NoUpstream { branch: String } }
@@ -140,7 +140,7 @@ pub struct RemoteFacts { pub remotes: Vec<Remote>, pub head_branch: Option<Strin
 │                        [ Cancel ]   [ Push ]        │
 ╰ ←→ choose  ⏎ act  esc cancel ─────────────────────╯
 Lease variant: title `Force-push main → origin/main?`; line 1 `origin/main 9f8e7d6 → a1b2c3d · refused if origin moved since your fetch (lease)`;
-line 2 `rewrites history for everyone who has 9f8e7d6`; command with --force-with-lease=…:9f8e7d6 --force-if-includes; button `[ Force push ]`.
+line 2 `rewrites history for everyone who has 9f8e7d6`; command with --force-with-lease=…:9f8e7d6; button `[ Force push ]`.
 ```
 **Credential prompt** — new `graft_ui::credential_prompt`, centred, modal, one field. Eye lands
 on the title, then the field. Masked when the prompt names a password/passphrase; else plain.

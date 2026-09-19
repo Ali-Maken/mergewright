@@ -125,7 +125,8 @@ pub enum NotInvertible {
     Pending,
     /// `Aborted` with no backup: nothing changed, nothing to put back.
     NoBackup,
-    /// A kind `u` never reverses: `Fetch` and `Push` (`journal::undoable_kind`).
+    /// An entry `u` never reverses: a `Fetch` or `Push`, or a `Pull` that
+    /// moved nothing (`journal::undoable`).
     NotUndoable(OperationKind),
     /// No in-force operation to undo.
     NothingToUndo,
@@ -151,8 +152,9 @@ pub fn inverse(
 ) -> Result<InversePlan, NotInvertible> {
     // A fetch or push is journaled but never reversed from here: its only
     // local trace is a tracking ref, and moving that back would lie about the
-    // remote (M4 design note, hard choice 1).
-    if !crate::journal::undoable_kind(entry.kind) {
+    // remote (M4 design note, hard choice 1). A pull that moved nothing has
+    // nothing to reverse, and is passed over the same way.
+    if !crate::journal::undoable(entry) {
         return Err(NotInvertible::NotUndoable(entry.kind));
     }
     match &entry.status {

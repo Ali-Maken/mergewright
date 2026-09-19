@@ -218,6 +218,25 @@ pub fn undoable_kind(kind: OperationKind) -> bool {
     !matches!(kind, OperationKind::Fetch | OperationKind::Push)
 }
 
+/// Whether `u` and `U` can see this entry: its kind is undoable, and it is
+/// not a pull that found nothing to do. `merge --ff-only` on an up-to-date
+/// branch exits 0, so such a pull is `Committed` with every after-field equal
+/// to its before-field; `u` on it would change nothing and cost the user a
+/// second keystroke. It stays in the journal — its fetch did run, and may
+/// have moved tracking refs the browser should show — but is transparent to
+/// undo, like a fetch (m4/04 review, M3). A pull that did move something is
+/// undoable as before.
+#[must_use]
+pub fn undoable(entry: &JournalEntry) -> bool {
+    undoable_kind(entry.kind) && !is_no_op_pull(entry)
+}
+
+fn is_no_op_pull(entry: &JournalEntry) -> bool {
+    entry.kind == OperationKind::Pull
+        && entry.status == EntryStatus::Committed
+        && !changed_anything(entry)
+}
+
 /// Whether the entry with `id` is in force: it took effect and no later
 /// in-force entry has `reverses == Some(id)`.
 #[must_use]
@@ -231,7 +250,8 @@ pub fn in_force(entries: &[JournalEntry], id: &EntryId) -> bool {
 
 /// What `u` undoes next: the newest in-force operation (never an `Undo` or
 /// `Redo` entry — those are stepped over through `next_redo` and by undoing
-/// what they put back — and never a fetch or push, see [`undoable_kind`]).
+/// what they put back — and never a fetch, a push or a pull that moved
+/// nothing, see [`undoable`]).
 #[must_use]
 pub fn next_undo(entries: &[JournalEntry]) -> Option<&JournalEntry> {
     let flags = in_force_flags(entries);
@@ -239,19 +259,20 @@ pub fn next_undo(entries: &[JournalEntry]) -> Option<&JournalEntry> {
         .iter()
         .zip(flags)
         .rev()
-        .find(|(entry, flag)| *flag && is_operation(entry) && undoable_kind(entry.kind))
+        .find(|(entry, flag)| *flag && is_operation(entry) && undoable(entry))
         .map(|(entry, _)| entry)
 }
 
 /// What `U` redoes next: the newest in-force `Undo` entry, unless an in-force
 /// operation is newer than it — a new operation after an undo moves the
-/// cursor past that branch of history (§6.5). A fetch or push after the
-/// undo does not: neither is undoable, so neither ends the redo branch.
+/// cursor past that branch of history (§6.5). A fetch, a push or a pull that
+/// moved nothing after the undo does not: none is undoable, so none ends the
+/// redo branch.
 #[must_use]
 pub fn next_redo(entries: &[JournalEntry]) -> Option<&JournalEntry> {
     let flags = in_force_flags(entries);
     for (entry, flag) in entries.iter().zip(flags).rev() {
-        if !flag || !undoable_kind(entry.kind) {
+        if !flag || !undoable(entry) {
             continue;
         }
         if is_operation(entry) {
