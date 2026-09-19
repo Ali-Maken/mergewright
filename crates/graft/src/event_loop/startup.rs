@@ -418,6 +418,30 @@ mod tests {
         );
     }
 
+    /// The same mistake the radar setting made, one section along: a config
+    /// key nothing threads into `AppState` is a setting that does nothing.
+    #[test]
+    fn keys_suspend_on_ctrl_z_reaches_app_state() {
+        let mut state = AppState::default();
+        seed_config(&mut state, &crate::config::Config::default());
+        assert!(
+            !state.suspend_on_ctrl_z,
+            "ADR-0002: Ctrl+Z is undo unless the user says otherwise"
+        );
+
+        let mut state = AppState::default();
+        seed_config(
+            &mut state,
+            &crate::config::Config {
+                keys: crate::config::Keys {
+                    suspend_on_ctrl_z: true,
+                },
+                ..crate::config::Config::default()
+            },
+        );
+        assert!(state.suspend_on_ctrl_z);
+    }
+
     #[test]
     fn finish_with_failing_writer_still_returns_the_loop_error() {
         let loop_error = io::Error::other("loop failed");
