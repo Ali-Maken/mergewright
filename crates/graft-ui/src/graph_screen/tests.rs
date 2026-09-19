@@ -779,23 +779,38 @@ fn the_footer_lists_every_graph_key_dropping_whole_hints_when_narrow() {
     }
 }
 
-/// Design note "New UI": `f fetch  p pull  P push` at 160 and at 120
-/// columns — the widths the note says the drop-from-the-right rule keeps
-/// them at. Grouped with `u undo` in [`LEADING_HINTS`] rather than at the
-/// mockup's position after `S stash`: placed there instead, only `P push`
-/// survives 160 and none survive 120 — see the comment on [`HINTS`].
+/// Design note "New UI" / mockup: `f fetch  p pull  P push` sit after
+/// `H hide stash` and before `J journal`, in the ordinary drop-from-the-right
+/// group — not grouped with `u undo` ahead of search/movement (a first pass
+/// that did so regressed the 80-column footer, pushing `/ search` and
+/// `j/k move` out; fixed by this placement, m4-remotes ticket 03). At this
+/// spot all three fit from 156 columns; at 200 the rest of the trailing
+/// hints (through `J journal`) fit alongside them too.
 #[test]
 fn remote_hints_at_wide_and_medium() {
-    for columns in [120, 160] {
-        let footer = footer_at(columns);
-        assert!(footer.contains("f fetch"), "{columns}: {footer}");
-        assert!(footer.contains("p pull"), "{columns}: {footer}");
-        assert!(footer.contains("P push"), "{columns}: {footer}");
-        let undo = footer.find("u undo").expect("u undo present");
-        let fetch = footer.find("f fetch").expect("f fetch present");
-        let search = footer.find("/ search").expect("/ search present");
-        assert!(undo < fetch && fetch < search, "{columns}: {footer}");
-    }
+    let medium = footer_at(156);
+    assert!(medium.contains("f fetch"), "{medium}");
+    assert!(medium.contains("p pull"), "{medium}");
+    assert!(medium.contains("P push"), "{medium}");
+    let hide_stash = medium.find("H hide stash").expect("H hide stash present");
+    let fetch = medium.find("f fetch").expect("f fetch present");
+    assert!(hide_stash < fetch, "{medium}");
+
+    let wide = footer_at(200);
+    let push = wide.find("P push").expect("P push present");
+    let journal = wide.find("J journal").expect("J journal present");
+    assert!(push < journal, "{wide}");
+}
+
+/// The regression this fix corrects: at 80 columns the remote hints must
+/// never displace `/ search` or `j/k move` — those are daily-width hints,
+/// and the remote keys are meant to drop first (m4-remotes ticket 03 fix).
+#[test]
+fn remote_hints_drop_before_search_and_movement_at_80() {
+    let footer = footer_at(80);
+    assert!(footer.contains("/ search"), "{footer}");
+    assert!(footer.contains("j/k move"), "{footer}");
+    assert!(!footer.contains("f fetch"), "{footer}");
 }
 
 /// m3-working-tree-undo-and-stash/04: the write keys are hinted on the
@@ -831,7 +846,7 @@ fn the_write_hints_appear_only_on_the_changes_pane() {
 fn the_expand_hint_keeps_its_place_after_the_renderer() {
     let line = key_hints(&["+ expand lanes"], 200);
     assert!(
-        line.starts_with(" q quit  F2 status  F3 renderer  u undo  + expand lanes  f fetch"),
+        line.starts_with(" q quit  F2 status  F3 renderer  u undo  + expand lanes  / search"),
         "{line}"
     );
 }
