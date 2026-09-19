@@ -125,7 +125,7 @@ pub enum NotInvertible {
     Pending,
     /// `Aborted` with no backup: nothing changed, nothing to put back.
     NoBackup,
-    /// A kind `u` never reverses: `Fetch` and `Push` (journal::undoable_kind).
+    /// A kind `u` never reverses: `Fetch` and `Push` (`journal::undoable_kind`).
     NotUndoable(OperationKind),
     /// No in-force operation to undo.
     NothingToUndo,

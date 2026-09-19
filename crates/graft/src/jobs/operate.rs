@@ -75,7 +75,11 @@ fn refresh_after_failure(error: &ApplyError) -> Option<Refresh> {
         // left to a wildcard so a new variant has to be thought about here).
         // Neither can say whether refs moved, so re-read everything rather
         // than keep a screen that may be describing a repository that has.
-        ApplyError::Journal { .. } | ApplyError::AfterState { .. } => Some(Refresh::Everything),
+        // A failed fetch/pull/push may still have moved remote-tracking refs
+        // (a pull fetches before its fast-forward fails): the graph too.
+        ApplyError::Journal { .. } | ApplyError::AfterState { .. } | ApplyError::Remote { .. } => {
+            Some(Refresh::Everything)
+        }
         // Cancelled between steps, which can be after some of them ran.
         ApplyError::Stopped => Some(Refresh::WorkingTree),
     }
