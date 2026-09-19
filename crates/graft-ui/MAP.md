@@ -10,7 +10,7 @@ One line per public item. Update when a public item changes.
 - `commit_editor` (mod) — the commit/amend editor screen: `Field`, `CommitEditorView`, `CommitEditorScreen`, `fits`, `SUBJECT_LIMIT`/`BODY_LIMIT` (m3-working-tree-undo-and-stash/05).
 - `detail` (mod) — the detail pane's view-model types, no drawing (m2-details-and-diffs/06).
 - `detail_pane` (mod) — the detail pane's layout and widget: breakpoints, regions, plain diff body (m2-details-and-diffs/07).
-- `graph_screen` (mod) — the graph screen Graft opens on: header, rows, key hints (every graph key, F3 included; narrow widths drop whole hints from the right, m1-the-graph/33; `y sha` added in 45).
+- `graph_screen` (mod) — the graph screen Graft opens on: header, rows, key hints (every graph key, F3 included; narrow widths drop whole hints from the right, m1-the-graph/33; `y sha` added in 45; `S stash` for the overlay and `H hide stash` for the graph toggle, m3/06 review M8).
 - `graph_screen::badges` (mod) — ref badges: kinds, tracking state, plain/Nerd Font text.
 - `graph_screen::columns` (mod) — pure formatting for the author initials, relative date and short SHA.
 - `journal_screen` (mod) — the undo journal browser (`J`): `RowMark`/`JournalRowView`/`JournalStatus`/`JournalView`/`JournalScreen` (m3-working-tree-undo-and-stash/06).

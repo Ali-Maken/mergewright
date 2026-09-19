@@ -69,7 +69,9 @@ name chosen in M8. Don't publish, register or tag anything public under it.
 | Debugging | `debugger` | Fable |
 | Research, docs, summarising, scouting | unnamed agent — **pass `model:` explicitly** | Sonnet or Haiku |
 
-**An agent with no definition file inherits the conductor's model (Opus).** Never dispatch `general-purpose` or `Explore` without naming the model; an unpinned docs or research job costs Opus for Sonnet work.
+**An agent with no definition file inherits the conductor's model (Opus).**
+
+**Docs follow the context, not the model table.** Docs a ticket produces — MAP.md, ARCHITECTURE.md, ticket NOTES — are written by that ticket's own builder, whatever its model: the diff is already in its context and a handoff describing what changed costs more than the lines themselves. **Standalone** doc work with no warm context to ride — gap splits, TESTING.md, AUTHORSHIP.md, research write-ups, log transcription — goes to Sonnet, the conductor's own included. Never dispatch `general-purpose` or `Explore` without naming the model; an unpinned docs or research job costs Opus for Sonnet work.
 
 - **Design pass (M2 onward):** `planner-fable` reads only the named PROMPT.md/DESIGN.md sections and crate MAP.md files — never source. **Brownfield group (touches existing code) → send a scout first** (ADR-0035: `Explore`, haiku/sonnet, ≤1 page per module: what exists, what state it holds, what it draws, which keys it claims). Greenfield keeps the old rule. Writes:
   1. `docs/design-notes/<milestone>.md`, two pages max: the milestone's promise (one line); interfaces/data shapes introduced; 2–3 hard-to-reverse choices with a recommendation each; where it differs from DESIGN.md and why; genuinely risky tickets; new UI DESIGN.md doesn't already specify (layout, per-breakpoint content, hierarchy, interaction), **as per-breakpoint mockups the user reads at the checkpoint where the design pass lands** (ADR-0035; no new stop — that checkpoint already exists).

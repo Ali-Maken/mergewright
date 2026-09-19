@@ -49,6 +49,8 @@ One line per public item. Update when a public item changes.
 - `EntryId` (struct) — a journal entry's id, a ULID (26 Crockford base32 chars, time then random), `Ord` by string = by time; also the backup ref's last segment (ADR-0010); `new(unix_ms, random)` / `parse` / `as_str` (fn); serde as its text (m3/02).
 - `OperationKind` (enum) — `Stage`, `Unstage`, `Discard`, `Commit`, `Amend`, `StashPush`, `StashApply`, `StashPop`, `StashDrop`, `Undo`, `Redo` (m3/02).
 - `EntryStatus` (enum) — `Pending`, `Committed`, `Aborted { reason }` (m3/02).
+- `INTERRUPTED` (const `&str`) — `"interrupted"`: the reason recovery records on an entry a dead process left open. One definition, because `ops` writes it and the journal browser matches on it (m3/06 review, Major 2).
+- `JournalEntry::is_interrupted` (fn) — `(&self) -> bool`: `Pending` (what the file holds) or `Aborted` with `INTERRUPTED` (what a reader is handed, recovery having closed it first). Keying on `Pending` alone looks right and never fires.
 - `Touches` (struct) — what an operation changes: `refs` (full names, or `HEAD` when detached), `index`, `worktree`; the snapshot scope and the generic inverse's steps (m3/02).
 - `HeadRef` (enum) — `Branch(full name)`, `Detached(Oid)`, `Unborn(full name)` (m3/02).
 - `JournalEntry` (struct) — one journaled operation, state-based (ADR-0031): `id`, `at_unix_ms`, `kind`, `description`, `status`, `touches`, `head_before`/`head_after`, `refs_before`/`refs_after` (`BTreeMap<String, Option<Oid>>`), `index_before`/`index_after`, `worktree_before`/`worktree_after` (tree ids), `backup_ref`, `pins`, `commands`, `reverses`. Serde derives; the JSONL lines are `graft-ops::journal`'s (m3/02).

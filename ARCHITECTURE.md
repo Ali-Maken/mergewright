@@ -81,6 +81,15 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   `ui::overview_strip` for the widgets, `app::map` for the per-branch bucket
   walk, `app::view::map` / `app::view::strip` for their view models,
   `app::update::map` for the Map view's keys (m2-details-and-diffs/18–20).
+- **Changing `u`/`U`, the journal browser or the stash overlay** →
+  `app::update::undo` for the keys and the drift box, `app::update::journal` /
+  `app::update::stash` for the overlays' state and keys, `app::jobs::undo` for
+  the journal read and the call into `ops::undo`, `app::jobs::stash` for the
+  stash list, `app::view::journal` / `app::view::stash` for their view models,
+  `ui::journal_screen` / `ui::stash_screen` for the widgets
+  (m3-working-tree-undo-and-stash/06). `app::jobs::undo` is the second module
+  in `app` that opens the journal — through `ops`, never by hand, like
+  `app::jobs::operate`.
 - **Changing what the Mistake Radar detects, or one of its background jobs**
   → `ops::mistake_radar` for detection itself (`rules`, `probes`, `explain`);
   `app::jobs::radar` for the jobs that run off the UI thread (`RadarContext`,

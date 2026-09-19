@@ -76,26 +76,27 @@ pub struct JournalRead {
 
 /// What a failed restore leaves stale on screen.
 ///
-/// `None` only where the failure's own contract says nothing was written.
-/// Everything else is `Everything`: a restore puts refs back first, so a
-/// failure after the first step can have moved the graph as well as the
-/// files, and a narrower guess would leave a moved ref on screen.
+/// `None` only before `ops` began: planning, or a rail that stopped it. Once
+/// [`graft_ops::restore::execute`] has been entered the answer is always
+/// `Everything`, because `execute` writes the entry's `Pending` line first
+/// and then runs its steps in order, breaking at the first failure and
+/// journalling `Aborted`. So even a failure that touched no file has changed
+/// the journal — and with two `UpdateRef` steps, a `RefMoved` on the second
+/// leaves the first ref already moved and the graph showing a tip that is no
+/// longer there.
+///
+/// This used to answer `None` for `RefMoved`, `Facts` and `Snapshot` on the
+/// grounds that "the compare-and-swap refused before any file was touched".
+/// True of the first step only, and never true of the journal
+/// (m3/06 review, Major 3). The honest narrower answer needs `ops` to say how
+/// many steps ran; until it does, a re-read of everything is the answer that
+/// cannot be wrong, and it is what `Ctrl+R` does anyway.
 fn refresh_after_failure(error: &UndoError) -> Option<Refresh> {
     match error {
-        // Planning failed, or the rails stopped it: nothing ran.
+        // Planning failed, or the rails stopped it: `execute` was never
+        // entered, so not even a journal line exists.
         UndoError::Nothing(_) | UndoError::Drift(_) | UndoError::Facts(_) => None,
-        UndoError::Restore(restore) => match restore {
-            // The compare-and-swap refused before any file was touched, and
-            // the plan stopped there.
-            RestoreError::RefMoved { .. } | RestoreError::Facts(_) | RestoreError::Snapshot(_) => {
-                None
-            }
-            RestoreError::StashGone { .. }
-            | RestoreError::Run(_)
-            | RestoreError::Journal { .. }
-            | RestoreError::AfterState { .. }
-            | RestoreError::Stopped => Some(Refresh::Everything),
-        },
+        UndoError::Restore(_) => Some(Refresh::Everything),
     }
 }
 
@@ -254,4 +255,38 @@ pub(super) fn read_journal(repos: &RepoStore, cancel: &Cancel) -> Result<Arc<Jou
         },
         |error| Err(error.to_string()),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A restore that stopped at a compare-and-swap still wrote a `Pending`
+    /// line and journalled its `Aborted` outcome, and with more than one ref
+    /// step it may have moved a ref before refusing. Answering "nothing to
+    /// re-read" left the browser and possibly the graph stale
+    /// (m3/06 review, Major 3).
+    #[test]
+    fn a_restore_that_refused_still_asks_for_a_refresh() {
+        let refused = UndoError::Restore(RestoreError::RefMoved {
+            name: "refs/heads/main".to_owned(),
+        });
+        assert_eq!(
+            refresh_after_failure(&refused),
+            Some(Refresh::Everything),
+            "the journal changed even where no file did"
+        );
+    }
+
+    /// The other half of the same rule: `ops` never began, so there is
+    /// nothing new on disk to read.
+    #[test]
+    fn a_failure_before_ops_began_asks_for_nothing() {
+        assert_eq!(
+            refresh_after_failure(&UndoError::Nothing(
+                graft_ops::undo::NotInvertible::NothingToUndo
+            )),
+            None
+        );
+    }
 }

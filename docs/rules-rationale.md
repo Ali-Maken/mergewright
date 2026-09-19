@@ -114,3 +114,19 @@ that is not done is a trust failure: it converts every other report in the proje
 something that has to be re-checked. Group 05 named a test beside each tick unprompted and
 its ticks were honest; group 04 did not and six were false. That is the whole argument for
 making it a gate rather than a habit.
+
+## Why Opus builders still write their own docs
+
+M3 measurement (`fbbbb4e`..HEAD): 28,166 lines of Rust against 3,719 lines of
+builder-written markdown — 11% of the diff, but only ~10 tool calls, taken at
+the tail of a context that already holds the diff.
+
+Splitting those out looks like a saving because output tokens drop. It isn't,
+because ADR-0029's metric is turns x prefix. To hand MAP.md to Sonnet the Opus
+builder must first enumerate every public item it changed — which is the MAP.md
+content — and Sonnet then pays a fresh prefix to read CLAUDE.md, the ticket, the
+diff and the existing map. Two prefixes to save the cheap half of one.
+
+The inverse holds for standalone doc work: there is no warm context to ride, so
+the cheaper model is simply cheaper. That is why the KNOWN_GAPS split went to
+Sonnet correctly and the naming research went to Opus by mistake.
