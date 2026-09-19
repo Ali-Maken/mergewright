@@ -459,3 +459,5 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M4/03 | Remote footer hints appear only at ≥156 cols; at 80/120 the user never sees f/p/P in the footer | unverified (visual, user's eye) | M4 |
 | M4/02 | Askpass `serve` waits on its handler with a 20 ms poll (pre-existing from group 02; review missed it). Rule 2 bans poll loops without the user's OK — replace with a channel/condvar, or the user OKs it | broken (rule) | M4 |
 | M4/fix | Thread-teardown fix unverified on Linux; HungRemote failed-wake path untested | unverified | M8 |
+| M4/05 | Push box truncates the long lease command (graft-ui wrap) | broken | M4 |
+| M4/05 | Real ssh/https remotes not exercised by key paths | unverified | M4 (acceptance) |

@@ -1,6 +1,6 @@
 # credential-prompt-wiring: the askpass mode of the binary, the in-app prompt state and keys, secrets across the job pool, the wrong-password round trip
 
-Status: ready
+Status: in progress
 Blocked by: 02 (done), 03, 05
 Build with: Opus — taking the planner's recommendation: a secret crossing three threads, and a field that must join `text_field_open()` (M3 group 06's Critical).
 Crates: graft
