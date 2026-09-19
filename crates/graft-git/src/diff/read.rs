@@ -16,7 +16,7 @@ use super::{
     FileDiff, FileEntry, FileList, FileStatus, ParseError, Truncated, parse_file_list,
     parse_unified, parse_worktree_file_list,
 };
-use crate::repo::RepoHandle;
+use crate::repo::{HeadState, RepoHandle};
 use crate::run::{GitArg, GitInvocation, RunError, Stop};
 
 mod raw;
@@ -25,6 +25,11 @@ mod raw;
 /// the runner kills the child and hands back a capped, still-successful
 /// [`crate::run::GitOutput`]; here that becomes [`DiffError::TooLarge`].
 const OUTPUT_CAP: usize = 64 * 1024 * 1024;
+
+/// Git's fixed empty-tree object id (sha1): what [`DiffSpec::Staged`] diffs
+/// the index against on an unborn branch, so a file staged before the first
+/// commit still shows.
+const EMPTY_TREE: &[u8] = b"4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
 /// Which two sides of history to diff.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -46,6 +51,13 @@ pub enum DiffSpec {
     },
     /// The working tree (index and unstaged edits) against `HEAD`.
     WorkingTreeVsHead,
+    /// The index against `HEAD` (the empty tree on an unborn branch): what
+    /// `Commit` stages. No untracked files — the index does not have them.
+    Staged,
+    /// The worktree against the index: what plain edits leave unstaged.
+    /// Untracked files are included, hunk-less, as [`DiffSpec::WorkingTreeVsHead`]
+    /// includes them.
+    Unstaged,
 }
 
 /// How to run a diff: how much context, and whether to ignore whitespace.
@@ -116,8 +128,11 @@ pub fn list_files(
     opts: &DiffOptions,
     stop: &dyn Stop,
 ) -> Result<FileList, DiffError> {
-    if matches!(spec, DiffSpec::WorkingTreeVsHead) {
-        return list_files_working_tree(repo, *opts, stop);
+    match spec {
+        DiffSpec::WorkingTreeVsHead => return list_files_working_tree(repo, *opts, stop),
+        DiffSpec::Staged => return list_files_staged(repo, *opts, stop),
+        DiffSpec::Unstaged => return list_files_unstaged(repo, *opts, stop),
+        DiffSpec::Commit { .. } | DiffSpec::Range { .. } => {}
     }
 
     let sides = resolve_sides(repo, spec, stop)?;
@@ -182,7 +197,87 @@ fn list_files_working_tree(
     }
     let (raw, numstat) = split_raw_and_numstat(&output.stdout);
     let mut list = parse_worktree_file_list(&raw, &numstat).map_err(DiffError::Parse)?;
+    append_untracked(repo, stop, &mut list)?;
+    Ok(list)
+}
 
+/// The index against `HEAD` — the empty tree on an unborn branch
+/// ([`EMPTY_TREE`]) — via plumbing `diff-index --cached`. Purely
+/// content-based (index vs a committed tree, never the worktree), so unlike
+/// [`list_files_working_tree`]/[`list_files_unstaged`] there is no stat-cache
+/// lie to filter: [`parse_file_list`], not the worktree variant. No
+/// untracked files: the index does not have them.
+fn list_files_staged(
+    repo: &RepoHandle,
+    opts: DiffOptions,
+    stop: &dyn Stop,
+) -> Result<FileList, DiffError> {
+    let against = staged_against(repo)?;
+    let mut invocation = GitInvocation::new(repo).args([
+        GitArg::Flag("diff-index"),
+        GitArg::Flag("--cached"),
+        GitArg::Flag("--no-color"),
+        GitArg::Flag("--no-ext-diff"),
+        GitArg::Flag("-M"),
+        GitArg::Flag("-C"),
+        GitArg::Flag("-r"),
+        GitArg::Flag("-z"),
+        GitArg::Flag("--raw"),
+        GitArg::Flag("--numstat"),
+    ]);
+    if opts.ignore_whitespace {
+        invocation = invocation.arg(GitArg::Flag("-w"));
+    }
+    invocation = invocation.arg(GitArg::Ref(against));
+    let output = invocation.output_cap(OUTPUT_CAP).run(stop)?;
+    if output.truncated {
+        return Err(DiffError::TooLarge { bytes: OUTPUT_CAP });
+    }
+    let (raw, numstat) = split_raw_and_numstat(&output.stdout);
+    parse_file_list(&raw, &numstat).map_err(DiffError::Parse)
+}
+
+/// The worktree against the index, via plumbing `diff-files` — the same
+/// stat-cache-lying command M2's review found under `git diff`, run directly
+/// instead so nothing refreshes `.git/index` (module doc). Untracked files
+/// are appended, as [`list_files_working_tree`] does.
+fn list_files_unstaged(
+    repo: &RepoHandle,
+    opts: DiffOptions,
+    stop: &dyn Stop,
+) -> Result<FileList, DiffError> {
+    let mut invocation = GitInvocation::new(repo).args([
+        GitArg::Flag("diff-files"),
+        GitArg::Flag("--no-color"),
+        GitArg::Flag("--no-ext-diff"),
+        GitArg::Flag("-M"),
+        GitArg::Flag("-C"),
+        GitArg::Flag("-r"),
+        GitArg::Flag("-z"),
+        GitArg::Flag("--raw"),
+        GitArg::Flag("--numstat"),
+    ]);
+    if opts.ignore_whitespace {
+        invocation = invocation.arg(GitArg::Flag("-w"));
+    }
+    let output = invocation.output_cap(OUTPUT_CAP).run(stop)?;
+    if output.truncated {
+        return Err(DiffError::TooLarge { bytes: OUTPUT_CAP });
+    }
+    let (raw, numstat) = split_raw_and_numstat(&output.stdout);
+    let mut list = parse_worktree_file_list(&raw, &numstat).map_err(DiffError::Parse)?;
+    append_untracked(repo, stop, &mut list)?;
+    Ok(list)
+}
+
+/// Appends every untracked worktree file (`ls-files -z --others
+/// --exclude-standard`) to `list`, hunk-less as M2 defined for
+/// [`FileStatus::Untracked`].
+fn append_untracked(
+    repo: &RepoHandle,
+    stop: &dyn Stop,
+    list: &mut FileList,
+) -> Result<(), DiffError> {
     let untracked = GitInvocation::new(repo)
         .args([
             GitArg::Flag("ls-files"),
@@ -204,7 +299,17 @@ fn list_files_working_tree(
             removed: None,
         });
     }
-    Ok(list)
+    Ok(())
+}
+
+/// `HEAD` if it names a commit, else [`EMPTY_TREE`] — the argument
+/// [`DiffSpec::Staged`] diffs the index against, so a file staged before the
+/// first commit still shows.
+fn staged_against(repo: &RepoHandle) -> Result<Vec<u8>, DiffError> {
+    match repo.head().map_err(|_| DiffError::NoHead)? {
+        HeadState::Unborn(_) => Ok(EMPTY_TREE.to_vec()),
+        HeadState::Branch(_) | HeadState::Detached(_) => Ok(b"HEAD".to_vec()),
+    }
 }
 
 /// One file's full diff.
@@ -226,38 +331,14 @@ pub fn file_diff(
         return Ok(empty_diff(entry));
     }
 
-    let mut invocation = GitInvocation::new(repo);
-    invocation = if matches!(spec, DiffSpec::WorkingTreeVsHead) {
-        ensure_head(repo)?;
-        invocation.args([
-            GitArg::Flag("diff-index"),
-            GitArg::Flag("--no-color"),
-            GitArg::Flag("--no-ext-diff"),
-            GitArg::Flag("-M"),
-            GitArg::Flag("-C"),
-        ])
-    } else {
-        invocation.args([
-            GitArg::Flag("diff-tree"),
-            GitArg::Flag("--no-color"),
-            GitArg::Flag("--no-ext-diff"),
-            GitArg::Flag("-M"),
-            GitArg::Flag("-C"),
-            GitArg::Flag("-r"),
-        ])
-    };
+    let mut invocation = file_diff_command(repo, spec)?;
     invocation = invocation
         .arg(GitArg::Flag("-p"))
         .arg(GitArg::Count("-U", u32::from(opts.context)));
     if opts.ignore_whitespace {
         invocation = invocation.arg(GitArg::Flag("-w"));
     }
-    invocation = if matches!(spec, DiffSpec::WorkingTreeVsHead) {
-        invocation.arg(GitArg::Ref(b"HEAD".to_vec()))
-    } else {
-        let sides = resolve_sides(repo, spec, stop)?;
-        with_sides_args(invocation, sides)
-    };
+    invocation = file_diff_ref_args(repo, spec, stop, invocation)?;
     invocation = invocation.arg(GitArg::Path(entry.path.clone()));
     if let Some(old_path) = &entry.old_path {
         invocation = invocation.arg(GitArg::Path(old_path.clone()));
@@ -274,6 +355,67 @@ pub fn file_diff(
     diff.entry = entry.clone();
     apply_truncation(&mut diff, max_lines);
     Ok(diff)
+}
+
+/// The subcommand and fixed flags for [`file_diff`]'s invocation, before the
+/// context/whitespace flags, the tree-ish, and the path arguments.
+fn file_diff_command(repo: &RepoHandle, spec: &DiffSpec) -> Result<GitInvocation, DiffError> {
+    let invocation = GitInvocation::new(repo);
+    Ok(match spec {
+        DiffSpec::WorkingTreeVsHead => {
+            ensure_head(repo)?;
+            invocation.args([
+                GitArg::Flag("diff-index"),
+                GitArg::Flag("--no-color"),
+                GitArg::Flag("--no-ext-diff"),
+                GitArg::Flag("-M"),
+                GitArg::Flag("-C"),
+            ])
+        }
+        DiffSpec::Staged => invocation.args([
+            GitArg::Flag("diff-index"),
+            GitArg::Flag("--cached"),
+            GitArg::Flag("--no-color"),
+            GitArg::Flag("--no-ext-diff"),
+            GitArg::Flag("-M"),
+            GitArg::Flag("-C"),
+        ]),
+        DiffSpec::Unstaged => invocation.args([
+            GitArg::Flag("diff-files"),
+            GitArg::Flag("--no-color"),
+            GitArg::Flag("--no-ext-diff"),
+            GitArg::Flag("-M"),
+            GitArg::Flag("-C"),
+        ]),
+        DiffSpec::Commit { .. } | DiffSpec::Range { .. } => invocation.args([
+            GitArg::Flag("diff-tree"),
+            GitArg::Flag("--no-color"),
+            GitArg::Flag("--no-ext-diff"),
+            GitArg::Flag("-M"),
+            GitArg::Flag("-C"),
+            GitArg::Flag("-r"),
+        ]),
+    })
+}
+
+/// The tree-ish argument(s) for [`file_diff`]'s invocation: `HEAD`, the
+/// staged-against ref, nothing (`diff-files` always compares the index to
+/// the worktree), or the resolved commit/range sides.
+fn file_diff_ref_args(
+    repo: &RepoHandle,
+    spec: &DiffSpec,
+    stop: &dyn Stop,
+    invocation: GitInvocation,
+) -> Result<GitInvocation, DiffError> {
+    Ok(match spec {
+        DiffSpec::WorkingTreeVsHead => invocation.arg(GitArg::Ref(b"HEAD".to_vec())),
+        DiffSpec::Staged => invocation.arg(GitArg::Ref(staged_against(repo)?)),
+        DiffSpec::Unstaged => invocation,
+        DiffSpec::Commit { .. } | DiffSpec::Range { .. } => {
+            let sides = resolve_sides(repo, spec, stop)?;
+            with_sides_args(invocation, sides)
+        }
+    })
 }
 
 /// A [`FileDiff`] with no hunks, for an entry no diff was read for.

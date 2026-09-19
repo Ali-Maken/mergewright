@@ -50,7 +50,10 @@ pub(super) fn read_files(
                 .map_err(|e| e.to_string())?
                 .message,
         ),
-        DiffSpec::Range { .. } | DiffSpec::WorkingTreeVsHead => None,
+        DiffSpec::Range { .. }
+        | DiffSpec::WorkingTreeVsHead
+        | DiffSpec::Staged
+        | DiffSpec::Unstaged => None,
     };
     let view = assemble_files(&list, message.as_deref().map(body_of));
     Ok((Arc::new(view), Arc::new(list)))

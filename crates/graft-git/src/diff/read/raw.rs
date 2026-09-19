@@ -44,8 +44,8 @@ pub(super) fn resolve_sides(
             None => Ok(Sides::Root(*commit)),
         },
         DiffSpec::Range { base, head } => Ok(Sides::TwoRevs(*base, *head)),
-        DiffSpec::WorkingTreeVsHead => {
-            unreachable!("callers handle WorkingTreeVsHead before calling resolve_sides")
+        DiffSpec::WorkingTreeVsHead | DiffSpec::Staged | DiffSpec::Unstaged => {
+            unreachable!("callers handle these specs before calling resolve_sides")
         }
     }
 }

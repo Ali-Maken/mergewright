@@ -11,7 +11,7 @@ use graft_fixtures::Shape;
 
 use super::*;
 use crate::fixture::Fixture;
-use crate::repo::SharedRepo;
+use crate::repo::{RepoHandle, SharedRepo};
 
 fn oid_of(repo_path: &Path, rev: &str) -> Oid {
     let stdout =
@@ -560,6 +560,227 @@ fn listing_the_working_tree_does_not_write_the_index() {
     assert!(
         before == after,
         "listing the working tree rewrote .git/index ({} bytes -> {} bytes)",
+        before.len(),
+        after.len()
+    );
+}
+
+/// `list_files(Staged)` lists exactly the paths a real `git diff --cached
+/// --numstat` oracle does — an independent porcelain command, not plumbing,
+/// since this is checking correctness, not the index-write guarantee (the
+/// dedicated tests for that use plumbing throughout).
+#[test]
+fn list_files_staged_matches_a_cached_diff_oracle() {
+    let scratch = graft_fixtures::copy_into_temp(Shape::FeatureBranches);
+    let shared = SharedRepo::open(scratch.path()).expect("the fixture opens");
+    let handle = shared.handle();
+    let root = scratch.path();
+
+    std::fs::write(root.join("a.txt"), "staged change\n").expect("a.txt written");
+    graft_fixtures::git::run(root, &["add", "a.txt"]).expect("git adds a.txt");
+    std::fs::write(root.join("b.txt"), "unstaged change, not staged\n").expect("b.txt written");
+
+    let list = list_files(&handle, &DiffSpec::Staged, &DiffOptions::default(), &())
+        .expect("list_files(Staged) succeeds");
+    let paths: BTreeSet<Vec<u8>> = list.files.iter().map(|entry| entry.path.clone()).collect();
+
+    assert_eq!(paths, BTreeSet::from([b"a.txt".to_vec()]));
+}
+
+/// `list_files(Unstaged)` lists a tracked edit and an untracked file
+/// together, the same as [`DiffSpec::WorkingTreeVsHead`] does — but not the
+/// staged one, which only [`DiffSpec::Staged`] shows.
+#[test]
+fn list_files_unstaged_lists_a_tracked_edit_and_an_untracked_file() {
+    let scratch = graft_fixtures::copy_into_temp(Shape::FeatureBranches);
+    let shared = SharedRepo::open(scratch.path()).expect("the fixture opens");
+    let handle = shared.handle();
+    let root = scratch.path();
+
+    std::fs::write(root.join("a.txt"), "staged change\n").expect("a.txt written");
+    graft_fixtures::git::run(root, &["add", "a.txt"]).expect("git adds a.txt");
+    std::fs::write(root.join("b.txt"), "unstaged change\n").expect("b.txt written");
+    std::fs::write(root.join("new.txt"), "untracked\n").expect("new.txt written");
+
+    let list = list_files(&handle, &DiffSpec::Unstaged, &DiffOptions::default(), &())
+        .expect("list_files(Unstaged) succeeds");
+    let paths: BTreeSet<Vec<u8>> = list.files.iter().map(|entry| entry.path.clone()).collect();
+
+    assert_eq!(
+        paths,
+        BTreeSet::from([b"b.txt".to_vec(), b"new.txt".to_vec()])
+    );
+    let untracked = list
+        .files
+        .iter()
+        .find(|entry| entry.path == b"new.txt")
+        .expect("new.txt is listed");
+    assert_eq!(untracked.status, FileStatus::Untracked);
+}
+
+/// `list_files(Staged)` on an unborn branch diffs the index against the
+/// empty tree, so a file staged before the first commit still shows —
+/// design note, `DiffSpec::Staged`.
+#[test]
+fn list_files_staged_on_an_unborn_branch_diffs_against_the_empty_tree() {
+    let fixture = Fixture::empty_repo();
+    write_file(&fixture, "first.txt", "hello\n");
+    fixture.git(&["add", "first.txt"]);
+    let repo = RepoHandle::open(fixture.root()).expect("the fixture opens");
+
+    let list = list_files(&repo, &DiffSpec::Staged, &DiffOptions::default(), &())
+        .expect("list_files(Staged) succeeds on an unborn branch");
+
+    assert_eq!(list.files.len(), 1);
+    assert_eq!(list.files[0].path, b"first.txt");
+    assert_eq!(list.files[0].status, FileStatus::Added);
+}
+
+/// `git diff [--cached] --no-color --no-ext-diff -M -C -U3 -- <path>`,
+/// parsed the same way [`file_diff`]'s own output is, as the independent
+/// oracle for [`file_diff_staged_and_unstaged_match_porcelain_diff_oracles`].
+fn porcelain_diff_oracle(root: &Path, cached: bool, path: &str) -> FileDiff {
+    let mut args = vec!["diff"];
+    if cached {
+        args.push("--cached");
+    }
+    args.extend(["--no-color", "--no-ext-diff", "-M", "-C", "-U3", "--", path]);
+    let stdout = graft_fixtures::git::run(root, &args).expect("the diff oracle runs");
+    parse_unified(&stdout)
+        .expect("the oracle parses")
+        .pop()
+        .expect("one file")
+}
+
+/// `file_diff(Staged, …)`/`file_diff(Unstaged, …)` reproduce the same hunks
+/// a porcelain `git diff --cached`/`git diff` oracle prints for the same
+/// file — the parser is shared with M2 ([`parse_unified`]); this checks the
+/// command each spec builds picks up the right side.
+#[test]
+fn file_diff_staged_and_unstaged_match_porcelain_diff_oracles() {
+    let scratch = graft_fixtures::copy_into_temp(Shape::FeatureBranches);
+    let shared = SharedRepo::open(scratch.path()).expect("the fixture opens");
+    let handle = shared.handle();
+    let root = scratch.path();
+
+    std::fs::write(root.join("a.txt"), "staged change\nsecond line\n").expect("a.txt written");
+    graft_fixtures::git::run(root, &["add", "a.txt"]).expect("git adds a.txt");
+    std::fs::write(root.join("b.txt"), "unstaged change\n").expect("b.txt written");
+
+    let staged_list = list_files(&handle, &DiffSpec::Staged, &DiffOptions::default(), &())
+        .expect("list_files(Staged) succeeds");
+    let staged_entry = staged_list
+        .files
+        .iter()
+        .find(|entry| entry.path == b"a.txt")
+        .expect("a.txt is staged");
+    let staged_diff = file_diff(
+        &handle,
+        &DiffSpec::Staged,
+        staged_entry,
+        &DiffOptions::default(),
+        usize::MAX,
+        &(),
+    )
+    .expect("file_diff(Staged) succeeds");
+    assert_eq!(
+        staged_diff.hunks,
+        porcelain_diff_oracle(root, true, "a.txt").hunks
+    );
+
+    let unstaged_list = list_files(&handle, &DiffSpec::Unstaged, &DiffOptions::default(), &())
+        .expect("list_files(Unstaged) succeeds");
+    let unstaged_entry = unstaged_list
+        .files
+        .iter()
+        .find(|entry| entry.path == b"b.txt")
+        .expect("b.txt is unstaged");
+    let unstaged_diff = file_diff(
+        &handle,
+        &DiffSpec::Unstaged,
+        unstaged_entry,
+        &DiffOptions::default(),
+        usize::MAX,
+        &(),
+    )
+    .expect("file_diff(Unstaged) succeeds");
+    assert_eq!(
+        unstaged_diff.hunks,
+        porcelain_diff_oracle(root, false, "b.txt").hunks
+    );
+}
+
+/// M3: `status::read` and the two new `DiffSpec`s must never write
+/// `.git/index` either — the guarantee M2 established for
+/// `list_files(WorkingTreeVsHead)` above ("the index-untouched test from
+/// round 1e is extended to both specs"). One test, five spawns, on a tree
+/// stat-dirty everywhere so a refresh would be tempting if any of the five
+/// ever did one.
+#[test]
+fn staging_reads_do_not_write_the_index() {
+    let scratch = graft_fixtures::copy_into_temp(Shape::FeatureBranches);
+    let repo = RepoHandle::open(scratch.path()).expect("the fixture opens");
+    let root = scratch.path();
+
+    // One staged edit, one unstaged edit — so list_files(Staged)/(Unstaged)
+    // and file_diff have something real to read, not an empty answer.
+    std::fs::write(root.join("a.txt"), "staged change\n").expect("a.txt written");
+    graft_fixtures::git::run(root, &["add", "a.txt"]).expect("git adds a.txt");
+    std::fs::write(root.join("b.txt"), "unstaged change\n").expect("b.txt written");
+
+    // Every other tracked file gets a new mtime with the same content: the
+    // stat-cache lie plumbing must not act on.
+    for path in graft_fixtures::git::run(root, &["ls-files", "-z"])
+        .expect("ls-files runs")
+        .split(|&b| b == 0)
+        .filter(|piece| !piece.is_empty())
+    {
+        let path = root.join(std::str::from_utf8(path).expect("fixture paths are ascii"));
+        let content = std::fs::read(&path).expect("the tracked file reads");
+        std::fs::write(&path, &content).expect("the same bytes go back with a new mtime");
+    }
+
+    let index = root.join(".git").join("index");
+    let before = std::fs::read(&index).expect("the index reads");
+
+    crate::status::read(&repo, &()).expect("status::read succeeds");
+    let staged = list_files(&repo, &DiffSpec::Staged, &DiffOptions::default(), &())
+        .expect("list_files(Staged) succeeds");
+    let unstaged = list_files(&repo, &DiffSpec::Unstaged, &DiffOptions::default(), &())
+        .expect("list_files(Unstaged) succeeds");
+    let staged_entry = staged
+        .files
+        .iter()
+        .find(|entry| entry.path == b"a.txt")
+        .expect("a.txt is staged");
+    let unstaged_entry = unstaged
+        .files
+        .iter()
+        .find(|entry| entry.path == b"b.txt")
+        .expect("b.txt is unstaged");
+    file_diff(
+        &repo,
+        &DiffSpec::Staged,
+        staged_entry,
+        &DiffOptions::default(),
+        usize::MAX,
+        &(),
+    )
+    .expect("file_diff(Staged) succeeds");
+    file_diff(
+        &repo,
+        &DiffSpec::Unstaged,
+        unstaged_entry,
+        &DiffOptions::default(),
+        usize::MAX,
+        &(),
+    )
+    .expect("file_diff(Unstaged) succeeds");
+
+    let after = std::fs::read(&index).expect("the index reads again");
+    assert!(
+        before == after,
+        "a staging read rewrote .git/index ({} bytes -> {} bytes)",
         before.len(),
         after.len()
     );
