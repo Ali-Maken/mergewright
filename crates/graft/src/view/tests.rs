@@ -3007,6 +3007,7 @@ fn credential_state(columns: u16, rows: u16, prompt: &str) -> AppState {
         id,
         description: "push main → origin/main".to_owned(),
         op: Some(push),
+        stoppable: crate::update::remote::Stoppable::Yes,
     });
     state.status = Status::Busy("push main → origin/main · esc cancels".to_owned());
     crate::update::credential::credential_needed(&mut state, id, prompt);

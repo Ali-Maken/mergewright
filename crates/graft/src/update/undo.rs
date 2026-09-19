@@ -57,7 +57,14 @@ fn launch(
     state.operating = Some(id);
     let words = if redo { "redo" } else { "undo" };
     state.status = Status::Busy(words.to_owned());
-    super::remote::launched(state, id, words.to_owned(), None);
+    // `Esc` will not stop it: see `remote::UNDO_CANNOT_STOP`.
+    super::remote::launched(
+        state,
+        id,
+        words.to_owned(),
+        None,
+        super::remote::Stoppable::No(super::remote::UNDO_CANNOT_STOP),
+    );
     vec![if redo {
         Command::Redo(id, force)
     } else {

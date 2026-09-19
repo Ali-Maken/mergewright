@@ -64,6 +64,8 @@
 mod cache;
 mod corpus;
 mod digest;
+#[cfg(unix)]
+pub mod fifo;
 mod filesystem;
 pub mod git;
 mod memory;

@@ -5,9 +5,18 @@
 //!
 //! Three threads touch a secret here: the loop (the key that sends it), the
 //! askpass server's listener (waiting in [`ChannelAskPass::ask`]) and the
-//! channel between them. The secret is a [`Secret`] the whole way — never
-//! copied into a `String`, never printed, zeroed when dropped — and an answer
-//! for a job that has stopped asking is dropped, not queued.
+//! channel between them. From the moment the key builds an [`Answer`] it is a
+//! [`Secret`] the whole way — never printed, zeroed when dropped — and an
+//! answer for a job that has stopped asking is dropped, not queued.
+//!
+//! What that does **not** cover: the characters before the `Enter` that makes
+//! the `Answer`. They are typed into the prompt's plain `TextField`, whose
+//! `String` `update` clones on every event (`update` returns a new `AppState`)
+//! and drops without zeroing. Copies of the typed password therefore sit in
+//! freed heap until it is reused. Closing the prompt replaces the field, which
+//! keeps it off the screen and out of the next state — not out of memory.
+//! Fixing it means a secret-backed field in `graft-ui`, not a change here
+//! (m4-remotes/06 review).
 
 use std::collections::HashMap;
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};

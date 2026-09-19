@@ -1071,6 +1071,47 @@ fn the_same_event_always_gives_the_same_answer() {
     assert_eq!(state.quit, None, "the input state was mutated");
 }
 
+/// A repository that opened clears a read failure and nothing else.
+///
+/// The refresh a failed push asks for lands here, so wiping the status would
+/// take `push rejected: …` off the screen before it could be read — and the
+/// next `P`'s lease box is offered off the back of that rejection. `Busy` is
+/// a running write's line and `Done` a finished one's; neither belongs to the
+/// repository (m4-remotes/05 review, M2).
+#[test]
+fn only_a_read_failure_is_cleared_when_the_repository_opens() {
+    let opened = |status: Status| {
+        let before = AppState {
+            status,
+            ..AppState::default()
+        };
+        update(
+            &before,
+            AppEvent::Produced(
+                JobId::new(1),
+                Product::Repository(Ok(facts("/code/api", "main"))),
+            ),
+        )
+        .0
+        .status
+    };
+
+    let sticky = Status::Sticky(
+        "push rejected: origin/main has commits you don't · p to pull first".to_owned(),
+    );
+    assert_eq!(opened(sticky.clone()), sticky, "a write's failure stays");
+    assert_eq!(
+        opened(Status::Failed("could not read the refs".to_owned())),
+        Status::Ready,
+        "a read failure is superseded"
+    );
+    let busy = Status::Busy("fetch all remotes · esc cancels".to_owned());
+    assert_eq!(opened(busy.clone()), busy, "a running write's line stays");
+    let done = Status::Done("pushed main → origin/main".to_owned());
+    assert_eq!(opened(done.clone()), done, "a finished write's line stays");
+    assert_eq!(opened(Status::Ready), Status::Ready);
+}
+
 #[test]
 fn an_opened_repository_becomes_what_the_screen_shows() {
     let (next, commands) = update(

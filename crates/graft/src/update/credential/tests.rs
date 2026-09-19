@@ -22,6 +22,7 @@ fn asking(prompt: &str) -> AppState {
         id: JOB,
         description: "push main → origin/main".to_owned(),
         op: None,
+        stoppable: crate::update::remote::Stoppable::Yes,
     });
     credential_needed(&mut state, JOB, prompt);
     assert!(state.credential.is_some(), "the prompt opened");
@@ -197,6 +198,10 @@ fn an_empty_answer_is_still_an_answer() {
     );
 }
 
+/// `Esc` in the prompt stops the whole write, and stops it **before** it
+/// refuses the ask. The other order lets git see the refusal and die on its
+/// own, which is classified `AuthFailed` — the line would then blame the
+/// password for what the user chose (m4-remotes/06 review, Minor m1).
 #[test]
 fn esc_cancels_the_operation() {
     let mut state = asking("Password for 'http://u@h':");
@@ -206,8 +211,8 @@ fn esc_cancels_the_operation() {
 
     assert_eq!(
         commands,
-        vec![Command::CancelCredential(JOB), Command::CancelJob(JOB)],
-        "the ask is answered `cancelled` and the whole write stops"
+        vec![Command::CancelJob(JOB), Command::CancelCredential(JOB)],
+        "the write stops first, then the ask is answered `cancelled`"
     );
     assert!(after.credential.is_none());
     assert_eq!(after.remote.cancelling, Some(JOB));
