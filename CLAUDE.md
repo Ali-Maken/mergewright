@@ -67,6 +67,8 @@ escalation and checkpoint policy are the conductor's — they live in
 - **Every milestone ends with an acceptance ticket:** one command walking the scenarios, a `TESTING.md` checklist saying concretely what right looks like per scenario, captures under `docs/shots/`. Promises — M1 "the shape of history is obvious at a glance"; M3 "you cannot lose work"; M5 "you see the result before you confirm"; M6 "a real conflict is resolvable without leaving the app".
 - **The user's daily use is a test tier, not a fallback**, from the day M3 lands. What it finds goes in `docs/field-notes.md` the same day.
 - **Architecture and readability are hard rules** (PROMPT.md 6.1, 6.2). Read `ARCHITECTURE.md` before adding or moving modules; use `codebase-design` when you do. Never add a dependency that breaks the crate rules.
+- **Shared namespaces are decided once, in the design, not per milestone.** Any group that binds a key reads `docs/design/02-keymap.md` first; it allocates keys for milestones not yet built. A key it does not name is **not free** — the code showing it unbound means nothing. Wanting a key the doc doesn't give you is a spec change, through the conductor, not a build decision. Same for what counts as an operation and what is undoable.
+- **A scout reports code, not intent.** "Nothing uses this" is not "this is available" — check the design doc before treating anything as unclaimed.
 - **Keep your context lean:** read the named sections, not the documents.
 
 ## Skills
