@@ -97,6 +97,7 @@ fn commit_undo_is_a_ref_cas_and_an_index_restore() {
                 restores(1, 2, true, false),
             ]
             .concat(),
+            pins: vec![],
         }
     );
 }
@@ -215,6 +216,83 @@ fn redo_of_an_undone_stash_pop_drops_the_stash_after_the_generic_steps() {
     assert_eq!(
         redo.steps.last(),
         Some(&Step::StashStore { commit: oid(0x71) })
+    );
+}
+
+#[test]
+fn a_plan_pins_every_stash_commit_it_drops() {
+    // Undo of a push drops the pushed stash: the Undo entry must pin it, or
+    // the redo's `StashStore` depends on gc timing.
+    let push = op(10, OperationKind::StashPush, 1, 2);
+    assert_eq!(inverse(&push, None).unwrap().pins, [oid(0x71)]);
+    // Undo of a pop stores the pinned stash back: nothing becomes unreachable.
+    let mut pop = op(10, OperationKind::StashPop, 1, 2);
+    pop.pins = vec![oid(0x70)];
+    assert_eq!(inverse(&pop, None).unwrap().pins, []);
+    // Redo of that undo drops it again, so the Redo entry pins it too.
+    let undo = reversal(20, OperationKind::Undo, &pop);
+    assert_eq!(plan_redo(&[pop, undo]).unwrap().pins, [oid(0x70)]);
+    let commit = op(10, OperationKind::Commit, 1, 2);
+    assert_eq!(inverse(&commit, None).unwrap().pins, []);
+}
+
+#[test]
+fn undo_of_a_push_that_pushed_nothing_never_drops_the_users_own_stash() {
+    // `git stash push` with nothing to save exits 0: `Committed`, and
+    // `refs/stash` is still the stash the user already had.
+    let mut push = op(10, OperationKind::StashPush, 1, 2);
+    push.refs_after
+        .insert("refs/stash".to_owned(), Some(oid(0x70)));
+    let undo = inverse(&push, None).unwrap();
+    assert!(
+        !undo
+            .steps
+            .iter()
+            .any(|step| matches!(step, Step::StashDrop { .. })),
+        "{:?}",
+        undo.steps
+    );
+    assert_eq!(undo.pins, []);
+    // Nor does redoing that undo store anything.
+    let undone = reversal(20, OperationKind::Undo, &push);
+    let redo = inverse(&undone, Some(&push)).unwrap();
+    assert!(
+        !redo
+            .steps
+            .iter()
+            .any(|step| matches!(step, Step::StashStore { .. }))
+    );
+    // A push with no stash before is the normal case: the new one is dropped.
+    let mut first = op(10, OperationKind::StashPush, 1, 2);
+    first.refs_before.insert("refs/stash".to_owned(), None);
+    assert_eq!(
+        inverse(&first, None).unwrap().steps.last(),
+        Some(&Step::StashDrop { commit: oid(0x71) })
+    );
+    // An unrecorded before-value cannot tell a new stash from an old one.
+    let mut unknown = op(10, OperationKind::StashPush, 1, 2);
+    unknown.refs_before.remove("refs/stash");
+    assert_eq!(
+        inverse(&unknown, None),
+        Err(NotInvertible::Incomplete {
+            field: "refs_before[refs/stash]"
+        })
+    );
+}
+
+#[test]
+fn redo_of_an_undo_that_failed_half_way_says_so() {
+    let discard = op(10, OperationKind::Discard, 1, 2);
+    let mut undo = reversal(20, OperationKind::Undo, &discard);
+    undo.status = EntryStatus::Aborted {
+        reason: "restore: I/O error".to_owned(),
+    };
+    undo.worktree_after = None;
+    let redo = inverse(&undo, Some(&discard)).unwrap();
+    assert_eq!(redo.kind, OperationKind::Redo);
+    assert_eq!(
+        redo.description,
+        "redo: Discard at 10 (after a failed undo)"
     );
 }
 
@@ -351,9 +429,49 @@ fn drift_sets_exactly_the_field_that_moved() {
     let both = drift(&entry, &worktree);
     assert!(both.worktree && both.head && !both.index && both.refs.is_empty());
     assert_eq!(both.explain(), "HEAD moved; the working tree changed");
+}
 
-    // An unrecorded field cannot drift.
-    let mut unknown = entry.clone();
-    unknown.worktree_after = None;
-    assert!(drift(&unknown, &worktree).explain().ends_with("HEAD moved"));
+#[test]
+fn an_unrecorded_after_state_is_reported_as_unknown_never_as_clean() {
+    // The inverse restores such a field whole (`PathScope::Everything`), so
+    // the rail must say so even when nothing else moved.
+    let entry = committed(10, OperationKind::Discard, 1, 2);
+    let now = RepoStateNow {
+        head: HeadRef::Branch(MAIN.to_owned()),
+        refs: BTreeMap::from([(MAIN.to_owned(), Some(oid(2)))]),
+        index_tree: oid(0xa2),
+        worktree_tree: oid(0xb2),
+    };
+    assert!(drift(&entry, &now).is_clean());
+
+    let mut no_worktree = entry.clone();
+    no_worktree.worktree_after = None;
+    let unknown = drift(&no_worktree, &now);
+    assert!(!unknown.is_clean());
+    assert_eq!(
+        unknown,
+        Drift {
+            unknown: vec!["the working tree"],
+            ..Drift::default()
+        }
+    );
+    assert_eq!(
+        unknown.explain(),
+        "the working tree's state after the operation was never recorded; undo restores all of it"
+    );
+
+    let mut nothing_after = entry.clone();
+    nothing_after.head_after = None;
+    nothing_after.index_after = None;
+    nothing_after.worktree_after = None;
+    assert_eq!(
+        drift(&nothing_after, &now).unknown,
+        ["HEAD", "the index", "the working tree"]
+    );
+
+    // A field the operation never touched was never going to be recorded.
+    let mut untouched = entry.clone();
+    untouched.touches.index = false;
+    untouched.index_after = None;
+    assert!(drift(&untouched, &now).is_clean());
 }

@@ -6,12 +6,15 @@ use std::path::{Path, PathBuf};
 use graft_core::commit::Timestamp;
 use graft_core::journal::{HeadRef, OperationKind, Touches};
 use graft_core::oid::Oid;
+use graft_git::run::GitArg;
 use graft_git::stash::StashEntry;
 use graft_git::state::InProgress;
 use graft_git::status::{Change, StatusEntry, WorkingTreeStatus};
 use graft_git::version::GitVersion;
 
-use super::{CommitParams, Operation, Refusal, RepoFacts, StashParams, Target};
+use super::{
+    CommitParams, Operation, PatchSide, Refusal, RepoFacts, StashParams, StashScope, Target,
+};
 
 fn oid(byte: u8) -> Oid {
     Oid::from_bytes(&[byte; 20]).unwrap()
@@ -85,13 +88,14 @@ fn paths(list: &[&str]) -> Target {
     Target::Paths(list.iter().map(PathBuf::from).collect())
 }
 
-fn patch_for(path: &str) -> Target {
+fn patch_for(path: &str, side: PatchSide) -> Target {
     Target::Patch {
         path: PathBuf::from(path),
         patch: format!(
             "diff --git a/{path} b/{path}\n--- a/{path}\n+++ b/{path}\n@@ -1 +1 @@\n-a\n+b\n"
         )
         .into_bytes(),
+        side,
     }
 }
 
@@ -122,21 +126,24 @@ fn plan_stage_and_unstage_paths_and_patches() {
     let f = facts();
     assert_eq!(
         lines(&Operation::Stage(paths(&["u.rs", "n.rs"])), &f),
-        ["git add -- u.rs n.rs"]
+        ["git --literal-pathspecs add -- u.rs n.rs"]
     );
     assert_eq!(
         lines(&Operation::Unstage(paths(&["s.rs"])), &f),
-        ["git restore --staged -- s.rs"]
+        ["git --literal-pathspecs restore --staged -- s.rs"]
     );
-    let stage_patch = Operation::Stage(patch_for("u.rs"));
+    let stage_patch = Operation::Stage(patch_for("u.rs", PatchSide::Worktree));
     assert_eq!(lines(&stage_patch, &f), ["git apply --cached -"]);
     assert!(stdin(&stage_patch, &f).starts_with(b"diff --git a/u.rs"));
     assert_eq!(
-        lines(&Operation::Unstage(patch_for("s.rs")), &f),
+        lines(&Operation::Unstage(patch_for("s.rs", PatchSide::Index)), &f),
         ["git apply --cached -R -"]
     );
     assert_eq!(
-        lines(&Operation::Discard(patch_for("u.rs")), &f),
+        lines(
+            &Operation::Discard(patch_for("u.rs", PatchSide::Worktree)),
+            &f
+        ),
         ["git apply -R -"]
     );
 }
@@ -149,7 +156,7 @@ fn plan_unstage_on_an_unborn_head_removes_from_the_index() {
     };
     assert_eq!(
         lines(&Operation::Unstage(paths(&["s.rs"])), &f),
-        ["git rm --cached --quiet -- s.rs"]
+        ["git --literal-pathspecs rm --cached --quiet -- s.rs"]
     );
 }
 
@@ -163,11 +170,11 @@ fn plan_stage_and_unstage_of_a_rename_name_both_paths() {
     });
     assert_eq!(
         lines(&Operation::Unstage(paths(&["new.rs"])), &f),
-        ["git restore --staged -- new.rs old.rs"]
+        ["git --literal-pathspecs restore --staged -- new.rs old.rs"]
     );
     assert_eq!(
         lines(&Operation::Discard(paths(&["new.rs"])), &f),
-        ["git restore --staged --worktree --source=HEAD -- new.rs old.rs"]
+        ["git --literal-pathspecs restore --staged --worktree --source=HEAD -- new.rs old.rs"]
     );
 }
 
@@ -177,14 +184,14 @@ fn plan_discard_is_one_invocation_per_class() {
     assert_eq!(
         lines(&Operation::Discard(paths(&["s.rs", "u.rs", "n.rs"])), &f),
         [
-            "git restore --staged --worktree --source=HEAD -- s.rs",
-            "git restore --worktree -- u.rs",
-            "git clean -f -- n.rs",
+            "git --literal-pathspecs restore --staged --worktree --source=HEAD -- s.rs",
+            "git --literal-pathspecs restore --worktree -- u.rs",
+            "git --literal-pathspecs clean -f -- n.rs",
         ]
     );
     assert_eq!(
         lines(&Operation::Discard(paths(&["u.rs"])), &f),
-        ["git restore --worktree -- u.rs"]
+        ["git --literal-pathspecs restore --worktree -- u.rs"]
     );
 }
 
@@ -197,8 +204,8 @@ fn plan_discard_on_an_unborn_head_has_no_head_to_restore_from() {
     assert_eq!(
         lines(&Operation::Discard(paths(&["s.rs", "n.rs"])), &f),
         [
-            "git rm --cached --quiet -- s.rs",
-            "git clean -f -- s.rs n.rs"
+            "git --literal-pathspecs rm --cached --quiet -- s.rs",
+            "git --literal-pathspecs clean -f -- s.rs n.rs"
         ]
     );
 }
@@ -230,20 +237,25 @@ fn plan_commit_and_amend_feed_the_message_on_stdin_never_dash_m() {
 #[test]
 fn plan_stash_kinds() {
     let f = facts();
-    let push = |message: Option<&str>, include_untracked, staged_only| {
+    let push = |message: Option<&str>, scope| {
         Operation::StashPush(StashParams {
             message: message.map(str::to_owned),
-            include_untracked,
-            staged_only,
+            scope,
         })
     };
-    assert_eq!(lines(&push(None, false, false), &f), ["git stash push"]);
+    let untracked_too = StashScope::All {
+        include_untracked: true,
+    };
     assert_eq!(
-        lines(&push(Some("wip"), true, false), &f),
+        lines(&push(None, StashScope::default()), &f),
+        ["git stash push"]
+    );
+    assert_eq!(
+        lines(&push(Some("wip"), untracked_too), &f),
         ["git stash push -u -m wip"]
     );
     assert_eq!(
-        lines(&push(Some("two words"), false, true), &f),
+        lines(&push(Some("two words"), StashScope::StagedOnly), &f),
         ["git stash push --staged -m 'two words'"]
     );
     let at = |index| (index, oid(0x10 + u8::try_from(index).unwrap()));
@@ -268,11 +280,11 @@ fn baseline_ops() -> Vec<Operation> {
     vec![
         Operation::Stage(paths(&["u.rs"])),
         Operation::Stage(paths(&["n.rs"])),
-        Operation::Stage(patch_for("u.rs")),
+        Operation::Stage(patch_for("u.rs", PatchSide::Worktree)),
         Operation::Unstage(paths(&["s.rs"])),
-        Operation::Unstage(patch_for("s.rs")),
+        Operation::Unstage(patch_for("s.rs", PatchSide::Index)),
         Operation::Discard(paths(&["s.rs", "u.rs", "n.rs"])),
-        Operation::Discard(patch_for("u.rs")),
+        Operation::Discard(patch_for("u.rs", PatchSide::Worktree)),
         Operation::Commit(commit("fix")),
         Operation::Amend(commit("fix")),
         Operation::StashPush(StashParams::default()),
@@ -372,26 +384,83 @@ fn a_path_in_the_wrong_state_is_refused_by_name() {
     );
     // A patch needs a tracked file on the right side (ADR-0034: no hunk
     // staging inside untracked files).
-    assert_eq!(Operation::Stage(patch_for("n.rs")).check(&f), wrong("n.rs"));
     assert_eq!(
-        Operation::Unstage(patch_for("u.rs")).check(&f),
+        Operation::Stage(patch_for("n.rs", PatchSide::Worktree)).check(&f),
+        wrong("n.rs")
+    );
+    assert_eq!(
+        Operation::Unstage(patch_for("u.rs", PatchSide::Worktree)).check(&f),
         wrong("u.rs")
     );
     assert_eq!(
-        Operation::Discard(patch_for("s.rs")).check(&f),
+        Operation::Discard(patch_for("s.rs", PatchSide::Worktree)).check(&f),
         wrong("s.rs")
+    );
+    // A hunk from the staged diff of a staged file is discardable.
+    assert_eq!(
+        Operation::Discard(patch_for("s.rs", PatchSide::Index)).check(&f),
+        Ok(())
+    );
+    assert_eq!(
+        Operation::Discard(patch_for("u.rs", PatchSide::Index)).check(&f),
+        wrong("u.rs")
+    );
+}
+
+#[test]
+fn a_hunk_from_the_other_diff_is_refused_for_stage_and_unstage() {
+    let f = facts();
+    // `u.rs` has an unstaged change, so the path is in state; the side is not.
+    let mut both = facts();
+    both.status.entries.push(StatusEntry {
+        staged: Some(Change::Modified),
+        ..unstaged("both.rs")
+    });
+    assert_eq!(
+        Operation::Stage(patch_for("both.rs", PatchSide::Index)).check(&both),
+        Err(Refusal::PatchSideMismatch)
+    );
+    assert_eq!(
+        Operation::Unstage(patch_for("both.rs", PatchSide::Worktree)).check(&both),
+        Err(Refusal::PatchSideMismatch)
+    );
+    assert_eq!(
+        Operation::Stage(patch_for("u.rs", PatchSide::Worktree)).check(&f),
+        Ok(())
+    );
+}
+
+#[test]
+fn discarding_an_index_hunk_reverses_it_in_the_working_tree_then_the_index() {
+    let f = facts();
+    assert_eq!(
+        lines(&Operation::Discard(patch_for("s.rs", PatchSide::Index)), &f),
+        ["git apply -R -", "git apply --cached -R -"]
+    );
+}
+
+#[test]
+fn paths_are_literal_pathspecs_so_a_star_names_one_file() {
+    let mut f = facts();
+    f.status.entries.push(unstaged("a*b"));
+    let plan = Operation::Stage(paths(&["a*b"])).plan(&f);
+    assert_eq!(plan[0].args[0], GitArg::Flag("--literal-pathspecs"));
+    assert_eq!(
+        lines(&Operation::Stage(paths(&["a*b"])), &f),
+        ["git --literal-pathspecs add -- 'a*b'"]
     );
 }
 
 #[test]
 fn a_patch_for_another_file_is_refused() {
     let f = facts();
-    let Target::Patch { patch, .. } = patch_for("other.rs") else {
+    let Target::Patch { patch, .. } = patch_for("other.rs", PatchSide::Worktree) else {
         unreachable!()
     };
     let target = Target::Patch {
         path: PathBuf::from("u.rs"),
         patch,
+        side: PatchSide::Worktree,
     };
     assert_eq!(
         Operation::Stage(target).check(&f),
@@ -400,6 +469,7 @@ fn a_patch_for_another_file_is_refused() {
     let new_file = Target::Patch {
         path: PathBuf::from("u.rs"),
         patch: b"--- /dev/null\n+++ b/u.rs\n@@ -0,0 +1 @@\n+a\n".to_vec(),
+        side: PatchSide::Worktree,
     };
     assert_eq!(Operation::Stage(new_file).check(&f), Ok(()));
 }
@@ -449,18 +519,37 @@ fn commit_refusals() {
 fn stash_push_refusals() {
     let mut only_untracked = facts();
     only_untracked.status.entries.retain(|e| e.untracked);
-    let push = |include_untracked, staged_only| {
+    let push = |scope| {
         Operation::StashPush(StashParams {
             message: None,
-            include_untracked,
-            staged_only,
+            scope,
         })
     };
+    let untracked_too = StashScope::All {
+        include_untracked: true,
+    };
     assert_eq!(
-        push(false, false).check(&only_untracked),
+        push(StashScope::default()).check(&only_untracked),
         Err(Refusal::NothingToStash)
     );
-    assert_eq!(push(true, false).check(&only_untracked), Ok(()));
+    assert_eq!(push(untracked_too).check(&only_untracked), Ok(()));
+    // `--staged` with nothing staged: git says `No staged changes`, exit 1.
+    let mut nothing_staged = facts();
+    nothing_staged.status.entries.retain(|e| !e.is_staged());
+    assert_eq!(
+        push(StashScope::StagedOnly).check(&nothing_staged),
+        Err(Refusal::NothingToStash)
+    );
+    assert_eq!(push(StashScope::default()).check(&nothing_staged), Ok(()));
+    // No commit yet: `You do not have the initial commit yet`, exit 1.
+    let unborn = RepoFacts {
+        head: HeadRef::Unborn("refs/heads/main".to_owned()),
+        ..facts()
+    };
+    assert_eq!(
+        push(StashScope::default()).check(&unborn),
+        Err(Refusal::UnbornHead)
+    );
     let old_git = RepoFacts {
         git: GitVersion {
             major: 2,
@@ -470,7 +559,7 @@ fn stash_push_refusals() {
         ..facts()
     };
     assert_eq!(
-        push(false, true).check(&old_git),
+        push(StashScope::StagedOnly).check(&old_git),
         Err(Refusal::NeedsGit {
             feature: "stash --staged",
             minimum: GitVersion {
@@ -480,7 +569,7 @@ fn stash_push_refusals() {
             }
         })
     );
-    assert_eq!(push(false, true).check(&facts()), Ok(()));
+    assert_eq!(push(StashScope::StagedOnly).check(&facts()), Ok(()));
 }
 
 #[test]
@@ -594,7 +683,7 @@ fn describe_reads_like_the_browser_line() {
         (Operation::Stage(paths(&["src/a.rs"])), "stage src/a.rs"),
         (Operation::Stage(paths(&["a", "b", "c"])), "stage 3 files"),
         (
-            Operation::Unstage(patch_for("src/a.rs")),
+            Operation::Unstage(patch_for("src/a.rs", PatchSide::Index)),
             "unstage a hunk of src/a.rs",
         ),
         (Operation::Discard(paths(&["src/a.rs"])), "discard src/a.rs"),
@@ -653,6 +742,7 @@ fn every_refusal_explains_itself_in_one_actionable_sentence() {
             path: PathBuf::from("a"),
         },
         Refusal::PatchPathMismatch,
+        Refusal::PatchSideMismatch,
         Refusal::NothingStaged,
         Refusal::EmptySubject,
         Refusal::UnbornHead,

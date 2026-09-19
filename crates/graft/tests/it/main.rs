@@ -17,3 +17,4 @@ mod heavy;
 mod many_refs;
 mod not_a_repo;
 mod piped_stdout;
+mod seam_rule;

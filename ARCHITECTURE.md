@@ -39,7 +39,10 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   properties: `check`, `plan`, `touches`, and `undo::inverse`). **The seam
   rule: `ops` decides, `app` wires.** `app` never builds a `GitInvocation` for
   a write, never touches the journal file, never chooses a snapshot; a key
-  becomes an `Operation` and `ops` does the rest.
+  becomes an `Operation` and `ops` does the rest. Guarded by
+  `crates/graft/tests/it/seam_rule.rs`: `GitInvocation` under `graft/src/`
+  only inside `jobs/` (reads); the journal's `render_*` and the inverse's
+  `Step::`/`PathScope::` constructors nowhere in `app`.
 - **Changing terminal detection or an image protocol** → `term`. Start at
   `DESIGN.md` §4, then `graft-term/src/detect/`: `environment` reads the env
   vars, `probe` writes the queries, `reply` parses what comes back, `tmux`

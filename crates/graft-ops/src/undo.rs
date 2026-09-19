@@ -55,16 +55,20 @@ pub enum Step {
         /// Which paths.
         paths: PathScope,
     },
-    /// Make `refs/stash`'s reflog contain `commit` again (`git stash store
-    /// -m <the commit's subject>`, which is the message git wrote — verified
-    /// byte for byte); a no-op when the reflog already has it, so a pop that
-    /// failed before dropping is not stored twice.
+    /// Make `refs/stash`'s reflog contain `commit` again: `git stash store
+    /// -m <the commit's subject>` (the subject is the message git wrote —
+    /// verified byte for byte). Idempotent by the executor's doing, not
+    /// git's: it scans the reflog first and stores only when `commit` is
+    /// absent, so a pop that failed before dropping is not listed twice
+    /// (`stash store` of a commit already at `stash@{1}` would add a
+    /// duplicate on top — verified).
     StashStore {
-        /// The stash commit, kept alive by the entry's backup ref.
+        /// The stash commit, kept alive by the entry's backup ref or `pins`.
         commit: Oid,
     },
     /// Remove the reflog entry whose commit is `commit` (`git stash drop
-    /// stash@{n}` at the index that holds it); a no-op when absent.
+    /// stash@{n}` at the index the executor finds it at); a no-op when the
+    /// reflog does not have it. The plan's `pins` keep the commit alive.
     StashDrop {
         /// The stash commit.
         commit: Oid,
@@ -101,6 +105,12 @@ pub struct InversePlan {
     pub touches: Touches,
     /// In order: refs, `HEAD`, index, working tree, then the stash reflog.
     pub steps: Vec<Step>,
+    /// Commits the steps make unreachable — every [`Step::StashDrop`]'s —
+    /// which the new entry's own inverse will need alive: its `pins`, so the
+    /// executor's backup ref points at them before the plan runs. Without
+    /// this a redo after `gc.pruneExpire` would store a commit git has
+    /// pruned.
+    pub pins: Vec<Oid>,
 }
 
 /// Why an entry has no inverse.
@@ -157,13 +167,34 @@ pub fn inverse(
     } else {
         "redo"
     };
+    // Redoing an undo that failed half way puts back the state the failed
+    // undo started from, which is the root's after-state; the browser says
+    // so, since "redo" alone reads as if the undo had finished.
+    let after_failure = match entry.status {
+        EntryStatus::Aborted { .. } if entry.kind == OperationKind::Undo => {
+            " (after a failed undo)"
+        }
+        _ => "",
+    };
     Ok(InversePlan {
         reverses: entry.id.clone(),
         kind,
-        description: format!("{verb}: {}", root.description),
+        description: format!("{verb}: {}{after_failure}", root.description),
         touches: touches_of(&steps),
+        pins: dropped_by(&steps),
         steps,
     })
+}
+
+/// The commits the plan's `StashDrop` steps leave unreachable.
+fn dropped_by(steps: &[Step]) -> Vec<Oid> {
+    steps
+        .iter()
+        .filter_map(|step| match step {
+            Step::StashDrop { commit } => Some(*commit),
+            _ => None,
+        })
+        .collect()
 }
 
 /// Refs back, `HEAD` back, trees back — from the entry's own before/after.
@@ -216,17 +247,12 @@ fn scope(after: Option<Oid>, before: Oid) -> PathScope {
 }
 
 /// The reflog step for the root operation's kind: its inverse when undoing,
-/// its own effect again when redoing.
+/// its own effect again when redoing. A push that pushed nothing (`git stash
+/// push` with nothing to save exits 0, so the entry is `Committed` with
+/// `refs/stash` unmoved) has no reflog step either way: the commit at
+/// `refs/stash` is the user's own earlier stash, and dropping it would
+/// destroy something the operation never touched.
 fn stash_step(root: &JournalEntry, forward: bool) -> Result<Option<Step>, NotInvertible> {
-    let pushed = || {
-        root.refs_after
-            .get(STASH_REF)
-            .copied()
-            .flatten()
-            .ok_or(NotInvertible::Incomplete {
-                field: "refs_after[refs/stash]",
-            })
-    };
     let pinned = || {
         root.pins
             .first()
@@ -234,8 +260,8 @@ fn stash_step(root: &JournalEntry, forward: bool) -> Result<Option<Step>, NotInv
             .ok_or(NotInvertible::Incomplete { field: "pins" })
     };
     Ok(match (root.kind, forward) {
-        (OperationKind::StashPush, false) => Some(Step::StashDrop { commit: pushed()? }),
-        (OperationKind::StashPush, true) => Some(Step::StashStore { commit: pushed()? }),
+        (OperationKind::StashPush, false) => pushed(root)?.map(|commit| Step::StashDrop { commit }),
+        (OperationKind::StashPush, true) => pushed(root)?.map(|commit| Step::StashStore { commit }),
         (OperationKind::StashPop | OperationKind::StashDrop, false) => {
             Some(Step::StashStore { commit: pinned()? })
         }
@@ -249,6 +275,27 @@ fn stash_step(root: &JournalEntry, forward: bool) -> Result<Option<Step>, NotInv
         }
         _ => None,
     })
+}
+
+/// The stash commit a push created: `refs/stash` after, when it differs from
+/// `refs/stash` before. Both sides must be recorded — an unknown before-value
+/// cannot tell a new stash from the user's old one.
+fn pushed(root: &JournalEntry) -> Result<Option<Oid>, NotInvertible> {
+    let before = root
+        .refs_before
+        .get(STASH_REF)
+        .copied()
+        .ok_or(NotInvertible::Incomplete {
+            field: "refs_before[refs/stash]",
+        })?;
+    let after = root
+        .refs_after
+        .get(STASH_REF)
+        .copied()
+        .ok_or(NotInvertible::Incomplete {
+            field: "refs_after[refs/stash]",
+        })?;
+    Ok(after.filter(|_| after != before))
 }
 
 fn touches_of(steps: &[Step]) -> Touches {
@@ -301,7 +348,8 @@ pub struct RepoStateNow {
 }
 
 /// What changed since the entry's after-state was recorded: the three
-/// comparisons of §6.7, refs never alone.
+/// comparisons of §6.7, refs never alone — and what could not be compared
+/// because the entry never recorded it.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct Drift {
     /// Refs whose value now differs from `refs_after`: name, recorded, now.
@@ -312,16 +360,28 @@ pub struct Drift {
     pub index: bool,
     /// The working-tree tree differs.
     pub worktree: bool,
+    /// What the inverse restores whole because its after-state was never
+    /// recorded (`PathScope::Everything`): `"HEAD"`, `"the index"`, `"the
+    /// working tree"`. Unknown is not clean: the user is told the whole
+    /// thing is about to be overwritten, and asked (§6.7).
+    pub unknown: Vec<&'static str>,
 }
 
 impl Drift {
-    /// Nothing moved since the entry.
+    /// Nothing moved since the entry, and every restore is scoped to what
+    /// the operation changed.
     #[must_use]
     pub fn is_clean(&self) -> bool {
-        self.refs.is_empty() && !self.head && !self.index && !self.worktree
+        self.refs.is_empty()
+            && !self.head
+            && !self.index
+            && !self.worktree
+            && self.unknown.is_empty()
     }
 
-    /// `refs/heads/main moved; the index changed; the working tree changed`.
+    /// `refs/heads/main moved; the index changed; the working tree changed`,
+    /// or `the working tree's state after the operation was never recorded;
+    /// undo restores all of it`.
     #[must_use]
     pub fn explain(&self) -> String {
         let mut parts: Vec<String> = self
@@ -338,6 +398,11 @@ impl Drift {
         if self.worktree {
             parts.push("the working tree changed".to_owned());
         }
+        for what in &self.unknown {
+            parts.push(format!(
+                "{what}'s state after the operation was never recorded; undo restores all of it"
+            ));
+        }
         if parts.is_empty() {
             "nothing changed since".to_owned()
         } else {
@@ -347,8 +412,9 @@ impl Drift {
 }
 
 /// Compares the entry's recorded after-state with `now`. A field the entry
-/// never recorded cannot drift; the snapshot, not this rail, is what makes
-/// undoing it safe (ADR-0009).
+/// never recorded is reported as `unknown` rather than compared: the inverse
+/// restores it whole (`PathScope::Everything`), so the rail must speak
+/// loudest exactly there.
 #[must_use]
 pub fn drift(entry: &JournalEntry, now: &RepoStateNow) -> Drift {
     let refs = entry
@@ -359,6 +425,16 @@ pub fn drift(entry: &JournalEntry, now: &RepoStateNow) -> Drift {
             (current != *recorded).then(|| (name.clone(), *recorded, current))
         })
         .collect();
+    let mut unknown = Vec::new();
+    if entry.head_after.is_none() {
+        unknown.push("HEAD");
+    }
+    if entry.touches.index && entry.index_after.is_none() {
+        unknown.push("the index");
+    }
+    if entry.touches.worktree && entry.worktree_after.is_none() {
+        unknown.push("the working tree");
+    }
     Drift {
         refs,
         head: entry
@@ -369,6 +445,7 @@ pub fn drift(entry: &JournalEntry, now: &RepoStateNow) -> Drift {
         worktree: entry
             .worktree_after
             .is_some_and(|tree| tree != now.worktree_tree),
+        unknown,
     }
 }
 

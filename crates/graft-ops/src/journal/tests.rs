@@ -75,14 +75,28 @@ pub(crate) fn reversal(at: i64, kind: OperationKind, target: &JournalEntry) -> J
     }
 }
 
+/// An `Aborted` stash pop that got half way: the working tree moved before
+/// git failed (a conflict), and the ref and index did not.
 fn aborted(at: i64, with_backup: bool) -> JournalEntry {
     JournalEntry {
         status: EntryStatus::Aborted {
             reason: "git exited 1".to_owned(),
         },
         worktree_before: with_backup.then(|| oid(0xb1)),
+        worktree_after: Some(oid(0xb2)),
         index_before: with_backup.then(|| oid(0xa1)),
         ..committed(at, OperationKind::StashPop, 1, 1)
+    }
+}
+
+/// An `Aborted` entry with a backup whose recorded after-state equals its
+/// before-state: git failed having changed nothing.
+fn aborted_no_op(at: i64, kind: OperationKind) -> JournalEntry {
+    JournalEntry {
+        status: EntryStatus::Aborted {
+            reason: "hook rejected it".to_owned(),
+        },
+        ..committed(at, kind, 1, 1)
     }
 }
 
@@ -254,6 +268,87 @@ fn aborted_entries_are_undoable_only_with_a_backup() {
     let pending_only = vec![pending(10)];
     assert_eq!(next_undo(&pending_only), None);
     assert_eq!(next_redo(&pending_only), None);
+}
+
+#[test]
+fn an_aborted_operation_that_changed_nothing_is_not_in_force() {
+    // A commit whose hook rejected it: backed up, recorded, no different.
+    let stage = committed(10, OperationKind::Stage, 1, 2);
+    let rejected = aborted_no_op(20, OperationKind::Commit);
+    let entries = vec![stage.clone(), rejected.clone()];
+    assert!(!in_force(&entries, &rejected.id));
+    assert_eq!(next_undo(&entries), Some(&stage));
+}
+
+#[test]
+fn an_aborted_undo_that_moved_nothing_leaves_its_target_in_force() {
+    // The undo's compare-and-swap refused: `main` had moved, nothing ran.
+    let commit = committed(10, OperationKind::Commit, 1, 2);
+    let mut undo = reversal(20, OperationKind::Undo, &commit);
+    undo.status = EntryStatus::Aborted {
+        reason: "update-ref: refs/heads/main is not at the expected value".to_owned(),
+    };
+    undo.head_after = Some(undo.head_before.clone());
+    undo.refs_after = undo.refs_before.clone();
+    undo.index_after = undo.index_before;
+    undo.worktree_after = undo.worktree_before;
+    let entries = vec![commit.clone(), undo.clone()];
+    assert!(in_force(&entries, &commit.id));
+    assert!(!in_force(&entries, &undo.id));
+    assert_eq!(next_undo(&entries), Some(&commit));
+    assert_eq!(next_redo(&entries), None);
+}
+
+#[test]
+fn an_aborted_operation_is_in_force_when_any_recorded_field_moved_or_is_unknown() {
+    let base = aborted_no_op(10, OperationKind::StashPop);
+    let moved: Vec<(&str, JournalEntry)> = vec![
+        ("ref", {
+            let mut e = base.clone();
+            e.refs_after.insert(MAIN.to_owned(), Some(oid(2)));
+            e
+        }),
+        ("HEAD", {
+            let mut e = base.clone();
+            e.head_after = Some(HeadRef::Detached(oid(1)));
+            e
+        }),
+        ("index", {
+            let mut e = base.clone();
+            e.index_after = Some(oid(0xa2));
+            e
+        }),
+        ("worktree", {
+            let mut e = base.clone();
+            e.worktree_after = Some(oid(0xb2));
+            e
+        }),
+        ("ref never recorded after", {
+            let mut e = base.clone();
+            e.refs_after.clear();
+            e
+        }),
+        ("index never recorded after", {
+            let mut e = base.clone();
+            e.index_after = None;
+            e
+        }),
+        ("worktree never recorded after", {
+            let mut e = base.clone();
+            e.worktree_after = None;
+            e
+        }),
+    ];
+    for (what, entry) in moved {
+        let entries = vec![entry.clone()];
+        assert!(in_force(&entries, &entry.id), "{what}");
+        assert_eq!(next_undo(&entries), Some(&entries[0]), "{what}");
+    }
+    // A field the operation does not touch is not its doing.
+    let mut untouched = base.clone();
+    untouched.touches.index = false;
+    untouched.index_after = None;
+    assert!(!in_force(std::slice::from_ref(&untouched), &untouched.id));
 }
 
 // ---- state_at -------------------------------------------------------------

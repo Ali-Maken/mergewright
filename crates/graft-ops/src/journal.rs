@@ -148,14 +148,35 @@ fn render<T: serde::Serialize>(line: &T) -> Result<Vec<u8>, JournalError> {
     Ok(bytes)
 }
 
-/// Whether an entry changed the repository: `Committed`, or `Aborted` with a
-/// backup (it may have got half way, design note Proposed change 2).
+/// Whether an entry changed the repository. `Committed` always did: it is
+/// what the user did, even when git found nothing to do. `Aborted` only when
+/// it has a backup and got some way — its recorded after-state differs from
+/// its before-state somewhere, or a touched field was never recorded after
+/// (design note Proposed change 2). A failure that changed nothing — a hook
+/// that rejected the commit, a stash push with nothing staged, an undo whose
+/// compare-and-swap refused — never happened as far as the cursor is
+/// concerned: it must not shadow the real `next_undo`, and an aborted undo
+/// must not mark its target reversed while it is still fully in effect.
 fn took_effect(entry: &JournalEntry) -> bool {
     match entry.status {
         EntryStatus::Committed => true,
-        EntryStatus::Aborted { .. } => entry.worktree_before.is_some(),
+        EntryStatus::Aborted { .. } => entry.worktree_before.is_some() && changed_anything(entry),
         EntryStatus::Pending => false,
     }
+}
+
+/// Whether any recorded after-field differs from its before-field. A touched
+/// field with no after-value counts as changed: unknown is not "unchanged"
+/// (`JournalEntry`'s own rule), and the inverse then restores all of it.
+fn changed_anything(entry: &JournalEntry) -> bool {
+    let refs = entry
+        .refs_before
+        .iter()
+        .any(|(name, before)| entry.refs_after.get(name) != Some(before));
+    let head = entry.head_after.as_ref() != Some(&entry.head_before);
+    let index = entry.touches.index && entry.index_after != entry.index_before;
+    let worktree = entry.touches.worktree && entry.worktree_after != entry.worktree_before;
+    refs || head || index || worktree
 }
 
 /// One flag per entry: it took effect and no later in-force entry reverses

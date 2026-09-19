@@ -2,12 +2,13 @@
 
 use std::path::PathBuf;
 
+use graft_core::journal::HeadRef;
 use graft_core::oid::Oid;
 use graft_git::run::GitArg;
 use graft_git::stash::StashEntry;
 use graft_git::version::GitVersion;
 
-use super::{Invocation, Refusal, RepoFacts, StashParams};
+use super::{Invocation, Refusal, RepoFacts, StashParams, StashScope};
 
 /// The stash ref; its reflog is the stash list.
 pub(super) const STASH_REF: &str = "refs/stash";
@@ -26,15 +27,27 @@ pub(super) fn describe_push(params: &StashParams) -> String {
     }
 }
 
+/// A push needs a commit to base the stash on (`You do not have the initial
+/// commit yet`, exit 1 — verified), something in its scope (`--staged` with
+/// nothing staged is `No staged changes`, exit 1 — verified), and a git new
+/// enough for `--staged`.
 pub(super) fn check_push(params: &StashParams, facts: &RepoFacts) -> Result<(), Refusal> {
+    if matches!(facts.head, HeadRef::Unborn(_)) {
+        return Err(Refusal::UnbornHead);
+    }
     let status = &facts.status;
-    let something = status.staged().next().is_some()
-        || status.unstaged().next().is_some()
-        || (params.include_untracked && status.untracked().next().is_some());
+    let something = match params.scope {
+        StashScope::StagedOnly => status.staged().next().is_some(),
+        StashScope::All { include_untracked } => {
+            status.staged().next().is_some()
+                || status.unstaged().next().is_some()
+                || (include_untracked && status.untracked().next().is_some())
+        }
+    };
     if !something {
         return Err(Refusal::NothingToStash);
     }
-    if params.staged_only && facts.git < STAGED_ONLY_SINCE {
+    if params.scope == StashScope::StagedOnly && facts.git < STAGED_ONLY_SINCE {
         return Err(Refusal::NeedsGit {
             feature: "stash --staged",
             minimum: STAGED_ONLY_SINCE,
@@ -82,11 +95,14 @@ pub(super) fn check_apply(index: usize, commit: Oid, facts: &RepoFacts) -> Resul
 
 pub(super) fn plan_push(params: &StashParams) -> Invocation {
     let mut args = vec![GitArg::Flag("stash"), GitArg::Flag("push")];
-    if params.include_untracked {
-        args.push(GitArg::Flag("-u"));
-    }
-    if params.staged_only {
-        args.push(GitArg::Flag("--staged"));
+    match params.scope {
+        StashScope::All {
+            include_untracked: true,
+        } => args.push(GitArg::Flag("-u")),
+        StashScope::All {
+            include_untracked: false,
+        } => {}
+        StashScope::StagedOnly => args.push(GitArg::Flag("--staged")),
     }
     if let Some(message) = &params.message {
         args.push(GitArg::Flag("-m"));

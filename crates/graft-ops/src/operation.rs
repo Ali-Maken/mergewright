@@ -71,14 +71,31 @@ pub enum Target {
     /// Whole files, as the status lists them.
     Paths(Vec<PathBuf>),
     /// One hunk, or selected lines of one, as a complete one-file patch from
-    /// `graft_git::diff::hunk_patch` (forward for a stage, reverse for an
-    /// unstage or discard).
+    /// `graft_git::diff::hunk_patch`. Its `PatchDirection` names how `plan`
+    /// applies it — `Forward` for a stage (`git apply --cached`), `Reverse`
+    /// for an unstage or discard (`apply -R`) — so the direction and the
+    /// `-R` are one choice, not two; it only changes the bytes for a
+    /// selection of lines (a whole hunk is the same either way).
     Patch {
         /// The file the patch is for.
         path: PathBuf,
         /// The patch bytes, fed to `git apply` on stdin.
         patch: Vec<u8>,
+        /// Which diff the hunk was cut from: a stage takes a worktree hunk,
+        /// an unstage an index hunk, a discard either — and reverses an
+        /// index hunk in both the index and the working tree.
+        side: PatchSide,
     },
+}
+
+/// Which diff a [`Target::Patch`] was cut from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PatchSide {
+    /// The unstaged diff: working tree against index. The Changes pane's
+    /// body for an unstaged or untracked file.
+    Worktree,
+    /// The staged diff: index against `HEAD`. The body for a staged file.
+    Index,
 }
 
 /// What a commit or amend needs.
@@ -99,10 +116,32 @@ pub struct CommitParams {
 pub struct StashParams {
     /// `-m <message>`; without one git names the stash after `HEAD`.
     pub message: Option<String>,
-    /// `-u`: untracked files go in too.
-    pub include_untracked: bool,
+    /// What goes in.
+    pub scope: StashScope,
+}
+
+/// What a stash push takes. Git refuses `--staged` together with
+/// `--include-untracked` (verified), so the pair is not representable: the
+/// prompt toggles one or the other.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StashScope {
+    /// Every staged and unstaged change; with `include_untracked`, `-u`
+    /// takes untracked files too.
+    All {
+        /// `-u`.
+        include_untracked: bool,
+    },
     /// `--staged`: only the index (git 2.35+).
-    pub staged_only: bool,
+    StagedOnly,
+}
+
+impl Default for StashScope {
+    /// `git stash push` with no flags: tracked changes only.
+    fn default() -> Self {
+        Self::All {
+            include_untracked: false,
+        }
+    }
 }
 
 /// One typed `git` invocation an operation plans: arguments and stdin, not a
@@ -175,13 +214,18 @@ pub enum Refusal {
     },
     /// The patch's `---`/`+++` path is not the target's path.
     PatchPathMismatch,
+    /// The hunk was cut from the other diff: an index hunk given to a stage,
+    /// or a worktree hunk to an unstage.
+    PatchSideMismatch,
     /// A commit with nothing staged and `allow_empty` off.
     NothingStaged,
     /// A message with no subject line.
     EmptySubject,
-    /// An amend before the first commit.
+    /// An amend or a stash push before the first commit.
     UnbornHead,
-    /// A stash push with nothing to put in it.
+    /// A stash push with nothing to put in it: nothing staged for a
+    /// staged-only push, otherwise nothing staged, unstaged or (when
+    /// included) untracked.
     NothingToStash,
     /// The system git is too old for a flag the operation needs.
     NeedsGit {
@@ -230,13 +274,18 @@ impl Refusal {
             Self::PatchPathMismatch => "The patch is for a different file than the one \
                                         selected; refresh and pick the hunk again."
                 .to_owned(),
+            Self::PatchSideMismatch => "The hunk comes from the other diff (a stage takes an \
+                                        unstaged hunk, an unstage a staged one); refresh and \
+                                        pick it again."
+                .to_owned(),
             Self::NothingStaged => {
                 "Nothing is staged; stage something first, or allow an empty commit.".to_owned()
             }
             Self::EmptySubject => "The commit message needs a subject line.".to_owned(),
-            Self::UnbornHead => "There is no commit to amend yet.".to_owned(),
-            Self::NothingToStash => "There are no changes to stash (untracked files count only \
-                                     when they are included)."
+            Self::UnbornHead => "There is no commit yet; amend and stash both need one.".to_owned(),
+            Self::NothingToStash => "There are no changes to stash: untracked files count only \
+                                     when they are included, and a staged-only stash needs \
+                                     something staged."
                 .to_owned(),
             Self::NeedsGit { feature, minimum } => {
                 format!("`git {feature}` needs git {minimum} or newer; the system git is older.")

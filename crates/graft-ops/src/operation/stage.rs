@@ -7,7 +7,7 @@ use graft_core::journal::HeadRef;
 use graft_git::run::GitArg;
 use graft_git::status::{StatusEntry, WorkingTreeStatus};
 
-use super::{Invocation, Refusal, RepoFacts, Target};
+use super::{Invocation, PatchSide, Refusal, RepoFacts, Target};
 
 /// Which status a path must be in for the operation to apply to it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -17,18 +17,32 @@ pub(super) enum State {
     Stageable,
     /// Unstage: a staged change.
     Staged,
-    /// Discard: any change at all; a patch needs an unstaged one to reverse.
+    /// Discard: any change at all; a patch needs a change on the side it
+    /// was cut from.
     Discardable,
 }
 
 impl State {
-    fn admits(self, entry: &StatusEntry, whole_file: bool) -> bool {
-        match self {
-            Self::Stageable => entry.is_unstaged() || (whole_file && entry.untracked),
-            Self::Staged => entry.is_staged(),
-            Self::Discardable => {
-                entry.is_unstaged() || (whole_file && (entry.is_staged() || entry.untracked))
+    /// `hunk` is the side a hunk came from; `None` for whole files.
+    fn admits(self, entry: &StatusEntry, hunk: Option<PatchSide>) -> bool {
+        match (self, hunk) {
+            (Self::Stageable, None) => entry.is_unstaged() || entry.untracked,
+            (Self::Discardable, None) => {
+                entry.is_unstaged() || entry.is_staged() || entry.untracked
             }
+            (Self::Stageable, Some(_)) | (Self::Discardable, Some(PatchSide::Worktree)) => {
+                entry.is_unstaged()
+            }
+            (Self::Staged, _) | (Self::Discardable, Some(PatchSide::Index)) => entry.is_staged(),
+        }
+    }
+
+    /// The side a hunk must come from, where the operation fixes it.
+    fn wanted_side(self) -> Option<PatchSide> {
+        match self {
+            Self::Stageable => Some(PatchSide::Worktree),
+            Self::Staged => Some(PatchSide::Index),
+            Self::Discardable => None,
         }
     }
 }
@@ -51,9 +65,12 @@ pub(super) fn check(
     match target {
         Target::Paths(paths) => paths
             .iter()
-            .try_for_each(|path| check_path(path, status, state, true)),
-        Target::Patch { path, patch } => {
-            check_path(path, status, state, false)?;
+            .try_for_each(|path| check_path(path, status, state, None)),
+        Target::Patch { path, patch, side } => {
+            check_path(path, status, state, Some(*side))?;
+            if state.wanted_side().is_some_and(|wanted| wanted != *side) {
+                return Err(Refusal::PatchSideMismatch);
+            }
             if patch_names(patch, path) {
                 Ok(())
             } else {
@@ -67,10 +84,10 @@ fn check_path(
     path: &Path,
     status: &WorkingTreeStatus,
     state: State,
-    whole_file: bool,
+    hunk: Option<PatchSide>,
 ) -> Result<(), Refusal> {
     match status.entry(path) {
-        Some(entry) if state.admits(entry, whole_file) => Ok(()),
+        Some(entry) if state.admits(entry, hunk) => Ok(()),
         _ => Err(Refusal::PathNotInState {
             path: path.to_path_buf(),
         }),
@@ -153,14 +170,30 @@ pub(super) fn plan_unstage(target: &Target, facts: &RepoFacts) -> Vec<Invocation
 /// back — verified); unstaged-only changes go back to the index. Before the
 /// first commit there is no `HEAD`: staged entries leave the index and are
 /// cleaned with the untracked ones.
+///
+/// A hunk is reversed where it came from: a worktree hunk in the working
+/// tree; an index hunk in the working tree first, then the index. The
+/// working tree goes first because it is the step that can fail — an
+/// unstaged edit over the same lines — and a failure there leaves nothing
+/// changed, where the other order would leave the hunk reversed in the index
+/// only.
 pub(super) fn plan_discard(target: &Target, facts: &RepoFacts) -> Vec<Invocation> {
     let paths = match target {
         Target::Paths(paths) => paths,
-        Target::Patch { patch, .. } => {
-            return vec![Invocation::with_stdin(
-                vec![GitArg::Flag("apply"), GitArg::Flag("-R"), stdin_arg()],
-                patch.clone(),
-            )];
+        Target::Patch { patch, side, .. } => {
+            let reverse = |cached: bool| {
+                let mut args = vec![GitArg::Flag("apply")];
+                if cached {
+                    args.push(GitArg::Flag("--cached"));
+                }
+                args.push(GitArg::Flag("-R"));
+                args.push(stdin_arg());
+                Invocation::with_stdin(args, patch.clone())
+            };
+            return match side {
+                PatchSide::Worktree => vec![reverse(false)],
+                PatchSide::Index => vec![reverse(false), reverse(true)],
+            };
         }
     };
     let classes = Classes::split(paths, &facts.status);
@@ -262,7 +295,13 @@ fn pathspec(paths: &[PathBuf], status: &WorkingTreeStatus) -> Vec<PathBuf> {
     spec
 }
 
+/// `git --literal-pathspecs <args> -- <paths>`: each path is exactly the
+/// file the status listed. Without the flag `*`, `?`, `[` and a leading `:`
+/// are pathspec magic even after `--` — verified: `add -- 'a*b'` also stages
+/// `ab` and `acb`, and `clean -f` would remove them; with the flag each
+/// command takes `a*b` alone.
 fn with_paths(mut args: Vec<GitArg>, paths: &[PathBuf]) -> Vec<GitArg> {
+    args.insert(0, GitArg::Flag("--literal-pathspecs"));
     args.push(GitArg::Separator);
     args.extend(
         paths
