@@ -147,6 +147,7 @@ One line per public item. Update when a public item changes.
 - `GitInvocation::output_cap` (fn) — max bytes kept per stream (default 64 MiB); past it the child is killed, output cut to the cap, `truncated`, still `Ok`.
 - `GitInvocation::run` (fn) — spawn, drain stdout/stderr concurrently, poll `Stop` every ≤ 50 ms; on stop kill + reap, `Err(Stopped)`.
 - `GitInvocation::command_line` (fn) — `git <args>` shell-quoted, lossy UTF-8, without `-C`/`--no-pager`; display only.
+- `command_line` (fn) — the same text for a bare `&[GitArg]` not yet bound to a repository (an operation's plan, the Command Log) (m3/02).
 - `GitArg` (enum) — `Flag`, `Count` (`-U3`), `Oid` (full hex), `Ref`/`Path` (raw bytes), `Separator`, `Word` (caller-built, never a path or ref).
 - `Stop` (trait) — `should_stop(&self) -> bool`, `Sync`; impls for `AtomicBool` (Relaxed load) and `()` (never). The walk's stop is a `&dyn Fn() -> bool`, no type of its own, so no impl.
 - `GitOutput` (struct) — `stdout`, `stderr`, `truncated`.

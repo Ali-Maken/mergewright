@@ -147,6 +147,28 @@ pub struct GitInvocation {
     env: Vec<(OsString, OsString)>,
 }
 
+/// `git <args>` as a person would type it: the text behind
+/// [`GitInvocation::command_line`], for an argument list that has not been
+/// bound to a repository yet (an operation's plan, the Command Log). Arguments
+/// are shell-quoted where needed and decoded lossily; never run this.
+#[must_use]
+pub fn command_line(args: &[GitArg]) -> String {
+    let mut line = String::from("git");
+    for argument in args {
+        line.push(' ');
+        let text = match argument {
+            GitArg::Flag(flag) => (*flag).to_owned(),
+            GitArg::Count(flag, n) => format!("{flag}{n}"),
+            GitArg::Oid(oid) => oid.to_string(),
+            GitArg::Ref(bytes) | GitArg::Path(bytes) => String::from_utf8_lossy(bytes).into_owned(),
+            GitArg::Separator => "--".to_owned(),
+            GitArg::Word(word) => word.clone(),
+        };
+        line.push_str(&shell_quote(&text));
+    }
+    line
+}
+
 impl GitInvocation {
     /// A command with no arguments yet, run in `repo`'s working tree (its git
     /// directory when bare).
@@ -228,22 +250,7 @@ impl GitInvocation {
     /// lossily, and the runner's own `-C <dir> --no-pager` is left out.
     #[must_use]
     pub fn command_line(&self) -> String {
-        let mut line = String::from("git");
-        for argument in &self.args {
-            line.push(' ');
-            let text = match argument {
-                GitArg::Flag(flag) => (*flag).to_owned(),
-                GitArg::Count(flag, n) => format!("{flag}{n}"),
-                GitArg::Oid(oid) => oid.to_string(),
-                GitArg::Ref(bytes) | GitArg::Path(bytes) => {
-                    String::from_utf8_lossy(bytes).into_owned()
-                }
-                GitArg::Separator => "--".to_owned(),
-                GitArg::Word(word) => word.clone(),
-            };
-            line.push_str(&shell_quote(&text));
-        }
-        line
+        command_line(&self.args)
     }
 
     fn spawn(&self) -> Result<Child, RunError> {
