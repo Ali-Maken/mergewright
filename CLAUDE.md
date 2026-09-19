@@ -46,7 +46,7 @@ escalation and checkpoint policy are the conductor's — they live in
 
 ## Gates
 
-- **Rust is done only when** `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test` all pass. Run them quiet; full output only on the failing part.
+- **Rust is done only when** `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run` and `cargo test --doc` all pass. Run them quiet; full output only on the failing part. (nextest does not run doctests — hence the second command. Measured 2026-09-19: 36.2 s → 21.7 s.)
 - **Tests must be laptop-safe** (PROMPT.md 7.1). Builders run the fast tier only. Heavy tier, fuzzing and benchmarks run in milestone reviews. **Every milestone review includes the release perf run** — frame budgets fail only under `--release` (ADR-0021).
 - **Measurement never runs in a helper's context.** Perf runs, benchmarks, memory curves run from a script writing to `docs/perf/<ticket>.txt`; the helper reads summary lines.
 - **Captures stay small:** `docs/shots/` trimmed to the point, **hard cap 200 KB per file**. Raw terminal streams never committed. The repo may be published.

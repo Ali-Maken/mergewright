@@ -1,0 +1,5 @@
+# Laptop-safe, matching RUST_TEST_THREADS = 4 in .cargo/config.toml (PROMPT.md 7.1).
+[profile.default]
+test-threads = 4
+failure-output = "immediate-final"
+status-level = "fail"

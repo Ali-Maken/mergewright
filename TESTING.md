@@ -4,7 +4,7 @@ Three tiers. You only need the first one day to day.
 
 | Tier | Command | When | Budget (PROMPT.md §7.1) | Measured |
 |---|---|---|---|---|
-| **Fast** | `cargo test` | After every change. The gate for every ticket | under 3 min, ~2 GB | 307 tests, **4.3 s** warm |
+| **Fast** | `cargo nextest run` + `cargo test --doc` | After every change. The gate for every ticket | under 3 min, ~2 GB | **21.7 s** warm (was 36.2 s on `cargo test`, measured 2026-09-19) |
 | **Heavy** | two commands, [below](#the-heavy-tier) | Milestone reviews only | under 10 min, ~3 GB | **1.7 s** with fixtures cached, 6 s when it has to build them |
 | **Manual** | [the checklist](#the-manual-terminal-checklist) | Only when you choose to. The M1 and M8 checkpoints | — | about 20 min per terminal pass |
 
@@ -20,7 +20,8 @@ obligation:
 ```sh
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
-cargo test
+cargo nextest run
+cargo test --doc   # nextest does not run doctests
 ```
 
 ## Times I left
@@ -47,7 +48,8 @@ _(empty until M3 lands — M0–M2 are read-only and there was nothing to leave 
 ## The fast tier
 
 ```sh
-cargo test
+cargo nextest run
+cargo test --doc   # nextest does not run doctests
 ```
 
 Everything that runs by default. Small fixtures only (500 commits or
