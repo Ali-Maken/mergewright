@@ -177,7 +177,9 @@ impl Journal {
                 .map(|name| (name.clone(), now.refs.get(name).copied().flatten()))
                 .collect();
             if closed.touches.index {
-                closed.index_after = Some(now.index_tree);
+                // `None` when the index is unmerged: there is no tree to
+                // record, and `drift` reads the gap as unknown.
+                closed.index_after = now.index_tree;
             } else {
                 closed.index_after = closed.index_before;
             }

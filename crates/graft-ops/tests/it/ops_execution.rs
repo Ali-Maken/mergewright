@@ -12,11 +12,11 @@ use graft_core::journal::{EntryStatus, OperationKind};
 use graft_ops::apply::{ApplyError, Refresh, apply};
 use graft_ops::operation::{CommitParams, Operation, StashParams, StashScope, Target};
 use graft_ops::snapshot;
-use graft_ops::undo::{self, UndoError};
+use graft_ops::undo::UndoError;
 
-use crate::support::{Never, RepoState, TempRepo, context, journal_for, state_of};
-
-const NOW: i64 = 1_700_000_000_000;
+use crate::support::{
+    NOW, Never, TempRepo, context, journal_for, round_trip, run, run_redo, run_undo,
+};
 
 fn paths(of: &[&str]) -> Target {
     Target::Paths(of.iter().map(PathBuf::from).collect())
@@ -32,55 +32,6 @@ fn mixed() -> TempRepo {
     repo.write("a.rs", b"fn a() { changed }\n");
     repo.write("untracked.bin", &[0, 255, 10, 13, 0, 7]);
     repo
-}
-
-/// Apply one operation with a fresh context, and return the entry.
-fn run(repo: &TempRepo, op: &Operation, at: i64) -> graft_core::journal::JournalEntry {
-    let handle = repo.open();
-    let mut journal = journal_for(&handle);
-    let never = Never;
-    let mut ctx = context(&handle, &mut journal, at, &never);
-    let applied = apply(&mut ctx, op).unwrap_or_else(|why| panic!("{}", why.explain()));
-    applied.entry
-}
-
-/// Undo the newest in-force operation.
-fn run_undo(repo: &TempRepo, at: i64, force: bool) -> Result<graft_ops::apply::Applied, UndoError> {
-    let handle = repo.open();
-    let mut journal = journal_for(&handle);
-    let never = Never;
-    let mut ctx = context(&handle, &mut journal, at, &never);
-    undo::undo(&mut ctx, force)
-}
-
-fn run_redo(repo: &TempRepo, at: i64, force: bool) -> Result<graft_ops::apply::Applied, UndoError> {
-    let handle = repo.open();
-    let mut journal = journal_for(&handle);
-    let never = Never;
-    let mut ctx = context(&handle, &mut journal, at, &never);
-    undo::redo(&mut ctx, force)
-}
-
-/// Apply, undo, redo, undo again — the state has to land back where each
-/// step says it should, every time.
-fn round_trip(repo: &TempRepo, op: &Operation) {
-    let before: RepoState = state_of(repo);
-    run(repo, op, NOW);
-    let after = state_of(repo);
-    assert_ne!(before, after, "the operation changed nothing to undo");
-
-    run_undo(repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
-    assert_eq!(state_of(repo), before, "undo did not put it back exactly");
-
-    run_redo(repo, NOW + 2, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
-    assert_eq!(state_of(repo), after, "redo did not put it forward exactly");
-
-    run_undo(repo, NOW + 3, false).unwrap_or_else(|why| panic!("undo 2: {}", why.explain()));
-    assert_eq!(
-        state_of(repo),
-        before,
-        "the second undo did not put it back"
-    );
 }
 
 // ── the journal file ────────────────────────────────────────────────────
@@ -140,8 +91,13 @@ fn a_pending_entry_with_no_outcome_is_found_and_closed_as_interrupted() {
 
     let never = Never;
     let mut ctx = context(&handle, &mut journal, NOW + 1, &never);
-    let closed = graft_ops::apply::recover_interrupted(&mut ctx).expect("recovery runs");
-    assert_eq!(closed.len(), 1);
+    let recovered = graft_ops::apply::recover_interrupted(&mut ctx).expect("recovery runs");
+    assert_eq!(recovered.closed.len(), 1);
+    assert!(
+        recovered.unreadable.is_empty(),
+        "the repository read fine: {:?}",
+        recovered.unreadable
+    );
     assert!(journal.unresolved().is_empty(), "nothing is left pending");
     let entry = &journal.entries()[0];
     assert!(

@@ -345,8 +345,11 @@ pub struct RepoStateNow {
     pub head: HeadRef,
     /// The refs the entry recorded, read again; a missing name is absent.
     pub refs: BTreeMap<String, Option<Oid>>,
-    /// The index tree now.
-    pub index_tree: Oid,
+    /// The index tree now — `None` when the index is unmerged, which has no
+    /// tree. That is not "the same as whatever was recorded": an entry that
+    /// recorded a tree has drifted, and one that recorded none is still
+    /// unknown.
+    pub index_tree: Option<Oid>,
     /// The working-tree tree now (§6.3's hashing).
     pub worktree_tree: Oid,
 }
@@ -445,7 +448,9 @@ pub fn drift(entry: &JournalEntry, now: &RepoStateNow) -> Drift {
             .head_after
             .as_ref()
             .is_some_and(|head| *head != now.head),
-        index: entry.index_after.is_some_and(|tree| tree != now.index_tree),
+        index: entry
+            .index_after
+            .is_some_and(|tree| Some(tree) != now.index_tree),
         worktree: entry
             .worktree_after
             .is_some_and(|tree| tree != now.worktree_tree),

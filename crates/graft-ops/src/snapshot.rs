@@ -153,7 +153,15 @@ pub fn take(
     let worktree_tree = write_tree(repo, temp.path(), stop)?;
     drop(temp);
 
-    let commit = commit_trees(repo, index_tree, worktree_tree, id, label, parents, stop)?;
+    let commit = commit_trees(
+        repo,
+        index_tree,
+        Some(worktree_tree),
+        id,
+        label,
+        parents,
+        stop,
+    )?;
     let name = backup_ref_name(worktree, id);
     update_ref(repo, &name, commit, stop)?;
     Ok(Snapshot {
@@ -163,14 +171,20 @@ pub fn take(
     })
 }
 
-/// Join two trees into one backup commit, without touching any ref.
+/// Join the trees into one backup commit, without touching any ref.
 ///
 /// `take` uses it for the before-snapshot; the protocol uses it again for the
-/// after-snapshot, whose parent is the before-commit.
+/// after-snapshot, whose parents are the before-commit and every commit the
+/// entry's after-fields name.
+///
+/// Either tree may be absent: an unmerged index has none, and an after-state
+/// read that failed for one side should still keep the other side reachable.
+/// A commit over neither is still worth making — its parents are what keeps
+/// the entry's recorded commits alive.
 pub fn commit_trees(
     repo: &RepoHandle,
     index_tree: Option<Oid>,
-    worktree_tree: Oid,
+    worktree_tree: Option<Oid>,
     id: &EntryId,
     label: &str,
     parents: &[Oid],
@@ -233,10 +247,13 @@ impl Drop for TempIndex {
         // Nothing can be done about a failed removal here and it must not
         // mask the operation's own result; the next snapshot uses a fresh
         // name, so a survivor is inert scratch, never read again.
+        // Said out loud rather than asserted: a panic in `Drop` while a test
+        // is already unwinding turns the real failure into an abort with no
+        // message (m3/03 review, Minor 4).
         if let Err(why) = std::fs::remove_file(&self.path)
             && why.kind() != std::io::ErrorKind::NotFound
         {
-            debug_assert!(false, "temp index {} survived: {why}", self.path.display());
+            eprintln!("graft: temp index {} survived: {why}", self.path.display());
         }
     }
 }
@@ -276,14 +293,16 @@ fn add_all(repo: &RepoHandle, index: &Path, stop: &dyn Stop) -> Result<(), Snaps
 fn mktree(
     repo: &RepoHandle,
     index_tree: Option<Oid>,
-    worktree_tree: Oid,
+    worktree_tree: Option<Oid>,
     stop: &dyn Stop,
 ) -> Result<Oid, SnapshotError> {
     let mut listing = String::new();
     if let Some(index_tree) = index_tree {
         listing.push_str(&format!("040000 tree {index_tree}\tindex\n"));
     }
-    listing.push_str(&format!("040000 tree {worktree_tree}\tworktree\n"));
+    if let Some(worktree_tree) = worktree_tree {
+        listing.push_str(&format!("040000 tree {worktree_tree}\tworktree\n"));
+    }
     let output = GitInvocation::new(repo)
         .arg(GitArg::Flag("mktree"))
         .stdin(listing.into_bytes())

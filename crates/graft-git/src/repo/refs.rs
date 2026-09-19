@@ -54,6 +54,49 @@ impl RepoHandle {
         Ok(found)
     }
 
+    /// One ref by full name, as the store holds it: `None` when it is absent.
+    ///
+    /// Where [`references`](Self::references) reads the whole store to answer
+    /// about anything, this answers about one name — a loose-ref file open, or
+    /// a lookup in `packed-refs`. The journal's protocol asks about one or two
+    /// names several times per operation, and on a repository with 50k refs a
+    /// full pass to answer that is the bookkeeping outweighing the work
+    /// (m3/03 review, M6).
+    ///
+    /// The target is **not** peeled and a symbolic ref is **not** followed:
+    /// both are the caller's choice, as in `references`.
+    ///
+    /// # Errors
+    /// [`RefsError`] if the ref store cannot be read, or holds a name or an id
+    /// that git's own rules reject.
+    pub fn reference(&self, name: &RefName) -> Result<Option<RefTarget>, RefsError> {
+        let read = |source: Box<dyn std::error::Error + Send + Sync>| RefsError::Read {
+            git_dir: self.git_dir().to_path_buf(),
+            source,
+        };
+        let malformed = |source| RefsError::Malformed {
+            git_dir: self.git_dir().to_path_buf(),
+            source,
+        };
+        let partial = gix::refs::PartialName::try_from(gix::bstr::BString::from(name.as_bytes()))
+            .map_err(|why| read(Box::new(why)))?;
+        let found = self
+            .repo
+            .try_find_reference(&partial)
+            .map_err(|why| read(Box::new(why)))?;
+        let Some(reference) = found else {
+            return Ok(None);
+        };
+        Ok(Some(match reference.target() {
+            gix::refs::TargetRef::Object(id) => {
+                RefTarget::Object(Oid::from_bytes(id.as_bytes()).map_err(malformed)?)
+            }
+            gix::refs::TargetRef::Symbolic(target) => {
+                RefTarget::Symbolic(RefName::new(target.as_bstr().to_vec()).map_err(malformed)?)
+            }
+        }))
+    }
+
     /// Every commit a ref reaches, `HEAD` included: where a walk starts.
     ///
     /// Annotated tags are peeled, which costs an object read each, and that

@@ -15,6 +15,7 @@ use std::path::Path;
 
 use graft_core::journal::HeadRef;
 use graft_core::oid::Oid;
+use graft_core::ref_name::RefName;
 use graft_git::repo::{HeadError, HeadState, RefTarget, RefsError, RepoHandle};
 use graft_git::run::Stop;
 use graft_git::stash::StashError;
@@ -98,25 +99,28 @@ pub fn head_ref(repo: &RepoHandle) -> Result<HeadRef, FactsError> {
 }
 
 /// The current value of every named ref: `None` for one that is absent.
+///
+/// Each name is looked up on its own rather than by reading the whole ref
+/// store: `begin`, `finish` and [`read_state_now`] each ask about the one or
+/// two refs an operation touches, and a full pass per call is three passes
+/// over 50k refs per operation (m3/03 review, M6).
 pub fn read_refs(
     repo: &RepoHandle,
     names: &[String],
 ) -> Result<BTreeMap<String, Option<Oid>>, FactsError> {
-    if names.is_empty() {
-        return Ok(BTreeMap::new());
-    }
-    let mut store: BTreeMap<String, RefTarget> = BTreeMap::new();
-    for entry in repo.references()? {
-        store.insert(ref_text(entry.name.as_bytes())?, entry.target);
-    }
     let mut found = BTreeMap::new();
     for name in names {
-        found.insert(name.clone(), resolve(&store, name));
+        found.insert(name.clone(), resolve(repo, name)?);
     }
     Ok(found)
 }
 
 /// The repository as it stands now: §6.7's three comparisons, read fresh.
+///
+/// An unmerged index — what a `stash pop` that hit a conflict leaves — has no
+/// tree at all, and that is recorded as `index_tree: None` rather than failing
+/// the read: `HEAD`, the named refs and the working tree are all still
+/// readable, and `drift` has to be able to report them (m3/03 review, M5).
 pub fn read_state_now(
     repo: &RepoHandle,
     scratch: &Path,
@@ -128,7 +132,11 @@ pub fn read_state_now(
     }
     let head = head_ref(repo)?;
     let named = read_refs(repo, refs)?;
-    let index_tree = snapshot::index_tree(repo, scratch, stop)?;
+    let index_tree = match snapshot::index_tree(repo, scratch, stop) {
+        Ok(tree) => Some(tree),
+        Err(SnapshotError::Unmerged) => None,
+        Err(why) => return Err(why.into()),
+    };
     let worktree_tree = snapshot::worktree_tree(repo, scratch, stop)?;
     Ok(RepoStateNow {
         head,
@@ -139,17 +147,23 @@ pub fn read_state_now(
 }
 
 /// Follow a symbolic ref to the object it names, at most a few hops.
-fn resolve<'a>(store: &'a BTreeMap<String, RefTarget>, name: &'a str) -> Option<Oid> {
-    let mut at = name;
+fn resolve(repo: &RepoHandle, name: &str) -> Result<Option<Oid>, FactsError> {
+    let mut at = RefName::new(name.as_bytes().to_vec())
+        .map_err(|_why| FactsError::NonUtf8Ref(name.to_owned()))?;
     for _ in 0..5 {
-        match store.get(at)? {
-            RefTarget::Object(id) => return Some(*id),
-            RefTarget::Symbolic(next) => {
-                at = std::str::from_utf8(next.as_bytes()).ok()?;
+        match repo.reference(&at)? {
+            None => return Ok(None),
+            Some(RefTarget::Object(id)) => return Ok(Some(id)),
+            Some(RefTarget::Symbolic(next)) => {
+                // The hop is checked for text here, not silently dropped: a
+                // name the journal cannot record is one a restore would aim
+                // wrongly with.
+                ref_text(next.as_bytes())?;
+                at = next;
             }
         }
     }
-    None
+    Ok(None)
 }
 
 fn ref_text(name: &[u8]) -> Result<String, FactsError> {

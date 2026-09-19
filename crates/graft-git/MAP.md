@@ -115,6 +115,7 @@ One line per public item. Update when a public item changes.
 - `RepoHandle::mailmap` (fn) — the repository's resolved `.mailmap`.
 - `RepoHandle::head` (fn) — where `HEAD` points.
 - `RepoHandle::references` (fn) — every ref in the repository.
+- `RepoHandle::reference` (fn) — one ref by full name, unpeeled and unfollowed; `None` when absent. For a caller that asks about one or two names rather than the whole store (m3/03 review, M6).
 - `RepoHandle::commit_tips` (fn, takes `&dyn KnownCommits`) — every branch/tag tip commit; a tip the table already knows is a commit is never header-read (m1-the-graph/58).
 - `RepoHandle::ref_snapshot` (fn, takes `&dyn KnownCommits`) — `references` and `commit_tips` from one pass over the ref store.
 - `RepoHandle::peeled_references` (fn, takes `&dyn KnownCommits`) — every ref that reaches a commit, with that commit (tags peeled).

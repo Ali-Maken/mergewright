@@ -216,3 +216,108 @@ The four M5 facts that were only ever proved by untracked scripts under
   5,000-file repo, not the heavy fixture.
 - **Close:** `PathScope::Everything` unreached-by-any-fixture.
 - Nothing is **broken**.
+
+---
+
+## Review fix round (2026-09-19, `builder-opus`)
+
+One round against `docs/reviews/m3-03-ops-execution.md`. Critical and every
+Major fixed at the cause; Minors 1–7 and 9–10 taken while the file was open.
+
+### C1 — unanchored after-state (cause)
+
+`finish` sealed an after-commit only for worktree operations with both trees
+present, so an index-only op's `index_after`, a conflicted pop's
+`worktree_after` and an amend's pre-amend commit hung off nothing.
+
+- `begin` now parents the **before**-commit on the pins *and* every commit the
+  entry's before-fields name (`anchors`): that is the pre-amend commit, and the
+  branch tip a commit moves off.
+- `finish` seals **whenever there is a backup ref**, over whichever trees were
+  readable, parented on the before-commit and on every commit the after-fields
+  name (so a redo after an undo still has its commit). `snapshot::commit_trees`
+  takes `worktree_tree: Option<Oid>` for the same reason `index_tree` is one.
+- A seal that fails drops only the freshly-read fields, never the before-ones:
+  an entry must not name a tree nothing reaches.
+- `recover_interrupted` seals the recovered after-state **before** it is
+  recorded, and records nothing when the seal fails — the same bug one level up,
+  which the review did not name.
+
+Proof: four tests in `ops_execution_hard.rs` run
+`reflog expire --expire-unreachable=now --all && gc --prune=now` between the
+operation and the undo (stage, amend, commit-then-undo-then-redo, conflicted
+pop). All four fail against the old sealing rule (verified by restoring it);
+all four pass now.
+
+### Majors
+
+- **M1** No `unwrap_or_default`/`.ok()` anywhere in `finish`. Every after-read
+  failure comes back as `ApplyError::AfterState { applied, unread }` on a
+  success, and is appended to the `Aborted` reason on a failure. `applied` is
+  inside the error so the caller still refreshes: the write did happen.
+  `recover_interrupted` returns `Recovered { closed, unreadable }`. The
+  after-reads take `&()`, never `ctx.stop` — a cancel mid-plan no longer makes
+  a weaker entry, and a test asserts it.
+- **M2** `StashApply`/`StashPop`/`StashDrop` round-trip (apply → undo → redo →
+  undo) and all four missing kinds are in the parity harness, which now takes
+  `fn(&TempRepo) -> Operation` so a stash op can name the commit it found.
+- **M3** Two multi-invocation tests: one stopped between invocations, one whose
+  first invocation fails. `StopAfter` is **deleted**: counting `should_stop`
+  polls is a different stop point on every machine. `StopWhenGone` replaces it —
+  it fires on the plan's own side effect, so the second invocation is the one
+  killed, every time. `support.rs` no longer carries `#![allow(dead_code)]`.
+- **M4** A malformed `ls-tree` record is `RestoreError::Run` with the record,
+  as `stash_reflog` already did. It cannot silently delete a staged entry.
+- **M5** `read_state_now` returns `index_tree: Option<Oid>`; the `Unmerged`
+  short-circuit in `reverse` is gone, so `HEAD`, refs and the working tree are
+  compared and reported even on a conflicted index.
+- **M6** `RepoHandle::reference(name)` added; `facts::read_refs` resolves each
+  name directly instead of reading the whole ref store three times per op.
+
+### Minors taken
+
+1 (`Journal { error, after }` carries git's failure), 2 (`explain` calls
+`reason_for`), 3 (`Context::scratch()` everywhere, no clone), 4 (`eprintln!`
+not `debug_assert!` in `Drop`), 5 (a non-UTF-8 symbolic target errors), 6
+(`StashGone` only on `Exited`), 7 (`RefMoved` on git's `but expected` /
+`reference already exists`), 9 and 10 (said in MAP.md).
+
+**Not taken: Minor 8** — `begin` still re-reads `HEAD`. Passing `facts.head` in
+would mean `restore::execute`, which has no `RepoFacts`, carrying an `Option`
+through `begin` for one saved read. Left as it is, deliberately.
+
+### Deviations 12 and 15, contested
+
+- **12 — conceded.** Parity now covers all nine kinds, and `StashApply` has
+  round-trip and redo coverage. The original note's claim that the four kinds
+  were "covered by round-trip and inverse tests" was wrong for `StashApply`.
+- **15 — conceded, and wider than the review asked.** `None` for a field the
+  repository would not give up is still the honest *record* — `drift` reports it
+  as unknown and the user is asked. What was wrong is that the *reason* was
+  dropped at the same line. No field is now set to `None` without the failure
+  travelling back to the caller, refs included.
+
+### Heavy-tier guard
+
+`many_refs::reading_tips_from_50k_real_refs_is_within_budget` records rather
+than asserts under `cfg!(debug_assertions)`, like `frames.rs` and `heavy.rs`
+(ADR-0021). The 200 ms constant is unchanged and the measured number is still
+printed; `--release` still fails over it.
+
+### For KNOWN_GAPS (conductor's file — not touched)
+
+- **Close:** C1, both halves. **Close:** the 50k-refs debug guard row (138–140 ms
+  isolated debug against 200 ms; now record-not-assert in debug). **Close:**
+  `StashApply` execution, redo of an undone pop/drop, multi-invocation plans,
+  parity for the four kinds — all now tested.
+- **Limitation, not broken (M5a):** redo of an undone *conflicted* pop restores
+  the conflict markers with a clean index, a state git itself never produces.
+  Recording stage-1/2/3 entries needs a different backup shape; not M3's.
+- **Unverified:** git 2.38–2.53 — everything here is still proved on 2.54 only,
+  including the two new `stderr` matches in `RefMoved`.
+- **Unverified:** a second Graft process on the same worktree. `Journal::open`
+  truncates a torn tail, so it is a writing call; two in-memory copies would
+  diverge and `append_outcome`'s duplicate check is per process.
+- **Unverified:** `docs/perf/m3-snapshot.txt` is still unrun. An undo pays three
+  snapshots and an apply of a worktree op two, so on a 20k-file repository `u`
+  is roughly 600 ms warm, off-thread.

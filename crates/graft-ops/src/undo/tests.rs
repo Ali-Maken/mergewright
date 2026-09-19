@@ -388,7 +388,7 @@ fn drift_sets_exactly_the_field_that_moved() {
     let now = RepoStateNow {
         head: HeadRef::Branch(MAIN.to_owned()),
         refs: BTreeMap::from([(MAIN.to_owned(), Some(oid(2)))]),
-        index_tree: oid(0xa2),
+        index_tree: Some(oid(0xa2)),
         worktree_tree: oid(0xb2),
     };
     let clean = drift(&entry, &now);
@@ -409,7 +409,7 @@ fn drift_sets_exactly_the_field_that_moved() {
     assert_eq!(drift(&entry, &moved_ref).explain(), "refs/heads/main moved");
 
     let index = RepoStateNow {
-        index_tree: oid(0xaf),
+        index_tree: Some(oid(0xaf)),
         ..now.clone()
     };
     assert_eq!(
@@ -439,7 +439,7 @@ fn an_unrecorded_after_state_is_reported_as_unknown_never_as_clean() {
     let now = RepoStateNow {
         head: HeadRef::Branch(MAIN.to_owned()),
         refs: BTreeMap::from([(MAIN.to_owned(), Some(oid(2)))]),
-        index_tree: oid(0xa2),
+        index_tree: Some(oid(0xa2)),
         worktree_tree: oid(0xb2),
     };
     assert!(drift(&entry, &now).is_clean());

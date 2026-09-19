@@ -17,7 +17,7 @@ use graft_core::journal::{EntryStatus, HeadRef};
 use graft_core::oid::Oid;
 use graft_git::run::{GitArg, GitInvocation, RunError};
 
-use crate::apply::{Applied, Context, Refresh, begin, finish, reason_for};
+use crate::apply::{AfterState, Applied, Context, Refresh, begin, finish, reason_for};
 use crate::facts::FactsError;
 use crate::journal::JournalError;
 use crate::snapshot::{self, SnapshotError};
@@ -48,9 +48,26 @@ pub enum RestoreError {
     /// The restore's own backup could not be taken, so it did not run.
     #[error("{0}")]
     Snapshot(SnapshotError),
-    /// The journal could not be written.
-    #[error("{0}")]
-    Journal(JournalError),
+    /// The journal could not be written. When the plan had already failed,
+    /// `after` carries that failure too, so it is not lost behind this one
+    /// (m3/03 review, Minor 1).
+    #[error("{}", journal_failed(.error, .after.as_deref()))]
+    Journal {
+        /// What the journal said.
+        error: JournalError,
+        /// What the plan's own failure was, when it had one.
+        after: Option<Box<RestoreError>>,
+    },
+    /// The plan ran and is journaled, but part of what it left behind could
+    /// not be read or kept reachable. `applied` carries the result, so the
+    /// caller still refreshes.
+    #[error("{}: {}", .applied.entry.description, after_state(.unread))]
+    AfterState {
+        /// What ran.
+        applied: Box<Applied>,
+        /// What could not be read or sealed.
+        unread: Vec<AfterState>,
+    },
     /// The caller asked to stop.
     #[error("stopped")]
     Stopped,
@@ -63,13 +80,33 @@ impl RestoreError {
     }
 }
 
+/// The journal failing, with the plan's own failure when there was one.
+fn journal_failed(error: &JournalError, after: Option<&RestoreError>) -> String {
+    match after {
+        Some(why) => format!("{error} (the restore had already failed: {why})"),
+        None => error.to_string(),
+    }
+}
+
+/// Every after-state failure on one line.
+fn after_state(unread: &[AfterState]) -> String {
+    unread
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
 impl From<crate::apply::PrepareError> for RestoreError {
     fn from(why: crate::apply::PrepareError) -> Self {
         use crate::apply::PrepareError;
         match why {
             PrepareError::Facts(why) => RestoreError::Facts(why),
             PrepareError::Snapshot(why) => RestoreError::Snapshot(why),
-            PrepareError::Journal(why) => RestoreError::Journal(why),
+            PrepareError::Journal(why) => RestoreError::Journal {
+                error: why,
+                after: None,
+            },
             PrepareError::Stopped => RestoreError::Stopped,
         }
     }
@@ -108,7 +145,15 @@ pub fn execute(ctx: &mut Context<'_>, plan: &InversePlan) -> Result<Applied, Res
             reason: aborted_reason(why),
         },
     };
-    finish(ctx, &mut pending, status, commands).map_err(RestoreError::Journal)?;
+    let unread = match finish(ctx, &mut pending, status, commands) {
+        Ok(unread) => unread,
+        Err(error) => {
+            return Err(RestoreError::Journal {
+                error,
+                after: failure.map(Box::new),
+            });
+        }
+    };
 
     match failure {
         None => {
@@ -117,11 +162,21 @@ pub fn execute(ctx: &mut Context<'_>, plan: &InversePlan) -> Result<Applied, Res
             } else {
                 Refresh::Everything
             };
-            Ok(Applied {
+            let applied = Applied {
                 entry: pending.entry,
                 refresh,
-            })
+            };
+            if unread.is_empty() {
+                Ok(applied)
+            } else {
+                Err(RestoreError::AfterState {
+                    applied: Box::new(applied),
+                    unread,
+                })
+            }
         }
+        // `finish` has put the after-state failures into the entry's
+        // `Aborted` reason already; the plan's own failure is the headline.
         Some(why) => Err(why),
     }
 }
@@ -181,11 +236,19 @@ fn update_ref(
     }
     match run(ctx, args, None, commands) {
         Ok(_) => Ok(()),
+        // git prints `cannot lock ref` for a ref another process holds too,
+        // and "is not where it was" would be the wrong diagnosis for that.
+        // These two lines are the compare-and-swap ones (m3/03 review,
+        // Minor 7); anything else stays the git error it is.
         Err(RestoreError::Run(RunError::Exited {
             stderr_first_line, ..
-        })) if stderr_first_line.contains("cannot lock ref") => Err(RestoreError::RefMoved {
-            name: name.to_owned(),
-        }),
+        })) if stderr_first_line.contains("but expected")
+            || stderr_first_line.contains("reference already exists") =>
+        {
+            Err(RestoreError::RefMoved {
+                name: name.to_owned(),
+            })
+        }
         Err(other) => Err(other),
     }
 }
@@ -370,8 +433,11 @@ fn stash_store(
     let subject = subject
         .run(ctx.stop)
         .map_err(|why| match why {
-            RunError::Stopped => RestoreError::Stopped,
-            _gone => RestoreError::StashGone { commit },
+            // Only git running and refusing means the commit is gone; git
+            // missing from PATH must not read as "the stash is gone"
+            // (m3/03 review, Minor 6).
+            RunError::Exited { .. } => RestoreError::StashGone { commit },
+            other => as_restore_error(other),
         })?
         .stdout;
     let message = String::from_utf8_lossy(&subject).trim_end().to_owned();
@@ -551,18 +617,33 @@ fn tree_entries(
     let output = run(ctx, args, None, commands)?;
     let mut found = BTreeMap::new();
     for record in split_nul(&output) {
+        // A record this cannot parse must never be read as "the tree does
+        // not have this path": `restore_index` writes an absent path to
+        // `update-index` as a deletion, so a parse slip would drop a staged
+        // entry with nothing said (m3/03 review, M4). `stash_reflog` treats
+        // git printing the unexpected the same way.
+        let malformed = |what: &str| {
+            Err(RestoreError::Run(RunError::Exited {
+                status: 0,
+                stderr_first_line: format!(
+                    "ls-tree printed a record this cannot read ({what}): {}",
+                    String::from_utf8_lossy(&record)
+                ),
+                command: format!("git ls-tree -r -z {tree}"),
+            }))
+        };
         let Some(tab) = record.iter().position(|byte| *byte == b'\t') else {
-            continue;
+            return malformed("no tab");
         };
         let (head, path) = record.split_at(tab);
         let head = String::from_utf8_lossy(head);
         let mut fields = head.split_whitespace();
         let (Some(mode), Some(_kind), Some(id)) = (fields.next(), fields.next(), fields.next())
         else {
-            continue;
+            return malformed("fewer than three fields");
         };
         let Ok(id) = Oid::from_hex(id) else {
-            continue;
+            return malformed("not an object id");
         };
         found.insert(path[1..].to_vec(), (mode.to_owned(), id));
     }

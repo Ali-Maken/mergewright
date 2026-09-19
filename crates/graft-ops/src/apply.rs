@@ -13,7 +13,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use graft_core::journal::{EntryId, EntryStatus, JournalEntry, OperationKind, Touches};
+use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches};
 use graft_core::oid::Oid;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitInvocation, RunError, Stop};
@@ -23,6 +23,7 @@ use crate::facts::{self, FactsError};
 use crate::journal::{Journal, JournalError};
 use crate::operation::{Invocation, Operation, Refusal};
 use crate::snapshot::{self, SnapshotError, SnapshotScope};
+use crate::undo::RepoStateNow;
 
 /// What the caller has to re-read after an operation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -54,10 +55,29 @@ pub enum ApplyError {
     /// The backup could not be taken. The operation did not run.
     #[error("{0}")]
     Snapshot(SnapshotError),
-    /// The journal could not be written. The operation did not run: a write
-    /// Graft cannot record is a write it must not make.
-    #[error("{0}")]
-    Journal(JournalError),
+    /// The journal could not be written. Before the operation ran, that means
+    /// it did not run: a write Graft cannot record is a write it must not
+    /// make. After it ran, the outcome line is missing — and `after` carries
+    /// git's own failure, which would otherwise be lost behind this one
+    /// (m3/03 review, Minor 1).
+    #[error("{}", journal_failed(.error, .after.as_ref()))]
+    Journal {
+        /// What the journal said.
+        error: JournalError,
+        /// What git said, when the operation had already failed.
+        after: Option<RunError>,
+    },
+    /// The operation ran and is journaled, but part of what it left behind
+    /// could not be read, or could not be kept reachable. The write happened,
+    /// so the caller still refreshes — `applied` carries it — and `u` still
+    /// works, more widely than it should.
+    #[error("{}: {}", .applied.entry.description, joined(.unread))]
+    AfterState {
+        /// What ran. Boxed for the same reason as `Git`'s entry.
+        applied: Box<Applied>,
+        /// What could not be read or sealed, in the order it was tried.
+        unread: Vec<AfterState>,
+    },
     /// `git` failed part-way. The entry is journaled `Aborted`.
     #[error("{}: {error}", .entry.description)]
     Git {
@@ -74,6 +94,54 @@ pub enum ApplyError {
     Stopped,
 }
 
+/// A field of an entry's after-state that could not be read, or could not be
+/// kept reachable.
+///
+/// The outcome line is written either way — an entry with no outcome reads as
+/// an operation still in flight, which this one is not — so the failure has
+/// nowhere else to go but back to the caller. It is never dropped: what it
+/// costs the user is a wider `u` (an unreadable tree) or an `u` that refuses
+/// (unreadable refs, which `generic_steps` reads as `Incomplete`), and they
+/// are owed the reason at the moment it happens rather than a fortnight
+/// later.
+#[derive(Debug, thiserror::Error)]
+pub enum AfterState {
+    /// `HEAD` could not be read after the operation.
+    #[error("HEAD after the operation: {0}")]
+    Head(FactsError),
+    /// The refs the operation touched could not be read after it.
+    #[error("the refs after the operation: {0}")]
+    Refs(FactsError),
+    /// The index could not be written as a tree after the operation.
+    #[error("the index after the operation: {0}")]
+    Index(SnapshotError),
+    /// The working tree could not be written as a tree after the operation.
+    #[error("the working tree after the operation: {0}")]
+    Worktree(SnapshotError),
+    /// The after-state was read but could not be hung off the backup ref, so
+    /// it is not recorded: `git gc` would prune it and leave the entry naming
+    /// objects that are gone.
+    #[error("the after-state could not be kept reachable: {0}")]
+    Unsealed(SnapshotError),
+}
+
+/// The journal failing, with git's own failure when there was one.
+fn journal_failed(error: &JournalError, after: Option<&RunError>) -> String {
+    match after {
+        Some(ran) => format!("{error} (git had already failed: {})", reason_for(ran)),
+        None => error.to_string(),
+    }
+}
+
+/// Every after-state failure on one line.
+fn joined(unread: &[AfterState]) -> String {
+    unread
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
 impl ApplyError {
     /// One line for the status line.
     pub fn explain(&self) -> String {
@@ -83,13 +151,7 @@ impl ApplyError {
                 error,
                 recoverable,
             } => {
-                let what = match error {
-                    RunError::Exited {
-                        stderr_first_line, ..
-                    } if !stderr_first_line.is_empty() => stderr_first_line.clone(),
-                    other => other.to_string(),
-                };
-                let mut line = format!("{}: {what}", entry.description);
+                let mut line = format!("{}: {}", entry.description, reason_for(error));
                 if *recoverable {
                     line.push_str(" · u restores the backup");
                 }
@@ -105,7 +167,10 @@ impl From<PrepareError> for ApplyError {
         match why {
             PrepareError::Facts(why) => ApplyError::Facts(why),
             PrepareError::Snapshot(why) => ApplyError::Snapshot(why),
-            PrepareError::Journal(why) => ApplyError::Journal(why),
+            PrepareError::Journal(why) => ApplyError::Journal {
+                error: why,
+                after: None,
+            },
             PrepareError::Stopped => ApplyError::Stopped,
         }
     }
@@ -144,10 +209,11 @@ impl<'a> Context<'a> {
         let scratch = journal
             .path()
             .parent()
-            .ok_or_else(|| {
-                ApplyError::Journal(JournalError::Io(std::io::Error::other(
+            .ok_or_else(|| ApplyError::Journal {
+                error: JournalError::Io(std::io::Error::other(
                     "the journal has no directory to keep scratch in",
-                )))
+                )),
+                after: None,
             })?
             .to_path_buf();
         let worktree = repo.worktree_name();
@@ -172,7 +238,8 @@ impl<'a> Context<'a> {
         EntryId::new(self.now_unix_ms, self.random)
     }
 
-    fn scratch(&self) -> &Path {
+    /// The directory the journal and the temporary index copies live in.
+    pub(crate) fn scratch(&self) -> &Path {
         &self.scratch
     }
 }
@@ -198,25 +265,24 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
         None,
     )?;
 
-    let mut failure = None;
-    for invocation in &plan {
-        let mut git = GitInvocation::new(ctx.repo).args(invocation.args.iter().cloned());
-        if let Some(bytes) = &invocation.stdin {
-            git = git.stdin(bytes.clone());
-        }
-        if let Err(why) = git.run(ctx.stop) {
-            failure = Some(why);
-            break;
-        }
-    }
-
+    let failure = run_plan(ctx, &plan);
     let status = match &failure {
         None => EntryStatus::Committed,
         Some(why) => EntryStatus::Aborted {
             reason: reason_for(why),
         },
     };
-    finish(ctx, &mut pending, status, commands).map_err(ApplyError::Journal)?;
+    let unread = match finish(ctx, &mut pending, status, commands) {
+        Ok(unread) => unread,
+        // The outcome line is what makes the entry undoable, so this is the
+        // headline — but git's own failure goes with it rather than under it.
+        Err(error) => {
+            return Err(ApplyError::Journal {
+                error,
+                after: failure,
+            });
+        }
+    };
 
     let entry = pending.entry;
     match failure {
@@ -226,8 +292,23 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
             } else {
                 Refresh::Everything
             };
-            Ok(Applied { entry, refresh })
+            let applied = Applied { entry, refresh };
+            if unread.is_empty() {
+                Ok(applied)
+            } else {
+                // The operation itself succeeded; what failed is the record
+                // of it. An `Err` the caller has to look at is the only way
+                // that reaches the user, and `applied` is in it so the
+                // refresh still happens.
+                Err(ApplyError::AfterState {
+                    applied: Box::new(applied),
+                    unread,
+                })
+            }
         }
+        // `finish` has already put the after-state failures, if any, into the
+        // entry's `Aborted` reason: git's own failure is the headline, but
+        // nothing is lost behind it.
         Some(error) => {
             let recoverable = entry.worktree_before.is_some();
             Err(ApplyError::Git {
@@ -239,6 +320,23 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     }
 }
 
+/// Run the plan's invocations in order, stopping at the first that fails.
+///
+/// The order is the operation's own: group 02 puts the step that can fail
+/// first, so a failure leaves the least behind it.
+fn run_plan(ctx: &Context<'_>, plan: &[Invocation]) -> Option<RunError> {
+    for invocation in plan {
+        let mut git = GitInvocation::new(ctx.repo).args(invocation.args.iter().cloned());
+        if let Some(bytes) = &invocation.stdin {
+            git = git.stdin(bytes.clone());
+        }
+        if let Err(why) = git.run(ctx.stop) {
+            return Some(why);
+        }
+    }
+    None
+}
+
 /// Close every entry left `Pending` by a previous run as `interrupted`,
 /// recording the repository as it stands now (DESIGN.md §6.2 step 3).
 ///
@@ -248,9 +346,12 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
 /// When the repository cannot be read at all, the entry is closed with no
 /// after-state — `u` then offers to restore the whole tree, and says so.
 ///
-/// Returns the ids it closed, so the caller can surface them.
-pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Vec<EntryId>, ApplyError> {
-    let open: Vec<(EntryId, Vec<String>)> = ctx
+/// Returns what it closed **and** what it could not read, so the caller can
+/// surface both: an entry closed with no after-state is one whose `u` will
+/// offer to overwrite the whole working tree, and the reason for that belongs
+/// on screen, not on the floor (m3/03 review, M1).
+pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyError> {
+    let open: Vec<(EntryId, Vec<String>, Option<String>)> = ctx
         .journal
         .unresolved()
         .into_iter()
@@ -258,33 +359,89 @@ pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Vec<EntryId>, ApplyE
             (
                 entry.id.clone(),
                 entry.refs_before.keys().cloned().collect(),
+                entry.backup_ref.clone(),
             )
         })
         .collect();
-    let mut closed = Vec::new();
-    for (id, refs) in open {
-        let now =
-            facts::read_state_now(ctx.repo, ctx.scratch(), &refs, ctx.stop).map_err(
-                |why| match why {
-                    FactsError::Stopped => ApplyError::Stopped,
-                    other => ApplyError::Facts(other),
-                },
-            );
-        let now = match now {
-            Ok(now) => Some(now),
-            // The repository is unreadable, and the entry still has to be
-            // closed: an entry left `Pending` for ever blocks `u` outright.
-            // `None` is the honest record and the widest restore, and the
-            // user is asked before it runs (`Drift::unknown`).
-            Err(ApplyError::Stopped) => return Err(ApplyError::Stopped),
-            Err(_unreadable) => None,
+    let mut recovered = Recovered::default();
+    for (id, refs, backup_ref) in open {
+        let read = facts::read_state_now(ctx.repo, ctx.scratch(), &refs, ctx.stop);
+        // The repository being unreadable must not leave the entry `Pending`
+        // for ever, which blocks `u` outright. `None` is the honest record
+        // and the widest restore, and the user is asked before it runs
+        // (`Drift::unknown`) — and told why, here.
+        let now = match read {
+            Ok(now) => match seal_recovered(ctx, &id, backup_ref.as_deref(), &now) {
+                Ok(()) => Some(now),
+                // The trees were read but nothing keeps them alive, so
+                // recording them would name objects `git gc` will prune.
+                Err(why) => {
+                    recovered.unreadable.push((id.clone(), why));
+                    None
+                }
+            },
+            Err(FactsError::Stopped) => return Err(ApplyError::Stopped),
+            Err(unreadable) => {
+                recovered.unreadable.push((id.clone(), unreadable));
+                None
+            }
         };
         ctx.journal
             .mark_interrupted(&id, now.as_ref())
-            .map_err(ApplyError::Journal)?;
-        closed.push(id);
+            .map_err(|error| ApplyError::Journal { error, after: None })?;
+        recovered.closed.push(id);
     }
-    Ok(closed)
+    Ok(recovered)
+}
+
+/// What [`recover_interrupted`] did at launch.
+#[derive(Debug, Default)]
+pub struct Recovered {
+    /// The entries closed as `interrupted`, in journal order.
+    pub closed: Vec<EntryId>,
+    /// The ones whose after-state could not be read or kept reachable, and
+    /// why. Each is closed with no after-state, so its `u` restores the whole
+    /// tree after asking.
+    pub unreadable: Vec<(EntryId, FactsError)>,
+}
+
+/// Hang a recovered entry's after-trees off its backup ref before they are
+/// recorded, so `git gc` cannot prune what the entry is about to name.
+///
+/// Nothing to do when the entry took no backup: such an entry records no tree
+/// (`mark_interrupted` copies its before-fields, which are `None`), and the
+/// refs it names are live refs.
+fn seal_recovered(
+    ctx: &Context<'_>,
+    id: &EntryId,
+    backup_ref: Option<&str>,
+    now: &RepoStateNow,
+) -> Result<(), FactsError> {
+    let Some(name) = backup_ref else {
+        return Ok(());
+    };
+    let at = facts::read_refs(ctx.repo, std::slice::from_ref(&name.to_owned()))?
+        .get(name)
+        .copied()
+        .flatten();
+    let mut parents: Vec<Oid> = at.into_iter().collect();
+    for anchor in anchors(Some(&now.head), &now.refs) {
+        if !parents.contains(&anchor) {
+            parents.push(anchor);
+        }
+    }
+    let label = format!("interrupted, recovered: {id}");
+    let commit = snapshot::commit_trees(
+        ctx.repo,
+        now.index_tree,
+        Some(now.worktree_tree),
+        id,
+        &label,
+        &parents,
+        &(),
+    )?;
+    snapshot::move_backup_ref(ctx.repo, name, commit, &())?;
+    Ok(())
 }
 
 /// An entry whose `Pending` line is written and whose backup, if any, is
@@ -331,6 +488,19 @@ pub(crate) fn begin(
     let refs_before = facts::read_refs(ctx.repo, &touches.refs).map_err(PrepareError::Facts)?;
 
     let wanted = snapshot::scope(&touches) == SnapshotScope::Full || !pins.is_empty();
+    // The snapshot's parents are the pins **and** every commit the entry's
+    // before-fields name: the pre-amend commit, the branch tip a commit is
+    // about to move off. Both are otherwise reachable only through a reflog,
+    // which `gc.reflogExpireUnreachable` drops after 30 days, and after that
+    // undoing an amend would lose the commit outright (m3/03 review, C1).
+    // Every name here is a branch or `refs/stash`, so every value is a commit
+    // git will take as a parent.
+    let mut parents = pins.clone();
+    for anchor in anchors(Some(&head_before), &refs_before) {
+        if !parents.contains(&anchor) {
+            parents.push(anchor);
+        }
+    }
     let (backup, backup_ref) = if wanted {
         let label = format!("{}: {description}", kind_name(kind));
         let taken = snapshot::take(
@@ -339,7 +509,7 @@ pub(crate) fn begin(
             &id,
             &ctx.worktree,
             &label,
-            &pins,
+            &parents,
             ctx.stop,
         )
         .map_err(PrepareError::Snapshot)?;
@@ -378,72 +548,143 @@ pub(crate) fn begin(
     })
 }
 
-/// Read the after-state and write the outcome line.
+/// Read the after-state, keep it reachable, write the outcome line.
 ///
 /// Every after-field the repository will give up is recorded, on abort as
 /// much as on success: `refs_after` for every key of `refs_before`,
-/// `head_after`, and each tree the entry touches. A field that cannot be read
-/// is recorded as `None` rather than propagated — the outcome line has to be
-/// written either way, since an entry with no outcome reads as an operation
-/// still in flight, which this one is not. `None` is not a swallowed error:
-/// `drift` reports it as unknown, the inverse widens to the whole backup
-/// tree, and the user is asked before that runs. It costs a confirm box,
-/// never the work itself.
+/// `head_after`, and each tree the entry touches. The outcome line is written
+/// either way, since an entry with no outcome reads as an operation still in
+/// flight, which this one is not — but a field that could not be read is
+/// **returned**, never dropped. A missing tree costs the user a wider `u`
+/// behind a confirm box; missing refs cost them an `u` that refuses
+/// (`generic_steps` reads them as `Incomplete`), and either way they are told.
+///
+/// Then the after-state is sealed: an after-commit over whatever trees were
+/// readable, parented on the before-commit and on every commit the
+/// after-fields name, with the backup ref moved to it. **Whenever there is a
+/// backup ref**, not only for worktree operations — an index-only operation's
+/// `index_after` is a loose tree no commit holds, and `git gc` prunes it two
+/// weeks later, long after the entry promised the operation could be undone
+/// (m3/03 review, C1).
 pub(crate) fn finish(
     ctx: &mut Context<'_>,
     pending: &mut Pending,
     status: EntryStatus,
     commands: Vec<String>,
-) -> Result<(), JournalError> {
+) -> Result<Vec<AfterState>, JournalError> {
     let entry = &mut pending.entry;
-    entry.status = status;
     entry.commands = commands;
-    entry.head_after = facts::head_ref(ctx.repo).ok();
-    entry.refs_after = facts::read_refs(ctx.repo, &entry.touches.refs).unwrap_or_default();
-    entry.index_after = if entry.touches.index {
-        snapshot::index_tree(ctx.repo, &ctx.scratch, ctx.stop).ok()
-    } else {
-        entry.index_before
-    };
-    entry.worktree_after = if entry.touches.worktree {
-        snapshot::worktree_tree(ctx.repo, &ctx.scratch, ctx.stop).ok()
-    } else {
-        entry.worktree_before
-    };
-
-    // A worktree-touching operation's after-state needs a backup of its own,
-    // or redo would have nothing to restore from. It hangs off the
-    // before-commit, so one ref keeps both ends (and the pins) reachable.
-    if let (true, Some(name), Some(before), Some(index_after), Some(worktree_after)) = (
-        entry.touches.worktree,
-        entry.backup_ref.as_deref(),
-        pending.before_commit,
-        entry.index_after,
-        entry.worktree_after,
-    ) {
-        let label = format!("{} after: {}", kind_name(entry.kind), entry.description);
-        let sealed = snapshot::commit_trees(
-            ctx.repo,
-            Some(index_after),
-            worktree_after,
-            &entry.id,
-            &label,
-            &[before],
-            ctx.stop,
-        )
-        .and_then(|commit| {
-            snapshot::move_backup_ref(ctx.repo, name, commit, ctx.stop).map(|()| commit)
-        });
-        // An after-commit that could not be made leaves the ref on the
-        // before-commit: the restore `u` needs still works, only redo's
-        // does not, and the entry says so by carrying no after tree that
-        // any ref reaches.
-        if sealed.is_err() {
-            entry.worktree_after = None;
-        }
+    let mut unread = read_after(ctx, entry);
+    if let Some(before) = pending.before_commit {
+        unread.extend(seal_after(ctx, entry, before));
     }
 
-    ctx.journal.append_outcome(entry)
+    entry.status = match status {
+        EntryStatus::Aborted { reason } if !unread.is_empty() => EntryStatus::Aborted {
+            reason: format!("{reason}; {}", joined(&unread)),
+        },
+        other => other,
+    };
+    ctx.journal.append_outcome(entry)?;
+    Ok(unread)
+}
+
+/// Read every after-field the repository will give up, and say which it
+/// would not.
+///
+/// The operation has already run, so the reads never stop: a stop that
+/// cancelled it mid-plan (Esc during a slow pop) must not also cancel the
+/// record of what it left behind, which would record a perfectly readable
+/// repository as unknown and force the widest restore (m3/03 review, M1).
+fn read_after(ctx: &Context<'_>, entry: &mut JournalEntry) -> Vec<AfterState> {
+    let never = &();
+    let mut unread = Vec::new();
+    match facts::head_ref(ctx.repo) {
+        Ok(head) => entry.head_after = Some(head),
+        Err(why) => unread.push(AfterState::Head(why)),
+    }
+    match facts::read_refs(ctx.repo, &entry.touches.refs) {
+        Ok(refs) => entry.refs_after = refs,
+        Err(why) => unread.push(AfterState::Refs(why)),
+    }
+    if entry.touches.index {
+        match snapshot::index_tree(ctx.repo, ctx.scratch(), never) {
+            Ok(tree) => entry.index_after = Some(tree),
+            // An unmerged index has no tree at all: a conflicted pop is the
+            // shape this exists for, and the working tree still lands.
+            Err(why) => unread.push(AfterState::Index(why)),
+        }
+    } else {
+        entry.index_after = entry.index_before;
+    }
+    if entry.touches.worktree {
+        match snapshot::worktree_tree(ctx.repo, ctx.scratch(), never) {
+            Ok(tree) => entry.worktree_after = Some(tree),
+            Err(why) => unread.push(AfterState::Worktree(why)),
+        }
+    } else {
+        entry.worktree_after = entry.worktree_before;
+    }
+    unread
+}
+
+/// Hang the after-state off the entry's backup ref.
+///
+/// The commit's parents are the before-commit — which carries the
+/// before-trees and the pins — and every commit the after-fields name, so one
+/// ref keeps everything the entry says reachable. A failure drops the
+/// freshly-read trees from the entry: a tree nothing reaches is a tree
+/// `git gc` prunes, and an entry naming one is a promise that expires. The
+/// before-fields stay, because the ref still holds the before-commit.
+fn seal_after(ctx: &Context<'_>, entry: &mut JournalEntry, before: Oid) -> Option<AfterState> {
+    let name = entry.backup_ref.clone()?;
+    let mut parents = vec![before];
+    for anchor in anchors(entry.head_after.as_ref(), &entry.refs_after) {
+        if !parents.contains(&anchor) {
+            parents.push(anchor);
+        }
+    }
+    let label = format!("{} after: {}", kind_name(entry.kind), entry.description);
+    let sealed = snapshot::commit_trees(
+        ctx.repo,
+        entry.index_after,
+        entry.worktree_after,
+        &entry.id,
+        &label,
+        &parents,
+        &(),
+    )
+    .and_then(|commit| snapshot::move_backup_ref(ctx.repo, &name, commit, &()));
+    match sealed {
+        Ok(()) => None,
+        Err(why) => {
+            if entry.touches.index {
+                entry.index_after = None;
+            }
+            if entry.touches.worktree {
+                entry.worktree_after = None;
+            }
+            Some(AfterState::Unsealed(why))
+        }
+    }
+}
+
+/// Every commit an entry's `HEAD`/refs fields name.
+///
+/// These are ids the journal records, so keeping them reachable is the backup
+/// ref's job: once the operation (or its undo) moves the ref off them, git's
+/// reflog is all that holds them, and git expires that.
+fn anchors(head: Option<&HeadRef>, refs: &BTreeMap<String, Option<Oid>>) -> Vec<Oid> {
+    let mut found = Vec::new();
+    if let Some(HeadRef::Detached(id)) = head {
+        found.push(*id);
+    }
+    for id in refs.values().flatten() {
+        if !found.contains(id) {
+            found.push(*id);
+        }
+    }
+    found
 }
 
 /// The commits an operation is about to make unreachable, and which its

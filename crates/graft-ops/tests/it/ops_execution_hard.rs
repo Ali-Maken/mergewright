@@ -13,14 +13,16 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 use graft_core::journal::{EntryStatus, HeadRef, OperationKind};
-use graft_ops::apply::{Applied, ApplyError, apply};
+use graft_core::oid::Oid;
+use graft_ops::apply::{ApplyError, apply};
 use graft_ops::facts;
-use graft_ops::operation::{CommitParams, Operation, StashParams, StashScope, Target};
+use graft_ops::operation::{CommitParams, Operation, PatchSide, StashParams, StashScope, Target};
 use graft_ops::undo::{self, NotInvertible, PathScope, Step, UndoError};
 
-use crate::support::{Never, TempRepo, context, journal_for, stash_list, state_of};
-
-const NOW: i64 = 1_700_000_000_000;
+use crate::support::{
+    NOW, Never, StopWhenGone, TempRepo, context, expire_and_prune, holds, journal_for, round_trip,
+    run, run_undo, run_with_stop, stash_list, state_of, try_run,
+};
 
 fn paths(of: &[&str]) -> Target {
     Target::Paths(of.iter().map(PathBuf::from).collect())
@@ -35,32 +37,6 @@ fn commit(message: &str) -> Operation {
     })
 }
 
-fn run(repo: &TempRepo, op: &Operation, at: i64) -> graft_core::journal::JournalEntry {
-    let handle = repo.open();
-    let mut journal = journal_for(&handle);
-    let never = Never;
-    let mut ctx = context(&handle, &mut journal, at, &never);
-    apply(&mut ctx, op)
-        .unwrap_or_else(|why| panic!("{}", why.explain()))
-        .entry
-}
-
-fn try_run(repo: &TempRepo, op: &Operation, at: i64) -> Result<Applied, ApplyError> {
-    let handle = repo.open();
-    let mut journal = journal_for(&handle);
-    let never = Never;
-    let mut ctx = context(&handle, &mut journal, at, &never);
-    apply(&mut ctx, op)
-}
-
-fn run_undo(repo: &TempRepo, at: i64, force: bool) -> Result<Applied, UndoError> {
-    let handle = repo.open();
-    let mut journal = journal_for(&handle);
-    let never = Never;
-    let mut ctx = context(&handle, &mut journal, at, &never);
-    undo::undo(&mut ctx, force)
-}
-
 // ── parity with the commands Graft logs ─────────────────────────────────
 
 /// Apply `op` on `a`, and run the *logged command lines* through a shell on
@@ -68,11 +44,14 @@ fn run_undo(repo: &TempRepo, at: i64, force: bool) -> Result<Applied, UndoError>
 ///
 /// This is the Command Log's promise under test (PROMPT principle 5): the
 /// lines Graft shows are the lines it ran, runnable by hand.
-fn parity(build: fn(&TempRepo), op: &Operation) {
+fn parity(build: fn(&TempRepo), make: fn(&TempRepo) -> Operation) {
     let a = TempRepo::init();
     let b = TempRepo::init();
     build(&a);
     build(&b);
+    // Built from `a`, because a stash operation names the commit it found
+    // there. The *command lines* name `stash@{n}`, which is what `b` replays.
+    let op = &make(&a);
 
     let handle = a.open();
     let never = Never;
@@ -141,23 +120,23 @@ fn one_commit_and_an_edit(repo: &TempRepo) {
 
 #[test]
 fn stage_matches_the_command_it_logs() {
-    parity(one_commit_and_an_edit, &Operation::Stage(paths(&["a.rs"])));
+    parity(one_commit_and_an_edit, |_repo| {
+        Operation::Stage(paths(&["a.rs"]))
+    });
 }
 
 #[test]
 fn discard_matches_the_command_it_logs() {
-    parity(
-        one_commit_and_an_edit,
-        &Operation::Discard(paths(&["a.rs"])),
-    );
+    parity(one_commit_and_an_edit, |_repo| {
+        Operation::Discard(paths(&["a.rs"]))
+    });
 }
 
 #[test]
 fn discarding_an_untracked_file_matches_the_command_it_logs() {
-    parity(
-        one_commit_and_an_edit,
-        &Operation::Discard(paths(&["new.txt"])),
-    );
+    parity(one_commit_and_an_edit, |_repo| {
+        Operation::Discard(paths(&["new.txt"]))
+    });
 }
 
 #[test]
@@ -167,7 +146,7 @@ fn unstage_matches_the_command_it_logs() {
             one_commit_and_an_edit(repo);
             repo.git(&["add", "a.rs"]);
         },
-        &Operation::Unstage(paths(&["a.rs"])),
+        |_repo| Operation::Unstage(paths(&["a.rs"])),
     );
 }
 
@@ -178,21 +157,84 @@ fn commit_matches_the_command_it_logs() {
             one_commit_and_an_edit(repo);
             repo.git(&["add", "a.rs"]);
         },
-        &commit("a change\n"),
+        |_repo| commit("a change\n"),
     );
 }
 
 #[test]
 fn stash_push_matches_the_command_it_logs() {
-    parity(
-        one_commit_and_an_edit,
-        &Operation::StashPush(StashParams {
+    parity(one_commit_and_an_edit, |_repo| {
+        Operation::StashPush(StashParams {
             message: Some("wip".to_owned()),
             scope: StashScope::All {
                 include_untracked: false,
             },
-        }),
+        })
+    });
+}
+
+// The four kinds the A/B harness did not cover (m3/03 review, M2). Each
+// builds its operation from the repository it was just handed, because a
+// stash operation names the commit it found there; the command lines the
+// other repository replays name `stash@{n}`, which is the same in both.
+
+#[test]
+fn amend_matches_the_command_it_logs() {
+    parity(
+        |repo| {
+            one_commit_and_an_edit(repo);
+            repo.git(&["add", "a.rs"]);
+        },
+        |_repo| {
+            Operation::Amend(CommitParams {
+                message: "one, amended\n".to_owned(),
+                sign_off: false,
+                no_verify: false,
+                allow_empty: false,
+            })
+        },
     );
+}
+
+#[test]
+fn stash_apply_matches_the_command_it_logs() {
+    parity(one_stash, |repo| Operation::StashApply {
+        index: 0,
+        commit: stash_at(repo, 0),
+    });
+}
+
+#[test]
+fn stash_pop_matches_the_command_it_logs() {
+    parity(one_stash, |repo| Operation::StashPop {
+        index: 0,
+        commit: stash_at(repo, 0),
+    });
+}
+
+#[test]
+fn stash_drop_matches_the_command_it_logs() {
+    parity(one_stash, |repo| Operation::StashDrop {
+        index: 0,
+        commit: stash_at(repo, 0),
+    });
+}
+
+/// One commit and one stash, with nothing left in the working tree: the
+/// setup `apply` and `pop` need, since `check` refuses either over a path
+/// that has a change of its own.
+fn one_stash(repo: &TempRepo) {
+    repo.write("a.txt", b"a\n");
+    repo.write("b.txt", b"b\n");
+    repo.commit_all("one");
+    repo.write("a.txt", b"a edited\n");
+    repo.git(&["stash", "push", "-q", "-m", "first"]);
+}
+
+/// The commit at `stash@{n}`.
+fn stash_at(repo: &TempRepo, index: usize) -> Oid {
+    let id = repo.git(&["rev-parse", &format!("stash@{{{index}}}")]);
+    Oid::from_hex(&id).expect("a stash id")
 }
 
 // ── the stash reflog facts the inverse rests on ─────────────────────────
@@ -763,5 +805,292 @@ fn an_undo_is_journaled_as_an_undo_with_its_own_commands() {
             .any(|line| line.contains("update-index")),
         "{:?}",
         undone.entry.commands
+    );
+}
+
+// ── everything the entry names outlives git's own windows ───────────────
+//
+// `gc.pruneExpire` is two weeks and `gc.reflogExpireUnreachable` is thirty
+// days, and `gc --auto` runs behind ordinary commits. An id a journal entry
+// records has to be reachable from that entry's backup ref, or `u` works for
+// a fortnight and then stops — with the entry still on screen promising it
+// can be undone (m3/03 review, C1). Each of these prunes between the
+// operation and the undo.
+
+#[test]
+fn an_index_only_operations_after_tree_survives_an_aggressive_prune() {
+    // Two files edited and only one staged, so the tree staging leaves is a
+    // tree nothing else in the repository holds: `a.rs` new, `b.rs` old. The
+    // backup's own worktree tree has both new, and `HEAD`'s has both old.
+    let repo = TempRepo::init();
+    repo.write("a.rs", b"one\n");
+    repo.write("b.rs", b"one\n");
+    repo.commit_all("one");
+    repo.write("a.rs", b"two\n");
+    repo.write("b.rs", b"two\n");
+    let before = state_of(&repo);
+
+    let entry = run(&repo, &Operation::Stage(paths(&["a.rs"])), NOW);
+    let after_tree = entry
+        .index_after
+        .unwrap_or_else(|| panic!("staging records the index it left"));
+    let after = state_of(&repo);
+
+    expire_and_prune(&repo);
+    assert!(
+        holds(&repo, &after_tree.to_string()),
+        "the tree the entry names must outlive gc; without it `u` cannot \
+         even work out which paths to put back"
+    );
+
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(state_of(&repo), before, "and the undo still puts it back");
+
+    crate::support::run_redo(&repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(state_of(&repo), after, "and the redo still puts it forward");
+}
+
+#[test]
+fn an_amends_pre_amend_commit_survives_an_aggressive_prune() {
+    let repo = TempRepo::init();
+    repo.write("a.rs", b"one\n");
+    repo.commit_all("one");
+    repo.write("a.rs", b"two\n");
+    repo.git(&["add", "a.rs"]);
+    let replaced = repo.git(&["rev-parse", "HEAD"]);
+    let before = state_of(&repo);
+
+    run(
+        &repo,
+        &Operation::Amend(CommitParams {
+            message: "one, amended\n".to_owned(),
+            sign_off: false,
+            no_verify: false,
+            allow_empty: false,
+        }),
+        NOW,
+    );
+    assert_ne!(repo.git(&["rev-parse", "HEAD"]), replaced);
+
+    expire_and_prune(&repo);
+    assert!(
+        holds(&repo, &replaced),
+        "the commit the amend replaced must outlive gc: its reflog entry is \
+         gone after thirty days, and with it the message and the tree"
+    );
+
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(
+        repo.git(&["rev-parse", "HEAD"]),
+        replaced,
+        "undo put the pre-amend commit back"
+    );
+    assert_eq!(state_of(&repo), before);
+}
+
+#[test]
+fn a_commits_own_commit_survives_an_aggressive_prune_across_undo_and_redo() {
+    let repo = TempRepo::init();
+    repo.write("a.rs", b"one\n");
+    repo.commit_all("one");
+    repo.write("a.rs", b"two\n");
+    repo.git(&["add", "a.rs"]);
+    let before = state_of(&repo);
+
+    run(&repo, &commit("two\n"), NOW);
+    let made = repo.git(&["rev-parse", "HEAD"]);
+    let after = state_of(&repo);
+
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(state_of(&repo), before);
+
+    // The branch has moved off the commit, so only a backup ref is holding
+    // it — which is exactly what redo needs a fortnight later.
+    expire_and_prune(&repo);
+    assert!(holds(&repo, &made), "the undone commit is still there");
+
+    crate::support::run_redo(&repo, NOW + 2, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(state_of(&repo), after, "redo put the commit back");
+}
+
+#[test]
+fn a_conflicted_pops_after_tree_survives_an_aggressive_prune() {
+    let repo = TempRepo::init();
+    repo.write("a.txt", b"one\ntwo\nthree\n");
+    repo.commit_all("one");
+    repo.write("a.txt", b"stashed\ntwo\nthree\n");
+    repo.git(&["stash", "push", "-q", "-m", "will conflict"]);
+    let stashed = stash_at(&repo, 0);
+    repo.write("a.txt", b"committed\ntwo\nthree\n");
+    repo.git(&["add", "a.txt"]);
+    repo.git(&["commit", "-q", "-m", "two"]);
+    let before = state_of(&repo);
+
+    let failed = try_run(
+        &repo,
+        &Operation::StashPop {
+            index: 0,
+            commit: stashed,
+        },
+        NOW,
+    );
+    let entry = match failed {
+        Err(ApplyError::Git { entry, .. }) => *entry,
+        other => panic!("the pop should have failed: {other:?}"),
+    };
+    // The index is unmerged, so there is no index tree; the working tree is
+    // where the half-applied merge lives, and it is what must survive.
+    assert!(entry.index_after.is_none(), "an unmerged index has no tree");
+    let after_tree = entry
+        .worktree_after
+        .unwrap_or_else(|| panic!("the conflicted working tree is recorded"));
+
+    expire_and_prune(&repo);
+    assert!(
+        holds(&repo, &after_tree.to_string()),
+        "the conflicted tree the entry names must outlive gc"
+    );
+
+    run_undo(&repo, NOW + 1, true).unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(state_of(&repo), before);
+}
+
+// ── stash inverses, both legs ───────────────────────────────────────────
+
+#[test]
+fn stash_apply_round_trips() {
+    let repo = one_stash_repo();
+    round_trip(
+        &repo,
+        &Operation::StashApply {
+            index: 0,
+            commit: stash_at(&repo, 0),
+        },
+    );
+}
+
+#[test]
+fn stash_pop_round_trips() {
+    let repo = one_stash_repo();
+    round_trip(
+        &repo,
+        &Operation::StashPop {
+            index: 0,
+            commit: stash_at(&repo, 0),
+        },
+    );
+}
+
+#[test]
+fn stash_drop_round_trips() {
+    let repo = with_two_stashes();
+    round_trip(
+        &repo,
+        &Operation::StashDrop {
+            index: 0,
+            commit: stash_at(&repo, 0),
+        },
+    );
+}
+
+fn one_stash_repo() -> TempRepo {
+    let repo = TempRepo::init();
+    one_stash(&repo);
+    repo
+}
+
+// ── a plan with more than one invocation ────────────────────────────────
+
+#[test]
+fn a_plan_stopped_between_invocations_is_aborted_recoverable_and_narrow() {
+    // Three classes, so `plan_discard` is three invocations: the staged new
+    // file first, then the unstaged edit, then the untracked file.
+    let repo = TempRepo::init();
+    repo.write("kept.rs", b"one\n");
+    repo.commit_all("one");
+    repo.write("staged-new.rs", b"new\n");
+    repo.git(&["add", "staged-new.rs"]);
+    repo.write("kept.rs", b"edited\n");
+    repo.write("untracked.bin", &[0, 255, 7]);
+    let before = state_of(&repo);
+
+    // The first invocation removes `staged-new.rs`; from then on the stop
+    // answers yes, so the second is the one that gets killed.
+    let stop = StopWhenGone::new(repo.path().join("staged-new.rs"));
+    let outcome = run_with_stop(
+        &repo,
+        &Operation::Discard(paths(&["staged-new.rs", "kept.rs", "untracked.bin"])),
+        NOW,
+        &stop,
+    );
+    let entry = match outcome {
+        Err(ApplyError::Git {
+            entry, recoverable, ..
+        }) => {
+            assert!(recoverable, "a backup was taken before the plan started");
+            *entry
+        }
+        other => panic!("the plan should have been cut short: {other:?}"),
+    };
+    assert!(
+        matches!(&entry.status, EntryStatus::Aborted { reason } if reason == "git was stopped"),
+        "{:?}",
+        entry.status
+    );
+    assert_eq!(entry.commands.len(), 3, "every planned line is journaled");
+    assert!(!repo.exists("staged-new.rs"), "the first invocation ran");
+    assert_eq!(repo.read("kept.rs"), b"edited\n", "the second did not");
+
+    // The after-state was read although the stop was still set — the reads
+    // come after the operation, so cancelling one only widens the restore
+    // (m3/03 review, M1). A recorded after-state means `u` needs no force.
+    assert!(
+        entry.worktree_after.is_some(),
+        "a cancelled operation still records what it left behind"
+    );
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(state_of(&repo), before, "the half-done discard is undone");
+}
+
+#[test]
+fn a_two_invocation_patch_discard_that_fails_first_changes_nothing() {
+    // `Discard(Patch { side: Index })` plans two: the working tree first,
+    // because that is the step that can fail. An unstaged edit over the same
+    // lines makes it fail, and the index must be left alone.
+    let repo = TempRepo::init();
+    repo.write("a.txt", b"one\ntwo\nthree\n");
+    repo.commit_all("one");
+    repo.write("a.txt", b"one\nSTAGED\nthree\n");
+    repo.git(&["add", "a.txt"]);
+    repo.write("a.txt", b"one\nIN THE WAY\nthree\n");
+    let before = state_of(&repo);
+
+    let patch = repo.git(&["diff", "--cached", "--", "a.txt"]);
+    let outcome = try_run(
+        &repo,
+        &Operation::Discard(Target::Patch {
+            path: PathBuf::from("a.txt"),
+            patch: format!("{patch}\n").into_bytes(),
+            side: PatchSide::Index,
+        }),
+        NOW,
+    );
+    let entry = match outcome {
+        Err(ApplyError::Git { entry, .. }) => *entry,
+        other => panic!("the first invocation should have failed: {other:?}"),
+    };
+    assert!(matches!(entry.status, EntryStatus::Aborted { .. }));
+    assert_eq!(
+        entry.commands.len(),
+        2,
+        "both planned lines are journaled even though one never ran"
+    );
+    assert_eq!(
+        state_of(&repo),
+        before,
+        "the working tree goes first precisely so a failure leaves nothing \
+         changed — the index must not be half-reversed"
     );
 }

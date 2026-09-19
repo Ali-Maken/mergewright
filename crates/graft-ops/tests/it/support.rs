@@ -9,17 +9,22 @@
 // scaffold that cannot build the repository has to stop the test loudly,
 // and there is no caller to hand an error to.
 #![allow(clippy::expect_used, clippy::unwrap_used)]
-#![allow(dead_code)]
+// Every helper here is used; no blanket `dead_code` allowance (m3/03 review, M3).
 
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 
-use graft_core::journal::EntryId;
+use graft_core::journal::JournalEntry;
 use graft_git::repo::RepoHandle;
 use graft_git::run::Stop;
 use graft_git::version::GitVersion;
-use graft_ops::apply::Context;
+use graft_ops::apply::{Applied, ApplyError, Context, apply};
 use graft_ops::journal::{Journal, journal_path};
+use graft_ops::operation::Operation;
+use graft_ops::undo::{self, UndoError};
+
+/// The clock every execution test runs on, so entry ids are readable.
+pub const NOW: i64 = 1_700_000_000_000;
 
 /// A repository in a temporary directory, removed when it drops.
 pub struct TempRepo {
@@ -125,10 +130,6 @@ impl TempRepo {
         std::fs::read(self.path.join(relative)).expect("the file reads")
     }
 
-    pub fn remove(&self, relative: &str) {
-        std::fs::remove_file(self.path.join(relative)).expect("the file is removed");
-    }
-
     pub fn exists(&self, relative: &str) -> bool {
         self.path.join(relative).exists()
     }
@@ -157,31 +158,28 @@ impl Stop for Never {
     }
 }
 
-/// A `Stop` that answers `false` until it has been asked `after` times, then
-/// `true` for ever: the user quitting part-way through an operation.
-pub struct StopAfter {
-    asked: AtomicUsize,
-    after: usize,
+/// A `Stop` that fires once a path has gone: the user quitting part-way
+/// through a plan, keyed to the plan's own effect.
+///
+/// Counting `should_stop` polls would be a different stop point on every
+/// machine and every git version — the runner polls while it waits on the
+/// child — so the stop is tied to something the plan itself does. Point it at
+/// a file the plan's *first* invocation removes and the *second* is the one
+/// that gets killed, every time.
+pub struct StopWhenGone {
+    path: PathBuf,
 }
 
-impl StopAfter {
-    pub fn new(after: usize) -> StopAfter {
-        StopAfter {
-            asked: AtomicUsize::new(0),
-            after,
-        }
+impl StopWhenGone {
+    pub fn new(path: PathBuf) -> StopWhenGone {
+        StopWhenGone { path }
     }
 }
 
-impl Stop for StopAfter {
+impl Stop for StopWhenGone {
     fn should_stop(&self) -> bool {
-        self.asked.fetch_add(1, Ordering::Relaxed) >= self.after
+        !self.path.exists()
     }
-}
-
-/// An `EntryId` from a fixed clock, so a test's ids are ordered and readable.
-pub fn entry_id(at: i64) -> EntryId {
-    EntryId::new(at, [0; 10])
 }
 
 /// Open a journal for a repository.
@@ -270,4 +268,99 @@ fn files_under(root: &Path, directory: &Path) -> Vec<(String, Vec<u8>)> {
 /// `git stash list` as `stash@{n}: <commit> <message>` lines.
 pub fn stash_list(repo: &TempRepo) -> String {
     repo.git(&["stash", "list", "--format=%H %gs"])
+}
+
+// ── running an operation, and putting it back ───────────────────────────
+
+/// Apply one operation with a fresh context, and return the entry.
+pub fn run(repo: &TempRepo, op: &Operation, at: i64) -> JournalEntry {
+    try_run(repo, op, at)
+        .unwrap_or_else(|why| panic!("{}", why.explain()))
+        .entry
+}
+
+/// The same, handing back the error instead of panicking.
+pub fn try_run(repo: &TempRepo, op: &Operation, at: i64) -> Result<Applied, ApplyError> {
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let never = Never;
+    let mut ctx = context(&handle, &mut journal, at, &never);
+    apply(&mut ctx, op)
+}
+
+/// Apply with a stop of the caller's choosing, for the plans that are meant
+/// to be cut short.
+pub fn run_with_stop(
+    repo: &TempRepo,
+    op: &Operation,
+    at: i64,
+    stop: &dyn Stop,
+) -> Result<Applied, ApplyError> {
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let mut ctx = context(&handle, &mut journal, at, stop);
+    apply(&mut ctx, op)
+}
+
+/// Undo the newest in-force operation.
+pub fn run_undo(repo: &TempRepo, at: i64, force: bool) -> Result<Applied, UndoError> {
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let never = Never;
+    let mut ctx = context(&handle, &mut journal, at, &never);
+    undo::undo(&mut ctx, force)
+}
+
+/// Put back the newest undo still in force.
+pub fn run_redo(repo: &TempRepo, at: i64, force: bool) -> Result<Applied, UndoError> {
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let never = Never;
+    let mut ctx = context(&handle, &mut journal, at, &never);
+    undo::redo(&mut ctx, force)
+}
+
+/// Apply, undo, redo, undo again — the state has to land back where each
+/// step says it should, every time. Both legs matter: an inverse that only
+/// ever runs once is half a test (m3/03 review, M2).
+pub fn round_trip(repo: &TempRepo, op: &Operation) {
+    let before: RepoState = state_of(repo);
+    run(repo, op, NOW);
+    let after = state_of(repo);
+    assert_ne!(before, after, "the operation changed nothing to undo");
+
+    run_undo(repo, NOW + 1, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+    assert_eq!(state_of(repo), before, "undo did not put it back exactly");
+
+    run_redo(repo, NOW + 2, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
+    assert_eq!(state_of(repo), after, "redo did not put it forward exactly");
+
+    run_undo(repo, NOW + 3, false).unwrap_or_else(|why| panic!("undo 2: {}", why.explain()));
+    assert_eq!(
+        state_of(repo),
+        before,
+        "the second undo did not put it back"
+    );
+}
+
+/// Everything git can reach only through a reflog, gone; everything an
+/// unreferenced object, pruned.
+///
+/// This is `git gc`'s two-week/thirty-day windows brought forward to now. An
+/// object a journal entry names has to survive it, or the entry is a promise
+/// that expires quietly (m3/03 review, C1).
+pub fn expire_and_prune(repo: &TempRepo) {
+    repo.git(&[
+        "reflog",
+        "expire",
+        "--expire=now",
+        "--expire-unreachable=now",
+        "--all",
+    ]);
+    repo.git(&["gc", "--prune=now", "-q"]);
+}
+
+/// Whether the repository still holds an object.
+pub fn holds(repo: &TempRepo, id: &str) -> bool {
+    repo.try_git(&["cat-file", "-e", id]).is_ok()
 }

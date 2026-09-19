@@ -13,7 +13,6 @@ use graft_core::journal::JournalEntry;
 use crate::apply::{Applied, Context};
 use crate::facts::{self, FactsError};
 use crate::restore::{self, RestoreError};
-use crate::snapshot::SnapshotError;
 use crate::undo::{Drift, InversePlan, NotInvertible, drift, plan_redo, plan_undo};
 
 /// Why an undo or redo did not happen.
@@ -75,24 +74,14 @@ fn reverse(
             names.push(name.clone());
         }
     }
-    let now = match facts::read_state_now(ctx.repo, &ctx.scratch.clone(), &names, ctx.stop) {
-        Ok(now) => now,
-        // An unmerged index — what a stash pop that hit a conflict leaves —
-        // has no tree, so it cannot equal the one the entry recorded. That
-        // is drift of the loudest kind, and the comparison has nothing to
-        // add to it. The restore itself copes: its backup keeps the working
-        // tree, conflict markers and all.
-        Err(FactsError::Snapshot(SnapshotError::Unmerged)) => {
-            if force {
-                return restore::execute(ctx, &plan).map_err(UndoError::Restore);
-            }
-            return Err(UndoError::Drift(Drift {
-                index: true,
-                ..Drift::default()
-            }));
-        }
-        Err(other) => return Err(UndoError::Facts(other)),
-    };
+    // An unmerged index — what a stash pop that hit a conflict leaves — has
+    // no tree, and `read_state_now` reports that as `index_tree: None` rather
+    // than failing: `HEAD`, the refs and the working tree are all still
+    // readable, and the user is owed all of it, not just "the index changed"
+    // (m3/03 review, M5). The restore itself copes: its backup keeps the
+    // working tree, conflict markers and all.
+    let now = facts::read_state_now(ctx.repo, ctx.scratch(), &names, ctx.stop)
+        .map_err(UndoError::Facts)?;
 
     let moved = drift(&target, &now);
     if !moved.is_clean() && !force {
