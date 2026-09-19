@@ -3,8 +3,9 @@
 use std::io;
 use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Condvar, Mutex, PoisonError};
 use std::thread::{self, JoinHandle};
+use std::time::Duration;
 
 /// A loopback port where every connection is accepted, held open, and never
 /// read from or written to — a server that has hung, or a network that
@@ -17,7 +18,10 @@ use std::thread::{self, JoinHandle};
 pub struct HungRemote {
     address: SocketAddr,
     thread: Option<JoinHandle<()>>,
-    held: Arc<Mutex<Vec<TcpStream>>>,
+    /// The accepted streams, and the `Condvar` the listener raises whenever
+    /// it pushes one. [`wait_for_connection`](HungRemote::wait_for_connection)
+    /// waits on that; without it a caller has to poll `connections`.
+    held: Arc<(Mutex<Vec<TcpStream>>, Condvar)>,
     stopping: Arc<AtomicBool>,
 }
 
@@ -29,7 +33,7 @@ impl HungRemote {
     pub fn listen() -> io::Result<HungRemote> {
         let listener = TcpListener::bind("127.0.0.1:0")?;
         let address = listener.local_addr()?;
-        let held = Arc::new(Mutex::new(Vec::new()));
+        let held = Arc::new((Mutex::new(Vec::new()), Condvar::new()));
         let stopping = Arc::new(AtomicBool::new(false));
         let thread = {
             let held = Arc::clone(&held);
@@ -59,7 +63,24 @@ impl HungRemote {
 
     /// Connections accepted and held so far.
     pub fn connections(&self) -> usize {
-        lock(&self.held).len()
+        lock(&self.held.0).len()
+    }
+
+    /// Blocks until a client has connected, or `within` elapses; `true` if one
+    /// has. Returns straight away when one connected already.
+    ///
+    /// The event, not a timer: the listener raises a `Condvar` as it accepts,
+    /// so a test waiting for "git has reached the remote" waits on that rather
+    /// than sleeping and re-checking `connections` (CLAUDE.md rule 2).
+    /// `within` is a deadline for the client that never comes, so the test
+    /// fails instead of hanging the run.
+    pub fn wait_for_connection(&self, within: Duration) -> bool {
+        let (streams, arrived) = &*self.held;
+        let guard = streams.lock().unwrap_or_else(PoisonError::into_inner);
+        let (guard, _timed_out) = arrived
+            .wait_timeout_while(guard, within, |streams| streams.is_empty())
+            .unwrap_or_else(PoisonError::into_inner);
+        !guard.is_empty()
     }
 }
 
@@ -70,14 +91,26 @@ impl HungRemote {
 /// is set — the wake-up, or a real client that connected in the same moment
 /// and was queued ahead of it — is closed, not held. Nothing can count it
 /// any more: `connections` needs the fixture, and it is being dropped.
-fn accept_and_hold(listener: &TcpListener, held: &Mutex<Vec<TcpStream>>, stopping: &AtomicBool) {
+fn accept_and_hold(
+    listener: &TcpListener,
+    held: &(Mutex<Vec<TcpStream>>, Condvar),
+    stopping: &AtomicBool,
+) {
+    let (streams, arrived) = held;
     for stream in listener.incoming() {
         if stopping.load(Ordering::SeqCst) {
             drop(stream);
+            // Nothing should be waiting — a waiter holds the fixture and
+            // `Drop` has it — but a wait that raced the drop ends here
+            // rather than on its deadline.
+            arrived.notify_all();
             return;
         }
         match stream {
-            Ok(stream) => lock(held).push(stream),
+            Ok(stream) => {
+                lock(streams).push(stream);
+                arrived.notify_all();
+            }
             Err(error) => {
                 // A failed `accept` (the client reset before it completed)
                 // costs this fixture nothing: the listener is still good and
@@ -122,7 +155,7 @@ impl Drop for HungRemote {
         if thread.join().is_err() {
             eprintln!("HungRemote on {}: listener thread panicked", self.address);
         }
-        for stream in lock(&self.held).drain(..) {
+        for stream in lock(&self.held.0).drain(..) {
             if let Err(error) = stream.shutdown(Shutdown::Both) {
                 // The client already went away (it was killed); the stream
                 // is closed either way when it drops here.

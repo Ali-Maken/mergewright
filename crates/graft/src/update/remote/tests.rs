@@ -376,3 +376,80 @@ fn failures_are_worded_and_remembered() {
     );
     assert_eq!(after.remote.last_rejected_push, None);
 }
+
+/// `Esc` does not stop `u` or `U`, and says why instead of looking ignored.
+///
+/// An inverse plan is several steps and `graft_ops::restore::execute` checks
+/// its stop token once, before the first one. A cancel mid-plan kills only
+/// the git child of the step in flight: that step fails, the loop breaks,
+/// and the steps that already ran stay applied. Nothing rolls them back, so
+/// the app does not offer the cancel — see [`UNDO_CANNOT_STOP`]
+/// (m4-remotes/05 review, M3).
+#[test]
+fn esc_does_not_stop_an_undo_or_a_redo() {
+    for (key, words) in [(plain('u'), "undo"), (plain('U'), "redo")] {
+        let (running, commands) = press(&AppState::default(), key);
+        let id = running.operating.expect("the undo launched");
+        assert_eq!(
+            commands.len(),
+            1,
+            "{words}: the launch is the only command: {commands:?}"
+        );
+
+        let (pressed, commands) = press(&running, KeyPress::plain(KeyCode::Escape));
+        assert!(
+            commands.is_empty(),
+            "{words}: Esc asked for something: {commands:?}"
+        );
+        assert_eq!(pressed.operating, Some(id), "{words}: still running");
+        assert_eq!(
+            pressed.remote.cancelling, None,
+            "{words}: nothing was asked to stop"
+        );
+        assert_eq!(
+            pressed.status,
+            Status::Busy(format!("{words} cannot be stopped part-way — finishing")),
+            "{words}"
+        );
+
+        // A second `Esc` says the same thing and still sends nothing.
+        let (again, commands) = press(&pressed, KeyPress::plain(KeyCode::Escape));
+        assert!(commands.is_empty(), "{words}: {commands:?}");
+        assert_eq!(again.status, pressed.status, "{words}");
+
+        // The commit editor's own `Esc` reaches `stop_write` without
+        // `cancel_operating`'s guard; it refuses too.
+        let mut direct = running.clone();
+        let mut commands = Vec::new();
+        assert!(
+            stop_write(&mut direct, &mut commands),
+            "{words}: the key is still consumed"
+        );
+        assert!(commands.is_empty(), "{words}: {commands:?}");
+        assert_eq!(direct.remote.cancelling, None, "{words}");
+    }
+}
+
+/// The refusal is on the write, not on `Esc`: a fetch is still stoppable.
+/// Without this, refusing an undo could be made to pass by refusing
+/// everything.
+#[test]
+fn a_remote_write_is_still_stoppable() {
+    let state = with_facts(
+        vec![remote("origin")],
+        Some("refs/heads/main"),
+        Some(upstream(Some(THEIRS))),
+    );
+    let (running, _) = press(&state, plain('f'));
+    let id = running.operating.expect("f launched the fetch");
+    assert_eq!(
+        running
+            .remote
+            .running
+            .as_ref()
+            .map(|running| running.stoppable),
+        Some(Stoppable::Yes)
+    );
+    let (_, commands) = press(&running, KeyPress::plain(KeyCode::Escape));
+    assert_eq!(commands, [Command::CancelJob(id)]);
+}

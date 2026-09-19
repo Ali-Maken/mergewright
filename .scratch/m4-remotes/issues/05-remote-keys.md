@@ -111,3 +111,116 @@ Unverified / for the user's eye:
 
 Known failing, not mine: `view::tests::every_graph_renderer_config_value_draws_as_it_says` (another builder's snapshot; not accepted, `.snap.new` deleted).
 
+## Review fixes (round 1, `docs/reviews/m4-05-remote-keys.md`)
+
+Scout: one Sonnet `Explore` over `update/undo.rs`, `jobs/undo.rs`, `jobs/pool.rs`,
+`update/remote.rs`, `graft-fixtures/remote/hung.rs` and the two poll loops.
+
+**M3 — `Esc` reaching `u`/`U`: the cancel is withdrawn, not proved safe.**
+I could not prove wholeness, and the code says why. `graft_ops::restore::execute`
+checks its stop token **once, before the first step** (`restore.rs:117`); the
+`for step in &plan.steps` loop has no check between steps. The only thing a cancel
+reaches mid-plan is the git child of the step in flight (`graft_git::run`, SIGTERM
+then SIGKILL): that step fails, the loop breaks, and `finish` journals `Aborted`
+with the earlier steps still applied. `jobs/undo.rs`' own doc comment on
+`refresh_after_failure` already names the case — two `UpdateRef` steps, the second
+refused, the first ref already moved. Nothing rolls that back.
+
+So `u`/`U` are now `Stoppable::No(UNDO_CANNOT_STOP)`: `Esc` sends no `CancelJob`,
+the undo runs to its end, and the line reads `undo cannot be stopped part-way —
+finishing…`. Every other write is unchanged and still stoppable.
+
+- `update::remote::tests::esc_does_not_stop_an_undo_or_a_redo` — for both `u` and
+  `U`: no command from `Esc`, `operating` unchanged, `cancelling` still `None`,
+  the line, a second `Esc` the same, and the commit editor's `stop_write` path
+  refusing too.
+- `update::remote::tests::a_remote_write_is_still_stoppable` — `f` is
+  `Stoppable::Yes` and `Esc` still emits `CancelJob`; the refusal is on the write,
+  not on `Esc`.
+- `it::remote_by_key::esc_cancels_hung_fetch`, `it::remote_by_key::esc_cancels_local_write`
+  — unchanged, still green.
+
+**For the conductor, not done here (it is a `graft-ops` change):** restoring the
+cancel means a between-step stop check in `restore::execute` *and* a rollback of
+the steps that ran. Until then `u`/`U` cannot be interrupted. A withdrawn
+capability, not a broken one.
+
+**M1 — the two poll-and-sleep waits are gone.** Both are now blocking waits on a
+real event, with a 30 s deadline for the event that never comes (a deadline, not a
+poll interval: nothing wakes in between).
+
+- `HungRemote::wait_for_connection(within) -> bool` in `graft-fixtures`: the
+  listener raises a `Condvar` as it accepts. `it::remote_by_key::esc_cancels_hung_fetch`.
+- `graft_fixtures::fifo::Fifo` (new, unix): a named pipe with a thread already
+  blocked on reading it; the pre-commit hook does `echo started > "$FIFO"`. Held
+  open read-write, so the hook's write never blocks and a write that arrives
+  before the wait is not missed. `fifo::tests::a_write_ends_the_wait`,
+  `fifo::tests::a_write_before_the_wait_is_not_missed`,
+  `fifo::tests::a_wait_with_no_writer_times_out`; used by
+  `it::remote_by_key::esc_cancels_local_write`.
+- `mkfifo` goes through the POSIX binary, not `libc::mkfifo`: `graft-fixtures` is
+  `#![deny(unsafe_code)]` and admits only the sites ADR-0015 names. Widening that
+  is a decision, not a fixture's to take.
+
+**M4 — the catch-all is gone.** `remote_event` deleted; `update::answer` calls
+`remote::remotes_arrived` and `remote::remote_progress` from its own two arms.
+Every event is matched exactly once. `answer` carries an
+`#[expect(clippy::too_many_lines)]` whose reason is the one
+`graft_ops::operation::explain` already carries (m4/04 review, Minor 7): the only
+way to shorten it is the re-entering catch-all this fix removed.
+Covered by `update::remote::tests::progress_reaches_the_line_and_narrows`,
+`update::tests::stale_remotes_dropped`,
+`it::remote_by_key::progress_reaches_the_status_line`.
+
+**M2 — `Sticky` surviving a refresh is now tested.**
+`update::tests::only_a_read_failure_is_cleared_when_the_repository_opens`: `Sticky`
+stays, `Failed` becomes `Ready`, `Busy` and `Done` untouched.
+
+**Minor 1 (non-UTF-8 argv) — already fixed by group 06, nothing to do.**
+`cli::from_process` is the only argv reader in the crate: `env::args_os()`,
+`env::var_os` for the socket, `to_string_lossy` for the prompt. No `env::args()`
+anywhere under `crates/graft/src`. Covered by
+`cli::tests::askpass_mode_needs_the_socket_and_exactly_one_argument`.
+
+**Minor 4** — `remote_failed`'s `Cancelled` arm carries a comment saying why it is
+unreachable through the pool and why it is kept.
+
+**Minor 10** — the `chmod` spawn is replaced by `PermissionsExt` (`executable()`
+in `tests/it/remote_by_key.rs`).
+
+Not done, still open: Minors 2, 3, 5, 6, 7, 8, 9, 11. None are in the files this
+round touched, and 2 and 3 are `graft-git`/`jobs::pool` behaviour changes rather
+than app fixes.
+
+### From the group 06 review (`docs/reviews/m4-06-credential-prompt-wiring.md`)
+
+- **Minor m1, `Esc` order.** `update/credential.rs`: the job is cancelled *before*
+  the ask is refused. The other order let git die of its own accord and be
+  classified `AuthFailed`, so the line blamed the password for what the user
+  chose. `update::credential::tests::esc_cancels_the_operation` pins the command
+  order and the resulting status.
+- **Doc overclaim in `jobs/askpass.rs`.** Corrected: the `Secret` zeroing starts
+  at the `Enter` that builds the `Answer`. The characters before it live in the
+  prompt's plain `TextField` `String`, which `update` clones on every event and
+  drops without zeroing. The comment now says exactly that, and names the fix (a
+  secret-backed field in `graft-ui`) as not-here.
+- **`KNOWN_GAPS.md` row 467** can be closed — see Minor 1 above. Not edited here.
+
+### Gates
+
+Workspace-wide, in `target-g05fix`: `cargo fmt --check` clean;
+`cargo clippy --all-targets --message-format=short -- -D warnings` clean, and the
+same with `--features heavy-tests`; `cargo nextest run` **1799 passed, 22 skipped,
+0 failed** (29.95 s); `cargo test --doc` clean. `remote_by_key`'s 8 tests now run
+in 2.15 s together — the two waits were the slow part.
+
+### Unverified
+
+- The undo refusal is proved at the app layer: `Command::CancelJob` is the only
+  route to a cancel, and no key path now emits one for `u`/`U`. I did **not**
+  build a repository where an undo runs long enough to press `Esc` against —
+  there is no hook git runs during a restore. The proof is that the cancel is
+  never sent, not that sending it would be survived.
+- The refusal line's wording is for the user's eye. No capture: it is one status
+  line and no pane changed.
+

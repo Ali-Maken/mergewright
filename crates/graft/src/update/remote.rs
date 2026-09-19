@@ -18,7 +18,7 @@ use graft_ui::confirm::ConfirmView;
 
 use super::confirm::{ConfirmThen, PendingConfirm};
 use super::detail::Loading;
-use super::events::{AppEvent, Command, Product, Progress};
+use super::events::Command;
 use super::state::{AppState, Status};
 use crate::jobs::remote::RemoteFacts;
 use crate::refs::Upstream;
@@ -57,7 +57,39 @@ pub struct Running {
     pub description: String,
     /// The operation, when it talks to a remote.
     pub op: Option<Operation>,
+    /// Whether `Esc` may stop this write.
+    pub stoppable: Stoppable,
 }
+
+/// Whether `Esc` may stop a running write.
+///
+/// Not every write can be stopped safely. Stopping one means killing the git
+/// child it is inside (`graft_git::run`), and whether that is safe depends on
+/// what the layer below does with the steps that already ran.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Stoppable {
+    /// `Esc` sends `Command::CancelJob`. An operation is one git write, so
+    /// killing it leaves the repository either written or not.
+    Yes,
+    /// `Esc` refuses and says so, in these words.
+    No(&'static str),
+}
+
+/// Why `Esc` will not stop an undo or a redo.
+///
+/// `u`/`U` run an inverse plan of several steps — refs, then `HEAD`, then the
+/// index, then the working tree — and `graft_ops::restore::execute` checks
+/// the stop token **once, before the first step**, never between them. The
+/// only thing a cancel reaches mid-plan is the git child of whichever step is
+/// running: that step fails, the loop breaks, and the entry is journalled
+/// `Aborted` with the earlier steps already applied. A plan with two
+/// `UpdateRef` steps would leave the first ref moved and the second not.
+///
+/// Nothing rolls that back today, so the honest answer is not to offer the
+/// cancel. Restoring it means a between-step stop check in `graft-ops` plus a
+/// rollback of the steps that ran — a `graft-ops` change, not an app one
+/// (m4-remotes/05 review, M3).
+pub const UNDO_CANNOT_STOP: &str = "cannot be stopped part-way — finishing";
 
 impl RemoteState {
     /// The running write, if `id` is it.
@@ -72,11 +104,13 @@ pub(super) fn launched(
     id: JobId,
     description: String,
     op: Option<Operation>,
+    stoppable: Stoppable,
 ) {
     state.remote.running = Some(Running {
         id,
         description,
         op,
+        stoppable,
     });
 }
 
@@ -128,20 +162,6 @@ pub(super) fn request_at_launch(
 /// The remote facts arrived. A stale answer — not the read in flight — is
 /// dropped. A branch change forgets the last rejected push: the lease it
 /// would offer is about another branch.
-/// Routes the remote facts and a remote write's progress, the two events
-/// [`super::update`] hands this module.
-pub(super) fn remote_event(state: &mut AppState, event: AppEvent) {
-    match event {
-        AppEvent::Produced(id, Product::Remotes(result)) => remotes_arrived(state, id, result),
-        AppEvent::Progress(id, Progress::RemoteProgress { brief }) => {
-            remote_progress(state, id, &brief);
-        }
-        // The caller routes only the two above here; any other event is
-        // someone else's and has nothing to do in this module.
-        _ => {}
-    }
-}
-
 pub(super) fn remotes_arrived(
     state: &mut AppState,
     id: JobId,
@@ -412,6 +432,13 @@ pub(super) fn stop_write(state: &mut AppState, commands: &mut Vec<Command>) -> b
     let Some(id) = state.operating else {
         return false;
     };
+    // A write that cannot be stopped safely keeps running, and the line says
+    // so rather than leaving `Esc` looking ignored. `Busy` is drawn with a
+    // trailing `…`, which is right here: it really is still going.
+    if let Stoppable::No(why) = stoppable(state, id) {
+        state.status = Status::Busy(format!("{} {why}", running_words(state, id)));
+        return true;
+    }
     if state.remote.cancelling == Some(id) {
         return true;
     }
@@ -420,6 +447,16 @@ pub(super) fn stop_write(state: &mut AppState, commands: &mut Vec<Command>) -> b
     // `Busy` is drawn with a trailing `…`, so the words stop at the verb.
     state.status = Status::Busy(format!("{} · cancelling", running_words(state, id)));
     true
+}
+
+/// Whether `Esc` may stop the write running under `id`. A write nothing
+/// recorded is treated as stoppable: that is what every write before this
+/// field existed was, and killing one git child is the safe half.
+fn stoppable(state: &AppState, id: JobId) -> Stoppable {
+    state
+        .remote
+        .running(id)
+        .map_or(Stoppable::Yes, |running| running.stoppable)
 }
 
 /// What the running write is called, for the cancel lines.
@@ -511,6 +548,12 @@ pub fn remote_failed(
     explained: &str,
 ) -> Status {
     match (failure, op) {
+        // Not reached through the job pool: `jobs::pool::run_job` turns any
+        // product returned after a cancel into `Event::JobCancelled`, which
+        // `cancelled` answers, so a cancelled remote write never arrives
+        // here. Kept because `RemoteFailure` can carry it from `ops` on any
+        // other route, and dropping the arm would make that a silent
+        // wrong-worded failure line (m4-remotes/05 review, Minor 4).
         (RemoteFailure::Cancelled, _) => Status::Done(format!("{} cancelled", op.describe())),
         (RemoteFailure::NonFastForward, Operation::Push(params)) => {
             state.remote.last_rejected_push = Some(params.clone());

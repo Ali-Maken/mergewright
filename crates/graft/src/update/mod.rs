@@ -52,7 +52,6 @@ use graft_core::job::JobId;
 use crate::history::{History, Phase};
 use crate::repository::RepositoryFacts;
 use credential::credential_needed;
-use remote::remote_event;
 
 /// Answer one event: the new state, and the work it wants done.
 ///
@@ -110,6 +109,13 @@ fn settle(next: &mut AppState, commands: &mut Vec<Command>, cursor_before: usize
 
 /// The half of [`update`] that answers one event, before the viewport is
 /// squared with the commit-graph line.
+#[expect(
+    clippy::too_many_lines,
+    reason = "one arm per event, matched exhaustively and dispatched straight to its \
+              module: the way to shorten it is to hand a whole event to a module that \
+              matches it again behind a catch-all, which is what m4-remotes/05's review \
+              (M4) had taken out of here"
+)]
 fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
     match event {
         event @ (AppEvent::Started(_, Task::WriteCommitGraph | Task::DeclineCommitGraph)
@@ -165,8 +171,12 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         )) => operate_answer(next, commands, event),
         AppEvent::Produced(id, Product::Undone(done)) => undone_answer(next, commands, id, *done),
         AppEvent::Produced(id, product @ Product::Journal(_)) => journal_answer(next, id, &product),
-        event @ (AppEvent::Produced(_, Product::Remotes(_))
-        | AppEvent::Progress(_, Progress::RemoteProgress { .. })) => remote_event(next, event),
+        AppEvent::Produced(id, Product::Remotes(result)) => {
+            remote::remotes_arrived(next, id, result);
+        }
+        AppEvent::Progress(id, Progress::RemoteProgress { brief }) => {
+            remote::remote_progress(next, id, &brief);
+        }
         event @ AppEvent::Produced(
             _,
             Product::CommitTemplate(_)

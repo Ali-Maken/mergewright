@@ -63,7 +63,13 @@ pub(super) fn launch(
     next.operating = Some(id);
     next.status = Status::Busy(super::remote::busy_text(&op));
     let remote = op.is_remote().then(|| op.clone());
-    super::remote::launched(next, id, op.describe(), remote);
+    super::remote::launched(
+        next,
+        id,
+        op.describe(),
+        remote,
+        super::remote::Stoppable::Yes,
+    );
     commands.push(Command::Operate(id, Box::new(op)));
 }
 

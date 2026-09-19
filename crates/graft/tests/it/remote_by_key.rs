@@ -20,6 +20,7 @@ use graft::update::{AppState, Status};
 use graft_core::event::{KeyCode, KeyPress};
 use graft_core::journal::{EntryStatus, JournalEntry, OperationKind};
 use graft_fixtures::Shape;
+use graft_fixtures::fifo::Fifo;
 use graft_fixtures::remote::{HungRemote, LocalRemote};
 
 use crate::app_harness::{App, git};
@@ -53,6 +54,17 @@ fn run(remote: &LocalRemote, dir: &Path, args: &[&str]) -> String {
     remote
         .git(dir, args)
         .unwrap_or_else(|why| panic!("git {args:?}: {why}"))
+}
+
+/// `chmod +x`, without spawning one: `PermissionsExt` is the plain way
+/// (m4-remotes/05 review, Minor 10).
+fn executable(path: &Path) {
+    use std::os::unix::fs::PermissionsExt;
+    let mut permissions = std::fs::metadata(path)
+        .expect("the hook was just written")
+        .permissions();
+    permissions.set_mode(permissions.mode() | 0o111);
+    std::fs::set_permissions(path, permissions).expect("the hook can be made executable");
 }
 
 fn rev(repo: &Path, name: &str) -> String {
@@ -399,17 +411,16 @@ fn locks(dir: &Path) -> Vec<std::path::PathBuf> {
 }
 
 /// Wait for the hung remote to have git's connection, so `Esc` stops a
-/// fetch that is really waiting on the network. Polling an external
-/// counter: the fixture has no event to wait on.
+/// fetch that is really waiting on the network.
+///
+/// The fixture's own event: its listener raises a `Condvar` as it accepts.
+/// The 30 s is a deadline for a connection that never comes, not a poll
+/// interval.
 fn wait_for_connection(hung: &HungRemote) {
-    let deadline = Instant::now() + Duration::from_secs(30);
-    while hung.connections() == 0 {
-        assert!(
-            Instant::now() < deadline,
-            "git never connected to the hung remote"
-        );
-        std::thread::sleep(Duration::from_millis(20));
-    }
+    assert!(
+        hung.wait_for_connection(Duration::from_secs(30)),
+        "git never connected to the hung remote"
+    );
 }
 
 /// `Esc` during `f` against a remote that never answers: the write clears
@@ -464,21 +475,20 @@ fn esc_cancels_local_write() {
     let remote = local();
     let work = remote.work();
     let hook = work.join(".git/hooks/pre-commit");
-    let started = work.join(".git/hook-started");
+    // The hook announces itself down a FIFO the test is already blocked on
+    // reading, so "the hook is inside `git commit`" is an event and not a
+    // sleep-and-check loop (CLAUDE.md rule 2).
+    let started = Fifo::create().expect("the fifo is made");
     std::fs::write(
         &hook,
-        format!("#!/bin/sh\ntouch '{}'\nsleep 5\n", started.display()),
+        format!(
+            "#!/bin/sh\necho started > '{}'\nsleep 5\n",
+            started.path().display()
+        ),
     )
     .expect("the hooks dir is writable");
     run(&remote, work, &["update-index", "--refresh"]);
-    std::process::Command::new("chmod")
-        .args(["+x"])
-        .arg(&hook)
-        .status()
-        .expect("chmod runs")
-        .success()
-        .then_some(())
-        .expect("the hook is executable");
+    executable(&hook);
     let main = main_ref(&remote);
     let before = rev(work, &main);
     stage(work);
@@ -488,12 +498,12 @@ fn esc_cancels_local_write() {
     let state = commit_by_key(&app, &state, "slow");
     assert!(state.operating.is_some(), "the commit is running");
     // Esc before the job starts would stop nothing that runs; wait for the
-    // hook to be inside `git commit`. Polling a file: the hook has no event.
-    let deadline = Instant::now() + Duration::from_secs(30);
-    while !started.exists() {
-        assert!(Instant::now() < deadline, "the pre-commit hook never ran");
-        std::thread::sleep(Duration::from_millis(20));
-    }
+    // hook to be inside `git commit`. The 30 s is the deadline for a hook
+    // that never runs, not a poll interval.
+    assert!(
+        started.wait(Duration::from_secs(30)),
+        "the pre-commit hook never ran"
+    );
 
     let pressed = Instant::now();
     let state = app.key(&state, KeyCode::Escape);

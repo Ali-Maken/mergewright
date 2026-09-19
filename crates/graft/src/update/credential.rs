@@ -201,16 +201,22 @@ pub fn credential_key(state: &mut AppState, commands: &mut Vec<Command>, key: Ke
         }
         KeyCode::Escape => {
             // Cancel the whole operation, never leave it half-authenticated:
-            // the ask gets no answer, and the job is stopped.
+            // the job is stopped, and the ask gets no answer.
+            //
+            // The job goes first. The other order lets git see its refused
+            // ask and die of its own accord before the cancel lands, and
+            // that death is classified `AuthFailed` — so the line would say
+            // the password was wrong when the user simply pressed `Esc`
+            // (m4-remotes/06 review, Minor m1).
             let job = prompt.job;
             prompt.field = TextField::new("");
             state.credential = None;
-            commands.push(Command::CancelCredential(job));
             if !super::remote::stop_write(state, commands) {
                 // `operating` is always this job while the prompt is open
                 // (`close_if_orphaned`); stop it by id all the same.
                 commands.push(Command::CancelJob(job));
             }
+            commands.push(Command::CancelCredential(job));
         }
         KeyCode::Char(character) => prompt.field.insert(character),
         KeyCode::Backspace => prompt.field.backspace(),

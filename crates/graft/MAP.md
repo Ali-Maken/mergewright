@@ -241,14 +241,16 @@ Git's credential question as an in-app prompt (m4-remotes/06, design note §7). 
 
 ## update::remote
 `f` fetch, `p` pull, `P` push, and `Esc` on any running write (m4-remotes/05, design note §5). Builds `Operation::{Fetch,Pull,Push}` from `AppState::remotes`; `graft_ops` decides what runs and words most failures.
-- `RemoteState` (struct) — `last_rejected_push: Option<PushParams>` (the push the remote refused non-fast-forward; the next `P` offers the lease box; cleared on success or a branch change), `reading` (the facts read in flight), `running: Option<Running>` (the write in flight: id, description, the `Operation` when it is one), `cancelling` (the write `Esc` stopped).
+- `RemoteState` (struct) — `last_rejected_push: Option<PushParams>` (the push the remote refused non-fast-forward; the next `P` offers the lease box; cleared on success or a branch change), `reading` (the facts read in flight), `running: Option<Running>` (the write in flight: id, description, the `Operation` when it is one, and `stoppable`), `cancelling` (the write `Esc` stopped).
 - `request` / `request_at_launch` (fn) — ask `Command::ReadRemotes`; the launch read runs from `settle` once the repository has opened and the facts are `Idle`.
 - `remotes_arrived` (fn) — lands the facts, dropping a stale id.
 - `fetch_key` / `pull_key` / `push_key` (fn) — the keys; refusals are words on the status line (no remote, detached, no upstream), never a no-op.
 - `pull_params` / `push_params` (fn) — the params from the facts; `push_params -> Result<PushParams, String>`.
 - `push_box` (fn) — `(params, ahead: Option<usize>, local_tip: Option<Oid>) -> ConfirmView`: `Push main → origin/main?` with the ahead count, or the force-with-lease box naming the tip it expects.
-- `busy_text` (fn) — remote operations add `ESC_HINT` to the busy line. `ESC_HINT` (const, ` · esc cancels`) — `view::frame` draws a busy line ending in it without its usual `…`. `remote_event` (fn) routes `Product::Remotes` and `Progress::RemoteProgress`.
-- `cancel_operating` / `stop_write` (fn) — `Esc` while any write runs: `CancelJob`, `Busy("<desc> · cancelling")`; a second `Esc` is a no-op. The commit editor's `Esc` goes through `stop_write` too.
+- `busy_text` (fn) — remote operations add `ESC_HINT` to the busy line. `ESC_HINT` (const, ` · esc cancels`) — `view::frame` draws a busy line ending in it without its usual `…`.
+- `Stoppable` (enum) — whether `Esc` may stop a running write: `Yes`, or `No(&'static str)` with the line that says why not. Set by whoever launches the write.
+- `UNDO_CANNOT_STOP` (const) — `u`/`U` are `Stoppable::No`. `graft_ops::restore::execute` checks its stop token once, before the first step, never between them, so a cancel mid-plan leaves the steps that already ran applied and nothing rolls them back.
+- `cancel_operating` / `stop_write` (fn) — `Esc` while any write runs: `CancelJob`, `Busy("<desc> · cancelling")`; a second `Esc` is a no-op. The commit editor's `Esc` goes through `stop_write` too. A `Stoppable::No` write is not asked to stop: the line says so and it keeps running.
 - `cancelled` (fn) — `Event::JobCancelled` for the cancelled write: clears `operating`, `Done("<desc> cancelled")`, refreshes everything.
 - `remote_progress` (fn) — git's progress onto the busy line, narrowed under 100 columns; ignored while cancelling.
 - `remote_done` / `remote_failed` (fn) — the success words (`fetched`, `pulled origin/main`, `pushed main → origin/main`) and the failure line: a non-fast-forward push is remembered and gets the `p`/`P` hint; anything else is `Sticky` with `graft_ops`' own explanation.
