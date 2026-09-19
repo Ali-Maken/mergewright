@@ -1,6 +1,6 @@
 # git-reads-and-patches: porcelain status, staged/unstaged diffs, the hunk patch builder, stash list, in-progress state, and every spawn through `run`
 
-Status: ready
+Status: partial — pieces 1–3 done, committed; pieces 4–8 remain (see NOTES below)
 Blocked by: none
 Build with: Sonnet — parsers with oracle tests against real git, plus small `graft-git` additions; mechanical by CLAUDE.md's table.
 Needs: none (`ops-model` and `ops-execution` call these; `changes-pane` calls `status::read`, `DiffSpec::{Staged, Unstaged}`, `hunk_patch`).
@@ -86,3 +86,44 @@ impl RepoHandle { pub fn git_path(&self, relative: &Path) -> Result<PathBuf, Run
 ## Size
 
 ~600 lines code (status 220, patch 150, stash 90, state 40, repo/run 60) + ~450 test. Seams: after piece 3, after piece 5. Delegate the "how does M2's `list_files` resolve sides" question to a scout; don't read `diff/read.rs` whole.
+
+## NOTES (handoff at seam after piece 3, 2026-09-19)
+
+Pieces 1–3 done and committed (`081f811e` piece 1+2 status, `113fb0a` piece 3
+Staged/Unstaged). Gates green on both `graft-git` and the full workspace
+(`cargo fmt --check`, `cargo test --quiet`, `cargo clippy --all-targets -D
+warnings`, `cargo build --quiet`). Stopping at the spec's own "seam after
+piece 3" rather than continuing into piece 4, per Size note above — pieces
+4–7 are a distinct, substantial remaining scope (hunk_patch + fuzz target,
+gix-based stash reflog reading, fs-check state, repo.rs git_path/worktree_name)
+each needing its own throwaway-repo verification.
+
+Remaining, in order:
+4. `diff/patch.rs`: `Selection`, `PatchError`, `hunk_patch`. Verify
+   `git apply --cached` behavior on a built `Lines` patch in a throwaway repo
+   before coding (spec item (d) under "Verify in a throwaway repo"). Add a
+   `parse_porcelain_v2` fuzz target too (scoped in piece 2 but not yet added —
+   see gap below) while in `fuzz/`.
+5. `stash.rs`: `StashEntry`, `list`. Verified during earlier exploration:
+   `git diff-tree --no-commit-id --root --name-only -r -z <stash>^3` is
+   required for the untracked-files commit (plain `<stash>^3` prints nothing;
+   git suppresses root-commit diffs by default). Read `refs/stash` reflog via
+   gix, no `git stash list` spawn.
+6. `state.rs`: `InProgress`, `in_progress` — plain fs check, no spawn.
+7. `repo.rs`: `git_path`/`worktree_name`. Verified: `GitArg::Path` cannot be
+   used for `--git-path <value>` — its auto-`--`-insertion breaks the
+   invocation (`git rev-parse --git-path -- x` → "fatal: bad revision").
+   Use two `GitArg::Word` tokens instead. Also verified: `git rev-parse
+   --git-path` prints a path relative to `-C` in the main worktree but
+   absolute in a linked worktree — join with `workdir().unwrap_or_else(git_dir)`
+   only when the result isn't already absolute.
+8. Final `MAP.md` sweep for pieces 4–7's public items.
+
+Known gap not yet closed: the `parse_porcelain_v2` fuzz target (scoped in
+piece 2) was not added — fold into piece 4's fuzz-target work, or split out
+if that's cleaner.
+
+Per CLAUDE.md, builders don't edit KNOWN_GAPS.md — flagging for the
+conductor: piece 1 (`GitInvocation::env`, moving `system_git`/
+`commit_graph::write` onto `run`) is done and closes KNOWN_GAPS row
+`m2-details-and-diffs/01`'s first bullet.
