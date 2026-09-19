@@ -151,3 +151,54 @@ warnings`, `cargo build --quiet`; fuzz workspace (`fuzz/`) builds. No
 compaction. Two builder sessions total for this group (piece count and
 per-piece throwaway-repo verification made it too big for one context, as
 the spec's own "Size" note anticipated).
+
+## NOTES (review fix round, 2026-09-19)
+
+Fixed every Critical and Major from `docs/reviews/m3-01-git-reads-and-patches.md`.
+Minors left to the conductor.
+
+- **C1** (vacuous porcelain oracle) — cause. `script_six_dirty_states` →
+  `script_dirty_states`, which scripts as many of the five tracked states as
+  the shape's `git ls-files` count allows (`Option` per state) and always the
+  untracked one; the `< 6` skip is gone. The loop now asserts it checked all
+  but at most one shape (20 of 21 here; only the non-UTF-8-ref shape may drop)
+  and that some shape carried all five states. New
+  `all_six_dirty_states_on_a_repository_built_for_them` builds a five-file
+  `Fixture` so rename and delete letters are proven whatever the corpus holds.
+- **M1** (`Lines` had no reverse form) — cause. New public
+  `diff::PatchDirection { Forward, Reverse }`; `hunk_patch` takes it as a
+  fourth argument. **Spec deviation:** the spec's signature was three
+  arguments; there is no correct reverse patch without a direction, and the
+  review recommended this. `Reverse` mirrors the rule (unselected `Added` →
+  context, unselected `Removed` → dropped). Proven with real git in temp
+  repos, byte-compared: stage one line (`apply --cached`), discard one line
+  (`apply -R`), unstage one line (`apply --cached -R`), restore one removed
+  line, and that the forward form is still refused by `apply -R`.
+- **M2** (no-newline fusion) — cause, in the builder. New
+  `PatchError::NoNewlineBoundary { line }`: a `\ No newline at end of file`
+  line that the selection leaves mid-side is refused instead of emitted.
+  Cost to the user: a single line cannot be staged or discarded out of a hunk
+  that ends a file with no trailing newline when the marker would be
+  stranded — the whole hunk still works, and is tested to produce git's own
+  bytes both ways.
+- **M3** (one one-line hunk per shape) — cause. The oracle now also runs on
+  each shape's newest non-merge commit with a parent, and on a new
+  `awkward_shapes_fixture`: a two-hunk file with a `@@ … @@ fn tail() {`
+  heading, a no-trailing-newline file, a rename with an edit, a mode change,
+  a deletion and an addition. A counter asserts hunks were actually compared.
+  `Lines` header text (`@@ -2,7 +2,8 @@`) is asserted.
+- **M4** (`status::read` ignored `truncated`) — cause. `read` now sets
+  `output_cap(OUTPUT_CAP)` and goes through `status_from`, which returns
+  `StatusError::TooLarge { bytes }`. Split out so the capped case is testable
+  without a 64 MiB tree.
+- **M5** (`has_untracked_commit` swallowed errors) — cause. Returns
+  `Result<bool, StashError>`; new `StashError::Object(String)`, `?`-ed in
+  `stash_paths`.
+
+`crates/graft-git/MAP.md` updated for `PatchDirection`, `hunk_patch`'s new
+argument, `PatchError::NoNewlineBoundary`, `StatusError::TooLarge`,
+`StashError::Object`.
+
+Gates: `cargo fmt --all --check`, `cargo clippy --all-targets
+--message-format=short -- -D warnings`, `cargo build --quiet`, `cargo test
+--quiet` — all green, 0 failures, 9 ignored. No compaction.

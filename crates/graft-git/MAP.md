@@ -61,8 +61,9 @@ One line per public item. Update when a public item changes.
 - `list_files` (fn) — one `diff-tree`/`diff-index`/`diff-files --raw --numstat -z` spawn (plus `ls-files --others` for untracked, working tree and `Unstaged` only) split and joined via `parse_file_list`/`parse_worktree_file_list`. `WorkingTreeVsHead`/`Unstaged` use plumbing `diff-index`/`diff-files`: porcelain `git diff` rewrites `.git/index`, which a read must not do (M2 review round 2). `Staged` uses `diff-index --cached` (content-only, no stat-cache lie, `parse_file_list`). A touched-but-unchanged file is filtered out in the join instead.
 - `file_diff` (fn) — one file's patch via `diff-tree`/`diff-index`/`diff-files -p -U<context>`, parsed with `parse_unified`; truncates to whole hunks at `max_lines` (`usize::MAX`: no cap); an `Untracked` entry returns a hunk-less `FileDiff` with no spawn.
 - `Selection` (enum) — `WholeHunk`, or `Lines(Vec<usize>)` (indices into `Hunk::lines`, `Added`/`Removed` only) (m3/01).
-- `PatchError` (enum) — why `hunk_patch` could not build a patch: `NoSuchHunk`, `NoSuchLine`, `NotAChangedLine`, `Binary`, `NothingSelected` (m3/01).
-- `hunk_patch` (fn) — a complete one-file unified patch (`diff --git`, mode lines when `old_mode != new_mode`, `--- `/`+++ ` with `/dev/null` for added/deleted files, one hunk) for `git apply`/`--cached`/`-R`; pure, no spawn. `WholeHunk` reproduces the hunk's own bytes; `Lines` drops unselected `Added` lines, turns unselected `Removed` lines to context, and recomputes the `@@` header's counts (m3/01).
+- `PatchDirection` (enum) — `Forward` (`git apply`/`--cached`) or `Reverse` (`git apply -R`): which side a `Lines` patch's preimage must match (m3/01).
+- `PatchError` (enum) — why `hunk_patch` could not build a patch: `NoSuchHunk`, `NoSuchLine`, `NotAChangedLine`, `Binary`, `NothingSelected`, `NoNewlineBoundary` (m3/01).
+- `hunk_patch` (fn) — `(diff, hunk, selection, direction)`: a complete one-file unified patch (`diff --git`, mode lines when `old_mode != new_mode`, `--- `/`+++ ` with `/dev/null` for added/deleted files, one hunk) for `git apply`/`--cached`/`-R`; pure, no spawn. `WholeHunk` reproduces the hunk's own bytes either way; `Lines` follows the `PatchDirection` (Forward drops unselected `Added` and contextualises unselected `Removed`; Reverse does the opposite) and recomputes the `@@` header's counts. Refuses with `NoNewlineBoundary` when the selection would strand a `\ No newline at end of file` marker mid-side (m3/01).
 - Split into files, public items unchanged (m2 review M8): `unified.rs`'s byte-level primitives (numbers, percentages, quoted-path unquoting) moved to `unified/primitives.rs`; `read.rs`'s revision-resolution and raw/numstat splitting (`Sides`, `resolve_sides`, `first_parent`, `split_raw_and_numstat`) moved to `read/raw.rs`.
 
 ## history
@@ -154,7 +155,7 @@ One line per public item. Update when a public item changes.
 
 ## stash
 - `StashEntry` (struct) — `index` (`0` newest), `commit`, `message` (git's own reflog message), `at`, `paths` (tracked changes plus, for `-u`/`-a`, the untracked-files commit's own paths) (m3/01).
-- `StashError` (enum) — `Stopped`, `Reflog` (the reflog itself could not be read), `Run` (a `diff-tree` spawn failed) (m3/01).
+- `StashError` (enum) — `Stopped`, `Reflog` (the reflog itself could not be read), `Run` (a `diff-tree` spawn failed), `Object` (a stash commit could not be read) (m3/01).
 - `list` (fn) — every stash entry, newest first, capped at 50; reads `refs/stash`'s reflog through `gix` (no `git stash list` spawn), one `diff-tree --name-only -r -z <stash>^ <stash>` spawn per entry plus a second (`--root <stash>^3`) when `gix` finds a third parent (the untracked-files commit); `Ok(vec![])` on a repository with no stashes (m3/01).
 
 ## state
@@ -164,7 +165,7 @@ One line per public item. Update when a public item changes.
 ## status
 - `WorkingTreeCounts` (struct) — how many files are staged, unstaged and untracked.
 - `WorkingTreeCounts::is_clean` (fn) — no staged, unstaged or untracked changes.
-- `StatusError` (enum) — why counting or reading the working tree's changes failed (`Run`/`Malformed` added m3/01).
+- `StatusError` (enum) — why counting or reading the working tree's changes failed (`Run`/`Malformed`/`TooLarge` added m3/01).
 - `counts` (fn) — count staged, unstaged and untracked files (bare repos report clean). Unchanged: still gix's own status iterator.
 - `Change` (enum) — one side's per-file state: `Added`, `Modified`, `Deleted`, `Renamed`, `Copied`, `TypeChanged` (m3/01).
 - `StatusEntry` (struct) — one path's status: `path`, `original_path` (renames/copies), `staged`/`unstaged` (`Option<Change>`), `untracked`, `unmerged`, `submodule`; `is_staged`/`is_unstaged` (m3/01).

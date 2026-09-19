@@ -77,3 +77,40 @@ fn sorted(paths: &[std::path::PathBuf]) -> Vec<std::path::PathBuf> {
     paths.sort();
     paths
 }
+
+#[test]
+fn a_stash_commit_that_cannot_be_read_is_an_error_not_a_no() {
+    // The finding this guards: an unreadable stash commit used to answer
+    // "no untracked files", so `StashEntry::paths` quietly left out every
+    // file the stash was carrying and the entry still listed as healthy.
+    let fixture = Fixture::with_two_commits();
+    let repo = open(&fixture);
+    let missing =
+        Oid::from_hex("0123456789abcdef0123456789abcdef01234567").expect("a well-formed id");
+
+    let error = has_untracked_commit(&repo, missing).expect_err("an unreadable commit is an error");
+
+    assert!(matches!(error, StashError::Object(_)), "{error:?}");
+    assert!(
+        error.to_string().contains("could not be read"),
+        "{error}: the message must say what went wrong"
+    );
+}
+
+#[test]
+fn a_real_stash_commit_is_read_without_error() {
+    let fixture = Fixture::with_two_commits();
+    fs::write(fixture.root().join("tracked.txt"), "first\n").expect("file written");
+    fixture.git(&["add", "tracked.txt"]);
+    fixture.commit("add tracked.txt");
+    fs::write(fixture.root().join("tracked.txt"), "changed\n").expect("file rewritten");
+    fs::write(fixture.root().join("loose.txt"), "untracked\n").expect("file written");
+    fixture.git(&["stash", "push", "-u", "-m", "with untracked"]);
+    let repo = open(&fixture);
+    let entry = &list(&repo, &()).expect("stash list reads")[0];
+
+    assert!(
+        has_untracked_commit(&repo, entry.commit).expect("a real stash commit reads"),
+        "a `-u` stash carries a third parent"
+    );
+}

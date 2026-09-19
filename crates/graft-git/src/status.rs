@@ -65,7 +65,21 @@ pub enum StatusError {
     /// following original-path record, or too few fields in a record.
     #[error("git status printed something Graft cannot parse: {0}")]
     Malformed(String),
+    /// `git status` printed more than [`OUTPUT_CAP`] bytes, so what came back
+    /// is a prefix of the real status. Parsing it would report a shorter,
+    /// plausible-looking list of changes; saying so is the only honest
+    /// answer, as `diff::read` already does for the same condition.
+    #[error("git status printed more than {bytes} bytes; the working tree is too large to read")]
+    TooLarge {
+        /// The cap that was hit, in bytes.
+        bytes: usize,
+    },
 }
+
+/// The most bytes kept from `git status`'s stdout. The same cap
+/// `diff::read` uses; past it the status is reported as
+/// [`StatusError::TooLarge`], never parsed as if it were complete.
+const OUTPUT_CAP: usize = 64 * 1024 * 1024;
 
 /// One side's state in an `XY` pair, or a submodule's `sub` field: `Some` for
 /// a real change, `None` for `.` (unchanged on that side).
@@ -360,8 +374,9 @@ fn bytes_to_pathbuf(bytes: &[u8]) -> PathBuf {
 ///
 /// # Errors
 /// [`StatusError::Run`] if `git` could not be run or exited non-zero;
-/// [`StatusError::Malformed`] if it printed something [`parse_porcelain_v2`]
-/// cannot read.
+/// [`StatusError::TooLarge`] if its output hit [`OUTPUT_CAP`], so only a
+/// prefix of the status came back; [`StatusError::Malformed`] if it printed
+/// something [`parse_porcelain_v2`] cannot read.
 pub fn read(repo: &RepoHandle, stop: &dyn Stop) -> Result<WorkingTreeStatus, StatusError> {
     if repo.is_bare() {
         return Ok(WorkingTreeStatus::default());
@@ -376,7 +391,25 @@ pub fn read(repo: &RepoHandle, stop: &dyn Stop) -> Result<WorkingTreeStatus, Sta
             GitArg::Flag("--untracked-files=all"),
             GitArg::Flag("--renames"),
         ])
+        .output_cap(OUTPUT_CAP)
         .run(stop)?;
+    status_from(&output)
+}
+
+/// What [`read`] makes of one `git status` run.
+///
+/// Split out so the capped case is testable without a 64 MiB working tree:
+/// a truncated output is [`StatusError::TooLarge`], never parsed. A cut at a
+/// record boundary would otherwise parse into a shorter, perfectly plausible
+/// list of changes, and a cut mid-record into a [`StatusError::Malformed`]
+/// that names the wrong cause.
+///
+/// # Errors
+/// See [`read`].
+fn status_from(output: &crate::run::GitOutput) -> Result<WorkingTreeStatus, StatusError> {
+    if output.truncated {
+        return Err(StatusError::TooLarge { bytes: OUTPUT_CAP });
+    }
     parse_porcelain_v2(&output.stdout)
 }
 

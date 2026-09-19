@@ -52,6 +52,9 @@ pub enum StashError {
     Reflog(String),
     /// A `git diff-tree` spawn for one entry's paths failed.
     Run(RunError),
+    /// A stash commit itself could not be read: a malformed object id, or an
+    /// object `gix` cannot find or decode.
+    Object(String),
 }
 
 impl std::fmt::Display for StashError {
@@ -62,6 +65,9 @@ impl std::fmt::Display for StashError {
                 write!(f, "the stash reflog could not be read: {message}")
             }
             StashError::Run(error) => write!(f, "{error}"),
+            StashError::Object(message) => {
+                write!(f, "a stash commit could not be read: {message}")
+            }
         }
     }
 }
@@ -146,7 +152,7 @@ fn stash_paths(
             GitArg::Ref(commit.to_string().into_bytes()),
         ],
     )?;
-    if has_untracked_commit(repo, commit) {
+    if has_untracked_commit(repo, commit)? {
         let untracked = diff_tree_name_only(
             repo,
             stop,
@@ -172,13 +178,23 @@ fn stash_paths(
 /// Whether `commit` (a stash commit) has a third parent: the untracked-files
 /// commit `git stash push -u`/`-a` creates alongside the ordinary one. Read
 /// through `gix`, no spawn — a stash commit is small and already local.
-fn has_untracked_commit(repo: &RepoHandle, commit: Oid) -> bool {
-    let Ok(oid) = gix::hash::oid::try_from_bytes(commit.as_bytes()) else {
-        return false;
-    };
-    repo.gix()
+///
+/// A commit that cannot be read is an error, not a `false`: answering "no
+/// untracked files" for a stash whose object is unreadable would drop those
+/// paths out of [`StashEntry::paths`] and let the user drop a stash without
+/// ever seeing what was in it.
+///
+/// # Errors
+/// [`StashError::Object`] if the id is not a valid hash, or the commit cannot
+/// be found or decoded.
+fn has_untracked_commit(repo: &RepoHandle, commit: Oid) -> Result<bool, StashError> {
+    let oid = gix::hash::oid::try_from_bytes(commit.as_bytes())
+        .map_err(|source| StashError::Object(format!("{commit}: {source}")))?;
+    let found = repo
+        .gix()
         .find_commit(oid)
-        .is_ok_and(|found| found.parent_ids().count() >= 3)
+        .map_err(|source| StashError::Object(format!("{commit}: {source}")))?;
+    Ok(found.parent_ids().count() >= 3)
 }
 
 /// Runs a `diff-tree --name-only -z` invocation and splits its stdout on NUL.

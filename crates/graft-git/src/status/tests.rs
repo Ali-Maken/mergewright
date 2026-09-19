@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 use graft_fixtures::Shape;
 
 use super::{
-    Change, StatusEntry, WorkingTreeCounts, WorkingTreeStatus, counts, parse_porcelain_v2, read,
+    Change, StatusEntry, StatusError, WorkingTreeCounts, WorkingTreeStatus, counts,
+    parse_porcelain_v2, read, status_from,
 };
 use crate::fixture::Fixture;
 use crate::repo::RepoHandle;
@@ -283,66 +284,93 @@ fn tracked_files(root: &Path) -> Vec<String> {
         .collect()
 }
 
-/// The six paths [`script_six_dirty_states`] touched, so the test can look
-/// each one back up in the status it reads.
-struct SixDirtyPaths {
-    staged_edit: String,
-    unstaged_edit: String,
-    staged_and_unstaged_edit: String,
-    rename_from: String,
-    rename_to: String,
-    deleted: String,
+/// The paths [`script_dirty_states`] touched, so the test can look each one
+/// back up in the status it reads. Each tracked state needs a tracked file of
+/// its own, and the corpus shapes have between zero and five, so every one is
+/// an `Option`: what the shape can carry is scripted, what it cannot is
+/// `None` and is not asserted. The untracked file needs nothing and is
+/// always there.
+#[derive(Default)]
+struct DirtyPaths {
+    staged_edit: Option<String>,
+    unstaged_edit: Option<String>,
+    staged_and_unstaged_edit: Option<String>,
+    rename_from: Option<String>,
+    rename_to: Option<String>,
+    deleted: Option<String>,
     untracked: &'static str,
 }
 
-/// Scripts one staged edit, one unstaged edit, one file with both, one
-/// staged rename and one unstaged delete across five of `root`'s tracked
-/// files, plus one new untracked file.
-fn script_six_dirty_states(root: &Path, files: &[String]) -> SixDirtyPaths {
-    let paths = SixDirtyPaths {
-        staged_edit: files[0].clone(),
-        unstaged_edit: files[1].clone(),
-        staged_and_unstaged_edit: files[2].clone(),
-        rename_from: files[3].clone(),
-        rename_to: format!("{}-renamed", files[3]),
-        deleted: files[4].clone(),
+impl DirtyPaths {
+    /// How many of the five tracked states were actually scripted.
+    fn tracked_states(&self) -> usize {
+        [
+            self.staged_edit.is_some(),
+            self.unstaged_edit.is_some(),
+            self.staged_and_unstaged_edit.is_some(),
+            self.rename_to.is_some(),
+            self.deleted.is_some(),
+        ]
+        .iter()
+        .filter(|scripted| **scripted)
+        .count()
+    }
+}
+
+/// Scripts one staged edit, one unstaged edit, one file with both, one staged
+/// rename and one unstaged delete across the first five of `root`'s tracked
+/// files, plus one new untracked file — as many of the five as `files` has
+/// entries for, in that order.
+fn script_dirty_states(root: &Path, files: &[String]) -> DirtyPaths {
+    let mut paths = DirtyPaths {
         untracked: "oracle-untracked.txt",
+        ..DirtyPaths::default()
     };
-
-    fs::write(root.join(&paths.staged_edit), b"staged edit\n").expect("staged edit written");
-    graft_fixtures::git::run(root, &["add", &paths.staged_edit]).expect("git adds the staged edit");
-
-    fs::write(root.join(&paths.unstaged_edit), b"unstaged edit\n").expect("unstaged edit written");
-
-    fs::write(root.join(&paths.staged_and_unstaged_edit), b"staged half\n")
-        .expect("staged half written");
-    graft_fixtures::git::run(root, &["add", &paths.staged_and_unstaged_edit])
-        .expect("git adds the staged half");
-    fs::write(
-        root.join(&paths.staged_and_unstaged_edit),
-        b"unstaged half\n",
-    )
-    .expect("unstaged half written");
-
-    graft_fixtures::git::run(root, &["mv", &paths.rename_from, &paths.rename_to])
-        .expect("git mv stages a rename");
-
-    fs::remove_file(root.join(&paths.deleted)).expect("the deleted file is removed");
-
     fs::write(root.join(paths.untracked), b"new\n").expect("untracked file written");
 
+    if let Some(path) = files.first() {
+        fs::write(root.join(path), b"staged edit\n").expect("staged edit written");
+        graft_fixtures::git::run(root, &["add", path]).expect("git adds the staged edit");
+        paths.staged_edit = Some(path.clone());
+    }
+    if let Some(path) = files.get(1) {
+        fs::write(root.join(path), b"unstaged edit\n").expect("unstaged edit written");
+        paths.unstaged_edit = Some(path.clone());
+    }
+    if let Some(path) = files.get(2) {
+        fs::write(root.join(path), b"staged half\n").expect("staged half written");
+        graft_fixtures::git::run(root, &["add", path]).expect("git adds the staged half");
+        fs::write(root.join(path), b"unstaged half\n").expect("unstaged half written");
+        paths.staged_and_unstaged_edit = Some(path.clone());
+    }
+    if let Some(path) = files.get(3) {
+        let renamed = format!("{path}-renamed");
+        graft_fixtures::git::run(root, &["mv", path, &renamed]).expect("git mv stages a rename");
+        paths.rename_from = Some(path.clone());
+        paths.rename_to = Some(renamed);
+    }
+    if let Some(path) = files.get(4) {
+        fs::remove_file(root.join(path)).expect("the deleted file is removed");
+        paths.deleted = Some(path.clone());
+    }
     paths
 }
 
 /// `read(repo)`'s counts must match an independent count of `git status`'s
-/// own raw output, and each of the six scripted paths must carry the
-/// [`Change`] its scripted state implies.
-fn assert_status_matches_the_six_dirty_states(shape: Shape, root: &Path, paths: &SixDirtyPaths) {
-    let repo = RepoHandle::open(root).expect("the scratch copy opens");
+/// own raw output, and each scripted path must carry the [`Change`] its
+/// scripted state implies.
+fn assert_status_matches_the_dirty_states(label: &str, root: &Path, paths: &DirtyPaths) {
+    let repo = RepoHandle::open(root).expect("the repository opens");
     let status = read(&repo, &()).unwrap_or_else(|error| {
-        panic!("{shape}: status::read failed: {error}");
+        panic!("{label}: status::read failed: {error}");
     });
+    assert_counts_match_the_oracle(label, root, &status);
+    assert_letters_match_the_scripted_states(label, &status, paths);
+}
 
+/// `read(repo).counts()` against an independent count of `git status`'s own
+/// raw output.
+fn assert_counts_match_the_oracle(label: &str, root: &Path, status: &WorkingTreeStatus) {
     let raw = graft_fixtures::git::run(
         root,
         &[
@@ -361,62 +389,105 @@ fn assert_status_matches_the_six_dirty_states(shape: Shape, root: &Path, paths: 
     assert_eq!(
         (actual.staged, actual.unstaged, actual.untracked),
         expected,
-        "{shape}: read().counts() must match git's own record letters"
+        "{label}: read().counts() must match git's own record letters"
     );
+}
 
+/// Each scripted path carries the [`Change`] its scripted state implies.
+fn assert_letters_match_the_scripted_states(
+    label: &str,
+    status: &WorkingTreeStatus,
+    paths: &DirtyPaths,
+) {
     let entry = |path: &str| {
         status
             .entry(Path::new(path))
-            .unwrap_or_else(|| panic!("{shape}: {path} must be in the status"))
+            .unwrap_or_else(|| panic!("{label}: {path} must be in the status"))
     };
 
-    let staged = entry(&paths.staged_edit);
-    assert_eq!(staged.staged, Some(Change::Modified), "{shape}");
-    assert_eq!(staged.unstaged, None, "{shape}");
-
-    let unstaged = entry(&paths.unstaged_edit);
-    assert_eq!(unstaged.staged, None, "{shape}");
-    assert_eq!(unstaged.unstaged, Some(Change::Modified), "{shape}");
-
-    let both = entry(&paths.staged_and_unstaged_edit);
-    assert_eq!(both.staged, Some(Change::Modified), "{shape}");
-    assert_eq!(both.unstaged, Some(Change::Modified), "{shape}");
-
-    let renamed = entry(&paths.rename_to);
-    assert_eq!(renamed.staged, Some(Change::Renamed), "{shape}");
-    assert_eq!(
-        renamed.original_path,
-        Some(PathBuf::from(&paths.rename_from)),
-        "{shape}"
-    );
-
-    assert_eq!(
-        entry(&paths.deleted).unstaged,
-        Some(Change::Deleted),
-        "{shape}"
-    );
-    assert!(entry(paths.untracked).untracked, "{shape}");
+    let sides = [
+        (&paths.staged_edit, Some(Change::Modified), None),
+        (&paths.unstaged_edit, None, Some(Change::Modified)),
+        (
+            &paths.staged_and_unstaged_edit,
+            Some(Change::Modified),
+            Some(Change::Modified),
+        ),
+    ];
+    for (scripted, staged, unstaged) in sides {
+        let Some(path) = scripted else { continue };
+        let found = entry(path);
+        assert_eq!(found.staged, staged, "{label}: {path} staged side");
+        assert_eq!(found.unstaged, unstaged, "{label}: {path} unstaged side");
+    }
+    if let (Some(to), Some(from)) = (&paths.rename_to, &paths.rename_from) {
+        let renamed = entry(to);
+        assert_eq!(renamed.staged, Some(Change::Renamed), "{label}: {to}");
+        assert_eq!(
+            renamed.original_path,
+            Some(PathBuf::from(from)),
+            "{label}: {to}"
+        );
+    }
+    if let Some(path) = &paths.deleted {
+        assert_eq!(
+            entry(path).unstaged,
+            Some(Change::Deleted),
+            "{label}: {path}"
+        );
+    }
+    assert!(entry(paths.untracked).untracked, "{label}");
 }
 
 #[test]
 fn read_matches_gits_own_counts_and_letters_on_every_shape() {
+    let mut shapes_checked = 0usize;
+    let mut best_states = 0usize;
     for &shape in Shape::ALL {
         let Some(scratch) = available(shape, graft_fixtures::try_copy_into_temp(shape)) else {
             continue;
         };
         let root = scratch.path();
         let files = tracked_files(root);
-        // Six scripted dirty states need six distinct tracked files; a shape
-        // too small for that is not this test's business (it still gets
-        // covered as `Linear`/`FeatureBranches` and the like, which have
-        // plenty).
-        if files.len() < 6 {
-            continue;
-        }
-
-        let paths = script_six_dirty_states(root, &files);
-        assert_status_matches_the_six_dirty_states(shape, root, &paths);
+        let paths = script_dirty_states(root, &files);
+        assert_status_matches_the_dirty_states(&shape.to_string(), root, &paths);
+        shapes_checked += 1;
+        best_states = best_states.max(paths.tracked_states());
     }
+    // A loop that can skip every iteration proves nothing; this one says out
+    // loud how much it actually ran. The corpus's widest shape carries five
+    // tracked files, so all five tracked states are scripted somewhere —
+    // `all_six_dirty_states_on_a_repository_built_for_them` guarantees it
+    // even if the corpus ever shrinks.
+    // Only the non-UTF-8-ref shape may drop out (`available` says so), so
+    // anything short of "all but one" means the loop started skipping again.
+    assert!(
+        shapes_checked + 1 >= Shape::ALL.len(),
+        "only {shapes_checked} of {} shapes were checked",
+        Shape::ALL.len()
+    );
+    assert!(
+        best_states == 5,
+        "no shape carried all five tracked states; the widest one scripted {best_states}"
+    );
+}
+
+#[test]
+fn all_six_dirty_states_on_a_repository_built_for_them() {
+    // The corpus decides how many tracked files a shape has; this repository
+    // is built with exactly the five the six states need, so the rename and
+    // delete letters are asserted against real git whatever the corpus holds.
+    let fixture = Fixture::empty_repo();
+    let files: Vec<String> = (0..5).map(|index| format!("f{index}.txt")).collect();
+    for path in &files {
+        fs::write(fixture.root().join(path), b"original\n").expect("file written");
+    }
+    fixture.git(&["add", "-A"]);
+    fixture.commit("five files");
+
+    let paths = script_dirty_states(fixture.root(), &files);
+    assert_eq!(paths.tracked_states(), 5, "all five states are scripted");
+    assert_status_matches_the_dirty_states("built-for-six", fixture.root(), &paths);
 }
 
 #[test]
@@ -437,5 +508,37 @@ fn ignored_files_are_not_counted_as_untracked() {
             unstaged: 0,
             untracked: 0,
         }
+    );
+}
+
+#[test]
+fn a_capped_status_is_an_error_not_a_shorter_list() {
+    // A cut at a record boundary parses perfectly well into fewer changes
+    // than the tree really has; that is exactly the answer that must not be
+    // returned.
+    let whole = b"1 M. N... 100644 100644 100644 \
+0000000000000000000000000000000000000000 \
+0000000000000000000000000000000000000000 a.txt\0? b.txt\0";
+    let full = status_from(&crate::run::GitOutput {
+        stdout: whole.to_vec(),
+        stderr: Vec::new(),
+        truncated: false,
+    })
+    .expect("an uncapped status parses");
+    assert_eq!(full.entries.len(), 2);
+
+    let cut = whole
+        .iter()
+        .position(|&byte| byte == 0)
+        .expect("the record separator is there")
+        + 1;
+    let capped = status_from(&crate::run::GitOutput {
+        stdout: whole[..cut].to_vec(),
+        stderr: Vec::new(),
+        truncated: true,
+    });
+    assert!(
+        matches!(capped, Err(StatusError::TooLarge { .. })),
+        "{capped:?}"
     );
 }

@@ -6,10 +6,28 @@
 //! Pure: no `git` spawn, no I/O. [`Selection::WholeHunk`] reproduces the
 //! hunk's own bytes, byte-for-byte, as `diff-tree -p` printed them —
 //! `parse_unified` is lossless for a hunk's kind/text/no-newline fields, so
-//! serialising them back out matches the input exactly. [`Selection::Lines`]
-//! drops unselected `Added` lines and turns unselected `Removed` lines back
-//! into context, the way `git add -p` builds a patch for a partial hunk, and
-//! recomputes the `@@` header's counts to match.
+//! serialising them back out matches the input exactly, and git accepts it
+//! both ways round.
+//!
+//! [`Selection::Lines`] cannot: a partial patch is built for one direction
+//! and refused by the other, so it takes a [`PatchDirection`].
+//! [`PatchDirection::Forward`] (`git apply`, `git apply --cached`) matches
+//! the hunk's *old* side, so an unselected `Added` line is dropped and an
+//! unselected `Removed` line becomes context — `git add -p`'s rule.
+//! [`PatchDirection::Reverse`] (`git apply -R`, for unstage and discard)
+//! matches the hunk's *new* side, which is what the file actually holds, so
+//! the rule mirrors: an unselected `Added` line becomes context and an
+//! unselected `Removed` line is dropped. Either way the `@@` header's counts
+//! are recomputed from the lines that survived.
+//!
+//! One shape has no honest partial patch at all: a `\ No newline at end of
+//! file` line that the selection turns into context while a later line on
+//! the same side survives. Git accepts such a patch and fuses the two lines
+//! into one (verified: staging `+three` alone out of `one\ntwo` (no final
+//! newline) → `one\ntwo\nthree` stages `one\ntwothree`), because selecting
+//! the later line silently entails giving the marker line a newline.
+//! [`hunk_patch`] refuses it with [`PatchError::NoNewlineBoundary`] rather
+//! than write wrong content; the whole hunk still stages and discards.
 
 use std::collections::HashSet;
 
@@ -21,9 +39,29 @@ pub enum Selection {
     /// The whole hunk, unchanged.
     WholeHunk,
     /// Only these lines: indices into [`super::Hunk::lines`], each naming an
-    /// `Added` or `Removed` line. An unselected `Added` line is dropped, an
-    /// unselected `Removed` line becomes context; every `Context` line stays.
+    /// `Added` or `Removed` line. What happens to the unselected ones depends
+    /// on the [`PatchDirection`] the patch is built for; every `Context` line
+    /// stays either way.
     Lines(Vec<usize>),
+}
+
+/// Which way the patch [`hunk_patch`] builds will be applied.
+///
+/// It decides nothing for [`Selection::WholeHunk`] — git's own hunk applies
+/// both ways — and everything for [`Selection::Lines`], because a partial
+/// patch's preimage is the side git will match against the file.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PatchDirection {
+    /// `git apply` / `git apply --cached`: staging a selection into the
+    /// index, or applying it to a worktree that holds the old side. The
+    /// preimage is the hunk's old side, so an unselected `Added` line is
+    /// dropped and an unselected `Removed` line becomes context.
+    Forward,
+    /// `git apply -R` / `git apply --cached -R`: unstaging a selection, or
+    /// discarding it from the worktree. The preimage is the hunk's new side —
+    /// what the file holds — so an unselected `Added` line becomes context
+    /// and an unselected `Removed` line is dropped.
+    Reverse,
 }
 
 /// Why [`hunk_patch`] could not build a patch.
@@ -51,6 +89,15 @@ pub enum PatchError {
     /// A [`Selection::Lines`] selected no lines, so there is nothing to
     /// stage or discard.
     NothingSelected,
+    /// The selection would have put a `\ No newline at end of file` line in
+    /// the middle of a side of the patch: this line carries the marker, and
+    /// the selection leaves a later line on the same side alive. Git accepts
+    /// such a patch and fuses the two lines into one, so there is no honest
+    /// partial patch here — the whole hunk is the only correct unit.
+    NoNewlineBoundary {
+        /// The index, in [`super::Hunk::lines`], of the marker-carrying line.
+        line: usize,
+    },
 }
 
 impl std::fmt::Display for PatchError {
@@ -63,6 +110,11 @@ impl std::fmt::Display for PatchError {
             }
             PatchError::Binary => write!(f, "the file is binary; there are no hunks"),
             PatchError::NothingSelected => write!(f, "nothing was selected"),
+            PatchError::NoNewlineBoundary { line } => write!(
+                f,
+                "line {line} has no newline at end of file and something after it \
+                 survived the selection; stage or discard the whole hunk instead"
+            ),
         }
     }
 }
@@ -78,12 +130,17 @@ impl std::error::Error for PatchError {}
 /// line pair (`old mode`/`new mode`) is added when `diff.old_mode` and
 /// `diff.new_mode` are both known and differ.
 ///
+/// `direction` says which way `ops` will apply the result; it changes nothing
+/// for [`Selection::WholeHunk`] and everything for [`Selection::Lines`] (see
+/// [`PatchDirection`]).
+///
 /// # Errors
 /// See [`PatchError`].
 pub fn hunk_patch(
     diff: &FileDiff,
     hunk: usize,
     selection: &Selection,
+    direction: PatchDirection,
 ) -> Result<Vec<u8>, PatchError> {
     if diff.binary.is_some() {
         return Err(PatchError::Binary);
@@ -92,7 +149,8 @@ pub fn hunk_patch(
         .hunks
         .get(hunk)
         .ok_or(PatchError::NoSuchHunk { hunk })?;
-    let lines = selected_lines(hunk_ref.lines.as_slice(), selection)?;
+    let lines = selected_lines(hunk_ref.lines.as_slice(), selection, direction)?;
+    check_no_newline_boundaries(&lines)?;
 
     let mut out = Vec::new();
     write_diff_git_header(&mut out, diff);
@@ -102,28 +160,45 @@ pub fn hunk_patch(
     Ok(out)
 }
 
-/// One line of the patch's body, with its final kind and renumbered old/new
-/// line numbers (the header's counts are computed from these).
+/// One line of the patch's body, with its final kind and the index it came
+/// from in the hunk (so an error can name it). The header's counts are
+/// computed from these.
 struct BuiltLine<'a> {
+    index: usize,
     kind: LineKind,
     text: &'a [u8],
     no_newline_at_eof: bool,
 }
 
-/// Applies `selection` to `lines`, in file order, and reports the result:
-/// an unselected `Added` line is dropped, an unselected `Removed` line
-/// becomes `Context`, everything else is kept as-is.
+impl BuiltLine<'_> {
+    /// Whether this line is part of the patch's old side (`-`/` `).
+    fn on_old_side(&self) -> bool {
+        self.kind != LineKind::Added
+    }
+
+    /// Whether this line is part of the patch's new side (`+`/` `).
+    fn on_new_side(&self) -> bool {
+        self.kind != LineKind::Removed
+    }
+}
+
+/// Applies `selection` to `lines`, in file order, following `direction`'s
+/// rule for the unselected ones (see [`PatchDirection`]); `Context` lines are
+/// kept as-is either way.
 ///
 /// # Errors
 /// See [`PatchError`].
 fn selected_lines<'a>(
     lines: &'a [DiffLine],
     selection: &Selection,
+    direction: PatchDirection,
 ) -> Result<Vec<BuiltLine<'a>>, PatchError> {
     match selection {
         Selection::WholeHunk => Ok(lines
             .iter()
-            .map(|line| BuiltLine {
+            .enumerate()
+            .map(|(index, line)| BuiltLine {
+                index,
                 kind: line.kind,
                 text: &line.text,
                 no_newline_at_eof: line.no_newline_at_eof,
@@ -147,13 +222,25 @@ fn selected_lines<'a>(
                 .iter()
                 .enumerate()
                 .filter_map(|(index, line)| {
-                    let kind = match line.kind {
-                        LineKind::Added if selected.contains(&index) => LineKind::Added,
-                        LineKind::Added => return None,
-                        LineKind::Removed if selected.contains(&index) => LineKind::Removed,
-                        LineKind::Context | LineKind::Removed => LineKind::Context,
+                    // A context line, and any line the caller picked, goes in
+                    // as it stands. An unselected change is kept — as context
+                    // — only on the side the patch's preimage has to match:
+                    // the old side going forward, the new side in reverse.
+                    // On the other side it was never there, so it is dropped.
+                    let kind = if line.kind == LineKind::Context || selected.contains(&index) {
+                        line.kind
+                    } else {
+                        let preimage_side = match direction {
+                            PatchDirection::Forward => LineKind::Removed,
+                            PatchDirection::Reverse => LineKind::Added,
+                        };
+                        if line.kind != preimage_side {
+                            return None;
+                        }
+                        LineKind::Context
                     };
                     Some(BuiltLine {
+                        index,
                         kind,
                         text: &line.text,
                         no_newline_at_eof: line.no_newline_at_eof,
@@ -162,6 +249,34 @@ fn selected_lines<'a>(
                 .collect())
         }
     }
+}
+
+/// Refuses a patch whose `\ No newline at end of file` marker would land
+/// anywhere but at the end of the side it belongs to.
+///
+/// The marker says "the line just above ends the file with no newline". It is
+/// true of the old side for a `-` line, of the new side for a `+` line, and of
+/// both for a context line. A selection that turns a marker-carrying line into
+/// context, or that leaves something after it on a side it now claims to end,
+/// makes that claim false — and git does not notice: it applies the patch and
+/// fuses the marker line with the next one (module doc). Refusing is the only
+/// answer that cannot write content the user did not ask for.
+///
+/// # Errors
+/// [`PatchError::NoNewlineBoundary`], naming the marker-carrying line.
+fn check_no_newline_boundaries(lines: &[BuiltLine<'_>]) -> Result<(), PatchError> {
+    for (position, line) in lines.iter().enumerate() {
+        if !line.no_newline_at_eof {
+            continue;
+        }
+        let after = &lines[position + 1..];
+        let old_side_broken = line.on_old_side() && after.iter().any(BuiltLine::on_old_side);
+        let new_side_broken = line.on_new_side() && after.iter().any(BuiltLine::on_new_side);
+        if old_side_broken || new_side_broken {
+            return Err(PatchError::NoNewlineBoundary { line: line.index });
+        }
+    }
+    Ok(())
 }
 
 fn write_diff_git_header(out: &mut Vec<u8>, diff: &FileDiff) {
@@ -215,20 +330,10 @@ fn range(start: u32, count: u32) -> String {
 }
 
 fn write_hunk(out: &mut Vec<u8>, hunk: &super::Hunk, lines: &[BuiltLine<'_>]) {
-    let old_lines = u32::try_from(
-        lines
-            .iter()
-            .filter(|line| line.kind != LineKind::Added)
-            .count(),
-    )
-    .unwrap_or(u32::MAX);
-    let new_lines = u32::try_from(
-        lines
-            .iter()
-            .filter(|line| line.kind != LineKind::Removed)
-            .count(),
-    )
-    .unwrap_or(u32::MAX);
+    let old_lines =
+        u32::try_from(lines.iter().filter(|line| line.on_old_side()).count()).unwrap_or(u32::MAX);
+    let new_lines =
+        u32::try_from(lines.iter().filter(|line| line.on_new_side()).count()).unwrap_or(u32::MAX);
 
     out.extend_from_slice(
         format!(
