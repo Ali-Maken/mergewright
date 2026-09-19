@@ -2600,6 +2600,178 @@ fn capture_m3_journal() {
     .expect("docs/shots is writable");
 }
 
+/// The stash overlay open over the scripted repository, with two entries
+/// and the newest one's files under them.
+fn stash_state(columns: u16, rows: u16) -> AppState {
+    let mut state = changes_pane_state(columns, rows);
+    state.repo_path = std::path::PathBuf::from("/code/api");
+    state.harness.clock = crate::session::Clock::Fixed(JOURNAL_NOW);
+    state.detail.shown = false;
+    state.stash.shown = true;
+    state.stash.entries = crate::update::detail::Loading::Ready(std::sync::Arc::new(vec![
+        stash_entry(
+            0,
+            "WIP on main: token refresh",
+            2 * 3_600,
+            &["src/auth/token.rs", "src/auth/refresh.rs", "README.md"],
+        ),
+        stash_entry(
+            1,
+            "quick fix before pull",
+            26 * 3_600,
+            &["src/api/routes.rs"],
+        ),
+    ]));
+    // The selected stash's files, as `Space` asks for them: a commit's file
+    // list, so no STAGED/UNSTAGED sections — a stash is one commit.
+    state.stash.preview = crate::update::detail::Loading::Ready(std::sync::Arc::new(
+        crate::jobs::detail::assemble_files(&stash_files(), None),
+    ));
+    state
+}
+
+/// What `stash@{0}` changed, as `git diff-tree` reports it.
+fn stash_files() -> graft_git::diff::FileList {
+    use graft_git::diff::{FileEntry, FileList, FileStatus};
+    let file = |path: &str, status: FileStatus, added: u32, removed: u32| FileEntry {
+        path: path.as_bytes().to_vec(),
+        old_path: None,
+        status,
+        added: Some(added),
+        removed: Some(removed),
+    };
+    FileList {
+        files: vec![
+            file("README.md", FileStatus::Modified, 1, 1),
+            file("src/auth/refresh.rs", FileStatus::Added, 31, 0),
+            file("src/auth/token.rs", FileStatus::Modified, 12, 4),
+        ],
+        added: 44,
+        removed: 5,
+    }
+}
+
+fn stash_entry(
+    index: usize,
+    message: &str,
+    ago_seconds: i64,
+    paths: &[&str],
+) -> graft_git::stash::StashEntry {
+    graft_git::stash::StashEntry {
+        index,
+        commit: oid(u8::try_from(index).unwrap_or(0) + 20),
+        message: message.to_owned(),
+        at: graft_core::commit::Timestamp {
+            seconds: JOURNAL_NOW - ago_seconds,
+            offset_seconds: 0,
+        },
+        paths: paths.iter().map(std::path::PathBuf::from).collect(),
+    }
+}
+
+const STASH_LIST_HEADER: &str = "\
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_m3_stash in crates/graft/src/view/tests.rs (#[ignore]d, run by
+# hand to regenerate). `S` on a scripted list of two stashes, `space`
+# pressed on the newest, drawn against a fixed clock so the ages never move.
+#
+# Judge by eye:
+# - The header counts them: STASHES (2).
+# - Each row reads stash@{n}, the message in quotes, the age, then the file
+#   count — and `1 file` is singular where the count is one.
+# - The cursor row is marked with ▸ and painted to the right edge.
+# - Under the list, the selected stash's files with +/− counts. This is a
+#   file list, not a diff: the diff of a stash is the detail pane's view.
+# - The footer offers ⏎ apply, p pop, s save, d drop, space files, esc close.
+";
+
+const STASH_SAVE_HEADER: &str = "\
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_m3_stash in crates/graft/src/view/tests.rs (#[ignore]d, run by
+# hand to regenerate). `s` pressed, a message typed, `tab` pressed once.
+#
+# Judge by eye:
+# - The message line carries what was typed, with the cursor after it.
+# - The scope is marked in text, not colour: (•) sits on `staged only`
+#   because `tab` moved it there, and ( ) on `all incl. untracked`.
+# - The line under it says the save is undoable. A capture cannot show
+#   colour, so nothing here may depend on it.
+# - The footer changes to ⏎ save, tab scope, esc back: while the prompt is
+#   open the list's own keys are text.
+";
+
+const STASH_EMPTY_HEADER: &str = "\
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_m3_stash in crates/graft/src/view/tests.rs (#[ignore]d, run by
+# hand to regenerate). `S` on a repository with no stashes.
+#
+# Judge by eye:
+# - The header reads STASHES (0) and the body says
+#   `no stashes — s stashes the working tree`: the empty state is also the
+#   instruction for leaving it.
+# - The footer offers only what works here: s save, esc close.
+";
+
+/// Regenerates the stash overlay's captures
+/// (m3-working-tree-undo-and-stash/06).
+#[test]
+#[ignore = "writes docs/shots/m3-stash-*.txt; run by hand to regenerate"]
+fn capture_m3_stash() {
+    use graft_core::event::{Event, KeyCode, KeyPress};
+
+    let state = stash_state(120, 32);
+    let screen = draw(&state, 120, 32);
+    assert!(screen.contains("STASHES (2)"), "{screen}");
+    assert!(screen.contains("stash@{1}"), "{screen}");
+    assert!(screen.contains("1 file"), "{screen}");
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m3-stash-list.txt"
+        ),
+        format!("{STASH_LIST_HEADER}=== 120x32 ===\n{screen}"),
+    )
+    .expect("docs/shots is writable");
+
+    // `s`, a message, then `tab` onto `staged only`.
+    let mut state = stash_state(120, 32);
+    let mut keys = vec![KeyCode::Char('s')];
+    keys.extend("token work".chars().map(KeyCode::Char));
+    keys.push(KeyCode::Tab);
+    for code in keys {
+        let (next, _) = crate::update::update(
+            &state,
+            crate::update::AppEvent::Core(Event::Key(KeyPress::plain(code))),
+        );
+        state = next;
+    }
+    let screen = draw(&state, 120, 32);
+    assert!(screen.contains("token work"), "{screen}");
+    assert!(screen.contains("(\u{2022}) staged only"), "{screen}");
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m3-stash-save.txt"
+        ),
+        format!("{STASH_SAVE_HEADER}=== 120x32 ===\n{screen}"),
+    )
+    .expect("docs/shots is writable");
+
+    let mut state = stash_state(120, 32);
+    state.stash.entries = crate::update::detail::Loading::Ready(std::sync::Arc::new(Vec::new()));
+    state.stash.preview = crate::update::detail::Loading::Idle;
+    let screen = draw(&state, 120, 32);
+    assert!(screen.contains("no stashes"), "{screen}");
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m3-stash-empty.txt"
+        ),
+        format!("{STASH_EMPTY_HEADER}=== 120x32 ===\n{screen}"),
+    )
+    .expect("docs/shots is writable");
+}
+
 const DRIFT_HEADER: &str = "\
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_m3_undo_drift in crates/graft/src/view/tests.rs (#[ignore]d, run

@@ -1,0 +1,46 @@
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_m3_stash in crates/graft/src/view/tests.rs (#[ignore]d, run by
+# hand to regenerate). `S` on a scripted list of two stashes, `space`
+# pressed on the newest, drawn against a fixed clock so the ages never move.
+#
+# Judge by eye:
+# - The header counts them: STASHES (2).
+# - Each row reads stash@{n}, the message in quotes, the age, then the file
+#   count — and `1 file` is singular where the count is one.
+# - The cursor row is marked with ▸ and painted to the right edge.
+# - Under the list, the selected stash's files with +/− counts. This is a
+#   file list, not a diff: the diff of a stash is the detail pane's view.
+# - The footer offers ⏎ apply, p pop, s save, d drop, space files, esc close.
+=== 120x32 ===
+"STASHES (2)                                                                                                             "
+"▸ stash@{0}   "WIP on main: token refresh"                     2h ago   3 files                                         "
+"  stash@{1}   "quick fix before pull"                          26h ago  1 file                                          "
+"── stash@{0} ──                                                                                                         "
+"  M README.md  +1 −1                                                                                                    "
+"  src/                                                                                                                  "
+"    auth/                                                                                                               "
+"      A refresh.rs  +31 −0                                                                                              "
+"      M token.rs  +12 −4                                                                                                "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"⏎ apply  p pop  s save  d drop  space files  esc close                                                                  "

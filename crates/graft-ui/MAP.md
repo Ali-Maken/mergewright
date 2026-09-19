@@ -17,6 +17,7 @@ One line per public item. Update when a public item changes.
 - `map_screen` (mod) — the Map view widget: `MapView`/`MapRowView`/`MapMarkView`/`MapStatus`/`MapScreen`, `ramp_glyph` (m2-details-and-diffs/19).
 - `overview_strip` (mod) — the one-column whole-history strip: `StripMark`/`StripMarks`/`StripCell`, `cell_for`/`row_for_cell`, `OverviewStrip` widget (m2-details-and-diffs/20).
 - `paint` (mod) — token-to-style helpers for widgets.
+- `stash_screen` (mod) — the stash overlay (`S`): `StashRowView`/`StashPromptView`/`StashStatus`/`StashView`/`StashScreen`, `files_label` (m3-working-tree-undo-and-stash/06).
 - `status_screen` (mod) — the status screen view and widget.
 - `syntax` (mod) — line-level syntax highlighting (`syntect`) over sanitised text.
 - `text_input` (mod) — the commit editor's (and later the stash prompt's) text entry: `TextField`, `TextArea`, `FieldView`/`FieldWidget`, `AreaView`/`AreaWidget` (m3-working-tree-undo-and-stash/05).
@@ -183,6 +184,20 @@ state or I/O; `view::strip::strip_marks` (crate `graft`) builds its input.
 ## paint
 - `color` (fn) — resolve a `TokenColor` to a ratatui `Color`.
 - `foreground` (fn) — a style that paints text in one of the theme's tokens.
+
+## stash_screen
+The stash overlay (`S`, DESIGN.md §1.11): every stash entry, the selected
+one's files, and the save prompt (m3-working-tree-undo-and-stash/06). An
+overlay over the graph area like `journal_screen`: no state, no I/O, and
+`view::stash::stash_view` (crate `graft`) builds its input. Every fact is in
+the text — the scope is `(•)`/`( )`, not a colour — because a capture
+carries none and neither does a `NO_COLOR` terminal.
+- `StashRowView` (struct) — one entry's row: `name` (`stash@{0}`), `message` (quoted, first line), `age`, `files`.
+- `StashPromptView` (struct) — the save prompt: `title`, `message` (a `text_input::FieldView`), `staged_only`, `refusal` (what `s` would refuse, shown before `⏎` is pressed).
+- `StashStatus` (enum) — `Loading`, `Empty` (`no stashes — s stashes the working tree`), `Failed(SanitizedText)`, `Ready`.
+- `StashView` (struct) — `rows` (newest first), `selected`, `preview` (the selected stash's `detail::FileListView`, drawn under the list), `prompt`, `status`, `notice`/`notice_is_failure` — the overlay covers the graph footer, so a write's acknowledgement and a refusal are drawn on its own row above the footer or nowhere.
+- `StashScreen` (struct) — `view`, `theme`; `Widget`: header (`STASHES (n)`), rows (cursor row painted to the right edge), the preview or the prompt, the notice, the footer (`⏎ apply  p pop  s save  d drop  space files  esc close`, or the prompt's own). Draws nothing outside its `Rect` at any size.
+- `files_label` (fn) — `1 file` / `3 files`: the count with the noun it agrees with.
 
 ## status_screen
 - `StatusView` (struct) — everything the status screen draws.

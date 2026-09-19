@@ -160,6 +160,7 @@ One line per public item. Update when a public item changes.
 - `StashEntry` (struct) — `index` (`0` newest), `commit`, `message` (git's own reflog message), `at`, `paths` (tracked changes plus, for `-u`/`-a`, the untracked-files commit's own paths) (m3/01).
 - `StashError` (enum) — `Stopped`, `Reflog` (the reflog itself could not be read), `Run` (a `diff-tree` spawn failed), `Object` (a stash commit could not be read) (m3/01).
 - `list` (fn) — every stash entry, newest first, capped at 50; reads `refs/stash`'s reflog through `gix` (no `git stash list` spawn), one `diff-tree --name-only -r -z <stash>^ <stash>` spawn per entry plus a second (`--root <stash>^3`) when `gix` finds a third parent (the untracked-files commit); `Ok(vec![])` on a repository with no stashes (m3/01).
+- `commits` (fn) — every entry's `(commit, index)`, newest first, same cap; the reflog only, with no `diff-tree` spawn at all, so the ref badges can be read on the startup/refresh path that `list` is too slow for (m3-working-tree-undo-and-stash/06).
 
 ## state
 - `InProgress` (enum) — `Merge`, `Rebase`, `CherryPick`, `Revert`, `Bisect`; `name`/`continue_command`/`abort_command` (m3/01).

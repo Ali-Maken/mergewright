@@ -1,0 +1,45 @@
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_m3_stash in crates/graft/src/view/tests.rs (#[ignore]d, run by
+# hand to regenerate). `s` pressed, a message typed, `tab` pressed once.
+#
+# Judge by eye:
+# - The message line carries what was typed, with the cursor after it.
+# - The scope is marked in text, not colour: (•) sits on `staged only`
+#   because `tab` moved it there, and ( ) on `all incl. untracked`.
+# - The line under it says the save is undoable. A capture cannot show
+#   colour, so nothing here may depend on it.
+# - The footer changes to ⏎ save, tab scope, esc back: while the prompt is
+#   open the list's own keys are text.
+=== 120x32 ===
+"STASHES (2)                                                                                                             "
+"Stash the working tree                                                                                                  "
+"▸message token work                                                                                                     "
+"  ( ) all incl. untracked   (•) staged only   (tab)                                                                     "
+"  Graft journals it, so u takes the stash back.                                                                         "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"⏎ save  tab scope  esc back                                                                                             "
