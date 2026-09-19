@@ -31,3 +31,10 @@ path = "fuzz_targets/parse_file_list.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "parse_porcelain_v2"
+path = "fuzz_targets/parse_porcelain_v2.rs"
+test = false
+doc = false
+bench = false

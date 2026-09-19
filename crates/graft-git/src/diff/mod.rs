@@ -8,11 +8,13 @@
 
 mod file_list;
 mod pairs;
+mod patch;
 mod read;
 mod unified;
 
 pub use file_list::{parse_file_list, parse_worktree_file_list};
 pub use pairs::{Pair, pairs};
+pub use patch::{PatchError, Selection, hunk_patch};
 pub use read::{DiffError, DiffOptions, DiffSpec, file_diff, list_files};
 pub use unified::parse_unified;
 
