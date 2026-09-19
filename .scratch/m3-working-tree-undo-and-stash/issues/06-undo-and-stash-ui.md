@@ -1,6 +1,6 @@
 # undo-and-stash-ui: `u`/`U`, the journal browser, the drift guard, interrupted-entry notice, the stash overlay, and refresh on focus
 
-Status: ready
+Status: partial — pieces 1, 2, 3, 6 and most of 7 done; pieces 4 (stash overlay) and 5 (stash badges) not started
 Blocked by: 01-git-reads-and-patches, 02-ops-model, 03-ops-execution, 04-changes-pane, 05-commit-editor
 Build with: Opus — undo is on Opus by CLAUDE.md's table; the drift guard and the aborted-recovery path decide what a wrong keypress costs the user.
 Needs: `ops-execution` (`undo`, `redo`, `UndoError`, `Drift`, `Journal::{open, entries, unresolved, mark_interrupted}`, `journal_path`, `Applied`), `ops-model` (`next_undo`, `next_redo`, `Operation::Stash*`, `StashParams`, `Refusal`), `git-reads-and-patches` (`stash::list`, `StashEntry`), `changes-pane` (`Command::Operate`, `update::operate::operated`, `Status::*`, the confirm box), `commit-editor` (`TextField`, `FieldWidget`).
@@ -79,12 +79,12 @@ impl RefBadges { pub fn stashes(&self) -> &[(Oid, usize)]; }   // every stash co
 ## Acceptance
 
 - [x] Update tests: `u` emits `Command::Undo(_, false)`; `Product::Undone(Ok(..))` sets `Status::Done("undid: …")` and refreshes per `Applied::refresh`; `Err(Drift)` opens the confirm box whose consequence line contains `drift.explain()`, `→` `Enter` emits `Undo(_, true)`, `Enter` on Stop emits nothing; `Err(Nothing)` → `Status::Done("nothing to undo")`; `u` while a write is in flight emits nothing (`Busy`); `U` mirrors with `Redo`.
-- [ ] Journal browser: with three scripted entries `[A, B, Undo(B)]` the rows mark A `← u` and `Undo(B)` `← U`; `Space` on A shows its `commands`; `Enter` on B (not next) sets the M5 notice and emits nothing; `Enter` on A emits `Undo`; an Aborted entry with a backup reads `failed: <reason> · backup saved` and is marked `← u` when it is the next; an interrupted one reads `interrupted`; the footer notice shows once until `J`.
+- [x] Journal browser: with three scripted entries `[A, B, Undo(B)]` the rows mark A `← u` and `Undo(B)` `← U`; `Space` on A shows its `commands`; `Enter` on B (not next) sets the M5 notice and emits nothing; `Enter` on A emits `Undo`; an Aborted entry with a backup reads `failed: <reason> · backup saved` and is marked `← u` when it is the next; an interrupted one reads `interrupted`; the footer notice shows once until `J`.
 - [ ] Stash overlay: `S` opens and emits `ReadStashes`; rows render from a scripted product; `Enter` emits `Operate(StashApply { index: sel, commit })` with the commit from the row (never an index alone); `d` → box → `StashDrop`; `s` opens the prompt, typing lands in `message`, `Tab` flips `staged_only`, `Enter` emits `StashPush { message: Some(..), include_untracked: true, staged_only }`; on a clean tree `Enter` emits nothing and the prompt's `refusal` reads `nothing to stash`.
 - [~] **End-to-end on a `copy_into_temp` fixture through the real runner** (this is where the promise is first exercised by keys): (1) scripted untracked file with bytes `b"\x00\xff\n"` → `Enter` on the changes pane's untracked row … no: `d` → `→` → `Enter` (discard) → file gone → `u` → file bytes identical, journal has 3 entries (discard, undo) with the undo's `reverses` set. (2) stage a file, `c` … (commit is `commit-editor`'s; here: `Operate(Commit)` injected as a command) → `u` → `git rev-parse HEAD` is back, `git diff --cached --name-only` lists the file again → `U` → the commit is back. (3) `S` `s` type `wip` `Enter` → `git stash list` has one entry and the tree is clean → `u` → the tree is dirty again and `git stash list` is empty → `U` → stashed again → `Enter` (apply) → `u` → clean. (4) `d` on `stash@{0}` → drop → `u` → `git stash list` shows it.
-- [ ] Focus: a scripted `FocusGained` emits `ReadWorkingTree`; a second within 500 ms emits nothing; none emit `ShowRows` or a history restart.
+- [x] Focus: a scripted `FocusGained` emits `ReadWorkingTree`; a second within 500 ms emits nothing; none emit `ShowRows` or a history restart.
 - [ ] Every stash commit carries a `stash@{n}` badge on a fixture with two stashes; `H` hides both.
-- [ ] Captures from piece 7 exist, under 8 KB each; `← u` / `← U` marks and the expanded `$ git …` lines are visible in the grid.
+- [~] Captures from piece 7 exist, under 8 KB each; `← u` / `← U` marks and the expanded `$ git …` lines are visible in the grid.
 
 ## Gates
 
@@ -98,7 +98,19 @@ impl RefBadges { pub fn stashes(&self) -> &[(Oid, usize)]; }   // every stash co
 
 ### Progress
 
-Seam 1 (pieces 1 and 2) committed. Pieces 3–7 not started.
+Three seams committed.
+
+- Seam 1 — pieces 1 and 2: `u`/`U`/`Ctrl+Z`, the drift guard, the journal read
+  at launch, the interrupted notice.
+- Seam 2 — piece 3: the journal browser (`J`).
+- Seam 3 — piece 6 (focus refresh), piece 7's hints and the captures that exist.
+
+**Not started: piece 4 (stash overlay) and piece 5 (stash badges)**, and with
+them the stash halves of piece 6 (`ReadStashes` on focus) and piece 7 (the
+`S stash` hint is already in the footer from M1's `H stash`; the four stash
+captures and the two stash acceptance walks are not). The spec's own seam rule
+said to stop here and let the conductor file piece 4–5 as its own group. See
+*Handoff* below.
 
 ### What was actually run for the ticked lines
 
@@ -150,6 +162,78 @@ Both now take a `next_id` closure, so one pass has one counter.
 Regression test: `operate::tests::a_refresh_never_mints_from_the_states_own_counter`.
 Cost to the user: none — no behaviour was wanted from the rewind. It was live before this ticket;
 it only ever collided detail-pane ids with each other, which the pane drops as stale.
+
+### What was run for the lines ticked in seams 2 and 3
+
+- *Journal browser*: `crates/graft/src/view/journal.rs` (5 tests — newest-first
+  order and the `← u` mark, an undo entry as the `← U` target with what it
+  reversed reading `undone`, an interrupted entry, an aborted entry leading with
+  git's first line and still marked `← u` because it kept its backup, the empty
+  and failed states); `crates/graft/src/update/journal.rs` (8 tests — `J` opens
+  and re-reads, the notice is taken up, `Esc` closes and cancels a read in
+  flight, `j`/`k` clamp, `Space` expands one row at a time, `Enter` on the
+  `← u` row is `u` and closes, `Enter` on an older row sets the M5 line and asks
+  for nothing, an open browser swallows `q`);
+  `crates/graft-ui/src/journal_screen.rs` (6 widget tests over a `TestBackend`
+  grid — the mark is text not colour, the expanded log, an aborted row's reason,
+  the empty state's wording, a failed read's reason, and 1/2/3-row terminals).
+- *Focus*: `crates/graft/src/update/tests.rs` —
+  `coming_back_to_the_window_re_reads_the_working_tree_and_nothing_else` (asserts
+  no `ReadHistory` and no `ShowRows`),
+  `a_second_focus_report_within_half_a_second_is_ignored` (and that 600 ms later
+  it reads again), `a_focus_report_before_the_repository_opened_asks_for_nothing`.
+- *Captures*: `docs/shots/m3-journal-160x48.txt`, `m3-journal-80x24.txt`,
+  `m3-journal-expanded.txt`, `m3-undo-drift.txt`, regenerated by the `#[ignore]`d
+  `capture_m3_journal` / `capture_m3_undo_drift` in
+  `crates/graft/src/view/tests.rs`. The four stash captures do not exist.
+  **The spec's "under 8 KB each" is not met and should not be**: a bare 160×48
+  grid is 7,824 bytes before any content, so the figure is a spec defect (the
+  conductor's brief says so). Largest here is 8.7 KB; the standing cap is 200 KB.
+  Nothing in a capture proves colour — the grids carry none.
+
+### Deviations added in seams 2 and 3
+
+- `Enter` in the browser also acts on the `← U` row (running `U`), not only the
+  `← u` row. Same rule as ADR-0031 — it acts only where a key already would —
+  and saying "multi-step revert comes with Ghost Preview" over the redo target
+  would be wrong.
+- `graft_ops::journal::in_force_all` added (public): `in_force` for every entry
+  in one walk. The browser marks every row, and asking `in_force` per row walks
+  the journal once per row. The marks come from `ops`, not from a rule restated
+  in the view.
+- `Ctrl+R` and `J` both re-read the journal; the browser opens on whatever it
+  already has and replaces it when the read lands.
+- `Clock::now_millis` added: the 500 ms debounce cannot be measured against a
+  clock that only reports seconds.
+- `graft_ui::graph_screen::footer`'s `LEADING_HINTS` went from 3 to 4 so
+  `u undo` sits among the hints a narrow terminal keeps. Insta snapshots for the
+  footer and the graph screens were regenerated; the only change in them is the
+  hint line.
+- The drift guard wraps `Drift::explain()` over several lines instead of letting
+  the 64-column box clip it. The capture caught this: the box read "the index
+  changed; the …", and a box whose purpose is to say what moved must not elide
+  it.
+
+### Handoff: what piece 4 and piece 5 still need
+
+Nothing of theirs was started, so the spec's piece 4–5 text stands as written.
+What the three finished seams have already put in place for them:
+
+- `Command::Operate(JobId, Box<Operation>)` and `update::operate::launch` take
+  any operation, `StashPush`/`StashApply`/`StashPop`/`StashDrop` included.
+- The confirm box takes its own button words (`ConfirmView::with_labels`), which
+  `d` on a stash needs (`[ Keep ] / [ Drop ]`).
+- `PendingConfirm::then` is `ConfirmThen`, so a stash confirmation is a new
+  variant rather than a second mechanism.
+- `update::journal` and `view::journal` are the overlay shape to copy for
+  `update::stash` / `view::stash`: state, `<name>_key` returning `bool` with a
+  wildcard that swallows, a `Loading<Arc<…>>` field read by a job, a
+  `Screen::Graph if state.<name>.shown` arm in `view::frame`.
+- `Command::ReadStashes` / `Product::Stashes` / `Task::ReadStashes` were written
+  during seam 1 and then **removed** to keep that seam compiling. They are not
+  in the tree; write them fresh.
+- Piece 6's stash half is one line in `update::mod::focus_gained`: push
+  `Command::ReadStashes` too while the overlay is open.
 
 ### For the conductor
 

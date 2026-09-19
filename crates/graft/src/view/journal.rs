@@ -237,6 +237,9 @@ mod tests {
     #[test]
     fn an_aborted_entry_leads_with_gits_first_line_and_keeps_the_rest_for_space() {
         let mut aborted = entry(2, OperationKind::Commit, "commit \"x\"");
+        // `in_force` counts an Aborted entry only with a backup of the tree
+        // it changed; without one there is nothing for `u` to restore.
+        aborted.worktree_before = Some(oid(3));
         aborted.status = EntryStatus::Aborted {
             reason: "hook rejected the commit\nsee .git/hooks/pre-commit".to_owned(),
         };
@@ -253,6 +256,11 @@ mod tests {
             .as_ref()
             .expect("an aborted entry has a reason");
         assert!(failure.as_str().contains("pre-commit"), "{failure:?}");
+        // It kept its backup and changed the index, so it is still what `u`
+        // reaches: a write that failed part-way is undoable, and the row
+        // must say so rather than look inert.
+        assert!(view.rows[0].summary.as_str().ends_with("backup saved"));
+        assert_eq!(view.rows[0].mark, RowMark::NextUndo);
     }
 
     #[test]
