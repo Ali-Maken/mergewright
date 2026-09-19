@@ -34,6 +34,7 @@ mod side_by_side;
 mod unified;
 
 pub use body::DetailPane;
+pub(crate) use files::status_letter;
 pub use layout::{DetailAreas, DetailLayout, detail_areas, split_area};
 pub use line_render::DiffFocus;
 pub use side_by_side::diff_body_side_by_side;

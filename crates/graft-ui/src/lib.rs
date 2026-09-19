@@ -19,6 +19,7 @@ pub mod journal_screen;
 pub mod map_screen;
 pub mod overview_strip;
 pub mod paint;
+pub mod stash_screen;
 pub mod status_screen;
 pub mod syntax;
 pub mod text_input;

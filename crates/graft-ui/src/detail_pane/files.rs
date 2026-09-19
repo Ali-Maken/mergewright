@@ -10,7 +10,7 @@ use crate::theme::Token;
 
 use super::line_render::draw_line;
 
-fn status_letter(status: FileStatusView) -> char {
+pub(crate) fn status_letter(status: FileStatusView) -> char {
     match status {
         FileStatusView::Added => 'A',
         FileStatusView::Deleted => 'D',

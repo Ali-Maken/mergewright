@@ -1035,6 +1035,7 @@ fn the_same_event_always_gives_the_same_answer() {
         radar_column_seen: std::cell::Cell::new(false),
         map: crate::update::map::MapState::default(),
         journal: crate::update::journal::JournalState::default(),
+        stash: crate::update::stash::StashState::default(),
         last_focus_refresh: None,
         strip_shown: false,
         confirm: None,

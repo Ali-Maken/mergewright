@@ -578,6 +578,20 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
+    /// Reads the stash list for the `S` overlay, under an id `update`
+    /// already chose.
+    fn read_stashes(&self, id: JobId) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::ReadStashes), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::Stashes(super::stash::read_stashes(&repos, cancel)))
+            })
+        });
+    }
+
     /// Builds the Map view's per-branch bucket counts, under an id `update`
     /// already chose (`update::map::MapState::open`, mirroring the detail
     /// pane's own jobs — see `queue_as`'s doc).
@@ -644,6 +658,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::Undo(id, force) => self.run_undo(id, false, force),
             Command::Redo(id, force) => self.run_undo(id, true, force),
             Command::ReadJournal(id) => self.read_journal(id),
+            Command::ReadStashes(id) => self.read_stashes(id),
             Command::CancelJob(id) => {
                 self.row_requests().remove(&id);
                 self.cancel(id);

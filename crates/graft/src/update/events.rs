@@ -144,6 +144,9 @@ pub enum Task {
     /// Read the undo journal, closing anything a previous run left open
     /// (m3-working-tree-undo-and-stash/06).
     ReadJournal,
+    /// Read the stash list for the `S` overlay
+    /// (m3-working-tree-undo-and-stash/06).
+    ReadStashes,
 }
 
 /// What a job brought back.
@@ -253,6 +256,10 @@ pub enum Product {
     /// `Arc`: the journal browser holds it across frames, never copied per
     /// event (m3-working-tree-undo-and-stash/06).
     Journal(Result<std::sync::Arc<crate::jobs::undo::JournalRead>, String>),
+    /// The stash list, `stash@{0}` first, or why it could not be read.
+    /// `Arc` for the same reason as [`Product::Journal`]: the overlay holds
+    /// it across frames (m3-working-tree-undo-and-stash/06).
+    Stashes(Result<std::sync::Arc<Vec<graft_git::stash::StashEntry>>, String>),
 }
 
 /// What running `git --version` found.
@@ -368,6 +375,10 @@ pub enum Command {
     /// browser never shows an entry that is waiting for a process that is
     /// gone (m3-working-tree-undo-and-stash/06).
     ReadJournal(JobId),
+    /// Read the stash list, under an id `update` chose. Asked for when the
+    /// `S` overlay opens and again after every write, because any of them
+    /// may have moved `refs/stash` (m3-working-tree-undo-and-stash/06).
+    ReadStashes(JobId),
     /// Read `commit.template`'s file for the commit editor's empty body,
     /// under an id `update` chose (m3-working-tree-undo-and-stash/05).
     ReadCommitTemplate(JobId),

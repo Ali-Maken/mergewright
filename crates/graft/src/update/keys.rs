@@ -83,16 +83,7 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
         next.status = Status::Ready;
         return;
     }
-    if super::detail::detail_key(next, commands, key) {
-        return;
-    }
-    if super::map::map_key(next, commands, key) {
-        return;
-    }
-    if journal_key(next, commands, key) {
-        return;
-    }
-    if super::strip::strip_key(next, key) {
+    if pane_and_overlay_key(next, commands, key) {
         return;
     }
     if let Some(command) = super::commit_graph::commit_graph_key(next, key) {
@@ -100,6 +91,17 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
         return;
     }
     graph_key(next, commands, key);
+}
+
+/// The detail pane, then each overlay in turn, then the overview strip:
+/// the panes that claim a key before the graph sees it. `true` when one of
+/// them took it.
+fn pane_and_overlay_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    super::detail::detail_key(next, commands, key)
+        || super::map::map_key(next, commands, key)
+        || journal_key(next, commands, key)
+        || stash_key(next, commands, key)
+        || super::strip::strip_key(next, key)
 }
 
 /// `u`/`U`, with `local_jobs` borrowed out for the closure the way every
@@ -116,6 +118,14 @@ fn undo_key(next: &mut AppState, commands: &mut Vec<Command>, redo: bool) {
 fn journal_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
     let mut local_jobs = next.local_jobs;
     let claimed = super::journal::journal_key(next, commands, key, &mut || local_jobs.next_id());
+    next.local_jobs = local_jobs;
+    claimed
+}
+
+/// The stash overlay's keys, the same way.
+fn stash_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    let mut local_jobs = next.local_jobs;
+    let claimed = super::stash::stash_key(next, commands, key, &mut || local_jobs.next_id());
     next.local_jobs = local_jobs;
     claimed
 }

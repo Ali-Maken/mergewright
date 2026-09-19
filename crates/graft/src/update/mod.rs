@@ -35,6 +35,7 @@ mod prelude;
 pub mod radar;
 mod search;
 mod selection;
+pub mod stash;
 mod state;
 mod strip;
 pub mod undo;
@@ -113,6 +114,15 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         }
         AppEvent::Core(event) => core_event(next, commands, event),
         AppEvent::Started(id, task) => started(next, commands, id, &task),
+        AppEvent::Produced(id, product @ Product::Stashes(_)) => stash_answer(next, id, &product),
+        // The overlay's file preview reads through `ListFiles` like the
+        // detail pane does, under its own id; the guard asks which of the
+        // two is waiting for this one.
+        AppEvent::Produced(id, product @ Product::Files(_))
+            if stash::claims(next, id, &product) =>
+        {
+            stash_answer(next, id, &product);
+        }
         // The detail pane names its jobs itself, before they start.
         event @ AppEvent::Produced(
             _,
@@ -146,16 +156,9 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             operate_answer(next, commands, event);
         }
         AppEvent::Produced(id, Product::Undone(outcome)) => {
-            let mut local_jobs = next.local_jobs;
-            commands.extend(undo::undone(next, id, *outcome, &mut || {
-                local_jobs.next_id()
-            }));
-            next.local_jobs = local_jobs;
+            undone_answer(next, commands, id, *outcome);
         }
-        AppEvent::Produced(id, product @ Product::Journal(_)) => {
-            let taken: bool = journal::journal_event(next, id, &product);
-            debug_assert!(taken, "the journal's own product");
-        }
+        AppEvent::Produced(id, product @ Product::Journal(_)) => journal_answer(next, id, &product),
         event @ AppEvent::Produced(
             _,
             Product::CommitTemplate(_)
@@ -164,6 +167,33 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             | Product::HandedOver(_),
         ) => commit_editor_answer(next, event),
     }
+}
+
+/// The journal read answered.
+fn journal_answer(next: &mut AppState, id: JobId, product: &Product) {
+    let taken: bool = journal::journal_event(next, id, product);
+    debug_assert!(taken, "the journal's own product");
+}
+
+/// The stash overlay's own product — the list, or the preview's file list.
+fn stash_answer(next: &mut AppState, id: JobId, product: &Product) {
+    let taken: bool = stash::stash_event(next, id, product);
+    debug_assert!(taken, "the stash overlay's own product");
+}
+
+/// One `u`/`U` answered, with `local_jobs` borrowed out for the closure the
+/// way every other call site does it.
+fn undone_answer(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    id: JobId,
+    outcome: crate::jobs::undo::Undone,
+) {
+    let mut local_jobs = next.local_jobs;
+    commands.extend(undo::undone(next, id, outcome, &mut || {
+        local_jobs.next_id()
+    }));
+    next.local_jobs = local_jobs;
 }
 
 /// A job said it had started. Three tasks take a note of the id; the rest are
@@ -190,6 +220,7 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::Operate
         | Task::Undo
         | Task::ReadJournal
+        | Task::ReadStashes
         | Task::ReadCommitTemplate
         | Task::ReadHeadMessage
         | Task::WriteCommitGraph
@@ -323,6 +354,7 @@ fn took_fact(next: &mut AppState, product: Product) {
         | Product::Operated(_)
         | Product::Undone(_)
         | Product::Journal(_)
+        | Product::Stashes(_)
         | Product::CommitTemplate(_)
         | Product::HeadMessage(_)
         | Product::ExternalEditor(_)
@@ -451,6 +483,11 @@ fn focus_gained(next: &mut AppState, commands: &mut Vec<Command>) {
     }
     next.last_focus_refresh = Some(now);
     commands.push(Command::ReadWorkingTree);
+    // Another window may have stashed or popped while this one was away.
+    // Only while the overlay is up: nothing else on screen reads the list.
+    let mut local_jobs = next.local_jobs;
+    stash::refresh(next, commands, &mut || local_jobs.next_id());
+    next.local_jobs = local_jobs;
 }
 
 /// A job was cancelled. Not a failure and not news — the application asked

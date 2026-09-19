@@ -23,6 +23,7 @@ mod journal;
 mod map;
 pub(crate) mod radar;
 mod rows;
+mod stash;
 mod status;
 pub(crate) mod strip;
 

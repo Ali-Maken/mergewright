@@ -148,6 +148,9 @@ pub struct AppState {
     /// read at launch whether or not the browser is open, because the
     /// interrupted-entry notice depends on it.
     pub journal: super::journal::JournalState,
+    /// The stash overlay as this run has read it, and its own cursor
+    /// (m3-working-tree-undo-and-stash/06).
+    pub stash: super::stash::StashState,
     /// When the last focus-gained refresh ran, Unix milliseconds. A
     /// terminal reports focus in pairs and in bursts, and every report is a
     /// working-tree read (m3-working-tree-undo-and-stash/06).

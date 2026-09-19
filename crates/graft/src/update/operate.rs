@@ -698,6 +698,10 @@ pub(super) fn refresh_scope(
             // finishes (m3-working-tree-undo-and-stash/06). The
             // `Everything` arm gets the same read through `refresh_key`.
             let mut commands = state.journal.read(next_id);
+            // A stash push, apply, pop or drop moves `refs/stash`, and the
+            // overlay is what the user is looking at when they press one
+            // (m3-working-tree-undo-and-stash/06).
+            super::stash::refresh(state, &mut commands, next_id);
             commands.push(Command::ReadWorkingTree);
             commands.extend(state.detail.refresh(next_id));
             commands

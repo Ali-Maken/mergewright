@@ -10,6 +10,7 @@ use graft_ui::journal_screen::JournalScreen;
 use graft_ui::map_screen::MapScreen;
 use graft_ui::overview_strip::{OverviewStrip, StripMarks};
 use graft_ui::paint::color;
+use graft_ui::stash_screen::StashScreen;
 use graft_ui::status_screen::StatusScreen;
 use graft_ui::theme::{Theme, Token};
 use ratatui::Frame;
@@ -25,6 +26,7 @@ use super::detail::detail_view;
 use super::journal::journal_view;
 use super::map::map_view;
 use super::rows::graph_view;
+use super::stash::stash_view;
 use super::status::status_view;
 
 /// The tier's name, as `graph.renderer` and the status screen spell it.
@@ -82,6 +84,28 @@ fn draw_journal(
     };
     if state.detail.shown {
         render_overlay_with_detail(session, state, frame, widget, area, "Journal");
+    } else {
+        frame.render_widget(widget, area);
+    }
+    draw_context_menu(state, frame, area, &session.theme);
+    draw_confirm(state, frame, area, &session.theme);
+    None
+}
+
+/// The stash overlay in the graph's area, with the confirm box over it —
+/// `d` opens the drop box without the overlay having closed first
+/// (m3-working-tree-undo-and-stash/06).
+///
+/// Never returns a pixel rectangle, for the same reason the journal browser
+/// does not: the overlay replaces the graph.
+fn draw_stash(session: &Session, state: &AppState, frame: &mut Frame, area: Rect) -> Option<Rect> {
+    let screen = stash_view(state, state.harness.clock.now_seconds());
+    let widget = StashScreen {
+        view: &screen,
+        theme: &session.theme,
+    };
+    if state.detail.shown {
+        render_overlay_with_detail(session, state, frame, widget, area, "Stash");
     } else {
         frame.render_widget(widget, area);
     }
@@ -191,6 +215,7 @@ pub fn view_with_graphics(
         }
         Screen::Graph if state.map.shown => draw_map(session, state, frame, area),
         Screen::Graph if state.journal.shown => draw_journal(session, state, frame, area),
+        Screen::Graph if state.stash.shown => draw_stash(session, state, frame, area),
         Screen::Graph => {
             let mut screen = graph_view(state, state.harness.clock.now_seconds());
             screen.icons = session.icons;

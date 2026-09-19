@@ -77,6 +77,7 @@ pub(crate) mod operate;
 mod pool;
 pub(crate) mod radar;
 mod runner;
+mod stash;
 mod types;
 pub(crate) mod undo;
 
