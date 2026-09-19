@@ -133,10 +133,12 @@ fn drift_box(description: &str, drift: &graft_ops::undo::Drift, redo: bool) -> P
     PendingConfirm {
         view: graft_ui::confirm::ConfirmView::new(
             format!("{verb} \u{201c}{description}\u{201d}?"),
-            vec![
-                format!("Since this {description}, {}.", drift.explain()),
-                "A backup is taken first, so this is itself undoable.".to_owned(),
-            ],
+            {
+                let mut message =
+                    wrapped(&format!("Since this {description}, {}.", drift.explain()));
+                message.push("A backup is taken first, so this is itself undoable.".to_owned());
+                message
+            },
             // No single git command to show: a restore is a plan of several,
             // and the journal browser's `Space` is where they are listed.
             format!("{} restores the recorded state", verb.to_lowercase()),
@@ -144,6 +146,28 @@ fn drift_box(description: &str, drift: &graft_ops::undo::Drift, redo: bool) -> P
         .with_labels("Stop", verb),
         then: ConfirmThen::Undo { redo },
     }
+}
+
+/// The widest line the confirm box draws without clipping: it is 64
+/// columns at most (`graft_ui::confirm::confirm_area`), and a `…` where the
+/// drift's own words should be is the one thing this box must not do.
+const CONFIRM_COLUMNS: usize = 62;
+
+/// `text` broken at spaces into lines of at most [`CONFIRM_COLUMNS`]. A
+/// single word longer than that is left whole — the box clips it, and
+/// cutting a path in half would be worse than a clipped one.
+fn wrapped(text: &str) -> Vec<String> {
+    let mut lines: Vec<String> = Vec::new();
+    for word in text.split_whitespace() {
+        match lines.last_mut() {
+            Some(line) if line.chars().count() + 1 + word.chars().count() <= CONFIRM_COLUMNS => {
+                line.push(' ');
+                line.push_str(word);
+            }
+            _ => lines.push(word.to_owned()),
+        }
+    }
+    lines
 }
 
 /// The footer's interrupted-entry line, until `J` has been pressed once.
@@ -405,6 +429,38 @@ mod tests {
             pending.view.message
         );
         assert_eq!(pending.then, ConfirmThen::Undo { redo: false });
+    }
+
+    #[test]
+    fn a_long_drift_explanation_is_wrapped_rather_than_clipped() {
+        // The box is 64 columns at most, and a `…` where the drift's own
+        // words should be is the one thing it must not do.
+        let drift = graft_ops::undo::Drift {
+            index: true,
+            worktree: true,
+            unknown: vec!["HEAD", "the working tree"],
+            ..drift()
+        };
+        let mut state = AppState::default();
+        let id = JobId::new(1);
+        state.operating = Some(id);
+        undone(
+            &mut state,
+            id,
+            Undone::Drift {
+                description: "commit \"Add the OAuth provider and its tests\"".to_owned(),
+                drift,
+                redo: false,
+            },
+            &mut ids(),
+        );
+        let view = &state.confirm.as_ref().expect("the guard opened").view;
+        assert!(view.message.len() > 2, "{:?}", view.message);
+        for line in &view.message {
+            assert!(line.chars().count() <= 62, "{line}");
+        }
+        let joined = view.message.join(" ");
+        assert!(joined.contains("the working tree"), "{joined}");
     }
 
     #[test]

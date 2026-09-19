@@ -416,10 +416,41 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             // field on it.
             let _taken: bool = commit_editor::paste(next, &text);
         }
-        // Nothing is bound to these yet. They reach `update` so that the
-        // tickets that need them have somewhere obvious to add the handling.
-        Event::FocusGained | Event::FocusLost => {}
+        Event::FocusGained => focus_gained(next, commands),
+        // Nothing is bound to this one. It reaches `update` so that the
+        // ticket that needs it has somewhere obvious to add the handling.
+        Event::FocusLost => {}
     }
+}
+
+/// How long after a focus-gained refresh the next one is ignored. A
+/// terminal reports focus on every alt-tab, some report it twice, and tmux
+/// reports it for every pane switch; without this, resting on the window
+/// edge would re-read the working tree as fast as the reports arrive
+/// (m3-working-tree-undo-and-stash/06, design note change 7).
+const FOCUS_DEBOUNCE_MS: i64 = 500;
+
+/// The terminal came back to the front: whatever was done to the repository
+/// in another window is what the user now expects to see.
+///
+/// The working tree only. Not the history walk — restarting it on every
+/// alt-tab would throw away the rows already on screen and move the cursor
+/// under the user's hands; `Ctrl+R` is still the way to ask for everything.
+fn focus_gained(next: &mut AppState, commands: &mut Vec<Command>) {
+    // Nothing to re-read before the repository has opened: the first read
+    // is already on its way.
+    if next.repository.is_none() {
+        return;
+    }
+    let now = next.harness.clock.now_millis();
+    if next
+        .last_focus_refresh
+        .is_some_and(|last| now.saturating_sub(last) < FOCUS_DEBOUNCE_MS)
+    {
+        return;
+    }
+    next.last_focus_refresh = Some(now);
+    commands.push(Command::ReadWorkingTree);
 }
 
 /// A job was cancelled. Not a failure and not news — the application asked

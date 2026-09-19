@@ -148,6 +148,10 @@ pub struct AppState {
     /// read at launch whether or not the browser is open, because the
     /// interrupted-entry notice depends on it.
     pub journal: super::journal::JournalState,
+    /// When the last focus-gained refresh ran, Unix milliseconds. A
+    /// terminal reports focus in pairs and in bursts, and every report is a
+    /// working-tree read (m3-working-tree-undo-and-stash/06).
+    pub last_focus_refresh: Option<i64>,
     /// The overview strip (`O`, DESIGN.md §5.3, m2-details-and-diffs/20):
     /// off until asked (no config default, M8 polish). Drawn only while
     /// this holds and [`super::map::MapState::shown`] does not.

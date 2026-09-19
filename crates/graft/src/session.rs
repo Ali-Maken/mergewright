@@ -75,6 +75,24 @@ impl Clock {
             Clock::Fixed(seconds) => seconds,
         }
     }
+
+    /// The same instant in milliseconds, for the one thing a second is too
+    /// coarse for: debouncing a terminal's focus reports, which arrive in
+    /// pairs and in bursts (m3-working-tree-undo-and-stash/06). Read at
+    /// millisecond resolution rather than scaled up from
+    /// [`Clock::now_seconds`], which would round two reports 600 ms apart
+    /// into the same instant.
+    #[must_use]
+    pub fn now_millis(self) -> i64 {
+        match self {
+            Clock::Wall => std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |elapsed| {
+                    i64::try_from(elapsed.as_millis()).unwrap_or(i64::MAX)
+                }),
+            Clock::Fixed(seconds) => seconds.saturating_mul(1_000),
+        }
+    }
 }
 
 /// What Graft is drawing with, for as long as this run lasts.

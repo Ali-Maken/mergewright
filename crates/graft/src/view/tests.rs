@@ -2408,3 +2408,242 @@ fn capture_m3_amend() {
     )
     .expect("docs/shots is writable");
 }
+
+/// The moment every journal capture is drawn against, so the ages in them
+/// never age (m3-working-tree-undo-and-stash/06).
+const JOURNAL_NOW: i64 = 1_700_000_000;
+
+/// One scripted journal entry.
+fn journal_entry(
+    ago_seconds: i64,
+    kind: graft_core::journal::OperationKind,
+    description: &str,
+    touches: graft_core::journal::Touches,
+    commands: &[&str],
+) -> graft_core::journal::JournalEntry {
+    let at_unix_ms = (JOURNAL_NOW - ago_seconds) * 1_000;
+    graft_core::journal::JournalEntry {
+        id: graft_core::journal::EntryId::new(at_unix_ms, [0; 10]),
+        at_unix_ms,
+        kind,
+        description: description.to_owned(),
+        status: graft_core::journal::EntryStatus::Committed,
+        touches,
+        head_before: graft_core::journal::HeadRef::Branch("refs/heads/main".to_owned()),
+        head_after: Some(graft_core::journal::HeadRef::Branch(
+            "refs/heads/main".to_owned(),
+        )),
+        refs_before: std::collections::BTreeMap::new(),
+        refs_after: std::collections::BTreeMap::new(),
+        index_before: Some(oid(1)),
+        index_after: Some(oid(2)),
+        worktree_before: Some(oid(3)),
+        worktree_after: Some(oid(4)),
+        backup_ref: Some("refs/graft/backup/main/01HF".to_owned()),
+        pins: Vec::new(),
+        commands: commands.iter().map(|line| (*line).to_owned()).collect(),
+        reverses: None,
+    }
+}
+
+/// The journal browser's own state: four entries, the newest of them a
+/// commit `u` would take back, and one that failed with its backup kept.
+fn journal_entries() -> Vec<graft_core::journal::JournalEntry> {
+    use graft_core::journal::{EntryStatus, OperationKind, Touches};
+
+    let refs_and_index = Touches {
+        refs: vec!["refs/heads/main".to_owned()],
+        index: true,
+        worktree: false,
+    };
+    let index_only = Touches {
+        refs: Vec::new(),
+        index: true,
+        worktree: false,
+    };
+    let worktree = Touches {
+        refs: Vec::new(),
+        index: true,
+        worktree: true,
+    };
+    let mut discard = journal_entry(
+        3 * 3_600,
+        OperationKind::Discard,
+        "discard src/auth/refresh_test.rs",
+        worktree,
+        &["git --literal-pathspecs restore --worktree -- src/auth/refresh_test.rs"],
+    );
+    discard.status = EntryStatus::Aborted {
+        reason: "error: unable to unlink 'src/auth/refresh_test.rs': Permission denied".to_owned(),
+    };
+    vec![
+        journal_entry(
+            26 * 3_600,
+            OperationKind::Stage,
+            "stage src/api/routes.rs",
+            index_only.clone(),
+            &["git --literal-pathspecs add -- src/api/routes.rs"],
+        ),
+        discard,
+        journal_entry(
+            14 * 60,
+            OperationKind::Stage,
+            "stage 3 files",
+            index_only,
+            &["git --literal-pathspecs add -- src/api/routes.rs src/auth/token.rs README.md"],
+        ),
+        journal_entry(
+            2 * 60,
+            OperationKind::Commit,
+            "commit \"Add OAuth provider\"",
+            refs_and_index,
+            &["git commit -F -"],
+        ),
+    ]
+}
+
+/// The journal browser open over the scripted repository.
+fn journal_state(columns: u16, rows: u16) -> AppState {
+    let mut state = changes_pane_state(columns, rows);
+    state.repo_path = std::path::PathBuf::from("/code/api");
+    state.harness.clock = crate::session::Clock::Fixed(JOURNAL_NOW);
+    state.detail.shown = false;
+    state.journal.shown = true;
+    state.journal.entries = crate::update::detail::Loading::Ready(std::sync::Arc::new(
+        crate::jobs::undo::JournalRead {
+            entries: journal_entries(),
+            interrupted: Vec::new(),
+            unreadable: Vec::new(),
+        },
+    ));
+    state
+}
+
+const JOURNAL_HEADER: &str = "\
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_m3_journal in crates/graft/src/view/tests.rs (#[ignore]d, run by
+# hand to regenerate). `J` on a scripted journal of four entries, drawn
+# against a fixed clock so the ages never move.
+#
+# Judge by eye:
+# - The header reads UNDO JOURNAL · <the repository's path>.
+# - Newest first: the commit is the top row, the 26-hour-old stage the last.
+# - Exactly one row carries ← u, and it is the top one. Not \"looks right\":
+#   that mark is `graft_ops`' own next_undo answer, so if it sits on any
+#   other row the key and the browser disagree.
+# - The discard row leads with failed: and git's own first line, and still
+#   ends with backup saved — a write that failed part-way is still undoable.
+# - The footer offers ⏎ undo this, space command log and J/esc close.
+";
+
+const JOURNAL_EXPANDED_HEADER: &str = "\
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_m3_journal in crates/graft/src/view/tests.rs (#[ignore]d, run by
+# hand to regenerate). The same journal with the cursor moved onto the
+# failed discard and `space` pressed.
+#
+# Judge by eye:
+# - The cursor row is the discard, marked ▸ and painted.
+# - Under it, indented: the whole failure reason, then the Command Log's one
+#   `$ git --literal-pathspecs restore …` line — the exact command that ran,
+#   not a description of it.
+# - The rows below the expansion are pushed down, not overwritten.
+";
+
+/// Regenerates the journal browser's captures
+/// (m3-working-tree-undo-and-stash/06).
+#[test]
+#[ignore = "writes docs/shots/m3-journal-*.txt; run by hand to regenerate"]
+fn capture_m3_journal() {
+    use graft_core::event::{Event, KeyCode, KeyPress};
+
+    for (columns, rows) in [(160_u16, 48_u16), (80, 24)] {
+        let state = journal_state(columns, rows);
+        let screen = draw(&state, columns, rows);
+        assert!(screen.contains("UNDO JOURNAL"), "{screen}");
+        assert!(screen.contains("← u"), "{screen}");
+        std::fs::write(
+            format!(
+                "{}/../../docs/shots/m3-journal-{columns}x{rows}.txt",
+                env!("CARGO_MANIFEST_DIR")
+            ),
+            format!("{JOURNAL_HEADER}=== {columns}x{rows} ===\n{screen}"),
+        )
+        .expect("docs/shots is writable");
+    }
+
+    // `j` twice onto the failed discard, then `space`.
+    let mut state = journal_state(120, 32);
+    for code in [KeyCode::Char('j'), KeyCode::Char('j'), KeyCode::Char(' ')] {
+        let (next, _) = crate::update::update(
+            &state,
+            crate::update::AppEvent::Core(Event::Key(KeyPress::plain(code))),
+        );
+        state = next;
+    }
+    let screen = draw(&state, 120, 32);
+    assert!(screen.contains("Permission denied"), "{screen}");
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m3-journal-expanded.txt"
+        ),
+        format!("{JOURNAL_EXPANDED_HEADER}=== 120x32 ===\n{screen}"),
+    )
+    .expect("docs/shots is writable");
+}
+
+const DRIFT_HEADER: &str = "\
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_m3_undo_drift in crates/graft/src/view/tests.rs (#[ignore]d, run
+# by hand to regenerate). The undo job answered Drift: the repository moved
+# since the entry `u` would take back.
+#
+# Judge by eye:
+# - The question names the entry, not the word \"operation\".
+# - The consequence is `graft_ops`' own drift.explain() text, verbatim —
+#   which fields moved, and that an unrecorded after-state is restored whole.
+# - The buttons read [ Stop ] and Undo, with Stop under the cursor: the safe
+#   choice is the one already selected, and neither says \"Discard\", which
+#   would name the opposite of what the button does.
+# - The command line shows what confirming would run.
+";
+
+/// Regenerates the undo drift guard's capture
+/// (m3-working-tree-undo-and-stash/06).
+#[test]
+#[ignore = "writes docs/shots/m3-undo-drift.txt; run by hand to regenerate"]
+fn capture_m3_undo_drift() {
+    let mut state = changes_pane_state(120, 32);
+    let id = graft_core::job::JobId::new(7);
+    state.operating = Some(id);
+    let drift = graft_ops::undo::Drift {
+        index: true,
+        unknown: vec!["the working tree"],
+        ..graft_ops::undo::Drift::default()
+    };
+    let mut next = 100;
+    let _commands = crate::update::undo::undone(
+        &mut state,
+        id,
+        crate::jobs::undo::Undone::Drift {
+            description: "commit \"Add OAuth provider\"".to_owned(),
+            drift,
+            redo: false,
+        },
+        &mut || {
+            next += 1;
+            graft_core::job::JobId::new(next)
+        },
+    );
+    let screen = draw(&state, 120, 32);
+    assert!(screen.contains("Stop"), "{screen}");
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m3-undo-drift.txt"
+        ),
+        format!("{DRIFT_HEADER}=== 120x32 ===\n{screen}"),
+    )
+    .expect("docs/shots is writable");
+}

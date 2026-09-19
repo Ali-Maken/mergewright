@@ -27,7 +27,7 @@ shape: criss-cross-merge, truecolor, focus, 80x24, row 4 selected
 
 
 
- q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent
+ q quit  F2 status  F3 renderer  u undo  / search  j/k move  Space fold
 
 modifiers: graph | subject
 ..b.......| .

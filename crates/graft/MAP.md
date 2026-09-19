@@ -56,7 +56,7 @@ The Map view's per-branch bucket counts (m2-details-and-diffs/18): one bounded w
 - `Session::settle` (fn) — resolve capabilities, theme, rendering info at startup.
 - `Session::apply` (fn) — take in a re-detected cell size or theme; `true` when anything changed. Never touches the tier.
 - `TerminalChange` (enum) — a mid-session answer that changed: `CellSize(CellSize)`, `Theme(ThemeHint)`.
-- `Clock` (enum) — `Wall` (default) or `Fixed(i64)`; `now_seconds()` is the one `SystemTime::now()` read on the date path (m1-the-graph/53). `update::Harness::clock` carries it; `view::graph_view` takes the result.
+- `Clock` (enum) — `Wall` (default) or `Fixed(i64)`; `now_seconds()` is the one `SystemTime::now()` read on the date path (m1-the-graph/53). `now_millis()` is the same instant at millisecond resolution, read for the focus-refresh debounce only (m3-working-tree-undo-and-stash/06). `update::Harness::clock` carries it; `view::graph_view` takes the result.
 
 ## event_loop
 - `Wake::Terminal` (variant) — a re-detected answer changed; `pump` applies it to the session and redraws.
@@ -147,6 +147,7 @@ Split into files, public items unchanged (m2 review M8): `mod.rs` keeps only the
 - `AppState::radar` (field) — `update::radar::RadarState`: the Mistake Radar's default-branch context and `[radar]` policy (m2-details-and-diffs/13, 13b).
 - `AppState::radar_column_seen` (field) — `Cell<bool>`, sticky once any row's marker has been `Some` this session; keeps the marker column showing after the row scrolls off-screen (m2-details-and-diffs/13b).
 - `AppState::map` (field) — `update::map::MapState`: the Map view's visibility and its build, if any (m2-details-and-diffs/18).
+- `AppState::last_focus_refresh` (field) — `Option<i64>`, Unix milliseconds: when the last focus-gained working-tree read ran. Terminals report focus in pairs and tmux reports it per pane switch, so reports inside 500 ms are ignored (m3-working-tree-undo-and-stash/06).
 - `AppState::journal` (field) — `update::journal::JournalState`: the undo journal as this run has read it, and the browser's own cursor (m3-working-tree-undo-and-stash/06).
 - `AppState::strip_shown` (field) — `bool`, off until `O` asked (no config default, M8 polish); the overview strip draws only while this holds and `map.shown` does not (m2-details-and-diffs/20).
 - `AppState::uncommitted_row_shown` (fn) — does the working-tree row draw this frame: a dirty tree, and nothing else. Pinned at row 0 from m3-working-tree-undo-and-stash/04; it used to need `HEAD` on top too, which hid the user's own uncommitted work as soon as they scrolled (closes `KNOWN_GAPS.md` m2/06b). `view::entries::uncommitted_shown` and `view::strips` both delegate to it.

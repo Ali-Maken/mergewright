@@ -41,4 +41,4 @@ expression: text
 
 
 
- q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent  F focus  H stash  y sha  PgUp/PgDn page
+ q quit  F2 status  F3 renderer  u undo  / search  j/k move  Space fold  1 first-parent  F focus  H stash  J journal

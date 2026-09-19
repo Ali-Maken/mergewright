@@ -771,6 +771,66 @@ fn a_bare_c_is_not_quit() {
     assert_eq!(next.quit, None);
 }
 
+/// The state a focus report means something in: a repository is open.
+fn opened_at(now_seconds: i64) -> AppState {
+    AppState {
+        repo_path: PathBuf::from("/code/api"),
+        repository: Some(facts("/code/api", "main")),
+        harness: Harness {
+            clock: crate::session::Clock::Fixed(now_seconds),
+            ..Harness::default()
+        },
+        ..AppState::default()
+    }
+}
+
+#[test]
+fn coming_back_to_the_window_re_reads_the_working_tree_and_nothing_else() {
+    // Design note change 7: what another window did to the repository is
+    // what the user expects to see on coming back. Not the history walk —
+    // restarting it would move the cursor under their hands.
+    // The launch journal read rides along on the first `update` of an open
+    // repository, whatever the event; what matters is the working-tree read
+    // and that no history walk starts.
+    let (next, commands) = update(&opened_at(10), core(Event::FocusGained));
+    assert!(commands.contains(&Command::ReadWorkingTree), "{commands:?}");
+    assert!(
+        !commands
+            .iter()
+            .any(|command| matches!(command, Command::ReadHistory(_) | Command::ShowRows(..))),
+        "{commands:?}"
+    );
+    assert_eq!(next.last_focus_refresh, Some(10_000));
+}
+
+#[test]
+fn a_second_focus_report_within_half_a_second_is_ignored() {
+    // Terminals report focus in pairs, and tmux reports it per pane switch.
+    let mut state = opened_at(10);
+    state.last_focus_refresh = Some(10_000 - 100);
+    let (next, commands) = update(&state, core(Event::FocusGained));
+    assert!(
+        !commands.contains(&Command::ReadWorkingTree),
+        "{commands:?}"
+    );
+    assert_eq!(next.last_focus_refresh, Some(10_000 - 100), "untouched");
+
+    state.last_focus_refresh = Some(10_000 - 600);
+    let (_, commands) = update(&state, core(Event::FocusGained));
+    assert!(
+        commands.contains(&Command::ReadWorkingTree),
+        "600 ms later: {commands:?}"
+    );
+}
+
+#[test]
+fn a_focus_report_before_the_repository_opened_asks_for_nothing() {
+    let before = AppState::default();
+    let (next, commands) = update(&before, core(Event::FocusGained));
+    assert!(commands.is_empty(), "{commands:?}");
+    assert_eq!(next, before);
+}
+
 #[test]
 fn unbound_events_change_nothing() {
     let before = AppState::default();
@@ -975,6 +1035,7 @@ fn the_same_event_always_gives_the_same_answer() {
         radar_column_seen: std::cell::Cell::new(false),
         map: crate::update::map::MapState::default(),
         journal: crate::update::journal::JournalState::default(),
+        last_focus_refresh: None,
         strip_shown: false,
         confirm: None,
         commit_editor: None,

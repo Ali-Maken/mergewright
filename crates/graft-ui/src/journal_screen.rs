@@ -17,6 +17,7 @@ use ratatui::widgets::Widget;
 use crate::fit::fit;
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
+use unicode_width::UnicodeWidthStr;
 
 /// What a row is to `u` and `U`, in words rather than colour.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -111,6 +112,29 @@ pub struct JournalScreen<'a> {
 /// being nothing here yet.
 const EMPTY: &str = "nothing yet — every write lands here and u takes it back";
 
+/// The description column's width: what is left once the prefix, the age
+/// and the mark have had theirs, capped so a long description does not push
+/// every summary off a wide screen. The summaries line up under each other,
+/// which is what makes the list scannable.
+fn description_columns(width: u16) -> usize {
+    const PREFIX_AND_AGE: usize = 2 + 9 + 1;
+    const MARK: usize = 13;
+    usize::from(width)
+        .saturating_sub(PREFIX_AND_AGE + MARK)
+        .saturating_sub(30)
+        .min(44)
+}
+
+/// `text` padded to `columns` display columns, or left alone when it is
+/// already wider — the row clips at the right edge either way.
+fn pad(text: &str, columns: usize) -> String {
+    let mut padded = text.to_owned();
+    for _ in text.width()..columns {
+        padded.push(' ');
+    }
+    padded
+}
+
 /// One text write, clipped to `area` and dropped when it would fall outside
 /// it. Mirrors `map_screen::render`'s own guard.
 fn set_text(buf: &mut Buffer, x: u16, y: u16, area: Rect, text: &str, style: Style) {
@@ -190,9 +214,9 @@ impl JournalScreen<'_> {
         }
         let prefix = if on_cursor { "▸ " } else { "  " };
         let line = format!(
-            "{prefix}{:<9} {}   {}",
+            "{prefix}{:<9} {} {}",
             row.age.as_str(),
-            row.description.as_str(),
+            pad(row.description.as_str(), description_columns(area.width)),
             row.summary.as_str()
         );
         set_text(buf, area.x, y, area, &line, style);

@@ -806,7 +806,7 @@ fn the_write_hints_appear_only_on_the_changes_pane() {
 fn the_expand_hint_keeps_its_place_after_the_renderer() {
     let line = key_hints(&["+ expand lanes"], 200);
     assert!(
-        line.starts_with(" q quit  F2 status  F3 renderer  + expand lanes  / search"),
+        line.starts_with(" q quit  F2 status  F3 renderer  u undo  + expand lanes  / search"),
         "{line}"
     );
 }
