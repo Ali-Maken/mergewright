@@ -454,3 +454,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M4/02 review | Askpass write_reply has no write timeout; close()'s join could hang on it | unverified | M4 |
 | M4/02 review | Remote-controlled text (prompts, failure reasons) is unsanitised in graft-git; group 06 must pass it through term::sanitize | unverified | M4 |
 | M4/02 review | RunError::Spawn mislabels a poisoned-sink error; WouldOverwrite multi-path parsing tested on one file only | broken (label) / unverified | M5 |
+| M4/03 | Main red at 0ba9203..(g03 fix): app snapshot every_graph_renderer_config_value_draws_as_it_says fails on footer hint placement | broken | M4 |
