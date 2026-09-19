@@ -475,3 +475,17 @@ fn an_unrecorded_after_state_is_reported_as_unknown_never_as_clean() {
     untouched.index_after = None;
     assert!(drift(&untouched, &now).is_clean());
 }
+
+#[test]
+fn remote_entries_are_not_invertible() {
+    for kind in [OperationKind::Fetch, OperationKind::Push] {
+        let entry = committed(10, kind, 1, 2);
+        assert_eq!(
+            inverse(&entry, None),
+            Err(NotInvertible::NotUndoable(kind)),
+            "{kind:?}"
+        );
+    }
+    let pull = committed(10, OperationKind::Pull, 1, 2);
+    assert!(inverse(&pull, None).is_ok());
+}

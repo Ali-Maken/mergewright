@@ -3,4 +3,5 @@
 mod mistake_radar;
 mod ops_execution;
 mod ops_execution_hard;
+mod remote_ops;
 mod support;

@@ -81,6 +81,8 @@ fn facts() -> RepoFacts {
             minor: 40,
             patch: 0,
         },
+        remotes: vec![],
+        upstream: None,
     }
 }
 

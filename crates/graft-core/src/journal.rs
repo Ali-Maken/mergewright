@@ -133,6 +133,12 @@ pub enum OperationKind {
     StashPop,
     /// `git stash drop`.
     StashDrop,
+    /// `git fetch`: moves remote-tracking refs only. Journaled, never undone.
+    Fetch,
+    /// A fast-forward pull: `fetch` then `merge --ff-only`. Undoable locally.
+    Pull,
+    /// `git push`: changes the remote. Journaled, never undone.
+    Push,
     /// The inverse of an earlier entry.
     Undo,
     /// The inverse of an `Undo` entry.

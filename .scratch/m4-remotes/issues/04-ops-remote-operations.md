@@ -1,6 +1,6 @@
 # ops-remote-operations: Fetch, Pull and Push as operations — plan, check, journal meaning, undo transparency, streaming + askpass through `apply`
 
-Status: in progress
+Status: done
 Blocked by: 02 (done)
 Build with: Opus — taking the planner's recommendation: git writes against a remote plus journal semantics M5 builds on.
 Crates: graft-ops, graft-core
@@ -66,24 +66,24 @@ pub enum FactsError { …, Remote(RemoteError) }
 
 Every tick names its verifying test inline, at tick time (ADR-0035). All through `apply` with `Context.remote = None` unless stated, against `LocalRemote`.
 
-- [ ] Fetch after `commit_on_remote` moves `refs/remotes/origin/main` to the bare's tip; journal entry kind `Fetch`, `Committed`, `refs_before`/`refs_after` empty, `commands` = the one fetch line; `Applied.refresh == Everything` — `fetch_moves_tracking_ref_and_journals`
-- [ ] Fetch with `prune` drops the tracking ref of a branch deleted on the remote — `fetch_prunes`
-- [ ] Fetch in a bare repo is allowed — `fetch_allowed_in_bare`
-- [ ] Pull fast-forwards `main`, updates the worktree file bytes, journals `{refs:[refs/heads/main], index, worktree}` with a backup; `u` (through `graft_ops::undo::undo`) moves `main` back and restores the file bytes **and leaves `refs/remotes/origin/main` at the fetched tip**; `U` forwards again — `pull_fast_forwards_then_undo_keeps_tracking_ref`
-- [ ] Pull on diverged branches: entry `Aborted`, `ApplyError::Remote { failure: NotFastForward }`, `main` unchanged, tracking ref advanced — `pull_diverged_is_refused_after_fetching`
-- [ ] Pull with an uncommitted change to a file the ff touches: `WouldOverwrite { paths: [that file] }`, file bytes unchanged — `pull_dirty_file_refused_bytes_unchanged`
-- [ ] Pull with no upstream → `Refused(NoUpstream)`, nothing journaled; detached → `Refused(DetachedHead)` — `pull_refusals`
-- [ ] Push after `commit_locally` moves the bare's `main`; entry records `refs/remotes/origin/main` before/after; `next_undo` over the journal returns the **commit** entry, not the push; `undo` then moves local `main` back while the bare's `main` and the tracking ref stay — `push_then_undo_touches_only_local`
-- [ ] Push with `set_upstream` on a new branch writes `branch.x.remote=origin` and `branch.x.merge=refs/heads/x` — `push_sets_upstream`
-- [ ] Push after `commit_on_remote` (no fetch) → `NonFastForward`, entry `Aborted`, bare unchanged — `push_non_fast_forward_classified`
-- [ ] Lease push after a local amend succeeds; lease push after a remote-side move since the last fetch → `StaleInfo`, bare unchanged — `lease_push_succeeds_after_amend`, `lease_push_refused_when_stale`
-- [ ] `next_redo` survives a fetch: commit → undo → fetch → `next_redo` is still the undo — `fetch_does_not_empty_redo`
-- [ ] `inverse` on a Fetch or Push entry → `NotUndoable(kind)` — `remote_entries_are_not_invertible`
-- [ ] Wrong password over `HttpRemote` with `Context.remote = None` → `AuthFailed { target }`, `Aborted` — `http_wrong_password_is_auth_failed`; with `Context.remote = Some(hooks)` whose `AskPass` answers the right password → push succeeds and `hooks.progress` was called ≥ 1 time — `http_askpass_answers_and_progress_flows`; the journal file's bytes do not contain the password — same test, `assert!(!journal_bytes.windows(n).any(..))`
-- [ ] Cancel mid-fetch (a `Stop` that flips after the first progress segment) → `ApplyError::Remote { failure: Cancelled }`, entry `Aborted("cancelled")`, no `*.lock` under `.git` — `cancel_mid_fetch_is_clean`
-- [ ] `preview()` on Push equals `plan(&facts)`'s command lines — `preview_matches_plan`
-- [ ] `ApplyError::explain` for every `RemoteFailure` variant contains the note's words (rejected/authentication failed/diverged/would overwrite/unreachable/stale) — `explain_names_each_failure`
-- [ ] MAP.md (ops, core) updated; DESIGN §6.4 handled per piece 7
+- [x] Fetch after `commit_on_remote` moves `refs/remotes/origin/main` to the bare's tip; journal entry kind `Fetch`, `Committed`, `refs_before`/`refs_after` empty, `commands` = the one fetch line; `Applied.refresh == Everything` — `fetch_moves_tracking_ref_and_journals`
+- [x] Fetch with `prune` drops the tracking ref of a branch deleted on the remote — `fetch_prunes`
+- [x] Fetch in a bare repo is allowed — `fetch_allowed_in_bare`
+- [x] Pull fast-forwards `main`, updates the worktree file bytes, journals `{refs:[refs/heads/main], index, worktree}` with a backup; `u` (through `graft_ops::undo::undo`) moves `main` back and restores the file bytes **and leaves `refs/remotes/origin/main` at the fetched tip**; `U` forwards again — `pull_fast_forwards_then_undo_keeps_tracking_ref`
+- [x] Pull on diverged branches: entry `Aborted`, `ApplyError::Remote { failure: NotFastForward }`, `main` unchanged, tracking ref advanced — `pull_diverged_is_refused_after_fetching`
+- [x] Pull with an uncommitted change to a file the ff touches: `WouldOverwrite { paths: [that file] }`, file bytes unchanged — `pull_dirty_file_refused_bytes_unchanged`
+- [x] Pull with no upstream → `Refused(NoUpstream)`, nothing journaled; detached → `Refused(DetachedHead)` — `pull_refusals`
+- [x] Push after `commit_locally` moves the bare's `main`; entry records `refs/remotes/origin/main` before/after; `next_undo` over the journal returns the **commit** entry, not the push; `undo` then moves local `main` back while the bare's `main` and the tracking ref stay — `push_then_undo_touches_only_local`
+- [x] Push with `set_upstream` on a new branch writes `branch.x.remote=origin` and `branch.x.merge=refs/heads/x` — `push_sets_upstream`
+- [x] Push after `commit_on_remote` (no fetch) → `NonFastForward`, entry `Aborted`, bare unchanged — `push_non_fast_forward_classified`
+- [x] Lease push after a local amend succeeds; lease push after a remote-side move since the last fetch → `StaleInfo`, bare unchanged — `lease_push_succeeds_after_amend`, `lease_push_refused_when_stale`
+- [x] `next_redo` survives a fetch: commit → undo → fetch → `next_redo` is still the undo — `fetch_does_not_empty_redo`
+- [x] `inverse` on a Fetch or Push entry → `NotUndoable(kind)` — `remote_entries_are_not_invertible` (unit, `undo::tests`)
+- [x] Wrong password over `HttpRemote` with `Context.remote = None` → `AuthFailed { target }`, `Aborted` — `http_wrong_password_is_auth_failed`; with `Context.remote = Some(hooks)` whose `AskPass` answers the right password → push succeeds and `hooks.progress` was called ≥ 1 time — `http_askpass_answers_and_progress_flows`; the journal file's bytes do not contain the password — same test, `assert!(!journal_bytes.windows(n).any(..))`
+- [x] Cancel mid-fetch (a `Stop` that flips after the first progress segment) → `ApplyError::Remote { failure: Cancelled }`, entry `Aborted("cancelled")`, no `*.lock` under `.git` — `cancel_mid_fetch_is_clean`
+- [x] `preview()` on Push equals `plan(&facts)`'s command lines — `preview_matches_plan` (unit, `operation::remote::tests`)
+- [x] `ApplyError::explain` for every `RemoteFailure` variant contains the note's words (rejected/authentication failed/diverged/would overwrite/unreachable/stale) — `explain_names_each_failure` (unit, `apply/remote/tests.rs`)
+- [x] MAP.md (ops, core) updated — docs, no test; DESIGN §6.4 **left unchanged**: no confirmation that the user accepted Proposed change 1 reached this builder
 
 ## Gates
 
@@ -92,3 +92,13 @@ Every tick names its verifying test inline, at tick time (ADR-0035). All through
 ## Size
 
 One context. Brownfield in `operation.rs`/`apply.rs`/`journal.rs`/`undo.rs` — send a scout for `apply.rs`'s invocation loop and error mapping before editing; report whether you did. Stop seam: after piece 3 (model + journal rule, no `apply` change) with pieces 4–6 in a handoff note.
+
+## NOTES
+
+- Two builders: the first stopped by a rate limit after pieces 1–3 and most of 4–6 (uncommitted); the second finished. No compaction.
+- Throwaway-repo checks (a)–(e) are held by integration tests that read the repository back rather than a separate manual run: (a) `pull_dirty_file_refused_bytes_unchanged`, `pull_diverged_is_refused_after_fetching`; (b) `lease_push_succeeds_after_amend`, `lease_push_refused_when_stale`; (c) `fetch_prunes`; (d) `push_sets_upstream` (reads `git config`); (e) `fetch_allowed_in_bare`.
+- **Outside crate set:** one match arm in `crates/graft/src/jobs/operate.rs` `refresh_after_failure` — `ApplyError::Remote { .. }` joins the `Everything` arm (a failed pull has already fetched). Needed for the workspace to compile; the ticket's Gates allow it.
+- Deviation: `remote_invocation` takes `(&Invocation, Option<&RemoteHooks>)`, not `&Context`, so the guard is unit-tested without a repo (`only_a_remote_invocation_with_hooks_gets_them`); private, no public change.
+- `src/bin/askpass_test_helper.rs`: a test-only binary in graft-ops, so `tests/it/remote_ops.rs` can drive git → helper → `AskPass` end to end before 05b gives Graft its askpass mode. It is built with the crate (not `cfg(test)`-gated — Cargo can't gate bins). 05b may want to delete it and point the tests at Graft's binary.
+- Auth-failure line uses the operation's own retry key (`f`/`p`/`P`), the note shows `P` for the push example.
+- `a_local_operation_with_hooks_runs_as_before` alone does not prove no askpass server spawns for a local invocation (a commit never prompts); the unit guard test above does.

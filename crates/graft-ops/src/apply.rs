@@ -10,11 +10,14 @@
 //!
 //! [`Journal::unresolved`]: crate::journal::Journal::unresolved
 
+mod remote;
+
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches};
 use graft_core::oid::Oid;
+use graft_git::remote::RemoteFailure;
 use graft_git::repo::RepoHandle;
 use graft_git::run::{GitInvocation, RunError, Stop};
 use graft_git::version::GitVersion;
@@ -24,6 +27,8 @@ use crate::journal::{Journal, JournalError};
 use crate::operation::{Invocation, Operation, Refusal};
 use crate::snapshot::{self, SnapshotError, SnapshotScope};
 use crate::undo::RepoStateNow;
+
+pub use remote::RemoteHooks;
 
 /// What the caller has to re-read after an operation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -92,6 +97,18 @@ pub enum ApplyError {
     /// The caller asked to stop.
     #[error("stopped")]
     Stopped,
+    /// A fetch, pull or push failed. The entry is journaled `Aborted` with
+    /// the failure's short text; `failure` is what the whole of git's stderr
+    /// said (a stop is `Cancelled`).
+    #[error("{}", remote::explain(.entry, .failure, .stderr_tail))]
+    Remote {
+        /// The entry, with whatever after-state could be read.
+        entry: Box<JournalEntry>,
+        /// Why, as far as git said.
+        failure: RemoteFailure,
+        /// git's last few stderr segments, for a detail view.
+        stderr_tail: Vec<String>,
+    },
 }
 
 /// A field of an entry's after-state that could not be read, or could not be
@@ -123,6 +140,11 @@ pub enum AfterState {
     /// objects that are gone.
     #[error("the after-state could not be kept reachable: {0}")]
     Unsealed(SnapshotError),
+    /// The askpass server a remote invocation ran with could not be shut
+    /// down cleanly: its socket or directory may be left in the temp dir.
+    /// The operation itself is unaffected.
+    #[error("the credential prompt's socket could not be cleaned up: {0}")]
+    AskPass(std::io::Error),
 }
 
 /// The journal failing, with git's own failure when there was one.
@@ -157,6 +179,11 @@ impl ApplyError {
                 }
                 line
             }
+            ApplyError::Remote {
+                entry,
+                failure,
+                stderr_tail,
+            } => remote::explain(entry, failure, stderr_tail),
             other => other.to_string(),
         }
     }
@@ -194,6 +221,9 @@ pub struct Context<'a> {
     pub random: [u8; 10],
     /// Cancellation.
     pub stop: &'a dyn Stop,
+    /// Progress and credential prompts for a remote operation; `None` is
+    /// headless (no prompt, no progress). [`Context::open`] leaves it `None`.
+    pub remote: Option<RemoteHooks>,
 }
 
 impl<'a> Context<'a> {
@@ -226,6 +256,7 @@ impl<'a> Context<'a> {
             now_unix_ms,
             random,
             stop,
+            remote: None,
         })
     }
 
@@ -265,11 +296,11 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
         None,
     )?;
 
-    let failure = run_plan(ctx, &plan);
+    let PlanRun { failure, cleanup } = run_plan(ctx, &plan, op.is_remote());
     let status = match &failure {
         None => EntryStatus::Committed,
-        Some(why) => EntryStatus::Aborted {
-            reason: reason_for(why),
+        Some(failed) => EntryStatus::Aborted {
+            reason: with_cleanup(failed.reason(), &cleanup),
         },
     };
     let unread = match finish(ctx, &mut pending, status, commands) {
@@ -279,7 +310,7 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
         Err(error) => {
             return Err(ApplyError::Journal {
                 error,
-                after: failure,
+                after: failure.map(|failed| failed.error),
             });
         }
     };
@@ -287,7 +318,11 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     let entry = pending.entry;
     match failure {
         None => {
-            let refresh = if entry.touches.refs.is_empty() {
+            let mut unread = unread;
+            unread.extend(cleanup);
+            // A remote operation moved refs the entry does not record (a
+            // fetch's tracking refs), so the graph is re-read regardless.
+            let refresh = if entry.touches.refs.is_empty() && !op.is_remote() {
                 Refresh::WorkingTree
             } else {
                 Refresh::Everything
@@ -309,32 +344,100 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
         // `finish` has already put the after-state failures, if any, into the
         // entry's `Aborted` reason: git's own failure is the headline, but
         // nothing is lost behind it.
-        Some(error) => {
-            let recoverable = entry.worktree_before.is_some();
-            Err(ApplyError::Git {
-                entry: Box::new(entry),
-                error,
-                recoverable,
-            })
+        Some(failed) => Err(failed.into_error(entry)),
+    }
+}
+
+/// What running a plan came to.
+struct PlanRun {
+    /// The invocation that failed, if one did.
+    failure: Option<PlanFailure>,
+    /// Askpass servers that would not shut down cleanly. Never fatal.
+    cleanup: Vec<AfterState>,
+}
+
+/// The invocation that failed.
+struct PlanFailure {
+    error: RunError,
+    /// For a remote operation: what the whole of git's stderr said, and its
+    /// last few segments.
+    remote: Option<(RemoteFailure, Vec<String>)>,
+}
+
+impl PlanFailure {
+    /// The entry's `Aborted` reason.
+    fn reason(&self) -> String {
+        match &self.remote {
+            Some((failure, _)) => remote::short(failure),
+            None => reason_for(&self.error),
         }
+    }
+
+    /// The error `apply` returns, the entry journaled.
+    fn into_error(self, entry: JournalEntry) -> ApplyError {
+        if let Some((failure, stderr_tail)) = self.remote {
+            return ApplyError::Remote {
+                entry: Box::new(entry),
+                failure,
+                stderr_tail,
+            };
+        }
+        let recoverable = entry.worktree_before.is_some();
+        ApplyError::Git {
+            entry: Box::new(entry),
+            error: self.error,
+            recoverable,
+        }
+    }
+}
+
+/// An `Aborted` reason with any askpass cleanup failure after it.
+fn with_cleanup(reason: String, cleanup: &[AfterState]) -> String {
+    if cleanup.is_empty() {
+        reason
+    } else {
+        format!("{reason}; {}", joined(cleanup))
     }
 }
 
 /// Run the plan's invocations in order, stopping at the first that fails.
 ///
 /// The order is the operation's own: group 02 puts the step that can fail
-/// first, so a failure leaves the least behind it.
-fn run_plan(ctx: &Context<'_>, plan: &[Invocation]) -> Option<RunError> {
+/// first, so a failure leaves the least behind it. A remote operation's
+/// invocations go through `remote::run`, which keeps their stderr; a local
+/// operation's run exactly as before.
+fn run_plan(ctx: &Context<'_>, plan: &[Invocation], is_remote: bool) -> PlanRun {
+    let mut cleanup = Vec::new();
     for invocation in plan {
         let mut git = GitInvocation::new(ctx.repo).args(invocation.args.iter().cloned());
         if let Some(bytes) = &invocation.stdin {
             git = git.stdin(bytes.clone());
         }
-        if let Err(why) = git.run(ctx.stop) {
-            return Some(why);
+        let failure = if is_remote {
+            remote::run(ctx, git, invocation, &mut cleanup)
+                .err()
+                .map(|failed| {
+                    let failure = remote::failure_of(&failed.error, &failed.segments);
+                    let tail = remote::tail(&failed.segments);
+                    PlanFailure {
+                        error: failed.error,
+                        remote: Some((failure, tail)),
+                    }
+                })
+        } else {
+            git.run(ctx.stop).err().map(|error| PlanFailure {
+                error,
+                remote: None,
+            })
+        };
+        if failure.is_some() {
+            return PlanRun { failure, cleanup };
         }
     }
-    None
+    PlanRun {
+        failure: None,
+        cleanup,
+    }
 }
 
 /// Close every entry left `Pending` by a previous run as `interrupted`,
@@ -698,7 +801,10 @@ fn pins_for(op: &Operation) -> Vec<Oid> {
         | Operation::Commit(_)
         | Operation::Amend(_)
         | Operation::StashPush(_)
-        | Operation::StashApply { .. } => Vec::new(),
+        | Operation::StashApply { .. }
+        | Operation::Fetch(_)
+        | Operation::Pull(_)
+        | Operation::Push(_) => Vec::new(),
     }
 }
 
@@ -724,6 +830,9 @@ pub(crate) fn kind_name(kind: OperationKind) -> &'static str {
         OperationKind::StashApply => "stash apply",
         OperationKind::StashPop => "stash pop",
         OperationKind::StashDrop => "stash drop",
+        OperationKind::Fetch => "fetch",
+        OperationKind::Pull => "pull",
+        OperationKind::Push => "push",
         OperationKind::Undo => "undo",
         OperationKind::Redo => "redo",
     }
