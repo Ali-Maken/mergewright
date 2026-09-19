@@ -329,7 +329,7 @@ Every budget in 56's checklist passes on 56c's numbers (`docs/shots/m1-memory-cu
 
 ## m2-details-and-diffs/01 — git spawns outside the runner (2026-09-17)
 
-- `graft-git::version::system_git` (`git --version`) and `graft-git::commit_graph::write` still build their own `Command::new("git")`. Pre-existing; the ticket allowed `commit_graph` and did not ask to move either. `commit_graph::write` deliberately never kills its child, so it would need a non-stopping `run` plus `--git-dir` instead of `-C`. Expiry: M3's first write ticket, when every write must go through `run`.
+- ~~`graft-git::version::system_git` and `graft-git::commit_graph::write` build their own `Command::new("git")`.~~ **Closed by `m3-working-tree-undo-and-stash/01` (piece 1, `073a107`)**: both moved onto `run`, which also gained `GitInvocation::env`. Row moved to `docs/gaps/closed.md`.
 - `contained_in` on a repository with no commits: the spec asked for `Ok` with empty lists, but with no commits there is no id to ask about, and an id naming no commit makes git exit 129 — returned as `Exited`, not hidden as "contained nowhere". Tested instead on `UnbornBranch` (HEAD unborn, other branches with commits): `Ok`. Callers only ask for a selected commit, which exists. Expiry: the detail-model ticket that calls `contained_in`, if it needs otherwise.
 
 ## m2-details-and-diffs/04 — Mistake Radar rule limits (2026-09-17)
