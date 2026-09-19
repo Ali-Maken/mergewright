@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{Read, Write};
 use std::os::fd::OwnedFd;
 use std::os::unix::net::UnixStream;
 use std::thread;
@@ -175,4 +175,60 @@ fn keys_given_back_come_before_anything_held_since() {
     let next = mux.inputs();
     assert_eq!(next_key(&next), KeyCode::Char('x'));
     assert_eq!(next_key(&next), KeyCode::Char('y'));
+}
+
+/// The point of `pause`, and the whole reason `hold` was not enough: while
+/// the mux is paused the bytes a user types are still in the terminal's
+/// buffer for whoever has the terminal now.
+///
+/// `second` is another handle on the same socket — the same relationship
+/// `$EDITOR` has with stdin once Graft has stepped off it. If the reader
+/// thread were still reading, this read would come back empty (or steal only
+/// part), because the two would be racing for the same bytes.
+#[test]
+fn a_paused_mux_leaves_the_input_for_whoever_has_the_terminal() {
+    let (mut terminal, ours) = UnixStream::pair().unwrap();
+    let mut second = ours.try_clone().unwrap();
+    let (mux, inputs) = InputMux::start(OwnedFd::from(ours)).unwrap();
+
+    // A key first, so the reader is demonstrably running before it is asked
+    // to stop.
+    terminal.write_all(b"a").unwrap();
+    assert_eq!(next_key(&inputs), KeyCode::Char('a'));
+
+    mux.pause().unwrap();
+    terminal.write_all(b"typed into the editor").unwrap();
+
+    second
+        .set_read_timeout(Some(PATIENCE))
+        .expect("a read timeout");
+    let mut taken = [0u8; 21];
+    second
+        .read_exact(&mut taken)
+        .expect("the bytes are still there");
+    assert_eq!(&taken[..], b"typed into the editor");
+
+    // And nothing reached Graft: those keys were the editor's.
+    assert!(inputs.recv_timeout(Duration::from_millis(100)).is_err());
+
+    mux.resume();
+    terminal.write_all(b"b").unwrap();
+    assert_eq!(next_key(&inputs), KeyCode::Char('b'));
+}
+
+/// `pause` waits for the reader to park rather than returning on hope, so a
+/// caller that gets `Ok(())` back can hand the terminal over at once.
+#[test]
+fn pause_returns_only_once_the_reader_has_stopped() {
+    let (mut terminal, mux, inputs) = started();
+    terminal.write_all(b"a").unwrap();
+    assert_eq!(next_key(&inputs), KeyCode::Char('a'));
+
+    let started = Instant::now();
+    mux.pause().unwrap();
+    assert!(
+        started.elapsed() < PATIENCE,
+        "pause waited out its park deadline instead of being answered"
+    );
+    mux.resume();
 }

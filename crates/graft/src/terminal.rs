@@ -50,6 +50,13 @@ enum Step {
     KittyKeyboard,
 }
 
+/// What [`TerminalSession::suspend`] gave up, for [`TerminalSession::resume`]
+/// to put back. Opaque on purpose: which modes were on is the session's
+/// business, and there is nothing a caller can usefully do with the list but
+/// hand it straight back.
+#[derive(Clone, Debug)]
+pub struct Suspended(Vec<Step>);
+
 /// Raw mode, behind a seam.
 ///
 /// Unlike every other step this writes no bytes to the output stream — it is a
@@ -167,6 +174,50 @@ impl TerminalSession {
     /// call writes nothing.
     pub fn restore(&self) -> io::Result<()> {
         restore(&self.state)
+    }
+
+    /// Give the terminal up for a moment: the same teardown [`restore`] does,
+    /// but remembering what was turned on so [`Self::resume`] can put exactly
+    /// that back (m3-working-tree-undo-and-stash/05).
+    ///
+    /// For `$EDITOR` and for `Ctrl+Z`: both hand the terminal to something
+    /// that expects to find it the way the shell left it. Restoring and then
+    /// setting up again from scratch would not do — setup applies the kitty
+    /// keyboard flag only when `SessionOptions` said so, and by now that
+    /// answer came from a capability probe nobody kept.
+    ///
+    /// # Errors
+    /// A mode could not be undone. The session is left as close to open as it
+    /// can be made, because the caller is not going to hand the terminal over
+    /// after all and Graft has to keep drawing into it.
+    pub fn suspend(&self) -> io::Result<Suspended> {
+        let steps = lock(&self.state)?.applied.clone();
+        match restore(&self.state) {
+            Ok(()) => Ok(Suspended(steps)),
+            Err(error) => {
+                if let Err(second) = self.resume(Suspended(steps)) {
+                    report_to_stderr(&second);
+                }
+                Err(error)
+            }
+        }
+    }
+
+    /// Take the terminal back, applying what [`Self::suspend`] recorded in
+    /// the order it was first applied in.
+    ///
+    /// Says nothing about the screen's contents: whatever ran in between drew
+    /// over every cell, so the caller redraws in full.
+    ///
+    /// # Errors
+    /// A mode could not be turned back on. Graft is then drawing into a
+    /// terminal that is not in the state it thinks it is; the caller stops.
+    pub fn resume(&self, suspended: Suspended) -> io::Result<()> {
+        let mut state = lock(&self.state)?;
+        for step in suspended.0 {
+            state.apply(step)?;
+        }
+        state.sink.flush()
     }
 
     fn setup(&self, options: SessionOptions) -> io::Result<()> {
@@ -330,7 +381,7 @@ fn report_to_stderr(error: &io::Error) {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
     use std::sync::{Arc, Mutex};
@@ -339,10 +390,10 @@ mod tests {
     /// escape sequences as the bytes themselves, raw mode as a marker, so a
     /// single assertion can pin the *interleaving* of the two.
     #[derive(Clone, Default)]
-    struct Transcript(Arc<Mutex<Vec<u8>>>);
+    pub(crate) struct Transcript(Arc<Mutex<Vec<u8>>>);
 
     impl Transcript {
-        fn rendered(&self) -> String {
+        pub(crate) fn rendered(&self) -> String {
             let bytes = self.0.lock().unwrap();
             String::from_utf8_lossy(&bytes).replace('\x1b', "<ESC>")
         }
@@ -385,7 +436,7 @@ mod tests {
 
     /// Raw mode that only writes to the transcript, so its ordering relative
     /// to the escape sequences is visible.
-    struct FakeRawMode {
+    pub(crate) struct FakeRawMode {
         transcript: Transcript,
         enable_fails: bool,
     }
@@ -405,14 +456,14 @@ mod tests {
         }
     }
 
-    fn raw_mode(transcript: &Transcript) -> FakeRawMode {
+    pub(crate) fn raw_mode(transcript: &Transcript) -> FakeRawMode {
         FakeRawMode {
             transcript: transcript.clone(),
             enable_fails: false,
         }
     }
 
-    const KITTY: SessionOptions = SessionOptions {
+    pub(crate) const KITTY: SessionOptions = SessionOptions {
         kitty_keyboard: true,
     };
 
@@ -456,6 +507,89 @@ mod tests {
                 "<RAW OFF>",
             ),
         );
+    }
+
+    /// `suspend` is the teardown and `resume` is the setup, and between them
+    /// the terminal is exactly as the shell left it — which is what `$EDITOR`
+    /// and `Ctrl+Z` both need (m3-working-tree-undo-and-stash/05).
+    #[test]
+    fn suspend_undoes_every_mode_and_resume_puts_the_same_ones_back() {
+        let transcript = Transcript::default();
+        let session =
+            TerminalSession::new(transcript.clone(), raw_mode(&transcript), KITTY).unwrap();
+        let after_setup = transcript.rendered();
+
+        let suspended = session.suspend().expect("the terminal is given up");
+        let while_outside = transcript
+            .rendered()
+            .strip_prefix(&after_setup)
+            .map(str::to_owned)
+            .unwrap();
+        assert_eq!(
+            while_outside,
+            concat!(
+                "<ESC>[<1u",
+                "<ESC>[?25h",
+                "<ESC>[?1004l",
+                "<ESC>[?2004l",
+                "<ESC>[?1006l<ESC>[?1015l<ESC>[?1003l<ESC>[?1002l<ESC>[?1000l",
+                "<ESC>[?1049l",
+                "<RAW OFF>",
+            ),
+            "the alternate screen goes last, so the editor draws over the shell",
+        );
+
+        session.resume(suspended).expect("the terminal comes back");
+        let after_resume = transcript
+            .rendered()
+            .strip_prefix(&format!("{after_setup}{while_outside}"))
+            .map(str::to_owned)
+            .unwrap();
+        assert_eq!(
+            after_resume, after_setup,
+            "resume applies the same modes in the same order setup did",
+        );
+    }
+
+    /// Whether the kitty flag was on is remembered, not re-derived: the probe
+    /// that decided it ran once, at startup, and nobody kept the answer.
+    #[test]
+    fn resume_does_not_turn_on_a_mode_suspend_did_not_find() {
+        let transcript = Transcript::default();
+        let session = TerminalSession::new(
+            transcript.clone(),
+            raw_mode(&transcript),
+            SessionOptions::default(),
+        )
+        .unwrap();
+        let suspended = session.suspend().unwrap();
+        let before_resume = transcript.rendered();
+        session.resume(suspended).unwrap();
+        let after = transcript
+            .rendered()
+            .strip_prefix(&before_resume)
+            .map(str::to_owned)
+            .unwrap();
+        assert!(
+            !after.contains("<ESC>[>1u"),
+            "kitty keyboard was never on: {after}",
+        );
+    }
+
+    /// A session already restored has nothing to give up, and resuming that
+    /// nothing is not an error — it is what happens when the loop tears down
+    /// while an editor is somehow still open.
+    #[test]
+    fn suspending_an_already_restored_session_is_a_no_op() {
+        let transcript = Transcript::default();
+        let session =
+            TerminalSession::new(transcript.clone(), raw_mode(&transcript), KITTY).unwrap();
+        session.restore().unwrap();
+        let before = transcript.rendered();
+
+        let suspended = session.suspend().unwrap();
+        session.resume(suspended).unwrap();
+        assert_eq!(transcript.rendered(), before);
     }
 
     #[test]

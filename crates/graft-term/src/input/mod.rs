@@ -10,6 +10,7 @@
 //! probe has finished.
 
 mod decode;
+mod gate;
 mod mux;
 
 pub use mux::{InputMux, Inputs, ReplyWaiter, SEQUENCE_TIMEOUT};

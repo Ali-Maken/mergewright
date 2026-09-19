@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 use graft_core::event::Event;
 
 use super::decode::{Decoded, Decoder};
+use super::gate::{Gate, Ready, drain};
 
 /// How long an unfinished escape sequence waits for its remaining bytes
 /// before what has arrived is read as keys.
@@ -36,6 +37,7 @@ pub type Inputs = Receiver<io::Result<Event>>;
 pub struct InputMux {
     waiters: Arc<Mutex<Vec<Sender<Vec<u8>>>>>,
     outlet: Arc<Mutex<Outlet>>,
+    gate: Arc<Gate>,
 }
 
 /// Where decoded events go: the current [`Inputs`], or a queue for the next
@@ -98,19 +100,47 @@ impl InputMux {
     /// Start reading `input` on a thread of its own.
     pub fn start(input: OwnedFd) -> io::Result<(Self, Inputs)> {
         let (sender, inputs) = mpsc::channel();
+        let (gate, wake) = Gate::new()?;
         let mux = Self {
             waiters: Arc::new(Mutex::new(Vec::new())),
             outlet: Arc::new(Mutex::new(Outlet {
                 sender: Some(sender),
                 held: Vec::new(),
             })),
+            gate: Arc::new(gate),
         };
         let waiters = Arc::clone(&mux.waiters);
         let outlet = Arc::clone(&mux.outlet);
+        let gate = Arc::clone(&mux.gate);
         thread::Builder::new()
             .name("graft-input".to_owned())
-            .spawn(move || read_until_done(File::from(input), &waiters, &outlet))?;
+            .spawn(move || read_until_done(File::from(input), &waiters, &outlet, &gate, &wake))?;
         Ok((mux, inputs))
+    }
+
+    /// Take the reader off the terminal's input entirely, and wait until it
+    /// is off (m3-working-tree-undo-and-stash/05).
+    ///
+    /// Stronger than [`InputMux::hold`], and for a different reason: `hold`
+    /// stops events reaching an [`Inputs`] while the reader keeps draining
+    /// the terminal, which is right between two runs of the loop and wrong
+    /// when the terminal is being handed to another program. After this, the
+    /// bytes a user types are still in the kernel's buffer when `$EDITOR`
+    /// asks for them.
+    ///
+    /// Undone by [`InputMux::resume`], which the caller owes it — a mux left
+    /// paused delivers no keys ever again.
+    ///
+    /// # Errors
+    /// The reader could not be woken to be told. The caller must keep the
+    /// terminal: the reader is still reading it.
+    pub fn pause(&self) -> io::Result<()> {
+        self.gate.pause()
+    }
+
+    /// Put the reader back on the terminal after [`InputMux::pause`].
+    pub fn resume(&self) {
+        self.gate.resume();
     }
 
     /// Open a fresh [`Inputs`] and make it the one that gets every event from
@@ -199,26 +229,43 @@ impl ReplyWaiter {
     }
 }
 
-fn read_until_done(mut input: File, waiters: &Mutex<Vec<Sender<Vec<u8>>>>, outlet: &Mutex<Outlet>) {
+fn read_until_done(
+    mut input: File,
+    waiters: &Mutex<Vec<Sender<Vec<u8>>>>,
+    outlet: &Mutex<Outlet>,
+    gate: &Gate,
+    wake: &OwnedFd,
+) {
     let fd = input.as_raw_fd();
+    let wake_fd = wake.as_raw_fd();
     let mut decoder = Decoder::new();
     let mut chunk = [0u8; 4096];
     let mut finished = Vec::new();
     let mut last_byte = Instant::now();
     loop {
+        // Before the wait, not after: a reader that parks here is not in
+        // `poll` on the terminal either, so nothing it does can disturb the
+        // program the terminal has been handed to.
+        gate.wait_while_paused();
         let wait = decoder
             .is_holding()
             .then(|| SEQUENCE_TIMEOUT.saturating_sub(last_byte.elapsed()));
-        let failure = match wait_for_input(fd, wait) {
+        let failure = match wait_for_input(fd, wake_fd, wait) {
             // A signal (SIGWINCH, most often) cut the wait short. The wait is
             // recomputed from the clock, so retrying loses no time.
             Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
             Err(error) => Some(error),
-            Ok(false) => {
+            // The gate opened or shut. Round the loop: the check at the top
+            // decides which, and nothing was read in the meantime.
+            Ok(Ready::Wake) => continue,
+            Ok(Ready::Timeout) => {
                 decoder.flush(&mut finished);
                 None
             }
-            Ok(true) => match input.read(&mut chunk) {
+            // Paused between the poll and here: the bytes `poll` saw belong
+            // to whoever has the terminal now, so they stay in the buffer.
+            Ok(Ready::Input) if gate.is_paused() => continue,
+            Ok(Ready::Input) => match input.read(&mut chunk) {
                 Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
                 Err(error) => Some(error),
                 Ok(0) => {
@@ -264,33 +311,48 @@ fn route(
     }
 }
 
-/// Wait for `fd` to have something to read, up to `timeout` (`None`: for as
-/// long as it takes). `false` means the timeout won.
+/// Wait until the terminal `fd` has something to read, the self-pipe `wake`
+/// fires, or `timeout` runs out (`None`: for as long as it takes).
 #[allow(
     unsafe_code,
     reason = "poll(2) has no safe wrapper in the standard library; ADR-0013 \
               covers this call and its soundness argument"
 )]
-fn wait_for_input(fd: RawFd, timeout: Option<Duration>) -> io::Result<bool> {
+fn wait_for_input(fd: RawFd, wake: RawFd, timeout: Option<Duration>) -> io::Result<Ready> {
     // `poll` takes `int` milliseconds, -1 for no limit. Rounded up, so a wait
     // of a fraction of a millisecond does not spin; clamped, because nothing
     // here waits 24 days.
     let milliseconds = timeout.map_or(-1, |wait| {
         i32::try_from(wait.as_micros().div_ceil(1000)).unwrap_or(i32::MAX)
     });
-    let mut watched = libc::pollfd {
-        fd,
-        events: libc::POLLIN,
-        revents: 0,
-    };
-    // SAFETY: the pointer is to one live, fully initialised `pollfd`, the
-    // count says one, and `poll` writes only `revents` back. ADR-0013.
-    let ready = unsafe { libc::poll(&raw mut watched, 1, milliseconds) };
-    match ready {
-        0 => Ok(false),
-        count if count > 0 => Ok(true),
-        _ => Err(io::Error::last_os_error()),
+    let mut watched = [
+        libc::pollfd {
+            fd,
+            events: libc::POLLIN,
+            revents: 0,
+        },
+        libc::pollfd {
+            fd: wake,
+            events: libc::POLLIN,
+            revents: 0,
+        },
+    ];
+    // SAFETY: the pointer is to a live, fully initialised array of two
+    // `pollfd`s, the count says two, and `poll` writes only `revents` back.
+    // ADR-0013.
+    let ready = unsafe { libc::poll(watched.as_mut_ptr(), 2, milliseconds) };
+    if ready < 0 {
+        return Err(io::Error::last_os_error());
     }
+    if ready == 0 {
+        return Ok(Ready::Timeout);
+    }
+    if watched[1].revents != 0 {
+        // The byte carries nothing; it is the wake itself that matters.
+        drain(wake);
+        return Ok(Ready::Wake);
+    }
+    Ok(Ready::Input)
 }
 
 #[cfg(test)]

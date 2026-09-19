@@ -16,13 +16,15 @@
 //!
 //! Split by concern (m1-the-graph/71): [`startup`] builds the terminal
 //! session and runs [`run`]; [`headless`] is the no-terminal path for a
-//! piped stdout; [`running`] is the loop's body ([`pump`]). This file keeps
-//! what both startup and headless share: the wake types, and
-//! `opening_repository`, the state both paths start from.
+//! piped stdout; [`running`] is the loop's body ([`pump`]); [`outside`] hands
+//! the terminal to `$EDITOR` and takes it back. This file keeps what both
+//! startup and headless share: the wake types, and `opening_repository`, the
+//! state both paths start from.
 
 mod graphics;
 mod headless;
 pub mod input;
+pub mod outside;
 pub mod redetect;
 mod row_clear;
 mod running;
