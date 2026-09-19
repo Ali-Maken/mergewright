@@ -91,6 +91,7 @@ The original text stands below as the brief's reasoning.
 **M7 design pass must carry** (user, 2026-09-17): a ticket for background layout advance while idle (KNOWN_GAPS "Layout advances only as far as the screen asks") whose scope includes **finding the cause** of the unexplained 17–18 ms release key. Not a documented limitation; don't push it a fifth time.
 
 **Naming (an M8 job):** pick a name in the style of Sublime Merge or Araxis Merge (a naming-pattern reference only: Araxis Merge is a diff/merge tool, not a Git client, and is not prior art for this project), with no "git" in it (Git's trademark policy forbids "git" inside names like "tergit"). Starting shortlist: Tributary (command `trib`) and Thicket passed the clash check on 2026-09-11. Graft is taken.
+**Re-checked 2026-09-19** (`docs/naming-research.md`): **the 2026-09-11 check was wrong about Thicket** — `taylorthurlow/thicket` is already "a better one-line git log", thicket.dev is a live OCaml tool and the crate is taken. **Tributary holds up**, and is the researched recommendation with command `trib`. Runners-up Batten and Piton. Trademark is **unverified** — every public trademark search refused automated access; a human must run USPTO classes 9 and 42 before the name is used. No GitHub org is free for any finalist, so a variant must be registered.
 
 **Every 2–3 milestones** (after M2, M5 and M7), the conductor also runs `/improve-codebase-architecture`.
 
