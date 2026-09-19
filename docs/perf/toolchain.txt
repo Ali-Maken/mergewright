@@ -40,3 +40,18 @@ Fair comparison, each runner warmed first, same tree, 1636 tests:
 sccache still unjudged: a warm tree executes no compile requests. Its value is
 the cold build each parallel worktree pays (ADR-0036). Measure with
 `scripts/toolchain-bench.sh --cold` in an idle window before M4 starts.
+
+## sccache: measured and REJECTED, 2026-09-19
+
+Cold build of all targets (test binaries included) into a fresh CARGO_TARGET_DIR,
+after a previous build had already populated sccache:
+
+  with sccache (cache warm)   26 s   — 225 requests, 222 misses, 0 hits, 0.00%
+  without sccache             27 s
+
+No measurable benefit and no cache hits at all. Not adopted. The binary stays
+installed but nothing sets RUSTC_WRAPPER.
+
+This also settles the ADR-0036 worry it was meant to answer: a parallel builder's
+own CARGO_TARGET_DIR costs about 27 s of cold build, which is negligible against
+a group's runtime. Worktree isolation is cheap; it does not need a shared cache.
