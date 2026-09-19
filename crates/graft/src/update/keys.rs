@@ -17,8 +17,10 @@ use super::state::{AppState, Quit, Status};
 ///
 /// The detail pane answers its keys first (`Enter` opens it, ADR-0023).
 pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
-    // The copy notice lasts until the next key, whatever that key does.
-    if matches!(next.status, Status::Copied { .. }) {
+    // The copy notice lasts until the next key, whatever that key does, and
+    // so does a finished write's `<description> done` line — both are
+    // acknowledgements of something the user just did, not state.
+    if matches!(next.status, Status::Copied { .. } | Status::Done(_)) {
         next.status = Status::Ready;
     }
     // So does the commit-graph written line.
@@ -98,7 +100,11 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
 /// `r`: refresh the repository from disk, cancelling whatever walk was
 /// already in flight — it would otherwise sit waiting for row requests that
 /// now go to its replacement.
-fn refresh_key(next: &mut AppState, commands: &mut Vec<Command>) {
+///
+/// Also `super::operate`'s `Refresh::Everything`: a write that moved refs
+/// leaves exactly what `Ctrl+R` rebuilds stale, and two hand-written lists of
+/// what "everything" means drift (m3/04 review M8).
+pub(super) fn refresh_key(next: &mut AppState, commands: &mut Vec<Command>) {
     let AppState {
         detail, local_jobs, ..
     } = &mut *next;

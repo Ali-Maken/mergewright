@@ -363,14 +363,30 @@ fn draw_confirm(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) 
     );
 }
 
-/// The footer's notice: `y`'s copy line until the next key, else `F3`'s
+/// The footer's notice: what is happening or just happened, else `F3`'s
 /// renderer line while an override is on. `None` otherwise, so the key
 /// hints show.
+///
+/// `Status::Failed` is not here: a failure is the graph screen's `problem`
+/// line, which is louder and does not vanish on the next key.
 fn footer_notice(state: &AppState, tier: RenderingTier) -> Option<SanitizedText> {
-    // `y`'s notice is the newer news: it lasts one key, the override stays.
-    // Worded as what was sent; whether the terminal honoured it is unknowable.
-    if let Status::Copied { short } = &state.status {
-        return Some(sanitize_line(&format!("{short}… → clipboard (osc 52)")));
+    match &state.status {
+        // A write is running. The only acknowledgement `Space` gives, and the
+        // only thing that says why the other write keys do nothing meanwhile
+        // (m3/04 review M3).
+        Status::Busy(description) => {
+            return Some(sanitize_line(&format!("{description}…")));
+        }
+        // It finished. Lasts until the next key, like the copy line.
+        Status::Done(description) => {
+            return Some(sanitize_line(&format!("{description} ✓")));
+        }
+        // `y`'s notice, worded as what was sent: whether the terminal honoured
+        // it is unknowable.
+        Status::Copied { short } => {
+            return Some(sanitize_line(&format!("{short}… → clipboard (osc 52)")));
+        }
+        Status::Ready | Status::Failed(_) => {}
     }
     // Only below the terminal's own tier: `F3` clears the override when it
     // cycles back to the top (m1-the-graph/33).

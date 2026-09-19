@@ -324,6 +324,7 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             // why. A panicking job says so in the same place — it is still a
             // failure, and the crash report's path rides along with it.
             next.status = Status::Failed(format!("{id} failed: {failure}"));
+            commands.extend(operate::write_job_ended(next, id));
         }
         Event::JobFinished(id) => {
             // A sort that finished without producing its order: nothing
@@ -339,27 +340,38 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             // on the status line is stale. Nothing keyed by job id is kept yet,
             // which is also what makes a result for a job whose screen has gone
             // harmless: there is nothing for it to overwrite.
-            next.status = Status::Ready;
-        }
-        // Cancellation is not a failure and not news: the application asked for
-        // it. The status line keeps whatever it was already saying.
-        Event::JobCancelled(id) => {
-            // A walk cancelled by anything other than `Esc` — shutdown, say —
-            // must not leave the screen waiting for it either.
-            if next.awaiting == Some(id) {
-                next.awaiting = None;
-                history::set_phase(next, Phase::Cancelled);
-                history::give_up_promotion(next, commands);
-            }
-            if next.promoting == Some(id) {
-                history::give_up_promotion(next, commands);
+            //
+            // One exception: a write still in flight owns the line. Only the
+            // history walk ends in `JobFinished` (every other job produces a
+            // `Product`), and a walk finishing says nothing about a write
+            // that has not answered yet — wiping `<description>` there would
+            // leave the write keys dead with nothing on screen saying why.
+            if !matches!(next.status, Status::Busy(_)) {
+                next.status = Status::Ready;
             }
         }
+        Event::JobCancelled(id) => job_cancelled(next, commands, id),
         Event::Mouse(mouse) => mouse::mouse_event(next, commands, mouse),
         // Nothing is bound to these yet. They reach `update` so that the
         // tickets that need them have somewhere obvious to add the handling.
         Event::Paste(_) | Event::FocusGained | Event::FocusLost => {}
     }
+}
+
+/// A job was cancelled. Not a failure and not news — the application asked
+/// for it — so the status line keeps whatever it was already saying.
+fn job_cancelled(next: &mut AppState, commands: &mut Vec<Command>, id: graft_core::job::JobId) {
+    // A walk cancelled by anything other than `Esc` — shutdown, say — must
+    // not leave the screen waiting for it either.
+    if next.awaiting == Some(id) {
+        next.awaiting = None;
+        history::set_phase(next, Phase::Cancelled);
+        history::give_up_promotion(next, commands);
+    }
+    if next.promoting == Some(id) {
+        history::give_up_promotion(next, commands);
+    }
+    commands.extend(operate::write_job_ended(next, id));
 }
 
 /// A search or a commit-graph job ended without the answer it was for;

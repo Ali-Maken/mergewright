@@ -25,6 +25,45 @@ use super::events::Command;
 use super::state::{AppState, Status};
 use crate::jobs::operate::Operated;
 
+/// A job ended without a `Product::Operated` — it panicked, the pool
+/// stopped it, or it was cancelled. Nothing else clears `AppState::operating`,
+/// so without this every write key stays a no-op for the rest of the session
+/// and the only way out is quitting (m3/04 review M4).
+///
+/// The working tree is re-read as well: a job that died part-way through a
+/// plan may have written before it did.
+pub(super) fn write_job_ended(state: &mut AppState, id: JobId) -> Vec<Command> {
+    if state.operating != Some(id) {
+        return Vec::new();
+    }
+    state.operating = None;
+    let mut commands = vec![Command::ReadWorkingTree];
+    let AppState {
+        detail, local_jobs, ..
+    } = &mut *state;
+    commands.extend(detail.refresh(&mut || local_jobs.next_id()));
+    commands
+}
+
+/// Queue one write, and say so.
+///
+/// One at a time (`AppState::operating`), and the status line carries
+/// `<description>` from the moment the key is pressed rather than from
+/// whenever the job thread gets going. Without it `Space` gives no
+/// acknowledgement at all and a second `Space` looks like a dead key rather
+/// than a write already running (m3/04 review M3).
+pub(super) fn launch(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    op: Operation,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    let id = next_id();
+    next.operating = Some(id);
+    next.status = Status::Busy(op.describe());
+    commands.push(Command::Operate(id, Box::new(op)));
+}
+
 /// A write is already running: every other write key is a no-op.
 #[must_use]
 pub fn operation_in_flight(state: &AppState) -> bool {
@@ -115,9 +154,7 @@ pub fn stage_selected(
         WorkingTreeSection::Staged => Operation::Unstage(target),
         WorkingTreeSection::Unstaged | WorkingTreeSection::Untracked => Operation::Stage(target),
     };
-    let id = next_id();
-    next.operating = Some(id);
-    commands.push(Command::Operate(id, Box::new(op)));
+    launch(next, commands, op, next_id);
     true
 }
 
@@ -227,6 +264,24 @@ fn patch_for(
         .map_err(|error| patch_reason(verb, &error))
 }
 
+/// Why a hunk-level write is refused in the side-by-side view, or `None` in
+/// the unified view.
+///
+/// `graft_ui::detail_pane::side_by_side` draws no line cursor — there is no
+/// single row to put one on once old and new sit in two columns. Acting on
+/// the cursor anyway would write a hunk the user cannot see, which is the
+/// same fault as review C1. Refusing in words and naming the way out beats
+/// both acting unseen and a key that does nothing (m3/04 review M5).
+fn side_by_side_refusal(state: &AppState, verb: &str) -> Option<String> {
+    if state.detail.mode == graft_ui::detail::DiffMode::SideBySide {
+        Some(format!(
+            "side by side has no line cursor \u{2014} press v for the unified view to {verb} a hunk"
+        ))
+    } else {
+        None
+    }
+}
+
 /// `Space`/`s` with the diff region focused: stage or unstage the hunk or
 /// line under the line cursor. Direction comes from the file's section, the
 /// same rule the file list follows.
@@ -250,6 +305,10 @@ pub fn stage_at_diff_cursor(
     };
     if section == WorkingTreeSection::Untracked {
         return stage_selected(next, commands, next_id);
+    }
+    if let Some(reason) = side_by_side_refusal(next, "stage") {
+        next.status = Status::Failed(reason);
+        return true;
     }
     let Some(path) = selected_path(next) else {
         return false;
@@ -280,9 +339,7 @@ pub fn stage_at_diff_cursor(
     } else {
         Operation::Stage(target)
     };
-    let id = next_id();
-    next.operating = Some(id);
-    commands.push(Command::Operate(id, Box::new(op)));
+    launch(next, commands, op, next_id);
     true
 }
 
@@ -298,6 +355,10 @@ pub fn request_discard_at_diff_cursor(next: &mut AppState) -> bool {
     };
     if section == WorkingTreeSection::Untracked {
         return request_discard(next);
+    }
+    if let Some(reason) = side_by_side_refusal(next, "discard") {
+        next.status = Status::Failed(reason);
+        return true;
     }
     let Some(path) = selected_path(next) else {
         return false;
@@ -373,9 +434,26 @@ fn discard_patch_command(side: PatchSide) -> String {
     }
 }
 
-/// `Ctrl+A`: stage every path `AppState::working_tree` lists — staged,
-/// unstaged and untracked alike (`git add` on an already-staged path is a
-/// no-op). `false` while a write is running or nothing is dirty.
+/// Whether `Ctrl+A` stages this entry.
+///
+/// Not every dirty path: `git add` on a path whose only change is a **staged
+/// deletion** — or a staged rename's vanished old name, which
+/// `graft_ops::operation::stage::pathspec` adds alongside the new one — is
+/// `fatal: pathspec '<p>' did not match any files`, exit 128, nothing staged
+/// at all. One such entry would make `Ctrl+A` fail outright rather than stage
+/// the rest (m3/04 review M2, verified against git 2.54).
+///
+/// An unmerged path is skipped for a different reason: `git add` on a
+/// conflicted file marks it resolved with the conflict markers still inside.
+/// Resolving a conflict is M6's, and it is not something `Ctrl+A` should do
+/// by accident.
+fn staged_by_stage_all(entry: &StatusEntry) -> bool {
+    !entry.unmerged && (entry.unstaged.is_some() || entry.untracked)
+}
+
+/// `Ctrl+A`: stage every unstaged and untracked path
+/// `AppState::working_tree` lists. `false` while a write is running, or when
+/// nothing there is stageable.
 pub fn stage_all(
     next: &mut AppState,
     commands: &mut Vec<Command>,
@@ -393,14 +471,18 @@ pub fn stage_all(
     let paths: Vec<PathBuf> = status
         .entries
         .iter()
+        .filter(|entry| staged_by_stage_all(entry))
         .map(|entry| entry.path.clone())
         .collect();
-    let id = next_id();
-    next.operating = Some(id);
-    commands.push(Command::Operate(
-        id,
-        Box::new(Operation::Stage(Target::Paths(paths))),
-    ));
+    if paths.is_empty() {
+        return false;
+    }
+    launch(
+        next,
+        commands,
+        Operation::Stage(Target::Paths(paths)),
+        next_id,
+    );
     true
 }
 
@@ -419,21 +501,76 @@ pub fn request_discard(next: &mut AppState) -> bool {
         return false;
     };
     let command = discard_command(&path, entry);
+    let counts = selected_counts(next);
+    let entry = entry.clone();
     let shown = path.display();
-    let view = graft_ui::confirm::ConfirmView::new(
-        format!("Discard changes to {shown}?"),
-        vec![
-            "This throws away the change in the working tree (and the".to_string(),
-            "index, if staged). Graft keeps a backup first, so `u` can".to_string(),
-            "undo it afterwards.".to_string(),
-        ],
-        command,
-    );
+    let question = if entry.untracked {
+        format!("Delete {shown}?")
+    } else {
+        format!("Discard changes to {shown}?")
+    };
+    let mut consequence = discard_consequence(&entry, counts);
+    consequence.push("Graft keeps a backup first, so `u` can undo it afterwards.".to_string());
+    let view = graft_ui::confirm::ConfirmView::new(question, consequence, command);
     next.confirm = Some(PendingConfirm {
         view,
         then: Operation::Discard(Target::Paths(vec![path])),
     });
     true
+}
+
+/// The line counts of the file under the files cursor, as the pane's own file
+/// list reports them: `(added, removed)`, or `None` for a binary file or
+/// before the list has arrived.
+fn selected_counts(state: &AppState) -> Option<(u32, u32)> {
+    let list = state.detail.list.as_ref()?;
+    let entry = state.detail.selected_entry()?;
+    let file = list.files.get(usize::try_from(entry).ok()?)?;
+    Some((file.added?, file.removed?))
+}
+
+/// What a whole-file discard actually does to this path, in plain words.
+///
+/// Three classes, three different consequences, and the one boilerplate line
+/// this used to carry was wrong for two of them (m3/04 review M6):
+///
+/// - **untracked** - `git clean -f` *deletes* the file. A box that said
+///   "throws away the change" never used the word the user needed.
+/// - **staged and unstaged** - `plan_discard` runs
+///   `restore --staged --worktree --source=HEAD`, so *both* changes go, not
+///   just the one the UNSTAGED row is showing. "and the index, if staged"
+///   hedged about something we already know.
+/// - **staged only / unstaged only** - the one change goes, and the box says
+///   which side it comes back from.
+///
+/// PROMPT.md section 3 asks for the consequence named. The exact command is
+/// the line below this one, but this is the line that gets read.
+fn discard_consequence(entry: &StatusEntry, counts: Option<(u32, u32)>) -> Vec<String> {
+    let lines = match counts {
+        Some((added, removed)) => format!(" (+{added} \u{2212}{removed})"),
+        None => String::new(),
+    };
+    if entry.untracked {
+        let size = match counts {
+            Some((added, _)) => format!(" \u{2014} {added} lines"),
+            None => String::new(),
+        };
+        return vec![format!("Deletes the file from the working tree{size}.")];
+    }
+    if entry.is_staged() && entry.is_unstaged() {
+        return vec![format!(
+            "Both the staged and the unstaged change go back to HEAD{lines}."
+        )];
+    }
+    if entry.is_staged() {
+        vec![format!(
+            "The staged change goes back to how HEAD has it{lines}."
+        )]
+    } else {
+        vec![format!(
+            "The change in the working tree goes back to how the index has it{lines}."
+        )]
+    }
 }
 
 /// The command the confirm box shows: what `graft_ops::operation::stage`
@@ -477,25 +614,50 @@ pub fn operated(
             ));
             refresh(state, applied.refresh, next_id)
         }
-        Operated::Failed(error) => {
+        Operated::Failed {
+            error,
+            refresh: what,
+        } => {
             state.status = Status::Failed(error);
-            Vec::new()
+            // A failure is not proof the screen is still true: `ApplyError::Git`
+            // means git ran part-way and journaled the entry `Aborted`, so the
+            // file list, the diff bytes and the header counts describe a
+            // repository that has already moved. The job decides how wide the
+            // re-read is; `None` is only the cases where nothing was written
+            // (m3/04 review M1).
+            match what {
+                Some(what) => refresh(state, what, next_id),
+                None => Vec::new(),
+            }
         }
     }
 }
 
+/// Re-read what the write changed.
+///
+/// [`Refresh::Everything`] means refs moved, which is exactly the state
+/// `Ctrl+R` rebuilds — so it runs `Ctrl+R`'s own path rather than a
+/// hand-written subset of it. The subset was missing the walk cancellation
+/// (a second history walk started while the first still ran), the repository
+/// re-open and the Mistake Radar's default-branch reset, which goes stale the
+/// moment a commit moves the tip (m3/04 review M8).
 fn refresh(
     state: &mut AppState,
     what: Refresh,
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
-    let mut commands = vec![Command::ReadWorkingTree];
-    commands.extend(state.detail.refresh(next_id));
-    if what == Refresh::Everything {
-        commands.push(Command::ReadHistory(graft_git::history::Order::Topological));
-        commands.push(Command::ReadRefs);
+    match what {
+        Refresh::WorkingTree => {
+            let mut commands = vec![Command::ReadWorkingTree];
+            commands.extend(state.detail.refresh(next_id));
+            commands
+        }
+        Refresh::Everything => {
+            let mut commands = Vec::new();
+            super::keys::refresh_key(state, &mut commands);
+            commands
+        }
     }
-    commands
 }
 
 #[cfg(test)]
@@ -509,6 +671,38 @@ mod tests {
 
     use super::*;
     use crate::update::detail::DetailSpec;
+
+    /// An `Applied` naming `description`, with `refresh` as its scope. Only
+    /// those two fields are read by `operated`; the rest is a plausible
+    /// journal entry.
+    fn applied(description: &str, refresh: Refresh) -> graft_ops::apply::Applied {
+        use graft_core::journal::{
+            EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches,
+        };
+        graft_ops::apply::Applied {
+            entry: JournalEntry {
+                id: EntryId::new(1, [0; 10]),
+                at_unix_ms: 1,
+                kind: OperationKind::Stage,
+                description: description.to_owned(),
+                status: EntryStatus::Committed,
+                touches: Touches::default(),
+                head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+                head_after: None,
+                refs_before: std::collections::BTreeMap::new(),
+                refs_after: std::collections::BTreeMap::new(),
+                index_before: None,
+                index_after: None,
+                worktree_before: None,
+                worktree_after: None,
+                backup_ref: None,
+                pins: Vec::new(),
+                commands: Vec::new(),
+                reverses: None,
+            },
+            refresh,
+        }
+    }
 
     /// A changes pane holding one section with one file row under it, the
     /// cursor on the file row, and `entry` behind `AppState::working_tree` —
@@ -1102,6 +1296,168 @@ mod tests {
         assert_eq!(pending.view.cursor, graft_ui::confirm::Choice::Cancel);
     }
 
+    fn deleted_and_staged(path: &str) -> StatusEntry {
+        StatusEntry {
+            path: path.into(),
+            original_path: None,
+            staged: Some(Change::Deleted),
+            unstaged: None,
+            untracked: false,
+            unmerged: false,
+            submodule: false,
+        }
+    }
+
+    fn unmerged_entry(path: &str) -> StatusEntry {
+        StatusEntry {
+            path: path.into(),
+            original_path: None,
+            staged: None,
+            unstaged: None,
+            untracked: false,
+            unmerged: true,
+            submodule: false,
+        }
+    }
+
+    #[test]
+    fn stage_all_skips_the_paths_git_add_would_refuse() {
+        // m3/04 review M2: `git add` on a staged deletion is
+        // `fatal: pathspec ... did not match any files`, exit 128, nothing
+        // staged — so one such entry used to make the whole `Ctrl+A` fail.
+        // An unmerged path is skipped too: `git add` there marks the conflict
+        // resolved with the markers still in the file.
+        let mut state = state_with(
+            &[("src/a.rs".into(), WorkingTreeSection::Unstaged)],
+            vec![
+                deleted_and_staged("gone.rs"),
+                unmerged_entry("conflict.rs"),
+                unstaged_entry("src/a.rs"),
+                untracked_entry("new.txt"),
+            ],
+            1,
+        );
+        let mut commands = Vec::new();
+        assert!(stage_all(&mut state, &mut commands, &mut ids()));
+        let Command::Operate(_, op) = &commands[0] else {
+            panic!("expected Operate");
+        };
+        assert_eq!(
+            **op,
+            Operation::Stage(Target::Paths(vec!["src/a.rs".into(), "new.txt".into()]))
+        );
+    }
+
+    #[test]
+    fn stage_all_refuses_when_nothing_left_is_stageable() {
+        let mut state = state_with(
+            &[("gone.rs".into(), WorkingTreeSection::Staged)],
+            vec![deleted_and_staged("gone.rs")],
+            1,
+        );
+        let mut commands = Vec::new();
+        assert!(!stage_all(&mut state, &mut commands, &mut ids()));
+        assert!(commands.is_empty());
+        assert_eq!(state.operating, None);
+    }
+
+    #[test]
+    fn side_by_side_refuses_a_hunk_write_instead_of_acting_unseen() {
+        // m3/04 review M5: the side-by-side view draws no line cursor, so a
+        // `Space` there would stage a hunk the user cannot see.
+        for section in [WorkingTreeSection::Unstaged, WorkingTreeSection::Staged] {
+            let mut state = state_on_diff(section, one_pair_diff(), 1);
+            state.detail.mode = graft_ui::detail::DiffMode::SideBySide;
+            let mut commands = Vec::new();
+            assert!(stage_at_diff_cursor(&mut state, &mut commands, &mut ids()));
+            assert!(commands.is_empty(), "{commands:?}");
+            assert_eq!(state.operating, None);
+            let Status::Failed(said) = &state.status else {
+                panic!("expected a refusal, got {:?}", state.status);
+            };
+            assert!(said.contains("press v"), "{said}");
+
+            let mut state = state_on_diff(section, one_pair_diff(), 1);
+            state.detail.mode = graft_ui::detail::DiffMode::SideBySide;
+            assert!(request_discard_at_diff_cursor(&mut state));
+            assert!(state.confirm.is_none());
+            let Status::Failed(said) = &state.status else {
+                panic!("expected a refusal, got {:?}", state.status);
+            };
+            assert!(said.contains("press v"), "{said}");
+        }
+    }
+
+    #[test]
+    fn the_discard_box_names_deletion_for_an_untracked_file() {
+        // m3/04 review M6: `git clean -f` deletes it. The box never said so.
+        let mut state = state_on(
+            "new.txt",
+            untracked_entry("new.txt"),
+            WorkingTreeSection::Untracked,
+        );
+        assert!(request_discard(&mut state));
+        let pending = state.confirm.as_ref().expect("a box opened");
+        assert_eq!(pending.view.title, "Delete new.txt?");
+        let said = pending.view.message.join(" ");
+        assert!(said.contains("Deletes the file"), "{said}");
+        assert!(said.contains("backup"), "{said}");
+    }
+
+    #[test]
+    fn the_discard_box_says_both_changes_go_for_a_file_staged_and_unstaged() {
+        // m3/04 review M6: from the UNSTAGED row the pane shows only the
+        // unstaged diff, but `plan_discard` runs
+        // `restore --staged --worktree --source=HEAD` and both go.
+        let both = StatusEntry {
+            path: "src/a.rs".into(),
+            original_path: None,
+            staged: Some(Change::Modified),
+            unstaged: Some(Change::Modified),
+            untracked: false,
+            unmerged: false,
+            submodule: false,
+        };
+        let mut state = state_on("src/a.rs", both, WorkingTreeSection::Unstaged);
+        assert!(request_discard(&mut state));
+        let pending = state.confirm.as_ref().expect("a box opened");
+        let said = pending.view.message.join(" ");
+        assert!(
+            said.contains("Both the staged and the unstaged change"),
+            "{said}"
+        );
+        // The counts come from the pane's own file list, not from prose.
+        assert!(said.contains("(+1 \u{2212}0)"), "{said}");
+    }
+
+    #[test]
+    fn a_dead_operate_job_does_not_take_the_write_keys_with_it() {
+        // m3/04 review M4: nothing but `Product::Operated` cleared
+        // `operating`, so one panicked or cancelled write left every write
+        // key a no-op until the user quit.
+        for ended in [true, false] {
+            let mut state = state_on(
+                "src/a.rs",
+                unstaged_entry("src/a.rs"),
+                WorkingTreeSection::Unstaged,
+            );
+            let id = JobId::new(3);
+            state.operating = Some(id);
+            let commands = write_job_ended(&mut state, if ended { id } else { JobId::new(9) });
+            if ended {
+                assert_eq!(state.operating, None);
+                assert!(commands.contains(&Command::ReadWorkingTree), "{commands:?}");
+                // Every write key's first line is this check, so clearing it
+                // is exactly what brings them back.
+                assert!(!operation_in_flight(&state));
+            } else {
+                // A different job ending says nothing about the write.
+                assert_eq!(state.operating, Some(id));
+                assert!(commands.is_empty());
+            }
+        }
+    }
+
     #[test]
     fn operated_drops_a_stale_answer() {
         let mut state = state_on(
@@ -1113,7 +1469,10 @@ mod tests {
         let commands = operated(
             &mut state,
             JobId::new(2),
-            Operated::Failed("boom".into()),
+            Operated::Failed {
+                error: "boom".into(),
+                refresh: Some(Refresh::WorkingTree),
+            },
             &mut ids(),
         );
         assert!(commands.is_empty());
@@ -1121,7 +1480,11 @@ mod tests {
     }
 
     #[test]
-    fn operated_failed_reports_the_error_and_asks_for_no_refresh() {
+    fn operated_failed_part_way_reports_the_error_and_still_refreshes() {
+        // m3/04 review M1. `ApplyError::Git` is "git ran part-way, journaled
+        // `Aborted`": the file list and the diff bytes on screen no longer
+        // describe the repository, so the next `Space` would cut a patch from
+        // stale bytes. The failure is shown *and* the pane re-reads.
         let mut state = state_on(
             "src/a.rs",
             unstaged_entry("src/a.rs"),
@@ -1129,9 +1492,107 @@ mod tests {
         );
         let id = JobId::new(5);
         state.operating = Some(id);
-        let commands = operated(&mut state, id, Operated::Failed("boom".into()), &mut ids());
-        assert!(commands.is_empty());
+        let commands = operated(
+            &mut state,
+            id,
+            Operated::Failed {
+                error: "boom".into(),
+                refresh: Some(Refresh::WorkingTree),
+            },
+            &mut ids(),
+        );
+        assert!(commands.contains(&Command::ReadWorkingTree), "{commands:?}");
+        assert!(
+            !commands
+                .iter()
+                .any(|command| matches!(command, Command::ReadHistory(_))),
+            "a working-tree failure must not restart the walk: {commands:?}"
+        );
         assert_eq!(state.operating, None);
         assert_eq!(state.status, Status::Failed("boom".into()));
+    }
+
+    #[test]
+    fn operated_failed_before_anything_ran_leaves_the_screen_alone() {
+        // A refusal writes nothing, so there is nothing to re-read; the job
+        // says so with `refresh: None` rather than the pane guessing.
+        let mut state = state_on(
+            "src/a.rs",
+            unstaged_entry("src/a.rs"),
+            WorkingTreeSection::Unstaged,
+        );
+        let id = JobId::new(5);
+        state.operating = Some(id);
+        let commands = operated(
+            &mut state,
+            id,
+            Operated::Failed {
+                error: "nothing to do".into(),
+                refresh: None,
+            },
+            &mut ids(),
+        );
+        assert!(commands.is_empty(), "{commands:?}");
+        assert_eq!(state.operating, None);
+        assert_eq!(state.status, Status::Failed("nothing to do".into()));
+    }
+
+    #[test]
+    fn operated_done_refreshes_the_working_tree_without_restarting_the_walk() {
+        let mut state = state_on(
+            "src/a.rs",
+            unstaged_entry("src/a.rs"),
+            WorkingTreeSection::Unstaged,
+        );
+        let id = JobId::new(7);
+        state.operating = Some(id);
+        let commands = operated(
+            &mut state,
+            id,
+            Operated::Done(applied("stage src/a.rs", Refresh::WorkingTree)),
+            &mut ids(),
+        );
+        assert_eq!(state.status, Status::Done("stage src/a.rs".into()));
+        assert!(commands.contains(&Command::ReadWorkingTree), "{commands:?}");
+        assert!(
+            !commands
+                .iter()
+                .any(|command| matches!(command, Command::ReadHistory(_))),
+            "{commands:?}"
+        );
+    }
+
+    #[test]
+    fn operated_done_on_everything_emits_the_same_commands_as_ctrl_r() {
+        // m3/04 review M8: `Everything` used to be a hand-written subset that
+        // had drifted from `Ctrl+R` — no walk cancellation, no repository
+        // re-open, no Mistake Radar reset.
+        let mut state = state_on(
+            "src/a.rs",
+            unstaged_entry("src/a.rs"),
+            WorkingTreeSection::Unstaged,
+        );
+        let id = JobId::new(9);
+        state.operating = Some(id);
+        let after_write = operated(
+            &mut state,
+            id,
+            Operated::Done(applied("commit", Refresh::Everything)),
+            &mut ids(),
+        );
+
+        let mut fresh = state_on(
+            "src/a.rs",
+            unstaged_entry("src/a.rs"),
+            WorkingTreeSection::Unstaged,
+        );
+        let mut after_ctrl_r = Vec::new();
+        crate::update::keys::refresh_key(&mut fresh, &mut after_ctrl_r);
+
+        assert_eq!(after_write, after_ctrl_r, "{after_write:?}");
+        assert!(
+            after_write.contains(&Command::OpenRepository),
+            "{after_write:?}"
+        );
     }
 }

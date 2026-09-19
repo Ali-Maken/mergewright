@@ -301,6 +301,31 @@ fn with_no_override_the_footer_keeps_the_ordinary_hints() {
     assert!(!screen.contains("renderer forced"), "{screen}");
 }
 
+#[test]
+fn a_running_write_and_a_finished_one_both_say_so_in_the_footer() {
+    // m3/04 review M3: `Status::Busy`/`Done` reached no drawing code at all,
+    // so `Space` gave no acknowledgement and a second `Space` looked like a
+    // dead key rather than a write already in flight.
+    let running = AppState {
+        history: Some(history_of(5, 1)),
+        status: Status::Busy("stage src/a.rs".to_owned()),
+        size: Size {
+            columns: 60,
+            rows: 5,
+        },
+        ..AppState::default()
+    };
+    let screen = draw(&running, 60, 5);
+    assert!(screen.contains("stage src/a.rs\u{2026}"), "{screen}");
+
+    let done = AppState {
+        status: Status::Done("stage src/a.rs".to_owned()),
+        ..running
+    };
+    let screen = draw(&done, 60, 5);
+    assert!(screen.contains("stage src/a.rs \u{2713}"), "{screen}");
+}
+
 /// A history like [`history_of`], but the newest row's subject is
 /// `subject` verbatim instead of `"Commit N\x1b[31m"` — for forcing a
 /// reveal to actually show something.

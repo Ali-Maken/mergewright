@@ -45,9 +45,7 @@ pub fn confirm_key(
             let op = pending.then.clone();
             next.confirm = None;
             if choice == Choice::Confirm {
-                let id = next_id();
-                next.operating = Some(id);
-                commands.push(Command::Operate(id, Box::new(op)));
+                super::operate::launch(next, commands, op, next_id);
             }
         }
         _ => next.confirm = None,
