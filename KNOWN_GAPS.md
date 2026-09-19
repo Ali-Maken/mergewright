@@ -197,6 +197,16 @@ exists.
 
 | Gap | Created by | Expiry |
 |---|---|---|
+| **Hunks inside an untracked file cannot be staged** — needs `add -N` first; `Space` on an untracked row stages the whole file | M3 design note, scope cut (ADR-0034, user-agreed) | M7 |
+| **No `i` to add a path to `.gitignore`** from the changes pane | M3 design note, scope cut (ADR-0034, user-agreed) | M7 |
+| **No commit message history** — the editor starts empty every time; no recall of recent messages | M3 design note, deferral | M7 |
+| **Cannot stash only selected files** — `S` stashes everything | M3 design note, deferral | M7 |
+| **Cannot create a branch from a stash** | M3 design note, deferral | M5 |
+| **No file watcher** — the working tree refreshes on focus-gain and on demand, not when a file changes underneath. An external edit is invisible until you come back to the window | M3 design note, deferral (`notify` not wired) | M4 |
+| **No action to clear undo backups** — the journal's backup refs accumulate; nothing in the UI prunes them | M3 design note, deferral | M8 |
+| **UNVERIFIED: `Ctrl+Enter` to commit is indistinguishable from `Enter` outside the kitty keyboard protocol** — hence `Tab` to `[ Commit ]` as the real path (ADR-0034). The kitty path itself is untested in a real terminal | `m3-working-tree-undo-and-stash/05`, ADR-0034 | Standing — only a real terminal can close it |
+| **`gallery --matrix` overwrites `docs/shots/35-coverage-matrix.txt` without the working-tree table** — run `m3_walk --matrix` after it, or the table is silently dropped. Fix = teach `coverage_matrix` the third table | `m3-working-tree-undo-and-stash/07` (finding 3) | M4 |
+| **UNVERIFIED: the pinned uncommitted row with `HEAD` below the top row** — `k` from the top reaches it in 17 of 22 walk scenarios, all with `HEAD` topmost. The scrolled case is untested | `m2/06b`, narrowed by `m3-working-tree-undo-and-stash/07` (finding 5) | M4 |
 | **A forced undo is not pinned to the entry the drift box named** — `ops::undo` takes no aim, so between the box being drawn and `U` being pressed the journal tip can move and the undo runs against a different entry. Needs `undo(ctx, force, aim)`, `UndoError::Aimed`, and `EntryId` on `Undone::Drift` | `m3-working-tree-undo-and-stash/06` review (M4) | M4 — signature change, not a patch |
 | **The id-rewind pattern survives in 13 more places** — group 06 fixed the two symptoms and added the guard (`no_local_job_id_is_ever_minted_twice`, proved red), but the minting pattern that causes it is unchanged at 13 other sites. Guarded, not removed | `m3-working-tree-undo-and-stash/06` review (M5) | M4 — structural refactor |
 | **`Esc` on a journal read that has not landed cancels it, and `settle` immediately re-requests** — churn, not loss: the read repeats rather than the data going missing | `m3-working-tree-undo-and-stash/06` fix round | M5 |
