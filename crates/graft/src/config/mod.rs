@@ -43,7 +43,7 @@ mod types;
 
 pub use load::{ConfigError, ConfigWarning, Loaded, default_path, load, load_from};
 pub use types::{
-    Config, DEFAULT_MAX_LANES, Diff, Graph, IconSet, Radar, RadarSetting, RendererChoice,
+    Config, DEFAULT_MAX_LANES, Diff, Graph, IconSet, Keys, Radar, RadarSetting, RendererChoice,
     ThemeChoice, Ui,
 };
 

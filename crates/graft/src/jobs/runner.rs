@@ -620,7 +620,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             // claim on the modes the loop drew through. Reaching here is a
             // routing bug (m3-working-tree-undo-and-stash/05).
             Command::OpenExternalEditor { .. }
-            | Command::EditCommitMessage(_)
+            | Command::EditCommitMessage { .. }
             | Command::Suspend => {
                 unreachable!("the terminal is handed over by the loop, never by a job")
             }

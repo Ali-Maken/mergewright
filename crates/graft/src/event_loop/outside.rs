@@ -20,12 +20,155 @@
 //! way back even if what ran in between panicked.
 
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use graft_term::input::InputMux;
 
 use crate::terminal::{Suspended, TerminalSession};
+
+/// What the frame loop can reach outside itself.
+///
+/// Two separate things, because they come and go separately: the repository's
+/// files are there in the headless path too, and the terminal is not.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Outside<'a> {
+    /// The repository's common git directory, where `crate::layout` keeps the
+    /// detail pane's split and where `Ctrl+E`'s message file goes.
+    pub common_dir: Option<&'a Path>,
+    /// The terminal, when there is one to hand over.
+    pub handover: Option<Handover<'a>>,
+}
+
+/// What the frame loop needs to hand the terminal to another program.
+///
+/// `None` wherever there is no terminal to hand over — the headless path, and
+/// every test that drives [`super::pump`] over a `TestBackend`. The keys still
+/// reach `update`; what comes back is a refusal saying so, rather than a
+/// silently ignored key.
+#[derive(Clone, Copy)]
+pub struct Handover<'a> {
+    /// The modes to put back and then re-apply.
+    pub session: &'a TerminalSession,
+    /// The reader to take off the terminal's input.
+    pub mux: &'a InputMux,
+    /// The repository's git directory: where `Ctrl+E`'s message file goes,
+    /// and the directory `git var GIT_EDITOR` is asked in.
+    pub git_dir: Option<&'a Path>,
+}
+
+impl std::fmt::Debug for Handover<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Handover")
+            .field("git_dir", &self.git_dir)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Where `Ctrl+E`'s message file goes, relative to the git directory.
+///
+/// Under `graft/` rather than beside git's own `COMMIT_EDITMSG`, which git
+/// rewrites on every commit and which a concurrent `git commit` in another
+/// terminal owns.
+const MESSAGE_FILE: &str = "graft/COMMIT_EDITMSG";
+
+impl Handover<'_> {
+    /// `Ctrl+E`: write `message` out, open it in the user's editor, and read
+    /// back what was saved.
+    ///
+    /// The old text is never thrown away on a failure — the caller keeps the
+    /// fields as they were and shows the reason — so every error path here
+    /// says what happened rather than returning an empty message.
+    ///
+    /// # Errors
+    /// There is no repository, the file could not be written or read, the
+    /// editor could not be found or started, or it exited non-zero.
+    pub fn edit_message(&self, message: &str) -> Result<String, String> {
+        let path = self.message_path()?;
+        std::fs::write(&path, message).map_err(|error| format!("{}: {error}", path.display()))?;
+        self.open(&path, None)?;
+        std::fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))
+    }
+
+    /// `e` on the changes pane: the file under the cursor, at its line.
+    ///
+    /// # Errors
+    /// As [`Handover::open`].
+    pub fn edit_file(&self, path: &Path, line: Option<u32>) -> Result<(), String> {
+        self.open(path, line)
+    }
+
+    /// `Ctrl+Z` under `keys.suspend_on_ctrl_z`: stop, with the terminal the
+    /// shell's again, until `fg`.
+    ///
+    /// # Errors
+    /// The terminal could not be handed over, or `kill` refused.
+    pub fn suspend(&self) -> Result<(), String> {
+        run_outside_terminal(self.session, self.mux, stop_this_process)
+            .map_err(|error| error.to_string())?
+            .map_err(|error| format!("could not suspend: {error}"))
+    }
+
+    /// Run the user's editor on `path` with the terminal to itself.
+    fn open(&self, path: &Path, line: Option<u32>) -> Result<(), String> {
+        let editor = self.git_editor()?;
+        let status = run_outside_terminal(self.session, self.mux, || {
+            editor_command(&editor, path, line).status()
+        })
+        .map_err(|error| error.to_string())?;
+
+        match status {
+            Ok(status) if status.success() => Ok(()),
+            // Not swallowed and not guessed at: the user's message is still
+            // in the fields, and this says why it did not change.
+            Ok(status) => Err(match status.code() {
+                Some(code) => format!("{editor} exited {code}, message unchanged"),
+                None => format!("{editor} was killed, message unchanged"),
+            }),
+            Err(error) => Err(format!("could not run {editor}: {error}")),
+        }
+    }
+
+    /// The message file's path, its `graft/` directory made.
+    fn message_path(&self) -> Result<PathBuf, String> {
+        let dir = self.repository()?;
+        let path = dir.join(MESSAGE_FILE);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|error| format!("{}: {error}", parent.display()))?;
+        }
+        Ok(path)
+    }
+
+    /// The editor git itself would run: `GIT_EDITOR`, then `core.editor`,
+    /// then `VISUAL`, then `EDITOR`, then git's built-in default — in one
+    /// spawn, rather than four lookups Graft would have to keep in step with
+    /// git's.
+    fn git_editor(&self) -> Result<String, String> {
+        let dir = self.repository()?;
+        let output = Command::new("git")
+            .current_dir(dir)
+            .args(["var", "GIT_EDITOR"])
+            .output()
+            .map_err(|error| format!("could not run git: {error}"))?;
+        if !output.status.success() {
+            return Err(format!(
+                "git var GIT_EDITOR: {}",
+                String::from_utf8_lossy(&output.stderr).trim()
+            ));
+        }
+        let editor = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+        if editor.is_empty() {
+            return Err("git var GIT_EDITOR named no editor".to_owned());
+        }
+        Ok(editor)
+    }
+
+    fn repository(&self) -> Result<&Path, String> {
+        self.git_dir
+            .ok_or_else(|| "no repository is open".to_owned())
+    }
+}
 
 /// Why the terminal could not be handed over, or taken back.
 #[derive(Debug)]

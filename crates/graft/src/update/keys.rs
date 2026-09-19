@@ -3,7 +3,7 @@
 //! `commit_graph`).
 
 use graft_core::capabilities::RenderingTier;
-use graft_core::event::{KeyCode, KeyPress};
+use graft_core::event::{KeyCode, KeyPress, Modifiers};
 use graft_core::oid::Oid;
 use graft_git::history::Order;
 
@@ -54,6 +54,17 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
             commands.extend(editor_commands);
             return;
         }
+    }
+    // `Ctrl+Z` before anything else claims it. Off by default, because
+    // ADR-0002 gives the key to undo; on, it means what it means everywhere
+    // else, and the loop hands the terminal back to the shell. With it off
+    // the key is left alone here — `undo-and-stash-ui` binds it to undo.
+    if next.suspend_on_ctrl_z
+        && key.code == KeyCode::Char('z')
+        && key.modifiers == Modifiers::CONTROL
+    {
+        commands.push(Command::Suspend);
+        return;
     }
     // A failure on the status line is dismissed by `Esc` before `Esc` means
     // anything else (PROMPT.md §3, "errors stay until dismissed"). Without

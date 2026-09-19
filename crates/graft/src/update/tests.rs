@@ -967,6 +967,8 @@ fn the_same_event_always_gives_the_same_answer() {
         in_progress: None,
         head_message: None,
         commit_template: None,
+        external_editor: None,
+        suspend_on_ctrl_z: false,
     };
 
     let first = update(&state, key(KeyCode::Char('q')));

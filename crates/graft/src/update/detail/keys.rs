@@ -134,6 +134,16 @@ fn changes_pane_write_key(
         DetailFocus::Diff => true,
         DetailFocus::Graph => return false,
     };
+    // `e` is not a write, but it reads the same cursor: the file the file
+    // list names, at the line the diff cursor is on
+    // (m3-working-tree-undo-and-stash/05).
+    if plain && key.code == KeyCode::Char('e') {
+        if let Some((path, line)) = super::super::operate::edit_target(next) {
+            commands.push(Command::OpenExternalEditor { path, line });
+            return true;
+        }
+        return false;
+    }
     let mut local_jobs = next.local_jobs;
     let mut ids = || local_jobs.next_id();
     let handled = if plain && matches!(key.code, KeyCode::Char(' ' | 's')) {

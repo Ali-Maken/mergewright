@@ -17,10 +17,10 @@ use graft_git::diff::{PatchDirection, PatchError, Selection};
 use graft_git::status::StatusEntry;
 use graft_ops::apply::Refresh;
 use graft_ops::operation::{Operation, PatchSide, Target};
-use graft_ui::detail::{BodyRow, LineKindView, WorkingTreeSection};
+use graft_ui::detail::{BodyRow, DetailFocus, LineKindView, WorkingTreeSection};
 
 use super::confirm::PendingConfirm;
-use super::detail::Loading;
+use super::detail::{DetailSpec, Loading};
 use super::events::Command;
 use super::state::{AppState, Status};
 use crate::jobs::operate::Operated;
@@ -208,6 +208,38 @@ fn diff_unit(state: &AppState) -> Option<DiffUnit> {
             }
         }
         BodyRow::Truncation => None,
+    }
+}
+
+/// What `e` opens: the file the changes-pane cursor names, and the line of it
+/// under the cursor when the diff region has focus
+/// (m3-working-tree-undo-and-stash/05).
+///
+/// The **new** side's line number, because that is the file on disk — the old
+/// side's numbering belongs to a version the editor would not be opening. A
+/// removed line has no new number, so the cursor lands at the top of the file
+/// rather than at a line that is not there any more.
+pub fn edit_target(state: &AppState) -> Option<(PathBuf, Option<u32>)> {
+    if !(state.detail.shown && state.detail.spec == Some(DetailSpec::WorkingTree)) {
+        return None;
+    }
+    let path = selected_path(state)?;
+    Some((path, cursor_line(state)))
+}
+
+/// The new-side line number under the diff cursor, or `None` off the diff
+/// region, on a heading, or on a removed line.
+fn cursor_line(state: &AppState) -> Option<u32> {
+    if state.detail.focus != DetailFocus::Diff {
+        return None;
+    }
+    let cursor = state.detail.body_cursor()?;
+    let Loading::Ready(view) = &state.detail.diff else {
+        return None;
+    };
+    match view.body_row(cursor)? {
+        BodyRow::Line { hunk, line } => view.hunks.get(hunk)?.lines.get(line)?.new_no,
+        BodyRow::Heading { .. } | BodyRow::Truncation => None,
     }
 }
 
@@ -679,7 +711,7 @@ mod tests {
     use graft_core::job::JobId;
     use graft_git::diff::{DiffLine, FileDiff, FileEntry, FileList, FileStatus, Hunk, LineKind};
     use graft_git::status::{Change, StatusEntry, WorkingTreeStatus};
-    use graft_ui::detail::{DetailFocus, FileListView, FileRow, FileRowKind, FileStatusView};
+    use graft_ui::detail::{FileListView, FileRow, FileRowKind, FileStatusView};
 
     use super::*;
     use crate::update::detail::DetailSpec;

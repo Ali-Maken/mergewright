@@ -387,23 +387,36 @@ fn ctrl_e_asks_for_the_message_to_go_out_to_an_editor() {
     let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
     let open = typed(&open, "subject");
     let (_, commands) = update(&open, control(KeyCode::Char('e')));
-    let Some(Command::EditCommitMessage(text)) = commands
+    let Some(Command::EditCommitMessage { message, .. }) = commands
         .iter()
-        .find(|command| matches!(command, Command::EditCommitMessage(_)))
+        .find(|command| matches!(command, Command::EditCommitMessage { .. }))
     else {
         panic!("{commands:?}");
     };
-    assert_eq!(text, "subject\n");
+    assert_eq!(message, "subject\n");
+}
+
+/// `Ctrl+E`'s id, and the state that is waiting on it.
+fn sent_to_the_editor(subject: &str) -> (AppState, JobId) {
+    let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
+    let open = typed(&open, subject);
+    let (sent, commands) = update(&open, control(KeyCode::Char('e')));
+    let Some(Command::EditCommitMessage { id, .. }) = commands
+        .iter()
+        .find(|command| matches!(command, Command::EditCommitMessage { .. }))
+    else {
+        panic!("{commands:?}");
+    };
+    (sent, *id)
 }
 
 #[test]
 fn what_the_external_editor_saved_replaces_the_fields() {
-    let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
-    let open = typed(&open, "typed here");
+    let (open, id) = sent_to_the_editor("typed here");
     let (back, _) = update(
         &open,
         AppEvent::Produced(
-            JobId::new(1),
+            id,
             Product::ExternalEditor(Ok("from vim\n\nand a body\n# stripped\n".to_owned())),
         ),
     );
@@ -414,12 +427,11 @@ fn what_the_external_editor_saved_replaces_the_fields() {
 
 #[test]
 fn an_external_editor_that_failed_keeps_the_old_text_and_says_so() {
-    let (open, _) = update(&ready(&["a.rs"]), key(KeyCode::Char('c')));
-    let open = typed(&open, "typed here");
+    let (open, id) = sent_to_the_editor("typed here");
     let (back, _) = update(
         &open,
         AppEvent::Produced(
-            JobId::new(1),
+            id,
             Product::ExternalEditor(Err("editor exited 1, message unchanged".to_owned())),
         ),
     );
@@ -472,4 +484,38 @@ fn the_title_says_committing_while_the_write_runs() {
         "{}",
         view.title
     );
+}
+
+/// `Esc` while `$EDITOR` is open means the draft is the user's again: what
+/// the editor saves after that belongs to a screen that is gone.
+#[test]
+fn a_message_from_an_editor_the_user_has_closed_is_dropped() {
+    let (open, id) = sent_to_the_editor("mine");
+    let (closed, _) = update(&open, key(KeyCode::Escape));
+    let (reopened, _) = update(&closed, key(KeyCode::Char('c')));
+    let (after, _) = update(
+        &reopened,
+        AppEvent::Produced(id, Product::ExternalEditor(Ok("from vim".to_owned()))),
+    );
+    assert_eq!(
+        after.commit_editor.as_ref().expect("open").subject.text(),
+        "mine"
+    );
+}
+
+/// `Ctrl+Z` is undo's key by default (ADR-0002) and must not be swallowed
+/// here; with `[keys] suspend_on_ctrl_z` on it stops Graft instead.
+#[test]
+fn ctrl_z_suspends_only_when_the_config_says_so() {
+    let quiet = ready(&["a.rs"]);
+    let (_, commands) = update(&quiet, control(KeyCode::Char('z')));
+    assert!(
+        !commands.contains(&Command::Suspend),
+        "left for undo: {commands:?}"
+    );
+
+    let mut asked = quiet;
+    asked.suspend_on_ctrl_z = true;
+    let (_, commands) = update(&asked, control(KeyCode::Char('z')));
+    assert!(commands.contains(&Command::Suspend), "{commands:?}");
 }

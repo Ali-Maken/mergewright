@@ -9,6 +9,7 @@ use ratatui::{TerminalOptions, Viewport};
 
 use super::graphics::{Graphics, GraphicsReplies, NoReplies};
 use super::headless::headless_settled;
+use super::outside::Outside;
 use super::running::{END_SYNCHRONIZED_UPDATE, draw, prefetch, pump_with};
 use super::*;
 use crate::history::Phase;
@@ -182,7 +183,7 @@ fn pixel_run(wakes: Vec<Wake>, replies: Vec<Vec<u8>>) -> (Vec<String>, String) {
         &mut session,
         state,
         &mut graphics,
-        None,
+        Outside::default(),
     )
     .expect("writing to memory cannot fail");
     assert_eq!(exit, Exit::Quit);
@@ -220,7 +221,7 @@ fn pixel_flushes(wakes: Vec<Wake>) -> (u64, Vec<String>) {
         &mut session,
         state,
         &mut graphics,
-        None,
+        Outside::default(),
     )
     .expect("writing to memory cannot fail");
     let end = String::from_utf8_lossy(END_SYNCHRONIZED_UPDATE).into_owned();
@@ -352,7 +353,7 @@ fn forced_pixels_on_a_silent_terminal_attempt_kitty_and_f3_recovers() {
         &mut session,
         state,
         &mut graphics,
-        None,
+        Outside::default(),
     )
     .expect("writing to memory cannot fail");
     let end = String::from_utf8_lossy(END_SYNCHRONIZED_UPDATE).into_owned();
@@ -764,7 +765,7 @@ fn prefetch_run(state: AppState, wakes: Vec<Wake>, idle: Vec<usize>) -> (u64, u6
         &mut session,
         state,
         &mut graphics,
-        None,
+        Outside::default(),
     )
     .expect("writing to memory cannot fail");
     let counters = graphics.strip_stats();

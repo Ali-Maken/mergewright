@@ -3,21 +3,23 @@
 //! of wakes and any job runner — which is what lets the frame bytes be
 //! asserted in a test.
 
+use std::collections::VecDeque;
 use std::io::{self, Write};
-use std::path::Path;
 
 use graft_core::event::{Event, KeyCode, KeyPress};
+use graft_core::job::JobId;
 use graft_graph::raster::cache::Flush;
 use graft_term::Transport;
 use ratatui::Terminal;
 use ratatui::backend::Backend;
 
 use super::graphics::{Graphics, GraphicsReplies, NoReplies};
+use super::outside::{Handover, Outside};
 use super::redetect;
 use super::{Exit, Wake, Wakes};
 use crate::jobs::Dispatch;
 use crate::session::{Session, TerminalChange};
-use crate::update::{AppEvent, AppState, Command, Quit, update};
+use crate::update::{AppEvent, AppState, Command, Product, Quit, update};
 use crate::view::{draws_pixels, view_with_graphics};
 
 /// Begin a synchronized update: the terminal buffers what follows and paints
@@ -51,7 +53,7 @@ where
         session,
         state,
         &mut Graphics::new(NoReplies),
-        None,
+        Outside::default(),
     )
 }
 
@@ -64,7 +66,7 @@ pub(super) fn pump_with<B, W, D, R>(
     session: &mut Session,
     state: AppState,
     graphics: &mut Graphics<R>,
-    common_dir: Option<&Path>,
+    outside: Outside<'_>,
 ) -> io::Result<Exit>
 where
     B: Backend<Error = io::Error> + Write,
@@ -72,7 +74,7 @@ where
     D: Dispatch,
     R: GraphicsReplies,
 {
-    let exit = frames(terminal, wakes, jobs, session, state, graphics, common_dir);
+    let exit = frames(terminal, wakes, jobs, session, state, graphics, outside);
     let released = release(terminal, graphics);
     // When the loop itself failed, its error is the one to report; a free
     // that fails too failed writing to the same broken terminal.
@@ -87,7 +89,7 @@ fn frames<B, W, D, R>(
     session: &mut Session,
     mut state: AppState,
     graphics: &mut Graphics<R>,
-    common_dir: Option<&Path>,
+    outside: Outside<'_>,
 ) -> io::Result<Exit>
 where
     B: Backend<Error = io::Error> + Write,
@@ -133,32 +135,7 @@ where
         let (next, commands) = update(&state, event);
         state = next;
 
-        for command in commands {
-            // Output, not work: the clipboard request goes to the terminal
-            // now, and a failed write ends the loop like any other.
-            let command = match command {
-                Command::CopyToClipboard(text) => {
-                    write_clipboard(terminal, session, &text)?;
-                    continue;
-                }
-                Command::SaveLayout(split) => {
-                    if let Some(common_dir) = common_dir {
-                        // Best-effort (`crate::layout`'s module doc): a
-                        // missing or unwritable `graft` directory is the
-                        // expected case here, not a failure worth surfacing.
-                        drop(crate::layout::save_split(common_dir, &split));
-                    }
-                    continue;
-                }
-                command => command,
-            };
-            // Handed over and forgotten. `dispatch` starts the work and
-            // returns: there is no handle here to join and no result to wait
-            // for, because the result comes back as another `Event`
-            // (ARCHITECTURE.md). This is the line that keeps the keyboard
-            // responsive during a two-minute fetch.
-            jobs.dispatch(command);
-        }
+        state = carry_out(terminal, session, jobs, state, outside, commands)?;
 
         match &state.quit {
             Some(Quit::Requested) => return Ok(Exit::Quit),
@@ -169,6 +146,91 @@ where
         }
 
         draw(terminal, session, &state, graphics)?;
+    }
+}
+
+/// Do what one frame's commands ask for, and return the state they left.
+///
+/// Most go straight to the job runner and are forgotten — `dispatch` starts
+/// the work and returns, which is the line that keeps the keyboard responsive
+/// during a two-minute fetch (ARCHITECTURE.md). The few the loop carries out
+/// itself are output, not work: they need the terminal, which no worker
+/// thread may touch. Those answer straight back into `update`, and what it
+/// answers with joins the same queue.
+fn carry_out<B, D>(
+    terminal: &mut Terminal<B>,
+    session: &Session,
+    jobs: &D,
+    mut state: AppState,
+    outside: Outside<'_>,
+    commands: Vec<Command>,
+) -> io::Result<AppState>
+where
+    B: Backend<Error = io::Error> + Write,
+    D: Dispatch,
+{
+    let mut queue: VecDeque<Command> = commands.into();
+    while let Some(command) = queue.pop_front() {
+        match command {
+            // The clipboard request goes to the terminal now, and a failed
+            // write ends the loop like any other.
+            Command::CopyToClipboard(text) => write_clipboard(terminal, session, &text)?,
+            Command::SaveLayout(split) => {
+                if let Some(common_dir) = outside.common_dir {
+                    // Best-effort (`crate::layout`'s module doc): a missing or
+                    // unwritable `graft` directory is the expected case here,
+                    // not a failure worth surfacing.
+                    drop(crate::layout::save_split(common_dir, &split));
+                }
+            }
+            // These three restore the terminal, hand it over and take it
+            // back (`super::outside`).
+            command @ (Command::EditCommitMessage { .. }
+            | Command::OpenExternalEditor { .. }
+            | Command::Suspend) => {
+                let answer = handed_over(outside.handover.as_ref(), command);
+                // Whatever ran out there drew over every cell, and the frame
+                // loop's own idea of the screen is now wrong.
+                terminal.clear()?;
+                let (next, more) = update(&state, answer);
+                state = next;
+                queue.extend(more);
+            }
+            command => jobs.dispatch(command),
+        }
+    }
+    Ok(state)
+}
+
+/// Carry out one of the three commands that need the terminal itself, and
+/// say what happened as the event `update` answers next.
+///
+/// Without a [`Handover`] — the headless path, and every test over a
+/// `TestBackend` — the key is refused in words rather than ignored: a `Ctrl+E`
+/// that does nothing at all reads as a hang.
+fn handed_over(outside: Option<&Handover<'_>>, command: Command) -> AppEvent {
+    let Some(outside) = outside else {
+        let why = "there is no terminal to hand over".to_owned();
+        return match command {
+            Command::EditCommitMessage { id, .. } => {
+                AppEvent::Produced(id, Product::ExternalEditor(Err(why)))
+            }
+            _ => AppEvent::Produced(JobId::new(0), Product::HandedOver(Err(why))),
+        };
+    };
+    match command {
+        Command::EditCommitMessage { id, message } => {
+            AppEvent::Produced(id, Product::ExternalEditor(outside.edit_message(&message)))
+        }
+        Command::OpenExternalEditor { path, line } => AppEvent::Produced(
+            JobId::new(0),
+            Product::HandedOver(outside.edit_file(&path, line)),
+        ),
+        Command::Suspend => {
+            AppEvent::Produced(JobId::new(0), Product::HandedOver(outside.suspend()))
+        }
+        // `frames` matches exactly these three before calling.
+        other => unreachable!("not a terminal handover: {other:?}"),
     }
 }
 

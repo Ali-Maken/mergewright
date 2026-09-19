@@ -172,6 +172,14 @@ pub struct AppState {
     /// The `commit.template` read an open editor is waiting on, for the same
     /// reason.
     pub commit_template: Option<JobId>,
+    /// The `Ctrl+E` handover an open editor is waiting on. What a `$EDITOR`
+    /// saved is dropped unless this still names it: `Esc` in between means
+    /// the user moved on, and dropping it beats overwriting a field they
+    /// have since retyped.
+    pub external_editor: Option<JobId>,
+    /// `[keys] suspend_on_ctrl_z`: `Ctrl+Z` stops Graft instead of undoing
+    /// (ADR-0002). Seeded from config at startup; off by default.
+    pub suspend_on_ctrl_z: bool,
 }
 
 /// The screens Graft can show.

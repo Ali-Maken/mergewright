@@ -318,7 +318,15 @@ pub fn template_arrived(state: &mut AppState, id: JobId, template: Result<Option
 }
 
 /// `$EDITOR` closed: the file it wrote, or why Graft could not use it.
-pub fn editor_returned(state: &mut AppState, result: Result<String, String>) {
+///
+/// Dropped when the editor it belongs to is gone — `Esc` while `$EDITOR` was
+/// open, or a second `Ctrl+E` — so a message never lands in a field the user
+/// has moved on from.
+pub fn editor_returned(state: &mut AppState, id: JobId, result: Result<String, String>) {
+    if state.external_editor != Some(id) {
+        return;
+    }
+    state.external_editor = None;
     let Some(editor) = state.commit_editor.as_mut() else {
         return;
     };
@@ -426,7 +434,7 @@ fn control_key(
                 editor.focus = Field::Body;
             });
         }
-        KeyCode::Char('e') => return edit_outside(state),
+        KeyCode::Char('e') => return edit_outside(state, next_id),
         KeyCode::Left => with_editor(state, |editor| match editor.focus {
             Field::Body => editor.body.word_left(),
             _ => editor.subject.word_left(),
@@ -443,11 +451,14 @@ fn control_key(
 /// `Ctrl+E`: hand the message to `$EDITOR`. Which file it is written to is
 /// the loop's to decide — `update` knows no repository directory — so the
 /// command carries only the text.
-fn edit_outside(state: &AppState) -> Vec<Command> {
-    match state.commit_editor.as_ref() {
-        Some(editor) => vec![Command::EditCommitMessage(editor.message())],
-        None => Vec::new(),
-    }
+fn edit_outside(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) -> Vec<Command> {
+    let Some(editor) = state.commit_editor.as_ref() else {
+        return Vec::new();
+    };
+    let id = next_id();
+    let message = editor.message();
+    state.external_editor = Some(id);
+    vec![Command::EditCommitMessage { id, message }]
 }
 
 /// Run `f` over the open editor; a no-op when there is none.
@@ -459,6 +470,9 @@ fn with_editor(state: &mut AppState, f: impl FnOnce(&mut CommitEditor)) {
 
 /// `Esc`: close, keeping a non-empty draft for the next `c` this session.
 fn close(state: &mut AppState) {
+    // Whatever `$EDITOR` is about to hand back belongs to an editor that is
+    // no longer on screen.
+    state.external_editor = None;
     let Some(editor) = state.commit_editor.take() else {
         return;
     };
@@ -470,6 +484,7 @@ fn close(state: &mut AppState) {
 pub fn committed(state: &mut AppState) {
     state.commit_editor = None;
     state.commit_draft = None;
+    state.external_editor = None;
 }
 
 /// Keys while the subject has focus. `Enter` moves to the body rather than

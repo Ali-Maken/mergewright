@@ -25,6 +25,23 @@ pub struct Config {
     pub diff: Diff,
     /// `[radar]`: the Mistake Radar's per-kind severity overrides.
     pub radar: Radar,
+    /// `[keys]`: the few bindings that are the user's to choose.
+    pub keys: Keys,
+}
+
+/// `[keys]`: bindings Graft cannot pick for everyone.
+///
+/// One field so far. ADR-0002 gives `Ctrl+Z` to undo, because in a Git client
+/// undo is the thing a hand reaches for and a suspend the user did not mean
+/// looks like a crash. A user who lives in job control disagrees, and this is
+/// how they say so.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(default)]
+pub struct Keys {
+    /// `keys.suspend_on_ctrl_z`: `Ctrl+Z` stops Graft the way it stops any
+    /// other terminal program, instead of undoing (ADR-0002). Off by
+    /// default — which is the whole point of the ADR.
+    pub suspend_on_ctrl_z: bool,
 }
 
 /// `[ui]`.

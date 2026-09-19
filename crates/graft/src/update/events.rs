@@ -226,6 +226,10 @@ pub enum Product {
     /// it: the editor would not start, exited non-zero, or the file could
     /// not be read back (m3-working-tree-undo-and-stash/05).
     ExternalEditor(Result<String, String>),
+    /// The terminal was handed to another program and came back, with
+    /// nothing to bring back but whether it worked: `e`'s file in `$EDITOR`,
+    /// and `Ctrl+Z`'s suspend (m3-working-tree-undo-and-stash/05).
+    HandedOver(Result<(), String>),
     /// One working-tree write finished. Not a plain `Result`: see
     /// [`crate::jobs::operate::Operated`]'s doc for why an operation that
     /// ran but left part of its after-state unread still carries the
@@ -358,7 +362,13 @@ pub enum Command {
     /// the terminal to `$EDITOR` on it, and bring back what was saved
     /// (`Ctrl+E`, m3-working-tree-undo-and-stash/05). The path is the
     /// loop's: `update` knows no repository directory.
-    EditCommitMessage(String),
+    EditCommitMessage {
+        /// The id the answering [`Product::ExternalEditor`] comes back under,
+        /// so a message from an editor the user has since closed is dropped.
+        id: JobId,
+        /// The message as the fields have it now.
+        message: String,
+    },
     /// Suspend Graft the way `Ctrl+Z` does in any other terminal program
     /// (`keys.suspend_on_ctrl_z`, ADR-0002). Carried out by the frame loop,
     /// like `OpenExternalEditor`.

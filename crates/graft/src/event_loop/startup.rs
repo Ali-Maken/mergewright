@@ -14,11 +14,12 @@ use ratatui::backend::CrosstermBackend;
 
 use super::graphics::Graphics;
 use super::headless::run_headless;
+use super::outside::{Handover, Outside};
 use super::redetect::Redetector;
 use super::row_clear::RowClear;
 use super::running::pump_with;
 use super::{ChannelWakes, Exit, Wake, input, opening_repository, signals};
-use crate::config::{Diff, Radar};
+
 use crate::crash;
 use crate::jobs::{self, JobRunner, Shutdown};
 use crate::repos::RepoStore;
@@ -49,6 +50,53 @@ fn start_redetector(
     .map(Some)
 }
 
+/// One repository, opened once and shared by every job that follows
+/// (`crate::repos`).
+///
+/// Opened *before* the terminal is touched: a path that is not a repository
+/// is a plain line on a plain terminal, never an alternate screen flashed for
+/// the length of the capability probe. `graph.default_branch` is ADR-0001's
+/// rule 1, so it goes where the branches are resolved.
+fn open_repository(
+    repo_path: &std::path::Path,
+    config: &crate::config::Config,
+) -> Result<Arc<RepoStore>, String> {
+    let repos = Arc::new(RepoStore::new(
+        repo_path.to_path_buf(),
+        config.graph.default_branch.clone(),
+    ));
+    match repos.shared() {
+        Ok(_) => Ok(repos),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
+/// Ask the terminal what it can do, and push the kitty keyboard flag if it
+/// turns out to speak the protocol — which could not be decided when the
+/// session opened, because the probe needs the raw mode the session turns on.
+fn probe(
+    environment: &detect::Environment,
+    mux: &InputMux,
+    session: &TerminalSession,
+) -> io::Result<graft_core::capabilities::Capabilities> {
+    let capabilities = detect::detect(environment, &mut TtyHost::new(mux.waiter()));
+    if capabilities.kitty_keyboard == Supported::Yes {
+        session.enable_kitty_keyboard()?;
+    }
+    Ok(capabilities)
+}
+
+/// The terminal session, with the panic hook already able to restore it.
+///
+/// Kitty keyboard is deliberately off here and pushed on later: whether the
+/// terminal speaks the protocol is something only the probe knows, and the
+/// probe needs the raw mode this session turns on.
+fn open_session() -> io::Result<TerminalSession> {
+    let session = TerminalSession::on_stdout(SessionOptions::default())?;
+    crash::install(session.restorer());
+    Ok(session)
+}
+
 /// Run Graft until the user quits or a signal says stop.
 ///
 /// The terminal is set up before the loop and restored after it, in that
@@ -62,19 +110,10 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
         config,
         harness,
     } = startup;
-    // One repository, opened once and shared by every job that follows
-    // (`crate::repos`). Opened *before* the terminal is touched: a path that
-    // is not a repository is a plain line on a plain terminal, never an
-    // alternate screen flashed for the length of the capability probe.
-    // `graph.default_branch` is ADR-0001's rule 1, so it goes where the
-    // branches are resolved.
-    let repos = Arc::new(RepoStore::new(
-        repo_path.clone(),
-        config.config.graph.default_branch.clone(),
-    ));
-    if let Err(error) = repos.shared() {
-        return Ok(Exit::Fatal(error.to_string()));
-    }
+    let repos = match open_repository(&repo_path, &config.config) {
+        Ok(repos) => repos,
+        Err(reason) => return Ok(Exit::Fatal(reason)),
+    };
 
     // A stdout that is not a tty — piped, redirected — never gets the
     // alternate screen or a single escape byte (ticket m1-the-graph/19): no
@@ -86,11 +125,7 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
         return run_headless(&repo_path, &config, repos);
     }
 
-    // Kitty keyboard is deliberately off here and pushed below instead:
-    // whether the terminal speaks the protocol is something only the probe
-    // knows, and the probe needs the raw mode this session turns on.
-    let session = TerminalSession::on_stdout(SessionOptions::default())?;
-    crash::install(session.restorer());
+    let session = open_session()?;
 
     // The mux owns stdin for the process (ticket m1-the-graph/20); this run
     // gets its own `Inputs` from it, and a wrapper that runs again (the
@@ -99,10 +134,7 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
     // typed meanwhile is queued, in order, for the loop.
     let (mux, inputs) = InputMux::on_stdin()?;
     let environment = detect::Environment::from_process();
-    let capabilities = detect::detect(&environment, &mut TtyHost::new(mux.waiter()));
-    if capabilities.kitty_keyboard == Supported::Yes {
-        session.enable_kitty_keyboard()?;
-    }
+    let capabilities = probe(&environment, &mux, &session)?;
     let mut settled = Session::settle(&config, capabilities);
 
     let (mut wakes, sender) = ChannelWakes::new();
@@ -121,8 +153,7 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
         &repo_path,
         &settled,
         harness,
-        config.config.diff,
-        config.config.radar,
+        &config.config,
         common_dir.as_deref(),
     )?;
     let mut graphics =
@@ -134,7 +165,17 @@ pub fn run(startup: Startup) -> io::Result<Exit> {
         &mut settled,
         state,
         &mut graphics,
-        common_dir.as_deref(),
+        Outside {
+            common_dir: common_dir.as_deref(),
+            handover: Some(Handover {
+                session: &session,
+                mux: &mux,
+                // The common directory, not the worktree's own:
+                // `crate::layout` already keeps Graft's files there, and the
+                // message file is written and read back within one key press.
+                git_dir: common_dir.as_deref(),
+            }),
+        },
     );
     let outcome = hand_back_input(&mux, forwarder, wakes, outcome);
     // Dropped before the restore so that its own teardown (it shows the cursor
@@ -264,8 +305,7 @@ fn terminal_and_state(
     repo_path: &std::path::Path,
     settled: &Session,
     harness: crate::update::Harness,
-    diff: Diff,
-    radar: Radar,
+    config: &crate::config::Config,
     common_dir: Option<&std::path::Path>,
 ) -> io::Result<(Terminal<RowClear<CrosstermBackend<io::Stdout>>>, AppState)> {
     let terminal = Terminal::new(RowClear(CrosstermBackend::new(io::stdout())))?;
@@ -277,7 +317,7 @@ fn terminal_and_state(
     let mut state = opening_repository(jobs, repo_path, size);
     state.settled_tier = Some(settled.rendering.tier);
     state.harness = harness;
-    seed_config(&mut state, diff, radar);
+    seed_config(&mut state, config);
     if let Some(common_dir) = common_dir
         && let Some(pane_size) = crate::layout::load_split(common_dir)
     {
@@ -290,13 +330,15 @@ fn terminal_and_state(
 /// live diff options and `AppState.radar.policy` — split out of
 /// `terminal_and_state` so it is testable without a real terminal
 /// (m2-details-and-diffs/13c; `KNOWN_GAPS` m2-details-and-diffs/13b).
-fn seed_config(state: &mut AppState, diff: Diff, radar: Radar) {
+fn seed_config(state: &mut AppState, config: &crate::config::Config) {
+    let (diff, radar, keys) = (config.diff, &config.radar, config.keys);
     state.detail.options = graft_git::diff::DiffOptions {
         context: diff.context,
         ignore_whitespace: diff.ignore_whitespace,
     };
     state.detail.word_tint = diff.word_tint;
     state.radar.policy = radar.policy();
+    state.suspend_on_ctrl_z = keys.suspend_on_ctrl_z;
 }
 
 #[cfg(test)]
@@ -305,10 +347,8 @@ mod tests {
 
     use graft_core::mistake_radar::MistakeRadarKind;
 
-    use super::{
-        AppState, Diff, Exit, Radar, Shutdown, finish_to, report_stalled_jobs_to, seed_config,
-    };
-    use crate::config::RadarSetting;
+    use super::{AppState, Exit, Shutdown, finish_to, report_stalled_jobs_to, seed_config};
+    use crate::config::{Radar, RadarSetting};
 
     /// A writer whose every write fails, standing in for a closed stderr.
     struct FailingWriter;
@@ -347,7 +387,7 @@ mod tests {
     #[test]
     fn a_non_default_radar_setting_reaches_app_state_policy() {
         let mut default_state = AppState::default();
-        seed_config(&mut default_state, Diff::default(), Radar::default());
+        seed_config(&mut default_state, &crate::config::Config::default());
         assert_eq!(
             default_state.radar.policy,
             graft_ops::mistake_radar::Policy::default(),
@@ -359,7 +399,13 @@ mod tests {
             foxtrot: RadarSetting::Off,
             ..Radar::default()
         };
-        seed_config(&mut state, Diff::default(), radar);
+        seed_config(
+            &mut state,
+            &crate::config::Config {
+                radar,
+                ..crate::config::Config::default()
+            },
+        );
 
         assert_eq!(
             state.radar.policy.severity(MistakeRadarKind::FoxtrotMerge),

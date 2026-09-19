@@ -144,7 +144,10 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         }
         event @ AppEvent::Produced(
             _,
-            Product::CommitTemplate(_) | Product::HeadMessage(_) | Product::ExternalEditor(_),
+            Product::CommitTemplate(_)
+            | Product::HeadMessage(_)
+            | Product::ExternalEditor(_)
+            | Product::HandedOver(_),
         ) => commit_editor_answer(next, event),
     }
 }
@@ -188,9 +191,15 @@ fn commit_editor_answer(next: &mut AppState, event: AppEvent) {
         AppEvent::Produced(id, Product::HeadMessage(message)) => {
             commit_editor::head_message_arrived(next, id, message);
         }
-        AppEvent::Produced(_, Product::ExternalEditor(result)) => {
-            commit_editor::editor_returned(next, result);
+        AppEvent::Produced(id, Product::ExternalEditor(result)) => {
+            commit_editor::editor_returned(next, id, result);
         }
+        // `e`'s file, or `Ctrl+Z`'s suspend: nothing came back but whether
+        // the terminal handover worked, and a failure is the user's to see.
+        AppEvent::Produced(_, Product::HandedOver(Err(why))) => {
+            next.status = Status::WriteFailed(why);
+        }
+        AppEvent::Produced(_, Product::HandedOver(Ok(()))) => {}
         other => debug_assert!(false, "not the commit editor's: {other:?}"),
     }
 }
@@ -298,7 +307,8 @@ fn took_fact(next: &mut AppState, product: Product) {
         | Product::Operated(_)
         | Product::CommitTemplate(_)
         | Product::HeadMessage(_)
-        | Product::ExternalEditor(_) => {}
+        | Product::ExternalEditor(_)
+        | Product::HandedOver(_) => {}
     }
 }
 
