@@ -28,7 +28,7 @@ use graft_git::state::InProgress;
 use graft_git::status::WorkingTreeStatus;
 use graft_git::version::GitVersion;
 
-pub use remote::{FetchParams, Lease, PullParams, PushParams};
+pub use remote::{FetchParams, Lease, PullParams, PushParams, RemoteNames};
 
 /// One write to the repository, as the user asked for it.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -212,10 +212,11 @@ pub struct RepoFacts {
     pub stashes: Vec<StashEntry>,
     /// The system git's version.
     pub git: GitVersion,
-    /// The configured remotes, `origin` first.
+    /// The configured remotes, `origin` first. Read only for a remote
+    /// operation (`read_facts`'s `with_remotes`); empty otherwise.
     pub remotes: Vec<Remote>,
-    /// The upstream of `HEAD`'s branch; `None` when detached, unborn or
-    /// not tracking anything.
+    /// The upstream of `HEAD`'s branch; `None` when detached, unborn, not
+    /// tracking anything, or not read (a local operation).
     pub upstream: Option<TrackedUpstream>,
 }
 
@@ -288,12 +289,26 @@ pub enum Refusal {
     UpstreamChanged,
     /// `HEAD` is no longer on the branch the app read.
     BranchChanged,
+    /// A force-push whose lease names a commit the local tracking ref is not
+    /// at: fetched since the box was read, or never fetched at all. Refused
+    /// before git runs, so work the user has not looked at is never
+    /// overwritten (m4/04 review, M1).
+    LeaseStale {
+        /// The branch on the remote, as `origin/main`.
+        remote_side: String,
+    },
 }
 
 impl Refusal {
     /// One plain sentence saying what stands in the way and what to do, naming
     /// the shell command where a later milestone owns the fix.
     #[must_use]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one arm per refusal, matched exhaustively here: splitting the remote \
+                  ones out needed a catch-all that re-entered this function (m4/04 review \
+                  Minor 7)"
+    )]
     pub fn explain(&self) -> String {
         match self {
             Self::Bare => "This repository has no working tree, so there is nothing here to \
@@ -344,12 +359,25 @@ impl Refusal {
                 name_paths(paths),
                 if paths.len() == 1 { "has" } else { "have" }
             ),
-            Self::DetachedHead
-            | Self::NoRemote
-            | Self::NoSuchRemote { .. }
-            | Self::NoUpstream { .. }
-            | Self::UpstreamChanged
-            | Self::BranchChanged => remote::explain(self),
+            // The remote refusals, in the M4 design note's words.
+            Self::DetachedHead => "HEAD is detached — check out a branch first".to_owned(),
+            Self::NoRemote => {
+                "no remote — add one in the shell: git remote add origin <url>".to_owned()
+            }
+            Self::NoSuchRemote { name } => format!("no remote named '{name}'"),
+            Self::NoUpstream { branch } => {
+                format!("{branch} has no upstream — P pushes and sets one")
+            }
+            Self::UpstreamChanged => {
+                "the branch's upstream changed since it was read — press p again".to_owned()
+            }
+            Self::BranchChanged => {
+                "HEAD moved to another branch since it was read — look again".to_owned()
+            }
+            Self::LeaseStale { remote_side } => format!(
+                "force-push refused: {remote_side} is not where the box said \
+                 (fetched since, or never fetched) · f to fetch, then look"
+            ),
         }
     }
 }
@@ -477,6 +505,18 @@ impl Operation {
     #[must_use]
     pub fn is_remote(&self) -> bool {
         matches!(self, Self::Fetch(_) | Self::Pull(_) | Self::Push(_))
+    }
+
+    /// The branch and remote names a remote operation's failure line uses,
+    /// from its params; `None` for a local operation.
+    #[must_use]
+    pub fn remote_names(&self) -> Option<RemoteNames> {
+        match self {
+            Self::Fetch(params) => Some(remote::names_of_fetch(params)),
+            Self::Pull(params) => Some(remote::names_of_pull(params)),
+            Self::Push(params) => Some(remote::names_of_push(params)),
+            _ => None,
+        }
     }
 
     /// The command lines a remote operation will run, known before any
