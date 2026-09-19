@@ -75,6 +75,12 @@ pub enum Task {
     ReadRefs,
     /// Read the working tree's staged/unstaged/untracked counts.
     ReadWorkingTree,
+    /// Read `commit.template`'s file, for the commit editor's empty body
+    /// (m3-working-tree-undo-and-stash/05).
+    ReadCommitTemplate,
+    /// Read `HEAD`'s commit message, to prefill an amend
+    /// (m3-working-tree-undo-and-stash/05).
+    ReadHeadMessage,
     /// Work out the strict topological order a provisional walk promotes to.
     PromoteHistory,
     /// Search history for a query (`/`).
@@ -149,7 +155,7 @@ pub enum Product {
     /// per changed path), or why it could not be read. `Arc`: shared with
     /// the changes pane's file list, never copied per event
     /// (m3-working-tree-undo-and-stash/04, mirroring `Product::Refs`).
-    WorkingTree(Result<std::sync::Arc<graft_git::status::WorkingTreeStatus>, String>),
+    WorkingTree(Result<crate::working_tree::WorkingTree, String>),
     /// Every commit in strict topological order, for the walk on screen to
     /// promote to (ADR-0008).
     TopologicalOrder(std::sync::Arc<[graft_core::commit_handle::CommitHandle]>),
@@ -207,6 +213,19 @@ pub enum Product {
     /// (`crate::map`). A `Stop` firing mid-walk is one more line here, the
     /// same as any other failure — not folded into a silent cancellation.
     Map(Result<std::sync::Arc<crate::map::MapData>, String>),
+    /// `commit.template`'s contents, or `None` where the config names no
+    /// template (m3-working-tree-undo-and-stash/05). A template that is
+    /// configured but unreadable is `None` with the reason on the status
+    /// line — the editor still opens, with an empty body.
+    CommitTemplate(Result<Option<String>, String>),
+    /// `HEAD`'s commit message, for an amend's prefill, or why it could not
+    /// be read — an unborn `HEAD` among the reasons
+    /// (m3-working-tree-undo-and-stash/05).
+    HeadMessage(Result<String, String>),
+    /// What `$EDITOR` left in the message file, or why Graft could not use
+    /// it: the editor would not start, exited non-zero, or the file could
+    /// not be read back (m3-working-tree-undo-and-stash/05).
+    ExternalEditor(Result<String, String>),
     /// One working-tree write finished. Not a plain `Result`: see
     /// [`crate::jobs::operate::Operated`]'s doc for why an operation that
     /// ran but left part of its after-state unread still carries the
@@ -315,6 +334,35 @@ pub enum Command {
     /// the key to the call (the seam rule, `crates/graft/tests/it/
     /// seam_rule.rs`, m3-working-tree-undo-and-stash/04).
     Operate(JobId, Box<graft_ops::operation::Operation>),
+    /// Read `commit.template`'s file for the commit editor's empty body,
+    /// under an id `update` chose (m3-working-tree-undo-and-stash/05).
+    ReadCommitTemplate(JobId),
+    /// Read `HEAD`'s commit message to prefill an amend, under an id
+    /// `update` chose (m3-working-tree-undo-and-stash/05).
+    ReadHeadMessage(JobId),
+    /// Hand the terminal to `$EDITOR` on this path, at this line, and take
+    /// it back when the editor exits (m3-working-tree-undo-and-stash/05).
+    ///
+    /// Carried out by the frame loop itself, never by the job runner:
+    /// restoring the terminal and re-entering it is the loop's own
+    /// business, and a worker thread has no business touching the modes the
+    /// loop drew through (`event_loop::outside`). `CopyToClipboard` and
+    /// `SaveLayout` are the precedent.
+    OpenExternalEditor {
+        /// The file to open.
+        path: std::path::PathBuf,
+        /// The line to put the cursor on, where the editor takes one.
+        line: Option<u32>,
+    },
+    /// Write this message to the repository's `graft/COMMIT_EDITMSG`, hand
+    /// the terminal to `$EDITOR` on it, and bring back what was saved
+    /// (`Ctrl+E`, m3-working-tree-undo-and-stash/05). The path is the
+    /// loop's: `update` knows no repository directory.
+    EditCommitMessage(String),
+    /// Suspend Graft the way `Ctrl+Z` does in any other terminal program
+    /// (`keys.suspend_on_ctrl_z`, ADR-0002). Carried out by the frame loop,
+    /// like `OpenExternalEditor`.
+    Suspend,
 }
 
 /// Where the offer to build a missing commit-graph file is (m1-the-graph/54).

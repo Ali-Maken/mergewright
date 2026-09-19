@@ -307,7 +307,7 @@ pub fn stage_at_diff_cursor(
         return stage_selected(next, commands, next_id);
     }
     if let Some(reason) = side_by_side_refusal(next, "stage") {
-        next.status = Status::Failed(reason);
+        next.status = Status::WriteFailed(reason);
         return true;
     }
     let Some(path) = selected_path(next) else {
@@ -325,7 +325,7 @@ pub fn stage_at_diff_cursor(
     let patch_bytes = match patch_for(next, &unit, direction, verb) {
         Ok(bytes) => bytes,
         Err(reason) => {
-            next.status = Status::Failed(reason);
+            next.status = Status::WriteFailed(reason);
             return true;
         }
     };
@@ -357,7 +357,7 @@ pub fn request_discard_at_diff_cursor(next: &mut AppState) -> bool {
         return request_discard(next);
     }
     if let Some(reason) = side_by_side_refusal(next, "discard") {
-        next.status = Status::Failed(reason);
+        next.status = Status::WriteFailed(reason);
         return true;
     }
     let Some(path) = selected_path(next) else {
@@ -371,7 +371,7 @@ pub fn request_discard_at_diff_cursor(next: &mut AppState) -> bool {
     let patch_bytes = match patch_for(next, &unit, PatchDirection::Reverse, "discard") {
         Ok(bytes) => bytes,
         Err(reason) => {
-            next.status = Status::Failed(reason);
+            next.status = Status::WriteFailed(reason);
             return true;
         }
     };
@@ -608,20 +608,29 @@ pub fn operated(
     match outcome {
         Operated::Done(applied) => {
             state.status = Status::Done(applied.entry.description.clone());
+            // The write the editor was open for landed, so the editor and
+            // the draft behind it are about a commit that now exists
+            // (m3-working-tree-undo-and-stash/05). A failure leaves both
+            // alone: the message is what the user has to fix.
+            super::commit_editor::committed(state);
             refresh(state, applied.refresh, next_id)
         }
         Operated::Incomplete { applied, error } => {
-            state.status = Status::Failed(format!(
+            state.status = Status::WriteFailed(format!(
                 "{} \u{2014} could not confirm it fully: {error}",
                 applied.entry.description
             ));
+            // It ran: the same reasoning as `Done`, and leaving the editor
+            // open would invite a second commit of a message already
+            // committed.
+            super::commit_editor::committed(state);
             refresh(state, applied.refresh, next_id)
         }
         Operated::Failed {
             error,
             refresh: what,
         } => {
-            state.status = Status::Failed(error);
+            state.status = Status::WriteFailed(error);
             // A failure is not proof the screen is still true: `ApplyError::Git`
             // means git ran part-way and journaled the entry `Aborted`, so the
             // file list, the diff bytes and the header counts describe a
@@ -1020,7 +1029,7 @@ mod tests {
         );
         assert!(commands.is_empty(), "nothing is written");
         assert_eq!(state.operating, None);
-        let Status::Failed(text) = &state.status else {
+        let Status::WriteFailed(text) = &state.status else {
             panic!(
                 "expected a failure on the status line, got {:?}",
                 state.status
@@ -1382,7 +1391,7 @@ mod tests {
             assert!(stage_at_diff_cursor(&mut state, &mut commands, &mut ids()));
             assert!(commands.is_empty(), "{commands:?}");
             assert_eq!(state.operating, None);
-            let Status::Failed(said) = &state.status else {
+            let Status::WriteFailed(said) = &state.status else {
                 panic!("expected a refusal, got {:?}", state.status);
             };
             assert!(said.contains("press v"), "{said}");
@@ -1391,7 +1400,7 @@ mod tests {
             state.detail.mode = graft_ui::detail::DiffMode::SideBySide;
             assert!(request_discard_at_diff_cursor(&mut state));
             assert!(state.confirm.is_none());
-            let Status::Failed(said) = &state.status else {
+            let Status::WriteFailed(said) = &state.status else {
                 panic!("expected a refusal, got {:?}", state.status);
             };
             assert!(said.contains("press v"), "{said}");
@@ -1519,7 +1528,7 @@ mod tests {
             "a working-tree failure must not restart the walk: {commands:?}"
         );
         assert_eq!(state.operating, None);
-        assert_eq!(state.status, Status::Failed("boom".into()));
+        assert_eq!(state.status, Status::WriteFailed("boom".into()));
     }
 
     #[test]
@@ -1544,7 +1553,7 @@ mod tests {
         );
         assert!(commands.is_empty(), "{commands:?}");
         assert_eq!(state.operating, None);
-        assert_eq!(state.status, Status::Failed("nothing to do".into()));
+        assert_eq!(state.status, Status::WriteFailed("nothing to do".into()));
     }
 
     #[test]

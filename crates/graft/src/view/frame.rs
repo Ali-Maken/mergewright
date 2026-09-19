@@ -61,6 +61,61 @@ pub fn draws_pixels(session: &Session, state: &AppState) -> bool {
         )
 }
 
+/// The Map view in the graph's area, with the context menu and the confirm
+/// box over it. Returns the rectangle the detail pane's pixels go in.
+fn draw_map(session: &Session, state: &AppState, frame: &mut Frame, area: Rect) -> Option<Rect> {
+    let tier = tier_in_force(session, state);
+    let mut screen = map_view(state, state.harness.clock.now_seconds());
+    screen.ascii = tier == RenderingTier::Ascii;
+
+    let graph = if state.detail.shown {
+        render_overlay_with_detail(
+            session,
+            state,
+            frame,
+            MapScreen {
+                view: &screen,
+                theme: &session.theme,
+            },
+            area,
+            "Map",
+        )
+    } else {
+        frame.render_widget(
+            MapScreen {
+                view: &screen,
+                theme: &session.theme,
+            },
+            area,
+        );
+        None
+    };
+    draw_context_menu(state, frame, area, &session.theme);
+    draw_confirm(state, frame, area, &session.theme);
+    graph
+}
+
+/// The commit editor in the graph's area, the detail pane left alone. Always
+/// `None`: the editor draws no pixels, whatever the terminal can do.
+fn draw_commit_editor(
+    session: &Session,
+    state: &AppState,
+    frame: &mut Frame,
+    area: Rect,
+) -> Option<Rect> {
+    let editor = crate::view::commit_editor_view(state)?;
+    let screen = graft_ui::commit_editor::CommitEditorScreen {
+        view: &editor,
+        theme: &session.theme,
+    };
+    if state.detail.shown {
+        render_overlay_with_detail(session, state, frame, &screen, area, "Commit");
+    } else {
+        frame.render_widget(&screen, area);
+    }
+    None
+}
+
 /// [`view`], saying `graphics` in the header when the graph is drawn in
 /// pixels; returns the rectangle those pixels go in, or `None` when this
 /// frame draws no pixels.
@@ -79,27 +134,14 @@ pub fn view_with_graphics(
     let pixels = draws_pixels(session, state);
 
     match state.screen {
-        Screen::Graph if state.map.shown => {
-            let tier = tier_in_force(session, state);
-            let mut screen = map_view(state, state.harness.clock.now_seconds());
-            screen.ascii = tier == RenderingTier::Ascii;
-
-            let graph = if state.detail.shown {
-                render_map_with_detail(session, state, frame, &screen, area)
-            } else {
-                frame.render_widget(
-                    MapScreen {
-                        view: &screen,
-                        theme: &session.theme,
-                    },
-                    area,
-                );
-                None
-            };
-            draw_context_menu(state, frame, area, &session.theme);
-            draw_confirm(state, frame, area, &session.theme);
-            graph
+        // The commit editor replaces the graph and leaves the detail pane
+        // alone — the rule for every M3 overlay (design note, hard choice 4).
+        // It is checked before the Map view's arm because `c` is answered
+        // wherever the cursor is, the Map view included.
+        Screen::Graph if state.commit_editor.is_some() => {
+            draw_commit_editor(session, state, frame, area)
         }
+        Screen::Graph if state.map.shown => draw_map(session, state, frame, area),
         Screen::Graph => {
             let mut screen = graph_view(state, state.harness.clock.now_seconds());
             screen.icons = session.icons;
@@ -221,17 +263,19 @@ fn render_graph_screen(
     None
 }
 
-/// The Map screen split with the detail pane: the same [`DetailLayout`] the
-/// graph uses, so opening the detail pane while `state.map.shown` neither
-/// hides the pane nor gives the map the whole frame back
-/// (`map-view-screen`, m2-details-and-diffs/19). Its tab strip reads `Map`
-/// where the graph's reads `Graph`.
-fn render_map_with_detail(
+/// An overlay screen (the Map view, the commit editor) split with the detail
+/// pane: the same [`DetailLayout`] the graph uses, so opening the detail pane
+/// while an overlay is up neither hides the pane nor gives the overlay the
+/// whole frame back (`map-view-screen`, m2-details-and-diffs/19; design note
+/// hard choice 4 makes this the rule for every M3 overlay). Its tab strip
+/// reads `Map` or `Commit` where the graph's reads `Graph`.
+fn render_overlay_with_detail(
     session: &Session,
     state: &AppState,
     frame: &mut Frame,
-    screen: &graft_ui::map_screen::MapView,
+    overlay: impl Widget,
     area: Rect,
+    label: &str,
 ) -> Option<Rect> {
     let layout = crate::update::detail::effective_layout(
         state.detail.focus,
@@ -239,7 +283,7 @@ fn render_map_with_detail(
         (area.width, area.height),
     );
     let view = detail_view(state);
-    let (map_area, pane_area) = split_for_detail(frame, session, layout, area, "Map");
+    let (overlay_area, pane_area) = split_for_detail(frame, session, layout, area, label);
 
     if let Some(pane_area) = pane_area {
         frame.render_widget(
@@ -252,14 +296,8 @@ fn render_map_with_detail(
         );
     }
 
-    let map_area = map_area?;
-    frame.render_widget(
-        MapScreen {
-            view: screen,
-            theme: &session.theme,
-        },
-        map_area,
-    );
+    let overlay_area = overlay_area?;
+    frame.render_widget(overlay, overlay_area);
     None
 }
 
@@ -386,7 +424,7 @@ fn footer_notice(state: &AppState, tier: RenderingTier) -> Option<SanitizedText>
         Status::Copied { short } => {
             return Some(sanitize_line(&format!("{short}… → clipboard (osc 52)")));
         }
-        Status::Ready | Status::Failed(_) => {}
+        Status::Ready | Status::Failed(_) | Status::WriteFailed(_) => {}
     }
     // Only below the terminal's own tier: `F3` clears the override when it
     // cycles back to the top (m1-the-graph/33).

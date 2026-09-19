@@ -44,6 +44,27 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     if super::context_menu::context_menu_key(next, commands, key) {
         return;
     }
+    // The commit editor is modal too, and claims every key but `Ctrl+C`
+    // (m3-working-tree-undo-and-stash/05).
+    {
+        let mut local_jobs = next.local_jobs;
+        let claimed = super::commit_editor::editor_key(next, &key, &mut || local_jobs.next_id());
+        next.local_jobs = local_jobs;
+        if let Some(editor_commands) = claimed {
+            commands.extend(editor_commands);
+            return;
+        }
+    }
+    // A failure on the status line is dismissed by `Esc` before `Esc` means
+    // anything else (PROMPT.md §3, "errors stay until dismissed"). Without
+    // this a write failure had no way off the screen at all
+    // (m3/04 review gap, m3-working-tree-undo-and-stash/05).
+    if key.code == KeyCode::Escape
+        && matches!(next.status, Status::Failed(_) | Status::WriteFailed(_))
+    {
+        next.status = Status::Ready;
+        return;
+    }
     if super::detail::detail_key(next, commands, key) {
         return;
     }
@@ -80,6 +101,12 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         toggle_compare_selected(next, commands);
     } else if is_context_menu_key(key) {
         super::context_menu::open_selected(next);
+    } else if let Some(amend) = is_commit_key(key) {
+        let mut local_jobs = next.local_jobs;
+        commands.extend(super::commit_editor::open(next, amend, &mut || {
+            local_jobs.next_id()
+        }));
+        next.local_jobs = local_jobs;
     } else if let Some(change) = view_change(key) {
         let height = next.graph_rows();
         let stash = next.refs.as_deref().and_then(crate::refs::RefBadges::stash);
@@ -292,7 +319,7 @@ fn copy_selected_sha(next: &mut AppState, commands: &mut Vec<Command>) {
     let sha = row.commit.id.to_string();
     let short = sha.chars().take(7).collect();
     commands.push(Command::CopyToClipboard(sha));
-    if !matches!(next.status, Status::Failed(_)) {
+    if !matches!(next.status, Status::Failed(_) | Status::WriteFailed(_)) {
         next.status = Status::Copied { short };
     }
 }
@@ -301,6 +328,19 @@ fn copy_selected_sha(next: &mut AppState, commands: &mut Vec<Command>) {
 /// against it (`compare-two-commits`, m2-details-and-diffs/11).
 fn is_compare_key(key: KeyPress) -> bool {
     key.code == KeyCode::Char('x') && !key.modifiers.control && !key.modifiers.alt
+}
+
+/// `c` opens the commit editor, `a` opens it amending `HEAD` (DESIGN.md
+/// §2.3; m3-working-tree-undo-and-stash/05). `Some(amend)` says which.
+fn is_commit_key(key: KeyPress) -> Option<bool> {
+    if key.modifiers.control || key.modifiers.alt {
+        return None;
+    }
+    match key.code {
+        KeyCode::Char('c') => Some(false),
+        KeyCode::Char('a') => Some(true),
+        _ => None,
+    }
 }
 
 /// `.`: open the context menu for the selected row (`context-actions-menu`,

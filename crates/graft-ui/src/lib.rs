@@ -6,6 +6,7 @@
 //! Depends on `graph`, `term` and `core`.
 #![forbid(unsafe_code)]
 
+pub mod commit_editor;
 pub mod confirm;
 pub mod context_menu;
 pub mod detail;

@@ -26,6 +26,10 @@ use crate::theme::{Theme, Token};
 /// The glyph marking a length guide (50 for the subject, 72 for the body).
 pub const GUIDE: char = '┊';
 
+/// The glyph marking whatever has focus. A character rather than a colour or
+/// a bold run, so a capture of the character grid still shows it.
+pub const FOCUS: char = '▸';
+
 /// Cells `text` occupies, counting a wide character as two.
 fn cells(text: &str) -> usize {
     text.chars().filter_map(UnicodeWidthChar::width).sum()
@@ -438,15 +442,14 @@ impl Widget for &FieldWidget<'_> {
         }
         let row = area.y;
         let label_width = LABEL_WIDTH.min(area.width);
-        let mut label = foreground(self.theme, Token::TextMuted);
-        if self.view.focused {
-            label = foreground(self.theme, Token::Text).add_modifier(Modifier::BOLD);
-        }
-        buf.set_string(
+        draw_label(
+            buf,
             area.x,
             row,
-            fit(self.view.label, usize::from(label_width)),
-            label,
+            label_width,
+            self.view.label,
+            self.view.focused,
+            self.theme,
         );
 
         let counter = self.view.counter.map(|(typed, limit)| {
@@ -527,16 +530,15 @@ impl Widget for &AreaWidget<'_> {
         if area.height == 0 || area.width == 0 {
             return;
         }
-        let mut label = foreground(self.theme, Token::TextMuted);
-        if self.view.focused {
-            label = foreground(self.theme, Token::Text).add_modifier(Modifier::BOLD);
-        }
         let label_width = LABEL_WIDTH.min(area.width);
-        buf.set_string(
+        draw_label(
+            buf,
             area.x,
             area.y,
-            fit(self.view.label, usize::from(label_width)),
-            label,
+            label_width,
+            self.view.label,
+            self.view.focused,
+            self.theme,
         );
 
         let Some(height) = area.height.checked_sub(1).filter(|rows| *rows > 0) else {
@@ -576,6 +578,37 @@ impl Widget for &AreaWidget<'_> {
                 self.theme,
             );
         }
+    }
+}
+
+/// A field's label, with `FOCUS` in the cell before it when the field has
+/// focus.
+///
+/// The marker is a character, not a bold attribute, because a capture records
+/// the character grid and nothing else (CLAUDE.md): "which field has focus"
+/// has to survive into `docs/shots/`. The bold rides along for a real
+/// terminal.
+fn draw_label(
+    buf: &mut Buffer,
+    x: u16,
+    y: u16,
+    width: u16,
+    label: &str,
+    focused: bool,
+    theme: &Theme,
+) {
+    if width == 0 {
+        return;
+    }
+    let style = if focused {
+        foreground(theme, Token::Text).add_modifier(Modifier::BOLD)
+    } else {
+        foreground(theme, Token::TextMuted)
+    };
+    let marker = if focused { FOCUS } else { ' ' };
+    buf.set_string(x, y, marker.to_string(), style);
+    if width > 1 {
+        buf.set_string(x + 1, y, fit(label, usize::from(width - 1)), style);
     }
 }
 

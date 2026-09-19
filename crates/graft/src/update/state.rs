@@ -153,6 +153,25 @@ pub struct AppState {
     /// own keys answer first and nothing else sees them
     /// (m3-working-tree-undo-and-stash/04).
     pub confirm: Option<super::confirm::PendingConfirm>,
+    /// The commit editor (`c`, `a`): `None` while closed. Modal like the
+    /// confirm box — while it is open every key is the editor's, bar `Ctrl+C`
+    /// (m3-working-tree-undo-and-stash/05).
+    pub commit_editor: Option<super::commit_editor::CommitEditor>,
+    /// What `Esc` kept when it closed a non-empty editor, so the next `c`
+    /// this session picks the message back up rather than losing it.
+    pub commit_draft: Option<super::commit_editor::CommitEditor>,
+    /// The merge, rebase, cherry-pick, revert or bisect the repository is
+    /// partway through, as the last working-tree read found it. Commit and
+    /// amend refuse while it is `Some` and the refusal names the shell
+    /// command that finishes it (ADR-0034; M5 does the real handling).
+    pub in_progress: Option<graft_git::state::InProgress>,
+    /// The `HEAD`-message read an `a` is waiting on: the editor opens on its
+    /// answer, so there is never a half-filled amend on screen. Any other
+    /// id's answer is dropped (m3-working-tree-undo-and-stash/05).
+    pub head_message: Option<JobId>,
+    /// The `commit.template` read an open editor is waiting on, for the same
+    /// reason.
+    pub commit_template: Option<JobId>,
 }
 
 /// The screens Graft can show.
@@ -398,9 +417,23 @@ pub enum Status {
     /// Nothing to report.
     #[default]
     Ready,
-    /// A background job failed, and this is what it said. Shown until
-    /// something replaces it — a failure is never dropped on the floor.
+    /// A background job failed, and this is what it said — a read, not
+    /// something the user asked for. Shown until a later job succeeds
+    /// (`JobFinished`) or `Esc` dismisses it; a failure is never dropped on
+    /// the floor.
     Failed(String),
+    /// A **write** the user asked for failed, and this is what it said: a
+    /// hook that rejected a commit, a patch git would not apply, a discard
+    /// that ran part-way.
+    ///
+    /// Apart from [`Status::Failed`] because the two are stale for different
+    /// reasons. A read failure is superseded by the next read that works, so
+    /// `JobFinished` clears it. A write failure is not: the refresh the
+    /// failure itself triggers finishes a moment later, and clearing on that
+    /// wiped a rejected hook's message off the screen before the user could
+    /// read it (m3/04 review, `KNOWN_GAPS.md`). It stays until `Esc`
+    /// (m3-working-tree-undo-and-stash/05).
+    WriteFailed(String),
     /// `y` sent the selected commit's SHA to the terminal's clipboard
     /// request (OSC 52); `short` is its first seven hex digits. Says what
     /// Graft sent, not that the clipboard has it: nothing comes back to

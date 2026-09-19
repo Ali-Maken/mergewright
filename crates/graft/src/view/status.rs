@@ -27,7 +27,7 @@ pub fn status_view(session: &Session, state: &AppState) -> StatusView {
         notes: notes(session, state),
         problem: match &state.status {
             Status::Ready | Status::Copied { .. } | Status::Busy(_) | Status::Done(_) => None,
-            Status::Failed(message) => Some(sanitize_line(message)),
+            Status::Failed(message) | Status::WriteFailed(message) => Some(sanitize_line(message)),
         },
         history: state.history.as_ref().map(history_view),
     }

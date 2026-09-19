@@ -209,7 +209,7 @@ fn a_field_draws_its_label_guide_and_counter() {
             .render(area, buf);
     });
     assert!(
-        lines[0].starts_with("Subject  add the commit editor"),
+        lines[0].starts_with("▸Subject add the commit editor"),
         "{lines:?}"
     );
     assert!(
@@ -272,7 +272,7 @@ fn an_area_scrolls_so_the_cursor_line_stays_on_screen() {
         })
             .render(area, buf);
     });
-    assert_eq!(lines[0], "Body");
+    assert_eq!(lines[0], "▸Body");
     assert!(lines[1].ends_with("line7"), "{lines:?}");
     assert!(lines[3].ends_with("line9"), "{lines:?}");
 }

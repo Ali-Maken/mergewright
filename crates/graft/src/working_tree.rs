@@ -7,18 +7,47 @@
 //! ahead/behind counts, there is nothing here worth remembering between
 //! reads.
 
+use std::sync::Arc;
+
 use graft_git::run::Stop;
+use graft_git::state::InProgress;
 use graft_git::status::WorkingTreeStatus;
 
 use crate::repos::RepoStore;
 
-/// Reads the working tree's status (a job's work).
+/// One read of the working tree: what changed, and whether the repository is
+/// partway through a merge, rebase, cherry-pick, revert or bisect.
+///
+/// The two travel together because they are read together and used together:
+/// the commit editor's refusal preview (ADR-0034) needs both to say whether
+/// `[ Commit ]` would do anything, and `in_progress` is a plain filesystem
+/// check under the git directory — no extra `git` spawn to piggyback it on
+/// the status read.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WorkingTree {
+    /// One entry per changed path. `Arc`: shared with the changes pane's
+    /// file list rather than copied per event.
+    pub status: Arc<WorkingTreeStatus>,
+    /// The operation partway through, if there is one.
+    pub in_progress: Option<InProgress>,
+}
+
+/// Reads the working tree's status and the repository's in-progress state
+/// (a job's work).
 ///
 /// # Errors
-/// The failure text, ready to show: the repository or its status could not
-/// be read.
-pub fn read(store: &RepoStore, stop: &dyn Stop) -> Result<WorkingTreeStatus, String> {
+/// The failure text, ready to show: the repository, its status or its
+/// in-progress markers could not be read.
+pub fn read(store: &RepoStore, stop: &dyn Stop) -> Result<WorkingTree, String> {
     let repo = store.shared().map_err(|error| error.to_string())?;
     let handle = repo.handle();
-    graft_git::status::read(&handle, stop).map_err(|error| error.to_string())
+    let status = graft_git::status::read(&handle, stop).map_err(|error| error.to_string())?;
+    // Not swallowed to `None`: an unreadable git directory is a real failure,
+    // and reporting "nothing in progress" would let a commit be offered that
+    // git will refuse.
+    let in_progress = graft_git::state::in_progress(&handle).map_err(|error| error.to_string())?;
+    Ok(WorkingTree {
+        status: Arc::new(status),
+        in_progress,
+    })
 }

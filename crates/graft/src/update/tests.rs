@@ -962,6 +962,11 @@ fn the_same_event_always_gives_the_same_answer() {
         map: crate::update::map::MapState::default(),
         strip_shown: false,
         confirm: None,
+        commit_editor: None,
+        commit_draft: None,
+        in_progress: None,
+        head_message: None,
+        commit_template: None,
     };
 
     let first = update(&state, key(KeyCode::Char('q')));
@@ -2423,9 +2428,10 @@ fn a_clean_tree_while_shown_clears_the_flag_and_follows_off_it() {
         &opened,
         AppEvent::Produced(
             JobId::new(1),
-            Product::WorkingTree(Ok(std::sync::Arc::new(
-                graft_git::status::WorkingTreeStatus::default(),
-            ))),
+            Product::WorkingTree(Ok(crate::working_tree::WorkingTree {
+                status: std::sync::Arc::new(graft_git::status::WorkingTreeStatus::default()),
+                in_progress: None,
+            })),
         ),
     );
     assert!(!clean.on_working_tree);

@@ -18,6 +18,7 @@
 //! M8 — both used to live in this file). This file keeps only the
 //! dispatcher: `update`, `answer` and `core_event`.
 
+pub mod commit_editor;
 mod commit_graph;
 pub mod confirm;
 mod context_menu;
@@ -41,6 +42,7 @@ pub(crate) use geometry::context_menu_area;
 pub use state::{AppState, Banner, CHROME_ROWS, Harness, Quit, Screen, Size, Status};
 
 use graft_core::event::Event;
+use graft_core::job::JobId;
 
 use crate::history::{History, Phase};
 use crate::repository::RepositoryFacts;
@@ -107,9 +109,7 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             commit_graph::commit_graph_event(next, event);
         }
         AppEvent::Core(event) => core_event(next, commands, event),
-        AppEvent::Started(id, Task::ReadHistory) => history_started(next, commands, id),
-        AppEvent::Started(id, Task::PromoteHistory) => history::sort_started(next, commands, id),
-        AppEvent::Started(id, Task::Search) => search::search_started(next, commands, id),
+        AppEvent::Started(id, task) => started(next, commands, id, &task),
         // The detail pane names its jobs itself, before they start.
         event @ AppEvent::Produced(
             _,
@@ -118,23 +118,6 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             | Product::ContainedIn(..)
             | Product::EvilProbe(..),
         ) => detail::detail_event(next, commands, event),
-        // Not waited on by start: welcome whenever they arrive.
-        AppEvent::Started(
-            _,
-            Task::OpenRepository
-            | Task::CheckSystemGit
-            | Task::ReadRefs
-            | Task::ReadWorkingTree
-            | Task::ListFiles { .. }
-            | Task::FileDiff { .. }
-            | Task::ContainedIn { .. }
-            | Task::RadarContext { .. }
-            | Task::EvilProbe { .. }
-            | Task::ForcePushProbe { .. }
-            | Task::DuplicatesProbe { .. }
-            | Task::Map
-            | Task::Operate,
-        ) => {}
         event @ AppEvent::Produced(
             _,
             Product::RadarContext(_) | Product::ForcePushProbe(..) | Product::DuplicatesProbe(_),
@@ -159,6 +142,56 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
         | AppEvent::Progress(_, Progress::Operating { .. })) => {
             operate_answer(next, commands, event);
         }
+        event @ AppEvent::Produced(
+            _,
+            Product::CommitTemplate(_) | Product::HeadMessage(_) | Product::ExternalEditor(_),
+        ) => commit_editor_answer(next, event),
+    }
+}
+
+/// A job said it had started. Three tasks take a note of the id; the rest are
+/// not waited on by `start`, and are welcome whenever they arrive.
+///
+/// The commit graph's two are answered before this, in [`answer`].
+fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &Task) {
+    match task {
+        Task::ReadHistory => history_started(next, commands, id),
+        Task::PromoteHistory => history::sort_started(next, commands, id),
+        Task::Search => search::search_started(next, commands, id),
+        Task::OpenRepository
+        | Task::CheckSystemGit
+        | Task::ReadRefs
+        | Task::ReadWorkingTree
+        | Task::ListFiles { .. }
+        | Task::FileDiff { .. }
+        | Task::ContainedIn { .. }
+        | Task::RadarContext { .. }
+        | Task::EvilProbe { .. }
+        | Task::ForcePushProbe { .. }
+        | Task::DuplicatesProbe { .. }
+        | Task::Map
+        | Task::Operate
+        | Task::ReadCommitTemplate
+        | Task::ReadHeadMessage
+        | Task::WriteCommitGraph
+        | Task::DeclineCommitGraph => {}
+    }
+}
+
+/// The three products the commit editor waits on
+/// (m3-working-tree-undo-and-stash/05).
+fn commit_editor_answer(next: &mut AppState, event: AppEvent) {
+    match event {
+        AppEvent::Produced(id, Product::CommitTemplate(template)) => {
+            commit_editor::template_arrived(next, id, template);
+        }
+        AppEvent::Produced(id, Product::HeadMessage(message)) => {
+            commit_editor::head_message_arrived(next, id, message);
+        }
+        AppEvent::Produced(_, Product::ExternalEditor(result)) => {
+            commit_editor::editor_returned(next, result);
+        }
+        other => debug_assert!(false, "not the commit editor's: {other:?}"),
     }
 }
 
@@ -239,8 +272,9 @@ fn took_fact(next: &mut AppState, product: Product) {
             // status line rather than leaving them silently missing.
             next.status = Status::Failed(failure);
         }
-        Product::WorkingTree(Ok(status)) => {
-            next.working_tree = Some(status);
+        Product::WorkingTree(Ok(read)) => {
+            next.working_tree = Some(read.status);
+            next.in_progress = read.in_progress;
         }
         Product::WorkingTree(Err(failure)) => {
             // The graph still draws without the uncommitted row; the reason
@@ -261,7 +295,10 @@ fn took_fact(next: &mut AppState, product: Product) {
         | Product::ForcePushProbe(..)
         | Product::DuplicatesProbe(_)
         | Product::Map(_)
-        | Product::Operated(_) => {}
+        | Product::Operated(_)
+        | Product::CommitTemplate(_)
+        | Product::HeadMessage(_)
+        | Product::ExternalEditor(_) => {}
     }
 }
 
@@ -341,12 +378,18 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             // which is also what makes a result for a job whose screen has gone
             // harmless: there is nothing for it to overwrite.
             //
-            // One exception: a write still in flight owns the line. Only the
-            // history walk ends in `JobFinished` (every other job produces a
-            // `Product`), and a walk finishing says nothing about a write
-            // that has not answered yet — wiping `<description>` there would
-            // leave the write keys dead with nothing on screen saying why.
-            if !matches!(next.status, Status::Busy(_)) {
+            // Two exceptions, both about writes. A write still in flight
+            // owns the line: only the history walk ends in `JobFinished`
+            // (every other job produces a `Product`), and a walk finishing
+            // says nothing about a write that has not answered yet — wiping
+            // `<description>` there would leave the write keys dead with
+            // nothing on screen saying why. And a write that *failed* owns
+            // it too: the refresh that failure itself asks for finishes a
+            // moment later, and clearing on that wiped a rejected hook's
+            // message off the screen before it could be read. A read
+            // failure is the only one a later success makes stale
+            // (m3/04 review gap, m3-working-tree-undo-and-stash/05).
+            if !matches!(next.status, Status::Busy(_) | Status::WriteFailed(_)) {
                 next.status = Status::Ready;
             }
         }

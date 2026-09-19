@@ -465,9 +465,41 @@ impl<S: JobEvents> JobRunner<S> {
             if cancel.is_cancelled() {
                 return Outcome::Cancelled;
             }
-            Outcome::Produced(Product::WorkingTree(
-                crate::working_tree::read(&repos, cancel).map(Arc::new),
-            ))
+            Outcome::Produced(Product::WorkingTree(crate::working_tree::read(
+                &repos, cancel,
+            )))
+        });
+    }
+
+    /// Reads `commit.template`'s file for the commit editor's empty body,
+    /// under an id `update` chose (m3-working-tree-undo-and-stash/05).
+    fn read_commit_template(&self, id: JobId) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::ReadCommitTemplate), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::CommitTemplate(super::commit_message::template(
+                    &repos,
+                )))
+            })
+        });
+    }
+
+    /// Reads `HEAD`'s commit message for an amend's prefill, under an id
+    /// `update` chose (m3-working-tree-undo-and-stash/05).
+    fn read_head_message(&self, id: JobId) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::ReadHeadMessage), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::HeadMessage(super::commit_message::head_message(
+                    &repos,
+                )))
+            })
         });
     }
 
@@ -566,6 +598,8 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
                 self.dispatch_detail(command);
             }
             Command::BuildMap(id, req) => self.build_map(id, req),
+            Command::ReadCommitTemplate(id) => self.read_commit_template(id),
+            Command::ReadHeadMessage(id) => self.read_head_message(id),
             Command::Operate(id, op) => self.operate(id, op),
             Command::CancelJob(id) => {
                 self.row_requests().remove(&id);
@@ -580,6 +614,15 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             // reaching here is a routing bug, not a runtime condition.
             Command::SaveLayout(_) => {
                 unreachable!("SaveLayout is written by the loop, never a job")
+            }
+            // Handing the terminal over and taking it back is the loop's
+            // own business (`event_loop::outside`): a worker thread has no
+            // claim on the modes the loop drew through. Reaching here is a
+            // routing bug (m3-working-tree-undo-and-stash/05).
+            Command::OpenExternalEditor { .. }
+            | Command::EditCommitMessage(_)
+            | Command::Suspend => {
+                unreachable!("the terminal is handed over by the loop, never by a job")
             }
         }
     }

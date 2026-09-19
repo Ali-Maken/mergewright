@@ -30,7 +30,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         .map(|facts| sanitize_path(&facts.path));
     let problem = match &state.status {
         Status::Ready | Status::Copied { .. } | Status::Busy(_) | Status::Done(_) => None,
-        Status::Failed(message) => Some(sanitize_line(message)),
+        Status::Failed(message) | Status::WriteFailed(message) => Some(sanitize_line(message)),
     };
     let Some(history) = &state.history else {
         return opening_view(state, location, problem);
