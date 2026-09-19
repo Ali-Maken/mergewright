@@ -13,6 +13,7 @@
 //! a snapshot; it turns a key into an `Operation` and hands it over.
 
 mod commit;
+mod remote;
 mod stage;
 mod stash;
 
@@ -20,11 +21,14 @@ use std::path::PathBuf;
 
 use graft_core::journal::{HeadRef, OperationKind, Touches};
 use graft_core::oid::Oid;
+use graft_git::remote::{Remote, TrackedUpstream};
 use graft_git::run::GitArg;
 use graft_git::stash::StashEntry;
 use graft_git::state::InProgress;
 use graft_git::status::WorkingTreeStatus;
 use graft_git::version::GitVersion;
+
+pub use remote::{FetchParams, Lease, PullParams, PushParams};
 
 /// One write to the repository, as the user asked for it.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -63,6 +67,15 @@ pub enum Operation {
         /// The stash commit the list showed at that position.
         commit: Oid,
     },
+    /// `git fetch`: moves remote-tracking refs, nothing the user typed.
+    /// Journaled, never undone.
+    Fetch(FetchParams),
+    /// A fast-forward pull: fetch the upstream's remote, then `merge
+    /// --ff-only` onto its tracking ref. Undoable: the branch and the tree
+    /// go back, the tracking ref stays where the fetch left it.
+    Pull(PullParams),
+    /// `git push`. Journaled, never undone — the remote keeps what it got.
+    Push(PushParams),
 }
 
 /// What a stage, unstage or discard applies to.
@@ -152,17 +165,25 @@ pub struct Invocation {
     pub args: Vec<GitArg>,
     /// Bytes fed on stdin: a patch, or a commit message.
     pub stdin: Option<Vec<u8>>,
+    /// Talks to a remote: the executor streams its progress and answers its
+    /// credential prompts. `false` for everything local.
+    pub remote: bool,
 }
 
 impl Invocation {
     fn new(args: Vec<GitArg>) -> Self {
-        Self { args, stdin: None }
+        Self {
+            args,
+            stdin: None,
+            remote: false,
+        }
     }
 
     fn with_stdin(args: Vec<GitArg>, stdin: Vec<u8>) -> Self {
         Self {
             args,
             stdin: Some(stdin),
+            remote: false,
         }
     }
 
@@ -191,6 +212,11 @@ pub struct RepoFacts {
     pub stashes: Vec<StashEntry>,
     /// The system git's version.
     pub git: GitVersion,
+    /// The configured remotes, `origin` first.
+    pub remotes: Vec<Remote>,
+    /// The upstream of `HEAD`'s branch; `None` when detached, unborn or
+    /// not tracking anything.
+    pub upstream: Option<TrackedUpstream>,
 }
 
 /// Why an operation will not run. Each one is a fact about the repository the
@@ -244,6 +270,24 @@ pub enum Refusal {
         /// The paths both the stash and the working tree changed.
         paths: Vec<PathBuf>,
     },
+    /// A pull or push with `HEAD` not on a branch (detached or unborn).
+    DetachedHead,
+    /// No remote is configured at all.
+    NoRemote,
+    /// No remote by the name asked for.
+    NoSuchRemote {
+        /// The name asked for.
+        name: String,
+    },
+    /// A pull on a branch with no upstream.
+    NoUpstream {
+        /// The branch, short name.
+        branch: String,
+    },
+    /// The upstream the app read is not the one configured now.
+    UpstreamChanged,
+    /// `HEAD` is no longer on the branch the app read.
+    BranchChanged,
 }
 
 impl Refusal {
@@ -300,6 +344,12 @@ impl Refusal {
                 name_paths(paths),
                 if paths.len() == 1 { "has" } else { "have" }
             ),
+            Self::DetachedHead
+            | Self::NoRemote
+            | Self::NoSuchRemote { .. }
+            | Self::NoUpstream { .. }
+            | Self::UpstreamChanged
+            | Self::BranchChanged => remote::explain(self),
         }
     }
 }
@@ -328,6 +378,9 @@ impl Operation {
             Self::StashApply { .. } => OperationKind::StashApply,
             Self::StashPop { .. } => OperationKind::StashPop,
             Self::StashDrop { .. } => OperationKind::StashDrop,
+            Self::Fetch(_) => OperationKind::Fetch,
+            Self::Pull(_) => OperationKind::Pull,
+            Self::Push(_) => OperationKind::Push,
         }
     }
 
@@ -345,6 +398,9 @@ impl Operation {
             Self::StashApply { index, .. } => format!("apply stash@{{{index}}}"),
             Self::StashPop { index, .. } => format!("pop stash@{{{index}}}"),
             Self::StashDrop { index, .. } => format!("drop stash@{{{index}}}"),
+            Self::Fetch(params) => remote::describe_fetch(params),
+            Self::Pull(params) => remote::describe_pull(params),
+            Self::Push(params) => remote::describe_push(params),
         }
     }
 
@@ -354,8 +410,13 @@ impl Operation {
     /// # Errors
     /// The first [`Refusal`] found, in this order: a bare repository, unmerged
     /// paths, an operation in progress (stage and unstage are allowed
-    /// mid-rebase, everything else waits), then the kind's own rules.
+    /// mid-rebase, everything else waits), then the kind's own rules. A
+    /// fetch skips the first three: it changes no branch, index or file, so
+    /// it runs in a bare repository and in the middle of a rebase.
     pub fn check(&self, facts: &RepoFacts) -> Result<(), Refusal> {
+        if let Self::Fetch(params) = self {
+            return remote::check_fetch(params, facts);
+        }
         if facts.bare {
             return Err(Refusal::Bare);
         }
@@ -384,6 +445,9 @@ impl Operation {
                 stash::check_apply(*index, *commit, facts)
             }
             Self::StashDrop { index, commit } => stash::find(*index, *commit, facts).map(|_| ()),
+            Self::Fetch(params) => remote::check_fetch(params, facts),
+            Self::Pull(params) => remote::check_pull(params, facts),
+            Self::Push(params) => remote::check_push(params, facts),
         }
     }
 
@@ -402,7 +466,32 @@ impl Operation {
             Self::StashApply { index, .. } => vec![stash::plan_at("apply", *index, true)],
             Self::StashPop { index, .. } => vec![stash::plan_at("pop", *index, true)],
             Self::StashDrop { index, .. } => vec![stash::plan_at("drop", *index, false)],
+            Self::Fetch(params) => remote::plan_fetch(params),
+            Self::Pull(params) => remote::plan_pull(params),
+            Self::Push(params) => remote::plan_push(params),
         }
+    }
+
+    /// Fetch, pull or push: an operation that talks to a remote. The
+    /// executor re-reads everything after one (`Refresh::Everything`).
+    #[must_use]
+    pub fn is_remote(&self) -> bool {
+        matches!(self, Self::Fetch(_) | Self::Pull(_) | Self::Push(_))
+    }
+
+    /// The command lines a remote operation will run, known before any
+    /// facts are read — the push box shows them. Equal to `plan`'s lines,
+    /// because a remote operation's plan reads nothing from the facts.
+    /// `None` for a local operation, whose plan depends on the status.
+    #[must_use]
+    pub fn preview(&self) -> Option<Vec<String>> {
+        let plan = match self {
+            Self::Fetch(params) => remote::plan_fetch(params),
+            Self::Pull(params) => remote::plan_pull(params),
+            Self::Push(params) => remote::plan_push(params),
+            _ => return None,
+        };
+        Some(plan.iter().map(Invocation::command_line).collect())
     }
 
     /// Property 3: what the operation changes — the snapshot's scope and the
@@ -420,6 +509,13 @@ impl Operation {
                 (vec![stash::STASH_REF.to_owned()], true, true)
             }
             Self::StashDrop { .. } => (vec![stash::STASH_REF.to_owned()], false, false),
+            // Tracking refs are not recorded: a fetch can move thousands.
+            Self::Fetch(_) => (vec![], false, false),
+            // The branch and the tree, never the tracking ref: undo must not
+            // move it back, since the remote still has those commits.
+            Self::Pull(_) => (vec![commit::head_ref_name(&facts.head)], true, true),
+            // For the browser's `origin/main a1b2c3d → 9f8e7d6`, not for undo.
+            Self::Push(params) => (remote::push_tracking_ref(params, facts), false, false),
         };
         Touches {
             refs,

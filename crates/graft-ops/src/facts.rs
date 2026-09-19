@@ -16,6 +16,7 @@ use std::path::Path;
 use graft_core::journal::HeadRef;
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
+use graft_git::remote::RemoteError;
 use graft_git::repo::{HeadError, HeadState, RefTarget, RefsError, RepoHandle};
 use graft_git::run::Stop;
 use graft_git::stash::StashError;
@@ -47,6 +48,9 @@ pub enum FactsError {
     /// A tree could not be written.
     #[error("{0}")]
     Snapshot(#[from] SnapshotError),
+    /// The remotes or the head branch's upstream could not be read.
+    #[error("remotes: {0}")]
+    Remote(#[from] RemoteError),
     /// A ref name that is not UTF-8. The journal records ref names as text,
     /// so one that is not text cannot be recorded — and a restore that
     /// silently mangled a name would aim at the wrong ref.
@@ -64,7 +68,8 @@ impl FactsError {
     }
 }
 
-/// Everything `check`, `plan` and `touches` need, read in one pass.
+/// Everything `check`, `plan` and `touches` need, read in one pass: the
+/// remotes and `HEAD`'s upstream come from config, no spawn.
 pub fn read_facts(
     repo: &RepoHandle,
     git: GitVersion,
@@ -79,6 +84,11 @@ pub fn read_facts(
     // `status::read` already reports a bare repository as empty.
     let status = graft_git::status::read(repo, stop)?;
     let stashes = graft_git::stash::list(repo, stop)?;
+    let remotes = graft_git::remote::list(repo)?;
+    let upstream = match &head {
+        HeadRef::Branch(branch) => graft_git::remote::upstream_of(repo, branch)?,
+        HeadRef::Detached(_) | HeadRef::Unborn(_) => None,
+    };
     Ok(RepoFacts {
         bare,
         head,
@@ -86,6 +96,8 @@ pub fn read_facts(
         status,
         stashes,
         git,
+        remotes,
+        upstream,
     })
 }
 

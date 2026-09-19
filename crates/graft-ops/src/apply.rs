@@ -698,7 +698,10 @@ fn pins_for(op: &Operation) -> Vec<Oid> {
         | Operation::Commit(_)
         | Operation::Amend(_)
         | Operation::StashPush(_)
-        | Operation::StashApply { .. } => Vec::new(),
+        | Operation::StashApply { .. }
+        | Operation::Fetch(_)
+        | Operation::Pull(_)
+        | Operation::Push(_) => Vec::new(),
     }
 }
 
@@ -724,6 +727,9 @@ pub(crate) fn kind_name(kind: OperationKind) -> &'static str {
         OperationKind::StashApply => "stash apply",
         OperationKind::StashPop => "stash pop",
         OperationKind::StashDrop => "stash drop",
+        OperationKind::Fetch => "fetch",
+        OperationKind::Pull => "pull",
+        OperationKind::Push => "push",
         OperationKind::Undo => "undo",
         OperationKind::Redo => "redo",
     }
