@@ -231,6 +231,32 @@ pub struct JournalEntry {
     pub reverses: Option<EntryId>,
 }
 
+/// The reason recovery writes on an entry a previous run left open.
+///
+/// Public because it is the *only* thing that distinguishes "the process
+/// died" from "the operation failed" once recovery has rewritten the line,
+/// and every reader that tells the user which of the two happened has to
+/// agree on the word.
+pub const INTERRUPTED: &str = "interrupted";
+
+impl JournalEntry {
+    /// Did a previous run die with this operation half-done?
+    ///
+    /// Two shapes say so, and a reader must accept both. `Pending` is what
+    /// the *file* holds — an entry opened and never closed. `Aborted` with
+    /// [`INTERRUPTED`] is what a reader is handed, because recovery closes
+    /// such an entry (sealing its backup) before anyone reads the journal.
+    /// Keying on `Pending` alone therefore looks right and never fires.
+    #[must_use]
+    pub fn is_interrupted(&self) -> bool {
+        match &self.status {
+            EntryStatus::Pending => true,
+            EntryStatus::Aborted { reason } => reason == INTERRUPTED,
+            EntryStatus::Committed => false,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

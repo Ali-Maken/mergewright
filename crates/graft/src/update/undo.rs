@@ -178,6 +178,13 @@ fn wrapped(text: &str) -> Vec<String> {
 /// An entry whose after-state could not be read says so too: its `u`
 /// restores the whole working tree, which is not a thing to discover by
 /// pressing the key.
+///
+/// Read off the journal itself, not off what a read happened to close. The
+/// journal is re-read after every write and on `Ctrl+R`, and the second read
+/// closes nothing — deriving the notice from "what this read recovered" made
+/// it vanish at the first staged file, which is the one moment the user most
+/// needs to know an operation did not finish (m3/06 review, Major 1).
+/// An entry a later entry has taken back is not announced.
 #[must_use]
 pub fn interrupted_notice(state: &AppState) -> Option<String> {
     if state.journal.notice_seen {
@@ -186,14 +193,28 @@ pub fn interrupted_notice(state: &AppState) -> Option<String> {
     let super::detail::Loading::Ready(read) = &state.journal.entries else {
         return None;
     };
-    let first = read.interrupted.first()?;
-    let more = read.interrupted.len().saturating_sub(1);
+    // Announced unless a later entry has taken it back. Deliberately *not*
+    // `in_force`: that answers "can `u` reach it", which is false for an
+    // interrupted entry with no backup — and that is the one the user most
+    // needs to be told about, not the one to keep quiet about.
+    let undone: std::collections::HashSet<&graft_core::journal::EntryId> = read
+        .entries
+        .iter()
+        .filter_map(|entry| entry.reverses.as_ref())
+        .collect();
+    let mut interrupted = read
+        .entries
+        .iter()
+        .filter(|entry| entry.is_interrupted() && !undone.contains(&entry.id))
+        .map(|entry| entry.description.as_str());
+    let first = interrupted.next()?;
+    let more = interrupted.count();
     let rest = if more == 0 {
         String::new()
     } else {
         format!(" (and {more} more)")
     };
-    let widest = if read.unreadable.is_empty() {
+    let widest = if state.journal.unreadable.is_empty() {
         String::new()
     } else {
         " \u{b7} its state could not be read, so u restores the whole tree".to_owned()
@@ -520,14 +541,57 @@ mod tests {
         assert_eq!(commands, vec![Command::Redo(JobId::new(1), true)]);
     }
 
+    /// A journal holding one entry per description, each one torn the way
+    /// recovery leaves it: `Aborted { reason: "interrupted" }`, which is what
+    /// the view is actually handed (`Pending` never survives a read).
     fn read(interrupted: &[&str], unreadable: &[&str]) -> JournalState {
+        let entries = interrupted
+            .iter()
+            .enumerate()
+            .map(|(index, description)| torn_entry(index, description))
+            .collect();
         JournalState {
             entries: Loading::Ready(Arc::new(JournalRead {
-                entries: Vec::new(),
-                interrupted: interrupted.iter().map(|&s| s.to_owned()).collect(),
-                unreadable: unreadable.iter().map(|&s| s.to_owned()).collect(),
+                entries,
+                unreadable: Vec::new(),
             })),
+            unreadable: unreadable.iter().map(|&s| s.to_owned()).collect(),
             ..JournalState::default()
+        }
+    }
+
+    /// One entry a previous run left open and recovery then closed.
+    fn torn_entry(index: usize, description: &str) -> graft_core::journal::JournalEntry {
+        use graft_core::journal::{EntryId, EntryStatus, HeadRef, OperationKind, Touches};
+        let oid = |byte: u8| graft_core::oid::Oid::from_bytes(&[byte; 20]).expect("20 bytes");
+        let number = i64::try_from(index).expect("a handful of entries") + 1;
+        graft_core::journal::JournalEntry {
+            id: EntryId::new(number, [0; 10]),
+            at_unix_ms: number,
+            kind: OperationKind::Commit,
+            description: description.to_owned(),
+            status: EntryStatus::Aborted {
+                reason: graft_core::journal::INTERRUPTED.to_owned(),
+            },
+            touches: Touches {
+                refs: Vec::new(),
+                index: false,
+                worktree: true,
+            },
+            head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+            head_after: None,
+            refs_before: std::collections::BTreeMap::new(),
+            refs_after: std::collections::BTreeMap::new(),
+            index_before: None,
+            index_after: None,
+            // A backup of the tree it changed, so `in_force` counts it: an
+            // entry `u` can no longer reach is not one to announce.
+            worktree_before: Some(oid(3)),
+            worktree_after: None,
+            backup_ref: Some("refs/graft/backup/main/x".to_owned()),
+            pins: Vec::new(),
+            commands: Vec::new(),
+            reverses: None,
         }
     }
 

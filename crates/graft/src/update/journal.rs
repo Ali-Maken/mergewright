@@ -36,6 +36,16 @@ pub struct JournalState {
     pub notice_seen: bool,
     /// The journal as it was last read.
     pub entries: Loading<std::sync::Arc<JournalRead>>,
+    /// The read in flight, if any. Held apart from [`JournalState::entries`]
+    /// so a re-read does not blank the list it is refreshing — the marks and
+    /// the interrupted notice are drawn from that list, and they must not
+    /// blink off for the duration of every `Ctrl+R` (m3/06 review, Major 1).
+    pub reading: Option<JobId>,
+    /// Interrupted entries whose after-state could not be read, and why,
+    /// **accumulated across reads**. Only the read that recovered an entry
+    /// can report it, so a later read that recovers nothing must not erase
+    /// the warning.
+    pub unreadable: Vec<String>,
 }
 
 impl JournalState {
@@ -44,7 +54,13 @@ impl JournalState {
     /// answer is dropped by id.
     pub(super) fn read(&mut self, next_id: &mut impl FnMut() -> JobId) -> Vec<Command> {
         let id = next_id();
-        self.entries = Loading::Pending(id);
+        self.reading = Some(id);
+        // A list already on hand stays on screen while the fresh one is
+        // fetched: the browser's marks and the interrupted notice come from
+        // it, and a journal read happens after every write.
+        if !matches!(self.entries, Loading::Ready(_)) {
+            self.entries = Loading::Pending(id);
+        }
         vec![Command::ReadJournal(id)]
     }
 
@@ -81,8 +97,17 @@ pub(super) fn journal_event(state: &mut AppState, id: JobId, product: &Product) 
     let Product::Journal(result) = product else {
         return false;
     };
-    if state.journal.entries != Loading::Pending(id) {
+    if state.journal.reading != Some(id) {
         return true;
+    }
+    state.journal.reading = None;
+    if let Ok(read) = result {
+        // Merged, not replaced: see `JournalState::unreadable`.
+        for line in &read.unreadable {
+            if !state.journal.unreadable.contains(line) {
+                state.journal.unreadable.push(line.clone());
+            }
+        }
     }
     state.journal.entries = match result {
         Ok(read) => Loading::Ready(std::sync::Arc::clone(read)),
@@ -177,9 +202,13 @@ fn close(next: &mut AppState, commands: &mut Vec<Command>) {
     next.journal.shown = false;
     next.journal.selected = 0;
     next.journal.expanded = None;
-    if let Loading::Pending(id) = next.journal.entries {
+    if let Some(id) = next.journal.reading.take() {
         commands.push(Command::CancelJob(id));
-        next.journal.entries = Loading::Idle;
+        // Only a read with nothing behind it leaves the field empty. A
+        // re-read over a list already on hand keeps that list.
+        if next.journal.entries == Loading::Pending(id) {
+            next.journal.entries = Loading::Idle;
+        }
     }
 }
 
@@ -267,7 +296,6 @@ mod tests {
                 entry(1, OperationKind::Stage, "stage src/a.rs"),
                 entry(2, OperationKind::Commit, "commit \"x\""),
             ],
-            interrupted: Vec::new(),
             unreadable: Vec::new(),
         }));
         state

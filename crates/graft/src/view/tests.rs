@@ -2519,7 +2519,6 @@ fn journal_state(columns: u16, rows: u16) -> AppState {
     state.journal.entries = crate::update::detail::Loading::Ready(std::sync::Arc::new(
         crate::jobs::undo::JournalRead {
             entries: journal_entries(),
-            interrupted: Vec::new(),
             unreadable: Vec::new(),
         },
     ));

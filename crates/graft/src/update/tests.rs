@@ -983,6 +983,7 @@ fn control_r_asks_for_the_repository_to_be_re_read() {
             entries: crate::update::detail::Loading::Pending(JobId::new(
                 crate::update::detail::LOCAL_JOB_BIT | 1,
             )),
+            reading: Some(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 1)),
             ..state.journal.clone()
         },
         local_jobs: next.local_jobs,

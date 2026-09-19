@@ -67,10 +67,6 @@ pub enum Undone {
 pub struct JournalRead {
     /// Every entry, oldest first — the order the file has them in.
     pub entries: Vec<JournalEntry>,
-    /// Entries a previous run left open and this read closed as
-    /// `interrupted`, in the journal's own words. The footer names them
-    /// until the user has looked (`update::undo::interrupted_notice`).
-    pub interrupted: Vec<String>,
     /// Interrupted entries whose after-state could not be read, and why.
     /// Their `u` restores the whole working tree after asking, and the
     /// reason for that belongs on screen rather than on the floor
@@ -244,8 +240,10 @@ pub(super) fn read_journal(repos: &RepoStore, cancel: &Cancel) -> Result<Arc<Jou
                     .find(|entry| &entry.id == id)
                     .map_or_else(|| id.as_str().to_owned(), |entry| entry.description.clone())
             };
+            // `recovered.closed` is deliberately not carried: the notice is
+            // derived from the entries themselves, so that it survives the
+            // next read, which closes nothing (m3/06 review, Major 1).
             Ok(Arc::new(JournalRead {
-                interrupted: recovered.closed.iter().map(described).collect(),
                 unreadable: recovered
                     .unreadable
                     .iter()

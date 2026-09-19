@@ -32,15 +32,21 @@ fn repo_with_a_commit() -> graft_fixtures::Scratch {
     scratch
 }
 
-/// How many entries the journal file holds. Two lines per entry — the
-/// pending line and its outcome — so this is what the browser would list.
-fn journal_entries(repo: &std::path::Path) -> usize {
-    let path = repo.join(".git/graft/undo-journal.jsonl");
-    let text = std::fs::read_to_string(&path).expect("the journal was written");
-    text.lines()
-        .filter(|line| line.contains("\"pending\"") || line.contains("\"Pending\""))
-        .count()
-        .max(text.lines().count().div_ceil(2))
+/// The journal, read the way the app reads it. The old version of this
+/// counted lines containing `"pending"` and rounded — a heuristic that
+/// checked neither the entry count nor what each entry was, under an
+/// assertion claiming both (m3/06 review, Major 7).
+fn journal(repo: &std::path::Path) -> Vec<graft_core::journal::JournalEntry> {
+    let path = journal_path(repo);
+    graft_ops::journal::Journal::open(&path)
+        .expect("the journal the writes just made is readable")
+        .entries()
+        .to_vec()
+}
+
+/// Where a repository's journal lives.
+fn journal_path(repo: &std::path::Path) -> std::path::PathBuf {
+    repo.join(".git/graft/undo-journal.jsonl")
 }
 
 /// Discard an untracked file, then `u`: the file comes back byte for byte,
@@ -78,9 +84,18 @@ fn u_brings_a_discarded_untracked_file_back_byte_for_byte() {
         after, AWKWARD,
         "and the bytes are the awkward ones, not a re-encoding"
     );
-    assert!(
-        journal_entries(repo) >= 2,
-        "the discard and its undo are both in the journal"
+    let entries = journal(repo);
+    assert_eq!(
+        entries.len(),
+        2,
+        "the discard and its undo, and nothing else: {entries:?}"
+    );
+    assert_eq!(entries[0].kind, graft_core::journal::OperationKind::Discard);
+    assert_eq!(entries[1].kind, graft_core::journal::OperationKind::Undo);
+    assert_eq!(
+        entries[1].reverses.as_ref(),
+        Some(&entries[0].id),
+        "the undo names the entry it took back"
     );
 }
 
@@ -187,4 +202,94 @@ fn u_on_a_repository_nothing_has_written_says_there_is_nothing_to_undo() {
         said.contains("nothing to undo"),
         "it says which way round it is: {said}"
     );
+}
+
+/// A `Pending` line no outcome ever followed: what a process killed mid-write
+/// leaves behind. Written straight into the journal, because the only other
+/// way to make one is to kill Graft at the right microsecond.
+fn tear_the_journal(repo: &std::path::Path, description: &str) {
+    use graft_core::journal::{EntryId, HeadRef, JournalEntry, OperationKind, Touches};
+
+    let path = journal_path(repo);
+    std::fs::create_dir_all(path.parent().expect("the journal has a directory"))
+        .expect("the scratch repo is writable");
+    let mut journal = graft_ops::journal::Journal::open(&path).expect("a journal opens");
+    let entry = JournalEntry {
+        id: EntryId::new(1, [7; 10]),
+        at_unix_ms: 1_700_000_000_000,
+        kind: OperationKind::Commit,
+        description: description.to_owned(),
+        status: graft_core::journal::EntryStatus::Pending,
+        touches: Touches {
+            refs: Vec::new(),
+            index: false,
+            worktree: true,
+        },
+        head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+        head_after: None,
+        refs_before: std::collections::BTreeMap::new(),
+        refs_after: std::collections::BTreeMap::new(),
+        index_before: None,
+        index_after: None,
+        worktree_before: None,
+        worktree_after: None,
+        backup_ref: None,
+        pins: Vec::new(),
+        commands: Vec::new(),
+        reverses: None,
+    };
+    journal
+        .append_pending(&entry)
+        .expect("the pending line is written");
+}
+
+/// An operation that never finished is announced, and **keeps** being
+/// announced until `J` is pressed — through the re-read every write does and
+/// through `Ctrl+R` (m3/06 review, Major 1). The row for it reads
+/// `interrupted`, not `failed: interrupted`, because recovery rewrites the
+/// entry to `Aborted` before any view sees it (Major 2).
+#[test]
+fn an_interrupted_operation_is_announced_until_j_and_its_row_says_interrupted() {
+    let scratch = repo_with_a_commit();
+    let repo = scratch.path();
+    tear_the_journal(repo, "commit \"half written\"");
+
+    let (app, state) = App::open(repo);
+    let state = app.pump(state, "the launch journal read", |state| {
+        graft::update::undo::interrupted_notice(state).is_some()
+    });
+
+    let notice = graft::update::undo::interrupted_notice(&state).expect("the launch read found it");
+    assert!(notice.contains("half written"), "{notice}");
+
+    // The row the browser would draw, straight off the real read. Recovery
+    // has already closed the entry as `Aborted { "interrupted" }` by now.
+    let rows = graft::view::journal_view(&state, 40).rows;
+    let row = rows.first().expect("one entry");
+    assert_eq!(row.mark, graft_ui::journal_screen::RowMark::Interrupted);
+    assert!(
+        row.summary.as_str().starts_with("interrupted"),
+        "a process that died did not `fail`: {}",
+        row.summary.as_str()
+    );
+
+    // `Ctrl+R` re-reads, and that read closes nothing at all.
+    let state = app.press(&state, KeyPress::control(KeyCode::Char('r')));
+    let state = app.pump(state, "the re-read", |state| {
+        matches!(
+            state.journal.entries,
+            graft::update::detail::Loading::Ready(_)
+        ) && state.journal.reading.is_none()
+    });
+    assert!(
+        graft::update::undo::interrupted_notice(&state).is_some(),
+        "the notice is the only way the user learns an operation did not finish; \
+         it must not vanish at the first refresh"
+    );
+
+    // `J` is what takes it up, and the only thing that ends it.
+    let state = app.key(&state, KeyCode::Char('J'));
+    assert_eq!(graft::update::undo::interrupted_notice(&state), None);
+    drop(state);
+    app.close();
 }

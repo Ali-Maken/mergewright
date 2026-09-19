@@ -23,9 +23,11 @@ use crate::undo::RepoStateNow;
 /// The journal file's name under the per-worktree `graft/` directory.
 const FILE_NAME: &str = "undo-journal.jsonl";
 
-/// The reason recorded for an entry whose process died before it could write
-/// an outcome.
-const INTERRUPTED: &str = "interrupted";
+// The reason recorded for an entry whose process died before it could write
+// an outcome. One definition, in `core`, because every reader that tells the
+// user "interrupted" rather than "failed" has to match on this exact word
+// (m3/06 review, Major 2) — `JournalEntry::is_interrupted` is that reader.
+use graft_core::journal::INTERRUPTED;
 
 /// An open journal: the file's path and the entries read from it.
 ///

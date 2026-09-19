@@ -61,7 +61,7 @@ fn rows_for(entries: &[JournalEntry], state: &AppState, now_seconds: i64) -> Vec
                 RowMark::NextUndo
             } else if Some(&entry.id) == next_redo {
                 RowMark::NextRedo
-            } else if entry.status == EntryStatus::Pending {
+            } else if entry.is_interrupted() {
                 RowMark::Interrupted
             } else if in_force.get(index) == Some(&false) {
                 RowMark::Undone
@@ -109,13 +109,16 @@ fn summary(entry: &JournalEntry) -> String {
     if entry.touches.worktree {
         parts.push("the working tree".to_owned());
     }
-    if let EntryStatus::Aborted { reason } = &entry.status {
+    // Interrupted first, and *instead of* `failed:` — recovery closes a torn
+    // entry as `Aborted { reason: "interrupted" }`, so the two arms overlap
+    // and "failed: interrupted" is the wrong word for a process that died
+    // (m3/06 review, Major 2).
+    if entry.is_interrupted() {
+        parts.insert(0, "interrupted".to_owned());
+    } else if let EntryStatus::Aborted { reason } = &entry.status {
         // The row carries the failure in short form; the whole reason is
         // under `Space`, which is where a multi-line stderr belongs.
         parts.insert(0, format!("failed: {}", first_line(reason)));
-    }
-    if entry.status == EntryStatus::Pending {
-        parts.insert(0, "interrupted".to_owned());
     }
     if entry.backup_ref.is_some() {
         parts.push("backup saved".to_owned());
@@ -125,12 +128,17 @@ fn summary(entry: &JournalEntry) -> String {
 
 /// The whole reason an `Aborted` entry gives, for the expanded row.
 fn failure(entry: &JournalEntry) -> Option<String> {
+    if entry.is_interrupted() {
+        return Some(
+            "interrupted: a previous run stopped between this entry's two journal lines".to_owned(),
+        );
+    }
     match &entry.status {
         EntryStatus::Aborted { reason } => Some(format!("failed: {reason}")),
-        EntryStatus::Pending => Some(
-            "interrupted: a previous run stopped between this entry's two journal lines".to_owned(),
-        ),
-        EntryStatus::Committed => None,
+        // Unreachable: `is_interrupted` has taken every `Pending` entry
+        // above. Kept as the honest arm of the match rather than a
+        // catch-all that would silently call a torn entry a clean one.
+        EntryStatus::Pending | EntryStatus::Committed => None,
     }
 }
 
@@ -184,7 +192,6 @@ mod tests {
         let mut state = AppState::default();
         state.journal.entries = Loading::Ready(Arc::new(JournalRead {
             entries,
-            interrupted: Vec::new(),
             unreadable: Vec::new(),
         }));
         state
@@ -226,6 +233,37 @@ mod tests {
         let view = journal_view(&state, 10);
         assert_eq!(view.rows[0].mark, RowMark::Interrupted);
         assert!(view.rows[0].summary.as_str().starts_with("interrupted"));
+        assert!(
+            view.rows[0]
+                .failure
+                .as_ref()
+                .is_some_and(|line| line.as_str().starts_with("interrupted:")),
+        );
+    }
+
+    /// What recovery actually leaves behind, and therefore the only shape
+    /// the browser ever really sees: `Aborted { reason: "interrupted" }`.
+    /// Keyed on `Pending` alone this row was unreachable and read
+    /// `failed: interrupted` (m3/06 review, Major 2).
+    #[test]
+    fn an_entry_recovery_closed_is_marked_interrupted_not_failed() {
+        let mut recovered = entry(2, OperationKind::Commit, "commit \"x\"");
+        // No before-tree: the process died before one was taken, so `u`
+        // cannot reach it and the row is not the `← u` target. That is the
+        // shape the warning mark exists for.
+        recovered.worktree_before = None;
+        recovered.status = EntryStatus::Aborted {
+            reason: graft_core::journal::INTERRUPTED.to_owned(),
+        };
+        let state = state_with(vec![recovered]);
+        let view = journal_view(&state, 10);
+        assert_eq!(view.rows[0].mark, RowMark::Interrupted);
+        let summary = view.rows[0].summary.as_str();
+        assert!(summary.starts_with("interrupted"), "{summary}");
+        assert!(
+            !summary.contains("failed"),
+            "a process that died: {summary}"
+        );
         assert!(
             view.rows[0]
                 .failure
