@@ -1,6 +1,7 @@
 # acceptance-remotes: one command that walks "you never leave Graft to fetch, pull or push", what right looks like, and the captures
 
-Status: draft
+Status: ready
+Blocked by: 01–06
 Build with: Fable — the milestone's acceptance ticket (CLAUDE.md standing rule); last in order, before review. Does not count against the Fable build expectation.
 Crates: graft (examples, tests/it, docs) — plus `TESTING.md`, `KNOWN_GAPS.md`, `README.md`, `CHANGELOG.md`, `docs/shots/`. No library code in any crate.
 Needs: every other M4 group — `remote-fixtures`, `git-remote-and-askpass`, `ops-remote-operations`, `ui-credential-prompt-and-hints`, `remote-keys`, `credential-prompt-wiring`.

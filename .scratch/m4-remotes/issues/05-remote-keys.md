@@ -1,6 +1,7 @@
 # remote-keys: `f` / `p` / `P`, the push box, `Esc` cancels a running write, live progress, plain-English failures, remote facts in `AppState`
 
-Status: draft
+Status: ready
+Blocked by: 04
 Build with: Opus — taking the planner's recommendation: key routing, job plumbing and cancel wiring through the pool.
 Crates: graft
 Needs: `ops-remote-operations` — `Operation::{Fetch, Pull, Push}`, `FetchParams`, `PullParams`, `PushParams`, `Lease`, `Operation::preview`, `ApplyError::Remote`, `RemoteHooks`, `Context.remote`; `git-remote-and-askpass` — `graft_git::remote::{Remote, TrackedUpstream, list, upstream_of, RemoteFailure, RemoteProgress}`. Tests: `graft_fixtures::remote::{LocalRemote, HungRemote}` from `remote-fixtures`. Footer hints come from `ui-credential-prompt-and-hints` (graft-ui) — if that group has not landed, the hints appear when it does; nothing here blocks on it.

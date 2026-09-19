@@ -448,3 +448,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 
 ### The frame gate asserts on the max of 420 keys, so one outlier fails it
 **Expiry: M7.** Unverified-adjacent — passes today but fragile by construction. Found by housekeeping/02. A single slow key fails the whole gate; six interleaved A/B runs showed baseline and patched both spike over 9 ms under load — machine noise, not the code under test. Asserting on the worst sample trains re-running until green, hiding real regressions. **Fix:** assert on p99, record the max. Pairs with M7's 17–18 ms release-key ticket — same measurement path.
+| M4/02 | Askpass socket has no peer-credential check; the 0700 dir is the only guard | unverified | M8 |
+| M4/02 | SSH askpass and SSH/forge auth-failure strings not exercised; full git→helper→app path is group 06 (G5b) | unverified | M4 |
+| M4/01 review | HungRemote wake-up race can drop a real connection instead of holding it; check under group 05's esc_cancels_hung_fetch | unverified | M4 |

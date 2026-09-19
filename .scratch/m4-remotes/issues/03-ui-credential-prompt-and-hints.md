@@ -1,6 +1,6 @@
 # ui-credential-prompt-and-hints: masked text field, the credential prompt widget, a wrapping confirm consequence, remote footer hints
 
-Status: draft
+Status: in progress
 Build with: Sonnet — taking the planner's recommendation: plain widgets with TestBackend snapshots, no state, no I/O.
 Crates: graft-ui
 Needs: none
