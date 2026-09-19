@@ -19,8 +19,8 @@ use graft_ui::detail_pane::DetailLayout;
 use crate::update::events::Command;
 
 use super::state::{
-    BELOW_MIN, DetailSpec, DetailState, DiffKey, GRAPH_MIN_COLUMNS, GRAPH_MIN_ROWS, Loading,
-    MAX_LINES, RIGHT_MIN, stepped,
+    BELOW_MIN, DetailSpec, DetailState, DiffKey, GRAPH_MIN_COLUMNS, GRAPH_MIN_ROWS, KeptCursor,
+    Loading, MAX_LINES, RIGHT_MIN, stepped,
 };
 
 impl DetailState {
@@ -70,9 +70,40 @@ impl DetailState {
         self.diff_cache.clear();
         self.contained.clear();
         match self.spec {
-            Some(spec) if self.shown => self.load(spec, next_id),
+            Some(spec) if self.shown => {
+                // Where the user was, so the list that arrives can put them
+                // back rather than dropping them on the first file
+                // (m3/04 review M7).
+                self.kept_cursor = self.cursor_to_keep();
+                self.load(spec, next_id)
+            }
             Some(_) | None => Vec::new(),
         }
+    }
+
+    /// The changes-pane cursor as [`KeptCursor`] records it, or `None` off
+    /// the changes pane or before its list has arrived.
+    fn cursor_to_keep(&self) -> Option<KeptCursor> {
+        if self.spec != Some(DetailSpec::WorkingTree) {
+            return None;
+        }
+        let Loading::Ready(files) = &self.files else {
+            return None;
+        };
+        let list = self.list.as_ref()?;
+        let section = files.selected_section();
+        let entry = files.selected_entry()?;
+        let path = list.files.get(usize::try_from(entry).ok()?)?.path.clone();
+        let position = section_files(files, list, section)
+            .iter()
+            .position(|(row, _)| *row == files.cursor)
+            .unwrap_or(0);
+        Some(KeptCursor {
+            path,
+            section,
+            position,
+            body: self.body_cursor,
+        })
     }
 
     /// Start (or answer from cache) the evil-merge probe for whatever the
@@ -185,9 +216,23 @@ impl DetailState {
         }
         match result {
             Ok((files, list)) => {
+                let kept = self.kept_cursor.take();
+                let (files, same_file) = put_cursor_back(files, &list, kept.as_ref());
                 self.files = Loading::Ready(files);
                 self.list = Some(list);
-                self.show_cursor(next_id)
+                let commands = self.show_cursor(next_id);
+                // The diff region's row only means anything while the file
+                // under the cursor is the same one. The row index is kept,
+                // not the hunk it named: after a stage that hunk is gone, and
+                // the nearest honest answer is the same place in the file.
+                // `body_cursor()` clamps it, and `body_top` follows it so the
+                // row is on screen (`diff_body` skips its pinned heading for
+                // the cursor's own row).
+                if let (Some(kept), true) = (kept, same_file) {
+                    self.body_cursor = kept.body;
+                    self.body_top = kept.body;
+                }
+                commands
             }
             Err(failure) => {
                 self.files = Loading::Failed(failure);
@@ -458,4 +503,57 @@ impl DetailState {
             }
         }
     }
+}
+
+/// Every visible file row of `section`, as `(row index, path)`, in row order.
+///
+/// `None` for `section` means "a list with no sections at all", which is
+/// every list but the changes pane's — there it is the whole list.
+fn section_files<'a>(
+    files: &FileListView,
+    list: &'a FileList,
+    section: Option<WorkingTreeSection>,
+) -> Vec<(usize, &'a [u8])> {
+    files
+        .visible()
+        .filter(|(row, _)| files.section_at(*row) == section)
+        .filter_map(|(row, view)| {
+            let entry = usize::try_from(view.entry?).ok()?;
+            Some((row, list.files.get(entry)?.path.as_slice()))
+        })
+        .collect()
+}
+
+/// Put the changes-pane cursor back where `kept` says it was, returning the
+/// list to install and whether the cursor landed on the same file.
+///
+/// Same path in the same group wins. Failing that the cursor stays in that
+/// group, at the same place down it — the file was just staged, discarded or
+/// deleted, and the user is still working in that group. Only when the group
+/// itself has gone does the fresh list's own cursor stand (m3/04 review M7).
+fn put_cursor_back(
+    files: Arc<FileListView>,
+    list: &FileList,
+    kept: Option<&KeptCursor>,
+) -> (Arc<FileListView>, bool) {
+    let Some(kept) = kept else {
+        return (files, false);
+    };
+    let candidates = section_files(&files, list, kept.section);
+    if candidates.is_empty() {
+        return (files, false);
+    }
+    let (row, same_file) = match candidates
+        .iter()
+        .find(|(_, path)| *path == kept.path.as_slice())
+    {
+        Some((row, _)) => (*row, true),
+        None => (candidates[kept.position.min(candidates.len() - 1)].0, false),
+    };
+    if row == files.cursor {
+        return (files, same_file);
+    }
+    let mut owned = Arc::unwrap_or_clone(files);
+    owned.cursor = row;
+    (Arc::new(owned), same_file)
 }

@@ -291,6 +291,31 @@ pub struct DetailState {
     /// The commits `Explanation::highlight` named: the graph fades every
     /// other row while `explain` is `Some` (`m2-details-and-diffs/17`).
     pub explain_highlight: Vec<Oid>,
+    /// Where the changes-pane cursor was when a refresh started, so the list
+    /// that arrives can put it back (`ops::refresh`, `ops::files_arrived`).
+    /// `None` at every other moment.
+    pub kept_cursor: Option<KeptCursor>,
+}
+
+/// Where the changes-pane cursor was before a write's refresh.
+///
+/// Every write reloads the file list, and the fresh list's cursor starts on
+/// the first file — usually one under STAGED. Staging the last unstaged hunk
+/// of a file therefore moved the cursor to some other file in another
+/// section, where the next `Space` means the **opposite** write. Nothing on
+/// screen said the cursor had moved (m3/04 review M7).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct KeptCursor {
+    /// The file the cursor was on, as git spells it.
+    pub path: Vec<u8>,
+    /// The group it was in. Direction comes from this, so it is the half
+    /// that must not be guessed wrong.
+    pub section: Option<WorkingTreeSection>,
+    /// How far down that group's files the cursor was, for when the file
+    /// itself is gone from the group — staged, discarded or deleted.
+    pub position: usize,
+    /// The diff region's line cursor.
+    pub body: usize,
 }
 
 impl Default for DetailState {
@@ -319,6 +344,7 @@ impl Default for DetailState {
             explain_requested: None,
             explain: None,
             explain_highlight: Vec::new(),
+            kept_cursor: None,
         }
     }
 }

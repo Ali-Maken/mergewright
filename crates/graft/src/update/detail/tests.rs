@@ -16,7 +16,10 @@ use crate::update::events::Command;
 use crate::update::state::AppState;
 
 use super::*;
-use graft_ui::detail::{FileRow, FileRowKind, FileStatusView, HunkView, LineView};
+use graft_git::diff::FileList;
+use graft_ui::detail::{
+    FileRow, FileRowKind, FileStatusView, HunkView, LineView, WorkingTreeSection,
+};
 
 fn oid(byte: u8) -> Oid {
     Oid::from_bytes(&[byte; Oid::SHA1_BYTES]).expect("20 bytes is an oid")
@@ -740,4 +743,154 @@ fn g_and_capital_g_jump_the_diff_body_to_its_ends() {
         KeyPress::plain(KeyCode::Char('g'))
     ));
     assert_eq!(state.detail.body_top, 0);
+}
+
+/// A changes-pane file list: `sections` in order, each with its files.
+/// Returns the view and the git list its rows index into.
+fn changes_pane(sections: &[(WorkingTreeSection, &[&str])]) -> (FileListView, FileList) {
+    use graft_git::diff::{FileEntry, FileStatus};
+
+    let mut rows = Vec::new();
+    let mut files = Vec::new();
+    for (section, paths) in sections {
+        rows.push(FileRow {
+            depth: 0,
+            name: sanitize_line(section.title()),
+            kind: FileRowKind::Section {
+                section: *section,
+                count: paths.len(),
+            },
+            entry: None,
+        });
+        for path in *paths {
+            rows.push(FileRow {
+                depth: 1,
+                name: sanitize_line(path),
+                kind: FileRowKind::File {
+                    status: FileStatusView::Modified,
+                    added: Some(1),
+                    removed: Some(0),
+                },
+                entry: Some(u32::try_from(files.len()).expect("a test list is short")),
+            });
+            files.push(FileEntry {
+                path: (*path).as_bytes().to_vec(),
+                old_path: None,
+                status: FileStatus::Modified,
+                added: Some(1),
+                removed: Some(0),
+            });
+        }
+    }
+    let count = u32::try_from(files.len()).expect("a test list is short");
+    let view = FileListView {
+        rows,
+        cursor: 1,
+        top: 0,
+        files: count,
+        added: 1,
+        removed: 0,
+        message: Vec::new(),
+    };
+    (
+        view,
+        FileList {
+            files,
+            added: 1,
+            removed: 0,
+        },
+    )
+}
+
+/// A changes pane showing `sections`, cursor on row `cursor`, line cursor at
+/// `body`.
+fn pane_on(sections: &[(WorkingTreeSection, &[&str])], cursor: usize, body: usize) -> DetailState {
+    let (mut view, list) = changes_pane(sections);
+    view.cursor = cursor;
+    DetailState {
+        shown: true,
+        spec: Some(DetailSpec::WorkingTree),
+        files: Loading::Ready(Arc::new(view)),
+        list: Some(Arc::new(list)),
+        body_cursor: body,
+        ..DetailState::default()
+    }
+}
+
+/// Run `refresh` and hand back the list a write would produce, as the job
+/// would. Returns the pane after both.
+fn refresh_into(mut detail: DetailState, after: &[(WorkingTreeSection, &[&str])]) -> DetailState {
+    let mut counter = 0;
+    let commands = detail.refresh(&mut || next_id_from(&mut counter));
+    let Some(Command::ListFiles(id, _, _)) = commands.first() else {
+        panic!("a refresh asks for the file list: {commands:?}");
+    };
+    let id = *id;
+    let (view, list) = changes_pane(after);
+    detail.files_arrived(id, Ok((Arc::new(view), Arc::new(list))), &mut || {
+        next_id_from(&mut counter)
+    });
+    detail
+}
+
+#[test]
+fn a_write_leaves_the_changes_cursor_on_the_same_file() {
+    // m3/04 review M7: every write reloads the list and the fresh one starts
+    // on the first file, usually under STAGED — so the next `Space`, meant to
+    // keep staging, unstaged something else instead.
+    let before = [
+        (WorkingTreeSection::Staged, &["a.rs"][..]),
+        (WorkingTreeSection::Unstaged, &["b.rs", "c.rs"][..]),
+    ];
+    // Row 4 is c.rs: heading, a.rs, heading, b.rs, c.rs.
+    let detail = refresh_into(pane_on(&before, 4, 6), &before);
+    let Loading::Ready(files) = &detail.files else {
+        panic!("the list arrived");
+    };
+    assert_eq!(files.cursor, 4);
+    assert_eq!(files.selected_section(), Some(WorkingTreeSection::Unstaged));
+    assert_eq!(detail.body_cursor, 6, "the line cursor comes back too");
+    assert!(detail.kept_cursor.is_none(), "the note is spent, not kept");
+}
+
+#[test]
+fn staging_the_file_under_the_cursor_keeps_the_cursor_in_its_own_group() {
+    // c.rs has moved to STAGED. Following it there would put the cursor on a
+    // row whose `Space` means *unstage* — the direction flip M7 names. The
+    // user is still working in UNSTAGED, so the cursor stays there.
+    let before = [
+        (WorkingTreeSection::Staged, &["a.rs"][..]),
+        (WorkingTreeSection::Unstaged, &["b.rs", "c.rs"][..]),
+    ];
+    let after = [
+        (WorkingTreeSection::Staged, &["a.rs", "c.rs"][..]),
+        (WorkingTreeSection::Unstaged, &["b.rs"][..]),
+    ];
+    let detail = refresh_into(pane_on(&before, 4, 6), &after);
+    let Loading::Ready(files) = &detail.files else {
+        panic!("the list arrived");
+    };
+    assert_eq!(files.selected_section(), Some(WorkingTreeSection::Unstaged));
+    let entry = files.selected_entry().expect("a file row");
+    let list = detail.list.as_ref().expect("a list");
+    assert_eq!(list.files[entry as usize].path, b"b.rs");
+    assert_eq!(
+        detail.body_cursor, 0,
+        "a different file's diff has no row to come back to"
+    );
+}
+
+#[test]
+fn a_group_that_has_gone_leaves_the_fresh_lists_own_cursor() {
+    let before = [
+        (WorkingTreeSection::Staged, &["a.rs"][..]),
+        (WorkingTreeSection::Unstaged, &["b.rs"][..]),
+    ];
+    let after = [(WorkingTreeSection::Staged, &["a.rs", "b.rs"][..])];
+    let detail = refresh_into(pane_on(&before, 3, 2), &after);
+    let Loading::Ready(files) = &detail.files else {
+        panic!("the list arrived");
+    };
+    assert_eq!(files.cursor, 1);
+    assert_eq!(files.selected_section(), Some(WorkingTreeSection::Staged));
 }
