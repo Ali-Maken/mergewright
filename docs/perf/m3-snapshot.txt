@@ -1,0 +1,10 @@
+# snapshot cost — 2026-09-19T07:16:52Z
+# git version 2.54.0 (Apple Git-157), Darwin arm64
+# 20000 tracked files, 2000 untracked, 1 stat-dirty
+
+cold: 868 ms (worktree tree 3d5b1e2d7b8140960d5bf451bd96b0b00b5790e8)
+warm-1: 205 ms (worktree tree 3d5b1e2d7b8140960d5bf451bd96b0b00b5790e8)
+warm-2: 184 ms (worktree tree 3d5b1e2d7b8140960d5bf451bd96b0b00b5790e8)
+
+# for comparison, the route the design rejected: a fresh index
+fresh read-tree: 897 ms

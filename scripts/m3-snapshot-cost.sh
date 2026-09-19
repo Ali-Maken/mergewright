@@ -13,7 +13,9 @@ TRACKED=${1:-20000}
 UNTRACKED=${2:-2000}
 OUT="$(cd "$(dirname "$0")/.." && pwd)/docs/perf/m3-snapshot.txt"
 WORK=$(mktemp -d)
-trap 'rm -rf "$WORK"' EXIT
+# git makes its loose objects read-only, so a plain rm -rf leaves the tree behind
+# on macOS and the script exits non-zero after a good run.
+trap 'chmod -R u+w "$WORK" 2>/dev/null; rm -rf "$WORK"' EXIT
 
 export GIT_CONFIG_GLOBAL=/dev/null
 export GIT_CONFIG_SYSTEM=/dev/null
