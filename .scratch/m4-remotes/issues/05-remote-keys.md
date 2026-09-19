@@ -1,6 +1,6 @@
 # remote-keys: `f` / `p` / `P`, the push box, `Esc` cancels a running write, live progress, plain-English failures, remote facts in `AppState`
 
-Status: ready
+Status: in progress
 Blocked by: 04
 Build with: Opus — taking the planner's recommendation: key routing, job plumbing and cancel wiring through the pool.
 Crates: graft
