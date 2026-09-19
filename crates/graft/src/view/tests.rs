@@ -2483,6 +2483,47 @@ fn journal_entries() -> Vec<graft_core::journal::JournalEntry> {
     discard.status = EntryStatus::Aborted {
         reason: "error: unable to unlink 'src/auth/refresh_test.rs': Permission denied".to_owned(),
     };
+    // A commit a previous run died in the middle of: recovery closes it as
+    // `Aborted { "interrupted" }`, and it has no before-tree to restore, so
+    // it carries the warning mark rather than the undo arrow.
+    let mut torn = journal_entry(
+        40 * 60,
+        OperationKind::Commit,
+        "commit \"WIP on refresh\"",
+        refs_and_index.clone(),
+        &["git commit -F -"],
+    );
+    torn.status = EntryStatus::Aborted {
+        reason: graft_core::journal::INTERRUPTED.to_owned(),
+    };
+    torn.worktree_before = None;
+    torn.head_after = None;
+    torn.backup_ref = None;
+
+    let commit = journal_entry(
+        2 * 60,
+        OperationKind::Commit,
+        "commit \"Add OAuth provider\"",
+        refs_and_index,
+        &["git commit -F -"],
+    );
+    // The undo of that commit: the newest entry, so it is what `U` would put
+    // back, and the commit under it reads `undone`. Without this row no
+    // capture showed the redo mark or `undone` at all (m3/06 review, Minor
+    // 12).
+    let mut undo = journal_entry(
+        60,
+        OperationKind::Undo,
+        "undo: commit \"Add OAuth provider\"",
+        Touches {
+            refs: vec!["refs/heads/main".to_owned()],
+            index: true,
+            worktree: false,
+        },
+        &["git update-ref refs/heads/main 1f3b9c2 8a7d4e1"],
+    );
+    undo.reverses = Some(commit.id.clone());
+
     vec![
         journal_entry(
             26 * 3_600,
@@ -2492,6 +2533,7 @@ fn journal_entries() -> Vec<graft_core::journal::JournalEntry> {
             &["git --literal-pathspecs add -- src/api/routes.rs"],
         ),
         discard,
+        torn,
         journal_entry(
             14 * 60,
             OperationKind::Stage,
@@ -2499,13 +2541,8 @@ fn journal_entries() -> Vec<graft_core::journal::JournalEntry> {
             index_only,
             &["git --literal-pathspecs add -- src/api/routes.rs src/auth/token.rs README.md"],
         ),
-        journal_entry(
-            2 * 60,
-            OperationKind::Commit,
-            "commit \"Add OAuth provider\"",
-            refs_and_index,
-            &["git commit -F -"],
-        ),
+        commit,
+        undo,
     ]
 }
 
@@ -2528,15 +2565,21 @@ fn journal_state(columns: u16, rows: u16) -> AppState {
 const JOURNAL_HEADER: &str = "\
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_m3_journal in crates/graft/src/view/tests.rs (#[ignore]d, run by
-# hand to regenerate). `J` on a scripted journal of four entries, drawn
+# hand to regenerate). `J` on a scripted journal of six entries, drawn
 # against a fixed clock so the ages never move.
 #
 # Judge by eye:
 # - The header reads UNDO JOURNAL · <the repository's path>.
-# - Newest first: the commit is the top row, the 26-hour-old stage the last.
-# - Exactly one row carries ← u, and it is the top one. Not \"looks right\":
-#   that mark is `graft_ops`' own next_undo answer, so if it sits on any
-#   other row the key and the browser disagree.
+# - Newest first: the undo is the top row, the 26-hour-old stage the last.
+# - Every mark the browser has is on screen, one row each, no row with two.
+#   Not \"looks right\": the marks are `graft_ops`' own next_undo, next_redo
+#   and in_force answers, so a mark on the wrong row means the key and the
+#   browser disagree.
+#     ← U          on the undo (top row): what `U` would put back.
+#     undone       on the commit under it: `u` already took that one back.
+#     ← u          on stage 3 files: the newest thing still in force.
+#     interrupted  on commit \"WIP on refresh\": a run that died mid-write.
+#                  It reads interrupted, and never failed:.
 # - The discard row leads with failed: and git's own first line, and still
 #   ends with backup saved — a write that failed part-way is still undoable.
 # - The footer offers ⏎ undo this, space command log and J/esc close.
@@ -2568,6 +2611,9 @@ fn capture_m3_journal() {
         let screen = draw(&state, columns, rows);
         assert!(screen.contains("UNDO JOURNAL"), "{screen}");
         assert!(screen.contains("← u"), "{screen}");
+        assert!(screen.contains("← U"), "{screen}");
+        assert!(screen.contains("undone"), "{screen}");
+        assert!(screen.contains("interrupted"), "{screen}");
         std::fs::write(
             format!(
                 "{}/../../docs/shots/m3-journal-{columns}x{rows}.txt",
@@ -2578,9 +2624,11 @@ fn capture_m3_journal() {
         .expect("docs/shots is writable");
     }
 
-    // `j` twice onto the failed discard, then `space`.
+    // Down onto the failed discard — the fifth row, newest first — then
+    // `space`.
     let mut state = journal_state(120, 32);
-    for code in [KeyCode::Char('j'), KeyCode::Char('j'), KeyCode::Char(' ')] {
+    let down = std::iter::repeat_n(KeyCode::Char('j'), 4);
+    for code in down.chain(std::iter::once(KeyCode::Char(' '))) {
         let (next, _) = crate::update::update(
             &state,
             crate::update::AppEvent::Core(Event::Key(KeyPress::plain(code))),

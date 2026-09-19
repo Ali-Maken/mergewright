@@ -11,14 +11,14 @@
 # - The rows below the expansion are pushed down, not overwritten.
 === 120x32 ===
 "UNDO JOURNAL · /code/api                                                                                                "
-"  2m ago    commit "Add OAuth provider"                  1 ref · the index · backup saved                           ← u "
-"  14m ago   stage 3 files                                the index · backup saved                                       "
+"  now       undo: commit "Add OAuth provider"            1 ref · the index · backup saved                           ← U "
+"  2m ago    commit "Add OAuth provider"                  1 ref · the index · backup saved                        undone "
+"  14m ago   stage 3 files                                the index · backup saved                                   ← u "
+"  40m ago   commit "WIP on refresh"                      interrupted · 1 ref · the index                    interrupted "
 "▸ 3h ago    discard src/auth/refresh_test.rs             failed: error: unable to unlink 'src/auth/refresh_test.rs': Pe…"
 "    failed: error: unable to unlink 'src/auth/refresh_test.rs': Permission denied                                       "
 "    $ git --literal-pathspecs restore --worktree -- src/auth/refresh_test.rs                                            "
 "  26h ago   stage src/api/routes.rs                      the index · backup saved                                       "
-"                                                                                                                        "
-"                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "

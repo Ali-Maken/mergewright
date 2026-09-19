@@ -1,25 +1,31 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
 # capture_m3_journal in crates/graft/src/view/tests.rs (#[ignore]d, run by
-# hand to regenerate). `J` on a scripted journal of four entries, drawn
+# hand to regenerate). `J` on a scripted journal of six entries, drawn
 # against a fixed clock so the ages never move.
 #
 # Judge by eye:
 # - The header reads UNDO JOURNAL · <the repository's path>.
-# - Newest first: the commit is the top row, the 26-hour-old stage the last.
-# - Exactly one row carries ← u, and it is the top one. Not "looks right":
-#   that mark is `graft_ops`' own next_undo answer, so if it sits on any
-#   other row the key and the browser disagree.
+# - Newest first: the undo is the top row, the 26-hour-old stage the last.
+# - Every mark the browser has is on screen, one row each, no row with two.
+#   Not "looks right": the marks are `graft_ops`' own next_undo, next_redo
+#   and in_force answers, so a mark on the wrong row means the key and the
+#   browser disagree.
+#     ← U          on the undo (top row): what `U` would put back.
+#     undone       on the commit under it: `u` already took that one back.
+#     ← u          on stage 3 files: the newest thing still in force.
+#     interrupted  on commit "WIP on refresh": a run that died mid-write.
+#                  It reads interrupted, and never failed:.
 # - The discard row leads with failed: and git's own first line, and still
 #   ends with backup saved — a write that failed part-way is still undoable.
 # - The footer offers ⏎ undo this, space command log and J/esc close.
 === 160x48 ===
 "UNDO JOURNAL · /code/api                                                                                                                                        "
-"▸ 2m ago    commit "Add OAuth provider"                  1 ref · the index · backup saved                                                                   ← u "
-"  14m ago   stage 3 files                                the index · backup saved                                                                               "
+"▸ now       undo: commit "Add OAuth provider"            1 ref · the index · backup saved                                                                   ← U "
+"  2m ago    commit "Add OAuth provider"                  1 ref · the index · backup saved                                                                undone "
+"  14m ago   stage 3 files                                the index · backup saved                                                                           ← u "
+"  40m ago   commit "WIP on refresh"                      interrupted · 1 ref · the index                                                            interrupted "
 "  3h ago    discard src/auth/refresh_test.rs             failed: error: unable to unlink 'src/auth/refresh_test.rs': Permission denied · the index · the workin…"
 "  26h ago   stage src/api/routes.rs                      the index · backup saved                                                                               "
-"                                                                                                                                                                "
-"                                                                                                                                                                "
 "                                                                                                                                                                "
 "                                                                                                                                                                "
 "                                                                                                                                                                "

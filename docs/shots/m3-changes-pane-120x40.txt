@@ -39,7 +39,7 @@
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-" q quit  F2 status  F3 renderer  <> resize  space stage  d discard  / search  j/k move  Space fold  1 first-parent      "
+" q quit  F2 status  F3 renderer  u undo  <> resize  space stage  d discard  / search  j/k move  Space fold              "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
 "STAGED (1)                    fn routes()                                                                               "

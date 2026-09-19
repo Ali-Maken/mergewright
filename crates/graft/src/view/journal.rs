@@ -87,7 +87,10 @@ fn rows_for(entries: &[JournalEntry], state: &AppState, now_seconds: i64) -> Vec
 fn age(at_unix_ms: i64, now_seconds: i64) -> String {
     let then = at_unix_ms.div_euclid(MILLIS);
     let relative = relative_date(then, now_seconds);
-    if relative == "future" {
+    // "future" and "now" are already whole answers; "now ago" is not English,
+    // and the journal browser opened straight after a write is full of
+    // entries less than a minute old.
+    if relative == "future" || relative == "now" {
         relative
     } else {
         format!("{relative} ago")

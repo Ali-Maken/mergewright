@@ -6,4 +6,4 @@ expression: nerd
 ●    ◆ main ⇄ origin   feature/auth ↑2 ↓1   origi… Commit 2                                           TE 2h   0202020
 ◇    topic Commit 1                                                                                     TE 2h   0101010
                                                                                                                         
- q quit  F2 status  F3 renderer  u undo  / search  j/k move  Space fold  1 first-parent  F focus  H stash  J journal
+ q quit  F2 status  F3 renderer  u undo  / search  j/k move  Space fold  1 first-parent  F focus  S stash  H hide stash

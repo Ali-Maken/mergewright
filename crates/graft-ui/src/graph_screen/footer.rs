@@ -176,7 +176,7 @@ pub(super) fn grouped(number: u32) -> String {
 /// the movement keys that are always there. `n`/`N` live on the search line,
 /// where they work. `Enter` opens the detail pane (ADR-0023); its hint comes
 /// with the pane (`detail-pane-frame`), not before it draws.
-pub(super) const HINTS: [&str; 15] = [
+pub(super) const HINTS: [&str; 16] = [
     "q quit",
     "F2 status",
     "F3 renderer",
@@ -186,7 +186,12 @@ pub(super) const HINTS: [&str; 15] = [
     "Space fold",
     "1 first-parent",
     "F focus",
-    "H stash",
+    // `S` opens the stash overlay; `H` hides stash commits in the graph.
+    // Two different things, and while `H stash` sat next to `J journal` it
+    // read as the overlay's key and the overlay had no hint at all
+    // (m3/06 review, Major 8).
+    "S stash",
+    "H hide stash",
     "J journal",
     "y sha",
     "PgUp/PgDn page",

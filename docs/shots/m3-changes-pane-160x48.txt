@@ -63,4 +63,4 @@
 "                                                                                                                                                                "
 "                                                                                                                                                                "
 "                                                                                                                                                                "
-" q quit  F2 status  F3 renderer  <> resize  space stage  d discard  / search  j/k move                                                                          "
+" q quit  F2 status  F3 renderer  u undo  <> resize  space stage  d discard  / search                                                                            "
