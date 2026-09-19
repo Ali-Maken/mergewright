@@ -27,7 +27,7 @@ shape: octopus-merge, 16, 80x24, cursor on row 2
 
 
 
- q quit  F2 status  F3 renderer  u undo  f fetch  p pull  P push  / search
+ q quit  F2 status  F3 renderer  u undo  / search  j/k move  Space fold
 
 graph colour per cell:
 5997766.

@@ -49,7 +49,7 @@ Every tick names its verifying test inline, at tick time (ADR-0035).
 - [x] Credential prompt at 80×24 and 160×48 matches the note's mockup in structure (title, prompt line, field, note, footer) — `credential_prompt::tests::{masked_80x24, username_160x48}`; too-small message at 30×5 — `too_small_draws_one_line`
 - [x] Nothing drawn outside `credential_area` at any size — `credential_prompt::tests::stays_inside_its_rect` (proptest over sizes 1..200 × 1..60)
 - [x] Confirm consequence wraps to ≤ 4 lines and the buttons never overlap the frame's footer row at 120×40 — `confirm::tests::{long_message_wraps, buttons_stay_above_footer_at_120}` (also `message_caps_at_four_lines_with_ellipsis`)
-- [x] Footer shows `f fetch  p pull  P push` at 160 and 120 columns — `graph_screen::tests::remote_hints_at_wide_and_medium`
+- [x] Footer shows `f fetch  p pull  P push` at the mockup's position (after `H hide stash`, before `J journal`), surviving from 156 columns — `graph_screen::tests::{remote_hints_at_wide_and_medium, remote_hints_drop_before_search_and_movement_at_80}`
 - [x] MAP.md updated (`text_input`, `credential_prompt`, `confirm`, `graph_screen`)
 
 ## Gates
@@ -72,23 +72,68 @@ and committed.
   before writing; this session read the diff directly instead — `git diff
   --stat` plus targeted reads — since the code was already written and the
   job was to verify it, not design it).
-- Footer hints at 120/200 cols: `f fetch  p pull  P push` sit right after
-  `u undo`; at 200 cols this pushes `Ctrl+R refresh` off the right edge
-  (existing drop-from-the-right rule); at 80 cols the new hints bump
-  `j/k move  Space fold` off — recorded in the new capture file. Placement
-  is right after `u undo`, before `/ search` (not literally after `S
-  stash`/before `J journal` as the ticket's scope line 23 first sketched) —
-  MAP.md's `graph_screen` line explains why: it holds the hints inside the
-  fixed-position part of the hint list, ahead of the dynamic `extra` splice,
-  so they don't get pushed around by screen-specific extra hints. This is a
-  placement deviation from the literal scope text, not from the acceptance
-  criterion (which only pins the widths, not the exact neighbours) — flagging
-  it since CLAUDE.md says say, don't silently deviate.
-- Added `credential_prompt::tests::capture_for_docs_shots` (`#[ignore]`d,
-  same convention as the M3 stash capture) and generated
-  `docs/shots/m4-credential-prompt-and-hints.txt` from it plus the literal
-  footer-hints snapshot files — judge by eye per that file's header.
 - Colour unverified (TestBackend records no colour attributes, per CLAUDE.md
   rule 5) — masking is proven as character content, not colour.
 - Out of scope, confirmed still out: key handling/state for
   `CredentialPrompt` (owned by the app layer, ticket G5b).
+
+## NOTES (follow-up fix, g03-fix branch from main @ d0e7934)
+
+The previous NOTES entry above (superseded, kept for the audit trail) placed
+`f fetch  p pull  P push` right after `u undo`, ahead of the leading-group
+boundary, arguing that kept them inside the fixed-position slot ahead of the
+`extra` splice. That was a genuine deviation from scope line 23 ("after `S
+stash`, before `J journal`"), flagged at the time as a placement choice —
+but merging it broke the app's daily 80-column footer
+(`graft view::tests::every_graph_renderer_config_value_draws_as_it_says`
+started showing `u undo  f fetch  p pull` where `/ search  j/k move` used
+to be). The coordinator caught this after merge and asked for the literal
+spec position. Fixed:
+
+- `HINTS` in `crates/graft-ui/src/graph_screen/footer.rs` now carries
+  `f fetch`/`p pull`/`P push` after `H hide stash`, before `J journal` —
+  the mockup's exact position, inside the ordinary trailing group (not
+  `LEADING_HINTS`). `extra` (lane-fold, pane-resize, stage/discard) still
+  splices in right after `u undo`, unaffected.
+- At this position, by character-width arithmetic on the fixed `HINTS`
+  list, all three hints first fit together at **156 columns**, not 120/160
+  as the original ticket text guessed — `graph_screen::tests::
+  remote_hints_at_wide_and_medium` now checks 156 (all three present, after
+  `H hide stash`) and 200 (`J journal` follows `P push`).
+- New regression test `graph_screen::tests::
+  remote_hints_drop_before_search_and_movement_at_80` pins the fix: at 80
+  columns `/ search` and `j/k move` are present, `f fetch` is not.
+- Regenerated every insta snapshot touched by the footer reorder
+  (`INSTA_UPDATE=always cargo test -p graft-ui`): `footer-hints-{80,120}`
+  (now match pre-ticket-03 content at those widths — the remote hints don't
+  reach 120 cols) and the `ascii_tier`/`lanes_without_hue`/`selection`/
+  `graph_screen__feature-branches` fixture snapshots (footer line only).
+  Also fixed one stale assertion,
+  `the_expand_hint_keeps_its_place_after_the_renderer`, which literally
+  checked `f fetch` came right after `+ expand lanes`.
+- Verified `graft view::tests::
+  every_graph_renderer_config_value_draws_as_it_says` (the app-crate
+  snapshot the coordinator named) passes unchanged from main — ran it
+  directly: `cargo nextest run -p graft
+  every_graph_renderer_config_value_draws_as_it_says`.
+- **Why gates missed the seam break the coordinator mentioned** (main's
+  d0e7934, `masked: false` in `crates/graft/src/view/{commit_editor,
+  stash}.rs`): that's a different issue from this footer regression — it's
+  the `graft` app crate wiring the new `FieldView.masked` field this
+  ticket added, which is outside `graft-ui` (this builder's crate set,
+  per CLAUDE.md's "never edits outside its crate set"). This ticket's own
+  gates (`-p graft-ui`) could not have caught a missing field in a struct
+  literal in a crate this session never compiled. The footer regression,
+  by contrast, *was* inside graft-ui and *was* caught by gates — the app
+  snapshot test that flagged it lives in `crates/graft/src/view/tests.rs`
+  (app crate), and this session's `-p graft-ui`-scoped gates never ran it;
+  workspace-wide gates would have. Both issues are the same root cause:
+  a crate-set-scoped builder's gates cannot see a crate it doesn't own.
+- Regenerated `docs/shots/m4-credential-prompt-and-hints.txt`: credential
+  prompt captures unchanged; footer lines corrected to the new (spec)
+  placement, including the previously-missing 156/200-column captures
+  showing all three hints and where `J journal` lands.
+- Ran all four gates workspace-wide this time (not `-p graft-ui`), per the
+  coordinator's ask: `cargo fmt --check`, `cargo clippy --all-targets -- -D
+  warnings`, `cargo nextest run` (1698/1698 passed), `cargo test --doc`
+  (all workspace crates) — all green.

@@ -25,4 +25,4 @@ expression: text
 
 
 
- q quit  F2 status  F3 renderer  u undo  f fetch  p pull  P push  / search
+ q quit  F2 status  F3 renderer  u undo  / search  j/k move  Space fold
