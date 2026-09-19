@@ -509,7 +509,7 @@ fn fifty_thousand(state: &AppState) -> Result<RefBadges, String> {
     let head = HeadState::Branch(refs[0].0.clone());
 
     let started = Instant::now();
-    let built = badges(&refs, &head, &upstreams, |_, _| {
+    let built = badges(&refs, &head, &upstreams, &[], |_, _| {
         Ok(AheadBehind {
             ahead: 0,
             behind: 0,
