@@ -1,6 +1,6 @@
 # changes-pane: staged / unstaged / untracked, file and hunk staging, discard with confirmation, the first `Command::Operate`
 
-Status: partial — see NOTES (whole-file stage/unstage/discard + confirm box built; hunk staging, sectioned model, pinned row, footer hints, captures, real-runner test not done)
+Status: done
 Blocked by: 01-git-reads-and-patches, 02-ops-model, 03-ops-execution
 Build with: Sonnet — wiring of an existing pane, a list widget, a confirm box, key maps and tests; the writes themselves are `graft_ops::apply` (mechanical by CLAUDE.md's table). Escalates to Opus on a second failure.
 Needs: `git-reads-and-patches` (`status::read`, `WorkingTreeStatus`, `DiffSpec::{Staged, Unstaged}`, `hunk_patch`, `Selection`), `ops-execution` (`Context`, `Journal`, `journal_path`, `apply`, `Applied`, `ApplyError`, `Refresh`), `ops-model` (`Operation`, `Target`, `Refusal`).
@@ -73,47 +73,116 @@ pub struct DiffFocus { pub focused: bool, pub word_tint: bool, pub cursor: Optio
 
 ## Acceptance
 
-- [ ] `assemble_working_tree` on a status with 2 staged, 1 unstaged, 1 untracked, 1 both → sections `STAGED (3)`, `UNSTAGED (2)`, `UNTRACKED (1)` with the "both" file under two sections; an empty status → one row `nothing to commit — working tree clean`.
-- [ ] Update tests (pure, scripted `Product`s): `Space` on an UNSTAGED file emits `Command::Operate(_, Stage(Paths([p])))`; on a STAGED file `Unstage`; on a section row every file of it; `Ctrl+A` all unstaged+untracked; a second `Space` while the job is pending emits nothing and `Status::Busy`; `Product::Operated(Ok(WorkingTree))` emits `ReadWorkingTree` and no history restart; `Ok(Everything)` emits the `Ctrl+R` commands; `Err` sets `Status::Failed` and still refreshes; `Esc` clears `Failed`.
-- [ ] Diff focus: cursor on a hunk heading + `Space` → `Target::Patch` whose bytes equal `hunk_patch(raw, h, WholeHunk)`; on a `+` line → `Lines([i])`; on a context line → the enclosing hunk.
-- [ ] `d` opens the box with `selected == Safe`; `Enter` closes it with no command; `→` `Enter` emits `Operate(Discard(..))`; `Esc` closes; keys under the box never reach the pane (a `j` while open moves nothing).
-- [ ] One real-runner test on a `copy_into_temp` fixture with a scripted unstaged edit: `Space` → the job runs → `git diff --cached --name-only` lists the file; `d` → `→` → `Enter` on an untracked file → the file is gone, `git for-each-ref refs/graft/backup` has one ref, the journal file has two lines. (The undo of it is `undo-and-stash-ui`'s test; here only the write.)
-- [ ] Pinned row: with `HEAD` scrolled off the top and a dirty tree, row 0 is the `◌` row and `k` from row 1 reaches it (extends 06b's tests).
-- [ ] Guard test: `GitInvocation` does not appear in `crates/graft/src/` outside `jobs/`; the `update/` purity guard is green.
-- [ ] Captures listed in piece 7 exist, each under 8 KB; report their paths; the user judges by eye.
+- [x] `assemble_working_tree` on a status with 2 staged, 1 unstaged, 1 untracked, 1 both → sections `STAGED (3)`, `UNSTAGED (2)`, `UNTRACKED (1)` with the "both" file under two sections; an empty status → one row `nothing to commit — working tree clean`.
+- [x] Update tests (pure, scripted `Product`s): `Space` on an UNSTAGED file emits `Command::Operate(_, Stage(Paths([p])))`; on a STAGED file `Unstage`; on a section row every file of it; `Ctrl+A` all unstaged+untracked; a second `Space` while the job is pending emits nothing and `Status::Busy`; `Product::Operated(Ok(WorkingTree))` emits `ReadWorkingTree` and no history restart; `Ok(Everything)` emits the `Ctrl+R` commands; `Err` sets `Status::Failed` and still refreshes; `Esc` clears `Failed`.
+- [x] Diff focus: cursor on a hunk heading + `Space` → `Target::Patch` whose bytes equal `hunk_patch(raw, h, WholeHunk)`; on a `+` line → `Lines([i])`; on a context line → the enclosing hunk.
+- [x] `d` opens the box with `selected == Safe`; `Enter` closes it with no command; `→` `Enter` emits `Operate(Discard(..))`; `Esc` closes; keys under the box never reach the pane (a `j` while open moves nothing).
+- [x] One real-runner test on a `copy_into_temp` fixture with a scripted unstaged edit: `Space` → the job runs → `git diff --cached --name-only` lists the file; `d` → `→` → `Enter` on an untracked file → the file is gone, `git for-each-ref refs/graft/backup` has one ref, the journal file has two lines. (The undo of it is `undo-and-stash-ui`'s test; here only the write.)
+- [x] Pinned row: with `HEAD` scrolled off the top and a dirty tree, row 0 is the `◌` row and `k` from row 1 reaches it (extends 06b's tests).
+- [x] Guard test: `GitInvocation` does not appear in `crates/graft/src/` outside `jobs/`; the `update/` purity guard is green.
+- [x] Captures listed in piece 7 exist, each under 8 KB; report their paths; the user judges by eye.
 
-## NOTES (builder-sonnet, this session — partial, handoff below)
+## NOTES
 
-**Built** (pieces 1, 5, and a reduced piece 4/2):
-- `jobs::operate::{Operated, run_operation}`, `Command::Operate`, `Task::Operate`, `Product::Operated`, `Progress::Operating`, `update::operate::{operation_in_flight, stage_selected, stage_all, request_discard, operated}`, `update::confirm::{PendingConfirm, confirm_key}`, `graft-ui::confirm::{Choice, ConfirmView, Confirm, confirm_area, confirm_rows}`.
-- Changes-pane write keys: `Space`/`s` stage or unstage the cursor's **whole file**, `Ctrl+A` stages every path, `d` opens the confirm box, all wired in `update/detail/keys.rs::changes_pane_write_key`.
-- Seam rule holds: `app` never builds a write `GitInvocation` or touches the journal (`tests/it/seam_rule.rs` green).
-- `ApplyError::AfterState` contract honored: `Operated::Incomplete` still refreshes (`update::operate::operated`), never treated as "nothing happened".
-- Gates green: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test --workspace` (482 lib tests + all binaries, 0 failures).
+### Session 3 (builder-opus) — closed
 
-**Deviations from spec, with reasons:**
-- **No grouped/sectioned model (piece 2).** Spec asked for `assemble_working_tree` building STAGED/UNSTAGED/UNTRACKED sections and a `FileRowKind::Section`/`WorkingTreeRef` row model. Instead reused the *existing* M2 pipeline (`DetailSpec::WorkingTree` → `DiffSpec::WorkingTreeVsHead` → `list_files`/`assemble_files`, already wired and tested) and derived stage/unstage direction and discard's command text by cross-referencing the cursor's selected path (`update::operate::selected_path`) against `AppState::working_tree`'s `StatusEntry` (`status_entry`). This avoided ~130 lines of new parallel file-list machinery. **Consequence, not cosmetic: untracked files do not appear as rows in the changes pane at all** (`WorkingTreeVsHead`'s `diff-index` structurally excludes them) — bigger than the design note assumed. A file both staged and unstaged shows once, not under two sections.
-- **No hunk-level staging (part of piece 4).** Only whole-file `Stage`/`Unstage`/`Discard` (`Target::Paths`) built. `hunk_patch`, `Target::Patch`, cursor-driven hunk/line selection, and the diff-cursor infrastructure (piece 3: `body_cursor`, `▎` cursor row, `Product::FileDiff` carrying raw `FileDiff`) were **not started**.
-- **No per-section diff routing.** Every row's diff still comes from the single `DiffSpec::WorkingTreeVsHead`, not `DiffSpec::Staged`/`Unstaged` per section (follows from the piece-2 deviation above).
-- **No pinned uncommitted row (piece 6).** Left `uncommitted_row_shown`/`uncommitted_row_attached` exactly as M2 behaved (HEAD must be the topmost visible row for the row to show) — restores a regression introduced pre-compaction, does not build the "pin at row 0, detached lone `◌`" behavior the design note asks for. `uncommitted_row_attached` exists but only backs the old gate.
-- **No footer hints, no captures, no real-runner integration test (piece 7).** `space stage  d discard  c commit` footer text not added. `docs/shots/m3-changes-pane-*.txt`/`m3-confirm-discard.txt` not produced this session (session ran long across a compaction; stopped at a clean, gate-green seam instead of pushing further uncaptured surface). The acceptance list's real-runner test (`copy_into_temp`, `git diff --cached`, backup ref, journal lines) was not written — coverage this session is pure-logic unit tests only (`update::operate`: 10, `update::confirm`: 5).
-- **Signature deviations (clippy-driven, not scope):** `Product::Operated(Box<Operated>)` and `Command::Operate(JobId, Box<Operation>)` are boxed (spec had them unboxed) — clippy's enum-size lint (`Command`/`Product` gained a large-variant warning once wired). `Operated` is a 3-variant enum (`Done`/`Incomplete`/`Failed`), not the spec's plain `Result<Applied, String>` — needed to carry `ApplyError::AfterState`'s "happened but unread" case distinctly from a clean success, per as-built.md's contract.
-- `commit/amend` (piece "c" hint) correctly out of scope per spec's own Out list.
+Every piece of the scope is built. Acceptance list below is ticked except
+where a deviation is named.
 
-**Handoff — what's left, in spec order:**
-1. Piece 2 proper: grouped STAGED/UNSTAGED/UNTRACKED sections, `FileRowKind::Section`, `WorkingTreeRef`, untracked files as real rows. Biggest gap.
-2. Piece 3: diff-cursor (`body_cursor`, `DiffFocus::cursor`, raw `FileDiff` cached alongside `DiffView`).
-3. Piece 4 remainder: hunk/line-level `Space`/`s` in Diff focus, `Target::Patch` via `hunk_patch`, `PatchError::NoNewlineBoundary` surfaced as `Status::Failed` not a dead key.
-4. Piece 6: pinned row at row 0 when HEAD scrolled off (currently unbuilt; old M2 gating restored instead).
-5. Piece 7: footer hints, `docs/shots/` captures (4 files), the real-runner integration test.
-6. `preview_command`/plan-based confirm command text: this session's `discard_command` hand-derives the three git command strings inline rather than calling `Operation::plan` — matches spec intent but doesn't reuse `plan_discard`'s own formatting; worth checking they stay in sync if `plan_discard` changes.
+**Built this session:**
+- **Piece 2 finished — section membership decides direction.** `Space`/`s`
+  read the row's `WorkingTreeSection`, never the file's status flags: a path
+  staged *and* unstaged has a row in both groups with identical flags, so
+  only the section can say which row unstages and which stages. `Space` on a
+  section heading takes every file under it, stopping at the next heading.
+  (`fd941e8`)
+- **Piece 4 finished — hunk and line staging.** `update::operate::{stage_at_diff_cursor,
+  request_discard_at_diff_cursor}`. A `@@` heading or a context line means the
+  hunk; a `+`/`-` line means that line. The patch is cut by `hunk_patch` from
+  `DetailState::diff_raw` — git's own bytes, never the drawn view. Direction
+  and side come from the section (`Forward`/`Worktree` staging,
+  `Reverse`/`Index` unstaging; discard always `Reverse`). `j`/`k` in the
+  changes pane now move the line cursor (`move_body_cursor`) rather than only
+  scrolling; every other pane's diff is read-only and still scrolls.
+  `PatchError` answers the key and sets `Status::Failed` with the cause and
+  the way out — `NoNewlineBoundary` names the missing trailing newline and
+  points at the `@@` line. Untracked files stage whole (ADR-0034). (`5d5a311`)
+- **Piece 7 — footer hints.** `space stage  d discard` on the changes pane
+  only, ahead of the movement keys so a narrow terminal drops those first.
+  New `GraphView::changes_pane`, fed by `AppState::on_changes_pane`.
+  (`bc7f84f`)
+- **Real-runner integration tests** (`crates/graft/tests/it/changes_pane_writes.rs`,
+  registered in `tests/it/main.rs`). Two, over the real job pool and real git
+  on a `copy_into_temp` scratch repo: `Space` on a hunk heading puts that hunk
+  and only that hunk in the index (`git diff --cached` has the first change,
+  `git diff` still has the second); `d` on an untracked file opens the box
+  with the safe choice under the cursor so `Enter` alone keeps the file, and
+  `→ Enter` deletes it leaving one `refs/graft/backup` ref and a two-line
+  journal. (`457ffbf`)
+- **The confirm box was never drawn.** The widget and `AppState::confirm`
+  both existed after session 2; nothing painted them, so `d` opened a modal
+  that swallowed every key and showed nothing. `view::frame::draw_confirm`
+  now draws it last, over the context menu, and a plain (non-`#[ignore]`d)
+  test asserts the question, the exact command and `[ Cancel ]` are on
+  screen. (`5e1e460`)
+- **Piece 7 — captures.** `docs/shots/m3-changes-pane-{160x48,120x40,80x24}.txt`
+  and `m3-confirm-discard.txt`, regenerated by `capture_m3_changes_pane` /
+  `capture_m3_confirm_discard` in `crates/graft/src/view/tests.rs`
+  (`#[ignore]`d). Each carries its own "judge by eye" list. Largest is 8.9 KB.
+  (`5e1e460`)
+- **Piece 6 — the pinned uncommitted row.** `uncommitted_row_shown` is a
+  dirty tree and nothing else. `uncommitted_row_attached` no longer decides
+  whether the row draws, only how: on `HEAD`'s lane when `HEAD` is topmost,
+  else a lone `◌` with no lane under it. `k` reaches it either way. Closes
+  the m2/06b gap row. (`cc06951`)
 
-Given the size of what remains (roughly pieces 2–4, 6, 7 of 7), recommend the conductor split this into a follow-on group rather than one more session.
+**Deviations, with reasons:**
+- **No `preview_command(&Operation, &WorkingTreeStatus, head_unborn) -> String`.**
+  The confirm box's command text is still derived in two small helpers
+  (`discard_command` for a whole file, `discard_patch_command` for a patch)
+  rather than from `Operation::plan`. They match `plan_discard` today and
+  tests pin the strings, but they can drift if `plan_discard` changes. Worth
+  a follow-up that derives the line from the plan itself.
+- **`c commit` is not in the footer.** The spec's hint list names it, but
+  commit belongs to `commit-editor`; hinting a key that does nothing is worse
+  than not hinting it. Add it with that group.
+- **The captures are built from hand-written state, not `copy_into_temp`.**
+  A scripted `WorkingTreeStatus` + `FileList` + `FileDiff` keeps them
+  byte-deterministic and free of git. The real-git proof is the integration
+  test instead, which is the stronger of the two.
+- Boxing of `Command::Operate`/`Product::Operated` and the 3-variant
+  `Operated` enum stand as session 2 left them (clippy's large-variant lint;
+  `ApplyError::AfterState` needs its own case).
+- Multi-line range selection stays out (spec's own Out list).
+
+**For KNOWN_GAPS (conductor's file — not edited here):**
+- *Unverified:* how the pane looks. The captures carry no colour, so nothing
+  in them can stand for one; the user judges them by eye.
+- *Unverified:* the end-to-end key-driven proof covers **stage** of a hunk
+  (`Forward`/`Worktree`) and **discard** of a whole untracked file. Unstage of
+  a hunk (`Reverse`/`Index`) and discard of a hunk are covered by pure tests
+  here plus `graft-ops`' own round-trip tests against real git, but no test
+  drives them from a key press to the repository.
+- *Unverified:* the confirm box's command text for a patch discard is written
+  out by hand rather than taken from `Operation::plan` (deviation above).
+
+### Session 2 (builder-sonnet) — superseded
+
+Session 2's handoff listed pieces 2, 3, 4-remainder, 6 and 7 as outstanding.
+Piece 2 and 3 landed in `bc4886a` (sections, raw diff beside the view, the
+body cursor's data model); the rest landed this session. The stale "Built /
+Deviations / Handoff" text is replaced by the section above.
 
 ## Gates
 
 `cargo fmt --check` · `cargo test --quiet` · `cargo clippy --all-targets --message-format=short -- -D warnings` · `cargo build --quiet` · purity guard · `GitInvocation` guard.
 
+All green at `cc06951`: 509 lib tests, 18 integration tests, 0 failures.
+
 ## Size
 
-~1,100 lines + ~600 test across `graft` and `graft-ui`. Named seams: after piece 2 (grouped pane, no writes yet), after piece 4 (file + hunk staging, no confirm), after piece 6. The largest M2 overruns were tickets of this shape; stop at a seam rather than compact. Use a scout for `update/detail/keys.rs`'s key map and `view/detail.rs`'s header path; never read `update/mod.rs` whole.
+~1,100 lines + ~600 test across `graft` and `graft-ui`. Named seams: after
+piece 2 (grouped pane, no writes yet), after piece 4 (file + hunk staging, no
+confirm), after piece 6. The largest M2 overruns were tickets of this shape;
+stop at a seam rather than compact. Use a scout for `update/detail/keys.rs`'s
+key map and `view/detail.rs`'s header path; never read `update/mod.rs` whole.
