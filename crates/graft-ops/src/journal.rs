@@ -208,6 +208,16 @@ fn is_operation(entry: &JournalEntry) -> bool {
     !matches!(entry.kind, OperationKind::Undo | OperationKind::Redo)
 }
 
+/// Whether `u` and `U` can see an entry of this kind. Fetch and push are
+/// journaled — the Command Log and the browser show them — but transparent
+/// to undo: `u` never talks to a remote, so it steps past them to the local
+/// operation before (M4 design note, hard choice 1). Pull is undoable: it
+/// moved only the local branch and tree.
+#[must_use]
+pub fn undoable_kind(kind: OperationKind) -> bool {
+    !matches!(kind, OperationKind::Fetch | OperationKind::Push)
+}
+
 /// Whether the entry with `id` is in force: it took effect and no later
 /// in-force entry has `reverses == Some(id)`.
 #[must_use]
@@ -221,7 +231,7 @@ pub fn in_force(entries: &[JournalEntry], id: &EntryId) -> bool {
 
 /// What `u` undoes next: the newest in-force operation (never an `Undo` or
 /// `Redo` entry — those are stepped over through `next_redo` and by undoing
-/// what they put back).
+/// what they put back — and never a fetch or push, see [`undoable_kind`]).
 #[must_use]
 pub fn next_undo(entries: &[JournalEntry]) -> Option<&JournalEntry> {
     let flags = in_force_flags(entries);
@@ -229,18 +239,19 @@ pub fn next_undo(entries: &[JournalEntry]) -> Option<&JournalEntry> {
         .iter()
         .zip(flags)
         .rev()
-        .find(|(entry, flag)| *flag && is_operation(entry))
+        .find(|(entry, flag)| *flag && is_operation(entry) && undoable_kind(entry.kind))
         .map(|(entry, _)| entry)
 }
 
 /// What `U` redoes next: the newest in-force `Undo` entry, unless an in-force
 /// operation is newer than it — a new operation after an undo moves the
-/// cursor past that branch of history (§6.5).
+/// cursor past that branch of history (§6.5). A fetch or push after the
+/// undo does not: neither is undoable, so neither ends the redo branch.
 #[must_use]
 pub fn next_redo(entries: &[JournalEntry]) -> Option<&JournalEntry> {
     let flags = in_force_flags(entries);
     for (entry, flag) in entries.iter().zip(flags).rev() {
-        if !flag {
+        if !flag || !undoable_kind(entry.kind) {
             continue;
         }
         if is_operation(entry) {

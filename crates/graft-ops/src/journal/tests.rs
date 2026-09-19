@@ -387,3 +387,47 @@ fn state_at_skips_a_pending_entry_that_recorded_no_after_state() {
     let entries = vec![committed(10, OperationKind::Commit, 1, 2), pending(20)];
     assert_eq!(state_at(&entries, 25).unwrap().refs[MAIN], Some(oid(2)));
 }
+
+#[test]
+fn fetch_and_push_are_not_undoable_kinds() {
+    use super::undoable_kind;
+    assert!(!undoable_kind(OperationKind::Fetch));
+    assert!(!undoable_kind(OperationKind::Push));
+    for kind in [
+        OperationKind::Pull,
+        OperationKind::Commit,
+        OperationKind::StashPush,
+        OperationKind::Undo,
+        OperationKind::Redo,
+    ] {
+        assert!(undoable_kind(kind), "{kind:?}");
+    }
+}
+
+#[test]
+fn next_undo_steps_past_a_push_and_a_fetch() {
+    let commit = committed(10, OperationKind::Commit, 1, 2);
+    let push = committed(20, OperationKind::Push, 5, 6);
+    let fetch = committed(30, OperationKind::Fetch, 6, 7);
+    let entries = vec![commit.clone(), push, fetch];
+    assert_eq!(next_undo(&entries), Some(&commit));
+}
+
+#[test]
+fn a_pull_is_undone_like_any_operation() {
+    let commit = committed(10, OperationKind::Commit, 1, 2);
+    let pull = committed(20, OperationKind::Pull, 2, 3);
+    let entries = vec![commit, pull.clone()];
+    assert_eq!(next_undo(&entries), Some(&pull));
+}
+
+#[test]
+fn a_fetch_or_push_after_an_undo_keeps_redo() {
+    let a = committed(10, OperationKind::Commit, 1, 2);
+    let undo_a = reversal(20, OperationKind::Undo, &a);
+    let fetch = committed(30, OperationKind::Fetch, 5, 6);
+    let push = committed(40, OperationKind::Push, 6, 7);
+    let entries = vec![a, undo_a.clone(), fetch, push];
+    assert_eq!(next_redo(&entries), Some(&undo_a));
+    assert_eq!(next_undo(&entries), None);
+}
