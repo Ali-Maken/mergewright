@@ -180,6 +180,12 @@ fn shown_key(
         prompt_key(next, commands, key, next_id);
         return true;
     }
+    // `Tab` belongs to the detail pane's focus cycle, always: an overlay
+    // that swallowed it would be one the user could never `Tab` out of
+    // (m3-working-tree-undo-and-stash/06).
+    if matches!(key.code, KeyCode::Tab | KeyCode::BackTab) {
+        return false;
+    }
     let rows = next.stash.rows().len();
     match key.code {
         KeyCode::Char('S') | KeyCode::Escape => close(next, commands),

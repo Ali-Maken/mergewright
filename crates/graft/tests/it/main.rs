@@ -21,4 +21,5 @@ mod many_refs;
 mod not_a_repo;
 mod piped_stdout;
 mod seam_rule;
+mod stash_by_key;
 mod undo_by_key;

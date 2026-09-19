@@ -10,6 +10,7 @@ use graft_git::history::Order;
 
 use crate::history::{History, Motion, View};
 use graft_graph::Follow;
+use graft_ui::detail::DetailFocus;
 
 use super::events::{Command, CommitGraphOffer};
 use super::state::{AppState, Quit, Status};
@@ -93,14 +94,23 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     graph_key(next, commands, key);
 }
 
-/// The detail pane, then each overlay in turn, then the overview strip:
-/// the panes that claim a key before the graph sees it. `true` when one of
-/// them took it.
+/// The detail pane, each overlay, then the overview strip: the panes that
+/// claim a key before the graph sees it. `true` when one of them took it.
+///
+/// An open overlay stands where the graph does, so it takes the keys the
+/// graph would — **before** the detail pane, which otherwise claims
+/// `Enter`, `s`, `d` and `Space` for itself and leaves `⏎ apply` doing
+/// nothing but opening the pane. While the pane has focus the pane keeps
+/// them, and `Tab` is never claimed by an overlay, so focus can always get
+/// back there (m3-working-tree-undo-and-stash/06).
 fn pane_and_overlay_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    let overlay_first = next.detail.focus == DetailFocus::Graph;
+    if overlay_first && (journal_key(next, commands, key) || stash_key(next, commands, key)) {
+        return true;
+    }
     super::detail::detail_key(next, commands, key)
         || super::map::map_key(next, commands, key)
-        || journal_key(next, commands, key)
-        || stash_key(next, commands, key)
+        || (!overlay_first && (journal_key(next, commands, key) || stash_key(next, commands, key)))
         || super::strip::strip_key(next, key)
 }
 
@@ -197,6 +207,10 @@ pub(super) fn refresh_key(
     // not seen is one `u` would not offer to take back
     // (m3-working-tree-undo-and-stash/06).
     commands.extend(next.journal.read(next_id));
+    // And so is the stash list, while the overlay is up: a stash push or
+    // pop in another window moves `refs/stash` under it
+    // (m3-working-tree-undo-and-stash/06).
+    super::stash::refresh(next, commands, next_id);
     commands.extend(next.detail.refresh(next_id));
     if let Some(id) = next.awaiting.take() {
         commands.push(Command::CancelJob(id));
