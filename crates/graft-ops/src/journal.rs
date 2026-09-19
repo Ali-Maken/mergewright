@@ -9,6 +9,7 @@
 //! newest in-force operation, `next_redo` the newest in-force undo that no
 //! newer operation has moved past.
 
+mod file;
 mod lines;
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
@@ -16,6 +17,7 @@ use std::collections::{BTreeMap, BTreeSet, HashSet};
 use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind};
 use graft_core::oid::Oid;
 
+pub use file::{Journal, journal_path};
 pub use lines::{Line, OutcomeLine, PendingLine};
 
 /// Why the journal's bytes could not be read as entries.

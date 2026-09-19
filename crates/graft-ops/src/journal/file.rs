@@ -1,0 +1,208 @@
+//! The journal file: open it, append to it, recover from a crash.
+//!
+//! Append-only JSONL under `<git-path graft>/undo-journal.jsonl`, which is
+//! per-worktree by git's own layout rules (ADR-0010). Two lines per entry:
+//! the `Pending` line goes down *before* the operation runs, the outcome
+//! line after it, so a crash between them leaves a `Pending` entry that
+//! [`Journal::unresolved`] finds on the next launch (DESIGN.md §6.2 step 3).
+//!
+//! Every append is `O_APPEND` plus `fsync`: the line is on disk before the
+//! operation it describes starts. Nothing here spawns `git`.
+
+use std::fs::{File, OpenOptions};
+use std::io::Write;
+use std::path::{Path, PathBuf};
+
+use graft_core::journal::{EntryId, EntryStatus, JournalEntry};
+use graft_git::repo::RepoHandle;
+use graft_git::run::RunError;
+
+use super::{JournalError, parse, render_outcome, render_pending};
+use crate::undo::RepoStateNow;
+
+/// The journal file's name under the per-worktree `graft/` directory.
+const FILE_NAME: &str = "undo-journal.jsonl";
+
+/// The reason recorded for an entry whose process died before it could write
+/// an outcome.
+const INTERRUPTED: &str = "interrupted";
+
+/// An open journal: the file's path and the entries read from it.
+///
+/// The entries are kept in memory so the undo/redo cursor (`next_undo`,
+/// `next_redo`) can be read without re-parsing; every append updates both the
+/// file and that copy, so they never disagree.
+#[derive(Debug)]
+pub struct Journal {
+    path: PathBuf,
+    entries: Vec<JournalEntry>,
+    torn_tail: Option<usize>,
+}
+
+impl Journal {
+    /// Open the journal at `path`, creating its directory and the file if
+    /// they are missing.
+    ///
+    /// A torn last line — a crash part-way through an append — is **cut off
+    /// the file here**, not just reported. It has to be: the torn bytes carry
+    /// no complete record and have no trailing newline, so appending after
+    /// them would splice the next line onto the wreckage, and every later
+    /// parse would then see a torn line that is not last and refuse the whole
+    /// file. [`Journal::torn_tail`] keeps the line number so a caller can say
+    /// it happened.
+    pub fn open(path: &Path) -> Result<Journal, JournalError> {
+        if let Some(directory) = path.parent() {
+            std::fs::create_dir_all(directory)?;
+        }
+        let bytes = match std::fs::read(path) {
+            Ok(bytes) => bytes,
+            Err(why) if why.kind() == std::io::ErrorKind::NotFound => {
+                File::create(path)?;
+                Vec::new()
+            }
+            Err(why) => return Err(why.into()),
+        };
+        let parsed = parse(&bytes)?;
+        if parsed.torn_tail.is_some() {
+            let keep = match bytes.iter().rposition(|byte| *byte == b'\n') {
+                Some(last_newline) => last_newline + 1,
+                None => 0,
+            };
+            let file = OpenOptions::new().write(true).open(path)?;
+            file.set_len(keep as u64)?;
+            file.sync_all()?;
+        }
+        Ok(Journal {
+            path: path.to_path_buf(),
+            entries: parsed.entries,
+            torn_tail: parsed.torn_tail,
+        })
+    }
+
+    /// The journal file's path.
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    /// Every entry, oldest first.
+    pub fn entries(&self) -> &[JournalEntry] {
+        &self.entries
+    }
+
+    /// The 1-based line number of a torn last line cut off at [`open`], if
+    /// there was one. Nothing was lost by it — the record it held never
+    /// finished being written — but the caller may want to say so.
+    ///
+    /// [`open`]: Journal::open
+    pub fn torn_tail(&self) -> Option<usize> {
+        self.torn_tail
+    }
+
+    /// Write an entry's `Pending` line and remember it.
+    ///
+    /// Returns `DuplicatePending` rather than writing a second opening line
+    /// for an id the file already holds.
+    pub fn append_pending(&mut self, entry: &JournalEntry) -> Result<(), JournalError> {
+        if self.entries.iter().any(|held| held.id == entry.id) {
+            return Err(JournalError::DuplicatePending(entry.id.clone()));
+        }
+        let line = render_pending(entry)?;
+        self.append(&line)?;
+        self.entries.push(entry.clone());
+        Ok(())
+    }
+
+    /// Write an entry's outcome line and replace the held copy with it.
+    ///
+    /// Refuses an entry still marked `Pending` (`render_outcome`'s own rule),
+    /// an id the file never opened, and a second outcome for one id.
+    pub fn append_outcome(&mut self, entry: &JournalEntry) -> Result<(), JournalError> {
+        let position = self
+            .entries
+            .iter()
+            .position(|held| held.id == entry.id)
+            .ok_or_else(|| JournalError::OutcomeWithoutPending(entry.id.clone()))?;
+        if self.entries[position].status != EntryStatus::Pending {
+            return Err(JournalError::DuplicateOutcome(entry.id.clone()));
+        }
+        let line = render_outcome(entry)?;
+        // The file first, the held copy second: a failed write must not leave
+        // the two disagreeing.
+        self.append(&line)?;
+        self.entries[position] = entry.clone();
+        Ok(())
+    }
+
+    /// Entries with no outcome: an operation whose process died between the
+    /// two lines (DESIGN.md §6.2 step 3).
+    pub fn unresolved(&self) -> Vec<&JournalEntry> {
+        self.entries
+            .iter()
+            .filter(|entry| entry.status == EntryStatus::Pending)
+            .collect()
+    }
+
+    /// Close an unresolved entry as `Aborted { reason: "interrupted" }`.
+    ///
+    /// `after` is the repository as it stands now, read by the caller (the
+    /// journal has no repository of its own). It matters: an entry whose
+    /// after-fields are all `None` is in force with an `Incomplete` inverse
+    /// for its refs and an `Everything`-scoped restore for its trees, so `u`
+    /// would either refuse or offer to overwrite the whole working tree.
+    /// Pass `None` only when the repository genuinely could not be read —
+    /// that is the case `PathScope::Everything` and `Drift::unknown` exist
+    /// for, and the user is asked before it runs.
+    pub fn mark_interrupted(
+        &mut self,
+        id: &EntryId,
+        after: Option<&RepoStateNow>,
+    ) -> Result<(), JournalError> {
+        let held = self
+            .entries
+            .iter()
+            .find(|held| held.id == *id)
+            .ok_or_else(|| JournalError::OutcomeWithoutPending(id.clone()))?;
+        if held.status != EntryStatus::Pending {
+            return Err(JournalError::DuplicateOutcome(id.clone()));
+        }
+        let mut closed = held.clone();
+        closed.status = EntryStatus::Aborted {
+            reason: INTERRUPTED.to_owned(),
+        };
+        if let Some(now) = after {
+            closed.head_after = Some(now.head.clone());
+            closed.refs_after = closed
+                .refs_before
+                .keys()
+                .map(|name| (name.clone(), now.refs.get(name).copied().flatten()))
+                .collect();
+            if closed.touches.index {
+                closed.index_after = Some(now.index_tree);
+            } else {
+                closed.index_after = closed.index_before;
+            }
+            if closed.touches.worktree {
+                closed.worktree_after = Some(now.worktree_tree);
+            } else {
+                closed.worktree_after = closed.worktree_before;
+            }
+        }
+        self.append_outcome(&closed)
+    }
+
+    /// One `O_APPEND` write plus `fsync`, so the line is durable before the
+    /// operation it opens starts running.
+    fn append(&self, line: &[u8]) -> Result<(), JournalError> {
+        let mut file = OpenOptions::new().append(true).open(&self.path)?;
+        file.write_all(line)?;
+        file.sync_all()?;
+        Ok(())
+    }
+}
+
+/// The journal's path for a repository: `graft/undo-journal.jsonl` resolved
+/// through `git rev-parse --git-path`, which is `.git/graft/…` in the main
+/// worktree and `.git/worktrees/<name>/graft/…` in a linked one (ADR-0010).
+pub fn journal_path(repo: &RepoHandle) -> Result<PathBuf, RunError> {
+    repo.git_path(Path::new(&format!("graft/{FILE_NAME}")))
+}

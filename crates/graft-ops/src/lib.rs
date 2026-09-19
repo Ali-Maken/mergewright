@@ -7,7 +7,11 @@
 
 #![forbid(unsafe_code)]
 
+pub mod apply;
+pub mod facts;
 pub mod journal;
 pub mod mistake_radar;
 pub mod operation;
+pub mod restore;
+pub mod snapshot;
 pub mod undo;

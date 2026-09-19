@@ -11,12 +11,16 @@
 //!
 //! A plan is data; `ops-execution` runs the steps. Nothing here spawns `git`.
 
+mod execute;
+
 use std::collections::BTreeMap;
 
 use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches};
 use graft_core::oid::Oid;
 
 use crate::journal::{next_redo, next_undo, root_operation};
+
+pub use execute::{UndoError, redo, undo};
 
 /// The stash ref, whose reflog is the stash list; restored by
 /// [`Step::StashStore`]/[`Step::StashDrop`], never by [`Step::UpdateRef`].
