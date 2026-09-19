@@ -322,8 +322,11 @@ pub(super) fn badge_view(label: &RefLabel) -> Badge {
             name: sanitize_path_bytes(name),
             kind: BadgeKind::Tag,
         },
-        RefLabel::Stash => Badge {
-            name: sanitize_line("stash"),
+        RefLabel::Stash(index) => Badge {
+            // `stash@{n}`, git's own name, so the badge and the `S` overlay
+            // call the same entry the same thing
+            // (m3-working-tree-undo-and-stash/06).
+            name: sanitize_line(&format!("stash@{{{index}}}")),
             kind: BadgeKind::Stash,
         },
     }

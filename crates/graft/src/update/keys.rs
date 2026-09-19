@@ -170,9 +170,11 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
         next.local_jobs = local_jobs;
     } else if let Some(change) = view_change(key) {
         let height = next.graph_rows();
-        let stash = next.refs.as_deref().and_then(crate::refs::RefBadges::stash);
+        let stashes: Vec<Oid> = next.refs.as_deref().map_or_else(Vec::new, |refs| {
+            refs.stashes().iter().map(|&(commit, _)| commit).collect()
+        });
         if let Some(history) = next.history.as_mut()
-            && let Some(view) = change.apply(history, stash)
+            && let Some(view) = change.apply(history, &stashes)
             && let Some(request) = history.change_view(view, height)
             && let Some(id) = next.awaiting
         {
@@ -461,7 +463,7 @@ enum ViewChange {
 impl ViewChange {
     /// The view after this change, or `None` where it does nothing: `Space`
     /// off a merge, `H` with no stash.
-    fn apply(self, history: &History, stash: Option<Oid>) -> Option<View> {
+    fn apply(self, history: &History, stashes: &[Oid]) -> Option<View> {
         let mut view = history.view.clone();
         match self {
             ViewChange::Fold => {
@@ -483,7 +485,15 @@ impl ViewChange {
             }
             ViewChange::Stashes => {
                 if view.inclusion.hidden_stashes.is_empty() {
-                    view.inclusion.hidden_stashes.insert(stash?);
+                    // Every entry, not just the newest: `H` reads as "the
+                    // stash", and hiding one of three would leave two
+                    // behind (m3-working-tree-undo-and-stash/06).
+                    if stashes.is_empty() {
+                        return None;
+                    }
+                    view.inclusion
+                        .hidden_stashes
+                        .extend(stashes.iter().copied());
                 } else {
                     view.inclusion.hidden_stashes.clear();
                 }

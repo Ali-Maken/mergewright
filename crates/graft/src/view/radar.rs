@@ -252,6 +252,7 @@ mod tests {
             &[(ref_name("main"), chain.first().copied().unwrap_or(oid(1)))],
             &head,
             &HashMap::new(),
+            &[],
             |_, _| unreachable!("no upstream configured, nothing to count"),
         )
         .expect("plain data with no upstream to count always builds");

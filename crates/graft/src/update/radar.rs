@@ -553,6 +553,7 @@ mod tests {
                 &[(ref_name("main"), tip)],
                 &head,
                 &HashMap::new(),
+                &[],
                 |_, _| unreachable!("no upstream is configured, so no count is ever asked for"),
             )
             .expect("badges builds from plain data with no upstream to count");
@@ -634,6 +635,7 @@ mod tests {
             ],
             &head,
             &upstreams,
+            &[],
             |_, _| {
                 Ok(graft_git::history::AheadBehind {
                     ahead: 1,
@@ -717,7 +719,7 @@ mod tests {
             refs.push((remote_name.clone(), oid(index + 128)));
             upstreams.insert(ref_name(&local), remote_name);
         }
-        let badges = crate::refs::badges(&refs, &head, &upstreams, |_, _| {
+        let badges = crate::refs::badges(&refs, &head, &upstreams, &[], |_, _| {
             Ok(graft_git::history::AheadBehind {
                 ahead: 1,
                 behind: 1,

@@ -291,21 +291,24 @@ fn capital_h_hides_the_stash_and_shows_it_again() {
     assert_eq!(none.history, state.history);
 
     let stash = Oid::from_bytes(&[9; Oid::SHA1_BYTES]).expect("an oid");
+    let older = Oid::from_bytes(&[8; Oid::SHA1_BYTES]).expect("an oid");
     let name = graft_core::ref_name::RefName::new("refs/stash").expect("valid");
     let badges = crate::refs::badges(
         &[(name, stash)],
         &graft_git::repo::HeadState::Detached(stash),
         &std::collections::HashMap::new(),
+        &[(stash, 0), (older, 1)],
         |_, _| Err("no upstreams here".to_owned()),
     )
     .expect("badges");
     assert_eq!(badges.stash(), Some(stash));
     state.refs = Some(Arc::new(badges));
 
+    // Both entries, not only the newest (m3-working-tree-undo-and-stash/06).
     let (hidden, commands) = update(&state, key(KeyCode::Char('H')));
     assert_eq!(
         asked_view(&commands).inclusion.hidden_stashes,
-        [stash].into()
+        [stash, older].into()
     );
     let (shown, commands) = update(&hidden, key(KeyCode::Char('H')));
     assert_eq!(asked_view(&commands), View::default());
@@ -2414,6 +2417,7 @@ fn dirty_on_screen(id: JobId) -> AppState {
         &[],
         &graft_git::repo::HeadState::Detached(head_id),
         &std::collections::HashMap::new(),
+        &[],
         |_, _| unreachable!("no branches on this fixture to count"),
     )
     .expect("no refs to fail reading");
@@ -2444,6 +2448,7 @@ fn k_reaches_the_working_tree_row_even_with_head_scrolled_off() {
         &[],
         &graft_git::repo::HeadState::Detached(elsewhere),
         &std::collections::HashMap::new(),
+        &[],
         |_, _| unreachable!("no branches on this fixture to count"),
     )
     .expect("no refs to fail reading");

@@ -537,14 +537,20 @@ pub fn request_discard(next: &mut AppState) -> bool {
     let counts = selected_counts(next);
     let entry = entry.clone();
     let shown = path.display();
-    let question = if entry.untracked {
-        format!("Delete {shown}?")
+    // The question and the button must name the same act. An untracked
+    // file is deleted, not discarded, and a box reading "Delete notes.md?"
+    // over a button saying `Discard` was the one box whose whole job is to
+    // be unambiguous before destroying something (m3/04 review round,
+    // closed here).
+    let (question, verb) = if entry.untracked {
+        (format!("Delete {shown}?"), "Delete")
     } else {
-        format!("Discard changes to {shown}?")
+        (format!("Discard changes to {shown}?"), "Discard")
     };
     let mut consequence = discard_consequence(&entry, counts);
     consequence.push("Graft keeps a backup first, so `u` can undo it afterwards.".to_string());
-    let view = graft_ui::confirm::ConfirmView::new(question, consequence, command);
+    let view = graft_ui::confirm::ConfirmView::new(question, consequence, command)
+        .with_labels("Cancel", verb);
     next.confirm = Some(PendingConfirm {
         view,
         then: ConfirmThen::Operate(Operation::Discard(Target::Paths(vec![path]))),
@@ -1460,9 +1466,26 @@ mod tests {
         assert!(request_discard(&mut state));
         let pending = state.confirm.as_ref().expect("a box opened");
         assert_eq!(pending.view.title, "Delete new.txt?");
+        // The question and the button say the same thing (m3/04 review
+        // round; the box used to ask "Delete" over a `Discard` button).
+        assert_eq!(pending.view.confirm_label, "Delete");
+        assert_eq!(pending.view.safe_label, "Cancel");
         let said = pending.view.message.join(" ");
         assert!(said.contains("Deletes the file"), "{said}");
         assert!(said.contains("backup"), "{said}");
+    }
+
+    #[test]
+    fn a_tracked_file_still_asks_to_discard_and_says_discard_on_the_button() {
+        let mut state = state_on(
+            "src/a.rs",
+            unstaged_entry("src/a.rs"),
+            WorkingTreeSection::Unstaged,
+        );
+        assert!(request_discard(&mut state));
+        let pending = state.confirm.as_ref().expect("a box opened");
+        assert_eq!(pending.view.title, "Discard changes to src/a.rs?");
+        assert_eq!(pending.view.confirm_label, "Discard");
     }
 
     #[test]

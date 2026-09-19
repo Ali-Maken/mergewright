@@ -31,14 +31,27 @@ fn on_main() -> HeadState {
     HeadState::Branch(name("refs/heads/main"))
 }
 
-/// Badges where every branch/upstream pair is `counts` apart.
+/// Badges where every branch/upstream pair is `counts` apart, and no
+/// stashes. `with_stashes` is the one that has them.
 fn with_counts(
     refs: &[(RefName, Oid)],
     head: &HeadState,
     upstreams: &HashMap<RefName, RefName>,
     counts: AheadBehind,
 ) -> RefBadges {
-    badges(refs, head, upstreams, |_, _| Ok(counts)).expect("counting cannot fail here")
+    with_stashes(refs, head, upstreams, counts, &[])
+}
+
+/// The same, with `stashes` as `graft_git::stash::commits` would read them
+/// off `refs/stash`'s reflog (m3-working-tree-undo-and-stash/06).
+fn with_stashes(
+    refs: &[(RefName, Oid)],
+    head: &HeadState,
+    upstreams: &HashMap<RefName, RefName>,
+    counts: AheadBehind,
+    stashes: &[(Oid, usize)],
+) -> RefBadges {
+    badges(refs, head, upstreams, stashes, |_, _| Ok(counts)).expect("counting cannot fail here")
 }
 
 fn branch(name: &str, current: bool, upstream: Upstream) -> RefLabel {
@@ -126,7 +139,7 @@ fn diverged_passes_both_counts_and_asks_with_the_right_tips() {
     };
     let mut asked = Vec::new();
 
-    let found = badges(&refs, &on_main(), &up, |local, upstream| {
+    let found = badges(&refs, &on_main(), &up, &[], |local, upstream| {
         asked.push((local, upstream));
         Ok(apart)
     })
@@ -166,13 +179,34 @@ fn a_tag_only_commit_carries_just_the_tag() {
 }
 
 #[test]
-fn the_stash_is_badged_and_remembered() {
+fn every_stash_entry_is_badged_by_its_own_index() {
+    // `refs/stash` names only the newest; the older entries reach the
+    // badges through the reflog read, which is the whole point of the
+    // change (`KNOWN_GAPS.md`, m3-working-tree-undo-and-stash/06).
     let refs = refs(&[("refs/heads/main", 1), ("refs/stash", 5)]);
+
+    let found = with_stashes(
+        &refs,
+        &on_main(),
+        &HashMap::new(),
+        LEVEL,
+        &[(oid(5), 0), (oid(6), 1)],
+    );
+
+    assert_eq!(found.on(oid(5)), [RefLabel::Stash(0)]);
+    assert_eq!(found.on(oid(6)), [RefLabel::Stash(1)]);
+    assert_eq!(found.stash(), Some(oid(5)), "`stash()` is still the newest");
+    assert_eq!(found.stashes(), [(oid(5), 0), (oid(6), 1)]);
+}
+
+#[test]
+fn a_repository_with_no_stash_has_no_stash_badges() {
+    let refs = refs(&[("refs/heads/main", 1)]);
 
     let found = with_counts(&refs, &on_main(), &HashMap::new(), LEVEL);
 
-    assert_eq!(found.on(oid(5)), [RefLabel::Stash]);
-    assert_eq!(found.stash(), Some(oid(5)));
+    assert_eq!(found.stash(), None);
+    assert!(found.stashes().is_empty());
 }
 
 #[test]
@@ -195,7 +229,7 @@ fn an_upstream_that_does_not_exist_is_no_upstream() {
     let refs = refs(&[("refs/heads/main", 1)]);
     let up = tracking(&[("refs/heads/main", "refs/remotes/origin/main")]);
 
-    let found = badges(&refs, &on_main(), &up, |_, _| {
+    let found = badges(&refs, &on_main(), &up, &[], |_, _| {
         panic!("nothing to count against a missing ref")
     })
     .expect("no count is asked for");

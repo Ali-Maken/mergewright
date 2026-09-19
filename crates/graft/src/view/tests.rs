@@ -445,12 +445,18 @@ pub(crate) fn refs_with_head(head: Option<Oid>) -> crate::refs::RefBadges {
                 .expect("a valid ref name"),
         ),
     };
-    crate::refs::badges(&[], &state, &std::collections::HashMap::new(), |_, _| {
-        Ok(graft_git::history::AheadBehind {
-            ahead: 0,
-            behind: 0,
-        })
-    })
+    crate::refs::badges(
+        &[],
+        &state,
+        &std::collections::HashMap::new(),
+        &[],
+        |_, _| {
+            Ok(graft_git::history::AheadBehind {
+                ahead: 0,
+                behind: 0,
+            })
+        },
+    )
     .expect("no branches to count")
 }
 
@@ -1173,6 +1179,7 @@ fn force_push_state() -> (AppState, Oid) {
         &[(main.clone(), tip), (origin_main, oid(9))],
         &HeadState::Branch(main),
         &upstreams,
+        &[],
         |_, _| {
             Ok(graft_git::history::AheadBehind {
                 ahead: 2,

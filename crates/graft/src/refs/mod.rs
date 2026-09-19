@@ -25,14 +25,13 @@ use crate::repos::RepoStore;
 const HEADS: &[u8] = b"refs/heads/";
 const REMOTES: &[u8] = b"refs/remotes/";
 const TAGS: &[u8] = b"refs/tags/";
-const STASH: &[u8] = b"refs/stash";
 
 /// The refs on every commit that has one, and where `HEAD` is.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct RefBadges {
     by_commit: HashMap<Oid, Vec<RefLabel>>,
     head: Option<Oid>,
-    stash: Option<Oid>,
+    stashes: Vec<(Oid, usize)>,
 }
 
 impl RefBadges {
@@ -52,7 +51,17 @@ impl RefBadges {
     /// The newest stash entry's commit, if there is a stash.
     #[must_use]
     pub fn stash(&self) -> Option<Oid> {
-        self.stash
+        self.stashes.first().map(|&(commit, _)| commit)
+    }
+
+    /// Every stash entry's commit with its index, `stash@{0}` first. The
+    /// graph badges each of them, and `H` hides them all together — older
+    /// entries live only in `refs/stash`'s reflog, which is why they had no
+    /// badge until now (`KNOWN_GAPS.md`,
+    /// m3-working-tree-undo-and-stash/06).
+    #[must_use]
+    pub fn stashes(&self) -> &[(Oid, usize)] {
+        &self.stashes
     }
 
     /// Every local branch: its tip, shorthand name, whether `HEAD` is on it,
@@ -91,8 +100,8 @@ pub enum RefLabel {
     Remote(Vec<u8>),
     /// A tag, short name `v2.3.0`.
     Tag(Vec<u8>),
-    /// The newest stash entry.
-    Stash,
+    /// A stash entry, by its position in the list: `0` is `stash@{0}`.
+    Stash(usize),
 }
 
 /// Where a local branch stands against its upstream.
@@ -190,7 +199,11 @@ pub fn read(store: &RepoStore, cache: &AheadBehindCache) -> Result<RefBadges, St
             upstreams.insert(name.clone(), upstream);
         }
     }
-    badges(refs, &head, &upstreams, |local, upstream| {
+    // The reflog only: `stash::list` would spawn a `diff-tree` per entry,
+    // and a badge never says how many files a stash holds
+    // (m3-working-tree-undo-and-stash/06).
+    let stashes = graft_git::stash::commits(&handle, &()).map_err(|error| error.to_string())?;
+    badges(refs, &head, &upstreams, &stashes, |local, upstream| {
         cache.get_or_count(local, upstream, || count(&handle, local, upstream))
     })
 }
@@ -208,6 +221,7 @@ pub fn badges<S: BuildHasher>(
     refs: &[(RefName, Oid)],
     head: &HeadState,
     upstreams: &HashMap<RefName, RefName, S>,
+    stashes: &[(Oid, usize)],
     mut count: impl FnMut(Oid, Oid) -> Result<AheadBehind, String>,
 ) -> Result<RefBadges, String> {
     let tips: HashMap<&RefName, Oid> = refs.iter().map(|(name, id)| (name, *id)).collect();
@@ -259,7 +273,7 @@ pub fn badges<S: BuildHasher>(
             );
         }
     }
-    result.push_remotes_tags_and_stash(refs, &merged);
+    result.push_remotes_tags_and_stash(refs, &merged, stashes);
     Ok(result)
 }
 
@@ -273,7 +287,12 @@ fn remote_of(name: &RefName) -> &[u8] {
 impl RefBadges {
     /// Everything after the local branches: remote-tracking refs not merged
     /// into an in-sync branch's badge, then tags, then the stash.
-    fn push_remotes_tags_and_stash(&mut self, refs: &[(RefName, Oid)], merged: &HashSet<&RefName>) {
+    fn push_remotes_tags_and_stash(
+        &mut self,
+        refs: &[(RefName, Oid)],
+        merged: &HashSet<&RefName>,
+        stashes: &[(Oid, usize)],
+    ) {
         let result = self;
         for (name, id) in refs {
             let full = name.as_bytes();
@@ -290,10 +309,14 @@ impl RefBadges {
             let full = name.as_bytes();
             if full.starts_with(TAGS) {
                 result.push(*id, RefLabel::Tag(full[TAGS.len()..].to_vec()));
-            } else if full == STASH {
-                result.stash = Some(*id);
-                result.push(*id, RefLabel::Stash);
             }
+        }
+        // Every entry, not only `refs/stash` itself: that ref names the
+        // newest, and the rest live behind it in its reflog, which the
+        // refs list does not carry at all.
+        result.stashes = stashes.to_vec();
+        for &(commit, index) in stashes {
+            result.push(commit, RefLabel::Stash(index));
         }
     }
 

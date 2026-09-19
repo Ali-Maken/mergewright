@@ -211,3 +211,34 @@ fn d_drops_a_stash_behind_the_box_and_u_puts_it_back_at_the_top() {
     let _ = state;
     app.close();
 }
+
+/// Every stash entry gets its own `stash@{n}` badge, not just the newest.
+/// `refs/stash` is one ref; the older entries live in its reflog, which is
+/// why they had none before (`KNOWN_GAPS.md`,
+/// m3-working-tree-undo-and-stash/06). Read through the real refs job.
+#[test]
+fn every_stash_entry_is_badged_on_a_real_repository() {
+    let scratch = repo_with_an_edit();
+    let repo = scratch.path();
+    git_as_graft(repo, &["stash", "push", "-m", "older"]);
+    std::fs::write(repo.join("sample.txt"), "one\ntwo\nthree\nfive\n")
+        .expect("the scratch repo is writable");
+    git_as_graft(repo, &["stash", "push", "-m", "newer"]);
+
+    let (app, state) = App::open(repo);
+    let state = app.pump(state, "the refs", |state| state.refs.is_some());
+    let refs = state.refs.as_ref().expect("the refs job answered");
+
+    let stashes = refs.stashes();
+    assert_eq!(stashes.len(), 2, "both entries reached the badges");
+    assert_eq!(stashes[0].1, 0);
+    assert_eq!(stashes[1].1, 1);
+    for &(commit, index) in stashes {
+        assert!(
+            refs.on(commit)
+                .contains(&graft::refs::RefLabel::Stash(index)),
+            "stash@{{{index}}} has no badge on {commit:?}"
+        );
+    }
+    app.close();
+}

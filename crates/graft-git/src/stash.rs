@@ -131,6 +131,49 @@ pub fn list(repo: &RepoHandle, stop: &dyn Stop) -> Result<Vec<StashEntry>, Stash
     Ok(result)
 }
 
+/// Every stash commit with its index, newest first, capped at
+/// [`MAX_ENTRIES`] — the reflog and nothing else.
+///
+/// [`list`]'s cheap half, for the graph's ref badges
+/// (m3-working-tree-undo-and-stash/06): it spawns no `diff-tree`, because a
+/// badge says `stash@{n}` and never how many files are in it. That matters
+/// — the badges are read on every refs refresh, and `list` would spawn up
+/// to fifty processes there.
+///
+/// A repository with no stashes is `Ok(vec![])`, as in [`list`].
+///
+/// # Errors
+/// See [`StashError`]; this half can only fail on the reflog itself.
+pub fn commits(repo: &RepoHandle, stop: &dyn Stop) -> Result<Vec<(Oid, usize)>, StashError> {
+    let gix_repo = repo.gix();
+    let reference = match gix_repo.find_reference("refs/stash") {
+        Ok(reference) => reference,
+        Err(gix::reference::find::existing::Error::NotFound { .. }) => return Ok(vec![]),
+        Err(source) => return Err(StashError::Reflog(source.to_string())),
+    };
+    let mut platform = reference.log_iter();
+    let Some(entries) = platform
+        .rev()
+        .map_err(|source| StashError::Reflog(source.to_string()))?
+    else {
+        return Ok(vec![]);
+    };
+    let mut result = Vec::new();
+    for (index, entry) in entries.enumerate() {
+        if index >= MAX_ENTRIES {
+            break;
+        }
+        if stop.should_stop() {
+            return Err(StashError::Stopped);
+        }
+        let line = entry.map_err(|source| StashError::Reflog(source.to_string()))?;
+        let commit = Oid::from_bytes(line.new_oid.as_bytes())
+            .map_err(|source| StashError::Reflog(source.to_string()))?;
+        result.push((commit, index));
+    }
+    Ok(result)
+}
+
 /// Every path a stash commit touched: its ordinary parent's tracked changes,
 /// plus — when the stash carries an untracked-files commit as a third
 /// parent (`git stash push -u`/`-a`) — that commit's own paths.
