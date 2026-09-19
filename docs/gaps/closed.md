@@ -81,3 +81,5 @@ open rows in the same sections.
 
 | ~~A write failure whose scope is `Everything` is wiped off the status line by the refresh walk's `JobFinished`.~~ **Closed by `m3-working-tree-undo-and-stash/05`**, at the cause: `Status::WriteFailed` tells a write failure from a read failure, which is the shape change the group 04 round said was needed rather than a patch. A hook-rejected commit now keeps its message | `m3/04` review round | Closed m3-05 |
 | ~~`Esc` does not clear a failed status.~~ **Closed by `m3-working-tree-undo-and-stash/05`**: `Esc` clears it. Was an acceptance-criterion item group 04 ticked without building | `m3/04` | Closed m3-05 |
+
+| ~~Only the newest stash entry has a badge.~~ **Closed by `m3-working-tree-undo-and-stash/06`**: the reflog is read, so every stash entry is badged. Proved on a real repo through the real job pool by reading `git stash list` back | M2 | Closed m3-06 |
