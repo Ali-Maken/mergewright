@@ -1,0 +1,50 @@
+m3 walk capture: m3-09-undo-drift-box — scenario undo-drift-guard, keys u, unicode tier, 160x48
+
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-XG7ByE  7 commits
+◌       Uncommitted changes (1 unstaged)
+  ◉─╮ ⓘ graft 01M2XA22182VBE15TRK79NS7MM commit after: commit "before the drift"                                                                 GR now  5688f28
+◆─│─╯   [◆ main] before the drift                                                                                                                MA now  40794eb
+│ ●     graft 01M2XA22182VBE15TRK79NS7MM commit: commit "before the drift"                                                                       GR now  fe9f13e
+●─╯     add sample.txt                                                                                                                           GT now  34a65dc
+●       Correct the note                                                                                                                         GF 7y   a82960b
+●       Add the first note                                                                                                                       GF 7y   fadcfb3
+◇       Add a readme                                                                                                                             GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+                                                Undo “commit "before the drift"”?
+                                                Since this commit "before the drift", the working tree
+                                                changed.
+                                                A backup is taken first, so this is itself undoable.
+
+                                                undo restores the recorded state
+
+                                                [ Stop ]     Undo
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ undo…

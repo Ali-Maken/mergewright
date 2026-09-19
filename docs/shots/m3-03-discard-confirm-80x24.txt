@@ -1,0 +1,26 @@
+m3 walk capture: m3-03-discard-confirm — scenario discard-tracked-unstaged, keys k ⏎ d, unicode tier, 80x24
+
+Graph  [Detail]
+UNCOMMITTED · 1 unstaged
+diff vs HEAD f2f2f1d
+
+UNSTAGED (1)
+  M sample.txt                                                             +2 −2
+▎
+  1     - one
+      1 Discard changes to sample.txt?
+  2   2 The change in the working tree goes back to how the index has i…
+  3   3 Graft keeps a backup first, so `u` can undo it afterwards.
+  4   4   four
+twelve  git restore --worktree -- sample.txt
+ 13  13   thirteen
+ 14  14 [ Cancel ]     Discard
+ 15  15   fifteen
+ 16     - sixteen
+     16 + SIXTEEN
+
+
+
+
+
+

@@ -1,0 +1,26 @@
+m3 walk capture: m3-04-commit-editor — scenario commit, keys k ⏎ c s h o u t Space t h r e e, unicode tier, 80x24
+
+COMMIT ── ⎇ main ── 1 file staged
+
+▸Subject shout three                                       ┊               11/50
+
+ Body
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]
+⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel

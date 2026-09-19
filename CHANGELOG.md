@@ -8,6 +8,50 @@ the versioning scheme are decided in M8.
 
 ## [Unreleased]
 
+### M3 — Working tree, undo and stash
+
+You cannot lose work: every write is journaled with a backup and comes back
+byte for byte on `u`.
+
+#### Added
+
+- **The changes pane** on the `Uncommitted changes` row (`k` from the top,
+  `Enter`): `STAGED` / `UNSTAGED` / `UNTRACKED` sections. `Space`/`s` stage or
+  unstage the file under the cursor; in the diff, `Space` stages a hunk or a
+  single line; `Ctrl+A` stages all; `d` discards after a confirm box that
+  opens on the safe answer.
+- **Commit editor** (`c`, `a` to amend): subject, body, `amend` / `sign-off`
+  / `no-verify` / `allow empty`, `[ Commit ]` reached by `Tab` (ADR-0034;
+  `Ctrl+Enter` where the terminal reports it). Refusals on the title row.
+- **Stash overlay** (`S`): `s` save with message and scope, `Enter` apply,
+  `p` pop, `d` drop (confirmed).
+- **Undo journal**: every write records refs, `HEAD`, index tree and worktree
+  tree before and after behind a `refs/graft/backup/<worktree>/<id>` ref.
+  `u` undoes, `U` redoes; a drift box asks first when the repository changed
+  since. `J` browses the journal (`← u` / `← U` marks, `Space` shows the
+  git commands). An interrupted operation is announced on the next launch and
+  `u` restores it. Linked worktrees keep their own journal.
+- **Refresh on focus**: status re-read when the terminal regains focus.
+- **The acceptance walk**: `cargo run -p graft --example m3_walk`, 22
+  scenarios judged by running git (`TESTING.md`, "Working tree, undo and
+  stash").
+
+#### Changed
+
+- **The harness prelude waits for M3's writes and reads** (`update::prelude`):
+  a key is fed only once no operation, journal/stash read or editor prefill
+  is in flight, and once the working-tree status has landed.
+- **Reads never write `.git/index`** (`GIT_OPTIONAL_LOCKS=0`; scenario
+  `no-index-write-on-read`).
+
+#### Known gaps
+
+See [`KNOWN_GAPS.md`](KNOWN_GAPS.md)'s M3 rows: hunks in untracked files,
+`i`, message history, selected-files stash, branch-from-stash, the `notify`
+watcher, clearing backups, commit during an in-progress merge/rebase
+(refused), the signing prompt (unverified), `Ctrl+Enter` outside the kitty
+keyboard protocol, a forced undo not pinned to the entry the drift box named.
+
 ### M2 — Details and diffs
 
 What a commit changed is readable without leaving the graph, and a bad merge

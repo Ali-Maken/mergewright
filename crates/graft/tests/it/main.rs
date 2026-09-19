@@ -16,6 +16,7 @@ mod frames;
 mod gallery;
 #[cfg(feature = "heavy-tests")]
 mod heavy;
+mod m3_walk;
 #[cfg(feature = "heavy-tests")]
 mod many_refs;
 mod not_a_repo;

@@ -1,0 +1,21 @@
+m3-working-tree-undo-and-stash/07: the snapshot-cost line, informational (no gate).
+
+What it measures: one backup snapshot (index tree + worktree tree, hard choice 3
+in docs/design-notes/m3-working-tree-undo-and-stash.md, KNOWN_GAPS R2-3) on a
+big, untracked-heavy tree. Every worktree- or index-touching operation pays it
+once before it runs, and again after.
+
+Command — never run inside a helper's context (CLAUDE.md, "Measurement never
+runs in a helper's context"); the reviewer runs it at the milestone review:
+
+    scripts/m3-snapshot-cost.sh            # 20000 tracked, 2000 untracked files
+    scripts/m3-snapshot-cost.sh 50000 5000 # a bigger tree
+
+It writes docs/perf/m3-snapshot.txt (cold, warm-1, warm-2, and the rejected
+fresh-index route for comparison).
+
+Acceptance ticket (2026-09-19): not run. The builder did not run the script;
+docs/perf/m3-snapshot.txt holds group 03's review run from earlier the same
+day. The review appends its own line below.
+
+review: not run

@@ -3,11 +3,14 @@
 //! `x j j` to mark a compare, `/query⏎ Enter` to open a searched-for row.
 //!
 //! Fed one key at a time, each only while the state is *settled*: the first
-//! history window is on hand, the refs answer has landed, and nothing an
-//! earlier key started is still in flight (the radar context, a search, the
-//! pane's file list or diff). So `Enter` opens on a real row and not on
-//! nothing, `j` after it moves the files cursor and not an empty list, and a
-//! second `Enter` after a search waits for the hit. Empty in the shipped
+//! history window, the refs answer and the working-tree status are on hand,
+//! and nothing an earlier key started is still in flight (the radar context,
+//! a search, the pane's file list or diff, a write and its undo, a journal
+//! or stash read, the commit editor's prefill). So `Enter` opens on a real
+//! row and not on nothing, `j` after it moves the files cursor and not an
+//! empty list, `k` finds the uncommitted row once the status says the tree
+//! is dirty, and `u` after `Space` undoes the stage that has landed rather
+//! than racing it (m3-working-tree-undo-and-stash/07). Empty in the shipped
 //! binary, so `update` never feeds anything there.
 
 use graft_core::event::KeyPress;
@@ -31,6 +34,7 @@ fn settled(state: &AppState) -> bool {
         .as_ref()
         .is_some_and(|history| history.window.is_some());
     let refs = state.refs.is_some();
+    let status = state.working_tree.is_some();
     let quiet = !matches!(state.radar.context, Loading::Pending(_))
         && state
             .search
@@ -38,5 +42,13 @@ fn settled(state: &AppState) -> bool {
             .is_none_or(|search| search.job.is_none())
         && !matches!(state.detail.files, Loading::Pending(_))
         && !matches!(state.detail.diff, Loading::Pending(_));
-    window && refs && quiet
+    // M3's writes and reads: a key pressed while one of these is in flight
+    // would act on the state before it, which is exactly the race a capture
+    // must not show.
+    let writes_landed = state.operating.is_none()
+        && state.journal.reading.is_none()
+        && !matches!(state.stash.entries, Loading::Pending(_))
+        && state.head_message.is_none()
+        && state.commit_template.is_none();
+    window && refs && status && quiet && writes_landed
 }

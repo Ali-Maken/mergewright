@@ -22,7 +22,7 @@ tags                    —                       —                       S:? 
 ref-states              —                       —                       S:? C:?,80x24,160x40    —                       C:?                     —                       S:?                   
 detached-head           —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
 unborn-branch           —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
-stash                   —                       —                       S:? C:?                 —                       C:?                     —                       S:?                   
+stash                   —                       —                       S:? C:?,80x24           —                       C:?                     —                       S:?                   
 unicode-names           —                       —                       S:? C:?,80x24,160x40    —                       C:?                     —                       S:?                   
 non-utf8-path           —                       —                       S:? C:?,80x24,160x40    —                       C:?                     —                       S:?                   
 non-utf8-ref-name       —                       —                       C:?                     —                       C:?                     —                       —                     
@@ -54,3 +54,18 @@ m2-16-feature-branches-o            —                       —               
 m2-17-graft-self-enter              —                       —                       C:80x24,160x40          —                       —                       —                       —                     
 m2-18-git-git-search-enter          —                       —                       C:80x24,160x40          —                       —                       —                       —                     
 m2-19-git-git-o                     —                       —                       C:80x24,160x40          —                       —                       —                       —                     
+
+Working tree, undo and stash coverage: capture × size (m3-working-tree-undo-and-stash/07)
+Files docs/shots/<stem>-<WxH>.txt from .scratch/m3-working-tree-undo-and-stash/pty-walk-m3.py;
+C the file exists, — it does not. Unicode tier only; colour is never captured.
+
+capture                      80x24     160x48  
+m3-01-stage-file             C         C       
+m3-08-journal-after-unstage  C         C       
+m3-02-stage-hunk             C         C       
+m3-03-discard-confirm        C         C       
+m3-04-commit-editor          C         C       
+m3-05-commit-refused         C         C       
+m3-09-undo-drift-box         C         C       
+m3-07-stash-prompt           C         C       
+m3-06-stash-list             C         C       

@@ -1,6 +1,6 @@
 # acceptance-working-tree-undo-and-stash: one command that walks "you cannot lose work", what right looks like, and the captures
 
-Status: ready
+Status: done (2026-09-19, builder-fable; KNOWN_GAPS rows left to the conductor — see NOTES)
 Blocked by: 01, 02, 03, 04, 05, 06 — every other M3 group
 Build with: Fable — the milestone's acceptance ticket (CLAUDE.md standing rule); last in order, before review. Does not count against the Fable build expectation.
 Needs: every other M3 group — `ops-model`, `git-reads-and-patches`, `ops-execution`, `changes-pane`, `commit-editor`, `undo-and-stash-ui`.
@@ -52,13 +52,15 @@ pub fn diff_truth(before: &RepoTruth, after: &RepoTruth) -> Vec<String>;        
 
 ## Acceptance
 
-- [ ] `cargo run -p graft --example m3-walk` prints `ok <name>` for every scenario listed and exits 0; `--only stash-drop` runs one; a deliberately broken expectation (temporarily) prints `FAIL` with the differing lines and exits 1 (then reverted).
-- [ ] `tests/it/m3_walk.rs::every_scenario_passes` runs the same list under `cargo test` (fast tier; each scenario is a small fixture copy, laptop-safe; report the added seconds against KNOWN_GAPS line 463's watch).
-- [ ] `TESTING.md` section present with every scenario's "what right looks like" line naming bytes, counts or exact git output; per-breakpoint and per-terminal tables with `not run`; the "Times I left" table left empty and pointed at; `docs/field-notes.md` exists.
-- [ ] Captures exist at the paths the ticket lists, each under 8 KB; `docs/shots/35-coverage-matrix.txt` gains a working-tree table (`--matrix`).
-- [ ] `docs/perf/acceptance-m3.txt` exists with the command and `not run`.
-- [ ] KNOWN_GAPS/README/CHANGELOG updated as piece 6 says; nothing in README implies a deferred feature exists.
-- [ ] The report says which scenarios were verified by running git and which by eye remain for the user, and lists any scenario that failed as a finding, not as a fix.
+Every tick names what verified it, at tick time (ADR-0035).
+
+- [x] `cargo run -p graft --example m3_walk` prints `ok <name>` for all 22 scenarios and exits 0 — run 2026-09-19, `22 ok, 0 failed`, 12.1 s wall. `--only stash-drop` runs one (`ok stash-drop`, exit 0). A deliberately broken expectation (`"shout three"` → `"shout four"` in the `commit` scenario, reverted) printed `FAIL commit: subject "shout three\n"` and exited 1.
+- [x] `tests/it/m3_walk.rs` runs the same list under `cargo test` — as **one test per scenario**, `m3_walk::every_scenario::{stage_file, unstage_file, stage_hunk, stage_line, stage_all, discard_tracked_unstaged, discard_untracked_binary, discard_staged_and_unstaged, commit, commit_refused_nothing_staged, amend, commit_on_unborn_head, undo_drift_guard, stash_save, stash_pop, stash_apply, stash_drop, stash_apply_refused_dirty_touched_file, interrupted_entry, linked_worktree, refresh_on_focus, no_index_write_on_read}`, plus `every_scenario_has_a_test` (the walk's list equals the test list). Slowest scenario test 1.36 s (`commit`); the 22 together 4.6 s under nextest. Fast tier whole workspace: 40.3 s and 38.4 s warm on two runs, 36.2 s without the walk tests (`cargo nextest run -E 'not test(m3_walk)'`), 21.7 s recorded the morning before — the walk explains 2–4 s of the rise, not the rest (finding 2).
+- [x] `TESTING.md` "Working tree, undo and stash": 22 numbered entries each naming bytes, blob ids, list lines or exact git output (`grep -c '^[0-9]*\. \*\*' TESTING.md` → 22 in that section); "What the walk proves and what it does not"; per-breakpoint table (80x24 / 120x40 `not run` / 160x48); per-terminal table (Ghostty, Zed, VS Code `not run`); the "From today" paragraph pointing at "Times I left" (left empty) and `docs/field-notes.md` (already existed; left as is).
+- [x] Captures: 18 files `docs/shots/m3-<nn>-<what>-{80x24,160x48}.txt`, largest 2652 bytes (`ls -la docs/shots/m3-*`), written by `pty-walk-m3.py`; every one reports `settled` with its expected text on screen. `docs/shots/35-coverage-matrix.txt` gains the working-tree table via `m3_walk --matrix`; `m3_walk::every_scenario::captures_are_named_keyed_and_listed_in_the_matrix` checks nine captures, distinct stems, keys, expected text and their presence in the table.
+- [x] `docs/perf/acceptance-m3.txt` exists with the command and `review: not run` (read back).
+- [ ] KNOWN_GAPS.md rows — **not done by the builder**: the conductor's dispatch forbade editing `KNOWN_GAPS.md`; the rows are drafted under NOTES for the conductor to file. README.md "What M3 actually does" and CHANGELOG.md "M3" sections written; README's "Not in M3" list names every deferral so nothing implies a deferred feature exists (read back).
+- [x] The report (and NOTES below) says which scenarios git verified (all 22) and which remain by eye (nine captures at two sizes, 120x40, three terminals, colour), and lists findings as findings, not fixes.
 
 ## Gates
 
@@ -67,3 +69,32 @@ pub fn diff_truth(before: &RepoTruth, after: &RepoTruth) -> Vec<String>;        
 ## Size
 
 ~700 lines (walk + scenarios) + docs. Seam: after piece 1 (the walk runs), then docs and captures. Reads summaries only; a capture is never read into context.
+
+## NOTES (builder-fable, 2026-09-19)
+
+**Scouts:** three `Explore` scouts on Sonnet (harness mechanics; M3 key flows and exact strings; ops/journal/fixtures facts). The builder read source only for the prelude (42 lines), `Field::next`, `refusal`, `plan_discard`'s head, and the shared `app_harness.rs` it builds on.
+
+**Where the build differs from this spec (the conductor's as-built file is theirs; recorded here):**
+
+1. **`Harness::prelude` + `run_headless` cannot drive the walk.** `run_headless` takes no keys and prints one frame; the prelude is a flat key list with no way to wait for a write to land or edit a file between keys. The walk drives `update` directly over the real `JobRunner` (`tests/it/app_harness.rs::App`, as `undo_by_key`/`stash_by_key` do) through `Step`s: `Key`, `Type`, `Await(pred)`, `Write` (settle a queued write, demand `Done`), `Settle`, `CursorTo(name, nth)`, `Focus`, `Shell(fn)`, `Mark`, `See`, `CommitButton`. Signatures changed accordingly: `Scenario { name, shape, setup: fn(&Path) -> Result<(), String>, open: Option<&str>, steps: Vec<Step>, expect: fn(&Path, &Marks) -> Result<(), String>, capture: Option<Capture> }`; `git_truth -> Result<RepoTruth, String>`; `RepoTruth` gains `head`, `stash`, `index_bytes` (the last compared only by `no-index-write-on-read` — a write and its undo legitimately rewrite the file); `run_scenario(&Scenario) -> Result<(), String>`.
+2. **The prelude is still the capture path**, and `update::prelude::settled` now also waits for `working_tree`, `operating`, `journal.reading`, a pending stash list, `head_message` and `commit_template` (public behaviour of `Harness::prelude`; MAP.md updated; test `the_prelude_holds_a_key_while_a_write_is_in_flight`; the M2 prelude test now delivers a working-tree answer first). `Capture { stem, headless: Vec<Step>, keys: Vec<KeyPress>, on_screen }` — `headless` runs before the interactive launch (the drift box needs a commit and an edit first).
+3. **One test per scenario**, not a single `every_scenario_passes`: 22 serial scenarios would be a 20 s+ test, past PROMPT §7.1's 10 s line.
+4. **Capture names** `m3-<nn>-<what>-<WxH>.txt` (no tier suffix: Unicode only). Nine captures, not eight — the spec's own list has nine items. `m3_walk --matrix` writes all three tables; **`gallery --matrix` still writes only its two and would drop the working-tree table** — run `m3_walk --matrix` after it.
+5. **Commit goes through `Tab` to `[ Commit ]`** (3 Tabs: Subject → Body → options → button — `Field::next` treats the options row as one stop), found dynamically by `Step::CommitButton`.
+6. **`stash-drop`'s gc** is `git gc --prune=now` alone. The spec's `reflog expire --all` empties the stash reflog the scenario then checks (the graft-ops test only checked the top entry).
+7. **`interrupted-entry`** builds its torn entry from a real discard through the app with the outcome line deleted, not a hand-written line with no before-state (which `u` could not restore anything from).
+8. **`discard-staged-and-unstaged`**: a path discard restores **both** the index and the file to HEAD from either row (`plan_discard`, staged class). The walk asserts that. See finding 1.
+
+**Findings (not fixed; for the conductor):**
+
+1. **`d` on the UNSTAGED row of a file that also has staged changes discards the staged version too.** Undoable (`u` brings both back, proven), so not loss — but the design note says `d` discards "the same unit" as `Space` per section membership, and a user aiming at the unstaged half loses their carefully staged half. Product preference: keep (simple, undoable) or split by section. Not fixed here.
+2. **Fast tier wall time** rose from 21.7 s to 38–40 s over the day; the walk tests account for 2–4 s (36.2 s without them). The rest is unexplained — other M3 tests, or machine load; the 22 walk tests each spawn a job pool and dozens of git processes and contend with the rest of the suite under nextest's parallelism. KNOWN_GAPS line 463's watch applies.
+3. `gallery --matrix` overwrites `35-coverage-matrix.txt` without the working-tree table (deviation 4). Small; fix = teach `coverage_matrix` the third table, which needs `tests/it/gallery.rs` to include the walk or vice versa.
+4. Group 06's captures `docs/shots/m3-changes-pane-160x48.txt`, `m3-commit-editor-160x48.txt`, `m3-journal-160x48.txt` predate this naming and are not in the matrix. Leave or retire.
+5. The pinned uncommitted row (KNOWN_GAPS m2/06b): `k` from the top row reaches it in every pane scenario (17 of 22), all with `HEAD` topmost. Not verified with `HEAD` below the top — the conductor decides whether that row closes.
+
+**KNOWN_GAPS rows to file (conductor; from the design note's deferrals, expiry suggested):** hunks inside untracked files (`add -N`) → M7; `i` for .gitignore → M7; commit message history → M7; stash selected files → M7; branch from stash → M5; `notify` file watcher → M4; clear-backups action → M8; commit/amend refused during merge/rebase/cherry-pick → M5/M6; signing prompt unverified (no walk scenario, no real terminal) → unverified, M8; `Ctrl+Enter` outside the kitty keyboard protocol → unverified, standing; forced undo not pinned to the entry the drift box named → M5 (from group 06); `Esc` on an unlanded journal read re-requests → M8; **R2-3** reword: "snapshot cost measured by `scripts/m3-snapshot-cost.sh`; the acceptance line is `docs/perf/acceptance-m3.txt` (`review: not run`)"; **m2/06b**: close only if finding 5 satisfies.
+
+**Verified how:** all 22 scenarios by running git after the app closed (`for-each-ref`, `ls-files -s`, `stash list`, `status --porcelain`, `rev-parse`, `rev-list --objects`, `hash-object --stdin`, file bytes), plus `fsck --no-dangling` and the backup-ref count per scenario. UI-only facts (`nothing staged` refusal, the interrupted notice, focus counts, the drift box opening and closing) by `AppState`, named as such in TESTING.md. **Not verified:** anything by eye (nine captures × two sizes are for the user), 120x40, Ghostty/Zed/VS Code, colour (captures carry none), `Ctrl+E` external editor, signing, hooks, a real terminal focus event, the snapshot cost.
+
+**Context:** compacted once, after every gate had passed and the doc edits were in; what remained (the TESTING.md fast-tier figure, this ticket update, the commit) was finished in the resumed context. Nothing remains to split. No turn count reported (harness has it).

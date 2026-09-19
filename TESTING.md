@@ -4,7 +4,7 @@ Three tiers. You only need the first one day to day.
 
 | Tier | Command | When | Budget (PROMPT.md §7.1) | Measured |
 |---|---|---|---|---|
-| **Fast** | `cargo nextest run` + `cargo test --doc` | After every change. The gate for every ticket | under 3 min, ~2 GB | **21.7 s** warm (was 36.2 s on `cargo test`, measured 2026-09-19) |
+| **Fast** | `cargo nextest run` + `cargo test --doc` | After every change. The gate for every ticket | under 3 min, ~2 GB | **38–40 s** warm (two runs, 2026-09-19, after the 22 M3 walk tests; 36.2 s without them the same hour, 21.7 s the morning before — the walk adds 2–4 s, the rest is not explained) |
 | **Heavy** | two commands, [below](#the-heavy-tier) | Milestone reviews only | under 10 min, ~3 GB | **1.7 s** with fixtures cached, 6 s when it has to build them |
 | **Manual** | [the checklist](#the-manual-terminal-checklist) | Only when you choose to. The M1 and M8 checkpoints | — | about 20 min per terminal pass |
 
@@ -1086,3 +1086,185 @@ checking each against its entry; at stop 10 wait for the subject row to
 settle on `· evil merge`; in a dirty checkout of graft itself press `k`,
 `Enter` at the top and check the "Working-tree row" entry. Record the result
 in the tier tables, naming the stop that failed if one did.
+
+## Working tree, undo and stash
+
+M3's acceptance ticket (m3-working-tree-undo-and-stash/07). M3 promises that
+**you cannot lose work**: every write Graft makes is journaled with a backup
+and comes back byte for byte on `u`. The walk is how a person checks that —
+one command, 22 scenarios, each a scratch copy of a corpus repository with a
+scripted dirty state, the real app driven by keys over the real job pool and
+real `git`, and then **the repository read back by running git**
+(`for-each-ref`, `ls-files -s`, `stash list`, `status --porcelain`, file
+bytes) — never by trusting the app's own state.
+
+```sh
+cargo run -p graft --example m3_walk                        # every scenario, one line each
+cargo run -p graft --example m3_walk -- --only stash-drop   # one
+cargo run -p graft --example m3_walk -- --list              # the names
+cargo run -p graft --example m3_walk -- --stems             # capture stems, keys, expected text
+cargo run -p graft --example m3_walk -- --matrix            # rewrites docs/shots/35-coverage-matrix.txt (all three tables)
+```
+
+`ok <name>` per scenario, `FAIL <name>: <what differs>` (20 lines at most),
+exit 1 on any failure. The same list runs in the fast tier as one test per
+scenario (`tests/it/m3_walk.rs`, `m3_walk::every_scenario::*`; slowest 1.4 s;
+the 22 alone take 4.6 s under nextest, and add 2–4 s to the whole tier). Every scenario
+ends with `git fsck --no-dangling` saying nothing but notices, and exactly one
+`refs/graft/backup/<worktree>/<id>` ref per journal entry that took a backup.
+
+Captures: `docs/shots/m3-<nn>-<what>-<WxH>.txt`, nine visual results at
+80x24 and 160x48, Unicode tier
+(`.scratch/m3-working-tree-undo-and-stash/pty-walk-m3.py <WxH>`, after
+`cargo build -p graft --example m3_walk`). The script runs
+`m3_walk --capture <scenario>`, which scripts the state and opens the real
+loop with the capture's keys as the harness prelude; the prelude now waits
+for a write in flight, a journal or stash read and the editor's prefill
+before feeding the next key, so `u` after `Space` undoes the stage rather
+than racing it. **A capture is what pyte saw, not what a person saw, and
+it carries no colour** — the user judges by eye.
+
+### What the walk proves and what it does not
+
+- **Every write and undo ran through the app against live git.** Nothing is
+  injected: the keys are the user's keys (`update` fed directly, the job
+  pool real), the journal, backups and restores are graft-ops's, and the
+  verdict is git's.
+- **Byte-for-byte is checked as bytes.** The untracked binary scenario uses
+  `00 ff 0a 0d fe`; the tracked ones compare whole-file contents and blob
+  ids, never a diff's text.
+- **The pty run is the interactive path; the walk is not.** The walk drives
+  `update` headless — no terminal, no probe, no real `$EDITOR`
+  (`Ctrl+E` is untested here), no signing prompt, no hook. Its focus event is
+  `Event::FocusGained` injected, not a terminal's focus report. What the
+  captures show is the interactive loop, but only for the nine capture keys.
+- **`Ctrl+Enter` is not the path exercised.** Commits go through `Tab` to
+  `[ Commit ]` and `Enter` (ADR-0034), which is the path that works in Zed and
+  VS Code.
+- **Nothing here measures the snapshot cost** — that is
+  `scripts/m3-snapshot-cost.sh` at review (`docs/perf/acceptance-m3.txt`,
+  `docs/perf/m3-snapshot.txt`).
+- **Two known gaps the walk does not cover, on purpose:** a forced undo is
+  not pinned to the entry the drift box named, so a concurrent journal move
+  could undo a different entry (the walk has no second writer); and `Esc` on
+  a journal read that has not landed cancels it and `settle` re-requests
+  (churn, not loss — the walk waits for the read).
+
+### Reading the entries
+
+The scratch starts from `Shape::Trivial` unless said otherwise;
+`sample.txt` is committed as 16 lines `one` … `sixteen`, the "edit" changes
+line 1 to `ONE` and line 16 to `SIXTEEN` (two hunks under three lines of
+context). "Back" means `diff_truth` finds **nothing** different between the
+truth taken after setup and the truth now: `HEAD`, every ref outside
+`refs/graft/`, every `ls-files -s` line, every file's bytes (untracked
+included) and every `stash list` line.
+
+### The scenarios
+
+1. **stage-file** — `k` `Enter` `Space` on `sample.txt`: `ls-files -s` holds
+   the edited blob for `sample.txt`. `u`: everything back.
+2. **unstage-file** — the edit staged first; `Space` under `STAGED`:
+   `ls-files -s` holds HEAD's blob, the file still reads edited. `u`: back.
+3. **stage-hunk** — `Enter` into the diff (line cursor on row 0, the first
+   `@@`), `Space`: the index holds `ONE` … `sixteen` (first hunk only); the
+   file still holds both.
+4. **stage-line** — line 1 becomes `ONE` + `ONE-B` (rows `@@`, `-one`,
+   `+ONE`, `+ONE-B`); `j j j` `Space` on `+ONE-B`: `git show :sample.txt` is
+   exactly `one` `ONE-B` `two` … `sixteen` — the `+ONE-B` line without the
+   `-one`/`+ONE` pair.
+5. **stage-all** — `a.txt`, `b.txt` modified, `c.txt` untracked, `Ctrl+A`:
+   `diff --cached --name-only` is `a.txt b.txt c.txt`, `diff --name-only`
+   empty, no untracked files left.
+6. **discard-tracked-unstaged** — `d`, `→`, `Enter` (the box opens on the
+   safe answer): the file reads as HEAD's 16 lines. `u`: back.
+7. **discard-untracked-binary** — `bin.dat` = `00 ff 0a 0d fe`; `d` `→`
+   `Enter`: the file is gone. `u`: the five bytes are back and
+   `status --porcelain` shows `?? bin.dat`.
+8. **discard-staged-and-unstaged** — first hunk staged, second unstaged, the
+   file listed under both sections; `d` on the `UNSTAGED` row: **both** the
+   index and the file read as HEAD's (a path discard restores both sides).
+   `u`: index and file back.
+9. **commit** — `c`, subject `shout three`, `Tab` to `[ Commit ]`, `Enter`:
+   HEAD moved and `log -1 --format=%s` is `shout three`. `u`: HEAD is the
+   old commit and `ls-files -s` holds the edited blob again (re-staged).
+   `U`: HEAD is the **same** sha the commit made, not a new one.
+10. **commit-refused-nothing-staged** — clean tree, `c`, a subject, `[ Commit ]`
+    `Enter`: the editor stays open with `nothing staged`, no write is
+    queued, no journal file exists, nothing in the repository changed.
+11. **amend** — `a` prefills `add sample.txt`; retyped `amended sample`,
+    `[ Commit ]`: HEAD is a new sha whose subject is `amended sample` and
+    whose tree holds the staged edit. `u`: HEAD is the old sha, subject
+    `add sample.txt`, the edit staged again.
+12. **commit-on-unborn-head** — `Shape::UnbornBranch`, `first.txt` staged,
+    `c`: the branch exists with one commit. `u`: `rev-parse HEAD` fails
+    (unborn again), the branch ref is gone, `ls-files -s` holds `first.txt`.
+13. **undo-drift-guard** — commit through the editor, then `sample.txt`
+    gains a line `DRIFT` out of band; `u`: a box `Undo "commit …"?` with
+    `Stop` under the cursor; `Enter`: nothing at all changed. `u` `→`
+    `Enter`: HEAD and the index back as after a plain undo, `sample.txt`
+    still holds `DRIFT` (a commit touches refs and index, not the file),
+    and `rev-list --objects <undo entry's backup ref>` lists the `DRIFT`
+    blob at `worktree/sample.txt` — the drifted state is kept.
+14. **stash-save** — `S` `s`, `wip`, `Enter`: `stash list` is exactly
+    `stash@{0}: On main: wip`, the file reads as HEAD's. `u`: back (no
+    stash, edit on disk). `U`: the stash is listed again, tree clean.
+15. **stash-pop** — `Shape::Stash` (two entries); `p`: one entry fewer, the
+    tree dirty. `u`: back — both entries, in order, the tree clean.
+16. **stash-apply** — `Enter`: both entries still listed, the tree dirty.
+    `u`: back.
+17. **stash-drop** — `d` `→` `Enter`: one entry fewer. Then
+    `git gc --prune=now`. `u`: `stash list` is byte for byte what it was —
+    the pin in the drop's journal entry kept the commit alive through gc.
+18. **stash-apply-refused-dirty-touched-file** — a file the stash changes
+    gets an uncommitted edit; `Enter` on the stash: the status line reads
+    `… uncommitted changes now …`, nothing changed, no journal file.
+19. **interrupted-entry** — a real discard through the app, then the
+    journal's outcome line deleted (a process killed mid-write). On launch
+    the footer notice reads `an operation was interrupted: discard
+    sample.txt · J to inspect`; `u`: the discarded edit is back on disk.
+20. **linked-worktree** — `git worktree add linked`, the edit staged from
+    inside it: `.git/worktrees/linked/graft/undo-journal.jsonl` has the one
+    entry, `.git/graft/undo-journal.jsonl` does not exist, the only backup
+    ref is under `refs/graft/backup/linked/`.
+21. **refresh-on-focus** — pane open (`1 unstaged, 0 untracked`), `extra.txt`
+    written out of band, `FocusGained`: the status re-reads (`ReadWorkingTree`
+    dispatched, `ReadHistory` not) and the counts read `1 unstaged,
+    1 untracked`.
+22. **no-index-write-on-read** — pane, `Esc`, `J`, `J`, `S`, `Esc`:
+    `.git/index` is byte for byte what it was before launch.
+
+### Per breakpoint
+
+Every capture exists at 80x24 and 160x48; 120x40 was not captured.
+
+| View | 80x24 | 120x40 | 160x48 |
+|---|---|---|---|
+| Changes pane (`m3-01-stage-file`, `m3-02-stage-hunk`) | tab strip, `Detail` tab is the whole screen: sections, files, diff | not run | pane right of the graph; `STAGED (1)` / `UNSTAGED (1)` section rows, the file under each, diff below |
+| Confirm box (`m3-03-discard-confirm`) | centred over the pane, `[ Cancel ]   Discard` | not run | same box, graph and pane around it |
+| Commit editor (`m3-04-commit-editor`, `m3-05-commit-refused`) | replaces the graph; title `COMMIT ── ⎇ main ── …`, `Subject`, `Body`, options, `[ Commit ]`; refused: `nothing staged` on the title and beside the button | not run | same, wider; the pane stays |
+| Stash (`m3-06-stash-list`, `m3-07-stash-prompt`) | `STASHES (2)` and rows `stash@{0} …`; prompt: `▸message wip`, `(•) all incl. untracked ( ) staged only` | not run | same |
+| Journal (`m3-08-journal-after-unstage`) | the unstage entry with `← u` | not run | same |
+| Drift box (`m3-09-undo-drift-box`) | `Undo "commit …"?`, what drifted, `[ Stop ]   Undo` | not run | same |
+
+### Per terminal: walk the working tree group
+
+Run `cargo run -p graft --example m3_walk` (all `ok`), then in a scratch
+checkout of your own: stage a file and a hunk, commit, amend, stash and pop,
+discard an edit, and press `u` after each, checking the entry above for what
+right looks like. Record the result here, naming the scenario that failed if
+one did.
+
+| Terminal | Result |
+|---|---|
+| Ghostty | not run |
+| Zed | not run |
+| VS Code | not run |
+
+### From today: the promise is measured in use
+
+M3 is the first milestone that writes, so from today the two lists that
+measure the promise start collecting: **"Times I left"** at the top of this
+file (every reach for the shell, ADR-0033) and
+[`docs/field-notes.md`](docs/field-notes.md) (what real use turned up,
+ADR-0029/0030). Both are empty on purpose until you use Graft for a day.

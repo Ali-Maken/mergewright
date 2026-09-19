@@ -1,0 +1,50 @@
+m3 walk capture: m3-03-discard-confirm — scenario discard-tracked-unstaged, keys k ⏎ d, unicode tier, 160x48
+
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-QVlfVR  4 commits      UNCOMMITTED · 1 unstaged
+◌   Uncommitted changes (1 unstaged)                                                         diff vs HEAD 268f426
+◆   [◆ main] add sample.txt                                                      now  268f426
+●   Correct the note                                                             7y   a82960b
+●   Add the first note                                                           7y   fadcfb3
+◇   Add a readme                                                                 7y   64ded19UNSTAGED (1)
+                                                                                               M sample.txt                                                +2 −2
+                                                                                             ▎
+                                                                                               1     - one
+                                                                                                   1 + ONE
+                                                                                               2   2   two
+                                                                                               3   3   three
+                                                                                               4   4   four
+                                                                                             twelve
+                                                                                              13  13   thirteen
+                                                                                              14  14   fourteen
+                                                                                              15  15   fifteen
+                                                                                              16     - sixteen
+                                                                                                  16 + SIXTEEN
+
+                                                Discard changes to sample.txt?
+                                                The change in the working tree goes back to how the index has i…
+                                                Graft keeps a backup first, so `u` can undo it afterwards.
+
+                                                git restore --worktree -- sample.txt
+
+                                                [ Cancel ]     Discard
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ q quit  F2 status  F3 renderer  u undo  <> resize  space stage  d discard  / search

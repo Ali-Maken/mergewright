@@ -71,6 +71,43 @@ actually been watched" below before trusting any of this by eye.
   `context` (integer), `ignore_whitespace`, `word_tint` (booleans) — the
   same options `w`/`[`/`]`/`W` change for the running session.
 
+### What M3 actually does
+
+M3 promises that **you cannot lose work**: every write is journaled with a
+backup and `u` takes it back byte for byte.
+
+- **The changes pane**: `k` from the top row selects `Uncommitted changes`,
+  `Enter` opens it — `STAGED`, `UNSTAGED`, `UNTRACKED` sections with the
+  files under each. `Space` (or `s`) stages or unstages the file under the
+  cursor (its section decides which); `Enter` moves into the diff, where
+  `Space` on a hunk heading stages that hunk and on a `+`/`-` line that one
+  line; `Ctrl+A` stages everything; `d` discards a file, hunk or line after a
+  confirm box that opens on the safe answer.
+- **Commit and amend**: `c` opens the editor, `a` opens it prefilled from
+  `HEAD`. `Tab` moves Subject → Body → options → `[ Commit ]`; `Enter` on the
+  button commits (`Ctrl+Enter` too, where the terminal can tell it apart).
+  Refusals (`nothing staged`, `subject empty`) show on the title row.
+- **Stash**: `S` lists the stashes; `s` saves (message, `Tab` toggles
+  `all incl. untracked` / `staged only`), `Enter` applies, `p` pops, `d`
+  drops after a confirm.
+- **Undo and redo**: `u` undoes the last write, `U` redoes it — for stage,
+  unstage, discard, commit, amend, stash save/apply/pop/drop alike. If the
+  repository changed since (an edit, a stash from the shell), a box says
+  what drifted and asks before undoing. `J` opens the journal: every write,
+  its backup, `← u` on the entry `u` would take back. An operation a killed
+  process left half done is announced in the footer on the next launch, and
+  `u` restores it.
+- **Refresh on focus**: the working-tree status is re-read when the
+  terminal regains focus. No file watcher yet.
+- **Not in M3**: hunk staging inside untracked files, `i` (.gitignore),
+  message history, stashing selected files, branch-from-stash, a file
+  watcher, clearing old backups, committing during a merge/rebase (refused,
+  names the command). All in `KNOWN_GAPS.md`.
+
+**From today, use it and keep score.** `TESTING.md`'s "Times I left" takes
+one line per reach for the shell; `docs/field-notes.md` takes what real use
+turned up. Those two lists, not the test suite, measure the promise.
+
 ### What M0 actually does
 
 - Opens a repository from a path or the current directory — including from a

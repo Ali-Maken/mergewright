@@ -1,0 +1,50 @@
+m3 walk capture: m3-06-stash-list — scenario stash-pop, keys S, unicode tier, 160x48
+
+STASHES (2)
+▸ stash@{0}   "On main: wip: with an untracked file"           6y ago   2 files
+  stash@{1}   "On main: wip: adjust a.txt"                     6y ago   1 file
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+⏎ apply  p pop  s save  d drop  space files  esc close

@@ -2739,6 +2739,11 @@ fn the_prelude_waits_for_the_window_and_the_refs_and_then_opens_row_0() {
     assert_eq!(state.harness.prelude.len(), 2, "both keys still waiting");
 
     let (state, _) = update(&state, rows_for(walk, 2, 0..30, 500));
+    assert!(
+        !state.detail.shown,
+        "the window is here but the working-tree status is not: still waiting"
+    );
+    let (state, _) = update(&state, working_tree_read(JobId::new(10)));
     assert!(state.detail.shown, "Enter was fed once the window landed");
     assert!(state.detail.spec.is_some(), "the pane is on a real row");
     assert!(
@@ -2746,6 +2751,55 @@ fn the_prelude_waits_for_the_window_and_the_refs_and_then_opens_row_0() {
         "Enter asked for row 0's files"
     );
     assert_eq!(state.harness.prelude.len(), 1, "j waits for the file list");
+}
+
+/// A clean working-tree answer, the way the status job reports one.
+fn working_tree_read(id: JobId) -> AppEvent {
+    AppEvent::Produced(
+        id,
+        Product::WorkingTree(Ok(crate::working_tree::WorkingTree {
+            status: std::sync::Arc::new(graft_git::status::WorkingTreeStatus::default()),
+            in_progress: None,
+        })),
+    )
+}
+
+/// m3-working-tree-undo-and-stash/07: a prelude key waits for a write in
+/// flight. `u` queued behind `Space` must undo the stage, not race it — the
+/// acceptance captures press exactly such sequences.
+#[test]
+fn the_prelude_holds_a_key_while_a_write_is_in_flight() {
+    let walk = JobId::new(4);
+    let mut state = awaiting(walk);
+    state.harness.prelude = vec![KeyPress::plain(KeyCode::Char('J'))];
+    let (state, _) = update(&state, sized(80, 12));
+    let (state, _) = update(
+        &state,
+        AppEvent::Produced(
+            JobId::new(9),
+            Product::Refs(Ok(crate::refs::RefBadges::default())),
+        ),
+    );
+    let (state, _) = update(&state, rows_for(walk, 2, 0..30, 500));
+    let mut state = state;
+    state.operating = Some(JobId::new(77));
+
+    let (state, _) = update(&state, working_tree_read(JobId::new(10)));
+    assert_eq!(
+        state.harness.prelude.len(),
+        1,
+        "a write is in flight: J waits"
+    );
+    assert!(!state.journal.shown);
+
+    let mut state = state;
+    state.operating = None;
+    let (state, _) = update(&state, sized(80, 12));
+    assert!(
+        state.harness.prelude.is_empty(),
+        "the write landed: J was fed"
+    );
+    assert!(state.journal.shown, "and it opened the journal browser");
 }
 
 /// Critical 1 of the m3/06 review: a global binding must never fire while a

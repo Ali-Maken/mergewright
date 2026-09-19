@@ -1,0 +1,50 @@
+m3 walk capture: m3-01-stage-file — scenario stage-file, keys k ⏎ Space, unicode tier, 160x48
+
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-M2tXE8  4 commits      UNCOMMITTED · 1 staged
+◌   Uncommitted changes (1 staged)                                                           diff vs HEAD a3191ac
+◆   [◆ main] add sample.txt                                                      now  a3191ac
+●   Correct the note                                                             7y   a82960b
+●   Add the first note                                                           7y   fadcfb3
+◇   Add a readme                                                                 7y   64ded19STAGED (1)
+                                                                                               M sample.txt                                                +2 −2
+                                                                                             ▎
+                                                                                               1     - one
+                                                                                                   1 + ONE
+                                                                                               2   2   two
+                                                                                               3   3   three
+                                                                                               4   4   four
+                                                                                             twelve
+                                                                                              13  13   thirteen
+                                                                                              14  14   fourteen
+                                                                                              15  15   fifteen
+                                                                                              16     - sixteen
+                                                                                                  16 + SIXTEEN
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ stage sample.txt ✓
