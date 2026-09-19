@@ -2245,10 +2245,6 @@ const COMMIT_EDITOR_HEADER: &str = "\
 # - The title row reads COMMIT ── ⎇ main ── 1 file staged. Not \"looks
 #   right\": the count must match the STAGED section of the changes-pane
 #   capture beside it.
-# - At 80x24 the editor has the whole area and the detail pane is not drawn.
-#   Under 100 columns the pane would be a tab, and the editor is modal, so
-#   the key that selects the other tab never reaches it — an editor behind a
-#   tab nobody can press is an editor that did not open.
 # - The subject row shows ▸Subject, the typed text, and a counter reading
 #   26/50. The ┊ guide is at column 50 of the text, not at the screen edge.
 # - The body row shows Body (no ▸: focus is on the body's text, and the
@@ -2257,10 +2253,27 @@ const COMMIT_EDITOR_HEADER: &str = "\
 #   empty — then [ Commit ]. None is ticked and none is refused, so no
 #   reason follows the button.
 # - The footer offers ⌃⏎/Commit, ⇥, ⌃E, ⌃S and esc.
+";
+
+/// The pane line, which is the one thing that differs between the two sizes.
+/// One header claimed both readings at once before (m3/05 review, Minor 4).
+fn commit_editor_pane_note(columns: u16) -> &'static str {
+    if columns < 100 {
+        "\
+# - The editor has the whole area and the detail pane is not drawn. Under
+#   100 columns the pane would be a tab, and the editor is modal, so the key
+#   that selects the other tab never reaches it — an editor behind a tab
+#   nobody can press is an editor that did not open.
+#
+"
+    } else {
+        "\
 # - The detail pane is still there beside the editor, with its own header.
 #   The editor replaced the graph, not the pane.
 #
-";
+"
+    }
+}
 
 /// Regenerates the commit editor's two captures
 /// (m3-working-tree-undo-and-stash/05).
@@ -2276,10 +2289,52 @@ fn capture_m3_commit_editor() {
                 "{}/../../docs/shots/m3-commit-editor-{columns}x{rows}.txt",
                 env!("CARGO_MANIFEST_DIR")
             ),
-            format!("{COMMIT_EDITOR_HEADER}=== {columns}x{rows} ===\n{screen}"),
+            format!(
+                "{COMMIT_EDITOR_HEADER}{}=== {columns}x{rows} ===\n{screen}",
+                commit_editor_pane_note(columns)
+            ),
         )
         .expect("docs/shots is writable");
     }
+}
+
+/// Regenerates `docs/shots/m3-commit-editor-rejected.txt` — a pre-commit
+/// hook's refusal, drawn on the editor rather than on the graph behind it
+/// (m3/05 review, Major 1).
+#[test]
+#[ignore = "writes docs/shots/m3-commit-editor-rejected.txt; run by hand to regenerate"]
+fn capture_m3_commit_editor_rejected() {
+    let mut state = commit_editor_state(120, 40);
+    state.status = crate::update::Status::Sticky(
+        "pre-commit: 2 files would be reformatted, run `cargo fmt`".to_owned(),
+    );
+    let screen = draw(&state, 120, 40);
+    assert!(screen.contains("pre-commit"), "{screen}");
+    let header = "\
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_m3_commit_editor_rejected in crates/graft/src/view/tests.rs
+# (#[ignore]d). The same half-typed editor, after a pre-commit hook refused
+# the commit.
+#
+# Judge by eye:
+# - The hook's own words are on the footer row, in place of the key hints,
+#   followed by `— esc dismisses`. Before this the reason went to the graph
+#   screen's problem line, which is behind the editor: a rejected commit
+#   looked to the user like nothing had happened at all.
+# - The typed subject and body are still there. Esc dismisses the reason and
+#   leaves the editor open; a second Esc closes it and keeps the draft.
+# - The reason is drawn in the warning colour, which this capture cannot
+#   record. The words are what has to carry it, and they do.
+#
+";
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m3-commit-editor-rejected.txt"
+        ),
+        format!("{header}=== 120x40 ===\n{screen}"),
+    )
+    .expect("docs/shots is writable");
 }
 
 /// Regenerates `docs/shots/m3-commit-editor-refused.txt`

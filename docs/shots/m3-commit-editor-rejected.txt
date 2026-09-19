@@ -1,0 +1,56 @@
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_m3_commit_editor_rejected in crates/graft/src/view/tests.rs
+# (#[ignore]d). The same half-typed editor, after a pre-commit hook refused
+# the commit.
+#
+# Judge by eye:
+# - The hook's own words are on the footer row, in place of the key hints,
+#   followed by `— esc dismisses`. Before this the reason went to the graph
+#   screen's problem line, which is behind the editor: a rejected commit
+#   looked to the user like nothing had happened at all.
+# - The typed subject and body are still there. Esc dismisses the reason and
+#   leaves the editor open; a second Esc closes it and keeps the draft.
+# - The reason is drawn in the warning colour, which this capture cannot
+#   record. The words are what has to carry it, and they do.
+#
+=== 120x40 ===
+"COMMIT ── ⎇ main ── 1 file staged                                                                                       "
+"                                                                                                                        "
+" Subject fix the token refresh race                        ┊                                                       26/50"
+"                                                                                                                        "
+"▸Body                                                                                                                   "
+"         The old token was refreshed twice when two requests raced.              ┊                                      "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]                                           "
+"pre-commit: 2 files would be reformatted, run `cargo fmt` — esc dismisses                                               "
+"UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
+"diff vs HEAD 0303030                                                                                                    "
+"STAGED (1)                    fn routes()                                                                               "
+"  ▾ src/                       18  18       let mut app = Router::new();                                                "
+"    ▾ auth/                    19     -     app.get("/health", health);                                                 "
+"      M token.rs        +12 −4     19▎+     app.get("/health", health);                                                 "
+"UNSTAGED (2)                       20 +     app.get("/ready", ready);                                                   "
+"  ▾ src/                       20  21       app                                                                         "
+"    ▾ api/                     21  22   }                                                                               "
+"      M routes.rs        +3 −2fn ready()                                                                                "
+"    ▾ auth/                    44  45   async fn ready() -> Json<Status> {                                              "
+"      M token.rs         +2 −0 45     -     Json(Status::Ok)                                                            "
+"UNTRACKED (1)                      46 +     Json(Status::from(&state))                                                  "
+"  ? notes.md             +0 −0 46  47   }                                                                               "
+"                                                                                                                        "
+"                                                                                                                        "

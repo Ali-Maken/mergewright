@@ -70,12 +70,16 @@ pub struct Keys { pub suspend_on_ctrl_z: bool }   // `[keys]`, default false (AD
 ## Acceptance
 
 - [x] `TextField`/`TextArea` unit tests: insert/delete around a wide char and a combining mark keep the cursor on a char boundary; `word_left` over `foo  bar`; `TextArea::text()` round-trips `\n`; `append_line` on an empty area does not add a leading blank line.
-- [x] Update tests: `c` opens the editor (`AppState::commit_editor.is_some()`), title contains `2 files staged` from a scripted status; typing lands in Subject; `Enter` moves focus to Body and a newline is *not* inserted in Subject; `Tab` ×4 reaches `CommitButton`; `Enter` there emits `Operate(_, Commit(params))` with `message == "subject\n\nbody\n"`, `sign_off` per `Ctrl+S`; with nothing staged the button emits nothing and the view's `refusal` reads `nothing staged`; `[ ] allow empty` toggled → emits; `a` prefills from `Product::HeadMessage` and sets `amend`; `Product::Operated(Ok(Everything))` closes the editor and clears the draft; `Err` keeps it open with `Status::Failed`; `Esc` keeps the draft and the next `c` reopens it.
+- [x] Update tests: `c` opens the editor (`AppState::commit_editor.is_some()`), title contains `2 files staged` from a scripted status; typing lands in Subject; `Enter` moves focus to Body and a newline is *not* inserted in Subject; `Tab` ×3 reaches `CommitButton` (the spec said ×4; the walk is Subject→Body→Amend→Button, which is three — m3/05 review); `Enter` there emits `Operate(_, Commit(params))` with `message == "subject\n\nbody\n"`, `sign_off` per `Ctrl+S`; with nothing staged the button emits nothing and the view's `refusal` reads `nothing staged`; `[ ] allow empty` toggled → emits; `a` prefills from `Product::HeadMessage` and sets `amend`; `Product::Operated(Ok(Everything))` closes the editor and clears the draft; `Err` keeps it open with `Status::Failed`; `Esc` keeps the draft and the next `c` reopens it.
 - [x] `editor_command` table: `vim` → `vim +12 path`, `code` → `code --goto path:12`, `zed` → `zed path:12`, `unknown-editor` → `unknown-editor path`; an editor string with arguments (`"emacs -nw"`) keeps them.
 - [x] `run_outside_terminal`: a scripted `RawMode`/`TerminalSession` test asserts the sequence leave-alt-screen → restore modes → `f` → modes back → alt-screen back, and that a panic inside `f` still restores (the guard). Real-terminal behaviour is the acceptance walk's pty check.
 - [x] Real-runner test on a `copy_into_temp` fixture: stage a file, open the editor, type a subject, `Tab` to the button, `Enter` → after the product, `git log -1 --format=%s` equals the subject and the journal has a `Commit` entry with `refs_before[main] != refs_after[main]`; then `a`, change the subject, commit → `git log -1 --format=%s` is the new subject and `git rev-list --count HEAD` is unchanged.
 - [x] `[keys] suspend_on_ctrl_z = true` reaches `AppState` (the `[radar]` seeding precedent); with it false `Ctrl+Z` is left for `undo-and-stash-ui`'s undo binding (no-op here, but the key must not be swallowed).
-- [x] Captures from piece 5 exist, under 8 KB; the `┊` guide glyphs and the `12/50` counter are visible in the character grid (colour is not provable — do not claim it).
+- [ ] Captures from piece 5 exist, under 8 KB; the `┊` guide glyphs and the `12/50` counter are visible in the character grid (colour is not provable — do not claim it).
+  **Unticked at the m3/05 review.** The captures exist and the guides and the
+  counter are in the grid; the 8 KB half **cannot be met and is a spec
+  defect** — see NOTES. Every file is under CLAUDE.md's 200 KB cap, which is
+  the rule that binds.
 
 ## Gates
 
@@ -139,6 +143,31 @@ reading the code.
    `the_button_commits_what_was_typed_and_then_amends_it` (real `git`, real job
    pool: `git log -1 --format=%s`, `rev-list --count`, and the journal entry's
    `refs_before[main] != refs_after[main]`), `nothing_staged_makes_no_commit`.
+**Added in the review round** (see the section at the end of this file):
+`graft-ui` `commit_editor::tests::{a_refused_commits_reason_is_drawn_on_the_editor_not_only_behind_it,
+the_key_hints_come_back_once_there_is_nothing_to_report,
+a_failure_costs_the_editor_no_rows}`;
+`update::commit_editor::tests::{a_paste_lands_in_the_subject,
+the_subject_flattens_a_paste_and_the_body_keeps_its_lines,
+a_paste_with_no_editor_open_is_ignored,
+a_refused_commits_reason_reaches_the_editors_own_view,
+esc_dismisses_the_reason_first_and_closes_the_editor_second}`;
+`update::operate::tests::{e_on_a_file_asks_for_that_files_porcelain_path,
+e_in_the_diff_carries_the_cursors_new_side_line}`;
+`event_loop::outside::tests::{a_porcelain_path_is_joined_onto_the_worktree_not_graft_s_own_directory,
+an_absolute_path_is_left_alone,
+a_quoted_editor_path_is_run_by_a_shell_the_way_git_runs_it,
+a_plain_word_list_is_not_handed_to_a_shell,
+the_shell_form_keeps_its_editors_line_style}`;
+`graft-term` `input::gate::tests::{a_reader_that_never_parks_is_a_refusal_not_a_shrug,
+a_reader_that_has_ended_lets_the_terminal_go,
+a_live_reader_parks_and_the_pause_comes_straight_back}`;
+`graft-git` `run::exec::tests::{a_stopped_child_is_asked_first_so_its_cleanup_can_run,
+a_child_that_ignores_the_ask_is_killed_anyway,
+a_child_that_already_exited_is_only_reaped}` and
+`editor::tests::{git_names_an_editor_for_any_directory_it_will_run_in,
+a_directory_that_is_not_there_is_reported_not_guessed_at}`.
+
 6. **`[keys]`** — `config::tests::keys_suspend_on_ctrl_z_parses_and_defaults_off`
    (parses, warns about nothing, default off) and
    `event_loop::startup::tests::keys_suspend_on_ctrl_z_reaches_app_state`
@@ -211,6 +240,9 @@ would have been told a setting that works does nothing. `SCHEMA` in
 missing. The existing unknown-section test happened to use `[keys]` as its
 example of a name Graft has no meaning for; it now uses `[nokeys]`.
 
+**`e`'s test claim below was wrong** and is corrected in the review-fix
+section at the end of this file: there was no test for `e` at all.
+
 **Left for someone else, deliberately:**
 - README has no "What M3 actually does" section yet (group 04 did not add one
   either), so `[keys] suspend_on_ctrl_z` is documented nowhere a user reads.
@@ -229,3 +261,142 @@ committed at its seam.
 `a5c6ca9` (terminal handover, the mux gate), `97f2f1d` (wiring, config, keys),
 `dd13914` (real-runner test, the tabbed fix, MAP.md), `644aaac` (the `[keys]`
 schema bug, the failed-commit test).
+
+---
+
+# Review round (m3/05), one fix pass
+
+`docs/reviews/m3-05-commit-editor.md`: 0 Critical, 8 Major, 14 Minor. All
+eight Majors fixed, plus Minors 1, 4 and 5. Commits `a6a3c34`, `acd2161`,
+`912380f` and this one.
+
+## The `index.lock` row: **true, and now fixed**
+
+The review filed it unverified: "`Esc` mid-commit SIGKILLs git — lock-file
+residue unverified". It is real. Measured, not reasoned about.
+
+A C harness (`fork` → `exec git commit` → `usleep(N)` → signal → `waitpid` →
+sweep `.git` for `*.lock`) swept the kill instant across a real `git commit`
+on a 20,000-file index in 250 µs steps, git 2.54, macOS:
+
+| signal | kills landing while git was running | stranded locks |
+|---|---|---|
+| `SIGKILL` (what `Child::kill` sends) | 267 | **43** |
+| `SIGTERM` | 288 | 6 |
+| `SIGTERM`, narrowed to the worst 3.5 ms | 288 | 6 |
+
+The stranded files were `.git/index.lock`, `.git/HEAD.lock`,
+`.git/refs/heads/main.lock` and `.git/packed-refs.lock`. Inside the ~7 ms git
+holds `index.lock` on that index, near **every** `SIGKILL` stranded it. A
+first attempt with 120 shell-driven kills found nothing — every kill had
+landed after the commit finished (`rev-list --count` went up by 120), which
+is why the count and not just the absence is recorded here.
+
+**Cause:** git removes its lock files from a signal handler
+(`SIGTERM`/`INT`/`HUP`/`QUIT`) and from `atexit`. Neither runs on `SIGKILL`.
+`graft-git`'s runner killed with `Child::kill`, which is `SIGKILL`.
+
+**Fix, at the cause:** `run::exec::kill` is now `SIGTERM`, a 2 s grace, then
+`SIGKILL` only for a child that sat through the ask — so a cancel still
+cannot hang on a hook that ignores the signal. No `libc` in `graft-git` and
+no `SIGTERM` in `std`, so the signal goes through `kill(1)`, the route
+`graft` already uses for `SIGTSTP`.
+
+**What it costs the user:** nothing on the ordinary path. A cancel of a git
+command that ignores `SIGTERM` now takes up to 2 s instead of being instant.
+
+**What remains, and it is not closable from here:** the 6 residues under
+`SIGTERM` are a race *inside git* — `create_tempfile` opens the lock file
+before it marks the tempfile active, so a signal arriving between those two
+finds nothing to remove. That is the same race a user's `Ctrl+C` in a
+terminal already runs. KNOWN_GAPS row, **unverified**, ~2% of cancels that
+land in the index-write window.
+
+## Majors
+
+1. **Hook refusal had nowhere to draw.** `CommitEditorView` gains `status`;
+   it takes the footer row in `Token::Warning` (the graph footer's `problem`
+   takes the hints the same way). `Esc` dismisses it before it closes the
+   editor — the two-stage `Esc` `keys.rs` already had. Cause, not symptom:
+   the previous round fixed `WriteFailed` so a rejected commit kept its
+   message, and the editor was the half that still swallowed it.
+2. **`e` opened the wrong file.** `Handover` carries `workdir`;
+   `editor_command` joins the porcelain path onto it and sets
+   `current_dir`. Cause. **The NOTES claim that `e` "works and is tested"
+   was false** — there was no test naming `OpenExternalEditor` or
+   `edit_target` anywhere. There are three now.
+3. **Paste was dropped.** `update::commit_editor::paste` routes
+   `Event::Paste` to the focused field. Cause (the arm was a stub).
+4. **`index.lock`** — above.
+5. **Quoted `GIT_EDITOR`.** Shell syntax in the string now goes through
+   `sh -c '<editor> "$@"'`, git's own rule. A plain word list still runs
+   directly. Cause.
+6. **`Gate::pause` swallowed a live reader.** The reader says when its loop
+   ends; a park timeout with no such word is now an `Err` the hand-over
+   refuses on. Cause.
+7. **`Status::WriteFailed` → `Status::Sticky`.** Three of its uses are failed
+   *reads*; the name said write. The rule — "a failure that must outlive the
+   refresh it triggers" — is on the variant now, and in MAP.md.
+8. **The last bare `git` spawn.** `git var GIT_EDITOR` goes through
+   `graft_git::editor::git_editor` → `run`, so it gets the fixed
+   environment, the output cap and the stop policy. It lives in `graft-git`
+   because `seam_rule.rs` allows a `GitInvocation` under `graft/src` only
+   inside `jobs/` and this call must run on the frame thread.
+   ARCHITECTURE.md has a "Handing the terminal over" section: why a job
+   cannot do it, the four steps of `run_outside_terminal`, where the git
+   spawn goes.
+
+   **Half not done, deliberately.** The review also asked for `GIT_EDITOR`
+   to be resolved *as a job at editor open* and stored in `AppState`. That
+   needs a new `Command`/`Product` pair, an `AppState` field, and a
+   two-step for `e` (which can fire before any editor has been opened, so
+   the answer would not be there yet). Minor 9 of the same review concedes
+   the UI-thread spawn is "acceptable because the editor blocks next
+   anyway", and the substance of Major 8 — invisible to the seam guard, off
+   the `run` rails — is fixed. Recorded rather than half-built.
+
+## Minors fixed
+
+- **1.** `reenter` put the reader back *before* raw mode, so a key typed in
+  that window was cooked and echoed over the screen Graft was about to
+  redraw. Modes first now. The guard's doc claimed it was what saved the
+  terminal on a panic; `TerminalSession::Drop` is, and it says so.
+- **4.** The 80x24 capture header claimed both "the detail pane is not
+  drawn" and "the detail pane is still there beside the editor". The pane
+  line is per size now.
+- **5.** Tick 7 unticked, the 8 KB line recorded as a spec defect (below).
+
+## Minors not fixed (for KNOWN_GAPS or a later ticket)
+
+2, 3, 6, 7, 8, 10, 11, 12, 13, 14. None changes behaviour the user can see
+except 8 (`strip_comments` hardcodes `#` and ignores `core.commentChar`),
+which is worth a row.
+
+## Spec defect: the 8 KB capture cap
+
+The acceptance line "Captures … under 8 KB" **cannot be met at 160×48 and is
+not a build failure**. A bare 160×48 grid is 48 × (160 + 2 quotes + newline)
+= **7,824 bytes** before a single multi-byte glyph or a line of preamble;
+`m3-commit-editor-160x48.txt` is 9,001. The reviewer confirmed the
+arithmetic independently. CLAUDE.md's rule is the **200 KB** cap, which every
+capture is two orders of magnitude under. The acceptance ticket should not
+inherit the 8 KB line.
+
+## Captures
+
+Regenerated, all under the 200 KB cap, the user judges them by eye:
+
+- `docs/shots/m3-commit-editor-160x48.txt` (9,001 B) — header split per size
+- `docs/shots/m3-commit-editor-80x24.txt` (3,300 B) — header split per size
+- `docs/shots/m3-commit-editor-rejected.txt` (5,784 B) — **new**: a
+  pre-commit hook's refusal on the footer row, the evidence for Major 1.
+  The warning colour it is drawn in is **not** provable from a capture.
+
+`m3-commit-editor-refused.txt` and `m3-amend.txt` are unchanged: neither
+draws a status.
+
+## Gates after the round
+
+`cargo fmt --check` clean · `cargo clippy --all-targets -- -D warnings`
+clean · `cargo test` **1,526 passed, 0 failed, 15 ignored** (1,503 before
+the round). Fast tier only.

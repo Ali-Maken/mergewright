@@ -7,10 +7,6 @@
 # - The title row reads COMMIT ── ⎇ main ── 1 file staged. Not "looks
 #   right": the count must match the STAGED section of the changes-pane
 #   capture beside it.
-# - At 80x24 the editor has the whole area and the detail pane is not drawn.
-#   Under 100 columns the pane would be a tab, and the editor is modal, so
-#   the key that selects the other tab never reaches it — an editor behind a
-#   tab nobody can press is an editor that did not open.
 # - The subject row shows ▸Subject, the typed text, and a counter reading
 #   26/50. The ┊ guide is at column 50 of the text, not at the screen edge.
 # - The body row shows Body (no ▸: focus is on the body's text, and the
