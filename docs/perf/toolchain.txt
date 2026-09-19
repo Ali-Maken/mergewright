@@ -23,3 +23,20 @@ after doctests                         5.0 s
 #   Max cache size                       10 GiB
 
 ## cold build: not measured (pass --cold)
+
+## CORRECTION, same day, after group 07 landed
+
+The run above is biased: it timed `cargo test` first on cold fixture caches,
+then nextest immediately after on hot ones. It is not evidence for either.
+
+Fair comparison, each runner warmed first, same tree, 1636 tests:
+
+  cargo test          70.1 s
+  nextest             40.3 s
+  cargo test --doc    10.2 s   (nextest does not run doctests)
+
+  nextest gate total  50.5 s  -> 28% faster, not the 40% first reported.
+
+sccache still unjudged: a warm tree executes no compile requests. Its value is
+the cold build each parallel worktree pays (ADR-0036). Measure with
+`scripts/toolchain-bench.sh --cold` in an idle window before M4 starts.
