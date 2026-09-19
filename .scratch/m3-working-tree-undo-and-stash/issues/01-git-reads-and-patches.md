@@ -1,6 +1,6 @@
 # git-reads-and-patches: porcelain status, staged/unstaged diffs, the hunk patch builder, stash list, in-progress state, and every spawn through `run`
 
-Status: partial — pieces 1–3 done, committed; pieces 4–8 remain (see NOTES below)
+Status: done — all 8 pieces committed (see NOTES below for the two-session history)
 Blocked by: none
 Build with: Sonnet — parsers with oracle tests against real git, plus small `graft-git` additions; mechanical by CLAUDE.md's table.
 Needs: none (`ops-model` and `ops-execution` call these; `changes-pane` calls `status::read`, `DiffSpec::{Staged, Unstaged}`, `hunk_patch`).
@@ -127,3 +127,27 @@ Per CLAUDE.md, builders don't edit KNOWN_GAPS.md — flagging for the
 conductor: piece 1 (`GitInvocation::env`, moving `system_git`/
 `commit_graph::write` onto `run`) is done and closes KNOWN_GAPS row
 `m2-details-and-diffs/01`'s first bullet.
+
+## NOTES (continuation, 2026-09-19)
+
+Pieces 4-8 done, committed: dfa30d6 (piece 4: `diff/patch.rs`
+`Selection`/`PatchError`/`hunk_patch`, plus the `parse_porcelain_v2` fuzz
+target closing the gap above), 4cd6542 (pieces 6-7: `state.rs`
+`InProgress`/`in_progress`; `repo.rs` `git_path`/`worktree_name`), 24f1eab
+(piece 5: `stash.rs` `StashEntry`/`StashError`/`list`; piece 8, the final
+MAP.md sweep, done incrementally in each piece's own commit rather than
+separately).
+
+Verified in throwaway repos before coding, one check each: `git apply
+--cached` accepts a minimal patch with no `diff --git`/index line (just
+`--- `/`+++ `/`@@`); git omits `,1` from a hunk header when a range's count
+is 1 (`@@ -0,0 +1 @@`, not `+1,1`); a scripted conflicting merge sets
+`MERGE_HEAD` and `git merge --abort` clears it; `git stash push -m`
+prefixes the message with `On <branch>: `.
+
+Gates green throughout: `cargo fmt --check`, `cargo test --quiet`
+(workspace), `cargo clippy --all-targets --message-format=short -- -D
+warnings`, `cargo build --quiet`; fuzz workspace (`fuzz/`) builds. No
+compaction. Two builder sessions total for this group (piece count and
+per-piece throwaway-repo verification made it too big for one context, as
+the spec's own "Size" note anticipated).
