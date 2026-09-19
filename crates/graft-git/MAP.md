@@ -146,7 +146,7 @@ One line per public item. Update when a public item changes.
 - `GitInvocation::env` (fn) — adds one variable to the child's environment, after the fixed ones (`GIT_INDEX_FILE`, `GIT_AUTHOR_*`, …); a later call for the same key overrides an earlier one (m3/01).
 - `GitInvocation::stdin` (fn) — bytes fed from their own thread; without it stdin is null.
 - `GitInvocation::output_cap` (fn) — max bytes kept per stream (default 64 MiB); past it the child is killed, output cut to the cap, `truncated`, still `Ok`.
-- `GitInvocation::run` (fn) — spawn, drain stdout/stderr concurrently, poll `Stop` every ≤ 50 ms; on stop kill + reap, `Err(Stopped)`.
+- `GitInvocation::run` (fn) — spawn, drain stdout/stderr concurrently, poll `Stop` every ≤ 50 ms; on stop stop + reap, `Err(Stopped)`. Stopping is **`SIGTERM`, then `SIGKILL` only after a 2 s grace** (m3/05 review fix): git removes `index.lock`/`HEAD.lock`/`refs/heads/*.lock` from a signal handler and from `atexit`, and neither runs on `SIGKILL`, so the old `Child::kill` could strand a lock a cancelled commit had open — measured 43 stranded locks in 267 mid-flight `SIGKILL`s on git 2.54, 6 in 288 with `SIGTERM`.
 - `GitInvocation::command_line` (fn) — `git <args>` shell-quoted, lossy UTF-8, without `-C`/`--no-pager`; display only.
 - `command_line` (fn) — the same text for a bare `&[GitArg]` not yet bound to a repository (an operation's plan, the Command Log) (m3/02).
 - `GitArg` (enum) — `Flag`, `Count` (`-U3`), `Oid` (full hex), `Ref`/`Path` (raw bytes), `Separator`, `Word` (caller-built, never a path or ref).
