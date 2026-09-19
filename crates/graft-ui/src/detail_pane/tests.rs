@@ -754,6 +754,79 @@ fn scrolling_within_a_hunk_pins_its_heading_until_the_next_one_shows() {
 }
 
 #[test]
+fn the_pinned_heading_never_hides_the_line_cursors_own_row() {
+    // m3/04 review C1. `k` past a hunk boundary leaves `body_top ==
+    // body_cursor`; the pin used to take that slot, so `Space` and `d` aimed
+    // at a row nobody could see. The cursor row must be on screen, with its
+    // own text, not merely inside `[top, top + height)`.
+    let theme = theme(ColorDepth::TrueColor);
+    let view = commit_view();
+    let BodyView::Diff(diff) = &view.body else {
+        panic!("expected a diff body");
+    };
+    let area = Rect::new(0, 0, 40, 2);
+
+    // Body row 2 is the removed line — inside the hunk, so a pin applies.
+    let mut buffer = Buffer::empty(area);
+    let _rows = diff_body(
+        &diff.hunks,
+        2,
+        None,
+        area,
+        &mut buffer,
+        &theme,
+        DiffFocus {
+            focused: true,
+            word_tint: true,
+            cursor: Some(2),
+        },
+    );
+    let drawn: Vec<String> = (0..area.height)
+        .map(|y| {
+            (0..area.width)
+                .map(|x| buffer[(x, y)].symbol().to_string())
+                .collect::<String>()
+        })
+        .collect();
+    let marked = drawn
+        .iter()
+        .find(|row| row.contains(super::line_render::CURSOR_GLYPH))
+        .unwrap_or_else(|| panic!("the cursor row was not drawn at all: {drawn:?}"));
+    assert!(
+        marked.contains("if token.is_expired() {"),
+        "the marked row is not body row 2: {marked:?}"
+    );
+
+    // The cursor one row below still gets its pin: only the row the pin
+    // would cover is exempt.
+    let mut buffer = Buffer::empty(area);
+    let _rows = diff_body(
+        &diff.hunks,
+        2,
+        None,
+        area,
+        &mut buffer,
+        &theme,
+        DiffFocus {
+            focused: true,
+            word_tint: true,
+            cursor: Some(3),
+        },
+    );
+    let row0 = (0..area.width)
+        .map(|x| buffer[(x, 0)].symbol().to_string())
+        .collect::<String>();
+    assert!(row0.contains("@@ -40,7 +40,15 @@"), "{row0:?}");
+    let row1 = (0..area.width)
+        .map(|x| buffer[(x, 1)].symbol().to_string())
+        .collect::<String>();
+    assert!(
+        row1.contains(super::line_render::CURSOR_GLYPH) && row1.contains("if token.is_expired()"),
+        "{row1:?}"
+    );
+}
+
+#[test]
 fn truncated_diff_ends_with_the_more_lines_footer() {
     let theme = theme(ColorDepth::TrueColor);
     let view = commit_view();

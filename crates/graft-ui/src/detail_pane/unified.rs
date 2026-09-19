@@ -109,7 +109,16 @@ pub fn diff_body(
         cursor: false,
     };
 
-    let pinned = pin_heading(hunks, &rows, top);
+    // The pin takes the slot the row at `top` would have used, so that row
+    // is not drawn at all. When that row is the line cursor's, the pin would
+    // hide the very line `Space` and `d` act on — a destructive key aimed at
+    // something off screen (m3/04 review C1). Context loses to visibility:
+    // the heading goes, the cursor row stays.
+    let pinned = if focus.cursor == Some(top) {
+        None
+    } else {
+        pin_heading(hunks, &rows, top)
+    };
     let mut used: u16 = 0;
     if let Some(heading) = pinned {
         let slot = RowSlot {
