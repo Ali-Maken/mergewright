@@ -108,6 +108,51 @@ backup and `u` takes it back byte for byte.
 one line per reach for the shell; `docs/field-notes.md` takes what real use
 turned up. Those two lists, not the test suite, measure the promise.
 
+### What M4 actually does
+
+M4 promises that **you never leave Graft to fetch, pull or push — not for a
+password, a rejection or a hang**.
+
+- **Fetch**: `f` fetches every remote with prune. Progress from git's own
+  `--progress` output runs in the footer (`fetch all remotes · receiving
+  objects 45% · esc cancels`); `fetched` when it lands. Fetches are
+  journaled but `u` passes over them — nothing of yours moved.
+- **Pull**: `p` fast-forwards the current branch from its upstream. Undoable:
+  `u` puts the branch and the working tree back, and leaves the tracking ref
+  where the fetch put it; `U` pulls again. A diverged branch is refused in
+  words that name the shell command (`pull stopped: main and origin/main
+  diverged — merge or rebase (M5); shell: git pull --rebase`); an
+  uncommitted edit to a file the pull would change is refused before
+  anything moves (`pull refused: would overwrite <file> (uncommitted)`). No
+  upstream: `main has no upstream — P pushes and sets one`.
+- **Push**: `P` opens a box first — `Push main → origin/main?`, the commit
+  count, `sets upstream` when it will, `can't be undone from here — origin
+  keeps what you send`, and the exact `git push` line. `Enter` on `[ Push ]`
+  runs it. A push is journaled but not undoable: `u` afterwards undoes your
+  commit **locally** and says `· origin/main still has it`; the remote is
+  only ever moved by `P`.
+- **A rejected push** stays on the footer until `Esc`: `push rejected:
+  origin/main has commits you don't · p to pull first, or P to force with
+  lease`. The next `P` offers the lease box — `Force-push main →
+  origin/main?`, the tip it expects on the remote, `rewrites history for
+  everyone who has …`, `--force-with-lease=…` in the command. If the remote
+  moved again since your fetch it is refused: `push refused: origin/main
+  moved since your last fetch (stale lease) · f to fetch, then look`. A plain
+  `--force` never runs; a lease push to any branch but the upstream of `HEAD`
+  is refused.
+- **Credentials are asked in the app**: git's password question opens a
+  masked field (`•`), a username question an unmasked one; `Enter` answers,
+  `Esc` cancels the whole operation. Graft never stores what you type and
+  never puts it in a log, the journal or a capture; your own credential
+  helpers keep working. A wrong password is a line, not a hang:
+  `authentication failed for http://… · P to try again`.
+- **`Esc` cancels** a running fetch, pull or push (`… · cancelling`, then
+  `… cancelled`, the journal entry says so). It does **not** cancel `u`/`U`:
+  `undo cannot be stopped part-way — finishing…`.
+- **Not in M4**: clone, adding/renaming/removing remotes, pull with merge or
+  rebase, fetching one remote, a stall notice, SSH (the askpass wiring is
+  set but unverified). All in `KNOWN_GAPS.md`.
+
 ### What M0 actually does
 
 - Opens a repository from a path or the current directory — including from a

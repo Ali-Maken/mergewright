@@ -1,6 +1,6 @@
 # acceptance-remotes: one command that walks "you never leave Graft to fetch, pull or push", what right looks like, and the captures
 
-Status: in progress
+Status: done (piece 5's KNOWN_GAPS rows left to the conductor — see NOTES)
 Blocked by: 01–06
 Build with: Fable — the milestone's acceptance ticket (CLAUDE.md standing rule); last in order, before review. Does not count against the Fable build expectation.
 Crates: graft (examples, tests/it, docs) — plus `TESTING.md`, `KNOWN_GAPS.md`, `README.md`, `CHANGELOG.md`, `docs/shots/`. No library code in any crate.
@@ -59,13 +59,13 @@ pub fn diff_truth(before: &Truth, after: &Truth) -> Vec<String>;   // ≤ 20 lin
 
 Every tick names its verifying test inline, at tick time (ADR-0035).
 
-- [ ] `cargo run -p graft --example m4_walk` prints `ok <name>` for every scenario (≥ 19) and exits 0; `--only <name>` runs one; a deliberately broken expectation prints `FAIL <name>: …` and exits 1 (revert it; name the run in NOTES)
-- [ ] `tests/it/m4_walk.rs` runs the same list under `cargo nextest run` as one test per scenario plus `every_scenario_has_a_test`; slowest scenario < 3 s; the fast tier's wall time recorded in TESTING.md's top table
-- [ ] `TESTING.md` "Remotes": one numbered entry per scenario naming exact refs/bytes/status text; the proves/does-not-prove list; per-breakpoint and per-terminal tables
-- [ ] Captures: the eight listed, at both sizes, each under 8 KB, `pty-walk-m4.py` asserting no password bytes in any capture; `docs/shots/35-coverage-matrix.txt` gains the remotes table without losing the other two (`m4_walk --matrix`, checked by `captures_are_named_keyed_and_listed_in_the_matrix`)
-- [ ] `grep -rn "<the walk's passwords>" docs/shots TESTING.md target/nextest crates/*/target 2>/dev/null` finds nothing — run once, recorded in NOTES
-- [ ] KNOWN_GAPS.md rows added/closed as listed; README and CHANGELOG M4 sections present
-- [ ] Every tick above names its test or the command that verified it
+- [x] `cargo run -p graft --example m4_walk` prints `ok <name>` for every scenario (≥ 19) and exits 0; `--only <name>` runs one; a deliberately broken expectation prints `FAIL <name>: …` and exits 1 (revert it; name the run in NOTES) — **verified by** `./target-g07/debug/examples/m4_walk` (19 `ok` lines, exit 0, `target-g07/walk/run2.txt`), `--only journal-rows` (`target-g07/walk/journal-rows2.txt`), and the broken run in NOTES (`target-g07/walk/broken.txt`, exit 1); the list itself by `m4_walk::every_scenario::every_scenario_has_a_test`
+- [x] `tests/it/m4_walk.rs` runs the same list under `cargo nextest run` as one test per scenario plus `every_scenario_has_a_test`; slowest scenario < 3 s; the fast tier's wall time recorded in TESTING.md's top table — **verified by** `cargo nextest run` (`m4_walk::every_scenario::*`, 19 scenario tests + 4 others, all pass; slowest `u_never_touches_the_remote` 1.408 s, from `--status-level pass` in `target-g07/walk/nextest-walks.txt`); TESTING.md top table says 34.3 s test time / 1822 tests and that the warm wall figure was not measured
+- [x] `TESTING.md` "Remotes": one numbered entry per scenario naming exact refs/bytes/status text; the proves/does-not-prove list; per-breakpoint and per-terminal tables — **verified by** reading: 19 entries, each quoting the walk's assertion strings (`sticky_containing`/`done_containing`/`prompt_is` texts and the git relations from each `expect`); breakpoint table quotes lines from the 16 capture files; 120x40 and the three terminals `not run`
+- [x] Captures: the eight listed, at both sizes, each under 8 KB, `pty-walk-m4.py` asserting no password bytes in any capture; `docs/shots/35-coverage-matrix.txt` gains the remotes table without losing the other two (`m4_walk --matrix`, checked by `captures_are_named_keyed_and_listed_in_the_matrix`) — **verified by** `GRAFT_TARGET=target-g07 python3 .scratch/m4-remotes/pty-walk-m4.py 80x24` / `160x48` (exit 0 both, 16 files 498–7992 bytes, `target-g07/walk/pty-*.txt`), the script's own secret/`•` checks (lines 200–208), `m4_walk::every_scenario::captures_are_named_keyed_and_listed_in_the_matrix` (8 captures, every stem in `remotes_matrix`, no secret in `--stems` output) and `gallery::the_matrix_marks_only_what_exists_by_name`; `--matrix` run once, the file holds four tables (graph, details, working tree, remotes)
+- [x] `grep -rn "<the walk's passwords>" docs/shots TESTING.md target/nextest crates/*/target 2>/dev/null` finds nothing — run once, recorded in NOTES — **verified by** the grep in NOTES (exit 1, no match); plus `no_secret_leaked` after every scenario (`m4_walk::every_scenario::*`)
+- [ ] KNOWN_GAPS.md rows added/closed as listed — **not done: the conductor asked this builder not to touch KNOWN_GAPS.md, PROGRESS.md or docs/log/**; the rows to file are listed in NOTES. README and CHANGELOG M4 sections present — **verified by** reading `README.md` "What M4 actually does" and `CHANGELOG.md` "M4 — Remotes"
+- [x] Every tick above names its test or the command that verified it — by inspection of this list
 
 ## Gates
 
@@ -74,3 +74,103 @@ Every tick names its verifying test inline, at tick time (ADR-0035).
 ## Size
 
 One context. The M3 walk cost one Fable run; this one has fewer scenarios with more setup each — copy `m3_walk`'s harness, add remotes. Scout `tests/it/m3_walk.rs`'s helper names first (haiku, ≤ 1 page); say so. Stop seam: after the `Local` scenarios land (pieces 1–2 partial) with HTTP/hung scenarios and captures in a handoff note.
+
+## NOTES
+
+**Compacted once**, after the captures and gates were green; what remained
+(TESTING.md section, ticket update, commit) was finished in the same
+session. Nothing is left over.
+
+**Scout:** one Sonnet `Explore` over `tests/it/m3_walk.rs`, `app_harness.rs`,
+`examples/m3_walk.rs`, `pty-walk-m3.py` and `graft-fixtures::remote` (helper
+names, prelude/settle semantics, the fixture API). Used its summary; read
+source only where the walk needed exact types.
+
+**What was built:** `crates/graft/tests/it/m4_walk.rs` (pure half, 19
+scenarios, 23 tests), `crates/graft/examples/m4_walk.rs` (the command; also
+its own askpass helper — `CARGO_BIN_EXE_graft` exists only in the test
+binary, so the example answers `GRAFT_ASKPASS_SOCKET` itself via
+`cli::askpass` + `respond`, and passes `current_exe` as the helper),
+`.scratch/m4-remotes/pty-walk-m4.py`, 16 captures, `35-coverage-matrix.txt`
+with four tables (`coverage_matrix` now appends the M3 and M4 tables —
+`gallery --matrix`, `m3_walk --matrix`, `m4_walk --matrix` all write the
+same file), TESTING.md "Remotes", README/CHANGELOG M4 sections, MAP.md line.
+`m3_walk::{neutralise_global_config, fsck_clean}` made `pub` for reuse.
+
+**Deviations from the Signatures block** (shape follows `m3_walk`, as the
+ticket's "the `m3_walk` shape" asks):
+- `RemoteKind::Http { anonymous: bool }` — the user/password are constants
+  (`USER`, `PASSWORD`, `WRONG`); the flag is whether the URL carries the user
+  (`username-then-password` needs it absent).
+- `Scenario.setup: fn(&Fixture) -> Result<(), String>` and `expect:
+  fn(&Fixture, &Marks) -> Result<(), String>` — `Fixture` wraps the
+  `LocalRemote` plus the optional `HttpRemote`/`HungRemote`; `Marks` holds
+  the truth `before` and at every `Step::Mark`, so an expectation compares
+  states (`same_bare(before, after)`) rather than one `Truth`.
+- `Step` is the M3 set plus `TypeSecret`, `Cancel`, `Shell`, `Mark`, `See`;
+  `Wait` is `Ready | CredentialPrompt | Connected | JournalHas(kind)` —
+  `Idle`/`StatusContains`/`Operating` were not needed (`See` checks status
+  text against the settled state).
+- `Truth` as specified, plus `work.index_bytes` for `no-index-write-on-fetch`.
+
+**Findings (for the conductor; none fixed here):**
+1. **Refresh race in the app (not the walk):** `awaiting` (the resident
+   history job's id) is set only on the `Started` event. A `Ctrl+R` issued
+   before the previous refresh's `Started` lands cannot cancel that older
+   history job; two resident history jobs then fill a two-worker pool and
+   `ReadRefs`/`ReadRemotes`/`ReadWorkingTree` never run. Seen in
+   `journal-rows` as a 120 s timeout. The walk now waits for `Ready` before
+   `Ctrl+R` (as a person's screen would settle); a `Ctrl+R` right after `p`
+   in the real app with a small pool could still do this. Worth a ticket.
+2. **Auth-failed line shows the full URL**, `authentication failed for
+   http://127.0.0.1:<port>/repo.git/ · P to try again`, where the design
+   note pictured `host:port`. Asserted as built; cosmetic, the conductor
+   decides.
+3. **The push box draws no frame** at 80x24 or 160x48 (`m4-01-*`): title,
+   message, command and buttons over the graph, the graph's `Comm` visible
+   left of the box. Whether that reads as a box is the user's call.
+4. **80 columns truncates the rejection hint** to `… or P to fo…`
+   (`m4-06-rejected-sticky-80x24.txt`) and the journal's push row to `not
+   undoa…`. The key the person needs (`P`) is the cut part.
+5. `last_rejected_push` is in memory only: a fresh run cannot show the lease
+   box unless it is rejected in that run, so `m4-02` is captured with keys
+   `P → ⏎ P` (rejected inside the run) rather than a headless prefix.
+6. Remote footer hints (`f fetch  p pull  P push`) need ≥ 156 columns; none
+   at 80x24 — by design.
+
+**FAIL path, named run:** `fetch-brings-new-commits`'s `nothing to undo`
+check was changed to look for `nothing to undo (deliberately broken)`;
+`./target-g07/debug/examples/m4_walk --only fetch-brings-new-commits`
+printed `FAIL fetch-brings-new-commits: u says nothing to undo: the line
+lacks \`nothing to undo (deliberately broken)\`: nothing to undo` and exited
+1 (`target-g07/walk/broken.txt`); reverted (grep count 0), rebuilt, rerun
+green.
+
+**Secrets grep:** `grep -rln "correct-horse-battery-staple\|not-the-password"
+docs/shots TESTING.md README.md CHANGELOG.md` → no match, exit 1. The
+nextest output under `target-g07/walk/*.txt` searched the same way: no
+match. (`target/nextest` and `crates/*/target` do not exist in this
+worktree; the target directory is `target-g07`.)
+
+**KNOWN_GAPS rows for the conductor to file** (this builder was told not to
+touch the file). Add, marked *unverified by design, not broken*, with
+expiry: clone (M8); add/rename/remove remotes (M7); pull with merge or
+rebase (M5); per-remote fetch (M7); stall notice / timeout (M7); `q`
+confirming during an operation (M8); SSH askpass env set but unverified
+(first field note); `notify` watcher (M7, moved from M4); the password sits
+in a plain `String` in the prompt's `TextField`, not zeroed (M7 or later);
+remote footer hints only at ≥ 156 columns (design). Plus finding 1 above
+as *broken (app-level race)*. Close: `gallery --matrix overwrites the
+working-tree table` (fixed here, `coverage_matrix` writes four tables);
+`RepoFacts.remotes` `&[]` (M4 groups 01–06 filled it; the walk's captures
+show `origin/` refs).
+
+**Not verified here:** anything by eye; 120x40; Ghostty/Zed/VS Code;
+colour; SSH; a real credential helper; the heavy tier and the release perf
+run (commands recorded in TESTING.md, figures `not run`).
+
+**Gates (workspace-wide, `CARGO_TARGET_DIR=target-g07`):** `cargo fmt
+--check` ok; `cargo clippy --all-targets --message-format=short -- -D
+warnings` ok; the same with `--features heavy-tests` ok; `cargo nextest
+run` 1822 passed, 22 skipped, 34.3 s; `cargo test --doc` ok. Outputs under
+`target-g07/walk/{fmt,clippy,clippy-heavy,nextest,doctest}.txt`.

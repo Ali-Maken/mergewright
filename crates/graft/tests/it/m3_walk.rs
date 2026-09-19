@@ -195,7 +195,7 @@ fn run_git_with(repo: &Path, args: &[&str], stdin: Option<&[u8]>) -> Result<Stri
 ///
 /// An identity is set for the same reason in reverse: a machine with *no*
 /// `user.email` would fail every commit here.
-fn neutralise_global_config(repo: &Path) -> Result<(), String> {
+pub fn neutralise_global_config(repo: &Path) -> Result<(), String> {
     let empty = git_path(repo, "graft-walk-empty")?;
     std::fs::create_dir_all(&empty).map_err(|why| format!("{}: {why}", empty.display()))?;
     let nothing = empty.join("nothing");
@@ -619,7 +619,7 @@ fn focus_gained(app: &App, state: &AppState) -> Result<AppState, String> {
 }
 
 /// `git fsck --no-dangling` says nothing but notices.
-fn fsck_clean(repo: &Path) -> Result<(), String> {
+pub fn fsck_clean(repo: &Path) -> Result<(), String> {
     // Not `run_git`: fsck's complaints come on stderr *and* it exits
     // non-zero when it has any, so both streams are wanted whatever the
     // status. Isolated all the same — a global `fsck.*` severity setting

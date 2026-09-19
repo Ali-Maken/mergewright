@@ -4,7 +4,7 @@ Three tiers. You only need the first one day to day.
 
 | Tier | Command | When | Budget (PROMPT.md §7.1) | Measured |
 |---|---|---|---|---|
-| **Fast** | `cargo nextest run` + `cargo test --doc` | After every change. The gate for every ticket | under 3 min, ~2 GB | **38–40 s** warm (two runs, 2026-09-19, after the 22 M3 walk tests; 36.2 s without them the same hour, 21.7 s the morning before — the walk adds 2–4 s, the rest is not explained) |
+| **Fast** | `cargo nextest run` + `cargo test --doc` | After every change. The gate for every ticket | under 3 min, ~2 GB | **34.3 s** of test time for 1822 tests (one run, 2026-09-20, after the 19 M4 walk tests, whose own test time is 14.8 s spread over the workers; 50.8 s wall including a rebuild, so the warm wall figure is not measured). Before M4: **38–40 s** warm (two runs, 2026-09-19, after the 22 M3 walk tests; 36.2 s without them the same hour, 21.7 s the morning before — the walk adds 2–4 s, the rest is not explained) |
 | **Heavy** | two commands, [below](#the-heavy-tier) | Milestone reviews only | under 10 min, ~3 GB | **1.7 s** with fixtures cached, 6 s when it has to build them |
 | **Manual** | [the checklist](#the-manual-terminal-checklist) | Only when you choose to. The M1 and M8 checkpoints | — | about 20 min per terminal pass |
 
@@ -1284,3 +1284,241 @@ measure the promise start collecting: **"Times I left"** at the top of this
 file (every reach for the shell, ADR-0033) and
 [`docs/field-notes.md`](docs/field-notes.md) (what real use turned up,
 ADR-0029/0030). Both are empty on purpose until you use Graft for a day.
+
+## Remotes
+
+M4's acceptance ticket (m4-remotes/07). M4 promises that **you never leave
+Graft to fetch, pull or push — not for a password, a rejection or a hang**.
+The walk is how a person checks that: one command, 19 scenarios, each a
+scratch `remote.git` (bare) with a `work` clone and a `teammate` clone, the
+bare served over `file://`, over loopback smart HTTP with Basic auth
+(`HttpRemote`), or by a socket that accepts and never answers (`HungRemote`);
+the real app driven by keys over the real job pool with the walk binary as
+its own askpass helper; and then **the truth read back by running git on
+both the work clone and the bare** (`for-each-ref` on each, `rev-parse
+HEAD`, `ls-files -s`, file bytes, `.git/index` bytes, the journal file) —
+never from `AppState`.
+
+```sh
+cargo run -p graft --example m4_walk                              # every scenario, one line each
+cargo run -p graft --example m4_walk -- --only push-plain         # one
+cargo run -p graft --example m4_walk -- --list                    # the names
+cargo run -p graft --example m4_walk -- --stems                   # capture stems, keys, expected text
+cargo run -p graft --example m4_walk -- --matrix                  # rewrites docs/shots/35-coverage-matrix.txt (all four tables)
+```
+
+`ok <name>` per scenario, `FAIL <name>: <what differs>` (20 lines at most:
+the work clone's refs/files/index, the bare's refs, the journal's length),
+exit 1 on any failure. The same list runs in the fast tier as one test per
+scenario (`tests/it/m4_walk.rs`, `m4_walk::every_scenario::*`; slowest
+`u_never_touches_the_remote` 1.4 s; the 19 take 14.8 s of test time, 7.8 s
+wall with the M3 walk alongside, and the whole tier is at 34.3 s test time).
+Every scenario ends with `git fsck --no-dangling` saying nothing but notices
+in the work clone, and with a search of the journal file, every status line
+the walk recorded and every capture file for the walk's two passwords
+(`no_secret_leaked`). A password typed by the walk goes through
+`Step::TypeSecret`, which the walk's trace never echoes.
+
+The walk's own `git` runs isolated from the machine (`run_isolated`), and
+each work clone has `credential.helper` set to the empty string, so a
+Keychain or `gh` helper on the machine cannot answer a prompt the walk
+expects to see itself.
+
+Captures: `docs/shots/m4-<nn>-<what>-<WxH>.txt`, eight visual results at
+80x24 and 160x48, Unicode tier (`.scratch/m4-remotes/pty-walk-m4.py <WxH>`
+after `cargo build -p graft --example m4_walk`, `GRAFT_TARGET` naming the
+target directory). The script runs `m4_walk --capture <scenario>`, which
+builds the remote, runs the scenario's headless prefix, then opens the real
+loop on the work clone with the capture's keys as the harness prelude (an
+open credential prompt counts as settled, so the typed password lands in the
+masked field). It fails, and writes nothing, if a password is on screen or
+the masked capture shows no `•`. **A capture is what pyte saw, not what a
+person saw, and it carries no colour** — the user judges by eye.
+
+### What the walk proves and what it does not
+
+- **Proves:** with a bare over `file://`, over loopback HTTP with Basic
+  auth, and behind a socket that never answers, every fetch, pull and push
+  above ends inside Graft — a password is typed into Graft's own prompt, a
+  rejection is a sticky line with the next key in it, a hang ends on `Esc`
+  with no lock file left — and the refs on both sides are what the entry
+  says. `u` after a fetch or push moves nothing on the remote, ever
+  (`u-never-touches-the-remote`, `push-plain`).
+- **Loopback only, no TLS, no SSH.** The HTTP server is `git http-backend`
+  behind a tiny server on `127.0.0.1`; nothing here exercises certificates,
+  proxies, `ssh-agent`, host keys or `SSH_ASKPASS`. The SSH askpass path is
+  set up but **unverified** until a field note says it worked.
+- **No real credential helper.** Every clone disables helpers, so what a
+  Keychain helper does before Graft's prompt is not covered.
+- **Esc during `u`/`U` does nothing** (m4-05 review): the line says `undo
+  cannot be stopped part-way — finishing…` and the undo completes. The walk
+  never presses it.
+- **Fetch and push are transparent to undo; an up-to-date pull is
+  journalled but skipped by `u`.** The walk asserts the first (`u` after a
+  fetch says `nothing to undo`) and the journal rows for the second; it has
+  no up-to-date pull scenario.
+- **A lease push is offered only for the branch whose upstream is HEAD's**;
+  the walk's rejections are always on `main`.
+- **The remote hints in the footer (`f fetch  p pull  P push`) draw only at
+  156 columns or more**; the 80x24 captures have none, by design, not by
+  fault.
+- **The password lives in a plain `String` inside the prompt's `TextField`**
+  while the prompt is open — not zeroed on close. The walk proves it never
+  reaches a file or the screen, nothing more.
+- **No colour, no focus, no real terminal.** pyte grids; the user's by-eye
+  pass is the table at the end.
+
+### Reading the entries
+
+Every scenario starts on `Shape::Linear`; the bare's `main` and the work
+clone's `main`/`origin/main` agree before the scenario's setup runs. "The
+teammate commits" means `teammate` adds `remote-N.txt` and pushes, so the
+bare's `main` is one ahead; "ours locally" means a commit `ours` in the work
+clone. `<tip>` is whatever `rev-parse` says that run — SHAs differ per run
+(the fixtures are timestamped), so the entries name the relation, and the
+walk asserts it. Status lines are quoted as the walk asserts them: a
+`sticky` line stays until the next key, a `done` line goes at the next
+refresh.
+
+### The scenarios
+
+1. **fetch-brings-new-commits** — the teammate commits; `f`: status
+   `fetched …`; `git -C work rev-parse refs/remotes/origin/main` equals
+   `git -C remote.git rev-parse main`, `HEAD` unmoved; the journal's last
+   entry is kind `Fetch`, status `Committed`. `u`: status `nothing to undo`,
+   every ref in `for-each-ref` identical to before `u`, the bare untouched.
+2. **fetch-prunes-deleted-branch** — the bare had `gone`, the clone fetched
+   it, the bare deleted it; `f`: `refs/remotes/origin/gone` is no longer in
+   the clone's `for-each-ref`.
+3. **pull-fast-forward** — the teammate commits; `p`: status `pulled
+   origin/…`; `HEAD` equals the bare's `main`, and the teammate's file reads
+   byte for byte what `git -C remote.git show <tip>:<file>` gives. `u`:
+   `HEAD` back to the old tip, every file back, `origin/main` **stays** at
+   the bare's tip, the bare unchanged. `U`: `HEAD` forward to the bare's tip
+   again.
+4. **pull-diverged-refused** — the teammate commits, ours locally; `p`:
+   sticky `pull stopped: … diverged … merge or rebase … git pull --rebase`;
+   `HEAD` unchanged, `origin/main` advanced to the bare's tip (the fetch half
+   happened), the bare unchanged.
+5. **pull-dirty-file-refused** — the teammate edits a tracked file and
+   pushes; the same file is edited in the clone; `p`: sticky `pull refused:
+   would overwrite … (uncommitted) … commit or stash first`; the file's
+   bytes are identical before and after, `HEAD` unchanged.
+6. **pull-no-upstream-refused** — `branch --unset-upstream`; `p`: the line
+   contains `has no upstream`, nothing was queued (`operating` empty), no
+   ref moved on either side.
+7. **push-plain** — ours locally; `P`: a box titled `Push main →
+   origin/main`, message `1 commit · can't be undone from here — origin
+   keeps what you…`, command `git push --progress origin
+   refs/heads/main:refs/heads/main`, `[ Cancel ]     Push`. `→` `⏎`: status
+   `pushed …`; `git -C remote.git rev-parse main` equals `git -C work
+   rev-parse HEAD`; the journal's `Push` entry has `refs_before
+   {refs/remotes/origin/main: <old tip>}` and `refs_after {…: <new tip>}`.
+   `u`: `HEAD` back to the old tip, status ends `origin/main still has it`,
+   **the bare unchanged**. `U`: `HEAD` forward again.
+8. **push-sets-upstream** — on a new `feature` branch; `P`: the box's
+   message contains `sets upstream`; `⏎`: the bare has `refs/heads/feature`
+   at the local tip, `branch.feature.remote` is `origin`,
+   `branch.feature.merge` is `refs/heads/feature`.
+9. **push-detached-refused** — `HEAD` detached; `P`: no box, the line
+   contains `detached`, the bare unchanged.
+10. **push-rejected-then-lease** — the tip is amended locally (a commit
+    origin already has, rewritten; the bare has not moved, so `origin/main`
+    is current); `P` `→` `⏎`: sticky `push rejected: origin/main has
+    commits you don't · p to pull first, or P to force with lease`, the
+    bare unchanged. `P` again: a box titled `Force-push main →
+    origin/main?`, `origin/main <old> → <amended> · refused if origin moved
+    since…`, `rewrites history for everyone who has <old>`, command `git
+    push --progress --force-with-lease=refs/heads/main:<old sha>…`,
+    `[ Cancel ]     Force push`. `⏎`: `git -C remote.git rev-parse main`
+    is the amended tip.
+11. **push-lease-refused-stale** — the teammate commits (the bare moved,
+    the clone has not fetched, so `origin/main` is stale), ours locally;
+    `P` `→` `⏎`: sticky `push rejected …`; `P`, `⏎` on the lease box:
+    sticky `push refused: … stale lease … f to fetch`; the bare's refs
+    identical to before the scenario — the lease protected the teammate's
+    commit.
+12. **wrong-password-then-right** — `HttpRemote` with `tester` /
+    `correct-…`; ours locally; `P` `⏎`: a masked prompt `Password for
+    'http://tester@127.0.0.1:<port>':`; the wrong password: sticky
+    `authentication failed for http://127.0.0.1:<port>/repo.git/ · P to
+    try again` (the full URL, not `host:port` as the design pictured — the
+    ticket's NOTES), the bare unchanged. `P` `⏎`, the right password:
+    the bare's `main` equals `HEAD`; the server counted at least one
+    authorised and one refused request; neither password is in the journal
+    file, any status line, or any capture.
+13. **password-prompt-esc-cancels** — the prompt is up; `Esc`: the prompt
+    is gone, the journal's last entry is `Push` with status `Aborted
+    ("cancelled")`, the bare unchanged, **zero** authorised requests reached
+    the server.
+14. **username-then-password** — the URL carries no user; `P` `⏎`: an
+    unmasked prompt `Username for 'http://127.0.0.1:<port>':`, showing
+    `▏tester` as typed; `⏎`: a masked `Password for …`; the password, `⏎`:
+    the bare's `main` equals `HEAD`.
+15. **hung-remote-esc-cancels** — the remote is a socket that accepts and
+    never answers; `f`: `operating` is set; once the socket has one
+    connection, `Esc`: the line ends `cancelling`, `operating` clears in
+    under 5 s, the line then reads `fetch all remotes cancelled`; the
+    journal's last entry is `Fetch` `Aborted("cancelled")`, no `*.lock`
+    under `.git`, the socket saw exactly one connection.
+16. **progress-reaches-the-footer** — the bare gains 400 files of 4 KiB;
+    `f`: some recorded status line starts `fetch all remotes · ` and
+    contains `objects` (`fetch all remotes · enumerating objects · esc
+    cancels` in the capture).
+17. **u-never-touches-the-remote** — fetch, pull, commit, push; then `u`
+    until `nothing to undo`: `git -C remote.git for-each-ref` is identical
+    to right after the push; `HEAD` is back where the scenario started;
+    `origin/main` is at the pushed tip (the tracking ref is not undone).
+18. **journal-rows** — fetch, pull, commit (`Ctrl+R` after), push; `J`: the
+    journal holds exactly `Fetch, Pull, Push` in that order; the push row's
+    summary contains `not undoable — origin has it`, the fetch row's `not
+    undoable`, the pull row is the next undo (`← u`).
+19. **no-index-write-on-fetch** — `f`: `.git/index` is byte for byte what
+    it was.
+
+### Per breakpoint
+
+What each capture shows; 120x40 is `not run` (the script takes two sizes).
+
+| View | 80x24 | 120x40 | 160x48 |
+|---|---|---|---|
+| Push box (`m4-01-push-box-plain`) | `Push main → origin/main`, the `1 commit · …` line, the `git push --progress …` command, `[ Cancel ]     Push`; **no frame is drawn around the box**, and the graph's `Comm` shows left of it — judge whether that reads as a box | not run | same lines, the graph and pane around it |
+| Lease box (`m4-02-push-box-lease`) | `Force-push main → origin/main?`, `origin/main <a> → <b> · refused if origin moved since…`, `rewrites history for everyone who has <a>`, the `--force-with-lease=` command, `[ Cancel ]     Force push` | not run | same |
+| Credential prompt, masked (`m4-03-credential-masked`) | `Credentials — 127.0.0.1:<port>`, `Password for 'http://tester@127.0.0.1:<port>':`, a field of `•` only (28 of them), `typed here only · never stored by Graft`, `⏎ send  ⌃U clear  esc cancel the push` | not run | same |
+| Credential prompt, username (`m4-04-credential-username`) | `Username for 'http://127.0.0.1:<port>':`, `▏tester` in clear | not run | same |
+| Progress footer (`m4-05-progress-footer`) | `fetch all remotes · enumerating objects · esc cancels` on the status line | not run | same; taken the instant it appeared, the frame is not settled |
+| Rejected sticky (`m4-06-rejected-sticky`) | `push rejected: origin/main has commits you don't · p to pull first, or P to fo…` — truncated at 80 columns, the `P` hint cut | not run | the whole line, `… or P to force with lease` |
+| Journal (`m4-07-journal-remote-rows`) | three rows; the push row ends `not undoa…` (truncated) | not run | push `origin/main <a> → <b> · not undoable — origin has it`; pull `1 ref · the index · the working tree · backup saved  ← u`; fetch `remote-tracking refs · not undoable` |
+| `u` after a push (`m4-08-undo-after-push`) | `undo: commit "ours" · origin/main still has it ✓` | not run | same; the footer ends `S stash  H hide stash  f fetch  p pull  P push` (the remote hints need 156 columns) |
+
+### Per terminal: walk the remotes group
+
+Run `cargo run -p graft --example m4_walk` (all `ok`), then in a clone of
+your own with a real remote: `f`, `p`, `P` on a branch that is ahead, `P`
+after a teammate pushed (expect the rejection, then the lease box), and a
+push to an HTTPS remote with no credential helper (expect Graft's own
+prompt: **the password field shows `•` only**, and after `Esc` nothing was
+sent). Press `Esc` during a fetch that is slow. Record the result here,
+naming the scenario that failed if one did. Colour, focus and the box's
+frame are what only this pass can judge.
+
+| Terminal | Result |
+|---|---|
+| Ghostty | not run |
+| Zed | not run |
+| VS Code | not run |
+
+### The review's runs
+
+The reviewer's, not the builder's (ADR-0021): figures `not run` here.
+
+```sh
+cargo test --features heavy-tests -- --test-threads=2                # the heavy tier — not run
+cargo test --release -p graft --features heavy-tests --test it -- frames:: heavy::budgets_hold --test-threads=1 --nocapture   # release perf — not run
+cargo run --release -p graft --example m4_walk                       # the walk under release — not run
+```
+
+**Times I left:** every remote-related reach for the shell during daily use
+— a clone, a remote added, a merge after a diverged pull, a stalled fetch
+you killed — goes in the table at the top of this file, dated, the same day
+(ADR-0033). That table, not this walk, measures the promise.

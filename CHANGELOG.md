@@ -8,6 +8,60 @@ the versioning scheme are decided in M8.
 
 ## [Unreleased]
 
+### M4 — Remotes
+
+You never leave Graft to fetch, pull or push — not for a password, a
+rejection or a hang.
+
+#### Added
+
+- **`f` fetch** (all remotes, prune), **`p` pull** (fast-forward only,
+  undoable: `u` puts branch and tree back, the tracking ref stays fetched),
+  **`P` push** through a confirm box that names the branch, the commit count,
+  `sets upstream` when it will, and the exact `git push` line.
+- **Rejections in words, on the footer until `Esc`**: non-fast-forward
+  (`push rejected: … · p to pull first, or P to force with lease`), a stale
+  lease (`push refused: … (stale lease) · f to fetch, then look`), a diverged
+  pull (`pull stopped: … shell: git pull --rebase`), a dirty file
+  (`pull refused: would overwrite <file> (uncommitted)`), no upstream,
+  detached `HEAD`, authentication failure (`· P to try again`).
+- **The lease box** after a rejection: `Force-push main → origin/main?`,
+  the remote tip it expects, `--force-with-lease=<branch>:<tip>`; a plain
+  `--force` never runs; refused for any branch but `HEAD`'s upstream.
+- **Credential prompt in the app**: `graft` is git's askpass helper over a
+  private socket; password questions are masked (`•`), username questions
+  are not; `Esc` cancels the operation. Nothing typed is stored, logged,
+  journaled or captured.
+- **`Esc` cancels any running write** (SIGTERM, 2 s grace, entry
+  `Aborted("cancelled")`), fetch, pull and push included; `u`/`U` are not
+  stoppable and say so.
+- **Live progress** from `git --progress` on the footer, `· esc cancels`.
+- **Push and fetch are journaled but transparent to undo**: `u` skips them
+  and, after a push, says `· origin/main still has it`; the journal rows read
+  `not undoable — origin has it` / `not undoable`.
+- **Real-remote test fixtures** (`graft-fixtures::remote`): a bare over
+  `file://`, smart HTTP with Basic auth on loopback, a port that never
+  answers.
+- **The acceptance walk**: `cargo run -p graft --example m4_walk`, 19
+  scenarios judged by running git on both the work clone and the bare
+  (`TESTING.md`, "Remotes").
+
+#### Changed
+
+- **Every coverage table is written by one function** (`coverage_matrix`):
+  `gallery --matrix`, `m3_walk --matrix` and `m4_walk --matrix` now produce
+  the same `docs/shots/35-coverage-matrix.txt` (the gallery used to drop the
+  working-tree table).
+
+#### Known gaps
+
+See [`KNOWN_GAPS.md`](KNOWN_GAPS.md)'s M4 rows: clone (M8), add/rename/remove
+remotes (M7), pull with merge/rebase (M5), per-remote fetch (M7), a stall
+notice or timeout (M7), `q` confirming during an operation (M8), SSH askpass
+(env set, unverified), the `notify` watcher (M7), the typed password held in
+a plain `String` until the prompt closes, remote footer hints only at 156
+columns or more.
+
 ### M3 — Working tree, undo and stash
 
 You cannot lose work: every write is journaled with a backup and comes back

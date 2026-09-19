@@ -24,6 +24,18 @@
 
 #[path = "../tests/it/gallery.rs"]
 mod gallery;
+// The coverage matrix lists the M3 and M4 walks' captures, so their pure
+// halves (and the harness they share) come along; nothing else of them runs
+// here.
+#[allow(dead_code, reason = "only the walks' coverage tables are used here")]
+#[path = "../tests/it/app_harness.rs"]
+mod app_harness;
+#[allow(dead_code, reason = "only the walks' coverage tables are used here")]
+#[path = "../tests/it/m3_walk.rs"]
+mod m3_walk;
+#[allow(dead_code, reason = "only the walks' coverage tables are used here")]
+#[path = "../tests/it/m4_walk.rs"]
+mod m4_walk;
 
 use std::fs;
 use std::io::{self, Read, Write};
