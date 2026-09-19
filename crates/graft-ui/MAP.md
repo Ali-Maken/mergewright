@@ -7,6 +7,7 @@ One line per public item. Update when a public item changes.
 - `graph_column` (mod) — the Unicode-tier graph column widget.
 - `context_menu` (mod) — the `.`/right-click popup: `ContextAction`, `MenuItem`, `ContextMenu` (`for_row`, `for_working_tree`, `move_cursor` clamped, `selected`, `width`); no theme carried, so its `Widget` impl draws only labels and the reversed cursor row, the background painted by the caller (m2-details-and-diffs/12).
 - `confirm` (mod) — the discard confirm box: `Choice` (`Cancel`/`Confirm`), `ConfirmView` (`new(title, message, command)` — opens with `Cancel` under the cursor, the safe default; `toggle`), `Confirm<'a>` widget (no theme carried, like `context_menu`: draws the title bold, the consequence in plain words, the exact `git` command it will run, then `[ Cancel ]   Discard` buttons), `confirm_area`/`confirm_rows` centre-and-clamp sizing helpers (never exceed the frame) (m3-working-tree-undo-and-stash/04).
+- `commit_editor` (mod) — the commit/amend editor screen: `Field`, `CommitEditorView`, `CommitEditorScreen`, `fits`, `SUBJECT_LIMIT`/`BODY_LIMIT` (m3-working-tree-undo-and-stash/05).
 - `detail` (mod) — the detail pane's view-model types, no drawing (m2-details-and-diffs/06).
 - `detail_pane` (mod) — the detail pane's layout and widget: breakpoints, regions, plain diff body (m2-details-and-diffs/07).
 - `graph_screen` (mod) — the graph screen Graft opens on: header, rows, key hints (every graph key, F3 included; narrow widths drop whole hints from the right, m1-the-graph/33; `y sha` added in 45).
@@ -240,3 +241,14 @@ no offset can go stale behind a resize.
 - `FieldWidget` (struct) — `view`, `theme`; `Widget` over one row: label, text, guide, right-aligned counter.
 - `AreaView` (struct) — `label`, `lines`, `cursor` (`(line, character)`), `guide_at`, `focused`.
 - `AreaWidget` (struct) — `view`, `theme`; `Widget` over the rows it is given: the label row, then as many lines as fit, scrolled so the cursor's line is always one of them.
+
+## commit_editor
+The commit/amend editor's screen (m3-working-tree-undo-and-stash/05). Draws
+into whatever rect it is given and carries no state of its own: the caller
+owns the `TextField`/`TextArea` halves and passes a view.
+- `SUBJECT_LIMIT` (const) — 50, where the subject's guide stands and past which its counter turns `Warning`.
+- `BODY_LIMIT` (const) — 72, the body's guide column.
+- `Field` (enum) — what has focus: `Subject`, `Body`, `Amend`, `SignOff`, `NoVerify`, `AllowEmpty`, `CommitButton`. `OPTIONS` (const) lists the four checkboxes in row order. `is_option`, `label`, `next`/`previous` (the `Tab` order, wrapping), `sibling_option(forward)` (`←`/`→` along the options row, `None` at either end).
+- `CommitEditorView` (struct) — `title`, `subject`/`body` (the `FieldView`/`AreaView` halves), `focus`, `amend`/`sign_off`/`no_verify`/`allow_empty`, `refusal` (the reason drawn dimmed beside a dimmed `[ Commit ]`, `None` when the commit may go ahead), `busy`.
+- `CommitEditorScreen` (struct) — `view`, `theme`; `Widget`: title row, subject row, body block, the options row pinned above the footer, then the key footer. Nothing scrolls off: below `fits` it is not drawn at all.
+- `fits` (fn) — whether an area has the rows (`CHROME_ROWS` = 6, plus a body line) and columns the screen needs. The caller shows a "too small" message instead.

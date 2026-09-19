@@ -2190,3 +2190,166 @@ fn capture_m3_confirm_delete_untracked() {
     )
     .expect("docs/shots is writable");
 }
+
+/// The state the commit editor's captures draw: the changes pane's scripted
+/// dirty tree, with `c` pressed and a message half typed
+/// (m3-working-tree-undo-and-stash/05).
+fn commit_editor_state(columns: u16, rows: u16) -> AppState {
+    use crate::update::{AppEvent, update};
+    use graft_core::event::{Event, KeyCode, KeyPress};
+
+    let mut state = changes_pane_state(columns, rows);
+    // A branch for the title row: the count and the branch are the two facts
+    // the title carries, and a fixture without one would capture half of it.
+    state.repository = Some(RepositoryFacts {
+        path: std::path::PathBuf::from("/code/api"),
+        bare: false,
+        head: Head::Branch(b"main".to_vec()),
+        mailmap: graft_git::mailmap::Mailmap::default(),
+        commit_graph: crate::repository::CommitGraphFact::Present { commits: 1 },
+    });
+    // The detail pane stays open behind the editor, which is the point of
+    // hard choice 4 in the design note.
+    let (mut state, _) = update(
+        &state,
+        AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Char('c')))),
+    );
+    for character in "fix the token refresh race".chars() {
+        let (next, _) = update(
+            &state,
+            AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Char(character)))),
+        );
+        state = next;
+    }
+    let (mut state, _) = update(
+        &state,
+        AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Tab))),
+    );
+    for character in "The old token was refreshed twice when two requests raced.".chars() {
+        let (next, _) = update(
+            &state,
+            AppEvent::Core(Event::Key(KeyPress::plain(KeyCode::Char(character)))),
+        );
+        state = next;
+    }
+    state
+}
+
+const COMMIT_EDITOR_HEADER: &str = "\
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_m3_commit_editor in crates/graft/src/view/tests.rs (#[ignore]d, run
+# by hand to regenerate). `c` on the scripted dirty tree, a subject typed,
+# then Tab to the body and a sentence typed there.
+#
+# Judge by eye:
+# - The title row reads COMMIT ── ⎇ main ── 1 file staged. Not \"looks
+#   right\": the count must match the STAGED section of the changes-pane
+#   capture beside it.
+# - At 80x24 the editor has the whole area and the detail pane is not drawn.
+#   Under 100 columns the pane would be a tab, and the editor is modal, so
+#   the key that selects the other tab never reaches it — an editor behind a
+#   tab nobody can press is an editor that did not open.
+# - The subject row shows ▸Subject, the typed text, and a counter reading
+#   26/50. The ┊ guide is at column 50 of the text, not at the screen edge.
+# - The body row shows Body (no ▸: focus is on the body's text, and the
+#   marker follows the focus) with its own ┊ guide at 72.
+# - The options row: four [ ] boxes — amend, sign-off, no-verify, allow
+#   empty — then [ Commit ]. None is ticked and none is refused, so no
+#   reason follows the button.
+# - The footer offers ⌃⏎/Commit, ⇥, ⌃E, ⌃S and esc.
+# - The detail pane is still there beside the editor, with its own header.
+#   The editor replaced the graph, not the pane.
+#
+";
+
+/// Regenerates the commit editor's two captures
+/// (m3-working-tree-undo-and-stash/05).
+#[test]
+#[ignore = "writes docs/shots/m3-commit-editor-*.txt; run by hand to regenerate"]
+fn capture_m3_commit_editor() {
+    for (columns, rows) in [(160_u16, 48_u16), (80, 24)] {
+        let state = commit_editor_state(columns, rows);
+        let screen = draw(&state, columns, rows);
+        assert!(screen.contains("COMMIT"), "{screen}");
+        std::fs::write(
+            format!(
+                "{}/../../docs/shots/m3-commit-editor-{columns}x{rows}.txt",
+                env!("CARGO_MANIFEST_DIR")
+            ),
+            format!("{COMMIT_EDITOR_HEADER}=== {columns}x{rows} ===\n{screen}"),
+        )
+        .expect("docs/shots is writable");
+    }
+}
+
+/// Regenerates `docs/shots/m3-commit-editor-refused.txt`
+/// (m3-working-tree-undo-and-stash/05).
+#[test]
+#[ignore = "writes docs/shots/m3-commit-editor-refused.txt; run by hand to regenerate"]
+fn capture_m3_commit_editor_refused() {
+    let mut state = commit_editor_state(120, 40);
+    // Nothing staged: the same editor, with the button dimmed and the reason
+    // beside it. The dimming is colour, which a capture cannot record — the
+    // reason in characters is what makes it legible here.
+    state.working_tree = Some(std::sync::Arc::new(
+        graft_git::status::WorkingTreeStatus::default(),
+    ));
+    let screen = draw(&state, 120, 40);
+    assert!(screen.contains("nothing staged"), "{screen}");
+    let header = "\
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_m3_commit_editor_refused in crates/graft/src/view/tests.rs
+# (#[ignore]d). The same editor with nothing staged.
+#
+# Judge by eye:
+# - `nothing staged` sits immediately after [ Commit ] on the options row.
+#   The button is also dimmed, and no capture in this repo can show that
+#   (CLAUDE.md) — the words are what has to carry it.
+# - The title row still reads `nothing staged` as its count, so the reason
+#   is visible even with the options row off the bottom of a short terminal.
+#
+=== 120x40 ===
+";
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m3-commit-editor-refused.txt"
+        ),
+        format!("{header}{screen}"),
+    )
+    .expect("docs/shots is writable");
+}
+
+/// Regenerates `docs/shots/m3-amend.txt` (m3-working-tree-undo-and-stash/05).
+#[test]
+#[ignore = "writes docs/shots/m3-amend.txt; run by hand to regenerate"]
+fn capture_m3_amend() {
+    use crate::update::commit_editor::CommitEditor;
+
+    let mut state = changes_pane_state(120, 40);
+    state.commit_editor = Some(CommitEditor::amend(
+        "a1b2c3d".to_owned(),
+        "fix the token refresh race\n\nThe old token was refreshed twice when two requests raced.\n",
+    ));
+    let screen = draw(&state, 120, 40);
+    assert!(screen.contains("AMEND a1b2c3d"), "{screen}");
+    let header = "\
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_m3_amend in crates/graft/src/view/tests.rs (#[ignore]d). `a` on the
+# scripted tree, with HEAD's message already prefilled.
+#
+# Judge by eye:
+# - The title row reads AMEND a1b2c3d, not COMMIT: which commit is being
+#   rewritten is named, because an amend of the wrong one is the mistake
+#   this milestone exists to prevent.
+# - [x] amend is ticked in the options row, and the subject and body hold
+#   HEAD's message split at its blank line.
+#
+=== 120x40 ===
+";
+    std::fs::write(
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/shots/m3-amend.txt"),
+        format!("{header}{screen}"),
+    )
+    .expect("docs/shots is writable");
+}

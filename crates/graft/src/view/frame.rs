@@ -108,12 +108,31 @@ fn draw_commit_editor(
         view: &editor,
         theme: &session.theme,
     };
-    if state.detail.shown {
+    if state.detail.shown && !tabbed(state, area) {
         render_overlay_with_detail(session, state, frame, &screen, area, "Commit");
     } else {
         frame.render_widget(&screen, area);
     }
     None
+}
+
+/// Would the detail pane share this area as a **tab strip** rather than a
+/// split?
+///
+/// Under 100 columns it does, and that is the one layout the commit editor
+/// cannot use: the editor is modal, so the key that would select the other
+/// tab never reaches the pane. An editor behind a tab the user cannot press
+/// is an editor that did not open. Below that width it takes the whole area
+/// and the pane waits — which is what `Esc` gets them back to.
+fn tabbed(state: &AppState, area: Rect) -> bool {
+    matches!(
+        crate::update::detail::effective_layout(
+            state.detail.focus,
+            &state.detail.pane_size,
+            (area.width, area.height),
+        ),
+        DetailLayout::Tab { .. }
+    )
 }
 
 /// [`view`], saying `graphics` in the header when the graph is drawn in

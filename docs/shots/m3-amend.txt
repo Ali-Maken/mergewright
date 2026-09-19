@@ -1,0 +1,52 @@
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_m3_amend in crates/graft/src/view/tests.rs (#[ignore]d). `a` on the
+# scripted tree, with HEAD's message already prefilled.
+#
+# Judge by eye:
+# - The title row reads AMEND a1b2c3d, not COMMIT: which commit is being
+#   rewritten is named, because an amend of the wrong one is the mistake
+#   this milestone exists to prevent.
+# - [x] amend is ticked in the options row, and the subject and body hold
+#   HEAD's message split at its blank line.
+#
+=== 120x40 ===
+"AMEND a1b2c3d ── 1 file staged                                                                                          "
+"                                                                                                                        "
+"▸Subject fix the token refresh race                        ┊                                                       26/50"
+"                                                                                                                        "
+" Body                                                                                                                   "
+"         The old token was refreshed twice when two requests raced.              ┊                                      "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"  [x] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]                                           "
+"⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel                                                           "
+"UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
+"diff vs HEAD 0303030                                                                                                    "
+"STAGED (1)                    fn routes()                                                                               "
+"  ▾ src/                       18  18       let mut app = Router::new();                                                "
+"    ▾ auth/                    19     -     app.get("/health", health);                                                 "
+"      M token.rs        +12 −4     19▎+     app.get("/health", health);                                                 "
+"UNSTAGED (2)                       20 +     app.get("/ready", ready);                                                   "
+"  ▾ src/                       20  21       app                                                                         "
+"    ▾ api/                     21  22   }                                                                               "
+"      M routes.rs        +3 −2fn ready()                                                                                "
+"    ▾ auth/                    44  45   async fn ready() -> Json<Status> {                                              "
+"      M token.rs         +2 −0 45     -     Json(Status::Ok)                                                            "
+"UNTRACKED (1)                      46 +     Json(Status::from(&state))                                                  "
+"  ? notes.md             +0 −0 46  47   }                                                                               "
+"                                                                                                                        "
+"                                                                                                                        "

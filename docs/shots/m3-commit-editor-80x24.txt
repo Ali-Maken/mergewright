@@ -1,0 +1,49 @@
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_m3_commit_editor in crates/graft/src/view/tests.rs (#[ignore]d, run
+# by hand to regenerate). `c` on the scripted dirty tree, a subject typed,
+# then Tab to the body and a sentence typed there.
+#
+# Judge by eye:
+# - The title row reads COMMIT ── ⎇ main ── 1 file staged. Not "looks
+#   right": the count must match the STAGED section of the changes-pane
+#   capture beside it.
+# - At 80x24 the editor has the whole area and the detail pane is not drawn.
+#   Under 100 columns the pane would be a tab, and the editor is modal, so
+#   the key that selects the other tab never reaches it — an editor behind a
+#   tab nobody can press is an editor that did not open.
+# - The subject row shows ▸Subject, the typed text, and a counter reading
+#   26/50. The ┊ guide is at column 50 of the text, not at the screen edge.
+# - The body row shows Body (no ▸: focus is on the body's text, and the
+#   marker follows the focus) with its own ┊ guide at 72.
+# - The options row: four [ ] boxes — amend, sign-off, no-verify, allow
+#   empty — then [ Commit ]. None is ticked and none is refused, so no
+#   reason follows the button.
+# - The footer offers ⌃⏎/Commit, ⇥, ⌃E, ⌃S and esc.
+# - The detail pane is still there beside the editor, with its own header.
+#   The editor replaced the graph, not the pane.
+#
+=== 80x24 ===
+"COMMIT ── ⎇ main ── 1 file staged                                               "
+"                                                                                "
+" Subject fix the token refresh race                        ┊               26/50"
+"                                                                                "
+"▸Body                                                                           "
+"         The old token was refreshed twice when two requests raced.             "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]   "
+"⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel                   "

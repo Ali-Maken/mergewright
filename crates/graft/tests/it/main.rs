@@ -8,6 +8,7 @@
 #[cfg(feature = "heavy-tests")]
 mod budget_run;
 mod changes_pane_writes;
+mod commit_editor_writes;
 mod dependency_edges;
 #[cfg(feature = "heavy-tests")]
 mod frames;

@@ -1,0 +1,52 @@
+# TestBackend capture (not a pty), no colour recorded. Fixture:
+# capture_m3_commit_editor_refused in crates/graft/src/view/tests.rs
+# (#[ignore]d). The same editor with nothing staged.
+#
+# Judge by eye:
+# - `nothing staged` sits immediately after [ Commit ] on the options row.
+#   The button is also dimmed, and no capture in this repo can show that
+#   (CLAUDE.md) — the words are what has to carry it.
+# - The title row still reads `nothing staged` as its count, so the reason
+#   is visible even with the options row off the bottom of a short terminal.
+#
+=== 120x40 ===
+"COMMIT ── ⎇ main ── nothing staged                                                                                      "
+"                                                                                                                        "
+" Subject fix the token refresh race                        ┊                                                       26/50"
+"                                                                                                                        "
+"▸Body                                                                                                                   "
+"         The old token was refreshed twice when two requests raced.              ┊                                      "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"                                                                                                                        "
+"  [ ] amend    [ ] sign-off    [ ] no-verify    [ ] allow empty    [ Commit ]  nothing staged                           "
+"⌃⏎/Commit commit  ⇥ next  ⌃E $EDITOR  ⌃S sign-off  esc cancel                                                           "
+"UNCOMMITTED                                                                                                             "
+"diff vs HEAD 0303030                                                                                                    "
+"STAGED (1)                    fn routes()                                                                               "
+"  ▾ src/                       18  18       let mut app = Router::new();                                                "
+"    ▾ auth/                    19     -     app.get("/health", health);                                                 "
+"      M token.rs        +12 −4     19▎+     app.get("/health", health);                                                 "
+"UNSTAGED (2)                       20 +     app.get("/ready", ready);                                                   "
+"  ▾ src/                       20  21       app                                                                         "
+"    ▾ api/                     21  22   }                                                                               "
+"      M routes.rs        +3 −2fn ready()                                                                                "
+"    ▾ auth/                    44  45   async fn ready() -> Json<Status> {                                              "
+"      M token.rs         +2 −0 45     -     Json(Status::Ok)                                                            "
+"UNTRACKED (1)                      46 +     Json(Status::from(&state))                                                  "
+"  ? notes.md             +0 −0 46  47   }                                                                               "
+"                                                                                                                        "
+"                                                                                                                        "
