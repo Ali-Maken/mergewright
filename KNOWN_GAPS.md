@@ -451,3 +451,6 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M4/02 | Askpass socket has no peer-credential check; the 0700 dir is the only guard | unverified | M8 |
 | M4/02 | SSH askpass and SSH/forge auth-failure strings not exercised; full git→helper→app path is group 06 (G5b) | unverified | M4 |
 | M4/01 review | HungRemote wake-up race can drop a real connection instead of holding it; check under group 05's esc_cancels_hung_fetch | unverified | M4 |
+| M4/02 review | Askpass write_reply has no write timeout; close()'s join could hang on it | unverified | M4 |
+| M4/02 review | Remote-controlled text (prompts, failure reasons) is unsanitised in graft-git; group 06 must pass it through term::sanitize | unverified | M4 |
+| M4/02 review | RunError::Spawn mislabels a poisoned-sink error; WouldOverwrite multi-path parsing tested on one file only | broken (label) / unverified | M5 |
