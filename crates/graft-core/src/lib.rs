@@ -14,6 +14,7 @@ pub mod commit_handle;
 pub mod error;
 pub mod event;
 pub mod job;
+pub mod journal;
 pub mod mistake_radar;
 pub mod oid;
 pub mod raster;

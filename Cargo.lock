@@ -1582,6 +1582,7 @@ name = "graft-core"
 version = "0.1.0"
 dependencies = [
  "proptest",
+ "serde",
  "thiserror",
 ]
 
@@ -1627,6 +1628,8 @@ dependencies = [
  "graft-core",
  "graft-fixtures",
  "graft-git",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

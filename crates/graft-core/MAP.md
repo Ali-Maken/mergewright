@@ -29,7 +29,7 @@ One line per public item. Update when a public item changes.
 - `HandleSet` (struct) — bitset of handles; `new` / `insert` / `contains` / `remove` / `len` / `is_empty` / `approximate_bytes` (fn). `PartialEq`/`Eq` by member, not by representation (`remove` leaves its word behind).
 
 ## error
-- `Error` (enum) — a value a core constructor cannot represent.
+- `Error` (enum) — a value a core constructor cannot represent (`OidLength`, `OidHex`, `RefName`, `EntryId` (m3/02)).
 - `RefNameRule` (enum) — the `check-ref-format` rule a rejected ref broke.
 
 ## event
@@ -45,6 +45,14 @@ One line per public item. Update when a public item changes.
 - `JobId` (struct) — names one background job; `new` / `raw` (fn).
 - `JobFailure` (enum) — why a job produced no result: failed or panicked.
 
+## journal
+- `EntryId` (struct) — a journal entry's id, a ULID (26 Crockford base32 chars, time then random), `Ord` by string = by time; also the backup ref's last segment (ADR-0010); `new(unix_ms, random)` / `parse` / `as_str` (fn); serde as its text (m3/02).
+- `OperationKind` (enum) — `Stage`, `Unstage`, `Discard`, `Commit`, `Amend`, `StashPush`, `StashApply`, `StashPop`, `StashDrop`, `Undo`, `Redo` (m3/02).
+- `EntryStatus` (enum) — `Pending`, `Committed`, `Aborted { reason }` (m3/02).
+- `Touches` (struct) — what an operation changes: `refs` (full names, or `HEAD` when detached), `index`, `worktree`; the snapshot scope and the generic inverse's steps (m3/02).
+- `HeadRef` (enum) — `Branch(full name)`, `Detached(Oid)`, `Unborn(full name)` (m3/02).
+- `JournalEntry` (struct) — one journaled operation, state-based (ADR-0031): `id`, `at_unix_ms`, `kind`, `description`, `status`, `touches`, `head_before`/`head_after`, `refs_before`/`refs_after` (`BTreeMap<String, Option<Oid>>`), `index_before`/`index_after`, `worktree_before`/`worktree_after` (tree ids), `backup_ref`, `pins`, `commands`, `reverses`. Serde derives; the JSONL lines are `graft-ops::journal`'s (m3/02).
+
 ## mistake_radar
 - `MistakeRadarKind` (enum) — the seven PROMPT §1.4 kinds: `BackwardMerge`, `FoxtrotMerge`, `AccidentalPullMerge`, `EvilMerge`, `DuplicateCommit`, `ForcePushedRemote`, `RiskyState`.
 - `MistakeRadarKind::ALL` (const) — every kind, in declaration order (`graft-ops::mistake_radar::Policy` indexes by it).
@@ -54,6 +62,7 @@ One line per public item. Update when a public item changes.
 ## oid
 - `Oid` (struct) — a git object id, 20 or 32 bytes inline; `SHA1_BYTES` / `MAX_BYTES` (const).
 - `Oid::from_bytes` / `from_hex` / `as_bytes` (fn) — build, parse, read.
+- `Oid` serde — as lowercase hex text (m3/02).
 
 ## raster
 - `RasterFrame` (struct) — the pixel renderer's strip: `width`, `height`, `rows`, `columns`, premultiplied RGBA `pixels`, never a painted background.

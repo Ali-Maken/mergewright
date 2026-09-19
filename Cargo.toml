@@ -24,6 +24,10 @@ graft-ui = { path = "crates/graft-ui" }
 # hand-written and kept in step (PROMPT.md 6.2). Only the crates that define
 # an error type depend on it.
 thiserror = "2.0.20"
+# The undo journal is JSONL (DESIGN.md §6.1): `graft-core` derives the entry
+# shape, `graft-ops` writes and parses the lines. Versions match `crates/graft`.
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
 
 # PROMPT.md 6.2's "enforced, not hoped for": every rule that a lint can check
 # is a lint, so the gate catches it instead of a reviewer. Each crate root

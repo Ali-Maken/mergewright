@@ -9,6 +9,9 @@ publish.workspace = true
 # No internal dependencies: `core` is the root of the layering (ARCHITECTURE.md).
 [dependencies]
 thiserror.workspace = true
+# The journal entry (`journal.rs`) is the one core type that is also a file
+# format; serde stays an external, behaviour-free derive.
+serde.workspace = true
 
 [lints]
 workspace = true

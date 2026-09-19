@@ -9,6 +9,10 @@ publish.workspace = true
 [dependencies]
 graft-core.workspace = true
 graft-git.workspace = true
+# The journal file is JSONL (DESIGN.md §6.1); `journal.rs` renders and parses
+# its lines. Nothing else in this crate serialises.
+serde.workspace = true
+serde_json.workspace = true
 
 [features]
 # Forwards the heavy tier to the fixtures, as `graft-git` does, so one

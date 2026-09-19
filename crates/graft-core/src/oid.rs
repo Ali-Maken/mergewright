@@ -110,6 +110,21 @@ impl fmt::Display for Oid {
     }
 }
 
+/// An `Oid` serialises as its lowercase hex text — the one form a person
+/// reading the undo journal by hand (DESIGN.md §6.1) or `git` itself accepts.
+impl serde::Serialize for Oid {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(self)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Oid {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let hex = <std::borrow::Cow<'de, str>>::deserialize(deserializer)?;
+        Self::from_hex(&hex).map_err(serde::de::Error::custom)
+    }
+}
+
 impl fmt::Debug for Oid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Oid({self})")

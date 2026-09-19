@@ -34,6 +34,13 @@ pub enum Error {
         /// Which rule it broke.
         reason: RefNameRule,
     },
+    /// A journal entry id that is not a ULID: 26 Crockford base32 characters,
+    /// the first no greater than `7`.
+    #[error("not a journal entry id: \"{text}\"")]
+    EntryId {
+        /// The offered text, escaped for display.
+        text: String,
+    },
 }
 
 /// The `git check-ref-format` rule a rejected ref name broke.
