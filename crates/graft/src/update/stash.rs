@@ -178,9 +178,9 @@ pub(super) fn stash_key(
     false
 }
 
-/// The overlay's own keys. The prompt is modal within it: while it is open
-/// every printable key is text, so `p` types a `p` rather than popping a
-/// stash.
+/// The overlay's own keys, with the prompt shut. While the prompt is open
+/// [`stash_key`] has already sent the key to [`prompt_key`], so `p` types a
+/// `p` rather than popping a stash.
 fn shown_key(
     next: &mut AppState,
     commands: &mut Vec<Command>,
