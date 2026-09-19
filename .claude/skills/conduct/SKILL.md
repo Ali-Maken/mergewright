@@ -21,6 +21,7 @@ You coordinate and the helpers do the work. **Your context must stay small**, be
   - `git log --oneline -10` and `git status --short`
 - **Model check:** this session should be Opus. If it isn't, tell the user to run `/model opus` and stop.
 - **Every piece of work goes to a fresh helper** via the Agent tool, **one group per helper** (ADR-0029) — the group's pieces run inside that one context, so the prefix is read once. Tell it the milestone, the group ID and path, and "Read CLAUDE.md first."
+- **Always pass `model:` explicitly for an unnamed agent.** `general-purpose`, `Explore` and any agent without a definition file **inherit the conductor's model — Opus** — so an unpinned research or docs job silently runs at Opus prices. It happened once in M3: the naming research ran 127,775 tokens on Opus for work CLAUDE.md routes to Sonnet. Research, docs, summarising and scouting → `model: "sonnet"` or `"haiku"`.
 - **Whom to dispatch:**
   - `planner-fable` — the milestone's design pass **and its ticket specs** (M2 onward); a spec-only pass when a split needs new decisions; the M8 architecture-pass ticket
   - `builder-sonnet` / `builder-opus` / `builder-fable` — whatever the ticket's `Build with` line says (`Fable (signature)` → `builder-fable`)

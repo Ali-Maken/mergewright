@@ -67,6 +67,9 @@ name chosen in M8. Don't publish, register or tag anything public under it.
 | Reviews, **every milestone from M2** (M1: Opus) | `reviewer` | Fable, high |
 | **M8 architecture pass** (MAP.md + public interfaces, never source) | `planner-fable` | Fable, high |
 | Debugging | `debugger` | Fable |
+| Research, docs, summarising, scouting | unnamed agent — **pass `model:` explicitly** | Sonnet or Haiku |
+
+**An agent with no definition file inherits the conductor's model (Opus).** Never dispatch `general-purpose` or `Explore` without naming the model; an unpinned docs or research job costs Opus for Sonnet work.
 
 - **Design pass (M2 onward):** `planner-fable` reads only the named PROMPT.md/DESIGN.md sections and crate MAP.md files — never source. **Brownfield group (touches existing code) → send a scout first** (ADR-0035: `Explore`, haiku/sonnet, ≤1 page per module: what exists, what state it holds, what it draws, which keys it claims). Greenfield keeps the old rule. Writes:
   1. `docs/design-notes/<milestone>.md`, two pages max: the milestone's promise (one line); interfaces/data shapes introduced; 2–3 hard-to-reverse choices with a recommendation each; where it differs from DESIGN.md and why; genuinely risky tickets; new UI DESIGN.md doesn't already specify (layout, per-breakpoint content, hierarchy, interaction), **as per-breakpoint mockups the user reads at the checkpoint where the design pass lands** (ADR-0035; no new stop — that checkpoint already exists).
