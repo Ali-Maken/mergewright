@@ -67,9 +67,26 @@ impl App {
     /// Open a repository the way the real loop does, and hand back the
     /// starting state.
     pub fn open(repo: &Path) -> (Self, AppState) {
+        Self::open_with(repo, None)
+    }
+
+    /// Open with `graft` itself as git's askpass helper (m4-remotes/06).
+    ///
+    /// The runner defaults to `current_exe`, which under `cargo test` is the
+    /// test binary and has no askpass mode; a test that means to answer a
+    /// credential question names `CARGO_BIN_EXE_graft` here.
+    pub fn open_with_askpass(repo: &Path, helper: std::path::PathBuf) -> (Self, AppState) {
+        Self::open_with(repo, Some(helper))
+    }
+
+    fn open_with(repo: &Path, askpass_helper: Option<std::path::PathBuf>) -> (Self, AppState) {
         let (sender, events) = mpsc::channel();
         let store = Arc::new(RepoStore::new(repo.to_path_buf(), None));
         let jobs = JobRunner::start(sender, 2, store).expect("the job pool starts");
+        let jobs = match askpass_helper {
+            Some(helper) => jobs.with_askpass_helper(helper),
+            None => jobs,
+        };
         for command in [
             Command::OpenRepository,
             Command::CheckSystemGit,
