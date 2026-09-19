@@ -1,15 +1,22 @@
-//! Counting the working tree's changes: staged, unstaged and untracked
-//! files, for the uncommitted-changes row (PROMPT.md §1.3).
+//! The working tree's changes: [`counts`] for the uncommitted-changes row
+//! (PROMPT.md §1.3, M2), [`read`] for the file-by-file staging view (M3).
 //!
-//! Read by a job, never by `update`: gix's status iterator walks the index
-//! and the worktree, which touches disk. [`counts`] is the one entry point.
-//! It reports numbers, not paths — the file tree those numbers break down
-//! into is the staging view (M3); this ticket only needs "how many".
+//! Both are reads, both touch disk, both are a job's work, never `update`'s.
+//! They go different ways to get there: `counts` walks `gix`'s status
+//! iterator directly; `read` parses `git status --porcelain=v2 -z`. That is
+//! the one git command that honours `GIT_OPTIONAL_LOCKS=0` (M2 review round
+//! 2, R2 Major 1) — a read must never refresh and rewrite `.git/index`, and
+//! porcelain `git diff` does exactly that, which is why every other read in
+//! this crate goes through plumbing instead. `git status` is the exception,
+//! not the rule.
 
 #[cfg(test)]
 mod tests;
 
+use std::path::{Path, PathBuf};
+
 use crate::repo::RepoHandle;
+use crate::run::{GitArg, GitInvocation, RunError, Stop};
 
 /// How many files are staged, changed but unstaged, and untracked.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -37,7 +44,7 @@ impl WorkingTreeCounts {
     }
 }
 
-/// Why counting the working tree's changes failed.
+/// Why counting or reading the working tree's changes failed.
 #[derive(Debug, thiserror::Error)]
 pub enum StatusError {
     /// The status platform could not be built.
@@ -49,6 +56,328 @@ pub enum StatusError {
     /// A status entry could not be read partway through the walk.
     #[error(transparent)]
     Item(#[from] Box<gix::status::iter::Error>),
+    /// `git status` itself could not be run.
+    #[error(transparent)]
+    Run(#[from] RunError),
+    /// `git status --porcelain=v2 -z` printed something
+    /// [`parse_porcelain_v2`] cannot read: an unrecognised record kind, an
+    /// `XY` letter that is not one of `.MADRCT`, a rename record with no
+    /// following original-path record, or too few fields in a record.
+    #[error("git status printed something Graft cannot parse: {0}")]
+    Malformed(String),
+}
+
+/// One side's state in an `XY` pair, or a submodule's `sub` field: `Some` for
+/// a real change, `None` for `.` (unchanged on that side).
+fn side_change(letter: u8) -> Result<Option<Change>, StatusError> {
+    Ok(match letter {
+        b'.' => None,
+        b'M' => Some(Change::Modified),
+        b'A' => Some(Change::Added),
+        b'D' => Some(Change::Deleted),
+        b'R' => Some(Change::Renamed),
+        b'C' => Some(Change::Copied),
+        b'T' => Some(Change::TypeChanged),
+        other => {
+            return Err(StatusError::Malformed(format!(
+                "unrecognised status letter {:?}",
+                other as char
+            )));
+        }
+    })
+}
+
+/// One kind of per-file change a porcelain v2 record's `X` or `Y` column can
+/// hold. Coarser than [`crate::diff::FileStatus`]: no similarity score, no
+/// `Untracked`/`Unmerged` (those are [`StatusEntry`]'s own flags, since a
+/// record's two columns can never both be untracked or unmerged at once).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Change {
+    /// `A`: new to the index or the worktree.
+    Added,
+    /// `M`: content differs.
+    Modified,
+    /// `D`: gone from the index or the worktree.
+    Deleted,
+    /// `R`: moved, same or different content (a rename record, `2`).
+    Renamed,
+    /// `C`: copied from another tracked file (a rename record, `2`).
+    Copied,
+    /// `T`: the entry type changed — file to symlink, and the like.
+    TypeChanged,
+}
+
+/// One path `git status --porcelain=v2` reported: at most one staged and one
+/// unstaged [`Change`], or untracked, or a merge conflict — never more than
+/// one of those three at once.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StatusEntry {
+    /// The path, as git printed it — the new path for a rename.
+    pub path: PathBuf,
+    /// The path this one was renamed or copied from (rename records only).
+    pub original_path: Option<PathBuf>,
+    /// The change between `HEAD` and the index, if any.
+    pub staged: Option<Change>,
+    /// The change between the index and the worktree, if any.
+    pub unstaged: Option<Change>,
+    /// A worktree entry the index does not know about at all.
+    pub untracked: bool,
+    /// An unresolved merge conflict (a porcelain v2 `u` record).
+    pub unmerged: bool,
+    /// The path is a submodule (the record's `sub` field starts with `S`).
+    pub submodule: bool,
+}
+
+impl StatusEntry {
+    /// Has a staged change: differs between `HEAD` and the index.
+    #[must_use]
+    pub fn is_staged(&self) -> bool {
+        self.staged.is_some()
+    }
+
+    /// Has an unstaged change: differs between the index and the worktree.
+    #[must_use]
+    pub fn is_unstaged(&self) -> bool {
+        self.unstaged.is_some()
+    }
+}
+
+/// Every changed, untracked and unmerged path in the working tree, as
+/// [`read`] or [`parse_porcelain_v2`] found them.
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct WorkingTreeStatus {
+    /// One entry per path git printed, in the order git printed them.
+    pub entries: Vec<StatusEntry>,
+}
+
+impl WorkingTreeStatus {
+    /// Entries with a staged change.
+    pub fn staged(&self) -> impl Iterator<Item = &StatusEntry> {
+        self.entries.iter().filter(|entry| entry.is_staged())
+    }
+
+    /// Entries with an unstaged change.
+    pub fn unstaged(&self) -> impl Iterator<Item = &StatusEntry> {
+        self.entries.iter().filter(|entry| entry.is_unstaged())
+    }
+
+    /// Untracked entries.
+    pub fn untracked(&self) -> impl Iterator<Item = &StatusEntry> {
+        self.entries.iter().filter(|entry| entry.untracked)
+    }
+
+    /// No entries at all: nothing staged, unstaged, untracked or unmerged.
+    #[must_use]
+    pub fn is_clean(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    /// How many entries are staged, unstaged and untracked — the same shape
+    /// [`counts`] reports, taken from an already-read status instead of a
+    /// second walk.
+    #[must_use]
+    pub fn counts(&self) -> WorkingTreeCounts {
+        WorkingTreeCounts {
+            staged: self.staged().count(),
+            unstaged: self.unstaged().count(),
+            untracked: self.untracked().count(),
+        }
+    }
+
+    /// The entry at `path`, if git reported one.
+    #[must_use]
+    pub fn entry(&self, path: &Path) -> Option<&StatusEntry> {
+        self.entries.iter().find(|entry| entry.path == path)
+    }
+}
+
+/// Parses `git status --porcelain=v2 -z`'s output. Pure: no `git` spawn, a
+/// `cargo-fuzz` target (`fuzz/fuzz_targets/parse_porcelain_v2.rs`) — malformed
+/// input is an `Err`, never a panic.
+///
+/// Handles the four record kinds `-z --untracked-files=all --renames`
+/// produces: `1` (ordinary), `2` (rename/copy — its NUL-terminated original
+/// path is the *next* record in the stream), `u` (unmerged) and `?`
+/// (untracked). A `!` (ignored) record is skipped rather than rejected,
+/// since a caller could in principle pass `--ignored` even though `read`
+/// itself never does. Branch-header `#` records are rejected: `read` never
+/// asks for `--branch`, so one appearing means the input is not what this
+/// parser was built for.
+///
+/// # Errors
+/// [`StatusError::Malformed`] for anything the format above does not cover.
+pub fn parse_porcelain_v2(bytes: &[u8]) -> Result<WorkingTreeStatus, StatusError> {
+    let mut entries = Vec::new();
+    let mut records = bytes.split(|&b| b == 0);
+    while let Some(record) = records.next() {
+        if record.is_empty() {
+            continue;
+        }
+        match record[0] {
+            b'1' => entries.push(parse_ordinary(record)?),
+            b'2' => {
+                let mut entry = parse_rename(record)?;
+                // An empty next piece reads the same as a missing one: a
+                // real path is never empty, so this also catches a rename
+                // that is the very last record with no origin following it
+                // — the buffer's own trailing NUL would otherwise look like
+                // one (a capped or truncated output ends exactly this way).
+                let original = records
+                    .next()
+                    .filter(|piece| !piece.is_empty())
+                    .ok_or_else(|| {
+                        StatusError::Malformed(
+                            "a rename record's original path is missing".to_owned(),
+                        )
+                    })?;
+                entry.original_path = Some(bytes_to_pathbuf(original));
+                entries.push(entry);
+            }
+            b'u' => entries.push(parse_unmerged(record)?),
+            b'?' => entries.push(parse_untracked(record)?),
+            b'!' => {}
+            other => {
+                return Err(StatusError::Malformed(format!(
+                    "unrecognised porcelain v2 record kind {:?}",
+                    other as char
+                )));
+            }
+        }
+    }
+    Ok(WorkingTreeStatus { entries })
+}
+
+/// Splits one record into exactly `count` space-separated fields, the last
+/// of which is everything remaining (a path may itself hold spaces).
+fn fields(record: &[u8], count: usize) -> Result<Vec<&[u8]>, StatusError> {
+    let parts: Vec<&[u8]> = record.splitn(count, |&b| b == b' ').collect();
+    if parts.len() != count {
+        return Err(StatusError::Malformed(format!(
+            "expected {count} fields, found {}",
+            parts.len()
+        )));
+    }
+    Ok(parts)
+}
+
+/// `XY` is always two ASCII letters.
+fn xy(field: &[u8]) -> Result<(u8, u8), StatusError> {
+    match field {
+        [x, y] => Ok((*x, *y)),
+        _ => Err(StatusError::Malformed(
+            "an XY field must be two characters".to_owned(),
+        )),
+    }
+}
+
+/// A `sub` field starting with `S` marks a submodule.
+fn is_submodule(field: &[u8]) -> bool {
+    field.first() == Some(&b'S')
+}
+
+/// `1 XY sub mH mI mW hH hI path`
+fn parse_ordinary(record: &[u8]) -> Result<StatusEntry, StatusError> {
+    let f = fields(record, 9)?;
+    let (x, y) = xy(f[1])?;
+    Ok(StatusEntry {
+        path: bytes_to_pathbuf(f[8]),
+        original_path: None,
+        staged: side_change(x)?,
+        unstaged: side_change(y)?,
+        untracked: false,
+        unmerged: false,
+        submodule: is_submodule(f[2]),
+    })
+}
+
+/// `2 XY sub mH mI mW hH hI X<score> path` (original path is the next
+/// record; the caller fills it in).
+fn parse_rename(record: &[u8]) -> Result<StatusEntry, StatusError> {
+    let f = fields(record, 10)?;
+    let (x, y) = xy(f[1])?;
+    Ok(StatusEntry {
+        path: bytes_to_pathbuf(f[9]),
+        original_path: None,
+        staged: side_change(x)?,
+        unstaged: side_change(y)?,
+        untracked: false,
+        unmerged: false,
+        submodule: is_submodule(f[2]),
+    })
+}
+
+/// `u XY sub m1 m2 m3 mW h1 h2 h3 path`
+fn parse_unmerged(record: &[u8]) -> Result<StatusEntry, StatusError> {
+    let f = fields(record, 11)?;
+    // `XY` here is a conflict pairing (`UU`, `AA`, `DD`, `AU`, `UA`, `UD`,
+    // `DU`), not a `Change` — `unmerged` alone says what happened; nothing
+    // downstream needs the pairing, and a `U` would not parse as a `Change`.
+    xy(f[1])?;
+    Ok(StatusEntry {
+        path: bytes_to_pathbuf(f[10]),
+        original_path: None,
+        staged: None,
+        unstaged: None,
+        untracked: false,
+        unmerged: true,
+        submodule: is_submodule(f[2]),
+    })
+}
+
+/// `? path`
+fn parse_untracked(record: &[u8]) -> Result<StatusEntry, StatusError> {
+    let f = fields(record, 2)?;
+    Ok(StatusEntry {
+        path: bytes_to_pathbuf(f[1]),
+        original_path: None,
+        staged: None,
+        unstaged: None,
+        untracked: true,
+        unmerged: false,
+        submodule: false,
+    })
+}
+
+#[cfg(unix)]
+fn bytes_to_pathbuf(bytes: &[u8]) -> PathBuf {
+    use std::os::unix::ffi::OsStrExt;
+    PathBuf::from(std::ffi::OsStr::from_bytes(bytes))
+}
+
+#[cfg(not(unix))]
+fn bytes_to_pathbuf(bytes: &[u8]) -> PathBuf {
+    // Windows paths are UTF-16; git for Windows reads/writes paths as UTF-8.
+    PathBuf::from(String::from_utf8_lossy(bytes).into_owned())
+}
+
+/// Reads the working tree's full status: every staged, unstaged, untracked
+/// and unmerged path.
+///
+/// One spawn, `git -c core.quotepath=off status --porcelain=v2 -z
+/// --untracked-files=all --renames` — `GIT_OPTIONAL_LOCKS=0` is already set
+/// by [`GitInvocation`] itself. A bare repository has no worktree to read and
+/// reports empty, as [`counts`] does.
+///
+/// # Errors
+/// [`StatusError::Run`] if `git` could not be run or exited non-zero;
+/// [`StatusError::Malformed`] if it printed something [`parse_porcelain_v2`]
+/// cannot read.
+pub fn read(repo: &RepoHandle, stop: &dyn Stop) -> Result<WorkingTreeStatus, StatusError> {
+    if repo.is_bare() {
+        return Ok(WorkingTreeStatus::default());
+    }
+    let output = GitInvocation::new(repo)
+        .args([
+            GitArg::Flag("-c"),
+            GitArg::Flag("core.quotepath=off"),
+            GitArg::Flag("status"),
+            GitArg::Flag("--porcelain=v2"),
+            GitArg::Flag("-z"),
+            GitArg::Flag("--untracked-files=all"),
+            GitArg::Flag("--renames"),
+        ])
+        .run(stop)?;
+    parse_porcelain_v2(&output.stdout)
 }
 
 /// Count staged, unstaged and untracked files.

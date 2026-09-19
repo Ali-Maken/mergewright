@@ -148,8 +148,13 @@ One line per public item. Update when a public item changes.
 ## status
 - `WorkingTreeCounts` (struct) — how many files are staged, unstaged and untracked.
 - `WorkingTreeCounts::is_clean` (fn) — no staged, unstaged or untracked changes.
-- `StatusError` (enum) — why counting the working tree's changes failed.
-- `counts` (fn) — count staged, unstaged and untracked files (bare repos report clean).
+- `StatusError` (enum) — why counting or reading the working tree's changes failed (`Run`/`Malformed` added m3/01).
+- `counts` (fn) — count staged, unstaged and untracked files (bare repos report clean). Unchanged: still gix's own status iterator.
+- `Change` (enum) — one side's per-file state: `Added`, `Modified`, `Deleted`, `Renamed`, `Copied`, `TypeChanged` (m3/01).
+- `StatusEntry` (struct) — one path's status: `path`, `original_path` (renames/copies), `staged`/`unstaged` (`Option<Change>`), `untracked`, `unmerged`, `submodule`; `is_staged`/`is_unstaged` (m3/01).
+- `WorkingTreeStatus` (struct) — `entries: Vec<StatusEntry>`; `staged`/`unstaged`/`untracked` (iterators), `is_clean`, `counts` (→ `WorkingTreeCounts`), `entry(path)` (m3/01).
+- `parse_porcelain_v2` (fn) — pure parser for `git status --porcelain=v2 -z` output; a `cargo-fuzz` target (m3/01).
+- `read` (fn) — one `git -c core.quotepath=off status --porcelain=v2 -z --untracked-files=all --renames` spawn through `run` (`GIT_OPTIONAL_LOCKS=0` from the runner itself); bare repos report empty (m3/01).
 
 ## version
 - `GitVersion` (struct) — a parsed `major.minor.patch` git version.
