@@ -108,3 +108,26 @@ routinely broken teaches every helper that the rules are advisory. Applied now:
   continuation, and no increase in false ticks. If M4 takes more than 7 hours, or if
   parallel builders produce merge conflicts the conductor cannot resolve from the specs,
   this ADR is wrong and the next milestone goes back to serial builders.
+
+## The conductor is a concurrent writer too
+
+Added 2026-09-19, from two collisions the same afternoon. Worktree isolation
+was written for builders against each other; it applies equally to the
+conductor working alongside one. `git add` writes the shared `.git/index`, so
+the next commit from *either* side takes everything staged:
+
+- `ace834e` (conductor, `git add -A`) swept a builder's uncommitted
+  `crates/graft/src/jobs/undo.rs` (+69), `ARCHITECTURE.md` and three `MAP.md`
+  files into a rules commit.
+- `6d6098d` (builder) swept the conductor's staged `scripts/toolchain-bench.sh`
+  into `m3-06-fixes`.
+
+Neither lost work and the reviewer's `fbbbb4e..HEAD` diff still sees all of it,
+but both misattribute, and AUTHORSHIP.md is generated from commits and logs.
+History was left intact: amending `HEAD` under a live builder risks its work,
+which is the worse trade.
+
+**Rule:** the conductor does not stage or commit while a helper is running. It
+queues its edits and commits between helpers — which ADR-0029's "batch the
+ceremony per group" already implied and this makes binding.
+
