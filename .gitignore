@@ -4,3 +4,5 @@
 
 # Scratch paste-blocks dropped in by the desktop app; not part of the repo
 Claude outputs/
+.claude/worktrees/
+target-g*/
