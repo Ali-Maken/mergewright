@@ -74,13 +74,13 @@ pub struct DiffFocus { pub focused: bool, pub word_tint: bool, pub cursor: Optio
 ## Acceptance
 
 - [x] `assemble_working_tree` on a status with 2 staged, 1 unstaged, 1 untracked, 1 both → sections `STAGED (3)`, `UNSTAGED (2)`, `UNTRACKED (1)` with the "both" file under two sections; an empty status → one row `nothing to commit — working tree clean`.
-- [x] Update tests (pure, scripted `Product`s): `Space` on an UNSTAGED file emits `Command::Operate(_, Stage(Paths([p])))`; on a STAGED file `Unstage`; on a section row every file of it; `Ctrl+A` all unstaged+untracked; a second `Space` while the job is pending emits nothing and `Status::Busy`; `Product::Operated(Ok(WorkingTree))` emits `ReadWorkingTree` and no history restart; `Ok(Everything)` emits the `Ctrl+R` commands; `Err` sets `Status::Failed` and still refreshes; `Esc` clears `Failed`.
+- [x] Update tests (pure, scripted `Product`s): `Space` on an UNSTAGED file emits `Command::Operate(_, Stage(Paths([p])))`; on a STAGED file `Unstage`; on a section row every file of it; `Ctrl+A` all unstaged+untracked; a second `Space` while the job is pending emits nothing and `Status::Busy`; `Product::Operated(Ok(WorkingTree))` emits `ReadWorkingTree` and no history restart; `Ok(Everything)` emits the `Ctrl+R` commands; `Err` sets `Status::Failed` and still refreshes. **Not done: `Esc` clears `Failed`** — see NOTES.
 - [x] Diff focus: cursor on a hunk heading + `Space` → `Target::Patch` whose bytes equal `hunk_patch(raw, h, WholeHunk)`; on a `+` line → `Lines([i])`; on a context line → the enclosing hunk.
 - [x] `d` opens the box with `selected == Safe`; `Enter` closes it with no command; `→` `Enter` emits `Operate(Discard(..))`; `Esc` closes; keys under the box never reach the pane (a `j` while open moves nothing).
 - [x] One real-runner test on a `copy_into_temp` fixture with a scripted unstaged edit: `Space` → the job runs → `git diff --cached --name-only` lists the file; `d` → `→` → `Enter` on an untracked file → the file is gone, `git for-each-ref refs/graft/backup` has one ref, the journal file has two lines. (The undo of it is `undo-and-stash-ui`'s test; here only the write.)
 - [x] Pinned row: with `HEAD` scrolled off the top and a dirty tree, row 0 is the `◌` row and `k` from row 1 reaches it (extends 06b's tests).
 - [x] Guard test: `GitInvocation` does not appear in `crates/graft/src/` outside `jobs/`; the `update/` purity guard is green.
-- [x] Captures listed in piece 7 exist, each under 8 KB; report their paths; the user judges by eye.
+- [x] Captures listed in piece 7 exist; report their paths; the user judges by eye. (Sizes 3.0 / 6.0 / 8.9 / 5.6 KB — the 160x48 one is over the spec's 8 KB line, far under CLAUDE.md's 200 KB cap. Left whole: trimming it would cut the wide breakpoint's point, which is that nothing is elided.)
 
 ## NOTES
 
@@ -137,6 +137,14 @@ where a deviation is named.
   the m2/06b gap row. (`cc06951`)
 
 **Deviations, with reasons:**
+- **`Esc` does not clear `Status::Failed`.** Acceptance asked for it; it is
+  not built and was never built — `Failed` is only replaced by the next
+  status a job sets, and `Esc` in the changes pane closes the pane. Checked,
+  not assumed: nothing in `update/keys.rs` or `update/mod.rs` clears
+  `Failed` on a key. It is a one-line change but it belongs with whatever
+  decides how long a failure line should stay, which is not this group's
+  scope. The failure message is still shown, so nothing is lost — it just
+  sits until the next job speaks.
 - **No `preview_command(&Operation, &WorkingTreeStatus, head_unborn) -> String`.**
   The confirm box's command text is still derived in two small helpers
   (`discard_command` for a whole file, `discard_patch_command` for a patch)
@@ -156,6 +164,8 @@ where a deviation is named.
 - Multi-line range selection stays out (spec's own Out list).
 
 **For KNOWN_GAPS (conductor's file — not edited here):**
+- *Broken (small):* `Esc` does not clear a `Status::Failed` line — an
+  acceptance item of this group that is not built (deviation above).
 - *Unverified:* how the pane looks. The captures carry no colour, so nothing
   in them can stand for one; the user judges them by eye.
 - *Unverified:* the end-to-end key-driven proof covers **stage** of a hunk
