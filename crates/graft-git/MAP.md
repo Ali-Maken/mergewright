@@ -9,7 +9,8 @@ One line per public item. Update when a public item changes.
 - `history` (mod) — rev-walks: chunked, ordered, resumable.
 - `mailmap` (mod) — `.mailmap` resolution, via gix's own parser.
 - `editor` (mod) — `git_editor(directory) -> Result<String, EditorError>`: `git var GIT_EDITOR` through `run`, so the app's terminal hand-over does not need a bare `git` spawn of its own (m3/05 review M8). `EditorError` is `Run(RunError)` or `NoEditor`. The answer is a shell command, not a program name.
-- `run` (mod) — the typed runner for system `git`: typed args, byte paths, stdin, kill-on-stop, output cap (m2/01).
+- `run` (mod) — the typed runner for system `git`: typed args, byte paths, stdin, kill-on-stop, output cap (m2/01); streaming stderr segments and askpass routing (m4/02).
+- `remote` (mod) — configured remotes and a branch's upstream (gix config, no spawn), plus the pure readers of a remote command's stderr: failure classification and progress parsing (m4/02).
 - `repo` (mod) — opening a repository and reading `HEAD`, refs and tips from it.
 - `stash` (mod) — the stash list, from `refs/stash`'s own reflog (m3/01).
 - `state` (mod) — whether a merge, rebase, cherry-pick, revert or bisect is in progress (m3/01).
@@ -155,6 +156,27 @@ One line per public item. Update when a public item changes.
 - `GitOutput` (struct) — `stdout`, `stderr`, `truncated`.
 - `RunError` (enum) — `GitNotFound`, `Spawn(io)`, `Stopped`, `Exited { status, stderr_first_line, command }`, `Signalled { command }`; `Display` is one line.
 - Split into files, public items unchanged (m2 review M8): `exec.rs` is the child-process machinery `GitInvocation::spawn`/`supervise` are built on — pipe draining on their own threads, kill/reap, `GitArg` → `OsString`/shell-quoted text; this file keeps the types and `GitInvocation`'s own methods.
+- `GitInvocation::on_stderr_line` (fn, takes `Box<dyn FnMut(&[u8]) + Send>`) — each `\r`/`\n`-separated stderr segment handed over as it arrives (separators dropped, empties skipped, partials carried across reads, tail flushed at EOF), **on the drain thread**; `GitOutput.stderr` still whole and capped; clones share the sink (m4/02).
+- `GitInvocation::askpass` (fn, takes `&AskPassServer`) — sets `GIT_ASKPASS`/`SSH_ASKPASS` = the server's helper, `SSH_ASKPASS_REQUIRE=force`, `GRAFT_ASKPASS_SOCKET` = its socket; `GIT_TERMINAL_PROMPT=0` stays; no credential in env or argv (m4/02).
+
+## run/askpass
+- `AskPass` (trait) — `ask(&self, prompt: &str) -> Option<Secret>`, `Send + Sync`; runs on a server-owned thread, may block; `None` = cancelled.
+- `Secret` (struct) — credential bytes; `new(Vec<u8>)`, `expose(&self) -> &[u8]`; `Debug` prints `Secret(…)`; no `Display`/`Clone`; `Drop` zeroes the whole allocation (safe code + `black_box`: the crate forbids `unsafe`).
+- `AskPassServer` (struct) — `spawn(helper: PathBuf, handler: Arc<dyn AskPass>) -> io::Result<Self>` makes `temp_dir()/graft-askpass-<pid>-<n>` (0700) with `ask.sock`, one listener thread; `socket_path()`, `helper()`; `close(self) -> io::Result<()>` stops, joins, unlinks, rmdirs (a waiting helper gets EOF); `Drop` does the same, ignoring errors; `Debug` shows socket and helper only.
+- `respond` (fn) — `respond(socket: &Path, prompt: &str, out: &mut dyn Write) -> Result<(), RespondError>`: the helper half (Graft's binary in askpass mode) — writes the answer + `\n` to `out`, nothing else.
+- `RespondError` (enum) — `Io(io::Error)`, `Cancelled` (exit non-zero), `Protocol(&'static str)`; `Display` one line.
+- Wire: helper sends `u32 BE len` + prompt (≤ 4 KiB, else closed); server replies `u8` status (0 answer, 1 cancelled) + `u32 BE len` + answer (helper accepts ≤ 64 KiB).
+
+## remote
+- `Remote` (struct) — `name`, `fetch_url` (`remote.<n>.url` as written), `push_url` (`pushurl`, if set).
+- `list` (fn) — `list(&RepoHandle) -> Result<Vec<Remote>, RemoteError>`: gix config, `origin` first then by name; a remote with no `url` is left out.
+- `TrackedUpstream` (struct) — `remote`, `remote_branch` (`refs/heads/x`), `tracking_ref` (through the fetch refspec, via `RepoHandle::upstream`), `tracking_tip: Option<Oid>` (`None` before the first fetch).
+- `upstream_of` (fn) — `upstream_of(&RepoHandle, branch: &str /* full */) -> Result<Option<TrackedUpstream>, RemoteError>`; `None` without `branch.<n>.remote`/`.merge` or when the refspec does not map the branch.
+- `RemoteError` (enum) — `Config(String)`, `Refs(RefsError)`; `Display` one line.
+- `RemoteFailure` (enum) — `AuthFailed { target }`, `NonFastForward`, `StaleInfo`, `RemoteRejected { reason }`, `NoSuchRemote { name }`, `Unreachable { target }`, `NotFastForward`, `WouldOverwrite { paths }`, `Cancelled` (caller sets it from `RunError::Stopped`), `Other { first_line }`.
+- `classify_failure` (fn) — `classify_failure(stderr: &[u8]) -> RemoteFailure`: pure, reads every line (`LC_ALL=C` English), rules in the order above, first match wins; unmatched → `Other` with the first `fatal:`/`error:` line (else first non-progress line) verbatim. Tests hold real git 2.54 stderr.
+- `RemoteProgress` (struct) — `phase` (lower-case, no colon), `percent`, `done`, `total`, `rate` (git's text); `brief()` → `<phase> <pct>%` / `<phase> <done>/<total>` / `<phase>`, ≤ 32 chars.
+- `parse_progress` (fn) — `parse_progress(segment: &[u8]) -> Option<RemoteProgress>`: one stderr segment; `remote: ` and its padding stripped; `None` for ref updates, `hint:`/`error:`/`fatal:`, anything else.
 
 ## stash
 - `StashEntry` (struct) — `index` (`0` newest), `commit`, `message` (git's own reflog message), `at`, `paths` (tracked changes plus, for `-u`/`-a`, the untracked-files commit's own paths) (m3/01).

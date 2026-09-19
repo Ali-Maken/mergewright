@@ -585,6 +585,66 @@ mod tests {
         server.close().expect("closes cleanly");
     }
 
+    /// Answers every ask with one known password.
+    struct Answers(&'static [u8]);
+
+    impl askpass::AskPass for Answers {
+        fn ask(&self, _prompt: &str) -> Option<askpass::Secret> {
+            Some(askpass::Secret::new(self.0.to_vec()))
+        }
+    }
+
+    /// After a real exchange over the socket, the password is nowhere the
+    /// runner puts things: not the invocation's `Debug`, not its command
+    /// line, not the environment git hands its children, not git's output,
+    /// not the server's `Debug`. It went to the helper's `out` and nowhere
+    /// else. (The full git → helper → app path is proved where the helper
+    /// lives, in the app's askpass mode.)
+    #[test]
+    fn the_password_never_reaches_the_invocation() {
+        const PASSWORD: &str = "hunter2-do-not-leak";
+        let server = askpass::AskPassServer::spawn(
+            std::path::PathBuf::from("/opt/graft"),
+            Arc::new(Answers(PASSWORD.as_bytes())),
+        )
+        .expect("the askpass server starts");
+        let mut helper_out = Vec::new();
+        askpass::respond(server.socket_path(), "Password:", &mut helper_out)
+            .expect("the exchange works");
+        assert_eq!(helper_out, format!("{PASSWORD}\n").into_bytes());
+
+        let repo = Fixture::empty_repo();
+        let invocation = GitInvocation::in_directory(repo.root())
+            .args([
+                GitArg::Flag("-c"),
+                GitArg::Flag("alias.showenv=!env"),
+                GitArg::Flag("showenv"),
+            ])
+            .askpass(&server)
+            .on_stderr_line(Box::new(|_| {}));
+        let output = invocation.run(&()).expect("git runs the alias");
+
+        for (place, text) in [
+            ("invocation Debug", format!("{invocation:?}")),
+            ("command line", invocation.command_line()),
+            (
+                "child env",
+                String::from_utf8_lossy(&output.stdout).into_owned(),
+            ),
+            (
+                "git stderr",
+                String::from_utf8_lossy(&output.stderr).into_owned(),
+            ),
+            ("server Debug", format!("{server:?}")),
+        ] {
+            assert!(
+                !text.contains(PASSWORD),
+                "the password leaked into the {place}"
+            );
+        }
+        server.close().expect("closes cleanly");
+    }
+
     /// A remote that needs no credentials never reaches the helper: askpass
     /// only adds a way to answer, it changes nothing else.
     #[test]
