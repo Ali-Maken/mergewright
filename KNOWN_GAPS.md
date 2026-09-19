@@ -464,8 +464,10 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M4/04 fix | Lease push to any branch other than HEAD's upstream is always refused | broken (limitation) | M5 |
 | M4/04 fix | New fix tests not run red against the old code first; review Minor 1 untested | unverified | M4 |
 | M4/05 review | `remote_event` re-match has a `_ => {}` catch-all (rule 3) | broken | M4 |
-| M4/05 review | `env::args()` panics on non-UTF-8 argv in askpass mode | broken | M5 |
+| M4/05 review | env::args() non-UTF-8 argv panic — closed: cli::from_process uses args_os/var_os, the only argv reader in crates/graft/src | closed | M4 |
 | M4/05 review | 11 Minors in docs/reviews/m4-05-remote-keys.md not yet triaged | unverified | M4 |
 | M4/06 | Sanitisation of remote text is convention, not type-enforced; a third path could skip it. SSH credential path untested (HTTP only) | unverified | M5 |
 | M4/06 review | Typed password lives in a plain TextField String, cloned by update() on every event and freed unzeroed; only Answer/Secret zeroes. Fixing it means a zeroing masked field in graft-ui + no per-event clone | broken (limitation, user's call) | M5 |
 | M4/06 review | 9 Minors in docs/reviews/m4-06-credential-prompt-wiring.md not yet triaged | unverified | M4 |
+| M4/05 fix | Esc cannot cancel u/U at all. Restoring it needs a between-step stop check + rollback in graft-ops restore::execute | broken (deliberate) | M5 |
+| M4/05 fix | Proof is that CancelJob is never sent, not that a mid-undo cancel is survived: no repo builds an undo long enough to press Esc | unverified | M5 |
