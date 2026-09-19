@@ -172,8 +172,12 @@ pub fn pixel_rows(state: &AppState, max_lanes: usize, strip_rows: usize) -> Pixe
     let first = history.window.as_ref().map_or(0, |window| window.first);
     let on_hand = first..first + window_rows.len();
 
-    // The same predicate `visible_rows` reads (`AppState::uncommitted_row_shown`).
-    let top_row = history.visible(1).first();
+    // The same predicates `visible_rows` reads: the row draws whenever the
+    // tree is dirty, and hangs off `HEAD`'s lane only while `HEAD` is on top.
+    let top_row = state
+        .uncommitted_row_attached()
+        .then(|| history.visible(1).first())
+        .flatten();
     let uncommitted = state.uncommitted_row_shown();
     let height = state.graph_rows().saturating_sub(usize::from(uncommitted));
 

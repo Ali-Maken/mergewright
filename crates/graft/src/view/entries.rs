@@ -62,7 +62,12 @@ pub(super) fn visible_rows<'a>(
     // The topmost visible row, independent of viewport height: whether the
     // uncommitted row attaches depends only on what is at the very top, not
     // on how many rows are shown below it.
-    let top_row = history.visible(1).first();
+    // `HEAD`'s row, but only while it is the topmost one: off screen, the
+    // uncommitted row draws as a lone `◌` with no lane under it.
+    let top_row = state
+        .uncommitted_row_attached()
+        .then(|| history.visible(1).first())
+        .flatten();
     let uncommitted = state
         .uncommitted_row_shown()
         .then(|| state.working_tree.as_ref().map(|status| status.counts()))

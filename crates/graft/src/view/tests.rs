@@ -563,17 +563,42 @@ fn all_three_are_named_together() {
     );
 }
 
+/// m3-working-tree-undo-and-stash/04: the row is pinned at row 0 whenever
+/// the tree is dirty. Scrolling away from `HEAD` used to hide the user's own
+/// uncommitted work — the one row they can always act on (`KNOWN_GAPS.md`,
+/// m2/06b). What `HEAD`'s position decides now is only whether the row hangs
+/// off `HEAD`'s lane or stands alone.
 #[test]
-fn the_row_is_hidden_when_head_is_not_the_topmost_visible_commit() {
+fn the_row_detaches_rather_than_hiding_when_head_is_not_on_top() {
+    let attached = state_with_head_and_counts(counts(1, 0, 0));
+    let view = graph_view(&attached, attached.harness.clock.now_seconds());
+    assert_eq!(view.rows[0].line.node, NodeKind::Uncommitted);
+    assert!(
+        !view.rows[0].line.row.outgoing.is_empty(),
+        "with HEAD on top the row hangs off HEAD's lane"
+    );
+
     // HEAD points at a commit that is not row 0 of what is on screen —
-    // scrolled down, say. The row must not draw beside the wrong commit.
-    let mut state = state_with_head_and_counts(counts(1, 0, 0));
-    state.refs = Some(std::sync::Arc::new(refs_with_head(Some(oid(1)))));
+    // scrolled down, say.
+    let mut detached = state_with_head_and_counts(counts(1, 0, 0));
+    detached.refs = Some(std::sync::Arc::new(refs_with_head(Some(oid(1)))));
 
-    let view = graph_view(&state, state.harness.clock.now_seconds());
+    let view = graph_view(&detached, detached.harness.clock.now_seconds());
 
-    assert_eq!(view.rows.len(), 3, "no virtual row");
-    assert_eq!(view.rows[0].line.row.commit.id, oid(3));
+    assert_eq!(
+        view.rows[0].line.node,
+        NodeKind::Uncommitted,
+        "the row still draws"
+    );
+    assert!(
+        view.rows[0].line.row.outgoing.is_empty() && view.rows[0].line.row.lanes.is_empty(),
+        "and draws alone: there is no lane to join when HEAD is off screen"
+    );
+    assert_eq!(
+        view.rows[1].line.row.commit.id,
+        oid(3),
+        "the history it displaced follows it"
+    );
 }
 
 #[test]

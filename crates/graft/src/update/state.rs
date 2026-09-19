@@ -226,32 +226,34 @@ impl AppState {
     }
 
     /// Does the uncommitted-changes row draw at the top of the viewport this
-    /// frame? m1-the-graph/12b's attachment rule, moved here so both `view`
-    /// (drawing it) and `update::selection` (selecting it) read one
-    /// predicate: refs answered, working-tree counts on hand and dirty, and
-    /// the topmost visible row is `HEAD` (or `HEAD` is unborn).
+    /// frame? Whenever the working tree is dirty
+    /// (m3-working-tree-undo-and-stash/04, design note "Changes pane").
     ///
-    /// Refs unresolved (the job has not answered yet) reads as "no": showing
-    /// the row and then possibly retracting it once the answer arrives would
-    /// flicker, and a clean-looking first frame is the safer guess.
+    /// It used to require `HEAD` to be the topmost visible row, which meant
+    /// scrolling down made the user's own uncommitted work disappear from
+    /// the screen — the one row they can always act on, gone because they
+    /// scrolled (`KNOWN_GAPS.md`, m2/06b). The row is pinned at row 0 now;
+    /// what `HEAD`'s position still decides is only whether it is drawn
+    /// hanging off `HEAD`'s lane or as a lone `◌`
+    /// ([`Self::uncommitted_row_attached`]).
+    ///
+    /// A clean tree, or no status read yet, is still "no".
     #[must_use]
     pub fn uncommitted_row_shown(&self) -> bool {
         let Some(status) = self.working_tree.as_deref() else {
             return false;
         };
-        !status.is_clean() && self.uncommitted_row_attached()
+        !status.is_clean()
     }
 
     /// Does the row sit on top of `HEAD`'s own lane this frame (the
     /// m1-the-graph/12b attachment rule): attached only while `HEAD` (or an
-    /// unborn branch) is the topmost visible row.
+    /// unborn branch) is the topmost visible row. Otherwise the row still
+    /// draws, as a lone `◌` with no lane line under it — there is no lane
+    /// to join when the commit it would hang from is off screen.
     ///
-    /// The design note for m3-working-tree-undo-and-stash/04 asks for the
-    /// row to pin to row 0 with a lone `◌` even when `HEAD` scrolls off the
-    /// top; that repaint of `view::entries` is out of this session's scope
-    /// (see the ticket's NOTES) — `uncommitted_row_shown` still hides the
-    /// row exactly as M2 did, so the known limitation
-    /// (`KNOWN_GAPS.md`, m2/06b) is unchanged, not widened.
+    /// Refs unresolved (the job has not answered yet) reads as "not
+    /// attached": guessing a lane and then retracting it would flicker.
     #[must_use]
     pub fn uncommitted_row_attached(&self) -> bool {
         let Some(history) = &self.history else {

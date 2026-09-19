@@ -2341,6 +2341,37 @@ fn k_from_the_top_row_selects_the_working_tree_row_and_asks_history_for_nothing(
     assert!(commands.is_empty(), "{commands:?}");
 }
 
+/// m3-working-tree-undo-and-stash/04: the row is pinned, so `k` still
+/// reaches it when `HEAD` is nowhere near the top. Before this it vanished
+/// the moment the user scrolled — the one row they can always act on, gone
+/// because they scrolled (`KNOWN_GAPS.md`, m2/06b).
+#[test]
+fn k_reaches_the_working_tree_row_even_with_head_scrolled_off() {
+    let mut state = dirty_on_screen(JobId::new(40));
+    // `HEAD` on a commit that is not the topmost visible row.
+    let elsewhere = graft_core::oid::Oid::from_bytes(&[0x5a; graft_core::oid::Oid::SHA1_BYTES])
+        .expect("20 bytes");
+    let badges = crate::refs::badges(
+        &[],
+        &graft_git::repo::HeadState::Detached(elsewhere),
+        &std::collections::HashMap::new(),
+        |_, _| unreachable!("no branches on this fixture to count"),
+    )
+    .expect("no refs to fail reading");
+    state.refs = Some(Arc::new(badges));
+    assert!(
+        state.uncommitted_row_shown(),
+        "the row draws: the tree is dirty"
+    );
+    assert!(
+        !state.uncommitted_row_attached(),
+        "but it is not on HEAD's lane"
+    );
+
+    let (next, _) = update(&state, key(KeyCode::Char('k')));
+    assert!(next.on_working_tree);
+}
+
 #[test]
 fn enter_on_the_working_tree_row_opens_the_pane_on_it() {
     let mut state = dirty_on_screen(JobId::new(41));
