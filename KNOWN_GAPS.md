@@ -217,6 +217,8 @@ exists.
 
 | Gap | Created by | Expiry |
 |---|---|---|
+| **Single-line stage and discard are refused on a hunk that ends a file with no trailing newline.** `PatchError::NoNewlineBoundary`. The whole hunk still stages and discards, byte-proved both directions. This is a deliberate refusal, not a silent failure: the alternative found in the group 01 review was `git apply --cached` exiting 0 and fusing two lines into one, i.e. wrong content in the index with no error. **Not broken — a narrowed feature with a visible message** | `m3-working-tree-undo-and-stash/01` review fix (`b47ae51`) | M7, if real use hits it; `docs/field-notes.md` decides |
+| **UNVERIFIED: the heavy tier's `many_refs::reading_tips_from_50k_real_refs_is_within_budget` fails in debug at 275 ms against a 200 ms guard.** Deterministic, predates M3 group 01 and is not its code. The release perf run is clean (13/13 in budget). Either the guard is a debug-inappropriate number or there is a real regression the release run is too fast to show — nothing has told them apart | pre-existing, surfaced by the M3 group 01 review | The M3 review's perf run: decide guard-vs-regression with numbers, never by relaxing the guard |
 | **No in-app conflict resolver.** M5 can produce conflicts through merge, rebase and cherry-pick before M6 builds the three-pane resolver. M5 must detect the conflicted state, list the conflicting files, offer the user's configured `git mergetool` or `$EDITOR`, and keep the operation banner with Continue / Skip / Abort available. M5 must not claim conflict resolution works | M5 | **M6** |
 
 ---
