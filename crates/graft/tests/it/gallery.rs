@@ -871,6 +871,11 @@ pub fn coverage_matrix(workspace: &Path) -> String {
         out.push('\n');
     }
     out.push_str(&details_matrix(&evidence));
+    // The walks' tables live with their scenarios; writing them here means
+    // `gallery --matrix`, `m3_walk --matrix` and `m4_walk --matrix` produce
+    // the same file, and none can drop another's table (m4-remotes/07).
+    out.push_str(&crate::m3_walk::working_tree_matrix(workspace));
+    out.push_str(&crate::m4_walk::remotes_matrix(workspace));
     out
 }
 

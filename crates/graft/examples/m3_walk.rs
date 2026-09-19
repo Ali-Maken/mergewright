@@ -38,6 +38,12 @@ mod app_harness;
 mod gallery;
 #[path = "../tests/it/m3_walk.rs"]
 mod m3_walk;
+#[allow(
+    dead_code,
+    reason = "the coverage matrix lists the M4 walk's captures; its scenarios are not run here"
+)]
+#[path = "../tests/it/m4_walk.rs"]
+mod m4_walk;
 
 use graft::event_loop::{self, Exit};
 use graft::session::Startup;
@@ -169,11 +175,10 @@ fn show(
     }
 }
 
-/// The gallery's two tables plus the working-tree captures' table, written
-/// where the gallery writes them.
+/// Every coverage table (the gallery's two, the working-tree one, the
+/// remotes one), written where the gallery writes them.
 fn write_matrix(workspace: &Path) -> ExitCode {
-    let mut matrix = gallery::coverage_matrix(workspace);
-    matrix.push_str(&m3_walk::working_tree_matrix(workspace));
+    let matrix = gallery::coverage_matrix(workspace);
     print!("{matrix}");
     let out = workspace.join("docs/shots/35-coverage-matrix.txt");
     match std::fs::write(&out, &matrix) {

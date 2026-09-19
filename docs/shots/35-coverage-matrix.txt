@@ -69,3 +69,17 @@ m3-05-commit-refused         C         C
 m3-09-undo-drift-box         C         C       
 m3-07-stash-prompt           C         C       
 m3-06-stash-list             C         C       
+
+Remotes coverage: capture × size (m4-remotes/07)
+Files docs/shots/<stem>-<WxH>.txt from .scratch/m4-remotes/pty-walk-m4.py;
+C the file exists, — it does not. Unicode tier only; colour is never captured.
+
+capture                    80x24     160x48  
+m4-01-push-box-plain       C         C       
+m4-02-push-box-lease       C         C       
+m4-06-rejected-sticky      C         C       
+m4-03-credential-masked    C         C       
+m4-04-credential-username  C         C       
+m4-05-progress-footer      C         C       
+m4-08-undo-after-push      C         C       
+m4-07-journal-remote-rows  C         C       

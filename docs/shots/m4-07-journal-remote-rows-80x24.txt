@@ -1,0 +1,26 @@
+m4 walk capture: m4-07-journal-remote-rows — scenario journal-rows, keys J, unicode tier, 80x24
+
+UNDO JOURNAL · /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-3V…
+▸ now       push main → origin/main   origin/main 7be74b5 → 76cd189 · not undoa…
+  now       pull origin/main          1 ref · the index · the working tree ·← u
+  now       fetch all remotes         remote-tracking refs · not undoable
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+⏎ undo this  space command log  J/esc close
