@@ -7,6 +7,7 @@
 //! caller directly on the buffer before this renders on top — the same split
 //! `graph_screen`'s row emphasis uses (background separately from text).
 
+use graft_term::{SanitizedText, sanitize_line};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
@@ -34,15 +35,31 @@ pub enum ContextAction {
     Push,
     /// Undo the last operation, the same as `u`.
     Undo,
+    /// One of the history verbs the app offered on this row — checkout,
+    /// merge, rebase, cherry-pick, revert, reset, a ref deletion or one of
+    /// the Mistake Radar's Fix items — named by its position in the list
+    /// the app passed to [`ContextMenu::for_row`].
+    ///
+    /// The index is all the widget knows. Which git operation the verb
+    /// means, and against which tips it is pinned, is the app's to decide,
+    /// at the same boundary it assembles every other view model: `ui` never
+    /// imports `git` or `ops` (`ARCHITECTURE.md`), and repo-derived text
+    /// reaches a widget only as [`SanitizedText`] (`DESIGN.md` §8.2), which
+    /// is what the label beside this index is.
+    History(usize),
 }
 
 /// One row of the menu.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+///
+/// The label is [`SanitizedText`] because a history verb names refs and
+/// commit subjects out of the repository (`Merge feature into main`), and
+/// repo-derived text crosses into a widget only through that newtype.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MenuItem {
     /// What choosing this item does.
     pub action: ContextAction,
     /// Its label.
-    pub label: &'static str,
+    pub label: SanitizedText,
 }
 
 /// The popup itself: its items and which one the cursor is on.
@@ -57,24 +74,26 @@ pub struct ContextMenu {
 /// The hints the width rule drops first and the user reaches for most: the
 /// remote verbs and undo, in the footer's own order. Every menu lists them,
 /// since none depends on which row the cursor is on.
-const ALWAYS_ITEMS: [MenuItem; 4] = [
+/// (A function rather than a `const`: [`SanitizedText`] owns its string, and
+/// only [`sanitize_line`] can make one.)
+fn always_items() -> [MenuItem; 4] {
+    [
+        item(ContextAction::Fetch, "Fetch (f)"),
+        item(ContextAction::Pull, "Pull (p)"),
+        item(ContextAction::Push, "Push (P)"),
+        item(ContextAction::Undo, "Undo (u)"),
+    ]
+}
+
+/// A fixed label this crate wrote itself. It still goes through
+/// [`sanitize_line`] so that `MenuItem::label` has one constructor rather
+/// than two, and no caller has to know which labels are safe by provenance.
+fn item(action: ContextAction, label: &str) -> MenuItem {
     MenuItem {
-        action: ContextAction::Fetch,
-        label: "Fetch (f)",
-    },
-    MenuItem {
-        action: ContextAction::Pull,
-        label: "Pull (p)",
-    },
-    MenuItem {
-        action: ContextAction::Push,
-        label: "Push (P)",
-    },
-    MenuItem {
-        action: ContextAction::Undo,
-        label: "Undo (u)",
-    },
-];
+        action,
+        label: sanitize_line(label),
+    }
+}
 
 impl ContextMenu {
     /// A commit row's menu: `Explain` first when the row is marked (design
@@ -88,28 +107,31 @@ impl ContextMenu {
     /// `J journal` and `/ search` open places of their own and are not here
     /// — the footer shows them from 160 columns, and `?` help (M8) is where
     /// the whole keymap finally lands.
+    ///
+    /// `history` is the labels of the history verbs the app offers on this
+    /// row, in the order it wants them listed; each becomes a
+    /// [`ContextAction::History`] carrying its index, and the app maps that
+    /// index back to the operation it means. They sit between the row's own
+    /// actions and the dropped keys.
     #[must_use]
-    pub fn for_row(marked: bool) -> ContextMenu {
-        let mut items = Vec::with_capacity(8);
+    pub fn for_row(marked: bool, history: Vec<SanitizedText>) -> ContextMenu {
+        let mut items = Vec::with_capacity(8 + history.len());
         if marked {
+            items.push(item(ContextAction::Explain, "Explain"));
+        }
+        items.push(item(ContextAction::CopySha, "Copy SHA (y)"));
+        items.push(item(
+            ContextAction::CompareWithThis,
+            "Compare with this (x)",
+        ));
+        items.push(item(ContextAction::OpenDetails, "Open details (⏎)"));
+        for (index, label) in history.into_iter().enumerate() {
             items.push(MenuItem {
-                action: ContextAction::Explain,
-                label: "Explain",
+                action: ContextAction::History(index),
+                label,
             });
         }
-        items.push(MenuItem {
-            action: ContextAction::CopySha,
-            label: "Copy SHA (y)",
-        });
-        items.push(MenuItem {
-            action: ContextAction::CompareWithThis,
-            label: "Compare with this (x)",
-        });
-        items.push(MenuItem {
-            action: ContextAction::OpenDetails,
-            label: "Open details (⏎)",
-        });
-        items.extend(ALWAYS_ITEMS);
+        items.extend(always_items());
         ContextMenu { items, cursor: 0 }
     }
 
@@ -118,11 +140,8 @@ impl ContextMenu {
     /// the same dropped keys every menu carries.
     #[must_use]
     pub fn for_working_tree() -> ContextMenu {
-        let mut items = vec![MenuItem {
-            action: ContextAction::OpenDetails,
-            label: "Open details (⏎)",
-        }];
-        items.extend(ALWAYS_ITEMS);
+        let mut items = vec![item(ContextAction::OpenDetails, "Open details (⏎)")];
+        items.extend(always_items());
         ContextMenu { items, cursor: 0 }
     }
 
@@ -148,7 +167,7 @@ impl ContextMenu {
         let longest = self
             .items
             .iter()
-            .map(|item| item.label.chars().count())
+            .map(|item| item.label.as_str().chars().count())
             .max()
             .unwrap_or(0);
         u16::try_from(longest).unwrap_or(u16::MAX).saturating_add(4)
@@ -171,7 +190,10 @@ impl Widget for &ContextMenu {
             } else {
                 Style::default()
             };
-            let text = fit(&format!(" {}", item.label), usize::from(area.width));
+            let text = fit(
+                &format!(" {}", item.label.as_str()),
+                usize::from(area.width),
+            );
             let y = area.y.saturating_add(offset);
             buf.set_stringn(area.x, y, text, usize::from(area.width), style);
         }
@@ -182,12 +204,16 @@ impl Widget for &ContextMenu {
 mod tests {
     use super::*;
 
+    fn labels(menu: &ContextMenu) -> Vec<&str> {
+        menu.items.iter().map(|item| item.label.as_str()).collect()
+    }
+
     /// The row's own actions, then the keys the bar drops
-    /// ([`ALWAYS_ITEMS`]): `. more` has to lead somewhere (m5-03 review,
+    /// ([`always_items`]): `. more` has to lead somewhere (m5-03 review,
     /// Major 1).
     #[test]
     fn for_row_omits_explain_when_not_marked() {
-        let menu = ContextMenu::for_row(false);
+        let menu = ContextMenu::for_row(false, Vec::new());
         assert!(
             !menu
                 .items
@@ -213,19 +239,21 @@ mod tests {
 
     #[test]
     fn for_row_lists_explain_first_when_marked() {
-        let menu = ContextMenu::for_row(true);
+        let menu = ContextMenu::for_row(true, Vec::new());
         assert_eq!(menu.items[0].action, ContextAction::Explain);
         assert_eq!(menu.items.len(), 8);
     }
 
     /// Every label but `Explain`'s names the key that does the same thing,
-    /// so the menu teaches the keyboard rather than replacing it.
+    /// so the menu teaches the keyboard rather than replacing it. The
+    /// history verbs are the exception by design: they own no letter, which
+    /// is why they live behind `.` at all (`docs/design/02-keymap.md` §2.1,
+    /// "Rare verbs live behind `.`").
     #[test]
     fn every_label_names_its_key() {
-        let menu = ContextMenu::for_row(true);
-        let labels: Vec<&str> = menu.items.iter().map(|item| item.label).collect();
+        let menu = ContextMenu::for_row(true, Vec::new());
         assert_eq!(
-            labels,
+            labels(&menu),
             vec![
                 "Explain",
                 "Copy SHA (y)",
@@ -237,6 +265,60 @@ mod tests {
                 "Undo (u)",
             ]
         );
+    }
+
+    /// The app's history verbs go between the row's own actions and the
+    /// dropped keys, each carrying the index the app will map back to an
+    /// operation.
+    #[test]
+    fn history_verbs_sit_between_the_rows_actions_and_the_dropped_keys() {
+        let menu = ContextMenu::for_row(
+            false,
+            vec![
+                sanitize_line("Checkout feature"),
+                sanitize_line("Merge feature into main"),
+            ],
+        );
+        assert_eq!(
+            menu.items
+                .iter()
+                .map(|item| item.action)
+                .collect::<Vec<_>>(),
+            vec![
+                ContextAction::CopySha,
+                ContextAction::CompareWithThis,
+                ContextAction::OpenDetails,
+                ContextAction::History(0),
+                ContextAction::History(1),
+                ContextAction::Fetch,
+                ContextAction::Pull,
+                ContextAction::Push,
+                ContextAction::Undo,
+            ]
+        );
+        assert_eq!(menu.items[3].label.as_str(), "Checkout feature");
+        assert_eq!(menu.items[4].label.as_str(), "Merge feature into main");
+    }
+
+    /// The index the widget reports is the position in the list the app
+    /// passed, not the position in the menu: `Explain` shifting every row
+    /// down must not change which operation a verb means.
+    #[test]
+    fn a_history_index_names_the_apps_own_list_not_the_menu_row() {
+        let history = vec![sanitize_line("Merge feature into main")];
+        let plain = ContextMenu::for_row(false, history.clone());
+        let marked = ContextMenu::for_row(true, history);
+        let of = |menu: &ContextMenu| {
+            menu.items
+                .iter()
+                .find_map(|item| match item.action {
+                    ContextAction::History(index) => Some(index),
+                    _ => None,
+                })
+                .expect("the verb is listed")
+        };
+        assert_eq!(of(&plain), 0);
+        assert_eq!(of(&marked), 0);
     }
 
     #[test]
@@ -259,7 +341,7 @@ mod tests {
 
     #[test]
     fn move_cursor_clamps_at_both_ends() {
-        let mut menu = ContextMenu::for_row(true);
+        let mut menu = ContextMenu::for_row(true, Vec::new());
         menu.move_cursor(-5);
         assert_eq!(menu.cursor, 0);
         menu.move_cursor(100);
@@ -268,16 +350,37 @@ mod tests {
 
     #[test]
     fn selected_follows_cursor() {
-        let mut menu = ContextMenu::for_row(true);
+        let mut menu = ContextMenu::for_row(true, Vec::new());
         menu.move_cursor(1);
         assert_eq!(menu.selected(), ContextAction::CopySha);
     }
 
     #[test]
     fn width_is_longest_label_plus_four() {
-        let menu = ContextMenu::for_row(true);
+        let menu = ContextMenu::for_row(true, Vec::new());
         // "Compare with this (x)" is 21 cells, the longest label.
         assert_eq!(menu.width(), 21 + 4);
+    }
+
+    /// A history verb's label is usually the longest thing in the menu, so
+    /// the box has to grow to it rather than clip it.
+    #[test]
+    fn width_grows_to_a_history_verbs_label() {
+        let menu = ContextMenu::for_row(
+            false,
+            vec![sanitize_line("Fix: reset main to before the merge")],
+        );
+        assert_eq!(menu.width(), 35 + 4);
+    }
+
+    /// The label a repository supplies is cleaned before it can be drawn:
+    /// `MenuItem::label` is a [`SanitizedText`], so a branch named with an
+    /// escape sequence cannot reach the terminal (`DESIGN.md` §8.2).
+    #[test]
+    fn a_ref_name_carrying_an_escape_cannot_reach_the_buffer() {
+        let menu = ContextMenu::for_row(false, vec![sanitize_line("Checkout \u{1b}[31mevil")]);
+        let label = menu.items[3].label.as_str();
+        assert!(!label.contains('\u{1b}'), "{label:?}");
     }
 
     #[test]

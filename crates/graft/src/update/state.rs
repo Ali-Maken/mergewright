@@ -8,7 +8,6 @@ use graft_core::capabilities::RenderingTier;
 use graft_core::event::{KeyCode, KeyPress};
 use graft_core::job::JobId;
 
-use graft_ui::context_menu::ContextMenu;
 use graft_ui::graph_screen::CommitGraphLine;
 
 use crate::history::History;
@@ -128,9 +127,9 @@ pub struct AppState {
     pub compare_base: Option<super::detail::CompareBase>,
     /// The `.`/right-click popup (`context-actions-menu`,
     /// m2-details-and-diffs/12): the row it opened on (`update::context_menu::WORKING_TREE_ROW`
-    /// for the uncommitted-changes row) and the menu itself. `None` while
-    /// closed.
-    pub context_menu: Option<(usize, ContextMenu)>,
+    /// for the uncommitted-changes row), the menu itself, and what each of
+    /// its history rows means. `None` while closed.
+    pub context_menu: Option<super::context_menu::OpenMenu>,
     /// The Mistake Radar's own state: the default-branch context it needs
     /// before it can find anything, and the policy `[radar]` config resolved
     /// to (`update::radar`, m2-details-and-diffs/13).

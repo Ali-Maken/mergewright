@@ -513,3 +513,204 @@ fn capture_time_machine_for_docs_shots() {
     }
     app.close();
 }
+
+// ---------------------------------------------------------------------------
+// The `.` menu's history verbs (piece 6).
+//
+// `update::context_menu::verbs`' own tests settle what each verb *means* over
+// scripted refs. Nothing there opens a repository, so nothing there can prove
+// that `.` on a real branch row actually lists them, that the widget draws
+// them, or that choosing one reaches `graft_ops::preview::plan`. That is what
+// these do.
+// ---------------------------------------------------------------------------
+
+/// `.` on `main`'s row, with the menu's plan on hand.
+fn menu_on_mains_row(app: &App, state: AppState) -> AppState {
+    let mut state = opened(app, state);
+    let mut guard = 0;
+    loop {
+        assert!(
+            guard < 20,
+            "never found main's row: {:?}",
+            rows_drawn(&state)
+        );
+        if on_main(&state) {
+            break;
+        }
+        state = app.key(&state, KeyCode::Char('j'));
+        guard += 1;
+    }
+    let state = app.key(&state, KeyCode::Char('.'));
+    assert!(
+        state.context_menu.is_some(),
+        "`.` opens the menu: {:?}",
+        state.status
+    );
+    state
+}
+
+/// The labels the menu lists, in order.
+fn menu_labels(state: &AppState) -> Vec<String> {
+    state
+        .context_menu
+        .as_ref()
+        .expect("a menu is open")
+        .menu
+        .items
+        .iter()
+        .map(|item| item.label.as_str().to_owned())
+        .collect()
+}
+
+/// `.` on a real branch row lists the history verbs, named against the real
+/// branches, and the widget really draws them.
+#[test]
+fn the_context_menu_lists_its_history_verbs_and_draws_them() {
+    let scratch = forked();
+    let (app, state) = App::open(scratch.path());
+    let state = menu_on_mains_row(&app, state);
+
+    let labels = menu_labels(&state);
+    for wanted in [
+        "Checkout main",
+        "Merge main into feature",
+        "Rebase feature onto main",
+        "Reset feature to here (mixed)",
+        "Reset feature to here (hard)",
+        "Delete branch main",
+    ] {
+        assert!(
+            labels.iter().any(|label| label == wanted),
+            "{wanted:?} missing from {labels:?}"
+        );
+    }
+
+    // Drawn, not merely listed: the rows come off the real buffer.
+    let text = frame(&state, 100, 30).join("\n");
+    assert!(text.contains("Merge main into feature"), "{text}");
+    assert!(text.contains("Rebase feature onto main"), "{text}");
+    app.close();
+}
+
+/// Choosing a verb opens the real Ghost Preview of exactly that operation,
+/// through `graft_ops::preview::plan`, and writes nothing.
+#[test]
+fn choosing_a_menu_verb_previews_that_operation_and_writes_nothing() {
+    let scratch = forked();
+    let before = git(
+        scratch.path(),
+        &["for-each-ref", "--format=%(refname) %(objectname)"],
+    );
+    let (app, state) = App::open(scratch.path());
+    let state = menu_on_mains_row(&app, state);
+
+    let wanted = "Rebase feature onto main";
+    let at = menu_labels(&state)
+        .iter()
+        .position(|label| label == wanted)
+        .unwrap_or_else(|| panic!("{wanted:?} missing from {:?}", menu_labels(&state)));
+    let expected = {
+        let open = state.context_menu.as_ref().expect("a menu is open");
+        let graft_ui::context_menu::ContextAction::History(index) = open.menu.items[at].action
+        else {
+            panic!("{wanted:?} is a history verb")
+        };
+        open.verbs[index].op.clone()
+    };
+
+    let mut state = state;
+    for _ in 0..at {
+        state = app.key(&state, KeyCode::Char('j'));
+    }
+    let state = app.key(&state, KeyCode::Enter);
+
+    assert!(state.context_menu.is_none(), "the menu closed");
+    let preview = state.preview.as_ref().expect("a preview opened");
+    assert_eq!(
+        preview.subject,
+        graft::update::preview::PreviewSubject::Operation {
+            op: Box::new(expected),
+            opened_by: ".",
+        },
+        "the operation previewed is the one the label named"
+    );
+
+    // The plan comes back from the real `graft_ops::preview::plan`, with the
+    // two commits it would replay in it.
+    let state = app.pump(state, "the menu verb's plan", |state| {
+        state
+            .preview
+            .as_ref()
+            .is_some_and(|preview| !preview.rows.is_empty())
+    });
+    let text = frame(&state, 100, 30).join("\n");
+    assert!(text.contains("Preview:"), "{text}");
+    assert_eq!(
+        git(
+            scratch.path(),
+            &["for-each-ref", "--format=%(refname) %(objectname)"]
+        ),
+        before,
+        "planning is a read: nothing moved"
+    );
+    app.close();
+}
+
+/// The capture under `docs/shots/`, from this same real path — the **user**
+/// judges the menu by eye (CLAUDE.md rule 6).
+///
+/// Run by hand: `cargo test -p graft --test it
+/// preview::capture_context_menu_for_docs_shots -- --ignored --nocapture`.
+#[test]
+#[ignore = "writes docs/shots/m5-ui-context-menu-verbs-*.txt; run by hand to regenerate"]
+fn capture_context_menu_for_docs_shots() {
+    let scratch = forked();
+    let (app, state) = App::open(scratch.path());
+    let state = menu_on_mains_row(&app, state);
+    let home = scratch.path().display().to_string();
+
+    for (label, columns, rows) in [("80x24", 80u16, 24u16), ("160x48", 160, 48)] {
+        let drawn = frame(&state, columns, rows);
+        let mut out = format!(
+            "# m5-ui-context-menu-verbs-{label}.txt: {columns}x{rows}, drawn by `view::view`\n\
+             # from a real AppState — a real repository (`main` three commits, `feature`\n\
+             # forked off the first with two of its own, `feature` checked out), opened\n\
+             # over the real job pool, cursor moved to `main`'s row and `.` pressed\n\
+             # through `update`\n\
+             # (crates/graft/tests/it/preview.rs, capture_context_menu_for_docs_shots,\n\
+             # #[ignore]d). Not a pty capture: the terminal is ratatui's TestBackend, so\n\
+             # this is a character grid with no colour attributes in it — CLAUDE.md rule\n\
+             # 5, colour ships unverified. The scratch repository's temporary path is\n\
+             # replaced by `/code/api`; nothing else is touched.\n\
+             #\n\
+             # What right looks like:\n\
+             #  - The menu is anchored under `main`'s row and is wide enough for its\n\
+             #    longest label, with the cursor on the first item.\n\
+             #  - The row's own actions come first (`Copy SHA (y)`, `Compare with this\n\
+             #    (x)`, `Open details (\u{23ce})`), then the history verbs, then the keys the\n\
+             #    hint bar drops (`Fetch (f)` \u{2026} `Undo (u)`).\n\
+             #  - The history verbs name the real branches, not placeholders: `Checkout\n\
+             #    main`, `Merge main into feature`, `Rebase feature onto main`,\n\
+             #    `Cherry-pick <sha7>`, `Revert <sha7>`, `Reset feature to here\n\
+             #    (mixed)`/`(hard)`, `Delete branch main`. `feature` is the branch\n\
+             #    checked out, `main` is the row under the cursor.\n\
+             #  - No verb names the branch you are standing on where git would refuse\n\
+             #    it: there is no `Checkout feature` and no `Delete branch feature`.\n\
+             #  - Choosing any of them opens a picture, not a write (PROMPT.md \u{a7}1.7).\n\
+             #  - At 80 columns the menu still fits inside the graph pane rather than\n\
+             #    running off it.\n\
+             #\n"
+        );
+        out.push('\n');
+        for line in &drawn {
+            out.push_str(&line.replace(&home, "/code/api"));
+            out.push('\n');
+        }
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/shots")
+            .join(format!("m5-ui-context-menu-verbs-{label}.txt"));
+        std::fs::write(&path, &out).expect("docs/shots is writable");
+        println!("wrote {} ({} bytes)", path.display(), out.len());
+    }
+    app.close();
+}

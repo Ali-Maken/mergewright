@@ -118,7 +118,7 @@ pub enum ContextAction { …, Checkout(CheckoutTarget), Merge { source: Source }
 
 ## Acceptance (every tick names its test at tick time)
 
-**Status: partial — continuation 1 of 2 finished pieces 7, 8, 9 and 10. Piece 6 is `blocked: needs graft-ui`.** Pieces 1–5 came from the first builder. This one added the journal's `Enter` time machine (and **ran** the revert path for the first time), the `operated` wording for the two history refusals, `p` on a diverged branch, `HISTORY_CANNOT_STOP`'s own test, and group 06's owed acceptance box 2. Piece 6 (the `.` menu verbs and Fix…) needs new `ContextAction` variants in `crates/graft-ui/src/context_menu.rs`, which is outside this builder's fence — see **Handoff (continuation 2)**.
+**Status: done — continuation 2 finished piece 6, the last unbuilt scope item.** Continuation 1 finished pieces 7, 8, 9 and 10. Pieces 1–5 came from the first builder. This one added the journal's `Enter` time machine (and **ran** the revert path for the first time), the `operated` wording for the two history refusals, `p` on a diverged branch, `HISTORY_CANNOT_STOP`'s own test, and group 06's owed acceptance box 2. Piece 6 (the `.` menu verbs and Fix…) needs new `ContextAction` variants in `crates/graft-ui/src/context_menu.rs`, which is outside this builder's fence — see **Handoff (continuation 2)**.
 
 Ticked:
 
@@ -143,10 +143,22 @@ Ticked by continuation 1 (each names its verifying test at tick time):
 - [x] **Group 06's owed acceptance box 2.** `UNDO_CANNOT_STOP` deleted (`grep -rn UNDO_CANNOT_STOP crates/` → nothing), `u`/`U` launch `Stoppable::Yes`, the busy line is `undo · esc cancels`, and `Esc` sends one `CancelJob` and latches `cancelling`: `update::remote::tests::esc_cancels_an_undo_in_flight` (both `u` and `U`). The answer side is `Undone::Cancelled` → `Status::Done` clean / `Status::Sticky` part-way (as-built 11). **Not ticked:** no test drives a *real* cancelled undo through the app — `graft-ops`' own `undo_cancel::*` suite covers the rollback, and the app side is unit-tested only.
 - [x] `as-built.md` addendum — deviations 9–15.
 
+Ticked by continuation 2 (each names its verifying test at tick time):
+
+- [x] **Piece 6 (scope item 6) — the `.` menu verbs.** Every verb in the ticket's table, with the exact `Operation` behind it: `update::context_menu::verbs::tests::menu_verbs_build_expected_operations` (nine labels in order, then one `assert_eq!` on the whole `Operation` value per label). The two that `m`/`r` also build are the *same* values those keys build, compared against `preview::source_at`/`current_branch` directly: `::the_merge_and_rebase_verbs_are_the_ones_m_and_r_build`.
+- [x] **The three Fix… items on a foxtrot shape**, all three stated against the finding's `real_tip`: `update::context_menu::verbs::tests::a_foxtrot_merge_head_is_on_offers_all_three_fixes` (the whole `Operation` value for each). `Fix: rebase instead` only while `HEAD` is on the merge: `::fix_rebase_is_absent_unless_head_is_on_the_merge`. **When the previous tip cannot be determined the Fix items are absent** (the ticket's own condition): `::no_fix_item_when_the_previous_tip_is_not_a_parent`, and a finding on another row adds nothing here: `::a_foxtrot_on_another_row_adds_nothing_here`.
+- [x] **A verb that git would refuse is not offered**, rather than offered and then failing: no `Checkout`/`Delete branch`/`Merge`/`Rebase` on the current branch's own tip (`::the_current_branchs_own_row_offers_neither_checkout_nor_delete_nor_merge`, exact label list), no `Merge`/`Rebase` on a detached `HEAD` (`::a_detached_head_keeps_the_verbs_that_do_not_need_a_branch`), no verb at all on an unborn `HEAD` (`::an_unborn_head_offers_no_history_verb`), and a merge row's revert names its mainline because git refuses one without `-m` (`::a_merge_rows_revert_names_its_mainline`).
+- [x] **The working-tree row gets none of these**: `update::context_menu::tests::the_working_tree_row_offers_no_history_verb` (no `HistoryVerb`, and no `ContextAction::History` item in the menu).
+- [x] **Each verb → `open_preview`, and nothing runs.** `update::context_menu::tests::a_history_verb_previews_the_operation_its_label_named_and_runs_nothing` (the `PreviewSubject` is the verb's own `Operation` by value, `opened_by: "."`, one `PlanPreview`, no `Command::Operate`, `operating == None`) and `::every_history_verb_the_menu_lists_opens_a_preview` — every label the menu offers, not just one, so no verb is a label with nothing behind it. `open_preview`'s refusals reach the menu path: `::a_verb_chosen_while_a_write_runs_is_refused_in_words`.
+- [x] **Through the real path, on a real repository**: `tests/it/preview.rs::the_context_menu_lists_its_history_verbs_and_draws_them` (real git, real job pool, `.` pressed through `update`, labels read off the **drawn buffer** at 100x30) and `::choosing_a_menu_verb_previews_that_operation_and_writes_nothing` (`Enter` on `Rebase feature onto main` → the real `graft_ops::preview::plan`, box drawn, and `for-each-ref` byte-identical before and after — planning is a read).
+- [x] **`graft-ui` still does not name a `graft-ops` type.** `crates/graft-ui/Cargo.toml` has no `graft-ops` in `[dependencies]` or `[dev-dependencies]` (unchanged by this continuation); `ContextAction::History(usize)` carries an index, and `MenuItem::label` is `graft_term::SanitizedText`, so a ref name reaches the widget only through `term::sanitize` (`ARCHITECTURE.md:191`, `DESIGN.md` §8.2). The index means the app's own list and not the menu row, so `Explain` shifting the rows cannot change what a verb does: `graft_ui::context_menu::tests::a_history_index_names_the_apps_own_list_not_the_menu_row`, and the labels sit between the row's actions and the dropped keys: `::history_verbs_sit_between_the_rows_actions_and_the_dropped_keys` + `update::context_menu::tests::a_branch_row_lists_its_history_verbs_between_its_actions_and_the_dropped_keys`. Sanitising really happens: `update::context_menu::verbs::tests::an_invisible_character_in_a_ref_name_is_cleaned_out_of_the_label`.
+- [x] **No new key bound.** `docs/design/02-keymap.md` §2.2 and §2.3 read before building: `.` is already the context-actions menu and §2.1 says rare verbs (delete branch/tag, cherry-pick, reset to here, fix a Mistake Radar marker) live behind it. This piece adds items behind `.` and binds nothing.
+- [x] **Captures** `docs/shots/m5-ui-context-menu-verbs-80x24.txt` (2.6 KB) and `-160x48.txt` (3.5 KB), written by `tests/it/preview.rs::capture_context_menu_for_docs_shots` (`#[ignore]`d) from the real path — real repository, real job pool, real `.`, real frame. **The user judges them; this builder does not tick "looks right".** Colour is unverified: a `TestBackend` character grid carries no colour attributes (CLAUDE.md rule 5).
+- [x] MAP.md updated: `crates/graft-ui/MAP.md` (`context_menu`) and `crates/graft/MAP.md` (`AppState::context_menu`, `update::context_menu` + `OpenMenu`/`HistoryVerb`, new `update::context_menu::verbs` section).
+
 Not ticked (not built):
 
-- [ ] **Piece 6 — the `.` menu verbs and Fix… — `blocked: needs graft-ui`.** See the handoff below.
-- [ ] Piece 11's remaining tests: `preview_box_lines_come_from_plan` across five operation kinds, `stale_tip_is_refused_in_words` (a real `git update-ref` between `Ready` and `Enter`), `nothing_to_do_plan_offers_close_only`, `too_small_enter_is_a_noop`, `plan_failure_shows_the_reason`, `menu_verbs_build_expected_operations` (blocked with piece 6).
+- [ ] Piece 11's remaining tests: `preview_box_lines_come_from_plan` across five operation kinds, `stale_tip_is_refused_in_words` (a real `git update-ref` between `Ready` and `Enter`), `nothing_to_do_plan_offers_close_only`, `too_small_enter_is_a_noop`, `plan_failure_shows_the_reason`. (`menu_verbs_build_expected_operations` is now done, above.)
 - [ ] KNOWN_GAPS rows for the conductor (below).
 
 ## Gates
@@ -343,3 +355,185 @@ the way the rebase box has one, that is a `graft-ops` gap, not an app one.
    it from a real moved ref.
 3. A real cancelled undo through the app, if the conductor wants the
    app-level proof (above, under "could not be verified").
+
+
+---
+
+## NOTES (builder, m5/08 — continuation 2, piece 6)
+
+**Scout: yes.** A Sonnet `Explore` over `graft-ui/src/context_menu.rs` and
+`graft/src/update/context_menu.rs` before any source was edited (ADR-0035).
+It is what established that `ContextAction` was `Copy` with eight payload-free
+variants, that `MenuItem::label` was `&'static str` (so a dynamic label needed
+a type change, not just a new variant), that `ALWAYS_ITEMS` was a `const`, and
+that neither file touched `SanitizedText` at all.
+
+**Compaction: no.**
+
+**The `graft-ui` → `graft-ops` edge was not added, and is not needed.**
+The conductor's ruling (ARCHITECTURE.md:191) is what this is built to.
+`ContextAction` gained **one** variant, not eleven:
+
+```rust
+// graft-ui/src/context_menu.rs
+pub enum ContextAction { …, History(usize) }
+pub struct MenuItem { pub action: ContextAction, pub label: graft_term::SanitizedText }
+pub fn for_row(marked: bool, history: Vec<SanitizedText>) -> ContextMenu
+```
+
+The widget says **which row of itself was chosen** and nothing more. The
+mapping lives in the new pure module `graft/src/update/context_menu/verbs.rs`:
+`history_verbs(id, parents, subject, &RefBadges, &[Finding]) -> Vec<HistoryVerb>`,
+where `HistoryVerb { label: SanitizedText, op: graft_ops::operation::Operation }`.
+`ContextAction::History(i)` means `verbs[i].op`. `CheckoutTarget`, `ResetMode`,
+`Source`, `Tip` and `Oid` are named only in `graft`, at the same boundary every
+other view model is assembled at. `crates/graft-ui/Cargo.toml` is untouched.
+
+Two consequences worth the conductor knowing:
+
+- Making `label` a `SanitizedText` **tightened** the boundary rather than just
+  satisfying it. It is the first menu label that is repo-derived at all, and
+  the type now makes it impossible to put an unsanitised one there. `RefName`
+  already refuses control bytes, so the reachable attack today is an invisible
+  character (a right-to-left override in a branch name) — which is what the
+  sanitising test uses, because a fabricated `\x1b` fixture is unreachable and
+  would have been a test that cannot fail.
+- `AppState::context_menu` is now `Option<update::context_menu::OpenMenu>`
+  (`{ row, menu, verbs }`) instead of `Option<(usize, ContextMenu)>`. The verb
+  list has to travel with the menu it was built for; two fields kept in sync
+  would have been the obvious bug. Four call sites adapted (`mouse.rs`,
+  `view/frame.rs`, `update/state.rs`, and the module's own tests).
+
+**Deviations from the ticket's Signatures block** (for `as-built.md`):
+
+9. `ContextAction::History(usize)` replaces the eleven payload-carrying
+   variants the Signatures block listed. Reason above — the conductor's ruling.
+10. `MenuItem::label` is `SanitizedText`, not `&'static str`; `ALWAYS_ITEMS`
+    (a `const`) became `always_items()` (a fn), since only `sanitize_line` can
+    construct the type.
+11. `ContextMenu::for_row` takes `history: Vec<SanitizedText>`.
+12. `apply_context_action` and `context_menu::dispatch` each gained a
+    `verbs: &[HistoryVerb]` parameter.
+13. `update::preview::{current_branch, source_at, short_name_of}` widened from
+    private to `pub(super)` so the verbs reuse the very rules `m`/`r` use
+    rather than restating them.
+
+**Two places the ticket's wording was ambiguous. I picked, and here is why.**
+
+1. *"`Merge <b> into <cur>` per local/remote badge (row's source rule)"* — read
+   as **one** merge item, with `<b>` chosen by the source rule
+   (`preview::source_at`: first local badge, else first remote, else the
+   commit). The alternative (one item per badge) would have made Merge plural
+   while the ticket's very next clause makes Rebase singular, and the design
+   note's own label list is `Merge <branch> into main` / `Rebase main onto
+   <branch>` — singular both. It also keeps the menu saying exactly what `m`
+   says, which is the menu's stated job. **If the conductor meant one item per
+   badge, this is a one-line change in `merge_and_rebase_verbs`.**
+2. *"`Fix: rebase instead` → `Rebase { onto: Source::Commit(the other parent) }`"*
+   — read as the **non-first** parent, which the finding calls `real_tip`
+   ("the default branch's real previous tip, now a non-first parent"). Not
+   `first_parent`. This is not only the literal reading of "the other parent"
+   against a finding that names `first_parent` explicitly; it is the only one
+   that works: `merge-base(merge, real_tip) == real_tip`, so rebasing onto it
+   replays the topic commits on top of the branch, which is the merge the user
+   meant to make. Onto `first_parent` the merge-base is `first_parent`, so git
+   would replay the **default branch** onto the topic — the mistake turned
+   around. The other two fixes already aim at `real_tip`, so all three now
+   agree on where "before the merge" is.
+
+**Proposed change (not made): the history verbs carry no key in their labels.**
+`graft-ui`'s documented invariant is "every label but `Explain`'s names its
+key". The ticket's and the design note's label tables give the verbs no key, so
+that is what shipped, and the invariant's test now says "every label but
+`Explain`'s and the history verbs'". Most of the verbs genuinely own no letter
+(keymap §2.1 is why they are behind `.` at all) — but **`Merge` and `Rebase`
+do**: they are `m` and `r`. `Merge main into feature (m)` would teach the key
+the way `Push (P)` does. That is a label change in one function and a spec
+question, so it is here rather than done.
+
+**Not offered, deliberately:** `Reset <cur> to here (soft)`. The design note
+and the ticket both list two reset items, mixed and hard.
+
+**Mutations run, and what caught each** (a green run is not evidence a test can
+fail; each mutation was applied, the **workspace** suite run, the failures read,
+and the file restored from a copy taken before the edit):
+
+1. `ContextMenu::for_row` numbering its `History(i)` by the **menu row**
+   instead of the caller's list index (compiles; every verb then means the
+   wrong operation, or none). Caught by five:
+   `graft_ui::context_menu::tests::a_history_index_names_the_apps_own_list_not_the_menu_row`,
+   `graft_ui::context_menu::tests::history_verbs_sit_between_the_rows_actions_and_the_dropped_keys`,
+   `update::context_menu::tests::a_branch_row_lists_its_history_verbs_between_its_actions_and_the_dropped_keys`,
+   `::a_history_verb_previews_the_operation_its_label_named_and_runs_nothing`
+   and `::every_history_verb_the_menu_lists_opens_a_preview`.
+2. `fix_verbs` aiming all three Fix items at `first_parent` instead of
+   `real_tip` — the reading I rejected above. Caught by three, all in
+   `update::context_menu::verbs::tests`:
+   `a_foxtrot_merge_head_is_on_offers_all_three_fixes`,
+   `fix_rebase_is_absent_unless_head_is_on_the_merge` and
+   `no_fix_item_when_the_previous_tip_is_not_a_parent`.
+3. `apply_context_action`'s `History` arm returning no command without opening
+   a preview (the verb becomes a label that does nothing; everything compiles).
+   Caught by four: `update::context_menu::tests::a_history_verb_previews_the_operation_its_label_named_and_runs_nothing`,
+   `::every_history_verb_the_menu_lists_opens_a_preview`,
+   `::a_verb_chosen_while_a_write_runs_is_refused_in_words` (so the refusal
+   test is not vacuous either) and
+   `tests/it/preview.rs::choosing_a_menu_verb_previews_that_operation_and_writes_nothing`.
+4. `delete_verbs` offering `Delete branch` for the branch `HEAD` is on. Caught
+   by exactly one:
+   `update::context_menu::verbs::tests::the_current_branchs_own_row_offers_neither_checkout_nor_delete_nor_merge`.
+5. `checkout_verbs` building `CheckoutTarget::Branch` from the **short** name
+   instead of the full ref — the shape `check_checkout` looks up in the facts,
+   so it would have refused `NoSuchRef` at confirm time. Caught by three, all
+   in `update::context_menu::verbs::tests`:
+   `menu_verbs_build_expected_operations`,
+   `a_detached_head_keeps_the_verbs_that_do_not_need_a_branch` and
+   `an_invisible_character_in_a_ref_name_is_cleaned_out_of_the_label`.
+
+**Captures** (the **user** judges them; this builder does not tick "looks
+right"). New: `docs/shots/m5-ui-context-menu-verbs-80x24.txt` (2.6 KB) and
+`-160x48.txt` (3.5 KB), from `.` on `main`'s row of the same `forked()` fixture
+the rebase captures use — `feature` checked out, so the menu reads `Checkout
+main`, `Merge main into feature`, `Rebase feature onto main`, `Reset feature to
+here (mixed)`/`(hard)`, `Delete branch main`, and offers neither `Checkout
+feature` nor `Delete branch feature`. **Colour is unverified** (CLAUDE.md rule
+5). One thing worth a human eye: the menu is `longest label + 4` wide, and the
+history verbs make it about twice as tall as before, so it now covers a good
+part of the graph — at 80 columns the graph's `age`/`sha` columns still show to
+the right of it. That is the widget's existing anchoring, not new here, but it
+is the first time the menu has been this big.
+
+**What could not be verified:**
+
+- **Merge and Rebase from the menu are only verified as far as the picture.**
+  They reuse `preview::source_at`, which spells a branch source with its
+  **short** name (`feature`), and `graft_ops`' `refs_of_merge`/`source_holds`
+  read and check the ref under that same string. Whether `read_facts` resolves
+  a short name is a `graft-ops` question I did not open, and no test in the
+  workspace confirms a menu-or-key merge/rebase end to end. This is **inherited
+  from `m`/`r` (piece 5), not introduced here** — the menu builds the identical
+  value, proved by `the_merge_and_rebase_verbs_are_the_ones_m_and_r_build`.
+  **Unverified, not broken**, and the same gap on both paths.
+- **No verb has been confirmed** — every test stops at the picture, which is
+  what `.` is for. The one write path this milestone exercises end to end is
+  the journal's time machine (continuation 1).
+- The `(ghost)` badge is still absent (first half's NOTES); untouched here.
+
+**KNOWN_GAPS rows for the conductor** (builders do not edit that file):
+
+- Earlier rows all still stand.
+- New: **menu/`m`/`r` merge and rebase are unverified past the preview** — no
+  test confirms one and reads the repository back (above). Unverified, not
+  broken.
+- New (small, cosmetic): `Merge`/`Rebase` menu labels do not name their keys
+  `m`/`r`, unlike every other keyed label in the menu — see Proposed change.
+
+**Gates**, workspace-wide, from `.worktrees/m5-08-p6` with
+`CARGO_TARGET_DIR=/tmp/graft-m508p6-target`:
+
+- `cargo fmt --all --check` — pass
+- `cargo clippy --all-targets --message-format=short -- -D warnings` — pass
+- `cargo nextest run --workspace` — **2106 passed, 0 failed, 34 skipped**
+  (main at `1958cf5` was 2082 passed / 33 skipped, so +24 and one more
+  `#[ignore]`d capture test), 49.3 s
+- `cargo test --doc` — pass (0 doctests; a gate, not evidence)
