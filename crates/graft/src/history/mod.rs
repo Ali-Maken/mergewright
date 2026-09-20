@@ -27,7 +27,7 @@ mod views;
 mod tests;
 
 pub use scroll::Motion;
-pub use seeds::seeds_for;
+pub use seeds::{preview_seeds, seeds_for};
 pub use source::WalkSource;
 pub use state::{
     Ended, History, HistoryUpdate, Phase, Promote, Promotion, RowRequest, View, WalkFacts, Wanted,

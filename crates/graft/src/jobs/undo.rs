@@ -62,6 +62,54 @@ pub enum Undone {
     },
 }
 
+/// What the journal's time machine came back with (DESIGN §6.6,
+/// m5-history-and-ghost-preview/08).
+///
+/// Apart from [`Undone`] because a jump is several restores, not one: what
+/// the user needs to read is how many of them ran, and `Undone`'s shapes
+/// carry one [`Applied`] or none.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RevertedTo {
+    /// Every step ran and journaled. One `Undo` entry per step, as §6.6
+    /// asks — never one summary entry.
+    Done {
+        /// The entry jumped back past, in the journal's own words.
+        description: String,
+        /// How many steps the plan had.
+        total: usize,
+        /// What ran, oldest step first.
+        steps: Vec<Applied>,
+    },
+    /// The repository moved since one of those entries, so nothing ran.
+    /// §6.7's rail: the user decides whether to go ahead.
+    Drift {
+        /// The entry the jump was aimed at.
+        description: String,
+        /// What differs from what the entry recorded.
+        drift: Drift,
+        /// That entry's id, carried so the confirm box's `[ Revert ]` can
+        /// re-run **this** jump with `force`. Reconstructing it from the
+        /// journal afterwards would be asking a second time and hoping for
+        /// the same answer.
+        target: graft_core::journal::EntryId,
+    },
+    /// The jump stopped, and this is how far it got.
+    ///
+    /// `done` steps really did run — they are journaled and each is
+    /// undoable on its own. Nothing is rolled back: that would be a second
+    /// write nobody asked for (`as-built.md` §5).
+    Failed {
+        /// The entry the jump was aimed at.
+        description: String,
+        /// Steps that ran before it stopped.
+        done: usize,
+        /// Steps the plan had, `0` when no plan could be made at all.
+        total: usize,
+        /// Why the next one did not, as one line.
+        error: String,
+    },
+}
+
 /// The journal as the browser shows it, plus what reading it had to close.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct JournalRead {
@@ -235,6 +283,76 @@ pub(super) fn run_undo(repos: &RepoStore, redo: bool, force: bool, cancel: &Canc
     )
 }
 
+/// The journal's time machine: undo every entry back to and including
+/// `target`, one step at a time (DESIGN §6.6, ADR-0031).
+///
+/// Reached only from a confirmed Ghost Preview, never straight from a key —
+/// the picture is drawn from the very `InversePlan`s this runs, so the two
+/// cannot disagree about what is about to happen.
+///
+/// `total` is read from the plan **before** anything runs, because
+/// `UndoError::PartWay` carries only what it managed (`done`) and "2 of 3"
+/// is the sentence the user needs. Reading it afterwards would be reading
+/// it from a journal the run has already changed.
+pub(super) fn run_revert_to(
+    repos: &RepoStore,
+    target: &graft_core::journal::EntryId,
+    force: bool,
+    cancel: &Cancel,
+) -> RevertedTo {
+    with_context(
+        repos,
+        cancel,
+        |ctx| {
+            let aimed_at = ctx
+                .journal
+                .entries()
+                .iter()
+                .find(|entry| entry.id == *target)
+                .map_or_else(
+                    || "that point".to_owned(),
+                    |entry| entry.description.clone(),
+                );
+            // How many steps the jump is, from the same planner
+            // `revert_to` will use. A plan that cannot be made at all is
+            // the run's own answer a moment later, so the count falls back
+            // to zero rather than being reported twice.
+            let total =
+                undo::plan_revert_to(ctx.journal.entries(), target).map_or(0, |plans| plans.len());
+            match undo::revert_to(ctx, target, force) {
+                Ok(steps) => RevertedTo::Done {
+                    description: aimed_at,
+                    total,
+                    steps,
+                },
+                Err(UndoError::Drift(drift)) => RevertedTo::Drift {
+                    description: aimed_at,
+                    drift,
+                    target: target.clone(),
+                },
+                Err(UndoError::PartWay { done, error }) => RevertedTo::Failed {
+                    description: aimed_at,
+                    done: done.len(),
+                    total,
+                    error: error_line(&error),
+                },
+                Err(other) => RevertedTo::Failed {
+                    description: aimed_at,
+                    done: 0,
+                    total,
+                    error: error_line(&other),
+                },
+            }
+        },
+        |error| RevertedTo::Failed {
+            description: "that point".to_owned(),
+            done: 0,
+            total: 0,
+            error: error.to_string(),
+        },
+    )
+}
+
 /// What `u` (or `U`) is about to take back, in the journal's own words.
 fn aimed_at(ctx: &Context<'_>, redo: bool) -> String {
     let entries = ctx.journal.entries();
@@ -253,6 +371,23 @@ fn aimed_at(ctx: &Context<'_>, redo: bool) -> String {
 /// `mark_interrupted`: it also seals the recovered entry's trees behind its
 /// backup ref, without which `git gc` prunes exactly what that entry's `u`
 /// would restore (group 03's review fix).
+/// The journal's entries, for a caller that only needs to read them.
+///
+/// Ghost Preview's time machine plans from the same entries `revert_to`
+/// will run against, which is what keeps the picture and the act one act
+/// (design note hard choice 3).
+pub(super) fn journal_entries(
+    repos: &RepoStore,
+    cancel: &Cancel,
+) -> Result<Vec<JournalEntry>, String> {
+    with_context(
+        repos,
+        cancel,
+        |ctx| Ok(ctx.journal.entries().to_vec()),
+        |error| Err(error.to_string()),
+    )
+}
+
 pub(super) fn read_journal(repos: &RepoStore, cancel: &Cancel) -> Result<Arc<JournalRead>, String> {
     with_context(
         repos,

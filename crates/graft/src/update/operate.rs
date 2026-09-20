@@ -61,17 +61,47 @@ pub(super) fn launch(
     op: Operation,
     next_id: &mut impl FnMut() -> JobId,
 ) {
+    launch_with(next, commands, op, super::remote::Stoppable::Yes, next_id);
+}
+
+/// Queue one write `Esc` must not stop, saying why in `why`.
+///
+/// A merge, rebase, cherry-pick, revert or time-machine jump is not one git
+/// write: killing it mid-flight leaves git's own state on disk with the
+/// journal entry still `Pending` and no outcome line — a shape `graft_ops`
+/// does not model ([`crate::update::preview::HISTORY_CANNOT_STOP`], which
+/// is the line `Esc` then shows). The refusal is words, never a key that
+/// looks ignored.
+pub(super) fn launch_unstoppable(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    op: Operation,
+    why: &'static str,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    launch_with(
+        next,
+        commands,
+        op,
+        super::remote::Stoppable::No(why),
+        next_id,
+    );
+}
+
+/// Both launches: one job id, one `Busy` line from the keystroke onwards,
+/// one `Running` record, one [`Command::Operate`].
+fn launch_with(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    op: Operation,
+    stoppable: super::remote::Stoppable,
+    next_id: &mut impl FnMut() -> JobId,
+) {
     let id = next_id();
     next.operating = Some(id);
     next.status = Status::Busy(super::remote::busy_text(&op));
     let remote = op.is_remote().then(|| op.clone());
-    super::remote::launched(
-        next,
-        id,
-        op.describe(),
-        remote,
-        super::remote::Stoppable::Yes,
-    );
+    super::remote::launched(next, id, op.describe(), remote, stoppable);
     commands.push(Command::Operate(id, Box::new(op)));
 }
 

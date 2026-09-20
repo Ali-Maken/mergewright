@@ -76,6 +76,7 @@ mod kinds;
 mod map;
 pub(crate) mod operate;
 mod pool;
+mod preview;
 pub(crate) mod radar;
 pub(crate) mod remote;
 mod runner;

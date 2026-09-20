@@ -8,6 +8,9 @@ use graft_git::branches::Branches;
 use graft_git::repo::{RefEntry, RefTarget};
 use graft_graph::{BranchIdentity, BranchSeed, Seeds};
 
+use super::state::WalkFacts;
+use crate::refs::RefBadges;
+
 const HEADS: &[u8] = b"refs/heads/";
 const REMOTES: &[u8] = b"refs/remotes/";
 
@@ -47,4 +50,65 @@ pub fn seeds_for(refs: &[RefEntry], branches: &Branches) -> Seeds {
             .filter_map(|entry| seed(&entry.name))
             .collect(),
     }
+}
+
+/// The seeds a Ghost Preview lays its bounded slice out with (m5/08).
+///
+/// The walk builds its own from the raw refs on its thread; the app never
+/// sees those. It does see [`WalkFacts`], which already carries ADR-0001's
+/// answer (which branch owns lane 0, which sit beside it), and
+/// [`RefBadges`], which carries every branch tip — so the same seeds can be
+/// rebuilt here without a second ref read.
+///
+/// They have to be the same seeds: the preview replaces the graph's rows
+/// while it is open, and the whole point of drawing ghosts *inside* the
+/// real picture is that the eye compares them against real rows. A preview
+/// laid out with [`Seeds::default`] would put the default branch in a
+/// different lane and every branch in a different colour, and the before
+/// and after would read as two graphs rather than one.
+#[must_use]
+pub fn preview_seeds(walk: Option<&WalkFacts>, refs: &RefBadges) -> Seeds {
+    let tips: HashMap<Vec<u8>, Oid> = refs
+        .branches()
+        .map(|(tip, short, _, _)| ([HEADS, short].concat(), tip))
+        .chain(
+            refs.remotes()
+                .map(|(tip, short)| ([REMOTES, short].concat(), tip)),
+        )
+        .collect();
+    let seed = |name: &RefName| {
+        tips.get(name.as_bytes()).map(|&tip| BranchSeed {
+            tip,
+            identity: BranchIdentity::of_name(name.shorthand()),
+        })
+    };
+    Seeds {
+        default_branch: walk
+            .and_then(|facts| facts.default_branch.as_ref())
+            .and_then(seed),
+        integration_branches: walk
+            .map(|facts| facts.integration.as_ref())
+            .unwrap_or_default()
+            .iter()
+            .filter_map(seed)
+            .collect(),
+        known_branches: tips
+            .iter()
+            .map(|(name, &tip)| BranchSeed {
+                tip,
+                identity: BranchIdentity::of_name(shorthand_of(name)),
+            })
+            .collect(),
+    }
+}
+
+/// `refs/heads/main` → `main`, the same rule [`RefName::shorthand`] uses,
+/// for a name already assembled as bytes.
+fn shorthand_of(full: &[u8]) -> &[u8] {
+    for prefix in [HEADS, REMOTES] {
+        if let Some(rest) = full.strip_prefix(prefix) {
+            return rest;
+        }
+    }
+    full
 }

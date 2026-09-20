@@ -33,6 +33,7 @@ pub mod map;
 mod mouse;
 pub mod operate;
 mod prelude;
+pub mod preview;
 pub mod radar;
 pub mod remote;
 mod search;
@@ -206,6 +207,12 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             _,
             Progress::Operating { .. } | Progress::CredentialNeeded { .. },
         )) => operate_answer(next, commands, event),
+        AppEvent::Produced(id, Product::Preview(result)) => {
+            preview::preview_produced(next, id, result);
+        }
+        AppEvent::Produced(id, Product::RevertedTo(done)) => {
+            reverted_to_answer(next, commands, id, *done);
+        }
         AppEvent::Produced(id, Product::Undone(done)) => undone_answer(next, commands, id, *done),
         AppEvent::Produced(id, product @ Product::Journal(_)) => journal_answer(next, id, &product),
         AppEvent::Produced(id, Product::Remotes(result)) => {
@@ -234,6 +241,20 @@ fn journal_answer(next: &mut AppState, id: JobId, product: &Product) {
 fn stash_answer(next: &mut AppState, id: JobId, product: &Product) {
     let taken: bool = stash::stash_event(next, id, product);
     debug_assert!(taken, "the stash overlay's own product");
+}
+
+/// The journal's time machine answered, the same way.
+fn reverted_to_answer(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    id: JobId,
+    outcome: crate::jobs::undo::RevertedTo,
+) {
+    let mut local_jobs = next.local_jobs;
+    commands.extend(undo::reverted_to(next, id, outcome, &mut || {
+        local_jobs.next_id()
+    }));
+    next.local_jobs = local_jobs;
 }
 
 /// One `u`/`U` answered, with `local_jobs` borrowed out for the closure the
@@ -275,6 +296,8 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         | Task::Operate
         | Task::Undo
         | Task::ReadJournal
+        | Task::PlanPreview
+        | Task::RevertTo
         | Task::ReadStashes
         | Task::ReadRemotes
         | Task::ReadCommitTemplate
@@ -433,6 +456,8 @@ fn took_fact(next: &mut AppState, product: Product) {
         | Product::Operated(_)
         | Product::Undone(_)
         | Product::Journal(_)
+        | Product::Preview(_)
+        | Product::RevertedTo(_)
         | Product::Stashes(_)
         | Product::Remotes(_)
         | Product::CommitTemplate(_)

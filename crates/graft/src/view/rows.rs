@@ -35,10 +35,26 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
 
     let walk = walk_view(history);
     let thread = thread(history);
-    let rows = visible_rows(state, history, thread.as_ref(), now_seconds);
-    let compaction = compaction(state, history, thread.as_ref(), &rows);
-    let reveal = reveal_index(state, history, &rows);
-    let hint_context = hint_context(state, &rows);
+    let live = visible_rows(state, history, thread.as_ref(), now_seconds);
+    let compaction = compaction(state, history, thread.as_ref(), &live);
+    // A preview is modal: while one is open the graph draws its slice
+    // instead of the live window, so the picture the box describes and the
+    // rows on screen are the same picture (design note hard choice 1).
+    let previewing = state
+        .preview
+        .as_ref()
+        .filter(|preview| !preview.rows.is_empty());
+    let (rows, reveal, hint_context) = if let Some(preview) = previewing {
+        (
+            super::preview::preview_entries(state, preview, now_seconds),
+            Some(preview.cursor),
+            HintContext::Preview,
+        )
+    } else {
+        let reveal = reveal_index(state, history, &live);
+        let hint_context = hint_context(state, &live);
+        (live, reveal, hint_context)
+    };
 
     GraphView {
         location,
