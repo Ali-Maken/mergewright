@@ -241,6 +241,7 @@ pub fn view_with_graphics(
             } else {
                 render_graph_screen(frame, &session.theme, &screen, area, pixels, strip)
             };
+            draw_preview(state, frame, area, &session.theme);
             draw_context_menu(state, frame, area, &session.theme);
             draw_confirm(state, frame, area, &session.theme);
             draw_credential(state, frame, area, session);
@@ -434,6 +435,31 @@ fn draw_tab_strip(
 /// paints labels and the reversed cursor row — no theme in its signature —
 /// so the `SurfaceRaised` background is this caller's job, painted on the
 /// buffer before the widget renders over it.
+/// Draws the Ghost Preview box over the graph, when one is open
+/// (m5-history-and-ghost-preview/08).
+///
+/// Docked to the bottom of the graph's own area, at the height the widget
+/// asks for — the same height `AppState::graph_rows` already took out of
+/// the viewport, so the box covers rows the graph did not draw rather than
+/// rows it did.
+fn draw_preview(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) {
+    let Some(view) = crate::update::preview::preview_box(state) else {
+        return;
+    };
+    let rect = graft_ui::preview_box::preview_box_area(area, &view);
+    if rect.is_empty() {
+        return;
+    }
+    frame.buffer_mut().set_style(
+        rect,
+        Style::new().bg(color(theme.token(Token::SurfaceRaised))),
+    );
+    frame.render_widget(
+        &graft_ui::preview_box::PreviewBoxWidget { view: &view, theme },
+        rect,
+    );
+}
+
 fn draw_context_menu(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) {
     let Some((row, menu)) = state.context_menu.as_ref() else {
         return;

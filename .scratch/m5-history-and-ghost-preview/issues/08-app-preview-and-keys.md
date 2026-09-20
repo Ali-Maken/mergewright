@@ -118,12 +118,30 @@ pub enum ContextAction { …, Checkout(CheckoutTarget), Merge { source: Source }
 
 ## Acceptance (every tick names its test at tick time)
 
-- [ ] Every test in piece 11 green, named at tick time; no `sleep`/poll loop in any of them
-- [ ] The `Operation` that runs is the one previewed: `m_opens_preview_and_enter_runs_the_pinned_op`; a moved tip never runs anything: `stale_tip_is_refused_in_words`
-- [ ] Every string in the box comes from `PreviewPlan` (`preview_box_lines_come_from_plan`); `rg -n '"git ' crates/graft/src/update/preview*` finds no hand-written git command — inspection, listed in NOTES
-- [ ] `preview_key` sits between `confirm_key` and `context_menu_key` in `key_event`; a `u` typed while the preview is open does nothing (`preview_is_modal`)
-- [ ] Captures `docs/shots/m5-ui-preview-rebase-{80x24,160x48}.txt` exist, ≤ 8 KB, show `(ghost)` rows with `—` sha and the docked box with `[ Cancel ]` first; the user judges them
-- [ ] MAP.md + `as-built.md` updated; NOTES: scout used or why not; turn count at each piece boundary; KNOWN_GAPS rows for the conductor (Esc = abort → M7; pixel-tier ghosts → M8); colour unverified
+**Status: partial — stopped at the ticket's own stop seam, after piece 5.** Pieces 1–5 are built, plus piece 3's runner wiring, the `RevertTo` job and answer (piece 9's plumbing), piece 11's first integration tests and piece 12's captures and MAP.md. Pieces 6, 7, 8, 9 (the journal key itself) and 10 are not started — see **Handoff** below.
+
+Ticked:
+
+- [x] Integration tests green, no `sleep` or poll loop in any of them (they use the harness's `pump`): `tests/it/preview.rs::r_on_a_fork_draws_ghosts_for_the_commits_it_would_replay`, `::the_preview_box_and_its_ghost_rows_are_actually_drawn`, `::esc_closes_the_preview_and_the_repository_never_moved`. **Piece 11's full list is not done** — see Handoff.
+- [x] The `Operation` that runs is the one previewed (the value is moved across, never rebuilt): `update::preview::tests::confirm_runs_the_very_operation_the_picture_was_drawn_from`. **Not ticked:** a moved tip never running anything — `check`'s `Moved` refusal is `graft_ops`' and the app-side test for it is not written. See Handoff.
+- [x] Every string in the box comes from `PreviewPlan`: `update::preview::tests::the_box_shows_the_plans_own_command_lines` (the plan's own `commands`, compared element for element). Inspection: `grep -n '"git ' crates/graft/src/update/preview.rs crates/graft/src/update/preview/slice.rs` finds nothing — no hand-written git command anywhere in the module.
+- [x] `preview_key` sits between `confirm_key` and `context_menu_key` in `key_event` (both are in `keys::boxes_key`, confirm first, and `context_menu_key` is called after it); a `u` typed while the preview is open does nothing: `update::preview::tests::an_open_preview_claims_the_keys_behind_it`.
+- [x] A preview never loads more history mid-preview, and says so when the part that matters falls outside the slice — the conductor's two binding conditions: `update::preview::slice::tests::slice_refuses_a_missing_ghost_parent` (the slice half) and `update::preview::tests::a_preview_that_cannot_be_drawn_here_says_so_instead_of_drawing_it` (the box half: `preview cannot be drawn here: <sha7> is not loaded · esc`, `[ Close ]` only, nothing laid out). Clipped lanes are counted and reported: `slice_clips_parents_outside_and_counts_them`, `slice_appends_anchors_last`, `lanes_that_leave_the_view_are_counted_on_the_box`.
+- [x] Every refusal is a problem line, never a `✓`: `a_preview_refuses_while_a_write_is_running_and_says_so_as_a_problem`, `a_preview_refuses_while_git_has_an_operation_in_progress`, `m_and_r_on_a_detached_head_say_what_is_missing`, `r_on_the_uncommitted_row_says_it_needs_a_commit`.
+- [x] The box is really drawn, at the real size, over rows the graph really gave up: `tests/it/preview.rs::the_preview_box_and_its_ghost_rows_are_actually_drawn` (reads the drawn buffer at 100x30) and `update::preview::tests::an_open_preview_takes_its_rows_out_of_the_graph_viewport`. The click targets agree with what the widget draws: `a_click_lands_on_the_button_the_widget_drew` renders the real `PreviewBoxWidget` into a `Buffer` and finds the labels on the row `choice_at` uses.
+- [x] Captures `docs/shots/m5-ui-preview-rebase-80x24.txt` (3.4 KB) and `-160x48.txt` (5.2 KB) exist, both under 8 KB, written by `tests/it/preview.rs::capture_preview_for_docs_shots` (`#[ignore]`d) from the real path. They show two ghost rows with `—` for sha and age, `feature`'s badge moved onto the newest ghost, and the docked box with `▸[ Cancel ]` first. **The user judges them; this builder does not tick "looks right".** Colour is unverified: the capture is a `TestBackend` character grid with no colour attributes (CLAUDE.md rule 5).
+- [x] `m`/`r` build the right operations, pinned to the tips the picture was drawn against: `m_builds_a_merge_of_the_selected_branch_into_the_current_one`, `r_builds_a_rebase_of_the_current_branch_onto_the_selection`, `the_history_keys_are_the_plain_letters_only`. Both keys are in `docs/design/02-keymap.md` §2.3 — read before binding; no key outside what the doc gives was taken.
+- [x] MAP.md updated: `update::preview`, `update::preview::slice`, `view::preview`, `jobs::preview`, `jobs::undo::{RevertedTo, run_revert_to, journal_entries}`, `update::undo::{revert_to_forced, reverted_to}`, `history::preview_seeds`, `refs::RefBadges::remotes`.
+
+Not ticked (not built):
+
+- [ ] Piece 6 — the `.` menu verbs and Fix…
+- [ ] Piece 7 — `operated` for the history operations
+- [ ] Piece 8 — the journal's `Enter` time machine key and the `OLDER_ENTRY` delete (the **job**, the command, the answer and the drift box are built; only the key and the journal-side wiring are missing)
+- [ ] Piece 9 — `p` on a diverged branch (`RemoteState.diverged_upstream`)
+- [ ] Piece 10 — as listed
+- [ ] `as-built.md` addendum
+- [ ] KNOWN_GAPS rows for the conductor
 
 ## Gates
 
@@ -137,3 +155,57 @@ One context, the largest app group. Stop seam after piece 5 (preview core + `m`/
 
 - A preview **never loads more history mid-preview**. Parents outside the laid-out slice are clipped and drawn as anchors.
 - **If the part of the preview that matters falls outside the slice, the preview says so** — a plain line the user can read — rather than drawing a truncated shape they could misread. Name the test that proves this.
+
+
+## NOTES (builder, m5/08)
+
+**Scout: yes.** An `Explore` scout (sonnet) covered `update/keys.rs`, `view/rows.rs`, `update/context_menu.rs`, `update/journal.rs`, `update/remote.rs` and `jobs/` before any code was written, per ADR-0035.
+
+**Compaction: yes, once, mid-ticket.** It happened after the preview core and the slice were written and before anything compiled. Nothing was lost — the state machine, the slice and their unit tests survived and are all green — but the conductor should know the turn budget was spent twice over the same context.
+
+**The `PartWay` seam: nothing to close, and the brief's signature was stale.** The conductor's brief described `UndoError::PartWay { done, total, error }`. The real definition is `{ done, error }` (`crates/graft-ops/src/undo/execute.rs:38`), which the conductor corrected mid-task. Verified three ways in this worktree before writing anything against it: `grep -rn 'PartWay' crates/` shows all five `crates/graft/src/jobs/undo.rs` sites already matching the two-field shape, `cargo check --workspace --all-targets` was clean at the baseline, and `cargo nextest run --workspace` was 2006/2006. **No app-side call site was left unclosed by group 07**, and no code here was written against the three-field shape, so nothing had to be undone. `jobs::undo::RevertedTo::Failed` does carry a `total`, but it reads it from `undo::plan_revert_to` **before** the run, not from `PartWay`.
+
+**Group 06's acceptance box 2 is out of this ticket's scope and out of this worktree's base.** `esc_cancels_an_undo_in_flight` does not exist at `950ab1d`, the commit this worktree is based on; it lands in `9ff1d28`, which is already on `main` and **ahead of this base**. `UNDO_CANNOT_STOP` here still reads `"cannot be stopped part-way — finishing"`, which may be exactly what group 06 changed. Picking the test up here would be writing it against a version of `update/undo.rs` that is about to be replaced, and `update/undo.rs` is a file this ticket edits — so the conductor should expect a merge there and should file that test separately.
+
+**Deviations from the ticket's Signatures block** (for `as-built.md`):
+
+1. `Command::PlanPreview(JobId, Box<PreviewRequest>)`, not `Box<PreviewSubject>`. The job needs to know which commits are already on screen so it only reads the ones that are not; `PreviewRequest` is `{ subject, resident: HashSet<Oid> }`. Same for `run_preview(repos, &PreviewRequest, cancel)`.
+2. `Command::RevertTo(JobId, EntryId, bool)` — the `force` flag, the way `Command::Undo` carries one. Without it the drift guard has no way to say "yes, go anyway".
+3. `RevertedTo::Drift` carries `target: EntryId`. The confirm box has to aim the retry at the same entry, and inventing a field on `AppState` to remember it would have been a stand-in value for something the answer already knows.
+4. `update::preview::BoxRect` instead of `ratatui::layout::Rect`. `update::tests::update_cannot_reach_the_world` forbids `update` from naming a drawing type, so the dock arithmetic is mirrored in plain numbers, the way `update::context_menu_area` already does. It is kept honest by `a_click_lands_on_the_button_the_widget_drew`, which renders the real widget.
+5. `history::preview_seeds(Option<&WalkFacts>, &RefBadges)` is new. `seeds_for` takes `&[RefEntry]` + `&Branches`, and the app holds neither; without matching seeds a ghost would land in the wrong lane and the wrong colour. `RefBadges::remotes` was added for it.
+6. `jobs::undo::journal_entries(repos, cancel)` is new, so the time machine's preview plans from the very entries `revert_to` will run against.
+7. `keys::boxes_key` and `keys::write_key` are new private helpers. They exist only because clippy's line and cognitive-complexity limits fire on `key_event` and `graph_key` once a sixth modal and a seventh key branch are added; the ordering they encode is unchanged.
+8. `Slice::clipped` now counts an **anchor's** cleared parents as well as parents clipped from resident rows. An anchor is the bottom of the picture and history plainly continues below it; not counting those was a preview quietly drawing a shorter history than the one it is about to change. `slice_appends_anchors_last` was corrected — it had asserted 1 where the honest answer is 2.
+
+**Not done, and it is a real gap: the `(ghost)` badge.** Piece 4 asks for `(ghost)` as the first badge on a ghost row. `graft_ui::graph_screen::BadgeKind` has no ghost variant, and every existing variant carries a colour meaning (`Tag`, `Head`, `Branch`, `Remote`, `Stash`) that would be a lie on a ghost. Adding `BadgeKind::Ghost` is a `graft-ui` change and `graft-ui` is outside this builder's fence. A ghost row today is marked by the hollow node glyph, the dashed edges, and `—` in place of both sha and age — visible in the capture, but not the word the ticket asked for. **Conductor: this needs a small `graft-ui` ticket, or an explicit decision that the glyph is enough.**
+
+**Ghost lanes are approximated.** `view::preview::entry` sets `GraphLine::ghost_lanes` to the lanes the ghost node itself touches (its own lane, the lanes closing into it, every edge leaving it). A ghost lane that runs *through* a row without touching its node is not in that set, so it would draw solid. With the shapes M5 produces (a replay chain and a ghost merge) the two coincide; a wider fan-out would show the difference. Unverified rather than broken.
+
+**KNOWN_GAPS rows for the conductor** (builders do not edit that file):
+
+- `Esc` = abort a conflicted history operation → M7. Not built here; `HISTORY_CANNOT_STOP` says so in words instead.
+- Pixel-tier ghosts → M8. The pixel tier draws the preview at the text tier.
+- `(ghost)` badge — needs `BadgeKind::Ghost` in `graft-ui` (above).
+- Ghost lane approximation (above) — unverified, not broken.
+- `restore` writing nothing when a ref is unreadable (group 06's finding) — untouched here; left **unverified, not broken**.
+
+**Gates**, workspace-wide, from this worktree with `CARGO_TARGET_DIR` outside the shared `target/`:
+
+- `cargo fmt --all --check` — pass
+- `cargo clippy --all-targets --message-format=short -- -D warnings` — pass
+- `cargo nextest run --workspace` — **2044 passed, 0 failed, 31 skipped** (baseline at `950ab1d` was 2006 passed / 31 skipped, so +38)
+- `cargo test --doc` — pass (0 doctests; a gate, not evidence)
+- `tests/it/seam_rule.rs` green with the preview read in place: it polices identifiers (`GitInvocation`, `Step::*`, `render_pending`, `render_outcome`, `PathScope::`), not the `graft_ops` module path, so calling `graft_ops::preview::*` from `jobs/preview.rs` needed no new allowance.
+
+## Handoff (pieces 6–10)
+
+Everything below is unstarted unless noted. The seams they attach to are all built and compiling.
+
+1. **Piece 6 — the `.` menu verbs and Fix…** Add the `ContextAction` variants to `graft-ui/src/context_menu.rs` (labels only — the ticket allows that file) and answer them in `update/context_menu.rs` by building the `Operation` and calling `update::preview::open_preview(state, commands, PreviewSubject::Operation { op, opened_by: "." }, false, next_id)`. `open_preview` already refuses correctly while a write runs or git is mid-operation, and already closes the menu's own modality question by being modal itself. Mirror `history_operation` in `update/preview.rs` for how a row's `Source` is read (`source_at`) and how the current branch becomes a `Tip` (`current_branch`).
+2. **Piece 7 — `operated` for the history operations.** `jobs::operate::Operated::Conflicted` already exists with `{ description, kind, paths, stalled }`; the ticket's Signatures block wants `entry: EntryId` on it instead. That is a `graft`-side change in `jobs/operate.rs` plus the banner work, which the ticket lists as `app-conflict-interim`'s.
+3. **Piece 8 — the journal's `Enter`.** The whole write path is **already built and tested through the type system**: `Command::RevertTo(id, entry, force)`, `Task::RevertTo`, `JobRunner::run_revert_to`, `jobs::undo::run_revert_to`, `Product::RevertedTo`, `update::mod::reverted_to_answer`, `update::undo::reverted_to`, `update::undo::revert_to_forced`, `ConfirmThen::RevertTo`, and `PreviewSubject::RevertTo` with `jobs::preview::run_preview` planning it from `plan_revert_to`. **What is missing is only the key**: in `update/journal.rs`, on `Enter`, call `open_preview(..., PreviewSubject::RevertTo(entry_id), /* return_to_journal */ true, next_id)` and set `state.journal.shown = false` (`close_preview` already puts it back). Also the `OLDER_ENTRY` delete the ticket names. **None of the revert path has been exercised at runtime** — it compiles and its answer-side is unit-tested via `update::undo`, but no test drives a real `revert_to` yet. Treat it as unverified.
+4. **Piece 9 — `p` on a diverged branch.** `RemoteState.diverged_upstream` does not exist yet; add it in `update/remote.rs` and have `remote_key(Pull)` open a preview of the merge instead of pulling.
+5. **Piece 10 — as the ticket lists it.**
+6. **Piece 11's remaining tests.** Written: three in `crates/graft/tests/it/preview.rs`. Still wanted: a stale-tip refusal (`check`'s `Moved` at confirm time), a confirm that actually runs a rebase end to end, and the time machine.
+7. **`as-built.md`** — the eight deviations above are written out in this ticket's NOTES ready to be moved across.

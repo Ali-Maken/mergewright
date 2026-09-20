@@ -22,6 +22,7 @@ pub(crate) mod explain;
 mod frame;
 mod journal;
 mod map;
+mod preview;
 pub(crate) mod radar;
 mod rows;
 mod stash;

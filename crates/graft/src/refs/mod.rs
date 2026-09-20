@@ -79,6 +79,22 @@ impl RefBadges {
             })
         })
     }
+
+    /// Every remote-tracking branch that has a badge of its own, as its tip
+    /// and shorthand (`origin/main`). Order is not meaningful.
+    ///
+    /// A remote level with a local branch tracking it carries no badge —
+    /// that branch's own chip says so — and so is not listed. For the Ghost
+    /// Preview's seeds ([`crate::history::preview_seeds`]) that is right:
+    /// the lane is already seeded by the local branch at the same commit.
+    pub fn remotes(&self) -> impl Iterator<Item = (Oid, &[u8])> {
+        self.by_commit.iter().flat_map(|(&id, labels)| {
+            labels.iter().filter_map(move |label| match label {
+                RefLabel::Remote(name) => Some((id, name.as_slice())),
+                _ => None,
+            })
+        })
+    }
 }
 
 /// One ref on a commit, before sanitising.

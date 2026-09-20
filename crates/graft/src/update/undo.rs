@@ -20,7 +20,7 @@ use graft_term::sanitize_line;
 use super::confirm::{ConfirmThen, PendingConfirm};
 use super::events::Command;
 use super::state::{AppState, Status};
-use crate::jobs::undo::Undone;
+use crate::jobs::undo::{RevertedTo, Undone};
 
 /// `u`/`Ctrl+Z` (`redo` false) and `U` (`redo` true).
 ///
@@ -133,6 +133,122 @@ pub fn undone(
                 None => Vec::new(),
             }
         }
+    }
+}
+
+/// The time machine again, past the drift guard: the user has read what
+/// moved and chosen `[ Revert ]`.
+///
+/// Unstoppable for the same reason the first attempt was: a jump is several
+/// restores, and `Esc` between two of them would leave the repository
+/// somewhere nobody asked for.
+pub(super) fn revert_to_forced(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    entry: graft_core::journal::EntryId,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    if super::operate::operation_in_flight(state) {
+        return;
+    }
+    let id = next_id();
+    state.operating = Some(id);
+    let description = format!("revert to before \u{201c}{}\u{201d}", entry.as_str());
+    state.status = Status::Busy(description.clone());
+    super::remote::launched(
+        state,
+        id,
+        description,
+        None,
+        super::remote::Stoppable::No(super::preview::HISTORY_CANNOT_STOP),
+    );
+    commands.push(Command::RevertTo(id, entry, true));
+}
+
+/// The journal's time machine answered (DESIGN §6.6,
+/// m5-history-and-ghost-preview/08).
+///
+/// A jump is several restores, and the three answers say so plainly: how
+/// many steps it took, how far it got when it stopped, or what moved
+/// underneath before it started. **`Everything` is re-read whenever a step
+/// ran** — a jump moves refs, `HEAD`, the index and the working tree, and no
+/// narrower scope covers all four.
+pub(super) fn reverted_to(
+    state: &mut AppState,
+    id: JobId,
+    outcome: RevertedTo,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    if state.operating != Some(id) {
+        return Vec::new();
+    }
+    state.operating = None;
+    match outcome {
+        RevertedTo::Done {
+            description,
+            total,
+            steps,
+        } => {
+            state.status = Status::Done(format!(
+                "reverted to before \u{201c}{description}\u{201d} ({total} {})",
+                if total == 1 { "step" } else { "steps" }
+            ));
+            // `steps` is what ran, kept for the record rather than for the
+            // refresh: `Everything` is wider than any of their own scopes.
+            debug_assert_eq!(steps.len(), total, "every planned step journaled");
+            refresh(state, Refresh::Everything, next_id)
+        }
+        RevertedTo::Drift {
+            description,
+            drift,
+            target,
+        } => {
+            state.confirm = Some(revert_drift_box(&description, &drift, target));
+            Vec::new()
+        }
+        RevertedTo::Failed {
+            description: _,
+            done,
+            total,
+            error,
+        } => {
+            // Sticky, and worded as a state: some steps really did run, and
+            // each of them is its own journal entry the browser can show.
+            state.status = Status::Sticky {
+                reason: format!(
+                    "revert stopped after {done} of {total} {}: {error}",
+                    if total == 1 { "step" } else { "steps" }
+                ),
+                keys: Some("J journal".to_owned()),
+            };
+            if done > 0 {
+                refresh(state, Refresh::Everything, next_id)
+            } else {
+                Vec::new()
+            }
+        }
+    }
+}
+
+/// The time machine's own drift box. Same rail, same words, but `[ Revert ]`
+/// re-runs the jump rather than one `u`.
+fn revert_drift_box(
+    description: &str,
+    drift: &graft_ops::undo::Drift,
+    target: graft_core::journal::EntryId,
+) -> PendingConfirm {
+    PendingConfirm {
+        view: graft_ui::confirm::ConfirmView::new(
+            sanitize_line(&format!("Revert to before \u{201c}{description}\u{201d}?")),
+            {
+                let mut message = wrapped(&format!("Since then, {}.", drift.explain()));
+                message.push("A backup is taken first, so this is itself undoable.".to_owned());
+                message.iter().map(|line| sanitize_line(line)).collect()
+            },
+            sanitize_line("revert restores the recorded state, step by step"),
+        )
+        .with_labels("Stop", "Revert"),
+        then: ConfirmThen::RevertTo { entry: target },
     }
 }
 

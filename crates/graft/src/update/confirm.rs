@@ -37,6 +37,15 @@ pub enum ConfirmThen {
         /// `true` for `U`.
         redo: bool,
     },
+    /// Re-run the journal's time machine past the same rail
+    /// (m5-history-and-ghost-preview/08). Its own variant rather than a
+    /// flag on [`ConfirmThen::Undo`] because it is a different call with a
+    /// different answer: `revert_to` takes an entry id and comes back as
+    /// [`crate::jobs::undo::RevertedTo`].
+    RevertTo {
+        /// The entry to jump back past.
+        entry: graft_core::journal::EntryId,
+    },
 }
 
 /// The box's own keys, while it is open: `Left`/`Right` move between
@@ -76,6 +85,9 @@ pub fn confirm_key(
                     }
                     ConfirmThen::Undo { redo } => {
                         commands.extend(super::undo::forced(next, redo, next_id));
+                    }
+                    ConfirmThen::RevertTo { entry } => {
+                        super::undo::revert_to_forced(next, commands, entry, next_id);
                     }
                 }
             }

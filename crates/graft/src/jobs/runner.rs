@@ -678,6 +678,50 @@ impl<S: JobEvents> JobRunner<S> {
         });
     }
 
+    /// Draws one Ghost Preview, under an id `update` already chose.
+    ///
+    /// A read like the detail pane's, not a write: it takes no
+    /// `AppState::operating`, announces no progress, and `Esc` cancels it
+    /// the way it cancels any other read.
+    fn plan_preview(&self, id: JobId, request: Box<crate::update::preview::PreviewRequest>) {
+        let repos = Arc::clone(&self.repos);
+        self.queue_as(id, Some(Task::PlanPreview), move |_| {
+            Box::new(move |cancel: &Cancel| {
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::Preview(super::preview::run_preview(
+                    &repos, &request, cancel,
+                )))
+            })
+        });
+    }
+
+    /// Runs the journal's time machine, under an id `update` already chose.
+    ///
+    /// A write, like an undo: it takes `AppState::operating`, so the same
+    /// `Progress::Operating` line names it while it runs.
+    fn run_revert_to(&self, id: JobId, target: graft_core::journal::EntryId, force: bool) {
+        let repos = Arc::clone(&self.repos);
+        let sink = self.sink.clone();
+        self.queue_as(id, Some(Task::RevertTo), move |id| {
+            Box::new(move |cancel: &Cancel| {
+                sink.deliver(AppEvent::Progress(
+                    id,
+                    Progress::Operating {
+                        description: "revert".to_owned(),
+                    },
+                ));
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::RevertedTo(Box::new(super::undo::run_revert_to(
+                    &repos, &target, force, cancel,
+                ))))
+            })
+        });
+    }
+
     /// Reads the undo journal, under an id `update` already chose. Closes
     /// whatever a previous run left open before it answers.
     fn read_journal(&self, id: JobId) {
@@ -788,6 +832,8 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::Undo(id, force) => self.run_undo(id, false, force),
             Command::Redo(id, force) => self.run_undo(id, true, force),
             Command::ReadJournal(id) => self.read_journal(id),
+            Command::PlanPreview(id, request) => self.plan_preview(id, request),
+            Command::RevertTo(id, target, force) => self.run_revert_to(id, target, force),
             Command::ReadStashes(id) => self.read_stashes(id),
             Command::ReadRemotes(id) => self.read_remotes(id),
             Command::CancelJob(id) => self.cancel(id),

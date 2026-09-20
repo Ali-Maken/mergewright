@@ -15,6 +15,33 @@ use graft_ui::detail::DetailFocus;
 use super::events::{Command, CommitGraphOffer};
 use super::state::{AppState, Quit, Status};
 
+/// The two modal boxes drawn over everything, in the order they claim keys.
+///
+/// The confirm box (`d` discard, m3-working-tree-undo-and-stash/04) wins
+/// even over the context menu: a menu key opened it, but it never opens one
+/// back over itself, so there is no ordering conflict — only whether it is
+/// `Some`.
+///
+/// The Ghost Preview sits **between** the confirm box and the context menu
+/// (m5-history-and-ghost-preview/08). A confirm box may open over a preview
+/// and never the reverse, so the box answers first; the menu is one of the
+/// things that opens a preview, and closes as it does, so the two are never
+/// up together. Modal: while a preview is open every key but `Ctrl+C` is its
+/// own — `u` included, because nothing may act over a picture the user is
+/// still reading.
+fn boxes_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    let mut local_jobs = next.local_jobs;
+    let opened = super::confirm::confirm_key(next, commands, key, &mut || local_jobs.next_id());
+    next.local_jobs = local_jobs;
+    if opened {
+        return true;
+    }
+    let mut local_jobs = next.local_jobs;
+    let claimed = super::preview::preview_key(next, commands, key, &mut || local_jobs.next_id());
+    next.local_jobs = local_jobs;
+    claimed
+}
+
 /// The half of [`super::core_event`] that answers a key.
 ///
 /// The detail pane answers its keys first (`Enter` opens it, ADR-0023).
@@ -29,17 +56,8 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     if matches!(next.commit_graph, CommitGraphOffer::Written { .. }) {
         next.commit_graph = CommitGraphOffer::NotNeeded;
     }
-    // The confirm box (`d` discard, m3-working-tree-undo-and-stash/04) is
-    // modal, and wins even over the context menu: a menu key opened it, but
-    // it never opens one back over itself, so there is no ordering conflict
-    // — only whether it is `Some`.
-    {
-        let mut local_jobs = next.local_jobs;
-        let opened = super::confirm::confirm_key(next, commands, key, &mut || local_jobs.next_id());
-        next.local_jobs = local_jobs;
-        if opened {
-            return;
-        }
+    if boxes_key(next, commands, key) {
+        return;
     }
     // A menu open (`.`/right-click, m2-details-and-diffs/12) is modal: its
     // own keys win over the detail pane's and the graph's alike.
@@ -185,8 +203,7 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
             local_jobs.next_id()
         }));
         next.local_jobs = local_jobs;
-    } else if let Some(remote) = is_remote_key(key) {
-        remote_key(next, commands, remote);
+    } else if write_key(next, commands, key) {
     } else if let Some(change) = view_change(key) {
         apply_view_change(next, commands, change);
     } else if let Some(motion) = motion_for(key) {
@@ -194,6 +211,26 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
     } else if key.code == KeyCode::Escape {
         escape_key(next, commands);
     }
+}
+
+/// The keys that change the repository: `m`/`r`, which end in a Ghost
+/// Preview rather than straight in a write (m5-history-and-ghost-preview/08),
+/// and the three remote keys. `true` when one of them answered.
+///
+/// `local_jobs` is borrowed out because the closure and `next` cannot
+/// overlap.
+fn write_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    if let Some(which) = super::preview::is_history_key(key) {
+        let mut local_jobs = next.local_jobs;
+        super::preview::history_key(next, commands, which, &mut || local_jobs.next_id());
+        next.local_jobs = local_jobs;
+        return true;
+    }
+    if let Some(remote) = is_remote_key(key) {
+        remote_key(next, commands, remote);
+        return true;
+    }
+    false
 }
 
 /// A view key (order, filter, stash visibility): asks the history job for

@@ -1,0 +1,51 @@
+# m5-ui-preview-rebase-80x24.txt: 80x24, drawn by `view::view`
+# from a real AppState — a real repository (`main` three commits, `feature`
+# forked off the first with two of its own, `feature` checked out), opened
+# over the real job pool, cursor moved to `main`'s row and `r` pressed
+# through `update`, then the real `graft_ops::preview::plan` run
+# (crates/graft/tests/it/preview.rs, capture_preview_for_docs_shots,
+# #[ignore]d). Not a pty capture: the terminal is ratatui's TestBackend, so
+# this is a character grid with no colour attributes in it — CLAUDE.md rule
+# 5, colour ships unverified. The scratch repository's temporary path is
+# replaced by `/code/api`; nothing else is touched.
+#
+# What right looks like:
+#  - Two ghost rows for the commits the rebase would replay: a hollow node
+#    glyph, dashed edges, and `—` in place of a short sha and an age,
+#    because those commits do not exist yet.
+#  - `feature`'s badge has left its old row and sits on the newest ghost —
+#    the picture shows where the branch *would* be, not where it is.
+#  - The box is docked to the bottom of the graph, above the footer row, and
+#    it is a box: every interior row bordered, nothing drawn in a hole.
+#  - The box names what happens in the plan's own words, shows the real
+#    `git rebase …` line it would run, and offers `[ Cancel ]` first with
+#    the cursor on it (ADR-0038 §1: the safe choice is where the cursor
+#    rests).
+#  - The rows behind the box are the picture, not the live graph, and the
+#    box covers rows the graph never drew — no real row is hidden by it.
+#
+
+ graft /code/api  8…
+  ●     finish the feature                                          now  33d3a0c
+  │ ○   [◆ feature] finish the feature                              —    —
+  │ ○   start the feature                                           —    —
+●─│─╯   [main] main moves again                                     now  3d8d763
+● │     main moves on                                               now  cd9d97a
+│ ●     start the feature                                           now  f62db80
+●─╯     add the base                                                now  77f224f
+●       Correct the note                                            7y   a82960b
+●       Add the first note                                          7y   fadcfb3
+◇       Add a readme                                                7y   64ded19
+
+
+
+╭ Preview: rebase feature onto main ───────────────────────────────────────────╮
+│ 2 commits replayed                                                           │
+│ feature 33d3a0c → ghost                                                      │
+│ working tree: 4 files updated                                                │
+│ no conflicts expected (forecast)                                             │
+│ undo: u takes this back                                                      │
+│ git rebase --no-update-refs --no-autostash main                              │
+│ ▸[ Cancel ]   [ Confirm ]                                                    │
+╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────╯
+

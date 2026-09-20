@@ -51,7 +51,7 @@ fn repo() -> graft_fixtures::Scratch {
 /// A plain truecolour terminal that answered every probe. `Capabilities` has
 /// no `Default` on purpose (an unprobed terminal is not a neutral one), so
 /// the literal lives here the way `frames.rs` keeps its own.
-fn capabilities() -> Capabilities {
+pub fn capabilities() -> Capabilities {
     Capabilities {
         tier: RenderingTier::Unicode,
         pixel_protocol: None,

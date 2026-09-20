@@ -165,6 +165,13 @@ pub enum Task {
     /// Read the undo journal, closing anything a previous run left open
     /// (m3-working-tree-undo-and-stash/06).
     ReadJournal,
+    /// Draw a Ghost Preview: plan what an operation would do, and read the
+    /// commits it points at that are not on screen
+    /// (m5-history-and-ghost-preview/08).
+    PlanPreview,
+    /// The journal's time machine: undo back past one entry
+    /// (m5-history-and-ghost-preview/08).
+    RevertTo,
     /// Read the stash list for the `S` overlay
     /// (m3-working-tree-undo-and-stash/06).
     ReadStashes,
@@ -268,6 +275,14 @@ pub enum Product {
     /// ran but left part of its after-state unread still carries the
     /// [`graft_ops::apply::Applied`] the caller refreshes from.
     Operated(Box<crate::jobs::operate::Operated>),
+    /// What a Ghost Preview's operation would do, or why no picture could be
+    /// drawn (m5-history-and-ghost-preview/08). `Arc`: the open preview
+    /// holds it across frames, and the slice is laid out from it once.
+    Preview(Result<std::sync::Arc<super::preview::Planned>, String>),
+    /// The journal's time machine finished, stopped part-way, or hit
+    /// §6.7's drift rail (m5-history-and-ghost-preview/08). Not a plain
+    /// `Result`, for [`Product::Undone`]'s reasons.
+    RevertedTo(Box<crate::jobs::undo::RevertedTo>),
     /// One undo or redo finished. Not a plain `Result` for the same reason
     /// [`Product::Operated`] is not: a restore that ran but could not read
     /// part of what it left behind still carries the
@@ -404,6 +419,17 @@ pub enum Command {
     /// the key to the call (the seam rule, `crates/graft/tests/it/
     /// seam_rule.rs`, m3-working-tree-undo-and-stash/04).
     Operate(JobId, Box<graft_ops::operation::Operation>),
+    /// Work out what a history operation — or the journal's time machine —
+    /// *would* do, so the Ghost Preview can draw it before anything runs
+    /// (m5-history-and-ghost-preview/08). A **read**: `graft_ops::preview`
+    /// plans, and the job reads whatever commits the picture needs and the
+    /// screen does not already hold.
+    PlanPreview(JobId, Box<super::preview::PreviewRequest>),
+    /// Run the journal's time machine: undo every entry back to and
+    /// including this one, a step at a time (DESIGN §6.6,
+    /// m5-history-and-ghost-preview/08). Reached only from a confirmed
+    /// Ghost Preview, never straight from a key.
+    RevertTo(JobId, graft_core::journal::EntryId, bool),
     /// Take back the newest operation still in force (`u`), under an id
     /// `update` chose. `true` forces past the drift guard — the user has
     /// seen what moved and said go ahead (m3-working-tree-undo-and-stash/06).

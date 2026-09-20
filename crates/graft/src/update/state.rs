@@ -205,6 +205,14 @@ pub struct AppState {
     /// `[keys] suspend_on_ctrl_z`: `Ctrl+Z` stops Graft instead of undoing
     /// (ADR-0002). Seeded from config at startup; off by default.
     pub suspend_on_ctrl_z: bool,
+    /// The open Ghost Preview (`m`, `r`, a `.` menu verb, the journal's
+    /// time machine): `None` while closed (m5-history-and-ghost-preview/08).
+    ///
+    /// Modal like the confirm box — while it is open every key is the
+    /// preview's bar `Ctrl+C`, and the graph draws the plan's rows instead
+    /// of the walk's. **Not** in [`AppState::text_field_open`]: nothing is
+    /// typed into it, and its own handler runs before `u` regardless.
+    pub preview: Option<super::preview::PreviewState>,
 }
 
 /// The screens Graft can show.
@@ -243,7 +251,13 @@ impl AppState {
     pub fn graph_rows(&self) -> usize {
         let chrome = CHROME_ROWS
             .saturating_add(self.harness.banner_rows())
-            .saturating_add(u16::from(self.commit_graph_line().is_some()));
+            .saturating_add(u16::from(self.commit_graph_line().is_some()))
+            // The Ghost Preview's box takes rows out of the graph the same
+            // way the footer and the commit-graph line do, so the rows it
+            // covers are rows the graph never drew — rather than rows drawn
+            // and then painted over, which is how a preview box ends up
+            // hiding the very ghosts it is describing.
+            .saturating_add(super::preview::preview_rows_taken(self));
         usize::from(self.size.rows.saturating_sub(chrome)).max(1)
     }
 
