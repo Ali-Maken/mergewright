@@ -25,7 +25,7 @@ use graft_git::version::GitVersion;
 
 use crate::facts::{self, FactsError};
 use crate::journal::{Journal, JournalError};
-use crate::operation::{Invocation, Operation, Refusal, RemoteNames};
+use crate::operation::{Invocation, Operation, Refusal, RemoteNames, RepoFacts};
 use crate::snapshot::{self, SnapshotError, SnapshotScope};
 use crate::undo::RepoStateNow;
 
@@ -44,6 +44,14 @@ pub enum Refresh {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Applied {
     /// The entry as it was written, outcome line included.
+    ///
+    /// One exception, and it is deliberate: a step taken while git already
+    /// has an operation in progress (the resolver's "mark resolved") is part
+    /// of that operation and writes no line of its own
+    /// ([`inside_live_operation`]). Its record here is **not in the
+    /// journal** — it says what ran, for the caller's status line, and its
+    /// command line was folded into the live entry instead. Read
+    /// `description` and `refresh` from it; do not look its `id` up.
     pub entry: JournalEntry,
     /// What to re-read.
     pub refresh: Refresh,
@@ -359,6 +367,9 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     let facts = facts::read_facts(ctx.repo, ctx.git, ctx.stop, &op.facts_scope())
         .map_err(ApplyError::Facts)?;
     op.check(&facts).map_err(ApplyError::Refused)?;
+    if let Some(live) = facts.in_progress {
+        return inside_live_operation(ctx, op, &facts, live);
+    }
     let touches = op.touches(&facts);
     let plan = op.plan(&facts);
     let commands: Vec<String> = plan.iter().map(Invocation::command_line).collect();
@@ -418,6 +429,94 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
         // nothing is lost behind it.
         Some(failed) => Err(failed.into_error(entry)),
     }
+}
+
+/// Run a step that belongs to an operation git already has in progress.
+///
+/// `check` admits exactly `Stage` and `Unstage` while a merge, rebase,
+/// cherry-pick or revert is open — the resolver's "mark resolved". Such a
+/// step is **part of that operation, not an operation of its own**: DESIGN
+/// §6.4 ("a mid-flight operation … is not a journal entry yet … the undo
+/// journal picks up once there's a finished operation to reverse") and M5
+/// hard choice 2 (one entry, `Pending` from the stop to the finish). So it
+/// runs, its command line joins the live entry, and it writes **no journal
+/// line of its own**. `u` after the finish takes the whole span back.
+///
+/// Journaling it as an ordinary entry is what killed `u` outright (m5/07
+/// review, C1): `write-tree` has no tree for an unmerged index, so the
+/// entry's `index_before` was `None` and its inverse `NoBackup` — and undo
+/// is linear, so the merge behind it became unreachable. The rule is "an
+/// operation is in progress", not "the index cannot be snapshotted": the
+/// last file a user resolves leaves the index clean, and that step must fold
+/// into the span like every one before it.
+///
+/// Nothing is at risk for want of a backup. Every step this admits writes
+/// only the index (`add`, `apply --cached`, `restore --staged`), and the
+/// span's own entry holds the pre-operation snapshot.
+fn inside_live_operation(
+    ctx: &mut Context<'_>,
+    op: &Operation,
+    facts: &RepoFacts,
+    live: InProgress,
+) -> Result<Applied, ApplyError> {
+    let plan = op.plan(facts);
+    let commands: Vec<String> = plan.iter().map(Invocation::command_line).collect();
+    let PlanRun { failure, .. } = run_plan(ctx, &plan, op.remote_names().as_ref());
+    fold_commands(ctx, live, commands.clone());
+
+    let mut record = JournalEntry {
+        id: ctx.next_id(),
+        at_unix_ms: ctx.now_unix_ms,
+        kind: op.kind(),
+        description: op.describe(),
+        status: EntryStatus::Committed,
+        touches: op.touches(facts),
+        head_before: facts.head.clone(),
+        head_after: Some(facts.head.clone()),
+        refs_before: BTreeMap::default(),
+        refs_after: BTreeMap::default(),
+        index_before: None,
+        index_after: None,
+        worktree_before: None,
+        worktree_after: None,
+        backup_ref: None,
+        pins: Vec::new(),
+        commands,
+        reverses: None,
+    };
+    match failure {
+        None => Ok(Applied {
+            entry: record,
+            refresh: Refresh::WorkingTree,
+        }),
+        Some(failed) => {
+            record.status = EntryStatus::Aborted {
+                reason: failed.reason(),
+            };
+            Err(failed.into_error(record))
+        }
+    }
+}
+
+/// Record a folded step on the live entry: its command line after the ones
+/// already held, so the Command Log shows the span in the order it happened.
+///
+/// A `Pending` entry's commands live in memory until its outcome line is
+/// written, so a caller that opens a fresh journal per job sees only the
+/// step it just ran (the same limitation the stop itself has — the plan's
+/// own lines do not reach disk either until `resume` closes the entry).
+fn fold_commands(ctx: &mut Context<'_>, live: InProgress, commands: Vec<String>) {
+    let Some((id, mut held)) = live_entry(ctx.journal.entries(), live)
+        .map(|entry| (entry.id.clone(), entry.commands.clone()))
+    else {
+        // An operation begun outside Graft has no entry of Graft's to record
+        // the step on. Nothing is dropped that was ever ours: git's own state
+        // is the whole record of that operation, and the step is reported to
+        // the caller on the returned `Applied`.
+        return;
+    };
+    held.extend(commands);
+    ctx.journal.hold_commands(&id, held);
 }
 
 /// The plan ran through: what the caller re-reads, and what the record of it

@@ -204,7 +204,12 @@ pub fn in_force_all(entries: &[JournalEntry]) -> Vec<bool> {
     in_force_flags(entries)
 }
 
-fn is_operation(entry: &JournalEntry) -> bool {
+/// Whether the entry is an operation of the user's rather than a movement
+/// along the undo stack. Inverting an `Undo` entry *re-applies* what it
+/// reversed, so anything that walks the journal backwards — `u`
+/// ([`next_undo`]) and the time machine ([`crate::undo::plan_revert_to`])
+/// alike — must step over `Undo` and `Redo` entries rather than invert them.
+pub(crate) fn is_operation(entry: &JournalEntry) -> bool {
     !matches!(entry.kind, OperationKind::Undo | OperationKind::Redo)
 }
 

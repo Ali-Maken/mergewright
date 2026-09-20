@@ -813,7 +813,7 @@ impl Operation {
             Self::Pull(params) => remote::plan_pull(params),
             Self::Push(params) => remote::plan_push(params),
             Self::Merge(params) => history::plan_merge(params),
-            Self::Rebase(params) => history::plan_rebase(params),
+            Self::Rebase(params) => history::plan_rebase(params, facts.git),
             Self::CherryPick(params) => history::plan_pick(params),
             Self::Revert(params) => history::plan_revert(params),
             Self::Reset(params) => history::plan_reset(params),

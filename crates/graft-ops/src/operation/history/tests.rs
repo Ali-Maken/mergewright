@@ -283,6 +283,9 @@ fn plan_merge_supplies_gits_own_subject_and_never_an_editor() {
         vec![
             GitArg::Flag("merge"),
             GitArg::Flag("--no-edit"),
+            // Spelled out on every arm, so `merge.ff` in the reader's config
+            // cannot turn the previewed fast-forward into a merge commit.
+            GitArg::Flag("--ff"),
             GitArg::Flag("-m"),
             GitArg::Word("Merge branch 'feat' into main".to_owned()),
             GitArg::Ref(FEAT.as_bytes().to_vec()),
@@ -315,7 +318,12 @@ fn plan_merge_supplies_gits_own_subject_and_never_an_editor() {
 #[test]
 fn plan_replays_pin_by_id_and_never_open_an_editor() {
     let f = facts();
-    assert_eq!(lines(&rebase(), &f), [format!("git rebase {FEAT}")]);
+    // `--no-update-refs` and `--no-autostash`: a rebase must move only the
+    // branch the entry records, and must never stash outside one.
+    assert_eq!(
+        lines(&rebase(), &f),
+        [format!("git rebase --no-update-refs --no-autostash {FEAT}")]
+    );
     assert_eq!(
         lines(&pick(), &f),
         [format!("git cherry-pick --no-edit {}", hex(0x0c))]
