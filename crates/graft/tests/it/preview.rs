@@ -573,8 +573,8 @@ fn the_context_menu_lists_its_history_verbs_and_draws_them() {
     let labels = menu_labels(&state);
     for wanted in [
         "Checkout main",
-        "Merge main into feature",
-        "Rebase feature onto main",
+        "Merge main into feature (m)",
+        "Rebase feature onto main (r)",
         "Reset feature to here (mixed)",
         "Reset feature to here (hard)",
         "Delete branch main",
@@ -587,8 +587,8 @@ fn the_context_menu_lists_its_history_verbs_and_draws_them() {
 
     // Drawn, not merely listed: the rows come off the real buffer.
     let text = frame(&state, 100, 30).join("\n");
-    assert!(text.contains("Merge main into feature"), "{text}");
-    assert!(text.contains("Rebase feature onto main"), "{text}");
+    assert!(text.contains("Merge main into feature (m)"), "{text}");
+    assert!(text.contains("Rebase feature onto main (r)"), "{text}");
     app.close();
 }
 
@@ -604,7 +604,7 @@ fn choosing_a_menu_verb_previews_that_operation_and_writes_nothing() {
     let (app, state) = App::open(scratch.path());
     let state = menu_on_mains_row(&app, state);
 
-    let wanted = "Rebase feature onto main";
+    let wanted = "Rebase feature onto main (r)";
     let at = menu_labels(&state)
         .iter()
         .position(|label| label == wanted)
@@ -690,12 +690,16 @@ fn capture_context_menu_for_docs_shots() {
              #    (x)`, `Open details (\u{23ce})`), then the history verbs, then the keys the\n\
              #    hint bar drops (`Fetch (f)` \u{2026} `Undo (u)`).\n\
              #  - The history verbs name the real branches, not placeholders: `Checkout\n\
-             #    main`, `Merge main into feature`, `Rebase feature onto main`,\n\
+             #    main`, `Merge main into feature (m)`, `Rebase feature onto main (r)`,\n\
              #    `Cherry-pick <sha7>`, `Revert <sha7>`, `Reset feature to here\n\
              #    (mixed)`/`(hard)`, `Delete branch main`. `feature` is the branch\n\
              #    checked out, `main` is the row under the cursor.\n\
              #  - No verb names the branch you are standing on where git would refuse\n\
              #    it: there is no `Checkout feature` and no `Delete branch feature`.\n\
+             #  - A trailing `(key)` means the same thing everywhere in the menu:\n\
+             #    next time you can skip it. `Merge` and `Rebase` carry one because\n\
+             #    `m` and `r` exist; checkout, cherry-pick, revert, reset and the\n\
+             #    deletions own no letter, so they carry none.\n\
              #  - Choosing any of them opens a picture, not a write (PROMPT.md \u{a7}1.7).\n\
              #  - At 80 columns the menu still fits inside the graph pane rather than\n\
              #    running off it.\n\
