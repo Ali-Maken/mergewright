@@ -1,7 +1,9 @@
 # hint-bar-redesign: three most relevant keys per context at 80 and 120, never all hidden; failure lines keep their keys
 
-Status: draft
+Status: ready
+Blocked by: none
 Build with: (blank — brownfield in `graph_screen`'s footer and `view::rows::graph_view`; recommendation: **Sonnet** — a pure table + width rule, fully unit-testable per width; the mockups in the note are the spec)
+**Conductor set after the scouts: Sonnet.**
 Crates: graft-ui, graft (one seam: `GraphView.hint_context` filled by `view/rows.rs`)
 Needs: none (`HintContext::Banner`/`Preview` variants exist from day one; pass-2 groups only start producing them)
 

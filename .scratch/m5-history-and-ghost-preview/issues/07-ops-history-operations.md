@@ -1,6 +1,7 @@
 # ops-history-operations: merge/rebase/cherry-pick/revert/reset/checkout/branch/tag as operations, the conflict span in the journal, resume, the time machine, and Ghost Preview planning
 
-Status: draft
+Status: ready
+Blocked by: 02 (git-history-reads)
 Build with: **Fable (signature)** — the journal shape of a conflicted operation and `PreviewPlan` are structural for M6 (resolver), M7 (chain rebase, ADR-0032) and the browser; "the ghost equals what git did" is not readable from a diff; the per-kind rules still need decisions the spec cannot fully pin.
 Crates: graft-ops, graft-core
 Needs: `git-history-reads` — `graft_git::history_reads::{merge_base, commits_between, forecast_merge, changed_paths}`, `graft_git::state::in_progress_detail`.

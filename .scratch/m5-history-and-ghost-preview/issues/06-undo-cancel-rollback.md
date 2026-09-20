@@ -1,7 +1,9 @@
 # undo-cancel-rollback: `Esc` cancels `u`/`U` between steps and rolls back what already ran
 
-Status: draft
+Status: ready
+Blocked by: none
 Build with: (blank — brownfield in `graft-ops::restore`; recommendation: **Opus** — a rollback that is wrong loses the one thing undo exists for; testable, so not Fable)
+**Conductor set after the scouts: Opus.**
 Crates: graft-ops, graft (one file: `update/remote.rs` `UNDO_CANNOT_STOP` removal)
 Needs: none
 

@@ -1,7 +1,9 @@
 # refresh-race: `Ctrl+R` before the previous walk's `Started` leaves an old history job running
 
-Status: draft
+Status: ready
+Blocked by: none
 Build with: (blank — brownfield in the app's job routing; recommendation: **Opus** — a concurrency bug whose fix pattern (ids minted by `update`) is the one KNOWN_GAPS row 216 wants everywhere)
+**Conductor set after the scouts: Opus.**
 Crates: graft
 Needs: none
 

@@ -1,7 +1,9 @@
 # secret-field: the typed password lives in a zeroizing buffer, never a `String`
 
-Status: draft
+Status: ready
+Blocked by: none
 Build with: (blank — brownfield; recommendation: **Sonnet**, mechanical once the scout has named every site the field's text passes through)
+**Conductor set after the scouts: Sonnet.**
 Crates: graft-ui, graft
 Needs: none
 **First group of M5 (ADR-0037 §5).** Nothing else starts before this is merged.

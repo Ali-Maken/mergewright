@@ -1,7 +1,9 @@
 # ui-ghost-banner-conflict: ghost rows, the preview box, N-choice confirm (+ its missing frame), the operation banner, the CONFLICTS section, the name prompt
 
-Status: draft
+Status: ready
+Blocked by: none
 Build with: (blank — brownfield in `graph_column`, `confirm`, `detail_pane`; recommendation: **Sonnet**, pure widgets with per-width tests; the user judges the captures)
+**Conductor set after the scouts: Sonnet.**
 Crates: graft-ui
 Needs: none (view-model types only; the app groups in pass 2 fill them)
 

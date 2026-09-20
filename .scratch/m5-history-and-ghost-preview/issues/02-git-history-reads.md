@@ -1,7 +1,9 @@
 # git-history-reads: merge-base, commit ranges, the `merge-tree` conflict forecast, in-progress detail, mergetool
 
-Status: draft
+Status: ready
+Blocked by: none
 Build with: (blank — mostly greenfield (`history_reads.rs` new) with small brownfield edits in `state.rs` and `run.rs`; recommendation: **Sonnet**, every behaviour is provable against real git in a scratch repo)
+**Conductor set after the scouts: Sonnet.**
 Crates: graft-git
 Needs: none
 
