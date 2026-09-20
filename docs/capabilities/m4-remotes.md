@@ -319,26 +319,45 @@ status: works
 - **Decided in:** `docs/design-notes/m4-remotes.md` "New UI: Footer while a remote write runs"
 - **Status:** works
 
-### M4-14. `Esc` cannot interrupt undo or redo — it finishes instead
+### M4-14. `Esc` interrupts an undo, and whatever it already applied is rolled back
 
 ```meta
 id: M4-14
 area: undo
 milestone: m4-remotes
-status: partial
+status: works
 ```
 
 - **How:** `Esc` while `u`/`U` is running.
-- **Behaviour:** Deliberately withdrawn, not silently broken: the
-  underlying restore executor only checks for a stop request once, before
-  the first step, so a cancel mid-plan could leave one ref moved and
-  another not. `u`/`U` are marked not-stoppable; `Esc` sends no cancel and
-  the status reads `"undo cannot be stopped part-way — finishing…"`. Every
-  other write stays stoppable.
-- **Proven by:** `graft::update::remote::tests::esc_does_not_stop_an_undo_or_a_redo`
-  `graft::update::remote::tests::a_remote_write_is_still_stoppable`
-- **Decided in:** M4 review of group 05 (`docs/reviews/m4-05-remote-keys.md`); reclassified as a bug for M5 in ADR-0037 §6
-- **Status:** partial — safe as shipped, but a real interruptible-undo-with-rollback fix is a KNOWN_GAPS row for M5
+- **How:** `Esc` while `u`/`U` is running.
+- **Behaviour:** **This entry describes a restriction that M5 lifted. The M4
+  behaviour is recorded here because it was a deliberate withdrawal, not a
+  bug, and because the reason it was withdrawn is the reason the fix looks
+  the way it does.**
+
+  In M4, `u`/`U` were marked not-stoppable: the restore executor checked for
+  a stop request only once, before the first step, so cancelling mid-plan
+  could leave one ref moved and another not. `Esc` sent no cancel and the
+  status read `"undo cannot be stopped part-way — finishing…"`. Every other
+  write stayed stoppable. That was safe but dishonest about `Esc`, and it
+  was filed as a bug for M5 in ADR-0037 §6.
+
+  As of M5, `Esc` does stop an undo. The restore executor checks the stop at
+  every step boundary and, when it stops part-way, **unwinds the steps it
+  already applied** — so the half-undone state the M4 restriction existed to
+  prevent cannot happen, and the restriction is no longer needed.
+  `UNDO_CANNOT_STOP` is gone and `Stoppable::Yes` is the default.
+
+  Two caveats, neither of them hypothetical. A step taken while git has an
+  operation in progress cannot always be reversed, and when a ref has moved
+  underneath a killed step the rollback refuses rather than overwriting it —
+  it reports drift and leaves the ref alone. Recovery from a part-way cancel
+  is **`U`**, not `u`.
+- **Proven by:** `graft::update::remote::tests::esc_cancels_an_undo_in_flight`
+  `graft_ops::tests::it::undo_cancel::a_killed_step_whose_ref_is_back_where_it_started_is_not_reversed`
+  `graft_ops::tests::it::undo_cancel::cancel_at_every_step_boundary_is_clean`
+- **Decided in:** M4 review of group 05 (`docs/reviews/m4-05-remote-keys.md`); reclassified as a bug for M5 in ADR-0037 §6; fixed in M5 groups 06 and 08
+- **Status:** works — the M4 restriction is lifted, and the rollback that made lifting it safe is mutation-checked (`docs/reviews/m5-06-undo-cancel-rollback.md`)
 
 ### M4-15. The status line shows live progress during a fetch, pull or push
 

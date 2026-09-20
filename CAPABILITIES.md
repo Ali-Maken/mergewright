@@ -14,8 +14,8 @@ The browsable, filterable version of this same data is `docs/generated/capabilit
 
 | Status | Count | Share | |
 |---|---:|---:|---|
-| works | 106 | 85.5% | `##################################` |
-| partial | 12 | 9.7% | `###` |
+| works | 107 | 86.3% | `##################################` |
+| partial | 11 | 8.9% | `###` |
 | unverified | 1 | 0.8% | `` |
 | broken | 5 | 4.0% | `#` |
 
@@ -159,7 +159,7 @@ The browsable, filterable version of this same data is `docs/generated/capabilit
 - **M1-22** The graph never freezes on a blank frame while scrolling in the pixel tier — `works` — [docs/capabilities/m1-the-graph.md#m1-22-the-graph-never-freezes-on-a-blank-frame-while-scrolling-in-the-pixel-tier](docs/capabilities/m1-the-graph.md#m1-22-the-graph-never-freezes-on-a-blank-frame-while-scrolling-in-the-pixel-tier)
 - **M4-21** Remote-supplied text can't inject terminal escapes onto your screen — `works` — [docs/capabilities/m4-remotes.md#m4-21-remote-supplied-text-cant-inject-terminal-escapes-onto-your-screen](docs/capabilities/m4-remotes.md#m4-21-remote-supplied-text-cant-inject-terminal-escapes-onto-your-screen)
 
-### undo (13 capabilities, 12 works)
+### undo (13 capabilities, 13 works)
 
 - **M3-01** Every working-tree write goes through one seam that snapshots first — `works` — [docs/capabilities/m3-working-tree-undo-and-stash.md#m3-01-every-working-tree-write-goes-through-one-seam-that-snapshots-first](docs/capabilities/m3-working-tree-undo-and-stash.md#m3-01-every-working-tree-write-goes-through-one-seam-that-snapshots-first)
 - **M3-02** `u` undoes the last operation; `U` redoes it — byte-for-byte — `works` — [docs/capabilities/m3-working-tree-undo-and-stash.md#m3-02-u-undoes-the-last-operation-u-redoes-it--byte-for-byte](docs/capabilities/m3-working-tree-undo-and-stash.md#m3-02-u-undoes-the-last-operation-u-redoes-it--byte-for-byte)
@@ -167,7 +167,7 @@ The browsable, filterable version of this same data is `docs/generated/capabilit
 - **M3-04** A crashed or interrupted operation is recoverable, not silently lost — `works` — [docs/capabilities/m3-working-tree-undo-and-stash.md#m3-04-a-crashed-or-interrupted-operation-is-recoverable-not-silently-lost](docs/capabilities/m3-working-tree-undo-and-stash.md#m3-04-a-crashed-or-interrupted-operation-is-recoverable-not-silently-lost)
 - **M3-05** The journal browser: every operation Graft has done, and what to do with it — `works` — [docs/capabilities/m3-working-tree-undo-and-stash.md#m3-05-the-journal-browser-every-operation-graft-has-done-and-what-to-do-with-it](docs/capabilities/m3-working-tree-undo-and-stash.md#m3-05-the-journal-browser-every-operation-graft-has-done-and-what-to-do-with-it)
 - **M3-13** Graft's own bookkeeping refs never appear as history — `works` ⚠ — [docs/capabilities/m3-working-tree-undo-and-stash.md#m3-13-grafts-own-bookkeeping-refs-never-appear-as-history](docs/capabilities/m3-working-tree-undo-and-stash.md#m3-13-grafts-own-bookkeeping-refs-never-appear-as-history)
-- **M4-14** `Esc` cannot interrupt undo or redo — it finishes instead — `partial` — [docs/capabilities/m4-remotes.md#m4-14-esc-cannot-interrupt-undo-or-redo--it-finishes-instead](docs/capabilities/m4-remotes.md#m4-14-esc-cannot-interrupt-undo-or-redo--it-finishes-instead)
+- **M4-14** `Esc` interrupts an undo, and whatever it already applied is rolled back — `works` — [docs/capabilities/m4-remotes.md#m4-14-esc-interrupts-an-undo-and-whatever-it-already-applied-is-rolled-back](docs/capabilities/m4-remotes.md#m4-14-esc-interrupts-an-undo-and-whatever-it-already-applied-is-rolled-back)
 - **M4-17** The journal records fetch, pull and push distinctly — and says which can be undone — `works` — [docs/capabilities/m4-remotes.md#m4-17-the-journal-records-fetch-pull-and-push-distinctly--and-says-which-can-be-undone](docs/capabilities/m4-remotes.md#m4-17-the-journal-records-fetch-pull-and-push-distinctly--and-says-which-can-be-undone)
 - **M4-23** Undo and redo survive a fetch without losing what they were pointing at — `works` — [docs/capabilities/m4-remotes.md#m4-23-undo-and-redo-survive-a-fetch-without-losing-what-they-were-pointing-at](docs/capabilities/m4-remotes.md#m4-23-undo-and-redo-survive-a-fetch-without-losing-what-they-were-pointing-at)
 - **M5-03** Merge, rebase, cherry-pick, revert, reset, checkout, branch/tag create-delete, and branch-from-stash all run as recorded, undoable operations — `works` — [docs/capabilities/m5-history-and-ghost-preview.md#m5-03-merge-rebase-cherry-pick-revert-reset-checkout-branchtag-create-delete-and-branch-from-stash-all-run-as-recorded-undoable-operations](docs/capabilities/m5-history-and-ghost-preview.md#m5-03-merge-rebase-cherry-pick-revert-reset-checkout-branchtag-create-delete-and-branch-from-stash-all-run-as-recorded-undoable-operations)
