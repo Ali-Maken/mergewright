@@ -284,7 +284,7 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     if ctx.stop.should_stop() {
         return Err(ApplyError::Stopped);
     }
-    let facts = facts::read_facts(ctx.repo, ctx.git, ctx.stop, op.is_remote())
+    let facts = facts::read_facts(ctx.repo, ctx.git, ctx.stop, &op.facts_scope())
         .map_err(ApplyError::Facts)?;
     op.check(&facts).map_err(ApplyError::Refused)?;
     let touches = op.touches(&facts);
@@ -814,7 +814,19 @@ fn anchors(head: Option<&HeadRef>, refs: &BTreeMap<String, Option<Oid>>) -> Vec<
 fn pins_for(op: &Operation) -> Vec<Oid> {
     match op {
         Operation::StashPop { commit, .. } | Operation::StashDrop { commit, .. } => vec![*commit],
-        Operation::Stage(_)
+        // The stash `stash branch` drops: undo stores it back (m5/07).
+        Operation::BranchFromStash(params) => vec![params.commit],
+        Operation::Merge(_)
+        | Operation::Rebase(_)
+        | Operation::CherryPick(_)
+        | Operation::Revert(_)
+        | Operation::Reset(_)
+        | Operation::Checkout(_)
+        | Operation::BranchCreate(_)
+        | Operation::BranchDelete(_)
+        | Operation::TagCreate(_)
+        | Operation::TagDelete(_)
+        | Operation::Stage(_)
         | Operation::Unstage(_)
         | Operation::Discard(_)
         | Operation::Commit(_)
@@ -852,6 +864,18 @@ pub(crate) fn kind_name(kind: OperationKind) -> &'static str {
         OperationKind::Fetch => "fetch",
         OperationKind::Pull => "pull",
         OperationKind::Push => "push",
+        OperationKind::Merge => "merge",
+        OperationKind::Rebase => "rebase",
+        OperationKind::CherryPick => "cherry-pick",
+        OperationKind::Revert => "revert",
+        OperationKind::Reset => "reset",
+        OperationKind::Checkout => "checkout",
+        OperationKind::BranchCreate => "branch",
+        OperationKind::BranchDelete => "delete branch",
+        OperationKind::TagCreate => "tag",
+        OperationKind::TagDelete => "delete tag",
+        OperationKind::BranchFromStash => "branch from stash",
+        OperationKind::RevertTo => "revert to",
         OperationKind::Undo => "undo",
         OperationKind::Redo => "redo",
     }

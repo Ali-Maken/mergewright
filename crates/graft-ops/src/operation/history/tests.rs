@@ -1,0 +1,811 @@
+//! Table tests for the history operations: the exact command lines, the
+//! browser line, `touches`, the facts each asks for, and every refusal one
+//! fact away from a passing baseline.
+
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+
+use graft_core::commit::Timestamp;
+use graft_core::error::RefNameRule;
+use graft_core::journal::{HeadRef, OperationKind, Touches};
+use graft_core::oid::Oid;
+use graft_git::run::GitArg;
+use graft_git::stash::StashEntry;
+use graft_git::state::InProgress;
+use graft_git::status::{Change, StatusEntry, WorkingTreeStatus};
+use graft_git::version::GitVersion;
+
+use super::super::{FactsScope, Operation, Refusal, RepoFacts, Target};
+use super::{
+    BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,
+    MergeParams, PickParams, RebaseParams, RefDeleteParams, ResetMode, ResetParams, ResetTarget,
+    RevertParams, Source, TagCreateParams, Tip,
+};
+
+const MAIN: &str = "refs/heads/main";
+const FEAT: &str = "refs/heads/feat";
+
+fn oid(byte: u8) -> Oid {
+    Oid::from_bytes(&[byte; 20]).unwrap()
+}
+
+fn hex(byte: u8) -> String {
+    oid(byte).to_string()
+}
+
+fn tip(name: &str, byte: u8) -> Tip {
+    Tip {
+        name: name.to_owned(),
+        oid: oid(byte),
+    }
+}
+
+fn entry(path: &str) -> StatusEntry {
+    StatusEntry {
+        path: PathBuf::from(path),
+        original_path: None,
+        staged: None,
+        unstaged: None,
+        untracked: false,
+        unmerged: false,
+        submodule: false,
+    }
+}
+
+/// On `main` at `0x0a`, `feat` at `0x0b`, `v1` absent, one stash, clean.
+fn facts() -> RepoFacts {
+    RepoFacts {
+        bare: false,
+        head: HeadRef::Branch(MAIN.to_owned()),
+        in_progress: None,
+        status: WorkingTreeStatus { entries: vec![] },
+        stashes: vec![StashEntry {
+            index: 0,
+            commit: oid(0x50),
+            message: "On main: wip".to_owned(),
+            at: Timestamp {
+                seconds: 0,
+                offset_seconds: 0,
+            },
+            paths: vec![PathBuf::from("a.rs")],
+        }],
+        git: GitVersion {
+            major: 2,
+            minor: 54,
+            patch: 0,
+        },
+        remotes: vec![],
+        upstream: None,
+        refs: BTreeMap::from([
+            (MAIN.to_owned(), Some(oid(0x0a))),
+            (FEAT.to_owned(), Some(oid(0x0b))),
+            ("HEAD".to_owned(), Some(oid(0x0a))),
+            ("refs/tags/v1".to_owned(), None),
+            ("refs/heads/nb".to_owned(), None),
+        ]),
+        markers: vec![],
+    }
+}
+
+fn lines(op: &Operation, facts: &RepoFacts) -> Vec<String> {
+    op.plan(facts)
+        .iter()
+        .map(super::super::Invocation::command_line)
+        .collect()
+}
+
+fn merge() -> Operation {
+    Operation::Merge(MergeParams {
+        source: Source::Branch(FEAT.to_owned()),
+        into: tip(MAIN, 0x0a),
+        source_tip: oid(0x0b),
+        ff: FastForward::Default,
+    })
+}
+
+fn rebase() -> Operation {
+    Operation::Rebase(RebaseParams {
+        branch: tip(MAIN, 0x0a),
+        onto: Source::Branch(FEAT.to_owned()),
+        onto_tip: oid(0x0b),
+    })
+}
+
+fn pick() -> Operation {
+    Operation::CherryPick(PickParams {
+        commits: vec![oid(0x0c)],
+        subject: "fix the thing".to_owned(),
+        head: tip(MAIN, 0x0a),
+    })
+}
+
+fn revert() -> Operation {
+    Operation::Revert(RevertParams {
+        commit: oid(0x0c),
+        subject: "fix the thing".to_owned(),
+        mainline: None,
+        parents: 1,
+        head: tip(MAIN, 0x0a),
+    })
+}
+
+fn reset(mode: ResetMode) -> Operation {
+    Operation::Reset(ResetParams {
+        target: ResetTarget::Head {
+            branch: tip(MAIN, 0x0a),
+            mode,
+        },
+        to: oid(0x0d),
+    })
+}
+
+fn move_branch() -> Operation {
+    Operation::Reset(ResetParams {
+        target: ResetTarget::Branch(tip(FEAT, 0x0b)),
+        to: oid(0x0d),
+    })
+}
+
+fn checkout() -> Operation {
+    Operation::Checkout(CheckoutParams {
+        to: CheckoutTarget::Branch(FEAT.to_owned()),
+        head_before: HeadRef::Branch(MAIN.to_owned()),
+    })
+}
+
+fn branch_create(checkout: bool) -> Operation {
+    Operation::BranchCreate(BranchCreateParams {
+        name: "nb".to_owned(),
+        at: oid(0x0a),
+        checkout,
+    })
+}
+
+fn branch_delete() -> Operation {
+    Operation::BranchDelete(RefDeleteParams {
+        name: FEAT.to_owned(),
+        expected: oid(0x0b),
+    })
+}
+
+fn tag_create(message: Option<&str>) -> Operation {
+    Operation::TagCreate(TagCreateParams {
+        name: "v1".to_owned(),
+        at: oid(0x0a),
+        message: message.map(str::to_owned),
+    })
+}
+
+fn branch_from_stash() -> Operation {
+    Operation::BranchFromStash(BranchFromStashParams {
+        name: "nb".to_owned(),
+        index: 0,
+        commit: oid(0x50),
+    })
+}
+
+fn baseline_ops() -> Vec<Operation> {
+    vec![
+        merge(),
+        rebase(),
+        pick(),
+        revert(),
+        reset(ResetMode::Mixed),
+        move_branch(),
+        checkout(),
+        branch_create(true),
+        branch_delete(),
+        tag_create(None),
+        tag_create(Some("release")),
+        Operation::TagDelete(RefDeleteParams {
+            name: MAIN.to_owned(),
+            expected: oid(0x0a),
+        }),
+        branch_from_stash(),
+    ]
+}
+
+// ---- describe -------------------------------------------------------------
+
+#[test]
+fn describe_reads_like_the_browser_line() {
+    let cases = [
+        (merge(), "merge feat into main"),
+        (rebase(), "rebase main onto feat"),
+        (pick(), "cherry-pick 0c0c0c0 \"fix the thing\""),
+        (revert(), "revert 0c0c0c0 \"fix the thing\""),
+        (reset(ResetMode::Hard), "reset main to 0d0d0d0 (hard)"),
+        (move_branch(), "move feat to 0d0d0d0"),
+        (checkout(), "checkout feat"),
+        (branch_create(false), "branch nb at 0a0a0a0"),
+        (branch_delete(), "delete branch feat"),
+        (tag_create(None), "tag v1 at 0a0a0a0"),
+        (branch_from_stash(), "branch nb from stash@{0}"),
+    ];
+    for (op, expected) in cases {
+        assert_eq!(op.describe(), expected);
+    }
+    let detached = Operation::Checkout(CheckoutParams {
+        to: CheckoutTarget::Detached(oid(0x0c)),
+        head_before: HeadRef::Branch(MAIN.to_owned()),
+    });
+    assert_eq!(detached.describe(), "checkout 0c0c0c0 (detached)");
+    let many = Operation::CherryPick(PickParams {
+        commits: vec![oid(1), oid(2)],
+        subject: "x".to_owned(),
+        head: tip(MAIN, 0x0a),
+    });
+    assert_eq!(many.describe(), "cherry-pick 2 commits");
+}
+
+#[test]
+fn kind_matches_the_variant() {
+    let kinds: Vec<OperationKind> = baseline_ops().iter().map(Operation::kind).collect();
+    assert_eq!(
+        kinds,
+        [
+            OperationKind::Merge,
+            OperationKind::Rebase,
+            OperationKind::CherryPick,
+            OperationKind::Revert,
+            OperationKind::Reset,
+            OperationKind::Reset,
+            OperationKind::Checkout,
+            OperationKind::BranchCreate,
+            OperationKind::BranchDelete,
+            OperationKind::TagCreate,
+            OperationKind::TagCreate,
+            OperationKind::TagDelete,
+            OperationKind::BranchFromStash,
+        ]
+    );
+    for op in baseline_ops() {
+        assert!(op.is_history(), "{}", op.describe());
+        assert!(!op.is_remote(), "{}", op.describe());
+    }
+    assert_eq!(merge().starts_in_progress(), Some(InProgress::Merge));
+    assert_eq!(rebase().starts_in_progress(), Some(InProgress::Rebase));
+    assert_eq!(pick().starts_in_progress(), Some(InProgress::CherryPick));
+    assert_eq!(revert().starts_in_progress(), Some(InProgress::Revert));
+    assert_eq!(checkout().starts_in_progress(), None);
+}
+
+// ---- plan -----------------------------------------------------------------
+
+#[test]
+fn plan_merge_supplies_gits_own_subject_and_never_an_editor() {
+    let f = facts();
+    let plan = merge().plan(&f);
+    assert_eq!(plan.len(), 1);
+    assert_eq!(
+        plan[0].args,
+        vec![
+            GitArg::Flag("merge"),
+            GitArg::Flag("--no-edit"),
+            GitArg::Flag("-m"),
+            GitArg::Word("Merge branch 'feat' into main".to_owned()),
+            GitArg::Ref(FEAT.as_bytes().to_vec()),
+        ]
+    );
+    let by_commit = Operation::Merge(MergeParams {
+        source: Source::Commit(oid(0x0b)),
+        into: tip(MAIN, 0x0a),
+        source_tip: oid(0x0b),
+        ff: FastForward::Only,
+    });
+    assert_eq!(
+        lines(&by_commit, &f),
+        [format!(
+            "git merge --no-edit --ff-only -m 'Merge commit '\\''{}'\\'' into main' {}",
+            hex(0x0b),
+            hex(0x0b)
+        )]
+    );
+    let no_ff = Operation::Merge(MergeParams {
+        ff: FastForward::Never,
+        ..match merge() {
+            Operation::Merge(params) => params,
+            _ => unreachable!(),
+        }
+    });
+    assert!(lines(&no_ff, &f)[0].contains(" --no-ff "));
+}
+
+#[test]
+fn plan_replays_pin_by_id_and_never_open_an_editor() {
+    let f = facts();
+    assert_eq!(lines(&rebase(), &f), [format!("git rebase {FEAT}")]);
+    assert_eq!(
+        lines(&pick(), &f),
+        [format!("git cherry-pick --no-edit {}", hex(0x0c))]
+    );
+    assert_eq!(
+        lines(&revert(), &f),
+        [format!("git revert --no-edit {}", hex(0x0c))]
+    );
+    let of_merge = Operation::Revert(RevertParams {
+        mainline: Some(1),
+        parents: 2,
+        ..match revert() {
+            Operation::Revert(params) => params,
+            _ => unreachable!(),
+        }
+    });
+    assert_eq!(
+        lines(&of_merge, &f),
+        [format!("git revert --no-edit -m 1 {}", hex(0x0c))]
+    );
+}
+
+#[test]
+fn plan_reset_moves_head_by_mode_and_other_branches_by_compare_and_swap() {
+    let f = facts();
+    for (mode, flag) in [
+        (ResetMode::Soft, "--soft"),
+        (ResetMode::Mixed, "--mixed"),
+        (ResetMode::Hard, "--hard"),
+    ] {
+        assert_eq!(
+            lines(&reset(mode), &f),
+            [format!("git reset {flag} {}", hex(0x0d))]
+        );
+    }
+    assert_eq!(
+        lines(&move_branch(), &f),
+        [format!("git update-ref {FEAT} {} {}", hex(0x0d), hex(0x0b))]
+    );
+}
+
+#[test]
+fn plan_switch_branch_tag_and_stash_branch() {
+    let f = facts();
+    assert_eq!(lines(&checkout(), &f), ["git switch feat"]);
+    let detached = Operation::Checkout(CheckoutParams {
+        to: CheckoutTarget::Detached(oid(0x0c)),
+        head_before: HeadRef::Branch(MAIN.to_owned()),
+    });
+    assert_eq!(
+        lines(&detached, &f),
+        [format!("git switch --detach {}", hex(0x0c))]
+    );
+    assert_eq!(
+        lines(&branch_create(false), &f),
+        [format!("git branch nb {}", hex(0x0a))]
+    );
+    assert_eq!(
+        lines(&branch_create(true), &f),
+        [
+            format!("git branch nb {}", hex(0x0a)),
+            "git switch nb".to_owned()
+        ]
+    );
+    assert_eq!(
+        lines(&branch_delete(), &f),
+        [format!("git update-ref -d {FEAT} {}", hex(0x0b))]
+    );
+    assert_eq!(
+        lines(&tag_create(None), &f),
+        [format!("git tag v1 {}", hex(0x0a))]
+    );
+    let annotated = tag_create(Some("release\r\nnotes\n\n")).plan(&f);
+    assert_eq!(
+        annotated[0].command_line(),
+        format!("git tag -a -F - v1 {}", hex(0x0a))
+    );
+    assert_eq!(
+        annotated[0].stdin.as_deref(),
+        Some(&b"release\nnotes\n"[..])
+    );
+    assert_eq!(
+        lines(&branch_from_stash(), &f),
+        ["git stash branch nb 'stash@{0}'"]
+    );
+}
+
+// ---- touches and scope ----------------------------------------------------
+
+#[test]
+fn touches_name_the_branch_head_is_on_and_the_trees_that_move() {
+    let f = facts();
+    let both = |refs: &[&str]| Touches {
+        refs: refs.iter().map(|r| (*r).to_owned()).collect(),
+        index: true,
+        worktree: true,
+    };
+    let refs_only = |refs: &[&str]| Touches {
+        refs: refs.iter().map(|r| (*r).to_owned()).collect(),
+        index: false,
+        worktree: false,
+    };
+    assert_eq!(merge().touches(&f), both(&[MAIN]));
+    assert_eq!(rebase().touches(&f), both(&[MAIN]));
+    assert_eq!(pick().touches(&f), both(&[MAIN]));
+    assert_eq!(revert().touches(&f), both(&[MAIN]));
+    assert_eq!(reset(ResetMode::Soft).touches(&f), refs_only(&[MAIN]));
+    assert_eq!(
+        reset(ResetMode::Mixed).touches(&f),
+        Touches {
+            refs: vec![MAIN.to_owned()],
+            index: true,
+            worktree: false,
+        }
+    );
+    assert_eq!(reset(ResetMode::Hard).touches(&f), both(&[MAIN]));
+    assert_eq!(move_branch().touches(&f), refs_only(&[FEAT]));
+    // `HEAD` itself is never a touched ref: `SetHead` puts it back.
+    assert_eq!(checkout().touches(&f), both(&[]));
+    assert_eq!(
+        branch_create(false).touches(&f),
+        refs_only(&["refs/heads/nb"])
+    );
+    assert_eq!(branch_create(true).touches(&f), both(&["refs/heads/nb"]));
+    assert_eq!(branch_delete().touches(&f), refs_only(&[FEAT]));
+    assert_eq!(tag_create(None).touches(&f), refs_only(&["refs/tags/v1"]));
+    assert_eq!(
+        branch_from_stash().touches(&f),
+        both(&["refs/heads/nb", "refs/stash"])
+    );
+}
+
+#[test]
+fn facts_scope_names_exactly_the_refs_check_reads() {
+    let scope = |refs: &[&str]| FactsScope {
+        remotes: false,
+        refs: refs.iter().map(|r| (*r).to_owned()).collect(),
+    };
+    assert_eq!(merge().facts_scope(), scope(&[MAIN, FEAT]));
+    assert_eq!(rebase().facts_scope(), scope(&[MAIN, FEAT]));
+    assert_eq!(pick().facts_scope(), scope(&[MAIN]));
+    assert_eq!(move_branch().facts_scope(), scope(&[FEAT]));
+    assert_eq!(checkout().facts_scope(), scope(&["HEAD", FEAT]));
+    assert_eq!(
+        branch_create(true).facts_scope(),
+        scope(&["refs/heads/nb", "HEAD"])
+    );
+    assert_eq!(branch_delete().facts_scope(), scope(&[FEAT]));
+    assert_eq!(tag_create(None).facts_scope(), scope(&["refs/tags/v1"]));
+    assert_eq!(branch_from_stash().facts_scope(), scope(&["refs/heads/nb"]));
+    assert_eq!(
+        Operation::Stage(Target::Paths(vec![PathBuf::from("a")])).facts_scope(),
+        FactsScope::default()
+    );
+}
+
+// ---- check ----------------------------------------------------------------
+
+#[test]
+fn every_kind_passes_the_baseline() {
+    let f = facts();
+    for op in baseline_ops() {
+        assert_eq!(op.check(&f), Ok(()), "{}", op.describe());
+    }
+}
+
+#[test]
+fn a_moved_tip_refuses_with_its_name() {
+    let mut f = facts();
+    f.refs.insert(FEAT.to_owned(), Some(oid(0x0e)));
+    let moved = Err(Refusal::Moved {
+        name: FEAT.to_owned(),
+    });
+    assert_eq!(merge().check(&f), moved);
+    assert_eq!(rebase().check(&f), moved);
+    assert_eq!(move_branch().check(&f), moved);
+    assert_eq!(branch_delete().check(&f), moved);
+    // A source given as a bare commit is not pinned to any ref.
+    let by_commit = Operation::Merge(MergeParams {
+        source: Source::Commit(oid(0x0e)),
+        into: tip(MAIN, 0x0a),
+        source_tip: oid(0x0e),
+        ff: FastForward::Default,
+    });
+    assert_eq!(by_commit.check(&f), Ok(()));
+    let mut main_moved = facts();
+    main_moved.refs.insert(MAIN.to_owned(), Some(oid(0x0e)));
+    let moved_main = Err(Refusal::Moved {
+        name: MAIN.to_owned(),
+    });
+    for op in [merge(), rebase(), pick(), revert(), reset(ResetMode::Mixed)] {
+        assert_eq!(op.check(&main_moved), moved_main, "{}", op.describe());
+    }
+}
+
+#[test]
+fn head_on_another_branch_refuses_branch_changed() {
+    let mut f = facts();
+    f.head = HeadRef::Branch(FEAT.to_owned());
+    for op in [
+        merge(),
+        rebase(),
+        pick(),
+        revert(),
+        reset(ResetMode::Mixed),
+        checkout(),
+    ] {
+        assert_eq!(
+            op.check(&f),
+            Err(Refusal::BranchChanged),
+            "{}",
+            op.describe()
+        );
+    }
+    // Detached `HEAD` is a tip named `HEAD`.
+    let mut detached = facts();
+    detached.head = HeadRef::Detached(oid(0x0a));
+    let pick_detached = Operation::CherryPick(PickParams {
+        commits: vec![oid(0x0c)],
+        subject: "x".to_owned(),
+        head: tip("HEAD", 0x0a),
+    });
+    assert_eq!(pick_detached.check(&detached), Ok(()));
+    detached.head = HeadRef::Detached(oid(0x0e));
+    assert_eq!(
+        pick_detached.check(&detached),
+        Err(Refusal::Moved {
+            name: "HEAD".to_owned()
+        })
+    );
+}
+
+#[test]
+fn a_dirty_tracked_tree_refuses_rebase_and_switch_but_not_merge() {
+    let mut f = facts();
+    f.status.entries.push(StatusEntry {
+        unstaged: Some(Change::Modified),
+        ..entry("a.rs")
+    });
+    f.status.entries.push(StatusEntry {
+        staged: Some(Change::Added),
+        ..entry("b.rs")
+    });
+    f.status.entries.push(StatusEntry {
+        untracked: true,
+        ..entry("junk")
+    });
+    let dirty = Err(Refusal::DirtyTree { count: 2 });
+    assert_eq!(rebase().check(&f), dirty);
+    assert_eq!(checkout().check(&f), dirty);
+    assert_eq!(branch_create(true).check(&f), dirty);
+    assert_eq!(branch_from_stash().check(&f), dirty);
+    for op in [
+        merge(),
+        pick(),
+        revert(),
+        reset(ResetMode::Hard),
+        move_branch(),
+        branch_create(false),
+        branch_delete(),
+        tag_create(None),
+    ] {
+        assert_eq!(op.check(&f), Ok(()), "{}", op.describe());
+    }
+}
+
+#[test]
+fn new_names_must_be_valid_and_free() {
+    let f = facts();
+    let bad = Operation::BranchCreate(BranchCreateParams {
+        name: "a..b".to_owned(),
+        at: oid(0x0a),
+        checkout: false,
+    });
+    assert_eq!(
+        bad.check(&f),
+        Err(Refusal::BadRefName {
+            name: "a..b".to_owned(),
+            rule: RefNameRule::ForbiddenSequence,
+        })
+    );
+    let taken = Operation::BranchCreate(BranchCreateParams {
+        name: "feat".to_owned(),
+        at: oid(0x0a),
+        checkout: false,
+    });
+    let mut with_feat = facts();
+    with_feat
+        .refs
+        .insert("refs/heads/feat".to_owned(), Some(oid(0x0b)));
+    assert_eq!(
+        taken.check(&with_feat),
+        Err(Refusal::RefExists {
+            name: "feat".to_owned()
+        })
+    );
+    let mut tag_taken = facts();
+    tag_taken
+        .refs
+        .insert("refs/tags/v1".to_owned(), Some(oid(1)));
+    assert_eq!(
+        tag_create(None).check(&tag_taken),
+        Err(Refusal::RefExists {
+            name: "v1".to_owned()
+        })
+    );
+    assert_eq!(
+        tag_create(Some("\n\n")).check(&f),
+        Err(Refusal::EmptySubject)
+    );
+    let mut stash_gone = facts();
+    stash_gone.stashes.clear();
+    assert_eq!(
+        branch_from_stash().check(&stash_gone),
+        Err(Refusal::NoSuchStash)
+    );
+}
+
+#[test]
+fn deleting_needs_the_ref_present_and_not_checked_out() {
+    let mut f = facts();
+    f.refs.insert(FEAT.to_owned(), None);
+    assert_eq!(
+        branch_delete().check(&f),
+        Err(Refusal::NoSuchRef {
+            name: FEAT.to_owned()
+        })
+    );
+    let current = Operation::BranchDelete(RefDeleteParams {
+        name: MAIN.to_owned(),
+        expected: oid(0x0a),
+    });
+    assert_eq!(
+        current.check(&facts()),
+        Err(Refusal::CheckedOut {
+            branch: "main".to_owned()
+        })
+    );
+    let mut gone = facts();
+    gone.refs.insert(FEAT.to_owned(), None);
+    assert_eq!(
+        checkout().check(&gone),
+        Err(Refusal::NoSuchRef {
+            name: FEAT.to_owned()
+        })
+    );
+}
+
+#[test]
+fn revert_mainline_must_match_the_commit() {
+    let f = facts();
+    let with = |mainline: Option<u8>, parents: usize| {
+        Operation::Revert(RevertParams {
+            commit: oid(0x0c),
+            subject: "x".to_owned(),
+            mainline,
+            parents,
+            head: tip(MAIN, 0x0a),
+        })
+    };
+    assert_eq!(with(None, 1).check(&f), Ok(()));
+    assert_eq!(with(Some(1), 2).check(&f), Ok(()));
+    assert_eq!(with(Some(2), 2).check(&f), Ok(()));
+    assert_eq!(with(Some(1), 1).check(&f), Err(Refusal::MainlineOnNonMerge));
+    assert_eq!(with(Some(3), 2).check(&f), Err(Refusal::MainlineOnNonMerge));
+    assert_eq!(with(Some(0), 2).check(&f), Err(Refusal::MainlineOnNonMerge));
+    assert_eq!(with(None, 2).check(&f), Err(Refusal::MergeNeedsMainline));
+    let empty = Operation::CherryPick(PickParams {
+        commits: vec![],
+        subject: String::new(),
+        head: tip(MAIN, 0x0a),
+    });
+    assert_eq!(empty.check(&f), Err(Refusal::NoCommits));
+}
+
+#[test]
+fn in_progress_and_unmerged_refuse_history_operations() {
+    let mut f = facts();
+    f.in_progress = Some(InProgress::Rebase);
+    for op in baseline_ops() {
+        assert_eq!(
+            op.check(&f),
+            Err(Refusal::InProgress(InProgress::Rebase)),
+            "{}",
+            op.describe()
+        );
+    }
+    let mut unmerged = facts();
+    unmerged.status.entries.push(StatusEntry {
+        unmerged: true,
+        ..entry("c.rs")
+    });
+    for op in baseline_ops() {
+        assert_eq!(
+            op.check(&unmerged),
+            Err(Refusal::Unmerged {
+                paths: vec![PathBuf::from("c.rs")]
+            }),
+            "{}",
+            op.describe()
+        );
+    }
+}
+
+#[test]
+fn staging_an_unmerged_path_is_mark_resolved_unless_markers_remain() {
+    let mut f = facts();
+    f.in_progress = Some(InProgress::Merge);
+    f.status.entries.push(StatusEntry {
+        unmerged: true,
+        ..entry("c.rs")
+    });
+    f.status.entries.push(StatusEntry {
+        unstaged: Some(Change::Modified),
+        ..entry("d.rs")
+    });
+    let stage =
+        |list: &[&str]| Operation::Stage(Target::Paths(list.iter().map(PathBuf::from).collect()));
+    assert_eq!(stage(&["c.rs"]).check(&f), Ok(()));
+    // A stage that mixes in a path that is not unmerged is not "mark
+    // resolved": the general refusal stands.
+    assert_eq!(
+        stage(&["c.rs", "d.rs"]).check(&f),
+        Err(Refusal::Unmerged {
+            paths: vec![PathBuf::from("c.rs")]
+        })
+    );
+    let mut marked = f.clone();
+    marked.markers.push(PathBuf::from("c.rs"));
+    assert_eq!(
+        stage(&["c.rs"]).check(&marked),
+        Err(Refusal::MarkersRemain {
+            path: PathBuf::from("c.rs")
+        })
+    );
+    assert_eq!(
+        lines(&stage(&["c.rs"]), &f),
+        ["git --literal-pathspecs add -- c.rs"]
+    );
+}
+
+#[test]
+fn every_history_refusal_explains_itself_in_one_line() {
+    let all = [
+        Refusal::Moved {
+            name: FEAT.to_owned(),
+        },
+        Refusal::DirtyTree { count: 1 },
+        Refusal::DirtyTree { count: 3 },
+        Refusal::BadRefName {
+            name: "a..b".to_owned(),
+            rule: RefNameRule::ForbiddenSequence,
+        },
+        Refusal::RefExists {
+            name: "v1".to_owned(),
+        },
+        Refusal::MarkersRemain {
+            path: PathBuf::from("c.rs"),
+        },
+        Refusal::NotInProgress,
+        Refusal::NotOnBranch {
+            commit: oid(0x0c),
+            branch: "main".to_owned(),
+        },
+        Refusal::MainlineOnNonMerge,
+        Refusal::MergeNeedsMainline,
+        Refusal::NoCommits,
+        Refusal::NoSuchRef {
+            name: FEAT.to_owned(),
+        },
+        Refusal::CheckedOut {
+            branch: "main".to_owned(),
+        },
+        Refusal::CannotSkip(InProgress::Merge),
+        Refusal::NotFastForward {
+            branch: "main".to_owned(),
+        },
+    ];
+    for refusal in all {
+        let text = refusal.explain();
+        assert!(!text.is_empty() && !text.contains('\n'), "{text}");
+    }
+    assert_eq!(
+        Refusal::DirtyTree { count: 1 }.explain(),
+        "needs a clean tree · S stashes 1 changed file first"
+    );
+    assert_eq!(
+        Refusal::Moved {
+            name: FEAT.to_owned()
+        }
+        .explain(),
+        "feat moved since the preview was drawn — press the key again"
+    );
+}

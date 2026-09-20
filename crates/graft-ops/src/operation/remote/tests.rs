@@ -47,6 +47,8 @@ fn facts() -> RepoFacts {
         },
         remotes: vec![origin()],
         upstream: Some(upstream()),
+        refs: std::collections::BTreeMap::new(),
+        markers: vec![],
     }
 }
 

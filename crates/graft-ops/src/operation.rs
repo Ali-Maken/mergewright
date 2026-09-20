@@ -13,12 +13,15 @@
 //! a snapshot; it turns a key into an `Operation` and hands it over.
 
 mod commit;
+mod history;
 mod remote;
 mod stage;
 mod stash;
 
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
+use graft_core::error::RefNameRule;
 use graft_core::journal::{HeadRef, OperationKind, Touches};
 use graft_core::oid::Oid;
 use graft_git::remote::{Remote, TrackedUpstream};
@@ -28,6 +31,11 @@ use graft_git::state::InProgress;
 use graft_git::status::WorkingTreeStatus;
 use graft_git::version::GitVersion;
 
+pub use history::{
+    BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,
+    MergeParams, PickParams, RebaseParams, RefDeleteParams, ResetMode, ResetParams, ResetTarget,
+    RevertParams, Source, TagCreateParams, Tip,
+};
 pub use remote::{FetchParams, Lease, PullParams, PushParams, RemoteNames};
 
 /// One write to the repository, as the user asked for it.
@@ -76,6 +84,41 @@ pub enum Operation {
     Pull(PullParams),
     /// `git push`. Journaled, never undone — the remote keeps what it got.
     Push(PushParams),
+    /// `git merge` into `HEAD`'s branch. One entry from start to finish: a
+    /// conflict leaves it `Pending` until `resume` closes it (m5/07).
+    Merge(MergeParams),
+    /// `git rebase` of `HEAD`'s branch. One entry across every stop.
+    Rebase(RebaseParams),
+    /// `git cherry-pick` onto `HEAD`.
+    CherryPick(PickParams),
+    /// `git revert` onto `HEAD`.
+    Revert(RevertParams),
+    /// `git reset` of `HEAD`'s branch, or `update-ref` of another branch.
+    Reset(ResetParams),
+    /// `git switch` to a branch or a detached commit.
+    Checkout(CheckoutParams),
+    /// `git branch <name> <at>`, optionally switched to.
+    BranchCreate(BranchCreateParams),
+    /// A branch deleted by compare-and-swap.
+    BranchDelete(RefDeleteParams),
+    /// `git tag`.
+    TagCreate(TagCreateParams),
+    /// A tag deleted by compare-and-swap.
+    TagDelete(RefDeleteParams),
+    /// `git stash branch`.
+    BranchFromStash(BranchFromStashParams),
+}
+
+/// What [`crate::facts::read_facts`] must read for one operation, beyond
+/// the fixed picture: [`Operation::facts_scope`] names it, so a stage never
+/// pays for remotes and a merge never pays for a pass over the ref store.
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct FactsScope {
+    /// Read the remotes and `HEAD`'s upstream (fetch, pull, push).
+    pub remotes: bool,
+    /// Refs to read by exact name into [`RepoFacts::refs`]: the tips a
+    /// history operation is pinned to, `HEAD` for a checkout.
+    pub refs: Vec<String>,
 }
 
 /// What a stage, unstage or discard applies to.
@@ -218,6 +261,14 @@ pub struct RepoFacts {
     /// The upstream of `HEAD`'s branch; `None` when detached, unborn, not
     /// tracking anything, or not read (a local operation).
     pub upstream: Option<TrackedUpstream>,
+    /// The refs [`FactsScope::refs`] asked for, by exact name; `None` for
+    /// one that is absent. `HEAD` resolves to the commit it is on. Empty
+    /// for an operation that named none (m5/07).
+    pub refs: BTreeMap<String, Option<Oid>>,
+    /// Unmerged paths whose file still holds a `<<<<<<< ` line. Read only
+    /// when the status lists unmerged paths, so it costs nothing otherwise
+    /// (m5/07).
+    pub markers: Vec<PathBuf>,
 }
 
 /// Why an operation will not run. Each one is a fact about the repository the
@@ -296,6 +347,70 @@ pub enum Refusal {
     LeaseStale {
         /// The branch on the remote, as `origin/main`.
         remote_side: String,
+    },
+    /// A tip the preview was drawn against is no longer where it was: the
+    /// picture the user confirmed is not what would run (m5/07, hard
+    /// choice 3).
+    Moved {
+        /// The ref, full name or `HEAD`.
+        name: String,
+    },
+    /// A rebase or a switch over changed tracked files; `S` stashes them
+    /// first (m5/07, hard choice 4). Untracked files never count.
+    DirtyTree {
+        /// How many tracked files have staged or unstaged changes.
+        count: usize,
+    },
+    /// A branch or tag name git would not accept.
+    BadRefName {
+        /// The name as typed.
+        name: String,
+        /// Which of git's rules it broke.
+        rule: RefNameRule,
+    },
+    /// A branch or tag by that name already exists.
+    RefExists {
+        /// The name as typed.
+        name: String,
+    },
+    /// A stage of an unmerged path whose file still has `<<<<<<<` in it.
+    MarkersRemain {
+        /// The path.
+        path: PathBuf,
+    },
+    /// `resume` with no operation of Graft's in progress.
+    NotInProgress,
+    /// A re-push of a commit that is not on the branch being pushed.
+    NotOnBranch {
+        /// The commit asked for.
+        commit: Oid,
+        /// The branch, short name.
+        branch: String,
+    },
+    /// `-m <n>` given for a commit that has no such parent, or is not a
+    /// merge at all.
+    MainlineOnNonMerge,
+    /// Reverting a merge without saying which parent is the mainline.
+    MergeNeedsMainline,
+    /// A cherry-pick with no commits.
+    NoCommits,
+    /// A ref the operation names does not exist.
+    NoSuchRef {
+        /// Full name.
+        name: String,
+    },
+    /// Deleting the branch `HEAD` is on.
+    CheckedOut {
+        /// Short name.
+        branch: String,
+    },
+    /// `Resume::Skip` on an operation that has no step to skip (a merge).
+    CannotSkip(InProgress),
+    /// `--ff-only` where the branches have diverged: a merge commit would be
+    /// needed, and the user said no (m5/07, from the preview).
+    NotFastForward {
+        /// The branch merged into, short name.
+        branch: String,
     },
 }
 
@@ -378,6 +493,51 @@ impl Refusal {
                 "force-push refused: {remote_side} is not where the box said \
                  (fetched since, or never fetched) · f to fetch, then look"
             ),
+            // The history refusals, in the M5 design note's words.
+            Self::Moved { name } => format!(
+                "{} moved since the preview was drawn — press the key again",
+                history::short_ref(name)
+            ),
+            Self::DirtyTree { count } => format!(
+                "needs a clean tree · S stashes {count} changed {} first",
+                if *count == 1 { "file" } else { "files" }
+            ),
+            Self::BadRefName { name, rule } => format!("bad name '{name}': {rule}"),
+            Self::RefExists { name } => format!("{name} exists"),
+            Self::MarkersRemain { path } => format!(
+                "{} still has conflict markers (<<<<<<<) — e edits, M opens the mergetool",
+                path.display()
+            ),
+            Self::NotInProgress => {
+                "nothing Graft started is in progress; an operation begun in the shell is \
+                 finished there"
+                    .to_owned()
+            }
+            Self::NotOnBranch { commit, branch } => format!(
+                "{} is not on {branch}; there is no old tip to re-push",
+                history::short(*commit)
+            ),
+            Self::MainlineOnNonMerge => {
+                "-m names a parent this commit has not got; only a merge takes a mainline"
+                    .to_owned()
+            }
+            Self::MergeNeedsMainline => {
+                "reverting a merge needs a mainline: Fix… offers -m 1".to_owned()
+            }
+            Self::NoCommits => "nothing to cherry-pick".to_owned(),
+            Self::NoSuchRef { name } => format!("{} does not exist", history::short_ref(name)),
+            Self::CheckedOut { branch } => {
+                format!("{branch} is checked out; switch away before deleting it")
+            }
+            Self::CannotSkip(kind) => {
+                format!(
+                    "a {} has nothing to skip · c continues, a aborts",
+                    kind.name()
+                )
+            }
+            Self::NotFastForward { branch } => {
+                format!("{branch} has diverged; a fast-forward is not possible — m merges instead")
+            }
         }
     }
 }
@@ -409,6 +569,75 @@ impl Operation {
             Self::Fetch(_) => OperationKind::Fetch,
             Self::Pull(_) => OperationKind::Pull,
             Self::Push(_) => OperationKind::Push,
+            Self::Merge(_) => OperationKind::Merge,
+            Self::Rebase(_) => OperationKind::Rebase,
+            Self::CherryPick(_) => OperationKind::CherryPick,
+            Self::Revert(_) => OperationKind::Revert,
+            Self::Reset(_) => OperationKind::Reset,
+            Self::Checkout(_) => OperationKind::Checkout,
+            Self::BranchCreate(_) => OperationKind::BranchCreate,
+            Self::BranchDelete(_) => OperationKind::BranchDelete,
+            Self::TagCreate(_) => OperationKind::TagCreate,
+            Self::TagDelete(_) => OperationKind::TagDelete,
+            Self::BranchFromStash(_) => OperationKind::BranchFromStash,
+        }
+    }
+
+    /// The in-progress state this operation itself opens when git stops on
+    /// a conflict: what the executor matches `in_progress` against to tell
+    /// "stopped, still live" from "failed" (m5/07). `None` for every other
+    /// operation.
+    #[must_use]
+    pub fn starts_in_progress(&self) -> Option<InProgress> {
+        match self {
+            Self::Merge(_) => Some(InProgress::Merge),
+            Self::Rebase(_) => Some(InProgress::Rebase),
+            Self::CherryPick(_) => Some(InProgress::CherryPick),
+            Self::Revert(_) => Some(InProgress::Revert),
+            _ => None,
+        }
+    }
+
+    /// A history operation (m5/07): its preview is drawn from ghosts and
+    /// ref moves, and the executor re-reads everything after it.
+    #[must_use]
+    pub fn is_history(&self) -> bool {
+        matches!(
+            self,
+            Self::Merge(_)
+                | Self::Rebase(_)
+                | Self::CherryPick(_)
+                | Self::Revert(_)
+                | Self::Reset(_)
+                | Self::Checkout(_)
+                | Self::BranchCreate(_)
+                | Self::BranchDelete(_)
+                | Self::TagCreate(_)
+                | Self::TagDelete(_)
+                | Self::BranchFromStash(_)
+        )
+    }
+
+    /// What the facts must carry for this operation: the remotes for a
+    /// remote one, the named refs a history one is pinned to.
+    #[must_use]
+    pub fn facts_scope(&self) -> FactsScope {
+        let refs = match self {
+            Self::Merge(params) => history::refs_of_merge(params),
+            Self::Rebase(params) => history::refs_of_rebase(params),
+            Self::CherryPick(params) => vec![params.head.name.clone()],
+            Self::Revert(params) => vec![params.head.name.clone()],
+            Self::Reset(params) => history::refs_of_reset(params),
+            Self::Checkout(params) => history::refs_of_checkout(params),
+            Self::BranchCreate(params) => history::refs_of_branch_create(params),
+            Self::BranchDelete(params) | Self::TagDelete(params) => vec![params.name.clone()],
+            Self::TagCreate(params) => vec![history::tag_ref(&params.name)],
+            Self::BranchFromStash(params) => vec![history::branch_ref(&params.name)],
+            _ => vec![],
+        };
+        FactsScope {
+            remotes: self.is_remote(),
+            refs,
         }
     }
 
@@ -429,6 +658,17 @@ impl Operation {
             Self::Fetch(params) => remote::describe_fetch(params),
             Self::Pull(params) => remote::describe_pull(params),
             Self::Push(params) => remote::describe_push(params),
+            Self::Merge(params) => history::describe_merge(params),
+            Self::Rebase(params) => history::describe_rebase(params),
+            Self::CherryPick(params) => history::describe_pick(params),
+            Self::Revert(params) => history::describe_revert(params),
+            Self::Reset(params) => history::describe_reset(params),
+            Self::Checkout(params) => history::describe_checkout(params),
+            Self::BranchCreate(params) => history::describe_branch_create(params),
+            Self::BranchDelete(params) => history::describe_delete("branch", params),
+            Self::TagCreate(params) => history::describe_tag_create(params),
+            Self::TagDelete(params) => history::describe_delete("tag", params),
+            Self::BranchFromStash(params) => history::describe_branch_from_stash(params),
         }
     }
 
@@ -437,10 +677,13 @@ impl Operation {
     ///
     /// # Errors
     /// The first [`Refusal`] found, in this order: a bare repository, unmerged
-    /// paths, an operation in progress (stage and unstage are allowed
-    /// mid-rebase, everything else waits), then the kind's own rules. A
-    /// fetch skips the first three: it changes no branch, index or file, so
-    /// it runs in a bare repository and in the middle of a rebase.
+    /// paths (a stage or unstage of exactly those paths is exempt — that is
+    /// "mark resolved", m5/07 — and a stage of one that still has conflict
+    /// markers is `MarkersRemain`), an operation in progress (stage and
+    /// unstage are allowed mid-rebase, everything else waits), then the
+    /// kind's own rules. A fetch skips the first three: it changes no
+    /// branch, index or file, so it runs in a bare repository and in the
+    /// middle of a rebase.
     pub fn check(&self, facts: &RepoFacts) -> Result<(), Refusal> {
         if let Self::Fetch(params) = self {
             return remote::check_fetch(params, facts);
@@ -456,7 +699,18 @@ impl Operation {
             .map(|entry| entry.path.clone())
             .collect();
         if !unmerged.is_empty() {
-            return Err(Refusal::Unmerged { paths: unmerged });
+            let resolving = match self {
+                Self::Stage(Target::Paths(paths)) | Self::Unstage(Target::Paths(paths)) => {
+                    paths.iter().all(|path| unmerged.contains(path))
+                }
+                _ => false,
+            };
+            if !resolving {
+                return Err(Refusal::Unmerged { paths: unmerged });
+            }
+            if let Self::Stage(Target::Paths(paths)) = self {
+                history::markers_in(paths, facts)?;
+            }
         }
         let waits_for_in_progress = !matches!(self, Self::Stage(_) | Self::Unstage(_));
         if let Some(kind) = facts.in_progress.filter(|_| waits_for_in_progress) {
@@ -476,6 +730,17 @@ impl Operation {
             Self::Fetch(params) => remote::check_fetch(params, facts),
             Self::Pull(params) => remote::check_pull(params, facts),
             Self::Push(params) => remote::check_push(params, facts),
+            Self::Merge(params) => history::check_merge(params, facts),
+            Self::Rebase(params) => history::check_rebase(params, facts),
+            Self::CherryPick(params) => history::check_pick(params, facts),
+            Self::Revert(params) => history::check_revert(params, facts),
+            Self::Reset(params) => history::check_reset(params, facts),
+            Self::Checkout(params) => history::check_checkout(params, facts),
+            Self::BranchCreate(params) => history::check_branch_create(params, facts),
+            Self::BranchDelete(params) => history::check_branch_delete(params, facts),
+            Self::TagCreate(params) => history::check_tag_create(params, facts),
+            Self::TagDelete(params) => history::check_delete(params, facts),
+            Self::BranchFromStash(params) => history::check_branch_from_stash(params, facts),
         }
     }
 
@@ -497,6 +762,16 @@ impl Operation {
             Self::Fetch(params) => remote::plan_fetch(params),
             Self::Pull(params) => remote::plan_pull(params),
             Self::Push(params) => remote::plan_push(params),
+            Self::Merge(params) => history::plan_merge(params),
+            Self::Rebase(params) => history::plan_rebase(params),
+            Self::CherryPick(params) => history::plan_pick(params),
+            Self::Revert(params) => history::plan_revert(params),
+            Self::Reset(params) => history::plan_reset(params),
+            Self::Checkout(params) => history::plan_checkout(params),
+            Self::BranchCreate(params) => history::plan_branch_create(params),
+            Self::BranchDelete(params) | Self::TagDelete(params) => history::plan_delete(params),
+            Self::TagCreate(params) => history::plan_tag_create(params),
+            Self::BranchFromStash(params) => history::plan_branch_from_stash(params),
         }
     }
 
@@ -556,6 +831,17 @@ impl Operation {
             Self::Pull(_) => (vec![commit::head_ref_name(&facts.head)], true, true),
             // For the browser's `origin/main a1b2c3d → 9f8e7d6`, not for undo.
             Self::Push(params) => (remote::push_tracking_ref(params, facts), false, false),
+            Self::Merge(_) | Self::Rebase(_) | Self::CherryPick(_) | Self::Revert(_) => {
+                (vec![commit::head_ref_name(&facts.head)], true, true)
+            }
+            Self::Reset(params) => return history::touches_reset(params),
+            Self::Checkout(_) => return history::touches_checkout(),
+            Self::BranchCreate(params) => return history::touches_branch_create(params),
+            Self::BranchDelete(params) | Self::TagDelete(params) => {
+                (vec![params.name.clone()], false, false)
+            }
+            Self::TagCreate(params) => (vec![history::tag_ref(&params.name)], false, false),
+            Self::BranchFromStash(params) => return history::touches_branch_from_stash(params),
         };
         Touches {
             refs,

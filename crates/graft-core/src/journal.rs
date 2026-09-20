@@ -139,6 +139,35 @@ pub enum OperationKind {
     Pull,
     /// `git push`: changes the remote. Journaled, never undone.
     Push,
+    /// `git merge`: a merge commit or a fast-forward onto the current branch.
+    /// One entry from start to finish, `Pending` while conflicts are open.
+    Merge,
+    /// `git rebase`: the current branch replayed onto another commit. One
+    /// entry across every conflict stop.
+    Rebase,
+    /// `git cherry-pick`: commits replayed onto `HEAD`.
+    CherryPick,
+    /// `git revert`: a commit's reverse patch committed onto `HEAD`.
+    Revert,
+    /// `git reset` of `HEAD`'s branch, or `update-ref` of another branch.
+    Reset,
+    /// `git switch`: `HEAD` moved to a branch or a commit.
+    Checkout,
+    /// `git branch <name> <commit>`, optionally checked out.
+    BranchCreate,
+    /// A branch deleted by compare-and-swap.
+    BranchDelete,
+    /// `git tag`, lightweight or annotated.
+    TagCreate,
+    /// A tag deleted by compare-and-swap.
+    TagDelete,
+    /// `git stash branch`: a branch at the stash's base with the stash
+    /// applied and dropped.
+    BranchFromStash,
+    /// The journal's time machine: every in-force entry back to a target,
+    /// reversed one `Undo` entry at a time (DESIGN.md §6.6). Reserved for the
+    /// browser's row label; each step it runs is journaled as `Undo`.
+    RevertTo,
     /// The inverse of an earlier entry.
     Undo,
     /// The inverse of an `Undo` entry.

@@ -11,7 +11,7 @@
 //! (ADR-0009).
 
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use graft_core::journal::HeadRef;
 use graft_core::oid::Oid;
@@ -20,10 +20,10 @@ use graft_git::remote::RemoteError;
 use graft_git::repo::{HeadError, HeadState, RefTarget, RefsError, RepoHandle};
 use graft_git::run::Stop;
 use graft_git::stash::StashError;
-use graft_git::status::StatusError;
+use graft_git::status::{StatusError, WorkingTreeStatus};
 use graft_git::version::GitVersion;
 
-use crate::operation::RepoFacts;
+use crate::operation::{FactsScope, RepoFacts};
 use crate::snapshot::{self, SnapshotError};
 use crate::undo::RepoStateNow;
 
@@ -56,6 +56,14 @@ pub enum FactsError {
     /// silently mangled a name would aim at the wrong ref.
     #[error("the ref name {0} is not UTF-8; Graft cannot journal it")]
     NonUtf8Ref(String),
+    /// An unmerged path's file could not be read for conflict markers.
+    #[error("reading {path} for conflict markers: {source}")]
+    Markers {
+        /// The path, as the status lists it.
+        path: PathBuf,
+        /// What the read said.
+        source: std::io::Error,
+    },
     /// The caller asked to stop.
     #[error("stopped")]
     Stopped,
@@ -71,16 +79,19 @@ impl FactsError {
 /// Everything `check`, `plan` and `touches` need, read in one pass: the
 /// remotes and `HEAD`'s upstream come from config, no spawn.
 ///
-/// `with_remotes` is [`crate::operation::Operation::is_remote`]: only fetch,
+/// `scope` is [`crate::operation::Operation::facts_scope`]: only fetch,
 /// pull and push read the remotes and upstream. For every other operation
 /// they are left empty and `None`, so a remote section git's config holds
 /// but Graft cannot read (a non-UTF-8 name or URL) never blocks a stage, a
-/// commit or a stash (m4/04 review, M2).
+/// commit or a stash (m4/04 review, M2). The named refs are read by name,
+/// never by a pass over the store; `HEAD` resolves through the branch it is
+/// on. Marker lines are looked for only in unmerged paths, so a clean
+/// status opens no file (m5/07).
 pub fn read_facts(
     repo: &RepoHandle,
     git: GitVersion,
     stop: &dyn Stop,
-    with_remotes: bool,
+    scope: &FactsScope,
 ) -> Result<RepoFacts, FactsError> {
     if stop.should_stop() {
         return Err(FactsError::Stopped);
@@ -91,7 +102,7 @@ pub fn read_facts(
     // `status::read` already reports a bare repository as empty.
     let status = graft_git::status::read(repo, stop)?;
     let stashes = graft_git::stash::list(repo, stop)?;
-    let (remotes, upstream) = if with_remotes {
+    let (remotes, upstream) = if scope.remotes {
         let remotes = graft_git::remote::list(repo)?;
         let upstream = match &head {
             HeadRef::Branch(branch) => graft_git::remote::upstream_of(repo, branch)?,
@@ -101,6 +112,20 @@ pub fn read_facts(
     } else {
         (Vec::new(), None)
     };
+    let mut refs = BTreeMap::new();
+    for name in &scope.refs {
+        let target = if name == "HEAD" {
+            match &head {
+                HeadRef::Branch(branch) => resolve(repo, branch)?,
+                HeadRef::Detached(id) => Some(*id),
+                HeadRef::Unborn(_) => None,
+            }
+        } else {
+            resolve(repo, name)?
+        };
+        refs.insert(name.clone(), target);
+    }
+    let markers = markers_in(repo, &status)?;
     Ok(RepoFacts {
         bare,
         head,
@@ -110,7 +135,34 @@ pub fn read_facts(
         git,
         remotes,
         upstream,
+        refs,
+        markers,
     })
+}
+
+/// The unmerged paths whose file still holds a `<<<<<<< ` line. A path the
+/// status lists as unmerged but that is gone from the disk (a delete/modify
+/// conflict resolved by deleting) has no markers.
+fn markers_in(repo: &RepoHandle, status: &WorkingTreeStatus) -> Result<Vec<PathBuf>, FactsError> {
+    let Some(workdir) = repo.workdir() else {
+        return Ok(Vec::new());
+    };
+    let mut marked = Vec::new();
+    for entry in status.entries.iter().filter(|entry| entry.unmerged) {
+        match graft_git::history_reads::first_marker_line(&workdir.join(&entry.path)) {
+            Ok(Some(_)) => marked.push(entry.path.clone()),
+            Ok(None) => {}
+            // Resolved by deleting the file: nothing to scan.
+            Err(source) if source.kind() == std::io::ErrorKind::NotFound => {}
+            Err(source) => {
+                return Err(FactsError::Markers {
+                    path: entry.path.clone(),
+                    source,
+                });
+            }
+        }
+    }
+    Ok(marked)
 }
 
 /// `HEAD` as the journal records it.
