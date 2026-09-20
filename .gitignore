@@ -6,3 +6,4 @@
 Claude outputs/
 .claude/worktrees/
 target-g*/
+.worktrees/
