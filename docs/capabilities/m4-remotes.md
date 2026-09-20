@@ -16,6 +16,13 @@ mock.
 
 ### M4-01. Fetch every remote with one key
 
+```meta
+id: M4-01
+area: remotes
+milestone: m4-remotes
+status: works
+```
+
 - **How:** `f` on the graph screen.
 - **Behaviour:** Runs `git fetch --progress --prune --all`. Moves every
   remote-tracking ref (e.g. `refs/remotes/origin/main`) to match the remote;
@@ -36,6 +43,13 @@ mock.
 
 ### M4-02. Pull fast-forwards the current branch
 
+```meta
+id: M4-02
+area: remotes
+milestone: m4-remotes
+status: works
+```
+
 - **How:** `p` on the graph screen, while `HEAD` is on a branch with an
   upstream.
 - **Behaviour:** Runs `fetch --progress <remote>` then
@@ -50,6 +64,13 @@ mock.
 - **Status:** works
 
 ### M4-03. Pull refuses rather than risk your work
+
+```meta
+id: M4-03
+area: remotes
+milestone: m4-remotes
+status: works
+```
 
 - **How:** `p` when the branches have diverged, a dirty file is in the way,
   there's no upstream, or `HEAD` is detached.
@@ -68,6 +89,13 @@ mock.
 - **Status:** works
 
 ### M4-04. Push the current branch, with a preview before it runs
+
+```meta
+id: M4-04
+area: remotes
+milestone: m4-remotes
+status: works
+```
 
 - **How:** `P` on the graph screen.
 - **Behaviour:** Opens a confirm box naming the exact command that will run
@@ -88,6 +116,13 @@ mock.
 
 ### M4-05. Pushing a new branch sets its upstream automatically
 
+```meta
+id: M4-05
+area: remotes
+milestone: m4-remotes
+status: works
+```
+
 - **How:** `P` on a branch with no tracking configured.
 - **Behaviour:** The confirm box says "(set upstream)"; on confirm, git
   writes `branch.<name>.remote=origin` and `branch.<name>.merge=refs/heads/<name>`
@@ -98,6 +133,13 @@ mock.
 - **Status:** works
 
 ### M4-06. A rejected push offers a safe retry, never a blind force
+
+```meta
+id: M4-06
+area: remotes
+milestone: m4-remotes
+status: works
+```
 
 - **How:** `P` when the remote branch has moved since your last fetch.
 - **Behaviour:** The push is refused (`NonFastForward`); the status line
@@ -123,6 +165,13 @@ mock.
 
 ### M4-07. Credentials are asked for inside the app, never in a shell
 
+```meta
+id: M4-07
+area: credentials
+milestone: m4-remotes
+status: works
+```
+
 - **How:** Any fetch/pull/push that needs a username or password.
 - **Behaviour:** Graft's own binary doubles as git's `askpass`/`SSH_ASKPASS`
   helper (invoked as `graft` with `GRAFT_ASKPASS_SOCKET` set and the prompt
@@ -138,6 +187,14 @@ mock.
 - **Status:** works
 
 ### M4-08. The password field shows a fixed row of dots, never the text or its length
+
+```meta
+id: M4-08
+area: credentials
+milestone: m4-remotes
+status: works
+unverified_aspect: colour, and the field's current look (no capture shows it as it looks today)
+```
 
 - **How:** Any password prompt (the credential prompt's masked field).
 - **Behaviour:** The field draws exactly 8 mask glyphs (`•`, or `*` at the
@@ -163,6 +220,13 @@ mock.
 
 ### M4-09. Non-password prompts (username, host trust) show what you type
 
+```meta
+id: M4-09
+area: credentials
+milestone: m4-remotes
+status: works
+```
+
 - **How:** git asking for a username, or a host-key yes/no question.
 - **Behaviour:** Those prompts are not masked — `is_masked_prompt` only
   matches text containing "assword"/"assphrase" (case-insensitive), so a
@@ -176,6 +240,14 @@ mock.
 
 ### M4-10. A wrong password gets a clear retry; the right one completes the push
 
+```meta
+id: M4-10
+area: credentials
+milestone: m4-remotes
+status: works
+unverified_aspect: SSH askpass — wired but unverified
+```
+
 - **How:** Type an incorrect password, `Enter`; the prompt reappears; type
   the correct one.
 - **Behaviour:** A wrong password ends with a sticky status
@@ -188,6 +260,13 @@ mock.
 
 ### M4-11. Cancelling a credential prompt safely aborts the whole operation
 
+```meta
+id: M4-11
+area: credentials
+milestone: m4-remotes
+status: works
+```
+
 - **How:** `Esc` while the credential prompt is open.
 - **Behaviour:** Sends both a cancel-credential and a cancel-job command
   together — the operation is never left half-authenticated. The journal
@@ -198,6 +277,13 @@ mock.
 - **Status:** works
 
 ### M4-12. Typed credentials never end up in the journal, a capture, or debug output
+
+```meta
+id: M4-12
+area: credentials
+milestone: m4-remotes
+status: works
+```
 
 - **How:** Always — this is a background guarantee, not a key.
 - **Behaviour:** `{:?}` of the app state or of the command carrying the
@@ -211,6 +297,13 @@ mock.
 - **Status:** works — the password sits in a plain (unzeroed) `String` in the prompt's text field until `Enter`; a true zeroizing buffer for the field itself shipped in M5, not M4 (KNOWN_GAPS M4/06, closed M5/01)
 
 ### M4-13. `Esc` cancels a stuck or long-running remote write
+
+```meta
+id: M4-13
+area: remotes
+milestone: m4-remotes
+status: works
+```
 
 - **How:** `Esc` while `f`/`p`/`P` is running and no other overlay is open.
 - **Behaviour:** Works even against a remote that never answers (a
@@ -228,6 +321,13 @@ mock.
 
 ### M4-14. `Esc` cannot interrupt undo or redo — it finishes instead
 
+```meta
+id: M4-14
+area: undo
+milestone: m4-remotes
+status: partial
+```
+
 - **How:** `Esc` while `u`/`U` is running.
 - **Behaviour:** Deliberately withdrawn, not silently broken: the
   underlying restore executor only checks for a stop request once, before
@@ -242,6 +342,13 @@ mock.
 
 ### M4-15. The status line shows live progress during a fetch, pull or push
 
+```meta
+id: M4-15
+area: remotes
+milestone: m4-remotes
+status: works
+```
+
 - **How:** Watch the footer while `f`/`p`/`P` is running.
 - **Behaviour:** Git's own `--progress` stderr (object counts, percentages)
   is parsed into short phrases (`"receiving objects 45%"`) and shown in the
@@ -253,6 +360,14 @@ mock.
 - **Status:** works
 
 ### M4-16. Remote failures are explained in plain English, never a raw git error
+
+```meta
+id: M4-16
+area: remotes
+milestone: m4-remotes
+status: works
+unverified_aspect: SSH/forge auth-failure strings — documented, not captured from a real SSH server
+```
 
 - **How:** Any fetch/pull/push that fails.
 - **Behaviour:** git's stderr is classified into one of ten kinds (auth
@@ -268,6 +383,13 @@ mock.
 
 ### M4-17. The journal records fetch, pull and push distinctly — and says which can be undone
 
+```meta
+id: M4-17
+area: undo
+milestone: m4-remotes
+status: works
+```
+
 - **How:** Open the journal (`J`) after any remote operation.
 - **Behaviour:** A push row reads `origin/main a1b2c3d → 9f8e7d6 · not
   undoable — origin has it`; a fetch row reads `remote-tracking refs · not
@@ -280,6 +402,13 @@ mock.
 - **Status:** works — at 80 columns the row text is cut (`"not undoa…"`); the key content still reads, but see M4-24
 
 ### M4-18. The footer hints `f`/`p`/`P` when there's room
+
+```meta
+id: M4-18
+area: hints-and-ui
+milestone: m4-remotes
+status: broken
+```
 
 - **How:** Look at the bottom hint bar on the graph screen.
 - **Behaviour:** `f fetch  p pull  P push` is added to the footer's hint
@@ -300,6 +429,13 @@ mock.
 
 ### M4-19. Local file-path remotes work end to end (the baseline every other capability sits on)
 
+```meta
+id: M4-19
+area: remotes
+milestone: m4-remotes
+status: works
+```
+
 - **How:** Any `origin` that is a plain filesystem/`file://` path (a
   colleague's bare clone, the common case for these tests and for many
   real setups).
@@ -313,6 +449,13 @@ mock.
 
 ### M4-20. Smart HTTP remotes with Basic auth are fully supported
 
+```meta
+id: M4-20
+area: remotes
+milestone: m4-remotes
+status: works
+```
+
 - **How:** Any remote reached over `http://user@host/repo.git`.
 - **Behaviour:** Clone, fetch and push (including a push large enough to be
   chunked, >1 MiB) all work against a real `git http-backend` process
@@ -324,6 +467,13 @@ mock.
 - **Status:** works — TLS and SSH are out of scope for M4 (see below)
 
 ### M4-21. Remote-supplied text can't inject terminal escapes onto your screen
+
+```meta
+id: M4-21
+area: terminal-rendering
+milestone: m4-remotes
+status: works
+```
 
 - **How:** Always — applies to every credential prompt line and every
   remote failure message, since both come from git/the remote and are
@@ -338,6 +488,13 @@ mock.
 
 ### M4-22. A hung remote doesn't wedge the app or its test suite
 
+```meta
+id: M4-22
+area: remotes
+milestone: m4-remotes
+status: works
+```
+
 - **How:** Background guarantee — a remote that accepts a connection and
   never answers.
 - **Behaviour:** `f`/`p`/`P` against such a remote blocks only the one job;
@@ -350,6 +507,13 @@ mock.
 
 ### M4-23. Undo and redo survive a fetch without losing what they were pointing at
 
+```meta
+id: M4-23
+area: undo
+milestone: m4-remotes
+status: works
+```
+
 - **How:** Commit, undo it, then fetch.
 - **Behaviour:** Because fetch is transparent to the undo journal, redo
   still points at the undone commit after the fetch runs — a fetch can
@@ -360,6 +524,13 @@ mock.
 - **Status:** works
 
 ### M4-24. Cosmetic gaps in the push/lease boxes and narrow-width journal rows
+
+```meta
+id: M4-24
+area: hints-and-ui
+milestone: m4-remotes
+status: broken
+```
 
 - **How:** N/A — visual limitations noted for completeness rather than a
   distinct capability.

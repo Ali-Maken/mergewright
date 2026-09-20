@@ -274,6 +274,24 @@ exists, and a change to `core` or `git` can never make the fixtures fail to
 build. It shells out to real `git` and owns nothing a production code path
 would want.
 
+### `capabilities`: repo metadata tooling, outside the table
+
+`graft-capabilities` (`crates/graft-capabilities/`) is the feature database:
+it parses `docs/capabilities/*.md`, checks every citation in it (a test
+name, a capture path, an ADR or design note) against the repository on
+disk, and generates `CAPABILITIES.md` and
+`docs/generated/capabilities.html` from the same parsed data. Schema and
+workflow are `docs/capabilities/README.md`.
+
+It is **not** a row in the table above: nothing it produces ships in the
+binary, and nothing in the binary reads it back. It has no `[dependencies]`
+on another Graft crate and — unlike `graft-fixtures` — no other Graft crate
+depends on it either, not even as a dev-dependency: it is not test
+infrastructure, it is a standalone checker that happens to live in the
+workspace so `cargo nextest run` picks up `tests/checker.rs` without a
+separate script anyone has to remember to run. `crates/graft` and
+`crates/graft-ops` in particular must never gain a dependency on it.
+
 ### The acceptance walks: `crates/graft/tests/it/`
 
 Every integration test of the app crate is a module of one binary

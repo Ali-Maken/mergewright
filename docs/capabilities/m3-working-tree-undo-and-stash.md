@@ -16,6 +16,13 @@ real repository: **you cannot lose work**.
 
 ### M3-01. Every working-tree write goes through one seam that snapshots first
 
+```meta
+id: M3-01
+area: undo
+milestone: m3-working-tree-undo-and-stash
+status: works
+```
+
 - **How:** Internal — every stage, unstage, discard, commit, amend, stash push/apply/pop/drop dispatches as an `Operation` through `graft_ops::apply`.
 - **Behaviour:** Before running, the seam reads current repo facts (`RepoFacts`) and takes a snapshot; the snapshot backs up whatever the operation is about to touch as a git commit under `refs/graft/backup/<worktree>/<ulid>` whose tree has exactly two sub-trees, `index` and `worktree` (`git ls-tree <commit>` shows only those two names). A worktree-touching operation's backup ref points at an after-commit whose parent is the before-commit. The operation only actually runs after the snapshot succeeds. Every apply is proven **parity**: applying through Graft's own code on one fixture copy and running the exact same `git` command line (from `Operation::plan`) on a second copy produce byte-identical `for-each-ref`, `ls-files -s` and `status --porcelain=v2` (excluding the backup refs themselves).
 - **Proven by:**
@@ -24,6 +31,13 @@ real repository: **you cannot lose work**.
 - **Status:** works
 
 ### M3-02. `u` undoes the last operation; `U` redoes it — byte-for-byte
+
+```meta
+id: M3-02
+area: undo
+milestone: m3-working-tree-undo-and-stash
+status: works
+```
 
 - **How:** `u` / `U`, anywhere in the app, not just inside a pane.
 - **Behaviour:** `u` emits `Command::Undo(_, force: false)`. On success, sets a status line (the entry's own description, e.g. `undo: stage src/a.rs` — not `undid: …`, since the description already carries the `undo:`/`redo:` prefix) and refreshes exactly the scope the undo touched (`Applied::refresh`: `WorkingTree` or `Everything`). `U` mirrors it with redo. `u`/`U` while a write is already in flight emit nothing (status stays `Busy`). For every operation kind, taking a full snapshot before the op, applying, then undoing reproduces byte-for-byte: `for-each-ref` (excluding `refs/graft`), `ls-files -s`, and every worktree file's bytes including untracked files. Redo then reproduces the post-op snapshot. Undo again reproduces the pre-op snapshot. Proven concretely on: an untracked binary file (bytes `[0, 255, 10, 13, ...]`) discarded then undone comes back byte-identical; an unstaged edit to a tracked file, same; a file both staged and unstaged, same, both index and worktree bytes. Discarding one file and then creating an unrelated new file: undo restores only the discarded file, leaves the new one alone (path scoping).
@@ -39,6 +53,13 @@ real repository: **you cannot lose work**.
 
 ### M3-03. Undo refuses safely when the repo moved under it (the drift guard)
 
+```meta
+id: M3-03
+area: undo
+milestone: m3-working-tree-undo-and-stash
+status: works
+```
+
 - **How:** Automatic — `u`/`U` when something changed since the operation ran.
 - **Behaviour:** If a ref the entry touched has moved (e.g. someone ran `git update-ref` by hand), undo returns `UndoError::Drift` naming the ref; the app opens a confirm box quoting `Drift::explain()` (e.g. "the index changed"). `→ Enter` forces it (`Undo(_, force: true)`); plain `Enter` on the "Stop" choice does nothing. With `force`, a moved ref specifically returns `RestoreError::RefMoved` and touches nothing else — a CAS (compare-and-swap) guard, not a blind overwrite. If the worktree itself changed (a file edited after the operation), undo reports `Drift { worktree: true }`; forcing it proceeds, and the drift's own backup preserves the edit that was overwritten (nothing is silently lost, it's recoverable from the entry's own backup). An undo failure is shown as a sticky status line, not a normal one, so the refresh the failure itself triggers doesn't wipe the reason a moment later.
 - **Proven by:**
@@ -50,6 +71,13 @@ real repository: **you cannot lose work**.
 - **Status:** works. Known gap: a forced undo isn't pinned to the exact entry the drift box named — between the box being drawn and `U`/force being pressed, the journal tip could move and the force could apply to a different entry (needs `undo(ctx, force, aim)` with an `Aimed` error; signature change, not built this milestone).
 
 ### M3-04. A crashed or interrupted operation is recoverable, not silently lost
+
+```meta
+id: M3-04
+area: undo
+milestone: m3-working-tree-undo-and-stash
+status: works
+```
 
 - **How:** Automatic — checked at every launch and on refresh.
 - **Behaviour:** If Graft (or the machine) dies between writing a journal's "pending" line and its outcome line, the next launch finds it in `Journal::unresolved()`. `recover_interrupted` (not a bare `Journal::mark_interrupted` — this is the actual recovery path, sealing the entry's before/after trees behind its backup ref) appends an `Aborted` outcome line and shows an "interrupted" notice in the UI until acknowledged with `J` (opening the journal). The notice survives every re-read in the meantime. An `Aborted` entry that has a backup can still be undone (`u` on it restores the backup); it's marked `← u` in the journal browser exactly when it's the next thing undo would act on. A `StashPop` that fails mid-way (e.g. because applying conflicts) similarly leaves an `Aborted` entry carrying `worktree_before`, and `undo` on it restores the pre-pop tree.
@@ -63,6 +91,13 @@ real repository: **you cannot lose work**.
 
 ### M3-05. The journal browser: every operation Graft has done, and what to do with it
 
+```meta
+id: M3-05
+area: undo
+milestone: m3-working-tree-undo-and-stash
+status: works
+```
+
 - **How:** `J` opens it; `j`/`k` move; `Space` expands a row to show its exact git command(s); `Enter` on the next-undoable row runs `u`; `Enter` on the next-redoable row runs `U`; `Enter` on any other row sets a notice and does nothing; `Esc`/`q` closes.
 - **Behaviour:** Rows are journal entries, newest first. The row that `u` would act on next is marked `← u`; the one `U` would act on is marked `← U`. `Enter` acts only where a key already would (same rule as undo/redo, not a general jump-to-any-point) — pressing it on an older row shows a notice instead of doing anything ("multi-step revert comes with a later milestone's Ghost Preview," not built here). An `Aborted` entry with a backup reads `failed: <git's first error line> · backup saved`; an interrupted one reads `interrupted`. `j`/`k` clamp at the ends (no wraparound). A background focus event or `Ctrl+R` re-reads the journal (another Graft process on the same worktree could have appended to it); the browser opens with what it already has and swaps in the fresh read when it lands.
 - **Proven by:**
@@ -74,6 +109,13 @@ real repository: **you cannot lose work**.
 - **Status:** works. Known gap: the browser has no status line of its own while open, so a write started from it (or an older-row notice) can be invisible while `J` is up — same defect `StashView::notice` was given a fix for, not applied here.
 
 ### M3-06. The changes pane: staged / unstaged / untracked, at a glance
+
+```meta
+id: M3-06
+area: working-tree
+milestone: m3-working-tree-undo-and-stash
+status: works
+```
 
 - **How:** Automatic pane showing working-tree status; sections `STAGED (n)`, `UNSTAGED (n)`, `UNTRACKED (n)`.
 - **Behaviour:** A file that is both staged and unstaged (partially staged) appears as a row under both sections with identical flags — which section a row is under, not the file's own status flags, decides whether `Space` on it stages or unstages (two rows for the same file can mean opposite writes). `Space` on a section heading acts on every file under that heading up to the next heading. `Ctrl+A` stages every unstaged and untracked file, but skips a conflicted (unmerged) path deliberately — `git add` on an unmerged path marks it resolved with its conflict markers still in the file, and resolving conflicts is a later milestone's job. A second `Space` while a write is already running does nothing and the status line reads busy. An empty working tree shows an empty list plus a body message (not a literal "nothing to commit" list row — a known wording deviation from the original spec). The pane's own footer hint (`space stage  d discard`) is drawn ahead of movement-key hints so a narrow terminal drops other hints first.
@@ -88,6 +130,13 @@ real repository: **you cannot lose work**.
 
 ### M3-07. Staging and discarding at hunk and line granularity
 
+```meta
+id: M3-07
+area: working-tree
+milestone: m3-working-tree-undo-and-stash
+status: works
+```
+
 - **How:** With the diff body focused (unified mode only — see below): `Space` on a hunk heading or a context line stages/unstages the whole hunk; `Space` on a `+`/`-` line stages/unstages just that line; `d` opens a discard confirmation at any of those granularities.
 - **Behaviour:** The patch cut for a hunk or line write comes from `hunk_patch`, applied to git's own raw diff bytes (`DetailState::diff_raw`) — never derived from the rendered/drawn view, so what's staged is exactly what git would compute. Direction and side follow the section: staging goes forward from worktree to index, unstaging goes reverse from index, discard is always reverse (destructive). Untracked files always stage whole-file (`git add -N` isn't used — a narrower "stage this line of an untracked file" isn't supported, see Deliberately not built). A line whose hunk has no trailing newline at end of file refuses with a named error (`PatchError::NoNewlineBoundary`) pointing at the `@@` heading — whole-hunk staging still works for that same hunk; only the single-line path is refused, deliberately, rather than silently corrupting the file via `git apply --cached`'s own newline-fusing behaviour. Side-by-side diff view has no line cursor, so hunk/line staging there refuses with a message telling you to press `v` for the unified view first; whole-file staging and untracked-file `Space` are unaffected in side-by-side.
 - **Proven by:**
@@ -100,6 +149,13 @@ real repository: **you cannot lose work**.
 
 ### M3-08. Discard with a confirmation box, per file, hunk or line
 
+```meta
+id: M3-08
+area: working-tree
+milestone: m3-working-tree-undo-and-stash
+status: works
+```
+
 - **How:** `d` on a file row, or in the diff body on a hunk/line, opens a confirm box; the box defaults to the safer choice under the cursor.
 - **Behaviour:** The box states the consequence in plain words specific to the target: an untracked file says it will be deleted; a file both staged and unstaged says both changes return to `HEAD`; otherwise it names which side (index or worktree) the content is restored from, with the affected line/file count. `→ Enter` confirms and emits `Operate(Discard(...))`; `Esc` or plain `Enter` on the default (safe) choice cancels with no command. While the box is open, keys never reach the pane underneath (e.g. `j` does not move anything). A real-runner test drives this to completion on an untracked file: `d` → `→` → `Enter` deletes the file, leaves exactly one `refs/graft/backup` ref, and a two-line journal (the discard, later its undo).
 - **Proven by:**
@@ -110,6 +166,13 @@ real repository: **you cannot lose work**.
 - **Status:** works. Known wording bug: the untracked-file box asks "Delete notes.md?" over a button labelled `Discard` — question and button disagree.
 
 ### M3-09. The commit editor: `c` to commit, `a` to amend
+
+```meta
+id: M3-09
+area: working-tree
+milestone: m3-working-tree-undo-and-stash
+status: works
+```
 
 - **How:** `c` opens a fresh commit editor; `a` opens it prefilled with `HEAD`'s message and sets amend mode; typing lands in the Subject field; `Enter` in Subject moves to Body without inserting a newline; `Tab` cycles Subject → Body → options (sign-off/allow-empty, one stop) → `[ Commit ]` button; `Enter`/`Ctrl+Enter` on the button commits.
 - **Behaviour:** The editor's title shows the live staged-file count (e.g. "2 files staged"). The commit message sent is `subject + "\n\n" + body + "\n"`. `Ctrl+S` toggles sign-off and it reaches the commit params. With nothing staged, the button does nothing and the editor shows a `nothing staged` refusal (an `[ ] allow empty` checkbox, once toggled on, lets it through anyway). On success (`Product::Operated(Ok(Everything))`), the editor closes and the draft clears; on failure it stays open with a sticky failure line and keeps the typed text. `Esc` keeps the draft — the next `c` reopens with it intact. A real-runner test proves the whole path: stage a file, type a subject, commit through the button — `git log -1 --format=%s` matches, the journal has a `Commit` entry whose `refs_before[main] != refs_after[main]`; then `a`, edit the subject, commit again — the subject changes but `git rev-list --count HEAD` stays the same (a true amend, not a second commit).
@@ -126,6 +189,14 @@ real repository: **you cannot lose work**.
 
 ### M3-10. `Ctrl+E` (or `e`) opens the commit message in your real `$EDITOR`, cleanly
 
+```meta
+id: M3-10
+area: working-tree
+milestone: m3-working-tree-undo-and-stash
+status: partial
+unverified_aspect: a real $EDITOR leaving a real terminal usable afterward — no test in this repo can prove it
+```
+
 - **How:** From the commit editor.
 - **Behaviour:** Resolves the editor command per program name: `vim` → `vim +12 path` (jump to the current line), `code` → `code --goto path:12`, `zed` → `zed path:12`, anything unrecognised → `<editor> path` (no line jump); an editor string carrying its own arguments (e.g. `"emacs -nw"`) keeps them. Running it suspends Graft's own terminal handling cleanly: leaves the alternate screen, restores original terminal modes, runs the editor, restores Graft's modes, re-enters the alternate screen — and does this even if the editor process (or the code driving it) panics, via a guard. The same suspend/resume path also serves plain `Ctrl+Z` (ADR-0002), controlled by `[keys] suspend_on_ctrl_z` in config (reaches `AppState` the same way `[radar]` settings do; with it off, `Ctrl+Z` is left unclaimed here for undo/redo, not swallowed).
 - **Proven by:**
@@ -137,6 +208,13 @@ real repository: **you cannot lose work**.
 - **Status:** partial/unverified for the real-terminal case. The suspend/resume mechanics are proven by transcript order and a panic guard in tests; no test in this repo can prove a real `$EDITOR` leaves a real terminal usable afterward (needs a human at a real terminal). `Ctrl+Enter`-vs-`Enter` distinguishing (outside the kitty keyboard protocol) is also unverified outside a real terminal — `Tab` to the button is the proven path.
 
 ### M3-11. Stash: save, list, apply, pop, drop — all undoable
+
+```meta
+id: M3-11
+area: stash
+milestone: m3-working-tree-undo-and-stash
+status: works
+```
 
 - **How:** `S` opens the stash overlay; `s` inside it opens a save prompt (type a message, `Tab` toggles staged-only vs. everything, `Enter` saves); `Enter`/`p` on a row applies/pops it; `d` opens a drop confirmation; `Space` previews a row's file list.
 - **Behaviour:** `S` opens and reads the stash list. `Enter` and `p` carry the row's actual commit object, never just a numeric index (so a concurrent change to the stash can't apply the wrong entry). Save with a clean tree refuses (`Enter` does nothing, shown as "nothing to stash"); an empty typed message sends `None`, not an empty string. `d` opens a box (`[ Keep ] / [ Drop ]`) before anything runs. Every write here goes through the same journal/undo seam as everything else: `s` (push) then `u` restores the working tree and empties the stash list, `U` re-stashes; apply then `u` cleans the tree again (apply doesn't remove the stash entry — only pop does); pop then `u` restores the entry at `stash@{0}`, proven by its message, not its index (a restored stash always re-lists at index 0 — original position isn't preserved, git has no insert-at-index for the stash reflog; content and commit are unchanged). Drop then `u` restores the correct one of two entries, verified after `git gc --prune=now` runs between the drop and the undo (the entry stayed reachable the whole time via its backup ref). Every real stash entry gets a `stash@{n}` badge in the graph; `H` hides all stash-derived rows and shows them again.
@@ -154,6 +232,13 @@ real repository: **you cannot lose work**.
 
 ### M3-12. Refresh on window focus, without losing your place
 
+```meta
+id: M3-12
+area: foundations
+milestone: m3-working-tree-undo-and-stash
+status: works
+```
+
 - **How:** Automatic — coming back to the terminal window (focus-gain).
 - **Behaviour:** A focus-gained event re-reads the working tree only — no history restart, no row-list rebuild. A second focus report within 500ms of the first is ignored (debounced); one more than 500ms later reads again. A focus report that arrives before the repository has finished opening asks for nothing. `Ctrl+R` (manual refresh) also re-reads the journal (in case another Graft process on the same worktree appended to it) and the stash list, keeping `Refresh::Everything` identical in scope to what `Ctrl+R` itself does.
 - **Proven by:**
@@ -165,6 +250,14 @@ real repository: **you cannot lose work**.
 
 ### M3-13. Graft's own bookkeeping refs never appear as history
 
+```meta
+id: M3-13
+area: undo
+milestone: m3-working-tree-undo-and-stash
+status: works
+unverified_aspect: whether stash-internals-in-graph was the original M2/M3 design intent
+```
+
 - **How:** Automatic.
 - **Behaviour:** Any ref under `refs/graft/**` (the journal's backup refs) is excluded before it ever reaches the graph, the ref badges, or the "contained in" computation — filtered once, at the read seam (`RefName::is_graft_internal`), not re-implemented at each call site. `refs/stash` is different: it's git's own namespace, the user already knows about it, and Graft draws stash entries on the graph on purpose.
 - **Proven by:**
@@ -175,6 +268,14 @@ real repository: **you cannot lose work**.
 
 ### M3-14. The pinned uncommitted row reaches the working tree from history
 
+```meta
+id: M3-14
+area: working-tree
+milestone: m3-working-tree-undo-and-stash
+status: works
+unverified_aspect: HEAD scrolled below the top in a live key sequence
+```
+
 - **How:** `k` from history row `top` with a dirty working tree.
 - **Behaviour:** Continues M2's pinned uncommitted row (see the M2 ledger, M2-02): with `HEAD` scrolled off the top of the visible window and the tree dirty, row 0 becomes the pinned `◌` row and `k` from row 1 reaches it — extending the M2 behaviour, which only worked while `HEAD` itself was the top row.
 - **Proven by:** `graft::update::selection` tests extending the M2 06b suite (ticket 04 acceptance, "Pinned row" line)
@@ -182,6 +283,14 @@ real repository: **you cannot lose work**.
 - **Status:** works in the scenarios exercised (17 of 22 acceptance-walk scenarios reach it, all with `HEAD` topmost). Unverified with `HEAD` scrolled below the top in a live key sequence — the acceptance walk didn't happen to construct that case.
 
 ### M3-15. `TESTING.md` "you cannot lose work" acceptance walk
+
+```meta
+id: M3-15
+area: working-tree
+milestone: m3-working-tree-undo-and-stash
+status: works
+unverified_aspect: everything judged only by eye: the captures themselves, the 120x40 breakpoint, terminal-specific behaviour, colour
+```
 
 - **How:** `cargo run -p graft --example m3_walk` (prints `ok <name>` per scenario) or `cargo test` (one test per scenario).
 - **Behaviour:** 22 scripted scenarios, each driving real keys through the real job pool against a real git repository and checking the result by reading git directly afterward (`for-each-ref`, `ls-files -s`, `stash list`, `status --porcelain`, `rev-parse`, `rev-list --objects`, `hash-object --stdin`, actual file bytes, `fsck --no-dangling`, backup-ref counts) — never by trusting `AppState`. Scenarios: stage file/hunk/line/all, discard (tracked-unstaged, untracked-binary, staged-and-unstaged), commit, commit-refused-nothing-staged, amend, commit-on-unborn-head, undo-drift-guard, stash save/pop/apply/drop, stash-apply-refused-dirty-touched-file, interrupted-entry, linked-worktree, refresh-on-focus, no-index-write-on-read. All 22 pass (22 ok, 0 failed, 12.1s wall for the example; 4.6s under `cargo nextest` for the tests). 18 terminal captures at two sizes (80×24, 160×48) plus a contact sheet concatenating them in order.

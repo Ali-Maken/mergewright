@@ -26,6 +26,14 @@ which files a lint scans, neither user-visible.
 
 ### M1-01. The graph draws in the tier the terminal can actually support, and never in a worse one than necessary
 
+```meta
+id: M1-01
+area: terminal-rendering
+milestone: m1-the-graph
+status: works
+unverified_aspect: real tmux and real SSH rendering — tmux not installed on the build machine
+```
+
 - **How:** automatic at startup (reusing M0's capability probe); `F3`
   manually cycles down through the tiers and back; `graph.renderer` in
   config always wins over detection.
@@ -59,6 +67,13 @@ which files a lint scans, neither user-visible.
   the Kitty protocol's error replies, are both unknown.
 
 ### M1-02. Commits render as a lane graph — deterministic, gap-free, with merges drawn where they happened
+
+```meta
+id: M1-02
+area: graph
+milestone: m1-the-graph
+status: works
+```
 
 - **How:** automatic, on every history walk.
 - **Behaviour:** every parent edge is drawn; no edge is ever drawn through a
@@ -100,6 +115,13 @@ which files a lint scans, neither user-visible.
 
 ### M1-03. History streams in topological order, falling back to date order when there's no commit-graph file — and never shows a parent above its own child
 
+```meta
+id: M1-03
+area: history
+milestone: m1-the-graph
+status: works
+```
+
 - **How:** automatic on repo open.
 - **Behaviour:** with a commit-graph file present, uses git's own generation
   numbers for an incremental topological sort that can start emitting rows
@@ -128,6 +150,13 @@ which files a lint scans, neither user-visible.
 
 ### M1-04. Provisional order is promoted to topological order mid-session without disrupting what's on screen
 
+```meta
+id: M1-04
+area: history
+milestone: m1-the-graph
+status: works
+```
+
 - **How:** automatic, once the commit-graph read finishes after the first
   paint (which used date order to get something on screen faster).
 - **Behaviour:** a notice appears; the selected commit and the screen's
@@ -144,6 +173,13 @@ which files a lint scans, neither user-visible.
 - **Status:** works.
 
 ### M1-05. Each row shows subject, author, relative date and ref badges — safely, even from hostile input
+
+```meta
+id: M1-05
+area: graph
+milestone: m1-the-graph
+status: works
+```
 
 - **How:** automatic, on every visible row.
 - **Behaviour:** columns degrade gracefully by terminal width (checked at
@@ -171,6 +207,13 @@ which files a lint scans, neither user-visible.
 
 ### M1-06. Relative dates round the way git's own `--date=relative` does, not by floor-dividing
 
+```meta
+id: M1-06
+area: graph
+milestone: m1-the-graph
+status: works
+```
+
 - **How:** automatic, on the date column.
 - **Behaviour:** matches git's own cascade at every unit boundary — e.g. 89
   and 90 minutes both read "89 minutes ago" (git rounds `(seconds+30)/60`,
@@ -192,6 +235,14 @@ which files a lint scans, neither user-visible.
   self-consistency.
 
 ### M1-07. Lanes stay distinguishable without relying on colour — at full colour, 16 colours, and with colour off entirely
+
+```meta
+id: M1-07
+area: graph
+milestone: m1-the-graph
+status: partial
+unverified_aspect: lane-colour distinguishability by eye at truecolor/256, and by an actual colour-vision-deficient viewer
+```
 
 - **How:** automatic, adapting to the terminal's detected colour depth or
   `NO_COLOR`.
@@ -221,6 +272,14 @@ which files a lint scans, neither user-visible.
   way — these stay open until someone looks.
 
 ### M1-08. Too many lanes for the width fold down to a budget, without losing the graph's shape
+
+```meta
+id: M1-08
+area: graph
+milestone: m1-the-graph
+status: works
+unverified_aspect: whether the folded rail reads as history or decoration at real widths — left open for the user to judge
+```
 
 - **How:** automatic whenever a window's open lanes exceed `graph.max_lanes`
   (unset default: 8 lanes below 100 columns, 10 from 100–159, 12 at 160 and
@@ -268,6 +327,13 @@ which files a lint scans, neither user-visible.
 
 ### M1-09. Folding a merge, viewing first-parent-only, and hiding stashes are independent toggles
 
+```meta
+id: M1-09
+area: graph
+milestone: m1-the-graph
+status: works
+```
+
 - **How:** `Space` folds/unfolds the merge under the cursor; `1` switches to
   a first-parent-only view; `H` hides/shows stash commits.
 - **Behaviour:** first-parent view collapses a history with merges to one
@@ -292,6 +358,13 @@ which files a lint scans, neither user-visible.
 
 ### M1-10. Selecting a commit highlights its ancestry; Focus mode dims everything else
 
+```meta
+id: M1-10
+area: graph
+milestone: m1-the-graph
+status: works
+```
+
 - **How:** moving the cursor selects a row; `F` toggles Focus mode on the
   current selection.
 - **Behaviour:** the selected commit's thread (its ancestors and
@@ -315,6 +388,13 @@ which files a lint scans, neither user-visible.
 
 ### M1-11. Mouse: click to select, wheel to scroll
 
+```meta
+id: M1-11
+area: graph
+milestone: m1-the-graph
+status: works
+```
+
 - **How:** click a row to select it; the scroll wheel moves the visible
   window, not the cursor.
 - **Behaviour:** click selects the row under the pointer; wheel scrolling
@@ -337,6 +417,13 @@ which files a lint scans, neither user-visible.
 - **Status:** works.
 
 ### M1-12. Hovering or peeking a truncated row shows its full subject in the footer
+
+```meta
+id: M1-12
+area: graph
+milestone: m1-the-graph
+status: works
+```
 
 - **How:** hover the mouse over a row whose subject was cut with `…`; or
   press `Enter` on the cursor row (keyboard-only equivalent).
@@ -369,6 +456,14 @@ which files a lint scans, neither user-visible.
 
 ### M1-13. `y` copies the selected commit's full SHA to the system clipboard
 
+```meta
+id: M1-13
+area: graph
+milestone: m1-the-graph
+status: partial
+unverified_aspect: whether the OS clipboard actually received the copied SHA — OSC 52 doesn't report back
+```
+
 - **How:** select a commit, press `y`.
 - **Behaviour:** sends an OSC 52 clipboard-set escape sequence
   (`ESC ] 52 ; c ; <base64 of the 40-character SHA> ESC \`), wrapped in
@@ -392,6 +487,14 @@ which files a lint scans, neither user-visible.
   user check (`KNOWN_GAPS.md`).
 
 ### M1-14. Search jumps to a matching commit by message, author, committer, SHA or content, wrapping with `n`/`N`
+
+```meta
+id: M1-14
+area: history
+milestone: m1-the-graph
+status: works
+unverified_aspect: the 100k-search responsiveness claim — not independently re-measured, only ticket text and a replay
+```
 
 - **How:** `/` opens search; `n`/`N` jump to the next/previous hit and wrap
   around.
@@ -424,6 +527,14 @@ which files a lint scans, neither user-visible.
   any hit exists is a no-op.
 
 ### M1-15. The pixel-tier graph renders as a real image, stays aligned, and scrolls within budget
+
+```meta
+id: M1-15
+area: terminal-rendering
+milestone: m1-the-graph
+status: works
+unverified_aspect: pixel-tier rendering at the application level in a real terminal — only the protocol/byte-stream is tested
+```
 
 - **How:** automatic in the Kitty-protocol pixel tier.
 - **Behaviour:** an RGBA rasteriser draws lane lines, curves and commit
@@ -482,6 +593,13 @@ which files a lint scans, neither user-visible.
 
 ### M1-16. iTerm2's own inline-image protocol renders the pixel tier where Kitty's isn't available
 
+```meta
+id: M1-16
+area: terminal-rendering
+milestone: m1-the-graph
+status: unverified
+```
+
 - **How:** automatic in iTerm2 (detected via the environment-hint exception,
   §M1-01) when the Kitty protocol isn't reachable.
 - **Behaviour:** an unchanged band of rows is never re-encoded or
@@ -498,6 +616,13 @@ which files a lint scans, neither user-visible.
   is not the same verification).
 
 ### M1-17. Resizing the terminal, or regaining focus, keeps the graph correct without a full redraw storm
+
+```meta
+id: M1-17
+area: terminal-rendering
+milestone: m1-the-graph
+status: works
+```
 
 - **How:** resizing the window; switching focus away and back.
 - **Behaviour:** a resize re-queries the terminal's cell size; if the
@@ -521,6 +646,13 @@ which files a lint scans, neither user-visible.
   probe answer — a real but rare race, expiry M1 heavy tier.
 
 ### M1-18. Typed keystrokes are never lost or mistaken for a terminal's protocol reply
+
+```meta
+id: M1-18
+area: terminal-rendering
+milestone: m1-the-graph
+status: works
+```
 
 - **How:** automatic — any key pressed while Graft is mid-probe (startup,
   resize, focus regain) or during normal operation.
@@ -549,6 +681,13 @@ which files a lint scans, neither user-visible.
   decoded (xterm, SS3, Kitty's `CSI u`, and SGR/X10 mouse all are).
 
 ### M1-19. Scrolling stays smooth (under a 16 ms input-to-frame budget) at real scale, in every tier
+
+```meta
+id: M1-19
+area: graph
+milestone: m1-the-graph
+status: works
+```
 
 - **How:** automatic — `j`/`k`/`PageUp`/`PageDown`/wheel scrolling.
 - **Behaviour:** this is the same 16 ms-per-frame promise as M1-15, stated
@@ -579,6 +718,13 @@ which files a lint scans, neither user-visible.
 
 ### M1-20. Reading a repository with tens of thousands of refs stays within budget
 
+```meta
+id: M1-20
+area: graph
+milestone: m1-the-graph
+status: works
+```
+
 - **How:** automatic — opening or refreshing a repository with a very large
   number of branches/tags.
 - **Behaviour:** on a 50,000-ref fixture, reading tips takes 165 ms in a
@@ -600,6 +746,13 @@ which files a lint scans, neither user-visible.
 
 ### M1-21. Every event-loop tick stays cheap even with a large ref set on screen
 
+```meta
+id: M1-21
+area: graph
+milestone: m1-the-graph
+status: works
+```
+
 - **How:** invisible — a fix underneath M1-19/M1-20's frame-budget numbers.
 - **Behaviour:** every UI event used to deep-clone the entire application
   state, including a full copy of every ref badge (measurable as 1.0–1.9 ms
@@ -619,6 +772,13 @@ which files a lint scans, neither user-visible.
 
 ### M1-22. The graph never freezes on a blank frame while scrolling in the pixel tier
 
+```meta
+id: M1-22
+area: terminal-rendering
+milestone: m1-the-graph
+status: works
+```
+
 - **How:** automatic — wheel/trackpad scrolling in the pixel tier.
 - **Behaviour:** an earlier bug left the pixel graph blank indefinitely
   after a wheel scroll moved the view away from the cursor's row and then
@@ -635,6 +795,14 @@ which files a lint scans, neither user-visible.
 - **Status:** works.
 
 ### M1-23. A fixed gallery walks 23 real and synthetic repository shapes end to end, with a capture of each
+
+```meta
+id: M1-23
+area: graph
+milestone: m1-the-graph
+status: works
+unverified_aspect: whether each gallery stop reads correctly by eye — explicitly left to the user, not yet done
+```
 
 - **How:** `cargo run -p graft --example gallery` (`]`/`[` to step,
   `q` to quit, `--list` to print every stop, `--matrix` for a coverage
@@ -670,6 +838,13 @@ which files a lint scans, neither user-visible.
 
 ### M1-24. The graph offers to build a missing commit-graph file, and using it visibly shrinks memory and speeds things up
 
+```meta
+id: M1-24
+area: history
+milestone: m1-the-graph
+status: works
+```
+
 - **How:** the footer shows an offer when a repository has no
   `.git/objects/info/commit-graph` file; `B` builds it, `X` declines (and
   the decline is remembered for that repository).
@@ -694,6 +869,13 @@ which files a lint scans, neither user-visible.
   measurement (M1-27), not this ticket's own acceptance run.
 
 ### M1-25. History scales to a million commits without loading everyone into memory
+
+```meta
+id: M1-25
+area: history
+milestone: m1-the-graph
+status: works
+```
 
 - **How:** automatic — the same repo-open and scroll behaviour as any
   smaller repository, but measured at real scale.
@@ -727,6 +909,13 @@ which files a lint scans, neither user-visible.
 
 ### M1-26. Rows on screen hydrate only as they're needed; scrolling a huge history doesn't pull everything in
 
+```meta
+id: M1-26
+area: history
+milestone: m1-the-graph
+status: works
+```
+
 - **How:** automatic — scrolling or paging through any repository, huge
   ones included.
 - **Behaviour:** the layout engine can lay out a slice of history as pure
@@ -752,6 +941,14 @@ which files a lint scans, neither user-visible.
   220 MiB to 98 MiB and 0.85 s to 0.80 s.
 
 ### M1-27. Memory stays inside a gated budget at a million commits — and the budget is honestly split between what's proven and what's only measured
+
+```meta
+id: M1-27
+area: history
+milestone: m1-the-graph
+status: partial
+unverified_aspect: first paint at 1M commits right after clearing the OS page cache — only ever measured warm
+```
 
 - **How:** invisible — the same repo-open/scroll path as any size, this row
   states the actual numbers at the largest tested scale.
@@ -804,6 +1001,13 @@ which files a lint scans, neither user-visible.
 
 ### M1-28. First paint at a million commits stays fast, and far jumps replay a bounded slice, not the whole history
 
+```meta
+id: M1-28
+area: history
+milestone: m1-the-graph
+status: works
+```
+
 - **How:** opening a huge repository; jumping far in it (search, or a
   direct commit lookup).
 - **Behaviour:** warm first paint at 1M commits is 88–125 ms, well under
@@ -829,6 +1033,13 @@ which files a lint scans, neither user-visible.
 
 ### M1-29. Piping Graft's output, or opening a repository that fails, never hangs a script
 
+```meta
+id: M1-29
+area: foundations
+milestone: m1-the-graph
+status: works
+```
+
 - **How:** running Graft with stdout redirected to a file or another
   program (`graft <repo> | cat`, CI, scripts).
 - **Behaviour:** a piped run waits for history to actually finish loading
@@ -850,6 +1061,14 @@ which files a lint scans, neither user-visible.
 - **Status:** works.
 
 ### M1-30. The manual terminal checklist and the checkpoint script give the user a single, repeatable way to judge the milestone
+
+```meta
+id: M1-30
+area: graph
+milestone: m1-the-graph
+status: works
+unverified_aspect: the per-terminal pass/reads-well verdicts — blank by design, the user's own checkpoint step
+```
 
 - **How:** `scripts/m1-checkpoint.sh <scenario>` (`git-git`, `criss-cross`,
   `foxtrot`, `octopus`, or `list`); the terminal matrix in `TESTING.md`.
