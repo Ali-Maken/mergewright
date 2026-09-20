@@ -14,6 +14,14 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 
 ### M5-01. Typing a Git password shows nothing about how long it is
 
+```meta
+id: M5-01
+area: credentials
+milestone: m5-history-and-ghost-preview
+status: works
+unverified_aspect: whether the password buffer is actually zeroed after drop — unverifiable from safe Rust
+```
+
 - **How:** any masked field (HTTP credential prompt).
 - **Behaviour:** the field always draws exactly 8 mask glyphs (`•`, or `*` at the ASCII
   tier), regardless of the real password's length — 3 characters and 30 characters look
@@ -35,6 +43,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 
 ### M5-02. Nothing about the password ever shows up in a debug dump
 
+```meta
+id: M5-02
+area: credentials
+milestone: m5-history-and-ghost-preview
+status: works
+```
+
 - **How:** any state dump (`{state:?}`) taken while a credential prompt is open, including
   the ones the M4 walk records automatically for its leak scan.
 - **Behaviour:** `SecretField`'s `Debug` prints a fixed string (`SecretField(..)`) for a
@@ -46,6 +61,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 - **Status:** works
 
 ### M5-03. Merge, rebase, cherry-pick, revert, reset, checkout, branch/tag create-delete, and branch-from-stash all run as recorded, undoable operations
+
+```meta
+id: M5-03
+area: undo
+milestone: m5-history-and-ghost-preview
+status: works
+```
 
 - **How:** internal — the operations layer (`graft-ops`) that the app's key bindings and
   menus call into (wiring for most of these keys is not yet built at the app layer — see
@@ -64,6 +86,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 
 ### M5-04. The picture you're shown before an operation runs is drawn from the exact commands that will run
 
+```meta
+id: M5-04
+area: history
+milestone: m5-history-and-ghost-preview
+status: works
+```
+
 - **How:** internal — every previewable operation's `PreviewPlan`.
 - **Behaviour:** `preview::plan` always overwrites its `commands` field with the operation's
   own `plan(&facts)` render — there is no second, independent description that could drift
@@ -75,6 +104,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 - **Status:** works
 
 ### M5-05. The picture is honest about the reader's own git config, not just about git's defaults
+
+```meta
+id: M5-05
+area: history
+milestone: m5-history-and-ghost-preview
+status: works
+```
 
 - **How:** internal — same preview plans, specifically merge, rebase and pull.
 - **Behaviour:** a merge's plan always writes `--ff` explicitly for a fast-forward, so a
@@ -88,6 +124,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 - **Status:** works
 
 ### M5-06. A merge, rebase or cherry-pick that conflicts stops as one open operation, not an error
+
+```meta
+id: M5-06
+area: conflicts
+milestone: m5-history-and-ghost-preview
+status: works
+```
 
 - **How:** internal — what `apply` does when a plan step exits non-zero while git reports an
   in-progress operation (merge/rebase/cherry-pick/revert underway).
@@ -106,6 +149,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 
 ### M5-07. Aborting a conflicted operation restores exactly the state before it started
 
+```meta
+id: M5-07
+area: conflicts
+milestone: m5-history-and-ghost-preview
+status: works
+```
+
 - **How:** internal — `resume(ctx, Resume::Abort)`.
 - **Behaviour:** runs `<kind> --abort`, then re-reads the repository state; if it doesn't
   match what was recorded before the operation started (someone edited mid-conflict), the
@@ -116,6 +166,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 - **Status:** works (ops layer only; not yet reachable by a key)
 
 ### M5-08. The time machine ("revert to before this point") never resurrects work you deliberately undid
+
+```meta
+id: M5-08
+area: undo
+milestone: m5-history-and-ghost-preview
+status: works
+```
 
 - **How:** internal — `undo::plan_revert_to` / `revert_to`, which will back `U` after several
   steps once the app wires it (not yet built — group 08).
@@ -128,6 +185,14 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 - **Status:** works (ops layer only)
 
 ### M5-09. A rewritten history shows as ghost commits that draw exactly what git would write
+
+```meta
+id: M5-09
+area: history
+milestone: m5-history-and-ghost-preview
+status: works
+unverified_aspect: the capture — the user has not judged it
+```
 
 - **How:** internal — `preview::plan`'s `GhostCommit`/`RefMove` shapes, consumed by the graph
   widget's `RowPaint::Ghost`.
@@ -146,6 +211,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 
 ### M5-10. A parent that falls outside what's currently laid out is drawn as an anchor, never as a truncated real commit
 
+```meta
+id: M5-10
+area: history
+milestone: m5-history-and-ghost-preview
+status: broken
+```
+
 - **How:** internal — clipped ghost parents at the edge of a bounded preview slice.
 - **Behaviour:** decided as a binding condition, not yet exercised in the app (the bounded
   re-layout that would produce this is group 08's, unbuilt).
@@ -153,6 +225,14 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 - **Status:** not yet built — a design condition, not a shipped behaviour
 
 ### M5-11. A confirm box always defaults to Cancel, with the cursor visible without colour
+
+```meta
+id: M5-11
+area: hints-and-ui
+milestone: m5-history-and-ghost-preview
+status: works
+unverified_aspect: the captures — unverified by eye
+```
 
 - **How:** any confirm dialog (2 choices or more — pick a branch to force-push over, discard
   a hunk, etc).
@@ -170,6 +250,14 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 
 ### M5-12. The Ghost Preview box actually draws a box at the size it says it needs
 
+```meta
+id: M5-12
+area: history
+milestone: m5-history-and-ghost-preview
+status: works
+unverified_aspect: the capture — unverified by eye
+```
+
 - **How:** any operation's preview.
 - **Behaviour:** the box docks above the screen's footer row at its own height (title + plan
   lines + commands + buttons + its own footer). Every interior row is a bordered content
@@ -183,6 +271,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 
 ### M5-13. Once an operation is running (merge/rebase/etc), the header shows what step you're on
 
+```meta
+id: M5-13
+area: hints-and-ui
+milestone: m5-history-and-ghost-preview
+status: partial
+```
+
 - **How:** internal `BannerView` widget, replacing the graph header's informational tail
   while an operation is in progress. Not yet wired to a live operation state (group 09).
 - **Behaviour:** at 100+ columns: ` ⚠ REBASING step 3 of 7 — conflict in src/auth/token.rs (+1) `; under 100: ` ⚠ REBASING 3/7 — conflict src/auth.rs `; without a step number: ` ⚠ MERGING — conflict in … `; without a conflict: ` ⚠ REBASING step 3 of 7 `. `Continue`/`Skip`/`Abort` buttons draw on their own row only at 160+ columns — they're a mouse target; the keys (not yet bound) are the way that always works.
@@ -190,6 +285,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 - **Status:** widget built and unit-tested; not yet wired to a real operation, and has no bounds test (`docs/gaps/m5-04-fix` gap 6)
 
 ### M5-14. A file with conflict markers shows in its own CONFLICTS section, and refuses to be staged or discarded by mistake
+
+```meta
+id: M5-14
+area: conflicts
+milestone: m5-history-and-ghost-preview
+status: partial
+```
 
 - **How:** the changes pane, when the working tree has unmerged paths.
 - **Behaviour:** `CONFLICTS (n)` heads the changes pane, before Staged/Unstaged/Untracked.
@@ -205,6 +307,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 
 ### M5-15. Merging or splitting a branch by name goes through a modal that types the name, not a confirm box
 
+```meta
+id: M5-15
+area: hints-and-ui
+milestone: m5-history-and-ghost-preview
+status: partial
+```
+
 - **How:** the name-prompt widget (used by branch/tag create, and stash-to-branch, once the
   app wires the keys that open it — group 10, unbuilt).
 - **Behaviour:** a centred modal, title + text field + an optional checkbox
@@ -217,6 +326,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 
 ### M5-16. The re-push offer ("put the remote back") is refused unless the commit is still reachable from the branch
 
+```meta
+id: M5-16
+area: undo
+milestone: m5-history-and-ghost-preview
+status: works
+```
+
 - **How:** internal — `apply::guard_repush`, backing the (not-yet-wired) re-push confirm
   from ADR-0038 §4.
 - **Behaviour:** before the first write, Graft re-checks (`merge-base --is-ancestor`) that
@@ -228,6 +344,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 - **Status:** works at the ops layer; the app-level "re-push old tip" confirm box itself is not built (all three call sites pass `source_commit: None` for now — see gaps)
 
 ### M5-17. Pressing `Ctrl+R` (refresh) rapidly never starves the history view
+
+```meta
+id: M5-17
+area: history
+milestone: m5-history-and-ghost-preview
+status: works
+```
 
 - **How:** `Ctrl+R`, pressed a second time before the first refresh has visibly started.
 - **Behaviour:** the app now mints the history walk's job id itself, at the moment it
@@ -243,6 +366,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 
 ### M5-18. Cancelling a pending journal read (`Esc`) doesn't cause it to be silently re-requested, but also doesn't lose the notice that an operation is waiting to be undone
 
+```meta
+id: M5-18
+area: undo
+milestone: m5-history-and-ghost-preview
+status: works
+```
+
 - **How:** `Esc` while the journal browser has a read in flight.
 - **Behaviour:** an `Esc` on a read the app still wants (e.g. the launch read that decides
   whether to show "an operation did not finish, `u` can still take it back") no longer
@@ -254,6 +384,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 - **Status:** works
 
 ### M5-19. The hint bar always shows the three most relevant keys for where you are, at common widths, and never advertises a key that does nothing
+
+```meta
+id: M5-19
+area: hints-and-ui
+milestone: m5-history-and-ghost-preview
+status: works
+```
 
 - **How:** the bottom row of the graph screen.
 - **Behaviour:** at 80 columns: the top 3 keys for the current context + `. more`; at 120: 6
@@ -273,6 +410,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 
 ### M5-20. The `.` menu is a doorway to every key the width rule dropped, not a dead end
 
+```meta
+id: M5-20
+area: hints-and-ui
+milestone: m5-history-and-ghost-preview
+status: works
+```
+
 - **How:** pressing `.` at any width.
 - **Behaviour:** the context menu that `.` opens lists every key relevant to the current
   context, including the ones the width rule hid — always Fetch/Pull/Push/Undo, plus the
@@ -286,6 +430,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 
 ### M5-21. A failure or sticky status line never loses the key that clears it, however narrow the terminal
 
+```meta
+id: M5-21
+area: hints-and-ui
+milestone: m5-history-and-ghost-preview
+status: works
+```
+
 - **How:** any failure banner or "sticky" status line at the bottom of the screen (e.g. a
   rejected push).
 - **Behaviour:** `fit_status_line` keeps the ` · keys` portion of a status line whole and cuts
@@ -298,6 +449,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 
 ### M5-22. Below 100 columns with a pane open, the doorway to every key still shows — the bar itself does not have to
 
+```meta
+id: M5-22
+area: hints-and-ui
+milestone: m5-history-and-ghost-preview
+status: broken
+```
+
 - **How:** any pane (Detail, Changes, etc.) opened below 100 columns, where the layout
   switches to tabs and the graph screen (and its hint bar) isn't drawn at all.
 - **Behaviour:** decided (ADR-0039) but **not yet built**: a ~7-column `. more` marker is
@@ -309,6 +467,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 - **Status:** broken — the decision is accepted but not implemented; `#[ignore]`d failing test `graft::tests::it::hint_bar::the_tab_layout_still_hides_every_key` pins the gap
 
 ### M5-23. A real `git status`/`merge-tree`/`rev-list` read backs every one of these: merge-base, commit ranges, conflict forecasts, in-progress rebase step, and mergetool config
+
+```meta
+id: M5-23
+area: conflicts
+milestone: m5-history-and-ghost-preview
+status: works
+```
 
 - **How:** internal — the git-read layer other operations and previews are built on.
 - **Behaviour:** `merge_base` matches `git merge-base` exactly, including returning "no common
@@ -327,6 +492,13 @@ and drop, and the milestone's own acceptance walk are not — see "Not yet built
 - **Status:** works. One real limit, stated plainly by the code: a forecast only checks one pair of commits, so a rebase or cherry-pick replaying several commits can still stop on a later one even after a clean forecast — wording is always "may conflict", never "will"
 
 ### M5-24. Checking a forecast never leaves a stray write in your repository unaccounted for — except it does, today
+
+```meta
+id: M5-24
+area: conflicts
+milestone: m5-history-and-ghost-preview
+status: broken
+```
 
 - **How:** internal — `forecast_merge`'s use of `git merge-tree --write-tree`.
 - **Behaviour:** verified against real git that this command does write a tree and its blobs

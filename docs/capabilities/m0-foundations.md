@@ -23,6 +23,14 @@ sizes clamped instead of panicking.
 
 ### M0-01. Opens a Git repository from a path, or the current directory
 
+```meta
+id: M0-01
+area: foundations
+milestone: m0-foundations
+status: works
+unverified_aspect: non-UTF-8 repo paths — fixture can't be built on this machine's filesystem
+```
+
 - **How:** `graft [path]`, or `graft` with no argument (uses the current
   directory).
 - **Behaviour:** Discovery (via `gix`) walks up from the given directory to
@@ -49,6 +57,14 @@ sizes clamped instead of panicking.
   tier on Linux).
 
 ### M0-02. The terminal's real drawing capability is detected before the first frame
+
+```meta
+id: M0-02
+area: terminal-rendering
+milestone: m0-foundations
+status: partial
+unverified_aspect: tier detection on every real terminal but one Ghostty session (iTerm2, Kitty, WezTerm, Terminal.app, Zed, VS Code, tmux, SSH)
+```
 
 - **How:** automatic at startup; also runnable standalone via
   `cargo run -p graft --example capability_probe`.
@@ -94,6 +110,13 @@ sizes clamped instead of panicking.
 
 ### M0-03. The status screen shows the repo, the rendering tier, the theme and any warnings
 
+```meta
+id: M0-03
+area: foundations
+milestone: m0-foundations
+status: partial
+```
+
 - **How:** shown automatically once a repository opens successfully.
 - **Behaviour:** displays the working directory path, `HEAD` state,
   rendering tier with its provenance (e.g. "detected" vs "assumed"), the
@@ -116,6 +139,13 @@ sizes clamped instead of panicking.
   the mislabel is confirmed, not merely unproven.
 
 ### M0-04. Repo-derived text can't attack the terminal
+
+```meta
+id: M0-04
+area: terminal-rendering
+milestone: m0-foundations
+status: works
+```
 
 - **How:** automatic — applied to every branch name, commit subject, path or
   other string that comes from the repository before it's drawn.
@@ -159,6 +189,14 @@ sizes clamped instead of panicking.
 
 ### M0-05. Theme adapts to the terminal's background and colour depth
 
+```meta
+id: M0-05
+area: terminal-rendering
+milestone: m0-foundations
+status: partial
+unverified_aspect: colour output by eye (16-colour lane-hue collapse, dark-chrome flattening)
+```
+
 - **How:** automatic — `OSC 11` background hint, `ui.theme` config override,
   and `NO_COLOR`.
 - **Behaviour:** three themes (dark, light, high-contrast), each 23 tokens
@@ -186,6 +224,13 @@ sizes clamped instead of panicking.
 
 ### M0-06. A config file controls theme, renderer and icon style
 
+```meta
+id: M0-06
+area: foundations
+milestone: m0-foundations
+status: works
+```
+
 - **How:** `${XDG_CONFIG_HOME:-~/.config}/graft/config.toml`, read once at
   startup.
 - **Behaviour:** keys are `ui.theme` (`auto`/`dark`/`light`/
@@ -211,6 +256,13 @@ sizes clamped instead of panicking.
 - **Status:** works.
 
 ### M0-07. A panic reports itself and never leaves the terminal broken
+
+```meta
+id: M0-07
+area: foundations
+milestone: m0-foundations
+status: partial
+```
 
 - **How:** automatic — any unrecoverable panic, in the UI thread or inside a
   background job.
@@ -242,6 +294,13 @@ sizes clamped instead of panicking.
   terminal; check the screen survives").
 
 ### M0-08. Quitting — by key, Ctrl-C, or a signal — always leaves the terminal clean
+
+```meta
+id: M0-08
+area: foundations
+milestone: m0-foundations
+status: works
+```
 
 - **How:** the quit key, `Ctrl-C`, `SIGINT`, `SIGTERM`, `SIGHUP`.
 - **Behaviour:** teardown undoes setup in exact reverse order (raw mode →
@@ -275,6 +334,13 @@ sizes clamped instead of panicking.
   never a real terminal emulator.
 
 ### M0-09. Long-running work never freezes the screen
+
+```meta
+id: M0-09
+area: foundations
+milestone: m0-foundations
+status: works
+```
 
 - **How:** invisible in itself — observed indirectly whenever the app is
   doing something in the background (opening a repository, `Ctrl+R` manual
