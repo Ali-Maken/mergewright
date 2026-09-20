@@ -113,3 +113,46 @@ fn forecast_merge_is_not_checkable_on_an_old_git_never_an_error() {
         Forecast::NotCheckable("git 2.40+ needed for a rebase forecast".to_owned())
     );
 }
+
+fn write_temp_file(bytes: &[u8]) -> (tempfile::TempDir, std::path::PathBuf) {
+    let dir = tempfile::tempdir().expect("a temp dir for a fixture file");
+    let path = dir.path().join("MERGE_ADD");
+    std::fs::write(&path, bytes).expect("the fixture file writes");
+    (dir, path)
+}
+
+#[test]
+fn first_marker_line_finds_the_marker_on_its_own_line() {
+    let (_dir, path) = write_temp_file(b"one\ntwo\n<<<<<<< HEAD\nthree\n");
+    assert_eq!(first_marker_line(&path).expect("the file reads"), Some(3));
+}
+
+#[test]
+fn first_marker_line_is_none_without_a_marker() {
+    let (_dir, path) = write_temp_file(b"one\ntwo\nthree\n");
+    assert_eq!(first_marker_line(&path).expect("the file reads"), None);
+}
+
+#[test]
+fn first_marker_line_reads_past_a_non_utf8_byte_before_the_marker() {
+    // A raw 0xE9 (Latin-1 for `é`, not valid UTF-8 on its own) on the first
+    // line, then the marker on the second: `BufRead::lines()` used to fail
+    // this with `Err(InvalidData)` before ever reaching the marker (M5/02
+    // fix round, M2).
+    let mut bytes = vec![0xE9, b'\n'];
+    bytes.extend_from_slice(b"<<<<<<< HEAD\n");
+    let (_dir, path) = write_temp_file(&bytes);
+    assert_eq!(first_marker_line(&path).expect("the file reads"), Some(2));
+}
+
+#[test]
+fn first_marker_line_finds_the_marker_in_a_crlf_file() {
+    let (_dir, path) = write_temp_file(b"one\r\ntwo\r\n<<<<<<< HEAD\r\nthree\r\n");
+    assert_eq!(first_marker_line(&path).expect("the file reads"), Some(3));
+}
+
+#[test]
+fn first_marker_line_is_none_for_a_file_with_no_trailing_newline() {
+    let (_dir, path) = write_temp_file(b"one\ntwo");
+    assert_eq!(first_marker_line(&path).expect("the file reads"), None);
+}
