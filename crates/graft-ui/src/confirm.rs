@@ -223,6 +223,125 @@ impl Widget for &Confirm<'_> {
 mod tests {
     use super::*;
 
+    /// Draw `view` centred in a `width × height` frame through
+    /// `confirm_area` and return its rows as plain strings — the character
+    /// grid a capture would show.
+    fn rows(view: &ConfirmView, width: u16, height: u16) -> Vec<String> {
+        let frame = Rect::new(0, 0, width, height);
+        let area = confirm_area(frame, view);
+        let mut buf = Buffer::empty(frame);
+        (&Confirm { view }).render(area, &mut buf);
+        (0..height)
+            .map(|y| {
+                (0..width)
+                    .map(|x| buf[(x, y)].symbol().to_owned())
+                    .collect::<String>()
+                    .trim_end()
+                    .to_owned()
+            })
+            .collect()
+    }
+
+    /// A push that also sets upstream: the consequence is long enough to
+    /// wrap onto two lines inside the box's own 64-cell cap (ticket scope
+    /// item 5's "two-line consequence").
+    fn push_view() -> ConfirmView {
+        ConfirmView::new(
+            "Push main → origin/main",
+            vec![
+                "2 commits · sets upstream · can't be undone from here — origin keeps \
+                 what you send"
+                    .to_owned(),
+            ],
+            "git push --progress -u origin refs/heads/main:refs/heads/main",
+        )
+    }
+
+    /// An ordinary push, already tracking upstream: short enough to sit on
+    /// one line inside the box's 64-cell cap (ticket scope item 5's
+    /// "one line" case). The box width is capped at 64 regardless of the
+    /// frame (`confirm_area`), so what fits on one line is a property of the
+    /// message, not of 80 vs. 160 columns — the two widths in this test
+    /// differ only in how the box is centred.
+    fn push_view_one_line() -> ConfirmView {
+        ConfirmView::new(
+            "Push main → origin/main",
+            vec!["can't be undone from here — origin keeps what you send".to_owned()],
+            "git push --progress origin main",
+        )
+    }
+
+    /// M4 group 03 review Major 6: nothing rendered the confirm box through
+    /// its real widget before this — the ticket's own scope asked for "push
+    /// confirm with a two-line consequence at 80 cols and one line at 160",
+    /// and the only tests that existed drove the private `wrap_message`
+    /// directly, never `Confirm::render`. This proves the box actually
+    /// wraps on screen at 80 and fits on one line at 160, and feeds the
+    /// `docs/shots/` capture (rule 6 — a visual ticket ends with one).
+    #[test]
+    fn push_confirm_wraps_at_80_and_fits_one_line_at_160() {
+        let view = push_view();
+
+        let narrow = rows(&view, 80, 24);
+        let commits_line = narrow
+            .iter()
+            .position(|line| line.contains("2 commits"))
+            .unwrap_or_else(|| panic!("no line has the start of the message: {narrow:#?}"));
+        assert!(
+            !narrow[commits_line].contains("keeps what you send"),
+            "expected the message to wrap before 160 cols' worth: {narrow:#?}"
+        );
+        assert!(
+            narrow
+                .iter()
+                .any(|line| line.contains("keeps what you send")),
+            "expected a second line with the rest of the message: {narrow:#?}"
+        );
+
+        let wide = rows(&push_view_one_line(), 160, 48);
+        let one_line: Vec<&String> = wide
+            .iter()
+            .filter(|line| {
+                line.contains("undone from here") && line.contains("keeps what you send")
+            })
+            .collect();
+        assert_eq!(
+            one_line.len(),
+            1,
+            "expected the message on one line at 160 cols: {wide:#?}"
+        );
+    }
+
+    /// Not an assertion — prints the push confirm box at 80×24 (wrapped)
+    /// and 160×48 (one line), for a `docs/shots/` capture. `cargo test -p
+    /// graft-ui confirm::tests::capture_for_docs_shots -- --ignored
+    /// --nocapture`, by hand, when the rendering changes.
+    #[test]
+    #[ignore = "run by hand to regenerate docs/shots/m4-credential-prompt-and-hints.txt"]
+    fn capture_for_docs_shots() {
+        for (label, view, w, h) in [
+            (
+                "push confirm, two-line consequence, 80x24",
+                push_view(),
+                80,
+                24,
+            ),
+            (
+                "push confirm, one-line consequence, 160x48",
+                push_view_one_line(),
+                160,
+                48,
+            ),
+        ] {
+            println!("=== {label} ===");
+            for line in rows(&view, w, h) {
+                if !line.trim().is_empty() {
+                    println!("{line:?}");
+                }
+            }
+        }
+    }
+
     #[test]
     fn opens_with_cancel_under_the_cursor() {
         let view = ConfirmView::new("Discard?", vec!["one line".into()], "git checkout --");
@@ -273,9 +392,16 @@ mod tests {
         assert!(wrapped.last().unwrap().ends_with('…'), "{wrapped:?}");
     }
 
-    /// M3 review 06 Minor 11: at 120 columns a long consequence must not
-    /// grow the box into the frame's last row — that row is the app's own
-    /// footer, drawn underneath, and a box reaching it used to hide it.
+    /// M3 review 06 Minor 11: a long consequence must not grow the box into
+    /// the frame's last row — that row is the app's own footer, drawn
+    /// underneath, and a box reaching it used to hide it.
+    ///
+    /// At 120×40 the box (capped at [`MAX_MESSAGE_LINES`] message lines, so
+    /// at most 9 rows) never comes close to the 40-row frame's footer, so
+    /// that height could never catch a reservation that was missing (M4
+    /// group 03 review Major 4 — the original version of this test could
+    /// not fail). A frame whose height is at or below `confirm_rows` is the
+    /// case the reservation actually has to act on.
     #[test]
     fn buttons_stay_above_footer_at_120() {
         let long = vec![
@@ -289,10 +415,25 @@ mod tests {
             long,
             "git push --progress -u origin refs/heads/main:refs/heads/main",
         );
-        let frame = Rect::new(0, 0, 120, 40);
-        let area = confirm_area(frame, &view);
+
+        // Exactly as tall as the box would need without the reservation
+        // (5 fixed rows + the 4-line-capped message = 9): without the
+        // `footer_row` deduction in `confirm_area`, `area.bottom()` would
+        // equal `frame.bottom()` here.
+        let snug = Rect::new(0, 0, 120, 9);
+        let area = confirm_area(snug, &view);
+        assert_eq!(area.height, snug.height - 1, "{area:?}");
         assert!(
-            area.bottom() < frame.bottom(),
+            area.bottom() < snug.bottom(),
+            "box reaches the footer row: {area:?}"
+        );
+
+        // Shorter still: the box must give up rows rather than overrun.
+        let cramped = Rect::new(0, 0, 120, 6);
+        let area = confirm_area(cramped, &view);
+        assert_eq!(area.height, cramped.height - 1, "{area:?}");
+        assert!(
+            area.bottom() < cramped.bottom(),
             "box reaches the footer row: {area:?}"
         );
     }

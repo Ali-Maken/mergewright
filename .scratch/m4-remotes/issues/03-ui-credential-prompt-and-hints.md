@@ -49,7 +49,7 @@ Every tick names its verifying test inline, at tick time (ADR-0035).
 - [x] Credential prompt at 80×24 and 160×48 matches the note's mockup in structure (title, prompt line, field, note, footer) — `credential_prompt::tests::{masked_80x24, username_160x48}`; too-small message at 30×5 — `too_small_draws_one_line`
 - [x] Nothing drawn outside `credential_area` at any size — `credential_prompt::tests::stays_inside_its_rect` (proptest over sizes 1..200 × 1..60)
 - [x] Confirm consequence wraps to ≤ 4 lines and the buttons never overlap the frame's footer row at 120×40 — `confirm::tests::{long_message_wraps, buttons_stay_above_footer_at_120}` (also `message_caps_at_four_lines_with_ellipsis`)
-- [x] Footer shows `f fetch  p pull  P push` at the mockup's position (after `H hide stash`, before `J journal`), surviving from 156 columns — `graph_screen::tests::{remote_hints_at_wide_and_medium, remote_hints_drop_before_search_and_movement_at_80}`
+- [x] Footer shows `f fetch  p pull  P push` at the mockup's position (after `H hide stash`, before `J journal`), surviving from 144 columns (corrected from the originally recorded 156, which counted `J journal` in — that joins at 155; see fix-round NOTES) — `graph_screen::tests::{remote_hints_at_wide_and_medium, remote_hints_drop_before_search_and_movement_at_80}`
 - [x] MAP.md updated (`text_input`, `credential_prompt`, `confirm`, `graph_screen`)
 
 ## Gates
@@ -137,3 +137,82 @@ spec position. Fixed:
   coordinator's ask: `cargo fmt --check`, `cargo clippy --all-targets -- -D
   warnings`, `cargo nextest run` (1698/1698 passed), `cargo test --doc`
   (all workspace crates) — all green.
+
+## NOTES (M4 group 03 review fix round, `docs/reviews/m4-03-ui-credential-prompt-and-hints.md`)
+
+No scout used: the review named exact files and line numbers for every
+finding, so a locate-first pass would have re-derived what the review
+already gave. Crate set graft-ui only (per this round's brief), except one
+forced exception below.
+
+Majors, each with its verifying test:
+
+1. **Too-small fallback.** `TOO_SMALL` shortened to `"too small for the
+   prompt"` (24 cells, fits whole below `MIN_COLUMNS` = 40) and centred via
+   an `x` offset in `credential_prompt.rs` render — `fit` pads to its full
+   `width` argument, so centring first had to stop asking `fit` to pad past
+   the message's own width (bug found and fixed while writing the test).
+   `credential_prompt::tests::{too_small_draws_one_line,
+   too_small_message_is_centred}`.
+2. **ASCII tier wiring.** `CredentialPrompt` gained an `ascii: bool` field,
+   threaded into `draw_field_row`'s `display_text` call —
+   `credential_prompt::tests::masked_field_at_the_ascii_tier_draws_stars`
+   drives the real widget field, not a bypassed helper. This forced a
+   `graft` (app crate) edit outside the nominal graft-ui-only crate set:
+   `CredentialPrompt`'s only construction site,
+   `crates/graft/src/view/frame.rs::draw_credential`, took a struct
+   literal with no `ascii` field, so adding a required field broke the
+   workspace build. Fixed properly rather than defaulting to `false`:
+   `draw_credential` now takes `session: &Session` (was `theme: &Theme`)
+   and sets `ascii = tier_in_force(session, state) == RenderingTier::Ascii`
+   — the same rule `draw_map`/the graph screen use for their own `ascii`
+   flags — at all 5 call sites. This is a seam crossing, flagged here per
+   CLAUDE.md; it was mechanical (one signature, 5 call-site one-liners) and
+   necessary for the workspace to compile, not a design decision.
+3. **144, not 156.** Verified by character-width arithmetic (Python, then
+   cross-checked against the actual test run) that all three remote hints
+   first fit together at 144 columns, and `J journal` joins at 155.
+   Corrected: `crates/graft-ui/MAP.md` `graph_screen` line, this ticket's
+   tick 5, `docs/shots/m4-credential-prompt-and-hints.txt` (144/155 in
+   place of 156, plus regenerated confirm/credential-prompt captures for
+   Majors 1 and 6), and `graph_screen::tests::remote_hints_at_wide_and_medium`
+   now pins the boundary itself (143 lacks `P push`, 144 has it, 144 lacks
+   `J journal`) instead of asserting an arbitrary wide width.
+4. **`buttons_stay_above_footer_at_120` couldn't fail.** Rewritten to use
+   120×9 and 120×6 frames (at/below the box's own 9-row budget at
+   `MAX_MESSAGE_LINES`), asserting both `area.bottom() < frame.bottom()`
+   and `area.height == frame.height - 1` — the footer-row reservation in
+   `confirm_area` now has something to actually do in the test.
+   `confirm::tests::buttons_stay_above_footer_at_120`.
+5. **Stale comment.** Removed from
+   `revealing_a_row_that_was_never_truncated_leaves_the_hints_alone` and
+   `no_reveal_shows_the_ordinary_hints`; both restored to width 60 (59
+   cells needed through `j/k move` with the hints in their fixed spec
+   position, confirmed by direct arithmetic and by both tests passing).
+6. **Confirm-box capture.** Added `confirm::tests::
+   push_confirm_wraps_at_80_and_fits_one_line_at_160` (a real
+   `Confirm::render` through `confirm_area`, not the private
+   `wrap_message` alone) and `confirm::tests::capture_for_docs_shots`
+   (`#[ignore]`, same pattern as the credential prompt's). Two views: a
+   push that sets upstream (message wraps to two lines — the box's width
+   is capped at 64 regardless of frame width, so "80 vs 160" only changes
+   centring, not wrapping; a same-message single view could never show
+   both cases, so a second, shorter message stands in for the "one line"
+   case). Both captures pasted into
+   `docs/shots/m4-credential-prompt-and-hints.txt`.
+
+Minors fixed in files already touched for a Major:
+- Minor 1: `masked_80x24` now asserts exactly 7 bullets, not "7 or 8".
+- Minor 3: `Debug for FieldView` redacts `cursor` too while masked (was
+  leaking the typed length via `Some(n)`) —
+  `text_input::tests::debug_redacts_a_masked_fields_text` extended to
+  check `Some(7)` is absent while masked, present unmasked.
+Minors 2, 4-9 not touched (not in a file this round otherwise edited, or
+judged out of the fix round's budget) — still open per the review.
+
+Gates, workspace-wide (never `-p`): `cargo fmt --check` (after `cargo
+fmt`), `cargo clippy --all-targets --message-format=short -- -D warnings`,
+`cargo nextest run` (1830/1830 passed, 23 skipped `#[ignore]`d capture
+tests), `cargo test --doc` (all workspace crates, 2 doctests in
+graft-fixtures, rest 0) — all green, own worktree,
+`CARGO_TARGET_DIR=target-g03fix`.

@@ -660,10 +660,7 @@ fn revealing_a_row_that_was_never_truncated_leaves_the_hints_alone() {
     let mut open = view(&rows, WalkView::Complete { rows: 3 }, 1);
     open.reveal = Some(0);
 
-    // 90, not 60: since m4-remotes ticket 03 the remote-write hints sit
-    // ahead of `j/k move` (design note "New UI"), and 60 columns is too
-    // narrow to keep both — this test is about the reveal, not the width.
-    let screen = text(&draw(&open, 90, 12));
+    let screen = text(&draw(&open, 60, 12));
     let footer = screen.last().expect("a footer row");
     assert!(footer.contains("move"), "{screen:#?}");
     assert!(!footer.contains("Commit 3"), "{screen:#?}");
@@ -676,8 +673,7 @@ fn no_reveal_shows_the_ordinary_hints() {
     let open = view(&rows, WalkView::Complete { rows: 3 }, 1);
     assert_eq!(open.reveal, None);
 
-    // 90, not 60 — see the comment on the reveal test above.
-    let screen = text(&draw(&open, 90, 12));
+    let screen = text(&draw(&open, 60, 12));
     let footer = screen.last().expect("a footer row");
     assert!(footer.contains("move"), "{screen:#?}");
 }
@@ -783,18 +779,34 @@ fn the_footer_lists_every_graph_key_dropping_whole_hints_when_narrow() {
 /// `H hide stash` and before `J journal`, in the ordinary drop-from-the-right
 /// group — not grouped with `u undo` ahead of search/movement (a first pass
 /// that did so regressed the 80-column footer, pushing `/ search` and
-/// `j/k move` out; fixed by this placement, m4-remotes ticket 03). At this
-/// spot all three fit from 156 columns; at 200 the rest of the trailing
-/// hints (through `J journal`) fit alongside them too.
+/// `j/k move` out; fixed by this placement, m4-remotes ticket 03). By
+/// character-width arithmetic on `HINTS`, all three first fit together at
+/// **144** columns — 143 is one cell short and drops `P push`; the
+/// originally recorded "156" was measured including `J journal`, which
+/// joins them eleven columns later, at 155 (M4 group 03 review Major 3). At
+/// 200 the rest of the trailing hints (through `J journal`) fit alongside
+/// them too.
 #[test]
 fn remote_hints_at_wide_and_medium() {
-    let medium = footer_at(156);
+    let just_short = footer_at(143);
+    assert!(just_short.contains("f fetch"), "{just_short}");
+    assert!(just_short.contains("p pull"), "{just_short}");
+    assert!(
+        !just_short.contains("P push"),
+        "expected P push to still be dropped at 143: {just_short}"
+    );
+
+    let medium = footer_at(144);
     assert!(medium.contains("f fetch"), "{medium}");
     assert!(medium.contains("p pull"), "{medium}");
     assert!(medium.contains("P push"), "{medium}");
     let hide_stash = medium.find("H hide stash").expect("H hide stash present");
     let fetch = medium.find("f fetch").expect("f fetch present");
     assert!(hide_stash < fetch, "{medium}");
+    assert!(
+        !medium.contains("J journal"),
+        "J journal joins later, at 155: {medium}"
+    );
 
     let wide = footer_at(200);
     let push = wide.find("P push").expect("P push present");
