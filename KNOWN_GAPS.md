@@ -490,6 +490,15 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M5/07 fix | The fold's Command Log visibility is untested — a step folded into a live entry may not show in the browser | unverified | M6 |
 | M5/05 | Three siblings of the same race are unfixed: `PromoteHistory`/`promoting`, the commit-graph `Writing`/`Declining` pair, and `Search`/`Search::job` (guarded by `unstarted`, not by a minted id) | broken (same class) | M7 |
 | M5/05 | `row_requests` leaks a sender for a walk that ends on its own | broken (leak) | M7 |
+| M5/06 fix | **A full-suite run failed once in sixteen and the failing test was never identified** — output not captured. It is either `a_cancelled_undo_through_u_leaves_u_where_it_was` (whose poll-count clock was fixed in the same round) or something still hiding. Assuming the former is the assumption rule 1 forbids. Needs a repeat run with output retained | unverified (identity unknown) | M6 |
+| M5/06 fix | `UndoError::Drift::explain` says "u again to go ahead" for a **redo** too — the same wrong-key defect as the part-way cancel message, which was fixed. The variant carries no direction and `graft` matches on it, so it could not be fixed inside the `graft-ops` fence | broken (tells the user the wrong key) | M6 |
+| M5/06 fix | `RestoreError::Stopped` is a third stop-shape alongside the existing two; group 08 should collapse them | unverified | M6 |
+| M5/06 fix | `Ran::Failed` performs no roll-back | unverified | M6 |
+| M5/06 fix | Ref names are not sanitised on the restore path | unverified | M6 |
+| M5/06 fix | The sweep is exhaustive only under `heavy-tests`; the fast tier samples at stride 3 and would miss a defect that lives only at a skipped boundary | unverified (deliberate trade, ADR-0021 tiering) | M6 |
+| M5/08 | `Operated::Conflicted` did not gain `entry: EntryId` — no reader in scope yet, so a conflicted operation's journal entry cannot be aimed at | unverified | M6 |
+| M5/08 | `diverged_upstream` is not cleared by a refresh; a failed pull refreshes itself and `check`'s `Moved` is the safety instead. Correct today, fragile if either half moves | unverified | M6 |
+| Conductor | **ADR-0036's per-builder `CARGO_TARGET_DIR` has no cleanup and no shared cache.** Twenty abandoned target directories reached 56 GB on the user's laptop, and every concurrent builder rebuilds the whole workspace from scratch — load average 8.5 on 10 cores, 100 °C. Mitigated by hand (one heavy agent at a time, delete at hand-back); the real fix is a shared compiler cache, which is an ADR | broken (process, felt by the user) | M6 |
 | M5/03 review | 10 Minors in `docs/reviews/m5-03-hint-bar-redesign.md` not triaged | unverified | M5 |
 | M5/04 review | 12 Minors in `docs/reviews/m5-04-ui-ghost-banner-conflict.md` not triaged | unverified | M5 |
 | M5/01 | `jobs/askpass.rs`'s module doc still describes the pre-M5 plain-`TextField` password leak as current and says the fix "means a secret-backed field in graft-ui" — that field shipped in group 01. A stale doc claiming a live security hole | broken (stale doc) | M5 (group 11) |
