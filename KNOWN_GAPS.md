@@ -484,8 +484,10 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M5/07 | `Undone` cannot carry a part-way revert's `done` count; needs its own product | broken (incomplete) | M5 (group 08) |
 | M5/07 | An untracked-file collision on checkout is not pre-empted (hard choice 4); git's own wording reaches the user instead of Graft's | broken | M6 |
 | M5/07 | `Refusal::MainlineOnNonMerge` is misnamed for the out-of-range-on-a-merge case, though `explain()` is honest | unverified (cosmetic) | M6 |
-| M5/03 fix | **Below 100 columns with a pane open, the Tab layout draws no hint bar at all** — ADR-0037 §4's forbidden case, at a width the user works at daily. Found by the fix round, not fixed: the fix costs every pane a row, which is a design call | broken (the forbidden case) | awaiting the user's call |
-| M5/07 review | 15 Minors in `docs/reviews/m5-07-ops-history-operations.md` not triaged | unverified | M5 |
+| M5/03 fix | **Below 100 columns with a pane open, the Tab layout draws no hint bar at all** — ADR-0037 §4's forbidden case. Decided 2026-09-20 (ADR-0039): the bar degrades to a never-dropped `. more` doorway riding the tab line, costing no row; `.` must then list every dropped key | broken (the forbidden case) | M5 (hint doorway group) |
+| M5/07 review | 12 Minors in `docs/reviews/m5-07-ops-history-operations.md` not triaged (3 closed as side effects of the fix round) | unverified | M5 |
+| M5/07 fix | `PartWay { done, total, error }` needs 5 app-side call sites; blocked while group 05 held `graft` | broken (seam open) | M5 (group 08) |
+| M5/07 fix | The fold's Command Log visibility is untested — a step folded into a live entry may not show in the browser | unverified | M6 |
 | M5/03 review | 10 Minors in `docs/reviews/m5-03-hint-bar-redesign.md` not triaged | unverified | M5 |
 | M5/04 review | 12 Minors in `docs/reviews/m5-04-ui-ghost-banner-conflict.md` not triaged | unverified | M5 |
 | M5/01 | `jobs/askpass.rs`'s module doc still describes the pre-M5 plain-`TextField` password leak as current and says the fix "means a secret-backed field in graft-ui" — that field shipped in group 01. A stale doc claiming a live security hole | broken (stale doc) | M5 (group 11) |
