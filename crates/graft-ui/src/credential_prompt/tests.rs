@@ -22,10 +22,22 @@ fn theme() -> Theme {
 /// Draw `view` at `width × height` and return its rows as plain strings —
 /// the character grid a capture would show.
 fn rows(view: &CredentialView<'_>, theme: &Theme, width: u16, height: u16) -> Vec<String> {
+    rows_at_tier(view, theme, width, height, false)
+}
+
+/// Like [`rows`], but choosing the ASCII tier's mask glyph (`*`) when
+/// `ascii` is set — the path a real terminal at that tier draws.
+fn rows_at_tier(
+    view: &CredentialView<'_>,
+    theme: &Theme,
+    width: u16,
+    height: u16,
+    ascii: bool,
+) -> Vec<String> {
     let frame = Rect::new(0, 0, width, height);
     let area = credential_area(frame);
     let mut buf = Buffer::empty(frame);
-    (&CredentialPrompt { view, theme }).render(area, &mut buf);
+    (&CredentialPrompt { view, theme, ascii }).render(area, &mut buf);
     (0..height)
         .map(|y| {
             (0..width)
@@ -83,10 +95,9 @@ fn masked_80x24() {
     assert!(box_lines[0].contains("Credentials"), "{box_lines:?}");
     assert!(box_lines[1].contains("Password for"), "{box_lines:?}");
     assert!(box_lines[2].contains("▏"), "{box_lines:?}");
-    assert!(
-        box_lines[2].contains("••••••••") || box_lines[2].contains("•••••••"),
-        "{box_lines:?}"
-    );
+    // "hunter2" is 7 characters — one bullet per character, no more (Minor 1:
+    // this used to accept 7 or 8, which would have let an off-by-one leak).
+    assert_eq!(box_lines[2].matches('•').count(), 7, "{box_lines:?}");
     assert!(!box_lines[2].contains("hunter2"), "{box_lines:?}");
     assert!(box_lines[3].contains("typed here only"), "{box_lines:?}");
     assert!(box_lines[4].contains("send"), "{box_lines:?}");
@@ -113,11 +124,49 @@ fn too_small_draws_one_line() {
     let lines = rows(&view, &theme, 30, 5);
     let content: Vec<&String> = lines.iter().filter(|l| !l.trim().is_empty()).collect();
     assert_eq!(content.len(), 1, "{lines:#?}");
-    assert!(
-        content[0].contains("too small"),
-        "expected the too-small message: {content:?}"
-    );
+    // The whole message, not a `fit`-cut prefix (Major 1): `TOO_SMALL` is
+    // kept short enough to fit even at the narrowest width this branch
+    // fires at, so a cut here would mean the message grew past its budget.
+    assert_eq!(content[0].trim(), TOO_SMALL, "message was cut: {content:?}");
     assert!(!content[0].contains("hunter2"), "{content:?}");
+}
+
+#[test]
+fn too_small_message_is_centred() {
+    let theme = theme();
+    let view = password_prompt();
+    let width = 30;
+    let lines = rows(&view, &theme, width, 5);
+    let line = lines
+        .iter()
+        .find(|l| l.contains(TOO_SMALL))
+        .unwrap_or_else(|| panic!("no line has the message: {lines:#?}"));
+    let leading_spaces = line.len() - line.trim_start().len();
+    let expected = usize::from(width) - TOO_SMALL.len();
+    assert_eq!(
+        leading_spaces,
+        expected / 2,
+        "expected the message centred in {width} columns: {line:?}"
+    );
+}
+
+#[test]
+fn masked_field_at_the_ascii_tier_draws_stars() {
+    let theme = theme();
+    let view = password_prompt();
+    let lines = rows_at_tier(&view, &theme, 80, 24, true);
+    let field_row = lines
+        .iter()
+        .find(|l| l.contains('▏'))
+        .unwrap_or_else(|| panic!("no field row: {lines:#?}"));
+    // "hunter2" is 7 characters — one star per character, no more.
+    assert_eq!(
+        field_row.matches('*').count(),
+        7,
+        "expected 7 stars at the ASCII tier: {field_row:?}"
+    );
+    assert!(!field_row.contains('•'), "{field_row:?}");
+    assert!(!field_row.contains("hunter2"), "{field_row:?}");
 }
 
 /// Not an assertion — prints the masked and unmasked prompts at both
@@ -155,7 +204,7 @@ proptest! {
         prop_assert!(area.bottom() <= frame.bottom());
 
         let mut buf = Buffer::empty(frame);
-        (&CredentialPrompt { view: &view, theme: &theme }).render(area, &mut buf);
+        (&CredentialPrompt { view: &view, theme: &theme, ascii: false }).render(area, &mut buf);
         for y in 0..height {
             for x in 0..width {
                 let inside = x >= area.x && x < area.right() && y >= area.y && y < area.bottom();

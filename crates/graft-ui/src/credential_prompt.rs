@@ -37,7 +37,12 @@ const BOX_ROWS: u16 = 5;
 /// The message shown when the frame is too small for the box. The app still
 /// holds the field underneath, so `Enter`/`Esc` answer it blind — there is
 /// nowhere on screen to say so, which is why this sentence exists at all.
-const TOO_SMALL: &str = "terminal too small for the credential prompt";
+///
+/// Kept short enough (24 cells) to fit whole at the narrowest width that
+/// triggers this branch (just below [`MIN_COLUMNS`] = 40) — a longer
+/// sentence here would always be cut by [`fit`], defeating the point of
+/// having a fallback message at all.
+const TOO_SMALL: &str = "too small for the prompt";
 
 /// Everything the credential prompt draws.
 #[derive(Clone)]
@@ -64,6 +69,10 @@ pub struct CredentialPrompt<'a> {
     pub view: &'a CredentialView<'a>,
     /// Colours.
     pub theme: &'a Theme,
+    /// Draw a masked field's glyph as `*` instead of `•` (the ASCII
+    /// renderer tier) — the same flag [`crate::text_input::FieldWidget`]
+    /// takes, threaded through here rather than decided by this widget.
+    pub ascii: bool,
 }
 
 /// Where the box goes in `frame`: centred, width `min(frame.width - 4, 72)`,
@@ -139,7 +148,7 @@ impl CredentialPrompt<'_> {
             return;
         }
         let field_width = u16::try_from(width - 4).unwrap_or(0);
-        let shown = display_text(&self.view.field, false);
+        let shown = display_text(&self.view.field, self.ascii);
         draw_line(
             buf,
             Rect {
@@ -167,10 +176,17 @@ impl Widget for &CredentialPrompt<'_> {
         let view = self.view;
 
         if area.height < BOX_ROWS {
+            // `fit` pads to exactly its `width` argument, which would make
+            // the message always as wide as the frame and defeat centring
+            // — so it is only ever asked to cut, never to pad, by capping
+            // the width it's given at the message's own cell width.
+            let message_width = cells(TOO_SMALL).min(width);
+            let message = fit(TOO_SMALL, message_width);
+            let x = area.x + u16::try_from((width - message_width) / 2).unwrap_or(0);
             buf.set_stringn(
-                area.x,
+                x,
                 area.y,
-                fit(TOO_SMALL, width),
+                message,
                 width,
                 foreground(self.theme, Token::Warning),
             );

@@ -367,10 +367,15 @@ fn debug_redacts_a_masked_fields_text() {
     let printed = format!("{view:?}");
     assert!(!printed.contains("hunter2"), "{printed}");
     assert!(printed.contains("<redacted>"), "{printed}");
+    // `cursor: Some(7)` at end-of-field is the typed length in digits — the
+    // same thing the missing counter and the mask glyphs are there to hide.
+    assert!(!printed.contains("Some(7)"), "{printed}");
 
     let unmasked = FieldView {
         masked: false,
         ..view
     };
-    assert!(format!("{unmasked:?}").contains("hunter2"));
+    let printed_unmasked = format!("{unmasked:?}");
+    assert!(printed_unmasked.contains("hunter2"));
+    assert!(printed_unmasked.contains("Some(7)"), "{printed_unmasked}");
 }

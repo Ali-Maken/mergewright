@@ -90,7 +90,7 @@ fn draw_journal(
     }
     draw_context_menu(state, frame, area, &session.theme);
     draw_confirm(state, frame, area, &session.theme);
-    draw_credential(state, frame, area, &session.theme);
+    draw_credential(state, frame, area, session);
     None
 }
 
@@ -113,7 +113,7 @@ fn draw_stash(session: &Session, state: &AppState, frame: &mut Frame, area: Rect
     }
     draw_context_menu(state, frame, area, &session.theme);
     draw_confirm(state, frame, area, &session.theme);
-    draw_credential(state, frame, area, &session.theme);
+    draw_credential(state, frame, area, session);
     None
 }
 
@@ -148,7 +148,7 @@ fn draw_map(session: &Session, state: &AppState, frame: &mut Frame, area: Rect) 
     };
     draw_context_menu(state, frame, area, &session.theme);
     draw_confirm(state, frame, area, &session.theme);
-    draw_credential(state, frame, area, &session.theme);
+    draw_credential(state, frame, area, session);
     graph
 }
 
@@ -243,7 +243,7 @@ pub fn view_with_graphics(
             };
             draw_context_menu(state, frame, area, &session.theme);
             draw_confirm(state, frame, area, &session.theme);
-            draw_credential(state, frame, area, &session.theme);
+            draw_credential(state, frame, area, session);
             graph
         }
         Screen::Status => {
@@ -251,7 +251,7 @@ pub fn view_with_graphics(
             frame.render_widget(StatusScreen::new(&screen, &session.theme), area);
             // A fetch started from the graph can ask for a password while
             // the user is reading this screen: the question follows them.
-            draw_credential(state, frame, area, &session.theme);
+            draw_credential(state, frame, area, session);
             None
         }
     }
@@ -488,7 +488,12 @@ fn draw_confirm(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) 
 /// while it is open every key is the field's. Like the confirm box, the
 /// widget paints only its own text, so the raised background is this
 /// caller's job.
-fn draw_credential(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) {
+///
+/// Draws the masked field at the ASCII tier when that tier is in force
+/// (`F3`'s override or the session's), the same rule `draw_map` and the
+/// graph screen use for their own `ascii` flags — a masked password must
+/// mask with `*` wherever the terminal cannot draw `•`.
+fn draw_credential(state: &AppState, frame: &mut Frame, area: Rect, session: &Session) {
     let Some(view) = super::credential_view(state) else {
         return;
     };
@@ -496,12 +501,18 @@ fn draw_credential(state: &AppState, frame: &mut Frame, area: Rect, theme: &Them
     if rect.is_empty() {
         return;
     }
+    let theme = &session.theme;
     frame.buffer_mut().set_style(
         rect,
         Style::new().bg(color(theme.token(Token::SurfaceRaised))),
     );
+    let ascii = tier_in_force(session, state) == RenderingTier::Ascii;
     frame.render_widget(
-        &graft_ui::credential_prompt::CredentialPrompt { view: &view, theme },
+        &graft_ui::credential_prompt::CredentialPrompt {
+            view: &view,
+            theme,
+            ascii,
+        },
         rect,
     );
 }

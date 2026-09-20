@@ -438,16 +438,22 @@ pub struct FieldView<'a> {
 impl std::fmt::Debug for FieldView<'_> {
     /// Redacts `text` while `masked`: a `{:?}` in a log line must not leak a
     /// password any more readily than the screen does (CLAUDE.md choice 2).
+    ///
+    /// `cursor` is redacted too while masked: at end-of-field `cursor` is
+    /// exactly the typed length, which is the same information the mask
+    /// glyphs and the missing counter are there to hide (M4 group 03 review
+    /// Minor 3).
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut out = f.debug_struct("FieldView");
         out.field("label", &self.label);
         if self.masked {
             out.field("text", &"<redacted>");
+            out.field("cursor", &self.cursor.map(|_| "<redacted>"));
         } else {
             out.field("text", &self.text);
+            out.field("cursor", &self.cursor);
         }
-        out.field("cursor", &self.cursor)
-            .field("guide_at", &self.guide_at)
+        out.field("guide_at", &self.guide_at)
             .field("counter", &self.counter)
             .field("focused", &self.focused)
             .field("masked", &self.masked)
