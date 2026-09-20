@@ -1,0 +1,19 @@
+m4-01-push-box-plain-80x24.txt	TESTING.md "Remotes" § Per breakpoint, Push box row: `Push main → origin/main`, the `1 commit · …` line, the `git push --progress …` command, `[ Cancel ]     Push`; no frame is drawn around the box, and the graph's `Comm` shows left of it — judge whether that reads as a box.
+m4-01-push-box-plain-160x48.txt	TESTING.md § Per breakpoint, Push box row: same lines, the graph and pane around it.
+m4-02-push-box-lease-80x24.txt	TESTING.md § Per breakpoint, Lease box row: `Force-push main → origin/main?`, `origin/main <a> → <b> · refused if origin moved since…`, `rewrites history for everyone who has <a>`, the `--force-with-lease=` command, `[ Cancel ]     Force push`.
+m4-02-push-box-lease-160x48.txt	TESTING.md § Per breakpoint, Lease box row: same.
+m4-03-credential-masked-80x24.txt	TESTING.md § Per breakpoint, Credential prompt (masked) row: `Credentials — 127.0.0.1:<port>`, `Password for 'http://tester@127.0.0.1:<port>':`, a field of `•` only (28 of them), `typed here only · never stored by Graft`, `⏎ send  ⌃U clear  esc cancel the push`.
+m4-03-credential-masked-160x48.txt	TESTING.md § Per breakpoint, Credential prompt (masked) row: same.
+m4-04-credential-username-80x24.txt	TESTING.md § Per breakpoint, Credential prompt (username) row: `Username for 'http://127.0.0.1:<port>':`, `▏tester` in clear.
+m4-04-credential-username-160x48.txt	TESTING.md § Per breakpoint, Credential prompt (username) row: same.
+m4-05-progress-footer-80x24.txt	TESTING.md § Per breakpoint, Progress footer row: `fetch all remotes · enumerating objects · esc cancels` on the status line.
+m4-05-progress-footer-160x48.txt	TESTING.md § Per breakpoint, Progress footer row: same; taken the instant it appeared, the frame is not settled.
+m4-06-rejected-sticky-80x24.txt	TESTING.md § Per breakpoint, Rejected sticky row: `push rejected: origin/main has moved · p pull first · P force with lease` — the whole line, both keys on it (68 columns; a remote branch name up to 22 characters still fits).
+m4-06-rejected-sticky-160x48.txt	TESTING.md § Per breakpoint, Rejected sticky row: the same line.
+m4-07-journal-remote-rows-80x24.txt	TESTING.md § Per breakpoint, Journal row: three rows; push reads `not undoable — origin has it · <a> → …`; pull reads `1 ref · the index · the working tree ·← u` (`backup saved` is under the `← u` mark).
+m4-07-journal-remote-rows-160x48.txt	TESTING.md § Per breakpoint, Journal row: push `not undoable — origin has it · <a> → <b>`; pull `1 ref · the index · the working tree · backup saved  ← u`; fetch `remote-tracking refs · not undoable`.
+m4-08-undo-after-push-80x24.txt	TESTING.md § Per breakpoint, `u` after a push row: `undo: commit "ours" · origin/main still has it ✓`.
+m4-08-undo-after-push-160x48.txt	TESTING.md § Per breakpoint, `u` after a push row: same; the footer ends `S stash  H hide stash  f fetch  p pull  P push` (the remote hints need 156 columns).
+m4-credential-prompt-and-hints.txt	Capture header "Judge by eye": password field shows only `•` per character (7 of them for "hunter2"), never the plaintext; username field shows the plaintext ("alice") — only password/token fields mask; box stays centred, borders intact, note row dimmed text present.
+m4-credential-prompt-in-app.txt	Capture header "Judge by eye": the box is centred over the screen, the title names the host (not the user), git's own question is on the first line, the field shows the masked count and no plaintext, the note says the answer is never stored, the footer says what ⏎, ⌃U and Esc do — Esc naming the push it cancels.
+m4-remote-keys.txt	Capture header "Judge by eye": the lease box names the tip it expects and the one it sends, says it is refused if origin moved since the fetch, says whose history it rewrites, shows the exact git command, `[ Cancel ]` is under the cursor with `Force push` beside it; the footer while `f` runs shows the operation, git's own progress, and how to stop it (`esc cancels`).
