@@ -26,7 +26,7 @@ fn view<'a>(focus: Field, refusal: Option<&str>) -> CommitEditorView<'a> {
             guide_at: Some(u16::try_from(SUBJECT_LIMIT).expect("50 fits in a u16")),
             counter: Some((26, SUBJECT_LIMIT)),
             focused: focus == Field::Subject,
-            masked: false,
+            secret: None,
         },
         body: AreaView {
             label: "Body",

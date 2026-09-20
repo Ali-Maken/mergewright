@@ -2910,7 +2910,7 @@ fn prelude_proceeds_into_credential_prompt() {
         answered,
         vec![&Command::AnswerCredential(
             push,
-            crate::update::credential::Answer::new(b"p".to_vec())
+            crate::update::credential::Answer::new(zeroize::Zeroizing::new(b"p".to_vec()))
         )],
         "the `p` landed in the field, not on the pull key, and Enter sent it"
     );

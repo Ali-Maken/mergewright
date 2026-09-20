@@ -52,7 +52,7 @@ pub struct CredentialView<'a> {
     /// What is being asked for: `Password for 'http://user@host':`.
     pub prompt: SanitizedText,
     /// The field itself — masked for a password or passphrase, plain for a
-    /// username or an SSH host-key answer (`FieldView::masked`).
+    /// username or an SSH host-key answer (`FieldView::secret`).
     pub field: FieldView<'a>,
     /// The dimmed line under the field: `typed here only · never stored by
     /// Graft`.
@@ -149,6 +149,17 @@ impl CredentialPrompt<'_> {
         }
         let field_width = u16::try_from(width - 4).unwrap_or(0);
         let shown = display_text(&self.view.field, self.ascii);
+        // A secret field's real cursor index is the typed length — the
+        // same information the mask glyphs and the missing counter are
+        // there to hide, so no cursor is drawn for it at all (`text_input`'s
+        // `FieldWidget` makes the same call for the same reason).
+        let cursor = self
+            .view
+            .field
+            .secret
+            .is_none()
+            .then_some(self.view.field.cursor)
+            .flatten();
         draw_line(
             buf,
             Rect {
@@ -158,7 +169,7 @@ impl CredentialPrompt<'_> {
                 height: 1,
             },
             &shown,
-            self.view.field.cursor,
+            cursor,
             None,
             self.theme,
         );

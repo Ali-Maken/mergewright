@@ -3014,14 +3014,14 @@ fn credential_state(columns: u16, rows: u16, prompt: &str) -> AppState {
     state
 }
 
-/// Types `text` into the open prompt, the way a key would.
+/// Types `text` into the open prompt, the way a paste would — the public
+/// entry point (`credential_paste`), not a direct poke at `PromptField`,
+/// which keeps its editing methods private to `update::credential`.
 fn type_into_prompt(state: &mut AppState, text: &str) {
-    state
-        .credential
-        .as_mut()
-        .expect("the prompt is open")
-        .field
-        .insert_str(text);
+    assert!(
+        crate::update::credential::credential_paste(state, text),
+        "the prompt is open"
+    );
 }
 
 #[test]
@@ -3037,7 +3037,13 @@ fn the_credential_prompt_draws_over_everything_and_masks_what_is_typed() {
         screen.contains("Password for 'http://user@127.0.0.1:8443':"),
         "{screen}"
     );
-    assert!(screen.contains("•••••••"), "the field is masked: {screen}");
+    // A fixed 8 glyphs, whatever "hunter2" (7 characters) is — the row
+    // never draws `len()` glyphs (ADR-0038 §2).
+    assert_eq!(
+        screen.chars().filter(|c| *c == '•' || *c == '◦').count(),
+        graft_ui::text_input::SECRET_GLYPHS,
+        "the field is masked at a fixed width: {screen}"
+    );
     assert!(
         !screen.contains("hunter2"),
         "the typed password reached the screen: {screen}"
@@ -3108,10 +3114,11 @@ fn capture_m4_credential_prompt_in_app() {
 # Judge by eye:
 # 1. 120x40, password ask with `hunter2` typed: the box is centred over the
 #    screen, the title names the host (not the user), git's own question is
-#    on the first line, the field shows seven `•` and no plaintext, the note
-#    says the answer is never stored, and the footer says what ⏎, ⌃U and Esc
-#    do — Esc naming the push it cancels. The line behind it still says the
-#    push is running.
+#    on the first line, the field shows a fixed 8 mask glyphs (never the
+#    typed length, ADR-0038 §2) and no plaintext, the note says the answer
+#    is never stored, and the footer says what ⏎, ⌃U and Esc do — Esc
+#    naming the push it cancels. The line behind it still says the push is
+#    running.
 # 2. 80x24, username ask with `alice` typed: the same box, the answer in the
 #    open (a username is not a secret), no `•` anywhere.
 #

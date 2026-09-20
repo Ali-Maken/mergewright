@@ -12,12 +12,15 @@
 //! their text as `String` but only ever cut it at character boundaries, so a
 //! wide character or a combining mark can never be split.
 
+use std::fmt;
+
 use graft_term::SanitizedText;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::widgets::Widget;
 use unicode_width::UnicodeWidthChar;
+use zeroize::Zeroizing;
 
 use crate::fit::fit;
 use crate::paint::foreground;
@@ -191,6 +194,195 @@ impl TextField {
         self.cursor = next_word(&chars, self.cursor);
     }
 }
+
+/// The credential prompt's typed password or passphrase — never a plain
+/// `String` (M5 secret-field ticket; the M4/06 review's SECURITY row this
+/// closes).
+///
+/// Backed by `Zeroizing<String>`: zeroize's own volatile-write-plus-barrier
+/// pair, not a hand-rolled overwrite, because a plain assignment (`s =
+/// String::new()`) is exactly the kind of dead store a compiler is allowed
+/// to elide — the old allocation would be freed with the password still in
+/// it. Every mutator below replaces `text` wholesale rather than editing it
+/// in place, so the old buffer is always wiped, not just abandoned.
+///
+/// `Clone` makes its own `Zeroizing` copy: `AppState` (and therefore this
+/// field, while a prompt is open) is cloned once per event
+/// (`graft::update::update`), and each clone must zero independently when
+/// it drops. No `text()`, no `Display`, no `as_str` — [`SecretField::into_bytes`]
+/// is the only way out, and it takes `self` by value so no `&str`/`String`
+/// copy is ever handed back to a caller.
+pub struct SecretField {
+    text: Zeroizing<String>,
+    /// Character index, `0..=len()`.
+    cursor: usize,
+    /// Flips on every edit (insert, backspace, delete, clear). A field
+    /// shows this, not `len()` or a counter, to prove a keystroke landed —
+    /// so the visible change never depends on how many characters are held
+    /// (ADR-0038 §2: identical whether the secret is 3 characters or 30).
+    pulse: bool,
+}
+
+impl Default for SecretField {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl SecretField {
+    /// An empty field.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            text: Zeroizing::new(String::new()),
+            cursor: 0,
+            pulse: false,
+        }
+    }
+
+    /// Type one character at the cursor. A control character is refused,
+    /// exactly like [`TextField::insert`].
+    pub fn insert(&mut self, character: char) {
+        if !typable(character) {
+            return;
+        }
+        let at = byte_of(&self.text, self.cursor);
+        self.text.insert(at, character);
+        self.cursor += 1;
+        self.pulse = !self.pulse;
+    }
+
+    /// Type a run of characters — a bracketed paste, landing exactly as if
+    /// typed. Control characters (including newlines) are dropped.
+    pub fn insert_str(&mut self, text: &str) {
+        for character in text.chars() {
+            self.insert(character);
+        }
+    }
+
+    /// Delete the character before the cursor.
+    pub fn backspace(&mut self) {
+        if self.cursor == 0 {
+            return;
+        }
+        self.cursor -= 1;
+        let at = byte_of(&self.text, self.cursor);
+        self.text.remove(at);
+        self.pulse = !self.pulse;
+    }
+
+    /// Delete the character under the cursor.
+    pub fn delete(&mut self) {
+        if self.cursor >= self.len() {
+            return;
+        }
+        let at = byte_of(&self.text, self.cursor);
+        self.text.remove(at);
+        self.pulse = !self.pulse;
+    }
+
+    /// One character left.
+    pub fn left(&mut self) {
+        self.cursor = self.cursor.saturating_sub(1);
+    }
+
+    /// One character right.
+    pub fn right(&mut self) {
+        self.cursor = (self.cursor + 1).min(self.len());
+    }
+
+    /// To the start of the field.
+    pub fn home(&mut self) {
+        self.cursor = 0;
+    }
+
+    /// To the end of the field.
+    pub fn end(&mut self) {
+        self.cursor = self.len();
+    }
+
+    /// Empties the field — replaces the buffer rather than truncating it,
+    /// so the old text is wiped, not just marked unused (`Ctrl+U`).
+    pub fn clear(&mut self) {
+        self.text = Zeroizing::new(String::new());
+        self.cursor = 0;
+        self.pulse = !self.pulse;
+    }
+
+    /// How many characters have been typed. Never shown to the user — a
+    /// counter is exactly the length a password prompt must hide — but
+    /// needed to keep the cursor and `Answer` in bounds.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.text.chars().count()
+    }
+
+    /// Nothing typed.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.text.is_empty()
+    }
+
+    /// The cursor's character index.
+    #[must_use]
+    pub fn cursor(&self) -> usize {
+        self.cursor
+    }
+
+    /// Whether the last edit flipped the pulse up or down — the field's
+    /// keystroke feedback (see the `pulse` field's doc).
+    #[must_use]
+    pub fn pulse(&self) -> bool {
+        self.pulse
+    }
+
+    /// The only way out: what was typed, as UTF-8 bytes, in a buffer that
+    /// zeroes on drop. `self` is consumed, not borrowed: `mem::take` moves
+    /// the buffer itself out of the zeroizing wrapper (swapping in an empty,
+    /// unallocated `String` there is nothing to wipe) and `String::into_bytes`
+    /// reuses the same allocation as a `Vec<u8>` — no copy of the secret is
+    /// made on the way out. The caller
+    /// (`graft::update::credential::Answer::new`) moves these bytes straight
+    /// into `Secret`, again without copying.
+    #[must_use]
+    pub fn into_bytes(mut self) -> Zeroizing<Vec<u8>> {
+        let taken = std::mem::take(&mut *self.text);
+        Zeroizing::new(taken.into_bytes())
+    }
+}
+
+impl Clone for SecretField {
+    fn clone(&self) -> Self {
+        Self {
+            text: Zeroizing::new(self.text.as_str().to_owned()),
+            cursor: self.cursor,
+            pulse: self.pulse,
+        }
+    }
+}
+
+impl fmt::Debug for SecretField {
+    /// Prints the length only in the form `SecretField(<len>)` — never the
+    /// text. Even the length is not shown as a bare number a casual read
+    /// could mistake for a count that matters; callers that must not leak
+    /// length at all (a rendered frame, `CredentialPrompt`'s own `Debug`)
+    /// do not read `len()` in the first place, they read `pulse()`.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "SecretField({})", self.len())
+    }
+}
+
+/// Compares by length only, not content: `Command`/`AppState` (which carry
+/// this field, through `graft::update::credential::PromptField`, while a
+/// prompt is open) must stay comparable for `update`'s own tests without
+/// ever comparing two typed secrets character by character.
+impl PartialEq for SecretField {
+    fn eq(&self, other: &Self) -> bool {
+        self.len() == other.len()
+    }
+}
+
+impl Eq for SecretField {}
 
 /// Several lines of editable text: the commit body.
 ///
@@ -407,46 +599,56 @@ impl TextArea {
 /// A single-line field as it is drawn: the label, the text, where the cursor
 /// is, the length guide and the counter.
 ///
-/// `masked` does not change `text`: the field still holds what was typed, so
-/// the caller (a credential prompt) can read it back. Masking is entirely a
-/// drawing decision, made once, in [`FieldWidget`] — never by a caller
-/// deciding what string to hand the widget (CLAUDE.md, m4-remotes design
-/// note choice 2's "must never" list: the secret must never reach a draw
-/// path except through this one gate).
+/// `secret` does not change `text`: for every other field the view still
+/// holds what was typed, so the caller can read it back. Masking is
+/// entirely a drawing decision, made once, in [`FieldWidget`] — never by a
+/// caller deciding what string to hand the widget (CLAUDE.md, m4-remotes
+/// design note choice 2's "must never" list: the secret must never reach a
+/// draw path except through this one gate). A secret field's own `text` is
+/// always empty — there is no real text for the caller to have put there
+/// (`graft::view::credential_view`).
 #[derive(Clone)]
 pub struct FieldView<'a> {
     /// The name shown ahead of the text (`Subject`).
     pub label: &'a str,
-    /// The text itself.
+    /// The text itself. Empty and unused while `secret` is `Some`.
     pub text: SanitizedText,
-    /// The cursor's **character** index, when this field has focus.
+    /// The cursor's **character** index, when this field has focus. Ignored
+    /// while `secret` is `Some`: the real cursor position is the typed
+    /// length, which is exactly what masking hides.
     pub cursor: Option<usize>,
     /// Cells from the start of the text region to the length guide. Ignored
-    /// while `masked`: a guide would still leak the exact typed length.
+    /// while `secret` is `Some`: a guide would still leak the exact typed
+    /// length.
     pub guide_at: Option<u16>,
-    /// `(typed, limit)` for the `12/50` counter. Ignored while `masked`: a
-    /// counter is the length in digits, which is exactly what masking hides.
+    /// `(typed, limit)` for the `12/50` counter. Ignored while `secret` is
+    /// `Some`: a counter is the length in digits, which is exactly what
+    /// masking hides.
     pub counter: Option<(usize, usize)>,
     /// Draws the label bold and the cursor reversed.
     pub focused: bool,
-    /// A password or passphrase field: every character draws as a mask
-    /// glyph (`•`, or `*` at the ASCII tier), never the real text, in any
-    /// render path. Default `false`.
-    pub masked: bool,
+    /// A password or passphrase field: `Some(pulse)` draws exactly
+    /// [`SECRET_GLYPHS`] mask glyphs (`•`, or `*` at the ASCII tier),
+    /// **never** `len()` glyphs and never the real text, in any render
+    /// path — the row's width and glyph count are the same for a 3-character
+    /// secret and a 30-character one (ADR-0038 §2). `pulse` (from
+    /// [`SecretField::pulse`]) flips one fixed glyph so a keystroke still
+    /// visibly registers without the response depending on length.
+    /// `None`: not a secret field, draw `text` normally. Replaces `masked:
+    /// bool`.
+    pub secret: Option<bool>,
 }
 
 impl std::fmt::Debug for FieldView<'_> {
-    /// Redacts `text` while `masked`: a `{:?}` in a log line must not leak a
-    /// password any more readily than the screen does (CLAUDE.md choice 2).
-    ///
-    /// `cursor` is redacted too while masked: at end-of-field `cursor` is
-    /// exactly the typed length, which is the same information the mask
-    /// glyphs and the missing counter are there to hide (M4 group 03 review
-    /// Minor 3).
+    /// Redacts `text` and `cursor` while `secret` is `Some` — a `{:?}` in a
+    /// log line must not leak a password any more readily than the screen
+    /// does (CLAUDE.md choice 2). `text` is always empty for a secret field
+    /// regardless (see the struct doc), but this does not rely on that: it
+    /// redacts unconditionally on `secret.is_some()`.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut out = f.debug_struct("FieldView");
         out.field("label", &self.label);
-        if self.masked {
+        if self.secret.is_some() {
             out.field("text", &"<redacted>");
             out.field("cursor", &self.cursor.map(|_| "<redacted>"));
         } else {
@@ -456,7 +658,7 @@ impl std::fmt::Debug for FieldView<'_> {
         out.field("guide_at", &self.guide_at)
             .field("counter", &self.counter)
             .field("focused", &self.focused)
-            .field("masked", &self.masked)
+            .field("secret", &self.secret)
             .finish()
     }
 }
@@ -466,17 +668,36 @@ impl std::fmt::Debug for FieldView<'_> {
 const MASK_GLYPH: char = '•';
 const MASK_GLYPH_ASCII: char = '*';
 
-/// What a field actually draws for its text: the text itself, or one mask
-/// glyph per character while `masked` — the single place that decision is
-/// made, so every draw path (this widget, and the credential prompt's own
-/// field row) goes through it rather than each deciding for itself.
+/// The glyph the first mask cell flips to on every edit, proving a
+/// keystroke landed without changing the row's width or glyph count
+/// (ADR-0038 §2): `◦` at the Unicode tier, `+` at the ASCII one.
+const PULSE_GLYPH: char = '◦';
+const PULSE_GLYPH_ASCII: char = '+';
+
+/// How many glyphs a secret field draws, whatever the real typed length
+/// (ADR-0038 §2, m4-07 review Minor 9).
+pub const SECRET_GLYPHS: usize = 8;
+
+/// What a field actually draws for its text: the text itself, or
+/// [`SECRET_GLYPHS`] mask glyphs — one of them flipped to the pulse glyph —
+/// while `secret` is `Some` — the single place that decision is made, so
+/// every draw path (this widget, and the credential prompt's own field row)
+/// goes through it rather than each deciding for itself.
 #[must_use]
 pub fn display_text(view: &FieldView<'_>, ascii: bool) -> String {
-    if !view.masked {
+    let Some(pulse) = view.secret else {
         return view.text.as_str().to_owned();
-    }
+    };
     let glyph = if ascii { MASK_GLYPH_ASCII } else { MASK_GLYPH };
-    glyph.to_string().repeat(view.text.as_str().chars().count())
+    let pulse_glyph = if ascii {
+        PULSE_GLYPH_ASCII
+    } else {
+        PULSE_GLYPH
+    };
+    let first = if pulse { pulse_glyph } else { glyph };
+    std::iter::once(first)
+        .chain(std::iter::repeat_n(glyph, SECRET_GLYPHS - 1))
+        .collect()
 }
 
 /// [`FieldView`] drawn into one row.
@@ -486,8 +707,8 @@ pub struct FieldWidget<'a> {
     pub view: &'a FieldView<'a>,
     /// Colours.
     pub theme: &'a Theme,
-    /// Draw the mask glyph as `*` instead of `•` (the ASCII renderer tier).
-    /// Ignored while the field is not `masked`.
+    /// Draw the mask glyph as `*`/`+` instead of `•`/`◦` (the ASCII
+    /// renderer tier). Ignored while the field is not a secret.
     pub ascii: bool,
 }
 
@@ -496,11 +717,13 @@ pub struct FieldWidget<'a> {
 pub const LABEL_WIDTH: u16 = 9;
 
 /// The counter's `n/limit` text and whether it is over, and the cells its
-/// column takes trailing space included. `None` throughout while masked: a
-/// counter is the typed length in digits, which is exactly what masking
-/// hides (CLAUDE.md choice 2's "must never").
+/// column takes trailing space included. `None` throughout for a secret
+/// field: a counter is the typed length in digits, which is exactly what
+/// masking hides (CLAUDE.md choice 2's "must never").
 fn counter_column(view: &FieldView<'_>) -> (Option<(String, bool)>, u16) {
-    let counter = (!view.masked)
+    let counter = view
+        .secret
+        .is_none()
         .then_some(view.counter)
         .flatten()
         .map(|(typed, limit)| (format!("{typed}/{limit}"), typed > limit));
@@ -528,9 +751,13 @@ impl Widget for &FieldWidget<'_> {
         );
 
         // A guide marks an exact column past a set number of characters,
-        // which would tell an onlooker something about a masked field's
-        // length that the mask glyphs are drawn to hide.
-        let guide_at = (!self.view.masked).then_some(self.view.guide_at).flatten();
+        // which would tell an onlooker something about a secret field's
+        // length that the mask glyphs are drawn to hide. The real cursor
+        // index is the typed length too, so a secret field draws no
+        // cursor at all — the pulse glyph is its only keystroke feedback.
+        let is_secret = self.view.secret.is_some();
+        let guide_at = (!is_secret).then_some(self.view.guide_at).flatten();
+        let cursor = (!is_secret).then_some(self.view.cursor).flatten();
         let (counter, counter_width) = counter_column(self.view);
 
         let text_x = area.x + label_width;
@@ -552,7 +779,7 @@ impl Widget for &FieldWidget<'_> {
                 height: 1,
             },
             &shown,
-            self.view.cursor,
+            cursor,
             guide_at,
             self.theme,
         );

@@ -28,6 +28,13 @@ thiserror = "2.0.20"
 # shape, `graft-ops` writes and parses the lines. Versions match `crates/graft`.
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
+# Wipes the credential prompt's typed password on drop and on every clone
+# (`graft_ui::text_input::SecretField`, M5 secret-field ticket): a plain
+# assignment can be optimised away as a dead store, so zeroing needs the
+# volatile-write + compiler-barrier pair this crate provides. Shared between
+# `graft-ui` (where the field lives) and `graft` (where the answer is built
+# and handed to `graft-git`'s own `Secret`), at one version. `alloc` only.
+zeroize = { version = "1.9.0", default-features = false, features = ["alloc"] }
 
 # PROMPT.md 6.2's "enforced, not hoped for": every rule that a lint can check
 # is a lint, so the gate catches it instead of a reviewer. Each crate root

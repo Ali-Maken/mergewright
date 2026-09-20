@@ -152,8 +152,8 @@ pub(super) fn prompt_is(state: &AppState, masked: bool, naming: &str) -> Result<
         .credential
         .as_ref()
         .ok_or_else(|| format!("no credential prompt is open; status {:?}", state.status))?;
-    check(prompt.masked == masked, || {
-        format!("the prompt's mask is {}, wanted {masked}", prompt.masked)
+    check(prompt.masked() == masked, || {
+        format!("the prompt's mask is {}, wanted {masked}", prompt.masked())
     })?;
     let text = prompt.prompt.as_str();
     check(text.contains(naming), || {

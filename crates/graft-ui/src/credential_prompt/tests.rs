@@ -49,18 +49,22 @@ fn rows_at_tier(
         .collect()
 }
 
+/// `pulse` is `false`: only `eight_glyphs_for_any_length` below cares about
+/// the pulse flipping, and it builds its own views.
 fn password_prompt() -> CredentialView<'static> {
     CredentialView {
         title: sanitize_line("Credentials — 127.0.0.1:8443"),
         prompt: sanitize_line("Password for 'http://user@127.0.0.1:8443':"),
         field: FieldView {
             label: "",
-            text: sanitize_line("hunter2"),
-            cursor: Some(7),
+            // No real text to pass: `graft::view::credential_view` never
+            // builds one for a secret field (ADR-0038 §2).
+            text: sanitize_line(""),
+            cursor: None,
             guide_at: None,
             counter: None,
             focused: true,
-            masked: true,
+            secret: Some(false),
         },
         note: sanitize_line("typed here only · never stored by Graft"),
         footer: sanitize_line("⏎ send  ⌃U clear  esc cancel the push"),
@@ -78,7 +82,7 @@ fn username_prompt() -> CredentialView<'static> {
             guide_at: None,
             counter: None,
             focused: true,
-            masked: false,
+            secret: None,
         },
         note: sanitize_line("typed here only · never stored by Graft"),
         footer: sanitize_line("⏎ send  ⌃U clear  esc cancel the push"),
@@ -95,9 +99,16 @@ fn masked_80x24() {
     assert!(box_lines[0].contains("Credentials"), "{box_lines:?}");
     assert!(box_lines[1].contains("Password for"), "{box_lines:?}");
     assert!(box_lines[2].contains("▏"), "{box_lines:?}");
-    // "hunter2" is 7 characters — one bullet per character, no more (Minor 1:
-    // this used to accept 7 or 8, which would have let an off-by-one leak).
-    assert_eq!(box_lines[2].matches('•').count(), 7, "{box_lines:?}");
+    // A fixed 8 glyphs, whatever the real length — this view carries no
+    // text at all, so any count other than 8 would mean the row is
+    // computing its own idea of the length rather than the constant
+    // (ADR-0038 §2; `masked_prompt_draws_only_glyphs` in `text_input`
+    // covers the widget directly).
+    assert_eq!(
+        box_lines[2].matches('•').count(),
+        crate::text_input::SECRET_GLYPHS,
+        "{box_lines:?}"
+    );
     assert!(!box_lines[2].contains("hunter2"), "{box_lines:?}");
     assert!(box_lines[3].contains("typed here only"), "{box_lines:?}");
     assert!(box_lines[4].contains("send"), "{box_lines:?}");
@@ -159,11 +170,12 @@ fn masked_field_at_the_ascii_tier_draws_stars() {
         .iter()
         .find(|l| l.contains('▏'))
         .unwrap_or_else(|| panic!("no field row: {lines:#?}"));
-    // "hunter2" is 7 characters — one star per character, no more.
+    // A fixed 8 glyphs, whatever the real length (ADR-0038 §2).
     assert_eq!(
         field_row.matches('*').count(),
-        7,
-        "expected 7 stars at the ASCII tier: {field_row:?}"
+        crate::text_input::SECRET_GLYPHS,
+        "expected {} stars at the ASCII tier: {field_row:?}",
+        crate::text_input::SECRET_GLYPHS
     );
     assert!(!field_row.contains('•'), "{field_row:?}");
     assert!(!field_row.contains("hunter2"), "{field_row:?}");

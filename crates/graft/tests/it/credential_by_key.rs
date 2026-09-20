@@ -387,7 +387,7 @@ fn username_then_password() {
         "git asks for the username first: {}",
         asked.prompt.as_str()
     );
-    assert!(!asked.masked, "a username is typed in the open");
+    assert!(!asked.masked(), "a username is typed in the open");
 
     let mut script = VecDeque::from(vec![USER, PASSWORD]);
     let state = drive(&app, state, "the push", &mut script, &mut seen, |state| {

@@ -518,7 +518,7 @@ mod tests {
             guide_at: None,
             counter: None,
             focused: true,
-            masked: false,
+            secret: None,
         };
         let mut screen = view(Vec::new(), StashStatus::Empty);
         screen.prompt = Some(StashPromptView {
@@ -545,7 +545,7 @@ mod tests {
             guide_at: None,
             counter: None,
             focused: true,
-            masked: false,
+            secret: None,
         };
         let mut screen = view(Vec::new(), StashStatus::Empty);
         screen.prompt = Some(StashPromptView {
