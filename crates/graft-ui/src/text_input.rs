@@ -20,7 +20,7 @@ use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::widgets::Widget;
 use unicode_width::UnicodeWidthChar;
-use zeroize::Zeroizing;
+use zeroize::{Zeroize, Zeroizing};
 
 use crate::fit::fit;
 use crate::paint::foreground;
@@ -203,25 +203,72 @@ impl TextField {
 /// pair, not a hand-rolled overwrite, because a plain assignment (`s =
 /// String::new()`) is exactly the kind of dead store a compiler is allowed
 /// to elide — the old allocation would be freed with the password still in
-/// it. Every mutator below replaces `text` wholesale rather than editing it
-/// in place, so the old buffer is always wiped, not just abandoned.
+/// it.
 ///
-/// `Clone` makes its own `Zeroizing` copy: `AppState` (and therefore this
-/// field, while a prompt is open) is cloned once per event
-/// (`graft::update::update`), and each clone must zero independently when
-/// it drops. No `text()`, no `Display`, no `as_str` — [`SecretField::into_bytes`]
-/// is the only way out, and it takes `self` by value so no `&str`/`String`
+/// # How the buffer is kept out of the allocator's hands
+///
+/// `Zeroizing`'s `Drop` wipes the buffer it is holding *at that moment*.
+/// That is worth nothing on its own if the `String` inside quietly
+/// reallocates as it grows: `String::insert` on a buffer that has run out
+/// of room asks the allocator for a bigger block, copies the bytes over and
+/// frees the old block **with the password still in it** — which is how an
+/// earlier version of this type leaked the first 8, then 16, then 32
+/// characters of anything longer than 8 (M5 group 01 review, Critical 1).
+/// zeroize documents the same limitation on its own `Vec` impl: it "cannot
+/// ensure that previous reallocations did not leave values on the heap".
+///
+/// So the rule here is that the inner `String` **never reallocates on its
+/// own**:
+///
+/// - [`SecretField::new`] reserves [`SECRET_CAPACITY`] bytes once, which is
+///   longer than any password a person types, so the common case never
+///   grows at all.
+/// - Growing past that goes through `make_room`, which builds a *fresh*
+///   `Zeroizing<String>`, copies into it and assigns — the assignment drops
+///   the old wrapper, and `Zeroize for Vec` zeroes the **whole capacity**,
+///   not just the live length, before the block is freed.
+/// - Shrinking edits (backspace, delete) use `String::remove`, which never
+///   reallocates, and then `wipe_after_end` overwrites the bytes the
+///   removed character left behind in the spare capacity.
+/// - [`SecretField::clear`] zeroes the whole capacity in place and keeps
+///   the allocation, so `Ctrl+U` frees nothing and leaves nothing.
+///
+/// **Not verified, and not verifiable from safe Rust:** that the bytes of a
+/// freed or shrunk-past block really do read as zero afterwards. Nothing in
+/// a `#![forbid(unsafe_code)]` crate can look at memory it no longer owns.
+/// What the tests do check is the part that decides whether the wipe has
+/// anything to wipe — that the capacity never changes under an edit, so the
+/// writes land in the buffer `Zeroizing` is holding
+/// (`tests::secret_field_never_reallocates_silently`). The zeroing itself
+/// rests on zeroize's contract, read in its source, not on an observation
+/// made here.
+///
+/// # The copy this type does *not* prevent
+///
+/// `Clone` makes its own `Zeroizing` copy, and `graft::update::update`
+/// clones the whole `AppState` once per event. So while a prompt is open
+/// the typed secret **is** copied once per event — every keystroke, every
+/// job progress message, every resize — and two copies are live for the
+/// length of the `update` call. Each one zeroes when it drops; none is
+/// freed unwiped. Removing the copy needs `update`'s own shape to change
+/// (an `Arc` around the prompt, or a state that is mutated rather than
+/// rebuilt), which is outside this type. Do not read the paragraph above as
+/// saying it does not happen.
+///
+/// No `text()`, no `Display`, no `as_str` — [`SecretField::into_bytes`] is
+/// the only way out, and it takes `self` by value so no `&str`/`String`
 /// copy is ever handed back to a caller.
 pub struct SecretField {
     text: Zeroizing<String>,
     /// Character index, `0..=len()`.
     cursor: usize,
-    /// Flips on every edit (insert, backspace, delete, clear). A field
-    /// shows this, not `len()` or a counter, to prove a keystroke landed —
-    /// so the visible change never depends on how many characters are held
-    /// (ADR-0038 §2: identical whether the secret is 3 characters or 30).
-    pulse: bool,
 }
+
+/// Bytes [`SecretField::new`] reserves up front. Longer than any password
+/// or passphrase a person types, so the buffer that the first keystroke
+/// lands in is the same one the last keystroke lands in — see the type's
+/// doc for why that matters.
+const SECRET_CAPACITY: usize = 256;
 
 impl Default for SecretField {
     fn default() -> Self {
@@ -230,14 +277,50 @@ impl Default for SecretField {
 }
 
 impl SecretField {
-    /// An empty field.
+    /// An empty field, with its one buffer already reserved.
     #[must_use]
     pub fn new() -> Self {
         Self {
-            text: Zeroizing::new(String::new()),
+            text: Zeroizing::new(String::with_capacity(SECRET_CAPACITY)),
             cursor: 0,
-            pulse: false,
         }
+    }
+
+    /// Makes room for `extra` more bytes *without* letting the inner
+    /// `String` reallocate behind our back.
+    ///
+    /// The fresh buffer is built first and the old wrapper is dropped by
+    /// the assignment, so the block being freed is one `Zeroizing` still
+    /// owns at the moment it goes — which is the only arrangement under
+    /// which zeroize's `Drop` can reach it.
+    fn make_room(&mut self, extra: usize) {
+        let needed = self.text.len() + extra;
+        if needed <= self.text.capacity() {
+            return;
+        }
+        let mut grown = Zeroizing::new(String::with_capacity(
+            (self.text.capacity() * 2).max(needed),
+        ));
+        grown.push_str(&self.text);
+        self.text = grown;
+    }
+
+    /// Overwrites the spare capacity — where a just-removed character's
+    /// bytes still sit — with NULs, then puts the length back.
+    ///
+    /// Writing exactly `capacity - len` bytes is what `String` can take
+    /// before it would ask the allocator for more, so this cannot
+    /// reallocate; NUL is one byte, so the truncation point stays a
+    /// character boundary. Safe Rust cannot read back the bytes past the
+    /// end to prove they are zero, so what the tests check instead is that
+    /// the capacity is unchanged, which is what keeps these writes inside
+    /// the buffer `Zeroizing` holds.
+    fn wipe_after_end(&mut self) {
+        let keep = self.text.len();
+        while self.text.len() < self.text.capacity() {
+            self.text.push('\0');
+        }
+        self.text.truncate(keep);
     }
 
     /// Type one character at the cursor. A control character is refused,
@@ -246,10 +329,10 @@ impl SecretField {
         if !typable(character) {
             return;
         }
+        self.make_room(character.len_utf8());
         let at = byte_of(&self.text, self.cursor);
         self.text.insert(at, character);
         self.cursor += 1;
-        self.pulse = !self.pulse;
     }
 
     /// Type a run of characters — a bracketed paste, landing exactly as if
@@ -268,7 +351,7 @@ impl SecretField {
         self.cursor -= 1;
         let at = byte_of(&self.text, self.cursor);
         self.text.remove(at);
-        self.pulse = !self.pulse;
+        self.wipe_after_end();
     }
 
     /// Delete the character under the cursor.
@@ -278,7 +361,7 @@ impl SecretField {
         }
         let at = byte_of(&self.text, self.cursor);
         self.text.remove(at);
-        self.pulse = !self.pulse;
+        self.wipe_after_end();
     }
 
     /// One character left.
@@ -301,20 +384,33 @@ impl SecretField {
         self.cursor = self.len();
     }
 
-    /// Empties the field — replaces the buffer rather than truncating it,
-    /// so the old text is wiped, not just marked unused (`Ctrl+U`).
+    /// Empties the field (`Ctrl+U`) — zeroes the whole capacity in place,
+    /// not just the live length, and keeps the allocation. Nothing is
+    /// freed, so nothing can be freed unwiped, and the next keystroke lands
+    /// in the same already-reserved buffer.
     pub fn clear(&mut self) {
-        self.text = Zeroizing::new(String::new());
+        self.text.zeroize();
         self.cursor = 0;
-        self.pulse = !self.pulse;
     }
 
     /// How many characters have been typed. Never shown to the user — a
     /// counter is exactly the length a password prompt must hide — but
     /// needed to keep the cursor and `Answer` in bounds.
+    ///
+    /// `O(n)` in the byte length, and called from `right`, `delete`, `end`
+    /// and `PartialEq`. Deliberately not cached: at password lengths the
+    /// walk is free, and a cached count is one more thing that can fall out
+    /// of step with the buffer.
     #[must_use]
     pub fn len(&self) -> usize {
         self.text.chars().count()
+    }
+
+    /// How many bytes the buffer holds room for. Tests only: the type's
+    /// whole safety argument rests on this not changing under an edit.
+    #[cfg(test)]
+    fn capacity(&self) -> usize {
+        self.text.capacity()
     }
 
     /// Nothing typed.
@@ -329,11 +425,29 @@ impl SecretField {
         self.cursor
     }
 
-    /// Whether the last edit flipped the pulse up or down — the field's
-    /// keystroke feedback (see the `pulse` field's doc).
+    /// The one bit the masked row is allowed to show: **is anything typed
+    /// in this field at all**. `false` for an untouched or just-cleared
+    /// field, `true` from the first character on, whatever the length.
+    ///
+    /// It was a toggle flipped by every edit, which read as "a keystroke
+    /// landed" but left the field resting at the *parity of the edit
+    /// count* — for a straight-typed password, one bit of its length, on
+    /// screen and in a committed capture (M5 group 01 review, Major 2).
+    /// The name is kept because `graft::view::credential_view` calls it;
+    /// the meaning is not.
+    ///
+    /// No deterministic replacement can do better while still changing on
+    /// every keystroke: every state a field passes through while typing is
+    /// also the resting state of a shorter password, so a row that is
+    /// constant at rest is constant throughout. Per-keystroke feedback
+    /// needs something the password does not determine — a timer that puts
+    /// the pulse out again, or entropy the field is seeded with — and
+    /// neither exists in the pure update layer today. The cost, stated
+    /// plainly: the first character lights the row and `Ctrl+U` puts it
+    /// out, and characters in between change nothing on screen.
     #[must_use]
     pub fn pulse(&self) -> bool {
-        self.pulse
+        !self.is_empty()
     }
 
     /// The only way out: what was typed, as UTF-8 bytes, in a buffer that
@@ -352,23 +466,27 @@ impl SecretField {
 }
 
 impl Clone for SecretField {
+    /// Its own zeroizing copy, with the capacity carried over — a clone
+    /// that started at its length's worth of room would reallocate on the
+    /// next keystroke, which is the thing this type exists to avoid.
     fn clone(&self) -> Self {
+        let mut text = Zeroizing::new(String::with_capacity(self.text.capacity()));
+        text.push_str(&self.text);
         Self {
-            text: Zeroizing::new(self.text.as_str().to_owned()),
+            text,
             cursor: self.cursor,
-            pulse: self.pulse,
         }
     }
 }
 
 impl fmt::Debug for SecretField {
-    /// Prints the length only in the form `SecretField(<len>)` — never the
-    /// text. Even the length is not shown as a bare number a casual read
-    /// could mistake for a count that matters; callers that must not leak
-    /// length at all (a rendered frame, `CredentialPrompt`'s own `Debug`)
-    /// do not read `len()` in the first place, they read `pulse()`.
+    /// A constant: `SecretField(..)`. Not the text, and not the length
+    /// either — ADR-0038 §2 puts `Debug` in the same list as the drawn row
+    /// and the capture, and `PromptField` derives `Debug`, so a length
+    /// printed here surfaces as `Secret(SecretField(7))` in any dump that
+    /// reaches a log line or a panic message.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "SecretField({})", self.len())
+        f.write_str("SecretField(..)")
     }
 }
 
@@ -632,8 +750,9 @@ pub struct FieldView<'a> {
     /// **never** `len()` glyphs and never the real text, in any render
     /// path — the row's width and glyph count are the same for a 3-character
     /// secret and a 30-character one (ADR-0038 §2). `pulse` (from
-    /// [`SecretField::pulse`]) flips one fixed glyph so a keystroke still
-    /// visibly registers without the response depending on length.
+    /// [`SecretField::pulse`]) is "something is typed in it", which flips
+    /// one fixed glyph; it is not a count and not a parity, so two secrets
+    /// of different lengths draw byte-identical rows.
     /// `None`: not a secret field, draw `text` normally. Replaces `masked:
     /// bool`.
     pub secret: Option<bool>,
@@ -668,9 +787,10 @@ impl std::fmt::Debug for FieldView<'_> {
 const MASK_GLYPH: char = '•';
 const MASK_GLYPH_ASCII: char = '*';
 
-/// The glyph the first mask cell flips to on every edit, proving a
-/// keystroke landed without changing the row's width or glyph count
-/// (ADR-0038 §2): `◦` at the Unicode tier, `+` at the ASCII one.
+/// The glyph the first mask cell shows while the field holds something,
+/// so an answer being typed is visibly different from an empty box without
+/// changing the row's width or glyph count (ADR-0038 §2): `◦` at the
+/// Unicode tier, `+` at the ASCII one.
 const PULSE_GLYPH: char = '◦';
 const PULSE_GLYPH_ASCII: char = '+';
 
