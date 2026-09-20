@@ -679,8 +679,8 @@ mod tests {
             listed,
             vec![
                 "Checkout feature",
-                "Merge feature into main",
-                "Rebase main onto feature",
+                "Merge feature into main (m)",
+                "Rebase main onto feature (r)",
                 "Cherry-pick 0303030",
                 "Revert 0303030",
                 "Reset main to here (mixed)",
@@ -724,12 +724,12 @@ mod tests {
             .expect("menu opened")
             .verbs
             .iter()
-            .find(|verb| verb.label.as_str() == "Merge feature into main")
+            .find(|verb| verb.label.as_str() == "Merge feature into main (m)")
             .expect("the verb is listed")
             .op
             .clone();
 
-        let commands = choose(&mut state, "Merge feature into main");
+        let commands = choose(&mut state, "Merge feature into main (m)");
 
         assert!(state.context_menu.is_none(), "the menu closed");
         let preview = state.preview.as_ref().expect("a preview opened");
@@ -821,7 +821,7 @@ mod tests {
         state.operating = Some(JobId::new(7));
         open_for_history_row(&mut state, 0);
 
-        let commands = choose(&mut state, "Merge feature into main");
+        let commands = choose(&mut state, "Merge feature into main (m)");
 
         assert!(state.preview.is_none());
         assert!(commands.is_empty(), "{commands:?}");

@@ -16,29 +16,32 @@
 #    (x)`, `Open details (⏎)`), then the history verbs, then the keys the
 #    hint bar drops (`Fetch (f)` … `Undo (u)`).
 #  - The history verbs name the real branches, not placeholders: `Checkout
-#    main`, `Merge main into feature`, `Rebase feature onto main`,
+#    main`, `Merge main into feature (m)`, `Rebase feature onto main (r)`,
 #    `Cherry-pick <sha7>`, `Revert <sha7>`, `Reset feature to here
 #    (mixed)`/`(hard)`, `Delete branch main`. `feature` is the branch
 #    checked out, `main` is the row under the cursor.
 #  - No verb names the branch you are standing on where git would refuse
 #    it: there is no `Checkout feature` and no `Delete branch feature`.
+#  - A trailing `(key)` means the same thing everywhere in the menu:
+#    next time you can skip it. `Merge` and `Rebase` carry one because
+#    `m` and `r` exist; checkout, cherry-pick, revert, reset and the
+#    deletions own no letter, so they carry none.
 #  - Choosing any of them opens a picture, not a write (PROMPT.md §1.7).
 #  - At 80 columns the menu still fits inside the graph pane rather than
 #    running off it.
 #
 
  graft /code/api  8 commits  date order, sorting…
-  ◆   [◆ feature] finish the feature                                                                                                             GT now  c6d42bd
-  ●   start the feature                                                                                                                          GT now  3d7f709
-● │   [main] main moves again                                                                                                                    GT now  df0abc6
- Copy SHA (y)                                                                                                                                    GT now  b5bd029
- Compare with this (x)                                                                                                                           GT now  14effc9
- Open details (⏎)                                                                                                                                GF 7y   a82960b
- Checkout main                                                                                                                                   GF 7y   fadcfb3
- Merge main into feature                                                                                                                         GF 7y   64ded19
- Rebase feature onto main
- Cherry-pick df0abc6
- Revert df0abc6
+  ◆   [◆ feature] finish the feature                                                                                                             GT now  11d209f
+● │   [main] main moves again                                                                                                                    GT now  e55219c
+ Copy SHA (y)                                                                                                                                    GT now  6d3bd01
+ Compare with this (x)                                                                                                                           GT now  f194f5c
+ Open details (⏎)                                                                                                                                GT now  350769c
+ Checkout main                                                                                                                                   GF 7y   a82960b
+ Merge main into feature (m)                                                                                                                     GF 7y   fadcfb3
+ Rebase feature onto main (r)                                                                                                                    GF 7y   64ded19
+ Cherry-pick e55219c
+ Revert e55219c
  Reset feature to here (mixed)
  Reset feature to here (hard)
  Delete branch main
@@ -46,6 +49,7 @@
  Pull (p)
  Push (P)
  Undo (u)
+
 
 
 

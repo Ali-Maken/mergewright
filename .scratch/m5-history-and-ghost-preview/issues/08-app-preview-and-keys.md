@@ -537,3 +537,65 @@ is the first time the menu has been this big.
   (main at `1958cf5` was 2082 passed / 33 skipped, so +24 and one more
   `#[ignore]`d capture test), 49.3 s
 - `cargo test --doc` — pass (0 doctests; a gate, not evidence)
+
+
+---
+
+## NOTES (builder, m5/08 — continuation 3, the label ruling)
+
+**Scope: the conductor's ruling on the Proposed change only.** No scout —
+brownfield, but over code this builder wrote in continuation 2 and still had in
+context; nothing else was touched.
+
+**`(m)` and `(r)` added.** The labels now read `Merge <b> into <cur> (m)` and
+`Rebase <cur> onto <b|sha7> (r)`. The ruling is right and the invariant is
+better for it: a trailing `(key)` now means one thing everywhere in this menu —
+"next time you can skip the menu" — and the verbs that carry none (Checkout,
+Cherry-pick, Revert, Reset, Delete branch/tag) are exactly the ones with no
+letter to teach. `graft_ui::context_menu::tests::every_label_names_its_key`'s
+doc comment and both MAP.md entries were rewritten to say that rather than
+"the history verbs are the exception".
+
+- [x] Both labels name their key: `update::context_menu::verbs::tests::menu_verbs_build_expected_operations`
+      (the label list, exact) and `::the_merge_and_rebase_verbs_are_the_ones_m_and_r_build`;
+      drawn on a real buffer by `tests/it/preview.rs::the_context_menu_lists_its_history_verbs_and_draws_them`.
+- [x] Mutation: `(m)` dropped from the merge label → caught by six, including
+      the two above and the integration test. Applied, workspace suite run,
+      failures read, file restored from a copy taken first.
+
+**The width rule does touch them, and the conductor asked to be told.**
+`ContextMenu::width()` asks for the longest label + 4, but
+`update::geometry::context_menu_bounds` clamps that to the graph pane, and the
+widget draws each row through `fit`, **which cuts from the right — where the
+key hint is**. So the `(key)` is the first thing a narrow pane loses, and the
+`…` says something was cut without saying what.
+
+- Not reachable in the shipped fixture: the longest label there is
+  `Reset feature to here (mixed)` (29 cells), so the menu wants 33 columns and
+  is untouched at 80×24, with or without the detail pane split.
+- Reachable with a long ref name: `Merge release/2026-q1-hotfix into main (m)`
+  wants 46 columns, so any graph pane under that drops the hint.
+- **Pinned, not fixed**, per the ruling: `graft_ui::context_menu::tests::a_pane_too_narrow_for_the_label_cuts_the_key_hint_off_the_end`
+  renders the real widget into a 24-column buffer and asserts the row keeps its
+  prefix, loses `(m)`, and ends in `…`. It is the hint bar's problem over again
+  (ADR-0039) and the answer belongs with that one, not in this widget.
+  **KNOWN_GAPS row for the conductor:** context-menu key hints are cut before
+  the label when the pane is narrower than the longest label — visible, not
+  broken, and ADR-0039-shaped.
+
+**Captures regenerated**, same two files, both still far under the cap:
+`docs/shots/m5-ui-context-menu-verbs-80x24.txt` (2.9 KB) and `-160x48.txt`
+(3.7 KB). The menu's drawn width did not change — `Reset feature to here
+(mixed)` is still the longest label, so `(m)`/`(r)` cost no columns. The
+"What right looks like" header gained the rule about what a trailing `(key)`
+means. **The user judges them; this builder does not tick "looks right."**
+Colour unverified (CLAUDE.md rule 5).
+
+**Gates**, workspace-wide, from `.worktrees/m5-08-p6b` with
+`CARGO_TARGET_DIR=/tmp/graft-m508p6b-target`:
+
+- `cargo fmt --all --check` — pass
+- `cargo clippy --all-targets --message-format=short -- -D warnings` — pass
+- `cargo nextest run --workspace` — **2107 passed, 0 failed, 34 skipped**
+  (main at `3f0d1a2` was 2106; +1, the truncation test), 52.0 s
+- `cargo test --doc` — pass (0 doctests; a gate, not evidence)

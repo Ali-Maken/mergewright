@@ -87,8 +87,8 @@ fn menu_verbs_build_expected_operations() {
         labels(&verbs),
         vec![
             "Checkout feature",
-            "Merge feature into main",
-            "Rebase main onto feature",
+            "Merge feature into main (m)",
+            "Rebase main onto feature (r)",
             "Cherry-pick 0300000",
             "Revert 0300000",
             "Reset main to here (mixed)",
@@ -106,7 +106,7 @@ fn menu_verbs_build_expected_operations() {
         })
     );
     assert_eq!(
-        op_of(&verbs, "Merge feature into main"),
+        op_of(&verbs, "Merge feature into main (m)"),
         &Operation::Merge(MergeParams {
             source: Source::Branch("feature".to_owned()),
             into: main_tip(),
@@ -115,7 +115,7 @@ fn menu_verbs_build_expected_operations() {
         })
     );
     assert_eq!(
-        op_of(&verbs, "Rebase main onto feature"),
+        op_of(&verbs, "Rebase main onto feature (r)"),
         &Operation::Rebase(RebaseParams {
             branch: main_tip(),
             onto: Source::Branch("feature".to_owned()),
@@ -187,7 +187,7 @@ fn the_merge_and_rebase_verbs_are_the_ones_m_and_r_build() {
     let current = current_branch(&refs).expect("HEAD is on main");
 
     assert_eq!(
-        op_of(&verbs, "Merge feature into main"),
+        op_of(&verbs, "Merge feature into main (m)"),
         &Operation::Merge(MergeParams {
             source: source.clone(),
             into: current.clone(),
@@ -196,7 +196,7 @@ fn the_merge_and_rebase_verbs_are_the_ones_m_and_r_build() {
         })
     );
     assert_eq!(
-        op_of(&verbs, "Rebase main onto feature"),
+        op_of(&verbs, "Rebase main onto feature (r)"),
         &Operation::Rebase(RebaseParams {
             branch: current,
             onto: source,

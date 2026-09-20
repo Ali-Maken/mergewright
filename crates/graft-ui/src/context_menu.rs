@@ -52,7 +52,7 @@ pub enum ContextAction {
 /// One row of the menu.
 ///
 /// The label is [`SanitizedText`] because a history verb names refs and
-/// commit subjects out of the repository (`Merge feature into main`), and
+/// commit subjects out of the repository (`Merge feature into main (m)`), and
 /// repo-derived text crosses into a widget only through that newtype.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MenuItem {
@@ -245,10 +245,13 @@ mod tests {
     }
 
     /// Every label but `Explain`'s names the key that does the same thing,
-    /// so the menu teaches the keyboard rather than replacing it. The
-    /// history verbs are the exception by design: they own no letter, which
-    /// is why they live behind `.` at all (`docs/design/02-keymap.md` §2.1,
-    /// "Rare verbs live behind `.`").
+    /// so the menu teaches the keyboard rather than replacing it. A history
+    /// verb the caller passes in follows the same rule: it names its key when
+    /// it has one (`Merge … (m)`, `Rebase … (r)`) and carries none when it
+    /// does not — owning no letter is why the rest of them live behind `.` at
+    /// all (`docs/design/02-keymap.md` §2.1, "Rare verbs live behind `.`").
+    /// So a trailing `(key)` anywhere in this menu means the same thing:
+    /// next time, you can skip the menu.
     #[test]
     fn every_label_names_its_key() {
         let menu = ContextMenu::for_row(true, Vec::new());
@@ -276,7 +279,7 @@ mod tests {
             false,
             vec![
                 sanitize_line("Checkout feature"),
-                sanitize_line("Merge feature into main"),
+                sanitize_line("Merge feature into main (m)"),
             ],
         );
         assert_eq!(
@@ -297,7 +300,7 @@ mod tests {
             ]
         );
         assert_eq!(menu.items[3].label.as_str(), "Checkout feature");
-        assert_eq!(menu.items[4].label.as_str(), "Merge feature into main");
+        assert_eq!(menu.items[4].label.as_str(), "Merge feature into main (m)");
     }
 
     /// The index the widget reports is the position in the list the app
@@ -305,7 +308,7 @@ mod tests {
     /// down must not change which operation a verb means.
     #[test]
     fn a_history_index_names_the_apps_own_list_not_the_menu_row() {
-        let history = vec![sanitize_line("Merge feature into main")];
+        let history = vec![sanitize_line("Merge feature into main (m)")];
         let plain = ContextMenu::for_row(false, history.clone());
         let marked = ContextMenu::for_row(true, history);
         let of = |menu: &ContextMenu| {
@@ -381,6 +384,42 @@ mod tests {
         let menu = ContextMenu::for_row(false, vec![sanitize_line("Checkout \u{1b}[31mevil")]);
         let label = menu.items[3].label.as_str();
         assert!(!label.contains('\u{1b}'), "{label:?}");
+    }
+
+    /// **The key hint is the first thing a narrow pane drops.** `width()`
+    /// asks for the longest label plus four, but the caller clamps that to
+    /// the graph pane it draws in (`graft::update::geometry::
+    /// context_menu_bounds`), and `fit` cuts from the right — where the
+    /// `(key)` is. A long ref name in a narrow pane therefore loses the very
+    /// thing the label was teaching, and loses it silently: the `…` says
+    /// something was cut, not what.
+    ///
+    /// Pinned here rather than fixed: it is the hint bar's problem over again
+    /// (ADR-0039), and the answer belongs with that one, not in this widget.
+    #[test]
+    fn a_pane_too_narrow_for_the_label_cuts_the_key_hint_off_the_end() {
+        let menu = ContextMenu::for_row(
+            false,
+            vec![sanitize_line("Merge release/2026-q1-hotfix into main (m)")],
+        );
+        assert_eq!(menu.width(), 42 + 4, "it asks for the whole label");
+
+        let area = Rect {
+            x: 0,
+            y: 0,
+            width: 24,
+            height: u16::try_from(menu.items.len()).expect("a short menu"),
+        };
+        let mut buffer = Buffer::empty(area);
+        (&menu).render(area, &mut buffer);
+        let row: String = (0..area.width).map(|x| buffer[(x, 3)].symbol()).collect();
+
+        assert!(row.starts_with(" Merge release/"), "{row:?}");
+        assert!(!row.contains("(m)"), "the key hint is gone: {row:?}");
+        assert!(
+            row.ends_with('\u{2026}'),
+            "and only an ellipsis says so: {row:?}"
+        );
     }
 
     #[test]

@@ -138,10 +138,16 @@ fn checkout_verbs(
     }
 }
 
-/// `Merge <b> into <cur>` and `Rebase <cur> onto <b>`, the two operations
-/// `m` and `r` build from this row. Absent on a detached `HEAD` (neither has
-/// a branch to act on — the keys refuse in words there) and on the current
-/// branch's own tip, where both are `already on it`.
+/// `Merge <b> into <cur> (m)` and `Rebase <cur> onto <b> (r)`, the two
+/// operations `m` and `r` build from this row. Absent on a detached `HEAD`
+/// (neither has a branch to act on — the keys refuse in words there) and on
+/// the current branch's own tip, where both are `already on it`.
+///
+/// These two are the only history verbs whose labels name a key, because they
+/// are the only ones that have one: a trailing `(key)` in this menu means
+/// "next time you can do this without opening it". Checkout, cherry-pick,
+/// revert, reset and the deletions own no letter — which is why they live
+/// behind `.` at all (`docs/design/02-keymap.md` §2.1) — so they carry none.
 fn merge_and_rebase_verbs(
     verbs: &mut Vec<HistoryVerb>,
     id: Oid,
@@ -162,7 +168,7 @@ fn merge_and_rebase_verbs(
         Source::Commit(_) => here.to_owned(),
     };
     verbs.push(verb(
-        &format!("Merge {named} into {cur}"),
+        &format!("Merge {named} into {cur} (m)"),
         Operation::Merge(MergeParams {
             source: source.clone(),
             into: current.clone(),
@@ -171,7 +177,7 @@ fn merge_and_rebase_verbs(
         }),
     ));
     verbs.push(verb(
-        &format!("Rebase {cur} onto {named}"),
+        &format!("Rebase {cur} onto {named} (r)"),
         Operation::Rebase(RebaseParams {
             branch: current.clone(),
             onto: source,
