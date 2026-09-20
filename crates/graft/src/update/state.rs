@@ -206,6 +206,16 @@ pub struct AppState {
     /// banner to focus — [`crate::update::banner::banner_view`] is the one
     /// thing that draws it, and it answers `None` without `in_progress`.
     pub banner_focus: bool,
+    /// The journal entries git is still part-way through, as the last
+    /// journal read found them
+    /// ([`crate::jobs::undo::JournalRead::live`], m5/09 seam A).
+    ///
+    /// The whole point is the difference between "an operation was
+    /// interrupted" and "an operation is standing right there": both are a
+    /// `Pending` line with no outcome, and only git's own state tells them
+    /// apart. An entry named here is **not** announced as interrupted and is
+    /// not drawn as one — it is the banner's, and `c`/`a` end it.
+    pub live_entries: Vec<graft_core::journal::EntryId>,
     /// The `HEAD`-message read an `a` is waiting on: the editor opens on its
     /// answer, so there is never a half-filled amend on screen. Any other
     /// id's answer is dropped (m3-working-tree-undo-and-stash/05).
