@@ -1,0 +1,51 @@
+# m5-hints-uncommitted-120x40.txt: TestBackend capture (not a pty), 120x40.
+# Fixture: capture_hint_bar_for_docs_shots in
+# crates/graft-ui/src/graph_screen/tests.rs (#[ignore]d, run by hand to
+# regenerate). HintContext::WorkingTreeRow on a five-row corpus (a branch
+# badge, a merge carrying a Mistake Radar marker, a plain row).
+#
+# Judge by eye: the footer's last row reads the uncommitted context's hints
+# for this width — three plus `. more` under 100 cols, six plus `. more`
+# from 100, every hint plus `. more` from 160 (ADR-0037 §4) — never all
+# hidden.
+
+ graft /code/api  5 commits
+●     Commit 5                                                                                           TE 2h   0505050
+◉─╮   Commit 4                                                                                           TE 2h   0404040
+● │   Commit 3                                                                                           TE 2h   0303030
+●─╯   Commit 2                                                                                           TE 2h   0202020
+◇     Commit 1                                                                                           TE 2h   0101010
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ ⏎ changes  c commit  S stash  p pull  P push  f fetch  . more

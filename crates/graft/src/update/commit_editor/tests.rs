@@ -297,7 +297,7 @@ fn a_says_why_when_heads_message_cannot_be_read() {
         ),
     );
     assert!(told.commit_editor.is_none());
-    let Status::Sticky(said) = &told.status else {
+    let Status::Sticky { reason: said, .. } = &told.status else {
         panic!("{:?}", told.status);
     };
     assert!(said.contains("nothing committed yet"), "{said}");
@@ -439,7 +439,7 @@ fn an_external_editor_that_failed_keeps_the_old_text_and_says_so() {
         back.commit_editor.as_ref().expect("open").subject.text(),
         "typed here"
     );
-    let Status::Sticky(said) = &back.status else {
+    let Status::Sticky { reason: said, .. } = &back.status else {
         panic!("{:?}", back.status);
     };
     assert!(said.contains("message unchanged"), "{said}");
@@ -544,7 +544,7 @@ fn a_commit_that_failed_keeps_the_editor_and_the_message() {
     let editor = after.commit_editor.as_ref().expect("still open");
     assert_eq!(editor.subject.text(), "subject");
     assert!(after.operating.is_none(), "the write is over");
-    let Status::Sticky(said) = &after.status else {
+    let Status::Sticky { reason: said, .. } = &after.status else {
         panic!("expected the reason, got {:?}", after.status);
     };
     assert!(said.contains("pre-commit hook"), "{said}");

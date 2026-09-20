@@ -343,7 +343,7 @@ fn prompt_key(
             // that was typed. The prompt applies it here rather than letting
             // the global arm run, because a global arm that fires while a
             // text field is open is Critical 1 of the m3/06 review.
-            if matches!(next.status, Status::Failed(_) | Status::Sticky(_)) {
+            if matches!(next.status, Status::Failed(_) | Status::Sticky { .. }) {
                 next.status = Status::Ready;
             } else {
                 next.stash.prompt = None;

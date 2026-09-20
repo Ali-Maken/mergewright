@@ -27,7 +27,7 @@ shape: criss-cross-merge, 16, highlight, 80x24, row 4 selected
 
 
 
- q quit  F2 status  F3 renderer  u undo  / search  j/k move  Space fold
+ ⏎ open  b branch  r rebase  . more
 
 modifiers: graph | subject
 ..b.......| .

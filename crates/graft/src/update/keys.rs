@@ -96,7 +96,7 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     // field can never be shut by a key its own handler never saw.
     if !next.text_field_open()
         && key.code == KeyCode::Escape
-        && matches!(next.status, Status::Failed(_) | Status::Sticky(_))
+        && matches!(next.status, Status::Failed(_) | Status::Sticky { .. })
     {
         next.status = Status::Ready;
         return;
@@ -459,7 +459,7 @@ fn copy_selected_sha(next: &mut AppState, commands: &mut Vec<Command>) {
     let sha = row.commit.id.to_string();
     let short = sha.chars().take(7).collect();
     commands.push(Command::CopyToClipboard(sha));
-    if !matches!(next.status, Status::Failed(_) | Status::Sticky(_)) {
+    if !matches!(next.status, Status::Failed(_) | Status::Sticky { .. }) {
         next.status = Status::Copied { short };
     }
 }
@@ -600,4 +600,27 @@ fn is_undo_key(key: KeyPress) -> Option<bool> {
 /// waiting for whatever would have noticed on its own.
 fn is_refresh(key: KeyPress) -> bool {
     key.code == KeyCode::Char('r') && key.modifiers.control
+}
+
+/// Every key this build actually binds on the graph screen and the panes
+/// its footer hints from, spelled exactly as `graph_screen::hints`'s tables
+/// spell them (`⏎` for `Enter`, `j/k` for either move key, `⌃A` for
+/// `Ctrl+A`) — so a test can walk every [`graft_ui::graph_screen::hints_for`]
+/// context against this list and catch a hinted key nothing answers
+/// (`hint-bar-redesign` scope item 6).
+///
+/// `m`, `r`, `b` and `t` (`BranchRow`'s merge/rebase/branch/tag,
+/// `docs/design/02-keymap.md` §2.3) are in the design note's hint table
+/// verbatim but not yet bound: the groups that wire them up are M5's own,
+/// still to build (`docs/design-notes/m5-history-and-ghost-preview.md`'s
+/// title — this ticket is the footer's plumbing, not those verbs). Likewise
+/// `s`/`a` (banner skip/abort) belong to the operation-banner group. None of
+/// the four are in this list; the walking test says so rather than papering
+/// over it.
+#[must_use]
+pub fn bound_keys() -> &'static [&'static str] {
+    &[
+        "⏎", "c", "p", "P", "f", "u", "J", "/", "j/k", "y", ".", "M", "e", "⌃A", "space", "d",
+        "esc", "⇥", "S", "<>",
+    ]
 }

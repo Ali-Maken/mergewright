@@ -7,11 +7,11 @@ use ratatui::layout::Rect;
 use ratatui::text::{Line, Span};
 use unicode_width::UnicodeWidthStr;
 
-use super::layout::{Columns, graph_width, text_width};
+use super::hints::{fit_status_line, hints_for, hints_text};
+use super::layout::{Columns, graph_width};
 use super::render::subject_truncated;
 use super::{CommitGraphLine, GraphEntry, GraphScreen, SearchLine};
 use crate::fit::fit;
-use crate::graph_column::RowPaint;
 use crate::paint::foreground;
 use crate::theme::Token;
 
@@ -38,13 +38,13 @@ impl GraphScreen<'_> {
 
     /// The footer's text and token: a problem, a search line, a notice, the
     /// pinned compare base's line, the reveal (a truncated subject, named by
-    /// hover), or — when none of those apply — the ordinary key hints.
+    /// hover), or — when none of those apply — the context's key hints
+    /// (`hints::hints_for`, `hint-bar-redesign`).
     pub(super) fn footer_line(
         &self,
         body: Rect,
         rows: &[GraphEntry<'_>],
         applied: Option<&Fold>,
-        fold: &Fold,
         width: usize,
     ) -> (String, Token) {
         // Same columns the body just drew through: the reveal must agree
@@ -63,7 +63,15 @@ impl GraphScreen<'_> {
             &self.view.notice,
             &self.view.compare_footer,
         ) {
-            (Some(problem), _, _, _) => (format!(" {problem}"), Token::Warning),
+            (Some(problem), _, _, _) => {
+                let width16 = u16::try_from(width.saturating_sub(1)).unwrap_or(u16::MAX);
+                let line = fit_status_line(
+                    problem.reason.as_str(),
+                    problem.keys.as_ref().map(graft_term::SanitizedText::as_str),
+                    width16,
+                );
+                (format!(" {line}"), Token::Warning)
+            }
             (None, Some(SearchLine::Prompt(typed)), _, _) => (format!(" /{typed}_"), Token::Info),
             (None, Some(SearchLine::Status { text, failed }), _, _) => (
                 format!(" {text}"),
@@ -75,23 +83,9 @@ impl GraphScreen<'_> {
                 if let Some(subject) = &reveal_subject {
                     (format!(" {subject}"), Token::Text)
                 } else {
-                    let mut extra = Vec::new();
-                    extra.extend(expand_hint(fold, self.view.compaction.expanded));
-                    // Only while the pane is on screen: no divider to drag
-                    // otherwise (ADR-0028).
-                    extra.extend(self.view.detail_shown.then_some("<> resize"));
-                    // The keys that write, only on the pane that can write
-                    // (m3-working-tree-undo-and-stash/04). They sit ahead of
-                    // the movement keys so a narrow terminal keeps them.
-                    if self.view.changes_pane {
-                        extra.push("space stage");
-                        extra.push("d discard");
-                    }
-                    // The cursor row's own hint, only when it is marked
-                    // (`m2-details-and-diffs/17`, design note "Marker
-                    // column").
-                    extra.extend(cursor_marked(rows).then_some(". explain"));
-                    (key_hints(&extra, width), Token::TextMuted)
+                    let width16 = u16::try_from(width).unwrap_or(u16::MAX);
+                    let hints = hints_for(&self.view.hint_context, width16);
+                    (hints_text(&hints), Token::TextMuted)
                 }
             }
         }
@@ -165,97 +159,4 @@ pub(super) fn grouped(number: u32) -> String {
         out.push(digit);
     }
     out
-}
-
-/// Every key the graph screen answers, in the order the footer drops them
-/// (PROMPT.md principle 4: the hint bar teaches the tool). Leaving, the
-/// status screen and the renderer first, then `+` while it applies
-/// ([`LEADING_HINTS`] of these come before it), then search and movement
-/// and movement, then the rest of the actions: a narrow terminal drops whole
-/// hints from the right, and the hint that comes and goes matters more than
-/// the movement keys that are always there. `n`/`N` live on the search line,
-/// where they work. `Enter` opens the detail pane (ADR-0023); its hint comes
-/// with the pane (`detail-pane-frame`), not before it draws.
-pub(super) const HINTS: [&str; 19] = [
-    "q quit",
-    "F2 status",
-    "F3 renderer",
-    "u undo",
-    "/ search",
-    "j/k move",
-    "Space fold",
-    "1 first-parent",
-    "F focus",
-    // `S` opens the stash overlay; `H` hides stash commits in the graph.
-    // Two different things, and while `H stash` sat next to `J journal` it
-    // read as the overlay's key and the overlay had no hint at all
-    // (m3/06 review, Major 8).
-    "S stash",
-    "H hide stash",
-    // Remote writes (design note "New UI", DESIGN.md §2.14): `f`/`p`/`P` are
-    // otherwise unclaimed at the graph-screen level (m4 scout, "Key
-    // routing"). Placed exactly where the mockup shows them — after
-    // `H hide stash`, before `J journal` — per the spec's ticket 03 piece
-    // 4, not ahead of search/movement: at 80 columns they drop with the
-    // rest of the trailing hints instead of displacing `/ search` and
-    // `j/k move` (`graph_screen::tests::remote_hints_at_wide_and_medium`).
-    "f fetch",
-    "p pull",
-    "P push",
-    "J journal",
-    "y sha",
-    "PgUp/PgDn page",
-    "g/G top/bottom",
-    "Ctrl+R refresh",
-];
-/// How many of [`HINTS`] come before the lane-expansion hint (and the other
-/// contextual `extra` hints, which splice in right after these). `u undo` is
-/// among them: the milestone's promise is that work cannot be lost, and the
-/// key that keeps it must survive a narrow terminal dropping hints from the
-/// right (m3-working-tree-undo-and-stash/06). The remote-write keys
-/// (`f fetch`/`p pull`/`P push`) sit further down the list, after
-/// `H hide stash`, where the mockup places them — outside this leading
-/// group, so `extra` still splices in ahead of them (m4-remotes ticket 03).
-const LEADING_HINTS: usize = 4;
-
-/// Whether the cursor row (the one painted [`RowPaint::Highlighted`]) has a
-/// Mistake Radar marker — the `. explain` hint's own condition.
-fn cursor_marked(rows: &[GraphEntry<'_>]) -> bool {
-    rows.iter()
-        .find(|entry| entry.line.paint == RowPaint::Highlighted)
-        .is_some_and(|entry| entry.marker.is_some())
-}
-
-/// The hint for the lane-expansion key, shown only while there is something
-/// to expand or collapse.
-fn expand_hint(fold: &Fold, expanded: bool) -> Option<&'static str> {
-    match (fold.marker().is_some(), expanded) {
-        (false, false) => None,
-        (_, true) => Some("+ collapse lanes"),
-        (true, false) => Some("+ expand lanes"),
-    }
-}
-
-/// The footer's key hints within `width` columns: as many whole hints as
-/// fit, dropped from the right, never one cut in half. `extra` (lane-fold,
-/// pane-resize) is spliced in right after the leading hints, in the order
-/// given.
-pub(super) fn key_hints(extra: &[&str], width: usize) -> String {
-    let (leading, rest) = HINTS.split_at(LEADING_HINTS);
-    let mut line = String::new();
-    for hint in leading
-        .iter()
-        .copied()
-        .chain(extra.iter().copied())
-        .chain(rest.iter().copied())
-    {
-        let separator = if line.is_empty() { " " } else { "  " };
-        if !line.is_empty() && text_width(&line) + text_width(separator) + text_width(hint) > width
-        {
-            break;
-        }
-        line.push_str(separator);
-        line.push_str(hint);
-    }
-    line
 }

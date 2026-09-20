@@ -362,7 +362,10 @@ fn failures_are_worded_and_remembered() {
     let rejected = "push rejected: origin/main has moved · p pull first · P force with lease";
     assert_eq!(
         remote_failed(&mut after, &op, &RemoteFailure::NonFastForward, rejected),
-        Status::Sticky(rejected.to_owned())
+        Status::Sticky {
+            reason: "push rejected: origin/main has moved".to_owned(),
+            keys: Some("p pull first · P force with lease".to_owned()),
+        }
     );
     assert_eq!(after.remote.last_rejected_push, Some(params));
     assert_eq!(

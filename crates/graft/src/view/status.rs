@@ -3,6 +3,7 @@
 
 use graft_git::version::SystemGit;
 use graft_term::{SanitizedText, sanitize_line, sanitize_path, sanitize_path_bytes};
+use graft_ui::graph_screen::ProblemLine;
 use graft_ui::status_screen::{HeadView, HistoryState, HistoryView, RepositoryView, StatusView};
 
 use crate::history::{History, Phase};
@@ -32,13 +33,38 @@ pub fn status_view(session: &Session, state: &AppState) -> StatusView {
 
 /// The one reading of [`Status`] that is a problem worth putting in front of
 /// the user: a failure, read or write. Every screen that shows one — the
-/// graph footer, the status screen, the commit editor — asks here, so the
-/// three cannot drift apart (m3/05 review).
+/// status screen, the commit editor — asks here (the graph footer asks
+/// [`graph_problem`] instead, so it can keep a sticky failure's keys whole),
+/// so they cannot drift apart (m3/05 review).
 #[must_use]
 pub(crate) fn problem(status: &Status) -> Option<SanitizedText> {
     match status {
         Status::Ready | Status::Copied { .. } | Status::Busy(_) | Status::Done(_) => None,
-        Status::Failed(message) | Status::Sticky(message) => Some(sanitize_line(message)),
+        Status::Failed(message) => Some(sanitize_line(message)),
+        Status::Sticky { reason, keys: None } => Some(sanitize_line(reason)),
+        Status::Sticky {
+            reason,
+            keys: Some(keys),
+        } => Some(sanitize_line(&format!("{reason} · {keys}"))),
+    }
+}
+
+/// The graph footer's reading of [`Status`]: the same problem, but with the
+/// reason and keys kept apart so [`graft_ui::graph_screen::hints::fit_status_line`]
+/// can cut the reason first and keep the keys whole (ADR-0037 §4,
+/// `hint-bar-redesign`).
+#[must_use]
+pub(crate) fn graph_problem(status: &Status) -> Option<ProblemLine> {
+    match status {
+        Status::Ready | Status::Copied { .. } | Status::Busy(_) | Status::Done(_) => None,
+        Status::Failed(message) => Some(ProblemLine {
+            reason: sanitize_line(message),
+            keys: None,
+        }),
+        Status::Sticky { reason, keys } => Some(ProblemLine {
+            reason: sanitize_line(reason),
+            keys: keys.as_deref().map(sanitize_line),
+        }),
     }
 }
 

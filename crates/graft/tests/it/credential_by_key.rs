@@ -213,12 +213,13 @@ fn wrong_then_right_password_pushes() {
     let state = push_answering(&app, &state, "the refused push", WRONG, &mut seen);
 
     match &state.status {
-        Status::Sticky(line) => {
+        Status::Sticky { reason, keys } => {
             assert!(
-                line.starts_with("authentication failed"),
-                "the line names the failure: {line}"
+                reason.starts_with("authentication failed"),
+                "the line names the failure: {reason}"
             );
-            assert!(line.contains("P to try again"), "{line}");
+            let keys = keys.as_deref().unwrap_or_default();
+            assert!(keys.contains("P to try again"), "{keys}");
         }
         other => panic!("a wrong password must leave a sticky line: {other:?}"),
     }

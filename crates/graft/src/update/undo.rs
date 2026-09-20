@@ -99,7 +99,7 @@ pub fn undone(
             refresh(state, applied.refresh, next_id)
         }
         Undone::Incomplete { applied, error } => {
-            state.status = Status::Sticky(format!(
+            state.status = Status::sticky(format!(
                 "{} \u{2014} could not confirm it fully: {error}",
                 applied.entry.description
             ));
@@ -127,7 +127,7 @@ pub fn undone(
             // refresh of its own, and that refresh finishing would wipe the
             // reason off the screen before it could be read (m3/05 review,
             // Major 7).
-            state.status = Status::Sticky(error);
+            state.status = Status::sticky(error);
             match what {
                 Some(what) => refresh(state, what, next_id),
                 None => Vec::new(),
@@ -430,7 +430,7 @@ mod tests {
         );
         assert_eq!(
             state.status,
-            Status::Sticky("refs/heads/main is not where it was".to_owned())
+            Status::sticky("refs/heads/main is not where it was".to_owned())
         );
         assert!(commands.is_empty(), "nothing ran: {commands:?}");
     }

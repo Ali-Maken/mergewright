@@ -489,7 +489,23 @@ pub enum Status {
     /// than the rule and then read as a lie at the three sites that use it
     /// for a failed *read* (m3/05 review, Major 7). What it means is
     /// "sticky": dismissed by hand, never by a later job.
-    Sticky(String),
+    ///
+    /// Split into `reason` and `keys` (`hint-bar-redesign`, ADR-0037 §4) so
+    /// the graph footer can keep `keys` whole and cut `reason` first when
+    /// the line does not fit — a blind cut once lost the very key the
+    /// message was naming (`push rejected: … · p pull · P force` at 80
+    /// columns, `m4-07-acceptance` M2). `keys` is `None` for the (common)
+    /// message with no key to keep.
+    Sticky {
+        /// What went wrong, in words.
+        reason: String,
+        /// The key(s) that answer it, worded as they'd read in the hint bar
+        /// (`"p pull · P force"`). Only `remote_failed` builds `Some` today
+        /// — it parses `ops`' "reason · keys" convention out of the failure
+        /// line it is handed, since `graft-ops` is out of this ticket's
+        /// crate set.
+        keys: Option<String>,
+    },
     /// `y` sent the selected commit's SHA to the terminal's clipboard
     /// request (OSC 52); `short` is its first seven hex digits. Says what
     /// Graft sent, not that the clipboard has it: nothing comes back to
@@ -504,6 +520,17 @@ pub enum Status {
     /// A working-tree write finished, in the journal's own words (`stage
     /// src/a.rs`). Cleared by the next key, like `Copied`.
     Done(String),
+}
+
+impl Status {
+    /// A sticky failure with no keys to keep whole — the common case; every
+    /// site that once wrote `Status::Sticky(reason)` writes this now.
+    pub fn sticky(reason: impl Into<String>) -> Status {
+        Status::Sticky {
+            reason: reason.into(),
+            keys: None,
+        }
+    }
 }
 
 /// A terminal size in character cells.

@@ -54,18 +54,12 @@ impl Widget for GraphScreen<'_> {
             buf.set_line(area.x, y, &styled, area.width);
         }
 
-        // Planned over exactly the rows drawn, expanded or not: the hint
-        // has to know whether there is anything to collapse.
-        let fold = self
-            .view
-            .compaction
-            .plan(rows.iter().map(|entry| &*entry.line.row));
         if body.height > 0 {
             self.body(body, rows, applied.as_ref(), buf);
         }
 
         if area.height > 1 {
-            let (text, token) = self.footer_line(body, rows, applied.as_ref(), &fold, width);
+            let (text, token) = self.footer_line(body, rows, applied.as_ref(), width);
             let footer = Line::styled(fit(&text, width), foreground(self.theme, token));
             buf.set_line(area.x, area.bottom() - 1, &footer, area.width);
         }
