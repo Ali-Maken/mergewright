@@ -466,8 +466,10 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M4/05 review | env::args() non-UTF-8 argv panic — closed: cli::from_process uses args_os/var_os, the only argv reader in crates/graft/src | closed | M4 |
 | M4/05 review | 11 Minors in docs/reviews/m4-05-remote-keys.md not yet triaged | unverified | M4 |
 | M4/06 | Sanitisation of remote text is convention, not type-enforced; a third path could skip it. SSH credential path untested (HTTP only) | unverified | M5 |
-| M4/06 review | **SECURITY** — the typed password lives in a plain TextField String, cloned by update() on every event and freed unzeroed; only Answer/Secret zeroes. User decision (ADR-0037): zeroizing buffer in M5's **first** group, never logged or captured | broken (security) | M5 (first group) |
 | M4/06 review | 9 Minors in docs/reviews/m4-06-credential-prompt-wiring.md not yet triaged | unverified | M4 |
+| M5/01 | Zero-after-drop of the password buffer cannot be proven from safe Rust — `zeroize`'s volatile write + barrier was verified by source inspection, not by observing freed memory | unverified | not planned |
+| M5/01 | The m4-03 and m4-04 pty-driven captures under `docs/shots/` still show the old 7-glyph mask; they need regenerating with `m4_walk --capture`, then `scripts/contact-sheet.sh m4` | broken (stale capture) | M5 (acceptance, group 11) |
+| M5/01 | `graft-fixtures` port-drop timing test failed once under load and passed on re-run; not reproduced since | unverified | M5 |
 | M4/05 fix | Esc cannot cancel u/U at all — **reclassified a bug by the user (ADR-0037), M5 ticket**: between-step stop check + rollback in graft-ops restore::execute | broken (bug, ticketed) | M5 |
 | M4/05 fix | Proof is that CancelJob is never sent, not that a mid-undo cancel is survived: no repo builds an undo long enough to press Esc | unverified | M5 |
 | M4/07 | Ctrl+R race leaves an old history job uncancelled — **reclassified a bug by the user (ADR-0037), M5 ticket** | broken (bug, ticketed) | M5 |
