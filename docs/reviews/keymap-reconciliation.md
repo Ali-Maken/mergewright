@@ -1,5 +1,10 @@
 # Keymap reconciliation (2026-09-20)
 
+**The tables this review proposed now live in `docs/design/02-keymap.md`**
+(ADR-0037, decision 1 — that doc is the single source of truth for keys).
+What follows is the review's findings and reasoning, kept for history; do
+not re-derive tables from here, they've been superseded by the doc.
+
 Read: `docs/design/02-keymap.md` (whole), `docs/design/01-view-mockups.md` §1.5–1.13,
 PROMPT.md §3, §4, §8; `docs/design-notes/m4-remotes.md`; the key-routing source named in
 the dispatch (below). No other source read.
@@ -95,21 +100,8 @@ M6 (conflict resolver) and M7 (interactive-rebase editor) are both dense, full-a
 reuse panes, and both only work if they **claim the keyboard wholesale** — every key,
 not just the ones they name — the same way the commit editor already does
 (`commit_editor.rs::editor_key`: "the editor claims every key but `Ctrl+C`"). The doc
-never says this for either. §2.1 lists interactive rebase's `p r e s f d` and the
-resolver's `o t b e` as *scoped reuse*, which is necessary but not sufficient: `p` is
-also global pull, `r` is also global rebase-onto-selection, `f` is also global fetch,
-`d` is also the (unbuilt) graph-row discard, `e` is also open-in-$EDITOR, `M` (resolver's
-mergetool launch, §2.6) is also global Map toggle, `n`/`N` (resolver's next/prev
-conflicted hunk) are also global search-hit stepping. Every one of these only stays a
-*reuse* and not a *collision* if the global bindings are not live while the pane has
-focus — which is true today only because the commit editor is coded that way and the
-doc never states it as the general rule for "claims the keyboard" panes. **Recommend**:
-add one sentence to §2.1 — these panes (commit editor, interactive rebase editor,
-conflict resolver, and by the same logic the stash save prompt and search prompt, which
-already do this in code) are **modal**: they see every key first and answer or discard
-it; nothing underneath moves. Name it once, point every affected §2.x section at it,
-done — this is a documentation gap, not a design one; the code already behaves this way
-everywhere it matters.
+never says this for either — now fixed: §2.1 and §2.6/§2.7 in `02-keymap.md` state the
+modal rule explicitly.
 
 Blame (M7) is the one exception worth naming: it reuses `n`/`N` but isn't alphabet-dense
 (`Enter`, `n`/`N`, `^`, `Space`) and doesn't need the wholesale claim — a normal
@@ -121,13 +113,11 @@ and branch comparison read as views on the existing graph/detail machinery, subm
 display as a sidebar row (`Enter` to open, per PROMPT.md §4 "appear in the sidebar and
 can be opened"). Nothing to reserve now; flag if M7's own design pass finds otherwise.
 
-**Add now, before M5–M7 planning starts,** so nobody re-discovers them as "free": `x`,
-`L`, `+`, `M`(Map)'s own table, `s`(stash save) — see the replacement tables below.
-
 ## 3. What rule governs the namespace
 
-The three conventions the dispatch names are all partly true and none is written down as
-a rule anyone could check a new binding against. Findings, then a proposed rule.
+The three conventions the dispatch names were all partly true and none was written down
+as a rule anyone could check a new binding against. The proposed rule (now in
+`02-keymap.md` §2.1) and its reasoning:
 
 - **"Lowercase acts on the cursor"** holds for `Space`, `s`, `d`, `y`, `x`, and `e` in the
   detail pane — genuine cursor/selection reads. It does **not** hold for `c`, `a`, `f`,
@@ -140,124 +130,41 @@ a rule anyone could check a new binding against. Findings, then a proposed rule.
   in the dispatch is a simplification worth dropping, not a rule worth codifying.
 - **"UPPERCASE opens a place"** holds for `S`, `J`, `M` cleanly: each opens an overlay,
   the same letter (or `Esc`) closes it. `O` and `F` are the same shape but toggle a mode
-  over the *same* screen rather than opening a separate one — worth keeping as the same
-  family, named as such, rather than a fourth unstated exception.
+  over the *same* screen rather than opening a separate one — kept as the same family,
+  named as such, rather than a fourth unstated exception.
 - **"UPPERCASE is sometimes the pair of its lowercase"** is true for exactly two letters
   — `u`/`U` (undo/redo) and `n`/`N` (next/previous, whatever "hit" the active scope
   means) — and false everywhere else it looks tempting. `o`/`O` is the tell: `O` is a
   place-toggle (the overview strip) under the *first* rule, and lowercase `o` means
   "take ours" in the conflict resolver and "Open…" on the first-run screen — two
   meanings, neither related to `O`, coexisting only because each lives in a scope the
-  other never has focus in. Nothing is broken (rule 1's modal/focus-scoping covers it),
-  but the doc's own framing of "o/O" as one of its three running conventions is
-  describing a coincidence, not a design. Retire it explicitly rather than let the next
-  reader treat `o`/`O` as a real pair and try to make a fourth binding "complete" it.
+  other never has focus in. Nothing is broken (the modal/focus-scoping rule covers it),
+  but framing "o/O" as a running convention described a coincidence, not a design.
+  Retired from `02-keymap.md`'s text for that reason.
 
-**Proposed rule** (for `02-keymap.md` §2.1, replacing the current three-conventions
-paragraph):
+**Grandfather list** — what the rule changes and what it leaves alone (now folded into
+`02-keymap.md` §2.1; kept here for the reasoning behind each row):
 
-1. **Lowercase is one verb, chosen for its mnemonic, live everywhere its object exists.**
-   Where the verb has a cursor object (a row, file, hunk, line, branch, hunk-conflict),
-   it acts on whatever's selected. Where it doesn't (`c` commit, `a` amend, `f` fetch,
-   `p` pull, `i` ignore), it acts on ambient state (`HEAD`, current branch, all remotes).
-   Never two verbs on one letter while both are live in the same focus.
-2. **UPPERCASE is reserved for exactly two jobs, and nothing else:**
-   - **Opening/toggling a place or mode** (`S` `J` `M` `O` `F` `H`): the same letter, or
-     `Esc`, always closes what it opened.
-   - **The reverse direction of a lowercase pair**, limited to `u`/`U` and `n`/`N` — no
-     new letter joins this category by resemblance alone; a proposal has to *be* a
-     direction-reversal, not just look like one (`o`/`O` never qualified).
-3. **A pane that reuses the full alphabet for its own vocabulary (interactive rebase,
-   conflict resolver, the commit editor, the stash save prompt, the search prompt) is
-   modal: it answers every key itself, control-modified ones included, with a stated
-   exception for `Ctrl+C`.** Nothing outside it is live while it has focus. This is
-   already true in code everywhere it matters; §2.1 should say so once, and each
-   affected §2.x section should point at it instead of re-implying it.
-4. **A same-shift-key pair that means two unrelated verbs** (`p` pull / `P` push) is
-   allowed **only** when: (a) the pair are natural opposites a git user already holds in
-   one hand (pull/push, not e.g. `p`/`P` for "pick"/something unrelated), and (b) the
-   irreversible one is never one keystroke from safe — it sits behind a confirm box
-   every time (M4's push box; a slipped `Shift` still lands on `[ Cancel ]`, never on a
-   running command). Any future pair proposed under this exception clears both bars or
-   doesn't get the letters.
-5. Numerals (`1`, and any that follow) are outside this rule entirely — they're view
-   filters, not verbs, and carry no case.
-
-**Grandfather list** — what the rule above changes and what it leaves alone:
-
-| Binding | Under the new rule | Action |
+| Binding | Under the new rule | Action taken |
 |---|---|---|
-| `S` `J` `M` | Rule 2a, place-toggle | Keep, unchanged |
-| `O` `F` `H` | Rule 2a, mode-toggle over the same screen | Keep; note explicitly as the same family as place-toggles, not a third thing |
-| `u`/`U`, `n`/`N` | Rule 2b, the only two direction pairs | Keep, name as the closed set |
-| `o` (resolver "ours", first-run "Open") vs `O` (strip) | Not a pair; each in its own modal/focus scope | Keep both; retire the "o/O pair" framing from §2.1's text |
-| `p`/`P` (pull/push) | Rule 4, box-gated opposite pair | Keep; write rule 4's two conditions into §2.3/§2.14 next to the binding so the exception is legible, not implicit |
-| `B`/`X` (commit-graph offer) | Neither 2a nor 2b — a one-shot decision on a modal banner that appears once per session, not a place and not a direction | Grandfather explicitly as a named third, narrow exception: one-shot modal-banner initials, only usable while the banner is the only modal thing on screen (`commit_graph_actionable()` already enforces this) |
-| Interactive rebase `p r e s f d`, resolver `o t b e n N M`, commit editor's whole alphabet, stash save prompt, search prompt | Rule 3, modal reuse | No change to the bindings; add the modal-claim sentence to §2.1 and cross-reference it from §2.6/§2.7/§2.9/§2.10 |
-| `F2`/`F3` (screen/tier diagnostics) | Outside the letter namespace (function keys); source already says "not one of DESIGN.md's keymap" | Leave as an acknowledged, intentional gap — low value to formalize, no collision risk |
+| `S` `J` `M` | Rule 2a, place-toggle | Kept, unchanged |
+| `O` `F` `H` | Rule 2a, mode-toggle over the same screen | Kept; named as the same family as place-toggles |
+| `u`/`U`, `n`/`N` | Rule 2b, the only two direction pairs | Kept, named as the closed set |
+| `o` (resolver "ours", first-run "Open") vs `O` (strip) | Not a pair; each in its own modal/focus scope | Kept both; "o/O pair" framing retired from §2.1's text |
+| `p`/`P` (pull/push) | Rule 4, box-gated opposite pair | Kept; the two conditions now sit in §2.1 next to the model sentence |
+| `B`/`X` (commit-graph offer) | Neither 2a nor 2b — a one-shot decision on a modal banner that appears once per session, not a place and not a direction | Grandfathered explicitly in §2.1 as a named third, narrow exception |
+| Interactive rebase `p r e s f d`, resolver `o t b e n N M`, commit editor's whole alphabet, stash save prompt, search prompt | Rule 3, modal reuse | No change to the bindings; the modal-claim sentence is in §2.1, cross-referenced from §2.6/§2.7/§2.9/§2.10/§2.14 |
+| `F2`/`F3` (screen/tier diagnostics) | Outside the letter namespace (function keys); not one of `02-keymap.md`'s tables | Left as an acknowledged, intentional gap — low value to formalize, no collision risk |
 
 ---
 
-## Proposed replacement — `02-keymap.md` tables
+## Since this review: M4 checkpoint (ADR-0037)
 
-Not written into the design doc; the user approves first. Deltas only, against the
-current file (line refs are to today's `docs/design/02-keymap.md`).
-
-**§2.1 principles** — replace the three-bullet "Focus-scoped panes…" list and its four
-named places with:
-
-> **Lowercase, UPPERCASE and modal reuse follow one rule** (see the keymap
-> reconciliation review, 2026-09-20, for the reasoning): lowercase always means one verb
-> for its mnemonic, applied to the cursor where the verb has one and to ambient state
-> (`HEAD`/current branch/all remotes) where it doesn't; UPPERCASE only opens/toggles a
-> place or mode (closed by the same letter or `Esc`) or reverses one of the two
-> direction pairs, `u`/`U` and `n`/`N`; a pane dense enough to need the alphabet for its
-> own vocabulary (the commit editor, the interactive rebase editor, the conflict
-> resolver, the stash save prompt, the search prompt) is **modal** — it answers every
-> key itself, `Ctrl+C` excepted, and nothing outside it is live while it has focus.
-> `B`/`X` on the commit-graph offer banner are a named, narrow exception: one-shot
-> initials on a banner that appears once per session and claims the keyboard the same
-> way. `p`/`P` (pull/push) are the model for any future same-shift-key opposite pair: box
-> a irreversible half, never let a slipped `Shift` run it.
-
-**§2.3 graph/history pane** — add rows (insert after `y`, keeping the existing ones
-unchanged):
-
-| Key | Action |
-|---|---|
-| `x` | Mark the selected commit as the compare base, or complete/clear a compare against it |
-| `+` | Expand/collapse lanes folded behind `+N` (§3.5) |
-
-And correct the two rows already there: `d` and `s` should read *"only reachable once the
-detail pane is open (`Enter`) — see §2.4"* rather than implying they act on the collapsed
-row directly, until a ticket builds that.
-
-**§2.5 diff pane** — add:
-
-| Key | Action |
-|---|---|
-| `L` | Load the full file (past the truncation point, PROMPT.md §6.3) |
-
-**New §2.3a — Map view** (insert after §2.3, before §2.4; renumber downstream sections by
-one, or letter it 2.3a to avoid a renumber — conductor's call):
-
-| Key | Action |
-|---|---|
-| `M` | Open (from the graph pane) or close the Map view |
-| `↑`/`↓`, `j`/`k` | Move the selected branch row |
-| `Enter` | Seek the graph to the selected branch's tip and close the view |
-| `Esc` | Close |
-
-**§2.9 stash list** — add, before the existing rows:
-
-| Key | Action |
-|---|---|
-| `s` | Save a new stash (message prompt; `Tab` switches staged-only vs everything, `Enter` saves, `Esc` cancels) |
-
-and mark `b` *"create a branch from this stash — planned, not yet built; homed at M5"*
-rather than presenting it as shipped.
-
-**§2.6 conflict resolver, §2.7 interactive rebase editor** — add one line to each,
-pointing at the new §2.1 modal-reuse rule, e.g.: *"This pane is modal (§2.1): every key
-is its own, `Ctrl+C` excepted; the global bindings above (`p` pull, `r` rebase, `f`
-fetch, `M` Map, `n`/`N` search) are not live while it has focus."*
+Decision 1 made `docs/design/02-keymap.md` the single source of truth for keys and
+directed this review's tables to be written in. Done 2026-09-20: `f`/`p`/`P` (fetch/pull/
+push, M4, now shipped) and the credential prompt's modal keys are also now in the doc —
+the credential prompt table needed one further correction beyond what this review
+proposed: `update/credential.rs::credential_key` shows the prompt has exactly one field
+open at a time (git asks username, then password, one question per turn), so `Tab`
+"move between fields" as originally worded in `02-keymap.md` didn't match the code;
+`02-keymap.md` §2.14 now describes the single-field behaviour as built.
