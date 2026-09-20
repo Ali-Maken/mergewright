@@ -466,11 +466,11 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M4/05 review | env::args() non-UTF-8 argv panic — closed: cli::from_process uses args_os/var_os, the only argv reader in crates/graft/src | closed | M4 |
 | M4/05 review | 11 Minors in docs/reviews/m4-05-remote-keys.md not yet triaged | unverified | M4 |
 | M4/06 | Sanitisation of remote text is convention, not type-enforced; a third path could skip it. SSH credential path untested (HTTP only) | unverified | M5 |
-| M4/06 review | Typed password lives in a plain TextField String, cloned by update() on every event and freed unzeroed; only Answer/Secret zeroes. Fixing it means a zeroing masked field in graft-ui + no per-event clone | broken (limitation, user's call) | M5 |
+| M4/06 review | **SECURITY** — the typed password lives in a plain TextField String, cloned by update() on every event and freed unzeroed; only Answer/Secret zeroes. User decision (ADR-0037): zeroizing buffer in M5's **first** group, never logged or captured | broken (security) | M5 (first group) |
 | M4/06 review | 9 Minors in docs/reviews/m4-06-credential-prompt-wiring.md not yet triaged | unverified | M4 |
-| M4/05 fix | Esc cannot cancel u/U at all. Restoring it needs a between-step stop check + rollback in graft-ops restore::execute | broken (deliberate) | M5 |
+| M4/05 fix | Esc cannot cancel u/U at all — **reclassified a bug by the user (ADR-0037), M5 ticket**: between-step stop check + rollback in graft-ops restore::execute | broken (bug, ticketed) | M5 |
 | M4/05 fix | Proof is that CancelJob is never sent, not that a mid-undo cancel is survived: no repo builds an undo long enough to press Esc | unverified | M5 |
-| M4/07 | Ctrl+R race leaves an old history job uncancelled (found by the acceptance walk) | broken | M5 |
+| M4/07 | Ctrl+R race leaves an old history job uncancelled — **reclassified a bug by the user (ADR-0037), M5 ticket** | broken (bug, ticketed) | M5 |
 | M4/07 | Auth failure line shows the full URL, not host:port | broken (cosmetic) | M5 |
 | M4/07 | Walk cannot cover SSH, TLS, a real credential helper, colour, 120x40 or real terminals — the user's eye and daily use are the tier for those | unverified | M5 |
 | M4 | Clone a repository — not in M4 | unverified by design (not broken) | M8 |
@@ -480,7 +480,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M4 | Stall notice or timeout on a slow remote (Esc is the only way out) | unverified by design (not broken) | M7 |
 | M4 | `q` confirming while an operation runs | unverified by design (not broken) | M8 |
 | M4 | SSH askpass env is set but unverified (HTTP is the proven path) | unverified | M5 (first field note) |
-| M4 | Remote footer hints only fit at ≥144 columns (not 156 — corrected by the m4-03 review); at 80/120 they are absent | unverified by design (user's eye) | M5 |
+| M4 | Remote footer hints absent below 144 columns — **rejected by the user (ADR-0037)**: the bar must show the 3 most relevant keys for the context at 80 and 120, never hide them all. M5 redesign | broken (design) | M5 |
 | M4/07 | Push box draws no frame (acceptance finding 3) | broken | M5 |
 | M4/07 | At 80 cols the rejection hint cuts to `or P to fo…` and the journal push row to `not undoa…` (finding 4) | broken | M5 |
 | M4/07 | `last_rejected_push` is memory-only: a restart loses the lease offer (finding 5) | broken | M5 |

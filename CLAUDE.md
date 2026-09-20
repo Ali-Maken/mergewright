@@ -64,6 +64,7 @@ escalation and checkpoint policy are the conductor's — they live in
 - **Never stage or commit while another agent works the same worktree.** `git add` writes the shared index; the next commit from either side takes it. The conductor commits between helpers.
 - **If you compact mid-ticket, say so.** The conductor splits the remainder.
 - **Builders never read `PROGRESS.md` or `KNOWN_GAPS.md`.** A builder's findings go in its ticket.
+- **A milestone's captures ship as one contact sheet** (ADR-0037): one file concatenating every capture in ticket order, each under its "what right looks like" line. The per-scenario files stay; the sheet is assembled from them. The user reviews by scrolling once.
 - **Every milestone ends with an acceptance ticket:** one command walking the scenarios, a `TESTING.md` checklist saying concretely what right looks like per scenario, captures under `docs/shots/`. Promises — M1 "the shape of history is obvious at a glance"; M3 "you cannot lose work"; M5 "you see the result before you confirm"; M6 "a real conflict is resolvable without leaving the app".
 - **The user's daily use is a test tier, not a fallback**, from the day M3 lands. What it finds goes in `docs/field-notes.md` the same day.
 - **Architecture and readability are hard rules** (PROMPT.md 6.1, 6.2). Read `ARCHITECTURE.md` before adding or moving modules; use `codebase-design` when you do. Never add a dependency that breaks the crate rules.
