@@ -96,7 +96,7 @@ pub fn history_verbs(
 
 /// `Checkout <b>` for each local branch on the row that `HEAD` is not
 /// already on; on a row carrying no local branch at all, `Checkout <sha7>
-/// (detached)` instead.
+/// , detached` instead.
 fn checkout_verbs(
     verbs: &mut Vec<HistoryVerb>,
     id: Oid,
@@ -129,7 +129,7 @@ fn checkout_verbs(
     }
     if !any_local {
         verbs.push(verb(
-            &format!("Checkout {here} (detached)"),
+            &format!("Checkout {here}, detached"),
             Operation::Checkout(CheckoutParams {
                 to: CheckoutTarget::Detached(id),
                 head_before,
@@ -186,13 +186,13 @@ fn merge_and_rebase_verbs(
     ));
 }
 
-/// `Revert <sha7>`, or `Revert <sha7> (-m 1)` on a merge: git refuses a
+/// `Revert <sha7>`, or `Revert <sha7>, -m 1` on a merge: git refuses a
 /// merge without `-m`, so the label says which side is kept rather than
 /// offering a verb that cannot run.
 fn revert_verb(id: Oid, parents: &[Oid], subject: &str, head: &Tip, here: &str) -> HistoryVerb {
     let is_merge = parents.len() > 1;
     let (label, mainline) = if is_merge {
-        (format!("Revert {here} (-m 1)"), Some(1))
+        (format!("Revert {here}, -m 1"), Some(1))
     } else {
         (format!("Revert {here}"), None)
     };
@@ -212,13 +212,18 @@ fn revert_verb(id: Oid, parents: &[Oid], subject: &str, head: &Tip, here: &str) 
     )
 }
 
-/// `Reset <cur> to here (mixed)` and `(hard)`. `--soft` is not offered: the
+/// `Reset <cur> to here, mixed` and `, hard`. `--soft` is not offered: the
 /// design note lists two.
+///
+/// The mode is **not** parenthesised. A trailing `(x)` anywhere in this menu
+/// means "that letter is live right now, press it and skip the menu"
+/// (`docs/design/02-keymap.md` §2.1); `mixed` and `hard` are reset modes, not
+/// keys, and wore that shape until m5-history-and-ghost-preview/12.
 fn reset_verbs(verbs: &mut Vec<HistoryVerb>, id: Oid, head: &Tip) {
     let cur = short_name_of(&head.name);
     for (mode, word) in [(ResetMode::Mixed, "mixed"), (ResetMode::Hard, "hard")] {
         verbs.push(verb(
-            &format!("Reset {cur} to here ({word})"),
+            &format!("Reset {cur} to here, {word}"),
             Operation::Reset(ResetParams {
                 target: ResetTarget::Head {
                     branch: head.clone(),

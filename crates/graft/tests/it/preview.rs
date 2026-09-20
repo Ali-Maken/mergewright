@@ -562,6 +562,53 @@ fn menu_labels(state: &AppState) -> Vec<String> {
         .collect()
 }
 
+/// The menu is **opaque**: on every row it draws, everything right of the
+/// label is blank, out to the end of the line.
+///
+/// The widget pads each of its own rows, so the popup's own columns were
+/// never the problem — the popup is only as wide as its longest label, and
+/// the graph rows it floats over kept drawing their date and sha columns
+/// beside each verb. In a character grid that reads as if the verb were
+/// bound to that sha (`Copy SHA (y)  …  now  6d3bd01`). The user found it by
+/// eye in `docs/shots/m5-ui-context-menu-verbs-80x24.txt`; this is the
+/// assertion the capture could not make (m5-history-and-ghost-preview/12).
+///
+/// `frame` trims each line's trailing blanks, so an opaque row is exactly
+/// `" {label}"` and a bleeding one is longer. Both capture widths, because
+/// the bleed is wider and louder at 160 columns than at 80.
+#[test]
+fn the_context_menu_is_opaque_on_every_row_it_draws() {
+    let scratch = forked();
+    let (app, state) = App::open(scratch.path());
+    let state = menu_on_mains_row(&app, state);
+    let labels = menu_labels(&state);
+    assert!(labels.len() > 8, "the fixture's menu is long: {labels:?}");
+
+    for (columns, rows) in [(80_u16, 24_u16), (160, 48)] {
+        let drawn = frame(&state, columns, rows);
+        for label in &labels {
+            let wanted = format!(" {label}");
+            let line = drawn
+                .iter()
+                .find(|line| line.starts_with(&wanted))
+                .unwrap_or_else(|| {
+                    panic!(
+                        "{wanted:?} is drawn at {columns}x{rows}:\n{}",
+                        drawn.join("\n")
+                    )
+                });
+            assert_eq!(
+                line,
+                &wanted,
+                "at {columns}x{rows} the menu row {label:?} carries what was \
+                 underneath it to the right of its label:\n{}",
+                drawn.join("\n")
+            );
+        }
+    }
+    app.close();
+}
+
 /// `.` on a real branch row lists the history verbs, named against the real
 /// branches, and the widget really draws them.
 #[test]
@@ -575,8 +622,8 @@ fn the_context_menu_lists_its_history_verbs_and_draws_them() {
         "Checkout main",
         "Merge main into feature (m)",
         "Rebase feature onto main (r)",
-        "Reset feature to here (mixed)",
-        "Reset feature to here (hard)",
+        "Reset feature to here, mixed",
+        "Reset feature to here, hard",
         "Delete branch main",
     ] {
         assert!(
@@ -671,8 +718,44 @@ fn capture_context_menu_for_docs_shots() {
 
     for (label, columns, rows) in [("80x24", 80u16, 24u16), ("160x48", 160, 48)] {
         let drawn = frame(&state, columns, rows);
-        let mut out = format!(
-            "# m5-ui-context-menu-verbs-{label}.txt: {columns}x{rows}, drawn by `view::view`\n\
+        let mut out = context_menu_caption(label, columns, rows);
+        out.push('\n');
+        for line in &drawn {
+            out.push_str(&line.replace(&home, "/code/api"));
+            out.push('\n');
+        }
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/shots")
+            .join(format!("m5-ui-context-menu-verbs-{label}.txt"));
+        std::fs::write(&path, &out).expect("docs/shots is writable");
+        println!("wrote {} ({} bytes)", path.display(), out.len());
+    }
+    app.close();
+}
+
+/// The "what right looks like" block the M5 contact sheet puts this capture
+/// under (ADR-0037).
+///
+/// Every line here is a claim the user checks by eye, so every line has to be
+/// true of **this** width. The block was byte-identical in both files until
+/// m5-history-and-ghost-preview/12, which left the 160-column capture
+/// claiming to be the 80-column one.
+fn context_menu_caption(label: &str, columns: u16, rows: u16) -> String {
+    let width_line = if columns <= 80 {
+        format!(
+            "#  - At {columns} columns \u{2014} the narrow end \u{2014} the menu still fits\n\
+             #    inside the graph pane rather than running off it.\n"
+        )
+    } else {
+        format!(
+            "#  - At {columns} columns the graph's date and sha columns sit far to the\n\
+             #    right of the menu, and they stop dead at the menu's own rows: the\n\
+             #    popup clears the whole band it stands on, so no verb has a stray\n\
+             #    sha beside it.\n"
+        )
+    };
+    format!(
+        "# m5-ui-context-menu-verbs-{label}.txt: {columns}x{rows}, drawn by `view::view`\n\
              # from a real AppState — a real repository (`main` three commits, `feature`\n\
              # forked off the first with two of its own, `feature` checked out), opened\n\
              # over the real job pool, cursor moved to `main`'s row and `.` pressed\n\
@@ -687,34 +770,29 @@ fn capture_context_menu_for_docs_shots() {
              #  - The menu is anchored under `main`'s row and is wide enough for its\n\
              #    longest label, with the cursor on the first item.\n\
              #  - The row's own actions come first (`Copy SHA (y)`, `Compare with this\n\
-             #    (x)`, `Open details (\u{23ce})`), then the history verbs, then the keys the\n\
-             #    hint bar drops (`Fetch (f)` \u{2026} `Undo (u)`).\n\
+             #    (x)`, `Open details (\u{23ce})`), then the history verbs, then the ambient\n\
+             #    ones (`Fetch (f)` \u{2026} `Undo (u)`). The menu lists every verb valid for\n\
+             #    this row at every width \u{2014} it does not filter against the hint bar,\n\
+             #    because a verb you can only discover at 160 columns is the failure\n\
+             #    ADR-0039 exists to prevent.\n\
+             #  - The menu is opaque. On each of its rows, everything right of the\n\
+             #    label is blank out to the edge of the pane: no date or sha from the\n\
+             #    commit row underneath survives beside a verb, where it would read as\n\
+             #    if the verb were bound to that sha.\n\
              #  - The history verbs name the real branches, not placeholders: `Checkout\n\
              #    main`, `Merge main into feature (m)`, `Rebase feature onto main (r)`,\n\
-             #    `Cherry-pick <sha7>`, `Revert <sha7>`, `Reset feature to here\n\
-             #    (mixed)`/`(hard)`, `Delete branch main`. `feature` is the branch\n\
+             #    `Cherry-pick <sha7>`, `Revert <sha7>`, `Reset feature to here,\n\
+             #    mixed`/`, hard`, `Delete branch main`. `feature` is the branch\n\
              #    checked out, `main` is the row under the cursor.\n\
              #  - No verb names the branch you are standing on where git would refuse\n\
              #    it: there is no `Checkout feature` and no `Delete branch feature`.\n\
-             #  - A trailing `(key)` means the same thing everywhere in the menu:\n\
-             #    next time you can skip it. `Merge` and `Rebase` carry one because\n\
-             #    `m` and `r` exist; checkout, cherry-pick, revert, reset and the\n\
-             #    deletions own no letter, so they carry none.\n\
+             #  - A trailing `(key)` means one thing everywhere in the menu: that\n\
+             #    letter is live right now, so next time you can skip the menu. Only\n\
+             #    `Merge` and `Rebase` carry one, because only `m` and `r` exist. A\n\
+             #    qualifier that is not a key never wears that shape \u{2014} hence `Reset\n\
+             #    \u{2026}, mixed`, not `(mixed)` (`docs/design/02-keymap.md` \u{a7}2.1).\n\
              #  - Choosing any of them opens a picture, not a write (PROMPT.md \u{a7}1.7).\n\
-             #  - At 80 columns the menu still fits inside the graph pane rather than\n\
-             #    running off it.\n\
+             {width_line}\
              #\n"
-        );
-        out.push('\n');
-        for line in &drawn {
-            out.push_str(&line.replace(&home, "/code/api"));
-            out.push('\n');
-        }
-        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../docs/shots")
-            .join(format!("m5-ui-context-menu-verbs-{label}.txt"));
-        std::fs::write(&path, &out).expect("docs/shots is writable");
-        println!("wrote {} ({} bytes)", path.display(), out.len());
-    }
-    app.close();
+    )
 }

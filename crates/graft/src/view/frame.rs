@@ -17,7 +17,7 @@ use ratatui::Frame;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Style;
-use ratatui::widgets::Widget;
+use ratatui::widgets::{Clear, Widget};
 
 use crate::session::Session;
 use crate::update::remote::ESC_HINT;
@@ -430,11 +430,6 @@ fn draw_tab_strip(
     frame.buffer_mut().set_string(area.x, area.y, text, style);
 }
 
-/// Draws the `.`/right-click popup on top of the graph, when one is open
-/// (`context-actions-menu`, m2-details-and-diffs/12). The widget itself only
-/// paints labels and the reversed cursor row — no theme in its signature —
-/// so the `SurfaceRaised` background is this caller's job, painted on the
-/// buffer before the widget renders over it.
 /// Draws the Ghost Preview box over the graph, when one is open
 /// (m5-history-and-ghost-preview/08).
 ///
@@ -460,6 +455,53 @@ fn draw_preview(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) 
     );
 }
 
+/// The pane an overlay anchored in the graph floats inside: the whole area
+/// when the detail pane is closed, the graph half of the split when it is
+/// open. Pure geometry — the same split `render_graph_with_detail` draws
+/// into, asked again rather than remembered, so the two cannot drift.
+fn primary_pane_area(state: &AppState, area: Rect) -> Option<Rect> {
+    if !state.detail.shown {
+        return Some(area);
+    }
+    let layout = crate::update::detail::effective_layout(
+        state.detail.focus,
+        &state.detail.pane_size,
+        (area.width, area.height),
+    );
+    graft_ui::detail_pane::split_area(layout, area).0
+}
+
+/// The band the popup stands on: its own rows, from its left edge out to the
+/// end of the pane it floats in. Never narrower than the popup itself, so a
+/// pane that somehow ends before the popup does still gets cleared under it.
+fn overlay_band(area: Rect, rect: Rect, pane: Option<Rect>) -> Rect {
+    let rect_right = rect.x.saturating_add(rect.width);
+    let right = pane
+        .map_or(rect_right, |pane| pane.x.saturating_add(pane.width))
+        .max(rect_right);
+    Rect {
+        x: rect.x,
+        y: rect.y,
+        width: right.saturating_sub(rect.x),
+        height: rect.height,
+    }
+    .intersection(area)
+}
+
+/// Draws the `.`/right-click popup on top of the graph, when one is open
+/// (`context-actions-menu`, m2-details-and-diffs/12). The widget paints only
+/// labels and the reversed cursor row — no theme in its signature — so the
+/// `SurfaceRaised` background is this caller's job, painted on the buffer
+/// before the widget renders over it.
+///
+/// The popup is only as wide as its longest label, so clearing its own
+/// rectangle is not enough: the graph rows it floats over keep drawing their
+/// date and sha columns to the right of it, on the popup's own lines, and a
+/// verb reads as if it were bound to the sha sitting beside it — `Copy SHA
+/// (y) … now 6d3bd01`. So the whole band is cleared first, out to the end of
+/// the pane, and only then is the popup's own rectangle tinted and drawn.
+/// The popup itself is not widened (m5-history-and-ghost-preview/12, found
+/// by the user in `docs/shots/m5-ui-context-menu-verbs-80x24.txt`).
 fn draw_context_menu(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) {
     let Some(open) = state.context_menu.as_ref() else {
         return;
@@ -479,6 +521,10 @@ fn draw_context_menu(state: &AppState, frame: &mut Frame, area: Rect, theme: &Th
     if rect.is_empty() {
         return;
     }
+    frame.render_widget(
+        Clear,
+        overlay_band(area, rect, primary_pane_area(state, area)),
+    );
     frame.buffer_mut().set_style(
         rect,
         Style::new().bg(color(theme.token(Token::SurfaceRaised))),
@@ -600,4 +646,71 @@ fn banner_lines(state: &AppState, tier: RenderingTier) -> Vec<SanitizedText> {
         .chain(banner.lines.iter().cloned())
         .map(|line| sanitize_line(&line))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SCREEN: Rect = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 24,
+    };
+
+    fn menu_rect() -> Rect {
+        Rect {
+            x: 0,
+            y: 4,
+            width: 33,
+            height: 15,
+        }
+    }
+
+    /// With no detail pane the band runs to the right edge of the screen, so
+    /// nothing the graph drew survives beside the popup
+    /// (m5-history-and-ghost-preview/12).
+    #[test]
+    fn the_band_runs_to_the_end_of_the_whole_area_when_there_is_no_split() {
+        let band = overlay_band(SCREEN, menu_rect(), Some(SCREEN));
+        assert_eq!(band.x, 0);
+        assert_eq!(band.width, 80, "out to the screen's edge");
+        assert_eq!(band.y, 4);
+        assert_eq!(band.height, 15, "only the popup's own rows");
+    }
+
+    /// With the detail pane open the band stops at the graph's edge: clearing
+    /// past it would erase the pane the user is reading.
+    #[test]
+    fn the_band_stops_at_the_pane_edge_so_the_detail_pane_survives() {
+        let graph = Rect {
+            x: 0,
+            y: 0,
+            width: 48,
+            height: 24,
+        };
+        let band = overlay_band(SCREEN, menu_rect(), Some(graph));
+        assert_eq!(band.width, 48, "the graph's width, not the screen's");
+        assert_eq!(
+            band.x + band.width,
+            48,
+            "the detail pane's first column is untouched"
+        );
+    }
+
+    /// A pane that somehow ends before the popup does still gets cleared
+    /// under the whole popup — the band is never narrower than what it is
+    /// there to cover.
+    #[test]
+    fn the_band_is_never_narrower_than_the_popup_itself() {
+        let narrow = Rect {
+            x: 0,
+            y: 0,
+            width: 10,
+            height: 24,
+        };
+        assert_eq!(overlay_band(SCREEN, menu_rect(), Some(narrow)).width, 33);
+        assert_eq!(overlay_band(SCREEN, menu_rect(), None).width, 33);
+    }
 }
