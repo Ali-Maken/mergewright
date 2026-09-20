@@ -485,4 +485,4 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M4/07 | At 80 cols the rejection hint cuts to `or P to fo…` and the journal push row to `not undoa…` (finding 4) | broken | M5 |
 | M4/07 | `last_rejected_push` is memory-only: a restart loses the lease offer (finding 5) | broken | M5 |
 | M4/03 review | 10 Minors in docs/reviews/m4-03-ui-credential-prompt-and-hints.md not yet triaged | unverified | M5 |
-| M4/03 review | Debug for FieldView redacts the masked text but leaks its length via `cursor` | broken | M4 (fix round) |
+| M4/03 review | Debug for FieldView cursor leak — closed by the 03 fix round (cursor redacted while masked) | closed | M4 |
