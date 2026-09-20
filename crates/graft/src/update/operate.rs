@@ -1812,7 +1812,7 @@ mod tests {
         assert!(
             !commands
                 .iter()
-                .any(|command| matches!(command, Command::ReadHistory(_))),
+                .any(|command| matches!(command, Command::ReadHistory(..))),
             "a working-tree failure must not restart the walk: {commands:?}"
         );
         assert_eq!(state.operating, None);
@@ -1900,7 +1900,7 @@ mod tests {
         assert!(
             commands
                 .iter()
-                .any(|command| matches!(command, Command::ReadHistory(_))),
+                .any(|command| matches!(command, Command::ReadHistory(..))),
             "refs moved: {commands:?}"
         );
         assert!(commands.contains(&Command::ReadRefs), "{commands:?}");
@@ -1981,7 +1981,7 @@ mod tests {
         assert!(
             !commands
                 .iter()
-                .any(|command| matches!(command, Command::ReadHistory(_))),
+                .any(|command| matches!(command, Command::ReadHistory(..))),
             "{commands:?}"
         );
     }

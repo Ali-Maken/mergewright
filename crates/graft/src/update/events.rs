@@ -318,12 +318,20 @@ pub enum Command {
     /// Find out whether the `git` on this machine is new enough (2.38,
     /// DESIGN.md §3.1). Runs once, at startup: it shells out, so it is a job.
     CheckSystemGit,
-    /// Walk history in this order and bring the commits back.
+    /// Walk history in this order and bring the commits back, under an id
+    /// `update` chose itself.
+    ///
+    /// The id is minted here rather than by the pool because
+    /// [`crate::update::AppState::awaiting`] has to name the walk from the
+    /// moment it is asked for: a `Ctrl+R` in the window before the pool's
+    /// `Started` event lands would otherwise have no name to cancel, and the
+    /// walk it meant to replace would stay parked on a worker
+    /// (m5-history-and-ghost-preview/05).
     ///
     /// The order asked for is not always the order that comes back: without a
     /// commit-graph file a topological walk falls to commit date, and says so
     /// (ADR-0008).
-    ReadHistory(Order),
+    ReadHistory(JobId, Order),
     /// Read the refs for the badges, counting ahead/behind off the loop's
     /// thread.
     ReadRefs,

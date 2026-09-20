@@ -275,14 +275,23 @@ pub(super) fn refresh_key(
     // (m3-working-tree-undo-and-stash/06).
     super::stash::refresh(next, commands, next_id);
     commands.extend(next.detail.refresh(next_id));
+    // The walk this refresh replaces is cancelled by name — and the name is
+    // one `update` minted when it asked for the walk, not one it learned
+    // from the pool's `Started` event. Learning it late left a window in
+    // which a second `Ctrl+R` had nothing to cancel, so the walk it meant to
+    // replace stayed parked on a worker; two of those fill the pool and the
+    // refs and working-tree reads never get a thread
+    // (m5-history-and-ghost-preview/05).
     if let Some(id) = next.awaiting.take() {
         commands.push(Command::CancelJob(id));
     }
     if let Some(id) = next.promoting.take() {
         commands.push(Command::CancelJob(id));
     }
+    let walk = next_id();
+    next.awaiting = Some(walk);
     commands.push(Command::OpenRepository);
-    commands.push(Command::ReadHistory(Order::Topological));
+    commands.push(Command::ReadHistory(walk, Order::Topological));
     commands.push(Command::ReadRefs);
     super::remote::request(next, commands, next_id);
     commands.push(Command::ReadWorkingTree);

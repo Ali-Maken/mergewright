@@ -722,11 +722,14 @@ fn a_command_from_update_reaches_the_job_runner() {
                 crate::update::detail::LOCAL_JOB_BIT | 1,
             )),
             Command::OpenRepository,
-            Command::ReadHistory(Order::Topological),
+            Command::ReadHistory(
+                graft_core::job::JobId::new(crate::update::detail::LOCAL_JOB_BIT | 2),
+                graft_git::history::Order::Topological,
+            ),
             Command::ReadRefs,
             // The remote facts are read beside the refs (m4-remotes/05).
             Command::ReadRemotes(graft_core::job::JobId::new(
-                crate::update::detail::LOCAL_JOB_BIT | 2,
+                crate::update::detail::LOCAL_JOB_BIT | 3,
             )),
             Command::ReadWorkingTree,
         ]

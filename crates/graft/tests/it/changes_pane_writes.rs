@@ -19,9 +19,8 @@ use std::time::Duration;
 
 use graft::jobs::{Dispatch, JobRunner, Shutdown};
 use graft::repos::RepoStore;
-use graft::update::{AppEvent, AppState, Command, Size, Status, update};
+use graft::update::{AppEvent, AppState, Size, Status, update};
 use graft_core::event::{Event, KeyCode, KeyPress};
-use graft_git::history::Order;
 
 /// Long enough that a slow machine never fails here, short enough that a
 /// hang is a named failure rather than a stuck suite.
@@ -88,20 +87,13 @@ impl App {
         let (sender, events) = mpsc::channel();
         let store = Arc::new(RepoStore::new(repo.to_path_buf(), None));
         let jobs = JobRunner::start(sender, 2, store).expect("the job pool starts");
-        for command in [
-            Command::OpenRepository,
-            Command::CheckSystemGit,
-            Command::ReadHistory(Order::Topological),
-            Command::ReadRefs,
-            Command::ReadWorkingTree,
-        ] {
+        // The opening list (and the id its history walk runs under) is
+        // `update::opening`'s, so this harness cannot drift from the real
+        // loop (m5-history-and-ghost-preview/05).
+        let (state, commands) = graft::update::opening(repo.to_path_buf(), SIZE);
+        for command in commands {
             jobs.dispatch(command);
         }
-        let state = AppState {
-            repo_path: repo.to_path_buf(),
-            size: SIZE,
-            ..AppState::default()
-        };
         (Self { jobs, events }, state)
     }
 

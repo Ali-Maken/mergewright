@@ -19,6 +19,12 @@ use super::*;
 /// Generous, because it is never reached when the code works.
 const PATIENCE: Duration = Duration::from_secs(5);
 
+/// An id of the shape `update` mints for the jobs it names itself — which
+/// the history walk now is (m5-history-and-ghost-preview/05).
+fn walk_id(n: u64) -> JobId {
+    JobId::new(crate::update::detail::LOCAL_JOB_BIT | n)
+}
+
 /// This crate's own source tree: a real repository, and the one the tests
 /// that dispatch a repository command read.
 fn this_repository() -> PathBuf {
@@ -428,7 +434,7 @@ fn two_jobs_share_one_open_repository() {
     next_started(&events, &Task::OpenRepository);
     next_report(&events);
 
-    runner.dispatch(Command::ReadHistory(Order::CommitDate));
+    runner.dispatch(Command::ReadHistory(walk_id(1), Order::CommitDate));
     next_started(&events, &Task::ReadHistory);
     next_report(&events);
 
@@ -514,8 +520,10 @@ fn a_history_job_answers_row_requests_until_cancelled() {
     let dir = graft_fixtures::borrow(graft_fixtures::Shape::Linear);
     let (runner, events, _store) = runner_at(&dir, 1);
 
-    runner.dispatch(Command::ReadHistory(Order::Topological));
+    let walk = walk_id(1);
+    runner.dispatch(Command::ReadHistory(walk, Order::Topological));
     let id = next_started(&events, &Task::ReadHistory);
+    assert_eq!(id, walk, "the walk runs under the id `update` chose");
     let asked = history::RowRequest {
         id: 1,
         wanted: history::Wanted::Rows(190..usize::MAX),
@@ -569,7 +577,7 @@ fn refresh_after_a_commit_graph_write_puts_the_next_walk_on_the_graph_path() {
     let (runner, events, _store) = runner_at(scratch.path(), 1);
 
     // Before: no commit-graph, so a topological order is provisional.
-    runner.dispatch(Command::ReadHistory(Order::Topological));
+    runner.dispatch(Command::ReadHistory(walk_id(1), Order::Topological));
     let id = next_started(&events, &Task::ReadHistory);
     let before = loop {
         match next_report(&events) {
@@ -597,7 +605,7 @@ fn refresh_after_a_commit_graph_write_puts_the_next_walk_on_the_graph_path() {
     next_started(&events, &Task::OpenRepository);
     next_report(&events);
 
-    runner.dispatch(Command::ReadHistory(Order::Topological));
+    runner.dispatch(Command::ReadHistory(walk_id(2), Order::Topological));
     let id = next_started(&events, &Task::ReadHistory);
     let after = loop {
         match next_report(&events) {

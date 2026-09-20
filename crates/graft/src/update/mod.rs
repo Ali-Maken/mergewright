@@ -53,6 +53,43 @@ use crate::history::{History, Phase};
 use crate::repository::RepositoryFacts;
 use credential::credential_needed;
 
+/// The state Graft starts in, and the jobs that fill it.
+///
+/// Both the real loop (`crate::event_loop`) and the integration harnesses go
+/// through here rather than writing the opening list out again, because the
+/// history walk's id is minted here: `AppState::awaiting` has to name the
+/// walk from the moment it is asked for, and a second list that forgot to do
+/// that would put the `Ctrl+R` race back for whoever used it
+/// (m5-history-and-ghost-preview/05).
+///
+/// Every one of these reads the world — the repository, `git --version`, the
+/// history, the refs, the working tree — so every one is a job: the first
+/// frame is drawn while they are still running, and says so, rather than
+/// waiting on the disk.
+#[must_use]
+pub fn opening(repo_path: std::path::PathBuf, size: Size) -> (AppState, Vec<Command>) {
+    let mut state = AppState {
+        size,
+        repo_path,
+        ..AppState::default()
+    };
+    let walk = state.local_jobs.next_id();
+    state.awaiting = Some(walk);
+    let commands = vec![
+        Command::OpenRepository,
+        Command::CheckSystemGit,
+        // The one with work in it. Asked for in topological order, which
+        // ADR-0008 downgrades to commit date when the repository has no
+        // commit-graph file.
+        Command::ReadHistory(walk, graft_git::history::Order::Topological),
+        // Badges: ahead/behind walks commits.
+        Command::ReadRefs,
+        // The uncommitted-changes row.
+        Command::ReadWorkingTree,
+    ];
+    (state, commands)
+}
+
 /// Answer one event: the new state, and the work it wants done.
 ///
 /// Takes the old state by reference and returns a new one instead of mutating
@@ -326,10 +363,17 @@ fn repository_opened(next: &mut AppState, facts: RepositoryFacts) {
 }
 
 /// A history walk started: it replaces whatever walk came before.
+///
+/// The walk the screen is waiting for was named when its command was built
+/// (`Command::ReadHistory`), so this event tells `update` nothing it does not
+/// already know — except which walk it is from. A `Started` under any other
+/// id belongs to a walk already superseded and cancelled, and taking it would
+/// blank the fresh walk's rows and put its cursor back on the wrong commit
+/// (m5-history-and-ghost-preview/05).
 fn history_started(next: &mut AppState, commands: &mut Vec<Command>, id: graft_core::job::JobId) {
-    // The newest ask wins. Anything the previous walk was going to
-    // say is now about a question nobody asked.
-    next.awaiting = Some(id);
+    if next.awaiting != Some(id) {
+        return;
+    }
     let mut history = History::started();
     history.strip_rows = keys::strip_rows_for(next.tier());
     // A refresh keeps what the user folded, hid or switched to, and puts the

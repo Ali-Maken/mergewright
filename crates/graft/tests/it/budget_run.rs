@@ -20,7 +20,7 @@ use std::time::{Duration, Instant};
 use graft::history::{History, Phase, View, Views, WalkSource, seeds_for};
 use graft::jobs::{Dispatch, JobRunner, Shutdown};
 use graft::repos::RepoStore;
-use graft::update::{AppEvent, AppState, Command, Size, update};
+use graft::update::{AppEvent, AppState, Size, update};
 use graft_core::commit_handle::CommitHandle;
 use graft_core::event::{Event, KeyCode, KeyPress};
 use graft_git::history::{Order, Walk};
@@ -542,20 +542,10 @@ fn open_with_store(repo: &Path) -> Result<OpenedWithStore, String> {
     let (sender, events) = mpsc::channel();
     let store = Arc::new(RepoStore::new(repo.to_path_buf(), None));
     let jobs = JobRunner::start(sender, 4, Arc::clone(&store)).map_err(|why| why.to_string())?;
-    for command in [
-        Command::OpenRepository,
-        Command::CheckSystemGit,
-        Command::ReadHistory(Order::Topological),
-        Command::ReadRefs,
-        Command::ReadWorkingTree,
-    ] {
+    let (state, commands) = graft::update::opening(repo.to_path_buf(), SIZE);
+    for command in commands {
         jobs.dispatch(command);
     }
-    let state = AppState {
-        repo_path: repo.to_path_buf(),
-        size: SIZE,
-        ..AppState::default()
-    };
     Ok((jobs, events, state, store))
 }
 
