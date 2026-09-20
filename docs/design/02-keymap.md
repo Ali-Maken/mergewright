@@ -14,21 +14,43 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   edit, ignore) and that verb is never reassigned to something else anywhere
   the letter is live. Vim movement (`j k h l`, `g G`, `/`) is additional and
   never collides with a mnemonic, per PROMPT.md §3.
-- **Focus-scoped panes may reuse a letter for a *different* vocabulary, never
-  a conflicting one.** The hint bar always shows what's active, so this isn't
-  a hidden mode: it's the same rule modal editors use for a command palette
-  that means something different depending on where the cursor is. Four
-  places do this deliberately:
-  - The **conflict resolver** binds `o`/`t`/`b` to ours/theirs/both — `t`
-    (normally "new tag") doesn't apply mid-resolve, so it's free.
-  - The **interactive rebase editor** binds `p r e s f d` to
-    pick/reword/edit/squash/fixup/drop — git's own convention for `rebase -i`
-    todo lines, which every Git user already knows. `r` here is "reword," not
-    "rebase," because you're already inside a rebase.
-  - The **operation banner**, when focused, binds `c s a` to
-    Continue/Skip/Abort — "commit," "stage" and "amend" aren't valid while an
-    operation is in progress, so the letters are free and match the buttons'
-    initials exactly.
+- **Lowercase, UPPERCASE and modal reuse follow one rule** (keymap
+  reconciliation, 2026-09-20 — see "History" below for the reasoning):
+  lowercase always means one verb for its mnemonic, applied to the cursor
+  where the verb has one (a row, file, hunk, line, branch, conflicted hunk)
+  and to ambient state (`HEAD`, current branch, all remotes) where it
+  doesn't (`c` commit, `a` amend, `f` fetch, `p` pull, `i` ignore).
+  UPPERCASE only does one of two jobs: opens/toggles a place or mode over
+  the same or a separate screen (`S` `J` `M` `O` `F` `H`), closed by the
+  same letter or `Esc`; or reverses one of exactly two direction pairs,
+  `u`/`U` and `n`/`N` — no new letter joins that pair by resemblance alone.
+  `B`/`X` on the commit-graph offer banner are a named, narrow exception:
+  one-shot initials on a banner that appears once per session and claims
+  the keyboard the same way a modal pane does. `p`/`P` (pull/push) are the
+  model for any future same-shift-key opposite pair: box the irreversible
+  half behind a confirm, never let a slipped `Shift` run it.
+- **A pane dense enough to need the alphabet for its own vocabulary is
+  modal: it answers every key itself, `Ctrl+C` excepted, and nothing
+  outside it is live while it has focus.** The hint bar always shows what's
+  active, so this isn't a hidden mode. Five places do this:
+  - The **conflict resolver** (§2.6) binds `o`/`t`/`b` to ours/theirs/both,
+    `e` to edit inline, `n`/`N` to next/previous hunk. None of the graph
+    pane's global bindings (`p` pull, `r` rebase, `f` fetch, `M` Map, `n`/`N`
+    search) are live while it has focus — same letters, different,
+    non-conflicting verbs.
+  - The **operation banner**, when focused (a merge, rebase, cherry-pick or
+    revert in progress — conflicted or not), binds `c s a` to
+    Continue/Skip/Abort — "commit," "stage" and "amend" aren't valid while
+    an operation is in progress, so the letters are free and match the
+    buttons' initials exactly.
+  - The **interactive rebase editor** (§2.7) binds `p r e s f d` to
+    pick/reword/edit/squash/fixup/drop — git's own convention for
+    `rebase -i` todo lines, which every Git user already knows. `r` here is
+    "reword," not "rebase," because you're already inside a rebase; none of
+    the graph pane's globals are live here either.
+  - The **commit message editor** (§2.10) claims every key but `Ctrl+C`.
+  - The **stash save prompt** (inside §2.9's `S` → `s`) and the **search
+    prompt** (`/`) claim every key but `Ctrl+C` while typing.
   - The **first-run / empty state** (§2.13) binds `o`/`i`/`c` to
     Open/Init/Clone — no repo is open yet, so the whole repo vocabulary
     (`c` commit included) is off duty.
@@ -79,8 +101,10 @@ and any redo prompt should lead with.
 | `r` | Rebase current onto selection |
 | `b` | New branch from selected commit |
 | `t` | New tag at selected commit |
-| `d` | Discard (only on the Uncommitted-changes row) |
-| `s` | Stage (alias for `Space` in this context) |
+| `d` | Discard — only reachable once the detail pane is open (`Enter`); see §2.4. Not yet bound directly on the collapsed Uncommitted-changes row (open ticket) |
+| `s` | Stage — same: only reachable once the detail pane is open; see §2.4. Not yet bound directly on the collapsed row |
+| `x` | Mark the selected commit as the compare base, or complete/clear a compare against it (PROMPT.md §4 "Diff any two commits") |
+| `+` | Expand/collapse lanes folded behind `+N` (§3.5) |
 | `S` | Stash… |
 | `f` | Fetch |
 | `p` | Pull |
@@ -88,7 +112,7 @@ and any redo prompt should lead with.
 | `i` | Add to `.gitignore` |
 | `e` | Open in `$EDITOR` |
 | `Enter` (on a sidebar branch/tag/stash) | Checkout / open |
-| `M` | Toggle Map view (§5.1) |
+| `M` | Toggle Map view (§5.1, §2.3a) |
 | `F` | Toggle Focus mode on the selected commit (§5.2) |
 | `O` | Toggle the Overview strip (§5.3) |
 | `Space` (on a merge) | Fold its merged branch into it / unfold (PROMPT.md §1.3; m1/15) |
@@ -96,6 +120,15 @@ and any redo prompt should lead with.
 | `H` | Hide / show the stash in the graph (m1/15) |
 | `Enter` (on a graph row) | Open the detail pane on that commit (peek (M1) → open details (M2), ADR-0023, m2-details-and-diffs/10) |
 | `y` | Copy the selected commit's SHA to the clipboard (OSC 52) (ADR-0023, m1/45) |
+
+### 2.3a Map view
+
+| Key | Action |
+|---|---|
+| `M` | Open (from the graph pane) or close the Map view |
+| `↑`/`↓`, `j`/`k` | Move the selected branch row |
+| `Enter` | Seek the graph to the selected branch's tip and close the view |
+| `Esc` | Close |
 
 ### 2.4 Working tree / staging (detail pane)
 
@@ -118,8 +151,13 @@ and any redo prompt should lead with.
 | `v` | Toggle unified / side-by-side |
 | `[` / `]` | Decrease / increase context lines |
 | `<` / `>` | Shrink / grow the detail pane on the focused divider, 4 cells a step; no-op with no divider shown (ADR-0028, m2-details-and-diffs/10b) |
+| `L` | Load the full file, past the truncation point (PROMPT.md §6.3) |
 
 ### 2.6 Conflict resolver
+
+**Modal** (§2.1): this pane answers every key itself, `Ctrl+C` excepted; the
+graph pane's global bindings above (`p` pull, `r` rebase, `f` fetch, `M` Map,
+`n`/`N` search) are not live while it has focus.
 
 | Key | Action |
 |---|---|
@@ -133,6 +171,9 @@ and any redo prompt should lead with.
 | (banner focused) `c` `s` `a` | Continue / Skip / Abort |
 
 ### 2.7 Interactive rebase editor
+
+**Modal** (§2.1): this pane answers every key itself, `Ctrl+C` excepted; the
+graph pane's global bindings above are not live while it has focus.
 
 | Key | Action |
 |---|---|
@@ -154,10 +195,11 @@ and any redo prompt should lead with.
 
 | Key | Action |
 |---|---|
+| `s` | Save a new stash (message prompt; **modal**, §2.1 — `Tab` switches staged-only vs everything, `Enter` saves, `Esc` cancels) |
 | `Enter` | Apply |
 | `p` | Pop (apply, then drop) |
 | `d` | Drop (undoable) |
-| `b` | Create a branch from this stash |
+| `b` | Create a branch from this stash — **planned, not yet built** (no milestone has claimed it yet; candidate for M5, which owns branch creation) |
 | `Space` | Preview the diff |
 
 ### 2.10 Commit message editor
@@ -202,12 +244,18 @@ A separate screen (no repo is open yet), with its own small vocabulary:
 
 ### 2.14 Credential prompt
 
+**Modal** (§2.1): one field, answers every key itself except `Ctrl+C`, which
+still quits (m4-remotes/06). git asks one question at a time (username, then
+password), so there is never more than one field open to move between.
+
 | Key | Action |
 |---|---|
-| `Tab` | Move between fields |
-| `Enter` | Submit |
-| `Esc` | Cancel (fails the operation cleanly, nothing left half-authenticated) |
-| `Ctrl+U` | Clear the focused field |
+| type | Insert into the field (masked with `•` when git asked for a password or passphrase) |
+| `Enter` | Submit the answer |
+| `Esc` | Cancel — stops the job and fails the operation cleanly, nothing left half-authenticated |
+| `Ctrl+U` | Clear the field |
+| `Backspace` `Delete` `←` `→` `Home` `End` | Edit the typed text |
+| `Ctrl+C` | Quit (passes through; the only chord this pane doesn't claim) |
 
 ### 2.15 Mouse (every pane, always first-class — PROMPT.md §3)
 
@@ -227,5 +275,16 @@ A separate screen (no repo is open yet), with its own small vocabulary:
   the terminal's native text selection, never captured by Graft (ADR-worthy
   rule already fixed by PROMPT.md §3; noted here because it constrains how
   the `term` module configures crossterm's mouse capture).
+
+### History
+
+This doc is the single source of truth for keys (ADR-0037, decision 1); code
+follows it, not the other way round. `docs/reviews/keymap-reconciliation.md`
+(2026-09-20) found and fixed seven drifts between this doc and the shipped
+bindings — `x`, `L`, `+`, the Map view and the stash save prompt were live
+and undocumented; `d`/`s` on the collapsed graph row and `b` on the stash
+list were documented but unbuilt — and proposed the lowercase/UPPERCASE/
+modal rule now in §2.1. Read that review for the reasoning; its tables are
+now folded into this file.
 
 ---
