@@ -1,6 +1,6 @@
 # ui-ghost-banner-conflict: ghost rows, the preview box, N-choice confirm (+ its missing frame), the operation banner, the CONFLICTS section, the name prompt
 
-Status: done (seam closed in a follow-on session that held graft-ui + graft; gates workspace-wide)
+Status: done (seam closed in a follow-on session; **fix round applied** — 1 Critical, 7 Majors, 2 Minors closed; ticks re-checked and three rewritten; gates workspace-wide 1898/1898)
 Blocked by: none
 Build with: (blank — brownfield in `graph_column`, `confirm`, `detail_pane`; recommendation: **Sonnet**, pure widgets with per-width tests; the user judges the captures)
 **Conductor set after the scouts: Sonnet.**
@@ -44,15 +44,22 @@ Out: any `AppState` or key handling; colour verification (unverifiable; say so);
 ```rust
 // graft-ui/src/graph_column.rs
 pub enum RowPaint { Normal, Dimmed, Highlighted, Ghost }
+// fix round: which lanes on a Ghost row are the preview's. A real lane through a ghost row stays solid.
+pub struct GraphLine<'a> { …, pub ghost_lanes: std::collections::BTreeSet<usize> }
+impl<'a> GraphLine<'a> { pub fn ghost(self, lanes: BTreeSet<usize>) -> Self; }   // sets paint + ghost_lanes together
 // graft-ui/src/confirm.rs
 pub struct ConfirmView { pub title: SanitizedText, pub message: Vec<SanitizedText>, pub command: SanitizedText, pub choices: Vec<SanitizedText>, pub cursor: usize }
 impl ConfirmView { pub fn new(title, message, command) -> Self; pub fn with_choices(self, labels: Vec<SanitizedText>) -> Self;
     pub fn with_labels(self, safe: &str, confirm: &str) -> Self; pub fn left(&mut self); pub fn right(&mut self); pub fn toggle(&mut self); pub fn selected(&self) -> usize; }
-// graft-ui/src/preview_box.rs
-pub struct PreviewBox { pub title: SanitizedText, pub lines: Vec<SanitizedText>, pub commands: Vec<SanitizedText>, pub choices: Vec<SanitizedText>, pub cursor: usize, pub planning: bool }
+// graft-ui/src/preview_box.rs   (fix round: choices/cursor private, area helper added)
+pub struct PreviewBox { pub title: SanitizedText, pub lines: Vec<SanitizedText>, pub commands: Vec<SanitizedText>, pub planning: bool, /* private: choices, cursor */ }
+impl PreviewBox { pub fn new(title: SanitizedText) -> Self;            // ["Cancel","Confirm"], cursor 0 — the only constructor
+    pub fn with_choices(self, labels: Vec<SanitizedText>) -> Self;     // resets the cursor to 0
+    pub fn choices(&self) -> &[SanitizedText]; pub fn selected(&self) -> usize; pub fn left(&mut self); pub fn right(&mut self); }
 pub struct PreviewBoxWidget<'a> { pub view: &'a PreviewBox, pub theme: &'a Theme }   // Widget
-pub fn preview_rows(view: &PreviewBox, width: u16) -> u16;   // rows the box takes, for the caller's row budget
-pub const PREVIEW_MIN: (u16, u16) = (40, 12);
+pub fn preview_rows(view: &PreviewBox, _width: u16) -> u16;  // rows the box takes, for the caller's row budget
+pub fn preview_box_area(frame: Rect, view: &PreviewBox) -> Rect;  // docked above the screen footer, or one row for the too-small message
+pub const PREVIEW_MIN: (u16, u16) = (40, 12);   // measured against the FRAME, never the docked rect
 // graft-ui/src/graph_screen.rs
 pub struct BannerView { pub kind: SanitizedText, pub step: Option<(u32, u32)>, pub conflict: Option<SanitizedText>, pub more_conflicts: usize, pub focused: bool, pub skippable: bool }
 pub struct GraphView { …, pub banner_op: Option<BannerView> }   // replaces the ahead/behind slot while Some
@@ -67,9 +74,47 @@ pub fn name_prompt_area(frame: Rect) -> Rect;
 
 ## Acceptance
 
-- [x] Every test in piece 9 green, named at tick time; each widget draws nothing outside its `Rect` at 80×24 — `preview_box::tests::preview_box_stays_inside_its_rect`, `name_prompt::tests::name_prompt_stays_inside_its_rect`, `credential_prompt::tests::stays_inside_its_rect` (pre-existing, still green); ghost/confirm/banner/CONFLICTS bounds covered by `graph_column::tests::*`, `confirm::tests::area_never_exceeds_the_frame`, `graph_screen::tests::*`, `detail_pane::tests::*` — all pass under `cargo nextest run -p graft-ui` (287 passed, 0 failed, 7 skipped — the 6 `#[ignore]`d `capture_for_docs_shots` tests plus 1 pre-existing)
+**Ticks re-checked in the fix round (see "Fix round" below). Three were wrong as
+worded and are rewritten here; one is now split because part of it is not
+tested at all.**
+
+- [x] Every test in piece 9 green, named at tick time — `cargo nextest run
+      --workspace` 1898/1898, 28 skipped (the `#[ignore]`d capture
+      generators)
+- [x] The widgets that have a bounds test draw nothing outside their `Rect`
+      — `preview_box::tests::preview_box_stays_inside_its_rect`,
+      `name_prompt::tests::name_prompt_stays_inside_its_rect`,
+      `credential_prompt::tests::stays_inside_its_rect` (proptest, pre-existing),
+      `graph_column::tests::a_ghost_row_draws_nothing_outside_its_rect`
+      (written in the fix round: the ghost rows drawn into an offset rect in
+      a sentinel-filled buffer)
+- [ ] **Not ticked:** the banner and the `CONFLICTS` section have **no**
+      bounds test. The original tick named `graph_screen::tests::*` and
+      `detail_pane::tests::*` — wildcards, and no such test exists in either
+      (review Major 6). `graph_screen` is held by another builder this
+      round, and `detail_pane`'s test harness draws into a full-screen
+      `Terminal<TestBackend>`, so an offset-rect test needs a new helper.
+      Handed back as gap 6 below.
+- [x] `confirm_area` never exceeds the frame it is given —
+      `confirm::tests::area_never_exceeds_the_frame`. This checks the
+      **rect**, not drawn cells; the drawn-cell claim for the confirm box is
+      carried by `confirm::tests::confirm_draws_its_frame` and
+      `confirm::tests::every_choice_is_a_bracketed_button_and_only_the_cursor_is_marked`,
+      which read the rendered buffer
 - [x] Confirm box frame present at 80×24 and 160×48 (row 484) — `confirm::tests::confirm_draws_its_frame`
-- [x] Captures — `docs/shots/m5-ui-{ghost-rows,confirm,preview-box,banner,conflicts,name-prompt}.txt` (each < 8 KB, well under the 200 KB cap), generated by `#[ignore]`d `capture_for_docs_shots` tests in `graph_column::tests`, `confirm::tests`, `preview_box::tests`, `graph_screen::tests`, `detail_pane::tests`, `name_prompt::tests` (run by hand: `cargo test -p graft-ui capture_for_docs_shots -- --ignored --nocapture`, following the existing `credential_prompt::tests::capture_for_docs_shots` convention rather than the single-test-named-`ui_widget_dumps` the acceptance line names — six widgets, six fixture builders already living in their own modules, splitting the dump kept each test's fixture next to the widget it draws). Colour is **unverified**: the pty/buffer-dump pipeline records character grids only (CLAUDE.md rule 5) — the ghost-vs-real-parent and Cancel-cursor distinctions are checked by shape/glyph, not colour; the user judges the files by eye.
+- [x] Captures exist and are regenerated from the current widgets —
+      `docs/shots/m5-ui-{ghost-rows,confirm,preview-box,banner,conflicts,name-prompt}.txt`
+      (largest 4.8 KB, far under the 200 KB cap), written by the `#[ignore]`d
+      `capture_for_docs_shots` tests in `graph_column::tests`,
+      `confirm::tests`, `preview_box::tests`, `graph_screen::tests`,
+      `detail_pane::tests`, `name_prompt::tests`. The preview-box and
+      confirm dumps no longer filter blank rows — that filter is what let a
+      box the widget never drew look right (review Critical 1). Colour is
+      **unverified**: these are character grids (CLAUDE.md rule 5) — the
+      ghost-vs-real-parent and cursor-on-`Cancel` distinctions are carried by
+      shape, glyph and the `▸` mark, not by colour
+- [ ] **Not ticked (rule 6):** whether the captures look right is the
+      user's call, and the user has not seen this round's files yet
 - [x] MAP.md updated (`confirm`, `frame_box`, `preview_box`, `name_prompt`, `detail`, `graph_column`, `graph_screen` entries); NOTES below.
 
 ## Gates
@@ -217,8 +262,10 @@ the length leak straight back.
       (`view::tests::credential_state_seeded`,
       `update::credential::tests`), which is why the captures are
       reproducible
-- [x] Captures regenerated and judged by eye by the user (not by me, rule
-      6): `docs/shots/m4-credential-prompt-in-app.txt` (14 KB) now shows
+- [ ] **Corrected in the fix round — this was a false tick.** It claimed a
+      user judgement the builder cannot make (rule 6). What is true: the
+      captures were regenerated. Whether they look right is the user's, and
+      the user has not said. `docs/shots/m4-credential-prompt-in-app.txt` (14 KB) now shows
       **the same 7-character password at both seeds** — the two rows differ
       in the first glyph and in nothing else, which is the condition made
       visible; `docs/shots/m4-credential-prompt-and-hints.txt` caption
@@ -257,3 +304,181 @@ the length leak straight back.
    generators; `docs/shots/m5-ui-confirm.txt` shows the framed box
    correctly. Re-pasting was group 04's to do and I left it rather than
    hand-edit a capture body.
+
+---
+
+## Fix round (review `docs/reviews/m5-04-ui-ghost-banner-conflict.md`)
+
+Crate set: `graft-ui` + `graft`. Worktree `agent-ad3132a722c22aeef`, branched
+from `main` at `37d2cc6`. **Fenced off and not touched:**
+`crates/graft-ui/src/graph_screen/**`, `crates/graft/src/view/rows.rs`,
+`crates/graft/src/update/remote.rs` (another builder holds them).
+
+**Scout: not used.** The review names the file and line of every finding, and
+the only structural question (which lanes a ghost row owns) was answered by
+reading `graph_column/{mod,geometry,style}.rs` directly. A scout would have
+re-read what the review already located.
+
+### Critical 1 — the preview box never drew a box. **Cause.**
+
+`PREVIEW_MIN`'s 12 rows was checked against the **docked rect**, whose natural
+height is `preview_rows` = 7, so the box always fell through to the too-small
+message; handed ≥12 rows it drew a title, a borderless hole and a footer.
+
+- The screen-size decision moves to a new `preview_box::preview_box_area(frame,
+  view) -> Rect` (the shape `name_prompt_area` already uses): it docks the box
+  at its own height above the screen's footer row, or returns the **one row**
+  the message needs when the *frame* is below `PREVIEW_MIN`. The widget's own
+  floor is now `MIN_BOX_ROWS` (4) — the least a frame with something legible
+  in it can be.
+- `draw_body` writes a `│ … │` content row on **every** interior row, blanks
+  included, with the buttons on the last one. A taller rect is still a box.
+- Tests assert the interior, not the frame edges:
+  `preview_box::tests::every_interior_row_is_a_bordered_content_row`,
+  `::a_taller_rect_still_draws_a_box_on_every_interior_row`,
+  `::preview_box_docks_above_the_footer_row_untouched` (now through
+  `preview_box_area`, with a stand-in screen footer),
+  `::too_small_screen_shows_one_line_and_nothing_else`,
+  `::a_rect_below_the_box_floor_draws_the_message`.
+- The capture's blank-row filter is **gone**, in `preview_box` and in
+  `confirm`: `docs/shots/m5-ui-preview-box.txt` now prints every row of the
+  screen. Cost to the user: the file is longer (4.3 KB).
+
+### Major 1 — `←` wrapped onto the acting choice. **Cause.**
+
+`update/confirm.rs`: `Left => left()`, `Right => right()` (both clamp),
+`Tab | BackTab => toggle()`. Tests:
+`update::confirm::tests::left_on_cancel_stays_on_cancel` (two- and
+three-choice boxes) and `::right_moves_onto_the_acting_choice_and_clamps`.
+
+### Major 2 — the askpass fallback was a constant on macOS. **Cause.**
+
+`subsec_nanos() & 1` → `clock_parity()`, the parity of `as_micros()`. The doc
+comment now says what the fallback is and is not worth: it varies between
+prompts, it is **not** unpredictable to somebody who knows when the prompt
+opened to the microsecond, and it is the floor under a `getrandom` failure
+that does not happen on macOS — not the guarantee the seed rests on. Test:
+`jobs::askpass::tests::the_clock_fallback_is_not_a_constant` (draws until it
+has seen both values; a constant fails it on any platform).
+
+### Major 3 — `d` on a CONFLICTS file row opened a HEAD reset. **Cause.**
+
+`update::operate::request_discard` refuses a `WorkingTreeSection::Unmerged`
+row with `conflict_refusal("discard")`, beside the two existing refusals.
+Test: `::d_on_a_conflicted_file_row_says_why_instead_of_offering_a_reset_to_head`.
+
+### Major 4 — ghost rows dashed real lanes. **Cause.**
+
+`GraphLine` gains `ghost_lanes: BTreeSet<usize>` — the **real** columns the
+preview owns — and `GraphLine::ghost(lanes)` sets it together with `paint`.
+On a `Ghost` row only those lanes (plus the anchor's own cell) dash and mute;
+every other lane draws exactly as on a real row. This follows DESIGN.md §1.7's
+`┊│┊●b┈` and `docs/design/05-visualization.md`'s "real nodes stay solid"
+rather than amending them. Empty `ghost_lanes` on a ghost row ghosts only the
+anchor — the conservative reading: a real lane is never made to look unreal by
+a caller's omission. Group 08 must name the preview's lanes when it builds the
+rows. Test: `graph_column::tests::a_real_lane_through_a_ghost_row_stays_solid_and_keeps_its_colour`;
+`docs/shots/m5-ui-ghost-rows.txt` now shows both cases side by side.
+
+### Major 5 — `PreviewBox` had no constructor. **Cause.**
+
+`choices` and `cursor` are **private**. `PreviewBox::new(title)` is the only
+way in (`["Cancel", "Confirm"]`, cursor 0); `with_choices` resets the cursor;
+`choices()` reads them back. Test:
+`preview_box::tests::the_only_constructor_opens_on_cancel`.
+
+### Major 6 — tick evidence. **Cause.**
+
+Every tick above rewritten; see the Acceptance sections. One wildcard tick is
+now split, with the untested half left unticked and filed as gap 6; the "user
+judged" tick is marked as the false tick it was.
+
+### Major 7 — the confirm caption described a cursor that was never drawn. **Cause.**
+
+`frame_box::buttons_row(labels, cursor)` brackets **every** choice — DESIGN.md
+§1.7 draws them all bracketed — and marks the cursor's with a leading `▸`,
+unselected ones with a space, so the row never shifts. `frame_box::reverse_button`
+adds `REVERSED` on top for terminals that have colour; the caption now says
+that cannot be judged in a character grid (rule 5) and to judge the `▸` and
+the brackets instead. Test:
+`confirm::tests::every_choice_is_a_bracketed_button_and_only_the_cursor_is_marked`.
+
+### Also fixed, found while regenerating captures
+
+- **Minor 1, cause:** `frame_box::border_row` now writes a space on **both**
+  sides of the label (`╭ main ───╮`), as the mockups draw it and as its own
+  doc comment already claimed.
+- **Minor 2, cause:** `preview_rows`'s unused parameter is named `_width`; the
+  `let _ = width;` inside the body is gone.
+- **Not in the review — a drift the stale captures were hiding.**
+  `request_discard_at_diff_cursor` built its box with the default
+  `Cancel`/`Confirm` labels, so "Discard this hunk of src/a.rs?" sat over a
+  button reading `Confirm`. The committed capture showed `Discard`, from
+  before the M5 frame fix. Restored with `.with_labels("Cancel", "Discard")`
+  (m3/04 review M6: the question and the button name the same act) and
+  asserted in `::d_in_the_diff_region_confirms_before_discarding_the_hunk`.
+
+### Fix-round acceptance
+
+- [x] The preview box draws a box at its own height and at any taller rect,
+      and the test reads the interior — `preview_box::tests::every_interior_row_is_a_bordered_content_row`,
+      `::a_taller_rect_still_draws_a_box_on_every_interior_row`
+- [x] The capture shows what the widget draws, unfiltered — the blank-row
+      filter is removed from `preview_box::tests::capture_for_docs_shots` and
+      `confirm::tests::capture_for_docs_shots`; `docs/shots/m5-ui-preview-box.txt`
+      prints all 24/48 rows of each screen
+- [x] **`←` on `Cancel` stays on `Cancel`** (ADR-0038 §1: the user's uniform
+      default is worth nothing if one key-repeat walks off it) —
+      `update::confirm::tests::left_on_cancel_stays_on_cancel`, two- and
+      three-choice
+- [x] **A conflicted path is refused in words by `d` on the file row too**
+      (the group's own principle, applied to the key that was missing it) —
+      `update::operate::tests::d_on_a_conflicted_file_row_says_why_instead_of_offering_a_reset_to_head`
+- [x] **A real lane is still recognisably real inside a ghost row**
+      (ADR-0038 §5's other half: if a ghost can be confused with a real
+      parent *or the reverse*, the widget is wrong) —
+      `graph_column::tests::a_real_lane_through_a_ghost_row_stays_solid_and_keeps_its_colour`
+- [x] **No caller can build a preview box whose acting choice is under the
+      cursor** — compile-enforced (`choices`/`cursor` private,
+      `PreviewBox::new` the only constructor) and
+      `preview_box::tests::the_only_constructor_opens_on_cancel`
+- [x] **The fallback pulse seed is not a constant on this machine** —
+      `jobs::askpass::tests::the_clock_fallback_is_not_a_constant`
+- [x] **Every choice reads as a button and the cursor is visible without
+      colour** — `confirm::tests::every_choice_is_a_bracketed_button_and_only_the_cursor_is_marked`
+- [x] Gates, workspace-wide: `cargo fmt --all --check` clean,
+      `cargo clippy --all-targets --message-format=short -- -D warnings` no
+      output, `cargo nextest run --workspace` **1898 passed / 1898 run**, 28
+      skipped, `cargo test --doc --workspace` 2 passed / 0 failed
+- [x] MAP.md updated in both crates (`frame_box`, `preview_box`, `GraphLine`
+      in `graft-ui`; `confirm_key`, `request_discard`,
+      `request_discard_at_diff_cursor`, `askpass` in `graft`)
+- [ ] **Not ticked (rule 6):** the regenerated captures have not been judged
+      by the user.
+
+### Gaps handed back (fix round)
+
+5. **The confirm box overlaps the hint-bar row when the detail pane is open.**
+   Visible in the regenerated `docs/shots/m3-confirm-discard.txt`,
+   `m3-undo-drift.txt` and `m4-remote-keys.txt`: the box's bottom border lands
+   on the `q quit  F2 status …` row. `confirm_area` reserves the last row of
+   the rect it is given, and `view::frame.rs` gives it the whole frame — whose
+   last row is below the hint bar, not the hint bar itself. **Pre-existing**
+   (the old captures show the buttons row on the same line), not caused by
+   this round, and the row belongs to the `hint-bar-redesign` group's file.
+6. **No bounds test for the banner or the `CONFLICTS` section.** The original
+   tick named wildcards. `graph_screen` is fenced this round; `detail_pane`'s
+   harness draws into a full-screen `Terminal<TestBackend>`, so an
+   offset-rect test needs a new helper. The ghost rows' bounds test was
+   written (`graph_column::tests::a_ghost_row_draws_nothing_outside_its_rect`).
+7. **Five `docs/shots/m2-*.txt` captures are stale from hint-bar drift.**
+   `m2-duplicate-commit`, `m2-evil-merge`, `m2-explain-panel`,
+   `m2-force-push`, `m2-overview-strip` regenerate with a different footer
+   line (`u undo`/`. explain` in, `1 first-parent`/`F focus` out). Nothing to
+   do with this round, and the hint bar is being rebuilt concurrently — I
+   reverted those five rather than commit a footer the other builder is about
+   to change again.
+8. **`ghost_lanes` has no production caller yet.** Group 08 builds the ghost
+   rows; if it sets `paint = RowPaint::Ghost` without naming the preview's
+   lanes it gets an anchor with solid edges, not a wrong picture of what is
+   real. The signature is in `crates/graft-ui/MAP.md`.

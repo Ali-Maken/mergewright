@@ -39,9 +39,10 @@ pub enum ConfirmThen {
     },
 }
 
-/// The box's own keys, while it is open: `Left`/`Right`/`Tab` move between
-/// `Cancel` and the destructive choice, `Enter` acts on whichever is under
-/// the cursor, everything else — `Esc` included — closes it without acting.
+/// The box's own keys, while it is open: `Left`/`Right` move between
+/// `Cancel` and the acting choices and **clamp** at either end, `Tab`
+/// cycles, `Enter` acts on whichever is under the cursor, everything else —
+/// `Esc` included — closes it without acting.
 /// Modal, like the context menu: this returns `true` whenever a box was
 /// open, so the caller sends it nothing else.
 pub fn confirm_key(
@@ -54,9 +55,13 @@ pub fn confirm_key(
         return false;
     };
     match key.code {
-        KeyCode::Left | KeyCode::Right | KeyCode::Tab | KeyCode::BackTab => {
-            pending.view.toggle();
-        }
+        // The arrows clamp; only `Tab` wraps. The safe choice is index 0
+        // and the cursor rests there (ADR-0038 §1), so an `←` that wrapped
+        // would put the acting choice one key-repeat away from where the
+        // cursor sits — the exact thing the uniform default is for.
+        KeyCode::Left => pending.view.left(),
+        KeyCode::Right => pending.view.right(),
+        KeyCode::Tab | KeyCode::BackTab => pending.view.toggle(),
         KeyCode::Enter => {
             // Index 0 is always the safe choice and always where the
             // cursor starts (ADR-0038 §1), so anything else is the box's
@@ -105,6 +110,65 @@ mod tests {
             code,
             modifiers: Modifiers::NONE,
         }
+    }
+
+    /// ADR-0038 §1: `Cancel` is where the cursor rests, and walking left
+    /// off it must not arrive at the acting choice. `←` on index 0 stays on
+    /// index 0 — on the three-choice box too, where `toggle`'s wrap used to
+    /// move the cursor *right*.
+    #[test]
+    fn left_on_cancel_stays_on_cancel() {
+        for choices in [
+            vec![sanitize_line("Cancel"), sanitize_line("Discard")],
+            vec![
+                sanitize_line("Cancel"),
+                sanitize_line("Undo locally"),
+                sanitize_line("Re-push old tip"),
+            ],
+        ] {
+            let mut view = pending();
+            view.view = view.view.clone().with_choices(choices);
+            let mut state = AppState {
+                confirm: Some(view),
+                ..AppState::default()
+            };
+            let mut commands = Vec::new();
+            assert!(confirm_key(
+                &mut state,
+                &mut commands,
+                key(KeyCode::Left),
+                &mut || { graft_core::job::JobId::new(1) }
+            ));
+            let after = state.confirm.expect("the box stays open").view;
+            assert_eq!(after.selected(), 0, "← walked off Cancel");
+            assert!(commands.is_empty(), "moving the cursor ran something");
+        }
+    }
+
+    /// `→` moves onto the acting choice and clamps at the last one: the
+    /// user reaches it on purpose, and never past it back onto `Cancel`.
+    #[test]
+    fn right_moves_onto_the_acting_choice_and_clamps() {
+        let mut view = pending();
+        view.view = view.view.clone().with_choices(vec![
+            sanitize_line("Cancel"),
+            sanitize_line("Undo locally"),
+            sanitize_line("Re-push old tip"),
+        ]);
+        let mut state = AppState {
+            confirm: Some(view),
+            ..AppState::default()
+        };
+        let mut commands = Vec::new();
+        for _ in 0..4 {
+            assert!(confirm_key(
+                &mut state,
+                &mut commands,
+                key(KeyCode::Right),
+                &mut || { graft_core::job::JobId::new(1) }
+            ));
+        }
+        assert_eq!(state.confirm.expect("still open").view.selected(), 2);
     }
 
     #[test]

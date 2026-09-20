@@ -22,7 +22,7 @@ use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::widgets::Widget;
 
-use crate::frame_box::{border_row, cells, content_row, wrap_line};
+use crate::frame_box::{border_row, buttons_row, cells, content_row, reverse_button, wrap_line};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 
@@ -163,16 +163,6 @@ pub fn confirm_area(area: Rect, view: &ConfirmView) -> Rect {
     }
 }
 
-/// One choice: bracketed when the cursor is on it, spaced the same width
-/// when it is not, so the row does not shift as the cursor moves.
-fn button(label: &str, selected: bool) -> String {
-    if selected {
-        format!("[ {label} ]")
-    } else {
-        format!("  {label}  ")
-    }
-}
-
 /// The confirm box itself: a rounded-border frame on a cleared area, so it
 /// never shows the cells that were underneath it (row 484).
 pub struct Confirm<'a> {
@@ -223,14 +213,12 @@ impl Widget for &Confirm<'_> {
         draw_content("", text_style, y, buf);
         y = y.saturating_add(1);
 
-        let buttons: String = view
-            .choices
-            .iter()
-            .enumerate()
-            .map(|(index, label)| button(label.as_str(), index == view.cursor))
-            .collect::<Vec<_>>()
-            .join("  ");
+        let labels: Vec<&str> = view.choices.iter().map(SanitizedText::as_str).collect();
+        let (buttons, cursor) = buttons_row(&labels, view.cursor);
         draw_content(&buttons, text_style, y, buf);
+        if y < area.bottom() {
+            reverse_button(buf, area, y, cursor, text_style);
+        }
         y = y.saturating_add(1);
 
         if y < area.bottom() {
@@ -417,6 +405,39 @@ mod tests {
         assert!(wrapped.last().unwrap().ends_with('…'), "{wrapped:?}");
     }
 
+    /// DESIGN.md §1.7 draws every choice bracketed; only the cursor's
+    /// carries `▸`. A bare `Re-push old tip` did not read as a button at
+    /// all, on the one box whose whole job is to say what the third choice
+    /// does (review Major 7). The `▸` is the cue a capture and a `NO_COLOR`
+    /// terminal keep; the `REVERSED` modifier rides on top of it and is
+    /// **not** verifiable here (CLAUDE.md rule 5).
+    #[test]
+    fn every_choice_is_a_bracketed_button_and_only_the_cursor_is_marked() {
+        let mut view = three_choice_view();
+        let drawn = rows(&view, 80, 24);
+        let buttons = drawn
+            .iter()
+            .find(|line| line.contains("Re-push old tip"))
+            .unwrap_or_else(|| panic!("no choices row: {drawn:#?}"));
+        assert!(buttons.contains("▸[ Cancel ]"), "{buttons:?}");
+        assert!(buttons.contains(" [ Undo locally ]"), "{buttons:?}");
+        assert!(buttons.contains(" [ Re-push old tip ]"), "{buttons:?}");
+        assert_eq!(buttons.matches('▸').count(), 1, "{buttons:?}");
+
+        view.right();
+        let moved = rows(&view, 80, 24);
+        let after = moved
+            .iter()
+            .find(|line| line.contains("Re-push old tip"))
+            .unwrap_or_else(|| panic!("no choices row: {moved:#?}"));
+        assert!(after.contains("▸[ Undo locally ]"), "{after:?}");
+        assert_eq!(
+            after.chars().count(),
+            buttons.chars().count(),
+            "the row must not shift as the cursor moves"
+        );
+    }
+
     /// Row 484 (m4-07 Minor 2): the box must actually draw a frame — a
     /// rounded top-left corner and the title on its first row — at every
     /// size the M4 push box tests used, not just at one lucky size.
@@ -502,10 +523,14 @@ mod tests {
              #\n\
              # What right looks like: a rounded-border frame around every box\n\
              # (row 484 fix — it used to draw no frame at all), the title in\n\
-             # the top border, and the cursor's reversed button always on\n\
-             # `Cancel` — the leftmost choice — whatever the box's own danger\n\
-             # level (ADR-0038 §1). Colour (which button reverses) is\n\
-             # unverified by this capture: judge the reversed-button glyphs.\n\
+             # the top border, and every choice drawn as a bracketed button.\n\
+             # The cursor is the `▸` in front of one of them, and it is\n\
+             # always on `Cancel` — the leftmost choice — whatever the box's\n\
+             # own danger level (ADR-0038 §1).\n\
+             #\n\
+             # The cursor's button is ALSO drawn reversed, and that cannot be\n\
+             # judged here: this is a character grid with no colour or\n\
+             # attributes (CLAUDE.md rule 5). Judge the `▸` and the brackets.\n\
              \n",
         );
         for (label, view, w, h) in [
@@ -524,12 +549,13 @@ mod tests {
                 48,
             ),
         ] {
+            // Every row, blank ones included: a blank-row filter is what
+            // let a box the widget never drew look right in a capture
+            // (review Critical 1, the preview box's own dump).
             out.push_str(&format!("=== {label} ===\n"));
             for line in rows(&view, w, h) {
-                if !line.trim().is_empty() {
-                    out.push_str(&line);
-                    out.push('\n');
-                }
+                out.push_str(&line);
+                out.push('\n');
             }
             out.push('\n');
         }
