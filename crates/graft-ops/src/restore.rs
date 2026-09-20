@@ -10,15 +10,23 @@
 //! working tree, stash reflog. Refs first is deliberate: a compare-and-swap
 //! that fails stops the plan before a single file has been written, so a
 //! moved ref leaves the working tree exactly as it was.
+//!
+//! The stop is checked **before every step**, and a stop rolls back what
+//! already ran (ADR-0037 §6). An operation that cannot be cancelled is the
+//! opposite of what undo is for, and a half-applied undo is worse than no
+//! undo at all — so cancelling is all-or-nothing, put back from the entry's
+//! own before-fields and its own backup ref, both taken before the first
+//! step. Where it cannot be, the entry says so and the backup ref still
+//! holds everything.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use graft_core::journal::{EntryStatus, HeadRef};
 use graft_core::oid::Oid;
-use graft_git::run::{GitArg, GitInvocation, RunError};
+use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 
 use crate::apply::{AfterState, Applied, Context, Refresh, begin, finish, reason_for};
-use crate::facts::FactsError;
+use crate::facts::{self, FactsError};
 use crate::journal::JournalError;
 use crate::snapshot::{self, SnapshotError};
 use crate::undo::{InversePlan, PathScope, Step};
@@ -71,12 +79,51 @@ pub enum RestoreError {
     /// The caller asked to stop.
     #[error("stopped")]
     Stopped,
+    /// The caller asked to stop, and every step that had already run was put
+    /// back: the repository stands exactly where it did before the restore
+    /// began, and the entry is `Aborted` and not in force.
+    #[error("undo cancelled · nothing changed")]
+    Cancelled {
+        /// How many steps were reversed.
+        rolled_back: usize,
+    },
+    /// The caller asked to stop, and the roll-back could not finish. What
+    /// `applied` names is still in force; the entry's own backup ref holds
+    /// the state the restore started from, so `u` on it gets everything back.
+    #[error("undo cancelled part-way · {} · u shows the backup", rollback_what(.rollback))]
+    CancelledPartway {
+        /// What the roll-back could not put back, newest first.
+        applied: Vec<String>,
+        /// Why it stopped.
+        rollback: Box<RestoreError>,
+    },
+    /// The roll-back had nothing to put a field back from: the entry's own
+    /// before-state does not record it. The index is the real case — a
+    /// backup taken over an unmerged index has no tree to record.
+    #[error("the restore's own backup does not hold {field}, so it could not be put back")]
+    NoBefore {
+        /// Which field: a ref name, `HEAD`, `the index`, `the working tree`.
+        field: String,
+    },
 }
 
 impl RestoreError {
     /// One line for the status line.
     pub fn explain(&self) -> String {
         self.to_string()
+    }
+}
+
+/// A roll-back failure in the words of a roll-back.
+///
+/// [`RestoreError::RefMoved`]'s own message ends "nothing was changed", which
+/// is true of a plan that stopped at its first compare-and-swap and false
+/// here: by the time a roll-back refuses, the steps it could not reverse are
+/// in force.
+fn rollback_what(why: &RestoreError) -> String {
+    match why {
+        RestoreError::RefMoved { name } => format!("{name} is not where the undo left it"),
+        other => other.to_string(),
     }
 }
 
@@ -127,35 +174,31 @@ pub fn execute(ctx: &mut Context<'_>, plan: &InversePlan) -> Result<Applied, Res
         Some(plan.reverses.clone()),
     )?;
 
-    let mut commands = Vec::new();
-    let mut failure = None;
-    for step in &plan.steps {
-        match run_step(ctx, step, &mut commands) {
-            Ok(()) => {}
-            Err(why) => {
-                failure = Some(why);
-                break;
-            }
-        }
-    }
-
-    let status = match &failure {
-        None => EntryStatus::Committed,
-        Some(why) => EntryStatus::Aborted {
-            reason: aborted_reason(why),
-        },
+    // The entry's own before-fields, read by `begin` before the first step
+    // and backed by the backup ref it took at the same moment (§6.4). This,
+    // not the plan, is what a roll-back puts things back to: the plan says
+    // where the *operation* left the repository, this says where the
+    // *restore* found it.
+    let before = Before {
+        refs: pending.entry.refs_before.clone(),
+        head: pending.entry.head_before.clone(),
+        index: pending.entry.index_before,
+        worktree: pending.entry.worktree_before,
     };
+
+    let mut commands = Vec::new();
+    let (status, outcome) = outcome_of(run_plan(ctx, plan, &before, &mut commands));
     let unread = match finish(ctx, &mut pending, status, commands) {
         Ok(unread) => unread,
         Err(error) => {
             return Err(RestoreError::Journal {
                 error,
-                after: failure.map(Box::new),
+                after: outcome.map(Box::new),
             });
         }
     };
 
-    match failure {
+    match outcome {
         None => {
             let refresh = if pending.entry.touches.refs.is_empty() {
                 Refresh::WorkingTree
@@ -176,9 +219,313 @@ pub fn execute(ctx: &mut Context<'_>, plan: &InversePlan) -> Result<Applied, Res
             }
         }
         // `finish` has put the after-state failures into the entry's
-        // `Aborted` reason already; the plan's own failure is the headline.
+        // `Aborted` reason already; the plan's own failure — or the cancel —
+        // is the headline.
         Some(why) => Err(why),
     }
+}
+
+/// How a plan's steps ended.
+enum Ran {
+    /// Every step ran.
+    Done,
+    /// A step failed, and nothing after it ran.
+    Failed(RestoreError),
+    /// The caller asked to stop, and the roll-back has already run.
+    Cancelled(Cancelled),
+}
+
+/// Run the plan's steps, stopping at the first failure — or, on a stop,
+/// putting back what already ran before returning.
+fn run_plan(
+    ctx: &mut Context<'_>,
+    plan: &InversePlan,
+    before: &Before,
+    commands: &mut Vec<String>,
+) -> Ran {
+    let mut cancelled = false;
+    let mut stopped_in = None;
+    let mut applied: Vec<&Step> = Vec::new();
+    for step in &plan.steps {
+        // Before every step, not only the first: between two steps is the
+        // one place a plan can be stopped and still be put back exactly.
+        if ctx.stop.should_stop() {
+            cancelled = true;
+            break;
+        }
+        match run_step(ctx, step, commands) {
+            Ok(()) => applied.push(step),
+            // The runner SIGTERMed git part-way through this step, so
+            // whether it landed is not knowable from the error.
+            Err(RestoreError::Stopped) => {
+                cancelled = true;
+                stopped_in = Some(step);
+                break;
+            }
+            Err(why) => return Ran::Failed(why),
+        }
+    }
+    if cancelled {
+        Ran::Cancelled(roll_back_after_stop(
+            ctx,
+            before,
+            &mut applied,
+            stopped_in,
+            commands,
+        ))
+    } else {
+        Ran::Done
+    }
+}
+
+/// The entry's outcome line, and the error the caller gets.
+fn outcome_of(ran: Ran) -> (EntryStatus, Option<RestoreError>) {
+    match ran {
+        Ran::Done => (EntryStatus::Committed, None),
+        Ran::Failed(why) => (
+            EntryStatus::Aborted {
+                reason: aborted_reason(&why),
+            },
+            Some(why),
+        ),
+        // The repository is back where the restore found it, so the entry's
+        // after-state — read fresh by `finish` — equals its before-state and
+        // `journal::in_force` says this entry is not in force: it shadows
+        // nothing, and `next_undo` still points at the entry `u` was about
+        // to reverse.
+        Ran::Cancelled(Cancelled::Clean(rolled_back)) => (
+            EntryStatus::Aborted {
+                reason: "cancelled".to_owned(),
+            },
+            Some(RestoreError::Cancelled { rolled_back }),
+        ),
+        // The after-state here is real and possibly half-way, which is the
+        // point: `in_force` says so, `drift` explains it, and the backup ref
+        // keeps everything.
+        Ran::Cancelled(Cancelled::Partway { applied, why }) => (
+            EntryStatus::Aborted {
+                reason: format!("cancelled — rollback failed: {}", rollback_what(&why)),
+            },
+            Some(RestoreError::CancelledPartway {
+                applied,
+                rollback: Box::new(why),
+            }),
+        ),
+    }
+}
+
+/// The restore's own before-state: where a roll-back puts things back to.
+///
+/// Every field is the undo entry's, written by [`begin`] before the first
+/// step ran, so it is the pre-undo repository and not the pre-operation one.
+struct Before {
+    refs: BTreeMap<String, Option<Oid>>,
+    head: HeadRef,
+    index: Option<Oid>,
+    worktree: Option<Oid>,
+}
+
+/// What a cancelled restore left behind.
+enum Cancelled {
+    /// Every step that ran was put back; the repository is where it started.
+    Clean(usize),
+    /// The roll-back could not finish. `applied` names what is still in
+    /// force, newest first.
+    Partway {
+        applied: Vec<String>,
+        why: RestoreError,
+    },
+}
+
+/// How far a roll-back got.
+enum RolledBack {
+    /// All of them, reversed newest first.
+    All(usize),
+    /// It refused at a step; `still` is that step and everything older.
+    Partway {
+        still: Vec<String>,
+        why: RestoreError,
+    },
+}
+
+/// Whether a step the runner killed git inside of actually landed.
+enum Settled {
+    /// It did, so it has to be reversed.
+    Applied,
+    /// It did not, so there is nothing to reverse.
+    NotApplied,
+    /// The repository would not say.
+    Unknown(RestoreError),
+}
+
+/// Put back what the plan had already done, and say whether it managed to.
+///
+/// The roll-back is not itself cancellable — it runs against `&()` — because
+/// a cancel of the cancel would strand the repository half-way through an
+/// undo, which is the one state this exists to prevent.
+fn roll_back_after_stop<'p>(
+    ctx: &mut Context<'_>,
+    before: &Before,
+    applied: &mut Vec<&'p Step>,
+    stopped_in: Option<&'p Step>,
+    commands: &mut Vec<String>,
+) -> Cancelled {
+    let never: &dyn Stop = &();
+    let asked = std::mem::replace(&mut ctx.stop, never);
+
+    if let Some(step) = stopped_in {
+        match settled(ctx, step, before) {
+            Settled::Applied => applied.push(step),
+            Settled::NotApplied => {}
+            // Nothing is rolled back here, deliberately. A roll-back is a
+            // write, and the state this one would aim at is the state the
+            // repository has just refused to report; writing on a guess is
+            // how the backup ref ends up the only truth left. Say what ran,
+            // and leave the backup to hold the rest.
+            Settled::Unknown(why) => {
+                ctx.stop = asked;
+                let mut still = vec![step_name(step)];
+                still.extend(newest_first(applied));
+                return Cancelled::Partway {
+                    applied: still,
+                    why,
+                };
+            }
+        }
+    }
+
+    let rolled = roll_back(ctx, before, applied, commands);
+    ctx.stop = asked;
+    match rolled {
+        RolledBack::All(count) => Cancelled::Clean(count),
+        RolledBack::Partway { still, why } => Cancelled::Partway {
+            applied: still,
+            why,
+        },
+    }
+}
+
+/// Reverse `applied`, newest first, stopping at the first step that refuses.
+///
+/// Newest first is what makes the compare-and-swaps meaningful: each ref is
+/// swapped against the value this plan's own step wrote, so a refusal means
+/// something outside Graft moved it in between — which is reported, never
+/// clobbered.
+fn roll_back(
+    ctx: &mut Context<'_>,
+    before: &Before,
+    applied: &[&Step],
+    commands: &mut Vec<String>,
+) -> RolledBack {
+    let mut done = 0;
+    for (at, step) in applied.iter().enumerate().rev() {
+        let reverse = match reverse_of(step, before) {
+            Ok(reverse) => reverse,
+            Err(why) => {
+                return RolledBack::Partway {
+                    still: newest_first(&applied[..=at]),
+                    why,
+                };
+            }
+        };
+        match run_step(ctx, &reverse, commands) {
+            Ok(()) => done += 1,
+            Err(why) => {
+                return RolledBack::Partway {
+                    still: newest_first(&applied[..=at]),
+                    why,
+                };
+            }
+        }
+    }
+    RolledBack::All(done)
+}
+
+/// The step that puts `step` back, from the entry's own before-state.
+fn reverse_of(step: &Step, before: &Before) -> Result<Step, RestoreError> {
+    Ok(match step {
+        Step::UpdateRef { name, to, .. } => {
+            let back = *before
+                .refs
+                .get(name)
+                .ok_or_else(|| RestoreError::NoBefore {
+                    field: name.clone(),
+                })?;
+            Step::UpdateRef {
+                name: name.clone(),
+                // Swap against what this step wrote, not against what the
+                // plan expected: the plan's `expect` is the operation's
+                // after-value, which is where the ref is going, not where it
+                // is.
+                expect: *to,
+                to: back,
+            }
+        }
+        Step::SetHead(_) => Step::SetHead(before.head.clone()),
+        // The same paths the forward step could have written — a roll-back
+        // is never wider than what it undoes — read out of the entry's own
+        // backup tree instead of the operation's.
+        Step::RestoreIndex { paths, .. } => Step::RestoreIndex {
+            tree: before.index.ok_or_else(|| RestoreError::NoBefore {
+                field: "the index".to_owned(),
+            })?,
+            paths: paths.clone(),
+        },
+        Step::RestoreWorktree { paths, .. } => Step::RestoreWorktree {
+            tree: before.worktree.ok_or_else(|| RestoreError::NoBefore {
+                field: "the working tree".to_owned(),
+            })?,
+            paths: paths.clone(),
+        },
+        Step::StashStore { commit } => Step::StashDrop { commit: *commit },
+        Step::StashDrop { commit } => Step::StashStore { commit: *commit },
+    })
+}
+
+/// Read the repository to settle whether a killed step landed.
+///
+/// Only a [`Step::UpdateRef`] needs asking. Every other reversal is
+/// idempotent by construction — a restore from the entry's own backup writes
+/// the same bytes whether or not the step ran, [`stash_store`] scans the
+/// reflog first and [`stash_drop`] is a no-op when the reflog lacks the
+/// commit — so reversing one that never ran costs nothing. A ref is
+/// different: its reversal is a compare-and-swap against what the step wrote,
+/// and running that on a step that never ran would refuse and be reported as
+/// drift that is not there.
+fn settled(ctx: &mut Context<'_>, step: &Step, before: &Before) -> Settled {
+    let Step::UpdateRef { name, to, .. } = step else {
+        return Settled::Applied;
+    };
+    // `read_refs` reads the ref store directly, so there is no command line
+    // to record for it.
+    let now = match facts::read_refs(ctx.repo, std::slice::from_ref(name)) {
+        Ok(found) => found.get(name).copied().flatten(),
+        Err(why) => return Settled::Unknown(RestoreError::Facts(why)),
+    };
+    if now == *to {
+        Settled::Applied
+    } else if now == *before.refs.get(name).unwrap_or(&None) {
+        Settled::NotApplied
+    } else {
+        // Neither where the step would have put it nor where the restore
+        // found it: something outside this plan moved it.
+        Settled::Unknown(RestoreError::RefMoved { name: name.clone() })
+    }
+}
+
+/// What a step touches, in the words the status line uses.
+fn step_name(step: &Step) -> String {
+    match step {
+        Step::UpdateRef { name, .. } => name.clone(),
+        Step::SetHead(_) => "HEAD".to_owned(),
+        Step::RestoreIndex { .. } => "the index".to_owned(),
+        Step::RestoreWorktree { .. } => "the working tree".to_owned(),
+        Step::StashStore { .. } | Step::StashDrop { .. } => "the stash".to_owned(),
+    }
+}
+
+fn newest_first(steps: &[&Step]) -> Vec<String> {
+    steps.iter().rev().map(|step| step_name(step)).collect()
 }
 
 fn aborted_reason(why: &RestoreError) -> String {
