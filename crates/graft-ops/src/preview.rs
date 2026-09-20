@@ -59,7 +59,7 @@ pub enum Target {
 /// A commit the operation would create, drawn but never written.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GhostCommit {
-    /// A synthetic id: SHA-1 over `"graft-ghost\0" + description + "\0" + n`
+    /// A synthetic id: SHA-1 over `"graft-ghost\0" + subject + "\0" + n`
     /// (see [`ghost_oid`]). Deterministic, so two previews of the same
     /// operation draw the same rows and the graph's caches agree; never
     /// written to the object database, and never equal to a real commit's
@@ -225,8 +225,12 @@ impl From<RunError> for PreviewError {
     }
 }
 
-/// A ghost's synthetic id: SHA-1 over `"graft-ghost\0"`, the description,
-/// a NUL and `n`.
+/// A ghost's synthetic id: SHA-1 over `"graft-ghost\0"`, the **subject** git
+/// would give the commit, a NUL and `n`.
+///
+/// The subject, not the operation's description: a rebase draws one ghost per
+/// replayed commit, and they must differ from one another. The doc said
+/// "description" and no caller ever passed one (m5/07 review, Minor 2).
 ///
 /// Deterministic on purpose — two previews of the same operation must draw
 /// the same rows, or the graph's row caches would churn and the eye would
@@ -234,9 +238,9 @@ impl From<RunError> for PreviewError {
 /// not collide with a real commit: git hashes `commit <len>\0…`, never
 /// `graft-ghost\0…`.
 #[must_use]
-pub fn ghost_oid(description: &str, n: usize) -> Oid {
+pub fn ghost_oid(subject: &str, n: usize) -> Oid {
     let mut message = b"graft-ghost\0".to_vec();
-    message.extend_from_slice(description.as_bytes());
+    message.extend_from_slice(subject.as_bytes());
     message.push(0);
     message.extend_from_slice(n.to_string().as_bytes());
     Oid::from_sha1(sha1(&message))
