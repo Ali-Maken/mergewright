@@ -91,8 +91,8 @@ fn menu_verbs_build_expected_operations() {
             "Rebase main onto feature (r)",
             "Cherry-pick 0300000",
             "Revert 0300000",
-            "Reset main to here (mixed)",
-            "Reset main to here (hard)",
+            "Reset main to here, mixed",
+            "Reset main to here, hard",
             "Delete branch feature",
             "Delete tag v1",
         ]
@@ -142,7 +142,7 @@ fn menu_verbs_build_expected_operations() {
         })
     );
     assert_eq!(
-        op_of(&verbs, "Reset main to here (mixed)"),
+        op_of(&verbs, "Reset main to here, mixed"),
         &Operation::Reset(ResetParams {
             target: ResetTarget::Head {
                 branch: main_tip(),
@@ -152,7 +152,7 @@ fn menu_verbs_build_expected_operations() {
         })
     );
     assert_eq!(
-        op_of(&verbs, "Reset main to here (hard)"),
+        op_of(&verbs, "Reset main to here, hard"),
         &Operation::Reset(ResetParams {
             target: ResetTarget::Head {
                 branch: main_tip(),
@@ -211,7 +211,7 @@ fn a_row_with_no_branch_offers_a_detached_checkout() {
     let refs = main_and_feature();
     let verbs = history_verbs(oid(9), &[oid(2)], "ninth", &refs, &[]);
     assert_eq!(
-        op_of(&verbs, "Checkout 0900000 (detached)"),
+        op_of(&verbs, "Checkout 0900000, detached"),
         &Operation::Checkout(CheckoutParams {
             to: CheckoutTarget::Detached(oid(9)),
             head_before: HeadRef::Branch("refs/heads/main".to_owned()),
@@ -236,8 +236,8 @@ fn the_current_branchs_own_row_offers_neither_checkout_nor_delete_nor_merge() {
         vec![
             "Cherry-pick 0200000",
             "Revert 0200000",
-            "Reset main to here (mixed)",
-            "Reset main to here (hard)",
+            "Reset main to here, mixed",
+            "Reset main to here, hard",
         ],
         "only the verbs that still mean something on HEAD's own tip"
     );
@@ -251,7 +251,7 @@ fn a_merge_rows_revert_names_its_mainline() {
     let refs = main_and_feature();
     let verbs = history_verbs(oid(3), &[oid(2), oid(4)], "merged", &refs, &[]);
     assert_eq!(
-        op_of(&verbs, "Revert 0300000 (-m 1)"),
+        op_of(&verbs, "Revert 0300000, -m 1"),
         &Operation::Revert(RevertParams {
             commit: oid(3),
             subject: "merged".to_owned(),
@@ -282,7 +282,7 @@ fn a_detached_head_keeps_the_verbs_that_do_not_need_a_branch() {
         "{labels:?}"
     );
     assert_eq!(
-        op_of(&verbs, "Reset HEAD to here (hard)"),
+        op_of(&verbs, "Reset HEAD to here, hard"),
         &Operation::Reset(ResetParams {
             target: ResetTarget::Head {
                 branch: Tip {

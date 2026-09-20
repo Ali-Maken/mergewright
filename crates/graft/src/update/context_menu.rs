@@ -683,8 +683,8 @@ mod tests {
                 "Rebase main onto feature (r)",
                 "Cherry-pick 0303030",
                 "Revert 0303030",
-                "Reset main to here (mixed)",
-                "Reset main to here (hard)",
+                "Reset main to here, mixed",
+                "Reset main to here, hard",
                 "Delete branch feature",
             ]
         );

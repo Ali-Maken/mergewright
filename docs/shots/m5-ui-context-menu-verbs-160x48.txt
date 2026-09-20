@@ -13,43 +13,53 @@
 #  - The menu is anchored under `main`'s row and is wide enough for its
 #    longest label, with the cursor on the first item.
 #  - The row's own actions come first (`Copy SHA (y)`, `Compare with this
-#    (x)`, `Open details (⏎)`), then the history verbs, then the keys the
-#    hint bar drops (`Fetch (f)` … `Undo (u)`).
+#    (x)`, `Open details (⏎)`), then the history verbs, then the ambient
+#    ones (`Fetch (f)` … `Undo (u)`). The menu lists every verb valid for
+#    this row at every width — it does not filter against the hint bar,
+#    because a verb you can only discover at 160 columns is the failure
+#    ADR-0039 exists to prevent.
+#  - The menu is opaque. On each of its rows, everything right of the
+#    label is blank out to the edge of the pane: no date or sha from the
+#    commit row underneath survives beside a verb, where it would read as
+#    if the verb were bound to that sha.
 #  - The history verbs name the real branches, not placeholders: `Checkout
 #    main`, `Merge main into feature (m)`, `Rebase feature onto main (r)`,
-#    `Cherry-pick <sha7>`, `Revert <sha7>`, `Reset feature to here
-#    (mixed)`/`(hard)`, `Delete branch main`. `feature` is the branch
+#    `Cherry-pick <sha7>`, `Revert <sha7>`, `Reset feature to here,
+#    mixed`/`, hard`, `Delete branch main`. `feature` is the branch
 #    checked out, `main` is the row under the cursor.
 #  - No verb names the branch you are standing on where git would refuse
 #    it: there is no `Checkout feature` and no `Delete branch feature`.
-#  - A trailing `(key)` means the same thing everywhere in the menu:
-#    next time you can skip it. `Merge` and `Rebase` carry one because
-#    `m` and `r` exist; checkout, cherry-pick, revert, reset and the
-#    deletions own no letter, so they carry none.
+#  - A trailing `(key)` means one thing everywhere in the menu: that
+#    letter is live right now, so next time you can skip the menu. Only
+#    `Merge` and `Rebase` carry one, because only `m` and `r` exist. A
+#    qualifier that is not a key never wears that shape — hence `Reset
+#    …, mixed`, not `(mixed)` (`docs/design/02-keymap.md` §2.1).
 #  - Choosing any of them opens a picture, not a write (PROMPT.md §1.7).
-#  - At 80 columns the menu still fits inside the graph pane rather than
-#    running off it.
+#  - At 160 columns the graph's date and sha columns sit far to the
+#    right of the menu, and they stop dead at the menu's own rows: the
+#    popup clears the whole band it stands on, so no verb has a stray
+#    sha beside it.
 #
 
  graft /code/api  8 commits  date order, sorting…
-  ◆   [◆ feature] finish the feature                                                                                                             GT now  11d209f
-● │   [main] main moves again                                                                                                                    GT now  e55219c
- Copy SHA (y)                                                                                                                                    GT now  6d3bd01
- Compare with this (x)                                                                                                                           GT now  f194f5c
- Open details (⏎)                                                                                                                                GT now  350769c
- Checkout main                                                                                                                                   GF 7y   a82960b
- Merge main into feature (m)                                                                                                                     GF 7y   fadcfb3
- Rebase feature onto main (r)                                                                                                                    GF 7y   64ded19
- Cherry-pick e55219c
- Revert e55219c
- Reset feature to here (mixed)
- Reset feature to here (hard)
+  ◆   [◆ feature] finish the feature                                                                                                             GT now  b7e9d3d
+  ●   start the feature                                                                                                                          GT now  078c7e0
+● │   [main] main moves again                                                                                                                    GT now  bf88d9d
+ Copy SHA (y)
+ Compare with this (x)
+ Open details (⏎)
+ Checkout main
+ Merge main into feature (m)
+ Rebase feature onto main (r)
+ Cherry-pick bf88d9d
+ Revert bf88d9d
+ Reset feature to here, mixed
+ Reset feature to here, hard
  Delete branch main
  Fetch (f)
  Pull (p)
  Push (P)
  Undo (u)
-
 
 
 
