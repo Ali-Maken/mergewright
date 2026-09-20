@@ -18,7 +18,7 @@ use std::collections::BTreeMap;
 use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches};
 use graft_core::oid::Oid;
 
-use crate::journal::{in_force_all, next_redo, next_undo, root_operation, undoable};
+use crate::journal::{in_force_all, is_operation, next_redo, next_undo, root_operation, undoable};
 
 pub use execute::{UndoError, redo, revert_to, undo};
 
@@ -367,8 +367,15 @@ pub fn plan_redo(entries: &[JournalEntry]) -> Result<InversePlan, NotInvertible>
 /// keeps every compare-and-swap true: each step's `expect` is the value the
 /// step before it just restored.
 ///
-/// An entry `u` cannot see is skipped, by exactly the rule `u` uses
-/// ([`undoable`]): a fetch or a push has no local inverse, and a pull that
+/// An entry `u` cannot see is skipped, by exactly the rules `u` uses. An
+/// `Undo` or `Redo` entry is stepped over ([`is_operation`]) — inverting one
+/// re-applies what the user undid, so a journal of `[pick, branch,
+/// undo(branch)]` reverted to the pick would have handed the branch back and
+/// written a `Redo` line nobody asked for (m5/07 review, C2). The entry it
+/// reversed is not in force, so it is skipped too, and every remaining
+/// compare-and-swap still sees the value the step before it restored.
+///
+/// The second rule is [`undoable`]: a fetch or a push has no local inverse, and a pull that
 /// moved nothing has nothing to put back. A push inside the range therefore
 /// leaves the remote where it is — ADR-0037 §3's three-choice box is the
 /// app's to raise before calling this, never something to infer from a plan
@@ -391,7 +398,7 @@ pub fn plan_revert_to(
     let mut plans = Vec::new();
     for index in (at..entries.len()).rev() {
         let entry = &entries[index];
-        if !flags[index] || !undoable(entry) {
+        if !flags[index] || !is_operation(entry) || !undoable(entry) {
             continue;
         }
         plans.push(inverse(entry, root_operation(entries, entry))?);

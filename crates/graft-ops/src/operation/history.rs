@@ -33,6 +33,7 @@ use graft_core::journal::{HeadRef, Touches};
 use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
 use graft_git::run::GitArg;
+use graft_git::version::GitVersion;
 
 use super::{Invocation, Refusal, RepoFacts, stash};
 
@@ -579,7 +580,14 @@ pub(crate) fn merge_subject(params: &MergeParams) -> String {
 pub(super) fn plan_merge(params: &MergeParams) -> Vec<Invocation> {
     let mut args = vec![GitArg::Flag("merge"), GitArg::Flag("--no-edit")];
     match params.ff {
-        FastForward::Default => {}
+        // `--ff` is spelled out rather than left to git's default, because
+        // git's default is `merge.ff` — a config the preview does not read.
+        // With `merge.ff=false` set, a merge the box drew as a fast-forward
+        // wrote a two-parent merge commit instead, and with `merge.ff=only`
+        // one it drew as a ghost merge failed outright (m5/07 review, M1;
+        // both verified against git 2.54). An explicit flag on every arm
+        // makes the preview's rule git's rule, and keeps `check` pure.
+        FastForward::Default => args.push(GitArg::Flag("--ff")),
         FastForward::Only => args.push(GitArg::Flag("--ff-only")),
         FastForward::Never => args.push(GitArg::Flag("--no-ff")),
     }
@@ -589,11 +597,28 @@ pub(super) fn plan_merge(params: &MergeParams) -> Vec<Invocation> {
     vec![Invocation::new(args)]
 }
 
-pub(super) fn plan_rebase(params: &RebaseParams) -> Vec<Invocation> {
-    vec![Invocation::new(vec![
-        GitArg::Flag("rebase"),
-        source_arg(&params.onto),
-    ])]
+/// `rebase.updateRefs` and `rebase.autostash` both move things the journal
+/// never sees: the first rewrites every branch pointing inside the rebased
+/// range (verified — `f1` moved under a rebase of `f2`), so `u` restores the
+/// branch and leaves the others rewritten, silently; the second stashes and
+/// pops outside any entry, which is the case hard choice 4 refuses
+/// `DirtyTree` for. Both are turned off explicitly (m5/07 review, M2).
+///
+/// M7's chain rebase (ADR-0032) opts back in deliberately, with every moved
+/// branch in `touches.refs` and in the preview's `ref_moves`.
+///
+/// `--no-update-refs` is git 2.38's, which is [`GitVersion::MINIMUM`]. An
+/// older git would reject the option and fail the rebase outright, and it
+/// has no `rebase.updateRefs` to honour either, so below the minimum the
+/// plan stays as it was.
+pub(super) fn plan_rebase(params: &RebaseParams, git: GitVersion) -> Vec<Invocation> {
+    let mut args = vec![GitArg::Flag("rebase")];
+    if git >= GitVersion::MINIMUM {
+        args.push(GitArg::Flag("--no-update-refs"));
+        args.push(GitArg::Flag("--no-autostash"));
+    }
+    args.push(source_arg(&params.onto));
+    vec![Invocation::new(args)]
 }
 
 pub(super) fn plan_pick(params: &PickParams) -> Vec<Invocation> {

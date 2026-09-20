@@ -1,0 +1,127 @@
+# m5/07 fix round — what real git actually does
+
+Recorded in throwaway repositories outside the worktree, 2026-09-20. The
+scripts are `/tmp/m5_07_fix_checks.sh` and `/tmp/m5_07_state_files.sh`; what
+follows is their output verbatim. Same shape as `plan-behaviours.txt` and
+`plan-behaviours-2.txt`, which the group wrote for (a)–(g).
+
+## Part 1 — the config a reader may have set (review M1, M2)
+
+Items 1–6 are the merge fast-forward flag. Item 2 is the bug as shipped: the
+picture drew a fast-forward and git made a merge commit. Item 4 is why Pull
+needed no change — `--ff-only` overrides `merge.ff=false`. Item 5 is Pull
+under `pull.rebase=true`, which the user has set globally: Graft's plan is
+`fetch` + `merge --ff-only`, never `git pull`, so the config cannot reach it.
+Items 7–9 are the rebase flags.
+
+```
+git: git version 2.54.0 (Apple Git-157)
+workdir: /tmp/m5fix4voRKt
+
+### 1. merge.ff=false + explicit --ff, ff-able (the M1 fix). want: exit 0, 2 words = fast-forward
+exit=0
+rev-list --parents words: 2  (2 = ff, 3 = merge commit)
+
+### 2. merge.ff=false + NO flag (today's Default) — reviewer's M1
+exit=0
+rev-list --parents words: 3
+
+### 3. merge.ff=only + explicit --no-ff, diverged (FastForward::Never)
+exit=0
+rev-list --parents words: 3
+
+### 4. merge.ff=false + --ff-only, ff-able (FastForward::Only, and Pull's own plan)
+exit=0
+rev-list --parents words: 2
+
+### 5. pull.rebase=true over 'merge --ff-only' (Pull's plan runs fetch + merge, never 'git pull')
+exit=0
+rev-list --parents words: 2
+
+### 5b. pull.ff=only / pull.rebase over a real 'git pull' for contrast — not Graft's path
+(skipped: Graft never runs 'git pull'; see plan_pull)
+
+### 6. merge.ff=only + no flag, diverged (Default) — reviewer's second M1 finding
+exit=128
+
+### 7. rebase.updateRefs=true, without and with --no-update-refs
+flag=none exit=0
+  f1x MOVED c2142407c05fffff9fbc5c9e423c7352a39f4e92 -> 2873841a58e77a8ab4cc90ce26dfad35aa272f2d
+flag=--no-update-refs exit=0
+  f1x UNCHANGED
+
+### 8. --no-update-refs accepted by this git?
+rebase --no-update-refs HEAD exit=0
+
+### 9. --no-autostash on a dirty tree (rebase) — Graft refuses DirtyTree first; what does git do?
+exit=1 (non-zero = refused, which is what we want)
+
+done
+```
+
+## Part 2 — what each kind of stop leaves behind (review M7)
+
+The review recommended matching a live journal entry by comparing its
+recorded before-state against `ORIG_HEAD`. This record is why that was not
+built: **a conflicted cherry-pick and a conflicted revert set no `ORIG_HEAD`
+at all**, so the comparison would have rejected Graft's own entry for two of
+the four kinds. The guard as built uses `rebase-merge/head-name` for a
+rebase, and the current symbolic `HEAD` plus the branch still standing at the
+entry's recorded tip for merge, cherry-pick and revert. A rebase with no
+`head-name` (a `git am`) matches nothing.
+
+```
+git: git version 2.54.0 (Apple Git-157)
+
+### merge conflict
+  pre-merge HEAD was: 987cfa341d9c9f15b31211ce109dfce8ae93aa90
+  HEAD symbolic: refs/heads/main
+  ORIG_HEAD: 987cfa341d9c9f15b31211ce109dfce8ae93aa90
+  branch main: 987cfa341d9c9f15b31211ce109dfce8ae93aa90
+  rebase-merge/head-name: (absent)
+  rebase-merge/orig-head: (absent)
+  rebase-merge/onto: (absent)
+  MERGE_HEAD: c0f02ed3b95477fc1415e0ef094224ba56cf3f9c
+  CHERRY_PICK_HEAD: (absent)
+  REVERT_HEAD: (absent)
+
+### rebase conflict
+  pre-rebase feat was: c0f02ed3b95477fc1415e0ef094224ba56cf3f9c
+  HEAD symbolic: (detached)
+  ORIG_HEAD: c0f02ed3b95477fc1415e0ef094224ba56cf3f9c
+  branch main: 987cfa341d9c9f15b31211ce109dfce8ae93aa90
+  rebase-merge/head-name: refs/heads/feat
+  rebase-merge/orig-head: c0f02ed3b95477fc1415e0ef094224ba56cf3f9c
+  rebase-merge/onto: 987cfa341d9c9f15b31211ce109dfce8ae93aa90
+  MERGE_HEAD: (absent)
+  CHERRY_PICK_HEAD: (absent)
+  REVERT_HEAD: (absent)
+
+### cherry-pick conflict
+  pre-pick HEAD was: 987cfa341d9c9f15b31211ce109dfce8ae93aa90
+  HEAD symbolic: refs/heads/main
+  ORIG_HEAD: (none)
+  branch main: 987cfa341d9c9f15b31211ce109dfce8ae93aa90
+  rebase-merge/head-name: (absent)
+  rebase-merge/orig-head: (absent)
+  rebase-merge/onto: (absent)
+  MERGE_HEAD: (absent)
+  CHERRY_PICK_HEAD: c0f02ed3b95477fc1415e0ef094224ba56cf3f9c
+  REVERT_HEAD: (absent)
+
+### revert conflict (revert a commit whose change was later rewritten)
+  pre-revert HEAD was: c1ea354b6c6b4ed756d161c591e19f279cd9d085
+  HEAD symbolic: refs/heads/main
+  ORIG_HEAD: (none)
+  branch main: c1ea354b6c6b4ed756d161c591e19f279cd9d085
+  rebase-merge/head-name: (absent)
+  rebase-merge/orig-head: (absent)
+  rebase-merge/onto: (absent)
+  MERGE_HEAD: (absent)
+  CHERRY_PICK_HEAD: (absent)
+  REVERT_HEAD: 0066ac48920d216e40c5e165c50a80410f8c9327
+
+### does a plain 'git merge' set ORIG_HEAD even when it succeeds?
+  (conflicted; see above)
+done
+```

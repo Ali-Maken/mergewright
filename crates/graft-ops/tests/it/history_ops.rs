@@ -18,7 +18,7 @@ use graft_fixtures::Shape;
 use graft_fixtures::remote::LocalRemote;
 use graft_git::repo::RepoHandle;
 use graft_git::state::InProgress;
-use graft_ops::apply::{Applied, ApplyError, Resume, apply, recover_interrupted, resume};
+use graft_ops::apply::{Applied, ApplyError, Refresh, Resume, apply, recover_interrupted, resume};
 use graft_ops::facts::read_facts;
 use graft_ops::operation::{
     BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,
@@ -33,8 +33,8 @@ use graft_ops::preview::{
 use graft_ops::undo::{self, UndoError};
 
 use crate::support::{
-    NOW, Never, RepoState, TempRepo, context, git_version, journal_for, round_trip, run, run_undo,
-    state_of, try_run,
+    NOW, Never, RepoState, TempRepo, context, git_version, journal_for, round_trip, run, run_redo,
+    run_undo, state_of, try_run,
 };
 
 // ── building repositories ───────────────────────────────────────────────
@@ -339,6 +339,7 @@ fn branch_from_stash_applies_undoes_redoes() {
     });
     let before = state_of(&repo);
     run(&repo, &op, NOW + 1);
+    let after = state_of(&repo);
     assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/wip-branch");
     assert_eq!(repo.read("base.txt"), b"edited, not committed\n".to_vec());
 
@@ -347,6 +348,25 @@ fn branch_from_stash_applies_undoes_redoes() {
         state_of(&repo),
         before,
         "undo put the stash back and removed the branch"
+    );
+
+    // The redo leg: a stash drop, the branch re-created, `HEAD` moved and
+    // the tree restored — the one inverse in this group that does all four.
+    // `round_trip` cannot be used here (the stash push already holds `NOW`).
+    run_redo(&repo, NOW + 3, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
+    assert_eq!(
+        state_of(&repo),
+        after,
+        "redo did not put it forward exactly"
+    );
+    assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/wip-branch");
+    assert_eq!(repo.read("base.txt"), b"edited, not committed\n".to_vec());
+
+    undo_to(&repo, NOW + 4);
+    assert_eq!(
+        state_of(&repo),
+        before,
+        "the second undo did not put it back"
     );
 }
 
@@ -435,6 +455,101 @@ fn ghost_matches_git_merge_fast_forward() {
     run(&repo, &op, NOW);
     real_moves_landed(&repo, &plan);
     assert!(repo.exists("main.txt"), "the tree came with it");
+}
+
+/// The reader's `merge.ff` cannot change what the box promised.
+///
+/// `merge.ff=false` turns git's default merge of an ff-able branch into a
+/// two-parent merge commit, and `merge.ff=only` makes a diverged merge fail
+/// — both against a preview that drew the opposite (m5/07 review, M1). The
+/// plan names the flag on every arm, so git follows the picture instead of
+/// the config. Real git, real config, read back out of the repository.
+#[test]
+fn a_merge_follows_the_picture_not_the_readers_merge_ff() {
+    let repo = ahead();
+    repo.git(&["config", "merge.ff", "false"]);
+    repo.git(&["switch", "-q", "feature"]);
+    let op = merge_op(&repo, "refs/heads/main", FastForward::Default);
+    let plan = preview_of(&repo, &op);
+    assert!(plan.ghosts.is_empty(), "the box promised a fast-forward");
+    let onto = id(&repo, "refs/heads/main");
+    assert_eq!(plan.ref_moves[0].to, Some(GhostTarget::Real(onto)));
+
+    run(&repo, &op, NOW);
+    assert_eq!(
+        id(&repo, "refs/heads/feature"),
+        onto,
+        "the branch landed exactly where the box said"
+    );
+    assert_eq!(
+        repo.git(&["rev-list", "--parents", "-n1", "HEAD"])
+            .split_whitespace()
+            .count(),
+        2,
+        "one parent: a fast-forward, not the merge commit merge.ff=false wants"
+    );
+
+    // And the other way: a diverged merge git would refuse under
+    // `merge.ff=only` still runs, because the plan says `--no-ff`.
+    let other = conflicting();
+    other.git(&["config", "merge.ff", "only"]);
+    let plan = preview_of(
+        &other,
+        &merge_op(&other, "refs/heads/feature", FastForward::Never),
+    );
+    assert_eq!(plan.ghosts.len(), 1, "the box promised a merge commit");
+    let op = merge_op(&other, "refs/heads/feature", FastForward::Never);
+    let error = try_run(&other, &op, NOW).expect_err("it conflicts, as it would anyway");
+    assert!(
+        matches!(error, ApplyError::Conflicted { .. }),
+        "git got as far as the conflict rather than refusing the merge outright: {error:?}"
+    );
+}
+
+/// A rebase moves only the branch the entry records.
+///
+/// `rebase.updateRefs=true` rewrites every branch pointing inside the
+/// replayed range. Those refs are in neither `refs_before`/`refs_after` nor
+/// the preview's `ref_moves`, so §6.7's rail cannot see them and `u` would
+/// leave them rewritten (m5/07 review, M2). The user works on dependent
+/// branches, which is exactly who turns this on.
+#[test]
+fn a_rebase_moves_only_the_branch_the_entry_records() {
+    let repo = TempRepo::init();
+    repo.git(&["config", "rebase.updateRefs", "true"]);
+    repo.write("base.txt", b"base\n");
+    repo.commit_all("one");
+    repo.write("main.txt", b"main\n");
+    repo.commit_all("on main");
+    repo.git(&["switch", "-qc", "lower", "HEAD~1"]);
+    repo.write("lower.txt", b"lower\n");
+    repo.commit_all("on lower");
+    repo.git(&["switch", "-qc", "upper"]);
+    repo.write("upper.txt", b"upper\n");
+    repo.commit_all("on upper");
+
+    let lower_before = id(&repo, "refs/heads/lower");
+    let op = rebase_op(&repo, "refs/heads/main");
+    let plan = preview_of(&repo, &op);
+    assert!(
+        !plan
+            .ref_moves
+            .iter()
+            .any(|moved| moved.name == "refs/heads/lower"),
+        "the box does not draw `lower` moving: {:?}",
+        plan.ref_moves
+    );
+
+    let entry = run(&repo, &op, NOW);
+    assert!(
+        !entry.refs_before.contains_key("refs/heads/lower"),
+        "the entry does not record `lower` either"
+    );
+    assert_eq!(
+        id(&repo, "refs/heads/lower"),
+        lower_before,
+        "rebase.updateRefs moved a branch neither the box nor the journal knows about"
+    );
 }
 
 #[test]
@@ -536,12 +651,50 @@ fn ghost_matches_git_revert() {
     assert_eq!(plan.ghosts.len(), 1);
     assert_eq!(plan.ghosts[0].parents, vec![GhostTarget::Real(head)]);
 
+    // The files the revert rewrites are the reverted commit's own change.
+    // Reverting `HEAD` is the ordinary case, and it is the one the old
+    // `commit..head` pair drew as empty (m5/07 review, M3).
+    assert_eq!(
+        plan.worktree,
+        WorktreeEffect::Updated {
+            paths: vec!["main.txt".into()],
+            more: false
+        },
+        "the box names the file the revert takes away"
+    );
+
     run(&repo, &op, NOW);
     assert_eq!(repo.git(&["rev-parse", "HEAD^"]), head.to_string());
     assert_eq!(
         repo.git(&["log", "-1", "--format=%s"]),
         plan.ghosts[0].subject,
         "git's own `Revert \"…\"` subject is what the ghost drew"
+    );
+    assert!(
+        !repo.exists("main.txt"),
+        "git rewrote exactly the path the box named"
+    );
+}
+
+/// With no recorded parent the list is a named hole, never an empty one:
+/// "we do not know which files" must not read as "no files change".
+#[test]
+fn a_revert_with_no_recorded_parent_says_so_rather_than_drawing_nothing() {
+    let repo = diverged();
+    let head = id(&repo, "HEAD");
+    let op = Operation::Revert(RevertParams {
+        commit: head,
+        subject: repo.git(&["log", "-1", "--format=%s"]),
+        mainline: None,
+        parents: 1,
+        parent: None,
+        head: head_tip(&repo),
+    });
+    let plan = preview_of(&repo, &op);
+    assert!(
+        matches!(plan.worktree, WorktreeEffect::NotShown { ref why } if why.contains("parent")),
+        "{:?}",
+        plan.worktree
     );
 }
 
@@ -737,11 +890,34 @@ fn conflict_span_is_one_entry_and_undoes_to_before_the_merge() {
     let before_main = id(&repo, "refs/heads/main");
     let entry = a_merge_that_stops_on_shared_txt(&repo);
 
-    // Resolved and staged outside the journal, so the only entry in it is
-    // the merge itself: what `u` must take back is the whole span, and a
-    // journaled "mark resolved" of its own would be the newer entry.
+    // Resolved through Graft's own "mark resolved" — the path M6's resolver
+    // takes, and the one that must leave the span one entry. A `Stage` taken
+    // inside a live operation is part of that operation: it runs, its command
+    // line joins the entry, and it writes no journal line of its own.
     repo.write("shared.txt", b"resolved\n");
-    repo.git(&["add", "shared.txt"]);
+    let staged = try_run(
+        &repo,
+        &Operation::Stage(graft_ops::operation::Target::Paths(vec![
+            "shared.txt".into(),
+        ])),
+        NOW + 3,
+    )
+    .expect("marking the file resolved is allowed once the markers are gone");
+    assert_eq!(
+        journal_lines(&repo),
+        1,
+        "the resolve step is part of the merge's entry, not a second entry"
+    );
+    assert_eq!(entries(&repo).len(), 1, "still one entry");
+    assert_eq!(
+        staged.entry.description, "stage shared.txt",
+        "the status line says what the user did, not what the merge is"
+    );
+    assert_eq!(
+        staged.refresh,
+        Refresh::WorkingTree,
+        "nothing moved a ref: the changes pane is what changed"
+    );
 
     // Now it continues, and the entry finally gets its outcome line.
     let applied = run_resume(&repo, Resume::Continue, NOW + 4).expect("the merge finishes");
@@ -765,6 +941,106 @@ fn conflict_span_is_one_entry_and_undoes_to_before_the_merge() {
     undo_to(&repo, NOW + 5);
     assert_eq!(id(&repo, "refs/heads/main"), before_main);
     assert_eq!(state_of(&repo), before, "back to before the merge, exactly");
+}
+
+/// Two conflicted files, resolved one at a time. The second `Stage` leaves
+/// a fully merged index — `write-tree` would succeed and the entry *could*
+/// have been journaled — and it still writes no line: the rule is "an
+/// operation is in progress", not "the index cannot be snapshotted".
+///
+/// This is the case a narrower rule would miss, and it is the ordinary one:
+/// the last file a user resolves always leaves the index clean.
+#[test]
+fn resolving_each_file_in_turn_still_leaves_the_span_one_entry() {
+    let repo = TempRepo::init();
+    repo.write("one.txt", b"base\n");
+    repo.write("two.txt", b"base\n");
+    repo.commit_all("one");
+    repo.git(&["branch", "feature"]);
+    repo.write("one.txt", b"main\n");
+    repo.write("two.txt", b"main\n");
+    repo.commit_all("two on main");
+    repo.git(&["switch", "-q", "feature"]);
+    repo.write("one.txt", b"feature\n");
+    repo.write("two.txt", b"feature\n");
+    repo.commit_all("one on feature");
+    repo.git(&["switch", "-q", "main"]);
+
+    let before = state_of(&repo);
+    let before_main = id(&repo, "refs/heads/main");
+    let op = merge_op(&repo, "refs/heads/feature", FastForward::Never);
+    let (entry, _, paths) = conflict_of(try_run(&repo, &op, NOW).expect_err("it conflicts"));
+    assert_eq!(paths.len(), 2, "both files conflicted: {paths:?}");
+
+    for (n, path) in [(1_i64, "one.txt"), (2, "two.txt")] {
+        repo.write(path, b"resolved\n");
+        let stage = Operation::Stage(graft_ops::operation::Target::Paths(vec![path.into()]));
+        try_run(&repo, &stage, NOW + n).expect("marking it resolved is allowed");
+        assert_eq!(
+            journal_lines(&repo),
+            1,
+            "after resolving {path}: still the merge's one Pending line"
+        );
+    }
+    // The index is fully merged now — the condition that used to decide
+    // whether the step got an entry of its own.
+    assert_eq!(entries(&repo).len(), 1, "one entry, two resolve steps");
+
+    let applied = run_resume(&repo, Resume::Continue, NOW + 4).expect("the merge finishes");
+    assert_eq!(
+        applied.entry.id, entry.id,
+        "the same entry, start to finish"
+    );
+    assert_eq!(journal_lines(&repo), 2);
+
+    undo_to(&repo, NOW + 5);
+    assert_eq!(id(&repo, "refs/heads/main"), before_main);
+    assert_eq!(state_of(&repo), before, "back to before the merge, exactly");
+}
+
+/// The resolve step's command line joins the live entry's, so the Command
+/// Log shows the whole span rather than the `merge` alone.
+///
+/// Both run through **one** `Journal`: a `Pending` entry's commands live in
+/// memory until its outcome line is written, so that is the only place the
+/// merge's own lines are to be found. A caller that opens a fresh journal
+/// per job — which the app does — sees only the step it just ran. That is
+/// the same limitation the stop itself has and it is not fixed here; it is
+/// recorded in the ticket as the one gap the fold inherits.
+#[test]
+fn a_resolve_step_joins_the_live_entrys_commands() {
+    let repo = conflicting();
+    let op = merge_op(&repo, "refs/heads/feature", FastForward::Never);
+
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let never = Never;
+    let stage = Operation::Stage(graft_ops::operation::Target::Paths(vec![
+        "shared.txt".into(),
+    ]));
+    {
+        let mut ctx = context(&handle, &mut journal, NOW, &never);
+        apply(&mut ctx, &op).expect_err("it conflicts");
+    }
+    repo.write("shared.txt", b"resolved\n");
+    {
+        let mut ctx = context(&handle, &mut journal, NOW + 3, &never);
+        apply(&mut ctx, &stage).expect("the resolve step runs");
+    }
+    let held = &journal.entries()[0];
+    assert_eq!(held.kind, OperationKind::Merge, "the live entry");
+    assert!(
+        held.commands.iter().any(|line| line.contains("merge")),
+        "the merge's own lines are still there: {:?}",
+        held.commands
+    );
+    assert!(
+        held.commands
+            .last()
+            .is_some_and(|line| line.contains("add")),
+        "the resolve step's line is appended, not replacing: {:?}",
+        held.commands
+    );
 }
 
 /// Staging a file that still has `<<<<<<< ` in it is refused, and the
@@ -835,6 +1111,61 @@ fn recovery_leaves_a_live_conflict_alone() {
     let recovered = recover_interrupted(&mut ctx).expect("recovery runs");
     assert!(recovered.live.is_empty());
     assert_eq!(recovered.closed, vec![entry.id]);
+}
+
+/// Graft does not adopt a merge somebody else started.
+///
+/// A `Pending` entry of Graft's plus a live merge of the same kind used to
+/// match on kind alone, so `resume` would have finished the shell's merge
+/// and closed Graft's entry with a before-state from a different act
+/// (m5/07 review, M7). Two legs: `HEAD` on a different branch, and the same
+/// branch moved on since the entry was written.
+#[test]
+fn a_shell_merge_is_not_adopted_as_grafts_own_entry() {
+    // Leg 1: a different branch.
+    let repo = conflicting();
+    let op = merge_op(&repo, "refs/heads/feature", FastForward::Never);
+    let (entry, _, _) = conflict_of(try_run(&repo, &op, NOW).expect_err("it conflicts"));
+    repo.git(&["merge", "--abort"]);
+    repo.git(&["switch", "-qc", "other"]);
+    let _ = repo.try_git(&["merge", "--no-ff", "--no-edit", "-m", "theirs", "feature"]);
+    assert!(repo.exists(".git/MERGE_HEAD"), "a merge is live again");
+    let refused = run_resume(&repo, Resume::Abort, NOW + 1).expect_err("not Graft's merge");
+    assert!(
+        matches!(refused, ApplyError::Refused(Refusal::NotInProgress)),
+        "{refused:?}"
+    );
+
+    // Leg 2: the same branch, but moved on since the entry was written.
+    let repo = conflicting();
+    let op = merge_op(&repo, "refs/heads/feature", FastForward::Never);
+    try_run(&repo, &op, NOW).expect_err("it conflicts");
+    repo.git(&["merge", "--abort"]);
+    repo.write("unrelated.txt", b"later work\n");
+    repo.commit_all("main moved on");
+    let _ = repo.try_git(&["merge", "--no-ff", "--no-edit", "-m", "theirs", "feature"]);
+    assert!(repo.exists(".git/MERGE_HEAD"), "a merge is live again");
+    let refused = run_resume(&repo, Resume::Continue, NOW + 1).expect_err("not Graft's merge");
+    assert!(
+        matches!(refused, ApplyError::Refused(Refusal::NotInProgress)),
+        "the branch moved since the entry was written: {refused:?}"
+    );
+
+    // And the entry is not "live" to recovery either: it closes like any
+    // other interrupted one instead of waiting for a banner that will never
+    // finish it.
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let never = Never;
+    let mut ctx = context(&handle, &mut journal, NOW + 2, &never);
+    let recovered = recover_interrupted(&mut ctx).expect("recovery runs");
+    assert!(
+        recovered.live.is_empty(),
+        "the shell's merge is not Graft's live entry: {:?}",
+        recovered.live
+    );
+    assert_eq!(recovered.closed.len(), 1, "the stale entry was closed");
+    drop(entry);
 }
 
 #[test]
@@ -1084,6 +1415,54 @@ fn time_machine_reverts_in_order() {
     );
 }
 
+/// Travelling back past an `Undo` does not re-apply what the user undid.
+///
+/// An in-force `Undo` entry is not an operation: inverting it would *redo*
+/// its root, so a "revert to before the pick" would hand back a branch the
+/// user had deliberately undone. `next_undo` has always filtered on
+/// `is_operation`; the time machine did not (m5/07 review, C2).
+#[test]
+fn the_time_machine_does_not_redo_what_was_undone() {
+    let repo = diverged();
+    let start = state_of(&repo);
+    let first = run(&repo, &pick_op(&repo, "refs/heads/feature"), NOW).id;
+    run(
+        &repo,
+        &Operation::BranchCreate(BranchCreateParams {
+            name: "second".to_owned(),
+            at: id(&repo, "HEAD"),
+            checkout: false,
+        }),
+        NOW + 1,
+    );
+    run_undo(&repo, NOW + 2, false).expect("the branch is undone");
+    assert!(
+        repo.try_git(&["rev-parse", "--verify", "refs/heads/second"])
+            .is_err(),
+        "the branch is gone before the revert"
+    );
+
+    // The picture first: it must not promise a branch either.
+    let plan = preview::plan_revert_to(&entries(&repo), &first).expect("a plan");
+    assert!(
+        !plan
+            .ref_moves
+            .iter()
+            .any(|move_| move_.name.contains("second")),
+        "the box would show a revert that creates the undone branch: {:?}",
+        plan.ref_moves
+    );
+
+    let done = revert_to(&repo, &first, NOW + 3).expect("the revert runs");
+    assert_eq!(done.len(), 1, "only the pick is still in force");
+    assert!(
+        repo.try_git(&["rev-parse", "--verify", "refs/heads/second"])
+            .is_err(),
+        "going back re-created a branch the user had undone"
+    );
+    assert_eq!(state_of(&repo), start, "exactly the state before the pick");
+}
+
 fn revert_to(repo: &TempRepo, target: &EntryId, at: i64) -> Result<Vec<Applied>, UndoError> {
     let handle = repo.open();
     let mut journal = journal_for(&handle);
@@ -1234,6 +1613,7 @@ fn a_repush_of_a_commit_that_is_not_on_the_branch_is_refused() {
         .git(&work, &["switch", "-q", "-"])
         .expect("back to the default branch");
 
+    let branch_ref = branch.clone();
     let op = Operation::Push(PushParams {
         branch: branch.clone(),
         remote: "origin".to_owned(),
@@ -1251,6 +1631,31 @@ fn a_repush_of_a_commit_that_is_not_on_the_branch_is_refused() {
             preview::PreviewError::Refused(Refusal::NotOnBranch { .. })
         ),
         "{refused:?}"
+    );
+
+    // And `apply` refuses it on its own account. The preview is a picture;
+    // a caller that never drew one would otherwise have force-pushed a
+    // commit off the branch under the lease (m5/07 review, M5).
+    let mut journal = journal_for(&handle);
+    let never = Never;
+    let mut ctx = context(&handle, &mut journal, NOW, &never);
+    let refused = apply(&mut ctx, &op).expect_err("apply refuses it too");
+    assert!(
+        matches!(
+            refused,
+            ApplyError::Refused(Refusal::NotOnBranch { ref commit, .. }) if *commit == elsewhere
+        ),
+        "{refused:?}"
+    );
+    drop(ctx);
+    assert!(
+        journal.entries().is_empty(),
+        "refused before the Pending line: nothing was journaled"
+    );
+    assert_eq!(
+        rev(&remote, remote.bare(), &branch_ref),
+        pushed,
+        "and the remote did not move"
     );
 }
 

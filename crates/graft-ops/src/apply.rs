@@ -11,6 +11,7 @@
 //! [`Journal::unresolved`]: crate::journal::Journal::unresolved
 
 mod remote;
+mod resume;
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -19,17 +20,17 @@ use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, Operation
 use graft_core::oid::Oid;
 use graft_git::remote::RemoteFailure;
 use graft_git::repo::RepoHandle;
-use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
+use graft_git::run::{GitInvocation, RunError, Stop};
 use graft_git::state::{self, InProgress};
 use graft_git::version::GitVersion;
 
 use crate::facts::{self, FactsError};
 use crate::journal::{Journal, JournalError};
-use crate::operation::{Invocation, Operation, Refusal, RemoteNames};
+use crate::operation::{Invocation, Operation, Refusal, RemoteNames, RepoFacts};
 use crate::snapshot::{self, SnapshotError, SnapshotScope};
-use crate::undo::RepoStateNow;
 
 pub use remote::RemoteHooks;
+pub use resume::{Recovered, Resume, recover_interrupted, resume};
 
 /// What the caller has to re-read after an operation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -44,6 +45,14 @@ pub enum Refresh {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Applied {
     /// The entry as it was written, outcome line included.
+    ///
+    /// One exception, and it is deliberate: a step taken while git already
+    /// has an operation in progress (the resolver's "mark resolved") is part
+    /// of that operation and writes no line of its own
+    /// ([`inside_live_operation`]). Its record here is **not in the
+    /// journal** — it says what ran, for the caller's status line, and its
+    /// command line was folded into the live entry instead. Read
+    /// `description` and `refresh` from it; do not look its `id` up.
     pub entry: JournalEntry,
     /// What to re-read.
     pub refresh: Refresh,
@@ -141,18 +150,6 @@ pub enum ApplyError {
         /// What git said.
         error: RunError,
     },
-}
-
-/// How [`resume`] takes a stopped history operation on (m5/07).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Resume {
-    /// `--continue`: every unmerged path must be staged first.
-    Continue,
-    /// `--skip`: drop the commit being replayed (rebase, cherry-pick,
-    /// revert). A merge has nothing to skip.
-    Skip,
-    /// `--abort`: back to where the operation started.
-    Abort,
 }
 
 /// A field of an entry's after-state that could not be read, or could not be
@@ -359,6 +356,10 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     let facts = facts::read_facts(ctx.repo, ctx.git, ctx.stop, &op.facts_scope())
         .map_err(ApplyError::Facts)?;
     op.check(&facts).map_err(ApplyError::Refused)?;
+    if let Some(live) = facts.in_progress {
+        return resume::inside_live_operation(ctx, op, &facts, live);
+    }
+    guard_repush(ctx, op, &facts)?;
     let touches = op.touches(&facts);
     let plan = op.plan(&facts);
     let commands: Vec<String> = plan.iter().map(Invocation::command_line).collect();
@@ -420,6 +421,48 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     }
 }
 
+/// ADR-0038 §4's ancestry rule, enforced where the push actually runs.
+///
+/// A re-push force-writes the remote branch to a commit the user picked out
+/// of their own history, and the rule is that the commit must be **on that
+/// branch**. Deciding it needs a read (`merge-base --is-ancestor`), and
+/// `check` is pure over `RepoFacts` and cannot spawn — so the decision lived
+/// in `preview::push` alone, and anything reaching `apply` without drawing a
+/// picture first would have forced any commit at all under the lease
+/// (m5/07 review, M5). `apply` can spawn, so it asks the same question in
+/// the same terms, before the `Pending` line and before git is told to push.
+///
+/// Nothing else is re-checked here: every other precondition is a fact
+/// `check` already holds.
+fn guard_repush(ctx: &Context<'_>, op: &Operation, facts: &RepoFacts) -> Result<(), ApplyError> {
+    let Operation::Push(params) = op else {
+        return Ok(());
+    };
+    let Some(source) = params.source_commit else {
+        return Ok(());
+    };
+    // A branch the facts cannot resolve is refused the same way a commit off
+    // the branch is: an unverified re-push is not one that runs.
+    let on_branch = match facts.refs.get(&params.branch).copied().flatten() {
+        Some(tip) => {
+            crate::preview::is_ancestor(ctx.repo, source, tip, ctx.stop).map_err(|error| {
+                match error {
+                    RunError::Stopped => ApplyError::Stopped,
+                    other => ApplyError::Facts(FactsError::Ancestry(other)),
+                }
+            })?
+        }
+        None => false,
+    };
+    if on_branch {
+        return Ok(());
+    }
+    Err(ApplyError::Refused(Refusal::NotOnBranch {
+        commit: source,
+        branch: crate::operation::short_ref(&params.branch).to_owned(),
+    }))
+}
+
 /// The plan ran through: what the caller re-reads, and what the record of it
 /// could not keep.
 fn succeeded(
@@ -473,7 +516,7 @@ fn stopped_on_conflict(
     if live != Some(started) {
         return Ok(None);
     }
-    Ok(Some((started, unmerged_paths(ctx)?)))
+    Ok(Some((started, resume::unmerged_paths(ctx)?)))
 }
 
 /// What running a plan came to.
@@ -586,346 +629,6 @@ fn run_plan(ctx: &Context<'_>, plan: &[Invocation], names: Option<&RemoteNames>)
         failure: None,
         cleanup,
     }
-}
-
-/// Close every entry left `Pending` by a previous run as `interrupted`,
-/// recording the repository as it stands now (DESIGN.md §6.2 step 3).
-///
-/// Run this at launch, before the user can touch anything: the state read
-/// here is recorded as the interrupted operation's after-state, so the later
-/// it runs, the more of the user's own work it attributes to that operation.
-/// When the repository cannot be read at all, the entry is closed with no
-/// after-state — `u` then offers to restore the whole tree, and says so.
-///
-/// Returns what it closed **and** what it could not read, so the caller can
-/// surface both: an entry closed with no after-state is one whose `u` will
-/// offer to overwrite the whole working tree, and the reason for that belongs
-/// on screen, not on the floor (m3/03 review, M1).
-pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyError> {
-    // A conflict that survived a relaunch: git's own state says the
-    // operation is still live, so its entry stays `Pending` and the banner
-    // takes over (m5/07, hard choice 2). Only the newest matching entry is
-    // live — an older one of the same kind was left behind by something
-    // else and closes as interrupted like any other.
-    let live = state::in_progress(ctx.repo).map_err(|error| ApplyError::Facts(error.into()))?;
-    let live_id =
-        live.and_then(|kind| live_entry(ctx.journal.entries(), kind).map(|entry| entry.id.clone()));
-    let open: Vec<(EntryId, Vec<String>, Option<String>)> = ctx
-        .journal
-        .unresolved()
-        .into_iter()
-        .filter(|entry| Some(&entry.id) != live_id.as_ref())
-        .map(|entry| {
-            (
-                entry.id.clone(),
-                entry.refs_before.keys().cloned().collect(),
-                entry.backup_ref.clone(),
-            )
-        })
-        .collect();
-    let mut recovered = Recovered {
-        live: live_id.into_iter().collect(),
-        ..Recovered::default()
-    };
-    for (id, refs, backup_ref) in open {
-        let read = facts::read_state_now(ctx.repo, ctx.scratch(), &refs, ctx.stop);
-        // The repository being unreadable must not leave the entry `Pending`
-        // for ever, which blocks `u` outright. `None` is the honest record
-        // and the widest restore, and the user is asked before it runs
-        // (`Drift::unknown`) — and told why, here.
-        let now = match read {
-            Ok(now) => match seal_recovered(ctx, &id, backup_ref.as_deref(), &now) {
-                Ok(()) => Some(now),
-                // The trees were read but nothing keeps them alive, so
-                // recording them would name objects `git gc` will prune.
-                Err(why) => {
-                    recovered.unreadable.push((id.clone(), why));
-                    None
-                }
-            },
-            Err(FactsError::Stopped) => return Err(ApplyError::Stopped),
-            Err(unreadable) => {
-                recovered.unreadable.push((id.clone(), unreadable));
-                None
-            }
-        };
-        ctx.journal
-            .mark_interrupted(&id, now.as_ref())
-            .map_err(|error| ApplyError::Journal { error, after: None })?;
-        recovered.closed.push(id);
-    }
-    Ok(recovered)
-}
-
-/// What [`recover_interrupted`] did at launch.
-#[derive(Debug, Default)]
-pub struct Recovered {
-    /// The entries closed as `interrupted`, in journal order.
-    pub closed: Vec<EntryId>,
-    /// The ones whose after-state could not be read or kept reachable, and
-    /// why. Each is closed with no after-state, so its `u` restores the whole
-    /// tree after asking.
-    pub unreadable: Vec<(EntryId, FactsError)>,
-    /// The entry left `Pending` on purpose: a history operation still
-    /// stopped on a conflict by git's own account (`MERGE_HEAD`,
-    /// `rebase-merge/` …). The banner offers `resume`; nothing was closed
-    /// (m5/07). At most one.
-    pub live: Vec<EntryId>,
-}
-
-/// The newest `Pending` entry whose operation opens the live state `kind`:
-/// the entry `resume` closes and recovery leaves alone (m5/07).
-fn live_entry(entries: &[JournalEntry], kind: InProgress) -> Option<&JournalEntry> {
-    entries
-        .iter()
-        .rev()
-        .find(|entry| entry.status == EntryStatus::Pending && starts(entry.kind) == Some(kind))
-}
-
-/// The in-progress state an operation of this kind opens when it stops.
-fn starts(kind: OperationKind) -> Option<InProgress> {
-    match kind {
-        OperationKind::Merge => Some(InProgress::Merge),
-        OperationKind::Rebase => Some(InProgress::Rebase),
-        OperationKind::CherryPick => Some(InProgress::CherryPick),
-        OperationKind::Revert => Some(InProgress::Revert),
-        _ => None,
-    }
-}
-
-/// The unmerged paths the status lists now.
-fn unmerged_paths(ctx: &Context<'_>) -> Result<Vec<PathBuf>, ApplyError> {
-    let status = graft_git::status::read(ctx.repo, ctx.stop)
-        .map_err(|error| ApplyError::Facts(error.into()))?;
-    Ok(status
-        .entries
-        .into_iter()
-        .filter(|entry| entry.unmerged)
-        .map(|entry| entry.path)
-        .collect())
-}
-
-/// Take a stopped history operation on: `--continue`, `--skip` or `--abort`
-/// on the newest `Pending` entry whose kind matches git's live state, with
-/// `GIT_EDITOR=true` so the resolved commit's message is never edited
-/// (m5/07, design note G5).
-///
-/// `Continue` with unmerged paths still in the index is refused before git
-/// runs — git would refuse too, but with a line about `git add`. A rebase
-/// may stop again on its next commit: that is [`ApplyError::Conflicted`]
-/// again, on the same entry, and the entry stays `Pending`. On success the
-/// after-state is read now and the outcome written `Committed`; `Abort`
-/// writes `Aborted("aborted")` with the after-state read just as fresh — it
-/// should equal the before-state, and when it does not (an edit made
-/// mid-conflict) `in_force` treats it honestly and the backup keeps the
-/// pre-operation tree. The resume command joins the entry's `commands`
-/// after the plan's own (kept in memory since the stop; a relaunch loses
-/// them, since only the outcome line records commands).
-///
-/// # Errors
-/// [`Refusal::NotInProgress`] when git has no operation in progress or no
-/// `Pending` entry of Graft's matches it (one begun in the shell finishes
-/// there); [`Refusal::CannotSkip`] for `Skip` on a merge;
-/// [`Refusal::Unmerged`] for `Continue` over unmerged paths; the executor's
-/// own errors otherwise.
-pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError> {
-    if ctx.stop.should_stop() {
-        return Err(ApplyError::Stopped);
-    }
-    let (kind, entry) = resume_target(ctx, how)?;
-
-    let args = [
-        GitArg::Flag(kind.name()),
-        GitArg::Flag(match how {
-            Resume::Continue => "--continue",
-            Resume::Skip => "--skip",
-            Resume::Abort => "--abort",
-        }),
-    ];
-    let mut commands = entry.commands.clone();
-    commands.push(graft_git::run::command_line(&args));
-    let ran = GitInvocation::new(ctx.repo)
-        .args(args)
-        .env("GIT_EDITOR", "true")
-        .run(ctx.stop);
-
-    let failure = match ran {
-        Ok(_) => None,
-        Err(RunError::Stopped) => return Err(ApplyError::Stopped),
-        Err(error) => {
-            // Still live: git stopped again (a rebase's next conflict) or
-            // refused to go on. Either way the entry is not finished.
-            let live =
-                state::in_progress(ctx.repo).map_err(|error| ApplyError::Facts(error.into()))?;
-            if live == Some(kind) {
-                return Err(still_pending(ctx, kind, entry, commands, error)?);
-            }
-            Some(error)
-        }
-    };
-    close_resume(ctx, entry, how, commands, failure)
-}
-
-/// Which entry a resume closes, and the checks that run before git does.
-///
-/// git's own state names the kind; the journal's newest `Pending` entry of
-/// that kind is the one Graft opened. An operation begun in the shell has no
-/// entry here and is finished there ([`Refusal::NotInProgress`]).
-fn resume_target(ctx: &Context<'_>, how: Resume) -> Result<(InProgress, JournalEntry), ApplyError> {
-    let live = state::in_progress(ctx.repo).map_err(|error| ApplyError::Facts(error.into()))?;
-    let Some(kind) = live else {
-        return Err(ApplyError::Refused(Refusal::NotInProgress));
-    };
-    let Some(entry) = live_entry(ctx.journal.entries(), kind).cloned() else {
-        return Err(ApplyError::Refused(Refusal::NotInProgress));
-    };
-    if how == Resume::Skip && kind == InProgress::Merge {
-        return Err(ApplyError::Refused(Refusal::CannotSkip(kind)));
-    }
-    if how == Resume::Continue {
-        let paths = unmerged_paths(ctx)?;
-        if !paths.is_empty() {
-            return Err(ApplyError::Refused(Refusal::Unmerged { paths }));
-        }
-    }
-    Ok((kind, entry))
-}
-
-/// git would not finish and its state is still live: the entry stays
-/// `Pending` and the banner stays up. Unmerged paths mean it stopped again
-/// on a conflict; none mean it refused (a hook, an empty pick).
-fn still_pending(
-    ctx: &mut Context<'_>,
-    kind: InProgress,
-    mut entry: JournalEntry,
-    commands: Vec<String>,
-    error: RunError,
-) -> Result<ApplyError, ApplyError> {
-    ctx.journal.hold_commands(&entry.id, commands.clone());
-    let paths = unmerged_paths(ctx)?;
-    entry.commands = commands;
-    Ok(if paths.is_empty() {
-        ApplyError::ResumeFailed {
-            entry: Box::new(entry),
-            kind,
-            error,
-        }
-    } else {
-        ApplyError::Conflicted {
-            entry: Box::new(entry),
-            kind,
-            paths,
-        }
-    })
-}
-
-/// git is done with the operation, one way or the other: write the outcome
-/// line the stop deferred.
-fn close_resume(
-    ctx: &mut Context<'_>,
-    entry: JournalEntry,
-    how: Resume,
-    commands: Vec<String>,
-    failure: Option<RunError>,
-) -> Result<Applied, ApplyError> {
-    // The backup ref still points at the before-commit: `seal_after` moves
-    // it only when the outcome is written, which is now.
-    let before_commit = match &entry.backup_ref {
-        Some(name) => facts::read_refs(ctx.repo, std::slice::from_ref(name))
-            .map_err(ApplyError::Facts)?
-            .get(name)
-            .copied()
-            .flatten(),
-        None => None,
-    };
-    let backup_gone = entry
-        .backup_ref
-        .clone()
-        .filter(|_| before_commit.is_none())
-        .map(|name| AfterState::BackupGone { name });
-    let mut pending = Pending {
-        entry,
-        before_commit,
-    };
-    let status = match (how, &failure) {
-        (_, Some(error)) => EntryStatus::Aborted {
-            reason: reason_for(error),
-        },
-        (Resume::Abort, None) => EntryStatus::Aborted {
-            reason: "aborted".to_owned(),
-        },
-        (Resume::Continue | Resume::Skip, None) => EntryStatus::Committed,
-    };
-    let mut unread = match finish(ctx, &mut pending, status, commands) {
-        Ok(unread) => unread,
-        Err(error) => {
-            return Err(ApplyError::Journal {
-                error,
-                after: failure,
-            });
-        }
-    };
-    unread.extend(backup_gone);
-    let entry = pending.entry;
-    if let Some(error) = failure {
-        let recoverable = entry.worktree_before.is_some();
-        return Err(ApplyError::Git {
-            entry: Box::new(entry),
-            error,
-            recoverable,
-        });
-    }
-    let applied = Applied {
-        entry,
-        refresh: Refresh::Everything,
-    };
-    if unread.is_empty() {
-        Ok(applied)
-    } else {
-        Err(ApplyError::AfterState {
-            applied: Box::new(applied),
-            unread,
-        })
-    }
-}
-
-/// Hang a recovered entry's after-trees off its backup ref before they are
-/// recorded, so `git gc` cannot prune what the entry is about to name.
-///
-/// Nothing to do when the entry took no backup: such an entry records no tree
-/// (`mark_interrupted` copies its before-fields, which are `None`), and the
-/// refs it names are live refs.
-fn seal_recovered(
-    ctx: &Context<'_>,
-    id: &EntryId,
-    backup_ref: Option<&str>,
-    now: &RepoStateNow,
-) -> Result<(), FactsError> {
-    let Some(name) = backup_ref else {
-        return Ok(());
-    };
-    let at = facts::read_refs(ctx.repo, std::slice::from_ref(&name.to_owned()))?
-        .get(name)
-        .copied()
-        .flatten();
-    let mut parents: Vec<Oid> = at.into_iter().collect();
-    for anchor in anchors(Some(&now.head), &now.refs) {
-        if !parents.contains(&anchor) {
-            parents.push(anchor);
-        }
-    }
-    let label = format!("interrupted, recovered: {id}");
-    let commit = snapshot::commit_trees(
-        ctx.repo,
-        now.index_tree,
-        Some(now.worktree_tree),
-        id,
-        &label,
-        &parents,
-        &(),
-    )?;
-    snapshot::move_backup_ref(ctx.repo, name, commit, &())?;
-    Ok(())
 }
 
 /// An entry whose `Pending` line is written and whose backup, if any, is

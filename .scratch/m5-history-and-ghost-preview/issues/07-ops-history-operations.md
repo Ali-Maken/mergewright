@@ -1,6 +1,6 @@
 # ops-history-operations: merge/rebase/cherry-pick/revert/reset/checkout/branch/tag as operations, the conflict span in the journal, resume, the time machine, and Ghost Preview planning
 
-Status: done — pieces 1–9 built; **one acceptance box is deliberately unticked** (piece 2's throwaway-repo record, never made). Workspace gate red in `graft` only: `blocked: needs graft`, five sites in NOTES.
+Status: done — pieces 1–9 built, seam closed, and the review's fix round applied (3 Critical, 7 of 11 Major). **`blocked: needs graft` for Major 4** (`UndoError::PartWay` needs a `total` field; signature and five call sites in the fix-round NOTES). Majors 6, 8 and 9 are app-side and were deferred by the conductor. Every acceptance tick re-checked against its requirement; one was false (C3) and is corrected in place.
 Blocked by: 02 (git-history-reads)
 Build with: **Fable (signature)** — the journal shape of a conflicted operation and `PreviewPlan` are structural for M6 (resolver), M7 (chain rebase, ADR-0032) and the browser; "the ghost equals what git did" is not readable from a diff; the per-kind rules still need decisions the spec cannot fully pin.
 Crates: graft-ops, graft-core
@@ -69,11 +69,20 @@ pub enum PreviewError { Facts(FactsError), Read(RunError), Refused(Refusal), Sto
 
 ## Acceptance
 
-- [x] Every test in piece 8 green, and every `plan` string exercised against real git with (a)–(g) recorded — both halves, in two parts. **Piece 8**: 42 tests in `crates/graft-ops/tests/it/history_ops.rs` (35 the group wrote + 7 added for the three gaps), green in the workspace run below. **The plan strings**: `<kind>_applies_undoes_redoes` (13 kinds) runs each kind's `plan(&facts)` lines through `apply` against a real repository and reads the result back out of git, and `preview_commands_come_from_plan` proves the lines the box shows are those same lines for eleven kinds — so no plan string is asserted only against itself. **(a)–(g)**: recorded independently against git 2.54 in throwaway repositories by `/tmp/plan_behaviours.sh` and `/tmp/plan_behaviours2.sh`, output committed as `.scratch/m5-history-and-ghost-preview/plan-behaviours.txt` and `plan-behaviours-2.txt`; per-item reading under NOTES · **(a)–(g), recorded**. Two of the ticket's own premises did not survive that record — see there.
-- [x] `preview::plan(...).commands == op.plan(&facts)` lines for every kind — `preview_commands_come_from_plan` (eleven kinds: merge, cherry-pick, revert, reset, checkout, branch create/delete, tag create/delete, rebase, branch-from-stash)
-- [x] No outcome line is ever written for a step that left `in_progress` state — `conflict_span_is_one_entry_and_undoes_to_before_the_merge` (asserts the journal **file** holds exactly 1 line at the stop and 2 after the finish, and that `MERGE_HEAD` is present in between)
-- [x] `journal::in_force` on `Pending` is false, with a test — `pending_is_not_in_force` (`crates/graft-ops/src/journal/tests.rs`: `!in_force`, `in_force_all == [true, false]`, and a `Pending` merge does not shadow `next_undo`)
-- [x] MAP.md + `as-built.md` written — `crates/graft-ops/MAP.md` (operation, journal, apply, undo, new `## preview` section), `crates/graft-core/MAP.md` (`Oid::from_sha1`), `.scratch/m5-history-and-ghost-preview/as-built.md`; NOTES below
+**Re-ticked in the fix round.** Every tick below was re-checked against its
+requirement, not against a restatement of the code, after the review found
+tick 1 false (C3). Corrections are marked **was**.
+
+- [x] **Every test in piece 8 green, and every `plan` string exercised against real git with (a)–(g) recorded.** The requirement has three parts and they are ticked separately.
+  - *Green*: `cargo nextest run -p graft-ops -E 'test(history_ops::)'` → **49 tests run, 49 passed** (42 before the fix round, 7 added by it). Workspace run under **Gates, as printed**.
+  - *Every plan string run by real git*: `<kind>_applies_undoes_redoes` — **eleven kinds** (merge, rebase, cherry-pick, revert, reset, checkout, branch create, branch delete, tag create, tag delete, branch-from-stash). **Was "13 kinds"; there were never thirteen** (m5/07 review, C3). Each runs that kind's `plan(&facts)` lines through `apply` against a real repository, then `u`, then redo, reading every state back out of git rather than out of Graft's model. `branch_from_stash_applies_undoes_redoes` was ticked with **no redo leg**; it now runs `run_redo(&repo, NOW + 3, false)` and a second `undo_to`, so all eleven apply *and* undo *and* redo. The two kinds outside that family need a remote and are covered separately: push by `repush_old_tip_with_lease` (applies against a real clone, then reads the remote's ref) and `a_repush_of_a_commit_that_is_not_on_the_branch_is_refused` (preview *and* apply, journal empty, remote unmoved); pull by `pull_fast_forwards_then_undo_keeps_tracking_ref` in `crates/graft-ops/tests/it/remote_ops.rs` (m4's group, not this one).
+  - *(a)–(g) recorded*: against git 2.54 in throwaway repositories, output committed as `.scratch/m5-history-and-ghost-preview/plan-behaviours.txt` and `plan-behaviours-2.txt`; per-item reading under NOTES · **(a)–(g), recorded**. Two of the ticket's own premises did not survive that record — see there. The fix round added two more recorded runs (`merge.ff`, `rebase.updateRefs`); see NOTES · **Fix round**.
+- [x] **`preview::plan(...).commands == op.plan(&facts)` lines for every kind.** The property is structural — `preview::plan` overwrites whatever a per-kind planner left in `commands` with `op.plan(&facts)` rendered, so there is one source and no second rendering to drift. Tested by equality for **eleven** of the twelve previewable kinds in `preview_commands_come_from_plan` (the nine in `local_kinds`, plus rebase from the branch it replays and branch-from-stash). The twelfth is Push, which needs a remote: `repush_old_tip_with_lease` asserts its one command line carries `--force-with-lease=` and no bare `--force`, by content rather than by equality. **Not a full tick for Push** — noted here rather than claimed.
+- [x] **No outcome line is ever written for a step that left `in_progress` state.** Two halves, and only the first was built when this was first ticked.
+  - *The stopping operation*: `conflict_span_is_one_entry_and_undoes_to_before_the_merge` asserts the journal **file** holds exactly 1 line at the stop and 2 after the finish, with `MERGE_HEAD` present in between.
+  - *Every step taken inside the span*: **was false.** A `Stage` marking a file resolved was journaled as an entry of its own, which killed `u` outright (m5/07 review, C1). Such a step now writes no line at all: `resolving_each_file_in_turn_still_leaves_the_span_one_entry` (two conflicted files; the **second** stage leaves a fully merged index, so `write-tree` would have succeeded — and it still writes nothing), `a_resolve_step_joins_the_live_entrys_commands` (the step's command line is appended to the live entry's), and `a_shell_merge_is_not_adopted_as_grafts_own_entry` (an operation Graft did not start has no entry of Graft's to fold onto, and the step still runs).
+- [x] **`journal::in_force` on `Pending` is false, with a test.** `pending_is_not_in_force` (`crates/graft-ops/src/journal/tests.rs`): `!in_force`, `in_force_all == [true, false]`, and a `Pending` merge does not shadow `next_undo`.
+- [x] **MAP.md + `as-built.md` written.** `crates/graft-ops/MAP.md` (operation, journal, apply, undo, preview), `crates/graft-core/MAP.md` (`Oid::from_sha1`), `.scratch/m5-history-and-ghost-preview/as-built.md`. Both were re-written in the fix round: MAP.md for the changed public items, `as-built.md` §1 because **its "For M6" paragraph was false as shipped** — it promised a contract the code did not hold. §1 now states what holds and what does not, and §8 records the config-pinning and `WorktreeEffect::NotShown`.
 
 ## Gates
 
@@ -368,3 +377,177 @@ All four workspace-wide, never `-p`.
 5. **`resume` still has no key.** The app can now see a conflict and say what
    it is; finishing or aborting it is ticket 09's. `conflicted_line`
    deliberately names no key until then.
+
+---
+
+## NOTES — fix round (m5/07 review: 3 Critical, 11 Major)
+
+Fenced to **graft-ops + graft-core**. Another builder held `graft-ui` and
+`graft`, so every app-side finding is listed as deferred below, not fixed.
+No scout: this was a fix round against a review I read in full, on code this
+same ticket wrote — the review named the file and line for every finding, so
+a scout would have surveyed a tree already described to me.
+
+### The three Criticals
+
+**C1 — a resolve step broke the conflict span, and `as-built.md` claimed it
+did not. Cause.** `apply` journaled a `Stage` taken during a live merge as
+an ordinary entry. `write-tree` has no tree for an unmerged index, so that
+entry's `index_before` was `None`, its inverse `NoBackup`, and undo is
+linear — the merge behind it became unreachable. `u` was dead after the one
+action a user takes most while a conflict is open.
+
+The shape, not the test. `apply` now dispatches any operation begun while
+`facts.in_progress` is `Some` to `apply::resume::inside_live_operation`: it
+runs, its command line is folded onto the live entry with `hold_commands`,
+and it writes **no journal line**. This is what DESIGN §6.4 and M5 hard
+choice 2 already decided and what `as-built.md` already claimed, so it
+restores the decided design rather than making a new decision — the reason I
+did not stop and ask.
+
+Two places I went beyond the review's wording, both deliberate and both
+reported here rather than done silently:
+
+1. The rule is **"git has an operation in progress"**, not "the index cannot
+   be snapshotted". The narrower rule would miss the ordinary case: the last
+   file a user resolves leaves a clean index, and that step must fold like
+   every one before it (`resolving_each_file_in_turn_still_leaves_the_span_one_entry`).
+2. It covers a **foreign** in-progress state too — a merge started in the
+   shell. Otherwise M7's fix would re-open the same undo wall from the other
+   side. Such a step runs and records nothing, because there is no entry of
+   Graft's to record it on; `fold_commands` says so in a comment rather than
+   swallowing it (`a_shell_merge_is_not_adopted_as_grafts_own_entry`).
+
+Verified: the whole `conflict_span_*` family plus the three new tests, each
+run red first (by reverting the dispatch) and then green. `as-built.md` §1
+now states what holds and what does not, including **the gap M6 inherits**:
+`commands` held on a `Pending` entry live in memory only, and the app opens
+a fresh `Journal` per job, so the Command Log shows the span's lines only
+within one job. The fold is correct; its visibility is not. That fix is
+app-side (review M9) and was deferred with the rest.
+
+**C2 — the time machine re-created what the user undid. Cause.**
+`plan_revert_to` walked every in-force entry, `Undo` and `Redo` included.
+Inverting an `Undo` re-does the work it undid, so `[pick, branch,
+undo(branch)]` reverted to before the pick by *re-creating the branch*. One
+line: the walk now skips anything `journal::is_operation` rejects, the same
+filter `next_undo` uses. `in_force` already settles which side of an
+undo/redo pair stands, so stepping over the pair is not losing information.
+Tested directly by `the_time_machine_does_not_redo_what_was_undone`
+(pick → branch → undo the branch → revert to before the pick; the branch
+must stay gone), red before the filter.
+
+**C3 — a false tick. Corrected.** `branch_from_stash_applies_undoes_redoes`
+was ticked as proving apply/undo/redo and had no redo leg; "13 kinds" was
+eleven and always had been. The test now runs `run_redo` and a second
+`undo_to`. **Every tick in the ticket was re-checked against its
+requirement**, not against a restatement of the code — see Acceptance. Two
+further weaknesses surfaced and are now written into the ticks rather than
+papered over: Push is the one previewable kind `preview_commands_come_from_plan`
+does not cover by equality, and the "no outcome line inside a span" tick had
+only ever been true of the stopping operation, not of the steps inside it.
+
+### Majors fixed
+
+- **M1 `merge.ff=false`. Cause.** `FastForward::Default` wrote no flag, so a
+  reader with `merge.ff=false` got a merge commit where the picture drew a
+  fast-forward. The plan now always writes the flag, `--ff` included.
+  Verified against real git 2.54, recorded in `plan-behaviours-3.txt`
+  part 1 items 1–2: with the config set, `merge --ff` fast-forwards (2 words
+  from `rev-list --parents`), no flag makes a merge commit (3).
+- **M2 `rebase.updateRefs`. Cause.** `rebase.updateRefs=true` moves every
+  branch pointing into the replayed range; the entry records one, so undo
+  could not put the others back. `plan_rebase` now writes
+  `--no-update-refs --no-autostash`, gated on `GitVersion::MINIMUM` (2.38,
+  where `--update-refs` arrived). Verified: items 7–9 — without the flag
+  `f1x` MOVED, with it UNCHANGED.
+- **Pull under `pull.rebase=true` — checked, honest, no change.** The user
+  has it set globally. `plan_pull` is `fetch` + `merge --ff-only <tracking>`
+  and never runs `git pull`, so `pull.rebase` cannot reach it; `--ff-only`
+  overrides `merge.ff=false`. Observed, not reasoned: item 5, exit 0, single
+  parent, both configs set.
+- **M3 revert preview. Cause.** A revert with no recorded parent drew
+  `WorktreeEffect::Untouched` — "nothing happens to your files", the one
+  thing it does not mean. New variant `NotShown { why }` names the hole the
+  way `ConflictForecast::NotChecked` does. `ghost_matches_git_revert` now
+  also asserts the drawn paths and that the file really goes;
+  `a_revert_with_no_recorded_parent_says_so_rather_than_drawing_nothing`
+  covers the hole.
+- **M5 the re-push ancestry guard existed only in the preview. Cause.** A
+  rule only the picture enforces is not enforced — `apply` could be called
+  without one. `apply::guard_repush` asks `merge-base --is-ancestor` again
+  before the first write and refuses `NotOnBranch`; `preview::is_ancestor`
+  is shared so there is one reading, and a read that *fails* is
+  `FactsError::Ancestry`, never a guess. ADR-0038 §4's other two conditions
+  were already met (`--force-with-lease` only, asserted in
+  `the_box_says_it_rewrites_the_remote`; wording that says it changes the
+  remote others may have pulled, asserted on `plan.undo`). The explicit
+  confirm is the app's. `a_repush_of_a_commit_that_is_not_on_the_branch_is_refused`
+  now has an `apply` leg: refused, journal empty, remote unmoved.
+- **M7 a live entry was matched by kind alone. Cause.** Graft would adopt a
+  merge started in the shell as its own entry and `resume` would close it.
+  `live_entry` now also compares the entry's `head_before` against git's own
+  state. **The review's recommended comparison was wrong and I did not build
+  it**: it said use `ORIG_HEAD`, and a conflicted cherry-pick and a
+  conflicted revert set no `ORIG_HEAD` at all (recorded, `plan-behaviours-3.txt`
+  part 2), so it would have rejected Graft's own entry for two of four
+  kinds. Built instead from `rebase-merge/head-name` (rebase) or the current
+  symbolic `HEAD` plus the branch still standing at the recorded tip (merge,
+  pick, revert). A rebase with no `head-name` — a `git am` — matches
+  nothing. This is a design deviation the conductor should know about.
+- **M11 file size and one duplicated table. Cause.** `apply.rs` 1463 →
+  947 lines (`apply/resume.rs`, 537: the span, `resume`, recovery);
+  `preview.rs` 1078 → 620 (`preview/kinds.rs`, 486: the eleven per-kind
+  planners), exactly the seams the review named. No public path changed —
+  `Resume`, `resume`, `recover_interrupted`, `Recovered` are re-exported.
+  The kind→in-progress table existed twice; it is now
+  `operation::opens_in_progress`, asked both ways. Separate commit, no
+  behaviour change, same 1985 tests before and after.
+
+### Majors deferred, and why
+
+- **M4 `UndoError::PartWay` invents a total — `blocked: needs graft`.** The
+  fix is one field, but the type is matched in the app crate, which another
+  builder holds. Signature needed:
+  `PartWay { done: Vec<Applied>, total: usize, error: Box<UndoError> }`.
+  Call sites that break: `crates/graft/src/jobs/undo.rs:105` (the
+  `{ done, error }` match), `:144`, and three test constructions at `:329`,
+  `:349`, `:363`. Not started, so nothing is half-done.
+- **M6 `Recovered.live` dropped on relaunch**, **M8 `MarkersRemain` naming
+  an unbound `M`**, **M9 a relaunch losing the plan's command lines** — all
+  app-side (`graft`, `graft-ui`), all outside the fence, all left as the
+  conductor directed. M9 is the same gap `as-built.md` §1 now names for M6.
+- **The 15 Minors.** Three are closed as a side effect, named here so the
+  conductor does not re-file them: **12** (tick 1's arithmetic) went with C3;
+  **11** (a `git am` matching a Graft rebase entry) went with M7 —
+  `live_entry` returns `None` for a rebase with no `rebase-merge/head-name`;
+  **2** (`ghost_oid`'s doc said "description" and every caller passes a
+  subject) was a false statement in a doc I was already rewriting, so I fixed
+  the doc and the parameter name, not the code. The other twelve are
+  untouched, and none sat on a line this round changed.
+
+### Gates, as printed (workspace-wide, never `-p`)
+
+- `cargo fmt --check` — clean, exit 0.
+- `cargo clippy --all-targets --message-format=short -- -D warnings` — clean.
+- `cargo nextest run` — `1985 tests run: 1985 passed, 29 skipped` in 46.4 s.
+  Main was 1978; the seven are this round's.
+- `cargo test --doc` — green, **and worth nothing**: 2 doctests in the whole
+  workspace, 0 in either crate this round touched. Credited with nothing.
+
+### What I could not verify
+
+- **The app-side effect of any of this.** The fence kept me out of `graft`,
+  so nothing here was run through the UI. The C1 fix changes what
+  `Applied.entry` means for a resolve step (it is not in the journal), and
+  no app code was checked against that — `as-built.md` §1 and
+  `graft-ops/MAP.md` say so at both ends, but saying is not testing.
+- **Chained conflicts.** `forecast_merge` answers about one pair of commits.
+  A rebase or cherry-pick replays each onto the result of the last, so no
+  test here proves a multi-commit forecast, and the wording stays "may
+  conflict". Unchanged by this round, restated because it bounds M5's
+  promise.
+- **Anything on a git other than 2.54.0 (Apple Git-157).** Every real-git
+  record in `plan-behaviours-3.txt` is that one version. The
+  `--no-update-refs` gate is written against `GitVersion::MINIMUM` from the
+  documented history of the flag, not from a run on 2.38.

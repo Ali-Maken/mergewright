@@ -22,6 +22,8 @@
 //!   predecessor, capped at [`FORECAST_CAP`], and [`ConflictForecast`]'s
 //!   wording is `Likely`, not `Certain`.
 
+mod kinds;
+
 use std::path::PathBuf;
 
 use graft_core::commit::{Identity, Timestamp};
@@ -33,12 +35,7 @@ use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
 use graft_git::version::GitVersion;
 
 use crate::facts::FactsError;
-use crate::operation::{
-    BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,
-    Invocation, MergeParams, Operation, PickParams, PushParams, RebaseParams, RefDeleteParams,
-    Refusal, RepoFacts, ResetMode, ResetParams, ResetTarget, RevertParams, TagCreateParams, Tip,
-    branch_ref, merge_subject, short, short_ref, tag_ref,
-};
+use crate::operation::{Invocation, Operation, Refusal, RepoFacts, Tip};
 use crate::undo::{InversePlan, NotInvertible, Step, plan_revert_to as inverse_plans};
 
 /// How many replayed commits a rebase forecasts one by one. Past it the
@@ -62,7 +59,7 @@ pub enum Target {
 /// A commit the operation would create, drawn but never written.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GhostCommit {
-    /// A synthetic id: SHA-1 over `"graft-ghost\0" + description + "\0" + n`
+    /// A synthetic id: SHA-1 over `"graft-ghost\0" + subject + "\0" + n`
     /// (see [`ghost_oid`]). Deterministic, so two previews of the same
     /// operation draw the same rows and the graph's caches agree; never
     /// written to the object database, and never equal to a real commit's
@@ -125,6 +122,17 @@ pub enum WorktreeEffect {
     /// The whole tree comes back from the journal's backup (the time
     /// machine): no path list, because it is not a diff.
     RestoredFromBackup,
+    /// Files on disk **will** change, and which ones could not be worked
+    /// out: the read the preview needed was not there.
+    ///
+    /// Deliberately not [`WorktreeEffect::Untouched`] and not an empty
+    /// `Updated` — both read as "nothing happens to your files", which is
+    /// the one thing this does not mean. A hole is named, the way
+    /// [`ConflictForecast::NotChecked`] names one.
+    NotShown {
+        /// Why the list is missing, in the user's terms.
+        why: String,
+    },
 }
 
 /// What `merge-tree` says about the operation, in the only terms it can.
@@ -217,8 +225,12 @@ impl From<RunError> for PreviewError {
     }
 }
 
-/// A ghost's synthetic id: SHA-1 over `"graft-ghost\0"`, the description,
-/// a NUL and `n`.
+/// A ghost's synthetic id: SHA-1 over `"graft-ghost\0"`, the **subject** git
+/// would give the commit, a NUL and `n`.
+///
+/// The subject, not the operation's description: a rebase draws one ghost per
+/// replayed commit, and they must differ from one another. The doc said
+/// "description" and no caller ever passed one (m5/07 review, Minor 2).
 ///
 /// Deterministic on purpose — two previews of the same operation must draw
 /// the same rows, or the graph's row caches would churn and the eye would
@@ -226,9 +238,9 @@ impl From<RunError> for PreviewError {
 /// not collide with a real commit: git hashes `commit <len>\0…`, never
 /// `graft-ghost\0…`.
 #[must_use]
-pub fn ghost_oid(description: &str, n: usize) -> Oid {
+pub fn ghost_oid(subject: &str, n: usize) -> Oid {
     let mut message = b"graft-ghost\0".to_vec();
-    message.extend_from_slice(description.as_bytes());
+    message.extend_from_slice(subject.as_bytes());
     message.push(0);
     message.extend_from_slice(n.to_string().as_bytes());
     Oid::from_sha1(sha1(&message))
@@ -320,17 +332,17 @@ pub fn plan(
         return Err(PreviewError::Stopped);
     }
     let mut drawn = match op {
-        Operation::Merge(params) => merge(repo, git, params, stop)?,
-        Operation::Rebase(params) => rebase(repo, git, params, stop)?,
-        Operation::CherryPick(params) => cherry_pick(repo, git, params, stop)?,
-        Operation::Revert(params) => revert(repo, git, params, stop)?,
-        Operation::Reset(params) => reset(repo, params, facts)?,
-        Operation::Checkout(params) => checkout(repo, params, facts)?,
-        Operation::BranchCreate(params) => branch_create(repo, params, facts)?,
-        Operation::TagCreate(params) => tag_create(params),
-        Operation::BranchDelete(params) | Operation::TagDelete(params) => ref_delete(params),
-        Operation::BranchFromStash(params) => branch_from_stash(repo, params, facts, stop)?,
-        Operation::Push(params) => push(repo, params, facts, stop)?,
+        Operation::Merge(params) => kinds::merge(repo, git, params, stop)?,
+        Operation::Rebase(params) => kinds::rebase(repo, git, params, stop)?,
+        Operation::CherryPick(params) => kinds::cherry_pick(repo, git, params, stop)?,
+        Operation::Revert(params) => kinds::revert(repo, git, params, stop)?,
+        Operation::Reset(params) => kinds::reset(repo, params, facts)?,
+        Operation::Checkout(params) => kinds::checkout(repo, params, facts)?,
+        Operation::BranchCreate(params) => kinds::branch_create(repo, params, facts)?,
+        Operation::TagCreate(params) => kinds::tag_create(params),
+        Operation::BranchDelete(params) | Operation::TagDelete(params) => kinds::ref_delete(params),
+        Operation::BranchFromStash(params) => kinds::branch_from_stash(repo, params, facts, stop)?,
+        Operation::Push(params) => kinds::push(repo, params, facts, stop)?,
         other => return Err(PreviewError::Refused(Refusal::NotPreviewable(other.kind()))),
     };
     drawn.description = op.describe();
@@ -493,459 +505,17 @@ fn parse_offset(text: &str) -> Option<i32> {
     Some(sign * (hours * 3600 + minutes * 60))
 }
 
-// ── merge ───────────────────────────────────────────────────────────────
-
-fn merge(
-    repo: &RepoHandle,
-    git: &GitVersion,
-    params: &MergeParams,
-    stop: &dyn Stop,
-) -> Result<PreviewPlan, PreviewError> {
-    let into = params.into.oid;
-    let source = params.source_tip;
-    let base = history_reads::merge_base(repo, into, source)?;
-    let mut plan = blank();
-    if base == Some(source) {
-        // Already contains it: git would say "Already up to date." and do
-        // nothing at all, which is worth saying before the keypress.
-        plan.undo = UndoNote::NotUndoable("nothing would change".to_owned());
-        return Ok(plan);
-    }
-    if base == Some(into) && params.ff != FastForward::Never {
-        plan.ref_moves = vec![RefMove {
-            name: params.into.name.clone(),
-            from: Some(into),
-            to: Some(Target::Real(source)),
-        }];
-        plan.worktree = updated(repo, into, source)?;
-        return Ok(plan);
-    }
-    if params.ff == FastForward::Only {
-        return Err(PreviewError::Refused(Refusal::NotFastForward {
-            branch: short_ref(&params.into.name).to_owned(),
-        }));
-    }
-    plan.ghosts = vec![GhostCommit {
-        oid: ghost_oid(&merge_subject(params), 0),
-        parents: vec![Target::Real(into), Target::Real(source)],
-        subject: merge_subject(params),
-        author: identity_now(repo, stop)?,
-        replays: None,
-    }];
-    plan.ref_moves = vec![RefMove {
-        name: params.into.name.clone(),
-        from: Some(into),
-        to: Some(Target::Ghost(0)),
-    }];
-    plan.worktree = updated(repo, into, source)?;
-    plan.conflicts = forecast_one(repo, git, None, into, source, stop)?;
-    Ok(plan)
-}
-
-// ── rebase ──────────────────────────────────────────────────────────────
-
-fn rebase(
-    repo: &RepoHandle,
-    git: &GitVersion,
-    params: &RebaseParams,
-    stop: &dyn Stop,
-) -> Result<PreviewPlan, PreviewError> {
-    let onto = params.onto_tip;
-    let range = history_reads::commits_between(repo, onto, params.branch.oid, FORECAST_CAP, stop)?;
-    let mut plan = blank();
-    if range.commits.is_empty() {
-        plan.undo = UndoNote::NotUndoable("nothing would be replayed".to_owned());
-        return Ok(plan);
-    }
-    for (index, commit) in range.commits.iter().enumerate() {
-        let parent = match index {
-            0 => Target::Real(onto),
-            earlier => Target::Ghost(earlier - 1),
-        };
-        plan.ghosts.push(GhostCommit {
-            oid: ghost_oid(&commit.subject, index),
-            parents: vec![parent],
-            subject: commit.subject.clone(),
-            author: commit.author.clone(),
-            replays: Some(commit.id),
-        });
-    }
-    plan.ref_moves = vec![RefMove {
-        name: params.branch.name.clone(),
-        from: Some(params.branch.oid),
-        to: Some(Target::Ghost(plan.ghosts.len() - 1)),
-    }];
-    // The files that differ between where the branch is and where it is
-    // going: the replayed result's tree is not known (it is a ghost), and
-    // this is the real pair that bounds what lands on disk.
-    plan.worktree = updated(repo, params.branch.oid, onto)?;
-    plan.conflicts = if range.capped {
-        ConflictForecast::NotChecked(format!("more than {FORECAST_CAP} commits"))
-    } else {
-        replay_forecast(repo, git, onto, &range.commits, stop)?
-    };
-    Ok(plan)
-}
-
-/// Each replayed commit against its own first parent, onto `onto`. Per
-/// commit, never chained (hard choice 5): the answer is "may conflict".
-fn replay_forecast(
-    repo: &RepoHandle,
-    git: &GitVersion,
-    onto: Oid,
-    commits: &[history_reads::CommitSummary],
-    stop: &dyn Stop,
-) -> Result<ConflictForecast, PreviewError> {
-    let mut sofar = ConflictForecast::Clean;
-    for commit in commits {
-        let base = commit.parents.first().copied();
-        sofar = fold(sofar, forecast_one(repo, git, base, onto, commit.id, stop)?);
-    }
-    Ok(sofar)
-}
-
-// ── cherry-pick ─────────────────────────────────────────────────────────
-
-fn cherry_pick(
-    repo: &RepoHandle,
-    git: &GitVersion,
-    params: &PickParams,
-    stop: &dyn Stop,
-) -> Result<PreviewPlan, PreviewError> {
-    let head = params.head.oid;
-    let mut plan = blank();
-    let mut conflicts = ConflictForecast::Clean;
-    for commit in &params.commits {
-        // The picked commit is by definition not on `head`, so one
-        // `rev-list <commit> ^<head>` capped at one gives the commit itself
-        // — subject, author and parents in a single spawn.
-        let range = history_reads::commits_between(repo, head, *commit, 1, stop)?;
-        let Some(summary) = range.commits.last() else {
-            // Already on this branch: git would make an empty commit or
-            // refuse, and either way there is nothing to draw.
-            plan.undo = UndoNote::NotUndoable(format!("{} is already here", short(*commit)));
-            return Ok(plan);
-        };
-        let index = plan.ghosts.len();
-        let parent = match index {
-            0 => Target::Real(head),
-            earlier => Target::Ghost(earlier - 1),
-        };
-        plan.ghosts.push(GhostCommit {
-            oid: ghost_oid(&summary.subject, index),
-            parents: vec![parent],
-            subject: summary.subject.clone(),
-            author: summary.author.clone(),
-            replays: Some(summary.id),
-        });
-        let base = summary.parents.first().copied();
-        conflicts = fold(
-            conflicts,
-            forecast_one(repo, git, base, head, *commit, stop)?,
-        );
-    }
-    plan.ref_moves = vec![RefMove {
-        name: params.head.name.clone(),
-        from: Some(head),
-        to: Some(Target::Ghost(plan.ghosts.len() - 1)),
-    }];
-    plan.worktree = worktree_of_replay(repo, head, &params.commits)?;
-    plan.conflicts = conflicts;
-    Ok(plan)
-}
-
-/// The paths a replay would rewrite: the union of what each replayed commit
-/// changed against its own first parent, which is the patch being applied.
-fn worktree_of_replay(
-    repo: &RepoHandle,
-    head: Oid,
-    commits: &[Oid],
-) -> Result<WorktreeEffect, PreviewError> {
-    let mut paths: Vec<PathBuf> = Vec::new();
-    let mut more = false;
-    for commit in commits {
-        let (changed, cut) = history_reads::changed_paths(repo, head, *commit, PATHS_CAP)?;
-        more |= cut;
-        for path in changed {
-            if !paths.contains(&path) {
-                paths.push(path);
-            }
-        }
-    }
-    Ok(WorktreeEffect::Updated { paths, more })
-}
-
-// ── revert ──────────────────────────────────────────────────────────────
-
-fn revert(
-    repo: &RepoHandle,
-    git: &GitVersion,
-    params: &RevertParams,
-    stop: &dyn Stop,
-) -> Result<PreviewPlan, PreviewError> {
-    let head = params.head.oid;
-    let subject = format!("Revert \"{}\"", params.subject);
-    let mut plan = blank();
-    plan.ghosts = vec![GhostCommit {
-        oid: ghost_oid(&subject, 0),
-        parents: vec![Target::Real(head)],
-        subject,
-        // `git revert` authors the new commit as the user, keeping none of
-        // the reverted commit's authorship — only its subject, quoted.
-        author: identity_now(repo, stop)?,
-        replays: Some(params.commit),
-    }];
-    plan.ref_moves = vec![RefMove {
-        name: params.head.name.clone(),
-        from: Some(head),
-        to: Some(Target::Ghost(0)),
-    }];
-    plan.worktree = updated(repo, params.commit, head)?;
-    // The reverse patch as a three-way merge: base is the commit itself,
-    // theirs is its parent — going backwards along that one edge.
-    plan.conflicts = match params.parent {
-        Some(parent) => forecast_one(repo, git, Some(params.commit), head, parent, stop)?,
-        None => {
-            ConflictForecast::NotChecked("the reverted commit's parent was not recorded".to_owned())
-        }
-    };
-    Ok(plan)
-}
-
-// ── reset ───────────────────────────────────────────────────────────────
-
-fn reset(
-    repo: &RepoHandle,
-    params: &ResetParams,
-    facts: &RepoFacts,
-) -> Result<PreviewPlan, PreviewError> {
-    let mut plan = blank();
-    match &params.target {
-        ResetTarget::Head { branch, mode } => {
-            plan.ref_moves = vec![RefMove {
-                name: branch.name.clone(),
-                from: Some(branch.oid),
-                to: Some(Target::Real(params.to)),
-            }];
-            plan.worktree = match mode {
-                ResetMode::Soft | ResetMode::Mixed => WorktreeEffect::Untouched,
-                ResetMode::Hard => hard_reset_effect(repo, branch.oid, params.to, facts)?,
-            };
-        }
-        // Another branch moved by compare-and-swap: `HEAD`, the index and
-        // the working tree are not in it at all.
-        ResetTarget::Branch(tip) => {
-            plan.ref_moves = vec![RefMove {
-                name: tip.name.clone(),
-                from: Some(tip.oid),
-                to: Some(Target::Real(params.to)),
-            }];
-        }
-    }
-    Ok(plan)
-}
-
-/// A `--hard` reset with dirty tracked files says `LOSES` and names them;
-/// with a clean tree it is an ordinary update. The two cannot both be said
-/// — one [`WorktreeEffect`] per plan — and the one that must be read is the
-/// loss.
-fn hard_reset_effect(
-    repo: &RepoHandle,
-    from: Oid,
-    to: Oid,
-    facts: &RepoFacts,
-) -> Result<WorktreeEffect, PreviewError> {
-    let dirty = dirty_tracked(facts);
-    if dirty.is_empty() {
-        updated(repo, from, to)
-    } else {
-        Ok(WorktreeEffect::Lost { paths: dirty })
-    }
-}
-
-// ── checkout, branch, tag, stash branch ─────────────────────────────────
-
-fn checkout(
-    repo: &RepoHandle,
-    params: &CheckoutParams,
-    facts: &RepoFacts,
-) -> Result<PreviewPlan, PreviewError> {
-    let from = head_tip(facts);
-    let mut plan = blank();
-    let to = match &params.to {
-        CheckoutTarget::Branch(name) => {
-            plan.head = Some(HeadMove::ToBranch(name.clone()));
-            facts.refs.get(name).copied().flatten()
-        }
-        CheckoutTarget::Detached(oid) => {
-            plan.head = Some(HeadMove::Detached(Target::Real(*oid)));
-            Some(*oid)
-        }
-    };
-    plan.worktree = match (from, to) {
-        (Some(from), Some(to)) => updated(repo, from, to)?,
-        // An unborn `HEAD`, or a branch the facts could not resolve: there
-        // is no pair to diff, and saying "nothing changes" would be a
-        // guess. The ref move and the `HEAD` move still say where it goes.
-        _ => WorktreeEffect::Untouched,
-    };
-    Ok(plan)
-}
-
-/// What `HEAD` resolves to now, as the facts saw it.
-///
-/// A scope that asked for `"HEAD"` has the answer already resolved; falling
-/// back to the branch's own entry covers a scope that named the branch
-/// instead. A scope that named neither has no tip to give, and saying
-/// "nothing changes" would be a guess.
-fn head_tip(facts: &RepoFacts) -> Option<Oid> {
-    if let Some(oid) = facts.refs.get("HEAD").copied().flatten() {
-        return Some(oid);
-    }
-    match &facts.head {
-        HeadRef::Branch(name) => facts.refs.get(name).copied().flatten(),
-        HeadRef::Detached(oid) => Some(*oid),
-        HeadRef::Unborn(_) => None,
-    }
-}
-
-fn branch_create(
-    repo: &RepoHandle,
-    params: &BranchCreateParams,
-    facts: &RepoFacts,
-) -> Result<PreviewPlan, PreviewError> {
-    let mut plan = blank();
-    plan.ref_moves = vec![RefMove {
-        name: branch_ref(&params.name),
-        from: None,
-        to: Some(Target::Real(params.at)),
-    }];
-    if params.checkout {
-        plan.head = Some(HeadMove::ToBranch(branch_ref(&params.name)));
-        if let Some(from) = head_tip(facts) {
-            plan.worktree = updated(repo, from, params.at)?;
-        }
-    }
-    Ok(plan)
-}
-
-fn tag_create(params: &TagCreateParams) -> PreviewPlan {
-    PreviewPlan {
-        ref_moves: vec![RefMove {
-            name: tag_ref(&params.name),
-            from: None,
-            to: Some(Target::Real(params.at)),
-        }],
-        ..blank()
-    }
-}
-
-fn ref_delete(params: &RefDeleteParams) -> PreviewPlan {
-    PreviewPlan {
-        ref_moves: vec![RefMove {
-            name: params.name.clone(),
-            from: Some(params.expected),
-            to: None,
-        }],
-        ..blank()
-    }
-}
-
-fn branch_from_stash(
-    repo: &RepoHandle,
-    params: &BranchFromStashParams,
-    facts: &RepoFacts,
-    stop: &dyn Stop,
-) -> Result<PreviewPlan, PreviewError> {
-    // `git stash branch` creates the branch at the stash's **base** — the
-    // commit the stash was taken on, its first parent — and applies there,
-    // which is why it cannot conflict. The stash commit is not reachable
-    // from `HEAD`, so one capped `rev-list` reaches it and its parents.
-    let head = head_tip(facts).ok_or_else(|| {
-        PreviewError::Read(RunError::Unparsable(
-            "HEAD is on no commit, so there is nothing the stash is not on".to_owned(),
-        ))
-    })?;
-    let range = history_reads::commits_between(repo, head, params.commit, 1, stop)?;
-    let base = range
-        .commits
-        .last()
-        .and_then(|summary| summary.parents.first().copied())
-        .ok_or_else(|| {
-            PreviewError::Read(RunError::Unparsable(format!(
-                "the stash commit {} has no base commit to branch from",
-                short(params.commit)
-            )))
-        })?;
-    let name = branch_ref(&params.name);
-    Ok(PreviewPlan {
-        ref_moves: vec![RefMove {
-            name: name.clone(),
-            from: None,
-            to: Some(Target::Real(base)),
-        }],
-        head: Some(HeadMove::ToBranch(name)),
-        worktree: updated(repo, base, params.commit)?,
-        ..blank()
-    })
-}
-
-// ── the guided re-push ──────────────────────────────────────────────────
-
-/// A push that puts the remote branch back where it was (ADR-0038 §4).
-///
-/// Only a re-push is drawn here: an ordinary push has no picture to show
-/// beyond its own command line, which the M4 box already has. The
-/// description says plainly that the remote moves, and `undo` says plainly
-/// that `u` will not bring it back — the two things ADR-0038 §4 requires
-/// the box to be unmistakable about.
-fn push(
-    repo: &RepoHandle,
-    params: &PushParams,
-    facts: &RepoFacts,
-    stop: &dyn Stop,
-) -> Result<PreviewPlan, PreviewError> {
-    let Some(source) = params.source_commit else {
-        return Err(PreviewError::Refused(Refusal::NotPreviewable(
-            graft_core::journal::OperationKind::Push,
-        )));
-    };
-    // The commit has to be on the branch being pushed. A branch the facts
-    // cannot resolve fails the same way: an unverified re-push is not one
-    // this box will draw.
-    let on_branch = match facts.refs.get(&params.branch).copied().flatten() {
-        Some(tip) => is_ancestor(repo, source, tip, stop)?,
-        None => false,
-    };
-    if !on_branch {
-        return Err(PreviewError::Refused(Refusal::NotOnBranch {
-            commit: source,
-            branch: short_ref(&params.branch).to_owned(),
-        }));
-    }
-    let remote_side = format!("{}/{}", params.remote, short_ref(&params.remote_branch));
-    Ok(PreviewPlan {
-        ref_moves: vec![RefMove {
-            name: remote_side.clone(),
-            from: params.lease.map(|lease| lease.expected),
-            to: Some(Target::Real(source)),
-        }],
-        undo: UndoNote::NotUndoable(format!(
-            "this rewrites {remote_side} for everyone who has already pulled it; u undoes your \
-             own branch, never a remote"
-        )),
-        ..blank()
-    })
-}
-
 /// `git merge-base --is-ancestor`: exit 0 is yes, exit 1 is no, anything
 /// else is a read that failed and is reported as one.
-fn is_ancestor(
+///
+/// Shared with [`crate::apply`], which asks it again at confirm time: a rule
+/// only the picture enforces is not enforced (m5/07 review, M5).
+pub(crate) fn is_ancestor(
     repo: &RepoHandle,
     older: Oid,
     newer: Oid,
     stop: &dyn Stop,
-) -> Result<bool, PreviewError> {
+) -> Result<bool, RunError> {
     let ran = GitInvocation::new(repo)
         .args([
             GitArg::Word("merge-base".to_owned()),
@@ -957,7 +527,7 @@ fn is_ancestor(
     match ran {
         Ok(_) => Ok(true),
         Err(RunError::Exited { status: 1, .. }) => Ok(false),
-        Err(other) => Err(other.into()),
+        Err(other) => Err(other),
     }
 }
 

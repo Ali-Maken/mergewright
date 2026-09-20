@@ -572,6 +572,24 @@ fn name_paths(paths: &[PathBuf]) -> String {
     }
 }
 
+/// The in-progress state an operation of this kind opens when git stops on
+/// a conflict: what the executor matches `in_progress` against to tell
+/// "stopped, still live" from "failed" (m5/07). `None` for every other kind.
+///
+/// One table, asked two ways: [`Operation::starts_in_progress`] for an
+/// operation about to run, this for a journal entry already written — a
+/// second copy is a second thing to keep in step (m5/07 review, M11).
+#[must_use]
+pub(crate) fn opens_in_progress(kind: OperationKind) -> Option<InProgress> {
+    match kind {
+        OperationKind::Merge => Some(InProgress::Merge),
+        OperationKind::Rebase => Some(InProgress::Rebase),
+        OperationKind::CherryPick => Some(InProgress::CherryPick),
+        OperationKind::Revert => Some(InProgress::Revert),
+        _ => None,
+    }
+}
+
 impl Operation {
     /// Which journal kind this records as.
     #[must_use]
@@ -609,13 +627,7 @@ impl Operation {
     /// operation.
     #[must_use]
     pub fn starts_in_progress(&self) -> Option<InProgress> {
-        match self {
-            Self::Merge(_) => Some(InProgress::Merge),
-            Self::Rebase(_) => Some(InProgress::Rebase),
-            Self::CherryPick(_) => Some(InProgress::CherryPick),
-            Self::Revert(_) => Some(InProgress::Revert),
-            _ => None,
-        }
+        opens_in_progress(self.kind())
     }
 
     /// A history operation (m5/07): its preview is drawn from ghosts and
@@ -813,7 +825,7 @@ impl Operation {
             Self::Pull(params) => remote::plan_pull(params),
             Self::Push(params) => remote::plan_push(params),
             Self::Merge(params) => history::plan_merge(params),
-            Self::Rebase(params) => history::plan_rebase(params),
+            Self::Rebase(params) => history::plan_rebase(params, facts.git),
             Self::CherryPick(params) => history::plan_pick(params),
             Self::Revert(params) => history::plan_revert(params),
             Self::Reset(params) => history::plan_reset(params),

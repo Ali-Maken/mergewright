@@ -43,9 +43,45 @@ impl Journal { pub fn hold_commands(&mut self, id: &EntryId, commands: Vec<Strin
 **For M6.** The resolver works entirely inside one `Pending` entry: mark a
 file resolved with an ordinary `Stage` (which `check` exempts from
 `Unmerged`, and refuses as `MarkersRemain` while `<<<<<<< ` is still in the
-file), then `resume(ctx, Resume::Continue)`. There is no second entry to
-reconcile, and `u` after the finish takes the whole span back — verified by
-`tests/it/history_ops.rs::conflict_span_is_one_entry_and_undoes_to_before_the_merge`.
+file), then `resume(ctx, Resume::Continue)`.
+
+This paragraph said "there is no second entry to reconcile" before the step
+that would have written one was built. It was false as shipped and the fix
+round (m5/07 review, C1) made it true. What now holds, exactly:
+
+- **A step taken while `in_progress` is `Some` writes no journal line.**
+  `apply` dispatches every such operation to
+  `apply::resume::inside_live_operation`, which runs the plan, folds its
+  command line onto the live entry via `hold_commands`, and returns an
+  `Applied` whose `entry` is **not in the journal**. The rule is "git has an
+  operation in progress", not "the index cannot be snapshotted" — the last
+  file a user resolves leaves a clean index, and that step must fold like
+  every one before it. Verified by
+  `tests/it/history_ops.rs::resolving_each_file_in_turn_still_leaves_the_span_one_entry`
+  (two conflicted files, the second leaving the index clean; one journal
+  line, one entry).
+- **Read `description` and `refresh` off that `Applied`; never look its `id`
+  up.** It is a record of what ran, for the status line. `Journal::entries`
+  will not have it.
+- **`u` after the finish takes the whole span back**, including the resolve
+  steps, because they are the same entry — verified by
+  `tests/it/history_ops.rs::conflict_span_is_one_entry_and_undoes_to_before_the_merge`,
+  which stages the resolution through `Operation::Stage` (as the resolver
+  will) and then undoes to before the merge.
+- **A span begun outside Graft has no entry to fold onto**, and the step
+  still runs: `fold_commands` records nothing and says why. Graft never
+  adopts a shell-started merge as its own entry (`live_entry` compares the
+  entry's `head_before` against git's `rebase-merge/head-name` or the
+  current symbolic `HEAD`, and requires the branch to still be at the
+  recorded tip) — verified by
+  `tests/it/history_ops.rs::a_shell_merge_is_not_adopted_as_grafts_own_entry`.
+- **The gap M6 inherits (not fixed here).** `commands` held on a `Pending`
+  entry live in memory only. The app opens a fresh `Journal` per job, so the
+  Command Log shows the span's lines only within one job — the fold is
+  correct, its visibility is not. `tests/it/history_ops.rs::a_resolve_step_joins_the_live_entrys_commands`
+  proves the fold by running the merge and the stage through one `Journal`,
+  and its doc records the limitation. Fixing it means persisting a
+  `Pending` entry's commands, which is app-side (m5/07 review, M9).
 
 ## 2. `PreviewPlan` (the structural piece)
 
@@ -95,7 +131,7 @@ re-bases the indices — decide before building, do not overload `usize`.
 |---|---|---|
 | `PickParams { commits, head }` | `+ subject: String` | `describe` is pure — it cannot spawn to read the picked commit's subject. |
 | `RevertParams { commit, mainline, head }` | `+ subject: String, parents: usize, parent: Option<Oid>` | `subject` as above; `parents` is what `check` validates `mainline` against; `parent` is the commit's first parent, which the forecast diffs against — a revert's commit is already on `HEAD`, so `commits_between` cannot reach it the way a cherry-pick's can. |
-| `PushParams { … }` | `+ source_commit: Option<Oid>` | As the note said. `check` refuses `RepushNeedsLease` when it is set without a lease; `preview::plan` refuses `NotOnBranch` unless it is an ancestor of the branch; the refspec's source is the commit. |
+| `PushParams { … }` | `+ source_commit: Option<Oid>` | As the note said. `check` refuses `RepushNeedsLease` when it is set without a lease; the refspec's source is the commit. The `NotOnBranch` ancestry guard is refused **twice** — `preview::plan` draws it, and `apply::guard_repush` asks `merge-base --is-ancestor` again before the first write, because a rule only the picture enforces is not enforced (m5/07 review, M5). Both share `preview::is_ancestor`, and a read that fails is `FactsError::Ancestry`, never a guess. |
 
 ## 4. `touches` for a checkout: **no** ref, not `[HEAD]`
 
@@ -171,3 +207,33 @@ line. `UndoError::PartWay` is handled in `jobs/undo.rs`'s
 `refresh_after_failure` and `undone_from`. All three `PushParams` literals
 take `source_commit: None`, since the guided re-push (ADR-0038 §4) is not
 built. Details and the tests that hold it: the ticket's second NOTES section.
+
+## 8. The plans pin the reader's config out (fix round)
+
+Added by the m5/07 fix round (review M1, M2). Not in the note, and it
+belongs here because every later milestone's plan lines inherit it: **a plan
+says what it means, so a config the reader happens to have set cannot make
+the preview a lie.**
+
+- `merge` carries `--ff` for `FastForward::Default`, not the absence of a
+  flag. `merge.ff=false` turns a plain `merge` into a merge commit, and the
+  picture had drawn a fast-forward. Verified against real git 2.54: with
+  `merge.ff=false` set, `merge --ff` fast-forwards (one parent), no flag
+  makes a merge commit (two). Test:
+  `tests/it/history_ops.rs::a_merge_follows_the_picture_not_the_readers_merge_ff`.
+- `rebase` carries `--no-update-refs --no-autostash`, gated on
+  `GitVersion::MINIMUM` (2.38, which is where `--update-refs` arrived).
+  `rebase.updateRefs=true` moves every branch pointing into the replayed
+  range, and the entry records one. Verified against real git: with the
+  config set, an unflagged rebase moves `f1x`; `--no-update-refs` leaves it.
+  Test: `tests/it/history_ops.rs::a_rebase_moves_only_the_branch_the_entry_records`.
+- **Pull was checked and is honest under `pull.rebase=true`** (the user has
+  it set globally). `plan_pull` is `fetch` + `merge --ff-only <tracking>` —
+  it never runs `git pull`, so `pull.rebase` cannot reach it, and `--ff-only`
+  overrides `merge.ff=false`. Observed directly, not reasoned: with both
+  configs set, the `merge --ff-only` fast-forwarded (exit 0, single parent).
+- **`WorktreeEffect::NotShown { why }`** is new (review M3). A revert with
+  no recorded parent used to draw `Untouched` — "nothing happens to your
+  files", which is the one thing it does not mean. It now names the hole, as
+  `ConflictForecast::NotChecked` does. Test:
+  `tests/it/history_ops.rs::a_revert_with_no_recorded_parent_says_so_rather_than_drawing_nothing`.
