@@ -1,6 +1,6 @@
 # undo-cancel-rollback: `Esc` cancels `u`/`U` between steps and rolls back what already ran
 
-Status: ready
+Status: done (graft-ops half; the `graft` half is out of this builder's fence — see NOTES)
 Blocked by: none
 Build with: (blank — brownfield in `graft-ops::restore`; recommendation: **Opus** — a rollback that is wrong loses the one thing undo exists for; testable, so not Fable)
 **Conductor set after the scouts: Opus.**
@@ -52,11 +52,10 @@ pub fn execute(ctx: &Context, plan: &InversePlan, force: bool) -> Result<Applied
 
 ## Acceptance
 
-- [ ] The four tests above, named at tick time, green; the counting stop is the only cancellation mechanism (grep NOTES for `sleep`: none)
-- [ ] `Esc` during `u` in the app: `update::undo` test `esc_cancels_an_undo_in_flight` sends `CancelJob` for the undo's id and the busy line reads `undo · cancelling` — `esc_cancels_an_undo_in_flight`
-- [ ] KNOWN_GAPS rows 471/472 named in NOTES as closable (conductor closes)
-- [ ] MAP.md updated; NOTES says whether a scout was used
-
+- [x] The tests below, named at tick time, green; the counting stop is one of the two mechanisms and there is **no** `sleep` and no hook anywhere in the file (`grep -n "sleep" crates/graft-ops/tests/it/undo_cancel.rs` → 2 hits, both the words "no sleeps"/"no sleep" in doc comments; no `thread::sleep` and no `std::time` anywhere in the file or in restore.rs) — `undo_cancel::cancel_between_steps_rolls_back_to_pre_undo_state`, `undo_cancel::cancel_at_every_step_boundary_is_clean`, `undo_cancel::rollback_refused_by_a_moved_ref_is_reported_not_hidden`, `undo_cancel::a_ref_moved_under_a_killed_step_is_reported_not_guessed`, `undo_cancel::a_stop_that_never_fires_changes_nothing`, `undo_cancel::a_cancelled_undo_through_u_leaves_u_where_it_was`, `undo_cancel::the_plan_this_file_cancels_is_three_steps`. **Deviation, reported:** the ticket asked for a counting stop only; a counting stop cannot *aim* at one step boundary (the runner polls the same stop while it waits on a child, and `begin`'s snapshot polls several times before step one), which `support::StopWhenGone`'s own doc comment already sets out. The sweep uses the counting stop; the two aimed tests use a stop keyed to the plan's own effect. See NOTES.
+- [ ] `Esc` during `u` in the app — **not done, not this builder's fence.** `esc_cancels_an_undo_in_flight`, `UNDO_CANNOT_STOP`, `Stoppable::Yes`, the `undo · esc cancels` busy line and the `undone` arms all live in `crates/graft/`, which group 08 holds. Scope item 5 is untouched here. No test named, so no tick.
+- [x] KNOWN_GAPS rows 501/502 named in NOTES as closable (conductor closes) — row numbers in the ticket (471/472) are stale; the rows are at 501 and 502.
+- [x] MAP.md updated (`crates/graft-ops/MAP.md` §restore, three new lines); NOTES says a scout was used.
 ## Gates
 
 `cargo fmt --check` · `cargo clippy --all-targets -- -D warnings` · `cargo nextest run -p graft-ops -p graft` · `cargo test --doc -p graft-ops`.
@@ -64,3 +63,42 @@ pub fn execute(ctx: &Context, plan: &InversePlan, force: bool) -> Result<Applied
 ## Size
 
 One context. graft-ops plus one file in graft; the graft file is disjoint from `refresh-race`'s files (`update/keys.rs`, `history`, `jobs/runner`) — still, do not run both builders in one worktree.
+
+## NOTES
+
+**Scout: yes.** A Sonnet `Explore` over `graft-ops` (restore, undo, journal, `UndoError`, cancellation, existing tests) before any source was read. One correction it turned up, load-bearing: **`UndoError::PartWay` is `{ done, error }` — there is no `total` field.** The conductor's brief said group 07 had landed `{ done, total, error }`; it has not. `total` is tracked at `KNOWN_GAPS.md:489` / `docs/reviews/m5-07-ops-history-operations.md` Major 4, deferred to group 08. Nothing here needed it: `restore::execute` produces `Cancelled`/`CancelledPartway`, and `revert_to` wraps those in `PartWay` unchanged.
+
+### What was built (graft-ops only)
+
+`crates/graft-ops/src/restore.rs`. `execute` now checks `ctx.stop` before **every** step; on a stop it reverses what already ran, newest first, from the entry's own `refs_before`/`head_before`/`index_before`/`worktree_before` and its own backup ref, against `&()` so the roll-back cannot itself be cancelled. New `RestoreError` variants: `Cancelled { rolled_back }`, `CancelledPartway { applied, rollback }`, and — a **third, unplanned variant, flagged here rather than deviated silently** — `NoBefore { field }`. The design note's G2 block names only the first two, but the roll-back has three places where the entry's before-state can be missing (a ref name absent from `refs_before`, `index_before` `None`, `worktree_before` `None`), and the first two are impossible by construction while **`index_before` is `None` whenever the backup was taken over an unmerged index — a real case, e.g. cancelling an undo after a conflicted stash pop.** Reusing `Run`/`Snapshot` for that would have been a misleading error, and `unwrap` is not an option on this path. If the conductor prefers two variants, say so and I will fold it into `Snapshot(SnapshotError::Unmerged)`, which is literally true for the index case only.
+
+`rollback_what` renders a roll-back failure in roll-back terms: `RefMoved`'s own message ends "nothing was changed", which is true of the forward path's first compare-and-swap and **false** of a roll-back. That is a message-rendering choice, not a behaviour special case.
+
+### Verified, and how
+
+- `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo nextest run`, `cargo test --doc` — all workspace-wide, all green. **2013/2013** (2006 before + 7 new), 2 doctests.
+- **Mutation-checked, not just green** (rule 1). Disabling the roll-back loop (`.take(0)`) fails 4 of the 7 new tests; making the killed-step decision a guess (`settled` always `Applied`) fails `a_ref_moved_under_a_killed_step_is_reported_not_guessed`. Both mutations were reverted. This is how I know the tests bind to the new code and not to the old behaviour.
+- Every assertion reads the repository back with `git` (`for-each-ref`, `ls-files -s`, the file bytes on disk) or the journal file, never a returned value.
+- `cancel_at_every_step_boundary_is_clean` sweeps **every** poll the plan makes (~30), not only the step boundaries, and asserts the real invariant: *a cancelled undo either finished or changed nothing*, plus no `*.lock` under `.git`. It also asserts that at least two of those cancels actually rolled a step back, so it cannot pass on cancels that never reached a step.
+
+### Not verified — read this before ticking anything downstream
+
+- **`Settled::Unknown` from a failed `read_refs`** (as opposed to from a moved ref): unreachable from a test without faking a ref-store read failure. The moved-ref half of `Unknown` **is** covered. Marked **unverified**, not broken.
+- **`NoBefore`**: no test reaches it. The index case needs an undo cancelled while `index_before` is `None` (unmerged index at backup time); I could not build that deterministically inside this ticket. **Unverified, not broken** — the code path is straight-line and reported, not swallowed.
+- **Which of the two cancel paths a given run takes** (between-step check vs. SIGTERM inside a step) is not deterministic, by nature: the runner polls the stop while waiting on a child. Both paths are covered — `rollback_refused_…` pins the between-step/roll-back path (it fails under mutation A), `a_ref_moved_under_a_killed_step_…` pins the killed-step path (it fails under mutation B) — but no single test can claim which path it took.
+- **Colour/visual: nothing here draws.** No capture; this ticket has no visual surface.
+
+### Decisions a reviewer should check against the requirement, not the code
+
+- On `Settled::Unknown` the roll-back writes **nothing at all** (not even the steps it is certain about). The repository has just refused a read; writing on a guess is how the backup ref becomes the only truth left. The user is told, and `u` on the new entry restores from the backup. This is a judgement call and is documented in the source.
+- `revert_to` is unchanged and still leaves completed *entries* in place on a stop. Only each individual `InversePlan` is now all-or-nothing. That matches §6.6 and the existing doc comment; it is not an oversight.
+
+### Cost
+
+`cancel_at_every_step_boundary_is_clean` is ~16 s wall (one temp repo per poll index). The workspace fast tier went **50 s → 61 s**. Still laptop-safe, but it is the suite's long pole now; if that is too much, the sweep is the thing to trim.
+
+### For the conductor
+
+- `KNOWN_GAPS.md:501` ("`Esc` cannot cancel u/U at all") — **the graft-ops half is closed**; the row cannot close outright until group 08 deletes `UNDO_CANNOT_STOP` and launches undo with `Stoppable::Yes`.
+- `KNOWN_GAPS.md:502` ("Proof is that `CancelJob` is never sent, not that a mid-undo cancel is survived") — **closable**: a mid-undo cancel is now survived and proven, mutation-checked, at the `graft-ops` layer. The app-layer half (that `Esc` actually sends `CancelJob` for `u`) remains group 08's.
+- Group 08 needs to handle two new `RestoreError` variants reaching it through `UndoError::Restore`: `Cancelled { rolled_back }` → `Done("undo cancelled")`, `CancelledPartway { applied, rollback }` → `Sticky`. `explain()` already yields the ticket's two strings verbatim.
