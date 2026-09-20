@@ -161,6 +161,31 @@ pub fn apply_context_action(
             state.detail.explain_requested = Some(oid);
             Vec::new()
         }
+        // The keys the hint bar drops at 80 and 120 columns, so that `. more`
+        // leads to them (m5-03 review, Major 1). Each one calls exactly what
+        // its key calls — a second path to the same function, never a second
+        // implementation. `oid` and `row` are beside the point: all four act
+        // on `HEAD` and the current branch, wherever the cursor is.
+        //
+        // The `bool` each key function returns says whether it claimed the
+        // key. From the menu the action was chosen outright, and a refusal
+        // (no remote, nothing to undo) already says so on the status line, so
+        // there is nothing left here to decide on.
+        ContextAction::Fetch => {
+            let mut commands = Vec::new();
+            let _claimed: bool = super::remote::fetch_key(state, &mut commands, next_id);
+            commands
+        }
+        ContextAction::Pull => {
+            let mut commands = Vec::new();
+            let _claimed: bool = super::remote::pull_key(state, &mut commands, next_id);
+            commands
+        }
+        ContextAction::Push => {
+            let _claimed: bool = super::remote::push_key(state);
+            Vec::new()
+        }
+        ContextAction::Undo => super::undo::undo_key(state, false, next_id),
     }
 }
 
@@ -210,6 +235,71 @@ mod tests {
             },
         );
         state
+    }
+
+    /// `. more` says the keys the bar dropped are behind `.`, so choosing
+    /// one there must run what the key runs — the same function, not a
+    /// second implementation (m5-03 review, Major 1).
+    #[test]
+    fn the_menu_runs_what_the_dropped_keys_run() {
+        for (action, code) in [
+            (ContextAction::Fetch, KeyCode::Char('f')),
+            (ContextAction::Pull, KeyCode::Char('p')),
+            (ContextAction::Push, KeyCode::Char('P')),
+            (ContextAction::Undo, KeyCode::Char('u')),
+        ] {
+            let mut from_menu = AppState::default();
+            let by_menu = dispatch(&mut from_menu, WORKING_TREE_ROW, action);
+
+            let mut from_key = AppState::default();
+            let mut by_key = Vec::new();
+            super::super::keys::key_event(&mut from_key, &mut by_key, key(code));
+
+            assert_eq!(by_menu, by_key, "{action:?} vs {code:?}");
+            assert_eq!(
+                from_menu.status, from_key.status,
+                "{action:?} vs {code:?} left different status lines"
+            );
+            assert_eq!(
+                from_menu.operating.is_some(),
+                from_key.operating.is_some(),
+                "{action:?} vs {code:?}"
+            );
+        }
+        // Not vacuous: `f` really does launch a fetch from a bare state.
+        let mut state = AppState::default();
+        assert!(!dispatch(&mut state, WORKING_TREE_ROW, ContextAction::Fetch).is_empty());
+    }
+
+    /// Every menu lists them, whichever row opened it — they act on `HEAD`
+    /// and the current branch, not on the row.
+    #[test]
+    fn every_menu_lists_the_dropped_keys() {
+        for menu in [
+            ContextMenu::for_row(false),
+            ContextMenu::for_row(true),
+            ContextMenu::for_working_tree(),
+        ] {
+            for action in [
+                ContextAction::Fetch,
+                ContextAction::Pull,
+                ContextAction::Push,
+                ContextAction::Undo,
+            ] {
+                assert!(
+                    menu.items.iter().any(|item| item.action == action),
+                    "{action:?} is missing from {:?}",
+                    menu.items
+                );
+            }
+            assert!(
+                menu.items
+                    .iter()
+                    .all(|item| item.label.contains('(') || item.action == ContextAction::Explain),
+                "every item but Explain names its key: {:?}",
+                menu.items
+            );
+        }
     }
 
     #[test]
@@ -267,14 +357,24 @@ mod tests {
         );
     }
 
+    /// The working-tree row's own action is `Open details` and nothing
+    /// else — `Copy SHA` and `Compare with this` have no commit to act on.
+    /// The dropped keys follow it (`every_menu_lists_the_dropped_keys`).
     #[test]
-    fn open_for_working_tree_lists_open_details_alone() {
+    fn open_for_working_tree_lists_open_details_first() {
         let mut state = AppState::default();
         open_for_working_tree(&mut state);
         let (row, menu) = state.context_menu.expect("menu opened");
         assert_eq!(row, WORKING_TREE_ROW);
-        assert_eq!(menu.items.len(), 1);
         assert_eq!(menu.items[0].action, ContextAction::OpenDetails);
+        assert!(
+            !menu.items.iter().any(|item| matches!(
+                item.action,
+                ContextAction::CopySha | ContextAction::CompareWithThis | ContextAction::Explain
+            )),
+            "the working-tree row names no commit: {:?}",
+            menu.items
+        );
     }
 
     #[test]

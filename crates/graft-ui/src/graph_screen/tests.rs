@@ -767,17 +767,22 @@ fn footer_at(columns: u16) -> String {
 
 /// The footer's hint list widens with the frame, not just in the unit tests
 /// over `hints_for` directly: a plain row shows 4 tokens (3 + `. more`) at
-/// 80, 7 at 120, and its full list (12) at 160 (`view()`'s default context).
+/// 80, 7 at 120, and as many as fit at 160 — its own list and then the keys
+/// the whole screen answers (`view()`'s default context).
 #[test]
 fn the_footer_hint_list_widens_with_the_frame() {
     let at = |columns| footer_at(columns).split("  ").count();
     assert_eq!(at(80), 4, "{}", footer_at(80));
     assert_eq!(at(120), 7, "{}", footer_at(120));
-    assert_eq!(at(160), 12, "{}", footer_at(160));
+    assert!(at(160) > 7, "{}", footer_at(160));
+    assert!(footer_at(160).contains("q quit"), "{}", footer_at(160));
 }
 
-/// Acceptance (g): the footer at 80x24 for a branch row reads the note's
-/// three-plus-more line, in order (`hint-bar-redesign`).
+/// Acceptance (g): the footer at 80x24 for a branch row reads three keys
+/// plus `. more`, in the note's table order — the note's own `m merge` and
+/// `r rebase` are not among them until a group binds them, so the three are
+/// the first three the branch row actually answers (m5-03 review, Critical
+/// 2; `hint-bar-redesign`).
 #[test]
 fn footer_eighty_branch_row() {
     let rows = linear(3);
@@ -785,20 +790,20 @@ fn footer_eighty_branch_row() {
     view.hint_context = HintContext::BranchRow { current: false };
     let screen = text(&draw(&view, 80, 24));
     let footer = screen.last().expect("a footer row").trim_end().to_owned();
-    assert_eq!(footer, " m merge  r rebase  ⏎ open  . more");
+    assert_eq!(footer, " ⏎ open  P push  c commit  . more");
 }
 
-/// The changes pane's own hints replace the row context's, and swap to the
-/// conflict-resolution set while any entry is unmerged
+/// The changes pane's own hints replace the row context's, and drop the
+/// write keys for the conflict set on an unmerged file — minus `M mergetool`
+/// and `space resolved`, which M6 still has to build (m5-03 review, Critical
+/// 2). `<> resize` follows the pane, not the context
 /// (m3-working-tree-undo-and-stash/04, m5-history-and-ghost-preview/04).
 #[test]
 fn the_changes_pane_hints_replace_the_row_context() {
     let rows = linear(3);
     let mut view = view(&rows, WalkView::Complete { rows: 3 }, 0);
-    view.hint_context = HintContext::ChangesPane {
-        unmerged: false,
-        detail_shown: true,
-    };
+    view.hint_context = HintContext::ChangesPane { unmerged: false };
+    view.detail_shown = true;
     let footer = text(&draw(&view, 200, 8))
         .last()
         .expect("a footer row")
@@ -808,20 +813,14 @@ fn the_changes_pane_hints_replace_the_row_context() {
     assert!(footer.contains("<> resize"), "{footer}");
     assert!(!footer.contains("m merge"), "{footer}");
 
-    view.hint_context = HintContext::ChangesPane {
-        unmerged: true,
-        detail_shown: false,
-    };
+    view.hint_context = HintContext::ChangesPane { unmerged: true };
+    view.detail_shown = false;
     let unmerged_footer = text(&draw(&view, 200, 8))
         .last()
         .expect("a footer row")
         .trim_end()
         .to_owned();
-    assert!(unmerged_footer.contains("M mergetool"), "{unmerged_footer}");
-    assert!(
-        unmerged_footer.contains("space resolved"),
-        "{unmerged_footer}"
-    );
+    assert_eq!(unmerged_footer, " e edit  c commit  ⇥ graph  . more");
     assert!(
         !unmerged_footer.contains("space stage"),
         "{unmerged_footer}"
@@ -1158,11 +1157,20 @@ fn capture_for_docs_shots() {
 
 // --- Hint bar captures (`hint-bar-redesign`, ADR-0037 §4) ---
 
-/// Not an assertion — dumps the footer's hint bar for the four contexts the
-/// design note's mockups cover (a branch row, a plain row, the
-/// Uncommitted-changes row, a marked merge) at the three breakpoints the
-/// width rule turns on (80, 120, 160 cols), so each can be judged by eye
-/// against the mockup. Run by hand to regenerate: `cargo test -p graft-ui
+/// Not an assertion — dumps the footer's hint bar for a marked row at the
+/// three breakpoints the width rule turns on (80, 120, 160 cols), so it can
+/// be judged by eye against the design note's mockup.
+///
+/// Only the marked context: a marker comes from the Mistake Radar, which
+/// needs a corpus built to trip it, so this one is a hand-built fixture
+/// drawn straight into a `TestBackend`. The other three contexts the note
+/// mocks up — a branch row, a plain row, the Uncommitted-changes row, and
+/// the changes pane besides — are captured from a real repository through
+/// the real app instead (`graft::it::hint_bar::capture_hint_bar_for_docs_shots`),
+/// because a capture of a view model somebody set by hand cannot show
+/// whether the app picks that view model (m5-03 review, Major 5).
+///
+/// Run by hand to regenerate: `cargo test -p graft-ui
 /// graph_screen::tests::capture_hint_bar_for_docs_shots -- --ignored
 /// --nocapture`.
 #[test]
@@ -1191,17 +1199,12 @@ fn capture_hint_bar_for_docs_shots() {
         },
     };
 
-    let scenarios: [(&str, HintContext, usize, bool); 4] = [
-        ("uncommitted", HintContext::WorkingTreeRow, 0, false),
-        ("branch", HintContext::BranchRow { current: false }, 4, true),
-        ("plain", HintContext::PlainRow, 2, false),
-        (
-            "marked",
-            HintContext::Marked(Box::new(HintContext::PlainRow)),
-            1,
-            false,
-        ),
-    ];
+    let scenarios: [(&str, HintContext, usize, bool); 1] = [(
+        "marked",
+        HintContext::Marked(Box::new(HintContext::PlainRow)),
+        1,
+        false,
+    )];
 
     for (name, context, cursor, badge) in scenarios {
         let mut scenario = view(&rows, WalkView::Complete { rows: 5 }, cursor);
@@ -1220,16 +1223,22 @@ fn capture_hint_bar_for_docs_shots() {
             ("160x48", 160, 48),
         ] {
             let mut out = format!(
-                "# m5-hints-{name}-{label}.txt: TestBackend capture (not a pty), {columns}x{term_rows}.\n\
-                 # Fixture: capture_hint_bar_for_docs_shots in\n\
+                "# m5-hints-{name}-{label}.txt: {columns}x{term_rows}, the GraphScreen widget\n\
+                 # drawn into ratatui's TestBackend from a view model built by hand —\n\
+                 # HintContext::{context:?} on a five-row corpus. Not a pty capture and\n\
+                 # not the app: no colour is recorded (CLAUDE.md rule 5, colour ships\n\
+                 # unverified), and the context is set here rather than chosen by\n\
+                 # `view::rows::hint_context`. The contexts a real repository can reach\n\
+                 # are captured through the whole app instead — m5-hints-branch-*,\n\
+                 # -plain-*, -uncommitted-*, -changes-*. Fixture:\n\
+                 # capture_hint_bar_for_docs_shots in\n\
                  # crates/graft-ui/src/graph_screen/tests.rs (#[ignore]d, run by hand to\n\
-                 # regenerate). HintContext::{context:?} on a five-row corpus (a branch\n\
-                 # badge, a merge carrying a Mistake Radar marker, a plain row).\n\
+                 # regenerate).\n\
                  #\n\
-                 # Judge by eye: the footer's last row reads the {name} context's hints\n\
-                 # for this width — three plus `. more` under 100 cols, six plus `. more`\n\
-                 # from 100, every hint plus `. more` from 160 (ADR-0037 §4) — never all\n\
-                 # hidden.\n\
+                 # Judge by eye: the footer's last row reads the marked row's hints for\n\
+                 # this width — `. explain` leads (the marker's own key), then the row's\n\
+                 # keys: three under 100 cols, six from 100, as many as fit from 160\n\
+                 # (ADR-0037 §4) — never all hidden, and never a key that does nothing.\n\
                  \n",
                 context = scenario.hint_context,
             );

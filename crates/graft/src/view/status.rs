@@ -49,21 +49,29 @@ pub(crate) fn problem(status: &Status) -> Option<SanitizedText> {
     }
 }
 
+/// What a failure line says when it carries no keys of its own. `Esc`
+/// really does clear a `Failed`/`Sticky` status (`update::keys::key_event`),
+/// and a failure that names no key at all is the one footer ADR-0037 §4
+/// rules out — the bar must never be keyless (m5-03 review, Major 2).
+const DISMISS: &str = "esc dismiss";
+
 /// The graph footer's reading of [`Status`]: the same problem, but with the
 /// reason and keys kept apart so [`graft_ui::graph_screen::hints::fit_status_line`]
 /// can cut the reason first and keep the keys whole (ADR-0037 §4,
-/// `hint-bar-redesign`).
+/// `hint-bar-redesign`), and with [`DISMISS`] standing in whenever the
+/// failure carries no keys — the common case (a hook rejected the commit,
+/// `$EDITOR` failed, staging refused on a conflict).
 #[must_use]
 pub(crate) fn graph_problem(status: &Status) -> Option<ProblemLine> {
     match status {
         Status::Ready | Status::Copied { .. } | Status::Busy(_) | Status::Done(_) => None,
         Status::Failed(message) => Some(ProblemLine {
             reason: sanitize_line(message),
-            keys: None,
+            keys: Some(sanitize_line(DISMISS)),
         }),
         Status::Sticky { reason, keys } => Some(ProblemLine {
             reason: sanitize_line(reason),
-            keys: keys.as_deref().map(sanitize_line),
+            keys: Some(sanitize_line(keys.as_deref().unwrap_or(DISMISS))),
         }),
     }
 }

@@ -1,0 +1,48 @@
+# m5-hints-changes-80x24.txt: 80x24, drawn by `view::view` from
+# a real AppState — a real repository, opened over the real job pool, with
+# the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
+# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# terminal is ratatui's TestBackend, so this is a character grid with no
+# colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
+# repository's temporary path is replaced by `/code/api` so the capture is
+# the same from one run to the next; nothing else is touched.
+#
+# Here the changes pane is open on the working tree.
+#
+# Judge by eye: the hint bar is the graph's bottom row — the frame's last
+# row, unless the pane is stacked under it. Three keys plus `. more` under
+# 100 columns, six plus `. more` from 100, the context's own keys and then
+# the screen's from 160 (ADR-0037 §4) — never all hidden, never a key that
+# does nothing, and `.` leads to the rest.
+#
+# NOTE: this frame has no hint bar at all. Under 100 columns the detail
+# pane takes the whole screen behind the `[Graph] Detail` tabs, and the
+# graph screen — the bar with it — is not drawn. A keyless screen is the
+# one outcome ADR-0037 §4 rules out, so this is a known gap, not what
+# right looks like (hint_bar::the_tab_layout_still_hides_every_key,
+# #[ignore]d).
+
+Graph  [Detail]
+UNCOMMITTED · 1 unstaged
+diff vs HEAD b663d42
+
+UNSTAGED (1)
+  M first.txt                                                              +1 −0
+reading…
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

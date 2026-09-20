@@ -602,25 +602,70 @@ fn is_refresh(key: KeyPress) -> bool {
     key.code == KeyCode::Char('r') && key.modifiers.control
 }
 
-/// Every key this build actually binds on the graph screen and the panes
-/// its footer hints from, spelled exactly as `graph_screen::hints`'s tables
-/// spell them (`⏎` for `Enter`, `j/k` for either move key, `⌃A` for
-/// `Ctrl+A`) — so a test can walk every [`graft_ui::graph_screen::hints_for`]
-/// context against this list and catch a hinted key nothing answers
-/// (`hint-bar-redesign` scope item 6).
+/// Every `(key, verb)` this build actually binds on the graph screen and
+/// the panes its footer hints from, spelled exactly as
+/// `graft_ui::graph_screen::hints`'s tables spell them (`⏎` for `Enter`,
+/// `j/k` for either move key, `⌃A` for `Ctrl+A`).
 ///
-/// `m`, `r`, `b` and `t` (`BranchRow`'s merge/rebase/branch/tag,
-/// `docs/design/02-keymap.md` §2.3) are in the design note's hint table
-/// verbatim but not yet bound: the groups that wire them up are M5's own,
-/// still to build (`docs/design-notes/m5-history-and-ghost-preview.md`'s
-/// title — this ticket is the footer's plumbing, not those verbs). Likewise
-/// `s`/`a` (banner skip/abort) belong to the operation-banner group. None of
-/// the four are in this list; the walking test says so rather than papering
-/// over it.
+/// The **verb** is half the claim: `M` is bound, but to the Map view, so a
+/// hint reading `M mergetool` is as dead as one on an unbound key — which
+/// is exactly what the key-only version of this list let through (m5-03
+/// review, Critical 2 and Major 6). `update::tests` walks it both ways:
+/// every hint `hints_for` draws must be in here, and every
+/// `HintState::Planned` entry in the hint tables must *not* be — so the
+/// group that binds `m merge` cannot add it here without also flipping the
+/// hint to live.
+///
+/// Each line names the dispatcher it is true because of. Keep them in step:
+/// this list is a claim about the code below it, and the tests only compare
+/// it with the hint tables.
 #[must_use]
-pub fn bound_keys() -> &'static [&'static str] {
+pub fn bound_actions() -> &'static [(&'static str, &'static str)] {
     &[
-        "⏎", "c", "p", "P", "f", "u", "J", "/", "j/k", "y", ".", "M", "e", "⌃A", "space", "d",
-        "esc", "⇥", "S", "<>",
+        // `graph_key`, this file.
+        ("q", "quit"),         // `is_quit`
+        ("F2", "status"),      // `is_screen_toggle`
+        ("F3", "renderer"),    // `is_tier_cycle`
+        ("+", "lanes"),        // `is_lane_toggle`
+        ("F", "focus"),        // `is_focus_toggle`
+        ("y", "sha"),          // `is_copy_key` → `copy_selected_sha`
+        ("x", "compare"),      // `is_compare_key` → `toggle_compare_selected`
+        ("c", "commit"),       // `is_commit_key` → `commit_editor::open`
+        ("a", "amend"),        // `is_commit_key`, amending
+        ("p", "pull"),         // `is_remote_key` → `remote::pull_key`
+        ("P", "push"),         // `is_remote_key` → `remote::push_key`
+        ("f", "fetch"),        // `is_remote_key` → `remote::fetch_key`
+        ("space", "fold"),     // `view_change` → `ViewChange::Fold`
+        ("1", "first-parent"), // `view_change` → `ViewChange::FirstParent`
+        ("H", "hide stash"),   // `view_change` → `ViewChange::Stashes`
+        ("j/k", "move"),       // `motion_for` → `move_cursor`
+        ("g/G", "top/bottom"), // `motion_for`
+        ("PgUp/PgDn", "page"), // `motion_for`
+        ("⌃R", "refresh"),     // `is_refresh` → `refresh_key`
+        ("u", "undo"),         // `is_undo_key` → `undo::undo_key`
+        ("U", "redo"),         // `is_undo_key`, redo
+        ("esc", "dismiss"),    // `key_event`: clears a `Failed`/`Sticky` status
+        (".", "more"),         // `is_context_menu_key` → `context_menu::open_selected`
+        (".", "explain"),      // the same menu's `Explain` item on a marked row
+        // The panes and overlays (`pane_and_overlay_key`).
+        ("⏎", "open"),      // `detail::keys`: opens the pane on the cursor row
+        ("⏎", "changes"),   // the same key on the uncommitted-changes row
+        ("<>", "resize"),   // `detail::keys`, while the pane is shown (ADR-0028)
+        ("⇥", "graph"),     // `detail::keys`: cycles focus back to the graph
+        ("space", "stage"), // `detail::keys::changes_pane_write_key`
+        ("d", "discard"),   // the same, `operate::request_discard`
+        ("⌃A", "all"),      // the same, `operate::stage_all`
+        ("e", "edit"),      // the same, `$EDITOR` at the cursor's line
+        ("S", "stash"),     // `stash::stash_key`: opens the overlay
+        ("J", "journal"),   // `journal::journal_key`: opens the browser
+        ("M", "map"),       // `map::map_key`
+        ("O", "overview"),  // `strip::strip_key`
+        ("/", "search"),    // `search::search_key`, before `key_event`
+        // Inside the two overlays, which hint their own lists.
+        ("⏎", "revert"),  // `journal::enter`: undoes/redoes the entry
+        ("⏎", "apply"),   // `stash::operate_on_selected`, keeping the entry
+        ("p", "pop"),     // the same, popping
+        ("d", "drop"),    // `stash::stash_key`
+        ("esc", "close"), // either overlay's own `Esc`
     ]
 }

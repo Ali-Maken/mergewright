@@ -27,7 +27,7 @@ shape: criss-cross-merge, 16, highlight, 80x24, row 4 selected
 
 
 
- ⏎ open  b branch  r rebase  . more
+ ⏎ open  c commit  y sha  . more
 
 modifiers: graph | subject
 ..b.......| .

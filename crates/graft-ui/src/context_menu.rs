@@ -26,6 +26,14 @@ pub enum ContextAction {
     CompareWithThis,
     /// Open the detail pane on this row, or the working tree.
     OpenDetails,
+    /// Fetch, the same as `f`.
+    Fetch,
+    /// Pull, the same as `p`.
+    Pull,
+    /// Push, the same as `P` (its confirm box included).
+    Push,
+    /// Undo the last operation, the same as `u`.
+    Undo,
 }
 
 /// One row of the menu.
@@ -46,13 +54,43 @@ pub struct ContextMenu {
     pub cursor: usize,
 }
 
+/// The hints the width rule drops first and the user reaches for most: the
+/// remote verbs and undo, in the footer's own order. Every menu lists them,
+/// since none depends on which row the cursor is on.
+const ALWAYS_ITEMS: [MenuItem; 4] = [
+    MenuItem {
+        action: ContextAction::Fetch,
+        label: "Fetch (f)",
+    },
+    MenuItem {
+        action: ContextAction::Pull,
+        label: "Pull (p)",
+    },
+    MenuItem {
+        action: ContextAction::Push,
+        label: "Push (P)",
+    },
+    MenuItem {
+        action: ContextAction::Undo,
+        label: "Undo (u)",
+    },
+];
+
 impl ContextMenu {
     /// A commit row's menu: `Explain` first when the row is marked (design
-    /// note, "Context actions"), then `Copy SHA`, `Compare with this`,
-    /// `Open details`.
+    /// note, "Context actions"), then the row's own actions, then the keys
+    /// the hint bar drops at 80 and 120 columns.
+    ///
+    /// `. more` is a promise: at 80 columns the bar shows three keys and
+    /// says the rest are behind `.`, so the rest have to *be* behind `.`
+    /// (ADR-0037 §4; m5-03 review, Major 1). Each label carries its key, so
+    /// choosing an item once teaches the key for next time. `S stash`,
+    /// `J journal` and `/ search` open places of their own and are not here
+    /// — the footer shows them from 160 columns, and `?` help (M8) is where
+    /// the whole keymap finally lands.
     #[must_use]
     pub fn for_row(marked: bool) -> ContextMenu {
-        let mut items = Vec::with_capacity(4);
+        let mut items = Vec::with_capacity(8);
         if marked {
             items.push(MenuItem {
                 action: ContextAction::Explain,
@@ -61,30 +99,31 @@ impl ContextMenu {
         }
         items.push(MenuItem {
             action: ContextAction::CopySha,
-            label: "Copy SHA",
+            label: "Copy SHA (y)",
         });
         items.push(MenuItem {
             action: ContextAction::CompareWithThis,
-            label: "Compare with this",
+            label: "Compare with this (x)",
         });
         items.push(MenuItem {
             action: ContextAction::OpenDetails,
-            label: "Open details",
+            label: "Open details (⏎)",
         });
+        items.extend(ALWAYS_ITEMS);
         ContextMenu { items, cursor: 0 }
     }
 
-    /// The uncommitted-changes row's menu: `Open details` alone (design
-    /// note, "Working tree row selected": `.` "lists `Open details` only").
+    /// The uncommitted-changes row's menu: `Open details` (design note,
+    /// "Working tree row selected": `.` "lists `Open details` only"), then
+    /// the same dropped keys every menu carries.
     #[must_use]
     pub fn for_working_tree() -> ContextMenu {
-        ContextMenu {
-            items: vec![MenuItem {
-                action: ContextAction::OpenDetails,
-                label: "Open details",
-            }],
-            cursor: 0,
-        }
+        let mut items = vec![MenuItem {
+            action: ContextAction::OpenDetails,
+            label: "Open details (⏎)",
+        }];
+        items.extend(ALWAYS_ITEMS);
+        ContextMenu { items, cursor: 0 }
     }
 
     /// Move the cursor by `delta` items, clamped to the ends (the files
@@ -143,6 +182,9 @@ impl Widget for &ContextMenu {
 mod tests {
     use super::*;
 
+    /// The row's own actions, then the keys the bar drops
+    /// ([`ALWAYS_ITEMS`]): `. more` has to lead somewhere (m5-03 review,
+    /// Major 1).
     #[test]
     fn for_row_omits_explain_when_not_marked() {
         let menu = ContextMenu::for_row(false);
@@ -152,33 +194,67 @@ mod tests {
                 .iter()
                 .any(|item| item.action == ContextAction::Explain)
         );
-        assert_eq!(menu.items.len(), 3);
-    }
-
-    #[test]
-    fn for_row_lists_explain_first_when_marked() {
-        let menu = ContextMenu::for_row(true);
-        assert_eq!(menu.items[0].action, ContextAction::Explain);
-        assert_eq!(menu.items.len(), 4);
         assert_eq!(
             menu.items
                 .iter()
                 .map(|item| item.action)
                 .collect::<Vec<_>>(),
             vec![
-                ContextAction::Explain,
                 ContextAction::CopySha,
                 ContextAction::CompareWithThis,
                 ContextAction::OpenDetails,
+                ContextAction::Fetch,
+                ContextAction::Pull,
+                ContextAction::Push,
+                ContextAction::Undo,
             ]
         );
     }
 
     #[test]
-    fn for_working_tree_lists_open_details_alone() {
+    fn for_row_lists_explain_first_when_marked() {
+        let menu = ContextMenu::for_row(true);
+        assert_eq!(menu.items[0].action, ContextAction::Explain);
+        assert_eq!(menu.items.len(), 8);
+    }
+
+    /// Every label but `Explain`'s names the key that does the same thing,
+    /// so the menu teaches the keyboard rather than replacing it.
+    #[test]
+    fn every_label_names_its_key() {
+        let menu = ContextMenu::for_row(true);
+        let labels: Vec<&str> = menu.items.iter().map(|item| item.label).collect();
+        assert_eq!(
+            labels,
+            vec![
+                "Explain",
+                "Copy SHA (y)",
+                "Compare with this (x)",
+                "Open details (⏎)",
+                "Fetch (f)",
+                "Pull (p)",
+                "Push (P)",
+                "Undo (u)",
+            ]
+        );
+    }
+
+    #[test]
+    fn for_working_tree_lists_open_details_then_the_dropped_keys() {
         let menu = ContextMenu::for_working_tree();
-        assert_eq!(menu.items.len(), 1);
         assert_eq!(menu.items[0].action, ContextAction::OpenDetails);
+        assert_eq!(
+            menu.items[1..]
+                .iter()
+                .map(|item| item.action)
+                .collect::<Vec<_>>(),
+            vec![
+                ContextAction::Fetch,
+                ContextAction::Pull,
+                ContextAction::Push,
+                ContextAction::Undo,
+            ]
+        );
     }
 
     #[test]
@@ -200,14 +276,14 @@ mod tests {
     #[test]
     fn width_is_longest_label_plus_four() {
         let menu = ContextMenu::for_row(true);
-        // "Compare with this" is 17 cells, the longest label.
-        assert_eq!(menu.width(), 17 + 4);
+        // "Compare with this (x)" is 21 cells, the longest label.
+        assert_eq!(menu.width(), 21 + 4);
     }
 
     #[test]
-    fn for_working_tree_width_is_its_own_label_plus_four() {
+    fn for_working_tree_width_is_its_own_longest_label_plus_four() {
         let menu = ContextMenu::for_working_tree();
-        // "Open details" is 12 cells.
-        assert_eq!(menu.width(), 12 + 4);
+        // "Open details (⏎)" is 16 characters.
+        assert_eq!(menu.width(), 16 + 4);
     }
 }

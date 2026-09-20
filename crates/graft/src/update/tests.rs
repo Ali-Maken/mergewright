@@ -3154,50 +3154,100 @@ fn stale_remotes_dropped() {
     assert_eq!(next.remote.reading, None);
 }
 
-/// Every key the footer's hint table offers is either bound in code
-/// (`keys::bound_keys`) or is one of the four the design note hints ahead of
-/// its own group (`m`/`r`/`b`/`t`, `BranchRow`'s merge/rebase/branch/tag —
-/// `docs/design/02-keymap.md` §2.3, not yet wired; `s`/`a`, the operation
-/// banner's skip/abort, belong to the banner group). `.` (more/explain) and
-/// `⇥` need no per-context check: they, `bound_keys` and every hinted `key`
-/// are compared as literal strings, spelled exactly as the footer draws
-/// them (`hint-bar-redesign` scope item 6).
+/// Every hint the footer actually draws names a key **and a verb** this
+/// build binds (`keys::bound_actions`), in every context, at every width,
+/// with and without a detail pane. No exemptions: the earlier version of
+/// this test carved out `m`/`r`/`b`/`t`/`s`/`a` and compared keys only, so
+/// `M mergetool` (the Map key) and `space resolved` (refused on an unmerged
+/// file) both passed while doing nothing (m5-03 review, Critical 2, Major
+/// 6). A key the design names but no group has built is `HintState::Planned`
+/// in the hint table and is never drawn, which is what makes the carve-out
+/// unnecessary.
 #[test]
-fn every_hinted_key_is_bound_or_a_named_pending_group() {
-    use graft_ui::graph_screen::{HintContext, hints_for};
+fn every_hinted_key_is_bound() {
+    use graft_ui::graph_screen::{Divider, hints_for};
 
-    let pending = ["m", "r", "b", "t", "s", "a"];
-    let bound = super::keys::bound_keys();
-    let contexts = [
+    let bound = super::keys::bound_actions();
+    for context in hinted_contexts() {
+        for divider in [Divider::Shown, Divider::Hidden] {
+            for columns in [40, 80, 100, 120, 160, 200] {
+                for hint in hints_for(&context, divider, columns) {
+                    assert!(
+                        bound.contains(&(hint.key, hint.verb)),
+                        "{context:?} at {columns} columns hints `{} {}`, which nothing binds",
+                        hint.key,
+                        hint.verb
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// The other half: a hint the table still calls planned must really be
+/// unbound. Binding `m` to merge without flipping its hint to live fails
+/// here — which is how the footer learns about a verb the moment it exists
+/// (`hint-bar-redesign` scope item 6; m5-03 review, Major 6).
+///
+/// `bound_actions` says nothing about *where* a binding is live, so a verb
+/// another context already hints as live is out of this check's reach: the
+/// banner's `e edit` (edit the conflicted file) is planned while the changes
+/// pane's `e edit` (open `$EDITOR` at the cursor) is bound, and the pair
+/// alone cannot tell them apart. Every planned verb nothing hints as live —
+/// `m merge`, `r rebase`, `b branch`, `t tag`, `M mergetool`,
+/// `space resolved`, the banner's `c continue`/`s skip`/`a abort` — is
+/// checked.
+#[test]
+fn every_planned_hint_is_still_unbound() {
+    use graft_ui::graph_screen::{HintState, every_hint};
+
+    let bound = super::keys::bound_actions();
+    let live: Vec<(&str, &str)> = every_hint()
+        .iter()
+        .filter(|hint| hint.state == HintState::Live)
+        .map(|hint| (hint.key, hint.verb))
+        .collect();
+    for hint in every_hint() {
+        let pair = (hint.key, hint.verb);
+        match hint.state {
+            HintState::Planned => {
+                if live.contains(&pair) {
+                    continue;
+                }
+                assert!(
+                    !bound.contains(&pair),
+                    "`{} {}` is bound now: flip it to `hint(..)` in graph_screen::hints",
+                    hint.key,
+                    hint.verb
+                );
+            }
+            HintState::Live => assert!(
+                bound.contains(&pair),
+                "`{} {}` is hinted as live but nothing binds it",
+                hint.key,
+                hint.verb
+            ),
+        }
+    }
+}
+
+/// Every context the graph footer can be in, `Preview` aside (its box draws
+/// its own footer, and its list is empty by design).
+fn hinted_contexts() -> Vec<graft_ui::graph_screen::HintContext> {
+    use graft_ui::graph_screen::HintContext;
+
+    vec![
         HintContext::WorkingTreeRow,
         HintContext::BranchRow { current: false },
         HintContext::BranchRow { current: true },
         HintContext::PlainRow,
         HintContext::Marked(Box::new(HintContext::PlainRow)),
+        HintContext::Marked(Box::new(HintContext::BranchRow { current: true })),
         HintContext::Banner { skippable: true },
         HintContext::Banner { skippable: false },
-        HintContext::ChangesPane {
-            unmerged: false,
-            detail_shown: true,
-        },
-        HintContext::ChangesPane {
-            unmerged: true,
-            detail_shown: false,
-        },
+        HintContext::ChangesPane { unmerged: false },
+        HintContext::ChangesPane { unmerged: true },
         HintContext::Journal,
         HintContext::Stash,
-    ];
-    for context in contexts {
-        for hint in hints_for(&context, 200) {
-            if hint.key == "." {
-                continue;
-            }
-            assert!(
-                bound.contains(&hint.key) || pending.contains(&hint.key),
-                "{context:?} hints `{}` ({}), which is neither bound nor a named pending key",
-                hint.key,
-                hint.verb
-            );
-        }
-    }
+    ]
 }

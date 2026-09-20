@@ -27,7 +27,7 @@ shape: linear, no-color, 80x24, cursor on row 2
 ●   Commit 181                                                      4y   c8254c5
 ●   Commit 180                                                      4y   e95ccd4
 ●   Commit 179                                                      4y   97b58e5
- ⏎ open  b branch  r rebase  . more
+ ⏎ open  c commit  y sha  . more
 
 graph colour per cell:
 ..

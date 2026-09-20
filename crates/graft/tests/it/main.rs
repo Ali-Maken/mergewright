@@ -19,6 +19,7 @@ mod frames;
 mod gallery;
 #[cfg(feature = "heavy-tests")]
 mod heavy;
+mod hint_bar;
 mod m3_walk;
 mod m4_walk;
 #[cfg(feature = "heavy-tests")]

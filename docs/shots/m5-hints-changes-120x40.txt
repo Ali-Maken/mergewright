@@ -1,0 +1,57 @@
+# m5-hints-changes-120x40.txt: 120x40, drawn by `view::view` from
+# a real AppState — a real repository, opened over the real job pool, with
+# the keys pressed through `update` (crates/graft/tests/it/hint_bar.rs,
+# capture_hint_bar_for_docs_shots, #[ignore]d). Not a pty capture: the
+# terminal is ratatui's TestBackend, so this is a character grid with no
+# colour in it (CLAUDE.md rule 5 — colour ships unverified). The scratch
+# repository's temporary path is replaced by `/code/api` so the capture is
+# the same from one run to the next; nothing else is touched.
+#
+# Here the changes pane is open on the working tree.
+#
+# Judge by eye: the hint bar is the graph's bottom row — the frame's last
+# row, unless the pane is stacked under it. Three keys plus `. more` under
+# 100 columns, six plus `. more` from 100, the context's own keys and then
+# the screen's from 160 (ADR-0037 §4) — never all hidden, never a key that
+# does nothing, and `.` leads to the rest.
+
+ graft /code/api  5 commits
+◌   Uncommitted changes (1 unstaged)
+◆   [◆ main] add second                                                                                  GT now  b663d42
+●   add first                                                                                            GT now  0929cd3
+●   Correct the note                                                                                     GF 7y   a82960b
+●   Add the first note                                                                                   GF 7y   fadcfb3
+◇   Add a readme                                                                                         GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ space stage  d discard  c commit  <> resize  ⌃A all  e edit  . more
+UNCOMMITTED · 1 unstaged
+diff vs HEAD b663d42
+UNSTAGED (1)                  reading…
+  M first.txt            +1 −0
+
+
+
+
+
+
+
+
+
+
+
+
