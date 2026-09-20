@@ -33,6 +33,17 @@ pub fn run_scenario(scenario: &Scenario) -> Result<(), String> {
     };
     (scenario.expect)(&fixture, &marks)?;
     fsck_clean(fixture.work())?;
+    // A scenario that types a secret must have left prompt dumps for
+    // `no_secret_leaked` to read; otherwise that half of the scan passes by
+    // never running.
+    check(
+        !scenario
+            .steps
+            .iter()
+            .any(|step| matches!(step, Step::TypeSecret(_)))
+            || !seen.prompts.is_empty(),
+        || "a secret was typed but no open-prompt state was recorded".to_owned(),
+    )?;
     no_secret_leaked(&fixture, &seen)
 }
 
@@ -63,9 +74,9 @@ pub fn askpass_helper() -> Result<PathBuf, String> {
     }
 }
 
-/// Neither password is in the journal on disk, nor in any event or status
-/// line the loop saw. Checked after every scenario, not only the HTTP ones:
-/// the rule is about the whole app.
+/// Neither password is in the journal on disk, nor in any event, status
+/// line or open-prompt `{state:?}` the loop saw. Checked after every
+/// scenario, not only the HTTP ones: the rule is about the whole app.
 pub fn no_secret_leaked(fixture: &Fixture, seen: &Recorded) -> Result<(), String> {
     let journal_path = fixture.work().join(".git/graft/undo-journal.jsonl");
     let journal_bytes = match std::fs::read(&journal_path) {
@@ -84,6 +95,12 @@ pub fn no_secret_leaked(fixture: &Fixture, seen: &Recorded) -> Result<(), String
             check(!line.contains(secret), || {
                 // The line itself is not printed: it holds the secret.
                 "a password reached an event or status line the loop saw".to_owned()
+            })?;
+        }
+        for dump in &seen.prompts {
+            check(!dump.contains(secret), || {
+                // Not printed, for the same reason.
+                "a password reached the app state's Debug while a prompt was open".to_owned()
             })?;
         }
     }
@@ -105,6 +122,12 @@ pub struct Recorded {
     pub events: Vec<String>,
     /// One line per distinct status the loop drew, in order.
     pub statuses: Vec<String>,
+    /// One `{state:?}` per state the loop passed through *while a
+    /// credential prompt was open* — the whole state, so the prompt's own
+    /// `Debug`, the field's and anything else that carries them are all in
+    /// it. Scope item 5(d) of the secret-field ticket: the unit tests prove
+    /// the redaction, this proves nothing walked around it on a real run.
+    pub prompts: Vec<String>,
 }
 
 impl Recorded {
@@ -112,6 +135,9 @@ impl Recorded {
         let line = status_text(state);
         if self.statuses.last() != Some(&line) {
             self.statuses.push(line);
+        }
+        if state.credential.is_some() {
+            self.prompts.push(format!("{state:?}"));
         }
     }
 }
