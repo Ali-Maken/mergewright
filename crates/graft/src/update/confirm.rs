@@ -46,6 +46,11 @@ pub enum ConfirmThen {
         /// The entry to jump back past.
         entry: graft_core::journal::EntryId,
     },
+    /// Carry the live operation forward, skip its step, or abort it — `s`
+    /// and `a` on the operation banner, which both box before they run
+    /// (m5-history-and-ghost-preview/09). `c` does not: continuing is the
+    /// operation doing what the user already asked for.
+    Resume(graft_ops::apply::Resume),
 }
 
 /// The box's own keys, while it is open: `Left`/`Right` move between
@@ -88,6 +93,9 @@ pub fn confirm_key(
                     }
                     ConfirmThen::RevertTo { entry } => {
                         super::undo::revert_to_forced(next, commands, entry, next_id);
+                    }
+                    ConfirmThen::Resume(what) => {
+                        super::banner::resume(next, commands, what, next_id);
                     }
                 }
             }

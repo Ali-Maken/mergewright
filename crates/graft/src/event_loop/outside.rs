@@ -108,6 +108,71 @@ impl Handover<'_> {
         self.open(path, line)
     }
 
+    /// `e` on a conflicted file: the user's editor, at the file's first
+    /// `<<<<<<< ` (m5-history-and-ghost-preview/09).
+    ///
+    /// The marker lookup happens here rather than in `update` because it
+    /// reads the file, and `update` reads nothing (ARCHITECTURE.md). No
+    /// marker is **not** a failure — the file has already been resolved by
+    /// hand, and the editor opens at the top, which is the truthful place
+    /// when there is no marker to point at. A read that genuinely fails is a
+    /// different thing and is reported rather than flattened into "line 1".
+    ///
+    /// # Errors
+    /// The file could not be read, or as [`Handover::open`].
+    pub fn edit_conflict(&self, path: &Path) -> Result<(), String> {
+        let absolute = in_worktree(path, self.workdir);
+        let line = graft_git::history_reads::first_marker_line(&absolute)
+            .map_err(|error| format!("{}: {error}", path.display()))?;
+        self.open(path, line.and_then(|line| u32::try_from(line).ok()))
+    }
+
+    /// `M` on a conflicted file: `git mergetool` on it, with the terminal
+    /// to itself (m5-history-and-ghost-preview/09).
+    ///
+    /// The same shape as [`Handover::open`], and deliberately so: the whole
+    /// guarantee that the user's shell survives lives in
+    /// [`run_outside_terminal`], which restores on **every** way out of
+    /// itself — a clean return, an early `?`, a tool that would not start, a
+    /// tool killed by a signal, and an unwinding panic. Nothing here may run
+    /// the tool outside that call, and nothing here may return before it.
+    ///
+    /// `--no-prompt` because the prompt would be asked on a terminal Graft
+    /// has just given away and answered by nobody. `merge.tool` being set is
+    /// the caller's precondition (`update::banner::open_mergetool` refuses
+    /// in words without one), so the tool is never git's own interactive
+    /// "which one?" question.
+    ///
+    /// Run in `workdir`, like the editor, because git's porcelain paths are
+    /// relative to the top of the working tree and Graft's own process
+    /// directory is wherever the user was standing (m3/05 review, Major 2).
+    ///
+    /// # Errors
+    /// The terminal could not be handed over or taken back, `git` could not
+    /// be started, or the tool exited non-zero or was killed — in every case
+    /// with the terminal already put back.
+    pub fn mergetool(&self, path: &Path) -> Result<(), String> {
+        let workdir = self
+            .workdir
+            .ok_or_else(|| "this repository has no working tree".to_owned())?;
+        let status = run_outside_terminal(self.session, self.mux, || {
+            mergetool_command(path, workdir).status()
+        })
+        .map_err(|error| error.to_string())?;
+
+        match status {
+            Ok(status) if status.success() => Ok(()),
+            // Not swallowed: a mergetool that did not finish leaves the
+            // conflict exactly where it was, and "it ran" would send the
+            // user to press `c` on a file still full of markers.
+            Ok(status) => Err(match status.code() {
+                Some(code) => format!("mergetool exited {code} for {}", path.display()),
+                None => format!("mergetool was killed for {}", path.display()),
+            }),
+            Err(error) => Err(format!("could not run git mergetool: {error}")),
+        }
+    }
+
     /// `Ctrl+Z` under `keys.suspend_on_ctrl_z`: stop, with the terminal the
     /// shell's again, until `fg`.
     ///
@@ -366,6 +431,33 @@ pub fn editor_command(
     if let Some(root) = workdir {
         command.current_dir(root);
     }
+    command
+}
+
+/// `git mergetool --no-prompt -- <path>`, run in the working tree's root.
+///
+/// A plain [`Command`], not one of `graft_git::run`'s invocations, and for
+/// the one reason `editor_command` is too: `run` captures stdout and stderr
+/// and caps the output, which is exactly wrong for a full-screen program
+/// that must have the real terminal. `Command::new("git")` is what `run`
+/// itself spawns (`graft-git/src/run.rs`), so this is the same `git` the
+/// rest of the process uses.
+///
+/// This is not a hole in the seam rule (`tests/it/seam_rule.rs`): it builds
+/// no write for `graft_ops` to plan. `git mergetool` edits files in the
+/// working tree and touches no ref and no journal entry — the operation it
+/// belongs to is already open, and `resume` is what closes it.
+///
+/// `--` before the path so a file called `-x` is a file and not a flag.
+#[must_use]
+pub fn mergetool_command(path: &Path, workdir: &Path) -> Command {
+    let mut command = Command::new("git");
+    command
+        .arg("mergetool")
+        .arg("--no-prompt")
+        .arg("--")
+        .arg(path)
+        .current_dir(workdir);
     command
 }
 

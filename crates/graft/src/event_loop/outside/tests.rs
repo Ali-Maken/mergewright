@@ -278,3 +278,227 @@ fn the_shell_form_keeps_its_editors_line_style() {
         "{words:?}"
     );
 }
+
+/// A repository in `workdir` stopped on a **real** merge conflict in
+/// `a.txt`, with `merge.tool` set to `tool` running `cmd`.
+///
+/// The conflict is not decoration: `git mergetool` on a path that is not
+/// unmerged prints "No files need merging" and exits 0, so without one the
+/// failure these tests are about never happens and they pass for the wrong
+/// reason.
+///
+/// `trustExitCode` so git reports the tool's own status rather than asking
+/// on stdin whether the merge went well — which is the question
+/// `--no-prompt` exists to avoid.
+fn repo_stopped_on_a_conflict(workdir: &Path, tool: &str, cmd: &str) {
+    use graft_fixtures::git::run;
+    let git =
+        |args: &[&str]| run(workdir, args).unwrap_or_else(|error| panic!("git {args:?}: {error}"));
+    git(&["init", "--quiet", "--initial-branch", "main"]);
+    git(&["config", "user.name", "Test"]);
+    git(&["config", "user.email", "test@example.com"]);
+    git(&["config", "merge.tool", tool]);
+    git(&["config", &format!("mergetool.{tool}.cmd"), cmd]);
+    git(&["config", &format!("mergetool.{tool}.trustExitCode"), "true"]);
+
+    std::fs::write(workdir.join("a.txt"), "base\n").expect("the base file");
+    git(&["add", "a.txt"]);
+    git(&["commit", "--quiet", "-m", "base"]);
+
+    git(&["checkout", "--quiet", "-b", "other"]);
+    std::fs::write(workdir.join("a.txt"), "theirs\n").expect("their edit");
+    git(&["commit", "--quiet", "-am", "theirs"]);
+
+    git(&["checkout", "--quiet", "main"]);
+    std::fs::write(workdir.join("a.txt"), "ours\n").expect("our edit");
+    git(&["commit", "--quiet", "-am", "ours"]);
+
+    // Expected to fail: that is the conflict.
+    let merged = run(workdir, &["merge", "other"]);
+    assert!(merged.is_err(), "the merge was supposed to conflict");
+    assert!(
+        workdir.join(".git/MERGE_HEAD").exists(),
+        "git is standing in the merge"
+    );
+}
+
+/// What `run_outside_terminal` writes on the way out and the way back in,
+/// for a transcript that started at `after_setup`.
+///
+/// The assertion every restoration test below makes: the bytes after setup
+/// are *teardown followed by the same setup again*, byte for byte. That is a
+/// statement about the terminal's modes, not about which functions were
+/// called — a `mergetool` that skipped the handover writes nothing here and
+/// fails this, and one that handed over but never came back ends on the
+/// teardown and fails it too.
+fn assert_terminal_was_given_up_and_taken_back(transcript: &Transcript, after_setup: &str) {
+    let rendered = transcript.rendered();
+    let moved = rendered
+        .strip_prefix(after_setup)
+        .unwrap_or_else(|| panic!("the transcript does not start with setup:\n{rendered}"));
+    assert!(
+        !moved.is_empty(),
+        "the terminal was never handed over at all: the tool ran over Graft's own screen, \
+         in raw mode, on the alternate screen"
+    );
+    assert!(
+        moved.contains("<ESC>[?1049l"),
+        "never left the alternate screen: {moved}"
+    );
+    assert!(
+        moved.ends_with(after_setup),
+        "the terminal was not put back the way Graft found it — this is the failure that \
+         outlives the process:\n{moved}"
+    );
+}
+
+/// The failure that matters most: `git mergetool` exits non-zero, and the
+/// user's terminal is still restored and re-entered.
+///
+/// `merge.tool` is set to a tool that exits 1, so git itself fails. What is
+/// asserted is the transcript — every mode off, then every mode back on, in
+/// order — not that a restore function was called.
+#[test]
+fn a_mergetool_that_exits_non_zero_still_puts_the_terminal_back() {
+    let scratch = tempfile::tempdir().expect("a scratch directory");
+    let workdir = scratch.path();
+    // The tool exits 1 on a file that really is unmerged, so git exits
+    // non-zero too.
+    repo_stopped_on_a_conflict(workdir, "failing", "false");
+
+    let transcript = Transcript::default();
+    let session =
+        TerminalSession::new(transcript.clone(), raw_mode(&transcript), KITTY).expect("a session");
+    let (_terminal, mux) = mux();
+    let after_setup = transcript.rendered();
+
+    let handover = Handover {
+        session: &session,
+        mux: &mux,
+        git_dir: None,
+        workdir: Some(workdir),
+    };
+    let failed = handover
+        .mergetool(Path::new("a.txt"))
+        .expect_err("the tool exits non-zero");
+    assert!(
+        failed.contains("a.txt"),
+        "the line names the file: {failed}"
+    );
+
+    assert_terminal_was_given_up_and_taken_back(&transcript, &after_setup);
+}
+
+/// The other failure shape: `git` cannot run the tool at all (here, a
+/// `merge.tool` naming a program that does not exist). Same guarantee.
+#[test]
+fn a_mergetool_that_cannot_start_still_puts_the_terminal_back() {
+    let scratch = tempfile::tempdir().expect("a scratch directory");
+    let workdir = scratch.path();
+    repo_stopped_on_a_conflict(workdir, "nosuchtool", "graft-no-such-program-exists");
+
+    let transcript = Transcript::default();
+    let session =
+        TerminalSession::new(transcript.clone(), raw_mode(&transcript), KITTY).expect("a session");
+    let (_terminal, mux) = mux();
+    let after_setup = transcript.rendered();
+
+    let handover = Handover {
+        session: &session,
+        mux: &mux,
+        git_dir: None,
+        workdir: Some(workdir),
+    };
+    let failed = handover
+        .mergetool(Path::new("a.txt"))
+        .expect_err("there is no such tool");
+    assert!(!failed.is_empty(), "the reason is never empty");
+
+    assert_terminal_was_given_up_and_taken_back(&transcript, &after_setup);
+}
+
+/// Nothing is left paused after a failed mergetool either: a mux still
+/// parked would take no more keys, which looks exactly like a hang — and it
+/// would happen precisely when the user most needs to press `a`.
+#[test]
+fn the_reader_is_reading_again_after_a_failed_mergetool() {
+    use std::io::Write;
+
+    let scratch = tempfile::tempdir().expect("a scratch directory");
+    let workdir = scratch.path();
+    repo_stopped_on_a_conflict(workdir, "failing", "false");
+
+    let transcript = Transcript::default();
+    let session = TerminalSession::new(
+        transcript.clone(),
+        raw_mode(&transcript),
+        SessionOptions::default(),
+    )
+    .expect("a session");
+    let (terminal, ours) = UnixStream::pair().expect("a socket pair");
+    let (mux, inputs) = InputMux::start(OwnedFd::from(ours)).expect("a reader");
+    let mut terminal = terminal;
+
+    let handover = Handover {
+        session: &session,
+        mux: &mux,
+        git_dir: None,
+        workdir: Some(workdir),
+    };
+    let _failed = handover.mergetool(Path::new("a.txt"));
+
+    terminal.write_all(b"a").expect("a key after the mergetool");
+    let event = inputs
+        .recv_timeout(std::time::Duration::from_secs(5))
+        .expect("the reader is back on the terminal")
+        .expect("a key, not a failure");
+    assert_eq!(
+        event,
+        graft_core::event::Event::Key(graft_core::event::KeyPress::plain(
+            graft_core::event::KeyCode::Char('a')
+        )),
+    );
+}
+
+/// A bare repository has no working tree to run the tool in, and says so
+/// rather than handing the terminal to a `git mergetool` with nowhere to go.
+#[test]
+fn a_mergetool_without_a_working_tree_refuses_before_handing_over() {
+    let transcript = Transcript::default();
+    let session =
+        TerminalSession::new(transcript.clone(), raw_mode(&transcript), KITTY).expect("a session");
+    let (_terminal, mux) = mux();
+    let after_setup = transcript.rendered();
+
+    let handover = Handover {
+        session: &session,
+        mux: &mux,
+        git_dir: None,
+        workdir: None,
+    };
+    let failed = handover
+        .mergetool(Path::new("a.txt"))
+        .expect_err("no working tree");
+    assert!(failed.contains("working tree"), "{failed}");
+    assert_eq!(
+        transcript.rendered(),
+        after_setup,
+        "nothing was handed over, so nothing was written to the terminal"
+    );
+}
+
+/// The command git is actually asked to run.
+#[test]
+fn the_mergetool_command_names_the_file_after_a_double_dash() {
+    let command = mergetool_command(Path::new("-weird.rs"), Path::new("/tmp/repo"));
+    assert_eq!(
+        spelled(&command),
+        ["git", "mergetool", "--no-prompt", "--", "-weird.rs"],
+        "`--` keeps a file called `-weird.rs` a file and not a flag"
+    );
+    assert_eq!(
+        command.get_current_dir(),
+        Some(Path::new("/tmp/repo")),
+        "run at the top of the working tree, where git's porcelain paths are relative to"
+    );
+}

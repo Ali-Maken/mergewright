@@ -243,7 +243,7 @@ pub fn open_preview(
         };
         return false;
     }
-    if let Some(kind) = state.in_progress {
+    if let Some(kind) = state.in_progress.as_ref().map(|detail| detail.kind) {
         state.status = Status::Sticky {
             reason: format!("finish or abort the {} first", kind_word(kind)),
             keys: None,

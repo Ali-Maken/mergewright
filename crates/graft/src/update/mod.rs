@@ -18,6 +18,7 @@
 //! M8 — both used to live in this file). This file keeps only the
 //! dispatcher: `update`, `answer` and `core_event`.
 
+pub mod banner;
 pub mod commit_editor;
 mod commit_graph;
 pub mod confirm;
@@ -207,6 +208,16 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             _,
             Progress::Operating { .. } | Progress::CredentialNeeded { .. },
         )) => operate_answer(next, commands, event),
+        AppEvent::Produced(id, Product::Resumed(outcome)) => {
+            let mut local_jobs = next.local_jobs;
+            commands.extend(banner::resumed(next, id, *outcome, &mut || {
+                local_jobs.next_id()
+            }));
+            next.local_jobs = local_jobs;
+        }
+        AppEvent::Produced(_, Product::Mergetool { path, result }) => {
+            mergetool_returned(next, commands, &path, result);
+        }
         AppEvent::Produced(id, Product::Preview(result)) => {
             preview::preview_produced(next, id, result);
         }
@@ -229,6 +240,39 @@ fn answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEvent) {
             | Product::HandedOver(_),
         ) => commit_editor_answer(next, event),
     }
+}
+
+/// `git mergetool` came back.
+///
+/// The working tree is re-read **either way**: a tool that exited non-zero
+/// may still have written the file before it did, and a stale `CONFLICTS`
+/// list is how a user comes to press `c` on a conflict they have already
+/// resolved. A failure keeps `a abort` in its keys, like every other line
+/// the conflict interim puts up.
+fn mergetool_returned(
+    next: &mut AppState,
+    commands: &mut Vec<Command>,
+    path: &std::path::Path,
+    result: Result<(), String>,
+) {
+    match result {
+        // Nothing to report: the banner and the file list say what the
+        // state is now, and a "mergetool ok" line would be a status field
+        // reading like news when nothing happened.
+        Ok(()) => {
+            if matches!(next.status, Status::Busy(_)) {
+                next.status = Status::Ready;
+            }
+        }
+        Err(why) => {
+            next.status = Status::Sticky {
+                reason: why,
+                keys: Some(format!("e edits {}  a abort", path.display())),
+            };
+        }
+    }
+    commands.push(Command::ReadWorkingTree);
+    commands.extend(next.detail.refresh(&mut || next.local_jobs.next_id()));
 }
 
 /// The journal read answered.
@@ -283,6 +327,7 @@ fn started(next: &mut AppState, commands: &mut Vec<Command>, id: JobId, task: &T
         Task::Search => search::search_started(next, commands, id),
         Task::OpenRepository
         | Task::CheckSystemGit
+        | Task::Resume
         | Task::ReadRefs
         | Task::ReadWorkingTree
         | Task::ListFiles { .. }
@@ -433,6 +478,14 @@ fn took_fact(next: &mut AppState, product: Product) {
         Product::WorkingTree(Ok(read)) => {
             next.working_tree = Some(read.status);
             next.in_progress = read.in_progress;
+            next.mergetool = read.mergetool;
+            // The banner cannot have focus once there is no banner: the
+            // operation finished, was aborted, or was finished from another
+            // terminal. Leaving the flag set would make every key vanish
+            // into a modal nothing (m5-history-and-ghost-preview/09).
+            if next.in_progress.is_none() {
+                next.banner_focus = false;
+            }
         }
         Product::WorkingTree(Err(failure)) => {
             // The graph still draws without the uncommitted row; the reason
@@ -442,6 +495,8 @@ fn took_fact(next: &mut AppState, product: Product) {
         }
         // Not a fact: `answer`'s pattern keeps these from arriving.
         Product::Repository(_)
+        | Product::Resumed(_)
+        | Product::Mergetool { .. }
         | Product::TopologicalOrder(_)
         | Product::CommitGraph(_)
         | Product::CommitGraphDeclined(_)

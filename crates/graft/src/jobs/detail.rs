@@ -228,29 +228,41 @@ fn push_tree(view: &mut FileListView, list: &FileList, indices: &[usize], base: 
     }
 }
 
-/// The changes pane's file list: `STAGED`, `UNSTAGED` and `UNTRACKED`
-/// sections, each over its own files as a directory tree, plus the one
-/// merged [`FileList`] every row's `entry` indexes into
-/// (m3-working-tree-undo-and-stash/04).
+/// The changes pane's four sections, each with the files that belong in it.
 ///
-/// A file that is both staged and unstaged appears **twice** — once in each
-/// section — because it is two different changes, and staging the second
-/// does not undo the first. The merged list holds it twice too, so the two
-/// rows read two different diffs.
-///
-/// An empty tree gets no section rows at all, just the `nothing to commit`
-/// message, so the pane does not print three empty headings.
-#[must_use]
-pub fn assemble_working_tree(staged: &FileList, unstaged: &FileList) -> (FileListView, FileList) {
+/// A conflicted file belongs in exactly one: `CONFLICTS`. It is excluded
+/// from the others **by path**, not by status — git reports an unmerged
+/// path in the worktree diff as an ordinary modification too, so filtering
+/// on `FileStatus::Unmerged` alone leaves it listed a second time under
+/// `UNSTAGED` as though it were a change to stage.
+fn sections_of(
+    staged: &FileList,
+    unstaged: &FileList,
+) -> [(WorkingTreeSection, Vec<FileEntry>); 4] {
     let untracked = |entry: &&FileEntry| entry.status == FileStatus::Untracked;
-    let by_section: [(WorkingTreeSection, Vec<FileEntry>); 3] = [
-        (WorkingTreeSection::Staged, staged.files.clone()),
+    let unmerged = |entry: &&FileEntry| entry.status == FileStatus::Unmerged;
+    let mut conflicted: std::collections::BTreeSet<Vec<u8>> = std::collections::BTreeSet::new();
+    let conflicts: Vec<FileEntry> = staged
+        .files
+        .iter()
+        .chain(unstaged.files.iter())
+        .filter(unmerged)
+        .filter(|entry| conflicted.insert(entry.path.clone()))
+        .cloned()
+        .collect();
+    let settled = |entry: &&FileEntry| !conflicted.contains(&entry.path);
+    [
+        (WorkingTreeSection::Unmerged, conflicts),
+        (
+            WorkingTreeSection::Staged,
+            staged.files.iter().filter(settled).cloned().collect(),
+        ),
         (
             WorkingTreeSection::Unstaged,
             unstaged
                 .files
                 .iter()
-                .filter(|entry| !untracked(entry))
+                .filter(|entry| !untracked(entry) && settled(entry))
                 .cloned()
                 .collect(),
         ),
@@ -258,7 +270,30 @@ pub fn assemble_working_tree(staged: &FileList, unstaged: &FileList) -> (FileLis
             WorkingTreeSection::Untracked,
             unstaged.files.iter().filter(untracked).cloned().collect(),
         ),
-    ];
+    ]
+}
+
+/// The changes pane's file list: `CONFLICTS`, `STAGED`, `UNSTAGED` and
+/// `UNTRACKED` sections, each over its own files as a directory tree, plus
+/// the one merged [`FileList`] every row's `entry` indexes into
+/// (m3-working-tree-undo-and-stash/04).
+///
+/// A file that is both staged and unstaged appears **twice** — once in each
+/// section — because it is two different changes, and staging the second
+/// does not undo the first. The merged list holds it twice too, so the two
+/// rows read two different diffs.
+///
+/// A **conflicted** file is the exception, and comes first
+/// (m5-history-and-ghost-preview/09). Git reports an unmerged path in both
+/// diffs and once per stage, so the same file would otherwise appear up to
+/// four times under headings that both read as ordinary changes. One row,
+/// in `CONFLICTS`, is the truth: there is one thing to do to it.
+///
+/// An empty tree gets no section rows at all, just the `nothing to commit`
+/// message, so the pane does not print three empty headings.
+#[must_use]
+pub fn assemble_working_tree(staged: &FileList, unstaged: &FileList) -> (FileListView, FileList) {
+    let by_section = sections_of(staged, unstaged);
 
     let mut merged = FileList {
         files: Vec::new(),

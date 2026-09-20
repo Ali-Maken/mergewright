@@ -114,3 +114,286 @@ One context. Stop seam after piece 4 (facts, banner, verbs, hand-offs) with 5–
 - **Keys:** `M` opens the mergetool, `e` edits. `e` already means "open in `$EDITOR`" in the graph pane and **keeps that one meaning everywhere**, banner and CONFLICTS row included. Write both into `docs/design/02-keymap.md` **in this same change** — the keymap is the single source of truth (ADR-0037 §1), so a key bound here and not written there is an incomplete ticket.
 - **"Re-push old tip"** puts the remote branch back and keeps the user's local commits. All three conditions hold: `--force-with-lease` only, never a bare force; its own explicit confirm; and the box **says plainly that this changes the remote other people may have already pulled**, labelled so it cannot be mistaken for a local undo.
 - Acceptance names the test for each condition, and the capture shows the box's wording for the user's eye.
+
+---
+
+## Status: PARTIAL — pieces 1–4 done, 5–7 handed off
+
+Pieces 1, 2, 3, 4, 8 (for 1–4) and 9 (for 1–4) are built and green.
+Pieces 5, 6, 7 and their tests are **not started**. The stop seam the ticket
+itself asked for.
+
+Gates, workspace-wide, warm: `cargo fmt --all --check` pass ·
+`cargo clippy --all-targets -- -D warnings` pass · `cargo nextest run`
+**2139 passed / 2139 run, 35 skipped, 69 s** · `cargo test --doc` pass.
+Baseline at the start was 2107; this group adds 32.
+
+### Acceptance, ticked with its test named
+
+- [x] **Piece 1, facts** — `WorkingTree { status, in_progress, mergetool }`,
+      all three read in the one job, none of them swallowed to `None`:
+      `conflict_interim::conflict_focuses_the_banner_and_lists_the_files`
+      (asserts `in_progress` is a live `Merge` and both unmerged paths),
+      `conflict_interim::mergetool_present_asks_the_loop_for_the_first_conflict`
+      (asserts `state.mergetool == Some("meld")`, read off disk).
+- [x] **Piece 2, banner** — kind word, step, first conflict, `more_conflicts`,
+      `focused`, `skippable`:
+      `update::banner::tests::the_banner_names_the_kind_the_step_and_the_first_conflict`,
+      `update::banner::tests::a_merge_is_not_skippable`,
+      `update::banner::tests::a_bisect_draws_no_banner_and_claims_no_key`,
+      and end to end `conflict_interim::conflict_focuses_the_banner_and_lists_the_files`.
+      Modal: `update::banner::tests::the_focused_banner_claims_every_key_but_control_c`
+      and `conflict_interim::banner_is_modal_when_focused`.
+      `hint_context = Banner { skippable }`: `view::rows::footer_context`,
+      covered by the existing hint-bar walk.
+- [x] **`banner_key` sits right after `preview_key`** — `update::keys::key_event`
+      calls `boxes_key` (confirm, then `preview_key`), then `banner_key`, then
+      `context_menu_key`. Read the source; no test asserts call order, and I
+      did not invent one.
+- [x] **Tab has a door back in** — `update::banner::take_focus`:
+      `update::banner::tests::tab_comes_back_round_to_the_banner`,
+      `…::tab_into_the_banner_waits_its_turn_behind_the_detail_pane`,
+      `…::nothing_takes_focus_when_there_is_no_banner_to_focus`.
+      **Not in the ticket's signature list** — added because the ticket's own
+      focus rule ("`Tab`/`Esc` leave focus") would otherwise strand `c`, `s`
+      and `a` behind a key with nothing on screen to find it by.
+- [x] **Piece 3, three verbs** — `continue_refuses_while_unmerged_then_finishes`
+      (the refusal words, then a real `git merge --continue` that lands a merge
+      commit), `abort_always_offered_and_restores` (box `[ Cancel ] [ Abort ]`,
+      tree and `HEAD` byte-identical to before, `MERGE_HEAD` gone),
+      `skip_on_a_merge_says_nothing_to_skip`. Unit:
+      `update::banner::tests::{continue_refuses_in_words_while_anything_is_unmerged,
+      the_refusal_counts_one_file_in_the_singular,
+      continue_with_nothing_unmerged_queues_an_unstoppable_resume,
+      skip_on_a_merge_says_there_is_nothing_to_skip,
+      skip_on_a_rebase_boxes_first_and_names_the_step,
+      abort_is_offered_in_every_state_the_banner_can_be_in,
+      stopping_again_keeps_the_banner_focused, finishing_clears_the_focus}`.
+- [x] **`a` reachable after a failed `c`** — `abort_always_offered_and_restores`
+      presses `c`, asserts it refused, *then* presses `a`. After a failed
+      **mergetool** is covered only at unit level
+      (`mergetool_with_none_configured_refuses_before_handing_over` leaves the
+      banner focused); the headless harness cannot run a mergetool at all.
+      See "unverified" below.
+- [x] **Piece 4, hand-offs** — `mergetool_absent_refuses_in_words`,
+      `mergetool_present_asks_the_loop_for_the_first_conflict`,
+      `e_opens_the_editor_at_the_first_marker`,
+      `space_on_a_conflicted_row_refuses_while_markers_remain`,
+      `update::operate::tests::space_on_a_conflicted_file_stages_it_as_the_resolution`.
+      Terminal restoration: `event_loop::outside::tests::{
+      a_mergetool_that_exits_non_zero_still_puts_the_terminal_back,
+      a_mergetool_that_cannot_start_still_puts_the_terminal_back,
+      the_reader_is_reading_again_after_a_failed_mergetool,
+      a_mergetool_without_a_working_tree_refuses_before_handing_over,
+      the_mergetool_command_names_the_file_after_a_double_dash}`.
+- [x] **Keymap written in this change** — `docs/design/02-keymap.md` §2.6a
+      (new, the M5 interim banner table) and §2.4 (`e` on a `CONFLICTS` row
+      opens at the first marker; `M` on a `CONFLICTS` row). **The conductor's
+      promised §2.6 interim table was not in the tree**: `git log -1 --
+      docs/design/02-keymap.md` gives `6a5b313 adr-0037: reconcile
+      02-keymap.md as keys' single source of truth`, which has no M5 interim
+      section. Written here under the ticket's binding user-conditions line.
+      §2.6 already allocated `M` to the mergetool and `(banner focused)
+      c s a` to the three verbs, so no key was taken that the design withheld.
+- [x] **Captures** — `docs/shots/m5-ui-banner-conflict-{80x24,120x40,160x48}.txt`,
+      2.2–3.1 KB each, written from the real path by
+      `conflict_interim::capture_banner_for_docs_shots` (`#[ignore]`d).
+      **The user judges them.** Colour ships unverified (rule 5): ratatui's
+      `TestBackend`, character grid only.
+- [ ] Pieces 5, 6, 7 and their acceptance rows — not started, see the handoff.
+
+### Cause or symptom, per fix
+
+Every fix below is a **cause** fix. No workaround, retry, sleep, hardcoded
+case or disabled test was added.
+
+1. `update::banner::edit_conflict` first read the file to find the marker
+   line — a purity violation (`update` reads no files). Cause: the read
+   belongs in the loop. Moved to `Handover::edit_conflict` behind a new
+   `Command::OpenConflictEditor { path }`.
+2. `space_on_a_conflicted_file_says_why_instead_of_staging_it` asserted the
+   group-04 behaviour piece 4 supersedes. Cause: the requirement changed.
+   Rewritten as `space_on_a_conflicted_file_stages_it_as_the_resolution`.
+3. `seam_rule::app_never_builds_a_write_invocation_or_touches_the_journal`
+   failed on `event_loop/outside.rs: GitInvocation`. Cause: the guard greps
+   source *text* and my doc comment named the identifier. Reworded the prose;
+   the guard was not weakened.
+4. `every_capability_citation_checks_out` failed on a citation to the test
+   renamed in (2). Cause: the citation. Fixed the citation, not the rename.
+5. The two terminal-restoration tests passed for the wrong reason: their
+   fixture had no unmerged path, so `git mergetool` printed "No files need
+   merging" and exited 0. Cause: the fixture. It now builds a real two-branch
+   conflict and `mergetool` runs on the file that is actually unmerged.
+6. `assemble_working_tree` never built a `CONFLICTS` section at all — the
+   `graft-ui` side of it (group 04) had no producer, and a conflicted file
+   was drawn up to four times across `STAGED`/`UNSTAGED`. Cause: the
+   assembler. `sections_of` now puts `CONFLICTS` first and excludes those
+   paths from the other sections **by path**, not by status (git reports an
+   unmerged file in the worktree diff as an ordinary modification too).
+7. `#![forbid(unsafe_code)]` rejected a `transmute` I had reached for to
+   build a `Handover` in a test. Cause: I did not need it. Built the borrow
+   inline.
+
+### Mutations run — each named decision proved failable
+
+Every mutation was applied, the suite run, the failing tests recorded, and
+the mutation reverted. A green run is not evidence a test can fail.
+
+| Mutation | Went red |
+|---|---|
+| `mergetool` runs the tool **outside** `run_outside_terminal` | `a_mergetool_that_exits_non_zero_still_puts_the_terminal_back`, `a_mergetool_that_cannot_start_still_puts_the_terminal_back` — on the transcript assertion "the terminal was never handed over at all" |
+| `Reenter::reenter` restores nothing (hands over, never comes back) | the same two, on "the terminal was not put back the way Graft found it" |
+| the focused banner claims no key (`_ => return false`) | `update::banner::tests::the_focused_banner_claims_every_key_but_control_c`, `conflict_interim::banner_is_modal_when_focused` |
+| `c` stops refusing while paths are unmerged | `update::banner::tests::continue_refuses_in_words_while_anything_is_unmerged`, `conflict_interim::continue_refuses_while_unmerged_then_finishes`, `conflict_interim::abort_always_offered_and_restores` |
+| conflicted files not excluded from the other sections | `conflict_interim::space_on_a_conflicted_row_refuses_while_markers_remain` |
+| `Space` on a conflicted row refuses instead of staging | `update::operate::tests::space_on_a_conflicted_file_stages_it_as_the_resolution`, `conflict_interim::{continue_refuses_while_unmerged_then_finishes, space_on_a_conflicted_row_refuses_while_markers_remain}` |
+| the `MarkersRemain` refusal loses its `keys` | `conflict_interim::space_on_a_conflicted_row_refuses_while_markers_remain` |
+| `take_focus` never gives the keyboard back | `update::banner::tests::{tab_comes_back_round_to_the_banner, tab_into_the_banner_waits_its_turn_behind_the_detail_pane}`, `conflict_interim::continue_refuses_while_unmerged_then_finishes` |
+| `a` refused while anything is unmerged | `update::banner::tests::abort_is_offered_in_every_state_the_banner_can_be_in`, `conflict_interim::abort_always_offered_and_restores` |
+
+### The terminal hand-over: what is guaranteed, and how it is proved
+
+`Handover::mergetool` runs the tool in exactly one place, inside
+`run_outside_terminal`. That call pauses the input mux, suspends the session,
+and builds a `Reenter` guard whose `Drop` restores. So the restore runs on a
+clean return, on an early `?`, and on a panic — there is **no** restore that
+only runs on the success path. A non-zero exit, a killed tool and a tool that
+cannot start are all decided **after** `run_outside_terminal` has returned,
+so none of them can skip it.
+
+The tests assert the **raw terminal byte transcript** — everything written
+after setup must be teardown followed by the identical setup again, byte for
+byte — not that a restore function was called. That is the shape the group 05
+review found passing with the bug put back, and both mutations above confirm
+these do not.
+
+### Journal semantics: no contradiction with group 07
+
+Read `.scratch/m5-history-and-ghost-preview/as-built.md` §1 before touching
+anything. Group 07's rule — a conflicted operation is **one** entry, `Pending`
+from stop to finish, and a step taken while `in_progress` is `Some` writes no
+journal line and folds into the live entry — is **unchanged**. This group
+writes nothing new to the journal and closes nothing: `run_resume` goes
+through `graft_ops::apply::resume`, the same path group 07 established.
+`conflict_focuses_the_banner_and_lists_the_files` asserts the entry is still
+`Pending` with no `head_after` while the conflict is live. Piece 5's planned
+approach (decide live-vs-interrupted at **read** time from `Recovered::live`,
+nothing changing on disk) also agrees with §1, and is left for the next
+builder to carry out.
+
+### Unverified — not broken (rule 4)
+
+- **The real `git mergetool` hand-over has never run.** The unit tests above
+  prove the terminal is restored around a tool that fails; nothing here has
+  run a real mergetool in a real terminal with a real conflict. For
+  `TESTING.md`'s per-terminal rows: open a repo stopped on a conflict, press
+  `M` with `merge.tool` set, resolve or quit the tool, and check the shell is
+  sane **after Graft exits** — in Ghostty, Kitty, iTerm2, Zed and VS Code.
+- **Colour** in all three captures: unverified by construction (rule 5).
+- `mergetool_present_asks_the_loop_for_the_first_conflict` and
+  `e_opens_the_editor_at_the_first_marker` read the **commands** `update`
+  returns rather than pressing the key through the harness: the harness
+  dispatches every command to the job pool, and a hand-over command is the
+  loop's, never a job's (`JobRunner::dispatch` `unreachable!`s on it, by
+  design). The loop's own headless answer (`Product::Mergetool { result:
+  Err("there is no terminal to hand over") }`) is wired in
+  `event_loop::running` and **is not covered by a test**.
+
+### Known wrong, in the captures, and it is piece 5's
+
+The footer of all three captures reads `an operation was interrupted: merge
+feature into main · J to inspect`, and that notice **wins over the banner's
+key hints** in `graft_ui::graph_screen::footer::footer_line`. The merge is not
+interrupted — it is live, and the banner two rows above says so. This is
+exactly what piece 5's `interrupted_notice` change fixes. I did not half-fix
+it here to keep the stop seam clean; it is called out inside each capture
+file so the user judging by eye is not misled. **Re-capture after piece 5.**
+
+### For the conductor
+
+- **KNOWN_GAPS row 236, re-worded** (builders do not edit that file):
+  *"M5 detects a conflict, lists the files, hands off to `git mergetool`/
+  `$EDITOR`, keeps Continue/Skip/Abort; **no in-app resolution**; expiry M6."*
+  Mark it **unverified-by-design, not broken**.
+- **Blocked, needs `graft-git`** (outside this group's crate set, not
+  touched): `FileStatusView::Unmerged { how }` reads `"unmerged"` rather than
+  `"both modified"`/`"deleted by them"`, because
+  `graft_git::status::StatusEntry` discards git's porcelain `XY` pair.
+  Carrying `XY` through needs a `graft-git` change. Visible in the captures.
+- **Pre-existing dead key, out of scope:** `update::remote::fetch_key`
+  swallows a refusal — it sets no `Status`, so `f` in a state that refuses
+  looks like a key that does nothing. Found while reading; not touched.
+- **Deferred, with a reason:** the banner's mouse buttons (piece 2's last
+  line, ≥ 160 columns, G6). `graft-ui` exposes no hit-test for them, and
+  duplicating `BANNER_BUTTONS_BREAKPOINT` and the layout arithmetic inside
+  `graft` would drift from the drawing the moment either moves. Wants a
+  `graft-ui` hit-test, which is another group's crate.
+- `banner::conflicted()` from the ticket's Signatures block was **not**
+  built: it was redundant. `update::operate::operated`'s `Conflicted` arm
+  keeps its existing, tested wording and only gained
+  `state.banner_focus = banner::banner_focusable(kind)`.
+- `jobs::operate::run_resume` dropped the ticket's `hooks` parameter: a
+  resume has no remote side, so the argument would have been unused.
+
+---
+
+## Handoff: pieces 5, 6, 7
+
+Everything below is **not started**. Split along the two seams the work
+actually has.
+
+### Seam A — piece 5, journal live-vs-interrupted (`update/journal.rs`, `jobs/undo.rs`, `view/journal.rs`)
+
+Nothing changes on disk. A live conflict is a `Pending` line with no outcome —
+the same bytes an interrupted entry has — and the difference is decided at
+**read** time against git's own state, so older journals need no migration.
+
+1. `jobs::undo::JournalRead` gains `pub live: Vec<EntryId>`, filled from
+   `graft_ops::apply::recover_interrupted`'s `Recovered::live`.
+2. `AppState::live_entries` set on each journal read.
+3. `update::journal::interrupted_notice` **excludes** live entries. This is
+   the fix the captures are waiting on: with it, the footer stops saying
+   "an operation was interrupted" about a merge that is standing right there,
+   and the banner's key hints reach the footer instead.
+4. `view::journal`: a live entry is worded `in progress — c continue
+   a abort`; never `interrupted`, never `← u`.
+5. **Launch**: `live` non-empty and `in_progress` `Some` → `banner_focus =
+   true` and `Sticky { reason: "<kind> still in progress from a previous
+   run", keys: Some("c continue  a abort") }` (PROMPT §9).
+6. Tests: `relaunch_into_a_live_conflict`,
+   `interrupted_entry_without_live_state_is_still_closed` (the M3 recovery
+   path must be unchanged), `journal_row_for_live_entry_says_in_progress`.
+7. **Re-run `conflict_interim::capture_banner_for_docs_shots -- --ignored`**
+   and delete the "KNOWN WRONG" paragraph from the capture header.
+
+### Seam B — pieces 6 and 7, the undo rules (`update/undo.rs`, `update/remote.rs`, `update/confirm.rs`, `update/commit_editor.rs`)
+
+Piece 6: `undo_key` refuses in words while `in_progress` is `Some` (`finish
+or abort the <kind> first · ⇥ banner`), no job. `CommitEditor::refusal`
+during an operation names the keys, not only the shell command. Tests:
+`u_refused_during_an_operation`.
+
+Piece 7: `u` after a push — the three-choice box, `ConfirmThen::UndoAfterPush`,
+`RemoteState.undo_after_push_asked`, `undo_after_push_box`. All three binding
+user conditions hold or the ticket is not done: `--force-with-lease` only, its
+own explicit confirm, and wording that says plainly it changes the remote.
+Tests: `u_after_push_asks_once_then_undoes_locally`,
+`u_after_push_repush_old_tip_moves_the_bare_back`,
+`u_after_push_cancel_asks_again`. Capture:
+`docs/shots/m5-ui-undo-after-push-80x24.txt`.
+
+### Gotchas for whoever takes these
+
+- `ConfirmThen::Resume(graft_ops::apply::Resume)` already exists; add
+  `UndoAfterPush` beside it.
+- The integration harness cannot press a key that produces a hand-over
+  command — `JobRunner::dispatch` `unreachable!`s on one. Read the commands
+  `update` returns instead (`conflict_interim::commands_for`).
+- `crate::app_harness::changes_pane` assumes the cursor is on the top row.
+  After a merge it is not; `conflict_interim::open_changes_pane` is the
+  version that works from anywhere.
+- The banner is **modal**: a test that presses a pane key after a conflict
+  must `Tab` out first, and `tab_back_to_the_banner` to get back.
+- `git diff --cached --name-only` always lists an unmerged path during a
+  merge. Use `git ls-files --unmerged -- <path>` to ask whether a path is
+  still unmerged.

@@ -297,10 +297,13 @@ status: partial
 - **Behaviour:** `CONFLICTS (n)` heads the changes pane, before Staged/Unstaged/Untracked.
   Each row names how it's unmerged in words (once wired to real git status data — currently
   every row says "unmerged" rather than "both modified"/"deleted by them", see gaps).
-  Pressing `Space` (stage) or `d` (discard) on a conflicted file answers the key with a
-  status-line reason instead of doing nothing or guessing which side to act on — neither
-  silently fails nor silently picks a side.
-- **Proven by:** `graft::update::operate::tests::space_on_a_conflicted_file_says_why_instead_of_staging_it`, `graft::update::operate::tests::d_on_a_conflicted_file_row_says_why_instead_of_offering_a_reset_to_head`, `graft::update::operate::tests::d_in_the_diff_region_of_a_conflicted_file_says_why_instead_of_asking`
+  `Space` on a conflicted file **marks it resolved** (staging an unmerged path is how git
+  records a resolution, group 09) — refused in words by `graft_ops` while `<<<<<<< ` is
+  still in the file, so a half-resolved file can never be marked done. `d` (discard) on one
+  still answers the key with a status-line reason rather than guessing which side to throw
+  away. `M` opens the configured mergetool on the row's file, `e` the editor at its first
+  marker.
+- **Proven by:** `graft::update::operate::tests::space_on_a_conflicted_file_stages_it_as_the_resolution`, `graft::update::operate::tests::d_on_a_conflicted_file_row_says_why_instead_of_offering_a_reset_to_head`, `graft::update::operate::tests::d_in_the_diff_region_of_a_conflicted_file_says_why_instead_of_asking`
 - **Looks like:** `docs/shots/m5-ui-conflicts.txt`
 - **Decided in:** DESIGN §1.13 New UI
 - **Status:** the widget and refusal wiring work; the section is never populated with real conflicts yet — `jobs/detail.rs` has no code path that builds an `Unmerged` group (group 09, unbuilt); the "how" wording is a placeholder, not the real porcelain-derived words

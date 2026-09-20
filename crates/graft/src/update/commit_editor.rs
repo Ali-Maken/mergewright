@@ -619,7 +619,7 @@ fn button_key(
 /// title row, and pressing it again says nothing new.
 fn commit(state: &mut AppState, next_id: &mut impl FnMut() -> JobId) -> Vec<Command> {
     let status = state.working_tree.as_deref();
-    let in_progress = state.in_progress;
+    let in_progress = state.in_progress.as_ref().map(|detail| detail.kind);
     let Some(editor) = state.commit_editor.as_ref() else {
         return Vec::new();
     };

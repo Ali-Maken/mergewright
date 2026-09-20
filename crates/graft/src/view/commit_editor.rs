@@ -18,7 +18,10 @@ use crate::update::commit_editor::CommitEditor;
 pub fn commit_editor_view(state: &AppState) -> Option<CommitEditorView<'static>> {
     let editor = state.commit_editor.as_ref()?;
     let busy = state.operating.is_some();
-    let refusal = editor.refusal(state.working_tree.as_deref(), state.in_progress);
+    let refusal = editor.refusal(
+        state.working_tree.as_deref(),
+        state.in_progress.as_ref().map(|detail| detail.kind),
+    );
     Some(CommitEditorView {
         title: title(state, editor, busy),
         subject: FieldView {

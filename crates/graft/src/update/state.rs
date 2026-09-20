@@ -185,10 +185,27 @@ pub struct AppState {
     /// this session picks the message back up rather than losing it.
     pub commit_draft: Option<super::commit_editor::CommitEditor>,
     /// The merge, rebase, cherry-pick, revert or bisect the repository is
-    /// partway through, as the last working-tree read found it. Commit and
-    /// amend refuse while it is `Some` and the refusal names the shell
-    /// command that finishes it (ADR-0034; M5 does the real handling).
-    pub in_progress: Option<graft_git::state::InProgress>,
+    /// partway through, as the last working-tree read found it, with the step
+    /// counts the banner words itself from. Commit and amend refuse while it
+    /// is `Some` and the refusal names the keys that finish it (ADR-0034,
+    /// m5-history-and-ghost-preview/09).
+    pub in_progress: Option<graft_git::state::InProgressDetail>,
+    /// `merge.tool` from git's config, as the same read found it. `None`
+    /// means `M` refuses in words instead of launching `git mergetool` and
+    /// letting git ask "which tool?" on a terminal Graft has just handed
+    /// over, where the question has no way back to the user.
+    pub mergetool: Option<String>,
+    /// The operation banner has the keyboard: `c`/`s`/`a`/`M`/`e` act on the
+    /// operation and every other key is swallowed
+    /// (`docs/design/02-keymap.md` §2.1, §2.6).
+    ///
+    /// Set on the event that lands a conflict and at launch when the journal
+    /// read finds a live entry, so a key-driven user never has to discover
+    /// the banner; cleared by `Tab`/`BackTab`/`Esc` and whenever
+    /// [`AppState::in_progress`] goes back to `None`. Never `true` without a
+    /// banner to focus — [`crate::update::banner::banner_view`] is the one
+    /// thing that draws it, and it answers `None` without `in_progress`.
+    pub banner_focus: bool,
     /// The `HEAD`-message read an `a` is waiting on: the editor opens on its
     /// answer, so there is never a half-filled amend on screen. Any other
     /// id's answer is dropped (m3-working-tree-undo-and-stash/05).

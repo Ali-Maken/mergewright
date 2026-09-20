@@ -980,7 +980,10 @@ fn commit_refused_nothing_staged() -> Scenario {
             commit_button(),
             vec![Step::See("the editor refuses and stays open", |state| {
                 let editor = state.commit_editor.as_ref().ok_or("the editor closed")?;
-                let refusal = editor.refusal(state.working_tree.as_deref(), state.in_progress);
+                let refusal = editor.refusal(
+                    state.working_tree.as_deref(),
+                    state.in_progress.as_ref().map(|detail| detail.kind),
+                );
                 check(refusal.as_deref() == Some("nothing staged"), || {
                     format!("refusal {refusal:?}")
                 })?;

@@ -1158,6 +1158,8 @@ fn the_same_event_always_gives_the_same_answer() {
         commit_editor: None,
         commit_draft: None,
         in_progress: None,
+        mergetool: None,
+        banner_focus: false,
         head_message: None,
         commit_template: None,
         external_editor: None,
@@ -2674,6 +2676,7 @@ fn a_clean_tree_while_shown_clears_the_flag_and_follows_off_it() {
             Product::WorkingTree(Ok(crate::working_tree::WorkingTree {
                 status: std::sync::Arc::new(graft_git::status::WorkingTreeStatus::default()),
                 in_progress: None,
+                mergetool: None,
             })),
         ),
     );
@@ -2913,6 +2916,7 @@ fn working_tree_read(id: JobId) -> AppEvent {
         Product::WorkingTree(Ok(crate::working_tree::WorkingTree {
             status: std::sync::Arc::new(graft_git::status::WorkingTreeStatus::default()),
             in_progress: None,
+            mergetool: None,
         })),
     )
 }

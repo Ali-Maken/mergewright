@@ -42,6 +42,22 @@ fn boxes_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) ->
     claimed
 }
 
+/// The operation banner, right after the preview and before the menu
+/// (m5-history-and-ghost-preview/09). Modal while focused: a merge or
+/// rebase stopped on a conflict is a state the user has to resolve or
+/// leave, and every key that would start a *second* thing on top of it —
+/// `u`, `S`, `m`, `r` — is swallowed rather than obeyed. `Ctrl+C` passes,
+/// and `Tab`/`Esc` give the keyboard back, so the mode always has a door.
+fn banner_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    if super::banner::take_focus(next, key) {
+        return true;
+    }
+    let mut local_jobs = next.local_jobs;
+    let claimed = super::banner::banner_key(next, commands, key, &mut || local_jobs.next_id());
+    next.local_jobs = local_jobs;
+    claimed
+}
+
 /// The half of [`super::core_event`] that answers a key.
 ///
 /// The detail pane answers its keys first (`Enter` opens it, ADR-0023).
@@ -57,6 +73,9 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
         next.commit_graph = CommitGraphOffer::NotNeeded;
     }
     if boxes_key(next, commands, key) {
+        return;
+    }
+    if banner_key(next, commands, key) {
         return;
     }
     // A menu open (`.`/right-click, m2-details-and-diffs/12) is modal: its

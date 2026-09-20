@@ -96,6 +96,9 @@ pub enum Task {
     ReadRefs,
     /// Read the working tree's staged/unstaged/untracked counts.
     ReadWorkingTree,
+    /// Carry the live operation forward, skip its step, or abort it
+    /// (m5-history-and-ghost-preview/09).
+    Resume,
     /// Read `commit.template`'s file, for the commit editor's empty body
     /// (m3-working-tree-undo-and-stash/05).
     ReadCommitTemplate,
@@ -275,6 +278,29 @@ pub enum Product {
     /// ran but left part of its after-state unread still carries the
     /// [`graft_ops::apply::Applied`] the caller refreshes from.
     Operated(Box<crate::jobs::operate::Operated>),
+    /// A `--continue`/`--skip`/`--abort` finished
+    /// (m5-history-and-ghost-preview/09). The same [`Operated`] shape as a
+    /// write, because it is one, and its own product so that the banner —
+    /// not `update::operate` — decides what the three outcomes mean for the
+    /// operation the user is standing in.
+    ///
+    /// [`Operated`]: crate::jobs::operate::Operated
+    Resumed(Box<crate::jobs::operate::Operated>),
+    /// `git mergetool` was handed the terminal for one file and came back
+    /// (m5-history-and-ghost-preview/09). `Err` is the tool refusing to
+    /// start, exiting non-zero or being killed, in words — never swallowed,
+    /// because a mergetool that did not run leaves the conflict exactly
+    /// where it was and the user needs to know which of the two happened.
+    ///
+    /// The path rides along so the line can name the file, and so the
+    /// working tree is re-read either way: a tool that failed at the end may
+    /// still have written the file.
+    Mergetool {
+        /// The file the tool was opened on.
+        path: std::path::PathBuf,
+        /// Whether it ran, or why it did not.
+        result: Result<(), String>,
+    },
     /// What a Ghost Preview's operation would do, or why no picture could be
     /// drawn (m5-history-and-ghost-preview/08). `Arc`: the open preview
     /// holds it across frames, and the slice is laid out from it once.
@@ -419,6 +445,17 @@ pub enum Command {
     /// the key to the call (the seam rule, `crates/graft/tests/it/
     /// seam_rule.rs`, m3-working-tree-undo-and-stash/04).
     Operate(JobId, Box<graft_ops::operation::Operation>),
+    /// Carry the live merge/rebase/cherry-pick/revert forward, back a step,
+    /// or all the way out, under an id `update` chose
+    /// (`c`/`s`/`a` on the operation banner,
+    /// m5-history-and-ghost-preview/09).
+    ///
+    /// Its own command rather than an [`Command::Operate`] with a
+    /// `Resume`-shaped `Operation`: `graft_ops::apply::resume` takes no
+    /// `Operation` at all — the operation is already on disk, in git's own
+    /// state, and what this names is only which of the three ways out to
+    /// take.
+    Resume(JobId, graft_ops::apply::Resume),
     /// Work out what a history operation — or the journal's time machine —
     /// *would* do, so the Ghost Preview can draw it before anything runs
     /// (m5-history-and-ghost-preview/08). A **read**: `graft_ops::preview`
@@ -479,6 +516,27 @@ pub enum Command {
         id: JobId,
         /// The message as the fields have it now.
         message: String,
+    },
+    /// Open `$EDITOR` on a conflicted file at its **first conflict
+    /// marker** (`e` on the banner or on a `CONFLICTS` row,
+    /// m5-history-and-ghost-preview/09).
+    ///
+    /// Apart from [`Command::OpenExternalEditor`], which carries a line
+    /// `update` already knows, because finding the first `<<<<<<< ` means
+    /// reading the file — and `update` opens no files. The loop is about to
+    /// open this one regardless, so it does the read.
+    OpenConflictEditor {
+        /// The conflicted file, as git's porcelain names it.
+        path: std::path::PathBuf,
+    },
+    /// Hand the terminal to `git mergetool` on one conflicted file
+    /// (`M`, m5-history-and-ghost-preview/09). Carried out by the frame
+    /// loop, like `OpenExternalEditor`, and for the same reason: the tool
+    /// is a full-screen program and the modes Graft drew through are the
+    /// loop's to put back.
+    OpenMergetool {
+        /// The conflicted file, as git's porcelain names it.
+        path: std::path::PathBuf,
     },
     /// Suspend Graft the way `Ctrl+Z` does in any other terminal program
     /// (`keys.suspend_on_ctrl_z`, ADR-0002). Carried out by the frame loop,
