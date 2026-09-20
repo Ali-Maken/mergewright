@@ -4,7 +4,7 @@
 
 Start Claude Code in this folder in auto mode with `claude --permission-mode auto` (the status bar should show `⏵⏵ auto mode on`), switch to **Opus** with `/model`, and run `/conduct`. Don't use plan mode: it blocks the file writes both the interview and the builders need. It works through the boxes on its own, handing each job to a fresh helper agent, and **stops at every box marked You or CHECKPOINT**. When you've done your part, type `continue`.
 
-**Current step:** **M3 checkpoint — awaiting the user.** All eight groups landed; the review's Critical (backup refs drawn as graph rows) is fixed at the cause and 11 captures regenerated. 35 M3 captures await the user's eye — the milestone is not done until they are judged. M4 is designed (`docs/design-notes/m4-remotes.md`, 7 groups in `.scratch/m4-remotes/issues/`, three waves, wave 1 fully parallel). M3 cost 25 runs / 3,133 turns / mean 125 — **ADR-0029's test failed** (it predicted well under M2's 119); compactions fell 23 → 3. ADR-0035 (scout) and ADR-0036 (parallel builders, concurrent reviews) are the replacements, both first tested in M4.
+**Current step:** **M4 checkpoint — awaiting the user.** All 7 groups built, reviewed and fixed; main green (fmt, clippy, nextest 1827/1827, doctests, walk 21 ok) and the release+heavy tier passes 1855/1855 (`docs/perf/m4.txt`). The acceptance review's Critical was the conductor's own false tick (KNOWN_GAPS rows claimed filed, 3 of ~12 actually filed) — fixed at da0c1af, 11 rows added. Six things wait on the user: the reconciled keymap (`docs/reviews/keymap-reconciliation.md`), the 35 M3 captures, the 16 M4 captures, undo skipping fetch/push (DESIGN §6.4 unchanged), footer hints needing ≥156 columns, and whether the typed password's plain-String lifetime is fixed in M5. M4 cost 16 agent runs / 1,233 tool uses (mean 77) against M3's 33 runs / 3,771 turns (mean 114) — ADR-0035 and ADR-0036 both held, with two rate-limit kills and no lost work.
 
 **M3 must be daily-usable the day it lands** (ADR-0030) — the user starts using Graft for real work then, and those findings shape M5 and M6 while they are still being designed. `docs/field-notes.md` and TESTING.md's "Times I left" start collecting from that day.
 
@@ -57,7 +57,7 @@ Start Claude Code in this folder in auto mode with `claude --permission-mode aut
 | [x] | **M1 The graph** | per ticket's `Build with` line | Opus | `git/git` and the merge-mistake fixtures: is the history shape obvious at a glance? |
 | [x] | M2 Details and diffs (read-only) | per ticket; Fable: Mistake Radar detection | Fable | Diffs look right; bad merges get flagged |
 | [x] | M3 Working tree, undo and stash (write) | per group; Fable: undo per-kind inverse | Fable | Stage a hunk, commit, undo it, stash and unstash, then try to lose work |
-| [ ] | M4 Remotes (write) | per group | Fable | Fetch, pull and push on a real remote; wrong password |
+| [x] | M4 Remotes (write) | per group | Fable | Fetch, pull and push on a real remote; wrong password |
 | [ ] | M5 Merge, rebase, reset, Ghost Preview (write) | per group; Fable: Ghost Preview planning | Fable | Every history change is previewed and can be undone |
 | [ ] | M6 Conflict resolver (write) | per group; Fable: conflict and operation state machine | Fable | Resolve a real conflict; kill mid-rebase, relaunch |
 | [ ] | M7 Power tools (read-only) — **conditional, judged on real use** (ADR-0030) | per group | Fable | Interactive rebase, blame, line history, reflog, **branch-dependency + chain rebase** (ADR-0032) |
