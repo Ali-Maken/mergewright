@@ -576,7 +576,7 @@ pub fn request_discard(next: &mut AppState) -> bool {
     // the conflict keys (design note). Refused in words, like `space` and
     // hunk-`d` above — never silently.
     if next.detail.selected_section() == Some(WorkingTreeSection::Unmerged) {
-        next.status = Status::Sticky(conflict_refusal("discard"));
+        next.status = Status::sticky(conflict_refusal("discard"));
         return true;
     }
     let Some(entry) = status_entry(next, &path) else {
@@ -1105,7 +1105,7 @@ mod tests {
             "the key is answered, not ignored"
         );
         assert!(state.confirm.is_none(), "no discard box opened");
-        let Status::Sticky(reason) = &state.status else {
+        let Status::Sticky { reason, .. } = &state.status else {
             panic!("expected a sticky reason, got {:?}", state.status);
         };
         assert!(reason.contains("conflicted file"), "{reason}");
