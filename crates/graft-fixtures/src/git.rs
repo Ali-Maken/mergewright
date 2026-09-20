@@ -149,6 +149,34 @@ pub fn run_isolated(cwd: &Path, args: &[&str], stdin: Option<&[u8]>) -> Result<V
     run_built(isolated, cwd, args, &input)
 }
 
+/// Runs `git <args>` in `cwd` as [`hermetic`] does, but stamped `date`
+/// instead of [`FIXED_DATE`].
+///
+/// For a test that builds its own history and needs the commits to come out
+/// **in a fixed order**. `git` dates at one-second resolution, so commits
+/// made in a burst tie; the graph breaks a date tie with the commit id
+/// (DESIGN.md §3.2), and a wall clock puts a different id on every run. A
+/// date per commit fixes both the ids and the order. `date` is anything git
+/// accepts, `@1609459260 +0000` included.
+///
+/// # Errors
+/// [`GitError`] if `git` cannot be started, outlives the deadline, or exits
+/// non-zero.
+pub fn run_at(cwd: &Path, args: &[&str], date: &str) -> Result<Vec<u8>, GitError> {
+    run_built(
+        |cwd, args| {
+            let mut command = hermetic(cwd, args);
+            command
+                .env("GIT_AUTHOR_DATE", date)
+                .env("GIT_COMMITTER_DATE", date);
+            command
+        },
+        cwd,
+        args,
+        &Input::Nothing,
+    )
+}
+
 /// Runs the command `build` makes, to completion or the deadline.
 ///
 /// `pub(crate)` so the remote fixtures can add their own environment (a

@@ -95,10 +95,24 @@ pub(super) fn open_selected(next: &mut AppState) {
     open_for_history_row(next, row);
 }
 
-/// The menu's own keys, while it is open: `j`/`k` move, `Enter` dispatches
-/// the selected action and closes it, everything else — `Esc` included —
-/// closes it without acting. Modal: no key reaches the graph while a menu is
-/// open, so this returns `true` whenever one was.
+/// The menu's own keys, while it is open. It claims exactly four — `j`/`k`
+/// (and the arrows) move, `Enter` dispatches the selected action and closes,
+/// `Esc` closes without acting — and **nothing else**
+/// (`docs/design/02-keymap.md` §2.1, "an overlay that needs only a cursor is
+/// not a modal pane").
+///
+/// Returning `true` means the key stops here. Every other key gets `false`:
+/// the menu closes and the key carries on down `keys::key_event` to mean what
+/// it always means, so `m` on a row labelled `Merge main into feature (m)`
+/// really merges instead of being eaten. A trailing `(key)` in a label is a
+/// promise that the letter is live right now; the old catch-all
+/// (`_ => close` then an unconditional `true`) broke that promise for every
+/// verb the menu advertises (m5-history-and-ghost-preview/13).
+///
+/// Nothing further down `key_event` reads `next.context_menu`, so closing
+/// here and falling through is the whole of "as if the menu had not been
+/// open" — `remote::cancel_operating`'s `context_menu.is_some()` guard sees
+/// the `None` this already wrote.
 pub(super) fn context_menu_key(
     next: &mut AppState,
     commands: &mut Vec<Command>,
@@ -120,7 +134,11 @@ pub(super) fn context_menu_key(
             next.context_menu = None;
             commands.extend(dispatch(next, row, &verbs, action));
         }
-        _ => next.context_menu = None,
+        KeyCode::Escape => next.context_menu = None,
+        _ => {
+            next.context_menu = None;
+            return false;
+        }
     }
     true
 }
@@ -522,6 +540,63 @@ mod tests {
         ));
         assert!(state.context_menu.is_none());
         assert!(commands.is_empty());
+    }
+
+    /// A verb key closes the menu and is **handed on**: `false` is what tells
+    /// `keys::key_event` to carry on down to `graph_key`, so `m` on a row
+    /// whose label reads `Merge main into feature (m)` really merges
+    /// (`docs/design/02-keymap.md` §2.1). Nothing is dispatched *here* — the
+    /// verb runs where it always runs (m5-history-and-ghost-preview/13).
+    #[test]
+    fn context_menu_key_closes_and_hands_a_verb_key_on() {
+        for code in [
+            KeyCode::Char('y'),
+            KeyCode::Char('x'),
+            KeyCode::Char('m'),
+            KeyCode::Char('r'),
+            KeyCode::Char('f'),
+            KeyCode::Char('p'),
+            KeyCode::Char('P'),
+            KeyCode::Char('u'),
+        ] {
+            let mut state = AppState::default();
+            open_for_history_row(&mut state, 0);
+            let mut commands = Vec::new();
+            assert!(
+                !context_menu_key(&mut state, &mut commands, key(code)),
+                "{code:?} must fall through to the graph's own handler"
+            );
+            assert!(
+                state.context_menu.is_none(),
+                "{code:?} must close the menu on its way past"
+            );
+            assert!(
+                commands.is_empty(),
+                "{code:?} dispatches nothing here: the verb runs downstream"
+            );
+        }
+    }
+
+    /// The keys the menu claims stop here (`true`). `Enter`, the fourth, is
+    /// pinned by `choose` below — it needs a menu with something real to
+    /// dispatch, which this bare state has not got.
+    #[test]
+    fn context_menu_key_claims_its_movement_and_esc() {
+        for code in [
+            KeyCode::Char('j'),
+            KeyCode::Down,
+            KeyCode::Char('k'),
+            KeyCode::Up,
+            KeyCode::Escape,
+        ] {
+            let mut state = AppState::default();
+            open_for_history_row(&mut state, 0);
+            let mut commands = Vec::new();
+            assert!(
+                context_menu_key(&mut state, &mut commands, key(code)),
+                "{code:?} is the menu's own key and stops here"
+            );
+        }
     }
 
     #[test]
