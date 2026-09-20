@@ -651,12 +651,50 @@ fn ghost_matches_git_revert() {
     assert_eq!(plan.ghosts.len(), 1);
     assert_eq!(plan.ghosts[0].parents, vec![GhostTarget::Real(head)]);
 
+    // The files the revert rewrites are the reverted commit's own change.
+    // Reverting `HEAD` is the ordinary case, and it is the one the old
+    // `commit..head` pair drew as empty (m5/07 review, M3).
+    assert_eq!(
+        plan.worktree,
+        WorktreeEffect::Updated {
+            paths: vec!["main.txt".into()],
+            more: false
+        },
+        "the box names the file the revert takes away"
+    );
+
     run(&repo, &op, NOW);
     assert_eq!(repo.git(&["rev-parse", "HEAD^"]), head.to_string());
     assert_eq!(
         repo.git(&["log", "-1", "--format=%s"]),
         plan.ghosts[0].subject,
         "git's own `Revert \"…\"` subject is what the ghost drew"
+    );
+    assert!(
+        !repo.exists("main.txt"),
+        "git rewrote exactly the path the box named"
+    );
+}
+
+/// With no recorded parent the list is a named hole, never an empty one:
+/// "we do not know which files" must not read as "no files change".
+#[test]
+fn a_revert_with_no_recorded_parent_says_so_rather_than_drawing_nothing() {
+    let repo = diverged();
+    let head = id(&repo, "HEAD");
+    let op = Operation::Revert(RevertParams {
+        commit: head,
+        subject: repo.git(&["log", "-1", "--format=%s"]),
+        mainline: None,
+        parents: 1,
+        parent: None,
+        head: head_tip(&repo),
+    });
+    let plan = preview_of(&repo, &op);
+    assert!(
+        matches!(plan.worktree, WorktreeEffect::NotShown { ref why } if why.contains("parent")),
+        "{:?}",
+        plan.worktree
     );
 }
 
@@ -1073,6 +1111,61 @@ fn recovery_leaves_a_live_conflict_alone() {
     let recovered = recover_interrupted(&mut ctx).expect("recovery runs");
     assert!(recovered.live.is_empty());
     assert_eq!(recovered.closed, vec![entry.id]);
+}
+
+/// Graft does not adopt a merge somebody else started.
+///
+/// A `Pending` entry of Graft's plus a live merge of the same kind used to
+/// match on kind alone, so `resume` would have finished the shell's merge
+/// and closed Graft's entry with a before-state from a different act
+/// (m5/07 review, M7). Two legs: `HEAD` on a different branch, and the same
+/// branch moved on since the entry was written.
+#[test]
+fn a_shell_merge_is_not_adopted_as_grafts_own_entry() {
+    // Leg 1: a different branch.
+    let repo = conflicting();
+    let op = merge_op(&repo, "refs/heads/feature", FastForward::Never);
+    let (entry, _, _) = conflict_of(try_run(&repo, &op, NOW).expect_err("it conflicts"));
+    repo.git(&["merge", "--abort"]);
+    repo.git(&["switch", "-qc", "other"]);
+    let _ = repo.try_git(&["merge", "--no-ff", "--no-edit", "-m", "theirs", "feature"]);
+    assert!(repo.exists(".git/MERGE_HEAD"), "a merge is live again");
+    let refused = run_resume(&repo, Resume::Abort, NOW + 1).expect_err("not Graft's merge");
+    assert!(
+        matches!(refused, ApplyError::Refused(Refusal::NotInProgress)),
+        "{refused:?}"
+    );
+
+    // Leg 2: the same branch, but moved on since the entry was written.
+    let repo = conflicting();
+    let op = merge_op(&repo, "refs/heads/feature", FastForward::Never);
+    try_run(&repo, &op, NOW).expect_err("it conflicts");
+    repo.git(&["merge", "--abort"]);
+    repo.write("unrelated.txt", b"later work\n");
+    repo.commit_all("main moved on");
+    let _ = repo.try_git(&["merge", "--no-ff", "--no-edit", "-m", "theirs", "feature"]);
+    assert!(repo.exists(".git/MERGE_HEAD"), "a merge is live again");
+    let refused = run_resume(&repo, Resume::Continue, NOW + 1).expect_err("not Graft's merge");
+    assert!(
+        matches!(refused, ApplyError::Refused(Refusal::NotInProgress)),
+        "the branch moved since the entry was written: {refused:?}"
+    );
+
+    // And the entry is not "live" to recovery either: it closes like any
+    // other interrupted one instead of waiting for a banner that will never
+    // finish it.
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let never = Never;
+    let mut ctx = context(&handle, &mut journal, NOW + 2, &never);
+    let recovered = recover_interrupted(&mut ctx).expect("recovery runs");
+    assert!(
+        recovered.live.is_empty(),
+        "the shell's merge is not Graft's live entry: {:?}",
+        recovered.live
+    );
+    assert_eq!(recovered.closed.len(), 1, "the stale entry was closed");
+    drop(entry);
 }
 
 #[test]
@@ -1520,6 +1613,7 @@ fn a_repush_of_a_commit_that_is_not_on_the_branch_is_refused() {
         .git(&work, &["switch", "-q", "-"])
         .expect("back to the default branch");
 
+    let branch_ref = branch.clone();
     let op = Operation::Push(PushParams {
         branch: branch.clone(),
         remote: "origin".to_owned(),
@@ -1537,6 +1631,31 @@ fn a_repush_of_a_commit_that_is_not_on_the_branch_is_refused() {
             preview::PreviewError::Refused(Refusal::NotOnBranch { .. })
         ),
         "{refused:?}"
+    );
+
+    // And `apply` refuses it on its own account. The preview is a picture;
+    // a caller that never drew one would otherwise have force-pushed a
+    // commit off the branch under the lease (m5/07 review, M5).
+    let mut journal = journal_for(&handle);
+    let never = Never;
+    let mut ctx = context(&handle, &mut journal, NOW, &never);
+    let refused = apply(&mut ctx, &op).expect_err("apply refuses it too");
+    assert!(
+        matches!(
+            refused,
+            ApplyError::Refused(Refusal::NotOnBranch { ref commit, .. }) if *commit == elsewhere
+        ),
+        "{refused:?}"
+    );
+    drop(ctx);
+    assert!(
+        journal.entries().is_empty(),
+        "refused before the Pending line: nothing was journaled"
+    );
+    assert_eq!(
+        rev(&remote, remote.bare(), &branch_ref),
+        pushed,
+        "and the remote did not move"
     );
 }
 

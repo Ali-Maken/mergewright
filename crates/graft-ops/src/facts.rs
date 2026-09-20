@@ -18,7 +18,7 @@ use graft_core::oid::Oid;
 use graft_core::ref_name::RefName;
 use graft_git::remote::RemoteError;
 use graft_git::repo::{HeadError, HeadState, RefTarget, RefsError, RepoHandle};
-use graft_git::run::Stop;
+use graft_git::run::{RunError, Stop};
 use graft_git::stash::StashError;
 use graft_git::status::{StatusError, WorkingTreeStatus};
 use graft_git::version::GitVersion;
@@ -64,6 +64,11 @@ pub enum FactsError {
         /// What the read said.
         source: std::io::Error,
     },
+    /// An ancestry read (`merge-base --is-ancestor`) failed, so the re-push
+    /// guard could not decide whether the commit is on the branch. Refusing
+    /// to guess is the point of the guard (ADR-0038 §4).
+    #[error("checking the commit is on the branch: {0}")]
+    Ancestry(RunError),
     /// The caller asked to stop.
     #[error("stopped")]
     Stopped,

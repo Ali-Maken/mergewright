@@ -125,6 +125,17 @@ pub enum WorktreeEffect {
     /// The whole tree comes back from the journal's backup (the time
     /// machine): no path list, because it is not a diff.
     RestoredFromBackup,
+    /// Files on disk **will** change, and which ones could not be worked
+    /// out: the read the preview needed was not there.
+    ///
+    /// Deliberately not [`WorktreeEffect::Untouched`] and not an empty
+    /// `Updated` — both read as "nothing happens to your files", which is
+    /// the one thing this does not mean. A hole is named, the way
+    /// [`ConflictForecast::NotChecked`] names one.
+    NotShown {
+        /// Why the list is missing, in the user's terms.
+        why: String,
+    },
 }
 
 /// What `merge-tree` says about the operation, in the only terms it can.
@@ -700,7 +711,17 @@ fn revert(
         from: Some(head),
         to: Some(Target::Ghost(0)),
     }];
-    plan.worktree = updated(repo, params.commit, head)?;
+    // What a revert rewrites is the reverted commit's **own** change —
+    // `parent..commit` — not the history since it. The old pair
+    // (`commit..head`) was empty whenever the commit being reverted was
+    // `HEAD`, which is the ordinary case, so the box said no file changed
+    // while git rewrote several (m5/07 review, M3).
+    plan.worktree = match params.parent {
+        Some(parent) => updated(repo, parent, params.commit)?,
+        None => WorktreeEffect::NotShown {
+            why: "the reverted commit's parent was not recorded".to_owned(),
+        },
+    };
     // The reverse patch as a three-way merge: base is the commit itself,
     // theirs is its parent — going backwards along that one edge.
     plan.conflicts = match params.parent {
@@ -940,12 +961,15 @@ fn push(
 
 /// `git merge-base --is-ancestor`: exit 0 is yes, exit 1 is no, anything
 /// else is a read that failed and is reported as one.
-fn is_ancestor(
+///
+/// Shared with [`crate::apply`], which asks it again at confirm time: a rule
+/// only the picture enforces is not enforced (m5/07 review, M5).
+pub(crate) fn is_ancestor(
     repo: &RepoHandle,
     older: Oid,
     newer: Oid,
     stop: &dyn Stop,
-) -> Result<bool, PreviewError> {
+) -> Result<bool, RunError> {
     let ran = GitInvocation::new(repo)
         .args([
             GitArg::Word("merge-base".to_owned()),
@@ -957,7 +981,7 @@ fn is_ancestor(
     match ran {
         Ok(_) => Ok(true),
         Err(RunError::Exited { status: 1, .. }) => Ok(false),
-        Err(other) => Err(other.into()),
+        Err(other) => Err(other),
     }
 }
 

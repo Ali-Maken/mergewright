@@ -370,6 +370,7 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     if let Some(live) = facts.in_progress {
         return inside_live_operation(ctx, op, &facts, live);
     }
+    guard_repush(ctx, op, &facts)?;
     let touches = op.touches(&facts);
     let plan = op.plan(&facts);
     let commands: Vec<String> = plan.iter().map(Invocation::command_line).collect();
@@ -431,6 +432,48 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     }
 }
 
+/// ADR-0038 §4's ancestry rule, enforced where the push actually runs.
+///
+/// A re-push force-writes the remote branch to a commit the user picked out
+/// of their own history, and the rule is that the commit must be **on that
+/// branch**. Deciding it needs a read (`merge-base --is-ancestor`), and
+/// `check` is pure over `RepoFacts` and cannot spawn — so the decision lived
+/// in `preview::push` alone, and anything reaching `apply` without drawing a
+/// picture first would have forced any commit at all under the lease
+/// (m5/07 review, M5). `apply` can spawn, so it asks the same question in
+/// the same terms, before the `Pending` line and before git is told to push.
+///
+/// Nothing else is re-checked here: every other precondition is a fact
+/// `check` already holds.
+fn guard_repush(ctx: &Context<'_>, op: &Operation, facts: &RepoFacts) -> Result<(), ApplyError> {
+    let Operation::Push(params) = op else {
+        return Ok(());
+    };
+    let Some(source) = params.source_commit else {
+        return Ok(());
+    };
+    // A branch the facts cannot resolve is refused the same way a commit off
+    // the branch is: an unverified re-push is not one that runs.
+    let on_branch = match facts.refs.get(&params.branch).copied().flatten() {
+        Some(tip) => {
+            crate::preview::is_ancestor(ctx.repo, source, tip, ctx.stop).map_err(|error| {
+                match error {
+                    RunError::Stopped => ApplyError::Stopped,
+                    other => ApplyError::Facts(FactsError::Ancestry(other)),
+                }
+            })?
+        }
+        None => false,
+    };
+    if on_branch {
+        return Ok(());
+    }
+    Err(ApplyError::Refused(Refusal::NotOnBranch {
+        commit: source,
+        branch: crate::operation::short_ref(&params.branch).to_owned(),
+    }))
+}
+
 /// Run a step that belongs to an operation git already has in progress.
 ///
 /// `check` admits exactly `Stage` and `Unstage` while a merge, rebase,
@@ -462,7 +505,7 @@ fn inside_live_operation(
     let plan = op.plan(facts);
     let commands: Vec<String> = plan.iter().map(Invocation::command_line).collect();
     let PlanRun { failure, .. } = run_plan(ctx, &plan, op.remote_names().as_ref());
-    fold_commands(ctx, live, commands.clone());
+    fold_commands(ctx, live, commands.clone())?;
 
     let mut record = JournalEntry {
         id: ctx.next_id(),
@@ -505,18 +548,23 @@ fn inside_live_operation(
 /// written, so a caller that opens a fresh journal per job sees only the
 /// step it just ran (the same limitation the stop itself has — the plan's
 /// own lines do not reach disk either until `resume` closes the entry).
-fn fold_commands(ctx: &mut Context<'_>, live: InProgress, commands: Vec<String>) {
-    let Some((id, mut held)) = live_entry(ctx.journal.entries(), live)
+fn fold_commands(
+    ctx: &mut Context<'_>,
+    live: InProgress,
+    commands: Vec<String>,
+) -> Result<(), ApplyError> {
+    let Some((id, mut held)) = live_entry(ctx.repo, ctx.journal.entries(), live, ctx.stop)?
         .map(|entry| (entry.id.clone(), entry.commands.clone()))
     else {
         // An operation begun outside Graft has no entry of Graft's to record
         // the step on. Nothing is dropped that was ever ours: git's own state
         // is the whole record of that operation, and the step is reported to
         // the caller on the returned `Applied`.
-        return;
+        return Ok(());
     };
     held.extend(commands);
     ctx.journal.hold_commands(&id, held);
+    Ok(())
 }
 
 /// The plan ran through: what the caller re-reads, and what the record of it
@@ -707,8 +755,11 @@ pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyErro
     // live — an older one of the same kind was left behind by something
     // else and closes as interrupted like any other.
     let live = state::in_progress(ctx.repo).map_err(|error| ApplyError::Facts(error.into()))?;
-    let live_id =
-        live.and_then(|kind| live_entry(ctx.journal.entries(), kind).map(|entry| entry.id.clone()));
+    let live_id = match live {
+        Some(kind) => live_entry(ctx.repo, ctx.journal.entries(), kind, ctx.stop)?
+            .map(|entry| entry.id.clone()),
+        None => None,
+    };
     let open: Vec<(EntryId, Vec<String>, Option<String>)> = ctx
         .journal
         .unresolved()
@@ -772,13 +823,82 @@ pub struct Recovered {
     pub live: Vec<EntryId>,
 }
 
-/// The newest `Pending` entry whose operation opens the live state `kind`:
-/// the entry `resume` closes and recovery leaves alone (m5/07).
-fn live_entry(entries: &[JournalEntry], kind: InProgress) -> Option<&JournalEntry> {
-    entries
-        .iter()
-        .rev()
-        .find(|entry| entry.status == EntryStatus::Pending && starts(entry.kind) == Some(kind))
+/// The newest `Pending` entry that is genuinely *this* live operation of
+/// Graft's: the entry `resume` closes and recovery leaves alone (m5/07).
+///
+/// Kind alone was not enough (m5/07 review, M7). A Graft merge entry left
+/// `Pending` by a crash *before* git ran, plus a `git merge` since started
+/// in the shell, matched on kind — and `resume(Continue)` would have
+/// finished someone else's merge and closed Graft's entry `Committed` with
+/// a before-state from a different act. Two facts git leaves behind settle
+/// it, both read here rather than assumed:
+///
+/// - **Where the operation started.** A rebase detaches `HEAD`, so its
+///   branch is `rebase-merge/head-name`; a merge, cherry-pick or revert
+///   leaves `HEAD` where it was. Either way the entry's `head_before` must
+///   equal it. A `rebase-apply` directory with no `head-name` is a `git am`,
+///   which matches no entry of Graft's at all (this also closes the group's
+///   own Minor 11).
+/// - **The branch has not moved.** A stopped merge, cherry-pick or revert
+///   has written no commit, so the branch is still where the entry recorded
+///   it. A rebase's own starting tip is in `rebase-merge/orig-head`, which
+///   `graft_git::state` does not expose, so that leg rests on `head-name`
+///   alone.
+///
+/// `ORIG_HEAD` is deliberately not used, although the review named it:
+/// verified against git 2.54, a merge and a rebase set it but a conflicted
+/// **cherry-pick and revert do not**, so requiring it would refuse two real
+/// resumes to catch one impostor.
+///
+/// A fact the entry never recorded is not evidence against it: the
+/// comparison is skipped rather than failed, which keeps a real conflict
+/// resumable.
+fn live_entry<'a>(
+    repo: &RepoHandle,
+    entries: &'a [JournalEntry],
+    kind: InProgress,
+    stop: &dyn Stop,
+) -> Result<Option<&'a JournalEntry>, ApplyError> {
+    if stop.should_stop() {
+        return Err(ApplyError::Stopped);
+    }
+    let detail = state::in_progress_detail(repo).map_err(|error| match error {
+        state::StateError::Io(io) => ApplyError::Facts(FactsError::State(io)),
+    })?;
+    let started_on = match kind {
+        InProgress::Rebase => match detail.as_ref().and_then(|found| found.head_name.as_deref()) {
+            Some(name) => HeadRef::Branch(name.to_owned()),
+            // A `git am`, or a rebase whose state file is unreadable:
+            // nothing here can be shown to be Graft's.
+            None => return Ok(None),
+        },
+        _ => facts::head_ref(repo).map_err(ApplyError::Facts)?,
+    };
+    let tip_now = match (&started_on, kind) {
+        (
+            HeadRef::Branch(name),
+            InProgress::Merge | InProgress::CherryPick | InProgress::Revert,
+        ) => facts::read_refs(repo, std::slice::from_ref(name))
+            .map_err(ApplyError::Facts)?
+            .get(name)
+            .copied()
+            .flatten()
+            .map(|oid| (name.clone(), oid)),
+        _ => None,
+    };
+    Ok(entries.iter().rev().find(|entry| {
+        entry.status == EntryStatus::Pending
+            && starts(entry.kind) == Some(kind)
+            && entry.head_before == started_on
+            && match &tip_now {
+                Some((name, now)) => match entry.refs_before.get(name) {
+                    Some(Some(recorded)) => recorded == now,
+                    // Not recorded, or recorded absent: nothing to compare.
+                    _ => true,
+                },
+                None => true,
+            }
+    }))
 }
 
 /// The in-progress state an operation of this kind opens when it stops.
@@ -875,7 +995,7 @@ fn resume_target(ctx: &Context<'_>, how: Resume) -> Result<(InProgress, JournalE
     let Some(kind) = live else {
         return Err(ApplyError::Refused(Refusal::NotInProgress));
     };
-    let Some(entry) = live_entry(ctx.journal.entries(), kind).cloned() else {
+    let Some(entry) = live_entry(ctx.repo, ctx.journal.entries(), kind, ctx.stop)?.cloned() else {
         return Err(ApplyError::Refused(Refusal::NotInProgress));
     };
     if how == Resume::Skip && kind == InProgress::Merge {
