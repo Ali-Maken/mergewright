@@ -54,7 +54,7 @@ pub fn mergetool(repo: &RepoHandle) -> Result<Option<String>, RunError>;
 
 ## Acceptance
 
-- [x] Every function above has the integration test named in piece 6, green, and each git claim is proven by reading git back (`git merge-base`, `git rev-list`, `git status`) — `merge_base_matches_git_merge_base_and_is_none_for_unrelated_history`, `commits_between_is_oldest_first_and_caps_to_the_commits_nearest_the_tip`, `forecast_merge_finds_a_real_conflict_and_a_clean_pair`, `changed_paths_matches_diff_tree_name_only_and_caps` (`tests/it/history_reads.rs`); `in_progress_detail_reports_step_head_name_and_onto_mid_rebase`, `mergetool_is_none_until_configured` (`src/state/tests.rs`); `parse_rev_list_reads_a_root_commit_and_its_child` (unit, real captured `rev-list` bytes)
+- [x] Every function above has the integration test named in piece 6, green, and each git claim is proven by reading git back (`git merge-base`, `git rev-list`, `git status`) — `merge_base_matches_git_merge_base_and_is_none_for_unrelated_history`, `commits_between_is_oldest_first_and_caps_to_the_commits_nearest_the_tip`, `forecast_merge_finds_a_real_conflict_and_a_clean_pair`, `changed_paths_matches_diff_tree_name_only_and_caps` (`tests/it/history_reads.rs`); `in_progress_detail_reports_step_head_name_and_onto_mid_rebase`, `mergetool_is_none_until_configured` (`src/state/tests.rs`); `parse_rev_list_reads_a_root_commit_and_its_child` (unit, real captured `rev-list` bytes); `first_marker_line` was untested at merge (review C1, false tick) — now `first_marker_line_finds_the_marker_on_its_own_line`, `first_marker_line_is_none_without_a_marker`, `first_marker_line_reads_past_a_non_utf8_byte_before_the_marker`, `first_marker_line_finds_the_marker_in_a_crlf_file`, `first_marker_line_is_none_for_a_file_with_no_trailing_newline` (`src/history_reads/tests.rs`)
 - [x] `forecast_merge` never returns `Err` for "cannot forecast": every such path is `NotCheckable(reason)` — `forecast_is_not_checkable_never_an_error` (`tests/it/history_reads.rs`, old git + a real bad-ref exit-1); `forecast_merge_is_not_checkable_on_an_old_git_never_an_error` (unit, version gating only)
 - [x] Row 455 relabel with its test — `poisoned_sink_is_not_spawn` (`src/run.rs`): added `RunError::Sink`, threaded a `poisoned_sink` flag from `exec::read_segmented` through `exec::apply` so a poisoned mutex reports `Sink`, a real pipe I/O error still reports `Spawn`
 - [x] MAP.md updated; NOTES records the git version tested against and the exact `merge-tree` output shapes seen
@@ -119,3 +119,62 @@ testing real `git merge-tree`/`rev-list`/`rebase` behaviour in a scratch
 repo before writing any code.
 
 No compaction during this ticket.
+
+### Fix round (docs/reviews/m5-02-git-history-reads.md, 2026-09-20)
+
+- **C1 (false tick).** Added the five `first_marker_line` tests listed above;
+  tick 1 corrected to name them. Fixed the real bug the review flagged with
+  it: `first_marker_line` used `BufRead::lines()`, which errors on any
+  non-UTF-8 byte above the marker — see M2 below, same fix covers both.
+- **M1.** `forecast_merge` now passes `-z`; `Forecast::Conflicts.paths` is
+  parsed by splitting on NUL (tree id field included) instead of `\n`, so it
+  is raw bytes, never git's C-quoted form. New test
+  `forecast_merge_conflict_paths_are_raw_bytes_for_non_ascii_and_special_names`
+  (`café.txt` and `has space.txt`, both conflicting) — passed on git 2.54.0
+  (Apple Git-157), the same version the review used.
+- **M2.** `first_marker_line` reads with `BufReader::read_until(b'\n', ..)`
+  into a reused `Vec<u8>` and checks `starts_with(b"<<<<<<< ")` — no UTF-8
+  decoding, so a non-UTF-8 byte anywhere before the marker no longer breaks
+  the read. Also fixes the string-allocation-per-line cost the review noted
+  in passing.
+- **M3.** Corrected: module doc (`history_reads.rs` top) and MAP.md's
+  `forecast_merge` line now say plainly that `--write-tree` writes the
+  merged/conflicted tree and its blobs into the repository's object
+  database, and that it is the only writer in this module. **Not done**:
+  the `GIT_OBJECT_DIRECTORY`/`GIT_ALTERNATE_OBJECT_DIRECTORIES` redirect the
+  review floated as a possible cleanup. Reasoned through it: it needs the
+  repo's real alternates chain to still resolve through the temp dir
+  (untested whether `GIT_ALTERNATE_OBJECT_DIRECTORIES=<repo objects>` also
+  picks up that dir's own `info/alternates` recursively — I believe it does,
+  from git's alt-odb loading code, but "I believe" is not "I observed", and
+  the review itself says this needs verifying against a repo with real
+  alternates and a linked worktree before relying on it) and needs cleanup
+  to run even when `run_raw` returns early via `?` or the temp dir creation
+  itself fails. That is real design and test surface beyond a fix round, on
+  a function group 07 is building on right now — flagging as a gap for the
+  conductor rather than landing something I haven't watched work. The design
+  note (`docs/design-notes/m5-history-and-ghost-preview.md:168`) talks about
+  a *chained* forecast needing "temporary commits (object writes)" as a
+  future cost, which reads as consistent with (not contradicting) this
+  finding — a single forecast already writes today, chaining would add
+  more. Left the design note itself alone: outside `graft-git`'s crate set.
+- **M4.** Added `RunError::Unparsable(String)` (`run.rs`) — git ran, exited
+  zero, output did not match the expected shape; distinct from `Spawn`
+  ("could not run git"). `merge_base`'s and `commits_between`'s parse-failure
+  arms now return it instead of `Spawn(io::Error::other(..))`. This adds a
+  variant to a `RunError` the ticket's own five signatures return, but is
+  not a signature change (no fn's parameter or return *type* changed, only
+  the enum gained a case) — did not stop for it. Had to add a match arm for
+  it in two other exhaustive `RunError` matches in this crate,
+  `commit_graph.rs`'s and `version.rs`'s own `run_error_to_*_error`
+  converters (neither can actually produce it — `write` and `system_git`
+  never call the code paths that return `Unparsable` — mapped defensively:
+  `CommitGraphError::Io`, `VersionError::Unrecognised`). No other crate in
+  the workspace matches `RunError` exhaustively (checked: `graft`,
+  `graft-ops` all use wildcard/`if let` arms), so this does not ripple past
+  `graft-git`.
+
+Gates (this worktree, workspace-wide, `CARGO_TARGET_DIR` outside `target/`):
+`cargo fmt --check` clean · `cargo clippy --all-targets --message-format=short -- -D warnings`
+clean · `cargo nextest run` 1852 passed, 0 failed, 23 skipped · `cargo test --doc`
+clean (0 doctests in graft-git; other crates' doctests unaffected).

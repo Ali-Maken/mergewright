@@ -135,6 +135,13 @@ pub enum RunError {
     /// started" for what is really an app-side callback bug).
     #[error("git's stderr callback is unusable after an earlier panic: {0}")]
     Sink(io::Error),
+    /// git ran, exited zero, and printed something that does not match the
+    /// shape the caller parses. Distinct from [`RunError::Spawn`]: git
+    /// answered fine, this reader could not make sense of the answer
+    /// (m5-history-and-ghost-preview/02 fix round — `Spawn`'s `Display`
+    /// reads "could not run git", which is false for this case).
+    #[error("git's output did not parse as expected: {0}")]
+    Unparsable(String),
     /// The caller's [`Stop`] asked; the child was killed and reaped.
     #[error("git was stopped")]
     Stopped,

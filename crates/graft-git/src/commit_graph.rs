@@ -163,6 +163,10 @@ fn run_error_to_commit_graph_error(error: RunError) -> CommitGraphError {
         // future caller added one; treated the same as `Spawn` — both are
         // "talking to git failed" — rather than left unhandled.
         RunError::Spawn(source) | RunError::Sink(source) => CommitGraphError::Io(source),
+        // `write` never parses git's output itself (it re-reads the graph
+        // file through `status` instead), so this never fires in practice;
+        // handled for exhaustiveness rather than left a `todo!`.
+        RunError::Unparsable(reason) => CommitGraphError::Io(io::Error::other(reason)),
         RunError::Stopped => CommitGraphError::Io(io::Error::other(
             "write was stopped, which never asks to be",
         )),

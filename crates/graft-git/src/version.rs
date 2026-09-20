@@ -166,6 +166,11 @@ fn run_error_to_version_error(error: RunError) -> VersionError {
         // mean a future caller added one; treated the same as `Spawn` —
         // both are "talking to git failed" — rather than left unhandled.
         RunError::Spawn(source) | RunError::Sink(source) => VersionError::Spawn { source },
+        // `system_git` parses `--version`'s output itself, after `run`
+        // returns `Ok`, so this never fires in practice; mapped onto the
+        // existing "did not read as a version" variant rather than left
+        // unhandled.
+        RunError::Unparsable(output) => VersionError::Unrecognised { output },
         RunError::Stopped => VersionError::Timeout {
             after: DEADLINE,
             // `GitInvocation::run` already killed and reaped the child

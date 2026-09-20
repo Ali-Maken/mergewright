@@ -4,7 +4,11 @@
 //! detail of a rebase in progress (`state.rs`'s `in_progress_detail`).
 //!
 //! Every spawn here goes through [`crate::run::GitInvocation`], never a
-//! bare shell string (PROMPT.md Technology). Nothing writes.
+//! bare shell string (PROMPT.md Technology). Every reader here except
+//! [`forecast_merge`] never writes: `git merge-tree --write-tree` writes
+//! the merged/conflicted tree and its blobs into the repository's object
+//! database (that is how it can print a tree id) — see [`forecast_merge`]'s
+//! own doc for what that costs.
 
 use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
@@ -46,9 +50,7 @@ pub fn merge_base(repo: &RepoHandle, a: Oid, b: Oid) -> Result<Option<Oid>, RunE
             Oid::from_hex(hex).map(Some).map_err(|why| {
                 // git ran, exited 0 and printed something that is not a
                 // valid id: not a shape `merge-base` should ever produce.
-                RunError::Spawn(io::Error::other(format!(
-                    "merge-base printed {hex:?}, not an id: {why}"
-                )))
+                RunError::Unparsable(format!("merge-base printed {hex:?}, not an id: {why}"))
             })
         }
         // No common ancestor: `merge-base` exits 1 with empty stdout, not
@@ -110,15 +112,10 @@ pub fn commits_between(
         .run(stop)?;
 
     let mut commits = parse_rev_list(&output.stdout).map_err(|why| {
-        // git's own well-known `--format` output not parsing is not a
-        // clean exit-code failure; the runner's "talking to git failed"
-        // bucket is the closest fit (`RunError` has no dedicated "git
-        // answered but graft-git could not read it" case, unlike
-        // `version::VersionError::Unrecognised` — adding one just for this
-        // single caller was not worth the extra surface).
-        RunError::Spawn(io::Error::other(format!(
-            "rev-list's output did not parse: {why}"
-        )))
+        // git ran and exited 0; the output just did not match the
+        // `--format` shape this reader parses. `RunError::Unparsable`,
+        // not `Spawn` — git answered fine, graft-git could not read it.
+        RunError::Unparsable(format!("rev-list's output did not parse: {why}"))
     })?;
     let capped = commits.len() > cap;
     if capped {
@@ -253,7 +250,8 @@ pub enum Forecast {
     Clean,
     /// These paths would conflict.
     Conflicts {
-        /// The conflicting paths, as `merge-tree --name-only` named them.
+        /// The conflicting paths, `merge-tree --name-only -z`'s raw bytes
+        /// (never git's C-quoted form: see [`forecast_merge`]).
         paths: Vec<PathBuf>,
     },
     /// The forecast could not be made — an old git, or an answer this
@@ -300,6 +298,14 @@ pub fn forecast_merge(
         GitArg::Flag("--write-tree"),
         GitArg::Flag("--name-only"),
         GitArg::Flag("--no-messages"),
+        // Without `-z`, `--name-only` prints conflicting paths through
+        // git's C-quoting: any non-ASCII byte, `"`, `\` or control
+        // character comes back as a quoted, octal-escaped literal instead
+        // of the path's raw bytes (verified on git 2.54: a conflict in
+        // `café.txt` prints `"caf\303\251.txt"`, quotes included). `-z`
+        // NUL-terminates every line instead, tree id included, so the
+        // same split handles both.
+        GitArg::Flag("-z"),
     ];
     if let Some(base) = base {
         args.push(GitArg::Word(format!("--merge-base={base}")));
@@ -312,13 +318,16 @@ pub fn forecast_merge(
     match raw.code {
         Some(0) => Ok(Forecast::Clean),
         Some(1) => {
-            let mut lines = raw.output.stdout.split(|&b| b == b'\n');
-            match lines.next() {
-                // A tree id on the first line: the rest, if any, are the
-                // conflicting paths `--name-only` printed.
+            let mut fields = raw.output.stdout.split(|&b| b == 0);
+            match fields.next() {
+                // A tree id in the first field: the rest, if any, are the
+                // conflicting paths `--name-only -z` printed, raw bytes.
                 Some(tree_id) if !tree_id.is_empty() => Ok(Forecast::Conflicts {
-                    paths: lines
-                        .filter(|line| !line.is_empty())
+                    // The trailing NUL after the last path leaves one
+                    // empty field at the end; drop it (and any other
+                    // stray empties) rather than treat it as a path.
+                    paths: fields
+                        .filter(|field| !field.is_empty())
                         .map(bytes_to_pathbuf)
                         .collect(),
                 }),
@@ -371,16 +380,32 @@ pub fn changed_paths(
 /// file at `path`, if any: an unresolved conflict marker left in a staged
 /// file. Plain fs read, no `git` spawn.
 ///
+/// Reads bytes, never decodes: a conflicted file with a non-UTF-8 byte
+/// anywhere above the marker (a Latin-1 comment, binary-ish content) must
+/// still find the marker, not fail to read it (M5/02 fix round —
+/// `BufRead::lines()` returns `Err(InvalidData)` on the first invalid byte,
+/// which made this look like an io failure, or a "no marker" `None` to a
+/// caller that folds the error away, for a file that plainly has one).
+///
 /// # Errors
 /// [`io::Error`] if the file could not be opened or read.
 pub fn first_marker_line(path: &Path) -> io::Result<Option<usize>> {
     let file = std::fs::File::open(path)?;
-    for (index, line) in io::BufReader::new(file).lines().enumerate() {
-        if line?.starts_with("<<<<<<< ") {
-            return Ok(Some(index + 1));
+    let mut reader = io::BufReader::new(file);
+    let mut line = Vec::new();
+    let mut index = 0usize;
+    loop {
+        line.clear();
+        // `read_until` includes the `\n` (absent only on the file's last,
+        // newline-less line) but that never affects a `starts_with` check.
+        if reader.read_until(b'\n', &mut line)? == 0 {
+            return Ok(None);
+        }
+        index += 1;
+        if line.starts_with(b"<<<<<<< ") {
+            return Ok(Some(index));
         }
     }
-    Ok(None)
 }
 
 #[cfg(unix)]
