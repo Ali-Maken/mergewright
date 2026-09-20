@@ -64,6 +64,7 @@ One line per public item. Update when a public item changes.
 ## oid
 - `Oid` (struct) — a git object id, 20 or 32 bytes inline; `SHA1_BYTES` / `MAX_BYTES` (const).
 - `Oid::from_bytes` / `from_hex` / `as_bytes` (fn) — build, parse, read.
+- `Oid::from_sha1` (fn) — wrap a 20-byte SHA-1 digest; infallible where `from_bytes` cannot be, because a caller that hashed something itself has 20 bytes by construction (m5/07, Ghost Preview's synthetic ids).
 - `Oid` serde — as lowercase hex text (m3/02).
 
 ## raster

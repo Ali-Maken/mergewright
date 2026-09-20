@@ -1,6 +1,6 @@
 # ops-history-operations: merge/rebase/cherry-pick/revert/reset/checkout/branch/tag as operations, the conflict span in the journal, resume, the time machine, and Ghost Preview planning
 
-Status: ready
+Status: done — pieces 1–9 built; **one acceptance box is deliberately unticked** (piece 2's throwaway-repo record, never made). Workspace gate red in `graft` only: `blocked: needs graft`, five sites in NOTES.
 Blocked by: 02 (git-history-reads)
 Build with: **Fable (signature)** — the journal shape of a conflicted operation and `PreviewPlan` are structural for M6 (resolver), M7 (chain rebase, ADR-0032) and the browser; "the ghost equals what git did" is not readable from a diff; the per-kind rules still need decisions the spec cannot fully pin.
 Crates: graft-ops, graft-core
@@ -69,11 +69,11 @@ pub enum PreviewError { Facts(FactsError), Read(RunError), Refused(Refusal), Sto
 
 ## Acceptance
 
-- [ ] Every test in piece 8 green, named at tick time; every `plan` string verified in a throwaway repo, results in NOTES (a)–(g)
-- [ ] `preview::plan(...).commands == op.plan(&facts)` lines for every kind — `preview_commands_come_from_plan`
-- [ ] No outcome line is ever written for a step that left `in_progress` state — `conflict_span_is_one_entry_and_undoes_to_before_the_merge`
-- [ ] `journal::in_force` on `Pending` is false, with a test — `pending_is_not_in_force`
-- [ ] MAP.md + `as-built.md` written; NOTES says scout used or why not, turn count at each piece boundary (ADR-0029)
+- [ ] **Not ticked — half of it holds.** Piece 8 is green: 35 tests in `crates/graft-ops/tests/it/history_ops.rs`, all named below, `286 tests run: 286 passed` for `graft-ops` + `graft-core`. The other half — "every `plan` string verified in a throwaway repo, results in NOTES (a)–(g)" — was piece 2's, and the predecessor left no NOTES; I did not redo it. What the real-git tests now cover of (a)–(g) is listed under NOTES · (a)–(g); (c), (d) and (f) are **unverified**.
+- [x] `preview::plan(...).commands == op.plan(&facts)` lines for every kind — `preview_commands_come_from_plan` (eleven kinds: merge, cherry-pick, revert, reset, checkout, branch create/delete, tag create/delete, rebase, branch-from-stash)
+- [x] No outcome line is ever written for a step that left `in_progress` state — `conflict_span_is_one_entry_and_undoes_to_before_the_merge` (asserts the journal **file** holds exactly 1 line at the stop and 2 after the finish, and that `MERGE_HEAD` is present in between)
+- [x] `journal::in_force` on `Pending` is false, with a test — `pending_is_not_in_force` (`crates/graft-ops/src/journal/tests.rs`: `!in_force`, `in_force_all == [true, false]`, and a `Pending` merge does not shadow `next_undo`)
+- [x] MAP.md + `as-built.md` written — `crates/graft-ops/MAP.md` (operation, journal, apply, undo, new `## preview` section), `crates/graft-core/MAP.md` (`Oid::from_sha1`), `.scratch/m5-history-and-ghost-preview/as-built.md`; NOTES below
 
 ## Gates
 
@@ -82,3 +82,83 @@ pub enum PreviewError { Facts(FactsError), Read(RunError), Refused(Refusal), Sto
 ## Size
 
 One context, the largest of the milestone. Stop seam after piece 4 (operations + conflict span + resume), pieces 5–8 in a handoff note if the context runs short.
+
+## NOTES
+
+**Model.** Pieces 1–2 were built by a Fable builder (`667ad8e`) which ran out
+of credits mid-piece-3. Pieces 3–9 were finished on Opus by the conductor's
+routing decision. The committed shapes from 1–2 were treated as given.
+
+**Scout.** No scout. The ticket's scout was piece 1's, and I inherited the
+worktree with pieces 1–2 committed and piece 3 half-written in
+`apply.rs` — reading that code *was* the survey, and a scout would have
+reported on a tree I already had open.
+
+**Turns (ADR-0029), this session only.** Piece 3+4 ≈ 40 turns (`66342a0`);
+pieces 5–7 ≈ 55 (`efbb96a`); piece 8 ≈ 20 (`ad203bb`); piece 9 ≈ 12. The
+predecessor's counts are unknown. **This session compacted once**, between
+pieces 7 and 8; nothing was left half-built across the boundary (piece 7 was
+committed before it).
+
+**(a)–(g), what the real-git tests actually cover.** Rule 1: this is what I
+observed, not what I assume.
+
+- (a) `merge --no-edit` + `GIT_EDITOR=true` never opens an editor — **held**:
+  every merge test runs to completion with no tty (`run_plan` sets
+  `GIT_EDITOR=true` on every invocation).
+- (b) a rebase conflict exits 1 leaving `rebase-merge/` — **held**:
+  `rebase_conflicts_twice_same_entry` reaches `Conflicted` twice and asserts
+  `.git/rebase-merge` is gone only after the finish.
+- (c) `revert --no-edit -m 1 <merge>`, and git refusing `-m` on a non-merge —
+  **unverified**. No test reverts a merge commit. `check` refuses
+  `MainlineOnNonMerge` first, so git is never asked the bad question, but I
+  did not observe git's own behaviour.
+- (d) `update-ref <name> <to> <expected>` refusing when moved — **unverified**
+  for the move case. The delete path's compare-and-swap runs in
+  `branch_delete_applies_undoes_redoes`, but nothing moves the ref underneath
+  it first.
+- (e) `switch` on a dirty tree — **partly**: `stale_preview_is_refused` proves
+  the `DirtyTree` refusal fires for a rebase before git runs, and that an
+  untracked file does **not** count. The checkout case is the same `check`
+  code path but is not separately tested.
+- (f) `stash branch` on a conflicting stash — **unverified**. The clean case
+  round-trips in `branch_from_stash_applies_undoes_redoes`.
+- (g) `tag -a -F -` reads the message from stdin — **held**:
+  `tag_create_applies_undoes_redoes` asserts `cat-file -t refs/tags/v1.0`
+  is `tag`, i.e. an annotated tag object, not a lightweight ref.
+
+**Two spawn decisions the note did not settle.**
+
+- *A ghost's author.* A replayed commit (rebase, cherry-pick) carries the
+  original author, which `commits_between` already returns. A commit git
+  would write fresh (merge, revert) gets `git var GIT_AUTHOR_IDENT`, parsed
+  bytes-in-bytes-out so a Latin-1 name survives. A failure there propagates
+  rather than defaulting: the real commit would fail the same way.
+- *Reading a cherry-picked commit without a `graft-git` change.*
+  `commits_between(head, commit, 1)` returns the picked commit itself — it is
+  by definition not on `head` — so subject, author and parents come back in
+  one spawn. A revert cannot use the trick (the commit *is* on `head`), which
+  is why `RevertParams` grew `parent: Option<Oid>`.
+
+**Four faults the real-git tests found, all fixed in `ad203bb`.** Details and
+reasoning in `as-built.md`; in short: `SetHead` recorded `HEAD` as a touched
+ref, so redoing a checkout moved the branch under it; `revert_to` minted one
+`EntryId` for every step; `preview::head_tip` never read `HEAD`'s own entry;
+the re-push ancestry check was skipped because `Push` named no refs in its
+`FactsScope`. Each is a cause fix, not a symptom fix.
+
+**Findings for the conductor.**
+
+- `OperationKind::RevertTo` is defined in `graft-core` and **nothing
+  constructs it**. The time machine journals one `Undo` entry per step, as
+  the note asked, so the kind has no use. M6/M7 should claim it or it should
+  go.
+- `graft-ops` has no doctests, so `cargo test --doc -p graft-ops` is
+  vacuously green (`0 passed`). Worth knowing before it is read as evidence.
+
+**The seam — `blocked: needs graft`.** Five sites, all mechanical, listed in
+`as-built.md` §7: `jobs/operate.rs:117` (`ApplyError::Conflicted` /
+`ResumeFailed`), `jobs/undo.rs:95` (`UndoError::PartWay`), and three
+`PushParams` literals needing `source_commit: None`
+(`update/remote.rs:299,317`, `view/tests.rs:2998`). The workspace gate is red
+there and nowhere else.
