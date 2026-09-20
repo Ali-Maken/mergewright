@@ -19,7 +19,8 @@ use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, Operation
 use graft_core::oid::Oid;
 use graft_git::remote::RemoteFailure;
 use graft_git::repo::RepoHandle;
-use graft_git::run::{GitInvocation, RunError, Stop};
+use graft_git::run::{GitArg, GitInvocation, RunError, Stop};
+use graft_git::state::{self, InProgress};
 use graft_git::version::GitVersion;
 
 use crate::facts::{self, FactsError};
@@ -112,6 +113,46 @@ pub enum ApplyError {
         /// operation's params (`Operation::remote_names`).
         names: Box<RemoteNames>,
     },
+    /// A history operation stopped on a conflict: git exited non-zero and
+    /// left its own in-progress state behind (`MERGE_HEAD`, `rebase-merge/`
+    /// …). The entry stays `Pending` — one entry from start to finish, M5
+    /// design note hard choice 2 — and [`resume`] closes it. No outcome line
+    /// is written here. `paths` are the unmerged paths the status lists
+    /// (m5/07).
+    #[error("{}: {} unmerged · resolve, then c continues, a aborts", entry.description, paths.len())]
+    Conflicted {
+        /// The entry, still `Pending`.
+        entry: Box<JournalEntry>,
+        /// The state git left: what the banner shows and what `resume` runs.
+        kind: InProgress,
+        /// The unmerged paths.
+        paths: Vec<PathBuf>,
+    },
+    /// [`resume`] ran `--continue`, `--skip` or `--abort`, git refused, and
+    /// its in-progress state is still there with no unmerged path to explain
+    /// it (a hook said no, an empty pick). The entry stays `Pending`, the
+    /// banner stays up; git's line says what to do (m5/07).
+    #[error("{}: {} · the {} is still in progress", entry.description, reason_for(error), kind.name())]
+    ResumeFailed {
+        /// The entry, still `Pending`.
+        entry: Box<JournalEntry>,
+        /// The state still live.
+        kind: InProgress,
+        /// What git said.
+        error: RunError,
+    },
+}
+
+/// How [`resume`] takes a stopped history operation on (m5/07).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Resume {
+    /// `--continue`: every unmerged path must be staged first.
+    Continue,
+    /// `--skip`: drop the commit being replayed (rebase, cherry-pick,
+    /// revert). A merge has nothing to skip.
+    Skip,
+    /// `--abort`: back to where the operation started.
+    Abort,
 }
 
 /// A field of an entry's after-state that could not be read, or could not be
@@ -148,6 +189,15 @@ pub enum AfterState {
     /// The operation itself is unaffected.
     #[error("the credential prompt's socket could not be cleaned up: {0}")]
     AskPass(std::io::Error),
+    /// The entry names a backup ref that no longer exists, so the after-state
+    /// read by `resume` has nothing to hang off and is not sealed: something
+    /// deleted `refs/graft/backup/…` while the operation was stopped. `u`
+    /// of this entry has no backup to restore from either (m5/07).
+    #[error("the backup ref {name} is gone; the after-state is not kept reachable")]
+    BackupGone {
+        /// The ref the entry named.
+        name: String,
+    },
 }
 
 /// The journal failing, with git's own failure when there was one.
@@ -302,6 +352,24 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
     )?;
 
     let PlanRun { failure, cleanup } = run_plan(ctx, &plan, op.remote_names().as_ref());
+    // Stopped, not failed: the entry stays `Pending` with no outcome line
+    // and `resume` closes it (hard choice 2).
+    //
+    // `cleanup` is dropped on this path and nothing is lost by it: it is
+    // filled only by `remote::run`, which `run_plan` reaches only when
+    // `remote_names()` is `Some`, while `starts_in_progress()` is `Some`
+    // only for merge, rebase, cherry-pick and revert — all local. The two
+    // are disjoint by construction, so `cleanup` here is always empty.
+    if let Some((kind, paths)) = stopped_on_conflict(ctx, op, failure.is_some())? {
+        ctx.journal
+            .hold_commands(&pending.entry.id, commands.clone());
+        pending.entry.commands = commands;
+        return Err(ApplyError::Conflicted {
+            entry: Box::new(pending.entry),
+            kind,
+            paths,
+        });
+    }
     let status = match &failure {
         None => EntryStatus::Committed,
         Some(failed) => EntryStatus::Aborted {
@@ -322,35 +390,68 @@ pub fn apply(ctx: &mut Context<'_>, op: &Operation) -> Result<Applied, ApplyErro
 
     let entry = pending.entry;
     match failure {
-        None => {
-            let mut unread = unread;
-            unread.extend(cleanup);
-            // A remote operation moved refs the entry does not record (a
-            // fetch's tracking refs), so the graph is re-read regardless.
-            let refresh = if entry.touches.refs.is_empty() && !op.is_remote() {
-                Refresh::WorkingTree
-            } else {
-                Refresh::Everything
-            };
-            let applied = Applied { entry, refresh };
-            if unread.is_empty() {
-                Ok(applied)
-            } else {
-                // The operation itself succeeded; what failed is the record
-                // of it. An `Err` the caller has to look at is the only way
-                // that reaches the user, and `applied` is in it so the
-                // refresh still happens.
-                Err(ApplyError::AfterState {
-                    applied: Box::new(applied),
-                    unread,
-                })
-            }
-        }
+        None => succeeded(entry, op, unread, cleanup),
         // `finish` has already put the after-state failures, if any, into the
         // entry's `Aborted` reason: git's own failure is the headline, but
         // nothing is lost behind it.
         Some(failed) => Err(failed.into_error(entry)),
     }
+}
+
+/// The plan ran through: what the caller re-reads, and what the record of it
+/// could not keep.
+fn succeeded(
+    entry: JournalEntry,
+    op: &Operation,
+    mut unread: Vec<AfterState>,
+    cleanup: Vec<AfterState>,
+) -> Result<Applied, ApplyError> {
+    unread.extend(cleanup);
+    // A remote operation moved refs the entry does not record (a fetch's
+    // tracking refs), so the graph is re-read regardless; a history
+    // operation moved `HEAD` or a ref the graph draws, even when
+    // `touches.refs` is empty (a checkout, m5/07).
+    let refresh = if entry.touches.refs.is_empty() && !op.is_remote() && !op.is_history() {
+        Refresh::WorkingTree
+    } else {
+        Refresh::Everything
+    };
+    let applied = Applied { entry, refresh };
+    if unread.is_empty() {
+        Ok(applied)
+    } else {
+        // The operation itself succeeded; what failed is the record of it.
+        // An `Err` the caller has to look at is the only way that reaches
+        // the user, and `applied` is in it so the refresh still happens.
+        Err(ApplyError::AfterState {
+            applied: Box::new(applied),
+            unread,
+        })
+    }
+}
+
+/// Did git stop on a conflict rather than fail?
+///
+/// A non-zero exit from an operation that opens its own in-progress state,
+/// with that state live afterwards, is a stop: `MERGE_HEAD` or
+/// `rebase-merge/` is there and the work is half done. Anything else
+/// non-zero is a failure and closes the entry (m5/07, hard choice 2).
+fn stopped_on_conflict(
+    ctx: &Context<'_>,
+    op: &Operation,
+    failed: bool,
+) -> Result<Option<(InProgress, Vec<PathBuf>)>, ApplyError> {
+    if !failed {
+        return Ok(None);
+    }
+    let Some(started) = op.starts_in_progress() else {
+        return Ok(None);
+    };
+    let live = state::in_progress(ctx.repo).map_err(|error| ApplyError::Facts(error.into()))?;
+    if live != Some(started) {
+        return Ok(None);
+    }
+    Ok(Some((started, unmerged_paths(ctx)?)))
 }
 
 /// What running a plan came to.
@@ -428,7 +529,13 @@ fn with_cleanup(reason: String, cleanup: &[AfterState]) -> String {
 fn run_plan(ctx: &Context<'_>, plan: &[Invocation], names: Option<&RemoteNames>) -> PlanRun {
     let mut cleanup = Vec::new();
     for invocation in plan {
-        let mut git = GitInvocation::new(ctx.repo).args(invocation.args.iter().cloned());
+        // No plan step ever wants an editor: every message travels on stdin
+        // or in `-m`. A step that would still open one (`merge` writing its
+        // message, `cherry-pick` without `--no-edit`) gets `true` and
+        // carries on with git's own text (M5 design note, G5 plan).
+        let mut git = GitInvocation::new(ctx.repo)
+            .args(invocation.args.iter().cloned())
+            .env("GIT_EDITOR", "true");
         if let Some(bytes) = &invocation.stdin {
             git = git.stdin(bytes.clone());
         }
@@ -473,10 +580,19 @@ fn run_plan(ctx: &Context<'_>, plan: &[Invocation], names: Option<&RemoteNames>)
 /// offer to overwrite the whole working tree, and the reason for that belongs
 /// on screen, not on the floor (m3/03 review, M1).
 pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyError> {
+    // A conflict that survived a relaunch: git's own state says the
+    // operation is still live, so its entry stays `Pending` and the banner
+    // takes over (m5/07, hard choice 2). Only the newest matching entry is
+    // live — an older one of the same kind was left behind by something
+    // else and closes as interrupted like any other.
+    let live = state::in_progress(ctx.repo).map_err(|error| ApplyError::Facts(error.into()))?;
+    let live_id =
+        live.and_then(|kind| live_entry(ctx.journal.entries(), kind).map(|entry| entry.id.clone()));
     let open: Vec<(EntryId, Vec<String>, Option<String>)> = ctx
         .journal
         .unresolved()
         .into_iter()
+        .filter(|entry| Some(&entry.id) != live_id.as_ref())
         .map(|entry| {
             (
                 entry.id.clone(),
@@ -485,7 +601,10 @@ pub fn recover_interrupted(ctx: &mut Context<'_>) -> Result<Recovered, ApplyErro
             )
         })
         .collect();
-    let mut recovered = Recovered::default();
+    let mut recovered = Recovered {
+        live: live_id.into_iter().collect(),
+        ..Recovered::default()
+    };
     for (id, refs, backup_ref) in open {
         let read = facts::read_state_now(ctx.repo, ctx.scratch(), &refs, ctx.stop);
         // The repository being unreadable must not leave the entry `Pending`
@@ -525,6 +644,227 @@ pub struct Recovered {
     /// why. Each is closed with no after-state, so its `u` restores the whole
     /// tree after asking.
     pub unreadable: Vec<(EntryId, FactsError)>,
+    /// The entry left `Pending` on purpose: a history operation still
+    /// stopped on a conflict by git's own account (`MERGE_HEAD`,
+    /// `rebase-merge/` …). The banner offers `resume`; nothing was closed
+    /// (m5/07). At most one.
+    pub live: Vec<EntryId>,
+}
+
+/// The newest `Pending` entry whose operation opens the live state `kind`:
+/// the entry `resume` closes and recovery leaves alone (m5/07).
+fn live_entry(entries: &[JournalEntry], kind: InProgress) -> Option<&JournalEntry> {
+    entries
+        .iter()
+        .rev()
+        .find(|entry| entry.status == EntryStatus::Pending && starts(entry.kind) == Some(kind))
+}
+
+/// The in-progress state an operation of this kind opens when it stops.
+fn starts(kind: OperationKind) -> Option<InProgress> {
+    match kind {
+        OperationKind::Merge => Some(InProgress::Merge),
+        OperationKind::Rebase => Some(InProgress::Rebase),
+        OperationKind::CherryPick => Some(InProgress::CherryPick),
+        OperationKind::Revert => Some(InProgress::Revert),
+        _ => None,
+    }
+}
+
+/// The unmerged paths the status lists now.
+fn unmerged_paths(ctx: &Context<'_>) -> Result<Vec<PathBuf>, ApplyError> {
+    let status = graft_git::status::read(ctx.repo, ctx.stop)
+        .map_err(|error| ApplyError::Facts(error.into()))?;
+    Ok(status
+        .entries
+        .into_iter()
+        .filter(|entry| entry.unmerged)
+        .map(|entry| entry.path)
+        .collect())
+}
+
+/// Take a stopped history operation on: `--continue`, `--skip` or `--abort`
+/// on the newest `Pending` entry whose kind matches git's live state, with
+/// `GIT_EDITOR=true` so the resolved commit's message is never edited
+/// (m5/07, design note G5).
+///
+/// `Continue` with unmerged paths still in the index is refused before git
+/// runs — git would refuse too, but with a line about `git add`. A rebase
+/// may stop again on its next commit: that is [`ApplyError::Conflicted`]
+/// again, on the same entry, and the entry stays `Pending`. On success the
+/// after-state is read now and the outcome written `Committed`; `Abort`
+/// writes `Aborted("aborted")` with the after-state read just as fresh — it
+/// should equal the before-state, and when it does not (an edit made
+/// mid-conflict) `in_force` treats it honestly and the backup keeps the
+/// pre-operation tree. The resume command joins the entry's `commands`
+/// after the plan's own (kept in memory since the stop; a relaunch loses
+/// them, since only the outcome line records commands).
+///
+/// # Errors
+/// [`Refusal::NotInProgress`] when git has no operation in progress or no
+/// `Pending` entry of Graft's matches it (one begun in the shell finishes
+/// there); [`Refusal::CannotSkip`] for `Skip` on a merge;
+/// [`Refusal::Unmerged`] for `Continue` over unmerged paths; the executor's
+/// own errors otherwise.
+pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError> {
+    if ctx.stop.should_stop() {
+        return Err(ApplyError::Stopped);
+    }
+    let (kind, entry) = resume_target(ctx, how)?;
+
+    let args = [
+        GitArg::Flag(kind.name()),
+        GitArg::Flag(match how {
+            Resume::Continue => "--continue",
+            Resume::Skip => "--skip",
+            Resume::Abort => "--abort",
+        }),
+    ];
+    let mut commands = entry.commands.clone();
+    commands.push(graft_git::run::command_line(&args));
+    let ran = GitInvocation::new(ctx.repo)
+        .args(args)
+        .env("GIT_EDITOR", "true")
+        .run(ctx.stop);
+
+    let failure = match ran {
+        Ok(_) => None,
+        Err(RunError::Stopped) => return Err(ApplyError::Stopped),
+        Err(error) => {
+            // Still live: git stopped again (a rebase's next conflict) or
+            // refused to go on. Either way the entry is not finished.
+            let live =
+                state::in_progress(ctx.repo).map_err(|error| ApplyError::Facts(error.into()))?;
+            if live == Some(kind) {
+                return Err(still_pending(ctx, kind, entry, commands, error)?);
+            }
+            Some(error)
+        }
+    };
+    close_resume(ctx, entry, how, commands, failure)
+}
+
+/// Which entry a resume closes, and the checks that run before git does.
+///
+/// git's own state names the kind; the journal's newest `Pending` entry of
+/// that kind is the one Graft opened. An operation begun in the shell has no
+/// entry here and is finished there ([`Refusal::NotInProgress`]).
+fn resume_target(ctx: &Context<'_>, how: Resume) -> Result<(InProgress, JournalEntry), ApplyError> {
+    let live = state::in_progress(ctx.repo).map_err(|error| ApplyError::Facts(error.into()))?;
+    let Some(kind) = live else {
+        return Err(ApplyError::Refused(Refusal::NotInProgress));
+    };
+    let Some(entry) = live_entry(ctx.journal.entries(), kind).cloned() else {
+        return Err(ApplyError::Refused(Refusal::NotInProgress));
+    };
+    if how == Resume::Skip && kind == InProgress::Merge {
+        return Err(ApplyError::Refused(Refusal::CannotSkip(kind)));
+    }
+    if how == Resume::Continue {
+        let paths = unmerged_paths(ctx)?;
+        if !paths.is_empty() {
+            return Err(ApplyError::Refused(Refusal::Unmerged { paths }));
+        }
+    }
+    Ok((kind, entry))
+}
+
+/// git would not finish and its state is still live: the entry stays
+/// `Pending` and the banner stays up. Unmerged paths mean it stopped again
+/// on a conflict; none mean it refused (a hook, an empty pick).
+fn still_pending(
+    ctx: &mut Context<'_>,
+    kind: InProgress,
+    mut entry: JournalEntry,
+    commands: Vec<String>,
+    error: RunError,
+) -> Result<ApplyError, ApplyError> {
+    ctx.journal.hold_commands(&entry.id, commands.clone());
+    let paths = unmerged_paths(ctx)?;
+    entry.commands = commands;
+    Ok(if paths.is_empty() {
+        ApplyError::ResumeFailed {
+            entry: Box::new(entry),
+            kind,
+            error,
+        }
+    } else {
+        ApplyError::Conflicted {
+            entry: Box::new(entry),
+            kind,
+            paths,
+        }
+    })
+}
+
+/// git is done with the operation, one way or the other: write the outcome
+/// line the stop deferred.
+fn close_resume(
+    ctx: &mut Context<'_>,
+    entry: JournalEntry,
+    how: Resume,
+    commands: Vec<String>,
+    failure: Option<RunError>,
+) -> Result<Applied, ApplyError> {
+    // The backup ref still points at the before-commit: `seal_after` moves
+    // it only when the outcome is written, which is now.
+    let before_commit = match &entry.backup_ref {
+        Some(name) => facts::read_refs(ctx.repo, std::slice::from_ref(name))
+            .map_err(ApplyError::Facts)?
+            .get(name)
+            .copied()
+            .flatten(),
+        None => None,
+    };
+    let backup_gone = entry
+        .backup_ref
+        .clone()
+        .filter(|_| before_commit.is_none())
+        .map(|name| AfterState::BackupGone { name });
+    let mut pending = Pending {
+        entry,
+        before_commit,
+    };
+    let status = match (how, &failure) {
+        (_, Some(error)) => EntryStatus::Aborted {
+            reason: reason_for(error),
+        },
+        (Resume::Abort, None) => EntryStatus::Aborted {
+            reason: "aborted".to_owned(),
+        },
+        (Resume::Continue | Resume::Skip, None) => EntryStatus::Committed,
+    };
+    let mut unread = match finish(ctx, &mut pending, status, commands) {
+        Ok(unread) => unread,
+        Err(error) => {
+            return Err(ApplyError::Journal {
+                error,
+                after: failure,
+            });
+        }
+    };
+    unread.extend(backup_gone);
+    let entry = pending.entry;
+    if let Some(error) = failure {
+        let recoverable = entry.worktree_before.is_some();
+        return Err(ApplyError::Git {
+            entry: Box::new(entry),
+            error,
+            recoverable,
+        });
+    }
+    let applied = Applied {
+        entry,
+        refresh: Refresh::Everything,
+    };
+    if unread.is_empty() {
+        Ok(applied)
+    } else {
+        Err(ApplyError::AfterState {
+            applied: Box::new(applied),
+            unread,
+        })
+    }
 }
 
 /// Hang a recovered entry's after-trees off its backup ref before they are

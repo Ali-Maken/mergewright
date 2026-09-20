@@ -7,7 +7,7 @@ use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, Operation
 use graft_core::oid::Oid;
 
 use super::{
-    JournalError, PointInTime, in_force, next_redo, next_undo, parse, render_outcome,
+    JournalError, PointInTime, in_force, in_force_all, next_redo, next_undo, parse, render_outcome,
     render_pending, root_operation, state_at,
 };
 
@@ -451,4 +451,24 @@ fn a_fetch_or_push_after_an_undo_keeps_redo() {
     let entries = vec![a, undo_a.clone(), fetch, push];
     assert_eq!(next_redo(&entries), Some(&undo_a));
     assert_eq!(next_undo(&entries), None);
+}
+
+#[test]
+fn pending_is_not_in_force() {
+    // A merge stopped on a conflict: the entry stays `Pending` until
+    // `resume` closes it, and a `Pending` entry is not in force whatever its
+    // fields say — the operation is half done, so neither `u` nor the
+    // browser's row mark may treat it as having taken effect (m5/07, M5
+    // design note hard choice 2). The entry's before-fields are a commit's,
+    // and its backup exists; only the missing outcome keeps it out of force.
+    let done = committed(10, OperationKind::Stage, 1, 2);
+    let stopped = JournalEntry {
+        kind: OperationKind::Merge,
+        ..pending(20)
+    };
+    let entries = vec![done.clone(), stopped.clone()];
+    assert!(!in_force(&entries, &stopped.id));
+    assert_eq!(in_force_all(&entries), vec![true, false]);
+    // And it does not shadow the operation before it.
+    assert_eq!(next_undo(&entries), Some(&done));
 }
