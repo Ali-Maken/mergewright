@@ -274,6 +274,38 @@ exists, and a change to `core` or `git` can never make the fixtures fail to
 build. It shells out to real `git` and owns nothing a production code path
 would want.
 
+### The acceptance walks: `crates/graft/tests/it/`
+
+Every integration test of the app crate is a module of one binary
+(`tests/it/main.rs`, PROMPT.md §7.1). The milestone acceptance walks live
+there too, and each has a dev-only example (`examples/m3_walk.rs`,
+`examples/m4_walk.rs`, `examples/gallery.rs`) that includes its pure half by
+`#[path]` and drives it from a command line. The modules they share are
+split so that **an example compiles only what it runs**:
+
+- `app_harness.rs` — the headless app: `App` drives `update` over the real
+  job pool.
+- `repo_truth.rs` — git as evidence: `RepoTruth`, `git_truth`, `diff_truth`,
+  the isolated `run_git`, `fsck_clean`, `keys_label`. Every walk judges by
+  this, never by `AppState`.
+- `coverage.rs` — the coverage matrix (`docs/shots/35-coverage-matrix.txt`):
+  the gallery's two tables plus one table per walk. The walks' capture stems
+  are **constants here** (`M3_STEMS`, `M4_STEMS`), not read from their
+  scenarios, so `gallery --matrix` needs no walk and the three `--matrix`
+  commands write the same file through one `write_matrix`. Each walk's
+  `captures_are_named_keyed_and_listed_in_the_matrix` test keeps its
+  scenarios' stems equal to the list.
+- `m3_walk.rs` — the M3 walk, one file (its precedent).
+- `m4_walk/` — the M4 walk by seam: `fixture` (the remote and its work
+  clone), `truth` (the bare's refs, journal, status lines and the remote's
+  counters on top of `RepoTruth`), `steps` (`Step`, `Wait`, `Scenario`,
+  `Capture`), `run` (the driver and `no_secret_leaked`), `vocabulary` (the
+  step and assertion helpers the scenarios are written in), the scenarios by
+  promise (`fetch_pull`, `push`, `credentials`, `hangs_and_undo`), and
+  `every_scenario` (one `#[test]` per scenario, `#[cfg(test)]`). `mod.rs`
+  is the list and the CLI helpers. The next walk (M5) copies this shape, not
+  `m3_walk.rs`.
+
 ## Shared types worth knowing where they live
 
 `core` holds plain data only — no behaviour, no algorithms. Laying out a

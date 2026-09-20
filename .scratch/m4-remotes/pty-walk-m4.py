@@ -44,7 +44,7 @@ CAPTURES = [line.split("\t") for line in
                            check=True).stdout.splitlines()]
 WANTED = set(sys.argv[2:])
 STABLE, CAP, APPEAR = 1.5, 40.0, 90.0
-# The walk's passwords (tests/it/m4_walk.rs: PASSWORD, WRONG). Kept here
+# The walk's passwords (tests/it/m4_walk/fixture.rs: PASSWORD, WRONG). Kept here
 # rather than printed by `--stems`, which must never print a secret.
 SECRETS = ["correct-horse-battery-staple", "not-the-password"]
 SOFT_CAP, HARD_CAP = 8 * 1024, 200 * 1024

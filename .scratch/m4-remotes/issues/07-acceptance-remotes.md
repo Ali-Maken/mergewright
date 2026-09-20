@@ -174,3 +174,77 @@ run (commands recorded in TESTING.md, figures `not run`).
 warnings` ok; the same with `--features heavy-tests` ok; `cargo nextest
 run` 1822 passed, 22 skipped, 34.3 s; `cargo test --doc` ok. Outputs under
 `target-g07/walk/{fmt,clippy,clippy-heavy,nextest,doctest}.txt`.
+
+## NOTES — fix round (docs/reviews/m4-07-acceptance.md, Majors M1–M5)
+
+Two sessions on branch `worktree-agent-a5a23b753b53dc54f`; the first was
+stopped by a rate limit with the file split half done, the second finished
+it. No compaction in either. No scout: both sessions worked from the review's
+line references and the walk's own module docs.
+
+**M1 — hang mode proven for fetch only** (commit `acec55f`). Added
+`hung-remote-pull-esc-cancels` and `hung-remote-push-esc-cancels` against
+`HungRemote`, sharing `hung_cancel_expect` (entry kind, `Aborted`
+`cancelled`, no locks, one connection, bare and work clone unmoved, index
+bytes equal). Verified by `m4_walk::every_scenario::{hung_remote_pull_esc_cancels,
+hung_remote_push_esc_cancels}` and `every_scenario_has_a_test` (21 names).
+
+**M2 — 80 columns cut `P` off the rejection line** (commit `acec55f`,
+product fix, cause not symptom). The sticky is now `push rejected: <remote
+branch> has moved · p pull first · P force with lease` (57 + name, was 81 +
+name) and the journal's push row leads with the verdict: `not undoable —
+origin has it · <a> → <b>`. Verified by `update::remote::tests` and
+`view::journal` tests whose strings changed, `remote_by_key`, and by the
+regenerated `m4-06-rejected-sticky-80x24.txt` / `m4-07-journal-remote-rows-80x24.txt`
+(six captures regenerated: m4-02, m4-06, m4-07 at both sizes).
+
+**M5 — TESTING.md claimed more than the walk asserted** (commit `acec55f`).
+`box_message_contains` now asserts the box lines TESTING.md quotes
+(push-plain, push-sets-upstream, the lease box), and
+`captures_are_named_keyed_and_listed_in_the_matrix` reads all sixteen
+committed capture files for both passwords. TESTING.md's two lines say what
+the code does.
+
+**M3 — `coverage_matrix` dragged every walk into every example** (this
+commit). New `tests/it/coverage.rs`: `MATRIX_PATH`, `SIZES`, the stem
+constants `M3_STEMS`/`M4_STEMS`, `coverage_matrix` (the gallery's
+`gallery_matrix` + `working_tree_matrix` + `remotes_matrix`) and
+`write_matrix`, the one call all three `--matrix` commands make. Examples
+include `coverage.rs` and what they run — `gallery` compiles no walk any
+more; `m3_walk` no longer compiles the M4 walk and vice versa. Verified by
+`it::coverage::tests::write_matrix_writes_all_four_tables_where_the_ticket_wants_them`
+(four titles in order, rows marked per file), `a_walk_table_marks_only_the_files_that_exist`,
+`stems_are_sorted_and_distinct`, and the walks' `captures_are_named_keyed_and_listed_in_the_matrix`
+tests asserting their scenarios' stems equal the constants; by hand,
+`gallery --matrix`, `m3_walk --matrix`, `m4_walk --matrix` run in turn: the
+three written files and the three stdouts byte-identical (`cmp`, under
+`target-g07fix/split/{file,matrix}-*.txt`). Side effect: the walk tables
+are now in stem order, which is review Minor 7; `35-coverage-matrix.txt`
+re-written (row order only).
+
+**M4 — one 2,182-line walk file** (this commit). `tests/it/m4_walk.rs` →
+`tests/it/m4_walk/`: `mod.rs` (82 lines: the list, `stems_line`,
+`capture_prelude`), `fixture.rs` (194), `truth.rs` (111), `steps.rs`
+(114), `run.rs` (335), `vocabulary.rs` (241), the scenarios by promise —
+`fetch_pull.rs` (304), `push.rs` (274), `credentials.rs` (168),
+`hangs_and_undo.rs` (364) — and `every_scenario.rs` (166, `#[cfg(test)]`).
+Git-as-evidence shared by both walks moved out of `m3_walk.rs` into
+`tests/it/repo_truth.rs` (316; `m3_walk.rs` 2,112 → 1,769). Largest file
+364 lines. Behaviour unchanged: the same 21 scenarios and assertions moved
+verbatim; the only code change beyond `use` paths is the wildcard
+`vocabulary::*` imports made explicit (clippy). Verified by the 26 tests
+under `m4_walk::` + `it::coverage::` + `m3_walk::…::captures…` all passing
+(slowest `u_never_touches_the_remote` 2.65 s, `target-g07fix/split/nextest-walks.txt`)
+and `cargo run -p graft --example m4_walk` → 21 `ok`, exit 0
+(`target-g07fix/split/walk.txt`). ARCHITECTURE.md gains "The acceptance
+walks: `crates/graft/tests/it/`" (the shape M5 copies); MAP.md lines for
+the three examples, TESTING.md and `pty-walk-m4.py` point at the new paths.
+
+**Gates (workspace-wide, `CARGO_TARGET_DIR=target-g07fix`):** `cargo fmt
+--check` ok; `cargo clippy --all-targets --message-format=short -- -D
+warnings` ok, and with `--features heavy-tests` ok; `cargo nextest run`
+1827 passed, 22 skipped, 57.6 s; `cargo test --doc` ok. Outputs under
+`target-g07fix/split/`.
+
+**Not verified here:** anything by eye; the six regenerated captures were
+not re-judged by the user.

@@ -19,7 +19,7 @@
 //! scenario's setup and its headless prefix, then opens the real interactive
 //! loop on the work clone with the capture's keys as the prelude — what
 //! `.scratch/m4-remotes/pty-walk-m4.py` records. The pure half is
-//! `tests/it/m4_walk.rs`, which `cargo test` runs as one test per scenario.
+//! `tests/it/m4_walk/`, which `cargo test` runs as one test per scenario.
 //!
 //! This binary is also git's **askpass helper** while it runs: the job pool
 //! names `current_exe` as the helper, so when git asks for a password it
@@ -37,20 +37,23 @@ use std::process::ExitCode;
 )]
 #[path = "../tests/it/app_harness.rs"]
 mod app_harness;
+#[allow(dead_code, reason = "only `--matrix` is used here")]
+#[path = "../tests/it/coverage.rs"]
+mod coverage;
 #[allow(
     dead_code,
-    reason = "only the coverage matrix is used here; the gallery uses the rest"
+    reason = "only its coverage tables are used here; the gallery uses the rest"
 )]
 #[path = "../tests/it/gallery.rs"]
 mod gallery;
+#[path = "../tests/it/m4_walk/mod.rs"]
+mod m4_walk;
 #[allow(
     dead_code,
-    reason = "the M3 walk's truth readers and its coverage table are shared; its scenarios are not run here"
+    reason = "shared with the integration tests and the M3 walk, which use more of it"
 )]
-#[path = "../tests/it/m3_walk.rs"]
-mod m3_walk;
-#[path = "../tests/it/m4_walk.rs"]
-mod m4_walk;
+#[path = "../tests/it/repo_truth.rs"]
+mod repo_truth;
 
 use graft::cli::{self, Invocation};
 use graft::event_loop::{self, Exit};
@@ -202,19 +205,19 @@ fn show(
     }
 }
 
-/// All the coverage tables — the gallery's two, the working-tree one and
-/// the remotes one — written where the gallery writes them.
+/// Print the coverage matrix and write it where the ticket wants it.
 fn write_matrix(workspace: &Path) -> ExitCode {
-    let matrix = gallery::coverage_matrix(workspace);
-    print!("{matrix}");
-    let out = workspace.join("docs/shots/35-coverage-matrix.txt");
-    match std::fs::write(&out, &matrix) {
-        Ok(()) => {
-            eprintln!("written to {}", out.display());
+    match coverage::write_matrix(workspace) {
+        Ok(matrix) => {
+            print!("{matrix}");
+            eprintln!(
+                "written to {}",
+                workspace.join(coverage::MATRIX_PATH).display()
+            );
             ExitCode::SUCCESS
         }
-        Err(error) => {
-            eprintln!("m4_walk: could not write {}: {error}", out.display());
+        Err(why) => {
+            eprintln!("could not write the coverage matrix: {why}");
             ExitCode::FAILURE
         }
     }

@@ -1310,7 +1310,7 @@ cargo run -p graft --example m4_walk -- --matrix                  # rewrites doc
 `ok <name>` per scenario, `FAIL <name>: <what differs>` (20 lines at most:
 the work clone's refs/files/index, the bare's refs, the journal's length),
 exit 1 on any failure. The same list runs in the fast tier as one test per
-scenario (`tests/it/m4_walk.rs`, `m4_walk::every_scenario::*`; slowest
+scenario (`tests/it/m4_walk/`, `m4_walk::every_scenario::*`; slowest
 `u_never_touches_the_remote` 1.4 s; the 19 take 14.8 s of test time, 7.8 s
 wall with the M3 walk alongside, and the whole tier is at 34.3 s test time).
 Every scenario ends with `git fsck --no-dangling` saying nothing but notices

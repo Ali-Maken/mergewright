@@ -30,9 +30,12 @@ use std::process::ExitCode;
 )]
 #[path = "../tests/it/app_harness.rs"]
 mod app_harness;
+#[allow(dead_code, reason = "only `--matrix` is used here")]
+#[path = "../tests/it/coverage.rs"]
+mod coverage;
 #[allow(
     dead_code,
-    reason = "only the coverage matrix is used here; the gallery uses the rest"
+    reason = "only its coverage tables are used here; the gallery uses the rest"
 )]
 #[path = "../tests/it/gallery.rs"]
 mod gallery;
@@ -40,10 +43,10 @@ mod gallery;
 mod m3_walk;
 #[allow(
     dead_code,
-    reason = "the coverage matrix lists the M4 walk's captures; its scenarios are not run here"
+    reason = "shared with the integration tests and the M4 walk, which use more of it"
 )]
-#[path = "../tests/it/m4_walk.rs"]
-mod m4_walk;
+#[path = "../tests/it/repo_truth.rs"]
+mod repo_truth;
 
 use graft::event_loop::{self, Exit};
 use graft::session::Startup;
@@ -73,7 +76,7 @@ fn main() -> ExitCode {
                         capture.stem,
                         scenario.name,
                         capture.on_screen,
-                        m3_walk::keys_label(&capture.keys)
+                        repo_truth::keys_label(&capture.keys)
                     );
                 }
             }
@@ -175,19 +178,19 @@ fn show(
     }
 }
 
-/// Every coverage table (the gallery's two, the working-tree one, the
-/// remotes one), written where the gallery writes them.
+/// Print the coverage matrix and write it where the ticket wants it.
 fn write_matrix(workspace: &Path) -> ExitCode {
-    let matrix = gallery::coverage_matrix(workspace);
-    print!("{matrix}");
-    let out = workspace.join("docs/shots/35-coverage-matrix.txt");
-    match std::fs::write(&out, &matrix) {
-        Ok(()) => {
-            eprintln!("written to {}", out.display());
+    match coverage::write_matrix(workspace) {
+        Ok(matrix) => {
+            print!("{matrix}");
+            eprintln!(
+                "written to {}",
+                workspace.join(coverage::MATRIX_PATH).display()
+            );
             ExitCode::SUCCESS
         }
-        Err(error) => {
-            eprintln!("m3_walk: could not write {}: {error}", out.display());
+        Err(why) => {
+            eprintln!("could not write the coverage matrix: {why}");
             ExitCode::FAILURE
         }
     }

@@ -22,29 +22,21 @@
 //! disk gets a page saying how to build it; on that page only `]`, `[` and
 //! `q` do anything.
 
+#[allow(
+    dead_code,
+    reason = "the walks' tables are theirs; `--matrix` writes the whole file"
+)]
+#[path = "../tests/it/coverage.rs"]
+mod coverage;
 #[path = "../tests/it/gallery.rs"]
 mod gallery;
-// The coverage matrix lists the M3 and M4 walks' captures, so their pure
-// halves (and the harness they share) come along; nothing else of them runs
-// here.
-#[allow(dead_code, reason = "only the walks' coverage tables are used here")]
-#[path = "../tests/it/app_harness.rs"]
-mod app_harness;
-#[allow(dead_code, reason = "only the walks' coverage tables are used here")]
-#[path = "../tests/it/m3_walk.rs"]
-mod m3_walk;
-#[allow(dead_code, reason = "only the walks' coverage tables are used here")]
-#[path = "../tests/it/m4_walk.rs"]
-mod m4_walk;
 
-use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use gallery::{
-    Availability, Entry, Group, banner, capture_stem, coverage_matrix, listing, missing_page,
-    resolve, roots, stops,
+    Availability, Entry, Group, banner, capture_stem, listing, missing_page, resolve, roots, stops,
 };
 use graft::event_loop::{self, Exit};
 use graft::session::Startup;
@@ -127,16 +119,17 @@ fn main() -> ExitCode {
 
 /// Print the coverage matrix and write it where the ticket wants it.
 fn write_matrix(workspace: &Path) -> ExitCode {
-    let matrix = coverage_matrix(workspace);
-    print!("{matrix}");
-    let out = workspace.join("docs/shots/35-coverage-matrix.txt");
-    match fs::write(&out, &matrix) {
-        Ok(()) => {
-            eprintln!("written to {}", out.display());
+    match coverage::write_matrix(workspace) {
+        Ok(matrix) => {
+            print!("{matrix}");
+            eprintln!(
+                "written to {}",
+                workspace.join(coverage::MATRIX_PATH).display()
+            );
             ExitCode::SUCCESS
         }
-        Err(error) => {
-            eprintln!("gallery: could not write {}: {error}", out.display());
+        Err(why) => {
+            eprintln!("could not write the coverage matrix: {why}");
             ExitCode::FAILURE
         }
     }
