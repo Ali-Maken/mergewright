@@ -6,26 +6,26 @@
 # Below 40x7 it draws one centred "too small" line and nothing else.
 
 === plain, 80x24 ===
-          ╭ New branch at a1b2c3d────────────────────────────────────╮
+          ╭ New branch at a1b2c3d ───────────────────────────────────╮
           │ ▏feature/auth                                            │
           │                                                          │
           │                                                          │
           │                                                          │
-          ╰ ⏎ create  ⇥ toggle  esc cancel───────────────────────────╯
+          ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
 
 === with checkout option, 160x48 ===
-                                                  ╭ New branch at a1b2c3d────────────────────────────────────╮
+                                                  ╭ New branch at a1b2c3d ───────────────────────────────────╮
                                                   │ ▏feature/auth                                            │
                                                   │ (•) check out after creating · ⇥ toggles                 │
                                                   │                                                          │
                                                   │                                                          │
-                                                  ╰ ⏎ create  ⇥ toggle  esc cancel───────────────────────────╯
+                                                  ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
 
 === refused, 80x24 ===
-          ╭ New branch at a1b2c3d────────────────────────────────────╮
+          ╭ New branch at a1b2c3d ───────────────────────────────────╮
           │ ▏feature/auth                                            │
           │ ( ) check out after creating · ⇥ toggles                 │
           │ bad name: cannot start with -                            │
           │                                                          │
-          ╰ ⏎ create  ⇥ toggle  esc cancel───────────────────────────╯
+          ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
 

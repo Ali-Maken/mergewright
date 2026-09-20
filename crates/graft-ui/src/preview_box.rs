@@ -11,20 +11,32 @@
 //! in the bottom border — while it is open the main footer draws nothing
 //! (`docs/design-notes/m5-history-and-ghost-preview.md`, "New UI" table).
 
-use graft_term::SanitizedText;
+use graft_term::{SanitizedText, sanitize_line};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Style;
 use ratatui::widgets::Widget;
 
-use crate::frame_box::{border_row, content_row};
+use crate::frame_box::{border_row, buttons_row, content_row, reverse_button};
 use crate::paint::foreground;
 use crate::theme::{Theme, Token};
 
-/// Below this width or this height the box does not fit: "a picture that
-/// cannot be seen is never confirmed" (design note). `⏎` does nothing at
-/// this size — the caller must not act on a plan the user could not read.
+/// Below this width or this height **the screen** does not fit the box: "a
+/// picture that cannot be seen is never confirmed" (design note). `⏎` does
+/// nothing at this size — the caller must not act on a plan the user could
+/// not read.
+///
+/// Measured against the frame, not against the rect the box is docked into:
+/// the box's own height is [`preview_rows`], which is 7 for a typical plan
+/// and so would fail a 12-row test of its own rect every time. Use
+/// [`preview_box_area`], which applies this to the frame and hands the
+/// widget either a box-sized rect or the one row the message needs.
 pub const PREVIEW_MIN: (u16, u16) = (40, 12);
+
+/// The fewest rows a box can be: the title border, one content row, the
+/// choices row, the footer border. Given less than this the widget draws
+/// [`TOO_SMALL`] rather than a frame with nothing legible inside it.
+const MIN_BOX_ROWS: u16 = 4;
 
 /// The box's own footer, shown in its bottom border while it is open.
 const FOOTER: &str = "←→ choose  ⏎ act  esc cancel";
@@ -45,9 +57,14 @@ pub struct PreviewBox {
     pub commands: Vec<SanitizedText>,
     /// The choices, left to right; index 0 is always `Cancel`
     /// (ADR-0038 §1, same rule as [`crate::confirm::ConfirmView`]).
-    pub choices: Vec<SanitizedText>,
-    /// Which choice the cursor is on.
-    pub cursor: usize,
+    /// Private, with [`PreviewBox::new`] the only way in, so no caller can
+    /// build a box whose first choice is the acting one — the same reason
+    /// `SecretField` lost its `Default` in M5 group 01.
+    choices: Vec<SanitizedText>,
+    /// Which choice the cursor is on. `0` (`Cancel`) on open, and private
+    /// for the same reason: the default never varies with how dangerous the
+    /// action is (ADR-0038 §1).
+    cursor: usize,
     /// The forecast has not landed yet: draws `predicting…` in place of
     /// `lines`, for up to about a second while the plan is worked out. The
     /// ghost rows themselves appear only once this turns false.
@@ -55,6 +72,37 @@ pub struct PreviewBox {
 }
 
 impl PreviewBox {
+    /// An empty box titled `title`, choices `Cancel`/`Confirm`, cursor on
+    /// `Cancel` — the only way to build one, so the safe choice is first and
+    /// under the cursor in every preview, whatever the plan does
+    /// (ADR-0038 §1). Fill `lines`, `commands` and `planning` after.
+    #[must_use]
+    pub fn new(title: SanitizedText) -> Self {
+        PreviewBox {
+            title,
+            lines: Vec::new(),
+            commands: Vec::new(),
+            choices: vec![sanitize_line("Cancel"), sanitize_line("Confirm")],
+            cursor: 0,
+            planning: false,
+        }
+    }
+
+    /// The same box with its own choices — `labels[0]` is the safe one and
+    /// is where the cursor goes back to (ADR-0038 §1).
+    #[must_use]
+    pub fn with_choices(mut self, labels: Vec<SanitizedText>) -> Self {
+        self.choices = labels;
+        self.cursor = 0;
+        self
+    }
+
+    /// The choices, left to right.
+    #[must_use]
+    pub fn choices(&self) -> &[SanitizedText] {
+        &self.choices
+    }
+
     /// The choice the cursor is on.
     #[must_use]
     pub fn selected(&self) -> usize {
@@ -78,8 +126,7 @@ impl PreviewBox {
 /// `width` today (no line wraps); taken anyway so a future wrap never
 /// changes this function's callers.
 #[must_use]
-pub fn preview_rows(view: &PreviewBox, width: u16) -> u16 {
-    let _ = width;
+pub fn preview_rows(view: &PreviewBox, _width: u16) -> u16 {
     let body = if view.planning { 1 } else { view.lines.len() };
     let rows = 1 // top border + title
         + body
@@ -87,6 +134,33 @@ pub fn preview_rows(view: &PreviewBox, width: u16) -> u16 {
         + 1 // choices row
         + 1; // bottom border + footer
     u16::try_from(rows).unwrap_or(u16::MAX)
+}
+
+/// Where the box goes in `frame`: docked to the bottom, at its own height
+/// ([`preview_rows`]), with the frame's last row left to the screen footer.
+///
+/// When the **frame** is smaller than [`PREVIEW_MIN`] this returns the one
+/// row the "preview needs 40x12" message takes instead, still above the
+/// footer — the same shape as [`crate::name_prompt::name_prompt_area`]. The
+/// size decision lives here so the widget is only ever handed a rect it can
+/// draw a real box in.
+#[must_use]
+pub fn preview_box_area(frame: Rect, view: &PreviewBox) -> Rect {
+    let footer_row = u16::from(frame.height > 1);
+    let usable = frame.height.saturating_sub(footer_row);
+    let height = if frame.width < PREVIEW_MIN.0 || frame.height < PREVIEW_MIN.1 {
+        usable.min(1)
+    } else {
+        preview_rows(view, frame.width)
+            .max(MIN_BOX_ROWS)
+            .min(usable)
+    };
+    Rect {
+        x: frame.x,
+        y: frame.y + usable.saturating_sub(height),
+        width: frame.width,
+        height,
+    }
 }
 
 /// [`PreviewBox`] drawn into whatever `Rect` the caller docks it to —
@@ -98,56 +172,49 @@ pub struct PreviewBoxWidget<'a> {
     pub theme: &'a Theme,
 }
 
-/// One choice: bracketed when the cursor is on it, spaced the same width
-/// otherwise, so the row does not shift as the cursor moves.
-fn button(label: &str, selected: bool) -> String {
-    if selected {
-        format!("[ {label} ]")
-    } else {
-        format!("  {label}  ")
-    }
-}
-
 impl PreviewBoxWidget<'_> {
     /// The lines, commands and choice buttons between the title and footer
-    /// borders — everything `render` draws once it knows the area is big
-    /// enough and cleared.
-    fn draw_body(&self, area: Rect, width: usize, mut y: u16, buf: &mut Buffer) {
+    /// borders. **Every** interior row is a `│ … │` content row, blank ones
+    /// included: docked into a rect taller than [`preview_rows`] the box
+    /// still reads as a box, instead of a title and a footer with a hole
+    /// between them (M5 group 04 review, Critical 1).
+    ///
+    /// The buttons sit on the last interior row, right above the footer, so
+    /// the slack goes between the plan and the choices.
+    fn draw_body(&self, area: Rect, width: usize, buf: &mut Buffer) {
         let view = self.view;
         let text_style = foreground(self.theme, Token::Text);
         let muted = foreground(self.theme, Token::TextMuted);
-        let draw = |text: &str, style: Style, y: u16, buf: &mut Buffer| {
-            if y < area.bottom().saturating_sub(1) {
-                buf.set_string(area.x, y, content_row(text, width), style);
-            }
-        };
 
+        let mut body: Vec<(&str, Style)> = Vec::new();
         if view.planning {
-            draw("predicting…", muted, y, buf);
-            y = y.saturating_add(1);
+            body.push(("predicting…", muted));
         } else {
-            for line in &view.lines {
-                draw(line.as_str(), text_style, y, buf);
-                y = y.saturating_add(1);
-            }
+            body.extend(view.lines.iter().map(|line| (line.as_str(), text_style)));
         }
-        for command in &view.commands {
-            draw(command.as_str(), muted, y, buf);
-            y = y.saturating_add(1);
+        body.extend(view.commands.iter().map(|line| (line.as_str(), muted)));
+
+        let first = area.y.saturating_add(1);
+        // The buttons row; `render` has already checked there is one.
+        let buttons_y = area.bottom().saturating_sub(2);
+        let room = usize::from(buttons_y.saturating_sub(first));
+        for (index, (text, style)) in body.iter().take(room).enumerate() {
+            let y = first.saturating_add(u16::try_from(index).unwrap_or(u16::MAX));
+            buf.set_string(area.x, y, content_row(text, width), *style);
+        }
+        let filled = u16::try_from(body.len().min(room)).unwrap_or(u16::MAX);
+        for y in first.saturating_add(filled)..buttons_y {
+            buf.set_string(area.x, y, content_row("", width), text_style);
         }
 
-        let buttons: String = view
-            .choices
-            .iter()
-            .enumerate()
-            .map(|(index, label)| button(label.as_str(), index == view.cursor))
-            .collect::<Vec<_>>()
-            .join("  ");
-        draw(&buttons, text_style, y, buf);
+        let labels: Vec<&str> = view.choices.iter().map(SanitizedText::as_str).collect();
+        let (buttons, cursor) = buttons_row(&labels, view.cursor);
+        buf.set_string(area.x, buttons_y, content_row(&buttons, width), text_style);
+        reverse_button(buf, area, buttons_y, cursor, text_style);
 
         buf.set_string(
             area.x,
-            area.bottom() - 1,
+            area.bottom().saturating_sub(1),
             border_row('╰', '╯', FOOTER, width),
             muted,
         );
@@ -163,7 +230,11 @@ impl Widget for &PreviewBoxWidget<'_> {
         let view = self.view;
         let text_style = foreground(self.theme, Token::Text);
 
-        if area.width < PREVIEW_MIN.0 || area.height < PREVIEW_MIN.1 {
+        // Against the rect, not against `PREVIEW_MIN`: the screen-size
+        // decision is `preview_box_area`'s, and a box at its own height is
+        // 7 rows, not 12. What the widget checks is whether *this* rect can
+        // hold a frame with something legible in it.
+        if area.width < PREVIEW_MIN.0 || area.height < MIN_BOX_ROWS {
             let message = crate::fit::fit(TOO_SMALL, width);
             buf.set_stringn(
                 area.x,
@@ -179,16 +250,14 @@ impl Widget for &PreviewBoxWidget<'_> {
             buf.set_stringn(area.x, y, " ".repeat(width), width, Style::default());
         }
 
-        let mut y = area.y;
         buf.set_string(
             area.x,
-            y,
+            area.y,
             border_row('╭', '╮', view.title.as_str(), width),
             text_style,
         );
-        y = y.saturating_add(1);
 
-        self.draw_body(area, width, y, buf);
+        self.draw_body(area, width, buf);
     }
 }
 

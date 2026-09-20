@@ -457,7 +457,11 @@ pub fn request_discard_at_diff_cursor(next: &mut AppState) -> bool {
             sanitize_line("Graft keeps a backup first, so `u` can undo it afterwards."),
         ],
         sanitize_line(&discard_patch_command(side)),
-    );
+    )
+    // The question and the button name the same act (m3/04 review M6).
+    // This box asks "Discard this hunk of …?"; a button reading `Confirm`
+    // leaves the user to remember which act they are confirming.
+    .with_labels("Cancel", "Discard");
     next.confirm = Some(PendingConfirm {
         view,
         then: ConfirmThen::Operate(Operation::Discard(Target::Patch {
@@ -566,6 +570,15 @@ pub fn request_discard(next: &mut AppState) -> bool {
     let Some(path) = selected_path(next) else {
         return false;
     };
+    // A conflicted path has no "before" to discard to. Its entry is both
+    // staged and unstaged, so the box below would offer a reset to HEAD and
+    // throw away the resolution in progress; `M`/`e`/`space resolved` are
+    // the conflict keys (design note). Refused in words, like `space` and
+    // hunk-`d` above — never silently.
+    if next.detail.selected_section() == Some(WorkingTreeSection::Unmerged) {
+        next.status = Status::Sticky(conflict_refusal("discard"));
+        return true;
+    }
     let Some(entry) = status_entry(next, &path) else {
         return false;
     };
@@ -1075,6 +1088,29 @@ mod tests {
         assert!(reason.contains("conflicted file"), "{reason}");
     }
 
+    /// `d` on a conflicted **file row** is refused too. A `UU` entry is both
+    /// staged and unstaged, so the discard box would otherwise offer "both
+    /// go back to HEAD" and `git restore --staged --worktree
+    /// --source=HEAD` — throwing away the resolution in progress. The key
+    /// is answered and says why (M5 group 04 review, Major 3).
+    #[test]
+    fn d_on_a_conflicted_file_row_says_why_instead_of_offering_a_reset_to_head() {
+        let mut state = state_on(
+            "src/auth.rs",
+            unmerged_entry("src/auth.rs"),
+            WorkingTreeSection::Unmerged,
+        );
+        assert!(
+            request_discard(&mut state),
+            "the key is answered, not ignored"
+        );
+        assert!(state.confirm.is_none(), "no discard box opened");
+        let Status::Sticky(reason) = &state.status else {
+            panic!("expected a sticky reason, got {:?}", state.status);
+        };
+        assert!(reason.contains("conflicted file"), "{reason}");
+    }
+
     /// The same for `d` on a hunk of a conflicted file: there is no clean
     /// side to cut a patch against, so the box never opens and the status
     /// line says so.
@@ -1210,6 +1246,11 @@ mod tests {
             pending.view.title
         );
         assert_eq!(pending.view.command.as_str(), "git apply -R -");
+        // The question and the button name the same act (m3/04 review M6):
+        // "Discard this hunk of …?" over a `Confirm` button leaves the user
+        // to remember what they are confirming.
+        assert_eq!(pending.view.choices[0].as_str(), "Cancel");
+        assert_eq!(pending.view.choices[1].as_str(), "Discard");
         assert!(
             matches!(
                 pending.then,

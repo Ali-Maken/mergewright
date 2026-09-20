@@ -47,16 +47,36 @@ const CANCEL_POLL: Duration = Duration::from_millis(100);
 /// A failed OS draw is deliberately not an error: the only thing that turns
 /// on it is *which* unpredictable-to-a-bystander bit is used, and refusing
 /// to open a credential prompt because the RNG is unavailable would be a
-/// far worse answer than falling back to the clock's nanosecond bit. There
-/// is nothing here for a caller to handle or a user to be told.
+/// far worse answer than falling back to the clock. There is nothing here
+/// for a caller to handle or a user to be told.
+///
+/// What the fallback is and is not worth, plainly. It is the parity of the
+/// whole microsecond count since the epoch, **not** the nanosecond bit this
+/// used to take: macOS's realtime clock is microsecond-granular, so
+/// `subsec_nanos() & 1` was the constant `0` on the machine this is
+/// developed on — a constant seed, which is exactly the length leak the
+/// seed exists to close (M5 group 04 review, Major 2). Microsecond parity
+/// does vary between prompts. It is *not* unpredictable to somebody who
+/// knows when the prompt opened to within a microsecond; it is only better
+/// than a constant. The reachable path is `getrandom::fill` failing, which
+/// on macOS means `getentropy` failing — so this is the floor under a case
+/// that does not happen, not the guarantee the seed rests on.
 pub(super) fn pulse_seed() -> bool {
     let mut byte = [0u8; 1];
     if getrandom::fill(&mut byte).is_ok() {
         return byte[0] & 1 == 1;
     }
+    clock_parity()
+}
+
+/// The fallback bit on its own, so it can be tested without breaking the
+/// OS RNG: the parity of the microseconds since the epoch. A clock before
+/// the epoch gives `false`; there is no clock that far wrong worth handling
+/// here, and the caller only ever gets a bit either way.
+fn clock_parity() -> bool {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .is_ok_and(|since| since.subsec_nanos() & 1 == 1)
+        .is_ok_and(|since| since.as_micros() & 1 == 1)
 }
 
 /// The asks waiting for an answer, by job: one at a time per job (git asks
@@ -167,6 +187,28 @@ mod tests {
         );
         let handle = thread::spawn(move || askpass.ask("Password for 'http://u@h':"));
         (handle, asked)
+    }
+
+    /// The fallback must not be a constant on this machine. `subsec_nanos()
+    /// & 1` was — macOS's realtime clock is microsecond-granular, so the low
+    /// nanosecond bit never left `0` and the fallback handed every prompt
+    /// the same seed (M5 group 04 review, Major 2). This draws until it has
+    /// seen both values; a constant fails it on whatever platform it runs.
+    #[test]
+    fn the_clock_fallback_is_not_a_constant() {
+        let deadline = Instant::now() + Duration::from_secs(1);
+        let (mut low, mut high) = (false, false);
+        while Instant::now() < deadline && !(low && high) {
+            if clock_parity() {
+                high = true;
+            } else {
+                low = true;
+            }
+        }
+        assert!(
+            low && high,
+            "the clock's parity never changed in a second: the fallback seed is a constant here"
+        );
     }
 
     #[test]
