@@ -7,7 +7,7 @@ use graft_core::event::{KeyCode, KeyPress};
 use graft_core::job::JobId;
 
 use graft_ops::operation::Operation;
-use graft_ui::confirm::{Choice, ConfirmView};
+use graft_ui::confirm::ConfirmView;
 
 use super::events::Command;
 use super::state::AppState;
@@ -58,10 +58,13 @@ pub fn confirm_key(
             pending.view.toggle();
         }
         KeyCode::Enter => {
-            let choice = pending.view.cursor;
+            // Index 0 is always the safe choice and always where the
+            // cursor starts (ADR-0038 §1), so anything else is the box's
+            // acting answer. Every box `graft` opens today has exactly two.
+            let acting = pending.view.selected() != 0;
             let then = pending.then.clone();
             next.confirm = None;
-            if choice == Choice::Confirm {
+            if acting {
                 match then {
                     ConfirmThen::Operate(op) => {
                         super::operate::launch(next, commands, op, next_id);
@@ -81,6 +84,7 @@ pub fn confirm_key(
 mod tests {
     use graft_core::event::Modifiers;
     use graft_ops::operation::Target;
+    use graft_term::sanitize_line;
 
     use super::*;
     use crate::update::state::AppState;
@@ -88,9 +92,9 @@ mod tests {
     fn pending() -> PendingConfirm {
         PendingConfirm {
             view: ConfirmView::new(
-                "Discard changes to a.rs?",
-                vec!["consequence".into()],
-                "git restore --worktree -- a.rs",
+                sanitize_line("Discard changes to a.rs?"),
+                vec![sanitize_line("consequence")],
+                sanitize_line("git restore --worktree -- a.rs"),
             ),
             then: ConfirmThen::Operate(Operation::Discard(Target::Paths(vec!["a.rs".into()]))),
         }
@@ -128,10 +132,7 @@ mod tests {
             key(KeyCode::Tab),
             &mut || { graft_core::job::JobId::new(1) }
         ));
-        assert_eq!(
-            state.confirm.unwrap().view.cursor,
-            graft_ui::confirm::Choice::Confirm
-        );
+        assert_eq!(state.confirm.unwrap().view.selected(), 1);
     }
 
     #[test]

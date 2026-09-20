@@ -14,6 +14,7 @@ use graft_core::journal::{EntryStatus, JournalEntry, OperationKind};
 use graft_core::oid::Oid;
 use graft_git::remote::RemoteFailure;
 use graft_ops::operation::{FetchParams, Lease, Operation, PullParams, PushParams};
+use graft_term::sanitize_line;
 use graft_ui::confirm::ConfirmView;
 
 use super::confirm::{ConfirmThen, PendingConfirm};
@@ -385,9 +386,9 @@ pub fn push_box(params: &PushParams, ahead: Option<usize>, local_tip: Option<Oid
                 params.remote
             ));
             ConfirmView::new(
-                format!("Push {local} → {remote_side}"),
-                vec![consequence.join(" · ")],
-                command,
+                sanitize_line(&format!("Push {local} → {remote_side}")),
+                vec![sanitize_line(&consequence.join(" · "))],
+                sanitize_line(&command),
             )
             .with_labels("Cancel", "Push")
         }
@@ -395,15 +396,15 @@ pub fn push_box(params: &PushParams, ahead: Option<usize>, local_tip: Option<Oid
             let theirs = short_oid(expected);
             let ours = local_tip.map_or_else(|| local.to_owned(), short_oid);
             ConfirmView::new(
-                format!("Force-push {local} → {remote_side}?"),
+                sanitize_line(&format!("Force-push {local} → {remote_side}?")),
                 vec![
-                    format!(
+                    sanitize_line(&format!(
                         "{remote_side} {theirs} → {ours} · refused if {} moved since your fetch (lease)",
                         params.remote
-                    ),
-                    format!("rewrites history for everyone who has {theirs}"),
+                    )),
+                    sanitize_line(&format!("rewrites history for everyone who has {theirs}")),
                 ],
-                command,
+                sanitize_line(&command),
             )
             .with_labels("Cancel", "Force push")
         }

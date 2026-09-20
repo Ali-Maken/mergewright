@@ -1,0 +1,37 @@
+# docs/shots/m5-ui-preview-box.txt — Ghost Preview box
+#
+# What right looks like: docked to the bottom of its area, its own
+# footer ("←→ choose  ⏎ act  esc cancel") on the area's last row,
+# never the screen's own footer row. While `planning` is set, the
+# lines are replaced by `predicting…` — no plan is shown before it
+# is computed. Below 40x12 the box draws one line, "preview needs
+# 40x12 · esc closes", and nothing else.
+
+=== ready, 80x24 ===
+╭ Preview: rebase feature/auth onto main───────────────────────────────────────╮
+│ 2 commits replayed · feature/auth 7f6e5d4 → ghost                            │
+│ working tree: 3 files updated · may conflict: src/auth.rs                    │
+│ undo: u restores feature/auth and the tree                                   │
+│ git rebase refs/heads/main                                                   │
+│ [ Cancel ]    Confirm                                                        │
+╰ ←→ choose  ⏎ act  esc cancel─────────────────────────────────────────────────╯
+
+=== ready, 160x48 ===
+╭ Preview: rebase feature/auth onto main───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 2 commits replayed · feature/auth 7f6e5d4 → ghost                                                                                                            │
+│ working tree: 3 files updated · may conflict: src/auth.rs                                                                                                    │
+│ undo: u restores feature/auth and the tree                                                                                                                   │
+│ git rebase refs/heads/main                                                                                                                                   │
+│ [ Cancel ]    Confirm                                                                                                                                        │
+╰ ←→ choose  ⏎ act  esc cancel─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+=== planning, 80x24 ===
+╭ Preview: rebase feature/auth onto main───────────────────────────────────────╮
+│ predicting…                                                                  │
+│ git rebase refs/heads/main                                                   │
+│ [ Cancel ]    Confirm                                                        │
+╰ ←→ choose  ⏎ act  esc cancel─────────────────────────────────────────────────╯
+
+=== too small, 30x8 ===
+preview needs 40x12 · esc clo…
+

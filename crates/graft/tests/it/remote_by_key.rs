@@ -342,7 +342,7 @@ fn rejected_then_lease_push() {
     let title = state
         .confirm
         .as_ref()
-        .map(|pending| pending.view.title.clone());
+        .map(|pending| pending.view.title.as_str().to_owned());
     assert_eq!(
         title,
         Some(format!("Force-push {branch} → origin/{branch}?"))

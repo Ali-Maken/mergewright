@@ -294,8 +294,8 @@ fn operate_answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEv
             next.status = Status::Busy(description);
         }
         // git is waiting on an answer only the user has.
-        AppEvent::Progress(id, Progress::CredentialNeeded { prompt }) => {
-            credential_needed(next, id, &prompt);
+        AppEvent::Progress(id, Progress::CredentialNeeded { prompt, pulse_seed }) => {
+            credential_needed(next, id, &prompt, pulse_seed);
         }
         _ => {}
     }

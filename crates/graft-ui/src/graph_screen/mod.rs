@@ -140,6 +140,71 @@ pub struct GraphView<'a> {
     /// column never appears and disappears as the same session scrolls
     /// (`docs/design-notes/m2-details-and-diffs.md`, marker column).
     pub marker_column: bool,
+    /// The operation banner: replaces the header's ahead/behind/walk slot
+    /// while `Some` — a merge/rebase/cherry-pick/revert is `in_progress`
+    /// (DESIGN.md §1.13, ADR-0038 §3). `None` draws the header as it always
+    /// has.
+    pub banner_op: Option<BannerView>,
+}
+
+/// The operation banner: `⚠ REBASING step 3 of 7 — conflict in
+/// src/auth/token.rs (+1)`, worded to the width it draws at
+/// ([`banner_line`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BannerView {
+    /// The operation's name, upper-case: `REBASING`, `MERGING`,
+    /// `CHERRY-PICKING`, `REVERTING`.
+    pub kind: SanitizedText,
+    /// The step git is on and how many there are, when the operation has
+    /// steps (a rebase/cherry-pick/revert sequence). `None` for a plain
+    /// merge, which has none to count.
+    pub step: Option<(u32, u32)>,
+    /// The first conflicted path, once a conflict has landed. `None` before
+    /// that — an in-progress operation the user has not hit trouble in yet.
+    pub conflict: Option<SanitizedText>,
+    /// How many more conflicted paths there are beyond the first
+    /// (`conflict`'s `(+N)`); `0` draws nothing extra.
+    pub more_conflicts: usize,
+    /// The banner has taken focus (a conflict just landed, ADR-0037 §3):
+    /// its slot draws reversed so a key-driven user notices without a
+    /// click.
+    pub focused: bool,
+    /// `s` (skip) is offered — a rebase/cherry-pick/revert sequence can
+    /// skip a step; a plain merge cannot. Affects only the hint bar
+    /// (`hint-bar-redesign`'s group, not this one's `graph_screen`
+    /// footer) — never the banner's own text or buttons.
+    pub skippable: bool,
+}
+
+/// `banner`'s text at `width` cells — narrower than 100 drops the word
+/// "step" and the operation's full sentence shape for a terser form; no
+/// conflict yet drops the `— conflict in …` clause entirely
+/// (`docs/design-notes/m5-history-and-ghost-preview.md`, "Operation banner"
+/// mockup).
+#[must_use]
+pub fn banner_line(banner: &BannerView, width: u16) -> String {
+    let wide = width >= 100;
+    let mut line = String::from("⚠ ");
+    line.push_str(banner.kind.as_str());
+    if let Some((step, total)) = banner.step {
+        if wide {
+            line.push_str(&format!(" step {step} of {total}"));
+        } else {
+            line.push_str(&format!(" {step}/{total}"));
+        }
+    }
+    if let Some(conflict) = &banner.conflict {
+        if wide {
+            line.push_str(" — conflict in ");
+        } else {
+            line.push_str(" — conflict ");
+        }
+        line.push_str(conflict.as_str());
+        if banner.more_conflicts > 0 {
+            line.push_str(&format!(" (+{})", banner.more_conflicts));
+        }
+    }
+    line
 }
 
 /// A Mistake Radar marker, painted on a row rather than laid out with it

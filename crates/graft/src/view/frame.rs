@@ -478,6 +478,7 @@ fn draw_confirm(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) 
     frame.render_widget(
         &graft_ui::confirm::Confirm {
             view: &pending.view,
+            theme,
         },
         rect,
     );

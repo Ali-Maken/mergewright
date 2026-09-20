@@ -53,10 +53,14 @@ pub enum PromptField {
 }
 
 impl PromptField {
-    /// An empty field of the kind `masked` calls for.
-    fn new(masked: bool) -> Self {
+    /// An empty field of the kind `masked` calls for. `pulse_seed` is
+    /// where the masked field's keystroke pulse starts — see
+    /// `crate::jobs::askpass::pulse_seed` for why it is drawn per prompt
+    /// and passed in rather than fixed here. The open field has no pulse
+    /// (it shows the real characters) and ignores it.
+    fn new(masked: bool, pulse_seed: bool) -> Self {
         if masked {
-            PromptField::Secret(SecretField::new())
+            PromptField::Secret(SecretField::new(pulse_seed))
         } else {
             PromptField::Open(TextField::new(""))
         }
@@ -276,7 +280,7 @@ pub fn host_of(prompt: &str) -> Option<String> {
 /// A question not opened here is not lost: the job waiting on it notices
 /// its cancellation, or the write it belongs to is no longer the one on
 /// screen and is answered by nobody, which git reports as a refusal.
-pub fn credential_needed(state: &mut AppState, id: JobId, prompt: &str) {
+pub fn credential_needed(state: &mut AppState, id: JobId, prompt: &str, pulse_seed: bool) {
     if state.operating != Some(id) || state.remote.cancelling == Some(id) {
         return;
     }
@@ -287,7 +291,7 @@ pub fn credential_needed(state: &mut AppState, id: JobId, prompt: &str) {
     state.credential = Some(CredentialPrompt {
         title: sanitize_line(&title),
         prompt: sanitize_line(prompt),
-        field: PromptField::new(is_masked_prompt(prompt)),
+        field: PromptField::new(is_masked_prompt(prompt), pulse_seed),
         job: id,
     });
 }

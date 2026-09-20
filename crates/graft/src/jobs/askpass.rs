@@ -31,6 +31,34 @@ use super::Cancel;
 /// How often a waiting ask looks at its job's cancel flag.
 const CANCEL_POLL: Duration = Duration::from_millis(100);
 
+/// A fresh random bit for the masked field's pulse, drawn once per prompt
+/// and carried to `update` in
+/// [`Progress::CredentialNeeded`](crate::update::Progress::CredentialNeeded).
+///
+/// Why the app draws it and not the widget: `graft_ui::text_input::
+/// SecretField` flips one bit on every edit so a keystroke visibly
+/// registers (ADR-0038 §2, first half). Starting that bit at a fixed value
+/// would leave the row resting at the parity of the password's length
+/// (second half, broken — M5 group 01 review, Major 2). Starting it at a
+/// bit nobody can predict leaves the resting row uniform and independent of
+/// what was typed. `update` stays pure and its tests pin the seed; the
+/// randomness lives out here with the rest of the job side.
+///
+/// A failed OS draw is deliberately not an error: the only thing that turns
+/// on it is *which* unpredictable-to-a-bystander bit is used, and refusing
+/// to open a credential prompt because the RNG is unavailable would be a
+/// far worse answer than falling back to the clock's nanosecond bit. There
+/// is nothing here for a caller to handle or a user to be told.
+pub(super) fn pulse_seed() -> bool {
+    let mut byte = [0u8; 1];
+    if getrandom::fill(&mut byte).is_ok() {
+        return byte[0] & 1 == 1;
+    }
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .is_ok_and(|since| since.subsec_nanos() & 1 == 1)
+}
+
 /// The asks waiting for an answer, by job: one at a time per job (git asks
 /// sequentially). Shared by the runner, which answers, and each job's
 /// [`ChannelAskPass`], which registers and removes its own entry.

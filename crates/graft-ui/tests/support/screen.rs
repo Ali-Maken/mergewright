@@ -64,5 +64,6 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
         detail_shown: false,
         changes_pane: false,
         marker_column: false,
+        banner_op: None,
     }
 }

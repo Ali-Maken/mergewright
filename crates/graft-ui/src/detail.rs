@@ -121,7 +121,7 @@ pub enum RadarLine {
 }
 
 /// A changed file's status, as the list shows it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FileStatusView {
     /// Added in this change.
     Added,
@@ -135,8 +135,14 @@ pub enum FileStatusView {
     Copied,
     /// File type changed (file, symlink, submodule).
     TypeChanged,
-    /// In conflict.
-    Unmerged,
+    /// In conflict: the porcelain `XY` status pair, already rendered as
+    /// words (`both modified`, `deleted by them`, `added by us`, …) — the
+    /// CONFLICTS row draws `how` in place of the usual letter and
+    /// added/removed counts (m5-history-and-ghost-preview/04).
+    Unmerged {
+        /// The conflict in words.
+        how: SanitizedText,
+    },
     /// Not tracked by git.
     Untracked,
 }
@@ -148,6 +154,11 @@ pub enum FileStatusView {
 /// `Staged` unstages, anything else stages.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum WorkingTreeSection {
+    /// Unmerged paths: a conflict from a stopped merge/rebase/cherry-pick.
+    /// Drawn first, ahead of every other section, so a conflict is never
+    /// mistaken for an ordinary staged/unstaged change
+    /// (m5-history-and-ghost-preview/04).
+    Unmerged,
     /// In the index, waiting to be committed.
     Staged,
     /// Changed in the working tree, not in the index.
@@ -161,6 +172,7 @@ impl WorkingTreeSection {
     #[must_use]
     pub fn title(self) -> &'static str {
         match self {
+            Self::Unmerged => "CONFLICTS",
             Self::Staged => "STAGED",
             Self::Unstaged => "UNSTAGED",
             Self::Untracked => "UNTRACKED",
@@ -169,7 +181,7 @@ impl WorkingTreeSection {
 }
 
 /// What a row of the file list is.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FileRowKind {
     /// A changes-pane group heading (`STAGED (2)`); the files of that group
     /// follow it at a greater depth. `FileRow::name` carries the word.
@@ -312,7 +324,7 @@ impl FileListView {
     #[must_use]
     pub fn section_entries(&self, row: usize) -> Vec<u32> {
         if !matches!(
-            self.rows.get(row).map(|r| r.kind),
+            self.rows.get(row).map(|r| &r.kind),
             Some(FileRowKind::Section { .. })
         ) {
             return Vec::new();

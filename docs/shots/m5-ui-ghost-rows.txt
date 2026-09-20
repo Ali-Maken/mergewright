@@ -1,0 +1,27 @@
+# docs/shots/m5-ui-ghost-rows.txt — ghost anchor vs real parent
+#
+# What right looks like: the top rows (real commits) draw solid
+# lines and the node's real shape (●/◉/◇). The bottom two rows are a
+# ghost slice — parents clipped at the preview's edge — and draw
+# dashed edges (┊/┈) and a hollow anchor (○, or ◎ for a ghost
+# merge). No ghost row may look like a real parent at either tier:
+# colour is unverified by this capture (CLAUDE.md rule 5) — the
+# shape difference is what a colourless terminal, and NO_COLOR,
+# rely on.
+
+=== Unicode tier, 8 cols ===
+◉─╮     
+│ ●     
+●─╯     
+◉─╮     
+┊ ○     
+○┈╯     
+
+=== ASCII tier, 8 cols ===
+*-\     
+| *     
+*-/     
+*-\     
+: o     
+o./     
+

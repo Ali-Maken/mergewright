@@ -1,0 +1,49 @@
+# docs/shots/m5-ui-confirm.txt — N-choice confirm, frame fix
+#
+# What right looks like: a rounded-border frame around every box
+# (row 484 fix — it used to draw no frame at all), the title in
+# the top border, and the cursor's reversed button always on
+# `Cancel` — the leftmost choice — whatever the box's own danger
+# level (ADR-0038 §1). Colour (which button reverses) is
+# unverified by this capture: judge the reversed-button glyphs.
+
+=== 2-choice push, 80x24 ===
+        ╭ Push main → origin/main──────────────────────────────────────╮
+        │ 2 commits · sets upstream · can't be undone from here —      │
+        │ origin keeps what you send                                   │
+        │                                                              │
+        │ git push --progress -u origin refs/heads/main:refs/heads/main│
+        │                                                              │
+        │ [ Cancel ]    Confirm                                        │
+        ╰──────────────────────────────────────────────────────────────╯
+
+=== 2-choice push, 160x48 ===
+                                                ╭ Push main → origin/main──────────────────────────────────────╮
+                                                │ 2 commits · sets upstream · can't be undone from here —      │
+                                                │ origin keeps what you send                                   │
+                                                │                                                              │
+                                                │ git push --progress -u origin refs/heads/main:refs/heads/main│
+                                                │                                                              │
+                                                │ [ Cancel ]    Confirm                                        │
+                                                ╰──────────────────────────────────────────────────────────────╯
+
+=== 3-choice undo-after-push, 80x24 ===
+        ╭ origin/main moved since you pushed───────────────────────────╮
+        │ u would normally undo your last push, but the remote tip     │
+        │ changed.                                                     │
+        │                                                              │
+        │ git push --force-with-lease origin refs/heads/main           │
+        │                                                              │
+        │ [ Cancel ]    Undo locally      Re-push old tip              │
+        ╰──────────────────────────────────────────────────────────────╯
+
+=== 3-choice undo-after-push, 160x48 ===
+                                                ╭ origin/main moved since you pushed───────────────────────────╮
+                                                │ u would normally undo your last push, but the remote tip     │
+                                                │ changed.                                                     │
+                                                │                                                              │
+                                                │ git push --force-with-lease origin refs/heads/main           │
+                                                │                                                              │
+                                                │ [ Cancel ]    Undo locally      Re-push old tip              │
+                                                ╰──────────────────────────────────────────────────────────────╯
+

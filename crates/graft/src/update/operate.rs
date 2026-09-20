@@ -17,6 +17,7 @@ use graft_git::diff::{PatchDirection, PatchError, Selection};
 use graft_git::status::StatusEntry;
 use graft_ops::apply::Refresh;
 use graft_ops::operation::{Operation, PatchSide, Target};
+use graft_term::sanitize_line;
 use graft_ui::detail::{BodyRow, DetailFocus, LineKindView, WorkingTreeSection};
 
 use super::confirm::{ConfirmThen, PendingConfirm};
@@ -162,6 +163,14 @@ pub fn stage_selected(
     let op = match section {
         WorkingTreeSection::Staged => Operation::Unstage(target),
         WorkingTreeSection::Unstaged | WorkingTreeSection::Untracked => Operation::Stage(target),
+        // Staging a conflicted path is how git marks it resolved — a
+        // different act, with its own confirmation, and the conflict
+        // group's key rather than this one's. The key is still answered:
+        // see `conflict_refusal`.
+        WorkingTreeSection::Unmerged => {
+            next.status = Status::Sticky(conflict_refusal("stage"));
+            return true;
+        }
     };
     launch(next, commands, op, next_id);
     true
@@ -255,13 +264,26 @@ fn cursor_line(state: &AppState) -> Option<u32> {
 /// Which way `graft_ops` will apply a patch cut from `section`, and which
 /// diff it was cut from. Staging reads the worktree side forward; unstaging
 /// and discarding both reverse what is already there.
-const fn patch_direction(section: WorkingTreeSection) -> (PatchDirection, PatchSide) {
+///
+/// `None` for a conflicted path: a file with conflict markers in it has no
+/// clean side to cut a hunk against, so there is no patch to build and the
+/// caller says so rather than guessing a side.
+const fn patch_direction(section: WorkingTreeSection) -> Option<(PatchDirection, PatchSide)> {
     match section {
-        WorkingTreeSection::Staged => (PatchDirection::Reverse, PatchSide::Index),
+        WorkingTreeSection::Staged => Some((PatchDirection::Reverse, PatchSide::Index)),
         WorkingTreeSection::Unstaged | WorkingTreeSection::Untracked => {
-            (PatchDirection::Forward, PatchSide::Worktree)
+            Some((PatchDirection::Forward, PatchSide::Worktree))
         }
+        WorkingTreeSection::Unmerged => None,
     }
+}
+
+/// Why a key in the changes pane will not act on a conflicted path, in the
+/// same shape as [`side_by_side_refusal`]: the key is answered and the
+/// status line carries the reason, because a key that silently does nothing
+/// reads as broken.
+fn conflict_refusal(verb: &str) -> String {
+    format!("{verb} does not act on a conflicted file \u{2014} resolve the conflict first")
 }
 
 /// Why a patch could not be built, in words that say what to do instead.
@@ -362,7 +384,10 @@ pub fn stage_at_diff_cursor(
     } else {
         "stage"
     };
-    let (direction, side) = patch_direction(section);
+    let Some((direction, side)) = patch_direction(section) else {
+        next.status = Status::Sticky(conflict_refusal(verb));
+        return true;
+    };
     let patch_bytes = match patch_for(next, &unit, direction, verb) {
         Ok(bytes) => bytes,
         Err(reason) => {
@@ -408,7 +433,10 @@ pub fn request_discard_at_diff_cursor(next: &mut AppState) -> bool {
         return false;
     };
     // A discard always reverses what is on disk, whichever side it came from.
-    let (_, side) = patch_direction(section);
+    let Some((_, side)) = patch_direction(section) else {
+        next.status = Status::Sticky(conflict_refusal("discard"));
+        return true;
+    };
     let patch_bytes = match patch_for(next, &unit, PatchDirection::Reverse, "discard") {
         Ok(bytes) => bytes,
         Err(reason) => {
@@ -420,15 +448,15 @@ pub fn request_discard_at_diff_cursor(next: &mut AppState) -> bool {
     let unit_word = if unit.one_line { "line" } else { "hunk" };
     let shown = path.display();
     let view = graft_ui::confirm::ConfirmView::new(
-        format!("Discard this {unit_word} of {shown}?"),
+        sanitize_line(&format!("Discard this {unit_word} of {shown}?")),
         vec![
-            format!(
+            sanitize_line(&format!(
                 "{} added / {} removed lines go back to how they were.",
                 counts.0, counts.1
-            ),
-            "Graft keeps a backup first, so `u` can undo it afterwards.".to_string(),
+            )),
+            sanitize_line("Graft keeps a backup first, so `u` can undo it afterwards."),
         ],
-        discard_patch_command(side),
+        sanitize_line(&discard_patch_command(side)),
     );
     next.confirm = Some(PendingConfirm {
         view,
@@ -557,8 +585,12 @@ pub fn request_discard(next: &mut AppState) -> bool {
     };
     let mut consequence = discard_consequence(&entry, counts);
     consequence.push("Graft keeps a backup first, so `u` can undo it afterwards.".to_string());
-    let view = graft_ui::confirm::ConfirmView::new(question, consequence, command)
-        .with_labels("Cancel", verb);
+    let view = graft_ui::confirm::ConfirmView::new(
+        sanitize_line(&question),
+        consequence.iter().map(|line| sanitize_line(line)).collect(),
+        sanitize_line(&command),
+    )
+    .with_labels("Cancel", verb);
     next.confirm = Some(PendingConfirm {
         view,
         then: ConfirmThen::Operate(Operation::Discard(Target::Paths(vec![path]))),
@@ -991,6 +1023,7 @@ mod tests {
             WorkingTreeSection::Staged => staged_entry(&path),
             WorkingTreeSection::Unstaged => unstaged_entry(&path),
             WorkingTreeSection::Untracked => untracked_entry(&path),
+            WorkingTreeSection::Unmerged => unmerged_entry(&path),
         };
         let mut state = state_on(&path, entry, section);
         state.detail.focus = DetailFocus::Diff;
@@ -1015,6 +1048,48 @@ mod tests {
             panic!("expected a patch target, got {target:?}");
         };
         (path, patch, *side)
+    }
+
+    /// A conflicted file's row answers `Space` with a reason rather than
+    /// doing nothing: staging one is how git marks a conflict resolved,
+    /// which is a different act from staging a change and is not this key's
+    /// (m5-history-and-ghost-preview/04 seam). A key that silently does
+    /// nothing reads as broken.
+    #[test]
+    fn space_on_a_conflicted_file_says_why_instead_of_staging_it() {
+        let mut state = state_on(
+            "src/auth.rs",
+            unmerged_entry("src/auth.rs"),
+            WorkingTreeSection::Unmerged,
+        );
+        let mut commands = Vec::new();
+        assert!(
+            stage_selected(&mut state, &mut commands, &mut ids()),
+            "the key is answered, not ignored"
+        );
+        assert!(commands.is_empty(), "nothing is staged: {commands:?}");
+        assert!(state.operating.is_none());
+        let Status::Sticky(reason) = &state.status else {
+            panic!("expected a sticky reason, got {:?}", state.status);
+        };
+        assert!(reason.contains("conflicted file"), "{reason}");
+    }
+
+    /// The same for `d` on a hunk of a conflicted file: there is no clean
+    /// side to cut a patch against, so the box never opens and the status
+    /// line says so.
+    #[test]
+    fn d_in_the_diff_region_of_a_conflicted_file_says_why_instead_of_asking() {
+        let mut state = state_on_diff(WorkingTreeSection::Unmerged, one_pair_diff(), 0);
+        assert!(
+            request_discard_at_diff_cursor(&mut state),
+            "the key is answered, not ignored"
+        );
+        assert!(state.confirm.is_none(), "no box opened");
+        let Status::Sticky(reason) = &state.status else {
+            panic!("expected a sticky reason, got {:?}", state.status);
+        };
+        assert!(reason.contains("conflicted file"), "{reason}");
     }
 
     #[test]
@@ -1128,13 +1203,13 @@ mod tests {
         let mut state = state_on_diff(WorkingTreeSection::Unstaged, one_pair_diff(), 0);
         assert!(request_discard_at_diff_cursor(&mut state));
         let pending = state.confirm.expect("confirm box opened");
-        assert_eq!(pending.view.cursor, graft_ui::confirm::Choice::Cancel);
+        assert_eq!(pending.view.selected(), 0);
         assert!(
             pending.view.title.as_str().contains("hunk of src/a.rs"),
             "the question names what goes: {:?}",
             pending.view.title
         );
-        assert_eq!(pending.view.command, "git apply -R -");
+        assert_eq!(pending.view.command.as_str(), "git apply -R -");
         assert!(
             matches!(
                 pending.then,
@@ -1355,7 +1430,7 @@ mod tests {
         );
         assert!(request_discard(&mut state));
         let pending = state.confirm.expect("confirm box opened");
-        assert_eq!(pending.view.command, "git clean -f -- new.txt");
+        assert_eq!(pending.view.command.as_str(), "git clean -f -- new.txt");
         assert_eq!(
             pending.then,
             ConfirmThen::Operate(Operation::Discard(Target::Paths(vec!["new.txt".into()])))
@@ -1372,7 +1447,7 @@ mod tests {
         assert!(request_discard(&mut state));
         let pending = state.confirm.expect("confirm box opened");
         assert_eq!(
-            pending.view.command,
+            pending.view.command.as_str(),
             "git restore --staged --worktree --source=HEAD -- src/a.rs"
         );
     }
@@ -1386,7 +1461,7 @@ mod tests {
         );
         assert!(request_discard(&mut state));
         let pending = state.confirm.expect("confirm box opened");
-        assert_eq!(pending.view.cursor, graft_ui::confirm::Choice::Cancel);
+        assert_eq!(pending.view.selected(), 0);
     }
 
     fn deleted_and_staged(path: &str) -> StatusEntry {
@@ -1491,12 +1566,18 @@ mod tests {
         );
         assert!(request_discard(&mut state));
         let pending = state.confirm.as_ref().expect("a box opened");
-        assert_eq!(pending.view.title, "Delete new.txt?");
+        assert_eq!(pending.view.title.as_str(), "Delete new.txt?");
         // The question and the button say the same thing (m3/04 review
         // round; the box used to ask "Delete" over a `Discard` button).
-        assert_eq!(pending.view.confirm_label, "Delete");
-        assert_eq!(pending.view.safe_label, "Cancel");
-        let said = pending.view.message.join(" ");
+        assert_eq!(pending.view.choices[1].as_str(), "Delete");
+        assert_eq!(pending.view.choices[0].as_str(), "Cancel");
+        let said = pending
+            .view
+            .message
+            .iter()
+            .map(graft_term::SanitizedText::as_str)
+            .collect::<Vec<_>>()
+            .join(" ");
         assert!(said.contains("Deletes the file"), "{said}");
         assert!(said.contains("backup"), "{said}");
     }
@@ -1510,8 +1591,8 @@ mod tests {
         );
         assert!(request_discard(&mut state));
         let pending = state.confirm.as_ref().expect("a box opened");
-        assert_eq!(pending.view.title, "Discard changes to src/a.rs?");
-        assert_eq!(pending.view.confirm_label, "Discard");
+        assert_eq!(pending.view.title.as_str(), "Discard changes to src/a.rs?");
+        assert_eq!(pending.view.choices[1].as_str(), "Discard");
     }
 
     #[test]
@@ -1531,7 +1612,13 @@ mod tests {
         let mut state = state_on("src/a.rs", both, WorkingTreeSection::Unstaged);
         assert!(request_discard(&mut state));
         let pending = state.confirm.as_ref().expect("a box opened");
-        let said = pending.view.message.join(" ");
+        let said = pending
+            .view
+            .message
+            .iter()
+            .map(graft_term::SanitizedText::as_str)
+            .collect::<Vec<_>>()
+            .join(" ");
         assert!(
             said.contains("Both the staged and the unstaged change"),
             "{said}"

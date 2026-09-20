@@ -2892,6 +2892,7 @@ fn prelude_proceeds_into_credential_prompt() {
             push,
             Progress::CredentialNeeded {
                 prompt: "Password for 'http://u@h':".to_owned(),
+                pulse_seed: false,
             },
         ),
     );
