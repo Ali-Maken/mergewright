@@ -88,7 +88,12 @@ pub fn revert_to(
 ) -> Result<Vec<Applied>, UndoError> {
     let plans = plan_revert_to(ctx.journal.entries(), target).map_err(UndoError::Nothing)?;
     let mut done = Vec::new();
-    for plan in &plans {
+    for (step, plan) in plans.iter().enumerate() {
+        if step > 0 {
+            // One entry per step, so one id per step: a `Context` names one
+            // entry until it is told to move on.
+            ctx.advance();
+        }
         if ctx.stop.should_stop() {
             return Err(UndoError::PartWay {
                 done,

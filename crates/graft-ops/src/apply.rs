@@ -323,6 +323,28 @@ impl<'a> Context<'a> {
         EntryId::new(self.now_unix_ms, self.random)
     }
 
+    /// Move on to the next entry id within one call.
+    ///
+    /// Almost every call journals one entry and keeps one id. The time
+    /// machine (§6.6) is the exception: it journals one `Undo` entry per
+    /// step, and two entries may well be minted inside the same
+    /// millisecond, so the clock alone cannot tell them apart. The random
+    /// half is incremented as an 80-bit big-endian counter — ULID's own
+    /// rule for entries that share a timestamp — which keeps the ids
+    /// distinct *and* in the order they were written.
+    pub(crate) fn advance(&mut self) {
+        for byte in self.random.iter_mut().rev() {
+            let (next, carried) = byte.overflowing_add(1);
+            *byte = next;
+            if !carried {
+                return;
+            }
+        }
+        // All ten bytes wrapped: astronomically unlikely, and the only
+        // honest thing left is a different millisecond.
+        self.now_unix_ms = self.now_unix_ms.saturating_add(1);
+    }
+
     /// The directory the journal and the temporary index copies live in.
     pub(crate) fn scratch(&self) -> &Path {
         &self.scratch

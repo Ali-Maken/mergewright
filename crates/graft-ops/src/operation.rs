@@ -674,7 +674,15 @@ impl Operation {
             Self::BranchCreate(params) => history::refs_of_branch_create(params),
             Self::BranchDelete(params) | Self::TagDelete(params) => vec![params.name.clone()],
             Self::TagCreate(params) => vec![history::tag_ref(&params.name)],
-            Self::BranchFromStash(params) => vec![history::branch_ref(&params.name)],
+            // `HEAD` as well: the preview reaches the stash commit by
+            // asking for what is on it and not on `HEAD`, and the branch
+            // starts at the stash's base, not at `HEAD` (m5/07).
+            Self::BranchFromStash(params) => {
+                vec![history::branch_ref(&params.name), "HEAD".to_owned()]
+            }
+            // The branch being pushed: a re-push has to prove its commit is
+            // on it before it will draw a force-push (ADR-0038 §4).
+            Self::Push(params) => vec![params.branch.clone()],
             _ => vec![],
         };
         FactsScope {

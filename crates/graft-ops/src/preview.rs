@@ -793,7 +793,15 @@ fn checkout(
 }
 
 /// What `HEAD` resolves to now, as the facts saw it.
+///
+/// A scope that asked for `"HEAD"` has the answer already resolved; falling
+/// back to the branch's own entry covers a scope that named the branch
+/// instead. A scope that named neither has no tip to give, and saying
+/// "nothing changes" would be a guess.
 fn head_tip(facts: &RepoFacts) -> Option<Oid> {
+    if let Some(oid) = facts.refs.get("HEAD").copied().flatten() {
+        return Some(oid);
+    }
     match &facts.head {
         HeadRef::Branch(name) => facts.refs.get(name).copied().flatten(),
         HeadRef::Detached(oid) => Some(*oid),
@@ -853,7 +861,11 @@ fn branch_from_stash(
     // commit the stash was taken on, its first parent — and applies there,
     // which is why it cannot conflict. The stash commit is not reachable
     // from `HEAD`, so one capped `rev-list` reaches it and its parents.
-    let head = head_tip(facts).unwrap_or(params.commit);
+    let head = head_tip(facts).ok_or_else(|| {
+        PreviewError::Read(RunError::Unparsable(
+            "HEAD is on no commit, so there is nothing the stash is not on".to_owned(),
+        ))
+    })?;
     let range = history_reads::commits_between(repo, head, params.commit, 1, stop)?;
     let base = range
         .commits
@@ -898,10 +910,14 @@ fn push(
             graft_core::journal::OperationKind::Push,
         )));
     };
-    let tip = facts.refs.get(&params.branch).copied().flatten();
-    if let Some(tip) = tip
-        && !is_ancestor(repo, source, tip, stop)?
-    {
+    // The commit has to be on the branch being pushed. A branch the facts
+    // cannot resolve fails the same way: an unverified re-push is not one
+    // this box will draw.
+    let on_branch = match facts.refs.get(&params.branch).copied().flatten() {
+        Some(tip) => is_ancestor(repo, source, tip, stop)?,
+        None => false,
+    };
+    if !on_branch {
         return Err(PreviewError::Refused(Refusal::NotOnBranch {
             commit: source,
             branch: short_ref(&params.branch).to_owned(),

@@ -320,7 +320,15 @@ fn touches_of(steps: &[Step]) -> Touches {
     for step in steps {
         match step {
             Step::UpdateRef { name, .. } => touches.refs.push(name.clone()),
-            Step::SetHead(_) => touches.refs.push("HEAD".to_owned()),
+            // `HEAD` is deliberately **not** a touched ref, for the same
+            // reason a checkout does not record one
+            // (`history::touches_checkout`): a touched ref is snapshotted
+            // into `refs_before`/`refs_after`, and inverting that snapshot
+            // emits `update-ref HEAD <old> <new>`, which moves the branch
+            // `HEAD` points at rather than `HEAD` itself. The move is
+            // recorded by the entry's `head_before`/`head_after` and put
+            // back by `SetHead`, which is symbolic-aware.
+            Step::SetHead(_) => {}
             Step::RestoreIndex { .. } => touches.index = true,
             Step::RestoreWorktree { .. } => touches.worktree = true,
             Step::StashStore { .. } | Step::StashDrop { .. } => {

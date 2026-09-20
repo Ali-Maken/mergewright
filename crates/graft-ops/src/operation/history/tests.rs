@@ -448,8 +448,12 @@ fn touches_name_the_branch_head_is_on_and_the_trees_that_move() {
     );
 }
 
+/// The scope is what the operation's facts have to answer: what `check`
+/// reads, and — since m5/07 — what `preview::plan` needs to draw the box.
+/// `HEAD` on a branch-from-stash is the preview's: it reaches the stash
+/// commit by asking for what is on it and not on `HEAD`.
 #[test]
-fn facts_scope_names_exactly_the_refs_check_reads() {
+fn facts_scope_names_the_refs_check_and_the_preview_read() {
     let scope = |refs: &[&str]| FactsScope {
         remotes: false,
         refs: refs.iter().map(|r| (*r).to_owned()).collect(),
@@ -465,7 +469,10 @@ fn facts_scope_names_exactly_the_refs_check_reads() {
     );
     assert_eq!(branch_delete().facts_scope(), scope(&[FEAT]));
     assert_eq!(tag_create(None).facts_scope(), scope(&["refs/tags/v1"]));
-    assert_eq!(branch_from_stash().facts_scope(), scope(&["refs/heads/nb"]));
+    assert_eq!(
+        branch_from_stash().facts_scope(),
+        scope(&["refs/heads/nb", "HEAD"])
+    );
     assert_eq!(
         Operation::Stage(Target::Paths(vec![PathBuf::from("a")])).facts_scope(),
         FactsScope::default()
