@@ -71,6 +71,12 @@ pub enum Progress {
         /// git's own words, raw — remote-reachable, sanitised before it is
         /// kept (`update::credential`).
         prompt: String,
+        /// Where the masked field's pulse starts, drawn fresh at random for
+        /// this prompt by `jobs::askpass::pulse_seed`. It is carried on the
+        /// event rather than drawn in `update` so `update` stays pure and
+        /// its tests can pin it (ADR-0038 §2; see
+        /// `graft_ui::text_input::SecretField::pulse`).
+        pulse_seed: bool,
     },
 }
 

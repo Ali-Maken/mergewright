@@ -24,7 +24,9 @@ fn asking(prompt: &str) -> AppState {
         op: None,
         stoppable: crate::update::remote::Stoppable::Yes,
     });
-    credential_needed(&mut state, JOB, prompt);
+    // The seed is pinned here: `update` is pure, and every test that
+    // looks at the drawn row needs to know where the pulse started.
+    credential_needed(&mut state, JOB, prompt, false);
     assert!(state.credential.is_some(), "the prompt opened");
     state
 }
@@ -357,7 +359,12 @@ fn a_second_ask_replaces_the_first_and_a_stale_one_is_ignored() {
     );
 
     // git asks for the password next, under the same job.
-    credential_needed(&mut state, JOB, "Password for 'https://ali@github.com':");
+    credential_needed(
+        &mut state,
+        JOB,
+        "Password for 'https://ali@github.com':",
+        false,
+    );
     let prompt = state.credential.as_ref().expect("open");
     assert!(prompt.masked(), "the second ask is a password");
     assert_eq!(typed_len(&state), 0, "the username is not left in it");
@@ -367,7 +374,7 @@ fn a_second_ask_replaces_the_first_and_a_stale_one_is_ignored() {
         operating: Some(JobId::new(9)),
         ..AppState::default()
     };
-    credential_needed(&mut other, JOB, "Password for 'https://x':");
+    credential_needed(&mut other, JOB, "Password for 'https://x':", false);
     assert!(other.credential.is_none());
 
     // Nor does one for a write the user has already asked to stop.
@@ -376,7 +383,7 @@ fn a_second_ask_replaces_the_first_and_a_stale_one_is_ignored() {
         ..AppState::default()
     };
     stopping.remote.cancelling = Some(JOB);
-    credential_needed(&mut stopping, JOB, "Password for 'https://x':");
+    credential_needed(&mut stopping, JOB, "Password for 'https://x':", false);
     assert!(stopping.credential.is_none());
 }
 

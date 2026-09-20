@@ -1,6 +1,6 @@
 # ui-ghost-banner-conflict: ghost rows, the preview box, N-choice confirm (+ its missing frame), the operation banner, the CONFLICTS section, the name prompt
 
-Status: blocked: needs graft (graft-ui scope done, gates green; workspace build breaks `crates/graft` — see Gates section for the exact signatures)
+Status: done (seam closed in a follow-on session that held graft-ui + graft; gates workspace-wide)
 Blocked by: none
 Build with: (blank — brownfield in `graph_column`, `confirm`, `detail_pane`; recommendation: **Sonnet**, pure widgets with per-width tests; the user judges the captures)
 **Conductor set after the scouts: Sonnet.**
@@ -103,3 +103,157 @@ One context. graft-ui only, files disjoint from `hint-bar-redesign` (`graph_scre
 - **`ui_widget_dumps` split into six tests.** The acceptance line names one test; I wrote six (`capture_for_docs_shots` in `graph_column`, `confirm`, `preview_box`, `graph_screen`, `detail_pane`, `name_prompt` tests modules), each `#[ignore]`d and each writing its own `docs/shots/m5-ui-*.txt`, matching the existing `credential_prompt::tests::capture_for_docs_shots` convention already in the crate. Ran all six by hand once (`cargo test -p graft-ui capture_for_docs_shots -- --ignored --nocapture`) to generate the committed files; they stay `#[ignore]`d so `cargo nextest run` doesn't rewrite them on every pass.
 - **Gates, graft-ui only:** `cargo fmt --check` pass, `cargo clippy -p graft-ui --all-targets -- -D warnings` pass (0 warnings), `cargo nextest run -p graft-ui` 287 passed/0 failed/7 skipped, `cargo test --doc -p graft-ui` 0 tests (crate has no doc tests). Workspace build (`cargo build --workspace`) fails in `crates/graft` — see the Gates section above for the exact signatures the next builder into `graft` needs.
 - **Deviation, already called out in MAP.md:** the ticket describes the banner replacing an "ahead/behind slot" in the header; no such slot exists (ahead/behind draws per-branch via row badges, not in the header). `banner_op` instead replaces the header's whole informational tail (walk state/filters/order/graphics status) — the closest real match to the design mockups. Not silently done: flagged in the `GraphView::banner_op` MAP.md entry my predecessor wrote.
+
+
+---
+
+## Follow-on session: the seam, and the masked field's pulse
+
+Crate set: `graft-ui` + `graft`. Worktree `agent-ac6481546dbf30070`, `main`
+merged in first (clean; group 04 never touched `text_input.rs`, which main
+had rewritten).
+
+### Job 1 — the seam `blocked: needs graft` stopped at
+
+Every call site above fixed to the new shapes; the graft-ui API was not
+reshaped to avoid the work.
+
+- `update/confirm.rs` — `Choice` gone. The box acts when
+  `view.selected() != 0`: index 0 is always the safe choice and always
+  where the cursor starts (ADR-0038 §1), so "not 0" is the acting answer
+  whether the box has two choices or five.
+- `view/frame.rs` — `Confirm { view, theme }`.
+- `view/rows.rs` — `banner_op: None` in both `GraphView` initialisers, with
+  a comment saying why (nothing in `app` starts a rebase or merge yet;
+  filling it is pass 2's).
+- `update/{operate,remote,stash,undo}.rs` — every `ConfirmView::new`
+  argument now goes through `sanitize_line`. Test sites follow
+  (`view.title.as_str()`, `view.choices[0]/[1]`, `message` mapped to `&str`
+  before `join`).
+- `jobs/detail.rs` — `diff_spec_for` treats `Unmerged` like `Unstaged`
+  (worktree against index: the file with its conflict markers, which is
+  what the user needs to see).
+- **A conflicted path is refused in words, not ignored.** `Space` on an
+  `Unmerged` row and `d` on a hunk of one both answer the key and put a
+  reason on the status line (`conflict_refusal`); `patch_direction` now
+  returns `Option` and gives `None` for `Unmerged`, because a file with
+  conflict markers has no clean side to cut a hunk against. A key that
+  silently does nothing reads as broken, and guessing a patch side would
+  have been worse.
+
+### Job 2 — a per-keystroke pulse that still hides the length
+
+`SecretField::pulse` was `!self.is_empty()`, so the first character lit the
+row and nothing after it changed anything — half of ADR-0038 §2 (a
+keystroke must visibly register) failing so the other half (the response
+must not encode length) could hold.
+
+Design, as the conductor proposed and as the old doc comment's own "entropy
+the field is seeded with" pointed at:
+
+- `SecretField::new(pulse_seed: bool)` is now the **only** constructor —
+  `Default` is gone, so there is no way to build a field that starts at a
+  fixed bit by accident. The bit flips on every edit (insert, each pasted
+  character, backspace, delete, `Ctrl+U`), exactly as it did before the
+  group 01 fix round.
+- The seed is drawn by the app, once per prompt:
+  `graft::jobs::askpass::pulse_seed()` (`getrandom`, falling back to the
+  clock's nanosecond bit — see below), carried on
+  `Progress::CredentialNeeded { prompt, pulse_seed }` and through
+  `credential_needed` → `PromptField::new` → `SecretField::new`. It rides
+  the event rather than being drawn inside `update` so `update` stays pure
+  and every test pins the seed.
+- The resting row is therefore `seed XOR (edits mod 2)`: uniform, and
+  independent of what was typed. The same password draws a lit row in half
+  its prompts and an unlit row in the other half.
+
+**Stated plainly, in the doc comment and in the captures:** the seed does
+not make the leak zero. Somebody watching that one screen from the moment
+the prompt opened can count the flips and so count the keystrokes; seeing
+it at two moments gives them the parity in between. That is the visible
+feedback the user asked for and cannot be removed while keeping it. What
+the seed closes is everything after the fact — the resting row, a
+screenshot, a capture committed to this repository — where there is no
+"when it opened" to count from.
+
+`getrandom` failure: the fallback is the clock's nanosecond bit, not a
+constant. Commented at the call site as a genuine ignore — the only thing
+that turns on the draw is *which* bystander-unpredictable bit is used, and
+refusing to open a credential prompt because the RNG is unavailable would
+be a far worse answer than the fallback. A constant fallback would have put
+the length leak straight back.
+
+### Acceptance (this session)
+
+- [x] The workspace builds and every gate is workspace-wide, never `-p` —
+      `cargo fmt --all --check` (clean), `cargo clippy --all-targets
+      --message-format=short -- -D warnings` (no output),
+      `cargo nextest run --workspace` **1885 passed / 1885 run**, 28
+      skipped (the `#[ignore]`d capture generators), `cargo test --doc
+      --workspace` 2 passed / 0 failed
+- [x] Staging or discarding a **conflicted** file answers the key and says
+      why, instead of doing nothing or guessing a patch side —
+      `update::operate::tests::space_on_a_conflicted_file_says_why_instead_of_staging_it`,
+      `update::operate::tests::d_in_the_diff_region_of_a_conflicted_file_says_why_instead_of_asking`
+- [x] **A keystroke visibly registers** — every one, not just the first
+      (ADR-0038 §2, first half; the user: a field that looks dead while
+      typing is not acceptable) — `graft_ui::text_input::tests::
+      every_keystroke_visibly_changes_the_masked_row`: eight inserts, a
+      backspace, a delete and `Ctrl+U`, from **both** seeds, each moving
+      exactly one cell between `•` and `◦`
+- [x] **That response does not count characters** (second half; the user:
+      neither is one whose feedback counts characters) — `graft_ui::
+      text_input::tests::the_resting_row_is_decided_by_the_seed_not_the_length`:
+      a 3-character secret and a 30-character one rest at the *same two
+      rows*, one per seed, so with the seed unknown and uniform a resting
+      row tells an observer nothing about the length
+- [x] The seed reaches the field from the app, per prompt, and the widget
+      stays pure — compile-enforced: `SecretField::new(pulse_seed: bool)`
+      is the only constructor and `Default` is gone, so no caller can get a
+      fixed start by omission; `graft-ui/Cargo.toml` names no RNG, and the
+      one production construction site is
+      `update::credential::PromptField::new`, reached only from
+      `credential_needed`. Tests pin the seed
+      (`view::tests::credential_state_seeded`,
+      `update::credential::tests`), which is why the captures are
+      reproducible
+- [x] Captures regenerated and judged by eye by the user (not by me, rule
+      6): `docs/shots/m4-credential-prompt-in-app.txt` (14 KB) now shows
+      **the same 7-character password at both seeds** — the two rows differ
+      in the first glyph and in nothing else, which is the condition made
+      visible; `docs/shots/m4-credential-prompt-and-hints.txt` caption
+      rewritten (it still named the deleted
+      `eight_glyphs_and_an_identical_row_for_any_length`). Colour is
+      **unverified** — these are `TestBackend` character grids, no colour
+      attribute survives (rule 5)
+- [x] MAP.md updated in both crates — `graft-ui` (`SecretField::new`,
+      `pulse`, no `Default`), `graft` (`Progress::CredentialNeeded`,
+      `PromptField::new`, `credential_needed`, `jobs::askpass::pulse_seed`,
+      the two refusals in `update::operate`)
+
+### Gaps handed back
+
+1. **`FileStatusView::Unmerged { how }` cannot say the real words yet.**
+   The design wants `both modified` / `deleted by them` from git's
+   porcelain `XY` pair. `graft_git::diff::FileStatus::Unmerged` is a unit
+   variant — `file_list.rs` maps every `U` to it — so `jobs/detail.rs` can
+   only pass `"unmerged"`. Carrying `XY` through needs `graft-git`, which
+   this session did not hold. The widget side is done and tested
+   (`detail_pane::files::tests::an_unmerged_row_shows_how_as_words_not_a_letter_and_counts`).
+2. **The `CONFLICTS` section is never populated.** `jobs/detail.rs`'s
+   `by_section` is a fixed array of three (Staged, Unstaged, Untracked);
+   nothing builds an `Unmerged` group. Pass 2's, as the ticket says.
+3. **Two committed captures are stale and I did not regenerate them.**
+   `docs/shots/m4-03-credential-masked-*.txt` and
+   `m4-04-credential-username-*.txt` still show the pre-M5 variable-length
+   mask (28 `•` glyphs for a 28-character password). They come from the M4
+   acceptance walk, which needs a local HTTP remote — heavy tier, not a
+   builder's. When they are regenerated, note that the first mask glyph is
+   the pulse and will differ between runs: that is the seed doing its job,
+   not a diff to chase.
+4. **The confirm-box section of
+   `docs/shots/m4-credential-prompt-and-hints.txt` predates this group's
+   frame fix.** That file's body is pasted together by hand from three
+   generators; `docs/shots/m5-ui-confirm.txt` shows the framed box
+   correctly. Re-pasting was group 04's to do and I left it rather than
+   hand-edit a capture body.

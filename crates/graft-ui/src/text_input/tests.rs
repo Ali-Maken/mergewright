@@ -350,94 +350,103 @@ fn changed_cells(before: &str, after: &str) -> Vec<(usize, char, char)> {
         .collect()
 }
 
-/// The heart of ADR-0038 §2 and of the conductor's binding condition: the
-/// masked row must carry **no** length signal at rest. A 3-character secret
-/// and a 30-character one draw exactly [`SECRET_GLYPHS`] glyphs and,
-/// stronger, draw the *same row, cell for cell* — before a further
-/// keystroke and after it.
+/// Half one of ADR-0038 §2 and of the conductor's binding condition: the
+/// masked row must carry **no** length signal at rest.
 ///
-/// The old version of this test deliberately did not compare the two rows,
-/// because `pulse` was a toggle and the two fields could rest at opposite
-/// parities: that parity was one bit of the length, on screen and in
-/// `docs/shots/m4-credential-prompt-in-app.txt` (M5 group 01 review, Major
-/// 2). `pulse` is now "something is typed", so the comparison the old test
-/// could not make is exactly the one that holds here.
+/// The row does flip as you type (the test below), so it cannot also be a
+/// constant. What makes it say nothing about the length is that it does not
+/// start at a fixed value: it starts at the seed the app draws afresh for
+/// every prompt. So the thing to assert is not "both lengths draw the same
+/// row" — they do not, for a given seed — but that **the seed, not the
+/// length, decides which row**: over the two seeds a 3-character secret and
+/// a 30-character one rest at exactly the same two rows, one each. With the
+/// seed uniform and unknown, so is the row, for any password.
 #[test]
-fn eight_glyphs_and_an_identical_row_for_any_length() {
-    let mut short = SecretField::new();
-    short.insert_str("abc");
-    let mut long = SecretField::new();
-    long.insert_str(&"x".repeat(30));
-    assert_eq!(short.len(), 3);
-    assert_eq!(long.len(), 30);
+fn the_resting_row_is_decided_by_the_seed_not_the_length() {
+    let rows = |text: &str| -> Vec<String> {
+        [false, true]
+            .into_iter()
+            .map(|seed| {
+                let mut field = SecretField::new(seed);
+                field.insert_str(text);
+                draw_secret(&secret_view(field.pulse()), false)
+            })
+            .collect()
+    };
+    let short = rows("abc");
+    let long = rows(&"x".repeat(30));
 
-    let short_before = draw_secret(&secret_view(short.pulse()), false);
-    let long_before = draw_secret(&secret_view(long.pulse()), false);
-    for drawn in [&short_before, &long_before] {
+    for drawn in short.iter().chain(long.iter()) {
         assert_eq!(
-            drawn.chars().filter(|c| *c == '•' || *c == '◦').count(),
+            drawn
+                .chars()
+                .filter(|c| *c == '\u{2022}' || *c == '\u{25e6}')
+                .count(),
             SECRET_GLYPHS,
             "{drawn:?}"
         );
     }
-    assert_eq!(
-        short_before, long_before,
-        "3 characters and 30 must be indistinguishable at rest"
+    assert_ne!(
+        short[0], short[1],
+        "the seed must be what moves the row, or seeding it changes nothing"
     );
-
-    // One more keystroke on each: still indistinguishable, and still the
-    // same row — no cell of it counts anything.
-    short.insert('d');
-    long.insert('y');
-    let short_after = draw_secret(&secret_view(short.pulse()), false);
-    let long_after = draw_secret(&secret_view(long.pulse()), false);
-    assert_eq!(short_after, long_after, "4 characters and 31, likewise");
+    let (mut short_sorted, mut long_sorted) = (short.clone(), long.clone());
+    short_sorted.sort();
+    long_sorted.sort();
     assert_eq!(
-        changed_cells(&short_before, &short_after),
-        Vec::new(),
-        "nothing in the row may move with the length"
+        short_sorted, long_sorted,
+        "3 characters and 30 rest at the same two rows, one per seed — so an \
+         observer who sees a resting row learns nothing about the length"
     );
 }
 
-/// The other half of the condition: a keystroke into an empty field does
-/// visibly register, and `Ctrl+U` visibly un-registers — one fixed cell,
-/// between the same two glyphs, at any length.
+/// Half two: a keystroke must visibly register — **every** keystroke, not
+/// just the first. The row flips on each insert, on a backspace, on a
+/// delete and on `Ctrl+U`, from either seed.
 ///
-/// What this does **not** claim: that the 2nd..nth keystroke shows
-/// anything. It cannot, and no deterministic field can — every row a field
-/// passes through while typing is also the resting row of a shorter
-/// password, so a row that is constant at rest (the assertion above) is
-/// constant while typing too. [`SecretField::pulse`] says what getting it
-/// back would need; the ticket's NOTES carries it as a gap.
+/// This is the half the group 01 fix round gave up to close the length
+/// leak (`pulse` became `!is_empty()`, so the 2nd..nth character changed
+/// nothing on screen). Seeding the toggle gets it back without giving the
+/// leak back — see [`SecretField::pulse`] for what an observer watching
+/// that one prompt throughout can still count.
 #[test]
-fn the_first_keystroke_and_ctrl_u_visibly_register() {
-    let mut field = SecretField::new();
-    let empty = draw_secret(&secret_view(field.pulse()), false);
-    field.insert('a');
-    let typed = draw_secret(&secret_view(field.pulse()), false);
+fn every_keystroke_visibly_changes_the_masked_row() {
+    for seed in [false, true] {
+        let mut field = SecretField::new(seed);
+        let mut previous = draw_secret(&secret_view(field.pulse()), false);
+        let one_cell_moved = |drawn: &str, previous: &str, what: &str| {
+            let delta = changed_cells(previous, drawn);
+            assert_eq!(delta.len(), 1, "{what} changed {delta:?}, seed {seed}");
+            let (_, was, now) = delta[0];
+            assert!(
+                matches!(
+                    (was, now),
+                    ('\u{2022}', '\u{25e6}') | ('\u{25e6}', '\u{2022}')
+                ),
+                "{what}: {was:?} -> {now:?}"
+            );
+        };
+        for (index, character) in "hunter2!".chars().enumerate() {
+            field.insert(character);
+            let drawn = draw_secret(&secret_view(field.pulse()), false);
+            one_cell_moved(&drawn, &previous, &format!("keystroke {index}"));
+            previous = drawn;
+        }
+        field.backspace();
+        let drawn = draw_secret(&secret_view(field.pulse()), false);
+        one_cell_moved(&drawn, &previous, "backspace");
+        previous = drawn;
 
-    let delta = changed_cells(&empty, &typed);
-    assert_eq!(delta.len(), 1, "exactly one cell changes: {delta:?}");
-    let (column, was, now) = delta[0];
-    assert_eq!((was, now), ('•', '◦'));
+        field.home();
+        field.delete();
+        let drawn = draw_secret(&secret_view(field.pulse()), false);
+        one_cell_moved(&drawn, &previous, "delete");
+        previous = drawn;
 
-    // A 30-character field: the same cell, the same two glyphs.
-    let mut long = SecretField::new();
-    let long_empty = draw_secret(&secret_view(long.pulse()), false);
-    long.insert_str(&"x".repeat(30));
-    let long_typed = draw_secret(&secret_view(long.pulse()), false);
-    assert_eq!(
-        changed_cells(&long_empty, &long_typed),
-        vec![(column, was, now)]
-    );
-
-    // `Ctrl+U` puts it out again.
-    long.clear();
-    assert_eq!(
-        draw_secret(&secret_view(long.pulse()), false),
-        long_empty,
-        "a cleared field is drawn as an empty one"
-    );
+        field.clear();
+        let drawn = draw_secret(&secret_view(field.pulse()), false);
+        one_cell_moved(&drawn, &previous, "ctrl+u");
+    }
 }
 
 /// The buffer never reallocates behind `Zeroizing`'s back: that is the
@@ -452,7 +461,7 @@ fn the_first_keystroke_and_ctrl_u_visibly_register() {
 /// needs — that the block being dropped is one `Zeroizing` still holds.
 #[test]
 fn secret_field_never_reallocates_silently() {
-    let mut field = SecretField::new();
+    let mut field = SecretField::new(false);
     let reserved = field.capacity();
     assert!(reserved >= 64, "a real password fits without growing");
 
@@ -479,7 +488,7 @@ fn secret_field_never_reallocates_silently() {
 
     // A clone starts with room too, so its next keystroke does not
     // reallocate the copy.
-    let mut typed = SecretField::new();
+    let mut typed = SecretField::new(false);
     typed.insert_str("hunter2");
     let cloned = typed.clone();
     assert_eq!(cloned.capacity(), typed.capacity());
@@ -525,7 +534,7 @@ fn debug_redacts_a_secret_fields_text() {
 /// is no `text()` to compare directly) and by [`SecretField::into_bytes`].
 #[test]
 fn secret_field_edits_by_length() {
-    let mut field = SecretField::new();
+    let mut field = SecretField::new(false);
     field.insert('a');
     field.insert(WIDE);
     field.insert('b');
@@ -549,7 +558,7 @@ fn secret_field_edits_by_length() {
         "into_bytes round-trips what editing actually left behind"
     );
 
-    let mut cleared = SecretField::new();
+    let mut cleared = SecretField::new(false);
     cleared.insert_str("hunter2");
     cleared.clear();
     assert!(cleared.is_empty());
@@ -562,7 +571,7 @@ fn secret_field_edits_by_length() {
 /// this field once per event while a prompt is open).
 #[test]
 fn secret_field_clone_is_independent() {
-    let mut field = SecretField::new();
+    let mut field = SecretField::new(false);
     field.insert_str("hunter2");
     let mut cloned = field.clone();
     cloned.insert('!');
@@ -587,9 +596,9 @@ fn secret_field_clone_is_independent() {
 /// — see `graft::update::credential::Answer`'s own `PartialEq`).
 #[test]
 fn secret_field_debug_and_eq_never_compare_content() {
-    let mut a = SecretField::new();
+    let mut a = SecretField::new(false);
     a.insert_str("hunter2");
-    let mut b = SecretField::new();
+    let mut b = SecretField::new(false);
     b.insert_str("orange17");
     assert_ne!(a, b, "different lengths");
     b.backspace();
@@ -605,8 +614,8 @@ fn secret_field_debug_and_eq_never_compare_content() {
         "a digit in a secret field's Debug is a length: {printed}"
     );
     // The same constant whatever is in it: nothing to difference.
-    let mut long = SecretField::new();
+    let mut long = SecretField::new(false);
     long.insert_str(&"x".repeat(30));
     assert_eq!(format!("{long:?}"), printed);
-    assert_eq!(format!("{:?}", SecretField::new()), printed);
+    assert_eq!(format!("{:?}", SecretField::new(false)), printed);
 }

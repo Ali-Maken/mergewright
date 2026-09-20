@@ -44,6 +44,10 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         problem,
         walk,
         rows,
+        // The operation banner is the conflict group's to fill (pass 2):
+        // nothing in `app` starts a rebase or merge yet, so there is never
+        // one in progress to announce.
+        banner_op: None,
         icons: graft_ui::graph_screen::Icons::default(),
         compaction,
         filters: Filters {
@@ -87,6 +91,7 @@ fn opening_view(
         problem,
         walk: WalkView::Opening,
         rows: Vec::new(),
+        banner_op: None,
         icons: graft_ui::graph_screen::Icons::default(),
         compaction: Compaction::at(crate::config::DEFAULT_MAX_LANES),
         filters: Filters::default(),

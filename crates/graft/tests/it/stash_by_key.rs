@@ -189,7 +189,7 @@ fn d_drops_a_stash_behind_the_box_and_u_puts_it_back_at_the_top() {
 
     let state = app.key(&state, KeyCode::Char('d'));
     let pending = state.confirm.as_ref().expect("the box opened");
-    assert_eq!(pending.view.title, "Drop stash@{1}?");
+    assert_eq!(pending.view.title.as_str(), "Drop stash@{1}?");
     assert!(state.operating.is_none(), "nothing ran before the answer");
     // `→` off the safe button, then `Enter`.
     let state = app.key(&state, KeyCode::Right);

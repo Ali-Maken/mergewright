@@ -262,6 +262,10 @@ pub struct SecretField {
     text: Zeroizing<String>,
     /// Character index, `0..=len()`.
     cursor: usize,
+    /// The masked row's one bit of keystroke feedback: flipped by every
+    /// edit, started from a seed the caller draws (see
+    /// [`SecretField::new`] and [`SecretField::pulse`]).
+    pulse: bool,
 }
 
 /// Bytes [`SecretField::new`] reserves up front. Longer than any password
@@ -270,19 +274,23 @@ pub struct SecretField {
 /// doc for why that matters.
 const SECRET_CAPACITY: usize = 256;
 
-impl Default for SecretField {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl SecretField {
-    /// An empty field, with its one buffer already reserved.
+    /// An empty field, with its one buffer already reserved, and its pulse
+    /// resting at `pulse_seed`.
+    ///
+    /// There is no `Default` and no seedless constructor on purpose: a
+    /// field that always starts unlit rests, after a straight-typed
+    /// password, at the parity of that password's length — one bit of the
+    /// length, on screen and in any capture (M5 group 01 review, Major 2).
+    /// The seed has to be a fresh random bit per prompt, and only the
+    /// caller can draw one; this type stays pure so its tests can pin both
+    /// seeds. `graft::jobs::askpass::pulse_seed` is where the app draws it.
     #[must_use]
-    pub fn new() -> Self {
+    pub fn new(pulse_seed: bool) -> Self {
         Self {
             text: Zeroizing::new(String::with_capacity(SECRET_CAPACITY)),
             cursor: 0,
+            pulse: pulse_seed,
         }
     }
 
@@ -333,6 +341,7 @@ impl SecretField {
         let at = byte_of(&self.text, self.cursor);
         self.text.insert(at, character);
         self.cursor += 1;
+        self.pulse = !self.pulse;
     }
 
     /// Type a run of characters — a bracketed paste, landing exactly as if
@@ -352,6 +361,7 @@ impl SecretField {
         let at = byte_of(&self.text, self.cursor);
         self.text.remove(at);
         self.wipe_after_end();
+        self.pulse = !self.pulse;
     }
 
     /// Delete the character under the cursor.
@@ -362,6 +372,7 @@ impl SecretField {
         let at = byte_of(&self.text, self.cursor);
         self.text.remove(at);
         self.wipe_after_end();
+        self.pulse = !self.pulse;
     }
 
     /// One character left.
@@ -391,6 +402,7 @@ impl SecretField {
     pub fn clear(&mut self) {
         self.text.zeroize();
         self.cursor = 0;
+        self.pulse = !self.pulse;
     }
 
     /// How many characters have been typed. Never shown to the user — a
@@ -425,29 +437,36 @@ impl SecretField {
         self.cursor
     }
 
-    /// The one bit the masked row is allowed to show: **is anything typed
-    /// in this field at all**. `false` for an untouched or just-cleared
-    /// field, `true` from the first character on, whatever the length.
+    /// The one bit the masked row shows: it flips on **every** edit —
+    /// insert, paste (once per character), backspace, delete, `Ctrl+U` —
+    /// so each keystroke visibly registers, which is the first half of
+    /// ADR-0038 §2.
     ///
-    /// It was a toggle flipped by every edit, which read as "a keystroke
-    /// landed" but left the field resting at the *parity of the edit
-    /// count* — for a straight-typed password, one bit of its length, on
-    /// screen and in a committed capture (M5 group 01 review, Major 2).
-    /// The name is kept because `graft::view::credential_view` calls it;
-    /// the meaning is not.
+    /// The second half is that the response must not encode the length.
+    /// It does not, because the bit does not start at a fixed value: it
+    /// starts at the seed the caller passed to [`SecretField::new`], which
+    /// the app draws fresh at random for each prompt. The row at rest is
+    /// `seed XOR (number of edits mod 2)`, and with the seed uniform and
+    /// unknown that is uniform and unknown too — the same password draws a
+    /// lit row in half its prompts and an unlit row in the other half, so
+    /// neither a glance at a resting screen nor a committed capture says
+    /// anything about how long it is.
     ///
-    /// No deterministic replacement can do better while still changing on
-    /// every keystroke: every state a field passes through while typing is
-    /// also the resting state of a shorter password, so a row that is
-    /// constant at rest is constant throughout. Per-keystroke feedback
-    /// needs something the password does not determine — a timer that puts
-    /// the pulse out again, or entropy the field is seeded with — and
-    /// neither exists in the pure update layer today. The cost, stated
-    /// plainly: the first character lights the row and `Ctrl+U` puts it
-    /// out, and characters in between change nothing on screen.
+    /// # What an observer can still infer
+    ///
+    /// Within one prompt the row genuinely flips as you type, so somebody
+    /// watching that screen from the moment the prompt opened counts the
+    /// flips and learns how many edits you have made — the length, if you
+    /// typed straight through. Seeing it at two moments tells them the
+    /// parity of the edits in between. That is not a leak the seed closes,
+    /// and it cannot be closed while a keystroke still has to show: it is
+    /// the visible feedback the user asked for. What the seed closes is
+    /// everything *after* the fact — the resting row, the screenshot, the
+    /// capture in this repository — where there is no "when it opened" to
+    /// count from.
     #[must_use]
     pub fn pulse(&self) -> bool {
-        !self.is_empty()
+        self.pulse
     }
 
     /// The only way out: what was typed, as UTF-8 bytes, in a buffer that
@@ -475,6 +494,7 @@ impl Clone for SecretField {
         Self {
             text,
             cursor: self.cursor,
+            pulse: self.pulse,
         }
     }
 }

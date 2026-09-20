@@ -584,7 +584,13 @@ impl<S: JobEvents> JobRunner<S> {
                 let askpass = Arc::new(super::askpass::ChannelAskPass::new(
                     id,
                     Box::new(move |prompt: String| {
-                        say(&sink, Progress::CredentialNeeded { prompt });
+                        say(
+                            &sink,
+                            Progress::CredentialNeeded {
+                                prompt,
+                                pulse_seed: super::askpass::pulse_seed(),
+                            },
+                        );
                     }),
                     waiting,
                     cancel.clone(),

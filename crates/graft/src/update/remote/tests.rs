@@ -107,9 +107,14 @@ fn pull_with_an_upstream_launches_it() {
 
 /// One box's title, consequence lines and command, exactly.
 fn assert_box(view: &ConfirmView, title: &str, message: &[&str], command: &str) {
-    assert_eq!(view.title, title);
-    assert_eq!(view.message, message);
-    assert_eq!(view.command, command);
+    assert_eq!(view.title.as_str(), title);
+    let said: Vec<&str> = view
+        .message
+        .iter()
+        .map(graft_term::SanitizedText::as_str)
+        .collect();
+    assert_eq!(said, message);
+    assert_eq!(view.command.as_str(), command);
 }
 
 /// The push box's title, consequence and command, exactly, for the three
@@ -134,7 +139,7 @@ fn push_box_text_table() {
         "git push --progress origin refs/heads/main:refs/heads/main",
     );
     assert_eq!(
-        (view.safe_label.as_str(), view.confirm_label.as_str()),
+        (view.choices[0].as_str(), view.choices[1].as_str()),
         ("Cancel", "Push")
     );
 
@@ -181,7 +186,7 @@ fn push_box_text_table() {
             "git push --progress --force-with-lease=refs/heads/main:{THEIRS} origin refs/heads/main:refs/heads/main"
         ),
     );
-    assert_eq!(view.confirm_label, "Force push");
+    assert_eq!(view.choices[1].as_str(), "Force push");
 }
 
 /// Every refusal `P` can give, as words on the status line.

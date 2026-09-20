@@ -144,14 +144,20 @@ fn d_asks_first_and_says_it_comes_back_at_stash_zero() {
     assert!(claimed);
     assert!(commands.is_empty(), "the box asks before anything runs");
     let pending = state.confirm.as_ref().expect("the box opened");
-    assert_eq!(pending.view.title, "Drop stash@{0}?");
+    assert_eq!(pending.view.title.as_str(), "Drop stash@{0}?");
     // The safe choice is under the cursor, and the two buttons say what the
     // question asks about.
-    assert_eq!(pending.view.cursor, graft_ui::confirm::Choice::Cancel);
-    assert_eq!(pending.view.safe_label, "Keep");
-    assert_eq!(pending.view.confirm_label, "Drop");
-    assert_eq!(pending.view.command, "git stash drop stash@{0}");
-    let said = pending.view.message.join(" ");
+    assert_eq!(pending.view.selected(), 0);
+    assert_eq!(pending.view.choices[0].as_str(), "Keep");
+    assert_eq!(pending.view.choices[1].as_str(), "Drop");
+    assert_eq!(pending.view.command.as_str(), "git stash drop stash@{0}");
+    let said = pending
+        .view
+        .message
+        .iter()
+        .map(graft_term::SanitizedText::as_str)
+        .collect::<Vec<_>>()
+        .join(" ");
     assert!(said.contains("3 files"), "{said:?}");
     assert!(
         said.contains("as stash@{0}, not where it was"),
