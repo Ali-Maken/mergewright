@@ -187,6 +187,8 @@ where
             // back (`super::outside`).
             command @ (Command::EditCommitMessage { .. }
             | Command::OpenExternalEditor { .. }
+            | Command::OpenMergetool { .. }
+            | Command::OpenConflictEditor { .. }
             | Command::Suspend) => {
                 let answer = handed_over(outside.handover.as_ref(), command);
                 // Whatever ran out there drew over every cell, and the frame
@@ -215,6 +217,16 @@ fn handed_over(outside: Option<&Handover<'_>>, command: Command) -> AppEvent {
             Command::EditCommitMessage { id, .. } => {
                 AppEvent::Produced(id, Product::ExternalEditor(Err(why)))
             }
+            // Refused in words, with the path, like every other mergetool
+            // failure: the conflict is still there, and the banner's line
+            // has to say so rather than look as though the tool ran.
+            Command::OpenMergetool { path } => AppEvent::Produced(
+                JobId::new(0),
+                Product::Mergetool {
+                    path,
+                    result: Err(why),
+                },
+            ),
             _ => AppEvent::Produced(JobId::new(0), Product::HandedOver(Err(why))),
         };
     };
@@ -226,10 +238,18 @@ fn handed_over(outside: Option<&Handover<'_>>, command: Command) -> AppEvent {
             JobId::new(0),
             Product::HandedOver(outside.edit_file(&path, line)),
         ),
+        Command::OpenConflictEditor { path } => AppEvent::Produced(
+            JobId::new(0),
+            Product::HandedOver(outside.edit_conflict(&path)),
+        ),
+        Command::OpenMergetool { path } => {
+            let result = outside.mergetool(&path);
+            AppEvent::Produced(JobId::new(0), Product::Mergetool { path, result })
+        }
         Command::Suspend => {
             AppEvent::Produced(JobId::new(0), Product::HandedOver(outside.suspend()))
         }
-        // `frames` matches exactly these three before calling.
+        // `frames` matches exactly these four before calling.
         other => unreachable!("not a terminal handover: {other:?}"),
     }
 }

@@ -220,6 +220,36 @@ pub(super) fn run_operation(
     cancel: &Cancel,
     hooks: Hooks,
 ) -> Operated {
+    in_context(repos, cancel, |ctx| {
+        ctx.remote = remote_hooks(op, hooks);
+        apply::apply(ctx, op)
+    })
+}
+
+/// Carries the live merge/rebase/cherry-pick/revert forward, skips its step
+/// or aborts it (`c`/`s`/`a` on the operation banner,
+/// m5-history-and-ghost-preview/09).
+///
+/// No [`Hooks`]: there is no remote to report progress from, and `resume`
+/// runs one `git <kind> --continue|--skip|--abort` rather than a plan with
+/// steps to narrate.
+///
+/// **Writes no journal entry of its own.** The operation's entry has been
+/// `Pending` since git stopped; `graft_ops::apply::resume` writes that
+/// entry's outcome line, which is what closes the span
+/// (`.scratch/m5-history-and-ghost-preview/as-built.md` §1).
+pub(super) fn run_resume(repos: &RepoStore, what: apply::Resume, cancel: &Cancel) -> Operated {
+    in_context(repos, cancel, |ctx| apply::resume(ctx, what))
+}
+
+/// The setup both of the above share: the repository, the system `git`, the
+/// journal file and one [`Context`] — one per call, since a context carries
+/// the single clock reading and random half that name its entry.
+fn in_context(
+    repos: &RepoStore,
+    cancel: &Cancel,
+    run: impl FnOnce(&mut Context<'_>) -> Result<Applied, ApplyError>,
+) -> Operated {
     let repo = match repos.shared() {
         Ok(repo) => repo,
         Err(error) => return nothing_ran(&error),
@@ -251,8 +281,7 @@ pub(super) fn run_operation(
         Ok(ctx) => ctx,
         Err(error) => return nothing_ran(&error),
     };
-    ctx.remote = remote_hooks(op, hooks);
-    answer(apply::apply(&mut ctx, op))
+    answer(run(&mut ctx))
 }
 
 /// One [`apply::apply`] result, as the caller reads it.

@@ -555,6 +555,39 @@ impl<S: JobEvents> JobRunner<S> {
     /// (m3-working-tree-undo-and-stash/04): the runner reports
     /// [`Progress::Operating`] as soon as the job starts, then `ops::apply`
     /// does the rest — the seam rule (`tests/it/seam_rule.rs`).
+    /// `c`/`s`/`a` on the operation banner: carry the live operation
+    /// forward, skip its step, or abort it
+    /// (m5-history-and-ghost-preview/09).
+    ///
+    /// Simpler than [`Self::operate`]: no progress stream and no askpass,
+    /// because `git <kind> --continue|--skip|--abort` talks to no remote
+    /// and asks no credential.
+    fn resume(&self, id: JobId, what: graft_ops::apply::Resume) {
+        let repos = Arc::clone(&self.repos);
+        let sink = self.sink.clone();
+        let description = match what {
+            graft_ops::apply::Resume::Continue => "continue",
+            graft_ops::apply::Resume::Skip => "skip",
+            graft_ops::apply::Resume::Abort => "abort",
+        };
+        self.queue_as(id, Some(Task::Resume), move |id| {
+            Box::new(move |cancel: &Cancel| {
+                sink.deliver(AppEvent::Progress(
+                    id,
+                    Progress::Operating {
+                        description: description.to_owned(),
+                    },
+                ));
+                if cancel.is_cancelled() {
+                    return Outcome::Cancelled;
+                }
+                Outcome::Produced(Product::Resumed(Box::new(super::operate::run_resume(
+                    &repos, what, cancel,
+                ))))
+            })
+        });
+    }
+
     fn operate(&self, id: JobId, op: Box<graft_ops::operation::Operation>) {
         let repos = Arc::clone(&self.repos);
         let sink = self.sink.clone();
@@ -782,6 +815,20 @@ impl<S: JobEvents> JobRunner<S> {
             })
         });
     }
+
+    /// Hand a running history job the window of rows the view now wants.
+    fn show_rows(&self, id: JobId, request: RowRequest) {
+        let mut row_requests = self.row_requests();
+        // No sender means the job was cancelled or has ended; its answer
+        // would be dropped as stale anyway, so there is nobody to tell.
+        if let Some(asks) = row_requests.get(&id)
+            && asks.send(request).is_err()
+        {
+            // The job has ended on its own (it failed, or found the loop
+            // gone). Its failure is reported through its own outcome.
+            row_requests.remove(&id);
+        }
+    }
 }
 
 impl<S: JobEvents> Dispatch for JobRunner<S> {
@@ -797,18 +844,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::WriteCommitGraph => self.write_commit_graph(),
             Command::DeclineCommitGraph => self.decline_commit_graph(),
             Command::ReadHistory(id, order) => self.read_history(id, order),
-            Command::ShowRows(id, request) => {
-                let mut row_requests = self.row_requests();
-                // No sender means the job was cancelled or has ended; its answer
-                // would be dropped as stale anyway, so there is nobody to tell.
-                if let Some(asks) = row_requests.get(&id)
-                    && asks.send(request).is_err()
-                {
-                    // The job has ended on its own (it failed, or found the loop
-                    // gone). Its failure is reported through its own outcome.
-                    row_requests.remove(&id);
-                }
-            }
+            Command::ShowRows(id, request) => self.show_rows(id, request),
             Command::Search(query) => {
                 let repos = Arc::clone(&self.repos);
                 let sink = self.sink.clone();
@@ -829,6 +865,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::ReadCommitTemplate(id) => self.read_commit_template(id),
             Command::ReadHeadMessage(id) => self.read_head_message(id),
             Command::Operate(id, op) => self.operate(id, op),
+            Command::Resume(id, what) => self.resume(id, what),
             Command::Undo(id, force) => self.run_undo(id, false, force),
             Command::Redo(id, force) => self.run_undo(id, true, force),
             Command::ReadJournal(id) => self.read_journal(id),
@@ -854,6 +891,8 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             // claim on the modes the loop drew through. Reaching here is a
             // routing bug (m3-working-tree-undo-and-stash/05).
             Command::OpenExternalEditor { .. }
+            | Command::OpenMergetool { .. }
+            | Command::OpenConflictEditor { .. }
             | Command::EditCommitMessage { .. }
             | Command::Suspend => {
                 unreachable!("the terminal is handed over by the loop, never by a job")

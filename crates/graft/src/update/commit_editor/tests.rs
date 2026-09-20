@@ -219,7 +219,12 @@ fn an_empty_subject_refuses() {
 #[test]
 fn a_merge_in_progress_refuses_and_names_the_command() {
     let mut state = ready(&["a.rs"]);
-    state.in_progress = Some(graft_git::state::InProgress::Merge);
+    state.in_progress = Some(graft_git::state::InProgressDetail {
+        kind: graft_git::state::InProgress::Merge,
+        step: None,
+        head_name: None,
+        onto: None,
+    });
     let (open, _) = update(&state, key(KeyCode::Char('c')));
     let open = typed(&open, "subject");
     let view = crate::view::commit_editor_view(&open).expect("open");

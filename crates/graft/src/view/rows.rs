@@ -44,6 +44,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         .preview
         .as_ref()
         .filter(|preview| !preview.rows.is_empty());
+    let banner_op = crate::update::banner::banner_view(state);
     let (rows, reveal, hint_context) = if let Some(preview) = previewing {
         (
             super::preview::preview_entries(state, preview, now_seconds),
@@ -52,7 +53,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         )
     } else {
         let reveal = reveal_index(state, history, &live);
-        let hint_context = hint_context(state, &live);
+        let hint_context = footer_context(state, &live, banner_op.as_ref());
         (live, reveal, hint_context)
     };
 
@@ -61,10 +62,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         problem,
         walk,
         rows,
-        // The operation banner is the conflict group's to fill (pass 2):
-        // nothing in `app` starts a rebase or merge yet, so there is never
-        // one in progress to announce.
-        banner_op: None,
+        banner_op,
         icons: graft_ui::graph_screen::Icons::default(),
         compaction,
         filters: Filters {
@@ -259,6 +257,24 @@ fn compaction(
 /// graph screen while they are shown, so the graph's own footer never has to
 /// hint them. `<> resize` is not a context: `GraphView::detail_shown` carries
 /// it, for every context alike.
+/// What the footer offers under this frame's rows.
+///
+/// A focused banner owns the keyboard, so the footer must list the banner's
+/// keys and nothing else: a hint bar offering `m merge` under a modal
+/// banner names a key that does nothing.
+fn footer_context(
+    state: &AppState,
+    rows: &[GraphEntry<'_>],
+    banner: Option<&graft_ui::graph_screen::BannerView>,
+) -> HintContext {
+    match banner {
+        Some(banner) if banner.focused => HintContext::Banner {
+            skippable: banner.skippable,
+        },
+        _ => hint_context(state, rows),
+    }
+}
+
 fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
     if state.on_changes_pane() {
         return HintContext::ChangesPane {

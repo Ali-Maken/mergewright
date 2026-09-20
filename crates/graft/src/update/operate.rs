@@ -203,15 +203,16 @@ pub fn stage_selected(
     let target = Target::Paths(paths);
     let op = match section {
         WorkingTreeSection::Staged => Operation::Unstage(target),
-        WorkingTreeSection::Unstaged | WorkingTreeSection::Untracked => Operation::Stage(target),
-        // Staging a conflicted path is how git marks it resolved — a
-        // different act, with its own confirmation, and the conflict
-        // group's key rather than this one's. The key is still answered:
-        // see `conflict_refusal`.
-        WorkingTreeSection::Unmerged => {
-            next.status = Status::sticky(conflict_refusal("stage"));
-            return true;
-        }
+        // `Unmerged` is here on purpose: staging a conflicted path **is**
+        // how git marks it resolved, and that is what `Space` on a
+        // `CONFLICTS` row now means (m5-history-and-ghost-preview/09).
+        // `graft_ops` is what makes it safe — `check` admits `Stage` while
+        // an operation is in progress and refuses `MarkersRemain` while
+        // `<<<<<<< ` is still in the file, so a half-resolved file can
+        // never be marked done from here.
+        WorkingTreeSection::Unstaged
+        | WorkingTreeSection::Untracked
+        | WorkingTreeSection::Unmerged => Operation::Stage(target),
     };
     launch(next, commands, op, next_id);
     true
@@ -787,6 +788,11 @@ pub fn operated(
                 &paths,
                 stalled.as_deref(),
             ));
+            // …and the banner takes the keyboard, so `c`/`s`/`a` are under
+            // the user's fingers rather than something to go looking for
+            // (m5-history-and-ghost-preview/09). The line above stays: it
+            // names the operation, which the banner's own keys do not.
+            state.banner_focus = super::banner::banner_focusable(kind);
             // The editor and its draft are left alone, as on a failure: no
             // commit was made, so clearing a message the user typed would be
             // throwing away their words over someone else's conflict.
@@ -883,6 +889,14 @@ fn history_refusal(state: &AppState, refused: Option<&Refusal>) -> Option<Status
                 "S stash {count} changed {}",
                 if *count == 1 { "file" } else { "files" }
             )),
+        }),
+        // Marking a half-resolved file done is the one mistake that loses
+        // work quietly: the markers go into the commit. The reason names
+        // the file; the keys are the two ways out of it, which is exactly
+        // what the user needs next.
+        Refusal::MarkersRemain { path } => Some(Status::Sticky {
+            reason: format!("{} still has conflict markers", path.display()),
+            keys: Some("e edit  M mergetool".to_owned()),
         }),
         _ => None,
     }
@@ -1244,13 +1258,19 @@ mod tests {
         (path, patch, *side)
     }
 
-    /// A conflicted file's row answers `Space` with a reason rather than
-    /// doing nothing: staging one is how git marks a conflict resolved,
-    /// which is a different act from staging a change and is not this key's
-    /// (m5-history-and-ghost-preview/04 seam). A key that silently does
-    /// nothing reads as broken.
+    /// `Space` on a conflicted row **marks it resolved**: staging an
+    /// unmerged path is exactly how git records a resolution, and that is
+    /// the key the design note gives it ("`space` marks resolved",
+    /// m5-history-and-ghost-preview/09).
+    ///
+    /// Group 04 left this refusing, because the operation that makes it safe
+    /// did not exist yet. It does now: `graft_ops`' `check` admits `Stage`
+    /// while an operation is in progress and refuses `MarkersRemain` while
+    /// `<<<<<<< ` is still in the file, so the refusal moved from "this key
+    /// is not for that" to "that file is not finished" — a fact about the
+    /// file rather than about the key.
     #[test]
-    fn space_on_a_conflicted_file_says_why_instead_of_staging_it() {
+    fn space_on_a_conflicted_file_stages_it_as_the_resolution() {
         let mut state = state_on(
             "src/auth.rs",
             unmerged_entry("src/auth.rs"),
@@ -1261,12 +1281,15 @@ mod tests {
             stage_selected(&mut state, &mut commands, &mut ids()),
             "the key is answered, not ignored"
         );
-        assert!(commands.is_empty(), "nothing is staged: {commands:?}");
-        assert!(state.operating.is_none());
-        let Status::Sticky { reason, .. } = &state.status else {
-            panic!("expected a sticky reason, got {:?}", state.status);
+        let [Command::Operate(_, op)] = commands.as_slice() else {
+            panic!("expected one staging operation: {commands:?}");
         };
-        assert!(reason.contains("conflicted file"), "{reason}");
+        assert!(
+            matches!(&**op, Operation::Stage(Target::Paths(paths))
+                if paths == &[PathBuf::from("src/auth.rs")]),
+            "{op:?}"
+        );
+        assert!(state.operating.is_some(), "the write is in flight");
     }
 
     /// `d` on a conflicted **file row** is refused too. A `UU` entry is both

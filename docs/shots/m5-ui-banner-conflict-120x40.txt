@@ -1,0 +1,74 @@
+# m5-ui-banner-conflict-120x40.txt: 120x40, drawn by `view::view`
+# from a real AppState — a real repository whose `main` and `feature`
+# both rewrote the same two files, opened over the real job pool, the
+# merge launched with `m` through the preview and the confirm box, and
+# git really stopped on the conflict (crates/graft/tests/it/
+# conflict_interim.rs, capture_banner_for_docs_shots, #[ignore]d). Not a
+# pty capture: the terminal is ratatui's TestBackend, so this is a
+# character grid with no colour attributes in it — CLAUDE.md rule 5,
+# colour ships unverified. The scratch repository's temporary path is
+# replaced by `/code/api`; nothing else is touched.
+#
+# What right looks like:
+#  - A banner above the panes reading `MERGING`, the file git stopped on
+#    (`notes.md`), and `+1 more` for the second one — the state the
+#    repository is in, said once, at the top.
+#  - The banner is drawn focused, and the footer offers the banner's keys
+#    and nothing else: `c continue`, `a abort`, `M mergetool`, `e edit`,
+#    `⇥ graph`. No `s skip`: there is no step to skip in a merge.
+#  - The changes pane opens with `CONFLICTS (2)`, above `STAGED` and
+#    `UNSTAGED`, and each conflicted file appears **once**: there is one
+#    thing to do to it, not two.
+#  - Nothing on the screen reads as an error. A stopped merge is a state
+#    to finish, and the words are about what to press next.
+#
+# KNOWN WRONG in this capture, and it is piece 5's fix, not a surprise:
+# the footer's last line reads `an operation was interrupted: merge ...`
+# and wins over the banner's key hints. This merge is not interrupted —
+# it is live, and the banner above says so. Piece 5 teaches the journal
+# to tell a live entry from an interrupted one, at which point this line
+# goes away and the footer shows `c continue  a abort  M mergetool
+# e edit  ⇥ graph` instead. Judge the banner and the pane here; the
+# footer is re-captured after piece 5.
+#
+
+ graft /code/api    ⚠ MERGING — conflict in notes.md (+1)
+◌     Uncommitted changes ()
+  ● ⓘ [feature] the feature's take                                                                       GT now  0861016
+◆ │   [◆ main] main's take                                                                               GT now  869c8db
+●─╯   the shared files                                                                                   GT now  4a97a92
+●     Correct the note                                                                                   GF 7y   a82960b
+●     Add the first note                                                                                 GF 7y   fadcfb3
+◇     Add a readme                                                                                       GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ an operation was interrupted: merge feature into main · J to inspect
+UNCOMMITTED
+diff vs HEAD 0861016
+CONFLICTS (2)                 reading…
+  notes.md            unmerged
+  shared.rs           unmerged
+
+
+
+
+
+
+
+
+
+
+

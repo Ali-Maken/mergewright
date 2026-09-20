@@ -138,7 +138,8 @@ and any redo prompt should lead with.
 | `s` | Stage (alias) |
 | `Ctrl+A` | Stage all |
 | `d` | Discard, with confirmation and an undoable backup |
-| `e` | Open in `$EDITOR` at the current line |
+| `e` | Open in `$EDITOR` at the current line — on a `CONFLICTS` row, at the first conflict marker |
+| `M` | On a `CONFLICTS` row only: launch the configured mergetool on that file (§2.6a) |
 | `i` | Add to `.gitignore` |
 | `c` / `a` | Commit / amend (as above — same verbs, same keys) |
 
@@ -169,6 +170,30 @@ graph pane's global bindings above (`p` pull, `r` rebase, `f` fetch, `M` Map,
 | `Enter` | Mark file resolved |
 | `M` | Launch the configured external mergetool |
 | (banner focused) `c` `s` `a` | Continue / Skip / Abort |
+
+### 2.6a Operation banner (M5 interim, until the resolver of §2.6 lands)
+
+M5 stops at a conflict without a resolver. The banner above the panes says
+what git is standing in the middle of and takes the keys; §2.6's pane
+replaces it in M6, keeping the same letters for the same verbs.
+
+**Modal while focused** (§2.1): the banner answers every key itself,
+`Ctrl+C` excepted. It takes focus the moment an operation stops, so the
+first key after a conflict goes to the thing that stopped, not to the graph
+underneath.
+
+| Key | Action |
+|---|---|
+| `c` | Continue — refused, in words, while any path is still unmerged |
+| `s` | Skip this commit (rebase and cherry-pick only; a merge says there is nothing to skip) |
+| `a` | Abort, back to where the operation started |
+| `M` | Launch the configured mergetool on the first conflicted file (§2.6) |
+| `e` | Open the first conflicted file in `$EDITOR` at its first marker (§2.4) |
+| `Tab` / `Esc` | Give the keyboard back to the panes; the banner stays drawn |
+
+With focus given back, `M` and `e` keep working on the file under the
+cursor in the detail pane (§2.4), and `Space` marks it resolved by staging
+it. Nothing else here is bound outside the banner.
 
 ### 2.7 Interactive rebase editor
 

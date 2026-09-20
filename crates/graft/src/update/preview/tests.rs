@@ -256,7 +256,12 @@ fn a_preview_refuses_while_a_write_is_running_and_says_so_as_a_problem() {
 #[test]
 fn a_preview_refuses_while_git_has_an_operation_in_progress() {
     let mut state = on_screen();
-    state.in_progress = Some(graft_git::state::InProgress::Rebase);
+    state.in_progress = Some(graft_git::state::InProgressDetail {
+        kind: graft_git::state::InProgress::Rebase,
+        step: None,
+        head_name: None,
+        onto: None,
+    });
     let mut commands = Vec::new();
     assert!(!open_preview(
         &mut state,
