@@ -461,10 +461,12 @@ fn draw_preview(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) 
 }
 
 fn draw_context_menu(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) {
-    let Some((row, menu)) = state.context_menu.as_ref() else {
+    let Some(open) = state.context_menu.as_ref() else {
         return;
     };
-    let Some((x, y, width, height)) = crate::update::context_menu_area(state, *row, menu) else {
+    let menu = &open.menu;
+    let Some((x, y, width, height)) = crate::update::context_menu_area(state, open.row, menu)
+    else {
         return;
     };
     let rect = Rect {

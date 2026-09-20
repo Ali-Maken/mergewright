@@ -10,7 +10,32 @@ use graft_ui::context_menu::{ContextAction, ContextMenu};
 
 use super::detail::DetailSpec;
 use super::events::Command;
+use super::preview::PreviewSubject;
 use super::state::{AppState, Status};
+
+pub mod verbs;
+
+pub use verbs::HistoryVerb;
+
+/// The `.`/right-click popup while it is open: the row it opened on, the
+/// menu the widget draws, and what each of its history rows means.
+///
+/// The three travel together because they are one answer to one `.`: the
+/// widget reports a row by index ([`ContextAction::History`]), and `verbs`
+/// is the list that index points into. Keeping them in one field is what
+/// makes it impossible for the labels on screen and the operations behind
+/// them to drift apart.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OpenMenu {
+    /// The absolute `History` row it opened on, or [`WORKING_TREE_ROW`].
+    pub row: usize,
+    /// What the widget draws.
+    pub menu: ContextMenu,
+    /// The history verbs this row offers, in the order the menu lists them.
+    /// Empty on the working-tree row and on a row the refs have not caught
+    /// up with.
+    pub verbs: Vec<HistoryVerb>,
+}
 
 /// The sentinel `row` for the uncommitted-changes row's menu: it names no
 /// absolute `History` row (`AppState::on_working_tree` is what selects it
@@ -22,26 +47,40 @@ pub(super) const WORKING_TREE_ROW: usize = usize::MAX;
 /// `view/entries.rs`) rather than a second, hand-maintained flag — a row
 /// with at least one finding lists `Explain`.
 pub(super) fn open_for_history_row(next: &mut AppState, row: usize) {
-    let marked = next
+    let mut marked = false;
+    let mut verbs = Vec::new();
+    if let Some(entry) = next
         .history
         .as_ref()
         .and_then(|history| history.row_at(row))
-        .is_some_and(|entry| {
-            let subject = String::from_utf8_lossy(entry.commit.subject());
-            !crate::view::radar::findings_for(
-                next,
-                entry.commit.id,
-                &entry.commit.parents,
-                &subject,
-            )
-            .is_empty()
-        });
-    next.context_menu = Some((row, ContextMenu::for_row(marked)));
+    {
+        let id = entry.commit.id;
+        let parents = entry.commit.parents.clone();
+        let subject = String::from_utf8_lossy(entry.commit.subject()).into_owned();
+        let findings = crate::view::radar::findings_for(next, id, &parents, &subject);
+        marked = !findings.is_empty();
+        // No refs yet means no branch to name: the row's own actions and the
+        // dropped keys still work, and a verb that cannot say which branch it
+        // moves is one this menu is better off not offering.
+        if let Some(refs) = next.refs.as_deref() {
+            verbs = verbs::history_verbs(id, &parents, &subject, refs, &findings);
+        }
+    }
+    let labels = verbs.iter().map(|verb| verb.label.clone()).collect();
+    next.context_menu = Some(OpenMenu {
+        row,
+        menu: ContextMenu::for_row(marked, labels),
+        verbs,
+    });
 }
 
 /// `.`/right-click on the uncommitted-changes row: `Open details` alone.
 pub(super) fn open_for_working_tree(next: &mut AppState) {
-    next.context_menu = Some((WORKING_TREE_ROW, ContextMenu::for_working_tree()));
+    next.context_menu = Some(OpenMenu {
+        row: WORKING_TREE_ROW,
+        menu: ContextMenu::for_working_tree(),
+        verbs: Vec::new(),
+    });
 }
 
 /// `.`: open the menu for whatever the cursor now names.
@@ -65,17 +104,21 @@ pub(super) fn context_menu_key(
     commands: &mut Vec<Command>,
     key: KeyPress,
 ) -> bool {
-    let Some((row, menu)) = next.context_menu.as_mut() else {
+    let Some(open) = next.context_menu.as_mut() else {
         return false;
     };
     match key.code {
-        KeyCode::Char('j') | KeyCode::Down => menu.move_cursor(1),
-        KeyCode::Char('k') | KeyCode::Up => menu.move_cursor(-1),
+        KeyCode::Char('j') | KeyCode::Down => open.menu.move_cursor(1),
+        KeyCode::Char('k') | KeyCode::Up => open.menu.move_cursor(-1),
         KeyCode::Enter => {
-            let action = menu.selected();
-            let row = *row;
+            let action = open.menu.selected();
+            // The verb list travels with the action it was chosen from, so
+            // nothing can dispatch against a list that has since been
+            // rebuilt.
+            let row = open.row;
+            let verbs = std::mem::take(&mut open.verbs);
             next.context_menu = None;
-            commands.extend(dispatch(next, row, action));
+            commands.extend(dispatch(next, row, &verbs, action));
         }
         _ => next.context_menu = None,
     }
@@ -97,10 +140,16 @@ fn oid_for(next: &AppState, row: usize) -> Option<Oid> {
 /// `apply_context_action`'s `next_id` plumbing from `next.local_jobs` — the
 /// same copy-out/copy-back idiom `keys::toggle_compare_selected` uses,
 /// needed because `next` is borrowed both by the closure and by the call.
-pub(super) fn dispatch(next: &mut AppState, row: usize, action: ContextAction) -> Vec<Command> {
+pub(super) fn dispatch(
+    next: &mut AppState,
+    row: usize,
+    verbs: &[HistoryVerb],
+    action: ContextAction,
+) -> Vec<Command> {
     let oid = oid_for(next, row);
     let mut local_jobs = next.local_jobs;
-    let commands = apply_context_action(next, action, row, oid, &mut || local_jobs.next_id());
+    let commands =
+        apply_context_action(next, action, row, oid, verbs, &mut || local_jobs.next_id());
     next.local_jobs = local_jobs;
     commands
 }
@@ -115,15 +164,12 @@ pub fn apply_context_action(
     action: ContextAction,
     row: usize,
     oid: Option<Oid>,
+    verbs: &[HistoryVerb],
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
     match action {
         ContextAction::CopySha => {
-            let Some(oid) = oid else {
-                debug_assert!(
-                    false,
-                    "CopySha is unreachable on the working-tree row (for_working_tree never lists it)"
-                );
+            let Some(oid) = commit_of(oid, "CopySha") else {
                 return Vec::new();
             };
             let sha = oid.to_string();
@@ -134,11 +180,7 @@ pub fn apply_context_action(
             vec![Command::CopyToClipboard(sha)]
         }
         ContextAction::CompareWithThis => {
-            let Some(oid) = oid else {
-                debug_assert!(
-                    false,
-                    "CompareWithThis is unreachable on the working-tree row (for_working_tree never lists it)"
-                );
+            let Some(oid) = commit_of(oid, "CompareWithThis") else {
                 return Vec::new();
             };
             super::detail::toggle_compare(state, row, oid, next_id)
@@ -151,11 +193,7 @@ pub fn apply_context_action(
             state.detail.open(spec, next_id)
         }
         ContextAction::Explain => {
-            let Some(oid) = oid else {
-                debug_assert!(
-                    false,
-                    "Explain is unreachable on the working-tree row (for_working_tree never lists it)"
-                );
+            let Some(oid) = commit_of(oid, "Explain") else {
                 return Vec::new();
             };
             state.detail.explain_requested = Some(oid);
@@ -186,7 +224,64 @@ pub fn apply_context_action(
             Vec::new()
         }
         ContextAction::Undo => super::undo::undo_key(state, false, next_id),
+        // A history verb: `Checkout`, `Merge`, `Rebase`, `Cherry-pick`,
+        // `Revert`, `Reset`, a ref deletion or one of the Fix items. The
+        // widget reported which row was chosen; `verbs` is the list that
+        // index points into, and `update::context_menu::verbs` decided what
+        // each one means (m5-history-and-ghost-preview/08, piece 6).
+        ContextAction::History(index) => {
+            let Some(chosen) = verbs.get(index) else {
+                debug_assert!(
+                    false,
+                    "History({index}) against {} verbs: the menu and the list it was built from disagree",
+                    verbs.len()
+                );
+                return Vec::new();
+            };
+            preview_history_verb(state, chosen, next_id)
+        }
     }
+}
+
+/// The commit an action acts on. `CopySha`, `CompareWithThis` and `Explain`
+/// are never listed on the working-tree row (`ContextMenu::for_working_tree`
+/// lists none of them), so `None` here is a routing bug rather than anything
+/// the user did: assert in debug, and answer with no command.
+fn commit_of(oid: Option<Oid>, action: &str) -> Option<Oid> {
+    debug_assert!(
+        oid.is_some(),
+        "{action} is unreachable on the working-tree row (for_working_tree never lists it)"
+    );
+    oid
+}
+
+/// A chosen history verb: open the Ghost Preview of the very operation its
+/// label named.
+///
+/// `.` ends in a picture, never in a write — only `Confirm` in that picture
+/// runs anything (PROMPT.md §1.7).
+fn preview_history_verb(
+    state: &mut AppState,
+    chosen: &HistoryVerb,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    let mut commands = Vec::new();
+    // The `bool` says whether a preview opened. Every refusal inside
+    // `open_preview` — a write already running, git mid-operation — has
+    // written its own sticky line saying so, and the item was chosen
+    // outright, so there is nothing left here to decide on: the same
+    // reasoning as the four dropped keys above.
+    let _opened: bool = super::preview::open_preview(
+        state,
+        &mut commands,
+        PreviewSubject::Operation {
+            op: Box::new(chosen.op.clone()),
+            opened_by: ".",
+        },
+        false,
+        next_id,
+    );
+    commands
 }
 
 #[cfg(test)]
@@ -249,7 +344,7 @@ mod tests {
             (ContextAction::Undo, KeyCode::Char('u')),
         ] {
             let mut from_menu = AppState::default();
-            let by_menu = dispatch(&mut from_menu, WORKING_TREE_ROW, action);
+            let by_menu = dispatch(&mut from_menu, WORKING_TREE_ROW, &[], action);
 
             let mut from_key = AppState::default();
             let mut by_key = Vec::new();
@@ -268,7 +363,7 @@ mod tests {
         }
         // Not vacuous: `f` really does launch a fetch from a bare state.
         let mut state = AppState::default();
-        assert!(!dispatch(&mut state, WORKING_TREE_ROW, ContextAction::Fetch).is_empty());
+        assert!(!dispatch(&mut state, WORKING_TREE_ROW, &[], ContextAction::Fetch).is_empty());
     }
 
     /// Every menu lists them, whichever row opened it — they act on `HEAD`
@@ -276,8 +371,8 @@ mod tests {
     #[test]
     fn every_menu_lists_the_dropped_keys() {
         for menu in [
-            ContextMenu::for_row(false),
-            ContextMenu::for_row(true),
+            ContextMenu::for_row(false, Vec::new()),
+            ContextMenu::for_row(true, Vec::new()),
             ContextMenu::for_working_tree(),
         ] {
             for action in [
@@ -295,7 +390,8 @@ mod tests {
             assert!(
                 menu.items
                     .iter()
-                    .all(|item| item.label.contains('(') || item.action == ContextAction::Explain),
+                    .all(|item| item.label.as_str().contains('(')
+                        || item.action == ContextAction::Explain),
                 "every item but Explain names its key: {:?}",
                 menu.items
             );
@@ -309,8 +405,9 @@ mod tests {
 
         open_for_history_row(&mut state, 0);
 
-        let (row, menu) = state.context_menu.expect("menu opened");
-        assert_eq!(row, 0);
+        let open = state.context_menu.expect("menu opened");
+        let menu = &open.menu;
+        assert_eq!(open.row, 0);
         assert!(
             menu.items
                 .iter()
@@ -327,8 +424,9 @@ mod tests {
 
         open_for_history_row(&mut state, 0);
 
-        let (row, menu) = state.context_menu.expect("menu opened");
-        assert_eq!(row, 0);
+        let open = state.context_menu.expect("menu opened");
+        let menu = &open.menu;
+        assert_eq!(open.row, 0);
         assert!(
             !menu
                 .items
@@ -346,8 +444,9 @@ mod tests {
 
         open_for_history_row(&mut state, 3);
 
-        let (row, menu) = state.context_menu.expect("menu opened");
-        assert_eq!(row, 3);
+        let open = state.context_menu.expect("menu opened");
+        let menu = &open.menu;
+        assert_eq!(open.row, 3);
         assert!(
             !menu
                 .items
@@ -364,8 +463,9 @@ mod tests {
     fn open_for_working_tree_lists_open_details_first() {
         let mut state = AppState::default();
         open_for_working_tree(&mut state);
-        let (row, menu) = state.context_menu.expect("menu opened");
-        assert_eq!(row, WORKING_TREE_ROW);
+        let open = state.context_menu.expect("menu opened");
+        let menu = &open.menu;
+        assert_eq!(open.row, WORKING_TREE_ROW);
         assert_eq!(menu.items[0].action, ContextAction::OpenDetails);
         assert!(
             !menu.items.iter().any(|item| matches!(
@@ -384,8 +484,8 @@ mod tests {
             ..AppState::default()
         };
         open_selected(&mut state);
-        let (row, _) = state.context_menu.expect("menu opened");
-        assert_eq!(row, WORKING_TREE_ROW);
+        let open = state.context_menu.expect("menu opened");
+        assert_eq!(open.row, WORKING_TREE_ROW);
     }
 
     #[test]
@@ -406,8 +506,8 @@ mod tests {
             &mut commands,
             key(KeyCode::Char('j'))
         ));
-        let (_, menu) = state.context_menu.as_ref().expect("still open");
-        assert_eq!(menu.cursor, 1);
+        let open = state.context_menu.as_ref().expect("still open");
+        assert_eq!(open.menu.cursor, 1);
     }
 
     #[test]
@@ -444,6 +544,7 @@ mod tests {
             ContextAction::CopySha,
             0,
             Some(oid(1)),
+            &[],
             &mut || next_id_from(&mut ids),
         );
         assert_eq!(commands, vec![Command::CopyToClipboard(oid(1).to_string())]);
@@ -464,6 +565,7 @@ mod tests {
             ContextAction::CompareWithThis,
             0,
             Some(oid(1)),
+            &[],
             &mut || next_id_from(&mut ids),
         );
         // `toggle_compare`'s first branch: pins the base, no command.
@@ -480,6 +582,7 @@ mod tests {
             ContextAction::OpenDetails,
             0,
             Some(oid(1)),
+            &[],
             &mut || next_id_from(&mut ids),
         );
         assert_eq!(state.detail.spec, Some(DetailSpec::Commit(oid(1))));
@@ -494,9 +597,239 @@ mod tests {
             ContextAction::OpenDetails,
             WORKING_TREE_ROW,
             None,
+            &[],
             &mut || next_id_from(&mut ids),
         );
         assert_eq!(state.detail.spec, Some(DetailSpec::WorkingTree));
+    }
+
+    /// `main` at commit 2 with `HEAD` on it, `feature` at commit 3 — which
+    /// is row 0 of `history_of(3, 0)`.
+    fn refs_over_the_fixture() -> std::sync::Arc<crate::refs::RefBadges> {
+        let name = |full: &str| {
+            graft_core::ref_name::RefName::new(full.as_bytes().to_vec()).expect("a valid ref name")
+        };
+        let badges = crate::refs::badges(
+            &[
+                (name("refs/heads/main"), oid(2)),
+                (name("refs/heads/feature"), oid(3)),
+            ],
+            &graft_git::repo::HeadState::Branch(name("refs/heads/main")),
+            &std::collections::HashMap::new(),
+            &[],
+            |_, _| {
+                Ok(graft_git::history::AheadBehind {
+                    ahead: 0,
+                    behind: 0,
+                })
+            },
+        )
+        .expect("no ahead/behind walk can fail here");
+        std::sync::Arc::new(badges)
+    }
+
+    fn on_the_feature_row() -> AppState {
+        AppState {
+            history: Some(crate::view::tests::history_of(3, 0)),
+            refs: Some(refs_over_the_fixture()),
+            ..AppState::default()
+        }
+    }
+
+    /// Puts the cursor on the item with this label and presses `Enter`.
+    fn choose(state: &mut AppState, label: &str) -> Vec<Command> {
+        let open = state.context_menu.as_mut().expect("a menu is open");
+        open.menu.cursor = open
+            .menu
+            .items
+            .iter()
+            .position(|item| item.label.as_str() == label)
+            .unwrap_or_else(|| {
+                panic!(
+                    "no item labelled {label:?} in {:?}",
+                    open.menu
+                        .items
+                        .iter()
+                        .map(|item| item.label.as_str())
+                        .collect::<Vec<_>>()
+                )
+            });
+        let mut commands = Vec::new();
+        assert!(context_menu_key(state, &mut commands, key(KeyCode::Enter)));
+        commands
+    }
+
+    /// The row's history verbs are listed between its own actions and the
+    /// dropped keys, and every one of them is a `History` index into the
+    /// list the app built — the widget names no operation of its own.
+    #[test]
+    fn a_branch_row_lists_its_history_verbs_between_its_actions_and_the_dropped_keys() {
+        let mut state = on_the_feature_row();
+        open_for_history_row(&mut state, 0);
+        let open = state.context_menu.as_ref().expect("menu opened");
+
+        let listed: Vec<&str> = open
+            .menu
+            .items
+            .iter()
+            .filter(|item| matches!(item.action, ContextAction::History(_)))
+            .map(|item| item.label.as_str())
+            .collect();
+        assert_eq!(
+            listed,
+            vec![
+                "Checkout feature",
+                "Merge feature into main",
+                "Rebase main onto feature",
+                "Cherry-pick 0303030",
+                "Revert 0303030",
+                "Reset main to here (mixed)",
+                "Reset main to here (hard)",
+                "Delete branch feature",
+            ]
+        );
+        // Each index points at the verb with that label.
+        for (item, verb) in open.menu.items.iter().filter_map(|item| match item.action {
+            ContextAction::History(index) => Some((item, &open.verbs[index])),
+            _ => None,
+        }) {
+            assert_eq!(item.label, verb.label);
+        }
+        let positions: Vec<usize> = open
+            .menu
+            .items
+            .iter()
+            .enumerate()
+            .filter(|(_, item)| matches!(item.action, ContextAction::History(_)))
+            .map(|(at, _)| at)
+            .collect();
+        assert_eq!(positions.first(), Some(&3), "after the row's own actions");
+        assert_eq!(
+            open.menu.items[positions.last().copied().expect("some verbs") + 1].action,
+            ContextAction::Fetch,
+            "and before the dropped keys"
+        );
+    }
+
+    /// Choosing a verb opens the Ghost Preview of the very operation its
+    /// label named, and runs nothing: `.` ends in a picture, and only
+    /// `Confirm` in that picture writes (PROMPT.md §1.7).
+    #[test]
+    fn a_history_verb_previews_the_operation_its_label_named_and_runs_nothing() {
+        let mut state = on_the_feature_row();
+        open_for_history_row(&mut state, 0);
+        let expected = state
+            .context_menu
+            .as_ref()
+            .expect("menu opened")
+            .verbs
+            .iter()
+            .find(|verb| verb.label.as_str() == "Merge feature into main")
+            .expect("the verb is listed")
+            .op
+            .clone();
+
+        let commands = choose(&mut state, "Merge feature into main");
+
+        assert!(state.context_menu.is_none(), "the menu closed");
+        let preview = state.preview.as_ref().expect("a preview opened");
+        assert_eq!(
+            preview.subject,
+            super::super::preview::PreviewSubject::Operation {
+                op: Box::new(expected),
+                opened_by: ".",
+            },
+            "the value that will run is the value the picture is drawn from"
+        );
+        assert!(
+            commands
+                .iter()
+                .all(|command| !matches!(command, Command::Operate(..))),
+            "nothing ran: {commands:?}"
+        );
+        assert!(state.operating.is_none());
+        assert_eq!(
+            commands
+                .iter()
+                .filter(|command| matches!(command, Command::PlanPreview(..)))
+                .count(),
+            1,
+            "{commands:?}"
+        );
+    }
+
+    /// Every verb the menu offers really opens a preview — none of them is a
+    /// label with nothing behind it.
+    #[test]
+    fn every_history_verb_the_menu_lists_opens_a_preview() {
+        let mut probe = on_the_feature_row();
+        open_for_history_row(&mut probe, 0);
+        let labels: Vec<String> = probe
+            .context_menu
+            .as_ref()
+            .expect("menu opened")
+            .verbs
+            .iter()
+            .map(|verb| verb.label.as_str().to_owned())
+            .collect();
+        assert!(!labels.is_empty());
+
+        for label in labels {
+            let mut state = on_the_feature_row();
+            open_for_history_row(&mut state, 0);
+            let commands = choose(&mut state, &label);
+            assert!(
+                state.preview.is_some(),
+                "{label} opened no preview: {:?}",
+                state.status
+            );
+            assert!(
+                commands
+                    .iter()
+                    .all(|command| !matches!(command, Command::Operate(..))),
+                "{label} ran something: {commands:?}"
+            );
+        }
+    }
+
+    /// The working-tree row names no commit, so it offers no history verb —
+    /// and nothing in the menu can reach one.
+    #[test]
+    fn the_working_tree_row_offers_no_history_verb() {
+        let mut state = on_the_feature_row();
+        state.on_working_tree = true;
+        open_selected(&mut state);
+        let open = state.context_menu.as_ref().expect("menu opened");
+        assert!(open.verbs.is_empty());
+        assert!(
+            !open
+                .menu
+                .items
+                .iter()
+                .any(|item| matches!(item.action, ContextAction::History(_))),
+            "{:?}",
+            open.menu.items
+        );
+    }
+
+    /// A verb chosen while a write is already running is refused in words
+    /// and starts nothing — `open_preview`'s own refusal, reached through
+    /// the menu.
+    #[test]
+    fn a_verb_chosen_while_a_write_runs_is_refused_in_words() {
+        let mut state = on_the_feature_row();
+        state.operating = Some(JobId::new(7));
+        open_for_history_row(&mut state, 0);
+
+        let commands = choose(&mut state, "Merge feature into main");
+
+        assert!(state.preview.is_none());
+        assert!(commands.is_empty(), "{commands:?}");
+        assert!(
+            matches!(&state.status, Status::Sticky { reason, .. } if reason.starts_with("wait for")),
+            "{:?}",
+            state.status
+        );
     }
 
     #[test]
@@ -508,6 +841,7 @@ mod tests {
             ContextAction::Explain,
             0,
             Some(oid(1)),
+            &[],
             &mut || next_id_from(&mut ids),
         );
         assert!(commands.is_empty());

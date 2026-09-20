@@ -1,0 +1,77 @@
+# m5-ui-context-menu-verbs-160x48.txt: 160x48, drawn by `view::view`
+# from a real AppState — a real repository (`main` three commits, `feature`
+# forked off the first with two of its own, `feature` checked out), opened
+# over the real job pool, cursor moved to `main`'s row and `.` pressed
+# through `update`
+# (crates/graft/tests/it/preview.rs, capture_context_menu_for_docs_shots,
+# #[ignore]d). Not a pty capture: the terminal is ratatui's TestBackend, so
+# this is a character grid with no colour attributes in it — CLAUDE.md rule
+# 5, colour ships unverified. The scratch repository's temporary path is
+# replaced by `/code/api`; nothing else is touched.
+#
+# What right looks like:
+#  - The menu is anchored under `main`'s row and is wide enough for its
+#    longest label, with the cursor on the first item.
+#  - The row's own actions come first (`Copy SHA (y)`, `Compare with this
+#    (x)`, `Open details (⏎)`), then the history verbs, then the keys the
+#    hint bar drops (`Fetch (f)` … `Undo (u)`).
+#  - The history verbs name the real branches, not placeholders: `Checkout
+#    main`, `Merge main into feature`, `Rebase feature onto main`,
+#    `Cherry-pick <sha7>`, `Revert <sha7>`, `Reset feature to here
+#    (mixed)`/`(hard)`, `Delete branch main`. `feature` is the branch
+#    checked out, `main` is the row under the cursor.
+#  - No verb names the branch you are standing on where git would refuse
+#    it: there is no `Checkout feature` and no `Delete branch feature`.
+#  - Choosing any of them opens a picture, not a write (PROMPT.md §1.7).
+#  - At 80 columns the menu still fits inside the graph pane rather than
+#    running off it.
+#
+
+ graft /code/api  8 commits  date order, sorting…
+  ◆   [◆ feature] finish the feature                                                                                                             GT now  c6d42bd
+  ●   start the feature                                                                                                                          GT now  3d7f709
+● │   [main] main moves again                                                                                                                    GT now  df0abc6
+ Copy SHA (y)                                                                                                                                    GT now  b5bd029
+ Compare with this (x)                                                                                                                           GT now  14effc9
+ Open details (⏎)                                                                                                                                GF 7y   a82960b
+ Checkout main                                                                                                                                   GF 7y   fadcfb3
+ Merge main into feature                                                                                                                         GF 7y   64ded19
+ Rebase feature onto main
+ Cherry-pick df0abc6
+ Revert df0abc6
+ Reset feature to here (mixed)
+ Reset feature to here (hard)
+ Delete branch main
+ Fetch (f)
+ Pull (p)
+ Push (P)
+ Undo (u)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ ⏎ open  P push  c commit  p pull  f fetch  u undo  S stash  / search  q quit  F2 status  F3 renderer  x compare  + lanes  j/k move  space fold  . more

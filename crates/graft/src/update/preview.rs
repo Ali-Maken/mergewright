@@ -996,7 +996,7 @@ fn build(which: HistoryKey, current: Tip, source: Source, tip: Oid) -> Operation
 /// The branch `HEAD` is on, as a [`Tip`]: full ref name and the oid the
 /// preview is pinned to. `None` when `HEAD` is detached or unborn — the
 /// state both keys refuse in words.
-fn current_branch(refs: &RefBadges) -> Option<Tip> {
+pub(super) fn current_branch(refs: &RefBadges) -> Option<Tip> {
     let head = refs.head()?;
     refs.on(head).iter().find_map(|label| match label {
         RefLabel::Branch {
@@ -1017,7 +1017,7 @@ fn current_branch(refs: &RefBadges) -> Option<Tip> {
 /// A name beats an id because a name is what the user sees on the row and
 /// what a reflog will record; the id is the honest answer when the row
 /// carries no branch at all.
-fn source_at(refs: &RefBadges, oid: Oid) -> Source {
+pub(super) fn source_at(refs: &RefBadges, oid: Oid) -> Source {
     let labels = refs.on(oid);
     let local = labels.iter().find_map(|label| match label {
         RefLabel::Branch { name, .. } => Some(String::from_utf8_lossy(name).into_owned()),
@@ -1034,6 +1034,6 @@ fn source_at(refs: &RefBadges, oid: Oid) -> Source {
 }
 
 /// `refs/heads/main` → `main`.
-fn short_name_of(full: &str) -> String {
+pub(super) fn short_name_of(full: &str) -> String {
     String::from_utf8_lossy(&slice::short_of(full)).into_owned()
 }

@@ -22,12 +22,12 @@ pub(super) fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mous
     // A menu open (`.`/right-click, m2-details-and-diffs/12) is modal: any
     // button down either dispatches (inside it) or closes it (outside), and
     // nothing else this click would have done happens in the same press.
-    if let Some((row, menu)) = next.context_menu.clone() {
+    if let Some(open) = next.context_menu.clone() {
         if matches!(
             mouse.kind,
             MouseKind::Down(MouseButton::Left | MouseButton::Right)
         ) {
-            context_menu_click(next, commands, row, &menu, mouse.column, mouse.row);
+            context_menu_click(next, commands, &open, mouse.column, mouse.row);
         }
         return;
     }
@@ -174,21 +174,25 @@ fn toggle_compare_at(next: &mut AppState, commands: &mut Vec<Command>, row: usiz
 fn context_menu_click(
     next: &mut AppState,
     commands: &mut Vec<Command>,
-    row: usize,
-    menu: &graft_ui::context_menu::ContextMenu,
+    open: &context_menu::OpenMenu,
     column: u16,
     screen_row: u16,
 ) {
     next.context_menu = None;
-    let Some(area) = geometry::context_menu_bounds(next, row, menu) else {
+    let Some(area) = geometry::context_menu_bounds(next, open.row, &open.menu) else {
         return;
     };
     if !area.contains(column, screen_row) {
         return;
     }
     let index = usize::from(screen_row - area.y);
-    let Some(item) = menu.items.get(index) else {
+    let Some(item) = open.menu.items.get(index) else {
         return;
     };
-    commands.extend(context_menu::dispatch(next, row, item.action));
+    commands.extend(context_menu::dispatch(
+        next,
+        open.row,
+        &open.verbs,
+        item.action,
+    ));
 }
