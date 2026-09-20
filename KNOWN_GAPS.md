@@ -480,7 +480,9 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M4 | Stall notice or timeout on a slow remote (Esc is the only way out) | unverified by design (not broken) | M7 |
 | M4 | `q` confirming while an operation runs | unverified by design (not broken) | M8 |
 | M4 | SSH askpass env is set but unverified (HTTP is the proven path) | unverified | M5 (first field note) |
-| M4 | Remote footer hints only fit at ≥156 columns; at 80/120 they are absent | unverified by design (user's eye) | M5 |
+| M4 | Remote footer hints only fit at ≥144 columns (not 156 — corrected by the m4-03 review); at 80/120 they are absent | unverified by design (user's eye) | M5 |
 | M4/07 | Push box draws no frame (acceptance finding 3) | broken | M5 |
 | M4/07 | At 80 cols the rejection hint cuts to `or P to fo…` and the journal push row to `not undoa…` (finding 4) | broken | M5 |
 | M4/07 | `last_rejected_push` is memory-only: a restart loses the lease offer (finding 5) | broken | M5 |
+| M4/03 review | 10 Minors in docs/reviews/m4-03-ui-credential-prompt-and-hints.md not yet triaged | unverified | M5 |
+| M4/03 review | Debug for FieldView redacts the masked text but leaks its length via `cursor` | broken | M4 (fix round) |
