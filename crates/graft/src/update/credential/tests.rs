@@ -312,9 +312,27 @@ fn secret_never_in_debug() {
     );
 
     // The field, on its own — `PromptField`'s derived `Debug` calls through
-    // to `SecretField`'s own, which prints only a length.
+    // to `SecretField`'s own, which prints a constant. Not the length
+    // either: this used to read `Secret(SecretField(7))` (m5-01 review,
+    // Major 1), and ADR-0038 §2 bars the length from `Debug` as firmly as
+    // from the drawn row.
     let field_printed = format!("{:?}", state.credential.as_ref().expect("open").field);
     assert!(!field_printed.contains("hunter2"), "{field_printed}");
+    assert!(
+        !field_printed.chars().any(char::is_numeric),
+        "a digit here is the typed length: {field_printed}"
+    );
+    // The same print whatever was typed, so there is nothing to difference.
+    let mut longer = asking("Password for 'http://u@h':");
+    type_in(&mut longer, "a-much-longer-passphrase");
+    assert_eq!(
+        format!("{:?}", longer.credential.as_ref().expect("open").field),
+        field_printed
+    );
+    assert!(
+        !format!("{longer:?}").contains("a-much-longer-passphrase"),
+        "the typed passphrase reached a Debug print"
+    );
 
     // The view built for drawing — `FieldView`'s `Debug` redacts unless
     // `secret` is `None`, but this field carries no real text either way

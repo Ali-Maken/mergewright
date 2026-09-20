@@ -14,6 +14,16 @@
 //! [`CredentialPrompt`]'s `Debug` leaves the field out, and the answer
 //! travels as an [`Answer`] whose `Debug` prints nothing of it.
 //!
+//! What still does happen, so nobody reads the guarantees above as wider
+//! than they are: `update` clones the whole [`AppState`] once per event, so
+//! while a prompt is open the typed secret is **copied once per event** —
+//! every keystroke, every job progress message, every resize — with two
+//! copies live for the length of the call. Each is a
+//! [`graft_ui::text_input::SecretField`], so each zeroes when it drops and
+//! none is freed unwiped; the copying itself is a property of `update`'s
+//! shape (take `&AppState`, return a new one), not of this module, and
+//! removing it means changing that shape.
+//!
 //! [`Progress::CredentialNeeded`]: super::Progress::CredentialNeeded
 
 use std::fmt;
@@ -108,8 +118,9 @@ impl PromptField {
         }
     }
 
-    /// Empties the field. The `Secret` case replaces its buffer (wiped, not
-    /// just marked unused); the `Open` case is a plain reset like before.
+    /// Empties the field. The `Secret` case zeroes its whole buffer in
+    /// place, capacity included; the `Open` case is a plain reset like
+    /// before.
     fn clear(&mut self) {
         match self {
             PromptField::Open(field) => *field = TextField::new(""),
@@ -160,10 +171,15 @@ impl CredentialPrompt {
 impl fmt::Debug for CredentialPrompt {
     /// The typed text is left out whatever the field's kind: a username is
     /// not secret, but an answer typed into the wrong ask can be. `field`
-    /// itself is safe to print now (`SecretField`'s own `Debug` prints only
-    /// a length), but it is still left out here, unconditionally, so this
-    /// impl does not have to be revisited if a future field type is less
-    /// careful.
+    /// itself is safe to print now (`SecretField`'s own `Debug` is the
+    /// constant `SecretField(..)` — not the text and not the length), but
+    /// it is still left out here, unconditionally, so this impl does not
+    /// have to be revisited if a future field type is less careful. That
+    /// belt-and-braces is why `m4_walk`'s `no_secret_leaked` scan of
+    /// `{state:?}` cannot by itself prove `SecretField`'s redaction: it
+    /// proves nothing walks around *this* omission. The field's own `Debug`
+    /// is covered by `tests::secret_never_in_debug`, which prints it
+    /// directly.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CredentialPrompt")
             .field("title", &self.title)
@@ -313,15 +329,18 @@ pub fn credential_key(state: &mut AppState, commands: &mut Vec<Command>, key: Ke
     match key.code {
         KeyCode::Enter => {
             let job = prompt.job;
-            // Swapped for a fresh, empty field of the same kind rather than
-            // read-then-cleared: the old field is consumed straight into
-            // `bytes` and dropped, so the typed text stays in no state that
-            // outlives this key (`SecretField::into_bytes` and `Drop` both
-            // wipe it; `field.into_bytes()` for the open case makes no
-            // stronger promise than `TextField` ever did, out of scope
-            // here).
-            let masked = prompt.masked();
-            let field = std::mem::replace(&mut prompt.field, PromptField::new(masked));
+            // Swapped out rather than read-then-cleared: the old field is
+            // consumed straight into `bytes` and dropped, so the typed text
+            // stays in no state that outlives this key
+            // (`SecretField::into_bytes` and `Drop` both wipe it;
+            // `field.into_bytes()` for the open case makes no stronger
+            // promise than `TextField` ever did, out of scope here).
+            //
+            // What is swapped *in* is an empty open field, whatever kind
+            // this prompt was: it is dropped on the next line with the
+            // prompt, and a fresh `Secret` would reserve a buffer only to
+            // wipe it again.
+            let field = std::mem::replace(&mut prompt.field, PromptField::Open(TextField::new("")));
             let answer = Answer::new(field.into_bytes());
             state.credential = None;
             commands.push(Command::AnswerCredential(job, answer));
@@ -336,6 +355,11 @@ pub fn credential_key(state: &mut AppState, commands: &mut Vec<Command>, key: Ke
             // the password was wrong when the user simply pressed `Esc`
             // (m4-remotes/06 review, Minor m1).
             let job = prompt.job;
+            // Defence in depth, not a requirement: dropping the prompt on
+            // the next line wipes the field anyway. The explicit clear
+            // means the wipe does not depend on `SecretField`'s `Drop`
+            // being reached — one fewer thing for a future refactor
+            // (a prompt kept alive, an `Arc` around it) to break silently.
             prompt.field.clear();
             state.credential = None;
             if !super::remote::stop_write(state, commands) {
