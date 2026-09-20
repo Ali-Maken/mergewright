@@ -273,3 +273,243 @@ fn capture_preview_for_docs_shots() {
     }
     app.close();
 }
+
+// ---------------------------------------------------------------------------
+// The journal's time machine (piece 8): `Enter` on an older row.
+//
+// Every other test in this file stops at the picture. This one confirms it,
+// which is the first and only time `graft_ops::undo::revert_to` runs at all:
+// the whole write path — the key, `PreviewSubject::RevertTo`, the plan from
+// `plan_revert_to`, `Command::RevertTo`, `jobs::undo::run_revert_to` and
+// `Product::RevertedTo` — was built and typechecked but never exercised
+// (this ticket's own handoff note). So it is read back from git, not from
+// the status line.
+// ---------------------------------------------------------------------------
+
+/// The journal, as the app's own reader sees it.
+fn journal_entries(repo: &Path) -> Vec<graft_core::journal::JournalEntry> {
+    graft_ops::journal::Journal::open(&repo.join(".git/graft/undo-journal.jsonl"))
+        .expect("the journal the writes just made is readable")
+        .entries()
+        .to_vec()
+}
+
+/// Stages `name` from inside the changes pane and waits for the write and
+/// the refreshed file list that follows it.
+fn stage(app: &App, state: AppState, name: &str) -> AppState {
+    let state = crate::app_harness::cursor_to(app, state, name);
+    let state = app.key(&state, KeyCode::Char(' '));
+    let state = app.settle_write(state, &format!("staging {name}"));
+    app.pump(state, "the file list after the stage", |state| {
+        matches!(state.detail.files, graft::update::detail::Loading::Ready(_))
+    })
+}
+
+/// The three files the stages below journal, oldest first.
+const STAGED: [&str; 3] = ["one.txt", "two.txt", "three.txt"];
+
+/// A repository with one commit and three untracked files, ready to stage.
+fn three_to_stage() -> graft_fixtures::Scratch {
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+    let repo = scratch.path();
+    commit(repo, "base.txt", "base\n", "add the base");
+    for name in STAGED {
+        std::fs::write(repo.join(name), "x\n").expect("the scratch repo is writable");
+    }
+    scratch
+}
+
+/// Stages all three through the changes pane: three journal entries, one
+/// per stage, in the order they were made.
+fn stage_all_three(app: &App, state: AppState) -> AppState {
+    let mut state = crate::app_harness::changes_pane(app, state);
+    for name in STAGED {
+        state = stage(app, state, name);
+    }
+    state
+}
+
+/// `Esc` out of the pane, `J`, then down to the oldest of the three rows —
+/// the one the time machine aims at (the browser lists newest first).
+fn journal_at_the_oldest_row(app: &App, state: &AppState) -> AppState {
+    let state = app.key(state, KeyCode::Escape);
+    let state = app.key(&state, KeyCode::Char('J'));
+    let state = app.pump(state, "the journal read", |state| {
+        state.journal.shown
+            && matches!(
+                state.journal.entries,
+                graft::update::detail::Loading::Ready(_)
+            )
+    });
+    let state = app.key(&state, KeyCode::Char('j'));
+    app.key(&state, KeyCode::Char('j'))
+}
+
+/// Waits for the plan the preview asked for, and insists it landed.
+fn planned_preview(app: &App, state: AppState) -> AppState {
+    let state = app.pump(state, "the revert plan", |state| {
+        state.preview.as_ref().is_some_and(|preview| {
+            !matches!(preview.plan, graft::update::detail::Loading::Pending(_))
+        })
+    });
+    let plan = &state.preview.as_ref().expect("still open").plan;
+    assert!(
+        matches!(plan, graft::update::detail::Loading::Ready(_)),
+        "the revert plan came back: {plan:?}"
+    );
+    state
+}
+
+/// Three stages, then `J`, then `Enter` on the oldest of them, then
+/// `Confirm`: the index goes all the way back to empty, three `Undo`
+/// entries are journaled, and the status line says how far it went.
+#[test]
+fn journal_enter_on_an_older_row_previews_and_confirm_really_reverts() {
+    let scratch = three_to_stage();
+    let repo = scratch.path();
+    assert_eq!(
+        git(repo, &["diff", "--cached", "--name-only"]).trim(),
+        "",
+        "the index starts empty"
+    );
+
+    let (app, state) = App::open(repo);
+    let state = stage_all_three(&app, state);
+    let staged = git(repo, &["diff", "--cached", "--name-only"]);
+    assert_eq!(
+        staged.split_whitespace().count(),
+        3,
+        "three stages landed: {staged}"
+    );
+    let before = journal_entries(repo);
+    assert_eq!(before.len(), 3, "one entry per stage: {before:?}");
+    let oldest = before[0].id.clone();
+
+    let state = journal_at_the_oldest_row(&app, &state);
+
+    // `Enter` previews. Nothing has run: the repository is untouched and no
+    // write is in flight.
+    let state = app.key(&state, KeyCode::Enter);
+    let preview = state.preview.as_ref().expect("Enter opened a preview");
+    assert_eq!(
+        preview.subject,
+        graft::update::preview::PreviewSubject::RevertTo(oldest),
+        "the preview is aimed at the row under the cursor"
+    );
+    assert!(!state.journal.shown, "the preview has the screen");
+    assert!(state.operating.is_none(), "Enter ran nothing");
+    let state = planned_preview(&app, state);
+    assert_eq!(
+        journal_entries(repo).len(),
+        3,
+        "planning is a read: the journal did not grow"
+    );
+    assert_eq!(
+        git(repo, &["diff", "--cached", "--name-only"]),
+        staged,
+        "planning is a read: the index did not move"
+    );
+
+    // `→` off `Cancel` onto `Confirm`, then `Enter`. Now it runs.
+    let state = app.key(&state, KeyCode::Right);
+    let state = app.key(&state, KeyCode::Enter);
+    assert!(state.preview.is_none(), "the picture has been answered");
+    let state = app.settle_write(state, "the revert");
+    let said = match &state.status {
+        graft::update::Status::Done(line) => line.clone(),
+        other => panic!("the revert did not report Done: {other:?}"),
+    };
+    drop(state);
+    app.close();
+
+    three_stages_undone(repo, &said);
+}
+
+/// What the repository must look like once the time machine has run: the
+/// index empty, the files still on disk, and one `Undo` entry per step.
+fn three_stages_undone(repo: &Path, said: &str) {
+    assert_eq!(
+        git(repo, &["diff", "--cached", "--name-only"]).trim(),
+        "",
+        "the index is back where it was before the first stage"
+    );
+    for name in STAGED {
+        assert!(
+            repo.join(name).exists(),
+            "{name} is unstaged, not deleted — the files are still there"
+        );
+    }
+    let after = journal_entries(repo);
+    assert_eq!(
+        after.len(),
+        6,
+        "one `Undo` entry per step, never one summary entry (DESIGN \u{a7}6.6): {after:?}"
+    );
+    assert!(
+        after[3..]
+            .iter()
+            .all(|entry| entry.kind == graft_core::journal::OperationKind::Undo),
+        "the three new entries are undos: {:?}",
+        &after[3..]
+    );
+    assert!(
+        said.contains("3 steps"),
+        "the line says how far it went: {said}"
+    );
+}
+
+/// The time machine's own capture — the picture the journal's `Enter` draws
+/// before anything runs. The **user** judges it (CLAUDE.md rule 6).
+///
+/// Run by hand: `cargo test -p graft --test it
+/// preview::capture_time_machine_for_docs_shots -- --ignored --nocapture`.
+#[test]
+#[ignore = "writes docs/shots/m5-ui-preview-time-machine-*.txt; run by hand to regenerate"]
+fn capture_time_machine_for_docs_shots() {
+    let scratch = three_to_stage();
+    let repo = scratch.path();
+    let (app, state) = App::open(repo);
+    let state = stage_all_three(&app, state);
+    let state = journal_at_the_oldest_row(&app, &state);
+    let state = app.key(&state, KeyCode::Enter);
+    let state = planned_preview(&app, state);
+    let home = repo.display().to_string();
+
+    for (label, columns, rows) in [("80x24", 80u16, 24u16), ("160x48", 160, 48)] {
+        let drawn = frame(&state, columns, rows);
+        let mut out = format!(
+            "# m5-ui-preview-time-machine-{label}.txt: {columns}x{rows}, drawn by\n\
+             # `view::view` from a real AppState. A real repository with one commit and\n\
+             # three files staged one at a time through the changes pane (three journal\n\
+             # entries), then `J`, `j`, `j`, `Enter` on the oldest of the three, through\n\
+             # `update` over the real job pool, then the real\n\
+             # `graft_ops::preview::plan_revert_to` run\n\
+             # (crates/graft/tests/it/preview.rs, capture_time_machine_for_docs_shots,\n\
+             # #[ignore]d). Not a pty capture: ratatui's TestBackend, a character grid\n\
+             # with no colour attributes \u{2014} CLAUDE.md rule 5, colour ships\n\
+             # unverified. The scratch repository's temporary path is replaced by\n\
+             # `/code/api`; nothing else is touched.\n\
+             #\n\
+             # What right looks like:\n\
+             #  - The journal browser is gone and the preview box is in its place. `Esc`\n\
+             #    puts the browser back on the same row.\n\
+             #  - The box says what reverting to before that entry would do, in the\n\
+             #    plan's own words \u{2014} how many steps, what the index and working tree\n\
+             #    would be, and the commands it would run. No hand-written git line.\n\
+             #  - `[ Cancel ]` is first and the cursor rests on it.\n\
+             #  - Nothing has run: this picture is a read.\n\
+             #\n"
+        );
+        out.push('\n');
+        for line in &drawn {
+            out.push_str(&line.replace(&home, "/code/api"));
+            out.push('\n');
+        }
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/shots")
+            .join(format!("m5-ui-preview-time-machine-{label}.txt"));
+        std::fs::write(&path, &out).expect("docs/shots is writable");
+        println!("wrote {} ({} bytes)", path.display(), out.len());
+    }
+    app.close();
+}

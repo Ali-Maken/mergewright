@@ -23,6 +23,7 @@ fn asking(prompt: &str) -> AppState {
         description: "push main → origin/main".to_owned(),
         op: None,
         stoppable: crate::update::remote::Stoppable::Yes,
+        opened_by: None,
     });
     // The seed is pinned here: `update` is pure, and every test that
     // looks at the drawn row needs to know where the pulse started.

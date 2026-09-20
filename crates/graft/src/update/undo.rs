@@ -57,14 +57,19 @@ fn launch(
     let id = next_id();
     state.operating = Some(id);
     let words = if redo { "redo" } else { "undo" };
-    state.status = Status::Busy(words.to_owned());
-    // `Esc` will not stop it: see `remote::UNDO_CANNOT_STOP`.
+    // `Esc` stops it. `graft_ops::restore::execute` now checks its stop
+    // token between steps and rolls back the ones that already ran
+    // (m5-history-and-ghost-preview/06), so a cancelled undo leaves the
+    // repository where it started rather than half-applied — which is what
+    // `UNDO_CANNOT_STOP` used to be the honest answer to.
+    state.status = Status::Busy(format!("{words}{}", super::remote::ESC_HINT));
     super::remote::launched(
         state,
         id,
         words.to_owned(),
         None,
-        super::remote::Stoppable::No(super::remote::UNDO_CANNOT_STOP),
+        super::remote::Stoppable::Yes,
+        None,
     );
     vec![if redo {
         Command::Redo(id, force)
@@ -110,6 +115,23 @@ pub fn undone(
         Undone::Nothing(why) => {
             state.status = Status::Done(why);
             Vec::new()
+        }
+        // `Esc`, answered. A clean cancel is an acknowledgement — `Done`,
+        // cleared by the next key, because nothing is wrong (CLAUDE.md: a
+        // status field must never read as an error when nothing is). A
+        // part-way cancel left something in force and is `Sticky` until
+        // it is read.
+        Undone::Cancelled {
+            clean,
+            why,
+            refresh: what,
+        } => {
+            state.status = if clean {
+                Status::Done(why)
+            } else {
+                Status::sticky(why)
+            };
+            refresh(state, what, next_id)
         }
         Undone::Drift {
             description,
@@ -161,6 +183,7 @@ pub(super) fn revert_to_forced(
         description,
         None,
         super::remote::Stoppable::No(super::preview::HISTORY_CANNOT_STOP),
+        None,
     );
     commands.push(Command::RevertTo(id, entry, true));
 }
@@ -433,7 +456,14 @@ mod tests {
         let commands = undo_key(&mut state, false, &mut ids());
         assert_eq!(commands, vec![Command::Undo(JobId::new(1), false)]);
         assert_eq!(state.operating, Some(JobId::new(1)));
-        assert_eq!(state.status, Status::Busy("undo".to_owned()));
+        // The busy line offers the cancel, because the cancel is now real
+        // (m5-history-and-ghost-preview/06): `restore::execute` rolls back
+        // the steps it had applied. `update::remote::tests::
+        // esc_cancels_an_undo_in_flight` is the other half.
+        assert_eq!(
+            state.status,
+            Status::Busy(format!("undo{}", super::super::remote::ESC_HINT))
+        );
     }
 
     #[test]

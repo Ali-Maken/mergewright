@@ -17,7 +17,7 @@ use graft_git::diff::{PatchDirection, PatchError, Selection};
 use graft_git::state::InProgress;
 use graft_git::status::StatusEntry;
 use graft_ops::apply::Refresh;
-use graft_ops::operation::{Operation, PatchSide, Target};
+use graft_ops::operation::{Operation, PatchSide, Refusal, Target};
 use graft_term::sanitize_line;
 use graft_ui::detail::{BodyRow, DetailFocus, LineKindView, WorkingTreeSection};
 
@@ -61,7 +61,14 @@ pub(super) fn launch(
     op: Operation,
     next_id: &mut impl FnMut() -> JobId,
 ) {
-    launch_with(next, commands, op, super::remote::Stoppable::Yes, next_id);
+    launch_with(
+        next,
+        commands,
+        op,
+        super::remote::Stoppable::Yes,
+        None,
+        next_id,
+    );
 }
 
 /// Queue one write `Esc` must not stop, saying why in `why`.
@@ -77,6 +84,7 @@ pub(super) fn launch_unstoppable(
     commands: &mut Vec<Command>,
     op: Operation,
     why: &'static str,
+    opened_by: Option<&'static str>,
     next_id: &mut impl FnMut() -> JobId,
 ) {
     launch_with(
@@ -84,6 +92,7 @@ pub(super) fn launch_unstoppable(
         commands,
         op,
         super::remote::Stoppable::No(why),
+        opened_by,
         next_id,
     );
 }
@@ -95,13 +104,14 @@ fn launch_with(
     commands: &mut Vec<Command>,
     op: Operation,
     stoppable: super::remote::Stoppable,
+    opened_by: Option<&'static str>,
     next_id: &mut impl FnMut() -> JobId,
 ) {
     let id = next_id();
     next.operating = Some(id);
     next.status = Status::Busy(super::remote::busy_text(&op));
     let remote = op.is_remote().then(|| op.clone());
-    super::remote::launched(next, id, op.describe(), remote, stoppable);
+    super::remote::launched(next, id, op.describe(), remote, stoppable, opened_by);
     commands.push(Command::Operate(id, Box::new(op)));
 }
 
@@ -785,29 +795,107 @@ pub fn operated(
             // what the commit editor's refusal names.
             refresh_scope(state, Refresh::Everything, next_id)
         }
-        Operated::Failed {
-            error,
-            refresh: what,
-            remote,
-        } => {
-            state.status = match (&remote_op, &remote) {
-                (Some(op), Some(failure)) => {
-                    super::remote::remote_failed(state, op, failure, &error)
-                }
-                _ => Status::sticky(error),
-            };
-            // A failure is not proof the screen is still true: `ApplyError::Git`
-            // means git ran part-way and journaled the entry `Aborted`, so the
-            // file list, the diff bytes and the header counts describe a
-            // repository that has already moved. The job decides how wide the
-            // re-read is; `None` is only the cases where nothing was written
-            // (m3/04 review M1).
-            match what {
-                Some(what) => refresh_scope(state, what, next_id),
-                None => Vec::new(),
-            }
+        failed @ Operated::Failed { .. } => {
+            operation_failed(state, remote_op.as_ref(), failed, next_id)
         }
     }
+}
+
+/// A write that did not land: the line it leaves, and what it makes stale.
+///
+/// A failure is not proof the screen is still true — `ApplyError::Git` ran
+/// part-way and journaled `Aborted` — so the job decides the scope, and
+/// `None` is only the cases where nothing was written (m3/04 review M1, and
+/// [`Operated::Failed`]'s own `refresh` field).
+fn operation_failed(
+    state: &mut AppState,
+    remote_op: Option<&Operation>,
+    failed: Operated,
+    next_id: &mut impl FnMut() -> JobId,
+) -> Vec<Command> {
+    let Operated::Failed {
+        error,
+        refresh: what,
+        remote,
+        refused,
+    } = failed
+    else {
+        // `operated` only ever hands this arm an `Operated::Failed`; the
+        // match above is what guarantees it.
+        return Vec::new();
+    };
+    state.status = failure_line(state, remote_op, remote.as_ref(), refused.as_ref(), error);
+    match what {
+        Some(what) => refresh_scope(state, what, next_id),
+        None => Vec::new(),
+    }
+}
+
+/// The status line for a write that failed: the remote wording where the
+/// failure came from a remote, the history wording where a precondition
+/// refused it, and `graft_ops`' own sentence otherwise.
+fn failure_line(
+    state: &mut AppState,
+    remote_op: Option<&Operation>,
+    remote: Option<&graft_git::remote::RemoteFailure>,
+    refused: Option<&Refusal>,
+    error: String,
+) -> Status {
+    match (remote_op, remote) {
+        (Some(op), Some(failure)) => super::remote::remote_failed(state, op, failure, &error),
+        _ => history_refusal(state, refused).unwrap_or_else(|| Status::sticky(error)),
+    }
+}
+
+/// The two refusals a confirmed Ghost Preview can come back with, each with
+/// the key that answers it (design note, hard choices 3 and 4).
+///
+/// `None` for every other refusal: those already read as one sentence from
+/// `Refusal::explain`, and inventing a key hint for them would be a promise
+/// the app cannot keep.
+///
+/// The verb is the first word of `Operation::describe`, which every
+/// `describe_*` in `graft_ops::operation::history` begins with (`rebase …`,
+/// `merge …`, `cherry-pick …`). Taking it from there rather than writing a
+/// table here is what keeps this line and the Command Log describing the
+/// same operation (`KNOWN_GAPS` row 229).
+fn history_refusal(state: &AppState, refused: Option<&Refusal>) -> Option<Status> {
+    let running = state.remote.running.as_ref();
+    match refused? {
+        // The picture was drawn against a tip that has since moved, so the
+        // operation the user confirmed is not the one that would run. The
+        // answer is to look again — at the same key.
+        Refusal::Moved { name } => Some(Status::Sticky {
+            reason: format!("{} moved since the preview", short_ref(name)),
+            keys: running
+                .and_then(|running| running.opened_by)
+                .map(|key| format!("{key} again")),
+        }),
+        // Hard choice 4: refuse before git runs rather than `--autostash`,
+        // whose pop can conflict outside any journal entry. The refusal
+        // costs one key, and that key is named.
+        Refusal::DirtyTree { count } => Some(Status::Sticky {
+            reason: format!(
+                "{} needs a clean tree",
+                running.map_or("it", |running| verb_of(&running.description))
+            ),
+            keys: Some(format!(
+                "S stash {count} changed {}",
+                if *count == 1 { "file" } else { "files" }
+            )),
+        }),
+        _ => None,
+    }
+}
+
+/// `refs/heads/main` → `main`; anything else as it stands (`HEAD`).
+fn short_ref(full: &str) -> &str {
+    full.rsplit_once('/').map_or(full, |(_, last)| last)
+}
+
+/// `rebase feature onto main` → `rebase`.
+fn verb_of(description: &str) -> &str {
+    description.split_whitespace().next().unwrap_or(description)
 }
 
 /// The status line for an operation git stopped part-way through.
@@ -1808,11 +1896,97 @@ mod tests {
                 error: "boom".into(),
                 refresh: Some(Refresh::WorkingTree),
                 remote: None,
+                refused: None,
             },
             &mut ids(),
         );
         assert!(commands.is_empty());
         assert_eq!(state.operating, Some(JobId::new(1)));
+    }
+
+    /// The two refusals a confirmed Ghost Preview can come back with are
+    /// worded as a problem **and a key**, not as a bare sentence
+    /// (m5-history-and-ghost-preview/08, piece 8; design note hard choices
+    /// 3 and 4).
+    ///
+    /// `Moved` names the key that drew the picture, which is the key that
+    /// redraws it — that is the whole point of carrying `opened_by` through
+    /// the launch. `DirtyTree` names `S` and how many files it would take.
+    #[test]
+    fn a_refused_history_operation_says_which_key_answers_it() {
+        let rebase = Operation::Rebase(graft_ops::operation::RebaseParams {
+            branch: graft_ops::operation::Tip {
+                name: "refs/heads/feature".to_owned(),
+                oid: graft_core::oid::Oid::from_bytes(&[1; 20]).expect("20 bytes"),
+            },
+            onto: graft_ops::operation::Source::Branch("main".to_owned()),
+            onto_tip: graft_core::oid::Oid::from_bytes(&[2; 20]).expect("20 bytes"),
+        });
+        let cases = [
+            (
+                Refusal::Moved {
+                    name: "refs/heads/main".to_owned(),
+                },
+                Status::Sticky {
+                    reason: "main moved since the preview".to_owned(),
+                    keys: Some("r again".to_owned()),
+                },
+            ),
+            (
+                Refusal::DirtyTree { count: 3 },
+                Status::Sticky {
+                    reason: "rebase needs a clean tree".to_owned(),
+                    keys: Some("S stash 3 changed files".to_owned()),
+                },
+            ),
+        ];
+        for (refusal, want) in cases {
+            let mut state = AppState::default();
+            let mut commands = Vec::new();
+            launch_unstoppable(
+                &mut state,
+                &mut commands,
+                rebase.clone(),
+                crate::update::preview::HISTORY_CANNOT_STOP,
+                Some("r"),
+                &mut || JobId::new(9),
+            );
+            let commands = operated(
+                &mut state,
+                JobId::new(9),
+                Operated::Failed {
+                    error: "the sentence nobody should see here".into(),
+                    refresh: None,
+                    remote: None,
+                    refused: Some(refusal.clone()),
+                },
+                &mut ids(),
+            );
+            assert!(commands.is_empty(), "{refusal:?}: {commands:?}");
+            assert_eq!(state.status, want, "{refusal:?}");
+        }
+    }
+
+    /// Every other refusal keeps `graft_ops`' own sentence: the app invents
+    /// no key hint it cannot honour.
+    #[test]
+    fn a_refusal_with_no_key_to_offer_keeps_the_plain_sentence() {
+        let mut state = AppState::default();
+        let id = JobId::new(4);
+        state.operating = Some(id);
+        let commands = operated(
+            &mut state,
+            id,
+            Operated::Failed {
+                error: "nothing staged".into(),
+                refresh: None,
+                remote: None,
+                refused: Some(Refusal::NothingStaged),
+            },
+            &mut ids(),
+        );
+        assert!(commands.is_empty());
+        assert_eq!(state.status, Status::sticky("nothing staged"));
     }
 
     #[test]
@@ -1835,6 +2009,7 @@ mod tests {
                 error: "boom".into(),
                 refresh: Some(Refresh::WorkingTree),
                 remote: None,
+                refused: None,
             },
             &mut ids(),
         );
@@ -1867,6 +2042,7 @@ mod tests {
                 error: "nothing to do".into(),
                 refresh: None,
                 remote: None,
+                refused: None,
             },
             &mut ids(),
         );

@@ -47,6 +47,16 @@ pub struct RemoteState {
     /// The write `Esc` asked to stop. Its `JobCancelled` is the answer the
     /// user asked for, not a failure.
     pub cancelling: Option<JobId>,
+    /// The upstream a `p` just refused to fast-forward onto — its full
+    /// tracking ref and the tip it was at — so the `m` and `r` the refusal
+    /// offers aim at *that* branch rather than at whatever row the cursor
+    /// happens to be on (m5-history-and-ghost-preview/08, piece 9).
+    ///
+    /// Set only when the tip is known: without it there is nothing to pin
+    /// an `Operation` to, and a key hint that cannot be honoured is worse
+    /// than none. Cleared by dismissing the line, by any write launching,
+    /// and by a refresh — each of which makes the recorded tip a guess.
+    pub diverged_upstream: Option<(String, Oid)>,
 }
 
 /// One write in flight.
@@ -60,6 +70,11 @@ pub struct Running {
     pub op: Option<Operation>,
     /// Whether `Esc` may stop this write.
     pub stoppable: Stoppable,
+    /// The key that drew the Ghost Preview this write was confirmed from
+    /// (`m`, `r`, `.`), so a `Moved` refusal at confirm time can say which
+    /// key to press again. `None` for every write that is not a previewed
+    /// history operation (m5-history-and-ghost-preview/08, piece 8).
+    pub opened_by: Option<&'static str>,
 }
 
 /// Whether `Esc` may stop a running write.
@@ -76,27 +91,16 @@ pub enum Stoppable {
     No(&'static str),
 }
 
-/// Why `Esc` will not stop an undo or a redo.
-///
-/// `u`/`U` run an inverse plan of several steps — refs, then `HEAD`, then the
-/// index, then the working tree — and `graft_ops::restore::execute` checks
-/// the stop token **once, before the first step**, never between them. The
-/// only thing a cancel reaches mid-plan is the git child of whichever step is
-/// running: that step fails, the loop breaks, and the entry is journalled
-/// `Aborted` with the earlier steps already applied. A plan with two
-/// `UpdateRef` steps would leave the first ref moved and the second not.
-///
-/// Nothing rolls that back today, so the honest answer is not to offer the
-/// cancel. Restoring it means a between-step stop check in `graft-ops` plus a
-/// rollback of the steps that ran — a `graft-ops` change, not an app one
-/// (m4-remotes/05 review, M3).
-pub const UNDO_CANNOT_STOP: &str = "cannot be stopped part-way — finishing";
-
 impl RemoteState {
     /// The running write, if `id` is it.
     fn running(&self, id: JobId) -> Option<&Running> {
         self.running.as_ref().filter(|running| running.id == id)
     }
+}
+
+/// `refs/heads/main` → `main`.
+fn short_ref(full: &str) -> &str {
+    full.rsplit_once('/').map_or(full, |(_, last)| last)
 }
 
 /// Note the write just launched under `id` (see [`RemoteState::running`]).
@@ -106,13 +110,19 @@ pub(super) fn launched(
     description: String,
     op: Option<Operation>,
     stoppable: Stoppable,
+    opened_by: Option<&'static str>,
 ) {
     state.remote.running = Some(Running {
         id,
         description,
         op,
         stoppable,
+        opened_by,
     });
+    // Whatever this write is, the tip the diverged line remembered is now a
+    // guess: the write may be the merge or the rebase that answers it, or
+    // something else that moves the same refs.
+    state.remote.diverged_upstream = None;
 }
 
 /// The key hint a running remote write's status line ends with. The footer
@@ -578,6 +588,26 @@ pub fn remote_failed(
             state.remote.last_rejected_push = Some(params.clone());
             sticky()
         }
+        // The pull that cannot fast-forward. `graft_ops`' own line sends the
+        // user to the shell (`git pull --rebase`); M5 gave them both verbs
+        // inside Graft, so the line names the two keys instead and the
+        // upstream is remembered for them to aim at.
+        (RemoteFailure::NotFastForward, Operation::Pull(params)) => {
+            let Some(tip) = params.upstream.tracking_tip else {
+                // Nothing to pin `m` or `r` to. `ops`' own sentence is the
+                // honest answer, including its shell fallback.
+                return sticky();
+            };
+            state.remote.diverged_upstream = Some((params.upstream.tracking_ref.clone(), tip));
+            Status::Sticky {
+                reason: format!(
+                    "{} and {} have diverged",
+                    short_ref(&params.branch),
+                    short_tracking(&params.upstream.tracking_ref)
+                ),
+                keys: Some("m merge it  r rebase onto it".to_owned()),
+            }
+        }
         _ => sticky(),
     }
 }
@@ -637,7 +667,7 @@ fn short_branch(name: &str) -> &str {
 }
 
 /// `refs/remotes/origin/main` → `origin/main`.
-fn short_tracking(name: &str) -> &str {
+pub(super) fn short_tracking(name: &str) -> &str {
     name.strip_prefix("refs/remotes/").unwrap_or(name)
 }
 

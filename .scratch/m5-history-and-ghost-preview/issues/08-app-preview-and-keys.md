@@ -118,7 +118,7 @@ pub enum ContextAction { …, Checkout(CheckoutTarget), Merge { source: Source }
 
 ## Acceptance (every tick names its test at tick time)
 
-**Status: partial — stopped at the ticket's own stop seam, after piece 5.** Pieces 1–5 are built, plus piece 3's runner wiring, the `RevertTo` job and answer (piece 9's plumbing), piece 11's first integration tests and piece 12's captures and MAP.md. Pieces 6, 7, 8, 9 (the journal key itself) and 10 are not started — see **Handoff** below.
+**Status: partial — continuation 1 of 2 finished pieces 7, 8, 9 and 10. Piece 6 is `blocked: needs graft-ui`.** Pieces 1–5 came from the first builder. This one added the journal's `Enter` time machine (and **ran** the revert path for the first time), the `operated` wording for the two history refusals, `p` on a diverged branch, `HISTORY_CANNOT_STOP`'s own test, and group 06's owed acceptance box 2. Piece 6 (the `.` menu verbs and Fix…) needs new `ContextAction` variants in `crates/graft-ui/src/context_menu.rs`, which is outside this builder's fence — see **Handoff (continuation 2)**.
 
 Ticked:
 
@@ -133,15 +133,21 @@ Ticked:
 - [x] `m`/`r` build the right operations, pinned to the tips the picture was drawn against: `m_builds_a_merge_of_the_selected_branch_into_the_current_one`, `r_builds_a_rebase_of_the_current_branch_onto_the_selection`, `the_history_keys_are_the_plain_letters_only`. Both keys are in `docs/design/02-keymap.md` §2.3 — read before binding; no key outside what the doc gives was taken.
 - [x] MAP.md updated: `update::preview`, `update::preview::slice`, `view::preview`, `jobs::preview`, `jobs::undo::{RevertedTo, run_revert_to, journal_entries}`, `update::undo::{revert_to_forced, reverted_to}`, `history::preview_seeds`, `refs::RefBadges::remotes`.
 
+Ticked by continuation 1 (each names its verifying test at tick time):
+
+- [x] **Piece 7 (scope item 8) — `operated` for the history operations.** `Refused(Moved)` → `Sticky { reason: "main moved since the preview", keys: Some("r again") }`; `Refused(DirtyTree { count })` → `Sticky { reason: "rebase needs a clean tree", keys: Some("S stash 3 changed files") }`: `update::operate::tests::a_refused_history_operation_says_which_key_answers_it` (both rows, exact `Status` values). Every other refusal keeps `graft_ops`' own sentence with no invented key: `update::operate::tests::a_refusal_with_no_key_to_offer_keeps_the_plain_sentence`. **Not ticked:** `Operated::Conflicted` does **not** gain `entry: EntryId` (as-built 13) and the `Done` arm was already built — neither was changed here.
+- [x] **Piece 8 (scope item 7) — the journal's `Enter` time machine.** The key opens a preview of `RevertTo(entry.id)` and launches nothing: `update::journal::tests::enter_on_an_older_row_opens_a_preview_of_reverting_to_it` (asserts the subject, `return_to_journal`, the single `PlanPreview` command and `operating == None`). `Esc` puts the browser back on the same row: `update::journal::tests::the_browser_comes_back_on_the_same_row_when_the_preview_is_cancelled`. `OLDER_ENTRY` deleted (`grep -rn OLDER_ENTRY crates/` → nothing).
+- [x] **The revert/time-machine write path really runs**, end to end, read back from git rather than from the status line: `tests/it/preview.rs::journal_enter_on_an_older_row_previews_and_confirm_really_reverts` — three real stages through the changes pane, `J`/`j`/`j`/`Enter`, the real `plan_revert_to`, `→`/`Enter` on `Confirm`, then `git diff --cached` empty, the three files still on disk, and six journal entries of which the last three are `OperationKind::Undo`. It also proves planning is a read (journal and index unchanged between `Enter` and `Confirm`).
+- [x] **Piece 9 (scope item 9) — `p` on a diverged branch.** `remote_failed` words it `main and origin/main have diverged · m merge it  r rebase onto it` and records `("refs/remotes/origin/main", THEIRS)`; `r` then previews a rebase **onto the tracking ref**, pinned to that tip, whatever row the cursor is on: `update::remote::tests::diverged_pull_sets_m_r_source` (asserts the whole `Operation` value). `Esc` dismisses the line and the field together: `update::remote::tests::dismissing_the_diverged_line_takes_its_keys_with_it`. The M4 walk's own expectation was updated to the new line: `tests/it/m4_walk::every_scenario::pull_diverged_refused`. **Deviation:** not cleared by a refresh — as-built 12 says why, and `check`'s `Moved` is what keeps it safe.
+- [x] **Piece 10 — `HISTORY_CANNOT_STOP`.** `Esc` during a running merge sends no `CancelJob` and the line says what does stop it: `update::remote::tests::history_ops_launch_unstoppable`.
+- [x] **Group 06's owed acceptance box 2.** `UNDO_CANNOT_STOP` deleted (`grep -rn UNDO_CANNOT_STOP crates/` → nothing), `u`/`U` launch `Stoppable::Yes`, the busy line is `undo · esc cancels`, and `Esc` sends one `CancelJob` and latches `cancelling`: `update::remote::tests::esc_cancels_an_undo_in_flight` (both `u` and `U`). The answer side is `Undone::Cancelled` → `Status::Done` clean / `Status::Sticky` part-way (as-built 11). **Not ticked:** no test drives a *real* cancelled undo through the app — `graft-ops`' own `undo_cancel::*` suite covers the rollback, and the app side is unit-tested only.
+- [x] `as-built.md` addendum — deviations 9–15.
+
 Not ticked (not built):
 
-- [ ] Piece 6 — the `.` menu verbs and Fix…
-- [ ] Piece 7 — `operated` for the history operations
-- [ ] Piece 8 — the journal's `Enter` time machine key and the `OLDER_ENTRY` delete (the **job**, the command, the answer and the drift box are built; only the key and the journal-side wiring are missing)
-- [ ] Piece 9 — `p` on a diverged branch (`RemoteState.diverged_upstream`)
-- [ ] Piece 10 — as listed
-- [ ] `as-built.md` addendum
-- [ ] KNOWN_GAPS rows for the conductor
+- [ ] **Piece 6 — the `.` menu verbs and Fix… — `blocked: needs graft-ui`.** See the handoff below.
+- [ ] Piece 11's remaining tests: `preview_box_lines_come_from_plan` across five operation kinds, `stale_tip_is_refused_in_words` (a real `git update-ref` between `Ready` and `Enter`), `nothing_to_do_plan_offers_close_only`, `too_small_enter_is_a_noop`, `plan_failure_shows_the_reason`, `menu_verbs_build_expected_operations` (blocked with piece 6).
+- [ ] KNOWN_GAPS rows for the conductor (below).
 
 ## Gates
 
@@ -209,3 +215,131 @@ Everything below is unstarted unless noted. The seams they attach to are all bui
 5. **Piece 10 — as the ticket lists it.**
 6. **Piece 11's remaining tests.** Written: three in `crates/graft/tests/it/preview.rs`. Still wanted: a stale-tip refusal (`check`'s `Moved` at confirm time), a confirm that actually runs a rebase end to end, and the time machine.
 7. **`as-built.md`** — the eight deviations above are written out in this ticket's NOTES ready to be moved across.
+
+---
+
+## NOTES (builder, m5/08 — continuation 1)
+
+**Scout: yes.** A Sonnet `Explore` over `update/journal.rs`, `update/context_menu.rs`
++ `graft-ui/src/context_menu.rs`, `update/remote.rs`, `update/operate.rs` +
+`jobs/operate.rs` and `update/undo.rs` before any source was edited (ADR-0035).
+It is what established that `ContextAction` has no history variants and that
+`Refusal::{Moved, DirtyTree}` were unhandled anywhere in `app`.
+
+**Compaction: no.**
+
+**Piece 6 is `blocked: needs graft-ui`.** The verbs cannot be added from
+`crates/graft/` alone: `ContextAction` and `MenuItem` live in
+`crates/graft-ui/src/context_menu.rs`, and the ticket's own Signatures block
+asks for eleven new variants there. The ticket grants that one file; the
+conductor's fence for this continuation is `graft` only, so it stopped at the
+seam rather than reaching across. **The signature needed**, verbatim from the
+Signatures block:
+
+```rust
+// graft-ui/src/context_menu.rs
+pub enum ContextAction { …, Checkout(CheckoutTarget), Merge { source: Source }, Rebase { onto: Source },
+    CherryPick(Oid), Revert { commit: Oid, mainline: Option<u8> }, Reset { to: Oid, mode: ResetMode },
+    DeleteBranch { name: String, at: Oid }, DeleteTag { name: String, at: Oid },
+    FixRevert { mainline: u8 }, FixReset { to: Oid }, FixRebase { onto: Oid } }
+```
+
+`CheckoutTarget` and `ResetMode` already exist, in `graft_ops::operation::history`
+(:177 and :156) — `graft-ui` would have to depend on `graft-ops` to name them,
+or the variants carry the plain parts (`String`/`Oid`/a local `ResetMode`) and
+`update/context_menu.rs` rebuilds the `Operation`. **That is a design choice
+the conductor should make, not the next builder**: `graft-ui` naming
+`graft-ops` types is an ARCHITECTURE.md question.
+
+Everything on the `graft` side of piece 6 is otherwise ready: `open_preview`
+already refuses correctly, `preview::source_at` and `preview::current_branch`
+are the row-reading rules to mirror, and `update::context_menu::dispatch`
+already has the `next_id` closure the call needs.
+
+**Mutations run, and what caught each** (a green run is not evidence a test
+can fail):
+
+1. `confirm_preview`'s `RevertTo` arm stopped pushing `Command::RevertTo`
+   (the write never launches, everything still compiles and every unit test
+   still passes). Caught by exactly one test:
+   `tests/it/preview.rs::journal_enter_on_an_older_row_previews_and_confirm_really_reverts`.
+   730 unit tests passed under the mutation — which is the point: only the
+   integration test actually exercises the write.
+2. `update::undo::launch` back to `Stoppable::No("MUTANT")`. Caught by
+   `update::remote::tests::esc_cancels_an_undo_in_flight`, and by nothing else.
+3. `history_refusal`'s `Moved` arm returning `keys: None`. Caught by
+   `update::operate::tests::a_refused_history_operation_says_which_key_answers_it`,
+   and by nothing else.
+4. `remote_failed` no longer recording `diverged_upstream`. Caught by
+   `update::remote::tests::diverged_pull_sets_m_r_source`, and by nothing else.
+
+Each mutation was applied, the suite run, the failure read, and the file
+restored from a copy taken before the edit.
+
+**Captures** (the **user** judges them; this builder does not tick "looks
+right"). New: `docs/shots/m5-ui-preview-time-machine-80x24.txt` (2.2 KB) and
+`-160x48.txt` (3.3 KB), written by
+`tests/it/preview.rs::capture_time_machine_for_docs_shots` (`#[ignore]`d)
+from the real path — a real repository, three real stages through the changes
+pane, the real journal, the real `plan_revert_to`, the real frame at the real
+size. **Colour is unverified**: a `TestBackend` character grid carries no
+colour attributes (CLAUDE.md rule 5). The two rebase captures from the first
+half are untouched.
+
+One thing the capture shows that is worth a human eye: the revert box has
+**no command lines** under it, because `preview::plan_revert_to` produces no
+`commands`. That is `graft_ops`' own answer and the box is honest about it
+(every other line is there), but if the user expects a `git …` line per step
+the way the rebase box has one, that is a `graft-ops` gap, not an app one.
+
+**What could not be verified:**
+
+- **No test drives a real cancelled undo through the app.** `esc_cancels_an_undo_in_flight`
+  proves the key sends `CancelJob`; `Undone::Cancelled`'s two status lines are
+  unit-tested through `undone`. Nothing in `crates/graft` runs a real
+  `restore::execute`, cancels it, and reads the repository back —
+  `graft-ops`' `undo_cancel::*` suite does that below the app. **Unverified,
+  not broken.**
+- `graft-ops::it::undo_cancel::a_cancelled_undo_through_u_leaves_u_where_it_was`
+  **failed once** under a full-workspace run and passed three times in a row
+  in isolation afterwards, and passed in every subsequent full run. Nothing
+  here touches `graft-ops`. It looks load-sensitive; the group 06 fix round
+  should know.
+- The `(ghost)` badge is still absent (first half's NOTES); untouched here.
+
+**KNOWN_GAPS rows for the conductor** (builders do not edit that file):
+
+- The first half's five rows still stand, minus nothing.
+- `KNOWN_GAPS.md:501` / `:502` ("`Esc` cannot cancel u/U at all", "Proof is
+  that `CancelJob` is never sent") — **both closable now.** `UNDO_CANNOT_STOP`
+  is gone, `u`/`U` launch `Stoppable::Yes`, and `esc_cancels_an_undo_in_flight`
+  is the proof the second row asked for.
+- `Esc` = abort a conflicted history operation → M7 (unchanged;
+  `HISTORY_CANNOT_STOP` says so in words).
+- New: **the revert box carries no command lines** because
+  `preview::plan_revert_to` returns none. `graft-ops`, small.
+- New: `graft_ops::apply::remote::explain`'s `NotFastForward` string still
+  reads "merge or rebase (M5); shell: git pull --rebase". The app now
+  overrides it whenever the tracking tip is known, so that text is only
+  reachable when it is not. `graft-ops` tidy-up, outside this fence.
+
+**Gates**, workspace-wide, from `.worktrees/m5-08-cont` with
+`CARGO_TARGET_DIR=/tmp/graft-m508cont-target`:
+
+- `cargo fmt --all --check` — pass
+- `cargo clippy --all-targets --message-format=short -- -D warnings` — pass
+- `cargo nextest run --workspace` — **2060 passed, 0 failed, 33 skipped**
+  (main was 2054; +6)
+- `cargo test --doc` — pass (0 doctests; a gate, not evidence)
+
+## Handoff (continuation 2)
+
+1. **Piece 6**, once the conductor has decided how `graft-ui` names the
+   operation types (above). It is the only unbuilt scope item.
+2. **Piece 11's remaining tests**, listed under "Not ticked". The
+   stale-tip one is the interesting one: `git update-ref` between `Ready`
+   and `Enter`, then assert the sticky names `main` and offers `r again` —
+   the app half of that wording is built and unit-tested, but nothing drives
+   it from a real moved ref.
+3. A real cancelled undo through the app, if the conductor wants the
+   app-level proof (above, under "could not be verified").
