@@ -1,6 +1,6 @@
 # secret-field: the typed password lives in a zeroizing buffer, never a `String`
 
-Status: done
+Status: done (fix round for `docs/reviews/m5-01-secret-field.md` landed — see FIX ROUND below)
 Blocked by: none
 Build with: (blank — brownfield; recommendation: **Sonnet**, mechanical once the scout has named every site the field's text passes through)
 **Conductor set after the scouts: Sonnet.**
@@ -63,6 +63,8 @@ impl Answer { pub fn new(bytes: zeroize::Zeroizing<Vec<u8>>) -> Self; }
 
 - [x] Typing, backspace, `Ctrl+U`, paste into the secret prompt behave as the `TextField` did, judged by length and by `into_bytes` — `graft_ui::text_input::tests::secret_field_edits_by_length`, `graft::update::credential::tests::ctrl_u_clears_the_field`, `graft::update::credential::tests::editing_keys_work_and_paste_lands_in_the_field`
 - [x] `Debug` of `SecretField`, `FieldView`, `CredentialPrompt`, `AppState` (with a prompt open) never contains the typed bytes — `graft_ui::text_input::tests::secret_field_debug_and_eq_never_compare_content` (widget-layer redaction), `graft::update::credential::tests::secret_never_in_debug` (app layer: state, field, view, and the `Command` an `Enter` produces, all scanned for the literal typed password)
+- [x] **Nothing about a `Debug` print, a log line or a panic message tells you how long the password is** (fix round, review Major 1 — it printed `Secret(SecretField(7))`). `SecretField`'s `Debug` is now one constant string for every field: two fields holding 7 and 30 characters, and an empty one, all print the same bytes, and the print contains no digit at all — `graft_ui::text_input::tests::secret_field_debug_and_eq_never_compare_content` (asserts the exact string `SecretField(..)`, asserts no numeric character, and asserts a 30-char field and an empty field print identically); at the app layer, `graft::update::credential::tests::secret_never_in_debug` (prints the live `PromptField` for `hunter2` and for `a-much-longer-passphrase` and asserts the two prints are equal and digit-free)
+- [x] **A `{state:?}` taken on a real run, while a credential prompt is open, contains no password** — scope item 5(d), which the first round silently dropped (review Major 3). `m4_walk`'s `Recorded` now keeps one `{state:?}` per state the loop passed through with `state.credential.is_some()`, and `no_secret_leaked` scans those alongside the journal, events and status lines; a scenario that types a secret but records no prompt state is a failure, so the scan cannot pass by never running — `m4_walk::every_scenario::wrong_password_then_right`, `m4_walk::every_scenario::password_prompt_esc_cancels`, `m4_walk::every_scenario::username_then_password` (all three type a secret, all three pass with the non-empty guard in force). Honest boundary: `CredentialPrompt`'s own `Debug` omits the field entirely, so this walk proves nothing walks around *that* omission; the field's own redaction is proved by `secret_never_in_debug`, which prints the field directly.
 - [x] The rendered frame shows a **fixed 8** mask glyphs, not `len` — deviation from the draft signature (`Option<usize>`) to the ADR-0038 §2 binding condition below; see NOTES — `graft_ui::text_input::tests::masked_prompt_draws_only_glyphs`, `graft_ui::text_input::tests::masked_field_at_the_ascii_tier_draws_stars`, `graft_ui::credential_prompt::tests::masked_field_at_the_ascii_tier_draws_stars`, `graft::view::tests::the_credential_prompt_draws_over_everything_and_masks_what_is_typed`
 - [x] `into_bytes` → `Answer` → `Secret` → git receives the password: the M4 walk's `password-prompt-*` scenarios pass unchanged — `m4_walk::every_scenario::wrong_password_then_right`, `m4_walk::every_scenario::password_prompt_esc_cancels`, `m4_walk::every_scenario::username_then_password` (all in `cargo nextest run --workspace`, full 1834/1834 pass, see NOTES)
 - [x] No `String` or `Vec<u8>` copy of the secret exists outside `Zeroizing`/`Secret` on the path keypress → git: `rg -n 'text\(\)|to_string\(\)|clone\(\)' crates/graft/src/update/credential.rs crates/graft-ui/src/text_input.rs` reviewed line by line in NOTES — inspection, listed
@@ -80,8 +82,13 @@ One context. Two crates, both edited by one builder (disjoint from every other M
 ## Conductor: user conditions (ADR-0038 §2) — binding
 
 - The masked field draws **a fixed 8 glyphs** whatever the real length. Length must not be inferable from the drawn field, its width, a counter, the cursor column or `Debug`. **Met**: `FieldView.secret: Option<bool>` (a pulse flag, not `Option<usize>`/`Option<len>` as the draft signature sketched — deliberately, so no future caller can read a length back out of the type at all) drives `display_text` to always emit `SECRET_GLYPHS = 8` glyphs; proved by `graft_ui::text_input::tests::eight_glyphs_and_an_identical_pulse_for_any_length` (3-char vs 30-char secret, both draw 8 glyphs before and after a keystroke).
-- **A keystroke must still visibly register** — a brief pulse, a caret, some response — and **that response must not encode length**. A field that looks dead while typing is not acceptable; neither is feedback that counts characters. **Met**: `SecretField.pulse: bool` flips on every edit; the drawn row swaps exactly one glyph (position 0) between `•` and `◦` (`*`/`+` at the ASCII tier) on each keystroke. Same test (`eight_glyphs_and_an_identical_pulse_for_any_length`) proves the *mechanism* — same column, same two glyphs swapped — is identical for a 3-char and a 30-char field. It deliberately does **not** assert the two fields' absolute drawn rows are equal at any instant: `pulse` is a toggle, so two fields with a different total edit count can be at opposite parities, and asserting equality there would itself be asserting something about length by the back door (see the test's own doc comment). What's proved is the mechanism, not the absolute state — that is what the condition actually requires.
-- Acceptance must name the test that proves both: 8 glyphs for a 3-char and a 30-char secret, and a visible change on keypress that is identical for both — both proved by `graft_ui::text_input::tests::eight_glyphs_and_an_identical_pulse_for_any_length`, described above.
+- **A keystroke must still visibly register** — a brief pulse, a caret, some response — and **that response must not encode length**. A field that looks dead while typing is not acceptable; neither is feedback that counts characters.
+  - **Second half met; first half only partly, and the shortfall is the honest answer, not a shortcut.** First round: `pulse` was a `bool` flipped by every edit. That gave per-keystroke feedback but left the field **resting at the parity of the edit count** — for a straight-typed password, one bit of its length, visible on screen and already committed in `docs/shots/m4-credential-prompt-in-app.txt:38` (review Major 2). That fails the second half of the condition outright.
+  - Now: `pulse()` is `!is_empty()` — "something is typed in this field". **Nothing on the masked row varies with length, at any moment**, proved by `graft_ui::text_input::tests::eight_glyphs_and_an_identical_row_for_any_length`, which asserts a 3-character and a 30-character field draw the *same row cell for cell*, before a further keystroke and after it (the first-round test deliberately could not make that comparison, because the parity made it false).
+  - **What the user loses:** the first character lights one fixed glyph (`•`→`◦`, `*`→`+` at the ASCII tier) and `⌃U` puts it out; the 2nd..nth keystroke changes nothing on screen — proved, and its limits stated, by `graft_ui::text_input::tests::the_first_keystroke_and_ctrl_u_visibly_register`.
+  - **Why not both:** no deterministic function of the buffer can change on every keystroke and be constant at rest, because every row a field passes through while typing is also the resting row of a shorter password. Per-keystroke feedback needs something the password does not determine. The review's option (b) (a flag set on edit, cleared by any other `AppEvent`) does not supply it: during a blocked askpass no other events arrive, so (b) rests lit after any edit — exactly what is shipped, without touching `update/mod.rs`. The review's option (a) (a random starting parity carried on `Progress::CredentialNeeded` from `jobs/askpass.rs`) does supply it and leaks nothing, but it needs `jobs/askpass.rs` and `update/mod.rs`, both outside this fix round's file fence. **Handed back to the conductor as a gap** — see FIX ROUND below.
+- Acceptance must name the test that proves both: 8 glyphs for a 3-char and a 30-char secret, and a visible change on keypress that is identical for both — `graft_ui::text_input::tests::eight_glyphs_and_an_identical_row_for_any_length` (8 glyphs, and the same row, for 3 vs 30) and `graft_ui::text_input::tests::the_first_keystroke_and_ctrl_u_visibly_register` (the visible change: the same column, the same two glyphs, at 1 character and at 30) — with the shortfall above stated, not papered over.
+- **Never freed unwiped.** First round failed this for any password over 8 characters: the `Zeroizing<String>` started at capacity 0 and `String::insert` grew it 0→8→16→32, each reallocation freeing the old block with the prefix still in it (review Critical 1). Now the buffer is reserved once at 256 bytes and never reallocates on its own: growth past it builds a fresh `Zeroizing` and drops the old wrapper (whose whole capacity zeroes), `backspace`/`delete` shrink in place and then overwrite the bytes past the new end, and `clear` zeroes the capacity in place and keeps the allocation — `graft_ui::text_input::tests::secret_field_never_reallocates_silently` (types 256 characters asserting the capacity never moves, then asserts growth past it, then that backspace/delete/clear/`Clone` leave it alone). **Not verified, and not verifiable here:** that a freed or shrunk-past block actually reads as zero. A `#![forbid(unsafe_code)]` crate cannot look at memory it no longer owns; that half rests on zeroize 1.9.0's `Zeroize for Vec` contract ("Ensures the entire capacity of the `Vec` is zeroed"), read in its source, not on anything observed here.
 
 ## NOTES
 
@@ -94,3 +101,108 @@ One context. Two crates, both edited by one builder (disjoint from every other M
 - KNOWN_GAPS row "M4/06 review SECURITY" — closed by this ticket; NOTES says so, KNOWN_GAPS.md itself untouched (conductor commits the close).
 - Nextest caught one genuinely flaky, unrelated test during the gate run: `graft-fixtures::remote::tests::http_remote_frees_its_port_on_drop` failed once in the full workspace run (port still accepting right after drop — a timing race in that fixture, not part of this ticket's crate set), passed clean in isolation and on a full re-run. Not touched, not silenced — flagged here per CLAUDE.md rule 1 (green gates are not evidence; say what happened).
 - Two `docs/shots/` captures regenerated by hand via their existing `#[ignore]`d tests (both now show a fixed 8 mask glyphs for "hunter2" instead of the old 7): `docs/shots/m4-credential-prompt-and-hints.txt` (`cargo test -p graft-ui --lib credential_prompt::tests::capture_for_docs_shots -- --ignored --nocapture`, output pasted in by hand per the file's existing convention) and `docs/shots/m4-credential-prompt-in-app.txt` (`cargo test -p graft --lib view::tests::capture_m4_credential_prompt_in_app -- --ignored --nocapture`, self-writing). Both ≤200 KB (6.5 KB and 8.2 KB). Out of scope, not regenerated: the `m4-03-credential-masked-*`/`m4-04-credential-username-*` captures and stems, which come from the `m4_walk` example's live `--capture` mode (real HTTP remote, pty-driven) rather than a unit test — those still show the old 7-glyph mask for a real password and will need a manual pty-capture pass; flagging for the conductor rather than silently leaving it unmentioned.
+
+## FIX ROUND (`docs/reviews/m5-01-secret-field.md`)
+
+Handed to a second builder after the first was killed mid-work by a session
+rate limit; the first builder's code changes were on disk, uncommitted and
+unverified, and this round verified them rather than trusting them. Gates
+were run here for the first time. Scout: none — the review names every file
+and line, so a scout would have re-derived what was already written down.
+
+What was addressed, and whether it was a cause fix or a symptom fix:
+
+1. **Critical 1 — the zeroizing buffer leaked on growth. Cause.**
+   `crates/graft-ui/src/text_input.rs`: `SECRET_CAPACITY = 256` reserved in
+   `new()`; `make_room` grows by building a fresh `Zeroizing` and assigning
+   (the old wrapper is dropped while it still owns the block, which is the
+   only arrangement where zeroize's `Drop` can reach it); `wipe_after_end`
+   overwrites the spare capacity after `backspace`/`delete`; `clear` calls
+   `Zeroize::zeroize` in place instead of replacing the buffer; `Clone`
+   carries the capacity over so a clone does not reallocate on its next
+   keystroke. The type's doc comment was rewritten to state that rule
+   instead of the false "every mutator replaces `text` wholesale" — and to
+   say plainly which half is unverifiable. Test:
+   `secret_field_never_reallocates_silently`. Cost to the user: 256 bytes
+   per open prompt, and a `backspace` writes up to 256 NUL bytes.
+2. **Major 1 — `Debug` printed the length. Cause.** Now the constant
+   `SecretField(..)`. Tests named in the Acceptance tick above.
+3. **Major 2 — the pulse's resting state encoded length. Cause, with a
+   disclosed loss of function.** `pulse()` is `!is_empty()`. The full
+   argument, the cost and the two rejected alternatives are in the
+   conductor-conditions block above. Captures: both regenerated and
+   compared byte for byte (below).
+4. **Major 3 — the `no_secret_leaked` scan (scope 5(d)) was missing and
+   undisclosed. Cause.** `crates/graft/tests/it/m4_walk/run.rs`:
+   `Recorded.prompts` + the guard that a scenario typing a secret must have
+   recorded at least one open-prompt state. Tick above.
+5. **Major 4 — the per-event `AppState` clone. Not fixed; documented
+   accurately and handed back.** `update` takes `&AppState` and returns a
+   new one, so while a prompt is open the typed secret is copied once per
+   event — every keystroke, every job progress message, every resize — with
+   two copies live for the length of the call. Each is a `SecretField`, so
+   each zeroes when it drops and none is freed unwiped. Removing it needs
+   `update/mod.rs`'s own shape to change, outside this fix round's fence.
+   The module doc of `crates/graft/src/update/credential.rs` and
+   `SecretField`'s own doc now both say it happens, in those words, so no
+   comment implies otherwise.
+
+Also corrected in passing, inside the fence: `CredentialPrompt`'s `Debug`
+doc still said `SecretField`'s `Debug` "prints only a length" (stale after
+fix 2), and it now also records why the walk-level `{state:?}` scan cannot
+by itself prove the field's redaction.
+
+### Captures
+
+- `docs/shots/m4-credential-prompt-in-app.txt` — regenerated
+  (`cargo test -p graft --lib view::tests::capture_m4_credential_prompt_in_app
+  -- --ignored --nocapture`, the test writes the file). **Byte-identical to
+  the committed version**, confirmed by `git status` reporting no change:
+  `hunter2` typed drew `◦•••••••` under the old toggle (parity of 7 edits =
+  odd) and draws `◦•••••••` under the new rule (something is typed). The
+  glyph is the same; what it now means is different, and it no longer
+  differs between a 7- and an 8-character password.
+- `docs/shots/m4-credential-prompt-and-hints.txt` — the widget body
+  regenerated (`cargo test -p graft-ui --lib
+  credential_prompt::tests::capture_for_docs_shots -- --ignored --nocapture`)
+  and compared line by line: **unchanged**. Its caption was wrong and is
+  fixed (review Minor 7): it claimed `hunter2` was typed into a view built
+  with `secret: Some(false)`, which under the new rule means *nothing*
+  typed, so the state it described could not draw that row. The caption now
+  says what the capture actually is, points at the in-app capture for the
+  typed state, and names the test that proves eight-for-any-length, since a
+  single capture cannot.
+- Both files are well under the 200 KB cap (8.2 KB, 7.0 KB). Per CLAUDE.md
+  rule 5, neither proves colour; per rule 6, both still want the user's eye.
+
+### Gates (this fix round, in the worktree, run workspace-wide)
+
+`cargo fmt --check` clean · `cargo clippy --all-targets --message-format=short
+-- -D warnings` clean · `cargo nextest run` **1848 tests run: 1848 passed, 23
+skipped** · `cargo test --doc` clean. The worktree branches from `4da442b`,
+before the M5 group 02 fix merged, so 1848 here against main's 1852 is the
+base difference, not a loss — the four extra tests on main are group 02's.
+Not run here: heavy tier, release perf, fuzz, bench.
+
+### Handed back to the conductor
+
+- **Per-keystroke feedback on the masked row is gone** (only the first
+  character and `⌃U` change it). Restoring it without leaking length needs
+  the review's option (a): a random starting parity carried on
+  `Progress::CredentialNeeded` from `jobs/askpass.rs`, XORed with the edit
+  count. Touches `crates/graft/src/jobs/askpass.rs` and
+  `crates/graft/src/update/mod.rs` — outside this fence. **Broken? No.
+  Unverified? No. A disclosed loss of function**, traded for closing a real
+  length leak.
+- **The per-event `AppState` clone of the secret stays** (item 5). Belongs
+  in `docs/gaps/closed.md`/ADR-0038 as a decision, per the review's own
+  wording, not as an open defect.
+- **Review Minor 8 is still open**: the `m4-03-credential-masked-*` /
+  `m4-04-credential-username-*` captures come from the `m4_walk` example's
+  live pty `--capture` mode and still show the old 7-glyph mask. Not
+  regenerable from a unit test, not touched here; the M5 acceptance group's
+  contact sheet will otherwise concatenate stale captures.
+- **Zero-after-drop remains unverified** (not broken): unobservable from
+  `#![forbid(unsafe_code)]`. It rests on zeroize 1.9.0's `Zeroize for Vec`
+  contract, which the review and this round both read in the vendored
+  source.

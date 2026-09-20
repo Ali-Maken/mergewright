@@ -198,6 +198,47 @@ fn forecast_merge_finds_a_real_conflict_and_a_clean_pair() {
 }
 
 #[test]
+fn forecast_merge_conflict_paths_are_raw_bytes_for_non_ascii_and_special_names() {
+    // Without `-z`, `merge-tree --name-only` would print these through
+    // git's C-quoting (`"caf\303\251.txt"`, quotes and octal escapes
+    // included, verified on git 2.54) instead of the raw bytes a `PathBuf`
+    // needs (M5/02 fix round M1).
+    let scratch = scratch();
+    let dir = scratch.path();
+    init(dir);
+    write_and_commit(dir, "café.txt", "base\n", "base");
+    write_and_commit(dir, "has space.txt", "base\n", "base 2");
+    git_ok(dir, &["checkout", "-q", "-b", "ours"]);
+    write_and_commit(dir, "café.txt", "ours\n", "ours change");
+    write_and_commit(dir, "has space.txt", "ours\n", "ours change 2");
+    let ours = rev_parse(dir, "HEAD");
+    git_ok(dir, &["checkout", "-q", "-b", "theirs", "main"]);
+    write_and_commit(dir, "café.txt", "theirs\n", "theirs change");
+    write_and_commit(dir, "has space.txt", "theirs\n", "theirs change 2");
+    let theirs = rev_parse(dir, "HEAD");
+
+    let repo = open(dir);
+    let git_version = version::system_git()
+        .expect("the system git is found")
+        .version();
+
+    let forecast = forecast_merge(&repo, &git_version, None, ours, theirs, &())
+        .expect("never an error for a real forecast");
+    let mut paths = match forecast {
+        Forecast::Conflicts { paths } => paths,
+        other => panic!("expected a conflict, got {other:?}"),
+    };
+    paths.sort();
+    assert_eq!(
+        paths,
+        vec![
+            std::path::PathBuf::from("café.txt"),
+            std::path::PathBuf::from("has space.txt"),
+        ]
+    );
+}
+
+#[test]
 fn forecast_is_not_checkable_never_an_error() {
     let scratch = scratch();
     let dir = scratch.path();

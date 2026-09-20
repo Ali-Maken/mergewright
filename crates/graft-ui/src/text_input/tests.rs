@@ -350,22 +350,20 @@ fn changed_cells(before: &str, after: &str) -> Vec<(usize, char, char)> {
         .collect()
 }
 
-/// The heart of ADR-0038 §2: a 3-character secret and a 30-character one
-/// both draw exactly [`SECRET_GLYPHS`] glyphs, and one keypress on each
-/// produces the *same shape* of visible change — the same column flipping
-/// between the same two glyphs — proving the response depends on nothing
-/// but "an edit happened", never on how many characters came before it.
+/// The heart of ADR-0038 §2 and of the conductor's binding condition: the
+/// masked row must carry **no** length signal at rest. A 3-character secret
+/// and a 30-character one draw exactly [`SECRET_GLYPHS`] glyphs and,
+/// stronger, draw the *same row, cell for cell* — before a further
+/// keystroke and after it.
 ///
-/// This does not assert the two fields' rows are equal to each other at any
-/// point: `pulse` is a toggle, so two fields with a different number of
-/// prior edits can land on opposite parities (3 inserts vs. 30 both flip
-/// the toggle, but an odd number of times against an even one) — asserting
-/// equality there would be asserting something about length by the back
-/// door. What ADR-0038 §2 actually requires, and what this proves, is that
-/// the *mechanism* triggered by a keystroke is the same regardless of
-/// length.
+/// The old version of this test deliberately did not compare the two rows,
+/// because `pulse` was a toggle and the two fields could rest at opposite
+/// parities: that parity was one bit of the length, on screen and in
+/// `docs/shots/m4-credential-prompt-in-app.txt` (M5 group 01 review, Major
+/// 2). `pulse` is now "something is typed", so the comparison the old test
+/// could not make is exactly the one that holds here.
 #[test]
-fn eight_glyphs_and_an_identical_pulse_for_any_length() {
+fn eight_glyphs_and_an_identical_row_for_any_length() {
     let mut short = SecretField::new();
     short.insert_str("abc");
     let mut long = SecretField::new();
@@ -382,58 +380,123 @@ fn eight_glyphs_and_an_identical_pulse_for_any_length() {
             "{drawn:?}"
         );
     }
+    assert_eq!(
+        short_before, long_before,
+        "3 characters and 30 must be indistinguishable at rest"
+    );
 
-    // One more keystroke on each.
+    // One more keystroke on each: still indistinguishable, and still the
+    // same row — no cell of it counts anything.
     short.insert('d');
     long.insert('y');
     let short_after = draw_secret(&secret_view(short.pulse()), false);
     let long_after = draw_secret(&secret_view(long.pulse()), false);
+    assert_eq!(short_after, long_after, "4 characters and 31, likewise");
+    assert_eq!(
+        changed_cells(&short_before, &short_after),
+        Vec::new(),
+        "nothing in the row may move with the length"
+    );
+}
 
-    assert_ne!(
-        short_before, short_after,
-        "a keystroke must visibly register"
-    );
-    assert_ne!(long_before, long_after, "a keystroke must visibly register");
-    let short_delta = changed_cells(&short_before, &short_after);
-    let long_delta = changed_cells(&long_before, &long_after);
+/// The other half of the condition: a keystroke into an empty field does
+/// visibly register, and `Ctrl+U` visibly un-registers — one fixed cell,
+/// between the same two glyphs, at any length.
+///
+/// What this does **not** claim: that the 2nd..nth keystroke shows
+/// anything. It cannot, and no deterministic field can — every row a field
+/// passes through while typing is also the resting row of a shorter
+/// password, so a row that is constant at rest (the assertion above) is
+/// constant while typing too. [`SecretField::pulse`] says what getting it
+/// back would need; the ticket's NOTES carries it as a gap.
+#[test]
+fn the_first_keystroke_and_ctrl_u_visibly_register() {
+    let mut field = SecretField::new();
+    let empty = draw_secret(&secret_view(field.pulse()), false);
+    field.insert('a');
+    let typed = draw_secret(&secret_view(field.pulse()), false);
+
+    let delta = changed_cells(&empty, &typed);
+    assert_eq!(delta.len(), 1, "exactly one cell changes: {delta:?}");
+    let (column, was, now) = delta[0];
+    assert_eq!((was, now), ('•', '◦'));
+
+    // A 30-character field: the same cell, the same two glyphs.
+    let mut long = SecretField::new();
+    let long_empty = draw_secret(&secret_view(long.pulse()), false);
+    long.insert_str(&"x".repeat(30));
+    let long_typed = draw_secret(&secret_view(long.pulse()), false);
     assert_eq!(
-        short_delta.len(),
-        1,
-        "exactly one cell changes: {short_delta:?}"
+        changed_cells(&long_empty, &long_typed),
+        vec![(column, was, now)]
     );
+
+    // `Ctrl+U` puts it out again.
+    long.clear();
     assert_eq!(
-        long_delta.len(),
-        1,
-        "exactly one cell changes: {long_delta:?}"
+        draw_secret(&secret_view(long.pulse()), false),
+        long_empty,
+        "a cleared field is drawn as an empty one"
     );
-    let (short_column, short_was, short_now) = short_delta[0];
-    let (long_column, long_was, long_now) = long_delta[0];
-    assert_eq!(
-        short_column, long_column,
-        "the same column flips, whatever the length"
-    );
-    // Whichever direction each field's toggle happened to be flipping (that
-    // depends on how many prior edits it had — see the doc comment above),
-    // it is always a flip between the same two glyphs.
-    let mut short_pair = [short_was, short_now];
-    let mut long_pair = [long_was, long_now];
-    short_pair.sort_unstable();
-    long_pair.sort_unstable();
-    assert_eq!(
-        short_pair, long_pair,
-        "the same two glyphs are flipped between, whatever the length"
-    );
-    assert_eq!(short_pair, ['•', '◦']);
+}
+
+/// The buffer never reallocates behind `Zeroizing`'s back: that is the
+/// whole of [`SecretField`]'s heap story, and the one half of it a safe
+/// test can observe (M5 group 01 review, Critical 1 — the old version grew
+/// 0 → 8 → 16 → 32, freeing an unwiped copy of the prefix each time).
+///
+/// Not asserted, because safe Rust cannot look at memory it no longer owns:
+/// that the freed blocks read as zero. That rests on zeroize's contract for
+/// `Zeroize for Vec` ("ensures the entire capacity of the `Vec` is
+/// zeroed"), which is why this test checks the precondition that contract
+/// needs — that the block being dropped is one `Zeroizing` still holds.
+#[test]
+fn secret_field_never_reallocates_silently() {
+    let mut field = SecretField::new();
+    let reserved = field.capacity();
+    assert!(reserved >= 64, "a real password fits without growing");
+
+    // Every keystroke up to the reserved size lands in the same buffer.
+    for _ in 0..reserved {
+        field.insert('x');
+        assert_eq!(field.capacity(), reserved, "the buffer moved under us");
+    }
+
+    // Past it, growth happens through the replacing path, not `String`'s.
+    field.insert('y');
+    let grown = field.capacity();
+    assert!(grown >= reserved * 2, "grown to {grown} from {reserved}");
+
+    // Shrinking and clearing never reallocate either, so the wipes land in
+    // the buffer that is still held.
+    field.backspace();
+    field.home();
+    field.delete();
+    assert_eq!(field.capacity(), grown);
+    field.clear();
+    assert!(field.is_empty());
+    assert_eq!(field.capacity(), grown, "`clear` keeps its one allocation");
+
+    // A clone starts with room too, so its next keystroke does not
+    // reallocate the copy.
+    let mut typed = SecretField::new();
+    typed.insert_str("hunter2");
+    let cloned = typed.clone();
+    assert_eq!(cloned.capacity(), typed.capacity());
 }
 
 /// `{:?}` on a secret field must not print the typed text: a log line leaks
 /// a password as readily as the screen does (CLAUDE.md choice 2).
 #[test]
 fn debug_redacts_a_secret_fields_text() {
+    // `cursor: Some(7)` on purpose: `credential_view` passes `None` for a
+    // secret today, but the type still accepts a cursor here and the
+    // cursor index *is* the typed length — the redaction is what covers
+    // that, so it stays tested (m5-01 review, Minor 9).
     let view = FieldView {
         label: "Password",
         text: sanitize_line(""),
-        cursor: None,
+        cursor: Some(7),
         guide_at: None,
         counter: None,
         focused: true,
@@ -442,6 +505,10 @@ fn debug_redacts_a_secret_fields_text() {
     let printed = format!("{view:?}");
     assert!(!printed.contains("hunter2"), "{printed}");
     assert!(printed.contains("<redacted>"), "{printed}");
+    assert!(
+        !printed.contains("Some(7)"),
+        "the cursor is the typed length: {printed}"
+    );
 
     let unmasked = FieldView {
         text: sanitize_line("hunter2"),
@@ -511,10 +578,13 @@ fn secret_field_clone_is_independent() {
     );
 }
 
-/// `Debug` prints a length, never the text; `PartialEq`/`Eq` compare by
-/// length only, so two different secrets of the same length are `==` (the
-/// same contract `Command`'s tests need — see
-/// `graft::update::credential::Answer`'s own `PartialEq`).
+/// `Debug` prints a constant — not the text and **not the length**, which
+/// ADR-0038 §2 puts in the same list as the drawn row (M5 group 01 review,
+/// Major 1: it used to print `SecretField(7)`, and `PromptField` derives
+/// `Debug`, so `AppState` dumps read the length straight off). `PartialEq`/
+/// `Eq` still compare by length, which is never printed, so two different
+/// secrets of the same length are `==` (the contract `Command`'s tests need
+/// — see `graft::update::credential::Answer`'s own `PartialEq`).
 #[test]
 fn secret_field_debug_and_eq_never_compare_content() {
     let mut a = SecretField::new();
@@ -528,6 +598,15 @@ fn secret_field_debug_and_eq_never_compare_content() {
         "same length, different content — still equal by design"
     );
     let printed = format!("{a:?}");
-    assert_eq!(printed, "SecretField(7)");
+    assert_eq!(printed, "SecretField(..)");
     assert!(!printed.contains("hunter2"));
+    assert!(
+        !printed.chars().any(char::is_numeric),
+        "a digit in a secret field's Debug is a length: {printed}"
+    );
+    // The same constant whatever is in it: nothing to difference.
+    let mut long = SecretField::new();
+    long.insert_str(&"x".repeat(30));
+    assert_eq!(format!("{long:?}"), printed);
+    assert_eq!(format!("{:?}", SecretField::new()), printed);
 }
