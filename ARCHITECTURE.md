@@ -39,7 +39,9 @@ as an `Event`. The UI thread only ever waits on the next `Event` — never on a
   properties: `check`, `plan`, `touches`, and `undo::inverse`). The
   execution half is `apply.rs` (the §6.2 protocol: read, check, back up,
   journal, run, journal again), `snapshot.rs` (both trees from one copy of
-  the index — never the real one), `restore.rs` (the inverse's steps) and
+  the index — never the real one), `restore.rs` (the inverse's plan loop, with
+  `restore/steps.rs` for the one `git` per step and `restore/rollback.rs` for
+  putting back what a cancelled undo had already done) and
   `undo/execute.rs` (the §6.7 drift rail in front of them). **The seam
   rule: `ops` decides, `app` wires.** `app` never builds a `GitInvocation` for
   a write, never touches the journal file, never chooses a snapshot; a key
