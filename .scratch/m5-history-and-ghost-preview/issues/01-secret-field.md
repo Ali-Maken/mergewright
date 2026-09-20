@@ -76,3 +76,9 @@ impl Answer { pub fn new(bytes: zeroize::Zeroizing<Vec<u8>>) -> Self; }
 ## Size
 
 One context. Two crates, both edited by one builder (disjoint from every other M5 group: run first, alone).
+
+## Conductor: user conditions (ADR-0038 §2) — binding
+
+- The masked field draws **a fixed 8 glyphs** whatever the real length. Length must not be inferable from the drawn field, its width, a counter, the cursor column or `Debug`.
+- **A keystroke must still visibly register** — a brief pulse, a caret, some response — and **that response must not encode length**. A field that looks dead while typing is not acceptable; neither is feedback that counts characters.
+- Acceptance must name the test that proves both: 8 glyphs for a 3-char and a 30-char secret, and a visible change on keypress that is identical for both.

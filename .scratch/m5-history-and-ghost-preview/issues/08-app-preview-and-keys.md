@@ -132,3 +132,8 @@ pub enum ContextAction { …, Checkout(CheckoutTarget), Merge { source: Source }
 ## Size
 
 One context, the largest app group. Stop seam after piece 5 (preview core + `m`/`r`), pieces 6–10 in a handoff note. Files: `update/preview*.rs` (new), `jobs/preview.rs` (new), `update/keys.rs`, `update/context_menu.rs`, `update/journal.rs`, `update/operate.rs`, `update/remote.rs`, `update/mod.rs`, `view/rows.rs`, `view/frame.rs`, `jobs/undo.rs`, `jobs/operate.rs`, `jobs/runner.rs`, graft-ui `context_menu.rs`. Runs alone in graft after G1–G3 and G6–G7 merge; the next two app groups build on it.
+
+## Conductor: user conditions (ADR-0038 §5) — binding
+
+- A preview **never loads more history mid-preview**. Parents outside the laid-out slice are clipped and drawn as anchors.
+- **If the part of the preview that matters falls outside the slice, the preview says so** — a plain line the user can read — rather than drawing a truncated shape they could misread. Name the test that proves this.

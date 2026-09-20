@@ -79,3 +79,9 @@ pub fn name_prompt_area(frame: Rect) -> Rect;
 ## Size
 
 One context. graft-ui only, files disjoint from `hint-bar-redesign` (`graph_screen/hints.rs`, footer code) — coordinate: this group owns `graph_screen.rs`'s header slot, that group its footer.
+
+## Conductor: user conditions (ADR-0038) — binding
+
+- **§1 — `[ Cancel ] [ Confirm ]`, cursor on Cancel, in every confirm box.** The default must **not** vary with how dangerous the action is: a default that moves is one the user stops reading. Apply it uniformly; DESIGN §1.7 is updated to match.
+- **§5 — an anchor must look like an anchor, not like a real parent**, at every tier the widget draws. If the two can be confused at any width, the widget is wrong.
+- The captures the user judges must include a ghost slice whose parents are clipped, so the anchor glyph can be judged by eye.

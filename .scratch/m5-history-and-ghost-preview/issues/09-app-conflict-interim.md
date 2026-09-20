@@ -108,3 +108,9 @@ pub fn undo_after_push_box(entry: &JournalEntry, push: &JournalEntry, now_ms: i6
 ## Size
 
 One context. Stop seam after piece 4 (facts, banner, verbs, hand-offs) with 5–7 in a handoff note. Files: `update/banner.rs` (new), `update/keys.rs`, `update/undo.rs`, `update/remote.rs`, `update/confirm.rs`, `update/journal.rs`, `update/detail/keys.rs`, `update/mod.rs`, `view/rows.rs`, `view/journal.rs`, `jobs/operate.rs`, `jobs/undo.rs`, `jobs/kinds.rs`, `event_loop/outside.rs`, `event_loop/running.rs`. Same crate as `app-preview-and-keys` and `app-drag-drop-and-stash-branch`: sequential, never concurrent.
+
+## Conductor: user conditions (ADR-0038 §3, §4) — binding
+
+- **Keys:** `M` opens the mergetool, `e` edits. `e` already means "open in `$EDITOR`" in the graph pane and **keeps that one meaning everywhere**, banner and CONFLICTS row included. Write both into `docs/design/02-keymap.md` **in this same change** — the keymap is the single source of truth (ADR-0037 §1), so a key bound here and not written there is an incomplete ticket.
+- **"Re-push old tip"** puts the remote branch back and keeps the user's local commits. All three conditions hold: `--force-with-lease` only, never a bare force; its own explicit confirm; and the box **says plainly that this changes the remote other people may have already pulled**, labelled so it cannot be mistaken for a local undo.
+- Acceptance names the test for each condition, and the capture shows the box's wording for the user's eye.
