@@ -470,6 +470,9 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M5/01 | Zero-after-drop of the password buffer cannot be proven from safe Rust — `zeroize`'s volatile write + barrier was verified by source inspection, not by observing freed memory | unverified | not planned |
 | M5/01 | The m4-03 and m4-04 pty-driven captures under `docs/shots/` still show the old 7-glyph mask; they need regenerating with `m4_walk --capture`, then `scripts/contact-sheet.sh m4` | broken (stale capture) | M5 (acceptance, group 11) |
 | M5/01 | `graft-fixtures` port-drop timing test failed once under load and passed on re-run; not reproduced since | unverified | M5 |
+| M5/02 | `forecast_merge` writes: `git merge-tree --write-tree` puts a tree and blobs into the user's object database (measured 9→11 objects per forecast). A `GIT_OBJECT_DIRECTORY` redirect was considered and **not** built — it needs verifying against real alternates and linked worktrees, which the builder could not observe. Objects are unreferenced and `git gc` collects them, but a preview is not read-only as the design implied | broken (writes where a read was promised) | M6 |
+| M5/02 review | 15 Minors in `docs/reviews/m5-02-git-history-reads.md` not triaged | unverified | M5 |
+| M5/01 review | 11 Minors in `docs/reviews/m5-01-secret-field.md` not triaged | unverified | M5 |
 | M4/05 fix | Esc cannot cancel u/U at all — **reclassified a bug by the user (ADR-0037), M5 ticket**: between-step stop check + rollback in graft-ops restore::execute | broken (bug, ticketed) | M5 |
 | M4/05 fix | Proof is that CancelJob is never sent, not that a mid-undo cancel is survived: no repo builds an undo long enough to press Esc | unverified | M5 |
 | M4/07 | Ctrl+R race leaves an old history job uncancelled — **reclassified a bug by the user (ADR-0037), M5 ticket** | broken (bug, ticketed) | M5 |
