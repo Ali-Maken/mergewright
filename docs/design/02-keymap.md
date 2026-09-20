@@ -54,6 +54,35 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   - The **first-run / empty state** (§2.13) binds `o`/`i`/`c` to
     Open/Init/Clone — no repo is open yet, so the whole repo vocabulary
     (`c` commit included) is off duty.
+- **An overlay that needs only a cursor is not a modal pane** (decided
+  2026-09-20, from the M5/12 captures; closes the gap the `.` menu fell
+  through). The five modal panes above claim the alphabet because they need
+  it for their own vocabulary. The `.` context menu does not: it needs `j`/`k`
+  to move, `Enter` to choose and `Esc` to close, which are movement and
+  confirm keys, not verbs. So it claims **those four and nothing else**, and
+  every verb letter stays live and keeps its meaning while it is open.
+
+  Three things follow, and they are the reason this is written down rather
+  than left to each pane:
+
+  - **The hint bar does not change while the menu is open**, and that is
+    correct rather than an oversight. §2.1 says the hint bar always shows
+    what's active; while the menu is open the graph's verbs *are* still
+    active, so showing them is the truth.
+  - **A key the menu displays must actually work when pressed.** A label
+    reading `Merge main into feature (m)` promises that `m` merges; it does,
+    because the menu never took `m` away. The label teaches a shortcut that
+    is live, which is the whole point of showing it.
+  - **The menu's contents never depend on terminal width.** It lists
+    everything valid in the current context — per ADR-0039, which made `.`
+    the doorway — whether or not the hint bar had room for it. Filtering the
+    menu against the live hint bar would make a verb discoverable at 160
+    columns and invisible at 80, which is precisely the failure ADR-0039
+    exists to prevent.
+
+  A future overlay that genuinely needs letters of its own becomes a sixth
+  modal pane by amending the list above, not by quietly claiming them.
+
 - **Bulk variants use a modifier, not a different letter.** `Ctrl+A` stages
   everything; plain `a` stays "amend" everywhere. This avoids growing the
   letter bank for "the same verb, but all of them."
