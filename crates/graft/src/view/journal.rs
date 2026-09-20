@@ -57,7 +57,14 @@ fn rows_for(entries: &[JournalEntry], state: &AppState, now_seconds: i64) -> Vec
         .enumerate()
         .rev()
         .map(|(index, entry)| {
-            let mark = if Some(&entry.id) == next_undo {
+            // Live first, and instead of every other mark: git is part-way
+            // through this very entry. `interrupted` would be a lie about a
+            // process that is alive, and `← u` would offer to undo an
+            // operation that has not finished happening (m5/09 seam A).
+            let is_live = state.live_entries.contains(&entry.id);
+            let mark = if is_live {
+                RowMark::None
+            } else if Some(&entry.id) == next_undo {
                 RowMark::NextUndo
             } else if Some(&entry.id) == next_redo {
                 RowMark::NextRedo
@@ -72,10 +79,10 @@ fn rows_for(entries: &[JournalEntry], state: &AppState, now_seconds: i64) -> Vec
             JournalRowView {
                 age: sanitize(&age(entry.at_unix_ms, now_seconds)),
                 description: sanitize(&entry.description),
-                summary: sanitize(&summary(entry)),
+                summary: sanitize(&summary(entry, is_live)),
                 mark,
                 commands: entry.commands.iter().map(|line| sanitize(line)).collect(),
-                failure: failure(entry).map(|line| sanitize(&line)),
+                failure: failure(entry, is_live).map(|line| sanitize(&line)),
                 expanded: state.journal.expanded == Some(newest_first),
             }
         })
@@ -97,9 +104,17 @@ fn age(at_unix_ms: i64, now_seconds: i64) -> String {
     }
 }
 
+/// What a live entry's row says instead of a verdict: the operation has not
+/// finished happening, and these are the two keys that end it either way.
+const IN_PROGRESS: &str = "in progress \u{2014} c continue  a abort";
+
 /// What the entry moved, and whether a backup was kept — the two facts that
 /// decide whether `u` can put it back.
-fn summary(entry: &JournalEntry) -> String {
+///
+/// `live` is git standing part-way through this very entry
+/// ([`crate::update::AppState::live_entries`]); it outranks every verdict,
+/// because there is not one yet.
+fn summary(entry: &JournalEntry, live: bool) -> String {
     let mut parts: Vec<String> = Vec::new();
     // A push or a fetch is journaled but `u` passes over it (design note,
     // choice 1): the row says what moved and that it stays moved, instead of
@@ -123,12 +138,12 @@ fn summary(entry: &JournalEntry) -> String {
             }
             let remote = tracking.split('/').next().unwrap_or("the remote");
             parts.insert(0, format!("not undoable \u{2014} {remote} has it"));
-            return with_failure(entry, &parts);
+            return with_failure(entry, live, &parts);
         }
         OperationKind::Fetch => {
             parts.push("remote-tracking refs".to_owned());
             parts.push("not undoable".to_owned());
-            return with_failure(entry, &parts);
+            return with_failure(entry, live, &parts);
         }
         _ => {}
     }
@@ -147,7 +162,9 @@ fn summary(entry: &JournalEntry) -> String {
     // entry as `Aborted { reason: "interrupted" }`, so the two arms overlap
     // and "failed: interrupted" is the wrong word for a process that died
     // (m3/06 review, Major 2).
-    if entry.is_interrupted() {
+    if live {
+        parts.insert(0, IN_PROGRESS.to_owned());
+    } else if entry.is_interrupted() {
         parts.insert(0, "interrupted".to_owned());
     } else if let EntryStatus::Aborted { reason } = &entry.status {
         // The row carries the failure in short form; the whole reason is
@@ -162,7 +179,10 @@ fn summary(entry: &JournalEntry) -> String {
 
 /// A push or fetch row that failed says so first, and nothing else: an
 /// aborted push sent nothing, so "origin has it" would be false.
-fn with_failure(entry: &JournalEntry, parts: &[String]) -> String {
+fn with_failure(entry: &JournalEntry, live: bool, parts: &[String]) -> String {
+    if live {
+        return IN_PROGRESS.to_owned();
+    }
     if entry.is_interrupted() {
         return "interrupted".to_owned();
     }
@@ -180,7 +200,15 @@ fn short(oid: graft_core::oid::Oid) -> String {
 }
 
 /// The whole reason an `Aborted` entry gives, for the expanded row.
-fn failure(entry: &JournalEntry) -> Option<String> {
+///
+/// A live entry has none: nothing failed, and the operation has not finished
+/// happening. Saying "a previous run stopped between this entry's two
+/// journal lines" about a merge running right now is the very lie this
+/// ticket exists to stop.
+fn failure(entry: &JournalEntry, live: bool) -> Option<String> {
+    if live {
+        return None;
+    }
     if entry.is_interrupted() {
         return Some(
             "interrupted: a previous run stopped between this entry's two journal lines".to_owned(),
@@ -246,6 +274,7 @@ mod tests {
         state.journal.entries = Loading::Ready(Arc::new(JournalRead {
             entries,
             unreadable: Vec::new(),
+            live: Vec::new(),
         }));
         state
     }

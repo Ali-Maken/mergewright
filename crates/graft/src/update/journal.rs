@@ -95,8 +95,16 @@ pub(super) fn journal_event(state: &mut AppState, id: JobId, product: &Product) 
     if state.journal.reading != Some(id) {
         return true;
     }
+    // Read before the assignment below: the launch read is the one that
+    // finds `entries` anything but `Ready`. See `launch_into_live`.
+    let first_read = !matches!(state.journal.entries, Loading::Ready(_));
     state.journal.reading = None;
     if let Ok(read) = result {
+        // Only a successful read knows what is live. A failed one is left
+        // holding the last answer rather than silently claiming "nothing is
+        // live", which would put the interrupted notice back on a merge that
+        // is standing right there.
+        state.live_entries.clone_from(&read.live);
         // Merged, not replaced: see `JournalState::unreadable`.
         for line in &read.unreadable {
             if !state.journal.unreadable.contains(line) {
@@ -114,7 +122,45 @@ pub(super) fn journal_event(state: &mut AppState, id: JobId, product: &Product) 
     if state.journal.expanded.is_some_and(|row| row >= rows) {
         state.journal.expanded = None;
     }
+    if first_read {
+        launch_into_live(state);
+    }
     true
+}
+
+/// The keys a relaunch into a live operation offers, worded for the hint bar.
+///
+/// `s` is not among them: a merge has no step to skip, and the two keys that
+/// are always right are the two that end the operation either way.
+const LIVE_KEYS: &str = "c continue  a abort";
+
+/// Relaunching into an operation git is still part-way through: the banner
+/// takes the keyboard and says whose it is (PROMPT.md §9 — `kill -9`
+/// mid-rebase must be answered by a key, not by reading docs).
+///
+/// Called from the **first** journal read and the **first** working-tree
+/// read, because the takeover needs a fact from each and either can land
+/// second. Both are first-reads on purpose: a conflict that happens later in
+/// the session is [`crate::update::operate`]'s to announce, and its wording
+/// is about the operation the user just ran — not "a previous run".
+pub(super) fn launch_into_live(state: &mut AppState) {
+    if state.live_entries.is_empty() {
+        return;
+    }
+    let Some(detail) = state.in_progress.as_ref() else {
+        return;
+    };
+    // A bisect has no banner to focus, so there is nothing to hand the
+    // keyboard to and no `c`/`a` to offer.
+    if !super::banner::banner_focusable(detail.kind) {
+        return;
+    }
+    let kind = detail.kind.name();
+    state.banner_focus = true;
+    state.status = super::state::Status::Sticky {
+        reason: format!("{kind} still in progress from a previous run"),
+        keys: Some(LIVE_KEYS.to_owned()),
+    };
 }
 
 /// `J`, and every key while the browser is open. `true` when the key was
@@ -317,6 +363,7 @@ mod tests {
                 entry(2, OperationKind::Commit, "commit \"x\""),
             ],
             unreadable: Vec::new(),
+            live: Vec::new(),
         }));
         state
     }

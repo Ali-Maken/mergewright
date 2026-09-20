@@ -7,7 +7,7 @@
 
 use std::sync::Arc;
 
-use graft_core::journal::JournalEntry;
+use graft_core::journal::{EntryId, JournalEntry};
 use graft_git::version::system_git;
 use graft_ops::apply::{Applied, Context, Refresh};
 use graft_ops::journal::{Journal, journal_path};
@@ -139,6 +139,15 @@ pub struct JournalRead {
     /// reason for that belongs on screen rather than on the floor
     /// (m3/03 review, M1).
     pub unreadable: Vec<String>,
+    /// The entries recovery left `Pending` **on purpose**: git is still
+    /// part-way through that very operation, so the entry is not torn, it is
+    /// open (`graft_ops::apply::Recovered::live`, m5/09 seam A).
+    ///
+    /// A live entry and an interrupted one are the same bytes on disk — a
+    /// `Pending` line with no outcome — and the difference is decided here,
+    /// at read time, against git's own state. So nothing is migrated, and a
+    /// journal written by an older Graft reads correctly.
+    pub live: Vec<EntryId>,
 }
 
 /// What a failed restore leaves stale on screen.
@@ -444,6 +453,10 @@ pub(super) fn read_journal(repos: &RepoStore, cancel: &Cancel) -> Result<Arc<Jou
                     .iter()
                     .map(|(id, why)| format!("{}: {why}", described(id)))
                     .collect(),
+                // Carried, unlike `recovered.closed`: a live entry is a fact
+                // about git's state *now*, which every read re-establishes,
+                // so it cannot go stale the way "what this read closed" did.
+                live: recovered.live.clone(),
                 entries: entries.to_vec(),
             }))
         },

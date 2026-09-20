@@ -476,6 +476,9 @@ fn took_fact(next: &mut AppState, product: Product) {
             next.status = Status::Failed(failure);
         }
         Product::WorkingTree(Ok(read)) => {
+            // Read before the assignment: the launch read is the one that
+            // finds no working tree yet. See `journal::launch_into_live`.
+            let first_read = next.working_tree.is_none();
             next.working_tree = Some(read.status);
             next.in_progress = read.in_progress;
             next.mergetool = read.mergetool;
@@ -485,6 +488,11 @@ fn took_fact(next: &mut AppState, product: Product) {
             // into a modal nothing (m5-history-and-ghost-preview/09).
             if next.in_progress.is_none() {
                 next.banner_focus = false;
+            } else if first_read {
+                // The other half of the launch takeover: whichever of the
+                // two launch reads lands second is the one that has both
+                // facts, so both call it and the second one wins.
+                journal::launch_into_live(next);
             }
         }
         Product::WorkingTree(Err(failure)) => {

@@ -1160,6 +1160,7 @@ fn the_same_event_always_gives_the_same_answer() {
         in_progress: None,
         mergetool: None,
         banner_focus: false,
+        live_entries: Vec::new(),
         head_message: None,
         commit_template: None,
         external_editor: None,

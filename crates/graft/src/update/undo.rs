@@ -358,10 +358,19 @@ pub fn interrupted_notice(state: &AppState) -> Option<String> {
         .iter()
         .filter_map(|entry| entry.reverses.as_ref())
         .collect();
+    // A live entry is `Pending` with no outcome, exactly like a torn one, so
+    // `is_interrupted` says yes to both. Only git's own state tells them
+    // apart, and the last journal read asked it: an operation standing right
+    // there, with a banner two rows above saying so, was never interrupted
+    // (m5/09 seam A).
     let mut interrupted = read
         .entries
         .iter()
-        .filter(|entry| entry.is_interrupted() && !undone.contains(&entry.id))
+        .filter(|entry| {
+            entry.is_interrupted()
+                && !undone.contains(&entry.id)
+                && !state.live_entries.contains(&entry.id)
+        })
         .map(|entry| entry.description.as_str());
     let first = interrupted.next()?;
     let more = interrupted.count();
@@ -721,6 +730,7 @@ mod tests {
             entries: Loading::Ready(Arc::new(JournalRead {
                 entries,
                 unreadable: Vec::new(),
+                live: Vec::new(),
             })),
             unreadable: unreadable.iter().map(|&s| s.to_owned()).collect(),
             ..JournalState::default()

@@ -13,30 +13,38 @@
 #  - A banner above the panes reading `MERGING`, the file git stopped on
 #    (`notes.md`), and `+1 more` for the second one — the state the
 #    repository is in, said once, at the top.
-#  - The banner is drawn focused, and the footer offers the banner's keys
-#    and nothing else: `c continue`, `a abort`, `M mergetool`, `e edit`,
-#    `⇥ graph`. No `s skip`: there is no step to skip in a merge.
+#  - The banner is drawn focused (colour, so unverified here), and the
+#    footer says nothing false about the merge: the line that used to
+#    read `an operation was interrupted` is gone — see below.
 #  - The changes pane opens with `CONFLICTS (2)`, above `STAGED` and
 #    `UNSTAGED`, and each conflicted file appears **once**: there is one
 #    thing to do to it, not two.
 #  - Nothing on the screen reads as an error. A stopped merge is a state
 #    to finish, and the words are about what to press next.
 #
-# KNOWN WRONG in this capture, and it is piece 5's fix, not a surprise:
-# the footer's last line reads `an operation was interrupted: merge ...`
-# and wins over the banner's key hints. This merge is not interrupted —
-# it is live, and the banner above says so. Piece 5 teaches the journal
-# to tell a live entry from an interrupted one, at which point this line
-# goes away and the footer shows `c continue  a abort  M mergetool
-# e edit  ⇥ graph` instead. Judge the banner and the pane here; the
-# footer is re-captured after piece 5.
+# Re-captured after piece 5 (m5/14). The `an operation was interrupted`
+# line these captures used to carry is gone: the journal now tells a
+# live entry from an interrupted one, and a merge standing right there
+# is neither announced nor drawn as torn.
+#
+# STILL WRONG, and it is **not** piece 5's — filed by m5/14, needs
+# `graft-ui`: the hint bar does not teach the banner's keys. Every
+# entry of `graph_screen::hints::banner_list` is still
+# `HintState::Planned`, which is never drawn, and `c continue` /
+# `s skip` / `a abort` are missing from `update::keys::bound_actions`
+# — so the pair of tests that would have caught it agree with each
+# other and pass. Group 09 bound the keys in `banner_key` without
+# flipping the table. Until that is flipped, the footer under a focused,
+# modal banner teaches `<> resize  . more` and nothing about `c` or `a`.
+# Judge the banner, the pane and the absence of the interrupted line
+# here; the hint bar is the next ticket's.
 #
 
  graft /code/api    ⚠ MERGING — …UNCOMMITTED
-◌     Uncommitted changes ()                                                                 diff vs HEAD 0861016
-  ● ⓘ [feature] the feature's take                                               now  0861016
-◆ │   [◆ main] main's take                                                       now  869c8db
-●─╯   the shared files                                                           now  4a97a92
+◌     Uncommitted changes ()                                                                 diff vs HEAD 3b026b5
+◆     [◆ main] main's take                                                       now  3b026b5
+│ ● ⓘ [feature] the feature's take                                               now  c3db3eb
+●─╯   the shared files                                                           now  95eb3f1
 ●     Correct the note                                                           7y   a82960bCONFLICTS (2)
 ●     Add the first note                                                         7y   fadcfb3  notes.md                                                 unmerged
 ◇     Add a readme                                                               7y   64ded19  shared.rs                                                unmerged
@@ -79,4 +87,4 @@
 
 
  no commit-graph file · B build one · X never here
- an operation was interrupted: merge feature into main · J to inspect
+ <> resize  . more

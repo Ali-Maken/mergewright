@@ -597,6 +597,235 @@ fn space_on_a_conflicted_row_refuses_while_markers_remain() {
 }
 
 // ---------------------------------------------------------------------------
+// Piece 5: live is not interrupted. A live conflict and an entry a previous
+// run tore in half are the **same bytes** — a `Pending` line with no outcome
+// — and only git's own state tells them apart (m5/09 seam A).
+// ---------------------------------------------------------------------------
+
+/// Both launch reads have landed: the working tree (which fills
+/// `in_progress`) and the journal (which fills `live_entries`). Either can
+/// land second, and the takeover needs both.
+fn launched(app: &App, state: AppState) -> AppState {
+    app.pump(state, "the launch reads", |state| {
+        state.working_tree.is_some()
+            && matches!(
+                state.journal.entries,
+                graft::update::detail::Loading::Ready(_)
+            )
+            && state.journal.reading.is_none()
+    })
+}
+
+/// The journal read that follows a write has landed, so `live_entries` is
+/// about the conflict that just happened rather than the state before it.
+fn journal_caught_up(app: &App, state: AppState) -> AppState {
+    app.pump(state, "the journal read the conflict asked for", |state| {
+        state.journal.reading.is_none()
+            && matches!(
+                state.journal.entries,
+                graft::update::detail::Loading::Ready(_)
+            )
+    })
+}
+
+/// Killed mid-merge and started again: git's state is still there, so the
+/// banner takes the keyboard on its own and the line says whose operation it
+/// is (PROMPT.md §9 — `kill -9` mid-rebase is answered by a key, not by
+/// reading docs).
+#[test]
+fn relaunch_into_a_live_conflict() {
+    let scratch = about_to_conflict();
+    let repo = scratch.path();
+
+    let (app, state) = App::open(repo);
+    let state = stopped_on_the_conflict(&app, state);
+    let pending = journal_entries(repo)
+        .last()
+        .expect("the merge wrote an entry")
+        .id
+        .clone();
+    drop(state);
+    app.close();
+
+    // A second Graft over the same worktree, the way a relaunch arrives.
+    let (app, state) = App::open(repo);
+    let state = launched(&app, state);
+
+    assert_eq!(
+        state.live_entries,
+        vec![pending],
+        "the launch read names the entry git is still part-way through, \
+         and closes nothing"
+    );
+    assert!(
+        state.banner_focus,
+        "the banner takes the keyboard at launch: {:?}",
+        state.status
+    );
+    assert_eq!(
+        state.status,
+        Status::Sticky {
+            reason: "merge still in progress from a previous run".to_owned(),
+            keys: Some("c continue  a abort".to_owned()),
+        },
+        "and the line says whose operation it is, with the two keys that end it"
+    );
+    // Still open on disk: the launch read recovered nothing (as-built §1).
+    assert_eq!(
+        journal_entries(repo)
+            .last()
+            .expect("the entry is still there")
+            .status,
+        graft_core::journal::EntryStatus::Pending,
+    );
+
+    drop(state);
+    app.close();
+}
+
+/// The dangerous version of this change closes nothing and calls every
+/// `Pending` entry live. This is the other side: the **same** journal bytes
+/// with git's merge state gone. M3's recovery path must be exactly what it
+/// was — the entry is closed, its backup sealed, and the user told.
+#[test]
+fn interrupted_entry_without_live_state_is_still_closed() {
+    let scratch = about_to_conflict();
+    let repo = scratch.path();
+
+    let (app, state) = App::open(repo);
+    let state = stopped_on_the_conflict(&app, state);
+    drop(state);
+    app.close();
+
+    // The merge ended outside Graft, so the journal's `Pending` line is now
+    // torn rather than live. Nothing about the journal file changed.
+    git(repo, &["merge", "--abort"]);
+    assert!(
+        !repo.join(".git/MERGE_HEAD").exists(),
+        "git's merge state is gone"
+    );
+
+    let (app, state) = App::open(repo);
+    let state = launched(&app, state);
+
+    assert!(
+        state.live_entries.is_empty(),
+        "nothing is live, so nothing is spared recovery"
+    );
+    let last = journal_entries(repo)
+        .last()
+        .expect("the entry is still there")
+        .clone();
+    match &last.status {
+        graft_core::journal::EntryStatus::Aborted { reason } => assert!(
+            reason.contains("interrupted"),
+            "recovery closes it as interrupted: {reason}"
+        ),
+        other => panic!("the M3 recovery path must still close it: {other:?}"),
+    }
+    let notice =
+        graft::update::undo::interrupted_notice(&state).expect("and the user is told about it");
+    assert!(notice.contains("an operation was interrupted"), "{notice}");
+
+    let rows = graft::view::journal_view(&state, 2_000_000_000).rows;
+    let row = rows.first().expect("the torn entry is the newest row");
+    assert_eq!(row.mark, graft_ui::journal_screen::RowMark::Interrupted);
+    assert!(
+        row.summary.as_str().starts_with("interrupted"),
+        "{}",
+        row.summary.as_str()
+    );
+
+    drop(state);
+    app.close();
+}
+
+/// The browser's row for the operation standing right there. Not
+/// `interrupted` — nothing was torn — and not `← u`: there is no outcome to
+/// take back until the merge finishes or is aborted.
+#[test]
+fn journal_row_for_live_entry_says_in_progress() {
+    let scratch = about_to_conflict();
+    let repo = scratch.path();
+    let (app, state) = App::open(repo);
+    let state = stopped_on_the_conflict(&app, state);
+    let state = journal_caught_up(&app, state);
+
+    assert_eq!(state.live_entries.len(), 1, "one live entry, the merge");
+
+    let rows = graft::view::journal_view(&state, 2_000_000_000).rows;
+    let row = rows.first().expect("the merge is the newest row");
+    assert!(
+        row.summary
+            .as_str()
+            .starts_with("in progress \u{2014} c continue  a abort"),
+        "the row offers the keys that end it: {}",
+        row.summary.as_str()
+    );
+    assert!(
+        !row.summary.as_str().contains("interrupted"),
+        "a merge standing right there was not interrupted: {}",
+        row.summary.as_str()
+    );
+    assert_eq!(
+        row.mark,
+        graft_ui::journal_screen::RowMark::None,
+        "never `interrupted`, never `\u{2190} u`"
+    );
+    assert_eq!(
+        row.failure, None,
+        "nothing failed: the operation has not finished happening"
+    );
+
+    drop(state);
+    app.close();
+}
+
+/// The line the three captures were waiting on. The footer used to claim an
+/// operation was interrupted about the merge the banner two rows above was
+/// naming, and that claim won over the banner's own key hints.
+#[test]
+fn the_footer_does_not_call_a_live_merge_interrupted() {
+    let scratch = about_to_conflict();
+    let repo = scratch.path();
+    let (app, state) = App::open(repo);
+    let state = stopped_on_the_conflict(&app, state);
+    let state = journal_caught_up(&app, state);
+
+    assert_eq!(
+        graft::update::undo::interrupted_notice(&state),
+        None,
+        "the notice is about entries a previous run left part-written, \
+         and this merge is live"
+    );
+
+    for (columns, rows) in [(80u16, 24u16), (120, 40), (160, 48)] {
+        let drawn = frame(&state, columns, rows);
+        assert!(
+            !drawn
+                .iter()
+                .any(|line| line.contains("an operation was interrupted")),
+            "the footer must not say it either, at {columns}x{rows}:\n{}",
+            drawn.join("\n")
+        );
+    }
+    // What the line reads instead: the operation's own state, in the words
+    // `update::operate` put there when git stopped. A state, not an error
+    // (CLAUDE.md, "a status field must never read as an error").
+    let drawn = frame(&state, 120, 40);
+    assert!(
+        drawn
+            .iter()
+            .any(|line| line.contains("merge feature into main")),
+        "the live merge names itself instead:\n{}",
+        drawn.join("\n")
+    );
+
+    drop(state);
+    app.close();
+}
+
+// ---------------------------------------------------------------------------
 // Piece 9: the captures. Not an assertion — the user judges these by eye
 // (CLAUDE.md rule 6).
 // ---------------------------------------------------------------------------
@@ -635,6 +864,54 @@ fn write_shot(name: &str, body: &str) {
     println!("wrote {} ({} bytes)", path.display(), body.len());
 }
 
+/// The header every banner capture carries: how it was made, what right
+/// looks like, and what is still wrong in it and whose that is.
+fn capture_header(label: &str, columns: u16, rows: u16) -> String {
+    format!(
+        "# m5-ui-banner-conflict-{label}.txt: {columns}x{rows}, drawn by `view::view`\n\
+             # from a real AppState \u{2014} a real repository whose `main` and `feature`\n\
+             # both rewrote the same two files, opened over the real job pool, the\n\
+             # merge launched with `m` through the preview and the confirm box, and\n\
+             # git really stopped on the conflict (crates/graft/tests/it/\n\
+             # conflict_interim.rs, capture_banner_for_docs_shots, #[ignore]d). Not a\n\
+             # pty capture: the terminal is ratatui's TestBackend, so this is a\n\
+             # character grid with no colour attributes in it \u{2014} CLAUDE.md rule 5,\n\
+             # colour ships unverified. The scratch repository's temporary path is\n\
+             # replaced by `/code/api`; nothing else is touched.\n\
+             #\n\
+             # What right looks like:\n\
+             #  - A banner above the panes reading `MERGING`, the file git stopped on\n\
+             #    (`notes.md`), and `+1 more` for the second one \u{2014} the state the\n\
+             #    repository is in, said once, at the top.\n\
+             #  - The banner is drawn focused (colour, so unverified here), and the\n\
+             #    footer says nothing false about the merge: the line that used to\n\
+             #    read `an operation was interrupted` is gone \u{2014} see below.\n\
+             #  - The changes pane opens with `CONFLICTS (2)`, above `STAGED` and\n\
+             #    `UNSTAGED`, and each conflicted file appears **once**: there is one\n\
+             #    thing to do to it, not two.\n\
+             #  - Nothing on the screen reads as an error. A stopped merge is a state\n\
+             #    to finish, and the words are about what to press next.\n\
+             #\n\
+             # Re-captured after piece 5 (m5/14). The `an operation was interrupted`\n\
+             # line these captures used to carry is gone: the journal now tells a\n\
+             # live entry from an interrupted one, and a merge standing right there\n\
+             # is neither announced nor drawn as torn.\n\
+             #\n\
+             # STILL WRONG, and it is **not** piece 5's \u{2014} filed by m5/14, needs\n\
+             # `graft-ui`: the hint bar does not teach the banner's keys. Every\n\
+             # entry of `graph_screen::hints::banner_list` is still\n\
+             # `HintState::Planned`, which is never drawn, and `c continue` /\n\
+             # `s skip` / `a abort` are missing from `update::keys::bound_actions`\n\
+             # \u{2014} so the pair of tests that would have caught it agree with each\n\
+             # other and pass. Group 09 bound the keys in `banner_key` without\n\
+             # flipping the table. Until that is flipped, the footer under a focused,\n\
+             # modal banner teaches `<> resize  . more` and nothing about `c` or `a`.\n\
+             # Judge the banner, the pane and the absence of the interrupted line\n\
+             # here; the hint bar is the next ticket's.\n\
+             #\n\n"
+    )
+}
+
 /// Writes the banner captures for `docs/shots/`.
 ///
 /// Run by hand: `cargo test -p graft --test it
@@ -659,41 +936,7 @@ fn capture_banner_for_docs_shots() {
         ("160x48", 160, 48),
     ] {
         let drawn = frame(&state, columns, rows);
-        let mut out = format!(
-            "# m5-ui-banner-conflict-{label}.txt: {columns}x{rows}, drawn by `view::view`\n\
-             # from a real AppState \u{2014} a real repository whose `main` and `feature`\n\
-             # both rewrote the same two files, opened over the real job pool, the\n\
-             # merge launched with `m` through the preview and the confirm box, and\n\
-             # git really stopped on the conflict (crates/graft/tests/it/\n\
-             # conflict_interim.rs, capture_banner_for_docs_shots, #[ignore]d). Not a\n\
-             # pty capture: the terminal is ratatui's TestBackend, so this is a\n\
-             # character grid with no colour attributes in it \u{2014} CLAUDE.md rule 5,\n\
-             # colour ships unverified. The scratch repository's temporary path is\n\
-             # replaced by `/code/api`; nothing else is touched.\n\
-             #\n\
-             # What right looks like:\n\
-             #  - A banner above the panes reading `MERGING`, the file git stopped on\n\
-             #    (`notes.md`), and `+1 more` for the second one \u{2014} the state the\n\
-             #    repository is in, said once, at the top.\n\
-             #  - The banner is drawn focused, and the footer offers the banner's keys\n\
-             #    and nothing else: `c continue`, `a abort`, `M mergetool`, `e edit`,\n\
-             #    `\u{21e5} graph`. No `s skip`: there is no step to skip in a merge.\n\
-             #  - The changes pane opens with `CONFLICTS (2)`, above `STAGED` and\n\
-             #    `UNSTAGED`, and each conflicted file appears **once**: there is one\n\
-             #    thing to do to it, not two.\n\
-             #  - Nothing on the screen reads as an error. A stopped merge is a state\n\
-             #    to finish, and the words are about what to press next.\n\
-             #\n\
-             # KNOWN WRONG in this capture, and it is piece 5's fix, not a surprise:\n\
-             # the footer's last line reads `an operation was interrupted: merge ...`\n\
-             # and wins over the banner's key hints. This merge is not interrupted \u{2014}\n\
-             # it is live, and the banner above says so. Piece 5 teaches the journal\n\
-             # to tell a live entry from an interrupted one, at which point this line\n\
-             # goes away and the footer shows `c continue  a abort  M mergetool\n\
-             # e edit  \u{21e5} graph` instead. Judge the banner and the pane here; the\n\
-             # footer is re-captured after piece 5.\n\
-             #\n\n"
-        );
+        let mut out = capture_header(label, columns, rows);
         for line in &drawn {
             out.push_str(&line.replace(&home, "/code/api"));
             out.push('\n');

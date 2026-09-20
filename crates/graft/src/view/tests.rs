@@ -2591,6 +2591,7 @@ fn journal_state(columns: u16, rows: u16) -> AppState {
         crate::jobs::undo::JournalRead {
             entries: journal_entries(),
             unreadable: Vec::new(),
+            live: Vec::new(),
         },
     ));
     state
