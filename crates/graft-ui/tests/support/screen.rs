@@ -4,7 +4,7 @@ use graft_graph::identity::BranchIdentity;
 use graft_term::{sanitize_line, sanitize_path};
 use graft_ui::graph_column::{GraphLine, RowPaint};
 use graft_ui::graph_screen::{
-    AuthorChip, Compaction, Filters, GraphEntry, GraphView, Icons, WalkView, initials,
+    AuthorChip, Compaction, Filters, GraphEntry, GraphView, HintContext, Icons, WalkView, initials,
     relative_date, short_sha,
 };
 
@@ -62,7 +62,7 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
         commit_graph: None,
         banner: Vec::new(),
         detail_shown: false,
-        changes_pane: false,
+        hint_context: HintContext::PlainRow,
         marker_column: false,
         banner_op: None,
     }

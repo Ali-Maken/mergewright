@@ -153,7 +153,7 @@ fn graft_opens_on_the_graph_with_the_cursor_row_highlighted() {
     assert_eq!(view.rows[1].line.paint, RowPaint::Highlighted);
     assert_eq!(view.rows[0].line.paint, RowPaint::Normal);
     assert!(screen.contains("Commit 5"), "{screen}");
-    assert!(screen.contains("q quit"), "{screen}");
+    assert!(screen.contains("⏎ open"), "{screen}");
     assert!(
         !screen.contains('\u{1b}'),
         "a subject's escape reached the cells"
@@ -187,7 +187,7 @@ fn a_harness_banner_sits_under_the_header_with_the_tier_and_costs_rows() {
     );
     assert!(lines[2].contains("shows: a lane jump"), "{screen}");
     assert!(
-        lines[5].contains("q quit"),
+        lines[5].contains("⏎ open"),
         "the hints keep the footer: {screen}"
     );
 
@@ -297,7 +297,7 @@ fn with_no_override_the_footer_keeps_the_ordinary_hints() {
     };
 
     let screen = draw(&state, 60, 5);
-    assert!(screen.contains("q quit"), "{screen}");
+    assert!(screen.contains("⏎ open"), "{screen}");
     assert!(!screen.contains("renderer forced"), "{screen}");
 }
 
@@ -2333,7 +2333,7 @@ fn capture_m3_commit_editor() {
 #[ignore = "writes docs/shots/m3-commit-editor-rejected.txt; run by hand to regenerate"]
 fn capture_m3_commit_editor_rejected() {
     let mut state = commit_editor_state(120, 40);
-    state.status = crate::update::Status::Sticky(
+    state.status = crate::update::Status::sticky(
         "pre-commit: 2 files would be reformatted, run `cargo fmt`".to_owned(),
     );
     let screen = draw(&state, 120, 40);
@@ -3092,7 +3092,7 @@ fn gits_words_and_a_remote_failure_cannot_carry_an_escape_to_the_screen() {
     let mut failed = credential_state(120, 40, "Password for 'http://u@h':");
     failed.credential = None;
     failed.operating = None;
-    failed.status = Status::Sticky("push rejected: \u{1b}[31mhook said no\u{7}".to_owned());
+    failed.status = Status::sticky("push rejected: \u{1b}[31mhook said no\u{7}".to_owned());
     let screen = draw(&failed, 120, 40);
     assert!(screen.contains("hook said no"), "{screen}");
     assert!(!screen.contains('\u{1b}'), "{screen:?}");

@@ -18,6 +18,7 @@
 pub mod badges;
 pub mod columns;
 mod footer;
+pub mod hints;
 mod layout;
 mod render;
 #[cfg(test)]
@@ -31,6 +32,7 @@ use graft_term::SanitizedText;
 
 pub use badges::{Badge, BadgeKind, Icons, Tracking};
 pub use columns::{absolute_date, initials, relative_date, short_sha};
+pub use hints::{Hint, HintContext, fit_status_line, hints_for, hints_text};
 pub use layout::{lanes_that_fit, max_lanes_for};
 
 use crate::graph_column::GraphLine;
@@ -74,7 +76,7 @@ pub struct GraphView<'a> {
     pub walk: WalkView,
     /// Something went wrong and has not been superseded. Takes the footer's
     /// place while it lasts; absent when nothing is wrong.
-    pub problem: Option<SanitizedText>,
+    pub problem: Option<ProblemLine>,
     /// The rows in the viewport, top first. The cursor's row is the one
     /// painted [`RowPaint::Highlighted`].
     pub rows: Vec<GraphEntry<'a>>,
@@ -130,11 +132,11 @@ pub struct GraphView<'a> {
     /// since that is the only time its divider exists to drag
     /// (`detail-resize-and-persistence`).
     pub detail_shown: bool,
-    /// The pane on screen is the changes pane (the working tree, not a
-    /// commit): the footer adds the keys that write
-    /// (m3-working-tree-undo-and-stash/04). They mean nothing anywhere else,
-    /// so they are never offered anywhere else.
-    pub changes_pane: bool,
+    /// Where the cursor or focus is, for the footer's hint list
+    /// (`hint-bar-redesign`, ADR-0037 §4): replaces the old `changes_pane`
+    /// flag with the context [`hints::hints_for`] needs to pick the three
+    /// most relevant keys at any width.
+    pub hint_context: HintContext,
     /// The marker column draws: `app` has seen a Mistake Radar finding this
     /// session, on a row or on a ref (`view::radar`). Sticky once true — the
     /// column never appears and disappears as the same session scrolls
@@ -145,6 +147,20 @@ pub struct GraphView<'a> {
     /// (DESIGN.md §1.13, ADR-0038 §3). `None` draws the header as it always
     /// has.
     pub banner_op: Option<BannerView>,
+}
+
+/// A problem the footer shows in place of the key hints: a failure, read or
+/// write (`Status::Failed`/`Status::Sticky`). Split in two so the width
+/// rule (`hints::fit_status_line`, ADR-0037 §4) can keep `keys` whole and
+/// cut `reason` first — a blind right-to-left cut at 80 columns once lost
+/// the very key the message was naming (`m4-07-acceptance` M2).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProblemLine {
+    /// What went wrong, in words.
+    pub reason: SanitizedText,
+    /// The key(s) that answer it, worded as they'd read in the hint bar
+    /// (`"p pull · P force"`). `None` when the message names none.
+    pub keys: Option<SanitizedText>,
 }
 
 /// The operation banner: `⚠ REBASING step 3 of 7 — conflict in

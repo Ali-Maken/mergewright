@@ -353,8 +353,11 @@ pub(super) fn status_text(state: &AppState) -> String {
     match &state.status {
         Status::Ready => String::new(),
         Status::Copied { short } => format!("copied {short}"),
-        Status::Failed(text) | Status::Sticky(text) | Status::Busy(text) | Status::Done(text) => {
-            text.clone()
-        }
+        Status::Failed(text) | Status::Busy(text) | Status::Done(text) => text.clone(),
+        Status::Sticky { reason, keys: None } => reason.clone(),
+        Status::Sticky {
+            reason,
+            keys: Some(keys),
+        } => format!("{reason} · {keys}"),
     }
 }

@@ -1096,7 +1096,7 @@ fn only_a_read_failure_is_cleared_when_the_repository_opens() {
         .status
     };
 
-    let sticky = Status::Sticky("push rejected: origin/main has moved · p pull first".to_owned());
+    let sticky = Status::sticky("push rejected: origin/main has moved · p pull first".to_owned());
     assert_eq!(opened(sticky.clone()), sticky, "a write's failure stays");
     assert_eq!(
         opened(Status::Failed("could not read the refs".to_owned())),
@@ -3152,4 +3152,52 @@ fn stale_remotes_dropped() {
         detail::Loading::Ready(facts("refs/heads/main"))
     );
     assert_eq!(next.remote.reading, None);
+}
+
+/// Every key the footer's hint table offers is either bound in code
+/// (`keys::bound_keys`) or is one of the four the design note hints ahead of
+/// its own group (`m`/`r`/`b`/`t`, `BranchRow`'s merge/rebase/branch/tag —
+/// `docs/design/02-keymap.md` §2.3, not yet wired; `s`/`a`, the operation
+/// banner's skip/abort, belong to the banner group). `.` (more/explain) and
+/// `⇥` need no per-context check: they, `bound_keys` and every hinted `key`
+/// are compared as literal strings, spelled exactly as the footer draws
+/// them (`hint-bar-redesign` scope item 6).
+#[test]
+fn every_hinted_key_is_bound_or_a_named_pending_group() {
+    use graft_ui::graph_screen::{HintContext, hints_for};
+
+    let pending = ["m", "r", "b", "t", "s", "a"];
+    let bound = super::keys::bound_keys();
+    let contexts = [
+        HintContext::WorkingTreeRow,
+        HintContext::BranchRow { current: false },
+        HintContext::BranchRow { current: true },
+        HintContext::PlainRow,
+        HintContext::Marked(Box::new(HintContext::PlainRow)),
+        HintContext::Banner { skippable: true },
+        HintContext::Banner { skippable: false },
+        HintContext::ChangesPane {
+            unmerged: false,
+            detail_shown: true,
+        },
+        HintContext::ChangesPane {
+            unmerged: true,
+            detail_shown: false,
+        },
+        HintContext::Journal,
+        HintContext::Stash,
+    ];
+    for context in contexts {
+        for hint in hints_for(&context, 200) {
+            if hint.key == "." {
+                continue;
+            }
+            assert!(
+                bound.contains(&hint.key) || pending.contains(&hint.key),
+                "{context:?} hints `{}` ({}), which is neither bound nor a named pending key",
+                hint.key,
+                hint.verb
+            );
+        }
+    }
 }

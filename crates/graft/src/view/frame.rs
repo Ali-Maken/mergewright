@@ -544,7 +544,7 @@ fn footer_notice(state: &AppState, tier: RenderingTier) -> Option<SanitizedText>
         Status::Copied { short } => {
             return Some(sanitize_line(&format!("{short}… → clipboard (osc 52)")));
         }
-        Status::Ready | Status::Failed(_) | Status::Sticky(_) => {}
+        Status::Ready | Status::Failed(_) | Status::Sticky { .. } => {}
     }
     // An operation a previous run left half-done. Louder than the renderer
     // line and quieter than a failure — nothing is broken, but there is a

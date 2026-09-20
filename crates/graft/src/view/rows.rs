@@ -7,8 +7,8 @@ use graft_graph::row::Row;
 use graft_term::{SanitizedText, sanitize_line, sanitize_path};
 use graft_ui::graph_column::RowPaint;
 use graft_ui::graph_screen::{
-    Compaction, Filters, GraphEntry, GraphView, OrderNotice, SHA_WIDTH, SearchLine, WalkView,
-    short_sha,
+    BadgeKind, Compaction, Filters, GraphEntry, GraphView, HintContext, OrderNotice, ProblemLine,
+    SHA_WIDTH, SearchLine, WalkView, short_sha,
 };
 use std::collections::BTreeSet;
 
@@ -28,7 +28,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         .repository
         .as_ref()
         .map(|facts| sanitize_path(&facts.path));
-    let problem = super::status::problem(&state.status);
+    let problem = super::status::graph_problem(&state.status);
     let Some(history) = &state.history else {
         return opening_view(state, location, problem);
     };
@@ -38,6 +38,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
     let rows = visible_rows(state, history, thread.as_ref(), now_seconds);
     let compaction = compaction(state, history, thread.as_ref(), &rows);
     let reveal = reveal_index(state, history, &rows);
+    let hint_context = hint_context(state, &rows);
 
     GraphView {
         location,
@@ -67,7 +68,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         commit_graph: state.commit_graph_line(),
         banner: Vec::new(),
         detail_shown: state.detail.shown,
-        changes_pane: state.on_changes_pane(),
+        hint_context,
         // `visible_rows` (just above) has already set `radar_column_seen`
         // for any row it built with a marker, so reading it here also
         // covers this frame's own findings, not just earlier ones
@@ -84,7 +85,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
 fn opening_view(
     state: &AppState,
     location: Option<SanitizedText>,
-    problem: Option<SanitizedText>,
+    problem: Option<ProblemLine>,
 ) -> GraphView<'_> {
     GraphView {
         location,
@@ -106,7 +107,7 @@ fn opening_view(
         commit_graph: state.commit_graph_line(),
         banner: Vec::new(),
         detail_shown: state.detail.shown,
-        changes_pane: state.on_changes_pane(),
+        hint_context: HintContext::PlainRow,
         // No history has arrived yet, so the radar context is never `Ready`
         // here — `state.history` is `None`, which `radar::request_context`
         // requires before it asks for one. Sticky findings from an earlier
@@ -223,6 +224,49 @@ fn compaction(
             &reserved,
             thread.map(|thread| &thread.ancestry),
         ),
+    }
+}
+
+/// The footer's context for this frame (`hints::hints_for`, ADR-0037 §4):
+/// the working-tree row and the changes pane both win over anything the
+/// cursor sits on, since they are full-screen states; otherwise the cursor
+/// row's own badges say whether it is a branch, and its Mistake Radar
+/// marker (`GraphEntry::marker`) wraps whichever context in `Marked`, exactly
+/// as `hints_for` interprets it. `Journal` and `Stash` are never produced
+/// here — `view::frame` draws those overlays instead of the graph screen
+/// while they are shown, so the graph's own footer never has to hint them.
+fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
+    if state.on_working_tree {
+        return HintContext::WorkingTreeRow;
+    }
+    if state.on_changes_pane() {
+        let unmerged = state
+            .working_tree
+            .as_deref()
+            .is_some_and(|status| status.entries.iter().any(|entry| entry.unmerged));
+        return HintContext::ChangesPane {
+            unmerged,
+            detail_shown: state.detail.shown,
+        };
+    }
+    let cursor = rows
+        .iter()
+        .find(|entry| entry.line.paint == RowPaint::Highlighted);
+    let Some(cursor) = cursor else {
+        return HintContext::PlainRow;
+    };
+    let base = cursor
+        .badges
+        .iter()
+        .find_map(|badge| match badge.kind {
+            BadgeKind::Branch { current, .. } => Some(HintContext::BranchRow { current }),
+            _ => None,
+        })
+        .unwrap_or(HintContext::PlainRow);
+    if cursor.marker.is_some() {
+        HintContext::Marked(Box::new(base))
+    } else {
+        base
     }
 }
 
