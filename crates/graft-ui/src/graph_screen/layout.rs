@@ -9,18 +9,33 @@ use unicode_width::UnicodeWidthStr;
 
 use super::{
     AUTHOR_BREAKPOINT, AUTHOR_WIDTH, CHROME_ROWS, Filters, GraphEntry, GraphScreen, GraphicsStatus,
-    MARKER_WIDTH, OrderNotice, SHA_WIDTH, SUBJECT_GAP, WHEN_WIDTH, WalkView,
+    MARKER_WIDTH, OrderNotice, SHA_WIDTH, SUBJECT_GAP, WHEN_WIDTH, WalkView, banner_line,
 };
 use crate::fit::fit;
 use crate::graph_column::{CELLS_PER_LANE, GraphColumn};
 use crate::paint::foreground;
 use crate::theme::Token;
 
+/// Columns at and above which the operation banner's own buttons row draws
+/// (`docs/design-notes/m5-history-and-ghost-preview.md`, "Operation
+/// banner"): they are mouse targets only — the keys named in the hint bar
+/// always work, at any width.
+const BANNER_BUTTONS_BREAKPOINT: u16 = 160;
+
 impl<'a> GraphScreen<'a> {
-    /// Rows the banner takes under the header: one per line. Saturates, so a
-    /// banner taller than any terminal still leaves the arithmetic sound.
-    fn banner_rows(&self) -> u16 {
-        u16::try_from(self.view.banner.len()).unwrap_or(u16::MAX)
+    /// Rows the banner takes under the header: one per harness-pinned line,
+    /// plus one more when the operation banner's buttons row draws at this
+    /// width. Saturates, so a banner taller than any terminal still leaves
+    /// the arithmetic sound.
+    fn banner_rows(&self, width: u16) -> u16 {
+        let harness = u16::try_from(self.view.banner.len()).unwrap_or(u16::MAX);
+        harness.saturating_add(u16::from(self.banner_buttons_row(width)))
+    }
+
+    /// Whether the operation banner's `[ Continue ] [ Skip ] [ Abort ]` row
+    /// draws under the header at this width.
+    pub(super) fn banner_buttons_row(&self, width: u16) -> bool {
+        self.view.banner_op.is_some() && width >= BANNER_BUTTONS_BREAKPOINT
     }
 
     /// Where the graph column lands inside `area`, the whole screen: the
@@ -37,7 +52,7 @@ impl<'a> GraphScreen<'a> {
     /// The rows' rectangle, the rows that fit in it, and the fold they are
     /// drawn through (`None` while expanded).
     pub(super) fn body_layout(&self, area: Rect) -> (Rect, &[GraphEntry<'a>], Option<Fold>) {
-        let banner = self.banner_rows();
+        let banner = self.banner_rows(area.width);
         let offer = u16::from(self.view.commit_graph.is_some());
         let body = Rect {
             y: area.y.saturating_add(1).saturating_add(banner),
@@ -81,40 +96,66 @@ impl<'a> GraphScreen<'a> {
                 &mut spans,
             );
         }
+        // The operation banner takes the rest of the header — the walk
+        // state, filters, order notice and graphics status all answer "is
+        // history still loading", which is not the question mid-operation
+        // (DESIGN.md §1.13, ADR-0038 §3). `focused` reverses the slot so a
+        // conflict landing is noticed without a click.
+        if let Some(banner) = &self.view.banner_op {
+            let text = banner_line(banner, u16::try_from(width).unwrap_or(u16::MAX));
+            let mut style = foreground(self.theme, Token::Warning);
+            if banner.focused {
+                style = style.add_modifier(ratatui::style::Modifier::REVERSED);
+            }
+            push(format!("  {text}"), style, &mut spans);
+            return Line::from(spans);
+        }
+        self.push_walk_status(folded_lanes, muted, &mut push, &mut spans);
+        Line::from(spans)
+    }
+
+    /// The walk state, filters, order notice and graphics status — the
+    /// header's informational tail when no operation banner takes its place.
+    fn push_walk_status(
+        &self,
+        folded_lanes: usize,
+        muted: Style,
+        push: &mut impl FnMut(String, Style, &mut Vec<Span<'static>>),
+        spans: &mut Vec<Span<'static>>,
+    ) {
         let (walk, token) = walk_text(&self.view.walk);
-        push(walk, foreground(self.theme, token), &mut spans);
+        push(walk, foreground(self.theme, token), spans);
         let filters = left_out(self.view.filters, folded_lanes);
         if !filters.is_empty() {
             push(
                 format!("  {filters}"),
                 foreground(self.theme, Token::Accent),
-                &mut spans,
+                spans,
             );
         }
         if matches!(self.view.walk, WalkView::Jumping { .. }) {
-            push("  Esc cancels".to_owned(), muted, &mut spans);
+            push("  Esc cancels".to_owned(), muted, spans);
         }
         match self.view.order {
             Some(OrderNotice::Sorting) => {
-                push("  date order, sorting…".to_owned(), muted, &mut spans);
+                push("  date order, sorting…".to_owned(), muted, spans);
             }
             Some(OrderNotice::Provisional) => push(
                 "  order stays provisional (date)".to_owned(),
                 foreground(self.theme, Token::Warning),
-                &mut spans,
+                spans,
             ),
             None => {}
         }
         match &self.view.graphics {
-            Some(GraphicsStatus::Ok) => push("  gfx ok".to_owned(), muted, &mut spans),
+            Some(GraphicsStatus::Ok) => push("  gfx ok".to_owned(), muted, spans),
             Some(GraphicsStatus::Failed(message)) => push(
                 format!("  gfx: {message}"),
                 foreground(self.theme, Token::Warning),
-                &mut spans,
+                spans,
             ),
             None => {}
         }
-        Line::from(spans)
     }
 }
 

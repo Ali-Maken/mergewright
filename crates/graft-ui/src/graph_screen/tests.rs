@@ -97,6 +97,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
         detail_shown: false,
         changes_pane: false,
         marker_column: false,
+        banner_op: None,
     }
 }
 
@@ -1029,4 +1030,172 @@ fn the_explain_hint_shows_only_on_a_marked_cursor_row() {
         "{:?}",
         cursor_screen[4]
     );
+}
+
+// --- Operation banner (m5-history-and-ghost-preview/04, ADR-0038 §3) ---
+
+fn rebase_banner(step: Option<(u32, u32)>, conflict: Option<&str>, more: usize) -> BannerView {
+    BannerView {
+        kind: sanitize_line("REBASING"),
+        step,
+        conflict: conflict.map(sanitize_line),
+        more_conflicts: more,
+        focused: false,
+        skippable: true,
+    }
+}
+
+/// Wide (≥100 cols): `step 3 of 7`, `conflict in <path>`, and the `(+N)`
+/// extra-conflicts count all spelled out in full.
+#[test]
+fn banner_line_at_100_or_more_spells_out_step_and_conflict_in() {
+    let banner = rebase_banner(Some((3, 7)), Some("src/auth/token.rs"), 1);
+    let text = banner_line(&banner, 100);
+    assert!(text.contains("REBASING"), "{text:?}");
+    assert!(text.contains("step 3 of 7"), "{text:?}");
+    assert!(text.contains("conflict in src/auth/token.rs"), "{text:?}");
+    assert!(text.contains("(+1)"), "{text:?}");
+}
+
+/// Narrow (<100 cols): `3/7`, `conflict <path>` — no "step", no "in".
+#[test]
+fn banner_line_under_100_uses_the_terse_form() {
+    let banner = rebase_banner(Some((3, 7)), Some("src/auth.rs"), 0);
+    let text = banner_line(&banner, 80);
+    assert!(text.contains("REBASING 3/7"), "{text:?}");
+    assert!(text.contains("conflict src/auth.rs"), "{text:?}");
+    assert!(!text.contains("step"), "{text:?}");
+    assert!(!text.contains("conflict in"), "{text:?}");
+}
+
+/// No step at all (a plain merge): the sentence has nothing to count.
+#[test]
+fn banner_line_with_no_step_names_only_the_operation_and_the_conflict() {
+    let banner = BannerView {
+        kind: sanitize_line("MERGING"),
+        step: None,
+        conflict: Some(sanitize_line("src/x.rs")),
+        more_conflicts: 0,
+        focused: false,
+        skippable: false,
+    };
+    let text = banner_line(&banner, 120);
+    assert_eq!(text, "⚠ MERGING — conflict in src/x.rs");
+}
+
+/// No conflict yet: nothing past the step — an in-progress operation the
+/// user has not hit trouble in.
+#[test]
+fn banner_line_with_no_conflict_stops_after_the_step() {
+    let banner = rebase_banner(Some((3, 7)), None, 0);
+    let text = banner_line(&banner, 120);
+    assert_eq!(text, "⚠ REBASING step 3 of 7");
+}
+
+/// The banner replaces the header's walk/filters/order/graphics slot
+/// entirely, and reverses when focused.
+#[test]
+fn the_banner_replaces_the_header_slot_and_reverses_when_focused() {
+    let rows = linear(2);
+    let mut unfocused = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    unfocused.banner_op = Some(rebase_banner(Some((3, 7)), Some("src/auth.rs"), 0));
+    let screen = text(&draw(&unfocused, 80, 6));
+    assert!(screen[0].contains("REBASING"), "{:?}", screen[0]);
+    assert!(!screen[0].contains("commits"), "{:?}", screen[0]);
+
+    let theme = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::TrueColor, false));
+    let mut focused = unfocused.clone();
+    focused.banner_op.as_mut().unwrap().focused = true;
+    let mut terminal = Terminal::new(TestBackend::new(80, 6)).expect("test backend opens");
+    terminal
+        .draw(|frame| frame.render_widget(GraphScreen::new(&focused, &theme), frame.area()))
+        .expect("drawing into a test backend cannot fail");
+    let buffer = terminal.backend().buffer();
+    let reversed = (0..buffer.area.width).any(|x| {
+        buffer[(x, 0)]
+            .style()
+            .add_modifier
+            .contains(Modifier::REVERSED)
+    });
+    assert!(reversed, "expected the focused banner slot to reverse");
+}
+
+/// The buttons row draws only at 160 columns and up, on its own row under
+/// the header — never at 80 or 120.
+#[test]
+fn banner_buttons_row_draws_only_at_160_and_up() {
+    let rows = linear(2);
+    let mut with_banner = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    with_banner.banner_op = Some(rebase_banner(Some((3, 7)), Some("src/auth.rs"), 0));
+
+    let narrow = text(&draw(&with_banner, 80, 10));
+    assert!(!narrow[1].contains("Continue"), "{:?}", narrow[1]);
+
+    let medium = text(&draw(&with_banner, 120, 10));
+    assert!(!medium[1].contains("Continue"), "{:?}", medium[1]);
+
+    let wide = text(&draw(&with_banner, 160, 10));
+    assert!(wide[1].contains("Continue"), "{:?}", wide[1]);
+    assert!(wide[1].contains("Skip"), "{:?}", wide[1]);
+    assert!(wide[1].contains("Abort"), "{:?}", wide[1]);
+}
+
+// --- CONFLICTS section (m5-history-and-ghost-preview/04) ---
+
+/// `WorkingTreeSection::Unmerged`'s heading word is `CONFLICTS` — the
+/// section drawn first, and the row text (words, not a letter and counts),
+/// are asserted in `detail_pane::tests::conflicts_section_draws_first_with_words_not_a_letter`
+/// and `detail_pane::files::tests::an_unmerged_row_shows_how_as_words_not_a_letter_and_counts`.
+#[test]
+fn unmerged_sections_heading_word_is_conflicts() {
+    use crate::detail::WorkingTreeSection;
+    assert_eq!(WorkingTreeSection::Unmerged.title(), "CONFLICTS");
+}
+
+/// Not an assertion — dumps the banner at <100/≥100/≥160 columns, so the
+/// header's operation banner can be judged by eye. Run by hand to
+/// regenerate: `cargo test -p graft-ui
+/// graph_screen::tests::capture_for_docs_shots -- --ignored --nocapture`.
+#[test]
+#[ignore = "writes docs/shots/m5-ui-banner.txt; run by hand to regenerate"]
+fn capture_for_docs_shots() {
+    let rows = linear(2);
+    let mut with_banner = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    with_banner.banner_op = Some(rebase_banner(Some((3, 7)), Some("src/auth/token.rs"), 1));
+
+    let mut out = String::new();
+    out.push_str(
+        "# docs/shots/m5-ui-banner.txt — operation banner (rebase/merge/conflict)\n\
+         #\n\
+         # What right looks like: the header's informational tail is\n\
+         # replaced, while an operation is in progress, by\n\
+         # `⚠ REBASING step 3 of 7 — conflict in <path> (+N)` — spelled out\n\
+         # at >=100 cols, abbreviated (`3/7`, path only) under 100. The\n\
+         # `[ Continue ] [ Skip ] [ Abort ]` buttons draw on their own row\n\
+         # under the header only at >=160 cols — keys always work, the\n\
+         # buttons are a mouse convenience.\n\
+         \n",
+    );
+    for (label, w) in [
+        ("<100 cols, 80x10", 80u16),
+        (">=100 cols, 120x10", 120),
+        (">=160 cols (buttons row), 160x10", 160),
+    ] {
+        out.push_str(&format!("=== {label} ===\n"));
+        for line in text(&draw(&with_banner, w, 10)) {
+            if !line.trim().is_empty() {
+                out.push_str(line.trim_end());
+                out.push('\n');
+            }
+        }
+        out.push('\n');
+    }
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m5-ui-banner.txt"
+        ),
+        out,
+    )
+    .expect("docs/shots is writable");
 }

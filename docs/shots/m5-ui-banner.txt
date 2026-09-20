@@ -1,0 +1,29 @@
+# docs/shots/m5-ui-banner.txt — operation banner (rebase/merge/conflict)
+#
+# What right looks like: the header's informational tail is
+# replaced, while an operation is in progress, by
+# `⚠ REBASING step 3 of 7 — conflict in <path> (+N)` — spelled out
+# at >=100 cols, abbreviated (`3/7`, path only) under 100. The
+# `[ Continue ] [ Skip ] [ Abort ]` buttons draw on their own row
+# under the header only at >=160 cols — keys always work, the
+# buttons are a mouse convenience.
+
+=== <100 cols, 80x10 ===
+ graft /code/api    ⚠ REBASING 3/7 — conflict src/auth/token.rs (+1)
+●   Commit 2                                                        2h   0202020
+◇   Commit 1                                                        2h   0101010
+ q quit  F2 status  F3 renderer  u undo  / search  j/k move  Space fold
+
+=== >=100 cols, 120x10 ===
+ graft /code/api    ⚠ REBASING step 3 of 7 — conflict in src/auth/token.rs (+1)
+●   Commit 2                                                                                             TE 2h   0202020
+◇   Commit 1                                                                                             TE 2h   0101010
+ q quit  F2 status  F3 renderer  u undo  / search  j/k move  Space fold  1 first-parent  F focus  S stash  H hide stash
+
+=== >=160 cols (buttons row), 160x10 ===
+ graft /code/api    ⚠ REBASING step 3 of 7 — conflict in src/auth/token.rs (+1)
+                                                                                                                               [ Continue ]  [ Skip ]  [ Abort ]
+●   Commit 2                                                                                                                                     TE 2h   0202020
+◇   Commit 1                                                                                                                                     TE 2h   0101010
+ q quit  F2 status  F3 renderer  u undo  / search  j/k move  Space fold  1 first-parent  F focus  S stash  H hide stash  f fetch  p pull  P push  J journal
+

@@ -10,7 +10,7 @@ use crate::theme::Token;
 
 use super::line_render::draw_line;
 
-pub(crate) fn status_letter(status: FileStatusView) -> char {
+pub(crate) fn status_letter(status: &FileStatusView) -> char {
     match status {
         FileStatusView::Added => 'A',
         FileStatusView::Deleted => 'D',
@@ -18,7 +18,10 @@ pub(crate) fn status_letter(status: FileStatusView) -> char {
         FileStatusView::Renamed => 'R',
         FileStatusView::Copied => 'C',
         FileStatusView::TypeChanged => 'T',
-        FileStatusView::Unmerged => 'U',
+        // Never drawn: the CONFLICTS row's `file_row_text` branches on
+        // `Unmerged` before reaching here and draws `how` instead of a
+        // letter.
+        FileStatusView::Unmerged { .. } => 'U',
         FileStatusView::Untracked => '?',
     }
 }
@@ -44,12 +47,20 @@ fn file_row_text(row: &FileRow, width: usize) -> String {
             added,
             removed,
         } => {
-            let letter = status_letter(*status);
-            let counts = match (added, removed) {
-                (Some(added), Some(removed)) => format!("+{added} \u{2212}{removed}"),
-                _ => "bin".to_string(),
-            };
-            (format!("{indent}{letter} {}", row.name.as_str()), counts)
+            // An unmerged file has no add/remove counts to show — there is
+            // no single "the diff" while both sides are still in the index
+            // — so its row is the name, and `how` (`both modified`, …)
+            // takes the trailing column instead of a letter and counts.
+            if let FileStatusView::Unmerged { how } = status {
+                (format!("{indent}{}", row.name.as_str()), how.to_string())
+            } else {
+                let letter = status_letter(status);
+                let counts = match (added, removed) {
+                    (Some(added), Some(removed)) => format!("+{added} \u{2212}{removed}"),
+                    _ => "bin".to_string(),
+                };
+                (format!("{indent}{letter} {}", row.name.as_str()), counts)
+            }
         }
     };
     if right.is_empty() {
@@ -87,5 +98,55 @@ pub(crate) fn render_files(view: &DetailView, area: Rect, theme: &Theme, buf: &m
         };
         let text = file_row_text(row, usize::from(area.width));
         draw_line(buf, area, offset, &text, style);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use graft_term::sanitize_line;
+
+    use super::*;
+    use crate::detail::{FileRow, FileRowKind, WorkingTreeSection};
+
+    /// An unmerged file's row shows the porcelain pair as words (`both
+    /// modified`), never the single letter and add/remove counts an
+    /// ordinary changed file draws (m5-history-and-ghost-preview/04).
+    #[test]
+    fn an_unmerged_row_shows_how_as_words_not_a_letter_and_counts() {
+        let row = FileRow {
+            depth: 1,
+            name: sanitize_line("src/auth.rs"),
+            kind: FileRowKind::File {
+                status: FileStatusView::Unmerged {
+                    how: sanitize_line("both modified"),
+                },
+                added: None,
+                removed: None,
+            },
+            entry: Some(0),
+        };
+        let text = file_row_text(&row, 40);
+        assert!(text.contains("src/auth.rs"), "{text:?}");
+        assert!(text.contains("both modified"), "{text:?}");
+        assert!(!text.starts_with(" U "), "{text:?}");
+    }
+
+    /// `CONFLICTS (n)` is the section heading word for
+    /// [`WorkingTreeSection::Unmerged`], drawn first in the changes pane by
+    /// the caller's row order — this widget draws whatever rows it is
+    /// given, in that order.
+    #[test]
+    fn the_conflicts_heading_word_and_row_order() {
+        let heading = FileRow {
+            depth: 0,
+            name: sanitize_line(WorkingTreeSection::Unmerged.title()),
+            kind: FileRowKind::Section {
+                section: WorkingTreeSection::Unmerged,
+                count: 2,
+            },
+            entry: None,
+        };
+        let text = file_row_text(&heading, 40);
+        assert!(text.starts_with("CONFLICTS (2)"), "{text:?}");
     }
 }

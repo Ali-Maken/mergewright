@@ -32,11 +32,13 @@ impl Widget for GraphScreen<'_> {
             &self.header(width, folded_lanes),
             area.width,
         );
+        let mut chrome_row = area.y.saturating_add(1);
+        if self.banner_buttons_row(area.width) {
+            self.draw_banner_buttons(chrome_row, area, buf);
+            chrome_row = chrome_row.saturating_add(1);
+        }
         for (offset, line) in self.view.banner.iter().enumerate() {
-            let y = area
-                .y
-                .saturating_add(1)
-                .saturating_add(u16::try_from(offset).unwrap_or(u16::MAX));
+            let y = chrome_row.saturating_add(u16::try_from(offset).unwrap_or(u16::MAX));
             if y >= area.bottom() {
                 break;
             }
@@ -81,6 +83,26 @@ impl Widget for GraphScreen<'_> {
 }
 
 impl GraphScreen<'_> {
+    /// The operation banner's own row, drawn only at 160 columns and up
+    /// (`banner_buttons_row`): `[ Continue ] [ Skip ] [ Abort ]`, right of
+    /// the header row it sits under. Mouse targets only — `c`/`s`/`a` in the
+    /// hint bar are the way that always works, at any width.
+    fn draw_banner_buttons(&self, y: u16, area: Rect, buf: &mut Buffer) {
+        if y >= area.bottom() {
+            return;
+        }
+        let text = "[ Continue ]  [ Skip ]  [ Abort ]";
+        let width = usize::from(area.width);
+        let start = area
+            .width
+            .saturating_sub(u16::try_from(text.len()).unwrap_or(u16::MAX));
+        let line = Line::styled(
+            fit(&format!("{}{text}", " ".repeat(usize::from(start))), width),
+            foreground(self.theme, Token::Text),
+        );
+        buf.set_line(area.x, y, &line, area.width);
+    }
+
     /// The rows: graph, the reserved marker slot, the subject, and — when
     /// there is room — the author chip, the relative date and the short SHA.
     fn body(&self, area: Rect, rows: &[GraphEntry<'_>], fold: Option<&Fold>, buf: &mut Buffer) {
@@ -119,6 +141,12 @@ impl GraphScreen<'_> {
         columns: &Columns,
         buf: &mut Buffer,
     ) {
+        debug_assert!(
+            entry.line.paint != RowPaint::Ghost
+                || (!entry.compare_marked && entry.marker.is_none()),
+            "a Ghost Preview row never carries the pinned-compare accent or a Mistake Radar \
+             marker — the caller builds ghost rows fresh, never off a real row that had one"
+        );
         let (style, trailing_style, palette16_edge) = self.row_emphasis(entry, y, area, buf);
 
         let (glyph, glyph_style) = if let Some((glyph, token)) = self.marker_glyph(entry) {

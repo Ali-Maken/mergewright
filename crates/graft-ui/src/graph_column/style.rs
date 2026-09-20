@@ -6,7 +6,31 @@
 use graft_core::capabilities::ColorDepth;
 use ratatui::style::{Modifier, Style};
 
-use super::{CELLS_PER_LANE, GraphLine, RAIL, STUB_ABOVE, STUB_BELOW};
+use super::{CELLS_PER_LANE, GraphLine, NodeKind, RAIL, STUB_ABOVE, STUB_BELOW};
+
+/// A Ghost Preview node's glyph: the anchor shape (ADR-0038 §5), never a
+/// glyph any real [`NodeKind`] draws — `○` for an ordinary ghost, `◎` for a
+/// ghost merge, so a replayed merge still reads as a merge without ever
+/// reading as [`NodeKind::Merge`]'s solid `◉`.
+pub(super) fn ghost_node_glyph(node: NodeKind) -> char {
+    if node == NodeKind::Merge {
+        '◎'
+    } else {
+        '○'
+    }
+}
+
+/// A Ghost Preview edge cell's glyph: straight runs dash (`│`→`┊`,
+/// `─`→`┈`); elbows and junctions have no dashed form in this set and stay
+/// as drawn — "drawn with the dashed set" means dimmed and part of the
+/// ghost row, not a literal dashed corner glyph that does not exist.
+pub(super) fn ghost_edge_glyph(glyph: char) -> char {
+    match glyph {
+        '│' => '┊',
+        '─' => '┈',
+        other => other,
+    }
+}
 
 /// The first cell of a drawn lane column.
 pub(super) fn lane_x(column: usize) -> u16 {
@@ -80,7 +104,12 @@ pub(super) fn to_ascii(glyph: char) -> char {
         '┤' | '├' | '┴' | '┬' | '┼' => '+',
         STUB_BELOW => 'v',
         STUB_ABOVE => '^',
-        RAIL => ':',
+        // Ghost Preview's dashed rail (`┊`, ADR-0038 §5) shares the solid
+        // rail's glyph at this tier — ASCII has no seventh glyph to spare.
+        RAIL | '┊' => ':',
+        '┈' => '.',
+        '○' => 'o',
+        '◎' => 'O',
         ' ' => ' ',
         _ => '*',
     }

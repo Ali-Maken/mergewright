@@ -155,7 +155,7 @@ fn centred(buf: &mut Buffer, area: Rect, text: &str, style: Style) {
 /// detail pane draws.
 fn status_letter(row: &crate::detail::FileRow) -> Option<char> {
     match &row.kind {
-        FileRowKind::File { status, .. } => Some(crate::detail_pane::status_letter(*status)),
+        FileRowKind::File { status, .. } => Some(crate::detail_pane::status_letter(status)),
         _ => None,
     }
 }
