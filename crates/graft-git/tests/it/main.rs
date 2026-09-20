@@ -7,4 +7,5 @@ mod commit_graph;
 mod corpus;
 mod diff_cases;
 mod diff_fixture;
+mod history_reads;
 mod run;

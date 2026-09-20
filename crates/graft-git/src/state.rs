@@ -9,7 +9,10 @@
 use std::io;
 use std::path::Path;
 
+use graft_core::oid::Oid;
+
 use crate::repo::RepoHandle;
+use crate::run::{GitArg, GitInvocation, RunError};
 
 /// An operation partway through, blocking a plain commit until it is
 /// resolved, continued or aborted.
@@ -102,6 +105,120 @@ fn exists(path: &Path) -> Result<bool, io::Error> {
         Ok(_) => Ok(true),
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
         Err(error) => Err(error),
+    }
+}
+
+/// The step a rebase is on, git's own tip and the branch it is rebasing,
+/// read straight from the files git itself writes there (ADR-0034: M5's
+/// operations read this to build the operation banner and its refusals).
+///
+/// `step`/`head_name`/`onto` are only ever set for [`InProgress::Rebase`]: a
+/// merge, cherry-pick, revert or bisect has no analogous "step n of m" or
+/// "onto" concept in a single well-known file, so those fields stay `None`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InProgressDetail {
+    /// Which operation is in progress.
+    pub kind: InProgress,
+    /// `(current, total)`: `rebase-merge/msgnum`+`rebase-merge/end`, or
+    /// `rebase-apply/next`+`rebase-apply/last`, whichever backend is in
+    /// use. `None` if either file is missing or does not parse as a number
+    /// — never an error for the whole call.
+    pub step: Option<(u32, u32)>,
+    /// `rebase-merge/head-name` or `rebase-apply/head-name`: the full ref
+    /// the rebase started on (`refs/heads/x`), as git wrote it. `None` on
+    /// the same terms as `step`.
+    pub head_name: Option<String>,
+    /// `rebase-merge/onto` or `rebase-apply/onto`: the commit being rebased
+    /// onto. `None` on the same terms as `step`.
+    pub onto: Option<Oid>,
+}
+
+/// Why [`in_progress_detail`] could not even check whether an operation is
+/// in progress. Reading the rebase state *files* — `step`, `head_name`,
+/// `onto` — never produces this: a missing or unparsable one is just `None`
+/// on the field, per [`InProgressDetail`]'s own doc.
+#[derive(Debug, thiserror::Error)]
+pub enum StateError {
+    /// [`in_progress`] itself failed: a marker path could not be checked.
+    #[error("could not check the repository's in-progress state: {0}")]
+    Io(#[from] io::Error),
+}
+
+/// [`in_progress`], plus — for a rebase — the step it is on, the branch it
+/// started from and what it is rebasing onto.
+///
+/// # Errors
+/// [`StateError`] on the same terms as [`in_progress`]: a marker path could
+/// not be checked. Never for a rebase detail file that is missing or does
+/// not parse; those fields are simply `None`.
+pub fn in_progress_detail(repo: &RepoHandle) -> Result<Option<InProgressDetail>, StateError> {
+    let Some(kind) = in_progress(repo)? else {
+        return Ok(None);
+    };
+    let (step, head_name, onto) = if kind == InProgress::Rebase {
+        let git_dir = repo.git_dir();
+        let merge_dir = git_dir.join("rebase-merge");
+        let (dir, current_file, total_file) = if exists(&merge_dir)? {
+            (merge_dir, "msgnum", "end")
+        } else {
+            (git_dir.join("rebase-apply"), "next", "last")
+        };
+        (
+            read_step(&dir, current_file, total_file),
+            read_field(&dir.join("head-name")),
+            read_field(&dir.join("onto")).and_then(|hex| Oid::from_hex(&hex).ok()),
+        )
+    } else {
+        (None, None, None)
+    };
+    Ok(Some(InProgressDetail {
+        kind,
+        step,
+        head_name,
+        onto,
+    }))
+}
+
+/// Reads a one-line git state file, trimmed. `None` if it is missing, empty
+/// or unreadable — every case this crate treats as "not there" rather than
+/// as a failure of the whole call.
+fn read_field(path: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(path).ok()?;
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_owned())
+    }
+}
+
+/// `(current, total)` from a pair of git state files (`msgnum`/`end`, or
+/// `next`/`last`). `None` if either is missing or is not a plain number.
+fn read_step(dir: &Path, current_file: &str, total_file: &str) -> Option<(u32, u32)> {
+    let current = read_field(&dir.join(current_file))?.parse().ok()?;
+    let total = read_field(&dir.join(total_file))?.parse().ok()?;
+    Some((current, total))
+}
+
+/// The configured merge tool (`git config --get merge.tool`), if any.
+///
+/// # Errors
+/// [`RunError`] from the runner: git missing or stopped. An unset
+/// `merge.tool` is git's own exit 1, read as `Ok(None)`, not an error.
+pub fn mergetool(repo: &RepoHandle) -> Result<Option<String>, RunError> {
+    match GitInvocation::new(repo)
+        .args([
+            GitArg::Flag("config"),
+            GitArg::Flag("--get"),
+            GitArg::Word("merge.tool".to_owned()),
+        ])
+        .run(&())
+    {
+        Ok(output) => Ok(Some(
+            String::from_utf8_lossy(&output.stdout).trim().to_owned(),
+        )),
+        Err(RunError::Exited { status: 1, .. }) => Ok(None),
+        Err(other) => Err(other),
     }
 }
 

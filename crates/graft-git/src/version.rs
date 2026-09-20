@@ -162,7 +162,10 @@ fn run_error_to_version_error(error: RunError) -> VersionError {
                 "git is not installed, or not on the PATH",
             ),
         },
-        RunError::Spawn(source) => VersionError::Spawn { source },
+        // `system_git` never calls `on_stderr_line`, so `Sink` can only
+        // mean a future caller added one; treated the same as `Spawn` —
+        // both are "talking to git failed" — rather than left unhandled.
+        RunError::Spawn(source) | RunError::Sink(source) => VersionError::Spawn { source },
         RunError::Stopped => VersionError::Timeout {
             after: DEADLINE,
             // `GitInvocation::run` already killed and reaped the child

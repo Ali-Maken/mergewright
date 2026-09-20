@@ -106,6 +106,18 @@ pub struct GitOutput {
     pub truncated: bool,
 }
 
+/// What [`GitInvocation::run_raw`] returns: everything captured, whatever
+/// git's exit code was.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct RawOutput {
+    /// Everything captured, whatever the exit code.
+    pub output: GitOutput,
+    /// git's own exit code. `None` only when the runner killed the child
+    /// itself — a stop, or the output cap — before it could exit on its
+    /// own; a real exit, including a non-zero one, is always `Some`.
+    pub code: Option<i32>,
+}
+
 /// Why a command did not give a result.
 #[derive(Debug, thiserror::Error)]
 pub enum RunError {
@@ -115,6 +127,14 @@ pub enum RunError {
     /// git could not be started, or talking to it failed.
     #[error("could not run git: {0}")]
     Spawn(io::Error),
+    /// The stderr sink an earlier clone of this invocation gave
+    /// [`GitInvocation::on_stderr_line`] panicked on that earlier run, and
+    /// is now unusable: calling a closure whose state might be half-mutated
+    /// would be worse than refusing (`KNOWN_GAPS` row 455 — this used to
+    /// surface as [`RunError::Spawn`], which reads as "git could not be
+    /// started" for what is really an app-side callback bug).
+    #[error("git's stderr callback is unusable after an earlier panic: {0}")]
+    Sink(io::Error),
     /// The caller's [`Stop`] asked; the child was killed and reaped.
     #[error("git was stopped")]
     Stopped,
@@ -298,6 +318,24 @@ impl GitInvocation {
         self.supervise(&mut child, stop)
     }
 
+    /// Runs the command like [`run`](Self::run), but never turns a non-zero
+    /// exit into an error and never discards stdout to keep only a
+    /// [`RunError::Exited`]'s `stderr_first_line`. For a command whose exit
+    /// code is not just success/failure — `git merge-tree`'s clean (0) vs
+    /// conflicts (1) vs a real error (anything else), each of which writes
+    /// stdout differently — the caller reads [`RawOutput::code`] and decides
+    /// what it means. `git` missing, the run being stopped, or the child
+    /// being killed by a signal it did not send itself are still errors:
+    /// this only stops turning *git's own* exit code into one.
+    ///
+    /// # Errors
+    /// [`RunError`]: git missing or unstartable, stopped, or killed by a
+    /// signal Graft did not send. Never [`RunError::Exited`].
+    pub fn run_raw(&self, stop: &dyn Stop) -> Result<RawOutput, RunError> {
+        let mut child = self.spawn()?;
+        self.supervise_raw(&mut child, stop)
+    }
+
     /// The command as a person would type it, for footers and error messages
     /// only; never run. Arguments are shell-quoted where needed and decoded
     /// lossily, and the runner's own `-C <dir> --no-pager` is left out.
@@ -337,6 +375,40 @@ impl GitInvocation {
     /// Feeds, drains and waits on a spawned child. On every return path the
     /// child has been reaped: no zombie outlives the call.
     fn supervise(&self, child: &mut Child, stop: &dyn Stop) -> Result<GitOutput, RunError> {
+        match self.outcome(child, stop)? {
+            Ending::Exited(status, output) => self.judge(status, output),
+            // Killed by the runner: a stdin write cut short by the kill is
+            // expected, so the writer is left to finish on its own.
+            Ending::Capped(output) => Ok(output),
+        }
+    }
+
+    /// [`supervise`](Self::supervise)'s [`run_raw`](Self::run_raw) twin:
+    /// the same outcome, without [`judge`](Self::judge) turning a non-zero
+    /// exit into [`RunError::Exited`] and losing stdout along the way.
+    fn supervise_raw(&self, child: &mut Child, stop: &dyn Stop) -> Result<RawOutput, RunError> {
+        match self.outcome(child, stop)? {
+            Ending::Exited(status, output) => match status.code() {
+                Some(code) => Ok(RawOutput {
+                    output,
+                    code: Some(code),
+                }),
+                // No code at all means a signal, not an exit git chose —
+                // `run_raw`'s contract is git's own exit code, so this stays
+                // an error rather than becoming a fabricated `None` code
+                // indistinguishable from the runner's own kill below.
+                None => Err(RunError::Signalled {
+                    command: self.command_line(),
+                }),
+            },
+            Ending::Capped(output) => Ok(RawOutput { output, code: None }),
+        }
+    }
+
+    /// Feeds, drains and waits on a spawned child, reporting how it ended
+    /// without judging the result. On every return path the child has been
+    /// reaped: no zombie outlives the call.
+    fn outcome(&self, child: &mut Child, stop: &dyn Stop) -> Result<Ending, RunError> {
         let (events, received) = mpsc::channel();
         let stdin = self
             .stdin
@@ -372,11 +444,9 @@ impl GitInvocation {
                         Err(error) => return Err(RunError::Spawn(error)),
                     }
                 }
-                self.judge(status, output)
+                Ok(Ending::Exited(status, output))
             }
-            // Killed by the runner: a stdin write cut short by the kill is
-            // expected, so the writer is left to finish on its own.
-            Ok(Ending::Capped(output)) => Ok(output),
+            Ok(Ending::Capped(output)) => Ok(Ending::Capped(output)),
             Err(error) => Err(error),
         }
     }
@@ -534,6 +604,36 @@ mod tests {
             seen.iter().map(Vec::as_slice).collect::<Vec<_>>(),
             "the sink saw exactly the captured stderr, in order, minus separators"
         );
+    }
+
+    /// `KNOWN_GAPS` row 455: a stderr sink poisoned by an earlier run of the
+    /// same (cloned) invocation must surface as `RunError::Sink`, not
+    /// `RunError::Spawn` — the latter reads as "git could not be started",
+    /// which is not what happened.
+    #[test]
+    fn poisoned_sink_is_not_spawn() {
+        let repo = Fixture::with_two_commits();
+        let invocation = GitInvocation::in_directory(repo.root())
+            .args([
+                GitArg::Flag("checkout"),
+                GitArg::Word("nonesuch-branch".to_owned()),
+            ])
+            .on_stderr_line(Box::new(|_| panic!("the sink panics on purpose")));
+
+        // git writes to stderr and exits non-zero; the sink panics on the
+        // first segment it is handed, poisoning its mutex. However this
+        // first run fails is not the point under test.
+        let first = invocation.run(&());
+        assert!(
+            first.is_err(),
+            "a panicking sink cannot let this run succeed"
+        );
+
+        // Same (cloned) invocation, same poisoned sink, a second run: the
+        // failure now is the sink refusing to run again, not a fresh spawn
+        // failure — `git` starts and runs exactly as before.
+        let second = invocation.run(&());
+        assert!(matches!(second, Err(RunError::Sink(_))), "{second:?}");
     }
 
     /// Counts the asks; never expects one.

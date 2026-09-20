@@ -7,6 +7,7 @@ One line per public item. Update when a public item changes.
 - `diff` (mod) — pure parsers for git's diff output: unified patches, `--raw`/`--numstat` file lists, hunk pairing (m2/02).
 - `commit_graph` (mod) — the commit-graph file: status, building it with system git, the offer's remembered decline (m1-the-graph/54).
 - `history` (mod) — rev-walks: chunked, ordered, resumable.
+- `history_reads` (mod) — the read layer M5's history operations and Ghost Preview plan against: divergence, commit ranges, a `merge-tree` conflict forecast, changed paths, conflict markers (m5-history-and-ghost-preview/02).
 - `mailmap` (mod) — `.mailmap` resolution, via gix's own parser.
 - `editor` (mod) — `git_editor(directory) -> Result<String, EditorError>`: `git var GIT_EDITOR` through `run`, so the app's terminal hand-over does not need a bare `git` spawn of its own (m3/05 review M8). `EditorError` is `Run(RunError)` or `NoEditor`. The answer is a shell command, not a program name.
 - `run` (mod) — the typed runner for system `git`: typed args, byte paths, stdin, kill-on-stop, output cap (m2/01); streaming stderr segments and askpass routing (m4/02).
@@ -102,6 +103,18 @@ One line per public item. Update when a public item changes.
 - `ahead_behind` (fn) — count how far a branch tip and its upstream tip have drifted apart.
 - `WalkError` (enum) — why a rev-walk failed.
 
+## history_reads
+- `merge_base` (fn) — `git merge-base <a> <b>`; `None` on its exit 1 (no common ancestor), never an error.
+- `CommitSummary` (struct) — `id`, `parents` (first parent first), `subject`, `author`.
+- `Range` (struct) — `commits` (oldest first), `capped`.
+- `commits_between` (fn) — `git rev-list --reverse --date=raw --format=%H%x00%P%x00%an%x00%ae%x00%ad%x00%s <include> ^<exclude>`, capped at `cap`; when capped, the entries kept are the ones nearest `include`, oldest of the fetched batch dropped.
+- `parse_rev_list` (fn) — pure parser for the format above (`commit <id>` header line, then the NUL-joined fields); a `cargo-fuzz` target.
+- `ParseError` (struct) — `line` (1-indexed), `what`.
+- `Forecast` (enum) — `Clean`, `Conflicts { paths }`, `NotCheckable(String)` (an old git, or an answer this reader does not recognise — never an error).
+- `forecast_merge` (fn) — `git merge-tree --write-tree --name-only --no-messages [--merge-base=<base>] <ours> <theirs>` through `GitInvocation::run_raw` (needs the real exit code and stdout even on exit 1, which `run`'s `RunError::Exited` discards); per commit, not chained (design note Hard choice 5) — a rebase/cherry-pick forecast is one call per replayed commit against its own predecessor, never through temporary commits. `--merge-base` needs git ≥ 2.40, the plain form ≥ 2.38; older is `NotCheckable`, not refused.
+- `changed_paths` (fn) — `git diff-tree -r --name-only -z <from> <to>`, capped.
+- `first_marker_line` (fn) — the first line starting `<<<<<<< ` in a file, 1-indexed; plain fs read.
+
 ## mailmap
 - `Mailmap` (struct) — a repository's resolved `.mailmap`, wrapping gix's own snapshot.
 - `Mailmap::from_bytes` (fn) — parse a mailmap from raw bytes (tests; real callers use `RepoHandle::mailmap`).
@@ -154,7 +167,9 @@ One line per public item. Update when a public item changes.
 - `GitArg` (enum) — `Flag`, `Count` (`-U3`), `Oid` (full hex), `Ref`/`Path` (raw bytes), `Separator`, `Word` (caller-built, never a path or ref).
 - `Stop` (trait) — `should_stop(&self) -> bool`, `Sync`; impls for `AtomicBool` (Relaxed load) and `()` (never). The walk's stop is a `&dyn Fn() -> bool`, no type of its own, so no impl.
 - `GitOutput` (struct) — `stdout`, `stderr`, `truncated`.
-- `RunError` (enum) — `GitNotFound`, `Spawn(io)`, `Stopped`, `Exited { status, stderr_first_line, command }`, `Signalled { command }`; `Display` is one line.
+- `RawOutput` (struct) — `output` (`GitOutput`), `code` (`Option<i32>`: `None` only when the runner itself killed the child).
+- `GitInvocation::run_raw` (fn) — like `run`, but never turns a non-zero exit into an error and never discards stdout: the caller reads `RawOutput::code` and decides what it means (m5-history-and-ghost-preview/02, for `merge-tree`'s clean/conflicts/error three-way, which `run`'s `judge` would collapse to a `stderr_first_line` on any non-zero code).
+- `RunError` (enum) — `GitNotFound`, `Spawn(io)`, `Sink(io)` (a stderr sink poisoned by an earlier panic on a cloned invocation — was mislabelled `Spawn`, M4/02 review / KNOWN_GAPS row 455, m5-history-and-ghost-preview/02), `Stopped`, `Exited { status, stderr_first_line, command }`, `Signalled { command }`; `Display` is one line.
 - Split into files, public items unchanged (m2 review M8): `exec.rs` is the child-process machinery `GitInvocation::spawn`/`supervise` are built on — pipe draining on their own threads, kill/reap, `GitArg` → `OsString`/shell-quoted text; this file keeps the types and `GitInvocation`'s own methods.
 - `GitInvocation::on_stderr_line` (fn, takes `Box<dyn FnMut(&[u8]) + Send>`) — each `\r`/`\n`-separated stderr segment handed over as it arrives (separators dropped, empties skipped, partials carried across reads, tail flushed at EOF), **on the drain thread**; `GitOutput.stderr` still whole and capped; clones share the sink (m4/02).
 - `GitInvocation::askpass` (fn, takes `&AskPassServer`) — sets `GIT_ASKPASS`/`SSH_ASKPASS` = the server's helper, `SSH_ASKPASS_REQUIRE=force`, `GRAFT_ASKPASS_SOCKET` = its socket; `GIT_TERMINAL_PROMPT=0` stays; no credential in env or argv (m4/02).
@@ -187,6 +202,10 @@ One line per public item. Update when a public item changes.
 ## state
 - `InProgress` (enum) — `Merge`, `Rebase`, `CherryPick`, `Revert`, `Bisect`; `name`/`continue_command`/`abort_command` (m3/01).
 - `in_progress` (fn) — a plain fs check under `RepoHandle::git_dir` for `MERGE_HEAD`, `rebase-merge/`, `rebase-apply/`, `CHERRY_PICK_HEAD`, `REVERT_HEAD`, `BISECT_LOG`; no `git` spawn (m3/01).
+- `InProgressDetail` (struct) — `kind`, `step` (`(current, total)`), `head_name`, `onto`; the last three are only ever set for `Rebase` (m5-history-and-ghost-preview/02).
+- `StateError` (enum) — `Io(io::Error)`, from `in_progress` itself; a rebase detail file that is missing or unparsable is never an error, just `None` on that field (m5-history-and-ghost-preview/02).
+- `in_progress_detail` (fn) — `in_progress`, plus for a rebase: `rebase-merge/{msgnum,end,head-name,onto}` or `rebase-apply/{next,last,head-name,onto}`, whichever backend is in use; plain fs reads (m5-history-and-ghost-preview/02).
+- `mergetool` (fn) — `git config --get merge.tool` through `run`; `None` on its exit 1 (unset), never an error (m5-history-and-ghost-preview/02).
 
 ## status
 - `WorkingTreeCounts` (struct) — how many files are staged, unstaged and untracked.

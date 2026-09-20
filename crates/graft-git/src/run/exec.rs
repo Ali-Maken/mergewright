@@ -33,6 +33,13 @@ pub(super) enum Pipe {
 pub(super) struct Event {
     stdout: bool,
     read: io::Result<(Vec<u8>, bool)>,
+    /// `read`'s `Err`, if any, is the stderr sink refusing to run because an
+    /// earlier clone's run already poisoned it — not a pipe I/O failure.
+    /// [`apply`] uses this to report [`super::RunError::Sink`] rather than
+    /// [`super::RunError::Spawn`] (`KNOWN_GAPS` row 455: the two used to be
+    /// the same variant, which reads as "git could not be started" for what
+    /// is really an app-side callback bug).
+    poisoned_sink: bool,
 }
 
 /// Reads one pipe to EOF or to `cap` on its own thread, then reports. With a
@@ -40,12 +47,20 @@ pub(super) struct Event {
 /// [`Segments`]); the sink runs on this thread.
 pub(super) fn drain(pipe: Pipe, cap: usize, events: Sender<Event>, sink: Option<StderrSink>) {
     thread::spawn(move || {
-        let (stdout, read) = match (pipe, sink) {
-            (Pipe::Out(mut out), _) => (true, read_capped(&mut out, cap, &mut |_| {})),
-            (Pipe::Err(mut err), None) => (false, read_capped(&mut err, cap, &mut |_| {})),
-            (Pipe::Err(mut err), Some(sink)) => (false, read_segmented(&mut err, cap, &sink)),
+        let (stdout, read, poisoned_sink) = match (pipe, sink) {
+            (Pipe::Out(mut out), _) => (true, read_capped(&mut out, cap, &mut |_| {}), false),
+            (Pipe::Err(mut err), None) => (false, read_capped(&mut err, cap, &mut |_| {}), false),
+            (Pipe::Err(mut err), Some(sink)) => {
+                let mut poisoned = false;
+                let read = read_segmented(&mut err, cap, &sink, &mut poisoned);
+                (false, read, poisoned)
+            }
         };
-        if let Err(unwanted) = events.send(Event { stdout, read }) {
+        if let Err(unwanted) = events.send(Event {
+            stdout,
+            read,
+            poisoned_sink,
+        }) {
             // The receiver is gone only when `run` has already returned
             // (stopped or failed) and no longer wants this output.
             drop(unwanted);
@@ -54,15 +69,20 @@ pub(super) fn drain(pipe: Pipe, cap: usize, events: Sender<Event>, sink: Option<
 }
 
 /// [`read_capped`], feeding every kept byte through [`Segments`] to `sink`.
+/// Sets `*poisoned` before returning `Err` when the failure is the sink
+/// mutex itself being poisoned, so the caller can tell that apart from a
+/// real pipe read error.
 fn read_segmented(
     pipe: &mut impl Read,
     cap: usize,
     sink: &StderrSink,
+    poisoned: &mut bool,
 ) -> io::Result<(Vec<u8>, bool)> {
     let mut sink = sink.0.lock().map_err(|_| {
         // A sink that panicked on an earlier run of this (cloned) invocation.
         // That panic already failed that run; this one says so rather than
         // calling a closure whose state is now unknown.
+        *poisoned = true;
         io::Error::other("the stderr sink panicked on an earlier run")
     })?;
     let mut segments = Segments::default();
@@ -138,7 +158,14 @@ impl Segments {
 }
 
 pub(super) fn apply(event: Event, output: &mut super::GitOutput) -> Result<(), RunError> {
-    let (bytes, capped) = event.read.map_err(RunError::Spawn)?;
+    let poisoned_sink = event.poisoned_sink;
+    let (bytes, capped) = event.read.map_err(|error| {
+        if poisoned_sink {
+            RunError::Sink(error)
+        } else {
+            RunError::Spawn(error)
+        }
+    })?;
     if event.stdout {
         output.stdout = bytes;
     } else {
@@ -404,7 +431,7 @@ From /tmp/t/bare\n * branch            main       -> FETCH_HEAD";
         let sink = StderrSink(std::sync::Arc::new(std::sync::Mutex::new(Box::new(
             move |segment: &[u8]| into.lock().expect("test lock").push(segment.to_vec()),
         ))));
-        let (kept, capped) = read_segmented(reader, usize::MAX, &sink).expect("reads");
+        let (kept, capped) = read_segmented(reader, usize::MAX, &sink, &mut false).expect("reads");
         assert!(!capped);
         let segments = seen.lock().expect("test lock").clone();
         (segments, kept)
@@ -439,8 +466,13 @@ From /tmp/t/bare\n * branch            main       -> FETCH_HEAD";
         let sink = StderrSink(std::sync::Arc::new(std::sync::Mutex::new(Box::new(
             move |segment: &[u8]| into.lock().expect("test lock").push(segment.to_vec()),
         ))));
-        let (kept, capped) =
-            read_segmented(&mut Scripted::new(b"one\ntwo\nthree\n", &[]), 6, &sink).expect("reads");
+        let (kept, capped) = read_segmented(
+            &mut Scripted::new(b"one\ntwo\nthree\n", &[]),
+            6,
+            &sink,
+            &mut false,
+        )
+        .expect("reads");
         assert!(capped);
         assert_eq!(kept, b"one\ntw");
         assert_eq!(
