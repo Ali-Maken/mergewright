@@ -33,8 +33,8 @@ use graft_ops::preview::{
 use graft_ops::undo::{self, UndoError};
 
 use crate::support::{
-    NOW, Never, RepoState, TempRepo, context, git_version, journal_for, round_trip, run, state_of,
-    try_run,
+    NOW, Never, RepoState, TempRepo, context, git_version, journal_for, round_trip, run, run_undo,
+    state_of, try_run,
 };
 
 // ── building repositories ───────────────────────────────────────────────
@@ -1332,4 +1332,361 @@ fn deleting_a_ref_draws_it_going_away() {
     assert_eq!(plan.ref_moves.len(), 1);
     assert_eq!(plan.ref_moves[0].from, Some(expected));
     assert_eq!(plan.ref_moves[0].to, None, "gone, not moved");
+}
+
+// ── the three cases the group left untested (m5/07 job 2) ───────────────
+//
+// The behaviours these pin were recorded against git 2.54 in a throwaway
+// repository first: `.scratch/m5-history-and-ghost-preview/plan-behaviours.txt`
+// and `plan-behaviours-2.txt`. Two of the ticket's own premises did not
+// survive that record, and the tests below assert what git actually does,
+// not what the ticket assumed.
+
+/// `main` with a merge commit at its tip: `feature`'s file is in the tree
+/// because the merge brought it, `main`'s own file because it was already
+/// there. Reverting the merge with mainline 1 must take the first away and
+/// leave the second.
+fn merged() -> TempRepo {
+    let repo = diverged();
+    let op = merge_op(&repo, "refs/heads/feature", FastForward::Never);
+    run(&repo, &op, NOW - 100);
+    repo
+}
+
+/// A revert of a merge commit, `-m 1`, run for real and read back out of
+/// the tree — the ticket's case (c).
+#[test]
+fn revert_of_a_merge_with_mainline_one_removes_the_merged_side() {
+    let repo = merged();
+    let merge = id(&repo, "HEAD");
+    assert_eq!(
+        repo.git(&["rev-list", "--parents", "-n1", "HEAD"])
+            .split_whitespace()
+            .count(),
+        3,
+        "the fixture's tip really is a two-parent merge"
+    );
+    assert!(repo.exists("feature.txt"), "the merge brought it in");
+    assert!(repo.exists("main.txt"));
+
+    // Graft writes the merge's own message, so the subject is read rather
+    // than assumed.
+    let merge_subject = repo.git(&["log", "-1", "--format=%s", "HEAD"]);
+    let op = Operation::Revert(RevertParams {
+        commit: merge,
+        subject: merge_subject.clone(),
+        mainline: Some(1),
+        parents: 2,
+        parent: Some(id(&repo, "HEAD^1")),
+        head: head_tip(&repo),
+    });
+    assert_eq!(
+        op.describe(),
+        format!("revert {} \"{merge_subject}\"", &merge.to_string()[..7])
+    );
+
+    let entry = run(&repo, &op, NOW);
+    assert_eq!(entry.kind, OperationKind::Revert);
+    // Read back out of git, not out of the returned value.
+    assert_eq!(
+        repo.git(&["log", "-1", "--format=%s"]),
+        format!("Revert \"{merge_subject}\"")
+    );
+    assert!(
+        !repo.exists("feature.txt"),
+        "mainline 1 keeps main's side and drops feature's"
+    );
+    assert!(repo.exists("main.txt"), "main's own side stays");
+    assert_eq!(
+        repo.git(&["rev-parse", "HEAD^"]),
+        merge.to_string(),
+        "the revert sits on the merge"
+    );
+}
+
+/// The same operation, all the way round: undo puts the merged side back,
+/// redo takes it away again.
+#[test]
+fn revert_of_a_merge_undoes_and_redoes() {
+    let repo = merged();
+    let merge = id(&repo, "HEAD");
+    let op = Operation::Revert(RevertParams {
+        commit: merge,
+        subject: repo.git(&["log", "-1", "--format=%s", "HEAD"]),
+        mainline: Some(1),
+        parents: 2,
+        parent: Some(id(&repo, "HEAD^1")),
+        head: head_tip(&repo),
+    });
+    round_trip(&repo, &op);
+}
+
+/// The Ghost Preview of a merge revert says the same thing the revert then
+/// does: one ghost on `HEAD`, `HEAD`'s branch moving to it, and the commands
+/// that actually run.
+#[test]
+fn the_ghost_of_a_merge_revert_matches_git() {
+    let repo = merged();
+    let merge = id(&repo, "HEAD");
+    let op = Operation::Revert(RevertParams {
+        commit: merge,
+        subject: repo.git(&["log", "-1", "--format=%s", "HEAD"]),
+        mainline: Some(1),
+        parents: 2,
+        parent: Some(id(&repo, "HEAD^1")),
+        head: head_tip(&repo),
+    });
+    let plan = preview_of(&repo, &op);
+    assert_eq!(plan.ghosts.len(), 1, "one commit is made");
+    assert_eq!(plan.ghosts[0].parents, vec![GhostTarget::Real(merge)]);
+    assert_eq!(plan.ref_moves.len(), 1);
+    assert_eq!(plan.ref_moves[0].name, "refs/heads/main");
+    assert_eq!(plan.ref_moves[0].to, Some(GhostTarget::Ghost(0)));
+    // `-m 1` is in the lines the box shows, and they are the lines that run.
+    assert!(
+        plan.commands.iter().any(|line| line.contains("-m 1")),
+        "{:?}",
+        plan.commands
+    );
+
+    run(&repo, &op, NOW);
+    assert_eq!(
+        repo.git(&["log", "-1", "--format=%s"]),
+        plan.ghosts[0].subject,
+        "the ghost's subject is the subject git wrote"
+    );
+    assert_eq!(
+        repo.git(&["rev-parse", "HEAD^"]),
+        merge.to_string(),
+        "the ghost's parent is the commit git built on"
+    );
+}
+
+/// `check`'s mainline rules, both ways, and the fact behind them: git 2.54
+/// **accepts** `-m 1` on a non-merge (older gits refused), so this refusal
+/// is Graft's own, not a repeat of git's. A merge with no mainline is
+/// refused by git too.
+#[test]
+fn mainline_is_refused_on_a_non_merge_and_required_on_a_merge() {
+    let repo = merged();
+    let merge = id(&repo, "HEAD");
+    let plain = id(&repo, "refs/heads/feature");
+    let handle = repo.open();
+
+    let refuse = |params: RevertParams| {
+        let op = Operation::Revert(params);
+        let facts = facts_for(&handle, &op);
+        op.check(&facts).expect_err("this one must be refused")
+    };
+
+    // A mainline on a commit with one parent.
+    assert!(matches!(
+        refuse(RevertParams {
+            commit: plain,
+            subject: "one on feature".to_owned(),
+            mainline: Some(1),
+            parents: 1,
+            parent: Some(id(&repo, "refs/heads/feature^")),
+            head: head_tip(&repo),
+        }),
+        Refusal::MainlineOnNonMerge
+    ));
+    // A mainline a merge has not got.
+    assert!(matches!(
+        refuse(RevertParams {
+            commit: merge,
+            subject: repo.git(&["log", "-1", "--format=%s", "HEAD"]),
+            mainline: Some(3),
+            parents: 2,
+            parent: Some(id(&repo, "HEAD^1")),
+            head: head_tip(&repo),
+        }),
+        Refusal::MainlineOnNonMerge
+    ));
+    // A merge with none at all.
+    assert!(matches!(
+        refuse(RevertParams {
+            commit: merge,
+            subject: repo.git(&["log", "-1", "--format=%s", "HEAD"]),
+            mainline: None,
+            parents: 2,
+            parent: Some(id(&repo, "HEAD^1")),
+            head: head_tip(&repo),
+        }),
+        Refusal::MergeNeedsMainline
+    ));
+
+    // The fact the first refusal rests on: git itself would have run it.
+    // A throwaway clone, so the assertion does not disturb the repository
+    // the other assertions read.
+    let scratch = TempRepo::init();
+    scratch.write("a.txt", b"one\n");
+    scratch.commit_all("one");
+    scratch.write("a.txt", b"two\n");
+    scratch.commit_all("two");
+    assert!(
+        scratch
+            .try_git(&["revert", "--no-edit", "-m", "1", "HEAD"])
+            .is_ok(),
+        "git 2.54 accepts -m on a non-merge, so Graft's refusal is its own \
+         (recorded in .scratch/m5-history-and-ghost-preview/plan-behaviours-2.txt)"
+    );
+}
+
+/// The ticket's case (d): the compare-and-swap on `update-ref`, against a
+/// ref that moved under it.
+///
+/// The drift rail (§6.7) catches this first and asks the user. This is what
+/// happens when the user says go ahead anyway: the swap itself is the last
+/// line of defence, it refuses, and the ref is left exactly where the other
+/// writer put it.
+#[test]
+fn a_forced_undo_still_refuses_when_the_ref_moved_under_it() {
+    let repo = diverged();
+    let op = reset_op(&repo, "refs/heads/main~1", ResetMode::Hard);
+    run(&repo, &op, NOW);
+    let after_reset = id(&repo, "refs/heads/main");
+
+    // Someone else moves `main` behind Graft's back — a shell, another
+    // process — to a commit the entry never saw.
+    repo.git(&["update-ref", "refs/heads/main", "refs/heads/feature"]);
+    let moved_to = id(&repo, "refs/heads/main");
+    assert_ne!(moved_to, after_reset);
+
+    // Unforced: the rail stops it and names the drift.
+    let asked = run_undo(&repo, NOW + 1, false).expect_err("drift must stop an undo");
+    assert!(matches!(asked, UndoError::Drift(_)), "{}", asked.explain());
+    assert_eq!(
+        id(&repo, "refs/heads/main"),
+        moved_to,
+        "nothing was touched"
+    );
+
+    // Forced: the rail is past, and `update-ref <name> <to> <expected>`
+    // refuses on its own.
+    let refused = run_undo(&repo, NOW + 2, true).expect_err("the swap must refuse");
+    assert!(
+        matches!(
+            &refused,
+            UndoError::Restore(graft_ops::restore::RestoreError::RefMoved { name })
+                if name == "refs/heads/main"
+        ),
+        "the compare-and-swap is what refused, naming the ref: {}",
+        refused.explain()
+    );
+    assert_eq!(
+        id(&repo, "refs/heads/main"),
+        moved_to,
+        "a refused compare-and-swap leaves the ref where the other writer put it"
+    );
+}
+
+/// The ticket's case (f) — with its premise corrected.
+///
+/// `git stash branch` creates the branch **at the stash's own base commit**
+/// and applies there, so a branch that moved under the stash cannot make it
+/// conflict: verified in
+/// `.scratch/m5-history-and-ghost-preview/plan-behaviours-2.txt` (f2), and
+/// pinned here.
+#[test]
+fn branch_from_stash_starts_at_the_stashs_base_so_it_cannot_conflict() {
+    let repo = diverged();
+    let base = id(&repo, "refs/heads/main");
+    repo.write("base.txt", b"my work in progress\n");
+    run(
+        &repo,
+        &Operation::StashPush(StashParams {
+            message: Some("wip".to_owned()),
+            scope: StashScope::All {
+                include_untracked: false,
+            },
+        }),
+        NOW,
+    );
+    // `main` moves on, rewriting the very line the stash touches. A `stash
+    // apply` here would conflict.
+    repo.write("base.txt", b"someone else's line\n");
+    repo.commit_all("two on main");
+    assert_ne!(id(&repo, "refs/heads/main"), base);
+
+    let op = Operation::BranchFromStash(BranchFromStashParams {
+        name: "wip-branch".to_owned(),
+        index: 0,
+        commit: id(&repo, "refs/stash"),
+    });
+    run(&repo, &op, NOW + 1);
+
+    assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/wip-branch");
+    assert_eq!(
+        id(&repo, "refs/heads/wip-branch"),
+        base,
+        "the branch is at the stash's base, not at main"
+    );
+    assert_eq!(
+        repo.git(&["diff", "--name-only", "--diff-filter=U"]),
+        "",
+        "nothing is unmerged"
+    );
+    assert_eq!(
+        repo.read("base.txt"),
+        b"my work in progress\n".to_vec(),
+        "the stashed work is on disk"
+    );
+}
+
+/// The two ways a `stash branch` really can fail, both refused by `check`
+/// before git is spawned.
+///
+/// The dirty-tree one is not a nicety: git creates the branch, moves `HEAD`
+/// onto it and *then* fails to apply, leaving a branch that should not
+/// exist and the stash still in the list
+/// (`plan-behaviours-2.txt` (f4)). Refusing first is what keeps that
+/// half-done state from ever being reachable.
+#[test]
+fn branch_from_stash_is_refused_before_git_can_half_do_it() {
+    let repo = diverged();
+    repo.write("base.txt", b"edited, not committed\n");
+    run(
+        &repo,
+        &Operation::StashPush(StashParams {
+            message: Some("wip".to_owned()),
+            scope: StashScope::All {
+                include_untracked: false,
+            },
+        }),
+        NOW,
+    );
+    let stash = id(&repo, "refs/stash");
+    let handle = repo.open();
+
+    // The name is already a branch.
+    let taken = Operation::BranchFromStash(BranchFromStashParams {
+        name: "feature".to_owned(),
+        index: 0,
+        commit: stash,
+    });
+    let facts = facts_for(&handle, &taken);
+    assert!(matches!(
+        taken.check(&facts).expect_err("the name is taken"),
+        Refusal::RefExists { ref name } if name == "feature"
+    ));
+
+    // The working tree is dirty.
+    repo.write("main.txt", b"a change made since the stash\n");
+    let dirty = Operation::BranchFromStash(BranchFromStashParams {
+        name: "wip-branch".to_owned(),
+        index: 0,
+        commit: stash,
+    });
+    let facts = facts_for(&handle, &dirty);
+    assert!(matches!(
+        dirty.check(&facts).expect_err("the tree is dirty"),
+        Refusal::DirtyTree { count: 1 }
+    ));
+
+    // Neither refusal wrote anything: no branch, and the stash is still
+    // there to be taken.
+    assert_eq!(repo.git(&["branch", "--list", "wip-branch"]), "");
+    assert_eq!(id(&repo, "refs/stash"), stash);
+    assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/main");
 }

@@ -3009,6 +3009,7 @@ fn credential_state_seeded(columns: u16, rows: u16, prompt: &str, pulse_seed: bo
         remote_branch: "refs/heads/main".to_owned(),
         set_upstream: false,
         lease: None,
+        source_commit: None,
     });
     state.operating = Some(id);
     state.remote.running = Some(crate::update::remote::Running {

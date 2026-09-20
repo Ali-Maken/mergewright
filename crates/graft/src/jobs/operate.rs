@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use graft_git::remote::{RemoteFailure, RemoteProgress};
 use graft_git::run::askpass::AskPass;
+use graft_git::state::InProgress;
 use graft_git::version::system_git;
 use graft_ops::apply::{self, Applied, ApplyError, Context, Refresh, RemoteHooks};
 use graft_ops::journal::{Journal, journal_path};
@@ -38,6 +39,43 @@ pub enum Operated {
         applied: Applied,
         /// What could not be read, as one line.
         error: String,
+    },
+    /// Git stopped part-way through a history operation and left its own
+    /// state live — `MERGE_HEAD`, `rebase-merge/`, `CHERRY_PICK_HEAD`,
+    /// `REVERT_HEAD`.
+    ///
+    /// **Not a failure, and not `Done`.** The journal entry stays `Pending`
+    /// with no outcome line (`.scratch/m5-history-and-ghost-preview/as-built.md`
+    /// §1), git's state is on disk, and the user is *in* the operation
+    /// until it is finished or aborted. Reporting it as
+    /// [`Operated::Failed`] would word a state the user must act on as
+    /// something that went wrong, and would drop the two facts they need to
+    /// act: which operation is live and which files are unmerged.
+    ///
+    /// Refreshing is always `Everything` — refs and the working tree have
+    /// both moved — which is what puts the unmerged paths under `CONFLICTS`
+    /// in the changes pane and `AppState::in_progress` behind the commit
+    /// editor's refusal.
+    Conflicted {
+        /// What was being done, in the journal's own words.
+        description: String,
+        /// The state git left: what `graft_ops::apply::resume` runs, and
+        /// what the commit editor's refusal already names.
+        kind: InProgress,
+        /// The unmerged paths, as `apply` read them out of `status`. Can be
+        /// empty: a rebase can stop with nothing unmerged (an `edit` step,
+        /// an empty commit).
+        paths: Vec<PathBuf>,
+        /// Git's own words when this came from a
+        /// [`ApplyError::ResumeFailed`] — a `--continue` a hook refused,
+        /// an empty pick — where the state is live but no unmerged path
+        /// explains it. `None` when the operation itself stopped on a
+        /// conflict.
+        ///
+        /// The two share a variant because they are one state to the user
+        /// ("git stopped and its state is still here"), and the one fact
+        /// that tells them apart is carried rather than dropped.
+        stalled: Option<String>,
     },
     /// Nothing was written, or nothing could be recorded — the one case
     /// with no [`Applied`] to refresh from.
@@ -133,9 +171,19 @@ fn refresh_after_failure(error: &ApplyError) -> Option<Refresh> {
         // than keep a screen that may be describing a repository that has.
         // A failed fetch/pull/push may still have moved remote-tracking refs
         // (a pull fetches before its fast-forward fails): the graph too.
-        ApplyError::Journal { .. } | ApplyError::AfterState { .. } | ApplyError::Remote { .. } => {
-            Some(Refresh::Everything)
-        }
+        //
+        // `Conflicted` and `ResumeFailed` are neither of those and are not
+        // failures at all — `run_operation` takes both into
+        // [`Operated::Conflicted`] before this is reached. They are named
+        // here rather than left to a wildcard so a third "git stopped and
+        // its state is live" variant has to be thought about, and they share
+        // this answer because it is the same one: git wrote refs and files
+        // before it stopped.
+        ApplyError::Journal { .. }
+        | ApplyError::AfterState { .. }
+        | ApplyError::Remote { .. }
+        | ApplyError::Conflicted { .. }
+        | ApplyError::ResumeFailed { .. } => Some(Refresh::Everything),
         // Cancelled between steps, which can be after some of them ran.
         ApplyError::Stopped => Some(Refresh::WorkingTree),
     }
@@ -194,7 +242,15 @@ pub(super) fn run_operation(
         Err(error) => return nothing_ran(&error),
     };
     ctx.remote = remote_hooks(op, hooks);
-    match apply::apply(&mut ctx, op) {
+    answer(apply::apply(&mut ctx, op))
+}
+
+/// One [`apply::apply`] result, as the caller reads it.
+///
+/// Split out of [`run_operation`] so the mapping is one readable match
+/// rather than a tail on the end of the setup.
+fn answer(result: Result<Applied, ApplyError>) -> Operated {
+    match result {
         Ok(applied) => Operated::Done(applied),
         Err(ApplyError::AfterState { applied, unread }) => Operated::Incomplete {
             applied: *applied,
@@ -203,6 +259,23 @@ pub(super) fn run_operation(
                 .map(ToString::to_string)
                 .collect::<Vec<_>>()
                 .join("; "),
+        },
+        // git stopped and left its state live. Not a failure: see
+        // [`Operated::Conflicted`].
+        Err(ApplyError::Conflicted { entry, kind, paths }) => Operated::Conflicted {
+            description: entry.description.clone(),
+            kind,
+            paths,
+            stalled: None,
+        },
+        Err(ApplyError::ResumeFailed { entry, kind, error }) => Operated::Conflicted {
+            description: entry.description.clone(),
+            kind,
+            // Nothing is unmerged — that is what makes this case different,
+            // and why git's own line is the only thing that can say what to
+            // do about it.
+            paths: Vec::new(),
+            stalled: Some(error.to_string()),
         },
         Err(error) => {
             let refresh = refresh_after_failure(&error);

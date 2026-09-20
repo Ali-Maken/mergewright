@@ -69,7 +69,7 @@ pub enum PreviewError { Facts(FactsError), Read(RunError), Refused(Refusal), Sto
 
 ## Acceptance
 
-- [ ] **Not ticked — half of it holds.** Piece 8 is green: 35 tests in `crates/graft-ops/tests/it/history_ops.rs`, all named below, `286 tests run: 286 passed` for `graft-ops` + `graft-core`. The other half — "every `plan` string verified in a throwaway repo, results in NOTES (a)–(g)" — was piece 2's, and the predecessor left no NOTES; I did not redo it. What the real-git tests now cover of (a)–(g) is listed under NOTES · (a)–(g); (c), (d) and (f) are **unverified**.
+- [x] Every test in piece 8 green, and every `plan` string exercised against real git with (a)–(g) recorded — both halves, in two parts. **Piece 8**: 42 tests in `crates/graft-ops/tests/it/history_ops.rs` (35 the group wrote + 7 added for the three gaps), green in the workspace run below. **The plan strings**: `<kind>_applies_undoes_redoes` (13 kinds) runs each kind's `plan(&facts)` lines through `apply` against a real repository and reads the result back out of git, and `preview_commands_come_from_plan` proves the lines the box shows are those same lines for eleven kinds — so no plan string is asserted only against itself. **(a)–(g)**: recorded independently against git 2.54 in throwaway repositories by `/tmp/plan_behaviours.sh` and `/tmp/plan_behaviours2.sh`, output committed as `.scratch/m5-history-and-ghost-preview/plan-behaviours.txt` and `plan-behaviours-2.txt`; per-item reading under NOTES · **(a)–(g), recorded**. Two of the ticket's own premises did not survive that record — see there.
 - [x] `preview::plan(...).commands == op.plan(&facts)` lines for every kind — `preview_commands_come_from_plan` (eleven kinds: merge, cherry-pick, revert, reset, checkout, branch create/delete, tag create/delete, rebase, branch-from-stash)
 - [x] No outcome line is ever written for a step that left `in_progress` state — `conflict_span_is_one_entry_and_undoes_to_before_the_merge` (asserts the journal **file** holds exactly 1 line at the stop and 2 after the finish, and that `MERGE_HEAD` is present in between)
 - [x] `journal::in_force` on `Pending` is false, with a test — `pending_is_not_in_force` (`crates/graft-ops/src/journal/tests.rs`: `!in_force`, `in_force_all == [true, false]`, and a `Pending` merge does not shadow `next_undo`)
@@ -162,3 +162,209 @@ the re-push ancestry check was skipped because `Push` named no refs in its
 `PushParams` literals needing `source_commit: None`
 (`update/remote.rs:299,317`, `view/tests.rs:2998`). The workspace gate is red
 there and nowhere else.
+
+
+---
+
+## NOTES — the seam and the leftovers (m5/07 follow-up session)
+
+**What this session did.** Closed the `blocked: needs graft` seam, made the
+(a)–(g) record that acceptance box 1 was waiting on, tested the three cases
+the group left unverified, and settled `OperationKind::RevertTo`. Started by
+merging `main` (at `9efa345`, 1904/1904) into the group's branch.
+
+**Scout.** Yes — one `Explore` (sonnet) over `crates/graft/src`, for what the
+app already holds about a live conflict before wiring two new variants into
+it. It is what found `AppState::in_progress` (fed by the working-tree read,
+read today only by the commit editor's refusal), that `Refresh::Everything`
+re-reads it through `refresh_key`, and that `Operated`/`Undone` had no
+variant that was neither a success nor a failure. Cheaper than reading the
+crate.
+
+**The merge was clean and the build was not** — as warned. `git merge`
+reported no conflict; `cargo check --all-targets` then failed with exactly
+the four seam errors and nothing else, so the semantic break that bit group
+03/04 (`Status::Sticky` reshaped under a branch still using the tuple form)
+did **not** recur here. Checked by compiling, not by reading the merge.
+
+### The seam
+
+- **`jobs/operate.rs`** — `Operated` gained `Conflicted { description, kind,
+  paths, stalled }`. `ApplyError::Conflicted` and `ApplyError::ResumeFailed`
+  both land there, neither in `Failed`. A conflicted merge is not something
+  that went wrong: the entry is journaled `Pending`, git's state is on disk,
+  and the user is *in* the operation — as-built.md §1's decision, carried
+  through to the app. `ResumeFailed` shares the variant because it is the
+  same state to the user, with `stalled` carrying the one fact that separates
+  them (git's own line, where nothing is unmerged to explain the stop).
+  Nothing is folded into a generic error arm.
+- **`update/operate.rs`** — the `Conflicted` arm sets a **sticky** status
+  (it has to outlive the refresh it triggers) worded by the new
+  `conflicted_line`, and always refreshes `Everything`. That wide re-read is
+  not a guess: it is the only scope that re-reads `AppState::in_progress` and
+  the unmerged flags that put the files under `CONFLICTS`. The commit editor
+  and its draft are **not** cleared — no commit was made, and throwing away
+  typed words over someone else's conflict would be losing work.
+- **Wording.** `conflicted_line` says what was being done, that the operation
+  is still open, and what is in front of the user — and names no key,
+  because `resume` has none yet (`docs/design/02-keymap.md` allocates it with
+  the resolver). It never reads as an error. Three shapes: one path is named,
+  several point at CONFLICTS, none says "no file left unmerged" rather than
+  claiming a conflict that is not there (a rebase can stop on an `edit` step).
+- **`jobs/undo.rs`** — `UndoError::PartWay` handled explicitly in both
+  `refresh_after_failure` (steps that ran ⇒ `Everything`; none run ⇒ the
+  inner error answers, so a rail that wrote nothing does not trigger a
+  re-read) and `undone_from`. Its `done: Vec<Applied>` is deliberately not
+  carried into `Undone`: the message already says "1 of 2 steps done, then:
+  …", and `Everything` is wider than any of those `Applied`s would ask for,
+  so nothing is left stale. Nothing reaches this arm today — `run_undo` only
+  calls `undo`/`redo`; the time machine gets its own job and
+  `Product::RevertedTo` in ticket 08 item 7, which is where "stopped after 2
+  of 3 steps" is meant to be worded.
+- **`PushParams.source_commit: None`** at all three sites
+  (`update/remote.rs` ×2, `view/tests.rs`). `P` pushes the branch as it
+  stands; re-pushing an *old* tip is ADR-0038 §4's separate offer with its
+  own confirm, not built yet, so `None` is the honest value rather than a
+  quiet reuse of whatever commit is selected. The existing lease machinery
+  (`last_rejected_push` → `Lease { expected: tracking_tip }`) is untouched.
+
+Seam tests (all in the workspace run): `a_conflicted_merge_is_shown_as_a_state_and_re_reads_everything`,
+`a_conflict_in_one_file_names_that_file`,
+`a_stop_with_nothing_unmerged_does_not_claim_a_conflict`,
+`a_continue_git_refused_repeats_gits_own_words`,
+`a_time_machine_that_stopped_part_way_re_reads_everything`,
+`a_time_machine_that_stopped_before_its_first_step_asks_for_nothing`,
+`a_part_way_revert_says_how_far_it_got`.
+
+### (a)–(g), recorded
+
+Run against git 2.54.0 (Apple Git-157). Full output in
+`.scratch/m5-history-and-ghost-preview/plan-behaviours.txt` (a–g) and
+`plan-behaviours-2.txt` (the (c), (e) and (f) follow-ups). Rule 1: every line
+below is from that output.
+
+- **(a) held.** `merge --no-edit` with a `GIT_EDITOR` that fails loudly:
+  exit 0, editor never opened, 2-parent commit made.
+- **(b) held.** `rebase <onto>` on a conflict: exit 1, `.git/rebase-merge`
+  present, `.git/rebase-apply` absent, `UU shared.txt`.
+- **(c) the ticket's premise is wrong.** `revert --no-edit -m 1 <merge>`
+  works (exit 0, the merged side gone, mainline's side kept). But **git 2.54
+  also accepts `-m 1` on a non-merge** — exit 0, an ordinary revert — where
+  the ticket said git refuses it. Only `-m 2` on a one-parent commit fails
+  ("does not have parent 2"). So `check`'s `MainlineOnNonMerge` is **Graft's
+  own refusal, stricter than git's**, not a repeat of it. That is still the
+  right rule (a mainline number on a non-merge is meaningless and the UI only
+  offers the choice on a merge) but the reasoning in `history.rs`'s module
+  doc is the one that holds, not the ticket's. A merge with **no** `-m` is
+  refused by git (exit 128).
+- **(d) held.** `update-ref <name> <to> <expected>` with a stale expected:
+  exit 128, "is at … but expected …", ref unchanged. A zero-oid expected on
+  an existing ref: exit 128, "reference already exists".
+- **(e) held, and Graft is stricter.** `switch` with a dirty *tracked* file
+  that differs: exit 1, "Your local changes … would be overwritten by
+  checkout" — staged or unstaged alike. With a dirty file that is
+  **identical** on both branches git carries the edit across (exit 0);
+  Graft's `clean_tree` refuses `DirtyTree` there anyway, which is hard choice
+  4 and deliberate. An **untracked** collision is a different git message
+  ("The following untracked working tree files would be overwritten") and
+  Graft does *not* pre-empt it — untracked never counts — so that one
+  reaches git and fails there. Noted as a gap below.
+- **(f) the ticket's premise is wrong.** `git stash branch` creates the
+  branch at the **stash's own base commit** and applies there — verified
+  directly: the new branch's tip equals `stash@{0}^`. A branch that moved
+  under the stash therefore **cannot** make it conflict; the attempt exits 0
+  with the stash dropped and nothing unmerged. The three ways it really
+  fails: the branch name is taken (exit 1, stash kept, HEAD unmoved); a
+  nonexistent stash ref (exit 1, no branch); and a **dirty working tree** —
+  exit 1, but git has *already* created the branch and moved `HEAD` onto it,
+  leaving the stash in the list. That last one is a genuine half-done state,
+  and `check_branch_from_stash`'s `clean_tree` is what keeps it unreachable.
+- **(g) held.** `tag -a -F - <name>` reads the message from stdin (the tag is
+  a `tag` object, message byte-correct). An empty stdin message is accepted
+  by git — `check_tag_create`'s `EmptySubject` is Graft's own guard.
+
+### The three untested cases (job 2 item 2)
+
+Seven tests added to `crates/graft-ops/tests/it/history_ops.rs`, each reading
+its claim back out of git:
+
+- **(c)** `revert_of_a_merge_with_mainline_one_removes_the_merged_side`
+  (the fixture's tip is asserted to be a real 2-parent merge; after the
+  revert `feature.txt` is gone, `main.txt` stays, `HEAD^` is the merge),
+  `revert_of_a_merge_undoes_and_redoes` (full `round_trip`),
+  `the_ghost_of_a_merge_revert_matches_git` (one ghost parented on the merge,
+  `refs/heads/main` → `Ghost(0)`, `-m 1` in `plan.commands`, and after the
+  run the ghost's subject and parent are the ones git wrote),
+  `mainline_is_refused_on_a_non_merge_and_required_on_a_merge` (all three
+  `check` rules, plus a throwaway repo proving git itself would have run the
+  first one).
+- **(d)** `a_forced_undo_still_refuses_when_the_ref_moved_under_it` — reset,
+  then `main` moved behind Graft's back. Unforced: `UndoError::Drift`, ref
+  untouched. Forced past the rail: the compare-and-swap itself refuses with
+  `RestoreError::RefMoved { name: "refs/heads/main" }` (matched by variant,
+  not by substring) and the ref stays where the other writer put it.
+- **(f)** `branch_from_stash_starts_at_the_stashs_base_so_it_cannot_conflict`
+  — a stash whose line `main` then rewrites; the new branch lands on the
+  stash's base, nothing is unmerged, the stashed bytes are on disk.
+  `branch_from_stash_is_refused_before_git_can_half_do_it` — `RefExists` for
+  a taken name and `DirtyTree { count: 1 }` for a dirty tree, both before git
+  is spawned, and neither refusal wrote a branch, moved `HEAD` or touched the
+  stash.
+
+**No new bugs found.** The group's own tests had already found the four it
+reports; these three cases held. Two *ticket premises* were wrong, not the
+code — (c) and (f) above. `history.rs`'s module doc already recorded both
+correctly, so the previous builder had observed them; what was missing was
+the record, not the verification.
+
+### `OperationKind::RevertTo` (job 2 item 3)
+
+**Unused, and on the design as it stands it stays unused.** §6.6 decided the
+time machine journals one `Undo` entry per step so `U` walks a revert back
+one operation at a time; a `RevertTo` entry would be exactly the summary that
+decision rejected. `undo::revert_to` writes `Undo` lines, nothing constructs
+this kind, and `apply.rs`'s `"revert to"` label for it is therefore
+unreachable. Ticket 08's `PreviewSubject::RevertTo` is a **different type
+with the same name** (it identifies what a preview is of) and is not a user
+of this variant.
+
+Not deleted: the M5 design note names it and removing it is the conductor's
+call, not a builder's. The reasoning is now on the variant itself in
+`crates/graft-core/src/journal.rs` and in `crates/graft-core/MAP.md`, so
+nobody has to find `as-built.md` to learn it is dead. **Decision wanted:
+delete it, or give it a use in M6/M7.**
+
+### Gates, as printed
+
+- `cargo fmt --check` — clean.
+- `cargo clippy --all-targets --message-format=short -- -D warnings` — clean
+  (three findings fixed on the way: identical match arms merged,
+  `run_operation` split so the result mapping is its own `answer` fn, one
+  redundant closure).
+- `cargo nextest run` — `1978 tests run: 1978 passed, 29 skipped` in 41.4 s.
+  Main was 1904; the difference is group 07's own suite plus the 7 added
+  here.
+- `cargo test --doc` — green, **and worth nothing**: 2 doctests in the whole
+  workspace, 0 in every crate this ticket touched. Not evidence of anything.
+
+All four workspace-wide, never `-p`.
+
+### Gaps handed back
+
+1. **`OperationKind::RevertTo`** — delete or claim (above).
+2. **`Undone` cannot carry a part-way revert's `done` list.** Fine today,
+   because nothing calls `revert_to`; ticket 08 item 7 needs it to say
+   "stopped after 2 of 3 steps" and will need its own product type.
+3. **An untracked-file collision on `checkout` is not pre-empted.** `check`'s
+   `DirtyTree` counts tracked files only (hard choice 4), so a `switch` that
+   would clobber an untracked file reaches git and fails with git's wording
+   rather than Graft's. Recorded under (e) above; a `WouldOverwrite`-style
+   classification was in piece 2's brief and does not exist.
+4. **`Refusal::MainlineOnNonMerge` is misnamed** for one of the two cases it
+   covers: a mainline number out of range on a commit that *is* a merge. Its
+   `explain()` is honest ("-m names a parent this commit has not got; only a
+   merge takes a mainline"), so this is a name, not a lie on screen.
+   Untouched — renaming a public variant is outside this ticket.
+5. **`resume` still has no key.** The app can now see a conflict and say what
+   it is; finishing or aborting it is ticket 09's. `conflicted_line`
+   deliberately names no key until then.

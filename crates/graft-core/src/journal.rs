@@ -165,8 +165,22 @@ pub enum OperationKind {
     /// applied and dropped.
     BranchFromStash,
     /// The journal's time machine: every in-force entry back to a target,
-    /// reversed one `Undo` entry at a time (DESIGN.md §6.6). Reserved for the
-    /// browser's row label; each step it runs is journaled as `Undo`.
+    /// reversed one `Undo` entry at a time (DESIGN.md §6.6).
+    ///
+    /// **Nothing writes this, and on the design as it stands nothing will.**
+    /// §6.6 decided the time machine journals one `Undo` entry *per step*,
+    /// so that `U` walks the revert back a single operation at a time and
+    /// the journal stays a record of what happened rather than a summary of
+    /// it. A `RevertTo` entry would be exactly the summary that decision
+    /// rejected. `graft_ops::undo::revert_to` therefore writes `Undo` lines
+    /// and no entry ever carries this kind — which also makes
+    /// `apply`'s `"revert to"` label for it unreachable.
+    ///
+    /// It is kept, not deleted, because the M5 design note names it and the
+    /// call is the conductor's rather than a builder's. Note that the app's
+    /// own `PreviewSubject::RevertTo` (ticket m5/08) is a different type
+    /// with the same name: it identifies what a preview is *of*, and its
+    /// existence is not a user of this variant (m5/07 job 2).
     RevertTo,
     /// The inverse of an earlier entry.
     Undo,

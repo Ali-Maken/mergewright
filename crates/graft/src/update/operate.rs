@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 
 use graft_core::job::JobId;
 use graft_git::diff::{PatchDirection, PatchError, Selection};
+use graft_git::state::InProgress;
 use graft_git::status::StatusEntry;
 use graft_ops::apply::Refresh;
 use graft_ops::operation::{Operation, PatchSide, Target};
@@ -730,6 +731,30 @@ pub fn operated(
             super::commit_editor::committed(state);
             refresh_scope(state, applied.refresh, next_id)
         }
+        Operated::Conflicted {
+            description,
+            kind,
+            paths,
+            stalled,
+        } => {
+            // Sticky, not `Failed` and not `Done`: git stopped and its state
+            // is still there, so the line has to outlive the full refresh it
+            // triggers (that refresh is exactly what puts the files under
+            // CONFLICTS) and has to read as a state, not an error.
+            state.status = Status::sticky(conflicted_line(
+                &description,
+                kind,
+                &paths,
+                stalled.as_deref(),
+            ));
+            // The editor and its draft are left alone, as on a failure: no
+            // commit was made, so clearing a message the user typed would be
+            // throwing away their words over someone else's conflict.
+            // Refs moved and the working tree moved. `Everything` is also
+            // the only scope that re-reads `AppState::in_progress`, which is
+            // what the commit editor's refusal names.
+            refresh_scope(state, Refresh::Everything, next_id)
+        }
         Operated::Failed {
             error,
             refresh: what,
@@ -752,6 +777,44 @@ pub fn operated(
                 None => Vec::new(),
             }
         }
+    }
+}
+
+/// The status line for an operation git stopped part-way through.
+///
+/// Worded as a **state**, not a failure (CLAUDE.md: a status field must never
+/// read as an error when nothing is wrong, and a conflict is not a bug —
+/// it is where the user now is). It says three things and no more: what was
+/// being done, that the operation is still open, and what is in front of
+/// them to act on. It names no key: `resume` has none yet
+/// (`docs/design/02-keymap.md` allocates it in the resolver's own group), and
+/// naming one that does nothing would be worse than naming none.
+fn conflicted_line(
+    description: &str,
+    kind: InProgress,
+    paths: &[PathBuf],
+    stalled: Option<&str>,
+) -> String {
+    let what = kind.name();
+    if let Some(said) = stalled {
+        return format!(
+            "{description} \u{2014} git would not continue: {said}; the {what} is still in progress"
+        );
+    }
+    match paths.len() {
+        // A rebase can stop with nothing unmerged (an `edit` step, a commit
+        // that became empty). Saying "0 files conflict" would be a lie about
+        // why it stopped, so this says only what is certainly true.
+        0 => format!(
+            "{description} \u{2014} stopped part-way; the {what} is in progress, with no file left unmerged"
+        ),
+        1 => format!(
+            "{description} \u{2014} {} conflicts: resolve it and stage it; the {what} stays in progress until you do",
+            paths[0].display()
+        ),
+        n => format!(
+            "{description} \u{2014} {n} files conflict, under CONFLICTS in the changes pane: resolve and stage them; the {what} stays in progress until you do"
+        ),
     }
 }
 
@@ -1780,6 +1843,122 @@ mod tests {
         assert!(commands.is_empty(), "{commands:?}");
         assert_eq!(state.operating, None);
         assert_eq!(state.status, Status::sticky("nothing to do"));
+    }
+
+    /// The state a conflicted merge leaves: one journaled `Pending` entry,
+    /// git's own state live, two files unmerged.
+    fn conflicted(paths: &[&str], stalled: Option<&str>) -> Operated {
+        Operated::Conflicted {
+            description: "merge feature into main".to_owned(),
+            kind: InProgress::Merge,
+            paths: paths.iter().map(PathBuf::from).collect(),
+            stalled: stalled.map(ToOwned::to_owned),
+        }
+    }
+
+    #[test]
+    fn a_conflicted_merge_is_shown_as_a_state_and_re_reads_everything() {
+        // m5/07 seam. `ApplyError::Conflicted` is not a failure: git stopped,
+        // the entry is `Pending`, and the user is now *in* the merge. The
+        // line has to say so, survive the refresh it triggers, and the
+        // refresh has to be the wide one — it is what puts the unmerged
+        // paths under CONFLICTS and fills `AppState::in_progress`.
+        let mut state = state_on(
+            "src/a.rs",
+            unstaged_entry("src/a.rs"),
+            WorkingTreeSection::Unstaged,
+        );
+        let id = JobId::new(7);
+        state.operating = Some(id);
+        let commands = operated(
+            &mut state,
+            id,
+            conflicted(&["src/a.rs", "src/b.rs"], None),
+            &mut ids(),
+        );
+        assert_eq!(state.operating, None);
+        let Status::Sticky { reason, .. } = &state.status else {
+            panic!(
+                "a live conflict must outlive its own refresh: {:?}",
+                state.status
+            );
+        };
+        assert!(reason.contains("merge feature into main"), "{reason}");
+        assert!(reason.contains("2 files conflict"), "{reason}");
+        assert!(reason.contains("CONFLICTS"), "{reason}");
+        assert!(
+            reason.contains("stays in progress"),
+            "the line must say the merge is still open: {reason}"
+        );
+        assert!(
+            !reason.contains("failed") && !reason.contains("error"),
+            "a conflict is a state, not an error: {reason}"
+        );
+        // The wide refresh, which is `Ctrl+R`'s own path: the working tree
+        // (unmerged flags and `in_progress`) and the graph both.
+        assert!(commands.contains(&Command::ReadWorkingTree), "{commands:?}");
+        assert!(
+            commands
+                .iter()
+                .any(|command| matches!(command, Command::ReadHistory(_))),
+            "refs moved: {commands:?}"
+        );
+        assert!(commands.contains(&Command::ReadRefs), "{commands:?}");
+    }
+
+    #[test]
+    fn a_conflict_in_one_file_names_that_file() {
+        let mut state = AppState::default();
+        let id = JobId::new(7);
+        state.operating = Some(id);
+        operated(&mut state, id, conflicted(&["src/a.rs"], None), &mut ids());
+        let Status::Sticky { reason, .. } = &state.status else {
+            panic!("{:?}", state.status)
+        };
+        assert!(reason.contains("src/a.rs conflicts"), "{reason}");
+        assert!(
+            !reason.contains("CONFLICTS"),
+            "one file needs no pane tour: {reason}"
+        );
+    }
+
+    #[test]
+    fn a_stop_with_nothing_unmerged_does_not_claim_a_conflict() {
+        // A rebase can stop with no unmerged path at all. Saying "0 files
+        // conflict" would be a lie about why it stopped.
+        let mut state = AppState::default();
+        let id = JobId::new(7);
+        state.operating = Some(id);
+        operated(&mut state, id, conflicted(&[], None), &mut ids());
+        let Status::Sticky { reason, .. } = &state.status else {
+            panic!("{:?}", state.status)
+        };
+        assert!(reason.contains("no file left unmerged"), "{reason}");
+        assert!(!reason.contains("conflict"), "{reason}");
+    }
+
+    #[test]
+    fn a_continue_git_refused_repeats_gits_own_words() {
+        // `ApplyError::ResumeFailed`: a hook said no, the state is still
+        // live, and nothing is unmerged — git's line is the only thing that
+        // can say what to do, so it is passed through rather than replaced.
+        let mut state = AppState::default();
+        let id = JobId::new(7);
+        state.operating = Some(id);
+        operated(
+            &mut state,
+            id,
+            conflicted(&[], Some("pre-commit hook refused")),
+            &mut ids(),
+        );
+        let Status::Sticky { reason, .. } = &state.status else {
+            panic!("{:?}", state.status)
+        };
+        assert!(reason.contains("pre-commit hook refused"), "{reason}");
+        assert!(
+            reason.contains("the merge is still in progress"),
+            "{reason}"
+        );
     }
 
     #[test]

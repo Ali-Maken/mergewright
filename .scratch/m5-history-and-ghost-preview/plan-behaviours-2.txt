@@ -1,0 +1,53 @@
+git: git version 2.54.0 (Apple Git-157)
+
+── (e2) switch with a dirty tracked file that is IDENTICAL on both branches ──
+carried.txt differs between main and feature: 0
+switch exit=0  now on: feature
+stderr: Switched to branch 'feature'|
+the dirty edit came along: uncommitted edit
+status:  M carried.txt|
+
+── (e3) switch with a STAGED change to a file that differs between branches ──
+switch (staged, file differs) exit=1  now on: main
+stderr: error: Your local changes to the following files would be overwritten by checkout:|	shared.txt|Please commit your changes or stash them before you switch branches.|Aborting|
+
+── (e4) switch with an UNTRACKED file that the target branch has ──
+switch (untracked collision) exit=1  now on: main
+stderr: error: The following untracked working tree files would be overwritten by checkout:|	newfile.txt|Please move or remove them before you switch branches.|Aborting|
+
+── (f2) what does 'git stash branch' actually check out? ──
+branch wipbranch tip == the stash's base commit: yes
+  (that is why a moved branch can never make 'stash branch' conflict)
+
+── (f3) stash branch when the branch name is already taken ──
+exit=1
+stderr: fatal: a branch named 'taken' already exists|
+stash list after: 'stash@{0}: On main: wip'  (kept = the stash survived)
+HEAD still: main
+
+── (f4) stash branch from a DIRTY working tree ──
+exit=1
+stdout: M	a.txt|On branch fromdirty|Changes not staged for commit:|  (use "git add <file>..." to update what will be committed)|  (use "git restore <file>..." to discard changes in working directory)|	modified:   a.txt||no changes added to commit (use "git add" and/or "git commit -a")|
+stderr: Switched to a new branch 'fromdirty'|error: Your local changes to the following files would be overwritten by merge:|	a.txt|Please commit your changes or stash them before you merge.|Aborting|Index was not unstashed.|
+stash list after: 'stash@{0}: On main: wip'
+HEAD: fromdirty
+a.txt: new dirty
+
+── (f5) stash branch where the stash's INDEX and worktree differ ──
+exit=0
+stdout: On branch split|Changes to be committed:|  (use "git restore --staged <file>..." to unstage)|	modified:   a.txt||Changes not staged for commit:|  (use "git add <file>..." to update what will be committed)|  (use "git restore <file>..." to discard changes in working directory)|	modified:   a.txt||Dropped stash@{0} (5ebae66aad21f14bd7b428f0fb157d13027160dd)|
+stderr: Switched to a new branch 'split'|
+stash list after: ''
+index restored too: a.txt|
+
+── (f6) stash branch onto a nonexistent stash ref ──
+exit=1  stderr: error: stash@{7} is not a valid reference|
+branch created anyway: 
+
+── (c2) is -m on a non-merge really accepted, and what does it do? ──
+revert -m 1 on a non-merge exit=0
+stdout: [main 21f28e1] Revert "two"
+a.txt after: a|  (back to 'a' = an ordinary revert)
+revert -m 2 on a non-merge exit=128  stderr: error: commit 55766a9d2a0674b09246d968aaa6f3bb7e6d3dc9 does not have parent 2
+
+── done ──

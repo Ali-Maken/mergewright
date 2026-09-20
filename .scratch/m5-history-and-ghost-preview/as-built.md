@@ -135,15 +135,19 @@ symbolic-aware. Found by `history_ops.rs::checkout_applies_undoes_redoes`.
 
 ## 6. Named in the note, not built here
 
-- **`OperationKind::RevertTo` is unused.** The time machine journals one
-  `Undo` entry per step, which the note also asked for, so no entry ever
-  carries this kind. M6/M7 either use it for something or it should go.
+- **`OperationKind::RevertTo` is unused, and stays unused.** The time
+  machine journals one `Undo` entry per step, which the note also asked for,
+  so no entry ever carries this kind — a `RevertTo` entry would be the
+  summary §6.6 rejected. The reasoning now lives on the variant itself in
+  `graft-core`. Ticket 08's `PreviewSubject::RevertTo` is a different type
+  with the same name and is not a user of it. **Delete or claim: the
+  conductor's call.**
 - `Refusal::NotInProgress`, `BadRefName`, `RefExists` exist and `explain`
   covers them; nothing in `graft-ops` returns the first one yet — `resume`
   is reached only from a live conflict, and the UI is where a stale banner
   key would be refused.
 
-## 7. The seam this ticket leaves open
+## 7. The seam this ticket left open — **closed**
 
 `graft` (the app crate) does not compile against this. Five sites, all
 mechanical:
@@ -156,3 +160,14 @@ mechanical:
 - `crates/graft/src/update/remote.rs:299` and `:317`, and
   `crates/graft/src/view/tests.rs:2998` — `PushParams` literals need
   `source_commit: None`.
+
+**Closed in the m5/07 follow-up session.** `main` was merged in first (clean
+merge, four seam errors on the first compile and nothing else). The two new
+`ApplyError` variants do **not** become `Operated::Failed`: `Operated` grew
+`Conflicted { description, kind, paths, stalled }`, which both land in,
+worded as a state and refreshing `Everything` — §1's "one entry, `Pending`
+from the stop" reaches the user as "you are in this merge", not as an error
+line. `UndoError::PartWay` is handled in `jobs/undo.rs`'s
+`refresh_after_failure` and `undone_from`. All three `PushParams` literals
+take `source_commit: None`, since the guided re-push (ADR-0038 §4) is not
+built. Details and the tests that hold it: the ticket's second NOTES section.
