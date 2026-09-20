@@ -43,13 +43,37 @@ fn type_in(state: &mut AppState, text: &str) -> Vec<Command> {
     all
 }
 
+/// The open field's text — only ever valid for a `PromptField::Open`
+/// (a username ask); a secret field has no `text()` to read (that is the
+/// point of `SecretField`), so tests that exercise the masked case use
+/// [`typed_len`] and [`typed_bytes`] instead.
 fn typed(state: &AppState) -> &str {
-    state
-        .credential
-        .as_ref()
-        .expect("the prompt is open")
-        .field
-        .text()
+    match &state.credential.as_ref().expect("the prompt is open").field {
+        PromptField::Open(field) => field.text(),
+        PromptField::Secret(_) => {
+            panic!("typed() is for the open field; use typed_len/typed_bytes")
+        }
+    }
+}
+
+/// How many characters are in the open prompt's field, whichever kind.
+fn typed_len(state: &AppState) -> usize {
+    match &state.credential.as_ref().expect("the prompt is open").field {
+        PromptField::Open(field) => field.len(),
+        PromptField::Secret(field) => field.len(),
+    }
+}
+
+/// Consumes `state`'s prompt and reads back what a `Secret` field holds —
+/// only ever done in a test, to prove editing behaves like `TextField`'s
+/// did; the real path (`Answer::new`) never turns it back into a `String`.
+fn typed_bytes(state: AppState) -> String {
+    match state.credential.expect("the prompt is open").field {
+        PromptField::Secret(field) => {
+            String::from_utf8(field.into_bytes().to_vec()).expect("typed text is valid UTF-8")
+        }
+        PromptField::Open(field) => field.text().to_owned(),
+    }
 }
 
 #[test]
@@ -111,7 +135,10 @@ fn gits_words_are_cleaned_before_they_are_kept() {
 
 #[test]
 fn prompt_is_modal_and_swallows_globals() {
-    let mut state = asking("Password for 'http://u@h':");
+    // The open field, not the secret one: this test is about which keys
+    // reach the prompt, not about masking, and `typed()` only reads back
+    // an `Open` field (a `Secret` one has no `text()` to compare).
+    let mut state = asking("Username for 'https://github.com':");
     assert!(
         state.text_field_open(),
         "the prompt is a text field: no global binding may fire under it"
@@ -146,7 +173,7 @@ fn prompt_is_modal_and_swallows_globals() {
 fn ctrl_u_clears_the_field() {
     let mut state = asking("Password for 'http://u@h':");
     type_in(&mut state, "hunter2");
-    assert_eq!(typed(&state), "hunter2");
+    assert_eq!(typed_len(&state), 7);
 
     let (after, commands) = press(
         &state,
@@ -156,9 +183,14 @@ fn ctrl_u_clears_the_field() {
         },
     );
 
-    assert_eq!(typed(&after), "");
+    assert_eq!(typed_len(&after), 0);
     assert!(commands.is_empty(), "{commands:?}");
     assert!(after.credential.is_some(), "the prompt stays open");
+    assert_eq!(
+        typed_bytes(after),
+        "",
+        "the buffer itself was replaced, not just marked empty"
+    );
 }
 
 #[test]
@@ -172,7 +204,7 @@ fn enter_answers_and_clears() {
         commands,
         vec![Command::AnswerCredential(
             JOB,
-            Answer::new(b"hunter2".to_vec())
+            Answer::new(zeroize::Zeroizing::new(b"hunter2".to_vec()))
         )],
         "the typed bytes go to the job that asked"
     );
@@ -193,7 +225,10 @@ fn an_empty_answer_is_still_an_answer() {
 
     assert_eq!(
         commands,
-        vec![Command::AnswerCredential(JOB, Answer::new(Vec::new()))],
+        vec![Command::AnswerCredential(
+            JOB,
+            Answer::new(zeroize::Zeroizing::new(Vec::new()))
+        )],
         "git decides what an empty answer means"
     );
 }
@@ -225,35 +260,48 @@ fn esc_cancels_the_operation() {
 
 #[test]
 fn editing_keys_work_and_paste_lands_in_the_field() {
+    // The secret field: there is no `text()` to read back mid-test, so
+    // every intermediate check is by length; the final content is checked
+    // once, by consuming the state into `typed_bytes`.
     let mut state = asking("Password for 'http://u@h':");
     type_in(&mut state, "hunter3");
     let (mut state, _) = press(&state, KeyPress::plain(KeyCode::Backspace));
-    assert_eq!(typed(&state), "hunter");
+    assert_eq!(typed_len(&state), 6, "hunter");
     for code in [KeyCode::Home, KeyCode::Right, KeyCode::Delete] {
         let (next, _) = press(&state, KeyPress::plain(code));
         state = next;
     }
-    assert_eq!(typed(&state), "hnter", "Home, →, Delete");
+    assert_eq!(typed_len(&state), 5, "Home, →, Delete: hnter");
 
     let (state, commands) = update(
         &state,
         AppEvent::Core(Event::Paste("2wo\u{1b}rd".to_owned())),
     );
     assert_eq!(
-        typed(&state),
-        "h2wordnter",
+        typed_len(&state),
+        10,
         "a paste lands at the cursor, its control characters refused"
     );
     assert!(commands.is_empty(), "{commands:?}");
+    assert_eq!(
+        typed_bytes(state),
+        "h2wordnter",
+        "the exact content, proven once by consuming into_bytes"
+    );
 }
 
+/// `{:?}` on `SecretField`, `FieldView`, `CredentialPrompt` and `AppState`
+/// (with a prompt open) never contains the typed bytes — the acceptance's
+/// "no `Debug` leak" tick, at every layer that carries the field.
+/// `graft_ui::text_input::tests::debug_redacts_a_secret_fields_text` and
+/// `secret_field_debug_and_eq_never_compare_content` cover `FieldView` and
+/// `SecretField` directly; this covers them wired into the app.
 #[test]
-fn debug_redacts_secret() {
+fn secret_never_in_debug() {
     let mut state = asking("Password for 'http://u@h':");
     type_in(&mut state, "hunter2");
 
     let printed = format!("{state:?}");
-
     assert!(
         !printed.contains("hunter2"),
         "the typed password reached a Debug print: {printed}"
@@ -262,7 +310,20 @@ fn debug_redacts_secret() {
         printed.contains("CredentialPrompt"),
         "the prompt is still visible in a debug dump: {printed}"
     );
-    // The command carrying it away is no different.
+
+    // The field, on its own — `PromptField`'s derived `Debug` calls through
+    // to `SecretField`'s own, which prints only a length.
+    let field_printed = format!("{:?}", state.credential.as_ref().expect("open").field);
+    assert!(!field_printed.contains("hunter2"), "{field_printed}");
+
+    // The view built for drawing — `FieldView`'s `Debug` redacts unless
+    // `secret` is `None`, but this field carries no real text either way
+    // (`credential_view` never puts one there for a secret field).
+    let view = crate::view::credential_view(&state).expect("prompt is open");
+    let view_printed = format!("{:?}", view.field);
+    assert!(!view_printed.contains("hunter2"), "{view_printed}");
+
+    // The command carrying the answer away is no different.
     let (_, commands) = press(&state, KeyPress::plain(KeyCode::Enter));
     let printed = format!("{commands:?}");
     assert!(!printed.contains("hunter2"), "{printed}");
@@ -273,15 +334,15 @@ fn a_second_ask_replaces_the_first_and_a_stale_one_is_ignored() {
     let mut state = asking("Username for 'https://github.com':");
     type_in(&mut state, "ali");
     assert!(
-        !state.credential.as_ref().expect("open").masked,
+        !state.credential.as_ref().expect("open").masked(),
         "a username is typed in the open"
     );
 
     // git asks for the password next, under the same job.
     credential_needed(&mut state, JOB, "Password for 'https://ali@github.com':");
     let prompt = state.credential.as_ref().expect("open");
-    assert!(prompt.masked, "the second ask is a password");
-    assert_eq!(prompt.field.text(), "", "the username is not left in it");
+    assert!(prompt.masked(), "the second ask is a password");
+    assert_eq!(typed_len(&state), 0, "the username is not left in it");
 
     // An ask from a job the screen is not waiting on opens nothing.
     let mut other = AppState {

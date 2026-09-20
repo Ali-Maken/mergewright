@@ -23,10 +23,114 @@ use graft_core::event::{KeyCode, KeyPress};
 use graft_core::job::JobId;
 use graft_git::run::askpass::Secret;
 use graft_term::{SanitizedText, sanitize_line};
-use graft_ui::text_input::TextField;
+use graft_ui::text_input::{SecretField, TextField};
+use zeroize::Zeroizing;
 
 use super::events::Command;
 use super::state::AppState;
+
+/// The prompt's one field: the open kind for a username or an SSH
+/// host-key answer, the zeroizing kind for a password or passphrase
+/// (`is_masked_prompt`). The username field is deliberately left a
+/// `TextField` — it is asked in the open, so there is nothing here for a
+/// zeroizing buffer to protect.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PromptField {
+    /// A username or an SSH host-key answer: typed and shown in the clear.
+    Open(TextField),
+    /// A password or passphrase: typed, masked, wiped on drop.
+    Secret(SecretField),
+}
+
+impl PromptField {
+    /// An empty field of the kind `masked` calls for.
+    fn new(masked: bool) -> Self {
+        if masked {
+            PromptField::Secret(SecretField::new())
+        } else {
+            PromptField::Open(TextField::new(""))
+        }
+    }
+
+    fn insert(&mut self, character: char) {
+        match self {
+            PromptField::Open(field) => field.insert(character),
+            PromptField::Secret(field) => field.insert(character),
+        }
+    }
+
+    fn insert_str(&mut self, text: &str) {
+        match self {
+            PromptField::Open(field) => field.insert_str(text),
+            PromptField::Secret(field) => field.insert_str(text),
+        }
+    }
+
+    fn backspace(&mut self) {
+        match self {
+            PromptField::Open(field) => field.backspace(),
+            PromptField::Secret(field) => field.backspace(),
+        }
+    }
+
+    fn delete(&mut self) {
+        match self {
+            PromptField::Open(field) => field.delete(),
+            PromptField::Secret(field) => field.delete(),
+        }
+    }
+
+    fn left(&mut self) {
+        match self {
+            PromptField::Open(field) => field.left(),
+            PromptField::Secret(field) => field.left(),
+        }
+    }
+
+    fn right(&mut self) {
+        match self {
+            PromptField::Open(field) => field.right(),
+            PromptField::Secret(field) => field.right(),
+        }
+    }
+
+    fn home(&mut self) {
+        match self {
+            PromptField::Open(field) => field.home(),
+            PromptField::Secret(field) => field.home(),
+        }
+    }
+
+    fn end(&mut self) {
+        match self {
+            PromptField::Open(field) => field.end(),
+            PromptField::Secret(field) => field.end(),
+        }
+    }
+
+    /// Empties the field. The `Secret` case replaces its buffer (wiped, not
+    /// just marked unused); the `Open` case is a plain reset like before.
+    fn clear(&mut self) {
+        match self {
+            PromptField::Open(field) => *field = TextField::new(""),
+            PromptField::Secret(field) => field.clear(),
+        }
+    }
+
+    /// What was typed, as bytes ready for [`Answer::new`]. `Secret` moves
+    /// its buffer out through `SecretField::into_bytes` (no plain copy);
+    /// `Open` has never claimed that guarantee (`TextField` stays a plain
+    /// `String` — the username is asked in the open, out of this ticket's
+    /// scope) so this only wraps its bytes in `Zeroizing` on the way out,
+    /// which costs nothing and keeps `Answer::new`'s one signature for both
+    /// kinds of field.
+    fn into_bytes(self) -> Zeroizing<Vec<u8>> {
+        match self {
+            PromptField::Open(field) => Zeroizing::new(field.text().as_bytes().to_vec()),
+            PromptField::Secret(field) => field.into_bytes(),
+        }
+    }
+}
 
 /// One question from git, open on screen.
 #[derive(Clone, PartialEq, Eq)]
@@ -38,20 +142,32 @@ pub struct CredentialPrompt {
     /// text (a crafted URL), so it passes `sanitize_line` before it is kept.
     pub prompt: SanitizedText,
     /// What the user has typed. Never printed by `Debug`.
-    pub field: TextField,
-    /// Draw the field as `•`: git asked for a password or passphrase.
-    pub masked: bool,
+    pub field: PromptField,
     /// The fetch, pull or push job waiting for the answer.
     pub job: JobId,
 }
 
+impl CredentialPrompt {
+    /// Does this prompt draw its field masked? `PromptField::Secret`
+    /// carries this on its own now, but callers (the view, the m4 walk's
+    /// vocabulary) still want a plain yes/no without matching on the field.
+    #[must_use]
+    pub fn masked(&self) -> bool {
+        matches!(self.field, PromptField::Secret(_))
+    }
+}
+
 impl fmt::Debug for CredentialPrompt {
-    /// The typed text is left out whatever `masked` says: a username is not
-    /// secret, but an answer typed into the wrong ask can be.
+    /// The typed text is left out whatever the field's kind: a username is
+    /// not secret, but an answer typed into the wrong ask can be. `field`
+    /// itself is safe to print now (`SecretField`'s own `Debug` prints only
+    /// a length), but it is still left out here, unconditionally, so this
+    /// impl does not have to be revisited if a future field type is less
+    /// careful.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CredentialPrompt")
             .field("title", &self.title)
-            .field("masked", &self.masked)
+            .field("masked", &self.masked())
             .field("job", &self.job)
             .finish_non_exhaustive()
     }
@@ -68,10 +184,16 @@ impl fmt::Debug for CredentialPrompt {
 pub struct Answer(Arc<Secret>);
 
 impl Answer {
-    /// Wraps the typed bytes.
+    /// Wraps the typed bytes, moving them out of the zeroizing wrapper and
+    /// into `Secret` — `mem::take` swaps the wrapper's `Vec` for an empty
+    /// one rather than cloning, so there is no intermediate plain copy;
+    /// what's left in `bytes` (nothing, an empty `Vec` has no heap
+    /// allocation to wipe) is dropped, and `Secret` owns the one real copy,
+    /// zeroed when it in turn drops.
     #[must_use]
-    pub fn new(bytes: Vec<u8>) -> Answer {
-        Answer(Arc::new(Secret::new(bytes)))
+    pub fn new(mut bytes: Zeroizing<Vec<u8>>) -> Answer {
+        let taken = std::mem::take(&mut *bytes);
+        Answer(Arc::new(Secret::new(taken)))
     }
 
     /// The bytes, for tests and the one place that sends them.
@@ -149,8 +271,7 @@ pub fn credential_needed(state: &mut AppState, id: JobId, prompt: &str) {
     state.credential = Some(CredentialPrompt {
         title: sanitize_line(&title),
         prompt: sanitize_line(prompt),
-        field: TextField::new(""),
-        masked: is_masked_prompt(prompt),
+        field: PromptField::new(is_masked_prompt(prompt)),
         job: id,
     });
 }
@@ -180,7 +301,7 @@ pub fn credential_key(state: &mut AppState, commands: &mut Vec<Command>, key: Ke
     if key.modifiers.control {
         match key.code {
             KeyCode::Char('c') => return false,
-            KeyCode::Char('u') => prompt.field = TextField::new(""),
+            KeyCode::Char('u') => prompt.field.clear(),
             // Any other control chord is not text: swallowed.
             _ => {}
         }
@@ -192,10 +313,16 @@ pub fn credential_key(state: &mut AppState, commands: &mut Vec<Command>, key: Ke
     match key.code {
         KeyCode::Enter => {
             let job = prompt.job;
-            let answer = Answer::new(prompt.field.text().as_bytes().to_vec());
-            // Cleared before it is closed: the typed text stays in no
-            // state that outlives this key.
-            prompt.field = TextField::new("");
+            // Swapped for a fresh, empty field of the same kind rather than
+            // read-then-cleared: the old field is consumed straight into
+            // `bytes` and dropped, so the typed text stays in no state that
+            // outlives this key (`SecretField::into_bytes` and `Drop` both
+            // wipe it; `field.into_bytes()` for the open case makes no
+            // stronger promise than `TextField` ever did, out of scope
+            // here).
+            let masked = prompt.masked();
+            let field = std::mem::replace(&mut prompt.field, PromptField::new(masked));
+            let answer = Answer::new(field.into_bytes());
             state.credential = None;
             commands.push(Command::AnswerCredential(job, answer));
         }
@@ -209,7 +336,7 @@ pub fn credential_key(state: &mut AppState, commands: &mut Vec<Command>, key: Ke
             // the password was wrong when the user simply pressed `Esc`
             // (m4-remotes/06 review, Minor m1).
             let job = prompt.job;
-            prompt.field = TextField::new("");
+            prompt.field.clear();
             state.credential = None;
             if !super::remote::stop_write(state, commands) {
                 // `operating` is always this job while the prompt is open

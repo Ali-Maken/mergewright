@@ -1,7 +1,7 @@
 //! Turning [`AppState`]'s credential prompt into the view model
 //! [`graft_ui::credential_prompt::CredentialPrompt`] draws (m4-remotes/06).
 //!
-//! The field's `masked` decides everything about how the text is drawn; the
+//! The field's `secret` decides everything about how the text is drawn; the
 //! counter is left off on purpose, because the number of characters typed is
 //! itself something a password prompt must not show
 //! (`graft_ui::text_input`).
@@ -12,6 +12,7 @@ use graft_ui::credential_prompt::CredentialView;
 use graft_ui::text_input::FieldView;
 
 use crate::update::AppState;
+use crate::update::credential::PromptField;
 
 /// What the note under the field says, always: Graft answers git's question
 /// and keeps nothing (design note m4, choice 2).
@@ -21,22 +22,38 @@ const NOTE: &str = "typed here only · never stored by Graft";
 #[must_use]
 pub fn credential_view(state: &AppState) -> Option<CredentialView<'static>> {
     let prompt = state.credential.as_ref()?;
-    Some(CredentialView {
-        title: prompt.title.clone(),
-        prompt: prompt.prompt.clone(),
-        field: FieldView {
+    let field = match &prompt.field {
+        // The open case is unchanged: real text, real cursor.
+        PromptField::Open(field) => FieldView {
             label: "",
-            // Already sanitised as it was typed (`TextField` refuses control
-            // characters at the door); `sanitize_line` again changes
-            // nothing and keeps the one rule in one place.
-            text: sanitize_line(prompt.field.text()),
-            cursor: Some(prompt.field.cursor()),
+            // Already sanitised as it was typed (`TextField` refuses
+            // control characters at the door); `sanitize_line` again
+            // changes nothing and keeps the one rule in one place.
+            text: sanitize_line(field.text()),
+            cursor: Some(field.cursor()),
             guide_at: None,
             // No counter: its length is part of what a password hides.
             counter: None,
             focused: true,
-            masked: prompt.masked,
+            secret: None,
         },
+        // No real text to pass: there is none to pass it from, and no real
+        // cursor either — `graft_ui::text_input` draws its own fixed glyph
+        // count and its own pulse from `secret` alone (ADR-0038 §2).
+        PromptField::Secret(field) => FieldView {
+            label: "",
+            text: sanitize_line(""),
+            cursor: None,
+            guide_at: None,
+            counter: None,
+            focused: true,
+            secret: Some(field.pulse()),
+        },
+    };
+    Some(CredentialView {
+        title: prompt.title.clone(),
+        prompt: prompt.prompt.clone(),
+        field,
         note: sanitize_line(NOTE),
         footer: sanitize_line(&format!(
             "⏎ send  ⌃U clear  esc cancel the {}",
