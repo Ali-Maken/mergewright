@@ -385,16 +385,19 @@ fn failures_are_worded_and_remembered() {
     assert_eq!(after.remote.last_rejected_push, None);
 }
 
-/// `Esc` does not stop `u` or `U`, and says why instead of looking ignored.
+/// `Esc` **cancels** `u` and `U` while they are in flight
+/// (m5-history-and-ghost-preview/06, scope item 5).
 ///
-/// An inverse plan is several steps and `graft_ops::restore::execute` checks
-/// its stop token once, before the first one. A cancel mid-plan kills only
-/// the git child of the step in flight: that step fails, the loop breaks,
-/// and the steps that already ran stay applied. Nothing rolls them back, so
-/// the app does not offer the cancel — see [`UNDO_CANNOT_STOP`]
-/// (m4-remotes/05 review, M3).
+/// This used to be the opposite assertion. `graft_ops::restore::execute`
+/// checked its stop token once, before the first step, so a cancel mid-plan
+/// left the steps that had already run applied and nothing put them back;
+/// the app refused the cancel and said so (`UNDO_CANNOT_STOP`). Group 06
+/// added the between-step check and the roll-back, so the refusal has no
+/// reason left and the key does what `Esc` does everywhere else: one
+/// `CancelJob` for the running job, `cancelling` latched so a second `Esc`
+/// does not ask twice.
 #[test]
-fn esc_does_not_stop_an_undo_or_a_redo() {
+fn esc_cancels_an_undo_in_flight() {
     for (key, words) in [(plain('u'), "undo"), (plain('U'), "redo")] {
         let (running, commands) = press(&AppState::default(), key);
         let id = running.operating.expect("the undo launched");
@@ -403,61 +406,181 @@ fn esc_does_not_stop_an_undo_or_a_redo() {
             1,
             "{words}: the launch is the only command: {commands:?}"
         );
+        assert_eq!(
+            running.status,
+            Status::Busy(format!("{words}{ESC_HINT}")),
+            "{words}: the busy line offers the cancel"
+        );
 
         let (pressed, commands) = press(&running, KeyPress::plain(KeyCode::Escape));
         assert!(
-            commands.is_empty(),
-            "{words}: Esc asked for something: {commands:?}"
+            matches!(commands.as_slice(), [Command::CancelJob(asked)] if *asked == id),
+            "{words}: Esc must stop the job it is on: {commands:?}"
         );
-        assert_eq!(pressed.operating, Some(id), "{words}: still running");
         assert_eq!(
-            pressed.remote.cancelling, None,
-            "{words}: nothing was asked to stop"
+            pressed.operating,
+            Some(id),
+            "{words}: still running until the job answers"
         );
+        assert_eq!(pressed.remote.cancelling, Some(id), "{words}");
         assert_eq!(
             pressed.status,
-            Status::Busy(format!("{words} cannot be stopped part-way — finishing")),
+            Status::Busy(format!("{words} \u{b7} cancelling")),
             "{words}"
         );
 
-        // A second `Esc` says the same thing and still sends nothing.
+        // A second `Esc` asks for nothing more: the first is still going.
         let (again, commands) = press(&pressed, KeyPress::plain(KeyCode::Escape));
-        assert!(commands.is_empty(), "{words}: {commands:?}");
-        assert_eq!(again.status, pressed.status, "{words}");
-
-        // The commit editor's own `Esc` reaches `stop_write` without
-        // `cancel_operating`'s guard; it refuses too.
-        let mut direct = running.clone();
-        let mut commands = Vec::new();
-        assert!(
-            stop_write(&mut direct, &mut commands),
-            "{words}: the key is still consumed"
-        );
-        assert!(commands.is_empty(), "{words}: {commands:?}");
-        assert_eq!(direct.remote.cancelling, None, "{words}");
+        assert!(commands.is_empty(), "{words}: asked twice: {commands:?}");
+        assert_eq!(again.remote.cancelling, Some(id), "{words}");
     }
 }
 
-/// The refusal is on the write, not on `Esc`: a fetch is still stoppable.
-/// Without this, refusing an undo could be made to pass by refusing
-/// everything.
+/// A history operation is the opposite: `Esc` does **not** stop it, and the
+/// line says why (m5-history-and-ghost-preview/08, piece 10).
+///
+/// An undo can now be cancelled because `restore::execute` rolls its own
+/// steps back. A merge or a rebase cannot: it is not one git write, and a
+/// SIGTERM mid-rebase leaves `rebase-merge/` on disk with a `Pending`
+/// journal entry that `graft_ops` does not model as `Aborted`. So the app
+/// refuses the cancel rather than offering one it cannot honour, and points
+/// at the thing that *can* stop it — the banner's `a`.
 #[test]
-fn a_remote_write_is_still_stoppable() {
-    let state = with_facts(
+fn history_ops_launch_unstoppable() {
+    let mut state = AppState::default();
+    let mut commands = Vec::new();
+    let op = graft_ops::operation::Operation::Merge(graft_ops::operation::MergeParams {
+        source: graft_ops::operation::Source::Branch("feature".to_owned()),
+        into: graft_ops::operation::Tip {
+            name: "refs/heads/main".to_owned(),
+            oid: oid(THEIRS),
+        },
+        source_tip: oid(THEIRS),
+        ff: graft_ops::operation::FastForward::Default,
+    });
+    let description = op.describe();
+    crate::update::operate::launch_unstoppable(
+        &mut state,
+        &mut commands,
+        op,
+        crate::update::preview::HISTORY_CANNOT_STOP,
+        Some("m"),
+        &mut || JobId::new(7),
+    );
+    assert_eq!(state.operating, Some(JobId::new(7)));
+
+    let (pressed, commands) = press(&state, KeyPress::plain(KeyCode::Escape));
+    assert!(
+        commands.is_empty(),
+        "a merge must not be killed mid-way: {commands:?}"
+    );
+    assert_eq!(pressed.remote.cancelling, None);
+    assert_eq!(
+        pressed.status,
+        Status::Busy(format!(
+            "{description} {}",
+            crate::update::preview::HISTORY_CANNOT_STOP
+        )),
+        "the refusal names what does stop it"
+    );
+}
+
+/// A `p` that cannot fast-forward names the two keys that *can* do it, and
+/// remembers the upstream they aim at (m5-history-and-ghost-preview/08,
+/// piece 9).
+///
+/// `graft_ops`' own line for this sends the user to the shell
+/// (`git pull --rebase`). M5 put both verbs inside Graft, so the app words
+/// it as a state with keys — and `r` then previews a rebase onto the
+/// *tracking ref*, whatever row the cursor is on, because the sentence on
+/// screen is what the user is answering.
+/// `main` at `OURS`, `origin/main` at `THEIRS`, the remote facts landed.
+fn diverged() -> AppState {
+    let mut state = with_facts(
         vec![remote("origin")],
         Some("refs/heads/main"),
         Some(upstream(Some(THEIRS))),
     );
-    let (running, _) = press(&state, plain('f'));
-    let id = running.operating.expect("f launched the fetch");
-    assert_eq!(
-        running
-            .remote
-            .running
-            .as_ref()
-            .map(|running| running.stoppable),
-        Some(Stoppable::Yes)
+    let ours = oid(OURS);
+    let main = graft_core::ref_name::RefName::new(b"refs/heads/main".to_vec()).expect("a ref name");
+    state.refs = Some(Arc::new(
+        crate::refs::badges(
+            &[(main.clone(), ours)],
+            &graft_git::repo::HeadState::Branch(main),
+            &std::collections::HashMap::new(),
+            &[],
+            |_, _| {
+                Ok(graft_git::history::AheadBehind {
+                    ahead: 1,
+                    behind: 1,
+                })
+            },
+        )
+        .expect("no ahead/behind walk can fail here"),
+    ));
+    state
+}
+
+/// Our own tip, for the rebase the diverged line offers.
+const OURS: &str = "1111111111111111111111111111111111111111";
+
+#[test]
+fn diverged_pull_sets_m_r_source() {
+    let mut state = diverged();
+    let op = Operation::Pull(PullParams {
+        branch: "refs/heads/main".to_owned(),
+        upstream: upstream(Some(THEIRS)),
+    });
+    let status = remote_failed(
+        &mut state,
+        &op,
+        &graft_git::remote::RemoteFailure::NotFastForward,
+        "pull stopped: main and origin/main diverged \u{2014} merge or rebase",
     );
-    let (_, commands) = press(&running, KeyPress::plain(KeyCode::Escape));
-    assert_eq!(commands, [Command::CancelJob(id)]);
+    assert_eq!(
+        status,
+        Status::Sticky {
+            reason: "main and origin/main have diverged".to_owned(),
+            keys: Some("m merge it  r rebase onto it".to_owned()),
+        }
+    );
+    assert_eq!(
+        state.remote.diverged_upstream,
+        Some(("refs/remotes/origin/main".to_owned(), oid(THEIRS)))
+    );
+    state.status = status;
+
+    // `r` previews a rebase onto that tracking ref, pinned to the tip the
+    // refusal recorded — not onto whatever the cursor is over.
+    let (next, _) = press(&state, plain('r'));
+    let preview = next.preview.as_ref().expect("r opened a preview");
+    let crate::update::preview::PreviewSubject::Operation { op, .. } = &preview.subject else {
+        panic!("not an operation: {:?}", preview.subject);
+    };
+    assert_eq!(
+        **op,
+        Operation::Rebase(graft_ops::operation::RebaseParams {
+            branch: graft_ops::operation::Tip {
+                name: "refs/heads/main".to_owned(),
+                oid: oid(OURS),
+            },
+            onto: graft_ops::operation::Source::Branch("origin/main".to_owned()),
+            onto_tip: oid(THEIRS),
+        })
+    );
+}
+
+/// `Esc` dismisses the diverged line, and the keys it offered go with it:
+/// the remembered tip means nothing without the sentence that explained it.
+#[test]
+fn dismissing_the_diverged_line_takes_its_keys_with_it() {
+    let mut state = diverged();
+    state.remote.diverged_upstream = Some(("refs/remotes/origin/main".to_owned(), oid(THEIRS)));
+    state.status = Status::Sticky {
+        reason: "main and origin/main have diverged".to_owned(),
+        keys: Some("m merge it  r rebase onto it".to_owned()),
+    };
+    let (dismissed, _) = press(&state, KeyPress::plain(KeyCode::Escape));
+    assert_eq!(dismissed.remote.diverged_upstream, None);
+    assert_eq!(dismissed.status, Status::Ready);
 }

@@ -192,16 +192,13 @@ fn pull_diverged_refused() -> Scenario {
             Step::WaitFor(Wait::Ready),
             key(ch('p')),
             Step::Settle("the refused pull"),
-            Step::See("the line names merge/rebase and the command", |state| {
-                sticky_containing(
-                    state,
-                    &[
-                        "pull stopped:",
-                        "diverged",
-                        "merge or rebase",
-                        "git pull --rebase",
-                    ],
-                )
+            // M5 replaced M4's line here. M4 could only send the user to
+            // the shell (`pull stopped: … merge or rebase (M5); shell: git
+            // pull --rebase`); M5 has both verbs, so the refusal names the
+            // two keys that do it inside Graft and remembers the upstream
+            // they aim at (m5-history-and-ghost-preview/08, piece 9).
+            Step::See("the line names the two keys that fix it", |state| {
+                sticky_containing(state, &["diverged", "m merge it", "r rebase onto it"])
             }),
             Step::Mark("refused"),
         ],

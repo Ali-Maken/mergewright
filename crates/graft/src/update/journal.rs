@@ -13,13 +13,8 @@ use graft_ui::detail::DetailFocus;
 
 use super::detail::Loading;
 use super::events::{Command, Product};
-use super::state::{AppState, Status};
+use super::state::AppState;
 use crate::jobs::undo::JournalRead;
-
-/// What `Enter` says on an entry older than the one `u` would take back.
-/// ADR-0031: the time machine is M5's, behind Ghost Preview, and saying so
-/// is better than a key that half works.
-pub const OLDER_ENTRY: &str = "multi-step revert comes with Ghost Preview (M5)";
 
 /// The journal browser's own state.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -221,9 +216,16 @@ fn close(next: &mut AppState, commands: &mut Vec<Command>) {
 }
 
 /// `Enter`: `u` on the entry `u` would take back, `U` on the one `U` would
-/// put back, and on anything else the M5 line (ADR-0031). Acting on an
-/// older entry is a multi-step revert, which needs a Ghost Preview to be
-/// safe — a key that half works would be the worst of the three.
+/// put back, and on anything older **the time machine** — revert to just
+/// before that entry (`docs/design/02-keymap.md` §2.11,
+/// `docs/design/06-undo-journal-design.md` §6.6).
+///
+/// The time machine is several restores in a row, so it is the one thing
+/// here that never runs from this key: it opens a Ghost Preview and the
+/// preview's `Confirm` runs it (ADR-0031, PROMPT.md §1.5). The browser is
+/// **hidden, not closed** — `selected` is left where it is, so `Esc` on the
+/// preview puts the browser back on the same row
+/// (`preview::close_preview`'s `return_to_journal`).
 fn enter(next: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl FnMut() -> JobId) {
     let Loading::Ready(read) = &next.journal.entries else {
         return;
@@ -234,13 +236,23 @@ fn enter(next: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl Fn
     let Some(entry) = read.entries.get(selected) else {
         return;
     };
-    let id = &entry.id;
-    let redo = if graft_ops::journal::next_undo(&read.entries).is_some_and(|at| at.id == *id) {
+    let id = entry.id.clone();
+    let redo = if graft_ops::journal::next_undo(&read.entries).is_some_and(|at| at.id == id) {
         false
-    } else if graft_ops::journal::next_redo(&read.entries).is_some_and(|at| at.id == *id) {
+    } else if graft_ops::journal::next_redo(&read.entries).is_some_and(|at| at.id == id) {
         true
     } else {
-        next.status = Status::Done(OLDER_ENTRY.to_owned());
+        if super::preview::open_preview(
+            next,
+            commands,
+            super::preview::PreviewSubject::RevertTo(id),
+            true,
+            next_id,
+        ) {
+            next.journal.shown = false;
+        }
+        // A refusal left its own sentence on the status line and the
+        // browser stays where it is; there is nothing else to say.
         return;
     };
     // The result is a change to the graph and the working tree, so the
@@ -431,17 +443,47 @@ mod tests {
         assert!(state.operating.is_some());
     }
 
+    /// The time machine: `Enter` on an older row previews, and **only**
+    /// previews. Nothing is launched from this key — `state.operating` is
+    /// still free — and the plan job is the only command that goes out.
     #[test]
-    fn enter_on_an_older_row_says_the_time_machine_is_m5s_and_asks_for_nothing() {
+    fn enter_on_an_older_row_opens_a_preview_of_reverting_to_it() {
         let mut state = state_with_two();
         state.journal.shown = true;
         state.journal.selected = 1;
+        let older = entry(1, OperationKind::Stage, "stage src/a.rs").id;
         let (claimed, commands) = press(&mut state, KeyCode::Enter);
         assert!(claimed);
-        assert!(commands.is_empty(), "{commands:?}");
-        assert_eq!(state.status, Status::Done(OLDER_ENTRY.to_owned()));
-        assert!(state.journal.shown, "the browser stays open to say so");
-        assert!(state.operating.is_none());
+        let preview = state.preview.as_ref().expect("the preview is open");
+        assert_eq!(
+            preview.subject,
+            crate::update::preview::PreviewSubject::RevertTo(older),
+            "the preview is of the row under the cursor, not of `u`'s entry"
+        );
+        assert!(preview.return_to_journal, "esc must put the browser back");
+        assert!(
+            matches!(commands.as_slice(), [Command::PlanPreview(_, _)]),
+            "a plan and nothing else: {commands:?}"
+        );
+        assert!(
+            state.operating.is_none(),
+            "the time machine runs from Confirm, never from this key"
+        );
+    }
+
+    /// Hidden, not closed: `Esc` on the preview reopens the browser on the
+    /// very row that opened it.
+    #[test]
+    fn the_browser_comes_back_on_the_same_row_when_the_preview_is_cancelled() {
+        let mut state = state_with_two();
+        state.journal.shown = true;
+        state.journal.selected = 1;
+        press(&mut state, KeyCode::Enter);
+        assert!(!state.journal.shown, "the preview has the screen");
+        let mut commands = Vec::new();
+        crate::update::preview::close_preview(&mut state, &mut commands);
+        assert!(state.journal.shown);
+        assert_eq!(state.journal.selected, 1, "the same row, not the newest");
     }
 
     #[test]

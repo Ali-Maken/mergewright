@@ -499,11 +499,19 @@ pub fn confirm_preview(
         .planned()
         .map_or_else(|| "revert to".to_owned(), |it| it.plan.description.clone());
     match preview.subject {
-        PreviewSubject::Operation { op, .. } => {
+        PreviewSubject::Operation { op, opened_by } => {
             // The same value, not a rebuilt one: `check` refuses `Moved` if
             // a tip has shifted since the picture was drawn, which is the
-            // whole of hard choice 3.
-            super::operate::launch_unstoppable(state, commands, *op, HISTORY_CANNOT_STOP, next_id);
+            // whole of hard choice 3. `opened_by` rides along so that
+            // refusal can name the key to press again.
+            super::operate::launch_unstoppable(
+                state,
+                commands,
+                *op,
+                HISTORY_CANNOT_STOP,
+                Some(opened_by),
+                next_id,
+            );
         }
         PreviewSubject::RevertTo(entry) => {
             let id = next_id();
@@ -515,6 +523,9 @@ pub fn confirm_preview(
                 description,
                 None,
                 super::remote::Stoppable::No(HISTORY_CANNOT_STOP),
+                // No key to press again: the time machine is aimed from a
+                // journal row, not from a key over the graph.
+                None,
             );
             commands.push(Command::RevertTo(id, entry, false));
         }
@@ -922,6 +933,22 @@ pub fn history_key(
 /// The operation `m` or `r` names from where the cursor is, or the sentence
 /// saying what is missing.
 fn history_operation(state: &AppState, which: HistoryKey, verb: &str) -> Result<Operation, String> {
+    // A `p` that could not fast-forward offered these two keys and named
+    // the upstream they act on. While that line is on screen they mean
+    // *that* branch, wherever the cursor is — the user is answering the
+    // sentence they are reading, not pointing at a row (piece 9). It comes
+    // first for exactly that reason: no row is read, so no row can refuse.
+    if let Some((tracking, tip)) = state.remote.diverged_upstream.as_ref() {
+        let refs = state
+            .refs
+            .as_deref()
+            .ok_or_else(|| format!("{verb} is waiting for the refs"))?;
+        let current =
+            current_branch(refs).ok_or_else(|| format!("{verb} needs a branch checked out"))?;
+        let source = Source::Branch(super::remote::short_tracking(tracking).to_owned());
+        return Ok(build(which, current, source, *tip));
+    }
+
     if state.on_working_tree {
         return Err(format!("{verb} needs a commit row"));
     }
@@ -944,19 +971,26 @@ fn history_operation(state: &AppState, which: HistoryKey, verb: &str) -> Result<
     {
         return Err("already on it".to_owned());
     }
-    Ok(match which {
+    Ok(build(which, current, source, selected))
+}
+
+/// The operation itself, once the source and the tip it is pinned to are
+/// settled — the same shape whether they came from the cursor's row or from
+/// the diverged upstream a `p` named.
+fn build(which: HistoryKey, current: Tip, source: Source, tip: Oid) -> Operation {
+    match which {
         HistoryKey::Merge => Operation::Merge(graft_ops::operation::MergeParams {
             source,
             into: current,
-            source_tip: selected,
+            source_tip: tip,
             ff: graft_ops::operation::FastForward::Default,
         }),
         HistoryKey::Rebase => Operation::Rebase(graft_ops::operation::RebaseParams {
             branch: current,
             onto: source,
-            onto_tip: selected,
+            onto_tip: tip,
         }),
-    })
+    }
 }
 
 /// The branch `HEAD` is on, as a [`Tip`]: full ref name and the oid the

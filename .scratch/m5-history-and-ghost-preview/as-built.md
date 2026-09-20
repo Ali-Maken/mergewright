@@ -237,3 +237,53 @@ the preview a lie.**
   files", which is the one thing it does not mean. It now names the hole, as
   `ConflictForecast::NotChecked` does. Test:
   `tests/it/history_ops.rs::a_revert_with_no_recorded_parent_says_so_rather_than_drawing_nothing`.
+
+## graft (app), group 08 continuation — pieces 7–10
+
+Deviations 1–8 from the first half are in the ticket's NOTES. These are new,
+from the second half (pieces 7, 8, 9, 10 and group 06's scope item 5).
+
+9. **`Running.opened_by: Option<&'static str>`** and a matching parameter on
+   `update::remote::launched` and `update::operate::launch_unstoppable`. The
+   ticket asks a `Moved` refusal to say `m again` / `r again` / `. again`,
+   but `PreviewSubject` — the only thing that knows which key drew the
+   picture — is consumed at confirm time. The key now rides along on the
+   write in flight, which is the one record that outlives the preview and
+   dies with the operation.
+10. **`Operated::Failed` gains `refused: Option<graft_ops::operation::Refusal>`**,
+    mirroring its existing `remote: Option<RemoteFailure>`. The refusal is
+    carried as a value rather than as `error.to_string()` because
+    `Status::Sticky` needs the reason and the **keys** apart, and a key hint
+    cannot be recovered from a sentence.
+11. **`Undone::Cancelled { clean, why, refresh }`** is new (group 06 scope
+    item 5). `RestoreError::{Cancelled, CancelledPartway}` used to fall into
+    `Undone::Failed` and read as a failure; a cancel the user asked for is
+    not one. `clean` chooses `Status::Done` over `Status::Sticky`, and the
+    words are `restore`'s own (`undo cancelled · nothing changed`), not the
+    ticket's shorter `undo cancelled` — same meaning, one more fact.
+12. **`RemoteState.diverged_upstream` is *not* cleared by a refresh**, though
+    the ticket lists refresh among its three clears. It cannot be: a pull
+    that fails non-fast-forward asks for `Refresh::Everything` itself, so
+    clearing on refresh would wipe the field microseconds after it was set
+    and the two keys it offers would never fire. It is cleared by dismissing
+    the line (`Esc`) and by any write launching. Safety does not rest on the
+    clear: the `Operation` is pinned to the recorded tip, and `check`
+    refuses `Moved` if the upstream moved in between — which is hard choice
+    3 doing exactly its job, and now has words (deviation 10).
+13. **`Operated::Conflicted` still carries `stalled: Option<String>`, not
+    `entry: EntryId`.** The Signatures block asks for `entry`; nothing in
+    this group's scope reads it (the banner is `app-conflict-interim`'s), so
+    adding it would have been an unused field. The conflicted line is
+    unchanged and already honest.
+14. **The verb in the `DirtyTree` line is the first word of
+    `Operation::describe`** (`rebase feature onto main` → `rebase`). Every
+    `describe_*` in `graft_ops::operation::history` begins with its verb.
+    Written this way rather than as a table in `app` so the refusal and the
+    Command Log cannot describe one operation two ways (KNOWN_GAPS row 229).
+15. **`m4_walk::fetch_pull::pull_diverged_refused`'s expectation changed.**
+    It asserted M4's line (`pull stopped: … merge or rebase (M5); shell: git
+    pull --rebase`). M5 has both verbs inside Graft, so the app now words it
+    `<branch> and <upstream> have diverged · m merge it  r rebase onto it`.
+    `graft_ops::apply::remote::explain`'s own string still says "(M5); shell:
+    …" and is now only reached when the tracking tip is unknown — a
+    `graft-ops` tidy-up, outside this builder's fence.

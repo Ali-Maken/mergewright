@@ -537,6 +537,7 @@ fn a_commit_that_failed_keeps_the_editor_and_the_message() {
                 error: "pre-commit hook: 1 file would be reformatted".to_owned(),
                 refresh: None,
                 remote: None,
+                refused: None,
             })),
         ),
     );
@@ -628,6 +629,7 @@ fn a_refused_commits_reason_reaches_the_editors_own_view() {
                 error: "pre-commit hook: 1 file would be reformatted".to_owned(),
                 refresh: None,
                 remote: None,
+                refused: None,
             })),
         ),
     );
@@ -657,6 +659,7 @@ fn esc_dismisses_the_reason_first_and_closes_the_editor_second() {
                 error: "pre-commit hook said no".to_owned(),
                 refresh: None,
                 remote: None,
+                refused: None,
             })),
         ),
     );

@@ -51,6 +51,25 @@ pub enum Undone {
         /// answer re-runs the right one.
         redo: bool,
     },
+    /// `Esc` stopped it, and `graft_ops` put back the steps that had
+    /// already run (m5-history-and-ghost-preview/06).
+    ///
+    /// Its own shape rather than a [`Undone::Failed`] because a cancel is
+    /// not a failure — the user asked for it. `clean` decides which of the
+    /// two lines the status bar gets, and it is the whole difference
+    /// between "nothing changed" and "some of it is still in force".
+    Cancelled {
+        /// The roll-back finished: the repository stands where it did
+        /// before the undo began.
+        clean: bool,
+        /// `graft_ops::restore`'s own sentence — `undo cancelled · nothing
+        /// changed`, or `undo cancelled part-way · … · u shows the backup`.
+        why: String,
+        /// The journal gained an `Aborted` entry either way, and a
+        /// part-way cancel moved refs — so unlike [`Undone::Failed`] there
+        /// is never a case with nothing to re-read.
+        refresh: Refresh,
+    },
     /// Nothing was put back, and this is why.
     Failed {
         /// What went wrong, as one line.
@@ -170,6 +189,20 @@ fn undone_from(error: UndoError, redo: bool, description: impl FnOnce() -> Strin
             description: description(),
             drift,
             redo,
+        },
+        // `Esc`. `restore::execute` rolled back what it had applied (clean)
+        // or said what it could not (part-way); both are answers, not
+        // failures, and both leave an `Aborted` entry in the journal, so
+        // the list on screen is stale either way.
+        UndoError::Restore(cancel @ RestoreError::Cancelled { .. }) => Undone::Cancelled {
+            clean: true,
+            why: cancel.to_string(),
+            refresh: Refresh::Everything,
+        },
+        UndoError::Restore(cancel @ RestoreError::CancelledPartway { .. }) => Undone::Cancelled {
+            clean: false,
+            why: cancel.to_string(),
+            refresh: Refresh::Everything,
         },
         UndoError::Restore(RestoreError::AfterState { applied, unread }) => Undone::Incomplete {
             applied: *applied,

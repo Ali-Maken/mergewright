@@ -117,6 +117,10 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
         && matches!(next.status, Status::Failed(_) | Status::Sticky { .. })
     {
         next.status = Status::Ready;
+        // The diverged line is gone, and with it the `m`/`r` it offered:
+        // the tip it remembered is only meaningful beside the words that
+        // explained it (m5-history-and-ghost-preview/08, piece 9).
+        next.remote.diverged_upstream = None;
         return;
     }
     if pane_and_overlay_key(next, commands, key) {

@@ -3017,6 +3017,7 @@ fn credential_state_seeded(columns: u16, rows: u16, prompt: &str, pulse_seed: bo
         description: "push main → origin/main".to_owned(),
         op: Some(push),
         stoppable: crate::update::remote::Stoppable::Yes,
+        opened_by: None,
     });
     state.status = Status::Busy("push main → origin/main · esc cancels".to_owned());
     crate::update::credential::credential_needed(&mut state, id, prompt, pulse_seed);

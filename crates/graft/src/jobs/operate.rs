@@ -99,6 +99,13 @@ pub enum Operated {
         /// reads it to decide what the next `P` offers — a rejected push
         /// turns the next box into the lease variant (m4-remotes/05).
         remote: Option<RemoteFailure>,
+        /// The precondition that said no ([`ApplyError::Refused`]); `None`
+        /// for every other failure. Carried as the value rather than as its
+        /// sentence because the two history refusals need a *key hint*
+        /// beside the reason — `m again` after a tip moved, `S stash …`
+        /// over a dirty tree — and a hint cannot be recovered from a string
+        /// (m5-history-and-ghost-preview/08, piece 8).
+        refused: Option<graft_ops::operation::Refusal>,
     },
 }
 
@@ -195,6 +202,9 @@ fn nothing_ran(error: &impl std::fmt::Display) -> Operated {
         error: error.to_string(),
         refresh: None,
         remote: None,
+        // `nothing_ran` is the pool's own failure to even open the
+        // repository, never a precondition `graft_ops` weighed.
+        refused: None,
     }
 }
 
@@ -283,10 +293,15 @@ fn answer(result: Result<Applied, ApplyError>) -> Operated {
                 ApplyError::Remote { failure, .. } => Some(failure.clone()),
                 _ => None,
             };
+            let refused = match &error {
+                ApplyError::Refused(refusal) => Some(refusal.clone()),
+                _ => None,
+            };
             Operated::Failed {
                 error: error.to_string(),
                 refresh,
                 remote,
+                refused,
             }
         }
     }
