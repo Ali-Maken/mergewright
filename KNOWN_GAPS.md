@@ -486,7 +486,7 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M5/07 | `Refusal::MainlineOnNonMerge` is misnamed for the out-of-range-on-a-merge case, though `explain()` is honest | unverified (cosmetic) | M6 |
 | M5/03 fix | **Below 100 columns with a pane open, the Tab layout draws no hint bar at all** — ADR-0037 §4's forbidden case. Decided 2026-09-20 (ADR-0039): the bar degrades to a never-dropped `. more` doorway riding the tab line, costing no row; `.` must then list every dropped key | broken (the forbidden case) | M5 (hint doorway group) |
 | M5/07 review | 12 Minors in `docs/reviews/m5-07-ops-history-operations.md` not triaged (3 closed as side effects of the fix round) | unverified | M5 |
-| M5/07 fix | `PartWay { done, total, error }` needs 5 app-side call sites; blocked while group 05 held `graft` | broken (seam open) | M5 (group 08) |
+| M5/07 fix | **This row was wrong.** `PartWay` is `{ done, error }` and all five app-side sites already match it — verified on main. No seam was ever open. What group 07 actually wanted was a *new* `total` field so a part-way message can say "3 of 7 steps"; that was never built and is an enhancement, not a break | unverified (the enhancement is unbuilt, nothing is broken) | M6 |
 | M5/07 fix | The fold's Command Log visibility is untested — a step folded into a live entry may not show in the browser | unverified | M6 |
 | M5/05 | Three siblings of the same race are unfixed: `PromoteHistory`/`promoting`, the commit-graph `Writing`/`Declining` pair, and `Search`/`Search::job` (guarded by `unstarted`, not by a minted id) | broken (same class) | M7 |
 | M5/05 | `row_requests` leaks a sender for a walk that ends on its own | broken (leak) | M7 |
