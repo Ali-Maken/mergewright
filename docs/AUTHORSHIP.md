@@ -159,6 +159,48 @@ Cause: conductor and a running builder shared one `.git/index` while a helper wa
 - **`ace834e`**, titled as a conductor rules-docs commit ("rules: docs follow the context"), also swept up **builder** work left uncommitted in the tree: `crates/graft/src/jobs/undo.rs` (+69), `ARCHITECTURE.md`, and the three `MAP.md` files (`crates/graft`, `crates/graft-core`, `crates/graft-ui`). The log attributes this content to a builder, not the conductor, but does not name which builder run it came from — left unstated here rather than guessed.
 - **`6d6098d`**, titled as a builder fix landing in `m3-06-fixes`, also swept in **conductor** work: `scripts/toolchain-bench.sh`. Per the log this file is conductor work, not `builder-opus`'s group 06 review-fixes work that the commit title otherwise describes.
 
-## M4–M8
+## M4 Remotes
 
-M4: design pass next (planner-fable).
+Ran under ADR-0029's groups model: 7 groups, plus fix rounds and a separate
+keymap-reconciliation pass.
+
+| Role | Model | Detail |
+|---|---|---|
+| Designed | Fable (`planner-fable`) | M4 design pass and 7 group specs — the log records the model for this milestone's design/spec work but, unlike M1/M3, carries no separate design-note walkthrough entry. Keymap reconciliation ran as its own `planner-fable` pass (31 turns): `docs/reviews/keymap-reconciliation.md`, 6 drifts beyond the known `d`, worst is `x` (compare-two-commits, live since M2) with no presence in the design doc at all; corrected 3 errors in the conductor's key extraction; M5–M8 allocation survives if M6/M7 are stated modal; awaiting user approval before `02-keymap.md` changes. |
+| Specified | Fable (`planner-fable`) | Group specs 01 remote-fixtures, 02 git-remote-and-askpass, 03 ui-credential-prompt-and-hints, 04 ops-remote-operations, 05 remote-keys, 06 credential-prompt-wiring, 07 acceptance-remotes. |
+| Built | see table below | |
+| Reviewed | Fable | One review round per group, for groups 01, 02, 04, 05, 06, 07 (detail below). Group 03 has no review round recorded in the log. |
+
+### M4 builds
+
+| Model | Groups/runs |
+|---|---|
+| Opus | 01-remote-fixtures — first dispatch killed by rate limit (wave 1, alongside 02 and keymap reconciliation), no commits/files; redispatched fresh, done (`70c75c3`, ticks `981abc2`, merged `5f6e6fd`, 56 turns, no scout — new code, 3 small files read); signature deviations recorded in the ticket (`LocalRemote::new -> Result<_, CorpusError>`, Oid as 40-hex `String`, no graft-core dependency); touched `Cargo.lock` outside its crate, unavoidable for the new dependency; 6 of 8 ticks each naming its test, first attempt left the ticket unticked and was sent back to tick its own, listener-thread exit left open (filed unverified), docs left for the reviewer · 02-git-remote-and-askpass — first dispatch killed in the same wave-1 rate limit; redispatched fresh, done, 11/11 ticks name tests, merged `807a425`, scout: 1 Sonnet, 102 tool uses/998 s · 04-ops-remote-operations — stopped by rate limit then continued (first run's tool-use count lost to the kill; 30 tool uses on the continuation), 18/18 ticks name tests, one line outside fence (`crates/graft/src/jobs/operate.rs`, `ApplyError::Remote` arm; allowed by ticket gates), merged `46c08b0`, scout: none (diff-driven continuation); builder noted DESIGN §6.4 not changed, awaiting the user's yes on the design note's Proposed change 1 (fetch/push transparent to undo) · 05-remote-keys — done, 198 tool uses/1572 s, COMPACTED once (nothing left over), 14/14 ticks, 2 Sonnet scouts, merged, capture `docs/shots/m4-remote-keys.txt` · 06-credential-prompt-wiring — done, 217 tool uses/1718 s, COMPACTED once (remainder docs only), 14/14 ticks, Sonnet scout, merged, capture `docs/shots/m4-credential-prompt-in-app.txt` · thread-teardown fix for 01+02 Majors — done, 81 tool uses total; first pass used a 20/10 ms polling accept, sent back (rule 2: no sleep/poll loop without user OK); final: blocking accept, stop → wake → join → unlink, failed wake returns `Err`; merged · group 04 review fixes — done, 121 tool uses; first pass kept a poll in askpass, corrected to blocking; merged via side worktree (reviewer held main's index); conductor seam fix: app push-box test + design note lines 68/143 dropped `--force-if-includes` · group 05 review fixes (+ group 06's two) — done, 110 tool uses, Sonnet scout, no compaction; Esc-cancel-for-u/U fix WITHDRAWN after proof it left work half-applied |
+| Sonnet | 03-ui-credential-prompt-and-hints — stopped by rate limit then continued (36 tool uses), merged `0ba9203`; main broke afterward (app crate built `FieldView` without new `masked` field → conductor seam fix `d0e7934`, cause, 2 lines); app snapshot then failed (footer hints placed after `u undo` not after `S stash` per spec, pushing `/ search`, `j/k move` off at 80 cols) → sent back to the same builder; fix round, same builder resumed, 49 tool uses total: hints moved after stash per spec, remote hints now fit only at ≥156 cols (visual, for the user); merged. Root cause of both misses: `-p graft-ui` gates never compiled the app crate, so CLAUDE.md gates moved workspace-wide. |
+| Fable | 07-acceptance-remotes — done, 118 tool uses/2303 s, COMPACTED once (nothing left), Sonnet scout, 6/7 ticks (the open one is a KNOWN_GAPS filing the conductor reserved), merged; walk `cargo run -p graft --example m4_walk` 19/19, slowest 1.4 s; 16 captures `docs/shots/m4-0{1..8}-*`, 71 KB total (cap 200 KB/file) · acceptance fix round — killed by session rate limit mid-split, continued by a fresh `builder-fable`, 36 tool uses: `acec55f` (hung pull + hung push cancel scenarios, box bodies and capture files under test, rejection line keeps its keys at 80 cols), `b0a0794` (walk split into `tests/it/m4_walk/{mod,fixture,truth,steps,run,vocabulary,fetch_pull,push,credentials,hangs_and_undo,every_scenario}.rs`, largest 364 lines; `coverage.rs` + `repo_truth.rs` shared; examples compile only what they run); merged |
+| Conductor (not a build) | keymap-reconciliation extraction check (corrected by the Fable pass above); accepted 02's `classify_failure` deviation ("unable to access" not `Unreachable`, also covers 403/TLS) as a heuristic inside the ticket, not a scope change, reviewer confirmed sound and tested; Critical fix from review group 07 in two halves — filed 11 KNOWN_GAPS rows, retargeted `notify` M4→M7, closed `gallery --matrix` (`da0c1af`) |
+
+**Failed/killed runs (infrastructure, not build stalls):** wave-1 dispatch — groups 01, 02 (both Opus) and keymap reconciliation (Fable) — killed together by a session rate limit within their opening moves; no commits or files, group 02's empty worktree removed; the log notes parallelism spends quota proportionally faster than serial dispatch, a cost of ADR-0036 the ADR does not state; all three redispatched fresh on the new session. Groups 03 and 04 were separately stopped mid-build by a later user-paused rate limit and resumed from their worktrees. The acceptance fix round was killed by a session rate limit mid-split and continued by a fresh `builder-fable`.
+
+**Compacted:** 05-remote-keys (once, nothing left over), 06-credential-prompt-wiring (once, remainder docs only), 07-acceptance-remotes (once, nothing left).
+
+### Review and fix rounds
+
+- **Review group 01** — Fable (concurrent with 02/03): 1 Major (listener-thread teardown unproven), 3 Minor. 6/6 ticks held. `e3d666c`, 30 tool uses.
+- **Review group 02** — Fable (concurrent with 03/04): 0 Critical, 1 Major (`AskPassServer::shutdown` leaks its listener thread when the wake-connect fails), 5 Minor. 9/9 ticks held. `56d2862`.
+- **Thread-teardown fix (01+02 Majors)** — Opus. See builds table.
+- **Review group 04** — Fable: 0 Critical, 4 Major, 9 Minor. 17/17 ticks held. `ce30d46`, 28 tool uses. Conductor decisions on two Majors: (1) lease — `--force-if-includes` was a no-op with an explicit expect; `check_push` must compare `expected` with the fetched tracking tip and refuse `LeaseStale`; (3) an up-to-date pull moves nothing → transparent to undo like fetch, never `next_undo`.
+- **Group 04 review fixes** — Opus. See builds table.
+- **Review group 05** — Fable: 0 Critical, 4 Major, 11 Minor. 13/13 test-named ticks held. `5bc0966`, 26 tool uses. Conductor decision on M3 (Esc cancels u/U in flight, untested): prove it leaves no half-applied undo, or Esc must not cancel u/U — not self-certifiable (checkpoint rule 2); fix round waited for group 06 to free the graft crate.
+- **Review group 06** — Fable: 0 Critical, 1 Major (typed password sits in a plain TextField String, cloned per event, freed unzeroed — the ticket asked for TextField, so a spec limitation), 9 Minor. 26/26 ticks held. `e1e8ade`, 25 tool uses. Confirms: no password in argv, env, journal, log, capture, panic or Debug; the HTTP round trip genuinely proves git got it. Conductor sent 06's two cheap fixes (Esc cancel order, askpass doc overclaim) to the running group-05-fix builder; the memory-remnant Major went to the user at the checkpoint.
+- **Group 05 review fixes (+ 06's two)** — Opus. See builds table. Esc-cancel-for-u/U WITHDRAWN: `restore::execute` checks its stop token once, before step 1, so a mid-flight cancel leaves earlier steps applied; u/U now `Stoppable::No`, line "undo cannot be stopped part-way — finishing…".
+- **Review group 07 acceptance** — Fable: **1 Critical**, 5 Major, 9 Minor. 6/7 ticks held — the false tick was the conductor's: tick 6 claimed KNOWN_GAPS rows filed when 3 of ~12 were. `30b7c9d`, 26 tool uses. Fixed in two halves: conductor filed 11 rows + retargeted `notify` M4→M7 + closed `gallery --matrix` (`da0c1af`); builder-fable fixed every overclaim.
+- **Acceptance fix round** — Fable. See builds table.
+
+Group 03 has no review round recorded in the log.
+
+**Milestone review perf tier:** `cargo test --release --features heavy-tests` — 1855 passed, 0 failed, exit 0 (`docs/perf/m4.txt`). Frame budgets hold under `--release`.
+
+## M5–M8
+
+Not yet in the session log.
