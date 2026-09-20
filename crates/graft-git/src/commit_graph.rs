@@ -159,7 +159,10 @@ fn run_error_to_commit_graph_error(error: RunError) -> CommitGraphError {
             io::ErrorKind::NotFound,
             "git is not installed, or not on the PATH",
         )),
-        RunError::Spawn(source) => CommitGraphError::Io(source),
+        // `write` never calls `on_stderr_line`, so `Sink` can only mean a
+        // future caller added one; treated the same as `Spawn` — both are
+        // "talking to git failed" — rather than left unhandled.
+        RunError::Spawn(source) | RunError::Sink(source) => CommitGraphError::Io(source),
         RunError::Stopped => CommitGraphError::Io(io::Error::other(
             "write was stopped, which never asks to be",
         )),

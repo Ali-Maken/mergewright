@@ -14,6 +14,7 @@ pub mod editor;
 #[cfg(test)]
 mod fixture;
 pub mod history;
+pub mod history_reads;
 pub mod mailmap;
 pub mod remote;
 pub mod repo;
