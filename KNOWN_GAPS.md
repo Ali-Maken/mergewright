@@ -484,6 +484,10 @@ Both pass tests, neither seen. If word-level diff tinting or the unfocused diff 
 | M5/07 | `Undone` cannot carry a part-way revert's `done` count; needs its own product | broken (incomplete) | M5 (group 08) |
 | M5/07 | An untracked-file collision on checkout is not pre-empted (hard choice 4); git's own wording reaches the user instead of Graft's | broken | M6 |
 | M5/07 | `Refusal::MainlineOnNonMerge` is misnamed for the out-of-range-on-a-merge case, though `explain()` is honest | unverified (cosmetic) | M6 |
+| M5/03 fix | **Below 100 columns with a pane open, the Tab layout draws no hint bar at all** — ADR-0037 §4's forbidden case, at a width the user works at daily. Found by the fix round, not fixed: the fix costs every pane a row, which is a design call | broken (the forbidden case) | awaiting the user's call |
+| M5/07 review | 15 Minors in `docs/reviews/m5-07-ops-history-operations.md` not triaged | unverified | M5 |
+| M5/03 review | 10 Minors in `docs/reviews/m5-03-hint-bar-redesign.md` not triaged | unverified | M5 |
+| M5/04 review | 12 Minors in `docs/reviews/m5-04-ui-ghost-banner-conflict.md` not triaged | unverified | M5 |
 | M5/01 | `jobs/askpass.rs`'s module doc still describes the pre-M5 plain-`TextField` password leak as current and says the fix "means a secret-backed field in graft-ui" — that field shipped in group 01. A stale doc claiming a live security hole | broken (stale doc) | M5 (group 11) |
 | M5/01 | The m4-03 and m4-04 pty-driven captures under `docs/shots/` still show the old 7-glyph mask; they need regenerating with `m4_walk --capture`, then `scripts/contact-sheet.sh m4` | broken (stale capture) | M5 (acceptance, group 11) |
 | M5/01 | `graft-fixtures` port-drop timing test failed once under load and passed on re-run; not reproduced since | unverified | M5 |
