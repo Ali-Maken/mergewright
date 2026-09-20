@@ -7,7 +7,7 @@ use ratatui::layout::Rect;
 use ratatui::text::{Line, Span};
 use unicode_width::UnicodeWidthStr;
 
-use super::hints::{fit_status_line, hints_for, hints_text};
+use super::hints::{Divider, fit_status_line, hints_for, hints_text};
 use super::layout::{Columns, graph_width};
 use super::render::subject_truncated;
 use super::{CommitGraphLine, GraphEntry, GraphScreen, SearchLine};
@@ -84,7 +84,16 @@ impl GraphScreen<'_> {
                     (format!(" {subject}"), Token::Text)
                 } else {
                     let width16 = u16::try_from(width).unwrap_or(u16::MAX);
-                    let hints = hints_for(&self.view.hint_context, width16);
+                    // The divider exists while any detail pane is open — a
+                    // commit's as much as the changes pane's (ADR-0028), which
+                    // is why the flag is read here and not carried inside one
+                    // context (m5-03 review, Major 4).
+                    let divider = if self.view.detail_shown {
+                        Divider::Shown
+                    } else {
+                        Divider::Hidden
+                    };
+                    let hints = hints_for(&self.view.hint_context, divider, width16);
                     (hints_text(&hints), Token::TextMuted)
                 }
             }

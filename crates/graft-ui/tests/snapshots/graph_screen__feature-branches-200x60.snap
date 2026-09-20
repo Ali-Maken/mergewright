@@ -61,4 +61,4 @@ expression: text
 
 
 
- ⏎ open  b branch  r rebase  t tag  c commit  y sha  m merge  u undo  S stash  J journal  / search  . more
+ ⏎ open  c commit  y sha  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x compare  + lanes  j/k move  space fold  1 first-parent  F focus  H hide stash  f fetch  p pull  . more

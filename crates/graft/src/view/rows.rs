@@ -228,26 +228,29 @@ fn compaction(
 }
 
 /// The footer's context for this frame (`hints::hints_for`, ADR-0037 §4):
-/// the working-tree row and the changes pane both win over anything the
-/// cursor sits on, since they are full-screen states; otherwise the cursor
-/// row's own badges say whether it is a branch, and its Mistake Radar
-/// marker (`GraphEntry::marker`) wraps whichever context in `Marked`, exactly
-/// as `hints_for` interprets it. `Journal` and `Stash` are never produced
-/// here — `view::frame` draws those overlays instead of the graph screen
-/// while they are shown, so the graph's own footer never has to hint them.
+/// the changes pane and the working-tree row both win over anything the
+/// cursor sits on, since they are full-screen states — **the pane first**,
+/// because it is the more specific of the two. The pane opens *on* the
+/// uncommitted-changes row and the cursor stays there, so `on_working_tree`
+/// and `on_changes_pane()` are true together for the whole time the pane is
+/// up; testing the row first made the pane's own keys unreachable and hinted
+/// `⏎ changes` to someone already in the changes (m5-03 review, Critical 1).
+///
+/// Otherwise the cursor row's own badges say whether it is a branch, and its
+/// Mistake Radar marker (`GraphEntry::marker`) wraps whichever context in
+/// `Marked`, exactly as `hints_for` interprets it. `Journal` and `Stash` are
+/// never produced here — `view::frame` draws those overlays instead of the
+/// graph screen while they are shown, so the graph's own footer never has to
+/// hint them. `<> resize` is not a context: `GraphView::detail_shown` carries
+/// it, for every context alike.
 fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
+    if state.on_changes_pane() {
+        return HintContext::ChangesPane {
+            unmerged: cursor_file_unmerged(state),
+        };
+    }
     if state.on_working_tree {
         return HintContext::WorkingTreeRow;
-    }
-    if state.on_changes_pane() {
-        let unmerged = state
-            .working_tree
-            .as_deref()
-            .is_some_and(|status| status.entries.iter().any(|entry| entry.unmerged));
-        return HintContext::ChangesPane {
-            unmerged,
-            detail_shown: state.detail.shown,
-        };
     }
     let cursor = rows
         .iter()
@@ -268,6 +271,38 @@ fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
     } else {
         base
     }
+}
+
+/// Whether the changes pane's cursor is on an unmerged (conflicted) file —
+/// the cursor's own file, not "any file in the tree": while one conflict
+/// exists, every clean file's row would otherwise lose `space stage` and
+/// `d discard` (m5-03 review, Minor 4). A section row, a directory row, or
+/// no file list at all: not unmerged.
+///
+/// Matched by path bytes, the way `update::operate` matches the cursor's
+/// file to its status entry — the file list is git's diff output and the
+/// status entries are git's porcelain output, and only the path joins them.
+fn cursor_file_unmerged(state: &AppState) -> bool {
+    use std::ffi::OsStr;
+
+    let Some(list) = state.detail.list.as_ref() else {
+        return false;
+    };
+    let Some(entry) = state.detail.selected_entry() else {
+        return false;
+    };
+    let Some(file) = usize::try_from(entry)
+        .ok()
+        .and_then(|index| list.files.get(index))
+    else {
+        return false;
+    };
+    state.working_tree.as_deref().is_some_and(|status| {
+        status.entries.iter().any(|candidate| {
+            candidate.unmerged
+                && OsStr::as_encoded_bytes(candidate.path.as_os_str()) == file.path.as_slice()
+        })
+    })
 }
 
 /// The columns a fold weighs above the ordinary rank (ADR-0025), built once
