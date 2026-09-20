@@ -47,7 +47,7 @@ One line per public item. Update when a public item changes.
 
 ## journal
 - `EntryId` (struct) — a journal entry's id, a ULID (26 Crockford base32 chars, time then random), `Ord` by string = by time; also the backup ref's last segment (ADR-0010); `new(unix_ms, random)` / `parse` / `as_str` (fn); serde as its text (m3/02).
-- `OperationKind` (enum) — `Stage`, `Unstage`, `Discard`, `Commit`, `Amend`, `StashPush`, `StashApply`, `StashPop`, `StashDrop`, `Fetch`, `Pull`, `Push` (m4/04; serde `fetch`/`pull`/`push`), `Undo`, `Redo` (m3/02).
+- `OperationKind` (enum) — `Stage`, `Unstage`, `Discard`, `Commit`, `Amend`, `StashPush`, `StashApply`, `StashPop`, `StashDrop`, `Fetch`, `Pull`, `Push` (m4/04; serde `fetch`/`pull`/`push`), `Merge`, `Rebase`, `CherryPick`, `Revert`, `Reset`, `Checkout`, `BranchCreate`, `BranchDelete`, `TagCreate`, `TagDelete`, `BranchFromStash`, `RevertTo` (m5/07; serde snake_case like the rest: `cherry_pick`, `branch_from_stash`, `revert_to`), `Undo`, `Redo` (m3/02). **`RevertTo` is never written**: §6.6 journals the time machine as one `Undo` entry per step, so a summary entry would be the thing that decision rejected — see the variant's own doc (m5/07 job 2).
 - `EntryStatus` (enum) — `Pending`, `Committed`, `Aborted { reason }` (m3/02).
 - `INTERRUPTED` (const `&str`) — `"interrupted"`: the reason recovery records on an entry a dead process left open. One definition, because `ops` writes it and the journal browser matches on it (m3/06 review, Major 2).
 - `JournalEntry::is_interrupted` (fn) — `(&self) -> bool`: `Pending` (what the file holds) or `Aborted` with `INTERRUPTED` (what a reader is handed, recovery having closed it first). Keying on `Pending` alone looks right and never fires.
@@ -64,6 +64,7 @@ One line per public item. Update when a public item changes.
 ## oid
 - `Oid` (struct) — a git object id, 20 or 32 bytes inline; `SHA1_BYTES` / `MAX_BYTES` (const).
 - `Oid::from_bytes` / `from_hex` / `as_bytes` (fn) — build, parse, read.
+- `Oid::from_sha1` (fn) — wrap a 20-byte SHA-1 digest; infallible where `from_bytes` cannot be, because a caller that hashed something itself has 20 bytes by construction (m5/07, Ghost Preview's synthetic ids).
 - `Oid` serde — as lowercase hex text (m3/02).
 
 ## raster

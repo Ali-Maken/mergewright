@@ -1,0 +1,1692 @@
+//! The history operations, the conflict span and Ghost Preview, against
+//! real git.
+//!
+//! Every claim is read back out of the repository — `rev-parse`,
+//! `for-each-ref`, `ls-files`, the files on disk — never from the value a
+//! function returned (PROMPT.md §7.2 item 4, the M3 group-03 standard). The
+//! ghost tests are the sharpest of these: the plan is drawn *first*, the
+//! operation then runs, and what git actually did is compared with what the
+//! picture promised.
+
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+
+use std::path::{Path, PathBuf};
+
+use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind};
+use graft_core::oid::Oid;
+use graft_fixtures::Shape;
+use graft_fixtures::remote::LocalRemote;
+use graft_git::repo::RepoHandle;
+use graft_git::state::InProgress;
+use graft_ops::apply::{Applied, ApplyError, Resume, apply, recover_interrupted, resume};
+use graft_ops::facts::read_facts;
+use graft_ops::operation::{
+    BranchCreateParams, BranchFromStashParams, CheckoutParams, CheckoutTarget, FastForward,
+    Invocation, Lease, MergeParams, Operation, PickParams, PushParams, RebaseParams,
+    RefDeleteParams, Refusal, ResetMode, ResetParams, ResetTarget, RevertParams, Source,
+    StashParams, StashScope, TagCreateParams, Tip,
+};
+use graft_ops::preview;
+use graft_ops::preview::{
+    ConflictForecast, HeadMove, PreviewPlan, Target as GhostTarget, UndoNote, WorktreeEffect,
+};
+use graft_ops::undo::{self, UndoError};
+
+use crate::support::{
+    NOW, Never, RepoState, TempRepo, context, git_version, journal_for, round_trip, run, run_undo,
+    state_of, try_run,
+};
+
+// ── building repositories ───────────────────────────────────────────────
+
+/// `main` with two commits, and `feature` branched off the first with one
+/// commit of its own, touching a different file: the two diverge and merge
+/// cleanly.
+fn diverged() -> TempRepo {
+    let repo = TempRepo::init();
+    repo.write("base.txt", b"base\n");
+    repo.commit_all("one");
+    repo.git(&["branch", "feature"]);
+    repo.write("main.txt", b"main\n");
+    repo.commit_all("two on main");
+    repo.git(&["switch", "-q", "feature"]);
+    repo.write("feature.txt", b"feature\n");
+    repo.commit_all("one on feature");
+    repo.git(&["switch", "-q", "main"]);
+    repo
+}
+
+/// The same shape, but both branches rewrite the same line of the same
+/// file: every merge, rebase or pick between them conflicts.
+fn conflicting() -> TempRepo {
+    let repo = TempRepo::init();
+    repo.write("shared.txt", b"base\n");
+    repo.commit_all("one");
+    repo.git(&["branch", "feature"]);
+    repo.write("shared.txt", b"main's line\n");
+    repo.commit_all("two on main");
+    repo.git(&["switch", "-q", "feature"]);
+    repo.write("shared.txt", b"feature's line\n");
+    repo.commit_all("one on feature");
+    repo.git(&["switch", "-q", "main"]);
+    repo
+}
+
+/// `main` two commits ahead of `feature`, with nothing on `feature` of its
+/// own: a merge of `feature` into `main` is already up to date, and a merge
+/// the other way fast-forwards.
+fn ahead() -> TempRepo {
+    let repo = TempRepo::init();
+    repo.write("base.txt", b"base\n");
+    repo.commit_all("one");
+    repo.git(&["branch", "feature"]);
+    repo.write("main.txt", b"main\n");
+    repo.commit_all("two on main");
+    repo
+}
+
+// ── reading the repository ──────────────────────────────────────────────
+
+fn id(repo: &TempRepo, rev: &str) -> Oid {
+    Oid::from_hex(&repo.git(&["rev-parse", rev])).expect("a full id")
+}
+
+fn tip(repo: &TempRepo, full_ref: &str) -> Tip {
+    Tip {
+        name: full_ref.to_owned(),
+        oid: id(repo, full_ref),
+    }
+}
+
+fn head_tip(repo: &TempRepo) -> Tip {
+    let branch = repo.git(&["symbolic-ref", "HEAD"]);
+    tip(repo, &branch)
+}
+
+fn entries(repo: &TempRepo) -> Vec<JournalEntry> {
+    let handle = repo.open();
+    journal_for(&handle).entries().to_vec()
+}
+
+fn facts_for(repo: &RepoHandle, op: &Operation) -> graft_ops::operation::RepoFacts {
+    read_facts(repo, git_version(), &Never, &op.facts_scope()).expect("the facts read")
+}
+
+/// Draw the plan for an operation, from a fresh read of the repository.
+fn preview_of(repo: &TempRepo, op: &Operation) -> PreviewPlan {
+    let handle = repo.open();
+    let facts = facts_for(&handle, op);
+    preview::plan(&handle, &git_version(), op, &facts, &Never)
+        .unwrap_or_else(|why| panic!("preview: {}", why.explain()))
+}
+
+fn try_preview(repo: &TempRepo, op: &Operation) -> Result<PreviewPlan, preview::PreviewError> {
+    let handle = repo.open();
+    let facts = facts_for(&handle, op);
+    preview::plan(&handle, &git_version(), op, &facts, &Never)
+}
+
+fn run_resume(repo: &TempRepo, how: Resume, at: i64) -> Result<Applied, ApplyError> {
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let never = Never;
+    let mut ctx = context(&handle, &mut journal, at, &never);
+    resume(&mut ctx, how)
+}
+
+// ── building operations ─────────────────────────────────────────────────
+
+fn merge_op(repo: &TempRepo, source: &str, ff: FastForward) -> Operation {
+    Operation::Merge(MergeParams {
+        source: Source::Branch(source.to_owned()),
+        into: head_tip(repo),
+        source_tip: id(repo, source),
+        ff,
+    })
+}
+
+fn rebase_op(repo: &TempRepo, onto: &str) -> Operation {
+    Operation::Rebase(RebaseParams {
+        branch: head_tip(repo),
+        onto: Source::Branch(onto.to_owned()),
+        onto_tip: id(repo, onto),
+    })
+}
+
+fn pick_op(repo: &TempRepo, rev: &str) -> Operation {
+    Operation::CherryPick(PickParams {
+        commits: vec![id(repo, rev)],
+        subject: repo.git(&["log", "-1", "--format=%s", rev]),
+        head: head_tip(repo),
+    })
+}
+
+fn revert_op(repo: &TempRepo, rev: &str) -> Operation {
+    Operation::Revert(RevertParams {
+        commit: id(repo, rev),
+        subject: repo.git(&["log", "-1", "--format=%s", rev]),
+        mainline: None,
+        parents: 1,
+        parent: Some(id(repo, &format!("{rev}^"))),
+        head: head_tip(repo),
+    })
+}
+
+fn reset_op(repo: &TempRepo, to: &str, mode: ResetMode) -> Operation {
+    Operation::Reset(ResetParams {
+        target: ResetTarget::Head {
+            branch: head_tip(repo),
+            mode,
+        },
+        to: id(repo, to),
+    })
+}
+
+// ── apply / undo / redo, per kind ───────────────────────────────────────
+
+#[test]
+fn merge_applies_undoes_redoes() {
+    let repo = diverged();
+    let op = merge_op(&repo, "refs/heads/feature", FastForward::Never);
+    round_trip(&repo, &op);
+    // And the merge itself did what it said: after re-applying, `main` is a
+    // merge commit with both tips as parents.
+    run(&repo, &op, NOW + 10);
+    assert_eq!(
+        repo.git(&["rev-list", "--count", "--merges", "HEAD", "-1"]),
+        "1",
+        "the tip is a merge commit"
+    );
+    assert_eq!(entries(&repo).last().unwrap().kind, OperationKind::Merge);
+}
+
+#[test]
+fn rebase_applies_undoes_redoes() {
+    let repo = diverged();
+    repo.git(&["switch", "-q", "feature"]);
+    round_trip(&repo, &rebase_op(&repo, "refs/heads/main"));
+    // Re-applied for real: `main` is now an ancestor of `feature`.
+    run(&repo, &rebase_op(&repo, "refs/heads/main"), NOW + 10);
+    repo.git(&["merge-base", "--is-ancestor", "main", "feature"]);
+    assert_eq!(entries(&repo).last().unwrap().kind, OperationKind::Rebase);
+}
+
+#[test]
+fn cherry_pick_applies_undoes_redoes() {
+    let repo = diverged();
+    round_trip(&repo, &pick_op(&repo, "refs/heads/feature"));
+    run(&repo, &pick_op(&repo, "refs/heads/feature"), NOW + 10);
+    assert_eq!(
+        repo.read("feature.txt"),
+        b"feature\n".to_vec(),
+        "the picked change landed on disk"
+    );
+}
+
+#[test]
+fn revert_applies_undoes_redoes() {
+    let repo = diverged();
+    round_trip(&repo, &revert_op(&repo, "HEAD"));
+    run(&repo, &revert_op(&repo, "HEAD"), NOW + 10);
+    assert!(!repo.exists("main.txt"), "the reverted file is gone again");
+    assert!(
+        repo.git(&["log", "-1", "--format=%s"])
+            .starts_with("Revert"),
+        "git's own Revert subject"
+    );
+}
+
+#[test]
+fn reset_applies_undoes_redoes() {
+    let repo = diverged();
+    round_trip(&repo, &reset_op(&repo, "HEAD~1", ResetMode::Hard));
+    run(&repo, &reset_op(&repo, "HEAD~1", ResetMode::Hard), NOW + 10);
+    assert!(!repo.exists("main.txt"), "--hard took the file with it");
+}
+
+#[test]
+fn checkout_applies_undoes_redoes() {
+    let repo = diverged();
+    let op = Operation::Checkout(CheckoutParams {
+        to: CheckoutTarget::Branch("refs/heads/feature".to_owned()),
+        head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+    });
+    round_trip(&repo, &op);
+    run(&repo, &op, NOW + 10);
+    assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/feature");
+    assert!(repo.exists("feature.txt"));
+}
+
+#[test]
+fn branch_create_applies_undoes_redoes() {
+    let repo = diverged();
+    let op = Operation::BranchCreate(BranchCreateParams {
+        name: "release/1.0".to_owned(),
+        at: id(&repo, "HEAD"),
+        checkout: false,
+    });
+    round_trip(&repo, &op);
+    run(&repo, &op, NOW + 10);
+    assert_eq!(
+        repo.git(&["rev-parse", "refs/heads/release/1.0"]),
+        repo.git(&["rev-parse", "HEAD"])
+    );
+}
+
+#[test]
+fn branch_delete_applies_undoes_redoes() {
+    let repo = diverged();
+    let op = Operation::BranchDelete(RefDeleteParams {
+        name: "refs/heads/feature".to_owned(),
+        expected: id(&repo, "refs/heads/feature"),
+    });
+    round_trip(&repo, &op);
+    run(&repo, &op, NOW + 10);
+    assert!(
+        repo.try_git(&["rev-parse", "--verify", "refs/heads/feature"])
+            .is_err(),
+        "the branch is gone"
+    );
+}
+
+#[test]
+fn tag_create_applies_undoes_redoes() {
+    let repo = diverged();
+    let op = Operation::TagCreate(TagCreateParams {
+        name: "v1.0".to_owned(),
+        at: id(&repo, "HEAD"),
+        message: Some("first release\n".to_owned()),
+    });
+    round_trip(&repo, &op);
+    run(&repo, &op, NOW + 10);
+    assert_eq!(
+        repo.git(&["cat-file", "-t", "refs/tags/v1.0"]),
+        "tag",
+        "an annotated tag object, not a lightweight ref"
+    );
+}
+
+#[test]
+fn tag_delete_applies_undoes_redoes() {
+    let repo = diverged();
+    repo.git(&["tag", "v0.9"]);
+    let op = Operation::TagDelete(RefDeleteParams {
+        name: "refs/tags/v0.9".to_owned(),
+        expected: id(&repo, "refs/tags/v0.9"),
+    });
+    round_trip(&repo, &op);
+}
+
+#[test]
+fn branch_from_stash_applies_undoes_redoes() {
+    let repo = diverged();
+    repo.write("base.txt", b"edited, not committed\n");
+    run(
+        &repo,
+        &Operation::StashPush(StashParams {
+            message: Some("wip".to_owned()),
+            scope: StashScope::All {
+                include_untracked: false,
+            },
+        }),
+        NOW,
+    );
+    let stash = id(&repo, "refs/stash");
+    let op = Operation::BranchFromStash(BranchFromStashParams {
+        name: "wip-branch".to_owned(),
+        index: 0,
+        commit: stash,
+    });
+    let before = state_of(&repo);
+    run(&repo, &op, NOW + 1);
+    assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/wip-branch");
+    assert_eq!(repo.read("base.txt"), b"edited, not committed\n".to_vec());
+
+    undo_to(&repo, NOW + 2);
+    assert_eq!(
+        state_of(&repo),
+        before,
+        "undo put the stash back and removed the branch"
+    );
+}
+
+fn undo_to(repo: &TempRepo, at: i64) {
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let never = Never;
+    let mut ctx = context(&handle, &mut journal, at, &never);
+    undo::undo(&mut ctx, false).unwrap_or_else(|why| panic!("undo: {}", why.explain()));
+}
+
+// ── the ghost equals what git did ───────────────────────────────────────
+
+/// Resolve a plan's target against the ghosts it was drawn with and the
+/// commits git actually made: a `Real` target is itself; a `Ghost` target is
+/// checked by shape, since its synthetic id is not a real commit.
+fn real_of(target: GhostTarget) -> Option<Oid> {
+    match target {
+        GhostTarget::Real(oid) => Some(oid),
+        GhostTarget::Ghost(_) => None,
+    }
+}
+
+/// Every `RefMove` with a `Real` destination landed exactly there.
+fn real_moves_landed(repo: &TempRepo, plan: &PreviewPlan) {
+    for moved in &plan.ref_moves {
+        let Some(expected) = moved.to.and_then(real_of) else {
+            continue;
+        };
+        assert_eq!(
+            id(repo, &moved.name),
+            expected,
+            "{} did not land where the plan said",
+            moved.name
+        );
+    }
+}
+
+#[test]
+fn ghost_matches_git_merge() {
+    let repo = diverged();
+    let op = merge_op(&repo, "refs/heads/feature", FastForward::Never);
+    let plan = preview_of(&repo, &op);
+    let into = id(&repo, "refs/heads/main");
+    let source = id(&repo, "refs/heads/feature");
+
+    assert_eq!(plan.ghosts.len(), 1, "one merge commit");
+    assert_eq!(
+        plan.ghosts[0].parents,
+        vec![GhostTarget::Real(into), GhostTarget::Real(source)]
+    );
+    assert_eq!(plan.ref_moves.len(), 1);
+    assert_eq!(plan.ref_moves[0].to, Some(GhostTarget::Ghost(0)));
+
+    run(&repo, &op, NOW);
+    let made = repo.git(&["rev-parse", "HEAD"]);
+    let parents: Vec<String> = repo
+        .git(&["rev-parse", &format!("{made}^@")])
+        .lines()
+        .map(str::to_owned)
+        .collect();
+    assert_eq!(
+        parents,
+        vec![into.to_string(), source.to_string()],
+        "git's merge has the ghost's parents, in the ghost's order"
+    );
+    assert_eq!(
+        repo.git(&["log", "-1", "--format=%s"]),
+        plan.ghosts[0].subject,
+        "git wrote the subject the ghost promised"
+    );
+}
+
+#[test]
+fn ghost_matches_git_merge_fast_forward() {
+    let repo = ahead();
+    repo.git(&["switch", "-q", "feature"]);
+    let op = merge_op(&repo, "refs/heads/main", FastForward::Default);
+    let plan = preview_of(&repo, &op);
+    assert!(plan.ghosts.is_empty(), "a fast-forward creates no commit");
+    assert_eq!(
+        plan.ref_moves[0].to,
+        Some(GhostTarget::Real(id(&repo, "refs/heads/main")))
+    );
+
+    run(&repo, &op, NOW);
+    real_moves_landed(&repo, &plan);
+    assert!(repo.exists("main.txt"), "the tree came with it");
+}
+
+#[test]
+fn ghost_matches_git_rebase() {
+    let repo = diverged();
+    repo.git(&["switch", "-q", "feature"]);
+    repo.write("second.txt", b"second\n");
+    repo.commit_all("two on feature");
+    let op = rebase_op(&repo, "refs/heads/main");
+    let plan = preview_of(&repo, &op);
+    let onto = id(&repo, "refs/heads/main");
+
+    assert_eq!(plan.ghosts.len(), 2, "two commits replayed");
+    assert_eq!(plan.ghosts[0].parents, vec![GhostTarget::Real(onto)]);
+    assert_eq!(plan.ghosts[1].parents, vec![GhostTarget::Ghost(0)]);
+    let replayed: Vec<Oid> = plan
+        .ghosts
+        .iter()
+        .map(|ghost| ghost.replays.expect("a rebase ghost replays a commit"))
+        .collect();
+
+    run(&repo, &op, NOW);
+    let landed: Vec<String> = repo
+        .git(&["rev-list", "--reverse", "main..feature"])
+        .lines()
+        .map(str::to_owned)
+        .collect();
+    assert_eq!(landed.len(), 2);
+    for (ghost, made) in plan.ghosts.iter().zip(&landed) {
+        assert_eq!(
+            repo.git(&["log", "-1", "--format=%s", made]),
+            ghost.subject,
+            "the replayed commit kept its subject"
+        );
+    }
+    // The replayed commits carry the same patches as the originals.
+    for (original, made) in replayed.iter().zip(&landed) {
+        assert_eq!(
+            patch_id(&repo, &original.to_string()),
+            patch_id(&repo, made),
+            "the patch git replayed is the one the ghost named"
+        );
+    }
+    real_moves_landed(&repo, &plan);
+}
+
+/// `git patch-id`'s id for one commit: the change, independent of its
+/// parents or its own id.
+fn patch_id(repo: &TempRepo, rev: &str) -> String {
+    let show = repo.git(&["show", "--format=", rev]);
+    let output = std::process::Command::new("sh")
+        .arg("-c")
+        .arg(format!(
+            "cd {} && git show --format= {rev} | git patch-id --stable",
+            repo.path().display()
+        ))
+        .output()
+        .expect("patch-id runs");
+    assert!(!show.is_empty(), "the commit has a patch to identify");
+    String::from_utf8_lossy(&output.stdout)
+        .split_whitespace()
+        .next()
+        .expect("patch-id prints an id")
+        .to_owned()
+}
+
+#[test]
+fn ghost_matches_git_cherry_pick() {
+    let repo = diverged();
+    let op = pick_op(&repo, "refs/heads/feature");
+    let plan = preview_of(&repo, &op);
+    let head = id(&repo, "HEAD");
+    assert_eq!(plan.ghosts.len(), 1);
+    assert_eq!(plan.ghosts[0].parents, vec![GhostTarget::Real(head)]);
+    assert_eq!(
+        plan.ghosts[0].replays,
+        Some(id(&repo, "refs/heads/feature"))
+    );
+
+    run(&repo, &op, NOW);
+    assert_eq!(repo.git(&["rev-parse", "HEAD^"]), head.to_string());
+    assert_eq!(
+        repo.git(&["log", "-1", "--format=%s"]),
+        plan.ghosts[0].subject
+    );
+    assert_eq!(
+        patch_id(&repo, "HEAD"),
+        patch_id(&repo, &plan.ghosts[0].replays.unwrap().to_string()),
+        "the same patch landed"
+    );
+}
+
+#[test]
+fn ghost_matches_git_revert() {
+    let repo = diverged();
+    let op = revert_op(&repo, "HEAD");
+    let plan = preview_of(&repo, &op);
+    let head = id(&repo, "HEAD");
+    assert_eq!(plan.ghosts.len(), 1);
+    assert_eq!(plan.ghosts[0].parents, vec![GhostTarget::Real(head)]);
+
+    run(&repo, &op, NOW);
+    assert_eq!(repo.git(&["rev-parse", "HEAD^"]), head.to_string());
+    assert_eq!(
+        repo.git(&["log", "-1", "--format=%s"]),
+        plan.ghosts[0].subject,
+        "git's own `Revert \"…\"` subject is what the ghost drew"
+    );
+}
+
+#[test]
+fn ghost_matches_git_reset() {
+    let repo = diverged();
+    let to = id(&repo, "HEAD~1");
+    let op = reset_op(&repo, "HEAD~1", ResetMode::Hard);
+    let plan = preview_of(&repo, &op);
+    assert!(plan.ghosts.is_empty(), "a reset creates nothing");
+    assert_eq!(plan.ref_moves.len(), 1);
+    assert_eq!(plan.ref_moves[0].to, Some(GhostTarget::Real(to)));
+    assert_eq!(plan.undo, UndoNote::Undoable);
+
+    run(&repo, &op, NOW);
+    real_moves_landed(&repo, &plan);
+}
+
+#[test]
+fn ghost_oids_do_not_change_between_two_previews_of_one_operation() {
+    let repo = diverged();
+    let op = merge_op(&repo, "refs/heads/feature", FastForward::Never);
+    let first = preview_of(&repo, &op);
+    let second = preview_of(&repo, &op);
+    assert_eq!(
+        first
+            .ghosts
+            .iter()
+            .map(|ghost| ghost.oid)
+            .collect::<Vec<_>>(),
+        second
+            .ghosts
+            .iter()
+            .map(|ghost| ghost.oid)
+            .collect::<Vec<_>>(),
+        "the same plan draws the same rows"
+    );
+    assert!(
+        repo.try_git(&["cat-file", "-e", &first.ghosts[0].oid.to_string()])
+            .is_err(),
+        "a ghost is not an object in the repository"
+    );
+}
+
+// ── the commands are the plan's own ─────────────────────────────────────
+
+/// The one rule that keeps the box honest: what it prints is what `plan`
+/// produced, not a second rendering that can drift from it.
+fn box_shows_the_lines_that_run(repo: &TempRepo, op: &Operation) {
+    let handle = repo.open();
+    let facts = facts_for(&handle, op);
+    let expected: Vec<String> = op
+        .plan(&facts)
+        .iter()
+        .map(Invocation::command_line)
+        .collect();
+    let plan = preview::plan(&handle, &git_version(), op, &facts, &Never)
+        .unwrap_or_else(|why| panic!("{}: {}", op.describe(), why.explain()));
+    assert!(!plan.commands.is_empty(), "{}", op.describe());
+    assert_eq!(
+        plan.commands,
+        expected,
+        "{}: the box must show the lines that run",
+        op.describe()
+    );
+}
+
+#[test]
+fn preview_commands_come_from_plan() {
+    let repo = diverged();
+    repo.git(&["tag", "v0.9"]);
+    for op in local_kinds(&repo) {
+        box_shows_the_lines_that_run(&repo, &op);
+    }
+
+    // A rebase, from the branch it replays.
+    let rebasing = diverged();
+    rebasing.git(&["switch", "-q", "feature"]);
+    box_shows_the_lines_that_run(&rebasing, &rebase_op(&rebasing, "refs/heads/main"));
+
+    // And a branch from a stash, which needs a stash to exist.
+    let stashed = diverged();
+    stashed.write("base.txt", b"wip\n");
+    run(
+        &stashed,
+        &Operation::StashPush(StashParams {
+            message: None,
+            scope: StashScope::All {
+                include_untracked: false,
+            },
+        }),
+        NOW,
+    );
+    box_shows_the_lines_that_run(
+        &stashed,
+        &Operation::BranchFromStash(BranchFromStashParams {
+            name: "from-stash".to_owned(),
+            index: 0,
+            commit: id(&stashed, "refs/stash"),
+        }),
+    );
+}
+
+/// Every history kind a `diverged()` repository can run as it stands. The
+/// rebase and the branch-from-stash need their own repositories and are
+/// built by their callers.
+fn local_kinds(repo: &TempRepo) -> Vec<Operation> {
+    vec![
+        merge_op(repo, "refs/heads/feature", FastForward::Never),
+        pick_op(repo, "refs/heads/feature"),
+        revert_op(repo, "HEAD"),
+        reset_op(repo, "HEAD~1", ResetMode::Mixed),
+        Operation::Checkout(CheckoutParams {
+            to: CheckoutTarget::Branch("refs/heads/feature".to_owned()),
+            head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+        }),
+        Operation::BranchCreate(BranchCreateParams {
+            name: "new".to_owned(),
+            at: id(repo, "HEAD"),
+            checkout: false,
+        }),
+        Operation::BranchDelete(RefDeleteParams {
+            name: "refs/heads/feature".to_owned(),
+            expected: id(repo, "refs/heads/feature"),
+        }),
+        Operation::TagCreate(TagCreateParams {
+            name: "v2.0".to_owned(),
+            at: id(repo, "HEAD"),
+            message: None,
+        }),
+        Operation::TagDelete(RefDeleteParams {
+            name: "refs/tags/v0.9".to_owned(),
+            expected: id(repo, "refs/tags/v0.9"),
+        }),
+    ]
+}
+
+// ── the conflict span ───────────────────────────────────────────────────
+
+/// The three things a stop hands back, or a panic naming what came instead.
+fn conflict_of(error: ApplyError) -> (JournalEntry, InProgress, Vec<PathBuf>) {
+    match error {
+        ApplyError::Conflicted { entry, kind, paths } => (*entry, kind, paths),
+        other => panic!("expected a conflict, got {other:?}"),
+    }
+}
+
+/// How many lines the journal file holds: two per finished entry, one for
+/// an operation that stopped and has not finished yet (§6.1).
+fn journal_lines(repo: &TempRepo) -> usize {
+    std::fs::read_to_string(repo.path().join(".git/graft/undo-journal.jsonl"))
+        .expect("the journal reads")
+        .lines()
+        .count()
+}
+
+/// The stop itself: one `Pending` entry, one journal line, git's own merge
+/// state live, and neither continuing nor staging the unresolved file
+/// allowed until the markers are gone.
+fn a_merge_that_stops_on_shared_txt(repo: &TempRepo) -> JournalEntry {
+    let op = merge_op(repo, "refs/heads/feature", FastForward::Never);
+    let (entry, kind, paths) = conflict_of(try_run(repo, &op, NOW).expect_err("it conflicts"));
+    assert_eq!(kind, InProgress::Merge);
+    assert_eq!(paths, vec![PathBuf::from("shared.txt")]);
+    assert_eq!(entry.status, EntryStatus::Pending);
+    assert!(
+        repo.exists(".git/MERGE_HEAD"),
+        "git's own state says the merge is live"
+    );
+    assert_eq!(
+        journal_lines(repo),
+        1,
+        "a stopped operation writes no outcome line"
+    );
+    assert_eq!(entries(repo).len(), 1);
+    assert_eq!(entries(repo)[0].status, EntryStatus::Pending);
+
+    // Continue before resolving: refused before git is asked.
+    let refused = run_resume(repo, Resume::Continue, NOW + 1).expect_err("unmerged");
+    assert!(
+        matches!(refused, ApplyError::Refused(Refusal::Unmerged { .. })),
+        "{refused:?}"
+    );
+    // Markers still in the file: staging it is refused by name.
+    staging_the_markers_is_refused(repo, "shared.txt", NOW + 2);
+    entry
+}
+
+#[test]
+fn conflict_span_is_one_entry_and_undoes_to_before_the_merge() {
+    let repo = conflicting();
+    let before = state_of(&repo);
+    let before_main = id(&repo, "refs/heads/main");
+    let entry = a_merge_that_stops_on_shared_txt(&repo);
+
+    // Resolved and staged outside the journal, so the only entry in it is
+    // the merge itself: what `u` must take back is the whole span, and a
+    // journaled "mark resolved" of its own would be the newer entry.
+    repo.write("shared.txt", b"resolved\n");
+    repo.git(&["add", "shared.txt"]);
+
+    // Now it continues, and the entry finally gets its outcome line.
+    let applied = run_resume(&repo, Resume::Continue, NOW + 4).expect("the merge finishes");
+    assert_eq!(
+        applied.entry.id, entry.id,
+        "the same entry, start to finish"
+    );
+    assert_eq!(applied.entry.status, EntryStatus::Committed);
+    assert!(!repo.exists(".git/MERGE_HEAD"));
+    assert_eq!(journal_lines(&repo), 2, "one entry, one outcome");
+    assert_eq!(
+        entries(&repo)
+            .iter()
+            .filter(|held| held.kind == OperationKind::Merge)
+            .count(),
+        1,
+        "one entry for the whole merge, not two"
+    );
+
+    // And `u` takes the whole span back.
+    undo_to(&repo, NOW + 5);
+    assert_eq!(id(&repo, "refs/heads/main"), before_main);
+    assert_eq!(state_of(&repo), before, "back to before the merge, exactly");
+}
+
+/// Staging a file that still has `<<<<<<< ` in it is refused, and the
+/// refusal names the file rather than reporting a git error.
+fn staging_the_markers_is_refused(repo: &TempRepo, path: &str, at: i64) {
+    let stage = Operation::Stage(graft_ops::operation::Target::Paths(vec![path.into()]));
+    let refused = try_run(repo, &stage, at).expect_err("markers remain");
+    let ApplyError::Refused(Refusal::MarkersRemain { path: named }) = refused else {
+        panic!("expected MarkersRemain, got {refused:?}");
+    };
+    assert_eq!(named, PathBuf::from(path));
+}
+
+#[test]
+fn abort_restores_before_state() {
+    let repo = conflicting();
+    let before = state_of(&repo);
+    let op = merge_op(&repo, "refs/heads/feature", FastForward::Never);
+    try_run(&repo, &op, NOW).expect_err("the merge conflicts");
+
+    let applied = run_resume(&repo, Resume::Abort, NOW + 1).expect("the abort runs");
+    assert_eq!(
+        applied.entry.status,
+        EntryStatus::Aborted {
+            reason: "aborted".to_owned()
+        }
+    );
+    assert!(!repo.exists(".git/MERGE_HEAD"));
+    assert_eq!(
+        state_of(&repo),
+        before,
+        "abort put the tree and the refs back, byte for byte"
+    );
+}
+
+#[test]
+fn recovery_leaves_a_live_conflict_alone() {
+    let repo = conflicting();
+    let op = merge_op(&repo, "refs/heads/feature", FastForward::Never);
+    let (entry, _, _) = conflict_of(try_run(&repo, &op, NOW).expect_err("it conflicts"));
+
+    // A relaunch: recovery runs over a journal with a Pending entry whose
+    // operation git still says is live.
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let never = Never;
+    let mut ctx = context(&handle, &mut journal, NOW + 1, &never);
+    let recovered = recover_interrupted(&mut ctx).expect("recovery runs");
+    assert_eq!(recovered.live, vec![entry.id.clone()]);
+    assert!(recovered.closed.is_empty(), "nothing was closed");
+    drop(ctx);
+    assert_eq!(
+        journal
+            .entries()
+            .iter()
+            .find(|held| held.id == entry.id)
+            .expect("the entry is there")
+            .status,
+        EntryStatus::Pending,
+        "the banner takes over; recovery does not close it"
+    );
+
+    // Contrast: with git's state cleared, the same entry closes as usual.
+    repo.git(&["merge", "--abort"]);
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let mut ctx = context(&handle, &mut journal, NOW + 2, &never);
+    let recovered = recover_interrupted(&mut ctx).expect("recovery runs");
+    assert!(recovered.live.is_empty());
+    assert_eq!(recovered.closed, vec![entry.id]);
+}
+
+#[test]
+fn rebase_conflicts_twice_same_entry() {
+    let repo = TempRepo::init();
+    repo.write("shared.txt", b"base\n");
+    repo.commit_all("one");
+    repo.git(&["branch", "feature"]);
+    repo.write("shared.txt", b"main\n");
+    repo.commit_all("main's change");
+    repo.git(&["switch", "-q", "feature"]);
+    repo.write("shared.txt", b"feature one\n");
+    repo.commit_all("feature one");
+    repo.write("shared.txt", b"feature two\n");
+    repo.commit_all("feature two");
+
+    let op = rebase_op(&repo, "refs/heads/main");
+    let (entry, kind, _) =
+        conflict_of(try_run(&repo, &op, NOW).expect_err("the first commit conflicts"));
+    assert_eq!(kind, InProgress::Rebase);
+
+    repo.write("shared.txt", b"resolved one\n");
+    repo.git(&["add", "shared.txt"]);
+    let (again, still, _) =
+        conflict_of(run_resume(&repo, Resume::Continue, NOW + 1).expect_err("it stops again"));
+    assert_eq!(again.id, entry.id, "one entry across both stops");
+    assert_eq!(still, InProgress::Rebase);
+    assert_eq!(
+        entries(&repo).len(),
+        1,
+        "still one entry, still with no outcome"
+    );
+
+    repo.write("shared.txt", b"resolved two\n");
+    repo.git(&["add", "shared.txt"]);
+    let done = run_resume(&repo, Resume::Continue, NOW + 2).expect("the rebase finishes");
+    assert_eq!(done.entry.id, entry.id);
+    assert_eq!(done.entry.status, EntryStatus::Committed);
+    assert!(!repo.exists(".git/rebase-merge"));
+}
+
+// ── refusals the preview is pinned by ───────────────────────────────────
+
+#[test]
+fn stale_preview_is_refused() {
+    // A tip that moved between the preview and the confirm.
+    let repo = diverged();
+    let op = merge_op(&repo, "refs/heads/feature", FastForward::Never);
+    repo.write("late.txt", b"a commit after the preview\n");
+    repo.commit_all("later");
+    let refused = try_run(&repo, &op, NOW).expect_err("the tip moved");
+    assert!(
+        matches!(
+            refused,
+            ApplyError::Refused(Refusal::Moved { ref name }) if name == "refs/heads/main"
+        ),
+        "{refused:?}"
+    );
+    assert_eq!(
+        entries(&repo).len(),
+        0,
+        "a refusal journals nothing and runs nothing"
+    );
+
+    // A rebase over a dirty tracked file.
+    let dirty = diverged();
+    dirty.git(&["switch", "-q", "feature"]);
+    let op = rebase_op(&dirty, "refs/heads/main");
+    dirty.write("base.txt", b"edited, not committed\n");
+    let refused = try_run(&dirty, &op, NOW).expect_err("the tree is dirty");
+    assert!(
+        matches!(
+            refused,
+            ApplyError::Refused(Refusal::DirtyTree { count: 1 })
+        ),
+        "{refused:?}"
+    );
+    assert_eq!(
+        dirty.read("base.txt"),
+        b"edited, not committed\n".to_vec(),
+        "the edit is untouched"
+    );
+
+    // An untracked file never counts as dirty (hard choice 4).
+    dirty.write("base.txt", b"base\n");
+    dirty.write("scratch.tmp", b"untracked\n");
+    try_run(&dirty, &rebase_op(&dirty, "refs/heads/main"), NOW + 1)
+        .expect("an untracked file does not block a rebase");
+}
+
+#[test]
+fn a_fast_forward_only_merge_of_diverged_branches_has_no_preview() {
+    let repo = diverged();
+    let op = merge_op(&repo, "refs/heads/feature", FastForward::Only);
+    let refused = try_preview(&repo, &op).expect_err("they have diverged");
+    assert!(
+        matches!(
+            refused,
+            preview::PreviewError::Refused(Refusal::NotFastForward { .. })
+        ),
+        "{refused:?}"
+    );
+}
+
+#[test]
+fn a_merge_that_would_change_nothing_says_so() {
+    let repo = ahead();
+    let op = merge_op(&repo, "refs/heads/feature", FastForward::Default);
+    let plan = preview_of(&repo, &op);
+    assert!(plan.ghosts.is_empty());
+    assert!(plan.ref_moves.is_empty());
+    assert_eq!(plan.worktree, WorktreeEffect::Untouched);
+    assert!(matches!(plan.undo, UndoNote::NotUndoable(_)));
+}
+
+// ── the forecast ────────────────────────────────────────────────────────
+
+#[test]
+fn forecast_names_the_conflicting_path() {
+    let clean = diverged();
+    let plan = preview_of(
+        &clean,
+        &merge_op(&clean, "refs/heads/feature", FastForward::Never),
+    );
+    assert_eq!(plan.conflicts, ConflictForecast::Clean);
+
+    let bad = conflicting();
+    let plan = preview_of(
+        &bad,
+        &merge_op(&bad, "refs/heads/feature", FastForward::Never),
+    );
+    assert_eq!(
+        plan.conflicts,
+        ConflictForecast::Likely {
+            paths: vec!["shared.txt".into()]
+        },
+        "the forecast names the file, and says may, not will"
+    );
+    // And it is a forecast, not a promise: git really does stop there.
+    let error = try_run(
+        &bad,
+        &merge_op(&bad, "refs/heads/feature", FastForward::Never),
+        NOW,
+    )
+    .expect_err("the merge conflicts");
+    assert!(matches!(error, ApplyError::Conflicted { .. }));
+
+    // A rebase whose replay conflicts is forecast the same way.
+    let rebasing = conflicting();
+    rebasing.git(&["switch", "-q", "feature"]);
+    let plan = preview_of(&rebasing, &rebase_op(&rebasing, "refs/heads/main"));
+    assert_eq!(
+        plan.conflicts,
+        ConflictForecast::Likely {
+            paths: vec!["shared.txt".into()]
+        }
+    );
+}
+
+#[test]
+fn a_capped_range_is_not_checked_rather_than_called_clean() {
+    let repo = TempRepo::init();
+    repo.write("base.txt", b"base\n");
+    repo.commit_all("one");
+    repo.git(&["branch", "long"]);
+    repo.write("main.txt", b"main\n");
+    repo.commit_all("on main");
+    repo.git(&["switch", "-q", "long"]);
+    for step in 0..preview::FORECAST_CAP + 2 {
+        repo.write(&format!("f{step}.txt"), b"x\n");
+        repo.commit_all(&format!("commit {step}"));
+    }
+    let plan = preview_of(&repo, &rebase_op(&repo, "refs/heads/main"));
+    assert!(
+        matches!(plan.conflicts, ConflictForecast::NotChecked(ref why) if why.contains("50")),
+        "{:?}",
+        plan.conflicts
+    );
+    assert_eq!(
+        plan.ghosts.len(),
+        preview::FORECAST_CAP,
+        "the drawn rows stop at the cap too"
+    );
+}
+
+// ── the time machine ────────────────────────────────────────────────────
+
+#[test]
+fn time_machine_reverts_in_order() {
+    let repo = diverged();
+    let start = state_of(&repo);
+    let first = run(&repo, &pick_op(&repo, "refs/heads/feature"), NOW).id;
+    run(
+        &repo,
+        &Operation::BranchCreate(BranchCreateParams {
+            name: "second".to_owned(),
+            at: id(&repo, "HEAD"),
+            checkout: false,
+        }),
+        NOW + 1,
+    );
+    run(
+        &repo,
+        &Operation::TagCreate(TagCreateParams {
+            name: "third".to_owned(),
+            at: id(&repo, "HEAD"),
+            message: None,
+        }),
+        NOW + 2,
+    );
+    assert_ne!(state_of(&repo), start);
+
+    // The preview first: three steps, drawn from the plans that will run.
+    let plan = preview::plan_revert_to(&entries(&repo), &first).expect("a plan");
+    assert!(plan.description.contains("3 steps"), "{}", plan.description);
+    assert_eq!(plan.worktree, WorktreeEffect::RestoredFromBackup);
+    assert!(plan.ghosts.is_empty(), "nothing is created by going back");
+
+    let done = revert_to(&repo, &first, NOW + 3).expect("the revert runs");
+    assert_eq!(done.len(), 3, "one journaled step per operation");
+    assert_eq!(
+        state_of(&repo),
+        start,
+        "the repository is back where it started"
+    );
+    assert_eq!(
+        entries(&repo)
+            .iter()
+            .filter(|entry| entry.kind == OperationKind::Undo)
+            .count(),
+        3,
+        "three Undo entries, so U walks them back one at a time"
+    );
+
+    // And `U` ×3 puts each step forward again, one at a time.
+    for step in 0..3 {
+        let handle = repo.open();
+        let mut journal = journal_for(&handle);
+        let never = Never;
+        let mut ctx = context(&handle, &mut journal, NOW + 10 + step, &never);
+        undo::redo(&mut ctx, false).unwrap_or_else(|why| panic!("redo: {}", why.explain()));
+    }
+    assert_eq!(
+        repo.git(&["rev-parse", "refs/tags/third"]),
+        repo.git(&["rev-parse", "HEAD"]),
+        "the third step is back"
+    );
+}
+
+fn revert_to(repo: &TempRepo, target: &EntryId, at: i64) -> Result<Vec<Applied>, UndoError> {
+    let handle = repo.open();
+    let mut journal = journal_for(&handle);
+    let never = Never;
+    let mut ctx = context(&handle, &mut journal, at, &never);
+    undo::revert_to(&mut ctx, target, false)
+}
+
+#[test]
+fn a_time_machine_step_that_cannot_be_inverted_stops_before_anything_runs() {
+    let repo = diverged();
+    let state = state_of(&repo);
+    let unknown = EntryId::new(NOW, [7; 10]);
+    let error = revert_to(&repo, &unknown, NOW + 1).expect_err("no such entry");
+    assert!(matches!(error, UndoError::Nothing(_)), "{error:?}");
+    assert_eq!(state_of(&repo), state, "nothing ran");
+}
+
+// ── the guided re-push ──────────────────────────────────────────────────
+
+/// A work clone whose branch has one commit the remote also has, pushed
+/// after `old_tip`: the shape the Command Log offers a re-push from.
+fn a_remote_that_moved_past_its_old_tip() -> (LocalRemote, String, Oid, Oid) {
+    let remote = LocalRemote::new(Shape::Linear).expect("a local remote");
+    let branch = format!("refs/heads/{}", remote.default_branch());
+    let work = remote.work().to_owned();
+    let old_tip = rev(&remote, &work, "HEAD");
+    remote
+        .git(&work, &["commit", "--allow-empty", "-q", "-m", "one more"])
+        .expect("a commit");
+    remote
+        .git(&work, &["push", "-q", "origin", "HEAD"])
+        .expect("the push lands");
+    let pushed = rev(&remote, remote.bare(), &branch);
+    assert_ne!(pushed, old_tip, "the remote moved forward");
+    (remote, branch, old_tip, pushed)
+}
+
+/// One `rev-parse` in one of the two repositories, as an id.
+fn rev(remote: &LocalRemote, at: &Path, what: &str) -> Oid {
+    Oid::from_hex(
+        remote
+            .git(at, &["rev-parse", what])
+            .expect("rev-parse")
+            .trim(),
+    )
+    .expect("a full id")
+}
+
+#[test]
+fn repush_old_tip_with_lease() {
+    let (remote, branch, old_tip, pushed) = a_remote_that_moved_past_its_old_tip();
+    let work = remote.work().to_owned();
+    let handle = RepoHandle::open(&work).expect("the work clone opens");
+    let params = PushParams {
+        branch: branch.clone(),
+        remote: "origin".to_owned(),
+        remote_branch: branch.clone(),
+        set_upstream: false,
+        lease: Some(Lease { expected: pushed }),
+        source_commit: Some(old_tip),
+    };
+
+    // A re-push without a lease is refused outright (ADR-0038 §4).
+    let bare = Operation::Push(PushParams {
+        lease: None,
+        ..params.clone()
+    });
+    assert_eq!(
+        bare.check(&facts_for(&handle, &bare)),
+        Err(Refusal::RepushNeedsLease),
+        "never a force without a lease"
+    );
+
+    let op = Operation::Push(params);
+    the_box_says_it_rewrites_the_remote(&handle, &op, old_tip, remote.default_branch());
+
+    let mut journal = journal_for(&handle);
+    let never = Never;
+    let mut ctx = context(&handle, &mut journal, NOW, &never);
+    apply(&mut ctx, &op).unwrap_or_else(|why| panic!("{}", why.explain()));
+    drop(ctx);
+
+    assert_eq!(
+        rev(&remote, remote.bare(), &branch),
+        old_tip,
+        "the remote branch is back at the old tip"
+    );
+    assert_eq!(
+        rev(&remote, &work, &branch),
+        pushed,
+        "the local branch kept every commit it had"
+    );
+}
+
+/// ADR-0038 §4's three requirements on the box, in one place: the line
+/// names the commit, the command carries a lease and nothing else, and the
+/// undo note says plainly that `u` will not bring the remote back.
+fn the_box_says_it_rewrites_the_remote(
+    handle: &RepoHandle,
+    op: &Operation,
+    source: Oid,
+    branch: &str,
+) {
+    assert_eq!(
+        op.describe(),
+        format!(
+            "force-push {} → origin/{branch} (with lease)",
+            &source.to_string()[..7]
+        ),
+        "the line names the commit, not the branch"
+    );
+    let facts = facts_for(handle, op);
+    let plan = preview::plan(handle, &git_version(), op, &facts, &Never).expect("a plan");
+    assert!(
+        matches!(plan.undo, UndoNote::NotUndoable(ref why) if why.contains("everyone")),
+        "{:?}",
+        plan.undo
+    );
+    assert_eq!(plan.commands.len(), 1);
+    assert!(
+        plan.commands[0].contains("--force-with-lease="),
+        "{}",
+        plan.commands[0]
+    );
+    assert!(
+        !plan.commands[0].contains("--force "),
+        "never a bare force: {}",
+        plan.commands[0]
+    );
+}
+
+#[test]
+fn a_repush_of_a_commit_that_is_not_on_the_branch_is_refused() {
+    let (remote, branch, _, pushed) = a_remote_that_moved_past_its_old_tip();
+    let work = remote.work().to_owned();
+    let handle = RepoHandle::open(&work).expect("the work clone opens");
+
+    // A commit on a side branch: real, but not an ancestor of the branch.
+    remote
+        .git(&work, &["switch", "-q", "-c", "side"])
+        .expect("a side branch");
+    remote
+        .git(&work, &["commit", "--allow-empty", "-q", "-m", "elsewhere"])
+        .expect("a commit");
+    let elsewhere = rev(&remote, &work, "HEAD");
+    remote
+        .git(&work, &["switch", "-q", "-"])
+        .expect("back to the default branch");
+
+    let op = Operation::Push(PushParams {
+        branch: branch.clone(),
+        remote: "origin".to_owned(),
+        remote_branch: branch,
+        set_upstream: false,
+        lease: Some(Lease { expected: pushed }),
+        source_commit: Some(elsewhere),
+    });
+    let facts = facts_for(&handle, &op);
+    let refused =
+        preview::plan(&handle, &git_version(), &op, &facts, &Never).expect_err("not on the branch");
+    assert!(
+        matches!(
+            refused,
+            preview::PreviewError::Refused(Refusal::NotOnBranch { .. })
+        ),
+        "{refused:?}"
+    );
+}
+
+// ── the working tree, as the box describes it ───────────────────────────
+
+#[test]
+fn a_hard_reset_over_dirty_files_says_loses_and_names_them() {
+    let repo = diverged();
+    repo.write("base.txt", b"edited\n");
+    let op = reset_op(&repo, "HEAD~1", ResetMode::Hard);
+    let plan = preview_of(&repo, &op);
+    assert_eq!(
+        plan.worktree,
+        WorktreeEffect::Lost {
+            paths: vec!["base.txt".into()]
+        }
+    );
+    assert_eq!(plan.undo, UndoNote::Undoable, "the backup covers it (§6.3)");
+
+    // A soft or mixed reset leaves the tree alone and says so.
+    let soft = preview_of(&repo, &reset_op(&repo, "HEAD~1", ResetMode::Soft));
+    assert_eq!(soft.worktree, WorktreeEffect::Untouched);
+
+    // And the loss really is recoverable: run it, then `u`.
+    let before: RepoState = state_of(&repo);
+    run(&repo, &op, NOW);
+    assert_eq!(
+        repo.read("base.txt"),
+        b"base\n".to_vec(),
+        "the edit is gone"
+    );
+    undo_to(&repo, NOW + 1);
+    assert_eq!(state_of(&repo), before, "the backup gave it back");
+}
+
+#[test]
+fn a_checkout_moves_head_and_names_the_files_it_rewrites() {
+    let repo = diverged();
+    let op = Operation::Checkout(CheckoutParams {
+        to: CheckoutTarget::Branch("refs/heads/feature".to_owned()),
+        head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+    });
+    let plan = preview_of(&repo, &op);
+    assert_eq!(
+        plan.head,
+        Some(HeadMove::ToBranch("refs/heads/feature".to_owned()))
+    );
+    let WorktreeEffect::Updated { paths, more } = &plan.worktree else {
+        panic!("a checkout rewrites files: {:?}", plan.worktree);
+    };
+    assert!(!more);
+    let mut named: Vec<String> = paths
+        .iter()
+        .map(|path| path.display().to_string())
+        .collect();
+    named.sort();
+    assert_eq!(named, vec!["feature.txt", "main.txt"]);
+
+    run(&repo, &op, NOW);
+    for path in &named {
+        // Each named path really did change state on disk.
+        assert_ne!(
+            repo.exists(path),
+            path == "main.txt",
+            "{path} was rewritten by the checkout"
+        );
+    }
+}
+
+#[test]
+fn deleting_a_ref_draws_it_going_away() {
+    let repo = diverged();
+    let expected = id(&repo, "refs/heads/feature");
+    let op = Operation::BranchDelete(RefDeleteParams {
+        name: "refs/heads/feature".to_owned(),
+        expected,
+    });
+    let plan = preview_of(&repo, &op);
+    assert_eq!(plan.ref_moves.len(), 1);
+    assert_eq!(plan.ref_moves[0].from, Some(expected));
+    assert_eq!(plan.ref_moves[0].to, None, "gone, not moved");
+}
+
+// ── the three cases the group left untested (m5/07 job 2) ───────────────
+//
+// The behaviours these pin were recorded against git 2.54 in a throwaway
+// repository first: `.scratch/m5-history-and-ghost-preview/plan-behaviours.txt`
+// and `plan-behaviours-2.txt`. Two of the ticket's own premises did not
+// survive that record, and the tests below assert what git actually does,
+// not what the ticket assumed.
+
+/// `main` with a merge commit at its tip: `feature`'s file is in the tree
+/// because the merge brought it, `main`'s own file because it was already
+/// there. Reverting the merge with mainline 1 must take the first away and
+/// leave the second.
+fn merged() -> TempRepo {
+    let repo = diverged();
+    let op = merge_op(&repo, "refs/heads/feature", FastForward::Never);
+    run(&repo, &op, NOW - 100);
+    repo
+}
+
+/// A revert of a merge commit, `-m 1`, run for real and read back out of
+/// the tree — the ticket's case (c).
+#[test]
+fn revert_of_a_merge_with_mainline_one_removes_the_merged_side() {
+    let repo = merged();
+    let merge = id(&repo, "HEAD");
+    assert_eq!(
+        repo.git(&["rev-list", "--parents", "-n1", "HEAD"])
+            .split_whitespace()
+            .count(),
+        3,
+        "the fixture's tip really is a two-parent merge"
+    );
+    assert!(repo.exists("feature.txt"), "the merge brought it in");
+    assert!(repo.exists("main.txt"));
+
+    // Graft writes the merge's own message, so the subject is read rather
+    // than assumed.
+    let merge_subject = repo.git(&["log", "-1", "--format=%s", "HEAD"]);
+    let op = Operation::Revert(RevertParams {
+        commit: merge,
+        subject: merge_subject.clone(),
+        mainline: Some(1),
+        parents: 2,
+        parent: Some(id(&repo, "HEAD^1")),
+        head: head_tip(&repo),
+    });
+    assert_eq!(
+        op.describe(),
+        format!("revert {} \"{merge_subject}\"", &merge.to_string()[..7])
+    );
+
+    let entry = run(&repo, &op, NOW);
+    assert_eq!(entry.kind, OperationKind::Revert);
+    // Read back out of git, not out of the returned value.
+    assert_eq!(
+        repo.git(&["log", "-1", "--format=%s"]),
+        format!("Revert \"{merge_subject}\"")
+    );
+    assert!(
+        !repo.exists("feature.txt"),
+        "mainline 1 keeps main's side and drops feature's"
+    );
+    assert!(repo.exists("main.txt"), "main's own side stays");
+    assert_eq!(
+        repo.git(&["rev-parse", "HEAD^"]),
+        merge.to_string(),
+        "the revert sits on the merge"
+    );
+}
+
+/// The same operation, all the way round: undo puts the merged side back,
+/// redo takes it away again.
+#[test]
+fn revert_of_a_merge_undoes_and_redoes() {
+    let repo = merged();
+    let merge = id(&repo, "HEAD");
+    let op = Operation::Revert(RevertParams {
+        commit: merge,
+        subject: repo.git(&["log", "-1", "--format=%s", "HEAD"]),
+        mainline: Some(1),
+        parents: 2,
+        parent: Some(id(&repo, "HEAD^1")),
+        head: head_tip(&repo),
+    });
+    round_trip(&repo, &op);
+}
+
+/// The Ghost Preview of a merge revert says the same thing the revert then
+/// does: one ghost on `HEAD`, `HEAD`'s branch moving to it, and the commands
+/// that actually run.
+#[test]
+fn the_ghost_of_a_merge_revert_matches_git() {
+    let repo = merged();
+    let merge = id(&repo, "HEAD");
+    let op = Operation::Revert(RevertParams {
+        commit: merge,
+        subject: repo.git(&["log", "-1", "--format=%s", "HEAD"]),
+        mainline: Some(1),
+        parents: 2,
+        parent: Some(id(&repo, "HEAD^1")),
+        head: head_tip(&repo),
+    });
+    let plan = preview_of(&repo, &op);
+    assert_eq!(plan.ghosts.len(), 1, "one commit is made");
+    assert_eq!(plan.ghosts[0].parents, vec![GhostTarget::Real(merge)]);
+    assert_eq!(plan.ref_moves.len(), 1);
+    assert_eq!(plan.ref_moves[0].name, "refs/heads/main");
+    assert_eq!(plan.ref_moves[0].to, Some(GhostTarget::Ghost(0)));
+    // `-m 1` is in the lines the box shows, and they are the lines that run.
+    assert!(
+        plan.commands.iter().any(|line| line.contains("-m 1")),
+        "{:?}",
+        plan.commands
+    );
+
+    run(&repo, &op, NOW);
+    assert_eq!(
+        repo.git(&["log", "-1", "--format=%s"]),
+        plan.ghosts[0].subject,
+        "the ghost's subject is the subject git wrote"
+    );
+    assert_eq!(
+        repo.git(&["rev-parse", "HEAD^"]),
+        merge.to_string(),
+        "the ghost's parent is the commit git built on"
+    );
+}
+
+/// `check`'s mainline rules, both ways, and the fact behind them: git 2.54
+/// **accepts** `-m 1` on a non-merge (older gits refused), so this refusal
+/// is Graft's own, not a repeat of git's. A merge with no mainline is
+/// refused by git too.
+#[test]
+fn mainline_is_refused_on_a_non_merge_and_required_on_a_merge() {
+    let repo = merged();
+    let merge = id(&repo, "HEAD");
+    let plain = id(&repo, "refs/heads/feature");
+    let handle = repo.open();
+
+    let refuse = |params: RevertParams| {
+        let op = Operation::Revert(params);
+        let facts = facts_for(&handle, &op);
+        op.check(&facts).expect_err("this one must be refused")
+    };
+
+    // A mainline on a commit with one parent.
+    assert!(matches!(
+        refuse(RevertParams {
+            commit: plain,
+            subject: "one on feature".to_owned(),
+            mainline: Some(1),
+            parents: 1,
+            parent: Some(id(&repo, "refs/heads/feature^")),
+            head: head_tip(&repo),
+        }),
+        Refusal::MainlineOnNonMerge
+    ));
+    // A mainline a merge has not got.
+    assert!(matches!(
+        refuse(RevertParams {
+            commit: merge,
+            subject: repo.git(&["log", "-1", "--format=%s", "HEAD"]),
+            mainline: Some(3),
+            parents: 2,
+            parent: Some(id(&repo, "HEAD^1")),
+            head: head_tip(&repo),
+        }),
+        Refusal::MainlineOnNonMerge
+    ));
+    // A merge with none at all.
+    assert!(matches!(
+        refuse(RevertParams {
+            commit: merge,
+            subject: repo.git(&["log", "-1", "--format=%s", "HEAD"]),
+            mainline: None,
+            parents: 2,
+            parent: Some(id(&repo, "HEAD^1")),
+            head: head_tip(&repo),
+        }),
+        Refusal::MergeNeedsMainline
+    ));
+
+    // The fact the first refusal rests on: git itself would have run it.
+    // A throwaway clone, so the assertion does not disturb the repository
+    // the other assertions read.
+    let scratch = TempRepo::init();
+    scratch.write("a.txt", b"one\n");
+    scratch.commit_all("one");
+    scratch.write("a.txt", b"two\n");
+    scratch.commit_all("two");
+    assert!(
+        scratch
+            .try_git(&["revert", "--no-edit", "-m", "1", "HEAD"])
+            .is_ok(),
+        "git 2.54 accepts -m on a non-merge, so Graft's refusal is its own \
+         (recorded in .scratch/m5-history-and-ghost-preview/plan-behaviours-2.txt)"
+    );
+}
+
+/// The ticket's case (d): the compare-and-swap on `update-ref`, against a
+/// ref that moved under it.
+///
+/// The drift rail (§6.7) catches this first and asks the user. This is what
+/// happens when the user says go ahead anyway: the swap itself is the last
+/// line of defence, it refuses, and the ref is left exactly where the other
+/// writer put it.
+#[test]
+fn a_forced_undo_still_refuses_when_the_ref_moved_under_it() {
+    let repo = diverged();
+    let op = reset_op(&repo, "refs/heads/main~1", ResetMode::Hard);
+    run(&repo, &op, NOW);
+    let after_reset = id(&repo, "refs/heads/main");
+
+    // Someone else moves `main` behind Graft's back — a shell, another
+    // process — to a commit the entry never saw.
+    repo.git(&["update-ref", "refs/heads/main", "refs/heads/feature"]);
+    let moved_to = id(&repo, "refs/heads/main");
+    assert_ne!(moved_to, after_reset);
+
+    // Unforced: the rail stops it and names the drift.
+    let asked = run_undo(&repo, NOW + 1, false).expect_err("drift must stop an undo");
+    assert!(matches!(asked, UndoError::Drift(_)), "{}", asked.explain());
+    assert_eq!(
+        id(&repo, "refs/heads/main"),
+        moved_to,
+        "nothing was touched"
+    );
+
+    // Forced: the rail is past, and `update-ref <name> <to> <expected>`
+    // refuses on its own.
+    let refused = run_undo(&repo, NOW + 2, true).expect_err("the swap must refuse");
+    assert!(
+        matches!(
+            &refused,
+            UndoError::Restore(graft_ops::restore::RestoreError::RefMoved { name })
+                if name == "refs/heads/main"
+        ),
+        "the compare-and-swap is what refused, naming the ref: {}",
+        refused.explain()
+    );
+    assert_eq!(
+        id(&repo, "refs/heads/main"),
+        moved_to,
+        "a refused compare-and-swap leaves the ref where the other writer put it"
+    );
+}
+
+/// The ticket's case (f) — with its premise corrected.
+///
+/// `git stash branch` creates the branch **at the stash's own base commit**
+/// and applies there, so a branch that moved under the stash cannot make it
+/// conflict: verified in
+/// `.scratch/m5-history-and-ghost-preview/plan-behaviours-2.txt` (f2), and
+/// pinned here.
+#[test]
+fn branch_from_stash_starts_at_the_stashs_base_so_it_cannot_conflict() {
+    let repo = diverged();
+    let base = id(&repo, "refs/heads/main");
+    repo.write("base.txt", b"my work in progress\n");
+    run(
+        &repo,
+        &Operation::StashPush(StashParams {
+            message: Some("wip".to_owned()),
+            scope: StashScope::All {
+                include_untracked: false,
+            },
+        }),
+        NOW,
+    );
+    // `main` moves on, rewriting the very line the stash touches. A `stash
+    // apply` here would conflict.
+    repo.write("base.txt", b"someone else's line\n");
+    repo.commit_all("two on main");
+    assert_ne!(id(&repo, "refs/heads/main"), base);
+
+    let op = Operation::BranchFromStash(BranchFromStashParams {
+        name: "wip-branch".to_owned(),
+        index: 0,
+        commit: id(&repo, "refs/stash"),
+    });
+    run(&repo, &op, NOW + 1);
+
+    assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/wip-branch");
+    assert_eq!(
+        id(&repo, "refs/heads/wip-branch"),
+        base,
+        "the branch is at the stash's base, not at main"
+    );
+    assert_eq!(
+        repo.git(&["diff", "--name-only", "--diff-filter=U"]),
+        "",
+        "nothing is unmerged"
+    );
+    assert_eq!(
+        repo.read("base.txt"),
+        b"my work in progress\n".to_vec(),
+        "the stashed work is on disk"
+    );
+}
+
+/// The two ways a `stash branch` really can fail, both refused by `check`
+/// before git is spawned.
+///
+/// The dirty-tree one is not a nicety: git creates the branch, moves `HEAD`
+/// onto it and *then* fails to apply, leaving a branch that should not
+/// exist and the stash still in the list
+/// (`plan-behaviours-2.txt` (f4)). Refusing first is what keeps that
+/// half-done state from ever being reachable.
+#[test]
+fn branch_from_stash_is_refused_before_git_can_half_do_it() {
+    let repo = diverged();
+    repo.write("base.txt", b"edited, not committed\n");
+    run(
+        &repo,
+        &Operation::StashPush(StashParams {
+            message: Some("wip".to_owned()),
+            scope: StashScope::All {
+                include_untracked: false,
+            },
+        }),
+        NOW,
+    );
+    let stash = id(&repo, "refs/stash");
+    let handle = repo.open();
+
+    // The name is already a branch.
+    let taken = Operation::BranchFromStash(BranchFromStashParams {
+        name: "feature".to_owned(),
+        index: 0,
+        commit: stash,
+    });
+    let facts = facts_for(&handle, &taken);
+    assert!(matches!(
+        taken.check(&facts).expect_err("the name is taken"),
+        Refusal::RefExists { ref name } if name == "feature"
+    ));
+
+    // The working tree is dirty.
+    repo.write("main.txt", b"a change made since the stash\n");
+    let dirty = Operation::BranchFromStash(BranchFromStashParams {
+        name: "wip-branch".to_owned(),
+        index: 0,
+        commit: stash,
+    });
+    let facts = facts_for(&handle, &dirty);
+    assert!(matches!(
+        dirty.check(&facts).expect_err("the tree is dirty"),
+        Refusal::DirtyTree { count: 1 }
+    ));
+
+    // Neither refusal wrote anything: no branch, and the stash is still
+    // there to be taken.
+    assert_eq!(repo.git(&["branch", "--list", "wip-branch"]), "");
+    assert_eq!(id(&repo, "refs/stash"), stash);
+    assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/main");
+}

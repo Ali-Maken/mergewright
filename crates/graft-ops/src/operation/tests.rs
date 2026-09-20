@@ -1,6 +1,7 @@
 //! Table tests for the four properties: every kind's exact command lines,
 //! every `Refusal` one fact away from a passing baseline.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use graft_core::commit::Timestamp;
@@ -83,6 +84,8 @@ fn facts() -> RepoFacts {
         },
         remotes: vec![],
         upstream: None,
+        refs: BTreeMap::new(),
+        markers: vec![],
     }
 }
 

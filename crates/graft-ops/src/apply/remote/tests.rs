@@ -26,6 +26,7 @@ fn push_op(branch: &str, remote: &str) -> Operation {
         remote_branch: format!("refs/heads/{branch}"),
         set_upstream: false,
         lease: None,
+        source_commit: None,
     })
 }
 

@@ -26,7 +26,10 @@ impl State {
     /// `hunk` is the side a hunk came from; `None` for whole files.
     fn admits(self, entry: &StatusEntry, hunk: Option<PatchSide>) -> bool {
         match (self, hunk) {
-            (Self::Stageable, None) => entry.is_unstaged() || entry.untracked,
+            // An unmerged path is stageable whole: that is "mark resolved"
+            // (m5/07); `Operation::check` has already refused it while the
+            // file still carries markers.
+            (Self::Stageable, None) => entry.is_unstaged() || entry.untracked || entry.unmerged,
             (Self::Discardable, None) => {
                 entry.is_unstaged() || entry.is_staged() || entry.untracked
             }

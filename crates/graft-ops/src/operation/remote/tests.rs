@@ -47,6 +47,8 @@ fn facts() -> RepoFacts {
         },
         remotes: vec![origin()],
         upstream: Some(upstream()),
+        refs: std::collections::BTreeMap::new(),
+        markers: vec![],
     }
 }
 
@@ -71,6 +73,7 @@ fn push_params() -> PushParams {
         remote_branch: "refs/heads/main".to_owned(),
         set_upstream: false,
         lease: None,
+        source_commit: None,
     }
 }
 

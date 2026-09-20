@@ -10,7 +10,7 @@ use std::path::PathBuf;
 
 use graft_core::journal::{EntryStatus, OperationKind};
 use graft_ops::apply::{ApplyError, Refresh, apply};
-use graft_ops::operation::{CommitParams, Operation, StashParams, StashScope, Target};
+use graft_ops::operation::{CommitParams, FactsScope, Operation, StashParams, StashScope, Target};
 use graft_ops::snapshot;
 use graft_ops::undo::UndoError;
 
@@ -181,7 +181,8 @@ fn reading_the_repository_never_rewrites_the_real_index() {
     snapshot::index_tree(&handle, &scratch, &never).expect("the index tree is written");
     snapshot::worktree_tree(&handle, &scratch, &never).expect("the worktree tree is written");
     let version = crate::support::git_version();
-    graft_ops::facts::read_facts(&handle, version, &never, false).expect("the facts read");
+    graft_ops::facts::read_facts(&handle, version, &never, &FactsScope::default())
+        .expect("the facts read");
 
     let after = std::fs::read(repo.path().join(".git/index")).expect("the index reads");
     assert_eq!(before, after, "a read left the index byte-identical");

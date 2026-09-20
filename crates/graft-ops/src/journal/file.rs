@@ -135,6 +135,26 @@ impl Journal {
         Ok(())
     }
 
+    /// Remember the command lines an entry has run so far, without writing
+    /// anything.
+    ///
+    /// A history operation stopped on a conflict keeps its entry `Pending`,
+    /// and only the outcome line carries `commands` — so between the stop
+    /// and [`crate::apply::resume`] the lines have nowhere on disk to live.
+    /// They are held here instead, and the outcome line `resume` finally
+    /// writes carries the plan's lines and the resume's together. A relaunch
+    /// while the conflict is open loses the plan's lines: the entry is still
+    /// `Pending` in the file, and nothing may be appended to an entry that
+    /// has not finished (m5/07).
+    ///
+    /// An id the journal does not hold is ignored: the caller is recording
+    /// what an entry ran, not asserting the entry exists.
+    pub fn hold_commands(&mut self, id: &EntryId, commands: Vec<String>) {
+        if let Some(entry) = self.entries.iter_mut().find(|held| held.id == *id) {
+            entry.commands = commands;
+        }
+    }
+
     /// Entries with no outcome: an operation whose process died between the
     /// two lines (DESIGN.md §6.2 step 3).
     pub fn unresolved(&self) -> Vec<&JournalEntry> {

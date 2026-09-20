@@ -16,7 +16,9 @@ use graft_core::journal::{EntryStatus, HeadRef, OperationKind};
 use graft_core::oid::Oid;
 use graft_ops::apply::{ApplyError, apply};
 use graft_ops::facts;
-use graft_ops::operation::{CommitParams, Operation, PatchSide, StashParams, StashScope, Target};
+use graft_ops::operation::{
+    CommitParams, FactsScope, Operation, PatchSide, StashParams, StashScope, Target,
+};
 use graft_ops::undo::{self, NotInvertible, PathScope, Step, UndoError};
 
 use crate::support::{
@@ -55,8 +57,13 @@ fn parity(build: fn(&TempRepo), make: fn(&TempRepo) -> Operation) {
 
     let handle = a.open();
     let never = Never;
-    let facts = facts::read_facts(&handle, crate::support::git_version(), &never, false)
-        .expect("the facts read");
+    let facts = facts::read_facts(
+        &handle,
+        crate::support::git_version(),
+        &never,
+        &FactsScope::default(),
+    )
+    .expect("the facts read");
     let plan = op.plan(&facts);
     run(&a, op, NOW);
 

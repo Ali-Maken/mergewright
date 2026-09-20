@@ -46,6 +46,24 @@ impl Oid {
         Ok(Oid { bytes: stored, len })
     }
 
+    /// Wraps a SHA-1 digest, which cannot be the wrong length.
+    ///
+    /// The fallible [`Oid::from_bytes`] is for bytes whose length is only
+    /// known at run time; a caller that has hashed something itself has 20
+    /// bytes by construction and should not have to handle an error that
+    /// cannot happen (m5/07, the Ghost Preview's synthetic ids).
+    #[must_use]
+    pub fn from_sha1(bytes: [u8; Self::SHA1_BYTES]) -> Self {
+        let mut stored = [0u8; Self::MAX_BYTES];
+        stored[..Self::SHA1_BYTES].copy_from_slice(&bytes);
+        Oid {
+            bytes: stored,
+            // 20 fits a `u8`; the constant is spelled out so no cast is
+            // needed and no truncation is possible.
+            len: 20,
+        }
+    }
+
     /// Parses a full hex object id, in either case.
     ///
     /// Abbreviated ids are deliberately not accepted: resolving one needs the

@@ -303,6 +303,12 @@ pub fn push_params(state: &AppState) -> Result<PushParams, String> {
             remote_branch: upstream.remote_branch.clone(),
             set_upstream: false,
             lease: None,
+            // `P` pushes the branch as it stands. Re-pushing an *old* tip
+            // after `u` took a push back is a different offer with its own
+            // confirm (ADR-0038 §4, the M5 note's "`u` after a push"), and
+            // it is not built yet — so this is `None`, never a quiet reuse
+            // of whatever commit happens to be selected.
+            source_commit: None,
         }
     } else {
         let remote = match facts.remotes.iter().find(|remote| remote.name == "origin") {
@@ -321,6 +327,9 @@ pub fn push_params(state: &AppState) -> Result<PushParams, String> {
             remote_branch: branch.clone(),
             set_upstream: true,
             lease: None,
+            // A first push of a branch with no upstream: the branch tip is
+            // the only thing there is to push. See the arm above.
+            source_commit: None,
         }
     };
     let rejected = state

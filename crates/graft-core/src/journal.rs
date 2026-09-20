@@ -139,6 +139,49 @@ pub enum OperationKind {
     Pull,
     /// `git push`: changes the remote. Journaled, never undone.
     Push,
+    /// `git merge`: a merge commit or a fast-forward onto the current branch.
+    /// One entry from start to finish, `Pending` while conflicts are open.
+    Merge,
+    /// `git rebase`: the current branch replayed onto another commit. One
+    /// entry across every conflict stop.
+    Rebase,
+    /// `git cherry-pick`: commits replayed onto `HEAD`.
+    CherryPick,
+    /// `git revert`: a commit's reverse patch committed onto `HEAD`.
+    Revert,
+    /// `git reset` of `HEAD`'s branch, or `update-ref` of another branch.
+    Reset,
+    /// `git switch`: `HEAD` moved to a branch or a commit.
+    Checkout,
+    /// `git branch <name> <commit>`, optionally checked out.
+    BranchCreate,
+    /// A branch deleted by compare-and-swap.
+    BranchDelete,
+    /// `git tag`, lightweight or annotated.
+    TagCreate,
+    /// A tag deleted by compare-and-swap.
+    TagDelete,
+    /// `git stash branch`: a branch at the stash's base with the stash
+    /// applied and dropped.
+    BranchFromStash,
+    /// The journal's time machine: every in-force entry back to a target,
+    /// reversed one `Undo` entry at a time (DESIGN.md §6.6).
+    ///
+    /// **Nothing writes this, and on the design as it stands nothing will.**
+    /// §6.6 decided the time machine journals one `Undo` entry *per step*,
+    /// so that `U` walks the revert back a single operation at a time and
+    /// the journal stays a record of what happened rather than a summary of
+    /// it. A `RevertTo` entry would be exactly the summary that decision
+    /// rejected. `graft_ops::undo::revert_to` therefore writes `Undo` lines
+    /// and no entry ever carries this kind — which also makes
+    /// `apply`'s `"revert to"` label for it unreachable.
+    ///
+    /// It is kept, not deleted, because the M5 design note names it and the
+    /// call is the conductor's rather than a builder's. Note that the app's
+    /// own `PreviewSubject::RevertTo` (ticket m5/08) is a different type
+    /// with the same name: it identifies what a preview is *of*, and its
+    /// existence is not a user of this variant (m5/07 job 2).
+    RevertTo,
     /// The inverse of an earlier entry.
     Undo,
     /// The inverse of an `Undo` entry.

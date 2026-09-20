@@ -8,12 +8,12 @@
 //! anything the entry never recorded, stops the undo and is explained; only
 //! the user's own `force` goes past it.
 
-use graft_core::journal::JournalEntry;
+use graft_core::journal::{EntryId, JournalEntry};
 
 use crate::apply::{Applied, Context};
 use crate::facts::{self, FactsError};
 use crate::restore::{self, RestoreError};
-use crate::undo::{Drift, InversePlan, NotInvertible, drift, plan_redo, plan_undo};
+use crate::undo::{Drift, InversePlan, NotInvertible, drift, plan_redo, plan_revert_to, plan_undo};
 
 /// Why an undo or redo did not happen.
 #[derive(Debug, thiserror::Error)]
@@ -30,6 +30,17 @@ pub enum UndoError {
     /// The repository could not be read.
     #[error("{0}")]
     Facts(FactsError),
+    /// A [`revert_to`] stopped part-way. `done` is what it had already put
+    /// back, newest first, each its own `Undo` entry — so the journal is
+    /// true, `U` walks them back one at a time, and the caller can say how
+    /// far it got instead of pretending nothing happened.
+    #[error("{} of {} steps done, then: {error}", done.len(), done.len() + 1)]
+    PartWay {
+        /// The steps that ran, in the order they ran.
+        done: Vec<Applied>,
+        /// Why the next one did not.
+        error: Box<UndoError>,
+    },
 }
 
 impl UndoError {
@@ -52,12 +63,69 @@ pub fn redo(ctx: &mut Context<'_>, force: bool) -> Result<Applied, UndoError> {
     reverse(ctx, force, plan_redo)
 }
 
+/// The time machine (§6.6): put the repository back to just before `target`,
+/// one journaled `Undo` entry per step, newest first.
+///
+/// Each step is a full [`restore::execute`] with its own backup and its own
+/// entry, so `U` walks the revert back one operation at a time rather than
+/// all at once — the journal stays a record of what happened, not a summary.
+/// `force` is §6.7's rail, applied per step: the state each entry says it
+/// left behind is compared with what is there now, and a difference stops
+/// the revert unless the user has already said to go ahead.
+///
+/// The stop is checked between steps. Cancelling leaves the steps that ran
+/// in place — they are journaled and undoable — rather than rolling them
+/// back, which would be a second unasked-for write.
+///
+/// # Errors
+/// [`UndoError::Nothing`] when there is nothing to revert; otherwise
+/// [`UndoError::PartWay`] carrying what had already run and why the next
+/// step did not.
+pub fn revert_to(
+    ctx: &mut Context<'_>,
+    target: &EntryId,
+    force: bool,
+) -> Result<Vec<Applied>, UndoError> {
+    let plans = plan_revert_to(ctx.journal.entries(), target).map_err(UndoError::Nothing)?;
+    let mut done = Vec::new();
+    for (step, plan) in plans.iter().enumerate() {
+        if step > 0 {
+            // One entry per step, so one id per step: a `Context` names one
+            // entry until it is told to move on.
+            ctx.advance();
+        }
+        if ctx.stop.should_stop() {
+            return Err(UndoError::PartWay {
+                done,
+                error: Box::new(UndoError::Restore(RestoreError::Stopped)),
+            });
+        }
+        match run_plan(ctx, plan, force) {
+            Ok(applied) => done.push(applied),
+            Err(error) => {
+                return Err(UndoError::PartWay {
+                    done,
+                    error: Box::new(error),
+                });
+            }
+        }
+    }
+    Ok(done)
+}
+
 fn reverse(
     ctx: &mut Context<'_>,
     force: bool,
     plan_of: fn(&[JournalEntry]) -> Result<InversePlan, NotInvertible>,
 ) -> Result<Applied, UndoError> {
     let plan = plan_of(ctx.journal.entries()).map_err(UndoError::Nothing)?;
+    run_plan(ctx, &plan, force)
+}
+
+/// §6.7's rail, then the restore: the entry the plan reverses is compared
+/// with the repository as it is now, and only the user's own `force` goes
+/// past a difference.
+fn run_plan(ctx: &mut Context<'_>, plan: &InversePlan, force: bool) -> Result<Applied, UndoError> {
     let target = ctx
         .journal
         .entries()
@@ -87,7 +155,7 @@ fn reverse(
     if !moved.is_clean() && !force {
         return Err(UndoError::Drift(moved));
     }
-    restore::execute(ctx, &plan).map_err(UndoError::Restore)
+    restore::execute(ctx, plan).map_err(UndoError::Restore)
 }
 
 fn nothing_to_say(why: &NotInvertible) -> String {

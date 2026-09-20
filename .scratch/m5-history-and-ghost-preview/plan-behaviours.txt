@@ -1,0 +1,71 @@
+git: git version 2.54.0 (Apple Git-157)
+recorded: 2026-09-20T13:20:23Z
+
+── (a) merge --no-edit, GIT_EDITOR=true ──
+exit=0 (0 expected; 42 would mean the editor opened)
+stderr: 
+merge commit subject: Merge branch 'feature'
+parents: 3 (3 words = 2 parents)
+control (no --no-edit) exit=0  stderr: 
+
+── (b) rebase <onto> on a conflict ──
+exit=1
+stderr head: Rebasing (1/1)error: could not apply be372ee... three|hint: Resolve all conflicts manually, mark them as resolved with|hint: "git add/rm <conflicted_files>", then run "git rebase --continue".|
+rebase-merge dir exists: yes
+rebase-apply dir exists: no
+unmerged paths: shared.txt
+status --porcelain: UU shared.txt|
+
+── (c) revert -m on a merge, and -m on a non-merge ──
+merge commit: 5bbffb625c9787b02bf5fc6d8cb8c56a52cf7ab9  parents: f35fa39fc39964285a42af5b242107ebc5a1bbe1 86258a11b213f55474979b3aaa473e6585f887e8
+feature.txt present before revert: yes
+revert -m 1 exit=0
+stdout: [main 64ad9c6] Revert "Merge branch 'feature'"| Date: Sun Sep 20 18:20:23 2026 +0500|
+stderr: 
+revert commit subject: Revert "Merge branch 'feature'"
+feature.txt present after revert: no
+main.txt still present: yes
+non-merge commit: f35fa39fc39964285a42af5b242107ebc5a1bbe1 (two)
+revert -m 1 on NON-merge exit=0
+stderr: 
+revert (no -m) on a MERGE exit=128
+stderr: error: commit 5bbffb625c9787b02bf5fc6d8cb8c56a52cf7ab9 is a merge but no -m option was given.|fatal: revert failed|
+
+── (d) update-ref refs/heads/x <to> <expected> when the ref moved ──
+x is at C1=e27d0f2faf330ee2b6d9effd402634fff2de60de
+x moved to C2=ce83340ae373e5c34831bf72de6d9677eab90a57
+CAS with correct expected: exit=0 (x now e27d0f2faf330ee2b6d9effd402634fff2de60de)
+CAS with STALE expected exit=128
+stderr: fatal: update_ref failed for ref 'refs/heads/x': cannot lock ref 'refs/heads/x': is at e27d0f2faf330ee2b6d9effd402634fff2de60de but expected ce83340ae373e5c34831bf72de6d9677eab90a57|
+x is still: e27d0f2faf330ee2b6d9effd402634fff2de60de (unchanged = refused)
+CAS with zero-oid expected on an existing ref exit=128  stderr: fatal: update_ref failed for ref 'refs/heads/x': cannot lock ref 'refs/heads/x': reference already exists
+
+── (e) switch with a dirty tracked file that differs ──
+switch (dirty, file differs) exit=1
+stderr: error: Your local changes to the following files would be overwritten by checkout:|	shared.txt|Please commit your changes or stash them before you switch branches.|Aborting|
+still on: main
+switch (dirty file NOT in the diff) exit=1  now on: main
+stderr: error: Your local changes to the following files would be overwritten by checkout:|	other.txt|
+the dirty edit survived: dirty
+
+── (f) stash branch on a conflicting stash ──
+stash list after push: stash@{0}: On main: wip
+stash base: d603814761227fe01827d6915254d6e91f276c11  main now: b15b274941caaca659f609429c0259cdcf3ae4ff
+stash branch exit=0
+stdout: On branch wipbranch|Changes not staged for commit:|  (use "git add <file>..." to update what will be committed)|  (use "git restore <file>..." to discard changes in working directory)|	modified:   shared.txt||no changes added to commit (use "git add" and/or "git commit -a")|Dropped stash@{0} (8b03b2b39eaa7c1a040468063afc9b1071799558)|
+stderr: Switched to a new branch 'wipbranch'|
+branch now: wipbranch
+stash list after: ''  (empty = the stash was dropped)
+unmerged paths: ''
+status:  M shared.txt|
+shared.txt has markers: 0
+
+── (g) tag -a -F - from stdin ──
+exit=0  stderr: 
+tag type: tag
+tag message: a tag message|second line||
+empty stdin message exit=0  stderr: 
+v1.3 type: tag
+lightweight v1.4 type: commit
+
+── done ──

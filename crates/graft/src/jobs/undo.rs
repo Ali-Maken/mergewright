@@ -97,6 +97,18 @@ fn refresh_after_failure(error: &UndoError) -> Option<Refresh> {
         // entered, so not even a journal line exists.
         UndoError::Nothing(_) | UndoError::Drift(_) | UndoError::Facts(_) => None,
         UndoError::Restore(_) => Some(Refresh::Everything),
+        // The time machine (`undo::revert_to`) stopped part-way. Every step
+        // in `done` is a full `restore::execute` that ran, journaled its own
+        // `Undo` entry and moved refs — so once one has run there is always
+        // something stale on screen. With none run, the step that failed
+        // decides, exactly as it would on its own.
+        UndoError::PartWay { done, error } => {
+            if done.is_empty() {
+                refresh_after_failure(error)
+            } else {
+                Some(Refresh::Everything)
+            }
+        }
     }
 }
 
@@ -118,6 +130,20 @@ fn undone_from(error: UndoError, redo: bool, description: impl FnOnce() -> Strin
                 .map(ToString::to_string)
                 .collect::<Vec<_>>()
                 .join("; "),
+        },
+        // A `revert_to` that stopped part-way. Its `done` list is not carried
+        // into `Undone`, and that is a decision rather than an oversight:
+        // the message already says how many steps ran ("2 of 3 steps done,
+        // then: …"), and `refresh_after_failure` answers `Everything`, which
+        // is wider than any of those `Applied`s would have asked for — so
+        // nothing on screen is left stale by dropping them. Nothing reaches
+        // this arm today: `run_undo` only ever calls `undo`/`redo`, and the
+        // time machine gets its own job and its own `Product::RevertedTo`
+        // (ticket m5/08 item 7), which is where "stopped after 2 of 3
+        // steps" is meant to be worded.
+        error @ UndoError::PartWay { .. } => Undone::Failed {
+            refresh: refresh_after_failure(&error),
+            error: error_line(&error),
         },
         other => Undone::Failed {
             refresh: refresh_after_failure(&other),
@@ -288,5 +314,94 @@ mod tests {
             )),
             None
         );
+    }
+
+    /// m5/07 seam. A time machine (`undo::revert_to`) that stopped part-way
+    /// has already run whole restores: refs moved, the journal grew an
+    /// `Undo` entry per step. The screen is stale however the *next* step
+    /// failed, so the scope is the wide one.
+    #[test]
+    fn a_time_machine_that_stopped_part_way_re_reads_everything() {
+        let applied = graft_ops::apply::Applied {
+            entry: entry_for("undo: commit \"fix\""),
+            refresh: Refresh::WorkingTree,
+        };
+        let stopped = UndoError::PartWay {
+            done: vec![applied],
+            // A rail the user has not answered yet: on its own it would
+            // have asked for no refresh at all.
+            error: Box::new(UndoError::Nothing(
+                graft_ops::undo::NotInvertible::NothingToUndo,
+            )),
+        };
+        assert_eq!(
+            refresh_after_failure(&stopped),
+            Some(Refresh::Everything),
+            "a step that ran moved refs, whatever stopped the next one"
+        );
+    }
+
+    /// And with nothing done, the step that failed answers for itself: a
+    /// blanket `Everything` here would have the browser re-read over a
+    /// refusal that wrote nothing.
+    #[test]
+    fn a_time_machine_that_stopped_before_its_first_step_asks_for_nothing() {
+        let stopped = UndoError::PartWay {
+            done: Vec::new(),
+            error: Box::new(UndoError::Nothing(
+                graft_ops::undo::NotInvertible::NothingToUndo,
+            )),
+        };
+        assert_eq!(refresh_after_failure(&stopped), None);
+    }
+
+    /// The message a part-way revert carries reaches the status line whole —
+    /// how far it got and what stopped it — rather than being replaced by a
+    /// generic failure line.
+    #[test]
+    fn a_part_way_revert_says_how_far_it_got() {
+        let stopped = UndoError::PartWay {
+            done: vec![graft_ops::apply::Applied {
+                entry: entry_for("undo: commit \"fix\""),
+                refresh: Refresh::WorkingTree,
+            }],
+            error: Box::new(UndoError::Nothing(
+                graft_ops::undo::NotInvertible::NothingToUndo,
+            )),
+        };
+        let Undone::Failed { error, refresh } = undone_from(stopped, false, String::new) else {
+            panic!("a part-way revert is not a drift and not a clean run")
+        };
+        assert!(error.contains("1 of 2 steps done"), "{error}");
+        assert!(
+            error.contains("nothing"),
+            "what stopped it survives too: {error}"
+        );
+        assert_eq!(refresh, Some(Refresh::Everything));
+    }
+
+    /// A plausible journal entry; only `description` is read here.
+    fn entry_for(description: &str) -> JournalEntry {
+        use graft_core::journal::{EntryId, EntryStatus, HeadRef, OperationKind, Touches};
+        JournalEntry {
+            id: EntryId::new(1, [0; 10]),
+            at_unix_ms: 0,
+            kind: OperationKind::Undo,
+            description: description.to_owned(),
+            status: EntryStatus::Committed,
+            touches: Touches::default(),
+            head_before: HeadRef::Unborn("refs/heads/main".to_owned()),
+            head_after: None,
+            refs_before: std::collections::BTreeMap::new(),
+            refs_after: std::collections::BTreeMap::new(),
+            index_before: None,
+            index_after: None,
+            worktree_before: None,
+            worktree_after: None,
+            backup_ref: None,
+            pins: Vec::new(),
+            commands: Vec::new(),
+            reverses: None,
+        }
     }
 }
