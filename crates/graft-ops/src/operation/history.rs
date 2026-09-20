@@ -113,6 +113,15 @@ pub struct RevertParams {
     /// How many parents the commit has: `check` needs it to know whether
     /// `mainline` applies, and `check` reads no object.
     pub parents: usize,
+    /// The parent whose change is being undone — `c^` for an ordinary
+    /// commit, `c^<mainline>` for a merge — as the caller read it from the
+    /// commit it is reverting. The Ghost Preview forecasts the reverse
+    /// patch against it (`merge-tree` with base `c` and theirs this); `None`
+    /// costs the forecast, nothing else. It is a parameter rather than a
+    /// read because the caller already has the row's parents, and `plan`
+    /// must not depend on a commit read this crate has no reader for
+    /// (m5/07).
+    pub parent: Option<Oid>,
     /// `HEAD` as the preview saw it.
     pub head: Tip,
 }
@@ -216,12 +225,12 @@ pub struct BranchFromStashParams {
 // ── describe ────────────────────────────────────────────────────────────
 
 /// The first seven hex digits.
-pub(super) fn short(oid: Oid) -> String {
+pub(crate) fn short(oid: Oid) -> String {
     oid.to_string().chars().take(7).collect()
 }
 
 /// `main` for `refs/heads/main`, `v1` for `refs/tags/v1`; `HEAD` stays.
-pub(super) fn short_ref(full: &str) -> &str {
+pub(crate) fn short_ref(full: &str) -> &str {
     full.strip_prefix("refs/heads/")
         .or_else(|| full.strip_prefix("refs/tags/"))
         .unwrap_or(full)
@@ -309,12 +318,12 @@ pub(super) fn describe_branch_from_stash(params: &BranchFromStashParams) -> Stri
 // ── which refs the facts must carry ─────────────────────────────────────
 
 /// The full name a short branch name lives under.
-pub(super) fn branch_ref(short: &str) -> String {
+pub(crate) fn branch_ref(short: &str) -> String {
     format!("refs/heads/{short}")
 }
 
 /// The full name a short tag name lives under.
-pub(super) fn tag_ref(short: &str) -> String {
+pub(crate) fn tag_ref(short: &str) -> String {
     format!("refs/tags/{short}")
 }
 
@@ -559,7 +568,7 @@ fn source_arg(source: &Source) -> GitArg {
 /// The merge commit's subject, in git's own shape so the Mistake Radar
 /// reads a Graft merge like any other: `Merge branch 'feat' into main`,
 /// `Merge commit '<full id>' into main`.
-pub(super) fn merge_subject(params: &MergeParams) -> String {
+pub(crate) fn merge_subject(params: &MergeParams) -> String {
     let what = match &params.source {
         Source::Branch(name) => format!("branch '{}'", short_ref(name)),
         Source::Commit(oid) => format!("commit '{oid}'"),

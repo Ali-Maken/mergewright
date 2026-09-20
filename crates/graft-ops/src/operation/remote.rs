@@ -54,6 +54,16 @@ pub struct PushParams {
     pub set_upstream: bool,
     /// A force push, guarded by a lease. Never a force without one.
     pub lease: Option<Lease>,
+    /// Push this commit instead of the branch's tip: the guided re-push
+    /// after an undo (ADR-0037 §3, ADR-0038 §4). The refspec becomes
+    /// `<oid>:<remote_branch>`, so the remote goes back to where it was
+    /// while the local branch keeps every commit it has. It must be an
+    /// ancestor of `branch`'s tip — pushing an unrelated commit is not a
+    /// re-push — which needs a `merge-base --is-ancestor` spawn and so is
+    /// checked in [`crate::preview::plan`], not in `check`
+    /// ([`Refusal::NotOnBranch`]). `None` pushes the tip, as every push
+    /// before M5 did.
+    pub source_commit: Option<Oid>,
 }
 
 /// `--force-with-lease=<remote_branch>:<expected>`: the remote branch is
@@ -138,9 +148,14 @@ pub(super) fn describe_pull(params: &PullParams) -> String {
 }
 
 pub(super) fn describe_push(params: &PushParams) -> String {
+    // A re-push names the commit, not the branch: what moves is the remote,
+    // and the local branch is not where it is going (ADR-0038 §4).
+    let source = match params.source_commit {
+        Some(oid) => super::history::short(oid),
+        None => short_branch(&params.branch).to_owned(),
+    };
     let target = format!(
-        "{} → {}/{}",
-        short_branch(&params.branch),
+        "{source} → {}/{}",
         params.remote,
         short_branch(&params.remote_branch)
     );
@@ -206,6 +221,11 @@ pub(super) fn check_push(params: &PushParams, facts: &RepoFacts) -> Result<(), R
     }
     if let Some(lease) = params.lease {
         check_lease(lease, params, facts)?;
+    } else if params.source_commit.is_some() {
+        // A re-push moves the remote branch backwards, so git would refuse
+        // it without a force anyway; this refusal is the one that says why,
+        // and keeps "lease or nothing" in one place (ADR-0038 §4).
+        return Err(Refusal::RepushNeedsLease);
     }
     Ok(())
 }
@@ -279,8 +299,14 @@ pub(super) fn plan_push(params: &PushParams) -> Vec<Invocation> {
         )));
     }
     args.push(GitArg::Word(params.remote.clone()));
+    // The source side of the refspec is the commit for a re-push, the
+    // branch otherwise; the destination is always the remote branch.
+    let source = match params.source_commit {
+        Some(oid) => oid.to_string(),
+        None => params.branch.clone(),
+    };
     args.push(GitArg::Ref(
-        format!("{}:{}", params.branch, params.remote_branch).into_bytes(),
+        format!("{source}:{}", params.remote_branch).into_bytes(),
     ));
     vec![remote_step(args)]
 }

@@ -18,9 +18,9 @@ use std::collections::BTreeMap;
 use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches};
 use graft_core::oid::Oid;
 
-use crate::journal::{next_redo, next_undo, root_operation};
+use crate::journal::{in_force_all, next_redo, next_undo, root_operation, undoable};
 
-pub use execute::{UndoError, redo, undo};
+pub use execute::{UndoError, redo, revert_to, undo};
 
 /// The stash ref, whose reflog is the stash list; restored by
 /// [`Step::StashStore`]/[`Step::StashDrop`], never by [`Step::UpdateRef`].
@@ -274,12 +274,17 @@ fn stash_step(root: &JournalEntry, forward: bool) -> Result<Option<Step>, NotInv
     Ok(match (root.kind, forward) {
         (OperationKind::StashPush, false) => pushed(root)?.map(|commit| Step::StashDrop { commit }),
         (OperationKind::StashPush, true) => pushed(root)?.map(|commit| Step::StashStore { commit }),
-        (OperationKind::StashPop | OperationKind::StashDrop, false) => {
-            Some(Step::StashStore { commit: pinned()? })
-        }
-        (OperationKind::StashPop | OperationKind::StashDrop, true) => {
-            Some(Step::StashDrop { commit: pinned()? })
-        }
+        // `stash branch` applies the stash and drops it, so its inverse
+        // stores the commit back exactly as a pop's does; the branch it
+        // created is removed by the generic `UpdateRef` (m5/07).
+        (
+            OperationKind::StashPop | OperationKind::StashDrop | OperationKind::BranchFromStash,
+            false,
+        ) => Some(Step::StashStore { commit: pinned()? }),
+        (
+            OperationKind::StashPop | OperationKind::StashDrop | OperationKind::BranchFromStash,
+            true,
+        ) => Some(Step::StashDrop { commit: pinned()? }),
         (OperationKind::Undo | OperationKind::Redo, _) => {
             return Err(NotInvertible::Incomplete {
                 field: "reverses (root is not an operation)",
@@ -343,6 +348,50 @@ pub fn plan_undo(entries: &[JournalEntry]) -> Result<InversePlan, NotInvertible>
 pub fn plan_redo(entries: &[JournalEntry]) -> Result<InversePlan, NotInvertible> {
     let entry = next_redo(entries).ok_or(NotInvertible::NothingToRedo)?;
     inverse(entry, root_operation(entries, entry))
+}
+
+/// The time machine's plans: every in-force entry from the newest back to
+/// `target` inclusive, each inverted, newest first (§6.6).
+///
+/// Reverting *to* an entry means reverting to just before it ran, so the
+/// target itself is reversed along with everything after it. The plans are
+/// computed against the journal as it stands, and running them in this order
+/// keeps every compare-and-swap true: each step's `expect` is the value the
+/// step before it just restored.
+///
+/// An entry `u` cannot see is skipped, by exactly the rule `u` uses
+/// ([`undoable`]): a fetch or a push has no local inverse, and a pull that
+/// moved nothing has nothing to put back. A push inside the range therefore
+/// leaves the remote where it is — ADR-0037 §3's three-choice box is the
+/// app's to raise before calling this, never something to infer from a plan
+/// that is silent about it.
+///
+/// # Errors
+/// [`NotInvertible::NothingToUndo`] when `target` is not in the journal or
+/// nothing in the range is in force; otherwise the first entry's own reason
+/// — a `Pending` entry in the range stops the whole revert rather than
+/// leaving a half-finished operation in the middle of it.
+pub fn plan_revert_to(
+    entries: &[JournalEntry],
+    target: &EntryId,
+) -> Result<Vec<InversePlan>, NotInvertible> {
+    let at = entries
+        .iter()
+        .position(|entry| entry.id == *target)
+        .ok_or(NotInvertible::NothingToUndo)?;
+    let flags = in_force_all(entries);
+    let mut plans = Vec::new();
+    for index in (at..entries.len()).rev() {
+        let entry = &entries[index];
+        if !flags[index] || !undoable(entry) {
+            continue;
+        }
+        plans.push(inverse(entry, root_operation(entries, entry))?);
+    }
+    if plans.is_empty() {
+        return Err(NotInvertible::NothingToUndo);
+    }
+    Ok(plans)
 }
 
 /// The repository as it is right now, read fresh by the executor for the

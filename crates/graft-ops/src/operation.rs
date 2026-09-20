@@ -36,6 +36,7 @@ pub use history::{
     MergeParams, PickParams, RebaseParams, RefDeleteParams, ResetMode, ResetParams, ResetTarget,
     RevertParams, Source, TagCreateParams, Tip,
 };
+pub(crate) use history::{branch_ref, merge_subject, short, short_ref, tag_ref};
 pub use remote::{FetchParams, Lease, PullParams, PushParams, RemoteNames};
 
 /// One write to the repository, as the user asked for it.
@@ -406,6 +407,17 @@ pub enum Refusal {
     },
     /// `Resume::Skip` on an operation that has no step to skip (a merge).
     CannotSkip(InProgress),
+    /// The Ghost Preview has no picture for this operation: a stage, a
+    /// commit, an ordinary push. The M4 confirm boxes cover those; the
+    /// preview draws the operations that move history.
+    NotPreviewable(OperationKind),
+    /// The journal's time machine cannot revert to the chosen entry, and
+    /// why (one line, already in the user's terms).
+    CannotRevertTo(String),
+    /// A re-push asked for without a lease. A re-push moves the remote
+    /// branch backwards, which is a force by any other name, and ADR-0038
+    /// §4 allows only `--force-with-lease` — never a bare force.
+    RepushNeedsLease,
     /// `--ff-only` where the branches have diverged: a merge commit would be
     /// needed, and the user said no (m5/07, from the preview).
     NotFastForward {
@@ -529,6 +541,14 @@ impl Refusal {
             Self::CheckedOut { branch } => {
                 format!("{branch} is checked out; switch away before deleting it")
             }
+            Self::NotPreviewable(kind) => {
+                format!("{} has no preview", crate::apply::kind_name(*kind))
+            }
+            Self::CannotRevertTo(why) => format!("cannot revert to that point: {why}"),
+            Self::RepushNeedsLease => {
+                "re-pushing an old tip rewrites the remote branch; it runs only with a lease"
+                    .to_owned()
+            }
             Self::CannotSkip(kind) => {
                 format!(
                     "a {} has nothing to skip · c continues, a aborts",
@@ -616,6 +636,28 @@ impl Operation {
                 | Self::TagDelete(_)
                 | Self::BranchFromStash(_)
         )
+    }
+
+    /// Every [`Tip`] this operation is pinned to: what the Ghost Preview was
+    /// drawn against, and what `check` refuses [`Refusal::Moved`] over
+    /// (hard choice 3). Empty for an operation with nothing pinned.
+    #[must_use]
+    pub fn tips(&self) -> Vec<Tip> {
+        match self {
+            Self::Merge(params) => vec![params.into.clone()],
+            Self::Rebase(params) => vec![params.branch.clone()],
+            Self::CherryPick(params) => vec![params.head.clone()],
+            Self::Revert(params) => vec![params.head.clone()],
+            Self::Reset(params) => match &params.target {
+                ResetTarget::Head { branch, .. } => vec![branch.clone()],
+                ResetTarget::Branch(tip) => vec![tip.clone()],
+            },
+            Self::BranchDelete(params) | Self::TagDelete(params) => vec![Tip {
+                name: params.name.clone(),
+                oid: params.expected,
+            }],
+            _ => vec![],
+        }
     }
 
     /// What the facts must carry for this operation: the remotes for a

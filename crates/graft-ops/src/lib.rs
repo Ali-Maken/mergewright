@@ -12,6 +12,7 @@ pub mod facts;
 pub mod journal;
 pub mod mistake_radar;
 pub mod operation;
+pub mod preview;
 pub mod restore;
 pub mod snapshot;
 pub mod undo;

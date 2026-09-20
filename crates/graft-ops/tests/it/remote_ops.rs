@@ -127,6 +127,7 @@ fn push(remote: &LocalRemote) -> PushParams {
         remote_branch: branch(remote),
         set_upstream: false,
         lease: None,
+        source_commit: None,
     }
 }
 
@@ -449,6 +450,7 @@ fn push_sets_upstream() {
         remote_branch: "refs/heads/topic".to_owned(),
         set_upstream: true,
         lease: None,
+        source_commit: None,
     });
     assert!(op.describe().ends_with("(set upstream)"));
 

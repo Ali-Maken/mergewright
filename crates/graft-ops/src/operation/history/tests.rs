@@ -125,6 +125,7 @@ fn revert() -> Operation {
         subject: "fix the thing".to_owned(),
         mainline: None,
         parents: 1,
+        parent: Some(oid(0x0b)),
         head: tip(MAIN, 0x0a),
     })
 }
@@ -672,6 +673,7 @@ fn revert_mainline_must_match_the_commit() {
             subject: "x".to_owned(),
             mainline,
             parents,
+            parent: Some(oid(0x0b)),
             head: tip(MAIN, 0x0a),
         })
     };

@@ -73,6 +73,7 @@ fn push_params() -> PushParams {
         remote_branch: "refs/heads/main".to_owned(),
         set_upstream: false,
         lease: None,
+        source_commit: None,
     }
 }
 
