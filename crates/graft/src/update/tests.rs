@@ -37,6 +37,20 @@ fn key(code: KeyCode) -> AppEvent {
     AppEvent::Core(Event::Key(KeyPress::plain(code)))
 }
 
+/// The pool announcing a walk the screen asked for.
+///
+/// `update` names the walk when it builds `Command::ReadHistory`, so a
+/// `Started` is only ever taken under the name the screen is already holding
+/// — feeding one out of nowhere is a walk nobody asked for
+/// (m5-history-and-ghost-preview/05).
+fn walk_started(state: &AppState, id: JobId) -> (AppState, Vec<Command>) {
+    let asked = AppState {
+        awaiting: Some(id),
+        ..state.clone()
+    };
+    update(&asked, AppEvent::Started(id, Task::ReadHistory))
+}
+
 #[test]
 fn graft_opens_on_the_graph_and_f2_swaps_to_the_status_screen_and_back() {
     let state = AppState::default();
@@ -89,17 +103,14 @@ fn at_the_pixel_tier_history_asks_for_whole_strips() {
         settled_tier: Some(RenderingTier::Pixel),
         ..AppState::default()
     };
-    let (started, _) = update(&state, AppEvent::Started(JobId::new(1), Task::ReadHistory));
+    let (started, _) = walk_started(&state, JobId::new(1));
     let history = started.history.expect("a walk started");
     assert_eq!(
         history.strip_rows,
         Some(graft_graph::raster::cache::STRIP_ROWS)
     );
 
-    let (unicode, _) = update(
-        &AppState::default(),
-        AppEvent::Started(JobId::new(1), Task::ReadHistory),
-    );
+    let (unicode, _) = walk_started(&AppState::default(), JobId::new(1));
     assert_eq!(unicode.history.expect("a walk started").strip_rows, None);
 }
 
@@ -109,7 +120,7 @@ fn f3_cycles_pixels_unicode_ascii_and_back_to_whole_strips() {
         settled_tier: Some(RenderingTier::Pixel),
         ..AppState::default()
     };
-    let (started, _) = update(&state, AppEvent::Started(JobId::new(1), Task::ReadHistory));
+    let (started, _) = walk_started(&state, JobId::new(1));
     let strip_rows = |state: &AppState| state.history.as_ref().and_then(|h| h.strip_rows);
 
     let (unicode, _) = update(&started, key(KeyCode::Function(3)));
@@ -236,7 +247,7 @@ fn a_walk_restart_reanchors_on_the_previously_selected_commit() {
     );
 
     let next_id = JobId::new(8);
-    let (restarted, _) = update(&state, AppEvent::Started(next_id, Task::ReadHistory));
+    let (restarted, _) = walk_started(&state, next_id);
 
     assert_eq!(
         restarted.history.as_ref().map(|history| history.reanchor),
@@ -800,7 +811,7 @@ fn coming_back_to_the_window_re_reads_the_working_tree_and_nothing_else() {
     assert!(
         !commands
             .iter()
-            .any(|command| matches!(command, Command::ReadHistory(_) | Command::ShowRows(..))),
+            .any(|command| matches!(command, Command::ReadHistory(..) | Command::ShowRows(..))),
         "{commands:?}"
     );
     assert_eq!(next.last_focus_refresh, Some(10_000));
@@ -970,10 +981,16 @@ fn control_r_asks_for_the_repository_to_be_re_read() {
             // can have appended to it (m3-working-tree-undo-and-stash/06).
             Command::ReadJournal(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 1)),
             Command::OpenRepository,
-            Command::ReadHistory(Order::Topological),
+            // The walk runs under an id `update` minted here, so a second
+            // `Ctrl+R` before its `Started` lands can still name it
+            // (m5-history-and-ghost-preview/05).
+            Command::ReadHistory(
+                JobId::new(crate::update::detail::LOCAL_JOB_BIT | 2),
+                Order::Topological,
+            ),
             Command::ReadRefs,
             // The remote facts, beside the refs (m4-remotes/05).
-            Command::ReadRemotes(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 2)),
+            Command::ReadRemotes(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 3)),
             Command::ReadWorkingTree,
         ]
     );
@@ -989,16 +1006,99 @@ fn control_r_asks_for_the_repository_to_be_re_read() {
             ..state.journal.clone()
         },
         remotes: crate::update::detail::Loading::Pending(JobId::new(
-            crate::update::detail::LOCAL_JOB_BIT | 2,
+            crate::update::detail::LOCAL_JOB_BIT | 3,
         )),
         remote: crate::update::remote::RemoteState {
-            reading: Some(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 2)),
+            reading: Some(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 3)),
             ..crate::update::remote::RemoteState::default()
         },
+        // The walk is named at once, not when its `Started` event lands.
+        awaiting: Some(JobId::new(crate::update::detail::LOCAL_JOB_BIT | 2)),
         local_jobs: next.local_jobs,
         ..state.clone()
     };
     assert_eq!(next, expected);
+}
+
+/// `Ctrl+R`, and the job id the walk it asked for will run under.
+fn refresh(state: &AppState) -> (AppState, Vec<Command>, JobId) {
+    let (next, commands) = update(
+        state,
+        core(Event::Key(KeyPress::control(KeyCode::Char('r')))),
+    );
+    let walk = commands
+        .iter()
+        .find_map(|command| match command {
+            Command::ReadHistory(id, _) => Some(*id),
+            _ => None,
+        })
+        .expect("a refresh asks for a history walk");
+    (next, commands, walk)
+}
+
+/// The `Ctrl+R` race (ADR-0037 §6, m5-history-and-ghost-preview/05).
+///
+/// Two refreshes with nothing fed back in between — no `Started`, no window,
+/// nothing. The second one still has to cancel the walk the first one asked
+/// for, which it can only do if that walk was named when it was asked for.
+/// Left uncancelled, the walk parks on a worker for the rest of the run.
+///
+/// Deterministic by construction: this is `update` alone, so the ordering
+/// under test is the one written here, not one a scheduler happened to pick.
+#[test]
+fn a_refresh_before_the_previous_walk_started_still_cancels_it() {
+    let state = AppState {
+        repo_path: PathBuf::from("/code/api"),
+        ..AppState::default()
+    };
+
+    let (after_first, _, first) = refresh(&state);
+    let (after_second, second_commands, second) = refresh(&after_first);
+
+    assert_eq!(
+        after_first.awaiting,
+        Some(first),
+        "the walk is named the moment it is asked for, not when it reports"
+    );
+    assert_ne!(first, second, "each refresh asks for its own walk");
+    assert!(
+        second_commands.contains(&Command::CancelJob(first)),
+        "the second refresh must cancel the first refresh's walk: {second_commands:?}"
+    );
+    assert_eq!(after_second.awaiting, Some(second));
+}
+
+/// A walk that has been superseded still announces itself — the announcement
+/// was already in flight when it was cancelled. Taking it would blank the
+/// rows the live walk has already put on screen.
+#[test]
+fn stale_started_is_dropped() {
+    let state = AppState {
+        repo_path: PathBuf::from("/code/api"),
+        ..AppState::default()
+    };
+    let (after_first, _, first) = refresh(&state);
+    let (mut after_second, _, second) = refresh(&after_first);
+    // The live walk has answered: the screen holds rows.
+    let mut live = History::started();
+    live.rows = 40;
+    live.phase = Phase::Complete;
+    after_second.history = Some(live.clone());
+
+    let (next, commands) = update(&after_second, AppEvent::Started(first, Task::ReadHistory));
+
+    assert_eq!(
+        next.history,
+        Some(live),
+        "a superseded walk's `Started` must leave the rows on screen alone"
+    );
+    assert_eq!(next.awaiting, Some(second), "the live walk keeps the name");
+    assert!(
+        !commands
+            .iter()
+            .any(|command| matches!(command, Command::ShowRows(id, _) if *id == first)),
+        "no rows are asked of a walk that was cancelled: {commands:?}"
+    );
 }
 
 #[test]
@@ -1270,10 +1370,7 @@ fn rows(id: JobId, n: usize) -> AppEvent {
 
 /// The state of an application with a walk in flight.
 fn awaiting(id: JobId) -> AppState {
-    let (next, commands) = update(
-        &AppState::default(),
-        AppEvent::Started(id, Task::ReadHistory),
-    );
+    let (next, commands) = walk_started(&AppState::default(), id);
 
     // A default state is zero rows tall, which shows one row: the first
     // screen, and one more screen below it.
@@ -1445,7 +1542,7 @@ fn a_superseded_walk_loses_to_the_newer_one() {
     let old = JobId::new(1);
     let new = JobId::new(2);
     let (state, _) = update(&awaiting(old), rows(old, 3));
-    let (state, _) = update(&state, AppEvent::Started(new, Task::ReadHistory));
+    let (state, _) = walk_started(&state, new);
     assert_eq!(progress(&state), (Phase::Streaming, 0));
 
     let (state, _) = update(&state, rows(old, 500));

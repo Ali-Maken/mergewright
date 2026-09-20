@@ -36,11 +36,10 @@ use std::path::Path;
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 
 use graft_core::event::Event;
-use graft_git::history::Order;
 
 use crate::jobs::{Delivery, Dispatch, JobEvents};
 use crate::session::TerminalChange;
-use crate::update::{AppEvent, AppState, Command};
+use crate::update::{AppEvent, AppState};
 
 pub use running::pump;
 pub use startup::run;
@@ -181,31 +180,20 @@ impl Wakes for ChannelWakes {
     }
 }
 
-/// The state Graft starts in, with the first two jobs already on their way.
+/// The state Graft starts in, with its opening jobs already on their way.
 ///
-/// Both read the world — one opens the repository, one runs `git --version` —
-/// so both are jobs: the first frame is drawn while they are still running,
-/// and says so, rather than waiting on the disk.
+/// The list itself is [`crate::update::opening`]'s, so that the id the
+/// history walk runs under is minted in one place (see its doc).
 fn opening_repository(
     jobs: &impl Dispatch,
     repo_path: &Path,
     size: crate::update::Size,
 ) -> AppState {
-    jobs.dispatch(Command::OpenRepository);
-    jobs.dispatch(Command::CheckSystemGit);
-    // The third is the one with work in it: reading history. Asked for in
-    // topological order, which ADR-0008 downgrades to commit date when the
-    // repository has no commit-graph file.
-    jobs.dispatch(Command::ReadHistory(Order::Topological));
-    // Badges: ahead/behind walks commits, so it is a job too.
-    jobs.dispatch(Command::ReadRefs);
-    // The uncommitted-changes row: a status read, so it is a job too.
-    jobs.dispatch(Command::ReadWorkingTree);
-    AppState {
-        repo_path: repo_path.to_path_buf(),
-        size,
-        ..AppState::default()
+    let (state, commands) = crate::update::opening(repo_path.to_path_buf(), size);
+    for command in commands {
+        jobs.dispatch(command);
     }
+    state
 }
 
 #[cfg(test)]

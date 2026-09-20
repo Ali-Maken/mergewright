@@ -250,12 +250,9 @@ fn fetch_pull_commit_push() -> Vec<Step> {
         Step::WaitFor(Wait::Ready),
         key(ch('p')),
         Step::Write("the pull"),
-        // Let the pull's own refresh land before `Ctrl+R`, as the screen
-        // settling would for a person: a refresh pressed before the previous
-        // one's `Started` events arrive leaves that history job uncancelled,
-        // and two resident history jobs fill the harness's two-worker pool
-        // (recorded in the ticket).
-        Step::WaitFor(Wait::Ready),
+        // No wait here on purpose: `Ctrl+R` lands while the pull's own
+        // refresh is still in flight, which is what a person does and what
+        // used to wedge the pool (m5-history-and-ghost-preview/05).
         Step::Shell(ours_locally),
         Step::Key(ctrl('r')),
         Step::WaitFor(Wait::Ready),

@@ -26,6 +26,7 @@ mod m4_walk;
 mod many_refs;
 mod not_a_repo;
 mod piped_stdout;
+mod refresh_race;
 mod remote_by_key;
 mod repo_truth;
 mod seam_rule;

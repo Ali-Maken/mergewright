@@ -346,7 +346,7 @@ fn focus_gained(app: &App, state: &AppState) -> Result<AppState, String> {
     check(
         !commands
             .iter()
-            .any(|command| matches!(command, Command::ReadHistory(_))),
+            .any(|command| matches!(command, Command::ReadHistory(..))),
         || format!("focus restarted the history walk: {commands:?}"),
     )?;
     for command in commands {

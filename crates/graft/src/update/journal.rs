@@ -196,19 +196,27 @@ fn shown_key(
     true
 }
 
-/// `Esc`/`J`: the browser goes away and the read it asked for, if it is
-/// still in flight, is cancelled — nothing on screen is waiting for it.
+/// `Esc`/`J`: the browser goes away, and a read it asked for that is only
+/// refreshing a list already on hand goes with it — nothing on screen is
+/// waiting for that one.
+///
+/// A read with **nothing** behind it stays. It is the launch read, and the
+/// footer's interrupted-entry notice and `u` are both waiting on it whether
+/// the browser is open or not; cancelling it used to blank the field back to
+/// `Idle`, which is exactly the condition [`request`] re-reads on, so `settle`
+/// asked for the same read again in the same pass. That churn is
+/// `KNOWN_GAPS.md` row 217, and the cause is here rather than in `settle`:
+/// `Esc` was stopping work the application still wanted
+/// (m5-history-and-ghost-preview/05).
 fn close(next: &mut AppState, commands: &mut Vec<Command>) {
     next.journal.shown = false;
     next.journal.selected = 0;
     next.journal.expanded = None;
-    if let Some(id) = next.journal.reading.take() {
+    if let Some(id) = next.journal.reading
+        && next.journal.entries != Loading::Pending(id)
+    {
+        next.journal.reading = None;
         commands.push(Command::CancelJob(id));
-        // Only a read with nothing behind it leaves the field empty. A
-        // re-read over a list already on hand keeps that list.
-        if next.journal.entries == Loading::Pending(id) {
-            next.journal.entries = Loading::Idle;
-        }
     }
 }
 
@@ -325,17 +333,62 @@ mod tests {
     }
 
     #[test]
-    fn escape_closes_it_and_cancels_a_read_still_in_flight() {
-        let mut state = AppState::default();
+    fn escape_closes_it_and_cancels_a_read_that_was_only_refreshing_the_list() {
+        let mut state = state_with_two();
         press(&mut state, KeyCode::Char('J'));
-        let pending = match state.journal.entries {
-            Loading::Pending(id) => id,
-            ref other => panic!("the open asked for a read: {other:?}"),
-        };
+        let refreshing = state
+            .journal
+            .reading
+            .expect("the open asked for a fresh read");
         let (claimed, commands) = press(&mut state, KeyCode::Escape);
         assert!(claimed);
         assert!(!state.journal.shown);
-        assert_eq!(commands, vec![Command::CancelJob(pending)]);
+        assert_eq!(commands, vec![Command::CancelJob(refreshing)]);
+        assert_eq!(state.journal.reading, None);
+    }
+
+    /// `KNOWN_GAPS.md` row 217: `Esc` on a read nothing is standing on used
+    /// to cancel it and blank the field, which is the one condition
+    /// [`request`] re-reads on — so the same read went straight back out.
+    ///
+    /// The read itself is what the footer's interrupted-entry notice and `u`
+    /// are waiting for, so the cure is to leave it running, not to stop
+    /// `settle` from asking.
+    #[test]
+    fn esc_on_a_pending_journal_read_does_not_rerequest() {
+        let mut state = AppState {
+            repository: Some(crate::repository::RepositoryFacts {
+                path: std::path::PathBuf::from("/code/api"),
+                bare: false,
+                head: crate::repository::Head::Branch(b"refs/heads/main".to_vec()),
+                mailmap: graft_git::mailmap::Mailmap::default(),
+                commit_graph: crate::repository::CommitGraphFact::Present { commits: 1 },
+            }),
+            ..AppState::default()
+        };
+        press(&mut state, KeyCode::Char('J'));
+        let launch_read = match state.journal.entries {
+            Loading::Pending(id) => id,
+            ref other => panic!("the open asked for a read with nothing behind it: {other:?}"),
+        };
+
+        let (claimed, on_escape) = press(&mut state, KeyCode::Escape);
+        // And then the tail of `update`, which is where the re-request was.
+        let mut settled = Vec::new();
+        request(&mut state, &mut settled, &mut ids());
+
+        assert!(claimed);
+        assert!(!state.journal.shown, "`Esc` closes the browser");
+        assert!(
+            on_escape.is_empty(),
+            "the read the notice is waiting for is left alone: {on_escape:?}"
+        );
+        assert!(
+            settled.is_empty(),
+            "and nothing asks for it a second time: {settled:?}"
+        );
+        assert_eq!(state.journal.reading, Some(launch_read));
+        assert_eq!(state.journal.entries, Loading::Pending(launch_read));
     }
 
     #[test]

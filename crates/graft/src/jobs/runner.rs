@@ -365,8 +365,20 @@ impl<S: JobEvents> JobRunner<S> {
     /// and one that is running stops at its next check. An id that is already
     /// finished or was never issued is a no-op — its result event is already on
     /// its way, and `update` decides what a result it no longer wants means.
+    ///
+    /// The history walk is the one job that can be *idle* rather than
+    /// running: between row requests it parks in `Receiver::recv`, where it
+    /// cannot see its token at all. Dropping its request sender is what wakes
+    /// it — `serve` reads a closed channel as the end of the walk. The token
+    /// is set first, so a walk woken mid-chunk finds `stop()` already true.
+    ///
+    /// Both halves live here rather than in `Command::CancelJob`'s arm, which
+    /// is where the sender-drop used to be: `cancel` is public, and a caller
+    /// that reached it any other way left the walk parked on a worker
+    /// (m5-history-and-ghost-preview/05).
     pub fn cancel(&self, id: JobId) {
         self.live.cancel(id);
+        drop(self.row_requests().remove(&id));
     }
 
     /// The row-request senders, locked.
@@ -623,14 +635,18 @@ impl<S: JobEvents> JobRunner<S> {
     }
 
     /// Starts the history walk and keeps the channel its row requests go down.
-    fn read_history(&self, order: graft_git::history::Order) {
+    ///
+    /// Under the id `update` already chose, like the detail pane's reads: a
+    /// `Ctrl+R` pressed before this walk's `Started` event lands still has a
+    /// name to cancel (m5-history-and-ghost-preview/05).
+    fn read_history(&self, id: JobId, order: graft_git::history::Order) {
         let repos = Arc::clone(&self.repos);
         let sink = self.sink.clone();
         let (asks, requests) = std::sync::mpsc::channel();
         // Registered before `update` can see the job has started: the
         // announcement travels through the loop's queue, and this runs
         // on the loop's own thread before it reads that queue again.
-        let id = self.queue_job(Some(Task::ReadHistory), |id| {
+        let id = self.queue_as(id, Some(Task::ReadHistory), |id| {
             read_history(repos, order, requests, sink, id)
         });
         self.row_requests().insert(id, asks);
@@ -736,7 +752,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::PromoteHistory => self.promote_history(),
             Command::WriteCommitGraph => self.write_commit_graph(),
             Command::DeclineCommitGraph => self.decline_commit_graph(),
-            Command::ReadHistory(order) => self.read_history(order),
+            Command::ReadHistory(id, order) => self.read_history(id, order),
             Command::ShowRows(id, request) => {
                 let mut row_requests = self.row_requests();
                 // No sender means the job was cancelled or has ended; its answer
@@ -774,10 +790,7 @@ impl<S: JobEvents> Dispatch for JobRunner<S> {
             Command::ReadJournal(id) => self.read_journal(id),
             Command::ReadStashes(id) => self.read_stashes(id),
             Command::ReadRemotes(id) => self.read_remotes(id),
-            Command::CancelJob(id) => {
-                self.row_requests().remove(&id);
-                self.cancel(id);
-            }
+            Command::CancelJob(id) => self.cancel(id),
             Command::AnswerCredential(id, answer) => self.credential(id, Some(answer)),
             Command::CancelCredential(id) => self.credential(id, None),
             // The loop writes this to the terminal itself (`event_loop`);
