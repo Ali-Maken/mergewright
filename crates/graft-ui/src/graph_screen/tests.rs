@@ -14,7 +14,8 @@ use ratatui::layout::Rect;
 use ratatui::style::Modifier;
 use unicode_width::UnicodeWidthStr;
 
-use super::footer::{HINTS, commit_graph_segments, grouped, key_hints};
+use super::footer::{commit_graph_segments, grouped};
+use super::hints::HintContext;
 use super::layout::walk_text;
 use super::*;
 use crate::graph_column::{GraphColumn, RowPaint};
@@ -95,8 +96,9 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
         commit_graph: None,
         banner: Vec::new(),
         detail_shown: false,
-        changes_pane: false,
+        hint_context: HintContext::PlainRow,
         marker_column: false,
+        banner_op: None,
     }
 }
 
@@ -133,7 +135,7 @@ fn rows_sit_between_the_header_and_the_key_hints() {
     assert!(screen[0].contains("3 commits"), "{screen:#?}");
     assert!(screen[1].contains("Commit 3"), "{screen:#?}");
     assert!(screen[3].contains("Commit 1"), "{screen:#?}");
-    assert!(screen[5].contains("q quit"), "{screen:#?}");
+    assert!(screen[5].contains("⏎ open"), "{screen:#?}");
     assert_eq!(usize::from(CHROME_ROWS), 2);
 }
 
@@ -157,7 +159,7 @@ fn a_banner_sits_under_the_header_and_takes_rows_from_the_body() {
         "two rows left for the body"
     );
     assert!(
-        screen[5].contains("q quit"),
+        screen[5].contains("⏎ open"),
         "the key hints keep the footer"
     );
 
@@ -259,11 +261,14 @@ fn a_walk_that_is_fine_never_reads_as_an_error() {
 fn a_problem_takes_the_footers_place() {
     let rows = linear(2);
     let mut view = view(&rows, WalkView::Complete { rows: 2 }, 0);
-    view.problem = Some(sanitize_line("job 3 failed: not a git repository"));
+    view.problem = Some(ProblemLine {
+        reason: sanitize_line("job 3 failed: not a git repository"),
+        keys: None,
+    });
     let screen = text(&draw(&view, 60, 5));
 
     assert!(screen[4].contains("not a git repository"), "{screen:#?}");
-    assert!(!screen[4].contains("q quit"), "{screen:#?}");
+    assert!(!screen[4].contains("⏎ open"), "{screen:#?}");
 }
 
 #[test]
@@ -276,7 +281,7 @@ fn more_rows_than_fit_are_cut_at_the_footer() {
     ));
 
     assert!(screen[3].contains("Commit 8"), "{screen:#?}");
-    assert!(screen[4].contains("q quit"), "{screen:#?}");
+    assert!(screen[4].contains("⏎ open"), "{screen:#?}");
 }
 
 #[test]
@@ -508,7 +513,12 @@ fn more_lanes_than_the_limit_fold_behind_a_rail_and_leave_the_subject_readable()
     );
     assert!(screen[1].contains("Merge branch 'topic-12'"), "{screen:#?}");
     assert!(screen[12].contains("Merge branch 'topic-1'"), "{screen:#?}");
-    assert!(screen[23].contains("+ expand lanes"), "{screen:#?}");
+    // The lane-fold hint (`+ expand lanes`) is not in the design note's
+    // hint-bar table for any context (`hint-bar-redesign`) and is dropped
+    // from the footer with this ticket — `+` still works, but is no longer
+    // hinted (flagged as a gap in the ticket's NOTES, not fixed here: the
+    // note's table is followed verbatim per the ticket's own instruction).
+    assert!(screen[23].contains("⏎ open"), "{screen:#?}");
 }
 
 /// ADR-0025: a thread twenty columns wide is a priority, not a veto — the
@@ -583,7 +593,9 @@ fn expanded_every_lane_draws_in_its_real_column_from_the_same_rows() {
             .any(|line| line.contains("+6") || line.contains('⋮')),
         "expanded: no count and no rail: {screen:#?}"
     );
-    assert!(screen[23].contains("+ collapse lanes"), "{screen:#?}");
+    // See `more_lanes_than_the_limit_fold_behind_a_rail_and_leave_the_subject_readable`:
+    // the lane-fold hint is no longer drawn (`hint-bar-redesign`).
+    assert!(screen[23].contains("⏎ open"), "{screen:#?}");
 }
 
 #[test]
@@ -662,7 +674,7 @@ fn revealing_a_row_that_was_never_truncated_leaves_the_hints_alone() {
 
     let screen = text(&draw(&open, 60, 12));
     let footer = screen.last().expect("a footer row");
-    assert!(footer.contains("move"), "{screen:#?}");
+    assert!(footer.contains("⏎ open"), "{screen:#?}");
     assert!(!footer.contains("Commit 3"), "{screen:#?}");
 }
 
@@ -675,7 +687,7 @@ fn no_reveal_shows_the_ordinary_hints() {
 
     let screen = text(&draw(&open, 60, 12));
     let footer = screen.last().expect("a footer row");
-    assert!(footer.contains("move"), "{screen:#?}");
+    assert!(footer.contains("⏎ open"), "{screen:#?}");
 }
 
 /// Escape sequences in a subject render inert in the reveal, the same as
@@ -753,113 +765,66 @@ fn footer_at(columns: u16) -> String {
     screen[5].trim_end().to_owned()
 }
 
+/// The footer's hint list widens with the frame, not just in the unit tests
+/// over `hints_for` directly: a plain row shows 4 tokens (3 + `. more`) at
+/// 80, 7 at 120, and its full list (12) at 160 (`view()`'s default context).
 #[test]
-fn the_footer_lists_every_graph_key_dropping_whole_hints_when_narrow() {
-    // Widened from 200 when the remote hints (`f`/`p`/`P`) were added
-    // (m4-remotes ticket 03): 19 hints no longer fit in 200 columns.
-    let wide = footer_at(230);
-    for hint in HINTS {
-        assert!(wide.contains(hint), "{hint} missing: {wide}");
-    }
-    for columns in [80, 120, 200] {
-        let footer = footer_at(columns);
-        assert!(footer.contains("F3 renderer"), "{columns}: {footer}");
-        assert!(footer.chars().count() <= usize::from(columns), "{footer}");
-        // A narrower footer is the wide one cut at a hint boundary.
-        assert!(wide.starts_with(&footer), "{columns}: {footer}");
-        assert!(
-            wide.len() == footer.len() || wide[footer.len()..].starts_with("  "),
-            "{columns} cut a hint in half: {footer}"
-        );
-        insta::assert_snapshot!(format!("footer-hints-{columns}"), footer);
-    }
+fn the_footer_hint_list_widens_with_the_frame() {
+    let at = |columns| footer_at(columns).split("  ").count();
+    assert_eq!(at(80), 4, "{}", footer_at(80));
+    assert_eq!(at(120), 7, "{}", footer_at(120));
+    assert_eq!(at(160), 12, "{}", footer_at(160));
 }
 
-/// Design note "New UI" / mockup: `f fetch  p pull  P push` sit after
-/// `H hide stash` and before `J journal`, in the ordinary drop-from-the-right
-/// group — not grouped with `u undo` ahead of search/movement (a first pass
-/// that did so regressed the 80-column footer, pushing `/ search` and
-/// `j/k move` out; fixed by this placement, m4-remotes ticket 03). By
-/// character-width arithmetic on `HINTS`, all three first fit together at
-/// **144** columns — 143 is one cell short and drops `P push`; the
-/// originally recorded "156" was measured including `J journal`, which
-/// joins them eleven columns later, at 155 (M4 group 03 review Major 3). At
-/// 200 the rest of the trailing hints (through `J journal`) fit alongside
-/// them too.
+/// Acceptance (g): the footer at 80x24 for a branch row reads the note's
+/// three-plus-more line, in order (`hint-bar-redesign`).
 #[test]
-fn remote_hints_at_wide_and_medium() {
-    let just_short = footer_at(143);
-    assert!(just_short.contains("f fetch"), "{just_short}");
-    assert!(just_short.contains("p pull"), "{just_short}");
-    assert!(
-        !just_short.contains("P push"),
-        "expected P push to still be dropped at 143: {just_short}"
-    );
-
-    let medium = footer_at(144);
-    assert!(medium.contains("f fetch"), "{medium}");
-    assert!(medium.contains("p pull"), "{medium}");
-    assert!(medium.contains("P push"), "{medium}");
-    let hide_stash = medium.find("H hide stash").expect("H hide stash present");
-    let fetch = medium.find("f fetch").expect("f fetch present");
-    assert!(hide_stash < fetch, "{medium}");
-    assert!(
-        !medium.contains("J journal"),
-        "J journal joins later, at 155: {medium}"
-    );
-
-    let wide = footer_at(200);
-    let push = wide.find("P push").expect("P push present");
-    let journal = wide.find("J journal").expect("J journal present");
-    assert!(push < journal, "{wide}");
-}
-
-/// The regression this fix corrects: at 80 columns the remote hints must
-/// never displace `/ search` or `j/k move` — those are daily-width hints,
-/// and the remote keys are meant to drop first (m4-remotes ticket 03 fix).
-#[test]
-fn remote_hints_drop_before_search_and_movement_at_80() {
-    let footer = footer_at(80);
-    assert!(footer.contains("/ search"), "{footer}");
-    assert!(footer.contains("j/k move"), "{footer}");
-    assert!(!footer.contains("f fetch"), "{footer}");
-}
-
-/// m3-working-tree-undo-and-stash/04: the write keys are hinted on the
-/// changes pane and nowhere else, so the footer never offers a key that does
-/// nothing where the cursor is.
-#[test]
-fn the_write_hints_appear_only_on_the_changes_pane() {
+fn footer_eighty_branch_row() {
     let rows = linear(3);
     let mut view = view(&rows, WalkView::Complete { rows: 3 }, 0);
-
-    let quiet = text(&draw(&view, 200, 8));
-    let quiet_footer = quiet.last().expect("a footer row").clone();
-    assert!(
-        !quiet_footer.contains("space stage") && !quiet_footer.contains("d discard"),
-        "{quiet_footer}"
-    );
-
-    view.detail_shown = true;
-    view.changes_pane = true;
-    let open = text(&draw(&view, 200, 8));
-    let open_footer = open.last().expect("a footer row").clone();
-    assert!(
-        open_footer.contains("space stage") && open_footer.contains("d discard"),
-        "{open_footer}"
-    );
-    // Ahead of the movement keys, so a narrow terminal keeps them.
-    let stage = open_footer.find("space stage").expect("the hint is there");
-    let movement = open_footer.find("j/k move").expect("the movement hint");
-    assert!(stage < movement, "{open_footer}");
+    view.hint_context = HintContext::BranchRow { current: false };
+    let screen = text(&draw(&view, 80, 24));
+    let footer = screen.last().expect("a footer row").trim_end().to_owned();
+    assert_eq!(footer, " m merge  r rebase  ⏎ open  . more");
 }
 
+/// The changes pane's own hints replace the row context's, and swap to the
+/// conflict-resolution set while any entry is unmerged
+/// (m3-working-tree-undo-and-stash/04, m5-history-and-ghost-preview/04).
 #[test]
-fn the_expand_hint_keeps_its_place_after_the_renderer() {
-    let line = key_hints(&["+ expand lanes"], 200);
+fn the_changes_pane_hints_replace_the_row_context() {
+    let rows = linear(3);
+    let mut view = view(&rows, WalkView::Complete { rows: 3 }, 0);
+    view.hint_context = HintContext::ChangesPane {
+        unmerged: false,
+        detail_shown: true,
+    };
+    let footer = text(&draw(&view, 200, 8))
+        .last()
+        .expect("a footer row")
+        .trim_end()
+        .to_owned();
+    assert!(footer.contains("space stage"), "{footer}");
+    assert!(footer.contains("<> resize"), "{footer}");
+    assert!(!footer.contains("m merge"), "{footer}");
+
+    view.hint_context = HintContext::ChangesPane {
+        unmerged: true,
+        detail_shown: false,
+    };
+    let unmerged_footer = text(&draw(&view, 200, 8))
+        .last()
+        .expect("a footer row")
+        .trim_end()
+        .to_owned();
+    assert!(unmerged_footer.contains("M mergetool"), "{unmerged_footer}");
     assert!(
-        line.starts_with(" q quit  F2 status  F3 renderer  u undo  + expand lanes  / search"),
-        "{line}"
+        unmerged_footer.contains("space resolved"),
+        "{unmerged_footer}"
+    );
+    assert!(
+        !unmerged_footer.contains("space stage"),
+        "{unmerged_footer}"
     );
 }
 
@@ -991,14 +956,21 @@ fn the_commit_graph_line_sits_above_the_hints_and_takes_a_graph_row() {
     assert_ne!(with[8], without[8], "one graph row gave way");
 }
 
-/// `. explain` (`m2-details-and-diffs/17`) is the cursor row's own hint: it
-/// shows only when the row painted [`RowPaint::Highlighted`] carries a
-/// marker, never for a marker elsewhere or no marker at all.
+/// `. explain` (`m2-details-and-diffs/17`) is the cursor row's own hint: the
+/// footer shows it exactly when `hint_context` is [`HintContext::Marked`] —
+/// decided by the caller (`graft::view::rows`, from whether the cursor row
+/// carries a Mistake Radar marker), never derived from `GraphEntry::marker`
+/// here (that field only paints the marker glyph, `hint-bar-redesign`).
 #[test]
-fn the_explain_hint_shows_only_on_a_marked_cursor_row() {
+fn the_explain_hint_follows_hint_context_not_the_row_marker() {
     let rows = linear(2);
 
-    let plain = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    let mut plain = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    // A marker on a row (even the cursor's) must not turn the hint on by
+    // itself: only `hint_context` does.
+    plain.rows[0].marker = Some(MarkerView {
+        severity: Severity::Warning,
+    });
     let plain_screen = text(&draw(&plain, 80, 5));
     assert!(
         !plain_screen[4].contains(". explain"),
@@ -1006,27 +978,276 @@ fn the_explain_hint_shows_only_on_a_marked_cursor_row() {
         plain_screen[4]
     );
 
-    // The marker on the *other* row (index 1, off the cursor at index 0)
-    // must not turn the hint on.
-    let mut marked_elsewhere = view(&rows, WalkView::Complete { rows: 2 }, 0);
-    marked_elsewhere.rows[1].marker = Some(MarkerView {
-        severity: Severity::Warning,
-    });
-    let elsewhere_screen = text(&draw(&marked_elsewhere, 80, 5));
+    let mut marked = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    marked.hint_context = HintContext::Marked(Box::new(HintContext::PlainRow));
+    let marked_screen = text(&draw(&marked, 80, 5));
     assert!(
-        !elsewhere_screen[4].contains(". explain"),
+        marked_screen[4].contains(". explain"),
         "{:?}",
-        elsewhere_screen[4]
+        marked_screen[4]
+    );
+}
+
+// --- Operation banner (m5-history-and-ghost-preview/04, ADR-0038 §3) ---
+
+fn rebase_banner(step: Option<(u32, u32)>, conflict: Option<&str>, more: usize) -> BannerView {
+    BannerView {
+        kind: sanitize_line("REBASING"),
+        step,
+        conflict: conflict.map(sanitize_line),
+        more_conflicts: more,
+        focused: false,
+        skippable: true,
+    }
+}
+
+/// Wide (≥100 cols): `step 3 of 7`, `conflict in <path>`, and the `(+N)`
+/// extra-conflicts count all spelled out in full.
+#[test]
+fn banner_line_at_100_or_more_spells_out_step_and_conflict_in() {
+    let banner = rebase_banner(Some((3, 7)), Some("src/auth/token.rs"), 1);
+    let text = banner_line(&banner, 100);
+    assert!(text.contains("REBASING"), "{text:?}");
+    assert!(text.contains("step 3 of 7"), "{text:?}");
+    assert!(text.contains("conflict in src/auth/token.rs"), "{text:?}");
+    assert!(text.contains("(+1)"), "{text:?}");
+}
+
+/// Narrow (<100 cols): `3/7`, `conflict <path>` — no "step", no "in".
+#[test]
+fn banner_line_under_100_uses_the_terse_form() {
+    let banner = rebase_banner(Some((3, 7)), Some("src/auth.rs"), 0);
+    let text = banner_line(&banner, 80);
+    assert!(text.contains("REBASING 3/7"), "{text:?}");
+    assert!(text.contains("conflict src/auth.rs"), "{text:?}");
+    assert!(!text.contains("step"), "{text:?}");
+    assert!(!text.contains("conflict in"), "{text:?}");
+}
+
+/// No step at all (a plain merge): the sentence has nothing to count.
+#[test]
+fn banner_line_with_no_step_names_only_the_operation_and_the_conflict() {
+    let banner = BannerView {
+        kind: sanitize_line("MERGING"),
+        step: None,
+        conflict: Some(sanitize_line("src/x.rs")),
+        more_conflicts: 0,
+        focused: false,
+        skippable: false,
+    };
+    let text = banner_line(&banner, 120);
+    assert_eq!(text, "⚠ MERGING — conflict in src/x.rs");
+}
+
+/// No conflict yet: nothing past the step — an in-progress operation the
+/// user has not hit trouble in.
+#[test]
+fn banner_line_with_no_conflict_stops_after_the_step() {
+    let banner = rebase_banner(Some((3, 7)), None, 0);
+    let text = banner_line(&banner, 120);
+    assert_eq!(text, "⚠ REBASING step 3 of 7");
+}
+
+/// The banner replaces the header's walk/filters/order/graphics slot
+/// entirely, and reverses when focused.
+#[test]
+fn the_banner_replaces_the_header_slot_and_reverses_when_focused() {
+    let rows = linear(2);
+    let mut unfocused = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    unfocused.banner_op = Some(rebase_banner(Some((3, 7)), Some("src/auth.rs"), 0));
+    let screen = text(&draw(&unfocused, 80, 6));
+    assert!(screen[0].contains("REBASING"), "{:?}", screen[0]);
+    assert!(!screen[0].contains("commits"), "{:?}", screen[0]);
+
+    let theme = Theme::new(ThemeKind::Dark, &terminal(ColorDepth::TrueColor, false));
+    let mut focused = unfocused.clone();
+    focused.banner_op.as_mut().unwrap().focused = true;
+    let mut terminal = Terminal::new(TestBackend::new(80, 6)).expect("test backend opens");
+    terminal
+        .draw(|frame| frame.render_widget(GraphScreen::new(&focused, &theme), frame.area()))
+        .expect("drawing into a test backend cannot fail");
+    let buffer = terminal.backend().buffer();
+    let reversed = (0..buffer.area.width).any(|x| {
+        buffer[(x, 0)]
+            .style()
+            .add_modifier
+            .contains(Modifier::REVERSED)
+    });
+    assert!(reversed, "expected the focused banner slot to reverse");
+}
+
+/// The buttons row draws only at 160 columns and up, on its own row under
+/// the header — never at 80 or 120.
+#[test]
+fn banner_buttons_row_draws_only_at_160_and_up() {
+    let rows = linear(2);
+    let mut with_banner = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    with_banner.banner_op = Some(rebase_banner(Some((3, 7)), Some("src/auth.rs"), 0));
+
+    let narrow = text(&draw(&with_banner, 80, 10));
+    assert!(!narrow[1].contains("Continue"), "{:?}", narrow[1]);
+
+    let medium = text(&draw(&with_banner, 120, 10));
+    assert!(!medium[1].contains("Continue"), "{:?}", medium[1]);
+
+    let wide = text(&draw(&with_banner, 160, 10));
+    assert!(wide[1].contains("Continue"), "{:?}", wide[1]);
+    assert!(wide[1].contains("Skip"), "{:?}", wide[1]);
+    assert!(wide[1].contains("Abort"), "{:?}", wide[1]);
+}
+
+// --- CONFLICTS section (m5-history-and-ghost-preview/04) ---
+
+/// `WorkingTreeSection::Unmerged`'s heading word is `CONFLICTS` — the
+/// section drawn first, and the row text (words, not a letter and counts),
+/// are asserted in `detail_pane::tests::conflicts_section_draws_first_with_words_not_a_letter`
+/// and `detail_pane::files::tests::an_unmerged_row_shows_how_as_words_not_a_letter_and_counts`.
+#[test]
+fn unmerged_sections_heading_word_is_conflicts() {
+    use crate::detail::WorkingTreeSection;
+    assert_eq!(WorkingTreeSection::Unmerged.title(), "CONFLICTS");
+}
+
+/// Not an assertion — dumps the banner at <100/≥100/≥160 columns, so the
+/// header's operation banner can be judged by eye. Run by hand to
+/// regenerate: `cargo test -p graft-ui
+/// graph_screen::tests::capture_for_docs_shots -- --ignored --nocapture`.
+#[test]
+#[ignore = "writes docs/shots/m5-ui-banner.txt; run by hand to regenerate"]
+fn capture_for_docs_shots() {
+    let rows = linear(2);
+    let mut with_banner = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    with_banner.banner_op = Some(rebase_banner(Some((3, 7)), Some("src/auth/token.rs"), 1));
+
+    let mut out = String::new();
+    out.push_str(
+        "# docs/shots/m5-ui-banner.txt — operation banner (rebase/merge/conflict)\n\
+         #\n\
+         # What right looks like: the header's informational tail is\n\
+         # replaced, while an operation is in progress, by\n\
+         # `⚠ REBASING step 3 of 7 — conflict in <path> (+N)` — spelled out\n\
+         # at >=100 cols, abbreviated (`3/7`, path only) under 100. The\n\
+         # `[ Continue ] [ Skip ] [ Abort ]` buttons draw on their own row\n\
+         # under the header only at >=160 cols — keys always work, the\n\
+         # buttons are a mouse convenience.\n\
+         \n",
+    );
+    for (label, w) in [
+        ("<100 cols, 80x10", 80u16),
+        (">=100 cols, 120x10", 120),
+        (">=160 cols (buttons row), 160x10", 160),
+    ] {
+        out.push_str(&format!("=== {label} ===\n"));
+        for line in text(&draw(&with_banner, w, 10)) {
+            if !line.trim().is_empty() {
+                out.push_str(line.trim_end());
+                out.push('\n');
+            }
+        }
+        out.push('\n');
+    }
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m5-ui-banner.txt"
+        ),
+        out,
+    )
+    .expect("docs/shots is writable");
+}
+
+// --- Hint bar captures (`hint-bar-redesign`, ADR-0037 §4) ---
+
+/// Not an assertion — dumps the footer's hint bar for the four contexts the
+/// design note's mockups cover (a branch row, a plain row, the
+/// Uncommitted-changes row, a marked merge) at the three breakpoints the
+/// width rule turns on (80, 120, 160 cols), so each can be judged by eye
+/// against the mockup. Run by hand to regenerate: `cargo test -p graft-ui
+/// graph_screen::tests::capture_hint_bar_for_docs_shots -- --ignored
+/// --nocapture`.
+#[test]
+#[ignore = "writes docs/shots/m5-hints-*.txt; run by hand to regenerate"]
+#[allow(clippy::too_many_lines)] // one hand-built fixture plus its capture header, not logic
+fn capture_hint_bar_for_docs_shots() {
+    // A corpus shape with a branch, a marked merge and a dirty tree
+    // (scope item 7): three ordinary commits, then a merge carrying a
+    // Mistake Radar marker, then the row a local branch badge sits on.
+    let mut rows = linear(5);
+    rows[1].commit.parents = vec![rows[2].commit.id, rows[3].commit.id];
+    let rows = layout(
+        &rows
+            .iter()
+            .map(|row| row.commit.clone())
+            .collect::<Vec<_>>(),
+        Seeds::default(),
     );
 
-    let mut marked_cursor = view(&rows, WalkView::Complete { rows: 2 }, 0);
-    marked_cursor.rows[0].marker = Some(MarkerView {
-        severity: Severity::Warning,
-    });
-    let cursor_screen = text(&draw(&marked_cursor, 80, 5));
-    assert!(
-        cursor_screen[4].contains(". explain"),
-        "{:?}",
-        cursor_screen[4]
-    );
+    let branch_badge = Badge {
+        name: sanitize_line("feature/hints"),
+        kind: BadgeKind::Branch {
+            identity: BranchIdentity::of_name(b"feature/hints"),
+            current: false,
+            tracking: Tracking::Untracked,
+        },
+    };
+
+    let scenarios: [(&str, HintContext, usize, bool); 4] = [
+        ("uncommitted", HintContext::WorkingTreeRow, 0, false),
+        ("branch", HintContext::BranchRow { current: false }, 4, true),
+        ("plain", HintContext::PlainRow, 2, false),
+        (
+            "marked",
+            HintContext::Marked(Box::new(HintContext::PlainRow)),
+            1,
+            false,
+        ),
+    ];
+
+    for (name, context, cursor, badge) in scenarios {
+        let mut scenario = view(&rows, WalkView::Complete { rows: 5 }, cursor);
+        scenario.hint_context = context;
+        if badge {
+            scenario.rows[cursor].badges.push(branch_badge.clone());
+        }
+        if name == "marked" {
+            scenario.rows[cursor].marker = Some(MarkerView {
+                severity: Severity::Warning,
+            });
+        }
+        for (label, columns, term_rows) in [
+            ("80x24", 80u16, 24u16),
+            ("120x40", 120, 40),
+            ("160x48", 160, 48),
+        ] {
+            let mut out = format!(
+                "# m5-hints-{name}-{label}.txt: TestBackend capture (not a pty), {columns}x{term_rows}.\n\
+                 # Fixture: capture_hint_bar_for_docs_shots in\n\
+                 # crates/graft-ui/src/graph_screen/tests.rs (#[ignore]d, run by hand to\n\
+                 # regenerate). HintContext::{context:?} on a five-row corpus (a branch\n\
+                 # badge, a merge carrying a Mistake Radar marker, a plain row).\n\
+                 #\n\
+                 # Judge by eye: the footer's last row reads the {name} context's hints\n\
+                 # for this width — three plus `. more` under 100 cols, six plus `. more`\n\
+                 # from 100, every hint plus `. more` from 160 (ADR-0037 §4) — never all\n\
+                 # hidden.\n\
+                 \n",
+                context = scenario.hint_context,
+            );
+            for line in text(&draw(&scenario, columns, term_rows)) {
+                out.push_str(line.trim_end());
+                out.push('\n');
+            }
+            std::fs::write(
+                format!(
+                    concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/../../docs/shots/m5-hints-{}-{}.txt"
+                    ),
+                    name, label
+                ),
+                out,
+            )
+            .expect("docs/shots is writable");
+        }
+    }
 }

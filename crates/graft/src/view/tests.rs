@@ -153,7 +153,7 @@ fn graft_opens_on_the_graph_with_the_cursor_row_highlighted() {
     assert_eq!(view.rows[1].line.paint, RowPaint::Highlighted);
     assert_eq!(view.rows[0].line.paint, RowPaint::Normal);
     assert!(screen.contains("Commit 5"), "{screen}");
-    assert!(screen.contains("q quit"), "{screen}");
+    assert!(screen.contains("⏎ open"), "{screen}");
     assert!(
         !screen.contains('\u{1b}'),
         "a subject's escape reached the cells"
@@ -187,7 +187,7 @@ fn a_harness_banner_sits_under_the_header_with_the_tier_and_costs_rows() {
     );
     assert!(lines[2].contains("shows: a lane jump"), "{screen}");
     assert!(
-        lines[5].contains("q quit"),
+        lines[5].contains("⏎ open"),
         "the hints keep the footer: {screen}"
     );
 
@@ -297,7 +297,7 @@ fn with_no_override_the_footer_keeps_the_ordinary_hints() {
     };
 
     let screen = draw(&state, 60, 5);
-    assert!(screen.contains("q quit"), "{screen}");
+    assert!(screen.contains("⏎ open"), "{screen}");
     assert!(!screen.contains("renderer forced"), "{screen}");
 }
 
@@ -2333,7 +2333,7 @@ fn capture_m3_commit_editor() {
 #[ignore = "writes docs/shots/m3-commit-editor-rejected.txt; run by hand to regenerate"]
 fn capture_m3_commit_editor_rejected() {
     let mut state = commit_editor_state(120, 40);
-    state.status = crate::update::Status::Sticky(
+    state.status = crate::update::Status::sticky(
         "pre-commit: 2 files would be reformatted, run `cargo fmt`".to_owned(),
     );
     let screen = draw(&state, 120, 40);
@@ -2974,6 +2974,14 @@ fn capture_m4_remote_keys() {
 
 /// A push running, with git's question open over it (m4-remotes/06).
 fn credential_state(columns: u16, rows: u16, prompt: &str) -> AppState {
+    credential_state_seeded(columns, rows, prompt, false)
+}
+
+/// The same, with the masked field's pulse seed pinned. Every test here
+/// pins it: the seed is random in the running app, so a capture or an
+/// assertion that did not pin it would flip between two rows at random
+/// (`graft::jobs::askpass::pulse_seed`).
+fn credential_state_seeded(columns: u16, rows: u16, prompt: &str, pulse_seed: bool) -> AppState {
     use crate::jobs::remote::RemoteFacts;
     use crate::update::detail::Loading;
     use graft_git::remote::{Remote, TrackedUpstream};
@@ -3010,7 +3018,7 @@ fn credential_state(columns: u16, rows: u16, prompt: &str) -> AppState {
         stoppable: crate::update::remote::Stoppable::Yes,
     });
     state.status = Status::Busy("push main → origin/main · esc cancels".to_owned());
-    crate::update::credential::credential_needed(&mut state, id, prompt);
+    crate::update::credential::credential_needed(&mut state, id, prompt, pulse_seed);
     state
 }
 
@@ -3084,7 +3092,7 @@ fn gits_words_and_a_remote_failure_cannot_carry_an_escape_to_the_screen() {
     let mut failed = credential_state(120, 40, "Password for 'http://u@h':");
     failed.credential = None;
     failed.operating = None;
-    failed.status = Status::Sticky("push rejected: \u{1b}[31mhook said no\u{7}".to_owned());
+    failed.status = Status::sticky("push rejected: \u{1b}[31mhook said no\u{7}".to_owned());
     let screen = draw(&failed, 120, 40);
     assert!(screen.contains("hook said no"), "{screen}");
     assert!(!screen.contains('\u{1b}'), "{screen:?}");
@@ -3096,9 +3104,17 @@ fn gits_words_and_a_remote_failure_cannot_carry_an_escape_to_the_screen() {
 #[test]
 #[ignore = "writes docs/shots/m4-credential-prompt-in-app.txt; run by hand to regenerate"]
 fn capture_m4_credential_prompt_in_app() {
-    let mut password = credential_state(120, 40, "Password for 'http://user@127.0.0.1:8443':");
+    let ask = "Password for 'http://user@127.0.0.1:8443':";
+    let mut password = credential_state_seeded(120, 40, ask, false);
     type_into_prompt(&mut password, "hunter2");
     let masked = draw(&password, 120, 40);
+
+    // The same password, the same length, the other seed. The two rows
+    // differ, which is the point: what the row rests at is the seed's
+    // doing, not the password's.
+    let mut other_seed = credential_state_seeded(120, 40, ask, true);
+    type_into_prompt(&mut other_seed, "hunter2");
+    let masked_other_seed = draw(&other_seed, 120, 40);
 
     let mut username = credential_state(80, 24, "Username for 'http://127.0.0.1:8443':");
     type_into_prompt(&mut username, "alice");
@@ -3119,7 +3135,16 @@ fn capture_m4_credential_prompt_in_app() {
 #    is never stored, and the footer says what ⏎, ⌃U and Esc do — Esc
 #    naming the push it cancels. The line behind it still says the push is
 #    running.
-# 2. 80x24, username ask with `alice` typed: the same box, the answer in the
+# 2. The same 7-character password again, with the prompt's pulse seed the
+#    other way up. The first mask glyph differs between 1 and 2 and nothing
+#    else does. That is the whole of ADR-0038 §2: the glyph flips on every
+#    keystroke so a key visibly lands, and where it rests is decided by a
+#    random bit drawn per prompt (`graft::jobs::askpass::pulse_seed`), not
+#    by the length — so a screenshot of either row says nothing about how
+#    long the password is. Both rows are 8 glyphs wide.
+#    It does not hide the length from somebody who watches the row from the
+#    moment the prompt opens and counts the flips.
+# 3. 80x24, username ask with `alice` typed: the same box, the answer in the
 #    open (a username is not a secret), no `•` anywhere.
 #
 ";
@@ -3128,7 +3153,11 @@ fn capture_m4_credential_prompt_in_app() {
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m4-credential-prompt-in-app.txt"
         ),
-        format!("{header}=== 120x40 · password ===\n{masked}\n=== 80x24 · username ===\n{plain}"),
+        format!(
+            "{header}=== 120x40 · password · pulse seed down ===\n{masked}\n\
+             === 120x40 · the same password · pulse seed up ===\n{masked_other_seed}\n\
+             === 80x24 · username ===\n{plain}"
+        ),
     )
     .expect("docs/shots is writable");
 }

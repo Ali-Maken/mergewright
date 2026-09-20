@@ -59,7 +59,10 @@ mod geometry;
 mod style;
 
 use geometry::{BLANK, row_cells};
-use style::{dashed, dashes_odd_columns, lane_x, off_thread, on_thread, to_ascii};
+use style::{
+    dashed, dashes_odd_columns, ghost_edge_glyph, ghost_node_glyph, lane_x, off_thread, on_thread,
+    to_ascii,
+};
 
 /// A folded outgoing edge: the branch continues below, behind the fold.
 pub const STUB_BELOW: char = '▾';
@@ -118,7 +121,8 @@ impl NodeKind {
     }
 }
 
-/// How strongly a row paints, set by selection and search (ticket 16).
+/// How strongly a row paints, set by selection and search (ticket 16), or
+/// that it is not a real commit at all.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum RowPaint {
     /// As designed.
@@ -128,12 +132,26 @@ pub enum RowPaint {
     Dimmed,
     /// Brought forward: the selection, or a search hit.
     Highlighted,
+    /// A Ghost Preview row: a commit that does not exist yet, or a real
+    /// parent clipped at the preview slice's edge and drawn as an anchor
+    /// rather than loaded (ADR-0038 §5). The node draws as a hollow anchor
+    /// glyph never used by a real [`NodeKind`]; the ghost's own edges dash
+    /// and paint [`Token::TextMuted`](crate::theme::Token::TextMuted)
+    /// regardless of the lane's branch colour — an anchor must never be
+    /// mistaken for a real parent, at any tier.
+    ///
+    /// Which edges are the ghost's is [`GraphLine::ghost_lanes`]'s to say.
+    /// A real lane passing through a ghost row keeps its solid glyph and
+    /// its colour (DESIGN.md §1.7's `┊│┊●b┈`): the before and the after are
+    /// one picture, and a real lane that dashes because a ghost is drawn
+    /// beside it leaves the user unable to tell what is real.
+    Ghost,
 }
 
 impl RowPaint {
     fn modifier(self) -> Modifier {
         match self {
-            RowPaint::Normal => Modifier::empty(),
+            RowPaint::Normal | RowPaint::Ghost => Modifier::empty(),
             RowPaint::Dimmed => Modifier::DIM,
             RowPaint::Highlighted => Modifier::BOLD,
         }
@@ -159,6 +177,19 @@ pub struct GraphLine<'a> {
     /// (`graft_graph::Ancestry::lit`): those lanes draw bold, every other
     /// lane dim. `None` when nothing is selected: every lane as designed.
     pub thread: Option<BTreeSet<usize>>,
+    /// The real columns that belong to the preview, on a
+    /// [`RowPaint::Ghost`] row. Only these lanes dash and mute; the node's
+    /// own cell always does, whether or not its column is listed. Every
+    /// other lane on the row is a real branch passing through and draws
+    /// exactly as it would on any other row — solid, in its own colour
+    /// (DESIGN.md §1.7, `docs/design/05-visualization.md` "real nodes stay
+    /// solid").
+    ///
+    /// Empty on a non-ghost row, and meaningless there. Empty on a ghost
+    /// row means only the anchor itself is drawn as a ghost — the
+    /// conservative reading: a real lane is never made to look unreal by
+    /// omission.
+    pub ghost_lanes: BTreeSet<usize>,
 }
 
 impl<'a> GraphLine<'a> {
@@ -170,7 +201,20 @@ impl<'a> GraphLine<'a> {
             row: Cow::Borrowed(row),
             paint: RowPaint::Normal,
             thread: None,
+            ghost_lanes: BTreeSet::new(),
         }
+    }
+
+    /// The same row drawn as a Ghost Preview row: `lanes` are the real
+    /// columns the preview owns, and nothing else on the row changes
+    /// appearance. Setting [`GraphLine::paint`] to [`RowPaint::Ghost`] by
+    /// hand and leaving `ghost_lanes` empty ghosts only the anchor — this
+    /// is the way to say which edges are the preview's.
+    #[must_use]
+    pub fn ghost(mut self, lanes: BTreeSet<usize>) -> Self {
+        self.paint = RowPaint::Ghost;
+        self.ghost_lanes = lanes;
+        self
     }
 
     /// A row with no commit behind it, drawn normally. For a synthesised row
@@ -182,6 +226,7 @@ impl<'a> GraphLine<'a> {
             row: Cow::Owned(row),
             paint: RowPaint::Normal,
             thread: None,
+            ghost_lanes: BTreeSet::new(),
         }
     }
 }
@@ -270,11 +315,36 @@ impl Widget for GraphColumn<'_> {
             let drawn = self.fold.map(|fold| fold.view(&line.row));
             let row = drawn.as_ref().map_or(&*line.row, |drawn| &*drawn.row);
             let cells = row_cells(row, line.node);
+            let ghost = line.paint == RowPaint::Ghost;
+            let node_x = lane_x(row.lane);
             for x in 0..area.width {
                 let cell = cells.get(usize::from(x)).copied().unwrap_or(BLANK);
                 let mut style = Style::new().add_modifier(line.paint.modifier());
                 let mut glyph = cell.glyph;
-                if let Some(owner) = cell.owner {
+                // A cell is the ghost's if it is the anchor itself or its
+                // lane is one the caller named. A real lane crossing a
+                // ghost row is *not*: it keeps its glyph and its colour, or
+                // the user cannot tell what is real (DESIGN.md §1.7).
+                let ghost_cell = ghost
+                    && (x == node_x
+                        || cell.owner.is_some_and(|owner| {
+                            real_column(owner.column)
+                                .is_some_and(|column| line.ghost_lanes.contains(&column))
+                        }));
+                if ghost_cell {
+                    // The ghost's own cells paint muted regardless of the
+                    // lane's branch colour and dash regardless of the
+                    // 16-colour/`NO_COLOR` parity rule below (ADR-0038 §5).
+                    glyph = if x == node_x {
+                        ghost_node_glyph(line.node)
+                    } else {
+                        ghost_edge_glyph(glyph)
+                    };
+                    if cell.owner.is_some() {
+                        style = foreground(self.theme, Token::TextMuted)
+                            .add_modifier(line.paint.modifier());
+                    }
+                } else if let Some(owner) = cell.owner {
                     style = style.fg(color(self.theme.branch(owner.identity)));
                     style = on_thread(style, line, real_column(owner.column));
                     if dashes && real_column(owner.column).is_some_and(|c| c % 2 == 1) {

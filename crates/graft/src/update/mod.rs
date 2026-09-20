@@ -28,7 +28,7 @@ mod events;
 mod geometry;
 mod history;
 pub mod journal;
-mod keys;
+pub mod keys;
 pub mod map;
 mod mouse;
 pub mod operate;
@@ -263,7 +263,7 @@ fn commit_editor_answer(next: &mut AppState, event: AppEvent) {
         // `e`'s file, or `Ctrl+Z`'s suspend: nothing came back but whether
         // the terminal handover worked, and a failure is the user's to see.
         AppEvent::Produced(_, Product::HandedOver(Err(why))) => {
-            next.status = Status::Sticky(why);
+            next.status = Status::sticky(why);
         }
         AppEvent::Produced(_, Product::HandedOver(Ok(()))) => {}
         other => debug_assert!(false, "not the commit editor's: {other:?}"),
@@ -294,8 +294,8 @@ fn operate_answer(next: &mut AppState, commands: &mut Vec<Command>, event: AppEv
             next.status = Status::Busy(description);
         }
         // git is waiting on an answer only the user has.
-        AppEvent::Progress(id, Progress::CredentialNeeded { prompt }) => {
-            credential_needed(next, id, &prompt);
+        AppEvent::Progress(id, Progress::CredentialNeeded { prompt, pulse_seed }) => {
+            credential_needed(next, id, &prompt, pulse_seed);
         }
         _ => {}
     }
@@ -478,7 +478,7 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             // message off the screen before it could be read. A read
             // failure is the only one a later success makes stale
             // (m3/04 review gap, m3-working-tree-undo-and-stash/05).
-            if !matches!(next.status, Status::Busy(_) | Status::Sticky(_)) {
+            if !matches!(next.status, Status::Busy(_) | Status::Sticky { .. }) {
                 next.status = Status::Ready;
             }
         }

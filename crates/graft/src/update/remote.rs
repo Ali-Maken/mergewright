@@ -14,6 +14,7 @@ use graft_core::journal::{EntryStatus, JournalEntry, OperationKind};
 use graft_core::oid::Oid;
 use graft_git::remote::RemoteFailure;
 use graft_ops::operation::{FetchParams, Lease, Operation, PullParams, PushParams};
+use graft_term::sanitize_line;
 use graft_ui::confirm::ConfirmView;
 
 use super::confirm::{ConfirmThen, PendingConfirm};
@@ -385,9 +386,9 @@ pub fn push_box(params: &PushParams, ahead: Option<usize>, local_tip: Option<Oid
                 params.remote
             ));
             ConfirmView::new(
-                format!("Push {local} → {remote_side}"),
-                vec![consequence.join(" · ")],
-                command,
+                sanitize_line(&format!("Push {local} → {remote_side}")),
+                vec![sanitize_line(&consequence.join(" · "))],
+                sanitize_line(&command),
             )
             .with_labels("Cancel", "Push")
         }
@@ -395,15 +396,15 @@ pub fn push_box(params: &PushParams, ahead: Option<usize>, local_tip: Option<Oid
             let theirs = short_oid(expected);
             let ours = local_tip.map_or_else(|| local.to_owned(), short_oid);
             ConfirmView::new(
-                format!("Force-push {local} → {remote_side}?"),
+                sanitize_line(&format!("Force-push {local} → {remote_side}?")),
                 vec![
-                    format!(
+                    sanitize_line(&format!(
                         "{remote_side} {theirs} → {ours} · refused if {} moved since your fetch (lease)",
                         params.remote
-                    ),
-                    format!("rewrites history for everyone who has {theirs}"),
+                    )),
+                    sanitize_line(&format!("rewrites history for everyone who has {theirs}")),
                 ],
-                command,
+                sanitize_line(&command),
             )
             .with_labels("Cancel", "Force push")
         }
@@ -538,7 +539,12 @@ pub(super) fn remote_done(state: &mut AppState, op: &Operation) -> Option<String
 }
 
 /// The status a failed remote write leaves. `explained` is `ops`' failure
-/// line (`ApplyError::Remote`'s `explain`), shown as it stands. A
+/// line (`ApplyError::Remote`'s `explain`), worded `reason` or `reason ·
+/// keys` (the design note's "Failure line" convention, `docs/design/02-…`
+/// isn't the source here — `ops::apply::remote::explain`'s own doc comment
+/// is). Split so the footer can keep the keys whole and cut the reason
+/// first at 80 columns (`hints::fit_status_line`, ADR-0037 §4) — parsed
+/// here rather than in `graft-ops`, which is another ticket's crate. A
 /// non-fast-forward push is remembered, so the next `P` offers the lease. A
 /// cancel is the user's own doing: `Done`, not sticky.
 pub fn remote_failed(
@@ -547,6 +553,10 @@ pub fn remote_failed(
     failure: &RemoteFailure,
     explained: &str,
 ) -> Status {
+    let sticky = || {
+        let (reason, keys) = split_reason_and_keys(explained);
+        Status::Sticky { reason, keys }
+    };
     match (failure, op) {
         // Not reached through the job pool: `jobs::pool::run_job` turns any
         // product returned after a cancel into `Event::JobCancelled`, which
@@ -557,9 +567,20 @@ pub fn remote_failed(
         (RemoteFailure::Cancelled, _) => Status::Done(format!("{} cancelled", op.describe())),
         (RemoteFailure::NonFastForward, Operation::Push(params)) => {
             state.remote.last_rejected_push = Some(params.clone());
-            Status::Sticky(explained.to_owned())
+            sticky()
         }
-        _ => Status::Sticky(explained.to_owned()),
+        _ => sticky(),
+    }
+}
+
+/// `"push rejected: X has moved · p pull first · P force with lease"` →
+/// `("push rejected: X has moved", Some("p pull first · P force with
+/// lease"))`. A line with no ` · ` (most of them) has no keys to keep
+/// whole; the reason is cut like any other footer text.
+fn split_reason_and_keys(explained: &str) -> (String, Option<String>) {
+    match explained.split_once(" · ") {
+        Some((reason, keys)) => (reason.to_owned(), Some(keys.to_owned())),
+        None => (explained.to_owned(), None),
     }
 }
 

@@ -15,6 +15,7 @@ use graft_git::diff::{DiffOptions, DiffSpec};
 use graft_git::stash::StashEntry;
 
 use graft_ops::operation::{Operation, StashParams, StashScope};
+use graft_term::sanitize_line;
 use graft_ui::detail::{DetailFocus, FileListView};
 use graft_ui::text_input::TextField;
 
@@ -342,7 +343,7 @@ fn prompt_key(
             // that was typed. The prompt applies it here rather than letting
             // the global arm run, because a global arm that fires while a
             // text field is open is Critical 1 of the m3/06 review.
-            if matches!(next.status, Status::Failed(_) | Status::Sticky(_)) {
+            if matches!(next.status, Status::Failed(_) | Status::Sticky { .. }) {
                 next.status = Status::Ready;
             } else {
                 next.stash.prompt = None;
@@ -439,14 +440,17 @@ fn request_drop(next: &mut AppState) -> bool {
     let name = format!("stash@{{{index}}}");
     let files = graft_ui::stash_screen::files_label(entry.paths.len());
     let view = graft_ui::confirm::ConfirmView::new(
-        format!("Drop {name}?"),
+        sanitize_line(&format!("Drop {name}?")),
         vec![
-            format!("{name} holds {files}. Dropping it takes it off the list."),
-            "Graft keeps a backup first, so `u` puts it back — but it comes back \
-             as stash@{0}, not where it was: git has no way to insert into the list."
-                .to_owned(),
+            sanitize_line(&format!(
+                "{name} holds {files}. Dropping it takes it off the list."
+            )),
+            sanitize_line(
+                "Graft keeps a backup first, so `u` puts it back — but it comes back \
+                 as stash@{0}, not where it was: git has no way to insert into the list.",
+            ),
         ],
-        format!("git stash drop {name}"),
+        sanitize_line(&format!("git stash drop {name}")),
     )
     .with_labels("Keep", "Drop");
     next.confirm = Some(PendingConfirm {

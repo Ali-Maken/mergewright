@@ -275,7 +275,7 @@ fn discarding_an_untracked_file_asks_first_and_leaves_a_way_back() {
     // The safe choice is under the cursor: `Enter` now changes nothing.
     let state = app.key(&state, KeyCode::Char('d'));
     let pending = state.confirm.as_ref().expect("the confirm box opened");
-    assert_eq!(pending.view.command, "git clean -f -- scratch.txt");
+    assert_eq!(pending.view.command.as_str(), "git clean -f -- scratch.txt");
     let state = app.key(&state, KeyCode::Enter);
     assert!(state.confirm.is_none(), "the box closed");
     assert!(state.operating.is_none(), "nothing was written");

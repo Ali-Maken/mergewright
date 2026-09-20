@@ -444,3 +444,281 @@ fn dashes_follow_the_real_column_through_a_fold() {
     assert_eq!(buf[(2, 11)].symbol(), "│", "real column 8 is even: solid");
     assert_eq!(buf[(4, 11)].symbol(), "╎", "real column 9 is odd: dashed");
 }
+
+// --- Ghost Preview (m5-history-and-ghost-preview/04, ADR-0038 §5) ---
+
+/// Every real column on `row`: the preview owns the whole row, which is
+/// what a slice with no real branch running through it looks like.
+fn all_lanes(row: &Row) -> BTreeSet<usize> {
+    (0..row.lanes.len().max(row.lane + 1)).collect()
+}
+
+/// A ghost row's node draws the anchor glyph (`○`/`◎`), never the real
+/// [`NodeKind`] glyph, and every straight edge on the row dashes — at any
+/// colour depth, unconditionally (unlike the 16-colour/`NO_COLOR` odd-column
+/// convention, which only ever applies to real rows).
+#[test]
+fn ghost_paint_dashes_every_straight_edge_and_forces_the_anchor_glyph() {
+    let rows = reuse_rows();
+    let theme = dark(ColorDepth::TrueColor);
+    let plain_lines: Vec<_> = rows.iter().map(GraphLine::plain).collect();
+    let plain = render(&plain_lines, &theme, 8);
+
+    let ghost_lines: Vec<GraphLine<'_>> = rows
+        .iter()
+        .map(|row| GraphLine::plain(row).ghost(all_lanes(row)))
+        .collect();
+    let ghost = render(&ghost_lines, &theme, 8);
+
+    for (y, row) in rows.iter().enumerate() {
+        let y = u16::try_from(y).expect("few rows");
+        let node_x = lane_x(row.lane);
+        for x in 0..plain.area.width {
+            let before = plain[(x, y)].symbol();
+            let after = ghost[(x, y)].symbol();
+            if x == node_x {
+                assert!(
+                    after == "○" || after == "◎",
+                    "node cell at ({x},{y}) drew {after:?}, not an anchor glyph"
+                );
+                assert_ne!(before, after, "a ghost node must never draw the real glyph");
+            } else {
+                match before {
+                    "│" => assert_eq!(after, "┊", "vertical edge at ({x},{y})"),
+                    "─" => assert_eq!(after, "┈", "horizontal edge at ({x},{y})"),
+                    other => assert_eq!(after, other, "cell at ({x},{y}) changed unexpectedly"),
+                }
+            }
+        }
+    }
+}
+
+/// The ghost rows draw nothing outside the `Rect` they were given — the
+/// ticket's piece-9 bounds claim for this widget, at an offset so a
+/// column-relative `x` that leaked would land on a sentinel cell.
+#[test]
+fn a_ghost_row_draws_nothing_outside_its_rect() {
+    let rows = reuse_rows();
+    let theme = dark(ColorDepth::TrueColor);
+    let lines: Vec<GraphLine<'_>> = rows
+        .iter()
+        .map(|row| GraphLine::plain(row).ghost(all_lanes(row)))
+        .collect();
+
+    let outer = Rect::new(0, 0, 24, 12);
+    let inner = Rect::new(3, 2, 8, u16::try_from(lines.len()).expect("few rows"));
+    let mut buf = Buffer::empty(outer);
+    for y in 0..outer.height {
+        for x in 0..outer.width {
+            buf[(x, y)].set_char('#');
+        }
+    }
+    GraphColumn::new(&lines, &theme).render(inner, &mut buf);
+
+    for y in 0..outer.height {
+        for x in 0..outer.width {
+            let inside = x >= inner.x && x < inner.right() && y >= inner.y && y < inner.bottom();
+            if !inside {
+                assert_eq!(
+                    buf[(x, y)].symbol(),
+                    "#",
+                    "drew outside its rect at ({x}, {y})"
+                );
+            }
+        }
+    }
+}
+
+/// DESIGN.md §1.7 draws `┊│┊●b┈`: the real lane running through a ghost row
+/// stays solid and keeps its own branch colour. Only the lanes the preview
+/// owns dash and mute — a real lane that changed appearance because a ghost
+/// was drawn beside it leaves the user unable to tell what is real
+/// (`docs/design/05-visualization.md`, "real nodes stay solid").
+#[test]
+fn a_real_lane_through_a_ghost_row_stays_solid_and_keeps_its_colour() {
+    let rows = reuse_rows();
+    let theme = dark(ColorDepth::TrueColor);
+    let (row, through) = rows
+        .iter()
+        .find_map(|row| {
+            let through = (0..row.lanes.len()).find(|&column| {
+                column != row.lane && row.lanes.get(column).copied().flatten().is_some()
+            })?;
+            Some((row, through))
+        })
+        .expect("the fixture has a row with a real lane passing through it");
+
+    let plain = render(std::slice::from_ref(&GraphLine::plain(row)), &theme, 8);
+    // Only the anchor's own lane belongs to the preview.
+    let ghosted = GraphLine::plain(row).ghost(BTreeSet::from([row.lane]));
+    let ghost = render(std::slice::from_ref(&ghosted), &theme, 8);
+
+    let node_x = lane_x(row.lane);
+    let through_x = lane_x(through);
+    assert!(
+        matches!(ghost[(node_x, 0)].symbol(), "○" | "◎"),
+        "the anchor itself must still be a ghost: {:?}",
+        ghost[(node_x, 0)].symbol()
+    );
+    assert_eq!(
+        ghost[(through_x, 0)].symbol(),
+        plain[(through_x, 0)].symbol(),
+        "the real lane's glyph changed on a ghost row"
+    );
+    assert_eq!(
+        ghost[(through_x, 0)].fg,
+        plain[(through_x, 0)].fg,
+        "the real lane lost its branch colour on a ghost row"
+    );
+    assert_ne!(
+        ghost[(through_x, 0)].fg,
+        ghost[(node_x, 0)].fg,
+        "a real lane and the anchor beside it must not paint the same"
+    );
+}
+
+/// A ghost merge (two or more parents) draws the merge anchor `◎`, distinct
+/// from the ordinary ghost anchor `○` — a replayed merge still reads as a
+/// merge without ever reading as [`NodeKind::Merge`]'s real `◉`.
+#[test]
+fn ghost_merge_draws_the_merge_anchor_not_the_ordinary_one() {
+    let rows = reuse_rows();
+    let theme = dark(ColorDepth::TrueColor);
+    let merge_row = &rows[0]; // id 6: "Merge branch 'b'"
+    let line = GraphLine::plain(merge_row).ghost(all_lanes(merge_row));
+    assert_eq!(line.node, NodeKind::Merge);
+    let buf = render(std::slice::from_ref(&line), &theme, 4);
+    assert!(text(&buf, 0).contains('◎'));
+    assert!(!text(&buf, 0).contains('◉'));
+}
+
+/// Ghost's ASCII glyph table (`: . o O`), distinct from the ASCII table
+/// real rows use, so an anchor is unmistakable at that tier too
+/// (ADR-0038 §5).
+#[test]
+fn ghost_row_ascii_glyphs_are_colon_dot_o_capital_o() {
+    let rows = reuse_rows();
+    let theme = dark(ColorDepth::TrueColor);
+    let lines: Vec<GraphLine<'_>> = rows
+        .iter()
+        .map(|row| GraphLine::plain(row).ghost(all_lanes(row)))
+        .collect();
+    let buf = render_ascii(&lines, &theme, 8);
+    let drawn: String = (0..buf.area.height).map(|y| text(&buf, y)).collect();
+    for c in drawn.chars() {
+        assert!(
+            matches!(c, ':' | '.' | 'o' | 'O' | ' ' | '/' | '\\' | '+'),
+            "unexpected ASCII glyph on a ghost row: {c:?} in {drawn:?}"
+        );
+    }
+    assert!(drawn.contains('o') || drawn.contains('O'), "{drawn:?}");
+}
+
+/// A ghost row's cells all paint `text-muted`, never a branch's own colour —
+/// the whole point of an anchor is that it never competes visually with a
+/// real commit's lane colour (ADR-0038 §5).
+#[test]
+fn ghost_row_paints_every_owned_cell_text_muted() {
+    let rows = reuse_rows();
+    let theme = dark(ColorDepth::TrueColor);
+    let muted = crate::paint::foreground(&theme, crate::theme::Token::TextMuted)
+        .fg
+        .expect("text-muted always sets a foreground colour");
+    let line = GraphLine::plain(&rows[0]).ghost(all_lanes(&rows[0]));
+    let buf = render(std::slice::from_ref(&line), &theme, 4);
+    let mut saw_a_coloured_cell = false;
+    for x in 0..buf.area.width {
+        let cell = &buf[(x, 0)];
+        if cell.symbol() != " " {
+            saw_a_coloured_cell = true;
+            assert_eq!(cell.fg, muted, "cell at x={x} did not paint text-muted");
+        }
+    }
+    assert!(saw_a_coloured_cell, "the row drew nothing at all");
+}
+
+/// Not an assertion — dumps a ghost slice, Unicode and ASCII, next to the
+/// same rows drawn `Normal`, so a ghost anchor can be told apart from a real
+/// parent by eye (ADR-0038 §5, ticket acceptance: "a ghost slice whose
+/// parents are clipped"). The first two rows are real; the last two are
+/// ghost rows standing in for parents that fell outside the preview slice —
+/// clipped, not loaded, drawn as anchors rather than a truncated shape.
+/// Run by hand to regenerate: `cargo test -p graft-ui
+/// graph_column::tests::capture_for_docs_shots -- --ignored --nocapture`.
+/// What the user is judging in `docs/shots/m5-ui-ghost-rows.txt`.
+const GHOST_CAPTION: &str = "\
+# docs/shots/m5-ui-ghost-rows.txt — ghost anchor vs real parent
+#
+# What right looks like: the top rows are real commits — solid
+# lines, the node's real shape (●/◉/◇). The bottom two rows are the
+# ghost slice: parents clipped at the preview's edge, drawn with a
+# hollow anchor (○, or ◎ for a ghost merge) and dashed edges (┊/┈).
+# No ghost row may look like a real parent at either tier.
+#
+# Two cases, because which lanes belong to the preview is the
+# caller's to say:
+#  - \"the preview owns the row\": every edge on the ghost rows is
+#    the preview's, so every edge dashes.
+#  - \"a real lane runs through\": only the anchor's own lane is the
+#    preview's. The real branch crossing those rows keeps its solid
+#    glyph and its colour — DESIGN.md §1.7's `┊│┊●b┈`, so the
+#    before and the after read as one picture, not two graphs.
+#
+# Colour is unverified by this capture (CLAUDE.md rule 5) — the
+# shape difference is what a colourless terminal, and NO_COLOR,
+# rely on.
+
+";
+
+#[test]
+#[ignore = "writes docs/shots/m5-ui-ghost-rows.txt; run by hand to regenerate"]
+fn capture_for_docs_shots() {
+    let rows = reuse_rows();
+    let theme = dark(ColorDepth::TrueColor);
+    // The last two rows stand in for real parents that fall outside the
+    // preview slice — a ghost anchor, not a partial real glyph.
+    let clip_from = rows.len() - 2;
+    let clipped = |whole_row: bool| -> Vec<GraphLine<'_>> {
+        rows.iter()
+            .enumerate()
+            .map(|(index, row)| {
+                if index < clip_from {
+                    GraphLine::plain(row)
+                } else if whole_row {
+                    GraphLine::plain(row).ghost(all_lanes(row))
+                } else {
+                    GraphLine::plain(row).ghost(BTreeSet::from([row.lane]))
+                }
+            })
+            .collect()
+    };
+
+    let mut out = String::from(GHOST_CAPTION);
+    for (case, whole_row) in [
+        ("the preview owns the row", true),
+        ("a real lane runs through", false),
+    ] {
+        let lines = clipped(whole_row);
+        for (label, ascii) in [("Unicode", false), ("ASCII", true)] {
+            out.push_str(&format!("=== {case} — {label} tier, 8 cols ===\n"));
+            let buf = if ascii {
+                render_ascii(&lines, &theme, 8)
+            } else {
+                render(&lines, &theme, 8)
+            };
+            for y in 0..buf.area.height {
+                out.push_str(&text(&buf, y));
+                out.push('\n');
+            }
+            out.push('\n');
+        }
+    }
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m5-ui-ghost-rows.txt"
+        ),
+        out,
+    )
+    .expect("docs/shots is writable");
+}

@@ -105,7 +105,12 @@ fn notice(state: &AppState) -> (Option<graft_term::sanitize::SanitizedText>, boo
     match &state.status {
         Status::Busy(description) => (Some(sanitize_line(&format!("{description}…"))), false),
         Status::Done(description) => (Some(sanitize_line(&format!("{description} ✓"))), false),
-        Status::Failed(message) | Status::Sticky(message) => (Some(sanitize_line(message)), true),
+        Status::Failed(message) => (Some(sanitize_line(message)), true),
+        Status::Sticky { reason, keys: None } => (Some(sanitize_line(reason)), true),
+        Status::Sticky {
+            reason,
+            keys: Some(keys),
+        } => (Some(sanitize_line(&format!("{reason} · {keys}"))), true),
         Status::Ready | Status::Copied { .. } => (None, false),
     }
 }

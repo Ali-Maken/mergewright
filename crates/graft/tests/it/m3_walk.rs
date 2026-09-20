@@ -1423,9 +1423,8 @@ fn stash_apply_refused_dirty_touched_file() -> Scenario {
                 key(KeyCode::Enter),
                 Step::Settle("the refused apply"),
                 Step::See("the refusal names the file", |state| match &state.status {
-                    Status::Failed(text) | Status::Sticky(text)
-                        if text.contains("uncommitted changes now") =>
-                    {
+                    Status::Failed(text) if text.contains("uncommitted changes now") => Ok(()),
+                    Status::Sticky { reason, .. } if reason.contains("uncommitted changes now") => {
                         Ok(())
                     }
                     other => Err(format!("status {other:?}")),

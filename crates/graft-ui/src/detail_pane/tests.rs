@@ -1122,3 +1122,133 @@ fn header_shows_every_radar_line_in_the_right_layout() {
     assert!(rows[4].contains("foxtrot merge"));
     assert!(rows[4].contains("evil merge: unchecked"));
 }
+
+// --- CONFLICTS section (m5-history-and-ghost-preview/04) ---
+
+/// A working-tree view whose file list opens with a `CONFLICTS` section
+/// (one unmerged file), followed by an ordinary `Staged` section — the
+/// caller's row order, which `render_files` draws as given
+/// (`WorkingTreeSection::Unmerged` first, per scope item 6).
+fn conflicted_working_tree_view() -> DetailView {
+    use crate::detail::WorkingTreeSection;
+    let mut view = working_tree_view(1, 0, 0);
+    view.files = Some(Arc::new(FileListView {
+        rows: vec![
+            FileRow {
+                depth: 0,
+                name: sanitize_line(WorkingTreeSection::Unmerged.title()),
+                kind: FileRowKind::Section {
+                    section: WorkingTreeSection::Unmerged,
+                    count: 1,
+                },
+                entry: None,
+            },
+            FileRow {
+                depth: 1,
+                name: sanitize_line("src/auth/token.rs"),
+                kind: FileRowKind::File {
+                    status: FileStatusView::Unmerged {
+                        how: sanitize_line("both modified"),
+                    },
+                    added: None,
+                    removed: None,
+                },
+                entry: Some(0),
+            },
+            FileRow {
+                depth: 0,
+                name: sanitize_line("Staged"),
+                kind: FileRowKind::Section {
+                    section: WorkingTreeSection::Staged,
+                    count: 1,
+                },
+                entry: None,
+            },
+            FileRow {
+                depth: 1,
+                name: sanitize_line("src/auth/session.rs"),
+                kind: FileRowKind::File {
+                    status: FileStatusView::Added,
+                    added: Some(3),
+                    removed: Some(0),
+                },
+                entry: Some(1),
+            },
+        ],
+        cursor: 0,
+        top: 0,
+        files: 2,
+        added: 3,
+        removed: 0,
+        message: vec![],
+    }));
+    view
+}
+
+/// The `CONFLICTS` section draws first in the changes pane, and its file
+/// row shows the porcelain pair as words (`both modified`), never a letter
+/// and add/remove counts — the row-text half of this is also covered at the
+/// `file_row_text` level by
+/// `detail_pane::files::tests::an_unmerged_row_shows_how_as_words_not_a_letter_and_counts`;
+/// this test is the widget-level check, through `DetailPane` end to end.
+#[test]
+fn conflicts_section_draws_first_with_words_not_a_letter() {
+    let view = conflicted_working_tree_view();
+    let layout = DetailLayout::compute(80, 24, DetailFocus::Files, None);
+    let terminal = draw(&view, layout, 80, 24);
+    let rows = text(&terminal);
+    let conflicts_row = rows
+        .iter()
+        .position(|r| r.contains("CONFLICTS"))
+        .unwrap_or_else(|| panic!("no CONFLICTS row: {rows:#?}"));
+    let staged_row = rows
+        .iter()
+        .position(|r| r.contains("Staged"))
+        .unwrap_or_else(|| panic!("no Staged row: {rows:#?}"));
+    assert!(
+        conflicts_row < staged_row,
+        "CONFLICTS must draw before Staged: {rows:#?}"
+    );
+    let unmerged_row = &rows[conflicts_row + 1];
+    assert!(unmerged_row.contains("both modified"), "{unmerged_row:?}");
+    assert!(!unmerged_row.contains(" U "), "{unmerged_row:?}");
+}
+
+/// Not an assertion — dumps the CONFLICTS-first changes pane at 80×24 and
+/// 160×48. Run by hand to regenerate: `cargo test -p graft-ui
+/// detail_pane::tests::capture_for_docs_shots -- --ignored --nocapture`.
+#[test]
+#[ignore = "writes docs/shots/m5-ui-conflicts.txt; run by hand to regenerate"]
+fn capture_for_docs_shots() {
+    let view = conflicted_working_tree_view();
+    let mut out = String::new();
+    out.push_str(
+        "# docs/shots/m5-ui-conflicts.txt — CONFLICTS section, changes pane\n\
+         #\n\
+         # What right looks like: `CONFLICTS (n)` heads the file list, ahead\n\
+         # of Staged/Unstaged/Untracked. Its row shows the porcelain pair as\n\
+         # words (`both modified`) in the trailing column, never a single\n\
+         # letter and add/remove counts — there is no single \"the diff\"\n\
+         # while both sides are still in the index.\n\
+         \n",
+    );
+    for (label, w, h) in [("80x24", 80u16, 24u16), ("160x48", 160, 48)] {
+        let layout = DetailLayout::compute(w, h, DetailFocus::Files, None);
+        out.push_str(&format!("=== {label} ===\n"));
+        for line in text(&draw(&view, layout, w, h)) {
+            if !line.trim().is_empty() {
+                out.push_str(line.trim_end());
+                out.push('\n');
+            }
+        }
+        out.push('\n');
+    }
+    std::fs::write(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/shots/m5-ui-conflicts.txt"
+        ),
+        out,
+    )
+    .expect("docs/shots is writable");
+}

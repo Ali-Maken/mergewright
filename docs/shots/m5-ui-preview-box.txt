@@ -1,0 +1,129 @@
+# docs/shots/m5-ui-preview-box.txt — Ghost Preview box
+#
+# What right looks like: the box is docked to the bottom of the
+# screen at its own height, its own footer ("←→ choose  ⏎ act  esc
+# cancel") on its last row and the screen's own footer row below it
+# untouched. Every row between the two borders is a `│ … │` row —
+# there is no hole in the box at any size. Every choice is
+# bracketed; the cursor's carries `▸` and rests on `Cancel`
+# (ADR-0038 §1). While `planning` is set, the plan's lines are
+# replaced by `predicting…` — no plan is shown before it is
+# computed. Below 40x12 of screen the box is one row: "preview
+# needs 40x12 · esc closes".
+#
+# Every row of the screen is printed, blank ones included. Colour
+# is unverified: this is a character grid (CLAUDE.md rule 5), so
+# the reversed cursor button cannot be judged here — the `▸` can.
+
+=== ready, docked in 80x24 ===
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: rebase feature/auth onto main ──────────────────────────────────────╮
+│ 2 commits replayed · feature/auth 7f6e5d4 → ghost                            │
+│ working tree: 3 files updated · may conflict: src/auth.rs                    │
+│ undo: u restores feature/auth and the tree                                   │
+│ git rebase refs/heads/main                                                   │
+│ ▸[ Cancel ]   [ Confirm ]                                                    │
+╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────╯
+m merge  r rebase  screen footer
+
+=== ready, docked in 160x48 ===
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: rebase feature/auth onto main ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 2 commits replayed · feature/auth 7f6e5d4 → ghost                                                                                                            │
+│ working tree: 3 files updated · may conflict: src/auth.rs                                                                                                    │
+│ undo: u restores feature/auth and the tree                                                                                                                   │
+│ git rebase refs/heads/main                                                                                                                                   │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
+╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+m merge  r rebase  screen footer
+
+=== planning, docked in 80x24 ===
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: rebase feature/auth onto main ──────────────────────────────────────╮
+│ predicting…                                                                  │
+│ git rebase refs/heads/main                                                   │
+│ ▸[ Cancel ]   [ Confirm ]                                                    │
+╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────╯
+m merge  r rebase  screen footer
+
+=== screen too small, 30x8 ===
+
+
+
+
+
+
+preview needs 40x12 · esc clo…
+m merge  r rebase  screen foot
+

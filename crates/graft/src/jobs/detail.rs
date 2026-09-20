@@ -81,7 +81,14 @@ pub(super) fn read_files(
 pub fn diff_spec_for(spec: DetailSpec, section: Option<WorkingTreeSection>) -> DiffSpec {
     match section {
         Some(WorkingTreeSection::Staged) => DiffSpec::Staged,
-        Some(WorkingTreeSection::Unstaged | WorkingTreeSection::Untracked) => DiffSpec::Unstaged,
+        // A conflicted path's diff is the worktree against the index, the
+        // same read as an unstaged change: that is the file with its
+        // conflict markers in it, which is what the user needs to see.
+        Some(
+            WorkingTreeSection::Unstaged
+            | WorkingTreeSection::Untracked
+            | WorkingTreeSection::Unmerged,
+        ) => DiffSpec::Unstaged,
         None => spec.diff_spec(),
     }
 }
@@ -308,7 +315,15 @@ fn status_view(status: FileStatus) -> FileStatusView {
         FileStatus::Renamed { .. } => FileStatusView::Renamed,
         FileStatus::Copied { .. } => FileStatusView::Copied,
         FileStatus::TypeChanged => FileStatusView::TypeChanged,
-        FileStatus::Unmerged => FileStatusView::Unmerged,
+        // `how` wants git's porcelain `XY` pair in words ("both modified",
+        // "deleted by them"). `graft_git::diff::FileStatus::Unmerged` does
+        // not carry the pair — `file_list.rs` maps every `U` to one
+        // variant — so the only true thing to say here is that it is
+        // unmerged. Carrying `XY` through needs `graft-git`, which this
+        // group does not hold; it is in the ticket's NOTES as a gap.
+        FileStatus::Unmerged => FileStatusView::Unmerged {
+            how: sanitize_line("unmerged"),
+        },
         FileStatus::Untracked => FileStatusView::Untracked,
     }
 }

@@ -1,0 +1,53 @@
+# docs/shots/m5-ui-ghost-rows.txt — ghost anchor vs real parent
+#
+# What right looks like: the top rows are real commits — solid
+# lines, the node's real shape (●/◉/◇). The bottom two rows are the
+# ghost slice: parents clipped at the preview's edge, drawn with a
+# hollow anchor (○, or ◎ for a ghost merge) and dashed edges (┊/┈).
+# No ghost row may look like a real parent at either tier.
+#
+# Two cases, because which lanes belong to the preview is the
+# caller's to say:
+#  - "the preview owns the row": every edge on the ghost rows is
+#    the preview's, so every edge dashes.
+#  - "a real lane runs through": only the anchor's own lane is the
+#    preview's. The real branch crossing those rows keeps its solid
+#    glyph and its colour — DESIGN.md §1.7's `┊│┊●b┈`, so the
+#    before and the after read as one picture, not two graphs.
+#
+# Colour is unverified by this capture (CLAUDE.md rule 5) — the
+# shape difference is what a colourless terminal, and NO_COLOR,
+# rely on.
+
+=== the preview owns the row — Unicode tier, 8 cols ===
+◉─╮     
+│ ●     
+●─╯     
+◉─╮     
+┊ ○     
+○┈╯     
+
+=== the preview owns the row — ASCII tier, 8 cols ===
+*-\     
+| *     
+*-/     
+*-\     
+: o     
+o./     
+
+=== a real lane runs through — Unicode tier, 8 cols ===
+◉─╮     
+│ ●     
+●─╯     
+◉─╮     
+│ ○     
+○─╯     
+
+=== a real lane runs through — ASCII tier, 8 cols ===
+*-\     
+| *     
+*-/     
+*-\     
+| o     
+o-/     
+

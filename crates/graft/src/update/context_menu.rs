@@ -128,7 +128,7 @@ pub fn apply_context_action(
             };
             let sha = oid.to_string();
             let short = sha.chars().take(7).collect();
-            if !matches!(state.status, Status::Failed(_) | Status::Sticky(_)) {
+            if !matches!(state.status, Status::Failed(_) | Status::Sticky { .. }) {
                 state.status = Status::Copied { short };
             }
             vec![Command::CopyToClipboard(sha)]

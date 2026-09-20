@@ -15,6 +15,7 @@
 
 use graft_core::job::JobId;
 use graft_ops::apply::Refresh;
+use graft_term::sanitize_line;
 
 use super::confirm::{ConfirmThen, PendingConfirm};
 use super::events::Command;
@@ -98,7 +99,7 @@ pub fn undone(
             refresh(state, applied.refresh, next_id)
         }
         Undone::Incomplete { applied, error } => {
-            state.status = Status::Sticky(format!(
+            state.status = Status::sticky(format!(
                 "{} \u{2014} could not confirm it fully: {error}",
                 applied.entry.description
             ));
@@ -126,7 +127,7 @@ pub fn undone(
             // refresh of its own, and that refresh finishing would wipe the
             // reason off the screen before it could be read (m3/05 review,
             // Major 7).
-            state.status = Status::Sticky(error);
+            state.status = Status::sticky(error);
             match what {
                 Some(what) => refresh(state, what, next_id),
                 None => Vec::new(),
@@ -145,16 +146,19 @@ fn drift_box(description: &str, drift: &graft_ops::undo::Drift, redo: bool) -> P
     let verb = if redo { "Redo" } else { "Undo" };
     PendingConfirm {
         view: graft_ui::confirm::ConfirmView::new(
-            format!("{verb} \u{201c}{description}\u{201d}?"),
+            sanitize_line(&format!("{verb} \u{201c}{description}\u{201d}?")),
             {
                 let mut message =
                     wrapped(&format!("Since this {description}, {}.", drift.explain()));
                 message.push("A backup is taken first, so this is itself undoable.".to_owned());
-                message
+                message.iter().map(|line| sanitize_line(line)).collect()
             },
             // No single git command to show: a restore is a plan of several,
             // and the journal browser's `Space` is where they are listed.
-            format!("{} restores the recorded state", verb.to_lowercase()),
+            sanitize_line(&format!(
+                "{} restores the recorded state",
+                verb.to_lowercase()
+            )),
         )
         .with_labels("Stop", verb),
         then: ConfirmThen::Undo { redo },
@@ -258,7 +262,6 @@ mod tests {
         EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches,
     };
     use graft_ops::apply::Applied;
-    use graft_ui::confirm::Choice;
 
     use super::*;
     use crate::jobs::undo::JournalRead;
@@ -427,7 +430,7 @@ mod tests {
         );
         assert_eq!(
             state.status,
-            Status::Sticky("refs/heads/main is not where it was".to_owned())
+            Status::sticky("refs/heads/main is not where it was".to_owned())
         );
         assert!(commands.is_empty(), "nothing ran: {commands:?}");
     }
@@ -450,15 +453,15 @@ mod tests {
         );
         assert!(commands.is_empty(), "nothing runs until the user says so");
         let pending = state.confirm.as_ref().expect("the drift box opened");
-        assert_eq!(pending.view.cursor, Choice::Cancel, "the safe choice first");
-        assert_eq!(pending.view.safe_label, "Stop");
-        assert_eq!(pending.view.confirm_label, "Undo");
+        assert_eq!(pending.view.selected(), 0, "the safe choice first");
+        assert_eq!(pending.view.choices[0].as_str(), "Stop");
+        assert_eq!(pending.view.choices[1].as_str(), "Undo");
         assert!(
             pending
                 .view
                 .message
                 .iter()
-                .any(|line| line.contains(&drift().explain())),
+                .any(|line| line.as_str().contains(&drift().explain())),
             "the box says what ops said: {:?}",
             pending.view.message
         );
@@ -493,7 +496,12 @@ mod tests {
         for line in &view.message {
             assert!(line.chars().count() <= 62, "{line}");
         }
-        let joined = view.message.join(" ");
+        let joined = view
+            .message
+            .iter()
+            .map(graft_term::SanitizedText::as_str)
+            .collect::<Vec<_>>()
+            .join(" ");
         assert!(joined.contains("the working tree"), "{joined}");
     }
 

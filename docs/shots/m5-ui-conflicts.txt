@@ -1,0 +1,34 @@
+# docs/shots/m5-ui-conflicts.txt — CONFLICTS section, changes pane
+#
+# What right looks like: `CONFLICTS (n)` heads the file list, ahead
+# of Staged/Unstaged/Untracked. Its row shows the porcelain pair as
+# words (`both modified`) in the trailing column, never a single
+# letter and add/remove counts — there is no single "the diff"
+# while both sides are still in the index.
+
+=== 80x24 ===
+UNCOMMITTED · 1 staged
+diff vs HEAD a1b2c3d
+CONFLICTS (1)
+  src/auth/token.rs                                                both modified
+Staged (1)
+  A src/auth/session.rs                                                    +3 −0
+@@ -40,7 +40,15 @@ fn refresh()
+ 40  40   let token = self.cache;
+ 41     - if token.is_expired() {
+     41 + if token.is_expired()
+     42 +     && !refreshing {
+
+=== 160x48 ===
+UNCOMMITTED · 1 staged
+diff vs HEAD a1b2c3d
+CONFLICTS (1)
+  src/auth/token.rs                                                                                                                                both modified
+Staged (1)
+  A src/auth/session.rs                                                                                                                                    +3 −0
+@@ -40,7 +40,15 @@ fn refresh()
+ 40  40   let token = self.cache;
+ 41     - if token.is_expired() {
+     41 + if token.is_expired()
+     42 +     && !refreshing {
+

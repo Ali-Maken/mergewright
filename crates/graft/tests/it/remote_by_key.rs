@@ -313,8 +313,11 @@ fn push_then_undo_is_local_only() {
 }
 
 /// The words a non-fast-forward rejection leaves.
-fn rejected_line(branch: &str) -> String {
-    format!("push rejected: origin/{branch} has moved · p pull first · P force with lease")
+fn rejected_status(branch: &str) -> Status {
+    Status::Sticky {
+        reason: format!("push rejected: origin/{branch} has moved"),
+        keys: Some("p pull first · P force with lease".to_owned()),
+    }
 }
 
 /// An amended, already-pushed commit: `P` is rejected in words; the next
@@ -334,7 +337,7 @@ fn rejected_then_lease_push() {
     let state = app.press(&state, plain('P'));
     let state = confirm(&app, &state);
     let state = finish(&app, state, "the rejected push");
-    assert_eq!(state.status, Status::Sticky(rejected_line(branch)));
+    assert_eq!(state.status, rejected_status(branch));
     assert_ne!(rev(remote.bare(), &main), amended);
 
     let state = ready(&app, state);
@@ -342,7 +345,7 @@ fn rejected_then_lease_push() {
     let title = state
         .confirm
         .as_ref()
-        .map(|pending| pending.view.title.clone());
+        .map(|pending| pending.view.title.as_str().to_owned());
     assert_eq!(
         title,
         Some(format!("Force-push {branch} → origin/{branch}?"))
@@ -373,16 +376,16 @@ fn stale_lease_refused() {
     let state = app.press(&state, plain('P'));
     let state = confirm(&app, &state);
     let state = finish(&app, state, "the rejected push");
-    assert_eq!(state.status, Status::Sticky(rejected_line(branch)));
+    assert_eq!(state.status, rejected_status(branch));
 
     let state = ready(&app, state);
     let state = app.press(&state, plain('P'));
     let state = confirm(&app, &state);
     let state = finish(&app, state, "the stale lease push");
-    let Status::Sticky(line) = &state.status else {
+    let Status::Sticky { reason, .. } = &state.status else {
         panic!("a refused lease is a sticky failure: {:?}", state.status);
     };
-    assert!(line.contains("stale lease"), "{line}");
+    assert!(reason.contains("stale lease"), "{reason}");
     assert_eq!(
         rev(remote.bare(), &main),
         theirs,

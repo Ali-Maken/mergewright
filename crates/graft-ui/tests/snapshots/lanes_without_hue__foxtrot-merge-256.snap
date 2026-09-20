@@ -27,7 +27,7 @@ shape: foxtrot-merge, 256, 80x24, cursor on row 2
 
 
 
- q quit  F2 status  F3 renderer  u undo  / search  j/k move  Space fold
+ ⏎ open  b branch  r rebase  . more
 
 graph colour per cell:
 ccc.
