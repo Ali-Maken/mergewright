@@ -445,13 +445,36 @@ fn draw_preview(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) 
     if rect.is_empty() {
         return;
     }
-    frame.buffer_mut().set_style(
-        rect,
-        Style::new().bg(color(theme.token(Token::SurfaceRaised))),
-    );
+    clear_and_tint(frame, rect, rect, theme);
     frame.render_widget(
         &graft_ui::preview_box::PreviewBoxWidget { view: &view, theme },
         rect,
+    );
+}
+
+/// Hands an overlay a rectangle it really owns: `clear` is wiped, then
+/// `tint` is painted `SurfaceRaised` so the widget draws onto the overlay's
+/// own background. `clear` is the wider of the two where an overlay is
+/// narrower than the pane it floats in (the `.` popup's band); everywhere
+/// else the two are the same rectangle.
+///
+/// The clear is the point. `set_style` repaints colour and leaves every
+/// cell's *symbol* where it was, so a tint on its own is a claim, not a
+/// fact: whatever the widget then declines to write keeps the graph row that
+/// was underneath it, now wearing the overlay's background. Each widget does
+/// blank its own rows at its own size, which is why the normal path looked
+/// right — but their **degraded** paths do not. Below 40x12
+/// `PreviewBoxWidget` writes one warning line and returns; below 7 rows
+/// `CredentialPrompt` writes one *centred, unpadded* warning and returns,
+/// leaving both ends of the row; below 2 rows `Confirm` returns having
+/// written nothing at all. Clearing here makes the ownership true for every
+/// widget at every size rather than resting on each one filling what it was
+/// given (m5-history-and-ghost-preview/13).
+fn clear_and_tint(frame: &mut Frame, clear: Rect, tint: Rect, theme: &Theme) {
+    frame.render_widget(Clear, clear);
+    frame.buffer_mut().set_style(
+        tint,
+        Style::new().bg(color(theme.token(Token::SurfaceRaised))),
     );
 }
 
@@ -521,14 +544,8 @@ fn draw_context_menu(state: &AppState, frame: &mut Frame, area: Rect, theme: &Th
     if rect.is_empty() {
         return;
     }
-    frame.render_widget(
-        Clear,
-        overlay_band(area, rect, primary_pane_area(state, area)),
-    );
-    frame.buffer_mut().set_style(
-        rect,
-        Style::new().bg(color(theme.token(Token::SurfaceRaised))),
-    );
+    let band = overlay_band(area, rect, primary_pane_area(state, area));
+    clear_and_tint(frame, band, rect, theme);
     frame.render_widget(menu, rect);
 }
 
@@ -545,10 +562,7 @@ fn draw_confirm(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) 
     if rect.is_empty() {
         return;
     }
-    frame.buffer_mut().set_style(
-        rect,
-        Style::new().bg(color(theme.token(Token::SurfaceRaised))),
-    );
+    clear_and_tint(frame, rect, rect, theme);
     frame.render_widget(
         &graft_ui::confirm::Confirm {
             view: &pending.view,
@@ -577,10 +591,7 @@ fn draw_credential(state: &AppState, frame: &mut Frame, area: Rect, session: &Se
         return;
     }
     let theme = &session.theme;
-    frame.buffer_mut().set_style(
-        rect,
-        Style::new().bg(color(theme.token(Token::SurfaceRaised))),
-    );
+    clear_and_tint(frame, rect, rect, theme);
     let ascii = tier_in_force(session, state) == RenderingTier::Ascii;
     frame.render_widget(
         &graft_ui::credential_prompt::CredentialPrompt {
@@ -650,7 +661,16 @@ fn banner_lines(state: &AppState, tier: RenderingTier) -> Vec<SanitizedText> {
 
 #[cfg(test)]
 mod tests {
+    use graft_core::job::JobId;
+    use graft_term::sanitize_line;
+    use graft_ui::text_input::TextField;
+    use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
+
     use super::*;
+    use crate::session::for_tests::session;
+    use crate::update::confirm::{ConfirmThen, PendingConfirm};
+    use crate::update::credential::{CredentialPrompt, PromptField};
 
     const SCREEN: Rect = Rect {
         x: 0,
@@ -712,5 +732,138 @@ mod tests {
         };
         assert_eq!(overlay_band(SCREEN, menu_rect(), Some(narrow)).width, 33);
         assert_eq!(overlay_band(SCREEN, menu_rect(), None).width, 33);
+    }
+
+    /// One glyph that appears nowhere in any overlay, so a cell still
+    /// holding it is a cell the overlay never wrote.
+    const DIRT: char = '#';
+
+    /// Fills every cell with [`DIRT`], lets `draw` put an overlay on top,
+    /// and returns what each row of the terminal ended up holding. This is
+    /// the graph rows underneath, stood in for by something unmistakable.
+    fn over_a_dirty_screen(
+        columns: u16,
+        rows: u16,
+        draw: impl FnOnce(&mut Frame<'_>, Rect),
+    ) -> Vec<String> {
+        let mut terminal =
+            Terminal::new(TestBackend::new(columns, rows)).expect("TestBackend reports its size");
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                let dirt: String = std::iter::repeat_n(DIRT, usize::from(area.width)).collect();
+                for y in area.top()..area.bottom() {
+                    frame
+                        .buffer_mut()
+                        .set_string(area.x, y, &dirt, Style::default());
+                }
+                draw(frame, area);
+            })
+            .expect("TestBackend cannot fail to draw");
+        let buffer = terminal.backend().buffer();
+        (0..buffer.area.height)
+            .map(|y| {
+                (0..buffer.area.width)
+                    .map(|x| buffer[(x, y)].symbol())
+                    .collect()
+            })
+            .collect()
+    }
+
+    /// Asserts that nothing the overlay was handed still shows what was
+    /// under it.
+    fn nothing_shows_through(drawn: &[String], rect: Rect, what: &str) {
+        for y in rect.top()..rect.bottom() {
+            let row: String = drawn[usize::from(y)]
+                .chars()
+                .skip(usize::from(rect.x))
+                .take(usize::from(rect.width))
+                .collect();
+            assert!(
+                !row.contains(DIRT),
+                "{what}: row {y} of the overlay's own rectangle still shows \
+                 what was underneath it — {row:?}\n{}",
+                drawn.join("\n")
+            );
+        }
+    }
+
+    fn a_confirm() -> PendingConfirm {
+        PendingConfirm {
+            view: graft_ui::confirm::ConfirmView::new(
+                sanitize_line("Discard changes?"),
+                vec![sanitize_line("3 files lose their edits.")],
+                sanitize_line("git restore ."),
+            ),
+            then: ConfirmThen::Undo { redo: false },
+        }
+    }
+
+    fn a_credential() -> CredentialPrompt {
+        CredentialPrompt {
+            title: sanitize_line("Credentials — example.com"),
+            prompt: sanitize_line("Username for 'https://example.com':"),
+            field: PromptField::Open(TextField::new("")),
+            job: JobId::new(1),
+        }
+    }
+
+    /// The confirm box owns the rectangle the caller tints for it — at every
+    /// size, its degraded sizes included. Below two usable rows the widget
+    /// draws **nothing**, and without the clear the tint simply recolours
+    /// the graph row that was there (m5-history-and-ghost-preview/13).
+    #[test]
+    fn the_confirm_box_never_shows_what_was_under_it() {
+        let state = AppState {
+            confirm: Some(a_confirm()),
+            ..AppState::default()
+        };
+        let session = session();
+        let view = &state.confirm.as_ref().expect("a box is open").view;
+        for (columns, rows) in [(80_u16, 24_u16), (64, 9), (40, 4), (20, 3), (80, 2), (3, 2)] {
+            let area = Rect {
+                x: 0,
+                y: 0,
+                width: columns,
+                height: rows,
+            };
+            let drawn = over_a_dirty_screen(columns, rows, |frame, area| {
+                draw_confirm(&state, frame, area, &session.theme);
+            });
+            let rect = graft_ui::confirm::confirm_area(area, view).intersection(area);
+            nothing_shows_through(&drawn, rect, &format!("confirm at {columns}x{rows}"));
+        }
+    }
+
+    /// The same for git's credential question. Below seven rows the widget
+    /// draws one *centred* warning and returns, so without the clear the
+    /// tinted row keeps the graph at both ends of it.
+    #[test]
+    fn the_credential_prompt_never_shows_what_was_under_it() {
+        let state = AppState {
+            credential: Some(a_credential()),
+            ..AppState::default()
+        };
+        let session = session();
+        for (columns, rows) in [
+            (80_u16, 24_u16),
+            (80, 6),
+            (60, 4),
+            (39, 8),
+            (30, 2),
+            (80, 1),
+        ] {
+            let area = Rect {
+                x: 0,
+                y: 0,
+                width: columns,
+                height: rows,
+            };
+            let drawn = over_a_dirty_screen(columns, rows, |frame, area| {
+                draw_credential(&state, frame, area, &session);
+            });
+            let rect = graft_ui::credential_prompt::credential_area(area).intersection(area);
+            nothing_shows_through(&drawn, rect, &format!("credential at {columns}x{rows}"));
+        }
     }
 }
