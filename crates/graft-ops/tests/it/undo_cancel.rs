@@ -1,8 +1,9 @@
 //! Cancelling an undo: `Esc` between steps puts back what already ran.
 //!
 //! No sleeps and no hooks: the stops here are a **counting** one —
-//! `should_stop` true from its n-th poll — for sweeping every place a cancel
-//! can land, and a **state-keyed** one for aiming at a single step boundary.
+//! `should_stop` true from its n-th poll — for sweeping the places a cancel
+//! can land (see `SWEEP_STRIDE`: a sample in the fast tier, all of them in the
+//! heavy one), and a **state-keyed** one for aiming at a single step boundary.
 //! Counting alone cannot aim: the runner polls the same stop while it waits
 //! on a child, so the n-th poll is a different place on a different machine
 //! (the reasoning `support::StopWhenGone` already sets out). Keying the stop
@@ -23,6 +24,8 @@ use graft_core::journal::EntryStatus;
 use graft_core::oid::Oid;
 use graft_git::run::Stop;
 use graft_ops::apply::Applied;
+use graft_ops::facts;
+use graft_ops::journal::{next_redo, next_undo};
 use graft_ops::operation::{Operation, ResetMode, ResetParams, ResetTarget, Tip};
 use graft_ops::restore::{self, RestoreError};
 use graft_ops::undo::{self, InversePlan, Step, UndoError};
@@ -357,6 +360,20 @@ fn cancel_between_steps_rolls_back_to_pre_undo_state() {
     );
 }
 
+/// How many of the plan's poll points the sweep below cuts at: every one
+/// under `--features heavy-tests`, every third in the fast tier.
+///
+/// The cost is one whole `TempRepo` — `git init`, three commits, a journaled
+/// reset — per cut, about 0.8 s, and the plan makes around thirty polls. At
+/// full depth that is a 16–24 s test, which the fast tier cannot carry
+/// (PROMPT 7.1); the heavy tier exists for exactly this. What the fast tier
+/// keeps is the invariant at ten points spread across all three steps, still
+/// including cuts inside a running step, with `rolled_something_back` below
+/// proving the sweep reaches past the first step. What it loses is
+/// exhaustiveness: one particular poll where the invariant broke could now be
+/// missed until the heavy tier runs in the milestone review.
+const SWEEP_STRIDE: usize = if cfg!(feature = "heavy-tests") { 1 } else { 3 };
+
 #[test]
 fn cancel_at_every_step_boundary_is_clean() {
     // Every poll the plan makes, not only the ones between steps: the runner
@@ -378,7 +395,7 @@ fn cancel_at_every_step_boundary_is_clean() {
     // a pass, not a miss: it is the "or finished" half.
     let mut rolled_something_back = 0;
     let done = state_after_undo();
-    for at in 1..=counted {
+    for at in (1..=counted).step_by(SWEEP_STRIDE) {
         let repo = reset_repo();
         let before = reset_and_state(&repo);
         let stop = StopAtPoll::new(at);
@@ -427,8 +444,22 @@ fn state_after_undo() -> RepoState {
     done
 }
 
-#[test]
-fn rollback_refused_by_a_moved_ref_is_reported_not_hidden() {
+/// One part-way cancel, set up the same way for both tests below.
+///
+/// The stop fires once the plan's *last* step has started writing files, so
+/// the ref step is long finished and certainly in the roll-back's list, and
+/// moves `main` away in the same breath: the roll-back's own compare-and-swap
+/// then meets a ref something else has moved.
+struct PartWay {
+    repo: TempRepo,
+    /// Where the undo found the repository — what a recovery has to reach.
+    before: RepoState,
+    /// Where the test moved `main`.
+    elsewhere: String,
+    why: RestoreError,
+}
+
+fn cancel_part_way() -> PartWay {
     let repo = reset_repo();
     // The middle commit, read before the reset buries it: somewhere the ref
     // step does not put `main` and the restore did not find it. Moving it to
@@ -436,15 +467,11 @@ fn rollback_refused_by_a_moved_ref_is_reported_not_hidden() {
     // right to succeed.
     let elsewhere = repo.git(&["rev-parse", "HEAD~1"]);
     let found_at = repo.git(&["rev-parse", "HEAD~2"]);
-    reset_and_state(&repo);
+    let before = reset_and_state(&repo);
     let undone = first_ref_step_target(&repo);
     assert_ne!(elsewhere, undone, "the test moves main somewhere new");
     assert_ne!(elsewhere, found_at, "the test moves main somewhere new");
 
-    // The stop fires once the plan's *last* step has started writing files,
-    // so the ref step is long finished and certainly in the roll-back's list,
-    // and moves `main` away in the same breath: the roll-back's own
-    // compare-and-swap then meets a ref something else has moved.
     let stop = StopOnce::new(repo.path(), Trigger::PathExists(PathBuf::from("a.txt")))
         .then_move("refs/heads/main", &elsewhere);
     let why = execute_under(&repo, NOW + 1, &stop).expect_err("the undo is cancelled");
@@ -454,6 +481,17 @@ fn rollback_refused_by_a_moved_ref_is_reported_not_hidden() {
         elsewhere,
         "main is where the test moved it, not where the undo left it"
     );
+    PartWay {
+        repo,
+        before,
+        elsewhere,
+        why,
+    }
+}
+
+#[test]
+fn rollback_refused_by_a_moved_ref_is_reported_not_hidden() {
+    let PartWay { repo, why, .. } = cancel_part_way();
 
     let RestoreError::CancelledPartway { applied, rollback } = &why else {
         panic!("expected a part-way cancel, got: {}", why.explain());
@@ -467,11 +505,6 @@ fn rollback_refused_by_a_moved_ref_is_reported_not_hidden() {
         &vec!["refs/heads/main".to_owned()],
         "only the ref is still in force — the index and working-tree steps \
          were reversed before the roll-back reached it"
-    );
-    assert!(
-        why.explain().contains("u shows the backup"),
-        "the user is pointed at the backup: {}",
-        why.explain()
     );
     // And it reversed what it could: the files the working-tree step had
     // written are gone again.
@@ -499,14 +532,163 @@ fn rollback_refused_by_a_moved_ref_is_reported_not_hidden() {
     );
 }
 
+/// The other half of the same requirement, and the promise behind it: after a
+/// part-way cancel the user gets everything back, and the key the message
+/// names is the key that does it.
 #[test]
-fn a_ref_moved_under_a_killed_step_is_reported_not_guessed() {
+fn after_a_part_way_cancel_the_named_key_restores_everything() {
+    let PartWay {
+        repo,
+        before,
+        elsewhere,
+        why,
+    } = cancel_part_way();
+    let entries = entries(&repo);
+    let last = entries.last().expect("the cancelled undo is journaled");
+
+    // §6.7's rail, asked of the half-cancelled entry.
+    //
+    // The ticket asked for "drift after reports it"; the repository says
+    // otherwise, and the repository is right. `finish` reads the after-state
+    // *fresh*, after the cancel, so the entry records where things actually
+    // ended up — main at `elsewhere` included. Drift compares that record
+    // with now, and nothing has moved since. The rail has nothing to warn
+    // about because the entry is not lying, which is the property that
+    // matters: a warning here would be noise, and, better, it means `U` needs
+    // no `force` to get the user's work back (below).
+    let drifted = {
+        let handle = repo.open();
+        let mut journal = journal_for(&handle);
+        let never = Never;
+        let ctx = context(&handle, &mut journal, NOW + 2, &never);
+        let names: Vec<String> = last.refs_after.keys().cloned().collect();
+        let now = facts::read_state_now(ctx.repo, &ctx.scratch, &names, &never)
+            .expect("the repository reads");
+        undo::drift(last, &now)
+    };
+    assert!(
+        drifted.is_clean(),
+        "the entry recorded the half-way state it really left, so nothing has drifted from it: {}",
+        drifted.explain()
+    );
+    assert_eq!(
+        last.refs_after.get("refs/heads/main").copied().flatten(),
+        Some(Oid::from_hex(&elsewhere).expect("git prints an object id")),
+        "and what it recorded is the ref as the test left it, not as the undo meant to leave it"
+    );
+
+    // Recovery is `U`, not `u`: the new entry is an in-force *Undo* entry,
+    // and `next_undo` steps over those. `u` would reach an older operation
+    // or nothing at all — which is why the part-way message names `U`.
+    assert_eq!(
+        next_redo(&entries).map(|entry| entry.id.clone()),
+        Some(last.id.clone()),
+        "U reaches the cancelled undo"
+    );
+    assert_ne!(
+        next_undo(&entries).map(|entry| entry.id.clone()),
+        Some(last.id.clone()),
+        "u never reaches it"
+    );
+    assert!(
+        why.explain().contains("U restores the backup"),
+        "the user is pointed at the key that works: {}",
+        why.explain()
+    );
+
+    // And following that instruction gets everything back — with `force`
+    // false, so this is the one keystroke the message promises and not a
+    // keystroke plus a drift prompt.
+    {
+        let handle = repo.open();
+        let mut journal = journal_for(&handle);
+        let never = Never;
+        let mut ctx = context(&handle, &mut journal, NOW + 2, &never);
+        undo::redo(&mut ctx, false).expect("U puts the backup back");
+    }
+    assert_eq!(
+        state_of(&repo),
+        before,
+        "the repository is back where the cancelled undo found it — nothing was lost"
+    );
+}
+
+#[test]
+fn a_killed_step_whose_ref_is_back_where_it_started_is_not_reversed() {
+    // The one test that observes the *read* rather than the compare-and-swap.
+    //
+    // The stop fires the moment the ref step's own `update-ref` has written —
+    // which is inside that step, because the runner polls this stop again
+    // after every pipe event before it can return — so the step comes back
+    // `Stopped` and whether it landed is not knowable from the error. In the
+    // same breath the stop puts `main` back where the restore found it. The
+    // repository now says, truthfully as far as anyone can tell, "that step
+    // did not land": there is nothing to reverse, nothing is written, and the
+    // user is told the undo was cancelled and nothing changed.
+    //
+    // A guess ("a killed step is an applied step") gets this wrong in a way
+    // the compare-and-swap cannot hide: it would swap `main` against the value
+    // the step wrote, git would refuse, and the user would be told a ref moved
+    // when nothing had. So `settled` returning `Applied` unconditionally fails
+    // this test — which is what makes it evidence for "read the repository,
+    // never guess" and not merely for the compare-and-swap.
+    let repo = reset_repo();
+    let before = reset_and_state(&repo);
+    // Where the restore finds `main`, i.e. the entry's own `refs_before`.
+    let found_at = repo.git(&["rev-parse", "refs/heads/main"]);
+    let undone = first_ref_step_target(&repo);
+    assert_ne!(found_at, undone, "the ref step has somewhere to move main");
+
+    let stop = StopOnce::new(
+        repo.path(),
+        Trigger::RefIs {
+            name: "refs/heads/main".to_owned(),
+            at: undone,
+        },
+    )
+    .then_move("refs/heads/main", &found_at);
+    let why = execute_under(&repo, NOW + 1, &stop).expect_err("the undo is cancelled");
+    assert!(stop.fired(), "the stop fired on the ref step's own effect");
+
+    match &why {
+        RestoreError::Cancelled { rolled_back } => assert_eq!(
+            *rolled_back, 0,
+            "the repository says the killed step did not land, so there is nothing to put back"
+        ),
+        other => panic!(
+            "expected a clean cancel with nothing to reverse, got: {}",
+            other.explain()
+        ),
+    }
+    assert_eq!(
+        repo.git(&["rev-parse", "refs/heads/main"]),
+        found_at,
+        "the roll-back wrote nothing: main is exactly where it was read to be"
+    );
+    assert_eq!(
+        state_of(&repo),
+        before,
+        "refs, the index and the working-tree bytes are back where the undo found them"
+    );
+    assert_eq!(
+        locks(&repo),
+        Vec::<String>::new(),
+        "no stale lock under .git"
+    );
+}
+
+#[test]
+fn a_ref_moved_under_a_killed_step_is_reported_not_overwritten() {
     // The other half of the moved-ref story: the stop fires the moment the
     // ref step's own `update-ref` has written, which is inside that step, so
     // the runner SIGTERMs git and the step comes back `Stopped`. Whether it
     // landed is then not knowable from the error — and the ref has been moved
     // away as well, so reading it says neither "landed" nor "did not". That
-    // is reported, never guessed at with a write.
+    // is reported, never overwritten.
+    //
+    // This one is about what the roll-back *does not write*. It cannot tell a
+    // read from a compare-and-swap — both refuse here — which is why the test
+    // above exists.
     let repo = reset_repo();
     let elsewhere = repo.git(&["rev-parse", "HEAD~1"]);
     reset_and_state(&repo);
@@ -559,43 +741,46 @@ fn a_stop_that_never_fires_changes_nothing() {
 #[test]
 fn a_cancelled_undo_through_u_leaves_u_where_it_was() {
     // The whole path, rails included: `undo::undo`, not `restore::execute`
-    // on its own. The poll count is learnt from a throwaway repository of the
-    // same shape — the two hold different commit ids, so only the count
-    // crosses over, never a state.
-    let counted = {
-        let repo = reset_repo();
-        reset_and_state(&repo);
-        let counter = CountPolls::new();
-        let handle = repo.open();
-        let mut journal = journal_for(&handle);
-        let mut ctx = context(&handle, &mut journal, NOW + 1, &counter);
-        undo::undo(&mut ctx, false).expect("an undo that is never stopped succeeds");
-        counter.count()
-    };
-    assert!(counted > 2, "the rails and the plan both poll the stop");
-
+    // on its own.
+    //
+    // The stop is keyed to the plan's own effect, not to a poll count. A
+    // count calibrated on a throwaway repository is a clock that runs at the
+    // machine's speed — the runner polls once per pipe event and once per
+    // millisecond of `try_wait` — so "the n-th poll" is a different place
+    // under load than it was when the count was taken, and this test used to
+    // fail roughly one full-suite run in four because of it. "Once the branch
+    // ref stands where the undo puts it" is the same place every time, and it
+    // is past §6.7's rails by construction: the rails only read.
     let repo = reset_repo();
     let before = reset_and_state(&repo);
     let next_undo_before = undo_plan(&repo).reverses;
+    let undone = first_ref_step_target(&repo);
 
-    // Near the end, so the rails are long past and the plan is under way.
-    let stop = StopAtPoll::new(counted - 1);
+    let stop = StopOnce::new(
+        repo.path(),
+        Trigger::RefIs {
+            name: "refs/heads/main".to_owned(),
+            at: undone,
+        },
+    );
     let why = {
         let handle = repo.open();
         let mut journal = journal_for(&handle);
         let mut ctx = context(&handle, &mut journal, NOW + 1, &stop);
         undo::undo(&mut ctx, false).expect_err("the undo is cancelled")
     };
+    assert!(stop.fired(), "the stop fired on the ref step's own effect");
 
-    assert!(
-        matches!(
-            &why,
-            UndoError::Restore(RestoreError::Cancelled { .. } | RestoreError::Stopped)
-                | UndoError::Facts(_)
+    // A stop that lands in the rails, before `begin`, would prove nothing
+    // about the roll-back, so it is not accepted here: the cancel has to be
+    // one that had already applied a step and put it back.
+    match &why {
+        UndoError::Restore(RestoreError::Cancelled { rolled_back }) => assert!(
+            *rolled_back >= 1,
+            "at least the ref step was put back, not a cancel before anything ran"
         ),
-        "a cancel, not a half-done undo: {}",
-        why.explain()
-    );
+        other => panic!("a cancel with a roll-back, not: {}", other.explain()),
+    }
     assert_eq!(
         state_of(&repo),
         before,
