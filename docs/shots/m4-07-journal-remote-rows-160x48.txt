@@ -1,7 +1,7 @@
 m4 walk capture: m4-07-journal-remote-rows — scenario journal-rows, keys J, unicode tier, 160x48
 
-UNDO JOURNAL · /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-tNoA4Z/work
-▸ now       push main → origin/main                      origin/main 7be74b5 → 76cd189 · not undoable — origin has it
+UNDO JOURNAL · /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-xtZCdV/work
+▸ now       push main → origin/main                      not undoable — origin has it · 7be74b5 → 76cd189
   now       pull origin/main                             1 ref · the index · the working tree · backup saved                                                ← u
   now       fetch all remotes                            remote-tracking refs · not undoable
 

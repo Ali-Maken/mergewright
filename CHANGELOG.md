@@ -20,7 +20,7 @@ rejection or a hang.
   **`P` push** through a confirm box that names the branch, the commit count,
   `sets upstream` when it will, and the exact `git push` line.
 - **Rejections in words, on the footer until `Esc`**: non-fast-forward
-  (`push rejected: … · p to pull first, or P to force with lease`), a stale
+  (`push rejected: … has moved · p pull first · P force with lease`), a stale
   lease (`push refused: … (stale lease) · f to fetch, then look`), a diverged
   pull (`pull stopped: … shell: git pull --rebase`), a dirty file
   (`pull refused: would overwrite <file> (uncommitted)`), no upstream,
@@ -33,16 +33,17 @@ rejection or a hang.
   are not; `Esc` cancels the operation. Nothing typed is stored, logged,
   journaled or captured.
 - **`Esc` cancels any running write** (SIGTERM, 2 s grace, entry
-  `Aborted("cancelled")`), fetch, pull and push included; `u`/`U` are not
+  `Aborted("cancelled")`), fetch, pull and push included — the walk cancels
+  each of the three against a socket that never answers; `u`/`U` are not
   stoppable and say so.
 - **Live progress** from `git --progress` on the footer, `· esc cancels`.
 - **Push and fetch are journaled but transparent to undo**: `u` skips them
   and, after a push, says `· origin/main still has it`; the journal rows read
-  `not undoable — origin has it` / `not undoable`.
+  `not undoable — origin has it · <old> → <new>` / `not undoable`.
 - **Real-remote test fixtures** (`graft-fixtures::remote`): a bare over
   `file://`, smart HTTP with Basic auth on loopback, a port that never
   answers.
-- **The acceptance walk**: `cargo run -p graft --example m4_walk`, 19
+- **The acceptance walk**: `cargo run -p graft --example m4_walk`, 21
   scenarios judged by running git on both the work clone and the bare
   (`TESTING.md`, "Remotes").
 

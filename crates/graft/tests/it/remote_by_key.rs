@@ -314,9 +314,7 @@ fn push_then_undo_is_local_only() {
 
 /// The words a non-fast-forward rejection leaves.
 fn rejected_line(branch: &str) -> String {
-    format!(
-        "push rejected: origin/{branch} has commits you don't · p to pull first, or P to force with lease"
-    )
+    format!("push rejected: origin/{branch} has moved · p pull first · P force with lease")
 }
 
 /// An amended, already-pushed commit: `P` is rejected in words; the next

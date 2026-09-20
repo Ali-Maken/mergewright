@@ -11,6 +11,7 @@ mod askpass_mode;
 mod budget_run;
 mod changes_pane_writes;
 mod commit_editor_writes;
+mod coverage;
 mod credential_by_key;
 mod dependency_edges;
 #[cfg(feature = "heavy-tests")]
@@ -25,6 +26,7 @@ mod many_refs;
 mod not_a_repo;
 mod piped_stdout;
 mod remote_by_key;
+mod repo_truth;
 mod seam_rule;
 mod stash_by_key;
 mod undo_by_key;

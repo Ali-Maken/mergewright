@@ -95,9 +95,9 @@ fn case(failure: &RemoteFailure) -> (Operation, &'static [&'static str]) {
         RemoteFailure::NonFastForward => (
             push(),
             &[
-                "push rejected: origin/main has commits you don't",
-                "p to pull first",
-                "force with lease",
+                "push rejected: origin/main has moved",
+                "p pull first",
+                "P force with lease",
             ],
         ),
         RemoteFailure::StaleInfo => (
@@ -179,7 +179,7 @@ fn names_survive_arrows_and_slashes() {
     assert_eq!(entry.description, "push a→b → team/origin/a→b");
     let line = explain(&entry, &RemoteFailure::NonFastForward, &[], &names);
     assert!(
-        line.starts_with("push rejected: team/origin/a→b has commits you don't"),
+        line.starts_with("push rejected: team/origin/a→b has moved"),
         "{line}"
     );
 

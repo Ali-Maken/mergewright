@@ -822,10 +822,12 @@ fn collect(dir: &Path, into: &mut Vec<PathBuf>) {
     }
 }
 
-/// The repo × tier × theme coverage matrix, with the sizes each cell has,
-/// from the files that exist today. `S` a snapshot, `C` a pty capture, `—`
-/// nothing; sizes follow, `?` when the file name does not say.
-pub fn coverage_matrix(workspace: &Path) -> String {
+/// The gallery's tables: repo × tier × theme with the sizes each cell has,
+/// then the details group's, from the files that exist today. `S` a
+/// snapshot, `C` a pty capture, `—` nothing; sizes follow, `?` when the file
+/// name does not say. The whole matrix, walks included, is
+/// `coverage::coverage_matrix`.
+pub fn gallery_matrix(workspace: &Path) -> String {
     let evidence = evidence(workspace);
     let entries = entries();
     let width = entries
@@ -871,11 +873,6 @@ pub fn coverage_matrix(workspace: &Path) -> String {
         out.push('\n');
     }
     out.push_str(&details_matrix(&evidence));
-    // The walks' tables live with their scenarios; writing them here means
-    // `gallery --matrix`, `m3_walk --matrix` and `m4_walk --matrix` produce
-    // the same file, and none can drop another's table (m4-remotes/07).
-    out.push_str(&crate::m3_walk::working_tree_matrix(workspace));
-    out.push_str(&crate::m4_walk::remotes_matrix(workspace));
     out
 }
 
@@ -1256,7 +1253,7 @@ mod tests {
         fs::write(shots.join("14-git-git-120x40.txt"), "").unwrap();
         fs::write(shots.join("22-raster-octopus-merge-on-dark.png"), "").unwrap();
 
-        let matrix = coverage_matrix(temp.path());
+        let matrix = gallery_matrix(temp.path());
         let row = |name: &str| {
             matrix
                 .lines()

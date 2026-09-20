@@ -103,7 +103,10 @@ fn summary(entry: &JournalEntry) -> String {
     let mut parts: Vec<String> = Vec::new();
     // A push or a fetch is journaled but `u` passes over it (design note,
     // choice 1): the row says what moved and that it stays moved, instead of
-    // the ref count and backup that mean "undoable" everywhere else.
+    // the ref count and backup that mean "undoable" everywhere else. The
+    // verdict comes first and the tracking ref is not repeated (the
+    // description names it): at 80 columns the summary has some 40 cells,
+    // and it is the verdict that must survive (m4 acceptance review M2).
     match entry.kind {
         OperationKind::Push => {
             let tracking = crate::update::remote::pushed_to(entry);
@@ -116,10 +119,10 @@ fn summary(entry: &JournalEntry) -> String {
                     .copied()
                     .flatten()
                     .map_or_else(|| "new".to_owned(), short);
-                parts.push(format!("{tracking} {before} → {}", short(*after)));
+                parts.push(format!("{before} → {}", short(*after)));
             }
             let remote = tracking.split('/').next().unwrap_or("the remote");
-            parts.push(format!("not undoable \u{2014} {remote} has it"));
+            parts.insert(0, format!("not undoable \u{2014} {remote} has it"));
             return with_failure(entry, &parts);
         }
         OperationKind::Fetch => {
@@ -362,7 +365,7 @@ mod tests {
                 ),
                 (
                     "push main → origin/main",
-                    "origin/main a1b2c3d → 9f8e7d6 · not undoable — origin has it",
+                    "not undoable — origin has it · a1b2c3d → 9f8e7d6",
                     RowMark::None
                 ),
                 (
