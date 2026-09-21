@@ -151,7 +151,11 @@ fn the_tip_row_hints_the_current_branch_context() {
     let (app, state) = App::open(scratch.path());
     let state = opened(&app, state);
 
-    assert_eq!(footer(&state, 80, 24), " ⏎ open  c commit  P push  . more");
+    let bar = footer(&state, 80, 24);
+    assert!(
+        bar.starts_with(" ⏎ open  c commit  P push") && bar.ends_with(". more"),
+        "{bar:?}"
+    );
     app.close();
 }
 
@@ -164,7 +168,11 @@ fn a_plain_row_hints_the_plain_context() {
     let state = opened(&app, state);
     let state = app.key(&state, KeyCode::Char('j'));
 
-    assert_eq!(footer(&state, 80, 24), " ⏎ open  c commit  y sha  . more");
+    let bar = footer(&state, 80, 24);
+    assert!(
+        bar.starts_with(" ⏎ open  c commit  y sha") && bar.ends_with(". more"),
+        "{bar:?}"
+    );
     app.close();
 }
 
@@ -178,9 +186,10 @@ fn the_uncommitted_row_hints_the_working_tree_context() {
     let state = app.key(&state, KeyCode::Char('k'));
     assert!(state.on_working_tree, "`k` selects the uncommitted row");
 
-    assert_eq!(
-        footer(&state, 80, 24),
-        " ⏎ changes  c commit  S stash  . more"
+    let bar = footer(&state, 80, 24);
+    assert!(
+        bar.starts_with(" ⏎ changes  c commit  S stash") && bar.ends_with(". more"),
+        "{bar:?}"
     );
     app.close();
 }
@@ -207,22 +216,31 @@ fn the_changes_pane_hints_the_keys_that_write() {
         "the pane opens on the uncommitted row and the cursor stays there"
     );
 
-    // Stacked below: a 120-cell bar, the six-key tier, `<> resize` among
-    // them (m5-03 review, Major 4 — the divider hint the old list dropped).
-    assert_eq!(
-        hint_bar(&state, 120, 40).as_deref(),
-        Some(" space stage  d discard  c commit  <> resize  ⌃A all  e edit  . more")
-    );
-    // Beside the graph: the graph column is ~93 cells, so the three-key
-    // tier — the three that write, and `.` for the rest.
-    assert_eq!(
-        hint_bar(&state, 160, 48).as_deref(),
-        Some(" space stage  d discard  c commit  . more")
-    );
-    // Wider, still side by side: six again.
-    assert_eq!(
-        hint_bar(&state, 200, 60).as_deref(),
-        Some(" space stage  d discard  c commit  <> resize  ⌃A all  e edit  . more")
+    // Every width leads with the three keys that write, and `<> resize`
+    // sits fourth while a pane is open (m5-03 review, Major 4 — the
+    // divider hint the old list dropped).
+    for (columns, rows) in [(120u16, 40u16), (160, 48), (200, 60)] {
+        let bar = hint_bar(&state, columns, rows).unwrap_or_default();
+        assert!(
+            bar.starts_with(" space stage  d discard  c commit  <> resize")
+                && bar.ends_with(". more"),
+            "at {columns}x{rows}: {bar:?}"
+        );
+    }
+
+    // **The defect this ticket fixed, at the width that showed it.** Beside
+    // the graph the bar has about 93 cells, and the old `width_tier` read
+    // that as "narrow" and capped the list at three — so the 160-column
+    // terminal taught three keys where the 120-column one taught six. The
+    // bar counts from its own row now (ADR-0039, 2026-09-21 amendment).
+    let beside = hint_bar(&state, 160, 48).unwrap_or_default();
+    let drawn = beside
+        .split("  ")
+        .filter(|part| !part.trim().is_empty())
+        .count();
+    assert!(
+        drawn > 4,
+        "93 cells fit more than three hints and `. more`: {beside:?}"
     );
 
     for (columns, rows) in [(120u16, 40u16), (160, 48), (200, 60)] {
@@ -341,7 +359,8 @@ fn capture_hint_bar_for_docs_shots() {
             ("120x40", 120, 40),
             ("160x48", 160, 48),
         ] {
-            let drawn = frame(state, columns, rows);
+            let sized = app.resize(state, columns, rows);
+            let drawn = frame(&sized, columns, rows);
             // The bar is the last row of the *graph* area, which is the
             // frame's last row only while the pane is closed or beside the
             // graph.
@@ -359,10 +378,17 @@ fn capture_hint_bar_for_docs_shots() {
                  # Here {what}.\n\
                  #\n\
                  # Judge by eye: the hint bar is the graph's bottom row — the frame's last\n\
-                 # row, unless the pane is stacked under it. Three keys plus `. more` under\n\
-                 # 100 columns, six plus `. more` from 100, the context's own keys and then\n\
-                 # the screen's from 160 (ADR-0037 §4) — never all hidden, never a key that\n\
-                 # does nothing, and `.` leads to the rest.\n"
+                 # row, unless the pane is stacked under it. **As many keys as fit the row\n\
+                 # the bar actually has**, `. more` last (ADR-0037 §4, ADR-0039's\n\
+                 # 2026-09-21 amendment): the count comes off the bar's own width, not the\n\
+                 # screen's, so a 160-column frame with the pane beside it fills the ~92\n\
+                 # cells the bar is left rather than falling back to three. Never all\n\
+                 # hidden, never fewer than three, never a key that does nothing, and `.`\n\
+                 # leads to the rest. Re-captured for m5/20 item 7, which deleted the\n\
+                 # 3/6/all width tiers — so these bars are longer than the last pass's.\n\
+                 # The app is resized to the capture's size before the frame is drawn,\n\
+                 # which the earlier pass did not do: one state photographed at three\n\
+                 # sizes is a picture of at most one of them.\n"
             );
             if bar.is_none() {
                 out.push_str(MISSING_BAR);

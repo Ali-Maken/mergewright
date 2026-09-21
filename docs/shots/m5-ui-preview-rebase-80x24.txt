@@ -26,22 +26,22 @@
 #
 
  graft /code/api  8…
-  ●     finish the feature                                          now  33d3a0c
+  ●     finish the feature                                          6y   8d6cd28
+  ●     start the feature                                           6y   52f3b96
+  │     after rebase
   │ ○   [◆ feature] finish the feature                              —    —
   │ ○   start the feature                                           —    —
-●─│─╯   [main] main moves again                                     now  3d8d763
-● │     main moves on                                               now  cd9d97a
-│ ●     start the feature                                           now  f62db80
-●─╯     add the base                                                now  77f224f
+●─│─╯   [main] main moves again                                     6y   45fa51d
+● │     main moves on                                               6y   37926a7
+●─╯     add the base                                                6y   ed332bc
 ●       Correct the note                                            7y   a82960b
 ●       Add the first note                                          7y   fadcfb3
 ◇       Add a readme                                                7y   64ded19
 
 
-
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────╮
 │ 2 commits replayed                                                           │
-│ feature 33d3a0c → ghost                                                      │
+│ feature 8d6cd28 → 2 new commits                                              │
 │ working tree: 4 files updated                                                │
 │ no conflicts expected (forecast)                                             │
 │ undo: u takes this back                                                      │

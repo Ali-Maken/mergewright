@@ -1,27 +1,36 @@
 # m5-ui-preview-scrolled-80x24.txt: 80x24, drawn by `view::view`
 # from a real AppState. A real repository: `old-release` cut at the base,
 # three commits on `main`, `topic` forked off its tip with two of its own,
-# and `redesign` — twenty-five commits newer than all of them — pushing
-# `old-release` thirty rows down the graph. Opened over the real job pool,
-# the cursor walked down to `old-release`'s row with `j` (so the viewport
-# really is scrolled: `history.top` is 14, not 0), then `r` pressed
-# through `update` and the real `graft_ops::preview::plan` run
-# (crates/graft/tests/it/preview.rs, capture_scrolled_preview_for_docs_shots,
-# #[ignore]d). Not a pty capture: ratatui's TestBackend, a character grid
-# with no colour attributes in it — CLAUDE.md rule 5, colour ships
-# unverified. The scratch repository's temporary path is replaced by
-# `/code/api`; nothing else is touched.
+# and `redesign` — sixty commits newer than all of them — pushing
+# `old-release` far down the graph. Opened over the real job pool, the
+# cursor walked down to `old-release`'s row with `j` **at this screen
+# size** (so the viewport really is scrolled: `history.top` is 49 here,
+# not 0 — it differs by screen, which is why each capture has its own
+# session and its own number), then `r` pressed through `update` and the
+# real `graft_ops::preview::plan` run (crates/graft/tests/it/preview.rs,
+# capture_scrolled_preview_for_docs_shots, #[ignore]d). Not a pty capture:
+# ratatui's TestBackend, a character grid with no colour attributes in it
+# — CLAUDE.md rule 5, colour ships unverified. The scratch repository's
+# temporary path is replaced by `/code/api`; nothing else is touched.
 #
 # What right looks like:
 #  - The rows on screen are the rows the user was looking at. `cut release
 #    1.0` — the row the cursor was on when `r` was pressed — is visible,
-#    and the newest commits (`redesign step 24` and its neighbours, a
+#    and the newest commits (`redesign step 59` and its neighbours, a
 #    screen or more above) are **not**. Before ticket 17 this capture
 #    showed exactly those rows instead, and the user's own were off-screen.
-#  - The five ghost rows sit right above `cut release 1.0`: hollow node
-#    glyphs, dashed edges, `—` in place of a short sha and an age.
+#  - The five predicted rows sit right above `cut release 1.0`: hollow
+#    node glyphs, dashed edges, `—` in place of a short sha and an age.
 #    They are `main`'s three commits and `topic`'s two, replayed.
-#  - `topic`'s badge has left its own row and sits on the newest ghost.
+#  - **An `after rebase` label on its own row above them**, and the box's
+#    ref line reads `topic e7e39a7 → 5 new commits`. Before m5/20 the
+#    block had no label and no separator, the five subjects were word for
+#    word the five real rows above them, and the line said `→ ghost`
+#    — a word the interface never defines. The first available reading
+#    was `these commits are in my history twice`, which is the confusion
+#    M2 exists to prevent.
+#  - `topic`'s badge has left its own row and sits on the newest of them,
+#    directly under the label.
 #  - The highlighted row is `cut release 1.0`: the commit the key was
 #    pressed on, not whichever row happens to sit where the box's choice
 #    cursor points. (Highlight is a colour, so the grid cannot show it —
@@ -30,13 +39,13 @@
 #    `[ Cancel ]` comes first with the cursor on it (ADR-0038 §1).
 #
 
- graft /code/api  3…
-  ●     redesign step 00                                            6y   c6c79eb
+ graft /code/api  7…
   │ ●   finish the topic                                            6y   e7e39a7
   │ ●   start the topic                                             6y   169d215
 ●─┴─╯   [main] main moves on (2)                                    6y   107af44
 ●       main moves on (1)                                           6y   2b2b2f1
 ●       main moves on (0)                                           6y   ba665c1
+│       after rebase
 │ ○     [◆ topic] finish the topic                                  —    —
 │ ○     start the topic                                             —    —
 │ ○     main moves on (2)                                           —    —
@@ -46,7 +55,7 @@
 ●─╯     add the base                                                6y   ed332bc
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────╮
 │ 5 commits replayed                                                           │
-│ topic e7e39a7 → ghost                                                        │
+│ topic e7e39a7 → 5 new commits                                                │
 │ working tree: 6 files updated                                                │
 │ no conflicts expected (forecast)                                             │
 │ undo: u takes this back                                                      │

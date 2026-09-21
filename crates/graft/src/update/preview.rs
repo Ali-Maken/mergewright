@@ -211,6 +211,41 @@ impl PreviewState {
     fn acts(&self) -> bool {
         self.undrawable.is_none() && self.planned().is_some_and(|it| !nothing_to_do(&it.plan))
     }
+
+    /// What to call the predicted block on screen, in the user's words:
+    /// `after rebase`, `after merge`, `after cherry-pick`, `after revert`,
+    /// else `the result`.
+    ///
+    /// Drawn on a row of its own above the first predicted row
+    /// (`view::preview::label_entry`). The label is the separator whose
+    /// absence was the complaint: without it the predicted subjects are
+    /// word for word the real ones directly above them, and the first
+    /// available reading is *these commits are in my history twice*
+    /// (m5/20 item 4). **Never says `ghost`** — that is our word, a
+    /// `CONTEXT.md` glossary term the interface never defines.
+    #[must_use]
+    pub fn outcome_label(&self) -> String {
+        self.subject
+            .operation()
+            .map(graft_ops::operation::Operation::kind)
+            .and_then(outcome_verb)
+            .map_or_else(|| "the result".to_owned(), |verb| format!("after {verb}"))
+    }
+}
+
+/// The word for what the operation does, for [`PreviewState::outcome_label`]
+/// — the verb the user pressed a key for, not the type's name. `None` for
+/// the kinds a preview never opens over, which fall back to `the result`
+/// rather than inventing a verb for them.
+fn outcome_verb(kind: graft_core::journal::OperationKind) -> Option<&'static str> {
+    use graft_core::journal::OperationKind;
+    match kind {
+        OperationKind::Merge => Some("merge"),
+        OperationKind::Rebase => Some("rebase"),
+        OperationKind::CherryPick => Some("cherry-pick"),
+        OperationKind::Revert => Some("revert"),
+        _ => None,
+    }
 }
 
 /// A plan that would change nothing: a merge already up to date, a reset to
@@ -689,7 +724,7 @@ fn planning_title(subject: &PreviewSubject) -> String {
 fn plan_lines(plan: &PreviewPlan, clipped: usize) -> Vec<SanitizedText> {
     let mut lines: Vec<String> = Vec::new();
     lines.extend(ghost_line(&plan.ghosts));
-    lines.extend(plan.ref_moves.iter().map(ref_line));
+    lines.extend(plan.ref_moves.iter().map(|moved| ref_line(plan, moved)));
     lines.extend(head_line(plan));
     lines.push(worktree_line(&plan.worktree));
     lines.push(conflict_line(&plan.conflicts));
@@ -749,17 +784,53 @@ fn ghost_line(ghosts: &[GhostCommit]) -> Option<String> {
     Some(parts.join(" · "))
 }
 
-/// One ref move: `feature 7f6e5d4 → ghost`, `old a1b2c3d → deleted`,
+/// One ref move: `topic e7e39a7 → 5 new commits`, `old a1b2c3d → deleted`,
 /// `topic (new) → 3c2b1a0`.
-fn ref_line(moved: &RefMove) -> String {
+///
+/// A ref landing on a predicted commit says **how many new commits** it
+/// would have, not `ghost`. `ghost` is our word: it appears nowhere else on
+/// screen, and the user is left to connect `○` and `—` to a noun the
+/// interface never defines (m5/20 item 4).
+fn ref_line(plan: &PreviewPlan, moved: &RefMove) -> String {
     let name = String::from_utf8_lossy(&slice::short_of(&moved.name)).into_owned();
     let from = moved.from.map_or_else(|| "(new)".to_owned(), short);
     let to = match moved.to {
         None => "deleted".to_owned(),
         Some(Target::Real(oid)) => short(oid),
-        Some(Target::Ghost(_)) => "ghost".to_owned(),
+        Some(Target::Ghost(at)) => new_commits(new_commits_at(plan, at)),
     };
     format!("{name} {from} \u{2192} {to}")
+}
+
+/// `5 new commits`, singular at one.
+fn new_commits(count: usize) -> String {
+    if count == 1 {
+        "1 new commit".to_owned()
+    } else {
+        format!("{count} new commits")
+    }
+}
+
+/// How many predicted commits the ref would gain: the ghost it lands on and
+/// every ghost below it in the same chain.
+///
+/// Walked through `parents`, not counted as `at + 1`: the plan's ghost list
+/// is one flat vector, and a plan with two chains in it would otherwise
+/// count the other chain's commits into this ref's total.
+fn new_commits_at(plan: &PreviewPlan, at: usize) -> usize {
+    let mut count = 0;
+    let mut next = Some(at);
+    while let Some(index) = next {
+        let Some(ghost) = plan.ghosts.get(index) else {
+            break;
+        };
+        count += 1;
+        next = ghost.parents.iter().find_map(|parent| match parent {
+            Target::Ghost(parent) => Some(*parent),
+            Target::Real(_) => None,
+        });
+    }
+    count
 }
 
 /// Where `HEAD` goes, when the plan moves it.
@@ -770,7 +841,10 @@ fn head_line(plan: &PreviewPlan) -> Option<String> {
             String::from_utf8_lossy(&slice::short_of(name))
         )),
         HeadMove::Detached(Target::Real(oid)) => Some(format!("HEAD detaches at {}", short(*oid))),
-        HeadMove::Detached(Target::Ghost(_)) => Some("HEAD detaches at ghost".to_owned()),
+        HeadMove::Detached(Target::Ghost(at)) => Some(format!(
+            "HEAD detaches at the newest of {}",
+            new_commits(new_commits_at(plan, *at))
+        )),
     }
 }
 

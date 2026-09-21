@@ -437,8 +437,8 @@ status: broken
   `remote_hints_drop_before_search_and_movement_at_80`) lived in
   `graft-ui/src/graph_screen/footer.rs` and no longer exist: M5 group 03
   rewrote the hint bar (`graph_screen/hints.rs`), and its tests
-  (`graft_ui::graph_screen::hints::tests::eighty_columns_shows_three_and_more`,
-  `graft_ui::graph_screen::hints::tests::hundred_twenty_shows_six`) pin the
+  (`graft_ui::graph_screen::hints::tests::eighty_columns_leads_with_three_and_fills_the_row`,
+  `graft_ui::graph_screen::hints::tests::a_wider_row_takes_more_hints_and_still_fits`) pin the
   *replacement* behaviour, not this one. The 144-column claim itself is
   documented only in `docs/reviews/m4-03-ui-credential-prompt-and-hints.md`
   and `docs/log/m4.md`, not in a runnable test — it describes what M4

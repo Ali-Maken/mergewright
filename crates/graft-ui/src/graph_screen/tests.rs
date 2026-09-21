@@ -766,23 +766,35 @@ fn footer_at(columns: u16) -> String {
 }
 
 /// The footer's hint list widens with the frame, not just in the unit tests
-/// over `hints_for` directly: a plain row shows 4 tokens (3 + `. more`) at
-/// 80, 7 at 120, and as many as fit at 160 — its own list and then the keys
-/// the whole screen answers (`view()`'s default context).
+/// over `hints_for` directly: every extra cell of row buys hints, and none
+/// of the rows overflows (`view()`'s default context).
 #[test]
 fn the_footer_hint_list_widens_with_the_frame() {
     let at = |columns| footer_at(columns).split("  ").count();
-    assert_eq!(at(80), 4, "{}", footer_at(80));
-    assert_eq!(at(120), 7, "{}", footer_at(120));
-    assert!(at(160) > 7, "{}", footer_at(160));
+    assert!(at(80) >= 4, "{}", footer_at(80));
+    assert!(
+        at(120) > at(80),
+        "80: {} / 120: {}",
+        footer_at(80),
+        footer_at(120)
+    );
+    assert!(at(160) >= at(120), "{}", footer_at(160));
     assert!(footer_at(160).contains("q quit"), "{}", footer_at(160));
+    for columns in [80u16, 120, 160] {
+        assert!(
+            footer_at(columns).chars().count() <= usize::from(columns),
+            "the bar overflowed {columns}: {}",
+            footer_at(columns)
+        );
+    }
 }
 
-/// Acceptance (g): the footer at 80x24 for a branch row reads three keys
-/// plus `. more`, in the note's table order — the note's own `m merge` and
-/// `r rebase` are not among them until a group binds them, so the three are
-/// the first three the branch row actually answers (m5-03 review, Critical
-/// 2; `hint-bar-redesign`).
+/// Acceptance (g): the footer at 80x24 for a branch row leads with the
+/// note's table order — the note's own `m merge` and `r rebase` are not
+/// among them until a group binds them, so the first three are the first
+/// three the branch row actually answers (m5-03 review, Critical 2;
+/// `hint-bar-redesign`) — and fills the rest of the row, ending in
+/// `. more`.
 #[test]
 fn footer_eighty_branch_row() {
     let rows = linear(3);
@@ -790,7 +802,10 @@ fn footer_eighty_branch_row() {
     view.hint_context = HintContext::BranchRow { current: false };
     let screen = text(&draw(&view, 80, 24));
     let footer = screen.last().expect("a footer row").trim_end().to_owned();
-    assert_eq!(footer, " ⏎ open  P push  c commit  . more");
+    assert_eq!(
+        footer,
+        " ⏎ open  P push  c commit  p pull  f fetch  u undo  S stash  / search  . more"
+    );
 }
 
 /// The changes pane's own hints replace the row context's, and drop the
@@ -1102,62 +1117,87 @@ fn the_explain_hint_follows_hint_context_not_the_row_marker() {
 
 // --- Operation banner (m5-history-and-ghost-preview/04, ADR-0038 §3) ---
 
-fn rebase_banner(step: Option<(u32, u32)>, conflict: Option<&str>, more: usize) -> BannerView {
+fn rebase_banner(step: Option<(u32, u32)>, conflict: Option<&str>) -> BannerView {
     BannerView {
         kind: sanitize_line("REBASING"),
         step,
         conflict: conflict.map(sanitize_line),
-        more_conflicts: more,
         focused: false,
         skippable: true,
     }
 }
 
-/// Wide (≥100 cols): `step 3 of 7`, `conflict in <path>`, and the `(+N)`
-/// extra-conflicts count all spelled out in full.
+/// The banner names the **state**, and the conflicted file is not on it at
+/// any width: the changes pane lists every conflicted file under
+/// `CONFLICTS (n)`, and a 24-row screen that says the same fact twice has
+/// spent a row on nothing (m5/20 item 1).
 #[test]
-fn banner_line_at_100_or_more_spells_out_step_and_conflict_in() {
-    let banner = rebase_banner(Some((3, 7)), Some("src/auth/token.rs"), 1);
-    let text = banner_line(&banner, 100);
-    assert!(text.contains("REBASING"), "{text:?}");
-    assert!(text.contains("step 3 of 7"), "{text:?}");
-    assert!(text.contains("conflict in src/auth/token.rs"), "{text:?}");
-    assert!(text.contains("(+1)"), "{text:?}");
+fn the_banner_names_the_state_and_never_the_files() {
+    let banner = rebase_banner(Some((3, 7)), Some("src/auth/token.rs"));
+    let text = banner_line(&banner);
+    assert_eq!(text, "REBASING step 3 of 7");
+    assert!(!text.contains("token.rs"), "{text:?}");
+    assert!(!text.contains("conflict"), "{text:?}");
+    assert!(!text.contains("(+"), "{text:?}");
 }
 
-/// Narrow (<100 cols): `3/7`, `conflict <path>` — no "step", no "in".
+/// No `⚠`. A stopped merge is a state to finish, not a failure
+/// (CLAUDE.md: a status field must never read as an error when nothing is
+/// wrong). `⚠` keeps its force for the Mistake Radar's real findings
+/// (m5/20 item 2).
 #[test]
-fn banner_line_under_100_uses_the_terse_form() {
-    let banner = rebase_banner(Some((3, 7)), Some("src/auth.rs"), 0);
-    let text = banner_line(&banner, 80);
-    assert!(text.contains("REBASING 3/7"), "{text:?}");
-    assert!(text.contains("conflict src/auth.rs"), "{text:?}");
-    assert!(!text.contains("step"), "{text:?}");
-    assert!(!text.contains("conflict in"), "{text:?}");
+fn the_banner_carries_no_warning_glyph() {
+    for banner in [
+        rebase_banner(Some((3, 7)), Some("src/auth/token.rs")),
+        rebase_banner(None, None),
+    ] {
+        let text = banner_line(&banner);
+        assert!(!text.contains('⚠'), "{text:?}");
+    }
 }
 
-/// No step at all (a plain merge): the sentence has nothing to count.
+/// One wording. `banner_line` takes no width, so there is no tier left to
+/// spell the same fact two ways — `conflict in notes.md` at 120 against
+/// `conflict notes.md` at 80 and 160, which is what the user read off three
+/// captures of one repository in one state (m5/20 item 3). The drawn
+/// version of this, across the tab layout too, is
+/// `graft::it::conflict_interim::the_banner_reads_the_same_at_every_width`.
 #[test]
-fn banner_line_with_no_step_names_only_the_operation_and_the_conflict() {
+fn the_banner_is_worded_the_same_whatever_the_header_it_lands_in() {
+    let rows = linear(2);
+    let banner = rebase_banner(Some((3, 7)), Some("src/auth/token.rs"));
+    let mut with_banner = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    with_banner.banner_op = Some(banner.clone());
+    let whole = banner_line(&banner);
+    for columns in [100u16, 120, 160, 200] {
+        let header = text(&draw(&with_banner, columns, 6))[0].clone();
+        assert!(
+            header.contains(&whole),
+            "at {columns} columns: {header:?} does not hold {whole:?}"
+        );
+    }
+}
+
+/// No step at all (a plain merge): the state on its own.
+#[test]
+fn banner_line_with_no_step_names_only_the_operation() {
     let banner = BannerView {
         kind: sanitize_line("MERGING"),
         step: None,
         conflict: Some(sanitize_line("src/x.rs")),
-        more_conflicts: 0,
         focused: false,
         skippable: false,
     };
-    let text = banner_line(&banner, 120);
-    assert_eq!(text, "⚠ MERGING — conflict in src/x.rs");
+    assert_eq!(banner_line(&banner), "MERGING");
 }
 
-/// No conflict yet: nothing past the step — an in-progress operation the
-/// user has not hit trouble in.
+/// A step, and nothing after it.
 #[test]
-fn banner_line_with_no_conflict_stops_after_the_step() {
-    let banner = rebase_banner(Some((3, 7)), None, 0);
-    let text = banner_line(&banner, 120);
-    assert_eq!(text, "⚠ REBASING step 3 of 7");
+fn banner_line_with_a_step_counts_it() {
+    assert_eq!(
+        banner_line(&rebase_banner(Some((3, 7)), None)),
+        "REBASING step 3 of 7"
+    );
 }
 
 /// The banner replaces the header's walk/filters/order/graphics slot
@@ -1166,7 +1206,7 @@ fn banner_line_with_no_conflict_stops_after_the_step() {
 fn the_banner_replaces_the_header_slot_and_reverses_when_focused() {
     let rows = linear(2);
     let mut unfocused = view(&rows, WalkView::Complete { rows: 2 }, 0);
-    unfocused.banner_op = Some(rebase_banner(Some((3, 7)), Some("src/auth.rs"), 0));
+    unfocused.banner_op = Some(rebase_banner(Some((3, 7)), Some("src/auth.rs")));
     let screen = text(&draw(&unfocused, 80, 6));
     assert!(screen[0].contains("REBASING"), "{:?}", screen[0]);
     assert!(!screen[0].contains("commits"), "{:?}", screen[0]);
@@ -1204,12 +1244,12 @@ fn a_long_location_is_cut_before_the_banner_is() {
     long.location = Some(sanitize_line(
         "/Users/someone/work/customers/acme/services/billing-api",
     ));
-    let banner = rebase_banner(Some((3, 7)), Some("src/auth/token.rs"), 1);
+    let banner = rebase_banner(Some((3, 7)), Some("src/auth/token.rs"));
     long.banner_op = Some(banner.clone());
 
     for columns in [80u16, 100, 120, 160] {
         let header = text(&draw(&long, columns, 6))[0].clone();
-        let whole = banner_line(&banner, columns);
+        let whole = banner_line(&banner);
         assert!(
             header.contains(&whole),
             "at {columns} columns the banner was cut instead of the path: \
@@ -1217,15 +1257,15 @@ fn a_long_location_is_cut_before_the_banner_is() {
         );
     }
 
-    // And at the widths where something has to give, the `…` is on the
-    // path. (At 160 the whole header fits and nothing is cut.)
-    for columns in [80u16, 100, 120] {
-        let header = text(&draw(&long, columns, 6))[0].clone();
-        assert!(
-            header.contains('\u{2026}'),
-            "at {columns} columns the path was not the thing cut: {header:?}"
-        );
-    }
+    // And at the width where something has to give, the `…` is on the
+    // path. (From 100 columns the whole header fits and nothing is cut —
+    // it used to have to give up to 120, because the banner named the
+    // conflicted file as well as the state; m5/20 item 1.)
+    let header = text(&draw(&long, 80, 6))[0].clone();
+    assert!(
+        header.contains('\u{2026}'),
+        "at 80 columns the path was not the thing cut: {header:?}"
+    );
 }
 
 /// The operation banner costs **no** row under the header, at any width,
@@ -1241,7 +1281,7 @@ fn the_operation_banner_costs_no_row_under_the_header() {
     let rows = linear(2);
     let plain = view(&rows, WalkView::Complete { rows: 2 }, 0);
     let mut with_banner = plain.clone();
-    with_banner.banner_op = Some(rebase_banner(Some((3, 7)), Some("src/auth.rs"), 0));
+    with_banner.banner_op = Some(rebase_banner(Some((3, 7)), Some("src/auth.rs")));
 
     for columns in [80u16, 120, 160, 200] {
         let banner = text(&draw(&with_banner, columns, 10));
@@ -1282,7 +1322,7 @@ fn unmerged_sections_heading_word_is_conflicts() {
 fn capture_for_docs_shots() {
     let rows = linear(2);
     let mut with_banner = view(&rows, WalkView::Complete { rows: 2 }, 0);
-    with_banner.banner_op = Some(rebase_banner(Some((3, 7)), Some("src/auth/token.rs"), 1));
+    with_banner.banner_op = Some(rebase_banner(Some((3, 7)), Some("src/auth/token.rs")));
 
     let mut out = String::new();
     out.push_str(

@@ -260,15 +260,26 @@ with the printed relative age so it never depends on colour alone.
 ### 1.13 Operation banner (mid-rebase, focused)
 
 ```
-╭ ◆ graft ─ ~/code/api ─ ⎇ (rebasing) ─────────────────────────────────────╮
-│ ⚠ REBASING  step 3 of 7 — conflict in src/auth/token.rs                 │
-│                                    [ Continue ]  [ Skip ]  [ Abort ]     │
-╰ c continue  s skip  a abort ─────────────────────────────────────────────╯
+╭ ◆ graft ─ ~/code/api ─ REBASING step 3 of 7 ───────────────────────────╮
+│ ●     cut release 1.0                                      3d  a82960b │
+╰ c continue  s skip  a abort  M mergetool  e edit  ⇥ graph ─────────────╯
 ```
 
 Shown in place of the ahead/behind indicator in the top bar whenever
 `rebase-merge/`, `MERGE_HEAD`, `CHERRY_PICK_HEAD` or `BISECT_LOG` exist; also
 the first thing offered on relaunch if Graft (or the machine) died mid-op.
+
+**The banner says the state and the step, and nothing else** (m5/20, the
+user's ruling). It does not name a conflicted file: the changes pane lists
+every one of them under `CONFLICTS (n)`, and a 24-row screen cannot afford
+to say it twice. It carries no `⚠` either — a stopped rebase is a state to
+finish, not a failure, and the glyph keeps its force for the Mistake Radar's
+real findings. One wording at every width: the earlier `step 3 of 7` / `3/7`
+pair came off a `width >= 100` tier that was fed the banner's **own** region
+rather than the screen's, so the wider terminal drew the terser spelling.
+The `[ Continue ] [ Skip ] [ Abort ]` row is gone (m5/16) — nothing answered
+a click on it, and the keys are taught on the footer, where every other key
+in Graft is taught.
 
 ### 1.14 Credential prompt (in-app askpass)
 

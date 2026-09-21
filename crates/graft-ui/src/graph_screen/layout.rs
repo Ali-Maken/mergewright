@@ -155,14 +155,11 @@ impl<'a> GraphScreen<'a> {
         // Its room comes out **before** the location's. The location used to
         // take what it liked and hand the banner the remainder, so a long
         // repository path (every capture's scratch repo, and plenty of real
-        // checkouts) cut the banner to `⚠ MERGING — …` — the file git
-        // stopped on gone, and the banner is the urgent half. A path cut
-        // with an `…` still says where you are (m5/16, review C1).
+        // checkouts) cut the banner to `MERG…` — the state gone, and the
+        // banner is the urgent half. A path cut with an `…` still says
+        // where you are (m5/16, review C1).
         let banner = self.view.banner_op.as_ref().map(|banner| {
-            let text = format!(
-                "  {}",
-                banner_line(banner, u16::try_from(width).unwrap_or(u16::MAX))
-            );
+            let text = format!("  {}", banner_line(banner));
             let mut style = foreground(self.theme, Token::Warning);
             if banner.focused {
                 style = style.add_modifier(ratatui::style::Modifier::REVERSED);

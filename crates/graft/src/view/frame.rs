@@ -442,7 +442,7 @@ fn draw_tab_banner(frame: &mut Frame, state: &AppState, area: Rect, theme: &Them
     if banner.focused {
         style = style.add_modifier(Modifier::REVERSED);
     }
-    let line = graft_ui::graph_screen::banner_line(&banner, area.width);
+    let line = graft_ui::graph_screen::banner_line(&banner);
     frame
         .buffer_mut()
         .set_string(area.x, area.y, graft_ui::fit::fit(&line, width), style);

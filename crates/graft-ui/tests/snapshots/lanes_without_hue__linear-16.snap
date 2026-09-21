@@ -27,7 +27,7 @@ shape: linear, 16, 80x24, cursor on row 2
 ●   Commit 181                                                      4y   c8254c5
 ●   Commit 180                                                      4y   e95ccd4
 ●   Commit 179                                                      4y   97b58e5
- ⏎ open  c commit  y sha  . more
+ ⏎ open  c commit  y sha  u undo  S stash  J journal  / search  q quit  . more
 
 graph colour per cell:
 5.

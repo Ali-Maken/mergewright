@@ -97,7 +97,6 @@ pub fn banner_view(state: &AppState) -> Option<BannerView> {
         conflict: paths
             .first()
             .map(|path| sanitize_line(&path.display().to_string())),
-        more_conflicts: paths.len().saturating_sub(1),
         focused: state.banner_focus,
         // A merge replays nothing, so it has no step to leave out. Offering
         // `s` on one would be a key that runs `git merge --skip`, which does

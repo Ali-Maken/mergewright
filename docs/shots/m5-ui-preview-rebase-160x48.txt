@@ -26,13 +26,14 @@
 #
 
  graft /code/api  8 commits
-  ●     finish the feature                                                                                                                       GT now  33d3a0c
-  │ ○   [◆ feature] finish the feature                                                                                                           GT —    —
-  │ ○   start the feature                                                                                                                        GT —    —
-●─│─╯   [main] main moves again                                                                                                                  GT now  3d8d763
-● │     main moves on                                                                                                                            GT now  cd9d97a
-│ ●     start the feature                                                                                                                        GT now  f62db80
-●─╯     add the base                                                                                                                             GT now  77f224f
+  ●     finish the feature                                                                                                                       GF 6y   8d6cd28
+  ●     start the feature                                                                                                                        GF 6y   52f3b96
+  │     after rebase
+  │ ○   [◆ feature] finish the feature                                                                                                           GF —    —
+  │ ○   start the feature                                                                                                                        GF —    —
+●─│─╯   [main] main moves again                                                                                                                  GF 6y   45fa51d
+● │     main moves on                                                                                                                            GF 6y   37926a7
+●─╯     add the base                                                                                                                             GF 6y   ed332bc
 ●       Correct the note                                                                                                                         GF 7y   a82960b
 ●       Add the first note                                                                                                                       GF 7y   fadcfb3
 ◇       Add a readme                                                                                                                             GF 7y   64ded19
@@ -62,10 +63,9 @@
 
 
 
-
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 2 commits replayed                                                                                                                                           │
-│ feature 33d3a0c → ghost                                                                                                                                      │
+│ feature 8d6cd28 → 2 new commits                                                                                                                              │
 │ working tree: 4 files updated                                                                                                                                │
 │ no conflicts expected (forecast)                                                                                                                             │
 │ undo: u takes this back                                                                                                                                      │

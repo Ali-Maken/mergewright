@@ -93,6 +93,13 @@ pub enum NodeKind {
     Stash,
     /// The working tree's uncommitted changes, drawn above `HEAD`.
     Uncommitted,
+    /// No node at all: a row that is not a commit, drawn only so a real
+    /// lane passing it keeps an unbroken line. The Ghost Preview's
+    /// `after rebase` label row is the one that uses it
+    /// (`graft::view::preview`, m5/20 item 4) — the label needs a row of
+    /// its own to read as a separator, and a row of its own must not put a
+    /// commit glyph where there is no commit.
+    Absent,
 }
 
 impl NodeKind {
@@ -117,6 +124,7 @@ impl NodeKind {
             NodeKind::Head => '◆',
             NodeKind::Stash => '■',
             NodeKind::Uncommitted => '◌',
+            NodeKind::Absent => ' ',
         }
     }
 }
