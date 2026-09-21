@@ -1,6 +1,7 @@
 //! The hang, progress, undo and journal scenarios: `Esc` on a socket that
 //! never answers, progress on the footer, and what `u` never touches.
 
+use graft_core::event::KeyCode;
 use graft_core::journal::OperationKind;
 use graft_fixtures::Shape;
 use graft_ui::journal_screen::RowMark;
@@ -232,7 +233,12 @@ fn u_never_touches_the_remote() -> Scenario {
                 push_by_key(),
                 vec![Step::WaitFor(Wait::JournalHas(OperationKind::Push))],
             ]),
-            keys: plain(&[ch('u')]),
+            // `u`, then `→ Enter` on `[ Undo locally ]`: from M5 the key
+            // opens the undo-after-push box first (ADR-0038 §4), and this
+            // capture's subject is the line the undo leaves afterwards.
+            // The box itself is M5's own capture,
+            // `m5-ui-undo-after-push-80x24.txt`.
+            keys: plain(&[ch('u'), KeyCode::Right, KeyCode::Enter]),
             secret: None,
             on_screen: "still has it",
             when: When::Settled,

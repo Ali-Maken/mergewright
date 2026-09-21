@@ -1,0 +1,80 @@
+# m5-ui-undo-after-push-80x24.txt: 80x24, drawn by `view::view` from a
+# real AppState — a scratch repository pushed to a `file://` bare,
+# then `u` (crates/graft/tests/it/remote_by_key.rs,
+# capture_undo_after_push_for_docs_shots, #[ignore]d). Not a pty
+# capture: the terminal is ratatui's TestBackend, so this is a
+# character grid with no colour attributes in it — CLAUDE.md rule 5,
+# colour ships unverified.
+#
+# Why: `u` undoes your local branch. A push has already sent that work
+# somewhere others can pull. Undoing silently would leave the two
+# disagreeing with no word about it (ADR-0038 §4).
+#
+# What right looks like:
+#  - **The first box names the remote side** and says in words that
+#    undo is local only, and that re-pushing the old tip rewrites a
+#    branch others may have pulled. Three answers, `Cancel` first.
+#  - **Re-push asks a second time.** Choosing `[ Re-push old tip ]`
+#    does not push: it opens the ordinary push confirm, showing the
+#    exact command. Two deliberate answers before a remote branch is
+#    rewritten.
+#  - **The command line says `--force-with-lease`**, never a bare
+#    `--force`. At 80 columns the box is narrower than the full
+#    command, so the tail is clipped — the same clipping the M4 lease
+#    box already takes (noted in the ticket; the fix is in graft-ops).
+#  - Your local branch keeps every commit it has: re-push moves the
+#    remote back, not you.
+
+== `u` after a push: the one box with three real answers ==
+
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-pJ1SLR/wor…
+◆   [◆ main ⇄ origin] to push                                       now  be3e736
+●   Commit 200                                                      7y   d5ae5fd
+●   Commit 199                                                      7y   13e6ab1
+●   Commit 198                                                      7y   f5055d9
+●   Commit 197                                                      7y   2cce853
+●   Comm╭ Undo after a push ───────────────────────────────────────────╮ 325da3f
+●   Comm│ commit "to push" is on origin/main                           │ 0722297
+●   Comm│ undo works on your local branch only                         │ b6a4a47
+●   Comm│ Re-push old tip rewrites origin/main, which others may have  │ 60af0eb
+●   Comm│ already pulled                                               │ aceb8c5
+●   Comm│                                                              │ 11d68ff
+●   Comm│ git push --progress --force-with-lease=refs/heads/main:be3e7…│ 91900bd
+●   Comm│                                                              │ cec3e93
+●   Comm│ ▸[ Cancel ]   [ Undo locally ]   [ Re-push old tip ]         │ 0a91ece
+●   Comm╰──────────────────────────────────────────────────────────────╯ 3121935
+●   Commit 186                                                      7y   fab25df
+●   Commit 185                                                      7y   09ae97c
+●   Commit 184                                                      7y   49d7783
+●   Commit 183                                                      7y   22d55c9
+●   Commit 182                                                      7y   d212b3e
+●   Commit 181                                                      7y   c8254c5
+●   Commit 180                                                      7y   e95ccd4
+ ⏎ open  c commit  y sha  u undo  S stash  J journal  / search  q quit  . more
+
+== `[ Re-push old tip ]`: its own second box, before the remote moves ==
+
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-pJ1SLR/wor…
+◆   [◆ main ⇄ origin] to push                                       now  be3e736
+●   Commit 200                                                      7y   d5ae5fd
+●   Commit 199                                                      7y   13e6ab1
+●   Commit 198                                                      7y   f5055d9
+●   Commit 197                                                      7y   2cce853
+●   Comm╭ Re-push old tip d5ae5fd → origin/main? ──────────────────────╮ 325da3f
+●   Comm│ origin/main be3e736 → d5ae5fd · refused if origin moved since│ 0722297
+●   Comm│ your fetch (lease)                                           │ b6a4a47
+●   Comm│ rewrites history for everyone who has be3e736                │ 60af0eb
+●   Comm│ your local branch keeps every commit it has                  │ aceb8c5
+●   Comm│                                                              │ 11d68ff
+●   Comm│ git push --progress --force-with-lease=refs/heads/main:be3e7…│ 91900bd
+●   Comm│                                                              │ cec3e93
+●   Comm│ ▸[ Cancel ]   [ Re-push ]                                    │ 0a91ece
+●   Comm╰──────────────────────────────────────────────────────────────╯ 3121935
+●   Commit 186                                                      7y   fab25df
+●   Commit 185                                                      7y   09ae97c
+●   Commit 184                                                      7y   49d7783
+●   Commit 183                                                      7y   22d55c9
+●   Commit 182                                                      7y   d212b3e
+●   Commit 181                                                      7y   c8254c5
+●   Commit 180                                                      7y   e95ccd4
+ ⏎ open  c commit  y sha  u undo  S stash  J journal  / search  q quit  . more

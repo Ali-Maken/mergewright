@@ -55,6 +55,21 @@ pub enum ConfirmThen {
     /// (m5-history-and-ghost-preview/09). `c` does not: continuing is the
     /// operation doing what the user already asked for.
     Resume(graft_ops::apply::Resume),
+    /// `u` on work a push has already sent (ADR-0038 §4): the one box with
+    /// three real answers, so the index the cursor is on decides which.
+    /// `[ Undo locally ]` runs the ordinary undo; `[ Re-push old tip ]`
+    /// opens the lease box, which is the confirm that actually touches the
+    /// remote — this one never does.
+    UndoAfterPush {
+        /// The push entry that sent it. Remembered in
+        /// [`crate::update::remote::RemoteState::undo_after_push_asked`] once
+        /// answered, so the same push explains itself once.
+        push: graft_core::journal::EntryId,
+        /// What `[ Re-push old tip ]` would push: the old tip, under a
+        /// lease. Boxed because it is three `String`s wide and every other
+        /// variant here is a word or two.
+        repush: Box<graft_ops::operation::PushParams>,
+    },
 }
 
 /// The box's own keys, while it is open: `Left`/`Right` move between
@@ -83,11 +98,13 @@ pub fn confirm_key(
         KeyCode::Enter => {
             // Index 0 is always the safe choice and always where the
             // cursor starts (ADR-0038 §1), so anything else is the box's
-            // acting answer. Every box `graft` opens today has exactly two.
-            let acting = pending.view.selected() != 0;
+            // acting answer. Most boxes have exactly two choices; the
+            // undo-after-push box has three, and is handed the index so it
+            // can tell `[ Undo locally ]` from `[ Re-push old tip ]`.
+            let chosen = pending.view.selected();
             let then = pending.then.clone();
             next.confirm = None;
-            if acting {
+            if chosen != 0 {
                 match then {
                     ConfirmThen::Operate(op) => {
                         super::operate::launch(next, commands, op, next_id);
@@ -100,6 +117,11 @@ pub fn confirm_key(
                     }
                     ConfirmThen::Resume(what) => {
                         super::banner::resume(next, commands, what, next_id);
+                    }
+                    ConfirmThen::UndoAfterPush { push, repush } => {
+                        super::undo::after_push_chosen(
+                            next, commands, chosen, push, *repush, next_id,
+                        );
                     }
                 }
             }

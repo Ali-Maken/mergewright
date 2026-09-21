@@ -57,6 +57,17 @@ pub struct RemoteState {
     /// than none. Cleared by dismissing the line, by any write launching,
     /// and by a refresh — each of which makes the recorded tip a guess.
     pub diverged_upstream: Option<(String, Oid)>,
+    /// The push whose undo-after-push box has already been answered
+    /// (ADR-0038 §4).
+    ///
+    /// Keyed on the **push**, not on the entry `u` would take back. The box
+    /// explains one fact — "this work is already on the remote" — and that
+    /// fact belongs to the push. Keying it on the undo target instead would
+    /// re-ask for every entry below the push, which is the nagging the
+    /// design note's "asked once" rules out; a *new* push is a new fact and
+    /// asks again. Set only when a choice was made, so `[ Cancel ]` asks
+    /// again.
+    pub undo_after_push_asked: Option<graft_core::journal::EntryId>,
 }
 
 /// One write in flight.
@@ -435,21 +446,172 @@ pub fn push_box(params: &PushParams, ahead: Option<usize>, local_tip: Option<Oid
         }
         Some(Lease { expected }) => {
             let theirs = short_oid(expected);
-            let ours = local_tip.map_or_else(|| local.to_owned(), short_oid);
-            ConfirmView::new(
-                sanitize_line(&format!("Force-push {local} → {remote_side}?")),
-                vec![
-                    sanitize_line(&format!(
-                        "{remote_side} {theirs} → {ours} · refused if {} moved since your fetch (lease)",
-                        params.remote
-                    )),
-                    sanitize_line(&format!("rewrites history for everyone who has {theirs}")),
-                ],
-                sanitize_line(&command),
-            )
-            .with_labels("Cancel", "Force push")
+            // What replaces the remote's tip. For a re-push that is the old
+            // commit being sent, not the branch head — the branch head is
+            // exactly what a re-push leaves alone (ADR-0038 §4).
+            let ours = params
+                .source_commit
+                .or(local_tip)
+                .map_or_else(|| local.to_owned(), short_oid);
+            let mut message = vec![
+                sanitize_line(&format!(
+                    "{remote_side} {theirs} → {ours} · refused if {} moved since your fetch (lease)",
+                    params.remote
+                )),
+                sanitize_line(&format!("rewrites history for everyone who has {theirs}")),
+            ];
+            // Titled and worded so it cannot be read as a local undo
+            // (ADR-0038 §4): what moves is the remote, and only the remote.
+            let (title, act) = if params.source_commit.is_some() {
+                message.push(sanitize_line("your local branch keeps every commit it has"));
+                (
+                    format!("Re-push old tip {ours} → {remote_side}?"),
+                    "Re-push",
+                )
+            } else {
+                (format!("Force-push {local} → {remote_side}?"), "Force push")
+            };
+            ConfirmView::new(sanitize_line(&title), message, sanitize_line(&command))
+                .with_labels("Cancel", act)
         }
     }
+}
+
+/// What `u` would take back that a push has already sent, and the re-push
+/// that would put the remote back (ADR-0038 §4).
+pub(super) struct UndoAfterPush {
+    /// The push that sent it — what `undo_after_push_asked` remembers.
+    pub push: graft_core::journal::EntryId,
+    /// The entry `u` would undo, in its own words, capped so the box's
+    /// first line stays one line.
+    pub description: String,
+    /// `origin/main`.
+    pub remote_side: String,
+    /// The re-push: the old tip, under a lease against the tracking tip the
+    /// user last fetched. **Always leased** — `PushParams` has no bare
+    /// force to reach for, and `graft_ops` refuses a source commit without
+    /// one (`Refusal::RepushNeedsLease`).
+    pub repush: PushParams,
+}
+
+/// The longest the box quotes an entry's own description before eliding it.
+/// `"commit \"…\" is on origin/main"` has to fit one wrapped line, and the
+/// box keeps at most four (`graft_ui::confirm::MAX_MESSAGE_LINES`).
+const QUOTED_DESCRIPTION: usize = 34;
+
+/// Whether `u` should explain itself first: the entry it would take back
+/// moved the current branch, and a push since then sent that branch to the
+/// remote.
+///
+/// `None` — and so an ordinary, unasked undo — whenever any of the pieces
+/// the box would need is missing: no journal read yet, no branch, no
+/// upstream, no fetched tracking tip to lease against, or an entry that
+/// never moved the branch (staging a file is not something a push sends).
+/// A box offering a re-push it could not run would be worse than no box:
+/// the undo's own line already says `· origin/main still has it`.
+pub(super) fn undo_after_push(state: &AppState) -> Option<UndoAfterPush> {
+    let Loading::Ready(read) = &state.journal.entries else {
+        return None;
+    };
+    let target = graft_ops::journal::next_undo(&read.entries)?;
+    let facts = facts(state).ok()?;
+    let branch = facts.head_branch.as_deref()?;
+    // `refs_before` is `Option<Oid>` per ref: a branch that did not exist
+    // before the entry has no old tip to send, and pushing "nothing" is a
+    // branch deletion, not a re-push.
+    let old_tip = (*target.refs_before.get(branch)?)?;
+    let upstream = facts.head_upstream.as_ref()?;
+    let expected = upstream.tracking_tip?;
+    // The same reading of "already pushed" as `pushed_since`, so the box
+    // and the line the undo leaves afterwards cannot disagree.
+    let push = read
+        .entries
+        .iter()
+        .filter(|entry| {
+            entry.kind == OperationKind::Push
+                && entry.status == EntryStatus::Committed
+                && entry.id > target.id
+        })
+        .max_by(|a, b| a.id.cmp(&b.id))?;
+    if state.remote.undo_after_push_asked.as_ref() == Some(&push.id) {
+        return None;
+    }
+    Some(UndoAfterPush {
+        push: push.id.clone(),
+        description: elided(&target.description, QUOTED_DESCRIPTION),
+        remote_side: format!(
+            "{}/{}",
+            upstream.remote,
+            short_branch(&upstream.remote_branch)
+        ),
+        repush: PushParams {
+            branch: branch.to_owned(),
+            remote: upstream.remote.clone(),
+            remote_branch: upstream.remote_branch.clone(),
+            set_upstream: false,
+            lease: Some(Lease { expected }),
+            source_commit: Some(old_tip),
+        },
+    })
+}
+
+/// `text`, or its first `limit` characters and an ellipsis.
+fn elided(text: &str, limit: usize) -> String {
+    if text.chars().count() <= limit {
+        return text.to_owned();
+    }
+    let mut short: String = text.chars().take(limit).collect();
+    short.push('\u{2026}');
+    short
+}
+
+/// The three-choice box `u` opens when a push has already sent the work
+/// (design note, "`u` after a push"). **Nothing runs from here**: `[ Undo
+/// locally ]` starts the ordinary undo, and `[ Re-push old tip ]` opens the
+/// lease box, which is the explicit confirm ADR-0038 §4 requires before the
+/// remote is touched.
+#[must_use]
+pub(super) fn undo_after_push_box(after: &UndoAfterPush) -> PendingConfirm {
+    let command = Operation::Push(after.repush.clone())
+        .preview()
+        .map_or_else(String::new, |lines| lines.join("\n"));
+    PendingConfirm {
+        view: ConfirmView::new(
+            sanitize_line("Undo after a push"),
+            vec![
+                sanitize_line(&format!(
+                    "{} is on {}",
+                    after.description, after.remote_side
+                )),
+                sanitize_line("undo works on your local branch only"),
+                sanitize_line(&format!(
+                    "Re-push old tip rewrites {}, which others may have already pulled",
+                    after.remote_side
+                )),
+            ],
+            sanitize_line(&command),
+        )
+        .with_choices(vec![
+            sanitize_line("Cancel"),
+            sanitize_line("Undo locally"),
+            sanitize_line("Re-push old tip"),
+        ]),
+        then: ConfirmThen::UndoAfterPush {
+            push: after.push.clone(),
+            repush: Box::new(after.repush.clone()),
+        },
+    }
+}
+
+/// `[ Re-push old tip ]`: the second, explicit confirm — the same lease box
+/// `P` opens after a rejection, worded for a re-push. Still nothing pushed.
+pub(super) fn repush_chosen(state: &mut AppState, params: PushParams) {
+    let local_tip = state.refs.as_deref().and_then(crate::refs::RefBadges::head);
+    let view = push_box(&params, head_ahead(state), local_tip);
+    state.confirm = Some(PendingConfirm {
+        view,
+        then: ConfirmThen::Operate(Operation::Push(params)),
+    });
 }
 
 /// `Esc` while a write runs: ask it to stop. Not while a text field, the

@@ -325,6 +325,15 @@ impl Walk<'_> {
     fn undo_all(&mut self, mut state: AppState) -> Result<AppState, String> {
         for _ in 0..10 {
             state = self.app.key(&state, KeyCode::Char('u'));
+            // A `u` that opens a box first — the drift rail, or the
+            // undo-after-push box from M5 (ADR-0038 §4) — is answered with
+            // its acting choice, which at index 1 is `[ Undo locally ]`.
+            // "Undo everything" means everything, not "everything that did
+            // not stop to ask".
+            if state.confirm.is_some() {
+                state = self.app.key(&state, KeyCode::Right);
+                state = self.app.key(&state, KeyCode::Enter);
+            }
             state = self.settle_write(state, "an undo")?;
             if status_text(&state).contains("nothing to undo") {
                 return Ok(state);

@@ -77,6 +77,15 @@ fn push_plain() -> Scenario {
                 Step::Mark("pushed"),
                 Step::WaitFor(Wait::JournalHas(OperationKind::Push)),
                 key(ch('u')),
+                // From M5, `u` on work a push already sent explains itself
+                // before it runs (ADR-0038 §4,
+                // m5-history-and-ghost-preview/15). `Step::Confirm` moves
+                // one right — onto `[ Undo locally ]` — and presses Enter.
+                Step::See("u after a push asks first", |state| {
+                    box_title_starts(state, "Undo after a push")?;
+                    box_message_contains(state, &["undo works on your local branch only"])
+                }),
+                Step::Confirm,
                 Step::Write("the undo"),
                 Step::See("u says origin still has it", |state| {
                     done_containing(state, " still has it")

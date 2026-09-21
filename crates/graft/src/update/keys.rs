@@ -78,8 +78,13 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     if banner_key(next, commands, key) {
         return;
     }
-    // A menu open (`.`/right-click, m2-details-and-diffs/12) is modal: its
-    // own keys win over the detail pane's and the graph's alike.
+    // A menu open (`.`/right-click, m2-details-and-diffs/12) gets the key
+    // first, but it is **not** modal (`docs/design/02-keymap.md` §2.1, "an
+    // overlay that needs only a cursor is not a modal pane"): it claims
+    // `j`/`k`, the arrows, `Enter`, `Esc` and `.`, and every other key
+    // closes it and carries on down this function to mean what it always
+    // means. That is what makes a label reading `Merge main into feature
+    // (m)` true (m5-history-and-ghost-preview/13).
     if super::context_menu::context_menu_key(next, commands, key) {
         return;
     }
