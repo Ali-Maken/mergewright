@@ -89,6 +89,84 @@ pub fn first_conflicted(state: &AppState) -> Option<PathBuf> {
     unmerged_paths(state).into_iter().next()
 }
 
+/// Whether this frame draws the graph screen at all — and so whether the
+/// operation banner already has a header to ride on.
+///
+/// Mirrors `view::frame::draw_screen`'s match, for the same reason
+/// `update::geometry` mirrors the pane split: the answer decides a *row
+/// count*, and a row count the mouse disagrees with is a click landing on
+/// the wrong row. The overlays (commit editor, Map, journal, stash) replace
+/// the graph and carry no banner of their own.
+#[must_use]
+pub fn graph_screen_on_frame(state: &AppState) -> bool {
+    state.screen == crate::update::state::Screen::Graph
+        && state.commit_editor.is_none()
+        && !state.map.shown
+        && !state.journal.shown
+        && !state.stash.shown
+}
+
+/// Rows the sub-100-column tab layout spends on the operation banner:
+/// **0**, **1** for the row above the `[Graph] Detail` strip, or **2** with
+/// its key hints on the bottom row while it has focus.
+///
+/// `0` whenever the frame already draws the banner somewhere else. Below
+/// 100 columns the shown tab takes the whole frame, so with the **Detail**
+/// tab up the graph screen is not drawn and the banner has nowhere to be —
+/// that is what `draw_tab_banner` exists for (m5/16, review C1). With the
+/// **Graph** tab up the graph screen *is* drawn, header and footer and all,
+/// and drawing the tab banner too put the same text on two rows and the
+/// same keys on two more (review M2).
+///
+/// The one number `view::frame::split_for_detail` draws from and
+/// `update::geometry` and `AppState::graph_rows` count from, so a click
+/// cannot land on a row the banner moved (review M1).
+#[must_use]
+pub fn tab_banner_rows(state: &AppState) -> u16 {
+    if !state.detail.shown {
+        return 0;
+    }
+    let size = (state.size.columns, state.size.rows);
+    let layout = super::detail::effective_layout(state.detail.focus, &state.detail.pane_size, size);
+    let graft_ui::detail_pane::DetailLayout::Tab { shown } = layout else {
+        return 0;
+    };
+    if banner_view(state).is_none() {
+        return 0;
+    }
+    if !shown && graph_screen_on_frame(state) {
+        return 0;
+    }
+    1 + u16::from(state.banner_focus)
+}
+
+/// Rows the sub-100-column tab layout puts above the **graph** when the
+/// graph is the tab on screen: the `[Graph] Detail` strip, and the
+/// operation banner's own row above it if this frame draws one there.
+///
+/// `0` in every other layout, and `0` with the Detail tab up — the graph
+/// is not drawn at all then. Counted by `AppState::graph_rows` and by
+/// `update::geometry::rows_above_graph`, which is what puts a click on the
+/// row the user is looking at.
+#[must_use]
+pub fn tab_rows_above_graph(state: &AppState) -> u16 {
+    if !state.detail.shown {
+        return 0;
+    }
+    let size = (state.size.columns, state.size.rows);
+    let layout = super::detail::effective_layout(state.detail.focus, &state.detail.pane_size, size);
+    match layout {
+        // The strip's own row, plus the banner's if it is drawn above it.
+        // The banner's *second* row (its key hints while focused) comes off
+        // the bottom, not the top, so it is not here — `graph_rows` counts
+        // it through `tab_banner_rows` instead.
+        graft_ui::detail_pane::DetailLayout::Tab { shown: false } => {
+            1.min(size.1) + 1.min(tab_banner_rows(state))
+        }
+        _ => 0,
+    }
+}
+
 /// The banner the header draws, or `None` when no operation is live.
 #[must_use]
 pub fn banner_view(state: &AppState) -> Option<BannerView> {
@@ -175,6 +253,34 @@ pub fn take_focus(state: &mut AppState, key: KeyPress) -> bool {
     true
 }
 
+/// `Tab`, `Shift+Tab` or `Esc`: the banner gives the keyboard up.
+///
+/// `Tab` out of the banner is the next step of the cycle, not a return
+/// ticket: the rule is graph → detail → banner → graph. Leaving
+/// `detail.focus` where it was sent `Tab` straight back into the banner from
+/// the Diff pane, so the graph was unreachable by `Tab` for as long as a
+/// banner was drawn (m5-09 review, Major 1). `BackTab` is the same cycle run
+/// backwards, so it lands on the pane the forward step came from.
+///
+/// `Esc` is not part of the cycle — it is "leave the mode" — so it puts the
+/// keyboard back where it found it.
+fn hand_the_keyboard_back(state: &mut AppState, key: KeyPress) {
+    state.banner_focus = false;
+    if state.detail.shown {
+        match key.code {
+            KeyCode::Tab => state.detail.focus = graft_ui::detail::DetailFocus::Graph,
+            KeyCode::BackTab => state.detail.focus = graft_ui::detail::DetailFocus::Diff,
+            _ => {}
+        }
+    }
+    // The line the banner put up was about the keys it just gave back;
+    // leaving it would read as an error in a pane that has nothing to
+    // report.
+    if matches!(state.status, Status::Sticky { .. }) {
+        state.status = Status::Ready;
+    }
+}
+
 /// The banner's keys, while it has focus.
 ///
 /// **Modal**: `true` for every key but `Ctrl+C`, which passes so that a
@@ -196,32 +302,7 @@ pub fn banner_key(
     }
     let plain = !key.modifiers.control && !key.modifiers.alt;
     match key.code {
-        KeyCode::Tab | KeyCode::BackTab | KeyCode::Escape => {
-            state.banner_focus = false;
-            // `Tab` out of the banner is the next step of the cycle, not a
-            // return ticket: the ticket's rule is graph → detail → banner →
-            // graph. Leaving `detail.focus` where it was sent `Tab` straight
-            // back into the banner from the Diff pane, so the graph was
-            // unreachable by `Tab` for as long as a banner was drawn
-            // (m5-09 review, Major 1). `BackTab` is the same cycle run
-            // backwards, so it lands on the pane the forward step came from.
-            //
-            // `Esc` is not part of the cycle — it is "leave the mode" — so
-            // it puts the keyboard back where it found it.
-            if state.detail.shown {
-                match key.code {
-                    KeyCode::Tab => state.detail.focus = graft_ui::detail::DetailFocus::Graph,
-                    KeyCode::BackTab => state.detail.focus = graft_ui::detail::DetailFocus::Diff,
-                    _ => {}
-                }
-            }
-            // The line the banner put up was about the keys it just gave
-            // back; leaving it would read as an error in a pane that has
-            // nothing to report.
-            if matches!(state.status, Status::Sticky { .. }) {
-                state.status = Status::Ready;
-            }
-        }
+        KeyCode::Tab | KeyCode::BackTab | KeyCode::Escape => hand_the_keyboard_back(state, key),
         KeyCode::Char('c') if plain => {
             continue_pressed(state, commands, next_id);
         }
@@ -239,10 +320,28 @@ pub fn banner_key(
             }
             None => nothing_conflicted(state),
         },
-        // Swallowed on purpose: §2.1's modal rule. Nothing outside the
-        // banner is live while it has focus, so `u` cannot undo the entry
-        // *before* the one still running and `S` cannot stash a tree full
-        // of conflict markers.
+        // `u`/`U` are refused **in words**, focused or not — the one thing
+        // §2.6 says about them while an operation is live. They used to
+        // fall into the silent arm below, so the key the user pressed on
+        // purpose drew nothing at all (review M3): `keys.rs` runs
+        // `banner_key` before the undo path, so `undo`'s own refusal — the
+        // same words — was reached only with the banner unfocused. Undo
+        // itself is still refused; what changed is that it says so.
+        KeyCode::Char('u' | 'U') if plain => {
+            // `banner_key` returned early unless `banner_view` was `Some`,
+            // which needs a live operation — the one thing
+            // `in_progress_refusal` reads. So this is always `Some` here,
+            // and there is no failure being passed over.
+            if let Some(refusal) = super::undo::in_progress_refusal(state) {
+                state.status = refusal;
+            }
+        }
+        // Swallowed on purpose, and **silently**: §2.1's modal rule.
+        // Nothing outside the banner is live while it has focus, so `u`
+        // cannot undo the entry *before* the one still running (answered
+        // in words just above, per §2.6) and `S` cannot stash a tree full
+        // of conflict markers. Anything reaching here draws nothing — the
+        // banner's own hint bar is what says which keys do apply.
         _ => {}
     }
     true

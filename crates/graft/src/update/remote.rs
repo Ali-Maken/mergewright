@@ -485,13 +485,22 @@ pub(super) struct UndoAfterPush {
     /// The entry `u` would undo, in its own words, capped so the box's
     /// first line stays one line.
     pub description: String,
-    /// `origin/main`.
+    /// `origin/main`, read from the push entry itself so the box names the
+    /// side that push actually moved.
     pub remote_side: String,
     /// The re-push: the old tip, under a lease against the tracking tip the
     /// user last fetched. **Always leased** — `PushParams` has no bare
     /// force to reach for, and `graft_ops` refuses a source commit without
     /// one (`Refusal::RepushNeedsLease`).
-    pub repush: PushParams,
+    ///
+    /// `Err` when the re-push cannot be built, carrying the words the box
+    /// shows instead: the remote read failed or has not answered yet, the
+    /// branch is not the one `HEAD` is on, there is no upstream, or nothing
+    /// was fetched to lease against. **The box still opens** — the journal
+    /// alone proves the push happened, and a failed remote read standing in
+    /// for "not pushed" is what turned `u` into a silent plain undo
+    /// (review M5).
+    pub repush: Result<PushParams, String>,
 }
 
 /// The longest the box quotes an entry's own description before eliding it.
@@ -499,59 +508,116 @@ pub(super) struct UndoAfterPush {
 /// box keeps at most four (`graft_ui::confirm::MAX_MESSAGE_LINES`).
 const QUOTED_DESCRIPTION: usize = 34;
 
-/// Whether `u` should explain itself first: the entry it would take back
-/// moved the current branch, and a push since then sent that branch to the
-/// remote.
+/// The branch an entry ran on, full (`refs/heads/main`): the journal's own
+/// record of where `HEAD` was when it was written. `None` for a detached
+/// head, which `p`/`P` refuse to push from, so a push entry always has one.
+fn entry_branch(entry: &JournalEntry) -> Option<&str> {
+    match &entry.head_before {
+        graft_core::journal::HeadRef::Branch(name) | graft_core::journal::HeadRef::Unborn(name) => {
+            Some(name)
+        }
+        graft_core::journal::HeadRef::Detached(_) => None,
+    }
+}
+
+/// The newest in-force push **of `branch`** after `after`, or `None` when
+/// nothing sent that branch since.
 ///
-/// `None` — and so an ordinary, unasked undo — whenever any of the pieces
-/// the box would need is missing: no journal read yet, no branch, no
-/// upstream, no fetched tracking tip to lease against, or an entry that
-/// never moved the branch (staging a file is not something a push sends).
-/// A box offering a re-push it could not run would be worse than no box:
-/// the undo's own line already says `· origin/main still has it`.
+/// The branch test is the whole point (review M4): without it a push of
+/// `main` counted as "this commit is on the remote" for a commit on
+/// `feature`, and the box then named `origin/feature` — a branch nothing
+/// had pushed. Read from the journal alone, so the remote being unreadable
+/// cannot turn a push that did happen into one that did not (review M5).
+fn latest_push_of<'a>(
+    entries: &'a [JournalEntry],
+    branch: &str,
+    after: &graft_core::journal::EntryId,
+) -> Option<&'a JournalEntry> {
+    entries
+        .iter()
+        .filter(|entry| {
+            entry.kind == OperationKind::Push
+                && entry.status == EntryStatus::Committed
+                && entry.id > *after
+                && entry_branch(entry) == Some(branch)
+        })
+        .max_by(|a, b| a.id.cmp(&b.id))
+}
+
+/// Whether `u` should explain itself first: a push since the entry `u`
+/// would take back sent **that entry's own branch** to the remote.
+///
+/// `None` — and so an ordinary, unasked undo — only when the journal says
+/// there is nothing to explain: no journal read yet, an entry with no
+/// branch, an entry that never moved that branch (staging a file is not
+/// something a push sends), or no in-force push of the branch since.
+/// Everything the *re-push* needs is checked separately, in [`repush_for`],
+/// and its absence disables that one choice rather than the box: the
+/// journal is what knows a push happened, and the remote read is not.
 pub(super) fn undo_after_push(state: &AppState) -> Option<UndoAfterPush> {
     let Loading::Ready(read) = &state.journal.entries else {
         return None;
     };
     let target = graft_ops::journal::next_undo(&read.entries)?;
-    let facts = facts(state).ok()?;
-    let branch = facts.head_branch.as_deref()?;
-    // `refs_before` is `Option<Oid>` per ref: a branch that did not exist
-    // before the entry has no old tip to send, and pushing "nothing" is a
-    // branch deletion, not a re-push.
-    let old_tip = (*target.refs_before.get(branch)?)?;
-    let upstream = facts.head_upstream.as_ref()?;
-    let expected = upstream.tracking_tip?;
+    let branch = entry_branch(target)?;
+    if !target.refs_before.contains_key(branch) {
+        return None;
+    }
     // The same reading of "already pushed" as `pushed_since`, so the box
     // and the line the undo leaves afterwards cannot disagree.
-    let push = read
-        .entries
-        .iter()
-        .filter(|entry| {
-            entry.kind == OperationKind::Push
-                && entry.status == EntryStatus::Committed
-                && entry.id > target.id
-        })
-        .max_by(|a, b| a.id.cmp(&b.id))?;
+    let push = latest_push_of(&read.entries, branch, &target.id)?;
     if state.remote.undo_after_push_asked.as_ref() == Some(&push.id) {
         return None;
     }
     Some(UndoAfterPush {
         push: push.id.clone(),
         description: elided(&target.description, QUOTED_DESCRIPTION),
-        remote_side: format!(
-            "{}/{}",
-            upstream.remote,
-            short_branch(&upstream.remote_branch)
-        ),
-        repush: PushParams {
-            branch: branch.to_owned(),
-            remote: upstream.remote.clone(),
-            remote_branch: upstream.remote_branch.clone(),
-            set_upstream: false,
-            lease: Some(Lease { expected }),
-            source_commit: Some(old_tip),
-        },
+        remote_side: pushed_to(push),
+        repush: repush_for(state, target, branch),
+    })
+}
+
+/// What `[ Re-push old tip ]` would send, or the words for why the box
+/// cannot offer it.
+///
+/// Every `Err` here is a fact the user is better off reading than not: a
+/// remote that could not be read, a read still in flight (which is not a
+/// failure and is not worded as one), a branch other than the one `HEAD`
+/// is on — whose upstream is not the upstream we hold — an upstream that
+/// does not exist, a tracking ref never fetched, or a branch that did not
+/// exist before the entry, where "the old tip" would be a branch deletion.
+fn repush_for(state: &AppState, target: &JournalEntry, branch: &str) -> Result<PushParams, String> {
+    let short = short_branch(branch);
+    let facts = facts(state).map_err(|why| format!("no re-push \u{2014} {why}"))?;
+    if facts.head_branch.as_deref() != Some(branch) {
+        return Err(format!("no re-push \u{2014} you are not on {short}"));
+    }
+    let upstream = facts
+        .head_upstream
+        .as_ref()
+        .ok_or_else(|| format!("no re-push \u{2014} {short} has no upstream"))?;
+    let expected = upstream.tracking_tip.ok_or_else(|| {
+        format!(
+            "no re-push \u{2014} {} has not been fetched",
+            upstream.remote
+        )
+    })?;
+    // `refs_before` is `Option<Oid>` per ref: a branch that did not exist
+    // before the entry has no old tip to send, and pushing "nothing" is a
+    // branch deletion, not a re-push.
+    let old_tip = target
+        .refs_before
+        .get(branch)
+        .copied()
+        .flatten()
+        .ok_or_else(|| format!("no re-push \u{2014} {short} had no tip before this"))?;
+    Ok(PushParams {
+        branch: branch.to_owned(),
+        remote: upstream.remote.clone(),
+        remote_branch: upstream.remote_branch.clone(),
+        set_upstream: false,
+        lease: Some(Lease { expected }),
+        source_commit: Some(old_tip),
     })
 }
 
@@ -565,16 +631,37 @@ fn elided(text: &str, limit: usize) -> String {
     short
 }
 
-/// The three-choice box `u` opens when a push has already sent the work
-/// (design note, "`u` after a push"). **Nothing runs from here**: `[ Undo
-/// locally ]` starts the ordinary undo, and `[ Re-push old tip ]` opens the
-/// lease box, which is the explicit confirm ADR-0038 §4 requires before the
-/// remote is touched.
+/// The box `u` opens when a push has already sent the work (design note,
+/// "`u` after a push"). **Nothing runs from here**: `[ Undo locally ]`
+/// starts the ordinary undo, and `[ Re-push old tip ]` opens the lease box,
+/// which is the explicit confirm ADR-0038 §4 requires before the remote is
+/// touched.
+///
+/// Three choices when the re-push can be built, **two** when it cannot —
+/// the third line then says why instead of warning about a rewrite that is
+/// not on offer.
+///
+/// The command row is deliberately blank (the user's decision, 2026-09-21):
+/// the default answer here is `Cancel`, and a force-with-lease sitting
+/// beside it reads as "Enter runs this". The command belongs to the second
+/// box — the lease confirm `repush_chosen` opens, which is where it is
+/// what is about to run.
 #[must_use]
 pub(super) fn undo_after_push_box(after: &UndoAfterPush) -> PendingConfirm {
-    let command = Operation::Push(after.repush.clone())
-        .preview()
-        .map_or_else(String::new, |lines| lines.join("\n"));
+    let (third_line, repush) = match &after.repush {
+        Ok(params) => (
+            format!(
+                "Re-push old tip rewrites {}, which others may have already pulled",
+                after.remote_side
+            ),
+            Some(Box::new(params.clone())),
+        ),
+        Err(why) => (why.clone(), None),
+    };
+    let mut choices = vec![sanitize_line("Cancel"), sanitize_line("Undo locally")];
+    if repush.is_some() {
+        choices.push(sanitize_line("Re-push old tip"));
+    }
     PendingConfirm {
         view: ConfirmView::new(
             sanitize_line("Undo after a push"),
@@ -584,21 +671,14 @@ pub(super) fn undo_after_push_box(after: &UndoAfterPush) -> PendingConfirm {
                     after.description, after.remote_side
                 )),
                 sanitize_line("undo works on your local branch only"),
-                sanitize_line(&format!(
-                    "Re-push old tip rewrites {}, which others may have already pulled",
-                    after.remote_side
-                )),
+                sanitize_line(&third_line),
             ],
-            sanitize_line(&command),
+            sanitize_line(""),
         )
-        .with_choices(vec![
-            sanitize_line("Cancel"),
-            sanitize_line("Undo locally"),
-            sanitize_line("Re-push old tip"),
-        ]),
+        .with_choices(choices),
         then: ConfirmThen::UndoAfterPush {
             push: after.push.clone(),
-            repush: Box::new(after.repush.clone()),
+            repush,
         },
     }
 }
@@ -811,6 +891,10 @@ fn split_reason_and_keys(explained: &str) -> (String, Option<String>) {
 /// than it already sent: ` · origin/main still has it`. Empty otherwise.
 /// Read from the journal the browser holds — `ops` skipped the push, so the
 /// user is owed the reason the remote still differs.
+///
+/// The same [`latest_push_of`] the box asks, so the line and the box cannot
+/// disagree: a push of some **other** branch leaves no line here, because
+/// it left this branch where it was.
 pub(super) fn pushed_since(state: &AppState, undone: &JournalEntry) -> String {
     let Some(target) = &undone.reverses else {
         return String::new();
@@ -818,17 +902,21 @@ pub(super) fn pushed_since(state: &AppState, undone: &JournalEntry) -> String {
     let Loading::Ready(read) = &state.journal.entries else {
         return String::new();
     };
-    read.entries
+    // The undo ran on the branch it put back, so `HEAD` before the undo
+    // names the branch whose pushes matter. The undone entry is older, so
+    // it is in this same read when it names a different one.
+    let branch = read
+        .entries
         .iter()
-        .filter(|entry| {
-            entry.kind == OperationKind::Push
-                && entry.status == EntryStatus::Committed
-                && entry.id > *target
-        })
-        .max_by(|a, b| a.id.cmp(&b.id))
-        .map_or_else(String::new, |push| {
-            format!(" · {} still has it", pushed_to(push))
-        })
+        .find(|entry| entry.id == *target)
+        .and_then(entry_branch)
+        .or_else(|| entry_branch(undone));
+    let Some(branch) = branch else {
+        return String::new();
+    };
+    latest_push_of(&read.entries, branch, target).map_or_else(String::new, |push| {
+        format!(" · {} still has it", pushed_to(push))
+    })
 }
 
 /// `origin/main` for a push entry: its recorded tracking ref, else the

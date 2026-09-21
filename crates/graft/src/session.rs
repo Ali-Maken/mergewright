@@ -41,14 +41,29 @@ pub enum TerminalChange {
     Theme(ThemeHint),
 }
 
-/// The one place `SystemTime::now()` is read on the date path
-/// (m1-the-graph/53): every relative date on screen is `then` fitted
-/// against `Clock::now_seconds()`, never the wall clock read directly.
+/// **The one place `SystemTime::now()` is read for anything a capture can
+/// show** (m1-the-graph/53; widened m5-history-and-ghost-preview/25).
+///
+/// It started as a rule about the date path — every relative date on
+/// screen is `then` fitted against [`Clock::now_seconds`], never the wall
+/// clock read directly. That scope left a hole, and captures fell into it:
+/// the journal timestamp `jobs::operate` and `jobs::undo` stamp each entry
+/// with is not a date on the date path, so it read the wall clock
+/// directly, and any capture of a repository the app writes **during** the
+/// capture drew an instant that changed on every run. Pinning that
+/// render-side instead would draw a real entry as a literal `future`
+/// (`graft_ui::journal::columns`).
+///
+/// So the rule is the whole rule now: **any instant that can reach a
+/// frame — drawn, or written into the repository and then drawn — comes
+/// through a `Clock`.** Timing that never reaches the screen (a debounce
+/// window, a deadline) is not covered and does not need to be.
 ///
 /// `Wall` is what the shipped binary passes. `Fixed` is what a caller that
-/// cannot tolerate drift asks for instead: a snapshot test, or the gallery
+/// cannot tolerate drift asks for instead: a snapshot test, the gallery
 /// viewing a corpus stop at `graft_fixtures::CORPUS_NOW` so its capture
-/// never ages.
+/// never ages, or a capture that writes to the repository it is
+/// photographing (`JobRunner::with_clock`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Clock {
     /// Read the real system clock.

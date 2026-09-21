@@ -19,7 +19,7 @@ mod credential;
 mod detail;
 mod entries;
 pub(crate) mod explain;
-mod frame;
+pub(crate) mod frame;
 mod journal;
 mod map;
 mod preview;

@@ -889,6 +889,36 @@ fn the_branch_badge_still_lands_on_the_newest_predicted_row() {
     app.close();
 }
 
+/// **`forecast` is our word too**, and `(forecast)` broke a second rule:
+/// `02-keymap.md` §2.1, extended 2026-09-21 — a trailing parenthesis
+/// carries a key, not a word, anywhere the user might press what is inside
+/// it. The preview's two lines said `no conflicts expected (forecast)` and
+/// `may conflict (forecast): …`; `expected` and `may` already say it is a
+/// prediction.
+///
+/// Swept the same way as `ghost` rather than asserted on the two lines,
+/// for the same reason: a spot check only ever catches the instance
+/// somebody already found.
+#[test]
+fn no_user_facing_string_says_forecast() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+    let mut offenders = Vec::new();
+    for crate_name in ["graft/src", "graft-ui/src"] {
+        walk_rust(&root.join(crate_name), &mut |path, line_no, line| {
+            for literal in string_literals(line) {
+                if literal.to_ascii_lowercase().contains("forecast") {
+                    offenders.push(format!("{}:{line_no}: {literal}", path.display()));
+                }
+            }
+        });
+    }
+    assert!(
+        offenders.is_empty(),
+        "these strings could reach the screen and say `forecast`:\n{}",
+        offenders.join("\n")
+    );
+}
+
 /// m5/20 item 4, the deeper point: **`ghost` is our word.** A sweep of
 /// every string literal in the two crates that draw, not a spot check of
 /// the one line the user happened to catch.

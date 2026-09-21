@@ -91,21 +91,33 @@ impl App {
     /// Open over a pool of exactly `workers` threads, for a test whose point
     /// is what happens when they run out (m5-history-and-ghost-preview/05).
     pub fn open_with_workers(repo: &Path, workers: usize) -> (Self, AppState) {
-        Self::open_sized(repo, None, workers)
+        Self::open_sized(repo, None, workers, graft::session::Clock::Wall)
+    }
+
+    /// Open with every journal entry this run writes stamped from `clock`.
+    ///
+    /// For a capture — or a test — of a repository the app writes **during**
+    /// the run: the entry's own `at_unix_ms` is drawn, so left on the wall
+    /// clock it reads differently every time
+    /// (m5-history-and-ghost-preview/25, `graft::session::Clock`).
+    pub fn open_with_clock(repo: &Path, clock: graft::session::Clock) -> (Self, AppState) {
+        Self::open_sized(repo, None, 2, clock)
     }
 
     fn open_with(repo: &Path, askpass_helper: Option<std::path::PathBuf>) -> (Self, AppState) {
-        Self::open_sized(repo, askpass_helper, 2)
+        Self::open_sized(repo, askpass_helper, 2, graft::session::Clock::Wall)
     }
 
     fn open_sized(
         repo: &Path,
         askpass_helper: Option<std::path::PathBuf>,
         workers: usize,
+        clock: graft::session::Clock,
     ) -> (Self, AppState) {
         let (sender, events) = mpsc::channel();
         let store = Arc::new(RepoStore::new(repo.to_path_buf(), None));
         let jobs = JobRunner::start(sender, workers, store).expect("the job pool starts");
+        let jobs = jobs.with_clock(clock);
         let jobs = match askpass_helper {
             Some(helper) => jobs.with_askpass_helper(helper),
             None => jobs,

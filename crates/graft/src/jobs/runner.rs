@@ -112,6 +112,11 @@ pub struct JobRunner<S: JobEvents> {
     /// under `cargo test`, where `current_exe` is the test binary: the
     /// integration tests point this at `CARGO_BIN_EXE_graft`.
     askpass_helper: Option<std::path::PathBuf>,
+    /// The clock every journal entry this runner writes is stamped from
+    /// (`crate::session::Clock`). `Wall` for the shipped binary; a capture
+    /// that writes to the repository it is photographing sets `Fixed`, so
+    /// the entry it draws afterwards reads the same on every run.
+    clock: crate::session::Clock,
 }
 
 impl<S: JobEvents> JobRunner<S> {
@@ -175,6 +180,7 @@ impl<S: JobEvents> JobRunner<S> {
             ahead_behind: Arc::default(),
             waiting: super::askpass::Waiting::default(),
             askpass_helper: None,
+            clock: crate::session::Clock::Wall,
         })
     }
 
@@ -186,6 +192,18 @@ impl<S: JobEvents> JobRunner<S> {
     #[must_use]
     pub fn with_askpass_helper(mut self, helper: std::path::PathBuf) -> Self {
         self.askpass_helper = Some(helper);
+        self
+    }
+
+    /// Stamp the journal entries this runner writes from `clock` rather
+    /// than the wall clock.
+    ///
+    /// For a capture whose repository the app writes **during** the
+    /// capture: the entry it then draws would otherwise carry a different
+    /// instant on every run. See [`crate::session::Clock`] for the rule.
+    #[must_use]
+    pub fn with_clock(mut self, clock: crate::session::Clock) -> Self {
+        self.clock = clock;
         self
     }
 
@@ -565,6 +583,7 @@ impl<S: JobEvents> JobRunner<S> {
     fn resume(&self, id: JobId, what: graft_ops::apply::Resume) {
         let repos = Arc::clone(&self.repos);
         let sink = self.sink.clone();
+        let clock = self.clock;
         let description = match what {
             graft_ops::apply::Resume::Continue => "continue",
             graft_ops::apply::Resume::Skip => "skip",
@@ -582,7 +601,7 @@ impl<S: JobEvents> JobRunner<S> {
                     return Outcome::Cancelled;
                 }
                 Outcome::Produced(Product::Resumed(Box::new(super::operate::run_resume(
-                    &repos, what, cancel,
+                    &repos, what, clock, cancel,
                 ))))
             })
         });
@@ -591,6 +610,7 @@ impl<S: JobEvents> JobRunner<S> {
     fn operate(&self, id: JobId, op: Box<graft_ops::operation::Operation>) {
         let repos = Arc::clone(&self.repos);
         let sink = self.sink.clone();
+        let clock = self.clock;
         let description = op.describe();
         let waiting = self.waiting.clone();
         // Settled here, on the loop's thread, not inside the job: what git
@@ -643,6 +663,7 @@ impl<S: JobEvents> JobRunner<S> {
                 Outcome::Produced(Product::Operated(Box::new(super::operate::run_operation(
                     &repos,
                     &op,
+                    clock,
                     cancel,
                     super::operate::Hooks {
                         progress: Box::new(progress),
@@ -692,6 +713,7 @@ impl<S: JobEvents> JobRunner<S> {
     fn run_undo(&self, id: JobId, redo: bool, force: bool) {
         let repos = Arc::clone(&self.repos);
         let sink = self.sink.clone();
+        let clock = self.clock;
         let description = if redo { "redo" } else { "undo" };
         self.queue_as(id, Some(Task::Undo), move |id| {
             Box::new(move |cancel: &Cancel| {
@@ -705,7 +727,7 @@ impl<S: JobEvents> JobRunner<S> {
                     return Outcome::Cancelled;
                 }
                 Outcome::Produced(Product::Undone(Box::new(super::undo::run_undo(
-                    &repos, redo, force, cancel,
+                    &repos, redo, force, clock, cancel,
                 ))))
             })
         });
@@ -718,13 +740,14 @@ impl<S: JobEvents> JobRunner<S> {
     /// the way it cancels any other read.
     fn plan_preview(&self, id: JobId, request: Box<crate::update::preview::PreviewRequest>) {
         let repos = Arc::clone(&self.repos);
+        let clock = self.clock;
         self.queue_as(id, Some(Task::PlanPreview), move |_| {
             Box::new(move |cancel: &Cancel| {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
                 Outcome::Produced(Product::Preview(super::preview::run_preview(
-                    &repos, &request, cancel,
+                    &repos, &request, clock, cancel,
                 )))
             })
         });
@@ -737,6 +760,7 @@ impl<S: JobEvents> JobRunner<S> {
     fn run_revert_to(&self, id: JobId, target: graft_core::journal::EntryId, force: bool) {
         let repos = Arc::clone(&self.repos);
         let sink = self.sink.clone();
+        let clock = self.clock;
         self.queue_as(id, Some(Task::RevertTo), move |id| {
             Box::new(move |cancel: &Cancel| {
                 sink.deliver(AppEvent::Progress(
@@ -749,7 +773,7 @@ impl<S: JobEvents> JobRunner<S> {
                     return Outcome::Cancelled;
                 }
                 Outcome::Produced(Product::RevertedTo(Box::new(super::undo::run_revert_to(
-                    &repos, &target, force, cancel,
+                    &repos, &target, force, clock, cancel,
                 ))))
             })
         });
@@ -759,12 +783,15 @@ impl<S: JobEvents> JobRunner<S> {
     /// whatever a previous run left open before it answers.
     fn read_journal(&self, id: JobId) {
         let repos = Arc::clone(&self.repos);
+        let clock = self.clock;
         self.queue_as(id, Some(Task::ReadJournal), move |_| {
             Box::new(move |cancel: &Cancel| {
                 if cancel.is_cancelled() {
                     return Outcome::Cancelled;
                 }
-                Outcome::Produced(Product::Journal(super::undo::read_journal(&repos, cancel)))
+                Outcome::Produced(Product::Journal(super::undo::read_journal(
+                    &repos, clock, cancel,
+                )))
             })
         });
     }

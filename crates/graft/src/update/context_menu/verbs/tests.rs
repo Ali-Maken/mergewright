@@ -472,11 +472,23 @@ fn a_commit_is_spelled_the_same_seven_digits_everywhere() {
     assert_eq!(short(oid(3)), SHA3);
 }
 
-/// The keys a label may name, and the only ones: `graft-ui`'s own fixed
-/// items carry `y`/`x`/`⏎`/`f`/`p`/`P`/`u`, and of the app's verbs only
-/// merge and rebase own a letter (`docs/design/02-keymap.md` §2.1 — the
-/// rest live behind `.` precisely because they own none).
-const LIVE_KEYS: [&str; 2] = ["m", "r"];
+/// The key a label names, read back from the dispatcher that makes the
+/// promise true rather than from a hand-kept list (m5/14-22 review, Minor 2:
+/// a list someone edits alongside the label it is meant to check is not a
+/// check). `update::keys::write_key` sends `m`/`r` straight to
+/// `preview::is_history_key`, so what that function answers *is* the set of
+/// keys a history verb may put in trailing parens — and which verb each one
+/// owns. A hint of more than one character is not a key press at all.
+fn key_behind(hint: &str) -> Option<crate::update::preview::HistoryKey> {
+    let mut chars = hint.chars();
+    let only = chars.next()?;
+    if chars.next().is_some() {
+        return None;
+    }
+    crate::update::preview::is_history_key(graft_core::event::KeyPress::plain(
+        graft_core::event::KeyCode::Char(only),
+    ))
+}
 
 /// Every label `history_verbs` can build, across every shape that changes
 /// which verbs are offered.
@@ -486,10 +498,10 @@ const LIVE_KEYS: [&str; 2] = ["m", "r"];
 /// enforce was unenforced on exactly the labels that broke it (review 08
 /// Major 3). `graft-ui` cannot depend on `graft`, so the reach belongs
 /// here, next to the labels themselves.
-fn every_label_the_app_can_build() -> Vec<String> {
-    let mut all: Vec<String> = Vec::new();
+fn every_label_the_app_can_build() -> Vec<HistoryVerb> {
+    let mut all: Vec<HistoryVerb> = Vec::new();
     let mut take = |verbs: Vec<HistoryVerb>| {
-        all.extend(labels(&verbs).into_iter().map(str::to_owned));
+        all.extend(verbs);
     };
 
     let refs = main_and_feature();
@@ -544,7 +556,8 @@ fn every_label_the_app_can_build() -> Vec<String> {
 /// `detached`, `-m 1` — goes after a comma.
 #[test]
 fn a_trailing_parenthesis_on_a_verb_label_is_always_a_live_key() {
-    for label in every_label_the_app_can_build() {
+    for verb in every_label_the_app_can_build() {
+        let label = verb.label.as_str();
         let Some(open) = label.rfind(" (") else {
             continue;
         };
@@ -553,10 +566,26 @@ fn a_trailing_parenthesis_on_a_verb_label_is_always_a_live_key() {
             "a parenthesis that never closes is not a shape this rule can read: {label}"
         );
         let hint = &label[open + 2..label.len() - 1];
+        let Some(which) = key_behind(hint) else {
+            panic!(
+                "{label} wears the key-hint shape, but pressing {hint} on the graph \
+                 does nothing - a qualifier goes after a comma"
+            )
+        };
+        // Half the promise is *which* verb the key does: `(m)` on a rebase
+        // would teach a shortcut that runs something else.
+        let runs = match which {
+            crate::update::preview::HistoryKey::Merge => {
+                matches!(verb.op, Operation::Merge(_))
+            }
+            crate::update::preview::HistoryKey::Rebase => {
+                matches!(verb.op, Operation::Rebase(_))
+            }
+        };
         assert!(
-            LIVE_KEYS.contains(&hint),
-            "{label} wears the key-hint shape, but {hint} is not a live key \
-             - a qualifier goes after a comma"
+            runs,
+            "{label} teaches {hint}, but that key runs {which:?} and this row offers {:?}",
+            verb.op
         );
     }
 }

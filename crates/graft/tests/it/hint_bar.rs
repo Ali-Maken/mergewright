@@ -238,6 +238,13 @@ fn the_changes_pane_hints_the_keys_that_write() {
         drawn > 4,
         "93 cells fit more than three hints and `. more`: {beside:?}"
     );
+    // Counting parts would still pass with half the write keys gone
+    // (m5/14-22 review, Minor 1), so name them: 93 cells fit the changes
+    // pane's whole vocabulary, in the order the tier hands it out.
+    assert_eq!(
+        beside, " space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more",
+        "every key the pane answers, beside the graph"
+    );
 
     for (columns, rows) in [(120u16, 40u16), (160, 48), (200, 60)] {
         let bar = hint_bar(&state, columns, rows).unwrap_or_default();
