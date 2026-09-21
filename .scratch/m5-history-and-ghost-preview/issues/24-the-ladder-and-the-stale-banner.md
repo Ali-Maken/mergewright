@@ -1,10 +1,9 @@
 # the-ladder-and-the-stale-banner: shrink before dropping, and a capture that predates its fix
 
-Status: **done**, at a seam. Pieces 2 and 3 merged earlier; piece 1 (the shrink
-ladder) built on the corrected rule and committed, plus the `m`/`r` hint fix the
-conductor added mid-build. **Four `graft` tests are red and stay red**: the
-seam is named under NOTES (second pass) and needs four mechanical edits in a
-crate this ticket does not hold.
+Status: **done.** Pieces 2 and 3 merged earlier; piece 1 (the shrink ladder)
+built on the corrected rule and committed, plus the `m`/`r` hint fix the
+conductor added mid-build. The four-test seam is **closed** on `g24c` — see
+NOTES (seam close): 2247/2247, gates clean.
 Blocked by: none — `graft-ui` and `graft-git` only. Ticket 25 holds `graft`
 and runs alongside you. **Never edit outside your crate set**; need `graft`,
 commit at the seam, report `blocked: needs graft`, stop.
@@ -556,3 +555,88 @@ the tail is long by construction. The ladder makes that readable rather than
 fixing it. If the user judges the bare-key tail as leftover, the cheaper answer
 is not a separator but a shorter `TAIL` — and that is a design question about
 what the bar is for, not a width rule.
+
+## NOTES (seam close, `graft` only, 2026-09-21)
+
+Branch `g24c` off `g24b`. Crate set `graft`; `graft-ui` untouched. No scout —
+the previous builder quoted every line, and the four edits were named exactly.
+
+**Baseline measured before any edit** (`cargo nextest run --workspace
+--no-fail-fast` on `g24b`, target `/tmp/graft-target-g24c`): 2247 tests, **4
+red** — `update::tests::every_hinted_key_is_bound`,
+`update::tests::every_planned_hint_is_still_unbound`,
+`view::tests::every_graph_renderer_config_value_draws_as_it_says`,
+`it::hint_bar::a_plain_row_hints_the_plain_context`. **After: 2247 run, 2247
+passed**, 38 skipped. `fmt --check`, `clippy --all-targets -D warnings` and
+`cargo test --doc --workspace` all clean.
+
+### 1. `bound_actions()` — `m merge`, `r rebase`
+
+`update/keys.rs`, in the `graph_key` block, each annotated with its dispatcher
+(`write_key` → `preview::history_key`). Both keys have been bound since m5/08;
+only the table was behind. Two stale doc comments corrected with them, because
+both now assert something false: `update/tests.rs`'s
+`every_planned_hint_is_still_unbound` doc listed `m merge`/`r rebase` among
+"every planned verb nothing hints as live", and `hint_bar.rs:140`'s doc said
+the tip row hints "none of the keys no group has built (`m merge`,
+`r rebase`)". Both now name `b branch`/`t tag` and say when `m`/`r` changed
+side. `crates/graft/MAP.md`'s `bound_actions` row updated to match.
+
+### 2. `hint_bar.rs:168` — and `:151`/`:186` checked, not assumed
+
+`:168` now `starts_with(" ⏎ open  r rebase  c commit")`. The other two were
+**run**, not reasoned about: both pass unchanged in the green run above.
+`:151` (`the_tip_row_hints_the_current_branch_context`, `⏎ open  c commit
+P push`) never saw `m`/`r` — `current_branch_row_list` does not carry them.
+`:186` (`the_uncommitted_row_hints_the_working_tree_context`, `⏎ changes
+c commit  S stash`) likewise. Only the plain-row list leads with `r rebase`.
+
+### 3. The renderer snapshots — read before accepting
+
+Four snapshots, one changed line each, and it is the **same** line in all four:
+the hint bar. Rows 1-4 (header, three commit rows with glyph, subject, `63y`
+date and sha) are byte-identical, `gfx ok` included, so the ladder moved
+nothing but the footer. At 60 columns the plain-row bar went from
+
+```
+ ⏎ open  c commit  y sha  u undo  S stash  J journal  . more
+ ⏎ open  r rebase  c commit  y  m  u  S  J  /  q  F2  . more
+```
+
+Six hints all at full rung became three at full plus eight bare keys: the same
+60 cells now advertise eleven keys instead of six, and `r rebase` leads because
+it is live now. The stale `renderer-Auto.snap.new` `g24b` had committed is
+deleted; all four `.snap` files were regenerated from one run
+(`INSTA_UPDATE=always`, that test only) so `Ascii`, `Pixel` and `Unicode` are
+not left one behind. This picture is exactly the open question ADR-0039's third
+amendment leaves to the user's eye.
+
+### 4. The caption
+
+Rewritten (`hint_bar.rs`, `capture_hint_bar_for_docs_shots`) and the twelve
+`m5-hints-{branch,changes,plain,uncommitted}-{80x24,120x40,160x48}.txt`
+regenerated, so the words now describe the picture. It says: `. more` is last
+and never dropped; the ladder is taken **per hint**, three rungs (full `y sha`,
+short `F3 rend`, bare key `x`); the bar fills from the most relevant end and
+each hint takes the best rung that still leaves room for the hints ahead of it;
+a hint that will not fit even at its bare key is **dropped**; so expect
+readable verbs at the left thinning into a tail of bare keys at the right, the
+tail turning back into verbs as the row widens, with nothing stepping down as a
+group. It then names the three labels with no short rung — `m merge`,
+`r rebase`, `S stash` — and says a squeezed `S stsh` would be a bug, keeps the
+floor (three most relevant never below short, never all hidden, never fewer
+than three, `.` leads to what was dropped, room counted off the bar's own
+width), and states the open question the user is being asked to answer.
+
+No hint label was changed and no short form invented.
+
+### Found, not fixed — outside the crate set
+
+`crates/graft-ui/src/graph_screen/tests.rs:1483-1487` writes the caption for
+`m5-hints-marked-{80x24,120x40,160x48}.txt`, and it still reads "three under
+100 cols, six from 100, as many as fit from 160 (ADR-0037 §4)" — the width
+tiers **m5/20 item 7 deleted**. The three marked captures on disk disprove it
+on their face: `m5-hints-marked-80x24.txt` draws eighteen hints at 80 columns,
+not three. Same failure as item 4, one crate over. `graft-ui` is `g24b`'s and
+finished, so this is reported rather than edited: one caption rewrite in
+`graft-ui`, then re-run its `capture_hint_bar_for_docs_shots`.

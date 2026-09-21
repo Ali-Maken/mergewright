@@ -140,7 +140,8 @@ fn opened(app: &App, state: AppState) -> AppState {
 
 /// The cursor starts on the tip, which carries the current branch's badge:
 /// the footer hints that row's own keys, and none of the keys no group has
-/// built (`m merge`, `r rebase` are the design note's, not this build's).
+/// built (`b branch`, `t tag` are the design note's, not this build's;
+/// `m merge` and `r rebase` were too until group 08 bound them).
 #[test]
 fn the_tip_row_hints_the_current_branch_context() {
     let scratch = repo();
@@ -166,7 +167,7 @@ fn a_plain_row_hints_the_plain_context() {
 
     let bar = footer(&state, 80, 24);
     assert!(
-        bar.starts_with(" ⏎ open  c commit  y sha") && bar.ends_with(". more"),
+        bar.starts_with(" ⏎ open  r rebase  c commit") && bar.ends_with(". more"),
         "{bar:?}"
     );
     app.close();
@@ -386,17 +387,39 @@ fn capture_hint_bar_for_docs_shots() {
                  # Here {what}.\n\
                  #\n\
                  # Judge by eye: the hint bar is the graph's bottom row — the frame's last\n\
-                 # row, unless the pane is stacked under it. **As many keys as fit the row\n\
-                 # the bar actually has**, `. more` last (ADR-0037 §4, ADR-0039's\n\
-                 # 2026-09-21 amendment): the count comes off the bar's own width, not the\n\
-                 # screen's, so a 160-column frame with the pane beside it fills the ~92\n\
-                 # cells the bar is left rather than falling back to three. Never all\n\
-                 # hidden, never fewer than three, never a key that does nothing, and `.`\n\
-                 # leads to the rest. Re-captured for m5/20 item 7, which deleted the\n\
-                 # 3/6/all width tiers — so these bars are longer than the last pass's.\n\
-                 # The app is resized to the capture's size before the frame is drawn,\n\
-                 # which the earlier pass did not do: one state photographed at three\n\
-                 # sizes is a picture of at most one of them.\n"
+                 # row, unless the pane is stacked under it. `. more` is always last and\n\
+                 # is never dropped (ADR-0037 §4).\n\
+                 #\n\
+                 # What fills the rest is a **ladder, taken per hint** (ADR-0039's third\n\
+                 # amendment, 2026-09-21). A hint has up to three rungs — full `y sha`,\n\
+                 # short `F3 rend`, bare key `x`. The bar fills from the most relevant\n\
+                 # end, and each hint takes the best rung that still leaves room for the\n\
+                 # hints ahead of it; a hint that will not fit even at its bare key is\n\
+                 # dropped. So the shape to expect is readable verbs at the left thinning\n\
+                 # into a tail of bare keys at the right, the tail turning back into\n\
+                 # verbs as the row gets wider. Nothing steps down as a group: one hint's\n\
+                 # rung says nothing about its neighbour's.\n\
+                 #\n\
+                 # The short rungs come from a table the user wrote, not a scheme. A verb\n\
+                 # it does not name has no short rung and goes straight from full to bare\n\
+                 # key: `m merge`, `r rebase` and `S stash` are the three to watch. A\n\
+                 # squeezed `S stsh` anywhere in these captures is a bug.\n\
+                 #\n\
+                 # Floor: the three most relevant never fall below their short rung, the\n\
+                 # bar is never all hidden, never fewer than three hints, never a key\n\
+                 # that does nothing, and `.` leads to everything the width dropped. The\n\
+                 # room is counted off the bar's own width, not the screen's, so a\n\
+                 # 160-column frame with the pane beside it fills the ~92 cells the bar\n\
+                 # is left rather than falling back to three.\n\
+                 #\n\
+                 # The open question, and why this is a capture rather than a test\n\
+                 # (CLAUDE.md rule 6): does a tail of bare keys after readable leading\n\
+                 # verbs earn its place, or should those hints simply be dropped? Built\n\
+                 # with the bare-key rung in, for the user to answer by eye.\n\
+                 #\n\
+                 # The app is resized to the capture's size before the frame is drawn:\n\
+                 # one state photographed at three sizes is a picture of at most one of\n\
+                 # them.\n"
             );
             if bar.is_none() {
                 out.push_str(MISSING_BAR);

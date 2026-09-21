@@ -3297,9 +3297,11 @@ fn every_hinted_key_is_bound() {
 /// banner's `e edit` (edit the conflicted file) is planned while the changes
 /// pane's `e edit` (open `$EDITOR` at the cursor) is bound, and the pair
 /// alone cannot tell them apart. Every planned verb nothing hints as live —
-/// `m merge`, `r rebase`, `b branch`, `t tag`, `M mergetool`,
-/// `space resolved`, the banner's `c continue`/`s skip`/`a abort` — is
-/// checked.
+/// `b branch`, `t tag`, `M mergetool`, `space resolved`, the banner's
+/// `c continue`/`s skip`/`a abort` — is checked. `m merge` and `r rebase`
+/// were on that list until m5/24: group 08 bound them and the hint tables
+/// call them live, so they are in `bound_actions` now and this test's Live
+/// half is what holds them.
 #[test]
 fn every_planned_hint_is_still_unbound() {
     use graft_ui::graph_screen::{HintState, every_hint};

@@ -10,17 +10,39 @@
 # Here the cursor is on the uncommitted-changes row, the pane closed.
 #
 # Judge by eye: the hint bar is the graph's bottom row — the frame's last
-# row, unless the pane is stacked under it. **As many keys as fit the row
-# the bar actually has**, `. more` last (ADR-0037 §4, ADR-0039's
-# 2026-09-21 amendment): the count comes off the bar's own width, not the
-# screen's, so a 160-column frame with the pane beside it fills the ~92
-# cells the bar is left rather than falling back to three. Never all
-# hidden, never fewer than three, never a key that does nothing, and `.`
-# leads to the rest. Re-captured for m5/20 item 7, which deleted the
-# 3/6/all width tiers — so these bars are longer than the last pass's.
-# The app is resized to the capture's size before the frame is drawn,
-# which the earlier pass did not do: one state photographed at three
-# sizes is a picture of at most one of them.
+# row, unless the pane is stacked under it. `. more` is always last and
+# is never dropped (ADR-0037 §4).
+#
+# What fills the rest is a **ladder, taken per hint** (ADR-0039's third
+# amendment, 2026-09-21). A hint has up to three rungs — full `y sha`,
+# short `F3 rend`, bare key `x`. The bar fills from the most relevant
+# end, and each hint takes the best rung that still leaves room for the
+# hints ahead of it; a hint that will not fit even at its bare key is
+# dropped. So the shape to expect is readable verbs at the left thinning
+# into a tail of bare keys at the right, the tail turning back into
+# verbs as the row gets wider. Nothing steps down as a group: one hint's
+# rung says nothing about its neighbour's.
+#
+# The short rungs come from a table the user wrote, not a scheme. A verb
+# it does not name has no short rung and goes straight from full to bare
+# key: `m merge`, `r rebase` and `S stash` are the three to watch. A
+# squeezed `S stsh` anywhere in these captures is a bug.
+#
+# Floor: the three most relevant never fall below their short rung, the
+# bar is never all hidden, never fewer than three hints, never a key
+# that does nothing, and `.` leads to everything the width dropped. The
+# room is counted off the bar's own width, not the screen's, so a
+# 160-column frame with the pane beside it fills the ~92 cells the bar
+# is left rather than falling back to three.
+#
+# The open question, and why this is a capture rather than a test
+# (CLAUDE.md rule 6): does a tail of bare keys after readable leading
+# verbs earn its place, or should those hints simply be dropped? Built
+# with the bare-key rung in, for the user to answer by eye.
+#
+# The app is resized to the capture's size before the frame is drawn:
+# one state photographed at three sizes is a picture of at most one of
+# them.
 
  graft /code/api  5 commits  date order, sorting…
 ◌   Uncommitted changes (1 unstaged)

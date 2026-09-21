@@ -706,6 +706,8 @@ pub fn bound_actions() -> &'static [(&'static str, &'static str)] {
         ("x", "compare"),      // `is_compare_key` → `toggle_compare_selected`
         ("c", "commit"),       // `is_commit_key` → `commit_editor::open`
         ("a", "amend"),        // `is_commit_key`, amending
+        ("m", "merge"),        // `write_key` → `preview::history_key`, `Merge`
+        ("r", "rebase"),       // `write_key` → `preview::history_key`, `Rebase`
         ("p", "pull"),         // `is_remote_key` → `remote::pull_key`
         ("P", "push"),         // `is_remote_key` → `remote::push_key`
         ("f", "fetch"),        // `is_remote_key` → `remote::fetch_key`
