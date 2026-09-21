@@ -1025,6 +1025,226 @@ fn context_menu_caption(label: &str, columns: u16, rows: u16) -> String {
 }
 
 // ---------------------------------------------------------------------------
+// Right-click: the menu's row and the verb's row are the same row
+// (m5-history-and-ghost-preview/18 F1).
+
+/// The subject of `main`'s tip in [`forked`] — the row these tests
+/// right-click, which is never the row the cursor starts on.
+const MAIN_TIP_SUBJECT: &str = "main moves again";
+
+/// `main`'s tip as `git` itself reports it. Every assertion below measures
+/// the verb against this, and the menu's labels against the branch name —
+/// never the menu against the verb, which is what the defect would have
+/// kept agreeing with.
+fn main_tip(repo: &Path) -> String {
+    git(repo, &["rev-parse", "main"]).trim().to_owned()
+}
+
+/// The screen row `subject` is drawn on, read out of the frame the user
+/// sees rather than from the geometry the code under test uses.
+fn screen_row_of(state: &AppState, subject: &str) -> u16 {
+    let drawn = frame(
+        state,
+        crate::app_harness::SIZE.columns,
+        crate::app_harness::SIZE.rows,
+    );
+    let hits: Vec<usize> = drawn
+        .iter()
+        .enumerate()
+        .filter(|(_, line)| line.contains(subject))
+        .map(|(y, _)| y)
+        .collect();
+    assert_eq!(
+        hits.len(),
+        1,
+        "{subject:?} is drawn on exactly one row; frame: {drawn:?}"
+    );
+    u16::try_from(hits[0]).expect("a screen row fits in u16")
+}
+
+/// Opened, cursor left where it lands (`feature`'s tip), then a right-click
+/// on `main`'s row — a row the cursor is **not** on.
+fn right_click_on_mains_row(app: &App, state: AppState) -> AppState {
+    let state = opened(app, state);
+    assert!(
+        !on_main(&state),
+        "the cursor has to start away from main's row or this proves nothing"
+    );
+    let row = screen_row_of(&state, MAIN_TIP_SUBJECT);
+    let menu = app.right_click(&state, 2, row);
+    assert!(
+        menu.context_menu.is_some(),
+        "a right-click on a commit row opens its menu: {:?}",
+        menu.status
+    );
+    menu
+}
+
+/// A right-click is a pick: it moves the cursor onto the row it opens the
+/// menu on, so "a verb acts on the cursor" and "the menu names this row"
+/// stay the same sentence (`docs/design/02-keymap.md` §2.1).
+///
+/// Before this, the menu opened on the clicked row and left the cursor
+/// alone, and group 13's fall-through then ran the letter against the
+/// cursor: the label named one commit and the verb moved another
+/// (m5-history-and-ghost-preview/18 F1, review `96edfd7` M1).
+#[test]
+fn a_right_click_moves_the_cursor_to_the_row_it_opens_the_menu_on() {
+    let scratch = forked();
+    let (app, state) = App::open(scratch.path());
+    let menu = right_click_on_mains_row(&app, state);
+    assert!(
+        on_main(&menu),
+        "the cursor followed the right-click onto main's row"
+    );
+    assert!(
+        !menu.on_working_tree,
+        "a commit row is not the working tree"
+    );
+    app.close();
+}
+
+/// The menu's labels and the verb it hands on both name the row that was
+/// clicked — each checked against `git`, not against the other.
+///
+/// `m`: the label says `Merge main into feature`, and the merge that opens
+/// carries `main`'s tip as its source. With the cursor left on `feature`'s
+/// tip this used to refuse with `already on it` and draw nothing.
+#[test]
+fn m_after_a_right_click_merges_the_branch_the_menu_named() {
+    let scratch = forked();
+    let tip = main_tip(scratch.path());
+    let (app, state) = App::open(scratch.path());
+    let menu = right_click_on_mains_row(&app, state);
+    let labels = menu_labels(&menu);
+    assert!(
+        labels
+            .iter()
+            .any(|label| label == "Merge main into feature (m)"),
+        "the menu names main as what it would merge: {labels:?}"
+    );
+
+    let pressed = app.key(&menu, KeyCode::Char('m'));
+    let pressed = app.pump(pressed, "the merge plan", |state| {
+        state
+            .preview
+            .as_ref()
+            .is_some_and(|preview| !preview.rows.is_empty())
+    });
+    let op = pressed
+        .preview
+        .as_ref()
+        .and_then(|preview| preview.subject.operation())
+        .unwrap_or_else(|| panic!("`m` opened no preview: {:?}", pressed.status));
+    match op {
+        graft_ops::operation::Operation::Merge(params) => assert_eq!(
+            params.source_tip.to_string(),
+            tip,
+            "the merge's source is the row the menu named"
+        ),
+        other => panic!("`m` planned something else: {other:?}"),
+    }
+    app.close();
+}
+
+/// `r`: the label says `Rebase feature onto main`, and the rebase that
+/// opens carries `main`'s tip as what it replays onto.
+#[test]
+fn r_after_a_right_click_rebases_onto_the_branch_the_menu_named() {
+    let scratch = forked();
+    let tip = main_tip(scratch.path());
+    let (app, state) = App::open(scratch.path());
+    let menu = right_click_on_mains_row(&app, state);
+    let labels = menu_labels(&menu);
+    assert!(
+        labels
+            .iter()
+            .any(|label| label == "Rebase feature onto main (r)"),
+        "the menu names main as what it would rebase onto: {labels:?}"
+    );
+
+    let pressed = app.key(&menu, KeyCode::Char('r'));
+    let pressed = app.pump(pressed, "the rebase plan", |state| {
+        state
+            .preview
+            .as_ref()
+            .is_some_and(|preview| !preview.rows.is_empty())
+    });
+    let op = pressed
+        .preview
+        .as_ref()
+        .and_then(|preview| preview.subject.operation())
+        .unwrap_or_else(|| panic!("`r` opened no preview: {:?}", pressed.status));
+    match op {
+        graft_ops::operation::Operation::Rebase(params) => assert_eq!(
+            params.onto_tip.to_string(),
+            tip,
+            "the rebase replays onto the row the menu named"
+        ),
+        other => panic!("`r` planned something else: {other:?}"),
+    }
+    app.close();
+}
+
+/// `x`: the compare base it pins is the clicked commit, not the cursor's.
+#[test]
+fn x_after_a_right_click_marks_the_commit_the_menu_named() {
+    let scratch = forked();
+    let tip = main_tip(scratch.path());
+    let (app, state) = App::open(scratch.path());
+    let menu = right_click_on_mains_row(&app, state);
+    let pressed = app.key(&menu, KeyCode::Char('x'));
+    let base = pressed
+        .compare_base
+        .as_ref()
+        .unwrap_or_else(|| panic!("`x` pinned nothing: {:?}", pressed.status));
+    assert_eq!(
+        base.oid.to_string(),
+        tip,
+        "`x` marked the row the menu named"
+    );
+    app.close();
+}
+
+/// `y` is the silent one: nothing is drawn and nothing is confirmed, so a
+/// wrong sha leaves the app looking correct and comes back hours later in
+/// a shell command the user pasted it into. It gets its own test for that
+/// reason (m5-history-and-ghost-preview/18 F1).
+///
+/// The commands are taken rather than dispatched: `CopyToClipboard` is
+/// terminal output the event loop performs, and the job runner refuses it.
+#[test]
+fn y_after_a_right_click_copies_the_sha_the_menu_named() {
+    let scratch = forked();
+    let tip = main_tip(scratch.path());
+    let (app, state) = App::open(scratch.path());
+    let menu = right_click_on_mains_row(&app, state);
+    let labels = menu_labels(&menu);
+    assert!(
+        labels.iter().any(|label| label == "Copy SHA (y)"),
+        "the menu advertises `y`: {labels:?}"
+    );
+
+    let (pressed, commands) = crate::app_harness::press_for_commands(
+        &menu,
+        graft_core::event::KeyPress::plain(KeyCode::Char('y')),
+    );
+    assert_eq!(
+        commands,
+        vec![graft::update::Command::CopyToClipboard(tip.clone())],
+        "`y` copied the sha of the row the menu named"
+    );
+    match &pressed.status {
+        graft::update::Status::Copied { short } => assert!(
+            tip.starts_with(short.as_str()),
+            "the footer names the sha that was copied: {short} of {tip}"
+        ),
+        other => panic!("`y` said nothing: {other:?}"),
+    }
+    app.close();
+}
+
+// ---------------------------------------------------------------------------
 // Scrolled a screen or more into history (ticket 17 F1).
 
 /// A history taller than the screen with a branch left behind at the bottom

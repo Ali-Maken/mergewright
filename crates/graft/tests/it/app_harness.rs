@@ -16,8 +16,8 @@ use std::time::Duration;
 
 use graft::jobs::{Dispatch, JobRunner, Shutdown};
 use graft::repos::RepoStore;
-use graft::update::{AppEvent, AppState, Size, Status, update};
-use graft_core::event::{Event, KeyCode, KeyPress};
+use graft::update::{AppEvent, AppState, Command, Size, Status, update};
+use graft_core::event::{Event, KeyCode, KeyPress, Modifiers, MouseButton, MouseInput, MouseKind};
 
 /// Long enough that a slow machine never fails here, short enough that a
 /// hang is a named failure rather than a stuck suite.
@@ -27,6 +27,16 @@ pub const SIZE: Size = Size {
     columns: 120,
     rows: 40,
 };
+
+/// A key press with the commands it produced handed back instead of
+/// dispatched. `y` needs this: `CopyToClipboard` is terminal output the
+/// event loop performs, and `jobs::runner` refuses it with `unreachable!`,
+/// so `App::press` cannot carry it.
+///
+/// Free-standing because it dispatches nothing, and so needs no job pool.
+pub fn press_for_commands(state: &AppState, key: KeyPress) -> (AppState, Vec<Command>) {
+    update(state, AppEvent::Core(Event::Key(key)))
+}
 
 /// Run `git` in `repo` and return its stdout, panicking with git's own
 /// stderr when it fails.
@@ -120,6 +130,38 @@ impl App {
 
     pub fn key(&self, state: &AppState, code: KeyCode) -> AppState {
         self.press(state, KeyPress::plain(code))
+    }
+
+    /// A mouse button going down at a screen cell, through the real event
+    /// the terminal sends. Pressed through `update` like every other input:
+    /// a right-click built as a state change instead of an event is exactly
+    /// what missed m5-history-and-ghost-preview/18.
+    pub fn mouse_down(
+        &self,
+        state: &AppState,
+        button: MouseButton,
+        column: u16,
+        row: u16,
+    ) -> AppState {
+        let (next, commands) = update(
+            state,
+            AppEvent::Core(Event::Mouse(MouseInput {
+                kind: MouseKind::Down(button),
+                column,
+                row,
+                modifiers: Modifiers::default(),
+            })),
+        );
+        for command in commands {
+            self.jobs.dispatch(command);
+        }
+        next
+    }
+
+    /// [`mouse_down`](Self::mouse_down) with the right button — the click
+    /// that opens the context menu.
+    pub fn right_click(&self, state: &AppState, column: u16, row: u16) -> AppState {
+        self.mouse_down(state, MouseButton::Right, column, row)
     }
 
     /// The terminal changed size, through the real event the event loop
