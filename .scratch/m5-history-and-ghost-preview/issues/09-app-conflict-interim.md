@@ -1,6 +1,6 @@
 # app-conflict-interim: the honest interim for a conflict without a resolver — banner with focus, `CONFLICTS (n)`, mergetool/editor hand-off, Continue/Skip/Abort, relaunch into a live conflict, the undo rules around it, and `u` after a push
 
-Status: ready
+Status: done (merged and reviewed — see docs/log/m5.md; this line was stale)
 Blocked by: 07, 08
 Build with: (blank — brownfield in `update/keys.rs`, `update/undo.rs`, `update/detail/keys.rs`, `update/journal.rs`, `jobs/`, `event_loop/outside.rs`; recommendation: **Opus** — a loop-owned terminal hand-over plus a journal-semantics change (live vs interrupted) whose wrong version silently closes a live rebase's entry. Testable, so not Fable.)
 **Conductor set after the scouts: Opus.**

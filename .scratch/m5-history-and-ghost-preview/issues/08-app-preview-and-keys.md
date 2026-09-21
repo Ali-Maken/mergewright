@@ -1,6 +1,6 @@
 # app-preview-and-keys: the Ghost Preview state machine (plan job, bounded-slice re-layout, the box, confirm runs the pinned op), `m`/`r`, the `.` menu verbs and Fix…, the journal time machine, `p` on a diverged branch
 
-Status: ready
+Status: done (merged and reviewed — see docs/log/m5.md; this line was stale)
 Blocked by: 04, 07
 Build with: (blank — brownfield across `update/keys.rs`, `view/rows.rs`, `update/context_menu.rs`, `update/journal.rs`, `update/remote.rs`, `jobs/`; recommendation: **Opus** — the note's "genuinely risky" group: the slice re-layout and the modal state machine are judged by the walk and the captures, not the diff. Not Fable: every hard choice is decided here.)
 **Conductor set after the scouts: Opus.**
