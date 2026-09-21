@@ -7,6 +7,7 @@ use graft_ui::graph_screen::WalkView;
 use graft_ui::status_screen::{HeadView, TierSource};
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
+use ratatui::layout::Rect;
 
 use super::entries::badge_view;
 use super::*;
@@ -3608,4 +3609,233 @@ fn the_lane_cap_comes_from_the_graphs_room_not_the_screens_width() {
         full_width.contains("+3 lanes"),
         "160 columns to itself folds at twelve lanes:\n{full_width}"
     );
+}
+
+/// A graph with real rows behind an overlay: the push state the credential
+/// tests already build, with the detail pane closed and enough history that
+/// every row beside the box carries a subject, a date and a SHA. Without
+/// that content beside the box a "nothing survives beside it" assertion
+/// passes on an empty screen and proves nothing.
+fn graph_behind_a_box(columns: u16, rows: u16) -> AppState {
+    let mut state = credential_state(columns, rows, "Password for 'http://user@127.0.0.1:8443':");
+    state.detail.shown = false;
+    state.on_working_tree = false;
+    state.history = Some(history_of(30, 0));
+    state.refs = Some(std::sync::Arc::new(refs_with_head(Some(oid(30)))));
+    state
+}
+
+/// The same graph with `P`'s push confirm open over it and no credential
+/// question.
+fn confirm_over_graph(columns: u16, rows: u16) -> AppState {
+    let mut state = graph_behind_a_box(columns, rows);
+    state.credential = None;
+    state.operating = None;
+    state.remote.running = None;
+    state.status = Status::Ready;
+    assert!(
+        crate::update::remote::push_key(&mut state),
+        "P opens the push confirm"
+    );
+    state
+}
+
+/// `state` drawn into a terminal of exactly this size, read back as the
+/// character grid — one `String` per cell, straight out of the buffer.
+///
+/// `draw` returns `TestBackend`'s debug rendering, which frames each row in
+/// quotes and marks style changes inline; an assertion about *cells* has to
+/// read cells, so this goes to the buffer instead.
+fn draw_cells(state: &AppState, columns: u16, rows: u16) -> Vec<Vec<String>> {
+    let mut terminal =
+        Terminal::new(TestBackend::new(columns, rows)).expect("TestBackend reports its size");
+    terminal
+        .draw(|frame| view(&session(), state, frame))
+        .expect("TestBackend cannot fail to draw");
+    let buffer = terminal.backend().buffer().clone();
+    (0..rows)
+        .map(|y| {
+            (0..columns)
+                .map(|x| buffer[(x, y)].symbol().to_owned())
+                .collect()
+        })
+        .collect()
+}
+
+/// ADR-0040: the credential prompt clears the band it occupies, at every
+/// width, rather than snapping onto the columns like the confirm box.
+///
+/// It fragments the short-SHA column when it does not — at 80 the four-hex
+/// tails ` b8c5`, `68ff`, `00bd` sat against its right border, reading as
+/// short identifiers that are not — and nothing behind it serves the task:
+/// the prompt is modal (`docs/design/02-keymap.md` §2.14) and the footer
+/// already carries `push main → origin/main · esc cancels`.
+///
+/// **Fails before the change:** `draw_credential` cleared `rect` alone, so
+/// the graph kept drawing its own columns on the box's own rows either side
+/// of it.
+#[test]
+fn the_credential_prompt_clears_the_band_it_stands_on_at_every_width() {
+    for columns in [40u16, 60, 80, 100, 120, 160, 200] {
+        let rows = 24;
+        let state = graph_behind_a_box(columns, rows);
+        let grid = draw_cells(&state, columns, rows);
+        let rect = graft_ui::credential_prompt::credential_area(Rect::new(0, 0, columns, rows));
+
+        // The graph really is behind it: without content on the box's own
+        // rows there is nothing for the band to have cleared.
+        let behind = draw_cells(&graph_with_no_overlay(columns, rows), columns, rows);
+        assert!(
+            (rect.y..rect.bottom()).any(|y| behind
+                .get(usize::from(y))
+                .is_some_and(|row| row.iter().any(|cell| cell.trim() != ""))),
+            "{columns}x{rows}: nothing is drawn on the prompt's rows, so this proves nothing"
+        );
+
+        for y in rect.y..rect.bottom() {
+            let row = &grid[usize::from(y)];
+            for (x, cell) in row.iter().enumerate() {
+                let x = u16::try_from(x).expect("a screen is narrower than u16::MAX");
+                if x >= rect.x && x < rect.right() {
+                    continue;
+                }
+                assert_eq!(
+                    cell, " ",
+                    "{columns}x{rows}: row {y} column {x} still holds {cell:?} beside the \
+                     credential prompt {rect:?}"
+                );
+            }
+        }
+    }
+}
+
+/// The same graph with nothing over it.
+fn graph_with_no_overlay(columns: u16, rows: u16) -> AppState {
+    let mut state = graph_behind_a_box(columns, rows);
+    state.credential = None;
+    state.confirm = None;
+    state.operating = None;
+    state.remote.running = None;
+    state.status = Status::Ready;
+    state
+}
+
+/// The confirm box as it was actually drawn, read back out of the picture:
+/// the rectangle its own rounded border encloses. Read from the grid rather
+/// than recomputed, so this test cannot agree with the layout site's
+/// arithmetic by repeating it — and so a box that blanks cells outside its
+/// visible border fails here rather than being excused.
+fn drawn_box_rect(grid: &[Vec<String>]) -> Rect {
+    let mut top = None;
+    let mut bottom = None;
+    let mut left = 0u16;
+    let mut right = 0u16;
+    for (y, row) in grid.iter().enumerate() {
+        let y = u16::try_from(y).expect("a screen is shorter than u16::MAX");
+        if let Some(x) = row.iter().position(|cell| cell == "\u{256d}") {
+            top = Some(y);
+            left = u16::try_from(x).expect("a screen is narrower than u16::MAX");
+            right = u16::try_from(
+                row.iter()
+                    .rposition(|cell| cell == "\u{256e}")
+                    .expect("the top border ends in a corner"),
+            )
+            .expect("a screen is narrower than u16::MAX");
+        }
+        if row.iter().any(|cell| cell == "\u{2570}") {
+            bottom = Some(y);
+        }
+    }
+    let top = top.expect("a box is drawn");
+    let bottom = bottom.expect("a box is closed");
+    Rect {
+        x: left,
+        y: top,
+        width: right - left + 1,
+        height: bottom - top + 1,
+    }
+}
+
+/// ADR-0040: a box that does not clear **covers**; it never alters. Drawn
+/// with and without the confirm box, every cell outside the box's own
+/// rectangle is identical.
+///
+/// **This checks the character grid only.** `TestBackend` records symbols
+/// and this assertion reads symbols, so a dimming or tinting layer painted
+/// over the rows beside the box would pass here unseen — captures carry no
+/// colour attributes (CLAUDE.md rule 5). The claim is exactly "no cell's
+/// character changed", and no more.
+#[test]
+fn a_box_that_does_not_clear_covers_and_never_alters() {
+    for columns in [80u16, 120, 160] {
+        let rows = 24;
+        let with = draw_cells(&confirm_over_graph(columns, rows), columns, rows);
+        let without = draw_cells(&graph_with_no_overlay(columns, rows), columns, rows);
+        let rect = drawn_box_rect(&with);
+        for (y, (drawn, plain)) in with.iter().zip(&without).enumerate() {
+            let y = u16::try_from(y).expect("a screen is shorter than u16::MAX");
+            for (x, (a, b)) in drawn.iter().zip(plain).enumerate() {
+                let x = u16::try_from(x).expect("a screen is narrower than u16::MAX");
+                let inside = x >= rect.x && x < rect.right() && y >= rect.y && y < rect.bottom();
+                if inside {
+                    continue;
+                }
+                assert_eq!(
+                    a, b,
+                    "{columns}x{rows}: cell ({x}, {y}) is outside the confirm box {rect:?} and \
+                     changed from {b:?} to {a:?}"
+                );
+            }
+        }
+    }
+}
+
+/// ADR-0040 clause 1: the confirm box does **not** clear — the rows beside
+/// it are the graph it is about to act on, and seeing them is the M5
+/// promise — and its left edge sits on the subject column's own boundary.
+///
+/// Before this, at 80 columns, the box started at column 8 and left
+/// `●   Comm` beside it: the subject column, split. It passed on the right
+/// only because "Push main → origin/main" happens to be the length it is.
+#[test]
+fn the_confirm_box_keeps_the_graph_beside_it_and_starts_on_the_subject_column() {
+    for columns in [80u16, 120, 160] {
+        let rows = 24;
+        let with = draw_cells(&confirm_over_graph(columns, rows), columns, rows);
+        let without = draw_cells(&graph_with_no_overlay(columns, rows), columns, rows);
+        let rect = drawn_box_rect(&with);
+
+        // Where the subject column starts, read off untouched rows rather
+        // than assumed: the leftmost cell any row's content reaches past
+        // the graph glyph. A row's own text may start further right — a ref
+        // badge pushes the subject along — so it is the minimum across the
+        // rows that says where the column itself begins.
+        let subject_x = without
+            .iter()
+            .filter(|row| row.concat().contains("Commit"))
+            .filter_map(|row| row.iter().skip(1).position(|cell| cell.trim() != ""))
+            .map(|index| u16::try_from(index + 1).expect("a screen is narrower than u16::MAX"))
+            .min()
+            .expect("the graph draws subjects");
+
+        assert_eq!(
+            rect.x, subject_x,
+            "{columns}x{rows}: the box starts at column {} and the subject column starts at \
+             {subject_x} — the box splits it",
+            rect.x
+        );
+        // It covers rather than clears: the SHA column is still drawn on
+        // the box's own rows.
+        let beside: String = with[usize::from(rect.y) + 1][usize::from(rect.right())..].concat();
+        assert!(
+            beside
+                .trim()
+                .chars()
+                .filter(char::is_ascii_hexdigit)
+                .count()
+                >= 7,
+            "{columns}x{rows}: nothing survives right of the box — it cleared instead of \
+             covering: {beside:?}"
+        );
+    }
 }

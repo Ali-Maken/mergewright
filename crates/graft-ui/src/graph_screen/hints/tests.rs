@@ -73,7 +73,8 @@ fn no_context_hides_every_key() {
 /// (b) At 80 columns the row contexts lead with their first three *bound*
 /// hints, in the note's table order — the planned entries (`b branch`,
 /// `t tag`) are not among them — and then take as many more as the row has
-/// room for, ending in `. more`. `m merge` and `r rebase` joined the bound
+/// room for, the `. more` doorway leading the bare keys. `m merge` and
+/// `r rebase` joined the bound
 /// ones when ticket 25 bound them (see `no_planned_hint_is_ever_drawn`), so
 /// a branch row now leads with the two verbs the design note put first.
 ///
@@ -106,7 +107,7 @@ fn eighty_columns_leads_with_three_and_fills_the_row() {
         for (got, want) in hints.iter().zip(first_three.iter()) {
             assert_eq!((got.key, got.verb), *want, "{context:?}: {hints:?}");
         }
-        assert_eq!(hints.last().copied(), Some(MORE), "{context:?}: {hints:?}");
+        assert_doorway_leads_the_bare_keys(&hints, &format!("{context:?} at 80 columns"));
         assert!(
             hints_text(&hints).width() <= 80,
             "{context:?}: {:?}",
@@ -155,7 +156,7 @@ fn hundred_sixty_shows_the_context_then_the_screen() {
             hints.len() > 7,
             "{context:?} shows no more at 160 than at 120: {hints:?}"
         );
-        let drawn = &hints[..hints.len() - 1];
+        let drawn = without_trailer(&hints);
         // By key and verb, not by whole `Hint`: the ladder leaves the tail
         // on lower rungs, and the order is what this test is about.
         assert_eq!(
@@ -166,7 +167,7 @@ fn hundred_sixty_shows_the_context_then_the_screen() {
                 .collect::<Vec<_>>(),
             "{context:?} reordered its list: {hints:?}"
         );
-        assert_eq!(hints.last(), Some(&MORE), "{context:?}: {hints:?}");
+        assert_doorway_leads_the_bare_keys(&hints, &format!("{context:?} at 160 columns"));
         let text = hints_text(&hints);
         assert!(text.width() <= 160, "{context:?}: {text:?} does not fit");
         assert!(
@@ -554,10 +555,12 @@ fn the_floor_holds_from_twenty_to_two_hundred_forty_columns() {
         let floor = whole.len().min(3);
         for columns in 20..=240u16 {
             let hints = hints_for(&context, Divider::Hidden, columns);
-            assert!(
-                !hints.is_empty(),
-                "{context:?} at {columns} columns: the bar is empty"
-            );
+            if is_the_bottom_of_the_ladder(&hints, doorway_of(&context)) {
+                // Below the floor the bar is the doorway, its bare key, or
+                // nothing — never a fragment of the floor (ADR-0039's
+                // bottom, m5/28).
+                continue;
+            }
             let body = without_trailer(&hints);
             assert!(
                 body.len() >= floor,
@@ -685,6 +688,9 @@ fn the_three_most_relevant_never_fall_below_their_short_rung() {
         let floor = whole.len().min(3);
         for columns in 0..=240u16 {
             let hints = hints_for(&context, Divider::Hidden, columns);
+            if is_the_bottom_of_the_ladder(&hints, doorway_of(&context)) {
+                continue;
+            }
             let body = without_trailer(&hints);
             assert!(
                 body.len() >= floor,
@@ -716,7 +722,7 @@ fn a_hint_is_dropped_only_when_its_bare_key_will_not_fit() {
                 if body.len() == whole.len() {
                     continue;
                 }
-                let mut with_one_more = body.to_vec();
+                let mut with_one_more = body.clone();
                 with_one_more.push(whole[body.len()].at(Rung::Key));
                 with_one_more.push(MORE);
                 assert!(
@@ -745,10 +751,10 @@ fn no_hint_loses_ground_as_the_room_for_it_grows() {
             let mut narrower: Vec<Hint> = Vec::new();
             for columns in 0..=240u16 {
                 let drawn = hints_for(&context, divider, columns);
-                // Without `. more`, which is always last: it slides right as
-                // hints are added, and comparing by index would read that
-                // slide as a reorder.
-                let wider = without_trailer(&drawn).to_vec();
+                // Without `. more`: it moves along the row as hints are
+                // added, and comparing by index would read that move as a
+                // reorder.
+                let wider = without_trailer(&drawn);
                 assert!(
                     wider.len() >= narrower.len(),
                     "{context:?} with {divider:?} at {columns} columns lost a hint"
@@ -786,12 +792,195 @@ fn whole_list(context: &HintContext, divider: Divider) -> Vec<Hint> {
     }
 }
 
-/// The drawn hints without the `. more` doorway, which is always at its full
-/// rung and always last — it is the one part of the bar the ladder does not
-/// touch.
-fn without_trailer(hints: &[Hint]) -> &[Hint] {
-    match hints.split_last() {
-        Some((last, rest)) if (last.key, last.verb) == (MORE.key, MORE.verb) => rest,
-        _ => hints,
+/// The drawn hints without the `. more` doorway — the one part of the bar
+/// the ladder does not touch.
+///
+/// Taken out wherever it sits rather than off the end: since m5/28 the
+/// doorway leads the bare keys, so on a graph row it is in the middle of the
+/// row and on a pane row it is still last (ADR-0039).
+fn without_trailer(hints: &[Hint]) -> Vec<Hint> {
+    hints
+        .iter()
+        .filter(|hint| (hint.key, hint.verb) != (MORE.key, MORE.verb))
+        .copied()
+        .collect()
+}
+
+/// **The doorway sits at the head of the bare keys — which is the end of
+/// the row when there are none** (ADR-0039, m5/28).
+///
+/// Stated as one invariant over the drawn row, because it is one rule: no
+/// bare key ahead of the doorway, nothing but bare keys behind it. A row
+/// with a tail of bare keys puts `. more` in front of that tail; a row with
+/// none leaves it last, where it always was.
+fn assert_doorway_leads_the_bare_keys(hints: &[Hint], context: &str) {
+    let at = hints
+        .iter()
+        .position(|hint| (hint.key, hint.verb) == (MORE.key, MORE.verb))
+        .unwrap_or_else(|| panic!("{context}: the doorway is never dropped: {hints:?}"));
+    assert!(
+        hints[..at].iter().all(|hint| hint.rung != Rung::Key),
+        "{context}: a bare key sits ahead of the doorway: {}",
+        hints_text(hints)
+    );
+    assert!(
+        hints[at + 1..].iter().all(|hint| hint.rung == Rung::Key),
+        "{context}: a labelled hint sits behind the doorway: {}",
+        hints_text(hints)
+    );
+}
+
+/// What the bar is allowed to be when its floor does not fit: exactly the
+/// doorway, exactly the doorway's bare key, or nothing at all.
+///
+/// ADR-0039's bottom, stated completely (m5/28). **Never a clipped prefix
+/// of any of them** — the doorway is the one element meant to be reliable,
+/// and `. mo` is worse than an empty bar because nobody chose where it cut.
+fn is_the_bottom_of_the_ladder(hints: &[Hint], doorway: Option<Hint>) -> bool {
+    match hints {
+        [] => true,
+        [only] => doorway.is_some_and(|door| (only.key, only.verb) == (door.key, door.verb)),
+        _ => false,
+    }
+}
+
+/// The doorway `context` has, if any: `. more` for everything but a marked
+/// row (whose `.` is already on screen as `. explain`) and the focused
+/// banner (modal, so it swallows `.` — ADR-0039's first amendment).
+fn doorway_of(context: &HintContext) -> Option<Hint> {
+    match context {
+        HintContext::Banner { .. } | HintContext::Preview => None,
+        HintContext::Marked(_) => Some(EXPLAIN),
+        _ => Some(MORE),
+    }
+}
+
+/// **One rule, two layouts, no special case** (ADR-0039, m5/28): the
+/// doorway sits at the head of the bare keys — which is the end of the row
+/// when there are none.
+///
+/// Asserted in one test because the point is that one rule produces both.
+/// A graph row at 80 cells has a tail of bare keys and `. more` leads it; the
+/// changes pane and the journal browser draw every hint whole at the same
+/// width, and `. more` stays last, where it always was.
+#[test]
+fn one_rule_puts_the_doorway_before_a_tail_and_last_without_one() {
+    let with_a_tail = hints_for(
+        &HintContext::BranchRow { current: true },
+        Divider::Hidden,
+        80,
+    );
+    let text = hints_text(&with_a_tail);
+    assert_eq!(
+        text, " ⏎ open  c commit  P push  . more  p  f  u  S  J  /  q  F2  F3  x  +  j/k  space",
+        "a row context has a tail, so the doorway leads it"
+    );
+    assert!(
+        !text.ends_with(". more"),
+        "the doorway is no longer last where a tail exists: {text:?}"
+    );
+
+    for context in [
+        HintContext::ChangesPane { unmerged: false },
+        HintContext::Journal,
+    ] {
+        let hints = hints_for(&context, Divider::Hidden, 80);
+        assert!(
+            hints.iter().all(|hint| hint.rung != Rung::Key),
+            "{context:?} at 80 cells has no tail to lead: {:?}",
+            hints_text(&hints)
+        );
+        assert!(
+            hints_text(&hints).ends_with(". more"),
+            "{context:?} has no bare keys, so the doorway stays last: {:?}",
+            hints_text(&hints)
+        );
+    }
+
+    // And the invariant behind both, over every context that has a `. more`
+    // to place, at every width. A marked row's doorway is `. explain`, which
+    // the caller puts at the head of the list itself and the ladder never
+    // moves; the focused banner has none at all.
+    for context in all_contexts() {
+        if doorway_of(&context) != Some(MORE) {
+            continue;
+        }
+        for columns in 1..=240u16 {
+            let hints = hints_for(&context, Divider::Hidden, columns);
+            if is_the_bottom_of_the_ladder(&hints, doorway_of(&context)) {
+                continue;
+            }
+            assert_doorway_leads_the_bare_keys(&hints, &format!("{context:?} at {columns}"));
+        }
+    }
+}
+
+/// **The bar never draws a fragment of itself**, at any width from 1 to 240.
+///
+/// Two halves of one property. It never asks for more cells than it has, so
+/// the footer never cuts it; and where its floor does not fit it is exactly
+/// the doorway, exactly the doorway's bare key, or empty — never a clipped
+/// prefix of any of them (ADR-0039's bottom, m5/28).
+///
+/// **Mutation that produces `. mo`:** drop the rung loop in
+/// `below_the_floor` and return `vec![doorway]` unconditionally. At four
+/// cells of bar the row is then ` . more`, seven cells asked of four, and
+/// the footer's own `fit` cuts it to `. m`. This fails naming the width.
+#[test]
+fn the_bar_never_draws_a_fragment_of_itself() {
+    for context in all_contexts() {
+        for divider in [Divider::Shown, Divider::Hidden] {
+            for columns in 1..=240u16 {
+                let hints = hints_for(&context, divider, columns);
+                let text = hints_text(&hints);
+                assert!(
+                    text.width() <= usize::from(columns),
+                    "{context:?} with {divider:?} asked for {} cells of a {columns}-cell bar, \
+                     so the footer has to cut it: {text:?}",
+                    text.width()
+                );
+                if hints.is_empty() {
+                    continue;
+                }
+                let whole = whole_list(&context, divider);
+                let floor = whole.len().min(3);
+                let body = without_trailer(&hints);
+                assert!(
+                    body.len() >= floor
+                        || is_the_bottom_of_the_ladder(&hints, doorway_of(&context)),
+                    "{context:?} with {divider:?} at {columns} columns drew {} of its floor \
+                     {floor} and is not the bottom of the ladder either: {text:?}",
+                    body.len()
+                );
+            }
+        }
+    }
+}
+
+/// The floor fits at 48 cells of bar — the narrowest bar anything reachable
+/// actually has.
+///
+/// `graft_ui::detail_pane::layout`'s `RIGHT_MIN = 48` clamps the graph side
+/// of a side-by-side split, and below 100 columns the pane is a full-width
+/// tab instead, so no divider drag leaves the bar narrower than this. The
+/// 20-cell overflow the m5/27 sweep found is below anything a user can
+/// reach — this is the number that matters, and it is asserted rather than
+/// assumed (m5/28).
+#[test]
+fn the_floor_fits_at_forty_eight_cells_of_bar() {
+    for context in all_contexts() {
+        if context == HintContext::Preview {
+            continue;
+        }
+        let whole = whole_list(&context, Divider::Hidden);
+        let floor = whole.len().min(3);
+        let hints = hints_for(&context, Divider::Hidden, 48);
+        let body = without_trailer(&hints);
+        assert!(
+            body.len() >= floor,
+            "{context:?} cannot draw its floor of {floor} in 48 cells — that is a live \
+             defect, not a completeness gap: {:?}",
+            hints_text(&hints)
+        );
     }
 }

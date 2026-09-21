@@ -26,9 +26,14 @@ only arises sometimes.
 
 ## The decision
 
-Restated 2026-09-21 (m5/27) to read straight: this is the rule as the three
+Restated 2026-09-21 (m5/27) to read straight: the rule as the three
 amendments below leave it, stated once rather than in the sequence that
-arrived at it. Nothing here is new; the history section keeps the trail.
+arrived at it. The history section keeps the trail.
+
+Edited in place 2026-09-21 (m5/28), not appended to, with the three things
+the third amendment left open or unsaid: where the doorway sits, what
+happens below the floor, and why the bare-key rung stays. A fourth
+amendment on top of a clean restatement is the autopsy growing back.
 
 Split the bar into two parts with **different promises**.
 
@@ -37,6 +42,28 @@ Split the bar into two parts with **different promises**.
    (a modal pane is the exception, below). This, and only this, is what
    ADR-0037 §4's "never all hidden" protects. The rule now costs seven
    columns instead of fifty, so it holds everywhere without a special case.
+
+   **One place it does not hold today, and that is a violation, not an
+   allowance.** Below 100 columns the detail pane takes the whole screen
+   behind a `[Graph] Detail` tab strip (`update::detail::effective_layout` →
+   `DetailLayout::Tab`), the graph screen is not drawn, and the bar goes with
+   it — so at 80 columns with the changes pane open, every key is hidden.
+   The evidence is a test that fails on purpose and is `#[ignore]`d:
+   `crates/graft/tests/it/hint_bar.rs:262-288`,
+   `the_tab_layout_still_hides_every_key`. The rule is not softened to fit
+   it. Fixing it means giving the tab layout a footer of its own, which
+   changes every pane's height, so it carries its own ticket.
+
+   **Where it sits: at the head of the bare keys — which is the end of the
+   row when there are none.** One sentence, two layouts, no special case.
+   A graph row ends in a run of bare keys and `. more` leads that run, so
+   everything after it reads as *keys the menu will spell out*; the changes
+   pane and the journal browser draw every hint whole, so the doorway stays
+   last. The doorway's promise is that it is **reliable** — never dropped,
+   never clipped — and reliable is not the same as last. It was last until
+   2026-09-21 (m5/28) and `ends_with(". more")` was pinned by three tests
+   and several captions; the promise those pinned is unchanged, only where
+   it sits.
 
 2. **The shortcuts.** The context's own keys, shown when there is room,
    dropped when there is not. Dropping them is safe *because* the doorway is
@@ -52,9 +79,35 @@ Four rules govern how the shortcuts fill the room they have:
   even at its bare key is dropped. This is decided **per hint, never as a
   step the whole list takes together** — the list-wide version was built,
   measured and reverted (third amendment, below).
-- **The floor.** The three most relevant hints never fall below their floor
-  rung — their short rung where the user's table gives one, their whole verb
-  where it does not — and the bar is never all hidden.
+- **The floor, and what is below it.** The three most relevant hints never
+  fall below their floor rung — their short rung where the user's table
+  gives one, their whole verb where it does not. A floor that cannot be met
+  is not a floor, so the sequence is stated to the bottom:
+
+  ```
+  floor  →  `. more`  →  `.`  →  nothing
+  ```
+
+  The bare-key rung applies to the doorway like anything else: one column
+  still says a key exists. Below that, empty. **The bar never draws a
+  fragment of itself at any width** — a clipped `. mo` on the one element
+  meant to be reliable is worse than an empty bar, and worse than a squeeze,
+  because nobody chose where it cut. This composes with the doorway's
+  position: as width shrinks the tail goes, then the labels, and `. more` is
+  what remains; its position stops mattering exactly where it starts being
+  the only thing there. **Design completeness, not a live defect** — the
+  narrowest bar anything reachable actually has is 48 columns
+  (`graft_ui::detail_pane::layout`'s `RIGHT_MIN`; below 100 the pane is a
+  full-width tab, where today no bar is drawn at all — the violation under
+  point 1, not a width this ladder is allowed to stop at), and the tightest
+  context's floor fits in 38.
+
+- **The bare-key rung stays.** Letting the ladder stop at the short rung and
+  dropping bare keys entirely was proposed and rejected: the tail's
+  membership is itself information. On another branch's tip it carries `m`
+  and `r`; on an ordinary commit it does not. That is context the menu only
+  gives you after a keypress. **The menu covers discovery; the bar covers
+  recall.**
 - **A modal pane draws its own keys, not the doorway.** Where a pane answers
   every key itself, `. more` would advertise a key the pane swallows, and the
   pane's own list is already complete, so nothing needs recovering.

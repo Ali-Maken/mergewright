@@ -31,9 +31,10 @@ mod support;
 use graft_core::capabilities::ColorDepth;
 use graft_fixtures::Shape;
 use graft_term::sanitize_line;
+use graft_ui::confirm::{ConfirmView, confirm_area, confirm_area_at};
 use graft_ui::detail::DetailFocus;
 use graft_ui::detail_pane::{DetailLayout, detail_areas, split_area};
-use graft_ui::graph_screen::{CommitGraphLine, GraphScreen};
+use graft_ui::graph_screen::{CommitGraphLine, GraphScreen, snap_to_columns};
 use graft_ui::preview_box::{PREVIEW_MIN, PreviewBox, preview_box_area};
 use graft_ui::theme::ThemeKind;
 use ratatui::layout::Rect;
@@ -307,5 +308,119 @@ fn the_preview_box_docks_inside_the_frame_and_above_the_footer() {
                 );
             }
         }
+    }
+}
+
+/// A box drawn over the graph covers whole row columns or it does not stand
+/// on them at all (ADR-0040) — swept over the same widths and heights as
+/// everything else in this file.
+///
+/// The fault this pins is geometric, not textual. At 80 columns the
+/// credential prompt's right border landed inside the short-SHA column and
+/// left ` b8c5`, `68ff`, `00bd` beside it: four-character hex tokens that
+/// read as valid short identifiers and are not. The confirm box beside it
+/// survived only because "Push main → origin/main" happens to be the length
+/// it is. Same surface class, opposite outcome, decided by a string — so the
+/// rule is asserted against the boundaries the rows are drawn to, at every
+/// width, rather than against either box's wording.
+///
+/// **Mutation that breaks it:** drop the `snap_to_columns` call in
+/// `graft::view::frame::draw_confirm` and draw `natural` — at 80 the box's
+/// left edge sits at column 8, mid-subject, and this fails naming it.
+#[test]
+fn no_box_drawn_over_the_graph_splits_a_row_column() {
+    let dir = graft_fixtures::borrow(Shape::FeatureBranches);
+    let laid = lay_out(Shape::FeatureBranches, &dir);
+    let lines = laid.lines();
+    let theme = theme(ThemeKind::Dark, ColorDepth::TrueColor);
+
+    let mut confirm = ConfirmView::new(
+        sanitize_line("Push main → origin/main"),
+        vec![sanitize_line(
+            "1 commit · can't be undone from here — origin keeps what you send",
+        )],
+        sanitize_line("git push --progress origin refs/heads/main:refs/heads/main"),
+    );
+    confirm = confirm.with_labels("Cancel", "Push");
+
+    for height in HEIGHTS {
+        for width in widths() {
+            let frame = Rect::new(0, 0, width, height);
+            let view = screen::view(&lines, usize::from(height), 0);
+            let boundaries = GraphScreen::new(&view, &theme).column_boundaries(frame);
+
+            let natural = confirm_area(frame, &confirm).intersection(frame);
+            if natural.is_empty() {
+                continue;
+            }
+            let Some(snapped) = snap_to_columns(natural, &boundaries, frame) else {
+                // No snap position fits: `draw_confirm` clears the band
+                // instead, so no column survives beside the box to be split.
+                continue;
+            };
+            let rect =
+                confirm_area_at(frame, &confirm, snapped.x, snapped.width).intersection(frame);
+            if rect.is_empty() {
+                continue;
+            }
+            assert!(
+                boundaries.contains(&rect.x),
+                "{width}x{height}: the confirm box starts at column {} and the row columns \
+                 begin at {boundaries:?} — it splits the one it starts inside",
+                rect.x
+            );
+            assert!(
+                boundaries.contains(&rect.right()),
+                "{width}x{height}: the confirm box ends at column {} and the row columns \
+                 begin at {boundaries:?} — it splits the one it ends inside",
+                rect.right()
+            );
+        }
+    }
+}
+
+/// Every boundary the snap can land on is one the rows are actually drawn
+/// to: the graph column's end, the marker slot's, the subject's, the gap's,
+/// the author chip's, the date's and the SHA's, plus the frame's own edges.
+///
+/// Without this, `no_box_drawn_over_the_graph_splits_a_row_column` could be
+/// satisfied by a boundary list that named every column — the box would land
+/// on a "boundary" that is the middle of the subject and the assertion would
+/// still hold. This pins the list itself against the two ends it must have
+/// and against being dense.
+#[test]
+fn the_row_columns_are_the_ones_the_rows_are_drawn_to() {
+    let dir = graft_fixtures::borrow(Shape::FeatureBranches);
+    let laid = lay_out(Shape::FeatureBranches, &dir);
+    let lines = laid.lines();
+    let theme = theme(ThemeKind::Dark, ColorDepth::TrueColor);
+
+    for width in widths() {
+        let frame = Rect::new(0, 0, width, 24);
+        let view = screen::view(&lines, 24, 0);
+        let boundaries = GraphScreen::new(&view, &theme).column_boundaries(frame);
+
+        assert_eq!(
+            boundaries.first().copied(),
+            Some(frame.x),
+            "{width}: the frame's left edge is a boundary"
+        );
+        assert_eq!(
+            boundaries.last().copied(),
+            Some(frame.right()),
+            "{width}: the frame's right edge is a boundary"
+        );
+        assert!(
+            boundaries.windows(2).all(|pair| pair[0] < pair[1]),
+            "{width}: boundaries must be ascending and deduped: {boundaries:?}"
+        );
+        // Seven columns at most (graph, marker, subject, gap, author, date,
+        // sha) means eight boundaries at most. A denser list would let the
+        // snap stop in the middle of a column.
+        assert!(
+            boundaries.len() <= 8,
+            "{width}: {} boundaries is more than the columns there are: {boundaries:?}",
+            boundaries.len()
+        );
     }
 }

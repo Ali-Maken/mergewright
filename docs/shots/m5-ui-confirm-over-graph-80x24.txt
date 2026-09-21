@@ -11,25 +11,26 @@
 # the frame is drawn, so the header is laid out against the width a
 # real checkout takes and the ages never move.
 #
-# **The question this capture exists to answer** (the user's, open
-# since ticket 13): the box has a border, so whatever survives beside
-# it reads as background rather than as part of the box. **Is the
-# surviving content beside the box aligned and legible, or
-# fragmentary?**
+# **What right looks like here** (ADR-0040): the box does **not**
+# clear its band — the rows beside it are the graph you are about to
+# act on, and seeing them is M5's promise. Instead both of its edges
+# sit on a boundary between two row columns, so every column that
+# survives beside it survives **whole**. No clipped subject, no
+# four-character tail of a SHA. The box's content is never shrunk to
+# reach a boundary; if no boundary fitted, it would clear instead.
 #
-# Neither box was changed to take this picture. Nothing is
-# band-cleared, nothing is re-centred: the box draws its own
-# rectangle and the graph keeps every cell outside it. That is the
-# state the decision is about — whether either box should clear the
-# band it stands on is yours to make, by eye, from this file.
+# The snap is computed where the screen is laid out
+# (`graft::view::frame`, from `GraphScreen::column_boundaries`), not
+# inside the widget — ADR-0040 clause 3, so the box stays a box and
+# knows nothing about the graph.
 #
 # What is behind it: 200 commits of ordinary history, the tip one
 # commit ahead of `origin/main`, with the graph filling the rows
 # above, below and beside the frame.
 #
 # What survives beside it, read back out of the frame below rather
-# than written here by hand — on the widest such row, `●   Comm` is
-# left of the border and `b6a4a47` is right of it.
+# than written here by hand — on the widest such row, `●` is
+# left of the border and `60af0eb` is right of it.
 #
 # The 3-choice box `u` opens once the work is on a remote (ADR-0038
 # §4) stands on this same corpus and is in
@@ -48,14 +49,14 @@
 ●   Commit 197                                                      2d   2cce853
 ●   Commit 196                                                      2d   325da3f
 ●   Commit 195                                                      2d   0722297
-●   Comm╭ Push main → origin/main ─────────────────────────────────────╮ b6a4a47
-●   Comm│ 1 commit · can't be undone from here — origin keeps what you │ 60af0eb
-●   Comm│ send                                                         │ aceb8c5
-●   Comm│                                                              │ 11d68ff
-●   Comm│ git push --progress origin refs/heads/main:refs/heads/main   │ 91900bd
-●   Comm│                                                              │ cec3e93
-●   Comm│ ▸[ Cancel ]   [ Push ]                                       │ 0a91ece
-●   Comm╰──────────────────────────────────────────────────────────────╯ 3121935
+●   Commit 194                                                      2d   b6a4a47
+●   ╭ Push main → origin/main ──────────────────────────────────────────╮60af0eb
+●   │ 1 commit · can't be undone from here — origin keeps what you send │aceb8c5
+●   │                                                                   │11d68ff
+●   │ git push --progress origin refs/heads/main:refs/heads/main        │91900bd
+●   │                                                                   │cec3e93
+●   │ ▸[ Cancel ]   [ Push ]                                            │0a91ece
+●   ╰───────────────────────────────────────────────────────────────────╯3121935
 ●   Commit 186                                                      2d   fab25df
 ●   Commit 185                                                      2d   09ae97c
 ●   Commit 184                                                      2d   49d7783

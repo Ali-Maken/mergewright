@@ -793,8 +793,8 @@ fn the_footer_hint_list_widens_with_the_frame() {
 /// note's table order — the note's own `m merge` and `r rebase` are not
 /// among them until a group binds them, so the first three are the first
 /// three the branch row actually answers (m5-03 review, Critical 2;
-/// `hint-bar-redesign`) — and fills the rest of the row, ending in
-/// `. more`.
+/// `hint-bar-redesign`) — and fills the rest of the row, `. more` leading
+/// the bare keys that follow (variant B, m5/28).
 ///
 /// Re-measured for the shrink ladder (m5/24, ADR-0039's third amendment):
 /// the three most relevant keep whole verbs and the row's remaining cells
@@ -812,7 +812,7 @@ fn footer_eighty_branch_row() {
     let footer = screen.last().expect("a footer row").trim_end().to_owned();
     assert_eq!(
         footer,
-        " m merge  r rebase  ⏎ open  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k  . more"
+        " m merge  r rebase  ⏎ open  . more  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k"
     );
 }
 
@@ -1512,12 +1512,14 @@ fn capture_hint_bar_for_docs_shots() {
     }
 }
 
-/// The shrink ladder, for the user's eye (m5/24, ADR-0039's third
-/// amendment; CLAUDE.md rule 6 — nobody here ticks "looks right").
+/// The shrink ladder, for the user's eye (m5/24 and m5/28, ADR-0039;
+/// CLAUDE.md rule 6 — nobody here ticks "looks right").
 ///
-/// Writes `docs/shots/m5-hints-ladder.txt`: the same five contexts at 80,
-/// 120 and 160 cells of bar, then the two ways of making the tail of bare
-/// keys read as deliberate rather than as the row running out of budget.
+/// Writes `docs/shots/m5-hints-ladder.txt`: the same six contexts at 80,
+/// 120 and 160 cells of bar, as built. The A/B comparison that used to
+/// follow them is gone — the variants were the question, the user answered
+/// it (variant B, the doorway leading the bare keys), and as-built is now B,
+/// so a comparison would be comparing the build against itself.
 ///
 /// Run by hand to regenerate: `cargo test -p graft-ui
 /// graph_screen::tests::capture_the_ladder_for_docs_shots -- --ignored
@@ -1526,10 +1528,10 @@ fn capture_hint_bar_for_docs_shots() {
 #[ignore = "writes docs/shots/m5-hints-ladder.txt; run by hand to regenerate"]
 #[allow(
     clippy::too_many_lines,
-    reason = "five contexts, three widths and the header each block explains itself with, not logic"
+    reason = "six contexts, three widths and the header each block explains itself with, not logic"
 )]
 fn capture_the_ladder_for_docs_shots() {
-    use super::hints::{Divider, Rung, hints_for, hints_text};
+    use super::hints::{Divider, hints_for, hints_text};
 
     let cases: [(&str, HintContext, Divider); 6] = [
         (
@@ -1577,23 +1579,31 @@ fn capture_the_ladder_for_docs_shots() {
     let mut out = String::new();
     out.push_str(
         "# docs/shots/m5-hints-ladder.txt — the hint bar's shrink ladder\n\
-         # (ADR-0039's third amendment, m5/24)\n\
+         # (ADR-0039, m5/24 and m5/28)\n\
          #\n\
          # What right looks like: the bar fills from the most relevant end. The\n\
          # three most relevant hints keep their whole verbs; every hint after them\n\
          # is drawn at its bare key until the whole context is on the bar, and only\n\
          # then do the tail's keys start gaining verbs, left to right. A hint that\n\
          # will not fit even at its bare key is dropped, and `. more` — the doorway\n\
-         # — is last and never dropped.\n\
+         # — is never dropped and **sits at the head of the bare keys**, which is\n\
+         # the end of the row when there are none.\n\
          #\n\
-         # **The question this capture exists to answer, and only the user can:**\n\
-         # does a bare key read as *available*, or as *leftover*? A tail of naked\n\
-         # letters after three labelled hints can look like the row ran out of\n\
-         # budget rather than like an offer. The two variants at the bottom are two\n\
-         # ways of saying \"deliberate\"; the plain rows above them are what is\n\
-         # built today. If none of the three reads right, the answer is to drop the\n\
-         # bare-key rung and let the ladder stop at the short rung — that is a\n\
-         # smaller change than any of these, not a bigger one.\n\
+         # The question these rows were captured to answer is answered: a tail of\n\
+         # naked letters after three labelled hints read as *leftover*, and the\n\
+         # user chose variant B, which is what is built here. Every labelled item\n\
+         # is now contiguous and the last of them announces the menu, so everything\n\
+         # after `. more` reads as keys the menu will spell out — which is what\n\
+         # they are. That resolves `space` and `j/k` in the tail too: the region is\n\
+         # labelled even though its members are not. It cost no cells and no glyph.\n\
+         # The A/B comparison that used to sit at the bottom of this file is gone\n\
+         # with the question.\n\
+         #\n\
+         # The bottom of the ladder, which these widths are all far above:\n\
+         # floor → `. more` → `.` → nothing. The bar never draws a fragment of\n\
+         # itself at any width. The narrowest bar anything reachable actually has\n\
+         # is 48 cells and the tightest context's floor fits in 38, so nothing\n\
+         # below is near it (ADR-0039).\n\
          #\n\
          # How this was made: `hints_for(context, divider, columns)` rendered by\n\
          # `hints_text`, which is exactly the two calls `graph_screen::footer` makes\n\
@@ -1621,76 +1631,6 @@ fn capture_the_ladder_for_docs_shots() {
             out.push_str(&ruler(columns));
             out.push('\n');
             out.push_str(&hints_text(&hints_for(context, *divider, columns)));
-            out.push_str("\n\n");
-        }
-    }
-
-    out.push_str(
-        "=== variant A — a `·` between the labelled hints and the bare keys ===\n\
-         #\n\
-         # What it is saying: everything left of the dot is a verb you can read;\n\
-         # everything right of it is a key that works, named but not spelled out.\n\
-         # The glyph is not new — `fit_status_line` already separates a sentence\n\
-         # from its keys with ` · ` in the footer's other slot, so the bar borrows\n\
-         # a mark the footer already owns rather than inventing one.\n\
-         #\n\
-         # It costs three cells, and the capture pays them honestly: the bar below\n\
-         # was fitted into three fewer columns, so where you see one fewer key than\n\
-         # the plain row above, that is the dot's price.\n\
-         \n",
-    );
-    for columns in widths {
-        for (what, context, divider) in &cases {
-            let hints = hints_for(context, *divider, columns.saturating_sub(3));
-            let split = hints
-                .iter()
-                .position(|hint| hint.rung == Rung::Key)
-                .unwrap_or(hints.len());
-            let mut line = hints_text(&hints[..split]);
-            if split < hints.len() {
-                line.push_str("  ·  ");
-                line.push_str(hints_text(&hints[split..]).trim_start());
-            }
-            out.push_str(&format!("--- {what}, {columns} cells\n"));
-            out.push_str(&ruler(columns));
-            out.push('\n');
-            out.push_str(&line);
-            out.push_str("\n\n");
-        }
-    }
-
-    out.push_str(
-        "=== variant B — the doorway leads the tail ===\n\
-         #\n\
-         # No new glyph and not one cell more: `. more` moves from the end of the\n\
-         # row to the front of the bare keys. The row then reads as three\n\
-         # sentences — here is what the cursor does, here is `.` for the rest, and\n\
-         # here are the keys `.` will spell out for you. The tail stops being what\n\
-         # is left over and becomes a preview of the menu.\n\
-         #\n\
-         # What it costs, and why it is a proposal rather than the build: `. more`\n\
-         # is no longer the last thing on the row, and three `graft` tests plus\n\
-         # every hint capture's caption pin `ends_with(\". more\")` today. Choosing\n\
-         # this means changing that promise deliberately, in one place.\n\
-         \n",
-    );
-    for columns in widths {
-        for (what, context, divider) in &cases {
-            let hints = hints_for(context, *divider, columns);
-            let split = hints
-                .iter()
-                .position(|hint| hint.rung == Rung::Key)
-                .unwrap_or(hints.len());
-            let mut reordered: Vec<_> = hints[..split].to_vec();
-            let (doorway, tail): (Vec<Hint>, Vec<Hint>) = hints[split..]
-                .iter()
-                .partition(|hint| (hint.key, hint.verb) == (".", "more"));
-            reordered.extend(doorway);
-            reordered.extend(tail);
-            out.push_str(&format!("--- {what}, {columns} cells\n"));
-            out.push_str(&ruler(columns));
-            out.push('\n');
-            out.push_str(&hints_text(&reordered));
             out.push_str("\n\n");
         }
     }

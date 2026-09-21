@@ -115,13 +115,15 @@ fn footer(state: &AppState, columns: u16, rows: u16) -> String {
 /// The bar is the last row of the *graph* area, which is the frame's last
 /// row only while the detail pane is closed or beside the graph: stacked
 /// below it (`DetailLayout::Below`, the layout at 120 columns) the pane's
-/// own rows come after. So it is found by its trailer instead of by
-/// position — every list the width rule cuts ends in `. more`.
+/// own rows come after. So it is found by its doorway instead of by
+/// position — every list the width rule cuts carries `. more`, though since
+/// m5/28 it leads the bare keys rather than ending the row (ADR-0039), so
+/// this looks for it anywhere on the line.
 fn hint_bar(state: &AppState, columns: u16, rows: u16) -> Option<String> {
     frame(state, columns, rows)
         .into_iter()
         .rev()
-        .find(|line| line.ends_with(". more"))
+        .find(|line| line.contains(". more"))
 }
 
 /// Opened, with the first rows, the refs and the working-tree status on
@@ -150,7 +152,7 @@ fn the_tip_row_hints_the_current_branch_context() {
 
     let bar = footer(&state, 80, 24);
     assert!(
-        bar.starts_with(" ⏎ open  c commit  P push") && bar.ends_with(". more"),
+        bar.starts_with(" ⏎ open  c commit  P push  . more") && !bar.ends_with(". more"),
         "{bar:?}"
     );
     app.close();
@@ -167,7 +169,7 @@ fn a_plain_row_hints_the_plain_context() {
 
     let bar = footer(&state, 80, 24);
     assert!(
-        bar.starts_with(" ⏎ open  r rebase  c commit") && bar.ends_with(". more"),
+        bar.starts_with(" ⏎ open  r rebase  c commit  . more") && !bar.ends_with(". more"),
         "{bar:?}"
     );
     app.close();
@@ -185,7 +187,7 @@ fn the_uncommitted_row_hints_the_working_tree_context() {
 
     let bar = footer(&state, 80, 24);
     assert!(
-        bar.starts_with(" ⏎ changes  c commit  S stash") && bar.ends_with(". more"),
+        bar.starts_with(" ⏎ changes  c commit  S stash  . more") && !bar.ends_with(". more"),
         "{bar:?}"
     );
     app.close();
@@ -373,7 +375,7 @@ fn capture_hint_bar_for_docs_shots() {
             // The bar is the last row of the *graph* area, which is the
             // frame's last row only while the pane is closed or beside the
             // graph.
-            let bar = drawn.iter().rev().find(|line| line.ends_with(". more"));
+            let bar = drawn.iter().rev().find(|line| line.contains(". more"));
             let mut out = format!(
                 "# m5-hints-{name}-{label}.txt: {columns}x{rows}, drawn by `view::view` from\n\
                  # a real AppState — a real repository, opened over the real job pool, with\n\
@@ -387,8 +389,9 @@ fn capture_hint_bar_for_docs_shots() {
                  # Here {what}.\n\
                  #\n\
                  # Judge by eye: the hint bar is the graph's bottom row — the frame's last\n\
-                 # row, unless the pane is stacked under it. `. more` is always last and\n\
-                 # is never dropped (ADR-0037 §4).\n\
+                 # row, unless the pane is stacked under it. `. more` is never dropped\n\
+                 # (ADR-0037 §4) and sits at the head of the bare keys — the end of the\n\
+                 # row where there are none (ADR-0039, m5/28).\n\
                  #\n\
                  # What fills the rest is a **ladder, taken per hint** (ADR-0039's third\n\
                  # amendment, 2026-09-21). A hint has up to three rungs — full `y sha`,\n\

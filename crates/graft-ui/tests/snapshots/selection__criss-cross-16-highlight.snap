@@ -27,7 +27,7 @@ shape: criss-cross-merge, 16, highlight, 80x24, row 4 selected
 
 
 
- ⏎ open  r rebase  c commit  y  m  u  S  J  /  q  F2  F3  x  +  j/k  . more
+ ⏎ open  r rebase  c commit  . more  y  m  u  S  J  /  q  F2  F3  x  +  j/k
 
 modifiers: graph | subject
 ..b.......| .
