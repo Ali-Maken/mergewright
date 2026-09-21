@@ -44,6 +44,37 @@ fn stopped(kind: InProgress, paths: &[&str]) -> AppState {
     }
 }
 
+/// An `Applied` naming a finished `--continue`. Only `description` and
+/// `refresh` are read by `resumed`; the rest is a plausible journal entry.
+fn done_applied() -> graft_ops::apply::Applied {
+    use graft_core::journal::{
+        EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches,
+    };
+    graft_ops::apply::Applied {
+        entry: JournalEntry {
+            id: EntryId::new(1, [0; 10]),
+            at_unix_ms: 1,
+            kind: OperationKind::Rebase,
+            description: "continue rebase".to_owned(),
+            status: EntryStatus::Committed,
+            touches: Touches::default(),
+            head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+            head_after: None,
+            refs_before: std::collections::BTreeMap::new(),
+            refs_after: std::collections::BTreeMap::new(),
+            index_before: None,
+            index_after: None,
+            worktree_before: None,
+            worktree_after: None,
+            backup_ref: None,
+            pins: Vec::new(),
+            commands: Vec::new(),
+            reverses: None,
+        },
+        refresh: graft_ops::apply::Refresh::Everything,
+    }
+}
+
 fn key(code: KeyCode) -> KeyPress {
     KeyPress {
         code,
@@ -336,10 +367,14 @@ fn stopping_again_keeps_the_banner_focused() {
     );
 }
 
-/// Finishing gives the keyboard back. Leaving `banner_focus` set with no
-/// banner to focus would swallow every key into a mode with no way out.
+/// A resume that failed leaves the operation live and `a` one key away —
+/// whatever git refused, the way back to before it started still works.
+///
+/// Renamed: it was called `finishing_clears_the_focus` and tested neither
+/// finishing nor focus (m5-09 review, Major 3). The name is now what it
+/// asserts, and the test below is what the old name claimed.
 #[test]
-fn finishing_clears_the_focus() {
+fn a_failed_resume_keeps_a_abort() {
     let mut state = stopped(InProgress::Rebase, &[]);
     let id = JobId::new(7);
     state.operating = Some(id);
@@ -362,6 +397,116 @@ fn finishing_clears_the_focus() {
         },
         "a failed resume still offers the way out"
     );
+    assert!(
+        state.banner_focus,
+        "the operation is still live, so the banner still has the keyboard"
+    );
+}
+
+/// Finishing gives the keyboard back. Leaving `banner_focus` set with no
+/// banner to focus would swallow every key into a mode with no way out.
+///
+/// Asserted on `resumed` alone, before any re-read lands: the mutation that
+/// deletes `state.banner_focus = false` from the `Done` arm must turn this
+/// red here and now. Driving it through the loop instead would let
+/// `took_fact` clear the flag when `in_progress` goes `None` and the test
+/// would pass over a deleted line (m5-09 review, Major 3, mutation M6).
+#[test]
+fn finishing_clears_the_focus() {
+    let mut state = stopped(InProgress::Rebase, &[]);
+    let id = JobId::new(7);
+    state.operating = Some(id);
+    resumed(
+        &mut state,
+        id,
+        crate::jobs::operate::Operated::Done(done_applied()),
+        &mut || JobId::new(8),
+    );
+    assert!(
+        !state.banner_focus,
+        "a finished operation has no banner to hold the keyboard"
+    );
+    assert_eq!(state.status, Status::Done("continue rebase".to_owned()));
+}
+
+/// `M` and `e` with nothing unmerged: the banner acts on "the first
+/// conflicted file", and there is none. They used to return `false` into a
+/// `banner_key` that claimed the key anyway — silently nothing, which reads
+/// as broken (m5-09 review, Major 2). The hint bar drops them in this state;
+/// this is what a user who learned the key elsewhere gets.
+#[test]
+fn mergetool_and_edit_refuse_in_words_when_nothing_is_conflicted() {
+    for code in [KeyCode::Char('M'), KeyCode::Char('e')] {
+        let mut state = stopped(InProgress::Rebase, &[]);
+        state.mergetool = Some("meld".to_owned());
+        let (claimed, commands) = press(&mut state, code);
+        assert!(claimed);
+        assert!(commands.is_empty(), "{code:?} queued {commands:?}");
+        assert_eq!(
+            state.status,
+            Status::Sticky {
+                reason: "nothing conflicted".to_owned(),
+                keys: Some("c continue  a abort".to_owned()),
+            },
+            "{code:?} said nothing"
+        );
+    }
+}
+
+/// `Tab` out of the banner is the next step of the cycle — graph → detail →
+/// banner → **graph** — not a return ticket to the pane it came from.
+///
+/// It used to leave `detail.focus` alone, so `Tab` from the Diff pane went
+/// Diff → banner → Diff → banner for as long as a banner was drawn, and the
+/// graph was unreachable by `Tab` (m5-09 review, Major 1).
+#[test]
+fn tab_out_of_the_banner_reaches_the_graph() {
+    let mut state = stopped(InProgress::Rebase, &["a.rs"]);
+    state.detail.shown = true;
+    state.detail.focus = graft_ui::detail::DetailFocus::Diff;
+
+    // The forward step the banner intercepted on its way to the graph.
+    state.banner_focus = false;
+    assert!(take_focus(&mut state, key(KeyCode::Tab)), "Tab lands on it");
+    assert!(state.banner_focus);
+
+    let (claimed, _) = press(&mut state, KeyCode::Tab);
+    assert!(claimed);
+    assert!(!state.banner_focus, "Tab gives the keyboard back");
+    assert_eq!(
+        state.detail.focus,
+        graft_ui::detail::DetailFocus::Graph,
+        "and the graph is where it lands"
+    );
+}
+
+/// `BackTab` is the same cycle backwards, so it lands on the pane the
+/// forward step came from rather than on the graph.
+#[test]
+fn backtab_out_of_the_banner_reaches_the_diff_pane() {
+    let mut state = stopped(InProgress::Rebase, &["a.rs"]);
+    state.detail.shown = true;
+    state.detail.focus = graft_ui::detail::DetailFocus::Files;
+    state.banner_focus = false;
+    assert!(take_focus(&mut state, key(KeyCode::BackTab)));
+
+    let (claimed, _) = press(&mut state, KeyCode::BackTab);
+    assert!(claimed);
+    assert!(!state.banner_focus);
+    assert_eq!(state.detail.focus, graft_ui::detail::DetailFocus::Diff);
+}
+
+/// `Esc` is "leave the mode", not a step of the cycle: it puts the keyboard
+/// back where it found it.
+#[test]
+fn escape_out_of_the_banner_leaves_the_pane_focus_alone() {
+    let mut state = stopped(InProgress::Rebase, &["a.rs"]);
+    state.detail.shown = true;
+    state.detail.focus = graft_ui::detail::DetailFocus::Files;
+    let (claimed, _) = press(&mut state, KeyCode::Escape);
+    assert!(claimed);
+    assert!(!state.banner_focus);
+    assert_eq!(state.detail.focus, graft_ui::detail::DetailFocus::Files);
 }
 
 /// Convenience for reading a `SanitizedText` back as `&str` in assertions.
@@ -419,4 +564,195 @@ fn nothing_takes_focus_when_there_is_no_banner_to_focus() {
         "Tab with no operation in progress is the panes' own"
     );
     assert!(!state.banner_focus);
+}
+
+// ---------------------------------------------------------------------------
+// The anchor: the hint bar against `banner_key` itself (m5/16).
+// ---------------------------------------------------------------------------
+
+/// The key `key` names, as a `KeyPress` code.
+///
+/// Panics on a key this test cannot press, which is the point: if the bar
+/// learns a key, this test fails until somebody says what pressing it is
+/// supposed to do.
+fn code_for(key: &str) -> KeyCode {
+    match key {
+        "c" => KeyCode::Char('c'),
+        "s" => KeyCode::Char('s'),
+        "a" => KeyCode::Char('a'),
+        "M" => KeyCode::Char('M'),
+        "e" => KeyCode::Char('e'),
+        "⇥" => KeyCode::Tab,
+        other => panic!(
+            "the focused banner's hint bar draws `{other}`, which this test \
+             does not know how to press — teach it what that key is meant to \
+             do rather than letting the bar advertise it unchecked"
+        ),
+    }
+}
+
+/// `c`/`s`/`a`: the three that move the operation on.
+fn did_a_resume_verb(
+    verb: &str,
+    key: &str,
+    before: &AppState,
+    after: &AppState,
+    commands: &[Command],
+) {
+    match verb {
+        // Unmerged files: a refusal in words. None: the real `--continue`.
+        "continue" => match continue_refusal(before) {
+            Some(reason) => assert_eq!(
+                after.status,
+                Status::Sticky {
+                    reason,
+                    keys: Some(RESOLVE_KEYS.to_owned()),
+                },
+                "`{key} {verb}`"
+            ),
+            None => assert!(
+                matches!(commands, [Command::Resume(_, Resume::Continue)]),
+                "`{key} {verb}` queued {commands:?}"
+            ),
+        },
+        "skip" | "abort" => {
+            let want = if verb == "skip" {
+                Resume::Skip
+            } else {
+                Resume::Abort
+            };
+            let confirm = after
+                .confirm
+                .as_ref()
+                .unwrap_or_else(|| panic!("`{key} {verb}` opened no box"));
+            assert!(
+                matches!(confirm.then, ConfirmThen::Resume(what) if what == want),
+                "`{key} {verb}` opened {:?}",
+                confirm.then
+            );
+        }
+        other => panic!("not a resume verb: {other}"),
+    }
+}
+
+/// `M`/`e`: the two that hand a conflicted file to the user's own tool.
+/// Hinted only while there is one, so "there is none" is a failure here.
+fn did_a_file_verb(verb: &str, key: &str, before: &AppState, commands: &[Command]) {
+    let path = first_conflicted(before).unwrap_or_else(|| {
+        panic!("`{key} {verb}` is hinted with nothing conflicted for it to open")
+    });
+    let (("mergetool", [Command::OpenMergetool { path: queued }])
+    | ("edit", [Command::OpenConflictEditor { path: queued }])) = (verb, commands)
+    else {
+        panic!("`{key} {verb}` queued {commands:?}")
+    };
+    assert_eq!(*queued, path, "`{key} {verb}` opened the wrong file");
+}
+
+/// What pressing `verb`'s key must have done. Every arm asserts the verb's
+/// own outcome; an unknown verb is a failure, not a pass.
+fn did_the_verb(verb: &str, key: &str, before: &AppState, after: &AppState, commands: &[Command]) {
+    match verb {
+        "continue" | "skip" | "abort" => did_a_resume_verb(verb, key, before, after, commands),
+        "mergetool" | "edit" => did_a_file_verb(verb, key, before, commands),
+        "graph" => assert!(
+            !after.banner_focus,
+            "`{key} {verb}` did not give the keyboard back"
+        ),
+        other => panic!(
+            "the focused banner's hint bar draws the verb `{other}`, which \
+             this test does not check — a verb nobody checks is a verb the \
+             key need not do"
+        ),
+    }
+}
+
+/// **The anchor.** Every hint the focused banner's footer draws is checked
+/// against what `banner_key` *does with that key*, by pressing it.
+///
+/// The two tests written to catch the dead banner hints
+/// (`update::tests::every_hinted_key_is_bound` and
+/// `every_planned_hint_is_still_unbound`) compare the hint table with
+/// `keys::bound_actions` — another table. Group 09 bound `c`/`s`/`a` in
+/// `banner_key` and flipped neither, so both tables were wrong in the same
+/// direction, agreed with each other, and passed while the footer under a
+/// modal banner taught `<> resize  . more` (m5/14, found on the way).
+///
+/// This test cannot agree its way out of that: the only thing it compares
+/// the bar with is the dispatcher.
+#[test]
+fn every_hint_the_focused_banner_draws_is_answered_by_banner_key() {
+    use graft_ui::graph_screen::{Divider, HintContext, hints_for};
+
+    for (skippable, conflicted) in [(true, true), (false, true), (true, false), (false, false)] {
+        let kind = if skippable {
+            InProgress::Rebase
+        } else {
+            InProgress::Merge
+        };
+        let paths: &[&str] = if conflicted {
+            &["src/auth.rs", "src/login.rs"]
+        } else {
+            &[]
+        };
+        let mut base = stopped(kind, paths);
+        // So `M` can queue the hand-over rather than refuse for want of a
+        // tool: the refusal is its own test.
+        base.mergetool = Some("meld".to_owned());
+        let banner = banner_view(&base).expect("an operation is live");
+        assert_eq!(banner.skippable, skippable);
+        assert_eq!(banner.conflict.is_some(), conflicted);
+        let context = HintContext::Banner {
+            skippable: banner.skippable,
+            conflicted: banner.conflict.is_some(),
+        };
+
+        for columns in [40u16, 80, 100, 120, 160, 200] {
+            for divider in [Divider::Shown, Divider::Hidden] {
+                let hints = hints_for(&context, divider, columns);
+                assert!(
+                    !hints.is_empty(),
+                    "the modal banner drew no key at all at {columns} columns \
+                     ({divider:?}) — ADR-0037 §4's one forbidden outcome"
+                );
+                for hint in hints {
+                    let mut state = base.clone();
+                    let (claimed, commands) = press(&mut state, code_for(hint.key));
+                    assert!(
+                        claimed,
+                        "`{} {}` is drawn but `banner_key` does not claim it",
+                        hint.key, hint.verb
+                    );
+                    did_the_verb(hint.verb, hint.key, &base, &state, &commands);
+                }
+            }
+        }
+    }
+}
+
+/// `c continue` and `a abort` are drawn in **every** banner state and at
+/// every width: they are the two ways out of a stopped operation, and the
+/// banner owns the keyboard while it is up.
+#[test]
+fn the_banner_always_teaches_continue_and_abort() {
+    use graft_ui::graph_screen::{Divider, HintContext, hints_for};
+
+    for (skippable, conflicted) in [(true, true), (false, true), (true, false), (false, false)] {
+        for columns in [40u16, 80, 120, 160] {
+            let hints = hints_for(
+                &HintContext::Banner {
+                    skippable,
+                    conflicted,
+                },
+                Divider::Shown,
+                columns,
+            );
+            for want in [("c", "continue"), ("a", "abort")] {
+                assert!(
+                    hints.iter().any(|hint| (hint.key, hint.verb) == want),
+                    "{want:?} missing at {columns} columns from {hints:?}"
+                );
+            }
+        }
+    }
 }

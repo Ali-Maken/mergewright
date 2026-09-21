@@ -241,6 +241,33 @@ fn compaction(
     }
 }
 
+/// What the footer offers under this frame's rows.
+///
+/// A focused banner owns the keyboard, so the footer must list the banner's
+/// keys and nothing else: a hint bar offering `m merge` under a modal
+/// banner names a key that does nothing. An *unfocused* banner claims
+/// nothing, so the cursor's own context stands.
+pub(crate) fn footer_context(
+    state: &AppState,
+    rows: &[GraphEntry<'_>],
+    banner: Option<&graft_ui::graph_screen::BannerView>,
+) -> HintContext {
+    match banner {
+        Some(banner) if banner.focused => banner_context(banner),
+        _ => hint_context(state, rows),
+    }
+}
+
+/// The hint context a focused banner puts the footer in. One function
+/// rather than two literals: the tab layout draws the banner's hints
+/// outside the graph screen (`view::frame`), and the two must not drift.
+pub(crate) fn banner_context(banner: &graft_ui::graph_screen::BannerView) -> HintContext {
+    HintContext::Banner {
+        skippable: banner.skippable,
+        conflicted: banner.conflict.is_some(),
+    }
+}
+
 /// The footer's context for this frame (`hints::hints_for`, ADR-0037 §4):
 /// the changes pane and the working-tree row both win over anything the
 /// cursor sits on, since they are full-screen states — **the pane first**,
@@ -257,24 +284,6 @@ fn compaction(
 /// graph screen while they are shown, so the graph's own footer never has to
 /// hint them. `<> resize` is not a context: `GraphView::detail_shown` carries
 /// it, for every context alike.
-/// What the footer offers under this frame's rows.
-///
-/// A focused banner owns the keyboard, so the footer must list the banner's
-/// keys and nothing else: a hint bar offering `m merge` under a modal
-/// banner names a key that does nothing.
-fn footer_context(
-    state: &AppState,
-    rows: &[GraphEntry<'_>],
-    banner: Option<&graft_ui::graph_screen::BannerView>,
-) -> HintContext {
-    match banner {
-        Some(banner) if banner.focused => HintContext::Banner {
-            skippable: banner.skippable,
-        },
-        _ => hint_context(state, rows),
-    }
-}
-
 fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
     if state.on_changes_pane() {
         return HintContext::ChangesPane {
@@ -351,5 +360,66 @@ pub(super) fn keep_for(
         selected: cursor.and_then(|at| rows.get(at)).map(|row| row.lane),
         reserved: reserved.clone(),
         preferred: thread.map(Ancestry::columns).unwrap_or_default(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use graft_term::sanitize_line;
+    use graft_ui::graph_screen::BannerView;
+
+    use super::*;
+
+    fn banner(focused: bool, conflict: Option<&str>) -> BannerView {
+        BannerView {
+            kind: sanitize_line("MERGING"),
+            step: None,
+            conflict: conflict.map(sanitize_line),
+            more_conflicts: 0,
+            focused,
+            skippable: false,
+        }
+    }
+
+    /// A focused banner owns the keyboard, so the footer is the banner's —
+    /// whatever the cursor is sitting on. Untested until now: the tick for
+    /// it cited the hint-bar walk, which enumerates `HintContext` variants
+    /// and never calls this function, so a `footer_context` that ignored
+    /// `focused` passed every test in the crate (m5-09 review, Major 5).
+    #[test]
+    fn a_focused_banner_takes_the_footer() {
+        let state = AppState::default();
+        assert_eq!(
+            footer_context(&state, &[], Some(&banner(true, Some("notes.md")))),
+            HintContext::Banner {
+                skippable: false,
+                conflicted: true,
+            }
+        );
+    }
+
+    /// An unfocused banner claims no key, so the cursor's own context
+    /// stands.
+    #[test]
+    fn an_unfocused_banner_leaves_the_footer_to_the_cursor() {
+        let state = AppState::default();
+        assert_eq!(
+            footer_context(&state, &[], Some(&banner(false, Some("notes.md")))),
+            hint_context(&state, &[]),
+        );
+    }
+
+    /// With nothing unmerged the banner's `M`/`e` refuse in words, so the
+    /// bar must not offer them: `conflicted` is what carries that.
+    #[test]
+    fn a_banner_with_no_conflict_says_so_in_its_context() {
+        let state = AppState::default();
+        assert_eq!(
+            footer_context(&state, &[], Some(&banner(true, None))),
+            HintContext::Banner {
+                skippable: false,
+                conflicted: false,
+            }
+        );
     }
 }

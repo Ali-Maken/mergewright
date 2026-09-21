@@ -7,44 +7,46 @@
 # pty capture: the terminal is ratatui's TestBackend, so this is a
 # character grid with no colour attributes in it — CLAUDE.md rule 5,
 # colour ships unverified. The scratch repository's temporary path is
-# replaced by `/code/api`; nothing else is touched.
+# set to `/code/api` **before** the frame is drawn, so the header is
+# laid out against the width a real checkout takes; nothing else is
+# touched.
 #
 # What right looks like:
 #  - A banner above the panes reading `MERGING`, the file git stopped on
-#    (`notes.md`), and `+1 more` for the second one — the state the
-#    repository is in, said once, at the top.
+#    (`notes.md`), and `(+1)` for the second one — the state the
+#    repository is in, said once, at the top. Whole, at all three
+#    widths: no `…`.
+#  - Under 100 columns the layout is tabs and the pane owns the screen,
+#    so the banner draws on its **own** row above the `Graph [Detail]`
+#    line and its keys on the bottom row. A modal that owns the
+#    keyboard has to be visible; that costs two rows of pane content
+#    here, and only while an operation is stopped.
+#  - The footer teaches the banner's own keys — `c continue`,
+#    `a abort`, `M mergetool`, `e edit`, `⇥ graph` — and nothing else.
+#    No `<> resize` and no `. more`: the banner is modal and swallows
+#    both.
 #  - The banner is drawn focused (colour, so unverified here), and the
-#    footer says nothing false about the merge: the line that used to
-#    read `an operation was interrupted` is gone — see below.
+#    footer says nothing false about the merge: no `an operation was
+#    interrupted` line.
 #  - The changes pane opens with `CONFLICTS (2)`, above `STAGED` and
 #    `UNSTAGED`, and each conflicted file appears **once**: there is one
 #    thing to do to it, not two.
 #  - Nothing on the screen reads as an error. A stopped merge is a state
 #    to finish, and the words are about what to press next.
 #
-# Re-captured after piece 5 (m5/14). The `an operation was interrupted`
-# line these captures used to carry is gone: the journal now tells a
-# live entry from an interrupted one, and a merge standing right there
-# is neither announced nor drawn as torn.
-#
-# STILL WRONG, and it is **not** piece 5's — filed by m5/14, needs
-# `graft-ui`: the hint bar does not teach the banner's keys. Every
-# entry of `graph_screen::hints::banner_list` is still
-# `HintState::Planned`, which is never drawn, and `c continue` /
-# `s skip` / `a abort` are missing from `update::keys::bound_actions`
-# — so the pair of tests that would have caught it agree with each
-# other and pass. Group 09 bound the keys in `banner_key` without
-# flipping the table. Until that is flipped, the footer under a focused,
-# modal banner teaches `<> resize  . more` and nothing about `c` or `a`.
-# Judge the banner, the pane and the absence of the interrupted line
-# here; the hint bar is the next ticket's.
+# Re-captured for m5/16, which fixed what the last pass filed here: the
+# banner was drawn nowhere at all at 80 columns and cut to
+# `⚠ MERGING — …` at 160, and the hint bar taught `<> resize  . more`
+# under a modal banner. Both are gone. What is **not** proven here:
+# colour (rule 5), and that the banner row reads well by eye — that is
+# yours to judge (rule 6).
 #
 
- graft /code/api    ⚠ MERGING — …UNCOMMITTED
-◌     Uncommitted changes ()                                                                 diff vs HEAD 3b026b5
-◆     [◆ main] main's take                                                       now  3b026b5
-│ ● ⓘ [feature] the feature's take                                               now  c3db3eb
-●─╯   the shared files                                                           now  95eb3f1
+ graft /code/api    ⚠ MERGING — conflict notes.md (+1)                                       UNCOMMITTED
+◌     Uncommitted changes ()                                                                 diff vs HEAD 309c248
+◆     [◆ main] main's take                                                       now  309c248
+│ ● ⓘ [feature] the feature's take                                               now  b839126
+●─╯   the shared files                                                           now  055930a
 ●     Correct the note                                                           7y   a82960bCONFLICTS (2)
 ●     Add the first note                                                         7y   fadcfb3  notes.md                                                 unmerged
 ◇     Add a readme                                                               7y   64ded19  shared.rs                                                unmerged
@@ -87,4 +89,4 @@
 
 
  no commit-graph file · B build one · X never here
- <> resize  . more
+ c continue  a abort  M mergetool  e edit  ⇥ graph

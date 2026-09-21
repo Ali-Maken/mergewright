@@ -12,8 +12,22 @@ fn all_contexts() -> Vec<HintContext> {
         HintContext::PlainRow,
         HintContext::Marked(Box::new(HintContext::PlainRow)),
         HintContext::Marked(Box::new(HintContext::BranchRow { current: true })),
-        HintContext::Banner { skippable: true },
-        HintContext::Banner { skippable: false },
+        HintContext::Banner {
+            skippable: true,
+            conflicted: true,
+        },
+        HintContext::Banner {
+            skippable: false,
+            conflicted: true,
+        },
+        HintContext::Banner {
+            skippable: true,
+            conflicted: false,
+        },
+        HintContext::Banner {
+            skippable: false,
+            conflicted: false,
+        },
         HintContext::ChangesPane { unmerged: false },
         HintContext::ChangesPane { unmerged: true },
         HintContext::Journal,
@@ -280,16 +294,46 @@ fn a_pane_hints_only_its_own_keys() {
     assert_eq!(unmerged, " e edit  c commit  ⇥ graph  . more");
 }
 
-/// The banner's own keys are all still to be built, so it falls back to the
-/// keys that are live everywhere rather than leave the bar empty — the one
-/// outcome ADR-0037 §4 rules out (m5-03 review, Major 2).
+/// The banner draws its **own** keys — the whole list, at 80 columns, with
+/// no `. more` and no `<> resize`: it is modal, so those two would name
+/// keys it swallows (m5/16). `M`/`e` are there only while something is
+/// conflicted; with nothing unmerged both refuse in words, and a hint that
+/// can only say no is a hint that lies (m5-09 review, Major 2).
 #[test]
-fn the_banner_falls_back_rather_than_show_nothing() {
-    for skippable in [true, false] {
-        let hints = hints_for(&HintContext::Banner { skippable }, Divider::Hidden, 80);
-        assert_eq!(hints.len(), 4, "{hints:?}");
-        assert_eq!((hints[0].key, hints[0].verb), ("q", "quit"), "{hints:?}");
-    }
+fn the_banner_draws_its_own_keys_and_no_doorway() {
+    assert_eq!(
+        hints_text(&hints_for(
+            &HintContext::Banner {
+                skippable: true,
+                conflicted: true,
+            },
+            Divider::Shown,
+            80,
+        )),
+        " c continue  s skip  a abort  M mergetool  e edit  ⇥ graph"
+    );
+    assert_eq!(
+        hints_text(&hints_for(
+            &HintContext::Banner {
+                skippable: false,
+                conflicted: true,
+            },
+            Divider::Shown,
+            80,
+        )),
+        " c continue  a abort  M mergetool  e edit  ⇥ graph"
+    );
+    assert_eq!(
+        hints_text(&hints_for(
+            &HintContext::Banner {
+                skippable: true,
+                conflicted: false,
+            },
+            Divider::Shown,
+            80,
+        )),
+        " c continue  s skip  a abort  ⇥ graph"
+    );
 }
 
 /// Every non-`Preview`, non-`Marked` context list is drawn in the order the

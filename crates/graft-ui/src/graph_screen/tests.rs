@@ -1075,24 +1075,74 @@ fn the_banner_replaces_the_header_slot_and_reverses_when_focused() {
     assert!(reversed, "expected the focused banner slot to reverse");
 }
 
-/// The buttons row draws only at 160 columns and up, on its own row under
-/// the header — never at 80 or 120.
+/// The banner's room comes out of the header **before** the location's.
+///
+/// The location used to take what it liked and hand the banner the
+/// remainder, so a long repository path — every capture's scratch repo, and
+/// plenty of real checkouts — cut the header to `⚠ REBASING step 3 of 7 — …`
+/// and the file git stopped on was gone: the urgent half cut for the half
+/// that does not change (m5/16, review C1, the `160x48` capture on `main`).
+/// A path with an `…` in it still says where you are, so the path is what
+/// pays.
 #[test]
-fn banner_buttons_row_draws_only_at_160_and_up() {
+fn a_long_location_is_cut_before_the_banner_is() {
     let rows = linear(2);
-    let mut with_banner = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    let mut long = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    long.location = Some(sanitize_line(
+        "/Users/someone/work/customers/acme/services/billing-api",
+    ));
+    let banner = rebase_banner(Some((3, 7)), Some("src/auth/token.rs"), 1);
+    long.banner_op = Some(banner.clone());
+
+    for columns in [80u16, 100, 120, 160] {
+        let header = text(&draw(&long, columns, 6))[0].clone();
+        let whole = banner_line(&banner, columns);
+        assert!(
+            header.contains(&whole),
+            "at {columns} columns the banner was cut instead of the path: \
+             {header:?} does not hold {whole:?}"
+        );
+    }
+
+    // And at the widths where something has to give, the `…` is on the
+    // path. (At 160 the whole header fits and nothing is cut.)
+    for columns in [80u16, 100, 120] {
+        let header = text(&draw(&long, columns, 6))[0].clone();
+        assert!(
+            header.contains('\u{2026}'),
+            "at {columns} columns the path was not the thing cut: {header:?}"
+        );
+    }
+}
+
+/// The operation banner costs **no** row under the header, at any width,
+/// and reserves no slot for anything either: the row right under the header
+/// is the first graph row, banner or no banner.
+///
+/// It used to draw `[ Continue ] [ Skip ] [ Abort ]` there from 160 columns
+/// — mouse targets nothing answers a click on, a row of graph paid for
+/// three verbs the hint bar already teaches on keys that work at every
+/// width (m5/16, review C1).
+#[test]
+fn the_operation_banner_costs_no_row_under_the_header() {
+    let rows = linear(2);
+    let plain = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    let mut with_banner = plain.clone();
     with_banner.banner_op = Some(rebase_banner(Some((3, 7)), Some("src/auth.rs"), 0));
 
-    let narrow = text(&draw(&with_banner, 80, 10));
-    assert!(!narrow[1].contains("Continue"), "{:?}", narrow[1]);
-
-    let medium = text(&draw(&with_banner, 120, 10));
-    assert!(!medium[1].contains("Continue"), "{:?}", medium[1]);
-
-    let wide = text(&draw(&with_banner, 160, 10));
-    assert!(wide[1].contains("Continue"), "{:?}", wide[1]);
-    assert!(wide[1].contains("Skip"), "{:?}", wide[1]);
-    assert!(wide[1].contains("Abort"), "{:?}", wide[1]);
+    for columns in [80u16, 120, 160, 200] {
+        let banner = text(&draw(&with_banner, columns, 10));
+        let none = text(&draw(&plain, columns, 10));
+        assert!(
+            !banner[1].contains("Continue"),
+            "at {columns} columns: {:?}",
+            banner[1]
+        );
+        assert_eq!(
+            banner[1], none[1],
+            "at {columns} columns the banner took a graph row from under the header"
+        );
+    }
 }
 
 // --- CONFLICTS section (m5-history-and-ghost-preview/04) ---
@@ -1111,6 +1161,9 @@ fn unmerged_sections_heading_word_is_conflicts() {
 /// header's operation banner can be judged by eye. Run by hand to
 /// regenerate: `cargo test -p graft-ui
 /// graph_screen::tests::capture_for_docs_shots -- --ignored --nocapture`.
+///
+/// The long location is deliberate: it is what pushed the banner off the
+/// header before the room was reserved for it first (m5/16, review C1).
 #[test]
 #[ignore = "writes docs/shots/m5-ui-banner.txt; run by hand to regenerate"]
 fn capture_for_docs_shots() {
@@ -1125,19 +1178,33 @@ fn capture_for_docs_shots() {
          # What right looks like: the header's informational tail is\n\
          # replaced, while an operation is in progress, by\n\
          # `⚠ REBASING step 3 of 7 — conflict in <path> (+N)` — spelled out\n\
-         # at >=100 cols, abbreviated (`3/7`, path only) under 100. The\n\
-         # `[ Continue ] [ Skip ] [ Abort ]` buttons draw on their own row\n\
-         # under the header only at >=160 cols — keys always work, the\n\
-         # buttons are a mouse convenience.\n\
+         # at >=100 cols, abbreviated (`3/7`, path only) under 100. It costs\n\
+         # no row: the line under the header is the first graph row at every\n\
+         # width. There is no `[ Continue ] [ Skip ] [ Abort ]` row any more\n\
+         # — nothing answered a click on it and it cost a graph row to teach\n\
+         # three keys the hint bar already teaches (m5/16).\n\
+         #\n\
+         # The third block is the point: a long repository path no longer\n\
+         # cuts the banner. The banner's room comes out of the header first\n\
+         # and the *path* is what an `…` lands on.\n\
          \n",
     );
-    for (label, w) in [
-        ("<100 cols, 80x10", 80u16),
-        (">=100 cols, 120x10", 120),
-        (">=160 cols (buttons row), 160x10", 160),
+    let mut long_path = with_banner.clone();
+    long_path.location = Some(sanitize_line(
+        "/Users/someone/work/customers/acme/services/billing-api",
+    ));
+    for (label, w, view) in [
+        ("<100 cols, 80x10", 80u16, &with_banner),
+        (">=100 cols, 120x10", 120, &with_banner),
+        (">=160 cols, 160x10", 160, &with_banner),
+        (
+            "a long path does not cut the banner, 120x10",
+            120,
+            &long_path,
+        ),
     ] {
         out.push_str(&format!("=== {label} ===\n"));
-        for line in text(&draw(&with_banner, w, 10)) {
+        for line in text(&draw(view, w, 10)) {
             if !line.trim().is_empty() {
                 out.push_str(line.trim_end());
                 out.push('\n');

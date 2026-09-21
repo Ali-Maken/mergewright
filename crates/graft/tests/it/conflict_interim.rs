@@ -274,15 +274,21 @@ fn banner_is_modal_when_focused() {
     }
 
     // `Ctrl+C` is the one key the banner never claims (§2.1): it reaches
-    // whatever the app does with it, which is not "nothing".
+    // `is_quit` and quits, exactly as it would with no banner at all.
+    //
+    // The assertion used to be `should_quit() || confirm.is_some() ||
+    // status != Ready`, and after a conflict the status is already `Sticky`
+    // — so the third arm was true whatever `Ctrl+C` did, and a banner that
+    // swallowed it left this test green (m5-09 review, Major 4). Naming the
+    // outcome is what makes it able to fail.
     let control_c = KeyPress {
         code: KeyCode::Char('c'),
         modifiers: Modifiers::CONTROL,
     };
     let (after, _) = update(&state, AppEvent::Core(Event::Key(control_c)));
     assert!(
-        after.should_quit() || after.confirm.is_some() || !matches!(after.status, Status::Ready),
-        "Ctrl+C passed the banner and was answered: {:?}",
+        after.should_quit(),
+        "Ctrl+C must quit through the banner: {:?}",
         after.status
     );
 
@@ -826,6 +832,157 @@ fn the_footer_does_not_call_a_live_merge_interrupted() {
 }
 
 // ---------------------------------------------------------------------------
+// The banner on the drawn frame, at every width (m5/16, review C1).
+// ---------------------------------------------------------------------------
+
+/// The state the three captures are taken in: git stopped on the conflict,
+/// the changes pane open on it, and the keyboard back on the banner.
+fn stopped_with_the_pane_open(app: &App, state: AppState) -> AppState {
+    let state = stopped_on_the_conflict(app, state);
+    let state = app.key(&state, KeyCode::Tab);
+    let state = open_changes_pane(app, state);
+    tab_back_to_the_banner(app, state)
+}
+
+/// **The Critical.** A focused banner is modal — it owns the keyboard — so
+/// it must be **on the frame**, with its keys, at every width. Asserted on
+/// the drawn buffer, not on `banner_view`: the view model was right all
+/// along, and the banner was still nowhere at 80 columns, because below 100
+/// the layout goes to tabs, the pane takes the screen and the graph header
+/// went with it (`docs/shots/m5-ui-banner-conflict-80x24.txt` on `main`
+/// showed no banner at all, with `c`/`s`/`a` live and invisible).
+#[test]
+fn the_banner_and_its_keys_are_on_the_frame_at_every_width() {
+    let scratch = about_to_conflict();
+    let (app, state) = App::open(scratch.path());
+    let state = stopped_with_the_pane_open(&app, state);
+    assert!(state.banner_focus, "the banner has the keyboard");
+
+    for (columns, rows) in [(80u16, 24u16), (120, 40), (160, 48)] {
+        let drawn = frame(&state, columns, rows);
+        let at = format!("at {columns}x{rows}:\n{}", drawn.join("\n"));
+        assert!(
+            drawn.iter().any(|line| line.contains("MERGING")),
+            "the banner names the operation {at}"
+        );
+        assert!(
+            drawn.iter().any(|line| line.contains("notes.md")),
+            "and the file git stopped on {at}"
+        );
+        let hints = drawn
+            .iter()
+            .find(|line| line.contains("c continue"))
+            .unwrap_or_else(|| panic!("no line teaches `c continue` {at}"));
+        assert!(hints.contains("a abort"), "{hints:?} {at}");
+        assert!(hints.contains("⇥ graph"), "the way out {hints:?} {at}");
+        assert!(
+            hints.contains("M mergetool") && hints.contains("e edit"),
+            "two files are conflicted, so both apply {hints:?} {at}"
+        );
+    }
+    drop(state);
+    app.close();
+}
+
+/// The banner's line is **outside** the pane in the tab layout: the pane's
+/// first row is the tab strip's, and the banner is above it. Drawn inside,
+/// it would travel with whichever tab is shown — which is how it came to be
+/// invisible with the changes pane open.
+#[test]
+fn below_a_hundred_columns_the_banner_draws_above_the_tab_line() {
+    let scratch = about_to_conflict();
+    let (app, state) = App::open(scratch.path());
+    let state = stopped_with_the_pane_open(&app, state);
+
+    let drawn = frame(&state, 80, 24);
+    assert!(
+        drawn[0].contains("MERGING"),
+        "the top row is the banner's: {drawn:?}"
+    );
+    assert!(
+        drawn[1].contains("[Detail]"),
+        "the tab line sits under it: {drawn:?}"
+    );
+    assert!(
+        drawn[23].contains("c continue"),
+        "and the banner's keys are the bottom row: {drawn:?}"
+    );
+    drop(state);
+    app.close();
+}
+
+/// What the banner costs below 100 columns, stated as a number because the
+/// user judges it by eye: **two** rows while it has the keyboard, **one**
+/// while it is only drawn, **none** with no operation live.
+#[test]
+fn the_tab_layout_banner_costs_one_row_drawn_and_two_focused() {
+    let scratch = about_to_conflict();
+    let (app, state) = App::open(scratch.path());
+    let focused = stopped_with_the_pane_open(&app, state);
+
+    let mut unfocused = focused.clone();
+    unfocused.banner_focus = false;
+    let mut no_operation = unfocused.clone();
+    no_operation.in_progress = None;
+
+    let rows_of = |state: &AppState| {
+        frame(state, 80, 24)
+            .iter()
+            .filter(|line| line.contains("unmerged") || line.contains("CONFLICTS"))
+            .count()
+    };
+    // The pane's own top row, wherever it starts.
+    let pane_top = |state: &AppState| {
+        frame(state, 80, 24)
+            .iter()
+            .position(|line| line.contains("UNCOMMITTED"))
+            .expect("the pane draws its title")
+    };
+    assert_eq!(pane_top(&no_operation), 1, "tab strip, then the pane");
+    assert_eq!(pane_top(&unfocused), 2, "one row: the banner");
+    assert_eq!(pane_top(&focused), 2, "the second row is taken off the end");
+    assert!(
+        rows_of(&focused) > 0 && rows_of(&no_operation) > 0,
+        "the pane still draws its conflicts either way"
+    );
+    drop(focused);
+    app.close();
+}
+
+/// ADR-0039's doorway still rides every other context at every width. The
+/// focused banner is the one place it is not drawn, and deliberately: it is
+/// modal, so `.` opens nothing while it has the keyboard, and the doorway's
+/// promise is that what was dropped is still reachable.
+#[test]
+fn the_doorway_survives_everywhere_the_banner_does_not_own_the_keyboard() {
+    let scratch = about_to_conflict();
+    let (app, state) = App::open(scratch.path());
+    let state = stopped_with_the_pane_open(&app, state);
+
+    for (columns, rows) in [(80u16, 24u16), (120, 40), (160, 48)] {
+        let drawn = frame(&state, columns, rows);
+        assert!(
+            !drawn.iter().any(|line| line.contains(". more")),
+            "the modal banner must not offer a key it swallows, at {columns}x{rows}:\n{}",
+            drawn.join("\n")
+        );
+    }
+
+    // `Tab` hands the keyboard back, and with it the doorway.
+    let left = app.key(&state, KeyCode::Tab);
+    for (columns, rows) in [(120u16, 40u16), (160, 48)] {
+        let drawn = frame(&left, columns, rows);
+        assert!(
+            drawn.iter().any(|line| line.trim_end().ends_with(". more")),
+            "the doorway is back at {columns}x{rows}:\n{}",
+            drawn.join("\n")
+        );
+    }
+    drop(left);
+    app.close();
+}
+
+// ---------------------------------------------------------------------------
 // Piece 9: the captures. Not an assertion — the user judges these by eye
 // (CLAUDE.md rule 6).
 // ---------------------------------------------------------------------------
@@ -877,37 +1034,39 @@ fn capture_header(label: &str, columns: u16, rows: u16) -> String {
              # pty capture: the terminal is ratatui's TestBackend, so this is a\n\
              # character grid with no colour attributes in it \u{2014} CLAUDE.md rule 5,\n\
              # colour ships unverified. The scratch repository's temporary path is\n\
-             # replaced by `/code/api`; nothing else is touched.\n\
+             # set to `/code/api` **before** the frame is drawn, so the header is\n\
+             # laid out against the width a real checkout takes; nothing else is\n\
+             # touched.\n\
              #\n\
              # What right looks like:\n\
              #  - A banner above the panes reading `MERGING`, the file git stopped on\n\
-             #    (`notes.md`), and `+1 more` for the second one \u{2014} the state the\n\
-             #    repository is in, said once, at the top.\n\
+             #    (`notes.md`), and `(+1)` for the second one \u{2014} the state the\n\
+             #    repository is in, said once, at the top. Whole, at all three\n\
+             #    widths: no `\u{2026}`.\n\
+             #  - Under 100 columns the layout is tabs and the pane owns the screen,\n\
+             #    so the banner draws on its **own** row above the `Graph [Detail]`\n\
+             #    line and its keys on the bottom row. A modal that owns the\n\
+             #    keyboard has to be visible; that costs two rows of pane content\n\
+             #    here, and only while an operation is stopped.\n\
+             #  - The footer teaches the banner's own keys \u{2014} `c continue`,\n\
+             #    `a abort`, `M mergetool`, `e edit`, `\u{21e5} graph` \u{2014} and nothing else.\n\
+             #    No `<> resize` and no `. more`: the banner is modal and swallows\n\
+             #    both.\n\
              #  - The banner is drawn focused (colour, so unverified here), and the\n\
-             #    footer says nothing false about the merge: the line that used to\n\
-             #    read `an operation was interrupted` is gone \u{2014} see below.\n\
+             #    footer says nothing false about the merge: no `an operation was\n\
+             #    interrupted` line.\n\
              #  - The changes pane opens with `CONFLICTS (2)`, above `STAGED` and\n\
              #    `UNSTAGED`, and each conflicted file appears **once**: there is one\n\
              #    thing to do to it, not two.\n\
              #  - Nothing on the screen reads as an error. A stopped merge is a state\n\
              #    to finish, and the words are about what to press next.\n\
              #\n\
-             # Re-captured after piece 5 (m5/14). The `an operation was interrupted`\n\
-             # line these captures used to carry is gone: the journal now tells a\n\
-             # live entry from an interrupted one, and a merge standing right there\n\
-             # is neither announced nor drawn as torn.\n\
-             #\n\
-             # STILL WRONG, and it is **not** piece 5's \u{2014} filed by m5/14, needs\n\
-             # `graft-ui`: the hint bar does not teach the banner's keys. Every\n\
-             # entry of `graph_screen::hints::banner_list` is still\n\
-             # `HintState::Planned`, which is never drawn, and `c continue` /\n\
-             # `s skip` / `a abort` are missing from `update::keys::bound_actions`\n\
-             # \u{2014} so the pair of tests that would have caught it agree with each\n\
-             # other and pass. Group 09 bound the keys in `banner_key` without\n\
-             # flipping the table. Until that is flipped, the footer under a focused,\n\
-             # modal banner teaches `<> resize  . more` and nothing about `c` or `a`.\n\
-             # Judge the banner, the pane and the absence of the interrupted line\n\
-             # here; the hint bar is the next ticket's.\n\
+             # Re-captured for m5/16, which fixed what the last pass filed here: the\n\
+             # banner was drawn nowhere at all at 80 columns and cut to\n\
+             # `\u{26a0} MERGING \u{2014} \u{2026}` at 160, and the hint bar taught `<> resize  . more`\n\
+             # under a modal banner. Both are gone. What is **not** proven here:\n\
+             # colour (rule 5), and that the banner row reads well by eye \u{2014} that is\n\
+             # yours to judge (rule 6).\n\
              #\n\n"
     )
 }
@@ -929,6 +1088,17 @@ fn capture_banner_for_docs_shots() {
     let state = open_changes_pane(&app, state);
     let state = tab_back_to_the_banner(&app, state);
     let home = repo.display().to_string();
+    // The path is shortened **before** drawing, not after. The scratch
+    // repository lives under a ~50-character temporary path, and the header
+    // lays itself out against it: replacing the text afterwards produced a
+    // capture that showed `/code/api` beside a banner cut to `⚠ MERGING —
+    // …`, and the reader had no way to know the width had been spent on a
+    // path they could not see. Shortening the state makes the capture the
+    // frame a user with `~/code/api` actually gets (m5/16).
+    let mut state = state;
+    if let Some(facts) = state.repository.as_mut() {
+        facts.path = std::path::PathBuf::from("/code/api");
+    }
 
     for (label, columns, rows) in [
         ("80x24", 80u16, 24u16),

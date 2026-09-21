@@ -3346,8 +3346,22 @@ fn hinted_contexts() -> Vec<graft_ui::graph_screen::HintContext> {
         HintContext::PlainRow,
         HintContext::Marked(Box::new(HintContext::PlainRow)),
         HintContext::Marked(Box::new(HintContext::BranchRow { current: true })),
-        HintContext::Banner { skippable: true },
-        HintContext::Banner { skippable: false },
+        HintContext::Banner {
+            skippable: true,
+            conflicted: true,
+        },
+        HintContext::Banner {
+            skippable: false,
+            conflicted: true,
+        },
+        HintContext::Banner {
+            skippable: true,
+            conflicted: false,
+        },
+        HintContext::Banner {
+            skippable: false,
+            conflicted: false,
+        },
         HintContext::ChangesPane { unmerged: false },
         HintContext::ChangesPane { unmerged: true },
         HintContext::Journal,

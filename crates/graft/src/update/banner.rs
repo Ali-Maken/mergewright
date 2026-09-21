@@ -195,6 +195,23 @@ pub fn banner_key(
     match key.code {
         KeyCode::Tab | KeyCode::BackTab | KeyCode::Escape => {
             state.banner_focus = false;
+            // `Tab` out of the banner is the next step of the cycle, not a
+            // return ticket: the ticket's rule is graph → detail → banner →
+            // graph. Leaving `detail.focus` where it was sent `Tab` straight
+            // back into the banner from the Diff pane, so the graph was
+            // unreachable by `Tab` for as long as a banner was drawn
+            // (m5-09 review, Major 1). `BackTab` is the same cycle run
+            // backwards, so it lands on the pane the forward step came from.
+            //
+            // `Esc` is not part of the cycle — it is "leave the mode" — so
+            // it puts the keyboard back where it found it.
+            if state.detail.shown {
+                match key.code {
+                    KeyCode::Tab => state.detail.focus = graft_ui::detail::DetailFocus::Graph,
+                    KeyCode::BackTab => state.detail.focus = graft_ui::detail::DetailFocus::Diff,
+                    _ => {}
+                }
+            }
             // The line the banner put up was about the keys it just gave
             // back; leaving it would read as an error in a pane that has
             // nothing to report.
@@ -207,14 +224,18 @@ pub fn banner_key(
         }
         KeyCode::Char('s') if plain => skip_pressed(state),
         KeyCode::Char('a') if plain => abort_pressed(state),
-        KeyCode::Char('M') if plain => {
-            let path = first_conflicted(state);
-            open_mergetool(state, commands, path.as_deref());
-        }
-        KeyCode::Char('e') if plain => {
-            let path = first_conflicted(state);
-            edit_conflict(state, commands, path.as_deref());
-        }
+        KeyCode::Char('M') if plain => match first_conflicted(state) {
+            Some(path) => {
+                open_mergetool(state, commands, Some(&path));
+            }
+            None => nothing_conflicted(state),
+        },
+        KeyCode::Char('e') if plain => match first_conflicted(state) {
+            Some(path) => {
+                edit_conflict(state, commands, Some(&path));
+            }
+            None => nothing_conflicted(state),
+        },
         // Swallowed on purpose: §2.1's modal rule. Nothing outside the
         // banner is live while it has focus, so `u` cannot undo the entry
         // *before* the one still running and `S` cannot stash a tree full
@@ -222,6 +243,22 @@ pub fn banner_key(
         _ => {}
     }
     true
+}
+
+/// `M`/`e` with nothing unmerged: say so, and name the two keys that do
+/// apply.
+///
+/// The banner acts on "the first conflicted file", and a stalled
+/// `--continue` or a tree the user has just resolved has none. Both keys
+/// used to return `false` into a `banner_key` that claimed them anyway, so
+/// they read as broken (m5-09 review, Major 2). The hint bar drops them in
+/// this state too (`hints::banner_list`'s `conflicted`), so this line is
+/// what a user who learned the key elsewhere gets.
+fn nothing_conflicted(state: &mut AppState) {
+    state.status = Status::Sticky {
+        reason: "nothing conflicted".to_owned(),
+        keys: Some("c continue  a abort".to_owned()),
+    };
 }
 
 /// `c`: refuse in words while anything is unmerged, else run `--continue`.
