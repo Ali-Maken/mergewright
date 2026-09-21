@@ -81,3 +81,71 @@ pub fn history_matrix() -> Table;
 ## Size
 
 One context; the M4 walk cost one Fable run and this one has more scenarios with lighter setup each — copy the M4 split, add the claim check. Scout `tests/it/m4_walk/` helper names first (Haiku, ≤ 1 page); say so. Stop seam: after the preview + merge + rebase scenarios land with `ghost_equals_git` (pieces 1 partial, 2 partial), the rest in a handoff note; captures and the sheet last.
+
+---
+
+# CARRIED WORK — added by the conductor, 2026-09-21
+
+These accumulated across tickets 13–29 and are tagged to this group in
+`KNOWN_GAPS.md`. **Builders never read `KNOWN_GAPS.md`**, so they are copied
+here in full. Each closes when its row can be moved to `docs/gaps/closed.md`
+with evidence; report which you closed and which you did not, and why.
+
+## Captures that are stale, and must be regenerated
+
+1. **17 captures under `docs/shots/`** carry the old 7-glyph mask and a
+   one-cell shift. Ticket 23 regenerated them mid-sweep and then deliberately
+   put them back (`git show HEAD:<p> > <p>`, never `git checkout`) rather than
+   fight a concurrent rebuild. They are yours now.
+2. **Six `docs/shots/m5-ui-preview-*.txt` still say `(forecast)`.** The string
+   is gone from `update/preview.rs`; the captures predate the change.
+3. **Five `docs/shots/m2-*.txt`** are stale from hint-bar drift — and the bar
+   has changed twice more since (tickets 27, 28), so re-read them before
+   assuming the old diagnosis still describes them.
+4. **`m4-03` and `m4-04` pty captures** still show the old 7-glyph mask.
+   Regenerate with `m4_walk --capture`, then `scripts/contact-sheet.sh m4`.
+5. **The confirm section of `docs/shots/m4-credential-prompt-and-hints.txt`**
+   predates group 04's frame fix.
+
+## Two that are decisions, not regenerations
+
+6. **`docs/shots/m4-credential-prompt-in-app.txt` and the M4 contact sheet
+   print the fixture's literal password in their caption** — "with `hunter2`
+   typed". It is a test literal, never a typed secret reaching a row, so
+   ADR-0038 §2 is intact. **But this repo may be published.** Writer:
+   `crates/graft/src/view/tests.rs::capture_m4_credential_prompt_in_app`.
+   Remove the literal; do not weaken the mask.
+7. **`docs/shots/m5-ui-confirm.txt` draws its box on a blank screen** and is
+   superseded by the four `m5-ui-*-over-graph-*` files from ticket 26. Its
+   writer is `graft-ui/src/confirm.rs::capture_for_docs_shots`. **Decide:
+   delete it, or give it real content the way ticket 26 did.** Say which and
+   why.
+
+## Two stale prose items — the class this milestone kept failing
+
+8. **`crates/graft/src/update/detail/keys.rs:137-140`** still explains `M`/`e`
+   by "the diff of an unmerged file is the merge's own combined diff". That is
+   no longer the diff shown.
+9. **`crates/graft/src/jobs/askpass.rs`'s module doc** still describes the
+   pre-M5 plain-`TextField` password leak as current, and says the fix "means a
+   secret-backed field in graft-ui" — that field shipped in group 01.
+
+## One missing test
+
+10. **The banner and the CONFLICTS section have no width-bounds test.** Group
+    09 captured at 80x24, 120x40 and 160x48 but added no bounds *test*. The
+    sweep to extend is `crates/graft-ui/tests/pane_boundaries.rs` (widths
+    20..=240), beside ticket 28's border rules.
+
+## Three review Minors
+
+11. **Minors 5, 6 and 7 of `docs/reviews/m5-14-to-22-eye-check-round.md`** —
+    capture/caption fixes, explicitly deferred to the contact sheet.
+
+## NOT yours — for the record, so you do not chase it
+
+- **The real `git mergetool` hand-over has never run in a real terminal.** Unit
+  tests prove the terminal is restored around a tool that *fails*. Only the
+  user can close this, at a real terminal on a real conflict; it goes in
+  `TESTING.md`'s "Times I left" when he does. Do not fake it and do not tick
+  it.
