@@ -74,6 +74,16 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
     reading `Merge main into feature (m)` promises that `m` merges; it does,
     because the menu never took `m` away. The label teaches a shortcut that
     is live, which is the whole point of showing it.
+
+    This is one case of a rule that isn't only the menu's (extended
+    2026-09-21): **trailing parens carry a key, not a word — anywhere the
+    user might press what's inside them.** `(forecast)` is a label, not a
+    shortcut, and sat in trailing parens anyway; a user reading the preview
+    box has every reason to expect `f` does something, because that's what
+    parens mean everywhere else in Graft. Scoping the rule to the menu left
+    the next surface free to rediscover the collision on its own, which is
+    exactly how `(forecast)` got there. Fixing that label is a code change
+    (the preview box, not this doc) and isn't done by this note.
   - **`.` closes what `.` opened** (decided 2026-09-21, M5/15). `.` is the
     doorway (ADR-0039), and a key that opens a place closes it again on the
     same letter or `Esc`, exactly as `S`, `J` and `M` do. It needs saying

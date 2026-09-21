@@ -30,6 +30,7 @@ decision so the checkpoint review can push back on it specifically.
 7. [Open design questions](#7-open-design-questions)
 8. [Architecture](#8-architecture)
 9. [Proposed changes](#9-proposed-changes)
+10. [Repetition](#10-repetition)
 
 ---
 
@@ -44,4 +45,5 @@ decision so the checkpoint review can push back on it specifically.
 7. [Open design questions](07-open-design-questions.md)
 8. [Architecture](08-architecture.md)
 9. [Proposed changes](09-proposed-changes.md)
+10. [Repetition](10-repetition.md)
 

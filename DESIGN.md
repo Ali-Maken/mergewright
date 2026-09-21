@@ -29,3 +29,4 @@ document.
 7. [Open design questions](docs/design/07-open-design-questions.md)
 8. [Architecture](docs/design/08-architecture.md)
 9. [Proposed changes](docs/design/09-proposed-changes.md)
+10. [Repetition](docs/design/10-repetition.md)
