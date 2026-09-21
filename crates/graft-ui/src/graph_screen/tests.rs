@@ -1483,8 +1483,13 @@ fn capture_hint_bar_for_docs_shots() {
                  #\n\
                  # Judge by eye: the footer's last row reads the marked row's hints for\n\
                  # this width — `. explain` leads (the marker's own key), then the row's\n\
-                 # keys: three under 100 cols, six from 100, as many as fit from 160\n\
-                 # (ADR-0037 §4) — never all hidden, and never a key that does nothing.\n\
+                 # keys, filled from the most relevant end: each hint takes the best rung\n\
+                 # that still leaves room for the hints ahead of it — full, short, then\n\
+                 # bare key — taken per hint, never as a step the whole list takes\n\
+                 # together, and a hint that will not fit even at its bare key is\n\
+                 # dropped (ADR-0039's third amendment, 2026-09-21). The three most\n\
+                 # relevant never fall below their short rung, and the bar is never all\n\
+                 # hidden — never a key that does nothing.\n\
                  \n",
                 context = scenario.hint_context,
             );
