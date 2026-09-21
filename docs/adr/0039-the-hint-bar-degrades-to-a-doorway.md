@@ -78,3 +78,35 @@ the doorway being reliable — which is a far cheaper thing to guarantee.
   worth revisiting once the doorway's menu is complete: the mechanism here is the
   same one, minus the timeout. Not taken now because it advertises nothing at
   rest unless the trigger is drawn — which is the doorway again.
+
+## Amendment, 2026-09-21: a modal pane draws its own keys, not the doorway
+
+M5 ticket 16 put the operation banner above the tab line so a modal overlay is
+visible wherever it has focus. The builder then drew **no `. more`** under a
+focused banner, and asked for the deviation to be confirmed. Confirmed, and the
+reasoning belongs here rather than in a doc comment — a rule that lives only in
+code gets "fixed" by the next person who reads this ADR.
+
+**The doorway is drawn at every width in every pane, except where the pane is
+modal and its own list is complete.**
+
+Two rules meet here and the older one wins:
+
+- This ADR says the doorway is never dropped. Its **purpose** is that dropping
+  shortcuts is safe *because* the doorway recovers them.
+- `docs/design/02-keymap.md` §2.1 says a displayed key must work when pressed.
+
+A modal pane answers every key itself, `Ctrl+C` excepted — so it swallows `.`.
+Drawing `. more` there advertises a key that does nothing, which is the failure
+this project treats as worse than absence. And the doorway has no work to do:
+the focused banner's whole list fits at 80 columns, so nothing was dropped for
+it to recover.
+
+So the guarantee is unchanged in substance — **the user is never left with no
+way to see what is valid here**. Under a modal pane that promise is kept by the
+pane showing its own complete list, which is strictly better than a doorway.
+Where a list is *not* complete, the doorway returns, modal or not.
+
+This does not loosen the rule for the graph screen, the panes or the tab
+layout, where `. more` remains undroppable and is pinned by 20 tests going red
+when it is removed.
