@@ -37,9 +37,24 @@
 #  - The banner is drawn focused (colour, so unverified here), and the
 #    footer says nothing false about the merge: no `an operation was
 #    interrupted` line.
+#  - **The working-tree row counts the conflict**: it reads
+#    `Uncommitted changes (16 unmerged)`, not the `()` it read on
+#    the last pass. An unmerged path is in none of staged,
+#    unstaged and untracked, so the row drew and then counted
+#    nothing (m5/21). Unmerged leads the count when other
+#    buckets are there too.
 #  - Nothing on the screen reads as an error.
 #
-# Re-captured for m5/20, which dropped the `⚠` and the filename from
+# Re-captured for m5/21, which made the working-tree row count
+# unmerged paths and gave the changes pane a body for a
+# conflicted file (it is read against `HEAD` now; against the
+# index git answers with a combined diff and the body drew
+# nothing). The two conflicted files' object ids differ from
+# the last pass because this fixture is built at wall-clock
+# time, which is also why `main` and `feature` can swap lanes
+# between runs.
+#
+# Captured first for m5/20, which dropped the `⚠` and the filename from
 # the banner, settled the pane before the shutter, put 30 commits of
 # ordinary work and 16 conflicted files behind the frame so the
 # banner's row cost lands on content rather than on blank space, and
@@ -51,37 +66,37 @@
 #
 
  graft /code/api    MERGING
-◌     Uncommitted changes ()
-◆     [◆ main] main's take                                                                               GT now  b541fa3
-│ ● ⓘ [feature] the feature's take                                                                       GT now  eaae172
-●─╯   the shared files                                                                                   GT now  6bd4e91
-●     Ship release 29                                                                                    GT now  52c1174
-●     Ship release 28                                                                                    GT now  11ed9c6
-●     Ship release 27                                                                                    GT now  0243ace
-●     Ship release 26                                                                                    GT now  8d22c2e
-●     Ship release 25                                                                                    GT now  8fdb28e
-●     Ship release 24                                                                                    GT now  2899001
-●     Ship release 23                                                                                    GT now  ef2bac7
-●     Ship release 22                                                                                    GT now  c120ecf
-●     Ship release 21                                                                                    GT now  0c5d9c9
-●     Ship release 20                                                                                    GT now  239b010
-●     Ship release 19                                                                                    GT now  8dc6869
-●     Ship release 18                                                                                    GT now  4906c38
-●     Ship release 17                                                                                    GT now  d2f43f5
-●     Ship release 16                                                                                    GT now  151ca22
-●     Ship release 15                                                                                    GT now  ecae6c7
-●     Ship release 14                                                                                    GT now  6ca3c68
-●     Ship release 13                                                                                    GT now  dd65f89
+◌     Uncommitted changes (16 unmerged)
+◆     [◆ main] main's take                                                                               GT now  4839242
+│ ● ⓘ [feature] the feature's take                                                                       GT now  78d0f60
+●─╯   the shared files                                                                                   GT now  601d57c
+●     Ship release 29                                                                                    GT now  b89f63b
+●     Ship release 28                                                                                    GT now  6be49cf
+●     Ship release 27                                                                                    GT now  045ff39
+●     Ship release 26                                                                                    GT now  ea8c88f
+●     Ship release 25                                                                                    GT now  0b15ca7
+●     Ship release 24                                                                                    GT now  2fb83e5
+●     Ship release 23                                                                                    GT now  43c4434
+●     Ship release 22                                                                                    GT now  b43742a
+●     Ship release 21                                                                                    GT now  38a8e1d
+●     Ship release 20                                                                                    GT now  e845889
+●     Ship release 19                                                                                    GT now  7ff8474
+●     Ship release 18                                                                                    GT now  39125ac
+●     Ship release 17                                                                                    GT now  5f593c0
+●     Ship release 16                                                                                    GT now  703db5a
+●     Ship release 15                                                                                    GT now  715f662
+●     Ship release 14                                                                                    GT now  c550a10
+●     Ship release 13                                                                                    GT now  0fd4c43
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
  c continue  a abort  M mergetool  e edit  ⇥ graph
 UNCOMMITTED
-diff vs HEAD b541fa3
-CONFLICTS (16)
-  notes.md           unmerged
-  shared.rs          unmerged
-  ▾ src/
-    step_00.rs       unmerged
-    step_01.rs       unmerged
+diff vs HEAD 4839242
+CONFLICTS (16)                ▎
+  notes.md           unmerged       1 + <<<<<<< HEAD
+  shared.rs          unmerged   1   2   our plan
+  ▾ src/                            3 + =======
+    step_00.rs       unmerged       4 + their plan
+    step_01.rs       unmerged       5 + >>>>>>> feature
     step_02.rs       unmerged
     step_03.rs       unmerged
     step_04.rs       unmerged

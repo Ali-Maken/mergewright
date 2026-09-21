@@ -223,7 +223,8 @@ pub fn view_with_graphics(
         Screen::Graph => {
             let mut screen = graph_view(state, state.harness.clock.now_seconds());
             screen.icons = session.icons;
-            screen.compaction.max_lanes = max_lanes_for(state.size.columns, session.max_lanes);
+            screen.compaction.max_lanes =
+                max_lanes_for(graph_columns(state, area), session.max_lanes);
             let tier = tier_in_force(session, state);
             screen.ascii = tier == RenderingTier::Ascii;
             // Only below the terminal's own tier: `F3` clears the override
@@ -389,6 +390,38 @@ fn render_overlay_with_detail(
 /// tab strip, since only this function knows the divide between the strip
 /// and its content. `primary_label` is `"Graph"` or `"Map"`, whichever
 /// screen this frame is drawing behind the detail pane.
+/// The columns the graph screen is drawn into this frame: the whole width
+/// with no detail pane, and what the split leaves it when there is one.
+///
+/// ADR-0039's 2026-09-21 amendment, third instance (m5/21 item 4): **ask how
+/// much room this thing has, not how big the screen is.** The lane cap came
+/// off `state.size.columns`, so a graph squeezed into 67 columns beside a
+/// pane on a 160-column terminal folded at the twelve lanes of a wide screen
+/// instead of the eight its own width asks for — the breakpoints exist to
+/// keep the subject readable, and they were being read off a width the graph
+/// does not have.
+///
+/// `screen` rather than `AppState::size` so the frame passes the area it is
+/// really drawing into; the pixel tier, which has no `Frame`, passes its own
+/// screen rectangle and the two agree because the split is the same pure
+/// geometry ([`graft_ui::detail_pane::split_area`]).
+///
+/// In the `Tab` layout with the pane shown there is no graph on screen at
+/// all; the full width is answered, because nothing is drawn to be wrong.
+pub(crate) fn graph_columns(state: &AppState, screen: Rect) -> u16 {
+    if !state.detail.shown {
+        return screen.width;
+    }
+    let layout = crate::update::detail::effective_layout(
+        state.detail.focus,
+        &state.detail.pane_size,
+        (screen.width, screen.height),
+    );
+    graft_ui::detail_pane::split_area(layout, screen)
+        .0
+        .map_or(screen.width, |graph| graph.width)
+}
+
 fn split_for_detail(
     frame: &mut Frame,
     session: &Session,

@@ -39,6 +39,7 @@ pub use credential::credential_view;
 pub use detail::detail_view;
 pub(crate) use entries::uncommitted_shown;
 pub(crate) use explain::build_explain_view;
+pub(crate) use frame::graph_columns;
 pub use frame::{draws_pixels, tier_in_force, view, view_with_graphics};
 pub use journal::journal_view;
 pub use map::map_view;

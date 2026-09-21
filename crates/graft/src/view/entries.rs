@@ -1,7 +1,7 @@
 //! Building one frame's `GraphEntry` rows: the selection's thread, the
 //! uncommitted-changes row, and each history row's cells and badges.
 
-use graft_git::status::WorkingTreeCounts;
+use graft_git::status::WorkingTreeStatus;
 use graft_graph::identity::BranchIdentity;
 use graft_graph::row::Row;
 use graft_graph::{Ancestry, Kin};
@@ -70,7 +70,7 @@ pub(super) fn visible_rows<'a>(
         .flatten();
     let uncommitted = state
         .uncommitted_row_shown()
-        .then(|| state.working_tree.as_ref().map(|status| status.counts()))
+        .then_some(state.working_tree.as_deref())
         .flatten();
     // The virtual row takes one of the viewport's rows when it draws:
     // `History::visible` knows nothing about it.
@@ -84,8 +84,8 @@ pub(super) fn visible_rows<'a>(
     // `move_from_graph` never moves `History::cursor` when it sets the flag,
     // so the two would otherwise both read as "the cursor's row" at once.
     uncommitted
-        .map(|counts| {
-            let mut entry = uncommitted_entry(top_row, counts);
+        .map(|status| {
+            let mut entry = uncommitted_entry(top_row, status);
             if state.on_working_tree {
                 entry.line.paint = RowPaint::Highlighted;
             }
@@ -145,13 +145,13 @@ pub(crate) fn uncommitted_shown(state: &AppState) -> bool {
 /// occupancy `HEAD`'s row has, so the connector line reads as continuing
 /// down into it. Author, date and SHA stay blank (DESIGN.md §1.1's mockup):
 /// there is no commit behind this row to show them for.
-fn uncommitted_entry<'a>(head_row: Option<&Row>, counts: WorkingTreeCounts) -> GraphEntry<'a> {
+fn uncommitted_entry<'a>(head_row: Option<&Row>, status: &WorkingTreeStatus) -> GraphEntry<'a> {
     let mut line = GraphLine::owned(uncommitted_row(head_row));
     line.node = NodeKind::Uncommitted;
     GraphEntry {
         badges: Vec::new(),
         line,
-        subject: sanitize_line(&uncommitted_subject(counts)),
+        subject: sanitize_line(&uncommitted_subject(status)),
         author: AuthorChip {
             initials: sanitize_line(""),
             identity: BranchIdentity::of_name(b""),
@@ -204,11 +204,27 @@ pub(super) fn uncommitted_row(head_row: Option<&Row>) -> Row {
     }
 }
 
-/// The subject text the uncommitted row shows: which of staged, unstaged
-/// and untracked are non-zero, and how many of each (DESIGN.md §1.1's
-/// mockup: `"Uncommitted changes (3 staged)"`).
-fn uncommitted_subject(counts: WorkingTreeCounts) -> String {
+/// The subject text the uncommitted row shows: which of unmerged, staged,
+/// unstaged and untracked are non-zero, and how many of each (DESIGN.md
+/// §1.1's mockup: `"Uncommitted changes (3 staged)"`).
+///
+/// Built from the status itself rather than [`WorkingTreeCounts`], because
+/// that struct has three buckets and the working tree has four states: a
+/// porcelain v2 `u` record is in **none** of staged, unstaged and untracked
+/// (`WorkingTreeStatus::counts` counts only those three). The row draws
+/// whenever the status has any entry at all, so a tree holding nothing but
+/// conflicts used to draw `Uncommitted changes ()` — empty parentheses at
+/// the one moment the working tree most needs describing (m5/21).
+///
+/// Unmerged leads: during a conflict it is what the user has to act on, and
+/// it never reads as resolved — `(2 unmerged, 1 staged)` says both halves.
+fn uncommitted_subject(status: &WorkingTreeStatus) -> String {
+    let counts = status.counts();
+    let unmerged = status.entries.iter().filter(|entry| entry.unmerged).count();
     let mut parts = Vec::new();
+    if unmerged > 0 {
+        parts.push(format!("{unmerged} unmerged"));
+    }
     if counts.staged > 0 {
         parts.push(format!("{} staged", counts.staged));
     }
