@@ -23,7 +23,7 @@ use ratatui::widgets::{Clear, Widget};
 
 use crate::session::Session;
 use crate::update::remote::ESC_HINT;
-use crate::update::{AppState, Screen, Status};
+use crate::update::{AppState, GraphOverlay, Screen, Status};
 
 use super::detail::detail_view;
 use super::journal::journal_view;
@@ -215,64 +215,68 @@ pub fn view_with_graphics(
     let pixels = draws_pixels(session, state);
 
     match state.screen {
-        // The commit editor replaces the graph and leaves the detail pane
-        // alone — the rule for every M3 overlay (design note, hard choice 4).
-        // It is checked before the Map view's arm because `c` is answered
-        // wherever the cursor is, the Map view included.
-        Screen::Graph if state.commit_editor.is_some() => {
-            draw_commit_editor(session, state, frame, area)
-        }
-        Screen::Graph if state.map.shown => draw_map(session, state, frame, area),
-        Screen::Graph if state.journal.shown => draw_journal(session, state, frame, area),
-        Screen::Graph if state.stash.shown => draw_stash(session, state, frame, area),
-        // The remaining case — none of the four overlays above — is exactly
-        // `update::banner::graph_screen_on_frame`'s own condition (review
-        // M3). Stays an unguarded fall-through (Rust cannot prove a guarded
-        // arm exhaustive, so `Screen::Graph` still needs one), but the
-        // agreement is checked rather than assumed: a fifth overlay added to
-        // the guards above and forgotten in that function would flip this
-        // `debug_assert!` in every dev build and test, not drift apart
-        // unnoticed.
-        Screen::Graph => {
-            debug_assert!(
-                crate::update::banner::graph_screen_on_frame(state),
-                "the match above took none of the four overlay arms, so \
+        // Which overlay stands where the graph would be is asked once, of
+        // `AppState::graph_overlay`, and `update::banner::graph_screen_on_frame`
+        // asks the same function (review M3, m5/31). The two cannot drift:
+        // a fifth overlay is a fifth variant and this match stops compiling
+        // until it is drawn, while the banner's condition is that function
+        // and needs no edit at all.
+        Screen::Graph => match state.graph_overlay() {
+            // The commit editor replaces the graph and leaves the detail
+            // pane alone — the rule for every M3 overlay (design note, hard
+            // choice 4). It comes before the Map view because `c` is
+            // answered wherever the cursor is, the Map view included;
+            // `AppState::graph_overlay` holds that order.
+            Some(GraphOverlay::CommitEditor) => draw_commit_editor(session, state, frame, area),
+            Some(GraphOverlay::Map) => draw_map(session, state, frame, area),
+            Some(GraphOverlay::Journal) => draw_journal(session, state, frame, area),
+            Some(GraphOverlay::Stash) => draw_stash(session, state, frame, area),
+            None => {
+                // Kept from the guard this replaced, and now covering the one
+                // direction left: that `graph_screen_on_frame` still *is* this
+                // function rather than a hand-written condition beside it. It
+                // fires in every dev build and test if someone spells the
+                // overlays out there again.
+                debug_assert!(
+                    crate::update::banner::graph_screen_on_frame(state),
+                    "no overlay stands where the graph would be, so \
                  `graph_screen_on_frame` must agree that the graph itself is drawn"
-            );
-            let mut screen = graph_view(state, state.harness.clock.now_seconds());
-            screen.icons = session.icons;
-            screen.compaction.max_lanes =
-                max_lanes_for(graph_columns(state, area), session.max_lanes);
-            let tier = tier_in_force(session, state);
-            screen.ascii = tier == RenderingTier::Ascii;
-            // Only below the terminal's own tier: `F3` clears the override
-            // when it cycles back to the top (m1-the-graph/33).
-            screen.notice = footer_notice(state, tier);
-            screen.banner = banner_lines(state, tier);
-            screen.pixel = pixels;
-            screen.graphics = pixels.then(|| graphics.clone());
+                );
+                let mut screen = graph_view(state, state.harness.clock.now_seconds());
+                screen.icons = session.icons;
+                screen.compaction.max_lanes =
+                    max_lanes_for(graph_columns(state, area), session.max_lanes);
+                let tier = tier_in_force(session, state);
+                screen.ascii = tier == RenderingTier::Ascii;
+                // Only below the terminal's own tier: `F3` clears the override
+                // when it cycles back to the top (m1-the-graph/33).
+                screen.notice = footer_notice(state, tier);
+                screen.banner = banner_lines(state, tier);
+                screen.pixel = pixels;
+                screen.graphics = pixels.then(|| graphics.clone());
 
-            let marks = state.strip_shown.then(|| super::strip::strip_marks(state));
-            let strip = marks.as_ref().map(|marks| (marks, screen.ascii));
+                let marks = state.strip_shown.then(|| super::strip::strip_marks(state));
+                let strip = marks.as_ref().map(|marks| (marks, screen.ascii));
 
-            let graph = if state.detail.shown {
-                render_graph_with_detail(session, state, frame, &screen, area, pixels, strip)
-            } else {
-                render_graph_screen(frame, &session.theme, &screen, area, pixels, strip)
-            };
-            draw_preview(state, frame, area, &session.theme);
-            draw_context_menu(state, frame, area, &session.theme);
-            draw_confirm(
-                state,
-                frame,
-                area,
-                &session.theme,
-                &row_columns(session, state, &screen, area),
-            );
-            draw_name_prompt(state, frame, area, session);
-            draw_credential(state, frame, area, session);
-            graph
-        }
+                let graph = if state.detail.shown {
+                    render_graph_with_detail(session, state, frame, &screen, area, pixels, strip)
+                } else {
+                    render_graph_screen(frame, &session.theme, &screen, area, pixels, strip)
+                };
+                draw_preview(state, frame, area, &session.theme);
+                draw_context_menu(state, frame, area, &session.theme);
+                draw_confirm(
+                    state,
+                    frame,
+                    area,
+                    &session.theme,
+                    &row_columns(session, state, &screen, area),
+                );
+                draw_name_prompt(state, frame, area, session);
+                draw_credential(state, frame, area, session);
+                graph
+            }
+        },
         Screen::Status => {
             let screen = status_view(session, state);
             frame.render_widget(StatusScreen::new(&screen, &session.theme), area);

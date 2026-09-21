@@ -10,8 +10,6 @@ use graft_core::event::{KeyCode, KeyPress};
 use graft_core::job::JobId;
 use graft_core::journal::OperationKind;
 
-use graft_ui::detail::DetailFocus;
-
 use super::detail::Loading;
 use super::events::{Command, Product};
 use super::state::AppState;
@@ -181,7 +179,7 @@ pub(super) fn journal_key(
     if next.journal.shown {
         return shown_key(next, commands, key, next_id);
     }
-    if key.code == KeyCode::Char('J') && next.detail.focus == DetailFocus::Graph {
+    if key.code == KeyCode::Char('J') && next.graph_has_focus() {
         next.journal.shown = true;
         next.journal.selected = 0;
         next.journal.expanded = None;

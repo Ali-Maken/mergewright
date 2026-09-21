@@ -670,7 +670,7 @@ fn did_the_verb(verb: &str, key: &str, before: &AppState, after: &AppState, comm
 /// against what `banner_key` *does with that key*, by pressing it.
 ///
 /// The two tests written to catch the dead banner hints
-/// (`update::tests::every_hinted_key_is_bound` and
+/// (`update::tests::every_key_the_bar_draws_is_answered` and
 /// `every_planned_hint_is_still_unbound`) compare the hint table with
 /// `keys::bound_actions` — another table. Group 09 bound `c`/`s`/`a` in
 /// `banner_key` and flipped neither, so both tables were wrong in the same

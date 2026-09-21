@@ -412,6 +412,12 @@ fn capture_hint_bar_for_docs_shots() {
     let plain = app.key(&tip, KeyCode::Char('j'));
     let uncommitted = app.key(&tip, KeyCode::Char('k'));
     let pane = changes_pane(&app, opened_state);
+    // The pane open on the tip with its **diff** focused: `⏎` has nothing
+    // left to open there and `S`, `J`, `M`, `O` need the graph to have the
+    // keyboard, so none of the five is drawn (m5/31).
+    let detail = app.key(&tip, KeyCode::Enter);
+    let detail = app.pump(detail, "the tip's detail", |state| state.detail.shown);
+    let detail = app.key(&detail, KeyCode::Enter);
     // The scratch repository lives under a different temporary directory
     // every run, and the header row draws its path: replaced so that
     // regenerating the captures shows only what actually changed.
@@ -433,6 +439,11 @@ fn capture_hint_bar_for_docs_shots() {
             "changes",
             &pane,
             "the changes pane is open on the working tree",
+        ),
+        (
+            "detail",
+            &detail,
+            "the pane is open on the tip with its diff focused: at 80 the              Detail tab owns the screen, wider it sits beside the graph",
         ),
     ] {
         for (label, columns, rows) in [
@@ -485,9 +496,11 @@ fn capture_hint_bar_for_docs_shots() {
                  # key: `m merge`, `r rebase` and `S stash` are the three to watch. A\n\
                  # squeezed `S stsh` anywhere in these captures is a bug.\n\
                  #\n\
-                 # Floor: the three most relevant never fall below their short rung, the\n\
-                 # bar is never all hidden, never fewer than three hints, never a key\n\
-                 # that does nothing, and `.` leads to everything the width dropped. The\n\
+                 # Floor: the three most relevant never fall below their floor rung,\n\
+                 # which is their short rung where the table above names one and their\n\
+                 # full verb where it does not. The bar is never all hidden, never fewer\n\
+                 # than three hints, never a key that does nothing, and `.` leads to\n\
+                 # everything the width dropped. The\n\
                  # room is counted off the bar's own width, not the screen's, so a\n\
                  # 160-column frame with the pane beside it fills the ~92 cells the bar\n\
                  # is left rather than falling back to three.\n\
@@ -536,4 +549,59 @@ const MISSING_BAR: &str = "#\n\
 
 fn write(path: &Path, text: &str) {
     std::fs::write(path, text).unwrap_or_else(|why| panic!("writing {}: {why}", path.display()));
+}
+
+/// **The Detail tab draws no key the focused pane refuses** (m5/31, review
+/// Q2). Two presses of `⏎` from a fresh screen: the first opens the pane on
+/// the tip, the second moves focus from the file list to the diff — and
+/// there `detail::keys::enter_opens` is false, so `⏎` is consumed and does
+/// nothing. The bar drew `⏎ open` anyway until this ticket.
+///
+/// Before the fix, at 80 columns, the bar read
+/// `⏎ open  c commit  P push  . more  p  f  b  t  u  S  J  /  q  F2  F3  x  +  j/k  space`;
+/// the four keys that need the graph to have the keyboard (`S`, `J`, `M`,
+/// `O`) were dead there too. The doorway stays: `.` still leads to
+/// everything hidden, which is what makes filtering honest (ADR-0039).
+#[test]
+fn the_detail_tab_hides_the_keys_a_focused_pane_does_not_answer() {
+    let scratch = repo();
+    let (app, state) = App::open(scratch.path());
+    let state = opened(&app, state);
+
+    // The graph's own row, where `⏎ open` is the key that opens the pane.
+    let on_the_graph = hint_bar(&state, 80, 24).expect("the graph row draws a bar");
+    assert!(
+        on_the_graph.contains("⏎ open"),
+        "the filter must not reach the row that answers `⏎`: {on_the_graph:?}"
+    );
+
+    let pane = app.key(&state, KeyCode::Enter);
+    let pane = app.pump(pane, "the tip's detail", |state| state.detail.shown);
+    let diff = app.key(&pane, KeyCode::Enter);
+    assert_eq!(
+        diff.detail.focus,
+        graft_ui::detail::DetailFocus::Diff,
+        "the second `⏎` moves focus to the diff"
+    );
+
+    let bar = hint_bar(&diff, 80, 24).expect("the Detail tab draws a bar");
+    assert_eq!(
+        bar, " c commit  P push  p pull  . more  f  b  t  u  /  q  F2  F3  x  +  j/k  space  1",
+        "the bar after the filter, quoted so the change is legible in review"
+    );
+    assert!(
+        !bar.contains('⏎'),
+        "`⏎` is consumed and does nothing with the diff focused: {bar:?}"
+    );
+    for dead in ["S", "J", "M", "O"] {
+        assert!(
+            !bar.split_whitespace().any(|word| word == dead),
+            "`{dead}` needs the graph to have the keyboard: {bar:?}"
+        );
+    }
+    assert!(
+        bar.contains(". more"),
+        "the doorway is never dropped, so nothing filtered is lost: {bar:?}"
+    );
+    app.close();
 }

@@ -5,7 +5,7 @@
 //! best of its three rungs — `c commit` → `c cmt` → `c` — that still leaves
 //! room for the hints ahead of it ([`ladder`], ADR-0039's third amendment).
 //! Never all hidden, never a hint cut in half, and never below the three
-//! most relevant at their short rung (ADR-0037 §4).
+//! most relevant at their **floor rung** (ADR-0037 §4).
 //!
 //! Replaces the old fixed nineteen-entry list (`crates/graft-ui/MAP.md`'s
 //! `graph_screen` entry: 144/155-column thresholds): that list answered
@@ -25,7 +25,8 @@
 //! [`HintState::Planned`] hints are dropped before the width rule
 //! runs, so the bar never teaches a key that does nothing (m5-03 review,
 //! Critical 2). `graft` proves both halves —
-//! `update::tests::every_hinted_key_is_bound` (Live ⇒ bound, key *and* verb)
+//! `update::tests::every_key_the_bar_draws_is_answered` (Live ⇒ bound, key
+//! *and* verb, **and answered in the state the bar is drawn in**)
 //! and `update::tests::every_planned_hint_is_still_unbound` (Planned ⇒ not
 //! bound, so binding one fails the build until the table is flipped).
 
@@ -73,7 +74,7 @@ pub struct Hint {
     /// The rung [`hints_for`] drew it at. Every table entry is [`Rung::Full`];
     /// only the width rule steps one down, so `verb` always names the whole
     /// verb whatever the rung (which is what `graft`'s
-    /// `update::tests::every_hinted_key_is_bound` compares against the
+    /// `update::tests::every_key_the_bar_draws_is_answered` compares against the
     /// keymap).
     pub rung: Rung,
 }
@@ -126,6 +127,13 @@ impl Hint {
 /// The user's short-form table, restated 2026-09-21 (m5/27, correcting
 /// m5/24): **the short form is a prefix of the full label, or there is no
 /// short form.**
+///
+/// This table is also what the floor is measured against. **A hint's floor
+/// rung is its short rung where this table names one, and its full verb
+/// where it does not** ([`Hint::floor_rung`]) — so since m5/27 deleted
+/// thirteen short forms, "the three most relevant at their short rung" is
+/// no longer the floor for most verbs, and the prose says *floor rung*
+/// where it means the floor.
 ///
 /// Three kinds were on the table before this pass, and only one survives:
 ///
@@ -258,6 +266,34 @@ pub enum HintContext {
     /// The gesture ends with the button, not a key, so the bar says what
     /// the pointer must do and which key backs out.
     Dragging,
+    /// The cursor row's own context, drawn while the **detail pane has the
+    /// keyboard and nothing left to open** — the same list, minus `⏎`.
+    ///
+    /// A filter, not a list of its own: no key is invented here and none is
+    /// bound (`docs/design/02-keymap.md` governs binding; hiding a key it
+    /// already names needs no allocation). `. more` still leads to every
+    /// verb the width dropped, so the key is one press away rather than
+    /// gone.
+    ///
+    /// Five keys go. Four are the graph screen's own doors — `S` stash,
+    /// `J` journal, `M` map, `O` overview — and every one of them is
+    /// guarded on the graph having the keyboard, so every one of them does
+    /// nothing while the pane has it (`graft::update::stash::stash_key`,
+    /// `journal::journal_key`, `map::map_key`, `strip::strip_key`, all
+    /// reading `AppState::graph_has_focus`). The fifth is `⏎`, which is
+    /// what opened the pane: with the diff focused there is nothing left
+    /// for it to open and it is consumed doing nothing
+    /// (`graft::update::detail::keys::enter_opens`, the same function this
+    /// wrapper's `opens` is set from) — the bar was teaching it at 80
+    /// columns on the Detail tab, where the pane draws the only bar there
+    /// is (m5/29), and beside the graph above 100 (m5 review Q2, m5/31).
+    PaneFocused {
+        /// The cursor row's own context, whose list this filters.
+        row: Box<HintContext>,
+        /// `⏎` still opens something: the files list has focus, so it opens
+        /// the diff. `false` with the diff already focused.
+        opens: bool,
+    },
 }
 
 /// The hints for `context` that fit in `columns` cells: **as many whole
@@ -290,8 +326,19 @@ pub enum HintContext {
 /// whole at 80 columns, so nothing is dropped and nothing needs a doorway.
 #[must_use]
 pub fn hints_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<Hint> {
+    let (list, trailer) = whole_bar(context, divider);
+    fit_list(&list, trailer, columns)
+}
+
+/// The bar `context` would draw on a row with no end to it, and the doorway
+/// that leads whatever the width drops. [`hints_for`] is this plus the width
+/// rule — the split exists so that a context which *filters* another
+/// ([`HintContext::PaneFocused`]) can take the whole list away and hand back
+/// less **before** the ladder runs. Filtering after it would leave a gap in
+/// a row the ladder had already fitted.
+fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint>) {
     match context {
-        HintContext::Preview => Vec::new(),
+        HintContext::Preview => (Vec::new(), None),
         // No width tier for the banner: every key it answers draws while
         // the width allows it, `⇥ graph` — the way out of the mode —
         // included. Three keys at 80 columns would have hidden the exit of
@@ -300,20 +347,66 @@ pub fn hints_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<H
         // A drag takes no doorway either, and for the banner's reason: `.`
         // does not open the menu while a badge is in the air, it cancels the
         // drag. Two hints fit at every width the app draws at.
-        HintContext::Banner { .. } | HintContext::Dragging => {
-            fit_list(&drawable(context, divider), None, columns)
-        }
+        // The banner, a badge in the air and the two overlays are all
+        // modal: each swallows every key but its own, so `.` opens no menu
+        // and `<>` moves no divider while it has focus (`banner_key`,
+        // `drag_key`, `journal::shown_key` and `stash::shown_key`, whose
+        // catch-all arms return "claimed"). ADR-0039's doorway is a promise
+        // that what the width dropped is still reachable; under a modal
+        // that reaches nothing it would be the dead key the ADR's own first
+        // condition rules out (its first amendment, extended to the
+        // overlays in m5/31 — the sweep pressed `.` in the journal and
+        // nothing happened).
+        HintContext::Banner { .. }
+        | HintContext::Dragging
+        | HintContext::Journal
+        | HintContext::Stash => (drawable(context, divider), None),
         HintContext::Marked(inner) => {
             // `.` is already on screen as `. explain`, so no `. more`; it
             // is prepended before fitting and not after, because a list
             // fitted first and prepended to second overflows by one hint.
             let mut list = vec![EXPLAIN];
             list.extend(drawable(inner, divider));
-            fit_list(&list, None, columns)
+            (list, None)
         }
-        _ => fit_list(&drawable(context, divider), Some(MORE), columns),
+        // The inner context's own bar, minus the key the focused pane has
+        // nothing left to do with. Nothing else changes: every other key on
+        // a row context is still answered with the pane up — the graph's
+        // own keys fall through to it, and the pane answers the motions
+        // itself (m5/31).
+        HintContext::PaneFocused { row, opens } => {
+            let (list, trailer) = whole_bar(row, divider);
+            let list = list
+                .into_iter()
+                .filter(|hint| !GRAPH_ONLY.contains(&hint.key) && (*opens || hint.key != ENTER))
+                .collect();
+            (list, trailer)
+        }
+        HintContext::WorkingTreeRow
+        | HintContext::BranchRow { .. }
+        | HintContext::PlainRow
+        | HintContext::ChangesPane { .. } => (drawable(context, divider), Some(MORE)),
     }
 }
+
+/// `Enter`, as every table spells it. Named because
+/// [`HintContext::PaneFocused`] filters on it.
+const ENTER: &str = "⏎";
+
+/// The keys only the graph screen answers: each opens something that stands
+/// *where the graph stands*, and each is guarded on the graph having the
+/// keyboard, so each does nothing while the detail pane has it
+/// (`graft::update::state::AppState::graph_has_focus`, the one function all
+/// four handlers read).
+const GRAPH_ONLY: [&str; 4] = ["S", "J", "M", "O"];
+
+/// The keys that need a commit under the cursor, and so do nothing on the
+/// uncommitted-changes row: `y` copies a sha there is none of and `x` marks
+/// a compare base there is no oid for. Both return at their first line on
+/// that row (`graft::update::keys::copy_selected_sha`,
+/// `toggle_compare_selected`), which the design note already said and the
+/// bar drew anyway (m5/31).
+const NEEDS_A_COMMIT: [&str; 2] = ["y", "x"];
 
 /// Every hint the footer could draw for `context`, in priority order, with
 /// the ones nothing has built yet already dropped: the context's own keys,
@@ -335,7 +428,13 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
         .filter(|hint| hint.state == HintState::Live)
         .collect();
     if divider == Divider::Shown
-        && !matches!(context, HintContext::Banner { .. } | HintContext::Dragging)
+        && !matches!(
+            context,
+            HintContext::Banner { .. }
+                | HintContext::Dragging
+                | HintContext::Journal
+                | HintContext::Stash
+        )
     {
         // Fourth, not last: appended, it sat behind ten context keys and the
         // six-hint tier never reached it, so the hint existed and was never
@@ -351,8 +450,10 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
         HintContext::WorkingTreeRow | HintContext::BranchRow { .. } | HintContext::PlainRow
     );
     if rows {
+        let commits = *context != HintContext::WorkingTreeRow;
         for extra in TAIL {
-            if !list.iter().any(|hint| hint.key == extra.key) {
+            let dead = !commits && NEEDS_A_COMMIT.contains(&extra.key);
+            if !dead && !list.iter().any(|hint| hint.key == extra.key) {
                 list.push(extra);
             }
         }
@@ -380,9 +481,9 @@ enum Step {
 ///
 /// Read as an order of steps that is the same at every width:
 ///
-/// 1. the floor (ADR-0037 §4) — the three most relevant, at their **short**
-///    rung, plus the doorway. Not a step: drawn whatever the width, because
-///    "never all hidden" outranks fitting;
+/// 1. the floor (ADR-0037 §4) — the three most relevant, at their **floor
+///    rung**, plus the doorway. Not a step: drawn whatever the width,
+///    because "never all hidden" outranks fitting;
 /// 2. those three to their full verbs. The leading verbs are the ones worth
 ///    the most cells, and they go first so that 80 columns still reads
 ///    `⏎ open  c commit  y sha` and not three abbreviations;
@@ -391,7 +492,7 @@ enum Step {
 ///    present — that is the "leaves room for the hints ahead of it" clause,
 ///    and it is what makes the tail of bare keys exist at all;
 /// 4. those tail hints raised, one at a time from the most relevant end,
-///    short rung then full.
+///    short rung then full (the two the ladder can raise to).
 ///
 /// The list-wide version of this — every hint stepping down a rung together
 /// — was built, measured and reverted: a row context is 22 hints, so below
@@ -420,7 +521,7 @@ fn ladder(list: &[Hint], floor: usize) -> Vec<Step> {
 /// (`. more`, unless the caller has already shown `.`).
 ///
 /// Never fewer than three hints (or `list.len()` if it is shorter) and never
-/// below their short rung — ADR-0037 §4's floor, the only number in the
+/// below their floor rung — ADR-0037 §4's floor, the only number in the
 /// rule. Below that room [`below_the_floor`] takes over: the bar collapses
 /// to the doorway hint alone, shrunk rung by rung until it fits, or to
 /// nothing — never a bar the footer has to cut, which is the one outcome
@@ -545,10 +646,12 @@ fn context_list(context: &HintContext) -> Vec<Hint> {
         // Nothing else is offered because nothing else acts — every other
         // key cancels the drag and then means what it always means.
         HintContext::Dragging => vec![hint("release", "drop on a row"), hint("esc", "cancel")],
-        // Both are answered in `hints_for` before this is reached; a
+        // All three are answered in `whole_bar` before this is reached; a
         // `RowContext` sub-enum would say so in the type, at the cost of
         // wrapping every row context at every call site.
-        HintContext::Marked(_) | HintContext::Preview => Vec::new(),
+        HintContext::Marked(_) | HintContext::PaneFocused { .. } | HintContext::Preview => {
+            Vec::new()
+        }
     }
 }
 
@@ -695,13 +798,23 @@ fn changes_pane_list(unmerged: bool) -> Vec<Hint> {
     }
 }
 
-/// Every hint in every context's table, planned ones included, deduped by
-/// `(key, verb, state)` — what `graft`'s guard tests walk so that neither
-/// half of the table can drift from what the app binds.
+/// **Every context the footer can be put in**, every field combination, each
+/// row context also wrapped in [`HintContext::Marked`]. The one enumeration
+/// every sweep reads — `graft-ui`'s own hint tests, [`every_hint`] and
+/// `graft`'s key sweeps.
+///
+/// It exists because three hand-written copies of this list drifted:
+/// [`HintContext::Dragging`] was added in m5/10 and only *one* of them
+/// gained it, so the drag's bar went two tickets without a sweep over it.
+///
+/// [`marked_form`] is the guard: it matches `HintContext` **exhaustively**,
+/// so a variant added to the enum stops this crate compiling until it is
+/// given a row there, one line from the list below. That is as far as the
+/// compiler can carry it — writing the variant into the list is still a
+/// human's job, which is why the two sit together.
 #[must_use]
-pub fn every_hint() -> Vec<Hint> {
-    let mut all = Vec::new();
-    let contexts = [
+pub fn every_context() -> Vec<HintContext> {
+    let plain = [
         HintContext::WorkingTreeRow,
         HintContext::BranchRow { current: false },
         HintContext::BranchRow { current: true },
@@ -722,13 +835,84 @@ pub fn every_hint() -> Vec<Hint> {
             skippable: false,
             conflicted: false,
         },
+        HintContext::Preview,
         HintContext::ChangesPane { unmerged: false },
         HintContext::ChangesPane { unmerged: true },
         HintContext::Journal,
         HintContext::Stash,
         HintContext::Dragging,
     ];
-    for context in contexts {
+    let mut all: Vec<HintContext> = plain.to_vec();
+    all.extend(plain.iter().filter_map(marked_form));
+    let rows: Vec<HintContext> = all.iter().flat_map(pane_focused_form).collect();
+    all.extend(rows);
+    all
+}
+
+/// `context` wrapped in [`HintContext::Marked`], for the contexts a Mistake
+/// Radar marker can actually reach — the cursor's own row, once
+/// `graft::view::rows::hint_context` has ruled out the working tree, the
+/// changes pane and a drag in the air. Everything else has no cursor row to
+/// carry a marker.
+///
+/// Exhaustive on purpose: see [`every_context`].
+fn marked_form(context: &HintContext) -> Option<HintContext> {
+    match context {
+        HintContext::BranchRow { .. } | HintContext::PlainRow => {
+            Some(HintContext::Marked(Box::new(context.clone())))
+        }
+        HintContext::WorkingTreeRow
+        | HintContext::Banner { .. }
+        | HintContext::Preview
+        | HintContext::ChangesPane { .. }
+        | HintContext::Journal
+        | HintContext::Stash
+        | HintContext::Dragging
+        | HintContext::Marked(_)
+        | HintContext::PaneFocused { .. } => None,
+    }
+}
+
+/// `context` wrapped in [`HintContext::PaneFocused`], for the contexts
+/// `graft::view::rows::hint_context` can reach with the pane focused and
+/// `⏎` spent — a cursor row, marked or not.
+///
+/// Not the working-tree row: a pane open on *it* is the changes pane, so
+/// the classifier answers `ChangesPane` long before it looks at the cursor
+/// row. Not the changes pane, the overlays or the banner either — none of
+/// their lists has an `⏎` this could take, and wrapping a list to change
+/// nothing would be a context nobody can tell from the one inside it.
+///
+/// Exhaustive on purpose: see [`every_context`].
+fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
+    match context {
+        HintContext::BranchRow { .. } | HintContext::PlainRow | HintContext::Marked(_) => {
+            [true, false]
+                .into_iter()
+                .map(|opens| HintContext::PaneFocused {
+                    row: Box::new(context.clone()),
+                    opens,
+                })
+                .collect()
+        }
+        HintContext::WorkingTreeRow
+        | HintContext::Banner { .. }
+        | HintContext::Preview
+        | HintContext::ChangesPane { .. }
+        | HintContext::Journal
+        | HintContext::Stash
+        | HintContext::Dragging
+        | HintContext::PaneFocused { .. } => Vec::new(),
+    }
+}
+
+/// Every hint in every context's table, planned ones included, deduped by
+/// `(key, verb, state)` — what `graft`'s guard tests walk so that neither
+/// half of the table can drift from what the app binds.
+#[must_use]
+pub fn every_hint() -> Vec<Hint> {
+    let mut all = Vec::new();
+    for context in every_context() {
         all.extend(context_list(&context));
     }
     all.extend(TAIL);

@@ -1209,12 +1209,17 @@ fn the_doorway_survives_everywhere_the_banner_does_not_own_the_keyboard() {
         );
     }
 
-    // `Tab` hands the keyboard back, and with it the doorway.
+    // `Tab` hands the keyboard back, and with it the doorway. Present, not
+    // last: the keyboard goes to the *graph*, whose bar has a tail of bare
+    // keys, and since m5/28 the doorway leads that tail rather than
+    // trailing the row (ADR-0039, one rule for both layouts). Before m5/31
+    // this bar was the changes pane's — which the graph having focus makes
+    // wrong, since `changes_pane_write_key` answers none of its keys then.
     let left = app.key(&state, KeyCode::Tab);
     for (columns, rows) in [(120u16, 40u16), (160, 48)] {
         let drawn = frame(&left, columns, rows);
         assert!(
-            drawn.iter().any(|line| line.trim_end().ends_with(". more")),
+            drawn.iter().any(|line| line.contains(". more")),
             "the doorway is back at {columns}x{rows}:\n{}",
             drawn.join("\n")
         );

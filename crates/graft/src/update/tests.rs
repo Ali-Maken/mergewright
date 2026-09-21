@@ -20,7 +20,7 @@ use crate::history::{
 };
 use crate::repository::{Head, RepositoryFacts};
 use crate::search::{Search, SearchState};
-use graft_ui::graph_screen::{CommitGraphLine, OrderNotice};
+use graft_ui::graph_screen::{CommitGraphLine, Divider, HintContext, OrderNotice};
 
 fn identity() -> Identity {
     Identity {
@@ -3259,33 +3259,653 @@ fn stale_remotes_dropped() {
     assert_eq!(next.remote.reading, None);
 }
 
-/// Every hint the footer actually draws names a key **and a verb** this
-/// build binds (`keys::bound_actions`), in every context, at every width,
-/// with and without a detail pane. No exemptions: the earlier version of
-/// this test carved out `m`/`r`/`b`/`t`/`s`/`a` and compared keys only, so
-/// `M mergetool` (the Map key) and `space resolved` (refused on an unmerged
-/// file) both passed while doing nothing (m5-03 review, Critical 2, Major
-/// 6). A key the design names but no group has built is `HintState::Planned`
-/// in the hint table and is never drawn, which is what makes the carve-out
-/// unnecessary.
+/// **Every key the bar draws, in any context, at any width, is answered by
+/// the handler that has focus in that state** (m5/31). The invariant three
+/// of this milestone's defects fell through, in one sweep.
+///
+/// It grew out of `every_hinted_key_is_bound`, whose narrower question —
+/// is this `(key, verb)` in `keys::bound_actions`? — is still asked in the
+/// same loop, because the table is what ties a key to the **verb** the hint
+/// names: `M` is bound, but to the Map view, so a hint reading
+/// `M mergetool` is as dead as one on an unbound key (m5-03 review,
+/// Critical 2). Its earlier version carved out `m`/`r`/`b`/`t`/`s`/`a` and
+/// compared keys only; there are no exemptions now, because a key the
+/// design names but no group has built is `HintState::Planned` and is never
+/// drawn.
+///
+/// What that table cannot say is **where** a binding is live, and `⏎ open`
+/// went straight through the hole: `Enter` is bound, and with the detail
+/// pane open on its diff it was consumed and did nothing while the bar
+/// still advertised it (m5 review, Q2). So every hint is also **pressed**,
+/// into a state that really is the screen its bar is drawn on.
+///
+/// **"Answered", without a second table of effects.** Each key is pressed
+/// twice over: once as itself, once as [`INERT`] — a key nothing binds.
+/// Whatever the state does on any event at all (the evil-merge probe
+/// re-asking for rows, a job taking an id) happens under both, so a key is
+/// answered exactly when what comes back differs from the inert press.
+/// Nothing here states what a key *should* do, so there is no second table
+/// to drift out of step with the first.
+///
+/// **Enumerated, not sampled.** The contexts come from
+/// `graph_screen::every_context`, the one list every sweep now reads, and
+/// [`state_for`] matches it exhaustively — a context added to the enum
+/// cannot compile until it has been given a state here.
+/// [`every_swept_state_is_the_context_it_claims`] then makes the app's own
+/// classifier confirm each state, so a fixture cannot quietly be a
+/// different screen from the one whose bar is being checked.
+///
+/// **A hint naming two keys** (`j/k`, `<>`) is answered when *either* acts:
+/// `k` on the top row has nowhere to go, and a boundary is not a dead key.
 #[test]
-fn every_hinted_key_is_bound() {
-    use graft_ui::graph_screen::{Divider, hints_for};
+fn every_key_the_bar_draws_is_answered() {
+    use graft_ui::graph_screen::{Divider, every_context, hints_for};
 
     let bound = super::keys::bound_actions();
-    for context in hinted_contexts() {
+    // Collected rather than asserted one at a time: when the bar and the
+    // handlers disagree they tend to disagree in several places at once,
+    // and a run that names one of them hides the shape of it.
+    let mut dead: Vec<String> = Vec::new();
+    for context in every_context() {
         for divider in [Divider::Shown, Divider::Hidden] {
-            for columns in [40, 80, 100, 120, 160, 200] {
-                for hint in hints_for(&context, divider, columns) {
-                    assert!(
-                        bound.contains(&(hint.key, hint.verb)),
-                        "{context:?} at {columns} columns hints `{} {}`, which nothing binds",
-                        hint.key,
-                        hint.verb
-                    );
+            let state = settled(state_for(&context, divider));
+            // Both bars this state can be under: the one the enum names,
+            // and the one `view::rows` actually asks for when handed the
+            // state (they differ only in row decoration, but a classifier
+            // that reads the state wrongly is exactly how a live key and a
+            // drawn key come apart — so the keys it picks are pressed too).
+            let mut drawn = vec![context.clone()];
+            if classified_form(&context).is_some() {
+                let banner = crate::update::banner::banner_view(&state);
+                let asked = crate::view::rows::footer_context(&state, &[], banner.as_ref());
+                if asked != context {
+                    drawn.push(asked);
+                }
+            }
+            let idle = nothing_happened(&state);
+            // Any key at all ends a drag: `update::drag::drag_key` takes
+            // `state.drag` before it reads the key. So while a badge is in
+            // the air the inert key moves the state too and no press can be
+            // told from another; the sweep says which states it is blind in
+            // rather than reading every key there as answered by accident.
+            let blind = idle.0 != state;
+            assert!(
+                !blind || state.drag.is_some(),
+                "{context:?} ({divider:?}): a key nothing binds moved the state, and not by \
+                 dropping a dragged badge — every key here now reads as answered whether it \
+                 is or not"
+            );
+            let mut pressed: Vec<(&str, &str)> = Vec::new();
+            for bar in &drawn {
+                for columns in [40, 80, 100, 120, 160, 200] {
+                    for hint in hints_for(bar, divider, columns) {
+                        assert!(
+                            bound.contains(&(hint.key, hint.verb)),
+                            "{bar:?} at {columns} columns hints `{} {}`, which nothing binds",
+                            hint.key,
+                            hint.verb
+                        );
+                        if pressed.contains(&(hint.key, hint.verb)) {
+                            continue;
+                        }
+                        pressed.push((hint.key, hint.verb));
+                        if !blind && !answered(&state, &idle, hint.key) {
+                            // Both names: the screen the state is, and the
+                            // bar the key came off — they differ exactly
+                            // when the classifier reads the state as
+                            // another screen, and then which one is wrong
+                            // is the whole question.
+                            dead.push(format!(
+                                "{context:?} ({divider:?}), bar of {bar:?}, draws `{} {}`",
+                                hint.key, hint.verb
+                            ));
+                        }
+                    }
                 }
             }
         }
+    }
+    assert!(
+        dead.is_empty(),
+        "the bar draws {} key(s) the handler with focus does nothing with:\n  {}",
+        dead.len(),
+        dead.join("\n  ")
+    );
+}
+
+/// The states [`every_key_the_bar_draws_is_answered`] presses keys into are
+/// the screens they claim to be — **the app's own classifier says so**, not
+/// the fixture. Without this the sweep could press every key into the wrong
+/// state and stay green, which is the same fault it exists to catch.
+///
+/// With no drawn rows to read badges or a marker off, `view::rows`
+/// answers `PlainRow` where the bar's context says `BranchRow` or `Marked`:
+/// the difference is decoration on the row, and the keys are the same. The
+/// two overlays are the other gap and a real one — `view::frame` draws the
+/// journal and the stash *instead of* the graph screen, so the graph's
+/// footer is never asked to classify them ([`state_for`] builds them from
+/// `shown` and their entries instead, and the sweep still presses their
+/// keys).
+#[test]
+fn every_swept_state_is_the_context_it_claims() {
+    use graft_ui::graph_screen::{Divider, every_context};
+
+    for context in every_context() {
+        for divider in [Divider::Shown, Divider::Hidden] {
+            let Some(want) = classified_form(&context) else {
+                continue;
+            };
+            let state = state_for(&context, divider);
+            let banner = crate::update::banner::banner_view(&state);
+            assert_eq!(
+                crate::view::rows::footer_context(&state, &[], banner.as_ref()),
+                want,
+                "the fixture for {context:?} ({divider:?}) is not that screen"
+            );
+        }
+    }
+}
+
+/// What `view::rows::footer_context` answers for [`state_for`]'s state,
+/// with no drawn rows to read a badge or a marker from, or `None` where the
+/// graph's footer never classifies the context at all.
+fn classified_form(context: &HintContext) -> Option<HintContext> {
+    match context {
+        HintContext::BranchRow { .. } | HintContext::Marked(_) => Some(HintContext::PlainRow),
+        HintContext::PaneFocused { opens, .. } => Some(HintContext::PaneFocused {
+            row: Box::new(HintContext::PlainRow),
+            opens: *opens,
+        }),
+        // The overlays replace the graph screen, and `Preview`'s box draws
+        // its own footer: `hint_context` is not the code that decides any
+        // of the three.
+        HintContext::Journal | HintContext::Stash | HintContext::Preview => None,
+        HintContext::WorkingTreeRow
+        | HintContext::PlainRow
+        | HintContext::Banner { .. }
+        | HintContext::ChangesPane { .. }
+        | HintContext::Dragging => Some(context.clone()),
+    }
+}
+
+/// A key nothing in the app binds — the baseline every press is measured
+/// against.
+const INERT: KeyCode = KeyCode::Function(12);
+/// A second one, so the baseline can be shown to *be* a baseline rather
+/// than an action of its own.
+const ALSO_INERT: KeyCode = KeyCode::Function(11);
+
+/// The state once the app has stopped reacting to being looked at.
+///
+/// A freshly built pane asks for what it is missing on the first event it
+/// sees (`ListFiles` for a pane whose files are `Idle`), which moves the
+/// state under a key that binds nothing and would leave the whole screen
+/// reading as answered. Pressing an unbound key until nothing moves settles
+/// that; whatever moves afterwards is the key's doing.
+///
+/// A drag is not settled — every key ends one (see the sweep's `blind`),
+/// so settling would put the badge down and throw the context away.
+fn settled(mut state: AppState) -> AppState {
+    if state.drag.is_some() {
+        return state;
+    }
+    for _ in 0..4 {
+        let (next, _) = update(&state, key(INERT));
+        if next == state {
+            return state;
+        }
+        state = next;
+    }
+    panic!("the state never stopped moving under a key that binds nothing");
+}
+
+/// What this state looks like after a key **nothing binds** — the shape of
+/// nothing happening here.
+///
+/// It has to be a real press, not an empty outcome: `update` does ambient
+/// work on every event whatever the key (the evil-merge probe re-asks for
+/// its rows, a job takes an id), so an absolute comparison would read every
+/// key as answered.
+fn nothing_happened(state: &AppState) -> (AppState, Vec<Command>) {
+    let idle = update(state, key(INERT));
+    assert_eq!(
+        update(state, key(ALSO_INERT)),
+        idle,
+        "the baseline must be a key that does nothing, not one that does something"
+    );
+    idle
+}
+
+/// Does the key the bar spells `name` do anything at all in this state,
+/// beyond what a key nothing binds already does?
+///
+/// Note which way round the comparison is. The defect this sweep exists to
+/// catch — a key **consumed by the focused handler that then does nothing**
+/// — comes back with *fewer* commands than the inert key, because it
+/// returns early and the ambient work never runs. "Differs from inert"
+/// catches it; "differs from an empty outcome" would not.
+fn answered(state: &AppState, idle: &(AppState, Vec<Command>), name: &str) -> bool {
+    presses_for(name)
+        .into_iter()
+        .any(|press| outcome(state, press) != *idle)
+}
+
+/// What a hint tells the hand to do. Not every entry on the bar is a key:
+/// `release drop on a row` is the mouse button coming up, which is how a
+/// badge drag ends (`update::drag`). The sweep **performs** it rather than
+/// exempting it — a rule that needs no list of words to skip, and one that
+/// would notice if the release stopped ending the drag.
+#[derive(Clone, Copy, Debug)]
+enum Press {
+    /// A key went down.
+    Key(KeyPress),
+    /// The left button came up.
+    Release,
+}
+
+/// The presses `name` stands for. A hint naming two keys stands for both.
+///
+/// Every spelling the hint tables use is here; anything else stops the
+/// sweep rather than being quietly passed over, because a bar entry nobody
+/// can perform is the defect this test is for.
+fn presses_for(name: &str) -> Vec<Press> {
+    let plain = |code| Press::Key(KeyPress::plain(code));
+    match name {
+        "release" => vec![Press::Release],
+        "⏎" => vec![plain(KeyCode::Enter)],
+        "esc" => vec![plain(KeyCode::Escape)],
+        "space" => vec![plain(KeyCode::Char(' '))],
+        "⇥" => vec![plain(KeyCode::Tab)],
+        "⌃A" => vec![Press::Key(KeyPress::control(KeyCode::Char('a')))],
+        "⌃R" => vec![Press::Key(KeyPress::control(KeyCode::Char('r')))],
+        "F2" => vec![plain(KeyCode::Function(2))],
+        "F3" => vec![plain(KeyCode::Function(3))],
+        "j/k" => vec![plain(KeyCode::Char('j')), plain(KeyCode::Char('k'))],
+        "g/G" => vec![plain(KeyCode::Char('g')), plain(KeyCode::Char('G'))],
+        "PgUp/PgDn" => vec![plain(KeyCode::PageUp), plain(KeyCode::PageDown)],
+        "<>" => vec![plain(KeyCode::Char('<')), plain(KeyCode::Char('>'))],
+        one => {
+            let mut letters = one.chars();
+            match (letters.next(), letters.next()) {
+                (Some(letter), None) => vec![plain(KeyCode::Char(letter))],
+                _ => panic!(
+                    "the bar draws `{one}`, which this sweep cannot perform — teach \
+                     `presses_for` what it is, or it is a bar entry nobody can act on"
+                ),
+            }
+        }
+    }
+}
+
+/// `press` put through the whole of `update`, exactly as the event loop
+/// would deliver it.
+fn outcome(state: &AppState, press: Press) -> (AppState, Vec<Command>) {
+    let event = match press {
+        Press::Key(key) => AppEvent::Core(Event::Key(key)),
+        Press::Release => AppEvent::Core(Event::Mouse(MouseInput {
+            kind: MouseKind::Up(MouseButton::Left),
+            column: 0,
+            row: 0,
+            modifiers: Modifiers::NONE,
+        })),
+    };
+    update(state, event)
+}
+
+/// **The screen each context's bar is drawn on.** Exhaustive over
+/// `HintContext`, so a context added to the enum has to be given a state
+/// here before this crate compiles again — which is what keeps the sweep
+/// from quietly covering one context fewer than the bar can draw.
+///
+/// `divider` is not decoration: `Divider::Shown` means a pane is open on
+/// this frame, and `<> resize` is drawn because of it. A state built
+/// without the pane would fail its own hint.
+fn state_for(context: &HintContext, divider: Divider) -> AppState {
+    let mut state = screen_for(context);
+    // Wide enough for the pane to sit beside the graph: below 100 columns
+    // the layout is tabs and `<>` moves no divider, by `update::detail`'s
+    // own rule.
+    state.size = Size {
+        columns: 160,
+        rows: 48,
+    };
+    one_stash(&mut state);
+    if divider == Divider::Shown && !state.detail.shown {
+        // On a commit, even where the cursor is on the working-tree row:
+        // a pane open on the working tree *is* the changes pane, which is
+        // its own context. This is the moment after the cursor moved onto
+        // the row and before the pane has followed it.
+        let spec = head_spec(&state)
+            .or_else(|| state.selected_spec())
+            .expect("a row to open the pane on");
+        show_pane(&mut state, spec, DetailFocus::Graph);
+    }
+    state
+}
+
+/// The half of [`state_for`] that is one arm per context — kept apart from
+/// the width and the pane, which every arm shares.
+fn screen_for(context: &HintContext) -> AppState {
+    let walk = JobId::new(701);
+    match context {
+        // The cursor on the uncommitted-changes row. With a pane open it is
+        // open on a *commit*: a pane open on the working tree is the
+        // changes pane, which is the next context along.
+        HintContext::WorkingTreeRow => {
+            let mut state = dirty_on_screen(walk);
+            state.on_working_tree = true;
+            state.history.as_mut().expect("a walk").cursor = MERGE_ROW;
+            state
+        }
+        // One row of history under the cursor. The badge and the Mistake
+        // Radar marker that tell `BranchRow`, `Marked` and `PlainRow` apart
+        // are painted on the row, not held in the state, and no key turns
+        // on them.
+        HintContext::BranchRow { .. }
+        | HintContext::PlainRow
+        | HintContext::Marked(_)
+        | HintContext::Preview => merge_on_screen(walk, MERGE_ROW).0,
+        // The same row, with the pane open on it and its diff focused —
+        // where `⏎` has nothing left to open.
+        HintContext::PaneFocused { opens, .. } => {
+            let (mut state, _) = merge_on_screen(walk, MERGE_ROW);
+            let spec = state.selected_spec().expect("the cursor is on a commit");
+            // `opens` *is* which region has focus: `⏎` opens the diff from
+            // the files list, and has nothing left to open once the diff
+            // has it (`detail::keys::enter_opens`).
+            let focus = if *opens {
+                DetailFocus::Files
+            } else {
+                DetailFocus::Diff
+            };
+            show_pane(&mut state, spec, focus);
+            let (view, raw) = pane_files();
+            state.detail.files = Loading::Ready(view);
+            state.detail.list = Some(raw);
+            let (diff, diff_raw) = long_diff("a.rs");
+            state.detail.diff = Loading::Ready(diff);
+            state.detail.diff_raw = Some(diff_raw);
+            state
+        }
+        HintContext::Banner {
+            skippable,
+            conflicted,
+        } => stopped_operation(walk, *skippable, *conflicted),
+        HintContext::ChangesPane { unmerged } => changes_pane_open(walk, *unmerged),
+        HintContext::Journal => {
+            let (mut state, _) = merge_on_screen(walk, MERGE_ROW);
+            state.journal.shown = true;
+            state.journal.entries = Loading::Ready(Arc::new(crate::jobs::undo::JournalRead {
+                entries: vec![journal_entry()],
+                unreadable: Vec::new(),
+                live: Vec::new(),
+            }));
+            state
+        }
+        HintContext::Stash => {
+            let (mut state, _) = merge_on_screen(walk, MERGE_ROW);
+            state.stash.shown = true;
+            state.stash.entries = Loading::Ready(Arc::new(vec![stash_entry()]));
+            state
+        }
+        HintContext::Dragging => badge_in_the_air(walk),
+    }
+}
+
+/// The row [`merge_on_screen`] puts a **merge** on, which is the row a
+/// graph-row context's keys are swept against: `space fold` has a merge to
+/// fold there, the way `H hide stash` has a stash to hide and `y sha` has a
+/// commit to copy. A key that does nothing under one row's *data* — `space`
+/// off a merge, `k` at the top — is a boundary, not a dead key, and this
+/// sweep is not the place that would tell the difference.
+const MERGE_ROW: usize = 1;
+
+/// One stash in the refs, so `H hide stash` has something to hide: with
+/// none, `ViewChange::Stashes` returns `None` by design (`update::keys`).
+fn one_stash(state: &mut AppState) {
+    let stash = Oid::from_bytes(&[9; Oid::SHA1_BYTES]).expect("20 bytes is an oid");
+    let name = graft_core::ref_name::RefName::new("refs/stash").expect("a valid ref name");
+    let badges = crate::refs::badges(
+        &[(name, stash)],
+        &graft_git::repo::HeadState::Detached(stash),
+        &std::collections::HashMap::new(),
+        &[(stash, 0)],
+        |_, _| Err("no upstreams on this fixture".to_owned()),
+    )
+    .expect("badges");
+    state.refs = Some(Arc::new(badges));
+}
+
+/// The pane open on `spec`, with a two-file list in it so the keys that act
+/// on a file have one under the cursor.
+fn show_pane(state: &mut AppState, spec: DetailSpec, focus: DetailFocus) {
+    state.detail.shown = true;
+    state.detail.spec = Some(spec);
+    state.detail.focus = focus;
+    let (files, list) = two_files();
+    state.detail.files = Loading::Ready(files);
+    state.detail.list = Some(list);
+}
+
+/// `DetailSpec` for the commit at row 0, for a state whose cursor is on the
+/// working-tree row and so has no commit selected.
+fn head_spec(state: &AppState) -> Option<DetailSpec> {
+    let row = state
+        .history
+        .as_ref()
+        .and_then(History::selected)?
+        .commit
+        .id;
+    Some(DetailSpec::Commit(row))
+}
+
+/// An operation stopped with its banner focused: a rebase when `s skip`
+/// applies, a merge when it does not, with a conflicted file when the
+/// banner's `M`/`e` are drawn.
+fn stopped_operation(walk: JobId, skippable: bool, conflicted: bool) -> AppState {
+    let (mut state, _) = merge_on_screen(walk, 0);
+    state.in_progress = Some(graft_git::state::InProgressDetail {
+        kind: if skippable {
+            graft_git::state::InProgress::Rebase
+        } else {
+            graft_git::state::InProgress::Merge
+        },
+        step: None,
+        head_name: None,
+        onto: None,
+    });
+    state.banner_focus = true;
+    if conflicted {
+        state.working_tree = Some(Arc::new(graft_git::status::WorkingTreeStatus {
+            entries: vec![status_entry("conflicted.rs", true)],
+        }));
+    }
+    state
+}
+
+/// The changes pane open and focused on its file list, over a working tree
+/// whose files are the ones the list draws — `unmerged` makes the file
+/// under the cursor a conflicted one, which is what swaps the pane's write
+/// keys for the conflict keys.
+fn changes_pane_open(walk: JobId, unmerged: bool) -> AppState {
+    let (mut state, _) = merge_on_screen(walk, 0);
+    state.on_working_tree = true;
+    state.working_tree = Some(Arc::new(graft_git::status::WorkingTreeStatus {
+        entries: vec![
+            status_entry("a.rs", unmerged),
+            status_entry("b.rs", unmerged),
+        ],
+    }));
+    show_pane(&mut state, DetailSpec::WorkingTree, DetailFocus::Files);
+    let (view, raw) = changes_pane_files();
+    state.detail.files = Loading::Ready(view);
+    state.detail.list = Some(raw);
+    state
+}
+
+/// The changes pane's file list: an `UNSTAGED` heading and the two files
+/// under it, the cursor on the first. `space stage` reads the **section**
+/// the cursor's row belongs to (`operate::stage_selected`), so a flat list
+/// with no heading is a pane whose write keys cannot fire.
+fn changes_pane_files() -> (DetailArc<FileListView>, DetailArc<FileList>) {
+    let (view, list) = two_files();
+    let mut view = (*view).clone();
+    view.rows.insert(
+        0,
+        FileRow {
+            depth: 0,
+            name: sanitize_line("UNSTAGED"),
+            kind: FileRowKind::Section {
+                section: graft_ui::detail::WorkingTreeSection::Unstaged,
+                count: 2,
+            },
+            entry: None,
+        },
+    );
+    for row in view.rows.iter_mut().skip(1) {
+        row.depth = 1;
+    }
+    view.cursor = 1;
+    (DetailArc::new(view), list)
+}
+
+/// A commit's file list with a directory row under the cursor, which is
+/// what `space` folds while the files region has focus
+/// (`detail::keys::files_key`).
+fn pane_files() -> (DetailArc<FileListView>, DetailArc<FileList>) {
+    let (view, list) = two_files();
+    let mut view = (*view).clone();
+    view.rows.insert(
+        0,
+        FileRow {
+            depth: 0,
+            name: sanitize_line("src"),
+            kind: FileRowKind::Dir { collapsed: false },
+            entry: None,
+        },
+    );
+    for row in view.rows.iter_mut().skip(1) {
+        row.depth = 1;
+    }
+    view.cursor = 0;
+    (DetailArc::new(view), list)
+}
+
+/// A diff long enough to scroll: `j`/`k` in the diff region clamp to the
+/// content they have, so a pane with nothing loaded answers them with
+/// nothing, which is a fixture that cannot see what it is looking for.
+fn long_diff(path: &str) -> (DetailArc<DiffView>, DetailArc<graft_git::diff::FileDiff>) {
+    use graft_ui::detail::{HunkView, LineKindView, LineView};
+
+    let (view, raw) = diff_of(path);
+    let mut view = (*view).clone();
+    let line = |number: u32| LineView {
+        kind: LineKindView::Context,
+        old_no: Some(number),
+        new_no: Some(number),
+        text: sanitize_line("a line of context"),
+        words: Vec::new(),
+        syntax: Vec::new(),
+        pair: None,
+    };
+    let mut lines = vec![LineView {
+        kind: LineKindView::HunkHeading,
+        old_no: None,
+        new_no: None,
+        text: sanitize_line("@@ -1,200 +1,200 @@"),
+        words: Vec::new(),
+        syntax: Vec::new(),
+        pair: None,
+    }];
+    lines.extend((1..=200).map(line));
+    view.hunks = vec![HunkView {
+        heading: sanitize_line("-1,200 +1,200"),
+        lines,
+    }];
+    (DetailArc::new(view), raw)
+}
+
+/// One `git status` entry for `path`, modified in the tree, conflicted when
+/// `unmerged`.
+fn status_entry(path: &str, unmerged: bool) -> graft_git::status::StatusEntry {
+    graft_git::status::StatusEntry {
+        path: path.into(),
+        original_path: None,
+        staged: None,
+        unstaged: Some(graft_git::status::Change::Modified),
+        untracked: false,
+        unmerged,
+        submodule: false,
+    }
+}
+
+/// A branch badge picked up from row 1 and held over row 0, which is where
+/// the gesture the bar is hinting actually is.
+fn badge_in_the_air(walk: JobId) -> AppState {
+    let (mut state, _) = merge_on_screen(walk, 1);
+    let at = state
+        .history
+        .as_ref()
+        .and_then(History::selected)
+        .expect("the cursor's row has arrived")
+        .commit
+        .id;
+    state.drag = Some(crate::update::drag::DragState {
+        source: crate::update::drag::DragSource {
+            name: "refs/heads/feature".to_owned(),
+            short: "feature".to_owned(),
+            at,
+            current: false,
+        },
+        from_row: 1,
+        over: Some(0),
+    });
+    state
+}
+
+/// One journal entry, so `⏎ revert` has something to undo.
+fn journal_entry() -> graft_core::journal::JournalEntry {
+    use graft_core::journal::{
+        EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches,
+    };
+
+    JournalEntry {
+        id: EntryId::new(1, [0; 10]),
+        at_unix_ms: 1,
+        kind: OperationKind::Commit,
+        description: "commit \"x\"".to_owned(),
+        status: EntryStatus::Committed,
+        touches: Touches {
+            refs: Vec::new(),
+            index: true,
+            worktree: false,
+        },
+        head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+        head_after: Some(HeadRef::Branch("refs/heads/main".to_owned())),
+        refs_before: std::collections::BTreeMap::new(),
+        refs_after: std::collections::BTreeMap::new(),
+        index_before: None,
+        index_after: None,
+        worktree_before: None,
+        worktree_after: None,
+        backup_ref: Some("refs/graft/backup/main/x".to_owned()),
+        pins: Vec::new(),
+        commands: vec!["git commit".to_owned()],
+        reverses: None,
+    }
+}
+
+/// One stash, so the overlay's keys have an entry under the cursor.
+fn stash_entry() -> graft_git::stash::StashEntry {
+    graft_git::stash::StashEntry {
+        index: 0,
+        commit: Oid::from_bytes(&[9; Oid::SHA1_BYTES]).expect("20 bytes is an oid"),
+        message: "WIP on main".to_owned(),
+        at: Timestamp {
+            seconds: 1_700_000_000,
+            offset_seconds: 0,
+        },
+        paths: vec![PathBuf::from("a.rs")],
     }
 }
 
@@ -3336,41 +3956,6 @@ fn every_planned_hint_is_still_unbound() {
             ),
         }
     }
-}
-
-/// Every context the graph footer can be in, `Preview` aside (its box draws
-/// its own footer, and its list is empty by design).
-fn hinted_contexts() -> Vec<graft_ui::graph_screen::HintContext> {
-    use graft_ui::graph_screen::HintContext;
-
-    vec![
-        HintContext::WorkingTreeRow,
-        HintContext::BranchRow { current: false },
-        HintContext::BranchRow { current: true },
-        HintContext::PlainRow,
-        HintContext::Marked(Box::new(HintContext::PlainRow)),
-        HintContext::Marked(Box::new(HintContext::BranchRow { current: true })),
-        HintContext::Banner {
-            skippable: true,
-            conflicted: true,
-        },
-        HintContext::Banner {
-            skippable: false,
-            conflicted: true,
-        },
-        HintContext::Banner {
-            skippable: true,
-            conflicted: false,
-        },
-        HintContext::Banner {
-            skippable: false,
-            conflicted: false,
-        },
-        HintContext::ChangesPane { unmerged: false },
-        HintContext::ChangesPane { unmerged: true },
-        HintContext::Journal,
-        HintContext::Stash,
-    ]
 }
 
 // The vertical axis of ticket 19's principle: count from what you were

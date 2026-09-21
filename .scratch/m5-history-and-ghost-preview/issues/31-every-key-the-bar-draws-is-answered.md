@@ -1,6 +1,6 @@
 # every-key-the-bar-draws-is-answered
 
-Status: ready
+Status: done
 Blocked by: **30** (shares `graft-ui` + `graft`).
 Crates: `graft-ui`, `graft`.
 Build with: **Opus.** The fix is small; deciding *which* keys a focused pane
@@ -165,19 +165,41 @@ that asymmetry is reachable, and if it is, that is a defect, not a tidy-up.
 
 ## Acceptance (every tick names its verifying test inline, at tick time)
 
-- [ ] The Detail tab at 80 with Diff focus draws no key the pane does not
-      answer — test: name it. Must fail before the change; quote the bar before
-      and after.
-- [ ] **Every context, every width**: no key drawn is unanswered — test: name
-      it, say how many contexts it enumerates and how it finds them.
-- [ ] Both mutations turn it red — evidence: the two failure messages.
-- [ ] `⏎ open` specifically is gone from the Detail tab's bar and still present
-      on the graph row where it works — test: name it. The filter must not
-      over-reach.
-- [ ] No new key is bound — evidence: `git diff` on `update/keys.rs` and
-      `docs/design/02-keymap.md` is empty.
-- [ ] Captures showing a Detail-tab bar regenerated, captions read against
-      them — evidence: quote the bar row from each.
+- [x] The Detail tab at 80 with Diff focus draws no key the pane does not
+      answer — test
+      `it::hint_bar::the_detail_tab_hides_the_keys_a_focused_pane_does_not_answer`.
+      Fails before the change (checked by reverting the wrap in
+      `view::rows::hint_context` to `if true`):
+      before ` ⏎ open  c commit  P push  . more  p  f  b  t  u  S  J  /  q  F2  F3  x  +  j/k`,
+      after ` c commit  P push  p pull  . more  f  b  t  u  /  q  F2  F3  x  +  j/k  space  1`.
+      The after bar is pinned in the test itself.
+- [x] **Every context, every width**: no key drawn is unanswered — test
+      `update::tests::every_key_the_bar_draws_is_answered`. **29 contexts**,
+      from `graph_screen::every_context()` (the single enumeration; see NOTES
+      for exactly how much of it the compiler forces), × 2 dividers × 6 widths,
+      and — where the graph footer classifies the state at all — the bar
+      `view::rows::footer_context` actually asks for as well as the enumerated
+      one. Paired with `update::tests::every_swept_state_is_the_context_it_claims`,
+      which makes the app's own classifier confirm each fixture is the screen
+      it claims.
+- [x] Both mutations turn it red — evidence in NOTES. The first turns **this
+      sweep** red (12 entries); the second turns `every_planned_hint_is_still_unbound`
+      red and leaves this sweep green, so the invariant is one-directional.
+- [x] `⏎ open` specifically is gone from the Detail tab's bar and still present
+      on the graph row where it works — test
+      `it::hint_bar::the_detail_tab_hides_the_keys_a_focused_pane_does_not_answer`,
+      whose first assertion is the graph row still drawing `⏎ open` at the same
+      width.
+- [x] No new key is bound — `git diff` on `crates/graft/src/update/keys.rs` and
+      `docs/design/02-keymap.md` is empty (checked with `git diff --stat`, no
+      output).
+- [x] Captures showing a Detail-tab bar regenerated — new scenario `detail`
+      in `it::hint_bar::capture_hint_bar_for_docs_shots`, three widths, bars:
+      - 80x24 ` c commit  P push  p pull  . more  f  b  t  u  /  q  F2  F3  x  +  j/k  space  1`
+      - 120x40 ` c commit  P push  <> resize  p pull  f fetch  b branch  t tag  . more  u  /  q  F2  F3  x  +  j/k  space  1  F  H  y`
+      - 160x48 ` c commit  P push  <> resize  . more  p  f  b  t  u  /  q  F2  F3  x  +  j/k  space  1  F  H`
+      No `⏎`, no `S`/`J`/`M`/`O` at any width; `. more` at all three.
+      **Not ticked as "looks right" — the user judges** (rule 6).
 
 Rule 6: you do not tick "looks right". The user does.
 
@@ -199,3 +221,138 @@ How many contexts the sweep covers and how it enumerates them. Whether the
 second mutation (`m`/`r` marked planned) turned it red — if not, the invariant
 is one-directional and that must be said. Anything unverified — which is not
 broken.
+
+## NOTES (builder)
+
+**Scout:** none. The ticket named both defect lines and the decision; the
+sweep then found the rest of the surface by running, which no scout would
+have.
+
+**No compaction.** One session.
+
+### The sweep, and how honest its enumeration is
+
+`graph_screen::every_context()` is the one list. What the **compiler** forces:
+every variant must be given a `Marked` form and a `PaneFocused` form (two
+exhaustive matches, no `_`), and `update::tests::screen_for` must be given a
+state for it. What is still **hand-written**: the plain list of one value per
+variant and per field combination — Rust cannot enumerate a type's values, and
+there is no `strum` in this workspace. So a *new variant* cannot be missed;
+a new *field* on an existing variant (a third `BranchRow` shape, say) can be.
+Said here rather than left to look like full coverage.
+
+29 contexts × 2 dividers × 6 widths (40, 80, 100, 120, 160, 200).
+
+**"Answered" is measured, not tabulated.** Each fixture is first *settled* —
+an unbound key (`F12`) pressed until the state stops moving, because a freshly
+built pane asks for what it is missing on the first event it sees — and then
+each drawn key is pressed and compared against that same unbound key's
+outcome. Note the direction: a key **consumed by the focused handler that then
+does nothing** comes back with *fewer* commands than the unbound key, because
+it returns early and the ambient work never runs. "Differs from inert" catches
+it; "differs from an empty outcome" would not, which is why the first two
+attempts at this test were green under the mutation.
+
+`release` needed no special case: `bound_actions()` carries it (m5/10), and
+the sweep performs it as a real mouse-up (`Press::Release`) rather than
+exempting it.
+
+**Where the sweep is blind, and it says so out loud:** in a drag, *every* key
+ends the gesture (`update::drag::drag_key` takes `state.drag` before it reads
+the key), so no press can be told from another. The sweep asserts that this
+only ever happens with `state.drag.is_some()` — if some other state starts
+moving under an unbound key, the test fails rather than quietly reading every
+key there as answered.
+
+### The two mutations
+
+1. **`⏎ open` advertised while the pane eats it** (the ticket's defect, as
+   shipped: the consuming arm kept, the bar's filter removed) — **red**, 12
+   entries:
+   `the bar draws 12 key(s) the handler with focus does nothing with:
+   PaneFocused { row: PlainRow, opens: false } (Shown), bar of PaneFocused { … }, draws `⏎ open`` (and the other eleven row/divider combinations).
+2. **`m`/`r` marked `planned`** — **green**. A `Planned` hint is dropped
+   before the width rule, so the bar draws nothing for the sweep to press.
+   It turns `update::tests::every_planned_hint_is_still_unbound` red instead
+   (`planned m merge is bound`). **The invariant is one-directional:** it
+   catches *drawn but dead*, never *live but never drawn*. The two tests
+   together cover both directions, and neither covers the other's.
+
+### Findings the sweep made, beyond the ticket's
+
+All fixed here; all the same class (the bar and the handler disagreeing).
+
+- **`view/rows.rs` `hint_context`: the changes pane's bar was drawn with the
+  graph focused.** `AppState::on_changes_pane` has no focus test, while
+  `update::detail::keys::changes_pane_write_key` refuses every one of those
+  keys with `DetailFocus::Graph => return false`. Reachable with one key:
+  `⇥` from the pane back to the graph. `space stage`, `d discard`, `⌃A all`
+  and `e edit` were all drawn and all dead. Now the pane's bar needs the
+  pane's focus; with the graph focused the row's own bar is drawn. This
+  changed one integration expectation
+  (`it::conflict_interim::the_doorway_survives_everywhere_the_banner_does_not_own_the_keyboard`:
+  after `⇥` the doorway is present but no longer *last*, because the graph
+  row's bar has a tail and since m5/28 the doorway leads the tail).
+- **The journal and the stash drew `. more`, and `.` opens nothing there.**
+  Both are modal overlays, exactly like the focused banner and a drag, which
+  ADR-0039's first amendment already covers. Doorway dropped in `whole_bar`.
+- **The two overlays drew `<> resize`** with no divider of their own.
+- **The working-tree row drew `y sha` and `x compare`**, which need a commit
+  under the cursor.
+- **Two test-side mirrors of `hints_for` in `hints/tests.rs`.** `whole_list`
+  restated the whole-bar rule and `doorway_of` had a `_` arm that claimed a
+  doorway for `Dragging` the bar never draws. `whole_list` now reads
+  `whole_bar` directly. `doorway_of` cannot: a marked row's `. explain`
+  leads the *list* rather than trailing it, so it stays written out arm by
+  arm — but exhaustively, no wildcard.
+
+### The banner mirror's guard (review M3)
+
+Closed as the conductor decided: **one enumeration, `AppState::graph_overlay`
+→ `Option<GraphOverlay>`** (`CommitEditor` | `Map` | `Journal` | `Stash`).
+`view::frame::draw_screen` matches on it — so a fifth overlay is a fifth
+variant and the frame stops compiling until it is drawn — and
+`update::banner::graph_screen_on_frame` is now
+`screen == Graph && state.graph_overlay().is_none()`, with no conditions of
+its own to drift. The `debug_assert!` is **kept**, with its comment rewritten:
+it no longer claims to catch a forgotten fifth overlay (it never could); it
+covers the one direction left, that `graph_screen_on_frame` still *is* that
+function rather than a hand-written condition beside it again.
+
+**The `commit_editor` asymmetry the ticket names does not exist.**
+`crates/graft/src/view/frame.rs:222` (before this change) read
+`Screen::Graph if state.commit_editor.is_some() => draw_commit_editor(…)` —
+the match tested all four, the same four `graph_screen_on_frame` tested. Not
+a defect, and nothing to fix; the ticket's premise was stale.
+
+### The wording pass
+
+- Deleted `the_floor_holds_from_twenty_to_two_hundred_forty_columns` (20..=240).
+  **Kept** the wider `0..=240` one, renamed
+  `the_three_most_relevant_never_fall_below_their_floor_rung`.
+- `hints.rs` module doc, `ladder` step 1 and the `fit_list` doc now say
+  **floor rung**. `hints.rs:413-414`'s `fit_list` doc — the one the ticket
+  flags as m5/30's — **was not fixed by 30**; it still read "never below
+  their short rung" when I got here, and is fixed now.
+- Added the one-line definition beside the table (`short_form`'s doc): a
+  hint's floor rung is its short rung where the table names one, its full
+  verb where it does not.
+- The uses that still mean "the abbreviated form" are left alone
+  (`hints.rs:152`, `hints/tests.rs:399/424/431/503`, `hint_bar.rs:483-484`,
+  `m5-hints-ladder.txt`).
+- **Captions: 15 capture files, not twelve.** Twelve from
+  `it::hint_bar.rs` (plain/branch/changes/uncommitted × 3 widths) and three
+  from `graph_screen/tests.rs` (marked × 3 widths) — the review's figure
+  missed the second writer. All 15 regenerated; the only change in them is
+  the caption (no bar drifted), plus the three new `detail` captures.
+
+### For KNOWN_GAPS / the conductor (not edited by me)
+
+- **`space fold` is drawn on the uncommitted-changes row** and folds the
+  *history cursor's* merge, not anything on that row. It is answered, so the
+  sweep passes it; whether it should be *drawn* there is a design question.
+- **`every_context()`'s plain list is hand-written** (above). A new field on
+  an existing variant can be missed. Unverified rather than broken: nothing
+  is wrong today.
+- **Colour is unverified as always** (rule 5) — the captures are character
+  grids.

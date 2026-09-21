@@ -399,6 +399,65 @@ impl AppState {
     pub fn on_changes_pane(&self) -> bool {
         self.detail.shown && self.detail.spec == Some(super::detail::DetailSpec::WorkingTree)
     }
+
+    /// **Has the graph the keyboard?** `S`, `J`, `M` and `O` each open
+    /// something that stands *where the graph stands*, so each is answered
+    /// only while nothing else has focus — `stash::stash_key`,
+    /// `journal::journal_key`, `map::map_key` and `strip::strip_key` all
+    /// ask here rather than each spelling the condition out.
+    ///
+    /// `view::rows::hint_context` asks here too, which is the point of the
+    /// function: the four keys were guarded four times over and the hint
+    /// bar drew them anyway, so a focused pane advertised four keys that
+    /// did nothing (m5/31). One answer, read by the handlers and by the bar.
+    #[must_use]
+    pub fn graph_has_focus(&self) -> bool {
+        self.detail.focus == graft_ui::detail::DetailFocus::Graph
+    }
+
+    /// **Which overlay is standing where the graph would be**, if any.
+    ///
+    /// The one enumeration of them. `view::frame::draw_screen` matches on
+    /// it to decide what to draw, and `update::banner::graph_screen_on_frame`
+    /// asks it whether there is a graph for the operation banner to ride on
+    /// — two answers that must agree, and used to be two lists that could
+    /// not (review M3, m5/31). A fifth overlay is a fifth variant, and the
+    /// frame's match stops compiling until it is drawn; the banner needs no
+    /// edit at all, because its condition is this function.
+    ///
+    /// Order is the frame's precedence, not a preference: the commit editor
+    /// covers the Map, the Map covers the journal, and so on down.
+    #[must_use]
+    pub fn graph_overlay(&self) -> Option<GraphOverlay> {
+        if self.commit_editor.is_some() {
+            Some(GraphOverlay::CommitEditor)
+        } else if self.map.shown {
+            Some(GraphOverlay::Map)
+        } else if self.journal.shown {
+            Some(GraphOverlay::Journal)
+        } else if self.stash.shown {
+            Some(GraphOverlay::Stash)
+        } else {
+            None
+        }
+    }
+}
+
+/// An overlay that **replaces** the graph screen: it takes the graph's whole
+/// area and carries no operation banner of its own.
+///
+/// See [`AppState::graph_overlay`], which is the only place the conditions
+/// live.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GraphOverlay {
+    /// The commit message editor (`c`).
+    CommitEditor,
+    /// The Map view (`M`).
+    Map,
+    /// The undo journal browser (`J`).
+    Journal,
+    /// The stash list (`S`).
+    Stash,
 }
 
 /// What a harness wrapping `event_loop::run` asks for (the graph gallery,

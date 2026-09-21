@@ -17,8 +17,9 @@
 # bare key — taken per hint, never as a step the whole list takes
 # together, and a hint that will not fit even at its bare key is
 # dropped (ADR-0039's third amendment, 2026-09-21). The three most
-# relevant never fall below their short rung, and the bar is never all
-# hidden — never a key that does nothing.
+# relevant never fall below their floor rung, which is their short rung
+# where the user's table names one and their full verb where it does
+# not, and the bar is never all hidden — never a key that does nothing.
 
  graft /code/api  5 commits
 ●     Commit 5                                                      2h   0505050
@@ -43,4 +44,4 @@
 
 
 
- . explain  ⏎ open  r rebase  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space
+ . explain  ⏎ open  b branch  r  t  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k

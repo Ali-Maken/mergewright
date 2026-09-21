@@ -325,7 +325,13 @@ fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
     if state.drag.is_some() {
         return HintContext::Dragging;
     }
-    if state.on_changes_pane() {
+    // The changes pane's own bar, but only while the pane has focus:
+    // `space`, `d`, `⌃A` and `e` are read by `changes_pane_write_key`,
+    // which refuses every one of them with the graph focused
+    // (`update::detail::keys`, `DetailFocus::Graph => return false`). With
+    // the pane open and focus back on the graph the row under the cursor is
+    // what the bar is about, which the rest of this function works out.
+    if state.on_changes_pane() && !state.graph_has_focus() {
         return HintContext::ChangesPane {
             unmerged: cursor_file_unmerged(state),
         };
@@ -336,21 +342,38 @@ fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
     let cursor = rows
         .iter()
         .find(|entry| entry.line.paint == RowPaint::Highlighted);
-    let Some(cursor) = cursor else {
-        return HintContext::PlainRow;
+    let row = match cursor {
+        None => HintContext::PlainRow,
+        Some(cursor) => {
+            let base = cursor
+                .badges
+                .iter()
+                .find_map(|badge| match badge.kind {
+                    BadgeKind::Branch { current, .. } => Some(HintContext::BranchRow { current }),
+                    _ => None,
+                })
+                .unwrap_or(HintContext::PlainRow);
+            if cursor.marker.is_some() {
+                HintContext::Marked(Box::new(base))
+            } else {
+                base
+            }
+        }
     };
-    let base = cursor
-        .badges
-        .iter()
-        .find_map(|badge| match badge.kind {
-            BadgeKind::Branch { current, .. } => Some(HintContext::BranchRow { current }),
-            _ => None,
-        })
-        .unwrap_or(HintContext::PlainRow);
-    if cursor.marker.is_some() {
-        HintContext::Marked(Box::new(base))
+    // Last, over whichever row context came out. A focused pane leaves four
+    // of the graph screen's keys doing nothing (`AppState::graph_has_focus`)
+    // and, with the diff focused, `⏎` as well — it has already opened
+    // everything there is to open. Both conditions are the handlers' own
+    // functions, read here rather than restated, which is the whole point:
+    // the bar and the key cannot disagree if they read one answer
+    // (m5 review Q2, m5/31).
+    if state.graph_has_focus() {
+        row
     } else {
-        base
+        HintContext::PaneFocused {
+            row: Box::new(row),
+            opens: crate::update::detail::enter_opens(&state.detail),
+        }
     }
 }
 

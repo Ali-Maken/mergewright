@@ -92,18 +92,16 @@ pub fn first_conflicted(state: &AppState) -> Option<PathBuf> {
 /// Whether this frame draws the graph screen at all — and so whether the
 /// operation banner already has a header to ride on.
 ///
-/// Mirrors `view::frame::draw_screen`'s match, for the same reason
-/// `update::geometry` mirrors the pane split: the answer decides a *row
-/// count*, and a row count the mouse disagrees with is a click landing on
-/// the wrong row. The overlays (commit editor, Map, journal, stash) replace
-/// the graph and carry no banner of their own.
+/// No longer a mirror of `view::frame::draw_screen`'s match: both read
+/// `AppState::graph_overlay`, the one enumeration of the overlays that
+/// replace the graph (review M3, m5/31). It used to restate the four
+/// conditions, and a fifth overlay added to the frame would have left this
+/// answering `true` for a frame with no graph on it — the answer decides a
+/// *row count*, and a row count the mouse disagrees with is a click landing
+/// on the wrong row.
 #[must_use]
 pub fn graph_screen_on_frame(state: &AppState) -> bool {
-    state.screen == crate::update::state::Screen::Graph
-        && state.commit_editor.is_none()
-        && !state.map.shown
-        && !state.journal.shown
-        && !state.stash.shown
+    state.screen == crate::update::state::Screen::Graph && state.graph_overlay().is_none()
 }
 
 /// Rows the sub-100-column tab layout spends on the operation banner:
