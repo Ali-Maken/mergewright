@@ -8,7 +8,7 @@ use ratatui::text::{Line, Span};
 use unicode_width::UnicodeWidthStr;
 
 use super::{
-    AUTHOR_BREAKPOINT, AUTHOR_WIDTH, Filters, GraphEntry, GraphScreen, GraphicsStatus,
+    AUTHOR_BREAKPOINT, AUTHOR_WIDTH, Filters, GraphEntry, GraphScreen, GraphView, GraphicsStatus,
     MARKER_WIDTH, OrderNotice, SHA_WIDTH, SUBJECT_GAP, WHEN_WIDTH, WalkView, banner_line,
 };
 use crate::fit::fit;
@@ -41,22 +41,6 @@ pub struct ScreenRows {
 }
 
 impl<'a> GraphScreen<'a> {
-    /// Rows the banner takes under the header: one per harness-pinned line.
-    /// Saturates, so a banner taller than any terminal still leaves the
-    /// arithmetic sound.
-    ///
-    /// The operation banner adds none. It had a `[ Continue ] [ Skip ]
-    /// [ Abort ]` row here at 160 columns and up — a row of mouse targets
-    /// nothing answers a click on (`banner_click` was never built) and that
-    /// the design note's own mockup does not have; the verbs it drew are the
-    /// hint bar's, which works at every width and on the keyboard the user
-    /// already has. Removed rather than made clickable: a row that costs a
-    /// graph row to teach three keys twice is not worth the row
-    /// (m5/16, review C1).
-    fn banner_rows(&self) -> u16 {
-        u16::try_from(self.view.banner.len()).unwrap_or(u16::MAX)
-    }
-
     /// Every row of the screen, carved once: which row the header takes,
     /// which rows the banner takes, which the body has left, and which the
     /// commit-graph offer and the hint bar sit on. A zero-height rectangle
@@ -70,45 +54,7 @@ impl<'a> GraphScreen<'a> {
     /// of the three that is modal (m5/19).
     #[must_use]
     pub fn screen_rows(&self, area: Rect) -> ScreenRows {
-        let header = Rect {
-            height: 1.min(area.height),
-            ..area
-        };
-        // Bottom up. The hint bar always has the last row; the offer takes
-        // the one above it when a row is going spare; the banner takes what
-        // is left between the header and them. The banner outranks the offer
-        // because it is modal and the offer is a suggestion, so where only
-        // one row is free it is the offer that goes without.
-        let footer = Rect {
-            y: area.bottom().saturating_sub(1),
-            height: u16::from(area.height > 1),
-            ..area
-        };
-        let top = header.bottom().min(footer.y);
-        let free = footer.y.saturating_sub(top);
-        let banner = Rect {
-            y: top,
-            height: self.banner_rows().min(free),
-            ..area
-        };
-        let offer = Rect {
-            y: footer.y.saturating_sub(1),
-            height: u16::from(self.view.commit_graph.is_some() && free > banner.height),
-            ..area
-        };
-        let body_floor = if offer.height > 0 { offer.y } else { footer.y };
-        let body = Rect {
-            y: banner.bottom(),
-            height: body_floor.saturating_sub(banner.bottom()),
-            ..area
-        };
-        ScreenRows {
-            header,
-            banner,
-            body,
-            offer,
-            footer,
-        }
+        screen_rows(self.view, area)
     }
 
     /// Where the graph column lands inside `area`, the whole screen: the
@@ -146,14 +92,7 @@ impl<'a> GraphScreen<'a> {
     /// The rows' rectangle, the rows that fit in it, and the fold they are
     /// drawn through (`None` while expanded).
     pub(super) fn body_layout(&self, area: Rect) -> (Rect, &[GraphEntry<'a>], Option<Fold>) {
-        let body = self.screen_rows(area).body;
-        let rows = &self.view.rows[..self.view.rows.len().min(usize::from(body.height))];
-        let fold = self
-            .view
-            .compaction
-            .plan(rows.iter().map(|entry| &*entry.line.row));
-        let applied = (!self.view.compaction.expanded).then_some(fold);
-        (body, rows, applied)
+        body_layout(self.view, area)
     }
 
     /// The header line; `folded_lanes` is how many lanes the drawn fold
@@ -266,6 +205,137 @@ impl<'a> GraphScreen<'a> {
     }
 }
 
+/// Rows [`GraphView::banner`](super::GraphView::banner) takes: one per
+/// harness-pinned line. Saturates, so a banner taller than any terminal
+/// still leaves the arithmetic sound.
+///
+/// The operation banner adds none. It had a `[ Continue ] [ Skip ]
+/// [ Abort ]` row here at 160 columns and up — a row of mouse targets
+/// nothing answers a click on (`banner_click` was never built) and that the
+/// design note's own mockup does not have; the verbs it drew are the hint
+/// bar's, which works at every width and on the keyboard the user already
+/// has. Removed rather than made clickable: a row that costs a graph row to
+/// teach three keys twice is not worth the row (m5/16, review C1).
+fn banner_rows(view: &GraphView<'_>) -> u16 {
+    u16::try_from(view.banner.len()).unwrap_or(u16::MAX)
+}
+
+/// [`GraphScreen::screen_rows`] as a plain function of the view: the row
+/// carve needs no theme and no widget, and a caller that has to know where
+/// the body rows are (a mouse hit-test) must read the very same carve rather
+/// than a second copy of it.
+#[must_use]
+pub fn screen_rows(view: &GraphView<'_>, area: Rect) -> ScreenRows {
+    let header = Rect {
+        height: 1.min(area.height),
+        ..area
+    };
+    // Bottom up. The hint bar always has the last row; the offer takes
+    // the one above it when a row is going spare; the banner takes what
+    // is left between the header and them. The banner outranks the offer
+    // because it is modal and the offer is a suggestion, so where only
+    // one row is free it is the offer that goes without.
+    let footer = Rect {
+        y: area.bottom().saturating_sub(1),
+        height: u16::from(area.height > 1),
+        ..area
+    };
+    let top = header.bottom().min(footer.y);
+    let free = footer.y.saturating_sub(top);
+    let banner = Rect {
+        y: top,
+        height: banner_rows(view).min(free),
+        ..area
+    };
+    let offer = Rect {
+        y: footer.y.saturating_sub(1),
+        height: u16::from(view.commit_graph.is_some() && free > banner.height),
+        ..area
+    };
+    let body_floor = if offer.height > 0 { offer.y } else { footer.y };
+    let body = Rect {
+        y: banner.bottom(),
+        height: body_floor.saturating_sub(banner.bottom()),
+        ..area
+    };
+    ScreenRows {
+        header,
+        banner,
+        body,
+        offer,
+        footer,
+    }
+}
+
+/// [`GraphScreen::body_layout`] as a plain function of the view.
+pub(super) fn body_layout<'a>(
+    view: &'a GraphView<'a>,
+    area: Rect,
+) -> (Rect, &'a [GraphEntry<'a>], Option<Fold>) {
+    let body = screen_rows(view, area).body;
+    let rows = &view.rows[..view.rows.len().min(usize::from(body.height))];
+    let fold = view
+        .compaction
+        .plan(rows.iter().map(|entry| &*entry.line.row));
+    let applied = (!view.compaction.expanded).then_some(fold);
+    (body, rows, applied)
+}
+
+/// Where the commit rows land in `area`, and the columns each of them is
+/// drawn to.
+///
+/// The one reading of that geometry outside the widget. `graft`'s mouse
+/// hit-test needs it to say which badge a cell belongs to, and the rule
+/// ADR-0040 already learned — two copies of a layout with nothing testing
+/// one against the other — is why it is handed out rather than mirrored.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RowLayout {
+    /// The rectangle the commit rows are drawn in: its first row is
+    /// `rows[0]`, its second `rows[1]`, and so on.
+    pub body: Rect,
+    /// Where each of a row's columns starts and how wide it is.
+    pub columns: Columns,
+}
+
+/// [`RowLayout`] for `view` drawn into `area` — the same carve
+/// [`GraphScreen`]'s own `render` draws from.
+#[must_use]
+pub fn row_layout(view: &GraphView<'_>, area: Rect) -> RowLayout {
+    let (body, rows, applied) = body_layout(view, area);
+    RowLayout {
+        body,
+        columns: Columns::compute(body, graph_width(body, rows, applied.as_ref())),
+    }
+}
+
+/// The entry drawn at `screen_row`, and the columns it was drawn to.
+///
+/// `None` above or below the commit rows. Together with
+/// [`super::badge_spans`] this is everything a hit-test needs: the entry
+/// says which badges the row has, the columns say where they start, and the
+/// spans say which cell is which — all three read off the same carve the
+/// renderer draws from, so there is nothing here to keep in step by hand.
+#[must_use]
+pub fn row_at<'a>(
+    view: &'a GraphView<'a>,
+    area: Rect,
+    screen_row: u16,
+) -> Option<(&'a GraphEntry<'a>, Columns)> {
+    let (body, rows, applied) = body_layout(view, area);
+    if body.height == 0 {
+        return None;
+    }
+    let offset = usize::from(screen_row.checked_sub(body.y)?);
+    if screen_row >= body.bottom() {
+        return None;
+    }
+    let entry = rows.get(offset)?;
+    Some((
+        entry,
+        Columns::compute(body, graph_width(body, rows, applied.as_ref())),
+    ))
+}
+
 /// The header's account of what the drawn fold and the filters leave out:
 /// the filters, then `+N lanes` while the drawn fold hides any. The count is
 /// the screen's to say — it planned the fold — and shows only while
@@ -376,17 +446,28 @@ pub(super) fn text_width(text: &str) -> usize {
 /// a column simply stops taking space rather than the arithmetic
 /// underflowing. The author chip is the one column that can drop entirely,
 /// below [`AUTHOR_BREAKPOINT`] (DESIGN.md §1.2/§1.3); the rest only narrow.
-pub(super) struct Columns {
-    pub(super) marker_x: u16,
-    pub(super) marker_width: u16,
-    pub(super) subject_x: u16,
-    pub(super) subject_width: u16,
-    pub(super) author_x: u16,
-    pub(super) author_width: u16,
-    pub(super) when_x: u16,
-    pub(super) when_width: u16,
-    pub(super) sha_x: u16,
-    pub(super) sha_width: u16,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Columns {
+    /// Where the Mistake Radar's marker slot starts.
+    pub marker_x: u16,
+    /// Its width; always reserved, whether or not a marker draws.
+    pub marker_width: u16,
+    /// Where the subject column starts — and so where the row's badges do.
+    pub subject_x: u16,
+    /// Its width, badges included.
+    pub subject_width: u16,
+    /// Where the author chip starts.
+    pub author_x: u16,
+    /// Its width; `0` below [`AUTHOR_BREAKPOINT`], the one column that drops.
+    pub author_width: u16,
+    /// Where the relative-date column starts.
+    pub when_x: u16,
+    /// Its width.
+    pub when_width: u16,
+    /// Where the short-SHA column starts.
+    pub sha_x: u16,
+    /// Its width.
+    pub sha_width: u16,
 }
 
 impl Columns {
@@ -397,7 +478,7 @@ impl Columns {
     // ("never shifts on scroll", m2-details-and-diffs.md) is met either way
     // — the width never changes at all; `marker_column` instead gates which
     // *glyph* the slot may draw (`GraphScreen::draw_row`).
-    pub(super) fn compute(area: Rect, graph_width: u16) -> Self {
+    pub(crate) fn compute(area: Rect, graph_width: u16) -> Self {
         let marker_x = area.x + graph_width.min(area.width);
         let marker_width = MARKER_WIDTH.min(area.width.saturating_sub(graph_width));
         let content_x = marker_x + marker_width;

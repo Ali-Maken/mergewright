@@ -169,7 +169,10 @@ fn a_plain_row_hints_the_plain_context() {
 
     let bar = footer(&state, 80, 24);
     assert!(
-        bar.starts_with(" ⏎ open  r rebase  c commit  . more") && !bar.ends_with(". more"),
+        // `b branch` and `t tag` went live in
+        // m5-history-and-ghost-preview/10, in the hint-bar design note's own
+        // order for a plain row; `c commit` dropped to its bare key.
+        bar.starts_with(" ⏎ open  b branch  r rebase  . more") && !bar.ends_with(". more"),
         "{bar:?}"
     );
     app.close();

@@ -9,7 +9,7 @@ use super::context_menu;
 use super::detail;
 use super::events::Command;
 use super::geometry::{self, DetailHit};
-use super::state::AppState;
+use super::state::{AppState, Status};
 
 /// Rows the wheel moves the viewport per notch (DESIGN.md §2.15). The
 /// keyboard's `j`/`k` move the selection; the wheel moves the viewport
@@ -31,47 +31,14 @@ pub(super) fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mous
         }
         return;
     }
+    // A branch badge in the air owns the button: see `drag::drag_mouse`.
+    if super::drag::drag_mouse(next, commands, mouse) {
+        return;
+    }
     match mouse.kind {
         MouseKind::ScrollUp => wheel(next, commands, mouse.column, mouse.row, -WHEEL_LINES),
         MouseKind::ScrollDown => wheel(next, commands, mouse.column, mouse.row, WHEEL_LINES),
-        MouseKind::Down(MouseButton::Left) => {
-            if let Some(bounds) = geometry::strip_bounds(next)
-                && bounds.contains(mouse.column, mouse.row)
-            {
-                let marks = crate::view::strip::strip_marks(next);
-                let row = graft_ui::overview_strip::row_for_cell(
-                    &marks,
-                    bounds.height,
-                    mouse.row - bounds.y,
-                );
-                select_row(next, commands, row);
-                return;
-            }
-            if matches!(
-                geometry::detail_hit(next, mouse.column, mouse.row),
-                Some(DetailHit::Divider)
-            ) {
-                next.detail.dragging = true;
-                return;
-            }
-            if let Some(row) = geometry::graph_row_at(next, mouse.row) {
-                if mouse.modifiers.shift || mouse.modifiers.control {
-                    // Same as `x` on that row (`compare-two-commits`,
-                    // m2-details-and-diffs/11): no separate click-only path,
-                    // and no change to the selection itself.
-                    toggle_compare_at(next, commands, row);
-                } else {
-                    select_graph_row(next, commands, row);
-                }
-            } else if next.uncommitted_row_shown() && mouse.row == geometry::rows_above_graph(next)
-            {
-                // The first body row while the working-tree row is shown:
-                // `graph_row_at` returns `None` for it (offset 0, displaced
-                // by the virtual row), so this is the one case its offset
-                // math does not already cover.
-                next.on_working_tree = true;
-            }
-        }
+        MouseKind::Down(MouseButton::Left) => left_click(next, commands, mouse),
         MouseKind::Down(MouseButton::Right) => {
             // Reuses the graph's existing click-to-row mapping, not a new
             // one (`context-actions-menu`, m2-details-and-diffs/12).
@@ -103,6 +70,43 @@ pub(super) fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mous
         // no button held — hover, not a drag.
         MouseKind::Moved => next.hover = geometry::graph_row_at(next, mouse.row),
         _ => {}
+    }
+}
+
+/// A left button down that no drag claimed: the overview strip, the detail
+/// pane's divider, or a row of the graph.
+fn left_click(next: &mut AppState, commands: &mut Vec<Command>, mouse: MouseInput) {
+    if let Some(bounds) = geometry::strip_bounds(next)
+        && bounds.contains(mouse.column, mouse.row)
+    {
+        let marks = crate::view::strip::strip_marks(next);
+        let row =
+            graft_ui::overview_strip::row_for_cell(&marks, bounds.height, mouse.row - bounds.y);
+        select_row(next, commands, row);
+        return;
+    }
+    if matches!(
+        geometry::detail_hit(next, mouse.column, mouse.row),
+        Some(DetailHit::Divider)
+    ) {
+        next.detail.dragging = true;
+        return;
+    }
+    if let Some(row) = geometry::graph_row_at(next, mouse.row) {
+        if mouse.modifiers.shift || mouse.modifiers.control {
+            // Same as `x` on that row (`compare-two-commits`,
+            // m2-details-and-diffs/11): no separate click-only path, and no
+            // change to the selection itself.
+            toggle_compare_at(next, commands, row);
+        } else {
+            select_graph_row(next, commands, row);
+        }
+    } else if next.uncommitted_row_shown() && mouse.row == geometry::rows_above_graph(next) {
+        // The first body row while the working-tree row is shown:
+        // `graph_row_at` returns `None` for it (offset 0, displaced by the
+        // virtual row), so this is the one case its offset math does not
+        // already cover.
+        next.on_working_tree = true;
     }
 }
 
@@ -153,7 +157,7 @@ fn scroll(next: &mut AppState, commands: &mut Vec<Command>, lines: isize) {
 /// sentinel and onto `row`. Both buttons go through this — a left click
 /// selects, a right click selects *and then* opens the row's menu — so
 /// there is one answer to "which row did that click pick".
-fn select_graph_row(next: &mut AppState, commands: &mut Vec<Command>, row: usize) {
+pub(super) fn select_graph_row(next: &mut AppState, commands: &mut Vec<Command>, row: usize) {
     next.on_working_tree = false;
     select_row(next, commands, row);
 }
@@ -206,10 +210,22 @@ fn context_menu_click(
     if !area.contains(column, screen_row) {
         return;
     }
-    let index = usize::from(screen_row - area.y);
+    // `item_at`, not a subtraction: a drop menu draws a title above its
+    // items, and only the menu knows whether it has one.
+    let Some(index) = open.menu.item_at(usize::from(screen_row - area.y)) else {
+        return;
+    };
     let Some(item) = open.menu.items.get(index) else {
         return;
     };
+    // A click on a disabled row says why, and leaves the menu where it was:
+    // the reason is next to the row it belongs to, and closing the menu
+    // would take it off the screen with the answer.
+    if let Some(reason) = &item.disabled {
+        next.context_menu = Some(open.clone());
+        next.status = Status::sticky(reason.as_str().to_owned());
+        return;
+    }
     commands.extend(context_menu::dispatch(
         next,
         open.row,

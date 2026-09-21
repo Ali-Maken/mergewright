@@ -60,11 +60,26 @@ pub struct MenuItem {
     pub action: ContextAction,
     /// Its label.
     pub label: SanitizedText,
+    /// Why this item cannot act right now, or `None` when it can.
+    ///
+    /// A disabled row is **shown, dimmed, with its reason beside it** rather
+    /// than hidden: `Rebase feature onto main — check out feature first`
+    /// teaches what is missing, and a row that quietly vanished would teach
+    /// nothing at all. `Enter` on one puts the reason on the status line and
+    /// leaves the menu open, so the user can pick another row without
+    /// reopening it (m5/10).
+    pub disabled: Option<SanitizedText>,
 }
 
-/// The popup itself: its items and which one the cursor is on.
+/// The popup itself: its items, an optional heading, and which item the
+/// cursor is on.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ContextMenu {
+    /// A heading drawn above the items, on a row of its own — the drop
+    /// menu's `feature → main`, which says what the drag was before the
+    /// verbs say what could be done with it. `None` for the `.` menu, whose
+    /// row is already the selected one.
+    pub title: Option<SanitizedText>,
     /// The items, in display order (top to bottom).
     pub items: Vec<MenuItem>,
     /// The highlighted item.
@@ -92,8 +107,12 @@ fn item(action: ContextAction, label: &str) -> MenuItem {
     MenuItem {
         action,
         label: sanitize_line(label),
+        disabled: None,
     }
 }
+
+/// What a disabled row's reason is written after: ` — check out main first`.
+const REASON_SEPARATOR: &str = " — ";
 
 impl ContextMenu {
     /// A commit row's menu: `Explain` first when the row is marked (design
@@ -129,10 +148,15 @@ impl ContextMenu {
             items.push(MenuItem {
                 action: ContextAction::History(index),
                 label,
+                disabled: None,
             });
         }
         items.extend(always_items());
-        ContextMenu { items, cursor: 0 }
+        ContextMenu {
+            title: None,
+            items,
+            cursor: 0,
+        }
     }
 
     /// The uncommitted-changes row's menu: `Open details` (design note,
@@ -142,7 +166,73 @@ impl ContextMenu {
     pub fn for_working_tree() -> ContextMenu {
         let mut items = vec![item(ContextAction::OpenDetails, "Open details (⏎)")];
         items.extend(always_items());
-        ContextMenu { items, cursor: 0 }
+        ContextMenu {
+            title: None,
+            items,
+            cursor: 0,
+        }
+    }
+
+    /// The menu a dropped branch badge opens over the row it was dropped on
+    /// (`docs/design/02-keymap.md` §2.15).
+    ///
+    /// `title` says what was dropped where (`feature → main`); each of
+    /// `verbs` is one of the app's own history verbs, paired with the reason
+    /// it cannot run right now — `None` for the ones that can. The actions
+    /// are [`ContextAction::History`] indices for the same reason the `.`
+    /// menu's are: which git operation a row means is the app's to say, and
+    /// `ui` imports neither `git` nor `ops` (`ARCHITECTURE.md`).
+    ///
+    /// The cursor starts on the first row that can act — a menu opening on a
+    /// row `Enter` only refuses on would make the commonest gesture (drop,
+    /// press `Enter`) a no-op. All four disabled means it starts at the top,
+    /// where the first reason is.
+    #[must_use]
+    pub fn for_drop(
+        title: SanitizedText,
+        verbs: Vec<(SanitizedText, Option<SanitizedText>)>,
+    ) -> ContextMenu {
+        let items: Vec<MenuItem> = verbs
+            .into_iter()
+            .enumerate()
+            .map(|(index, (label, disabled))| MenuItem {
+                action: ContextAction::History(index),
+                label,
+                disabled,
+            })
+            .collect();
+        let cursor = items
+            .iter()
+            .position(|item| item.disabled.is_none())
+            .unwrap_or(0);
+        ContextMenu {
+            title: Some(title),
+            items,
+            cursor,
+        }
+    }
+
+    /// Rows the popup draws: its items, plus the title's own row when it has
+    /// one. What the caller sizes the rectangle by.
+    #[must_use]
+    pub fn rows(&self) -> usize {
+        self.items.len() + usize::from(self.title.is_some())
+    }
+
+    /// The item `offset` rows down from the popup's top edge, or `None` when
+    /// that row is the title (which is not selectable) or past the end.
+    /// The one place a screen row is turned back into an item index, so a
+    /// click and the cursor cannot count the title differently.
+    #[must_use]
+    pub fn item_at(&self, offset: usize) -> Option<usize> {
+        let index = offset.checked_sub(usize::from(self.title.is_some()))?;
+        (index < self.items.len()).then_some(index)
+    }
+
+    /// Why the item under the cursor cannot act, or `None` when it can.
+    #[must_use]
+    pub fn selected_refusal(&self) -> Option<&SanitizedText> {
+        self.items[self.cursor].disabled.as_ref()
     }
 
     /// Move the cursor by `delta` items, clamped to the ends (the files
@@ -167,10 +257,31 @@ impl ContextMenu {
         let longest = self
             .items
             .iter()
-            .map(|item| item.label.as_str().chars().count())
+            .map(|item| row_text(item).chars().count())
+            .chain(
+                self.title
+                    .iter()
+                    .map(|title| title.as_str().chars().count()),
+            )
             .max()
             .unwrap_or(0);
         u16::try_from(longest).unwrap_or(u16::MAX).saturating_add(4)
+    }
+}
+
+/// One item's whole row, its refusal included: `Rebase f onto main — check
+/// out f first`. The one place the two halves are joined, so [`width`] and
+/// the draw measure the same string.
+///
+/// [`width`]: ContextMenu::width
+fn row_text(item: &MenuItem) -> String {
+    match &item.disabled {
+        Some(reason) => format!(
+            "{}{REASON_SEPARATOR}{}",
+            item.label.as_str(),
+            reason.as_str()
+        ),
+        None => item.label.as_str().to_owned(),
     }
 }
 
@@ -179,23 +290,40 @@ impl Widget for &ContextMenu {
         if area.width == 0 || area.height == 0 {
             return;
         }
-        for (offset, item) in (0_u16..).zip(self.items.iter()) {
+        let width = usize::from(area.width);
+        let mut offset = 0_u16;
+        if let Some(title) = &self.title {
+            buf.set_stringn(
+                area.x,
+                area.y,
+                fit(&format!(" {}", title.as_str()), width),
+                width,
+                Style::new().add_modifier(Modifier::BOLD),
+            );
+            offset = 1;
+        }
+        for item in &self.items {
             if offset >= area.height {
                 break;
             }
-            let style = if usize::from(offset) == self.cursor {
-                // The accent cursor row: reversed so it reads over whatever
-                // background the caller painted underneath.
-                Style::new().add_modifier(Modifier::REVERSED)
+            let index = usize::from(offset) - usize::from(self.title.is_some());
+            let mut style = if item.disabled.is_some() {
+                // Dim: the row is there to be read, not chosen. `Enter` on it
+                // says why in words rather than doing nothing.
+                Style::new().add_modifier(Modifier::DIM)
             } else {
                 Style::default()
             };
-            let text = fit(
-                &format!(" {}", item.label.as_str()),
-                usize::from(area.width),
-            );
+            if index == self.cursor {
+                // The accent cursor row: reversed so it reads over whatever
+                // background the caller painted underneath. A disabled row
+                // still takes it — the cursor must be visible wherever it is.
+                style = style.add_modifier(Modifier::REVERSED);
+            }
+            let text = fit(&format!(" {}", row_text(item)), width);
             let y = area.y.saturating_add(offset);
-            buf.set_stringn(area.x, y, text, usize::from(area.width), style);
+            buf.set_stringn(area.x, y, text, width, style);
+            offset = offset.saturating_add(1);
         }
     }
 }

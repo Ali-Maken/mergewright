@@ -1,0 +1,45 @@
+# m5-ui-name-prompt-80x24.txt: drawn by `view::view` from a real AppState over
+# a real repository (`main` three commits, `feature` forked off the first with
+# two of its own), opened over the real job pool, cursor moved to `main`'s row,
+# `b` pressed and `main` typed into the field
+# (crates/graft/tests/it/name_and_drag.rs, capture_the_name_prompt_for_docs_shots).
+# A golden snapshot: that test fails if the frame drifts. Regenerate on purpose
+# with GRAFT_UPDATE_SHOTS=1. The terminal is ratatui's TestBackend, so this is a
+# character grid with no colour attributes in it — CLAUDE.md rule 5, colour
+# ships unverified.
+#
+# What right looks like:
+#  - The top border says what is being named and where: `New branch at <sha7>`.
+#  - The typed name is on the field row, with the cursor after it.
+#  - The option line offers the checkout, and says `⇥` is what flips it.
+#  - The refusal under the field reads `exists` — `main` is taken. A name that
+#    is fine so far shows no line there at all: an empty box never opens with a
+#    warning already on it.
+#  - The bottom border carries the keys that end it.
+#  - The box covers whole columns of the graph (ADR-0040); no half-covered
+#    column shows beside it.
+#
+ graft /code/api  8 commits
+  ◆ ⓘ [◆ feature] finish the feature                                now  8d6cd28
+  ●   start the feature                                             2m   52f3b96
+● │   [main] main moves again                                       3m   45fa51d
+● │   main moves on                                                 4m   37926a7
+●─╯   add the base                                                  5m   ed332bc
+●     Correct the note                                              1y   a82960b
+●     Add the first note                                            1y   fadcfb3
+◇     Add a readme                                                  1y   64ded19
+          ╭ New branch at 45fa51d ───────────────────────────────────╮
+          │ ▏main                                                    │
+          │ ( ) check out after creating · ⇥ toggles                 │
+          │ exists                                                   │
+          │                                                          │
+          ╰ ⏎ create  ⇥ toggle  esc cancel ──────────────────────────╯
+
+
+
+
+
+
+
+ no commit-graph file · B build one · X never here
+ m merge  r rebase  ⏎ open  . more  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +

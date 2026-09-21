@@ -177,6 +177,14 @@ pub struct AppState {
     /// is in [`AppState::text_field_open`]. Its `Debug` never prints what was
     /// typed.
     pub credential: Option<super::credential::CredentialPrompt>,
+    /// The name prompt (`b` branch, `t` tag, `b` in the stash overlay):
+    /// `None` while closed. Modal, and a text field — it is in
+    /// [`AppState::text_field_open`].
+    pub name_prompt: Option<super::name_prompt::NamePrompt>,
+    /// A branch badge picked up with the left button and not yet dropped:
+    /// `None` when nothing is in the air. Mouse-only; any key cancels it
+    /// (m5-history-and-ghost-preview/10).
+    pub drag: Option<super::drag::DragState>,
     /// The commit editor (`c`, `a`): `None` while closed. Modal like the
     /// confirm box — while it is open every key is the editor's, bar `Ctrl+C`
     /// (m3-working-tree-undo-and-stash/05).
@@ -500,6 +508,7 @@ impl AppState {
             || self.commit_editor.is_some()
             || self.stash.prompt.is_some()
             || self.credential.is_some()
+            || self.name_prompt.is_some()
     }
 }
 

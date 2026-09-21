@@ -98,7 +98,11 @@ fn eighty_columns_leads_with_three_and_fills_the_row() {
         ),
         (
             HintContext::PlainRow,
-            [("⏎", "open"), ("r", "rebase"), ("c", "commit")],
+            // `b branch` and `t tag` went live in
+            // m5-history-and-ghost-preview/10, in the places the hint-bar
+            // design note had already reserved for them; `c commit` moved
+            // down a rung to make room.
+            [("⏎", "open"), ("b", "branch"), ("r", "rebase")],
         ),
     ];
     for (context, first_three) in cases {
@@ -170,9 +174,14 @@ fn hundred_sixty_shows_the_context_then_the_screen() {
         assert_doorway_leads_the_bare_keys(&hints, &format!("{context:?} at 160 columns"));
         let text = hints_text(&hints);
         assert!(text.width() <= 160, "{context:?}: {text:?} does not fit");
+        // `q` is reached at 160 in every context. Whether it is reached at
+        // its full rung (`q quit`) or as a bare key depends on how much the
+        // context has of its own to say: a branch row, which since
+        // m5-history-and-ghost-preview/10 offers `b branch` and `t tag` as
+        // well, spends its full rungs on those and draws `q` bare.
         assert!(
-            text.contains("q quit"),
-            "{context:?} still hides `q quit` at 160: {text:?}"
+            text.contains(" q "),
+            "{context:?} still hides `q` at 160: {text:?}"
         );
     }
     // Wide enough for the whole tail as well: `x compare`, the one live key
@@ -245,11 +254,10 @@ fn status_line_keeps_its_keys() {
 /// (m5-03 review, Critical 2 — at 80 columns two of a branch row's three
 /// keys did nothing at all).
 ///
-/// The canary used to be `m merge`. M5 ticket 25 bound `m` and `r` to the
-/// Ghost Preview (`graft::update::preview::is_history_key`) and the table
-/// went on calling them planned, so two working keys were advertised
-/// nowhere — the converse of `docs/design/02-keymap.md` §2.1's rule, and
-/// the reason they are live here now. `b branch` carries the canary.
+/// The canary used to be `m merge`, then `b branch`; both have since been
+/// bound (M5 tickets 25 and 10) and the table was updated with them, which
+/// is the rule working. `M mergetool` carries it now — M6's, and the last
+/// `Planned` row left on the graph side.
 #[test]
 fn no_planned_hint_is_ever_drawn() {
     let planned: Vec<Hint> = every_hint()
@@ -259,7 +267,7 @@ fn no_planned_hint_is_ever_drawn() {
     assert!(
         planned
             .iter()
-            .any(|hint| (hint.key, hint.verb) == ("b", "branch")),
+            .any(|hint| (hint.key, hint.verb) == ("M", "mergetool")),
         "the design note's planned entries must stay in the table: {planned:?}"
     );
     for context in all_contexts() {
@@ -311,10 +319,19 @@ fn the_divider_hint_is_fourth_so_the_six_key_tier_reaches_it() {
         HintContext::ChangesPane { unmerged: false },
     ] {
         let hints = hints_for(&context, Divider::Shown, 120);
-        assert_eq!(
-            hints.get(3).map(|hint| hint.key),
-            Some("<>"),
-            "{context:?}: {:?}",
+        // Fifth, not fourth, on a graph row since `b branch` and `t tag`
+        // went live (m5-history-and-ghost-preview/10): `drawable` still
+        // inserts it fourth, and the doorway `. more` is then promoted in
+        // front of it to lead the tail. What the rule is for is that the
+        // hint is *reached* at the tier a pane and a graph first fit side
+        // by side, and it still is.
+        let at = hints
+            .iter()
+            .position(|hint| hint.key == "<>")
+            .unwrap_or_else(|| panic!("{context:?} never draws `<>`: {:?}", hints_text(&hints)));
+        assert!(
+            at <= 4,
+            "{context:?} buried `<>` at {at}: {:?}",
             hints_text(&hints)
         );
     }
@@ -872,7 +889,7 @@ fn one_rule_puts_the_doorway_before_a_tail_and_last_without_one() {
     );
     let text = hints_text(&with_a_tail);
     assert_eq!(
-        text, " ⏎ open  c commit  P push  . more  p  f  u  S  J  /  q  F2  F3  x  +  j/k  space",
+        text, " ⏎ open  c commit  P push  . more  p  f  b  t  u  S  J  /  q  F2  F3  x  +  j/k",
         "a row context has a tail, so the doorway leads it"
     );
     assert!(

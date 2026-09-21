@@ -254,6 +254,10 @@ pub enum HintContext {
     /// The stash list has focus (overlay; draws its own footer today —
     /// reserved for the `?` help overlay, M8).
     Stash,
+    /// A branch badge is being dragged (`docs/design/02-keymap.md` §2.15).
+    /// The gesture ends with the button, not a key, so the bar says what
+    /// the pointer must do and which key backs out.
+    Dragging,
 }
 
 /// The hints for `context` that fit in `columns` cells: **as many whole
@@ -293,7 +297,12 @@ pub fn hints_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<H
         // included. Three keys at 80 columns would have hidden the exit of
         // a modal that swallows every other key, which is the failure
         // `banner_key`'s own doc comment warns of.
-        HintContext::Banner { .. } => fit_list(&drawable(context, divider), None, columns),
+        // A drag takes no doorway either, and for the banner's reason: `.`
+        // does not open the menu while a badge is in the air, it cancels the
+        // drag. Two hints fit at every width the app draws at.
+        HintContext::Banner { .. } | HintContext::Dragging => {
+            fit_list(&drawable(context, divider), None, columns)
+        }
         HintContext::Marked(inner) => {
             // `.` is already on screen as `. explain`, so no `. more`; it
             // is prepended before fitting and not after, because a list
@@ -325,7 +334,9 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
         .into_iter()
         .filter(|hint| hint.state == HintState::Live)
         .collect();
-    if divider == Divider::Shown && !matches!(context, HintContext::Banner { .. }) {
+    if divider == Divider::Shown
+        && !matches!(context, HintContext::Banner { .. } | HintContext::Dragging)
+    {
         // Fourth, not last: appended, it sat behind ten context keys and the
         // six-hint tier never reached it, so the hint existed and was never
         // drawn (found by rendering a real frame —
@@ -523,9 +534,15 @@ fn context_list(context: &HintContext) -> Vec<Hint> {
             hint("⏎", "apply"),
             hint("p", "pop"),
             hint("d", "drop"),
+            hint("b", "branch"),
             hint("esc", "close"),
-            planned("b", "branch"),
         ],
+        // The drag is a mouse gesture: `release` is not a key, it is what
+        // the user's hand has to do, and `esc` is the one key that answers
+        // while a badge is in the air (`graft::update::drag::drag_cancel`).
+        // Nothing else is offered because nothing else acts — every other
+        // key cancels the drag and then means what it always means.
+        HintContext::Dragging => vec![hint("release", "drop on a row"), hint("esc", "cancel")],
         // Both are answered in `hints_for` before this is reached; a
         // `RowContext` sub-enum would say so in the type, at the cost of
         // wrapping every row context at every call site.
@@ -582,8 +599,8 @@ fn branch_row_list() -> Vec<Hint> {
         hint("m", "merge"),
         hint("r", "rebase"),
         hint("⏎", "open"),
-        planned("b", "branch"),
-        planned("t", "tag"),
+        hint("b", "branch"),
+        hint("t", "tag"),
         hint("P", "push"),
         hint("c", "commit"),
         hint("p", "pull"),
@@ -601,8 +618,8 @@ fn current_branch_row_list() -> Vec<Hint> {
         hint("P", "push"),
         hint("p", "pull"),
         hint("f", "fetch"),
-        planned("b", "branch"),
-        planned("t", "tag"),
+        hint("b", "branch"),
+        hint("t", "tag"),
         hint("u", "undo"),
         hint("S", "stash"),
         hint("J", "journal"),
@@ -613,9 +630,9 @@ fn current_branch_row_list() -> Vec<Hint> {
 fn plain_row_list() -> Vec<Hint> {
     vec![
         hint("⏎", "open"),
-        planned("b", "branch"),
+        hint("b", "branch"),
         hint("r", "rebase"),
-        planned("t", "tag"),
+        hint("t", "tag"),
         hint("c", "commit"),
         hint("y", "sha"),
         hint("m", "merge"),
@@ -707,6 +724,7 @@ pub fn every_hint() -> Vec<Hint> {
         HintContext::ChangesPane { unmerged: true },
         HintContext::Journal,
         HintContext::Stash,
+        HintContext::Dragging,
     ];
     for context in contexts {
         all.extend(context_list(&context));

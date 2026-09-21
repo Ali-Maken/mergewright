@@ -72,6 +72,11 @@ pub(super) fn key_event(next: &mut AppState, commands: &mut Vec<Command>, key: K
     if matches!(next.commit_graph, CommitGraphOffer::Written { .. }) {
         next.commit_graph = CommitGraphOffer::NotNeeded;
     }
+    // A badge in the air is dropped by any key, before that key means
+    // anything: `drag::drag_key`. Only `Esc` is spent doing it.
+    if super::drag::drag_key(next, key) {
+        return;
+    }
     if boxes_key(next, commands, key) {
         return;
     }
@@ -243,11 +248,16 @@ fn graph_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) {
 
 /// The keys that change the repository: `m`/`r`, which end in a Ghost
 /// Preview rather than straight in a write (m5-history-and-ghost-preview/08),
-/// and the three remote keys. `true` when one of them answered.
+/// `b`/`t`, which end in the name prompt, and the three remote keys. `true`
+/// when one of them answered.
 ///
 /// `local_jobs` is borrowed out because the closure and `next` cannot
 /// overlap.
 fn write_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    if let Some(tag) = is_name_key(key) {
+        super::name_prompt::open_from_graph(next, tag);
+        return true;
+    }
     if let Some(which) = super::preview::is_history_key(key) {
         let mut local_jobs = next.local_jobs;
         super::preview::history_key(next, commands, which, &mut || local_jobs.next_id());
@@ -544,6 +554,22 @@ fn is_compare_key(key: KeyPress) -> bool {
     key.code == KeyCode::Char('x') && !key.modifiers.control && !key.modifiers.alt
 }
 
+/// `b` names a new branch at the cursor's commit, `t` a new tag
+/// (`docs/design/02-keymap.md` §2.3). `Some(true)` for the tag.
+///
+/// Both open the name prompt and nothing else: a branch is created only once
+/// there is a name to create it under, so neither key writes by itself.
+fn is_name_key(key: KeyPress) -> Option<bool> {
+    if key.modifiers.control || key.modifiers.alt {
+        return None;
+    }
+    match key.code {
+        KeyCode::Char('b') => Some(false),
+        KeyCode::Char('t') => Some(true),
+        _ => None,
+    }
+}
+
 /// `c` opens the commit editor, `a` opens it amending `HEAD` (DESIGN.md
 /// §2.3; m3-working-tree-undo-and-stash/05). `Some(amend)` says which.
 fn is_commit_key(key: KeyPress) -> Option<bool> {
@@ -721,6 +747,8 @@ pub fn bound_actions() -> &'static [(&'static str, &'static str)] {
         ("u", "undo"),         // `is_undo_key` → `undo::undo_key`
         ("U", "redo"),         // `is_undo_key`, redo
         ("esc", "dismiss"),    // `key_event`: clears a `Failed`/`Sticky` status
+        ("b", "branch"),       // `is_name_key` → `name_prompt::open_from_graph`
+        ("t", "tag"),          // `is_name_key`, tagging
         (".", "more"),         // `is_context_menu_key` → `context_menu::open_selected`
         (".", "explain"),      // the same menu's `Explain` item on a marked row
         // The panes and overlays (`pane_and_overlay_key`).
@@ -749,6 +777,12 @@ pub fn bound_actions() -> &'static [(&'static str, &'static str)] {
         ("⏎", "apply"),   // `stash::operate_on_selected`, keeping the entry
         ("p", "pop"),     // the same, popping
         ("d", "drop"),    // `stash::stash_key`
+        ("b", "branch"),  // `stash::shown_key` → `name_prompt::open_name_prompt`
         ("esc", "close"), // either overlay's own `Esc`
+        // Dragging a branch badge (`drag::drag_mouse`, `drag::drag_key`).
+        // `release` is the mouse button, named as a key so the hint bar can
+        // offer it: the gesture ends with the button, not with `⏎`.
+        ("release", "drop on a row"),
+        ("esc", "cancel"), // `drag_key`: `Esc` drops the badge, doing nothing
     ]
 }

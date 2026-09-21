@@ -1155,6 +1155,8 @@ fn the_same_event_always_gives_the_same_answer() {
         strip_shown: false,
         confirm: None,
         credential: None,
+        name_prompt: None,
+        drag: None,
         commit_editor: None,
         commit_draft: None,
         in_progress: None,

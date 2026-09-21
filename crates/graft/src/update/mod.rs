@@ -25,6 +25,7 @@ pub mod confirm;
 mod context_menu;
 pub mod credential;
 pub mod detail;
+pub mod drag;
 mod events;
 mod geometry;
 mod history;
@@ -32,6 +33,7 @@ pub mod journal;
 pub mod keys;
 pub mod map;
 mod mouse;
+pub mod name_prompt;
 pub mod operate;
 mod prelude;
 pub mod preview;
@@ -48,7 +50,7 @@ pub use events::{AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progres
 pub(crate) use geometry::context_menu_area;
 pub use state::{AppState, Banner, CHROME_ROWS, Harness, Quit, Screen, Size, Status};
 
-use graft_core::event::Event;
+use graft_core::event::{Event, KeyPress};
 use graft_core::job::JobId;
 
 use crate::history::{History, Phase};
@@ -546,6 +548,20 @@ fn repository_open_failed(next: &mut AppState, failure: String) {
     }
 }
 
+/// The name prompt's turn at a key, right after the credential prompt's and
+/// before the search prompt's: a one-field modal that claims every key but
+/// `Ctrl+C`, so a branch named `search` cannot open the search prompt
+/// halfway through being typed (m3/06 review, Critical 1).
+///
+/// `local_jobs` is borrowed out because the closure and `next` cannot
+/// overlap.
+fn name_prompt_claimed(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
+    let mut local_jobs = next.local_jobs;
+    let claimed = name_prompt::name_prompt_key(next, commands, key, &mut || local_jobs.next_id());
+    next.local_jobs = local_jobs;
+    claimed
+}
+
 /// The half of [`answer`] that answers the events `core` defines.
 fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
     match event {
@@ -558,6 +574,9 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             // a password typed while the search prompt happened to be open
             // must land in the credential field, not the search.
             if credential::credential_key(next, commands, key) {
+                return;
+            }
+            if name_prompt_claimed(next, commands, key) {
                 return;
             }
             if next.search_prompt.is_some() || !next.harness.hand_back.contains(&key.code) {
@@ -622,7 +641,9 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             // commit editor. A paste arriving anywhere else is not an error
             // and there is nothing to report: the user pasted at a screen
             // with no text field on it.
-            if !credential::credential_paste(next, &text) {
+            if !credential::credential_paste(next, &text)
+                && !name_prompt::name_prompt_paste(next, &text)
+            {
                 let _taken: bool = commit_editor::paste(next, &text);
             }
         }

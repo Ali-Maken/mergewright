@@ -32,7 +32,7 @@ use crate::preview::{FORK_NOW, forked, frame, frame_at, on_main, opened, rows_dr
 /// `.` on `main`'s row, with the menu's plan on hand.
 /// Presses `j` until the cursor sits on `main`'s row — where the history
 /// verbs have something to name.
-fn on_mains_row(app: &App, state: AppState) -> AppState {
+pub(crate) fn on_mains_row(app: &App, state: AppState) -> AppState {
     let mut state = opened(app, state);
     let mut guard = 0;
     loop {
@@ -525,7 +525,7 @@ fn capture_context_menu_for_docs_shots() {
 /// A "what right looks like" frame has to be a settled one: both
 /// context-menu captures were taken mid-sort, so the picture the user
 /// judged showed a transient (M5 groups 12/13 review, m2).
-fn settled(app: &App, state: AppState) -> AppState {
+pub(crate) fn settled(app: &App, state: AppState) -> AppState {
     app.pump(state, "the walk and the radar to settle", |state| {
         // The radar too: its context arrives on its own job, and the marker
         // column it fills is part of the picture. Waiting only for the sort
@@ -551,7 +551,7 @@ fn settled(app: &App, state: AppState) -> AppState {
 ///
 /// Setting the path before the frame is drawn means the header fits against
 /// the path the caption claims, which is the only honest picture of it.
-fn at_a_fixed_path(state: AppState) -> AppState {
+pub(crate) fn at_a_fixed_path(state: AppState) -> AppState {
     let mut state = state;
     let repository = state
         .repository
@@ -566,7 +566,7 @@ fn at_a_fixed_path(state: AppState) -> AppState {
 /// `GRAFT_UPDATE_SHOTS=0` or `=false` left exported in a shell used to mean
 /// "yes" (`var_os(..).is_some()`), which is the shape of an accident, not of
 /// an instruction (M5 groups 12/13 review, m1).
-fn updating_shots(value: Option<&std::ffi::OsStr>) -> bool {
+pub(crate) fn updating_shots(value: Option<&std::ffi::OsStr>) -> bool {
     value == Some(std::ffi::OsStr::new("1"))
 }
 
@@ -579,7 +579,7 @@ fn updating_shots(value: Option<&std::ffi::OsStr>) -> bool {
 /// a `GRAFT_UPDATE_SHOTS` someone left exported can no longer turn a real
 /// regression green, and a regenerated file is always something `git status`
 /// has to show (M5 groups 12/13 review, m1).
-fn check_capture(path: &Path, out: &str, updating: bool) -> Result<(), String> {
+pub(crate) fn check_capture(path: &Path, out: &str, updating: bool) -> Result<(), String> {
     let committed = std::fs::read_to_string(path);
     if updating {
         std::fs::write(path, out)

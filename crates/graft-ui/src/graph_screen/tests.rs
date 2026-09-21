@@ -779,7 +779,10 @@ fn the_footer_hint_list_widens_with_the_frame() {
         footer_at(120)
     );
     assert!(at(160) >= at(120), "{}", footer_at(160));
-    assert!(footer_at(160).contains("q quit"), "{}", footer_at(160));
+    // `q` is reached at 160; whether it keeps its verb depends on how much
+    // the context has of its own to say (m5-history-and-ghost-preview/10
+    // made `b branch` and `t tag` live on every row list).
+    assert!(footer_at(160).contains(" q "), "{}", footer_at(160));
     for columns in [80u16, 120, 160] {
         assert!(
             footer_at(columns).chars().count() <= usize::from(columns),
@@ -800,7 +803,8 @@ fn the_footer_hint_list_widens_with_the_frame() {
 /// the three most relevant keep whole verbs and the row's remaining cells
 /// now go on more *keys* rather than on four more verbs — eight hints became
 /// seventeen, and the ones past the leading three are on their bare-key
-/// rung. Which of those two rows is better is the user's call by eye
+/// rung. `b` and `t` joined them in m5-history-and-ghost-preview/10, and
+/// `j/k` fell off the end of the row to make room. Which of those two rows is better is the user's call by eye
 /// (`docs/shots/m5-hints-ladder.txt`, CLAUDE.md rule 6); what this test pins
 /// is that the leading verbs survive at 80 columns.
 #[test]
@@ -812,7 +816,7 @@ fn footer_eighty_branch_row() {
     let footer = screen.last().expect("a footer row").trim_end().to_owned();
     assert_eq!(
         footer,
-        " m merge  r rebase  ⏎ open  . more  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k"
+        " m merge  r rebase  ⏎ open  . more  b  t  P  c  p  f  u  S  /  q  F2  F3  x  +"
     );
 }
 
@@ -1668,4 +1672,146 @@ fn capture_the_ladder_for_docs_shots() {
         .join("../../docs/shots/m5-hints-ladder.txt");
     std::fs::write(&path, &out).unwrap_or_else(|why| panic!("writing {}: {why}", path.display()));
     println!("wrote {} ({} bytes)", path.display(), out.len());
+}
+
+/// The hit-test and the renderer are the same code, and this is the test
+/// that says so: draw a row, then read every cell of it back and check that
+/// each one belongs to the badge [`badge_spans`] names.
+///
+/// `graft`'s mouse hit-test asks `badge_spans` which badge a column is on
+/// (`graft::view::hit::badge_index_at`). If that ever stopped agreeing with
+/// what was drawn, a drag would pick up the badge next to the one under the
+/// pointer — silently, because both are branches and both look plausible.
+/// ADR-0040's lesson, one layer down.
+#[test]
+fn badge_spans_match_the_drawn_cells() {
+    let rows = linear(3);
+    let badges = three_badges();
+    // Wide enough for all three, and narrow enough that the last is clipped
+    // — the clipped case is exactly where a mirrored packing would drift.
+    for width in [40_u16, 60, 100] {
+        for icons in [Icons::Plain, Icons::Nerd] {
+            let mut screen = view(&rows, WalkView::Complete { rows: 3 }, 0);
+            screen.icons = icons;
+            screen.rows[0].badges.clone_from(&badges);
+            check_one_row(&screen, width, icons);
+        }
+    }
+}
+
+/// A branch with an ahead/behind chip, a remote and a tag: three badges of
+/// three different widths, so the packing has something to get wrong.
+fn three_badges() -> Vec<Badge> {
+    vec![
+        Badge {
+            name: sanitize_line("main"),
+            kind: BadgeKind::Branch {
+                identity: BranchIdentity::of_name(b"main"),
+                current: true,
+                tracking: Tracking::Apart {
+                    ahead: 2,
+                    behind: 1,
+                },
+            },
+        },
+        Badge {
+            name: sanitize_line("origin/main"),
+            kind: BadgeKind::Remote {
+                identity: BranchIdentity::of_name(b"origin/main"),
+            },
+        },
+        Badge {
+            name: sanitize_line("v2.3.0"),
+            kind: BadgeKind::Tag,
+        },
+    ]
+}
+
+/// Draw `screen` at `width` and check every span against the cells drawn.
+fn check_one_row(screen: &GraphView<'_>, width: u16, icons: Icons) {
+    {
+        {
+            let terminal = draw(screen, width, 12);
+            let drawn = text(&terminal);
+            let area = Rect {
+                x: 0,
+                y: 0,
+                width,
+                height: 12,
+            };
+            let (entry, columns) =
+                row_at(screen, area, 1).expect("the first commit row is drawn at y = 1");
+            let line = &drawn[1];
+            let cells: Vec<&str> = line.split("").filter(|cell| !cell.is_empty()).collect();
+
+            let spans = badge_spans(entry, &columns, icons);
+            assert!(!spans.is_empty(), "{width} columns, {icons:?}: no badges");
+            for (span, index) in &spans {
+                let drawn_here: String = cells[usize::from(span.start)..usize::from(span.end)]
+                    .concat()
+                    .trim_end()
+                    .to_owned();
+                let expected = entry.badges[*index].text(icons);
+                // A badge cut off at the pane's edge is drawn elided
+                // (`draw_cell`'s `fit`), so the last one on a narrow row
+                // reads as a prefix plus `…`. The span is still the badge's
+                // cells, which is what this is checking.
+                let drawn_here = drawn_here.trim_end_matches('…');
+                assert!(
+                    expected.starts_with(drawn_here),
+                    "{width} columns, {icons:?}: cells {span:?} read {drawn_here:?}, \
+                     but badge {index} is {expected:?}"
+                );
+                assert!(
+                    !drawn_here.is_empty(),
+                    "{width} columns, {icons:?}: badge {index} claims {span:?} and drew nothing"
+                );
+            }
+            // Non-overlapping and in order, which is what makes "the column
+            // is in this span" a single answer.
+            for pair in spans.windows(2) {
+                assert!(
+                    pair[0].0.end <= pair[1].0.start,
+                    "{width} columns, {icons:?}: {:?} overlaps {:?}",
+                    pair[0].0,
+                    pair[1].0
+                );
+            }
+        }
+    }
+}
+
+/// A row with no badges claims no cells — so a click on a bare subject
+/// picks nothing up.
+#[test]
+fn a_row_without_badges_has_no_spans() {
+    let rows = linear(3);
+    let screen = view(&rows, WalkView::Complete { rows: 3 }, 0);
+    let area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 12,
+    };
+    let (entry, columns) = row_at(&screen, area, 1).expect("a commit row");
+    assert!(badge_spans(entry, &columns, Icons::Plain).is_empty());
+}
+
+/// Off the commit rows there is no row at all: the header, the footer and
+/// anything past the end of the history answer `None`.
+#[test]
+fn row_at_is_none_off_the_body() {
+    let rows = linear(2);
+    let screen = view(&rows, WalkView::Complete { rows: 2 }, 0);
+    let area = Rect {
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 12,
+    };
+    assert!(row_at(&screen, area, 0).is_none(), "the header");
+    assert!(row_at(&screen, area, 1).is_some(), "the first commit");
+    assert!(row_at(&screen, area, 2).is_some(), "the second");
+    assert!(row_at(&screen, area, 3).is_none(), "past the history");
+    assert!(row_at(&screen, area, 11).is_none(), "the footer");
 }

@@ -272,31 +272,19 @@ impl GraphScreen<'_> {
         style: Style,
         buf: &mut Buffer,
     ) -> u16 {
-        if entry.badges.is_empty() {
-            return 0;
-        }
         let icons = self.view.icons;
-        let texts: Vec<String> = entry.badges.iter().map(|badge| badge.text(icons)).collect();
-        let separator = badges::separator(icons);
-        let taken = badges_width(entry, icons, columns);
-        // Room for the badges themselves; the gap after them stays blank.
-        let room = taken.saturating_sub(SUBJECT_GAP);
-
-        let mut x = columns.subject_x;
-        let end = columns.subject_x + room;
-        for (index, (badge, text)) in entry.badges.iter().zip(&texts).enumerate() {
-            if index > 0 {
-                let gap = u16::try_from(separator.width()).unwrap_or(u16::MAX);
-                x = x.saturating_add(gap).min(end);
-            }
-            let width = u16::try_from(text.width()).unwrap_or(u16::MAX).min(end - x);
-            if width == 0 {
-                break;
-            }
-            draw_cell(buf, x, y, width, text, style.patch(self.badge_style(badge)));
-            x += width;
+        for (span, index) in badge_spans(entry, columns, icons) {
+            let badge = &entry.badges[index];
+            draw_cell(
+                buf,
+                span.start,
+                y,
+                span.end - span.start,
+                &badge.text(icons),
+                style.patch(self.badge_style(badge)),
+            );
         }
-        taken
+        badges_width(entry, icons, columns)
     }
 
     /// The colour and weight one badge draws in: branches and remotes in
@@ -319,6 +307,53 @@ impl GraphScreen<'_> {
             BadgeKind::Stash => foreground(self.theme, Token::Info),
         }
     }
+}
+
+/// The screen columns each of `entry`'s badges occupies, as drawn: one
+/// `(range, index)` per badge that had room, `index` naming its place in
+/// [`GraphEntry::badges`]. Ascending, never overlapping, all inside the
+/// subject column's badge share.
+///
+/// **This is the packing rule itself, not a description of it.**
+/// [`GraphScreen::draw_badges`] draws from exactly these ranges, and
+/// `graft`'s mouse hit-test reads the same call to say which badge a cell
+/// belongs to (`graft::view::hit::badge_at`). A second, mirrored copy of the
+/// packing in the app crate is what this function exists to prevent: the
+/// `detail_pane` mirror in `graft::update::geometry` is a standing drift
+/// risk, and one was enough (m5/10 decision).
+///
+/// Pure arithmetic over the badges' own text widths — no buffer, no theme,
+/// no `Rect`.
+#[must_use]
+pub fn badge_spans(
+    entry: &GraphEntry<'_>,
+    columns: &Columns,
+    icons: Icons,
+) -> Vec<(std::ops::Range<u16>, usize)> {
+    if entry.badges.is_empty() {
+        return Vec::new();
+    }
+    let separator = u16::try_from(badges::separator(icons).width()).unwrap_or(u16::MAX);
+    // Room for the badges themselves; the gap after them stays blank.
+    let room = badges_width(entry, icons, columns).saturating_sub(SUBJECT_GAP);
+    let end = columns.subject_x + room;
+
+    let mut spans = Vec::with_capacity(entry.badges.len());
+    let mut x = columns.subject_x;
+    for (index, badge) in entry.badges.iter().enumerate() {
+        if index > 0 {
+            x = x.saturating_add(separator).min(end);
+        }
+        let width = u16::try_from(badge.text(icons).width())
+            .unwrap_or(u16::MAX)
+            .min(end - x);
+        if width == 0 {
+            break;
+        }
+        spans.push((x..x + width, index));
+        x += width;
+    }
+    spans
 }
 
 /// Cells a row's badges take from the subject column's left edge, the

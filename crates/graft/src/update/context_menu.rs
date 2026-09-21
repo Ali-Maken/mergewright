@@ -126,6 +126,14 @@ pub(super) fn context_menu_key(
         KeyCode::Char('j') | KeyCode::Down => open.menu.move_cursor(1),
         KeyCode::Char('k') | KeyCode::Up => open.menu.move_cursor(-1),
         KeyCode::Enter => {
+            // A disabled row answers with its reason and stays open: the
+            // reason is drawn beside the row it belongs to, and closing the
+            // menu would take the question off screen with the answer.
+            if let Some(reason) = open.menu.selected_refusal() {
+                let reason = reason.as_str().to_owned();
+                next.status = Status::sticky(reason);
+                return true;
+            }
             let action = open.menu.selected();
             // The verb list travels with the action it was chosen from, so
             // nothing can dispatch against a list that has since been
