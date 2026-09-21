@@ -40,6 +40,22 @@ fn escape_priority(next: &mut AppState, key: KeyPress) -> bool {
     false
 }
 
+/// **Has `⏎` anything left to open?** The one answer two places read: the
+/// key handler below, which consumes `Enter` and does nothing when it has
+/// not, and `view::rows::hint_context`, which stops the bar drawing
+/// `⏎ open` in the same state (`graft_ui::graph_screen::HintContext::PaneFocused`).
+///
+/// They were two facts before, and they disagreed: the bar said `⏎ open` on
+/// the Detail tab at 80 columns while the key did nothing (m5 review Q2,
+/// m5/31). One function is why they cannot disagree again.
+///
+/// `false` only with the pane open *and* its diff focused — that is where
+/// the opening has already happened. From the graph `⏎` opens the pane; with
+/// the files list focused it opens the diff.
+pub(crate) fn enter_opens(detail: &DetailState) -> bool {
+    !(detail.shown && detail.focus == DetailFocus::Diff)
+}
+
 /// The pane's keys, answered before the graph's. `true` when the key was the pane's.
 pub(crate) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: KeyPress) -> bool {
     let plain = key.modifiers == Modifiers::NONE;
@@ -71,8 +87,10 @@ pub(crate) fn detail_key(next: &mut AppState, commands: &mut Vec<Command>, key: 
     } = next;
     let ids = &mut || local_jobs.next_id();
     match key.code {
-        KeyCode::Enter if plain && detail.shown && detail.focus == DetailFocus::Diff => {
+        KeyCode::Enter if plain && !enter_opens(detail) => {
             // Diff already has focus: Enter has nothing further to open.
+            // The bar does not draw `⏎ open` here either — same function,
+            // read by both (`view::rows::hint_context`, m5/31).
             true
         }
         KeyCode::Enter if plain && detail.shown && detail.focus == DetailFocus::Files => {

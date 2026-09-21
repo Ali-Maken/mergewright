@@ -48,7 +48,7 @@ pub mod undo;
 
 pub use events::{AppEvent, Command, CommitGraphOffer, GitCheck, Product, Progress, Task};
 pub(crate) use geometry::context_menu_area;
-pub use state::{AppState, Banner, CHROME_ROWS, Harness, Quit, Screen, Size, Status};
+pub use state::{AppState, Banner, CHROME_ROWS, GraphOverlay, Harness, Quit, Screen, Size, Status};
 
 use graft_core::event::{Event, KeyPress};
 use graft_core::job::JobId;

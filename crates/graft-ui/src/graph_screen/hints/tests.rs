@@ -4,35 +4,14 @@ use super::*;
 
 /// Every context the graph footer can be in, `Preview` aside (it is the one
 /// context allowed an empty list).
+///
+/// Taken from `hints::every_context` rather than written out again: this
+/// file's own copy of the list missed `Dragging` for two tickets (m5/31).
 fn all_contexts() -> Vec<HintContext> {
-    vec![
-        HintContext::WorkingTreeRow,
-        HintContext::BranchRow { current: false },
-        HintContext::BranchRow { current: true },
-        HintContext::PlainRow,
-        HintContext::Marked(Box::new(HintContext::PlainRow)),
-        HintContext::Marked(Box::new(HintContext::BranchRow { current: true })),
-        HintContext::Banner {
-            skippable: true,
-            conflicted: true,
-        },
-        HintContext::Banner {
-            skippable: false,
-            conflicted: true,
-        },
-        HintContext::Banner {
-            skippable: true,
-            conflicted: false,
-        },
-        HintContext::Banner {
-            skippable: false,
-            conflicted: false,
-        },
-        HintContext::ChangesPane { unmerged: false },
-        HintContext::ChangesPane { unmerged: true },
-        HintContext::Journal,
-        HintContext::Stash,
-    ]
+    every_context()
+        .into_iter()
+        .filter(|context| *context != HintContext::Preview)
+        .collect()
 }
 
 /// The four cursor-row contexts, which are the ones the design note's
@@ -558,47 +537,6 @@ fn the_banner_never_draws_a_stop_or_m_tool() {
     }
 }
 
-/// ADR-0037 §4's floor, swept the width the ticket names (m5/27): every
-/// context's three most relevant hints hold at or above their floor rung —
-/// now `Rung::Full` for the thirteen verbs whose short rung was deleted —
-/// and the bar is never empty, from 20 to 240 columns.
-#[test]
-fn the_floor_holds_from_twenty_to_two_hundred_forty_columns() {
-    for context in all_contexts() {
-        if context == HintContext::Preview {
-            continue;
-        }
-        let whole = whole_list(&context, Divider::Hidden);
-        let floor = whole.len().min(3);
-        for columns in 20..=240u16 {
-            let hints = hints_for(&context, Divider::Hidden, columns);
-            if is_the_bottom_of_the_ladder(&hints, doorway_of(&context)) {
-                // Below the floor the bar is the doorway, its bare key, or
-                // nothing — never a fragment of the floor (ADR-0039's
-                // bottom, m5/28).
-                continue;
-            }
-            let body = without_trailer(&hints);
-            assert!(
-                body.len() >= floor,
-                "{context:?} at {columns} columns drew {} of its floor {floor}",
-                body.len()
-            );
-            for (drawn, want) in body.iter().zip(whole.iter()).take(floor) {
-                assert!(
-                    drawn.rung >= want.floor_rung(),
-                    "{context:?} at {columns} columns put `{} {}` below its floor \
-                     ({:?} < {:?})",
-                    drawn.key,
-                    drawn.verb,
-                    drawn.rung,
-                    want.floor_rung()
-                );
-            }
-        }
-    }
-}
-
 /// The bare keys are a **tail**, not a scatter: once the bar has put one
 /// hint on its key alone, every hint after it is on its key alone too.
 /// Swept over every context, both dividers, every width from 0 to 240.
@@ -693,10 +631,15 @@ fn a_row_context_keeps_whole_verbs_at_the_relevant_end() {
 }
 
 /// ADR-0037 §4's floor: the three most relevant hints (or the whole list,
-/// where it is shorter) are always drawn and never fall below their short
-/// rung — and the bar is never empty. Swept 0 to 240 columns.
+/// where it is shorter) are always drawn and never fall below their **floor
+/// rung** — their short rung where the user's table names one, their full
+/// verb where it does not (`Hint::floor_rung`, m5/27) — and the bar is
+/// never empty. Swept 0 to 240 columns.
+///
+/// The 20..=240 half of this sweep used to be a second test beside it,
+/// word for word; deleted in m5/31 (it was a strict subset).
 #[test]
-fn the_three_most_relevant_never_fall_below_their_short_rung() {
+fn the_three_most_relevant_never_fall_below_their_floor_rung() {
     for context in all_contexts() {
         if context == HintContext::Preview {
             continue;
@@ -717,7 +660,7 @@ fn the_three_most_relevant_never_fall_below_their_short_rung() {
             for (drawn, want) in body.iter().zip(whole.iter()).take(floor) {
                 assert!(
                     drawn.rung >= want.floor_rung(),
-                    "{context:?} at {columns} columns put `{}` below its short rung",
+                    "{context:?} at {columns} columns put `{}` below its floor rung",
                     drawn.key
                 );
             }
@@ -798,15 +741,10 @@ fn no_hint_loses_ground_as_the_room_for_it_grows() {
 }
 
 /// Every hint `context` could draw, `. explain` included, before the width
-/// rule sees it.
+/// rule sees it — `whole_bar`'s own answer, so a context the bar filters
+/// (a focused pane drops five keys) cannot read as the unfiltered list.
 fn whole_list(context: &HintContext, divider: Divider) -> Vec<Hint> {
-    if let HintContext::Marked(inner) = context {
-        let mut list = vec![EXPLAIN];
-        list.extend(drawable(inner, divider));
-        list
-    } else {
-        drawable(context, divider)
-    }
+    super::whole_bar(context, divider).0
 }
 
 /// The drawn hints without the `. more` doorway — the one part of the bar
@@ -862,13 +800,30 @@ fn is_the_bottom_of_the_ladder(hints: &[Hint], doorway: Option<Hint>) -> bool {
 }
 
 /// The doorway `context` has, if any: `. more` for everything but a marked
-/// row (whose `.` is already on screen as `. explain`) and the focused
-/// banner (modal, so it swallows `.` — ADR-0039's first amendment).
+/// row (whose `.` is already on screen as `. explain`), the focused banner,
+/// a drag in the air and the two overlays — modal in the way that matters,
+/// so `.` leads nowhere and is not drawn (ADR-0039's first amendment).
+///
+/// Not `whole_bar`'s trailer: a marked row's `. explain` leads the *list*
+/// rather than trailing it, and this is the hint the tests look for on the
+/// drawn row either way. Written out arm by arm rather than with a `_` —
+/// the wildcard is how it came to claim a doorway for `Dragging` that the
+/// bar never draws (m5/31).
 fn doorway_of(context: &HintContext) -> Option<Hint> {
     match context {
-        HintContext::Banner { .. } | HintContext::Preview => None,
+        HintContext::Banner { .. }
+        | HintContext::Preview
+        | HintContext::Dragging
+        | HintContext::Journal
+        | HintContext::Stash => None,
         HintContext::Marked(_) => Some(EXPLAIN),
-        _ => Some(MORE),
+        // A filter keeps the doorway of the context it filters: `. more`
+        // still leads to everything, the dropped `⏎` included.
+        HintContext::PaneFocused { row, .. } => doorway_of(row),
+        HintContext::WorkingTreeRow
+        | HintContext::BranchRow { .. }
+        | HintContext::PlainRow
+        | HintContext::ChangesPane { .. } => Some(MORE),
     }
 }
 
@@ -907,11 +862,22 @@ fn one_rule_puts_the_doorway_before_a_tail_and_last_without_one() {
             "{context:?} at 80 cells has no tail to lead: {:?}",
             hints_text(&hints)
         );
-        assert!(
-            hints_text(&hints).ends_with(". more"),
-            "{context:?} has no bare keys, so the doorway stays last: {:?}",
-            hints_text(&hints)
-        );
+        let text = hints_text(&hints);
+        // The journal draws no doorway at all — `.` opens nothing over an
+        // overlay, which the key sweep found and ADR-0039's first amendment
+        // already covers (m5/31). Where there *is* one and no tail to lead,
+        // it stays last, where it always was.
+        if doorway_of(&context).is_some() {
+            assert!(
+                text.ends_with(". more"),
+                "{context:?} has no bare keys, so the doorway stays last: {text:?}"
+            );
+        } else {
+            assert!(
+                !text.contains(". more"),
+                "{context:?} is modal: `.` leads nowhere, so it is not drawn: {text:?}"
+            );
+        }
     }
 
     // And the invariant behind both, over every context that has a `. more`

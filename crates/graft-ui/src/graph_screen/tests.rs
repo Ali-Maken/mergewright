@@ -1492,8 +1492,9 @@ fn capture_hint_bar_for_docs_shots() {
                  # bare key — taken per hint, never as a step the whole list takes\n\
                  # together, and a hint that will not fit even at its bare key is\n\
                  # dropped (ADR-0039's third amendment, 2026-09-21). The three most\n\
-                 # relevant never fall below their short rung, and the bar is never all\n\
-                 # hidden — never a key that does nothing.\n\
+                 # relevant never fall below their floor rung, which is their short rung\n\
+                 # where the user's table names one and their full verb where it does\n\
+                 # not, and the bar is never all hidden — never a key that does nothing.\n\
                  \n",
                 context = scenario.hint_context,
             );

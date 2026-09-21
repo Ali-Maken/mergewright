@@ -16,7 +16,7 @@ use graft_git::stash::StashEntry;
 
 use graft_ops::operation::{Operation, StashParams, StashScope};
 use graft_term::sanitize_line;
-use graft_ui::detail::{DetailFocus, FileListView};
+use graft_ui::detail::FileListView;
 use graft_ui::text_input::TextField;
 
 use super::confirm::{ConfirmThen, PendingConfirm};
@@ -168,7 +168,7 @@ pub(super) fn stash_key(
     if next.stash.shown {
         return shown_key(next, commands, key, next_id);
     }
-    if key.code == KeyCode::Char('S') && next.detail.focus == DetailFocus::Graph {
+    if key.code == KeyCode::Char('S') && next.graph_has_focus() {
         next.stash.shown = true;
         next.stash.selected = 0;
         next.stash.preview = Loading::Idle;

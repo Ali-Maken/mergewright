@@ -7,8 +7,6 @@
 
 use graft_core::event::{KeyCode, KeyPress};
 
-use graft_ui::detail::DetailFocus;
-
 use super::state::AppState;
 
 /// `O` on the graph screen (no modifier, focus on the graph, no map shown)
@@ -16,7 +14,7 @@ use super::state::AppState;
 /// stops dispatching.
 pub(super) fn strip_key(next: &mut AppState, key: KeyPress) -> bool {
     let plain = !key.modifiers.control && !key.modifiers.alt;
-    if !plain || next.map.shown || next.detail.focus != DetailFocus::Graph {
+    if !plain || next.map.shown || !next.graph_has_focus() {
         return false;
     }
     if key.code == KeyCode::Char('O') {
@@ -29,6 +27,7 @@ pub(super) fn strip_key(next: &mut AppState, key: KeyPress) -> bool {
 #[cfg(test)]
 mod tests {
     use graft_core::event::Modifiers;
+    use graft_ui::detail::DetailFocus;
 
     use super::*;
 

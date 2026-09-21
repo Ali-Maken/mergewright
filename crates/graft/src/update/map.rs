@@ -9,7 +9,6 @@ use std::sync::Arc;
 use graft_core::event::{KeyCode, KeyPress};
 use graft_core::job::JobId;
 use graft_core::oid::Oid;
-use graft_ui::detail::DetailFocus;
 
 use crate::map::{MapData, MapRequest};
 
@@ -142,7 +141,7 @@ pub(super) fn map_key(next: &mut AppState, commands: &mut Vec<Command>, key: Key
     if next.map.shown {
         return shown_key(next, commands, key);
     }
-    if key.code == KeyCode::Char('M') && next.detail.focus == DetailFocus::Graph {
+    if key.code == KeyCode::Char('M') && next.graph_has_focus() {
         let req = request(next);
         let AppState {
             map, local_jobs, ..
@@ -237,6 +236,7 @@ pub(super) fn resized(next: &mut AppState, commands: &mut Vec<Command>) {
 #[cfg(test)]
 mod tests {
     use graft_ops::mistake_radar::Policy;
+    use graft_ui::detail::DetailFocus;
 
     use super::*;
     use crate::map::{MapBranch, MapData};

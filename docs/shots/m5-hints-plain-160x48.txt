@@ -31,9 +31,11 @@
 # key: `m merge`, `r rebase` and `S stash` are the three to watch. A
 # squeezed `S stsh` anywhere in these captures is a bug.
 #
-# Floor: the three most relevant never fall below their short rung, the
-# bar is never all hidden, never fewer than three hints, never a key
-# that does nothing, and `.` leads to everything the width dropped. The
+# Floor: the three most relevant never fall below their floor rung,
+# which is their short rung where the table above names one and their
+# full verb where it does not. The bar is never all hidden, never fewer
+# than three hints, never a key that does nothing, and `.` leads to
+# everything the width dropped. The
 # room is counted off the bar's own width, not the screen's, so a
 # 160-column frame with the pane beside it fills the ~92 cells the bar
 # is left rather than falling back to three.
@@ -94,4 +96,4 @@
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ open  r rebase  c commit  y sha  m merge  u undo  S stash  J journal  / search  q quit  F2 status  F3 rend  . more  x  +  j/k  space  1  F  H  f  p  P  M  O
+ ⏎ open  b branch  r rebase  t tag  c commit  y sha  m merge  u undo  S stash  J journal  / search  . more  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
