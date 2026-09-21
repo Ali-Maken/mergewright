@@ -127,3 +127,39 @@ before hand-back. Check the baseline on `main` yourself. Commit, never push.
 **Cause or symptom for every fix** — he asked for this explicitly. What you
 could not verify. And if you disagree with a ruling here, say so in the report
 rather than quietly doing something else.
+
+---
+
+## 7. The hint bar counts from the screen, not from itself — added after ticket 19
+
+Ticket 19 fixed the inverted footer and found the **same miscalibration
+unfixed in `hints_for`**: three hints at 160 columns against six at 120. It
+stopped and asked rather than changing it, because the 3/6/all numbers trace
+to ADR-0037 §4. Right call — and the answer is that they never were spec.
+
+**I have amended ADR-0039** (see its 2026-09-21 amendment, "count from the
+bar's own width, never the screen's"). ADR-0037 §4 sets a floor — three most
+relevant keys, never all hidden — and says nothing about screen width. The
+tiers were invented on top of it.
+
+**Build to the amended rule:** the bar shows as many hints as fit in **the
+room the bar actually has**, never fewer than three (or the doorway where a
+modal pane draws its own complete list), and it **shrinks before it drops**.
+
+Ticket 19 left `no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows`
+passing because `hints_for` is monotone *in its own argument*; the defect is in
+what is passed to it. Your test must be anchored to **the drawn bar at a real
+screen size with a real pane open**, not to `hints_for`'s argument — otherwise
+it will agree with the code exactly as this milestone's other six did.
+
+**While you are there, look for the third instance.** The general form of both
+bugs is: *asking how big the screen is instead of how much room this thing
+has.* Any place branching on screen width to decide how much to say is
+suspect. If you find one, fix it or file it; if you look and find none, say
+you looked.
+
+## Recapture is now required, not optional
+
+Ticket 19's three fixes (the gutter, the row carve, the footer wording) move
+the 120 and 160 frames. Every capture in item 6 must be re-taken regardless of
+what else you change.
