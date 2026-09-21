@@ -12,6 +12,7 @@ mod budget_run;
 mod changes_pane_writes;
 mod commit_editor_writes;
 mod conflict_interim;
+mod context_menu;
 mod coverage;
 mod credential_by_key;
 mod dependency_edges;

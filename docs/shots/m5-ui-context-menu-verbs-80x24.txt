@@ -3,16 +3,17 @@
 # forked off the first with two of its own, `feature` checked out), opened
 # over the real job pool, cursor moved to `main`'s row and `.` pressed
 # through `update`
-# (crates/graft/tests/it/preview.rs, capture_context_menu_for_docs_shots).
+# (crates/graft/tests/it/context_menu.rs, capture_context_menu_for_docs_shots).
 # This file is a golden snapshot: that test asserts the frame still
 # matches it, so drift fails the suite. Regenerate on purpose with
 # GRAFT_UPDATE_SHOTS=1. Not a pty capture: the terminal is ratatui's
 # TestBackend, so this is a character grid with no colour attributes in
 # it — CLAUDE.md rule 5, colour ships unverified. The fixture's commits
 # carry fixed dates and the ages are drawn against a fixed clock, so the
-# frame is the same on every run and does not age. The scratch
-# repository's temporary path is replaced by `/code/api`; nothing else
-# is touched.
+# frame is the same on every run and does not age. The repository is
+# moved to `/code/api` **before** the frame is drawn, so the header is
+# fitted to the path shown here rather than to a temporary one, and the
+# walk's sort and the radar have landed — a settled screen, not a transient.
 #
 # What right looks like:
 #  - The menu is anchored under `main`'s row and is wide enough for its
@@ -40,12 +41,16 @@
 #    qualifier that is not a key never wears that shape — hence `Reset
 #    …, mixed`, not `(mixed)` (`docs/design/02-keymap.md` §2.1).
 #  - Choosing any of them opens a picture, not a write (PROMPT.md §1.7).
+#  - The marker column has settled: `feature`'s tip carries the radar's
+#    muted `ⓘ`. Earlier captures were taken before the radar
+#    answered and the column was blank — that was the transient, not
+#    this. What the finding says is not part of this picture.
 #  - At 80 columns — the narrow end — the menu still fits
 #    inside the graph pane rather than running off it.
 #
 
- graft /code/api  8…
-  ◆   [◆ feature] finish the feature                                now  8d6cd28
+ graft /code/api  8 commits
+  ◆ ⓘ [◆ feature] finish the feature                                now  8d6cd28
   ●   start the feature                                             2m   52f3b96
 ● │   [main] main moves again                                       3m   45fa51d
  Copy SHA (y)
