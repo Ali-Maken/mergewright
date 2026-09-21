@@ -70,11 +70,16 @@ fn no_context_hides_every_key() {
     }
 }
 
-/// (b) At 80 columns, the row contexts show exactly their first three
-/// *bound* hints plus `. more`, in the note's table order — the planned
-/// entries (`m merge`, `r rebase`, `b branch`, `t tag`) are not among them.
+/// (b) At 80 columns the row contexts lead with their first three *bound*
+/// hints, in the note's table order — the planned entries (`m merge`,
+/// `r rebase`, `b branch`, `t tag`) are not among them — and then take as
+/// many more as the row has room for, ending in `. more`.
+///
+/// It used to be exactly three plus `. more` whatever else fitted: a tier
+/// keyed to width, not a fit. ADR-0037 §4's three is a floor (ADR-0039,
+/// 2026-09-21 amendment).
 #[test]
-fn eighty_columns_shows_three_and_more() {
+fn eighty_columns_leads_with_three_and_fills_the_row() {
     let cases: &[(HintContext, [(&str, &str); 3])] = &[
         (
             HintContext::WorkingTreeRow,
@@ -95,27 +100,43 @@ fn eighty_columns_shows_three_and_more() {
     ];
     for (context, first_three) in cases {
         let hints = hints_for(context, Divider::Hidden, 80);
-        assert_eq!(hints.len(), 4, "{context:?} at 80 columns: {hints:?}");
+        assert!(hints.len() >= 4, "{context:?} at 80 columns: {hints:?}");
         for (got, want) in hints.iter().zip(first_three.iter()) {
             assert_eq!((got.key, got.verb), *want, "{context:?}: {hints:?}");
         }
-        assert_eq!(hints[3], MORE, "{context:?}: {hints:?}");
-    }
-}
-
-/// (c) At 120 columns (the 100..160 tier), the row contexts show six hints
-/// plus `. more`, and the line still fits.
-#[test]
-fn hundred_twenty_shows_six() {
-    for context in row_contexts() {
-        let hints = hints_for(&context, Divider::Hidden, 120);
-        assert_eq!(hints.len(), 7, "{context:?}: {hints:?}");
-        assert_eq!(hints[6], MORE, "{context:?}: {hints:?}");
+        assert_eq!(hints.last().copied(), Some(MORE), "{context:?}: {hints:?}");
         assert!(
-            hints_text(&hints).width() <= 120,
+            hints_text(&hints).width() <= 80,
             "{context:?}: {:?}",
             hints_text(&hints)
         );
+    }
+}
+
+/// (c) A wider row takes more hints than a narrower one, and every one of
+/// them fits: the bar's answer is a fit, not a step.
+#[test]
+fn a_wider_row_takes_more_hints_and_still_fits() {
+    for context in row_contexts() {
+        let narrow = hints_for(&context, Divider::Hidden, 80);
+        let wide = hints_for(&context, Divider::Hidden, 120);
+        assert!(
+            wide.len() >= narrow.len(),
+            "{context:?}: 120 drew {wide:?}, 80 drew {narrow:?}"
+        );
+        assert!(
+            hints_text(&wide).width() <= 120,
+            "{context:?}: {:?}",
+            hints_text(&wide)
+        );
+        // And the extra room bought something: the 80-cell row could not
+        // hold the whole list, so 120 must hold strictly more of it.
+        if hints_text(&drawable(&context, Divider::Hidden)).width() > 80 {
+            assert!(
+                wide.len() > narrow.len(),
+                "{context:?}: 120 cells bought no extra hint: {wide:?}"
+            );
+        }
     }
 }
 
@@ -341,10 +362,10 @@ fn the_banner_draws_its_own_keys_and_no_doorway() {
 /// refactor.
 #[test]
 fn context_lists_match_the_design_note_order() {
-    let working_tree = hints_for(&HintContext::WorkingTreeRow, Divider::Hidden, 120);
+    let working_tree = hints_for(&HintContext::WorkingTreeRow, Divider::Hidden, 240);
     let text = hints_text(&working_tree);
-    assert_eq!(
-        text,
-        " ⏎ changes  c commit  S stash  p pull  P push  f fetch  . more"
+    assert!(
+        text.starts_with(" ⏎ changes  c commit  S stash  p pull  P push  f fetch"),
+        "{text:?}"
     );
 }

@@ -140,17 +140,20 @@ pub enum HintContext {
     Stash,
 }
 
-/// Below this width: the first three hints. `100..160`: six. `160` and
-/// above: as many as fit.
-const NARROW: u16 = 100;
-/// Below this width (and at or above [`NARROW`]): six hints.
-const MEDIUM: u16 = 160;
-
-/// The hints for `context` that fit in `columns` cells: as many whole hints
-/// as the width tier allows (three below 100, six from 100 to 159, as many
-/// as fit from 160), dropped further from the right if even that does not
-/// fit — never below three (or the context's own count, if it has fewer)
-/// plus `. more`. Never empty except for [`HintContext::Preview`].
+/// The hints for `context` that fit in `columns` cells: **as many whole
+/// hints as fit the row the bar actually has**, dropped from the right
+/// until they do — never below three (or the context's own count, if it has
+/// fewer) plus `. more`. Never empty except for [`HintContext::Preview`].
+///
+/// `columns` is the bar's own room, not the screen's, and there is no
+/// width tier on top of it. The 3/6/all tiers this used to carry were
+/// never spec: ADR-0037 §4 sets a floor (three most relevant keys, never
+/// all hidden) and says nothing about width. Laid over a `columns` that is
+/// already the bar's own region, a tier is a *cap*: at 160 columns with the
+/// detail pane beside the graph the bar has about 92 cells and fell into
+/// the "narrow" tier, so it drew three hints — while a 120-column screen
+/// with the pane below kept its 120 cells and drew six. The wider terminal
+/// said less (ADR-0039's 2026-09-21 amendment, m5/20 item 7).
 ///
 /// `divider` adds `<> resize` when a detail pane is open, whichever context
 /// the cursor is in (ADR-0028: the pane being shown is what makes the
@@ -172,24 +175,16 @@ pub fn hints_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<H
         // included. Three keys at 80 columns would have hidden the exit of
         // a modal that swallows every other key, which is the failure
         // `banner_key`'s own doc comment warns of.
-        HintContext::Banner { .. } => {
-            fit_list(&drawable(context, divider), None, columns, usize::MAX)
-        }
+        HintContext::Banner { .. } => fit_list(&drawable(context, divider), None, columns),
         HintContext::Marked(inner) => {
-            // `.` is already on screen as `. explain`, so no `. more`; the
-            // explain hint counts as one of the width tier's own, which is
-            // why it is prepended before fitting and not after (a list
-            // fitted first and prepended to second overflows by one hint).
+            // `.` is already on screen as `. explain`, so no `. more`; it
+            // is prepended before fitting and not after, because a list
+            // fitted first and prepended to second overflows by one hint.
             let mut list = vec![EXPLAIN];
             list.extend(drawable(inner, divider));
-            let tier = width_tier(list.len(), columns);
-            fit_list(&list, None, columns, tier)
+            fit_list(&list, None, columns)
         }
-        _ => {
-            let list = drawable(context, divider);
-            let tier = width_tier(list.len(), columns);
-            fit_list(&list, Some(MORE), columns, tier)
-        }
+        _ => fit_list(&drawable(context, divider), Some(MORE), columns),
     }
 }
 
@@ -236,24 +231,13 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
     list
 }
 
-/// How many hints the width tier allows: three below 100 columns, six from
-/// 100 to 159, the whole list from 160.
-fn width_tier(list_len: usize, columns: u16) -> usize {
-    if columns < NARROW {
-        3
-    } else if columns < MEDIUM {
-        6
-    } else {
-        list_len
-    }
-}
-
-/// As many of `list`'s leading hints as `tier` and `columns` allow, plus
+/// As many of `list`'s leading hints as `columns` cells hold, plus
 /// `trailer` (`. more`, unless the caller has already shown `.`). Never
-/// fewer than three (or `list.len()` if it is shorter).
-fn fit_list(list: &[Hint], trailer: Option<Hint>, columns: u16, tier: usize) -> Vec<Hint> {
+/// fewer than three (or `list.len()` if it is shorter) — ADR-0037 §4's
+/// floor, which is the only number in the rule.
+fn fit_list(list: &[Hint], trailer: Option<Hint>, columns: u16) -> Vec<Hint> {
     let floor = list.len().min(3);
-    let mut count = tier.min(list.len());
+    let mut count = list.len();
     loop {
         let mut candidate = list[..count].to_vec();
         candidate.extend(trailer);

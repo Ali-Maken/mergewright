@@ -10,7 +10,7 @@
 
 use graft_graph::identity::BranchIdentity;
 use graft_term::sanitize_line;
-use graft_ui::graph_column::{GraphLine, RowPaint};
+use graft_ui::graph_column::{GraphLine, NodeKind, RowPaint};
 use graft_ui::graph_screen::{
     AuthorChip, GraphEntry, SHA_WIDTH, initials, relative_date, short_sha,
 };
@@ -39,26 +39,51 @@ pub(super) fn preview_entries<'a>(
 ) -> Vec<GraphEntry<'a>> {
     let badges = crate::update::preview::preview_badges(state);
     let mailmap = state.repository.as_ref().map(|facts| &facts.mailmap);
-    preview
-        .rows
-        .iter()
-        .enumerate()
-        .skip(window_start(state, preview))
-        .map(|(index, row)| {
-            let ghost = preview.ghost_index.contains_key(&row.commit.id);
-            entry(
-                row,
-                ghost,
-                preview.selected_row == Some(index),
-                badges.as_ref(),
-                mailmap,
-                now,
-            )
-        })
-        .collect()
+    let label = preview.outcome_label();
+
+    // Built for the whole slice first, labels and all, and only then
+    // windowed. The label rows are drawn rows: choosing the window against
+    // `PreviewState::rows` and inserting them afterwards would hand the
+    // screen one row more than it has, and the row it lost would be the
+    // bottom one — the row the user pressed the key on (ticket 17 F1, the
+    // Critical this milestone already paid for once).
+    let mut drawn: Vec<GraphEntry<'a>> = Vec::with_capacity(preview.rows.len() + 1);
+    let mut at_start = 0;
+    let mut at_selected = 0;
+    let mut previous_ghost = false;
+    for (index, row) in preview.rows.iter().enumerate() {
+        let ghost = preview.ghost_index.contains_key(&row.commit.id);
+        if ghost && !previous_ghost {
+            drawn.push(label_entry(row, &label));
+        }
+        previous_ghost = ghost;
+        if index == preview.view_start {
+            // The label above a run that *starts* at the user's top row
+            // belongs to the picture: point at it, not past it.
+            at_start = drawn.len() - usize::from(ghost);
+        }
+        if preview.selected_row == Some(index) {
+            at_selected = drawn.len();
+        }
+        drawn.push(entry(
+            row,
+            ghost,
+            preview.selected_row == Some(index),
+            badges.as_ref(),
+            mailmap,
+            now,
+        ));
+    }
+
+    let start = window_start(state, preview, at_start, at_selected);
+    drawn.drain(..start.min(drawn.len()));
+    drawn
 }
 
-/// Where the drawn window starts inside [`PreviewState::rows`].
+/// Where the drawn window starts inside the rows built above — `at_start`
+/// is the user's own top row and `at_selected` the row the key was pressed
+/// on, both as positions in that list rather than in
+/// [`PreviewState::rows`].
 ///
 /// The user's own top row, and never above it. The box docks over the
 /// bottom of the graph, though, so the picture is shorter than the screen
@@ -66,14 +91,54 @@ pub(super) fn preview_entries<'a>(
 /// pressed on off the bottom, the window slides down by exactly as much as
 /// it must to keep it. A picture the user cannot find their own commit in
 /// is not a preview of anything they asked for.
-fn window_start(state: &AppState, preview: &PreviewState) -> usize {
-    let Some(selected) = preview.selected_row else {
-        return preview.view_start;
-    };
+fn window_start(
+    state: &AppState,
+    preview: &PreviewState,
+    at_start: usize,
+    at_selected: usize,
+) -> usize {
+    if preview.selected_row.is_none() {
+        return at_start;
+    }
     let visible = state.graph_rows();
-    preview
-        .view_start
-        .max(selected.saturating_sub(visible.saturating_sub(1)))
+    at_start.max(at_selected.saturating_sub(visible.saturating_sub(1)))
+}
+
+/// The label row drawn above a run of ghosts: `after rebase`, on a row of
+/// its own, with no node and no trailing columns.
+///
+/// Its lane occupancy is the first ghost's, so every **real** lane running
+/// past the block keeps an unbroken `│` through the label; the ghost's own
+/// column is blank, because the ghost lane starts on the row below. Nothing
+/// on this row is a commit, so nothing on it claims to be one: no node
+/// glyph ([`NodeKind::Absent`]), no author, no age, no sha.
+fn label_entry<'a>(ghost: &graft_graph::row::Row, label: &str) -> GraphEntry<'a> {
+    let mut line = GraphLine::owned(graft_graph::row::Row {
+        // Never compared against a ref or a selection: `view` builds this
+        // row fresh every frame and nothing else holds it. It keeps the
+        // ghost's synthetic id only because a `Row` must have one.
+        commit: ghost.commit.clone(),
+        lane: ghost.lane,
+        incoming: Vec::new(),
+        outgoing: Vec::new(),
+        lanes: ghost.lanes.clone(),
+        marker: None,
+    });
+    line.node = NodeKind::Absent;
+    line.paint = RowPaint::Dimmed;
+    GraphEntry {
+        badges: Vec::new(),
+        line,
+        subject: sanitize_line(label),
+        author: AuthorChip {
+            initials: sanitize_line(""),
+            identity: BranchIdentity::of_name(b""),
+        },
+        when: String::new(),
+        sha: String::new(),
+        compare_marked: false,
+        marker: None,
+    }
 }
 
 /// One row of the slice, real or ghost.

@@ -25,4 +25,4 @@ expression: text
 
 
 
- ⏎ open  c commit  y sha  . more
+ ⏎ open  c commit  y sha  u undo  S stash  J journal  / search  q quit  . more

@@ -10,10 +10,17 @@
 # Here the changes pane is open on the working tree.
 #
 # Judge by eye: the hint bar is the graph's bottom row — the frame's last
-# row, unless the pane is stacked under it. Three keys plus `. more` under
-# 100 columns, six plus `. more` from 100, the context's own keys and then
-# the screen's from 160 (ADR-0037 §4) — never all hidden, never a key that
-# does nothing, and `.` leads to the rest.
+# row, unless the pane is stacked under it. **As many keys as fit the row
+# the bar actually has**, `. more` last (ADR-0037 §4, ADR-0039's
+# 2026-09-21 amendment): the count comes off the bar's own width, not the
+# screen's, so a 160-column frame with the pane beside it fills the ~92
+# cells the bar is left rather than falling back to three. Never all
+# hidden, never fewer than three, never a key that does nothing, and `.`
+# leads to the rest. Re-captured for m5/20 item 7, which deleted the
+# 3/6/all width tiers — so these bars are longer than the last pass's.
+# The app is resized to the capture's size before the frame is drawn,
+# which the earlier pass did not do: one state photographed at three
+# sizes is a picture of at most one of them.
 #
 # NOTE: this frame has no hint bar at all. Under 100 columns the detail
 # pane takes the whole screen behind the `[Graph] Detail` tabs, and the
@@ -24,7 +31,7 @@
 
 Graph  [Detail]
 UNCOMMITTED · 1 unstaged
-diff vs HEAD b663d42
+diff vs HEAD 240d5d6
 
 UNSTAGED (1)
   M first.txt                                                              +1 −0

@@ -27,20 +27,54 @@ use crate::app_harness::{App, git, git_as_graft};
 /// Two files, not one, so `CONFLICTS (2)` and "2 files still conflicted" are
 /// read off a real count rather than a hard-coded singular.
 fn about_to_conflict() -> graft_fixtures::Scratch {
+    about_to_conflict_over(0, 0)
+}
+
+/// The same repository with `extra` more files conflicted on top of
+/// `shared.rs` and `notes.md`, named so they sort after both and leave
+/// `notes.md` git's first unmerged path either way, over `history` commits
+/// of ordinary work before the branch point.
+///
+/// The captures use both. A screen with four rows of content and thirteen
+/// blanks cannot show what the banner's two rows cost, which is the
+/// question the 80x24 capture is taken to answer (m5/20 item 6, the user's
+/// own words): `history` is what fills the graph, `extra` what fills the
+/// changes pane. Both are 0 for the behavioural tests, which pay a git
+/// process per commit and are asserting counts, not filling screens.
+fn about_to_conflict_over(extra: usize, history: usize) -> graft_fixtures::Scratch {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
     let path = scratch.path();
+    let more: Vec<String> = (0..extra).map(|n| format!("src/step_{n:02}.rs")).collect();
+    if extra > 0 {
+        std::fs::create_dir_all(path.join("src")).expect("the scratch repo is writable");
+    }
+
+    for n in 0..history {
+        write(path, "changelog.md", &format!("release {n}\n"));
+        commit(path, &format!("Ship release {n}"));
+    }
+
     write(path, "shared.rs", "fn main() {}\n");
     write(path, "notes.md", "the plan\n");
+    for name in &more {
+        write(path, name, "fn step() {}\n");
+    }
     commit(path, "the shared files");
 
     git(path, &["switch", "--quiet", "-c", "feature"]);
     write(path, "shared.rs", "fn main() { theirs() }\n");
     write(path, "notes.md", "their plan\n");
+    for name in &more {
+        write(path, name, "fn step() { theirs() }\n");
+    }
     commit(path, "the feature's take");
 
     git(path, &["switch", "--quiet", "main"]);
     write(path, "shared.rs", "fn main() { ours() }\n");
     write(path, "notes.md", "our plan\n");
+    for name in &more {
+        write(path, name, "fn step() { ours() }\n");
+    }
     commit(path, "main's take");
     scratch
 }
@@ -151,8 +185,20 @@ fn open_changes_pane(app: &App, state: AppState) -> AppState {
         guard += 1;
     }
     let state = app.key(&state, KeyCode::Enter);
-    app.pump(state, "the changes pane's file list", |state| {
+    let state = app.pump(state, "the changes pane's file list", |state| {
         matches!(state.detail.files, graft::update::detail::Loading::Ready(_))
+    });
+    // And the selected file's diff. The body draws `reading\u{2026}` while
+    // **either** the list or the diff is still in flight
+    // (`view::detail::body_view`), and the list landing first is what put
+    // `reading\u{2026}` into all three committed captures: a photograph of a
+    // half-loaded screen, which is weak evidence for everything else on it
+    // (m5/20 item 5).
+    app.pump(state, "the conflicted file's diff", |state| {
+        !matches!(
+            state.detail.diff,
+            graft::update::detail::Loading::Pending(_)
+        )
     })
 }
 
@@ -212,9 +258,10 @@ fn conflict_focuses_the_banner_and_lists_the_files() {
             .as_ref()
             .map(graft_term::SanitizedText::as_str),
         Some("notes.md"),
-        "the banner names the first conflicted path, in git's own order"
+        "the first conflicted path, in git's own order \u{2014} never drawn on the \
+         banner, but it is what decides whether `M` and `e` have something \
+         to open (`view::rows::banner_context`)"
     );
-    assert_eq!(banner.more_conflicts, 1, "and says how many more there are");
 
     let paths = graft::update::banner::unmerged_paths(&state);
     assert_eq!(
@@ -865,9 +912,21 @@ fn the_banner_and_its_keys_are_on_the_frame_at_every_width() {
             drawn.iter().any(|line| line.contains("MERGING")),
             "the banner names the operation {at}"
         );
+        let banner = drawn
+            .iter()
+            .find(|line| line.contains("MERGING"))
+            .unwrap_or_else(|| panic!("no banner {at}"));
+        assert!(
+            !banner.contains("notes.md") && !banner.contains("conflict"),
+            "the banner names the state; the pane names the files {banner:?} {at}"
+        );
+        assert!(
+            drawn.iter().any(|line| line.contains("CONFLICTS (2)")),
+            "and the pane does name them {at}"
+        );
         assert!(
             drawn.iter().any(|line| line.contains("notes.md")),
-            "and the file git stopped on {at}"
+            "including the one git stopped on {at}"
         );
         let hints = drawn
             .iter()
@@ -880,6 +939,99 @@ fn the_banner_and_its_keys_are_on_the_frame_at_every_width() {
             "two files are conflicted, so both apply {hints:?} {at}"
         );
     }
+    drop(state);
+    app.close();
+}
+
+/// One wording, at every width \u2014 read off the **drawn** frame, which is
+/// where the user read the defect.
+///
+/// The three captures of one repository in one state spelled the banner
+/// two ways: `conflict in notes.md` at 120, `conflict notes.md` at 80 and
+/// 160 (m5/20 item 3). The cause was a `width >= 100` tier inside
+/// `banner_line`, fed the banner's own region \u2014 120 cells on a 120-column
+/// screen with the detail pane below it, about 92 on a 160-column one with
+/// the pane beside it. So the *wider* terminal got the terser spelling.
+/// The tier is gone and the file with it, and the wording is now one
+/// string with no width in it at all.
+///
+/// Anchored to the frame rather than to `banner_line`, which now takes no
+/// width and would agree with itself for free.
+#[test]
+fn the_banner_reads_the_same_at_every_width() {
+    let scratch = about_to_conflict();
+    let (app, state) = App::open(scratch.path());
+    let state = stopped_with_the_pane_open(&app, state);
+
+    let mut wordings = Vec::new();
+    for (columns, rows) in [(80u16, 24u16), (120, 40), (160, 48)] {
+        let drawn = frame(&state, columns, rows);
+        let line = drawn
+            .iter()
+            .find(|line| line.contains("MERGING"))
+            .unwrap_or_else(|| panic!("no banner at {columns}x{rows}:\n{}", drawn.join("\n")))
+            .clone();
+        let at = line.find("MERGING").expect("just matched");
+        // The banner's own run of text: up to the gap that separates it
+        // from whatever else shares the row (the pane, at 160).
+        let tail = &line[at..];
+        let wording = tail
+            .split("  ")
+            .next()
+            .unwrap_or(tail)
+            .trim_end()
+            .to_owned();
+        wordings.push((columns, wording));
+    }
+    let first = wordings[0].1.clone();
+    assert_eq!(first, "MERGING", "{wordings:?}");
+    for (columns, wording) in &wordings {
+        assert_eq!(
+            wording, &first,
+            "the banner is worded differently at {columns} columns: {wordings:?}"
+        );
+    }
+    drop(state);
+    app.close();
+}
+
+/// The hint bar counts from **its own row**, not from the screen.
+///
+/// At 160x48 the detail pane sits beside the graph and takes about 42% of
+/// the screen, so the bar has roughly 92 cells \u2014 and the old `width_tier`
+/// read 92 as "narrow" and capped the list at three, while a 120-column
+/// screen with the pane below it kept the full 120 cells and drew six. The
+/// bigger terminal taught fewer keys (ADR-0039, 2026-09-21 amendment).
+///
+/// Anchored to the drawn bar at a real screen size with a real pane open.
+/// Ticket 19's property test sweeps `hints_for`'s own `columns` argument,
+/// and `hints_for` was always monotone in that; the defect was in what the
+/// bar's room actually was.
+#[test]
+fn the_hint_bar_fills_the_row_it_has_at_a_hundred_and_sixty_columns() {
+    let scratch = about_to_conflict();
+    let (app, state) = App::open(scratch.path());
+    // The banner is modal and draws its own short list, so this asks the
+    // graph's own bar: give the keyboard back first.
+    let state = stopped_with_the_pane_open(&app, state);
+    let state = app.key(&state, KeyCode::Tab);
+
+    let drawn = frame(&state, 160, 48);
+    let bar = drawn
+        .iter()
+        .rev()
+        .find(|line| line.contains(" more"))
+        .unwrap_or_else(|| panic!("no hint bar at 160x48:\n{}", drawn.join("\n")))
+        .clone();
+    let hints = bar
+        .split("  ")
+        .filter(|part| !part.trim().is_empty())
+        .count();
+    assert!(
+        hints > 3,
+        "160 columns with a pane open leaves the bar ~92 cells, which fits \
+         more than three hints: {bar:?}"
+    );
     drop(state);
     app.close();
 }
@@ -1021,33 +1173,75 @@ fn write_shot(name: &str, body: &str) {
     println!("wrote {} ({} bytes)", path.display(), body.len());
 }
 
-/// The header every banner capture carries: how it was made, what right
-/// looks like, and what is still wrong in it and whose that is.
-fn capture_header(label: &str, columns: u16, rows: u16) -> String {
+/// The width-specific bullets in [`capture_header`]: only one side of the
+/// narrow tier's tab strip is on screen under 100 columns, and what a
+/// stopped merge costs is not the same on the two of them.
+fn cost_bullets(conflicts: usize, graph_tab: bool) -> String {
+    if graph_tab {
+        "#  - **What it costs.** Under 100 columns only one side of the tab\n\
+         #    strip is on screen and this frame stands on the graph, with 30\n\
+         #    commits of ordinary work behind it: history runs from the first\n\
+         #    row to the last with nothing blank. The banner shares the header\n\
+         #    row with the repository path, and its keys take over the hint bar\n\
+         #    that was already there \u{2014} so on this tab a stopped merge costs\n\
+         #    **no** rows of history at all. The row of its own is the `Detail`\n\
+         #    tab's case, where the `Graph  [Detail]` strip needs a line of its\n\
+         #    own anyway; that tab at 24 rows is a six-row file list over a body\n\
+         #    that draws nothing for an unmerged file (the ticket's NOTES), so it\n\
+         #    could not show a cost either way.\n"
+    } else {
+        "#  - At this width the pane and the graph are both on screen, so the\n\
+         #    banner shares the header row rather than taking one of its own.\n\
+         #  - The changes pane opens with `CONFLICTS ({conflicts})`, above `STAGED`\n\
+         #    and `UNSTAGED`, and each conflicted file appears **once**: there\n\
+         #    is one thing to do to it, not two.\n\
+         #  - **No `reading\u{2026}`.** The capture waits for the selected file's\n\
+         #    diff as well as the file list; the earlier pass photographed a\n\
+         #    half-loaded pane.\n"
+    }
+    .replace("{conflicts}", &conflicts.to_string())
+}
+
+/// The caption on one banner capture.
+///
+/// `conflicts` is the real count, so the caption can never claim a number
+/// the frame does not show. `graph_tab` says which side of the narrow
+/// tier's tab strip this frame is standing on, because only one of them is
+/// on screen under 100 columns and the two are not the same picture.
+fn capture_header(
+    label: &str,
+    columns: u16,
+    rows: u16,
+    conflicts: usize,
+    graph_tab: bool,
+) -> String {
+    let cost = cost_bullets(conflicts, graph_tab);
     format!(
         "# m5-ui-banner-conflict-{label}.txt: {columns}x{rows}, drawn by `view::view`\n\
              # from a real AppState \u{2014} a real repository whose `main` and `feature`\n\
-             # both rewrote the same two files, opened over the real job pool, the\n\
+             # both rewrote the same {conflicts} files, opened over the real job pool, the\n\
              # merge launched with `m` through the preview and the confirm box, and\n\
              # git really stopped on the conflict (crates/graft/tests/it/\n\
-             # conflict_interim.rs, capture_banner_for_docs_shots, #[ignore]d). Not a\n\
-             # pty capture: the terminal is ratatui's TestBackend, so this is a\n\
-             # character grid with no colour attributes in it \u{2014} CLAUDE.md rule 5,\n\
-             # colour ships unverified. The scratch repository's temporary path is\n\
-             # set to `/code/api` **before** the frame is drawn, so the header is\n\
-             # laid out against the width a real checkout takes; nothing else is\n\
-             # touched.\n\
+             # conflict_interim.rs, capture_banner_for_docs_shots, #[ignore]d). The\n\
+             # app was resized to {columns}x{rows} before the frame was drawn, so the\n\
+             # layout it chose is the layout for this screen and not for another\n\
+             # one. Not a pty capture: the terminal is ratatui's TestBackend, so\n\
+             # this is a character grid with no colour attributes in it \u{2014}\n\
+             # CLAUDE.md rule 5, colour ships unverified. The scratch repository's\n\
+             # temporary path is set to `/code/api` **before** the frame is drawn,\n\
+             # so the header is laid out against the width a real checkout takes;\n\
+             # nothing else is touched.\n\
              #\n\
              # What right looks like:\n\
-             #  - A banner above the panes reading `MERGING`, the file git stopped on\n\
-             #    (`notes.md`), and `(+1)` for the second one \u{2014} the state the\n\
-             #    repository is in, said once, at the top. Whole, at all three\n\
-             #    widths: no `\u{2026}`.\n\
-             #  - Under 100 columns the layout is tabs and the pane owns the screen,\n\
-             #    so the banner draws on its **own** row above the `Graph [Detail]`\n\
-             #    line and its keys on the bottom row. A modal that owns the\n\
-             #    keyboard has to be visible; that costs two rows of pane content\n\
-             #    here, and only while an operation is stopped.\n\
+             #  - A banner above the panes reading `MERGING` \u{2014} the state the\n\
+             #    repository is in, said once, at the top, and **nothing else**. No\n\
+             #    filename: the changes pane lists every conflicted file, and\n\
+             #    saying it twice on a 24-row screen spends a row on nothing.\n\
+             #    Worded the\n\
+             #    same at all three widths.\n\
+             #  - No `\u{26a0}`. A stopped merge is a state to finish, not a failure;\n\
+             #    the glyph keeps its force for the Mistake Radar's real findings.\n\
+             {cost}\
              #  - The footer teaches the banner's own keys \u{2014} `c continue`,\n\
              #    `a abort`, `M mergetool`, `e edit`, `\u{21e5} graph` \u{2014} and nothing else.\n\
              #    No `<> resize` and no `. more`: the banner is modal and swallows\n\
@@ -1055,18 +1249,17 @@ fn capture_header(label: &str, columns: u16, rows: u16) -> String {
              #  - The banner is drawn focused (colour, so unverified here), and the\n\
              #    footer says nothing false about the merge: no `an operation was\n\
              #    interrupted` line.\n\
-             #  - The changes pane opens with `CONFLICTS (2)`, above `STAGED` and\n\
-             #    `UNSTAGED`, and each conflicted file appears **once**: there is one\n\
-             #    thing to do to it, not two.\n\
-             #  - Nothing on the screen reads as an error. A stopped merge is a state\n\
-             #    to finish, and the words are about what to press next.\n\
+             #  - Nothing on the screen reads as an error.\n\
              #\n\
-             # Re-captured for m5/16, which fixed what the last pass filed here: the\n\
-             # banner was drawn nowhere at all at 80 columns and cut to\n\
-             # `\u{26a0} MERGING \u{2014} \u{2026}` at 160, and the hint bar taught `<> resize  . more`\n\
-             # under a modal banner. Both are gone. What is **not** proven here:\n\
-             # colour (rule 5), and that the banner row reads well by eye \u{2014} that is\n\
-             # yours to judge (rule 6).\n\
+             # Re-captured for m5/20, which dropped the `\u{26a0}` and the filename from\n\
+             # the banner, settled the pane before the shutter, put 30 commits of\n\
+             # ordinary work and {conflicts} conflicted files behind the frame so the\n\
+             # banner's row cost lands on content rather than on blank space, and\n\
+             # made the hint bar count from its own row rather than from width\n\
+             # tiers (so the bars here are longer than on the last pass). What is\n\
+             # **not** proven here: colour (rule 5), and that the banner row reads\n\
+             # well by eye \u{2014}\n\
+             # that is yours to judge (rule 6).\n\
              #\n\n"
     )
 }
@@ -1078,35 +1271,87 @@ fn capture_header(label: &str, columns: u16, rows: u16) -> String {
 #[test]
 #[ignore = "writes docs/shots/m5-ui-banner-conflict-*.txt; run by hand to regenerate"]
 fn capture_banner_for_docs_shots() {
-    let scratch = about_to_conflict();
+    // Enough behind the frame that the banner's two rows land on content:
+    // 30 commits of ordinary work for the graph and 16 conflicted files for
+    // the changes pane. The capture is taken to show what those rows cost,
+    // and it cannot show a cost against blank space (m5/20 item 6).
+    let conflicts = 16;
+    let scratch = about_to_conflict_over(conflicts - 2, 30);
     let repo = scratch.path();
     let (app, state) = App::open(repo);
     let state = stopped_on_the_conflict(&app, state);
-    // The changes pane open on the conflicts, and the keyboard back on the
-    // banner: the screen the user is actually looking at.
+
+    // Two screens, not one. Under 100 columns the tab strip shows one side
+    // at a time, and the narrow capture stands on the **graph**: the
+    // changes pane's file list is capped at 40% of the pane and its body
+    // draws nothing for an unmerged file, so the Detail tab at 24 rows is
+    // six rows of list over eleven blanks — the very picture item 6 was
+    // filed about. The graph fills.
+    //
+    // Cloned before the pane is opened, because the banner keeps the
+    // keyboard through all of it (`detail.focus` is what the tab strip
+    // reads, and it is still `Graph` here).
+    // Tab out of the banner and round to it again: the cycle is banner ->
+    // graph -> banner while the pane is closed, and coming back round is
+    // what clears the sticky line the stop laid over the hint bar. Without
+    // it the footer reads `esc dismiss` and the banner's own keys are
+    // nowhere on the frame.
+    let on_the_graph = tab_back_to_the_banner(&app, app.key(&state, KeyCode::Tab));
     let state = app.key(&state, KeyCode::Tab);
     let state = open_changes_pane(&app, state);
     let state = tab_back_to_the_banner(&app, state);
     let home = repo.display().to_string();
-    // The path is shortened **before** drawing, not after. The scratch
-    // repository lives under a ~50-character temporary path, and the header
-    // lays itself out against it: replacing the text afterwards produced a
-    // capture that showed `/code/api` beside a banner cut to `⚠ MERGING —
-    // …`, and the reader had no way to know the width had been spent on a
-    // path they could not see. Shortening the state makes the capture the
-    // frame a user with `~/code/api` actually gets (m5/16).
-    let mut state = state;
-    if let Some(facts) = state.repository.as_mut() {
-        facts.path = std::path::PathBuf::from("/code/api");
-    }
 
-    for (label, columns, rows) in [
-        ("80x24", 80u16, 24u16),
-        ("120x40", 120, 40),
-        ("160x48", 160, 48),
+    for (label, columns, rows, graph_tab) in [
+        ("80x24", 80u16, 24u16, true),
+        ("120x40", 120, 40, false),
+        ("160x48", 160, 48, false),
     ] {
-        let drawn = frame(&state, columns, rows);
-        let mut out = capture_header(label, columns, rows);
+        let shot = if graph_tab { &on_the_graph } else { &state };
+        // The path is shortened **before** drawing, not after. The scratch
+        // repository lives under a ~50-character temporary path, and the
+        // header lays itself out against it: replacing the text afterwards
+        // produced a capture that showed `/code/api` beside a banner cut to
+        // `MERG…`, and the reader had no way to know the width had been
+        // spent on a path they could not see. Shortening the state makes
+        // the capture the frame a user with `~/code/api` actually gets
+        // (m5/16). Done to a copy, per shot, so the state the app is still
+        // driving keeps the path git is reachable by.
+        let mut shot = shot.clone();
+        if let Some(facts) = shot.repository.as_mut() {
+            facts.path = std::path::PathBuf::from("/code/api");
+        }
+        // Resized before drawing: the layout, the graph's row budget and
+        // the hint bar's room all come off `state.size`, so a state sized
+        // for one screen photographed at another is a picture of neither.
+        let sized = app.resize(&shot, columns, rows);
+        let drawn = frame(&sized, columns, rows);
+        let body = drawn.join("\n");
+        assert!(
+            body.contains("MERGING"),
+            "every banner capture is of a stopped merge: {label}"
+        );
+        if graph_tab {
+            assert!(
+                drawn.iter().all(|line| !line.trim().is_empty()),
+                "a frame with blank rows in it cannot show what a row costs \
+                 (m5/20 item 6): {label}\n{body}"
+            );
+            assert!(
+                drawn[0].contains("/code/api") && drawn[0].contains("MERGING"),
+                "on the graph tab the banner shares the header row: {label}\n{body}"
+            );
+        } else {
+            assert!(
+                body.contains(&format!("CONFLICTS ({conflicts})")),
+                "the wide captures show the changes pane's own count: {label}"
+            );
+            assert!(
+                !body.contains("reading\u{2026}"),
+                "the shutter waits for the pane to settle (m5/20 item 5): {label}"
+            );
+        }
+        let mut out = capture_header(label, columns, rows, conflicts, graph_tab);
         for line in &drawn {
             out.push_str(&line.replace(&home, "/code/api"));
             out.push('\n');
@@ -1114,5 +1359,6 @@ fn capture_banner_for_docs_shots() {
         write_shot(&format!("m5-ui-banner-conflict-{label}.txt"), &out);
     }
     drop(state);
+    drop(on_the_graph);
     app.close();
 }

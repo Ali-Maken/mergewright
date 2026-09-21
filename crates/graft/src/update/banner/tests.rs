@@ -102,7 +102,6 @@ fn the_banner_names_the_kind_the_step_and_the_first_conflict() {
         banner.conflict.as_ref().map(SanitizedTextExt::text),
         Some("src/auth.rs")
     );
-    assert_eq!(banner.more_conflicts, 1);
     assert!(banner.focused);
     assert!(banner.skippable, "a rebase has a step to skip");
 }

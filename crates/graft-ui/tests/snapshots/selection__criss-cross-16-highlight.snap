@@ -27,7 +27,7 @@ shape: criss-cross-merge, 16, highlight, 80x24, row 4 selected
 
 
 
- ⏎ open  c commit  y sha  . more
+ ⏎ open  c commit  y sha  u undo  S stash  J journal  / search  q quit  . more
 
 modifiers: graph | subject
 ..b.......| .

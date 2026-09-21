@@ -395,7 +395,6 @@ mod tests {
             kind: sanitize_line("MERGING"),
             step: None,
             conflict: conflict.map(sanitize_line),
-            more_conflicts: 0,
             focused,
             skippable: false,
         }

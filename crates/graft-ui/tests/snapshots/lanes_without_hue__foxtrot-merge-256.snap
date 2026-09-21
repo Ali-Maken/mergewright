@@ -27,7 +27,7 @@ shape: foxtrot-merge, 256, 80x24, cursor on row 2
 
 
 
- ⏎ open  c commit  y sha  . more
+ ⏎ open  c commit  y sha  u undo  S stash  J journal  / search  q quit  . more
 
 graph colour per cell:
 ccc.

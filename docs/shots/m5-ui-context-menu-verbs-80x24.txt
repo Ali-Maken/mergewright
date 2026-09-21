@@ -72,4 +72,4 @@
 
 
  no commit-graph file · B build one · X never here
- ⏎ open  P push  c commit  . more
+ ⏎ open  P push  c commit  p pull  f fetch  u undo  S stash  / search  . more
