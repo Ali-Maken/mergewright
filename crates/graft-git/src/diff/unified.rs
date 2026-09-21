@@ -22,7 +22,9 @@ use super::{BinaryNote, DiffLine, FileDiff, FileEntry, FileStatus, Hunk, LineKin
 ///
 /// See the module doc for what this accepts. A line git could not have
 /// produced from this command fails with [`ParseError`], naming the
-/// 1-indexed input line.
+/// 1-indexed input line — including a combined diff (`diff --cc`, `@@@`),
+/// which is a shape this parser does not read rather than one it can report
+/// as no changes.
 pub fn parse_unified(bytes: &[u8]) -> Result<Vec<FileDiff>, ParseError> {
     let lines = split_lines(bytes);
     let mut out = Vec::new();
@@ -38,12 +40,59 @@ pub fn parse_unified(bytes: &[u8]) -> Result<Vec<FileDiff>, ParseError> {
             i = parse_file_section(&lines, i, &mut building)?;
             out.push(building.finish());
         } else {
-            // Before the first file, `diff-tree` prints the commit id on its
-            // own line; nothing else here is ours to fail on.
+            reject_line_outside_a_file_section(lines[i], i)?;
             i += 1;
         }
     }
     Ok(out)
+}
+
+/// Fails unless `line` is the one thing that legitimately sits outside a
+/// `diff --git` section: the bare object id `git diff-tree -p` prints before
+/// the first file (leaving it out takes `--no-commit-id`, which none of our
+/// invocations pass).
+///
+/// It is one named case, not a licence to skip. A combined diff — git's
+/// answer for an unmerged path — carries no `diff --git` line anywhere, so
+/// *every* line of such a reply arrives here; skipping them all returned
+/// `Ok(vec![])`, success with nothing in it, and the caller had no error to
+/// show (m5-history-and-ghost-preview/22).
+fn reject_line_outside_a_file_section(line: &[u8], idx: usize) -> Result<(), ParseError> {
+    reject_combined_diff(line, idx)?;
+    if is_bare_object_id(line) {
+        return Ok(());
+    }
+    Err(ParseError {
+        line: idx + 1,
+        what: "unreadable line outside any `diff --git` section",
+    })
+}
+
+/// Fails on git's combined format — `diff --cc`, `diff --combined` and their
+/// `@@@` hunk headers — which it prints for an unmerged path and for a merge
+/// commit shown with `-c`. This parser reads two-sided diffs only; a caller
+/// that wants an unmerged path's content reads it against one side.
+///
+/// Named and refused rather than parsed: a wrong answer here is invisible,
+/// and the error says which shape arrived.
+fn reject_combined_diff(line: &[u8], idx: usize) -> Result<(), ParseError> {
+    if line.starts_with(b"diff --cc ")
+        || line.starts_with(b"diff --combined ")
+        || line.starts_with(b"@@@ ")
+    {
+        return Err(ParseError {
+            line: idx + 1,
+            what: "combined diff (`diff --cc`) is not supported here",
+        });
+    }
+    Ok(())
+}
+
+/// A bare object id on its own line: 40 hex digits (sha1) or 64 (sha256).
+/// Never abbreviated — abbreviating `diff-tree`'s commit id takes an explicit
+/// `--abbrev`, so a short id here is output we did not ask for.
+fn is_bare_object_id(line: &[u8]) -> bool {
+    matches!(line.len(), 40 | 64) && line.iter().all(u8::is_ascii_hexdigit)
 }
 
 /// One file's headers and hunks, as they arrive; turned into a [`FileDiff`]
@@ -195,6 +244,7 @@ fn parse_file_section(
 ) -> Result<usize, ParseError> {
     while i < lines.len() && !lines[i].starts_with(b"diff --git ") {
         let line = lines[i];
+        reject_combined_diff(line, i)?;
         if apply_metadata_line(building, line, i)? {
             i += 1;
         } else if line.starts_with(b"Binary files ") && line.ends_with(b" differ") {
@@ -211,9 +261,13 @@ fn parse_file_section(
             building.hunks.push(hunk);
             i = next;
         } else {
-            // An unrecognised header line before the first hunk (`index
-            // ...`, or anything future git versions add): kept out of the
-            // hunk list, never fails the parse.
+            // An extended header line this parser reads nothing from: the
+            // `index <old>..<new> <mode>` line, or a header a future git
+            // adds beside it. Skipped, and unlike the top-level case this
+            // cannot hide a whole reply — the file's `diff --git` line was
+            // already read, so the file is reported either way and the two
+            // shapes that *would* hide one (`diff --cc`, `@@@`) are refused
+            // above (m5-history-and-ghost-preview/22).
             i += 1;
         }
     }

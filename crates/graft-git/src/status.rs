@@ -1,14 +1,19 @@
-//! The working tree's changes: [`counts`] for the uncommitted-changes row
-//! (PROMPT.md §1.3, M2), [`read`] for the file-by-file staging view (M3).
+//! The working tree's changes: [`read`] gives the file-by-file staging view
+//! (M3), and [`WorkingTreeStatus::counts`] the uncommitted-changes row's
+//! numbers (PROMPT.md §1.3) from that same read.
 //!
-//! Both are reads, both touch disk, both are a job's work, never `update`'s.
-//! They go different ways to get there: `counts` walks `gix`'s status
-//! iterator directly; `read` parses `git status --porcelain=v2 -z`. That is
-//! the one git command that honours `GIT_OPTIONAL_LOCKS=0` (M2 review round
-//! 2, R2 Major 1) — a read must never refresh and rewrite `.git/index`, and
-//! porcelain `git diff` does exactly that, which is why every other read in
-//! this crate goes through plumbing instead. `git status` is the exception,
-//! not the rule.
+//! It is a read, it touches disk, it is a job's work, never `update`'s. It
+//! parses `git status --porcelain=v2 -z` — the one git command that honours
+//! `GIT_OPTIONAL_LOCKS=0` (M2 review round 2, R2 Major 1). A read must never
+//! refresh and rewrite `.git/index`, and porcelain `git diff` does exactly
+//! that, which is why every other read in this crate goes through plumbing
+//! instead. `git status` is the exception, not the rule.
+//!
+//! There was a second way in: a `counts` that walked `gix`'s status iterator
+//! for the row alone. It went in m5-history-and-ghost-preview/22, once the
+//! app had stopped calling it — it could not report an unmerged path
+//! honestly (m5/21), and a second walk that disagreed with the first is a
+//! worse answer than one walk.
 
 #[cfg(test)]
 mod tests;
@@ -186,9 +191,9 @@ impl WorkingTreeStatus {
         self.entries.is_empty()
     }
 
-    /// How many entries are staged, unstaged and untracked — the same shape
-    /// [`counts`] reports, taken from an already-read status instead of a
-    /// second walk.
+    /// How many entries are staged, unstaged and untracked, counted from
+    /// the entries [`read`] already returned. Unmerged paths are their own
+    /// state and are counted by neither (m5-history-and-ghost-preview/21).
     #[must_use]
     pub fn counts(&self) -> WorkingTreeCounts {
         WorkingTreeCounts {
@@ -370,7 +375,8 @@ fn bytes_to_pathbuf(bytes: &[u8]) -> PathBuf {
 /// One spawn, `git -c core.quotepath=off status --porcelain=v2 -z
 /// --untracked-files=all --renames` — `GIT_OPTIONAL_LOCKS=0` is already set
 /// by [`GitInvocation`] itself. A bare repository has no worktree to read and
-/// reports empty, as [`counts`] does.
+/// reports empty — not an error, since there is truthfully nothing
+/// uncommitted to show.
 ///
 /// # Errors
 /// [`StatusError::Run`] if `git` could not be run or exited non-zero;
@@ -411,46 +417,4 @@ fn status_from(output: &crate::run::GitOutput) -> Result<WorkingTreeStatus, Stat
         return Err(StatusError::TooLarge { bytes: OUTPUT_CAP });
     }
     parse_porcelain_v2(&output.stdout)
-}
-
-/// Count staged, unstaged and untracked files.
-///
-/// A bare repository has no worktree to compare and reports a clean tree —
-/// not an error, since there is truthfully nothing uncommitted to show.
-///
-/// # Errors
-/// The status walk could not start, or broke partway through.
-pub fn counts(handle: &RepoHandle) -> Result<WorkingTreeCounts, StatusError> {
-    if handle.is_bare() {
-        return Ok(WorkingTreeCounts::default());
-    }
-
-    let platform = handle
-        .gix()
-        .status(gix::progress::Discard)
-        .map_err(Box::new)?;
-    let mut result = WorkingTreeCounts::default();
-    for item in platform.into_iter(Vec::new()).map_err(Box::new)? {
-        match item.map_err(Box::new)? {
-            gix::status::Item::TreeIndex(_) => result.staged += 1,
-            gix::status::Item::IndexWorktree(item) => match item {
-                gix::status::index_worktree::Item::Modification { .. } => {
-                    result.unstaged += 1;
-                }
-                gix::status::index_worktree::Item::DirectoryContents { .. } => {
-                    result.untracked += 1;
-                }
-                // Rename tracking is off by default (`Repository::status`
-                // leaves `rewrites: None`), so this arm is unreached in
-                // practice; kept exhaustive rather than wildcarded so a
-                // future default change is a compile error here, not a
-                // silent miscount. A rewrite's source is an index entry
-                // gone missing, which is a staged change.
-                gix::status::index_worktree::Item::Rewrite { .. } => {
-                    result.staged += 1;
-                }
-            },
-        }
-    }
-    Ok(result)
 }
