@@ -61,8 +61,7 @@ pub(super) fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mous
                     // and no change to the selection itself.
                     toggle_compare_at(next, commands, row);
                 } else {
-                    next.on_working_tree = false;
-                    select_row(next, commands, row);
+                    select_graph_row(next, commands, row);
                 }
             } else if next.uncommitted_row_shown() && mouse.row == geometry::rows_above_graph(next)
             {
@@ -76,10 +75,23 @@ pub(super) fn mouse_event(next: &mut AppState, commands: &mut Vec<Command>, mous
         MouseKind::Down(MouseButton::Right) => {
             // Reuses the graph's existing click-to-row mapping, not a new
             // one (`context-actions-menu`, m2-details-and-diffs/12).
+            //
+            // A right-click **picks** the row before it opens the menu, the
+            // same `select_row` a left click runs. Every verb in the app
+            // acts on the cursor — including the letters the menu hands back
+            // down `key_event` (m5-history-and-ghost-preview/13) — so a menu
+            // opened somewhere the cursor is not would label one commit and
+            // move another. That was the bug: `y` copied the cursor's sha
+            // under a label naming the clicked one, silently
+            // (m5-history-and-ghost-preview/18 F1). Moving the cursor here
+            // keeps "the current row" a single value instead of adding a
+            // second one for the menu to carry.
             if let Some(row) = geometry::graph_row_at(next, mouse.row) {
+                select_graph_row(next, commands, row);
                 context_menu::open_for_history_row(next, row);
             } else if next.uncommitted_row_shown() && mouse.row == geometry::rows_above_graph(next)
             {
+                next.on_working_tree = true;
                 context_menu::open_for_working_tree(next);
             }
         }
@@ -135,6 +147,15 @@ fn scroll(next: &mut AppState, commands: &mut Vec<Command>, lines: isize) {
     {
         commands.push(Command::ShowRows(id, request));
     }
+}
+
+/// Puts the cursor on a graph row a click landed on: off the working-tree
+/// sentinel and onto `row`. Both buttons go through this — a left click
+/// selects, a right click selects *and then* opens the row's menu — so
+/// there is one answer to "which row did that click pick".
+fn select_graph_row(next: &mut AppState, commands: &mut Vec<Command>, row: usize) {
+    next.on_working_tree = false;
+    select_row(next, commands, row);
 }
 
 /// Selects the row a click landed on.

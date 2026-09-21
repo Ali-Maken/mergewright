@@ -1,6 +1,6 @@
 # right-click-acts-on-the-wrong-row: the menu names one commit and the verb runs on another
 
-Status: ready
+Status: done
 Blocked by: 17 (same crate — `graft`)
 Build with: **Opus.** A verb running on a row the user did not pick, and one
 path of it silently, is the failure class this project ranks above all others.
@@ -67,28 +67,113 @@ regenerated capture is visible in `git status` rather than silently identical.
 
 ## Acceptance (every tick names its verifying test inline, at tick time)
 
-- [ ] Right-click a row that is not the cursor, then press each of the menu's
+Every test below is in `crates/graft/tests/it/context_menu.rs` unless said
+otherwise, and every one of them presses a real `Event::Mouse` through the
+real `update` (`app_harness::App::right_click`).
+
+- [x] Right-click a row that is not the cursor, then press each of the menu's
       verbs: the verb acts on the row the menu names — driven through real
       `update` from the click — test:
-- [ ] `y` after a right-click copies the sha of the row the menu names — this
+      `m_after_a_right_click_merges_the_branch_the_menu_named` (the merge's
+      `source_tip`), `r_after_a_right_click_rebases_onto_the_branch_the_menu_named`
+      (the rebase's `onto_tip`), `x_after_a_right_click_marks_the_commit_the_menu_named`
+      (the compare base), `y_after_a_right_click_copies_the_sha_the_menu_named`.
+      Each is measured against `git rev-parse main`, not against the menu.
+      `f`/`p`/`P` are not covered here: pressing them starts a real network
+      job, which is not a fast-tier test. They go down the same
+      `context_menu_key` fall-through as the four above and act on the
+      cursor, which the first tick's fix moves — **unverified**, not broken.
+- [x] `y` after a right-click copies the sha of the row the menu names — this
       is the silent one, so it needs its own tick — test:
-- [ ] The menu's title and its target cannot disagree — a test that goes red
+      `y_after_a_right_click_copies_the_sha_the_menu_named`. It asserts the
+      `Command::CopyToClipboard` itself (through
+      `app_harness::press_for_commands`, because the job runner refuses that
+      command) and the `Status::Copied` short sha the footer shows.
+- [x] The menu's title and its target cannot disagree — a test that goes red
       if they drift apart, not one that checks them against each other —
-      test:
-- [ ] A normal test run fails on capture drift; `GRAFT_UPDATE_SHOTS=1` is the
+      test: `a_right_click_moves_the_cursor_to_the_row_it_opens_the_menu_on`
+      pins the invariant the fix rests on (menu row == cursor row), and the
+      four verb tests above check the labels (`Merge main into feature (m)`
+      and so on) and the verb's target **separately, each against git**. The
+      menu has no title field; its labels are what names the row.
+- [x] A normal test run fails on capture drift; `GRAFT_UPDATE_SHOTS=1` is the
       only thing that rewrites one — test:
+      `only_an_explicit_regeneration_rewrites_a_capture`. Only the literal
+      `1` now regenerates (`updating_shots`), and a regeneration writes the
+      file **and still fails** (`check_capture`), so it is red until the new
+      capture is committed and `git status` must show it. The policy is
+      tested over a temporary file rather than by setting the variable:
+      `cargo test` runs a binary's tests in one process.
 
-**Mutation-check each.** For F1, the mutation is the bug: restore the
-click-without-cursor-move and show the new test going red. If it stays green,
-you have not reproduced it.
+## Mutation table (each tick, red tests named)
 
-## Gates
+| mutation | red |
+|---|---|
+| **F1, the bug itself:** the `Down(Right)` arm opens the menu without `select_graph_row` | 5, and only these 5 in the whole `graft` suite: `a_right_click_moves_the_cursor_to_the_row_it_opens_the_menu_on`, `x_…`, `y_…` (wrong sha: `8d6cd28` for `45fa51d`), `m_…`, `r_…` |
+| `check_capture` returns `Ok` after rewriting (the old behaviour) | `only_an_explicit_regeneration_rewrites_a_capture` |
+| `updating_shots` accepts any value (`var_os(..).is_some()`, the old behaviour) | `only_an_explicit_regeneration_rewrites_a_capture` |
+| `primary_pane_area` takes `split_area(..).1` (band clears across the detail pane) | `the_menus_band_stops_at_the_detail_pane_instead_of_clearing_it`, and nothing else — as the review found |
+| `context_menu_key`'s fall-through sets a generic `key not bound` status instead of handing the key on | `every_verb_the_menu_advertises_is_live_while_it_is_open` (it stayed green on this before m3's hardening) |
 
-Workspace-wide, never `-p`. `CARGO_TARGET_DIR=/tmp/graft-target-g18`, deleted
-before hand-back. Check the baseline on `main` yourself when you start.
-Commit, never push.
+## What was done
 
-## Report
+**F1 — cause (1), the right-click moves the cursor.** `update::mouse`'s
+`Down(Right)` arm now runs the same `select_graph_row` the left click runs
+before `open_for_history_row`, and sets `on_working_tree` for the
+uncommitted row. Nothing forbade (1). (2) — the menu carrying its own target
+— would have added a second notion of "the current row" for every verb to
+read, which is the duplicate state this milestone keeps being bitten by. The
+cursor cannot move while the menu is open (the menu claims `j`/`k`, and any
+mouse event while it is open either dispatches or closes it), so menu row and
+cursor row agree from the click to the keystroke by construction.
 
-Which cause you fixed, (1) or (2), and why. Whether any test you found was
-pinning the old behaviour. Anything unverified — which is not broken.
+**No test was pinning the old behaviour** — because **nothing tested the
+right-click at all.** `MouseButton::Right` appeared exactly once in the whole
+crate before this ticket, in `update::mouse` itself. Every context-menu test
+opened the menu with `.`, which starts from the cursor, so the gap between
+the click and the cursor was invisible to the suite. The harness had no mouse
+helper; it has `mouse_down`/`right_click` now.
+
+**F2 — the review's Majors and Minors.** M2 (file sizes), M3 (band vs the
+split), m1 (`GRAFT_UPDATE_SHOTS`), m2 (the capture's header artifact and the
+mid-sort frame), m3 (`every_verb_…` proving "the verb ran", not "something
+changed"). m5's items are C1's, in ticket 17.
+
+## NOTES — for the conductor
+
+- **Not done, and why.** m4 asks for four KNOWN_GAPS rows to be moved to
+  `docs/gaps/closed.md`. CLAUDE.md says a builder never reads
+  `KNOWN_GAPS.md`, so this is the conductor's. The rows the review names are
+  511–514, plus its own four new rows; of those, "right-click menu + verb
+  letter acts on the cursor row" is now **closed** (the five tests above),
+  "`GRAFT_UPDATE_SHOTS` exported in a shell turns regressions green" is now
+  **closed** (`only_an_explicit_regeneration_rewrites_a_capture`),
+  "band-with-split untested through a frame" is now **closed**
+  (`the_menus_band_stops_at_the_detail_pane_instead_of_clearing_it`), and
+  "the golden snapshot depends on the temp-path length of the machine" is
+  **closed by construction** — the header is now fitted to `/code/api`, not
+  to a temporary path, so there is nothing left to be Linux-dependent. Still
+  **unverified**: no Linux run.
+- **Captures regenerated, by eye.** `docs/shots/m5-ui-context-menu-verbs-80x24.txt`
+  and `-160x48.txt`. Two things changed in the picture: the 80-column
+  header reads ` graft /code/api  8 commits` instead of ` graft /code/api  8…`
+  (the truncation was an artifact of the temporary path), and `feature`'s
+  tip now carries the radar's muted `ⓘ`. The marker was **a race** before —
+  the capture was taken before the radar's context job answered — and the
+  frame now waits for it. The caption says so. Rule 6: the user judges both.
+- **M2 is only half closed.** `view/frame.rs` is 731 lines and
+  `it/context_menu.rs` is 961, both still over PROMPT.md §6.2's ~400. The
+  review's prescribed split is done (`view/frame/tests.rs`;
+  `it/preview.rs` 1711 → 790 + `it/context_menu.rs`); cutting the remainder
+  further is a module-boundary decision, not a test move, and wants
+  `codebase-design`. Named, not half-fixed.
+- **A slow failure mode.** `m_after_a_right_click_…` and `r_after_a_right_click_…`
+  fail by *timing out* the harness's 120 s pump when the bug is present,
+  because the refused verb queues no job. They pass in ~0.2 s. Green runs are
+  unaffected; a red one on these two costs two minutes.
+- **`#[ignore]`d capture writers untouched.** `capture_preview_for_docs_shots`,
+  `capture_time_machine_for_docs_shots` and `capture_scrolled_preview_for_docs_shots`
+  still write without asserting. They never run in a normal suite, so they
+  cannot mask a regression — but they are not golden snapshots either.
+- **No compaction.** No scout: the ticket said not to, and the review named
+  the file and line.

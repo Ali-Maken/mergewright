@@ -39,12 +39,12 @@ const FORK_EPOCH: i64 = 1_609_459_200;
 /// The instant the fixture's relative dates are drawn against: a minute
 /// after its newest commit, so a capture of it reads the same age forever
 /// instead of drifting with real time (`session::Clock::Fixed`).
-const FORK_NOW: i64 = FORK_EPOCH + 6 * 60;
+pub const FORK_NOW: i64 = FORK_EPOCH + 6 * 60;
 
 /// A fork: `main` with three commits, `feature` branched off the first and
 /// carrying two of its own, `feature` checked out. Rebasing `feature` onto
 /// `main` replays two commits, which is a picture with ghosts in it.
-fn forked() -> graft_fixtures::Scratch {
+pub fn forked() -> graft_fixtures::Scratch {
     let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
     let path = scratch.path();
     dated_commit(path, "base.txt", "base\n", "add the base", 1);
@@ -74,7 +74,7 @@ fn commit(repo: &Path, name: &str, body: &str, subject: &str) {
 }
 
 /// Opened, with the first rows and the refs on hand — everything `r` reads.
-fn opened(app: &App, state: AppState) -> AppState {
+pub fn opened(app: &App, state: AppState) -> AppState {
     app.pump(state, "the first rows and the refs", |state| {
         state.refs.is_some()
             && state
@@ -117,7 +117,7 @@ fn preview_of_a_rebase(app: &App, state: AppState) -> AppState {
 }
 
 /// Is the cursor on a row carrying the `main` branch badge?
-fn on_main(state: &AppState) -> bool {
+pub fn on_main(state: &AppState) -> bool {
     let Some(refs) = state.refs.as_deref() else {
         return false;
     };
@@ -133,7 +133,7 @@ fn on_main(state: &AppState) -> bool {
         .any(|label| matches!(label, graft::refs::RefLabel::Branch { name, .. } if name == b"main"))
 }
 
-fn rows_drawn(state: &AppState) -> Vec<String> {
+pub fn rows_drawn(state: &AppState) -> Vec<String> {
     state
         .history
         .as_ref()
@@ -149,14 +149,14 @@ fn rows_drawn(state: &AppState) -> Vec<String> {
 }
 
 /// Every row of the frame `view::view` draws for `state` at this size.
-fn frame(state: &AppState, columns: u16, rows: u16) -> Vec<String> {
+pub fn frame(state: &AppState, columns: u16, rows: u16) -> Vec<String> {
     frame_at(state, columns, rows, None)
 }
 
 /// [`frame`], with the instant its relative dates are drawn against. `None`
 /// is the wall clock; a capture that must not age passes
 /// `Some(Clock::Fixed(…))`.
-fn frame_at(state: &AppState, columns: u16, rows: u16, clock: Option<Clock>) -> Vec<String> {
+pub fn frame_at(state: &AppState, columns: u16, rows: u16, clock: Option<Clock>) -> Vec<String> {
     let session = Session::settle(&Loaded::default(), capabilities());
     let mut state = state.clone();
     state.size = graft::update::Size { columns, rows };
@@ -554,224 +554,6 @@ fn capture_time_machine_for_docs_shots() {
     app.close();
 }
 
-// ---------------------------------------------------------------------------
-// The `.` menu's history verbs (piece 6).
-//
-// `update::context_menu::verbs`' own tests settle what each verb *means* over
-// scripted refs. Nothing there opens a repository, so nothing there can prove
-// that `.` on a real branch row actually lists them, that the widget draws
-// them, or that choosing one reaches `graft_ops::preview::plan`. That is what
-// these do.
-// ---------------------------------------------------------------------------
-
-/// `.` on `main`'s row, with the menu's plan on hand.
-/// Presses `j` until the cursor sits on `main`'s row — where the history
-/// verbs have something to name.
-fn on_mains_row(app: &App, state: AppState) -> AppState {
-    let mut state = opened(app, state);
-    let mut guard = 0;
-    loop {
-        assert!(
-            guard < 20,
-            "never found main's row: {:?}",
-            rows_drawn(&state)
-        );
-        if on_main(&state) {
-            break;
-        }
-        state = app.key(&state, KeyCode::Char('j'));
-        guard += 1;
-    }
-    state
-}
-
-fn menu_on_mains_row(app: &App, state: AppState) -> AppState {
-    let state = on_mains_row(app, state);
-    let state = app.key(&state, KeyCode::Char('.'));
-    assert!(
-        state.context_menu.is_some(),
-        "`.` opens the menu: {:?}",
-        state.status
-    );
-    state
-}
-
-/// The labels the menu lists, in order.
-fn menu_labels(state: &AppState) -> Vec<String> {
-    state
-        .context_menu
-        .as_ref()
-        .expect("a menu is open")
-        .menu
-        .items
-        .iter()
-        .map(|item| item.label.as_str().to_owned())
-        .collect()
-}
-
-/// The menu is **opaque**: on every row it draws, everything right of the
-/// label is blank, out to the end of the line.
-///
-/// The widget pads each of its own rows, so the popup's own columns were
-/// never the problem — the popup is only as wide as its longest label, and
-/// the graph rows it floats over kept drawing their date and sha columns
-/// beside each verb. In a character grid that reads as if the verb were
-/// bound to that sha (`Copy SHA (y)  …  now  6d3bd01`). The user found it by
-/// eye in `docs/shots/m5-ui-context-menu-verbs-80x24.txt`; this is the
-/// assertion the capture could not make (m5-history-and-ghost-preview/12).
-///
-/// `frame` trims each line's trailing blanks, so an opaque row is exactly
-/// `" {label}"` and a bleeding one is longer. Both capture widths, because
-/// the bleed is wider and louder at 160 columns than at 80.
-#[test]
-fn the_context_menu_is_opaque_on_every_row_it_draws() {
-    let scratch = forked();
-    let (app, state) = App::open(scratch.path());
-    let state = menu_on_mains_row(&app, state);
-    let labels = menu_labels(&state);
-    assert!(labels.len() > 8, "the fixture's menu is long: {labels:?}");
-
-    for (columns, rows) in [(80_u16, 24_u16), (160, 48)] {
-        let drawn = frame(&state, columns, rows);
-        for label in &labels {
-            let wanted = format!(" {label}");
-            let line = drawn
-                .iter()
-                .find(|line| line.starts_with(&wanted))
-                .unwrap_or_else(|| {
-                    panic!(
-                        "{wanted:?} is drawn at {columns}x{rows}:\n{}",
-                        drawn.join("\n")
-                    )
-                });
-            assert_eq!(
-                line,
-                &wanted,
-                "at {columns}x{rows} the menu row {label:?} carries what was \
-                 underneath it to the right of its label:\n{}",
-                drawn.join("\n")
-            );
-        }
-    }
-    app.close();
-}
-
-/// A trailing `(m)` on a menu label promises that `m` is live **right now**.
-/// So pressing it with the menu open closes the menu and runs the verb, in
-/// one keystroke, landing on exactly the picture `m` draws when no menu was
-/// open (`docs/design/02-keymap.md` §2.1: the `.` menu claims `j`/`k`/`Enter`
-/// /`Esc` and nothing else).
-///
-/// Compared frame-to-frame rather than field-to-field: "as if the menu had
-/// not been open" is a claim about what the user ends up looking at.
-#[test]
-fn a_verb_key_the_menu_advertises_closes_it_and_runs_the_verb() {
-    let scratch = forked();
-    let (app, state) = App::open(scratch.path());
-    let row = on_mains_row(&app, state);
-
-    let menu = app.key(&row, KeyCode::Char('.'));
-    assert!(
-        menu.context_menu.is_some(),
-        "`.` opens the menu: {:?}",
-        menu.status
-    );
-    let labels = menu_labels(&menu);
-    assert!(
-        labels.iter().any(|label| label.ends_with("(m)")),
-        "the menu advertises `m`: {labels:?}"
-    );
-
-    let through_menu = app.key(&menu, KeyCode::Char('m'));
-    assert!(
-        through_menu.context_menu.is_none(),
-        "`m` closes the menu on its way through"
-    );
-    assert!(
-        through_menu.preview.is_some(),
-        "`m` ran the merge it advertised instead of being swallowed: {:?}",
-        through_menu.status
-    );
-    let through_menu = app.pump(through_menu, "the merge plan", |state| {
-        state
-            .preview
-            .as_ref()
-            .is_some_and(|preview| !preview.rows.is_empty())
-    });
-
-    let direct = app.key(&row, KeyCode::Char('m'));
-    let direct = app.pump(direct, "the merge plan", |state| {
-        state
-            .preview
-            .as_ref()
-            .is_some_and(|preview| !preview.rows.is_empty())
-    });
-
-    assert_eq!(
-        frame(&through_menu, 80, 24),
-        frame(&direct, 80, 24),
-        "`.` then `m` must land where a bare `m` lands"
-    );
-    app.close();
-}
-
-/// `m` is not alone: every letter the menu advertises has to be live, not
-/// just the one the defect was found with. Each of these closes the menu and
-/// then does its own job, so the screen it leaves is **not** the screen that
-/// merely closing the menu leaves.
-///
-/// `f`/`p`/`P` are left out on purpose: pressing them really starts a
-/// network job, which is not a fast-tier test. `y` is left out because this
-/// harness cannot run it — `CopyToClipboard` is terminal output the event
-/// loop performs, not a job the test runner can answer. That all four are
-/// handed on is pinned by
-/// `graft::update::context_menu::tests::context_menu_key_closes_and_hands_a_verb_key_on`,
-/// and that the menu's own items run the same code `f`/`p`/`P` run is pinned
-/// by `graft::update::context_menu::tests::the_menu_runs_what_the_dropped_keys_run`.
-#[test]
-fn every_verb_the_menu_advertises_is_live_while_it_is_open() {
-    for code in [
-        KeyCode::Char('x'),
-        KeyCode::Char('m'),
-        KeyCode::Char('r'),
-        KeyCode::Char('u'),
-    ] {
-        let scratch = forked();
-        let (app, state) = App::open(scratch.path());
-        let menu = menu_on_mains_row(&app, state);
-
-        let merely_closed = app.key(&menu, KeyCode::Escape);
-        let pressed = app.key(&menu, code);
-        assert!(
-            pressed.context_menu.is_none(),
-            "{code:?} closes the menu on its way through"
-        );
-        assert_ne!(
-            frame(&pressed, 80, 24),
-            frame(&merely_closed, 80, 24),
-            "{code:?} was swallowed: the menu closed and nothing else happened"
-        );
-        app.close();
-    }
-}
-
-/// `Esc` is one of the four keys the menu does claim: it closes the menu and
-/// stops there, running nothing (`docs/design/02-keymap.md` §2.1).
-#[test]
-fn esc_closes_the_menu_and_runs_nothing() {
-    let scratch = forked();
-    let (app, state) = App::open(scratch.path());
-    let menu = menu_on_mains_row(&app, state);
-    let closed = app.key(&menu, KeyCode::Escape);
-    assert!(closed.context_menu.is_none(), "`Esc` closes the menu");
-    assert!(
-        closed.preview.is_none(),
-        "`Esc` is not a verb: {:?}",
-        closed.status
-    );
-    app.close();
-}
-
 /// Below 40x12 the Ghost Preview box gives up its frame and draws one
 /// warning line instead. That line still has to be **opaque**: the caller
 /// tints the whole rectangle, so anything the widget does not write itself
@@ -806,222 +588,6 @@ fn the_preview_warning_row_is_opaque_when_the_box_cannot_fit() {
         );
     }
     app.close();
-}
-
-/// `.` on a real branch row lists the history verbs, named against the real
-/// branches, and the widget really draws them.
-#[test]
-fn the_context_menu_lists_its_history_verbs_and_draws_them() {
-    let scratch = forked();
-    let (app, state) = App::open(scratch.path());
-    let state = menu_on_mains_row(&app, state);
-
-    let labels = menu_labels(&state);
-    for wanted in [
-        "Checkout main",
-        "Merge main into feature (m)",
-        "Rebase feature onto main (r)",
-        "Reset feature to here, mixed",
-        "Reset feature to here, hard",
-        "Delete branch main",
-    ] {
-        assert!(
-            labels.iter().any(|label| label == wanted),
-            "{wanted:?} missing from {labels:?}"
-        );
-    }
-
-    // Drawn, not merely listed: the rows come off the real buffer.
-    let text = frame(&state, 100, 30).join("\n");
-    assert!(text.contains("Merge main into feature (m)"), "{text}");
-    assert!(text.contains("Rebase feature onto main (r)"), "{text}");
-    app.close();
-}
-
-/// Choosing a verb opens the real Ghost Preview of exactly that operation,
-/// through `graft_ops::preview::plan`, and writes nothing.
-#[test]
-fn choosing_a_menu_verb_previews_that_operation_and_writes_nothing() {
-    let scratch = forked();
-    let before = git(
-        scratch.path(),
-        &["for-each-ref", "--format=%(refname) %(objectname)"],
-    );
-    let (app, state) = App::open(scratch.path());
-    let state = menu_on_mains_row(&app, state);
-
-    let wanted = "Rebase feature onto main (r)";
-    let at = menu_labels(&state)
-        .iter()
-        .position(|label| label == wanted)
-        .unwrap_or_else(|| panic!("{wanted:?} missing from {:?}", menu_labels(&state)));
-    let expected = {
-        let open = state.context_menu.as_ref().expect("a menu is open");
-        let graft_ui::context_menu::ContextAction::History(index) = open.menu.items[at].action
-        else {
-            panic!("{wanted:?} is a history verb")
-        };
-        open.verbs[index].op.clone()
-    };
-
-    let mut state = state;
-    for _ in 0..at {
-        state = app.key(&state, KeyCode::Char('j'));
-    }
-    let state = app.key(&state, KeyCode::Enter);
-
-    assert!(state.context_menu.is_none(), "the menu closed");
-    let preview = state.preview.as_ref().expect("a preview opened");
-    assert_eq!(
-        preview.subject,
-        graft::update::preview::PreviewSubject::Operation {
-            op: Box::new(expected),
-            opened_by: ".",
-        },
-        "the operation previewed is the one the label named"
-    );
-
-    // The plan comes back from the real `graft_ops::preview::plan`, with the
-    // two commits it would replay in it.
-    let state = app.pump(state, "the menu verb's plan", |state| {
-        state
-            .preview
-            .as_ref()
-            .is_some_and(|preview| !preview.rows.is_empty())
-    });
-    let text = frame(&state, 100, 30).join("\n");
-    assert!(text.contains("Preview:"), "{text}");
-    assert_eq!(
-        git(
-            scratch.path(),
-            &["for-each-ref", "--format=%(refname) %(objectname)"]
-        ),
-        before,
-        "planning is a read: nothing moved"
-    );
-    app.close();
-}
-
-/// The capture under `docs/shots/`, from this same real path, **asserted**
-/// against what is committed there — the **user** judges the menu by eye
-/// (CLAUDE.md rule 6), and this keeps what he judged from changing behind
-/// his back.
-///
-/// It can assert now because the frame is reproducible: [`forked`] stamps a
-/// fixed date on every commit it makes and [`FORK_NOW`] fixes the instant
-/// the ages are drawn against. Before that it was not, and a snapshot of a
-/// frame that wobbles is worse than none
-/// (m5-history-and-ghost-preview/13).
-///
-/// To regenerate after a deliberate change: `GRAFT_UPDATE_SHOTS=1 cargo test
-/// -p graft --test it preview::capture_context_menu_for_docs_shots`, then
-/// look at the diff before committing it.
-#[test]
-fn capture_context_menu_for_docs_shots() {
-    let scratch = forked();
-    let (app, state) = App::open(scratch.path());
-    let state = menu_on_mains_row(&app, state);
-    let home = scratch.path().display().to_string();
-    let updating = std::env::var_os("GRAFT_UPDATE_SHOTS").is_some();
-
-    for (label, columns, rows) in [("80x24", 80u16, 24u16), ("160x48", 160, 48)] {
-        let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(FORK_NOW)));
-        let mut out = context_menu_caption(label, columns, rows);
-        out.push('\n');
-        for line in &drawn {
-            out.push_str(&line.replace(&home, "/code/api"));
-            out.push('\n');
-        }
-        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../docs/shots")
-            .join(format!("m5-ui-context-menu-verbs-{label}.txt"));
-        if updating {
-            std::fs::write(&path, &out).expect("docs/shots is writable");
-            println!("wrote {} ({} bytes)", path.display(), out.len());
-            continue;
-        }
-        let committed = std::fs::read_to_string(&path).unwrap_or_else(|why| {
-            panic!(
-                "{} is missing ({why}); regenerate with GRAFT_UPDATE_SHOTS=1",
-                path.display()
-            )
-        });
-        assert_eq!(
-            out, committed,
-            "the {label} capture has drifted from what is committed. Read the \
-             new frame, and if it is right regenerate with GRAFT_UPDATE_SHOTS=1:\n{out}"
-        );
-    }
-    app.close();
-}
-
-/// The "what right looks like" block the M5 contact sheet puts this capture
-/// under (ADR-0037).
-///
-/// Every line here is a claim the user checks by eye, so every line has to be
-/// true of **this** width. The block was byte-identical in both files until
-/// m5-history-and-ghost-preview/12, which left the 160-column capture
-/// claiming to be the 80-column one.
-fn context_menu_caption(label: &str, columns: u16, rows: u16) -> String {
-    let width_line = if columns <= 80 {
-        format!(
-            "#  - At {columns} columns \u{2014} the narrow end \u{2014} the menu still fits\n\
-             #    inside the graph pane rather than running off it.\n"
-        )
-    } else {
-        format!(
-            "#  - At {columns} columns the graph's date and sha columns sit far to the\n\
-             #    right of the menu, and they stop dead at the menu's own rows: the\n\
-             #    popup clears the whole band it stands on, so no verb has a stray\n\
-             #    sha beside it.\n"
-        )
-    };
-    format!(
-        "# m5-ui-context-menu-verbs-{label}.txt: {columns}x{rows}, drawn by `view::view`\n\
-             # from a real AppState — a real repository (`main` three commits, `feature`\n\
-             # forked off the first with two of its own, `feature` checked out), opened\n\
-             # over the real job pool, cursor moved to `main`'s row and `.` pressed\n\
-             # through `update`\n\
-             # (crates/graft/tests/it/preview.rs, capture_context_menu_for_docs_shots).\n\
-             # This file is a golden snapshot: that test asserts the frame still\n\
-             # matches it, so drift fails the suite. Regenerate on purpose with\n\
-             # GRAFT_UPDATE_SHOTS=1. Not a pty capture: the terminal is ratatui's\n\
-             # TestBackend, so this is a character grid with no colour attributes in\n\
-             # it — CLAUDE.md rule 5, colour ships unverified. The fixture's commits\n\
-             # carry fixed dates and the ages are drawn against a fixed clock, so the\n\
-             # frame is the same on every run and does not age. The scratch\n\
-             # repository's temporary path is replaced by `/code/api`; nothing else\n\
-             # is touched.\n\
-             #\n\
-             # What right looks like:\n\
-             #  - The menu is anchored under `main`'s row and is wide enough for its\n\
-             #    longest label, with the cursor on the first item.\n\
-             #  - The row's own actions come first (`Copy SHA (y)`, `Compare with this\n\
-             #    (x)`, `Open details (\u{23ce})`), then the history verbs, then the ambient\n\
-             #    ones (`Fetch (f)` \u{2026} `Undo (u)`). The menu lists every verb valid for\n\
-             #    this row at every width \u{2014} it does not filter against the hint bar,\n\
-             #    because a verb you can only discover at 160 columns is the failure\n\
-             #    ADR-0039 exists to prevent.\n\
-             #  - The menu is opaque. On each of its rows, everything right of the\n\
-             #    label is blank out to the edge of the pane: no date or sha from the\n\
-             #    commit row underneath survives beside a verb, where it would read as\n\
-             #    if the verb were bound to that sha.\n\
-             #  - The history verbs name the real branches, not placeholders: `Checkout\n\
-             #    main`, `Merge main into feature (m)`, `Rebase feature onto main (r)`,\n\
-             #    `Cherry-pick <sha7>`, `Revert <sha7>`, `Reset feature to here,\n\
-             #    mixed`/`, hard`, `Delete branch main`. `feature` is the branch\n\
-             #    checked out, `main` is the row under the cursor.\n\
-             #  - No verb names the branch you are standing on where git would refuse\n\
-             #    it: there is no `Checkout feature` and no `Delete branch feature`.\n\
-             #  - A trailing `(key)` means one thing everywhere in the menu: that\n\
-             #    letter is live right now, so next time you can skip the menu. Only\n\
-             #    `Merge` and `Rebase` carry one, because only `m` and `r` exist. A\n\
-             #    qualifier that is not a key never wears that shape \u{2014} hence `Reset\n\
-             #    \u{2026}, mixed`, not `(mixed)` (`docs/design/02-keymap.md` \u{a7}2.1).\n\
-             #  - Choosing any of them opens a picture, not a write (PROMPT.md \u{a7}1.7).\n\
-             {width_line}\
-             #\n"
-    )
 }
 
 // ---------------------------------------------------------------------------
