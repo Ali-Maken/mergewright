@@ -116,6 +116,12 @@ pub enum HintContext {
         /// `s` (skip) applies — a rebase/cherry-pick/revert sequence, not a
         /// plain merge.
         skippable: bool,
+        /// A file is conflicted, so `M mergetool` and `e edit` have
+        /// something to open. With none, both refuse in words
+        /// (`graft::update::banner::banner_key`) and the bar leaves them
+        /// out rather than teaching a key that cannot act (m5-09 review,
+        /// Major 2).
+        conflicted: bool,
     },
     /// The Ghost Preview box has focus: its own border draws the footer,
     /// so the main footer's list is empty.
@@ -149,10 +155,26 @@ const MEDIUM: u16 = 160;
 /// `divider` adds `<> resize` when a detail pane is open, whichever context
 /// the cursor is in (ADR-0028: the pane being shown is what makes the
 /// divider exist).
+///
+/// [`HintContext::Banner`] is the exception to both trailers. The banner is
+/// modal — `banner_key` answers every key but `Ctrl+C` — so `.` opens
+/// nothing and `<>` moves no divider while it has focus. ADR-0039's doorway
+/// is a promise that what the width rule dropped is still reachable; under a
+/// modal that reaches nothing, drawing it would be the dead key the ADR's
+/// own first condition rules out. The banner's list is short enough to draw
+/// whole at 80 columns, so nothing is dropped and nothing needs a doorway.
 #[must_use]
 pub fn hints_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<Hint> {
     match context {
         HintContext::Preview => Vec::new(),
+        // No width tier for the banner: every key it answers draws while
+        // the width allows it, `⇥ graph` — the way out of the mode —
+        // included. Three keys at 80 columns would have hidden the exit of
+        // a modal that swallows every other key, which is the failure
+        // `banner_key`'s own doc comment warns of.
+        HintContext::Banner { .. } => {
+            fit_list(&drawable(context, divider), None, columns, usize::MAX)
+        }
         HintContext::Marked(inner) => {
             // `.` is already on screen as `. explain`, so no `. more`; the
             // explain hint counts as one of the width tier's own, which is
@@ -160,9 +182,14 @@ pub fn hints_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<H
             // fitted first and prepended to second overflows by one hint).
             let mut list = vec![EXPLAIN];
             list.extend(drawable(inner, divider));
-            fit_list(&list, None, columns)
+            let tier = width_tier(list.len(), columns);
+            fit_list(&list, None, columns, tier)
         }
-        _ => fit_list(&drawable(context, divider), Some(MORE), columns),
+        _ => {
+            let list = drawable(context, divider);
+            let tier = width_tier(list.len(), columns);
+            fit_list(&list, Some(MORE), columns, tier)
+        }
     }
 }
 
@@ -174,16 +201,18 @@ pub fn hints_for(context: &HintContext, divider: Divider, columns: u16) -> Vec<H
 /// A pane keeps to its own list: while the changes pane, an overlay or the
 /// banner has focus it answers keys the graph does not, and the graph
 /// answers keys it does not, so [`TAIL`] would be advertising the wrong
-/// screen. The one exception is a context whose keys are all still
-/// [`HintState::Planned`] (the banner today): its list would otherwise be
-/// empty, and a keyless bar is the one outcome ADR-0037 §4 rules out, so it
-/// falls back to the keys that are live everywhere.
+/// screen.
+///
+/// The focused banner goes further and takes no divider hint either: it is
+/// modal, so `<>` is as dead as every other key it swallows. (Under 100
+/// columns the angle keys are a no-op in any case —
+/// `graft::update::detail`'s own rule for the tab layout.)
 fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
     let mut list: Vec<Hint> = context_list(context)
         .into_iter()
         .filter(|hint| hint.state == HintState::Live)
         .collect();
-    if divider == Divider::Shown {
+    if divider == Divider::Shown && !matches!(context, HintContext::Banner { .. }) {
         // Fourth, not last: appended, it sat behind ten context keys and the
         // six-hint tier never reached it, so the hint existed and was never
         // drawn (found by rendering a real frame —
@@ -197,7 +226,7 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
         context,
         HintContext::WorkingTreeRow | HintContext::BranchRow { .. } | HintContext::PlainRow
     );
-    if rows || list.is_empty() {
+    if rows {
         for extra in TAIL {
             if !list.iter().any(|hint| hint.key == extra.key) {
                 list.push(extra);
@@ -207,17 +236,22 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
     list
 }
 
-/// As many of `list`'s leading hints as the width tier and `columns` allow,
-/// plus `trailer` (`. more`, unless the caller has already shown `.`).
-/// Never fewer than three (or `list.len()` if it is shorter).
-fn fit_list(list: &[Hint], trailer: Option<Hint>, columns: u16) -> Vec<Hint> {
-    let tier = if columns < NARROW {
+/// How many hints the width tier allows: three below 100 columns, six from
+/// 100 to 159, the whole list from 160.
+fn width_tier(list_len: usize, columns: u16) -> usize {
+    if columns < NARROW {
         3
     } else if columns < MEDIUM {
         6
     } else {
-        list.len()
-    };
+        list_len
+    }
+}
+
+/// As many of `list`'s leading hints as `tier` and `columns` allow, plus
+/// `trailer` (`. more`, unless the caller has already shown `.`). Never
+/// fewer than three (or `list.len()` if it is shorter).
+fn fit_list(list: &[Hint], trailer: Option<Hint>, columns: u16, tier: usize) -> Vec<Hint> {
     let floor = list.len().min(3);
     let mut count = tier.min(list.len());
     loop {
@@ -243,7 +277,10 @@ fn context_list(context: &HintContext) -> Vec<Hint> {
         HintContext::BranchRow { current: false } => branch_row_list(),
         HintContext::BranchRow { current: true } => current_branch_row_list(),
         HintContext::PlainRow => plain_row_list(),
-        HintContext::Banner { skippable } => banner_list(*skippable),
+        HintContext::Banner {
+            skippable,
+            conflicted,
+        } => banner_list(*skippable, *conflicted),
         HintContext::ChangesPane { unmerged } => changes_pane_list(*unmerged),
         // Keymap §2.11: the journal browser answers `⏎` and `Esc` only.
         HintContext::Journal => vec![hint("⏎", "revert"), hint("esc", "close")],
@@ -356,19 +393,27 @@ fn plain_row_list() -> Vec<Hint> {
     ]
 }
 
-/// The banner's own keys (design note, "Banner focused"). None of them is
-/// bound yet — the banner is not focusable today — so the whole list is
-/// planned, and [`drawable`] falls back to [`TAIL`] rather than leave the
-/// bar empty. The group that gives the banner focus flips these.
-fn banner_list(skippable: bool) -> Vec<Hint> {
-    let mut list = vec![planned("c", "continue")];
+/// The banner's own keys (design note, "Banner focused"), every one of them
+/// answered by `graft::update::banner::banner_key` while the banner has
+/// focus.
+///
+/// The list is the *whole* bar in that context: the banner is modal, so
+/// `<> resize` and `. more` are dropped by [`hints_for`] and [`drawable`]
+/// rather than advertised at keys the banner swallows. `M`/`e` appear only
+/// while something is conflicted — with nothing unmerged they refuse in
+/// words, and a hint whose key can only say "no" is a hint that lies
+/// (m5-09 review, Major 2).
+fn banner_list(skippable: bool, conflicted: bool) -> Vec<Hint> {
+    let mut list = vec![hint("c", "continue")];
     if skippable {
-        list.push(planned("s", "skip"));
+        list.push(hint("s", "skip"));
     }
-    list.push(planned("a", "abort"));
-    list.push(planned("M", "mergetool"));
-    list.push(planned("e", "edit"));
-    list.push(planned("⇥", "graph"));
+    list.push(hint("a", "abort"));
+    if conflicted {
+        list.push(hint("M", "mergetool"));
+        list.push(hint("e", "edit"));
+    }
+    list.push(hint("⇥", "graph"));
     list
 }
 
@@ -409,8 +454,22 @@ pub fn every_hint() -> Vec<Hint> {
         HintContext::BranchRow { current: false },
         HintContext::BranchRow { current: true },
         HintContext::PlainRow,
-        HintContext::Banner { skippable: true },
-        HintContext::Banner { skippable: false },
+        HintContext::Banner {
+            skippable: true,
+            conflicted: true,
+        },
+        HintContext::Banner {
+            skippable: false,
+            conflicted: true,
+        },
+        HintContext::Banner {
+            skippable: true,
+            conflicted: false,
+        },
+        HintContext::Banner {
+            skippable: false,
+            conflicted: false,
+        },
         HintContext::ChangesPane { unmerged: false },
         HintContext::ChangesPane { unmerged: true },
         HintContext::Journal,

@@ -16,7 +16,7 @@ use graft_ui::theme::{Theme, Token};
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
-use ratatui::style::Style;
+use ratatui::style::{Modifier, Style};
 use ratatui::widgets::{Clear, Widget};
 
 use crate::session::Session;
@@ -276,7 +276,7 @@ fn render_graph_with_detail(
         (area.width, area.height),
     );
     let view = detail_view(state);
-    let (graph_area, pane_area) = split_for_detail(frame, session, layout, area, "Graph");
+    let (graph_area, pane_area) = split_for_detail(frame, session, state, layout, area, "Graph");
 
     if let Some(pane_area) = pane_area {
         frame.render_widget(
@@ -366,7 +366,7 @@ fn render_overlay_with_detail(
         (area.width, area.height),
     );
     let view = detail_view(state);
-    let (overlay_area, pane_area) = split_for_detail(frame, session, layout, area, label);
+    let (overlay_area, pane_area) = split_for_detail(frame, session, state, layout, area, label);
 
     if let Some(pane_area) = pane_area {
         frame.render_widget(
@@ -392,18 +392,86 @@ fn render_overlay_with_detail(
 fn split_for_detail(
     frame: &mut Frame,
     session: &Session,
+    state: &AppState,
     layout: DetailLayout,
     area: Rect,
     primary_label: &str,
 ) -> (Option<Rect>, Option<Rect>) {
-    if let DetailLayout::Tab { shown } = layout {
-        let strip = Rect {
-            height: 1.min(area.height),
-            ..area
-        };
-        draw_tab_strip(frame, strip, shown, primary_label, &session.theme);
-    }
+    let DetailLayout::Tab { shown } = layout else {
+        return graft_ui::detail_pane::split_area(layout, area);
+    };
+    let area = draw_tab_banner(frame, state, area, &session.theme);
+    let strip = Rect {
+        height: 1.min(area.height),
+        ..area
+    };
+    draw_tab_strip(frame, strip, shown, primary_label, &session.theme);
     graft_ui::detail_pane::split_area(layout, area)
+}
+
+/// The operation banner in the sub-100-column tab layout: its own row above
+/// the `[Graph] Detail` strip, and — while it has focus — its key hints on
+/// the bottom row. Returns what is left of `area` for the strip and the pane.
+///
+/// Everywhere else the banner rides the graph screen's header. Below 100
+/// columns the layout switches to tabs (DESIGN §1.1), the shown pane takes
+/// the whole screen, the graph screen is not drawn — and the banner went
+/// with it. A conflict then stopped the operation, the banner took focus,
+/// and it was **modal**: `c`, `s` and `a` were live with nothing on screen
+/// to find them by, at 80 columns (m5/16, review C1).
+///
+/// The rule this settles: *a modal overlay must be visible wherever it has
+/// focus.* It is not a pane's content, so it does not travel with one — it
+/// draws outside, above the tab line. ADR-0039 guarantees the small,
+/// always-needed marker rather than choosing between everything and
+/// nothing; this is the same principle for the thing ADR-0039 did not
+/// cover.
+///
+/// The cost, knowingly accepted: **one** row of pane content while an
+/// operation is live, **two** while its banner has the keyboard, and none
+/// at all the rest of the time.
+fn draw_tab_banner(frame: &mut Frame, state: &AppState, area: Rect, theme: &Theme) -> Rect {
+    let Some(banner) = crate::update::banner::banner_view(state) else {
+        return area;
+    };
+    if area.width == 0 || area.height == 0 {
+        return area;
+    }
+    let width = usize::from(area.width);
+    let mut style = Style::default().fg(color(theme.token(Token::Warning)));
+    if banner.focused {
+        style = style.add_modifier(Modifier::REVERSED);
+    }
+    let line = graft_ui::graph_screen::banner_line(&banner, area.width);
+    frame
+        .buffer_mut()
+        .set_string(area.x, area.y, graft_ui::fit::fit(&line, width), style);
+    let left = Rect {
+        y: area.y.saturating_add(1),
+        height: area.height - 1,
+        ..area
+    };
+    if !banner.focused || left.height == 0 {
+        return left;
+    }
+    // The banner's own keys, on the bottom row. `Divider::Hidden`: the tab
+    // layout has no divider to drag (`update::detail`'s angle keys are a
+    // no-op here), and the modal would swallow `<>` in any case.
+    let hints = graft_ui::graph_screen::hints_for(
+        &crate::view::rows::banner_context(&banner),
+        graft_ui::graph_screen::Divider::Hidden,
+        area.width,
+    );
+    frame.buffer_mut().set_string(
+        left.x,
+        left.bottom() - 1,
+        graft_ui::fit::fit(&graft_ui::graph_screen::hints_text(&hints), width),
+        Style::default().fg(color(theme.token(Token::TextMuted))),
+    );
+    Rect {
+        height: left.height - 1,
+        ..left
+    }
 }
 
 /// The narrow tier's tab strip: `[Graph] Detail` or `Graph [Detail]`

@@ -3,27 +3,37 @@
 # What right looks like: the header's informational tail is
 # replaced, while an operation is in progress, by
 # `⚠ REBASING step 3 of 7 — conflict in <path> (+N)` — spelled out
-# at >=100 cols, abbreviated (`3/7`, path only) under 100. The
-# `[ Continue ] [ Skip ] [ Abort ]` buttons draw on their own row
-# under the header only at >=160 cols — keys always work, the
-# buttons are a mouse convenience.
+# at >=100 cols, abbreviated (`3/7`, path only) under 100. It costs
+# no row: the line under the header is the first graph row at every
+# width. There is no `[ Continue ] [ Skip ] [ Abort ]` row any more
+# — nothing answered a click on it and it cost a graph row to teach
+# three keys the hint bar already teaches (m5/16).
+#
+# The third block is the point: a long repository path no longer
+# cuts the banner. The banner's room comes out of the header first
+# and the *path* is what an `…` lands on.
 
 === <100 cols, 80x10 ===
  graft /code/api    ⚠ REBASING 3/7 — conflict src/auth/token.rs (+1)
 ●   Commit 2                                                        2h   0202020
 ◇   Commit 1                                                        2h   0101010
- q quit  F2 status  F3 renderer  u undo  / search  j/k move  Space fold
+ ⏎ open  c commit  y sha  . more
 
 === >=100 cols, 120x10 ===
  graft /code/api    ⚠ REBASING step 3 of 7 — conflict in src/auth/token.rs (+1)
 ●   Commit 2                                                                                             TE 2h   0202020
 ◇   Commit 1                                                                                             TE 2h   0101010
- q quit  F2 status  F3 renderer  u undo  / search  j/k move  Space fold  1 first-parent  F focus  S stash  H hide stash
+ ⏎ open  c commit  y sha  u undo  S stash  J journal  . more
 
-=== >=160 cols (buttons row), 160x10 ===
+=== >=160 cols, 160x10 ===
  graft /code/api    ⚠ REBASING step 3 of 7 — conflict in src/auth/token.rs (+1)
-                                                                                                                               [ Continue ]  [ Skip ]  [ Abort ]
 ●   Commit 2                                                                                                                                     TE 2h   0202020
 ◇   Commit 1                                                                                                                                     TE 2h   0101010
- q quit  F2 status  F3 renderer  u undo  / search  j/k move  Space fold  1 first-parent  F focus  S stash  H hide stash  f fetch  p pull  P push  J journal
+ ⏎ open  c commit  y sha  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x compare  + lanes  j/k move  space fold  1 first-parent  . more
+
+=== a long path does not cut the banner, 120x10 ===
+ graft /Users/someone/work/customers/acme/services/billing…  ⚠ REBASING step 3 of 7 — conflict in src/auth/token.rs (+1)
+●   Commit 2                                                                                             TE 2h   0202020
+◇   Commit 1                                                                                             TE 2h   0101010
+ ⏎ open  c commit  y sha  u undo  S stash  J journal  . more
 

@@ -725,6 +725,13 @@ pub fn bound_actions() -> &'static [(&'static str, &'static str)] {
         ("d", "discard"),   // the same, `operate::request_discard`
         ("⌃A", "all"),      // the same, `operate::stage_all`
         ("e", "edit"),      // the same, `$EDITOR` at the cursor's line
+        // The operation banner, while it has focus (`banner::banner_key`).
+        // `e edit` and `⇥ graph` above are the same keys in another
+        // context; these four are the banner's own.
+        ("c", "continue"),  // `banner_key` → `continue_pressed`
+        ("s", "skip"),      // `banner_key` → `skip_pressed`
+        ("a", "abort"),     // `banner_key` → `abort_pressed`
+        ("M", "mergetool"), // `banner_key` → `open_mergetool`
         ("S", "stash"),     // `stash::stash_key`: opens the overlay
         ("J", "journal"),   // `journal::journal_key`: opens the browser
         ("M", "map"),       // `map::map_key`
