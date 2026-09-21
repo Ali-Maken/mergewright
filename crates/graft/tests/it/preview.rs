@@ -14,15 +14,11 @@
 
 use std::path::Path;
 
-use graft::config::Loaded;
-use graft::session::{Clock, Session};
+use graft::session::Clock;
 use graft::update::AppState;
 use graft_core::event::KeyCode;
-use ratatui::Terminal;
-use ratatui::backend::TestBackend;
 
 use crate::app_harness::{App, git, git_as_graft};
-use crate::hint_bar::capabilities;
 
 /// [`forked`]'s first commit, Unix seconds; one minute per commit after it.
 ///
@@ -40,6 +36,17 @@ const FORK_EPOCH: i64 = 1_609_459_200;
 /// after its newest commit, so a capture of it reads the same age forever
 /// instead of drifting with real time (`session::Clock::Fixed`).
 pub const FORK_NOW: i64 = FORK_EPOCH + 6 * 60;
+
+/// The same for [`left_behind`], whose newest commit is at minute 67 —
+/// sixty `redesign` steps past anything [`forked`] makes.
+///
+/// It needs its own instant because drawing that fixture against
+/// [`FORK_NOW`] would put 61 commits in the future, and a future commit is
+/// not rendered as an age at all: `relative_date` returns the word `future`
+/// (`graft-ui/src/graph_screen/columns.rs:61`). A pinned clock that is too
+/// early changes what the capture *shows*, which is the one thing pinning
+/// it must not do.
+const LEFT_BEHIND_NOW: i64 = FORK_EPOCH + 70 * 60;
 
 /// A fork: `main` with three commits, `feature` branched off the first and
 /// carrying two of its own, `feature` checked out. Rebasing `feature` onto
@@ -157,26 +164,7 @@ pub fn frame(state: &AppState, columns: u16, rows: u16) -> Vec<String> {
 /// is the wall clock; a capture that must not age passes
 /// `Some(Clock::Fixed(…))`.
 pub fn frame_at(state: &AppState, columns: u16, rows: u16, clock: Option<Clock>) -> Vec<String> {
-    let session = Session::settle(&Loaded::default(), capabilities());
-    let mut state = state.clone();
-    state.size = graft::update::Size { columns, rows };
-    if let Some(clock) = clock {
-        state.harness.clock = clock;
-    }
-    let mut terminal = Terminal::new(TestBackend::new(columns, rows)).expect("test backend opens");
-    terminal
-        .draw(|frame| graft::view::view(&session, &state, frame))
-        .expect("drawing into a test backend cannot fail");
-    let buffer = terminal.backend().buffer();
-    (0..buffer.area.height)
-        .map(|y| {
-            (0..buffer.area.width)
-                .map(|x| buffer[(x, y)].symbol())
-                .collect::<String>()
-                .trim_end()
-                .to_owned()
-        })
-        .collect()
+    crate::captures::frame_at(state, columns, rows, clock)
 }
 
 /// `r` on `main`'s row draws a rebase of `feature` onto it: ghosts for the
@@ -268,7 +256,7 @@ fn capture_preview_for_docs_shots() {
     let home = scratch.path().display().to_string();
 
     for (label, columns, rows) in [("80x24", 80u16, 24u16), ("160x48", 160, 48)] {
-        let drawn = frame(&state, columns, rows);
+        let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(FORK_NOW)));
         let mut out = format!(
             "# m5-ui-preview-rebase-{label}.txt: {columns}x{rows}, drawn by `view::view`\n\
              # from a real AppState — a real repository (`main` three commits, `feature`\n\
@@ -760,7 +748,7 @@ fn capture_scrolled_preview_for_docs_shots() {
         let state = preview_scrolled_at(&app, state, columns, rows);
         let top = state.history.as_ref().expect("a history").top;
         tops.push((label, top));
-        let drawn = frame(&state, columns, rows);
+        let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(LEFT_BEHIND_NOW)));
         let mut out = scrolled_caption(label, columns, rows, top);
         out.push('\n');
         for line in &drawn {

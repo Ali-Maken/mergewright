@@ -26,17 +26,17 @@
 #
 
  graft /code/api  8…
-  ●     finish the feature                                          6y   8d6cd28
-  ●     start the feature                                           6y   52f3b96
+  ●     finish the feature                                          now  8d6cd28
+  ●     start the feature                                           2m   52f3b96
   │     after rebase
   │ ○   [◆ feature] finish the feature                              —    —
   │ ○   start the feature                                           —    —
-●─│─╯   [main] main moves again                                     6y   45fa51d
-● │     main moves on                                               6y   37926a7
-●─╯     add the base                                                6y   ed332bc
-●       Correct the note                                            7y   a82960b
-●       Add the first note                                          7y   fadcfb3
-◇       Add a readme                                                7y   64ded19
+●─│─╯   [main] main moves again                                     3m   45fa51d
+● │     main moves on                                               4m   37926a7
+●─╯     add the base                                                5m   ed332bc
+●       Correct the note                                            1y   a82960b
+●       Add the first note                                          1y   fadcfb3
+◇       Add a readme                                                1y   64ded19
 
 
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────╮

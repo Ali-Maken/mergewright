@@ -18,18 +18,14 @@
 use std::path::Path;
 use std::time::Duration;
 
-use graft::config::Loaded;
-use graft::session::Session;
 use graft::update::AppState;
 use graft_core::capabilities::{
     Capabilities, CellSize, CellSizeSource, ColorDepth, ProbeOutcome, RenderingTier, Rgb,
     Supported, Theme as TerminalTheme, ThemeHint, ThemeSource, TmuxStatus,
 };
 use graft_core::event::KeyCode;
-use ratatui::Terminal;
-use ratatui::backend::TestBackend;
 
-use crate::app_harness::{App, changes_pane, git, git_as_graft};
+use crate::app_harness::{App, changes_pane, git};
 
 /// A repository with two commits on the current branch and a dirty tracked
 /// file, so that every row context the graph can be in is one key away: the
@@ -40,12 +36,28 @@ fn repo() -> graft_fixtures::Scratch {
     let path = scratch.path();
     std::fs::write(path.join("first.txt"), "one\n").expect("the scratch repo is writable");
     git(path, &["add", "first.txt"]);
-    git_as_graft(path, &["commit", "-m", "add first"]);
+    dated_commit(path, "add first", 1);
     std::fs::write(path.join("second.txt"), "two\n").expect("the scratch repo is writable");
     git(path, &["add", "second.txt"]);
-    git_as_graft(path, &["commit", "-m", "add second"]);
+    dated_commit(path, "add second", 2);
     std::fs::write(path.join("first.txt"), "one\nedited\n").expect("the scratch repo is writable");
     scratch
+}
+
+/// The instant [`repo`]'s first commit is stamped at, Unix seconds; one
+/// minute per commit after it. Without it the fixture was built at
+/// wall-clock time, so the hint-bar captures' commit ids and ages differed
+/// on every regeneration.
+const HINTS_EPOCH: i64 = 1_609_459_200;
+
+/// The instant the hint-bar captures' relative dates are drawn against.
+const HINTS_NOW: i64 = HINTS_EPOCH + 10 * 60;
+
+/// One fixture commit, stamped `minute` minutes after [`HINTS_EPOCH`].
+fn dated_commit(repo: &Path, subject: &str, minute: i64) {
+    let when = format!("@{} +0000", HINTS_EPOCH + minute * 60);
+    graft_fixtures::git::run_at(repo, &["commit", "-m", subject], &when)
+        .unwrap_or_else(|why| panic!("committing {subject:?}: {why}"));
 }
 
 /// A plain truecolour terminal that answered every probe. `Capabilities` has
@@ -85,23 +97,7 @@ pub fn capabilities() -> Capabilities {
 
 /// Every row of the frame `view::view` draws for `state` at this size.
 fn frame(state: &AppState, columns: u16, rows: u16) -> Vec<String> {
-    let session = Session::settle(&Loaded::default(), capabilities());
-    let mut state = state.clone();
-    state.size = graft::update::Size { columns, rows };
-    let mut terminal = Terminal::new(TestBackend::new(columns, rows)).expect("test backend opens");
-    terminal
-        .draw(|frame| graft::view::view(&session, &state, frame))
-        .expect("drawing into a test backend cannot fail");
-    let buffer = terminal.backend().buffer();
-    (0..buffer.area.height)
-        .map(|y| {
-            (0..buffer.area.width)
-                .map(|x| buffer[(x, y)].symbol())
-                .collect::<String>()
-                .trim_end()
-                .to_owned()
-        })
-        .collect()
+    crate::captures::frame(state, columns, rows)
 }
 
 /// The footer's bottom line: the frame's last row, as drawn. Right while
@@ -360,7 +356,12 @@ fn capture_hint_bar_for_docs_shots() {
             ("160x48", 160, 48),
         ] {
             let sized = app.resize(state, columns, rows);
-            let drawn = frame(&sized, columns, rows);
+            let drawn = crate::captures::frame_at(
+                &sized,
+                columns,
+                rows,
+                Some(graft::session::Clock::Fixed(HINTS_NOW)),
+            );
             // The bar is the last row of the *graph* area, which is the
             // frame's last row only while the pane is closed or beside the
             // graph.

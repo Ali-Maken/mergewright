@@ -24,11 +24,11 @@
 
  graft /code/api  5 commits
 ◌   Uncommitted changes (1 unstaged)
-◆   [◆ main] add second                                                                                  GT now  240d5d6
-●   add first                                                                                            GT now  c5f2383
-●   Correct the note                                                                                     GF 7y   a82960b
-●   Add the first note                                                                                   GF 7y   fadcfb3
-◇   Add a readme                                                                                         GF 7y   64ded19
+◆   [◆ main] add second                                                                                  GF 8m   29a1432
+●   add first                                                                                            GF 9m   3d9496e
+●   Correct the note                                                                                     GF 1y   a82960b
+●   Add the first note                                                                                   GF 1y   fadcfb3
+◇   Add a readme                                                                                         GF 1y   64ded19
 
 
 
@@ -47,7 +47,7 @@
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
  space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
 UNCOMMITTED · 1 unstaged
-diff vs HEAD 240d5d6
+diff vs HEAD 29a1432
 UNSTAGED (1)                  reading…
   M first.txt           +1 −0
 

@@ -13,10 +13,26 @@
 
 use std::path::Path;
 
+use graft::session::Clock;
 use graft_core::event::KeyCode;
 
-use crate::app_harness::{App, git, git_as_graft};
-use crate::captures::{frame, write_shot};
+use crate::app_harness::{App, git};
+use crate::captures::{frame, frame_at, write_shot};
+
+/// The instant [`many_lanes`]'s first commit is stamped at, Unix seconds;
+/// one minute per commit and per merge after it.
+///
+/// Without this the fixture was built at wall-clock time, so every commit
+/// and merge object got a different id every run. The graph breaks a date
+/// tie with the commit id (DESIGN.md §3.2), so the lane order of fifteen
+/// columns opened in the same second was not stable either. After
+/// `graft_fixtures::git::FIXED_DATE`, so these commits never appear to
+/// predate the corpus history they are added to.
+const LANE_EPOCH: i64 = 1_609_459_200;
+
+/// The instant the capture's relative dates are drawn against: past the
+/// newest of the 28 objects above, so an age reads the same forever.
+const LANE_NOW: i64 = LANE_EPOCH + 60 * 60;
 
 /// The size the capture is taken at. 160 columns so the screen's own
 /// breakpoint is the twelve-lane one and the pane makes a visible
@@ -39,9 +55,9 @@ fn many_lanes() -> graft_fixtures::Scratch {
         let branch = format!("topic-{topic:02}");
         git(path, &["switch", "--quiet", "-c", &branch, &base]);
         write(path, &format!("{branch}.rs"), "fn topic() {}\n");
-        commit(path, &format!("Work on {branch}"));
+        commit(path, &format!("Work on {branch}"), topic * 2 - 1);
         git(path, &["switch", "--quiet", "main"]);
-        git_as_graft(
+        run_at(
             path,
             &[
                 "merge",
@@ -51,6 +67,7 @@ fn many_lanes() -> graft_fixtures::Scratch {
                 &format!("Merge branch '{branch}'"),
                 &branch,
             ],
+            topic * 2,
         );
     }
     scratch
@@ -60,9 +77,18 @@ fn write(repo: &Path, name: &str, body: &str) {
     std::fs::write(repo.join(name), body).expect("the scratch repo is writable");
 }
 
-fn commit(repo: &Path, subject: &str) {
+fn commit(repo: &Path, subject: &str, minute: i64) {
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-m", subject]);
+    run_at(repo, &["commit", "-m", subject], minute);
+}
+
+/// One object-making git command, stamped `minute` minutes after
+/// [`LANE_EPOCH`] so its id and its place in date order are the same on
+/// every run.
+fn run_at(repo: &Path, args: &[&str], minute: i64) {
+    let when = format!("@{} +0000", LANE_EPOCH + minute * 60);
+    graft_fixtures::git::run_at(repo, args, &when)
+        .unwrap_or_else(|why| panic!("git {args:?}: {why}"));
 }
 
 /// The app opened on the fixture, with the graph on hand, the detail pane
@@ -152,10 +178,11 @@ fn capture_lane_cap_for_docs_shots() {
     let (app, state) = App::open(scratch.path());
     let state = opened_with_pane(&app, state);
 
-    let with_pane = frame(&state, COLUMNS, ROWS);
+    let at = Some(Clock::Fixed(LANE_NOW));
+    let with_pane = frame_at(&state, COLUMNS, ROWS, at);
     let mut alone = state.clone();
     alone.detail.shown = false;
-    let full_width = frame(&alone, COLUMNS, ROWS);
+    let full_width = frame_at(&alone, COLUMNS, ROWS, at);
 
     let body = format!(
         "{}\n== the pane open: the graph has 92 columns ==\n\n{}\n\n\

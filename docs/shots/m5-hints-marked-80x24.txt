@@ -38,4 +38,4 @@
 
 
 
- . explain  ⏎ open  c commit
+ . explain  ⏎ open  c commit  y sha  u undo  S stash  J journal  / search

@@ -1,6 +1,6 @@
 # every-capture-is-reproducible: a fixed clock in every file that writes to docs/shots
 
-Status: ready
+Status: done
 Blocked by: none — 15 merged
 Build with: **Opus.** The rule is simple; applying it without changing what the
 captures *show* is not, and the M5 walk is about to depend on it.
@@ -95,15 +95,126 @@ already right. Fix the sentence so it cannot be read that way again. Doc only �
 
 ## Acceptance (every tick names its verifying test inline, at tick time)
 
-- [ ] The sweep table above is confirmed file by file, with what time enters
-      each capture — test/evidence:
-- [ ] Every writer that puts time in its output uses a fixed clock — test:
-- [ ] Each affected capture regenerates byte-identically three runs in a row —
-      test:
-- [ ] No capture's content changed beyond dates and ids — evidence:
-- [ ] `gallery.rs` still uses the wall clock for real repositories — test:
-- [ ] The `footer.rs` module doc no longer reads as if the offer were a
-      `footer_line` alternative — test:
+- [x] The sweep table above is confirmed file by file, with what time enters
+      each capture — evidence: the **confirmed table** below, from a scout
+      (`Explore`, sonnet) that read each file, plus my own
+      `grep -rn 'docs/shots' crates`. The ticket's table was wrong in two
+      places and short by five writers; both corrections are recorded there.
+- [x] Every writer that puts time in its output uses a fixed clock — test:
+      `conflict_interim::capture_banner_for_docs_shots`,
+      `lane_cap::capture_lane_cap_for_docs_shots`,
+      `hint_bar::capture_hint_bar_for_docs_shots`,
+      `preview::capture_preview_for_docs_shots`,
+      `preview::capture_scrolled_preview_for_docs_shots`. **Three writers are
+      deliberately not pinned** — see "Not taken, and why" below; they are
+      reported, not silently skipped.
+- [x] Each affected capture regenerates byte-identically three runs in a row —
+      test: those five, run three times with
+      `cargo nextest run -E '…' --run-ignored all`, each run's 22 files copied
+      aside and `diff -rq`'d. r1≡r2 and r1≡r3, all 22 files. A fourth run
+      after a rebuild (the mutation revert) also matched r1 byte for byte.
+- [x] No capture's content changed beyond dates and ids — evidence:
+      `git diff docs/shots` on the 22. Ages and short oids change; frames,
+      wording, captions and row counts do not. **One consequence worth
+      naming:** `m5-lane-cap-160x24.txt`'s *row order* changed. That is the
+      defect being cured, not a regression — 28 objects previously shared one
+      wall-clock second, so the graph's date tie broke on the commit id
+      (DESIGN.md §3.2) and ordered them arbitrarily. The capture still shows
+      what it exists to show: the `▾` fold marker appears exactly once before
+      and after, and the header still reads `31 commits  +1 lanes`.
+- [x] `gallery.rs` still uses the wall clock for real repositories — test:
+      `gallery::every_entry_uses_the_clock_its_source_needs` (the `Source::…`
+      match at `crates/graft/tests/it/gallery.rs:50-54` and its assertion at
+      `:1004-1008`). Neither `tests/it/gallery.rs` nor `examples/gallery.rs`
+      is touched by this ticket — `git diff --stat` on both is empty.
+- [x] The `footer.rs` module doc no longer reads as if the offer were a
+      `footer_line` alternative — test: read against
+      `footer_line`'s own doc (`footer.rs:38-42`, which lists problem /
+      search / notice / compare / reveal / hints and no offer) and
+      `commit_graph_line` (`footer.rs:22`). Doc-only; `cargo doc` has no
+      behavioural test to name, and none is claimed.
+
+## The confirmed sweep table
+
+Two rows of the ticket's table were wrong and five writers were missing.
+
+| File | Writes shots? | Time in output | Was pinned? | Now |
+|---|---|---|---|---|
+| `tests/it/preview.rs` | yes, 3 captures | age per row | **no — ticket said yes** | 2 of 3 pinned |
+| `tests/it/context_menu.rs` | yes | age per row | yes (`:504`) | unchanged |
+| `examples/gallery.rs` | coverage matrix only | **none** | n/a | unchanged |
+| `tests/it/conflict_interim.rs` | yes | age + tie-broken lane order | no | pinned |
+| `tests/it/captures.rs` | helper only | **none of its own** | n/a | gained `frame_at` |
+| `tests/it/lane_cap.rs` | yes | age + tie-broken row order | no | pinned |
+| `graft-graph tests/it/raster.rs` | yes, PNGs | **none — geometry only** | n/a | unchanged |
+| `examples/m3_walk.rs` | coverage matrix only | (walk captures are pty-side) | no | **not taken** |
+| `examples/m4_walk.rs` | not a writer | (walk captures are pty-side) | no | **not taken** |
+| `tests/it/hint_bar.rs` **(missed)** | yes, 14 files | age per row | no | pinned |
+| `tests/it/remote_by_key.rs` **(missed)** | yes | age of an app-made commit | no | **not taken** |
+| `tests/it/coverage.rs` **(missed)** | yes | **none** | n/a | unchanged |
+| `src/view/tests.rs` **(missed)** | yes, 19 files | near-epoch, scripted | mixed | unchanged |
+| `graft-ui` × 7 **(missed)** | yes, 8 files | **none — no time source at all** | n/a | unchanged |
+
+Verified rather than assumed: `grep -n 'SystemTime\|now()\|Utc::now\|run_isolated'`
+over all seven `graft-ui` writers returns nothing, and `write_shots` plus the
+seven `graft-ui` `capture_for_docs_shots` tests run twice produce
+byte-identical output. **A file with no time in its output needs no change,
+and none was made to one.**
+
+## Not taken, and why (all three need a behaviour change)
+
+`Clock` is not the only place the wall clock is read. `session.rs:44` claims
+it is "the one place `SystemTime::now()` is read on the date path", but
+**`crates/graft/src/jobs/operate.rs:270-275` and
+`crates/graft/src/jobs/undo.rs:297-302` both call `SystemTime::now()`
+directly**, bypassing `Clock` entirely, to stamp `at_unix_ms` on a journal
+entry and to date the commits the app itself makes.
+
+So any capture whose repository is written *by the app during the capture*
+cannot be pinned from the test side. Pinning only the render clock would date
+those objects after the pinned instant, and a future commit is not drawn as
+an age at all — `relative_date` returns the literal word `future`
+(`crates/graft-ui/src/graph_screen/columns.rs:61-63`). That would change what
+the capture shows, which §2 forbids. The three:
+
+1. **`preview::capture_time_machine_for_docs_shots`** — its journal entries
+   are written live by `jobs/operate.rs:270`.
+2. **`remote_by_key::capture_undo_after_push_for_docs_shots`** — its commit is
+   made through the commit editor (`pushed_one_commit`, `:460-469`).
+3. **`examples/m3_walk.rs` / `m4_walk.rs`** — the walks include `commit`,
+   `amend`, `commit-on-unborn-head`, `stash-save` and `stash-pop`
+   (`tests/it/m3_walk.rs:908, 1013, 1070, 1245, 1303`), all of which create
+   objects live.
+
+I caught this in my own work first: my initial pin of the scrolled-preview
+capture used `FORK_NOW`, which is 61 commits too early for `left_behind`, and
+would have rendered 61 rows as `future`. `LEFT_BEHIND_NOW`
+(`preview.rs`) exists because of that.
+
+**The fix is one seam** — give the job layer the session's `Clock` instead of
+reading `SystemTime` — but that is a behaviour change in `graft`'s job path,
+not a test change, so it is reported here rather than taken (§3's rule,
+applied to §2).
+
+## Findings
+
+- **Nothing in the suite defends capture determinism.** With
+  `conflict_interim`'s fixture clock unpinned, the full workspace suite was
+  **2226/2226 green** — 0 red. Every capture writer is `#[ignore]d`, so the
+  only thing that catches an unpinned clock is regenerating three times and
+  diffing by hand. A future builder can unpin one and every gate stays green.
+- **`captures::frame` was a copy of `preview::frame_at` with the clock
+  parameter dropped.** That is the cause of this whole ticket: ticket 21
+  extracted the helper and lost the one argument that mattered. There was
+  also a *third* copy in `hint_bar.rs:87-104`. Both now delegate to the one
+  in `captures.rs`, so the next extraction cannot lose it again.
+- **17 captures under `docs/shots/` are stale, unrelated to the clock.**
+  Regenerating the `view::tests` `capture_m2_*` / `m3_*` / `m4_*` family and
+  `graft-ui`'s `m5-ui-banner.txt` shifts the age column one cell and adds a
+  space after the short oid — the 7-glyph-mask staleness already on the
+  books. I regenerated them while sweeping and **put them back** (by
+  `git show HEAD:<path> > <path>`, not `git checkout`), so this ticket's diff
+  is only the 22 clock captures. They are the acceptance group's to redo.
 
 **Mutation-check the clock ones.** Unpin one fixture's clock and show the
 three-run diff going red. If it stays green, the determinism is coming from

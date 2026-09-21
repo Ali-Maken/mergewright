@@ -1,6 +1,7 @@
-//! The footer: a problem, a search line, a notice, a revealed subject, the
-//! commit-graph offer, or — when none of those apply — the key hints; and
-//! the commit-graph offer's own line above it.
+//! The footer: one line that is a problem, a search line, a notice, the
+//! pinned compare base, a revealed subject, or — when none of those apply —
+//! the key hints (`footer_line`). The commit-graph offer is not one of those
+//! alternatives: it is drawn by `commit_graph_line` on its own row above.
 
 use graft_graph::fold::Fold;
 use ratatui::layout::Rect;

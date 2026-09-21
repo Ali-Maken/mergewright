@@ -15,12 +15,30 @@
 
 use std::path::Path;
 
+use graft::session::Clock;
 use graft::update::{AppEvent, AppState, Command, Status, update};
 use graft_core::event::{Event, KeyCode, KeyPress, Modifiers};
 use graft_git::state::InProgress;
 
-use crate::app_harness::{App, git, git_as_graft};
-use crate::captures::{frame, write_shot};
+use crate::app_harness::{App, git};
+use crate::captures::{frame, frame_at, write_shot};
+
+/// The instant [`about_to_conflict_over`]'s first commit is stamped at, Unix
+/// seconds; one minute per commit after it.
+///
+/// Without this the fixture was built at wall-clock time, so every commit
+/// object got a different id on every run. The graph breaks a date tie with
+/// the commit id (DESIGN.md §3.2), which is why `main` and `feature` swapped
+/// lanes between regenerations of the banner captures
+/// (m5-history-and-ghost-preview/21). After
+/// `graft_fixtures::git::FIXED_DATE`, so these commits never appear to
+/// predate the corpus history they are added to.
+const CONFLICT_EPOCH: i64 = 1_609_459_200;
+
+/// The instant the banner captures' relative dates are drawn against: a
+/// minute after the newest commit any of them makes, so an age reads the
+/// same forever instead of drifting with real time.
+const CONFLICT_NOW: i64 = CONFLICT_EPOCH + 120 * 60;
 
 /// Two branches that both rewrote the same two lines: merging `feature` into
 /// `main` stops with `shared.rs` and `notes.md` unmerged.
@@ -50,9 +68,11 @@ fn about_to_conflict_over(extra: usize, history: usize) -> graft_fixtures::Scrat
         std::fs::create_dir_all(path.join("src")).expect("the scratch repo is writable");
     }
 
+    let mut minute = 0;
     for n in 0..history {
         write(path, "changelog.md", &format!("release {n}\n"));
-        commit(path, &format!("Ship release {n}"));
+        minute += 1;
+        commit(path, &format!("Ship release {n}"), minute);
     }
 
     write(path, "shared.rs", "fn main() {}\n");
@@ -60,7 +80,8 @@ fn about_to_conflict_over(extra: usize, history: usize) -> graft_fixtures::Scrat
     for name in &more {
         write(path, name, "fn step() {}\n");
     }
-    commit(path, "the shared files");
+    minute += 1;
+    commit(path, "the shared files", minute);
 
     git(path, &["switch", "--quiet", "-c", "feature"]);
     write(path, "shared.rs", "fn main() { theirs() }\n");
@@ -68,7 +89,7 @@ fn about_to_conflict_over(extra: usize, history: usize) -> graft_fixtures::Scrat
     for name in &more {
         write(path, name, "fn step() { theirs() }\n");
     }
-    commit(path, "the feature's take");
+    commit(path, "the feature's take", minute + 1);
 
     git(path, &["switch", "--quiet", "main"]);
     write(path, "shared.rs", "fn main() { ours() }\n");
@@ -76,7 +97,7 @@ fn about_to_conflict_over(extra: usize, history: usize) -> graft_fixtures::Scrat
     for name in &more {
         write(path, name, "fn step() { ours() }\n");
     }
-    commit(path, "main's take");
+    commit(path, "main's take", minute + 2);
     scratch
 }
 
@@ -84,9 +105,13 @@ fn write(repo: &Path, name: &str, body: &str) {
     std::fs::write(repo.join(name), body).expect("the scratch repo is writable");
 }
 
-fn commit(repo: &Path, subject: &str) {
+/// One fixture commit, stamped `minute` minutes after [`CONFLICT_EPOCH`] so
+/// both its id and its place in date order are the same on every run.
+fn commit(repo: &Path, subject: &str, minute: i64) {
     git(repo, &["add", "--all"]);
-    git_as_graft(repo, &["commit", "-m", subject]);
+    let when = format!("@{} +0000", CONFLICT_EPOCH + minute * 60);
+    graft_fixtures::git::run_at(repo, &["commit", "-m", subject], &when)
+        .unwrap_or_else(|why| panic!("committing {subject:?}: {why}"));
 }
 
 /// Opened, with the first rows and the refs on hand.
@@ -1218,14 +1243,17 @@ fn cost_bullets(conflicts: usize, graph_tab: bool) -> String {
 /// fixture facts a reader needs before comparing it with the last one.
 /// Its own function because [`capture_header`] is at its line limit.
 fn provenance(conflicts: usize) -> String {
-    "# Re-captured for m5/21, which made the working-tree row count\n\
-# unmerged paths and gave the changes pane a body for a\n\
+    "# Re-captured for m5/23, which pinned this fixture's clock: every\n\
+# commit is stamped a fixed minute after 2021-01-01 and the frame is\n\
+# drawn against a fixed instant, so the object ids, the ages and the\n\
+# lane order of `main` and `feature` are the same on every run. They\n\
+# all differ from the last pass, once, as a consequence.\n\
+#\n\
+# Captured before that for m5/21, which made the working-tree row\n\
+# count unmerged paths and gave the changes pane a body for a\n\
 # conflicted file (it is read against `HEAD` now; against the\n\
 # index git answers with a combined diff and the body drew\n\
-# nothing). The two conflicted files' object ids differ from\n\
-# the last pass because this fixture is built at wall-clock\n\
-# time, which is also why `main` and `feature` can swap lanes\n\
-# between runs.\n\
+# nothing).\n\
 #\n\
 # Captured first for m5/20, which dropped the `\u{26a0}` and the filename from\n\
 # the banner, settled the pane before the shutter, put 30 commits of\n\
@@ -1362,7 +1390,7 @@ fn capture_banner_for_docs_shots() {
         // the hint bar's room all come off `state.size`, so a state sized
         // for one screen photographed at another is a picture of neither.
         let sized = app.resize(&shot, columns, rows);
-        let drawn = frame(&sized, columns, rows);
+        let drawn = frame_at(&sized, columns, rows, Some(Clock::Fixed(CONFLICT_NOW)));
         let body = drawn.join("\n");
         assert!(
             body.contains("MERGING"),
