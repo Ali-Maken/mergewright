@@ -112,7 +112,8 @@ frame.** `overlay_band`'s three unit tests check arithmetic on hand-made rects.
 band runs to, and nothing exercises it: `the_context_menu_is_opaque_on_every_row_it_draws`
 runs with `detail.shown == false` at both sizes, and the golden snapshot too.
 Swapping `split_area(...).0` for `.1` (clearing across the detail pane instead
-of stopping at it) would pass the whole suite. Add a third case to the opacity
+of stopping at it) passes the whole `graft` suite — **verified** in the review
+worktree: 779 unit + 127 `it` tests green with the swap applied. Add a third case to the opacity
 test with the detail pane open at 160x48 (`DetailLayout::Right`), asserting the
 menu rows end at the label **and** the detail pane's first column is untouched.
 
@@ -226,7 +227,17 @@ naming the path; no `let _ =`, no `unwrap_or_default()`, no empty `Err(_)`.
   a commit-graph, 485–541 ms without; peak RSS 31–112 MB.
 - **Fast suite** `cargo test`: 125 s wall cold (compile included), 740 MB
   peak RSS; `cargo nextest run` warm 74.2 s.
-- Slowest five, benches, fuzz: *pending*.
+- **Slowest five** (nextest, warm): `graft-ops::it undo_cancel::cancel_at_every_step_boundary_is_clean` 9.5 s;
+  `graft-git::it diff_fixture::parse_unified_matches_numstat_for_every_shape` 9.3 s;
+  `graft-graph layout::stream::tests::scrolling_the_whole_history_keeps_the_resident_set_bounded` 7.0 s;
+  `graft-fixtures::it corpus::two_builds_produce_the_same_object_ids` 5.5 s;
+  `graft-git diff::patch::tests::whole_hunk_reproduces_gits_own_bytes_on_every_corpus_shape` 2.9 s.
+  None of the new tests from these groups is near the top (`every_verb_…` opens four scratch repositories and still finishes inside the `it` binary's 12 s).
+- **Benches** (`--warm-up-time 1 --measurement-time 3`; neither crate was touched by these groups, so this is a health check, not a comparison):
+  `graft-graph hot_paths`: 805 µs, rasterise/one strip 622 µs, StripCache::get hit 1.71 µs / miss 624 µs;
+  `graft-ui row_render`: 15.3 µs. Note: `cargo bench -p <crate>` without `--bench <name>` fails with `Unrecognized option: 'warm-up-time'` because the lib's libtest harness sees criterion's flags — the review command should name the bench target.
+- **Fuzz** (`cargo +nightly fuzz run <t> -- -max_total_time=60 -rss_limit_mb=1024`, own target dir under `/tmp`):
+  `parse_unified` 666k runs, cov 61, no crash; `parse_file_list` 648k runs, cov 375, no crash; `parse_porcelain_v2` 573k runs, cov 212, no crash. RSS ≤ 526 MB.
 
 ## For KNOWN_GAPS.md
 
@@ -235,4 +246,4 @@ naming the path; no `let _ =`, no `unwrap_or_default()`, no empty `Err(_)`.
 | Right-click menu + verb letter acts on the cursor row, not the menu's row (M1) | **broken** (reproduced) | M5 — before the acceptance group; the label promise is the milestone's |
 | Golden snapshot depends on the temp-path length of the machine (header fit at 80 columns) | **unverified** (no Linux run) | M8 (publish) |
 | `GRAFT_UPDATE_SHOTS` exported in a shell turns snapshot regressions green | **unverified** as a real incident; mechanism verified | M8 |
-| Band-with-split (`primary_pane_area`) untested through a frame (M3) | **unverified** — reasoned correct from `split_area`'s `(graph, detail)` order | M6 |
+| Band-with-split (`primary_pane_area`) untested through a frame (M3) | **unverified** — reasoned correct from `split_area`'s `(graph, detail)` order; the swapped half passes the suite | M6 |
