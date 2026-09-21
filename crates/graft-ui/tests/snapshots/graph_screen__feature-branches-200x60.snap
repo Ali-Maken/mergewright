@@ -61,4 +61,4 @@ expression: text
 
 
 
- ⏎ open  c commit  y sha  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x compare  + lanes  j/k move  space fold  1 first-parent  F focus  H hide stash  f fetch  p pull  . more
+ ⏎ open  r rebase  c commit  y sha  m merge  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x compare  + lanes  j/k move  space fold  1 first-parent  F  H  f  p  P  M  O  . more

@@ -61,4 +61,4 @@
 
 
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  . more
+ ⏎ changes  c commit  S stash  p pull  P push  f fetch  u  J  /  j/k  q  F2  F3  x  +  space  1  F  H  y  M  O  . more

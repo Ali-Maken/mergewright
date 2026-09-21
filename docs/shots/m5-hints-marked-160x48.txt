@@ -62,4 +62,4 @@
 
 
 
- . explain  ⏎ open  c commit  y sha  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x compare  + lanes  j/k move  space fold
+ . explain  ⏎ open  r rebase  c commit  y sha  m merge  u undo  S stash  J journal  / search  q quit  F2 status  F3  x  +  j/k  space  1  F  H  f  p  P  M  O

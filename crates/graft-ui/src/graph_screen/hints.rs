@@ -1,8 +1,11 @@
 //! The footer's key hints, by context (`hint-bar-redesign`, ADR-0037 §4: the
 //! bar is how anything is discoverable; a feature nobody can see doesn't
-//! exist). Shows the three most relevant keys for wherever the cursor or
-//! focus is, at 80 columns, six at 120, and from 160 as many as fit — never
-//! all hidden, and never a hint cut in half.
+//! exist). Shows what the cursor or focus can do, filled **from the most
+//! relevant end**: as many hints as the bar's own room holds, each on the
+//! best of its three rungs — `c commit` → `c cmt` → `c` — that still leaves
+//! room for the hints ahead of it ([`ladder`], ADR-0039's third amendment).
+//! Never all hidden, never a hint cut in half, and never below the three
+//! most relevant at their short rung (ADR-0037 §4).
 //!
 //! Replaces the old fixed nineteen-entry list (`crates/graft-ui/MAP.md`'s
 //! `graph_screen` entry: 144/155-column thresholds): that list answered
@@ -41,7 +44,24 @@ pub enum HintState {
     Planned,
 }
 
-/// One hint: a key, the verb it does, and whether it does it yet.
+/// How much of a hint the bar had room to draw — ADR-0039's ladder
+/// ("shrink before dropping"), corrected by its third amendment: a hint
+/// steps down its own rungs, never the whole list together.
+///
+/// Ordered worst to best, so `<` means "less of the hint".
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Rung {
+    /// The key on its own: `S`. What the doorway recovers.
+    Key,
+    /// The key and the user's short label: `c cmt`. A verb with no short
+    /// form draws its whole verb here — its middle rung *is* its full form.
+    Short,
+    /// The key and the whole verb: `c commit`.
+    Full,
+}
+
+/// One hint: a key, the verb it does, whether it does it yet, and how much
+/// of it the bar drew.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Hint {
     /// The key as it reads on screen (`m`, `⏎`, `⌃A`, `.`).
@@ -50,6 +70,98 @@ pub struct Hint {
     pub verb: &'static str,
     /// Bound today, or still to be built.
     pub state: HintState,
+    /// The rung [`hints_for`] drew it at. Every table entry is [`Rung::Full`];
+    /// only the width rule steps one down, so `verb` always names the whole
+    /// verb whatever the rung (which is what `graft`'s
+    /// `update::tests::every_hinted_key_is_bound` compares against the
+    /// keymap).
+    pub rung: Rung,
+}
+
+impl Hint {
+    /// The same hint, drawn at `rung`.
+    const fn at(mut self, rung: Rung) -> Self {
+        self.rung = rung;
+        self
+    }
+
+    /// What the bar draws for this hint at its rung, key included.
+    #[must_use]
+    pub fn text(&self) -> String {
+        match self.rung {
+            Rung::Key => self.key.to_owned(),
+            Rung::Short => format!(
+                "{} {}",
+                self.key,
+                short_form(self.verb).unwrap_or(self.verb)
+            ),
+            Rung::Full => format!("{} {}", self.key, self.verb),
+        }
+    }
+
+    /// The rungs this hint really has, worst to best. A verb with no short
+    /// form has two, not three: dropping the middle rung is what keeps the
+    /// ladder from spending a step on nothing, and what keeps a rung from
+    /// meaning two different amounts of text.
+    fn rungs(&self) -> &'static [Rung] {
+        if short_form(self.verb).is_some() {
+            &[Rung::Key, Rung::Short, Rung::Full]
+        } else {
+            &[Rung::Key, Rung::Full]
+        }
+    }
+
+    /// The lowest rung ADR-0037 §4 lets one of the three most relevant hints
+    /// fall to: its short form where the user's table gives one, and its
+    /// whole verb where it does not.
+    fn floor_rung(&self) -> Rung {
+        if short_form(self.verb).is_some() {
+            Rung::Short
+        } else {
+            Rung::Full
+        }
+    }
+}
+
+/// The user's short-form table, approved 2026-09-21 (m5/24). **A list he
+/// wrote, not a scheme** — nothing here is derived, and a verb this function
+/// does not name has no short rung at all.
+///
+/// `stash` is absent on purpose and it is the rule the rest of the table
+/// reads by: every hint is a whole word, so one consonant-squeeze (`stsh`)
+/// would make the bar inconsistent in *kind* and teach the reader that
+/// labels here can be mangled. Where a row cannot afford `S stash`, the
+/// ladder already has the answer — the bare key. `merge` and `rebase` are
+/// live and absent for the same reason as `stash`; `branch`, `tag` and
+/// `resolved` are [`HintState::Planned`] and never drawn. All five keep
+/// their full form: the table is the user's, and a label it does not name is
+/// reported, not replaced.
+fn short_form(verb: &str) -> Option<&'static str> {
+    Some(match verb {
+        "first-parent" => "first",
+        "continue" => "cont",
+        "mergetool" => "tool",
+        "discard" => "disc",
+        "hide stash" => "hide",
+        "journal" => "log",
+        "overview" => "over",
+        "renderer" => "rend",
+        "explain" => "why",
+        "search" => "find",
+        "changes" => "diff",
+        "status" => "stat",
+        "compare" => "cmp",
+        "resize" => "size",
+        "commit" => "cmt",
+        "revert" => "rev",
+        "stage" => "stg",
+        "abort" => "stop",
+        "apply" => "use",
+        "graph" => "grph",
+        "close" => "shut",
+        "lanes" => "lane",
+        _ => return None,
+    })
 }
 
 /// A hint whose key is bound today.
@@ -58,6 +170,7 @@ const fn hint(key: &'static str, verb: &'static str) -> Hint {
         key,
         verb,
         state: HintState::Live,
+        rung: Rung::Full,
     }
 }
 
@@ -68,6 +181,7 @@ const fn planned(key: &'static str, verb: &'static str) -> Hint {
         key,
         verb,
         state: HintState::Planned,
+        rung: Rung::Full,
     }
 }
 
@@ -141,9 +255,11 @@ pub enum HintContext {
 }
 
 /// The hints for `context` that fit in `columns` cells: **as many whole
-/// hints as fit the row the bar actually has**, dropped from the right
-/// until they do — never below three (or the context's own count, if it has
-/// fewer) plus `. more`. Never empty except for [`HintContext::Preview`].
+/// hints as fit the row the bar actually has**, each at the best rung
+/// [`ladder`] can afford it, and the ones that will not fit even at their
+/// bare key dropped from the right — never below three (or the context's own
+/// count, if it has fewer) plus `. more`. Never empty except for
+/// [`HintContext::Preview`].
 ///
 /// `columns` is the bar's own room, not the screen's, and there is no
 /// width tier on top of it. The 3/6/all tiers this used to carry were
@@ -231,21 +347,91 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
     list
 }
 
-/// As many of `list`'s leading hints as `columns` cells hold, plus
-/// `trailer` (`. more`, unless the caller has already shown `.`). Never
-/// fewer than three (or `list.len()` if it is shorter) — ADR-0037 §4's
-/// floor, which is the only number in the rule.
-fn fit_list(list: &[Hint], trailer: Option<Hint>, columns: u16) -> Vec<Hint> {
-    let floor = list.len().min(3);
-    let mut count = list.len();
-    loop {
-        let mut candidate = list[..count].to_vec();
-        candidate.extend(trailer);
-        if text_width(&hints_text(&candidate)) <= usize::from(columns) || count <= floor {
-            return candidate;
+/// One rung's worth of bar: either one more hint at its bare key, or one
+/// hint already drawn raised to a better rung. [`ladder`] puts them in a
+/// fixed order and [`fit_list`] takes the longest prefix that fits, which is
+/// what makes the bar monotone in its own width — every prefix costs at
+/// least as much as the one before it, so more room can only add a hint or
+/// improve one, never the reverse.
+#[derive(Clone, Copy, Debug)]
+enum Step {
+    /// Draw the next hint, at its bare key.
+    Add,
+    /// Raise the hint at this index to this rung.
+    Raise(usize, Rung),
+}
+
+/// ADR-0039's ladder, third amendment: the bar fills **from the most
+/// relevant end**, and each hint takes the best rung that still leaves room
+/// for the hints ahead of it.
+///
+/// Read as an order of steps that is the same at every width:
+///
+/// 1. the floor (ADR-0037 §4) — the three most relevant, at their **short**
+///    rung, plus the doorway. Not a step: drawn whatever the width, because
+///    "never all hidden" outranks fitting;
+/// 2. those three to their full verbs. The leading verbs are the ones worth
+///    the most cells, and they go first so that 80 columns still reads
+///    `⏎ open  c commit  y sha` and not three abbreviations;
+/// 3. every remaining hint, in priority order, at its **bare key**. A hint
+///    may only rise above its key once every hint ahead of it is at least
+///    present — that is the "leaves room for the hints ahead of it" clause,
+///    and it is what makes the tail of bare keys exist at all;
+/// 4. those tail hints raised, one at a time from the most relevant end,
+///    short rung then full.
+///
+/// The list-wide version of this — every hint stepping down a rung together
+/// — was built, measured and reverted: a row context is 22 hints, so below
+/// 190 columns nothing but the bare-key rung fitted and 80, 120 and 160
+/// drew the same keys-with-no-verbs bar this ADR had already rejected
+/// (ADR-0039's third amendment, which corrects its second).
+fn ladder(list: &[Hint], floor: usize) -> Vec<Step> {
+    let mut steps = Vec::new();
+    for (index, hint) in list.iter().enumerate().take(floor) {
+        if hint.rungs().contains(&Rung::Short) {
+            steps.push(Step::Raise(index, Rung::Full));
         }
-        count -= 1;
     }
+    for _ in floor..list.len() {
+        steps.push(Step::Add);
+    }
+    for (index, hint) in list.iter().enumerate().skip(floor) {
+        for rung in hint.rungs().iter().skip(1) {
+            steps.push(Step::Raise(index, *rung));
+        }
+    }
+    steps
+}
+
+/// `list` drawn into `columns` cells by [`ladder`], plus `trailer`
+/// (`. more`, unless the caller has already shown `.`).
+///
+/// Never fewer than three hints (or `list.len()` if it is shorter) and never
+/// below their short rung — ADR-0037 §4's floor, the only number in the
+/// rule. Below that the bar overflows and the footer cuts it, which is
+/// still better than the one outcome the ADR forbids.
+fn fit_list(list: &[Hint], trailer: Option<Hint>, columns: u16) -> Vec<Hint> {
+    let room = usize::from(columns);
+    let floor = list.len().min(3);
+    let mut drawn: Vec<Hint> = list[..floor]
+        .iter()
+        .map(|hint| hint.at(hint.floor_rung()))
+        .collect();
+    for step in ladder(list, floor) {
+        let mut candidate = drawn.clone();
+        match step {
+            Step::Add => candidate.push(list[candidate.len()].at(Rung::Key)),
+            Step::Raise(index, rung) => candidate[index] = candidate[index].at(rung),
+        }
+        let mut measured = candidate.clone();
+        measured.extend(trailer);
+        if text_width(&hints_text(&measured)) > room {
+            break;
+        }
+        drawn = candidate;
+    }
+    drawn.extend(trailer);
+    drawn
 }
 
 fn text_width(text: &str) -> usize {
@@ -330,8 +516,8 @@ fn working_tree_row_list() -> Vec<Hint> {
 
 fn branch_row_list() -> Vec<Hint> {
     vec![
-        planned("m", "merge"),
-        planned("r", "rebase"),
+        hint("m", "merge"),
+        hint("r", "rebase"),
         hint("⏎", "open"),
         planned("b", "branch"),
         planned("t", "tag"),
@@ -365,11 +551,11 @@ fn plain_row_list() -> Vec<Hint> {
     vec![
         hint("⏎", "open"),
         planned("b", "branch"),
-        planned("r", "rebase"),
+        hint("r", "rebase"),
         planned("t", "tag"),
         hint("c", "commit"),
         hint("y", "sha"),
-        planned("m", "merge"),
+        hint("m", "merge"),
         hint("u", "undo"),
         hint("S", "stash"),
         hint("J", "journal"),
@@ -477,17 +663,18 @@ pub fn every_hint() -> Vec<Hint> {
     all
 }
 
-/// `hints` as the footer draws them: `" ⏎ open  c commit  P push"` — a
+/// `hints` as the footer draws them: `" ⏎ open  c commit  P push  u  S"` — a
 /// leading space (matching the footer's other slots, all built the same
-/// way), two spaces between hints, one between a key and its verb.
+/// way), two spaces between hints, and each hint at its own
+/// [`Rung`](Hint::rung). A hint built straight from the table is `Rung::Full`,
+/// so a list that never went through [`hints_for`] reads exactly as it
+/// always did.
 #[must_use]
 pub fn hints_text(hints: &[Hint]) -> String {
     let mut line = String::new();
     for hint in hints {
         line.push_str(if line.is_empty() { " " } else { "  " });
-        line.push_str(hint.key);
-        line.push(' ');
-        line.push_str(hint.verb);
+        line.push_str(&hint.text());
     }
     line
 }

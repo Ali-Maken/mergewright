@@ -45,4 +45,4 @@
 
 
  no commit-graph file · B build one · X never here
- ⏎ open  c commit  P push  p pull  f fetch  u undo  S stash  J journal  . more
+ ⏎ open  c commit  P push  p  f  u  S  J  /  q  F2  F3  x  +  j/k  space  . more

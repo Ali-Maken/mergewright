@@ -1,8 +1,10 @@
 # the-ladder-and-the-stale-banner: shrink before dropping, and a capture that predates its fix
 
-Status: **partial** — pieces 2 and 3 done and committed; piece 1 (the shrink
-ladder) is **blocked on a spec decision**, evidence under NOTES. Not started
-again until the user answers.
+Status: **done**, at a seam. Pieces 2 and 3 merged earlier; piece 1 (the shrink
+ladder) built on the corrected rule and committed, plus the `m`/`r` hint fix the
+conductor added mid-build. **Four `graft` tests are red and stay red**: the
+seam is named under NOTES (second pass) and needs four mechanical edits in a
+crate this ticket does not hold.
 Blocked by: none — `graft-ui` and `graft-git` only. Ticket 25 holds `graft`
 and runs alongside you. **Never edit outside your crate set**; need `graft`,
 commit at the seam, report `blocked: needs graft`, stop.
@@ -364,17 +366,66 @@ So the capture must let him answer that in one pass:
 
 ## Acceptance (every tick names its verifying test inline, at tick time)
 
-- [ ] Every hint the user's table names has its short rung, spelled exactly as
-      given; `stash` and the four Planned labels keep their full form — test:
-- [ ] The bar fills from the most relevant end: a hint takes the best rung that
+- [x] Every hint the user's table names has its short rung, spelled exactly as
+      given; `stash` and the Planned labels keep their full form — test:
+      `graph_screen::hints::tests::every_short_rung_is_the_users_own_word`
+      (the 22 cells asserted verbatim against `short_form`, plus `short_form`
+      returning `None` for `stash`, `merge`, `rebase`, `branch`, `tag`,
+      `resolved` and every other whole-word verb, plus a walk over
+      `every_hint()` proving no drawn verb has a short form the table does not
+      give it). Mutation E — `"commit" => "com"` and an invented
+      `"stash" => "stsh"` — red.
+- [x] The bar fills from the most relevant end: a hint takes the best rung that
       leaves room for those ahead of it, and only a hint that will not fit at
-      its bare key is dropped — the property, swept over widths — test:
-- [ ] The three most relevant never fall below their short rung, and the bar is
+      its bare key is dropped — tests, all swept over every context, both
+      dividers, widths 0..=240:
+      `::the_bare_keys_are_a_tail_not_a_scatter` (once one hint is at `Key`,
+      every hint after it is),
+      `::a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn` (past
+      the floor, a hint rises above its key only when the whole context is on
+      the bar — the "leaves room for the hints ahead of it" clause),
+      `::a_hint_is_dropped_only_when_its_bare_key_will_not_fit` (adding the
+      next hint at its key would overflow), and
+      `::a_row_context_keeps_whole_verbs_at_the_relevant_end` (the leading
+      three are `Rung::Full` at 80, 120 and 160). Mutations A (list-wide
+      ladder), B (plain left-to-right greedy) and F (stop adding at eight
+      hints) each red.
+- [x] The three most relevant never fall below their short rung, and the bar is
       never all hidden (ADR-0037 §4) — test:
-- [ ] `no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows` still holds —
-      test:
-- [ ] At 80 columns the leading verbs are still full — test:
-- [ ] The capture shows 80/120/160 plus the deliberate-tail variant — evidence:
+      `::the_three_most_relevant_never_fall_below_their_short_rung` (0..=240
+      columns, every context; the floor count and each floor hint's rung
+      against its own `floor_rung`), with `::no_context_hides_every_key`
+      unchanged for the never-empty half. Mutation D (floor = 0) red on the
+      first.
+- [x] `no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows` still holds —
+      test: that test itself
+      (`graph_screen::tests`, unchanged, green in the workspace run below), now
+      joined by `::no_hint_loses_ground_as_the_room_for_it_grows`, which adds
+      the rung dimension the ladder introduces: 0..=240 columns, every context,
+      both dividers, no hint reordered and no hint's rung lower than at one
+      cell less. Mutation C (skip a step that does not fit instead of stopping,
+      so the result is no longer a prefix) red.
+- [x] At 80 columns the leading verbs are still full — tests:
+      `::eighty_columns_leads_with_three_and_fills_the_row` (the first three
+      by (key, verb), `. more` last, width ≤ 80),
+      `::a_row_context_keeps_whole_verbs_at_the_relevant_end`, and
+      `graph_screen::tests::footer_eighty_branch_row`, which pins the whole
+      drawn row: `" m merge  r rebase  ⏎ open  P  c  p  f  u  S  /  q  F2  F3
+      x  +  j/k  . more"`.
+- [x] The capture shows 80/120/160 plus the deliberate-tail variant — evidence:
+      `docs/shots/m5-hints-ladder.txt` (21 KB), written by
+      `graph_screen::tests::capture_the_ladder_for_docs_shots` (`#[ignore]`d).
+      Five contexts × three widths as built, then variant A (a `·` between the
+      labelled hints and the bare keys, fitted into three fewer columns so the
+      dot pays for itself) and variant B (`. more` moved to the front of the
+      bare keys — no new glyph, not one cell more). Each block over a ruler
+      exactly `columns` cells wide. **Not ticked "looks right" — rule 6.**
+- [x] **Added mid-build by the conductor:** `m merge` and `r rebase` are `Live`
+      — test: `graph_screen::hints::tests::no_planned_hint_is_ever_drawn` (its
+      canary moved from `m merge` to `b branch`) and
+      `::eighty_columns_leads_with_three_and_fills_the_row`, whose branch-row
+      case now expects `m merge  r rebase  ⏎ open`. **This is the seam: it
+      turns four `graft` tests red.** See NOTES.
 
 **Mutation:** make the ladder step the whole list down together (the rule that
 was wrong). The sweep property must go red, and the capture must show bare keys
@@ -385,3 +436,123 @@ at 160. If it stays green the property is not expressing the corrected rule.
 Workspace-wide, never `-p`. `CARGO_TARGET_DIR=/tmp/graft-target-g24b`, deleted
 before hand-back. Baseline **2226/2226** — check it yourself. Captures under
 200 KB. Never `git checkout` across your worktree. Commit, never push.
+
+
+---
+
+## NOTES (builder, second pass, 2026-09-21)
+
+No scout: the ticket and ADR-0039's third amendment quoted every line, and the
+first pass had already mapped `hints.rs`. Reading the file itself (521 lines)
+was cheaper than briefing anyone.
+
+**Baseline.** Measured on this worktree: 2226 passed / 37 skipped at `d96433e`
+(exit 0), but that run overlapped my first edit, so treat it as agreeing with
+the ticket's number rather than as an independent measurement. I then rebased
+onto `main` at `547467e` (ticket 25 merged, 2240 tests) — testing the ladder
+against a stale `graft` would have hidden the seam below. Final: **2247 tests,
+2243 passed, 4 failed, 38 skipped.** `cargo fmt --check`, `cargo clippy
+--all-targets -- -D warnings` and `cargo test --doc` all clean.
+
+### Cause, not symptom
+
+The defect was the rule, not the code: ADR-0039's second amendment said shrink
+"applies before any hint is dropped at all", which read list-wide empties a
+22-hint bar. The third amendment corrects it and this build implements the
+corrected rule. Nothing is special-cased and no test was weakened.
+
+### How the ladder is built
+
+`ladder(list, floor)` returns a **fixed sequence of steps**, the same at every
+width, and `fit_list` takes the longest prefix that fits. The order is: the
+three most relevant to their full verbs; then every remaining hint at its bare
+key; then those raised, one hint at a time from the left, short rung then full.
+The floor — three hints at their short rung plus `. more` — is drawn before the
+first step and whatever the width.
+
+Prefix-of-a-fixed-sequence is what buys monotonicity in *both* dimensions for
+free: every prefix costs at least as much as the one before it, so more room
+can only add a hint or raise one. A plain left-to-right greedy is **not**
+monotone — spending a cell to raise hint 0 can cost hint 5 its verb — and two
+other shapes I tried (maximise the count first, then upgrade; interleave add
+and raise per hint) each lose one of the two properties. This is the only
+shape I found that keeps both and still draws the tail.
+
+### What the bar draws now (`Divider::Hidden`, ordinary commit row)
+
+```
+ 80: " ⏎ open  r rebase  c commit  y  m  u  S  J  /  q  F2  F3  x  +  j/k  . more"
+120: " ⏎ open  r rebase  c commit  y sha  m merge  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  . more"
+160: " ⏎ open  r rebase  c commit  y sha  m merge  u undo  S stash  J journal  / search  q quit  F2 status  F3 rend  x  +  j/k  space  1  F  H  f  p  P  M  O  . more"
+```
+
+The short rung shows up exactly where the room runs out mid-hint — `F3 rend`
+at 160, `x cmp` on a current-branch row, `c cmt` in a 40-cell changes pane.
+
+### The seam — four `graft` tests red, and the four edits that close them
+
+Flipping `m merge` / `r rebase` to `Live` was the conductor's mid-build
+addition. It is correct (`graft::update::preview::is_history_key` binds both)
+and it needs four changes in `crates/graft/**`, which this ticket does not
+hold and was told not to widen into:
+
+1. `crates/graft/src/update/keys.rs`, `bound_actions()` — add two rows:
+   `("m", "merge"),   // is_history_key → preview::history_key` and
+   `("r", "rebase"),  // the same`.
+   Closes `update::tests::every_hinted_key_is_bound` **and**
+   `update::tests::every_planned_hint_is_still_unbound` (the second fails on
+   its `Live ⇒ bound` arm, not its planned arm).
+2. `crates/graft/tests/it/hint_bar.rs:168`
+   (`a_plain_row_hints_the_plain_context`) —
+   `starts_with(" ⏎ open  c commit  y sha")` becomes
+   `starts_with(" ⏎ open  r rebase  c commit")`.
+   The other two rows at :151 and :186 (`the_tip_row_hints_the_current_branch_context`,
+   `the_uncommitted_row_hints_the_working_tree_context`) **still pass**: their
+   contexts have no `m`/`r` at the head and `ends_with(". more")` is unchanged.
+3. `crates/graft/src/view/snapshots/graft__view__tests__renderer-*.snap` —
+   accept; the bar row is the only line that moved.
+4. `crates/graft/tests/it/hint_bar.rs:370-392`, the caption
+   `capture_hint_bar_for_docs_shots` writes into all twelve
+   `m5-hints-<context>-<size>.txt` files. It is not false — it says "as many
+   keys as fit the row the bar actually has, `. more` last" — but it is now
+   **incomplete**: it does not mention rungs, so a reader meeting a tail of
+   bare keys has nothing in the caption telling him it is deliberate. The
+   twelve captures were regenerated from this worktree (the test writes only
+   `docs/shots/`, which is not a crate), so the pictures are current; the words
+   above them are one milestone behind. `docs/shots/m5-hints-ladder.txt` says
+   it properly and is the file to judge by.
+
+### Captures regenerated (all `docs/shots/`, no crate touched)
+
+- **New:** `m5-hints-ladder.txt` — the deliverable.
+- `m5-hints-{branch,plain,uncommitted}-{80x24,120x40,160x48}.txt` (nine) and
+  `m5-hints-marked-*.txt` (three) — the bar changed under them.
+- `m5-ui-context-menu-verbs-{80x24,160x48}.txt` — its drift check caught the
+  same row.
+- `m5-hints-changes-*.txt` did **not** change: the changes pane's list fits
+  whole at every captured width, so the ladder never runs.
+
+### The wording table: one label reported, not replaced
+
+Every cell applied cleanly, 22 of 22, no collisions. Labels `hints.rs` has that
+the table does not name, all left at their full form per the ticket's rule:
+`stash` (the user's explicit ruling), `merge` and `rebase` (now live, and
+absent from the table for the same reason as `stash`), and the still-planned
+`branch`, `tag`, `resolved`. **None replaced, none invented.**
+
+### Unverified
+
+- **Colour** — the footer's hints draw in `Token::TextMuted`; `TestBackend`
+  records a character grid, so no capture here proves it (rule 5).
+- **Which of the three tails reads right** — plain, variant A or variant B — is
+  the user's by eye. Nothing here ticks it (rule 6).
+- The 2226 baseline above overlapped my first edit; the post-change 2247-test
+  run is the measurement I stand behind.
+
+### One thing for the next pass, not done here
+
+`TAIL` is appended to every row context, so a row context is 22-plus hints and
+the tail is long by construction. The ladder makes that readable rather than
+fixing it. If the user judges the bare-key tail as leftover, the cheaper answer
+is not a separator but a shorter `TAIL` — and that is a design question about
+what the bar is for, not a width rule.

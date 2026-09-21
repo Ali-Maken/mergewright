@@ -38,4 +38,4 @@
 
 
 
- . explain  ⏎ open  c commit  y sha  u undo  S stash  J journal  / search
+ . explain  ⏎ open  r rebase  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space

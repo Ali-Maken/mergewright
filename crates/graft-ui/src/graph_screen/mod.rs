@@ -33,7 +33,7 @@ use graft_term::SanitizedText;
 pub use badges::{Badge, BadgeKind, Icons, Tracking};
 pub use columns::{absolute_date, initials, relative_date, short_sha};
 pub use hints::{
-    Divider, Hint, HintContext, HintState, every_hint, fit_status_line, hints_for, hints_text,
+    Divider, Hint, HintContext, HintState, Rung, every_hint, fit_status_line, hints_for, hints_text,
 };
 pub use layout::{ScreenRows, lanes_that_fit, max_lanes_for};
 

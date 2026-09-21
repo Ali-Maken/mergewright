@@ -27,7 +27,7 @@ shape: criss-cross-merge (widest), 16, 80x24, cursor on row 2
 
 
 
- ⏎ open  c commit  y sha  u undo  S stash  J journal  / search  q quit  . more
+ ⏎ open  r rebase  c commit  y  m  u  S  J  /  q  F2  F3  x  +  j/k  . more
 
 graph colour per cell:
 ..6.......

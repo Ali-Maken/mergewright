@@ -45,4 +45,4 @@
 
 
  no commit-graph file · B build one · X never here
- ⏎ open  c commit  y sha  u undo  S stash  J journal  / search  q quit  . more
+ ⏎ open  r rebase  c commit  y  m  u  S  J  /  q  F2  F3  x  +  j/k  . more

@@ -71,9 +71,11 @@ fn no_context_hides_every_key() {
 }
 
 /// (b) At 80 columns the row contexts lead with their first three *bound*
-/// hints, in the note's table order — the planned entries (`m merge`,
-/// `r rebase`, `b branch`, `t tag`) are not among them — and then take as
-/// many more as the row has room for, ending in `. more`.
+/// hints, in the note's table order — the planned entries (`b branch`,
+/// `t tag`) are not among them — and then take as many more as the row has
+/// room for, ending in `. more`. `m merge` and `r rebase` joined the bound
+/// ones when ticket 25 bound them (see `no_planned_hint_is_ever_drawn`), so
+/// a branch row now leads with the two verbs the design note put first.
 ///
 /// It used to be exactly three plus `. more` whatever else fitted: a tier
 /// keyed to width, not a fit. ADR-0037 §4's three is a floor (ADR-0039,
@@ -87,7 +89,7 @@ fn eighty_columns_leads_with_three_and_fills_the_row() {
         ),
         (
             HintContext::BranchRow { current: false },
-            [("⏎", "open"), ("P", "push"), ("c", "commit")],
+            [("m", "merge"), ("r", "rebase"), ("⏎", "open")],
         ),
         (
             HintContext::BranchRow { current: true },
@@ -95,7 +97,7 @@ fn eighty_columns_leads_with_three_and_fills_the_row() {
         ),
         (
             HintContext::PlainRow,
-            [("⏎", "open"), ("c", "commit"), ("y", "sha")],
+            [("⏎", "open"), ("r", "rebase"), ("c", "commit")],
         ),
     ];
     for (context, first_three) in cases {
@@ -154,9 +156,14 @@ fn hundred_sixty_shows_the_context_then_the_screen() {
             "{context:?} shows no more at 160 than at 120: {hints:?}"
         );
         let drawn = &hints[..hints.len() - 1];
+        // By key and verb, not by whole `Hint`: the ladder leaves the tail
+        // on lower rungs, and the order is what this test is about.
         assert_eq!(
-            drawn,
-            &own[..drawn.len()],
+            drawn.iter().map(|h| (h.key, h.verb)).collect::<Vec<_>>(),
+            own[..drawn.len()]
+                .iter()
+                .map(|h| (h.key, h.verb))
+                .collect::<Vec<_>>(),
             "{context:?} reordered its list: {hints:?}"
         );
         assert_eq!(hints.last(), Some(&MORE), "{context:?}: {hints:?}");
@@ -181,13 +188,26 @@ fn marked_leads_with_explain_and_omits_more() {
     let marked = HintContext::Marked(Box::new(HintContext::PlainRow));
     for columns in [40, 80, 120, 160, 200] {
         let hints = hints_for(&marked, Divider::Hidden, columns);
-        assert_eq!(hints[0], EXPLAIN, "{hints:?}");
+        assert_eq!((hints[0].key, hints[0].verb), (EXPLAIN.key, EXPLAIN.verb));
         assert!(
-            !hints.contains(&MORE),
+            !hints
+                .iter()
+                .any(|h| (h.key, h.verb) == (MORE.key, MORE.verb)),
             "marked row must not also show `. more`: {hints:?}"
         );
         let plain = drawable(&HintContext::PlainRow, Divider::Hidden);
-        assert_eq!(&hints[1..], &plain[..hints.len() - 1], "{hints:?}");
+        // Key and verb only: the ladder varies the rung, not the order.
+        assert_eq!(
+            hints[1..]
+                .iter()
+                .map(|h| (h.key, h.verb))
+                .collect::<Vec<_>>(),
+            plain[..hints.len() - 1]
+                .iter()
+                .map(|h| (h.key, h.verb))
+                .collect::<Vec<_>>(),
+            "{hints:?}"
+        );
         assert!(
             hints_text(&hints).width() <= usize::from(columns),
             "{columns} columns: {:?}",
@@ -223,6 +243,12 @@ fn status_line_keeps_its_keys() {
 /// keeps the design note's planned entries, the width rule never sees them
 /// (m5-03 review, Critical 2 — at 80 columns two of a branch row's three
 /// keys did nothing at all).
+///
+/// The canary used to be `m merge`. M5 ticket 25 bound `m` and `r` to the
+/// Ghost Preview (`graft::update::preview::is_history_key`) and the table
+/// went on calling them planned, so two working keys were advertised
+/// nowhere — the converse of `docs/design/02-keymap.md` §2.1's rule, and
+/// the reason they are live here now. `b branch` carries the canary.
 #[test]
 fn no_planned_hint_is_ever_drawn() {
     let planned: Vec<Hint> = every_hint()
@@ -232,7 +258,7 @@ fn no_planned_hint_is_ever_drawn() {
     assert!(
         planned
             .iter()
-            .any(|hint| (hint.key, hint.verb) == ("m", "merge")),
+            .any(|hint| (hint.key, hint.verb) == ("b", "branch")),
         "the design note's planned entries must stay in the table: {planned:?}"
     );
     for context in all_contexts() {
@@ -368,4 +394,281 @@ fn context_lists_match_the_design_note_order() {
         text.starts_with(" ⏎ changes  c commit  S stash  p pull  P push  f fetch"),
         "{text:?}"
     );
+}
+
+// --- The shrink ladder (m5/24, ADR-0039's third amendment) ---
+
+/// Every cell of the short-form table is the user's own word, spelled as he
+/// approved it on 2026-09-21, and **nothing else has a short rung**.
+///
+/// The second half is the point: `stash` is the label that bites at 80
+/// columns and he ruled against shortening it, because every other hint is a
+/// whole word and one consonant-squeeze teaches the reader that labels here
+/// can be mangled. If a later pass invents `stsh`, or gives `merge` a short
+/// form before the group that binds it asks, this goes red.
+#[test]
+fn every_short_rung_is_the_users_own_word() {
+    let table = [
+        ("first-parent", "first"),
+        ("continue", "cont"),
+        ("mergetool", "tool"),
+        ("discard", "disc"),
+        ("hide stash", "hide"),
+        ("journal", "log"),
+        ("overview", "over"),
+        ("renderer", "rend"),
+        ("explain", "why"),
+        ("search", "find"),
+        ("changes", "diff"),
+        ("status", "stat"),
+        ("compare", "cmp"),
+        ("resize", "size"),
+        ("commit", "cmt"),
+        ("revert", "rev"),
+        ("stage", "stg"),
+        ("abort", "stop"),
+        ("apply", "use"),
+        ("graph", "grph"),
+        ("close", "shut"),
+        ("lanes", "lane"),
+    ];
+    for (verb, want) in table {
+        assert_eq!(short_form(verb), Some(want), "`{verb}`'s short rung");
+    }
+    // No verb the hint tables use has a short form the user did not write.
+    for hint in every_hint() {
+        if let Some(short) = short_form(hint.verb) {
+            assert!(
+                table.contains(&(hint.verb, short)),
+                "`{} {}` has a short rung `{short}` the user's table does not give it",
+                hint.key,
+                hint.verb
+            );
+        }
+    }
+    // And the ones he deliberately left out keep their whole word.
+    for verb in [
+        "stash", "merge", "rebase", "branch", "tag", "resolved", "open", "push", "pull", "fetch",
+        "focus", "undo", "more", "quit", "move", "fold", "edit", "skip", "sha", "map", "pop",
+        "drop", "all",
+    ] {
+        assert_eq!(short_form(verb), None, "`{verb}` must keep its whole word");
+    }
+}
+
+/// The bare keys are a **tail**, not a scatter: once the bar has put one
+/// hint on its key alone, every hint after it is on its key alone too.
+/// Swept over every context, both dividers, every width from 0 to 240.
+///
+/// This is the shape of ADR-0039's third amendment — the bar fills from the
+/// most relevant end, so what runs out runs out at the far end. A bar that
+/// read `⏎ open  c  y sha  u  S stash` would be the width rule showing
+/// through instead of a priority order.
+#[test]
+fn the_bare_keys_are_a_tail_not_a_scatter() {
+    for context in all_contexts() {
+        for divider in [Divider::Shown, Divider::Hidden] {
+            for columns in 0..=240u16 {
+                let hints = hints_for(&context, divider, columns);
+                let body = without_trailer(&hints);
+                let first_key = body.iter().position(|hint| hint.rung == Rung::Key);
+                if let Some(first_key) = first_key {
+                    for hint in &body[first_key..] {
+                        assert!(
+                            hint.rung == Rung::Key,
+                            "{context:?} at {columns} columns draws `{}` after a bare key: {:?}",
+                            hint.text(),
+                            hints_text(&hints)
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// "Each hint takes the best rung that still leaves room for **the hints
+/// ahead of it**" (ADR-0039, third amendment), stated so it can go red: past
+/// the three most relevant, a hint rises above its bare key only once every
+/// hint in the context is drawn. Room spent on a fourth verb is room the
+/// twentieth key has not had yet.
+///
+/// This is the clause the reverted rule got backwards, and the one a plain
+/// left-to-right greedy would break: greedy hands hint four its whole verb
+/// while hints five to twenty-two are not on the bar at all.
+#[test]
+fn a_tail_hint_gains_its_verb_only_once_the_whole_list_is_drawn() {
+    for context in all_contexts() {
+        for divider in [Divider::Shown, Divider::Hidden] {
+            let whole = whole_list(&context, divider);
+            for columns in 0..=240u16 {
+                let hints = hints_for(&context, divider, columns);
+                let body = without_trailer(&hints);
+                let raised = body
+                    .iter()
+                    .skip(3)
+                    .find(|hint| hint.rung != Rung::Key)
+                    .map(|hint| hint.key);
+                if let Some(key) = raised {
+                    assert_eq!(
+                        body.len(),
+                        whole.len(),
+                        "{context:?} at {columns} columns gave `{key}` a verb with \
+                         {} of its {} hints drawn: {:?}",
+                        body.len(),
+                        whole.len(),
+                        hints_text(&hints)
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// The picture the ladder exists to produce, and the one the list-wide
+/// version could not: at 80, 120 **and** 160 columns a row context leads
+/// with whole verbs, not with bare keys.
+///
+/// The reverted rule drew ` ⏎  c  y  u  S  J  …` at all three widths
+/// (ADR-0039's third amendment quotes it). If this goes green with bare keys
+/// in the lead, the ladder has become list-wide again.
+#[test]
+fn a_row_context_keeps_whole_verbs_at_the_relevant_end() {
+    for context in row_contexts() {
+        for columns in [80u16, 120, 160] {
+            let hints = hints_for(&context, Divider::Hidden, columns);
+            for hint in hints.iter().take(3) {
+                assert_eq!(
+                    hint.rung,
+                    Rung::Full,
+                    "{context:?} at {columns} columns: {:?}",
+                    hints_text(&hints)
+                );
+            }
+        }
+    }
+}
+
+/// ADR-0037 §4's floor: the three most relevant hints (or the whole list,
+/// where it is shorter) are always drawn and never fall below their short
+/// rung — and the bar is never empty. Swept 0 to 240 columns.
+#[test]
+fn the_three_most_relevant_never_fall_below_their_short_rung() {
+    for context in all_contexts() {
+        if context == HintContext::Preview {
+            continue;
+        }
+        let whole = whole_list(&context, Divider::Hidden);
+        let floor = whole.len().min(3);
+        for columns in 0..=240u16 {
+            let hints = hints_for(&context, Divider::Hidden, columns);
+            let body = without_trailer(&hints);
+            assert!(
+                body.len() >= floor,
+                "{context:?} at {columns} columns drew {} of its floor {floor}: {hints:?}",
+                body.len()
+            );
+            for (drawn, want) in body.iter().zip(whole.iter()).take(floor) {
+                assert!(
+                    drawn.rung >= want.floor_rung(),
+                    "{context:?} at {columns} columns put `{}` below its short rung",
+                    drawn.key
+                );
+            }
+        }
+    }
+}
+
+/// A hint is dropped only when it will not fit **even at its bare key** —
+/// the last clause of ADR-0039's third amendment. At every width, adding the
+/// next hint the context has, at its key alone, would overflow the bar.
+#[test]
+fn a_hint_is_dropped_only_when_its_bare_key_will_not_fit() {
+    for context in row_contexts() {
+        for divider in [Divider::Shown, Divider::Hidden] {
+            let whole = drawable(&context, divider);
+            for columns in 40..=240u16 {
+                let hints = hints_for(&context, divider, columns);
+                let body = without_trailer(&hints);
+                if body.len() == whole.len() {
+                    continue;
+                }
+                let mut with_one_more = body.to_vec();
+                with_one_more.push(whole[body.len()].at(Rung::Key));
+                with_one_more.push(MORE);
+                assert!(
+                    hints_text(&with_one_more).width() > usize::from(columns),
+                    "{context:?} at {columns} columns dropped `{}` with room for its key: {:?}",
+                    whole[body.len()].key,
+                    hints_text(&hints)
+                );
+            }
+        }
+    }
+}
+
+/// Monotone in the bar's own width, rung by rung and hint by hint: a cell
+/// more room can add a hint or raise one, never the reverse. Swept over
+/// every context, both dividers, 0 to 240 columns.
+///
+/// The count half of this is
+/// `graph_screen::tests::no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows`;
+/// the rung half is new with the ladder, and is what makes "the bar got
+/// wider and said less" impossible in the new dimension the ladder adds.
+#[test]
+fn no_hint_loses_ground_as_the_room_for_it_grows() {
+    for context in all_contexts() {
+        for divider in [Divider::Shown, Divider::Hidden] {
+            let mut narrower: Vec<Hint> = Vec::new();
+            for columns in 0..=240u16 {
+                let drawn = hints_for(&context, divider, columns);
+                // Without `. more`, which is always last: it slides right as
+                // hints are added, and comparing by index would read that
+                // slide as a reorder.
+                let wider = without_trailer(&drawn).to_vec();
+                assert!(
+                    wider.len() >= narrower.len(),
+                    "{context:?} with {divider:?} at {columns} columns lost a hint"
+                );
+                for (index, before) in narrower.iter().enumerate() {
+                    assert_eq!(
+                        (wider[index].key, wider[index].verb),
+                        (before.key, before.verb),
+                        "{context:?} with {divider:?} at {columns} columns reordered"
+                    );
+                    assert!(
+                        wider[index].rung >= before.rung,
+                        "{context:?} with {divider:?}: `{}` fell from {:?} to {:?} \
+                         when the bar grew to {columns} columns",
+                        before.key,
+                        before.rung,
+                        wider[index].rung
+                    );
+                }
+                narrower = wider;
+            }
+        }
+    }
+}
+
+/// Every hint `context` could draw, `. explain` included, before the width
+/// rule sees it.
+fn whole_list(context: &HintContext, divider: Divider) -> Vec<Hint> {
+    if let HintContext::Marked(inner) = context {
+        let mut list = vec![EXPLAIN];
+        list.extend(drawable(inner, divider));
+        list
+    } else {
+        drawable(context, divider)
+    }
+}
+
+/// The drawn hints without the `. more` doorway, which is always at its full
+/// rung and always last — it is the one part of the bar the ladder does not
+/// touch.
+fn without_trailer(hints: &[Hint]) -> &[Hint] {
+    match hints.split_last() {
+        Some((last, rest)) if (last.key, last.verb) == (MORE.key, MORE.verb) => rest,
+        _ => hints,
+    }
 }
