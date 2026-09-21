@@ -27,3 +27,15 @@ _(nothing yet — M0–M2 were read-only and never left the fixtures)_
 ## Fixed
 
 _(nothing yet)_
+
+## 2026-09-21 — the user's eye-check of the five M5 captures
+
+Five captures, five defects he found and three of us missed, plus two design calls and one structural ask. Filed as tickets 19 (his boundary-test design, `graft-ui`) and 20 (wording, ghosts, captions).
+
+- **He could not answer the question the capture was taken for.** The 80x24 banner capture shows a pane holding four rows of content and about thirteen blanks, so the banner crowds out nothing and its row cost is unjudgeable. A capture that cannot show the cost cannot answer the question it was taken for — recapture with a real history behind it. Captures need to be taken in the state the question is about, not the state that is easiest to reach.
+- **Same fact twice on a 24-row screen**: the banner reads `conflict notes.md (+1)` and four rows below the pane reads `CONFLICTS (2)` with both filenames. Neither is wrong; together they waste a scarce screen. No test would ever have caught this, because both halves are individually correct.
+- **`ghost` is our word.** It appears nowhere else on screen: the user sees `○` and `—` and has to connect them to a noun the UI never defines. A `CONTEXT.md` glossary term leaked into the interface. The glossary exists so *we* use one term — that is not a licence to show it to the user.
+- **The ghosts read as duplicate commits.** Five ghost subjects identical to the five real rows above them, no separator, no label; strip colour and the only cue is `○` vs `●` and two em-dashes. He named the failure precisely: *"a first read of 'these are in my history twice' is available — the duplicate-commit confusion M2 exists to prevent."* The one cue that does work is the `[◆ topic]` badge moving onto the newest ghost, because it says outcome rather than extra rows.
+- **Footer verbosity inverted**: 120 columns gets the long explanatory line, 160 with forty more columns gets the terse one. Wider terminal, terser text.
+- **A caption claimed a screen the capture does not show** — it describes `CONFLICTS (2)` above `STAGED`/`UNSTAGED` while the capture shows `reading…` and neither. Taken mid-load. A capture of a half-loaded screen is weak evidence for everything else on it too.
+- **A caption true at one width and false at the other**: `history.top is 14` holds at 160x48 and is 24 at 80x24. Second instance of a per-width caption bug this milestone.
