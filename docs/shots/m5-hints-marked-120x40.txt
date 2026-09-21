@@ -12,8 +12,13 @@
 #
 # Judge by eye: the footer's last row reads the marked row's hints for
 # this width — `. explain` leads (the marker's own key), then the row's
-# keys: three under 100 cols, six from 100, as many as fit from 160
-# (ADR-0037 §4) — never all hidden, and never a key that does nothing.
+# keys, filled from the most relevant end: each hint takes the best rung
+# that still leaves room for the hints ahead of it — full, short, then
+# bare key — taken per hint, never as a step the whole list takes
+# together, and a hint that will not fit even at its bare key is
+# dropped (ADR-0039's third amendment, 2026-09-21). The three most
+# relevant never fall below their short rung, and the bar is never all
+# hidden — never a key that does nothing.
 
  graft /code/api  5 commits
 ●     Commit 5                                                                                           TE 2h   0505050
