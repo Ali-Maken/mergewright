@@ -24,6 +24,7 @@ use graft_fixtures::fifo::Fifo;
 use graft_fixtures::remote::{HungRemote, LocalRemote};
 
 use crate::app_harness::{App, git};
+use crate::captures::{frame, write_shot};
 
 fn local() -> LocalRemote {
     let remote =
@@ -290,6 +291,19 @@ fn push_then_undo_is_local_only() {
             && state.journal.reading.is_none()
     });
     let state = app.key(&state, KeyCode::Char('u'));
+    // From M5, `u` on work a push already sent explains itself before it
+    // runs (ADR-0038 §4, m5-history-and-ghost-preview/15). `confirm` moves
+    // one right — onto `[ Undo locally ]` — and presses Enter.
+    assert_eq!(
+        state
+            .confirm
+            .as_ref()
+            .map(|pending| pending.view.title.as_str()),
+        Some("Undo after a push"),
+        "u after a push asked nothing; status {:?}",
+        state.status
+    );
+    let state = confirm(&app, &state);
     let state = app.settle_write(state, "the undo");
     let Status::Done(line) = &state.status else {
         unreachable!("settle_write insists on Done");
@@ -310,6 +324,159 @@ fn push_then_undo_is_local_only() {
     drop(state);
     assert_eq!(rev(work, &main), committed, "U put the commit back");
     app.close();
+}
+
+/// **Piece 7, ADR-0038 §4.** `u` on work a push already sent stops and
+/// explains itself — once. `[ Undo locally ]` runs the ordinary undo, the
+/// bare does not move, and the same push does not ask again: `U` puts the
+/// commit back and the next `u` takes it away with no box in between.
+#[test]
+fn u_after_push_asks_once_then_undoes_locally() {
+    let remote = local();
+    let work = remote.work();
+    let main = main_ref(&remote);
+    let before = rev(work, &main);
+    stage(work);
+
+    let (app, state) = App::open(work);
+    let state = pushed_one_commit(&app, state);
+    let committed = rev(work, &main);
+    assert_eq!(rev(remote.bare(), &main), committed, "the bare has it");
+
+    // First `u`: the box, and nothing running.
+    let state = app.key(&state, KeyCode::Char('u'));
+    let view = &state
+        .confirm
+        .as_ref()
+        .unwrap_or_else(|| panic!("u asked nothing; status {:?}", state.status))
+        .view;
+    assert_eq!(view.title.as_str(), "Undo after a push");
+    let choices: Vec<&str> = view
+        .choices
+        .iter()
+        .map(graft_term::SanitizedText::as_str)
+        .collect();
+    assert_eq!(choices, ["Cancel", "Undo locally", "Re-push old tip"]);
+    assert!(state.operating.is_none(), "the box started a write");
+    assert_eq!(rev(work, &main), committed, "nothing ran yet");
+
+    // `[ Undo locally ]` is one right of `Cancel`.
+    let state = confirm(&app, &state);
+    let state = app.settle_write(state, "the undo");
+    assert_eq!(rev(work, &main), before, "u undid the commit locally");
+    assert_eq!(
+        rev(remote.bare(), &main),
+        committed,
+        "the bare is untouched"
+    );
+
+    let state = app.key(&state, KeyCode::Char('U'));
+    let state = app.settle_write(state, "the redo");
+    assert_eq!(rev(work, &main), committed, "U put the commit back");
+
+    // Asked once: the same push explains itself no further.
+    let state = app.key(&state, KeyCode::Char('u'));
+    assert!(
+        state.confirm.is_none(),
+        "the same push asked twice: {:?}",
+        state.confirm.as_ref().map(|p| p.view.title.as_str())
+    );
+    let state = app.settle_write(state, "the second undo");
+    drop(state);
+    assert_eq!(rev(work, &main), before, "and it undid, with no box");
+    app.close();
+}
+
+/// **Piece 7, ADR-0038 §4, all three conditions.** `[ Re-push old tip ]`
+/// opens its own confirm — the lease box — and only that box's `Enter`
+/// moves the remote. It moves it *back*, which nothing but a
+/// `--force-with-lease` push can do: without the lease `graft_ops` refuses
+/// the source commit outright (`Refusal::RepushNeedsLease`) and the bare
+/// stays where the push left it. The local branch keeps its commits.
+#[test]
+fn u_after_push_repush_old_tip_moves_the_bare_back() {
+    let remote = local();
+    let work = remote.work();
+    let main = main_ref(&remote);
+    let before = rev(work, &main);
+    stage(work);
+
+    let (app, state) = App::open(work);
+    let state = pushed_one_commit(&app, state);
+    let committed = rev(work, &main);
+    assert_eq!(rev(remote.bare(), &main), committed, "the bare has it");
+
+    // `u`, then `→ →` onto `[ Re-push old tip ]`.
+    let state = app.key(&state, KeyCode::Char('u'));
+    let state = app.key(&state, KeyCode::Right);
+    let state = app.key(&state, KeyCode::Right);
+    let state = app.key(&state, KeyCode::Enter);
+    let pending = state
+        .confirm
+        .as_ref()
+        .unwrap_or_else(|| panic!("no second confirm; status {:?}", state.status));
+    let short: String = before.chars().take(7).collect();
+    assert_eq!(
+        pending.view.title.as_str(),
+        format!(
+            "Re-push old tip {short} → origin/{}?",
+            remote.default_branch()
+        )
+    );
+    assert!(
+        pending
+            .view
+            .command
+            .as_str()
+            .contains("--force-with-lease="),
+        "{:?}",
+        pending.view.command
+    );
+    assert!(state.operating.is_none(), "the lease box started a write");
+    assert_eq!(
+        rev(remote.bare(), &main),
+        committed,
+        "the remote moved before its own confirm"
+    );
+
+    let state = confirm(&app, &state);
+    let state = app.settle_write(state, "the re-push");
+    drop(state);
+    assert_eq!(
+        rev(remote.bare(), &main),
+        before,
+        "the re-push did not move origin back"
+    );
+    assert_eq!(
+        rev(work, &main),
+        committed,
+        "the re-push touched the local branch"
+    );
+    app.close();
+}
+
+/// A commit made by `c` and sent by `P`, with the journal and the refreshed
+/// tracking tip landed: the state `u` finds after a push.
+fn pushed_one_commit(app: &App, state: AppState) -> AppState {
+    let state = ready(app, state);
+    let state = commit_by_key(app, &state, "to push");
+    let state = app.settle_write(state, "the commit");
+    let state = ready(app, state);
+    let state = app.press(&state, plain('P'));
+    let state = confirm(app, &state);
+    let state = app.settle_write(state, "the push");
+    journal_has_the_push(app, state)
+}
+
+/// The journal read that carries the push, so `u` decides from it.
+fn journal_has_the_push(app: &App, state: AppState) -> AppState {
+    let state = app.pump(state, "the journal with the push", |state| {
+        matches!(&state.journal.entries, Loading::Ready(read)
+            if read.entries.iter().any(|entry| entry.kind == OperationKind::Push))
+            && state.journal.reading.is_none()
+    });
+    // And the refreshed tracking tip the lease is taken against.
+    ready(app, state)
 }
 
 /// The words a non-fast-forward rejection leaves.
@@ -564,4 +731,81 @@ fn progress_reaches_the_status_line() {
     assert!(progressed, "no progress line among {seen:?}");
     assert_eq!(state.status, Status::Done("fetched".to_owned()));
     app.close();
+}
+
+/// Writes the undo-after-push capture into `docs/shots/`.
+///
+/// Run by hand: `cargo test -p graft --test it
+/// remote_by_key::capture_undo_after_push_for_docs_shots -- --ignored
+/// --nocapture`.
+#[test]
+#[ignore = "writes docs/shots/m5-ui-undo-after-push-80x24.txt; run by hand to regenerate"]
+fn capture_undo_after_push_for_docs_shots() {
+    let remote = local();
+    let work = remote.work();
+    stage(work);
+
+    let (app, state) = App::open(work);
+    let state = pushed_one_commit(&app, state);
+
+    // `u`: the box that explains the push.
+    let asked = app.key(&state, KeyCode::Char('u'));
+    assert!(asked.confirm.is_some(), "u asked nothing to capture");
+    let first = frame(&asked, 80, 24);
+
+    // Right, Right, Enter: `[ Re-push old tip ]`, which opens its own box
+    // before anything reaches the remote.
+    let moved = app.key(&asked, KeyCode::Right);
+    let moved = app.key(&moved, KeyCode::Right);
+    let repush = app.key(&moved, KeyCode::Enter);
+    assert!(
+        repush.confirm.is_some(),
+        "re-push ran without its own confirm"
+    );
+    let second = frame(&repush, 80, 24);
+
+    let body = format!(
+        "{}\n== `u` after a push: the one box with three real answers ==\n\n{}\n\n\
+         == `[ Re-push old tip ]`: its own second box, before the remote moves ==\n\n{}\n",
+        undo_after_push_header(),
+        first.join("\n"),
+        second.join("\n"),
+    );
+    write_shot("m5-ui-undo-after-push-80x24.txt", &body);
+
+    drop(repush);
+    drop(state);
+    app.close();
+}
+
+/// The caption. What right looks like, in the user's terms, and what the
+/// capture cannot show.
+fn undo_after_push_header() -> String {
+    "# m5-ui-undo-after-push-80x24.txt: 80x24, drawn by `view::view` from a\n\
+     # real AppState \u{2014} a scratch repository pushed to a `file://` bare,\n\
+     # then `u` (crates/graft/tests/it/remote_by_key.rs,\n\
+     # capture_undo_after_push_for_docs_shots, #[ignore]d). Not a pty\n\
+     # capture: the terminal is ratatui's TestBackend, so this is a\n\
+     # character grid with no colour attributes in it \u{2014} CLAUDE.md rule 5,\n\
+     # colour ships unverified.\n\
+     #\n\
+     # Why: `u` undoes your local branch. A push has already sent that work\n\
+     # somewhere others can pull. Undoing silently would leave the two\n\
+     # disagreeing with no word about it (ADR-0038 \u{a7}4).\n\
+     #\n\
+     # What right looks like:\n\
+     #  - **The first box names the remote side** and says in words that\n\
+     #    undo is local only, and that re-pushing the old tip rewrites a\n\
+     #    branch others may have pulled. Three answers, `Cancel` first.\n\
+     #  - **Re-push asks a second time.** Choosing `[ Re-push old tip ]`\n\
+     #    does not push: it opens the ordinary push confirm, showing the\n\
+     #    exact command. Two deliberate answers before a remote branch is\n\
+     #    rewritten.\n\
+     #  - **The command line says `--force-with-lease`**, never a bare\n\
+     #    `--force`. At 80 columns the box is narrower than the full\n\
+     #    command, so the tail is clipped \u{2014} the same clipping the M4 lease\n\
+     #    box already takes (noted in the ticket; the fix is in graft-ops).\n\
+     #  - Your local branch keeps every commit it has: re-push moves the\n\
+     #    remote back, not you.\n"
+        .to_owned()
 }

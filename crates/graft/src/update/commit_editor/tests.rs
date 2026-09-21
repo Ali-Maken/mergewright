@@ -217,7 +217,7 @@ fn an_empty_subject_refuses() {
 }
 
 #[test]
-fn a_merge_in_progress_refuses_and_names_the_command() {
+fn a_merge_in_progress_refuses_and_names_the_keys() {
     let mut state = ready(&["a.rs"]);
     state.in_progress = Some(graft_git::state::InProgressDetail {
         kind: graft_git::state::InProgress::Merge,
@@ -230,9 +230,37 @@ fn a_merge_in_progress_refuses_and_names_the_command() {
     let view = crate::view::commit_editor_view(&open).expect("open");
     let refusal = view.refusal.as_deref().expect("a refusal").to_owned();
     assert!(refusal.contains("merge in progress"), "{refusal}");
-    assert!(refusal.contains("git commit"), "{refusal}");
+    // m5-history-and-ghost-preview/15, piece 6: the refusal names the
+    // banner's keys, not only the shell command ADR-0034's interim showed.
+    // The banner is where a merge ends, either way, and it is two rows up.
+    assert!(refusal.contains("c continue"), "{refusal}");
+    assert!(refusal.contains("a abort"), "{refusal}");
+    assert!(
+        !refusal.contains("git commit"),
+        "the shell command is no longer the only way out: {refusal}"
+    );
     let (_, commands) = update(&open, control(KeyCode::Enter));
     assert!(operate(&commands).is_none(), "{commands:?}");
+}
+
+/// A bisect draws no banner (M7's), so there are no keys to name and the
+/// refusal keeps git's own command — a refusal must never offer a key that
+/// is not live.
+#[test]
+fn a_bisect_in_progress_still_names_the_shell_command() {
+    let mut state = ready(&["a.rs"]);
+    state.in_progress = Some(graft_git::state::InProgressDetail {
+        kind: graft_git::state::InProgress::Bisect,
+        step: None,
+        head_name: None,
+        onto: None,
+    });
+    let (open, _) = update(&state, key(KeyCode::Char('c')));
+    let open = typed(&open, "subject");
+    let view = crate::view::commit_editor_view(&open).expect("open");
+    let refusal = view.refusal.as_deref().expect("a refusal").to_owned();
+    assert!(refusal.contains("git bisect good/bad"), "{refusal}");
+    assert!(!refusal.contains("c continue"), "{refusal}");
 }
 
 #[test]

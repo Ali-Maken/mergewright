@@ -58,9 +58,10 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
   2026-09-20, from the M5/12 captures; closes the gap the `.` menu fell
   through). The five modal panes above claim the alphabet because they need
   it for their own vocabulary. The `.` context menu does not: it needs `j`/`k`
-  to move, `Enter` to choose and `Esc` to close, which are movement and
-  confirm keys, not verbs. So it claims **those four and nothing else**, and
-  every verb letter stays live and keeps its meaning while it is open.
+  to move, `Enter` to choose, and `Esc` or `.` again to close — movement,
+  confirm, and its own opener, not verbs. So it claims **those five and
+  nothing else**, and every verb letter stays live and keeps its meaning
+  while it is open.
 
   Three things follow, and they are the reason this is written down rather
   than left to each pane:
@@ -73,6 +74,13 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
     reading `Merge main into feature (m)` promises that `m` merges; it does,
     because the menu never took `m` away. The label teaches a shortcut that
     is live, which is the whole point of showing it.
+  - **`.` closes what `.` opened** (decided 2026-09-21, M5/15). `.` is the
+    doorway (ADR-0039), and a key that opens a place closes it again on the
+    same letter or `Esc`, exactly as `S`, `J` and `M` do. It needs saying
+    because the rule above — every other key closes the menu and falls
+    through — sends a fallen-through `.` straight back to the graph pane's
+    `.`, which reopens what was just closed. `.` is not a verb, so claiming
+    it takes nothing away from the panes underneath.
   - **The menu's contents never depend on terminal width.** It lists
     everything valid in the current context — per ADR-0039, which made `.`
     the doorway — whether or not the hint bar had room for it. Filtering the
@@ -111,7 +119,7 @@ Previous: [View mockups](01-view-mockups.md) · Next: [Graph layout algorithm](0
 | `g` / `G` | Jump to top / bottom (vim) |
 | `/` | Find in the focused list |
 | `Enter` | Open / drill in / activate |
-| `.` | Context actions menu for the selected item |
+| `.` | Context actions menu for the selected item; `.` again or `Esc` closes it |
 | `Space` | Toggle stage where staging applies, else expand/collapse |
 
 `Ctrl+Shift+Z` is not a reliable binding: many terminals collapse it to the
@@ -224,6 +232,13 @@ With focus given back, `M` and `e` keep working on the file under the
 cursor in the detail pane (§2.4), and `Space` marks it resolved by staging
 it. Nothing else here is bound outside the banner.
 
+**`u` and `U` are refused while an operation is live**, focused or not:
+`finish or abort the <kind> first · ⇥ banner`. Undo is otherwise global
+(§2.2), but an undo on top of an unfinished operation is a second history
+write over the first, and the banner is where the first one ends either way.
+Commit and amend refuse for the same reason and name the same keys (M5/15).
+A bisect draws no banner until M7, so it is not covered by this rule.
+
 ### 2.7 Interactive rebase editor
 
 **Modal** (§2.1): this pane answers every key itself, `Ctrl+C` excepted; the
@@ -314,7 +329,7 @@ password), so there is never more than one field open to move between.
 ### 2.15 Mouse (every pane, always first-class — PROMPT.md §3)
 
 - Click selects; double-click opens; right-click opens the same context menu
-  as `.`.
+  as `.`, and `.` or `Esc` closes it however it was opened.
 - The scroll wheel works in every scrollable area.
 - Divider drags resize panes; sizes are remembered per repo.
 - Drag a branch badge onto a commit or another branch to open Merge

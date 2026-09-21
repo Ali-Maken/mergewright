@@ -157,14 +157,25 @@ impl CommitEditor {
         status: Option<&WorkingTreeStatus>,
         in_progress: Option<InProgress>,
     ) -> Option<String> {
-        // ADR-0034: finishing a merge, rebase or cherry-pick is M5/M6's, so
-        // until then the refusal names the shell command that does it.
+        // Finishing a merge, rebase, cherry-pick or revert is the operation
+        // banner's, from M5 (ADR-0034's shell command was the interim while
+        // there was nothing in the app to name). The keys are the banner's
+        // own (`docs/design/02-keymap.md` §2.6a); `Esc` first, because this
+        // editor is modal and holds every key while it is open.
         if let Some(kind) = in_progress {
-            return Some(format!(
-                "{} in progress — {} first",
-                kind.name(),
-                kind.continue_command()
-            ));
+            return Some(match kind {
+                // A bisect draws no banner — that is M7's — so there are no
+                // keys to name and git's own command is still the way out.
+                InProgress::Bisect => format!(
+                    "{} in progress — {} first",
+                    kind.name(),
+                    kind.continue_command()
+                ),
+                _ => format!(
+                    "{} in progress — esc, then c continue  a abort",
+                    kind.name()
+                ),
+            });
         }
         // An amend with nothing staged is a reword, which is allowed
         // (`Operation::check`).

@@ -32,7 +32,61 @@ pub fn undo_key(
     redo: bool,
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
+    // `u` after a push explains itself before it runs — and only for `u`:
+    // `U` puts back something the user has already taken back, so the
+    // remote is where it was when they last saw it (ADR-0038 §4).
+    if !redo && let Some(after) = super::remote::undo_after_push(state) {
+        state.confirm = Some(super::remote::undo_after_push_box(&after));
+        return Vec::new();
+    }
     launch(state, redo, false, next_id)
+}
+
+/// `[ Undo locally ]` and `[ Re-push old tip ]` on the undo-after-push box.
+///
+/// `chosen` is the cursor's index, so the two acting choices stay one box
+/// rather than two: `1` undoes, `2` opens the lease box. `0` is `Cancel`
+/// and never arrives here — which is exactly why cancelling asks again.
+pub(super) fn after_push_chosen(
+    state: &mut AppState,
+    commands: &mut Vec<Command>,
+    chosen: usize,
+    push: graft_core::journal::EntryId,
+    repush: graft_ops::operation::PushParams,
+    next_id: &mut impl FnMut() -> JobId,
+) {
+    // Answered, so this push explains itself once. Set for both choices: a
+    // user who reached the lease box and backed out of it has still read
+    // what the box had to say.
+    state.remote.undo_after_push_asked = Some(push);
+    match chosen {
+        1 => commands.extend(launch(state, false, false, next_id)),
+        2 => super::remote::repush_chosen(state, repush),
+        other => debug_assert!(
+            false,
+            "the undo-after-push box has three choices; the cursor was on {other}"
+        ),
+    }
+}
+
+/// Why `u`/`U` will not run while git is part-way through an operation, or
+/// `None` when nothing is.
+///
+/// A merge, rebase, cherry-pick or revert that has stopped is a state with
+/// exactly two ends — finish it or abort it — and an undo on top of one
+/// would be a second history write over an unfinished first. Refused **in
+/// words**, with no job and nothing dispatched, and the words name where
+/// the two ends live (`docs/design/02-keymap.md` §2.6a).
+///
+/// A bisect is deliberately not covered: it draws no banner (`banner::live`
+/// answers `None` for one, and bisect banners are M7's), so `⇥ banner`
+/// would point at nothing.
+fn in_progress_refusal(state: &AppState) -> Option<Status> {
+    let kind = super::banner::live(state)?.kind;
+    Some(Status::Sticky {
+        reason: format!("finish or abort the {} first", kind.name()),
+        keys: Some("\u{21e5} banner".to_owned()),
+    })
 }
 
 /// The same key again, past the drift guard: the user has read what moved
@@ -52,6 +106,12 @@ fn launch(
     next_id: &mut impl FnMut() -> JobId,
 ) -> Vec<Command> {
     if super::operate::operation_in_flight(state) {
+        return Vec::new();
+    }
+    // Checked here rather than in `undo_key` alone, so the drift box's
+    // second, forcing `Enter` cannot slip past it either.
+    if let Some(refusal) = in_progress_refusal(state) {
+        state.status = refusal;
         return Vec::new();
     }
     let id = next_id();
@@ -496,6 +556,74 @@ mod tests {
         let mut state = AppState::default();
         let commands = undo_key(&mut state, true, &mut ids());
         assert_eq!(commands, vec![Command::Redo(JobId::new(1), false)]);
+    }
+
+    /// Piece 6. A stopped merge, rebase, cherry-pick or revert has exactly
+    /// two ends, and `u` is neither. Refused **in words**, with no job — and
+    /// the words name where the two ends are.
+    #[test]
+    fn u_refused_during_an_operation() {
+        for (kind, word) in [
+            (graft_git::state::InProgress::Merge, "merge"),
+            (graft_git::state::InProgress::Rebase, "rebase"),
+            (graft_git::state::InProgress::CherryPick, "cherry-pick"),
+            (graft_git::state::InProgress::Revert, "revert"),
+        ] {
+            let mut state = AppState {
+                in_progress: Some(graft_git::state::InProgressDetail {
+                    kind,
+                    step: None,
+                    head_name: None,
+                    onto: None,
+                }),
+                ..AppState::default()
+            };
+            for redo in [false, true] {
+                let commands = undo_key(&mut state, redo, &mut ids());
+                assert!(commands.is_empty(), "{word}: {commands:?}");
+                assert_eq!(state.operating, None, "{word}: a job was claimed");
+                assert_eq!(
+                    state.status,
+                    Status::Sticky {
+                        reason: format!("finish or abort the {word} first"),
+                        keys: Some("\u{21e5} banner".to_owned()),
+                    },
+                    "{word}"
+                );
+            }
+        }
+    }
+
+    /// The drift box's second, forcing `Enter` is the same key again, so it
+    /// meets the same refusal: `[ Undo ]` must not be a way around a live
+    /// operation.
+    #[test]
+    fn forcing_past_the_drift_box_is_refused_during_an_operation_too() {
+        let mut state = AppState {
+            confirm: Some(drift_box("stage src/a.rs", &drift(), false)),
+            in_progress: Some(graft_git::state::InProgressDetail {
+                kind: graft_git::state::InProgress::Rebase,
+                step: None,
+                head_name: None,
+                onto: None,
+            }),
+            ..AppState::default()
+        };
+        state
+            .confirm
+            .as_mut()
+            .expect("the box is open")
+            .view
+            .toggle();
+        let mut commands = Vec::new();
+        assert!(super::super::confirm::confirm_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Enter),
+            &mut ids(),
+        ));
+        assert!(commands.is_empty(), "{commands:?}");
+        assert_eq!(state.operating, None);
     }
 
     #[test]

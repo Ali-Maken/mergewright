@@ -57,7 +57,11 @@ fn kind_word(kind: InProgress) -> Option<&'static str> {
 }
 
 /// The operation live right now, when it is one this module can act on.
-fn live(state: &AppState) -> Option<&InProgressDetail> {
+///
+/// Also what `update::undo` asks before it refuses `u`: the refusal points
+/// at the banner, so it must only be given when there is a banner to point
+/// at (a bisect has none).
+pub(super) fn live(state: &AppState) -> Option<&InProgressDetail> {
     let detail = state.in_progress.as_ref()?;
     kind_word(detail.kind).map(|_| detail)
 }

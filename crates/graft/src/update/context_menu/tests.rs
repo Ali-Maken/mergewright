@@ -277,7 +277,7 @@ fn context_menu_key_closes_and_hands_a_verb_key_on() {
     }
 }
 
-/// The keys the menu claims stop here (`true`). `Enter`, the fourth, is
+/// The keys the menu claims stop here (`true`). `Enter`, the fifth, is
 /// pinned by `choose` below — it needs a menu with something real to
 /// dispatch, which this bare state has not got.
 #[test]
@@ -288,6 +288,7 @@ fn context_menu_key_claims_its_movement_and_esc() {
         KeyCode::Char('k'),
         KeyCode::Up,
         KeyCode::Escape,
+        KeyCode::Char('.'),
     ] {
         let mut state = AppState::default();
         open_for_history_row(&mut state, 0);
@@ -634,4 +635,40 @@ fn apply_explain_sets_the_flag_and_returns_no_command() {
     );
     assert!(commands.is_empty());
     assert_eq!(state.detail.explain_requested, Some(oid(1)));
+}
+
+/// `.` closes the menu it opened, pressed through the whole of `update`
+/// rather than through `context_menu_key` alone — which is where the bug
+/// was. Group 13 made every advertised key fall through, correctly closing
+/// the menu on `x m r u y f p P`; `.` falling through the same way reached
+/// `keys::graph_key`, whose `.` reopened the menu it had just closed, so
+/// `.` could never shut it. §2.1: a key that opens a place closes it again
+/// on the same letter or `Esc` (m5-history-and-ghost-preview/15).
+#[test]
+fn dot_closes_the_menu_it_opened() {
+    use graft_core::event::Event;
+
+    // A real history row, not the working-tree row: `selection::reconcile`
+    // clears `on_working_tree` at the end of every event when there is
+    // nothing uncommitted to show, which would make the second `.` find
+    // nothing to reopen and pass this test for the wrong reason.
+    let state = on_the_feature_row();
+    let (opened, _) = crate::update::update(
+        &state,
+        crate::update::AppEvent::Core(Event::Key(key(KeyCode::Char('.')))),
+    );
+    assert!(opened.context_menu.is_some(), "`.` opens the menu");
+
+    let (closed, commands) = crate::update::update(
+        &opened,
+        crate::update::AppEvent::Core(Event::Key(key(KeyCode::Char('.')))),
+    );
+    assert!(
+        closed.context_menu.is_none(),
+        "`.` reopened what `.` had just closed"
+    );
+    assert!(
+        commands.is_empty(),
+        "closing the menu ran something: {commands:?}"
+    );
 }

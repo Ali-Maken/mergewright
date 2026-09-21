@@ -618,3 +618,304 @@ fn the_remembered_upstream_dies_with_the_line_that_explained_it() {
         "and `r` no longer aims at it"
     );
 }
+
+// ---------------------------------------------------------------------------
+// `u` after a push (ADR-0038 §4, m5-history-and-ghost-preview/15, piece 7)
+// ---------------------------------------------------------------------------
+
+/// `main`'s tip before the commit — what `[ Re-push old tip ]` sends.
+const OLD_TIP: &str = "1111111222222233333334444444555555566666";
+
+/// One journal entry, minimal but honest about the two fields the
+/// undo-after-push gate reads: the kind, and which refs it moved.
+fn entry(
+    number: i64,
+    kind: graft_core::journal::OperationKind,
+    description: &str,
+    moved: Option<(&str, Option<Oid>, Option<Oid>)>,
+) -> JournalEntry {
+    use graft_core::journal::{EntryId, HeadRef, Touches};
+    let mut refs_before = std::collections::BTreeMap::new();
+    let mut refs_after = std::collections::BTreeMap::new();
+    if let Some((name, before, after)) = moved {
+        refs_before.insert(name.to_owned(), before);
+        refs_after.insert(name.to_owned(), after);
+    }
+    JournalEntry {
+        id: EntryId::new(number, [0; 10]),
+        at_unix_ms: number,
+        kind,
+        description: description.to_owned(),
+        status: EntryStatus::Committed,
+        touches: Touches::default(),
+        head_before: HeadRef::Branch("refs/heads/main".to_owned()),
+        head_after: Some(HeadRef::Branch("refs/heads/main".to_owned())),
+        refs_before,
+        refs_after,
+        index_before: None,
+        index_after: None,
+        worktree_before: None,
+        worktree_after: None,
+        backup_ref: None,
+        pins: Vec::new(),
+        commands: Vec::new(),
+        reverses: None,
+    }
+}
+
+/// The state the box exists for: `main` committed from `OLD_TIP` to `THEIRS`,
+/// then pushed, with the tracking ref fetched at `THEIRS`.
+fn after_a_push() -> AppState {
+    let mut state = with_facts(
+        vec![remote("origin")],
+        Some("refs/heads/main"),
+        Some(upstream(Some(THEIRS))),
+    );
+    state.journal.entries = Loading::Ready(Arc::new(crate::jobs::undo::JournalRead {
+        entries: vec![
+            entry(
+                1,
+                OperationKind::Commit,
+                "commit \"to push\"",
+                Some(("refs/heads/main", Some(oid(OLD_TIP)), Some(oid(THEIRS)))),
+            ),
+            entry(
+                2,
+                OperationKind::Push,
+                "push main → origin/main",
+                Some((
+                    "refs/remotes/origin/main",
+                    Some(oid(OLD_TIP)),
+                    Some(oid(THEIRS)),
+                )),
+            ),
+        ],
+        unreadable: Vec::new(),
+        live: Vec::new(),
+    }));
+    state
+}
+
+/// `u` on work a push already sent stops and asks, in three choices, and
+/// dispatches nothing — the design note's "no undo runs yet".
+#[test]
+fn u_after_push_asks_before_it_runs() {
+    let (next, commands) = press(&after_a_push(), plain('u'));
+    assert!(commands.is_empty(), "{commands:?}");
+    assert_eq!(next.operating, None);
+    let view = &next.confirm.as_ref().expect("the box opened").view;
+    assert_eq!(view.title.as_str(), "Undo after a push");
+    let said: Vec<&str> = view
+        .message
+        .iter()
+        .map(graft_term::SanitizedText::as_str)
+        .collect();
+    assert_eq!(
+        said,
+        [
+            "commit \"to push\" is on origin/main",
+            "undo works on your local branch only",
+            "Re-push old tip rewrites origin/main, which others may have already pulled",
+        ]
+    );
+    let choices: Vec<&str> = view
+        .choices
+        .iter()
+        .map(graft_term::SanitizedText::as_str)
+        .collect();
+    assert_eq!(choices, ["Cancel", "Undo locally", "Re-push old tip"]);
+    assert_eq!(view.selected(), 0, "the safe choice first (ADR-0038 §1)");
+}
+
+/// **ADR-0038 §4, condition 1.** The re-push is leased against the tracking
+/// tip the user last fetched, and the command it shows is
+/// `--force-with-lease=…` — never a bare force. Mutating the lease to `None`
+/// fails here, and `graft_ops`' `check_push` would then refuse the push
+/// outright (`Refusal::RepushNeedsLease`): `PushParams` has no bare force to
+/// reach for at all.
+#[test]
+fn the_repush_is_leased_and_never_a_bare_force() {
+    let after = crate::update::remote::undo_after_push(&after_a_push()).expect("a push to explain");
+    assert_eq!(
+        after.repush.lease,
+        Some(Lease {
+            expected: oid(THEIRS)
+        }),
+        "the lease guards the tip the box showed"
+    );
+    assert_eq!(
+        after.repush.source_commit,
+        Some(oid(OLD_TIP)),
+        "the old tip is what goes, not the branch head"
+    );
+    assert!(!after.repush.set_upstream, "a re-push sets nothing");
+
+    let command = crate::update::remote::undo_after_push_box(&after)
+        .view
+        .command
+        .as_str()
+        .to_owned();
+    assert_eq!(
+        command,
+        format!(
+            "git push --progress --force-with-lease=refs/heads/main:{THEIRS} origin {OLD_TIP}:refs/heads/main"
+        )
+    );
+    for bare in [" --force ", " --force=", " -f ", " --force\n"] {
+        assert!(!command.contains(bare), "a bare force in {command}");
+    }
+}
+
+/// **ADR-0038 §4, conditions 2 and 3.** `[ Re-push old tip ]` runs nothing:
+/// it opens the lease box, which is the confirm that touches the remote, and
+/// that box says what moves, that it rewrites history for everyone, and that
+/// the local branch is untouched.
+#[test]
+fn repush_opens_its_own_confirm_before_the_remote_moves() {
+    let (asked, _) = press(&after_a_push(), plain('u'));
+    // `→` twice: `Cancel` → `Undo locally` → `Re-push old tip`.
+    let (asked, _) = press(&asked, KeyPress::plain(KeyCode::Right));
+    let (asked, _) = press(&asked, KeyPress::plain(KeyCode::Right));
+    assert_eq!(
+        asked.confirm.as_ref().expect("still open").view.selected(),
+        2
+    );
+    let (next, commands) = press(&asked, KeyPress::plain(KeyCode::Enter));
+    assert!(commands.is_empty(), "nothing pushed yet: {commands:?}");
+    assert_eq!(next.operating, None);
+    let pending = next.confirm.as_ref().expect("the lease box opened");
+    assert_box(
+        &pending.view,
+        "Re-push old tip 1111111 → origin/main?",
+        &[
+            "origin/main 9f8e7d6 → 1111111 · refused if origin moved since your fetch (lease)",
+            "rewrites history for everyone who has 9f8e7d6",
+            "your local branch keeps every commit it has",
+        ],
+        &format!(
+            "git push --progress --force-with-lease=refs/heads/main:{THEIRS} origin {OLD_TIP}:refs/heads/main"
+        ),
+    );
+    assert_eq!(pending.view.choices[1].as_str(), "Re-push");
+    assert_eq!(pending.view.selected(), 0, "on Cancel, as every box is");
+
+    // And only that box's own `Enter` sends it.
+    let (moved, _) = press(&next, KeyPress::plain(KeyCode::Right));
+    let (pushed, commands) = press(&moved, KeyPress::plain(KeyCode::Enter));
+    let Some(id) = pushed.operating else {
+        panic!("the lease box's Enter pushed nothing: {commands:?}");
+    };
+    assert_eq!(
+        commands,
+        [Command::Operate(
+            id,
+            Box::new(Operation::Push(after_the_box_params()))
+        )]
+    );
+}
+
+/// The params `repush_opens_its_own_confirm_before_the_remote_moves` expects
+/// to reach the job runner.
+fn after_the_box_params() -> PushParams {
+    PushParams {
+        branch: "refs/heads/main".to_owned(),
+        remote: "origin".to_owned(),
+        remote_branch: "refs/heads/main".to_owned(),
+        set_upstream: false,
+        lease: Some(Lease {
+            expected: oid(THEIRS),
+        }),
+        source_commit: Some(oid(OLD_TIP)),
+    }
+}
+
+/// `[ Cancel ]` answers nothing, so the next `u` asks again. A box that went
+/// quiet after being dismissed would let the second `u` rewrite history the
+/// user had just declined to think about.
+#[test]
+fn u_after_push_cancel_asks_again() {
+    let (asked, _) = press(&after_a_push(), plain('u'));
+    assert!(asked.confirm.is_some());
+    let (cancelled, commands) = press(&asked, KeyPress::plain(KeyCode::Enter));
+    assert!(commands.is_empty(), "Cancel ran something: {commands:?}");
+    assert!(cancelled.confirm.is_none(), "the box closed");
+    assert_eq!(
+        cancelled.remote.undo_after_push_asked, None,
+        "cancelling is not an answer"
+    );
+
+    let (again, commands) = press(&cancelled, plain('u'));
+    assert!(commands.is_empty(), "{commands:?}");
+    assert_eq!(
+        again
+            .confirm
+            .as_ref()
+            .map(|pending| pending.view.title.as_str()),
+        Some("Undo after a push"),
+        "the second u asked nothing"
+    );
+}
+
+/// `[ Undo locally ]` answers it: the undo launches, and the same push does
+/// not stop the next `u` again.
+#[test]
+fn undo_locally_runs_the_undo_and_the_same_push_asks_once() {
+    let (asked, _) = press(&after_a_push(), plain('u'));
+    let (moved, _) = press(&asked, KeyPress::plain(KeyCode::Right));
+    let (undoing, commands) = press(&moved, KeyPress::plain(KeyCode::Enter));
+    let Some(id) = undoing.operating else {
+        panic!("[ Undo locally ] launched nothing: {commands:?}");
+    };
+    assert_eq!(commands, [Command::Undo(id, false)]);
+    assert_eq!(
+        undoing.remote.undo_after_push_asked,
+        Some(graft_core::journal::EntryId::new(2, [0; 10])),
+        "remembered against the push, not the entry undone"
+    );
+
+    // The flag is what silences the second ask; the journal is unchanged
+    // here, so this is the gate and nothing else.
+    let mut settled = undoing.clone();
+    settled.operating = None;
+    let (again, commands) = press(&settled, plain('u'));
+    assert!(again.confirm.is_none(), "it asked twice");
+    assert!(
+        matches!(commands.as_slice(), [Command::Undo(_, false)]),
+        "{commands:?}"
+    );
+}
+
+/// `U` never opens the box: a redo puts back something the user took back,
+/// so the remote is where it was when they last looked at it.
+#[test]
+fn capital_u_after_a_push_does_not_ask() {
+    let (next, commands) = press(&after_a_push(), plain('U'));
+    assert!(next.confirm.is_none());
+    assert!(
+        matches!(commands.as_slice(), [Command::Redo(_, false)]),
+        "{commands:?}"
+    );
+}
+
+/// An entry that never moved the branch was never sent by the push, so `u`
+/// on it runs straight away — the box is for work the remote has.
+#[test]
+fn an_entry_the_push_did_not_send_is_not_explained() {
+    let mut state = after_a_push();
+    let Loading::Ready(read) = &state.journal.entries else {
+        panic!("built Ready");
+    };
+    let mut entries = read.entries.clone();
+    entries[0] = entry(1, OperationKind::Stage, "stage src/a.rs", None);
+    state.journal.entries = Loading::Ready(Arc::new(crate::jobs::undo::JournalRead {
+        entries,
+        unreadable: Vec::new(),
+        live: Vec::new(),
+    }));
+    let (next, commands) = press(&state, plain('u'));
+    assert!(next.confirm.is_none(), "nothing to explain");
+    assert!(
+        matches!(commands.as_slice(), [Command::Undo(_, false)]),
+        "{commands:?}"
+    );
+}

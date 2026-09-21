@@ -95,11 +95,12 @@ pub(super) fn open_selected(next: &mut AppState) {
     open_for_history_row(next, row);
 }
 
-/// The menu's own keys, while it is open. It claims exactly four — `j`/`k`
+/// The menu's own keys, while it is open. It claims exactly five — `j`/`k`
 /// (and the arrows) move, `Enter` dispatches the selected action and closes,
-/// `Esc` closes without acting — and **nothing else**
+/// `Esc` and `.` close without acting — and **nothing else**
 /// (`docs/design/02-keymap.md` §2.1, "an overlay that needs only a cursor is
-/// not a modal pane").
+/// not a modal pane"). None of the five is a verb, so no verb letter is
+/// taken away from the panes underneath.
 ///
 /// Returning `true` means the key stops here. Every other key gets `false`:
 /// the menu closes and the key carries on down `keys::key_event` to mean what
@@ -134,7 +135,15 @@ pub(super) fn context_menu_key(
             next.context_menu = None;
             commands.extend(dispatch(next, row, &verbs, action));
         }
-        KeyCode::Escape => next.context_menu = None,
+        // `.` closes what `.` opened, exactly as `Esc` does. It is the
+        // doorway (ADR-0039), and §2.1 says a key that opens a place closes
+        // it again on the same key or `Esc`. `.` has to be named here rather
+        // than left to the fall-through below, because falling through
+        // reaches `keys::graph_key`, whose `.` reopens the menu that was
+        // just closed — so `.` could never shut it
+        // (m5-history-and-ghost-preview/13 left this unpinned as a spec
+        // call; ticket 15 is the ruling).
+        KeyCode::Escape | KeyCode::Char('.') => next.context_menu = None,
         _ => {
             next.context_menu = None;
             return false;
