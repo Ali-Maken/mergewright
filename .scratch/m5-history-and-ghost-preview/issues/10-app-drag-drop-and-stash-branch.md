@@ -11,7 +11,56 @@ Needs:
 - `ui-ghost-banner-conflict` — `NamePromptView`, `NamePrompt` widget, `name_prompt_area`, `FieldView`.
 - `hint-bar-redesign` — `HintContext`, `hints_for` (the `Dragging` variant is added here).
 
-## Scout first (Haiku/Sonnet `Explore`, ≤ 1 page) — `scout-app.md` §1, §2 first
+## THE SCOUT IS DONE — read `.scratch/m5-history-and-ghost-preview/scout-10-drag-drop.md`
+
+Do not re-run it. It answers every question below with file:line. Three of its
+findings change how you build this, and one decision has already been made for
+you.
+
+### Decision (conductor, 2026-09-21): one implementation, called by both
+
+The scout's blocking finding: **a badge's on-screen column range is not knowable
+outside `graph_screen` today.** The packing loop is `GraphScreen::draw_badges`
+(`render.rs:267-297`), a private method; `Columns` is `pub(super)`;
+`badges_width` gives only a total. And `update/geometry.rs` may not import the
+rendering crate — **a test greps for that** (`geometry.rs:1-5`).
+
+The obvious move is to hand-mirror the packing in `geometry.rs`, the way it
+already mirrors `detail_pane`'s split. **Do not do that.** Two copies of one
+layout rule, with nothing testing one against the other, is the exact shape that
+has cost this milestone three stale captions and a false tick. The existing
+`detail_pane` mirror is already a latent drift risk; a second one compounds it.
+
+**Build it as one pure function that both the renderer and the hit-test call.**
+`draw_badges` stops computing ranges and starts consuming them. Requirements:
+
+- **Pure and rendering-free** — no `ratatui` types in its signature or body, so
+  `update/geometry.rs` can call it without breaking the grep test. If the grep
+  test needs its rule restated (it forbids the rendering crate, not all of
+  `graft-ui`), restate it precisely rather than loosening it.
+- **Placement is yours**, using `codebase-design`, after reading
+  `ARCHITECTURE.md`. It must not break the crate rules —
+  `ARCHITECTURE.md:191`, `ui` never imports `git` or `ops`.
+- **A test that the renderer and the hit-test agree**, not two tests that each
+  assert their own half. Drawing a row and hit-testing every column of it must
+  name the same badge the renderer drew there.
+
+If you conclude a single implementation genuinely cannot be had, **stop and
+report with the reason** — do not quietly write the mirror.
+
+### Two more scout findings that shape the build
+
+- **`Drag(Left)` only reaches `update` when `next.detail.dragging` is already
+  true** (`mouse.rs:95-97`); otherwise it falls to `_ => {}` (`:102`). A badge
+  drag needs its own claimed state, on the same pattern as the divider's.
+- **With a context menu open, only `Down(Left|Right)` are read** (`:24-32`).
+  Since the drop opens a menu, drag events stop arriving at that moment — build
+  for that, do not fight it.
+- **`stash.selected` (cursor) and `entry.index` (`stash@{N}`) are different
+  fields** that coincide today only because rows are index-ordered
+  (`stash.rs:74-77`). Do not conflate them.
+
+## Original scout brief (done — kept for the record)
 
 - `crates/graft/src/update/mouse.rs` + `geometry.rs`: which mouse kinds reach `update` (`Down`/`Up`/`Drag`/`Moved`/wheel — `DetailState::dragging` proves `Down`/`Up`/`Drag` do), how a graph click maps `(column, row)` to an absolute row, how the divider drag is claimed and released, what `Bounds` gives.
 - `crates/graft-ui/src/graph_screen/layout.rs` (`Columns::compute`) and where badges are drawn: is the column range of each badge on a row knowable outside the widget today (the drag needs a hit-test)?
