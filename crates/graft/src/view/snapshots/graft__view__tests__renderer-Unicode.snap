@@ -6,4 +6,4 @@ expression: screen
 "●   Commit 5␛[31m                               63y  0505050"
 "●   Commit 4␛[31m                               63y  0404040"
 "●   Commit 3␛[31m                               63y  0303030"
-" ⏎ open  r rebase  c commit  . more  y  m  u  S  J  /  q  F2"
+" ⏎ open  b branch  r rebase  . more  t  c  y  m  u  S  J  / "

@@ -124,6 +124,15 @@ pub(super) fn visible_rows<'a>(
                     {
                         entry.line.paint = RowPaint::Dimmed;
                     }
+                    // The row a dragged badge is over, last: while a badge
+                    // is in the air the question on screen is "where would
+                    // this land", and the answer wins over the cursor's own
+                    // highlight and over Focus mode's fade. The cursor has
+                    // not moved and comes back the moment the badge is
+                    // dropped (m5-history-and-ghost-preview/10, §2.15).
+                    if crate::update::drag::drop_target(state) == Some(index) {
+                        entry.line.paint = RowPaint::Highlighted;
+                    }
                     entry
                 }),
         )

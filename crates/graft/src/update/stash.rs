@@ -215,9 +215,35 @@ fn shown_key(
         KeyCode::Char('d') => {
             request_drop(next);
         }
+        KeyCode::Char('b') => open_branch_prompt(next),
         _ => {}
     }
     true
+}
+
+/// `b`: name the branch `git stash branch` should make from the selected
+/// entry (`docs/design/02-keymap.md` §2.9). The prompt opens over the
+/// overlay; creating is [`super::name_prompt`]'s, and the result is a Ghost
+/// Preview like every other write that moves `HEAD`.
+///
+/// **`entry.index`, never `stash.selected`.** The two agree today only
+/// because the rows are listed in index order, and a list that ever filtered
+/// or re-sorted would make the cursor's position a different number from the
+/// `stash@{n}` the command needs.
+fn open_branch_prompt(next: &mut AppState) {
+    let Some((index, commit)) = next
+        .stash
+        .selected_entry()
+        .map(|entry| (entry.index, entry.commit))
+    else {
+        return;
+    };
+    // `false` here means a modal box already has the keyboard, in which case
+    // this key never reached the overlay at all.
+    let _opened: bool = super::name_prompt::open_name_prompt(
+        next,
+        super::name_prompt::NameKind::BranchFromStash { index, commit },
+    );
 }
 
 /// Which of the two "put it back" keys was pressed.

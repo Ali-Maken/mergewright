@@ -28,6 +28,7 @@ mod m3_walk;
 mod m4_walk;
 #[cfg(feature = "heavy-tests")]
 mod many_refs;
+mod name_and_drag;
 mod not_a_repo;
 mod piped_stdout;
 mod preview;

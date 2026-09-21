@@ -1,0 +1,72 @@
+# m5-ui-drop-menu-160x48.txt: drawn by `view::view` from a real
+# AppState over a real repository (`main` three commits, `feature` forked off
+# the first with two of its own, `feature` checked out), opened over the real
+# job pool, `feature`'s badge pressed, dragged onto `main`'s row and released
+# there — three real mouse events through `update`
+# (crates/graft/tests/it/name_and_drag.rs, capture_the_drop_menu_for_docs_shots).
+# A golden snapshot: that test fails if the frame drifts. Regenerate on
+# purpose with GRAFT_UPDATE_SHOTS=1. The terminal is ratatui's TestBackend, so
+# this is a character grid with no colour attributes in it — CLAUDE.md rule 5,
+# colour ships unverified.
+#
+# What right looks like:
+#  - A title row above the verbs reads `feature → main`, so the menu says what
+#    went where without the user having to remember the gesture.
+#  - Every verb names both branches, never `this` or `that`.
+#  - A verb that cannot run is dim and carries its reason after ` — `.
+#  - `Reset` names its mode after a comma (`, mixed` / `, hard`), never in
+#    parentheses: a trailing `(k)` is reserved for a live key.
+#  - The menu sits inside the graph pane rather than running off it, and
+#    covers whole columns of the graph (ADR-0040) — no half-covered column
+#    shows beside it.
+#  - The menu opens directly under `main`'s row — the row the badge landed
+#    on, which is still readable above it.
+#
+ graft /code/api  8 commits
+  ◆ ⓘ [◆ feature] finish the feature                                                                                                             GF now  8d6cd28
+  ●   start the feature                                                                                                                          GF 2m   52f3b96
+● │   [main] main moves again                                                                                                                    GF 3m   45fa51d
+ feature → main
+ Merge feature into main — check out main first
+ Rebase feature onto main
+ Reset feature to here, mixed
+ Reset feature to here, hard
+ Cherry-pick 45fa51d onto feature
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ . explain  ⏎ open  c commit  P push  p pull  f fetch  b branch  t tag  u undo  S stash  J journal  / search  q quit  F2  F3  x  +  j/k  space  1  F  H  y  M  O

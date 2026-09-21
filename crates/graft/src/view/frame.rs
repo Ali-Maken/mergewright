@@ -92,6 +92,7 @@ fn draw_journal(
     }
     draw_context_menu(state, frame, area, &session.theme);
     draw_confirm(state, frame, area, &session.theme, &[]);
+    draw_name_prompt(state, frame, area, session);
     draw_credential(state, frame, area, session);
     None
 }
@@ -115,6 +116,7 @@ fn draw_stash(session: &Session, state: &AppState, frame: &mut Frame, area: Rect
     }
     draw_context_menu(state, frame, area, &session.theme);
     draw_confirm(state, frame, area, &session.theme, &[]);
+    draw_name_prompt(state, frame, area, session);
     draw_credential(state, frame, area, session);
     None
 }
@@ -150,6 +152,7 @@ fn draw_map(session: &Session, state: &AppState, frame: &mut Frame, area: Rect) 
     };
     draw_context_menu(state, frame, area, &session.theme);
     draw_confirm(state, frame, area, &session.theme, &[]);
+    draw_name_prompt(state, frame, area, session);
     draw_credential(state, frame, area, session);
     graph
 }
@@ -253,6 +256,7 @@ pub fn view_with_graphics(
                 &session.theme,
                 &row_columns(session, state, &screen, area),
             );
+            draw_name_prompt(state, frame, area, session);
             draw_credential(state, frame, area, session);
             graph
         }
@@ -261,6 +265,7 @@ pub fn view_with_graphics(
             frame.render_widget(StatusScreen::new(&screen, &session.theme), area);
             // A fetch started from the graph can ask for a password while
             // the user is reading this screen: the question follows them.
+            draw_name_prompt(state, frame, area, session);
             draw_credential(state, frame, area, session);
             None
         }
@@ -711,7 +716,7 @@ fn clear_and_tint(frame: &mut Frame, clear: Rect, tint: Rect, theme: &Theme) {
 /// when the detail pane is closed, the graph half of the split when it is
 /// open. Pure geometry — the same split `render_graph_with_detail` draws
 /// into, asked again rather than remembered, so the two cannot drift.
-fn primary_pane_area(state: &AppState, area: Rect) -> Option<Rect> {
+pub(super) fn primary_pane_area(state: &AppState, area: Rect) -> Option<Rect> {
     if !state.detail.shown {
         return Some(area);
     }
@@ -875,6 +880,28 @@ fn draw_confirm(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme, 
 /// (`F3`'s override or the session's), the same rule `draw_map` and the
 /// graph screen use for their own `ascii` flags — a masked password must
 /// mask with `*` wherever the terminal cannot draw `•`.
+/// Draws the name prompt (`b`, `t`, stash `b`) over everything but git's
+/// own credential question — which opens by itself, at a moment nobody
+/// chose, and so has to be the one box on top.
+fn draw_name_prompt(state: &AppState, frame: &mut Frame, area: Rect, session: &Session) {
+    let Some(view) = super::name_prompt_view(state) else {
+        return;
+    };
+    let rect = graft_ui::name_prompt::name_prompt_area(area).intersection(area);
+    if rect.is_empty() {
+        return;
+    }
+    let theme = &session.theme;
+    // ADR-0040: clears rather than snapping, for the credential prompt's
+    // reason — it is modal, and the graph behind a box the user is typing
+    // into is decoration. Its own rows only, so the footer stays.
+    clear_and_tint(frame, full_width_band(area, rect), rect, theme);
+    frame.render_widget(
+        &graft_ui::name_prompt::NamePrompt { view: &view, theme },
+        rect,
+    );
+}
+
 fn draw_credential(state: &AppState, frame: &mut Frame, area: Rect, session: &Session) {
     let Some(view) = super::credential_view(state) else {
         return;

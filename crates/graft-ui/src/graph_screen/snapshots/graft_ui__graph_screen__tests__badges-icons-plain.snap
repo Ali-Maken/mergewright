@@ -6,4 +6,4 @@ expression: plain
 ●   [◆ main ⇄ origin] [feature/auth ↑2 ↓1] [origin/f… Commit 2                                           TE 2h   0202020
 ◇   [topic] Commit 1                                                                                     TE 2h   0101010
                                                                                                                         
- ⏎ open  r rebase  c commit  y sha  m merge  . more  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
+ ⏎ open  b branch  r rebase  t tag  . more  c  y  m  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O

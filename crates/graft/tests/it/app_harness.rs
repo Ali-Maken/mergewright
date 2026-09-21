@@ -155,10 +155,17 @@ impl App {
         column: u16,
         row: u16,
     ) -> AppState {
+        self.mouse(state, MouseKind::Down(button), column, row)
+    }
+
+    /// Any mouse event at a screen cell, through the real event the terminal
+    /// sends. The drag gesture needs `Drag` and `Up` as well as `Down`
+    /// (m5-history-and-ghost-preview/10).
+    pub fn mouse(&self, state: &AppState, kind: MouseKind, column: u16, row: u16) -> AppState {
         let (next, commands) = update(
             state,
             AppEvent::Core(Event::Mouse(MouseInput {
-                kind: MouseKind::Down(button),
+                kind,
                 column,
                 row,
                 modifiers: Modifiers::default(),

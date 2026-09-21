@@ -320,6 +320,11 @@ pub(crate) fn pane_hint_context(state: &AppState) -> HintContext {
 /// hint them. `<> resize` is not a context: `GraphView::detail_shown` carries
 /// it, for every context alike.
 fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
+    // A badge in the air first: while the gesture is running, the keys the
+    // cursor's row would offer are not the ones that end it.
+    if state.drag.is_some() {
+        return HintContext::Dragging;
+    }
     if state.on_changes_pane() {
         return HintContext::ChangesPane {
             unmerged: cursor_file_unmerged(state),

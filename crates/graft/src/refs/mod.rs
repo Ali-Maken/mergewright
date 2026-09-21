@@ -95,6 +95,22 @@ impl RefBadges {
             })
         })
     }
+
+    /// Every tag that has a badge, as its commit and shorthand (`v2.3.0`).
+    /// Order is not meaningful.
+    ///
+    /// What the name prompt's `exists` preview asks for a typed tag name —
+    /// the branch half already had [`RefBadges::branches`], and asking the
+    /// same source of truth for both keeps the two previews one rule
+    /// (m5-history-and-ghost-preview/10).
+    pub fn tags(&self) -> impl Iterator<Item = (Oid, &[u8])> {
+        self.by_commit.iter().flat_map(|(&id, labels)| {
+            labels.iter().filter_map(move |label| match label {
+                RefLabel::Tag(name) => Some((id, name.as_slice())),
+                _ => None,
+            })
+        })
+    }
 }
 
 /// One ref on a commit, before sanitising.

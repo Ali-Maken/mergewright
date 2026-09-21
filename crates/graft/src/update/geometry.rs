@@ -375,7 +375,10 @@ pub(super) fn context_menu_bounds(
 ) -> Option<Bounds> {
     let graph = context_menu_graph_bounds(state)?;
     let width = menu.width().min(graph.width.max(1));
-    let height = u16::try_from(menu.items.len())
+    // `rows()`, not `items.len()`: a drop menu carries a title row above
+    // its items, and a box a row short of its own contents would clip the
+    // last verb off the bottom.
+    let height = u16::try_from(menu.rows())
         .unwrap_or(u16::MAX)
         .min(graph.height.max(1));
     let anchor = if row == context_menu::WORKING_TREE_ROW {
@@ -403,4 +406,44 @@ pub(super) fn context_menu_bounds(
         width,
         height,
     })
+}
+
+/// The branch badge under a screen cell, as everything a drag needs to carry
+/// it: `None` off a badge, and `None` on any badge that is not a **local
+/// branch**.
+///
+/// The three it says no to, and why:
+///
+/// - a **remote-tracking** badge is not a ref this repository may move;
+///   `origin/main` changes when the remote does, and dragging it would
+///   promise a push it is not.
+/// - a **tag** is meant to stay where it was put — moving one is a separate,
+///   deliberate act, not a gesture.
+/// - a **stash** badge and the detached-`HEAD` mark name no branch at all.
+///
+/// The column half of this is `view::hit`, which asks `graft_ui` where the
+/// badges were drawn rather than working it out again here; the row half is
+/// [`graph_row_at`], the same one every other click goes through.
+pub(super) fn badge_at(state: &AppState, column: u16, row: u16) -> Option<super::drag::DragSource> {
+    let index = crate::view::badge_index_at(state, column, row, state.harness.clock.now_seconds())?;
+    let at = state
+        .history
+        .as_ref()?
+        .row_at(graph_row_at(state, row)?)
+        .map(|history_row| history_row.commit.id)?;
+    match state.refs.as_deref()?.on(at).get(index)? {
+        crate::refs::RefLabel::Branch { name, current, .. } => {
+            let short = String::from_utf8_lossy(name).into_owned();
+            Some(super::drag::DragSource {
+                name: format!("refs/heads/{short}"),
+                short,
+                at,
+                current: *current,
+            })
+        }
+        crate::refs::RefLabel::DetachedHead
+        | crate::refs::RefLabel::Remote(_)
+        | crate::refs::RefLabel::Tag(_)
+        | crate::refs::RefLabel::Stash(_) => None,
+    }
 }
