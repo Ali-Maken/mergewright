@@ -150,10 +150,22 @@ pub fn confirm_rows(view: &ConfirmView, width: u16) -> u16 {
 #[must_use]
 pub fn confirm_area(area: Rect, view: &ConfirmView) -> Rect {
     let width = area.width.min(64);
+    let x = area.x + area.width.saturating_sub(width) / 2;
+    confirm_area_at(area, view, x, width)
+}
+
+/// The same box at a horizontal span the caller chose rather than the
+/// centred one [`confirm_area`] computes: same vertical rule, height taken
+/// again at `width` because a wider box wraps its message into fewer lines.
+///
+/// This is what the layout site calls after snapping the box onto whole
+/// graph columns (ADR-0040). The widget learns a width, which is its own
+/// business; it never learns what a column is.
+#[must_use]
+pub fn confirm_area_at(area: Rect, view: &ConfirmView, x: u16, width: u16) -> Rect {
     let footer_row = u16::from(area.height > 1);
     let usable_height = area.height.saturating_sub(footer_row);
     let height = confirm_rows(view, width).min(usable_height);
-    let x = area.x + area.width.saturating_sub(width) / 2;
     let y = area.y + usable_height.saturating_sub(height) / 2;
     Rect {
         x,

@@ -1,21 +1,29 @@
 # docs/shots/m5-hints-ladder.txt — the hint bar's shrink ladder
-# (ADR-0039's third amendment, m5/24)
+# (ADR-0039, m5/24 and m5/28)
 #
 # What right looks like: the bar fills from the most relevant end. The
 # three most relevant hints keep their whole verbs; every hint after them
 # is drawn at its bare key until the whole context is on the bar, and only
 # then do the tail's keys start gaining verbs, left to right. A hint that
 # will not fit even at its bare key is dropped, and `. more` — the doorway
-# — is last and never dropped.
+# — is never dropped and **sits at the head of the bare keys**, which is
+# the end of the row when there are none.
 #
-# **The question this capture exists to answer, and only the user can:**
-# does a bare key read as *available*, or as *leftover*? A tail of naked
-# letters after three labelled hints can look like the row ran out of
-# budget rather than like an offer. The two variants at the bottom are two
-# ways of saying "deliberate"; the plain rows above them are what is
-# built today. If none of the three reads right, the answer is to drop the
-# bare-key rung and let the ladder stop at the short rung — that is a
-# smaller change than any of these, not a bigger one.
+# The question these rows were captured to answer is answered: a tail of
+# naked letters after three labelled hints read as *leftover*, and the
+# user chose variant B, which is what is built here. Every labelled item
+# is now contiguous and the last of them announces the menu, so everything
+# after `. more` reads as keys the menu will spell out — which is what
+# they are. That resolves `space` and `j/k` in the tail too: the region is
+# labelled even though its members are not. It cost no cells and no glyph.
+# The A/B comparison that used to sit at the bottom of this file is gone
+# with the question.
+#
+# The bottom of the ladder, which these widths are all far above:
+# floor → `. more` → `.` → nothing. The bar never draws a fragment of
+# itself at any width. The narrowest bar anything reachable actually has
+# is 48 cells and the tightest context's floor fits in 38, so nothing
+# below is near it (ADR-0039).
 #
 # How this was made: `hints_for(context, divider, columns)` rendered by
 # `hints_text`, which is exactly the two calls `graph_screen::footer` makes
@@ -38,19 +46,19 @@
 
 --- the cursor is on the uncommitted-changes row
 [······························ 80 cells of bar ·······························]
- ⏎ changes  c commit  S stash  p  P  f  u  J  /  j/k  q  F2  F3  x  +  . more
+ ⏎ changes  c commit  S stash  . more  p  P  f  u  J  /  j/k  q  F2  F3  x  +
 
 --- the cursor is on the tip, which carries the current branch's badge
 [······························ 80 cells of bar ·······························]
- ⏎ open  c commit  P push  p  f  u  S  J  /  q  F2  F3  x  +  j/k  space  . more
+ ⏎ open  c commit  P push  . more  p  f  u  S  J  /  q  F2  F3  x  +  j/k  space
 
 --- the cursor is on another branch's tip
 [······························ 80 cells of bar ·······························]
- m merge  r rebase  ⏎ open  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k  . more
+ m merge  r rebase  ⏎ open  . more  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k
 
 --- the cursor is on an ordinary commit row
 [······························ 80 cells of bar ·······························]
- ⏎ open  r rebase  c commit  y  m  u  S  J  /  q  F2  F3  x  +  j/k  . more
+ ⏎ open  r rebase  c commit  . more  y  m  u  S  J  /  q  F2  F3  x  +  j/k
 
 --- the changes pane has focus, the divider draggable
 [······························ 80 cells of bar ·······························]
@@ -64,19 +72,19 @@
 
 --- the cursor is on the uncommitted-changes row
 [·················································· 120 cells of bar ··················································]
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u  J  /  j/k  q  F2  F3  x  +  space  1  F  H  y  M  O  . more
+ ⏎ changes  c commit  S stash  p pull  P push  f fetch  . more  u  J  /  j/k  q  F2  F3  x  +  space  1  F  H  y  M  O
 
 --- the cursor is on the tip, which carries the current branch's badge
 [·················································· 120 cells of bar ··················································]
- ⏎ open  c commit  P push  p pull  f fetch  u undo  S stash  J  /  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  . more
+ ⏎ open  c commit  P push  p pull  f fetch  u undo  S stash  . more  J  /  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O
 
 --- the cursor is on another branch's tip
 [·················································· 120 cells of bar ··················································]
- m merge  r rebase  ⏎ open  P push  c commit  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  . more
+ m merge  r rebase  ⏎ open  P push  c commit  . more  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O
 
 --- the cursor is on an ordinary commit row
 [·················································· 120 cells of bar ··················································]
- ⏎ open  r rebase  c commit  y sha  m merge  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  . more
+ ⏎ open  r rebase  c commit  y sha  m merge  . more  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
 
 --- the changes pane has focus, the divider draggable
 [·················································· 120 cells of bar ··················································]
@@ -90,194 +98,25 @@
 
 --- the cursor is on the uncommitted-changes row
 [······································································ 160 cells of bar ······································································]
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  F3 rend  x  +  space  1  F  H  y  M  O  . more
+ ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  F3 rend  . more  x  +  space  1  F  H  y  M  O
 
 --- the cursor is on the tip, which carries the current branch's badge
 [······································································ 160 cells of bar ······································································]
- ⏎ open  c commit  P push  p pull  f fetch  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x  +  j/k  space  1  F  H  y  M  O  . more
+ ⏎ open  c commit  P push  p pull  f fetch  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  . more  x  +  j/k  space  1  F  H  y  M  O
 
 --- the cursor is on another branch's tip
 [······································································ 160 cells of bar ······································································]
- m merge  r rebase  ⏎ open  P push  c commit  p pull  f fetch  u undo  S stash  / search  q quit  F2 status  F3  x  +  j/k  space  1  F  H  J  y  M  O  . more
+ m merge  r rebase  ⏎ open  P push  c commit  p pull  f fetch  u undo  S stash  / search  q quit  F2 status  . more  F3  x  +  j/k  space  1  F  H  J  y  M  O
 
 --- the cursor is on an ordinary commit row
 [······································································ 160 cells of bar ······································································]
- ⏎ open  r rebase  c commit  y sha  m merge  u undo  S stash  J journal  / search  q quit  F2 status  F3 rend  x  +  j/k  space  1  F  H  f  p  P  M  O  . more
+ ⏎ open  r rebase  c commit  y sha  m merge  u undo  S stash  J journal  / search  q quit  F2 status  F3 rend  . more  x  +  j/k  space  1  F  H  f  p  P  M  O
 
 --- the changes pane has focus, the divider draggable
 [······································································ 160 cells of bar ······································································]
  space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
 
 --- the undo journal browser has focus
-[······································································ 160 cells of bar ······································································]
- ⏎ revert  esc close  . more
-
-=== variant A — a `·` between the labelled hints and the bare keys ===
-#
-# What it is saying: everything left of the dot is a verb you can read;
-# everything right of it is a key that works, named but not spelled out.
-# The glyph is not new — `fit_status_line` already separates a sentence
-# from its keys with ` · ` in the footer's other slot, so the bar borrows
-# a mark the footer already owns rather than inventing one.
-#
-# It costs three cells, and the capture pays them honestly: the bar below
-# was fitted into three fewer columns, so where you see one fewer key than
-# the plain row above, that is the dot's price.
-
---- the cursor is on the uncommitted-changes row, 80 cells
-[······························ 80 cells of bar ·······························]
- ⏎ changes  c commit  S stash  ·  p  P  f  u  J  /  j/k  q  F2  F3  x  +  . more
-
---- the cursor is on the tip, which carries the current branch's badge, 80 cells
-[······························ 80 cells of bar ·······························]
- ⏎ open  c commit  P push  ·  p  f  u  S  J  /  q  F2  F3  x  +  j/k  . more
-
---- the cursor is on another branch's tip, 80 cells
-[······························ 80 cells of bar ·······························]
- m merge  r rebase  ⏎ open  ·  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k  . more
-
---- the cursor is on an ordinary commit row, 80 cells
-[······························ 80 cells of bar ·······························]
- ⏎ open  r rebase  c commit  ·  y  m  u  S  J  /  q  F2  F3  x  +  j/k  . more
-
---- the changes pane has focus, the divider draggable, 80 cells
-[······························ 80 cells of bar ·······························]
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
-
---- the undo journal browser has focus, 80 cells
-[······························ 80 cells of bar ·······························]
- ⏎ revert  esc close  . more
-
---- the cursor is on the uncommitted-changes row, 120 cells
-[·················································· 120 cells of bar ··················································]
- ⏎ changes  c commit  S stash  p pull  P push  ·  f  u  J  /  j/k  q  F2  F3  x  +  space  1  F  H  y  M  O  . more
-
---- the cursor is on the tip, which carries the current branch's badge, 120 cells
-[·················································· 120 cells of bar ··················································]
- ⏎ open  c commit  P push  p pull  f fetch  u undo  ·  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O  . more
-
---- the cursor is on another branch's tip, 120 cells
-[·················································· 120 cells of bar ··················································]
- m merge  r rebase  ⏎ open  P push  c commit  ·  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O  . more
-
---- the cursor is on an ordinary commit row, 120 cells
-[·················································· 120 cells of bar ··················································]
- ⏎ open  r rebase  c commit  y sha  m merge  ·  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  . more
-
---- the changes pane has focus, the divider draggable, 120 cells
-[·················································· 120 cells of bar ··················································]
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
-
---- the undo journal browser has focus, 120 cells
-[·················································· 120 cells of bar ··················································]
- ⏎ revert  esc close  . more
-
---- the cursor is on the uncommitted-changes row, 160 cells
-[······································································ 160 cells of bar ······································································]
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  ·  F3  x  +  space  1  F  H  y  M  O  . more
-
---- the cursor is on the tip, which carries the current branch's badge, 160 cells
-[······································································ 160 cells of bar ······································································]
- ⏎ open  c commit  P push  p pull  f fetch  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  ·  x  +  j/k  space  1  F  H  y  M  O  . more
-
---- the cursor is on another branch's tip, 160 cells
-[······································································ 160 cells of bar ······································································]
- m merge  r rebase  ⏎ open  P push  c commit  p pull  f fetch  u undo  S stash  / search  q quit  F2 stat  ·  F3  x  +  j/k  space  1  F  H  J  y  M  O  . more
-
---- the cursor is on an ordinary commit row, 160 cells
-[······································································ 160 cells of bar ······································································]
- ⏎ open  r rebase  c commit  y sha  m merge  u undo  S stash  J journal  / search  q quit  F2 status  ·  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  . more
-
---- the changes pane has focus, the divider draggable, 160 cells
-[······································································ 160 cells of bar ······································································]
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
-
---- the undo journal browser has focus, 160 cells
-[······································································ 160 cells of bar ······································································]
- ⏎ revert  esc close  . more
-
-=== variant B — the doorway leads the tail ===
-#
-# No new glyph and not one cell more: `. more` moves from the end of the
-# row to the front of the bare keys. The row then reads as three
-# sentences — here is what the cursor does, here is `.` for the rest, and
-# here are the keys `.` will spell out for you. The tail stops being what
-# is left over and becomes a preview of the menu.
-#
-# What it costs, and why it is a proposal rather than the build: `. more`
-# is no longer the last thing on the row, and three `graft` tests plus
-# every hint capture's caption pin `ends_with(". more")` today. Choosing
-# this means changing that promise deliberately, in one place.
-
---- the cursor is on the uncommitted-changes row, 80 cells
-[······························ 80 cells of bar ·······························]
- ⏎ changes  c commit  S stash  . more  p  P  f  u  J  /  j/k  q  F2  F3  x  +
-
---- the cursor is on the tip, which carries the current branch's badge, 80 cells
-[······························ 80 cells of bar ·······························]
- ⏎ open  c commit  P push  . more  p  f  u  S  J  /  q  F2  F3  x  +  j/k  space
-
---- the cursor is on another branch's tip, 80 cells
-[······························ 80 cells of bar ·······························]
- m merge  r rebase  ⏎ open  . more  P  c  p  f  u  S  /  q  F2  F3  x  +  j/k
-
---- the cursor is on an ordinary commit row, 80 cells
-[······························ 80 cells of bar ·······························]
- ⏎ open  r rebase  c commit  . more  y  m  u  S  J  /  q  F2  F3  x  +  j/k
-
---- the changes pane has focus, the divider draggable, 80 cells
-[······························ 80 cells of bar ·······························]
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
-
---- the undo journal browser has focus, 80 cells
-[······························ 80 cells of bar ·······························]
- ⏎ revert  esc close  . more
-
---- the cursor is on the uncommitted-changes row, 120 cells
-[·················································· 120 cells of bar ··················································]
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  . more  u  J  /  j/k  q  F2  F3  x  +  space  1  F  H  y  M  O
-
---- the cursor is on the tip, which carries the current branch's badge, 120 cells
-[·················································· 120 cells of bar ··················································]
- ⏎ open  c commit  P push  p pull  f fetch  u undo  S stash  . more  J  /  q  F2  F3  x  +  j/k  space  1  F  H  y  M  O
-
---- the cursor is on another branch's tip, 120 cells
-[·················································· 120 cells of bar ··················································]
- m merge  r rebase  ⏎ open  P push  c commit  . more  p  f  u  S  /  q  F2  F3  x  +  j/k  space  1  F  H  J  y  M  O
-
---- the cursor is on an ordinary commit row, 120 cells
-[·················································· 120 cells of bar ··················································]
- ⏎ open  r rebase  c commit  y sha  m merge  . more  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O
-
---- the changes pane has focus, the divider draggable, 120 cells
-[·················································· 120 cells of bar ··················································]
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
-
---- the undo journal browser has focus, 120 cells
-[·················································· 120 cells of bar ··················································]
- ⏎ revert  esc close  . more
-
---- the cursor is on the uncommitted-changes row, 160 cells
-[······································································ 160 cells of bar ······································································]
- ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  F3 rend  . more  x  +  space  1  F  H  y  M  O
-
---- the cursor is on the tip, which carries the current branch's badge, 160 cells
-[······································································ 160 cells of bar ······································································]
- ⏎ open  c commit  P push  p pull  f fetch  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  . more  x  +  j/k  space  1  F  H  y  M  O
-
---- the cursor is on another branch's tip, 160 cells
-[······································································ 160 cells of bar ······································································]
- m merge  r rebase  ⏎ open  P push  c commit  p pull  f fetch  u undo  S stash  / search  q quit  F2 status  . more  F3  x  +  j/k  space  1  F  H  J  y  M  O
-
---- the cursor is on an ordinary commit row, 160 cells
-[······································································ 160 cells of bar ······································································]
- ⏎ open  r rebase  c commit  y sha  m merge  u undo  S stash  J journal  / search  q quit  F2 status  F3 rend  . more  x  +  j/k  space  1  F  H  f  p  P  M  O
-
---- the changes pane has focus, the divider draggable, 160 cells
-[······································································ 160 cells of bar ······································································]
- space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
-
---- the undo journal browser has focus, 160 cells
 [······································································ 160 cells of bar ······································································]
  ⏎ revert  esc close  . more
 
@@ -299,15 +138,15 @@
 
 --- the undo journal browser has focus, 16 cells
 [ 16 cells of bar ]
- ⏎ rev  esc close  . more
+ . more
 
 --- the undo journal browser has focus, 20 cells
 [ 20 cells of bar ·]
- ⏎ rev  esc close  . more
+ . more
 
 --- the undo journal browser has focus, 24 cells
 [·· 24 cells of bar ···]
- ⏎ rev  esc close  . more
+ . more
 
 --- the undo journal browser has focus, 27 cells
 [···· 27 cells of bar ····]

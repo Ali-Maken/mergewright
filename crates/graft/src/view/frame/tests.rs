@@ -169,7 +169,7 @@ fn the_confirm_box_never_shows_what_was_under_it() {
             height: rows,
         };
         let drawn = over_a_dirty_screen(columns, rows, |frame, area| {
-            draw_confirm(&state, frame, area, &session.theme);
+            draw_confirm(&state, frame, area, &session.theme, &[]);
         });
         let rect = graft_ui::confirm::confirm_area(area, view).intersection(area);
         nothing_shows_through(&drawn, rect, &format!("confirm at {columns}x{rows}"));

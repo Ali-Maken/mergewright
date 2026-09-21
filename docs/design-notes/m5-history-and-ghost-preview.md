@@ -179,7 +179,7 @@ pub fn fit_status_line(reason: &str, keys: &str, columns: u16) -> String;  // cu
 
 ## New UI (captures carry no colour: every fact is text)
 
-**Hint bar** — `graph_screen` footer, rebuilt from `hints_for`. Priority lists (first 3 at <100, 6 at 100–159, all at 160+; `. more` always last; `? help`/`⌃P` absent until M8 binds them):
+**Hint bar** — `graph_screen` footer, rebuilt from `hints_for`. Priority lists (the width tiers here were replaced by the shrink ladder, ADR-0039; `. more` is never dropped and since m5/28 leads the bare keys rather than ending the row; `? help`/`⌃P` absent until M8 binds them):
 ```
 Uncommitted row : ⏎ changes  c commit  S stash  | p pull  P push  f fetch  | u undo  J journal  / search  j/k move
 Branch row      : m merge  r rebase  ⏎ open     | b branch  t tag  P push   | c commit  p pull  f fetch  u undo  S stash  / search

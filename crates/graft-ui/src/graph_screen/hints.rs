@@ -419,21 +419,82 @@ fn fit_list(list: &[Hint], trailer: Option<Hint>, columns: u16) -> Vec<Hint> {
         .iter()
         .map(|hint| hint.at(hint.floor_rung()))
         .collect();
+    if !fits(&drawn, trailer, room) {
+        return below_the_floor(list, trailer, room);
+    }
     for step in ladder(list, floor) {
         let mut candidate = drawn.clone();
         match step {
             Step::Add => candidate.push(list[candidate.len()].at(Rung::Key)),
             Step::Raise(index, rung) => candidate[index] = candidate[index].at(rung),
         }
-        let mut measured = candidate.clone();
-        measured.extend(trailer);
-        if text_width(&hints_text(&measured)) > room {
+        if !fits(&candidate, trailer, room) {
             break;
         }
         drawn = candidate;
     }
-    drawn.extend(trailer);
+    place_doorway(drawn, trailer)
+}
+
+/// Does `drawn` plus `trailer` fit in `room`?
+///
+/// The trailer is measured on the end wherever [`place_doorway`] will put
+/// it: [`hints_text`] separates every pair of hints the same way, so moving
+/// one hint within the row changes no cell count.
+fn fits(drawn: &[Hint], trailer: Option<Hint>, room: usize) -> bool {
+    let mut measured = drawn.to_vec();
+    measured.extend(trailer);
+    text_width(&hints_text(&measured)) <= room
+}
+
+/// **The doorway sits at the head of the bare keys — which is the end of
+/// the row when there are none.**
+///
+/// One sentence, two layouts, no special case. On a graph row context the
+/// bar ends in a run of bare keys, and `. more` leads it: everything after
+/// the doorway then reads as *keys the menu will spell out*, which is what
+/// the run is. In the changes pane and the journal browser nothing is drawn
+/// at its bare key, so the same rule leaves `. more` last, where it always
+/// was.
+///
+/// The doorway's promise is that it is **reliable** — never dropped, never
+/// clipped — which is not the same as being last (ADR-0039).
+fn place_doorway(mut drawn: Vec<Hint>, trailer: Option<Hint>) -> Vec<Hint> {
+    if let Some(trailer) = trailer {
+        let head_of_the_bare_keys = drawn
+            .iter()
+            .position(|hint| hint.rung == Rung::Key)
+            .unwrap_or(drawn.len());
+        drawn.insert(head_of_the_bare_keys, trailer);
+    }
     drawn
+}
+
+/// Below the floor: what the bar draws when it cannot draw its floor.
+///
+/// ADR-0039 mandates a floor and a floor that cannot be met is not a floor,
+/// so the sequence is stated to the bottom: floor, then the doorway whole,
+/// then the doorway's bare key, then nothing. **The bar never draws a
+/// fragment of itself at any width** — a clipped `. mo` on the one element
+/// meant to be reliable is worse than an empty bar, and worse than a
+/// squeeze, because nobody chose where it cut.
+///
+/// The doorway is the trailer where there is one, and otherwise a leading
+/// `.` the caller put into the list itself ([`HintContext::Marked`]'s
+/// `. explain`). A context with neither is modal and swallows `.` — the
+/// focused banner — so it has no doorway and goes straight to nothing.
+fn below_the_floor(list: &[Hint], trailer: Option<Hint>, room: usize) -> Vec<Hint> {
+    let doorway = trailer.or_else(|| list.first().copied().filter(|hint| hint.key == "."));
+    let Some(doorway) = doorway else {
+        return Vec::new();
+    };
+    for rung in doorway.rungs().iter().rev() {
+        let row = vec![doorway.at(*rung)];
+        if text_width(&hints_text(&row)) <= room {
+            return row;
+        }
+    }
+    Vec::new()
 }
 
 fn text_width(text: &str) -> usize {

@@ -122,6 +122,27 @@ impl<'a> GraphScreen<'a> {
         }
     }
 
+    /// Every x at which one row column ends and the next begins in `area`,
+    /// ascending and deduped, `area`'s own two edges included.
+    ///
+    /// The geometry the rows are actually drawn to ([`Columns::compute`]),
+    /// handed out as plain data. A caller laying an overlay over the graph
+    /// needs it to keep that overlay's edges out of the middle of a column
+    /// (ADR-0040); it is given as numbers rather than as a "where should
+    /// this box go" call so that the overlay widgets stay ignorant of the
+    /// graph — see [`snap_to_columns`], which is the whole of the rule and
+    /// knows nothing about either.
+    ///
+    /// Empty when `area` is, which reads as "no columns here to split".
+    #[must_use]
+    pub fn column_boundaries(&self, area: Rect) -> Vec<u16> {
+        if area.is_empty() {
+            return Vec::new();
+        }
+        let (body, rows, applied) = self.body_layout(area);
+        Columns::compute(body, graph_width(body, rows, applied.as_ref())).boundaries(body)
+    }
+
     /// The rows' rectangle, the rows that fit in it, and the fold they are
     /// drawn through (`None` while expanded).
     pub(super) fn body_layout(&self, area: Rect) -> (Rect, &[GraphEntry<'a>], Option<Fold>) {
@@ -422,4 +443,65 @@ impl Columns {
             sha_width,
         }
     }
+
+    /// Every x where one column ends and the next begins, ascending and
+    /// deduped, with `area`'s own edges at each end.
+    ///
+    /// The trailing columns are laid out contiguously right to left, so one
+    /// column's end is the next one's start and naming the starts is enough;
+    /// the subject's end is named separately because [`SUBJECT_GAP`] sits
+    /// between it and the author chip, and that gap is a region of its own
+    /// that an overlay may legitimately stop inside. A column that took no
+    /// width (the author chip below [`AUTHOR_BREAKPOINT`]) contributes a
+    /// boundary equal to its neighbour's and the dedup drops it.
+    fn boundaries(&self, area: Rect) -> Vec<u16> {
+        let mut xs = vec![
+            area.x,
+            self.marker_x,
+            self.subject_x,
+            self.subject_x.saturating_add(self.subject_width),
+            self.author_x,
+            self.when_x,
+            self.sha_x,
+            area.right(),
+        ];
+        xs.retain(|x| *x >= area.x && *x <= area.right());
+        xs.sort_unstable();
+        xs.dedup();
+        xs
+    }
+}
+
+/// `rect` grown outward until both of its vertical edges sit on a boundary
+/// in `boundaries`, so every column it touches is covered whole and none of
+/// them is split (ADR-0040).
+///
+/// Outward, never inward: reaching a boundary by shrinking would cut the
+/// box's own content, which trades a legible fragment beside the box for an
+/// illegible one inside it. `None` when no such rectangle fits inside
+/// `bounds` — the caller then has a box that cannot cover, and ADR-0040
+/// says such a box clears the band it stands on instead of splitting it.
+///
+/// Pure geometry: it knows nothing about the graph and nothing about the
+/// box. Both halves arrive as numbers, which is what keeps the rule at the
+/// layout site rather than inside either widget.
+///
+/// An empty `boundaries` returns `rect` unchanged — a screen with no row
+/// columns has nothing to split.
+#[must_use]
+pub fn snap_to_columns(rect: Rect, boundaries: &[u16], bounds: Rect) -> Option<Rect> {
+    if rect.is_empty() || boundaries.is_empty() {
+        return Some(rect);
+    }
+    let right = rect.x.saturating_add(rect.width);
+    let left = boundaries.iter().copied().filter(|x| *x <= rect.x).max()?;
+    let snapped = boundaries.iter().copied().filter(|x| *x >= right).min()?;
+    if left < bounds.x || snapped > bounds.right() {
+        return None;
+    }
+    Some(Rect {
+        x: left,
+        width: snapped.saturating_sub(left),
+        ..rect
+    })
 }

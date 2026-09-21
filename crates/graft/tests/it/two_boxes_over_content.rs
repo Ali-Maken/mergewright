@@ -1,14 +1,15 @@
 //! The confirm box and the credential prompt photographed **over real
-//! content** (m5-history-and-ghost-preview/26).
+//! content** (m5-history-and-ghost-preview/26, retaken by 28).
 //!
-//! The question these captures exist to answer is the user's, open since
-//! ticket 13: a bordered box has an explicit edge, so whatever survives
-//! beside it reads as background — *is that surviving content aligned and
-//! legible, or fragmentary?* The captures we had could not answer it.
-//! `docs/shots/m5-ui-confirm.txt` draws the box on an empty screen, and the
-//! credential capture stood on a three-commit graph with most of the frame
-//! blank. Neither widget is changed here: whether either one should clear
-//! the band it stands on is the user's call, made by eye, from these files.
+//! The question these captures were built to answer was the user's, open
+//! since ticket 13: a bordered box has an explicit edge, so whatever
+//! survives beside it reads as background — *is that surviving content
+//! aligned and legible, or fragmentary?* He answered it from the 80x24 pair
+//! and the answer is **ADR-0040**: a non-clearing box covers whole columns
+//! or it clears. So these are no longer pictures of an open question. They
+//! are pictures of the decided behaviour, and the writer asserts it before
+//! writing: the confirm box snaps onto column boundaries and keeps the
+//! graph beside it, the credential prompt clears the band it stands on.
 //!
 //! Every frame is drawn from a real `AppState` over a real repository and a
 //! real `file://` remote, at a fixed clock, with the scratch path shortened
@@ -147,9 +148,9 @@ fn shot(app: &App, state: &AppState, columns: u16, rows: u16, scratch: &Path) ->
 }
 
 /// How much of the frame is not the box: the rows that still carry graph
-/// text outside the box's own columns. A capture with nothing behind the
-/// box is the capture this ticket exists to replace, so the writer refuses
-/// to produce one.
+/// text outside the box's own columns. Both boxes are judged by this one
+/// number, in opposite directions (ADR-0040) — the confirm box must leave
+/// rows standing beside it, the credential prompt must leave none.
 fn rows_with_content_beside_the_box(drawn: &[String]) -> usize {
     drawn
         .iter()
@@ -215,7 +216,7 @@ fn capture_two_boxes_over_real_content_for_docs_shots() {
         section(&mut out, "`P`: the push confirm, on the graph", &push_box);
         write_shot(&format!("m5-ui-confirm-over-graph-{label}.txt"), &out);
 
-        let mut out = credential_header(label, columns, rows, &what_survives(&credential_box));
+        let mut out = credential_header(label, columns, rows);
         section(
             &mut out,
             "git's password question, over the push it belongs to",
@@ -226,7 +227,7 @@ fn capture_two_boxes_over_real_content_for_docs_shots() {
 }
 
 /// The two frames at one size, each checked against what the capture is for
-/// before it is written: real history behind the box, content surviving
+/// before it is written: real history behind the box, ADR-0040's outcome
 /// beside it, and no plaintext anywhere.
 fn boxes_at(label: &str, columns: u16, rows: u16) -> (Vec<String>, Vec<String>) {
     let remote = one_commit_to_push();
@@ -278,9 +279,8 @@ fn boxes_at(label: &str, columns: u16, rows: u16) -> (Vec<String>, Vec<String>) 
 }
 
 /// What the capture is for, asserted before it is written: real history
-/// behind each box, content surviving beside it (a blank screen is the
-/// capture this ticket replaces), no plaintext anywhere, and the masked
-/// field at its fixed width (ADR-0038 §2).
+/// behind each box, ADR-0040's opposite outcomes beside them, no plaintext
+/// anywhere, and the masked field at its fixed width (ADR-0038 §2).
 fn check(label: &str, push_box: &[String], credential_box: &[String]) {
     for (what, drawn) in [
         ("the push confirm", push_box),
@@ -292,15 +292,34 @@ fn check(label: &str, push_box: &[String], credential_box: &[String]) {
             "{what} at {label} has no history behind it:\n{body}"
         );
         assert!(
-            rows_with_content_beside_the_box(drawn) >= 3,
-            "{what} at {label} has nothing surviving beside it, which is \
-             the capture this ticket replaces:\n{body}"
-        );
-        assert!(
             !body.contains(TYPED),
             "the typed password reached a capture: {what} at {label}"
         );
     }
+    // ADR-0040, the confirm box: it does not clear, because the rows beside
+    // it are the graph the user is about to act on.
+    assert!(
+        rows_with_content_beside_the_box(push_box) >= 3,
+        "the push confirm at {label} has nothing surviving beside it, and \
+         ADR-0040 says it keeps the graph:\n{}",
+        push_box.join("\n")
+    );
+    // ADR-0040, the credential prompt: it clears its band, full width, at
+    // every width — and the band only, so the footer below it stands.
+    assert_eq!(
+        rows_with_content_beside_the_box(credential_box),
+        0,
+        "the credential prompt at {label} left content in the band it \
+         clears (ADR-0040):\n{}",
+        credential_box.join("\n")
+    );
+    assert!(
+        credential_box
+            .last()
+            .is_some_and(|footer| !footer.trim().is_empty()),
+        "the credential prompt at {label} cleared the footer too; ADR-0040 \
+         clears the band, not the screen"
+    );
     assert_eq!(
         credential_box
             .join("\n")
@@ -330,17 +349,18 @@ fn confirm_header(label: &str, columns: u16, rows: u16, survives: &(String, Stri
          # the frame is drawn, so the header is laid out against the width a\n\
          # real checkout takes and the ages never move.\n\
          #\n\
-         # **The question this capture exists to answer** (the user's, open\n\
-         # since ticket 13): the box has a border, so whatever survives beside\n\
-         # it reads as background rather than as part of the box. **Is the\n\
-         # surviving content beside the box aligned and legible, or\n\
-         # fragmentary?**\n\
+         # **What right looks like here** (ADR-0040): the box does **not**\n\
+         # clear its band \u{2014} the rows beside it are the graph you are about to\n\
+         # act on, and seeing them is M5's promise. Instead both of its edges\n\
+         # sit on a boundary between two row columns, so every column that\n\
+         # survives beside it survives **whole**. No clipped subject, no\n\
+         # four-character tail of a SHA. The box's content is never shrunk to\n\
+         # reach a boundary; if no boundary fitted, it would clear instead.\n\
          #\n\
-         # Neither box was changed to take this picture. Nothing is\n\
-         # band-cleared, nothing is re-centred: the box draws its own\n\
-         # rectangle and the graph keeps every cell outside it. That is the\n\
-         # state the decision is about \u{2014} whether either box should clear the\n\
-         # band it stands on is yours to make, by eye, from this file.\n\
+         # The snap is computed where the screen is laid out\n\
+         # (`graft::view::frame`, from `GraphScreen::column_boundaries`), not\n\
+         # inside the widget \u{2014} ADR-0040 clause 3, so the box stays a box and\n\
+         # knows nothing about the graph.\n\
          #\n\
          # What is behind it: 200 commits of ordinary history, the tip one\n\
          # commit ahead of `origin/main`, with the graph filling the rows\n\
@@ -362,8 +382,7 @@ fn confirm_header(label: &str, columns: u16, rows: u16, survives: &(String, Stri
 }
 
 /// The caption for the credential captures.
-fn credential_header(label: &str, columns: u16, rows: u16, survives: &(String, String)) -> String {
-    let (left, right) = survives;
+fn credential_header(label: &str, columns: u16, rows: u16) -> String {
     format!(
         "# m5-ui-credential-over-graph-{label}.txt: {columns}x{rows}, drawn by\n\
          # `view::view` from a real AppState \u{2014} the same repository and the\n\
@@ -379,16 +398,24 @@ fn credential_header(label: &str, columns: u16, rows: u16, survives: &(String, S
          # changed every run could not be diffed. Not a pty capture \u{2014} no\n\
          # colour attributes, CLAUDE.md rule 5.\n\
          #\n\
-         # **The same question, for the other box**: is the surviving content\n\
-         # beside the prompt aligned and legible, or fragmentary? Your stated\n\
-         # expectation is the opposite of the confirm box's \u{2014} *nothing there\n\
-         # needs to stay visible* \u{2014} so what this file has to show is what is\n\
-         # in fact still visible, clearly enough to judge. The prompt was not\n\
-         # changed to take it: no band-clearing, no re-centring.\n\
+         # **What right looks like here** (ADR-0040): the opposite outcome,\n\
+         # from the same rule. The prompt **clears the band it stands on**,\n\
+         # full width, at every width. Two reasons, either sufficient: at 80\n\
+         # its right border landed inside the short-SHA column and left four-\n\
+         # character tails standing against it, reading as identifiers that\n\
+         # are not; and nothing behind a modal password question serves the\n\
+         # task \u{2014} the footer already says which push is waiting.\n\
          #\n\
-         # What survives beside it, read back out of the frame below rather\n\
-         # than written here by hand \u{2014} on the widest such row, `{left}` is\n\
-         # left of the border and `{right}` is right of it.\n\
+         # It clears **the band**, not the screen: the graph above it and the\n\
+         # footer below it stay. So there is nothing beside the prompt in the\n\
+         # rows it occupies, and that is the picture, not an omission \u{2014} the\n\
+         # writer asserts it before writing this file, and a change of heart\n\
+         # fails there rather than going stale here.\n\
+         #\n\
+         # The border's rule no longer runs into the title or the key hints:\n\
+         # `Credentials \u{2014} 127.0.0.1:8443\u{2500}\u{2500}\u{2500}` read as part of the host. The\n\
+         # prompt's private copy of `frame_box::border_row` is gone and the\n\
+         # four bordered surfaces share one implementation (ADR-0040).\n\
          #\n\
          # ADR-0038 \u{a7}2 is unchanged and holds here: the field draws a fixed\n\
          # 8 mask glyphs whatever was typed, never the typed length, and the\n\

@@ -18,9 +18,9 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Modifier;
 use ratatui::widgets::Widget;
-use unicode_width::UnicodeWidthChar;
 
 use crate::fit::fit;
+use crate::frame_box::{border_row, cells, content_row};
 use crate::paint::foreground;
 use crate::text_input::{FieldView, display_text, draw_line};
 use crate::theme::{Theme, Token};
@@ -101,40 +101,6 @@ pub fn credential_area(frame: Rect) -> Rect {
         width,
         height,
     }
-}
-
-/// Cells `text` occupies, counting a wide character as two.
-fn cells(text: &str) -> usize {
-    text.chars().filter_map(UnicodeWidthChar::width).sum()
-}
-
-/// A border row: `left`, a space, `label` fit to what is left, dashes filling
-/// the rest, a space, `right` — exactly `width` cells.
-fn border_row(left: char, right: char, label: &str, width: usize) -> String {
-    if width == 0 {
-        return String::new();
-    }
-    if width == 1 {
-        return left.to_string();
-    }
-    let inner = width - 2;
-    if inner == 0 {
-        return format!("{left}{right}");
-    }
-    let labelled = format!(" {label}");
-    let used = cells(&labelled).min(inner);
-    let clamped = fit(&labelled, used);
-    let dashes = "─".repeat(inner - used);
-    format!("{left}{clamped}{dashes}{right}")
-}
-
-/// A plain content row: `│ text │`, `text` fit to what is left.
-fn content_row(text: &str, width: usize) -> String {
-    if width < 2 {
-        return "│".repeat(width);
-    }
-    let inner = width - 2;
-    format!("│{}│", fit(&format!(" {text}"), inner))
 }
 
 impl CredentialPrompt<'_> {

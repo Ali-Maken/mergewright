@@ -5,7 +5,9 @@ use graft_core::capabilities::{PixelProtocol, RenderingTier};
 use graft_term::SanitizedText;
 use graft_term::sanitize_line;
 use graft_ui::detail_pane::{DetailLayout, DetailPane};
-use graft_ui::graph_screen::{GraphScreen, GraphView, GraphicsStatus, max_lanes_for};
+use graft_ui::graph_screen::{
+    GraphScreen, GraphView, GraphicsStatus, max_lanes_for, snap_to_columns,
+};
 use graft_ui::journal_screen::JournalScreen;
 use graft_ui::map_screen::MapScreen;
 use graft_ui::overview_strip::{OverviewStrip, StripMarks};
@@ -89,7 +91,7 @@ fn draw_journal(
         frame.render_widget(widget, area);
     }
     draw_context_menu(state, frame, area, &session.theme);
-    draw_confirm(state, frame, area, &session.theme);
+    draw_confirm(state, frame, area, &session.theme, &[]);
     draw_credential(state, frame, area, session);
     None
 }
@@ -112,7 +114,7 @@ fn draw_stash(session: &Session, state: &AppState, frame: &mut Frame, area: Rect
         frame.render_widget(widget, area);
     }
     draw_context_menu(state, frame, area, &session.theme);
-    draw_confirm(state, frame, area, &session.theme);
+    draw_confirm(state, frame, area, &session.theme, &[]);
     draw_credential(state, frame, area, session);
     None
 }
@@ -147,7 +149,7 @@ fn draw_map(session: &Session, state: &AppState, frame: &mut Frame, area: Rect) 
         None
     };
     draw_context_menu(state, frame, area, &session.theme);
-    draw_confirm(state, frame, area, &session.theme);
+    draw_confirm(state, frame, area, &session.theme, &[]);
     draw_credential(state, frame, area, session);
     graph
 }
@@ -244,7 +246,13 @@ pub fn view_with_graphics(
             };
             draw_preview(state, frame, area, &session.theme);
             draw_context_menu(state, frame, area, &session.theme);
-            draw_confirm(state, frame, area, &session.theme);
+            draw_confirm(
+                state,
+                frame,
+                area,
+                &session.theme,
+                &row_columns(session, state, &screen, area),
+            );
             draw_credential(state, frame, area, session);
             graph
         }
@@ -637,6 +645,50 @@ fn primary_pane_area(state: &AppState, area: Rect) -> Option<Rect> {
     graft_ui::detail_pane::split_area(layout, area).0
 }
 
+/// The band a box occupies: its own rows, the frame's whole width.
+///
+/// ADR-0040's other answer. Where a box cannot cover whole columns, the rule
+/// leaves it two choices and splitting is not one of them, so the band goes
+/// blank instead: a reader cannot mistake a clipped column for a box that
+/// leaked into it when there is no column left beside the box at all. Only
+/// the box's own rows — the footer below and the header above are not the
+/// box's to take.
+fn full_width_band(area: Rect, rect: Rect) -> Rect {
+    Rect {
+        x: area.x,
+        y: rect.y,
+        width: area.width,
+        height: rect.height,
+    }
+    .intersection(area)
+}
+
+/// Where the graph's row columns begin and end this frame, as data, for the
+/// overlays that have to keep off the middle of one (ADR-0040).
+///
+/// Asked of the same [`GraphScreen`] the rows were drawn with, against the
+/// same pane, rather than recomputed here — the snap and the draw cannot
+/// then disagree about where a column is. Empty when the graph is not on
+/// screen, which reads as "no columns here to split".
+fn row_columns(
+    session: &Session,
+    state: &AppState,
+    screen: &GraphView<'_>,
+    area: Rect,
+) -> Vec<u16> {
+    primary_pane_area(state, area).map_or_else(Vec::new, |pane| {
+        let mut boundaries = GraphScreen::new(screen, &session.theme).column_boundaries(pane);
+        // The frame's own edges, so a box straddling the divider into the
+        // detail pane snaps out to cover that pane whole rather than
+        // stopping part-way across it.
+        boundaries.push(area.x);
+        boundaries.push(area.right());
+        boundaries.sort_unstable();
+        boundaries.dedup();
+        boundaries
+    })
+}
+
 /// The band the popup stands on: its own rows, from its left edge out to the
 /// end of the pane it floats in. Never narrower than the popup itself, so a
 /// pane that somehow ends before the popup does still gets cleared under it.
@@ -697,15 +749,35 @@ fn draw_context_menu(state: &AppState, frame: &mut Frame, area: Rect, theme: &Th
 /// answers a key while it is up — so it is drawn last, after the context
 /// menu, and never under it. Like the context menu the widget paints only
 /// its own text, so the raised background is this caller's job.
-fn draw_confirm(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme) {
+fn draw_confirm(state: &AppState, frame: &mut Frame, area: Rect, theme: &Theme, columns: &[u16]) {
     let Some(pending) = state.confirm.as_ref() else {
         return;
     };
-    let rect = graft_ui::confirm::confirm_area(area, &pending.view).intersection(area);
+    let natural = graft_ui::confirm::confirm_area(area, &pending.view).intersection(area);
+    if natural.is_empty() {
+        return;
+    }
+    // ADR-0040: the box covers whole columns or it clears. This one never
+    // clears — the rows beside it are the graph it is about to act on, and
+    // showing them is the whole point of confirming over the graph. So it
+    // snaps outward onto the column boundaries and takes its height again
+    // at the width that gives it.
+    let (rect, clear) = match snap_to_columns(natural, columns, area) {
+        Some(snapped) => {
+            let rect =
+                graft_ui::confirm::confirm_area_at(area, &pending.view, snapped.x, snapped.width)
+                    .intersection(area);
+            (rect, rect)
+        }
+        // No snap position fits inside the frame. The box may not split a
+        // column, so it stops standing on any: it keeps its natural size
+        // and the band it occupies is cleared out from under it.
+        None => (natural, full_width_band(area, natural)),
+    };
     if rect.is_empty() {
         return;
     }
-    clear_and_tint(frame, rect, rect, theme);
+    clear_and_tint(frame, clear, rect, theme);
     frame.render_widget(
         &graft_ui::confirm::Confirm {
             view: &pending.view,
@@ -734,7 +806,13 @@ fn draw_credential(state: &AppState, frame: &mut Frame, area: Rect, session: &Se
         return;
     }
     let theme = &session.theme;
-    clear_and_tint(frame, rect, rect, theme);
+    // ADR-0040: this box clears, at every width, rather than snapping. It
+    // fragments the sha column when it does not, and nothing behind it
+    // serves the task — the prompt is modal (`docs/design/02-keymap.md`
+    // §2.14) and the footer already carries the context it needs
+    // (`push main → origin/main · esc cancels`). The graph behind a secret
+    // is decoration. The band is its own rows only, so that footer stays.
+    clear_and_tint(frame, full_width_band(area, rect), rect, theme);
     let ascii = tier_in_force(session, state) == RenderingTier::Ascii;
     frame.render_widget(
         &graft_ui::credential_prompt::CredentialPrompt {

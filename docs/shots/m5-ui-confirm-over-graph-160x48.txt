@@ -11,25 +11,26 @@
 # the frame is drawn, so the header is laid out against the width a
 # real checkout takes and the ages never move.
 #
-# **The question this capture exists to answer** (the user's, open
-# since ticket 13): the box has a border, so whatever survives beside
-# it reads as background rather than as part of the box. **Is the
-# surviving content beside the box aligned and legible, or
-# fragmentary?**
+# **What right looks like here** (ADR-0040): the box does **not**
+# clear its band — the rows beside it are the graph you are about to
+# act on, and seeing them is M5's promise. Instead both of its edges
+# sit on a boundary between two row columns, so every column that
+# survives beside it survives **whole**. No clipped subject, no
+# four-character tail of a SHA. The box's content is never shrunk to
+# reach a boundary; if no boundary fitted, it would clear instead.
 #
-# Neither box was changed to take this picture. Nothing is
-# band-cleared, nothing is re-centred: the box draws its own
-# rectangle and the graph keeps every cell outside it. That is the
-# state the decision is about — whether either box should clear the
-# band it stands on is yours to make, by eye, from this file.
+# The snap is computed where the screen is laid out
+# (`graft::view::frame`, from `GraphScreen::column_boundaries`), not
+# inside the widget — ADR-0040 clause 3, so the box stays a box and
+# knows nothing about the graph.
 #
 # What is behind it: 200 commits of ordinary history, the tip one
 # commit ahead of `origin/main`, with the graph filling the rows
 # above, below and beside the frame.
 #
 # What survives beside it, read back out of the frame below rather
-# than written here by hand — on the widest such row, `●   Commit 182` is
-# left of the border and `GF 2d   d212b3e` is right of it.
+# than written here by hand — on the widest such row, `●` is
+# left of the border and `GF 2d   c8254c5` is right of it.
 #
 # The 3-choice box `u` opens once the work is on a remote (ADR-0038
 # §4) stands on this same corpus and is in
@@ -60,14 +61,14 @@
 ●   Commit 185                                                                                                                                   GF 2d   09ae97c
 ●   Commit 184                                                                                                                                   GF 2d   49d7783
 ●   Commit 183                                                                                                                                   GF 2d   22d55c9
-●   Commit 182                                  ╭ Push main → origin/main ─────────────────────────────────────╮                                 GF 2d   d212b3e
-●   Commit 181                                  │ 1 commit · can't be undone from here — origin keeps what you │                                 GF 2d   c8254c5
-●   Commit 180                                  │ send                                                         │                                 GF 2d   e95ccd4
-●   Commit 179                                  │                                                              │                                 GF 2d   97b58e5
-●   Commit 178                                  │ git push --progress origin refs/heads/main:refs/heads/main   │                                 GF 2d   1c9b7ed
-●   Commit 177                                  │                                                              │                                 GF 2d   f93340a
-●   Commit 176                                  │ ▸[ Cancel ]   [ Push ]                                       │                                 GF 2d   5aaeeba
-●   Commit 175                                  ╰──────────────────────────────────────────────────────────────╯                                 GF 2d   6be5928
+●   Commit 182                                                                                                                                   GF 2d   d212b3e
+●   ╭ Push main → origin/main ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ GF 2d   c8254c5
+●   │ 1 commit · can't be undone from here — origin keeps what you send                                                                        │ GF 2d   e95ccd4
+●   │                                                                                                                                          │ GF 2d   97b58e5
+●   │ git push --progress origin refs/heads/main:refs/heads/main                                                                               │ GF 2d   1c9b7ed
+●   │                                                                                                                                          │ GF 2d   f93340a
+●   │ ▸[ Cancel ]   [ Push ]                                                                                                                   │ GF 2d   5aaeeba
+●   ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ GF 2d   6be5928
 ●   Commit 174                                                                                                                                   GF 2d   9b67be4
 ●   Commit 173                                                                                                                                   GF 2d   937d32b
 ●   Commit 172                                                                                                                                   GF 2d   81be718
