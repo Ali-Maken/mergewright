@@ -92,6 +92,17 @@ it is two days old and has one amendment already. Do not append a second.
       quote the amended clause.
 - [ ] Captures regenerated and still byte-identical across two runs — evidence:
       `diff -q` output, and quote the padded row.
+- [ ] **The sweep includes at least one state with a detail pane open beside
+      the graph** — not only full-frame graphs. Review Q1: `view/tests.rs`'s
+      `confirm_over_graph` sets `detail.shown = false` (`:2673`) and
+      `pane_boundaries.rs` sweeps a full-frame graph, so **no test draws a box
+      over a graph that has a pane beside it.** `snap_to_columns` waives the
+      gutter only at `bounds.right()` (`graph_screen/layout.rs:520-524`); with a
+      pane open, the graph's own right edge is a different boundary, and whether
+      the cell it steps onto is m5/19's unpainted gutter or the SHA's last
+      character is untested. Draw it at 160 with the pane open and say which it
+      is — test: name it. If the box eats a SHA character, that is a defect in
+      this ticket's scope; fix it under the same invariant.
 
 Rule 6: you do not tick "looks right". The user does.
 
