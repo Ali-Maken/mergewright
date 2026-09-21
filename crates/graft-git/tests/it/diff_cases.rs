@@ -380,6 +380,24 @@ mod properties {
     /// The test's own statement of the only line the parser may skip, kept
     /// independent of the parser's: a bare object id, 40 hex digits (sha1)
     /// or 64 (sha256).
+    ///
+    /// **This mirrors `diff::unified::is_bare_object_id` on purpose, and
+    /// that is also its limit** (M5 review Minor 3). A property whose
+    /// predicate is a re-implementation of the code's agrees with the code
+    /// by construction: if both are wrong the same way, this stays green.
+    /// What it does catch is the shape — `Ok(vec![])` for an input the
+    /// parser did not understand — over inputs nobody wrote by hand.
+    ///
+    /// The real expected strings live in the four hand-written cases above
+    /// this module, and **they are what must not be "simplified" away into
+    /// this property**: `a_combined_diff_is_an_error_not_an_empty_success`
+    /// and `a_combined_section_after_a_normal_file_is_an_error_too` pin
+    /// `"combined diff (`diff --cc`) is not supported here"` with its line
+    /// number, `an_unreadable_line_before_the_first_file_is_an_error` pins
+    /// `"unreadable line outside any `diff --git` section"`, and
+    /// `the_diff_tree_commit_id_line_is_still_skipped_and_the_diff_still_parses`
+    /// pins the one skip at both id lengths. Delete those and nothing
+    /// checks the wording the user reads.
     fn is_a_bare_object_id(line: &str) -> bool {
         matches!(line.len(), 40 | 64) && line.bytes().all(|b| b.is_ascii_hexdigit())
     }

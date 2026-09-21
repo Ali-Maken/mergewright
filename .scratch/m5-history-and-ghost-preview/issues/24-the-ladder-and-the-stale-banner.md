@@ -1,6 +1,8 @@
 # the-ladder-and-the-stale-banner: shrink before dropping, and a capture that predates its fix
 
-Status: ready
+Status: **partial** — pieces 2 and 3 done and committed; piece 1 (the shrink
+ladder) is **blocked on a spec decision**, evidence under NOTES. Not started
+again until the user answers.
 Blocked by: none — `graft-ui` and `graft-git` only. Ticket 25 holds `graft`
 and runs alongside you. **Never edit outside your crate set**; need `graft`,
 commit at the seam, report `blocked: needs graft`, stop.
@@ -87,18 +89,55 @@ don't assume.
 
 ## Acceptance (every tick names its verifying test inline, at tick time)
 
-- [ ] Every hint over four characters has the user's short rung, spelled
-      exactly as the table gives it — test:
-- [ ] At a width where the bar must economise, every hint is on its shortest
-      informative rung **before** any hint is dropped — the property, swept
-      over widths, not a case — test:
-- [ ] `no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows` still holds —
-      test:
-- [ ] `capture_for_docs_shots`'s caption describes what `banner_line` now draws
-      — test:
-- [ ] `docs/shots/m5-ui-banner.txt` shows no `⚠`, no filename and no width
-      tiering — evidence (read the file, quote the row):
-- [ ] Minor 4 comment added; Minor 3 doc comment added — test:
+- [ ] **NOT DONE — blocked, see NOTES.** Every hint over four characters has
+      the user's short rung, spelled exactly as the table gives it — test:
+      none written. The table was implemented and reverted; five labels have
+      no cell (NOTES 3).
+- [ ] **NOT DONE — blocked, see NOTES.** At a width where the bar must
+      economise, every hint is on its shortest informative rung **before**
+      any hint is dropped — test: none written.
+- [x] `no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows` still holds
+      — test: that test itself
+      (`crates/graft-ui/src/graph_screen/tests.rs:1022`), green in the
+      workspace run below. `hints.rs` is byte-identical to `main`
+      (`git diff crates/graft-ui/src/graph_screen/hints.rs` is empty), so it
+      holds for the trivial reason that nothing under it changed.
+- [x] `capture_for_docs_shots`'s caption describes what `banner_line` now
+      draws — test: the three tests that pin the drawn text, all green:
+      `graph_screen::tests::the_banner_names_the_state_and_never_the_files`
+      (asserts `"REBASING step 3 of 7"` exactly, and no filename, no
+      `conflict`, no `(+`), `::the_banner_carries_no_warning_glyph` (no `⚠`),
+      `::the_banner_is_worded_the_same_whatever_the_header_it_lands_in` (one
+      wording at 100/120/160/200 — the claim "no width tiers" the caption now
+      makes). The caption asserts nothing these three do not.
+- [x] `docs/shots/m5-ui-banner.txt` shows no `⚠`, no filename and no width
+      tiering — evidence: regenerated and read. The banner row, identical in
+      all four blocks (`80x10`, `120x10`, `160x10`, long-path `120x10`):
+
+      ```
+       graft /code/api    REBASING step 3 of 7
+      ```
+
+      The block labels `<100 cols` / `>=100 cols` / `>=160 cols` are gone too
+      — they were the tiering claim in the file's own headings. A second
+      stale sentence was found and fixed while regenerating: the caption said
+      "the *path* is what an `…` lands on", and with the banner this short
+      the long path at 120 columns is no longer cut at all, so the picture
+      showed no `…`. Reworded to what the picture shows.
+- [x] Minor 4 comment added; Minor 3 doc comment added — test: both are
+      comment-only, so the gate is that the claims are true and the tree is
+      green. Minor 4's claim ("the `None` arm is `wordings` is empty, and
+      that cannot happen") is exercised by
+      `graph_screen::tests::the_commit_graph_line_spends_the_room_it_is_given`,
+      which sweeps width `0..=240` over all four `COMMIT_GRAPH_LINES` and
+      asserts width 0 returns the *narrowest* wording — i.e. it runs the
+      `narrowest` path for every variant and gets a real wording back.
+      Minor 3's doc comment names the four cases by their test names; all
+      four exist and are green
+      (`a_combined_diff_is_an_error_not_an_empty_success`,
+      `a_combined_section_after_a_normal_file_is_an_error_too`,
+      `an_unreadable_line_before_the_first_file_is_an_error`,
+      `the_diff_tree_commit_id_line_is_still_skipped_and_the_diff_still_parses`).
 
 **Mutation-check per the section below.** The one that matters: make the bar
 drop a hint while another is still on its full rung, and show the ladder
@@ -128,3 +167,114 @@ mutation by editing the file back.
 Cause or symptom per fix. Any table row you could not apply, and why — **named,
 not replaced**. What `m5-ui-banner.txt` says now. Anything unverified, which is
 not broken.
+
+## NOTES (builder, 2026-09-21)
+
+No scout: the ticket said none was needed and quoted every line — correct, it
+was enough.
+
+Baseline measured on this worktree before any edit: **2226 passed, 37 skipped,
+54.8 s**. After: **2226 passed, 37 skipped**, `cargo fmt --check` and
+`cargo clippy --all-targets -- -D warnings` both clean, `cargo test --doc` ok.
+
+### 1. Piece 1 is blocked: the ladder as specified empties the graph's hint bar
+
+**Built it, ran it, reverted it.** Not arithmetic — observed.
+
+The ticket's rule is "at a given width the bar spends the room it has on the
+most informative rung that fits, for every hint, **before it drops any hint**",
+and ADR-0039's 2026-09-21 amendment says the same in the same words: shrink
+"applies before any hint is dropped at all". Implemented exactly that: three
+rungs, the whole list stepping down together, drop only once every hint is on
+its key.
+
+What it draws. The row contexts are **22 hints long** — `drawable()` appends
+`TAIL`'s screen-wide keys to every row context
+(`crates/graft-ui/src/graph_screen/hints.rs:224-230`, m5-03 review Major 3).
+Measured widths of the whole list plus `. more`:
+
+| rung | cells |
+|---|---|
+| full | 227 |
+| short (the user's table) | 190 |
+| key alone | 81 |
+
+So below **190 columns** no rung but "key alone" fits, and the ladder goes
+there before dropping anything. The regenerated capture, with the ladder in,
+drew this at 80, 120 **and** 160 columns:
+
+```
+ ⏎  c  y  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  . more
+```
+
+The 160-column terminal teaches exactly as much as the 80-column one: nothing.
+That is ADR-0039's own **"Considered and not taken — Keys with no verbs
+(`space d c`). Fits anywhere, teaches nothing."**
+
+Three tests in `graft` (a crate ticket 25 holds — never edited) pin the old
+text and went red, with the drawn bar in the panic message:
+
+- `crates/graft/tests/it/hint_bar.rs:151` — `" ⏎  c  P  p  f  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  y  M  . more"` against `starts_with(" ⏎ open  c commit  P push")`
+- `crates/graft/tests/it/hint_bar.rs:168` — same shape, plain row
+- `crates/graft/tests/it/hint_bar.rs:186` — same shape, uncommitted row
+
+`crates/graft-ui/src/graph_screen/hints/tests.rs:80`
+(`eighty_columns_leads_with_three_and_fills_the_row`) pins the same expectation
+inside my own crate.
+
+**Cause, not symptom.** The ladder is right for a short list and wrong for a
+long one, and ADR-0039 was written for a short one: its worked example is the
+changes pane, 7 hints (`space stage` → `space stg` → `space`), which shrinks
+sensibly. `TAIL` landed afterwards and made every row context 22 hints. "Shrink
+everything before dropping anything" then means "shrink 22 hints to bare keys
+rather than drop the 22nd", which inverts the ADR's own purpose.
+
+I did **not** pick a replacement rule. Three that would work, for the user to
+choose between — all of them spec changes, not build decisions:
+
+- (a) Ladder per context list only, `TAIL` excluded — `TAIL` keeps dropping
+  from the right as today. Keeps the ADR's example working, keeps the leading
+  verbs at 80 columns.
+- (b) Ladder applies, but the key-alone rung is never drawn for a list longer
+  than N — the bar drops instead. Needs N.
+- (c) Shrink from the right, hint by hint, so the leading hints stay full and
+  the tail degrades first. **Contradicts the ticket's stated defect condition**
+  ("a bar that drops a hint while another hint is still on its full rung"), so
+  it needs that sentence rewritten.
+
+Cost of leaving it as it is: none to the user — the bar is exactly what it was
+on `main`. The ADR keeps an unbuilt clause.
+
+### 2. The wording table: applied cleanly, 22/22 cells, no collisions
+
+Every cell was implementable as given and no two short forms collide, in any
+context or against any other drawn verb. The table is not the problem.
+
+### 3. Five labels the table does not name — reported, not replaced
+
+`hints.rs` has these verbs, none of them in the table and none in the
+no-short-form list (`fetch pull push undo drop edit skip pop move open more
+sha map focus all quit fold`):
+
+- **`stash`** (5 chars) — `hint("S", "stash")`, **Live**, drawn in `TAIL` and
+  in all four row contexts. The one that bites today. Note the table *does*
+  name `hide stash` → `hide`, so a short `stash` cannot be `hide`.
+- `merge`, `rebase`, `branch`, `resolved` — all `HintState::Planned`, never
+  drawn, so they cost nothing until the group that binds them lands.
+
+Also worth the user's eye: the no-short-form list is introduced as "four
+characters or under", but `fetch` and `focus` in it are five. I took the
+**list** as authoritative over the arithmetic (they have no short form) rather
+than shortening two words he wrote out. Confirm or correct.
+
+While the ladder is unbuilt, none of this is live.
+
+### 4. Incidental
+
+`capture_for_docs_shots` crossed clippy's `too_many_lines` when the caption
+grew; added `#[allow(clippy::too_many_lines)]` with a reason, matching the
+exemption `capture_hint_bar_for_docs_shots` beside it already carries. No lint
+was disabled to hide a fault.
+
+**Rule 6: the regenerated capture is not ticked "looks right" here.** The user
+judges `docs/shots/m5-ui-banner.txt`.

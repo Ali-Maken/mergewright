@@ -1,39 +1,50 @@
 # docs/shots/m5-ui-banner.txt — operation banner (rebase/merge/conflict)
 #
 # What right looks like: the header's informational tail is
-# replaced, while an operation is in progress, by
-# `⚠ REBASING step 3 of 7 — conflict in <path> (+N)` — spelled out
-# at >=100 cols, abbreviated (`3/7`, path only) under 100. It costs
-# no row: the line under the header is the first graph row at every
-# width. There is no `[ Continue ] [ Skip ] [ Abort ]` row any more
-# — nothing answered a click on it and it cost a graph row to teach
-# three keys the hint bar already teaches (m5/16).
+# replaced, while an operation is in progress, by the state and
+# nothing else — `REBASING step 3 of 7`.
 #
-# The third block is the point: a long repository path no longer
-# cuts the banner. The banner's room comes out of the header first
-# and the *path* is what an `…` lands on.
+# Three things it does not say (m5/20, all three the user's):
+# no `⚠` — a stopped merge is a state to finish, not a failure;
+# no conflicted filename and no `(+N)` — the changes pane already
+# lists every conflicted file under `CONFLICTS (n)`, and a 24-row
+# screen that says the same fact twice has spent a row on nothing;
+# and no width tiers — `banner_line` takes no width, so the same
+# repository in the same state reads the same in all three blocks
+# below. They are three sizes of terminal, not three wordings.
+#
+# It costs no row: the line under the header is the first graph row
+# at every width. There is no `[ Continue ] [ Skip ] [ Abort ]` row
+# any more — nothing answered a click on it and it cost a graph row
+# to teach three keys the hint bar already teaches (m5/16).
+#
+# The last block is the point: a long repository path does not cut
+# the banner. The banner's room comes out of the header first, so
+# the *path* is what an `…` would land on — and at 120 columns,
+# against a banner this short, it no longer has to: the whole path
+# and the whole banner are both there.
 
-=== <100 cols, 80x10 ===
- graft /code/api    ⚠ REBASING 3/7 — conflict src/auth/token.rs (+1)
+=== 80x10 ===
+ graft /code/api    REBASING step 3 of 7
 ●   Commit 2                                                        2h   0202020
 ◇   Commit 1                                                        2h   0101010
- ⏎ open  c commit  y sha  . more
+ ⏎ open  c commit  y sha  u undo  S stash  J journal  / search  q quit  . more
 
-=== >=100 cols, 120x10 ===
- graft /code/api    ⚠ REBASING step 3 of 7 — conflict in src/auth/token.rs (+1)
+=== 120x10 ===
+ graft /code/api    REBASING step 3 of 7
 ●   Commit 2                                                                                             TE 2h   0202020
 ◇   Commit 1                                                                                             TE 2h   0101010
- ⏎ open  c commit  y sha  u undo  S stash  J journal  . more
+ ⏎ open  c commit  y sha  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x compare  . more
 
-=== >=160 cols, 160x10 ===
- graft /code/api    ⚠ REBASING step 3 of 7 — conflict in src/auth/token.rs (+1)
+=== 160x10 ===
+ graft /code/api    REBASING step 3 of 7
 ●   Commit 2                                                                                                                                     TE 2h   0202020
 ◇   Commit 1                                                                                                                                     TE 2h   0101010
  ⏎ open  c commit  y sha  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x compare  + lanes  j/k move  space fold  1 first-parent  . more
 
 === a long path does not cut the banner, 120x10 ===
- graft /Users/someone/work/customers/acme/services/billing…  ⚠ REBASING step 3 of 7 — conflict in src/auth/token.rs (+1)
+ graft /Users/someone/work/customers/acme/services/billing-api    REBASING step 3 of 7
 ●   Commit 2                                                                                             TE 2h   0202020
 ◇   Commit 1                                                                                             TE 2h   0101010
- ⏎ open  c commit  y sha  u undo  S stash  J journal  . more
+ ⏎ open  c commit  y sha  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x compare  . more
 
