@@ -1,0 +1,68 @@
+# m5-ui-confirm-over-graph-80x24.txt: 80x24, drawn by
+# `view::view` from a real AppState — the Linear corpus cloned into a
+# `file://` bare, the clone left one commit ahead of it, the walk let
+# settle, then `P` pressed
+# (crates/graft/tests/it/two_boxes_over_content.rs,
+# capture_two_boxes_over_real_content_for_docs_shots, #[ignore]d).
+# Not a pty capture: the terminal is ratatui's TestBackend, so this is
+# a character grid with no colour attributes in it — CLAUDE.md rule 5,
+# colour ships unverified. The scratch repository's temporary path is
+# set to `/code/api` and the clock to the corpus's own `now` **before**
+# the frame is drawn, so the header is laid out against the width a
+# real checkout takes and the ages never move.
+#
+# **The question this capture exists to answer** (the user's, open
+# since ticket 13): the box has a border, so whatever survives beside
+# it reads as background rather than as part of the box. **Is the
+# surviving content beside the box aligned and legible, or
+# fragmentary?**
+#
+# Neither box was changed to take this picture. Nothing is
+# band-cleared, nothing is re-centred: the box draws its own
+# rectangle and the graph keeps every cell outside it. That is the
+# state the decision is about — whether either box should clear the
+# band it stands on is yours to make, by eye, from this file.
+#
+# What is behind it: 200 commits of ordinary history, the tip one
+# commit ahead of `origin/main`, with the graph filling the rows
+# above, below and beside the frame.
+#
+# What survives beside it, read back out of the frame below rather
+# than written here by hand — on the widest such row, `●   Comm` is
+# left of the border and `b6a4a47` is right of it.
+#
+# The 3-choice box `u` opens once the work is on a remote (ADR-0038
+# §4) stands on this same corpus and is in
+# docs/shots/m5-ui-undo-after-push-80x24.txt. It is not reproduced
+# here: reaching it needs a commit Graft makes **during** the run,
+# and git stamps that commit from the wall clock, so its oid — which
+# the box and the header both draw — would move every run and this
+# file could not be diffed.
+
+== `P`: the push confirm, on the graph ==
+
+ graft /code/api  200 commits
+◆ ⓘ [◆ main ↑1] Commit 200                                          2d   d5ae5fd
+●   [origin/main] Commit 199                                        2d   13e6ab1
+●   Commit 198                                                      2d   f5055d9
+●   Commit 197                                                      2d   2cce853
+●   Commit 196                                                      2d   325da3f
+●   Commit 195                                                      2d   0722297
+●   Comm╭ Push main → origin/main ─────────────────────────────────────╮ b6a4a47
+●   Comm│ 1 commit · can't be undone from here — origin keeps what you │ 60af0eb
+●   Comm│ send                                                         │ aceb8c5
+●   Comm│                                                              │ 11d68ff
+●   Comm│ git push --progress origin refs/heads/main:refs/heads/main   │ 91900bd
+●   Comm│                                                              │ cec3e93
+●   Comm│ ▸[ Cancel ]   [ Push ]                                       │ 0a91ece
+●   Comm╰──────────────────────────────────────────────────────────────╯ 3121935
+●   Commit 186                                                      2d   fab25df
+●   Commit 185                                                      2d   09ae97c
+●   Commit 184                                                      2d   49d7783
+●   Commit 183                                                      2d   22d55c9
+●   Commit 182                                                      2d   d212b3e
+●   Commit 181                                                      2d   c8254c5
+●   Commit 180                                                      2d   e95ccd4
+ no commit-graph file · B build one · X never here
+ . explain  ⏎ open  c commit  P  p  f  u  S  J  /  q  F2  F3  x  +  j/k  space
+

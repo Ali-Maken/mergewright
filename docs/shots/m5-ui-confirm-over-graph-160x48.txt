@@ -1,0 +1,92 @@
+# m5-ui-confirm-over-graph-160x48.txt: 160x48, drawn by
+# `view::view` from a real AppState — the Linear corpus cloned into a
+# `file://` bare, the clone left one commit ahead of it, the walk let
+# settle, then `P` pressed
+# (crates/graft/tests/it/two_boxes_over_content.rs,
+# capture_two_boxes_over_real_content_for_docs_shots, #[ignore]d).
+# Not a pty capture: the terminal is ratatui's TestBackend, so this is
+# a character grid with no colour attributes in it — CLAUDE.md rule 5,
+# colour ships unverified. The scratch repository's temporary path is
+# set to `/code/api` and the clock to the corpus's own `now` **before**
+# the frame is drawn, so the header is laid out against the width a
+# real checkout takes and the ages never move.
+#
+# **The question this capture exists to answer** (the user's, open
+# since ticket 13): the box has a border, so whatever survives beside
+# it reads as background rather than as part of the box. **Is the
+# surviving content beside the box aligned and legible, or
+# fragmentary?**
+#
+# Neither box was changed to take this picture. Nothing is
+# band-cleared, nothing is re-centred: the box draws its own
+# rectangle and the graph keeps every cell outside it. That is the
+# state the decision is about — whether either box should clear the
+# band it stands on is yours to make, by eye, from this file.
+#
+# What is behind it: 200 commits of ordinary history, the tip one
+# commit ahead of `origin/main`, with the graph filling the rows
+# above, below and beside the frame.
+#
+# What survives beside it, read back out of the frame below rather
+# than written here by hand — on the widest such row, `●   Commit 182` is
+# left of the border and `GF 2d   d212b3e` is right of it.
+#
+# The 3-choice box `u` opens once the work is on a remote (ADR-0038
+# §4) stands on this same corpus and is in
+# docs/shots/m5-ui-undo-after-push-80x24.txt. It is not reproduced
+# here: reaching it needs a commit Graft makes **during** the run,
+# and git stamps that commit from the wall clock, so its oid — which
+# the box and the header both draw — would move every run and this
+# file could not be diffed.
+
+== `P`: the push confirm, on the graph ==
+
+ graft /code/api  200 commits
+◆ ⓘ [◆ main ↑1] Commit 200                                                                                                                       GF 2d   d5ae5fd
+●   [origin/main] Commit 199                                                                                                                     GF 2d   13e6ab1
+●   Commit 198                                                                                                                                   GF 2d   f5055d9
+●   Commit 197                                                                                                                                   GF 2d   2cce853
+●   Commit 196                                                                                                                                   GF 2d   325da3f
+●   Commit 195                                                                                                                                   GF 2d   0722297
+●   Commit 194                                                                                                                                   GF 2d   b6a4a47
+●   Commit 193                                                                                                                                   GF 2d   60af0eb
+●   Commit 192                                                                                                                                   GF 2d   aceb8c5
+●   Commit 191                                                                                                                                   GF 2d   11d68ff
+●   Commit 190                                                                                                                                   GF 2d   91900bd
+●   Commit 189                                                                                                                                   GF 2d   cec3e93
+●   Commit 188                                                                                                                                   GF 2d   0a91ece
+●   Commit 187                                                                                                                                   GF 2d   3121935
+●   Commit 186                                                                                                                                   GF 2d   fab25df
+●   Commit 185                                                                                                                                   GF 2d   09ae97c
+●   Commit 184                                                                                                                                   GF 2d   49d7783
+●   Commit 183                                                                                                                                   GF 2d   22d55c9
+●   Commit 182                                  ╭ Push main → origin/main ─────────────────────────────────────╮                                 GF 2d   d212b3e
+●   Commit 181                                  │ 1 commit · can't be undone from here — origin keeps what you │                                 GF 2d   c8254c5
+●   Commit 180                                  │ send                                                         │                                 GF 2d   e95ccd4
+●   Commit 179                                  │                                                              │                                 GF 2d   97b58e5
+●   Commit 178                                  │ git push --progress origin refs/heads/main:refs/heads/main   │                                 GF 2d   1c9b7ed
+●   Commit 177                                  │                                                              │                                 GF 2d   f93340a
+●   Commit 176                                  │ ▸[ Cancel ]   [ Push ]                                       │                                 GF 2d   5aaeeba
+●   Commit 175                                  ╰──────────────────────────────────────────────────────────────╯                                 GF 2d   6be5928
+●   Commit 174                                                                                                                                   GF 2d   9b67be4
+●   Commit 173                                                                                                                                   GF 2d   937d32b
+●   Commit 172                                                                                                                                   GF 2d   81be718
+●   Commit 171                                                                                                                                   GF 2d   57b8196
+●   Commit 170                                                                                                                                   GF 2d   8ea98be
+●   Commit 169                                                                                                                                   GF 2d   4926766
+●   Commit 168                                                                                                                                   GF 2d   0d60d60
+●   Commit 167                                                                                                                                   GF 2d   fa5ef1d
+●   Commit 166                                                                                                                                   GF 2d   953abf3
+●   Commit 165                                                                                                                                   GF 2d   49912f3
+●   Commit 164                                                                                                                                   GF 2d   1143b38
+●   Commit 163                                                                                                                                   GF 2d   e135216
+●   Commit 162                                                                                                                                   GF 2d   6ddbc37
+●   Commit 161                                                                                                                                   GF 2d   4b6f375
+●   Commit 160                                                                                                                                   GF 2d   545bf13
+●   Commit 159                                                                                                                                   GF 2d   a1a658c
+●   Commit 158                                                                                                                                   GF 2d   1e28a71
+●   Commit 157                                                                                                                                   GF 2d   b57586d
+●   Commit 156                                                                                                                                   GF 2d   edc7cba
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ . explain  ⏎ open  c commit  P push  p pull  f fetch  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x  +  j/k  space  1  F  H  y  M  O
+

@@ -36,4 +36,5 @@ mod remote_by_key;
 mod repo_truth;
 mod seam_rule;
 mod stash_by_key;
+mod two_boxes_over_content;
 mod undo_by_key;
