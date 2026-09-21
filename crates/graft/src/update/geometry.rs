@@ -54,13 +54,16 @@ impl Bounds {
 /// click or wheel notch lands exactly where the pixel is.
 /// `banner_rows` is what the operation banner costs this frame in the
 /// `Tab` arm (`banner::tab_banner_rows`): one row above the strip, and a
-/// second off the bottom while it has focus. `split_for_detail` draws from
-/// the same number, which is the point — the rows it took were invisible
+/// second off the bottom while it has focus. `hint_rows` is the pane's own
+/// hint bar in that same arm (`detail::tab_hint_rows`), one row off the
+/// bottom while the Detail tab is up. `split_for_detail` draws from the
+/// same two numbers, which is the point — the rows they took were invisible
 /// here, so every click below the strip landed a row high (review M1).
 pub(super) fn detail_split(
     layout: DetailLayout,
     size: (u16, u16),
     banner_rows: u16,
+    hint_rows: u16,
 ) -> (Option<Bounds>, Option<Bounds>) {
     match layout {
         DetailLayout::Right { columns } => {
@@ -99,14 +102,19 @@ pub(super) fn detail_split(
         }
         DetailLayout::Tab { shown } => {
             // The banner's first row is above the strip; its second, the
-            // key hints it draws while focused, comes off the bottom.
+            // key hints it draws while focused, comes off the bottom. The
+            // pane's own hint bar takes one more off the bottom while the
+            // Detail tab is up (m5-history-and-ghost-preview/29). Both come
+            // out before the strip, exactly as `view::frame::detail_rects`
+            // spends them, so the strip is `0` on a frame with nothing left.
             let above = 1.min(banner_rows);
-            let strip = 1.min(size.1.saturating_sub(above));
+            let body = size.1.saturating_sub(banner_rows).saturating_sub(hint_rows);
+            let strip = 1.min(body);
             let content = Bounds {
                 x: 0,
                 y: above.saturating_add(strip),
                 width: size.0,
-                height: size.1.saturating_sub(strip).saturating_sub(banner_rows),
+                height: body.saturating_sub(strip),
             };
             if shown {
                 (None, Some(content))
@@ -179,7 +187,14 @@ pub(super) fn diff_body_rows(state: &AppState) -> usize {
     }
     let size = (state.size.columns, state.size.rows);
     let layout = detail::effective_layout(state.detail.focus, &state.detail.pane_size, size);
-    let Some(pane) = detail_split(layout, size, super::banner::tab_banner_rows(state)).1 else {
+    let Some(pane) = detail_split(
+        layout,
+        size,
+        super::banner::tab_banner_rows(state),
+        detail::tab_hint_rows(state),
+    )
+    .1
+    else {
         return 0;
     };
     let files_count = match &state.detail.files {
@@ -230,7 +245,12 @@ pub(super) fn detail_hit(state: &AppState, column: u16, row: u16) -> Option<Deta
         }
         DetailLayout::Tab { .. } => {}
     }
-    let (_, pane) = detail_split(layout, size, super::banner::tab_banner_rows(state));
+    let (_, pane) = detail_split(
+        layout,
+        size,
+        super::banner::tab_banner_rows(state),
+        detail::tab_hint_rows(state),
+    );
     let pane = pane?;
     if !pane.contains(column, row) {
         return None;
@@ -266,7 +286,13 @@ pub(super) fn graph_row_at(state: &AppState, screen_row: u16) -> Option<usize> {
         let layout = detail::effective_layout(state.detail.focus, &state.detail.pane_size, size);
         // The split is the one place that knows whether a graph rect exists;
         // asking it keeps this from becoming a second reading of the layout.
-        detail_split(layout, size, super::banner::tab_banner_rows(state)).0?;
+        detail_split(
+            layout,
+            size,
+            super::banner::tab_banner_rows(state),
+            detail::tab_hint_rows(state),
+        )
+        .0?;
     }
     let history = state.history.as_ref()?;
     let offset = usize::from(screen_row.checked_sub(rows_above_graph(state))?);
@@ -289,7 +315,13 @@ pub(super) fn context_menu_graph_bounds(state: &AppState) -> Option<Bounds> {
     let size = (state.size.columns, state.size.rows);
     if state.detail.shown {
         let layout = detail::effective_layout(state.detail.focus, &state.detail.pane_size, size);
-        detail_split(layout, size, super::banner::tab_banner_rows(state)).0
+        detail_split(
+            layout,
+            size,
+            super::banner::tab_banner_rows(state),
+            detail::tab_hint_rows(state),
+        )
+        .0
     } else {
         Some(Bounds {
             x: 0,

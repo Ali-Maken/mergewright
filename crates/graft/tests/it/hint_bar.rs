@@ -259,21 +259,16 @@ fn the_changes_pane_hints_the_keys_that_write() {
     app.close();
 }
 
-/// A gap this ticket found and did not fix, kept as a failing test rather
-/// than a paragraph: under 100 columns the detail pane takes the whole
-/// screen behind a `[Graph] Detail` tab strip
-/// (`update::detail::effective_layout` → `DetailLayout::Tab`), the graph
-/// screen is not drawn at all, and with it goes the hint bar — so at 80
-/// columns, with the changes pane open, **every** key is hidden. That is
-/// the one outcome ADR-0037 §4 rules out, and 80 columns is an everyday
-/// width in an editor's terminal.
-///
-/// Fixing it means giving the tab layout a footer of its own, which changes
-/// the pane's height for every pane and is a design decision, not this fix
-/// round's (see the ticket's NOTES).
+/// Below 100 columns the shown tab owns the whole screen
+/// (`update::detail::effective_layout` → `DetailLayout::Tab`) and the graph
+/// screen — footer and all — is not drawn behind it. So the detail pane
+/// reserves a footer row of its own and draws **its** keys into it
+/// (m5-history-and-ghost-preview/29): at 80 columns with the changes pane
+/// open the bar is present, and it hints the pane's vocabulary rather than
+/// the graph's. Every key hidden is the one outcome ADR-0037 §4 rules out,
+/// and 80 columns is an everyday width in an editor's terminal.
 #[test]
-#[ignore = "known gap: the Tab detail layout draws no hint bar (m5-03 fix round)"]
-fn the_tab_layout_still_hides_every_key() {
+fn the_tab_layout_draws_the_panes_own_keys() {
     let scratch = repo();
     let (app, state) = App::open(scratch.path());
     let state = opened(&app, state);
@@ -284,6 +279,83 @@ fn the_tab_layout_still_hides_every_key() {
         bar.is_some(),
         "the bar is never all hidden (ADR-0037 §4); the frame was {:?}",
         frame(&state, 80, 24)
+    );
+    let bar = bar.unwrap_or_default();
+    assert!(
+        bar.starts_with(" space stage  d discard  c commit"),
+        "the pane that owns the screen owns the keys: {bar:?}"
+    );
+    // The pane's own row, not one borrowed from a graph that is not drawn:
+    // it is the frame's last row, under the pane.
+    let drawn = frame(&state, 80, 24);
+    assert_eq!(
+        drawn.last().map(String::as_str),
+        Some(bar.as_str()),
+        "the reserved row is the frame's last: {drawn:?}"
+    );
+    app.close();
+}
+
+/// Every pane context that can own the Tab layout draws the bar, not just
+/// the changes pane (m5-history-and-ghost-preview/29). Three states the
+/// user reaches with one key each, below 100 columns:
+///
+/// - the Detail tab on the tip, whose row carries the current branch's
+///   badge (`HintContext::BranchRow { current: true }`);
+/// - the Detail tab on an ordinary commit one row down
+///   (`HintContext::PlainRow`);
+/// - the changes pane (`HintContext::ChangesPane`), which
+///   [`the_tab_layout_draws_the_panes_own_keys`] pins in detail.
+///
+/// And the fourth arm of the same layout: the **Graph** tab, where the
+/// graph screen is drawn and carries its own footer — the pane reserves
+/// nothing there, so the row is not spent twice.
+///
+/// `Journal` and `Stash` are unreachable today (those overlays draw their
+/// own footer) and `Banner` is modal: a focused banner already draws its
+/// keys on the bottom row, which
+/// `update::tests::the_focused_banner_keeps_the_only_hint_row` covers.
+#[test]
+fn every_tab_context_draws_a_bar() {
+    let scratch = repo();
+    let (app, state) = App::open(scratch.path());
+    let opened_state = opened(&app, state);
+
+    // The Detail tab on the tip: the current branch's row.
+    let tip = app.key(&opened_state, KeyCode::Enter);
+    let tip = app.pump(tip, "the tip's detail", |state| state.detail.shown);
+    let bar = hint_bar(&tip, 80, 24);
+    assert!(
+        bar.is_some(),
+        "the Detail tab on the tip draws a bar; the frame was {:?}",
+        frame(&tip, 80, 24)
+    );
+
+    // One row down is an ordinary commit.
+    let plain = app.key(&opened_state, KeyCode::Char('j'));
+    let plain = app.key(&plain, KeyCode::Enter);
+    let plain = app.pump(plain, "a plain row's detail", |state| state.detail.shown);
+    assert!(
+        hint_bar(&plain, 80, 24).is_some(),
+        "the Detail tab on a plain row draws a bar; the frame was {:?}",
+        frame(&plain, 80, 24)
+    );
+
+    // The changes pane.
+    let pane = changes_pane(&app, opened_state.clone());
+    assert!(
+        hint_bar(&pane, 80, 24).is_some(),
+        "the changes pane draws a bar; the frame was {:?}",
+        frame(&pane, 80, 24)
+    );
+
+    // The Graph tab: the graph screen is on frame and its own footer is the
+    // bar, so the pane reserves no second row.
+    let graph_tab = app.key(&pane, KeyCode::Tab);
+    assert!(
+        hint_bar(&graph_tab, 80, 24).is_some(),
+        "the Graph tab keeps the graph's own footer; the frame was {:?}",
+        frame(&graph_tab, 80, 24)
     );
     app.close();
 }
@@ -388,8 +460,10 @@ fn capture_hint_bar_for_docs_shots() {
                  #\n\
                  # Here {what}.\n\
                  #\n\
-                 # Judge by eye: the hint bar is the graph's bottom row — the frame's last\n\
-                 # row, unless the pane is stacked under it. `. more` is never dropped\n\
+                 # Judge by eye: the hint bar is the bottom row of whatever owns the\n\
+                 # screen — the graph's, or (below 100 columns, with the Detail tab up)\n\
+                 # the pane's own reserved row, which costs the pane one row of content\n\
+                 # and is what keeps every key from being hidden. `. more` is never dropped\n\
                  # (ADR-0037 §4) and sits at the head of the bare keys — the end of the\n\
                  # row where there are none (ADR-0039, m5/28).\n\
                  #\n\
@@ -445,13 +519,17 @@ fn capture_hint_bar_for_docs_shots() {
 /// What a capture says when the frame it recorded has no hint bar at all:
 /// the truth, and that it is a gap rather than the shape to judge by eye
 /// (CLAUDE.md rule 1).
+///
+/// No scenario here reaches it since m5-history-and-ghost-preview/29 gave
+/// the sub-100-column tab layout a reserved row of its own. It stays
+/// because a capture must be able to say so if one ever does — a picture
+/// that quietly omits the bar is a picture that lies.
 const MISSING_BAR: &str = "#\n\
-     # NOTE: this frame has no hint bar at all. Under 100 columns the detail\n\
-     # pane takes the whole screen behind the `[Graph] Detail` tabs, and the\n\
-     # graph screen — the bar with it — is not drawn. A keyless screen is the\n\
-     # one outcome ADR-0037 §4 rules out, so this is a known gap, not what\n\
-     # right looks like (hint_bar::the_tab_layout_still_hides_every_key,\n\
-     # #[ignore]d).\n";
+     # NOTE: this frame has no hint bar at all. That is the one outcome\n\
+     # ADR-0037 §4 rules out, so it is a defect rather than the shape to\n\
+     # judge by eye: every layout carries a bar of its own\n\
+     # (hint_bar::the_tab_layout_draws_the_panes_own_keys,\n\
+     # hint_bar::every_tab_context_draws_a_bar).\n";
 
 fn write(path: &Path, text: &str) {
     std::fs::write(path, text).unwrap_or_else(|why| panic!("writing {}: {why}", path.display()));

@@ -67,6 +67,44 @@ pub fn effective_layout(
     DetailLayout::compute(size.0, size.1, focus, override_cells)
 }
 
+/// Rows the sub-100-column tab layout reserves for the **detail pane's own
+/// hint bar**: one while the Detail tab is up, none anywhere else.
+///
+/// Below 100 columns the shown tab owns the whole screen (DESIGN §1.1). On
+/// the Graph tab the graph screen is drawn and its footer carries the keys,
+/// so nothing is owed. On the Detail tab the graph screen is not drawn at
+/// all — and the hint bar went with it, so at 80 columns with the changes
+/// pane open *every* key was hidden, the one outcome ADR-0037 §4 rules out
+/// and the premise ADR-0039 rests on (m5-history-and-ghost-preview/29).
+/// The pane that owns the screen owns the keys, so it gets a footer row of
+/// its own and draws its own `HintContext` into it.
+///
+/// The cost, knowingly accepted: one row of content off every pane in this
+/// layout — about 4% at 24 rows. Losing that beats showing no keys at all.
+///
+/// `0` while the operation banner has focus. A focused banner is modal and
+/// already draws its own keys on the bottom row ([`tab_banner_rows`] is 2
+/// then); a second bar under it would hint keys the modal swallows, and the
+/// row it would cost is a row the banner already spent.
+///
+/// Counted by `update::geometry::detail_split` and by
+/// `view::frame::detail_rects` from this one number, which is what keeps a
+/// click on the row the user is looking at (review M1's shape).
+///
+/// [`tab_banner_rows`]: crate::update::banner::tab_banner_rows
+#[must_use]
+pub fn tab_hint_rows(state: &AppState) -> u16 {
+    if !state.detail.shown {
+        return 0;
+    }
+    let size = (state.size.columns, state.size.rows);
+    let layout = effective_layout(state.detail.focus, &state.detail.pane_size, size);
+    if !matches!(layout, DetailLayout::Tab { shown: true }) {
+        return 0;
+    }
+    u16::from(crate::update::banner::tab_banner_rows(state) < 2)
+}
+
 /// Answers `explain_requested`, if there is one this tick
 /// (`m2-details-and-diffs/17`): opens the pane on that commit, then resolves
 /// the finding it was marked for and turns it into `DetailState::explain`.
