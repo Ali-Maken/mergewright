@@ -26,19 +26,47 @@ only arises sometimes.
 
 ## The decision
 
+Restated 2026-09-21 (m5/27) to read straight: this is the rule as the three
+amendments below leave it, stated once rather than in the sequence that
+arrived at it. Nothing here is new; the history section keeps the trail.
+
 Split the bar into two parts with **different promises**.
 
 1. **The doorway.** One short, fixed marker — `. more`, about seven columns —
-   drawn at **every** width, in **every** pane, never dropped. This, and only
-   this, is what ADR-0037 §4's "never all hidden" protects. The rule now costs
-   seven columns instead of fifty, so it holds everywhere without a special case.
+   drawn at **every** width, in **every** pane the doorway has work to do in
+   (a modal pane is the exception, below). This, and only this, is what
+   ADR-0037 §4's "never all hidden" protects. The rule now costs seven
+   columns instead of fifty, so it holds everywhere without a special case.
 
-2. **The shortcuts.** The three-to-six most relevant keys for the context, shown
-   when there is room, dropped when there is not. Dropping them is safe *because*
-   the doorway is not droppable.
+2. **The shortcuts.** The context's own keys, shown when there is room,
+   dropped when there is not. Dropping them is safe *because* the doorway is
+   not droppable.
 
 Discoverability no longer depends on the shortcuts being visible. It depends on
 the doorway being reliable — which is a far cheaper thing to guarantee.
+
+Four rules govern how the shortcuts fill the room they have:
+
+- **The bar fills from the most relevant end.** Each hint takes the best rung
+  that still leaves room for the hints ahead of it; a hint that will not fit
+  even at its bare key is dropped. This is decided **per hint, never as a
+  step the whole list takes together** — the list-wide version was built,
+  measured and reverted (third amendment, below).
+- **The floor.** The three most relevant hints never fall below their floor
+  rung — their short rung where the user's table gives one, their whole verb
+  where it does not — and the bar is never all hidden.
+- **A modal pane draws its own keys, not the doorway.** Where a pane answers
+  every key itself, `. more` would advertise a key the pane swallows, and the
+  pane's own list is already complete, so nothing needs recovering.
+- **Widths are counted from the bar's own width, never the screen's.** A pane
+  can leave the bar narrower than it is with no pane open at all; keying the
+  count to the screen gives less help on the bigger terminal, which is wrong
+  in the direction that matters.
+
+**No abbreviation scheme.** The ladder's bare-key rung is already the
+mechanism for "no room" — a verb the short-form table does not name simply
+draws whole or not at all, never invented or squeezed to fit (m5/27,
+`crates/graft-ui/src/graph_screen/hints.rs`'s `short_form`).
 
 ## Three conditions, without which this is a lie
 
@@ -78,6 +106,12 @@ the doorway being reliable — which is a far cheaper thing to guarantee.
   worth revisiting once the doorway's menu is complete: the mechanism here is the
   same one, minus the timeout. Not taken now because it advertises nothing at
   rest unless the trigger is drawn — which is the doorway again.
+
+## History
+
+The decision above is what these three amendments collectively arrive at,
+restated once rather than read as an autopsy (CLAUDE.md, m5/27). Kept
+unedited, in order, for the trail.
 
 ## Amendment, 2026-09-21: a modal pane draws its own keys, not the doorway
 
