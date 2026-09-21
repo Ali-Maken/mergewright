@@ -336,6 +336,16 @@ fn a_plan_with_nothing_in_it_offers_close_only() {
         "and it says why: {:?}",
         view.lines
     );
+    // Review 08 Minor 7: it used to offer `undo: u takes this back` above
+    // `nothing to do`, over a plan with nothing to take back.
+    assert!(
+        !view
+            .lines
+            .iter()
+            .any(|line| line.as_str().starts_with("undo:")),
+        "and offers no undo of a change it is not making: {:?}",
+        view.lines
+    );
 }
 
 /// The plan failed: the reason is on the box, and there is nothing to run.
@@ -798,4 +808,30 @@ fn detached() -> RefBadges {
         &[(name(b"refs/heads/feature"), oid(3))],
         &HeadState::Detached(oid(2)),
     )
+}
+
+/// Review 08 Minor 1 and the ticket's last acceptance line. The test above
+/// calls [`preview_key`] directly, which proves the function is modal but
+/// not that `key_event` reaches it before the global `u`. That ordering was
+/// held by reading `keys.rs`; this holds it by pressing the key.
+#[test]
+fn u_over_an_open_preview_does_nothing_through_the_real_key_path() {
+    let (state, _) = opened_with(a_plan());
+    assert!(state.preview.is_some(), "a preview is open to type over");
+
+    let (after, commands) = crate::update::update(
+        &state,
+        AppEvent::Core(graft_core::event::Event::Key(KeyPress::plain(
+            KeyCode::Char('u'),
+        ))),
+    );
+
+    assert!(
+        !commands
+            .iter()
+            .any(|command| matches!(command, Command::Undo(..) | Command::Redo(..))),
+        "the global `u` must not fire behind a picture: {commands:?}"
+    );
+    assert!(after.preview.is_some(), "and the preview is still open");
+    assert!(after.operating.is_none(), "nothing was launched");
 }

@@ -26,6 +26,10 @@ const NOT_YET: &str = "\u{2014}";
 
 /// The preview's rows for this frame, in drawing order.
 ///
+/// Starts at [`PreviewState::view_start`], not at `rows[0]`: the slice is
+/// three screens wide so a ghost has somewhere to hang, and only the middle
+/// one is the screen the user was looking at when they pressed the key.
+///
 /// Empty while the plan is still being made — the box says `predicting…`
 /// and the graph keeps the rows it had, so the screen does not blink.
 pub(super) fn preview_entries<'a>(
@@ -39,18 +43,37 @@ pub(super) fn preview_entries<'a>(
         .rows
         .iter()
         .enumerate()
+        .skip(window_start(state, preview))
         .map(|(index, row)| {
             let ghost = preview.ghost_index.contains_key(&row.commit.id);
             entry(
                 row,
                 ghost,
-                index == preview.cursor,
+                preview.selected_row == Some(index),
                 badges.as_ref(),
                 mailmap,
                 now,
             )
         })
         .collect()
+}
+
+/// Where the drawn window starts inside [`PreviewState::rows`].
+///
+/// The user's own top row, and never above it. The box docks over the
+/// bottom of the graph, though, so the picture is shorter than the screen
+/// those rows were scrolled on; when that would push the row the key was
+/// pressed on off the bottom, the window slides down by exactly as much as
+/// it must to keep it. A picture the user cannot find their own commit in
+/// is not a preview of anything they asked for.
+fn window_start(state: &AppState, preview: &PreviewState) -> usize {
+    let Some(selected) = preview.selected_row else {
+        return preview.view_start;
+    };
+    let visible = state.graph_rows();
+    preview
+        .view_start
+        .max(selected.saturating_sub(visible.saturating_sub(1)))
 }
 
 /// One row of the slice, real or ghost.

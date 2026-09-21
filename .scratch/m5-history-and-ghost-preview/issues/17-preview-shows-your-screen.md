@@ -1,6 +1,6 @@
 # preview-shows-your-screen: scrolled down, you confirm a picture of the screen above yours — group 08 fix round
 
-Status: ready
+Status: done
 Blocked by: 16 (same crate — `graft`; never two cargo commands in one worktree)
 Build with: **Opus.** F1 is the milestone promise failing silently, and the
 reason it survived is a whole test suite pinned at `top == 0`.
@@ -54,37 +54,96 @@ held **by inspection only** — `u` over a preview is not tested through
 
 ## Acceptance (every tick names its verifying test inline, at tick time)
 
-- [ ] At `top > 0` the drawn rows are the viewport's, and the cursor and the
+- [x] At `top > 0` the drawn rows are the viewport's, and the cursor and the
       ghosts are on screen — asserted on the **drawn frame** — test:
-- [ ] The same at a `top` near the end of history, where the window clamps —
-      test:
-- [ ] `Enter` on a non-next `Undo` row lands where the row's title says —
-      test:
-- [ ] The key-hint invariant test sees verb labels, and `Fix: revert the merge`
+      `view::tests::a_preview_scrolled_into_history_draws_the_screen_the_user_is_on`
+      (drawn frame, unit) and `it::preview::a_preview_scrolled_into_history_draws_the_rows_the_user_was_on`
+      (the real app, `j` to a row then `r`).
+- [x] The same at a `top` near the end of history, where the window clamps —
+      test: `view::tests::a_preview_near_the_end_of_history_still_starts_at_the_users_top_row`.
+- [x] `Enter` on a non-next `Undo` row lands where the row's title says —
+      test: `update::journal::tests::enter_on_an_undo_row_refuses_rather_than_reverting_somewhere_else`
+      (and `…::enter_on_the_next_redo_row_is_still_capital_u`). Fixed by
+      **refusing in words**, not by planning something else — see NOTES.
+- [x] The key-hint invariant test sees verb labels, and `Fix: revert the merge`
       no longer breaks it — test:
-- [ ] `u` over an open preview, through `key_event` rather than by inspection —
-      test:
+      `update::context_menu::verbs::tests::a_trailing_parenthesis_on_a_verb_label_is_always_a_live_key`
+      over `every_label_the_app_can_build()` (six fixture shapes, >15 labels).
+- [x] `u` over an open preview, through `key_event` rather than by inspection —
+      test: `update::preview::tests::u_over_an_open_preview_does_nothing_through_the_real_key_path`.
 
-**Mutation-check each.** For F1 the mutation is the bug itself: restore the
-slice-start offset and show the new test going red. If it stays green at
-`top > 0`, you have not reproduced the bug and the tick is false.
+## Mutation table (each applied, watched red, restored)
+
+| # | Mutation | Test that went red |
+|---|---|---|
+| A | `view_start = 0` (the bug itself) | both F1 tests |
+| B | highlight by `preview.cursor` | `a_preview_highlights_the_commit_the_cursor_is_on_not_the_choice_index` |
+| C | remove the F2 refusal | `enter_on_an_undo_row_refuses_rather_than_reverting_somewhere_else` |
+| D | restore the `(-m N)` label | `a_trailing_parenthesis_on_a_verb_label_is_always_a_live_key` |
+| E | let `u` past the preview in `boxes_key` | `u_over_an_open_preview_does_nothing_through_the_real_key_path` |
+| F | ULID on the busy line | `the_time_machines_busy_line_names_the_entry_not_its_id` |
+| G | unconditional undo line | `a_plan_with_nothing_in_it_offers_close_only` |
+| H | hint context keyed on rows | `the_footer_is_the_previews_from_the_moment_the_box_opens` |
+| I | `window_start` never slides | `a_preview_keeps_the_cursors_commit_on_screen_when_the_box_takes_rows` |
+| J | `is_ref` ignores the kind | `moving_a_branch_leaves_a_tag_of_the_same_name_where_it_is` |
+| K | drop `forget_stale_divergence` | `the_remembered_upstream_dies_with_the_line_that_explained_it` |
+| L | drop Major 4's refusal arm | `a_commit_that_is_there_but_will_not_read_refuses_the_whole_picture` |
 
 ## Capture
 
-Re-take the preview captures **at `top > 0`** — that is the state that was
-never pictured. Keep a `top == 0` one too if it is already there. Headers say
-what right looks like. ≤ 200 KB each. Colour unverified (rule 5). **Do not
-tick the visual result** (rule 6).
+- `docs/shots/m5-ui-preview-scrolled-80x24.txt` (4049 B) and
+  `…-160x48.txt` (8267 B) — the preview at `top > 0`, the state that was
+  never pictured. Written by `it::preview::capture_scrolled_preview_for_docs_shots`.
+- `docs/shots/m5-ui-preview-time-machine-{80x24,160x48}.txt` regenerated; the
+  header no longer asks the user to look for a `git …` line that is not there
+  (Minor 6).
+- **Colour unverified** (rule 5). **The visual result is not ticked** (rule 6).
 
-## Gates
+## NOTES
 
-Workspace-wide, never `-p`. `CARGO_TARGET_DIR=/tmp/graft-target-g17`, deleted
-before hand-back. Baseline: whatever `main` reads when you start — check it,
-do not assume 2156.
+**F1, watched failing first.** The test at `top > 0` was written and run
+before any production change. It drew ids 92→76 (slice rows 28–44) while the
+viewport's top row was id 64 and the ghost was nowhere on the frame — the bug
+exactly as the review describes it. Only then was `view_start` added.
+**Cause fix.** The picture is now drawn from the user's `top`, mapped into the
+slice **by commit id** (ghosts are woven in, so an index is not a position).
 
-Commit, never push.
+**A second real defect, found by the app-level test.** The box docks over the
+bottom of the graph, so the picture is shorter than the screen those rows were
+scrolled on; at `top=14, cursor=30` the cursor's own commit was still off the
+bottom. Fixed at the cause in `view::preview::window_start` — slide down by
+exactly as much as it takes, never above `view_start`. Mutation I.
 
-## Report
+**F2 is a refusal, and that is the cause fix available here.** The review's
+option (b) — resolve the `Undo` target to its root operation's position —
+yields the *same* wrong plan, because `plan_revert_to` can only invert
+operations in force and cannot redo. For `[A, B, undo(B), C]` the only plan
+reachable is `inverse(C)`, which leaves `B` undone while the row's title says
+otherwise. So `Enter` on an `Undo`/`Redo` row now says what it cannot do
+instead of doing something else. Landing there properly needs a redo step in
+`graft_ops::undo::plan_revert_to` — `graft-ops`, outside this fence.
 
-Cause or symptom per fix. For F1 specifically: say what the test you wrote is
-anchored to, and confirm you watched it fail before you fixed anything.
+**F3: a test was holding the bug in place.** Two assertions in
+`verbs/tests.rs` asserted `Fix: revert the merge (-m 2)` — the wrong label.
+They were changed to `, -m 2`, because the suite was agreeing with the code
+rather than with the `be719c6` ruling. `crates/graft/MAP.md`'s claim that the
+rule is whole is true again. **`graft-ui` was not needed**: it cannot depend
+on `graft`, so the invariant's reach over verb labels lives in `graft`'s own
+`verbs/tests.rs`.
+
+**Deliberately not done.**
+- **Minor 8** (cache the preview row count on `PreviewState`): unmeasured by
+  the review's own words, and caching would need interior mutability on a
+  `Clone + Debug + PartialEq + Eq` struct. CLAUDE.md forbids measurement in a
+  helper's context, so this is a change with no evidence behind it. Left open.
+- **Minor 5** (`plan_revert_to` prints `(1 steps)`): `graft-ops`, outside the
+  crate set. Not touched.
+
+**Compaction.** This ticket compacted once, during F4. Nothing of the ticket
+remains: F1–F3 and every Major and Minor above are either done or listed as
+deliberately not done, and the gates were re-run after the last change.
+
+**Gates**, workspace-wide: baseline on `main` checked at the start — 2171
+passed / 34 skipped. After: `cargo fmt --all --check` clean,
+`cargo clippy --all-targets -- -D warnings` clean, `cargo nextest run
+--workspace` **2187 passed / 35 skipped**, `cargo test --doc` clean.

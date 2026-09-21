@@ -531,8 +531,11 @@ fn capture_time_machine_for_docs_shots() {
              #  - The journal browser is gone and the preview box is in its place. `Esc`\n\
              #    puts the browser back on the same row.\n\
              #  - The box says what reverting to before that entry would do, in the\n\
-             #    plan's own words \u{2014} how many steps, what the index and working tree\n\
-             #    would be, and the commands it would run. No hand-written git line.\n\
+             #    plan's own words \u{2014} how many steps, and what the index and working\n\
+             #    tree would be. **No `git \u{2026}` line:** a revert is `graft`'s own\n\
+             #    restore, step by step, not a git command anyone could type, and\n\
+             #    `plan_revert_to` returns no commands (review 08 Minor 6 \u{2014} this\n\
+             #    header used to ask the reader to look for one).\n\
              #  - `[ Cancel ]` is first and the cursor rests on it.\n\
              #  - Nothing has run: this picture is a read.\n\
              #\n"
@@ -1019,4 +1022,203 @@ fn context_menu_caption(label: &str, columns: u16, rows: u16) -> String {
              {width_line}\
              #\n"
     )
+}
+
+// ---------------------------------------------------------------------------
+// Scrolled a screen or more into history (ticket 17 F1).
+
+/// A history taller than the screen with a branch left behind at the bottom
+/// of it: the state every earlier test and capture missed.
+///
+/// `old-release` is thirty rows down, so reaching it scrolls the viewport and
+/// `history.top` stops being `0` — the one value where the preview's slice
+/// start saturates and drawing the picture from the slice's first row looks
+/// identical to drawing it from the user's own first row.
+///
+/// `redesign` is what puts the distance there: twenty-five commits newer than
+/// `topic`'s, the way a colleague's branch sits above yours in a real
+/// repository. Rebasing `topic` onto `old-release` then replays five
+/// commits, and every ghost lands beside the row the cursor is on.
+fn left_behind() -> graft_fixtures::Scratch {
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+    let path = scratch.path();
+    dated_commit(path, "base.txt", "base\n", "add the base", 1);
+    git(path, &["switch", "-c", "old-release"]);
+    dated_commit(path, "release.txt", "1.0\n", "cut release 1.0", 2);
+    git(path, &["switch", "main"]);
+    for (n, minute) in (3..=5).enumerate() {
+        dated_commit(
+            path,
+            &format!("main-{n}.txt"),
+            "x\n",
+            &format!("main moves on ({n})"),
+            minute,
+        );
+    }
+    git(path, &["switch", "-c", "topic"]);
+    dated_commit(path, "topic-one.txt", "one\n", "start the topic", 6);
+    dated_commit(path, "topic-two.txt", "two\n", "finish the topic", 7);
+    git(path, &["switch", "-c", "redesign", "main"]);
+    for n in 0..25 {
+        dated_commit(
+            path,
+            &format!("redesign-{n:02}.txt"),
+            "x\n",
+            &format!("redesign step {n:02}"),
+            8 + i64::from(n),
+        );
+    }
+    git(path, &["switch", "topic"]);
+    scratch
+}
+
+/// Is the cursor on a row carrying `name`'s branch badge?
+fn on_branch(state: &AppState, name: &[u8]) -> bool {
+    let Some(refs) = state.refs.as_deref() else {
+        return false;
+    };
+    let Some(row) = state
+        .history
+        .as_ref()
+        .and_then(graft::history::History::selected)
+    else {
+        return false;
+    };
+    refs.on(row.commit.id)
+        .iter()
+        .any(|label| matches!(label, graft::refs::RefLabel::Branch { name: it, .. } if it == name))
+}
+
+/// Scrolls to `old-release`'s row — well below the first screen — and
+/// presses `r`.
+fn preview_scrolled_into_history(app: &App, state: AppState) -> AppState {
+    let mut state = opened(app, state);
+    // A screen the fixture is taller than, without the fixture having to be
+    // a hundred real commits: the harness opens at 120x40.
+    state = app.resize(&state, 80, 24);
+    let mut guard = 0;
+    loop {
+        assert!(guard < 200, "never reached old-release's row");
+        if on_branch(&state, b"old-release") {
+            break;
+        }
+        state = app.key(&state, KeyCode::Char('j'));
+        state = app.pump(state, "the row under the cursor", |state| {
+            state
+                .history
+                .as_ref()
+                .and_then(graft::history::History::selected)
+                .is_some()
+        });
+        guard += 1;
+    }
+    let top = state.history.as_ref().expect("a history").top;
+    assert!(
+        top > 0,
+        "the whole point of this fixture is a scrolled viewport"
+    );
+    let state = app.key(&state, KeyCode::Char('r'));
+    assert!(
+        state.preview.is_some(),
+        "`r` opens a preview: {:?}",
+        state.status
+    );
+    app.pump(state, "the preview's plan", |state| {
+        state
+            .preview
+            .as_ref()
+            .is_some_and(|preview| !preview.rows.is_empty())
+    })
+}
+
+/// Ticket 17 F1, against a real repository and the real drawn frame: the
+/// rows the preview draws are the user's own screen.
+///
+/// The unit test in `view::tests` pins the same rule over scripted state;
+/// this one proves it survives the real walk, the real plan job and the
+/// real slice.
+#[test]
+fn a_preview_scrolled_into_history_draws_the_rows_the_user_was_on() {
+    let scratch = left_behind();
+    let (app, state) = App::open(scratch.path());
+    let state = preview_scrolled_into_history(&app, state);
+
+    let drawn = frame(&state, 80, 24).join("\n");
+    assert!(
+        drawn.contains("cut release 1.0"),
+        "the row the cursor is on is on screen:\n{drawn}"
+    );
+    assert!(
+        !drawn.contains("redesign step 24"),
+        "and the newest screen, a screen above the user's, is not:\n{drawn}"
+    );
+    assert!(
+        drawn.contains("start the topic"),
+        "the replayed commits are drawn as ghosts beside it:\n{drawn}"
+    );
+    app.close();
+}
+
+/// The capture the milestone never had: the preview **scrolled into
+/// history**, which is where the graph spends most of its life on a real
+/// repository. The user judges it by eye (CLAUDE.md rule 6).
+///
+/// Run by hand: `cargo test -p graft --test it
+/// preview::capture_scrolled_preview_for_docs_shots -- --ignored --nocapture`.
+#[test]
+#[ignore = "writes docs/shots/m5-ui-preview-scrolled-*.txt; run by hand to regenerate"]
+fn capture_scrolled_preview_for_docs_shots() {
+    let scratch = left_behind();
+    let (app, state) = App::open(scratch.path());
+    let state = preview_scrolled_into_history(&app, state);
+    let top = state.history.as_ref().expect("a history").top;
+    let home = scratch.path().display().to_string();
+
+    for (label, columns, rows) in [("80x24", 80u16, 24u16), ("160x48", 160, 48)] {
+        let drawn = frame(&state, columns, rows);
+        let mut out = format!(
+            "# m5-ui-preview-scrolled-{label}.txt: {columns}x{rows}, drawn by `view::view`\n\
+             # from a real AppState. A real repository: `old-release` cut at the base,\n\
+             # three commits on `main`, `topic` forked off its tip with two of its own,\n\
+             # and `redesign` — twenty-five commits newer than all of them — pushing\n\
+             # `old-release` thirty rows down the graph. Opened over the real job pool,\n\
+             # the cursor walked down to `old-release`'s row with `j` (so the viewport\n\
+             # really is scrolled: `history.top` is {top}, not 0), then `r` pressed\n\
+             # through `update` and the real `graft_ops::preview::plan` run\n\
+             # (crates/graft/tests/it/preview.rs, capture_scrolled_preview_for_docs_shots,\n\
+             # #[ignore]d). Not a pty capture: ratatui's TestBackend, a character grid\n\
+             # with no colour attributes in it — CLAUDE.md rule 5, colour ships\n\
+             # unverified. The scratch repository's temporary path is replaced by\n\
+             # `/code/api`; nothing else is touched.\n\
+             #\n\
+             # What right looks like:\n\
+             #  - The rows on screen are the rows the user was looking at. `cut release\n\
+             #    1.0` — the row the cursor was on when `r` was pressed — is visible,\n\
+             #    and the newest commits (`redesign step 24` and its neighbours, a\n\
+             #    screen or more above) are **not**. Before ticket 17 this capture\n\
+             #    showed exactly those rows instead, and the user's own were off-screen.\n\
+             #  - The five ghost rows sit right above `cut release 1.0`: hollow node\n\
+             #    glyphs, dashed edges, `\u{2014}` in place of a short sha and an age.\n\
+             #    They are `main`'s three commits and `topic`'s two, replayed.\n\
+             #  - `topic`'s badge has left its own row and sits on the newest ghost.\n\
+             #  - The highlighted row is `cut release 1.0`: the commit the key was\n\
+             #    pressed on, not whichever row happens to sit where the box's choice\n\
+             #    cursor points. (Highlight is a colour, so the grid cannot show it —\n\
+             #    unverified by construction, rule 5.)\n\
+             #  - The box is docked above the footer, every interior row bordered, and\n\
+             #    `[ Cancel ]` comes first with the cursor on it (ADR-0038 \u{a7}1).\n\
+             #\n"
+        );
+        out.push('\n');
+        for line in &drawn {
+            out.push_str(&line.replace(&home, "/code/api"));
+            out.push('\n');
+        }
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/shots")
+            .join(format!("m5-ui-preview-scrolled-{label}.txt"));
+        std::fs::write(&path, &out).expect("docs/shots is writable");
+        println!("wrote {} ({} bytes)", path.display(), out.len());
+    }
+    app.close();
 }

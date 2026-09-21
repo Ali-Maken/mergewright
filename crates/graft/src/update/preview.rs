@@ -162,6 +162,20 @@ pub struct PreviewState {
     pub plan: Loading<Arc<Planned>>,
     /// The laid-out rows the graph draws while the plan is `Ready`.
     pub rows: Vec<Row>,
+    /// Where the user's screen begins inside [`PreviewState::rows`].
+    ///
+    /// The slice is three screens wide so a ghost has somewhere to hang,
+    /// but only one of those screens is the user's. Drawing from `rows[0]`
+    /// shows them the screen *above* theirs the moment they are scrolled
+    /// (ticket 17 F1), so the picture starts here instead: the index of the
+    /// row that was at the top of the viewport when the preview opened.
+    pub view_start: usize,
+    /// The commit the cursor was on, as an index into
+    /// [`PreviewState::rows`] — what the picture highlights.
+    ///
+    /// Not [`PreviewState::cursor`], which is the *choice* cursor inside
+    /// the box (`0` Cancel, `1` Confirm) and has nothing to do with a row.
+    pub selected_row: Option<usize>,
     /// Which of [`PreviewState::rows`] are ghosts, by their synthetic id,
     /// mapped to their index in the plan's ghost list.
     pub ghost_index: HashMap<Oid, usize>,
@@ -268,6 +282,8 @@ pub fn open_preview(
         job: id,
         plan: Loading::Pending(id),
         rows: Vec::new(),
+        view_start: 0,
+        selected_row: None,
         ghost_index: HashMap::new(),
         clipped: 0,
         undrawable: None,
@@ -337,9 +353,12 @@ pub fn preview_key(
     if key.code == KeyCode::Char('c') && key.modifiers == Modifiers::CONTROL {
         return false;
     }
+    // Counted before the borrow, since it reads the whole state; the `else`
+    // then covers the same case the check above did, without a panic
+    // standing between the two (review 08 Minor 3).
     let choices = choice_count(state);
     let Some(preview) = state.preview.as_mut() else {
-        unreachable!("checked just above")
+        return false;
     };
     match key.code {
         KeyCode::Left => preview.cursor = preview.cursor.saturating_sub(1),
@@ -442,6 +461,10 @@ pub fn preview_produced(state: &mut AppState, id: JobId, result: Result<Arc<Plan
                 refs,
             )
         });
+    // Which absolute history row the user's screen starts at, and which
+    // their cursor is on. Read before the preview is borrowed, and read
+    // once: a preview is modal, so neither can move while it is open.
+    let viewport = state.history.as_ref().map(|it| (it.top, it.cursor));
     let Some(preview) = state.preview.as_mut() else {
         // The preview closed while the job was in flight. Nothing to do —
         // `close_preview` has already cancelled it.
@@ -469,10 +492,19 @@ pub fn preview_produced(state: &mut AppState, id: JobId, result: Result<Arc<Plan
                 .collect();
             preview.clipped = slice.clipped;
             preview.undrawable = None;
-            preview.rows = graft_graph::layout(&slice.commits, seeds);
+            let rows = graft_graph::layout(&slice.commits, seeds);
+            let (top, cursor) = viewport.unwrap_or((0, 0));
+            // `top` is always resident — it is the row the user is looking
+            // at — so the fallback only fires when there is no history at
+            // all, where `rows` is empty anyway.
+            preview.view_start = row_of(preview, &rows, top).unwrap_or(0);
+            preview.selected_row = row_of(preview, &rows, cursor);
+            preview.rows = rows;
         }
         Err(SliceError::MissingParent(oid)) => {
             preview.rows = Vec::new();
+            preview.view_start = 0;
+            preview.selected_row = None;
             preview.ghost_index = HashMap::new();
             preview.clipped = 0;
             preview.undrawable = Some(oid);
@@ -480,6 +512,20 @@ pub fn preview_produced(state: &mut AppState, id: JobId, result: Result<Arc<Plan
     }
     preview.plan = Loading::Ready(planned);
     preview.cursor = 0;
+}
+
+/// Where the commit on absolute history row `row` ended up in the laid-out
+/// slice, if the slice holds it at all.
+///
+/// By id rather than by arithmetic: the slice has the plan's ghosts woven
+/// into it, so a resident row's index in `rows` is its index in the
+/// snapshot plus however many ghosts were inserted above it.
+fn row_of(preview: &PreviewState, rows: &[Row], row: usize) -> Option<usize> {
+    let id = preview
+        .resident
+        .get(row.checked_sub(preview.slice_top)?)?
+        .id;
+    rows.iter().position(|it| it.commit.id == id)
 }
 
 /// `Confirm`: run the very operation that was drawn.
@@ -495,9 +541,16 @@ pub fn confirm_preview(
     let Some(preview) = state.preview.take() else {
         return;
     };
-    let description = preview
-        .planned()
-        .map_or_else(|| "revert to".to_owned(), |it| it.plan.description.clone());
+    let Some(description) = preview.planned().map(|it| it.plan.description.clone()) else {
+        // `Confirm` is only offered over a plan that landed
+        // (`PreviewState::acts`), so this cannot fire. If it ever did, the
+        // honest answer is to leave the picture up: launching an operation
+        // under a description this function had to invent is how the box
+        // and the Command Log come to describe one act two ways
+        // (review 08 Minor 2).
+        state.preview = Some(preview);
+        return;
+    };
     match preview.subject {
         PreviewSubject::Operation { op, opened_by } => {
             // The same value, not a rebuilt one: `check` refuses `Moved` if
@@ -640,7 +693,12 @@ fn plan_lines(plan: &PreviewPlan, clipped: usize) -> Vec<SanitizedText> {
     lines.extend(head_line(plan));
     lines.push(worktree_line(&plan.worktree));
     lines.push(conflict_line(&plan.conflicts));
-    lines.push(undo_line(&plan.undo));
+    // A plan that changes nothing has nothing to take back, and offering
+    // `u` over it teaches the box says things it does not mean
+    // (review 08 Minor 7).
+    if !nothing_to_do(plan) {
+        lines.push(undo_line(&plan.undo));
+    }
     // The slice's edge, named rather than left for the eye to misread: a
     // lane that simply stops is the accepted cost of a bounded picture
     // (hard choice 1), but the user is told it is happening.

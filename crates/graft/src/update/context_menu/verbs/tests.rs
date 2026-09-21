@@ -22,20 +22,10 @@ fn name(full: &str) -> RefName {
     RefName::new(full.as_bytes().to_vec()).expect("a valid ref name")
 }
 
+/// The menu's own fixture builder — one shape of "a row's refs" for both
+/// files (m5-08 review, Major 6).
 fn built(refs: &[(RefName, Oid)], head: &HeadState) -> RefBadges {
-    crate::refs::badges(
-        refs,
-        head,
-        &std::collections::HashMap::new(),
-        &[],
-        |_, _| {
-            Ok(graft_git::history::AheadBehind {
-                ahead: 0,
-                behind: 0,
-            })
-        },
-    )
-    .expect("no ahead/behind walk can fail here")
+    super::super::tests::ref_badges(refs, head)
 }
 
 /// `main` at commit 2 with `HEAD` on it, `feature` and the tag `v1` at
@@ -345,7 +335,7 @@ fn a_foxtrot_merge_head_is_on_offers_all_three_fixes() {
     let head = main_tip();
 
     assert_eq!(
-        op_of(&verbs, "Fix: revert the merge (-m 2)"),
+        op_of(&verbs, "Fix: revert the merge, -m 2"),
         &Operation::Revert(RevertParams {
             commit: oid(2),
             subject: "Merge branch 'x'".to_owned(),
@@ -395,7 +385,7 @@ fn fix_rebase_is_absent_unless_head_is_on_the_merge() {
     let labels = labels(&verbs);
     assert!(!labels.contains(&"Fix: rebase instead"), "{labels:?}");
     assert!(
-        labels.contains(&"Fix: revert the merge (-m 2)"),
+        labels.contains(&"Fix: revert the merge, -m 2"),
         "{labels:?}"
     );
     assert!(
@@ -480,4 +470,93 @@ fn an_invisible_character_in_a_ref_name_is_cleaned_out_of_the_label() {
 #[test]
 fn a_commit_is_spelled_the_same_seven_digits_everywhere() {
     assert_eq!(short(oid(3)), SHA3);
+}
+
+/// The keys a label may name, and the only ones: `graft-ui`'s own fixed
+/// items carry `y`/`x`/`⏎`/`f`/`p`/`P`/`u`, and of the app's verbs only
+/// merge and rebase own a letter (`docs/design/02-keymap.md` §2.1 — the
+/// rest live behind `.` precisely because they own none).
+const LIVE_KEYS: [&str; 2] = ["m", "r"];
+
+/// Every label `history_verbs` can build, across every shape that changes
+/// which verbs are offered.
+///
+/// `graft-ui`'s `every_label_names_its_key` cannot reach these: it builds
+/// the menu with `Vec::new()` for the verbs, so the rule it exists to
+/// enforce was unenforced on exactly the labels that broke it (review 08
+/// Major 3). `graft-ui` cannot depend on `graft`, so the reach belongs
+/// here, next to the labels themselves.
+fn every_label_the_app_can_build() -> Vec<String> {
+    let mut all: Vec<String> = Vec::new();
+    let mut take = |verbs: Vec<HistoryVerb>| {
+        all.extend(labels(&verbs).into_iter().map(str::to_owned));
+    };
+
+    let refs = main_and_feature();
+    // An ordinary row with a branch on it: checkout, merge, rebase,
+    // cherry-pick, revert, reset, delete branch, delete tag.
+    take(history_verbs(oid(3), &[oid(2)], "third", &refs, &[]));
+    // A row with no badge at all: the detached checkout.
+    take(history_verbs(oid(9), &[oid(2)], "ninth", &refs, &[]));
+    // The current branch's own row.
+    take(history_verbs(oid(2), &[oid(1)], "second", &refs, &[]));
+    // A merge row: the revert names its mainline.
+    take(history_verbs(
+        oid(3),
+        &[oid(2), oid(4)],
+        "merged",
+        &refs,
+        &[],
+    ));
+    // A detached `HEAD`.
+    take(history_verbs(
+        oid(3),
+        &[oid(2)],
+        "third",
+        &built(
+            &[(name("refs/heads/feature"), oid(3))],
+            &HeadState::Detached(oid(2)),
+        ),
+        &[],
+    ));
+    // A foxtrot merge `HEAD` is standing on: all three Fix… items.
+    take(history_verbs(
+        oid(2),
+        &[oid(7), oid(5)],
+        "Merge branch 'x'",
+        &built(
+            &[(name("refs/heads/main"), oid(2))],
+            &HeadState::Branch(name("refs/heads/main")),
+        ),
+        &[foxtrot(oid(2), oid(7), oid(5))],
+    ));
+
+    assert!(
+        all.len() > 15,
+        "the sweep must actually reach the labels: {all:?}"
+    );
+    all
+}
+
+/// The trailing key-hint rule, over the labels `graft-ui`'s own invariant
+/// test never sees. A trailing `(x)` means "that key is live, next time you
+/// can skip the menu"; a qualifier that is not a key — a reset mode,
+/// `detached`, `-m 1` — goes after a comma.
+#[test]
+fn a_trailing_parenthesis_on_a_verb_label_is_always_a_live_key() {
+    for label in every_label_the_app_can_build() {
+        let Some(open) = label.rfind(" (") else {
+            continue;
+        };
+        assert!(
+            label.ends_with(')'),
+            "a parenthesis that never closes is not a shape this rule can read: {label}"
+        );
+        let hint = &label[open + 2..label.len() - 1];
+        assert!(
+            LIVE_KEYS.contains(&hint),
+            "{label} wears the key-hint shape, but {hint} is not a live key \
+             - a qualifier goes after a comma"
+        );
+    }
 }

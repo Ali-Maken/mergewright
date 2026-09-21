@@ -318,7 +318,7 @@ fn fix_verbs(
     };
     let cur = short_name_of(&head.name);
     verbs.push(verb(
-        &format!("Fix: revert the merge (-m {mainline})"),
+        &format!("Fix: revert the merge, -m {mainline}"),
         Operation::Revert(RevertParams {
             commit: id,
             subject: subject.to_owned(),

@@ -14,14 +14,17 @@
 #  - The journal browser is gone and the preview box is in its place. `Esc`
 #    puts the browser back on the same row.
 #  - The box says what reverting to before that entry would do, in the
-#    plan's own words — how many steps, what the index and working tree
-#    would be, and the commands it would run. No hand-written git line.
+#    plan's own words — how many steps, and what the index and working
+#    tree would be. **No `git …` line:** a revert is `graft`'s own
+#    restore, step by step, not a git command anyone could type, and
+#    `plan_revert_to` returns no commands (review 08 Minor 6 — this
+#    header used to ask the reader to look for one).
 #  - `[ Cancel ]` is first and the cursor rests on it.
 #  - Nothing has run: this picture is a read.
 #
 
  graft /code/api  4 commits
-◆   [◆ main] add the base                                                                                                                        GT now  91bae1d
+◆   [◆ main] add the base                                                                                                                        GT now  e468a77
 ●   Correct the note                                                                                                                             GF 7y   a82960b
 ●   Add the first note                                                                                                                           GF 7y   fadcfb3
 ◇   Add a readme                                                                                                                                 GF 7y   64ded19

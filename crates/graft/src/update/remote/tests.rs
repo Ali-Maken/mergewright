@@ -584,3 +584,37 @@ fn dismissing_the_diverged_line_takes_its_keys_with_it() {
     assert_eq!(dismissed.remote.diverged_upstream, None);
     assert_eq!(dismissed.status, Status::Ready);
 }
+
+/// Review 08 Minor 9. `Esc` was not the only way the diverged line left the
+/// screen: a job's `Done`, or any later refusal, replaced it and left the
+/// remembered tip behind — so the next `m` silently merged the upstream
+/// from whatever row the cursor was on, with nothing on screen saying so.
+#[test]
+fn the_remembered_upstream_dies_with_the_line_that_explained_it() {
+    let mut state = diverged();
+    state.remote.diverged_upstream = Some(("refs/remotes/origin/main".to_owned(), oid(THEIRS)));
+    state.status = Status::Sticky {
+        reason: "main and origin/main have diverged".to_owned(),
+        keys: Some(crate::update::remote::DIVERGED_KEYS.to_owned()),
+    };
+
+    // Any event at all, with the line replaced by something else first.
+    state.status = Status::Done("fetched origin".to_owned());
+    let (after, _) = press(&state, plain('k'));
+
+    assert_eq!(
+        after.remote.diverged_upstream, None,
+        "the tip goes with the words"
+    );
+    let (next, _) = press(&after, plain('r'));
+    assert!(
+        next.preview.is_none() || {
+            let preview = next.preview.as_ref().expect("checked");
+            !matches!(
+                preview.subject.operation(),
+                Some(Operation::Rebase(params)) if params.onto_tip == oid(THEIRS)
+            )
+        },
+        "and `r` no longer aims at it"
+    );
+}

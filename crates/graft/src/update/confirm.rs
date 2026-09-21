@@ -45,6 +45,10 @@ pub enum ConfirmThen {
     RevertTo {
         /// The entry to jump back past.
         entry: graft_core::journal::EntryId,
+        /// The entry's own words, carried through so the busy line reads
+        /// `revert to before “commit …”` rather than the raw ULID
+        /// (review 08 Minor 2).
+        description: String,
     },
     /// Carry the live operation forward, skip its step, or abort it — `s`
     /// and `a` on the operation banner, which both box before they run
@@ -91,8 +95,8 @@ pub fn confirm_key(
                     ConfirmThen::Undo { redo } => {
                         commands.extend(super::undo::forced(next, redo, next_id));
                     }
-                    ConfirmThen::RevertTo { entry } => {
-                        super::undo::revert_to_forced(next, commands, entry, next_id);
+                    ConfirmThen::RevertTo { entry, description } => {
+                        super::undo::revert_to_forced(next, commands, entry, &description, next_id);
                     }
                     ConfirmThen::Resume(what) => {
                         super::banner::resume(next, commands, what, next_id);

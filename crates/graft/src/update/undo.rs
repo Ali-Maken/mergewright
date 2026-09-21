@@ -168,6 +168,7 @@ pub(super) fn revert_to_forced(
     state: &mut AppState,
     commands: &mut Vec<Command>,
     entry: graft_core::journal::EntryId,
+    what: &str,
     next_id: &mut impl FnMut() -> JobId,
 ) {
     if super::operate::operation_in_flight(state) {
@@ -175,7 +176,10 @@ pub(super) fn revert_to_forced(
     }
     let id = next_id();
     state.operating = Some(id);
-    let description = format!("revert to before \u{201c}{}\u{201d}", entry.as_str());
+    // The entry's own description, not its id: `01J…` on the busy line is
+    // a fact about the journal file, not about what the user asked for
+    // (review 08 Minor 2).
+    let description = format!("revert to before \u{201c}{what}\u{201d}");
     state.status = Status::Busy(description.clone());
     super::remote::launched(
         state,
@@ -229,6 +233,15 @@ pub(super) fn reverted_to(
             state.confirm = Some(revert_drift_box(&description, &drift, target));
             Vec::new()
         }
+        RevertedTo::Refused { description, error } => {
+            // Nothing ran, so nothing is to be refreshed and nothing is
+            // half-done: a refusal, worded as one (review 08 Minor 4).
+            state.status = Status::Sticky {
+                reason: format!("cannot revert to before \u{201c}{description}\u{201d}: {error}"),
+                keys: None,
+            };
+            Vec::new()
+        }
         RevertedTo::Failed {
             description: _,
             done,
@@ -271,7 +284,10 @@ fn revert_drift_box(
             sanitize_line("revert restores the recorded state, step by step"),
         )
         .with_labels("Stop", "Revert"),
-        then: ConfirmThen::RevertTo { entry: target },
+        then: ConfirmThen::RevertTo {
+            entry: target,
+            description: description.to_owned(),
+        },
     }
 }
 
@@ -803,5 +819,87 @@ mod tests {
         };
         let notice = interrupted_notice(&state).expect("there is one to report");
         assert!(notice.contains("restores the whole tree"), "{notice}");
+    }
+
+    /// Review 08 Minor 4. A revert whose plan could not be made at all
+    /// used to say `revert stopped after 0 of 0 steps`, which describes
+    /// something that ran and gave up. Nothing ran.
+    #[test]
+    fn a_revert_that_never_started_is_worded_as_a_refusal() {
+        let mut state = AppState::default();
+        let running = JobId::new(7);
+        state.operating = Some(running);
+        let mut next = 0;
+        let mut next_id = || {
+            next += 1;
+            JobId::new(next)
+        };
+
+        let commands = reverted_to(
+            &mut state,
+            running,
+            crate::jobs::undo::RevertedTo::Refused {
+                description: "commit one".to_owned(),
+                error: "there is nothing to revert".to_owned(),
+            },
+            &mut next_id,
+        );
+
+        assert_eq!(
+            state.status,
+            Status::sticky(
+                "cannot revert to before \u{201c}commit one\u{201d}: there is nothing to revert"
+            )
+        );
+        assert!(commands.is_empty(), "nothing ran, so nothing is re-read");
+    }
+
+    /// Review 08 Minor 2. The drift box's `[ Revert ]` used to launch under
+    /// `revert to before "01J..."` — the entry's ULID, because the
+    /// description was not carried through `ConfirmThen::RevertTo`. A ULID
+    /// is a fact about the journal file, not about what the user asked for.
+    #[test]
+    fn the_time_machines_busy_line_names_the_entry_not_its_id() {
+        let target = EntryId::new(1, [0; 10]);
+        let mut state = AppState::default();
+        let mut commands = Vec::new();
+        let mut next = 0;
+        let mut next_id = || {
+            next += 1;
+            JobId::new(next)
+        };
+        // `reverted_to` drops an outcome that is not the job in flight.
+        let running = JobId::new(99);
+        state.operating = Some(running);
+        reverted_to(
+            &mut state,
+            running,
+            crate::jobs::undo::RevertedTo::Drift {
+                description: "commit one".to_owned(),
+                drift: drift(),
+                target,
+            },
+            &mut next_id,
+        );
+        let confirm = state.confirm.as_mut().expect("the drift box is open");
+        // Index 0 is `Stop`; `[ Revert ]` is the acting choice.
+        confirm.view.right();
+
+        assert!(crate::update::confirm::confirm_key(
+            &mut state,
+            &mut commands,
+            KeyPress::plain(KeyCode::Enter),
+            &mut next_id,
+        ));
+
+        assert_eq!(
+            state.status,
+            Status::Busy("revert to before \u{201c}commit one\u{201d}".to_owned()),
+            "the entry's own words, not its ULID"
+        );
+        assert!(
+            matches!(commands.as_slice(), [Command::RevertTo(_, _, true)]),
+            "{commands:?}"
+        );
     }
 }
