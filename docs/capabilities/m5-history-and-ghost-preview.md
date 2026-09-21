@@ -456,18 +456,21 @@ status: works
 id: M5-22
 area: hints-and-ui
 milestone: m5-history-and-ghost-preview
-status: broken
+status: works
 ```
 
 - **How:** any pane (Detail, Changes, etc.) opened below 100 columns, where the layout
-  switches to tabs and the graph screen (and its hint bar) isn't drawn at all.
-- **Behaviour:** decided (ADR-0039) but **not yet built**: a ~7-column `. more` marker is
-  meant to ride the existing `[Graph] Detail` tab line at every width, so the "never hide
-  every key" guarantee costs 7 columns instead of the whole bar, and no pane loses a row for
-  it. As shipped today, this case is the one the guarantee explicitly forbids and it still
-  happens — see the gap below.
+  switches to tabs and the graph screen itself isn't drawn.
+- **Behaviour:** the tab layout draws its own bottom row of key hints for the focused
+  pane, through the same `hints_for` ladder and floor every other bar uses
+  (`update::detail::tab_hint_rows`, `view::frame::draw_tab_hints`) — reused rather than
+  doubled when the operation banner already draws its own key-hint row at the pane's foot.
+  So the "never hide every key" guarantee holds here too, at the cost of one row, only
+  below 100 columns, only where nothing else is already spending it (m5-history-and-
+  ghost-preview/29).
+- **Proven by:** `graft::tests::it::hint_bar::the_tab_layout_draws_the_panes_own_keys`, `graft::tests::it::hint_bar::every_tab_context_draws_a_bar`
 - **Decided in:** `docs/adr/0039-the-hint-bar-degrades-to-a-doorway.md`
-- **Status:** broken — the decision is accepted but not implemented; `#[ignore]`d failing test `graft::tests::it::hint_bar::the_tab_layout_still_hides_every_key` pins the gap
+- **Status:** works
 
 ### M5-23. A real `git status`/`merge-tree`/`rev-list` read backs every one of these: merge-base, commit ranges, conflict forecasts, in-progress rebase step, and mergetool config
 

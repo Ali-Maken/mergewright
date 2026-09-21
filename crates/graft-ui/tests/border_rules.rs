@@ -1,19 +1,46 @@
-//! No bordered surface puts text against its own rule.
+//! No bordered surface puts text against a border glyph — on any side,
+//! inside or out (m5-history-and-ghost-preview/30's invariant, replacing
+//! three point fixes that each created the next).
 //!
-//! The four surfaces that draw a label into a border are checked as a class,
-//! not one at a time. They disagreed: `confirm` and `preview_box` went
-//! through the shared `frame_box::border_row`, which puts a space on both
-//! sides of the label, while `credential_prompt` kept a private copy that
-//! put one only on the left. The result read as
-//! `╭ Credentials — 127.0.0.1:8443─────╮`, where `8443─────` looks like part
-//! of the host, and `╰ ⏎ send  ⌃U clear  esc cancel the push────╯` did the
-//! same to the footer.
+//! Ticket 28 found the first instance and stated the property only over the
+//! horizontal rule: `confirm` and `preview_box` went through the shared
+//! `frame_box::border_row`, which puts a space on both sides of a title,
+//! while `credential_prompt` kept a private copy that put one only on the
+//! left. The result read as `╭ Credentials — 127.0.0.1:8443─────╮`, where
+//! `8443─────` looks like part of the host.
 //!
-//! So the property is stated over the drawn cells rather than over any one
-//! helper: a rule cell (`─`) never touches a cell holding text. Space on
-//! either side, another rule cell, or a corner — anything else is the fault.
-//! A fifth surface that grows its own `border_row` fails here the day it is
-//! drawn.
+//! Ticket 29 found a second instance the rule-only property could not see at
+//! all — a box's own right *border*, run into the graph column beside it
+//! (`╮60af0eb`) — and fixed it with a gutter in the snap, in a different
+//! file (`graft::view::frame`), tested a different way
+//! (`graft-ui/tests/pane_boundaries.rs`, which knows about the graph's
+//! columns and so can check "beside the box", something this file's widgets
+//! alone cannot).
+//!
+//! Ticket 30 (this one) found a third instance neither caught: the box's own
+//! **vertical** border (`│`) run into its own longest content line
+//! (`…you send│`), because nothing here checked a `│` cell's neighbours at
+//! all, only a `─` cell's. So the property widens to every border glyph a
+//! box draws with — `─│╭╮╯╰` — checked against its left and right neighbour
+//! wherever it appears, not only in the top and bottom rows. That is now one
+//! test class instead of three: it would have caught all three instances
+//! above, and it catches the fourth the day some fifth surface's content row
+//! stops reserving its own padding.
+//!
+//! **Scope, stated plainly:** this file checks a border glyph against the
+//! cell immediately to its own left or right, within the widget's own
+//! rectangle — "inside" the invariant's "inside or out". The "out" half —
+//! whether a box's border touches *another widget's* content drawn beside
+//! it — needs the other widget on screen to check against, which nothing
+//! here draws; that half is `pane_boundaries.rs`'s
+//! `no_box_drawn_over_the_graph_touches_the_content_beside_it` and
+//! `graft::view::tests`'
+//! `the_confirm_box_leaves_a_gutter_before_a_wider_detail_pane` (this
+//! ticket's Q1 case, the detail pane beside the box).
+#![allow(
+    clippy::expect_used,
+    reason = "a test row that cannot even be measured has nothing to check; the panic names why"
+)]
 
 mod support;
 
@@ -31,36 +58,43 @@ use ratatui::widgets::Widget;
 
 use support::theme;
 
-/// The glyph a border's rule is drawn with.
-const RULE: &str = "\u{2500}";
-
-/// Cells that may sit beside a rule: more rule, the four rounded corners,
-/// and blank.
-fn may_touch_a_rule(cell: &str) -> bool {
+/// Every glyph a box draws its own frame with: the horizontal rule, the
+/// vertical border, and the four rounded corners.
+fn is_border_glyph(cell: &str) -> bool {
     matches!(
         cell,
-        RULE | "\u{256d}" | "\u{256e}" | "\u{256f}" | "\u{2570}" | " " | ""
+        "\u{2500}" | "\u{2502}" | "\u{256d}" | "\u{256e}" | "\u{256f}" | "\u{2570}"
     )
 }
 
-/// The first place `buf` runs a rule straight into text, in words.
-fn rule_fault(buf: &Buffer, area: Rect) -> Option<String> {
+/// Cells that may sit beside a border glyph: another border glyph, or
+/// blank. Anything else is text, and text is the fault.
+fn may_touch_a_border(cell: &str) -> bool {
+    is_border_glyph(cell) || cell == " " || cell.is_empty()
+}
+
+/// The first place `buf` runs a border glyph straight into text, in words —
+/// checked on both sides of **every** border glyph, not only the rule: a
+/// `│` with a non-space neighbour is the same fault turned ninety degrees
+/// (instance three, `…you send│`).
+fn border_fault(buf: &Buffer, area: Rect) -> Option<String> {
     for y in area.top()..area.bottom() {
         let row: Vec<String> = (area.left()..area.right())
             .map(|x| buf[(x, y)].symbol().to_owned())
             .collect();
         for (index, cell) in row.iter().enumerate() {
-            if cell != RULE {
+            if !is_border_glyph(cell) {
                 continue;
             }
             let left = index.checked_sub(1).and_then(|i| row.get(i));
             let right = row.get(index + 1);
             for (side, neighbour) in [("left", left), ("right", right)] {
                 if let Some(neighbour) = neighbour
-                    && !may_touch_a_rule(neighbour)
+                    && !may_touch_a_border(neighbour)
                 {
                     return Some(format!(
-                        "row {y} column {} — the rule touches {neighbour:?} on its {side}: {}",
+                        "row {y} column {} ({cell:?}) — it touches {neighbour:?} on its {side}: \
+                         {}",
                         area.left() + u16::try_from(index).unwrap_or(u16::MAX),
                         row.concat()
                     ));
@@ -78,9 +112,9 @@ fn check(name: &str, theme: &Theme, draw: impl Fn(Rect, &mut Buffer, &Theme)) {
         let mut buf = Buffer::empty(area);
         draw(area, &mut buf, theme);
         assert!(
-            rule_fault(&buf, area).is_none(),
+            border_fault(&buf, area).is_none(),
             "{name} at {width} columns: {}",
-            rule_fault(&buf, area).unwrap_or_default()
+            border_fault(&buf, area).unwrap_or_default()
         );
     }
 }
@@ -161,4 +195,69 @@ fn the_ghost_preview_and_the_name_prompt_keep_their_rules_off_their_text() {
     check("the name prompt", &theme, |area, buf, theme| {
         (&NamePrompt { view: &name, theme }).render(area, buf);
     });
+}
+
+/// One row, hand-built to hold exactly the fault each ticket found, so the
+/// **detector** itself is pinned against all three by name — not only
+/// against whichever widget happens to reproduce them today.
+fn one_row(row: &str) -> (Buffer, Rect) {
+    let width = u16::try_from(row.chars().count()).expect("a test row is narrower than u16::MAX");
+    let area = Rect::new(0, 0, width, 1);
+    let mut buf = Buffer::empty(area);
+    buf.set_string(0, 0, row, ratatui::style::Style::default());
+    (buf, area)
+}
+
+/// Instance 1 (ticket 28): the title ran into its own rule —
+/// `╭ Credentials — 127.0.0.1:8443─────╮`. Ticket 28 already fixed the
+/// widget (`border_row` puts a space on both sides of a label everywhere
+/// now), so this cannot be reproduced by drawing a widget any more; it pins
+/// the **detector** against the fault directly, so a regression anywhere
+/// still gets caught the day it draws this shape again.
+#[test]
+fn instance_one_a_title_run_into_its_own_rule_is_still_caught() {
+    let (buf, area) = one_row("╭ Credentials — 127.0.0.1:8443─────╮");
+    assert!(
+        border_fault(&buf, area).is_some(),
+        "the detector must flag a rule run straight into a title"
+    );
+}
+
+/// Instance 2 (ticket 29): the box's border ran into the graph column
+/// beside it — `╮60af0eb`. Fixed at the layout site
+/// (`graft_ui::graph_screen::snap_to_columns`'s gutter step), a different
+/// file this crate's widgets know nothing about, so it is pinned the same
+/// way as instance 1: against the detector directly. The live, drawn
+/// version of this instance — the box's border against the graph's own
+/// content, not a hand-built row — is
+/// `pane_boundaries.rs`'s `no_box_drawn_over_the_graph_touches_the_content_beside_it`,
+/// which sweeps the real `snap_to_columns` and names the mutation that
+/// reproduces it (dropping the `- 1` gutter step).
+#[test]
+fn instance_two_a_border_run_into_the_graph_beside_it_is_still_caught() {
+    let (buf, area) = one_row("╮60af0eb");
+    assert!(
+        border_fault(&buf, area).is_some(),
+        "the detector must flag a border run straight into adjoining content"
+    );
+}
+
+/// Instance 3 (this ticket): the confirm box's own longest line ran into
+/// its own right border — `…you send│`. Unlike instances 1 and 2, this one
+/// **is** still reproducible by drawing the real widget: reverting
+/// `frame_box::content_row` to clamp `" {text}"` to the full inner width
+/// (no reserved right-hand padding) reproduces it exactly, failing
+/// `the_confirm_box_and_the_credential_prompt_keep_their_rules_off_their_text`
+/// at 40 columns naming
+/// `"│ git push --progress origin refs/head…│"` — verified by hand,
+/// restored before this commit. Pinned here the same way as the other two,
+/// so the detector's own coverage of this exact shape does not depend on
+/// which widget happens to draw it.
+#[test]
+fn instance_three_a_box_s_own_longest_line_run_into_its_own_border_is_still_caught() {
+    let (buf, area) = one_row("│ 1 commit …you send│");
+    assert!(
+        border_fault(&buf, area).is_some(),
+        "the detector must flag a content row's own text run into its own border"
+    );
 }

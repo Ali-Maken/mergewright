@@ -225,7 +225,20 @@ pub fn view_with_graphics(
         Screen::Graph if state.map.shown => draw_map(session, state, frame, area),
         Screen::Graph if state.journal.shown => draw_journal(session, state, frame, area),
         Screen::Graph if state.stash.shown => draw_stash(session, state, frame, area),
+        // The remaining case — none of the four overlays above — is exactly
+        // `update::banner::graph_screen_on_frame`'s own condition (review
+        // M3). Stays an unguarded fall-through (Rust cannot prove a guarded
+        // arm exhaustive, so `Screen::Graph` still needs one), but the
+        // agreement is checked rather than assumed: a fifth overlay added to
+        // the guards above and forgotten in that function would flip this
+        // `debug_assert!` in every dev build and test, not drift apart
+        // unnoticed.
         Screen::Graph => {
+            debug_assert!(
+                crate::update::banner::graph_screen_on_frame(state),
+                "the match above took none of the four overlay arms, so \
+                 `graph_screen_on_frame` must agree that the graph itself is drawn"
+            );
             let mut screen = graph_view(state, state.harness.clock.now_seconds());
             screen.icons = session.icons;
             screen.compaction.max_lanes =
@@ -753,23 +766,49 @@ fn full_width_band(area: Rect, rect: Rect) -> Rect {
 /// same pane, rather than recomputed here — the snap and the draw cannot
 /// then disagree about where a column is. Empty when the graph is not on
 /// screen, which reads as "no columns here to split".
+///
+/// With the detail pane open side by side (review Q1), `pane.right()` is
+/// **not** the screen's edge — `detail_pane::layout::gutter` already leaves
+/// one blank column between the graph and the pane beside it. Left in the
+/// boundary list unchanged, `snap_to_columns` would treat that boundary like
+/// any interior one and step its own gutter cell back from it (ADR-0040's
+/// 2026-09-21 amendment), landing one cell short of the blank column that is
+/// already there — on the short-SHA column's own last character rather than
+/// beside it. So the boundary that stands for "the pane's own edge" is
+/// dropped in favour of where the neighbouring pane's content actually
+/// starts, the same distance further out; the amendment's gutter step then
+/// lands exactly on the blank column `detail_pane` already reserved.
 fn row_columns(
     session: &Session,
     state: &AppState,
     screen: &GraphView<'_>,
     area: Rect,
 ) -> Vec<u16> {
-    primary_pane_area(state, area).map_or_else(Vec::new, |pane| {
-        let mut boundaries = GraphScreen::new(screen, &session.theme).column_boundaries(pane);
-        // The frame's own edges, so a box straddling the divider into the
-        // detail pane snaps out to cover that pane whole rather than
-        // stopping part-way across it.
-        boundaries.push(area.x);
-        boundaries.push(area.right());
-        boundaries.sort_unstable();
-        boundaries.dedup();
-        boundaries
-    })
+    let Some(pane) = primary_pane_area(state, area) else {
+        return Vec::new();
+    };
+    let mut boundaries = GraphScreen::new(screen, &session.theme).column_boundaries(pane);
+    if state.detail.shown {
+        let layout = crate::update::detail::effective_layout(
+            state.detail.focus,
+            &state.detail.pane_size,
+            (area.width, area.height),
+        );
+        if let DetailLayout::Right { .. } = layout
+            && let (_, Some(neighbour)) = graft_ui::detail_pane::split_area(layout, area)
+        {
+            boundaries.retain(|&x| x != pane.right());
+            boundaries.push(neighbour.x);
+        }
+    }
+    // The frame's own edges, so a box straddling the divider into the
+    // detail pane snaps out to cover that pane whole rather than
+    // stopping part-way across it.
+    boundaries.push(area.x);
+    boundaries.push(area.right());
+    boundaries.sort_unstable();
+    boundaries.dedup();
+    boundaries
 }
 
 /// The band the popup stands on: its own rows, from its left edge out to the

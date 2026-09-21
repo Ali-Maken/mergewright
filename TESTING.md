@@ -1624,14 +1624,14 @@ Two things in that table look wrong at a glance and are not:
   leads to the rest, and the `.` menu now lists the keys the width rule
   drops first (`Fetch (f)`, `Pull (p)`, `Push (P)`, `Undo (u)`).
 
-**Known gap — under 100 columns, with a detail pane open, there is no hint
-bar at all.** `update::detail::effective_layout` picks `DetailLayout::Tab`
-there: the pane takes the whole screen behind a `[Graph] Detail` strip and
-the graph screen, the bar with it, is not drawn. That is ADR-0037 §4's one
-forbidden outcome, at an everyday width in an editor's terminal. It is
-recorded, not fixed: `hint_bar::the_tab_layout_still_hides_every_key`
-(`#[ignore]`d, asserts the bar is there) and the NOTE at the head of
-`m5-hints-changes-80x24.txt`. Fixing it means giving the tab layout a footer
-of its own, which costs every pane a row.
+**Fixed — under 100 columns, with a detail pane open, the tab layout draws
+its own hint bar.** `update::detail::effective_layout` picks
+`DetailLayout::Tab` there: the pane takes the whole screen behind a
+`[Graph] Detail` strip, and the graph screen — with its own footer — is not
+drawn. `view::frame::draw_tab_hints` gives that layout a bottom row of its
+own instead, through the same `hints_for` ladder every other bar uses, so
+ADR-0037 §4's "never hide every key" holds here too
+(m5-history-and-ghost-preview/29): `hint_bar::the_tab_layout_draws_the_panes_own_keys`
+and `hint_bar::every_tab_context_draws_a_bar`.
 
 

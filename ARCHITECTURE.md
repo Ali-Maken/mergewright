@@ -196,6 +196,17 @@ into `ui` only as `term::SanitizedText` — a newtype only `term::sanitize`
 can construct, applied by `app` at the view-model boundary (`DESIGN.md`
 §8.2), so escape-sequence injection is a compile error, not a review catch.
 
+The same one-way rule holds *inside* `app`, between its own `update` and
+`view` modules, with one test-only exception: production `update` code never
+imports `view` — the diagram above is `Event ─▶ update ─▶ view`, not the
+other way round — but `update`'s own tests may read `view`, when the
+alternative is a second, hand-kept copy of `view`'s geometry that nothing
+checks against the real one (`update/tests.rs`'s
+`the_geometry_mirror_matches_the_rects_the_frame_hands_out`, which sweeps
+`update::geometry::detail_split` against `view::frame::detail_rects` itself,
+made `pub(crate)` for exactly this). Production code crosses neither
+direction, whichever module it sits in.
+
 ### The open repository: `SharedRepo` and `RepoStore`
 
 Opening a repository is expensive — discovery walks up the tree, then the

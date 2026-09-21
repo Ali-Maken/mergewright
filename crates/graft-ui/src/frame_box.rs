@@ -23,6 +23,17 @@ pub(crate) fn cells(text: &str) -> usize {
 /// A border row: `left`, a space, `label` fit to what is left, dashes
 /// filling the rest, a space, `right` — exactly `width` cells. `label`
 /// empty draws a plain dashed border.
+///
+/// A label too long to fit is cut with `…` (`fit`'s own rule), and when it
+/// is, one blank cell — **not** a dash — is reserved between the cut label
+/// and `right`: a dash is a border glyph itself, so putting one directly
+/// after the `…` would still leave that ellipsis touching a border glyph,
+/// only a different one. Before this, a label that needed cutting claimed
+/// every inner cell (`used = cells(&labelled).min(inner)`, nothing left
+/// over), so its own `…` sat straight against the corner:
+/// `╰ ⏎ send  ⌃U clear  esc cancel the pus…╯`. A label that fits without
+/// cutting is unaffected — it already ends in `labelled`'s own trailing
+/// space.
 #[must_use]
 pub(crate) fn border_row(left: char, right: char, label: &str, width: usize) -> String {
     if width == 0 {
@@ -40,20 +51,40 @@ pub(crate) fn border_row(left: char, right: char, label: &str, width: usize) -> 
     } else {
         format!(" {label} ")
     };
-    let used = cells(&labelled).min(inner);
-    let clamped = fit(&labelled, used);
-    let dashes = "─".repeat(inner - used);
+    let full = cells(&labelled);
+    if full > inner {
+        let used = inner.saturating_sub(1);
+        let clamped = fit(&labelled, used);
+        return format!("{left}{clamped} {right}");
+    }
+    let clamped = fit(&labelled, full);
+    let dashes = "─".repeat(inner - full);
     format!("{left}{clamped}{dashes}{right}")
 }
 
 /// A plain content row: `│ text │`, `text` fit to what is left.
+///
+/// One cell of padding is reserved on **both** sides of `text`, not just the
+/// left — the invariant this ticket exists for: no text cell is ever
+/// adjacent to a border glyph. Before this, `fit` was only ever asked to
+/// clamp `" {text}"` to `inner` cells, so a line exactly `inner - 1` cells
+/// long filled every cell up to the right border and left it no gutter at
+/// all: the confirm box's longest line ran `…what you send│`, asymmetric
+/// against the `│ 1 commit …` on its left. Below three inner cells there is
+/// no room to reserve both and still leave the text one cell of its own, so
+/// this falls back to the old single-left-pad shape — a caller reaching that
+/// width is already past the point where the box should have cleared rather
+/// than drawn (ADR-0040 §2).
 #[must_use]
 pub(crate) fn content_row(text: &str, width: usize) -> String {
     if width < 2 {
         return "│".repeat(width);
     }
     let inner = width - 2;
-    format!("│{}│", fit(&format!(" {text}"), inner))
+    if inner < 3 {
+        return format!("│{}│", fit(&format!(" {text}"), inner));
+    }
+    format!("│ {} │", fit(text, inner - 2))
 }
 
 /// The gap between two buttons on a choices row.

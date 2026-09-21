@@ -421,8 +421,10 @@ fn ladder(list: &[Hint], floor: usize) -> Vec<Step> {
 ///
 /// Never fewer than three hints (or `list.len()` if it is shorter) and never
 /// below their short rung — ADR-0037 §4's floor, the only number in the
-/// rule. Below that the bar overflows and the footer cuts it, which is
-/// still better than the one outcome the ADR forbids.
+/// rule. Below that room [`below_the_floor`] takes over: the bar collapses
+/// to the doorway hint alone, shrunk rung by rung until it fits, or to
+/// nothing — never a bar the footer has to cut, which is the one outcome
+/// the ADR forbids.
 fn fit_list(list: &[Hint], trailer: Option<Hint>, columns: u16) -> Vec<Hint> {
     let room = usize::from(columns);
     let floor = list.len().min(3);

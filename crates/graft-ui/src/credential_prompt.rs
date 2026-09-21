@@ -107,13 +107,16 @@ impl CredentialPrompt<'_> {
     /// The field row: `│ ▏` then the field itself, masking and cursor
     /// placement owned entirely by `text_input` — this widget never decides
     /// what string represents the typed text (CLAUDE.md choice 2's "must
-    /// never").
+    /// never"). Reserves one blank cell between the field and the closing
+    /// `│`, the same invariant `frame_box::content_row` reserves for every
+    /// other row — without it a typed value long enough to fill the field
+    /// exactly ran its last character straight into the border.
     fn draw_field_row(&self, area: Rect, buf: &mut Buffer, width: usize, y: u16) {
         buf.set_string(area.x, y, "│ ▏", foreground(self.theme, Token::Text));
-        if width <= 4 {
+        if width <= 5 {
             return;
         }
-        let field_width = u16::try_from(width - 4).unwrap_or(0);
+        let field_width = u16::try_from(width - 5).unwrap_or(0);
         let shown = display_text(&self.view.field, self.ascii);
         // A secret field's real cursor index is the typed length — the
         // same information the mask glyphs and the missing counter are
@@ -139,7 +142,7 @@ impl CredentialPrompt<'_> {
             None,
             self.theme,
         );
-        let close_x = area.x + 3 + field_width;
+        let close_x = area.x + 4 + field_width;
         buf.set_string(close_x, y, "│", foreground(self.theme, Token::Text));
     }
 }

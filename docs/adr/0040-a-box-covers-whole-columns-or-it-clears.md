@@ -46,6 +46,14 @@ Four clauses make it total.
    PROMPT.md 6.1. Whoever lays out the screen already knows both, so the
    rect arrives computed and the widget stays dumb.
 
+   **Scope: the graph screen only.** Column boundaries are the graph
+   screen's own concept — `GraphScreen::column_boundaries`, the rows it lays
+   the SHA and subject columns onto. The journal browser, the stash list and
+   the Map view have no such columns to fragment, so `view::frame`'s three
+   other call sites (`draw_journal`, `draw_stash`, `draw_map`) pass
+   `draw_confirm(..., &[])` — an empty boundary set, correct by
+   construction, not a gap this ADR leaves open.
+
 ## Why a geometric rule and not a per-box ruling
 
 A border makes a box's edge explicit, so content beside it reads as
@@ -101,11 +109,13 @@ gutter is owed at the frame's edge, so the outward position is still there.
 **What the gutter costs, for the record:** one cell of box. The box is never
 narrower than the rect it was handed — the snap is still outward only — but
 it is one cell narrower than it was before this clause, and at 80 columns
-that is the cell the confirm box's longest line was using as right-hand
-padding: `│ 1 commit · can't be undone from here — origin keeps what you
-send│` (`docs/shots/m5-ui-confirm-over-graph-80x24.txt`). Nothing is
-truncated and nothing rewraps. Whether that trade is right is the user's
-call by eye, per CLAUDE.md rule 6.
+that costs the message an extra wrapped line: `│ 1 commit · can't be undone
+from here — origin keeps what you` / `│ send` rather than fitting on one
+line (`docs/shots/m5-ui-confirm-over-graph-80x24.txt`). `frame_box::content_row`
+still reserves its own cell of right-hand padding on every row regardless
+(m5-history-and-ghost-preview/30) — nothing is truncated and nothing touches
+the border. Whether the extra line is the right trade is the user's call by
+eye, per CLAUDE.md rule 6.
 
 ## Also decided here: text never touches a border's rule
 

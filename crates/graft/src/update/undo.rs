@@ -66,11 +66,25 @@ pub(super) fn after_push_chosen(
     match (chosen, repush) {
         (1, _) => commands.extend(launch(state, false, false, next_id)),
         (2, Some(params)) => super::remote::repush_chosen(state, params),
-        (other, params) => debug_assert!(
-            false,
-            "the undo-after-push box offers {} choices; the cursor was on {other}",
-            if params.is_some() { "three" } else { "two" }
-        ),
+        (other, params) => {
+            // Impossible by construction — the box only ever offers two or
+            // three choices, `chosen` is its own cursor index, and `2` never
+            // arrives without a `repush` (the docs above). `debug_assert!`
+            // catches it in every dev and test build; release must not
+            // silently do nothing if it ever does fire (CLAUDE.md rule 3),
+            // so it also leaves a status line naming the mismatch — costs
+            // nothing on the path that never runs, and is seen the one time
+            // it might (review M8).
+            debug_assert!(
+                false,
+                "the undo-after-push box offers {} choices; the cursor was on {other}",
+                if params.is_some() { "three" } else { "two" }
+            );
+            state.status = Status::Sticky {
+                reason: format!("undo-after-push: no choice {other} on this box"),
+                keys: None,
+            };
+        }
     }
 }
 
