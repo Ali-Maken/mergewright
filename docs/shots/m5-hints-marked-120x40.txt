@@ -54,4 +54,4 @@
 
 
 
- . explain  ⏎ open  c commit  y sha  u undo  S stash
+ . explain  ⏎ open  c commit  y sha  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x compare
