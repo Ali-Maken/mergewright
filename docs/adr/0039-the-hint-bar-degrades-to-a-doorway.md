@@ -110,3 +110,36 @@ Where a list is *not* complete, the doorway returns, modal or not.
 This does not loosen the rule for the graph screen, the panes or the tab
 layout, where `. more` remains undroppable and is pinned by 20 tests going red
 when it is removed.
+
+## Amendment, 2026-09-21: count from the bar's own width, never the screen's
+
+Ticket 19 fixed an inverted footer — 120 columns drew 116 cells of wording and
+160 drew 47 — by replacing width tiers with "the widest wording that fits". It
+then found the **same miscalibration unfixed in `hints_for`**: three hints at
+160 columns against six at 120. It stopped and asked rather than changing it,
+on the grounds that the 3/6/all numbers trace to ADR-0037 §4 and are therefore
+a spec matter. Correct call, and the answer is that they never were.
+
+**ADR-0037 §4 says the bar shows "the three most relevant keys for the current
+context and drops or abbreviates the rest. Never all hidden."** It sets a
+floor and a rule. It says nothing about screen width, and the 3/6/all tiers
+keyed to the screen are an implementation invented on top of it.
+
+**The rule: the bar shows as many hints as fit in the room the bar actually
+has.** Not the screen's width — the bar's own region. A pane can take 42% of a
+160-column screen, which leaves the bar narrower than it is at 120 with no
+pane; keying the count to the screen is then wrong in the direction that
+matters, giving the user *less* help on the bigger terminal.
+
+Unchanged: ADR-0037 §4's floor of three most relevant keys; never all hidden,
+which is the doorway's job; and shrink before dropping (`space stage` →
+`space stg` → `space`), which applies before any hint is dropped at all.
+
+Also unchanged: where a modal pane draws its own complete list, the doorway
+does not appear — the amendment above this one.
+
+The general form, and the reason both of these were wrong the same way: **ask
+how much room this thing has, not how big the screen is.** Any place that
+branches on screen width to decide how much to say is suspect; there is at
+least one more in the tree, and tickets should look for it rather than wait
+for a capture to expose it.
