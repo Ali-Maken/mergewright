@@ -6,7 +6,7 @@ use graft_term::SanitizedText;
 use graft_term::sanitize_line;
 use graft_ui::detail_pane::{DetailLayout, DetailPane};
 use graft_ui::graph_screen::{
-    GraphScreen, GraphView, GraphicsStatus, max_lanes_for, snap_to_columns,
+    GraphScreen, GraphView, GraphicsStatus, HintContext, max_lanes_for, snap_to_columns,
 };
 use graft_ui::journal_screen::JournalScreen;
 use graft_ui::map_screen::MapScreen;
@@ -285,7 +285,15 @@ fn render_graph_with_detail(
         (area.width, area.height),
     );
     let view = detail_view(state);
-    let (graph_area, pane_area) = split_for_detail(frame, session, state, layout, area, "Graph");
+    let (graph_area, pane_area) = split_for_detail(
+        frame,
+        session,
+        state,
+        layout,
+        area,
+        "Graph",
+        &screen.hint_context,
+    );
 
     if let Some(pane_area) = pane_area {
         frame.render_widget(
@@ -375,7 +383,15 @@ fn render_overlay_with_detail(
         (area.width, area.height),
     );
     let view = detail_view(state);
-    let (overlay_area, pane_area) = split_for_detail(frame, session, state, layout, area, label);
+    let (overlay_area, pane_area) = split_for_detail(
+        frame,
+        session,
+        state,
+        layout,
+        area,
+        label,
+        &crate::view::rows::pane_hint_context(state),
+    );
 
     if let Some(pane_area) = pane_area {
         frame.render_widget(
@@ -449,7 +465,25 @@ pub(crate) fn detail_rects(
     let DetailLayout::Tab { .. } = layout else {
         return graft_ui::detail_pane::split_area(layout, area);
     };
-    graft_ui::detail_pane::split_area(layout, tab_banner_area(state, area))
+    graft_ui::detail_pane::split_area(layout, tab_content_area(state, area))
+}
+
+/// What is left of `area` for the tab strip and the pane once both of the
+/// tab layout's own chrome rows have been taken: the operation banner's
+/// ([`tab_banner_area`]) and then the pane's hint bar, one row off the
+/// bottom while the Detail tab is up
+/// (`update::detail::tab_hint_rows`, m5-history-and-ghost-preview/29).
+///
+/// Order matters and is the same order `update::geometry::detail_split`
+/// mirrors: both rows come out before the strip is carved, so a frame with
+/// nothing left carves no strip rather than a negative pane.
+fn tab_content_area(state: &AppState, area: Rect) -> Rect {
+    let area = tab_banner_area(state, area);
+    let rows = crate::update::detail::tab_hint_rows(state).min(area.height);
+    Rect {
+        height: area.height - rows,
+        ..area
+    }
 }
 
 /// What is left of `area` once the tab banner has taken its rows: one off
@@ -478,6 +512,7 @@ fn split_for_detail(
     layout: DetailLayout,
     area: Rect,
     primary_label: &str,
+    hints: &HintContext,
 ) -> (Option<Rect>, Option<Rect>) {
     let DetailLayout::Tab { shown } = layout else {
         return graft_ui::detail_pane::split_area(layout, area);
@@ -488,9 +523,52 @@ fn split_for_detail(
         ..left
     };
     draw_tab_strip(frame, strip, shown, primary_label, &session.theme);
+    draw_tab_hints(frame, state, left, hints, &session.theme);
     // Not a second copy of the arithmetic: the drawing path splits by the
     // very function the mouse mirror is swept against.
     detail_rects(state, layout, area)
+}
+
+/// The detail pane's own hint bar, on the bottom row of the sub-100-column
+/// tab layout (`update::detail::tab_hint_rows`,
+/// m5-history-and-ghost-preview/29). `left` is what the operation banner
+/// left, so the row is that area's last.
+///
+/// Everywhere else the keys ride the graph screen's footer. On the Detail
+/// tab the graph screen is not drawn at all, so the bar went with it and
+/// every key was hidden at 80 columns — the one outcome ADR-0037 §4 rules
+/// out. The pane that owns the screen owns the keys, so it draws its own
+/// `HintContext` here, through the same `hints_for` ladder and floor every
+/// other bar uses (ADR-0039; m5/24, m5/28).
+///
+/// `Divider::Hidden`: the tab layout has no divider to drag, so `<>` is a
+/// key that would do nothing — the same reason the focused banner's own
+/// hints hide it.
+fn draw_tab_hints(
+    frame: &mut Frame,
+    state: &AppState,
+    left: Rect,
+    context: &HintContext,
+    theme: &Theme,
+) {
+    let rows = crate::update::detail::tab_hint_rows(state).min(left.height);
+    if rows == 0 || left.width == 0 {
+        return;
+    }
+    let hints = graft_ui::graph_screen::hints_for(
+        context,
+        graft_ui::graph_screen::Divider::Hidden,
+        left.width,
+    );
+    frame.buffer_mut().set_string(
+        left.x,
+        left.bottom() - 1,
+        graft_ui::fit::fit(
+            &graft_ui::graph_screen::hints_text(&hints),
+            usize::from(left.width),
+        ),
+        Style::default().fg(color(theme.token(Token::TextMuted))),
+    );
 }
 
 /// The operation banner in the sub-100-column tab layout: its own row above

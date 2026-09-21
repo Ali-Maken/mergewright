@@ -13,11 +13,16 @@
 #
 # **What right looks like here** (ADR-0040): the box does **not**
 # clear its band — the rows beside it are the graph you are about to
-# act on, and seeing them is M5's promise. Instead both of its edges
-# sit on a boundary between two row columns, so every column that
-# survives beside it survives **whole**. No clipped subject, no
+# act on, and seeing them is M5's promise. Instead every column that
+# survives beside it survives **whole**: its left edge sits on a
+# boundary between two row columns and its right edge one cell short
+# of one, on that column's **gutter**, so there is a blank column
+# between the border and the SHA rather than `╮60af0eb` reading as one
+# token (ADR-0040's 2026-09-21 amendment). No clipped subject, no
 # four-character tail of a SHA. The box's content is never shrunk to
-# reach a boundary; if no boundary fitted, it would clear instead.
+# reach a position; if none fitted, it would clear instead — though
+# the gutter costs the box a cell, and at 80 columns that is the cell
+# its longest line used as right-hand padding. Judge that by eye.
 #
 # The snap is computed where the screen is laid out
 # (`graft::view::frame`, from `GraphScreen::column_boundaries`), not
@@ -50,13 +55,13 @@
 ●   Commit 196                                                      2d   325da3f
 ●   Commit 195                                                      2d   0722297
 ●   Commit 194                                                      2d   b6a4a47
-●   ╭ Push main → origin/main ──────────────────────────────────────────╮60af0eb
-●   │ 1 commit · can't be undone from here — origin keeps what you send │aceb8c5
-●   │                                                                   │11d68ff
-●   │ git push --progress origin refs/heads/main:refs/heads/main        │91900bd
-●   │                                                                   │cec3e93
-●   │ ▸[ Cancel ]   [ Push ]                                            │0a91ece
-●   ╰───────────────────────────────────────────────────────────────────╯3121935
+●   ╭ Push main → origin/main ─────────────────────────────────────────╮ 60af0eb
+●   │ 1 commit · can't be undone from here — origin keeps what you send│ aceb8c5
+●   │                                                                  │ 11d68ff
+●   │ git push --progress origin refs/heads/main:refs/heads/main       │ 91900bd
+●   │                                                                  │ cec3e93
+●   │ ▸[ Cancel ]   [ Push ]                                           │ 0a91ece
+●   ╰──────────────────────────────────────────────────────────────────╯ 3121935
 ●   Commit 186                                                      2d   fab25df
 ●   Commit 185                                                      2d   09ae97c
 ●   Commit 184                                                      2d   49d7783

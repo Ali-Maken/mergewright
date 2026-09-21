@@ -351,11 +351,16 @@ fn confirm_header(label: &str, columns: u16, rows: u16, survives: &(String, Stri
          #\n\
          # **What right looks like here** (ADR-0040): the box does **not**\n\
          # clear its band \u{2014} the rows beside it are the graph you are about to\n\
-         # act on, and seeing them is M5's promise. Instead both of its edges\n\
-         # sit on a boundary between two row columns, so every column that\n\
-         # survives beside it survives **whole**. No clipped subject, no\n\
+         # act on, and seeing them is M5's promise. Instead every column that\n\
+         # survives beside it survives **whole**: its left edge sits on a\n\
+         # boundary between two row columns and its right edge one cell short\n\
+         # of one, on that column's **gutter**, so there is a blank column\n\
+         # between the border and the SHA rather than `\u{256e}60af0eb` reading as one\n\
+         # token (ADR-0040's 2026-09-21 amendment). No clipped subject, no\n\
          # four-character tail of a SHA. The box's content is never shrunk to\n\
-         # reach a boundary; if no boundary fitted, it would clear instead.\n\
+         # reach a position; if none fitted, it would clear instead \u{2014} though\n\
+         # the gutter costs the box a cell, and at 80 columns that is the cell\n\
+         # its longest line used as right-hand padding. Judge that by eye.\n\
          #\n\
          # The snap is computed where the screen is laid out\n\
          # (`graft::view::frame`, from `GraphScreen::column_boundaries`), not\n\

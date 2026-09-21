@@ -3448,6 +3448,72 @@ fn the_tab_strip_comes_out_of_the_graphs_row_budget() {
     );
 }
 
+/// **The regression this ticket most likely causes.** Below 100 columns
+/// with the pane open on the **Graph** tab, a click must still land on the
+/// row the user is looking at: the `[Graph] Detail` strip pushes the rows
+/// down by one, and reserving the pane's hint bar
+/// (`update::detail::tab_hint_rows`, m5-history-and-ghost-preview/29) must
+/// not move them again — the bar is the Detail tab's row, not the graph's,
+/// so `rows_above_graph` is unchanged and the click keeps landing where it
+/// did (ticket 25's fix of exactly this shape, review M1).
+///
+/// **Mutation:** add one to `rows_above_graph`'s return and this goes red
+/// at the assert below — which is what makes it a test of the offset and
+/// not just of the click path.
+#[test]
+fn a_click_below_one_hundred_columns_still_lands_on_the_row_it_named() {
+    use graft_ui::detail::DetailFocus;
+
+    let id = JobId::new(20);
+    let (mut state, merge_id) = merge_on_screen(id, 0);
+    state.size = Size {
+        columns: 80,
+        rows: 12,
+    };
+    state.detail.shown = true;
+    state.detail.focus = DetailFocus::Graph;
+    assert!(
+        matches!(
+            crate::update::detail::effective_layout(
+                state.detail.focus,
+                &state.detail.pane_size,
+                (state.size.columns, state.size.rows),
+            ),
+            graft_ui::detail_pane::DetailLayout::Tab { shown: false }
+        ),
+        "80 columns with the graph tab up is the layout this is about"
+    );
+    assert_eq!(
+        crate::update::detail::tab_hint_rows(&state),
+        0,
+        "the Graph tab keeps the graph's own footer; the pane reserves nothing"
+    );
+
+    // The strip's row, then the first graph row: the second commit sits one
+    // row below that.
+    let strip = 1;
+    let click = core(Event::Mouse(MouseInput {
+        kind: MouseKind::Down(MouseButton::Left),
+        column: 10,
+        row: HEADER_ROWS + strip + 1,
+        modifiers: Modifiers::NONE,
+    }));
+    let (next, _) = update(&state, click);
+
+    assert_eq!(
+        next.history.as_ref().map(|history| history.cursor),
+        Some(1),
+        "the row the pointer was on"
+    );
+    assert_eq!(
+        next.history
+            .as_ref()
+            .and_then(History::selected)
+            .map(|row| row.commit.id),
+        Some(merge_id)
+    );
+}
+
 /// One size, one focus, one banner: the drawn rects and the mirror's.
 fn the_mirror_agrees_at(
     width: u16,
@@ -3495,6 +3561,7 @@ fn the_mirror_agrees_at(
         layout,
         (width, height),
         crate::update::banner::tab_banner_rows(&state),
+        crate::update::detail::tab_hint_rows(&state),
     );
     let at = format!(
         "{width}x{height}, live={live}, focus={focus:?}, \

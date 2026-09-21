@@ -9,8 +9,10 @@
 #
 # Here the changes pane is open on the working tree.
 #
-# Judge by eye: the hint bar is the graph's bottom row — the frame's last
-# row, unless the pane is stacked under it. `. more` is never dropped
+# Judge by eye: the hint bar is the bottom row of whatever owns the
+# screen — the graph's, or (below 100 columns, with the Detail tab up)
+# the pane's own reserved row, which costs the pane one row of content
+# and is what keeps every key from being hidden. `. more` is never dropped
 # (ADR-0037 §4) and sits at the head of the bare keys — the end of the
 # row where there are none (ADR-0039, m5/28).
 #
@@ -44,13 +46,6 @@
 # The app is resized to the capture's size before the frame is drawn:
 # one state photographed at three sizes is a picture of at most one of
 # them.
-#
-# NOTE: this frame has no hint bar at all. Under 100 columns the detail
-# pane takes the whole screen behind the `[Graph] Detail` tabs, and the
-# graph screen — the bar with it — is not drawn. A keyless screen is the
-# one outcome ADR-0037 §4 rules out, so this is a known gap, not what
-# right looks like (hint_bar::the_tab_layout_still_hides_every_key,
-# #[ignore]d).
 
 Graph  [Detail]
 UNCOMMITTED · 1 unstaged
@@ -75,4 +70,4 @@ reading…
 
 
 
-
+ space stage  d discard  c commit  ⌃A all  e edit  ⇥ graph  . more

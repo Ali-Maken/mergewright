@@ -13,11 +13,16 @@
 #
 # **What right looks like here** (ADR-0040): the box does **not**
 # clear its band — the rows beside it are the graph you are about to
-# act on, and seeing them is M5's promise. Instead both of its edges
-# sit on a boundary between two row columns, so every column that
-# survives beside it survives **whole**. No clipped subject, no
+# act on, and seeing them is M5's promise. Instead every column that
+# survives beside it survives **whole**: its left edge sits on a
+# boundary between two row columns and its right edge one cell short
+# of one, on that column's **gutter**, so there is a blank column
+# between the border and the SHA rather than `╮60af0eb` reading as one
+# token (ADR-0040's 2026-09-21 amendment). No clipped subject, no
 # four-character tail of a SHA. The box's content is never shrunk to
-# reach a boundary; if no boundary fitted, it would clear instead.
+# reach a position; if none fitted, it would clear instead — though
+# the gutter costs the box a cell, and at 80 columns that is the cell
+# its longest line used as right-hand padding. Judge that by eye.
 #
 # The snap is computed where the screen is laid out
 # (`graft::view::frame`, from `GraphScreen::column_boundaries`), not
@@ -62,13 +67,13 @@
 ●   Commit 184                                                                                                                                   GF 2d   49d7783
 ●   Commit 183                                                                                                                                   GF 2d   22d55c9
 ●   Commit 182                                                                                                                                   GF 2d   d212b3e
-●   ╭ Push main → origin/main ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ GF 2d   c8254c5
-●   │ 1 commit · can't be undone from here — origin keeps what you send                                                                        │ GF 2d   e95ccd4
-●   │                                                                                                                                          │ GF 2d   97b58e5
-●   │ git push --progress origin refs/heads/main:refs/heads/main                                                                               │ GF 2d   1c9b7ed
-●   │                                                                                                                                          │ GF 2d   f93340a
-●   │ ▸[ Cancel ]   [ Push ]                                                                                                                   │ GF 2d   5aaeeba
-●   ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ GF 2d   6be5928
+●   ╭ Push main → origin/main ────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮  GF 2d   c8254c5
+●   │ 1 commit · can't be undone from here — origin keeps what you send                                                                       │  GF 2d   e95ccd4
+●   │                                                                                                                                         │  GF 2d   97b58e5
+●   │ git push --progress origin refs/heads/main:refs/heads/main                                                                              │  GF 2d   1c9b7ed
+●   │                                                                                                                                         │  GF 2d   f93340a
+●   │ ▸[ Cancel ]   [ Push ]                                                                                                                  │  GF 2d   5aaeeba
+●   ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  GF 2d   6be5928
 ●   Commit 174                                                                                                                                   GF 2d   9b67be4
 ●   Commit 173                                                                                                                                   GF 2d   937d32b
 ●   Commit 172                                                                                                                                   GF 2d   81be718

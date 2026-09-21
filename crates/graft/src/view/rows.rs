@@ -288,6 +288,21 @@ pub(crate) fn banner_context(banner: &graft_ui::graph_screen::BannerView) -> Hin
     }
 }
 
+/// The hint context the detail pane hints with when it owns the whole
+/// screen — the sub-100-column `Tab` layout with the Detail tab up, where
+/// the graph screen is not drawn and its footer is not there to borrow
+/// (m5-history-and-ghost-preview/29).
+///
+/// Built from state alone, with no drawn rows: an overlay (the Map view,
+/// the commit editor) can own the primary tab while the pane is up, and
+/// there is no `GraphView` on that path to read a context off. So the
+/// cursor row's own badges — the one thing the rows carry that state does
+/// not — are out of reach here and the base is `PlainRow`. The graph's own
+/// path passes `GraphView::hint_context` instead, which does have them.
+pub(crate) fn pane_hint_context(state: &AppState) -> HintContext {
+    hint_context(state, &[])
+}
+
 /// The footer's context for this frame (`hints::hints_for`, ADR-0037 §4):
 /// the changes pane and the working-tree row both win over anything the
 /// cursor sits on, since they are full-screen states — **the pane first**,

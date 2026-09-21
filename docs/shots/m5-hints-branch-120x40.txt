@@ -9,8 +9,10 @@
 #
 # Here the cursor is on the tip, which carries the current branch's badge.
 #
-# Judge by eye: the hint bar is the graph's bottom row — the frame's last
-# row, unless the pane is stacked under it. `. more` is never dropped
+# Judge by eye: the hint bar is the bottom row of whatever owns the
+# screen — the graph's, or (below 100 columns, with the Detail tab up)
+# the pane's own reserved row, which costs the pane one row of content
+# and is what keeps every key from being hidden. `. more` is never dropped
 # (ADR-0037 §4) and sits at the head of the bare keys — the end of the
 # row where there are none (ADR-0039, m5/28).
 #
