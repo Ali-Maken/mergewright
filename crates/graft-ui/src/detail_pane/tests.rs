@@ -268,7 +268,12 @@ fn below_splits_files_and_body_horizontally_beside_a_two_line_header() {
     let pane = Rect::new(0, 0, 120, 12);
     let areas = detail_areas(pane, layout, 3);
     assert_eq!(areas.header, Rect::new(0, 0, 120, 2));
-    assert_eq!(areas.files, Rect::new(0, 2, 30, 10));
+    // 29, not 30: the thirtieth column is the gutter, so a file name that
+    // fills the list does not run into the diff beside it (m5/19). The
+    // body's own x is unchanged — the gutter comes out of the list's width,
+    // which is what keeps `graft::update::geometry`'s hit-testing mirror
+    // landing on the same cells.
+    assert_eq!(areas.files, Rect::new(0, 2, 29, 10));
     assert_eq!(areas.body, Rect::new(30, 2, 90, 10));
 }
 

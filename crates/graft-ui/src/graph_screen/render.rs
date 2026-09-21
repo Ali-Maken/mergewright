@@ -11,7 +11,7 @@ use ratatui::widgets::Widget;
 use unicode_width::UnicodeWidthStr;
 
 use super::layout::{Columns, graph_width};
-use super::{Badge, BadgeKind, CHROME_ROWS, GraphEntry, GraphScreen, Icons, SUBJECT_GAP, badges};
+use super::{Badge, BadgeKind, GraphEntry, GraphScreen, Icons, SUBJECT_GAP, badges};
 use crate::fit::fit;
 use crate::graph_column::{GraphColumn, GraphLine, RowPaint};
 use crate::paint::{color, foreground};
@@ -24,20 +24,30 @@ impl Widget for GraphScreen<'_> {
             return;
         }
         let width = usize::from(area.width);
+        // One carve for the whole screen, so no two of these draws can claim
+        // the same row at any height (`GraphScreen::screen_rows`).
+        let chrome = self.screen_rows(area);
         let (body, rows, applied) = self.body_layout(area);
         let folded_lanes = applied.as_ref().map_or(0, Fold::folded_count);
-        buf.set_line(
-            area.x,
-            area.y,
-            &self.header(width, folded_lanes),
-            area.width,
-        );
-        let chrome_row = area.y.saturating_add(1);
-        for (offset, line) in self.view.banner.iter().enumerate() {
-            let y = chrome_row.saturating_add(u16::try_from(offset).unwrap_or(u16::MAX));
-            if y >= area.bottom() {
-                break;
-            }
+        if chrome.header.height > 0 {
+            buf.set_line(
+                area.x,
+                chrome.header.y,
+                &self.header(width, folded_lanes),
+                area.width,
+            );
+        }
+        for (offset, line) in self
+            .view
+            .banner
+            .iter()
+            .take(usize::from(chrome.banner.height))
+            .enumerate()
+        {
+            let y = chrome
+                .banner
+                .y
+                .saturating_add(u16::try_from(offset).unwrap_or(u16::MAX));
             let token = if offset == 0 {
                 Token::Accent
             } else {
@@ -54,17 +64,17 @@ impl Widget for GraphScreen<'_> {
             self.body(body, rows, applied.as_ref(), buf);
         }
 
-        if area.height > 1 {
+        if chrome.footer.height > 0 {
             let (text, token) = self.footer_line(body, rows, applied.as_ref(), width);
             let footer = Line::styled(fit(&text, width), foreground(self.theme, token));
-            buf.set_line(area.x, area.bottom() - 1, &footer, area.width);
+            buf.set_line(area.x, chrome.footer.y, &footer, area.width);
         }
         if let Some(line) = self.view.commit_graph
-            && area.height > CHROME_ROWS
+            && chrome.offer.height > 0
         {
             buf.set_line(
                 area.x,
-                area.bottom() - 2,
+                chrome.offer.y,
                 &self.commit_graph_line(line, width),
                 area.width,
             );

@@ -68,6 +68,23 @@ pub(crate) fn percent(cells: u16, pct: u32) -> u16 {
     u16::try_from(u32::from(cells) * pct / 100).unwrap_or(u16::MAX)
 }
 
+/// The blank column between two side-by-side regions: one, unless one of
+/// them has no cells at all, in which case there is no boundary to mark.
+///
+/// **Always taken out of the left region's width, never the right one's x.**
+/// Two regions flush against each other run their text together: at 160
+/// columns the graph's short-SHA column ended where the changes pane began,
+/// so `a82960b` and `CONFLICTS (2)` read as `a82960bCONFLICTS` — one token,
+/// in a capture the user caught by eye (m5/19). Taking the column off the
+/// left keeps every boundary *position* where it was, which matters because
+/// `graft::update::geometry` mirrors this arithmetic for mouse hit-testing
+/// in plain `u16` and cannot call in here: the only cell that changes hands
+/// is the gutter itself, which routes to the region it came out of rather
+/// than to nothing.
+fn gutter(left: u16, right: u16) -> u16 {
+    u16::from(left > 0 && right > 0)
+}
+
 /// `area` split into the graph rectangle and the pane rectangle for
 /// `layout`, either of which is `None` in `Tab` mode (only the shown side
 /// gets space). Pure geometry — no drawing — so both the frame that draws
@@ -80,12 +97,13 @@ pub fn split_area(layout: DetailLayout, area: Rect) -> (Option<Rect>, Option<Rec
     match layout {
         DetailLayout::Right { columns } => {
             let columns = columns.min(area.width);
+            let left = area.width - columns;
             let graph_area = Rect {
-                width: area.width - columns,
+                width: left.saturating_sub(gutter(left, columns)),
                 ..area
             };
             let pane_area = Rect {
-                x: area.x + graph_area.width,
+                x: area.x + left,
                 width: columns,
                 ..area
             };
@@ -156,13 +174,14 @@ pub fn detail_areas(pane_area: Rect, layout: DetailLayout, files_count: usize) -
 
     if matches!(layout, DetailLayout::Below { .. }) {
         let files_width = 30.min(rest.width);
+        let body_width = rest.width.saturating_sub(files_width);
         let files = Rect {
-            width: files_width,
+            width: files_width.saturating_sub(gutter(files_width, body_width)),
             ..rest
         };
         let body = Rect {
             x: rest.x.saturating_add(files_width),
-            width: rest.width.saturating_sub(files_width),
+            width: body_width,
             ..rest
         };
         DetailAreas {
