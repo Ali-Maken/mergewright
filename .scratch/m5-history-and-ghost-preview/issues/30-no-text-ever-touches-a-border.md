@@ -95,6 +95,73 @@ it is two days old and has one amendment already. Do not append a second.
 
 Rule 6: you do not tick "looks right". The user does.
 
+---
+
+# PART 2 — the review's Majors, which are the same class
+
+`docs/reviews/m5-23-to-29.md`. These are folded in because every one of them is
+**two things that must agree, with nothing testing one against the other** —
+the same fault the invariant above exists to kill. Fix them here or they become
+a seventh instance.
+
+## M1. Five documents still say the Tab layout has no keys
+
+Ticket 29 fixed it. These still describe it as live:
+
+- `docs/adr/0039-the-hint-bar-degrades-to-a-doorway.md` — `:46-56`, `:101`,
+  `:131`, `:141`, `:152`
+- `docs/capabilities/…m5:470` — status still `broken`
+- `TESTING.md:1627-1634`
+- `KNOWN_GAPS.md:494`
+
+**And ADR-0039's "Considered and not taken" lists "A row reserved for the bar in
+every pane"** — which reads, to anyone opening it, as rejecting what now ships.
+
+**Be precise about this rather than just deleting the bullet.** The ADR rejected
+the *broad* option — a reserved row in every pane at every width — for a real
+reason: "costs a line of content at every width to fix a case that only some
+widths have." What ticket 29 built is **narrower**: one row, Detail tab only,
+where no other bar exists. The rejection still stands for the broad version.
+
+So: keep the rejected bullet, and record beside it what **was** taken and why
+it is not the same thing. A reader must be able to see both and tell them
+apart. `KNOWN_GAPS.md` is the **conductor's** file — do not edit it; report the
+row and the conductor closes it.
+
+## M2. `hints.rs:413`'s doc contradicts its own body
+
+The comment says the bar overflows and the footer cuts it. The body calls
+`below_the_floor`. Ticket 28 implemented the floor-yields-to-the-doorway rule
+and the comment was not updated. **The comment is the thing that is wrong** —
+check the body and describe what it does.
+
+This comment has now misled twice: the conductor quoted it to the user as
+current behaviour after it had already stopped being true.
+
+## M3. `banner::graph_screen_on_frame` is a new untested hand mirror
+
+A second copy of layout knowledge with nothing asserting it matches the thing
+it mirrors — the exact shape forbidden for badge geometry in ticket 10, and the
+shape `update/geometry.rs` already carries as a known gap.
+
+**Either** give it a test that it agrees with the real layout — draw a frame,
+compare — **or**, if one implementation can serve both, make it one. Do not
+leave a third mirror untested.
+
+## M4. The ladder caption claims `H hide`, the picture has none
+
+`docs/shots/m5-hints-ladder.txt`. Another stale caption — the fourth this
+milestone. Read the regenerated file and make the caption describe **it**.
+
+## M5. `KNOWN_GAPS.md:546` still open after ticket 28
+
+Conductor's file. **Report it; do not edit it.**
+
+## Also
+
+Seven Minors and two Questions in the review are **not** in this ticket. The
+conductor triages them at the milestone close. Do not chase them.
+
 ## Gates
 
 `cargo fmt --check`, `cargo clippy --all-targets --message-format=short

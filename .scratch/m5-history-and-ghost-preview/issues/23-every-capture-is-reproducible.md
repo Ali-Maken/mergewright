@@ -123,7 +123,12 @@ already right. Fix the sentence so it cannot be read that way again. Doc only �
       what it exists to show: the `▾` fold marker appears exactly once before
       and after, and the header still reads `31 commits  +1 lanes`.
 - [x] `gallery.rs` still uses the wall clock for real repositories — test:
-      `gallery::every_entry_uses_the_clock_its_source_needs` (the `Source::…`
+      `gallery::corpus_stops_view_at_corpus_now_real_repos_view_the_wall_clock`
+      (**name corrected 2026-09-21** — the tick cited a test that does not
+      exist; the review filed it Critical, rightly. The test at the cited line
+      `gallery.rs:1003` does assert the claim: for every entry,
+      `Source::Shape` → `Clock::Fixed(CORPUS_NOW)` and the real-repo sources →
+      `Clock::Wall`. The claim held; the name did not.) (the `Source::…`
       match at `crates/graft/tests/it/gallery.rs:50-54` and its assertion at
       `:1004-1008`). Neither `tests/it/gallery.rs` nor `examples/gallery.rs`
       is touched by this ticket — `git diff --stat` on both is empty.
