@@ -44,10 +44,22 @@ The hints live in `crates/graft-ui/src/graph_screen/hints.rs`
 property are pinned by `no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows`
 (ticket 19) — **that property must still hold** after the ladder lands.
 
-**The rule the ladder serves:** at a given width the bar spends the room it has
-on the most informative rung that fits, for every hint, before it drops any
-hint. A bar that drops a hint while another hint is still on its full rung is
-the defect.
+**The rule the ladder serves — corrected 2026-09-21 by the conductor, after
+this ticket's first attempt proved the original wrong.** The sentence that was
+here said the bar puts *every* hint on its best rung before dropping any hint.
+Built and measured, that empties the bar: a row context is 22 hints (227 cells
+full, 190 short, 81 key alone), so below 190 columns the list-wide ladder draws
+bare keys at 80, 120 and 160 alike — this ADR's own rejected option.
+
+**The rule now (ADR-0039, third amendment):** the bar fills **from the most
+relevant end**; each hint takes the best rung that still leaves room for the
+hints ahead of it; a hint that does not fit even at its key alone is dropped.
+Shrinking is **per hint**, never a step the whole list takes together. ADR-0037
+§4's floor stands: the three most relevant never go below their **short** rung,
+and the bar is never all hidden.
+
+The monotonicity property must still hold — more room can only improve a hint's
+rung or add one, never the reverse.
 
 ## 2. M6 from the review — a capture contradicting ticket 20 still ships
 

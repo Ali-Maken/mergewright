@@ -143,3 +143,54 @@ how much room this thing has, not how big the screen is.** Any place that
 branches on screen width to decide how much to say is suspect; there is at
 least one more in the tree, and tickets should look for it rather than wait
 for a capture to expose it.
+
+## Amendment, 2026-09-21 (third): the ladder degrades per hint, from the least relevant end — correcting the amendment above
+
+**The amendment above this one is wrong in one clause, and it is mine.** It
+says shrink before dropping "applies before any hint is dropped at all". Read
+list-wide — every hint steps down a rung together, and only when all of them
+are on their key does anything drop — that clause **empties the bar**.
+
+Ticket 24 built exactly that clause, measured it, and reverted rather than ship
+it. The numbers: `drawable()` appends `TAIL`'s screen-wide keys to every row
+context (`graph_screen/hints.rs:224-230`), so a row context is **22 hints**.
+Whole list plus `. more`: **227 cells full, 190 short, 81 key alone.** Below 190
+columns no rung but "key alone" fits, so the list-wide ladder goes straight
+there and draws this at 80, 120 **and** 160:
+
+```
+ ⏎  c  y  u  S  J  /  q  F2  F3  x  +  j/k  space  1  F  H  f  p  P  M  O  . more
+```
+
+The 160-column terminal teaches exactly as much as the 80-column one: nothing.
+That is this ADR's own rejected option — *"Keys with no verbs (`space d c`).
+Fits anywhere, teaches nothing."*
+
+**Why the clause was wrong.** This ADR's worked example is the changes pane at
+**7** hints, where `space stage → space stg → space` shrinks sensibly. `TAIL`
+landed afterwards and made every row context 22. "Shrink everything before
+dropping anything" then means "shrink 22 hints to bare keys rather than drop the
+22nd", which inverts the purpose. A rule written for a short list was applied to
+a long one — the same mistake shape as the width tiers two amendments ago, in a
+different dimension.
+
+**The rule, corrected.** The bar fills **from the most relevant end**. Each hint
+takes the best rung that still leaves room for the hints ahead of it. A hint that
+does not fit even at its key alone is **dropped**. Shrinking is per hint, against
+that hint's own place in the order — never a step the whole list takes together.
+
+**Floor, unchanged:** ADR-0037 §4's three most relevant keys never degrade below
+their **short** rung, and the bar is never all hidden.
+
+This keeps every property the bar already has. It is monotone in the bar's own
+width — more room can only improve a hint's rung or add one, never the reverse
+— so `no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows` and
+`no_footer_line_gets_terser_as_the_room_for_it_grows` still hold. And the
+leading verbs stay full at 80 columns, which is what
+`eighty_columns_leads_with_three_and_fills_the_row` has always pinned.
+
+**Open, and the user's by eye (rule 6):** whether a *tail* of bare keys after
+readable leading verbs earns its place, or whether those hints should simply be
+dropped. The rejected option above was the whole bar as bare keys; a tail after
+`⏎ open  c commit  P push` is a different picture, and a capture is the only
+honest way to answer it. Built with the key-alone rung in, for him to judge.
