@@ -22,20 +22,10 @@ fn name(full: &str) -> RefName {
     RefName::new(full.as_bytes().to_vec()).expect("a valid ref name")
 }
 
+/// The menu's own fixture builder — one shape of "a row's refs" for both
+/// files (m5-08 review, Major 6).
 fn built(refs: &[(RefName, Oid)], head: &HeadState) -> RefBadges {
-    crate::refs::badges(
-        refs,
-        head,
-        &std::collections::HashMap::new(),
-        &[],
-        |_, _| {
-            Ok(graft_git::history::AheadBehind {
-                ahead: 0,
-                behind: 0,
-            })
-        },
-    )
-    .expect("no ahead/behind walk can fail here")
+    super::super::tests::ref_badges(refs, head)
 }
 
 /// `main` at commit 2 with `HEAD` on it, `feature` and the tag `v1` at

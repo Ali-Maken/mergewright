@@ -210,8 +210,11 @@ fn transitive_real_parents(plan: &PreviewPlan, index: usize) -> Vec<Oid> {
 pub struct BadgeOverlay<'a> {
     /// What the refs read last said.
     base: &'a RefBadges,
-    /// Short ref names that leave a commit, by commit.
-    removed: HashMap<Oid, Vec<Vec<u8>>>,
+    /// Refs that leave a commit, by commit: short name **and kind**. A
+    /// branch and a tag can share a short name on one commit, and moving
+    /// the branch must not take the tag's badge with it (review 08 Minor
+    /// 11).
+    removed: HashMap<Oid, Vec<(LabelKind, Vec<u8>)>>,
     /// Labels that arrive at a commit, by commit.
     added: HashMap<Oid, Vec<RefLabel>>,
     /// Where the `HEAD` node mark goes once the plan has run.
@@ -230,9 +233,7 @@ impl BadgeOverlay<'_> {
             .on(oid)
             .iter()
             .filter(|label| match gone {
-                Some(gone) => {
-                    !short_name(label).is_some_and(|name| gone.iter().any(|it| it == name))
-                }
+                Some(gone) => !gone.iter().any(|(kind, name)| is_ref(label, *kind, name)),
                 None => true,
             })
             .cloned()
@@ -258,12 +259,13 @@ impl BadgeOverlay<'_> {
 /// its commit and arrives nowhere.
 #[must_use]
 pub fn badges_for_preview<'a>(badges: &'a RefBadges, plan: &PreviewPlan) -> BadgeOverlay<'a> {
-    let mut removed: HashMap<Oid, Vec<Vec<u8>>> = HashMap::new();
+    let mut removed: HashMap<Oid, Vec<(LabelKind, Vec<u8>)>> = HashMap::new();
     let mut added: HashMap<Oid, Vec<RefLabel>> = HashMap::new();
     let ghost_oids: Vec<Oid> = plan.ghosts.iter().map(|ghost| ghost.oid).collect();
 
     for moved in &plan.ref_moves {
         let short = short_of(&moved.name);
+        let kind = LabelKind::of_full(&moved.name);
         // The label as it is drawn today, so a branch that moves keeps its
         // upstream chip and its `current` mark instead of being redrawn as a
         // plain untracked branch it is not.
@@ -273,12 +275,12 @@ pub fn badges_for_preview<'a>(badges: &'a RefBadges, plan: &PreviewPlan) -> Badg
                 badges
                     .on(from)
                     .iter()
-                    .find(|label| short_name(label) == Some(short.as_slice()))
+                    .find(|label| is_ref(label, kind, &short))
                     .cloned()
             })
             .unwrap_or_else(|| label_for(&moved.name, short.clone()));
         if let Some(from) = moved.from {
-            removed.entry(from).or_default().push(short.clone());
+            removed.entry(from).or_default().push((kind, short.clone()));
         }
         if let Some(to) = moved.to
             && let Some(oid) = resolve(to, &ghost_oids)
@@ -354,17 +356,54 @@ fn resolve(target: Target, ghost_oids: &[Oid]) -> Option<Oid> {
 /// branch arriving fresh is neither current nor tracking anything this
 /// preview knows about.
 fn label_for(full: &str, short: Vec<u8>) -> RefLabel {
-    if full.starts_with("refs/tags/") {
-        RefLabel::Tag(short)
-    } else if full.starts_with("refs/remotes/") {
-        RefLabel::Remote(short)
-    } else {
-        RefLabel::Branch {
+    match LabelKind::of_full(full) {
+        LabelKind::Tag => RefLabel::Tag(short),
+        LabelKind::Remote => RefLabel::Remote(short),
+        LabelKind::Branch => RefLabel::Branch {
             name: short,
             current: false,
             upstream: Upstream::None,
+        },
+    }
+}
+
+/// Which kind of ref a label or a full ref name is. A short name alone does
+/// not identify a badge: `v1` can be a tag and a branch at once.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum LabelKind {
+    /// `refs/heads/…`
+    Branch,
+    /// `refs/remotes/…`
+    Remote,
+    /// `refs/tags/…`
+    Tag,
+}
+
+impl LabelKind {
+    /// A `RefMove`'s own name. Anything unprefixed is a branch — which is
+    /// what `origin/main` in a push's `RefMove` is not, but `short_of`
+    /// leaves that one unchanged and `RefLabel::Remote` is matched by the
+    /// `refs/remotes/` arm above it.
+    fn of_full(full: &str) -> LabelKind {
+        if full.starts_with("refs/tags/") {
+            LabelKind::Tag
+        } else if full.starts_with("refs/remotes/") {
+            LabelKind::Remote
+        } else {
+            LabelKind::Branch
         }
     }
+}
+
+/// Is `label` this exact ref — the same kind and the same short name?
+fn is_ref(label: &RefLabel, kind: LabelKind, short: &[u8]) -> bool {
+    let matches_kind = match label {
+        RefLabel::Branch { .. } => kind == LabelKind::Branch,
+        RefLabel::Remote(_) => kind == LabelKind::Remote,
+        RefLabel::Tag(_) => kind == LabelKind::Tag,
+        RefLabel::DetachedHead | RefLabel::Stash(_) => false,
+    };
+    matches_kind && short_name(label) == Some(short)
 }
 
 /// A label's short name, or `None` for the shapes that have none

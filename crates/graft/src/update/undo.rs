@@ -233,6 +233,15 @@ pub(super) fn reverted_to(
             state.confirm = Some(revert_drift_box(&description, &drift, target));
             Vec::new()
         }
+        RevertedTo::Refused { description, error } => {
+            // Nothing ran, so nothing is to be refreshed and nothing is
+            // half-done: a refusal, worded as one (review 08 Minor 4).
+            state.status = Status::Sticky {
+                reason: format!("cannot revert to before \u{201c}{description}\u{201d}: {error}"),
+                keys: None,
+            };
+            Vec::new()
+        }
         RevertedTo::Failed {
             description: _,
             done,
@@ -810,6 +819,39 @@ mod tests {
         };
         let notice = interrupted_notice(&state).expect("there is one to report");
         assert!(notice.contains("restores the whole tree"), "{notice}");
+    }
+
+    /// Review 08 Minor 4. A revert whose plan could not be made at all
+    /// used to say `revert stopped after 0 of 0 steps`, which describes
+    /// something that ran and gave up. Nothing ran.
+    #[test]
+    fn a_revert_that_never_started_is_worded_as_a_refusal() {
+        let mut state = AppState::default();
+        let running = JobId::new(7);
+        state.operating = Some(running);
+        let mut next = 0;
+        let mut next_id = || {
+            next += 1;
+            JobId::new(next)
+        };
+
+        let commands = reverted_to(
+            &mut state,
+            running,
+            crate::jobs::undo::RevertedTo::Refused {
+                description: "commit one".to_owned(),
+                error: "there is nothing to revert".to_owned(),
+            },
+            &mut next_id,
+        );
+
+        assert_eq!(
+            state.status,
+            Status::sticky(
+                "cannot revert to before \u{201c}commit one\u{201d}: there is nothing to revert"
+            )
+        );
+        assert!(commands.is_empty(), "nothing ran, so nothing is re-read");
     }
 
     /// Review 08 Minor 2. The drift box's `[ Revert ]` used to launch under

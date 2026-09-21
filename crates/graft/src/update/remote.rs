@@ -125,6 +125,28 @@ pub(super) fn launched(
     state.remote.diverged_upstream = None;
 }
 
+/// The keys the diverged-pull line offers, and the mark that tells
+/// [`forget_stale_divergence`] the line is still the one on screen.
+pub const DIVERGED_KEYS: &str = "m merge it  r rebase onto it";
+
+/// The remembered upstream tip outlives its words otherwise.
+///
+/// `m` and `r` aim at [`RemoteState::diverged_upstream`] instead of at the
+/// row under the cursor, which is right only while the line that explained
+/// the divergence is on screen. `Esc` clears both; every other way the line
+/// goes — a job's `Done`, a later refusal — used to leave the tip behind,
+/// so the next `m` silently merged the upstream from wherever the cursor
+/// happened to be (review 08 Minor 9). Run at the tail of every `update`.
+pub(super) fn forget_stale_divergence(state: &mut AppState) {
+    let showing = matches!(
+        &state.status,
+        Status::Sticky { keys: Some(keys), .. } if keys == DIVERGED_KEYS
+    );
+    if !showing {
+        state.remote.diverged_upstream = None;
+    }
+}
+
 /// The key hint a running remote write's status line ends with. The footer
 /// draws a line ending in it as it is, without the `…` it gives every other
 /// busy line: the hint is not the part still in progress (design note, New
@@ -605,7 +627,7 @@ pub fn remote_failed(
                     short_ref(&params.branch),
                     short_tracking(&params.upstream.tracking_ref)
                 ),
-                keys: Some("m merge it  r rebase onto it".to_owned()),
+                keys: Some(DIVERGED_KEYS.to_owned()),
             }
         }
         _ => sticky(),

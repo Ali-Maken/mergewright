@@ -112,6 +112,18 @@ pub enum RevertedTo {
         /// the same answer.
         target: graft_core::journal::EntryId,
     },
+    /// The jump never started: no plan could be made, or the facts it
+    /// needed could not be read.
+    ///
+    /// Apart from [`RevertedTo::Failed`] because the two read differently
+    /// to the user. `stopped after 0 of 0 steps` says something ran and
+    /// gave up; nothing ran (review 08 Minor 4).
+    Refused {
+        /// The entry the jump was aimed at.
+        description: String,
+        /// Why, as one line.
+        error: String,
+    },
     /// The jump stopped, and this is how far it got.
     ///
     /// `done` steps really did run — they are journaled and each is
@@ -122,7 +134,7 @@ pub enum RevertedTo {
         description: String,
         /// Steps that ran before it stopped.
         done: usize,
-        /// Steps the plan had, `0` when no plan could be made at all.
+        /// Steps the plan had.
         total: usize,
         /// Why the next one did not, as one line.
         error: String,
@@ -378,18 +390,14 @@ pub(super) fn run_revert_to(
                     total,
                     error: error_line(&error),
                 },
-                Err(other) => RevertedTo::Failed {
+                Err(other) => RevertedTo::Refused {
                     description: aimed_at,
-                    done: 0,
-                    total,
                     error: error_line(&other),
                 },
             }
         },
-        |error| RevertedTo::Failed {
+        |error| RevertedTo::Refused {
             description: "that point".to_owned(),
-            done: 0,
-            total: 0,
             error: error.to_string(),
         },
     )

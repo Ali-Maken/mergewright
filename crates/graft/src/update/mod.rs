@@ -142,6 +142,7 @@ fn settle(next: &mut AppState, commands: &mut Vec<Command>, cursor_before: usize
     // moved — so a frame looks a row up instead of walking every ref
     // (M2 review C1).
     radar::refresh_ref_findings(next);
+    remote::forget_stale_divergence(next);
     commands.extend(detail::open_explain(next, &mut || local_jobs.next_id()));
     next.local_jobs = local_jobs;
 }

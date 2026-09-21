@@ -117,14 +117,61 @@ fn read_anchors(
         if cancel.should_stop() {
             return Err("stopped".to_owned());
         }
-        // A read that fails is not fatal on its own: a ref can point at an
-        // object this repository no longer has (a pruned remote-tracking
-        // tip). The slice refuses later, **by name**, if the missing one was
-        // holding a ghost up — which is a sentence the user can act on,
-        // where "failed to read 7f3a…" is not.
-        if let Ok(commit) = graft_git::history::read_commit(handle, oid) {
+        if let Some(commit) = keep(graft_git::history::read_commit(handle, oid))? {
             anchors.push(commit);
         }
     }
     Ok(anchors)
+}
+
+/// What one anchor read means for the picture: a row, nothing, or a refusal.
+///
+/// **Nothing** is only ever the one safe case: a ref pointing at an object
+/// this repository no longer has (a pruned remote-tracking tip). The slice
+/// refuses later, **by name**, if the missing one was holding a ghost up —
+/// which is a sentence the user can act on, where "failed to read 7f3a…" is
+/// not.
+///
+/// Every other failure — a corrupt object, an object database that will not
+/// open — is a refusal. Dropping one would draw a picture with a piece
+/// silently missing and no sign that it is missing, which is the one thing a
+/// preview must not do.
+fn keep(read: Result<Commit, graft_git::history::WalkError>) -> Result<Option<Commit>, String> {
+    use graft_git::history::{NodeError, WalkError};
+    match read {
+        Ok(commit) => Ok(Some(commit)),
+        Err(WalkError::Commit(NodeError::Missing { .. })) => Ok(None),
+        Err(other) => Err(format!("cannot draw this one: {other}")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::keep;
+    use graft_core::oid::Oid;
+    use graft_git::history::{NodeError, WalkError};
+
+    /// An id to hang an error on. Which one it is does not matter here.
+    fn some_oid() -> Oid {
+        Oid::from_sha1([0x7f; 20])
+    }
+
+    #[test]
+    fn a_pruned_tip_is_left_out_of_the_picture_rather_than_refusing_it() {
+        let missing = Err(WalkError::Commit(NodeError::Missing { id: some_oid() }));
+        assert_eq!(keep(missing), Ok(None));
+    }
+
+    #[test]
+    fn a_commit_that_is_there_but_will_not_read_refuses_the_whole_picture() {
+        let unreadable = Err(WalkError::Commit(NodeError::Unreadable {
+            id: some_oid(),
+            source: Box::new(std::io::Error::other("the object database is on fire")),
+        }));
+        let refused = keep(unreadable).expect_err("an unreadable object is not a missing one");
+        assert!(
+            refused.contains("the object database is on fire"),
+            "the box has to say what went wrong, got {refused:?}"
+        );
+    }
 }

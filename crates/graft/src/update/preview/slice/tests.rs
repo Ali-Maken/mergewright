@@ -401,3 +401,38 @@ fn short_of_strips_the_ref_prefix_and_leaves_a_remote_shorthand_alone() {
     );
     assert_eq!(short_of("origin/main"), b"origin/main".to_vec());
 }
+
+/// Review 08 Minor 11. A tag and a branch can share a short name on one
+/// commit; the overlay removed by short name alone, so moving the branch
+/// took the tag's badge off the picture too — a ref the operation does not
+/// touch, missing from the row it is standing on.
+#[test]
+fn moving_a_branch_leaves_a_tag_of_the_same_name_where_it_is() {
+    let badges = badges_with(
+        &[("refs/heads/v1", oid(21)), ("refs/tags/v1", oid(21))],
+        &HeadState::Branch(ref_name("refs/heads/v1")),
+        &[],
+    );
+    let mut drawing = plan();
+    drawing.ghosts = vec![ghost(100, vec![Target::Real(oid(10))], "replay")];
+    drawing.ref_moves = vec![RefMove {
+        name: "refs/heads/v1".to_owned(),
+        from: Some(oid(21)),
+        to: Some(Target::Ghost(0)),
+    }];
+
+    let overlay = badges_for_preview(&badges, &drawing);
+
+    assert_eq!(
+        overlay.on(oid(21)),
+        vec![RefLabel::Tag(b"v1".to_vec())],
+        "the tag stays: the plan moves the branch, not it"
+    );
+    assert!(
+        overlay
+            .on(oid(100))
+            .iter()
+            .any(|label| matches!(label, RefLabel::Branch { name, .. } if name == b"v1")),
+        "and the branch arrives on the ghost"
+    );
+}
