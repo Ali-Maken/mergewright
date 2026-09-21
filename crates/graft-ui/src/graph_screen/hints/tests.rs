@@ -399,37 +399,28 @@ fn context_lists_match_the_design_note_order() {
 // --- The shrink ladder (m5/24, ADR-0039's third amendment) ---
 
 /// Every cell of the short-form table is the user's own word, spelled as he
-/// approved it on 2026-09-21, and **nothing else has a short rung**.
+/// restated it on 2026-09-21 (m5/27), and **nothing else has a short rung**:
+/// thirteen rows gone (four squeezes, two suffixes, seven substitutions),
+/// nine remain, and every one of the nine is a prefix of its full verb.
 ///
-/// The second half is the point: `stash` is the label that bites at 80
-/// columns and he ruled against shortening it, because every other hint is a
-/// whole word and one consonant-squeeze teaches the reader that labels here
-/// can be mangled. If a later pass invents `stsh`, or gives `merge` a short
-/// form before the group that binds it asks, this goes red.
+/// If a later pass reintroduces a squeeze or a substitution — `stsh` for
+/// `stash`, or a fresh `find`/`tool`/`stop` for some other verb — this goes
+/// red.
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "the user's table plus the full deleted/never-had list, not logic"
+)]
 fn every_short_rung_is_the_users_own_word() {
     let table = [
         ("first-parent", "first"),
         ("continue", "cont"),
-        ("mergetool", "tool"),
         ("discard", "disc"),
         ("hide stash", "hide"),
-        ("journal", "log"),
         ("overview", "over"),
         ("renderer", "rend"),
-        ("explain", "why"),
-        ("search", "find"),
-        ("changes", "diff"),
         ("status", "stat"),
-        ("compare", "cmp"),
-        ("resize", "size"),
-        ("commit", "cmt"),
         ("revert", "rev"),
-        ("stage", "stg"),
-        ("abort", "stop"),
-        ("apply", "use"),
-        ("graph", "grph"),
-        ("close", "shut"),
         ("lanes", "lane"),
     ];
     for (verb, want) in table {
@@ -446,13 +437,145 @@ fn every_short_rung_is_the_users_own_word() {
             );
         }
     }
-    // And the ones he deliberately left out keep their whole word.
+    // The thirteen deleted rows — four squeezes, two suffixes, seven
+    // substitutions — keep their whole word, alongside the ones that were
+    // always absent.
     for verb in [
-        "stash", "merge", "rebase", "branch", "tag", "resolved", "open", "push", "pull", "fetch",
-        "focus", "undo", "more", "quit", "move", "fold", "edit", "skip", "sha", "map", "pop",
-        "drop", "all",
+        "stash",
+        "merge",
+        "rebase",
+        "branch",
+        "tag",
+        "resolved",
+        "open",
+        "push",
+        "pull",
+        "fetch",
+        "focus",
+        "undo",
+        "more",
+        "quit",
+        "move",
+        "fold",
+        "edit",
+        "skip",
+        "sha",
+        "map",
+        "pop",
+        "drop",
+        "all",
+        "compare",
+        "commit",
+        "stage",
+        "graph",
+        "mergetool",
+        "resize",
+        "journal",
+        "explain",
+        "search",
+        "changes",
+        "abort",
+        "apply",
+        "close",
     ] {
         assert_eq!(short_form(verb), None, "`{verb}` must keep its whole word");
+    }
+}
+
+/// **The short form is a prefix of the full label, or there is no short
+/// form.** Stated so a future row that squeezes or substitutes fails here
+/// rather than being reviewed: for every verb the table names, `verb`
+/// starts with `short_form(verb)`.
+#[test]
+fn every_short_form_is_a_prefix_of_its_verb() {
+    for hint in every_hint() {
+        if let Some(short) = short_form(hint.verb) {
+            assert!(
+                hint.verb.starts_with(short),
+                "`{short}` is not a prefix of `{}` — a squeeze or a substitution",
+                hint.verb
+            );
+        }
+    }
+}
+
+/// The banner defect this table restatement fixes: `a stop` (for `abort`)
+/// and `M tool` (for `mergetool`) broke `docs/design/02-keymap.md:45`'s
+/// "match the buttons' initials exactly", and `rungs()` chose them with no
+/// context test — so they were reachable, not theoretical, wherever the
+/// banner degraded to its short rung. Swept over every banner shape and
+/// width; must never draw either substitution again.
+#[test]
+fn the_banner_never_draws_a_stop_or_m_tool() {
+    let banners = [
+        HintContext::Banner {
+            skippable: true,
+            conflicted: true,
+        },
+        HintContext::Banner {
+            skippable: false,
+            conflicted: true,
+        },
+        HintContext::Banner {
+            skippable: true,
+            conflicted: false,
+        },
+        HintContext::Banner {
+            skippable: false,
+            conflicted: false,
+        },
+    ];
+    for context in banners {
+        for columns in 0..=240u16 {
+            let text = hints_text(&hints_for(&context, Divider::Hidden, columns));
+            assert!(
+                !text.contains("a stop"),
+                "{context:?} at {columns}: {text:?}"
+            );
+            assert!(
+                !text.contains("M tool"),
+                "{context:?} at {columns}: {text:?}"
+            );
+        }
+    }
+}
+
+/// ADR-0037 §4's floor, swept the width the ticket names (m5/27): every
+/// context's three most relevant hints hold at or above their floor rung —
+/// now `Rung::Full` for the thirteen verbs whose short rung was deleted —
+/// and the bar is never empty, from 20 to 240 columns.
+#[test]
+fn the_floor_holds_from_twenty_to_two_hundred_forty_columns() {
+    for context in all_contexts() {
+        if context == HintContext::Preview {
+            continue;
+        }
+        let whole = whole_list(&context, Divider::Hidden);
+        let floor = whole.len().min(3);
+        for columns in 20..=240u16 {
+            let hints = hints_for(&context, Divider::Hidden, columns);
+            assert!(
+                !hints.is_empty(),
+                "{context:?} at {columns} columns: the bar is empty"
+            );
+            let body = without_trailer(&hints);
+            assert!(
+                body.len() >= floor,
+                "{context:?} at {columns} columns drew {} of its floor {floor}",
+                body.len()
+            );
+            for (drawn, want) in body.iter().zip(whole.iter()).take(floor) {
+                assert!(
+                    drawn.rung >= want.floor_rung(),
+                    "{context:?} at {columns} columns put `{} {}` below its floor \
+                     ({:?} < {:?})",
+                    drawn.key,
+                    drawn.verb,
+                    drawn.rung,
+                    want.floor_rung()
+                );
+            }
+        }
     }
 }
 

@@ -256,6 +256,16 @@ marked merge row: `Fix: revert the merge (-m 1)`, `Fix: reset main to before the
 - **app-preview-and-keys (pass 2)** — the slice re-layout and the modal state machine; judged by captures and the
   walk, not the diff. Opus.
 
+## Pending: the border/background distinction (→ ticket 28)
+
+Accepted with a clause, m5/27: a bordered box (the Ghost Preview, the operation
+banner) makes its edge explicit, so content beside it reads as *background*
+rather than as part of the box — **but only while whole columns survive beside
+the box**. Fragment a column and the border does not save you; a reader cannot
+tell a clipped column from a box that leaked into it. The geometry rule that
+follows from this, and its ADR, are ticket 28's — not written or implemented
+here.
+
 Fable builds: G5 (signature) + acceptance. The design is not underspecified: each hard problem is decided above.
 Group count 11 → **pass 1 = this note + G1–G7** (`secret-field`, `undo-cancel-rollback`, `refresh-race`,
 `git-history-reads`, `ops-history-operations`, `ui-ghost-banner-conflict`, `hint-bar-redesign`); pass 2 =

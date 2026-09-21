@@ -123,42 +123,44 @@ impl Hint {
     }
 }
 
-/// The user's short-form table, approved 2026-09-21 (m5/24). **A list he
-/// wrote, not a scheme** — nothing here is derived, and a verb this function
-/// does not name has no short rung at all.
+/// The user's short-form table, restated 2026-09-21 (m5/27, correcting
+/// m5/24): **the short form is a prefix of the full label, or there is no
+/// short form.**
 ///
-/// `stash` is absent on purpose and it is the rule the rest of the table
-/// reads by: every hint is a whole word, so one consonant-squeeze (`stsh`)
-/// would make the bar inconsistent in *kind* and teach the reader that
-/// labels here can be mangled. Where a row cannot afford `S stash`, the
-/// ladder already has the answer — the bare key. `merge` and `rebase` are
-/// live and absent for the same reason as `stash`; `branch`, `tag` and
-/// `resolved` are [`HintState::Planned`] and never drawn. All five keep
-/// their full form: the table is the user's, and a label it does not name is
-/// reported, not replaced.
+/// Three kinds were on the table before this pass, and only one survives:
+///
+/// - a **prefix** keeps the label's beginning (`cont` for `continue`) — the
+///   reader recovers the word from the fragment, the way `git`'s own
+///   abbreviated flags do;
+/// - a **squeeze** removes letters from the middle (`stsh` for `stash`,
+///   `cmt` for `commit`) — the reader cannot recover the word from the
+///   fragment, only recognise it once told;
+/// - a **substitution** replaces the word outright (`find` for `search`,
+///   `tool` for `mergetool`) — it gives one verb two names, which
+///   `docs/design/02-keymap.md:12`'s "one meaning per verb" forbids
+///   outright, and two of them (`a stop`, `M tool`) also broke
+///   `docs/design/02-keymap.md:45`'s "match the buttons' initials exactly".
+///
+/// Squeezes and substitutions are gone. A verb this function does not name
+/// simply has no short rung — adding a row is never required to make a
+/// label fit, because the ladder's bare-key rung is already the mechanism
+/// for "no room" (ADR-0039).
+///
+/// `stash`, `merge` and `rebase` are live and absent because a squeeze was
+/// the only short form that ever fit them and the user ruled squeezes out;
+/// `branch`, `tag` and `resolved` are [`HintState::Planned`] and never
+/// drawn. All six keep their full form: the table is the user's, and a
+/// label it does not name is reported, not replaced.
 fn short_form(verb: &str) -> Option<&'static str> {
     Some(match verb {
         "first-parent" => "first",
         "continue" => "cont",
-        "mergetool" => "tool",
         "discard" => "disc",
         "hide stash" => "hide",
-        "journal" => "log",
         "overview" => "over",
         "renderer" => "rend",
-        "explain" => "why",
-        "search" => "find",
-        "changes" => "diff",
         "status" => "stat",
-        "compare" => "cmp",
-        "resize" => "size",
-        "commit" => "cmt",
         "revert" => "rev",
-        "stage" => "stg",
-        "abort" => "stop",
-        "apply" => "use",
-        "graph" => "grph",
-        "close" => "shut",
         "lanes" => "lane",
         _ => return None,
     })

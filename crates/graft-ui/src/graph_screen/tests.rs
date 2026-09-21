@@ -1531,7 +1531,7 @@ fn capture_hint_bar_for_docs_shots() {
 fn capture_the_ladder_for_docs_shots() {
     use super::hints::{Divider, Rung, hints_for, hints_text};
 
-    let cases: [(&str, HintContext, Divider); 5] = [
+    let cases: [(&str, HintContext, Divider); 6] = [
         (
             "the cursor is on the uncommitted-changes row",
             HintContext::WorkingTreeRow,
@@ -1556,6 +1556,11 @@ fn capture_the_ladder_for_docs_shots() {
             "the changes pane has focus, the divider draggable",
             HintContext::ChangesPane { unmerged: false },
             Divider::Shown,
+        ),
+        (
+            "the undo journal browser has focus",
+            HintContext::Journal,
+            Divider::Hidden,
         ),
     ];
     let widths = [80u16, 120, 160];
@@ -1601,10 +1606,11 @@ fn capture_the_ladder_for_docs_shots() {
          # grid, so the muted grey the footer draws in is unverified\n\
          # (CLAUDE.md rule 5).\n\
          #\n\
-         # The short rung is visible where the room runs out mid-hint: `x cmp`,\n\
-         # `F3 rend`, `H hide`, `c cmt`. Every short form is the user's own word\n\
-         # from the table he approved on 2026-09-21 — `stash`, `merge` and\n\
-         # `rebase` are not in it and keep their whole word at every width.\n\
+         # The short rung is visible where the room runs out mid-hint: `F3 rend`,\n\
+         # `H hide`. Every short form is a prefix of the full verb, the user's own\n\
+         # word, restated 2026-09-21 (m5/27) — a verb it does not name (`stash`,\n\
+         # `merge`, `rebase`, `compare`, `commit` among them) has no short rung at\n\
+         # all and keeps its whole word at every width.\n\
          \n",
     );
 
@@ -1687,6 +1693,35 @@ fn capture_the_ladder_for_docs_shots() {
             out.push_str(&hints_text(&reordered));
             out.push_str("\n\n");
         }
+    }
+
+    out.push_str(
+        "=== `rev` — revert's only home, the undo journal browser ===\n\
+         #\n\
+         # `revert` keeps its short form under the m5/27 rule — `rev` is a clean\n\
+         # prefix, not a squeeze or a substitution. But `rev` is also a git word\n\
+         # meaning *revision* (`rev-parse`, `rev-list`), and that clash is the\n\
+         # user's to judge, not the builder's — this section exists only to put it\n\
+         # in front of him.\n\
+         #\n\
+         # It cannot be shown at 80, 120 or 160 cells: the journal browser's whole\n\
+         # list is `⏎ revert  esc close`, two hints, and that fits whole (plus\n\
+         # `. more`) from about 28 cells of bar — every width in the three-width\n\
+         # matrix above is past that, so the journal row there always reads\n\
+         # `⏎ revert  esc close  . more` in full, never `rev`. Below is the\n\
+         # narrowest room `rev` actually appears in, computed the same way as\n\
+         # every row above: `hints_for`, nothing hand-set.\n\
+         \n",
+    );
+    for columns in [16u16, 20, 24, 27] {
+        let hints = hints_for(&HintContext::Journal, Divider::Hidden, columns);
+        out.push_str(&format!(
+            "--- the undo journal browser has focus, {columns} cells\n"
+        ));
+        out.push_str(&ruler(columns));
+        out.push('\n');
+        out.push_str(&hints_text(&hints));
+        out.push_str("\n\n");
     }
 
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))

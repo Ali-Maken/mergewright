@@ -28,10 +28,11 @@
 # grid, so the muted grey the footer draws in is unverified
 # (CLAUDE.md rule 5).
 #
-# The short rung is visible where the room runs out mid-hint: `x cmp`,
-# `F3 rend`, `H hide`, `c cmt`. Every short form is the user's own word
-# from the table he approved on 2026-09-21 — `stash`, `merge` and
-# `rebase` are not in it and keep their whole word at every width.
+# The short rung is visible where the room runs out mid-hint: `F3 rend`,
+# `H hide`. Every short form is a prefix of the full verb, the user's own
+# word, restated 2026-09-21 (m5/27) — a verb it does not name (`stash`,
+# `merge`, `rebase`, `compare`, `commit` among them) has no short rung at
+# all and keeps its whole word at every width.
 
 === as built — 80 cells of bar ===
 
@@ -55,6 +56,10 @@
 [······························ 80 cells of bar ·······························]
  space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
 
+--- the undo journal browser has focus
+[······························ 80 cells of bar ·······························]
+ ⏎ revert  esc close  . more
+
 === as built — 120 cells of bar ===
 
 --- the cursor is on the uncommitted-changes row
@@ -77,6 +82,10 @@
 [·················································· 120 cells of bar ··················································]
  space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
 
+--- the undo journal browser has focus
+[·················································· 120 cells of bar ··················································]
+ ⏎ revert  esc close  . more
+
 === as built — 160 cells of bar ===
 
 --- the cursor is on the uncommitted-changes row
@@ -85,7 +94,7 @@
 
 --- the cursor is on the tip, which carries the current branch's badge
 [······································································ 160 cells of bar ······································································]
- ⏎ open  c commit  P push  p pull  f fetch  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x cmp  +  j/k  space  1  F  H  y  M  O  . more
+ ⏎ open  c commit  P push  p pull  f fetch  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x  +  j/k  space  1  F  H  y  M  O  . more
 
 --- the cursor is on another branch's tip
 [······································································ 160 cells of bar ······································································]
@@ -98,6 +107,10 @@
 --- the changes pane has focus, the divider draggable
 [······································································ 160 cells of bar ······································································]
  space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
+
+--- the undo journal browser has focus
+[······································································ 160 cells of bar ······································································]
+ ⏎ revert  esc close  . more
 
 === variant A — a `·` between the labelled hints and the bare keys ===
 #
@@ -131,6 +144,10 @@
 [······························ 80 cells of bar ·······························]
  space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
 
+--- the undo journal browser has focus, 80 cells
+[······························ 80 cells of bar ·······························]
+ ⏎ revert  esc close  . more
+
 --- the cursor is on the uncommitted-changes row, 120 cells
 [·················································· 120 cells of bar ··················································]
  ⏎ changes  c commit  S stash  p pull  P push  ·  f  u  J  /  j/k  q  F2  F3  x  +  space  1  F  H  y  M  O  . more
@@ -151,6 +168,10 @@
 [·················································· 120 cells of bar ··················································]
  space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
 
+--- the undo journal browser has focus, 120 cells
+[·················································· 120 cells of bar ··················································]
+ ⏎ revert  esc close  . more
+
 --- the cursor is on the uncommitted-changes row, 160 cells
 [······································································ 160 cells of bar ······································································]
  ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  ·  F3  x  +  space  1  F  H  y  M  O  . more
@@ -170,6 +191,10 @@
 --- the changes pane has focus, the divider draggable, 160 cells
 [······································································ 160 cells of bar ······································································]
  space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
+
+--- the undo journal browser has focus, 160 cells
+[······································································ 160 cells of bar ······································································]
+ ⏎ revert  esc close  . more
 
 === variant B — the doorway leads the tail ===
 #
@@ -204,6 +229,10 @@
 [······························ 80 cells of bar ·······························]
  space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
 
+--- the undo journal browser has focus, 80 cells
+[······························ 80 cells of bar ·······························]
+ ⏎ revert  esc close  . more
+
 --- the cursor is on the uncommitted-changes row, 120 cells
 [·················································· 120 cells of bar ··················································]
  ⏎ changes  c commit  S stash  p pull  P push  f fetch  . more  u  J  /  j/k  q  F2  F3  x  +  space  1  F  H  y  M  O
@@ -224,13 +253,17 @@
 [·················································· 120 cells of bar ··················································]
  space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
 
+--- the undo journal browser has focus, 120 cells
+[·················································· 120 cells of bar ··················································]
+ ⏎ revert  esc close  . more
+
 --- the cursor is on the uncommitted-changes row, 160 cells
 [······································································ 160 cells of bar ······································································]
  ⏎ changes  c commit  S stash  p pull  P push  f fetch  u undo  J journal  / search  j/k move  q quit  F2 status  F3 rend  . more  x  +  space  1  F  H  y  M  O
 
 --- the cursor is on the tip, which carries the current branch's badge, 160 cells
 [······································································ 160 cells of bar ······································································]
- ⏎ open  c commit  P push  p pull  f fetch  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x cmp  . more  +  j/k  space  1  F  H  y  M  O
+ ⏎ open  c commit  P push  p pull  f fetch  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  . more  x  +  j/k  space  1  F  H  y  M  O
 
 --- the cursor is on another branch's tip, 160 cells
 [······································································ 160 cells of bar ······································································]
@@ -243,4 +276,40 @@
 --- the changes pane has focus, the divider draggable, 160 cells
 [······································································ 160 cells of bar ······································································]
  space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more
+
+--- the undo journal browser has focus, 160 cells
+[······································································ 160 cells of bar ······································································]
+ ⏎ revert  esc close  . more
+
+=== `rev` — revert's only home, the undo journal browser ===
+#
+# `revert` keeps its short form under the m5/27 rule — `rev` is a clean
+# prefix, not a squeeze or a substitution. But `rev` is also a git word
+# meaning *revision* (`rev-parse`, `rev-list`), and that clash is the
+# user's to judge, not the builder's — this section exists only to put it
+# in front of him.
+#
+# It cannot be shown at 80, 120 or 160 cells: the journal browser's whole
+# list is `⏎ revert  esc close`, two hints, and that fits whole (plus
+# `. more`) from about 28 cells of bar — every width in the three-width
+# matrix above is past that, so the journal row there always reads
+# `⏎ revert  esc close  . more` in full, never `rev`. Below is the
+# narrowest room `rev` actually appears in, computed the same way as
+# every row above: `hints_for`, nothing hand-set.
+
+--- the undo journal browser has focus, 16 cells
+[ 16 cells of bar ]
+ ⏎ rev  esc close  . more
+
+--- the undo journal browser has focus, 20 cells
+[ 20 cells of bar ·]
+ ⏎ rev  esc close  . more
+
+--- the undo journal browser has focus, 24 cells
+[·· 24 cells of bar ···]
+ ⏎ rev  esc close  . more
+
+--- the undo journal browser has focus, 27 cells
+[···· 27 cells of bar ····]
+ ⏎ rev  esc close  . more
 
