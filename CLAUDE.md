@@ -4,7 +4,7 @@ Why behind every rule here: [`docs/rules-rationale.md`](docs/rules-rationale.md)
 
 "Graft" is a **codename**. The name is taken by another Git GUI; the real one is chosen in M8. Never publish, register or tag anything public under it.
 
-## The six that pay
+## The seven that pay
 
 Every rule below earned its place by catching a real failure. They are dispositions, checkable in a report.
 
@@ -14,6 +14,7 @@ Every rule below earned its place by catching a real failure. They are dispositi
 4. **Never mark stubbed or half-done work done.** It goes in `KNOWN_GAPS.md`, where **broken and unverified are marked apart**. Unverified is not broken.
 5. **Captures can't prove colour.** The pty pipeline records character grids with no colour attributes. Colour ships **unverified** and says so.
 6. **Visual results are judged by eye, by the user.** Any visual ticket ends with a capture under `docs/shots/`. No builder or reviewer ticks "looks right".
+7. **A behavioural claim carries its line, at filing time.** A finding that asserts wrong logic, wrong order or wrong behaviour names the file and line that proves it when it is filed. No line, not a defect — it is filed as a **question**. This is rule 1 at the filing step: a capture shows output, and output alone cannot tell wrong logic from correct logic under an input you assumed. It binds both sides — **the user files with the line or as a question, and the conductor does not open a ticket on a behavioural claim that arrives without one, the user's included.** Textual findings still stand on a capture alone: wording drift, a stale caption, a number disagreeing with the picture, two panes with no gap between them.
 
 **The gate that makes them stick:** every acceptance tick **names its verifying test inline, at tick time**. A tick with no test named is not a tick. The reviewer spot-checks a sample per group and says how many it checked and how many held. **A false tick is Critical**, whatever its size.
 
