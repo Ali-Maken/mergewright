@@ -168,10 +168,57 @@ milestone. Read the regenerated file and make the caption describe **it**.
 
 Conductor's file. **Report it; do not edit it.**
 
+## M6. ADR-0039's own body still teaches the squeeze it forbids
+
+`docs/adr/0039-…:133-136` — "Shrink before dropping … `space stage` →
+`space stg` → `space`" sits under *Three conditions, without which this is a
+lie*, while the decision **above it** says "**No abbreviation scheme** … never
+invented or squeezed to fit". `stg` is one of the thirteen rows ticket 27
+deleted. Rewrite the example with a verb the table actually names
+(`c continue` → `c cont` → `c`), or drop the middle step. Same ADR as M1 —
+one pass, both.
+
+## M7. ADR-0040 is enforced on the graph screen only, and does not say so
+
+`view/frame.rs:94,117,152` — the journal, stash and Map screens call
+`draw_confirm(…, &[])`, and `snap_to_columns` returns the rect unchanged for
+empty boundaries (`layout.rs:511-513`). A confirm box over the journal browser
+is reachable (`u` from the browser).
+
+**Conductor's decision, so it is not re-derived:** the rule is about *columns*,
+and a surface with no column model has no boundary to bisect — there is nothing
+for the box to cut in half. So `:511-513` is correct by construction, not an
+omission. **Fix the words, not the code**, unless you find the journal or stash
+genuinely does publish column starts that a box can bisect — look before you
+conclude, and say which you found.
+
+In ADR-0040, define what a column boundary is (a boundary the surface
+publishes) and say plainly that a surface publishing none has nothing to snap
+to. A reader must not come away thinking three screens were forgotten.
+
+## M8. `after_push_chosen`'s impossible arm is `debug_assert!` only
+
+`update/undo.rs:67-73` — in release, a cursor index the box did not offer is
+**silently a no-op**. That is rule 3: a failure that carries on without a word.
+Pre-existing shape, now with a second variant (`repush: None` + `chosen == 2`).
+Give it a `Status::Sticky` naming the mismatch — it costs nothing and is seen
+if it ever fires. Keep the `debug_assert!`.
+
+## M9. One sentence in ARCHITECTURE.md about the test-only edge
+
+`view/mod.rs` made `frame` `pub(crate)` so `update/tests.rs:3559` can call
+`crate::view::frame::detail_rects`. Production `update` still imports no view
+code, and sweeping the mirror against the real rects is the **right** test —
+but ARCHITECTURE.md says nothing about tests crossing the line, so the next
+builder has no way to know how far it goes. Add the sentence: `update`'s tests
+may read `view`; never the reverse, and never production code either way.
+
 ## Also
 
-Seven Minors and two Questions in the review are **not** in this ticket. The
-conductor triages them at the milestone close. Do not chase them.
+Of the review's seven Minors, **four are above** (M6–M9). Minor 1 is ticket
+31's (same file), Minor 6 is ticket 11's (a caption), and Minor 5 is a gap row
+the conductor holds. Do not chase any of those three. The two Questions are
+answered: Q1 is in your acceptance above; Q2 is ticket 31.
 
 ## Gates
 

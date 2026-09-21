@@ -142,6 +142,18 @@ with evidence; report which you closed and which you did not, and why.
 11. **Minors 5, 6 and 7 of `docs/reviews/m5-14-to-22-eye-check-round.md`** —
     capture/caption fixes, explicitly deferred to the contact sheet.
 
+12. **`docs/shots/m3-changes-pane-80x24.txt` — the 80x24 block no longer shows
+    what its caption promises.** Review `m5-23-to-29.md` Minor 6. Ticket 29's
+    reserved bar row cost the block `M routes.rs`, so `:26-29` reads
+    `UNSTAGED (2)` → `▾ src/` → `▾ api/` → `fn routes()` — a section with a
+    folder and no file under it, and no `UNTRACKED` row at all — while the
+    caption still says "Three section rows … each with its files indented
+    under it" and only warns that `notes.md` "may sit below the fold".
+    Writer: `crates/graft/src/view/tests.rs::capture_m3_changes_pane`.
+    **Read the regenerated file and make the caption describe it**, naming
+    which rows are below the fold at that width. Do not widen the capture to
+    make the old caption true.
+
 ## NOT yours — for the record, so you do not chase it
 
 - **The real `git mergetool` hand-over has never run in a real terminal.** Unit

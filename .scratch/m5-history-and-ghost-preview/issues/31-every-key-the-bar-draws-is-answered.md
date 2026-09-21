@@ -73,6 +73,32 @@ pane actually answers, plus the doorway.
    re-mark `m`/`r` as `planned`. Both must turn the sweep red. If the second
    does not, the invariant only covers one direction — say so.
 
+## Also yours: the wording is one rule behind (review Minor 1)
+
+Same file, same class — the table and the prose disagree, and nothing tests
+one against the other. Since ticket 27 the floor is `Rung::Full` for every verb
+the table does not name (`hints.rs::floor_rung`), so **"short rung" is wrong
+everywhere it still appears**:
+
+- a duplicate test: `hints/tests.rs:682`
+  `the_three_most_relevant_never_fall_below_their_short_rung` (0..=240) and
+  `:549` `the_floor_holds_from_twenty_to_two_hundred_forty_columns` (20..=240)
+  have identical bodies and the second is a strict subset. **Delete the
+  subset**, keep the wider one, and say which you kept.
+- `hints.rs:8` (module doc), `hints.rs:372-373` (`ladder` step 1, "at their
+  **short** rung"), `hints.rs:412` (`fit_list` doc).
+- the hint-bar caption shipped in **twelve** captures —
+  `crates/graft/tests/it/hint_bar.rs:485`, e.g.
+  `docs/shots/m5-hints-plain-80x24.txt:34`. Count them yourself and report the
+  number; the review's figure is not evidence.
+
+s/short rung/floor rung/, and add the one-line definition of the floor rung
+beside the table so the next reader does not have to infer it.
+
+Note `hints.rs:413-414`'s doc is **ticket 30's** (review Major M2) — if 30
+landed first it is already fixed; do not fix it twice, and do not leave it if
+30 somehow missed it. Say which you found.
+
 ## What NOT to do
 
 - Do not bind a new key anywhere.
