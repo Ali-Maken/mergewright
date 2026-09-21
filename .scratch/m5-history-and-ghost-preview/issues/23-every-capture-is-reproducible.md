@@ -1,7 +1,7 @@
 # every-capture-is-reproducible: a fixed clock in every file that writes to docs/shots
 
 Status: ready
-Blocked by: 15 (holds `graft`)
+Blocked by: none — 15 merged
 Build with: **Opus.** The rule is simple; applying it without changing what the
 captures *show* is not, and the M5 walk is about to depend on it.
 Crates: `graft` (tests + examples), `graft-graph` (`tests/it/raster.rs`), and
@@ -109,10 +109,30 @@ already right. Fix the sentence so it cannot be read that way again. Doc only �
 three-run diff going red. If it stays green, the determinism is coming from
 somewhere else and you have not found it.
 
+## How to run a mutation check (new, from 23 onward)
+
+Mutation checks have been costing an hour a ticket by running the whole
+workspace suite once per mutation — and in one case **twice**, the first run
+piped to `/dev/null`. Do it this way instead:
+
+- **Per mutation, run only the tests that tick names.** A filtered
+  `cargo nextest run -E 'test(<name>)'` finishes in seconds. Narrowing cannot
+  produce a false green: if the named test catches the fault, it catches it
+  under a filter exactly as it does in a full run.
+- **Once, on the mutation that restores the actual reported bug, run the full
+  workspace suite** and report the blast radius — "n red, and only these n".
+  That claim has been load-bearing twice this milestone (ticket 18 proved no
+  other test pinned the old behaviour; ticket 22 discovered a second guard
+  because an expected red did *not* appear). Keep it where it earns its place.
+- **Never run the same suite twice to parse it twice.** Capture the output
+  once and read it.
+
+The rebuild after each edit is the floor and this does not remove it.
+
 ## Gates
 
 Workspace-wide, never `-p`. `CARGO_TARGET_DIR=/tmp/graft-target-g23`, deleted
-before hand-back. Baseline **2213/2213** — check it yourself.
+before hand-back. Baseline **2226/2226** — check it yourself.
 
 **Never `git checkout` or `git restore` across your worktree** — a builder
 destroyed five uncommitted files that way this milestone. Revert a mutation by
