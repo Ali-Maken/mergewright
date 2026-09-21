@@ -75,20 +75,28 @@ pub(super) fn read_files(
 }
 
 /// The git diff one changes-pane row shows: a STAGED row is the index
-/// against `HEAD`, anything else is the working tree against the index.
-/// Every other spec has one diff and no sections.
+/// against `HEAD`, a CONFLICTS row is the worktree against `HEAD`, anything
+/// else is the working tree against the index. Every other spec has one diff
+/// and no sections.
 #[must_use]
 pub fn diff_spec_for(spec: DetailSpec, section: Option<WorkingTreeSection>) -> DiffSpec {
     match section {
         Some(WorkingTreeSection::Staged) => DiffSpec::Staged,
-        // A conflicted path's diff is the worktree against the index, the
-        // same read as an unstaged change: that is the file with its
-        // conflict markers in it, which is what the user needs to see.
-        Some(
-            WorkingTreeSection::Unstaged
-            | WorkingTreeSection::Untracked
-            | WorkingTreeSection::Unmerged,
-        ) => DiffSpec::Unstaged,
+        // A conflicted path is read against `HEAD`, not against the index
+        // (m5/21). "Worktree against the index" has no answer for it: the
+        // index holds three stages of the path, not one, so `git diff-files`
+        // replies with a **combined** diff (`diff --cc`, `@@@` headers) —
+        // a different format, which the unified parser skips, leaving 0
+        // hunks and a blank pane beside a file the changes pane has just
+        // named under `CONFLICTS`.
+        //
+        // `git diff-index HEAD` on the same path is an ordinary two-way
+        // diff of the file as it now stands — markers and all — against
+        // what is committed. That is the question the user is asking of a
+        // conflicted file, and it keeps answering it as they edit: the
+        // markers disappear from the diff as they resolve them.
+        Some(WorkingTreeSection::Unmerged) => DiffSpec::WorkingTreeVsHead,
+        Some(WorkingTreeSection::Unstaged | WorkingTreeSection::Untracked) => DiffSpec::Unstaged,
         None => spec.diff_spec(),
     }
 }
@@ -604,7 +612,7 @@ mod tests {
 
 #[cfg(test)]
 mod working_tree_tests {
-    use graft_ui::detail::WorkingTreeSection::{Staged, Unstaged, Untracked};
+    use graft_ui::detail::WorkingTreeSection::{Staged, Unmerged, Unstaged, Untracked};
 
     use super::*;
 
@@ -744,5 +752,18 @@ mod working_tree_tests {
             graft_core::oid::Oid::from_bytes(&[7; 20]).expect("20 bytes is an oid"),
         );
         assert_eq!(diff_spec_for(commit, None), commit.diff_spec());
+    }
+
+    /// m5/21: an unmerged path against the index has no two-way answer —
+    /// git replies with a combined diff and the body drew nothing. Against
+    /// `HEAD` it is an ordinary diff of the file as it stands.
+    /// `conflict_interim::an_unmerged_file_draws_its_conflict_in_the_body`
+    /// is the same fact read off a real stopped merge.
+    #[test]
+    fn a_conflicted_row_reads_against_head_not_the_index() {
+        assert_eq!(
+            diff_spec_for(DetailSpec::WorkingTree, Some(Unmerged)),
+            DiffSpec::WorkingTreeVsHead
+        );
     }
 }

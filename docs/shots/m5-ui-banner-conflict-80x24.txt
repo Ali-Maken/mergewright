@@ -30,9 +30,8 @@
 #    that was already there — so on this tab a stopped merge costs
 #    **no** rows of history at all. The row of its own is the `Detail`
 #    tab's case, where the `Graph  [Detail]` strip needs a line of its
-#    own anyway; that tab at 24 rows is a six-row file list over a body
-#    that draws nothing for an unmerged file (the ticket's NOTES), so it
-#    could not show a cost either way.
+#    own anyway; that tab at 24 rows is a six-row file list over one
+#    file's conflict, which shows a screen rather than a cost.
 #  - The footer teaches the banner's own keys — `c continue`,
 #    `a abort`, `M mergetool`, `e edit`, `⇥ graph` — and nothing else.
 #    No `<> resize` and no `. more`: the banner is modal and swallows
@@ -40,9 +39,24 @@
 #  - The banner is drawn focused (colour, so unverified here), and the
 #    footer says nothing false about the merge: no `an operation was
 #    interrupted` line.
+#  - **The working-tree row counts the conflict**: it reads
+#    `Uncommitted changes (16 unmerged)`, not the `()` it read on
+#    the last pass. An unmerged path is in none of staged,
+#    unstaged and untracked, so the row drew and then counted
+#    nothing (m5/21). Unmerged leads the count when other
+#    buckets are there too.
 #  - Nothing on the screen reads as an error.
 #
-# Re-captured for m5/20, which dropped the `⚠` and the filename from
+# Re-captured for m5/21, which made the working-tree row count
+# unmerged paths and gave the changes pane a body for a
+# conflicted file (it is read against `HEAD` now; against the
+# index git answers with a combined diff and the body drew
+# nothing). The two conflicted files' object ids differ from
+# the last pass because this fixture is built at wall-clock
+# time, which is also why `main` and `feature` can swap lanes
+# between runs.
+#
+# Captured first for m5/20, which dropped the `⚠` and the filename from
 # the banner, settled the pane before the shutter, put 30 commits of
 # ordinary work and 16 conflicted files behind the frame so the
 # banner's row cost lands on content rather than on blank space, and
@@ -54,26 +68,26 @@
 #
 
  graft /code/api    MERGING
-◌     Uncommitted changes ()
-◆     [◆ main] main's take                                          now  b541fa3
-│ ●   [feature] the feature's take                                  now  eaae172
-●─╯   the shared files                                              now  6bd4e91
-●     Ship release 29                                               now  52c1174
-●     Ship release 28                                               now  11ed9c6
-●     Ship release 27                                               now  0243ace
-●     Ship release 26                                               now  8d22c2e
-●     Ship release 25                                               now  8fdb28e
-●     Ship release 24                                               now  2899001
-●     Ship release 23                                               now  ef2bac7
-●     Ship release 22                                               now  c120ecf
-●     Ship release 21                                               now  0c5d9c9
-●     Ship release 20                                               now  239b010
-●     Ship release 19                                               now  8dc6869
-●     Ship release 18                                               now  4906c38
-●     Ship release 17                                               now  d2f43f5
-●     Ship release 16                                               now  151ca22
-●     Ship release 15                                               now  ecae6c7
-●     Ship release 14                                               now  6ca3c68
-●     Ship release 13                                               now  dd65f89
+◌     Uncommitted changes (16 unmerged)
+◆     [◆ main] main's take                                          now  4839242
+│ ●   [feature] the feature's take                                  now  78d0f60
+●─╯   the shared files                                              now  601d57c
+●     Ship release 29                                               now  b89f63b
+●     Ship release 28                                               now  6be49cf
+●     Ship release 27                                               now  045ff39
+●     Ship release 26                                               now  ea8c88f
+●     Ship release 25                                               now  0b15ca7
+●     Ship release 24                                               now  2fb83e5
+●     Ship release 23                                               now  43c4434
+●     Ship release 22                                               now  b43742a
+●     Ship release 21                                               now  38a8e1d
+●     Ship release 20                                               now  e845889
+●     Ship release 19                                               now  7ff8474
+●     Ship release 18                                               now  39125ac
+●     Ship release 17                                               now  5f593c0
+●     Ship release 16                                               now  703db5a
+●     Ship release 15                                               now  715f662
+●     Ship release 14                                               now  c550a10
+●     Ship release 13                                               now  0fd4c43
  no commit-graph file · B build one · X never here
  c continue  a abort  M mergetool  e edit  ⇥ graph

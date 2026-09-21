@@ -511,6 +511,17 @@ pub(crate) fn counts(
     unstaged: usize,
     untracked: usize,
 ) -> std::sync::Arc<graft_git::status::WorkingTreeStatus> {
+    counts_with_unmerged(staged, unstaged, untracked, 0)
+}
+
+/// [`counts`] plus `unmerged` conflicted paths — a porcelain v2 `u` record,
+/// which is in none of staged, unstaged and untracked (m5/21).
+pub(crate) fn counts_with_unmerged(
+    staged: usize,
+    unstaged: usize,
+    untracked: usize,
+    unmerged: usize,
+) -> std::sync::Arc<graft_git::status::WorkingTreeStatus> {
     use graft_git::status::{Change, StatusEntry, WorkingTreeStatus};
     let mut entries = Vec::new();
     for i in 0..staged {
@@ -543,6 +554,17 @@ pub(crate) fn counts(
             unstaged: None,
             untracked: true,
             unmerged: false,
+            submodule: false,
+        });
+    }
+    for i in 0..unmerged {
+        entries.push(StatusEntry {
+            path: format!("unmerged-{i}.txt").into(),
+            original_path: None,
+            staged: None,
+            unstaged: None,
+            untracked: false,
+            unmerged: true,
             submodule: false,
         });
     }
@@ -613,6 +635,68 @@ fn all_three_are_named_together() {
         view.rows[0].subject.as_str(),
         "Uncommitted changes (1 staged, 2 unstaged, 3 untracked)"
     );
+}
+
+/// m5/21: an unmerged path is in none of staged, unstaged and untracked, so
+/// a tree holding nothing else counted nothing and the row read
+/// `Uncommitted changes ()` — empty parentheses at the one moment the
+/// working tree most needs describing.
+#[test]
+fn unmerged_paths_alone_are_named_rather_than_counting_nothing() {
+    let state = state_with_head_and_counts(counts_with_unmerged(0, 0, 0, 2));
+
+    let view = graph_view(&state, state.harness.clock.now_seconds());
+
+    assert_eq!(
+        view.rows[0].subject.as_str(),
+        "Uncommitted changes (2 unmerged)"
+    );
+}
+
+/// Unmerged leads: during a conflict it is what the user must act on, and
+/// the other buckets keep their order behind it (m5/21, ticket item 3).
+#[test]
+fn unmerged_leads_the_count_and_the_other_buckets_follow() {
+    let state = state_with_head_and_counts(counts_with_unmerged(1, 2, 3, 4));
+
+    let view = graph_view(&state, state.harness.clock.now_seconds());
+
+    assert_eq!(
+        view.rows[0].subject.as_str(),
+        "Uncommitted changes (4 unmerged, 1 staged, 2 unstaged, 3 untracked)"
+    );
+}
+
+/// Swept over all sixteen combinations of the four buckets: whenever the row
+/// draws at all, it names something. The row drawing and the count being
+/// empty can never happen together (m5/21).
+#[test]
+fn the_count_is_never_empty_while_the_row_draws() {
+    for bits in 0..16u8 {
+        let status = counts_with_unmerged(
+            usize::from(bits & 1 != 0),
+            usize::from(bits & 2 != 0),
+            usize::from(bits & 4 != 0),
+            usize::from(bits & 8 != 0),
+        );
+        let state = state_with_head_and_counts(status);
+
+        let view = graph_view(&state, state.harness.clock.now_seconds());
+
+        let drawn = view.rows[0].line.node == NodeKind::Uncommitted;
+        assert_eq!(
+            drawn,
+            bits != 0,
+            "bits {bits}: the row draws exactly when something is uncommitted"
+        );
+        if drawn {
+            assert!(
+                !view.rows[0].subject.as_str().contains("()"),
+                "bits {bits}: {} counts nothing",
+                view.rows[0].subject.as_str()
+            );
+        }
+    }
 }
 
 /// m3-working-tree-undo-and-stash/04: the row is pinned at row 0 whenever
@@ -3461,5 +3545,67 @@ fn a_preview_keeps_the_cursors_commit_on_screen_when_the_box_takes_rows() {
     assert!(
         drawn.iter().max() <= Some(&id_at(top)),
         "and nothing above the user's own top row is\n{frame}"
+    );
+}
+
+/// A window of `lanes` occupied columns, all passing straight down past a
+/// node in lane 0: enough columns that the lane cap decides how many draw.
+pub(crate) fn history_with_lanes(lanes: usize) -> History {
+    let mut history = history_of(3, 0);
+    let window = history.window.as_mut().expect("history_of built a window");
+    let mut rows: Vec<graft_graph::row::Row> = window.rows.to_vec();
+    for row in &mut rows {
+        row.lanes = (0..lanes)
+            .map(|lane| {
+                Some(graft_graph::identity::BranchIdentity::of_name(
+                    format!("lane-{lane}").as_bytes(),
+                ))
+            })
+            .collect();
+    }
+    window.rows = rows.into();
+    history
+}
+
+/// ADR-0039's 2026-09-21 amendment, third instance (m5/21 item 4): **ask
+/// how much room this thing has, not how big the screen is.** The lane cap
+/// came off the screen's width, so a graph with the detail pane beside it on
+/// a 160-column terminal folded to the twelve lanes of a wide screen while
+/// standing in 92 columns — a narrow view by DESIGN.md's own breakpoint.
+/// The header's `+N lanes` is the count made visible: eight drawn columns
+/// (seven lanes and the marker) hide seven of fourteen, twelve hide three.
+#[test]
+fn the_lane_cap_comes_from_the_graphs_room_not_the_screens_width() {
+    use graft_ui::detail::DetailFocus;
+
+    let mut state = AppState {
+        history: Some(history_with_lanes(14)),
+        size: Size {
+            columns: 160,
+            rows: 12,
+        },
+        ..AppState::default()
+    };
+    state.detail.shown = true;
+    state.detail.focus = DetailFocus::Files;
+
+    assert_eq!(
+        super::graph_columns(&state, ratatui::layout::Rect::new(0, 0, 160, 12)),
+        92,
+        "the pane leaves the graph 92 of the 160 columns"
+    );
+    let with_pane = draw(&state, 160, 12);
+    assert!(
+        with_pane.contains("+7 lanes"),
+        "92 columns is a narrow view: eight drawn columns, seven of the \
+         fourteen lanes folded away:\n{with_pane}"
+    );
+
+    // The same screen with no pane really is wide, and keeps its twelve.
+    state.detail.shown = false;
+    let full_width = draw(&state, 160, 12);
+    assert!(
+        full_width.contains("+3 lanes"),
+        "160 columns to itself folds at twelve lanes:\n{full_width}"
     );
 }

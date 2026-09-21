@@ -20,6 +20,7 @@ use graft_core::event::{Event, KeyCode, KeyPress, Modifiers};
 use graft_git::state::InProgress;
 
 use crate::app_harness::{App, git, git_as_graft};
+use crate::captures::{frame, write_shot};
 
 /// Two branches that both rewrote the same two lines: merging `feature` into
 /// `main` stops with `shared.rs` and `notes.md` unmerged.
@@ -649,6 +650,52 @@ fn space_on_a_conflicted_row_refuses_while_markers_remain() {
     app.close();
 }
 
+/// m5/21 item 2: the body beside a `CONFLICTS` row drew **nothing**. The
+/// read asked for was the worktree against the index (`git diff-files`), and
+/// for an unmerged path the index holds three stages, so git answers with a
+/// *combined* diff (`diff --cc`) that the unified parser does not read — 0
+/// hunks, a blank pane beside a file the pane has just named.
+///
+/// The conflicted file, with its markers, against `HEAD` is a plain two-way
+/// diff, and it is the question the user is actually asking.
+#[test]
+fn an_unmerged_file_draws_its_conflict_in_the_body() {
+    let scratch = about_to_conflict();
+    let repo = scratch.path();
+    let (app, state) = App::open(repo);
+    let state = stopped_on_the_conflict(&app, state);
+
+    let state = app.key(&state, KeyCode::Tab);
+    let state = open_changes_pane(&app, state);
+    let state = crate::app_harness::cursor_to(&app, state, "notes.md");
+    let state = app.pump(state, "the conflicted file's diff", |state| {
+        matches!(state.detail.diff, graft::update::detail::Loading::Ready(_))
+    });
+
+    match &state.detail.diff {
+        graft::update::detail::Loading::Ready(diff) => {
+            assert!(
+                !diff.hunks.is_empty(),
+                "a conflicted file's diff came back with no hunks: {:?}",
+                diff.status
+            );
+        }
+        other => panic!("the conflicted file's diff never arrived: {other:?}"),
+    }
+
+    // And it reaches the drawn frame: the markers git left in the file are
+    // what the body shows.
+    let rows = frame(&state, 120, 30);
+    assert!(
+        rows.iter().any(|row| row.contains("<<<<<<<")),
+        "the conflict markers are not on the frame:\n{}",
+        rows.join("\n")
+    );
+
+    drop(state);
+    app.close();
+}
+
 // ---------------------------------------------------------------------------
 // Piece 5: live is not interrupted. A live conflict and an entry a previous
 // run tore in half are the **same bytes** — a `Pending` line with no outcome
@@ -1139,40 +1186,6 @@ fn the_doorway_survives_everywhere_the_banner_does_not_own_the_keyboard() {
 // (CLAUDE.md rule 6).
 // ---------------------------------------------------------------------------
 
-/// Every row of the frame `view::view` draws for `state` at this size.
-fn frame(state: &AppState, columns: u16, rows: u16) -> Vec<String> {
-    let session = graft::session::Session::settle(
-        &graft::config::Loaded::default(),
-        crate::hint_bar::capabilities(),
-    );
-    let mut state = state.clone();
-    state.size = graft::update::Size { columns, rows };
-    let mut terminal = ratatui::Terminal::new(ratatui::backend::TestBackend::new(columns, rows))
-        .expect("test backend opens");
-    terminal
-        .draw(|frame| graft::view::view(&session, &state, frame))
-        .expect("drawing into a test backend cannot fail");
-    let buffer = terminal.backend().buffer();
-    (0..buffer.area.height)
-        .map(|y| {
-            (0..buffer.area.width)
-                .map(|x| buffer[(x, y)].symbol())
-                .collect::<String>()
-                .trim_end()
-                .to_owned()
-        })
-        .collect()
-}
-
-/// Writes one capture into `docs/shots/` and says where it went.
-fn write_shot(name: &str, body: &str) {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/shots")
-        .join(name);
-    std::fs::write(&path, body).expect("docs/shots is writable");
-    println!("wrote {} ({} bytes)", path.display(), body.len());
-}
-
 /// The width-specific bullets in [`capture_header`]: only one side of the
 /// narrow tier's tab strip is on screen under 100 columns, and what a
 /// stopped merge costs is not the same on the two of them.
@@ -1186,9 +1199,8 @@ fn cost_bullets(conflicts: usize, graph_tab: bool) -> String {
          #    that was already there \u{2014} so on this tab a stopped merge costs\n\
          #    **no** rows of history at all. The row of its own is the `Detail`\n\
          #    tab's case, where the `Graph  [Detail]` strip needs a line of its\n\
-         #    own anyway; that tab at 24 rows is a six-row file list over a body\n\
-         #    that draws nothing for an unmerged file (the ticket's NOTES), so it\n\
-         #    could not show a cost either way.\n"
+         #    own anyway; that tab at 24 rows is a six-row file list over one\n\
+         #    file's conflict, which shows a screen rather than a cost.\n"
     } else {
         "#  - At this width the pane and the graph are both on screen, so the\n\
          #    banner shares the header row rather than taking one of its own.\n\
@@ -1200,6 +1212,32 @@ fn cost_bullets(conflicts: usize, graph_tab: bool) -> String {
          #    half-loaded pane.\n"
     }
     .replace("{conflicts}", &conflicts.to_string())
+}
+
+/// Where this capture came from: the passes that changed it, and the
+/// fixture facts a reader needs before comparing it with the last one.
+/// Its own function because [`capture_header`] is at its line limit.
+fn provenance(conflicts: usize) -> String {
+    "# Re-captured for m5/21, which made the working-tree row count\n\
+# unmerged paths and gave the changes pane a body for a\n\
+# conflicted file (it is read against `HEAD` now; against the\n\
+# index git answers with a combined diff and the body drew\n\
+# nothing). The two conflicted files' object ids differ from\n\
+# the last pass because this fixture is built at wall-clock\n\
+# time, which is also why `main` and `feature` can swap lanes\n\
+# between runs.\n\
+#\n\
+# Captured first for m5/20, which dropped the `\u{26a0}` and the filename from\n\
+# the banner, settled the pane before the shutter, put 30 commits of\n\
+# ordinary work and {conflicts} conflicted files behind the frame so the\n\
+# banner's row cost lands on content rather than on blank space, and\n\
+# made the hint bar count from its own row rather than from width\n\
+# tiers (so the bars here are longer than on the last pass). What is\n\
+# **not** proven here: colour (rule 5), and that the banner row reads\n\
+# well by eye \u{2014}\n\
+# that is yours to judge (rule 6).\n"
+        .to_owned()
+        .replace("{conflicts}", &conflicts.to_string())
 }
 
 /// The caption on one banner capture.
@@ -1216,6 +1254,7 @@ fn capture_header(
     graph_tab: bool,
 ) -> String {
     let cost = cost_bullets(conflicts, graph_tab);
+    let provenance = provenance(conflicts);
     format!(
         "# m5-ui-banner-conflict-{label}.txt: {columns}x{rows}, drawn by `view::view`\n\
              # from a real AppState \u{2014} a real repository whose `main` and `feature`\n\
@@ -1249,17 +1288,15 @@ fn capture_header(
              #  - The banner is drawn focused (colour, so unverified here), and the\n\
              #    footer says nothing false about the merge: no `an operation was\n\
              #    interrupted` line.\n\
+             #  - **The working-tree row counts the conflict**: it reads\n\
+             #    `Uncommitted changes ({conflicts} unmerged)`, not the `()` it read on\n\
+             #    the last pass. An unmerged path is in none of staged,\n\
+             #    unstaged and untracked, so the row drew and then counted\n\
+             #    nothing (m5/21). Unmerged leads the count when other\n\
+             #    buckets are there too.\n\
              #  - Nothing on the screen reads as an error.\n\
              #\n\
-             # Re-captured for m5/20, which dropped the `\u{26a0}` and the filename from\n\
-             # the banner, settled the pane before the shutter, put 30 commits of\n\
-             # ordinary work and {conflicts} conflicted files behind the frame so the\n\
-             # banner's row cost lands on content rather than on blank space, and\n\
-             # made the hint bar count from its own row rather than from width\n\
-             # tiers (so the bars here are longer than on the last pass). What is\n\
-             # **not** proven here: colour (rule 5), and that the banner row reads\n\
-             # well by eye \u{2014}\n\
-             # that is yours to judge (rule 6).\n\
+             {provenance}\
              #\n\n"
     )
 }
@@ -1283,10 +1320,10 @@ fn capture_banner_for_docs_shots() {
 
     // Two screens, not one. Under 100 columns the tab strip shows one side
     // at a time, and the narrow capture stands on the **graph**: the
-    // changes pane's file list is capped at 40% of the pane and its body
-    // draws nothing for an unmerged file, so the Detail tab at 24 rows is
-    // six rows of list over eleven blanks — the very picture item 6 was
-    // filed about. The graph fills.
+    // changes pane's file list is capped at 40% of the pane, so the Detail
+    // tab at 24 rows is six rows of list over a body showing one file's
+    // conflict — a fine screen, but not one that can show what the banner's
+    // rows cost, which is what item 6 was filed about. The graph fills.
     //
     // Cloned before the pane is opened, because the banner keeps the
     // keyboard through all of it (`detail.focus` is what the tab strip

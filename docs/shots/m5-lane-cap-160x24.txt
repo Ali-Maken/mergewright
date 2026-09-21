@@ -1,0 +1,91 @@
+# m5-lane-cap-160x24.txt: 160x24, drawn by `view::view` from a real
+# AppState — a scratch repository with fourteen topic branches merged
+# into `main` one after another, so fifteen columns are open over most
+# of the window (crates/graft/tests/it/lane_cap.rs,
+# capture_lane_cap_for_docs_shots, #[ignore]d). Not a pty capture: the
+# terminal is ratatui's TestBackend, so this is a character grid with
+# no colour attributes in it — CLAUDE.md rule 5, colour ships
+# unverified.
+#
+# Why: the lane cap was read off the **screen's** width while the
+# detail pane stood beside the graph. At 160 columns the graph gets 92
+# of them and folded to twelve lanes anyway — the breakpoint for a
+# width it does not have. ADR-0039's 2026-09-21 amendment, third
+# instance: ask how much room this thing has, not how big the screen
+# is (m5/21 item 4).
+#
+# What right looks like:
+#  - **The two frames differ.** With the pane open the graph folds:
+#    the header says `+1 lanes` and a `⋮` marker column stands
+#    where the folded lane was. With the pane closed the same
+#    repository on the same terminal draws every lane and the header
+#    says nothing about lanes. That difference is the whole fix — the
+#    two used to be identical, because both asked the screen.
+#  - One lane, not five, because `Fold::plan` never hides a column
+#    with a node on screen: most of these columns hold one. The cap
+#    decides only the lanes passing through, which is the point — it
+#    is a budget, not a truncation.
+#  - With the pane open the subject column starts two cells earlier
+#    and every subject is still readable.
+#  - Nothing reads as an error on either frame.
+#
+# What is **not** proven here: colour (rule 5), and whether the graph
+# beside the pane reads well by eye — that is yours to judge (rule 6).
+# The counts themselves are pinned by
+# `lane_cap::the_pane_narrows_the_graph_so_the_graph_folds_more` and
+# `view::tests::the_lane_cap_comes_from_the_graphs_room_not_the_screens_width`.
+#
+
+== the pane open: the graph has 92 columns ==
+
+ graft /code/api  31 commits  +1 lanes                                                       COMMIT c8fcd70
+◆─╮                   ⋮   [◆ main] Merge branch 'topic-14'                      now  c8fcd70 Graft Test <test@example.invalid> · 2026-09-21 11:29 +0500 · now
+│ ●                   ⋮ ⓘ [topic-14] Work on topic-14                           now  290cd91 parents 5477a52, 290cd91 · diff vs first parent
+◉─│─╮                 ⋮   Merge branch 'topic-13'                               now  5477a52 Contained in: checking…
+◉─│─│─╮               ⋮   Merge branch 'topic-12'                               now  0890363 evil merge: clean
+│ │ │ ●               ⋮ ⓘ [topic-12] Work on topic-12                           now  92a90fd A topic-14.rs                                                 +1 −0
+│ │ ● │               ⋮ ⓘ [topic-13] Work on topic-13                           now  c2d215a reading…
+◉▾│ │ │               ⋮   Merge branch 'topic-11'                               now  cf794d6
+◉─│─│─│─╮             ⋮   Merge branch 'topic-10'                               now  bda92f1
+│ │ │ │ ●             ⋮ ⓘ [topic-10] Work on topic-10                           now  400089d
+◉─│─│─│─│─╮           ⋮   Merge branch 'topic-09'                               now  c7afb54
+│ │ │ │ │ ●           ⋮ ⓘ [topic-09] Work on topic-09                           now  44d46a4
+◉─│─│─│─│─│─╮         ⋮   Merge branch 'topic-08'                               now  9e030db
+◉─│─│─│─│─│─│─╮       ⋮   Merge branch 'topic-07'                               now  82c0f03
+│ │ │ │ │ │ │ ●       ⋮ ⓘ [topic-07] Work on topic-07                           now  0996279
+◉─│─│─│─│─│─│─│─╮     ⋮   Merge branch 'topic-06'                               now  5b3b49f
+◉─│─│─│─│─│─│─│─│─╮   ⋮   Merge branch 'topic-05'                               now  0d6fadc
+│ │ │ │ │ │ │ │ │ ●   ⋮ ⓘ [topic-05] Work on topic-05                           now  01e6cc4
+│ │ │ │ │ │ │ │ ● │   ⋮ ⓘ [topic-06] Work on topic-06                           now  1b51b02
+│ │ │ │ │ │ ● │ │ │   ⋮ ⓘ [topic-08] Work on topic-08                           now  8678fd3
+◉─│─│─│─│─│─│─│─│─│─╮ ⋮   Merge branch 'topic-04'                               now  ed1566f
+│ │ │ │ │ │ │ │ │ │ ● ⋮ ⓘ [topic-04] Work on topic-04                           now  6085722
+ no commit-graph file · B build one (git commit-graph write --reachable) · X never here
+ ⏎ open  c commit  P push  <> resize  p pull  f fetch  u undo  S stash  J journal  . more
+
+== the same terminal, pane closed: the graph has all 160 ==
+
+ graft /code/api  31 commits
+◆─╮                       [◆ main] Merge branch 'topic-14'                                                                                       GT now  c8fcd70
+│ ●                     ⓘ [topic-14] Work on topic-14                                                                                            GT now  290cd91
+◉─│─╮                     Merge branch 'topic-13'                                                                                                GT now  5477a52
+◉─│─│─╮                   Merge branch 'topic-12'                                                                                                GT now  0890363
+│ │ │ ●                 ⓘ [topic-12] Work on topic-12                                                                                            GT now  92a90fd
+│ │ ● │                 ⓘ [topic-13] Work on topic-13                                                                                            GT now  c2d215a
+◉─│─│─│─╮                 Merge branch 'topic-11'                                                                                                GT now  cf794d6
+◉─│─│─│─│─╮               Merge branch 'topic-10'                                                                                                GT now  bda92f1
+│ │ │ │ │ ●             ⓘ [topic-10] Work on topic-10                                                                                            GT now  400089d
+◉─│─│─│─│─│─╮             Merge branch 'topic-09'                                                                                                GT now  c7afb54
+│ │ │ │ │ │ ●           ⓘ [topic-09] Work on topic-09                                                                                            GT now  44d46a4
+◉─│─│─│─│─│─│─╮           Merge branch 'topic-08'                                                                                                GT now  9e030db
+◉─│─│─│─│─│─│─│─╮         Merge branch 'topic-07'                                                                                                GT now  82c0f03
+│ │ │ │ │ │ │ │ ●       ⓘ [topic-07] Work on topic-07                                                                                            GT now  0996279
+◉─│─│─│─│─│─│─│─│─╮       Merge branch 'topic-06'                                                                                                GT now  5b3b49f
+◉─│─│─│─│─│─│─│─│─│─╮     Merge branch 'topic-05'                                                                                                GT now  0d6fadc
+│ │ │ │ │ │ │ │ │ │ ●   ⓘ [topic-05] Work on topic-05                                                                                            GT now  01e6cc4
+│ │ │ │ │ │ │ │ │ ● │   ⓘ [topic-06] Work on topic-06                                                                                            GT now  1b51b02
+│ │ │ │ │ │ │ ● │ │ │   ⓘ [topic-08] Work on topic-08                                                                                            GT now  8678fd3
+◉─│─│─│─│─│─│─│─│─│─│─╮   Merge branch 'topic-04'                                                                                                GT now  ed1566f
+│ │ │ │ │ │ │ │ │ │ │ ● ⓘ [topic-04] Work on topic-04                                                                                            GT now  6085722
+ no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
+ ⏎ open  c commit  P push  p pull  f fetch  u undo  S stash  J journal  / search  q quit  F2 status  F3 renderer  x compare  + lanes  j/k move  . more

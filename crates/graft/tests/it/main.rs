@@ -9,6 +9,7 @@ mod app_harness;
 mod askpass_mode;
 #[cfg(feature = "heavy-tests")]
 mod budget_run;
+mod captures;
 mod changes_pane_writes;
 mod commit_editor_writes;
 mod conflict_interim;
@@ -22,6 +23,7 @@ mod gallery;
 #[cfg(feature = "heavy-tests")]
 mod heavy;
 mod hint_bar;
+mod lane_cap;
 mod m3_walk;
 mod m4_walk;
 #[cfg(feature = "heavy-tests")]

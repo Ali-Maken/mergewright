@@ -37,9 +37,24 @@
 #  - The banner is drawn focused (colour, so unverified here), and the
 #    footer says nothing false about the merge: no `an operation was
 #    interrupted` line.
+#  - **The working-tree row counts the conflict**: it reads
+#    `Uncommitted changes (16 unmerged)`, not the `()` it read on
+#    the last pass. An unmerged path is in none of staged,
+#    unstaged and untracked, so the row drew and then counted
+#    nothing (m5/21). Unmerged leads the count when other
+#    buckets are there too.
 #  - Nothing on the screen reads as an error.
 #
-# Re-captured for m5/20, which dropped the `⚠` and the filename from
+# Re-captured for m5/21, which made the working-tree row count
+# unmerged paths and gave the changes pane a body for a
+# conflicted file (it is read against `HEAD` now; against the
+# index git answers with a combined diff and the body drew
+# nothing). The two conflicted files' object ids differ from
+# the last pass because this fixture is built at wall-clock
+# time, which is also why `main` and `feature` can swap lanes
+# between runs.
+#
+# Captured first for m5/20, which dropped the `⚠` and the filename from
 # the banner, settled the pane before the shutter, put 30 commits of
 # ordinary work and 16 conflicted files behind the frame so the
 # banner's row cost lands on content rather than on blank space, and
@@ -51,40 +66,40 @@
 #
 
  graft /code/api    MERGING                                                                  UNCOMMITTED
-◌     Uncommitted changes ()                                                                 diff vs HEAD b541fa3
-◆     [◆ main] main's take                                                      now  b541fa3
-│ ● ⓘ [feature] the feature's take                                              now  eaae172
-●─╯   the shared files                                                          now  6bd4e91
-●     Ship release 29                                                           now  52c1174 CONFLICTS (16)
-●     Ship release 28                                                           now  11ed9c6   notes.md                                                 unmerged
-●     Ship release 27                                                           now  0243ace   shared.rs                                                unmerged
-●     Ship release 26                                                           now  8d22c2e   ▾ src/
-●     Ship release 25                                                           now  8fdb28e     step_00.rs                                             unmerged
-●     Ship release 24                                                           now  2899001     step_01.rs                                             unmerged
-●     Ship release 23                                                           now  ef2bac7     step_02.rs                                             unmerged
-●     Ship release 22                                                           now  c120ecf     step_03.rs                                             unmerged
-●     Ship release 21                                                           now  0c5d9c9     step_04.rs                                             unmerged
-●     Ship release 20                                                           now  239b010     step_05.rs                                             unmerged
-●     Ship release 19                                                           now  8dc6869     step_06.rs                                             unmerged
-●     Ship release 18                                                           now  4906c38     step_07.rs                                             unmerged
-●     Ship release 17                                                           now  d2f43f5     step_08.rs                                             unmerged
-●     Ship release 16                                                           now  151ca22     step_09.rs                                             unmerged
-●     Ship release 15                                                           now  ecae6c7     step_10.rs                                             unmerged
-●     Ship release 14                                                           now  6ca3c68     step_11.rs                                             unmerged
-●     Ship release 13                                                           now  dd65f89     step_12.rs                                             unmerged
-●     Ship release 12                                                           now  3243942
-●     Ship release 11                                                           now  e26057e
-●     Ship release 10                                                           now  8d8691f
-●     Ship release 9                                                            now  485acfd
-●     Ship release 8                                                            now  16ebb9e
-●     Ship release 7                                                            now  3b112c1
-●     Ship release 6                                                            now  51c6e7d
-●     Ship release 5                                                            now  d43caa9
-●     Ship release 4                                                            now  565ee00
-●     Ship release 3                                                            now  bc4547e
-●     Ship release 2                                                            now  33796e6
-●     Ship release 1                                                            now  ad1ef7b
-●     Ship release 0                                                            now  7ad35c1
+◌     Uncommitted changes (16 unmerged)                                                      diff vs HEAD 4839242
+◆     [◆ main] main's take                                                      now  4839242
+│ ● ⓘ [feature] the feature's take                                              now  78d0f60
+●─╯   the shared files                                                          now  601d57c
+●     Ship release 29                                                           now  b89f63b CONFLICTS (16)
+●     Ship release 28                                                           now  6be49cf   notes.md                                                 unmerged
+●     Ship release 27                                                           now  045ff39   shared.rs                                                unmerged
+●     Ship release 26                                                           now  ea8c88f   ▾ src/
+●     Ship release 25                                                           now  0b15ca7     step_00.rs                                             unmerged
+●     Ship release 24                                                           now  2fb83e5     step_01.rs                                             unmerged
+●     Ship release 23                                                           now  43c4434     step_02.rs                                             unmerged
+●     Ship release 22                                                           now  b43742a     step_03.rs                                             unmerged
+●     Ship release 21                                                           now  38a8e1d     step_04.rs                                             unmerged
+●     Ship release 20                                                           now  e845889     step_05.rs                                             unmerged
+●     Ship release 19                                                           now  7ff8474     step_06.rs                                             unmerged
+●     Ship release 18                                                           now  39125ac     step_07.rs                                             unmerged
+●     Ship release 17                                                           now  5f593c0     step_08.rs                                             unmerged
+●     Ship release 16                                                           now  703db5a     step_09.rs                                             unmerged
+●     Ship release 15                                                           now  715f662     step_10.rs                                             unmerged
+●     Ship release 14                                                           now  c550a10     step_11.rs                                             unmerged
+●     Ship release 13                                                           now  0fd4c43     step_12.rs                                             unmerged
+●     Ship release 12                                                           now  29b0e2d ▎
+●     Ship release 11                                                           now  46513a1       1 + <<<<<<< HEAD
+●     Ship release 10                                                           now  4071adc   1   2   our plan
+●     Ship release 9                                                            now  02d606c       3 + =======
+●     Ship release 8                                                            now  27deb01       4 + their plan
+●     Ship release 7                                                            now  34b076e       5 + >>>>>>> feature
+●     Ship release 6                                                            now  7cbd1c7
+●     Ship release 5                                                            now  333af42
+●     Ship release 4                                                            now  ac379f4
+●     Ship release 3                                                            now  0ad3aaa
+●     Ship release 2                                                            now  d21db05
+●     Ship release 1                                                            now  cc1aeb6
+●     Ship release 0                                                            now  e0aca65
 ●     Correct the note                                                          7y   a82960b
 ●     Add the first note                                                        7y   fadcfb3
 ◇     Add a readme                                                              7y   64ded19
