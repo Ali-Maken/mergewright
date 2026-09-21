@@ -486,6 +486,24 @@ impl Columns {
 /// box. Both halves arrive as numbers, which is what keeps the rule at the
 /// layout site rather than inside either widget.
 ///
+/// **And it stops one cell short of the column it stops at.** The right
+/// edge rests on the *gutter* that precedes the next column's text, not on
+/// the first cell of that text, so there is a blank column between the
+/// border and whatever is beside it (ADR-0040's 2026-09-21 amendment). A
+/// box flush against the column it ends at reads as one token — at 80 the
+/// confirm box drew `╮60af0eb`, which is the `8443─────` fault of the same
+/// ADR turned through ninety degrees. The gutter is not needed at
+/// `bounds.right()`, where there is nothing beside the box at all.
+///
+/// The left edge needs no such step: every row column's own text is laid
+/// out after a leading blank, so the cell before a boundary is already a
+/// gutter belonging to the column ahead of it.
+///
+/// Stepping back costs a cell, so a boundary whose gutter no longer covers
+/// `rect` is not a snap position at all and the search carries on outward —
+/// which is how a box can run out of positions and clear where it used to
+/// snap. Shrinking the box to fit one is still forbidden (clause 2).
+///
 /// An empty `boundaries` returns `rect` unchanged — a screen with no row
 /// columns has nothing to split.
 #[must_use]
@@ -495,7 +513,18 @@ pub fn snap_to_columns(rect: Rect, boundaries: &[u16], bounds: Rect) -> Option<R
     }
     let right = rect.x.saturating_add(rect.width);
     let left = boundaries.iter().copied().filter(|x| *x <= rect.x).max()?;
-    let snapped = boundaries.iter().copied().filter(|x| *x >= right).min()?;
+    let snapped = boundaries
+        .iter()
+        .copied()
+        .filter_map(|x| {
+            if x >= bounds.right() {
+                Some(x)
+            } else {
+                x.checked_sub(1)
+            }
+        })
+        .filter(|x| *x >= right)
+        .min()?;
     if left < bounds.x || snapped > bounds.right() {
         return None;
     }

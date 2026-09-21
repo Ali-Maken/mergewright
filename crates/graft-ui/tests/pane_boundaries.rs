@@ -369,14 +369,179 @@ fn no_box_drawn_over_the_graph_splits_a_row_column() {
                  begin at {boundaries:?} — it splits the one it starts inside",
                 rect.x
             );
+            // The right edge rests on the **gutter** before a column's
+            // text, not on the text itself (ADR-0040's 2026-09-21
+            // amendment), so the position to look for is one cell short of
+            // a boundary — except at the frame's own edge, where nothing is
+            // beside the box and no gutter is owed.
             assert!(
-                boundaries.contains(&rect.right()),
+                rect.right() == frame.right()
+                    || boundaries.contains(&(rect.right().saturating_add(1))),
                 "{width}x{height}: the confirm box ends at column {} and the row columns \
-                 begin at {boundaries:?} — it splits the one it ends inside",
+                 begin at {boundaries:?} — it splits the one it ends inside, or stands \
+                 flush against it",
                 rect.right()
             );
         }
     }
+}
+
+/// **And it leaves a gutter.** A non-clearing box leaves at least one blank
+/// column between its border and any content beside it (ADR-0040, amended
+/// 2026-09-21 by m5-history-and-ghost-preview/29). Covering whole columns
+/// is not enough on its own: at 80 columns the confirm box's right border
+/// landed on the first cell of the short-SHA column and the row read
+/// `╮60af0eb` — one token, the vertical form of the `8443─────` fault the
+/// same ticket fixed on the horizontal edge.
+///
+/// Asserted against the **drawn** rows rather than against the geometry:
+/// the question is whether a character sits next to the border, and only
+/// the buffer can answer it. `draw_confirm` tints `rect` and nothing else
+/// when the box snaps, so every cell outside `rect` still holds the graph.
+///
+/// **Mutation that reproduces `╮60af0eb`:** drop the `- 1` gutter step in
+/// `snap_to_columns` (snap the right edge to the boundary itself) and this
+/// fails at 80x24 naming the character it touched.
+#[test]
+fn no_box_drawn_over_the_graph_touches_the_content_beside_it() {
+    use ratatui::buffer::Buffer;
+    use ratatui::widgets::Widget as _;
+
+    let dir = graft_fixtures::borrow(Shape::FeatureBranches);
+    let laid = lay_out(Shape::FeatureBranches, &dir);
+    let lines = laid.lines();
+    let theme = theme(ThemeKind::Dark, ColorDepth::TrueColor);
+
+    let mut confirm = ConfirmView::new(
+        sanitize_line("Push main → origin/main"),
+        vec![sanitize_line(
+            "1 commit · can't be undone from here — origin keeps what you send",
+        )],
+        sanitize_line("git push --progress origin refs/heads/main:refs/heads/main"),
+    );
+    confirm = confirm.with_labels("Cancel", "Push");
+
+    for height in HEIGHTS {
+        for width in widths() {
+            let frame = Rect::new(0, 0, width, height);
+            let view = screen::view(&lines, usize::from(height), 0);
+            let screen = GraphScreen::new(&view, &theme);
+            let boundaries = screen.column_boundaries(frame);
+
+            let natural = confirm_area(frame, &confirm).intersection(frame);
+            if natural.is_empty() {
+                continue;
+            }
+            // No snap position fits: `draw_confirm` clears the band instead,
+            // so nothing survives beside the box to be touched.
+            let Some(snapped) = snap_to_columns(natural, &boundaries, frame) else {
+                continue;
+            };
+            let rect =
+                confirm_area_at(frame, &confirm, snapped.x, snapped.width).intersection(frame);
+            if rect.is_empty() {
+                continue;
+            }
+
+            let mut drawn = Buffer::empty(frame);
+            let body = screen.screen_rows(frame).body;
+            screen.render(frame, &mut drawn);
+            // The rows the column geometry describes. The header and the
+            // footer are single lines with no columns in them, so a box
+            // standing on one is not what this rule is about.
+            for y in rect.top().max(body.top())..rect.bottom().min(body.bottom()) {
+                if rect.x > frame.x {
+                    let beside = drawn[(rect.x - 1, y)].symbol().to_owned();
+                    assert!(
+                        beside.trim().is_empty(),
+                        "{width}x{height}: the box starts at column {} and {beside:?} sits \
+                         against its left border on row {y}",
+                        rect.x
+                    );
+                }
+                if rect.right() < frame.right() {
+                    let beside = drawn[(rect.right(), y)].symbol().to_owned();
+                    assert!(
+                        beside.trim().is_empty(),
+                        "{width}x{height}: the box ends at column {} and {beside:?} sits \
+                         against its right border on row {y}",
+                        rect.right()
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// Where the gutter cannot be honoured the box **clears** — it never
+/// shrinks its content to reach a position (ADR-0040 clause 2, unchanged by
+/// the 2026-09-21 amendment).
+///
+/// Two halves. The first is the rule itself, on numbers: with the frame's
+/// own right edge out of the boundary set there is no gutter-legal position
+/// beyond the last column, and [`snap_to_columns`] answers `None` rather
+/// than handing back a rect narrower than the one it was given.
+///
+/// The second is the measurement the amendment owes: **which width first
+/// forces the confirm box to clear.** Ticket 28 recorded that no width in
+/// 20..=240 reached that branch; the gutter costs a cell, so it could have.
+/// This sweeps the same range and prints the first width that clears, or
+/// says none does — the answer goes in the ticket's report either way.
+#[test]
+fn where_the_gutter_cannot_be_honoured_the_box_clears() {
+    let bounds = Rect::new(0, 0, 80, 24);
+    // A single column start at 40 and no frame edge in the set: a rect
+    // reaching past 39 has nowhere left to go that leaves a gutter.
+    let past_the_last_column = Rect::new(4, 0, 40, 6);
+    assert!(
+        snap_to_columns(past_the_last_column, &[0, 40], bounds).is_none(),
+        "no gutter-legal position past the last column: the caller clears"
+    );
+    // One cell narrower and the gutter at 39 covers it, so it snaps.
+    let inside = Rect::new(4, 0, 35, 6);
+    assert_eq!(
+        snap_to_columns(inside, &[0, 40], bounds).map(|rect| (rect.x, rect.right())),
+        Some((0, 39)),
+        "the right edge rests on the gutter before column 40, not on 40"
+    );
+
+    let dir = graft_fixtures::borrow(Shape::FeatureBranches);
+    let laid = lay_out(Shape::FeatureBranches, &dir);
+    let lines = laid.lines();
+    let theme = theme(ThemeKind::Dark, ColorDepth::TrueColor);
+    let mut confirm = ConfirmView::new(
+        sanitize_line("Push main → origin/main"),
+        vec![sanitize_line(
+            "1 commit · can't be undone from here — origin keeps what you send",
+        )],
+        sanitize_line("git push --progress origin refs/heads/main:refs/heads/main"),
+    );
+    confirm = confirm.with_labels("Cancel", "Push");
+
+    let mut clears: Vec<(u16, u16)> = Vec::new();
+    for height in HEIGHTS {
+        for width in widths() {
+            let frame = Rect::new(0, 0, width, height);
+            let view = screen::view(&lines, usize::from(height), 0);
+            let boundaries = GraphScreen::new(&view, &theme).column_boundaries(frame);
+            let natural = confirm_area(frame, &confirm).intersection(frame);
+            if natural.is_empty() {
+                continue;
+            }
+            if snap_to_columns(natural, &boundaries, frame).is_none() {
+                clears.push((width, height));
+            }
+        }
+    }
+    // Not an assertion that it never clears — clearing is correct where it
+    // happens. The measurement is the point, so it is printed and the shape
+    // of the answer is pinned: the frame's own edges are in the boundary
+    // set, so an outward position always exists there.
+    assert!(
+        clears.is_empty(),
+        "the confirm box clears at {clears:?} — the amendment changed the \
+         measurement ticket 28 recorded, and the ticket's report must say so"
+    );
 }
 
 /// Every boundary the snap can land on is one the rows are actually drawn
