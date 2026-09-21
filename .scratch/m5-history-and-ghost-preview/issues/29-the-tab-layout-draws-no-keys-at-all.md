@@ -73,6 +73,59 @@ not invent a second mechanism.
 4. Regenerate any capture that draws a pane below 100 columns, and read each
    regenerated file against its caption before committing.
 
+---
+
+# PART 2 — a box leaves a gutter, the same as a pane does
+
+Small, adjacent, same crates. Ticket 28 landed the column-snap rule and it
+works: `docs/shots/m5-ui-confirm-over-graph-80x24.txt` now keeps whole shas in
+their column, and the credential prompt clears its band. **One fault remains,
+on the edge the rule did not speak to.**
+
+At 80 the confirm box now reads:
+
+```
+●   ╭ Push main → origin/main ──────────────────────────────────────────╮60af0eb
+●   │ 1 commit · can't be undone from here — origin keeps what you send │aceb8c5
+```
+
+The border **abuts the sha with no blank column**. `╮60af0eb` reads as one
+token. That is the same fault as `8443─────` in a title — a rule running
+straight into text — moved from the horizontal edge to the vertical one, and we
+fixed the horizontal case in the same ticket that created this.
+
+It is also the rule ticket 19 already established for panes:
+`crates/graft-ui/tests/pane_boundaries.rs` asserts **adjacent panes leave ≥ 1
+column**, and its mutation message reads *"the graph ends at column 93 and the
+detail pane starts at column 93."* A box beside content is the same problem
+with a border drawn on it.
+
+## The decision (conductor)
+
+> **A non-clearing box leaves at least one blank column between its border and
+> any content beside it.** The snap boundary is the next column's *gutter*, not
+> the first cell of its text.
+
+Read this as a clarification of ADR-0040, not a new rule: a column's trailing
+gutter belongs to that column, so bleeding into the next column's leading
+gutter was always splitting something. **Amend ADR-0040 in place** — it was
+written today; do not append an amendment to a document that new.
+
+If honouring the gutter leaves no snap position that fits the content, the box
+**clears**, per ADR-0040's existing final clause. Do not shrink the content.
+
+## What to build (Part 2)
+
+1. The gutter in the snap computation, at the layout site — same place ticket
+   28 put the snap, not inside the widget.
+2. ADR-0040 amended in place.
+3. Extend the existing sweep rather than writing a second one: the
+   no-split assertion in `crates/graft-ui/tests/border_rules.rs` (new in 28)
+   or `pane_boundaries.rs`, whichever ticket 28 put it in, gains the gutter
+   check across the same widths.
+4. Recapture the four `m5-ui-{confirm,credential}-over-graph-*` files. They are
+   deterministic (ticket 26) — **keep that**, regenerate twice and diff.
+
 ## Acceptance (every tick names its verifying test inline, at tick time)
 
 - [ ] The bar is present in Tab layout at 80 columns with the changes pane
@@ -88,6 +141,20 @@ not invent a second mechanism.
       and say it covers the Tab context.
 - [ ] Captures below 100 columns regenerated, each caption read against its own
       file — evidence: quote one row per file.
+
+### Part 2
+
+- [ ] **No box border touches content beside it**, swept over the same widths
+      the no-split assertion uses — test: name it, and give a mutation that
+      reproduces `╮60af0eb`. It must fail on the current code.
+- [ ] Where the gutter cannot be honoured, the box clears rather than shrinking
+      its content — test: name it, and say which width first forces it (ticket
+      28 reported that **no** width in 20..=240 forces the confirm box to clear
+      today; the gutter may change that, and if it does not, say so).
+- [ ] ADR-0040 amended **in place**, no appended amendment — evidence: quote
+      the amended clause.
+- [ ] The four over-graph captures regenerated and still byte-identical across
+      two runs — evidence: `diff -q` output, and quote the row beside the box.
 
 Rule 6: you do not tick "looks right". The user does.
 
