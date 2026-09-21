@@ -47,24 +47,29 @@ pub fn undo_key(
 /// `chosen` is the cursor's index, so the two acting choices stay one box
 /// rather than two: `1` undoes, `2` opens the lease box. `0` is `Cancel`
 /// and never arrives here — which is exactly why cancelling asks again.
+///
+/// `repush` is `None` when the box could not build one (the remote read
+/// failed or is still in flight): the box then drew two choices, so `2`
+/// cannot be the cursor's index and there is nothing to open.
 pub(super) fn after_push_chosen(
     state: &mut AppState,
     commands: &mut Vec<Command>,
     chosen: usize,
     push: graft_core::journal::EntryId,
-    repush: graft_ops::operation::PushParams,
+    repush: Option<graft_ops::operation::PushParams>,
     next_id: &mut impl FnMut() -> JobId,
 ) {
     // Answered, so this push explains itself once. Set for both choices: a
     // user who reached the lease box and backed out of it has still read
     // what the box had to say.
     state.remote.undo_after_push_asked = Some(push);
-    match chosen {
-        1 => commands.extend(launch(state, false, false, next_id)),
-        2 => super::remote::repush_chosen(state, repush),
-        other => debug_assert!(
+    match (chosen, repush) {
+        (1, _) => commands.extend(launch(state, false, false, next_id)),
+        (2, Some(params)) => super::remote::repush_chosen(state, params),
+        (other, params) => debug_assert!(
             false,
-            "the undo-after-push box has three choices; the cursor was on {other}"
+            "the undo-after-push box offers {} choices; the cursor was on {other}",
+            if params.is_some() { "three" } else { "two" }
         ),
     }
 }
@@ -81,7 +86,7 @@ pub(super) fn after_push_chosen(
 /// A bisect is deliberately not covered: it draws no banner (`banner::live`
 /// answers `None` for one, and bisect banners are M7's), so `⇥ banner`
 /// would point at nothing.
-fn in_progress_refusal(state: &AppState) -> Option<Status> {
+pub(super) fn in_progress_refusal(state: &AppState) -> Option<Status> {
     let kind = super::banner::live(state)?.kind;
     Some(Status::Sticky {
         reason: format!("finish or abort the {} first", kind.name()),

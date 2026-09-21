@@ -17,7 +17,7 @@ use std::path::Path;
 
 use graft::session::Clock;
 use graft::update::{AppEvent, AppState, Command, Status, update};
-use graft_core::event::{Event, KeyCode, KeyPress, Modifiers};
+use graft_core::event::{Event, KeyCode, KeyPress, Modifiers, MouseButton};
 use graft_git::state::InProgress;
 
 use crate::app_harness::{App, git};
@@ -1169,6 +1169,23 @@ fn the_tab_layout_banner_costs_one_row_drawn_and_two_focused() {
         rows_of(&focused) > 0 && rows_of(&no_operation) > 0,
         "the pane still draws its conflicts either way"
     );
+
+    // The row is taken off the *end*, so the pane is a row shorter while
+    // focused - the half of the claim the top row cannot show (m5/14-22
+    // review, Minor 8). Read at 12 rows, where the diff outlives the pane:
+    // at 24 it stops before the bottom either way, so the lost row is blank
+    // and a frame proves nothing.
+    let pane_bottom = |state: &AppState| {
+        frame(state, 80, 12)
+            .iter()
+            .rposition(|line| !line.trim().is_empty() && !line.contains("c continue"))
+            .expect("the pane draws something")
+    };
+    assert_eq!(
+        pane_bottom(&focused),
+        pane_bottom(&unfocused) - 1,
+        "the focused banner's second row comes out of the pane, not the terminal"
+    );
     drop(focused);
     app.close();
 }
@@ -1425,5 +1442,150 @@ fn capture_banner_for_docs_shots() {
     }
     drop(state);
     drop(on_the_graph);
+    app.close();
+}
+
+/// **Review M2, confirmed by running it.** On the *Graph* tab below 100
+/// columns the operation banner drew **twice**, and so did its keys.
+///
+/// `split_for_detail` draws the tab banner for `Tab { shown }` whichever
+/// side is shown, and the graph screen carries the same banner on its own
+/// header row (`view::rows` sets `banner_op` unconditionally) and feeds it
+/// to the hint bar. With the Detail tab shown the graph is not drawn and
+/// nothing doubles, which is why every existing case missed it:
+/// `the_tab_layout_banner_costs_one_row_drawn_and_two_focused` locates the
+/// pane by `"UNCOMMITTED"`, i.e. the Detail tab only.
+///
+/// The fix is the one the review proposed: the tab banner is the *fallback*
+/// for a frame with no graph header on it, so it draws only when the graph
+/// is not on screen.
+#[test]
+fn the_banner_and_its_keys_draw_once_on_the_graph_tab() {
+    let scratch = about_to_conflict();
+    let (app, state) = App::open(scratch.path());
+    let mut on_the_graph_tab = stopped_with_the_pane_open(&app, state);
+    on_the_graph_tab.detail.focus = graft_ui::detail::DetailFocus::Graph;
+
+    for focused in [false, true] {
+        let mut state = on_the_graph_tab.clone();
+        state.banner_focus = focused;
+        let drawn = frame(&state, 80, 24);
+        let at = format!("focused={focused}, 80x24:\n{}", drawn.join("\n"));
+        assert!(
+            drawn.iter().any(|line| line.contains("[Graph]")),
+            "the graph tab is the one shown {at}"
+        );
+        let banners = drawn.iter().filter(|line| line.contains("MERGING")).count();
+        assert_eq!(banners, 1, "the banner draws once {at}");
+        let key_rows = drawn
+            .iter()
+            .filter(|line| line.contains("c continue"))
+            .count();
+        assert!(key_rows <= 1, "its keys are listed once {at}");
+        if focused {
+            assert_eq!(key_rows, 1, "and a focused banner still shows them {at}");
+        }
+    }
+    drop(on_the_graph_tab);
+    app.close();
+}
+
+/// **Review M1, on the screen.** The rows the tab layout spends — the
+/// `[Graph] Detail` strip, and the operation banner's row when one is drawn
+/// above it — were unknown to `update::geometry` and to
+/// `AppState::graph_rows`, so below 100 columns with a merge stopped every
+/// click landed on a row above the one the user was pointing at.
+///
+/// Driven through the real mouse event, not through the geometry: what is
+/// being asserted is that the commit the click picks is the commit whose
+/// subject is drawn on that screen row. The sweep
+/// (`update::tests::the_geometry_mirror_matches_the_rects_the_frame_hands_out`)
+/// is the class test; this is the anchor that ties it to pixels.
+#[test]
+fn a_click_below_a_hundred_columns_picks_the_row_it_landed_on() {
+    let scratch = about_to_conflict();
+    let (app, state) = App::open(scratch.path());
+    let mut state = stopped_with_the_pane_open(&app, state);
+    state.detail.focus = graft_ui::detail::DetailFocus::Graph;
+    state.size = graft::update::Size {
+        columns: 80,
+        rows: 24,
+    };
+
+    for banner_focus in [false, true] {
+        let mut on_screen = state.clone();
+        on_screen.banner_focus = banner_focus;
+        let drawn = frame(&on_screen, 80, 24);
+        let at = format!("banner_focus={banner_focus}:\n{}", drawn.join("\n"));
+        for subject in ["main's take", "the shared files", "Add a readme"] {
+            let row = drawn
+                .iter()
+                .position(|line| line.contains(subject))
+                .unwrap_or_else(|| panic!("`{subject}` is on the frame {at}"));
+            let row = u16::try_from(row).expect("24 rows fit a u16");
+            let clicked = app.mouse_down(&on_screen, MouseButton::Left, 2, row);
+            let picked = clicked
+                .history
+                .as_ref()
+                .and_then(graft::history::History::selected)
+                .map(|found| String::from_utf8_lossy(found.commit.subject()).into_owned())
+                .unwrap_or_default();
+            assert_eq!(
+                picked, subject,
+                "a click on screen row {row} picked `{picked}` {at}"
+            );
+        }
+    }
+    drop(state);
+    app.close();
+}
+
+/// The other half of review M1's click: **below 100 columns with the Detail
+/// tab shown the graph is not on screen at all**, so no click can name a
+/// graph row. Before the guard in `geometry::graph_row_at`, clicking the
+/// file `notes.md` moved the hidden graph's selection to another commit -
+/// nothing on screen said so, and the pane the user was reading is what
+/// changed next.
+#[test]
+fn a_click_on_the_detail_tab_does_not_move_the_hidden_graph() {
+    let scratch = about_to_conflict();
+    let (app, state) = App::open(scratch.path());
+    let mut state = stopped_with_the_pane_open(&app, state);
+    state.size = graft::update::Size {
+        columns: 80,
+        rows: 24,
+    };
+
+    let selected = |state: &AppState| {
+        state
+            .history
+            .as_ref()
+            .and_then(graft::history::History::selected)
+            .map(|found| String::from_utf8_lossy(found.commit.subject()).into_owned())
+            .unwrap_or_default()
+    };
+
+    for banner_focus in [false, true] {
+        let mut on_screen = state.clone();
+        on_screen.banner_focus = banner_focus;
+        let drawn = frame(&on_screen, 80, 24);
+        let at = format!("banner_focus={banner_focus}:\n{}", drawn.join("\n"));
+        let row = drawn
+            .iter()
+            .position(|line| line.contains("notes.md"))
+            .expect("the conflicted file is on the frame");
+        let row = u16::try_from(row).expect("24 rows fit a u16");
+        let clicked = app.mouse_down(&on_screen, MouseButton::Left, 4, row);
+        assert_eq!(
+            selected(&clicked),
+            selected(&on_screen),
+            "a click on a file name selected another commit {at}"
+        );
+        assert!(
+            !clicked.on_working_tree || on_screen.on_working_tree,
+            "nor the uncommitted row {at}"
+        );
+    }
+    drop(state);
     app.close();
 }

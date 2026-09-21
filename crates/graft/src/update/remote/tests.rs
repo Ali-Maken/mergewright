@@ -736,25 +736,28 @@ fn u_after_push_asks_before_it_runs() {
 #[test]
 fn the_repush_is_leased_and_never_a_bare_force() {
     let after = crate::update::remote::undo_after_push(&after_a_push()).expect("a push to explain");
+    let repush = after.repush.as_ref().expect("the re-push could be built");
     assert_eq!(
-        after.repush.lease,
+        repush.lease,
         Some(Lease {
             expected: oid(THEIRS)
         }),
         "the lease guards the tip the box showed"
     );
     assert_eq!(
-        after.repush.source_commit,
+        repush.source_commit,
         Some(oid(OLD_TIP)),
         "the old tip is what goes, not the branch head"
     );
-    assert!(!after.repush.set_upstream, "a re-push sets nothing");
+    assert!(!repush.set_upstream, "a re-push sets nothing");
 
-    let command = crate::update::remote::undo_after_push_box(&after)
-        .view
-        .command
-        .as_str()
-        .to_owned();
+    // The command itself is the *second* box's; see
+    // `the_first_box_shows_no_push_command`. What is asserted here is that
+    // whatever that box renders cannot be a bare force.
+    let command = Operation::Push(repush.clone())
+        .preview()
+        .expect("a push previews its command")
+        .join("\n");
     assert_eq!(
         command,
         format!(
@@ -764,6 +767,24 @@ fn the_repush_is_leased_and_never_a_bare_force() {
     for bare in [" --force ", " --force=", " -f ", " --force\n"] {
         assert!(!command.contains(bare), "a bare force in {command}");
     }
+}
+
+/// **The first box shows no command** (the user's decision, 2026-09-21).
+/// Its default answer is `Cancel` and its second is `Undo locally`; a
+/// `--force-with-lease` drawn beside a safe default reads as "Enter runs
+/// this". The command belongs to the lease box, which is where it is what
+/// is about to run — and
+/// `repush_opens_its_own_confirm_before_the_remote_moves` is what holds it
+/// there.
+#[test]
+fn the_first_box_shows_no_push_command() {
+    let after = crate::update::remote::undo_after_push(&after_a_push()).expect("a push to explain");
+    let command = crate::update::remote::undo_after_push_box(&after)
+        .view
+        .command
+        .as_str()
+        .to_owned();
+    assert_eq!(command, "", "the first box's command row is blank");
 }
 
 /// **ADR-0038 §4, conditions 2 and 3.** `[ Re-push old tip ]` runs nothing:
@@ -918,4 +939,189 @@ fn an_entry_the_push_did_not_send_is_not_explained() {
         matches!(commands.as_slice(), [Command::Undo(_, false)]),
         "{commands:?}"
     );
+}
+
+/// One journal entry on a branch other than `main`: the same shape as
+/// [`entry`], with `HEAD` recorded where it really was.
+fn entry_on(
+    number: i64,
+    branch: &str,
+    kind: graft_core::journal::OperationKind,
+    description: &str,
+    moved: Option<(&str, Option<Oid>, Option<Oid>)>,
+) -> JournalEntry {
+    use graft_core::journal::HeadRef;
+    JournalEntry {
+        head_before: HeadRef::Branch(branch.to_owned()),
+        head_after: Some(HeadRef::Branch(branch.to_owned())),
+        ..entry(number, kind, description, moved)
+    }
+}
+
+/// Replace the journal read with `entries`.
+fn with_journal(state: &AppState, entries: Vec<JournalEntry>) -> AppState {
+    let mut next = state.clone();
+    next.journal.entries = Loading::Ready(Arc::new(crate::jobs::undo::JournalRead {
+        entries,
+        unreadable: Vec::new(),
+        live: Vec::new(),
+    }));
+    next
+}
+
+/// The state the user hits on dependent branches: a commit on `main`, and
+/// then a push of **`feature`** — a different branch entirely.
+fn a_push_of_another_branch() -> AppState {
+    with_journal(
+        &after_a_push(),
+        vec![
+            entry(
+                1,
+                OperationKind::Commit,
+                "commit \"to push\"",
+                Some(("refs/heads/main", Some(oid(OLD_TIP)), Some(oid(THEIRS)))),
+            ),
+            entry_on(
+                2,
+                "refs/heads/feature",
+                OperationKind::Push,
+                "push feature \u{2192} origin/feature",
+                Some((
+                    "refs/remotes/origin/feature",
+                    Some(oid(OLD_TIP)),
+                    Some(oid(THEIRS)),
+                )),
+            ),
+        ],
+    )
+}
+
+/// **Review M4.** A push of another branch is not this commit on the
+/// remote. `commit on feature, push main, u` opened the box saying
+/// `commit "…" is on origin/feature` — naming a branch nothing had pushed.
+/// The user works on dependent branches, so "committed here, pushed there"
+/// is an ordinary day.
+#[test]
+fn a_push_of_another_branch_does_not_ask_or_name_that_branch() {
+    assert!(
+        crate::update::remote::undo_after_push(&a_push_of_another_branch()).is_none(),
+        "feature's push says nothing about main's commit"
+    );
+    let (next, commands) = press(&a_push_of_another_branch(), plain('u'));
+    assert!(next.confirm.is_none(), "{:?}", next.confirm.map(|c| c.view));
+    assert!(
+        matches!(commands.as_slice(), [Command::Undo(_, false)]),
+        "{commands:?}"
+    );
+}
+
+/// The same branch test on the line `undo` leaves behind: `origin/feature
+/// still has it` was drawn after undoing a commit on `main`, which is
+/// false twice over. The box and the line read the same journal the same
+/// way, so neither can say it alone.
+#[test]
+fn the_still_has_it_line_names_no_branch_the_push_did_not_send() {
+    let undo_of_one = JournalEntry {
+        reverses: Some(graft_core::journal::EntryId::new(1, [0; 10])),
+        ..entry(3, OperationKind::Undo, "undo: commit \"to push\"", None)
+    };
+    assert_eq!(
+        crate::update::remote::pushed_since(&a_push_of_another_branch(), &undo_of_one),
+        "",
+        "nothing sent main, so there is nothing still holding it"
+    );
+    assert_eq!(
+        crate::update::remote::pushed_since(&after_a_push(), &undo_of_one),
+        " \u{b7} origin/main still has it",
+        "and the push that did send it still says so"
+    );
+}
+
+/// **Review M5, rule 3.** A failed remote read used to answer `None` from
+/// `undo_after_push`, so `u` ran as if no push had happened: no box, no
+/// `still has it` line. The journal alone knows the push happened; only
+/// the *re-push* needs the remote, so only the re-push goes away.
+#[test]
+fn a_failed_remote_read_does_not_turn_u_into_a_silent_plain_undo() {
+    let mut state = after_a_push();
+    state.remotes = Loading::Failed("git remote show origin: host unreachable".to_owned());
+
+    let (next, commands) = press(&state, plain('u'));
+    assert!(commands.is_empty(), "it undid silently: {commands:?}");
+    assert_eq!(next.operating, None);
+    let view = &next.confirm.as_ref().expect("the box still opened").view;
+    let said: Vec<&str> = view
+        .message
+        .iter()
+        .map(graft_term::SanitizedText::as_str)
+        .collect();
+    assert_eq!(
+        said,
+        [
+            "commit \"to push\" is on origin/main",
+            "undo works on your local branch only",
+            "no re-push \u{2014} remotes could not be read: git remote show origin: host unreachable",
+        ]
+    );
+    let choices: Vec<&str> = view
+        .choices
+        .iter()
+        .map(graft_term::SanitizedText::as_str)
+        .collect();
+    assert_eq!(
+        choices,
+        ["Cancel", "Undo locally"],
+        "no choice the box cannot honour"
+    );
+}
+
+/// **A read still in flight is not an error.** `facts` refuses `Pending`
+/// the same way it refuses `Failed`, and the box must not turn "still
+/// loading" into a scary line: it says what it is waiting for, and the
+/// `Undo locally` answer is there either way.
+#[test]
+fn a_pending_remote_read_is_not_reported_as_a_failure() {
+    let mut state = after_a_push();
+    state.remotes = Loading::Pending(graft_core::job::JobId::new(7));
+
+    let (next, _) = press(&state, plain('u'));
+    let view = &next.confirm.as_ref().expect("the box still opened").view;
+    let third = view.message[2].as_str();
+    assert_eq!(
+        third,
+        "no re-push \u{2014} still reading the remotes \u{2014} try again in a moment"
+    );
+    for scary in ["could not", "failed", "error", "refused"] {
+        assert!(
+            !third.contains(scary),
+            "a read in flight is not a failure: {third:?}"
+        );
+    }
+    let choices: Vec<&str> = view
+        .choices
+        .iter()
+        .map(graft_term::SanitizedText::as_str)
+        .collect();
+    assert_eq!(choices, ["Cancel", "Undo locally"]);
+}
+
+/// And the two-choice box's `[ Undo locally ]` still undoes: a box whose
+/// only acting answer did nothing would be worse than the silence it
+/// replaced.
+#[test]
+fn undo_locally_still_runs_when_there_is_no_re_push() {
+    let mut state = after_a_push();
+    state.remotes = Loading::Failed("host unreachable".to_owned());
+    let (asked, _) = press(&state, plain('u'));
+    let (moved, _) = press(&asked, KeyPress::plain(KeyCode::Right));
+    assert_eq!(
+        moved.confirm.as_ref().expect("still open").view.selected(),
+        1,
+        "`→` clamps at the last choice the box has"
+    );
+    let (undoing, commands) = press(&moved, KeyPress::plain(KeyCode::Enter));
+    let Some(id) = undoing.operating else {
+        panic!("[ Undo locally ] launched nothing: {commands:?}");
+    };
+    assert_eq!(commands, [Command::Undo(id, false)]);
 }

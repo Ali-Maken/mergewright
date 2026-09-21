@@ -38,6 +38,7 @@ use crate::update::preview::{PREVIEW_ANCHOR_CAP, Planned, PreviewRequest, Previe
 pub(super) fn run_preview(
     repos: &RepoStore,
     request: &PreviewRequest,
+    clock: crate::session::Clock,
     cancel: &Cancel,
 ) -> Result<Arc<Planned>, String> {
     let repo = repos.shared().map_err(|error| error.to_string())?;
@@ -53,7 +54,7 @@ pub(super) fn run_preview(
                 .map_err(|why| why.explain())?
         }
         PreviewSubject::RevertTo(entry) => {
-            let entries = super::undo::journal_entries(repos, cancel)?;
+            let entries = super::undo::journal_entries(repos, clock, cancel)?;
             graft_ops::preview::plan_revert_to(&entries, entry).map_err(|why| why.explain())?
         }
     };

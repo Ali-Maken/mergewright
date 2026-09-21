@@ -755,3 +755,46 @@ fn the_banner_always_teaches_continue_and_abort() {
         }
     }
 }
+
+/// **§2.6, and review M3.** "`u` and `U` are refused while an operation is
+/// live, **focused or not**". The focused banner used to drop them into its
+/// silent modal arm, so the doc said one thing for both focus states and
+/// the code said it in one: a key pressed on purpose drew nothing at all.
+///
+/// The words are `undo::in_progress_refusal`'s own, not a copy, so the two
+/// focus states cannot drift apart again.
+#[test]
+fn a_focused_banner_answers_u_instead_of_swallowing_it() {
+    for kind in [
+        InProgress::Merge,
+        InProgress::Rebase,
+        InProgress::CherryPick,
+        InProgress::Revert,
+    ] {
+        for code in [KeyCode::Char('u'), KeyCode::Char('U')] {
+            let mut state = stopped(kind, &["src/auth.rs"]);
+            assert!(state.banner_focus, "the banner has the keyboard");
+            let (claimed, commands) = press(&mut state, code);
+            assert!(claimed, "{code:?} is still the modal's: {commands:?}");
+            assert!(
+                commands.is_empty(),
+                "{code:?} undid something: {commands:?}"
+            );
+            assert_eq!(state.operating, None, "{code:?} claimed a job");
+            let unfocused = AppState {
+                banner_focus: false,
+                ..stopped(kind, &["src/auth.rs"])
+            };
+            assert_eq!(
+                Some(state.status.clone()),
+                crate::update::undo::in_progress_refusal(&unfocused),
+                "{code:?} says what the unfocused banner says"
+            );
+            assert!(
+                matches!(state.status, Status::Sticky { .. }),
+                "{code:?} drew nothing: {:?}",
+                state.status
+            );
+        }
+    }
+}

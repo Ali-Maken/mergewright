@@ -872,11 +872,18 @@ fn worktree_line(effect: &WorktreeEffect) -> String {
 
 /// The forecast, in the only terms `merge-tree` can support: `may`, never
 /// `will`, and a hole named as a hole.
+///
+/// No `(forecast)` on the end of either line. `02-keymap.md` §2.1 (extended
+/// 2026-09-21): a trailing parenthesis carries a **key**, not a word,
+/// anywhere the user might press what is inside it — and `forecast` is our
+/// word, not theirs (CONTEXT.md, "These are our words"). `expected` and
+/// `may` already say the line is a prediction, which is all the
+/// parenthetical was adding.
 fn conflict_line(forecast: &ConflictForecast) -> String {
     match forecast {
-        ConflictForecast::Clean => "no conflicts expected (forecast)".to_owned(),
+        ConflictForecast::Clean => "no conflicts expected".to_owned(),
         ConflictForecast::Likely { paths } => {
-            format!("may conflict (forecast): {}", list(paths, 3))
+            format!("may conflict: {}", list(paths, 3))
         }
         ConflictForecast::NotChecked(why) => format!("conflicts: not checked ({why})"),
     }

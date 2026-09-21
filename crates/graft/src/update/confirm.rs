@@ -67,8 +67,10 @@ pub enum ConfirmThen {
         push: graft_core::journal::EntryId,
         /// What `[ Re-push old tip ]` would push: the old tip, under a
         /// lease. Boxed because it is three `String`s wide and every other
-        /// variant here is a word or two.
-        repush: Box<graft_ops::operation::PushParams>,
+        /// variant here is a word or two. `None` when the box could not
+        /// build one — the remote could not be read, or has not answered
+        /// yet — and then the box has no third choice to reach it by.
+        repush: Option<Box<graft_ops::operation::PushParams>>,
     },
 }
 
@@ -120,7 +122,12 @@ pub fn confirm_key(
                     }
                     ConfirmThen::UndoAfterPush { push, repush } => {
                         super::undo::after_push_chosen(
-                            next, commands, chosen, push, *repush, next_id,
+                            next,
+                            commands,
+                            chosen,
+                            push,
+                            repush.map(|params| *params),
+                            next_id,
                         );
                     }
                 }

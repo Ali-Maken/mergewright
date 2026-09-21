@@ -293,3 +293,51 @@ fn an_interrupted_operation_is_announced_until_j_and_its_row_says_interrupted() 
     drop(state);
     app.close();
 }
+
+/// The instant `the_journal_timestamp_comes_through_the_clock` pins the
+/// run at: a round Unix second well clear of any fixture's dates.
+const PINNED: i64 = 1_800_000_000;
+
+/// **The clock seam** (m5-history-and-ghost-preview/25). `jobs::operate`
+/// and `jobs::undo` stamped every journal entry from `SystemTime::now()`
+/// directly, so a capture of a repository the app writes *during* the
+/// capture drew an instant that changed on every run — and the journal's
+/// own rows draw that instant.
+///
+/// The three captures this unblocks cannot be pinned render-side: the
+/// journal row's age is `at_unix_ms` against the view's clock, so a render
+/// clock pinned in the past would draw a real entry as a literal `future`.
+/// Both ends have to come from the same `Clock`, and this is the end that
+/// was missing.
+///
+/// Two entries, from the two modules: the discard is `jobs::operate`'s and
+/// the undo is `jobs::undo`'s.
+#[test]
+fn the_journal_timestamp_comes_through_the_clock() {
+    let scratch = repo_with_a_commit();
+    let repo = scratch.path();
+    std::fs::write(repo.join("scratch.bin"), AWKWARD).expect("the scratch repo is writable");
+
+    let (app, state) = App::open_with_clock(repo, graft::session::Clock::Fixed(PINNED));
+    let state = changes_pane(&app, state);
+    let state = cursor_to(&app, state, "scratch.bin");
+    let state = app.key(&state, KeyCode::Char('d'));
+    let state = app.key(&state, KeyCode::Right);
+    let state = app.key(&state, KeyCode::Enter);
+    let state = app.settle_write(state, "the discard");
+    let state = app.key(&state, KeyCode::Char('u'));
+    let state = app.settle_write(state, "the undo");
+    drop(state);
+    app.close();
+
+    let entries = journal(repo);
+    assert_eq!(entries.len(), 2, "the discard and its undo: {entries:?}");
+    for entry in &entries {
+        assert_eq!(
+            entry.at_unix_ms,
+            PINNED * 1_000,
+            "`{}` was stamped from the wall clock, not the run's `Clock`",
+            entry.description
+        );
+    }
+}

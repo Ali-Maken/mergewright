@@ -278,6 +278,12 @@ impl AppState {
         let chrome = CHROME_ROWS
             .saturating_add(self.harness.banner_rows())
             .saturating_add(u16::from(self.commit_graph_line().is_some()))
+            // Below 100 columns with the graph as the tab shown, the
+            // `[Graph] Detail` strip is a row the graph never gets — and
+            // so is the operation banner's row when one is drawn above it.
+            // Neither was a term here, so `j`/`k` and every mouse row ran
+            // past what the graph actually drew (review M1).
+            .saturating_add(super::banner::tab_rows_above_graph(self))
             // The Ghost Preview's box takes rows out of the graph the same
             // way the footer and the commit-graph line do, so the rows it
             // covers are rows the graph never drew — rather than rows drawn

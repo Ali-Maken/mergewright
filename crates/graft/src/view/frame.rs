@@ -422,6 +422,47 @@ pub(crate) fn graph_columns(state: &AppState, screen: Rect) -> u16 {
         .map_or(screen.width, |graph| graph.width)
 }
 
+/// The rects this frame hands the graph (or overlay) and the detail pane,
+/// computed exactly as [`split_for_detail`] does and **without drawing**.
+///
+/// `update::geometry::detail_split` mirrors this for mouse hit-testing and
+/// must agree with it at every size — `update::tests`'
+/// `the_geometry_mirror_matches_the_rects_the_frame_hands_out` sweeps the
+/// two against each other. It is here rather than there because the rows
+/// the tab banner takes are taken *by the drawing path*, and a mirror
+/// checked against a second copy of the arithmetic proves nothing (review
+/// M1).
+#[must_use]
+pub(crate) fn detail_rects(
+    state: &AppState,
+    layout: DetailLayout,
+    area: Rect,
+) -> (Option<Rect>, Option<Rect>) {
+    let DetailLayout::Tab { .. } = layout else {
+        return graft_ui::detail_pane::split_area(layout, area);
+    };
+    graft_ui::detail_pane::split_area(layout, tab_banner_area(state, area))
+}
+
+/// What is left of `area` once the tab banner has taken its rows: one off
+/// the top for the banner line, and one off the bottom for its key hints
+/// while it has focus. The count is
+/// [`crate::update::banner::tab_banner_rows`]'s, so the view, the mouse
+/// and `graph_rows` all spend the same rows.
+fn tab_banner_area(state: &AppState, area: Rect) -> Rect {
+    let rows = crate::update::banner::tab_banner_rows(state);
+    if rows == 0 || area.width == 0 || area.height == 0 {
+        return area;
+    }
+    let top = 1.min(area.height);
+    let bottom = rows.saturating_sub(1).min(area.height - top);
+    Rect {
+        y: area.y.saturating_add(top),
+        height: area.height - top - bottom,
+        ..area
+    }
+}
+
 fn split_for_detail(
     frame: &mut Frame,
     session: &Session,
@@ -433,13 +474,15 @@ fn split_for_detail(
     let DetailLayout::Tab { shown } = layout else {
         return graft_ui::detail_pane::split_area(layout, area);
     };
-    let area = draw_tab_banner(frame, state, area, &session.theme);
+    let left = draw_tab_banner(frame, state, area, &session.theme);
     let strip = Rect {
-        height: 1.min(area.height),
-        ..area
+        height: 1.min(left.height),
+        ..left
     };
     draw_tab_strip(frame, strip, shown, primary_label, &session.theme);
-    graft_ui::detail_pane::split_area(layout, area)
+    // Not a second copy of the arithmetic: the drawing path splits by the
+    // very function the mouse mirror is swept against.
+    detail_rects(state, layout, area)
 }
 
 /// The operation banner in the sub-100-column tab layout: its own row above
@@ -464,12 +507,18 @@ fn split_for_detail(
 /// operation is live, **two** while its banner has the keyboard, and none
 /// at all the rest of the time.
 fn draw_tab_banner(frame: &mut Frame, state: &AppState, area: Rect, theme: &Theme) -> Rect {
+    // The row budget is `update`'s, not this function's: `geometry` and
+    // `graph_rows` count from the same number, and a second opinion here is
+    // exactly how a click comes to land one row off (review M1). `0` also
+    // covers the Graph tab, whose graph header already carries the banner
+    // (review M2).
+    let left = tab_banner_area(state, area);
+    if left == area {
+        return area;
+    }
     let Some(banner) = crate::update::banner::banner_view(state) else {
         return area;
     };
-    if area.width == 0 || area.height == 0 {
-        return area;
-    }
     let width = usize::from(area.width);
     let mut style = Style::default().fg(color(theme.token(Token::Warning)));
     if banner.focused {
@@ -479,17 +528,13 @@ fn draw_tab_banner(frame: &mut Frame, state: &AppState, area: Rect, theme: &Them
     frame
         .buffer_mut()
         .set_string(area.x, area.y, graft_ui::fit::fit(&line, width), style);
-    let left = Rect {
-        y: area.y.saturating_add(1),
-        height: area.height - 1,
-        ..area
-    };
-    if !banner.focused || left.height == 0 {
+    if left.bottom() == area.bottom() {
         return left;
     }
-    // The banner's own keys, on the bottom row. `Divider::Hidden`: the tab
-    // layout has no divider to drag (`update::detail`'s angle keys are a
-    // no-op here), and the modal would swallow `<>` in any case.
+    // The banner's own keys, on the bottom row — the row `tab_banner_area`
+    // just took off the end. `Divider::Hidden`: the tab layout has no
+    // divider to drag (`update::detail`'s angle keys are a no-op here), and
+    // the modal would swallow `<>` in any case.
     let hints = graft_ui::graph_screen::hints_for(
         &crate::view::rows::banner_context(&banner),
         graft_ui::graph_screen::Divider::Hidden,
@@ -497,14 +542,11 @@ fn draw_tab_banner(frame: &mut Frame, state: &AppState, area: Rect, theme: &Them
     );
     frame.buffer_mut().set_string(
         left.x,
-        left.bottom() - 1,
+        area.bottom() - 1,
         graft_ui::fit::fit(&graft_ui::graph_screen::hints_text(&hints), width),
         Style::default().fg(color(theme.token(Token::TextMuted))),
     );
-    Rect {
-        height: left.height - 1,
-        ..left
-    }
+    left
 }
 
 /// The narrow tier's tab strip: `[Graph] Detail` or `Graph [Detail]`

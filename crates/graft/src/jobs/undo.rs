@@ -16,6 +16,7 @@ use graft_ops::undo::{self, Drift, UndoError};
 
 use super::Cancel;
 use crate::repos::RepoStore;
+use crate::session::Clock;
 
 /// What one undo or redo came back with.
 ///
@@ -273,6 +274,7 @@ fn nothing_ran(error: &dyn std::fmt::Display) -> Undone {
 /// [`Context`] borrows it for as long as the operation runs.
 fn with_context<T>(
     repos: &RepoStore,
+    clock: Clock,
     cancel: &Cancel,
     then: impl FnOnce(&mut Context<'_>) -> T,
     failed: impl FnOnce(&dyn std::fmt::Display) -> T,
@@ -294,12 +296,10 @@ fn with_context<T>(
         Ok(journal) => journal,
         Err(error) => return failed(&error),
     };
-    let now_unix_ms = i64::try_from(
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |duration| duration.as_millis()),
-    )
-    .unwrap_or(i64::MAX);
+    // Through the `Clock`, for the reason `jobs::operate::in_context`
+    // gives: an instant that can reach a frame is never read from the wall
+    // clock directly (`crate::session::Clock`).
+    let now_unix_ms = clock.now_millis();
     let mut random = [0u8; 10];
     if let Err(error) = getrandom::fill(&mut random) {
         return failed(&format!("could not read random bytes: {error}"));
@@ -314,9 +314,16 @@ fn with_context<T>(
 /// Take back the newest operation still in force, or put back the newest
 /// undo. `force` goes past §6.7's drift rail — the user has been shown what
 /// moved and said go ahead.
-pub(super) fn run_undo(repos: &RepoStore, redo: bool, force: bool, cancel: &Cancel) -> Undone {
+pub(super) fn run_undo(
+    repos: &RepoStore,
+    redo: bool,
+    force: bool,
+    clock: Clock,
+    cancel: &Cancel,
+) -> Undone {
     with_context(
         repos,
+        clock,
         cancel,
         |ctx| {
             // The entry the inverse is aimed at, read before running: a
@@ -352,10 +359,12 @@ pub(super) fn run_revert_to(
     repos: &RepoStore,
     target: &graft_core::journal::EntryId,
     force: bool,
+    clock: Clock,
     cancel: &Cancel,
 ) -> RevertedTo {
     with_context(
         repos,
+        clock,
         cancel,
         |ctx| {
             let aimed_at = ctx
@@ -428,19 +437,26 @@ fn aimed_at(ctx: &Context<'_>, redo: bool) -> String {
 /// (design note hard choice 3).
 pub(super) fn journal_entries(
     repos: &RepoStore,
+    clock: Clock,
     cancel: &Cancel,
 ) -> Result<Vec<JournalEntry>, String> {
     with_context(
         repos,
+        clock,
         cancel,
         |ctx| Ok(ctx.journal.entries().to_vec()),
         |error| Err(error.to_string()),
     )
 }
 
-pub(super) fn read_journal(repos: &RepoStore, cancel: &Cancel) -> Result<Arc<JournalRead>, String> {
+pub(super) fn read_journal(
+    repos: &RepoStore,
+    clock: Clock,
+    cancel: &Cancel,
+) -> Result<Arc<JournalRead>, String> {
     with_context(
         repos,
+        clock,
         cancel,
         |ctx| {
             let recovered =

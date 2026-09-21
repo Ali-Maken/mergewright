@@ -17,6 +17,7 @@ use graft_ops::operation::Operation;
 
 use super::Cancel;
 use crate::repos::RepoStore;
+use crate::session::Clock;
 
 /// What running one operation came back with.
 ///
@@ -217,10 +218,11 @@ fn nothing_ran(error: &impl std::fmt::Display) -> Operated {
 pub(super) fn run_operation(
     repos: &RepoStore,
     op: &Operation,
+    clock: Clock,
     cancel: &Cancel,
     hooks: Hooks,
 ) -> Operated {
-    in_context(repos, cancel, |ctx| {
+    in_context(repos, clock, cancel, |ctx| {
         ctx.remote = remote_hooks(op, hooks);
         apply::apply(ctx, op)
     })
@@ -238,8 +240,13 @@ pub(super) fn run_operation(
 /// `Pending` since git stopped; `graft_ops::apply::resume` writes that
 /// entry's outcome line, which is what closes the span
 /// (`.scratch/m5-history-and-ghost-preview/as-built.md` §1).
-pub(super) fn run_resume(repos: &RepoStore, what: apply::Resume, cancel: &Cancel) -> Operated {
-    in_context(repos, cancel, |ctx| apply::resume(ctx, what))
+pub(super) fn run_resume(
+    repos: &RepoStore,
+    what: apply::Resume,
+    clock: Clock,
+    cancel: &Cancel,
+) -> Operated {
+    in_context(repos, clock, cancel, |ctx| apply::resume(ctx, what))
 }
 
 /// The setup both of the above share: the repository, the system `git`, the
@@ -247,6 +254,7 @@ pub(super) fn run_resume(repos: &RepoStore, what: apply::Resume, cancel: &Cancel
 /// the single clock reading and random half that name its entry.
 fn in_context(
     repos: &RepoStore,
+    clock: Clock,
     cancel: &Cancel,
     run: impl FnOnce(&mut Context<'_>) -> Result<Applied, ApplyError>,
 ) -> Operated {
@@ -267,12 +275,10 @@ fn in_context(
         Ok(journal) => journal,
         Err(error) => return nothing_ran(&error),
     };
-    let now_unix_ms = i64::try_from(
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |duration| duration.as_millis()),
-    )
-    .unwrap_or(i64::MAX);
+    // Through the `Clock`, not `SystemTime::now()`: a capture of a
+    // repository the app writes mid-capture would otherwise draw a
+    // different instant on every run (`crate::session::Clock`).
+    let now_unix_ms = clock.now_millis();
     let mut random = [0u8; 10];
     if let Err(error) = getrandom::fill(&mut random) {
         return nothing_ran(&format!("could not read random bytes: {error}"));

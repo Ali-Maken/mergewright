@@ -16,9 +16,14 @@ use super::state::AppState;
 /// adds its rows; see [`rows_above_graph`].
 pub(super) const HEADER_ROWS: u16 = 1;
 
-/// Screen rows above the first graph row: the header and any banner.
+/// Screen rows above the first graph row: the header, any harness banner,
+/// and — below 100 columns with the graph as the tab shown — the tab
+/// strip and the operation banner's row above it
+/// (`banner::tab_rows_above_graph`, review M1).
 pub(super) fn rows_above_graph(state: &AppState) -> u16 {
-    HEADER_ROWS.saturating_add(state.harness.banner_rows())
+    HEADER_ROWS
+        .saturating_add(state.harness.banner_rows())
+        .saturating_add(super::banner::tab_rows_above_graph(state))
 }
 
 /// A screen rectangle in the four plain numbers a `Rect` would carry.
@@ -47,9 +52,15 @@ impl Bounds {
 /// is absent in `Tab` mode: mirrors `graft_ui::detail_pane::split_area`,
 /// which `view/frame.rs::split_for_detail` draws from — same split, so a
 /// click or wheel notch lands exactly where the pixel is.
+/// `banner_rows` is what the operation banner costs this frame in the
+/// `Tab` arm (`banner::tab_banner_rows`): one row above the strip, and a
+/// second off the bottom while it has focus. `split_for_detail` draws from
+/// the same number, which is the point — the rows it took were invisible
+/// here, so every click below the strip landed a row high (review M1).
 pub(super) fn detail_split(
     layout: DetailLayout,
     size: (u16, u16),
+    banner_rows: u16,
 ) -> (Option<Bounds>, Option<Bounds>) {
     match layout {
         DetailLayout::Right { columns } => {
@@ -87,12 +98,15 @@ pub(super) fn detail_split(
             (Some(graph), Some(pane))
         }
         DetailLayout::Tab { shown } => {
-            let strip = 1.min(size.1);
+            // The banner's first row is above the strip; its second, the
+            // key hints it draws while focused, comes off the bottom.
+            let above = 1.min(banner_rows);
+            let strip = 1.min(size.1.saturating_sub(above));
             let content = Bounds {
                 x: 0,
-                y: strip,
+                y: above.saturating_add(strip),
                 width: size.0,
-                height: size.1 - strip,
+                height: size.1.saturating_sub(strip).saturating_sub(banner_rows),
             };
             if shown {
                 (None, Some(content))
@@ -165,7 +179,7 @@ pub(super) fn diff_body_rows(state: &AppState) -> usize {
     }
     let size = (state.size.columns, state.size.rows);
     let layout = detail::effective_layout(state.detail.focus, &state.detail.pane_size, size);
-    let Some(pane) = detail_split(layout, size).1 else {
+    let Some(pane) = detail_split(layout, size, super::banner::tab_banner_rows(state)).1 else {
         return 0;
     };
     let files_count = match &state.detail.files {
@@ -216,7 +230,7 @@ pub(super) fn detail_hit(state: &AppState, column: u16, row: u16) -> Option<Deta
         }
         DetailLayout::Tab { .. } => {}
     }
-    let (_, pane) = detail_split(layout, size);
+    let (_, pane) = detail_split(layout, size, super::banner::tab_banner_rows(state));
     let pane = pane?;
     if !pane.contains(column, row) {
         return None;
@@ -239,7 +253,21 @@ pub(super) fn detail_hit(state: &AppState, column: u16, row: u16) -> Option<Deta
 /// `None` over the header, the footer, the uncommitted-changes row (selected
 /// through the flag, not a `History` row — see `mouse_event`), or a row
 /// below what has laid out so far.
+///
+/// And `None` when the graph is **not on screen**: below 100 columns with the
+/// Detail tab shown, the pane has the whole frame and the graph is behind it.
+/// Without this, a click on a file name moved the hidden graph's selection —
+/// the user clicked `notes.md` and the app jumped to another commit, with
+/// nothing on screen to explain it (found while fixing review M1; same class,
+/// same layout).
 pub(super) fn graph_row_at(state: &AppState, screen_row: u16) -> Option<usize> {
+    if state.detail.shown {
+        let size = (state.size.columns, state.size.rows);
+        let layout = detail::effective_layout(state.detail.focus, &state.detail.pane_size, size);
+        // The split is the one place that knows whether a graph rect exists;
+        // asking it keeps this from becoming a second reading of the layout.
+        detail_split(layout, size, super::banner::tab_banner_rows(state)).0?;
+    }
     let history = state.history.as_ref()?;
     let offset = usize::from(screen_row.checked_sub(rows_above_graph(state))?);
     if offset >= state.graph_rows() {
@@ -261,7 +289,7 @@ pub(super) fn context_menu_graph_bounds(state: &AppState) -> Option<Bounds> {
     let size = (state.size.columns, state.size.rows);
     if state.detail.shown {
         let layout = detail::effective_layout(state.detail.focus, &state.detail.pane_size, size);
-        detail_split(layout, size).0
+        detail_split(layout, size, super::banner::tab_banner_rows(state)).0
     } else {
         Some(Bounds {
             x: 0,

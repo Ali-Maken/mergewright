@@ -3368,3 +3368,169 @@ fn hinted_contexts() -> Vec<graft_ui::graph_screen::HintContext> {
         HintContext::Stash,
     ]
 }
+
+// The vertical axis of ticket 19's principle: count from what you were
+// given, not from the screen (review M1).
+
+/// **The class test for the vertical axis.** `update::geometry` exists to
+/// mirror the view for hit-testing, and its `Tab` arm did not know the
+/// operation banner takes a row above the strip (and a second off the
+/// bottom while focused). So below 100 columns with a merge stopped, every
+/// click landed one row above the row the user saw, and two while the
+/// banner had the keyboard.
+///
+/// Swept, not sampled, and against the rects the **drawing path** computes
+/// (`view::frame::detail_rects` is what `split_for_detail` splits from),
+/// not against a second copy of the arithmetic — a mirror checked against
+/// a copy of itself agrees by construction. Widths through both
+/// breakpoints; heights down to one where the banner's two rows are most
+/// of the frame; both tabs; focused and not; banner live and not.
+/// The third reader of the tab layout's row budget: `AppState::graph_rows`,
+/// which is how many history rows `j`/`k`, `PgDn` and `G` believe are on
+/// screen. The `[Graph] Detail` strip is a row the graph never gets, and
+/// neither was a term here before review M1 - so the cursor could be moved
+/// onto a row the graph had not drawn.
+///
+/// The strip is all it costs *on the graph tab*: the banner's word rides the
+/// graph header there (see `banner::tab_banner_rows`), which is the other
+/// half of M2. The number itself is checked against the drawn rects by
+/// `the_geometry_mirror_matches_the_rects_the_frame_hands_out`; this test is
+/// about who spends it.
+#[test]
+fn the_tab_strip_comes_out_of_the_graphs_row_budget() {
+    use graft_ui::detail::DetailFocus;
+
+    let mut tabbed = AppState {
+        size: crate::update::state::Size {
+            columns: 80,
+            rows: 24,
+        },
+        ..AppState::default()
+    };
+    tabbed.detail.shown = true;
+    tabbed.detail.focus = DetailFocus::Graph;
+    let mut wide = tabbed.clone();
+    wide.size.columns = 160;
+
+    assert_eq!(
+        crate::update::banner::tab_rows_above_graph(&wide),
+        0,
+        "beside the graph there is no strip and no tab banner"
+    );
+    assert_eq!(
+        crate::update::banner::tab_rows_above_graph(&tabbed),
+        1,
+        "the `[Graph] Detail` strip"
+    );
+    assert_eq!(
+        tabbed.graph_rows() + 1,
+        wide.graph_rows(),
+        "the strip is a row the graph does not get"
+    );
+
+    // A live operation, banner focused, graph tab still the one shown: the
+    // strip is still the whole cost, because the graph header carries the
+    // kind word and its keys ride the footer.
+    let mut live = tabbed.clone();
+    live.banner_focus = true;
+    live.in_progress = Some(graft_git::state::InProgressDetail {
+        kind: graft_git::state::InProgress::Merge,
+        step: None,
+        head_name: None,
+        onto: None,
+    });
+    assert_eq!(
+        live.graph_rows(),
+        tabbed.graph_rows(),
+        "the banner costs the graph tab nothing: it is drawn in the header"
+    );
+}
+
+/// One size, one focus, one banner: the drawn rects and the mirror's.
+fn the_mirror_agrees_at(
+    width: u16,
+    height: u16,
+    live: bool,
+    focus: graft_ui::detail::DetailFocus,
+    banner_focus: bool,
+) {
+    use ratatui::layout::Rect;
+
+    let bounds = |rect: Rect| geometry::Bounds {
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+    };
+    let mut state = AppState {
+        size: crate::update::state::Size {
+            columns: width,
+            rows: height,
+        },
+        banner_focus,
+        ..AppState::default()
+    };
+    state.detail.shown = true;
+    state.detail.focus = focus;
+    if live {
+        state.in_progress = Some(graft_git::state::InProgressDetail {
+            kind: graft_git::state::InProgress::Merge,
+            step: None,
+            head_name: None,
+            onto: None,
+        });
+    }
+    let layout =
+        crate::update::detail::effective_layout(focus, &state.detail.pane_size, (width, height));
+    let area = Rect {
+        x: 0,
+        y: 0,
+        width,
+        height,
+    };
+    let (graph, pane) = crate::view::frame::detail_rects(&state, layout, area);
+    let mirrored = geometry::detail_split(
+        layout,
+        (width, height),
+        crate::update::banner::tab_banner_rows(&state),
+    );
+    let at = format!(
+        "{width}x{height}, live={live}, focus={focus:?}, \
+         banner_focus={banner_focus}, layout={layout:?}"
+    );
+    // The pane rect exactly: it is what `detail_hit` tests a click against.
+    assert_eq!(mirrored.1, pane.map(bounds), "pane rect at {at}");
+    // The graph rect on the **vertical** axis exactly. Its width is
+    // deliberately one wider here in the `Right` layout: m5/19 routes the
+    // gutter column to the region it came out of rather than to nothing, so
+    // the mirror keeps a cell the drawing path does not paint
+    // (`detail_pane/layout.rs`'s `gutter`). That is the horizontal axis and
+    // has its own test (`graft-ui`'s `pane_boundaries.rs`).
+    assert_eq!(
+        mirrored.0.map(|rect| (rect.y, rect.height)),
+        graph.map(|rect| (rect.y, rect.height)),
+        "graph rows at {at}"
+    );
+    assert_eq!(
+        mirrored.0.is_some(),
+        graph.is_some(),
+        "graph drawn-or-not at {at}"
+    );
+}
+
+#[test]
+fn the_geometry_mirror_matches_the_rects_the_frame_hands_out() {
+    use graft_ui::detail::DetailFocus;
+
+    for width in 20u16..=240 {
+        for height in [3u16, 8, 24, 40, 48] {
+            for live in [false, true] {
+                for focus in [DetailFocus::Graph, DetailFocus::Files, DetailFocus::Diff] {
+                    for banner_focus in [false, true] {
+                        the_mirror_agrees_at(width, height, live, focus, banner_focus);
+                    }
+                }
+            }
+        }
+    }
+}
