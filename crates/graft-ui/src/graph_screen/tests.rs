@@ -14,7 +14,7 @@ use ratatui::layout::Rect;
 use ratatui::style::Modifier;
 use unicode_width::UnicodeWidthStr;
 
-use super::footer::{commit_graph_segments, grouped};
+use super::footer::{commit_graph_segments, grouped, segments_width};
 use super::hints::HintContext;
 use super::layout::walk_text;
 use super::*;
@@ -935,6 +935,119 @@ fn every_commit_graph_wording_fits_under_its_breakpoint() {
     );
     assert_eq!(grouped(200), "200");
     assert_eq!(grouped(1_000), "1,000");
+}
+
+/// Every wording the commit-graph line has, so the sweep below covers each
+/// variant's whole set.
+const COMMIT_GRAPH_LINES: [CommitGraphLine; 4] = [
+    CommitGraphLine::Offered,
+    CommitGraphLine::NoGitToBuild,
+    CommitGraphLine::Writing,
+    CommitGraphLine::Written { commits: 1_000_000 },
+];
+
+/// A footer line never says less because it was given more room, swept over
+/// every width rather than sampled at the breakpoints.
+///
+/// The defect (m5/19, the user's own, by eye): at 120 columns the offer read
+/// `no commit-graph file: history sorts on every open · B build one (git
+/// commit-graph write --reachable) · X never here`, and at 160 — forty more
+/// columns of terminal — `no commit-graph file · B build one · X never
+/// here`. The wording was picked by a width *tier* calibrated against the
+/// screen, while the width handed in is the graph area's, which loses 42% of
+/// the screen to the detail pane at 160. A tier cannot be fixed by moving
+/// its numbers; picking the widest wording that fits removes the tier.
+///
+/// Swept, not sampled: the fault lived at one breakpoint and not the other,
+/// which is exactly what checking 120 and 160 by hand would agree with.
+#[test]
+fn no_footer_line_gets_terser_as_the_room_for_it_grows() {
+    for line in COMMIT_GRAPH_LINES {
+        let mut narrower = 0usize;
+        for width in 0..=240usize {
+            let drawn = segments_width(&commit_graph_segments(line, width));
+            assert!(
+                drawn >= narrower,
+                "{line:?}: {width} columns draws {drawn} cells, {} draws {narrower}",
+                width - 1
+            );
+            narrower = drawn;
+        }
+    }
+}
+
+/// The wording drawn is the widest one that fits, so no room is left on the
+/// table — and it only overflows when nothing fits at all.
+#[test]
+fn the_commit_graph_line_spends_the_room_it_is_given() {
+    for line in COMMIT_GRAPH_LINES {
+        // The widest the line ever gets: from there up, that is what draws.
+        let widest = segments_width(&commit_graph_segments(line, usize::MAX));
+        for width in 0..=240usize {
+            let drawn = segments_width(&commit_graph_segments(line, width));
+            if drawn > width {
+                // Overflowing is only allowed when the narrowest wording
+                // itself does not fit; `commit_graph_line` then cuts it.
+                assert_eq!(
+                    drawn,
+                    segments_width(&commit_graph_segments(line, 0)),
+                    "{line:?} at {width}: overflowed with a wording that was not the narrowest"
+                );
+            }
+            if width >= widest {
+                assert_eq!(drawn, widest, "{line:?} at {width}: room going spare");
+            }
+        }
+    }
+}
+
+/// The hint bar never drops a hint because the bar got wider, swept over
+/// every width in every context.
+#[test]
+fn no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows() {
+    for context in every_hint_context() {
+        for divider in [Divider::Shown, Divider::Hidden] {
+            let mut narrower = 0usize;
+            for columns in 0..=240u16 {
+                let drawn = hints_for(&context, divider, columns).len();
+                assert!(
+                    drawn >= narrower,
+                    "{context:?} with {divider:?}: {columns} columns draws {drawn} hints, \
+                     {} draws {narrower}",
+                    columns - 1
+                );
+                narrower = drawn;
+            }
+        }
+    }
+}
+
+/// Every context the hint bar has a table for, `Marked` included.
+fn every_hint_context() -> Vec<HintContext> {
+    let plain = vec![
+        HintContext::WorkingTreeRow,
+        HintContext::BranchRow { current: false },
+        HintContext::BranchRow { current: true },
+        HintContext::PlainRow,
+        HintContext::Banner {
+            skippable: true,
+            conflicted: true,
+        },
+        HintContext::Banner {
+            skippable: false,
+            conflicted: false,
+        },
+        HintContext::Preview,
+        HintContext::ChangesPane { unmerged: false },
+        HintContext::ChangesPane { unmerged: true },
+        HintContext::Journal,
+        HintContext::Stash,
+    ];
+    let marked = plain
+        .iter()
+        .cloned()
+        .map(|context| HintContext::Marked(Box::new(context)));
+    plain.iter().cloned().chain(marked).collect()
 }
 
 #[test]

@@ -101,59 +101,100 @@ impl GraphScreen<'_> {
     }
 }
 
-/// Wide enough for the commit-graph line's longest wording.
-const COMMIT_GRAPH_WIDE: usize = 120;
-/// Wide enough for its middle wording; below it, the shortest.
-const COMMIT_GRAPH_MEDIUM: usize = 100;
+/// Cells a wording takes.
+pub(super) fn segments_width(segments: &[(String, bool)]) -> usize {
+    segments.iter().map(|(text, _)| text.width()).sum()
+}
 
 /// The commit-graph line's text at `width`, as segments: `true` marks a key
 /// letter, drawn in the accent.
+///
+/// The wording drawn is the **widest one that fits `width`**, or the
+/// narrowest there is when none does — keyed on what fits, not on a width
+/// tier.
+///
+/// The tiers this replaces (120 / 100 / under) were calibrated against the
+/// *screen's* width, but this line is drawn inside the graph's area, and the
+/// graph gives up 42% of the screen the moment the detail pane opens beside
+/// it (`DetailLayout::Right`). So a 160-column terminal handed this function
+/// 92 columns, fell under the 100-column tier and drew the 47-cell wording
+/// where the 87-cell one had five cells to spare: forty more columns of
+/// terminal, less text than at 120 (m5/19, found by the user in
+/// `docs/shots/m5-ui-banner-conflict-160x48.txt`). Choosing the widest that
+/// fits cannot invert like that, whatever order the wordings are written in
+/// and whatever width the caller has — pinned by
+/// `no_footer_line_gets_terser_as_the_room_for_it_grows`.
 pub(super) fn commit_graph_segments(line: CommitGraphLine, width: usize) -> Vec<(String, bool)> {
+    let mut wordings = commit_graph_wordings(line);
+    // Nothing fits: draw the narrowest anyway and let `commit_graph_line`
+    // cut it. Cutting the shortest wording loses the least.
+    let narrowest = wordings
+        .iter()
+        .enumerate()
+        .min_by_key(|(_, wording)| segments_width(wording))
+        .map(|(index, _)| index)
+        .unwrap_or_default();
+    let index = wordings
+        .iter()
+        .enumerate()
+        .filter(|(_, wording)| segments_width(wording) <= width)
+        .max_by_key(|(_, wording)| segments_width(wording))
+        .map_or(narrowest, |(index, _)| index);
+    wordings.swap_remove(index)
+}
+
+/// Every wording the line has, in no particular order:
+/// [`commit_graph_segments`] picks between them by what fits.
+fn commit_graph_wordings(line: CommitGraphLine) -> Vec<Vec<(String, bool)>> {
     let text = |words: &str| (words.to_owned(), false);
     let key = |letter: &str| (letter.to_owned(), true);
-    let wide = width >= COMMIT_GRAPH_WIDE;
-    let narrow = width < COMMIT_GRAPH_MEDIUM;
     match line {
-        CommitGraphLine::Offered if wide => vec![
-            text(" no commit-graph file: history sorts on every open · "),
-            key("B"),
-            // The spec's " never for this repo" made this line 125 columns;
-            // "never here" keeps it inside the 120 it is drawn at.
-            text(" build one (git commit-graph write --reachable) · "),
-            key("X"),
-            text(" never here"),
-        ],
-        CommitGraphLine::Offered if narrow => vec![
-            text(" no commit-graph file · "),
-            key("B"),
-            text(" build one · "),
-            key("X"),
-            text(" never here"),
-        ],
         CommitGraphLine::Offered => vec![
-            text(" no commit-graph file · "),
-            key("B"),
-            text(" build one (git commit-graph write --reachable) · "),
-            key("X"),
-            text(" never here"),
+            vec![
+                text(" no commit-graph file: history sorts on every open · "),
+                key("B"),
+                // The spec's " never for this repo" made this line 125
+                // columns; "never here" keeps it inside the 120 it is
+                // drawn at.
+                text(" build one (git commit-graph write --reachable) · "),
+                key("X"),
+                text(" never here"),
+            ],
+            vec![
+                text(" no commit-graph file · "),
+                key("B"),
+                text(" build one (git commit-graph write --reachable) · "),
+                key("X"),
+                text(" never here"),
+            ],
+            vec![
+                text(" no commit-graph file · "),
+                key("B"),
+                text(" build one · "),
+                key("X"),
+                text(" never here"),
+            ],
         ],
-        CommitGraphLine::NoGitToBuild if narrow => {
-            vec![text(" no commit-graph file · no git to build one")]
-        }
-        CommitGraphLine::NoGitToBuild => vec![text(
-            " no commit-graph file, and no git ≥ 2.38 on PATH to build one",
-        )],
-        CommitGraphLine::Writing if narrow => vec![text(" building the commit-graph…")],
-        CommitGraphLine::Writing => vec![text(
-            " building the commit-graph… (git commit-graph write --reachable)",
-        )],
-        CommitGraphLine::Written { .. } if narrow => {
-            vec![text(" commit-graph written · next open sorts at once")]
-        }
-        CommitGraphLine::Written { commits } => vec![text(&format!(
-            " commit-graph written: {} commits · the next open sorts at once · Ctrl+R to use it",
-            grouped(commits)
-        ))],
+        CommitGraphLine::NoGitToBuild => vec![
+            vec![text(
+                " no commit-graph file, and no git ≥ 2.38 on PATH to build one",
+            )],
+            vec![text(" no commit-graph file · no git to build one")],
+        ],
+        CommitGraphLine::Writing => vec![
+            vec![text(
+                " building the commit-graph… (git commit-graph write --reachable)",
+            )],
+            vec![text(" building the commit-graph…")],
+        ],
+        CommitGraphLine::Written { commits } => vec![
+            vec![text(&format!(
+                " commit-graph written: {} commits · the next open sorts at once · Ctrl+R to use \
+                 it",
+                grouped(commits)
+            ))],
+            vec![text(" commit-graph written · next open sorts at once")],
+        ],
     }
 }
 

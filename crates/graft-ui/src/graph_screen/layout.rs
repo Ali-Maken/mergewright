@@ -8,13 +8,37 @@ use ratatui::text::{Line, Span};
 use unicode_width::UnicodeWidthStr;
 
 use super::{
-    AUTHOR_BREAKPOINT, AUTHOR_WIDTH, CHROME_ROWS, Filters, GraphEntry, GraphScreen, GraphicsStatus,
+    AUTHOR_BREAKPOINT, AUTHOR_WIDTH, Filters, GraphEntry, GraphScreen, GraphicsStatus,
     MARKER_WIDTH, OrderNotice, SHA_WIDTH, SUBJECT_GAP, WHEN_WIDTH, WalkView, banner_line,
 };
 use crate::fit::fit;
 use crate::graph_column::{CELLS_PER_LANE, GraphColumn};
 use crate::paint::foreground;
 use crate::theme::Token;
+
+/// The screen's rows, carved once by [`GraphScreen::screen_rows`]: one
+/// rectangle per part of the screen that owns rows of its own, none of which
+/// ever overlaps another.
+///
+/// A zero-height rectangle means that part is not drawn at this size — the
+/// hint bar on a one-row screen, the commit-graph offer with no row to spare,
+/// the banner when there is none. Callers that draw from these skip the empty
+/// ones rather than special-casing each size.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ScreenRows {
+    /// The header's row: the brand, the location, the walk or the operation
+    /// banner.
+    pub header: Rect,
+    /// The rows [`GraphView::banner`](super::GraphView::banner) takes under
+    /// the header, clipped to what is free above the rest of the chrome.
+    pub banner: Rect,
+    /// The rows the commit rows are drawn in.
+    pub body: Rect,
+    /// The commit-graph offer's row, directly above the hint bar.
+    pub offer: Rect,
+    /// The hint bar's row: the screen's last.
+    pub footer: Rect,
+}
 
 impl<'a> GraphScreen<'a> {
     /// Rows the banner takes under the header: one per harness-pinned line.
@@ -33,6 +57,60 @@ impl<'a> GraphScreen<'a> {
         u16::try_from(self.view.banner.len()).unwrap_or(u16::MAX)
     }
 
+    /// Every row of the screen, carved once: which row the header takes,
+    /// which rows the banner takes, which the body has left, and which the
+    /// commit-graph offer and the hint bar sit on. A zero-height rectangle
+    /// means that part is not on screen at this size.
+    ///
+    /// One carve, so no two parts of the draw can claim the same row. They
+    /// used to work it out separately, each from `area.height` and its own
+    /// idea of what else was on screen, and on a screen with a single row to
+    /// spare all three of the banner, the offer and the footer claimed it —
+    /// the offer and then the footer drew over the banner, which is the one
+    /// of the three that is modal (m5/19).
+    #[must_use]
+    pub fn screen_rows(&self, area: Rect) -> ScreenRows {
+        let header = Rect {
+            height: 1.min(area.height),
+            ..area
+        };
+        // Bottom up. The hint bar always has the last row; the offer takes
+        // the one above it when a row is going spare; the banner takes what
+        // is left between the header and them. The banner outranks the offer
+        // because it is modal and the offer is a suggestion, so where only
+        // one row is free it is the offer that goes without.
+        let footer = Rect {
+            y: area.bottom().saturating_sub(1),
+            height: u16::from(area.height > 1),
+            ..area
+        };
+        let top = header.bottom().min(footer.y);
+        let free = footer.y.saturating_sub(top);
+        let banner = Rect {
+            y: top,
+            height: self.banner_rows().min(free),
+            ..area
+        };
+        let offer = Rect {
+            y: footer.y.saturating_sub(1),
+            height: u16::from(self.view.commit_graph.is_some() && free > banner.height),
+            ..area
+        };
+        let body_floor = if offer.height > 0 { offer.y } else { footer.y };
+        let body = Rect {
+            y: banner.bottom(),
+            height: body_floor.saturating_sub(banner.bottom()),
+            ..area
+        };
+        ScreenRows {
+            header,
+            banner,
+            body,
+            offer,
+            footer,
+        }
+    }
+
     /// Where the graph column lands inside `area`, the whole screen: the
     /// rectangle the pixel tier places its images in, every body row tall.
     #[must_use]
@@ -47,15 +125,7 @@ impl<'a> GraphScreen<'a> {
     /// The rows' rectangle, the rows that fit in it, and the fold they are
     /// drawn through (`None` while expanded).
     pub(super) fn body_layout(&self, area: Rect) -> (Rect, &[GraphEntry<'a>], Option<Fold>) {
-        let banner = self.banner_rows();
-        let offer = u16::from(self.view.commit_graph.is_some());
-        let body = Rect {
-            y: area.y.saturating_add(1).saturating_add(banner),
-            height: area
-                .height
-                .saturating_sub(CHROME_ROWS.saturating_add(banner).saturating_add(offer)),
-            ..area
-        };
+        let body = self.screen_rows(area).body;
         let rows = &self.view.rows[..self.view.rows.len().min(usize::from(body.height))];
         let fold = self
             .view
