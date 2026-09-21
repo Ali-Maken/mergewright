@@ -43,16 +43,16 @@ Split the bar into two parts with **different promises**.
    ADR-0037 §4's "never all hidden" protects. The rule now costs seven
    columns instead of fifty, so it holds everywhere without a special case.
 
-   **One place it does not hold today, and that is a violation, not an
-   allowance.** Below 100 columns the detail pane takes the whole screen
-   behind a `[Graph] Detail` tab strip (`update::detail::effective_layout` →
-   `DetailLayout::Tab`), the graph screen is not drawn, and the bar goes with
-   it — so at 80 columns with the changes pane open, every key is hidden.
-   The evidence is a test that fails on purpose and is `#[ignore]`d:
-   `crates/graft/tests/it/hint_bar.rs:262-288`,
-   `the_tab_layout_still_hides_every_key`. The rule is not softened to fit
-   it. Fixing it means giving the tab layout a footer of its own, which
-   changes every pane's height, so it carries its own ticket.
+   **Fixed 2026-09-21 (m5/29), below 100 columns as everywhere else.** The
+   detail pane taking the whole screen behind a `[Graph] Detail` tab strip
+   (`update::detail::effective_layout` → `DetailLayout::Tab`) used to leave
+   the doorway with nowhere to draw, since the graph screen — and its
+   footer — is not on the tab layout at all. The tab layout now draws its
+   own bottom row for the pane's own keys
+   (`update::detail::tab_hint_rows`, `view::frame::draw_tab_hints`), through
+   the same `hints_for` ladder and floor every other bar uses. The test that
+   used to fail on purpose, `crates/graft/tests/it/hint_bar.rs`, is renamed
+   to `the_tab_layout_draws_the_panes_own_keys` and passes.
 
    **Where it sits: at the head of the bare keys — which is the end of the
    row when there are none.** One sentence, two layouts, no special case.
@@ -98,9 +98,8 @@ Four rules govern how the shortcuts fill the room they have:
   the only thing there. **Design completeness, not a live defect** — the
   narrowest bar anything reachable actually has is 48 columns
   (`graft_ui::detail_pane::layout`'s `RIGHT_MIN`; below 100 the pane is a
-  full-width tab, where today no bar is drawn at all — the violation under
-  point 1, not a width this ladder is allowed to stop at), and the tightest
-  context's floor fits in 38.
+  full-width tab, which since m5/29 draws its own bar through this same
+  ladder — point 1), and the tightest context's floor fits in 38.
 
 - **The bare-key rung stays.** Letting the ladder stop at the short rung and
   dropping bare keys entirely was proposed and rejected: the tail's
@@ -128,11 +127,15 @@ draws whole or not at all, never invented or squeezed to fit (m5/27,
   Major 1). A doorway that does not lead to what was dropped makes dropping
   unsafe, and that is precisely why the old design had to choose between showing
   everything and showing nothing. This is the real work of this ADR.
-- **No row is spent in tab mode.** The doorway rides a line already drawn — the
-  `Graph  [Detail]` tab line has dead space on the right. A pane loses no
-  content at any width.
+- **Below 100 columns, one row is spent — reused where it can be.** m5/29
+  found the doorway had nowhere to ride below 100 columns (point 1 above)
+  and gave the tab layout a bottom row of its own
+  (`update::detail::tab_hint_rows`). That row is skipped, not doubled, when
+  the operation banner already draws its own key-hint row at the focused
+  pane's foot (`tab_banner_rows(state) < 2`) — so the cost is one line, only
+  in tab mode, only when nothing else is already spending it.
 - **Shrink before dropping.** When space tightens, lose padding first, then the
-  verb, and keep the key itself longest — `space stage` → `space stg` → `space`.
+  verb, and keep the key itself longest — `F3 renderer` → `F3 rend` → `F3`.
   Zellij degrades in these stages and it reads well; dropping whole items while
   keeping fat separators does not.
 
@@ -150,7 +153,12 @@ draws whole or not at all, never invented or squeezed to fit (m5/27,
 ## Considered and not taken
 
 - **A row reserved for the bar in every pane.** Honest and simple; costs a line
-  of content at every width to fix a case that only some widths have.
+  of content at every width to fix a case that only some widths have. **What
+  was taken instead, 2026-09-21 (m5/29):** a narrower version of this same
+  idea — one row, not in every pane but only in the tab layout, and only
+  below 100 columns where the doorway has no footer to ride at all (point 1
+  above). The width-everywhere cost this bullet rejects never happened;
+  the row is spent only where the violation actually was.
 - **Keys with no verbs** (`space d c`). Fits anywhere, teaches nothing.
 - **tig's model — no hints at all, `?` for help.** Coherent, and flatly against
   the user's "a feature nobody can see doesn't exist".

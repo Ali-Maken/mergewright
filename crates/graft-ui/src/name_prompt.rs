@@ -99,13 +99,16 @@ fn cells(text: &str) -> usize {
 impl NamePrompt<'_> {
     /// The field row: `│ ▏` then the field itself, masking and cursor
     /// placement owned entirely by `text_input` (never this widget's call —
-    /// same rule `credential_prompt` follows).
+    /// same rule `credential_prompt` follows). Same reserved gutter cell
+    /// before the closing `│` as `credential_prompt::draw_field_row` — a
+    /// typed name long enough to fill the field must not run into the
+    /// border.
     fn draw_field_row(&self, area: Rect, buf: &mut Buffer, width: usize, y: u16) {
         buf.set_string(area.x, y, "│ ▏", foreground(self.theme, Token::Text));
-        if width <= 4 {
+        if width <= 5 {
             return;
         }
-        let field_width = u16::try_from(width - 4).unwrap_or(0);
+        let field_width = u16::try_from(width - 5).unwrap_or(0);
         let shown = display_text(&self.view.field, false);
         draw_line(
             buf,
@@ -120,7 +123,7 @@ impl NamePrompt<'_> {
             None,
             self.theme,
         );
-        let close_x = area.x + 3 + field_width;
+        let close_x = area.x + 4 + field_width;
         buf.set_string(close_x, y, "│", foreground(self.theme, Token::Text));
     }
 }

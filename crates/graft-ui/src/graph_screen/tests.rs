@@ -1620,8 +1620,8 @@ fn capture_the_ladder_for_docs_shots() {
          # grid, so the muted grey the footer draws in is unverified\n\
          # (CLAUDE.md rule 5).\n\
          #\n\
-         # The short rung is visible where the room runs out mid-hint: `F3 rend`,\n\
-         # `H hide`. Every short form is a prefix of the full verb, the user's own\n\
+         # The short rung is visible where the room runs out mid-hint: `F3 rend`\n\
+         # below. Every short form is a prefix of the full verb, the user's own\n\
          # word, restated 2026-09-21 (m5/27) — a verb it does not name (`stash`,\n\
          # `merge`, `rebase`, `compare`, `commit` among them) has no short rung at\n\
          # all and keeps its whole word at every width.\n\

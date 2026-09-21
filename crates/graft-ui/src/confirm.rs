@@ -135,9 +135,13 @@ impl ConfirmView {
 /// Rows the box needs to draw itself: the top border (title), the message
 /// wrapped to `width` (capped at [`MAX_MESSAGE_LINES`]), a blank row, the
 /// command, a blank row, the choices, the bottom border.
+///
+/// Wrapped to `width - 4`: two borders and a cell of padding on each side
+/// (`frame_box::content_row`'s own reservation) — not `width - 3`, which
+/// left the longest line exactly filling the border's own gutter cell.
 #[must_use]
 pub fn confirm_rows(view: &ConfirmView, width: u16) -> u16 {
-    let wrapped = wrap_message(&view.message, usize::from(width).saturating_sub(3));
+    let wrapped = wrap_message(&view.message, usize::from(width).saturating_sub(4));
     u16::try_from(wrapped.len().saturating_add(6)).unwrap_or(u16::MAX)
 }
 
@@ -214,7 +218,7 @@ impl Widget for &Confirm<'_> {
             }
         };
 
-        for line in wrap_message(&view.message, width.saturating_sub(3)) {
+        for line in wrap_message(&view.message, width.saturating_sub(4)) {
             draw_content(&line, text_style, y, buf);
             y = y.saturating_add(1);
         }
@@ -415,6 +419,81 @@ mod tests {
         let wrapped = wrap_message(&[sanitize_line(&long)], 10);
         assert_eq!(wrapped.len(), MAX_MESSAGE_LINES);
         assert!(wrapped.last().unwrap().ends_with('…'), "{wrapped:?}");
+    }
+
+    /// The box's required width is two borders plus two cells of padding
+    /// plus the longest content line — `confirm_rows` now wraps
+    /// `view.message` to `width - 4`, not `width - 3`, and `Confirm`'s own
+    /// `render` wraps to the same width, so the longest wrapped line is
+    /// never more than `width - 4` cells and `frame_box::content_row`
+    /// (`width - 2` inner, one cell of padding reserved each side) always
+    /// has a spare cell on the right. Reproduces the exact fault named in
+    /// the ticket: this message, at 80 columns, used to end its longest
+    /// line flush against the border (`…what you send│`); it does not here.
+    #[test]
+    fn the_longest_line_never_touches_the_border_because_the_wrap_width_reserves_its_padding() {
+        // Exactly 60 cells: `confirm_area` caps the box's own width at 64
+        // whatever the frame is (`width = area.width.min(64)`), so
+        // `wrap_message` is called with `64 - 4 = 60` — the longest a line
+        // can be without wrapping, and the boundary the fault lived on (one
+        // cell longer wraps instead; shorter already had slack). Built from
+        // real words so `wrap_line`'s own word-wrap does not itself reject
+        // it for having no space to break on.
+        let longest_line = {
+            let mut line = "a ".repeat(29); // 58 cells (29 "a " pairs)
+            line.push_str("bb"); // + 2 = 60 cells exactly
+            line
+        };
+        assert_eq!(
+            cells(&longest_line),
+            60,
+            "test fixture must be exactly 60 cells"
+        );
+
+        let view = ConfirmView::new(
+            sanitize_line("Push main → origin/main"),
+            text(&[longest_line.as_str()]),
+            sanitize_line("git push --progress origin refs/heads/main:refs/heads/main"),
+        )
+        .with_labels("Cancel", "Push");
+
+        let drawn = rows(&view, 80, 24);
+        let line = drawn
+            .iter()
+            .find(|line| line.contains(" bb"))
+            .unwrap_or_else(|| panic!("no line has the message: {drawn:#?}"));
+        // `rows` trims trailing whitespace before returning, which is
+        // exactly why the bug read as invisible in a casual look at the
+        // string: the padding this test cares about IS the trailing
+        // whitespace. So this reads the raw buffer cell, not the trimmed
+        // `String`, and checks it directly.
+        let theme = theme();
+        let frame = Rect::new(0, 0, 80, 24);
+        let area = confirm_area(frame, &view);
+        let mut buf = Buffer::empty(frame);
+        (&Confirm {
+            view: &view,
+            theme: &theme,
+        })
+            .render(area, &mut buf);
+        let row_y = drawn
+            .iter()
+            .position(|drawn_line| drawn_line == line)
+            .expect("the line found above is in the same Vec");
+        let y = u16::try_from(row_y).expect("a test frame is shorter than u16::MAX");
+        let border_x = area.right() - 1;
+        assert_eq!(
+            buf[(border_x, y)].symbol(),
+            "│",
+            "the box's own right border must still be exactly where expected"
+        );
+        assert_eq!(
+            buf[(border_x - 1, y)].symbol(),
+            " ",
+            "the cell just inside the right border must be blank — the reserved padding \
+             `content_row` now always leaves, so the longest line's last character never sits \
+             directly against `│`"
+        );
     }
 
     /// DESIGN.md §1.7 draws every choice bracketed; only the cursor's

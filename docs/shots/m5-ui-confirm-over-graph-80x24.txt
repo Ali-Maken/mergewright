@@ -35,7 +35,7 @@
 #
 # What survives beside it, read back out of the frame below rather
 # than written here by hand — on the widest such row, `●` is
-# left of the border and `60af0eb` is right of it.
+# left of the border and `b6a4a47` is right of it.
 #
 # The 3-choice box `u` opens once the work is on a remote (ADR-0038
 # §4) stands on this same corpus and is in
@@ -54,9 +54,9 @@
 ●   Commit 197                                                      2d   2cce853
 ●   Commit 196                                                      2d   325da3f
 ●   Commit 195                                                      2d   0722297
-●   Commit 194                                                      2d   b6a4a47
-●   ╭ Push main → origin/main ─────────────────────────────────────────╮ 60af0eb
-●   │ 1 commit · can't be undone from here — origin keeps what you send│ aceb8c5
+●   ╭ Push main → origin/main ─────────────────────────────────────────╮ b6a4a47
+●   │ 1 commit · can't be undone from here — origin keeps what you     │ 60af0eb
+●   │ send                                                             │ aceb8c5
 ●   │                                                                  │ 11d68ff
 ●   │ git push --progress origin refs/heads/main:refs/heads/main       │ 91900bd
 ●   │                                                                  │ cec3e93
@@ -70,5 +70,5 @@
 ●   Commit 181                                                      2d   c8254c5
 ●   Commit 180                                                      2d   e95ccd4
  no commit-graph file · B build one · X never here
- . explain  ⏎ open  c commit  P  p  f  u  S  J  /  q  F2  F3  x  +  j/k  space
+ . explain  ⏎ open  c commit  P  p  f  b  t  u  S  J  /  q  F2  F3  x  +  j/k
 

@@ -3839,3 +3839,118 @@ fn the_confirm_box_keeps_the_graph_beside_it_and_starts_on_the_subject_column() 
         );
     }
 }
+
+/// The same graph with `P`'s push confirm open, and the detail pane open
+/// beside it — the swept state review Q1 asked for: no test before this
+/// ticket drew a box over a graph with a pane beside it, only over a
+/// full-frame graph (`confirm_over_graph`) or over an empty one
+/// (`pane_boundaries.rs`, `graft-ui`, no `AppState` to open a pane in).
+fn confirm_over_graph_with_detail_pane(columns: u16, rows: u16) -> AppState {
+    let mut state = confirm_over_graph(columns, rows);
+    state.detail.shown = true;
+    state
+}
+
+/// Review Q1, drawn at 160 — the width it named, and the narrowest at which
+/// the detail pane sits beside the graph rather than below or behind a tab
+/// (`DetailLayout::RIGHT_BREAKPOINT`).
+///
+/// **At 160 the box straddles the whole pane**: the push confirm's natural
+/// width (64, centred on the full frame) already reaches past the graph's
+/// own share of 160 columns, so `snap_to_columns` picks the frame's own
+/// right edge — where the ADR-0040 amendment's gutter step is correctly
+/// waived because nothing is beside the box there at all. So at 160 this
+/// sweeps the general "nothing touches" property but does not exercise the
+/// boundary `row_columns` special-cases (`pane.right()`) — that needs the
+/// box to stay inside the graph's own share, which
+/// [`the_confirm_box_leaves_a_gutter_before_a_wider_detail_pane`] below
+/// covers, and says so rather than mislabel this as the swept case.
+#[test]
+fn the_confirm_box_over_the_graph_still_covers_whole_columns_with_the_detail_pane_open() {
+    let columns = 160;
+    let rows = 24;
+    let with = draw_cells(
+        &confirm_over_graph_with_detail_pane(columns, rows),
+        columns,
+        rows,
+    );
+    let rect = drawn_box_rect(&with);
+    assert_eq!(
+        rect.right(),
+        columns,
+        "{columns}x{rows}: expected the box to straddle out to the frame's own edge at this \
+         width (natural width 64 already exceeds the graph's own share) — it did not, so this \
+         test no longer covers what its comment claims and needs re-checking against the \
+         narrower case instead"
+    );
+    for (y, row) in with.iter().enumerate() {
+        let y = u16::try_from(y).expect("a screen is shorter than u16::MAX");
+        if y < rect.top() || y >= rect.bottom() {
+            continue;
+        }
+        if rect.x > 0 {
+            let beside = &row[usize::from(rect.x) - 1];
+            assert_eq!(
+                beside,
+                " ",
+                "{columns}x{rows}: row {y} column {} sits against the box's left border and \
+                 holds {beside:?}",
+                rect.x - 1
+            );
+        }
+    }
+}
+
+/// Review Q1's actual case: the box's natural width (64) fits inside the
+/// graph's own share of the screen, so it snaps onto a boundary *inside*
+/// the graph pane rather than straddling out to the frame's edge — the one
+/// case `pane_boundaries.rs`'s sweep (no `AppState`, no detail pane) and
+/// `the_confirm_box_over_the_graph_still_covers_whole_columns_with_the_detail_pane_open`
+/// (160, straddles fully) both miss.
+///
+/// 450 columns puts the graph's own share (`DetailLayout::Right`, 42%,
+/// `detail_pane::layout::gutter`'s blank column subtracted) comfortably past
+/// the push confirm's natural right edge, so the box's right border lands on
+/// a real interior boundary — `graph.right()`, the pane's own edge — and
+/// `row_columns` has to hand `snap_to_columns` the boundary that already sits
+/// behind `detail_pane`'s own blank gutter column rather than the raw pane
+/// edge, or the amendment's gutter step lands one cell short of it: on the
+/// short-SHA column's own last character.
+///
+/// **Mutation that reproduces the fault:** revert `row_columns` to push
+/// `area.x`/`area.right()` only, without dropping `pane.right()` in favour of
+/// the neighbouring pane's own start — this fails at row 8 (the top border),
+/// naming a non-blank cell immediately right of the box.
+#[test]
+fn the_confirm_box_leaves_a_gutter_before_a_wider_detail_pane() {
+    let columns = 450;
+    let rows = 24;
+    let with = draw_cells(
+        &confirm_over_graph_with_detail_pane(columns, rows),
+        columns,
+        rows,
+    );
+    let rect = drawn_box_rect(&with);
+    assert!(
+        rect.right() < columns,
+        "{columns}x{rows}: expected the box to stay inside the graph's own share rather than \
+         straddle to the frame's edge — it reached {}, so this width no longer exercises the \
+         boundary this test pins and needs picking again",
+        rect.right()
+    );
+    for (y, row) in with.iter().enumerate() {
+        let y = u16::try_from(y).expect("a screen is shorter than u16::MAX");
+        if y < rect.top() || y >= rect.bottom() {
+            continue;
+        }
+        let beside = &row[usize::from(rect.right())];
+        assert_eq!(
+            beside,
+            " ",
+            "{columns}x{rows}: row {y} column {} sits against the box's right border, with the \
+             detail pane open beside it, and holds {beside:?} rather than the blank gutter \
+             `detail_pane::layout::gutter` already reserves there",
+            rect.right()
+        );
+    }
+}
