@@ -267,3 +267,166 @@ fn hunk_line_count_mismatch_is_a_parse_error() {
     );
     assert_eq!(err.line, 6);
 }
+
+// --- What the parser must refuse rather than report as an empty success
+// (m5-history-and-ghost-preview/22). Every line below that is skipped has to
+// be one named case; anything else is an error naming its line.
+
+/// Copied from what `git diff-index -p HEAD -- conflicted.txt` prints while
+/// the path is unmerged: the combined format, with no `diff --git` line
+/// anywhere in it. Before this ticket the whole reply fell through the
+/// top-level skip and came back as `Ok(vec![])`.
+const COMBINED_REPLY: &[&str] = &[
+    "diff --cc conflicted.txt",
+    "index 0f0d4b1,7b8d2c5..0000000",
+    "--- a/conflicted.txt",
+    "+++ b/conflicted.txt",
+    "@@@ -1,1 -1,1 +1,5 @@@",
+    "++<<<<<<< HEAD",
+    " +ours",
+    "++=======",
+    "+ theirs",
+    "++>>>>>>> other",
+];
+
+#[test]
+fn a_combined_diff_is_an_error_not_an_empty_success() {
+    let err = parse_unified(&input(COMBINED_REPLY)).unwrap_err();
+    assert_eq!(
+        err.what,
+        "combined diff (`diff --cc`) is not supported here"
+    );
+    assert_eq!(err.line, 1);
+}
+
+#[test]
+fn a_combined_section_after_a_normal_file_is_an_error_too() {
+    let mut lines = vec![
+        "diff --git a/one.txt b/one.txt",
+        "index aaa..bbb 100644",
+        "--- a/one.txt",
+        "+++ b/one.txt",
+        "@@ -1 +1 @@",
+        "-a",
+        "+b",
+    ];
+    lines.extend_from_slice(COMBINED_REPLY);
+    let err = parse_unified(&input(&lines)).unwrap_err();
+    assert_eq!(
+        err.what,
+        "combined diff (`diff --cc`) is not supported here"
+    );
+    assert_eq!(err.line, 8);
+}
+
+#[test]
+fn an_unreadable_line_before_the_first_file_is_an_error() {
+    let err = parse_unified(&input(&[
+        "fatal: something we have no grammar for",
+        "diff --git a/f.txt b/f.txt",
+        "index aaa..bbb 100644",
+        "--- a/f.txt",
+        "+++ b/f.txt",
+        "@@ -1 +1 @@",
+        "-a",
+        "+b",
+    ]))
+    .unwrap_err();
+    assert_eq!(err.what, "unreadable line outside any `diff --git` section");
+    assert_eq!(err.line, 1);
+}
+
+#[test]
+fn the_diff_tree_commit_id_line_is_still_skipped_and_the_diff_still_parses() {
+    for id in [
+        "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+        "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678a1b2c3d4e5f60718293a4b5c",
+    ] {
+        let diffs = parse_unified(&input(&[
+            id,
+            "diff --git a/f.txt b/f.txt",
+            "index aaa..bbb 100644",
+            "--- a/f.txt",
+            "+++ b/f.txt",
+            "@@ -1 +1 @@",
+            "-a",
+            "+b",
+        ]))
+        .unwrap_or_else(|why| panic!("{id}: {why:?}"));
+        assert_eq!(diffs.len(), 1);
+        assert_eq!(diffs[0].entry.path, b"f.txt");
+    }
+    // A commit whose diff is empty (a merge, shown without `-c`) is the one
+    // input that legitimately parses to nothing at all.
+    assert!(
+        parse_unified(&input(&["a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"]))
+            .unwrap()
+            .is_empty()
+    );
+}
+
+mod properties {
+    use graft_git::diff::parse_unified;
+    use proptest::prelude::*;
+
+    use super::input;
+
+    /// The case count for whichever tier this was compiled for: 64 in the
+    /// fast tier, 1000 with `--features heavy-tests` (PROMPT.md §7.1).
+    fn tier() -> ProptestConfig {
+        ProptestConfig::with_cases(graft_fixtures::proptest_cases())
+    }
+
+    /// The test's own statement of the only line the parser may skip, kept
+    /// independent of the parser's: a bare object id, 40 hex digits (sha1)
+    /// or 64 (sha256).
+    fn is_a_bare_object_id(line: &str) -> bool {
+        matches!(line.len(), 40 | 64) && line.bytes().all(|b| b.is_ascii_hexdigit())
+    }
+
+    /// Lines from every family a reply can be built out of: ones the parser
+    /// reads, ones it must refuse, the id it may skip, and noise.
+    fn line() -> impl Strategy<Value = String> {
+        prop_oneof![
+            Just("diff --git a/f.txt b/f.txt"),
+            Just("index aaa..bbb 100644"),
+            Just("--- a/f.txt"),
+            Just("+++ b/f.txt"),
+            Just("@@ -1 +1 @@"),
+            Just("-a"),
+            Just("+b"),
+            Just("diff --cc f.txt"),
+            Just("diff --combined f.txt"),
+            Just("@@@ -1,1 -1,1 +1,5 @@@"),
+            Just("a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"),
+            Just("a1b2c3d4e5f60718293a4b5c6d7e8f9012345678a1b2c3d4e5f60718293a4b5c"),
+            Just("fatal: not a git repository"),
+            Just("warning: LF will be replaced by CRLF"),
+            Just(""),
+            Just("Binary files a/f.bin and b/f.bin differ"),
+        ]
+        .prop_map(str::to_owned)
+    }
+
+    proptest! {
+        #![proptest_config(tier())]
+
+        /// The property the `diff --cc` case is one instance of:
+        /// `parse_unified` never reports success with nothing in it for an
+        /// input it did not understand. An empty `Ok` is only honest when
+        /// every line was one the parser explicitly recognises as benign.
+        #[test]
+        fn an_empty_ok_means_every_line_was_a_bare_object_id(
+            lines in prop::collection::vec(line(), 1..8),
+        ) {
+            let refs: Vec<&str> = lines.iter().map(String::as_str).collect();
+            let bytes = input(&refs);
+            if let Ok(diffs) = parse_unified(&bytes) {
+                prop_assert!(
+                    !diffs.is_empty() || lines.iter().all(|l| is_a_bare_object_id(l)),
+                    "Ok(vec![]) for an input it did not understand: {refs:?}",
+                );
+            }
+        }
+    }
+}

@@ -53,7 +53,7 @@ One line per public item. Update when a public item changes.
 - `Truncated` (struct) — `shown_lines`/`total_lines`, set by a caller that cut a diff short (never by `parse_unified` itself).
 - `FileDiff` (struct) — `entry`, `hunks`, `binary`, `truncated`, `old_mode`/`new_mode`.
 - `ParseError` (struct) — `line` (1-indexed where known), `what`.
-- `parse_unified` (fn) — parses `git diff-tree -p -M -C --no-color --no-ext-diff` output (one or many files); pure, no `git` spawn, a `cargo-fuzz` target.
+- `parse_unified` (fn) — parses `git diff-tree -p -M -C --no-color --no-ext-diff` output (one or many files); pure, no `git` spawn, a `cargo-fuzz` target. Outside a `diff --git` section it skips only a bare object id (`diff-tree`'s commit id) and errors on anything else; a combined diff (`diff --cc`/`@@@`) is a named error, never an empty success (m5-history-and-ghost-preview/22).
 - `parse_file_list` (fn) — joins `diff-tree --raw -z` with `--numstat -z` (same trailing args, `--no-commit-id`) into one `FileList`; pure, a `cargo-fuzz` target.
 - `parse_worktree_file_list` (fn) — the same join for `diff-index` against the working tree: drops the `--raw` records `--numstat` has no record for (`M`, one mode, all-zero new id) — the index's stat cache lying. Pure.
 - `Pair` (struct) — `removed`/`added` index ranges into one hunk's `lines`.
@@ -211,7 +211,6 @@ One line per public item. Update when a public item changes.
 - `WorkingTreeCounts` (struct) — how many files are staged, unstaged and untracked.
 - `WorkingTreeCounts::is_clean` (fn) — no staged, unstaged or untracked changes.
 - `StatusError` (enum) — why counting or reading the working tree's changes failed (`Run`/`Malformed`/`TooLarge` added m3/01).
-- `counts` (fn) — count staged, unstaged and untracked files (bare repos report clean). Unchanged: still gix's own status iterator.
 - `Change` (enum) — one side's per-file state: `Added`, `Modified`, `Deleted`, `Renamed`, `Copied`, `TypeChanged` (m3/01).
 - `StatusEntry` (struct) — one path's status: `path`, `original_path` (renames/copies), `staged`/`unstaged` (`Option<Change>`), `untracked`, `unmerged`, `submodule`; `is_staged`/`is_unstaged` (m3/01).
 - `WorkingTreeStatus` (struct) — `entries: Vec<StatusEntry>`; `staged`/`unstaged`/`untracked` (iterators), `is_clean`, `counts` (→ `WorkingTreeCounts`), `entry(path)` (m3/01).
