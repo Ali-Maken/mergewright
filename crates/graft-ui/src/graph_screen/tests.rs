@@ -1310,15 +1310,22 @@ fn unmerged_sections_heading_word_is_conflicts() {
     assert_eq!(WorkingTreeSection::Unmerged.title(), "CONFLICTS");
 }
 
-/// Not an assertion — dumps the banner at <100/≥100/≥160 columns, so the
-/// header's operation banner can be judged by eye. Run by hand to
-/// regenerate: `cargo test -p graft-ui
-/// graph_screen::tests::capture_for_docs_shots -- --ignored --nocapture`.
+/// Not an assertion — dumps the banner at three widths, so the header's
+/// operation banner can be judged by eye. The widths are three sizes of
+/// terminal, **not** three tiers: `banner_line` takes no width and there is
+/// one wording (m5/20 item 3). Run by hand to regenerate: `cargo test -p
+/// graft-ui graph_screen::tests::capture_for_docs_shots -- --ignored
+/// --nocapture`.
 ///
 /// The long location is deliberate: it is what pushed the banner off the
 /// header before the room was reserved for it first (m5/16, review C1).
 #[test]
 #[ignore = "writes docs/shots/m5-ui-banner.txt; run by hand to regenerate"]
+// The body is one capture header and four `draw` calls, not logic — the same
+// exemption `capture_hint_bar_for_docs_shots` below carries for the same
+// reason. The caption grew when it stopped describing behaviour the code no
+// longer has (m5/24).
+#[allow(clippy::too_many_lines)]
 fn capture_for_docs_shots() {
     let rows = linear(2);
     let mut with_banner = view(&rows, WalkView::Complete { rows: 2 }, 0);
@@ -1329,17 +1336,28 @@ fn capture_for_docs_shots() {
         "# docs/shots/m5-ui-banner.txt — operation banner (rebase/merge/conflict)\n\
          #\n\
          # What right looks like: the header's informational tail is\n\
-         # replaced, while an operation is in progress, by\n\
-         # `⚠ REBASING step 3 of 7 — conflict in <path> (+N)` — spelled out\n\
-         # at >=100 cols, abbreviated (`3/7`, path only) under 100. It costs\n\
-         # no row: the line under the header is the first graph row at every\n\
-         # width. There is no `[ Continue ] [ Skip ] [ Abort ]` row any more\n\
-         # — nothing answered a click on it and it cost a graph row to teach\n\
-         # three keys the hint bar already teaches (m5/16).\n\
+         # replaced, while an operation is in progress, by the state and\n\
+         # nothing else — `REBASING step 3 of 7`.\n\
          #\n\
-         # The third block is the point: a long repository path no longer\n\
-         # cuts the banner. The banner's room comes out of the header first\n\
-         # and the *path* is what an `…` lands on.\n\
+         # Three things it does not say (m5/20, all three the user's):\n\
+         # no `⚠` — a stopped merge is a state to finish, not a failure;\n\
+         # no conflicted filename and no `(+N)` — the changes pane already\n\
+         # lists every conflicted file under `CONFLICTS (n)`, and a 24-row\n\
+         # screen that says the same fact twice has spent a row on nothing;\n\
+         # and no width tiers — `banner_line` takes no width, so the same\n\
+         # repository in the same state reads the same in all three blocks\n\
+         # below. They are three sizes of terminal, not three wordings.\n\
+         #\n\
+         # It costs no row: the line under the header is the first graph row\n\
+         # at every width. There is no `[ Continue ] [ Skip ] [ Abort ]` row\n\
+         # any more — nothing answered a click on it and it cost a graph row\n\
+         # to teach three keys the hint bar already teaches (m5/16).\n\
+         #\n\
+         # The last block is the point: a long repository path does not cut\n\
+         # the banner. The banner's room comes out of the header first, so\n\
+         # the *path* is what an `…` would land on — and at 120 columns,\n\
+         # against a banner this short, it no longer has to: the whole path\n\
+         # and the whole banner are both there.\n\
          \n",
     );
     let mut long_path = with_banner.clone();
@@ -1347,9 +1365,9 @@ fn capture_for_docs_shots() {
         "/Users/someone/work/customers/acme/services/billing-api",
     ));
     for (label, w, view) in [
-        ("<100 cols, 80x10", 80u16, &with_banner),
-        (">=100 cols, 120x10", 120, &with_banner),
-        (">=160 cols, 160x10", 160, &with_banner),
+        ("80x10", 80u16, &with_banner),
+        ("120x10", 120, &with_banner),
+        ("160x10", 160, &with_banner),
         (
             "a long path does not cut the banner, 120x10",
             120,

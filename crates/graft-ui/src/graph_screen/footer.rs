@@ -129,6 +129,12 @@ pub(super) fn commit_graph_segments(line: CommitGraphLine, width: usize) -> Vec<
     let mut wordings = commit_graph_wordings(line);
     // Nothing fits: draw the narrowest anyway and let `commit_graph_line`
     // cut it. Cutting the shortest wording loses the least.
+    // `unwrap_or_default()` here is index 0, not a swallowed failure: the
+    // `None` arm is "`wordings` is empty", and `commit_graph_wordings`
+    // returns a non-empty `vec![..]` for every arm of its match. Index 0 is
+    // then the only index the `swap_remove` below could take in any case, so
+    // the default is the answer rather than a stand-in for one (CLAUDE.md
+    // rule 3; M5 review Minor 4 — the line reads like a swallow and is not).
     let narrowest = wordings
         .iter()
         .enumerate()
