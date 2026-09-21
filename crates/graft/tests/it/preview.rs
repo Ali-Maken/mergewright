@@ -656,6 +656,89 @@ fn the_context_menu_is_opaque_on_every_row_it_draws() {
     app.close();
 }
 
+/// The band the menu clears runs to the edge of the **graph** pane and
+/// stops there: with the detail pane open, every column of the detail pane
+/// is exactly what it was before the menu opened.
+///
+/// `primary_pane_area` (`view::frame`) is what decides which half of the
+/// split the band runs to, and nothing exercised it: the opacity test above
+/// runs with the detail pane closed at both sizes, and so does the golden
+/// snapshot. Swapping `split_area(…).0` for `.1` — clearing *across* the
+/// detail pane — passed the whole suite (M5 groups 12/13 review, M3).
+#[test]
+fn the_menus_band_stops_at_the_detail_pane_instead_of_clearing_it() {
+    let scratch = forked();
+    let (app, state) = App::open(scratch.path());
+    let state = on_mains_row(&app, state);
+    let state = app.key(&state, KeyCode::Enter);
+    let state = app.pump(state, "the detail pane's file list", |state| {
+        matches!(state.detail.files, graft::update::detail::Loading::Ready(_))
+    });
+
+    // 160x48 lays the detail pane out to the right (`DetailLayout::Right`),
+    // which is the split this is about.
+    let width = 160_usize;
+    let closed = frame(&state, 160, 48);
+    let split = char_index_of(&closed[0], "COMMIT ")
+        .unwrap_or_else(|| panic!("the detail pane draws its header:\n{}", closed.join("\n")));
+    assert!(
+        closed
+            .iter()
+            .filter_map(|line| char_index_of(line, "parents "))
+            .chain(
+                closed
+                    .iter()
+                    .filter_map(|line| char_index_of(line, "A main-two.txt"))
+            )
+            .all(|at| at == split),
+        "the detail pane's own rows all start at its left edge, column {split}:\n{}",
+        closed.join("\n")
+    );
+
+    let menu = app.key(&state, KeyCode::Char('.'));
+    assert!(menu.context_menu.is_some(), "`.` opens the menu");
+    let open = frame(&menu, 160, 48);
+
+    for label in menu_labels(&menu) {
+        let wanted = format!(" {label}");
+        let row = open
+            .iter()
+            .position(|line| line.starts_with(&wanted))
+            .unwrap_or_else(|| panic!("{wanted:?} is drawn:\n{}", open.join("\n")));
+        let drawn = cells(&open[row], width);
+        let before = cells(&closed[row], width);
+        let left: String = drawn[..split].iter().collect();
+        assert_eq!(
+            left.trim_end(),
+            wanted,
+            "the menu row {label:?} carries what was under it out to the split:\n{}",
+            open.join("\n")
+        );
+        assert_eq!(
+            &drawn[split..],
+            &before[split..],
+            "the menu's band cleared into the detail pane on row {row} ({label:?}):\n{}",
+            open.join("\n")
+        );
+    }
+    app.close();
+}
+
+/// The column `needle` starts at, counting cells rather than bytes: these
+/// frames are full of box drawing and `…`.
+fn char_index_of(line: &str, needle: &str) -> Option<usize> {
+    line.find(needle).map(|byte| line[..byte].chars().count())
+}
+
+/// One frame line as `width` cells. [`frame`] trims trailing blanks, so the
+/// line has to be padded back out before two of them can be compared
+/// column by column.
+fn cells(line: &str, width: usize) -> Vec<char> {
+    let mut cells: Vec<char> = line.chars().collect();
+    cells.resize(width, ' ');
+    cells
+}
+
 /// A trailing `(m)` on a menu label promises that `m` is live **right now**.
 /// So pressing it with the menu open closes the menu and runs the verb, in
 /// one keystroke, landing on exactly the picture `m` draws when no menu was
@@ -717,8 +800,13 @@ fn a_verb_key_the_menu_advertises_closes_it_and_runs_the_verb() {
 
 /// `m` is not alone: every letter the menu advertises has to be live, not
 /// just the one the defect was found with. Each of these closes the menu and
-/// then does its own job, so the screen it leaves is **not** the screen that
-/// merely closing the menu leaves.
+/// then does **its own** job — named here per key, not as "the screen
+/// changed".
+///
+/// It used to assert only that the frame differed from the one `Esc` leaves.
+/// That is "something happened", and for `u` on this fixture the something
+/// was a line on the status bar: a future generic "key not bound" status
+/// would have kept it green (M5 groups 12/13 review, m3).
 ///
 /// `f`/`p`/`P` are left out on purpose: pressing them really starts a
 /// network job, which is not a fast-tier test. `y` is left out because this
@@ -737,6 +825,7 @@ fn every_verb_the_menu_advertises_is_live_while_it_is_open() {
         KeyCode::Char('u'),
     ] {
         let scratch = forked();
+        let tip = main_tip(scratch.path());
         let (app, state) = App::open(scratch.path());
         let menu = menu_on_mains_row(&app, state);
 
@@ -751,8 +840,62 @@ fn every_verb_the_menu_advertises_is_live_while_it_is_open() {
             frame(&merely_closed, 80, 24),
             "{code:?} was swallowed: the menu closed and nothing else happened"
         );
+        // The effect this key, and no other, is supposed to have.
+        the_effect_of(code, &pressed, &tip);
         app.close();
     }
+}
+
+/// What each letter the menu advertises is supposed to *do*, named per key.
+/// The cursor is on `main`'s row, whose commit is `tip`.
+fn the_effect_of(code: KeyCode, pressed: &AppState, tip: &str) {
+    match code {
+        KeyCode::Char('x') => {
+            let base = pressed
+                .compare_base
+                .as_ref()
+                .unwrap_or_else(|| panic!("`x` pinned no compare base: {:?}", pressed.status));
+            assert_eq!(base.oid.to_string(), tip, "`x` marked the cursor's commit");
+        }
+        KeyCode::Char('m') => assert!(
+            matches!(
+                planned(pressed, "m"),
+                graft_ops::operation::Operation::Merge(_)
+            ),
+            "`m` planned a merge, not {:?}",
+            planned(pressed, "m")
+        ),
+        KeyCode::Char('r') => assert!(
+            matches!(
+                planned(pressed, "r"),
+                graft_ops::operation::Operation::Rebase(_)
+            ),
+            "`r` planned a rebase, not {:?}",
+            planned(pressed, "r")
+        ),
+        KeyCode::Char('u') => {
+            assert!(
+                pressed.operating.is_some(),
+                "`u` started an undo: {:?}",
+                pressed.status
+            );
+            let said = format!("{:?}", pressed.status).to_lowercase();
+            assert!(
+                said.contains("undo"),
+                "`u` says on the status line what it is doing: {said}"
+            );
+        }
+        other => panic!("no effect named for {other:?}"),
+    }
+}
+
+/// The operation the preview `key` opened would run.
+fn planned<'a>(state: &'a AppState, key: &str) -> &'a graft_ops::operation::Operation {
+    state
+        .preview
+        .as_ref()
+        .and_then(|preview| preview.subject.operation())
+        .unwrap_or_else(|| panic!("`{key}` opened no preview: {:?}", state.status))
 }
 
 /// `Esc` is one of the four keys the menu does claim: it closes the menu and
@@ -915,15 +1058,17 @@ fn choosing_a_menu_verb_previews_that_operation_and_writes_nothing() {
 ///
 /// To regenerate after a deliberate change: `GRAFT_UPDATE_SHOTS=1 cargo test
 /// -p graft --test it preview::capture_context_menu_for_docs_shots`, then
-/// look at the diff before committing it.
+/// look at the diff before committing it. That run is **red** — see
+/// [`check_capture`].
 #[test]
 fn capture_context_menu_for_docs_shots() {
     let scratch = forked();
     let (app, state) = App::open(scratch.path());
     let state = menu_on_mains_row(&app, state);
     let home = scratch.path().display().to_string();
-    let updating = std::env::var_os("GRAFT_UPDATE_SHOTS").is_some();
+    let updating = updating_shots(std::env::var_os("GRAFT_UPDATE_SHOTS").as_deref());
 
+    let mut drifted = Vec::new();
     for (label, columns, rows) in [("80x24", 80u16, 24u16), ("160x48", 160, 48)] {
         let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(FORK_NOW)));
         let mut out = context_menu_caption(label, columns, rows);
@@ -935,24 +1080,107 @@ fn capture_context_menu_for_docs_shots() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../docs/shots")
             .join(format!("m5-ui-context-menu-verbs-{label}.txt"));
-        if updating {
-            std::fs::write(&path, &out).expect("docs/shots is writable");
-            println!("wrote {} ({} bytes)", path.display(), out.len());
-            continue;
+        if let Err(why) = check_capture(&path, &out, updating) {
+            drifted.push(why);
         }
-        let committed = std::fs::read_to_string(&path).unwrap_or_else(|why| {
-            panic!(
-                "{} is missing ({why}); regenerate with GRAFT_UPDATE_SHOTS=1",
-                path.display()
-            )
-        });
-        assert_eq!(
-            out, committed,
-            "the {label} capture has drifted from what is committed. Read the \
-             new frame, and if it is right regenerate with GRAFT_UPDATE_SHOTS=1:\n{out}"
-        );
     }
     app.close();
+    assert!(drifted.is_empty(), "{}", drifted.join("\n\n"));
+}
+
+/// May this run rewrite a committed capture? Only the literal `1`.
+///
+/// `GRAFT_UPDATE_SHOTS=0` or `=false` left exported in a shell used to mean
+/// "yes" (`var_os(..).is_some()`), which is the shape of an accident, not of
+/// an instruction (M5 groups 12/13 review, m1).
+fn updating_shots(value: Option<&std::ffi::OsStr>) -> bool {
+    value == Some(std::ffi::OsStr::new("1"))
+}
+
+/// One capture against what is committed at `path`, rewritten first when
+/// `updating`.
+///
+/// Drift is an `Err` **whether or not** the file was rewritten. A
+/// regeneration is therefore always a red run, and stays red until the new
+/// capture is committed and the suite runs again without the variable — so
+/// a `GRAFT_UPDATE_SHOTS` someone left exported can no longer turn a real
+/// regression green, and a regenerated file is always something `git status`
+/// has to show (M5 groups 12/13 review, m1).
+fn check_capture(path: &Path, out: &str, updating: bool) -> Result<(), String> {
+    let committed = std::fs::read_to_string(path);
+    if updating {
+        std::fs::write(path, out)
+            .map_err(|why| format!("{} is not writable: {why}", path.display()))?;
+    }
+    let committed = committed.map_err(|why| {
+        format!(
+            "{} is missing ({why}); regenerate with GRAFT_UPDATE_SHOTS=1",
+            path.display()
+        )
+    })?;
+    if committed == out {
+        return Ok(());
+    }
+    let rewritten = if updating {
+        "It has been rewritten — read the diff, and commit it if it is right."
+    } else {
+        "Read the new frame, and if it is right regenerate with GRAFT_UPDATE_SHOTS=1."
+    };
+    Err(format!(
+        "{} has drifted from what is committed. {rewritten}\n{out}",
+        path.display()
+    ))
+}
+
+/// A normal run fails on drift and rewrites nothing; only the literal
+/// `GRAFT_UPDATE_SHOTS=1` rewrites, and that run is red too.
+///
+/// Over a temporary file rather than the real one, and over the policy
+/// function rather than the environment: `cargo test` runs a binary's tests
+/// in one process, so a test that set the variable would change what its
+/// neighbours saw.
+#[test]
+fn only_an_explicit_regeneration_rewrites_a_capture() {
+    assert!(updating_shots(Some(std::ffi::OsStr::new("1"))));
+    for accident in ["", "0", "false", "no", "2"] {
+        assert!(
+            !updating_shots(Some(std::ffi::OsStr::new(accident))),
+            "GRAFT_UPDATE_SHOTS={accident:?} is not an instruction to rewrite"
+        );
+    }
+    assert!(!updating_shots(None));
+
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
+    let path = scratch.path().join("capture.txt");
+    std::fs::write(&path, "committed\n").expect("the scratch dir is writable");
+
+    assert!(
+        check_capture(&path, "committed\n", false).is_ok(),
+        "a capture that has not drifted passes"
+    );
+
+    let drifted = check_capture(&path, "new\n", false);
+    assert!(drifted.is_err(), "a normal run fails on drift: {drifted:?}");
+    assert_eq!(
+        std::fs::read_to_string(&path).expect("the file is still there"),
+        "committed\n",
+        "a normal run rewrote a committed capture"
+    );
+
+    let regenerated = check_capture(&path, "new\n", true);
+    assert!(
+        regenerated.is_err(),
+        "a regeneration is red until the new capture is committed: {regenerated:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(&path).expect("the file is still there"),
+        "new\n",
+        "the regeneration wrote the new capture out for `git status` to show"
+    );
+    assert!(
+        check_capture(&path, "new\n", false).is_ok(),
+        "once committed, the normal run is green again"
+    );
 }
 
 /// The "what right looks like" block the M5 contact sheet puts this capture
