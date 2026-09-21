@@ -290,3 +290,98 @@ was disabled to hide a fault.
 
 **Rule 6: the regenerated capture is not ticked "looks right" here.** The user
 judges `docs/shots/m5-ui-banner.txt`.
+
+
+---
+
+# Continuation: piece 1 only (the ladder), 2026-09-21
+
+Pieces 2 and 3 are merged. **Only the ladder remains.** The rule it serves was
+corrected above and in ADR-0039's third amendment: **per hint, from the most
+relevant end** — never a step the whole list takes together.
+
+## `stash` — ruled by the user: no short form
+
+It keeps its full label. His reasoning, which is the general rule and not a
+one-off:
+
+- **Every other hint is a whole word** — open, commit, push, pull, fetch, undo,
+  search, compare, lanes, move, fold, more. A consonant-squeeze for one verb
+  makes the bar inconsistent **in kind**, not merely in width. A reader who
+  meets `stsh` learns that labels here can be mangled, and then reads every
+  other label twice.
+- **The ladder already has the mechanism for "no room": the bare-key rung.** If
+  a row cannot afford `S stash`, that is the ladder saying to drop `S` into the
+  tail with the others. An abbreviation scheme solves the same problem a second
+  time and solves it worse.
+- `hide` being taken is an argument against `hide`, not for `stsh`.
+
+So: **no short rung for `stash`.** Its middle rung is its full form; when the
+room runs out it goes to the bare key like anything else.
+
+The four Planned labels the table does not name — `merge`, `rebase`, `branch`,
+`resolved` — cost nothing yet. Leave them full; do not invent short forms.
+
+**My ticket's "four characters or under" was wrong** (it listed `fetch` and
+`focus`, which are five). The real rule is the one above: a label has a short
+rung only where the user's table gives it one. Everything else is full → bare
+key.
+
+## The bare-key rung stays in, and the capture is the deliverable
+
+Build it with the key-alone rung. The user judges whether it earns its place.
+
+**What he is judging, in his words:** *whether a bare key reads as available or
+as leftover — a tail of naked letters after three labelled hints can look like
+the row ran out of budget rather than like an offer.*
+
+So the capture must let him answer that in one pass:
+
+- **80, 120 and 160 columns.**
+- **A variant with a separator or an ordering that makes the tail read as
+  deliberate**, beside the plain one, in the same file. Something that says
+  "these are also available" rather than "we ran out of room" — a divider
+  before the tail, or grouping the bare keys apart. **Propose it; do not agonise
+  over it.** One variant is enough, and if you think two are genuinely
+  different, show two.
+- Each block under its own "what right looks like" line, as the other captures
+  in `docs/shots/` do.
+
+**Rule 6: you do not tick this.** He does.
+
+## Still true from the original ticket
+
+- The wording table is the user's. **Do not invent, re-word or improve a cell.**
+  A label `hints.rs` has that the table does not name keeps its full form and is
+  **reported**, not replaced.
+- `no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows` must still hold,
+  and so must `eighty_columns_leads_with_three_and_fills_the_row` — the leading
+  verbs stay full at 80 columns under the corrected rule.
+- Crate set `graft-ui` and `graft-git`. **`graft` is held by ticket 25**, which
+  is editing `view/`, `update/` and `jobs/`. The three `graft` tests at
+  `tests/it/hint_bar.rs:151,168,186` pin the old bar text — if the corrected
+  rule changes what they see, **report it as a seam, do not edit them.**
+
+## Acceptance (every tick names its verifying test inline, at tick time)
+
+- [ ] Every hint the user's table names has its short rung, spelled exactly as
+      given; `stash` and the four Planned labels keep their full form — test:
+- [ ] The bar fills from the most relevant end: a hint takes the best rung that
+      leaves room for those ahead of it, and only a hint that will not fit at
+      its bare key is dropped — the property, swept over widths — test:
+- [ ] The three most relevant never fall below their short rung, and the bar is
+      never all hidden (ADR-0037 §4) — test:
+- [ ] `no_hint_bar_context_drops_a_hint_as_the_room_for_it_grows` still holds —
+      test:
+- [ ] At 80 columns the leading verbs are still full — test:
+- [ ] The capture shows 80/120/160 plus the deliberate-tail variant — evidence:
+
+**Mutation:** make the ladder step the whole list down together (the rule that
+was wrong). The sweep property must go red, and the capture must show bare keys
+at 160. If it stays green the property is not expressing the corrected rule.
+
+## Gates
+
+Workspace-wide, never `-p`. `CARGO_TARGET_DIR=/tmp/graft-target-g24b`, deleted
+before hand-back. Baseline **2226/2226** — check it yourself. Captures under
+200 KB. Never `git checkout` across your worktree. Commit, never push.
