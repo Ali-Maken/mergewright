@@ -69,6 +69,22 @@ pane actually answers, plus the doorway.
    them from the type where you can; if you cannot, say so plainly in the test
    and in your report rather than letting it look like coverage.
 
+   **Start from `every_hinted_key_is_bound`, which already exists** and is the
+   reason ticket 10's builder caught `⏎` being dead during a drag before
+   shipping it (its ticket NOTES, deviation 3 — the hint now reads
+   `release drop on a row`). **It is context-blind: it asks whether the key is
+   bound anywhere, not whether it does anything in the state the bar is drawn
+   in.** That is exactly the hole Q2 fell through — `Enter` *is* bound, it just
+   does nothing with Diff focus. Extending that test is almost certainly
+   cheaper and safer than writing a second one beside it; if you disagree after
+   reading it, say why rather than leaving two sweeps that overlap.
+
+   **`release` is not a key.** `HintContext::Dragging` draws
+   `release drop on a row` — a word telling the hand what to do, not a
+   binding. The sweep must not demand a handler for it. Find the general rule
+   rather than special-casing the string: ticket 10 put both entries in
+   `bound_actions()`, so look there first and say what you did.
+
 3. Mutations: re-break `detail/keys.rs:74-77` into advertising `⏎ open`, and
    re-mark `m`/`r` as `planned`. Both must turn the sweep red. If the second
    does not, the invariant only covers one direction — say so.
