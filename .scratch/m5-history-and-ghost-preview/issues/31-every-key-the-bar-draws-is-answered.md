@@ -115,6 +115,47 @@ Note `hints.rs:413-414`'s doc is **ticket 30's** (review Major M2) — if 30
 landed first it is already fixed; do not fix it twice, and do not leave it if
 30 somehow missed it. Say which you found.
 
+## Also yours: the banner mirror's guard claims more than it does
+
+Ticket 30 answered review Major M3 with a `debug_assert!` in
+`crates/graft/src/view/frame.rs`'s `Screen::Graph` fall-through, asserting
+`update::banner::graph_screen_on_frame(state)`. **Its builder flagged this as
+weaker than the ticket's two options, which was the honest thing to do. It is
+also weaker than its own comment says**, and the conductor checked it:
+
+The comment claims "a fifth overlay added to the guards above and forgotten in
+that function would flip this `debug_assert!` in every dev build and test."
+It would not. `crates/graft/src/update/banner.rs:101-107` names exactly
+`commit_editor`, `map`, `journal`, `stash`:
+
+- fifth overlay **shown** → the match takes the new arm, the fall-through is
+  never reached, **the assert is never evaluated** — while
+  `graph_screen_on_frame` returns `true` because it has never heard of it, and
+  the banner draws on a frame that is not the graph. **That is the exact bug
+  the guard is advertised as catching, and it sails through.**
+- fifth overlay **not shown** → fall-through reached, function returns `true`,
+  assert passes.
+
+What it *does* catch is the converse: `graph_screen_on_frame` gaining a
+condition the match lacks. That is worth keeping — **do not delete it.** Fix
+the comment so it describes the direction it actually covers, and close the
+other direction.
+
+**This is the same fault as Q2 and as everything else in this milestone: two
+things that must agree, with the thing that checks them only able to see one
+side.** It belongs in this ticket because this ticket is where that class gets
+an invariant rather than a fourth point fix.
+
+**Conductor's decision, so it is not re-derived:** close it by making the
+overlay set a **single enumeration both sides read**, so a fifth overlay
+cannot be added to one and forgotten in the other — that is ticket 10's
+`badge_spans` answer applied to the same shape, and it is the answer this
+milestone has already proven works. If you conclude one enumeration genuinely
+cannot serve both, **stop and report** rather than leaving a second guard
+beside the first. Note while you are there: `frame.rs`'s match guards do
+**not** test `commit_editor`, while `graph_screen_on_frame` does — say whether
+that asymmetry is reachable, and if it is, that is a defect, not a tidy-up.
+
 ## What NOT to do
 
 - Do not bind a new key anywhere.
