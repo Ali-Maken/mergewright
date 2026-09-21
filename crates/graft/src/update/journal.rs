@@ -8,6 +8,7 @@
 
 use graft_core::event::{KeyCode, KeyPress};
 use graft_core::job::JobId;
+use graft_core::journal::OperationKind;
 
 use graft_ui::detail::DetailFocus;
 
@@ -283,11 +284,32 @@ fn enter(next: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl Fn
         return;
     };
     let id = entry.id.clone();
+    let kind = entry.kind;
     let redo = if graft_ops::journal::next_undo(&read.entries).is_some_and(|at| at.id == id) {
         false
     } else if graft_ops::journal::next_redo(&read.entries).is_some_and(|at| at.id == id) {
         true
     } else {
+        // The time machine aims at an **operation**. An `Undo` or `Redo`
+        // row is a move along the journal, not a state the repository was
+        // in, and `plan_revert_to` reaches its answer by inverting the
+        // operations in force since the target — it has no way to put back
+        // what an undo took away. Aimed at `undo(B)` in `[A, B, undo(B),
+        // C]` it plans `inverse(C)` alone and leaves `B` undone, while the
+        // box's title reads `revert to before "undo: B"`. Refusing in
+        // words is the honest answer: the row you pick is the state you get
+        // (review 08 Major 2), or no row is picked at all.
+        let step = match kind {
+            OperationKind::Undo => Some("an undo"),
+            OperationKind::Redo => Some("a redo"),
+            _ => None,
+        };
+        if let Some(step) = step {
+            next.status = super::state::Status::sticky(format!(
+                "the time machine reverts to before an operation · this row is {step}"
+            ));
+            return;
+        }
         if super::preview::open_preview(
             next,
             commands,
@@ -311,7 +333,7 @@ fn enter(next: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl Fn
 mod tests {
     use std::sync::Arc;
 
-    use graft_core::journal::{EntryId, HeadRef, JournalEntry, OperationKind, Touches};
+    use graft_core::journal::{EntryId, HeadRef, JournalEntry, Touches};
 
     use super::*;
 
@@ -515,6 +537,80 @@ mod tests {
         assert!(
             state.operating.is_none(),
             "the time machine runs from Confirm, never from this key"
+        );
+    }
+
+    /// Review 08 Major 2. `[A, B, undo(B), C]`, cursor on `undo(B)`: that
+    /// row is neither `u`'s nor `U`'s, so it used to open a time machine
+    /// titled `revert to before "undo: B"` whose plan was `inverse(C)`
+    /// alone — a picture of a state with `B` in force, and an act that
+    /// leaves `B` undone. The row you pick has to be the state you get, so
+    /// the key refuses in words instead.
+    #[test]
+    fn enter_on_an_undo_row_refuses_rather_than_reverting_somewhere_else() {
+        let undone = entry(2, OperationKind::Commit, "commit \"x\"").id;
+        let mut undo_of_b = entry(3, OperationKind::Undo, "undo: commit \"x\"");
+        undo_of_b.reverses = Some(undone);
+        let mut state = AppState::default();
+        state.journal.entries = Loading::Ready(Arc::new(JournalRead {
+            entries: vec![
+                entry(1, OperationKind::Stage, "stage src/a.rs"),
+                entry(2, OperationKind::Commit, "commit \"x\""),
+                undo_of_b,
+                entry(4, OperationKind::Stage, "stage src/b.rs"),
+            ],
+            unreadable: Vec::new(),
+            live: Vec::new(),
+        }));
+        state.journal.shown = true;
+        // Newest first: [C, undo(B), B, A].
+        state.journal.selected = 1;
+
+        let (claimed, commands) = press(&mut state, KeyCode::Enter);
+
+        assert!(claimed);
+        assert!(
+            state.preview.is_none(),
+            "no picture is drawn of a state this key cannot reach"
+        );
+        assert!(commands.is_empty(), "nothing is planned: {commands:?}");
+        assert!(state.journal.shown, "the browser stays where it is");
+        assert_eq!(
+            state.status,
+            crate::update::state::Status::sticky(
+                "the time machine reverts to before an operation · this row is an undo"
+            ),
+            "and it says why"
+        );
+    }
+
+    /// The same row when it *is* `U`'s: `Enter` redoes, as it always did.
+    /// The refusal above must not swallow the one undo row that has a
+    /// meaning.
+    #[test]
+    fn enter_on_the_next_redo_row_is_still_capital_u() {
+        let undone = entry(2, OperationKind::Commit, "commit \"x\"").id;
+        let mut undo_of_b = entry(3, OperationKind::Undo, "undo: commit \"x\"");
+        undo_of_b.reverses = Some(undone);
+        let mut state = AppState::default();
+        state.journal.entries = Loading::Ready(Arc::new(JournalRead {
+            entries: vec![
+                entry(1, OperationKind::Stage, "stage src/a.rs"),
+                entry(2, OperationKind::Commit, "commit \"x\""),
+                undo_of_b,
+            ],
+            unreadable: Vec::new(),
+            live: Vec::new(),
+        }));
+        state.journal.shown = true;
+        state.journal.selected = 0;
+
+        let (claimed, commands) = press(&mut state, KeyCode::Enter);
+
+        assert!(claimed);
+        assert!(
+            matches!(commands.as_slice(), [Command::Redo(_, _)]),
+            "a redo, not a refusal: {commands:?}"
         );
     }
 

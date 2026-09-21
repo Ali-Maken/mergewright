@@ -122,6 +122,17 @@ impl App {
         self.press(state, KeyPress::plain(code))
     }
 
+    /// The terminal changed size, through the real event the event loop
+    /// sends. A test that needs a viewport the fixture is taller than says
+    /// so here rather than building a hundred real commits.
+    pub fn resize(&self, state: &AppState, columns: u16, rows: u16) -> AppState {
+        let (next, commands) = update(state, AppEvent::Core(Event::Resize { columns, rows }));
+        for command in commands {
+            self.jobs.dispatch(command);
+        }
+        next
+    }
+
     /// Feeds job answers through `update` until `done` holds.
     pub fn pump(
         &self,

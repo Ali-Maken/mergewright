@@ -37,24 +37,16 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
     let thread = thread(history);
     let live = visible_rows(state, history, thread.as_ref(), now_seconds);
     let compaction = compaction(state, history, thread.as_ref(), &live);
-    // A preview is modal: while one is open the graph draws its slice
-    // instead of the live window, so the picture the box describes and the
-    // rows on screen are the same picture (design note hard choice 1).
-    let previewing = state
-        .preview
-        .as_ref()
-        .filter(|preview| !preview.rows.is_empty());
     let banner_op = crate::update::banner::banner_view(state);
-    let (rows, reveal, hint_context) = if let Some(preview) = previewing {
-        (
-            super::preview::preview_entries(state, preview, now_seconds),
-            Some(preview.cursor),
-            HintContext::Preview,
-        )
+    let (rows, reveal) = rows_for_frame(state, history, live, now_seconds);
+    // The footer follows the *box*, not the slice. While the plan is still
+    // in flight the rows are empty and the graph keeps what it had, but the
+    // box already has the keyboard — a footer offering `m merge  r rebase`
+    // there names two keys the modal box swallows (review 08 Minor 10).
+    let hint_context = if state.preview.is_some() {
+        HintContext::Preview
     } else {
-        let reveal = reveal_index(state, history, &live);
-        let hint_context = footer_context(state, &live, banner_op.as_ref());
-        (live, reveal, hint_context)
+        footer_context(state, &rows, banner_op.as_ref())
     };
 
     GraphView {
@@ -92,6 +84,34 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
             crate::update::detail::Loading::Ready(_)
         ) && state.radar_column_seen.get(),
     }
+}
+
+/// The rows this frame draws, and which of them reveals its refs on hover.
+///
+/// A preview is modal: while one is open the graph draws its slice instead
+/// of the live window, so the picture the box describes and the rows on
+/// screen are the same picture (design note hard choice 1). There is no
+/// hovered row over a picture, and the choice cursor lives in the box, so
+/// nothing is revealed — the selected commit is painted by
+/// `preview_entries` itself.
+fn rows_for_frame<'a>(
+    state: &'a AppState,
+    history: &'a History,
+    live: Vec<GraphEntry<'a>>,
+    now_seconds: i64,
+) -> (Vec<GraphEntry<'a>>, Option<usize>) {
+    if let Some(preview) = state
+        .preview
+        .as_ref()
+        .filter(|preview| !preview.rows.is_empty())
+    {
+        return (
+            super::preview::preview_entries(state, preview, now_seconds),
+            None,
+        );
+    }
+    let reveal = reveal_index(state, history, &live);
+    (live, reveal)
 }
 
 /// The view before any history has arrived: the header says so, and there is

@@ -1,0 +1,80 @@
+# m5-ui-preview-scrolled-160x48.txt: 160x48, drawn by `view::view`
+# from a real AppState. A real repository: `old-release` cut at the base,
+# three commits on `main`, `topic` forked off its tip with two of its own,
+# and `redesign` — twenty-five commits newer than all of them — pushing
+# `old-release` thirty rows down the graph. Opened over the real job pool,
+# the cursor walked down to `old-release`'s row with `j` (so the viewport
+# really is scrolled: `history.top` is 14, not 0), then `r` pressed
+# through `update` and the real `graft_ops::preview::plan` run
+# (crates/graft/tests/it/preview.rs, capture_scrolled_preview_for_docs_shots,
+# #[ignore]d). Not a pty capture: ratatui's TestBackend, a character grid
+# with no colour attributes in it — CLAUDE.md rule 5, colour ships
+# unverified. The scratch repository's temporary path is replaced by
+# `/code/api`; nothing else is touched.
+#
+# What right looks like:
+#  - The rows on screen are the rows the user was looking at. `cut release
+#    1.0` — the row the cursor was on when `r` was pressed — is visible,
+#    and the newest commits (`redesign step 24` and its neighbours, a
+#    screen or more above) are **not**. Before ticket 17 this capture
+#    showed exactly those rows instead, and the user's own were off-screen.
+#  - The five ghost rows sit right above `cut release 1.0`: hollow node
+#    glyphs, dashed edges, `—` in place of a short sha and an age.
+#    They are `main`'s three commits and `topic`'s two, replayed.
+#  - `topic`'s badge has left its own row and sits on the newest ghost.
+#  - The highlighted row is `cut release 1.0`: the commit the key was
+#    pressed on, not whichever row happens to sit where the box's choice
+#    cursor points. (Highlight is a colour, so the grid cannot show it —
+#    unverified by construction, rule 5.)
+#  - The box is docked above the footer, every interior row bordered, and
+#    `[ Cancel ]` comes first with the cursor on it (ADR-0038 §1).
+#
+
+ graft /code/api  35 commits
+  ●     redesign step 10                                                                                                                         GF 6y   2e71932
+  ●     redesign step 09                                                                                                                         GF 6y   15e3640
+  ●     redesign step 08                                                                                                                         GF 6y   d9ead6d
+  ●     redesign step 07                                                                                                                         GF 6y   abc4f61
+  ●     redesign step 06                                                                                                                         GF 6y   8124484
+  ●     redesign step 05                                                                                                                         GF 6y   c2d6da1
+  ●     redesign step 04                                                                                                                         GF 6y   be1a1ac
+  ●     redesign step 03                                                                                                                         GF 6y   eb40531
+  ●     redesign step 02                                                                                                                         GF 6y   a2606d6
+  ●     redesign step 01                                                                                                                         GF 6y   3533523
+  ●     redesign step 00                                                                                                                         GF 6y   c6c79eb
+  │ ●   finish the topic                                                                                                                         GF 6y   e7e39a7
+  │ ●   start the topic                                                                                                                          GF 6y   169d215
+●─┴─╯   [main] main moves on (2)                                                                                                                 GF 6y   107af44
+●       main moves on (1)                                                                                                                        GF 6y   2b2b2f1
+●       main moves on (0)                                                                                                                        GF 6y   ba665c1
+│ ○     [◆ topic] finish the topic                                                                                                               GF —    —
+│ ○     start the topic                                                                                                                          GF —    —
+│ ○     main moves on (2)                                                                                                                        GF —    —
+│ ○     main moves on (1)                                                                                                                        GF —    —
+│ ○     main moves on (0)                                                                                                                        GF —    —
+│ ●     [old-release] cut release 1.0                                                                                                            GF 6y   3b09656
+●─╯     add the base                                                                                                                             GF 6y   ed332bc
+●       Correct the note                                                                                                                         GF 7y   a82960b
+●       Add the first note                                                                                                                       GF 7y   fadcfb3
+◇       Add a readme                                                                                                                             GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: rebase topic onto old-release ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 5 commits replayed                                                                                                                                           │
+│ topic e7e39a7 → ghost                                                                                                                                        │
+│ working tree: 6 files updated                                                                                                                                │
+│ no conflicts expected (forecast)                                                                                                                             │
+│ undo: u takes this back                                                                                                                                      │
+│ git rebase --no-update-refs --no-autostash old-release                                                                                                       │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
+╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+

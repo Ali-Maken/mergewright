@@ -3164,3 +3164,302 @@ fn capture_m4_credential_prompt_in_app() {
     )
     .expect("docs/shots is writable");
 }
+
+/// Which of [`history_of`]'s commits the frame actually drew, by id.
+///
+/// Substring matching would make `Commit 5` a hit inside `Commit 50`, so the
+/// digits are parsed rather than searched for.
+fn commits_drawn(frame: &str) -> std::collections::BTreeSet<u8> {
+    let mut drawn = std::collections::BTreeSet::new();
+    for line in frame.lines() {
+        let mut rest = line;
+        while let Some(at) = rest.find("Commit ") {
+            rest = &rest[at + "Commit ".len()..];
+            let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
+            if let Ok(id) = digits.parse::<u8>() {
+                drawn.insert(id);
+            }
+        }
+    }
+    drawn
+}
+
+/// A rebase plan with one ghost anchored on `anchor`, replaying `replayed`
+/// and carrying `feature`'s badge onto the ghost.
+fn one_ghost_over(anchor: Oid, replayed: Oid) -> graft_ops::preview::PreviewPlan {
+    use graft_ops::preview::{
+        ConflictForecast, GhostCommit, HeadMove, PreviewPlan, RefMove, Target, UndoNote,
+        WorktreeEffect, ghost_oid,
+    };
+    PreviewPlan {
+        description: "rebase feature onto main".to_owned(),
+        commands: vec!["git rebase --no-update-refs --no-autostash main".to_owned()],
+        ghosts: vec![GhostCommit {
+            oid: ghost_oid("replayed work", 0),
+            parents: vec![Target::Real(anchor)],
+            subject: "replayed work".to_owned(),
+            author: graft_core::commit::Identity {
+                name: b"Ada".to_vec(),
+                email: b"ada@example.com".to_vec(),
+                when: graft_core::commit::Timestamp {
+                    seconds: 1_700_000_000,
+                    offset_seconds: 0,
+                },
+            },
+            replays: Some(replayed),
+        }],
+        ref_moves: vec![RefMove {
+            name: "refs/heads/feature".to_owned(),
+            from: Some(replayed),
+            to: Some(Target::Ghost(0)),
+        }],
+        head: Some(HeadMove::ToBranch("refs/heads/feature".to_owned())),
+        worktree: WorktreeEffect::Untouched,
+        conflicts: ConflictForecast::Clean,
+        undo: UndoNote::Undoable,
+        against: Vec::new(),
+    }
+}
+
+/// A preview over a history the user has scrolled into, with one ghost
+/// anchored inside the viewport, and the row numbers the fixture uses.
+///
+/// Returns the state with the preview open and its plan landed, the
+/// viewport's top row, and `id_at`: the commit id `history_of` put on an
+/// absolute row.
+fn scrolled_preview(
+    count: u8,
+    top_at: impl Fn(usize) -> usize,
+    ghost_row_offset: usize,
+) -> (AppState, usize, usize) {
+    scrolled_preview_with_cursor(count, top_at, ghost_row_offset, |_| 1)
+}
+
+/// [`scrolled_preview`], with the cursor placed `cursor_at(height)` rows
+/// below the top of the viewport.
+fn scrolled_preview_with_cursor(
+    count: u8,
+    top_at: impl Fn(usize) -> usize,
+    ghost_row_offset: usize,
+    cursor_at: impl Fn(usize) -> usize,
+) -> (AppState, usize, usize) {
+    use crate::update::preview::{Planned, PreviewSubject, open_preview, preview_produced};
+    use graft_ops::operation::{Operation, RebaseParams, Source, Tip};
+
+    let mut state = AppState {
+        history: Some(history_of(count, 0)),
+        size: Size {
+            columns: 100,
+            rows: 30,
+        },
+        ..AppState::default()
+    };
+    let height = state.graph_rows();
+    let top = top_at(height);
+    let id_at = |row: usize| u8::try_from(usize::from(count) - row).expect("row is inside history");
+    let cursor_row = top + cursor_at(height);
+    {
+        let history = state.history.as_mut().expect("a history");
+        history.top = top;
+        history.cursor = cursor_row;
+    }
+
+    let anchor = oid(id_at(top + ghost_row_offset));
+    let plan = one_ghost_over(anchor, oid(id_at(cursor_row)));
+
+    let mut commands = Vec::new();
+    let mut next = 0;
+    assert!(
+        open_preview(
+            &mut state,
+            &mut commands,
+            PreviewSubject::Operation {
+                op: Box::new(Operation::Rebase(RebaseParams {
+                    branch: Tip {
+                        name: "refs/heads/feature".to_owned(),
+                        oid: oid(id_at(cursor_row)),
+                    },
+                    onto: Source::Branch("main".to_owned()),
+                    onto_tip: anchor,
+                })),
+                opened_by: "r",
+            },
+            false,
+            &mut || {
+                next += 1;
+                graft_core::job::JobId::new(next)
+            },
+        ),
+        "nothing is running, so the preview opens"
+    );
+    let job = state.preview.as_ref().expect("a preview is open").job;
+    preview_produced(
+        &mut state,
+        job,
+        Ok(std::sync::Arc::new(Planned {
+            plan,
+            anchors: Vec::new(),
+        })),
+    );
+    (state, top, height)
+}
+
+/// Ticket 17 F1. Scrolled a screen or more into history, the preview must
+/// draw the rows the user was looking at — not the top of the three-screen
+/// window it fetched. Every other preview test sits at `top == 0`, where the
+/// slice start saturates and the two are the same rows.
+#[test]
+fn a_preview_scrolled_into_history_draws_the_screen_the_user_is_on() {
+    let (state, top, height) = scrolled_preview(120, |height| 2 * height, 3);
+
+    let frame = draw(&state, 100, 30);
+    let drawn = commits_drawn(&frame);
+    let id_at = |row: usize| u8::try_from(120_usize - row).expect("row is inside history");
+
+    assert!(
+        drawn.contains(&id_at(top)),
+        "the viewport's first row is drawn\n{frame}"
+    );
+    assert!(
+        !drawn.contains(&id_at(top - height)),
+        "the screen above the user's is not drawn\n{frame}"
+    );
+    assert!(
+        drawn.contains(&id_at(top + 1)),
+        "the commit the cursor is on is on screen\n{frame}"
+    );
+    assert!(
+        frame.contains("replayed work"),
+        "the ghost anchored inside the viewport is on screen\n{frame}"
+    );
+}
+
+/// Ticket 17 F1, second tick: the same at the bottom of history, where the
+/// three-screen fetch window runs out of rows below the viewport and the
+/// slice ends early. The picture still starts at the user's own top row.
+#[test]
+fn a_preview_near_the_end_of_history_still_starts_at_the_users_top_row() {
+    const COUNT: u8 = 120;
+    // Eight rows from the bottom: the three-screen fetch window asks for
+    // rows history does not have, so the slice clamps below the viewport.
+    let (state, top, height) = scrolled_preview(COUNT, |_| usize::from(COUNT) - 8, 3);
+    assert!(top > height, "the viewport is more than one screen down");
+
+    let frame = draw(&state, 100, 30);
+    let drawn = commits_drawn(&frame);
+    let id_at = |row: usize| u8::try_from(usize::from(COUNT) - row).expect("inside history");
+
+    assert!(
+        drawn.contains(&id_at(top)),
+        "the viewport's first row is drawn\n{frame}"
+    );
+    assert_eq!(
+        drawn.iter().max(),
+        Some(&id_at(top)),
+        "nothing above the user's top row is drawn\n{frame}"
+    );
+    assert!(
+        drawn.contains(&id_at(usize::from(COUNT) - 1)),
+        "the oldest row the history has is on screen\n{frame}"
+    );
+    let oldest = id_at(usize::from(COUNT) - 1);
+    let newest = id_at(top);
+    assert_eq!(
+        drawn.iter().copied().collect::<Vec<u8>>(),
+        (oldest..=newest).collect::<Vec<u8>>(),
+        "the drawn rows are the viewport's, contiguous, and no others\n{frame}"
+    );
+    assert!(
+        frame.contains("replayed work"),
+        "the ghost anchored inside the viewport is on screen\n{frame}"
+    );
+}
+
+/// Review 08 Major 5: the preview highlighted whichever row happened to sit
+/// at the *choice* cursor's index — row 0 over `Cancel`, row 1 over
+/// `Confirm` — so the commit the user pressed the key on was never marked.
+#[test]
+fn a_preview_highlights_the_commit_the_cursor_is_on_not_the_choice_index() {
+    let (state, top, _) = scrolled_preview(120, |height| 2 * height, 3);
+    let cursor_id = oid(u8::try_from(120_usize - (top + 1)).expect("inside history"));
+
+    let view = graph_view(&state, state.harness.clock.now_seconds());
+
+    let highlighted: Vec<Oid> = view
+        .rows
+        .iter()
+        .filter(|entry| entry.line.paint == RowPaint::Highlighted)
+        .map(|entry| entry.line.row.commit.id)
+        .collect();
+    assert_eq!(
+        highlighted,
+        vec![cursor_id],
+        "exactly the cursor's commit is highlighted"
+    );
+    assert_eq!(view.reveal, None, "a modal picture has no hovered row");
+}
+
+/// Review 08 Minor 10: while the plan is still in flight the slice is empty
+/// and the graph keeps the rows it had — but the box already has the
+/// keyboard, so the footer must be the preview's. It used to go on offering
+/// `m merge  r rebase`, two keys the modal box swallows.
+#[test]
+fn the_footer_is_the_previews_from_the_moment_the_box_opens() {
+    let mut state = AppState {
+        history: Some(history_of(6, 0)),
+        size: Size {
+            columns: 100,
+            rows: 30,
+        },
+        ..AppState::default()
+    };
+    let mut commands = Vec::new();
+    let mut next = 0;
+    assert!(crate::update::preview::open_preview(
+        &mut state,
+        &mut commands,
+        crate::update::preview::PreviewSubject::RevertTo(graft_core::journal::EntryId::new(
+            1, [0; 10]
+        )),
+        false,
+        &mut || {
+            next += 1;
+            graft_core::job::JobId::new(next)
+        },
+    ));
+    let preview = state.preview.as_ref().expect("a preview is open");
+    assert!(preview.rows.is_empty(), "the plan has not landed yet");
+
+    let view = graph_view(&state, state.harness.clock.now_seconds());
+
+    assert_eq!(
+        view.hint_context,
+        graft_ui::graph_screen::HintContext::Preview
+    );
+}
+
+/// The box docks over the bottom of the graph, so the picture is shorter
+/// than the screen the rows were scrolled on. With the cursor near the
+/// bottom of that screen, starting the picture at the user's top row alone
+/// would push their own commit off the end of it — the F1 defect turned
+/// around. The window slides down by exactly as much as it must.
+#[test]
+fn a_preview_keeps_the_cursors_commit_on_screen_when_the_box_takes_rows() {
+    const COUNT: u8 = 120;
+    let (state, top, height) =
+        scrolled_preview_with_cursor(COUNT, |height| 2 * height, 3, |height| height - 1);
+    let cursor = top + height - 1;
+
+    let frame = draw(&state, 100, 30);
+    let drawn = commits_drawn(&frame);
+    let id_at = |row: usize| u8::try_from(usize::from(COUNT) - row).expect("inside history");
+
+    assert!(
+        drawn.contains(&id_at(cursor)),
+        "the commit the key was pressed on is on screen\n{frame}"
+    );
+    assert!(
+        drawn.iter().max() <= Some(&id_at(top)),
+        "and nothing above the user's own top row is\n{frame}"
+    );
+}
