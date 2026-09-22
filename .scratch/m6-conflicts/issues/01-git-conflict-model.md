@@ -1,6 +1,6 @@
 # git-conflict-model: the conflict file as data — parse git's markers byte-exactly, take a side per block, write back without clobbering, read the three stages, reproduce git's diff3 blocks for base, name the unmerged shape, and the stopped-rebase corpus shape
 
-Status: ready
+Status: blocked — everything in the crate set landed and is green; the whole-workspace gate fails only at the seam (24 `StatusEntry` literals in `graft`/`graft-ops`, see NOTES). Conductor adds `unmerged_how: None` there and flips this to done.
 Blocked by: **none** — starts immediately.
 Build with: Fable (signature) — `ConflictFile` is the spine every M6 group and M7's rerere/interactive-rebase stops hang on; the parse rules (what is a marker, what is a label, what a `=======` inside a block means, how CRLF and a missing final newline survive) are decided here and are not readable from a diff; the builder chooses the rules, the fixture shapes and the fuzz target. Meets all three tests (design note "Genuinely risky tickets").
 Crates: graft-git, graft-fixtures
@@ -70,22 +70,24 @@ pub enum Shape { /* existing */ StoppedRebase, StoppedMerge }
 
 ## Acceptance
 
-Every box names its test.
+Every box names its test. All in `crates/graft-git/src/conflict/tests.rs` unless said otherwise; run 2026-09-22 under `cargo nextest run --workspace --exclude graft --exclude graft-ops` (1087 passed, 1 skipped).
 
-- [ ] Round trip: `render(parse(b)) == b` for every file in `StoppedRebase` with markers, plus hand-written LF / CRLF / mixed / no-final-newline / label-with-spaces inputs — `conflict::tests::round_trip_is_byte_exact`.
-- [ ] `md.md` parses as one block whose theirs side contains the literal `=======` line; the ruling is in NOTES with the `git merge-file` output it was checked against — `conflict::tests::setext_underline_after_the_separator_is_content`.
-- [ ] `parse` on `zdiff3.txt` gives a `base` on every block; on `both.txt` no base — `conflict::tests::diff3_and_zdiff3_carry_base`.
-- [ ] `take(Ours|Theirs|Both)` then `render` equals `git checkout --ours|--theirs` bytes for a one-block file, and ours-then-theirs for `Both` — `conflict::tests::take_matches_git_checkout_sides`.
-- [ ] `write_back` with a stale `expected` returns `Changed { now }` and leaves the file's bytes untouched; with the right one the file has the rendered bytes, the old mode bits, and no temp file remains in the directory — `conflict::tests::write_back_refuses_a_changed_file`, `write_back_keeps_mode_and_leaves_no_temp`.
-- [ ] `blob_id(bytes)` equals `git hash-object --stdin` for empty, 1-byte and 1 MiB inputs — `conflict::tests::blob_id_is_gits`.
-- [ ] `read` on `pic.bin` → `Binary`; on a 9 MiB file → `TooLarge { bytes }` — `conflict::tests::read_names_binary_and_too_large`.
-- [ ] `stage_bytes` for `theirs-deleted.txt` stage 3 → `Ok(None)`, stage 2 → `Some(bytes)` equal to `git show :2:` — `conflict::tests::stage_bytes_reads_and_names_missing`.
-- [ ] `diff3_blocks` + `attach_base` on `three.txt` attaches 3 bases; after `take` on block 1 and a hand edit of ours in block 2 the reproduced blocks no longer match and the answer is `BaseMismatch { block: 1 }`, nothing attached — `conflict::tests::base_attaches_by_equality_only`.
-- [ ] `UnmergedHow` for all eleven fixture files matches `git status --porcelain=v2` XY — `status::tests::unmerged_how_from_porcelain`.
-- [ ] `Shape::StoppedRebase` and `StoppedMerge` build in under 2 s each and `git status` in them lists exactly the eleven paths as unmerged — `graft_fixtures::tests::stopped_shapes_are_as_documented`.
-- [ ] Fuzz target compiles (`cargo fuzz build conflict_parse` runs in the review, not here); a 1 000-iteration property test with random marker soup runs in nextest under 1 s — `conflict::tests::parse_never_panics_on_marker_soup`.
-- [ ] `first_marker_line` (existing) agrees with `blocks()[0].first_line` on every marker file — `conflict::tests::first_marker_line_agrees`.
-- [ ] MAP.md for `graft-git` (`conflict`, `status::UnmergedHow`) and `graft-fixtures` (both shapes, file by file) updated; NOTES lists: the `=======` ruling, the marker-size gap, the scratch-dir choice.
+- [x] Round trip: `render(parse(b)) == b` for every marker file in `StoppedRebase` (both, three, crlf, nofinal, md, zdiff3, both-added) plus eleven hand-written inputs (LF, CRLF, mixed, no final newline, newline-less end marker, label with spaces, empty label, empty sides, adjacent blocks, lone `\r`) — `conflict::tests::round_trip_is_byte_exact`.
+- [x] `md.md` parses as one block whose theirs side holds the literal `=======` line, both from `git merge-file`'s verbatim output (`MERGE_FILE_MD`) and from the corpus file git wrote at the stop; ruling in NOTES — `conflict::tests::setext_underline_after_the_separator_is_content`.
+- [x] `zdiff3.txt`: a base (`middle`) on every block; `both.txt`: none — `conflict::tests::diff3_and_zdiff3_carry_base`.
+- [x] `take(Ours|Theirs)` + `render` equals `git checkout --ours|--theirs` bytes for five one-block files (both, crlf, md, nofinal, both-added); `Both` equals git's two checkouts spliced at line granularity (shared head, ours' own lines, theirs' own lines, shared tail) — `conflict::tests::take_matches_git_checkout_sides`.
+- [x] Stale `expected` → `Changed { now }` with `now` the on-disk blob id and the bytes untouched; the right one → rendered bytes, mode bits kept (0o755 on unix), no `.graft-*` left — `conflict::tests::write_back_refuses_a_changed_file`, `write_back_keeps_mode_and_leaves_no_temp`.
+- [x] `blob_id` equals `git hash-object --stdin` for empty, 1-byte and 1 MiB inputs — `conflict::tests::blob_id_is_gits`.
+- [x] `read` on `pic.bin` → `Binary`; on a sparse 9 MiB file → `TooLarge { bytes: 9 MiB }` — `conflict::tests::read_names_binary_and_too_large`.
+- [x] `stage_bytes` for `theirs-deleted.txt`: stage 3 → `Ok(None)`, stage 2 → `git show :2:` bytes, stage 1 → the base; stage 0 → `Err`; an unindexed path → `Ok(None)` — `conflict::tests::stage_bytes_reads_and_names_missing`.
+- [x] `diff3_file` (the ticket's `diff3_blocks`, see NOTES) + `attach_base` on `three.txt` attaches 3 bases (`one`, `two`, `three`); after `take(0, Ours)` in memory and a hand edit of block 1's ours side → `BaseMismatch { block: 1 }`, nothing attached; whole-file shapes and unindexed paths → `Ok(None)` — `conflict::tests::base_attaches_by_equality_only`. A take **written back** removes its block while the stages keep it: the two remaining blocks still get their bases, a hand edit still mismatches — `base_survives_a_written_take_but_not_a_hand_edit`. A block git's default style **joined** from three `diff3` conflicts gets the whole run's base, plain lines in place, and a one-sided match is still a mismatch — `a_joined_block_gets_the_base_of_its_whole_run` (literals are `git merge-file` output, NOTES).
+- [x] `UnmergedHow` for all **thirteen** (not eleven, NOTES) unmerged paths in both stopped shapes matches `git status --porcelain=v2` XY; the seven pairs by hand and `MM` → `Malformed` — `status::tests::unmerged_how_from_porcelain` (calls `stopped_shape_unmerged_how_matches_git` per shape).
+- [x] Both shapes build into a temp dir in under 2 s each (0.42 s for the whole test), `.git/rebase-merge` / `.git/MERGE_HEAD` present, `git status --porcelain=v2` lists exactly the thirteen `(XY, path)` records, `zdiff3.txt` carries `||||||| ` — `graft_fixtures::shapes::conflicts::tests::stopped_shapes_are_as_documented`; names round-trip — `every_stopped_shape_has_a_name_and_is_found_by_it`.
+- [x] Fuzz target: `cargo check --manifest-path fuzz/Cargo.toml --bin conflict_parse` passes on stable (no errors printed); **`cargo fuzz build` not run here** (nightly, the review's). The 1 000-iteration soup test passes; it and the shapes test together ran in 0.42 s under nextest — `conflict::tests::parse_never_panics_on_marker_soup`.
+- [x] `first_marker_line` agrees with `blocks()[0].first_line` on every marker file in both shapes — `conflict::tests::first_marker_line_agrees`.
+- [x] MAP.md for `graft-git` (`conflict` section, `status::UnmergedHow`, `StatusEntry.unmerged_how`) and `graft-fixtures` (both shapes, file by file, `STOPPED`/`every`) updated; NOTES below lists the `=======` ruling, the marker-size ruling, the scratch-dir choice.
+
+Beyond the list: `marker_size_other_than_seven_is_plain`, `malformed_files_name_their_line` (`Unterminated` at the `<<<<<<<` line; every `StrayMarker` shape with its line), `a_second_base_marker_or_separator_inside_a_block_is_content`, `blocks_report_index_state_and_line`, `a_hand_built_block_renders_with_its_ends` (CRLF markers, `Terminator::None` end).
 
 ## Gates
 
@@ -94,3 +96,43 @@ Every box names its test.
 ## Size
 
 One context. graft-git `conflict.rs` ~600 lines with tests, `status.rs` +60, fixtures +250. Under 80k tokens if the builder reads the MAP.md sections named and not `graft-git/src/history_reads.rs` whole.
+
+## NOTES
+
+**Seam — why the workspace gate did not run whole.** Adding `unmerged_how` to `StatusEntry` breaks 24 struct literals outside the crate set (`cargo check --workspace --all-targets`: 24 × `E0063 missing field unmerged_how`, nothing else): `crates/graft-ops/src/operation/history/tests.rs:44`, `crates/graft-ops/src/operation/tests.rs:25`, `crates/graft/src/update/operate.rs:1119,1131,1143,1553,1713,1725,1848`, `crates/graft/src/update/tests.rs:2556,2565,2574,4134`, `crates/graft/src/view/tests.rs:529,540,551,562,2078`, `crates/graft/src/update/selection.rs:178,187,196`, `crates/graft/src/update/banner/tests.rs:24`, `crates/graft/src/update/commit_editor/tests.rs:47`, `crates/graft/src/update/stash/tests.rs:56`. Fix: `unmerged_how: None` at each (`Some(UnmergedHow::BothModified)` where the literal sets `unmerged: true`, if that site wants a shape). Gates ran with `--workspace --exclude graft --exclude graft-ops`: fmt, clippy `-D warnings`, nextest 1087/1087, doctests 2/2, all green. `blocked: needs graft, graft-ops`.
+
+**The `=======` ruling.** The first `=======` after `<<<<<<<` is the separator; any later `=======` (and any `|||||||` after its section) before `>>>>>>>` is theirs' content. Evidence, `git merge-file -p -L ours -L base -L theirs` (git 2.54, 2026-09-22) on `md.md`'s three versions, kept verbatim in `conflict/tests.rs` as `MERGE_FILE_MD`:
+```
+Title
+=====
+
+<<<<<<< ours
+Intro line ours
+=======
+Heading
+=======
+
+Intro line theirs
+>>>>>>> theirs
+```
+`git checkout --theirs` on the corpus file gives the underline back as content (`take_matches_git_checkout_sides`). Inherent limit: a `=======` line in *ours'* content is read as the separator — nothing in the file distinguishes it. Not a gap to fix; documented in the module doc.
+
+**Marker size ≠ 7.** A marker of any other width is not a marker: the file parses as plain text with zero blocks (`marker_size_other_than_seven_is_plain`), never `StrayMarker`. Chosen because a file with `conflict-marker-size = 12` must still open and read; the resolver then sees no blocks rather than an error. Gap, for KNOWN_GAPS: honouring `conflict-marker-size` (per-path gitattribute) is out; such a file shows as having no conflicts to take.
+
+**Scratch dir for `diff3_file`.** A `tempfile::Builder` directory with prefix `graft-diff3-`, not `.git/graft/`: nothing is left in the user's repository if the process dies between write and merge, and it works on a read-only checkout — the sealed corpus is one, and `diff3_file` is tested on it. `merge-file` runs via `GitInvocation::in_directory(scratch)` with `run_raw`; exit 0..=127 is the conflict count, anything else is `Diff3Error::MergeFile`.
+
+**`diff3_blocks` became `diff3_file`, and `attach_base` aligns runs, not blocks.** Measured (git 2.54, 2026-09-22, `/tmp` throwaway): git's default `merge` conflict style joins conflicts separated by three or fewer unchanged lines into one block; gap four keeps them apart; `diff3`/`zdiff3` style never joins. So a working-tree block is not one reproduced block but the union of one or more, with the plain lines between. `attach_base` therefore matches each file block against the shortest run of reproduced regions whose ours-side and theirs-side lines are byte-equal to it; the base is that run's base lines with the plain lines kept in place. That needs the plain regions, hence `diff3_file -> Option<ConflictFile>`. The gap-1 outputs are the `MERGE_STYLE_JOINED` / `DIFF3_STYLE_SEPARATE` literals in the tests. `three.txt` in the corpus has four filler lines between its changed lines so it really has three blocks (with one it had one, and the first cut of the test caught it).
+
+**Thirteen unmerged paths, not eleven.** rename/rename(1to2) is the only recipe that yields `DD`, and it necessarily brings the two new names as `AU` and `UA`. All seven `UnmergedHow` variants are in the corpus. Rename/delete yields `UD`, not `DD`.
+
+**`Shape::STOPPED`, not `ALL`.** `Shape::ALL` feeds the gallery, graph-snapshot and mistake-radar tests in `graft`, `graft-graph`, `graft-ops` (outside the crate set) that assume a clean tree. The stopped shapes live in `Shape::STOPPED`; `Shape::every()` = `ALL` ∪ `STOPPED` drives corpus build/read, `from_name` and the fixture identity tests.
+
+**Dependencies.** `sha1 = "0.10"` added to graft-git (gix's hasher exposes only a fallible `try_finalize`); `tempfile` moved from dev-dependency to dependency for the scratch dir. `Cargo.lock` changed accordingly.
+
+**Edges measured on git 2.54 (module doc).** CRLF files get CRLF-terminated markers; a side lacking a final newline gets one added *inside* the block, so a conflict file ends in a partial line only if its last plain line does; an empty label writes `<<<<<<< ` then newline.
+
+**Unverified.** `cargo fuzz build` (nightly) — only `cargo check` of the target on stable. Windows path bytes (`path_bytes` non-unix arm is lossy, unexercised).
+
+**Scout.** Sonnet `Explore` on graft-fixtures (shape/corpus/digest layout) before editing; graft-git read from MAP.md sections only.
+
+**Compaction.** The session compacted once, after the tests first ran (the merge-vs-diff3 hunking finding); everything above was finished after it. Nothing remains.

@@ -47,6 +47,7 @@ fn parse_porcelain_v2_reads_a_modified_and_an_untracked_record() {
                 unstaged: None,
                 untracked: false,
                 unmerged: false,
+                unmerged_how: None,
                 submodule: false,
             },
             StatusEntry {
@@ -56,6 +57,7 @@ fn parse_porcelain_v2_reads_a_modified_and_an_untracked_record() {
                 unstaged: None,
                 untracked: true,
                 unmerged: false,
+                unmerged_how: None,
                 submodule: false,
             },
         ]
@@ -431,4 +433,123 @@ fn a_capped_status_is_an_error_not_a_shorter_list() {
         matches!(capped, Err(StatusError::TooLarge { .. })),
         "{capped:?}"
     );
+}
+
+/// `UnmergedHow` as git would print it, for comparing with a raw `u` record.
+fn xy_of(how: super::UnmergedHow) -> &'static str {
+    use super::UnmergedHow;
+    match how {
+        UnmergedHow::BothModified => "UU",
+        UnmergedHow::BothAdded => "AA",
+        UnmergedHow::BothDeleted => "DD",
+        UnmergedHow::AddedByUs => "AU",
+        UnmergedHow::AddedByThem => "UA",
+        UnmergedHow::DeletedByUs => "DU",
+        UnmergedHow::DeletedByThem => "UD",
+    }
+}
+
+#[test]
+fn unmerged_how_from_porcelain() {
+    use super::UnmergedHow;
+
+    // Every pair, by hand, with git's words.
+    for (xy, how, words, markers) in [
+        ("UU", UnmergedHow::BothModified, "both modified", true),
+        ("AA", UnmergedHow::BothAdded, "both added", true),
+        ("DD", UnmergedHow::BothDeleted, "both deleted", false),
+        ("AU", UnmergedHow::AddedByUs, "added by us", false),
+        ("UA", UnmergedHow::AddedByThem, "added by them", false),
+        ("DU", UnmergedHow::DeletedByUs, "deleted by us", false),
+        ("UD", UnmergedHow::DeletedByThem, "deleted by them", false),
+    ] {
+        let record = format!("u {xy} N... 100644 100644 100644 100644 aaaa bbbb cccc p.txt\0");
+        let status = parse_porcelain_v2(record.as_bytes()).expect("parses");
+        let entry = &status.entries[0];
+        assert!(entry.unmerged);
+        assert_eq!(entry.unmerged_how, Some(how), "{xy}");
+        assert_eq!(how.words(), words);
+        assert_eq!(how.has_markers(), markers, "{xy}");
+        assert_eq!(xy_of(how), xy);
+    }
+    let bad = b"u MM N... 100644 100644 100644 100644 aaaa bbbb cccc p.txt\0";
+    assert!(matches!(
+        parse_porcelain_v2(bad),
+        Err(StatusError::Malformed(_))
+    ));
+
+    // Every file in both stopped corpus shapes, against git's own XY, read
+    // independently of the parser under test.
+    for shape in [Shape::StoppedRebase, Shape::StoppedMerge] {
+        stopped_shape_unmerged_how_matches_git(shape);
+    }
+}
+
+/// `(path, XY)` for every `u` record `git status --porcelain=v2 -z` prints
+/// in `dir`, sorted by path — split by hand, not by the parser under test.
+fn gits_own_xy(dir: &Path) -> Vec<(String, String)> {
+    let raw = graft_fixtures::git::run(dir, &["status", "--porcelain=v2", "-z"])
+        .unwrap_or_else(|why| panic!("{why}"));
+    let mut found: Vec<(String, String)> = raw
+        .split(|&b| b == 0)
+        .filter(|record| record.first() == Some(&b'u'))
+        .map(|record| {
+            let text = String::from_utf8_lossy(record).into_owned();
+            let fields: Vec<&str> = text.splitn(11, ' ').collect();
+            (fields[10].to_owned(), fields[1].to_owned())
+        })
+        .collect();
+    found.sort();
+    found
+}
+
+fn stopped_shape_unmerged_how_matches_git(shape: Shape) {
+    use super::UnmergedHow;
+
+    let expected: Vec<(String, UnmergedHow)> = [
+        ("added-by-them.txt", UnmergedHow::AddedByThem),
+        ("added-by-us.txt", UnmergedHow::AddedByUs),
+        ("both-added.txt", UnmergedHow::BothAdded),
+        ("both-deleted.txt", UnmergedHow::BothDeleted),
+        ("both.txt", UnmergedHow::BothModified),
+        ("crlf.txt", UnmergedHow::BothModified),
+        ("md.md", UnmergedHow::BothModified),
+        ("nofinal.txt", UnmergedHow::BothModified),
+        ("ours-deleted.txt", UnmergedHow::DeletedByUs),
+        ("pic.bin", UnmergedHow::BothModified),
+        ("theirs-deleted.txt", UnmergedHow::DeletedByThem),
+        ("three.txt", UnmergedHow::BothModified),
+        ("zdiff3.txt", UnmergedHow::BothModified),
+    ]
+    .into_iter()
+    .map(|(path, how)| (path.to_owned(), how))
+    .collect();
+    let dir = graft_fixtures::borrow(shape);
+    let repo = RepoHandle::open(&dir).expect("the fixture opens");
+    let status = read(&repo, &()).unwrap_or_else(|why| panic!("{shape}: {why}"));
+    let mut found: Vec<(String, UnmergedHow)> = status
+        .entries
+        .iter()
+        .filter(|entry| entry.unmerged)
+        .map(|entry| {
+            (
+                entry.path.to_string_lossy().into_owned(),
+                entry.unmerged_how.expect("an unmerged entry says how"),
+            )
+        })
+        .collect();
+    found.sort_by(|a, b| a.0.cmp(&b.0));
+    assert_eq!(found, expected, "{shape}");
+    assert!(
+        status
+            .entries
+            .iter()
+            .all(|entry| entry.unmerged == entry.unmerged_how.is_some())
+    );
+
+    let ours: Vec<(String, String)> = found
+        .iter()
+        .map(|(path, how)| (path.clone(), xy_of(*how).to_owned()))
+        .collect();
+    assert_eq!(ours, gits_own_xy(&dir), "{shape}: XY as git printed it");
 }

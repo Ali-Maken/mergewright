@@ -8,6 +8,7 @@
 
 pub mod branches;
 pub mod commit_graph;
+pub mod conflict;
 pub mod contained;
 pub mod diff;
 pub mod editor;

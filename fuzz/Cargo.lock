@@ -1204,6 +1204,8 @@ version = "0.1.0"
 dependencies = [
  "gix",
  "graft-core",
+ "sha1",
+ "tempfile",
  "thiserror",
 ]
 

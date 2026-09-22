@@ -19,7 +19,7 @@ use graft_fixtures::git::GitError;
 /// list alone would miss a ref moving, so this takes both.
 fn identity(root: &Path) -> BTreeMap<String, String> {
     let mut found = BTreeMap::new();
-    for shape in Shape::ALL {
+    for shape in Shape::every() {
         let dir = root.join(shape.name());
         if !dir.join(".git").is_dir() {
             continue;
@@ -133,13 +133,13 @@ fn a_second_build_in_the_same_place_is_a_no_op() {
 #[test]
 fn the_shared_corpus_is_reachable_and_every_shape_accounted_for() {
     let report = graft_fixtures::ensure().expect("the shared corpus");
-    for shape in Shape::ALL {
-        match graft_fixtures::try_borrow(*shape) {
+    for shape in Shape::every() {
+        match graft_fixtures::try_borrow(shape) {
             Ok(dir) => assert!(dir.is_dir(), "{shape} borrowed a path that is not there"),
             Err(why) => {
                 let reason = why.to_string();
                 assert!(
-                    report.unavailable.iter().any(|skip| skip.shape == *shape),
+                    report.unavailable.iter().any(|skip| skip.shape == shape),
                     "{shape} failed without being reported unavailable: {reason}"
                 );
             }

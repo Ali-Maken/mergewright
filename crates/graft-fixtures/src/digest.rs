@@ -16,6 +16,7 @@ use crate::git::{self, GitError};
 /// changes the digest, and so the directory the corpus is built in.
 const GENERATOR: &[&str] = &[
     include_str!("shapes/mod.rs"),
+    include_str!("shapes/conflicts.rs"),
     include_str!("shapes/history.rs"),
     include_str!("shapes/merges.rs"),
     include_str!("shapes/refs.rs"),

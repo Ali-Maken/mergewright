@@ -76,6 +76,15 @@ pub enum Shape {
     /// one is built only where the filesystem accepts such a name — not on
     /// APFS.
     NonUtf8RefName,
+    /// A repository left at a rebase conflict: `.git/rebase-merge/` present,
+    /// `HEAD` detached at `main`, and one stop with every unmerged shape git
+    /// has — thirteen paths, listed file by file in `MAP.md` (m6-conflicts/01).
+    /// In `STOPPED`, not `ALL`: see there.
+    StoppedRebase,
+    /// The same files and the same stop reached by `git merge feature` on
+    /// `main` instead, so `MERGE_HEAD` is present and both `in_progress`
+    /// kinds have a corpus.
+    StoppedMerge,
 }
 
 impl Shape {
@@ -104,6 +113,14 @@ impl Shape {
         Shape::NonUtf8RefName,
     ];
 
+    /// The shapes stopped mid-operation (m6-conflicts/01), built by the
+    /// corpus alongside `ALL` but listed apart: every consumer of `ALL` — the
+    /// gallery's stops, the graph's snapshots, the mistake radar's expected
+    /// findings — owes each shape a decision of its own, and those belong to
+    /// the crates that draw them, not to the fixture. Fold these into `ALL`
+    /// when those decisions are made.
+    pub const STOPPED: &'static [Shape] = &[Shape::StoppedRebase, Shape::StoppedMerge];
+
     /// The shape's directory name inside the corpus, and the name tests and
     /// reports call it by.
     pub fn name(self) -> &'static str {
@@ -129,15 +146,19 @@ impl Shape {
             Shape::Stash => "stash",
             Shape::NonUtf8Path => "non-utf8-path",
             Shape::NonUtf8RefName => "non-utf8-ref-name",
+            Shape::StoppedRebase => "stopped-rebase",
+            Shape::StoppedMerge => "stopped-merge",
         }
     }
 
     /// The shape whose [`Shape::name`] is `name`, or `None`.
     pub fn from_name(name: &str) -> Option<Shape> {
-        Shape::ALL
-            .iter()
-            .copied()
-            .find(|shape| shape.name() == name)
+        Shape::every().find(|shape| shape.name() == name)
+    }
+
+    /// Every shape the corpus builds: [`Shape::ALL`] then [`Shape::STOPPED`].
+    pub fn every() -> impl Iterator<Item = Shape> {
+        Shape::ALL.iter().chain(Shape::STOPPED).copied()
     }
 }
 

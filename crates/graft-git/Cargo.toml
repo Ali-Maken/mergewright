@@ -62,6 +62,17 @@ gix = { version = "0.87.1", default-features = false, features = [
 ] }
 graft-core.workspace = true
 thiserror.workspace = true
+# `conflict::blob_id`: git's blob id of a working-tree file, computed locally
+# so a resolver write can refuse a file that changed underneath it without a
+# `hash-object` spawn per keypress (m6-conflicts/01). Plain SHA-1 rather than
+# gix's collision-checked hasher: that hasher can only fail on an input git
+# itself refuses to hash, and a fingerprint has no honest value then. Already
+# in the tree under `gix`, so no new code is compiled.
+sha1 = "0.10"
+# `conflict::write_back` (a temporary beside the file, renamed over it) and
+# `conflict::diff3_blocks` (the three stages in a scratch directory for
+# `git merge-file`). Was a dev-dependency; the same version, now shipped.
+tempfile = "3.27.0"
 
 [features]
 # Turns the heavy tier on for this crate's tests, per TESTING.md. A crate
@@ -81,9 +92,6 @@ workspace = true
 # every test build regardless, because dev-dependencies are not optional in
 # practice — the feature only chooses which tier it builds.
 graft-fixtures.workspace = true
-# Repository fixtures are built by real `git` commands in a temporary
-# directory: tiny ones, per PROMPT.md §7.1's fast tier.
-tempfile = "3.27.0"
 # Property tests for `diff::pairs` (PROMPT.md §7.1 mandates `proptest`, capped
 # at 64 fast-tier cases). Default features off: `fork`/`timeout` would pull in
 # a process-spawning harness this pure function never needs.

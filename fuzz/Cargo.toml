@@ -38,3 +38,10 @@ path = "fuzz_targets/parse_porcelain_v2.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "conflict_parse"
+path = "fuzz_targets/conflict_parse.rs"
+test = false
+doc = false
+bench = false

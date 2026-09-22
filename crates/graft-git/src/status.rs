@@ -143,8 +143,71 @@ pub struct StatusEntry {
     pub untracked: bool,
     /// An unresolved merge conflict (a porcelain v2 `u` record).
     pub unmerged: bool,
+    /// Which conflict it is, for an unmerged record: the `u` record's `XY`
+    /// pair (m6-conflicts/01). `Some` exactly when `unmerged` is true.
+    pub unmerged_how: Option<UnmergedHow>,
     /// The path is a submodule (the record's `sub` field starts with `S`).
     pub submodule: bool,
+}
+
+/// The seven shapes an unmerged path takes — porcelain v2's `XY` on a `u`
+/// record — in git's own words (m6-conflicts/01).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum UnmergedHow {
+    /// `UU`: changed on both sides; the working-tree file has markers.
+    BothModified,
+    /// `AA`: new on both sides with different content; markers.
+    BothAdded,
+    /// `DD`: gone on both sides (each renamed it elsewhere); no file.
+    BothDeleted,
+    /// `AU`: only our side has it (our name for a file both renamed).
+    AddedByUs,
+    /// `UA`: only their side has it.
+    AddedByThem,
+    /// `DU`: we deleted what they changed.
+    DeletedByUs,
+    /// `UD`: they deleted what we changed.
+    DeletedByThem,
+}
+
+impl UnmergedHow {
+    /// The `XY` pair as git prints it, or `None` for a pair that is not an
+    /// unmerged one.
+    fn from_xy(x: u8, y: u8) -> Option<Self> {
+        Some(match (x, y) {
+            (b'U', b'U') => UnmergedHow::BothModified,
+            (b'A', b'A') => UnmergedHow::BothAdded,
+            (b'D', b'D') => UnmergedHow::BothDeleted,
+            (b'A', b'U') => UnmergedHow::AddedByUs,
+            (b'U', b'A') => UnmergedHow::AddedByThem,
+            (b'D', b'U') => UnmergedHow::DeletedByUs,
+            (b'U', b'D') => UnmergedHow::DeletedByThem,
+            _ => return None,
+        })
+    }
+
+    /// git's own phrase for it, as `git status` prints under "Unmerged
+    /// paths".
+    #[must_use]
+    pub fn words(self) -> &'static str {
+        match self {
+            UnmergedHow::BothModified => "both modified",
+            UnmergedHow::BothAdded => "both added",
+            UnmergedHow::BothDeleted => "both deleted",
+            UnmergedHow::AddedByUs => "added by us",
+            UnmergedHow::AddedByThem => "added by them",
+            UnmergedHow::DeletedByUs => "deleted by us",
+            UnmergedHow::DeletedByThem => "deleted by them",
+        }
+    }
+
+    /// Whether the working-tree file carries conflict markers to resolve
+    /// block by block (`UU`, `AA` — unless binary). Every other shape is
+    /// resolved whole: keep one side's file, or none.
+    #[must_use]
+    pub fn has_markers(self) -> bool {
+        matches!(self, UnmergedHow::BothModified | UnmergedHow::BothAdded)
+    }
 }
 
 impl StatusEntry {
@@ -305,6 +368,7 @@ fn parse_ordinary(record: &[u8]) -> Result<StatusEntry, StatusError> {
         unstaged: side_change(y)?,
         untracked: false,
         unmerged: false,
+        unmerged_how: None,
         submodule: is_submodule(f[2]),
     })
 }
@@ -321,6 +385,7 @@ fn parse_rename(record: &[u8]) -> Result<StatusEntry, StatusError> {
         unstaged: side_change(y)?,
         untracked: false,
         unmerged: false,
+        unmerged_how: None,
         submodule: is_submodule(f[2]),
     })
 }
@@ -329,9 +394,16 @@ fn parse_rename(record: &[u8]) -> Result<StatusEntry, StatusError> {
 fn parse_unmerged(record: &[u8]) -> Result<StatusEntry, StatusError> {
     let f = fields(record, 11)?;
     // `XY` here is a conflict pairing (`UU`, `AA`, `DD`, `AU`, `UA`, `UD`,
-    // `DU`), not a `Change` — `unmerged` alone says what happened; nothing
-    // downstream needs the pairing, and a `U` would not parse as a `Change`.
-    xy(f[1])?;
+    // `DU`), not a `Change`: a `U` would not parse as one. It is kept as
+    // `UnmergedHow`, which the resolver reads to choose between a marker
+    // file and a whole-file choice (m6-conflicts/01).
+    let (x, y) = xy(f[1])?;
+    let how = UnmergedHow::from_xy(x, y).ok_or_else(|| {
+        StatusError::Malformed(format!(
+            "an unmerged record's XY must be one of UU, AA, DD, AU, UA, DU, UD, not {:?}",
+            String::from_utf8_lossy(f[1])
+        ))
+    })?;
     Ok(StatusEntry {
         path: bytes_to_pathbuf(f[10]),
         original_path: None,
@@ -339,6 +411,7 @@ fn parse_unmerged(record: &[u8]) -> Result<StatusEntry, StatusError> {
         unstaged: None,
         untracked: false,
         unmerged: true,
+        unmerged_how: Some(how),
         submodule: is_submodule(f[2]),
     })
 }
@@ -353,6 +426,7 @@ fn parse_untracked(record: &[u8]) -> Result<StatusEntry, StatusError> {
         unstaged: None,
         untracked: true,
         unmerged: false,
+        unmerged_how: None,
         submodule: false,
     })
 }

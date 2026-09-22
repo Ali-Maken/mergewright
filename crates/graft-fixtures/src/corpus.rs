@@ -161,11 +161,11 @@ fn build_staging(base: &Path) -> Result<PathBuf, CorpusError> {
         "probing the filesystem for non-UTF-8 name support",
     ))?;
 
-    for shape in Shape::ALL {
+    for shape in Shape::every() {
         let dir = staging.path().join(shape.name());
-        match (*shape, &non_utf8) {
+        match (shape, &non_utf8) {
             (Shape::NonUtf8RefName, Support::Unavailable(reason)) => skip(&dir, reason)?,
-            _ => shapes::build(*shape, &dir, streams.path())?,
+            _ => shapes::build(shape, &dir, streams.path())?,
         }
     }
 
@@ -197,11 +197,11 @@ fn finish(root: PathBuf, built: bool, started: Instant) -> Result<Report, Corpus
 
 fn read_skips(root: &Path) -> Result<Vec<Unavailable>, CorpusError> {
     let mut found = BTreeMap::new();
-    for shape in Shape::ALL {
+    for shape in Shape::every() {
         let note = root.join(shape.name()).join(UNAVAILABLE);
         match fs::read_to_string(&note) {
             Ok(reason) => {
-                found.insert(*shape, reason.trim().to_owned());
+                found.insert(shape, reason.trim().to_owned());
             }
             Err(why) if why.kind() == io::ErrorKind::NotFound => {}
             Err(source) => {
