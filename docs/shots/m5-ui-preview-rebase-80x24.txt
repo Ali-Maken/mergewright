@@ -4,7 +4,7 @@
 # over the real job pool, cursor moved to `main`'s row and `r` pressed
 # through `update`, then the real `graft_ops::preview::plan` run
 # (crates/graft/tests/it/preview.rs, capture_preview_for_docs_shots,
-# #[ignore]d). Not a pty capture: the terminal is ratatui's TestBackend, so
+# asserted). Not a pty capture: the terminal is ratatui's TestBackend, so
 # this is a character grid with no colour attributes in it — CLAUDE.md rule
 # 5, colour ships unverified. The scratch repository's temporary path is
 # replaced by `/code/api`; nothing else is touched.
@@ -25,18 +25,18 @@
 #    box covers rows the graph never drew — no real row is hidden by it.
 #
 
- graft /code/api  8…
-  ●     finish the feature                                          now  8d6cd28
-  ●     start the feature                                           2m   52f3b96
-  │     after rebase
-  │ ○   [◆ feature] finish the feature                              —    —
-  │ ○   start the feature                                           —    —
-●─│─╯   [main] main moves again                                     3m   45fa51d
-● │     main moves on                                               4m   37926a7
-●─╯     add the base                                                5m   ed332bc
-●       Correct the note                                            1y   a82960b
-●       Add the first note                                          1y   fadcfb3
-◇       Add a readme                                                1y   64ded19
+ graft /code/api  8 commits
+  ●      finish the feature                                         now  8d6cd28
+  ●      start the feature                                          2m   52f3b96
+  │      after rebase
+  │ ○    [◆ feature] finish the feature                             —    —
+  │ ○    start the feature                                          —    —
+●─│─╯ ▏  [main] main moves again                                    3m   45fa51d
+● │      main moves on                                              4m   37926a7
+●─╯      add the base                                               5m   ed332bc
+●        Correct the note                                           1y   a82960b
+●        Add the first note                                         1y   fadcfb3
+◇        Add a readme                                               1y   64ded19
 
 
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────╮

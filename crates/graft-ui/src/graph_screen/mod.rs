@@ -45,10 +45,23 @@ pub use render::badge_spans;
 use crate::graph_column::GraphLine;
 use crate::theme::Theme;
 
-/// Cells the marker slot always takes: its glyph, then a gap. Reserved
-/// whether or not a row has a marker (`graph` never sets one; `ops` will,
-/// M2), so the columns after it never move when markers start appearing.
-const MARKER_WIDTH: u16 = 2;
+/// Cells the marker slot always takes: the cursor rule, the Mistake Radar
+/// glyph, then a gap. Reserved whether or not a row has either, so the
+/// columns after it never move when a cursor or a marker appears.
+///
+/// It was two — glyph, gap — until m5-history-and-ghost-preview/35 gave the
+/// cursor's rule the first cell and left the glyph to take the rest, which
+/// spent the gap: `▏⚠Merge branch 'feature'`, a marker touching the subject
+/// it marks. Two things with no gap between them read as one thing
+/// (m5-history-and-ghost-preview/30), so the rule gets a cell of its own
+/// rather than borrowing the gap's. The subject pays one column for it at
+/// every width; it is elastic and truncates one character earlier.
+const MARKER_WIDTH: u16 = 3;
+
+/// Cells inside [`MARKER_WIDTH`] that belong to the cursor rule, reserved on
+/// every row so the glyph beside it never moves between a cursor row and its
+/// neighbour.
+const RULE_WIDTH: u16 = 1;
 
 /// Cells the author chip takes: two initials, then a gap.
 const AUTHOR_WIDTH: u16 = 3;

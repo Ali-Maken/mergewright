@@ -7,8 +7,8 @@
 # are captured through the whole app instead — m5-hints-branch-*,
 # -plain-*, -uncommitted-*, -changes-*. Fixture:
 # capture_hint_bar_for_docs_shots in
-# crates/graft-ui/src/graph_screen/tests.rs (#[ignore]d, run by hand to
-# regenerate).
+# crates/graft-ui/src/graph_screen/tests.rs (asserted;
+# regenerate on purpose).
 #
 # Judge by eye: the footer's last row reads the marked row's hints for
 # this width — `. explain` leads (the marker's own key), then the row's
@@ -22,11 +22,11 @@
 # not, and the bar is never all hidden — never a key that does nothing.
 
  graft /code/api  5 commits
-●     Commit 5                                                      2h   0505050
-◉─╮   Commit 4                                                      2h   0404040
-● │   Commit 3                                                      2h   0303030
-●─╯   Commit 2                                                      2h   0202020
-◇     Commit 1                                                      2h   0101010
+●      Commit 5                                                     2h   0505050
+◉─╮ ▏  Commit 4                                                     2h   0404040
+● │    Commit 3                                                     2h   0303030
+●─╯    Commit 2                                                     2h   0202020
+◇      Commit 1                                                     2h   0101010
 
 
 

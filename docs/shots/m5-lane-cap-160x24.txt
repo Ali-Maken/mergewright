@@ -2,7 +2,7 @@
 # AppState — a scratch repository with fourteen topic branches merged
 # into `main` one after another, so fifteen columns are open over most
 # of the window (crates/graft/tests/it/lane_cap.rs,
-# capture_lane_cap_for_docs_shots, #[ignore]d). Not a pty capture: the
+# capture_lane_cap_for_docs_shots, asserted). Not a pty capture: the
 # terminal is ratatui's TestBackend, so this is a character grid with
 # no colour attributes in it — CLAUDE.md rule 5, colour ships
 # unverified.
@@ -39,53 +39,53 @@
 == the pane open: the graph has 92 columns ==
 
  graft /code/api  31 commits  +1 lanes                                                       COMMIT 0b83d39
-◆─╮                   ⋮   [◆ main] Merge branch 'topic-14'                      32m  0b83d39 Graft Fixture <fixture@example.invalid> · 2021-01-01 00:28 +0000 ·…
-│ ●                   ⋮ ⓘ [topic-14] Work on topic-14                           33m  20e9d9b parents 1152b59, 20e9d9b · diff vs first parent
-◉─│─╮                 ⋮   Merge branch 'topic-13'                               34m  1152b59 Contained in: checking…
-│ │ ●                 ⋮ ⓘ [topic-13] Work on topic-13                           35m  1b324bc evil merge: clean
-◉─│─│─╮               ⋮   Merge branch 'topic-12'                               36m  66ca526 A topic-14.rs                                                 +1 −0
-│ │ │ ●               ⋮ ⓘ [topic-12] Work on topic-12                           37m  d5b2138 reading…
-◉─│─│─│─╮             ⋮   Merge branch 'topic-11'                               38m  c7cfb0f
-│ │ │ │ ●             ⋮ ⓘ [topic-11] Work on topic-11                           39m  78d006a
-◉─│─│─│─│─╮           ⋮   Merge branch 'topic-10'                               40m  c4f1278
-│ │ │ │ │ ●           ⋮ ⓘ [topic-10] Work on topic-10                           41m  c2ae944
-◉─│─│─│─│─│─╮         ⋮   Merge branch 'topic-09'                               42m  88d0971
-│ │ │ │ │ │ ●         ⋮ ⓘ [topic-09] Work on topic-09                           43m  9a14cfb
-◉─│─│─│─│─│─│─╮       ⋮   Merge branch 'topic-08'                               44m  49000db
-│ │ │ │ │ │ │ ●       ⋮ ⓘ [topic-08] Work on topic-08                           45m  0172b6a
-◉─│─│─│─│─│─│─│─╮     ⋮   Merge branch 'topic-07'                               46m  413742f
-│ │ │ │ │ │ │ │ ●     ⋮ ⓘ [topic-07] Work on topic-07                           47m  7f91379
-◉─│─│─│─│─│─│─│─│─╮   ⋮   Merge branch 'topic-06'                               48m  5572a1b
-│ │ │ │ │ │ │ │ │ ●   ⋮ ⓘ [topic-06] Work on topic-06                           49m  ea66e44
-◉─│─│─│─│─│─│─│─│─│─╮ ⋮   Merge branch 'topic-05'                               50m  400cf48
-│ │ │ │ │ │ │ │ │ │ ● ⋮ ⓘ [topic-05] Work on topic-05                           51m  3eb9e24
-◉▾│ │ │ │ │ │ │ │ │ │ ⋮   Merge branch 'topic-04'                               52m  ea6b0bf
+◆─╮                   ⋮ ▏  [◆ main] Merge branch 'topic-14'                     32m  0b83d39 Graft Fixture <fixture@example.invalid> · 2021-01-01 00:28 +0000 ·…
+│ ●                   ⋮  ⓘ [topic-14] Work on topic-14                          33m  20e9d9b parents 1152b59, 20e9d9b · diff vs first parent
+◉─│─╮                 ⋮    Merge branch 'topic-13'                              34m  1152b59 Contained in: checking…
+│ │ ●                 ⋮  ⓘ [topic-13] Work on topic-13                          35m  1b324bc evil merge: clean
+◉─│─│─╮               ⋮    Merge branch 'topic-12'                              36m  66ca526 A topic-14.rs                                                 +1 −0
+│ │ │ ●               ⋮  ⓘ [topic-12] Work on topic-12                          37m  d5b2138 reading…
+◉─│─│─│─╮             ⋮    Merge branch 'topic-11'                              38m  c7cfb0f
+│ │ │ │ ●             ⋮  ⓘ [topic-11] Work on topic-11                          39m  78d006a
+◉─│─│─│─│─╮           ⋮    Merge branch 'topic-10'                              40m  c4f1278
+│ │ │ │ │ ●           ⋮  ⓘ [topic-10] Work on topic-10                          41m  c2ae944
+◉─│─│─│─│─│─╮         ⋮    Merge branch 'topic-09'                              42m  88d0971
+│ │ │ │ │ │ ●         ⋮  ⓘ [topic-09] Work on topic-09                          43m  9a14cfb
+◉─│─│─│─│─│─│─╮       ⋮    Merge branch 'topic-08'                              44m  49000db
+│ │ │ │ │ │ │ ●       ⋮  ⓘ [topic-08] Work on topic-08                          45m  0172b6a
+◉─│─│─│─│─│─│─│─╮     ⋮    Merge branch 'topic-07'                              46m  413742f
+│ │ │ │ │ │ │ │ ●     ⋮  ⓘ [topic-07] Work on topic-07                          47m  7f91379
+◉─│─│─│─│─│─│─│─│─╮   ⋮    Merge branch 'topic-06'                              48m  5572a1b
+│ │ │ │ │ │ │ │ │ ●   ⋮  ⓘ [topic-06] Work on topic-06                          49m  ea66e44
+◉─│─│─│─│─│─│─│─│─│─╮ ⋮    Merge branch 'topic-05'                              50m  400cf48
+│ │ │ │ │ │ │ │ │ │ ● ⋮  ⓘ [topic-05] Work on topic-05                          51m  3eb9e24
+◉▾│ │ │ │ │ │ │ │ │ │ ⋮    Merge branch 'topic-04'                              52m  ea6b0bf
  no commit-graph file · B build one (git commit-graph write --reachable) · X never here
  ⏎ open  c commit  P push  . more  <>  p  f  b  t  u  /  q  F2  F3  x  +  j/k  space  1  F
 
 == the same terminal, pane closed: the graph has all 160 ==
 
  graft /code/api  31 commits
-◆─╮                       [◆ main] Merge branch 'topic-14'                                                                                       GF 32m  0b83d39
-│ ●                     ⓘ [topic-14] Work on topic-14                                                                                            GF 33m  20e9d9b
-◉─│─╮                     Merge branch 'topic-13'                                                                                                GF 34m  1152b59
-│ │ ●                   ⓘ [topic-13] Work on topic-13                                                                                            GF 35m  1b324bc
-◉─│─│─╮                   Merge branch 'topic-12'                                                                                                GF 36m  66ca526
-│ │ │ ●                 ⓘ [topic-12] Work on topic-12                                                                                            GF 37m  d5b2138
-◉─│─│─│─╮                 Merge branch 'topic-11'                                                                                                GF 38m  c7cfb0f
-│ │ │ │ ●               ⓘ [topic-11] Work on topic-11                                                                                            GF 39m  78d006a
-◉─│─│─│─│─╮               Merge branch 'topic-10'                                                                                                GF 40m  c4f1278
-│ │ │ │ │ ●             ⓘ [topic-10] Work on topic-10                                                                                            GF 41m  c2ae944
-◉─│─│─│─│─│─╮             Merge branch 'topic-09'                                                                                                GF 42m  88d0971
-│ │ │ │ │ │ ●           ⓘ [topic-09] Work on topic-09                                                                                            GF 43m  9a14cfb
-◉─│─│─│─│─│─│─╮           Merge branch 'topic-08'                                                                                                GF 44m  49000db
-│ │ │ │ │ │ │ ●         ⓘ [topic-08] Work on topic-08                                                                                            GF 45m  0172b6a
-◉─│─│─│─│─│─│─│─╮         Merge branch 'topic-07'                                                                                                GF 46m  413742f
-│ │ │ │ │ │ │ │ ●       ⓘ [topic-07] Work on topic-07                                                                                            GF 47m  7f91379
-◉─│─│─│─│─│─│─│─│─╮       Merge branch 'topic-06'                                                                                                GF 48m  5572a1b
-│ │ │ │ │ │ │ │ │ ●     ⓘ [topic-06] Work on topic-06                                                                                            GF 49m  ea66e44
-◉─│─│─│─│─│─│─│─│─│─╮     Merge branch 'topic-05'                                                                                                GF 50m  400cf48
-│ │ │ │ │ │ │ │ │ │ ●   ⓘ [topic-05] Work on topic-05                                                                                            GF 51m  3eb9e24
-◉─│─│─│─│─│─│─│─│─│─│─╮   Merge branch 'topic-04'                                                                                                GF 52m  ea6b0bf
+◆─╮                     ▏  [◆ main] Merge branch 'topic-14'                                                                                      GF 32m  0b83d39
+│ ●                      ⓘ [topic-14] Work on topic-14                                                                                           GF 33m  20e9d9b
+◉─│─╮                      Merge branch 'topic-13'                                                                                               GF 34m  1152b59
+│ │ ●                    ⓘ [topic-13] Work on topic-13                                                                                           GF 35m  1b324bc
+◉─│─│─╮                    Merge branch 'topic-12'                                                                                               GF 36m  66ca526
+│ │ │ ●                  ⓘ [topic-12] Work on topic-12                                                                                           GF 37m  d5b2138
+◉─│─│─│─╮                  Merge branch 'topic-11'                                                                                               GF 38m  c7cfb0f
+│ │ │ │ ●                ⓘ [topic-11] Work on topic-11                                                                                           GF 39m  78d006a
+◉─│─│─│─│─╮                Merge branch 'topic-10'                                                                                               GF 40m  c4f1278
+│ │ │ │ │ ●              ⓘ [topic-10] Work on topic-10                                                                                           GF 41m  c2ae944
+◉─│─│─│─│─│─╮              Merge branch 'topic-09'                                                                                               GF 42m  88d0971
+│ │ │ │ │ │ ●            ⓘ [topic-09] Work on topic-09                                                                                           GF 43m  9a14cfb
+◉─│─│─│─│─│─│─╮            Merge branch 'topic-08'                                                                                               GF 44m  49000db
+│ │ │ │ │ │ │ ●          ⓘ [topic-08] Work on topic-08                                                                                           GF 45m  0172b6a
+◉─│─│─│─│─│─│─│─╮          Merge branch 'topic-07'                                                                                               GF 46m  413742f
+│ │ │ │ │ │ │ │ ●        ⓘ [topic-07] Work on topic-07                                                                                           GF 47m  7f91379
+◉─│─│─│─│─│─│─│─│─╮        Merge branch 'topic-06'                                                                                               GF 48m  5572a1b
+│ │ │ │ │ │ │ │ │ ●      ⓘ [topic-06] Work on topic-06                                                                                           GF 49m  ea66e44
+◉─│─│─│─│─│─│─│─│─│─╮      Merge branch 'topic-05'                                                                                               GF 50m  400cf48
+│ │ │ │ │ │ │ │ │ │ ●    ⓘ [topic-05] Work on topic-05                                                                                           GF 51m  3eb9e24
+◉─│─│─│─│─│─│─│─│─│─│─╮    Merge branch 'topic-04'                                                                                               GF 52m  ea6b0bf
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
  ⏎ open  c commit  P push  p pull  f fetch  b branch  t tag  u undo  / search  q quit  F2 status  F3 renderer  x compare  + lane  . more  j/k  space  1  F  H  y

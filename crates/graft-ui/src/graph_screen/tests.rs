@@ -369,7 +369,8 @@ fn a_row_with_a_marker_still_shows_the_cursor_rule() {
         "and the marker takes the cell next to it"
     );
 
-    // The columns after it have not moved: the slot is still two cells.
+    // The columns after it have not moved: the slot is `MARKER_WIDTH` cells
+    // whatever it holds.
     let empty = view(&rows, WalkView::Complete { rows: 2 }, 0);
     let plain = text(&draw(&empty, 120, 5));
     let both = text(&terminal);
@@ -378,6 +379,43 @@ fn a_row_with_a_marker_still_shows_the_cursor_rule() {
         line[..byte].chars().count()
     };
     assert_eq!(subject_at(&plain[1]), subject_at(&both[1]));
+}
+
+/// m5-history-and-ghost-preview/40. A marker glyph never touches the subject.
+///
+/// 35 gave the cursor's rule a cell of the two the marker slot already had,
+/// and the cell it took was the gap: every row carrying a radar marker drew
+/// `▏⚠Merge branch 'feature'`, the warning welded to the words it warns
+/// about, in ten committed captures. The slot is three cells now — rule,
+/// glyph, gap — and this is the test that says so, at every width the
+/// screen is drawn at, for both severities and with and without the cursor.
+#[test]
+fn a_marker_glyph_never_touches_the_subject() {
+    let rows = linear(2);
+    for severity in [Severity::Warning, Severity::Info] {
+        for cursor in [0usize, 1] {
+            for width in [80u16, 100, 120, 160] {
+                let mut filled = view(&rows, WalkView::Complete { rows: 2 }, cursor);
+                filled.rows[0].marker = Some(MarkerView { severity });
+                filled.marker_column = true;
+                let terminal = draw(&filled, width, 5);
+                let buffer = terminal.backend().buffer();
+
+                let glyph = (0..buffer.area.width)
+                    .find(|x| matches!(buffer[(*x, 1)].symbol(), "⚠" | "ⓘ"))
+                    .unwrap_or_else(|| {
+                        panic!("the marker is drawn at {width}: {:#?}", text(&terminal))
+                    });
+                assert_eq!(
+                    buffer[(glyph + 1, 1)].symbol(),
+                    " ",
+                    "{severity:?}, cursor on row {cursor}, {width} columns: the cell \
+                     after the marker is the gap, not the subject: {:#?}",
+                    text(&terminal)
+                );
+            }
+        }
+    }
 }
 
 #[test]
@@ -1393,20 +1431,18 @@ fn unmerged_sections_heading_word_is_conflicts() {
 /// Not an assertion — dumps the banner at three widths, so the header's
 /// operation banner can be judged by eye. The widths are three sizes of
 /// terminal, **not** three tiers: `banner_line` takes no width and there is
-/// one wording (m5/20 item 3). Run by hand to regenerate: `cargo test -p
-/// graft-ui graph_screen::tests::capture_for_docs_shots -- --ignored
-/// --nocapture`.
+/// one wording (m5/20 item 3). Run by hand to regenerate: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui graph_screen::tests::capture_for_docs_shots`.
 ///
 /// The long location is deliberate: it is what pushed the banner off the
 /// header before the room was reserved for it first (m5/16, review C1).
 #[test]
-#[ignore = "writes docs/shots/m5-ui-banner.txt; run by hand to regenerate"]
 // The body is one capture header and four `draw` calls, not logic — the same
 // exemption `capture_hint_bar_for_docs_shots` below carries for the same
 // reason. The caption grew when it stopped describing behaviour the code no
 // longer has (m5/24).
 #[allow(clippy::too_many_lines)]
 fn capture_for_docs_shots() {
+    let mut shots = graft_fixtures::Captures::new();
     let rows = linear(2);
     let mut with_banner = view(&rows, WalkView::Complete { rows: 2 }, 0);
     with_banner.banner_op = Some(rebase_banner(Some((3, 7)), Some("src/auth/token.rs")));
@@ -1463,14 +1499,14 @@ fn capture_for_docs_shots() {
         }
         out.push('\n');
     }
-    std::fs::write(
+    shots.check(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m5-ui-banner.txt"
         ),
         out,
-    )
-    .expect("docs/shots is writable");
+    );
+    shots.finish();
 }
 
 // --- Hint bar captures (`hint-bar-redesign`, ADR-0037 §4) ---
@@ -1488,13 +1524,11 @@ fn capture_for_docs_shots() {
 /// because a capture of a view model somebody set by hand cannot show
 /// whether the app picks that view model (m5-03 review, Major 5).
 ///
-/// Run by hand to regenerate: `cargo test -p graft-ui
-/// graph_screen::tests::capture_hint_bar_for_docs_shots -- --ignored
-/// --nocapture`.
+/// Run by hand to regenerate: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui graph_screen::tests::capture_hint_bar_for_docs_shots`.
 #[test]
-#[ignore = "writes docs/shots/m5-hints-*.txt; run by hand to regenerate"]
 #[allow(clippy::too_many_lines)] // one hand-built fixture plus its capture header, not logic
 fn capture_hint_bar_for_docs_shots() {
+    let mut shots = graft_fixtures::Captures::new();
     // A corpus shape with a branch, a marked merge and a dirty tree
     // (scope item 7): three ordinary commits, then a merge carrying a
     // Mistake Radar marker, then the row a local branch badge sits on.
@@ -1550,8 +1584,8 @@ fn capture_hint_bar_for_docs_shots() {
                  # are captured through the whole app instead — m5-hints-branch-*,\n\
                  # -plain-*, -uncommitted-*, -changes-*. Fixture:\n\
                  # capture_hint_bar_for_docs_shots in\n\
-                 # crates/graft-ui/src/graph_screen/tests.rs (#[ignore]d, run by hand to\n\
-                 # regenerate).\n\
+                 # crates/graft-ui/src/graph_screen/tests.rs (asserted;\n\
+                 # regenerate on purpose).\n\
                  #\n\
                  # Judge by eye: the footer's last row reads the marked row's hints for\n\
                  # this width — `. explain` leads (the marker's own key), then the row's\n\
@@ -1570,7 +1604,7 @@ fn capture_hint_bar_for_docs_shots() {
                 out.push_str(line.trim_end());
                 out.push('\n');
             }
-            std::fs::write(
+            shots.check(
                 format!(
                     concat!(
                         env!("CARGO_MANIFEST_DIR"),
@@ -1579,10 +1613,10 @@ fn capture_hint_bar_for_docs_shots() {
                     name, label
                 ),
                 out,
-            )
-            .expect("docs/shots is writable");
+            );
         }
     }
+    shots.finish();
 }
 
 /// The shrink ladder, for the user's eye (m5/24 and m5/28, ADR-0039;
@@ -1594,17 +1628,16 @@ fn capture_hint_bar_for_docs_shots() {
 /// it (variant B, the doorway leading the bare keys), and as-built is now B,
 /// so a comparison would be comparing the build against itself.
 ///
-/// Run by hand to regenerate: `cargo test -p graft-ui
-/// graph_screen::tests::capture_the_ladder_for_docs_shots -- --ignored
-/// --nocapture`.
+/// Run by hand to regenerate: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui graph_screen::tests::capture_the_ladder_for_docs_shots`.
 #[test]
-#[ignore = "writes docs/shots/m5-hints-ladder.txt; run by hand to regenerate"]
 #[allow(
     clippy::too_many_lines,
     reason = "six contexts, three widths and the header each block explains itself with, not logic"
 )]
 fn capture_the_ladder_for_docs_shots() {
     use super::hints::{Divider, hints_for, hints_text};
+
+    let mut shots = graft_fixtures::Captures::new();
 
     let cases: [(&str, HintContext, Divider); 6] = [
         (
@@ -1739,8 +1772,8 @@ fn capture_the_ladder_for_docs_shots() {
 
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../docs/shots/m5-hints-ladder.txt");
-    std::fs::write(&path, &out).unwrap_or_else(|why| panic!("writing {}: {why}", path.display()));
-    println!("wrote {} ({} bytes)", path.display(), out.len());
+    shots.check(&path, &out);
+    shots.finish();
 }
 
 /// The hit-test and the renderer are the same code, and this is the test

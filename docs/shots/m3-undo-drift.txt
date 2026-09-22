@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_undo_drift in crates/graft/src/view/tests.rs (#[ignore]d, run
-# by hand to regenerate). The undo job answered Drift: the repository moved
+# capture_m3_undo_drift in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). The undo job answered Drift: the repository moved
 # since the entry `u` would take back.
 #
 # Judge by eye:
@@ -13,25 +13,25 @@
 # - The command line shows what confirming would run.
 === 120x32 ===
 " graft 3 commits                                                                                                        "
-"◌   Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                             "
-"◆   [HEAD] Commit 3␛[31m                                                                                 TE 57y  0303030"
-"●   Commit 2␛[31m                                                                                        TE 57y  0202020"
-"◇   Commit 1␛[31m                                                                                        TE 57y  0101010"
+"◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                            "
+"◆    [HEAD] Commit 3␛[31m                                                                                TE 57y  0303030"
+"●    Commit 2␛[31m                                                                                       TE 57y  0202020"
+"◇    Commit 1␛[31m                                                                                       TE 57y  0101010"
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-"    ╭ Undo “commit "Add OAuth provider"”? ────────────────────────────────────────────────────────────╮                 "
-"    │ Since this commit "Add OAuth provider", the index changed; the                                  │                 "
-"    │ working tree's state after the operation was never recorded;                                    │                 "
-"    │ undo restores all of it.                                                                        │                 "
-"    │ A backup is taken first, so this is itself undoable.                                            │                 "
-"    │                                                                                                 │                 "
-"    │ undo restores the recorded state                                                                │                 "
-"    │                                                                                                 │                 "
-"    │ ▸[ Stop ]   [ Undo ]                                                                            │                 "
-" spa╰─────────────────────────────────────────────────────────────────────────────────────────────────╯                 "
+"     ╭ Undo “commit "Add OAuth provider"”? ───────────────────────────────────────────────────────────╮                 "
+"     │ Since this commit "Add OAuth provider", the index changed; the                                 │                 "
+"     │ working tree's state after the operation was never recorded;                                   │                 "
+"     │ undo restores all of it.                                                                       │                 "
+"     │ A backup is taken first, so this is itself undoable.                                           │                 "
+"     │                                                                                                │                 "
+"     │ undo restores the recorded state                                                               │                 "
+"     │                                                                                                │                 "
+"     │ ▸[ Stop ]   [ Undo ]                                                                           │                 "
+" spac╰────────────────────────────────────────────────────────────────────────────────────────────────╯                 "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
 "STAGED (1)                    fn routes()                                                                               "

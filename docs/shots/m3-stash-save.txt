@@ -1,6 +1,6 @@
 # TestBackend capture (not a pty), no colour recorded. Fixture:
-# capture_m3_stash in crates/graft/src/view/tests.rs (#[ignore]d, run by
-# hand to regenerate). `s` pressed, a message typed, `tab` pressed once.
+# capture_m3_stash in crates/graft/src/view/tests.rs (asserted; regenerate
+# on purpose). `s` pressed, a message typed, `tab` pressed once.
 #
 # Judge by eye:
 # - The message line carries what was typed, with the cursor after it.

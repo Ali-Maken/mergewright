@@ -1,6 +1,7 @@
 # m2-map-view.txt: TestBackend capture (not a pty), 80x24. Fixture:
-# capture_m2_map_view in crates/graft/src/view/tests.rs (#[ignore]d, run by
-# hand to regenerate). Three synthetic branches: main (current, tip in the
+# capture_m2_map_view in crates/graft/src/view/tests.rs (asserted;
+# regenerate on purpose). Three synthetic branches: main (current, tip in
+# the
 # newest bucket), feature/auth (merged into main's row, elbow at bucket 3),
 # release/2.3 (a v1.0 tag and a Warning radar mark), plus 2 more local
 # branches beyond the row cap (footer's "+2 more"), and complete: false

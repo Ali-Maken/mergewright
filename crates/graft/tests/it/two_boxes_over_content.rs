@@ -31,7 +31,7 @@ use graft_fixtures::Shape;
 use graft_fixtures::remote::LocalRemote;
 
 use crate::app_harness::App;
-use crate::captures::{frame_at, write_shot};
+use crate::captures::{check_shot, frame_at};
 
 /// The instant every frame's relative dates are drawn against. The corpus's
 /// own "now", so a capture taken today and one taken next year are the same
@@ -206,15 +206,14 @@ fn section(out: &mut String, label: &str, drawn: &[String]) {
 /// `docs/shots/m5-ui-credential-over-graph-*.txt`: the two boxes, at 80x24
 /// and 160x48, each standing on a 200-commit graph. Run by hand to
 /// regenerate:
-/// `cargo test -p graft --test it two_boxes_over_content -- --ignored --nocapture`.
+/// `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it two_boxes_over_content`.
 #[test]
-#[ignore = "writes docs/shots/m5-ui-{confirm,credential}-over-graph-*.txt; run by hand to regenerate"]
 fn capture_two_boxes_over_real_content_for_docs_shots() {
     for (label, columns, rows) in [("80x24", 80u16, 24u16), ("160x48", 160, 48)] {
         let (push_box, credential_box) = boxes_at(label, columns, rows);
         let mut out = confirm_header(label, columns, rows, &what_survives(&push_box));
         section(&mut out, "`P`: the push confirm, on the graph", &push_box);
-        write_shot(&format!("m5-ui-confirm-over-graph-{label}.txt"), &out);
+        check_shot(&format!("m5-ui-confirm-over-graph-{label}.txt"), &out);
 
         let mut out = credential_header(label, columns, rows);
         section(
@@ -222,7 +221,7 @@ fn capture_two_boxes_over_real_content_for_docs_shots() {
             "git's password question, over the push it belongs to",
             &credential_box,
         );
-        write_shot(&format!("m5-ui-credential-over-graph-{label}.txt"), &out);
+        check_shot(&format!("m5-ui-credential-over-graph-{label}.txt"), &out);
     }
 }
 
@@ -341,7 +340,7 @@ fn confirm_header(label: &str, columns: u16, rows: u16, survives: &(String, Stri
          # `file://` bare, the clone left one commit ahead of it, the walk let\n\
          # settle, then `P` pressed\n\
          # (crates/graft/tests/it/two_boxes_over_content.rs,\n\
-         # capture_two_boxes_over_real_content_for_docs_shots, #[ignore]d).\n\
+         # capture_two_boxes_over_real_content_for_docs_shots, asserted).\n\
          # Not a pty capture: the terminal is ratatui's TestBackend, so this is\n\
          # a character grid with no colour attributes in it \u{2014} CLAUDE.md rule 5,\n\
          # colour ships unverified. The scratch repository's temporary path is\n\
@@ -397,7 +396,7 @@ fn credential_header(label: &str, columns: u16, rows: u16) -> String {
          # `Progress::CredentialNeeded` uses) and a seven-character password\n\
          # typed into it\n\
          # (crates/graft/tests/it/two_boxes_over_content.rs,\n\
-         # capture_two_boxes_over_real_content_for_docs_shots, #[ignore]d).\n\
+         # capture_two_boxes_over_real_content_for_docs_shots, asserted).\n\
          # The host in the question is pinned to `127.0.0.1:8443`: a real HTTP\n\
          # fixture is served on a port the OS picks, and a capture whose title\n\
          # changed every run could not be diffed. Not a pty capture \u{2014} no\n\

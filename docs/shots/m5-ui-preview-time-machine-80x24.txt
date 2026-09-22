@@ -5,10 +5,12 @@
 # `update` over the real job pool, then the real
 # `graft_ops::preview::plan_revert_to` run
 # (crates/graft/tests/it/preview.rs, capture_time_machine_for_docs_shots,
-# #[ignore]d). Not a pty capture: ratatui's TestBackend, a character grid
+# asserted). Not a pty capture: ratatui's TestBackend, a character grid
 # with no colour attributes — CLAUDE.md rule 5, colour ships
 # unverified. The scratch repository's temporary path is replaced by
-# `/code/api`; nothing else is touched.
+# `/code/api`, and the base commit's id — invented by this run, so
+# different every time — is zeroed to `0000000`; nothing else is
+# touched.
 #
 # What right looks like:
 #  - The journal browser is gone and the preview box is in its place. `Esc`
@@ -23,11 +25,11 @@
 #  - Nothing has run: this picture is a read.
 #
 
- graft /code/api  4…
-◆   [◆ main] add the base                                           now  d5fb070
-●   Correct the note                                                7y   a82960b
-●   Add the first note                                              7y   fadcfb3
-◇   Add a readme                                                    7y   64ded19
+ graft /code/api  4 commits
+◆ ▏  [◆ main] add the base                                          now  0000000
+●    Correct the note                                               7y   a82960b
+●    Add the first note                                             7y   fadcfb3
+◇    Add a readme                                                   7y   64ded19
 
 
 

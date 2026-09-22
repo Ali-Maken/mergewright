@@ -139,13 +139,13 @@ fn name_prompt_stays_inside_its_rect() {
     }
 }
 
-/// Not an assertion — dumps the plain prompt, with the checkout option, and
-/// with a refusal, at 80×24 and 160×48. Run by hand to regenerate:
-/// `cargo test -p graft-ui name_prompt::tests::capture_for_docs_shots --
-/// --ignored --nocapture`.
+/// The plain prompt, with the checkout option, and with a refusal, at 80×24
+/// and 160×48, **asserted** against what is committed. Regenerate on purpose:
+/// `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui
+/// name_prompt::tests::capture_for_docs_shots`.
 #[test]
-#[ignore = "writes docs/shots/m5-ui-name-prompt.txt; run by hand to regenerate"]
 fn capture_for_docs_shots() {
+    let mut shots = graft_fixtures::Captures::new();
     let theme = theme();
     let mut out = String::new();
     out.push_str(
@@ -189,12 +189,12 @@ fn capture_for_docs_shots() {
         }
         out.push('\n');
     }
-    std::fs::write(
+    shots.check(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m5-ui-name-prompt.txt"
         ),
         out,
-    )
-    .expect("docs/shots is writable");
+    );
+    shots.finish();
 }

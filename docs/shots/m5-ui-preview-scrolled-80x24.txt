@@ -8,7 +8,7 @@
 # not 0 — it differs by screen, which is why each capture has its own
 # session and its own number), then `r` pressed through `update` and the
 # real `graft_ops::preview::plan` run (crates/graft/tests/it/preview.rs,
-# capture_scrolled_preview_for_docs_shots, #[ignore]d). Not a pty capture:
+# capture_scrolled_preview_for_docs_shots, asserted). Not a pty capture:
 # ratatui's TestBackend, a character grid with no colour attributes in it
 # — CLAUDE.md rule 5, colour ships unverified. The scratch repository's
 # temporary path is replaced by `/code/api`; nothing else is touched.
@@ -39,20 +39,20 @@
 #    `[ Cancel ]` comes first with the cursor on it (ADR-0038 §1).
 #
 
- graft /code/api  7…
-  │ ●   finish the topic                                            63m  e7e39a7
-  │ ●   start the topic                                             64m  169d215
-●─┴─╯   [main] main moves on (2)                                    65m  107af44
-●       main moves on (1)                                           66m  2b2b2f1
-●       main moves on (0)                                           67m  ba665c1
-│       after rebase
-│ ○     [◆ topic] finish the topic                                  —    —
-│ ○     start the topic                                             —    —
-│ ○     main moves on (2)                                           —    —
-│ ○     main moves on (1)                                           —    —
-│ ○     main moves on (0)                                           —    —
-│ ●     [old-release] cut release 1.0                               68m  3b09656
-●─╯     add the base                                                69m  ed332bc
+ graft /code/api  70 commits
+  │ ●    finish the topic                                           63m  e7e39a7
+  │ ●    start the topic                                            64m  169d215
+●─┴─╯    [main] main moves on (2)                                   65m  107af44
+●        main moves on (1)                                          66m  2b2b2f1
+●        main moves on (0)                                          67m  ba665c1
+│        after rebase
+│ ○      [◆ topic] finish the topic                                 —    —
+│ ○      start the topic                                            —    —
+│ ○      main moves on (2)                                          —    —
+│ ○      main moves on (1)                                          —    —
+│ ○      main moves on (0)                                          —    —
+│ ●   ▏  [old-release] cut release 1.0                              68m  3b09656
+●─╯      add the base                                               69m  ed332bc
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────╮
 │ 5 commits replayed                                                           │
 │ topic e7e39a7 → 5 new commits                                                │

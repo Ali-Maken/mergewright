@@ -215,9 +215,26 @@ fn cells(line: &str, width: usize) -> Vec<char> {
 #[test]
 fn a_verb_key_the_menu_advertises_closes_it_and_runs_the_verb() {
     let scratch = forked();
+    let planned = |state: &AppState| {
+        state
+            .preview
+            .as_ref()
+            .is_some_and(|preview| !preview.rows.is_empty())
+    };
+
+    // Each branch gets its own app over the same repository, and each is left
+    // to settle before its frame is taken. `m` only opens a preview — nothing
+    // is written — so the second app opens on the same commits as the first.
+    //
+    // They used to fork one `AppState` and share one job pool, which cannot
+    // work: a finished job's event goes to whichever branch is pumping, so the
+    // walk's completion landed on one of them and the other kept saying `date
+    // order, sorting…` forever. That was invisible until
+    // m5-history-and-ghost-preview/40 shortened the repository path in the
+    // header — the temp path used to fill all 80 columns and push the status
+    // off the end of both frames.
     let (app, state) = App::open(scratch.path());
     let row = on_mains_row(&app, state);
-
     let menu = app.key(&row, KeyCode::Char('.'));
     assert!(
         menu.context_menu.is_some(),
@@ -229,7 +246,6 @@ fn a_verb_key_the_menu_advertises_closes_it_and_runs_the_verb() {
         labels.iter().any(|label| label.ends_with("(m)")),
         "the menu advertises `m`: {labels:?}"
     );
-
     let through_menu = app.key(&menu, KeyCode::Char('m'));
     assert!(
         through_menu.context_menu.is_none(),
@@ -240,23 +256,18 @@ fn a_verb_key_the_menu_advertises_closes_it_and_runs_the_verb() {
         "`m` ran the merge it advertised instead of being swallowed: {:?}",
         through_menu.status
     );
-    let through_menu = app.pump(through_menu, "the merge plan", |state| {
-        state
-            .preview
-            .as_ref()
-            .is_some_and(|preview| !preview.rows.is_empty())
-    });
+    let through_menu = app.pump(through_menu, "the merge plan", planned);
+    let through_menu = sort_landed(&app, through_menu);
+    let through_menu = frame(&through_menu, 80, 24);
+    app.close();
 
+    let (app, state) = App::open(scratch.path());
+    let row = on_mains_row(&app, state);
     let direct = app.key(&row, KeyCode::Char('m'));
-    let direct = app.pump(direct, "the merge plan", |state| {
-        state
-            .preview
-            .as_ref()
-            .is_some_and(|preview| !preview.rows.is_empty())
-    });
-
+    let direct = app.pump(direct, "the merge plan", planned);
+    let direct = sort_landed(&app, direct);
     assert_eq!(
-        frame(&through_menu, 80, 24),
+        through_menu,
         frame(&direct, 80, 24),
         "`.` then `m` must land where a bare `m` lands"
     );
@@ -488,16 +499,15 @@ fn choosing_a_menu_verb_previews_that_operation_and_writes_nothing() {
 /// To regenerate after a deliberate change: `GRAFT_UPDATE_SHOTS=1 cargo test
 /// -p graft --test it context_menu::capture_context_menu_for_docs_shots`, then
 /// look at the diff before committing it. That run is **red** — see
-/// [`check_capture`].
+/// [`graft_fixtures::capture`].
 #[test]
 fn capture_context_menu_for_docs_shots() {
     let scratch = forked();
     let (app, state) = App::open(scratch.path());
-    // Settled before it is photographed, and standing at the path the
-    // caption claims — see [`settled`] and [`at_a_fixed_path`].
+    // Settled before it is photographed; `captures::frame_at` draws it at
+    // the fixed path the caption claims.
     let state = settled(&app, opened(&app, state));
-    let state = at_a_fixed_path(menu_on_mains_row(&app, state));
-    let updating = updating_shots(std::env::var_os("GRAFT_UPDATE_SHOTS").as_deref());
+    let state = menu_on_mains_row(&app, state);
 
     let mut drifted = Vec::new();
     for (label, columns, rows) in [("80x24", 80u16, 24u16), ("160x48", 160, 48)] {
@@ -511,7 +521,7 @@ fn capture_context_menu_for_docs_shots() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../docs/shots")
             .join(format!("m5-ui-context-menu-verbs-{label}.txt"));
-        if let Err(why) = check_capture(&path, &out, updating) {
+        if let Err(why) = graft_fixtures::check(&path, &out) {
             drifted.push(why);
         }
     }
@@ -525,6 +535,23 @@ fn capture_context_menu_for_docs_shots() {
 /// A "what right looks like" frame has to be a settled one: both
 /// context-menu captures were taken mid-sort, so the picture the user
 /// judged showed a transient (M5 groups 12/13 review, m2).
+/// Pumped until the header stops saying `date order, sorting…`, and no
+/// further.
+///
+/// [`settled`] waits for the Mistake Radar as well, which is right for a
+/// capture but wrong here: the radar's context never arrives while a preview
+/// is open, so that wait times out. A frame that only has to agree about the
+/// sort waits for the sort.
+///
+/// The width is 160 on purpose, like [`settled`]'s: the status sits at the
+/// right of the header and an 80-column frame can truncate it away, which
+/// would make this return before the sort had landed.
+fn sort_landed(app: &App, state: AppState) -> AppState {
+    app.pump(state, "the topological sort", |state| {
+        !frame(state, 160, 48)[0].contains("sorting")
+    })
+}
+
 pub(crate) fn settled(app: &App, state: AppState) -> AppState {
     app.pump(state, "the walk and the radar to settle", |state| {
         // The radar too: its context arrives on its own job, and the marker
@@ -536,124 +563,6 @@ pub(crate) fn settled(app: &App, state: AppState) -> AppState {
             graft::update::detail::Loading::Ready(_)
         ) && !frame(state, 160, 48)[0].contains("sorting")
     })
-}
-
-/// The repository moved to `/code/api` for the drawing.
-///
-/// The captions say the repository is at `/code/api`, and the captures used
-/// to get there by drawing against the scratch repository's long temporary
-/// path and substituting afterwards. The header **fits** itself to the
-/// width it has, so the 80-column capture showed `graft /code/api  8…`: a
-/// truncation caused by a path that is not in the picture. It also tied the
-/// snapshot to this machine's temp-path length — on Linux
-/// (`/tmp/.tmpXXXXXX`) the header fits differently and the golden test
-/// fails (M5 groups 12/13 review, m2).
-///
-/// Setting the path before the frame is drawn means the header fits against
-/// the path the caption claims, which is the only honest picture of it.
-pub(crate) fn at_a_fixed_path(state: AppState) -> AppState {
-    let mut state = state;
-    let repository = state
-        .repository
-        .as_mut()
-        .expect("the repository's facts have arrived");
-    repository.path = std::path::PathBuf::from("/code/api");
-    state
-}
-
-/// May this run rewrite a committed capture? Only the literal `1`.
-///
-/// `GRAFT_UPDATE_SHOTS=0` or `=false` left exported in a shell used to mean
-/// "yes" (`var_os(..).is_some()`), which is the shape of an accident, not of
-/// an instruction (M5 groups 12/13 review, m1).
-pub(crate) fn updating_shots(value: Option<&std::ffi::OsStr>) -> bool {
-    value == Some(std::ffi::OsStr::new("1"))
-}
-
-/// One capture against what is committed at `path`, rewritten first when
-/// `updating`.
-///
-/// Drift is an `Err` **whether or not** the file was rewritten. A
-/// regeneration is therefore always a red run, and stays red until the new
-/// capture is committed and the suite runs again without the variable — so
-/// a `GRAFT_UPDATE_SHOTS` someone left exported can no longer turn a real
-/// regression green, and a regenerated file is always something `git status`
-/// has to show (M5 groups 12/13 review, m1).
-pub(crate) fn check_capture(path: &Path, out: &str, updating: bool) -> Result<(), String> {
-    let committed = std::fs::read_to_string(path);
-    if updating {
-        std::fs::write(path, out)
-            .map_err(|why| format!("{} is not writable: {why}", path.display()))?;
-    }
-    let committed = committed.map_err(|why| {
-        format!(
-            "{} is missing ({why}); regenerate with GRAFT_UPDATE_SHOTS=1",
-            path.display()
-        )
-    })?;
-    if committed == out {
-        return Ok(());
-    }
-    let rewritten = if updating {
-        "It has been rewritten — read the diff, and commit it if it is right."
-    } else {
-        "Read the new frame, and if it is right regenerate with GRAFT_UPDATE_SHOTS=1."
-    };
-    Err(format!(
-        "{} has drifted from what is committed. {rewritten}\n{out}",
-        path.display()
-    ))
-}
-
-/// A normal run fails on drift and rewrites nothing; only the literal
-/// `GRAFT_UPDATE_SHOTS=1` rewrites, and that run is red too.
-///
-/// Over a temporary file rather than the real one, and over the policy
-/// function rather than the environment: `cargo test` runs a binary's tests
-/// in one process, so a test that set the variable would change what its
-/// neighbours saw.
-#[test]
-fn only_an_explicit_regeneration_rewrites_a_capture() {
-    assert!(updating_shots(Some(std::ffi::OsStr::new("1"))));
-    for accident in ["", "0", "false", "no", "2"] {
-        assert!(
-            !updating_shots(Some(std::ffi::OsStr::new(accident))),
-            "GRAFT_UPDATE_SHOTS={accident:?} is not an instruction to rewrite"
-        );
-    }
-    assert!(!updating_shots(None));
-
-    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::Trivial);
-    let path = scratch.path().join("capture.txt");
-    std::fs::write(&path, "committed\n").expect("the scratch dir is writable");
-
-    assert!(
-        check_capture(&path, "committed\n", false).is_ok(),
-        "a capture that has not drifted passes"
-    );
-
-    let drifted = check_capture(&path, "new\n", false);
-    assert!(drifted.is_err(), "a normal run fails on drift: {drifted:?}");
-    assert_eq!(
-        std::fs::read_to_string(&path).expect("the file is still there"),
-        "committed\n",
-        "a normal run rewrote a committed capture"
-    );
-
-    let regenerated = check_capture(&path, "new\n", true);
-    assert!(
-        regenerated.is_err(),
-        "a regeneration is red until the new capture is committed: {regenerated:?}"
-    );
-    assert_eq!(
-        std::fs::read_to_string(&path).expect("the file is still there"),
-        "new\n",
-        "the regeneration wrote the new capture out for `git status` to show"
-    );
-    assert!(
-        check_capture(&path, "new\n", false).is_ok(),
-        "once committed, the normal run is green again"
-    );
 }
 
 /// The "what right looks like" block the M5 contact sheet puts this capture

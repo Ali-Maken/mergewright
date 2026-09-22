@@ -1220,11 +1220,10 @@ fn conflicts_section_draws_first_with_words_not_a_letter() {
 }
 
 /// Not an assertion — dumps the CONFLICTS-first changes pane at 80×24 and
-/// 160×48. Run by hand to regenerate: `cargo test -p graft-ui
-/// detail_pane::tests::capture_for_docs_shots -- --ignored --nocapture`.
+/// 160×48. Run by hand to regenerate: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui detail_pane::tests::capture_for_docs_shots`.
 #[test]
-#[ignore = "writes docs/shots/m5-ui-conflicts.txt; run by hand to regenerate"]
 fn capture_for_docs_shots() {
+    let mut shots = graft_fixtures::Captures::new();
     let view = conflicted_working_tree_view();
     let mut out = String::new();
     out.push_str(
@@ -1248,12 +1247,12 @@ fn capture_for_docs_shots() {
         }
         out.push('\n');
     }
-    std::fs::write(
+    shots.check(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../docs/shots/m5-ui-conflicts.txt"
         ),
         out,
-    )
-    .expect("docs/shots is writable");
+    );
+    shots.finish();
 }

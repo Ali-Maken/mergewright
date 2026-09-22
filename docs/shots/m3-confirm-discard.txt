@@ -1,6 +1,6 @@
 # m3-confirm-discard.txt: TestBackend capture (not a pty), 120x40, no colour
 # recorded. Fixture: capture_m3_confirm_discard in
-# crates/graft/src/view/tests.rs (#[ignore]d, run by hand to regenerate).
+# crates/graft/src/view/tests.rs (asserted; regenerate on purpose).
 # `d` pressed with the diff region focused and the line cursor on an added
 # line of src/api/routes.rs.
 #
@@ -13,10 +13,10 @@
 #   is asking about.
 #
 " graft 3 commits                                                                                                        "
-"◌   Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                             "
-"◆   [HEAD] Commit 3␛[31m                                                                                 TE 57y  0303030"
-"●   Commit 2␛[31m                                                                                        TE 57y  0202020"
-"◇   Commit 1␛[31m                                                                                        TE 57y  0101010"
+"◌ ▏  Uncommitted changes (1 staged, 2 unstaged, 1 untracked)                                                            "
+"◆    [HEAD] Commit 3␛[31m                                                                                TE 57y  0303030"
+"●    Commit 2␛[31m                                                                                       TE 57y  0202020"
+"◇    Commit 1␛[31m                                                                                       TE 57y  0101010"
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
@@ -27,14 +27,14 @@
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-"    ╭ Discard this line of src/api/routes.rs? ────────────────────────────────────────────────────────╮                 "
-"    │ 1 added / 0 removed lines go back to how they were.                                             │                 "
-"    │ Graft keeps a backup first, so `u` can undo it afterwards.                                      │                 "
-"    │                                                                                                 │                 "
-"    │ git apply -R -                                                                                  │                 "
-"    │                                                                                                 │                 "
-"    │ ▸[ Cancel ]   [ Discard ]                                                                       │                 "
-"    ╰─────────────────────────────────────────────────────────────────────────────────────────────────╯                 "
+"     ╭ Discard this line of src/api/routes.rs? ───────────────────────────────────────────────────────╮                 "
+"     │ 1 added / 0 removed lines go back to how they were.                                            │                 "
+"     │ Graft keeps a backup first, so `u` can undo it afterwards.                                     │                 "
+"     │                                                                                                │                 "
+"     │ git apply -R -                                                                                 │                 "
+"     │                                                                                                │                 "
+"     │ ▸[ Cancel ]   [ Discard ]                                                                      │                 "
+"     ╰────────────────────────────────────────────────────────────────────────────────────────────────╯                 "
 " space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more                                           "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "

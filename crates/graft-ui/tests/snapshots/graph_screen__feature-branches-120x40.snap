@@ -3,16 +3,16 @@ source: crates/graft-ui/tests/graph_screen.rs
 expression: text
 ---
  graft ~/code/api  10 commits
-  ●       three: in progress                                                                             GF 4y   0683985
-◆─│─╮   ▏ Merge branch 'feature/two'                                                                     GF 4y   5202e1c
-│ │ ●     two: finish                                                                                    GF 4y   e30e870
-│ │ ●     two: start                                                                                     GF 4y   40034e4
-◉─│─│─╮   Merge branch 'feature/one'                                                                     GF 4y   3a97003
-│ │ │ ●   one: finish                                                                                    GF 4y   fdb311f
-│ │ │ ●   one: start                                                                                     GF 4y   bba225a
-●─┴─╯ │   Add b.txt                                                                                      GF 4y   de95041
-●─────╯   Add a.txt                                                                                      GF 4y   21b16b9
-◇         Add a readme                                                                                   GF 4y   daa5167
+  ●        three: in progress                                                                            GF 4y   0683985
+◆─│─╮   ▏  Merge branch 'feature/two'                                                                    GF 4y   5202e1c
+│ │ ●      two: finish                                                                                   GF 4y   e30e870
+│ │ ●      two: start                                                                                    GF 4y   40034e4
+◉─│─│─╮    Merge branch 'feature/one'                                                                    GF 4y   3a97003
+│ │ │ ●    one: finish                                                                                   GF 4y   fdb311f
+│ │ │ ●    one: start                                                                                    GF 4y   bba225a
+●─┴─╯ │    Add b.txt                                                                                     GF 4y   de95041
+●─────╯    Add a.txt                                                                                     GF 4y   21b16b9
+◇          Add a readme                                                                                  GF 4y   daa5167
 
 
 

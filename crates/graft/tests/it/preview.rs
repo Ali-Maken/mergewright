@@ -242,18 +242,13 @@ fn esc_closes_the_preview_and_the_repository_never_moved() {
 /// The captures under `docs/shots/`, from this same real path — the **user**
 /// judges the ghost rows and the docked box by eye (CLAUDE.md rule 6).
 ///
-/// Run by hand: `cargo test -p graft --test it
-/// preview::capture_preview_for_docs_shots -- --ignored --nocapture`.
+/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it preview::capture_preview_for_docs_shots`.
 #[test]
-#[ignore = "writes docs/shots/m5-ui-preview-rebase-*.txt; run by hand to regenerate"]
 fn capture_preview_for_docs_shots() {
     let scratch = forked();
     let (app, state) = App::open(scratch.path());
     let state = preview_of_a_rebase(&app, state);
-    // The scratch repository lives under a different temporary directory
-    // every run, and the header row draws its path: replaced so that
-    // regenerating the captures shows only what actually changed.
-    let home = scratch.path().display().to_string();
+    let mut drifted = Vec::new();
 
     for (label, columns, rows) in [("80x24", 80u16, 24u16), ("160x48", 160, 48)] {
         let drawn = frame_at(&state, columns, rows, Some(Clock::Fixed(FORK_NOW)));
@@ -264,7 +259,7 @@ fn capture_preview_for_docs_shots() {
              # over the real job pool, cursor moved to `main`'s row and `r` pressed\n\
              # through `update`, then the real `graft_ops::preview::plan` run\n\
              # (crates/graft/tests/it/preview.rs, capture_preview_for_docs_shots,\n\
-             # #[ignore]d). Not a pty capture: the terminal is ratatui's TestBackend, so\n\
+             # asserted). Not a pty capture: the terminal is ratatui's TestBackend, so\n\
              # this is a character grid with no colour attributes in it — CLAUDE.md rule\n\
              # 5, colour ships unverified. The scratch repository's temporary path is\n\
              # replaced by `/code/api`; nothing else is touched.\n\
@@ -287,16 +282,18 @@ fn capture_preview_for_docs_shots() {
         );
         out.push('\n');
         for line in &drawn {
-            out.push_str(&line.replace(&home, "/code/api"));
+            out.push_str(line);
             out.push('\n');
         }
         let path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../docs/shots")
             .join(format!("m5-ui-preview-rebase-{label}.txt"));
-        std::fs::write(&path, &out).expect("docs/shots is writable");
-        println!("wrote {} ({} bytes)", path.display(), out.len());
+        if let Err(why) = graft_fixtures::check(&path, &out) {
+            drifted.push(why);
+        }
     }
     app.close();
+    assert!(drifted.is_empty(), "{}", drifted.join("\n\n"));
 }
 
 // ---------------------------------------------------------------------------
@@ -486,19 +483,21 @@ fn three_stages_undone(repo: &Path, said: &str) {
 /// The time machine's own capture — the picture the journal's `Enter` draws
 /// before anything runs. The **user** judges it (CLAUDE.md rule 6).
 ///
-/// Run by hand: `cargo test -p graft --test it
-/// preview::capture_time_machine_for_docs_shots -- --ignored --nocapture`.
+/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it preview::capture_time_machine_for_docs_shots`.
 #[test]
-#[ignore = "writes docs/shots/m5-ui-preview-time-machine-*.txt; run by hand to regenerate"]
 fn capture_time_machine_for_docs_shots() {
     let scratch = three_to_stage();
     let repo = scratch.path();
+    // `three_to_stage` commits here and now, so the id is different every run.
+    // The capture shows it, so it is zeroed out before the file is compared —
+    // otherwise no two runs could ever agree (m5-history-and-ghost-preview/40).
+    let base = git(repo, &["rev-parse", "HEAD"]).trim().to_owned();
     let (app, state) = App::open(repo);
     let state = stage_all_three(&app, state);
     let state = journal_at_the_oldest_row(&app, &state);
     let state = app.key(&state, KeyCode::Enter);
     let state = planned_preview(&app, state);
-    let home = repo.display().to_string();
+    let mut drifted = Vec::new();
 
     for (label, columns, rows) in [("80x24", 80u16, 24u16), ("160x48", 160, 48)] {
         let drawn = frame(&state, columns, rows);
@@ -510,10 +509,12 @@ fn capture_time_machine_for_docs_shots() {
              # `update` over the real job pool, then the real\n\
              # `graft_ops::preview::plan_revert_to` run\n\
              # (crates/graft/tests/it/preview.rs, capture_time_machine_for_docs_shots,\n\
-             # #[ignore]d). Not a pty capture: ratatui's TestBackend, a character grid\n\
+             # asserted). Not a pty capture: ratatui's TestBackend, a character grid\n\
              # with no colour attributes \u{2014} CLAUDE.md rule 5, colour ships\n\
              # unverified. The scratch repository's temporary path is replaced by\n\
-             # `/code/api`; nothing else is touched.\n\
+             # `/code/api`, and the base commit's id \u{2014} invented by this run, so\n\
+             # different every time \u{2014} is zeroed to `0000000`; nothing else is\n\
+             # touched.\n\
              #\n\
              # What right looks like:\n\
              #  - The journal browser is gone and the preview box is in its place. `Esc`\n\
@@ -530,16 +531,20 @@ fn capture_time_machine_for_docs_shots() {
         );
         out.push('\n');
         for line in &drawn {
-            out.push_str(&line.replace(&home, "/code/api"));
+            out.push_str(line);
             out.push('\n');
         }
         let path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../docs/shots")
             .join(format!("m5-ui-preview-time-machine-{label}.txt"));
-        std::fs::write(&path, &out).expect("docs/shots is writable");
-        println!("wrote {} ({} bytes)", path.display(), out.len());
+        if let Err(why) =
+            graft_fixtures::check(&path, &crate::captures::without_invented_id(&out, &base))
+        {
+            drifted.push(why);
+        }
     }
     app.close();
+    assert!(drifted.is_empty(), "{}", drifted.join("\n\n"));
 }
 
 /// Below 40x12 the Ghost Preview box gives up its frame and draws one
@@ -730,13 +735,11 @@ fn a_preview_scrolled_into_history_draws_the_rows_the_user_was_on() {
 /// history**, which is where the graph spends most of its life on a real
 /// repository. The user judges it by eye (CLAUDE.md rule 6).
 ///
-/// Run by hand: `cargo test -p graft --test it
-/// preview::capture_scrolled_preview_for_docs_shots -- --ignored --nocapture`.
+/// Regenerate on purpose: `GRAFT_UPDATE_SHOTS=1 cargo test -p graft --test it preview::capture_scrolled_preview_for_docs_shots`.
 #[test]
-#[ignore = "writes docs/shots/m5-ui-preview-scrolled-*.txt; run by hand to regenerate"]
 fn capture_scrolled_preview_for_docs_shots() {
     let scratch = left_behind();
-    let home = scratch.path().display().to_string();
+    let mut drifted = Vec::new();
     let mut tops: Vec<(&str, usize)> = Vec::new();
 
     for (label, columns, rows) in [("80x24", 80u16, 24u16), ("160x48", 160, 48)] {
@@ -752,14 +755,15 @@ fn capture_scrolled_preview_for_docs_shots() {
         let mut out = scrolled_caption(label, columns, rows, top);
         out.push('\n');
         for line in &drawn {
-            out.push_str(&line.replace(&home, "/code/api"));
+            out.push_str(line);
             out.push('\n');
         }
         let path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../docs/shots")
             .join(format!("m5-ui-preview-scrolled-{label}.txt"));
-        std::fs::write(&path, &out).expect("docs/shots is writable");
-        println!("wrote {} ({} bytes)", path.display(), out.len());
+        if let Err(why) = graft_fixtures::check(&path, &out) {
+            drifted.push(why);
+        }
         drop(state);
         app.close();
     }
@@ -773,6 +777,7 @@ fn capture_scrolled_preview_for_docs_shots() {
         "the two captures are scrolled to different places, so each caption \
          needs its own `history.top`: {tops:?}"
     );
+    assert!(drifted.is_empty(), "{}", drifted.join("\n\n"));
 }
 
 /// The caption on one scrolled-preview capture: `top` is that session's own
@@ -790,7 +795,7 @@ fn scrolled_caption(label: &str, columns: u16, rows: u16, top: usize) -> String 
          # not 0 \u{2014} it differs by screen, which is why each capture has its own\n\
          # session and its own number), then `r` pressed through `update` and the\n\
          # real `graft_ops::preview::plan` run (crates/graft/tests/it/preview.rs,\n\
-         # capture_scrolled_preview_for_docs_shots, #[ignore]d). Not a pty capture:\n\
+         # capture_scrolled_preview_for_docs_shots, asserted). Not a pty capture:\n\
          # ratatui's TestBackend, a character grid with no colour attributes in it\n\
          # \u{2014} CLAUDE.md rule 5, colour ships unverified. The scratch repository's\n\
          # temporary path is replaced by `/code/api`; nothing else is touched.\n\

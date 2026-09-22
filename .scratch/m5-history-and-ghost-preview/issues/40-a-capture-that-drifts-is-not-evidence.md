@@ -1,6 +1,6 @@
 # a-capture-that-drifts-is-not-evidence
 
-Status: ready
+Status: done
 Blocked by: nothing (branch off `main` at `b4840ca` or later).
 Crates: `graft`, `graft-ui`, `graft-graph`.
 Build with: **Opus.** The third piece changes how every capture in the repo is
@@ -124,24 +124,82 @@ above are yours to use.
 
 ## Acceptance (every tick names its verifying test inline, at tick time)
 
-- [ ] No marker glyph abuts the subject text in any capture — test: name it,
-      and quote one before/after row.
-- [ ] `m4-credential-prompt-in-app.txt` is byte-identical across two
-      consecutive regenerations — say how you checked, and list anything else
-      non-deterministic you found.
-- [ ] Every capture generator **asserts by default and fails on drift** —
-      name the mechanism, and **prove it**: change one committed capture by a
-      single character, show the named failure, put it back.
-- [ ] Blessing is explicit and documented — name the command, and say where a
-      future builder will read about it.
-- [ ] Any generator left `#[ignore]`d is listed with the reason it cannot be
-      asserted — give the list, or say "none".
-- [ ] All 42 regenerated and the contact sheet rebuilt — give
-      `git diff --stat` totals and the sheet's size.
-- [ ] `grep -c 'NOT RECORDED'` on the sheet is 0 — give the number.
-- [ ] Whole suite green; report before and after. Baseline **2356 passed, 37
-      skipped** — and say what the skipped count is now, since piece 3 should
-      move most of those 37 into the run.
+- [x] No marker glyph abuts the subject text in any capture — test:
+      `graft-ui::graph_screen::tests::a_marker_glyph_never_touches_the_subject`
+      (new; draws a marked row at 80/100/120/160, both severities, cursor on
+      and off the row, and asserts the cell after the glyph is a space).
+      Proved it bites: with `MARKER_WIDTH` put back to 2 it fails with
+      `# @ |!Commit 2` (rule, warning, subject, no gap); at 3 it passes.
+      Before/after, from `docs/shots/m2-evil-merge.txt`:
+      `"@-.  ! Merge branch 'feature'"` -> `"@-. |! Merge branch 'feature'"`,
+      and from `docs/shots/m5-ui-drop-menu-80x24.txt`:
+      `  # |i[# feature] finish the feature` ->
+      `  # |i [# feature] finish the feature`.
+      (Glyphs transliterated here so this file stays greppable; read the
+      captures for the real ones.)
+- [x] Byte-identical across two consecutive regenerations — checked by
+      hashing `git diff -- docs/shots` after the green run and after each of
+      **two** further full `GRAFT_UPDATE_SHOTS=1 cargo nextest run` passes:
+      all three hashes are `9413925bbd71548b50036bdbed911eb496c29128`. Every
+      capture is also asserted on every plain run now, so drift is a red run
+      rather than something anyone has to check by hand.
+      **The ticket names the wrong file:** `m4-credential-prompt-in-app.txt`
+      has no temp path in it (`grep -c '/var/folders'` = 0); the random
+      scratch path was in `docs/shots/m5-ui-undo-after-push-80x24.txt`
+      (` graft /var/folders/z4/.../T/graft-remote-idICFn/wor...`). Fixed at
+      the seam rather than in that one file: `captures::frame_at` now sets
+      `repository.path` to `/code/api` **before** the frame is drawn, so it
+      holds for every capture drawn through it.
+      Other non-determinism found and fixed: two run-invented commit ids —
+      `m5-ui-undo-after-push-80x24.txt` (the pushed commit) and
+      `m5-ui-preview-time-machine-{80x24,160x48}.txt` (the base commit,
+      `627ee72` one run, `2078db7` the next). Both go through
+      `captures::without_invented_id`, which zeroes every prefix of the id at
+      the same width, so no column shifts. **What I did not fix** is under
+      Findings.
+- [x] Every capture generator **asserts by default and fails on drift** —
+      mechanism: `graft_fixtures::capture` (new module), built on the repo's
+      existing `GRAFT_UPDATE_SHOTS` convention rather than a second one. Its
+      own unit tests are `graft-fixtures::capture::tests` (18), of which
+      `a_normal_run_fails_on_drift_and_rewrites_nothing` is the one that
+      pins assert-by-default. Proof by breaking it: changed `Ship` to `Sh1p`
+      in `docs/shots/m2-duplicate-commit.txt` and
+      `graft::view::tests::capture_m2_duplicate_commit` failed with
+
+      ```
+      capture docs/shots/m2-duplicate-commit.txt does not match what the code draws:
+        line 17, column 11:
+          committed  "...Sh1p the release notes ..."
+          drawn      "...Ship the release notes ..."
+      ```
+
+      then restored the file and it passed. Nothing was made tolerant: the
+      comparison is byte-for-byte.
+- [x] Blessing is explicit and documented — `GRAFT_UPDATE_SHOTS=1 cargo
+      nextest run`, and **a regeneration is always a red run**: the file is
+      rewritten *and* the test fails, naming it, so a changed capture cannot
+      reach a commit unlooked-at. Documented in `TESTING.md` under a new
+      **Captures** heading, immediately after "The three gates" — where a
+      builder is already reading — and in `crates/graft-fixtures/MAP.md`.
+      Test: `graft-fixtures::capture::tests::a_regeneration_rewrites_the_file_and_is_still_red`.
+- [x] Any generator left `#[ignore]`d is listed — **one**, and it is not a
+      capture generator: `graft-graph::it::strip_cache::strip_height_numbers`,
+      a timing tool that prints numbers and asserts nothing, run by hand in
+      release when choosing the strip height. `cargo nextest list --workspace
+      --run-ignored ignored-only` returns exactly that one test.
+- [x] All regenerated and the contact sheet rebuilt — `git diff --stat` under
+      `docs/shots/`: **68 files changed, 1267 insertions(+), 1245
+      deletions(-)** (51 with grid changes, 16 caption-only, plus the sheet).
+      `scripts/contact-sheet.sh m5` reports `62 captures, 0 without a
+      recorded caption`; the sheet is **281,376 bytes**.
+- [x] `grep -c 'NOT RECORDED'` on the sheet is **0**.
+- [x] Whole suite green — **before 2356 passed, 37 skipped; after 2415
+      passed, 1 skipped** (`cargo nextest run --workspace`). 36 of the 37
+      were capture generators and now run; the 37th is the timing tool above.
+      The other new tests are 18 for `graft_fixtures::capture`, 5 for
+      `without_invented_id`, and the marker-gap test. All four gates pass
+      workspace-wide (`cargo test --doc`: 2 passed — vacuous, as the ticket
+      says).
 
 Rule 6: you do not tick "looks right". The user does — and he is waiting on
 this ticket to be able to.
@@ -162,3 +220,66 @@ command at a time. **Never bare `git stash`.** **Never `git checkout` or
 What the 42 turned out to be once fixed. Whether `insta` carried the captures
 or a comparator was needed. What is still non-deterministic. How many of the
 37 skipped now run. Anything unverified — which is not broken.
+
+## Findings
+
+**Still non-deterministic, and not fixed here: 160 capture files under
+`docs/shots/` carry machine-specific values.** They are the pty/gallery and
+acceptance-walk captures, written by *scripts*, not by any Rust test, so
+nothing in this ticket's mechanism reaches them:
+
+| What | Files | Example |
+|---|---|---|
+| `$HOME` | 113 | ` graft /Users/devuser/dev/sandbox/gitter  137 commits` (`09-graph-screen.txt`) |
+| macOS temp dir | 47 | ` graft /var/folders/z4/.../T/graft-trivial-TMtlqo  4 commits` (`m3-01-stage-file-160x48.txt`) |
+| ephemeral port | 5 | `Credentials - 127.0.0.1:54372` (`m4-03-credential-masked-160x48.txt`) |
+
+`docs/shots/37-pty-drive.py:9` also hardcodes
+`/Users/devuser/dev/sandbox/gitter/target/debug/graft` as its default
+binary. **The repo may be published** (CLAUDE.md), so this is one person's
+home directory and machine layout shipped in 160 files, and it means no
+acceptance-walk capture can be reproduced or asserted either. Fixing it needs
+the pty harness changed and every walk re-run on a real terminal — out of this
+ticket, and it is the same fix at a different seam.
+
+**`docs/shots/m5-contact-sheet.txt` is 281,376 bytes, over CLAUDE.md's 200 KB
+hard cap.** Pre-existing: the committed sheet was already 280,779 bytes before
+this ticket; 62 captures concatenated do not fit. Not introduced here and not
+fixed here.
+
+**The ticket's counts.** It says 35 generators and 42 captures. There are
+**36** generators (the 37th skipped test is a timing tool), and the fixes
+touched **68** files under `docs/shots/` — 51 with real grid changes, 16 whose
+only change is a caption line that no longer says `#[ignore]d, run by hand`,
+and the sheet.
+
+**`insta` cannot carry these.** It is in the repo for `.snap` files and it was
+the first thing tried. It writes a YAML `source:`/`expression:` header into
+every file and forces the `.snap` extension, but `docs/shots/*.txt` names are
+consumed by `scripts/contact-sheet.sh`, by the coverage-matrix test and by the
+gallery test (ADR-0037), and the `.png` and `.esc` captures cannot live at a
+`.snap` path at all. A capture is a picture the user reads, not a serialised
+value. So: a comparator, `graft_fixtures::capture`, which reports the first
+differing line and column rather than a whole-file diff.
+
+**Two defects this ticket surfaced rather than caused.**
+
+1. `graft::it::context_menu::a_verb_key_the_menu_advertises_closes_it_and_runs_the_verb`
+   forked one `AppState` and ran both branches over **one** job pool. A
+   finished job's event goes to whichever branch is pumping, so the
+   topological walk landed on one of them and the other kept saying
+   `date order, sorting...` forever. It was invisible because the header used
+   to be filled by the temp path; shortening it to `/code/api` made room for
+   the status and the two frames stopped matching. Fixed by giving each branch
+   its own `App` over the same repository and letting each settle before
+   comparing — not by relaxing the comparison.
+2. The first cut of the mechanism panicked on the first mismatch, so a
+   generator that writes several captures aborted before reaching the rest and
+   one regeneration pass could not rewrite them all. Fixed with
+   `graft_fixtures::Captures`: collect every mismatch, fail once at the end.
+   Eleven generators use it.
+
+**Unverified (not broken).** Colour: the captures are character grids with no
+colour attributes (CLAUDE.md rule 5), so nothing here says the cursor rule or
+the marker is the right colour. And rule 6 — whether the new three-cell slot
+*looks* right is the user's call, on `docs/shots/m5-contact-sheet.txt`.

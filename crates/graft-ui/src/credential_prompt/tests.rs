@@ -183,10 +183,8 @@ fn masked_field_at_the_ascii_tier_draws_stars() {
 
 /// Not an assertion — prints the masked and unmasked prompts at both
 /// breakpoints plus the too-small fallback, for a `docs/shots/` capture.
-/// `cargo test -p graft-ui credential_prompt::tests::capture_for_docs_shots
-/// -- --ignored --nocapture`, by hand, when the rendering changes.
+/// `GRAFT_UPDATE_SHOTS=1 cargo test -p graft-ui credential_prompt::tests::capture_for_docs_shots`, by hand, when the rendering changes.
 #[test]
-#[ignore = "run by hand to regenerate docs/shots/m4-credential-prompt-and-hints.txt"]
 fn capture_for_docs_shots() {
     let theme = theme();
     for (label, view, w, h) in [
