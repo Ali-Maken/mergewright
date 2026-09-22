@@ -1,9 +1,21 @@
 # acceptance-conflicts: the walk proves a real conflict is resolvable without leaving the app — merge, rebase-stops-twice, whole-file shapes, stash pop, base, start over, `$EDITOR` round trip, and `kill -9` mid-rebase then relaunch — with the TESTING.md checklist, the captures, the contact sheet, and the "Times I left" line
 
 Status: ready
-Blocked by: **01**, **02**, **03**, **04**, **05**, **06**.
+Blocked by: **01**, **02**, **03**, **04**, **05**, **06**, **08**.
 Build with: Fable — the acceptance ticket (does not count against the Fable build budget): it decides what each scenario must prove from git's own state, and writes the "what right looks like" lines the user judges by.
 Crates: graft (tests only: `crates/graft/tests/it/`), docs (`TESTING.md`, `docs/shots/`, `.scratch/m6-conflicts/pty-walk-m6.py`)
+**Added by the conductor after group 08 was filed (2026-09-22):** one scenario,
+`undo-a-resolution-in-a-stash-pop-conflict` — m5's stash-pop shape; `⏎` from the
+pane; `o`, `⏎` → `all conflicts resolved`; `u` → the pane's `CONFLICTS` row is
+back, `ls-files -u` lists the path, the file bytes equal the bytes before `⏎`;
+`u` → the pop is undone (clean tree, stash still listed); `U` → the conflict is
+back, markers on disk and `ls-files -u` non-empty. Truth from git, never from
+`AppState`. **What right looks like:** `git ls-files -u` prints three lines for
+`p` after the first `u`, none after the second, three again after `U`.
+Also: `start-over-brings-the-markers-back` (already below) depends on group 08
+for its "after `⏎`" step; its *what right looks like* line gains — `git ls-files
+-u` lists the path with the **same stage oids** as before the take.
+
 Needs: every other M6 ticket — `git-conflict-model`, `ops-conflict-operations`, `ui-conflict-resolver`, `app-conflict-resolver`, `app-resolver-whole-files-and-base`, `app-answers-beat-rereads`.
 
 ## Read first
