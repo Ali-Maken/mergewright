@@ -59,10 +59,15 @@ CAPTURES = [line.split("\t") for line in
                            check=True).stdout.splitlines()]
 WANTED = set(sys.argv[2:])
 STABLE, CAP, APPEAR, EXIT_GRACE = 1.5, 40.0, 90.0, 10.0
-# The walk's passwords, when a scenario types one (none yet: the M5 walk's
-# remote is a bare over file://). Kept here rather than printed by
-# `--stems`, which must never print a secret.
-SECRETS = []
+# The walk's passwords. Kept here rather than printed by `--stems`, which
+# must never print a secret; the same two strings as
+# `tests/it/m5_walk/fixture.rs`'s `SECRETS`, and any capture whose frame
+# carries either is a failure. No captured scenario types one today —
+# `password-field-is-secret` has no capture — so this list is what a future
+# one is searched against, and the search itself now has something to look
+# for (m5-history-and-ghost-preview/11 recorded that an empty list proves
+# nothing).
+SECRETS = ["correct-horse-battery-staple", "hunter2"]
 SOFT_CAP, HARD_CAP = 8 * 1024, 200 * 1024
 
 config_home = tempfile.mkdtemp(prefix="graft-walk-m5-")

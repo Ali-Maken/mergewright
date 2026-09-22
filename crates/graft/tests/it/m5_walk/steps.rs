@@ -2,12 +2,12 @@
 //! shell out, the capture a pty run replays, and the [`Scenario`] that binds
 //! them to a fixture and a verdict.
 
-use graft::update::AppState;
+use graft::update::{AppState, Command};
 use graft_core::event::KeyPress;
 use graft_core::journal::OperationKind;
 use graft_fixtures::Shape;
 
-use super::fixture::Fixture;
+use super::fixture::{Fixture, Remote};
 use super::truth::Marks;
 
 /// A scenario's `setup` and a `Shell` step: git and plain files against the
@@ -15,6 +15,9 @@ use super::truth::Marks;
 pub type Fix = fn(&Fixture) -> Result<(), String>;
 /// A fact only the UI state holds (a box's title, a line in the preview).
 pub type See = fn(&AppState) -> Result<(), String>;
+/// A fact about the commands a key asked for, for a command the headless
+/// walk must **not** run — the hand-over to `$EDITOR` is the only one.
+pub type SeeCommands = fn(&[Command]) -> Result<(), String>;
 /// The verdict: from git, the marks the steps took and the claim the
 /// preview made.
 pub type Expect = fn(&Fixture, &Marks) -> Result<(), String>;
@@ -70,6 +73,24 @@ pub enum Wait {
     /// file resolved is a write like any other, and the banner decides from
     /// the last read, not from the write.
     Resolved,
+    /// The journal's own entries have landed — `Loading::Ready`, not merely
+    /// "no re-read in flight". `u` after a push reads them to decide
+    /// whether to explain itself (`update::remote::undo_after_push` returns
+    /// `None` outright while they are still `Pending`), so a `u` pressed
+    /// before they land is an ordinary, unasked undo.
+    JournalRead,
+    /// Git's credential question is open: the masked field has the
+    /// keyboard.
+    CredentialPrompt,
+    /// The changes pane's file list has landed — the pane is open and has
+    /// something to hint keys for.
+    ChangesPane,
+    /// The app's **remote facts** have caught up with git: the upstream's
+    /// `tracking_tip` is where `refs/remotes/origin/…` really points now.
+    /// `Wait::Ready` only asks whether `state.remotes` is `Ready`, which a
+    /// stale reading also is — and a force-with-lease built from a stale
+    /// tip is refused by git, not by the app.
+    RemotesCaughtUp,
 }
 
 /// One thing the walk does to the running app, in order.
@@ -97,8 +118,26 @@ pub enum Step {
     DragBadgeOnto(&'static str),
     /// Take the preview's plan as the claim `expect` judges git against.
     Claim,
+    /// Type this text into the credential prompt's masked field. Never
+    /// printed and never named by a step's own label: the walk proves the
+    /// bytes reached no event, status line, prompt dump, journal, askpass
+    /// argument or file (`run::no_secret_leaked`).
+    TypeSecret(&'static str),
     /// The open preview or confirm box: `→` off `Cancel`, `Enter`.
     Confirm,
+    /// The open box's choice at this index: `→` that many times from
+    /// `Cancel`, then `Enter`. [`Step::Confirm`] is `Choose(1)` with the
+    /// box's own existence checked; this is for the third choice of the
+    /// undo-after-push box.
+    Choose(usize),
+    /// Press one key for its **commands only**, without dispatching them —
+    /// the one step that looks at what a key asked for rather than at what
+    /// the app did with it. `e` hands a conflicted file to `$EDITOR`, which
+    /// a headless walk must not start.
+    KeyFor(&'static str, KeyPress, SeeCommands),
+    /// `Esc` on the write in flight, then its answer: the real `CancelJob`
+    /// path. The status must say `cancelling` the moment the key lands.
+    Cancel(&'static str),
     /// A write was queued by the last key: run it to its answer and insist
     /// it succeeded (`Status::Done`).
     Write(&'static str),
@@ -147,9 +186,10 @@ pub struct Scenario {
     pub name: &'static str,
     /// The corpus shape the scratch (or the bare) is copied from.
     pub shape: Shape,
-    /// `origin` is a bare over `file://` with a teammate's clone; the app
-    /// opens the work clone.
-    pub remote: bool,
+    /// What `origin` is: nothing, a bare over `file://` with a teammate's
+    /// clone, or that same bare over Basic-auth HTTP. For either remote the
+    /// app opens the work clone.
+    pub remote: Remote,
     /// The terminal the app believes it has; the preview's size rule reads
     /// it. `(80, 24)` unless the scenario is about the size.
     pub size: (u16, u16),

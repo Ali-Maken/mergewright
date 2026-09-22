@@ -5,7 +5,7 @@
 use graft_core::event::KeyCode;
 use graft_fixtures::Shape;
 
-use super::fixture::{Fixture, conflicting, forked};
+use super::fixture::{Fixture, Remote, conflicting, forked};
 use super::steps::{Capture, Scenario, Step, Wait, When};
 use super::truth::Marks;
 use super::vocabulary::{
@@ -46,7 +46,7 @@ fn preview_opens_with_ghosts_and_plan_commands() -> Scenario {
     Scenario {
         name: "preview-opens-with-ghosts-and-plan-commands",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: forked,
         steps: vec![
@@ -90,7 +90,7 @@ fn esc_cancels_nothing_runs() -> Scenario {
     Scenario {
         name: "esc-cancels-nothing-runs",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: forked,
         steps: vec![
@@ -129,7 +129,7 @@ fn cancel_is_the_default_choice() -> Scenario {
     Scenario {
         name: "cancel-is-the-default-choice",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: forked,
         steps: vec![
@@ -163,7 +163,7 @@ fn stale_preview_refused() -> Scenario {
     Scenario {
         name: "stale-preview-refused",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: forked,
         steps: vec![
@@ -210,7 +210,7 @@ fn preview_too_small_never_confirms() -> Scenario {
     Scenario {
         name: "preview-too-small-never-confirms",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (38, 10),
         setup: forked,
         steps: {
@@ -258,7 +258,7 @@ fn preview_refused_during_an_operation() -> Scenario {
     Scenario {
         name: "preview-refused-during-an-operation",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: conflicting,
         steps: chain(vec![

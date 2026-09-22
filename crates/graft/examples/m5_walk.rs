@@ -22,7 +22,17 @@
 //! `.scratch/m5-history-and-ghost-preview/pty-walk-m5.py` records. The pure
 //! half is `tests/it/m5_walk/`, which `cargo test` runs as one test per
 //! scenario.
+//!
+//! This binary is also git's **askpass helper** while it runs, exactly as
+//! `examples/m4_walk.rs` is: the job pool starts it with
+//! `GRAFT_ASKPASS_SOCKET` set and the question as its one argument, and the
+//! process answers the way `graft` itself does, never touching the terminal.
+//! Without this the one HTTP scenario, `password-field-is-secret`, never
+//! sees a credential question at all — git gets nothing from the helper and
+//! fails the push outright with `authentication failed`.
 
+use std::ffi::OsString;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -32,6 +42,12 @@ use std::process::ExitCode;
 )]
 #[path = "../tests/it/app_harness.rs"]
 mod app_harness;
+#[allow(
+    dead_code,
+    reason = "the walk uses `frame`; the rest belongs to the capture writers"
+)]
+#[path = "../tests/it/captures.rs"]
+mod captures;
 #[allow(dead_code, reason = "only `--matrix` is used here")]
 #[path = "../tests/it/coverage.rs"]
 mod coverage;
@@ -50,6 +66,7 @@ mod m5_walk;
 #[path = "../tests/it/repo_truth.rs"]
 mod repo_truth;
 
+use graft::cli::{self, Invocation};
 use graft::event_loop::{self, Exit};
 use graft::session::Startup;
 use graft::update::Harness;
@@ -59,7 +76,19 @@ const USAGE: &str =
     "usage: m5_walk [--only <scenario> | --list | --stems | --capture <scenario> | --matrix]";
 
 fn main() -> ExitCode {
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    // Askpass mode first, before anything else: git ran this binary as its
+    // credential helper during a scenario's push.
+    let raw: Vec<OsString> = std::env::args_os().skip(1).collect();
+    if let Some(Invocation::Askpass { socket, prompt }) =
+        cli::askpass(std::env::var_os(cli::ASKPASS_SOCKET_VAR), &raw)
+    {
+        return askpass(&socket, &prompt);
+    }
+
+    let args: Vec<String> = raw
+        .iter()
+        .map(|arg| arg.to_string_lossy().into_owned())
+        .collect();
     let workspace = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     match (args.first().map(String::as_str), args.get(1)) {
         (None, _) => walk(None),
@@ -83,6 +112,22 @@ fn main() -> ExitCode {
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE
+        }
+    }
+}
+
+/// Askpass mode, as `graft`'s own `main` does it: pass git's `prompt` to the
+/// running walk over `socket`, print its answer for git, exit. 0 answered,
+/// 1 cancelled, 2 anything else.
+fn askpass(socket: &Path, prompt: &str) -> ExitCode {
+    use graft_git::run::askpass::{RespondError, respond};
+    let mut out = std::io::stdout().lock();
+    match respond(socket, prompt, &mut out).and_then(|()| out.flush().map_err(RespondError::Io)) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(RespondError::Cancelled) => ExitCode::from(1),
+        Err(why) => {
+            eprintln!("m5_walk askpass: {why}");
+            ExitCode::from(2)
         }
     }
 }

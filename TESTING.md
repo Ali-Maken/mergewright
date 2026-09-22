@@ -1607,9 +1607,10 @@ you killed — goes in the table at the top of this file, dated, the same day
 
 M5's acceptance ticket (m5-history-and-ghost-preview/11). M5 promises that
 **you see the result before you confirm**. The walk is how a person checks
-that: one command, 38 scenarios (the ticket asks for 45 or more; the rest
-are listed under "Not yet walked"), each a scratch copy of a corpus shape
-with a history scripted by git, the real app driven by keys and a mouse
+that: one command, 49 scenarios — every one m5/11 asked for — each a
+scratch copy of a corpus shape with a history scripted by git, one of them
+a work clone whose `origin` is Basic-auth HTTP so git really asks for a
+password, the real app driven by keys and a mouse
 drag over the real job pool and real `git`, and then **the truth read back
 by running git** (`for-each-ref`, `rev-parse HEAD`, `symbolic-ref`,
 `write-tree`, `ls-files -u`, `stash list`, file bytes, `.git/index` bytes,
@@ -1637,17 +1638,15 @@ refs, HEAD, index tree, files, journal length, the claim's own words), exit
 scenario (`tests/it/m5_walk/`, `m5_walk::every_scenario::*`). Every
 scenario ends with `git fsck --no-dangling` saying nothing but notices.
 
-**37 of the 38 scenarios pass; one fails on purpose** —
-`fix-rebase-instead`, left failing by m5/38 as a finding: the rebase plan
-draws a ghost for a **merge commit** inside the replayed range
-(`graft-ops/src/preview/kinds.rs:113`, one ghost per commit in the range
-`graft-git/src/history_reads.rs:94` hands back — `rev-list` with no
-`--no-merges`), and `git rebase` without `--rebase-merges` drops it. So the
-box promises two new commits where git makes one, and the branch's
-predicted tip is a commit that never exists. `ghost_equals_git` says it in
-one line: ``ghost 1: subject `Merge branch 'main' into feature`, git wrote
-`feature: work` ``. Not fixed here — the walk found it, and it is the
-conductor's to schedule.
+**All 49 scenarios pass.** The last one to fail on purpose was
+`fix-rebase-instead`, left failing by m5/38 as a finding and fixed by
+m5/43: the rebase plan drew a ghost for a **merge commit** inside the
+replayed range (one ghost per commit in the range
+`graft-git/src/history_reads.rs` handed back — `rev-list` with no
+`--no-merges`), and `git rebase` without `--rebase-merges` drops it, so the
+box promised two new commits where git makes one and the branch's predicted
+tip was a commit that never exists. The range the preview counts now
+matches the one git replays.
 
 The five the acceptance walk left failing on purpose before that were fixed
 in m5/32:
@@ -1722,10 +1721,22 @@ keeps every `m5-*.txt` captioned).
   the Ghost Preview and `ghost_equals_git`; `u` restores a deleted branch,
   a deleted tag, a stash `git stash branch` consumed, and a moved branch,
   each to its old commit.
-- **Does not walk** conflict continuation (`c` after a resolve), a rebase
-  that stops twice, `M mergetool`, `e edit`, `u` during an operation, the
-  `Fix:` verbs, `u` after a push, the secret field, or the 80-column
-  hints — the ticket's other 16 scenarios, listed under "Not yet walked".
+- **Proves the conflict keys and the journal row** (m5/38, m5/39): `c`
+  after a resolve, a rebase that stops twice under one entry, `M` refusing
+  in words with no `merge.tool`, `e` asking for the editor at the first
+  `<<<<<<<` marker, `u` refused mid-operation, and the journal's live row
+  reading `in progress`, never `interrupted`.
+- **Proves `u` after a push, the secret field and the 80-column hints**
+  (m5/39): the three-choice box and all three of its answers against the
+  bare's own refs; a password that draws eight glyphs whatever its length
+  and reaches no frame, event, status line, state dump, askpass argument
+  or environment, or file; and the footer's three-and-`. more` in five
+  contexts.
+- **Does not walk** the real `git mergetool` hand-over, the real `$EDITOR`
+  hand-over (`e` is pressed for its commands and never dispatched), or an
+  interactive rebase — all external programs or M6/M7 work. The
+  cancel-mid-undo *step boundary* is `graft-ops::it undo_cancel`'s, not
+  this walk's (scenario 46).
 - **No drop-menu capture, no name-prompt capture, no stale-preview
   capture**: a pty run has no mouse prelude and no hook between two keys.
 - **No colour, no focus, no real terminal.** pyte grids; the user's by-eye
@@ -1819,13 +1830,13 @@ and the exact git command are from the captures only.
 23. **fix-rebase-instead** — the same row, `Fix: rebase instead`: the
     replayed tip has exactly one parent and it is `<merge>^2`,
     `base.txt`/`main.txt`/`feature.txt` all still in the tree, last entry
-    `Rebase` `Committed`, `u` puts `main` back on the merge — and then
-    **`ghost_equals_git` FAILS**, on purpose and left failing (m5/38's
-    finding): the plan draws a ghost for the merge commit inside the
-    replayed range and `git rebase` without `--rebase-merges` drops it, so
-    the box promises two new commits where git makes one. The claim is
-    judged **last** in this scenario so the eight checks above it are
-    reached and proven.
+    `Rebase` `Committed`, `u` puts `main` back on the merge, and
+    `ghost_equals_git` holds. It did not until m5/43: the plan drew a ghost
+    for the merge commit inside the replayed range, which `git rebase`
+    without `--rebase-merges` drops, so the box promised two new commits
+    where git makes one (found by m5/38, left failing as a finding). The
+    claim is judged **last** in this scenario, so the eight checks above it
+    are reached whatever the claim says.
 24. **conflict-focuses-banner-and-lists-files** — `conflicting`; `m` on
     `feature`, confirm: `MERGE_HEAD` present, journal `Merge` `Pending`,
     banner focused, `unmerged_paths` is `[shared.txt]`, the file starts
@@ -1855,54 +1866,134 @@ and the exact git command are from the captures only.
     across two stops. The replayed branch's `~2` is `main`'s tip and
     `shared.txt` is `resolved twice\n`. One `u` puts `feature` back at its
     old commit with every file byte-identical to before the rebase.
-29. **time-machine-three-steps** — `three_to_stage`; stage three files;
+29. **mergetool-absent-refuses-in-words** — the stopped merge of 28's
+    shape, banner focused, `merge.tool` unset (the fixture blanks the
+    machine's config): `M` says `no merge.tool configured · e edits
+    shared.txt  a abort` and **runs nothing** — no write started, git still
+    merging, `shared.txt` byte-identical, the journal's one `Merge` entry
+    still `Pending`. The real hand-over to `git mergetool` is an external
+    program and is in no walk; only the refusal is.
+30. **e-opens-editor-at-first-marker** — the same stop; `e` is pressed for
+    its **commands only**, never dispatched, so no `$EDITOR` starts in a
+    headless run: exactly one `Command::OpenConflictEditor { path:
+    "shared.txt", line }`, and `line` is the line number of the first
+    `<<<<<<< ` in the file's own bytes, found by scanning them here.
+    Nothing ran, git is still merging.
+31. **u-refused-during-an-operation** — the same stop; `u`: `finish or
+    abort the merge first`, no write started, `MERGE_HEAD` still there,
+    refs, files and journal length unchanged. Waits on `Wait::
+    NotInProgress` rather than sleeping, so the refusal is judged against
+    a re-read in-progress state and not a stale one.
+32. **journal-row-says-in-progress** (120x40) — the same stop; `Esc` off
+    the banner, `J`: the drawn frame carries `in progress — c continue  a
+    abort` and **nowhere says `interrupted`** — the row is live, not the
+    wreck of a previous run (m5/14).
+33. **time-machine-three-steps** — `three_to_stage`; stage three files;
     `J`, down to the first entry, `Enter`: title `Preview: revert to before
     "stage one.txt" (3 steps)`, box `restored from backup`; confirm: the
     index tree equals the tree before the first stage; three `Undo`
     entries; `U` ×3 stages them again.
-30. **time-machine-esc-returns-to-journal** — `Esc` on that box: the
+34. **time-machine-esc-returns-to-journal** — `Esc` on that box: the
     journal browser is back, shown and ready.
-31. **pull-diverged-offers-m-and-r** — `Shape::Linear` with a bare; the
+35. **pull-diverged-offers-m-and-r** — `Shape::Linear` with a bare; the
     teammate commits on the bare, `ours locally`; `p`: `main and
     origin/main have diverged · m merge it  r rebase onto it`, no ref
     moved; `r`, confirm: one ghost, `ghost_equals_git`, `main~1` is
     `origin/main`, the bare untouched.
-32. **b-creates-and-checks-out** — `forked`; cursor on `main`, `b`,
+36. **u-after-push-asks-once** — `Shape::Linear` with a bare; `feature`
+    merged into `main`, then `P`. `u`: a three-choice box, title `Undo
+    after a push`, a line saying `undo works on your local branch only`,
+    choices exactly `["Cancel", "Undo locally", "Re-push old tip"]`,
+    cursor on `Cancel`. `Undo locally`: local `main` is back at its
+    pre-merge commit and **the bare is untouched**. A second `u` opens no
+    box — asked once per entry.
+37. **u-after-push-repush-old-tip** — the same up to the box; `Re-push old
+    tip`: the lease box's command carries `--force-with-lease` and
+    nothing is running yet; confirm: the bare's `main` is back at its
+    pre-push commit and local `main` is untouched. The walk waits on
+    `Wait::RemotesCaughtUp` before `u`, because a lease built from a
+    stale reading of `origin/main` is refused by git, not by the app.
+38. **u-after-push-cancel-asks-again** — the same box; `Esc`: nothing ran,
+    nothing journaled, refs and files as they were — and `u` again asks
+    again. Cancelling is not an answer.
+39. **b-creates-and-checks-out** — `forked`; cursor on `main`, `b`,
     `release`, `⇥` (checkout), `Enter`: `refs/heads/release` is `main`'s
     commit, `HEAD` symbolic to it, one journal entry naming `release`. No
     preview — a create moves no history.
-33. **b-refuses-bad-and-existing-names** — `b`, `bad name` (a space):
+40. **b-refuses-bad-and-existing-names** — `b`, `bad name` (a space):
     `name_refusal` starts `bad name:`; `Ctrl+U`, `main` (already a
     branch): `name_refusal` is `exists`; `Esc`: the prompt closes, refs
     and files unchanged, nothing journaled.
-34. **t-creates-a-tag** — cursor on `feature`, `t`, `v2.0.0`, `Enter`:
+41. **t-creates-a-tag** — cursor on `feature`, `t`, `v2.0.0`, `Enter`:
     `refs/tags/v2.0.0` is `feature`'s commit, `cat-file -t` says `commit`
     (lightweight, no tag object), one journal entry.
-35. **delete-branch-then-u-restores** — `.` on `main`, `Delete branch
+42. **delete-branch-then-u-restores** — `.` on `main`, `Delete branch
     main`, confirm: `ghost_equals_git`, `refs/heads/main` gone, one
     `BranchDelete` entry; `u`: `main` back at its old commit.
-36. **delete-tag-then-u-restores** — a tag `v1` on `main`'s tip; `.` on
+43. **delete-tag-then-u-restores** — a tag `v1` on `main`'s tip; `.` on
     `v1`'s row, `Delete tag v1`, confirm: `ghost_equals_git`,
     `refs/tags/v1` gone, one `TagDelete` entry; `u`: `v1` back.
-37. **stash-b-branches-from-stash** — one stashed entry `wip`; `S`, `b`,
+44. **stash-b-branches-from-stash** — one stashed entry `wip`; `S`, `b`,
     `rescued`, `Enter` opens the Ghost Preview, confirm: `ghost_equals_git`,
     `HEAD` symbolic to `refs/heads/rescued`, `stash list` empty, one
     `BranchFromStash` entry; `u`: the stash (`wip`) is back.
-38. **move-a-branch-not-checked-out** — `forked_on_main`; drag `feature`'s
+45. **move-a-branch-not-checked-out** — `forked_on_main`; drag `feature`'s
     badge (not current) onto `main`'s row: the drop menu offers `Move
     feature to here`, not a `Reset` row; pick it, confirm:
     `ghost_equals_git`, `refs/heads/feature` equals `main`'s old commit,
     `HEAD` stays on `main`, the tree untouched, one `Reset` entry; `u`:
     `feature` back.
 
+46. **esc-cancels-undo-and-rolls-back** — `forked_on_main` with a dirty
+    `base.txt`; `.` → `Reset main to here, hard`, confirm, then `u` and
+    `Esc` on the very next `update`, through the real `CancelJob` path.
+    The line says `undo cancelled`; refs, files, the index tree and
+    `HEAD` are exactly what they were before `u`; no `Undo` entry is
+    `Committed`. **What it does not prove:** that the cancel landed
+    *between two steps* of the inverse plan. From the real key path it
+    never does — `Esc` always beats the worker to `restore::execute`'s
+    first `should_stop`, so no journal entry is opened at all and the
+    `Aborted("cancelled")` row m5/11 asked for is unreachable here.
+    `graft-ops`' own `it undo_cancel` owns every step boundary, with a
+    stop keyed to the plan's effect.
+47. **ctrl-r-twice-leaves-one-history-job** — two `⌃R`s with nothing
+    pumped between them: one walk is awaited, none is being promoted, and
+    then the rows, the refs and the working tree all come back. Reaching
+    that is the assertion — a walk left parked on the two-worker pool
+    starves the reads queued behind it and the wait never returns. Refs,
+    files and journal length are unchanged by a refresh.
+48. **password-field-is-secret** — `Shape::Linear` over **Basic-auth
+    HTTP** (the one transport that makes git ask); `P`, confirm, git's
+    password question. The field is masked; `hunter2` (7 characters) and
+    then `correct-horse-battery-staple` (28) each draw **eight** glyphs
+    in one run and nothing else — the row says nothing about the length
+    (ADR-0038 §2). `Enter`: the push lands, the bare has the commit, the
+    server authorised at least one request. What the secret reached is
+    checked from outside the app: no drawn frame, no event, no status
+    line, no `{AppState:?}` taken while the prompt was open, no argument
+    or environment variable git passed its askpass helper (a wrapper
+    script logs both before handing over), and no byte of any file the
+    run leaves behind, the journal among them.
+49. **hints-at-80-show-three-and-more** — at 80 columns, five contexts,
+    each against the design note's own list: the current-branch row `⏎
+    open  c commit  P push  . more`, a plain row `⏎ open  b branch  r
+    rebase  . more`, the uncommitted row `⏎ changes  c commit  S stash  .
+    more`, the changes pane on an unmerged file `e edit  c commit  ⇥
+    graph  . more`, and the focused banner `c continue  s skip  a abort
+    M mergetool  e edit  ⇥ graph` — all six, and **no `. more`**: they
+    measure 57 columns, so ADR-0039's ladder never shortens them. A
+    sticky line takes the footer at 80, so the banner's hints are read
+    after `Esc` dismisses it and `⇥` takes the keyboard back. Looking
+    wrote nothing: git is still mid-rebase with one `Pending` entry.
+
 ### Not yet walked
 
-The ticket lists these; none is built, so none is ticked:
-`mergetool-absent`, `e-opens-editor`, `u-refused-during-an-operation`,
-`journal-row-says-in-progress`, `u-after-push` ×3, `esc-cancels-undo`,
-`ctrl-r-twice`, `password-field-is-secret`, `hints-at-80`. **NOT in any
-walk:** the real `git mergetool` hand-over — an external program, judged
-by hand.
+**Nothing. The section is empty** — all 49 scenarios m5/11 listed are
+built and run (m5/39 closed the last eleven). What is still **not in any
+walk** is named above and below rather than here, because none of it is a
+scenario a headless run can hold: the real `git mergetool` hand-over and
+the real `$EDITOR` hand-over are external programs, and a real terminal
+(colour, focus, reverse video) is the user's by-eye pass.
 
 ### Per breakpoint
 
@@ -1921,8 +2012,7 @@ What each capture shows; 120x40 is `not run` except for the banner.
 
 ### Per terminal: walk the history group
 
-Run `cargo run -p graft --example m5_walk` (expect `37 ok, 1 failed` —
-`fix-rebase-instead` is the known finding above), then
+Run `cargo run -p graft --example m5_walk` (expect `49 ok, 0 failed`), then
 in a clone of your own: `r` on a branch
 row, look at the ghost rows and the box, `Esc`; `m` on a branch that
 conflicts, confirm, resolve in your editor, `c`; `.` on a commit, `Reset …

@@ -59,9 +59,16 @@ walk! {
     conflict_survives_relaunch => "conflict-survives-relaunch",
     continue_refuses_until_resolved_then_one_entry_undoes => "continue-refuses-until-resolved-then-one-entry-undoes",
     rebase_stops_twice_same_entry => "rebase-stops-twice-same-entry",
+    mergetool_absent_refuses_in_words => "mergetool-absent-refuses-in-words",
+    e_opens_editor_at_first_marker => "e-opens-editor-at-first-marker",
+    u_refused_during_an_operation => "u-refused-during-an-operation",
+    journal_row_says_in_progress => "journal-row-says-in-progress",
     time_machine_three_steps => "time-machine-three-steps",
     time_machine_esc_returns_to_journal => "time-machine-esc-returns-to-journal",
     pull_diverged_offers_m_and_r => "pull-diverged-offers-m-and-r",
+    u_after_push_asks_once => "u-after-push-asks-once",
+    u_after_push_repush_old_tip => "u-after-push-repush-old-tip",
+    u_after_push_cancel_asks_again => "u-after-push-cancel-asks-again",
     b_creates_and_checks_out => "b-creates-and-checks-out",
     b_refuses_bad_and_existing_names => "b-refuses-bad-and-existing-names",
     t_creates_a_tag => "t-creates-a-tag",
@@ -69,6 +76,10 @@ walk! {
     delete_tag_then_u_restores => "delete-tag-then-u-restores",
     stash_b_branches_from_stash => "stash-b-branches-from-stash",
     move_a_branch_not_checked_out => "move-a-branch-not-checked-out",
+    esc_cancels_undo_and_rolls_back => "esc-cancels-undo-and-rolls-back",
+    ctrl_r_twice_leaves_one_history_job => "ctrl-r-twice-leaves-one-history-job",
+    password_field_is_secret => "password-field-is-secret",
+    hints_at_80_show_three_and_more => "hints-at-80-show-three-and-more",
 }
 
 /// Every capture names a distinct `m5-<nn>-…` stem, presses keys, says
@@ -134,17 +145,47 @@ fn prepare_capture_leaves_the_scratch_open_with_its_prefix_done() {
 /// box readers — so `ghost_equals_git` is the only judge of the ghost.
 #[test]
 fn ghost_equals_git_is_the_only_claim_check() {
+    // Every scenario file in the directory, found by **listing it** rather
+    // than by a hand-kept list: three tickets in a row (m5/37, m5/38,
+    // m5/39) had to remember to add their new file, and nothing failed if
+    // they forgot. The walk's own machinery is named here instead, so
+    // adding to *that* is the deliberate act.
+    const MACHINERY: [&str; 9] = [
+        "claim.rs",
+        "every_scenario.rs",
+        "fixture.rs",
+        "gestures.rs",
+        "mod.rs",
+        "run.rs",
+        "steps.rs",
+        "truth.rs",
+        // Reads the preview on purpose: `ghosts_drawn` and the box
+        // readers every `See` goes through are here, in one place.
+        "vocabulary.rs",
+    ];
     let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/it/m5_walk");
-    for name in [
-        "preview.rs",
-        "merge_rebase.rs",
-        "pick_revert_reset.rs",
-        "radar_fixes.rs",
-        "conflicts.rs",
-        "time_machine.rs",
-        "remotes.rs",
-        "refs_and_names.rs",
-    ] {
+    let mut scenario_files: Vec<String> = std::fs::read_dir(&dir)
+        .expect("tests/it/m5_walk")
+        .map(|entry| {
+            entry
+                .expect("entry")
+                .file_name()
+                .to_string_lossy()
+                .into_owned()
+        })
+        .filter(|name| {
+            std::path::Path::new(name)
+                .extension()
+                .is_some_and(|extension| extension == "rs")
+                && !MACHINERY.contains(&name.as_str())
+        })
+        .collect();
+    scenario_files.sort();
+    assert!(
+        scenario_files.len() >= 8,
+        "only {scenario_files:?} were found; the listing is not seeing the directory"
+    );
+    for name in &scenario_files {
         let source = std::fs::read_to_string(dir.join(name)).expect(name);
         for (number, line) in source.lines().enumerate() {
             assert!(

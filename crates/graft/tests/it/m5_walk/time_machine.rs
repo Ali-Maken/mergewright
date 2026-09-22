@@ -5,7 +5,7 @@
 use graft_core::journal::OperationKind;
 use graft_fixtures::Shape;
 
-use super::fixture::{Fixture, STAGED, three_to_stage};
+use super::fixture::{Fixture, Remote, STAGED, three_to_stage};
 use super::steps::{Capture, Scenario, Step, Wait, When};
 use super::truth::Marks;
 use super::vocabulary::{box_says, ch, chain, key, plain, redo, title_names};
@@ -18,8 +18,10 @@ pub(super) fn time_travelling() -> Vec<Scenario> {
     ]
 }
 
-/// Three stages, `J`, down to the oldest row, `Enter`: the preview.
-fn preview_of_the_oldest() -> Vec<Step> {
+/// Three stages, `J`, down to the oldest row, `Enter`: the preview. Shared
+/// with `regressions::esc_cancels_undo_and_rolls_back`, which cancels the
+/// three-step undo this box offers.
+pub(super) fn preview_of_the_oldest() -> Vec<Step> {
     vec![
         Step::WaitFor(Wait::Ready),
         Step::Stage(STAGED[0]),
@@ -44,7 +46,7 @@ fn time_machine_three_steps() -> Scenario {
     Scenario {
         name: "time-machine-three-steps",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: three_to_stage,
         steps: chain(vec![
@@ -80,7 +82,7 @@ fn time_machine_esc_returns_to_journal() -> Scenario {
     Scenario {
         name: "time-machine-esc-returns-to-journal",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: three_to_stage,
         steps: chain(vec![

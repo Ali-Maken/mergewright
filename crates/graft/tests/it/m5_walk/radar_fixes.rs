@@ -12,7 +12,7 @@ use graft_core::journal::OperationKind;
 use graft_fixtures::Shape;
 
 use super::claim::ghost_equals_git;
-use super::fixture::{Fixture, foxtrot};
+use super::fixture::{Fixture, Remote, foxtrot};
 use super::steps::{Scenario, Step, Wait};
 use super::truth::{Marks, Truth};
 use super::vocabulary::{branch, chain, claim_and_confirm, last_entry_committed, undo};
@@ -70,7 +70,7 @@ fn fix_revert_the_merge() -> Scenario {
     Scenario {
         name: "fix-revert-the-merge",
         shape: Shape::FoxtrotMerge,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: foxtrot,
         steps: chain(vec![
@@ -123,7 +123,7 @@ fn fix_reset_to_before_the_merge() -> Scenario {
     Scenario {
         name: "fix-reset-to-before-the-merge",
         shape: Shape::FoxtrotMerge,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: foxtrot,
         steps: chain(vec![
@@ -165,7 +165,7 @@ fn fix_rebase_instead() -> Scenario {
     Scenario {
         name: "fix-rebase-instead",
         shape: Shape::FoxtrotMerge,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: foxtrot,
         steps: chain(vec![
