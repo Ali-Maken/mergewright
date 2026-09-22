@@ -201,7 +201,7 @@ impl Journal {
             if closed.touches.index {
                 // `None` when the index is unmerged: there is no tree to
                 // record, and `drift` reads the gap as unknown.
-                closed.index_after = now.index_tree;
+                closed.index_after = Some(now.index);
             } else {
                 closed.index_after = closed.index_before;
             }

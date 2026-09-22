@@ -845,7 +845,7 @@ fn an_index_only_operations_after_tree_survives_an_aggressive_prune() {
 
     expire_and_prune(&repo);
     assert!(
-        holds(&repo, &after_tree.to_string()),
+        holds(&repo, &after_tree.tree().to_string()),
         "the tree the entry names must outlive gc; without it `u` cannot \
          even work out which paths to put back"
     );
@@ -947,9 +947,16 @@ fn a_conflicted_pops_after_tree_survives_an_aggressive_prune() {
         Err(ApplyError::Git { entry, .. }) => *entry,
         other => panic!("the pop should have failed: {other:?}"),
     };
-    // The index is unmerged, so there is no index tree; the working tree is
-    // where the half-applied merge lives, and it is what must survive.
-    assert!(entry.index_after.is_none(), "an unmerged index has no tree");
+    // The index is unmerged, and since m6-conflicts/08 that is a recorded
+    // state of its own — the stage tree — not an absence. Both it and the
+    // conflicted working tree have to outlive `gc`.
+    let index_after = entry
+        .index_after
+        .unwrap_or_else(|| panic!("the unmerged index is recorded"));
+    assert!(
+        index_after.is_unmerged(),
+        "a conflicted pop leaves an unmerged index: {index_after:?}"
+    );
     let after_tree = entry
         .worktree_after
         .unwrap_or_else(|| panic!("the conflicted working tree is recorded"));
@@ -959,8 +966,16 @@ fn a_conflicted_pops_after_tree_survives_an_aggressive_prune() {
         holds(&repo, &after_tree.to_string()),
         "the conflicted tree the entry names must outlive gc"
     );
+    assert!(
+        holds(&repo, &index_after.tree().to_string()),
+        "the stage tree the entry names must outlive gc too"
+    );
 
-    run_undo(&repo, NOW + 1, true).unwrap_or_else(|why| panic!("{}", why.explain()));
+    // No `force`: the recorded after-state and the repository now are the
+    // same unmerged index, so there is no drift to force past
+    // (`conflicted_pop_undo_is_clean_without_force` proves the drift read
+    // itself; this proves `u` goes through).
+    run_undo(&repo, NOW + 1, false).unwrap_or_else(|why| panic!("{}", why.explain()));
     assert_eq!(state_of(&repo), before);
 }
 

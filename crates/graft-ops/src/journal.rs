@@ -14,7 +14,7 @@ mod lines;
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
-use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind};
+use graft_core::journal::{EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, OperationKind};
 use graft_core::oid::Oid;
 
 pub use file::{Journal, journal_path};
@@ -324,7 +324,7 @@ pub struct PointInTime {
     /// Every ref any entry touched, with its value at `at`.
     pub refs: BTreeMap<String, Option<Oid>>,
     /// The index tree.
-    pub index: Option<Oid>,
+    pub index: Option<IndexState>,
     /// The working-tree tree.
     pub worktree: Option<Oid>,
 }

@@ -178,7 +178,7 @@ fn reading_the_repository_never_rewrites_the_real_index() {
     let never = Never;
     let scratch = repo.path().join(".git/graft");
     std::fs::create_dir_all(&scratch).expect("the scratch is made");
-    snapshot::index_tree(&handle, &scratch, &never).expect("the index tree is written");
+    snapshot::index_state(&handle, &scratch, &never).expect("the index state is read");
     snapshot::worktree_tree(&handle, &scratch, &never).expect("the worktree tree is written");
     let version = crate::support::git_version();
     graft_ops::facts::read_facts(&handle, version, &never, &FactsScope::default())

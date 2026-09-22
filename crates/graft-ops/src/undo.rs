@@ -14,8 +14,11 @@
 mod execute;
 
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 
-use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches};
+use graft_core::journal::{
+    EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, OperationKind, Touches,
+};
 use graft_core::oid::Oid;
 
 use crate::journal::{in_force_all, is_operation, next_redo, next_undo, root_operation, undoable};
@@ -43,12 +46,14 @@ pub enum Step {
     /// Point `HEAD` back: `symbolic-ref` for a branch (born or not),
     /// `update-ref --no-deref` when detached.
     SetHead(HeadRef),
-    /// Read `paths` of `tree` into the index.
+    /// Put `paths` back as `index` recorded them, whatever shape it has: a
+    /// merged path goes back at stage 0, a conflicted one gets its stages 1,
+    /// 2 and 3 again. Always `update-index --index-info`, never `read-tree`.
     RestoreIndex {
-        /// The recorded index tree.
-        tree: Oid,
+        /// The recorded index state.
+        index: IndexState,
         /// Which paths.
-        paths: PathScope,
+        paths: IndexPaths,
     },
     /// Write `paths` of `tree` into the working tree: a path in the tree is
     /// written, a path only in the scope's other side is removed.
@@ -93,6 +98,30 @@ pub enum PathScope {
     /// The whole tree: the after-state was never recorded (an operation that
     /// died before it could be read), so nothing narrower is known. The
     /// executor's own pre-undo snapshot (ADR-0009) keeps this safe.
+    Everything,
+}
+
+/// Which paths an index restore touches.
+///
+/// Separate from [`PathScope`] because an index state is not a plain tree: a
+/// stage tree's paths live one component down, and two states of different
+/// shapes cannot be diffed against each other at all
+/// ([`crate::snapshot::index_paths_changed`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum IndexPaths {
+    /// Only the paths whose index entries differ between the two states:
+    /// what the operation changed, nothing the user touched since.
+    ChangedBetween {
+        /// The recorded after-state.
+        from: IndexState,
+        /// The recorded before-state, which the restore reads.
+        to: IndexState,
+    },
+    /// Exactly these paths and no others: what `d` restarting one conflicted
+    /// file asks for (m6-conflicts/08).
+    Exactly(Vec<PathBuf>),
+    /// Every path either the recorded state or the index now holds: the
+    /// after-state was never recorded, so nothing narrower is known.
     Everything,
 }
 
@@ -235,10 +264,17 @@ fn generic_steps(entry: &JournalEntry) -> Result<Vec<Step>, NotInvertible> {
         steps.push(Step::SetHead(entry.head_before.clone()));
     }
     if entry.touches.index {
-        let tree = entry.index_before.ok_or(NotInvertible::NoBackup)?;
+        // An unmerged before-index used to land here as `NoBackup`: it had no
+        // tree, so `index_before` was `None` and every older entry became
+        // unreachable behind it, undo being linear (m6-conflicts/08, the
+        // defect this group exists for). It has a state of its own now.
+        let index = entry.index_before.ok_or(NotInvertible::NoBackup)?;
         steps.push(Step::RestoreIndex {
-            tree,
-            paths: scope(entry.index_after, tree),
+            index,
+            paths: match entry.index_after {
+                Some(from) => IndexPaths::ChangedBetween { from, to: index },
+                None => IndexPaths::Everything,
+            },
         });
     }
     if entry.touches.worktree {
@@ -417,11 +453,10 @@ pub struct RepoStateNow {
     pub head: HeadRef,
     /// The refs the entry recorded, read again; a missing name is absent.
     pub refs: BTreeMap<String, Option<Oid>>,
-    /// The index tree now — `None` when the index is unmerged, which has no
-    /// tree. That is not "the same as whatever was recorded": an entry that
-    /// recorded a tree has drifted, and one that recorded none is still
-    /// unknown.
-    pub index_tree: Option<Oid>,
+    /// The index now, merged or unmerged. Never absent and never an error:
+    /// an unmerged index is a state, and comparing it against a recorded one
+    /// is what tells an undone conflict apart from a drifted one.
+    pub index: IndexState,
     /// The working-tree tree now (§6.3's hashing).
     pub worktree_tree: Oid,
 }
@@ -435,8 +470,10 @@ pub struct Drift {
     pub refs: Vec<(String, Option<Oid>, Option<Oid>)>,
     /// `HEAD` moved.
     pub head: bool,
-    /// The index tree differs.
-    pub index: bool,
+    /// The index differs from what the entry recorded: what it recorded, and
+    /// what it is now. A merged index that is unmerged now is drift like any
+    /// other — and says so in different words.
+    pub index: Option<(IndexState, IndexState)>,
     /// The working-tree tree differs.
     pub worktree: bool,
     /// What the inverse restores whole because its after-state was never
@@ -453,7 +490,7 @@ impl Drift {
     pub fn is_clean(&self) -> bool {
         self.refs.is_empty()
             && !self.head
-            && !self.index
+            && self.index.is_none()
             && !self.worktree
             && self.unknown.is_empty()
     }
@@ -471,8 +508,15 @@ impl Drift {
         if self.head {
             parts.push("HEAD moved".to_owned());
         }
-        if self.index {
-            parts.push("the index changed".to_owned());
+        if let Some((recorded, now)) = self.index {
+            parts.push(
+                match (recorded.is_unmerged(), now.is_unmerged()) {
+                    (false, true) => "the index is unmerged now",
+                    (true, false) => "the index is merged now",
+                    _ => "the index changed",
+                }
+                .to_owned(),
+            );
         }
         if self.worktree {
             parts.push("the working tree changed".to_owned());
@@ -522,7 +566,8 @@ pub fn drift(entry: &JournalEntry, now: &RepoStateNow) -> Drift {
             .is_some_and(|head| *head != now.head),
         index: entry
             .index_after
-            .is_some_and(|tree| Some(tree) != now.index_tree),
+            .filter(|recorded| *recorded != now.index)
+            .map(|recorded| (recorded, now.index)),
         worktree: entry
             .worktree_after
             .is_some_and(|tree| tree != now.worktree_tree),

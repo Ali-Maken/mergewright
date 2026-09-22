@@ -240,6 +240,74 @@ pub enum HeadRef {
     Unborn(String),
 }
 
+/// The index as an entry records it: one tree, and what shape it has.
+///
+/// A merged index writes straight out with `git write-tree`. An unmerged one
+/// has no tree at all — `write-tree` refuses it — so it is recorded as the
+/// **stage tree**: every index entry at `<stage>/<path>`, stage 0, so a
+/// conflict's three sides are one object id like any other state
+/// (m6-conflicts/08, ADR-0031: the journal answers whole-repo state at a
+/// time, and an unmerged index is a state like any other).
+///
+/// The shape travels with the id because the two trees are not
+/// interchangeable: handing a stage tree to `git restore --source` would
+/// write `0/`, `1/`, `2/` and `3/` directories into the working tree.
+///
+/// On disk a `Merged` state is the bare oid string every entry written
+/// before M6 holds, so those lines parse and render unchanged; `Unmerged` is
+/// `{"unmerged":"<oid>"}`.
+///
+/// ```
+/// use graft_core::journal::IndexState;
+/// use graft_core::oid::Oid;
+///
+/// let id = Oid::from_hex("acf15d58a3b48e5878fe281a624fb5c688dcaee1").expect("a hex oid");
+/// let merged = IndexState::Merged(id);
+/// assert_eq!(merged.tree(), id);
+/// assert!(!merged.is_unmerged());
+/// assert_eq!(
+///     serde_json::to_string(&merged).expect("it serialises"),
+///     "\"acf15d58a3b48e5878fe281a624fb5c688dcaee1\""
+/// );
+///
+/// let unmerged = IndexState::Unmerged { unmerged: id };
+/// assert!(unmerged.is_unmerged());
+/// assert_eq!(
+///     serde_json::to_string(&unmerged).expect("it serialises"),
+///     "{\"unmerged\":\"acf15d58a3b48e5878fe281a624fb5c688dcaee1\"}"
+/// );
+/// ```
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum IndexState {
+    /// The plain tree `git write-tree` gives. Serialised as the bare oid
+    /// string, which is exactly what every pre-M6 line holds.
+    Merged(Oid),
+    /// The stage tree `{ 0/<path>…, 1/<path>…, 2/<path>…, 3/<path>… }`, every
+    /// entry at stage 0 so the tree is writable at all.
+    Unmerged {
+        /// The stage tree's id.
+        unmerged: Oid,
+    },
+}
+
+impl IndexState {
+    /// The tree id, whichever shape this is. Read it only together with
+    /// [`IndexState::is_unmerged`] — the two trees mean different things.
+    #[must_use]
+    pub fn tree(&self) -> Oid {
+        match self {
+            IndexState::Merged(tree) | IndexState::Unmerged { unmerged: tree } => *tree,
+        }
+    }
+
+    /// Is this the stage tree of a half-finished merge?
+    #[must_use]
+    pub fn is_unmerged(&self) -> bool {
+        matches!(self, IndexState::Unmerged { .. })
+    }
+}
+
 /// One journaled operation: its before- and after-state, and what it needs.
 ///
 /// The before-fields are known when the `Pending` line is written; the
@@ -268,10 +336,12 @@ pub struct JournalEntry {
     pub refs_before: BTreeMap<String, Option<Oid>>,
     /// The same refs after the operation.
     pub refs_after: BTreeMap<String, Option<Oid>>,
-    /// The index as a tree id before, when the operation touches the index.
-    pub index_before: Option<Oid>,
-    /// The index tree after.
-    pub index_after: Option<Oid>,
+    /// The index before, when the operation touches the index. `None` means
+    /// only *never recorded* — an unmerged index has a state of its own
+    /// ([`IndexState::Unmerged`]), not an absence.
+    pub index_before: Option<IndexState>,
+    /// The index after.
+    pub index_after: Option<IndexState>,
     /// The working tree — tracked content and untracked files — as a tree
     /// id before, when the operation touches the working tree (§6.3).
     pub worktree_before: Option<Oid>,
@@ -356,6 +426,50 @@ mod tests {
                 "{bad}"
             );
         }
+    }
+
+    /// The journal is a file format, and M6 changed the type of two of its
+    /// fields. Every line M3–M5 wrote holds a **bare oid string** there, so
+    /// the untagged `Merged` arm has to read one, `null` has to stay `None`,
+    /// and the new `Unmerged` shape has to round-trip beside them.
+    #[test]
+    fn index_state_serde_is_backward_compatible() {
+        #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+        struct Holder {
+            index_before: Option<IndexState>,
+        }
+        let id = Oid::from_hex("acf15d58a3b48e5878fe281a624fb5c688dcaee1").expect("a hex oid");
+
+        // A bare oid — what every pre-M6 line holds — is a merged index.
+        let old: Holder =
+            serde_json::from_str(r#"{"index_before":"acf15d58a3b48e5878fe281a624fb5c688dcaee1"}"#)
+                .expect("a pre-M6 line parses");
+        assert_eq!(old.index_before, Some(IndexState::Merged(id)));
+        // And renders back byte-identically: no field renamed, no map where
+        // a string was.
+        assert_eq!(
+            serde_json::to_string(&old).expect("it renders"),
+            r#"{"index_before":"acf15d58a3b48e5878fe281a624fb5c688dcaee1"}"#
+        );
+
+        // `null` is still "never recorded", not "unmerged".
+        let absent: Holder =
+            serde_json::from_str(r#"{"index_before":null}"#).expect("a null line parses");
+        assert_eq!(absent.index_before, None);
+
+        // The new shape round-trips.
+        let unmerged = Holder {
+            index_before: Some(IndexState::Unmerged { unmerged: id }),
+        };
+        let text = serde_json::to_string(&unmerged).expect("it renders");
+        assert_eq!(
+            text,
+            r#"{"index_before":{"unmerged":"acf15d58a3b48e5878fe281a624fb5c688dcaee1"}}"#
+        );
+        assert_eq!(
+            serde_json::from_str::<Holder>(&text).expect("it parses back"),
+            unmerged
+        );
     }
 
     #[test]

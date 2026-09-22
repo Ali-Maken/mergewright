@@ -2,13 +2,13 @@
 
 use std::collections::BTreeMap;
 
-use graft_core::journal::{EntryStatus, HeadRef, OperationKind, Touches};
+use graft_core::journal::{EntryStatus, HeadRef, IndexState, OperationKind, Touches};
 
 use crate::journal::tests::{MAIN, committed, oid, reversal};
 
 use super::{
-    Drift, InversePlan, NotInvertible, PathScope, RepoStateNow, Step, drift, inverse, plan_redo,
-    plan_undo,
+    Drift, IndexPaths, InversePlan, NotInvertible, PathScope, RepoStateNow, Step, drift, inverse,
+    plan_redo, plan_undo,
 };
 
 fn changed(from: u8, to: u8) -> PathScope {
@@ -18,12 +18,24 @@ fn changed(from: u8, to: u8) -> PathScope {
     }
 }
 
+/// A merged index state, the shape every entry these tests build records.
+fn merged(byte: u8) -> IndexState {
+    IndexState::Merged(oid(byte))
+}
+
+fn index_changed(from: u8, to: u8) -> IndexPaths {
+    IndexPaths::ChangedBetween {
+        from: merged(from),
+        to: merged(to),
+    }
+}
+
 fn restores(before: u8, after: u8, index: bool, worktree: bool) -> Vec<Step> {
     let mut steps = Vec::new();
     if index {
         steps.push(Step::RestoreIndex {
-            tree: oid(0xa0 + before),
-            paths: changed(0xa0 + after, 0xa0 + before),
+            index: merged(0xa0 + before),
+            paths: index_changed(0xa0 + after, 0xa0 + before),
         });
     }
     if worktree {
@@ -355,8 +367,8 @@ fn pending_no_backup_and_incomplete_entries_are_not_invertible() {
         steps,
         [
             Step::RestoreIndex {
-                tree: oid(0xa1),
-                paths: PathScope::Everything
+                index: merged(0xa1),
+                paths: IndexPaths::Everything
             },
             Step::RestoreWorktree {
                 tree: oid(0xb1),
@@ -381,6 +393,42 @@ fn pending_no_backup_and_incomplete_entries_are_not_invertible() {
     );
 }
 
+/// The same tree id in the other shape is drift too, and the words say which
+/// way it went (m6-conflicts/08).
+#[test]
+fn drift_says_which_way_the_index_shape_went() {
+    let entry = committed(10, OperationKind::Discard, 1, 2);
+    let now = RepoStateNow {
+        head: HeadRef::Branch(MAIN.to_owned()),
+        refs: BTreeMap::from([(MAIN.to_owned(), Some(oid(2)))]),
+        index: merged(0xa2),
+        worktree_tree: oid(0xb2),
+    };
+
+    let unmerged = RepoStateNow {
+        index: IndexState::Unmerged {
+            unmerged: oid(0xa2),
+        },
+        ..now.clone()
+    };
+    assert_eq!(
+        drift(&entry, &unmerged).explain(),
+        "the index is unmerged now"
+    );
+
+    let was_unmerged = {
+        let mut entry = entry.clone();
+        entry.index_after = Some(IndexState::Unmerged {
+            unmerged: oid(0xa2),
+        });
+        entry
+    };
+    assert_eq!(
+        drift(&was_unmerged, &now).explain(),
+        "the index is merged now"
+    );
+}
+
 #[test]
 fn drift_sets_exactly_the_field_that_moved() {
     // `committed` records every field: a ref, `HEAD` and both trees.
@@ -388,7 +436,7 @@ fn drift_sets_exactly_the_field_that_moved() {
     let now = RepoStateNow {
         head: HeadRef::Branch(MAIN.to_owned()),
         refs: BTreeMap::from([(MAIN.to_owned(), Some(oid(2)))]),
-        index_tree: Some(oid(0xa2)),
+        index: merged(0xa2),
         worktree_tree: oid(0xb2),
     };
     let clean = drift(&entry, &now);
@@ -409,13 +457,13 @@ fn drift_sets_exactly_the_field_that_moved() {
     assert_eq!(drift(&entry, &moved_ref).explain(), "refs/heads/main moved");
 
     let index = RepoStateNow {
-        index_tree: Some(oid(0xaf)),
+        index: merged(0xaf),
         ..now.clone()
     };
     assert_eq!(
         drift(&entry, &index),
         Drift {
-            index: true,
+            index: Some((merged(0xa2), merged(0xaf))),
             ..Drift::default()
         }
     );
@@ -427,7 +475,7 @@ fn drift_sets_exactly_the_field_that_moved() {
         ..now.clone()
     };
     let both = drift(&entry, &worktree);
-    assert!(both.worktree && both.head && !both.index && both.refs.is_empty());
+    assert!(both.worktree && both.head && both.index.is_none() && both.refs.is_empty());
     assert_eq!(both.explain(), "HEAD moved; the working tree changed");
 }
 
@@ -439,7 +487,7 @@ fn an_unrecorded_after_state_is_reported_as_unknown_never_as_clean() {
     let now = RepoStateNow {
         head: HeadRef::Branch(MAIN.to_owned()),
         refs: BTreeMap::from([(MAIN.to_owned(), Some(oid(2)))]),
-        index_tree: Some(oid(0xa2)),
+        index: merged(0xa2),
         worktree_tree: oid(0xb2),
     };
     assert!(drift(&entry, &now).is_clean());

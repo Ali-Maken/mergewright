@@ -61,19 +61,45 @@ pub enum Resume {
 /// last file a user resolves leaves the index clean, and that step must fold
 /// into the span like every one before it.
 ///
-/// Nothing is at risk for want of a backup. Every step this admits writes
-/// only the index (`add`, `apply --cached`, `restore --staged`), and the
-/// span's own entry holds the pre-operation snapshot.
+/// **Writing no line is not the same as keeping no backup.** This used to say
+/// nothing was at risk here, on the grounds that every admitted step wrote
+/// only the index. That stopped being true when the resolver landed: a
+/// whole-file take is `checkout --ours|--theirs` + `add`, or `rm --quiet`,
+/// and a restart is `checkout --merge` — all of them write the working tree
+/// (`touches.worktree`), and all of them are admitted here. A hand edit made
+/// in `$EDITOR` and then resolved the other way was overwritten with no
+/// confirmation, no line and no snapshot, and the span's own entry predates
+/// the edit (m6 g03 review, M2).
+///
+/// So the span's entry stays one entry, and every step whose `touches` names
+/// the index or the working tree takes a **chained backup commit** first
+/// ([`snapshot::chain_backup`], Decision 2 of m6-conflicts/08): the
+/// repository as it stands, hung off the entry's own backup ref, no journal
+/// line. It is what `d` reads back after `⏎`, and it is the recovery point
+/// for that hand edit.
 pub(super) fn inside_live_operation(
     ctx: &mut Context<'_>,
     op: &Operation,
     facts: &RepoFacts,
     live: InProgress,
 ) -> Result<Applied, ApplyError> {
+    // Before anything runs: the entry the step folds into, and the snapshot
+    // that keeps what the step is about to overwrite.
+    let span = live_entry(ctx.repo, ctx.journal.entries(), live, ctx.stop)?.cloned();
+    let touches = op.touches(facts);
+    let step_backup = match &span {
+        Some(entry) if touches.index || touches.worktree => {
+            snapshot::chain_backup(ctx, entry).map_err(as_apply_error)?
+        }
+        // No entry of Graft's to chain onto (an operation begun in the
+        // shell), or a step that writes neither: nothing to keep.
+        _ => None,
+    };
+
     let plan = op.plan(facts);
     let commands: Vec<String> = plan.iter().map(Invocation::command_line).collect();
     let PlanRun { failure, .. } = run_plan(ctx, &plan, op.remote_names().as_ref());
-    fold_commands(ctx, live, commands.clone())?;
+    fold_commands(ctx, span.as_ref(), commands.clone());
 
     let mut record = JournalEntry {
         id: ctx.next_id(),
@@ -81,7 +107,7 @@ pub(super) fn inside_live_operation(
         kind: op.kind(),
         description: op.describe(),
         status: EntryStatus::Committed,
-        touches: op.touches(facts),
+        touches,
         head_before: facts.head.clone(),
         head_after: Some(facts.head.clone()),
         refs_before: BTreeMap::default(),
@@ -99,6 +125,7 @@ pub(super) fn inside_live_operation(
         None => Ok(Applied {
             entry: record,
             refresh: Refresh::WorkingTree,
+            step_backup,
         }),
         Some(failed) => {
             record.status = EntryStatus::Aborted {
@@ -109,6 +136,15 @@ pub(super) fn inside_live_operation(
     }
 }
 
+/// A snapshot failure as an apply failure, the **stop kept as a stop** so the
+/// caller can tell "you cancelled" from "git would not run".
+fn as_apply_error(why: snapshot::SnapshotError) -> ApplyError {
+    match why {
+        snapshot::SnapshotError::Stopped => ApplyError::Stopped,
+        other => ApplyError::Snapshot(other),
+    }
+}
+
 /// Record a folded step on the live entry: its command line after the ones
 /// already held, so the Command Log shows the span in the order it happened.
 ///
@@ -116,23 +152,18 @@ pub(super) fn inside_live_operation(
 /// written, so a caller that opens a fresh journal per job sees only the
 /// step it just ran (the same limitation the stop itself has — the plan's
 /// own lines do not reach disk either until `resume` closes the entry).
-fn fold_commands(
-    ctx: &mut Context<'_>,
-    live: InProgress,
-    commands: Vec<String>,
-) -> Result<(), ApplyError> {
-    let Some((id, mut held)) = live_entry(ctx.repo, ctx.journal.entries(), live, ctx.stop)?
-        .map(|entry| (entry.id.clone(), entry.commands.clone()))
-    else {
-        // An operation begun outside Graft has no entry of Graft's to record
-        // the step on. Nothing is dropped that was ever ours: git's own state
-        // is the whole record of that operation, and the step is reported to
-        // the caller on the returned `Applied`.
-        return Ok(());
+///
+/// `None` is an operation begun outside Graft: there is no entry of Graft's
+/// to record the step on. Nothing is dropped that was ever ours — git's own
+/// state is the whole record of that operation, and the step is reported to
+/// the caller on the returned `Applied`.
+fn fold_commands(ctx: &mut Context<'_>, span: Option<&JournalEntry>, commands: Vec<String>) {
+    let Some(entry) = span else {
+        return;
     };
+    let mut held = entry.commands.clone();
     held.extend(commands);
-    ctx.journal.hold_commands(&id, held);
-    Ok(())
+    ctx.journal.hold_commands(&entry.id, held);
 }
 
 /// Close every entry left `Pending` by a previous run as `interrupted`,
@@ -342,6 +373,11 @@ pub fn resume(ctx: &mut Context<'_>, how: Resume) -> Result<Applied, ApplyError>
     }
     let (kind, entry) = resume_target(ctx, how)?;
 
+    // What git is about to write over. `--abort` throws the span's work away
+    // and `--continue` commits it, so in both cases the last state the user
+    // saw is only in the chain after this (m6-conflicts/08 Decision 2).
+    snapshot::chain_backup(ctx, &entry).map_err(as_apply_error)?;
+
     let args = [
         GitArg::Flag(kind.name()),
         GitArg::Flag(match how {
@@ -486,6 +522,7 @@ fn close_resume(
     let applied = Applied {
         entry,
         refresh: Refresh::Everything,
+        step_backup: None,
     };
     if unread.is_empty() {
         Ok(applied)
@@ -525,7 +562,7 @@ fn seal_recovered(
     let label = format!("interrupted, recovered: {id}");
     let commit = snapshot::commit_trees(
         ctx.repo,
-        now.index_tree,
+        Some(now.index),
         Some(now.worktree_tree),
         id,
         &label,

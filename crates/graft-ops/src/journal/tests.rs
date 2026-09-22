@@ -3,7 +3,9 @@
 
 use std::collections::BTreeMap;
 
-use graft_core::journal::{EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches};
+use graft_core::journal::{
+    EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, OperationKind, Touches,
+};
 use graft_core::oid::Oid;
 
 use super::{
@@ -39,8 +41,8 @@ pub(crate) fn committed(at: i64, kind: OperationKind, before: u8, after: u8) -> 
         head_after: Some(HeadRef::Branch(MAIN.to_owned())),
         refs_before: BTreeMap::from([(MAIN.to_owned(), Some(oid(before)))]),
         refs_after: BTreeMap::from([(MAIN.to_owned(), Some(oid(after)))]),
-        index_before: Some(oid(0xa0 + before)),
-        index_after: Some(oid(0xa0 + after)),
+        index_before: Some(IndexState::Merged(oid(0xa0 + before))),
+        index_after: Some(IndexState::Merged(oid(0xa0 + after))),
         worktree_before: Some(oid(0xb0 + before)),
         worktree_after: Some(oid(0xb0 + after)),
         backup_ref: Some(format!("refs/graft/backup/main/{}", id(at))),
@@ -84,7 +86,7 @@ fn aborted(at: i64, with_backup: bool) -> JournalEntry {
         },
         worktree_before: with_backup.then(|| oid(0xb1)),
         worktree_after: Some(oid(0xb2)),
-        index_before: with_backup.then(|| oid(0xa1)),
+        index_before: with_backup.then(|| IndexState::Merged(oid(0xa1))),
         ..committed(at, OperationKind::StashPop, 1, 1)
     }
 }
@@ -315,7 +317,7 @@ fn an_aborted_operation_is_in_force_when_any_recorded_field_moved_or_is_unknown(
         }),
         ("index", {
             let mut e = base.clone();
-            e.index_after = Some(oid(0xa2));
+            e.index_after = Some(IndexState::Merged(oid(0xa2)));
             e
         }),
         ("worktree", {
@@ -373,7 +375,7 @@ fn state_at_reads_the_newest_after_state_or_the_oldest_before_state() {
                 (MAIN.to_owned(), Some(oid(3))),
                 (other.to_owned(), Some(oid(0x50))),
             ]),
-            index: Some(oid(0xa3)),
+            index: Some(IndexState::Merged(oid(0xa3))),
             worktree: Some(oid(0xb3)),
         }
     );

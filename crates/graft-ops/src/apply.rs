@@ -56,6 +56,14 @@ pub struct Applied {
     pub entry: JournalEntry,
     /// What to re-read.
     pub refresh: Refresh,
+    /// The chained backup commit taken **before** a folded step ran, when
+    /// there was one ([`snapshot::chain_backup`]).
+    ///
+    /// `Some` only for the exception above: a step inside a live operation
+    /// that writes the index or the working tree. It is not in the journal
+    /// either — the entry's backup ref points at it, and `d` reads the
+    /// conflict's stages back out of it.
+    pub step_backup: Option<Oid>,
 }
 
 /// Why an operation did not run, or did not finish.
@@ -481,7 +489,11 @@ fn succeeded(
     } else {
         Refresh::Everything
     };
-    let applied = Applied { entry, refresh };
+    let applied = Applied {
+        entry,
+        refresh,
+        step_backup: None,
+    };
     if unread.is_empty() {
         Ok(applied)
     } else {
@@ -717,7 +729,7 @@ pub(crate) fn begin(
         head_after: None,
         refs_before,
         refs_after: BTreeMap::default(),
-        index_before: backup.and_then(|taken| taken.index_tree),
+        index_before: backup.map(|taken| taken.index),
         index_after: None,
         worktree_before: backup.map(|taken| taken.worktree_tree),
         worktree_after: None,
@@ -795,10 +807,11 @@ fn read_after(ctx: &Context<'_>, entry: &mut JournalEntry) -> Vec<AfterState> {
         Err(why) => unread.push(AfterState::Refs(why)),
     }
     if entry.touches.index {
-        match snapshot::index_tree(ctx.repo, ctx.scratch(), never) {
-            Ok(tree) => entry.index_after = Some(tree),
-            // An unmerged index has no tree at all: a conflicted pop is the
-            // shape this exists for, and the working tree still lands.
+        match snapshot::index_state(ctx.repo, ctx.scratch(), never) {
+            // An unmerged index is a state, not an absence: a conflicted pop
+            // records its stage tree here and is undoable from it
+            // (m6-conflicts/08).
+            Ok(index) => entry.index_after = Some(index),
             Err(why) => unread.push(AfterState::Index(why)),
         }
     } else {
@@ -825,7 +838,17 @@ fn read_after(ctx: &Context<'_>, entry: &mut JournalEntry) -> Vec<AfterState> {
 /// before-fields stay, because the ref still holds the before-commit.
 fn seal_after(ctx: &Context<'_>, entry: &mut JournalEntry, before: Oid) -> Option<AfterState> {
     let name = entry.backup_ref.clone()?;
-    let mut parents = vec![before];
+    // The ref's **current** target, not the pre-operation commit: a stopped
+    // operation's folded steps chain commits onto it
+    // ([`snapshot::chain_backup`]), and parenting the pre-operation commit
+    // would leave every one of them unreachable the moment the ref moved
+    // here. Falling back to `before` keeps the old behaviour when the ref
+    // cannot be read, which is the case the `Unsealed` arm below reports.
+    let tip = facts::read_refs(ctx.repo, std::slice::from_ref(&name))
+        .ok()
+        .and_then(|refs| refs.get(&name).copied().flatten())
+        .unwrap_or(before);
+    let mut parents = vec![tip];
     for anchor in anchors(entry.head_after.as_ref(), &entry.refs_after) {
         if !parents.contains(&anchor) {
             parents.push(anchor);
