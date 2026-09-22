@@ -72,7 +72,7 @@ say why.
   *Deviation from the wording:* the table is per `(how, side)`, not per corpus file — the corpus's other `UU` files (`three.txt`, `crlf.txt`, `nofinal.txt`, `md.md`, `zdiff3.txt`) differ only in their marker text, which the whole-file path never reads. The stopped merge is built inside the test because it needs a writable journal and `TempRepo`'s read-back helpers.
 - [x] `ResolveWholeFile` inside a live operation adds **no** journal line (folded) — `conflict_ops::whole_file_folds_into_live_entry` (a live merge; `facts.in_progress` is what selects the folding path, so a rebase takes the same branch).
 - [x] With no live entry it writes one entry with `OperationKind::ResolveConflict` — `conflict_ops::whole_file_is_its_own_entry_when_nothing_is_live` (over a real conflicted `stash pop`, which the test proves leaves `in_progress == None`).
-- [ ] **…and `u` restores the unmerged index (`ls-files -u` lists the path again).** **Not true, and not fixed here.** Measured: `u` refuses with `no backup was taken for that operation, so it cannot be undone` — `conflict_ops::undo_after_a_whole_file_resolution_with_nothing_live` records exactly that. Cause, with its line: the index was unmerged when the before-snapshot was taken, `git write-tree` has no tree for one (`crates/graft-ops/src/snapshot.rs:147` records `index_tree: None`), so the entry's `index_before` is `None` and `crates/graft-ops/src/undo.rs:238` turns `touches.index` into `NotInvertible::NoBackup`. Restoring an unmerged index needs the three stages recorded and replayed through `update-index --index-info` — a new `Step` and a new before-field, which is `KNOWN_GAPS` 229's own scope ("the conflict resolver owns unmerged-index state"), not this group's. **This is not new with this operation**: any operation whose before-index is unmerged has the same shape, and because undo is linear the refusal also stands between the user and older entries. Worth a ticket.
+- [ ] **…and `u` restores the unmerged index (`ls-files -u` lists the path again).** **Not true, and not fixed here.** Measured: `u` refuses with `no backup was taken for that operation, so it cannot be undone` — `conflict_ops::undo_after_a_whole_file_resolution_with_nothing_live` records exactly that. Cause, with its line: the index was unmerged when the before-snapshot was taken, `git write-tree` has no tree for one (`crates/graft-ops/src/snapshot.rs:147` records `index_tree: None`), so the entry's `index_before` is `None` and `crates/graft-ops/src/undo.rs:238` turns `touches.index` into `NotInvertible::NoBackup`. Restoring an unmerged index needs the three stages recorded and replayed through `update-index --index-info` — a new `Step` and a new before-field, which is `KNOWN_GAPS` 229's own scope ("the conflict resolver owns unmerged-index state"), not this group's. **This is not new with this operation**: any operation whose before-index is unmerged has the same shape, and because undo is linear the refusal also stands between the user and older entries. **Covered by group 08** (`.scratch/m6-conflicts/issues/08-ops-undo-an-unmerged-index.md`) — stage replay is a journal design decision, so it was filed as its own spec. Not abandoned.
 - [x] `RestartConflict` brings the markers back and the path back to `ls-files -u` — `conflict_ops::restart_brings_the_conflict_back` (three stages listed again, theirs' lines back in the file).
   *Deviation from the wording:* the acceptance said "taken-then-**staged** `both.txt`". Staging an unmerged path collapses it to stage 0, so the status no longer calls it unmerged and `check` refuses `NotUnmerged` — which the spec's own Scope line asks for, and which matches `open_conflict` (the resolver can only be open on an unmerged path, so `d` cannot be pressed on a staged one). The test therefore takes the side *on disk*, the reachable state, and `conflict_ops::conflict_operations_refuse_a_path_that_is_not_conflicted` pins the refusal on the staged one. Raw git does restore a staged `UU` from its resolve-undo record, but refuses a staged whole-file shape with `does not have all necessary versions` (both verified, git 2.54) — so allowing it would work for one shape and fail for six.
 - [x] `open_conflict`: `pic.bin` → `binary: true, file: None`; `theirs-deleted.txt` → `how: DeletedByThem, file: None`; a clean path → `Refused(NotUnmerged)`; a stray marker → `Markers(ParseError { line })` — `conflict::tests::open_names_every_shape`.
@@ -83,7 +83,7 @@ say why.
 - [x] `mark_resolved_refusal` → `Some(ConflictsOpen { open: 2 })` after one of three takes, `None` after three — `conflict::tests::mark_resolved_refusal_counts_open`.
 - [x] The three new refusals' words — `operation::tests::conflict_refusals_in_words`.
   *Deviation:* they are arms of `Refusal::explain()`. There is no `words()` on `Refusal` and adding one would be a second way to say the same thing.
-- [ ] **`tests/it/seam_rule.rs` extended with the new allow-list.** **Not done: `crates/graft` is not in this group's crate set** (`graft-ops`, `graft-core`), and another builder held it concurrently. The change is one row in `FORBIDDEN` at `crates/graft/tests/it/seam_rule.rs:17`: `("write_back", Allowed::Nowhere)` — the app calls `graft_ops::conflict::apply_take`, never `graft_git::conflict::write_back`. Handed to whoever holds `graft`.
+- [ ] **`tests/it/seam_rule.rs` extended with the new allow-list.** **Not done: `crates/graft` is not in this group's crate set** (`graft-ops`, `graft-core`), and another builder held it concurrently. The change is one row in `FORBIDDEN` at `crates/graft/tests/it/seam_rule.rs:17`: `("write_back", Allowed::Nowhere)` — the app calls `graft_ops::conflict::apply_take`, never `graft_git::conflict::write_back`. **The conductor is adding this row himself** (stated when the graft-git fix round merged); it is not this group's to close.
 - [x] MAP.md updated (`crates/graft-ops/MAP.md` §operation, new §conflict; `crates/graft-core/MAP.md` §journal) and NOTES records the verified table with its git version.
 
 ## Gates
@@ -157,20 +157,44 @@ were used as the merged code has them.
 1. The `u` gap above (`KNOWN_GAPS` 229 territory): a whole-file resolution
    with no live entry is journaled but not undoable, and undo being linear,
    the refusal also blocks older entries. Pre-existing in shape, newly
-   reachable in practice.
-2. `seam_rule.rs` needs its one row; `crates/graft` was not mine.
+   reachable in practice. **Filed as group 08** — stage replay is a journal
+   design decision, not this group's.
+2. `seam_rule.rs` needs its one row; `crates/graft` was not mine. The
+   conductor is adding it.
 3. The coordinator's mid-build note about `graft-git` corrections: nothing
    here reads a marker label, and nothing depends on `blocks().first_line`
    surviving `attach_base`, so the label and line-number changes do not reach
-   this group. One reading does touch it: `mark_resolved_refusal` treats
-   `file.open() == 0` as "nothing left to take a side on". Today a file whose
-   `conflict-marker-size` is not 7 parses as clean, so `open()` is 0 and this
-   refusal stays silent; `MarkersRemain` in the facts is the second line of
-   defence. Once that becomes a typed parse error it will surface from
-   `open_conflict` as `OpenError::Markers` instead, which is better and needs
-   no change here. Merged main at `f7fec5d` before the final gate run; the
-   `graft-git` fixes were not in it yet.
+   this group.
 
-**Gates:** `cargo fmt --check`, `cargo clippy --all-targets -D warnings`,
-`cargo nextest run` (2530 passed, 1 skipped), `cargo test --doc` — all
-workspace-wide, all green after merging main.
+**The `open() == 0` question, answered against the merged `graft-git`
+(main `421b4ec`, merged into this branch).**
+
+`mark_resolved_refusal` reads `file.open() == 0` as "nothing left to take a
+side on". That reading is only as good as the parser's ability to see markers
+at all, so it was flagged before the fix round landed. What the merged code
+actually does, measured:
+
+- **Eight or more `<`** (`conflict-marker-size` ≥ 8): `parse` now returns
+  `ParseErrorKind::MarkerSize`, so `open_conflict` hands back
+  `OpenError::Markers` and the resolver never gets a `ConflictFile` at all —
+  `mark_resolved_refusal` is unreachable on such a file. Strictly better than
+  the old "parses clean"; **no change needed here**. Pinned by
+  `conflict::tests::a_longer_marker_size_never_reads_as_resolved`.
+- **Below seven** (e.g. `conflict-marker-size=3` → `<<< HEAD`): still parses
+  clean, so `open() == 0` and `mark_resolved_refusal` returns `None`. The
+  second line of defence does not catch it either —
+  `crates/graft-git/src/history_reads.rs:452` (`first_marker_line`) matches
+  seven **or more**, so `MarkersRemain` misses a short marker too. This stays
+  a **broken** gap, owned by M7 per the conductor; not touched here.
+
+**The merge.** Main merged at `421b4ec`. Nothing in this group broke:
+`cargo check --workspace --all-targets` was clean immediately after the merge,
+because no code here reads `ours_label`/`theirs_label`, `Block.base` or
+`reproduced`. `BaseError::Mismatch`'s words were already narrow — "a hand edit
+inside a block" — which is exactly what `BaseMismatch` now means after
+`attach_base` stopped refusing zealous-merge splits and `eol=crlf` files, so
+no re-wording was needed.
+
+**Gates** (workspace-wide, after merging main at `421b4ec`): `cargo fmt
+--check` ok, `cargo clippy --all-targets -- -D warnings` clean, `cargo nextest
+run` **2536 passed, 1 skipped, 0 failed**, `cargo test --doc` 0 failures.

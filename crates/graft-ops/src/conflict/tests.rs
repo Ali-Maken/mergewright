@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use graft_fixtures::{Scratch, Shape};
-use graft_git::conflict::{BlockState, Take};
+use graft_git::conflict::{BlockState, ParseErrorKind, Take};
 use graft_git::repo::RepoHandle;
 use graft_git::status::{UnmergedHow, WorkingTreeStatus};
 
@@ -69,6 +69,26 @@ fn open_names_every_shape() {
     match open(&repo, &status, "both.txt") {
         Err(OpenError::Markers(error)) => assert_eq!(error.line, 2),
         other => panic!("expected Markers, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_longer_marker_size_never_reads_as_resolved() {
+    let (_scratch, repo, status) = stopped();
+    let workdir = repo.workdir().expect("a working tree");
+
+    // `conflict-marker-size = 8`. The parser reads git's default size only,
+    // so the danger is reading this as plain text — zero blocks, `open() ==
+    // 0`, nothing left to resolve — and letting the markers be staged.
+    let eight = b"<<<<<<<< ours\nmine\n========\nyours\n>>>>>>>> theirs\n";
+    std::fs::write(workdir.join("both.txt"), eight).expect("the file is written");
+
+    match open(&repo, &status, "both.txt") {
+        Err(OpenError::Markers(error)) => {
+            assert_eq!(error.what, ParseErrorKind::MarkerSize);
+            assert_eq!(error.line, 1);
+        }
+        other => panic!("expected MarkerSize, got {other:?}"),
     }
 }
 
