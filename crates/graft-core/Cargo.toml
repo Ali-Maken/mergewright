@@ -19,3 +19,6 @@ workspace = true
 [dev-dependencies]
 # `HandleSet`'s model test against `HashSet` (PROMPT.md §7.1 names proptest).
 proptest = { version = "1", default-features = false, features = ["std", "bit-set"] }
+# The journal is a file format, so its serde shape is asserted as bytes —
+# `IndexState`'s backward compatibility above all (m6-conflicts/08).
+serde_json.workspace = true

@@ -113,8 +113,9 @@ pub enum RestoreError {
         rollback: Box<RestoreError>,
     },
     /// The roll-back had nothing to put a field back from: the entry's own
-    /// before-state does not record it. The index is the real case — a
-    /// backup taken over an unmerged index has no tree to record.
+    /// before-state does not record it. It is a ref's case now: an unmerged
+    /// index used to be the real one, and since m6-conflicts/08 it has a
+    /// recorded state of its own (`IndexState::Unmerged`) rather than a gap.
     #[error("the restore's own backup does not hold {field}, so it could not be put back")]
     NoBefore {
         /// Which field: a ref name, `HEAD`, `the index`, `the working tree`.
@@ -223,6 +224,7 @@ pub fn execute(ctx: &mut Context<'_>, plan: &InversePlan) -> Result<Applied, Res
             let applied = Applied {
                 entry: pending.entry,
                 refresh,
+                step_backup: None,
             };
             if unread.is_empty() {
                 Ok(applied)

@@ -349,13 +349,21 @@ fn whole_file_is_its_own_entry_when_nothing_is_live() {
     assert_eq!(unmerged_lines(&repo, "both.txt"), String::new());
 }
 
-/// What `u` actually does after that entry, recorded rather than assumed:
-/// the index was unmerged when the backup was taken and an unmerged index
-/// has no tree, so the entry's `index_before` is `None` and the generic
-/// inverse has nothing to restore the index from.
+/// `u` after that entry puts the conflict back — the stages with their own
+/// oids and modes, and the file with the bytes it had before the resolution.
+///
+/// This used to refuse `no backup was taken`: the index was unmerged when the
+/// backup was taken, an unmerged index had no tree, so `index_before` was
+/// `None` and `generic_steps` read that as no backup at all. Undo being
+/// linear, the refusal blocked every **older** entry too (`KNOWN_GAPS` 229,
+/// m6-conflicts/08).
 #[test]
-fn undo_after_a_whole_file_resolution_with_nothing_live() {
+fn undo_of_a_resolution_restores_the_stages() {
     let repo = conflicted_stash_pop();
+    let stages_before = unmerged_lines(&repo, "both.txt");
+    let bytes_before = repo.read("both.txt");
+    assert!(!stages_before.is_empty(), "the pop left three stages");
+
     let applied = run(
         &repo,
         &Operation::ResolveWholeFile(ResolveWholeParams {
@@ -365,14 +373,23 @@ fn undo_after_a_whole_file_resolution_with_nothing_live() {
         }),
         NOW,
     );
-    assert_eq!(applied.index_before, None, "an unmerged index has no tree");
-    let undone = crate::support::run_undo(&repo, NOW + 1, false);
-    let why = undone.err().map(|error| error.explain());
-    assert_eq!(
-        why.as_deref(),
-        Some("no backup was taken for that operation, so it cannot be undone"),
-        "the unmerged index cannot be put back from a tree (`KNOWN_GAPS` 229)"
+    assert!(
+        applied
+            .index_before
+            .is_some_and(|index| index.is_unmerged()),
+        "the unmerged index is recorded as its own state: {:?}",
+        applied.index_before
     );
+    assert_eq!(unmerged_lines(&repo, "both.txt"), String::new());
+
+    crate::support::run_undo(&repo, NOW + 1, false)
+        .unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(
+        unmerged_lines(&repo, "both.txt"),
+        stages_before,
+        "the same stage oids and modes, byte for byte"
+    );
+    assert_eq!(repo.read("both.txt"), bytes_before, "and the same bytes");
 }
 
 /// `checkout --merge` brings the markers and the three stages back.
@@ -402,6 +419,66 @@ fn restart_brings_the_conflict_back() {
         3,
         "all three stages are listed again"
     );
+}
+
+/// A restart refuses every one-sided shape in words, and the same `git` the
+/// plan would have run fails on all of them — so the refusal is the honest
+/// gate, not a guess (m6 g03 review, M1).
+///
+/// The old gate was "is it unmerged", which every one of these passes; git
+/// then exited 1 with `does not have all necessary versions` and the raw
+/// error was folded into the live entry as an `Aborted` step.
+#[test]
+fn restart_refuses_the_shapes_checkout_merge_cannot_merge() {
+    let repo = stopped_merge();
+    let one_sided = [
+        ("theirs-deleted.txt", UnmergedHow::DeletedByThem),
+        ("ours-deleted.txt", UnmergedHow::DeletedByUs),
+        ("renamed-ours.txt", UnmergedHow::AddedByUs),
+        ("renamed-theirs.txt", UnmergedHow::AddedByThem),
+        ("renamed.txt", UnmergedHow::BothDeleted),
+    ];
+
+    for (path, how) in one_sided {
+        // git's own answer first, so the refusal is measured against it
+        // rather than against a reading of `builtin/checkout.c`.
+        let ran = repo.try_git(&["--literal-pathspecs", "checkout", "--merge", "--", path]);
+        assert!(
+            ran.as_ref()
+                .is_err_and(|stderr| stderr.contains("does not have all necessary versions")),
+            "{path} ({}): git itself should refuse: {ran:?}",
+            how.words()
+        );
+
+        let refused = try_run(
+            &repo,
+            &Operation::RestartConflict(RestartParams {
+                path: PathBuf::from(path),
+            }),
+            NOW,
+        );
+        match refused {
+            Err(ApplyError::Refused(Refusal::NotMarkerShape {
+                path: at,
+                how: read,
+            })) => {
+                assert_eq!(at, PathBuf::from(path));
+                assert_eq!(read, how, "the shape the status reads");
+            }
+            other => panic!("{path} should be refused in words, not by git: {other:?}"),
+        }
+    }
+
+    // And the two that do work still do.
+    for path in ["both.txt", "both-added.txt"] {
+        run(
+            &repo,
+            &Operation::RestartConflict(RestartParams {
+                path: PathBuf::from(path),
+            }),
+            NOW,
+        );
+    }
 }
 
 /// Both operations refuse a path the status does not call unmerged, before

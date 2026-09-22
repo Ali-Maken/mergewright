@@ -449,10 +449,16 @@ pub enum Refusal {
         /// How many blocks are still open.
         open: usize,
     },
-    /// A block take on a shape that has no markers to take from: every
+    /// A block take, or a restart, on a shape that has no markers: every
     /// `UnmergedHow` but `BothModified` and `BothAdded`, and a binary file
     /// of either of those. [`Operation::ResolveWholeFile`] is the way out
     /// (m6-conflicts/03).
+    ///
+    /// A restart lands here for the same reason at one remove: `checkout
+    /// --merge` needs more than one stage to merge, and a one-sided shape has
+    /// one. It used to reach git and come back as a raw
+    /// `does not have all necessary versions` (m6 g03 review, M1);
+    /// [`conflict::check_restart`] holds the measurements.
     NotMarkerShape {
         /// The path.
         path: PathBuf,
@@ -873,9 +879,7 @@ impl Operation {
             Self::TagDelete(params) => history::check_delete(params, facts),
             Self::BranchFromStash(params) => history::check_branch_from_stash(params, facts),
             Self::ResolveWholeFile(params) => conflict::check_resolve(params, facts),
-            Self::RestartConflict(params) => {
-                conflict::check_unmerged(&params.path, facts).map(|_| ())
-            }
+            Self::RestartConflict(params) => conflict::check_restart(&params.path, facts),
         }
     }
 

@@ -913,7 +913,22 @@ fn conflict_operations_check_against_the_status() {
         resolve("p.rs", Side::Ours, UnmergedHow::DeletedByThem).check(&f),
         Ok(())
     );
-    assert_eq!(restart("p.rs").check(&f), Ok(()));
+    // A restart is refused on a one-sided shape, not admitted: `checkout
+    // --merge` has nothing to merge and exits 1 with "does not have all
+    // necessary versions" (measured, git 2.54.0 — the table on
+    // `conflict::check_restart`). This test used to pin `Ok(())` and so
+    // pinned the raw git error (m6 g03 review, M1).
+    assert_eq!(
+        restart("p.rs").check(&f),
+        Err(Refusal::NotMarkerShape {
+            path: PathBuf::from("p.rs"),
+            how: UnmergedHow::DeletedByThem,
+        })
+    );
+    // The two shapes it does work on.
+    for how in [UnmergedHow::BothModified, UnmergedHow::BothAdded] {
+        assert_eq!(restart("p.rs").check(&conflicted("p.rs", how)), Ok(()));
+    }
     // The shape the caller held is not the shape the status reads now: the
     // side they picked may not exist in the shape it became.
     assert_eq!(

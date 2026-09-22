@@ -10,7 +10,7 @@
 
 use std::collections::BTreeMap;
 
-use graft_core::journal::HeadRef;
+use graft_core::journal::{HeadRef, IndexState};
 use graft_core::oid::Oid;
 use graft_git::run::Stop;
 
@@ -29,7 +29,7 @@ use super::steps::run_step;
 pub(super) struct Before {
     pub(super) refs: BTreeMap<String, Option<Oid>>,
     pub(super) head: HeadRef,
-    pub(super) index: Option<Oid>,
+    pub(super) index: Option<IndexState>,
     pub(super) worktree: Option<Oid>,
 }
 
@@ -194,8 +194,12 @@ fn reverse_of(step: &Step, before: &Before) -> Result<Step, RestoreError> {
         // The same paths the forward step could have written — a roll-back
         // is never wider than what it undoes — read out of the entry's own
         // backup tree instead of the operation's.
+        // `NoBefore` can no longer arise here from an unmerged index: one
+        // has a state of its own now (m6-conflicts/08). It stays for an
+        // entry that recorded nothing at all, which is what a restore of an
+        // operation that never touched the index would be.
         Step::RestoreIndex { paths, .. } => Step::RestoreIndex {
-            tree: before.index.ok_or_else(|| RestoreError::NoBefore {
+            index: before.index.ok_or_else(|| RestoreError::NoBefore {
                 field: "the index".to_owned(),
             })?,
             paths: paths.clone(),

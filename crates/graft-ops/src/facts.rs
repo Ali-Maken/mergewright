@@ -198,10 +198,11 @@ pub fn read_refs(
 
 /// The repository as it stands now: §6.7's three comparisons, read fresh.
 ///
-/// An unmerged index — what a `stash pop` that hit a conflict leaves — has no
-/// tree at all, and that is recorded as `index_tree: None` rather than failing
-/// the read: `HEAD`, the named refs and the working tree are all still
-/// readable, and `drift` has to be able to report them (m3/03 review, M5).
+/// An unmerged index — what a `stash pop` that hit a conflict leaves — has a
+/// state of its own ([`graft_core::journal::IndexState::Unmerged`]), never an
+/// absence and never an error: `drift` has to be able to compare it against
+/// what an entry recorded, and "no tree" used to make every such comparison
+/// read as a change (m6-conflicts/08).
 pub fn read_state_now(
     repo: &RepoHandle,
     scratch: &Path,
@@ -213,16 +214,12 @@ pub fn read_state_now(
     }
     let head = head_ref(repo)?;
     let named = read_refs(repo, refs)?;
-    let index_tree = match snapshot::index_tree(repo, scratch, stop) {
-        Ok(tree) => Some(tree),
-        Err(SnapshotError::Unmerged) => None,
-        Err(why) => return Err(why.into()),
-    };
+    let index = snapshot::index_state(repo, scratch, stop)?;
     let worktree_tree = snapshot::worktree_tree(repo, scratch, stop)?;
     Ok(RepoStateNow {
         head,
         refs: named,
-        index_tree,
+        index,
         worktree_tree,
     })
 }
