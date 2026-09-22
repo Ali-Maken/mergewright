@@ -1607,7 +1607,7 @@ you killed — goes in the table at the top of this file, dated, the same day
 
 M5's acceptance ticket (m5-history-and-ghost-preview/11). M5 promises that
 **you see the result before you confirm**. The walk is how a person checks
-that: one command, 23 scenarios (the ticket asks for 45 or more; the rest
+that: one command, 30 scenarios (the ticket asks for 45 or more; the rest
 are listed under "Not yet walked"), each a scratch copy of a corpus shape
 with a history scripted by git, the real app driven by keys and a mouse
 drag over the real job pool and real `git`, and then **the truth read back
@@ -1637,7 +1637,7 @@ refs, HEAD, index tree, files, journal length, the claim's own words), exit
 scenario (`tests/it/m5_walk/`, `m5_walk::every_scenario::*`). Every
 scenario ends with `git fsck --no-dangling` saying nothing but notices.
 
-**All 28 scenarios pass.** The five the acceptance walk left failing on
+**All 35 scenarios pass.** The five the acceptance walk left failing on
 purpose were fixed in m5/32:
 
 - `merge-no-ff-ghost-equals-git`, `rebase-two-commits-ghost-equals-git`,
@@ -1703,11 +1703,17 @@ keeps every `m5-*.txt` captioned).
   scenario checks each path the box named against the files that really
   changed, and the four `history_ops` tests above check the whole path set
   both ways against the bytes on disk.
+- **Proves refs and names** (m5/37): `b` and `t` create straight from the
+  graph with no preview, and a bad or already-taken name is refused in the
+  box before `Enter` does anything; a branch or tag delete and moving a
+  branch that is not checked out (drag → `Move … to here`) both go through
+  the Ghost Preview and `ghost_equals_git`; `u` restores a deleted branch,
+  a deleted tag, a stash `git stash branch` consumed, and a moved branch,
+  each to its old commit.
 - **Does not walk** conflict continuation (`c` after a resolve), a rebase
   that stops twice, `M mergetool`, `e edit`, `u` during an operation, the
-  refs-and-names group (`b`, `t`, delete, stash-`b`), the `Fix:` verbs,
-  `u` after a push, the secret field, or the 80-column hints — the ticket's
-  other 22 scenarios, listed under "Not yet walked".
+  `Fix:` verbs, `u` after a push, the secret field, or the 80-column
+  hints — the ticket's other 16 scenarios, listed under "Not yet walked".
 - **No drop-menu capture, no name-prompt capture, no stale-preview
   capture**: a pty run has no mouse prelude and no hook between two keys.
 - **No colour, no focus, no real terminal.** pyte grids; the user's by-eye
@@ -1792,13 +1798,39 @@ and the exact git command are from the captures only.
     moved; `r`, confirm: one ghost, `ghost_equals_git`, `main~1` is
     `origin/main`, the bare untouched (**FAIL**: the remembered tip is
     pre-fetch, `r` is refused once).
+24. **b-creates-and-checks-out** — `forked`; cursor on `main`, `b`,
+    `release`, `⇥` (checkout), `Enter`: `refs/heads/release` is `main`'s
+    commit, `HEAD` symbolic to it, one journal entry naming `release`. No
+    preview — a create moves no history.
+25. **b-refuses-bad-and-existing-names** — `b`, `bad name` (a space):
+    `name_refusal` starts `bad name:`; `Ctrl+U`, `main` (already a
+    branch): `name_refusal` is `exists`; `Esc`: the prompt closes, refs
+    and files unchanged, nothing journaled.
+26. **t-creates-a-tag** — cursor on `feature`, `t`, `v2.0.0`, `Enter`:
+    `refs/tags/v2.0.0` is `feature`'s commit, `cat-file -t` says `commit`
+    (lightweight, no tag object), one journal entry.
+27. **delete-branch-then-u-restores** — `.` on `main`, `Delete branch
+    main`, confirm: `ghost_equals_git`, `refs/heads/main` gone, one
+    `BranchDelete` entry; `u`: `main` back at its old commit.
+28. **delete-tag-then-u-restores** — a tag `v1` on `main`'s tip; `.` on
+    `v1`'s row, `Delete tag v1`, confirm: `ghost_equals_git`,
+    `refs/tags/v1` gone, one `TagDelete` entry; `u`: `v1` back.
+29. **stash-b-branches-from-stash** — one stashed entry `wip`; `S`, `b`,
+    `rescued`, `Enter` opens the Ghost Preview, confirm: `ghost_equals_git`,
+    `HEAD` symbolic to `refs/heads/rescued`, `stash list` empty, one
+    `BranchFromStash` entry; `u`: the stash (`wip`) is back.
+30. **move-a-branch-not-checked-out** — `forked_on_main`; drag `feature`'s
+    badge (not current) onto `main`'s row: the drop menu offers `Move
+    feature to here`, not a `Reset` row; pick it, confirm:
+    `ghost_equals_git`, `refs/heads/feature` equals `main`'s old commit,
+    `HEAD` stays on `main`, the tree untouched, one `Reset` entry; `u`:
+    `feature` back.
 
 ### Not yet walked
 
 The ticket lists these; none is built, so none is ticked:
 `preview-refused-during-an-operation`, `merge-already-up-to-date-offers-close`,
-`revert-merge-uses-mainline`, `move-a-branch-not-checked-out`, the
-refs-and-names group (`b`, `t`, delete branch/tag, stash `b`), the `Fix:`
+`revert-merge-uses-mainline`, the `Fix:`
 verbs, `continue-refuses-until-resolved`, `rebase-stops-twice`,
 `mergetool-absent`, `e-opens-editor`, `u-refused-during-an-operation`,
 `journal-row-says-in-progress`, `u-after-push` ×3, `esc-cancels-undo`,
@@ -1823,7 +1855,7 @@ What each capture shows; 120x40 is `not run` except for the banner.
 
 ### Per terminal: walk the history group
 
-Run `cargo run -p graft --example m5_walk` (expect `ok` for all 28), then
+Run `cargo run -p graft --example m5_walk` (expect `ok` for all 30), then
 in a clone of your own: `r` on a branch
 row, look at the ghost rows and the box, `Esc`; `m` on a branch that
 conflicts, confirm, resolve in your editor, `c`; `.` on a commit, `Reset …

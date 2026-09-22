@@ -39,12 +39,26 @@ pub enum Wait {
     RefsCaughtUp,
     /// The journal browser is open with its entries on hand.
     Journal,
+    /// The name prompt (`b`, `t`, or the stash overlay's `b`) is open, its
+    /// field ready to type into. Opening it is synchronous — nothing to
+    /// pump — but every scenario that types a name waits for it
+    /// explicitly rather than assuming the key that opens it always will.
+    Prompt,
+    /// The stash overlay's list has landed: `S` opened it and dispatched
+    /// `Command::ReadStashes`, and no existing `Wait` pumps for that read —
+    /// `Ready`'s own predicate never looks at `AppState::stash`. Needed for
+    /// `stash-b-branches-from-stash`, the one scenario that opens the
+    /// overlay before typing a name into it.
+    StashReady,
 }
 
 /// One thing the walk does to the running app, in order.
 pub enum Step {
     /// Press one key.
     Key(KeyPress),
+    /// Type this text into the field the name prompt has open, one key per
+    /// character — what a person typing a branch or tag name does.
+    Type(&'static str),
     /// Feed job answers until the condition holds.
     WaitFor(Wait),
     /// `j` from the top until the cursor's row carries this branch or tag
