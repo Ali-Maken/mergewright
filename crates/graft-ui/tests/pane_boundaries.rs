@@ -32,11 +32,18 @@ use graft_core::capabilities::ColorDepth;
 use graft_fixtures::Shape;
 use graft_term::sanitize_line;
 use graft_ui::confirm::{ConfirmView, confirm_area, confirm_area_at};
-use graft_ui::detail::DetailFocus;
-use graft_ui::detail_pane::{DetailLayout, detail_areas, split_area};
-use graft_ui::graph_screen::{CommitGraphLine, GraphScreen, snap_to_columns};
+use graft_ui::detail::{
+    ContainedIn, DetailFocus, DetailHeader, DetailView, FileListView, FileRow, FileRowKind,
+    FileStatusView, Subject, WorkingTreeSection,
+};
+use graft_ui::detail_pane::{DetailLayout, DetailPane, detail_areas, split_area};
+use graft_ui::graph_screen::{
+    BannerView, CommitGraphLine, GraphScreen, banner_line, snap_to_columns,
+};
 use graft_ui::preview_box::{PREVIEW_MIN, PreviewBox, preview_box_area};
 use graft_ui::theme::ThemeKind;
+use ratatui::Terminal;
+use ratatui::backend::TestBackend;
 use ratatui::layout::Rect;
 
 use support::corpus::lay_out;
@@ -270,6 +277,265 @@ fn check_carve(screen: GraphScreen<'_>, area: Rect, banner_lines: u16, where_: &
         (body.y, body.height),
         (rows.body.y, rows.body.height),
         "{where_}: the graph column's rows and the carve's disagree"
+    );
+}
+
+/// The text on one row of a drawn terminal, cell by cell, trailing blanks
+/// trimmed.
+fn row_text(terminal: &Terminal<TestBackend>, y: u16) -> String {
+    let buffer = terminal.backend().buffer();
+    let text: String = (buffer.area.x..buffer.area.right())
+        .map(|x| buffer[(x, y)].symbol().to_owned())
+        .collect();
+    text.trim_end().to_owned()
+}
+
+/// The first and last column something other than a space is drawn on,
+/// for one row of a drawn terminal.
+fn inked_span(terminal: &Terminal<TestBackend>, y: u16) -> Option<(u16, u16)> {
+    let buffer = terminal.backend().buffer();
+    let inked: Vec<u16> = (buffer.area.x..buffer.area.right())
+        .filter(|&x| buffer[(x, y)].symbol() != " ")
+        .collect();
+    Some((*inked.first()?, *inked.last()?))
+}
+
+/// The operation banner shares the header row with the repository path,
+/// and its room comes out **before** the path's (m5/16, review C1): at every
+/// width that can hold the banner's own words, the state is on the row in
+/// full — never `MERG…` — focused or not, with or without a step count, and
+/// the conflicted file it carries for the hint bar is never drawn
+/// (m5-history-and-ghost-preview/11, carried item 10).
+///
+/// **Mutation that breaks it:** in `graph_screen::layout`, hand the banner
+/// the width left *after* the location instead of reserving its own — at
+/// 80 columns the scratch path wins and the state is cut.
+#[test]
+fn the_banner_keeps_its_state_word_at_every_width() {
+    let dir = graft_fixtures::borrow(Shape::FeatureBranches);
+    let laid = lay_out(Shape::FeatureBranches, &dir);
+    let lines = laid.lines();
+    let theme = theme(ThemeKind::Dark, ColorDepth::TrueColor);
+    let conflict = "src/auth/token.rs";
+    // What the header spends before anything else: the app's own name. Read
+    // off a wide render with no banner rather than hard-coded, so the sweep
+    // follows the header if that prefix ever changes.
+    let prefix = {
+        let view = screen::view(&lines, 24, 0);
+        let mut terminal = Terminal::new(TestBackend::new(240, 24)).expect("test backend opens");
+        terminal
+            .draw(|frame| frame.render_widget(GraphScreen::new(&view, &theme), frame.area()))
+            .expect("draws");
+        let header = row_text(&terminal, 0);
+        header
+            .find("~/code/api")
+            .unwrap_or_else(|| panic!("no location on the header row: {header:?}"))
+    };
+
+    for height in HEIGHTS {
+        for focused in [false, true] {
+            for step in [None, Some((3, 7))] {
+                let mut view = screen::view(&lines, usize::from(height), 0);
+                view.banner_op = Some(BannerView {
+                    kind: sanitize_line("REBASING"),
+                    step,
+                    conflict: Some(sanitize_line(conflict)),
+                    focused,
+                    skippable: true,
+                });
+                let want = banner_line(view.banner_op.as_ref().expect("set above"));
+                // The banner is drawn behind two spaces of its own, after
+                // the header's prefix.
+                let needs = prefix + 2 + want.chars().count();
+                for width in widths() {
+                    let mut terminal =
+                        Terminal::new(TestBackend::new(width, height)).expect("test backend opens");
+                    terminal
+                        .draw(|frame| {
+                            frame.render_widget(GraphScreen::new(&view, &theme), frame.area());
+                        })
+                        .expect("draws");
+                    let header = row_text(&terminal, 0);
+                    let where_ = format!("{width}x{height}, focused {focused}, step {step:?}");
+                    if usize::from(width) >= needs {
+                        assert!(
+                            header.contains(&want),
+                            "{where_}: the header row lost the banner: {header:?}"
+                        );
+                    }
+                    // Narrower than that, the banner may be cut — but never
+                    // in favour of the path: a header with no whole banner
+                    // has no whole path either.
+                    if !header.contains(&want) {
+                        assert!(
+                            !header.contains("~/code/api"),
+                            "{where_}: the state was cut for the path: {header:?}"
+                        );
+                    }
+                    assert!(
+                        !header.contains("token.rs"),
+                        "{where_}: the banner names the file: {header:?}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// The rows of a changes pane with one conflict: `CONFLICTS (1)` first,
+/// its file row under it, then a staged file.
+fn conflicted_rows() -> Vec<FileRow> {
+    vec![
+        FileRow {
+            depth: 0,
+            name: sanitize_line(WorkingTreeSection::Unmerged.title()),
+            kind: FileRowKind::Section {
+                section: WorkingTreeSection::Unmerged,
+                count: 1,
+            },
+            entry: None,
+        },
+        FileRow {
+            depth: 1,
+            name: sanitize_line("src/auth/token.rs"),
+            kind: FileRowKind::File {
+                status: FileStatusView::Unmerged {
+                    how: sanitize_line("both modified"),
+                },
+                added: None,
+                removed: None,
+            },
+            entry: Some(0),
+        },
+        FileRow {
+            depth: 0,
+            name: sanitize_line("Staged"),
+            kind: FileRowKind::Section {
+                section: WorkingTreeSection::Staged,
+                count: 1,
+            },
+            entry: None,
+        },
+        FileRow {
+            depth: 1,
+            name: sanitize_line("src/auth/session.rs"),
+            kind: FileRowKind::File {
+                status: FileStatusView::Added,
+                added: Some(3),
+                removed: Some(0),
+            },
+            entry: Some(1),
+        },
+    ]
+}
+
+/// A changes pane on the working tree, listing [`conflicted_rows`].
+fn conflicted_view() -> DetailView {
+    let rows = conflicted_rows();
+    DetailView {
+        header: DetailHeader {
+            subject: Subject::WorkingTree {
+                staged: 1,
+                unstaged: 0,
+                untracked: 0,
+            },
+            summary: sanitize_line("Uncommitted changes"),
+            author: sanitize_line(""),
+            author_date: sanitize_line(""),
+            relative: sanitize_line(""),
+            committer: None,
+            co_authors: vec![],
+            parents: vec![],
+            against: Some(sanitize_line("HEAD a1b2c3d")),
+            contained: ContainedIn::NotAsked,
+            radar: vec![],
+        },
+        files: Some(std::sync::Arc::new(FileListView {
+            rows,
+            cursor: 0,
+            top: 0,
+            files: 2,
+            added: 3,
+            removed: 0,
+            message: vec![],
+        })),
+        body: graft_ui::detail::BodyView::Empty(sanitize_line("")),
+        body_top: 0,
+        body_cursor: None,
+        focus: DetailFocus::Files,
+        mode: graft_ui::detail::DiffMode::Unified,
+        options: graft_ui::detail::DiffOptionsView::default(),
+        explain: None,
+    }
+}
+
+/// The `CONFLICTS` section is drawn inside the files region at every width
+/// and height the pane can take: its heading row and its file row put ink
+/// only between the region's left and right edges, the heading reads
+/// `CONFLICTS (1)` in full wherever the region is wide enough to hold it,
+/// and the file row's `both modified` never spills past the edge
+/// (m5-history-and-ghost-preview/11, carried item 10).
+#[test]
+fn the_conflicts_section_stays_inside_the_files_region_at_every_width() {
+    let view = conflicted_view();
+    let theme = theme(ThemeKind::Dark, ColorDepth::TrueColor);
+    let rows = view.files.as_ref().map_or(0, |files| files.rows.len());
+    let mut checked = 0;
+
+    for height in HEIGHTS {
+        for width in widths() {
+            let frame = Rect::new(0, 0, width, height);
+            let layout = DetailLayout::compute(width, height, DetailFocus::Files, None);
+            let Some(pane) = split_area(layout, frame).1 else {
+                continue;
+            };
+            let areas = detail_areas(pane, layout, rows);
+            if areas.files.height == 0 || areas.files.width == 0 {
+                continue;
+            }
+            let mut terminal =
+                Terminal::new(TestBackend::new(width, height)).expect("test backend opens");
+            terminal
+                .draw(|frame| {
+                    frame.render_widget(
+                        DetailPane {
+                            view: &view,
+                            layout: &layout,
+                            theme: &theme,
+                        },
+                        pane,
+                    );
+                })
+                .expect("draws");
+            let where_ = format!("{width}x{height}, files {:?}", areas.files);
+            let heading_y = (areas.files.y..areas.files.bottom())
+                .find(|&y| row_text(&terminal, y).contains("CONFLICTS"))
+                .unwrap_or_else(|| panic!("{where_}: no CONFLICTS row in the files region"));
+            for y in [heading_y, heading_y + 1] {
+                if y >= areas.files.bottom() {
+                    continue;
+                }
+                let Some((first, last)) = inked_span(&terminal, y) else {
+                    continue;
+                };
+                assert!(
+                    first >= areas.files.x && last < areas.files.right(),
+                    "{where_}: row {y} is inked at {first}..={last}, outside the files region"
+                );
+            }
+            let heading = row_text(&terminal, heading_y);
+            if usize::from(areas.files.width) > "CONFLICTS (1)".len() {
+                assert!(
+                    heading.contains("CONFLICTS (1)"),
+                    "{where_}: the heading is cut: {heading:?}"
+                );
+            }
+            checked += 1;
+        }
+    }
+    assert!(
+        checked > 100,
+        "the sweep drew {checked} panes — too few to mean anything"
     );
 }
 

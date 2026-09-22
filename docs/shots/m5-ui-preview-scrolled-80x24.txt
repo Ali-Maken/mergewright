@@ -57,7 +57,7 @@
 │ 5 commits replayed                                                           │
 │ topic e7e39a7 → 5 new commits                                                │
 │ working tree: 6 files updated                                                │
-│ no conflicts expected (forecast)                                             │
+│ no conflicts expected                                                        │
 │ undo: u takes this back                                                      │
 │ git rebase --no-update-refs --no-autostash old-release                       │
 │ ▸[ Cancel ]   [ Confirm ]                                                    │

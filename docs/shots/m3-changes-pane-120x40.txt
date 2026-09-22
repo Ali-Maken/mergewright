@@ -8,8 +8,11 @@
 # - Three section rows, STAGED (1) / UNSTAGED (2) / UNTRACKED (1), each with
 #   its files indented under it. src/auth/token.rs appears twice, once under
 #   STAGED and once under UNSTAGED: that is the point, not a duplicate.
-# - notes.md is a row at all (at 80x24 the list is short enough that it may
-#   sit below the fold — scroll it into view when judging that size). Before
+#   **At 80x24 the file list has six rows and stops at UNSTAGED's
+#   `▾ src/` / `▾ api/`**: routes.rs, token.rs's second row and the whole
+#   UNTRACKED section are below the fold — scroll the list to judge them at
+#   that size. All three sections are on screen at 120x40 and 160x48.
+# - notes.md is a row at all (below the fold at 80x24, see above). Before
 #   this milestone untracked files were invisible in this pane.
 # - The line cursor: a ▎ in the sign column of one diff row, and that row
 #   alone. It is what Space and d act on.
@@ -39,20 +42,20 @@
 "                                                                                                                        "
 "                                                                                                                        "
 "                                                                                                                        "
-" q quit  F2 status  F3 renderer  u undo  <> resize  space stage  d discard  / search  j/k move  Space fold              "
+" space stage  d discard  c commit  <> resize  ⌃A all  e edit  ⇥ graph  . more                                           "
 "UNCOMMITTED · 1 staged 2 unstaged 1 untracked                                                                           "
 "diff vs HEAD 0303030                                                                                                    "
 "STAGED (1)                    fn routes()                                                                               "
 "  ▾ src/                       18  18       let mut app = Router::new();                                                "
 "    ▾ auth/                    19     -     app.get("/health", health);                                                 "
-"      M token.rs        +12 −4     19▎+     app.get("/health", health);                                                 "
+"      M token.rs       +12 −4      19▎+     app.get("/health", health);                                                 "
 "UNSTAGED (2)                       20 +     app.get("/ready", ready);                                                   "
 "  ▾ src/                       20  21       app                                                                         "
 "    ▾ api/                     21  22   }                                                                               "
-"      M routes.rs        +3 −2fn ready()                                                                                "
+"      M routes.rs       +3 −2 fn ready()                                                                                "
 "    ▾ auth/                    44  45   async fn ready() -> Json<Status> {                                              "
-"      M token.rs         +2 −0 45     -     Json(Status::Ok)                                                            "
+"      M token.rs        +2 −0  45     -     Json(Status::Ok)                                                            "
 "UNTRACKED (1)                      46 +     Json(Status::from(&state))                                                  "
-"  ? notes.md             +0 −0 46  47   }                                                                               "
+"  ? notes.md            +0 −0  46  47   }                                                                               "
 "                                                                                                                        "
 "                                                                                                                        "

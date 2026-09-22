@@ -153,11 +153,13 @@ fn changes_pane_write_key(
         DetailFocus::Graph => return false,
     };
     // A conflicted row answers `M` and `e` itself: the mergetool, and the
-    // editor at the file's first `<<<<<<< ` rather than at the diff cursor
-    // — the diff of an unmerged file is the merge's own combined diff, and
-    // its line numbers are not the file's (m5-history-and-ghost-preview/09).
-    // Both act on the row under the cursor, not on the banner's first
-    // conflict.
+    // editor at the file's first `<<<<<<< ` rather than at the diff cursor.
+    // The pane's diff for an unmerged file is the file as it stands against
+    // HEAD (`jobs::detail::diff_spec_for`, `DiffSpec::WorkingTreeVsHead`):
+    // it shows the markers, but the cursor may rest on any changed line,
+    // and the first marker is where resolving starts
+    // (m5-history-and-ghost-preview/09). Both act on the row under the
+    // cursor, not on the banner's first conflict.
     if plain && matches!(key.code, KeyCode::Char('M' | 'e')) {
         if let Some(path) = super::super::banner::cursor_conflict(next) {
             return match key.code {

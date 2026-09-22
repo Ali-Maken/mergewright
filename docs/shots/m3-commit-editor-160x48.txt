@@ -21,7 +21,7 @@
 === 160x48 ===
 "COMMIT ── ⎇ main ── 1 file staged                                                            UNCOMMITTED · 1 staged 2 unstaged 1 untracked                      "
 "                                                                                             diff vs HEAD 0303030                                               "
-" Subject fix the token refresh race                        ┊                            26/50                                                                   "
+" Subject fix the token refresh race                        ┊                           26/50                                                                    "
 "                                                                                                                                                                "
 "▸Body                                                                                                                                                           "
 "         The old token was refreshed twice when two requests raced.              ┊           STAGED (1)                                                         "

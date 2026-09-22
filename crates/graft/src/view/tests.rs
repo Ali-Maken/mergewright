@@ -2162,8 +2162,11 @@ const CHANGES_PANE_HEADER: &str = "\
 # - Three section rows, STAGED (1) / UNSTAGED (2) / UNTRACKED (1), each with
 #   its files indented under it. src/auth/token.rs appears twice, once under
 #   STAGED and once under UNSTAGED: that is the point, not a duplicate.
-# - notes.md is a row at all (at 80x24 the list is short enough that it may
-#   sit below the fold — scroll it into view when judging that size). Before
+#   **At 80x24 the file list has six rows and stops at UNSTAGED's
+#   `▾ src/` / `▾ api/`**: routes.rs, token.rs's second row and the whole
+#   UNTRACKED section are below the fold — scroll the list to judge them at
+#   that size. All three sections are on screen at 120x40 and 160x48.
+# - notes.md is a row at all (below the fold at 80x24, see above). Before
 #   this milestone untracked files were invisible in this pane.
 # - The line cursor: a ▎ in the sign column of one diff row, and that row
 #   alone. It is what Space and d act on.
@@ -3216,7 +3219,7 @@ fn capture_m4_credential_prompt_in_app() {
 # its own is docs/shots/m4-credential-prompt-and-hints.txt.
 #
 # Judge by eye:
-# 1. 120x40, password ask with `hunter2` typed: the box is centred over the
+# 1. 120x40, password ask with a 7-character password typed: the box is centred over the
 #    screen, the title names the host (not the user), git's own question is
 #    on the first line, the field shows a fixed 8 mask glyphs (never the
 #    typed length, ADR-0038 §2) and no plaintext, the note says the answer

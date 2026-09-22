@@ -24,7 +24,7 @@
 #
 
  graft /code/api  4 commits
-◆   [◆ main] add the base                                                                                                                        GT now  24d2868
+◆   [◆ main] add the base                                                                                                                        GT now  d5fb070
 ●   Correct the note                                                                                                                             GF 7y   a82960b
 ●   Add the first note                                                                                                                           GF 7y   fadcfb3
 ◇   Add a readme                                                                                                                                 GF 7y   64ded19
@@ -66,7 +66,7 @@
 
 ╭ Preview: revert to before "stage one.txt" (3 steps) ─────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ index and working tree restored from backup                                                                                                                  │
-│ no conflicts expected (forecast)                                                                                                                             │
+│ no conflicts expected                                                                                                                                        │
 │ undo: u takes this back                                                                                                                                      │
 │ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
 ╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

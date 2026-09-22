@@ -1543,6 +1543,241 @@ cargo run --release -p graft --example m4_walk                       # the walk 
 you killed — goes in the table at the top of this file, dated, the same day
 (ADR-0033). That table, not this walk, measures the promise.
 
+## History
+
+M5's acceptance ticket (m5-history-and-ghost-preview/11). M5 promises that
+**you see the result before you confirm**. The walk is how a person checks
+that: one command, 23 scenarios (the ticket asks for 45 or more; the rest
+are listed under "Not yet walked"), each a scratch copy of a corpus shape
+with a history scripted by git, the real app driven by keys and a mouse
+drag over the real job pool and real `git`, and then **the truth read back
+by running git** (`for-each-ref`, `rev-parse HEAD`, `symbolic-ref`,
+`write-tree`, `ls-files -u`, `stash list`, file bytes, `.git/index` bytes,
+the `.git/MERGE_HEAD`/`rebase-merge` markers, the journal file) — never
+from `AppState`. The one thing read from `AppState` is **the claim**: the
+plan behind the preview box (`Step::Claim`), so `ghost_equals_git` can say
+whether the ghost equals what git did — each ref move's `to` is where the
+ref is, each ghost's subject and parents are the new commit's, each
+replayed ghost's patch-id is its source's (reversed for a revert), the
+head is where the plan said, and every path the box named is among the
+files that changed. `every_scenario::ghost_equals_git_is_the_only_claim_check`
+greps the scenario files so no scenario judges the plan any other way.
+
+```sh
+cargo run -p graft --example m5_walk                              # every scenario, one line each
+cargo run -p graft --example m5_walk -- --only rebase-two-commits-ghost-equals-git   # one
+cargo run -p graft --example m5_walk -- --list                    # the names
+cargo run -p graft --example m5_walk -- --stems                   # capture stems, keys, expected text
+cargo run -p graft --example m5_walk -- --matrix                  # rewrites docs/shots/35-coverage-matrix.txt (all five tables)
+```
+
+`ok <name>` per scenario, `FAIL <name>: <what differs>` (20 lines at most:
+refs, HEAD, index tree, files, journal length, the claim's own words), exit
+1 on any failure. The same list runs in the fast tier as one test per
+scenario (`tests/it/m5_walk/`, `m5_walk::every_scenario::*`). Every
+scenario ends with `git fsck --no-dangling` saying nothing but notices.
+
+**Five scenarios FAIL on this hash, and are left failing** (fixing what the
+walk finds is outside the acceptance ticket; the lines are in the ticket's
+NOTES for the conductor):
+
+- `merge-no-ff-ghost-equals-git`, `rebase-two-commits-ghost-equals-git`,
+  `rebase-via-drop-menu`, `cherry-pick-via-menu-ghost-equals-git` — the
+  box's **working-tree line names files that do not change**: a merge of
+  `feature` into `main` draws `main-one.txt` (main's own file) as updated
+  and says `4 files updated` where git changes two. The refs, ghosts and
+  patch-ids all hold; only the worktree forecast is wrong
+  (`graft-ops/src/preview/kinds.rs:77`, `:118`, `:196-213` diff the two
+  tips against each other instead of HEAD against the result).
+- `pull-diverged-offers-m-and-r` — after `p` on a diverged branch the line
+  offers `m` and `r`, but the tip it remembers for `origin/main` is the one
+  from **before** the pull's own fetch, so `r` is refused once with
+  `main moved since the preview · r again` (`graft/src/update/remote.rs:286-299`,
+  `:860-865`; `graft/src/update/preview.rs:1080-1088`).
+
+Captures: `docs/shots/m5-<nn>-<what>-<WxH>.txt`, eight visual results at
+80x24 and 160x48, the banner also at 120x40, the too-small preview at
+38x10 only, Unicode tier
+(`.scratch/m5-history-and-ghost-preview/pty-walk-m5.py <WxH>` after
+`cargo build -p graft --example m5_walk`, `GRAFT_TARGET` naming the target
+directory). The script runs `m5_walk --capture <scenario>`, which builds
+the scratch, runs the scenario's headless prefix (the time machine's three
+stages), then opens the real loop with the capture's keys as the harness
+prelude — fed one key per settled state, and since this ticket a pending
+preview plan counts as unsettled, so `→ ⏎` land on a drawn box. A preview
+capture whose box is not on screen is **not written**. **A capture is what
+pyte saw, not what a person saw, and it carries no colour** — the user
+judges by eye. The contact sheet is `docs/shots/m5-contact-sheet.txt`
+(`scripts/contact-sheet.sh m5`; `contact_sheet_captions_cover_every_m5_capture`
+keeps every `m5-*.txt` captioned).
+
+### What the walk proves and what it does not
+
+- **Proves:** for a rebase of two commits, a fast-forward and a no-ff
+  merge, a cherry-pick, a revert, a mixed and a hard reset, a branch and a
+  detached checkout, and a rebase onto a diverged upstream, the refs and
+  the new commits after `Confirm` are what the ghost drew — parents,
+  subjects, patch-ids, HEAD (`ghost_equals_git`); `Esc` and `Enter`-on-
+  `Cancel` run nothing and journal nothing; a ref that moved under the box
+  is refused and nothing moves; a 38x10 screen never confirms; a dirty
+  tree refuses a rebase and offers `S`; a hard reset's box says `LOSES
+  base.txt (backup saved)` and `u` brings the bytes back; a conflicting
+  merge stops with `MERGE_HEAD` present, the banner focused,
+  `shared.txt` unmerged, `a` asks `Cancel`/`Abort` first and restores the
+  tree; the stop survives a relaunch; the time machine's three steps put
+  the index tree back to before the first stage, and three `U` redo it.
+- **Does not prove the worktree forecast** (the four failures above) —
+  read the box's `working tree:` line as unverified until they pass.
+- **Does not walk** conflict continuation (`c` after a resolve), a rebase
+  that stops twice, `M mergetool`, `e edit`, `u` during an operation, the
+  refs-and-names group (`b`, `t`, delete, stash-`b`), the `Fix:` verbs,
+  `u` after a push, the secret field, or the 80-column hints — the ticket's
+  other 22 scenarios, listed under "Not yet walked".
+- **No drop-menu capture, no name-prompt capture, no stale-preview
+  capture**: a pty run has no mouse prelude and no hook between two keys.
+- **No colour, no focus, no real terminal.** pyte grids; the user's by-eye
+  pass is the table at the end.
+
+### Reading the entries
+
+Every scenario starts on `Shape::Trivial` (four commits) unless it says
+otherwise; the setup commits are timestamped from a fixed epoch, so SHAs
+are stable per shape but the entries name the relation. `forked` means:
+`main` gains `main moves on`, `main moves again`; `feature` forks off `add
+the base` with `start the feature`, `finish the feature`; `feature` is
+checked out. Box lines and status lines quoted below are asserted as
+substrings (`box_says`, `title_names`, `status_containing`); button rows
+and the exact git command are from the captures only.
+
+### The scenarios
+
+1. **preview-opens-with-ghosts-and-plan-commands** — `r` on `main`: title
+   `Preview: rebase …`; box `2 commits replayed`, `feature `, `→ 2 new
+   commits`, `no conflicts expected`, `undo: u takes this back`; ghost rows
+   drawn; the plan is one command starting `git rebase `; nothing ran.
+2. **esc-cancels-nothing-runs** — `Esc` on the box: no box, nothing
+   operating, refs and files as before.
+3. **cancel-is-the-default-choice** — `Enter` at once: same (ADR-0038 §1).
+4. **stale-preview-refused** — `git update-ref refs/heads/main main~1`
+   while the box is up; `Enter`: `main moved since the preview` and `r
+   again` on the line; `main` where the shell put it, `feature` unmoved,
+   no journal entry.
+5. **preview-too-small-never-confirms** (38x10) — the box does not fit;
+   `Enter` leaves the preview open, nothing ran, no entry.
+6. **merge-ff-preview-equals-git** — `forked_on_main`; `m` on `feature`,
+   confirm: `main` equals old `feature`, tree matches; `u` puts `main`
+   back.
+7. **merge-no-ff-ghost-equals-git** — `m` on `feature` from `main`:
+   `ghost_equals_git` (**FAIL**, worktree line), `u` restores, `U` redoes.
+8. **merge-forecast-names-the-conflicting-path** — `conflicting`; box says
+   `may conflict` and `shared.txt`.
+9. **rebase-two-commits-ghost-equals-git** — `r` on `main` from `feature`:
+   `ghost_equals_git`, the two new commits' patch-ids equal the old tips'
+   (**FAIL**, worktree line).
+10. **rebase-dirty-tree-refused-offers-stash** — a dirty `base.txt`;
+    confirm: `rebase needs a clean tree`, `S stash 1 changed file`; nothing
+    moved.
+11. **rebase-via-drop-menu** — drag `feature`'s badge onto `main`'s row,
+    pick `Rebase`: same holds as 9 (**FAIL**, worktree line).
+12. **cherry-pick-via-menu-ghost-equals-git** — `.` on `finish the
+    feature` from `main`, `Cherry-pick`: one ghost, patch-id equal
+    (**FAIL**, worktree line).
+13. **revert-via-menu-ghost-equals-git** — `.` on `main moves again`,
+    `Revert`: one ghost whose patch is the reverse.
+14. **reset-hard-says-loses-and-u-brings-it-back** — dirty `base.txt`; `.`
+    on `main moves on`, `Reset main to here, hard`: box `working tree:
+    LOSES base.txt (backup saved)`; confirm: `main` at `main moves on`,
+    the tree clean; `u`: `main` back, `base.txt` bytes back.
+15. **reset-mixed-keeps-the-tree** — same row, `mixed`: `main` moved, the
+    file bytes untouched.
+16. **checkout-branch-via-menu** — `Checkout main`: `HEAD` symbolic to
+    `refs/heads/main`, files are main's; `u` puts `feature` back.
+17. **checkout-detached-via-menu** — `Checkout <sha>, detached`: `HEAD`
+    detached at the row.
+18. **conflict-focuses-banner-and-lists-files** — `conflicting`; `m` on
+    `feature`, confirm: `MERGE_HEAD` present, journal `Merge` `Pending`,
+    banner focused, `unmerged_paths` is `[shared.txt]`, the file starts
+    `<<<<<<<`.
+19. **banner-a-aborts-and-restores** — `a`: choices `["Cancel", "Abort"]`;
+    `Abort`: no `MERGE_HEAD`, `shared.txt` is main's, entry
+    `Aborted("aborted")`.
+20. **conflict-survives-relaunch** — close and reopen the app mid-merge:
+    the line says `still in progress from a previous run`, git still
+    merging.
+21. **time-machine-three-steps** — `three_to_stage`; stage three files;
+    `J`, down to the first entry, `Enter`: title `Preview: revert to before
+    "stage one.txt" (3 steps)`, box `restored from backup`; confirm: the
+    index tree equals the tree before the first stage; three `Undo`
+    entries; `U` ×3 stages them again.
+22. **time-machine-esc-returns-to-journal** — `Esc` on that box: the
+    journal browser is back, shown and ready.
+23. **pull-diverged-offers-m-and-r** — `Shape::Linear` with a bare; the
+    teammate commits on the bare, `ours locally`; `p`: `main and
+    origin/main have diverged · m merge it  r rebase onto it`, no ref
+    moved; `r`, confirm: one ghost, `ghost_equals_git`, `main~1` is
+    `origin/main`, the bare untouched (**FAIL**: the remembered tip is
+    pre-fetch, `r` is refused once).
+
+### Not yet walked
+
+The ticket lists these; none is built, so none is ticked:
+`preview-refused-during-an-operation`, `merge-already-up-to-date-offers-close`,
+`revert-merge-uses-mainline`, `move-a-branch-not-checked-out`, the
+refs-and-names group (`b`, `t`, delete branch/tag, stash `b`), the `Fix:`
+verbs, `continue-refuses-until-resolved`, `rebase-stops-twice`,
+`mergetool-absent`, `e-opens-editor`, `u-refused-during-an-operation`,
+`journal-row-says-in-progress`, `u-after-push` ×3, `esc-cancels-undo`,
+`ctrl-r-twice`, `password-field-is-secret`, `hints-at-80`. **NOT in any
+walk:** the real `git mergetool` hand-over — an external program, judged
+by hand.
+
+### Per breakpoint
+
+What each capture shows; 120x40 is `not run` except for the banner.
+
+| View | 80x24 | 120x40 | 160x48 |
+|---|---|---|---|
+| Rebase preview (`m5-01-preview-rebase`) | `Preview: rebase feature onto main`, two ghost rows under `after rebase` with `—` for SHA and age, `2 commits replayed`, `feature 8d6cd28 → 2 new commits`, `working tree: 4 files updated` (**the walk says 2 files change**), `no conflicts expected`, `undo: u takes this back`, `git rebase --no-update-refs --no-autostash main`, `▸[ Cancel ]   [ Confirm ]` | not run | same box, wider graph |
+| Merge preview (`m5-02-preview-merge`) | `Preview: merge feature into main`, `1 merge commit`, `main 45fa51d → 1 new commit`, the `git merge --no-edit --ff -m '…' feature` command | not run | same |
+| Hard-reset preview (`m5-03-preview-reset-hard`) | the box after `.` → `Reset main to here, hard`: `working tree: LOSES base.txt (backup saved)` | not run | same |
+| Time machine (`m5-04-time-machine`) | `Preview: revert to before "stage one.txt" (3 steps)`, `index and working tree restored from backup`, no git line | not run | same |
+| Too small (`m5-05-preview-too-small`, 38x10 only) | `preview needs 40x12 · esc closes` on the last row, the ghost rows still drawn above | — | — |
+| Stopped merge (`m5-06-banner-conflicts`) | `MERGING` at the end of the header row, `Uncommitted changes (1 unmerged)`, the sticky `merge feature into main — shared.txt conflicts: resolve it and s…` on the footer (cut at 80 columns; the banner's own keys show after `Esc`) | the same, the sticky whole | the same |
+| Branch-row hint bar (`m5-07-branch-row-hints`) | after `r` then `Esc` on `main` from `feature`: no box, `m merge  r rebase  ⏎ open  . more` then bare keys | not run | `m merge  r rebase  ⏎ open  b branch  t tag  P push  c commit  p pull  f fetch  u undo  S stash  . more  /  q …` — **`q quit` is a bare `q` at 160 since `b` and `t` went live; the user decides whether the tail is too long** |
+| Diverged pull (`m5-11-diverged-pull-sticky`) | `main and origin/main have diverged · m merge it  r rebase onto it` on the footer, `[◆ main ↑1]` and `[origin/main]` one row apart | not run | same |
+
+### Per terminal: walk the history group
+
+Run `cargo run -p graft --example m5_walk` (expect the five `FAIL`s named
+above and `ok` for the rest), then in a clone of your own: `r` on a branch
+row, look at the ghost rows and the box, `Esc`; `m` on a branch that
+conflicts, confirm, resolve in your editor, `c`; `.` on a commit, `Reset …
+hard` with an edited file, confirm, `u`. Record the result here, naming the
+scenario that failed if one did. Colour, the focused banner's reverse
+video and the ghost rows' dimming are what only this pass can judge.
+
+| Terminal | Result |
+|---|---|
+| Ghostty | not run |
+| Zed | not run |
+| VS Code | not run |
+
+### The review's runs
+
+The reviewer's, not the builder's (ADR-0021): figures `not run` here.
+
+```sh
+cargo test --features heavy-tests -- --test-threads=2                # the heavy tier — not run
+cargo run --release -p graft --example m5_walk                       # the walk under release — not run
+```
+
+**Times I left:** every reach for the shell during a merge, rebase, pick,
+revert, reset or conflict in daily use — `git rebase -i`, a `git reset`
+typed because the box did not say what you needed, a conflict you resolved
+with `git mergetool` from a shell — goes in the table at the top of this
+file, dated, the same day (ADR-0033). That table, not this walk, measures
+the promise.
+
 ## Hint bar
 
 `hint-bar-redesign` (ADR-0037 §4): the footer shows the three most relevant

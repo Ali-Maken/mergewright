@@ -26,6 +26,7 @@ mod hint_bar;
 mod lane_cap;
 mod m3_walk;
 mod m4_walk;
+mod m5_walk;
 #[cfg(feature = "heavy-tests")]
 mod many_refs;
 mod name_and_drag;

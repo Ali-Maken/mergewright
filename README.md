@@ -108,6 +108,45 @@ backup and `u` takes it back byte for byte.
 one line per reach for the shell; `docs/field-notes.md` takes what real use
 turned up. Those two lists, not the test suite, measure the promise.
 
+### What M5 actually does
+
+M5 promises that **you see the result before you confirm**.
+
+- **Ghost Preview**: `m` merges the row's branch into yours, `r` rebases
+  yours onto it, `.` opens a menu with cherry-pick, revert, reset (mixed or
+  hard), checkout (branch or detached) and delete; dragging a branch badge
+  onto a row opens the same verbs as a drop menu. Every one opens a box
+  first, and above it the graph draws **ghost rows** — the commits the
+  operation would create, hollow, with `—` for their SHA — where they would
+  land. The box says what moves (`feature 8d6cd28 → 2 new commits`), what
+  the working tree gets (`4 files updated`, or `LOSES base.txt (backup
+  saved)` for a hard reset), whether a conflict is expected (`no conflicts
+  expected` / `may conflict: shared.txt`), that `u` takes it back, and the
+  exact git command. `Enter` on `[ Confirm ]` runs it; the cursor starts on
+  `[ Cancel ]`; `Esc` runs nothing.
+- **The ghost is what git does.** The acceptance walk confirms each
+  preview and then reads the repository back with git: the refs land where
+  the box said, the new commits have the ghost's parents, subjects and
+  patches. Where they do not, `TESTING.md` "History" says so.
+- **A stale preview is refused**: if `main` moved while the box was open
+  (a teammate's push, an editor's git), `Enter` says `main moved since the
+  preview · r again` and runs nothing. A rebase on a dirty tree is refused
+  with `S stash 1 changed file` on the line.
+- **Conflicts stop honestly.** A merge or rebase that conflicts leaves git
+  mid-operation: the header says `MERGING`, the changes pane lists the
+  files under `CONFLICTS (n)`, and the footer offers `c continue`,
+  `a abort` (through a box whose default is Cancel), `M mergetool`, `e edit`.
+  The stop survives closing and reopening Graft. **M5 does not resolve
+  conflicts** — that is M6's promise; today you resolve in your editor and
+  press `c`.
+- **The time machine**: in the journal (`J`), `Enter` on an older entry
+  previews `revert to before "<entry>" (N steps)` — the index and working
+  tree restored from the backups — and `u` after it steps forward again.
+- **A diverged pull** (`p`) no longer sends you to the shell: the line
+  offers `m merge it  r rebase onto it`, each a preview.
+- **Not in M5**: resolving conflicts in the app, interactive rebase,
+  pushing a rewritten branch. All in `KNOWN_GAPS.md`.
+
 ### What M4 actually does
 
 M4 promises that **you never leave Graft to fetch, pull or push — not for a

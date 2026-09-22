@@ -19,9 +19,9 @@
 #   (crates/graft/src/view/tests.rs) is what proves that behaviour.
 #
 " graft 3 commits                                                                             COMMIT 0303030                                                     "
-"◉─╮ ⚠ Merge branch 'feature'                                                     57y  0303030Test <test@example.invalid> · 1970-01-01 00:00 +0000 · 57y         "
-"│ ●   Ship the release notes                                                     57y  0202020parents 0101010, 0202020 · diff vs first parent                    "
-"◇─╯   Start the feature branch                                                   57y  0101010Contained in: checking…                                            "
+"◉─╮ ⚠ Merge branch 'feature'                                                    57y  0303030 Test <test@example.invalid> · 1970-01-01 00:00 +0000 · 57y         "
+"│ ●   Ship the release notes                                                    57y  0202020 parents 0101010, 0202020 · diff vs first parent                    "
+"◇─╯   Start the feature branch                                                  57y  0101010 Contained in: checking…                                            "
 "                                                                                             foxtrot merge · evil merge: unchecked                              "
 "                                                                                             ⚠ FOXTROT MERGE                                                    "
 "                                                                                             This merge's first parent (0101010) is not main's previous tip     "
@@ -41,4 +41,4 @@
 "                                                                                                     ──╯                                                        "
 "                                                                                             first parent  0101010                                              "
 "                                                                                             Esc close                                                          "
-" q quit  F2 status  F3 renderer  <> resize  . explain  / search  j/k move  Space fold                                                                           "
+" . explain  ⏎ open  b branch  r  <>  t  c  y  m  u  /  q  F2  F3  x  +  j/k  space  1  F  H                                                                     "

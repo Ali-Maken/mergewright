@@ -17,7 +17,7 @@ m3-08-journal-after-unstage-160x48.txt	TESTING.md § Per breakpoint, Journal row
 m3-09-undo-drift-box-80x24.txt	TESTING.md § Per breakpoint, Drift box row: `Undo "commit …"?`, what drifted, `[ Stop ]   Undo`.
 m3-09-undo-drift-box-160x48.txt	TESTING.md § Per breakpoint, Drift box row: same.
 m3-amend.txt	Capture header "Judge by eye": the title row reads AMEND a1b2c3d, not COMMIT — which commit is being rewritten is named, because an amend of the wrong one is the mistake.
-m3-changes-pane-80x24.txt	Capture header: scripted dirty tree (staged+edited file, edited file, untracked file); diff region focused, line cursor on the second added line of hunk 1 — judge by eye per the file's own bullets.
+m3-changes-pane-80x24.txt	Capture header: scripted dirty tree (staged+edited file, edited file, untracked file); diff region focused, line cursor on the second added line of hunk 1. At 80x24 the file list is six rows: `STAGED (1)` with `M token.rs`, then `UNSTAGED (2)` with only `▾ src/` / `▾ api/` — `routes.rs` and the whole `UNTRACKED` section are below the fold, not missing (the sections are all on screen at 120x40 and 160x48). Judge the rest by the file's own bullets.
 m3-changes-pane-120x40.txt	Capture header: same scripted dirty tree as the 80x24/160x48 captures — judge by eye per the file's own bullets.
 m3-changes-pane-160x48.txt	Capture header: same scripted dirty tree as the 80x24/120x40 captures — judge by eye per the file's own bullets.
 m3-commit-editor-80x24.txt	Capture header "Judge by eye": the title row reads COMMIT ── ⎇ main ── 1 file staged, not "looks right".

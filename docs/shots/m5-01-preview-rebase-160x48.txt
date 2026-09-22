@@ -1,0 +1,50 @@
+m5 walk capture: m5-01-preview-rebase — scenario preview-opens-with-ghosts-and-plan-commands, keys j j r, unicode tier, 160x48
+
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-FAFU1j  8 commits
+  ●     finish the feature                                                                                                                       GF 6y   8d6cd28
+  ●     start the feature                                                                                                                        GF 6y   52f3b96
+  │     after rebase
+  │ ○   [◆ feature] finish the feature                                                                                                           GF —    —
+  │ ○   start the feature                                                                                                                        GF —    —
+●─│─╯   [main] main moves again                                                                                                                  GF 6y   45fa51d
+● │     main moves on                                                                                                                            GF 6y   37926a7
+●─╯     add the base                                                                                                                             GF 6y   ed332bc
+●       Correct the note                                                                                                                         GF 7y   a82960b
+●       Add the first note                                                                                                                       GF 7y   fadcfb3
+◇       Add a readme                                                                                                                             GF 7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭ Preview: rebase feature onto main ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 2 commits replayed                                                                                                                                           │
+│ feature 8d6cd28 → 2 new commits                                                                                                                              │
+│ working tree: 4 files updated                                                                                                                                │
+│ no conflicts expected                                                                                                                                        │
+│ undo: u takes this back                                                                                                                                      │
+│ git rebase --no-update-refs --no-autostash main                                                                                                              │
+│ ▸[ Cancel ]   [ Confirm ]                                                                                                                                    │
+╰ ←→ choose  ⏎ act  esc cancel ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+

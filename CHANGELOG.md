@@ -8,6 +8,42 @@ the versioning scheme are decided in M8.
 
 ## [Unreleased]
 
+### M5 — History and Ghost Preview
+
+You see the result before you confirm.
+
+#### Added
+
+- **Ghost Preview** for `m` merge, `r` rebase, and the `.` menu's
+  cherry-pick, revert, reset (mixed/hard), checkout (branch/detached) and
+  delete, plus a drag-and-drop menu on branch badges: ghost rows in the
+  graph where the new commits would land, a box naming the ref moves, the
+  working-tree effect (`LOSES <file> (backup saved)` for a hard reset), the
+  conflict forecast, `undo: u takes this back` and the exact git command.
+  `Enter` on `[ Confirm ]` runs it; the cursor starts on `[ Cancel ]`.
+- **Refusals in words**: `<ref> moved since the preview · <key> again` when
+  a ref moved under an open box; `<verb> needs a clean tree · S stash N
+  changed file(s)`; too small a screen says `preview needs 40x12`.
+- **Operation banner and CONFLICTS section**: a stopped merge, rebase,
+  cherry-pick or revert puts `MERGING`/`REBASING step N of M` in the
+  header, lists the files under `CONFLICTS (n)` in the changes pane, and
+  the footer offers `c continue`, `a abort`, `M mergetool`, `e edit`. The
+  stop survives a relaunch (`still in progress from a previous run`).
+- **The time machine**: `Enter` on a journal entry previews `revert to
+  before "<entry>" (N steps)`, restoring index and working tree from the
+  backups; undoable.
+- **Diverged pull** offers `m merge it  r rebase onto it` on the line.
+- **Undo after a push** asks first, naming what the remote still has.
+- **Credential prompt** uses a zeroizing secret field: a fixed 8 mask
+  glyphs, never the typed length.
+- **Hint bar redesign** (ADR-0037 §4): the three most relevant keys, more
+  with width, never a key that does nothing.
+
+#### Not in M5
+
+- Resolving conflicts inside the app (M6), interactive rebase, pushing a
+  rewritten branch. See `KNOWN_GAPS.md`.
+
 ### M4 — Remotes
 
 You never leave Graft to fetch, pull or push — not for a password, a

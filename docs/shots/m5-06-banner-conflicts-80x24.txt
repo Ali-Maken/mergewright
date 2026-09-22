@@ -1,0 +1,26 @@
+m5 walk capture: m5-06-banner-conflicts — scenario conflict-focuses-banner-and-lists-files, keys m → ⏎, unicode tier, 80x24
+
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-…  MERGING
+◌     Uncommitted changes (1 unmerged)
+  ● ⓘ [feature] feature rewrites it                                 6y   41d4d46
+◆ │   [◆ main] main rewrites it                                     6y   3bb5569
+●─╯   add the shared file                                           6y   f435fe3
+●     Correct the note                                              7y   a82960b
+●     Add the first note                                            7y   fadcfb3
+◇     Add a readme                                                  7y   64ded19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ merge feature into main — shared.txt conflicts: resolve it and s… · esc dismiss
