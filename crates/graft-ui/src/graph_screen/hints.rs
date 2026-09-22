@@ -186,9 +186,12 @@ const fn hint(key: &'static str, verb: &'static str) -> Hint {
 
 /// A hint the keymap names for this context that no group has built yet.
 /// Never drawn (see the module comment).
-#[expect(
-    dead_code,
-    reason = "no key is planned-but-unbound today (m6-conflicts/05 bound the last two); kept for the next one a design names ahead of its group"
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "no key is planned-but-unbound today (m6-conflicts/05 bound the last two); kept for the next one a design names ahead of its group, and used by the tests' positive control"
+    )
 )]
 const fn planned(key: &'static str, verb: &'static str) -> Hint {
     Hint {

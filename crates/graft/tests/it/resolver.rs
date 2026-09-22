@@ -12,11 +12,13 @@
 
 use std::path::Path;
 
+use graft::jobs::Dispatch;
 use graft::update::resolver::OpenedFrom;
 use graft::update::{AppState, Command, GraphOverlay, Status};
 use graft_core::event::{KeyCode, KeyPress, MouseKind};
 use graft_fixtures::{Scratch, Shape};
 use graft_git::status::UnmergedHow;
+use graft_ops::operation::{Operation, ResolveWholeParams, Side};
 
 use crate::app_harness::{App, changes_pane, cursor_to, press_for_commands};
 
@@ -234,9 +236,139 @@ fn whole_file_table_through_the_keys() {
     }
 }
 
+/// Every whole-file `(how, side)` row, driven through the real keys on the
+/// real fixture: the exact `Operate` command `o`/`t` queue, and what the
+/// file is once git has it (m6-conflicts/05 scope 1). `pic.bin` is the
+/// binary `UU` row.
+#[test]
+#[allow(clippy::too_many_lines, reason = "a table of 12 (how, side) rows")]
+fn whole_file_ops_per_row() {
+    // (path, how, side, the file after: None = gone, Some(bytes) = kept)
+    let rows: [(&str, UnmergedHow, Side, Option<&[u8]>); 12] = [
+        (
+            "theirs-deleted.txt",
+            UnmergedHow::DeletedByThem,
+            Side::Ours,
+            Some(b"changed by us, deleted by them\n"),
+        ),
+        (
+            "theirs-deleted.txt",
+            UnmergedHow::DeletedByThem,
+            Side::Theirs,
+            None,
+        ),
+        (
+            "ours-deleted.txt",
+            UnmergedHow::DeletedByUs,
+            Side::Ours,
+            None,
+        ),
+        (
+            "ours-deleted.txt",
+            UnmergedHow::DeletedByUs,
+            Side::Theirs,
+            Some(b"deleted by us, changed by them\n"),
+        ),
+        (
+            "added-by-us.txt",
+            UnmergedHow::AddedByUs,
+            Side::Ours,
+            Some(b"renamed to a different name by each side\n"),
+        ),
+        (
+            "added-by-us.txt",
+            UnmergedHow::AddedByUs,
+            Side::Theirs,
+            None,
+        ),
+        (
+            "added-by-them.txt",
+            UnmergedHow::AddedByThem,
+            Side::Ours,
+            None,
+        ),
+        (
+            "added-by-them.txt",
+            UnmergedHow::AddedByThem,
+            Side::Theirs,
+            Some(b"renamed to a different name by each side\n"),
+        ),
+        (
+            "both-deleted.txt",
+            UnmergedHow::BothDeleted,
+            Side::Ours,
+            None,
+        ),
+        (
+            "both-deleted.txt",
+            UnmergedHow::BothDeleted,
+            Side::Theirs,
+            None,
+        ),
+        (
+            "pic.bin",
+            UnmergedHow::BothModified,
+            Side::Ours,
+            Some(b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR ours\0"),
+        ),
+        (
+            "pic.bin",
+            UnmergedHow::BothModified,
+            Side::Theirs,
+            Some(b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR theirs\0"),
+        ),
+    ];
+    for (name, how, side, after) in rows {
+        let (scratch, app, state) = stopped(Shape::StoppedMerge);
+        let repo = scratch.path().to_owned();
+        let state = resolver_on_whole_file(&app, state, name);
+        let key = if side == Side::Ours { 'o' } else { 't' };
+
+        let (_, commands) = press_for_commands(&state, KeyPress::plain(KeyCode::Char(key)));
+        let [Command::Operate(_, operation)] = commands.as_slice() else {
+            panic!("{name} `{key}` queued {commands:?}")
+        };
+        assert!(
+            matches!(
+                operation.as_ref(),
+                Operation::ResolveWholeFile(ResolveWholeParams { path, side: s, how: h })
+                    if path == Path::new(name) && *s == side && *h == how
+            ),
+            "{name} `{key}`: {operation:?}"
+        );
+
+        let state = app.key(&state, KeyCode::Char(key));
+        let state = app.pump(state, "the whole-file resolve", |state| {
+            state.operating.is_none()
+        });
+        assert!(
+            !still_unmerged(&repo).lines().any(|line| line == name),
+            "{name} `{key}`: still unmerged"
+        );
+        match after {
+            None => assert!(
+                !repo.join(name).exists(),
+                "{name} `{key}`: file still there"
+            ),
+            Some(bytes) => {
+                let got = std::fs::read(repo.join(name)).expect("the kept file");
+                assert_eq!(got, bytes, "{name} `{key}`: wrong side kept");
+            }
+        }
+
+        drop(state);
+        app.close();
+        drop(scratch);
+    }
+}
+
 /// `theirs-deleted.txt` is `UD` (`DeletedByThem`): a whole-file card, not a
 /// closed resolver — the shape scope 1 turns from a refusal into a card.
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "one acceptance box walked end to end, in its own order"
+)]
 fn deleted_by_them_o_keeps() {
     let (scratch, app, state) = stopped(Shape::StoppedMerge);
     let repo = scratch.path().to_owned();
@@ -254,15 +386,39 @@ fn deleted_by_them_o_keeps() {
             "the card shows what is on disk"
         );
     }
+    let rows = crate::captures::frame(&state, 120, 40);
+    assert!(
+        rows.iter()
+            .any(|row| row.contains("deleted by them · o keeps the file  t deletes it")),
+        "the card's line is not on the frame:\n{}",
+        rows.join("\n")
+    );
+
+    let (_, commands) = press_for_commands(&state, KeyPress::plain(KeyCode::Char('o')));
+    let [Command::Operate(_, operation)] = commands.as_slice() else {
+        panic!("`o` on the card queued {commands:?}")
+    };
+    assert!(
+        matches!(
+            operation.as_ref(),
+            Operation::ResolveWholeFile(ResolveWholeParams {
+                path,
+                side: Side::Ours,
+                how: UnmergedHow::DeletedByThem,
+            }) if path == Path::new("theirs-deleted.txt")
+        ),
+        "{operation:?}"
+    );
 
     let state = app.key(&state, KeyCode::Char('o'));
-    assert!(
-        state.operating.is_some(),
-        "`o` on a whole-file card queued no write: {:?}",
-        state.status
-    );
-    let state = app.pump(state, "the whole-file resolve", |state| {
+    assert!(state.operating.is_some(), "{:?}", state.status);
+    let state = app.pump(state, "the resolve and the next file", |state| {
         state.operating.is_none()
+            && state.resolver.as_ref().is_some_and(|open| {
+                open.path != Path::new("theirs-deleted.txt")
+                    && open.job.is_none()
+                    && (open.file.is_some() || open.whole_file.is_some())
+            })
     });
 
     assert_eq!(
@@ -276,6 +432,13 @@ fn deleted_by_them_o_keeps() {
             .any(|line| line == "theirs-deleted.txt"),
         "git no longer calls it unmerged: {:?}",
         still_unmerged(&repo)
+    );
+    assert!(
+        still_unmerged(&repo)
+            .lines()
+            .any(|line| Path::new(line) == open(&state).path),
+        "the resolver moved on to another conflicted file: {:?}",
+        open(&state).path
     );
 
     drop(state);
@@ -302,6 +465,11 @@ fn deleted_by_them_t_deletes() {
     assert!(
         !repo.join("theirs-deleted.txt").exists(),
         "`t` removed the file theirs never had"
+    );
+    assert_eq!(
+        crate::app_harness::git(&repo, &["ls-files", "--", "theirs-deleted.txt"]).trim(),
+        "",
+        "and the index holds no entry for it at any stage"
     );
     assert!(
         !still_unmerged(&repo)
@@ -423,17 +591,17 @@ fn B_says_no_base() {
     let (scratch, app, state) = stopped(Shape::StoppedMerge);
     let state = resolver_on(&app, state, "both-added.txt");
 
+    let (_, commands) = press_for_commands(&state, KeyPress::plain(KeyCode::Char('B')));
+    assert!(
+        commands.is_empty(),
+        "an `AA` file has no stage 1: no base load to start: {commands:?}"
+    );
     let state = app.key(&state, KeyCode::Char('B'));
-    let state = app.pump(state, "the base load's refusal", |state| {
-        state
-            .resolver
-            .as_ref()
-            .is_some_and(|open| open.base_job.is_none())
-    });
 
+    assert!(open(&state).base_job.is_none(), "no job");
     assert!(!open(&state).base_shown, "nothing was attached");
     let (words, problem) = open(&state).notice.clone().expect("a notice");
-    assert_eq!(words, "this conflict has no common ancestor to show");
+    assert_eq!(words, "no base (added on both sides)");
     assert!(problem, "a base asked for and not loaded is a problem");
 
     drop(state);
@@ -441,33 +609,63 @@ fn B_says_no_base() {
     drop(scratch);
 }
 
-/// A fresh read — here, closing and reopening the same file — carries no
-/// attached bases: `open_conflict` never calls `attach_base`, only `B` does
-/// (m6-conflicts/05 scope 2).
+/// A re-read after the `e` hand-over carries no attached bases:
+/// `open_conflict` never calls `attach_base`, only `B` does — and `B` then
+/// loads them again (m6-conflicts/05 scope 2).
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "one acceptance box walked end to end, in its own order"
+)]
 fn reread_drops_base() {
     let (scratch, app, state) = stopped(Shape::StoppedMerge);
     let state = resolver_on(&app, state, "three.txt");
-    let state = app.key(&state, KeyCode::Char('B'));
-    let state = app.pump(state, "the base load", |state| {
-        state
-            .resolver
-            .as_ref()
-            .is_some_and(|open| open.base_job.is_none())
-    });
+    let load_base = |app: &App, state: AppState| {
+        let (_, commands) = press_for_commands(&state, KeyPress::plain(KeyCode::Char('B')));
+        assert!(
+            matches!(commands.as_slice(), [Command::LoadBase(_, path, _)] if path == Path::new("three.txt")),
+            "`B` queued {commands:?}"
+        );
+        let state = app.key(&state, KeyCode::Char('B'));
+        app.pump(state, "the base load", |state| {
+            state
+                .resolver
+                .as_ref()
+                .is_some_and(|open| open.base_job.is_none())
+        })
+    };
+    let state = load_base(&app, state);
     assert!(open(&state).base_shown, "shown before the re-read");
 
-    let state = app.key(&state, KeyCode::Escape);
-    assert!(state.resolver.is_none(), "closed");
-    // Reopened directly: `Esc` never moved the changes-pane cursor off
-    // three.txt's row, so `⏎` there reopens the same file without another
-    // trip through `on_the_row`/`cursor_to`.
-    let state = app.key(&state, KeyCode::Enter);
+    // `e`: the editor itself is not run here (a test has no terminal to
+    // hand over); its command is checked, then its answer is fed back the
+    // way the real loop feeds it, and what that queues is run for real.
+    let (_, commands) = press_for_commands(&state, KeyPress::plain(KeyCode::Char('e')));
+    assert!(
+        matches!(commands.as_slice(), [Command::OpenExternalEditor { path, .. }] if path == Path::new("three.txt")),
+        "`e` queued {commands:?}"
+    );
+    let (state, commands) = graft::update::update(
+        &state,
+        graft::update::AppEvent::Produced(
+            graft_core::job::JobId::new(9_200),
+            graft::update::Product::HandedOver(Ok(())),
+        ),
+    );
+    assert!(
+        commands
+            .iter()
+            .any(|command| matches!(command, Command::OpenConflict(_, path) if path == Path::new("three.txt"))),
+        "the hand-back queued no re-read: {commands:?}"
+    );
+    for command in commands {
+        app.jobs.dispatch(command);
+    }
     let state = app.pump(state, "the re-read", |state| {
         state
             .resolver
             .as_ref()
-            .is_some_and(|open| open.file.is_some())
+            .is_some_and(|open| open.job.is_none() && open.file.is_some())
     });
 
     assert!(!open(&state).base_shown, "a fresh read carries no base");
@@ -477,6 +675,14 @@ fn reread_drops_base() {
             block.reproduced.is_none(),
             "and nothing was attached to reproduce a base from: {block:?}"
         );
+    }
+
+    // `B` again loads them again.
+    let state = load_base(&app, state);
+    assert!(open(&state).base_shown, "`B` reloads after the re-read");
+    let file = open(&state).file.as_ref().expect("a document");
+    for block in conflict_blocks(file) {
+        assert!(block.reproduced.is_some(), "reloaded: {block:?}");
     }
 
     drop(state);
@@ -492,6 +698,10 @@ fn reread_drops_base() {
 #[allow(
     non_snake_case,
     reason = "the key is `d`, and the test is named for it"
+)]
+#[allow(
+    clippy::too_many_lines,
+    reason = "one acceptance box walked end to end, in its own order"
 )]
 fn d_starts_over_behind_a_box() {
     let (scratch, app, state) = stopped(Shape::StoppedMerge);
@@ -517,13 +727,26 @@ fn d_starts_over_behind_a_box() {
         "{:?}",
         confirm.view.message
     );
-    assert!(
-        confirm.view.message.iter().any(|line| line
-            .as_str()
-            .contains("not undoable while the operation is open")),
-        "{:?}",
-        confirm.view.message
+    let message: Vec<&str> = confirm
+        .view
+        .message
+        .iter()
+        .map(graft_term::SanitizedText::as_str)
+        .collect();
+    assert_eq!(
+        message,
+        vec![
+            "the conflict comes back with all its markers",
+            "takes and edits in this file are lost · not undoable while the merge is open",
+        ]
     );
+    let choices: Vec<&str> = confirm
+        .view
+        .choices
+        .iter()
+        .map(graft_term::SanitizedText::as_str)
+        .collect();
+    assert_eq!(choices, vec!["Cancel", "Start over"]);
     assert_eq!(
         confirm.view.command.as_str(),
         "git checkout --merge -- both.txt"
@@ -531,6 +754,18 @@ fn d_starts_over_behind_a_box() {
 
     // `→` off `Cancel` onto `Start over`, then `Enter` runs it.
     let state = app.key(&state, KeyCode::Right);
+    let (_, commands) = press_for_commands(&state, KeyPress::plain(KeyCode::Enter));
+    let [Command::Operate(_, operation)] = commands.as_slice() else {
+        panic!("`Start over` queued {commands:?}")
+    };
+    assert!(
+        matches!(
+            operation.as_ref(),
+            Operation::RestartConflict(graft_ops::operation::RestartParams { path, .. })
+                if path == Path::new("both.txt")
+        ),
+        "{operation:?}"
+    );
     let state = app.key(&state, KeyCode::Enter);
     let state = app.pump(state, "the restart", |state| {
         state.operating.is_none()
@@ -694,6 +929,14 @@ fn stash_pop_conflict_resolves_without_a_banner() {
 
     let state = take_all_and_mark(&app, state);
     assert!(state.resolver.is_none(), "the only file closes it");
+    assert_eq!(
+        journal_entries(scratch.path())
+            .last()
+            .map(|entry| entry.description.clone()),
+        Some("stage sample.txt".to_owned()),
+        "a block take + `Stage` with no operation open is an ordinary \
+         journaled stage (the box says `unchanged`: filed as a question)"
+    );
     assert!(
         matches!(&state.status, Status::Done(line) if line == "all conflicts resolved"),
         "no banner, so no `c continue`: {:?}",

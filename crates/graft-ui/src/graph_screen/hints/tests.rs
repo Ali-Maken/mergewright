@@ -253,20 +253,31 @@ fn status_line_keeps_its_keys() {
 /// group.
 #[test]
 fn no_planned_hint_is_ever_drawn() {
+    // Positive control: the check the sweep uses rejects a list holding a
+    // `Planned` hint, so this test can still fail even though no table row
+    // is `Planned` today. (The drop itself is `drawable`'s filter.)
+    let canary = [hint("x", "live"), planned("y", "unbuilt")];
+    assert!(
+        only_live(&canary).is_err(),
+        "the check must reject a Planned hint"
+    );
+
     for context in all_contexts() {
         for divider in [Divider::Shown, Divider::Hidden] {
             for columns in [40, 80, 100, 120, 160, 200] {
-                for drawn in hints_for(&context, divider, columns) {
-                    assert_eq!(
-                        drawn.state,
-                        HintState::Live,
-                        "{context:?} at {columns} draws the unbuilt `{} {}`",
-                        drawn.key,
-                        drawn.verb
-                    );
+                if let Err(unbuilt) = only_live(&hints_for(&context, divider, columns)) {
+                    panic!("{context:?} at {columns} draws the unbuilt `{unbuilt}`");
                 }
             }
         }
+    }
+}
+
+/// `Err` naming the first drawn hint that is not [`HintState::Live`].
+fn only_live(drawn: &[Hint]) -> Result<(), String> {
+    match drawn.iter().find(|hint| hint.state != HintState::Live) {
+        Some(hint) => Err(format!("{} {}", hint.key, hint.verb)),
+        None => Ok(()),
     }
 }
 

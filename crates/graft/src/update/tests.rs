@@ -4187,6 +4187,7 @@ fn resolver_on_screen(walk: JobId) -> AppState {
         opened_from: resolver::OpenedFrom::Pane,
         file: Some(Arc::new(file)),
         whole_file: None,
+        how: None,
         cursor_block: Some(0),
         top: 0,
         base_shown: false,

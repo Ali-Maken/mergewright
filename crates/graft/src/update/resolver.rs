@@ -76,6 +76,10 @@ pub struct ResolverState {
     /// resolver has nothing open while both are `None`, which is how a
     /// stray `o`/`t`/`B` mid-read is told apart from one on a real card.
     pub whole_file: Option<WholeFileShape>,
+    /// The shape git's status gave the path, once the opening read landed.
+    /// `B` words its refusal from it: an `AA` file never had a common
+    /// ancestor, and says so in the spec's words rather than ops' generic ones.
+    pub how: Option<UnmergedHow>,
     /// The block the cursor is on, or `None` when the file has none open.
     pub cursor_block: Option<usize>,
     /// The first document row on screen.
@@ -132,6 +136,7 @@ impl ResolverState {
             opened_from,
             file: None,
             whole_file: None,
+            how: None,
             cursor_block: None,
             top: 0,
             base_shown: false,
@@ -492,6 +497,14 @@ fn toggle_base(
     let Some(file) = open.file.clone() else {
         return;
     };
+    if open.how == Some(UnmergedHow::BothAdded) {
+        // Added on both sides: git holds no stage 1, so there is no base to
+        // load — answered here, in the spec's words, with no job.
+        if let Some(open) = state.resolver.as_mut() {
+            open.notice = Some(("no base (added on both sides)".to_owned(), true));
+        }
+        return;
+    }
     let path = open.path.clone();
     let id = next_id();
     let Some(open) = state.resolver.as_mut() else {
@@ -633,14 +646,22 @@ fn restart_box(state: &mut AppState) {
         return;
     };
     open.notice = None;
+    // The box names the operation the restart folds into (a merge, a
+    // rebase …). A stash-pop conflict has none open, so it makes no claim
+    // about one.
+    let lost = match state.in_progress.as_ref() {
+        Some(detail) => format!(
+            "takes and edits in this file are lost · not undoable while the {} is open",
+            detail.kind.name()
+        ),
+        None => "takes and edits in this file are lost".to_owned(),
+    };
     state.confirm = Some(PendingConfirm {
         view: ConfirmView::new(
             sanitize_line(&format!("Start {} over?", path.display())),
             vec![
                 sanitize_line("the conflict comes back with all its markers"),
-                sanitize_line(
-                    "takes and edits in this file are lost · not undoable while the operation is open",
-                ),
+                sanitize_line(&lost),
             ],
             sanitize_line(&format!("git checkout --merge -- {}", path.display())),
         )
@@ -748,6 +769,7 @@ fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::conflict::Opened
             return;
         };
         open.job = None;
+        open.how = Some(opened.how);
         open.file = None;
         open.whole_file = Some(WholeFileShape {
             how: opened.how,
@@ -766,6 +788,7 @@ fn conflict_arrived(state: &mut AppState, opened: &crate::jobs::conflict::Opened
         return;
     };
     open.job = None;
+    open.how = Some(opened.how);
     open.file = Some(Arc::new(file));
     open.whole_file = None;
     open.cursor_block = cursor_block;

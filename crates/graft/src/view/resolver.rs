@@ -359,6 +359,7 @@ mod tests {
                 opened_from: OpenedFrom::Pane,
                 file: Some(Arc::new(file)),
                 whole_file: None,
+                how: None,
                 cursor_block: Some(0),
                 top: 0,
                 base_shown: false,
