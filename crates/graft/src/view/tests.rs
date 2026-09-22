@@ -3594,7 +3594,7 @@ fn the_lane_cap_comes_from_the_graphs_room_not_the_screens_width() {
     state.detail.focus = DetailFocus::Files;
 
     assert_eq!(
-        super::graph_columns(&state, ratatui::layout::Rect::new(0, 0, 160, 12)),
+        super::frame::graph_columns(&state, ratatui::layout::Rect::new(0, 0, 160, 12)),
         92,
         "the pane leaves the graph 92 of the 160 columns"
     );
@@ -3612,6 +3612,143 @@ fn the_lane_cap_comes_from_the_graphs_room_not_the_screens_width() {
         full_width.contains("+3 lanes"),
         "160 columns to itself folds at twelve lanes:\n{full_width}"
     );
+}
+
+// ---------------------------------------------------------------------------
+// The hit-test measures what the frame draws (m5/33, review M1)
+// ---------------------------------------------------------------------------
+
+/// Where `needle` ended up on the drawn frame: the column its first cell
+/// starts at, and the screen row.
+///
+/// Read off the cells the renderer actually wrote — nothing here asks
+/// `graft_ui` where a badge goes, so a hit-test that disagrees with the
+/// renderer is caught rather than agreed with.
+fn drawn_at(
+    session: &Session,
+    state: &AppState,
+    columns: u16,
+    rows: u16,
+    needle: &str,
+) -> (u16, u16) {
+    let mut terminal =
+        Terminal::new(TestBackend::new(columns, rows)).expect("TestBackend reports its size");
+    terminal
+        .draw(|frame| view(session, state, frame))
+        .expect("TestBackend cannot fail to draw");
+    let buffer = terminal.backend().buffer();
+    for y in 0..rows {
+        let mut line = String::new();
+        let mut cells: Vec<(usize, u16)> = Vec::new();
+        for x in 0..columns {
+            cells.push((line.len(), x));
+            line.push_str(buffer[(x, y)].symbol());
+        }
+        if let Some(byte) = line.find(needle) {
+            let (_, x) = cells
+                .into_iter()
+                .find(|(at, _)| *at == byte)
+                .expect("a needle starts at a cell boundary");
+            return (x, y);
+        }
+    }
+    panic!(
+        "{needle:?} is nowhere on the frame:\n{}",
+        terminal.backend()
+    );
+}
+
+/// Two local branches on the newest commit of a graph with more lanes than
+/// any cap draws: the graph column is twelve lanes wide as a 160-column
+/// frame draws it and eight as `DEFAULT_MAX_LANES` would have it, so every
+/// badge sits eight columns apart between the two answers.
+fn two_branches_on_a_wide_graph() -> AppState {
+    use graft_core::ref_name::RefName;
+    use graft_git::repo::HeadState;
+
+    let alpha = RefName::new(b"refs/heads/alpha".to_vec()).expect("a valid ref name");
+    let bravo = RefName::new(b"refs/heads/bravo".to_vec()).expect("a valid ref name");
+    let refs = crate::refs::badges(
+        &[(alpha.clone(), oid(3)), (bravo, oid(3))],
+        &HeadState::Branch(alpha),
+        &std::collections::HashMap::new(),
+        &[],
+        |_, _| {
+            Ok(graft_git::history::AheadBehind {
+                ahead: 0,
+                behind: 0,
+            })
+        },
+    )
+    .expect("plain data always builds");
+
+    AppState {
+        history: Some(history_with_lanes(14)),
+        refs: Some(std::sync::Arc::new(refs)),
+        size: Size {
+            columns: 160,
+            rows: 12,
+        },
+        ..AppState::default()
+    }
+}
+
+/// Where `name`'s badge is in `RefBadges::on`, which is the index
+/// `badge_index_at` answers in.
+fn badge_index_of(state: &AppState, name: &str) -> usize {
+    state
+        .refs
+        .as_deref()
+        .expect("the refs are on hand")
+        .on(oid(3))
+        .iter()
+        .position(|label| {
+            matches!(label, crate::refs::RefLabel::Branch { name: on, .. }
+                if on.as_slice() == name.as_bytes())
+        })
+        .unwrap_or_else(|| panic!("{name} has a badge"))
+}
+
+/// M5 review M1: the hit-test built its **own** `GraphView` — `Icons::default()`
+/// and `DEFAULT_MAX_LANES` — while the frame overrode both from the session.
+/// With Nerd icons, or past eight lanes on a wide screen, the cells the user
+/// sees and the cells the drag measures came from different views and a drag
+/// landed on the wrong badge, or on none.
+#[test]
+fn a_drag_lands_on_the_badge_the_frame_drew_under_the_pointer() {
+    let mut state = two_branches_on_a_wide_graph();
+    state.icons = graft_ui::graph_screen::Icons::Nerd;
+    let session = session();
+
+    // First that the glyph set reaches the frame at all. Without this the
+    // test is only about the two sides *agreeing*: drop `icons` from the
+    // builder and both draw and measure the plain form, agree on it, and
+    // every assertion below still holds — which is exactly the half of the
+    // bug that shipped. `\u{e725}` is the branch glyph, drawn only for
+    // `Icons::Nerd`; `[alpha]` is the plain form of the same badge.
+    let frame = draw(&state, 160, 12);
+    assert!(
+        frame.contains('\u{e725}') && !frame.contains("[alpha]"),
+        "the frame draws the Nerd badges `state.icons` asks for:\n{frame}"
+    );
+
+    for name in ["alpha", "bravo"] {
+        let expected = badge_index_of(&state, name);
+        let (column, row) = drawn_at(&session, &state, 160, 12, name);
+        for offset in 0..u16::try_from(name.len()).expect("a short name") {
+            assert_eq!(
+                super::badge_index_at(
+                    &state,
+                    column + offset,
+                    row,
+                    state.harness.clock.now_seconds()
+                ),
+                Some(expected),
+                "the frame drew {name} at column {}, so a drag there picks {name} up",
+                column + offset
+            );
+        }
+    }
 }
 
 /// A graph with real rows behind an overlay: the push state the credential
@@ -4330,5 +4467,48 @@ fn picking_a_badge_up_changes_the_screen_before_the_pointer_moves() {
     assert_ne!(
         before, after,
         "the press alone changes the picture — the source row fades and the footer swaps"
+    );
+}
+
+/// A dead key found by review M6's width sweep once the fixtures were built
+/// at the width whose bar they were checking (m5/33): under 100 columns the
+/// detail pane is a **tab strip**, so there is no divider to drag — and the
+/// graph screen's own footer went on offering `<>` because it read
+/// "a pane is open" as "a divider is there". `view::frame` says the right
+/// thing where it draws the Detail tab's bar; this is the Graph tab, which
+/// keeps the graph screen's footer.
+#[test]
+fn the_resize_key_is_offered_only_where_there_is_a_divider_to_drag() {
+    use graft_ui::detail::DetailFocus;
+
+    let mut state = AppState {
+        history: Some(history_of(5, 1)),
+        size: Size {
+            columns: 80,
+            rows: 24,
+        },
+        ..AppState::default()
+    };
+    state.detail.shown = true;
+    state.detail.focus = DetailFocus::Graph;
+
+    let tabbed = draw(&state, 80, 24);
+    assert!(
+        tabbed.contains("[Graph]"),
+        "80 columns with the pane open is the tab layout:\n{tabbed}"
+    );
+    assert!(
+        !tabbed.contains("<>"),
+        "the tab layout has no divider, so `<>` must not be offered:\n{tabbed}"
+    );
+
+    state.size = Size {
+        columns: 160,
+        rows: 24,
+    };
+    let split = draw(&state, 160, 24);
+    assert!(
+        split.contains("<>"),
+        "160 columns is a real split, and its divider is draggable:\n{split}"
     );
 }

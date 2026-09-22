@@ -254,8 +254,12 @@ cargo build
 Run it on any repository you have:
 
 ```sh
-cargo run -p graft -- ~/code/some-repo
+cargo run -- ~/code/some-repo
 ```
+
+(`cargo run` alone is enough: the workspace has four binaries and `graft` is
+the one it runs. `cargo run -p graft -- <repo>`, which the rest of the docs
+use, is the same thing spelled out.)
 
 You should get a screen like this, and nothing else:
 

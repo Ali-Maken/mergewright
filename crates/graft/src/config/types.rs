@@ -289,3 +289,19 @@ pub enum IconSet {
     /// Nerd Font glyphs, for users who have a patched font.
     Nerd,
 }
+
+impl IconSet {
+    /// The glyph set the graph screen draws badges with.
+    ///
+    /// The one translation of `ui.icons` into what the widgets take: it is
+    /// read once into [`crate::update::AppState::icons`], because the badge
+    /// glyphs decide how wide a badge is and so where a *drag* has to hit it
+    /// (m5-history-and-ghost-preview/33).
+    #[must_use]
+    pub const fn glyphs(self) -> graft_ui::graph_screen::Icons {
+        match self {
+            IconSet::Plain => graft_ui::graph_screen::Icons::Plain,
+            IconSet::Nerd => graft_ui::graph_screen::Icons::Nerd,
+        }
+    }
+}

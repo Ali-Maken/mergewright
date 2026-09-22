@@ -95,7 +95,7 @@ fn view(rows: &[Row], walk: WalkView, cursor: usize) -> GraphView<'_> {
         compare_footer: None,
         commit_graph: None,
         banner: Vec::new(),
-        detail_shown: false,
+        divider_shown: false,
         hint_context: HintContext::PlainRow,
         marker_column: false,
         banner_op: None,
@@ -898,7 +898,7 @@ fn the_changes_pane_hints_replace_the_row_context() {
     let rows = linear(3);
     let mut view = view(&rows, WalkView::Complete { rows: 3 }, 0);
     view.hint_context = HintContext::ChangesPane { unmerged: false };
-    view.detail_shown = true;
+    view.divider_shown = true;
     let footer = text(&draw(&view, 200, 8))
         .last()
         .expect("a footer row")
@@ -909,7 +909,7 @@ fn the_changes_pane_hints_replace_the_row_context() {
     assert!(!footer.contains("m merge"), "{footer}");
 
     view.hint_context = HintContext::ChangesPane { unmerged: true };
-    view.detail_shown = false;
+    view.divider_shown = false;
     let unmerged_footer = text(&draw(&view, 200, 8))
         .last()
         .expect("a footer row")
@@ -1883,4 +1883,88 @@ fn row_at_is_none_off_the_body() {
     assert!(row_at(&screen, area, 2).is_some(), "the second");
     assert!(row_at(&screen, area, 3).is_none(), "past the history");
     assert!(row_at(&screen, area, 11).is_none(), "the footer");
+}
+
+// ---------------------------------------------------------------------------
+// `every_context` cannot quietly miss a shape (m5-history-and-ghost-preview/33,
+// review M3)
+// ---------------------------------------------------------------------------
+
+/// Shapes [`coverage_slot`] can answer with — one per variant and per
+/// boolean field combination.
+const COVERAGE_SLOTS: usize = 17;
+
+/// The slot `context` takes in [`every_context_reaches_every_shape`]'s tally.
+///
+/// **Exhaustive on the enum and on every boolean field**, which is the whole
+/// point: a variant added to `HintContext`, or a field combination added to
+/// one, stops this crate compiling until it is given a slot here — and then
+/// the test below fails until `every_context` actually produces one.
+///
+/// `Marked` and `PaneFocused` are tallied by the wrapper alone. What they
+/// wrap is not a shape of its own: `every_context` builds them by wrapping
+/// the plain list, so a plain shape that reaches the list reaches its
+/// wrapped forms too.
+fn coverage_slot(context: &HintContext) -> usize {
+    match context {
+        HintContext::WorkingTreeRow => 0,
+        HintContext::BranchRow { current: false } => 1,
+        HintContext::BranchRow { current: true } => 2,
+        HintContext::PlainRow => 3,
+        HintContext::Banner {
+            skippable: false,
+            conflicted: false,
+        } => 4,
+        HintContext::Banner {
+            skippable: false,
+            conflicted: true,
+        } => 5,
+        HintContext::Banner {
+            skippable: true,
+            conflicted: false,
+        } => 6,
+        HintContext::Banner {
+            skippable: true,
+            conflicted: true,
+        } => 7,
+        HintContext::Preview => 8,
+        HintContext::ChangesPane { unmerged: false } => 9,
+        HintContext::ChangesPane { unmerged: true } => 10,
+        HintContext::Journal => 11,
+        HintContext::Stash => 12,
+        HintContext::Dragging => 13,
+        HintContext::Marked(_) => 14,
+        HintContext::PaneFocused { opens: false, .. } => 15,
+        HintContext::PaneFocused { opens: true, .. } => 16,
+    }
+}
+
+/// `every_context`'s list is written by hand — Rust cannot enumerate a
+/// type's values, and `Marked`/`PaneFocused` are recursive, so there is no
+/// finite set to derive without choosing a depth by hand anyway. What the
+/// compiler *can* do is refuse: [`coverage_slot`] matches exhaustively, so a
+/// new shape cannot compile until it is named, and this test then fails
+/// until the list actually produces one.
+///
+/// So adding a variant is still a human's edit. It is no longer a human's
+/// **omission** (m5/33, review M3 — the gap row and the ticket notes used to
+/// claim the compiler forced the list itself, which it does not).
+#[test]
+fn every_context_reaches_every_shape() {
+    let mut seen = [false; COVERAGE_SLOTS];
+    for context in every_context() {
+        seen[coverage_slot(&context)] = true;
+    }
+
+    let missed: Vec<usize> = seen
+        .iter()
+        .enumerate()
+        .filter(|(_, hit)| !**hit)
+        .map(|(slot, _)| slot)
+        .collect();
+    assert!(
+        missed.is_empty(),
+        "`every_context` never produces slot(s) {missed:?} of `coverage_slot` — a shape \
+         the sweeps that read it will never see"
+    );
 }

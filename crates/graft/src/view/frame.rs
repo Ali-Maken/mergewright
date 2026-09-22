@@ -6,7 +6,7 @@ use graft_term::SanitizedText;
 use graft_term::sanitize_line;
 use graft_ui::detail_pane::{DetailLayout, DetailPane};
 use graft_ui::graph_screen::{
-    GraphScreen, GraphView, GraphicsStatus, HintContext, max_lanes_for, snap_to_columns,
+    GraphScreen, GraphView, GraphicsStatus, HintContext, snap_to_columns,
 };
 use graft_ui::journal_screen::JournalScreen;
 use graft_ui::map_screen::MapScreen;
@@ -200,7 +200,7 @@ fn draw_commit_editor(
 /// tab never reaches the pane. An editor behind a tab the user cannot press
 /// is an editor that did not open. Below that width it takes the whole area
 /// and the pane waits — which is what `Esc` gets them back to.
-fn tabbed(state: &AppState, area: Rect) -> bool {
+pub(super) fn tabbed(state: &AppState, area: Rect) -> bool {
     matches!(
         crate::update::detail::effective_layout(
             state.detail.focus,
@@ -256,16 +256,18 @@ pub fn view_with_graphics(
                     "no overlay stands where the graph would be, so \
                  `graph_screen_on_frame` must agree that the graph itself is drawn"
                 );
+                // `graph_view` has already settled everything that decides
+                // where a cell lands — the badge glyphs, the lane cap, the
+                // harness banner — because `view::hit` builds the same view
+                // to hit-test a drag against (m5/33, review M1). What is set
+                // here needs the `Session` and moves nothing: the tier's
+                // glyph set, the footer notice, the pixel rectangle.
                 let mut screen = graph_view(state, state.harness.clock.now_seconds());
-                screen.icons = session.icons;
-                screen.compaction.max_lanes =
-                    max_lanes_for(graph_columns(state, area), session.max_lanes);
                 let tier = tier_in_force(session, state);
                 screen.ascii = tier == RenderingTier::Ascii;
                 // Only below the terminal's own tier: `F3` clears the override
                 // when it cycles back to the top (m1-the-graph/33).
                 screen.notice = footer_notice(state, tier);
-                screen.banner = banner_lines(state, tier);
                 screen.pixel = pixels;
                 screen.graphics = pixels.then(|| graphics.clone());
 
@@ -470,6 +472,23 @@ fn render_overlay_with_detail(
 ///
 /// In the `Tab` layout with the pane shown there is no graph on screen at
 /// all; the full width is answered, because nothing is drawn to be wrong.
+/// The whole screen as a rectangle, from the size the loop last told
+/// `update` about.
+///
+/// The one answer for "how big is the screen" off the drawing path: a mouse
+/// event arrives between frames with no `Frame` to ask, and
+/// `event_loop::graphics` has none either. Agreeing with `Frame::area` is
+/// what makes the hit-test measure the frame the user is looking at.
+#[must_use]
+pub(crate) fn screen_area(state: &AppState) -> Rect {
+    Rect {
+        x: 0,
+        y: 0,
+        width: state.size.columns,
+        height: state.size.rows,
+    }
+}
+
 pub(crate) fn graph_columns(state: &AppState, screen: Rect) -> u16 {
     if !state.detail.shown {
         return screen.width;
@@ -1094,11 +1113,11 @@ fn footer_notice(state: &AppState, tier: RenderingTier) -> Option<SanitizedText>
 /// tier in force (the harness cannot know it; the probe decides), then its
 /// lines. Empty without a harness banner, so the shipped binary draws
 /// nothing extra.
-fn banner_lines(state: &AppState, tier: RenderingTier) -> Vec<SanitizedText> {
+pub(super) fn banner_lines(state: &AppState) -> Vec<SanitizedText> {
     let Some(banner) = &state.harness.banner else {
         return Vec::new();
     };
-    std::iter::once(format!("{} · {}", banner.title, tier_name(tier)))
+    std::iter::once(format!("{} · {}", banner.title, tier_name(state.tier())))
         .chain(banner.lines.iter().cloned())
         .map(|line| sanitize_line(&line))
         .collect()

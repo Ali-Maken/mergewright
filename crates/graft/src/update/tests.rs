@@ -1109,11 +1109,12 @@ fn a_bare_r_asks_for_nothing() {
     assert!(commands.is_empty());
 }
 
-#[test]
-fn the_same_event_always_gives_the_same_answer() {
-    // Purity's observable half: no clock, no counter, no hidden state, so
-    // repeating a call repeats the answer.
-    let state = AppState {
+/// Every field of [`AppState`] written out, so a field added to the state
+/// stops this file compiling until [`the_same_event_always_gives_the_same_answer`]
+/// has been given a value for it — a new field with hidden state is exactly
+/// what that test is about.
+fn every_field_spelled_out() -> AppState {
+    AppState {
         quit: None,
         harness: Harness::default(),
         status: Status::Failed("earlier".to_owned()),
@@ -1139,6 +1140,8 @@ fn the_same_event_always_gives_the_same_answer() {
         local_jobs: LocalJobs::default(),
         renderer_override: None,
         settled_tier: None,
+        icons: graft_ui::graph_screen::Icons::Plain,
+        max_lanes: None,
         search_prompt: None,
         search: None,
         on_working_tree: false,
@@ -1168,7 +1171,14 @@ fn the_same_event_always_gives_the_same_answer() {
         external_editor: None,
         suspend_on_ctrl_z: false,
         preview: None,
-    };
+    }
+}
+
+#[test]
+fn the_same_event_always_gives_the_same_answer() {
+    // Purity's observable half: no clock, no counter, no hidden state, so
+    // repeating a call repeats the answer.
+    let state = every_field_spelled_out();
 
     let first = update(&state, key(KeyCode::Char('q')));
     let second = update(&state, key(KeyCode::Char('q')));
@@ -3351,9 +3361,21 @@ fn stale_remotes_dropped() {
 ///
 /// **A hint naming two keys** (`j/k`, `<>`) is answered when *either* acts:
 /// `k` on the top row has nowhere to go, and a boundary is not a dead key.
+///
+/// **At the width the bar is drawn for** (m5/33, review M6). The fixture is
+/// built at each of [`SWEPT_WIDTHS`], not at 160 for all six, so the
+/// handlers see the layout the bar belongs to — the sub-100-column `Tab`
+/// layout is where tickets 29 and 31's defects lived, and the sweep was
+/// pressing its bars into a wide side-by-side state. All six widths settle.
+/// The `Divider` the bar is asked for comes from the state through
+/// `view::rows::divider_shown` rather than from the loop, for the same
+/// reason: a bar the app never draws is not a bar to check. Doing this
+/// found one dead key straight away — `<> resize` under 100 columns, where
+/// the pane is a tab strip with no divider to drag (fixed in
+/// `graft_ui::graph_screen::GraphView::divider_shown`).
 #[test]
 fn every_key_the_bar_draws_is_answered() {
-    use graft_ui::graph_screen::{Divider, every_context, hints_for};
+    use graft_ui::graph_screen::{Divider, every_context};
 
     let bound = super::keys::bound_actions();
     // Collected rather than asserted one at a time: when the bar and the
@@ -3362,60 +3384,8 @@ fn every_key_the_bar_draws_is_answered() {
     let mut dead: Vec<String> = Vec::new();
     for context in every_context() {
         for divider in [Divider::Shown, Divider::Hidden] {
-            let state = settled(state_for(&context, divider));
-            // Both bars this state can be under: the one the enum names,
-            // and the one `view::rows` actually asks for when handed the
-            // state (they differ only in row decoration, but a classifier
-            // that reads the state wrongly is exactly how a live key and a
-            // drawn key come apart — so the keys it picks are pressed too).
-            let mut drawn = vec![context.clone()];
-            if classified_form(&context).is_some() {
-                let banner = crate::update::banner::banner_view(&state);
-                let asked = crate::view::rows::footer_context(&state, &[], banner.as_ref());
-                if asked != context {
-                    drawn.push(asked);
-                }
-            }
-            let idle = nothing_happened(&state);
-            // Any key at all ends a drag: `update::drag::drag_key` takes
-            // `state.drag` before it reads the key. So while a badge is in
-            // the air the inert key moves the state too and no press can be
-            // told from another; the sweep says which states it is blind in
-            // rather than reading every key there as answered by accident.
-            let blind = idle.0 != state;
-            assert!(
-                !blind || state.drag.is_some(),
-                "{context:?} ({divider:?}): a key nothing binds moved the state, and not by \
-                 dropping a dragged badge — every key here now reads as answered whether it \
-                 is or not"
-            );
-            let mut pressed: Vec<(&str, &str)> = Vec::new();
-            for bar in &drawn {
-                for columns in [40, 80, 100, 120, 160, 200] {
-                    for hint in hints_for(bar, divider, columns) {
-                        assert!(
-                            bound.contains(&(hint.key, hint.verb)),
-                            "{bar:?} at {columns} columns hints `{} {}`, which nothing binds",
-                            hint.key,
-                            hint.verb
-                        );
-                        if pressed.contains(&(hint.key, hint.verb)) {
-                            continue;
-                        }
-                        pressed.push((hint.key, hint.verb));
-                        if !blind && !answered(&state, &idle, hint.key) {
-                            // Both names: the screen the state is, and the
-                            // bar the key came off — they differ exactly
-                            // when the classifier reads the state as
-                            // another screen, and then which one is wrong
-                            // is the whole question.
-                            dead.push(format!(
-                                "{context:?} ({divider:?}), bar of {bar:?}, draws `{} {}`",
-                                hint.key, hint.verb
-                            ));
-                        }
-                    }
-                }
+            for columns in SWEPT_WIDTHS {
+                dead.extend(dead_keys_on(&context, divider, columns, bound));
             }
         }
     }
@@ -3425,6 +3395,99 @@ fn every_key_the_bar_draws_is_answered() {
         dead.len(),
         dead.join("\n  ")
     );
+}
+
+/// One cell of [`every_key_the_bar_draws_is_answered`]'s sweep: this
+/// context, at this width, with the pane open or not — every hint its bar
+/// draws that the handler with focus does nothing with.
+fn dead_keys_on(
+    context: &HintContext,
+    divider: Divider,
+    columns: u16,
+    bound: &[(&str, &str)],
+) -> Vec<String> {
+    use graft_ui::graph_screen::hints_for;
+
+    let state = settled(state_for(context, divider, columns));
+    // Both bars this state can be under: the one the enum names, and the one
+    // `view::rows` actually asks for when handed the state (they differ only
+    // in row decoration, but a classifier that reads the state wrongly is
+    // exactly how a live key and a drawn key come apart — so the keys it
+    // picks are pressed too).
+    let mut drawn = vec![context.clone()];
+    if classified_form(context).is_some() {
+        let banner = crate::update::banner::banner_view(&state);
+        let asked = crate::view::rows::footer_context(&state, &[], banner.as_ref());
+        if asked != *context {
+            drawn.push(asked);
+        }
+    }
+    let idle = nothing_happened(&state);
+    // Any key at all ends a drag: `update::drag::drag_key` takes `state.drag`
+    // before it reads the key. So while a badge is in the air the inert key
+    // moves the state too and no press can be told from another; the sweep
+    // says which states it is blind in rather than reading every key there as
+    // answered by accident.
+    let blind = idle.0 != state;
+    // The sweep's own baseline must read as *not* an answer, or every key
+    // here would read as one. `nothing_happened` makes that true today by
+    // asserting the two inert presses agree outright; pinned again here, at
+    // the point that depends on it, so relaxing the baseline cannot quietly
+    // turn the sweep green (m5/33, review M2).
+    assert!(
+        blind
+            || !did_something(
+                &idle,
+                &outcome(&state, Press::Key(KeyPress::plain(ALSO_INERT)))
+            ),
+        "{context:?} ({divider:?}) at {columns} columns: a key nothing binds reads as an \
+         answer, so every key drawn on this bar would"
+    );
+    assert!(
+        !blind || state.drag.is_some(),
+        "{context:?} ({divider:?}) at {columns} columns: a key nothing binds moved the \
+         state, and not by dropping a dragged badge — every key here now reads as answered \
+         whether it is or not"
+    );
+    // The divider the **app** would draw this bar with, not the fixture's
+    // knob: under 100 columns the pane is a tab strip and
+    // `view::rows::divider_shown` says there is nothing to drag, so asking
+    // for the `Shown` bar here would be asking for a bar the app never draws
+    // (m5/33, review M6).
+    let drawn_divider = if crate::view::divider_shown(&state) {
+        Divider::Shown
+    } else {
+        Divider::Hidden
+    };
+
+    let mut dead = Vec::new();
+    let mut pressed: Vec<(&str, &str)> = Vec::new();
+    for bar in &drawn {
+        for hint in hints_for(bar, drawn_divider, columns) {
+            assert!(
+                bound.contains(&(hint.key, hint.verb)),
+                "{bar:?} at {columns} columns hints `{} {}`, which nothing binds",
+                hint.key,
+                hint.verb
+            );
+            if pressed.contains(&(hint.key, hint.verb)) {
+                continue;
+            }
+            pressed.push((hint.key, hint.verb));
+            if !blind && !answered(&state, &idle, hint.key) {
+                // Both names: the screen the state is, and the bar the key
+                // came off — they differ exactly when the classifier reads
+                // the state as another screen, and then which one is wrong is
+                // the whole question.
+                dead.push(format!(
+                    "{context:?} ({divider:?}) at {columns} columns, bar of {bar:?}, \
+                     draws `{} {}`",
+                    hint.key, hint.verb
+                ));
+            }
+        }
+    }
+    dead
 }
 
 /// The states [`every_key_the_bar_draws_is_answered`] presses keys into are
@@ -3449,7 +3512,7 @@ fn every_swept_state_is_the_context_it_claims() {
             let Some(want) = classified_form(&context) else {
                 continue;
             };
-            let state = state_for(&context, divider);
+            let state = state_for(&context, divider, 160);
             let banner = crate::update::banner::banner_view(&state);
             assert_eq!(
                 crate::view::rows::footer_context(&state, &[], banner.as_ref()),
@@ -3481,6 +3544,13 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Dragging => Some(context.clone()),
     }
 }
+
+/// The screen widths [`every_key_the_bar_draws_is_answered`] sweeps: the
+/// two layout breakpoints (100 and 160 columns, DESIGN.md §1) with a width
+/// either side of each. The state is built at the width whose bar is being
+/// checked, so the handlers see the layout the bar was drawn for
+/// (m5/33, review M6).
+const SWEPT_WIDTHS: [u16; 6] = [40, 80, 100, 120, 160, 200];
 
 /// A key nothing in the app binds — the baseline every press is measured
 /// against.
@@ -3533,15 +3603,33 @@ fn nothing_happened(state: &AppState) -> (AppState, Vec<Command>) {
 /// Does the key the bar spells `name` do anything at all in this state,
 /// beyond what a key nothing binds already does?
 ///
-/// Note which way round the comparison is. The defect this sweep exists to
-/// catch — a key **consumed by the focused handler that then does nothing**
-/// — comes back with *fewer* commands than the inert key, because it
-/// returns early and the ambient work never runs. "Differs from inert"
-/// catches it; "differs from an empty outcome" would not.
+/// This used to be `outcome(..) != *idle`, under a comment claiming that
+/// comparing against the inert press is what catches a key **consumed by
+/// the focused handler that then does nothing**. It is the inverse (m5/33,
+/// review M2). Such a key returns early, so the ambient work never runs and
+/// its outcome differs from the baseline by having *less* in it — and a
+/// plain `!=` reads any difference as an answer, so the one defect the
+/// sweep exists for was the one it waved through.
+///
+/// The real guarantee is [`did_something`]: **added**, not merely
+/// different. Nothing here assumes the baseline is empty, because it is
+/// not — `update` does ambient work on every event whatever the key (the
+/// evil-merge probe re-asks for its rows), and the inert press comes back
+/// carrying that command like any other press.
 fn answered(state: &AppState, idle: &(AppState, Vec<Command>), name: &str) -> bool {
     presses_for(name)
         .into_iter()
-        .any(|press| outcome(state, press) != *idle)
+        .any(|press| did_something(idle, &outcome(state, press)))
+}
+
+/// Did this press **add** anything to what a key nothing binds already
+/// does: move the state, or produce a command the baseline did not?
+///
+/// Losing the baseline's ambient work is not an answer, so a press whose
+/// commands are a subset of the baseline's and whose state is the
+/// baseline's counts as nothing happening.
+fn did_something(idle: &(AppState, Vec<Command>), outcome: &(AppState, Vec<Command>)) -> bool {
+    outcome.0 != idle.0 || outcome.1.iter().any(|command| !idle.1.contains(command))
 }
 
 /// What a hint tells the hand to do. Not every entry on the bar is a key:
@@ -3614,15 +3702,14 @@ fn outcome(state: &AppState, press: Press) -> (AppState, Vec<Command>) {
 /// `divider` is not decoration: `Divider::Shown` means a pane is open on
 /// this frame, and `<> resize` is drawn because of it. A state built
 /// without the pane would fail its own hint.
-fn state_for(context: &HintContext, divider: Divider) -> AppState {
+fn state_for(context: &HintContext, divider: Divider, columns: u16) -> AppState {
     let mut state = screen_for(context);
-    // Wide enough for the pane to sit beside the graph: below 100 columns
-    // the layout is tabs and `<>` moves no divider, by `update::detail`'s
-    // own rule.
-    state.size = Size {
-        columns: 160,
-        rows: 48,
-    };
+    // The width the bar being checked was drawn for (m5/33, review M6). It
+    // used to be 160 for every fixture while the sweep drew bars at six
+    // widths, so every narrow bar was pressed into a wide, side-by-side
+    // state — and the `Tab` layout under 100 columns is exactly where
+    // tickets 29 and 31's defects lived.
+    state.size = Size { columns, rows: 48 };
     one_stash(&mut state);
     if divider == Divider::Shown && !state.detail.shown {
         // On a commit, even where the cursor is on the working-tree row:
@@ -4009,6 +4096,99 @@ fn every_planned_hint_is_still_unbound() {
                 hint.verb
             ),
         }
+    }
+}
+
+/// Bound `(key, verb)` pairs the hint bar draws **nowhere**, each with the
+/// reason it is not a defect — the named exemption list
+/// [`every_bound_action_is_hinted_live_or_is_named_here`] walks against
+/// (m5/33, review M4).
+///
+/// Five of the six are `docs/design/02-keymap.md` §2.2 globals: keys live in
+/// every pane, which the bar does not list because the bar lists the *focused
+/// context's* keys. The sixth is not a decided exemption and says so.
+const NEVER_HINTED: &[(&str, &str, &str)] = &[
+    (
+        "g/G",
+        "top/bottom",
+        "keymap §2.2: global movement, live in every pane",
+    ),
+    (
+        "PgUp/PgDn",
+        "page",
+        "keymap §2.2: global movement, live in every pane",
+    ),
+    ("⌃R", "refresh", "keymap §2.2: global"),
+    (
+        "U",
+        "redo",
+        "keymap §2.2: global, and §2.1's Shift pair of the `u undo` the bar does draw",
+    ),
+    (
+        "esc",
+        "dismiss",
+        "keymap §2.2: `Esc` backs out everywhere. The bar draws it where it is the \
+         context's own key (`esc close`, `esc cancel`); clearing a stale status line \
+         is not a context action",
+    ),
+    (
+        "a",
+        "amend",
+        "**open question, not a decision** (m5/33): keymap §2.3 binds `a` on the graph \
+         pane and §2.1 says the bar always shows what is active, but no hint table has \
+         ever listed it — the bar draws `c commit` alone. Filed in ticket 33; here so \
+         the walk below is honest rather than blocked",
+    ),
+];
+
+/// **The converse direction** (m5/33, review M4).
+/// [`every_planned_hint_is_still_unbound`] walks the hint tables and asks
+/// whether each entry is bound; it cannot see a key that is bound and is in
+/// **no table at all**, and [`super::keys::bound_actions`] is hand-written,
+/// so that gap is real rather than theoretical.
+///
+/// This walks the other way: every `(key, verb)` the app binds is drawn
+/// `HintState::Live` in some context, or is named in [`NEVER_HINTED`] with
+/// its reason. The exemption list is walked too — a row that stopped being
+/// bound, or that is drawn now, fails here rather than sitting stale.
+#[test]
+fn every_bound_action_is_hinted_live_or_is_named_here() {
+    use graft_ui::graph_screen::{HintState, every_hint};
+
+    let bound = super::keys::bound_actions();
+    // `every_hint` is the union of every context's own list plus the tail
+    // and the doorway hints `whole_bar` adds, so "live in here" is "live on
+    // some bar".
+    let live: Vec<(&str, &str)> = every_hint()
+        .iter()
+        .filter(|hint| hint.state == HintState::Live)
+        .map(|hint| (hint.key, hint.verb))
+        .collect();
+    let exempt: Vec<(&str, &str)> = NEVER_HINTED.iter().map(|(k, v, _)| (*k, *v)).collect();
+
+    let unhinted: Vec<String> = bound
+        .iter()
+        .filter(|pair| !live.contains(pair) && !exempt.contains(pair))
+        .map(|(key, verb)| format!("`{key} {verb}`"))
+        .collect();
+    assert!(
+        unhinted.is_empty(),
+        "bound, and drawn on no bar in any context: {}. Either hint it, or add it to \
+         NEVER_HINTED with the reason it is never drawn",
+        unhinted.join(", ")
+    );
+
+    for (key, verb, why) in NEVER_HINTED {
+        assert!(
+            bound.contains(&(*key, *verb)),
+            "`{key} {verb}` is on the never-hinted list ({why}) but nothing binds it \
+             any more — take the row off"
+        );
+        assert!(
+            !live.contains(&(*key, *verb)),
+            "`{key} {verb}` is drawn live now, so the never-hinted list is wrong \
+             about it ({why}) — take the row off"
+        );
     }
 }
 

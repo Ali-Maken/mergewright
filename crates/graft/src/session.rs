@@ -125,13 +125,6 @@ pub struct Session {
     /// today, the config file's warnings. Already sanitised: the text quotes
     /// keys the user typed.
     pub notes: Vec<SanitizedText>,
-    /// Which glyphs ref badges draw with: `ui.icons`, plain unless the
-    /// config file asks for Nerd Font icons (never detected, PROMPT.md §5).
-    pub icons: graft_ui::graph_screen::Icons,
-    /// `graph.max_lanes`: the configured lane cap, or `None` to follow the
-    /// terminal's width (`graft_ui::graph_screen::max_lanes_for` resolves it
-    /// per frame, since it depends on the current screen width).
-    pub max_lanes: Option<usize>,
 }
 
 impl Session {
@@ -175,14 +168,7 @@ impl Session {
             )));
         }
 
-        let icons = match config.config.ui.icons {
-            crate::config::IconSet::Plain => graft_ui::graph_screen::Icons::Plain,
-            crate::config::IconSet::Nerd => graft_ui::graph_screen::Icons::Nerd,
-        };
-
         Self {
-            icons,
-            max_lanes: config.config.graph.max_lanes,
             theme: Theme::new(kind, &capabilities),
             rendering,
             notes,

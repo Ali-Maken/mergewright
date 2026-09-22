@@ -85,11 +85,13 @@ impl GraphScreen<'_> {
                     (format!(" {subject}"), Token::Text)
                 } else {
                     let width16 = u16::try_from(width).unwrap_or(u16::MAX);
-                    // The divider exists while any detail pane is open — a
-                    // commit's as much as the changes pane's (ADR-0028), which
-                    // is why the flag is read here and not carried inside one
-                    // context (m5-03 review, Major 4).
-                    let divider = if self.view.detail_shown {
+                    // The divider exists while any detail pane is open in
+                    // a *split* — a commit's as much as the changes pane's
+                    // (ADR-0028), which is why the flag is read here and not
+                    // carried inside one context (m5-03 review, Major 4).
+                    // The tab layout has no divider, and the flag says so
+                    // (m5/33).
+                    let divider = if self.view.divider_shown {
                         Divider::Shown
                     } else {
                         Divider::Hidden

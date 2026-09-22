@@ -5,6 +5,11 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
+# The workspace has four binaries in four crates, so plain `cargo run` could
+# not tell which one was meant and refused — the first thing the user hit
+# when he tried to open his own app (m5-history-and-ghost-preview/33).
+# `cargo run -- <repo>` now runs Graft.
+default-run = "graft"
 
 # `app` is the only crate allowed to see every other crate (ARCHITECTURE.md).
 [dependencies]
