@@ -1,6 +1,6 @@
 m3 walk capture: m3-09-undo-drift-box — scenario undo-drift-guard, keys u, unicode tier, 160x48
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-k9N2Or  5 commits
+ graft <scratch____________________________________________________________>  5 commits
 ◌   Uncommitted changes (1 unstaged)
 ◆   [◆ main] before the drift                                                                                                                    GT now  5a9dc77
 ●   add sample.txt                                                                                                                               GT now  e9dad5a

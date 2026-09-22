@@ -1,6 +1,6 @@
 gallery stop 9/23: accidental-pull-merge, ascii tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/a…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/a…
 *-\   [◆ main] Merge branch 'main' of https://example.invalid/graf… 6y   3222407
 *-|-  My commit                                                     6y   abd2097
 |-*-  [origin/main]:Their commit                                    6y   781b8cc

@@ -29,7 +29,7 @@ no wrap: the first row never went back to HEAD
  q quit  F2 status  / search  j/k move  PgUp/PgDn page  g/G top/bottom
 
 --- after 100 notches ---
- graft /Users/devuser/dev/sandbox/gitter  191 commits
+ graft <home____________>/dev/sandbox/gitter  191 commits
 ◇   Project setup: spec, plan, conductor and helper agents          1d   10b1fba
 
 

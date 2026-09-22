@@ -1,12 +1,12 @@
 m5 walk capture: m5-05-preview-too-small — scenario preview-too-small-never-confirms, keys j j r, unicode tier, 38x10
 
- graft /var/folders/z4/tqdvc9557mv3f1…
-  ●     finish the featu… 6y   8d6cd28
-  ●     start the feature 6y   52f3b96
-  │     after rebase
-  │ ○   [◆ fea… finish t… —    —
-  │ ○   start the feature —    —
-●─│─╯   [main] main move… 6y   45fa51d
-● │     main moves on     6y   37926a7
+ graft <scratch_____________________>…
+  ●      finish the feat… 6y   8d6cd28
+  ●      start the featu… 6y   52f3b96
+  │      after rebase
+  │ ○    [◆ fea… finish … —    —
+  │ ○    start the featu… —    —
+●─│─╯ ▏  [main] main mov… 6y   45fa51d
+● │      main moves on    6y   37926a7
 preview needs 40x12 · esc closes
 

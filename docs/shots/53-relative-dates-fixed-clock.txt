@@ -1,6 +1,6 @@
 gallery stop 13/24: relative-dates, unicode tier, 80x24, fixed clock (CORPUS_NOW)
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/eb4b99caec644413/r…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/eb4b99caec644413/r…
  gallery 13/24 relative-dates · quirks · ] next [ back q quit · unicode
  shows: one lane, top to bottom: now, 2m, 2h, 2d, 2w, 2mo, 1y — every unit
  differs: the date column varies here; every other stop sits in one tight window

@@ -1,6 +1,6 @@
 gallery stop 17/23: unborn-branch, unicode tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/u…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/u…
   ●   [other] other: work                                           6y   e1b73f9
 ●─│   [main] Add a.txt                                              6y   8fee593
 ◇─╯   Add a readme                                                  6y   ca2dfba

@@ -8,7 +8,7 @@ Script (verbatim), used for the before/B/C/D measurement passes on git/git (85,6
 
     #!/bin/bash
     # usage: meas.sh <label>  — 3 runs each nocg and cg; appends summary lines
-    cd /Users/devuser/dev/sandbox/gitter
+    cd <home____________>/dev/sandbox/gitter
     L=$1; CG=$(scripts/clone-git-git.sh --where); NOCG=target/27b/nocg.git
     for which in nocg cg; do
       R=$NOCG; [ $which = cg ] && R=$CG

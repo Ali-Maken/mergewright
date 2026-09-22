@@ -207,15 +207,12 @@ fn the_input_reader_is_reading_again_afterwards() {
 /// zed, and a stray file the moment the user saved.
 #[test]
 fn a_porcelain_path_is_joined_onto_the_worktree_not_graft_s_own_directory() {
-    let command = opened_in("vim", Some(12), "/home/u/code/api");
+    let command = opened_in("vim", Some(12), "/code/api");
 
-    assert_eq!(
-        spelled(&command),
-        ["vim", "+12", "/home/u/code/api/src/main.rs"]
-    );
+    assert_eq!(spelled(&command), ["vim", "+12", "/code/api/src/main.rs"]);
     assert_eq!(
         command.get_current_dir(),
-        Some(Path::new("/home/u/code/api")),
+        Some(Path::new("/code/api")),
         "and the editor starts where git would start one"
     );
 }
@@ -226,7 +223,7 @@ fn an_absolute_path_is_left_alone() {
         "vim",
         Path::new("/tmp/graft/COMMIT_EDITMSG"),
         None,
-        Some(Path::new("/home/u/code/api")),
+        Some(Path::new("/code/api")),
     );
 
     assert_eq!(spelled(&command), ["vim", "/tmp/graft/COMMIT_EDITMSG"]);

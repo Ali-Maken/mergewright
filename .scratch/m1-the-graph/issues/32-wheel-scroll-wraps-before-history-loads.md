@@ -8,7 +8,7 @@ Leaves runnable: yes — wheel scroll stops at the end instead of wrapping.
 Found by the user in Ghostty (2026-09-13), debug build at 1508cdd, repo = this repo (186 commits).
 
 ## Repro (user's words, condensed)
-1. Launch: `cargo build -p graft && open -na /Applications/Ghostty.app --args -e .../target/debug/graft /Users/devuser/dev/sandbox/gitter`
+1. Launch: `cargo build -p graft && open -na /Applications/Ghostty.app --args -e .../target/debug/graft <home____________>/dev/sandbox/gitter`
 2. **Immediately** scroll down with the trackpad and keep going.
 3. The view scrolls to a commit from "1d ago" (not the oldest: the oldest commits are author `RE`), then **jumps back to the top** and keeps going — endless loop.
 

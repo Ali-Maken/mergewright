@@ -1,6 +1,6 @@
 gallery stop 2/23: linear, ascii tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/l…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/l…
 *   [◆ main] Commit 200                                             6y   d5ae5fd
 *   Commit 199                                                      6y   13e6ab1
 *   Commit 198                                                      6y   f5055d9

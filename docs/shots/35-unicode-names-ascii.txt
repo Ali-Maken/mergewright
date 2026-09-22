@@ -1,6 +1,6 @@
 gallery stop 14/23: unicode-names, ascii tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/u…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/u…
   *       [ветка] ветка: первый коммит                              6y   e26412c
 *-| *tag  [機能]A機能: 最初のコミット                               6y   9c306b6
 *-| |t*g  [fonctionnalité] fonctionnalité : première étape 🚀       6y   a6b3175

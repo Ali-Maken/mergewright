@@ -1,6 +1,6 @@
 gallery stop 19/23: non-utf8-path, ascii tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/n…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/n…
   *   [latin1] Add a Latin-1 path                                   6y   16151d4
 *-/   [◆ main]xAdd a readme                                         6y   7e00915
 *-| | *d  untracked files on main: d96881b Add a.txt                5y   f11c383

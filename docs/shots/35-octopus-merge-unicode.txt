@@ -1,6 +1,6 @@
 gallery stop 4/23: octopus-merge, unicode tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/o…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/o…
 ◆─┬─┬─╮   [◆ main] Merge branches 'topic-1', 'topic-2' and 'topic-… 6y   e385b54
 │─│─│o●m  [topic-3]Mtopic 3                                         6y   c95dba0
 │ │ ●o│m  [topic-2]ttopic 2                                         6y   3d625a5

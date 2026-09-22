@@ -1,6 +1,6 @@
 details gallery stop 8/19: m2-08-backward-merge, unicode tier, 160x40
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/backward-merge  4 commits
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/backward-merge  4 commits
  gallery 8/19 backward-merge · radar · ] next [ back q quit · unicode
  shows: ⚠ backward merge on feature's tip merge; main's two rows unmarked
  differs: stop 6's mirror: same subjects, the marker sits on feature's row

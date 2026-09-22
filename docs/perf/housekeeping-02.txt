@@ -38,8 +38,8 @@
 # harmless: it is a claim that this change did not cause it.
 
 ## before — heap accounting, 2026-09-18 22:35, release, one process at a time
-# 10k cg: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-10000-commit-graph-a77b50bd4c9e50dc
-# 100k cg: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-commit-graph-73591869b9beea12
+# 10k cg: <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-10000-commit-graph-a77b50bd4c9e50dc
+# 100k cg: <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-commit-graph-73591869b9beea12
 # B/commit = (100k - 10k) / 90000. Live heap is measured by a counting
 # global allocator; each 'hold' row is the live bytes that structure freed
 # when dropped, in the order listed.
@@ -72,8 +72,8 @@ hold/RepoStore (CommitTable)                          47642       221165       1
 total/live_unattributed                                9295         9296       0.00
 
 ## after — heap accounting, 2026-09-18 22:41, release, one process at a time
-# 10k cg: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-10000-commit-graph-a77b50bd4c9e50dc
-# 100k cg: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-commit-graph-73591869b9beea12
+# 10k cg: <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-10000-commit-graph-a77b50bd4c9e50dc
+# 100k cg: <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-commit-graph-73591869b9beea12
 # B/commit = (100k - 10k) / 90000. Live heap is measured by a counting
 # global allocator; each 'hold' row is the live bytes that structure freed
 # when dropped, in the order listed.

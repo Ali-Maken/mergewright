@@ -1,7 +1,7 @@
 gallery, the first frame and two `]` presses, unicode tier, 80x24
 
 --- first frame: trivial ---
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/t…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/t…
  gallery 1/23 trivial · one lane · ] next [ back q quit · unicode
  shows: 3 commits in one straight lane: ◆ HEAD on top, ◇ root at the bottom
  differs: the smallest stop, so only 3 rows show: that is all of it, a baseline
@@ -27,7 +27,7 @@ gallery, the first frame and two `]` presses, unicode tier, 80x24
  q quit  F2 status  F3 renderer  / search  j/k move  Enter pin  Space fold
 
 --- after `]` #1: linear ---
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/l…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/l…
  gallery 2/23 linear · one lane · ] next [ back q quit · unicode
  shows: 200 commits in one lane; G, g and PageDown never shift the node column
  differs: the same lane as stop 1, 200 rows deep: scrolling is what it tests
@@ -53,7 +53,7 @@ gallery, the first frame and two `]` presses, unicode tier, 80x24
  q quit  F2 status  F3 renderer  / search  j/k move  Enter pin  Space fold
 
 --- after `]` #2: feature-branches ---
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/f…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/f…
  gallery 3/23 feature-branches · merges · ] next [ back q quit · unicode
  shows: two merges on main; feature/one and /two curve in, /three stays open
  differs: the first curves; Space folds the merged two, 1 leaves main's column

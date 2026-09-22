@@ -1,6 +1,6 @@
 m4 walk capture: m4-08-undo-after-push — scenario u-never-touches-the-remote, keys u → ⏎, unicode tier, 80x24
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-yp1d42/wor…
+ graft <scratch_______________________________________________________________>…
 ◌     Uncommitted changes (1 staged)
   ●   [origin/main] ours                                            now  3dab5be
 ◆─╯   [◆ main ↓1] theirs                                            6y   7be74b5

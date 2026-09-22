@@ -5,7 +5,7 @@ Judge by eye. Real feature-branches fixture, HEAD detached onto row 0, dirtied
 so each frame also names the screen row `RowPaint::Highlighted` (bold) landed on.
 
 == before k (cursor on HEAD's row, row 0) — highlighted screen row: Some(2) ==
-" graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-feature-branches-9q2p0V  10 commits  date order, sorting… "
+" graft <scratch_____________________________________________________________________>  10 commits  date order, sorting… "
 "  ◌       Uncommitted changes (1 staged, 1 unstaged, 1 untracked)                                                       "
 "  ◆       [HEAD] [feature/three] three: in progress                                                      GF 7y   0683985"
 "◉─│─╮     [main] Merge branch 'feature/two'                                                              GF 7y   5202e1c"
@@ -21,7 +21,7 @@ so each frame also names the screen row `RowPaint::Highlighted` (bold) landed on
 " q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent  F focus  H stash  y sha  PgUp/PgDn page"
 
 == after k (cursor on the working-tree row) — highlighted screen row: Some(1) ==
-" graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-feature-branches-9q2p0V  10 commits  date order, sorting… "
+" graft <scratch_____________________________________________________________________>  10 commits  date order, sorting… "
 "  ◌       Uncommitted changes (1 staged, 1 unstaged, 1 untracked)                                                       "
 "  ◆       [HEAD] [feature/three] three: in progress                                                      GF 7y   0683985"
 "◉─│─╮     [main] Merge branch 'feature/two'                                                              GF 7y   5202e1c"

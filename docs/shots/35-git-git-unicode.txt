@@ -1,6 +1,6 @@
 gallery stop 23/23: git-git, unicode tier, 80x24
 
- graft /Users/devuser/.cache/graft/git-git.git  44 rows so far  ic-100000-r…
+ graft <home____________>/.cache/graft/git-git.git  44 rows so far  ic-100000-r…
 ◉─╮           +17   [next] Merge branch 'jk/ci-use-system-asciidoc… 1d   848ec2e
 │ │ ◉─────────+17a  [seen]0Merge branch 'js/rust-in-windows-ci' in… 1d   a184f46
 │r│ ◉─────────+171  Merge branch 'ap/var-broken-down-idents' into … 1d   01c5fa0

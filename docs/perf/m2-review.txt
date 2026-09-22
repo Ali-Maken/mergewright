@@ -20,7 +20,7 @@ release perf run (ADR-0021):
 release perf: exit 101, 604 s, peak rss 532 MB
 test frames::fifty_thousand_refs_keep_input_to_frame_under_16_ms_at_the_pixel_tier ... refs: 50000 refs, badges() 5.699375ms, 25000 lookups 522.875µs (20 ns each), 25180 labels found
 frames: tier=Pixel refs=FiftyThousand state_clone_and_drop_us (recorded, not asserted): laps=64 p50=0 max=12
-  process didn't exit successfully: `/Users/devuser/dev/sandbox/gitter/target/release/deps/it-8f3aee7a97191f7f 'frames::' 'heavy::budgets_hold' --test-threads=1 --nocapture` (signal: 15, SIGTERM: termination signal)
+  process didn't exit successfully: `<home____________>/dev/sandbox/gitter/target/release/deps/it-8f3aee7a97191f7f 'frames::' 'heavy::budgets_hold' --test-threads=1 --nocapture` (signal: 15, SIGTERM: termination signal)
              3612194  page reclaims
 
 target/ size: 9.8G

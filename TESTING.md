@@ -58,6 +58,24 @@ changes the truncation), and `captures::without_invented_id` zeroes an object id
 a test committed itself, same width, every prefix. A capture that differs for
 any other reason is a defect, and neither is a place to hide one.
 
+**Nothing in a tracked file names the machine it was written on**
+(m5-history-and-ghost-preview/41). `graft_fixtures::capture` redacts three
+classes out of what the code drew, before it compares or writes it — a home
+directory, a path under the OS scratch directory, and a port the OS picked —
+each replaced by a placeholder of exactly the width it took, so no grid moves.
+`no_tracked_file_names_this_machine` then checks every file `git` tracks, on
+every run, and says what to do:
+
+```sh
+cargo run -q -p graft-fixtures -- redact <path>...   # a file older than the rule
+```
+
+Write `<home>` by hand where a test or a document needs a home directory. The
+pty walks do not write to `docs/shots/` themselves: they pipe each frame to
+`graft-fixtures capture <path>`, which is the same mechanism on the same terms,
+so a walk asserts like everything else and `GRAFT_UPDATE_SHOTS=1` is how it
+regenerates.
+
 ## Times I left
 
 Every time you leave Graft for the shell, one line here. **This is the only

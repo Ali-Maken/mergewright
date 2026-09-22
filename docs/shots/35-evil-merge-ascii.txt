@@ -1,6 +1,6 @@
 gallery stop 8/23: evil-merge, ascii tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/e…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/e…
 *-\   [◆ main] Merge branch 'alpha'                                 6y   cc1103b
 *-|-  Advance main                                                  6y   0631550
 |-*-  [alpha]ialpha: work                                           6y   bd20b78

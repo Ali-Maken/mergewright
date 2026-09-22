@@ -1360,7 +1360,7 @@ fn a_long_location_is_cut_before_the_banner_is() {
     let rows = linear(2);
     let mut long = view(&rows, WalkView::Complete { rows: 2 }, 0);
     long.location = Some(sanitize_line(
-        "/Users/someone/work/customers/acme/services/billing-api",
+        "/media/archive/work/customers/acme/services/billing-api",
     ));
     let banner = rebase_banner(Some((3, 7)), Some("src/auth/token.rs"));
     long.banner_op = Some(banner.clone());
@@ -1478,7 +1478,7 @@ fn capture_for_docs_shots() {
     );
     let mut long_path = with_banner.clone();
     long_path.location = Some(sanitize_line(
-        "/Users/someone/work/customers/acme/services/billing-api",
+        "/media/archive/work/customers/acme/services/billing-api",
     ));
     for (label, w, view) in [
         ("80x10", 80u16, &with_banner),

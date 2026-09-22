@@ -1,6 +1,6 @@
 details gallery stop 3/19: m2-03-feature-branches-enter-tab-v, unicode tier, 160x40
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/feature-branch…COMMIT 0683985
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/feature-branch…COMMIT 0683985
  gallery 3/19 feature-branches · Enter Tab v · ] next [ back q quit · unicode                Graft Fixture <fixture@example.invalid> · 2020-01-01 00:09 +0000 ·…
  shows: side-by-side: two halves with own gutters, │ between, unpaired blank                 parents de95041 · diff vs first parent
  differs: stop 1's diff split in two; Tab moved focus to the body first                      Contained in: feature/three

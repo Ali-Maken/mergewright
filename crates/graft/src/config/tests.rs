@@ -266,7 +266,7 @@ fn every_rendering_tier_can_be_forced() {
 fn xdg_config_home_wins_over_home() {
     let path = path_in_environment(|name| match name {
         "XDG_CONFIG_HOME" => Some(OsString::from("/xdg")),
-        "HOME" => Some(OsString::from("/home/someone")),
+        "HOME" => Some(OsString::from("/code")),
         _ => None,
     });
 
@@ -275,12 +275,11 @@ fn xdg_config_home_wins_over_home() {
 
 #[test]
 fn home_supplies_dot_config_when_xdg_is_unset() {
-    let path =
-        path_in_environment(|name| (name == "HOME").then(|| OsString::from("/home/someone")));
+    let path = path_in_environment(|name| (name == "HOME").then(|| OsString::from("/code")));
 
     assert_eq!(
         path.as_deref(),
-        Some(Path::new("/home/someone/.config/graft/config.toml"))
+        Some(Path::new("/code/.config/graft/config.toml"))
     );
 }
 
@@ -289,13 +288,13 @@ fn a_relative_xdg_config_home_is_ignored() {
     // The XDG spec says a non-absolute value is treated as unset.
     let path = path_in_environment(|name| match name {
         "XDG_CONFIG_HOME" => Some(OsString::from("relative/config")),
-        "HOME" => Some(OsString::from("/home/someone")),
+        "HOME" => Some(OsString::from("/code")),
         _ => None,
     });
 
     assert_eq!(
         path.as_deref(),
-        Some(Path::new("/home/someone/.config/graft/config.toml"))
+        Some(Path::new("/code/.config/graft/config.toml"))
     );
 }
 

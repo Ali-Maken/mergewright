@@ -1,6 +1,6 @@
 gallery stop 22/23: synthetic-100k, ascii tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-r…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-r…
 *     Uncommitted changes (1 untracked)
 *     [◆ main] [many/000000 ↑1] [t… Trunk commit 100000             6y   907b0e4
 *r    [many/000001 ⇄ origin] [orig… Trunk commit 99999              6y   94bd832

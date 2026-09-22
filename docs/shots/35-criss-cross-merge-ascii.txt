@@ -1,6 +1,6 @@
 gallery stop 5/23: criss-cross-merge, ascii tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/c…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/c…
   *         [beta] beta: carry on                                   6y   be27a12
 *-|-\o*m    [◆ main]tMerge branch 'alpha'                           6y   e44c042
 | *-|-\m    beta: merge alpha                                       6y   f77039c

@@ -1,6 +1,6 @@
 details gallery stop 6/19: m2-06-foxtrot-merge, ascii tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/f…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/f…
  gallery 6/19 foxtrot-merge · radar · ] next [ back q quit · ascii
  shows: ⚠ in the marker column on the foxtrot merge; footer gains . explain
  differs: the first ⚠: ⓘ (no upstream) sat on branch tips since stop 1

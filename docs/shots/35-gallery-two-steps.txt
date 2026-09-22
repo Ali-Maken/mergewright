@@ -1,7 +1,7 @@
 gallery, two `]` presses from the first stop, unicode tier, 80x24
 
 --- first frame: trivial ---
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/t…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/t…
 ◆   [◆ main] Correct the note                                       6y   a82960b
 ●   Add the first note                                              6y   fadcfb3
 ◇   Add a readme                                                    6y   64ded19
@@ -27,7 +27,7 @@ gallery, two `]` presses from the first stop, unicode tier, 80x24
  trivial · 1/23 · expect: 3 commits in one straight lane; plain nodes; no tag, …
 
 --- after `]` #1: linear ---
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/l…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/l…
 ◆   [◆ main] Commit 200                                             6y   d5ae5fd
 ●   Commit 199                                                      6y   13e6ab1
 ●   Commit 198                                                      6y   f5055d9
@@ -53,7 +53,7 @@ gallery, two `]` presses from the first stop, unicode tier, 80x24
  linear · 2/23 · expect: 200 commits, one straight lane the whole way; scrollin…
 
 --- after `]` #2: feature-branches ---
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/f…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/f…
   ●       [feature/three] three: in progress                        6y   0683985
 ◆─│─╮omm  [◆ main] Merge branch 'feature/two'                       6y   5202e1c
 │ │ ●omm  [feature/two] two: finish                                 6y   e30e870

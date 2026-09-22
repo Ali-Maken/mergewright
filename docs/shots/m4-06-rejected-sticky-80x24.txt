@@ -1,6 +1,6 @@
 m4 walk capture: m4-06-rejected-sticky — scenario push-lease-refused-stale, keys P → ⏎, unicode tier, 80x24
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-remote-h2QSdW/wor…
+ graft <scratch_______________________________________________________________>…
 ◆ ⓘ [◆ main ↑1] ours                                                6y   739071c
 ●   [origin/main] Commit 200                                        7y   d5ae5fd
 ●   Commit 199                                                      7y   13e6ab1

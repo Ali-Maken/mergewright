@@ -26,12 +26,21 @@
 //! where they covered two captures; this module is the same thing where all
 //! three crates that draw one can reach it.
 //!
+//! What the code drew is [`machine::redacted`] before it is compared or
+//! written, so a home directory, an OS scratch path or an ephemeral port
+//! cannot reach a committed file whatever the generator drew
+//! (m5-history-and-ghost-preview/41). It happens here, at the one seam every
+//! capture goes through, rather than per generator — and the placeholders are
+//! the width of what they replace, so the grid does not move.
+//!
 //! There is deliberately **no tolerance**. A capture allowed to differ from
 //! the code is exactly the thing this module exists to delete, so the
 //! comparison is byte-for-byte and any difference is a failure. A generator
 //! whose output is not reproducible is therefore a defect in the generator —
 //! fix the source of the variance (a clock, a temp path, a PID) rather than
 //! loosening the check.
+
+pub mod machine;
 
 use std::ffi::OsStr;
 use std::path::Path;
@@ -155,6 +164,7 @@ pub fn capture_bytes(path: impl AsRef<Path>, drawn: impl AsRef<[u8]>) {
 /// binary's tests in one process, so a test that set the variable would
 /// change what its neighbours saw.
 fn check_text(path: &Path, drawn: &str, updating: bool) -> Result<(), String> {
+    let drawn = &machine::redacted(drawn);
     let committed = std::fs::read(path);
     rewrite(path, drawn.as_bytes(), updating)?;
     let committed = committed.map_err(|why| missing(path, &why.to_string()))?;
@@ -168,6 +178,7 @@ fn check_text(path: &Path, drawn: &str, updating: bool) -> Result<(), String> {
 
 /// [`check_bytes`] with the decision made by the caller; see [`check_text`].
 fn check_raw(path: &Path, drawn: &[u8], updating: bool) -> Result<(), String> {
+    let drawn = &machine::redacted_bytes(drawn);
     let committed = std::fs::read(path);
     rewrite(path, drawn, updating)?;
     let committed = committed.map_err(|why| missing(path, &why.to_string()))?;
@@ -456,6 +467,49 @@ mod tests {
         let why = check_raw(&path, &[7u8, 8], true).expect_err("a new capture is red once");
         assert!(why.contains("could not be read"), "{why}");
         assert_eq!(std::fs::read(&path).expect("readable"), vec![7u8, 8]);
+    }
+
+    /// Whose account drew it stops mattering: the same frame from two
+    /// different home directories is one committed file.
+    ///
+    /// "Two different homes of the same width", because the placeholder is
+    /// the width of what it replaces — a capture is a grid, and a narrower
+    /// stand-in would slide every column after it. What makes a capture the
+    /// same on a machine whose home is a different *length* is the writer not
+    /// drawing a real path at all (`captures::CAPTURE_REPO_PATH`); this is
+    /// the backstop under it, for whatever the writer did not think of.
+    #[test]
+    fn the_same_frame_from_two_different_homes_is_one_file() {
+        let temp = tempfile::tempdir().expect("a temp dir");
+        let path = temp.path().join("shot.txt");
+        let ada = format!("graft {}ada/code/api  3 commits\n", concat!("/Us", "ers/"));
+        let bo = format!("graft {}abby/code/api  3 commits\n", concat!("/ho", "me/"));
+        std::fs::write(&path, machine::redacted(&ada)).expect("writable");
+
+        assert_eq!(
+            check_text(&path, &ada, false),
+            Ok(()),
+            "the machine that wrote it disagreed with itself"
+        );
+        assert_eq!(
+            check_text(&path, &bo, false),
+            Ok(()),
+            "a second account drawing the same frame wrote a different file"
+        );
+    }
+
+    #[test]
+    fn a_capture_is_written_redacted_when_it_is_regenerated() {
+        let temp = tempfile::tempdir().expect("a temp dir");
+        let path = temp.path().join("shot.txt");
+        std::fs::write(&path, "old\n").expect("writable");
+        let drawn = format!("at {}ada/code\n", concat!("/Us", "ers/"));
+        check_text(&path, &drawn, true).expect_err("a regeneration is red");
+        let written = std::fs::read(&path).expect("readable");
+        assert!(
+            machine::found(&written).is_empty(),
+            "a regeneration wrote a path that names the machine"
+        );
     }
 
     #[test]

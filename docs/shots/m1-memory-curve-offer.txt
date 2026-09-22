@@ -1,6 +1,6 @@
 # m1-the-graph/56: the offer on a copy of the 1M small no-commit-graph fixture, 120x40, release
 # 120x40: the offer frame
- graft /Users/devuser/dev/sandbox/gitter/target/56/offer-1m  reading history…
+ graft <home____________>/dev/sandbox/gitter/target/56/offer-1m  reading history…
 
 
 
@@ -41,7 +41,7 @@
  no commit-graph file: history sorts on every open · B build one (git commit-graph write --reachable) · X never here
  q quit  F2 status  F3 renderer  / search  j/k move  Space fold  1 first-parent  F focus  H stash  y sha  PgUp/PgDn page
 # 120x40: after B, the written frame (B to written line: 5.3 s wall)
- graft /Users/devuser/dev/sandbox/gitter/target/56/offer-1m  500 rows so far
+ graft <home____________>/dev/sandbox/gitter/target/56/offer-1m  500 rows so far
 ◌     Uncommitted changes (1 untracked)
 ◆     [◆ main] [tag: release/1000000] Trunk commit 1000000                                               GF 5y   eae4445
 ●     Trunk commit 999999                                                                                GF 5y   419a6cb

@@ -1,6 +1,6 @@
 gallery stop 3/23: feature-branches, unicode tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/f…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/f…
   ●       [feature/three] three: in progress                        6y   0683985
 ◆─│─╮omm  [◆ main] Merge branch 'feature/two'                       6y   5202e1c
 │ │ ●omm  [feature/two] two: finish                                 6y   e30e870

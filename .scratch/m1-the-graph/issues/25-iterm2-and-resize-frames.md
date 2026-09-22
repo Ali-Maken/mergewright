@@ -55,7 +55,7 @@ Proposed change: docs/design/03-graph-layout-algorithm.md §3.8 lists terminal r
 User command (iTerm2 ≥ 3.5; forces the pixel tier, since iTerm2 with truecolor settles on Unicode by ADR-0016):
 
 ```
-cd /Users/devuser/dev/sandbox/gitter && cargo build -p graft && mkdir -p /tmp/graft-iterm/graft && printf '[graph]\nrenderer = "pixel"\n' > /tmp/graft-iterm/graft/config.toml && XDG_CONFIG_HOME=/tmp/graft-iterm ./target/debug/graft .
+cd <home____________>/dev/sandbox/gitter && cargo build -p graft && mkdir -p /tmp/graft-iterm/graft && printf '[graph]\nrenderer = "pixel"\n' > /tmp/graft-iterm/graft/config.toml && XDG_CONFIG_HOME=/tmp/graft-iterm ./target/debug/graft .
 ```
 
 Look for: lane graph drawn as an image beside the commit text, rows aligned; j/k scroll keeps alignment; resize the window — graph redraws in place, no leftover image fragments; F3 drops to Unicode and the image disappears.

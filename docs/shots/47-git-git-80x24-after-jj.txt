@@ -1,7 +1,7 @@
 m1-the-graph/47: git/git, 80x24, Unicode tier, after j j onto a merge train. ADR-0025: the selected commit's thread no longer pins the graph column and rail to half the terminal width.
 
 == final frame, plain ==
- graft /Users/devuser/.cache/graft/git-git.git  88 rows so far  +17 lanes
+ graft <home____________>/.cache/graft/git-git.git  88 rows so far  +17 lanes
 ◉▾            ⋮   [next] Merge branch 'jk/ci-use-system-asciidocto… 1d   848ec2e
 │ ◉▾          ⋮   [seen] Merge branch 'js/rust-in-windows-ci' into… 1d   a184f46
 │ ◉▾          ⋮   Merge branch 'ap/var-broken-down-idents' into se… 1d   01c5fa0

@@ -1,5 +1,5 @@
 === frame after startup ===
- graft /Users/devuser/dev/sandbox/gitter  194 commits
+ graft <home____________>/dev/sandbox/gitter  194 commits
 ◌   Uncommitted changes (40 unstaged, 5 untracked)
 ◆   [◆ main] tickets: m1/34 adds pin on Enter and author/date to t… 6m   703e6b5
 ●   progress: m1/32 done, next 33                                   7m   7c17957
@@ -25,7 +25,7 @@
  q quit  F2 status  F3 renderer  / search  j/k move  Enter details  Space fold
 
 === frame after F3 press 1 ===
- graft /Users/devuser/dev/sandbox/gitter  194 commits
+ graft <home____________>/dev/sandbox/gitter  194 commits
 *   Uncommitted changes (40 unstaged, 5 untracked)
 *   [◆ main] tickets: m1/34 adds pin on Enter and author/date to t… 6m   703e6b5
 *   progress: m1/32 done, next 33                                   7m   7c17957
@@ -51,7 +51,7 @@
  renderer: ascii (F3 cycles)
 
 === frame after F3 press 2 ===
- graft /Users/devuser/dev/sandbox/gitter  194 commits
+ graft <home____________>/dev/sandbox/gitter  194 commits
 ◌   Uncommitted changes (40 unstaged, 5 untracked)
 ◆   [◆ main] tickets: m1/34 adds pin on Enter and author/date to t… 6m   703e6b5
 ●   progress: m1/32 done, next 33                                   7m   7c17957
@@ -77,7 +77,7 @@
  q quit  F2 status  F3 renderer  / search  j/k move  Enter details  Space fold
 
 === frame after F3 press 3 ===
- graft /Users/devuser/dev/sandbox/gitter  194 commits
+ graft <home____________>/dev/sandbox/gitter  194 commits
 *   Uncommitted changes (40 unstaged, 5 untracked)
 *   [◆ main] tickets: m1/34 adds pin on Enter and author/date to t… 6m   703e6b5
 *   progress: m1/32 done, next 33                                   7m   7c17957

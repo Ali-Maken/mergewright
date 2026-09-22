@@ -1,6 +1,6 @@
 gallery stop 2/23: linear, unicode tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/l…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/l…
  gallery 2/23 linear · one lane · ] next [ back q quit · unicode
  shows: 200 commits in one lane; G, g and PageDown never shift the node column
  differs: the same lane as stop 1, 200 rows deep: scrolling is what it tests

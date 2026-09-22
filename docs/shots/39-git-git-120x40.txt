@@ -1,7 +1,7 @@
 39 fold vocabulary: pty capture of target/release/graft (text tier: the pty answers no graphics query), truecolor env, script docs/shots/39-capture.py. First frame (cursor on the top row): a selection deeper in a merge train pins its whole thread, so little folds (see 39-git-git-80x24-after-jj.txt). git/git, 120x40. Same checks as 39-git-git-80x24.txt.
 
 == final frame, plain ==
- graft /Users/devuser/.cache/graft/git-git.git  152 rows so far  +33 lanes
+ graft <home____________>/.cache/graft/git-git.git  152 rows so far  +33 lanes
 ◉─╮           ⋮   [next] Merge branch 'jk/ci-use-system-asciidoctor' into next                           JC 1d   848ec2e
 │ │ ◉▾        ⋮   [seen] Merge branch 'js/rust-in-windows-ci' into seen                                  JC 1d   a184f46
 │ │ ◉▾        ⋮   Merge branch 'ap/var-broken-down-idents' into seen                                     JC 1d   01c5fa0

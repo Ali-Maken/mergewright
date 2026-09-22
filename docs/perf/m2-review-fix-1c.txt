@@ -1,5 +1,5 @@
 m2 review fix 1c — evil-merge probe, before and after (M6)
-repository: /Users/devuser/.cache/graft/git-git.git
+repository: <home____________>/.cache/graft/git-git.git
 merges walked (two-parent, newest first): 60
 date: 2026-09-18T19:30:51Z
 

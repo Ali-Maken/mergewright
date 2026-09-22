@@ -1,6 +1,6 @@
 # The memory curve: scripts/memory-curve.sh 10000 100000 1000000 (2026-09-14, release, 3 runs per cell, one process at a time)
 # Gate: peak RSS < 300 MB with a commit-graph (ADR-0026); without one at 1M: reported, footprint < 300 MB.
-# 10000 small: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-10000-no-commit-graph-2ea66420a0c78085
+# 10000 small: <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-10000-no-commit-graph-2ea66420a0c78085
 # 10000 small: pack 2 MiB on disk, commit-graph absent
 10000 small run1: first paint 23.318792ms, G 60.866875ms, g 52.292µs, 10000 rows, provisional order: true, peak RSS at paint 8.0 MiB, after G 16.9 MiB, end 16.9 MiB, overflow_len 10000 (m1-the-graph/51b 2x check)
 10000 small run1: footprint 10.5 MiB, process max RSS 17.0 MiB
@@ -14,7 +14,7 @@
 10000 small once: far jump half way, to row 5000 of 10000: 1.891917ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
 10000 small once: far jump nine tenths, to row 9000 of 10000: 1.875458ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
 10000 small once: peak RSS after the far jump measurements 22.7 MiB
-# 10000 --commit-graph: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-10000-commit-graph-f5daf3384154a14b
+# 10000 --commit-graph: <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-10000-commit-graph-f5daf3384154a14b
 # 10000 --commit-graph: pack 2 MiB on disk, commit-graph present
 10000 --commit-graph run1: first paint 11.002166ms, G 16.081667ms, g 51.75µs, 10000 rows, provisional order: false, peak RSS at paint 7.8 MiB, after G 12.0 MiB, end 12.0 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
 10000 --commit-graph run1: footprint 6.4 MiB, process max RSS 12.1 MiB
@@ -28,7 +28,7 @@
 10000 --commit-graph once: far jump half way, to row 5000 of 10000: 4.057875ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
 10000 --commit-graph once: far jump nine tenths, to row 9000 of 10000: 3.92675ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
 10000 --commit-graph once: peak RSS after the far jump measurements 20.7 MiB
-# 10000 --realistic: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-10000-realistic-no-commit-graph-0c4bbadb33b3fd58
+# 10000 --realistic: <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-10000-realistic-no-commit-graph-0c4bbadb33b3fd58
 # 10000 --realistic: pack 3 MiB on disk, commit-graph absent
 10000 --realistic run1: first paint 13.476375ms, G 42.1725ms, g 46.084µs, 10000 rows, provisional order: true, peak RSS at paint 8.6 MiB, after G 24.5 MiB, end 24.6 MiB, overflow_len 10000 (m1-the-graph/51b 2x check)
 10000 --realistic run1: footprint 17.5 MiB, process max RSS 24.6 MiB
@@ -42,7 +42,7 @@
 10000 --realistic once: far jump half way, to row 5000 of 10000: 1.926459ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
 10000 --realistic once: far jump nine tenths, to row 9000 of 10000: 1.912542ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
 10000 --realistic once: peak RSS after the far jump measurements 36.6 MiB
-# 10000 --realistic --commit-graph: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-10000-realistic-commit-graph-a49fdfea7d23d228
+# 10000 --realistic --commit-graph: <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-10000-realistic-commit-graph-a49fdfea7d23d228
 # 10000 --realistic --commit-graph: pack 3 MiB on disk, commit-graph present
 10000 --realistic --commit-graph run1: first paint 11.224959ms, G 17.521166ms, g 62.875µs, 10000 rows, provisional order: false, peak RSS at paint 8.2 MiB, after G 15.8 MiB, end 15.9 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
 10000 --realistic --commit-graph run1: footprint 10.0 MiB, process max RSS 15.9 MiB
@@ -56,7 +56,7 @@
 10000 --realistic --commit-graph once: far jump half way, to row 5000 of 10000: 4.29525ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
 10000 --realistic --commit-graph once: far jump nine tenths, to row 9000 of 10000: 4.384541ms, replayed 1500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
 10000 --realistic --commit-graph once: peak RSS after the far jump measurements 33.3 MiB
-# 100000 small: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-no-commit-graph-ba5bf1dd41fcee03
+# 100000 small: <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-no-commit-graph-ba5bf1dd41fcee03
 # 100000 small: pack 29 MiB on disk, commit-graph absent
 100000 small run1: first paint 95.869417ms, G 506.508541ms, g 93.917µs, 100000 rows, provisional order: true, peak RSS at paint 22.4 MiB, after G 68.0 MiB, end 68.0 MiB, overflow_len 100000 (m1-the-graph/51b 2x check)
 100000 small run1: footprint 36.0 MiB, process max RSS 68.1 MiB
@@ -70,7 +70,7 @@
 100000 small once: far jump half way, to row 50000 of 100000: 953.708µs, replayed 500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
 100000 small once: far jump nine tenths, to row 90000 of 100000: 1.075792ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
 100000 small once: peak RSS after the far jump measurements 138.4 MiB
-# 100000 --commit-graph: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-commit-graph-9a592fc3353d5ab5
+# 100000 --commit-graph: <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-commit-graph-9a592fc3353d5ab5
 # 100000 --commit-graph: pack 29 MiB on disk, commit-graph present
 100000 --commit-graph run1: first paint 16.405375ms, G 57.950708ms, g 97.292µs, 100000 rows, provisional order: false, peak RSS at paint 19.7 MiB, after G 26.7 MiB, end 26.7 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
 100000 --commit-graph run1: footprint 9.3 MiB, process max RSS 26.8 MiB
@@ -84,7 +84,7 @@
 100000 --commit-graph once: far jump half way, to row 50000 of 100000: 1.884625ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
 100000 --commit-graph once: far jump nine tenths, to row 90000 of 100000: 1.807083ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
 100000 --commit-graph once: peak RSS after the far jump measurements 125.1 MiB
-# 100000 --realistic: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-realistic-no-commit-graph-75d9d82601e974e2
+# 100000 --realistic: <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-realistic-no-commit-graph-75d9d82601e974e2
 # 100000 --realistic: pack 35 MiB on disk, commit-graph absent
 100000 --realistic run1: first paint 108.511917ms, G 543.992417ms, g 109µs, 100000 rows, provisional order: true, peak RSS at paint 23.5 MiB, after G 75.5 MiB, end 75.6 MiB, overflow_len 100000 (m1-the-graph/51b 2x check)
 100000 --realistic run1: footprint 37.4 MiB, process max RSS 75.6 MiB
@@ -98,7 +98,7 @@
 100000 --realistic once: far jump half way, to row 50000 of 100000: 1.922042ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
 100000 --realistic once: far jump nine tenths, to row 90000 of 100000: 1.052083ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
 100000 --realistic once: peak RSS after the far jump measurements 189.8 MiB
-# 100000 --realistic --commit-graph: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-realistic-commit-graph-7466bed2ec0d4c76
+# 100000 --realistic --commit-graph: <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-realistic-commit-graph-7466bed2ec0d4c76
 # 100000 --realistic --commit-graph: pack 35 MiB on disk, commit-graph present
 100000 --realistic --commit-graph run1: first paint 79.835209ms, G 60.30475ms, g 109.75µs, 100000 rows, provisional order: false, peak RSS at paint 19.7 MiB, after G 30.4 MiB, end 30.5 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
 100000 --realistic --commit-graph run1: footprint 12.8 MiB, process max RSS 30.5 MiB
@@ -112,7 +112,7 @@
 100000 --realistic --commit-graph once: far jump half way, to row 50000 of 100000: 1.968083ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
 100000 --realistic --commit-graph once: far jump nine tenths, to row 90000 of 100000: 1.9195ms, replayed 500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 2000 (m1-the-graph/56, 60)
 100000 --realistic --commit-graph once: peak RSS after the far jump measurements 190.4 MiB
-# 1000000 small: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-1000000-no-commit-graph-d5f8e6a5494a9ead
+# 1000000 small: <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-1000000-no-commit-graph-d5f8e6a5494a9ead
 # 1000000 small: pack 297 MiB on disk, commit-graph absent
 1000000 small run1: first paint 997.187458ms, G 6.083120541s, g 669.084µs, 1000000 rows, provisional order: true, peak RSS at paint 162.5 MiB, after G 445.4 MiB, end 445.4 MiB, overflow_len 1000000 (m1-the-graph/51b 2x check)
 1000000 small run1: footprint 155.6 MiB, process max RSS 445.5 MiB
@@ -126,7 +126,7 @@
 1000000 small once: far jump half way, to row 500000 of 1000000: 13.001084ms, replayed 4500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 16000 (m1-the-graph/56, 60)
 1000000 small once: far jump nine tenths, to row 900000 of 1000000: 13.273792ms, replayed 4500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 16000 (m1-the-graph/56, 60)
 1000000 small once: peak RSS after the far jump measurements 1037.3 MiB
-# 1000000 --commit-graph: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-1000000-commit-graph-511a25b425758b13
+# 1000000 --commit-graph: <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-1000000-commit-graph-511a25b425758b13
 # 1000000 --commit-graph: pack 297 MiB on disk, commit-graph present
 1000000 --commit-graph run1: first paint 709.702875ms, G 564.083917ms, g 658.75µs, 1000000 rows, provisional order: false, peak RSS at paint 128.2 MiB, after G 174.2 MiB, end 174.2 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
 1000000 --commit-graph run1: footprint 37.8 MiB, process max RSS 174.3 MiB
@@ -140,7 +140,7 @@
 1000000 --commit-graph once: far jump half way, to row 500000 of 1000000: 14.948041ms, replayed 4500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 16000 (m1-the-graph/56, 60)
 1000000 --commit-graph once: far jump nine tenths, to row 900000 of 1000000: 14.901292ms, replayed 4500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 16000 (m1-the-graph/56, 60)
 1000000 --commit-graph once: peak RSS after the far jump measurements 997.4 MiB
-# 1000000 --realistic: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-1000000-realistic-no-commit-graph-72fa024bc63d5a20
+# 1000000 --realistic: <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-1000000-realistic-no-commit-graph-72fa024bc63d5a20
 # 1000000 --realistic: pack 358 MiB on disk, commit-graph absent
 1000000 --realistic run1: first paint 1.031568375s, G 6.300158791s, g 625.416µs, 1000000 rows, provisional order: true, peak RSS at paint 169.7 MiB, after G 507.4 MiB, end 507.5 MiB, overflow_len 1000000 (m1-the-graph/51b 2x check)
 1000000 --realistic run1: footprint 156.7 MiB, process max RSS 507.5 MiB
@@ -154,7 +154,7 @@
 1000000 --realistic once: far jump half way, to row 500000 of 1000000: 15.329875ms, replayed 4500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 16000 (m1-the-graph/56, 60)
 1000000 --realistic once: far jump nine tenths, to row 900000 of 1000000: 14.5385ms, replayed 4500 rows, 1 chunks rebuilt, hydrated 500, checkpoint stride 16000 (m1-the-graph/56, 60)
 1000000 --realistic once: peak RSS after the far jump measurements 1691.4 MiB
-# 1000000 --realistic --commit-graph: /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-1000000-realistic-commit-graph-c710f42cc79576f0
+# 1000000 --realistic --commit-graph: <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-1000000-realistic-commit-graph-c710f42cc79576f0
 # 1000000 --realistic --commit-graph: pack 358 MiB on disk, commit-graph present
 1000000 --realistic --commit-graph run1: first paint 789.58025ms, G 609.424292ms, g 643.666µs, 1000000 rows, provisional order: false, peak RSS at paint 129.4 MiB, after G 183.6 MiB, end 183.7 MiB, overflow_len 0 (m1-the-graph/51b 2x check)
 1000000 --realistic --commit-graph run1: footprint 46.7 MiB, process max RSS 183.7 MiB

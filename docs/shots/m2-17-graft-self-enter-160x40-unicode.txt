@@ -1,6 +1,6 @@
 details gallery stop 17/19: m2-17-graft-self-enter, unicode tier, 160x40
 
- graft /Users/devuser/dev/sandbox/gitter  140 rows so far                                COMMIT ca5796c
+ graft <home____________>/dev/sandbox/gitter  140 rows so far                                COMMIT ca5796c
  gallery 17/19 graft-self · Enter · ] next [ back q quit · unicode                           Ali-Maken <116688264+Ali-Maken@users.noreply.github.com> · 2026-09-18 07:09 +0500 · 2…
  shows: real commit: Contained in: main; ✉ row only if the message has a body                parents d288023 · diff vs first parent
  differs: real repo: syntax roles tint the diff; the corpus stops are plain                  Contained in: main

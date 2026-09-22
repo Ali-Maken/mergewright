@@ -1,6 +1,6 @@
 details gallery stop 12/19: m2-12-ref-states, unicode tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/r…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/76bc0e2e392220e9/r…
  gallery 12/19 ref-states · radar · ] next [ back q quit · unicode
  shows: no marker column: ahead tracks origin/ahead and is not the default
  differs: the negative control: classify_refs flags only unpushed-on-default

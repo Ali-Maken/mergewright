@@ -83,7 +83,7 @@ fn typed_bytes(state: AppState) -> String {
 fn is_masked_prompt_table() {
     for masked in [
         "Password for 'http://user@127.0.0.1:8443':",
-        "Enter passphrase for key '/home/u/.ssh/id_ed25519':",
+        "Enter passphrase for key '/code/.ssh/id_ed25519':",
         "password:",
     ] {
         assert!(is_masked_prompt(masked), "{masked:?} must be masked");

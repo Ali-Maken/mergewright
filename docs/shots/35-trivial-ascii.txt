@@ -1,6 +1,6 @@
 gallery stop 1/23: trivial, ascii tier, 80x24
 
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/t…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/6703a19dff9f622a/t…
 *   [◆ main] Correct the note                                       6y   a82960b
 *   Add the first note                                              6y   fadcfb3
 *   Add a readme                                                    6y   64ded19

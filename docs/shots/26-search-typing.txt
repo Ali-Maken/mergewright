@@ -1,5 +1,5 @@
 --- first frame ---
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
 ◌     Uncommitted changes (1 untracked)
 ◆     [◆ main] [tag: release/01000… Trunk commit 100000             6y   907b0e4
 ●     Trunk commit 99999                                            6y   94bd832
@@ -24,7 +24,7 @@
 ●     Trunk commit 99980                                            6y   9f71232
  q quit  F2 status  / search  j/k move  PgUp/PgDn page  g/G top/bottom
 --- search running ---
- graft /Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
+ graft <home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-n…
 ◌     Uncommitted changes (1 untracked)
 ◆     [◆ main] [tag: release/01000… Trunk commit 100000             6y   907b0e4
 ●     Trunk commit 99999                                            6y   94bd832
@@ -454,7 +454,7 @@ F2 #401 sent 1512 ms after Enter: 3.7 ms to the changed screen
 Graft
 
 Repository
-/Users/devuser/dev/sandbox/gitter/target/fixtures/synthetic-100000-no-commit
+<home____________>/dev/sandbox/gitter/target/fixtures/synthetic-100000-no-commit
 -graph-024d506de281597a
 HEAD        main
 History     streaming, 500 rows laid out
