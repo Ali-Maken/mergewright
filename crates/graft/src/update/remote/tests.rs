@@ -570,6 +570,76 @@ fn diverged_pull_sets_m_r_source() {
     );
 }
 
+/// Where the pull's own fetch left `origin/main`, once the refs catch up.
+const MOVED: &str = "4444444444444444444444444444444444444444";
+
+/// m5/32, finding 2. The tip the diverged line remembered came from the
+/// params `p` was built with — read **before the pull's own fetch**, which
+/// is the very thing that moves `refs/remotes/origin/main`. So `r` aimed at
+/// a tip that had already moved and `tip_holds` refused the first press
+/// with `main moved since the preview · r again`: the user was told to
+/// retry what they had just done.
+///
+/// `tip_holds` is right and untouched. What changed is the record: while
+/// the line is on screen the tip is re-read from the refs at the tail of
+/// every `update`, so both halves of the pair `r` pins — the branch and the
+/// upstream — come from one reading of the refs.
+#[test]
+fn the_diverged_line_aims_at_where_the_fetch_left_the_tracking_ref() {
+    let mut state = diverged_with_tracking_at(oid(MOVED));
+    // What `remote_failed` recorded, pre-fetch.
+    state.remote.diverged_upstream = Some(("refs/remotes/origin/main".to_owned(), oid(THEIRS)));
+    state.status = Status::Sticky {
+        reason: "main and origin/main have diverged".to_owned(),
+        keys: Some(crate::update::remote::DIVERGED_KEYS.to_owned()),
+    };
+
+    // One event with the line still on screen: the refs have caught up, so
+    // the tail re-points the tip at them.
+    let (caught_up, _) = press(&state, plain('k'));
+    assert_eq!(
+        caught_up.remote.diverged_upstream,
+        Some(("refs/remotes/origin/main".to_owned(), oid(MOVED))),
+        "the line still remembers the pre-fetch tip"
+    );
+
+    let (next, _) = press(&caught_up, plain('r'));
+    let preview = next.preview.as_ref().expect("r opened a preview");
+    let Some(Operation::Rebase(params)) = preview.subject.operation() else {
+        panic!("not a rebase: {:?}", preview.subject);
+    };
+    assert_eq!(
+        params.onto_tip,
+        oid(MOVED),
+        "r aimed at the tip the fetch replaced"
+    );
+}
+
+/// [`diverged`], plus a badge for `origin/main` at `tracking` — the refs as
+/// they read once the pull's fetch has landed and the refresh has arrived.
+fn diverged_with_tracking_at(tracking: Oid) -> AppState {
+    let mut state = diverged();
+    let main = graft_core::ref_name::RefName::new(b"refs/heads/main".to_vec()).expect("a ref name");
+    let remote = graft_core::ref_name::RefName::new(b"refs/remotes/origin/main".to_vec())
+        .expect("a ref name");
+    state.refs = Some(Arc::new(
+        crate::refs::badges(
+            &[(main.clone(), oid(OURS)), (remote, tracking)],
+            &graft_git::repo::HeadState::Branch(main),
+            &std::collections::HashMap::new(),
+            &[],
+            |_, _| {
+                Ok(graft_git::history::AheadBehind {
+                    ahead: 1,
+                    behind: 1,
+                })
+            },
+        )
+        .expect("no ahead/behind walk can fail here"),
+    ));
+    state
+}
+
 /// `Esc` dismisses the diverged line, and the keys it offered go with it:
 /// the remembered tip means nothing without the sentence that explained it.
 #[test]

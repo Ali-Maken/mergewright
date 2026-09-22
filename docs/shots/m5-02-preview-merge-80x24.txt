@@ -1,6 +1,6 @@
 m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, keys m, unicode tier, 80x24
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-FV7APp  8…
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-9Dh0vm  8…
   │ ●   [feature] finish the feature                                6y   8d6cd28
   │ ●   start the feature                                           6y   52f3b96
 ●─╯ │   main moves again                                            6y   45fa51d
@@ -17,7 +17,7 @@ m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, 
 ╭ Preview: merge feature into main ────────────────────────────────────────────╮
 │ 1 merge commit                                                               │
 │ main 45fa51d → 1 new commit                                                  │
-│ working tree: 4 files updated                                                │
+│ working tree: 2 files updated                                                │
 │ no conflicts expected                                                        │
 │ undo: u takes this back                                                      │
 │ git merge --no-edit --ff -m 'Merge branch '\''feature'\'' into main' feature │

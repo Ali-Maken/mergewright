@@ -2095,3 +2095,128 @@ fn branch_from_stash_is_refused_before_git_can_half_do_it() {
     assert_eq!(id(&repo, "refs/stash"), stash);
     assert_eq!(repo.git(&["symbolic-ref", "HEAD"]), "refs/heads/main");
 }
+
+// ── the `working tree:` line's one rule ─────────────────────────────────
+//
+// **The line names the files that differ between the tree `HEAD` has now
+// and the tree it will have once the operation lands.** Nothing else — and
+// in particular not the two tips the operation happens to mention, which
+// also counts `HEAD`'s own commits: they are already on disk and do not
+// move. That pair was what a no-ff merge, a rebase and a cherry-pick all
+// drew, and it named a file git never touched in every one of them
+// (m5/32, findings from the M5 acceptance walk).
+//
+// Each test below draws the plan, runs the operation, and reads the bytes
+// on disk before and after. The comparison is against the **files**, not
+// against another `git diff`, so a mutation that puts the old pair back
+// cannot make both sides wrong together.
+
+/// The bytes of every file the `diverged` shape can have, present or not.
+fn files_now(repo: &TempRepo) -> Vec<(&'static str, Option<Vec<u8>>)> {
+    ["base.txt", "main.txt", "feature.txt"]
+        .into_iter()
+        .map(|name| {
+            let bytes = repo.exists(name).then(|| repo.read(name));
+            (name, bytes)
+        })
+        .collect()
+}
+
+/// Which of those files git actually rewrote, in name order.
+fn really_changed(
+    before: &[(&'static str, Option<Vec<u8>>)],
+    after: &[(&'static str, Option<Vec<u8>>)],
+) -> Vec<PathBuf> {
+    before
+        .iter()
+        .zip(after)
+        .filter(|((_, was), (_, now))| was != now)
+        .map(|((name, _), _)| PathBuf::from(name))
+        .collect()
+}
+
+/// The paths a plan drew as updated, in name order.
+fn drawn(plan: &PreviewPlan) -> Vec<PathBuf> {
+    let WorktreeEffect::Updated { paths, more } = &plan.worktree else {
+        panic!("not an Updated effect: {:?}", plan.worktree);
+    };
+    assert!(!more, "the shape is too small to cap");
+    let mut paths = paths.clone();
+    paths.sort();
+    paths
+}
+
+/// A merge that commits: the files the **source** gained since the two
+/// diverged, never `into` against `source`, which would also name
+/// `main.txt` — `HEAD`'s own commit, already on disk.
+#[test]
+fn a_no_ff_merge_names_only_the_files_the_source_brings() {
+    let repo = diverged();
+    let op = merge_op(&repo, "feature", FastForward::Never);
+    let plan = preview_of(&repo, &op);
+    assert_eq!(
+        drawn(&plan),
+        vec![PathBuf::from("feature.txt")],
+        "the two tips against each other would add main.txt, which does not move"
+    );
+
+    let before = files_now(&repo);
+    run(&repo, &op, NOW);
+    assert_eq!(really_changed(&before, &files_now(&repo)), drawn(&plan));
+}
+
+/// A rebase: the files **`onto`** gained since the two diverged. The
+/// branch's own commits are replayed on top, so their files are already
+/// here and do not move.
+#[test]
+fn a_rebase_names_only_the_files_onto_brings() {
+    let repo = diverged();
+    let op = rebase_op(&repo, "feature");
+    let plan = preview_of(&repo, &op);
+    assert_eq!(
+        drawn(&plan),
+        vec![PathBuf::from("feature.txt")],
+        "the branch against `onto` would add main.txt, which is replayed and stays"
+    );
+
+    let before = files_now(&repo);
+    run(&repo, &op, NOW);
+    assert_eq!(really_changed(&before, &files_now(&repo)), drawn(&plan));
+}
+
+/// A cherry-pick: each picked commit against its **own first parent**,
+/// which is what the patch is. `HEAD` against the commit would name
+/// everything on the other branch, picked or not.
+#[test]
+fn a_cherry_pick_names_only_the_picked_patch() {
+    let repo = diverged();
+    let op = pick_op(&repo, "feature");
+    let plan = preview_of(&repo, &op);
+    assert_eq!(
+        drawn(&plan),
+        vec![PathBuf::from("feature.txt")],
+        "HEAD against the picked commit would add main.txt, which is not in the patch"
+    );
+
+    let before = files_now(&repo);
+    run(&repo, &op, NOW);
+    assert_eq!(really_changed(&before, &files_now(&repo)), drawn(&plan));
+}
+
+/// A fast-forward lands `HEAD` on a real commit, so its tree is the pair
+/// directly — and the fork point *is* `into`, so the rule agrees with
+/// itself. This is the one case where the two tips were always right, and
+/// it is why the wrong pair survived: it looked right here.
+#[test]
+fn a_fast_forward_merge_and_the_fork_point_rule_agree() {
+    let repo = ahead();
+    repo.git(&["switch", "-q", "feature"]);
+    let op = merge_op(&repo, "main", FastForward::Default);
+    let plan = preview_of(&repo, &op);
+    assert!(plan.ghosts.is_empty(), "a fast-forward draws no ghost");
+    assert_eq!(drawn(&plan), vec![PathBuf::from("main.txt")]);
+
+    let before = files_now(&repo);
+    run(&repo, &op, NOW);
+    assert_eq!(really_changed(&before, &files_now(&repo)), drawn(&plan));
+}

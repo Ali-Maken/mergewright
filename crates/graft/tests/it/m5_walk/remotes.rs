@@ -79,14 +79,29 @@ fn pull_diverged_offers_m_and_r() -> Scenario {
     }
 }
 
-/// The refused pull moved nothing; `r` then rebased `ours locally` onto
-/// the tracking ref, the ghost equals git, the bare is untouched.
+/// The refused pull moved nothing of the user's — only the tracking ref its
+/// fetch half brought forward; `r` then rebased `ours locally` onto that
+/// tracking ref, the ghost equals git, the bare is untouched.
 fn pull_diverged_holds(fixture: &Fixture, marks: &Marks) -> Result<(), String> {
     let diverged = marks.get("diverged")?;
     a_status_said(diverged, "have diverged")?;
-    check(diverged.repo.refs == marks.before.repo.refs, || {
-        "the refused pull moved a ref".to_owned()
+    // The **local** branches and `HEAD` stayed where they were: the pull
+    // refused to fast-forward and wrote nothing of the user's. Its fetch
+    // half did run, and `refs/remotes/origin/main` moving is that half
+    // doing its job — it is exactly what `r` rebases onto below without a
+    // second fetch. Reading `refs` whole called that fetch "a ref moved"
+    // (m5/32; unreachable while the `See` step above failed).
+    check(heads(diverged) == heads(&marks.before), || {
+        "the refused pull moved a local branch".to_owned()
     })?;
+    check(diverged.repo.head == marks.before.repo.head, || {
+        "the refused pull moved HEAD".to_owned()
+    })?;
+    let tracking_was = marks.before.repo.refs.get("refs/remotes/origin/main");
+    check(
+        diverged.repo.refs.get("refs/remotes/origin/main") != tracking_was,
+        || "the pull's fetch left origin/main where it was".to_owned(),
+    )?;
     let rebased = marks.get("rebased")?;
     let claim = marks.claim()?;
     check(claim.plan.plan.ghosts.len() == 1, || {
@@ -108,4 +123,16 @@ fn pull_diverged_holds(fixture: &Fixture, marks: &Marks) -> Result<(), String> {
     check(rebased.bare == marks.before.bare, || {
         "the rebase touched the bare".to_owned()
     })
+}
+
+/// Only the local branches of a truth, as name/oid pairs: what a refused
+/// pull must leave alone, without counting the tracking refs its fetch half
+/// is supposed to move.
+fn heads(truth: &super::truth::Truth) -> Vec<(&String, &String)> {
+    truth
+        .repo
+        .refs
+        .iter()
+        .filter(|(name, _)| name.starts_with("refs/heads/"))
+        .collect()
 }

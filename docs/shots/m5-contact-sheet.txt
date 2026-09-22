@@ -21,7 +21,7 @@ what right looks like: TESTING.md § Per breakpoint, Rebase preview row: the sam
 
 m5 walk capture: m5-01-preview-rebase — scenario preview-opens-with-ghosts-and-plan-commands, keys j j r, unicode tier, 160x48
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-FAFU1j  8 commits
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-cRbert  8 commits
   ●     finish the feature                                                                                                                       GF 6y   8d6cd28
   ●     start the feature                                                                                                                        GF 6y   52f3b96
   │     after rebase
@@ -62,7 +62,7 @@ m5 walk capture: m5-01-preview-rebase — scenario preview-opens-with-ghosts-and
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 2 commits replayed                                                                                                                                           │
 │ feature 8d6cd28 → 2 new commits                                                                                                                              │
-│ working tree: 4 files updated                                                                                                                                │
+│ working tree: 2 files updated                                                                                                                                │
 │ no conflicts expected                                                                                                                                        │
 │ undo: u takes this back                                                                                                                                      │
 │ git rebase --no-update-refs --no-autostash main                                                                                                              │
@@ -72,12 +72,12 @@ m5 walk capture: m5-01-preview-rebase — scenario preview-opens-with-ghosts-and
 
 ================================================================================
 docs/shots/m5-01-preview-rebase-80x24.txt
-what right looks like: TESTING.md "History" § Per breakpoint, Rebase preview row: `r` on `main` from `feature` — two ghost rows under `after rebase` with `—` for SHA and age, the box `Preview: rebase feature onto main`, `2 commits replayed`, `feature 8d6cd28 → 2 new commits`, `working tree: 4 files updated` (the walk finds two files change — read that line as unverified), `no conflicts expected`, `undo: u takes this back`, `git rebase --no-update-refs --no-autostash main`, `▸[ Cancel ]   [ Confirm ]`, the box's own footer `←→ choose  ⏎ act  esc cancel`.
+what right looks like: TESTING.md "History" § Per breakpoint, Rebase preview row: `r` on `main` from `feature` — two ghost rows under `after rebase` with `—` for SHA and age, the box `Preview: rebase feature onto main`, `2 commits replayed`, `feature 8d6cd28 → 2 new commits`, `working tree: 2 files updated` (the two files `feature` brings — the walk proves it against git), `no conflicts expected`, `undo: u takes this back`, `git rebase --no-update-refs --no-autostash main`, `▸[ Cancel ]   [ Confirm ]`, the box's own footer `←→ choose  ⏎ act  esc cancel`.
 ================================================================================
 
 m5 walk capture: m5-01-preview-rebase — scenario preview-opens-with-ghosts-and-plan-commands, keys j j r, unicode tier, 80x24
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-MWIsJ5  8…
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-2M6ckb  8…
   ●     finish the feature                                          6y   8d6cd28
   ●     start the feature                                           6y   52f3b96
   │     after rebase
@@ -94,7 +94,7 @@ m5 walk capture: m5-01-preview-rebase — scenario preview-opens-with-ghosts-and
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────╮
 │ 2 commits replayed                                                           │
 │ feature 8d6cd28 → 2 new commits                                              │
-│ working tree: 4 files updated                                                │
+│ working tree: 2 files updated                                                │
 │ no conflicts expected                                                        │
 │ undo: u takes this back                                                      │
 │ git rebase --no-update-refs --no-autostash main                              │
@@ -109,7 +109,7 @@ what right looks like: TESTING.md § Per breakpoint, Merge preview row: same.
 
 m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, keys m, unicode tier, 160x48
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-CVLqao  8 commits
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-OP9pbQ  8 commits
   │ ●   [feature] finish the feature                                                                                                             GF 6y   8d6cd28
   │ ●   start the feature                                                                                                                        GF 6y   52f3b96
 ●─╯ │   main moves again                                                                                                                         GF 6y   45fa51d
@@ -150,7 +150,7 @@ m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, 
 ╭ Preview: merge feature into main ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 1 merge commit                                                                                                                                               │
 │ main 45fa51d → 1 new commit                                                                                                                                  │
-│ working tree: 4 files updated                                                                                                                                │
+│ working tree: 2 files updated                                                                                                                                │
 │ no conflicts expected                                                                                                                                        │
 │ undo: u takes this back                                                                                                                                      │
 │ git merge --no-edit --ff -m 'Merge branch '\''feature'\'' into main' feature                                                                                 │
@@ -160,12 +160,12 @@ m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, 
 
 ================================================================================
 docs/shots/m5-02-preview-merge-80x24.txt
-what right looks like: TESTING.md § Per breakpoint, Merge preview row: `m` on `feature` from `main` — `Preview: merge feature into main`, `1 merge commit`, `main 45fa51d → 1 new commit`, `working tree: 4 files updated` (unverified: the walk finds two), `no conflicts expected`, `undo: u takes this back`, the `git merge --no-edit --ff -m 'Merge branch '\''feature'\'' into main' feature` command, cursor on `[ Cancel ]`.
+what right looks like: TESTING.md § Per breakpoint, Merge preview row: `m` on `feature` from `main` — `Preview: merge feature into main`, `1 merge commit`, `main 45fa51d → 1 new commit`, `working tree: 2 files updated` (the two files `feature` brings — the walk proves it against git), `no conflicts expected`, `undo: u takes this back`, the `git merge --no-edit --ff -m 'Merge branch '\''feature'\'' into main' feature` command, cursor on `[ Cancel ]`.
 ================================================================================
 
 m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, keys m, unicode tier, 80x24
 
- graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-FV7APp  8…
+ graft /var/folders/z4/tqdvc9557mv3f1pqcnw0__xw0000gn/T/graft-trivial-9Dh0vm  8…
   │ ●   [feature] finish the feature                                6y   8d6cd28
   │ ●   start the feature                                           6y   52f3b96
 ●─╯ │   main moves again                                            6y   45fa51d
@@ -182,7 +182,7 @@ m5 walk capture: m5-02-preview-merge — scenario merge-no-ff-ghost-equals-git, 
 ╭ Preview: merge feature into main ────────────────────────────────────────────╮
 │ 1 merge commit                                                               │
 │ main 45fa51d → 1 new commit                                                  │
-│ working tree: 4 files updated                                                │
+│ working tree: 2 files updated                                                │
 │ no conflicts expected                                                        │
 │ undo: u takes this back                                                      │
 │ git merge --no-edit --ff -m 'Merge branch '\''feature'\'' into main' feature │
@@ -4028,7 +4028,7 @@ what right looks like: Capture header "What right looks like": two ghost rows sh
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 2 commits replayed                                                                                                                                           │
 │ feature 8d6cd28 → 2 new commits                                                                                                                              │
-│ working tree: 4 files updated                                                                                                                                │
+│ working tree: 2 files updated                                                                                                                                │
 │ no conflicts expected                                                                                                                                        │
 │ undo: u takes this back                                                                                                                                      │
 │ git rebase --no-update-refs --no-autostash main                                                                                                              │
@@ -4085,7 +4085,7 @@ what right looks like: Capture header "What right looks like": two ghost rows sh
 ╭ Preview: rebase feature onto main ───────────────────────────────────────────╮
 │ 2 commits replayed                                                           │
 │ feature 8d6cd28 → 2 new commits                                              │
-│ working tree: 4 files updated                                                │
+│ working tree: 2 files updated                                                │
 │ no conflicts expected                                                        │
 │ undo: u takes this back                                                      │
 │ git rebase --no-update-refs --no-autostash main                              │
@@ -4180,7 +4180,7 @@ what right looks like: Capture header "What right looks like": the rows on scree
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ 5 commits replayed                                                                                                                                           │
 │ topic e7e39a7 → 5 new commits                                                                                                                                │
-│ working tree: 6 files updated                                                                                                                                │
+│ working tree: 1 file updated                                                                                                                                 │
 │ no conflicts expected                                                                                                                                        │
 │ undo: u takes this back                                                                                                                                      │
 │ git rebase --no-update-refs --no-autostash old-release                                                                                                       │
@@ -4251,7 +4251,7 @@ what right looks like: Capture header "What right looks like": the rows on scree
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────╮
 │ 5 commits replayed                                                           │
 │ topic e7e39a7 → 5 new commits                                                │
-│ working tree: 6 files updated                                                │
+│ working tree: 1 file updated                                                 │
 │ no conflicts expected                                                        │
 │ undo: u takes this back                                                      │
 │ git rebase --no-update-refs --no-autostash old-release                       │

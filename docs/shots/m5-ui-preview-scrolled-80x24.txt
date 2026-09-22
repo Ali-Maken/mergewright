@@ -56,7 +56,7 @@
 ╭ Preview: rebase topic onto old-release ──────────────────────────────────────╮
 │ 5 commits replayed                                                           │
 │ topic e7e39a7 → 5 new commits                                                │
-│ working tree: 6 files updated                                                │
+│ working tree: 1 file updated                                                 │
 │ no conflicts expected                                                        │
 │ undo: u takes this back                                                      │
 │ git rebase --no-update-refs --no-autostash old-release                       │

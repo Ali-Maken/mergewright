@@ -1577,23 +1577,36 @@ refs, HEAD, index tree, files, journal length, the claim's own words), exit
 scenario (`tests/it/m5_walk/`, `m5_walk::every_scenario::*`). Every
 scenario ends with `git fsck --no-dangling` saying nothing but notices.
 
-**Five scenarios FAIL on this hash, and are left failing** (fixing what the
-walk finds is outside the acceptance ticket; the lines are in the ticket's
-NOTES for the conductor):
+**All 28 scenarios pass.** The five the acceptance walk left failing on
+purpose were fixed in m5/32:
 
 - `merge-no-ff-ghost-equals-git`, `rebase-two-commits-ghost-equals-git`,
   `rebase-via-drop-menu`, `cherry-pick-via-menu-ghost-equals-git` — the
-  box's **working-tree line names files that do not change**: a merge of
-  `feature` into `main` draws `main-one.txt` (main's own file) as updated
-  and says `4 files updated` where git changes two. The refs, ghosts and
-  patch-ids all hold; only the worktree forecast is wrong
-  (`graft-ops/src/preview/kinds.rs:77`, `:118`, `:196-213` diff the two
-  tips against each other instead of HEAD against the result).
+  box's **working-tree line named files that do not change**: a merge of
+  `feature` into `main` drew `main-one.txt` (main's own file) as updated
+  and said `4 files updated` where git changes two. One cause in all four:
+  the line diffed the two tips the operation mentions, which also counts
+  `HEAD`'s own commits. It now answers one question — which files differ
+  between the tree `HEAD` has now and the tree it will have once the
+  operation lands — in one place (`graft-ops/src/preview.rs`, `Landing`
+  and `worktree`). Direct tests: `graft-ops::it history_ops::
+  a_no_ff_merge_names_only_the_files_the_source_brings`,
+  `a_rebase_names_only_the_files_onto_brings`,
+  `a_cherry_pick_names_only_the_picked_patch`,
+  `a_fast_forward_merge_and_the_fork_point_rule_agree` — each draws the
+  plan, runs the operation, and compares the drawn paths with the file
+  **bytes** that changed on disk.
 - `pull-diverged-offers-m-and-r` — after `p` on a diverged branch the line
-  offers `m` and `r`, but the tip it remembers for `origin/main` is the one
-  from **before** the pull's own fetch, so `r` is refused once with
-  `main moved since the preview · r again` (`graft/src/update/remote.rs:286-299`,
-  `:860-865`; `graft/src/update/preview.rs:1080-1088`).
+  offers `m` and `r`, and the tip it remembers for `origin/main` was the
+  one from **before** the pull's own fetch, so `r` was refused once with
+  `main moved since the preview · r again`. The refusal machinery
+  (`tip_holds`, `Refusal::Moved`) was right and is untouched; the record
+  was wrong. While the line is on screen the tip is now re-read from the
+  refs at the tail of every `update`
+  (`graft/src/update/remote.rs`, `forget_stale_divergence`), so both halves
+  of the pair `r` pins come from one reading of the refs. Test:
+  `graft update::remote::tests::
+  the_diverged_line_aims_at_where_the_fetch_left_the_tracking_ref`.
 
 Captures: `docs/shots/m5-<nn>-<what>-<WxH>.txt`, eight visual results at
 80x24 and 160x48, the banner also at 120x40, the too-small preview at
@@ -1626,8 +1639,10 @@ keeps every `m5-*.txt` captioned).
   `shared.txt` unmerged, `a` asks `Cancel`/`Abort` first and restores the
   tree; the stop survives a relaunch; the time machine's three steps put
   the index tree back to before the first stage, and three `U` redo it.
-- **Does not prove the worktree forecast** (the four failures above) —
-  read the box's `working tree:` line as unverified until they pass.
+- **Proves the worktree forecast** since m5/32: every `ghost-equals-git`
+  scenario checks each path the box named against the files that really
+  changed, and the four `history_ops` tests above check the whole path set
+  both ways against the bytes on disk.
 - **Does not walk** conflict continuation (`c` after a resolve), a rebase
   that stops twice, `M mergetool`, `e edit`, `u` during an operation, the
   refs-and-names group (`b`, `t`, delete, stash-`b`), the `Fix:` verbs,
@@ -1737,8 +1752,8 @@ What each capture shows; 120x40 is `not run` except for the banner.
 
 | View | 80x24 | 120x40 | 160x48 |
 |---|---|---|---|
-| Rebase preview (`m5-01-preview-rebase`) | `Preview: rebase feature onto main`, two ghost rows under `after rebase` with `—` for SHA and age, `2 commits replayed`, `feature 8d6cd28 → 2 new commits`, `working tree: 4 files updated` (**the walk says 2 files change**), `no conflicts expected`, `undo: u takes this back`, `git rebase --no-update-refs --no-autostash main`, `▸[ Cancel ]   [ Confirm ]` | not run | same box, wider graph |
-| Merge preview (`m5-02-preview-merge`) | `Preview: merge feature into main`, `1 merge commit`, `main 45fa51d → 1 new commit`, the `git merge --no-edit --ff -m '…' feature` command | not run | same |
+| Rebase preview (`m5-01-preview-rebase`) | `Preview: rebase feature onto main`, two ghost rows under `after rebase` with `—` for SHA and age, `2 commits replayed`, `feature 8d6cd28 → 2 new commits`, `working tree: 2 files updated` (the two `main` brings — proved against git by the walk), `no conflicts expected`, `undo: u takes this back`, `git rebase --no-update-refs --no-autostash main`, `▸[ Cancel ]   [ Confirm ]` | not run | same box, wider graph |
+| Merge preview (`m5-02-preview-merge`) | `Preview: merge feature into main`, `1 merge commit`, `main 45fa51d → 1 new commit`, `working tree: 2 files updated` (the two `feature` brings), the `git merge --no-edit --ff -m '…' feature` command | not run | same |
 | Hard-reset preview (`m5-03-preview-reset-hard`) | the box after `.` → `Reset main to here, hard`: `working tree: LOSES base.txt (backup saved)` | not run | same |
 | Time machine (`m5-04-time-machine`) | `Preview: revert to before "stage one.txt" (3 steps)`, `index and working tree restored from backup`, no git line | not run | same |
 | Too small (`m5-05-preview-too-small`, 38x10 only) | `preview needs 40x12 · esc closes` on the last row, the ghost rows still drawn above | — | — |
@@ -1748,8 +1763,8 @@ What each capture shows; 120x40 is `not run` except for the banner.
 
 ### Per terminal: walk the history group
 
-Run `cargo run -p graft --example m5_walk` (expect the five `FAIL`s named
-above and `ok` for the rest), then in a clone of your own: `r` on a branch
+Run `cargo run -p graft --example m5_walk` (expect `ok` for all 28), then
+in a clone of your own: `r` on a branch
 row, look at the ghost rows and the box, `Esc`; `m` on a branch that
 conflicts, confirm, resolve in your editor, `c`; `.` on a commit, `Reset …
 hard` with an edited file, confirm, `u`. Record the result here, naming the

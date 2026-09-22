@@ -202,15 +202,23 @@ fn rebase_holds(fixture: &Fixture, marks: &super::truth::Marks) -> Result<(), St
         || "a rebase ghost replays nothing".to_owned(),
     )?;
     ghost_equals_git(claim, &marks.before, rebased, fixture)?;
-    let onto = fixture.git(&["rev-parse", "feature~2"])?;
+    // The rebased branch is named by the **oid the `rebased` mark holds**,
+    // never by `feature`: `u` has already put that name back, so every
+    // `feature~n` here would read the history the rebase replaced. Objects
+    // outlive the ref, so the oid still resolves (m5/32: these three checks
+    // were unreachable while the working-tree line failed above, and read
+    // the undone history the moment it stopped failing).
+    let new_tip = branch(rebased, "feature")?;
+    let onto = fixture.git(&["rev-parse", &format!("{new_tip}~2")])?;
     check(onto.trim() == branch(&marks.before, "main")?, || {
-        format!("feature~2 is {}, not main's tip", onto.trim())
+        format!("the rebased branch's ~2 is {}, not main's tip", onto.trim())
     })?;
     let old_tip = branch(&marks.before, "feature")?;
     let old_first = fixture.git(&["rev-parse", &format!("{old_tip}~1")])?;
+    let new_first = fixture.git(&["rev-parse", &format!("{new_tip}~1")])?;
     for (new, old) in [
-        ("feature", old_tip.as_str()),
-        ("feature~1", old_first.trim()),
+        (new_tip.as_str(), old_tip.as_str()),
+        (new_first.trim(), old_first.trim()),
     ] {
         check(
             patch_id(fixture, new, false)? == patch_id(fixture, old, false)?,

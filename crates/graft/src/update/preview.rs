@@ -853,9 +853,12 @@ fn head_line(plan: &PreviewPlan) -> Option<String> {
 fn worktree_line(effect: &WorktreeEffect) -> String {
     match effect {
         WorktreeEffect::Untouched => "working tree: untouched".to_owned(),
+        // `files_label`, not `{n} files`: "1 files updated" reads as a bug
+        // in the counter, and every other count in this box already agrees
+        // with its noun.
         WorktreeEffect::Updated { paths, more } => format!(
-            "working tree: {} files updated{}",
-            paths.len(),
+            "working tree: {} updated{}",
+            graft_ui::stash_screen::files_label(paths.len()),
             if *more { ", more" } else { "" }
         ),
         WorktreeEffect::Lost { paths } => {

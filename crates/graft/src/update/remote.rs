@@ -54,8 +54,13 @@ pub struct RemoteState {
     ///
     /// Set only when the tip is known: without it there is nothing to pin
     /// an `Operation` to, and a key hint that cannot be honoured is worse
-    /// than none. Cleared by dismissing the line, by any write launching,
-    /// and by a refresh — each of which makes the recorded tip a guess.
+    /// than none. Cleared by dismissing the line and by any write
+    /// launching, each of which makes the recorded tip a guess.
+    ///
+    /// The tip is **not** kept as it was first recorded. The pull's own
+    /// fetch moves the tracking ref after the params were built, so
+    /// [`forget_stale_divergence`] re-reads it from the refs at the tail of
+    /// every `update` for as long as the line is showing (m5/32).
     pub diverged_upstream: Option<(String, Oid)>,
     /// The push whose undo-after-push box has already been answered
     /// (ADR-0038 §4).
@@ -140,7 +145,8 @@ pub(super) fn launched(
 /// [`forget_stale_divergence`] the line is still the one on screen.
 pub const DIVERGED_KEYS: &str = "m merge it  r rebase onto it";
 
-/// The remembered upstream tip outlives its words otherwise.
+/// The remembered upstream outlives its words otherwise, and its tip goes
+/// stale the moment the refs move.
 ///
 /// `m` and `r` aim at [`RemoteState::diverged_upstream`] instead of at the
 /// row under the cursor, which is right only while the line that explained
@@ -148,6 +154,21 @@ pub const DIVERGED_KEYS: &str = "m merge it  r rebase onto it";
 /// goes — a job's `Done`, a later refusal — used to leave the tip behind,
 /// so the next `m` silently merged the upstream from wherever the cursor
 /// happened to be (review 08 Minor 9). Run at the tail of every `update`.
+///
+/// While the line **is** showing, the tip is re-read from the refs the app
+/// now holds. The record is written by [`remote_failed`] from the params
+/// the `p` was built with — taken **before the pull's own fetch**, which is
+/// the very thing that moved the tracking ref — so a recorded tip is stale
+/// from the instant it is written, and the first `r` was refused with
+/// `main moved since the preview` (m5/32, finding 2). Re-reading here makes
+/// the tip a projection of the refs rather than a snapshot beside them:
+/// `history_operation` already takes the current branch from those same
+/// refs, so both halves of the pinned pair now come from one reading.
+///
+/// A tracking ref the refs do not list keeps what it had:
+/// [`crate::refs::RefBadges::remotes`] leaves out a remote level a local
+/// branch tracks at the same commit, and guessing would be worse than the
+/// `Moved` refusal `tip_holds` already gives.
 pub(super) fn forget_stale_divergence(state: &mut AppState) {
     let showing = matches!(
         &state.status,
@@ -155,7 +176,27 @@ pub(super) fn forget_stale_divergence(state: &mut AppState) {
     );
     if !showing {
         state.remote.diverged_upstream = None;
+        return;
     }
+    let Some((tracking, tip)) = state.remote.diverged_upstream.as_mut() else {
+        return;
+    };
+    if let Some(now) = state
+        .refs
+        .as_deref()
+        .and_then(|refs| tracking_tip(refs, tracking))
+    {
+        *tip = now;
+    }
+}
+
+/// Where the refs the app holds put the tracking ref named by its full name
+/// (`refs/remotes/origin/main`); `None` when they carry no badge for it.
+fn tracking_tip(refs: &crate::refs::RefBadges, tracking: &str) -> Option<Oid> {
+    let short = short_tracking(tracking).as_bytes();
+    refs.remotes()
+        .find(|(_, name)| *name == short)
+        .map(|(oid, _)| oid)
 }
 
 /// The key hint a running remote write's status line ends with. The footer
