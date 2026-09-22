@@ -267,3 +267,132 @@ fn take_view(take: Take) -> TakeView {
         Take::Both => TakeView::Both,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use super::{resolver_explainer, resolver_title, resolver_view};
+    use crate::update::AppState;
+    use crate::update::resolver::{OpenedFrom, ResolverState};
+    use graft_git::state::{InProgress, InProgressDetail};
+
+    /// A resolver open on `bytes`, at `path`.
+    fn open_on(bytes: &[u8], path: &str) -> AppState {
+        let file = graft_git::conflict::parse(bytes).expect("a conflict file");
+        AppState {
+            working_tree: Some(Arc::new(graft_git::status::WorkingTreeStatus {
+                entries: vec![graft_git::status::StatusEntry {
+                    path: path.into(),
+                    original_path: None,
+                    staged: None,
+                    unstaged: Some(graft_git::status::Change::Modified),
+                    untracked: false,
+                    unmerged: true,
+                    unmerged_how: None,
+                    submodule: false,
+                }],
+            })),
+            resolver: Some(ResolverState {
+                path: path.into(),
+                opened_from: OpenedFrom::Pane,
+                file: Some(Arc::new(file)),
+                cursor_block: Some(0),
+                top: 0,
+                base_shown: false,
+                job: None,
+                staging: None,
+                notice: None,
+            }),
+            ..AppState::default()
+        }
+    }
+
+    /// Repo bytes reach the screen through here and nowhere else, so an
+    /// escape sequence in a conflicted file cannot repaint the terminal and
+    /// a newline in a path cannot forge a row.
+    #[test]
+    fn resolver_view_sanitises() {
+        let bytes =
+            b"plain\n<<<<<<< \x1b[31mHEAD\nours \x1b[2Jline\n=======\ntheirs\n>>>>>>> feature\n";
+        let state = open_on(bytes, "src/with\na newline.rs");
+        let view = resolver_view(&state, 120).expect("a document");
+
+        assert!(
+            !view.title.as_str().contains('\n') && !view.title.as_str().contains('\u{1b}'),
+            "the title carries a control character: {:?}",
+            view.title.as_str()
+        );
+        let drawn: Vec<String> = view
+            .regions
+            .iter()
+            .flat_map(|region| match region {
+                graft_ui::conflict_resolver::RegionView::Plain { lines, .. } => {
+                    lines.iter().map(|line| line.as_str().to_owned()).collect()
+                }
+                graft_ui::conflict_resolver::RegionView::Block(block) => block
+                    .ours
+                    .iter()
+                    .chain(block.theirs.iter())
+                    .map(|line| line.as_str().to_owned())
+                    .chain([
+                        block.ours_label.as_str().to_owned(),
+                        block.theirs_label.as_str().to_owned(),
+                    ])
+                    .collect::<Vec<_>>(),
+                graft_ui::conflict_resolver::RegionView::WholeFile { .. } => Vec::new(),
+            })
+            .collect();
+        assert!(
+            !drawn.iter().any(|line| line.contains('\u{1b}')),
+            "an escape sequence reached the screen: {drawn:?}"
+        );
+        assert!(
+            drawn.iter().any(|line| line.contains("line")),
+            "the line itself was dropped, not cleaned: {drawn:?}"
+        );
+    }
+
+    /// A rebase swaps `ours` and `theirs` round compared with a merge, which
+    /// is the one thing everybody gets wrong. The explainer says which.
+    #[test]
+    fn explainer_names_the_sides() {
+        let mut state = open_on(b"a\n<<<<<<< HEAD\nx\n=======\ny\n>>>>>>> f\n", "both.txt");
+        state.in_progress = Some(InProgressDetail {
+            kind: InProgress::Rebase,
+            step: None,
+            head_name: None,
+            onto: None,
+        });
+        assert_eq!(
+            resolver_explainer(&state).as_deref(),
+            Some(
+                "ours = the branch you are rebasing onto, what you are rebasing onto · \
+                 theirs = the commit being replayed"
+            )
+        );
+
+        state.in_progress = None;
+        assert_eq!(
+            resolver_explainer(&state),
+            None,
+            "nothing in progress, no sides to explain"
+        );
+    }
+
+    /// The title is the only place the file's own count is drawn, so it says
+    /// where in the list this file is and how much of it is left.
+    #[test]
+    fn the_title_says_where_you_are() {
+        let path = std::path::Path::new("src/auth.rs");
+        assert_eq!(
+            resolver_title(path, 2, 5, 1, 3, true),
+            "src/auth.rs · file 2 of 5 · 1 of 3 conflicts open"
+        );
+        assert_eq!(
+            resolver_title(path, 2, 5, 1, 3, false),
+            "src/auth.rs · 1/3 open",
+            "the short form is what fits under 100 columns"
+        );
+    }
+}

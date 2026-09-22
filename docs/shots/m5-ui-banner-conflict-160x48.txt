@@ -74,22 +74,22 @@
 │ ●  ⓘ [feature] the feature's take                                             88m  38c48dd
 ●─╯    the shared files                                                         89m  58854e9
 ●      Ship release 29                                                          2h   b796998 CONFLICTS (16)
-●      Ship release 28                                                          2h   8b1f759   notes.md                                                 unmerged
-●      Ship release 27                                                          2h   0e2c4ab   shared.rs                                                unmerged
+●      Ship release 28                                                          2h   8b1f759   notes.md                                            both modified
+●      Ship release 27                                                          2h   0e2c4ab   shared.rs                                           both modified
 ●      Ship release 26                                                          2h   e478821   ▾ src/
-●      Ship release 25                                                          2h   4f73502     step_00.rs                                             unmerged
-●      Ship release 24                                                          2h   dbaccce     step_01.rs                                             unmerged
-●      Ship release 23                                                          2h   fcfad85     step_02.rs                                             unmerged
-●      Ship release 22                                                          2h   2b22a7d     step_03.rs                                             unmerged
-●      Ship release 21                                                          2h   f18afe9     step_04.rs                                             unmerged
-●      Ship release 20                                                          2h   8afb691     step_05.rs                                             unmerged
-●      Ship release 19                                                          2h   3c4da4b     step_06.rs                                             unmerged
-●      Ship release 18                                                          2h   56aee62     step_07.rs                                             unmerged
-●      Ship release 17                                                          2h   16ea802     step_08.rs                                             unmerged
-●      Ship release 16                                                          2h   9e9dfd0     step_09.rs                                             unmerged
-●      Ship release 15                                                          2h   a840fd9     step_10.rs                                             unmerged
-●      Ship release 14                                                          2h   0f8d5d6     step_11.rs                                             unmerged
-●      Ship release 13                                                          2h   78ddfac     step_12.rs                                             unmerged
+●      Ship release 25                                                          2h   4f73502     step_00.rs                                        both modified
+●      Ship release 24                                                          2h   dbaccce     step_01.rs                                        both modified
+●      Ship release 23                                                          2h   fcfad85     step_02.rs                                        both modified
+●      Ship release 22                                                          2h   2b22a7d     step_03.rs                                        both modified
+●      Ship release 21                                                          2h   f18afe9     step_04.rs                                        both modified
+●      Ship release 20                                                          2h   8afb691     step_05.rs                                        both modified
+●      Ship release 19                                                          2h   3c4da4b     step_06.rs                                        both modified
+●      Ship release 18                                                          2h   56aee62     step_07.rs                                        both modified
+●      Ship release 17                                                          2h   16ea802     step_08.rs                                        both modified
+●      Ship release 16                                                          2h   9e9dfd0     step_09.rs                                        both modified
+●      Ship release 15                                                          2h   a840fd9     step_10.rs                                        both modified
+●      Ship release 14                                                          2h   0f8d5d6     step_11.rs                                        both modified
+●      Ship release 13                                                          2h   78ddfac     step_12.rs                                        both modified
 ●      Ship release 12                                                          2h   9bedacc ▎
 ●      Ship release 11                                                          2h   e3bce29       1 + <<<<<<< HEAD
 ●      Ship release 10                                                          2h   185dcc3   1   2   our plan

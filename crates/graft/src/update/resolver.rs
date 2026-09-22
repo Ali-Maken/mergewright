@@ -828,3 +828,63 @@ fn scrolled_to(state: &AppState, block: usize) -> usize {
         None => top,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::scroll_block_into_view;
+    use graft_ui::conflict_resolver::{Layout, ScreenRow};
+
+    /// A hundred rows with a block header every ten.
+    fn layout_of(rows: usize, headers: &[usize]) -> Layout {
+        Layout {
+            rows: (0..rows)
+                .map(|row| match headers.iter().position(|at| *at == row) {
+                    Some(block) => ScreenRow::Header { block },
+                    None => ScreenRow::Plain {
+                        line_no: row + 1,
+                        text: graft_term::sanitize_line("a line"),
+                    },
+                })
+                .collect(),
+            block_row: headers.to_vec(),
+            columns: 120,
+        }
+    }
+
+    /// A take lands on a block the window has scrolled past: the window
+    /// moves, and it moves so the header is the **first** row, since
+    /// everything the block is about is below it.
+    #[test]
+    fn take_scrolls_the_block_into_view() {
+        let layout = layout_of(120, &[10, 50, 90]);
+
+        assert_eq!(
+            scroll_block_into_view(&layout, 2, 0, 20),
+            90,
+            "block 2's header is the first row of the window"
+        );
+        assert_eq!(
+            scroll_block_into_view(&layout, 0, 5, 20),
+            5,
+            "already on screen: the window does not move at all"
+        );
+        assert_eq!(
+            scroll_block_into_view(&layout, 0, 40, 20),
+            10,
+            "scrolling back is the same rule in the other direction"
+        );
+        assert_eq!(
+            scroll_block_into_view(&layout, 9, 7, 20),
+            7,
+            "a block that is not there moves nothing"
+        );
+    }
+
+    /// Never past the end: the last screenful is as far as the window goes,
+    /// or the rows below the document would be blank.
+    #[test]
+    fn the_window_stops_at_the_last_screenful() {
+        let layout = layout_of(100, &[10, 95]);
+        assert_eq!(scroll_block_into_view(&layout, 1, 0, 20), 80);
+    }
+}
