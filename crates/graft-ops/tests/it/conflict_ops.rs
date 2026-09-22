@@ -7,7 +7,7 @@
 
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use graft_core::journal::{EntryStatus, OperationKind};
 use graft_git::status::UnmergedHow;
@@ -454,6 +454,45 @@ fn a_stale_shape_is_refused() {
         Err(ApplyError::Refused(Refusal::NotUnmerged { .. })) => {}
         other => panic!("expected NotUnmerged, got {other:?}"),
     }
+}
+
+/// A binary `UU` from the real corpus: the one shape whose `how` says it has
+/// markers but which still goes to `ResolveWholeFile`, because git wrote no
+/// markers into a binary file for a take to reach.
+#[test]
+fn a_binary_conflict_resolves_whole() {
+    let scratch = graft_fixtures::copy_into_temp(graft_fixtures::Shape::StoppedMerge);
+    let handle = graft_git::repo::RepoHandle::open(scratch.path()).expect("the fixture opens");
+    let status = graft_git::status::read(&handle, &()).expect("the status reads");
+    assert_eq!(
+        status
+            .entry(Path::new("pic.bin"))
+            .and_then(|entry| entry.unmerged_how),
+        Some(UnmergedHow::BothModified)
+    );
+
+    let mut journal = crate::support::journal_for(&handle);
+    let never = crate::support::Never;
+    let mut ctx = crate::support::context(&handle, &mut journal, NOW, &never);
+    let applied = graft_ops::apply::apply(
+        &mut ctx,
+        &Operation::ResolveWholeFile(ResolveWholeParams {
+            path: PathBuf::from("pic.bin"),
+            side: Side::Theirs,
+            how: UnmergedHow::BothModified,
+        }),
+    )
+    .unwrap_or_else(|why| panic!("{}", why.explain()));
+    assert_eq!(applied.entry.description, "resolved pic.bin (theirs)");
+
+    let after = graft_git::status::read(&handle, &()).expect("the status reads again");
+    assert_eq!(
+        after
+            .entry(Path::new("pic.bin"))
+            .and_then(|entry| entry.unmerged_how),
+        None,
+        "pic.bin is resolved"
+    );
 }
 
 /// A repository whose index is unmerged with no operation in progress: what
