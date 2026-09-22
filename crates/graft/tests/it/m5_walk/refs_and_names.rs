@@ -15,7 +15,7 @@ use graft_core::journal::OperationKind;
 use graft_fixtures::Shape;
 
 use super::claim::ghost_equals_git;
-use super::fixture::{Fixture, forked, forked_on_main};
+use super::fixture::{Fixture, Remote, forked, forked_on_main};
 use super::steps::{Scenario, Step, Wait};
 use super::truth::Marks;
 use super::vocabulary::{
@@ -60,7 +60,7 @@ fn b_creates_and_checks_out() -> Scenario {
     Scenario {
         name: "b-creates-and-checks-out",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: forked,
         steps: vec![
@@ -117,7 +117,7 @@ fn b_refuses_bad_and_existing_names() -> Scenario {
     Scenario {
         name: "b-refuses-bad-and-existing-names",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: forked,
         steps: vec![
@@ -160,7 +160,7 @@ fn t_creates_a_tag() -> Scenario {
     Scenario {
         name: "t-creates-a-tag",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: forked,
         steps: vec![
@@ -206,7 +206,7 @@ fn delete_branch_then_u_restores() -> Scenario {
     Scenario {
         name: "delete-branch-then-u-restores",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: forked,
         steps: chain(vec![
@@ -243,7 +243,7 @@ fn delete_tag_then_u_restores() -> Scenario {
     Scenario {
         name: "delete-tag-then-u-restores",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: forked_with_tag,
         steps: chain(vec![
@@ -279,7 +279,7 @@ fn stash_b_branches_from_stash() -> Scenario {
     Scenario {
         name: "stash-b-branches-from-stash",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: with_a_stash,
         steps: chain(vec![
@@ -323,7 +323,7 @@ fn move_a_branch_not_checked_out() -> Scenario {
     Scenario {
         name: "move-a-branch-not-checked-out",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: forked_on_main,
         steps: chain(vec![

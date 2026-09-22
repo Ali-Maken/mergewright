@@ -8,7 +8,7 @@ use graft_fixtures::Shape;
 
 use super::claim::{ghost_equals_git, patch_id};
 use super::fixture::{
-    Fixture, already_up_to_date, conflicting, fast_forwardable, forked, forked_on_main,
+    Fixture, Remote, already_up_to_date, conflicting, fast_forwardable, forked, forked_on_main,
 };
 use super::steps::{Capture, Scenario, Step, Wait, When};
 use super::vocabulary::{
@@ -38,7 +38,7 @@ fn merge_ff_preview_equals_git() -> Scenario {
     Scenario {
         name: "merge-ff-preview-equals-git",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: fast_forwardable,
         steps: chain(vec![
@@ -71,7 +71,7 @@ fn merge_no_ff_ghost_equals_git() -> Scenario {
     Scenario {
         name: "merge-no-ff-ghost-equals-git",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: forked_on_main,
         steps: chain(vec![
@@ -133,7 +133,7 @@ fn merge_forecast_names_the_conflicting_path() -> Scenario {
     Scenario {
         name: "merge-forecast-names-the-conflicting-path",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: conflicting,
         steps: vec![
@@ -173,7 +173,7 @@ fn merge_already_up_to_date_offers_close() -> Scenario {
     Scenario {
         name: "merge-already-up-to-date-offers-close",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: already_up_to_date,
         steps: vec![
@@ -226,7 +226,7 @@ fn rebase_two_commits_ghost_equals_git() -> Scenario {
     Scenario {
         name: "rebase-two-commits-ghost-equals-git",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: forked,
         steps: chain(vec![
@@ -302,7 +302,7 @@ fn rebase_dirty_tree_refused_offers_stash() -> Scenario {
     Scenario {
         name: "rebase-dirty-tree-refused-offers-stash",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: |fixture| {
             forked(fixture)?;
@@ -343,7 +343,7 @@ fn rebase_via_drop_menu() -> Scenario {
     Scenario {
         name: "rebase-via-drop-menu",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: forked,
         steps: chain(vec![

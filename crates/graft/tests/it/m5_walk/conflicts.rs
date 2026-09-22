@@ -3,17 +3,17 @@
 //! relaunch; `c` refuses until the tree is resolved; and a rebase that
 //! stops twice is still **one** journal entry that **one** `u` takes back.
 
-use graft_core::event::KeyCode;
+use graft_core::event::{KeyCode, KeyPress};
 use graft_core::journal::{EntryStatus, OperationKind};
 use graft_fixtures::Shape;
 use graft_git::state::InProgress;
 
-use super::fixture::{conflicting, twice_conflicting};
+use super::fixture::{Remote, conflicting, twice_conflicting};
 use super::steps::{Capture, Fix, Scenario, Step, Wait, When};
 use super::truth::{Marks, Truth};
 use super::vocabulary::{
     a_status_said, branch, ch, chain, entries_of, file_was, key, last_entry, plain, same_files,
-    status_containing, undo,
+    same_refs, status_containing, undo,
 };
 use crate::repo_truth::check;
 
@@ -24,6 +24,10 @@ pub(super) fn conflicting_merges() -> Vec<Scenario> {
         conflict_survives_relaunch(),
         continue_refuses_until_resolved_then_one_entry_undoes(),
         rebase_stops_twice_same_entry(),
+        mergetool_absent_refuses_in_words(),
+        e_opens_editor_at_first_marker(),
+        u_refused_during_an_operation(),
+        journal_row_says_in_progress(),
     ]
 }
 
@@ -57,7 +61,7 @@ fn conflict_focuses_banner_and_lists_files() -> Scenario {
     Scenario {
         name: "conflict-focuses-banner-and-lists-files",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: conflicting,
         steps: chain(vec![
@@ -110,7 +114,7 @@ fn banner_a_aborts_and_restores() -> Scenario {
     Scenario {
         name: "banner-a-aborts-and-restores",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: conflicting,
         steps: chain(vec![
@@ -164,7 +168,7 @@ fn conflict_survives_relaunch() -> Scenario {
     Scenario {
         name: "conflict-survives-relaunch",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: conflicting,
         steps: chain(vec![
@@ -268,7 +272,7 @@ fn continue_refuses_until_resolved_then_one_entry_undoes() -> Scenario {
     Scenario {
         name: "continue-refuses-until-resolved-then-one-entry-undoes",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: conflicting,
         steps: chain(vec![
@@ -352,7 +356,7 @@ fn rebase_stops_twice_same_entry() -> Scenario {
     Scenario {
         name: "rebase-stops-twice-same-entry",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: twice_conflicting,
         steps: chain(vec![
@@ -432,4 +436,220 @@ fn two_stops_one_entry(fixture: &super::fixture::Fixture, marks: &Marks) -> Resu
         || "one u did not bring feature back".to_owned(),
     )?;
     same_files("one u after two stops", &marks.before, undone)
+}
+
+// ─────────────────── the keys that lead out, and the row ──────────────────
+
+/// Nothing moved between setup and `mark`, and git is still mid-merge: a
+/// refusal that ran something is not a refusal.
+fn nothing_ran_and_still_merging(marks: &Marks, mark: &str) -> Result<(), String> {
+    let after = marks.get(mark)?;
+    check(after.in_progress.as_deref() == Some("merge"), || {
+        format!("git says {:?}, not a merge", after.in_progress)
+    })?;
+    same_refs("the refusal ran nothing", &marks.before, after)?;
+    check(
+        after.journal.len() == marks.before.journal.len() + 1,
+        || {
+            format!(
+                "the journal grew by {}, not by the merge's one entry",
+                after.journal.len() - marks.before.journal.len()
+            )
+        },
+    )
+}
+
+/// `M` with no `merge.tool` in any config the app can reach: it says so,
+/// and names the two keys that do work. The **real** `git mergetool`
+/// hand-over is an external program and is walked nowhere — the user runs
+/// it (`TESTING.md`, "What the walk proves and what it does not").
+fn mergetool_absent_refuses_in_words() -> Scenario {
+    Scenario {
+        name: "mergetool-absent-refuses-in-words",
+        shape: Shape::Trivial,
+        remote: Remote::None,
+        size: (80, 24),
+        setup: conflicting,
+        steps: chain(vec![
+            merge_that_stops(),
+            vec![
+                Step::See("no merge tool is configured to start with", |state| {
+                    check(state.mergetool.is_none(), || {
+                        format!("the app found a merge tool: {:?}", state.mergetool)
+                    })
+                }),
+                key(ch('M')),
+                Step::See("M refuses in words and names what does work", |state| {
+                    status_containing(state, "no merge.tool configured")?;
+                    status_containing(state, "e edits shared.txt")?;
+                    status_containing(state, "a abort")
+                }),
+                Step::Mark("refused"),
+            ],
+        ]),
+        expect: |fixture, marks| {
+            nothing_ran_and_still_merging(marks, "refused")?;
+            a_status_said(marks.get("refused")?, "no merge.tool configured")?;
+            let body = fixture.bytes("shared.txt")?;
+            check(body.starts_with(b"<<<<<<<"), || {
+                "M touched shared.txt".to_owned()
+            })
+        },
+        capture: None,
+    }
+}
+
+/// `e` hands the conflicted file to `$EDITOR` at its first marker.
+///
+/// The walk presses the key for its **commands only** and never dispatches
+/// them: starting a real `$EDITOR` needs a real terminal, which a headless
+/// run has not got. So the two halves are checked where each one lives —
+/// the command names the unmerged path, and the line the hand-over opens at
+/// (`event_loop::outside::Handover::edit_conflict` asks
+/// `graft_git::history_reads::first_marker_line`) is the first `<<<<<<< `
+/// line of the file on disk, found again here by reading the bytes.
+/// `AppState` carries no line at all — `Command::OpenConflictEditor` has
+/// one field, `path` — so this is as close as a headless walk gets.
+fn e_opens_editor_at_first_marker() -> Scenario {
+    Scenario {
+        name: "e-opens-editor-at-first-marker",
+        shape: Shape::Trivial,
+        remote: Remote::None,
+        size: (80, 24),
+        setup: conflicting,
+        steps: chain(vec![
+            merge_that_stops(),
+            vec![
+                Step::KeyFor(
+                    "e asks for the editor on the conflicted file",
+                    KeyPress::plain(ch('e')),
+                    |commands| {
+                        let opened: Vec<&std::path::PathBuf> = commands
+                            .iter()
+                            .filter_map(|command| match command {
+                                graft::update::Command::OpenConflictEditor { path } => Some(path),
+                                _ => None,
+                            })
+                            .collect();
+                        check(opened.len() == 1, || {
+                            format!("e asked for {} editors: {commands:?}", opened.len())
+                        })?;
+                        check(opened[0].as_os_str() == "shared.txt", || {
+                            format!("e asked for {}", opened[0].display())
+                        })
+                    },
+                ),
+                Step::Mark("asked"),
+            ],
+        ]),
+        expect: |fixture, marks| {
+            nothing_ran_and_still_merging(marks, "asked")?;
+            // The line the hand-over would open at, and the line the bytes
+            // say it is. `expect` may read the disk here: `e` changed
+            // nothing, so the file is still what the mark saw.
+            let path = fixture.repo().join("shared.txt");
+            let opened = graft_git::history_reads::first_marker_line(&path)
+                .map_err(|why| format!("reading shared.txt: {why}"))?;
+            let body = fixture.bytes("shared.txt")?;
+            let first = body
+                .split(|byte| *byte == b'\n')
+                .position(|line| line.starts_with(b"<<<<<<< "))
+                .map(|index| index + 1);
+            check(first.is_some(), || {
+                "shared.txt has no `<<<<<<< ` line at all".to_owned()
+            })?;
+            check(opened == first, || {
+                format!("the hand-over opens at line {opened:?}, the marker is at {first:?}")
+            })
+        },
+        capture: None,
+    }
+}
+
+/// `u` in the middle of a stopped merge is refused **in words**, and the
+/// words name where the two real ends are. Undo takes back a finished
+/// operation; a merge git is standing in the middle of has not got one yet.
+fn u_refused_during_an_operation() -> Scenario {
+    Scenario {
+        name: "u-refused-during-an-operation",
+        shape: Shape::Trivial,
+        remote: Remote::None,
+        size: (80, 24),
+        setup: conflicting,
+        steps: chain(vec![
+            merge_that_stops(),
+            vec![
+                key(ch('u')),
+                Step::See("u refuses and says which operation to finish", |state| {
+                    status_containing(state, "finish or abort the merge first")?;
+                    check(state.operating.is_none(), || {
+                        format!("u started a write: {:?}", state.operating)
+                    })
+                }),
+                Step::Mark("refused"),
+            ],
+        ]),
+        expect: |fixture, marks| {
+            nothing_ran_and_still_merging(marks, "refused")?;
+            a_status_said(marks.get("refused")?, "finish or abort the merge first")?;
+            // The merge's own entry is still the pending one `c` or `a`
+            // will finish: `u` did not touch it.
+            stopped(marks, "refused")?;
+            let body = fixture.bytes("shared.txt")?;
+            check(body.starts_with(b"<<<<<<<"), || {
+                "u touched shared.txt".to_owned()
+            })
+        },
+        capture: None,
+    }
+}
+
+/// The journal browser's row for the merge git is standing in says **in
+/// progress** and offers the two keys that end it — not "done", and not the
+/// wording a torn previous run gets.
+fn journal_row_says_in_progress() -> Scenario {
+    Scenario {
+        name: "journal-row-says-in-progress",
+        shape: Shape::Trivial,
+        remote: Remote::None,
+        size: (120, 40),
+        setup: conflicting,
+        steps: chain(vec![
+            merge_that_stops(),
+            vec![
+                // The banner is modal while focused, so `J` needs the
+                // keyboard handed back first.
+                key(KeyCode::Escape),
+                key(ch('J')),
+                Step::WaitFor(Wait::Journal),
+                Step::See("the row says in progress, with the keys", |state| {
+                    let frame = crate::captures::frame(state, 120, 40);
+                    check(
+                        frame
+                            .iter()
+                            .any(|line| line.contains("in progress — c continue  a abort")),
+                        || {
+                            format!(
+                                "no journal row says it: {:?}",
+                                frame
+                                    .iter()
+                                    .filter(|line| line.contains("merge"))
+                                    .collect::<Vec<_>>()
+                            )
+                        },
+                    )?;
+                    check(
+                        !frame.iter().any(|line| line.contains("interrupted")),
+                        || "the row reads as a torn run, not a live one".to_owned(),
+                    )
+                }),
+                Step::Mark("browsing"),
+            ],
+        ]),
+        expect: |_, marks| {
+            nothing_ran_and_still_merging(marks, "browsing")?;
+            stopped(marks, "browsing")
+        },
+        capture: None,
+    }
 }

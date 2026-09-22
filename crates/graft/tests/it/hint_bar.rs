@@ -16,13 +16,8 @@
 )]
 
 use std::path::Path;
-use std::time::Duration;
 
 use graft::update::AppState;
-use graft_core::capabilities::{
-    Capabilities, CellSize, CellSizeSource, ColorDepth, ProbeOutcome, RenderingTier, Rgb,
-    Supported, Theme as TerminalTheme, ThemeHint, ThemeSource, TmuxStatus,
-};
 use graft_core::event::KeyCode;
 
 use crate::app_harness::{App, changes_pane, git};
@@ -58,41 +53,6 @@ fn dated_commit(repo: &Path, subject: &str, minute: i64) {
     let when = format!("@{} +0000", HINTS_EPOCH + minute * 60);
     graft_fixtures::git::run_at(repo, &["commit", "-m", subject], &when)
         .unwrap_or_else(|why| panic!("committing {subject:?}: {why}"));
-}
-
-/// A plain truecolour terminal that answered every probe. `Capabilities` has
-/// no `Default` on purpose (an unprobed terminal is not a neutral one), so
-/// the literal lives here the way `frames.rs` keeps its own.
-pub fn capabilities() -> Capabilities {
-    Capabilities {
-        tier: RenderingTier::Unicode,
-        pixel_protocol: None,
-        kitty_graphics: Supported::No,
-        sixel: Supported::No,
-        iterm2_images: false,
-        kitty_keyboard: Supported::No,
-        synchronized_output: Supported::Yes,
-        cell_size: CellSize {
-            width: 9,
-            height: 18,
-            source: CellSizeSource::Reported,
-        },
-        theme: ThemeHint {
-            theme: TerminalTheme::Dark,
-            source: ThemeSource::Background(Rgb {
-                red: 0x10,
-                green: 0x10,
-                blue: 0x14,
-            }),
-        },
-        color_depth: ColorDepth::TrueColor,
-        no_color: false,
-        is_tty: true,
-        over_ssh: false,
-        tmux: TmuxStatus::Outside,
-        probe: ProbeOutcome::Answered,
-        probe_budget: Duration::from_millis(250),
-    }
 }
 
 /// Every row of the frame `view::view` draws for `state` at this size.

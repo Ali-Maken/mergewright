@@ -3,12 +3,39 @@
 //! `origin`; and the histories the scenarios script into it, every commit
 //! stamped a fixed minute so ids and row order are the same on every run.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use graft_fixtures::Shape;
-use graft_fixtures::remote::LocalRemote;
+use graft_fixtures::remote::{HttpRemote, LocalRemote};
 
 use crate::repo_truth::{neutralise_global_config, run_git};
+
+/// The HTTP remote's user, asked for in the open: a name is not a secret.
+pub const USER: &str = "tester";
+/// The HTTP remote's password — typed into the masked field, never echoed.
+pub const PASSWORD: &str = "correct-horse-battery-staple";
+/// A shorter thing typed into the same field first, so the walk can compare
+/// the mask of a 7-character secret with the mask of a 28-character one
+/// (ADR-0038 §2: eight glyphs either way, never the typed length).
+pub const SHORT: &str = "hunter2";
+/// Every string that must appear in no capture, event, status line, prompt
+/// dump, journal, askpass argument or environment — and in no file the
+/// fixture leaves behind. `pty-walk-m5.py` keeps the same list.
+pub const SECRETS: [&str; 2] = [PASSWORD, SHORT];
+
+/// What `origin` is for a scenario, and so which fixture is built.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Remote {
+    /// No remote at all: a scratch copy of the corpus shape.
+    None,
+    /// A bare over `file://` with a teammate's clone; the app opens the
+    /// work clone. Git never asks for a credential over `file://`.
+    Local,
+    /// The same bare over smart HTTP with Basic auth ([`USER`] /
+    /// [`PASSWORD`]) — the one transport that makes git ask, and so the
+    /// only one the secret field can be walked over.
+    Http,
+}
 
 /// The first scripted commit's instant, Unix seconds; one minute per commit
 /// after it. After `graft_fixtures::git::FIXED_DATE`, so scripted commits
@@ -19,24 +46,27 @@ pub const EPOCH: i64 = 1_609_459_200;
 pub struct Fixture {
     scratch: Option<graft_fixtures::Scratch>,
     remote: Option<LocalRemote>,
+    http: Option<HttpRemote>,
 }
 
 impl Fixture {
     /// Copy `shape` to scratch (or clone it as a remote with a work clone)
     /// and put the machine's own git config out of the app's reach.
-    pub fn build(shape: Shape, remote: bool) -> Result<Self, String> {
-        let fixture = if remote {
-            let local = LocalRemote::new(shape).map_err(|why| format!("fixture: {why:?}"))?;
-            Fixture {
-                scratch: None,
-                remote: Some(local),
-            }
-        } else {
+    pub fn build(shape: Shape, remote: Remote) -> Result<Self, String> {
+        let mut fixture = if remote == Remote::None {
             let scratch = graft_fixtures::try_copy_into_temp(shape)
                 .map_err(|why| format!("fixture {}: {why:?}", shape.name()))?;
             Fixture {
                 scratch: Some(scratch),
                 remote: None,
+                http: None,
+            }
+        } else {
+            let local = LocalRemote::new(shape).map_err(|why| format!("fixture: {why:?}"))?;
+            Fixture {
+                scratch: None,
+                remote: Some(local),
+                http: None,
             }
         };
         neutralise_global_config(fixture.repo())?;
@@ -44,7 +74,40 @@ impl Fixture {
             fixture.repo(),
             &["config", "--local", "credential.helper", ""],
         )?;
+        if remote == Remote::Http {
+            let bare = fixture
+                .bare()
+                .ok_or_else(|| "an HTTP fixture has no bare".to_owned())?
+                .to_path_buf();
+            let http = HttpRemote::serve(&bare, USER, PASSWORD)
+                .map_err(|why| format!("the HTTP remote: {why}"))?;
+            // `url()` names the user, so git asks only for the password.
+            let url = http.url();
+            run_git(fixture.repo(), &["remote", "set-url", "origin", &url])?;
+            fixture.http = Some(http);
+        }
         Ok(fixture)
+    }
+
+    /// The scratch root this fixture owns: the work clone's parent for a
+    /// remote fixture, the scratch itself otherwise. Everything the walk
+    /// writes beside the repository lands here, and
+    /// [`super::run::no_secret_leaked`] reads every byte of it back.
+    pub fn root(&self) -> PathBuf {
+        match &self.remote {
+            Some(_) => self
+                .repo()
+                .parent()
+                .unwrap_or_else(|| self.repo())
+                .to_path_buf(),
+            None => self.repo().to_path_buf(),
+        }
+    }
+
+    /// The HTTP remote's `(authorised, rejected)` request counts, when the
+    /// scenario has one.
+    pub fn requests(&self) -> Option<(usize, usize)> {
+        self.http.as_ref().map(HttpRemote::requests)
     }
 
     /// The repository the app opens.
@@ -216,6 +279,26 @@ pub fn three_to_stage(fixture: &Fixture) -> Result<(), String> {
 
 /// The three files [`three_to_stage`] leaves, oldest stage first.
 pub const STAGED: [&str; 3] = ["one.txt", "two.txt", "three.txt"];
+
+/// A work clone with `feature` one commit ahead of `main` and `main`
+/// checked out: merging `feature` fast-forwards `main` past
+/// `origin/main`, and `P` then has something to send.
+///
+/// The merge is what puts a journal entry with a `refs/heads/main` in its
+/// `refs_before` on the journal — which is what `u` after a push is about.
+/// A commit scripted with git leaves no entry and so nothing to undo.
+pub fn ahead_to_merge_and_push(fixture: &Fixture) -> Result<(), String> {
+    fixture.git(&["branch", "feature"])?;
+    fixture.git(&["switch", "feature"])?;
+    fixture.commit("work.txt", "work\n", "the feature's work", 1)?;
+    fixture.git(&["switch", "main"]).map(drop)
+}
+
+/// The work clone one commit ahead of `origin/main` over HTTP: `P` pushes
+/// it, and git asks for the password on the way.
+pub fn one_to_push(fixture: &Fixture) -> Result<(), String> {
+    fixture.commit("ours.txt", "ours\n", "ours locally", 1)
+}
 
 /// The work clone one commit ahead of `origin/main`, and the bare one
 /// ahead of the clone: a diverged pull.

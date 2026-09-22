@@ -7,9 +7,50 @@
 )]
 
 use std::path::Path;
+use std::time::Duration;
 
 use graft::session::Clock;
 use graft::update::AppState;
+use graft_core::capabilities::{
+    Capabilities, CellSize, CellSizeSource, ColorDepth, ProbeOutcome, RenderingTier, Rgb,
+    Supported, Theme as TerminalTheme, ThemeHint, ThemeSource, TmuxStatus,
+};
+
+/// A plain truecolour terminal that answered every probe. `Capabilities` has
+/// no `Default` on purpose (an unprobed terminal is not a neutral one), so
+/// the literal lives beside the one frame writer that needs it, the way
+/// `frames.rs` keeps its own.
+pub fn capabilities() -> Capabilities {
+    Capabilities {
+        tier: RenderingTier::Unicode,
+        pixel_protocol: None,
+        kitty_graphics: Supported::No,
+        sixel: Supported::No,
+        iterm2_images: false,
+        kitty_keyboard: Supported::No,
+        synchronized_output: Supported::Yes,
+        cell_size: CellSize {
+            width: 9,
+            height: 18,
+            source: CellSizeSource::Reported,
+        },
+        theme: ThemeHint {
+            theme: TerminalTheme::Dark,
+            source: ThemeSource::Background(Rgb {
+                red: 0x10,
+                green: 0x10,
+                blue: 0x14,
+            }),
+        },
+        color_depth: ColorDepth::TrueColor,
+        no_color: false,
+        is_tty: true,
+        over_ssh: false,
+        tmux: TmuxStatus::Outside,
+        probe: ProbeOutcome::Answered,
+        probe_budget: Duration::from_millis(250),
+    }
+}
 
 /// Every row of the frame `view::view` draws for `state` at this size, drawn
 /// against the wall clock.
@@ -53,10 +94,8 @@ const CAPTURE_REPO_PATH: &str = "/code/api";
 /// The repository's location is rewritten to [`CAPTURE_REPO_PATH`] whatever
 /// directory the test opened, so the frame is the same on every machine.
 pub fn frame_at(state: &AppState, columns: u16, rows: u16, clock: Option<Clock>) -> Vec<String> {
-    let session = graft::session::Session::settle(
-        &graft::config::Loaded::default(),
-        crate::hint_bar::capabilities(),
-    );
+    let session =
+        graft::session::Session::settle(&graft::config::Loaded::default(), capabilities());
     let mut state = state.clone();
     state.size = graft::update::Size { columns, rows };
     if let Some(clock) = clock {

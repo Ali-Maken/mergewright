@@ -7,7 +7,7 @@ use graft_core::journal::OperationKind;
 use graft_fixtures::Shape;
 
 use super::claim::ghost_equals_git;
-use super::fixture::{Fixture, forked_on_main, merged_on_main};
+use super::fixture::{Fixture, Remote, forked_on_main, merged_on_main};
 use super::steps::{Capture, Scenario, Step, Wait, When};
 use super::truth::Marks;
 use super::vocabulary::{
@@ -31,7 +31,7 @@ fn cherry_pick_via_menu_ghost_equals_git() -> Scenario {
     Scenario {
         name: "cherry-pick-via-menu-ghost-equals-git",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: forked_on_main,
         steps: chain(vec![
@@ -52,7 +52,7 @@ fn revert_via_menu_ghost_equals_git() -> Scenario {
     Scenario {
         name: "revert-via-menu-ghost-equals-git",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: forked_on_main,
         steps: chain(vec![
@@ -98,7 +98,7 @@ fn revert_merge_uses_mainline() -> Scenario {
     Scenario {
         name: "revert-merge-uses-mainline",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: merged_on_main,
         steps: chain(vec![
@@ -154,7 +154,7 @@ fn reset_hard_says_loses_and_u_brings_it_back() -> Scenario {
     Scenario {
         name: "reset-hard-says-loses-and-u-brings-it-back",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         // An uncommitted edit to a tracked file: what `--hard` throws away.
         setup: |fixture| {
@@ -195,7 +195,7 @@ fn reset_mixed_keeps_the_tree() -> Scenario {
     Scenario {
         name: "reset-mixed-keeps-the-tree",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: forked_on_main,
         steps: chain(vec![
@@ -229,7 +229,7 @@ fn checkout_branch_via_menu() -> Scenario {
     Scenario {
         name: "checkout-branch-via-menu",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: forked_on_main,
         steps: chain(vec![
@@ -285,7 +285,7 @@ fn checkout_detached_via_menu() -> Scenario {
     Scenario {
         name: "checkout-detached-via-menu",
         shape: Shape::Trivial,
-        remote: false,
+        remote: Remote::None,
         size: (80, 24),
         setup: forked_on_main,
         steps: chain(vec![

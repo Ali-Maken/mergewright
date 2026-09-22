@@ -30,6 +30,7 @@ mod pick_revert_reset;
 mod preview;
 mod radar_fixes;
 mod refs_and_names;
+mod regressions;
 mod remotes;
 mod run;
 mod steps;
@@ -57,6 +58,7 @@ pub fn scenarios() -> Vec<Scenario> {
     all.extend(time_machine::time_travelling());
     all.extend(remotes::remote_history());
     all.extend(refs_and_names::refs_and_names());
+    all.extend(regressions::regressions());
     all
 }
 
