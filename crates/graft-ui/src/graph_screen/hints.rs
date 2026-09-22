@@ -295,6 +295,29 @@ pub enum HintContext {
         /// [`HintContext::PaneFocused`] reads it.
         opens: bool,
     },
+    /// The conflict resolver has the keyboard (M6, `docs/design-notes/m6-conflicts.md`
+    /// "New UI"): modal, its own whole list, no `. more`.
+    ///
+    /// **Every entry [`resolver_list`] draws is [`HintState::Planned`].**
+    /// This group (`ui-conflict-resolver`) builds the widget and this
+    /// table; it does not build the resolver's key dispatch — there is no
+    /// `AppState` for "the resolver has focus" yet, so nothing in `graft`
+    /// can answer a press. Drawing any of these keys `Live` now, with
+    /// nothing behind them, is exactly the defect m5-03 review's Critical 2
+    /// named for `M mergetool`: a hint whose key does something else, or
+    /// nothing. `app-conflict-resolver` (G4) builds the state machine and
+    /// flips this table to `Live` in the same commit
+    /// (`docs/design-notes/m6-conflicts.md`, Groups: "G4 … + `hints.rs` at
+    /// the seam close").
+    Resolver {
+        /// `B` show/hide base (Proposed change 2b) — pending a
+        /// `docs/design/02-keymap.md` edit; the app passes `false` until
+        /// then, per the ticket. Kept as a field so the shape is ready; the
+        /// hint stays [`HintState::Planned`] either way today.
+        base: bool,
+        /// `d` start this file over (Proposed change 2c) — same.
+        restart: bool,
+    },
     /// A branch badge is being dragged (`docs/design/02-keymap.md` §2.15).
     /// The gesture ends with the button, not a key, so the bar says what
     /// the pointer must do and which key backs out.
@@ -400,7 +423,8 @@ fn whole_bar(context: &HintContext, divider: Divider) -> (Vec<Hint>, Option<Hint
         | HintContext::Journal
         | HintContext::Stash
         | HintContext::Map
-        | HintContext::PaneOverOverlay { .. } => (drawable(context, divider), None),
+        | HintContext::PaneOverOverlay { .. }
+        | HintContext::Resolver { .. } => (drawable(context, divider), None),
         HintContext::Marked(inner) => {
             // `.` is already on screen as `. explain`, so no `. more`; it
             // is prepended before fitting and not after, because a list
@@ -476,6 +500,7 @@ fn drawable(context: &HintContext, divider: Divider) -> Vec<Hint> {
                 | HintContext::Stash
                 | HintContext::Map
                 | HintContext::PaneOverOverlay { .. }
+                | HintContext::Resolver { .. }
         )
     {
         // Fourth, not last: appended, it sat behind ten context keys and the
@@ -671,6 +696,7 @@ fn context_list(context: &HintContext) -> Vec<Hint> {
             conflicted,
         } => banner_list(*skippable, *conflicted),
         HintContext::ChangesPane { unmerged } => changes_pane_list(*unmerged),
+        HintContext::Resolver { base, restart } => resolver_list(*base, *restart),
         // Keymap §2.11: the journal browser answers `⏎` and `Esc` only.
         HintContext::Journal => vec![hint("⏎", "revert"), hint("esc", "close")],
         // Keymap §2.9: `b` (branch from this stash) is named there as
@@ -823,6 +849,11 @@ fn banner_list(skippable: bool, conflicted: bool) -> Vec<Hint> {
     }
     list.push(hint("a", "abort"));
     if conflicted {
+        // `⏎ resolve` leads (Proposed change 2a): planned until the
+        // resolver's key handling exists (`HintContext::Resolver`'s doc
+        // comment) — G4 flips it to `Live` in the same commit that opens
+        // the resolver from here.
+        list.insert(0, planned("⏎", "resolve"));
         list.push(hint("M", "mergetool"));
         list.push(hint("e", "edit"));
     }
@@ -838,6 +869,10 @@ fn banner_list(skippable: bool, conflicted: bool) -> Vec<Hint> {
 fn changes_pane_list(unmerged: bool) -> Vec<Hint> {
     if unmerged {
         vec![
+            // `⏎ resolve` leads (Proposed change 2a) — planned for the same
+            // reason the other two are: G4 flips all three to `Live`
+            // together, when it wires the key that opens the resolver.
+            planned("⏎", "resolve"),
             planned("M", "mergetool"),
             hint("e", "edit"),
             planned("space", "resolved"),
@@ -854,6 +889,38 @@ fn changes_pane_list(unmerged: bool) -> Vec<Hint> {
             hint("⇥", "graph"),
         ]
     }
+}
+
+/// The resolver's own key list (`docs/design-notes/m6-conflicts.md`, "New
+/// UI" footer mockups): `o ours  t theirs  b both  [B base]  e edit
+/// n next  N prev  ⏎ resolved  M mergetool  [d start over]  esc close`,
+/// `B base` after `b both` only while `base` (Proposed change 2b), `d start
+/// over` before `esc close` only while `restart` (Proposed change 2c).
+///
+/// Every entry is [`planned`] — see [`HintContext::Resolver`]'s doc comment
+/// for why: this ticket builds the table and the widget, not the app-side
+/// key handling `G4` wires it to.
+fn resolver_list(base: bool, restart: bool) -> Vec<Hint> {
+    let mut list = vec![
+        planned("o", "ours"),
+        planned("t", "theirs"),
+        planned("b", "both"),
+    ];
+    if base {
+        list.push(planned("B", "base"));
+    }
+    list.extend([
+        planned("e", "edit"),
+        planned("n", "next"),
+        planned("N", "prev"),
+        planned("⏎", "resolved"),
+        planned("M", "mergetool"),
+    ]);
+    if restart {
+        list.push(planned("d", "start over"));
+    }
+    list.push(planned("esc", "close"));
+    list
 }
 
 /// **Every context the footer can be put in**, every field combination, each
@@ -912,6 +979,22 @@ pub fn every_context() -> Vec<HintContext> {
         HintContext::PaneOverOverlay { opens: false },
         HintContext::PaneOverOverlay { opens: true },
         HintContext::Dragging,
+        HintContext::Resolver {
+            base: false,
+            restart: false,
+        },
+        HintContext::Resolver {
+            base: true,
+            restart: false,
+        },
+        HintContext::Resolver {
+            base: false,
+            restart: true,
+        },
+        HintContext::Resolver {
+            base: true,
+            restart: true,
+        },
     ];
     let mut all: Vec<HintContext> = plain.to_vec();
     all.extend(plain.iter().filter_map(marked_form));
@@ -941,6 +1024,7 @@ fn marked_form(context: &HintContext) -> Option<HintContext> {
         | HintContext::Map
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging
+        | HintContext::Resolver { .. }
         | HintContext::Marked(_)
         | HintContext::PaneFocused { .. } => None,
     }
@@ -982,6 +1066,7 @@ fn pane_focused_form(context: &HintContext) -> Vec<HintContext> {
         | HintContext::Map
         | HintContext::PaneOverOverlay { .. }
         | HintContext::Dragging
+        | HintContext::Resolver { .. }
         | HintContext::PaneFocused { .. } => Vec::new(),
     }
 }
