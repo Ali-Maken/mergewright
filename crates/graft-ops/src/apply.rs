@@ -900,7 +900,11 @@ fn pins_for(op: &Operation) -> Vec<Oid> {
         | Operation::StashApply { .. }
         | Operation::Fetch(_)
         | Operation::Pull(_)
-        | Operation::Push(_) => Vec::new(),
+        | Operation::Push(_)
+        // Nothing becomes unreachable: the stages the resolution drops live
+        // in the index, not in a commit anything could collect.
+        | Operation::ResolveWholeFile(_)
+        | Operation::RestartConflict(_) => Vec::new(),
     }
 }
 
@@ -940,6 +944,8 @@ pub(crate) fn kind_name(kind: OperationKind) -> &'static str {
         OperationKind::TagCreate => "tag",
         OperationKind::TagDelete => "delete tag",
         OperationKind::BranchFromStash => "branch from stash",
+        OperationKind::ResolveConflict => "resolve conflict",
+        OperationKind::RestartConflict => "restart conflict",
         OperationKind::RevertTo => "revert to",
         OperationKind::Undo => "undo",
         OperationKind::Redo => "redo",

@@ -1,5 +1,6 @@
 //! `graft-ops`'s integration tests, one binary (PROMPT.md §7.1).
 
+mod conflict_ops;
 mod history_ops;
 mod mistake_radar;
 mod ops_execution;
