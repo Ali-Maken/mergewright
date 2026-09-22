@@ -61,7 +61,7 @@ pub fn view<'a>(lines: &[GraphLine<'a>], height: usize, cursor: usize) -> GraphV
         compare_footer: None,
         commit_graph: None,
         banner: Vec::new(),
-        detail_shown: false,
+        divider_shown: false,
         hint_context: HintContext::PlainRow,
         marker_column: false,
         banner_op: None,

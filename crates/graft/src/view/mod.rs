@@ -41,16 +41,18 @@ pub use credential::credential_view;
 pub use detail::detail_view;
 pub(crate) use entries::uncommitted_shown;
 pub(crate) use explain::build_explain_view;
-pub(crate) use frame::graph_columns;
 pub use frame::{draws_pixels, tier_in_force, view, view_with_graphics};
 pub(crate) use hit::badge_index_at;
 pub use journal::journal_view;
 pub use map::map_view;
 pub use name_prompt::name_prompt_view;
 pub use rows::graph_view;
+pub(crate) use rows::max_lanes;
 pub use status::status_view;
 pub use strip::strip_marks;
 
-// Only `update::tests` calls this outside `rows` itself.
+// Only `update::tests` calls these outside `rows` itself.
+#[cfg(test)]
+pub(crate) use rows::divider_shown;
 #[cfg(test)]
 pub(crate) use rows::order_notice;

@@ -135,10 +135,19 @@ pub struct GraphView<'a> {
     /// the rest in the info colour. Every line costs a graph row. Empty in
     /// the shipped binary.
     pub banner: Vec<SanitizedText>,
-    /// The detail pane is on screen: the footer adds a `<> resize` hint,
-    /// since that is the only time its divider exists to drag
-    /// (`detail-resize-and-persistence`).
-    pub detail_shown: bool,
+    /// The detail pane is on screen **and its divider exists to drag**: the
+    /// footer adds a `<> resize` hint, which is the only time that key does
+    /// anything (`detail-resize-and-persistence`).
+    ///
+    /// The second half is not decoration. Under 100 columns the pane is a
+    /// tab strip, not a split, and `<>` moves nothing — `view::frame` says
+    /// exactly that where it draws the Detail tab's own bar, while the
+    /// Graph tab kept the graph screen's footer, which read "a pane is
+    /// open" as "a divider is there" and drew a dead key at 40 and 80
+    /// columns (m5-history-and-ghost-preview/33, found by review M6's
+    /// width sweep). The field is named for what the footer needs so the
+    /// two cannot come apart again.
+    pub divider_shown: bool,
     /// Where the cursor or focus is, for the footer's hint list
     /// (`hint-bar-redesign`, ADR-0037 §4): replaces the old `changes_pane`
     /// flag with the context [`hints::hints_for`] needs to pick the three

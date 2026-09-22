@@ -111,6 +111,23 @@ pub struct AppState {
     /// pixel strips. `None` in a state built without a session (tests,
     /// headless), which draws as the Unicode tier would.
     pub settled_tier: Option<RenderingTier>,
+    /// Which glyphs ref badges draw with: `ui.icons`, seeded at startup
+    /// (`crate::config::IconSet::glyphs`), plain unless the config file asks
+    /// for Nerd Font icons (never detected, PROMPT.md §5).
+    ///
+    /// Here rather than on `Session` because the glyph set decides how wide
+    /// each badge is, so it decides where a **drag** has to hit one. The
+    /// frame and the mouse hit-test build the same `GraphView` from this one
+    /// field; when it lived on `Session` the hit-test could not see it and
+    /// measured a badge the frame never drew (m5-history-and-ghost-preview/33,
+    /// review M1).
+    pub icons: graft_ui::graph_screen::Icons,
+    /// `graph.max_lanes`: the configured lane cap, or `None` to let the
+    /// width breakpoint decide. Resolved per frame against the room the
+    /// graph has (`graft_ui::graph_screen::max_lanes_for`), because the cap
+    /// moves the graph column's width and so every badge's columns — which
+    /// is why it lives beside [`AppState::icons`] rather than on `Session`.
+    pub max_lanes: Option<usize>,
     /// The `/` prompt while it is open: what has been typed so far.
     pub search_prompt: Option<String>,
     /// The search on screen, running or finished, until `Esc` closes it.

@@ -290,10 +290,16 @@ fn stash_b_opens_prompt_then_preview_then_creates() {
 /// a badge up, and answers with the state, the column and the screen row it
 /// was found on.
 ///
-/// This is the point of the whole hit-test: nothing here knows where a badge
-/// is drawn. It finds one the way the user does, by pressing where it looks
-/// like it is, so a hit-test that disagreed with the renderer would find
-/// nothing at all.
+/// **What this proves, and what it does not.** It presses cells until the
+/// hit-test says a badge is under one, so what follows is a real gesture
+/// through `update` carrying a real branch. It reads no drawn cell, though,
+/// so a hit-test measuring geometry the frame never drew would still be
+/// found here — at the wrong column — and this would pass. It used to claim
+/// otherwise (m5/33, review M1). The agreement between the drawn cells and
+/// the measured ones is pinned by
+/// `graft::view::tests::a_drag_lands_on_the_badge_the_frame_drew_under_the_pointer`,
+/// which finds the badge in the rendered buffer first and then presses
+/// exactly where it was drawn.
 fn grab_a_badge(app: &App, state: &AppState, columns: u16) -> (AppState, u16, u16) {
     for screen_row in 1..8_u16 {
         for column in 0..columns {

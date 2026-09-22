@@ -22,6 +22,20 @@ use super::entries::{Thread, thread, uncommitted_shown, visible_rows};
 ///
 /// The rows are borrowed from the window the walk last sent; only the
 /// subjects, which came out of the repository, are copied — sanitised.
+///
+/// **The one place a drawn `GraphView` is built** (m5-history-and-ghost-preview/33,
+/// review M1). Everything that decides where a cell lands is settled here:
+/// the badge glyphs ([`AppState::icons`]), the lane cap ([`max_lanes`], which
+/// widens or narrows the graph column) and the harness banner (which pushes
+/// the rows down). `view::frame` adds only fields that repaint what is
+/// already placed — the tier's glyph set, the footer notice, the pixel
+/// rectangle — because those need the `Session` and move nothing.
+///
+/// That matters because [`super::hit::badge_index_at`] calls this function
+/// too, to say which badge a mouse cell belongs to. When the frame overrode
+/// the icons and the lane cap *after* building the view, the hit-test
+/// measured against a view nothing ever drew, and with Nerd icons or past
+/// eight lanes a drag landed on the wrong badge.
 #[must_use]
 pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
     let location = state
@@ -55,7 +69,7 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         walk,
         rows,
         banner_op,
-        icons: graft_ui::graph_screen::Icons::default(),
+        icons: state.icons,
         compaction,
         filters: Filters {
             first_parent: history.view.follow == graft_graph::Follow::FirstParent,
@@ -72,8 +86,8 @@ pub fn graph_view(state: &AppState, now_seconds: i64) -> GraphView<'_> {
         search: search_line(state),
         compare_footer: compare_footer_line(state),
         commit_graph: state.commit_graph_line(),
-        banner: Vec::new(),
-        detail_shown: state.detail.shown,
+        banner: super::frame::banner_lines(state),
+        divider_shown: divider_shown(state),
         hint_context,
         // `visible_rows` (just above) has already set `radar_column_seen`
         // for any row it built with a marker, so reading it here also
@@ -127,8 +141,8 @@ fn opening_view(
         walk: WalkView::Opening,
         rows: Vec::new(),
         banner_op: None,
-        icons: graft_ui::graph_screen::Icons::default(),
-        compaction: Compaction::at(crate::config::DEFAULT_MAX_LANES),
+        icons: state.icons,
+        compaction: Compaction::at(max_lanes(state)),
         filters: Filters::default(),
         reveal: None,
         order: None,
@@ -139,8 +153,8 @@ fn opening_view(
         search: search_line(state),
         compare_footer: compare_footer_line(state),
         commit_graph: state.commit_graph_line(),
-        banner: Vec::new(),
-        detail_shown: state.detail.shown,
+        banner: super::frame::banner_lines(state),
+        divider_shown: divider_shown(state),
         hint_context: HintContext::PlainRow,
         // No history has arrived yet, so the radar context is never `Ready`
         // here — `state.history` is `None`, which `radar::request_context`
@@ -230,6 +244,35 @@ fn reveal_index(state: &AppState, history: &History, rows: &[GraphEntry<'_>]) ->
 /// cursor's own column and the selection's thread ahead of everything else
 /// (ADR-0025) — a priority a fold still overrides once the budget runs out,
 /// not a veto.
+/// Is there a divider on screen for `<>` to move?
+///
+/// The pane has to be **open** and in a **split**: under 100 columns it is a
+/// tab strip with nothing between the two tabs to drag, so `<>` is a key
+/// that does nothing and the footer must not offer it. `view::frame` already
+/// passes `Divider::Hidden` for the Detail tab's own bar and says why; this
+/// is the same answer for the Graph tab, which keeps the graph screen's
+/// footer (m5-history-and-ghost-preview/33, review M6's width sweep).
+pub(crate) fn divider_shown(state: &AppState) -> bool {
+    state.detail.shown && !super::frame::tabbed(state, super::frame::screen_area(state))
+}
+
+/// The lane cap this frame folds at: `graph.max_lanes` if the config file
+/// set one, else the width breakpoint — resolved against the room the graph
+/// has, not the whole screen (ADR-0039's amendment,
+/// [`super::frame::graph_columns`]).
+///
+/// The room is read off `AppState::size` rather than taken as an argument on
+/// purpose: the hit-test has no `Frame` to ask, and a cap the drawing path
+/// could pass a different width to is the very divergence this function
+/// exists to close. `event_loop::graphics` already reads the screen
+/// rectangle the same way.
+pub(crate) fn max_lanes(state: &AppState) -> usize {
+    graft_ui::graph_screen::max_lanes_for(
+        super::frame::graph_columns(state, super::frame::screen_area(state)),
+        state.max_lanes,
+    )
+}
+
 fn compaction(
     state: &AppState,
     history: &History,
@@ -250,7 +293,7 @@ fn compaction(
         .cloned()
         .collect();
     Compaction {
-        max_lanes: crate::config::DEFAULT_MAX_LANES,
+        max_lanes: max_lanes(state),
         expanded: state.lanes_expanded,
         keep: keep_for(
             &drawn,
@@ -317,7 +360,7 @@ pub(crate) fn pane_hint_context(state: &AppState) -> HintContext {
 /// `Marked`, exactly as `hints_for` interprets it. `Journal` and `Stash` are
 /// never produced here — `view::frame` draws those overlays instead of the
 /// graph screen while they are shown, so the graph's own footer never has to
-/// hint them. `<> resize` is not a context: `GraphView::detail_shown` carries
+/// hint them. `<> resize` is not a context: `GraphView::divider_shown` carries
 /// it, for every context alike.
 fn hint_context(state: &AppState, rows: &[GraphEntry<'_>]) -> HintContext {
     // A badge in the air first: while the gesture is running, the keys the

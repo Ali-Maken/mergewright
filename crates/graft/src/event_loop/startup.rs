@@ -330,10 +330,11 @@ fn terminal_and_state(
     Ok((terminal, state))
 }
 
-/// Seeds `state` with `[diff]`'s and `[radar]`'s startup values — the pane's
-/// live diff options and `AppState.radar.policy` — split out of
-/// `terminal_and_state` so it is testable without a real terminal
-/// (m2-details-and-diffs/13c; `KNOWN_GAPS` m2-details-and-diffs/13b).
+/// Seeds `state` with the config file's startup values — `[diff]`'s live
+/// pane options, `[radar]`'s policy, `keys.suspend_on_ctrl_z`, and the two
+/// `[ui]`/`[graph]` values that move cells (`ui.icons`, `graph.max_lanes`) —
+/// split out of `terminal_and_state` so it is testable without a real
+/// terminal (m2-details-and-diffs/13c; `KNOWN_GAPS` m2-details-and-diffs/13b).
 fn seed_config(state: &mut AppState, config: &crate::config::Config) {
     let (diff, radar, keys) = (config.diff, &config.radar, config.keys);
     state.detail.options = graft_git::diff::DiffOptions {
@@ -343,6 +344,13 @@ fn seed_config(state: &mut AppState, config: &crate::config::Config) {
     state.detail.word_tint = diff.word_tint;
     state.radar.policy = radar.policy();
     state.suspend_on_ctrl_z = keys.suspend_on_ctrl_z;
+    // `ui.icons` and `graph.max_lanes` decide how wide a badge is and how
+    // wide the graph column is, so they decide where a *drag* has to hit a
+    // badge. They are state, not session, for that reason: the frame and
+    // the mouse hit-test build one `GraphView` from them
+    // (m5-history-and-ghost-preview/33, review M1).
+    state.icons = config.ui.icons.glyphs();
+    state.max_lanes = config.graph.max_lanes;
 }
 
 #[cfg(test)]

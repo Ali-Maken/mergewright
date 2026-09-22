@@ -710,11 +710,20 @@ fn is_refresh(key: KeyPress) -> bool {
 /// The **verb** is half the claim: `M` is bound, but to the Map view, so a
 /// hint reading `M mergetool` is as dead as one on an unbound key — which
 /// is exactly what the key-only version of this list let through (m5-03
-/// review, Critical 2 and Major 6). `update::tests` walks it both ways:
-/// every hint `hints_for` draws must be in here, and every
-/// `HintState::Planned` entry in the hint tables must *not* be — so the
-/// group that binds `m merge` cannot add it here without also flipping the
-/// hint to live.
+/// review, Critical 2 and Major 6). `update::tests` walks it three ways:
+///
+/// - every hint `hints_for` draws must be in here
+///   (`every_key_the_bar_draws_is_answered`), and every hint drawn live must
+///   also be *answered* by the handler that has focus;
+/// - every `HintState::Planned` entry in the hint tables must **not** be in
+///   here (`every_planned_hint_is_still_unbound`), so the group that binds
+///   `m merge` cannot add it here without also flipping the hint to live;
+/// - and every line **here** must be drawn live in some context, or be named
+///   in `update::tests::NEVER_HINTED` with the reason it never is
+///   (`every_bound_action_is_hinted_live_or_is_named_here`). Until m5/33 the
+///   comment here said "both ways" and meant two walks that both started
+///   from the hint tables: a key bound in a handler and listed here but put
+///   in no table at all went through every sweep untouched.
 ///
 /// Each line names the dispatcher it is true because of. Keep them in step:
 /// this list is a claim about the code below it, and the tests only compare

@@ -807,11 +807,21 @@ fn changes_pane_list(unmerged: bool) -> Vec<Hint> {
 /// [`HintContext::Dragging`] was added in m5/10 and only *one* of them
 /// gained it, so the drag's bar went two tickets without a sweep over it.
 ///
-/// [`marked_form`] is the guard: it matches `HintContext` **exhaustively**,
-/// so a variant added to the enum stops this crate compiling until it is
-/// given a row there, one line from the list below. That is as far as the
-/// compiler can carry it — writing the variant into the list is still a
-/// human's job, which is why the two sit together.
+/// **It cannot come from the type.** Rust has no way to enumerate a type's
+/// values without a derive macro, and `Marked`/`PaneFocused` wrap a context
+/// of their own, so the set is not even finite without choosing a depth by
+/// hand. What the compiler can do is refuse, and three exhaustive matches
+/// make it: [`marked_form`] and [`pane_focused_form`] here, and
+/// `tests::coverage_slot`, which additionally spells out every **boolean
+/// field combination**. A shape added to the enum stops this crate
+/// compiling until it is named in all three, and
+/// `tests::every_context_reaches_every_shape` then fails until the list
+/// below actually produces one.
+///
+/// So adding a variant is still a human's edit; it is no longer a human's
+/// *omission* (m5-history-and-ghost-preview/33, review M3, which corrected
+/// an earlier claim that the compiler forced the list itself — it does
+/// not).
 #[must_use]
 pub fn every_context() -> Vec<HintContext> {
     let plain = [

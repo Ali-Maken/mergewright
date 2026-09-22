@@ -19,7 +19,7 @@ use graft_term::input::ReplyWaiter;
 use graft_term::iterm2::ItermImages;
 use graft_term::kitty::{self, CellRect, KittyImages, Place};
 use graft_term::{Transport, sanitize_line};
-use graft_ui::graph_screen::{GraphicsStatus, max_lanes_for};
+use graft_ui::graph_screen::GraphicsStatus;
 use ratatui::layout::Rect;
 
 use crate::session::Session;
@@ -29,20 +29,6 @@ use crate::view::strips::{StripPaint, pixel_rows};
 /// Strips kept rasterised, and images kept uploaded: a tall viewport plus a
 /// strip either side (`StripCache::capacity_for(32, 256, 64)` is 11).
 const STRIPS_KEPT: usize = 16;
-
-/// The lane cap the strips are painted to, from the room the graph actually
-/// has rather than the screen's width (`view::graph_columns`, m5/21 item 4).
-/// It has to be the same number the text tiers fold to, or the pixel strips
-/// would draw a different graph from the one the rest of the frame lays out.
-fn lane_cap(session: &Session, state: &AppState) -> usize {
-    let screen = Rect {
-        x: 0,
-        y: 0,
-        width: state.size.columns,
-        height: state.size.rows,
-    };
-    max_lanes_for(crate::view::graph_columns(state, screen), session.max_lanes)
-}
 
 /// Where the terminal's replies about images come from.
 pub trait GraphicsReplies {
@@ -152,7 +138,7 @@ impl<R: GraphicsReplies> Graphics<R> {
             return;
         };
         let top = state.history.as_ref().map_or(0, |history| history.top);
-        let pixels = pixel_rows(state, lane_cap(session, state), STRIP_ROWS);
+        let pixels = pixel_rows(state, crate::view::max_lanes(state), STRIP_ROWS);
         let paint = StripPaint::of(session);
 
         let mut drawn: Vec<(usize, Arc<RasterFrame>, Range<usize>, u16)> = Vec::new();
@@ -211,7 +197,7 @@ impl<R: GraphicsReplies> Graphics<R> {
         state: &AppState,
         waiting: &mut impl FnMut() -> bool,
     ) -> usize {
-        let pixels = pixel_rows(state, lane_cap(session, state), STRIP_ROWS);
+        let pixels = pixel_rows(state, crate::view::max_lanes(state), STRIP_ROWS);
         let paint = StripPaint::of(session);
         let mut rasterised = 0;
         for strip in &pixels.strips {
