@@ -90,6 +90,27 @@ Every box names its test; captures are `graft_fixtures::capture` snapshots under
 - [x] `ChangesPane { unmerged: true }` and `Banner { conflicted: true }` rows carry a leading `⏎ resolve`, pinned by exact string on `context_list` (before the `Live` filter, since all three of `⏎`/`M`/`space` stay `Planned`) — `hints::tests::unmerged_rows_lead_with_resolve` (continuation session, 2026-09-22): `ChangesPane{unmerged:true}` → `" ⏎ resolve  M mergetool  e edit  space resolved  c commit  ⇥ graph"`; `Banner{conflicted:true, skippable:false}` → `" ⏎ resolve  c continue  a abort  M mergetool  e edit  ⇥ graph"`; `skippable:true` inserts `s skip` after `c continue`; `conflicted:false` drops `resolve` entirely. Note the exact wording differs from this ticket's own prose above (`⇥ leave` was never in the code; it has always been `⇥ graph`) — the test pins what the code says, not the ticket's paraphrase. `every_planned_hint_is_still_unbound` still passes.
 - [x] MAP.md updated (`§conflict_resolver` new section, `§graph_screen::hints` `Resolver` addition) — see NOTES.
 
+## Superseded by the fix round (conductor, 2026-09-22)
+
+The review (`docs/reviews/m6-02-03-resolver-widget-and-operations.md`, g02
+section) found 1 Critical and 5 Major here, and the fix round merged them. Three
+boxes above describe code that no longer exists — read the fix round's commit,
+not them:
+
+- The **`resolver_draws_only_the_window`** box carried a **false tick**: the test
+  rendered into the whole buffer, so "cells outside `area` are untouched" was
+  never asserted. It now renders into a sub-`Rect` of a sentinel-filled buffer.
+- The **taken-block line number** boxes pin `first_line + 1 + i` arithmetic and
+  goldens that encode an off-by-one. A resolved block's `first_line` already *is*
+  its first taken line, so it is `first_line + i` now and both goldens were
+  regenerated. **That error came from a fix the conductor ordered**, not from the
+  builder's own work.
+- The cursor block no longer reverses whole — only its header does, with the
+  gutter mark carrying the rest (m5/44's precedent).
+
+Left open on purpose: Minor m2 (the `┴` join under a taken block with no divider
+above it), out of the fix round's file fence.
+
 ## NOTES
 
 - Scout (`https://.scratch/m6-conflicts/scout-ui.md`) used; its four corrections applied as given: (1) crate set graft-ui + exactly `graft/src/update/tests.rs`'s `classified_form`/`screen_for`, both exhaustive matches with no wildcard — confirmed by the compiler forcing both when `Resolver` was added; `keys.rs`/`bound_actions()` was **not** touched (no wildcard match there over `HintContext`). (2) Only `ChangesPane{unmerged}`'s `M mergetool`/`space resolved` were `planned()` going in; banner's `M`/`e` were already `Live` — confirmed in the pre-existing code before editing, held unchanged. (3) `ResolverScreen` modeled on `map_screen.rs`: neither it nor `journal_screen.rs`/`stash_screen.rs` draw a border — the widget draws only title/header/body content, no box chars; the app's outer chrome draws the frame. (4) The modal `whole_bar` arm's shrink ladder had never been exercised past 2-5 hints before; the resolver's 9-entry list is the first to actually hit `fit_list`'s width math at 80 columns — the drop order documented above (`esc close`→`esc`, nothing else) was observed, not assumed, after an initial wrong guess failed a test (see acceptance row above).
