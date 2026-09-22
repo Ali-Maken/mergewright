@@ -182,6 +182,7 @@ mod tests {
                     unstaged: None,
                     untracked: false,
                     unmerged: false,
+                    unmerged_how: None,
                     submodule: false,
                 },
                 StatusEntry {
@@ -191,6 +192,7 @@ mod tests {
                     unstaged: Some(Change::Modified),
                     untracked: false,
                     unmerged: false,
+                    unmerged_how: None,
                     submodule: false,
                 },
                 StatusEntry {
@@ -200,6 +202,7 @@ mod tests {
                     unstaged: None,
                     untracked: true,
                     unmerged: false,
+                    unmerged_how: None,
                     submodule: false,
                 },
             ],

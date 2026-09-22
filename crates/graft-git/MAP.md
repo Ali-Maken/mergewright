@@ -6,6 +6,7 @@ One line per public item. Update when a public item changes.
 - `contained` (mod) — which branches, remotes and tags contain a commit, via `git for-each-ref --contains` (m2/01).
 - `diff` (mod) — pure parsers for git's diff output: unified patches, `--raw`/`--numstat` file lists, hunk pairing (m2/02).
 - `commit_graph` (mod) — the commit-graph file: status, building it with system git, the offer's remembered decline (m1-the-graph/54).
+- `conflict` (mod) — a conflicted file as data: markers parsed byte-exactly, a side taken per block, written back without clobbering, the three stages read, git's `diff3` output reproduced for a block's base (m6-conflicts/01).
 - `history` (mod) — rev-walks: chunked, ordered, resumable.
 - `history_reads` (mod) — the read layer M5's history operations and Ghost Preview plan against: divergence, commit ranges, a `merge-tree` conflict forecast, changed paths, conflict markers (m5-history-and-ghost-preview/02).
 - `mailmap` (mod) — `.mailmap` resolution, via gix's own parser.
@@ -37,6 +38,30 @@ One line per public item. Update when a public item changes.
 - `Offer` (enum) — `Undecided` or `Declined`.
 - `offer_state` (fn) — `<common_dir>/graft/commit-graph-offer` present = `Declined`.
 - `remember_declined` (fn) — write `declined\n` there, creating `graft/`.
+
+## conflict
+The conflict file as data (m6-conflicts/01). The marker rules are decided in the module doc: exactly seven marker chars at column 0, a space and a label (`<<<<<<< `, `||||||| `, `>>>>>>> `), or `=======` alone; a marker of any other size (`conflict-marker-size` ≠ 7) is plain text, so the file has no blocks; the first `=======` after `<<<<<<<` is the separator and a later one, or a second `|||||||`, is theirs' content (checked against `git merge-file`, 2026-09-22) — a `=======` in *ours'* content is read as the separator, the one shape that cannot be told apart; `zdiff3` parses as `diff3`.
+- `Line` (struct) — one line, terminator included when it has one.
+- `Terminator` (enum) — `None`, `Lf`, `CrLf`; `as_bytes`.
+- `MarkerEnds` (struct) — how each marker line of a block ended (`start`, `base`, `separator`, `end`); `MarkerEnds::LF`. Why `render` is byte-exact under CRLF, mixed endings and a newline-less last line.
+- `Block` (struct) — `ours_label`, `ours`, `base: Option<(label, lines)>`, `theirs_label`, `theirs`, `ends`; `taken(take)` — the lines a take leaves.
+- `Take` (enum) — `Ours`, `Theirs`, `Both` (ours then theirs).
+- `Region` (enum) — `Plain(lines)`, `Conflict(Block)`, `Resolved { block, take }`.
+- `ConflictFile` (struct) — `regions`, `fingerprint` (blob id of the bytes parsed); `render`, `take(block, take) -> Result<(), NoSuchBlock>` (the index counts `Conflict` and `Resolved` regions in order; re-taking replaces), `blocks() -> Vec<BlockAt>`, `open()` (blocks still `Conflict`).
+- `BlockAt` (struct) — `index`, `state`, `first_line` (1-based, in `render()`); `BlockState` (enum) — `Open`, `Took(Take)`.
+- `ParseError` (struct) — `line` (1-based), `what: ParseErrorKind`: `Unterminated` (a block still open at EOF, at its `<<<<<<<` line), `StrayMarker` (`<<<<<<<` inside a block; `=======`, `|||||||` or `>>>>>>>` outside one; `>>>>>>>` before the separator).
+- `NoSuchBlock` (struct) — the index `take` was given.
+- `parse` (fn) — bytes → `ConflictFile`; `render(parse(b)) == b` for every `Ok` (fuzz target `conflict_parse`; 1 000-case soup test in nextest).
+- `blob_id` (fn) — git's blob id of the bytes, `sha1("blob <len>\0" + bytes)`, computed locally (`sha1` crate); what `write_back` and git's index compare.
+- `ReadError` (enum) — `Io`, `Binary` (a NUL in the first 8 KiB, git's rule), `TooLarge { bytes }` (over 8 MiB), `Parse`.
+- `read` (fn) — path → `ConflictFile`.
+- `WriteError` (enum) — `Io`, `Changed { now }`.
+- `write_back` (fn) — a `.graft-*` temp file in the same directory, `sync_all`, the path's mode bits, renamed over the path; `Changed { now }` when the file's current blob id is not `expected`, bytes untouched. Returns the new fingerprint.
+- `stage_bytes` (fn) — `git show :N:<path>` in effect (`--literal-pathspecs ls-files -u -z` then `cat-file blob`); `Ok(None)` when the stage is missing (a whole-file shape); a stage outside 1..=3 is `RunError::Unparsable`.
+- `Diff3Error` (enum) — `Run`, `Io` (the scratch copies), `MergeFile { status, stderr_first_line }` (an exit past the conflict count, cap 127, or killed), `Parse`.
+- `diff3_file` (fn) — the three stages written to a `tempfile` scratch directory (never under `.git/`: nothing left behind if the process dies, and a read-only checkout works), merged with `git merge-file -p --diff3 -L ours -L base -L theirs`, parsed; `Ok(None)` when a stage is missing. The ticket's `diff3_blocks`, renamed: `attach_base` needs the plain runs between the blocks too.
+- `BaseMismatch` (struct) — `block`: the first file block no run of reproduced regions equals.
+- `attach_base` (fn) — gives each file block, in order, the base of the shortest run of reproduced regions (one conflict, or several with the plain lines between them) whose ours-side lines and theirs-side lines are byte-equal to the block's. Needed because git's default conflict style joins conflicts fewer than four unchanged lines apart into one block while `diff3` never does (measured, git 2.54, 2026-09-22). Reproduced conflicts the file no longer has are skipped (a take written to disk); a file block matching nothing is `Err`, nothing attached — never a guess. Returns how many blocks got a base.
 
 ## contained
 - `Contained` (struct) — `branches`, `remotes`, `tags` (short names as bytes: `main`, `origin/main`, `v1.0`), capped 200 per class; `more` counts the rest. Symrefs (`origin/HEAD`) left out.
@@ -213,7 +238,8 @@ One line per public item. Update when a public item changes.
 - `WorkingTreeCounts::is_clean` (fn) — no staged, unstaged or untracked changes.
 - `StatusError` (enum) — why counting or reading the working tree's changes failed (`Run`/`Malformed`/`TooLarge` added m3/01).
 - `Change` (enum) — one side's per-file state: `Added`, `Modified`, `Deleted`, `Renamed`, `Copied`, `TypeChanged` (m3/01).
-- `StatusEntry` (struct) — one path's status: `path`, `original_path` (renames/copies), `staged`/`unstaged` (`Option<Change>`), `untracked`, `unmerged`, `submodule`; `is_staged`/`is_unstaged` (m3/01).
+- `StatusEntry` (struct) — one path's status: `path`, `original_path` (renames/copies), `staged`/`unstaged` (`Option<Change>`), `untracked`, `unmerged`, `unmerged_how` (`Some` exactly when `unmerged`; m6-conflicts/01), `submodule`; `is_staged`/`is_unstaged` (m3/01).
+- `UnmergedHow` (enum) — a porcelain v2 `u` record's XY pair: `BothModified` (UU), `BothAdded` (AA), `BothDeleted` (DD), `AddedByUs` (AU), `AddedByThem` (UA), `DeletedByUs` (DU), `DeletedByThem` (UD); any other pair on a `u` record is `StatusError::Malformed`. `words()` — git's own phrase (`both modified`, …); `has_markers()` — UU or AA, the shapes with a working-tree file to parse (m6-conflicts/01).
 - `WorkingTreeStatus` (struct) — `entries: Vec<StatusEntry>`; `staged`/`unstaged`/`untracked` (iterators), `is_clean`, `counts` (→ `WorkingTreeCounts`), `entry(path)` (m3/01).
 - `parse_porcelain_v2` (fn) — pure parser for `git status --porcelain=v2 -z` output; a `cargo-fuzz` target (m3/01).
 - `read` (fn) — one `git -c core.quotepath=off status --porcelain=v2 -z --untracked-files=all --renames` spawn through `run` (`GIT_OPTIONAL_LOCKS=0` from the runner itself); bare repos report empty (m3/01).

@@ -2560,6 +2560,7 @@ fn dirty_on_screen(id: JobId) -> AppState {
                 unstaged: None,
                 untracked: false,
                 unmerged: false,
+                unmerged_how: None,
                 submodule: false,
             },
             graft_git::status::StatusEntry {
@@ -2569,6 +2570,7 @@ fn dirty_on_screen(id: JobId) -> AppState {
                 unstaged: Some(graft_git::status::Change::Modified),
                 untracked: false,
                 unmerged: false,
+                unmerged_how: None,
                 submodule: false,
             },
             graft_git::status::StatusEntry {
@@ -2578,6 +2580,7 @@ fn dirty_on_screen(id: JobId) -> AppState {
                 unstaged: None,
                 untracked: true,
                 unmerged: false,
+                unmerged_how: None,
                 submodule: false,
             },
         ],
@@ -4138,6 +4141,7 @@ fn status_entry(path: &str, unmerged: bool) -> graft_git::status::StatusEntry {
         unstaged: Some(graft_git::status::Change::Modified),
         untracked: false,
         unmerged,
+        unmerged_how: None,
         submodule: false,
     }
 }

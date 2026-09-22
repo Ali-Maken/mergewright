@@ -60,6 +60,7 @@ fn dirty() -> Arc<WorkingTreeStatus> {
             unstaged: Some(Change::Modified),
             untracked: false,
             unmerged: false,
+            unmerged_how: None,
             submodule: false,
         }],
     })
