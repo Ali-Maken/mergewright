@@ -3605,7 +3605,14 @@ fn classified_form(context: &HintContext) -> Option<HintContext> {
         }),
         // `Preview`'s box draws its own footer: `hint_context` is not the
         // code that decides it.
-        HintContext::Preview => None,
+        //
+        // `Resolver` has no app-side state yet either — no `GraphOverlay`
+        // variant, no `view::rows` arm reads for it (that wiring is G4's,
+        // at the seam this ticket's crate set stops short of). Every one
+        // of its hints ships `Planned` (graft-ui/src/graph_screen/hints.rs),
+        // so `dead_keys_in` never asks `footer_context` to classify a state
+        // that does not exist.
+        HintContext::Preview | HintContext::Resolver { .. } => None,
         // The three overlays and the pane with one behind it **are**
         // classified, since m5/42: `view::rows` reads
         // `AppState::graph_overlay` and answers the overlay's own list with
@@ -3834,10 +3841,19 @@ fn screen_for(context: &HintContext) -> Vec<AppState> {
         // Radar marker that tell `BranchRow`, `Marked` and `PlainRow` apart
         // are painted on the row, not held in the state, and no key turns
         // on them.
+        //
+        // `Resolver` shares this arm's state too, but for an unrelated
+        // reason: no app state represents the resolver screen yet (G4
+        // builds it). Every hint `resolver_list` produces is `Planned`
+        // (graft-ui/src/graph_screen/hints.rs), so `hints_for` draws none
+        // of them here and `dead_keys_in` has nothing live to press — this
+        // placeholder only has to be *a* valid, settleable state, not a
+        // real resolver one.
         HintContext::BranchRow { .. }
         | HintContext::PlainRow
         | HintContext::Marked(_)
-        | HintContext::Preview => vec![merge_on_screen(walk, MERGE_ROW).0],
+        | HintContext::Preview
+        | HintContext::Resolver { .. } => vec![merge_on_screen(walk, MERGE_ROW).0],
         // The same row, with the pane open on it and its diff focused —
         // where `⏎` has nothing left to open.
         HintContext::PaneFocused { opens, .. } => vec![commit_pane(walk, *opens)],

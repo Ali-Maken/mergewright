@@ -2,15 +2,28 @@ use unicode_width::UnicodeWidthStr;
 
 use super::*;
 
-/// Every context the graph footer can be in, `Preview` aside (it is the one
-/// context allowed an empty list).
+/// Every context the graph footer can be in, `Preview` and `Resolver` aside.
+///
+/// `Preview` draws its own footer by design — the one context allowed an
+/// empty list on purpose. `Resolver` is empty for a different reason, and
+/// only in this build: every entry `resolver_list` draws is
+/// `HintState::Planned` (`HintContext::Resolver`'s own doc comment) — this
+/// group builds the widget and the table, not the app-side key handling
+/// `app-conflict-resolver` (G4) wires it to, so there is nothing live to
+/// draw yet. `no_planned_hint_is_ever_drawn` still holds every one of those
+/// entries to the same "never drawn" rule this sweep checks for everyone
+/// else; this exemption is what keeps that true without also claiming a bar
+/// nobody can act on. G4 removes `Resolver` from this filter in the same
+/// commit that flips the table to `Live`.
 ///
 /// Taken from `hints::every_context` rather than written out again: this
 /// file's own copy of the list missed `Dragging` for two tickets (m5/31).
 fn all_contexts() -> Vec<HintContext> {
     every_context()
         .into_iter()
-        .filter(|context| *context != HintContext::Preview)
+        .filter(|context| {
+            *context != HintContext::Preview && !matches!(context, HintContext::Resolver { .. })
+        })
         .collect()
 }
 
@@ -817,7 +830,8 @@ fn doorway_of(context: &HintContext) -> Option<Hint> {
         | HintContext::Journal
         | HintContext::Stash
         | HintContext::Map
-        | HintContext::PaneOverOverlay { .. } => None,
+        | HintContext::PaneOverOverlay { .. }
+        | HintContext::Resolver { .. } => None,
         HintContext::Marked(_) => Some(EXPLAIN),
         // A filter keeps the doorway of the context it filters: `. more`
         // still leads to everything, the dropped `⏎` included.
@@ -968,4 +982,111 @@ fn the_floor_fits_at_forty_eight_cells_of_bar() {
             hints_text(&hints)
         );
     }
+}
+
+// --- The resolver's table (M6, `docs/design-notes/m6-conflicts.md`) ---
+
+/// `every_context()` names all four `base`/`restart` combinations —
+/// [`super::every_context_reaches_every_shape`]-style coverage would be
+/// overkill for two booleans, so this states it directly.
+#[test]
+fn every_context_lists_resolver() {
+    let contexts = every_context();
+    for base in [false, true] {
+        for restart in [false, true] {
+            assert!(
+                contexts.contains(&HintContext::Resolver { base, restart }),
+                "every_context() is missing Resolver {{ base: {base}, restart: {restart} }}"
+            );
+        }
+    }
+}
+
+/// The resolver's own table — `context_list`, **before** the `Live` filter
+/// [`drawable`] applies — reads exactly as the design note's footer
+/// mockups, `B base`/`d start over` only under their flag, and answers
+/// [`ladder`]'s width sweep the same way any other ~9-key list would.
+///
+/// This checks the *table*, not the bar: every entry here is
+/// `HintState::Planned` in this build (`HintContext::Resolver`'s doc
+/// comment), so `hints_for` itself draws nothing for `Resolver` yet — that
+/// half is `no_context_hides_every_key`'s documented exemption, not a gap in
+/// this test. What this proves is that the table and the ladder are already
+/// right, so flipping the table to `Live` (G4) is a one-line change with
+/// nothing left to design.
+#[test]
+fn resolver_hint_ladder() {
+    let list = context_list(&HintContext::Resolver {
+        base: false,
+        restart: false,
+    });
+    let words: Vec<(&str, &str)> = list.iter().map(|hint| (hint.key, hint.verb)).collect();
+    assert_eq!(
+        words,
+        vec![
+            ("o", "ours"),
+            ("t", "theirs"),
+            ("b", "both"),
+            ("e", "edit"),
+            ("n", "next"),
+            ("N", "prev"),
+            ("⏎", "resolved"),
+            ("M", "mergetool"),
+            ("esc", "close"),
+        ]
+    );
+    assert!(list.iter().all(|hint| hint.state == HintState::Planned));
+
+    let with_base = context_list(&HintContext::Resolver {
+        base: true,
+        restart: false,
+    });
+    let base_at = with_base
+        .iter()
+        .position(|hint| (hint.key, hint.verb) == ("B", "base"))
+        .expect("`B base` after `b both` while `base`");
+    assert_eq!(with_base[base_at - 1].key, "b", "`B base` follows `b both`");
+
+    let with_restart = context_list(&HintContext::Resolver {
+        base: false,
+        restart: true,
+    });
+    let restart_at = with_restart
+        .iter()
+        .position(|hint| (hint.key, hint.verb) == ("d", "start over"))
+        .expect("`d start over` before `esc close` while `restart`");
+    assert_eq!(
+        with_restart[restart_at + 1].key,
+        "esc",
+        "`d start over` precedes `esc close`"
+    );
+
+    // The width ladder: drawn through `hints_text`/`fit_list` directly (not
+    // `hints_for`, which would run the `Live` filter and zero the list) —
+    // the ladder's own mechanics do not know or care about `HintState`, so
+    // this exercises exactly the code `hints_for` would once the table
+    // flips.
+    let whole = list.clone();
+    let at_160 = fit_list(&whole, None, 160);
+    assert_eq!(
+        hints_text(&at_160),
+        " o ours  t theirs  b both  e edit  n next  N prev  ⏎ resolved  M mergetool  esc close"
+    );
+    // Observed (cargo test -p graft-ui --lib graph_screen::hints::tests::resolver_hint_ladder
+    // -- --nocapture, with a temporary eprintln probe): the 160-column line is
+    // 85 cells; at 80 columns the ladder only needs to drop the least relevant
+    // word — `close` off the tail `esc close` — to reach 79 cells. Every other
+    // hint, `N prev` and `M mergetool` included, keeps its verb at 80 columns;
+    // the floor-of-3-relevant-hints mechanics never engage here because the
+    // full list already nearly fits.
+    let at_80 = fit_list(&whole, None, 80);
+    let text_80 = hints_text(&at_80);
+    assert_eq!(
+        text_80,
+        " o ours  t theirs  b both  e edit  n next  N prev  ⏎ resolved  M mergetool  esc"
+    );
+    assert!(text_80.width() <= 80, "{text_80:?}");
+    // Nothing is ever cut to `. more` — the resolver is modal (§2.1), so
+    // there is no doorway to lead a dropped tail to.
+    assert!(!text_80.contains("more"), "{text_80:?}");
 }
