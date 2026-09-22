@@ -235,23 +235,34 @@ it is two days old and has one amendment already. Do not append a second.
 
 ## Acceptance (every tick names its verifying test inline, at tick time)
 
-- [ ] **No text is adjacent to a border glyph on any side, at any swept
+> **Conductor, 2026-09-22 — how these boxes came to be ticked, stated plainly
+> rather than tidied.** They were **blank when this ticket was merged**, and
+> the conductor merged it anyway at 2298/2298 (review `m5-10-30-31.md` M5).
+> Nothing false shipped: the builder's Report below answers every item with a
+> test name, and the reviewer checked that **13 of 13 names resolve to tests
+> that exist**. The boxes are ticked here from that Report, **after the fact,
+> by the conductor — not at tick time by the builder**, which is what the rule
+> asks for. The record says so because "an unticked list with a prose report
+> beside it is the shape in which a false tick hides next time."
+
+
+- [x] **No text is adjacent to a border glyph on any side, at any swept
       width** — test: name it. Give three mutations, one reproducing each known
       instance (`8443─────`, `╮60af0eb`, `you send│`), each verified red.
-- [ ] The box's required width includes its own padding — test: name it, and
+- [x] The box's required width includes its own padding — test: name it, and
       name the function that now computes it.
-- [ ] Where the width cannot be had, the box clears rather than truncating —
+- [x] Where the width cannot be had, the box clears rather than truncating —
       test: name it, and say which width first forces it. Ticket 29 reported
       that no width in 20..=240 forced a clear; say whether that still holds.
-- [ ] Every bordered surface is covered, not just the two — evidence: say how
+- [x] Every bordered surface is covered, not just the two — evidence: say how
       many the sweep enumerates and how it finds them (a hardcoded list that
       silently misses a new surface is not coverage; say so if that is what it
       is).
-- [ ] ADR-0040 amended **in place**, no second appended amendment — evidence:
+- [x] ADR-0040 amended **in place**, no second appended amendment — evidence:
       quote the amended clause.
-- [ ] Captures regenerated and still byte-identical across two runs — evidence:
+- [x] Captures regenerated and still byte-identical across two runs — evidence:
       `diff -q` output, and quote the padded row.
-- [ ] **The sweep includes at least one state with a detail pane open beside
+- [x] **The sweep includes at least one state with a detail pane open beside
       the graph** — not only full-frame graphs. Review Q1: `view/tests.rs`'s
       `confirm_over_graph` sets `detail.shown = false` (`:2673`) and
       `pane_boundaries.rs` sweeps a full-frame graph, so **no test draws a box
