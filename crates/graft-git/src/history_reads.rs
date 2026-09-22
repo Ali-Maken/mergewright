@@ -435,9 +435,10 @@ pub fn changed_paths(
     Ok((paths.into_iter().map(bytes_to_pathbuf).collect(), capped))
 }
 
-/// The 1-indexed line number of the first line starting `<<<<<<< ` in the
-/// file at `path`, if any: an unresolved conflict marker left in a staged
-/// file. Plain fs read, no `git` spawn.
+/// The 1-indexed line number of the first line that opens a conflict block in
+/// the file at `path`, if any: an unresolved conflict marker left in a staged
+/// file. See [`opens_a_conflict`] for what counts. Plain fs read, no `git`
+/// spawn.
 ///
 /// Reads bytes, never decodes: a conflicted file with a non-UTF-8 byte
 /// anywhere above the marker (a Latin-1 comment, binary-ish content) must
@@ -461,10 +462,27 @@ pub fn first_marker_line(path: &Path) -> io::Result<Option<usize>> {
             return Ok(None);
         }
         index += 1;
-        if line.starts_with(b"<<<<<<< ") {
+        if opens_a_conflict(&line) {
             return Ok(Some(index));
         }
     }
+}
+
+/// Whether a raw line (terminator included or not) opens a conflict block:
+/// seven or more `<` at column 0, then a space and a label, or nothing.
+///
+/// Seven **or more**, unlike [`crate::conflict::parse`], which reads only
+/// git's default size: this is the "are there markers here" check that guards
+/// a stage and a commit, so it errs towards seeing one. Seven with a label is
+/// the everyday form; bare `<<<<<<<` is what `rerere` writes; longer is a
+/// path with `conflict-marker-size` set, which `parse` refuses by name
+/// (`ParseErrorKind::MarkerSize`) rather than calling plain.
+fn opens_a_conflict(line: &[u8]) -> bool {
+    let run = line.iter().take_while(|&&byte| byte == b'<').count();
+    if run < 7 {
+        return false;
+    }
+    matches!(&line[run..], [] | [b'\n'] | [b'\r', b'\n'] | [b' ', ..])
 }
 
 #[cfg(unix)]
