@@ -300,7 +300,7 @@ The conflict resolver's state machine (m6-conflicts/04), pure and **modal**: whi
 - `scroll_block_into_view` (fn) — `(&Layout, block, top, height) -> usize`: `top` moved as little as it must, and when it must move at all the block's header lands on the **first** row.
 - `banner_rows` / `fits` (fns) — the rows the operation banner keeps above the resolver (1 while an operation is live: mid-rebase, `REBASING step 3 of 7` is what says which side is which), and whether the rest clears the widget's floor.
 
-`B`/`d` are not yet on the footer or in `update::keys::BOUND_ACTIONS` (m6-conflicts/05 NOTES): `graft-ui`'s `resolver_list` hard-codes them `Planned` regardless of the booleans `view::rows::overlay_context` passes (`base: true, restart: true`, already wired). They act the moment they are pressed either way.
+`B base` / `d start over` are live footer hints and in `update::keys::BOUND_ACTIONS`.
 
 ## update::preview
 Ghost Preview's state machine (PROMPT.md §1.7, ADR-0038, design note hard choices 1, 3, 5), pure. A preview is a **modal overlay over a bounded slice**: it never loads more history, and it never runs anything — only `Confirm` does.

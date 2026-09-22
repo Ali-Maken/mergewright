@@ -387,7 +387,7 @@ fn B_shows_and_hides_base() {
         );
     }
     assert!(
-        matches!(&state.status, Status::Done(line) if line.starts_with("base shown for")),
+        matches!(&state.status, Status::Done(line) if line == "base shown for 3 conflicts"),
         "{:?}",
         state.status
     );
@@ -700,6 +700,11 @@ fn stash_pop_conflict_resolves_without_a_banner() {
         state.status
     );
     assert!(!state.banner_focus, "there is no banner to hand back to");
+    assert_eq!(
+        crate::app_harness::git(scratch.path(), &["ls-files", "-u"]).trim(),
+        "",
+        "the index holds no unmerged entry"
+    );
 
     drop(state);
     app.close();

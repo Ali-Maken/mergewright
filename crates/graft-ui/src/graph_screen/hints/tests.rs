@@ -246,23 +246,13 @@ fn status_line_keeps_its_keys() {
 /// (m5-03 review, Critical 2 — at 80 columns two of a branch row's three
 /// keys did nothing at all).
 ///
-/// The canary used to be `m merge`, then `b branch`, then `M mergetool`; all
-/// three have since been bound (M5 tickets 25 and 10, m6-conflicts/04) and
-/// the table was updated with them, which is the rule working. `B base`
-/// carries it now — group 05's, and with `d start over` the last two
-/// `Planned` rows in the table.
+/// The canary used to be `m merge`, then `b branch`, then `M mergetool`,
+/// then `B base`; all have since been bound (the last two by
+/// m6-conflicts/05), and the table holds no `Planned` row today. The sweep
+/// below still guards the rule for the next key a design names ahead of its
+/// group.
 #[test]
 fn no_planned_hint_is_ever_drawn() {
-    let planned: Vec<Hint> = every_hint()
-        .into_iter()
-        .filter(|hint| hint.state == HintState::Planned)
-        .collect();
-    assert!(
-        planned
-            .iter()
-            .any(|hint| (hint.key, hint.verb) == ("B", "base")),
-        "the design note's planned entries must stay in the table: {planned:?}"
-    );
     for context in all_contexts() {
         for divider in [Divider::Shown, Divider::Hidden] {
             for columns in [40, 80, 100, 120, 160, 200] {

@@ -395,10 +395,7 @@ fn overlay_context(state: &AppState) -> Option<HintContext> {
         //
         // `B`/`d` act the moment they are pressed (`update::resolver::
         // toggle_base`/`restart_box`, m6-conflicts/05), so this passes
-        // `true` for both. The hint bar itself still never draws them:
-        // `graft-ui`'s `resolver_list` hard-codes both `HintState::Planned`
-        // regardless of this argument, and flipping that is outside this
-        // crate's set (m6-conflicts/05 NOTES).
+        // `true` for both, and the bar draws both as live hints.
         GraphOverlay::Resolver => {
             return Some(HintContext::Resolver {
                 base: true,

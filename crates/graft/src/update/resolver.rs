@@ -22,13 +22,8 @@
 //! — through the same [`Command::Operate`] channel a `d` restart or `⏎`'s
 //! `git add` use, rather than an fs write.
 //!
-//! **`B`/`d` are not yet on the footer or in `update::keys::BOUND_ACTIONS`**
-//! (m6-conflicts/05 NOTES): the hint bar only ever draws them once
-//! `graft-ui`'s `resolver_list` stops hard-coding them `Planned`, which is
-//! outside this crate. They act the moment they are pressed regardless —
-//! tested directly here and in `tests/it/resolver.rs` — and
-//! `view::rows::overlay_context` already passes `base: true, restart: true`,
-//! ready for the day the hint flips.
+//! `B base` and `d start over` are on the footer and in
+//! `update::keys::BOUND_ACTIONS`, so the key sweep covers them.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
