@@ -331,7 +331,7 @@ fn enter(next: &mut AppState, commands: &mut Vec<Command>, next_id: &mut impl Fn
 mod tests {
     use std::sync::Arc;
 
-    use graft_core::journal::{EntryId, HeadRef, JournalEntry, Touches};
+    use graft_core::journal::{EntryId, HeadRef, IndexState, JournalEntry, Touches};
 
     use super::*;
 
@@ -363,8 +363,8 @@ mod tests {
             head_after: Some(HeadRef::Branch("refs/heads/main".to_owned())),
             refs_before: std::collections::BTreeMap::new(),
             refs_after: std::collections::BTreeMap::new(),
-            index_before: Some(oid(1)),
-            index_after: Some(oid(2)),
+            index_before: Some(IndexState::Merged(oid(1))),
+            index_after: Some(IndexState::Merged(oid(2))),
             worktree_before: None,
             worktree_after: None,
             backup_ref: Some("refs/graft/backup/main/x".to_owned()),

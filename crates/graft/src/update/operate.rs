@@ -1027,6 +1027,7 @@ mod tests {
                 reverses: None,
             },
             refresh,
+            step_backup: None,
         }
     }
 

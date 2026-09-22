@@ -502,7 +502,7 @@ mod tests {
 
     use graft_core::event::{KeyCode, KeyPress};
     use graft_core::journal::{
-        EntryId, EntryStatus, HeadRef, JournalEntry, OperationKind, Touches,
+        EntryId, EntryStatus, HeadRef, IndexState, JournalEntry, OperationKind, Touches,
     };
     use graft_ops::apply::Applied;
 
@@ -544,12 +544,20 @@ mod tests {
                 reverses: None,
             },
             refresh,
+            step_backup: None,
         }
+    }
+
+    /// Two different merged trees: index drift that still explains itself as
+    /// "the index changed", the wording the m3 captures pin.
+    fn index_drift() -> (IndexState, IndexState) {
+        let oid = |byte: u8| graft_core::oid::Oid::from_bytes(&[byte; 20]).expect("20 bytes");
+        (IndexState::Merged(oid(1)), IndexState::Merged(oid(2)))
     }
 
     fn drift() -> graft_ops::undo::Drift {
         graft_ops::undo::Drift {
-            index: true,
+            index: Some(index_drift()),
             ..graft_ops::undo::Drift::default()
         }
     }
@@ -791,7 +799,7 @@ mod tests {
         // The box is 64 columns at most, and a `…` where the drift's own
         // words should be is the one thing it must not do.
         let drift = graft_ops::undo::Drift {
-            index: true,
+            index: Some(index_drift()),
             worktree: true,
             unknown: vec!["HEAD", "the working tree"],
             ..drift()

@@ -530,6 +530,7 @@ mod tests {
         let applied = graft_ops::apply::Applied {
             entry: entry_for("undo: commit \"fix\""),
             refresh: Refresh::WorkingTree,
+            step_backup: None,
         };
         let stopped = UndoError::PartWay {
             done: vec![applied],
@@ -569,6 +570,7 @@ mod tests {
             done: vec![graft_ops::apply::Applied {
                 entry: entry_for("undo: commit \"fix\""),
                 refresh: Refresh::WorkingTree,
+                step_backup: None,
             }],
             error: Box::new(UndoError::Nothing(
                 graft_ops::undo::NotInvertible::NothingToUndo,

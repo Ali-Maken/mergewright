@@ -73,6 +73,7 @@ fn done_applied() -> graft_ops::apply::Applied {
             reverses: None,
         },
         refresh: graft_ops::apply::Refresh::Everything,
+        step_backup: None,
     }
 }
 

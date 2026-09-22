@@ -2534,8 +2534,8 @@ fn journal_entry(
         )),
         refs_before: std::collections::BTreeMap::new(),
         refs_after: std::collections::BTreeMap::new(),
-        index_before: Some(oid(1)),
-        index_after: Some(oid(2)),
+        index_before: Some(graft_core::journal::IndexState::Merged(oid(1))),
+        index_after: Some(graft_core::journal::IndexState::Merged(oid(2))),
         worktree_before: Some(oid(3)),
         worktree_after: Some(oid(4)),
         backup_ref: Some("refs/graft/backup/main/01HF".to_owned()),
@@ -2948,7 +2948,10 @@ fn capture_m3_undo_drift() {
     let id = graft_core::job::JobId::new(7);
     state.operating = Some(id);
     let drift = graft_ops::undo::Drift {
-        index: true,
+        index: Some((
+            graft_core::journal::IndexState::Merged(oid(1)),
+            graft_core::journal::IndexState::Merged(oid(2)),
+        )),
         unknown: vec!["the working tree"],
         ..graft_ops::undo::Drift::default()
     };
