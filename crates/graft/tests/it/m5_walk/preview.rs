@@ -5,13 +5,14 @@
 use graft_core::event::KeyCode;
 use graft_fixtures::Shape;
 
-use super::fixture::{Fixture, forked};
+use super::fixture::{Fixture, conflicting, forked};
 use super::steps::{Capture, Scenario, Step, Wait, When};
 use super::truth::Marks;
 use super::vocabulary::{
-    box_says, ch, ghosts_drawn, key, nothing_open, plain, same_files, same_refs, status_containing,
-    title_names,
+    box_says, ch, chain, ghosts_drawn, key, nothing_open, plain, same_files, same_refs,
+    status_containing, title_names,
 };
+use crate::repo_truth::check;
 
 pub(super) fn previewing() -> Vec<Scenario> {
     vec![
@@ -20,6 +21,7 @@ pub(super) fn previewing() -> Vec<Scenario> {
         cancel_is_the_default_choice(),
         stale_preview_refused(),
         preview_too_small_never_confirms(),
+        preview_refused_during_an_operation(),
     ]
 }
 
@@ -245,5 +247,59 @@ fn preview_too_small_never_confirms() -> Scenario {
             on_screen: "preview needs",
             when: When::Settled,
         }),
+    }
+}
+
+/// `m` or `r` while git is part-way through a merge: refused in words, with
+/// no box and no job. A preview drawn over an operation that has stopped is
+/// a picture of a repository that is about to change under it
+/// (`update::preview::open_preview`).
+fn preview_refused_during_an_operation() -> Scenario {
+    Scenario {
+        name: "preview-refused-during-an-operation",
+        shape: Shape::Trivial,
+        remote: false,
+        size: (80, 24),
+        setup: conflicting,
+        steps: chain(vec![
+            super::conflicts::merge_that_stops(),
+            vec![
+                Step::Mark("stopped"),
+                // The banner is modal while it has focus: every key but its
+                // own is swallowed there, *silently*. `Esc` hands the
+                // keyboard back first, so what this scenario watches is the
+                // preview's own refusal and not the banner's mode.
+                key(KeyCode::Escape),
+                Step::CursorTo("feature"),
+                key(ch('m')),
+                Step::See("m says to finish or abort the merge", |state| {
+                    status_containing(state, "finish or abort the merge first")
+                }),
+                Step::See("m opened no box", nothing_open),
+                key(ch('r')),
+                Step::See("r is refused in the same words", |state| {
+                    status_containing(state, "finish or abort the merge first")
+                }),
+                Step::See("r opened no box", nothing_open),
+                Step::Mark("refused"),
+            ],
+        ]),
+        expect: |_, marks| {
+            let stopped = marks.get("stopped")?;
+            let refused = marks.get("refused")?;
+            check(refused.in_progress.as_deref() == Some("merge"), || {
+                format!("git says {:?}, not a merge", refused.in_progress)
+            })?;
+            same_refs("the refused previews", stopped, refused)?;
+            same_files("the refused previews", stopped, refused)?;
+            check(refused.journal.len() == stopped.journal.len(), || {
+                format!(
+                    "the journal went from {} entries to {}",
+                    stopped.journal.len(),
+                    refused.journal.len()
+                )
+            })
+        },
+        capture: None,
     }
 }

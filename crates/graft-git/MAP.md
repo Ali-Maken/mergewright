@@ -108,6 +108,7 @@ One line per public item. Update when a public item changes.
 - `CommitSummary` (struct) — `id`, `parents` (first parent first), `subject`, `author`.
 - `Range` (struct) — `commits` (oldest first), `capped`.
 - `commits_between` (fn) — `git rev-list --reverse --date=raw --format=%H%x00%P%x00%an%x00%ae%x00%ad%x00%s <include> ^<exclude>`, capped at `cap`; when capped, the entries kept are the ones nearest `include`, oldest of the fetched batch dropped.
+- `replayed_commits` (fn) — the commits `git rebase <onto>` will actually replay from `branch`: the same rev-list plus `--topo-order --no-merges --cherry-pick --right-only <onto>...<branch>`, which is git's own todo-list walk. **Not** `commits_between`: git drops merges (no `--rebase-merges`) and changes already on `onto` under another id (no `--reapply-cherry-picks`), so the Ghost Preview would otherwise promise commits git never writes (m5/43).
 - `parse_rev_list` (fn) — pure parser for the format above (`commit <id>` header line, then the NUL-joined fields); a `cargo-fuzz` target.
 - `ParseError` (struct) — `line` (1-indexed), `what`.
 - `Forecast` (enum) — `Clean`, `Conflicts { paths }`, `NotCheckable(String)` (an old git, or an answer this reader does not recognise — never an error).

@@ -114,13 +114,15 @@ fn ghost_is(plan: &PreviewPlan, index: usize, real: &str, fixture: &Fixture) -> 
     }
     if let Some(replays) = ghost.replays {
         // A revert's ghost is matched against the commit it undoes: its
-        // patch is that commit's, reversed.
-        let reversed = plan
-            .commands
-            .first()
-            .is_some_and(|command| command.starts_with("git revert "));
-        let drawn = patch_id(fixture, &replays.to_string(), reversed)?;
-        let written = patch_id(fixture, real, false)?;
+        // patch is that commit's, reversed **against the side the revert
+        // keeps**. For an ordinary commit that is its only parent; for a
+        // merge it is the mainline the plan passes, which is not always the
+        // first parent — a foxtrot fix reverts with `-m 2`, and reversing
+        // against parent 1 there compares two different patches
+        // (m5/38: proved by running `git revert -m 2` and `patch-id` over
+        // both parents).
+        let drawn = patch_id(fixture, &replays.to_string(), reverse_against(plan))?;
+        let written = patch_id(fixture, real, None)?;
         check(drawn == written, || {
             format!("ghost {index}: replays {replays}, but the patch-ids differ")
         })?;
@@ -128,13 +130,35 @@ fn ghost_is(plan: &PreviewPlan, index: usize, real: &str, fixture: &Fixture) -> 
     Ok(())
 }
 
-/// `git patch-id --stable` of one commit's diff, or of its reverse.
-pub fn patch_id(fixture: &Fixture, commit: &str, reversed: bool) -> Result<String, String> {
+/// Which parent a revert plan keeps: `Some(n)` when the plan is a revert,
+/// taking `-m n` from its own command line and defaulting to the first
+/// parent when it names none. `None` for anything that is not a revert.
+fn reverse_against(plan: &PreviewPlan) -> Option<u32> {
+    let command = plan.commands.first()?;
+    if !command.starts_with("git revert ") {
+        return None;
+    }
+    let mainline = command
+        .split_whitespace()
+        .skip_while(|word| *word != "-m")
+        .nth(1)
+        .and_then(|number| number.parse().ok());
+    Some(mainline.unwrap_or(1))
+}
+
+/// `git patch-id --stable` of one commit's diff, or — for a revert — of the
+/// reverse of the diff between `commit` and the parent numbered
+/// `reverse_against`.
+pub fn patch_id(
+    fixture: &Fixture,
+    commit: &str,
+    reverse_against: Option<u32>,
+) -> Result<String, String> {
     // `-R` is ignored on a one-commit `diff-tree`; the reverse is the two
     // trees named the other way round.
-    let parent = format!("{commit}^");
-    let args: Vec<&str> = if reversed {
-        vec!["diff-tree", "-p", commit, &parent]
+    let parent = reverse_against.map(|number| format!("{commit}^{number}"));
+    let args: Vec<&str> = if let Some(parent) = parent.as_deref() {
+        vec!["diff-tree", "-p", commit, parent]
     } else {
         vec!["diff-tree", "-p", "--root", commit]
     };

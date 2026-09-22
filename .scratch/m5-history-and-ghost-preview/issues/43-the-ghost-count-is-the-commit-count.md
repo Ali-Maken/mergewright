@@ -1,6 +1,6 @@
 # the-ghost-count-is-the-commit-count
 
-Status: ready
+Status: done
 Blocked by: nothing — **branch off `g38` at `3eac4f9`**, not off `main`.
 Crates: `graft-ops`, `graft-git`, `graft`.
 Build with: **Opus.** Git semantics, and the wrong choice here is a lie in the
@@ -94,19 +94,151 @@ Leave both alone.
 
 ## Acceptance (every tick names its verifying test inline, at tick time)
 
-- [ ] `fix-rebase-instead` passes, and the ghosts it draws equal the commits
-      git wrote — test: `m5_walk` scenario by that name. Quote the ghost
-      subjects and the `git log` subjects side by side.
-- [ ] The `RefMove` points at the commit that actually becomes the tip —
-      say how it is asserted.
-- [ ] Every other caller of the changed range or plan code is checked —
-      **name them and say what you found**, one line each.
-- [ ] No other walk scenario regressed — run the whole walk and give
-      `N ok, M failed`. Baseline from g38: **37 ok, 1 failed**.
-- [ ] Whole suite green; report before and after. Baseline on `g38`:
-      **2453 run, 2452 passed, 1 failed, 1 skipped**. Target: 0 failed.
+- [x] `fix-rebase-instead` passes, and the ghosts it draws equal the commits
+      git wrote — test: **`m5_walk` scenario `fix-rebase-instead`**
+      (`crates/graft/tests/it/m5_walk/radar_fixes.rs:164`, judged by
+      `claim::ghost_equals_git`). Run:
+      `cargo run -p graft --example m5_walk -- --only fix-rebase-instead`
+      → `1 ok, 0 failed`.
+
+      Side by side, read out of the scenario itself (temporary `println!`
+      in `rebase_instead_holds`, removed again after the run):
+
+      | ghosts the box drew | `git log --format=%s <main>` after Confirm |
+      |---|---|
+      | `feature: work` | `feature: work` |
+      | *(none — the merge is gone)* | `Advance main` |
+      | | `Add the base` |
+
+      Before the fix, the same scenario printed
+      ``FAIL fix-rebase-instead: ghost 1: subject `Merge branch 'main' into
+      feature`, git wrote `feature: work` `` — reproduced on this branch
+      before any edit.
+- [x] The `RefMove` points at the commit that actually becomes the tip.
+      Asserted two ways. In the walk: `ghost_equals_git` takes the plan's
+      one `RefMove` — observed
+      `RefMove { name: "refs/heads/main", from: 84cc93e…, to: Ghost(0) }` —
+      resolves `refs/heads/main` after Confirm (`cdc9f91`, subject
+      `feature: work`) and calls `ghost_is`, which compares the ghost's
+      subject, its parents and its `patch-id` against that real commit.
+      In unit form: `a_rebase_draws_no_ghost_for_a_merge_git_will_drop`
+      (`crates/graft-ops/tests/it/history_ops.rs`) asserts
+      `plan.ref_moves[0].to == Some(Ghost(0))` and then, after running the
+      op, that `git log -1 --format=%s refs/heads/main` equals
+      `plan.ghosts[0].subject`.
+- [x] Every other caller of the changed range or plan code is checked.
+      `commits_between` was **not** changed — a new sibling
+      `replayed_commits` was added and only the rebase planner moved to it —
+      so the other two callers are untouched, and each has a reason it must
+      stay on `commits_between`:
+      - `preview::kinds::cherry_pick` — `commits_between(head, commit, 1)`
+        to read one commit's own summary. It is a lookup, not a replay
+        list; `--cherry-pick --right-only` would be meaningless at cap 1.
+        Still green: `ghost_matches_git_cherry_pick` and the walk's pick
+        scenarios.
+      - `preview::kinds::branch_from_stash` — `commits_between(head, stash,
+        1)`, then `.commits.last().parents.first()` for the stash's base.
+        **A stash commit is always a merge**: verified by running git
+        (`git stash push` → `git log -1 --format=%P refs/stash` shows two
+        parents; `rev-list HEAD..stash` gives 2 entries, with `--no-merges`
+        it gives 1 — the index commit). Filtering merges inside
+        `commits_between` would have handed this planner the wrong commit.
+        Still green: walk scenario `stash-b-branches-from-stash`.
+      - `crates/graft-git/tests/it/history_reads.rs` —
+        `commits_between_is_oldest_first_and_caps_to_the_commits_nearest_the_tip`,
+        unchanged and green; the new test asserts the two readers differ on
+        purpose.
+- [x] No other walk scenario regressed — whole walk
+      (`cargo run -p graft --example m5_walk`): **38 ok, 0 failed**
+      (baseline from g38: 37 ok, 1 failed).
+- [x] Whole suite green. Before (this branch, after merging g38, before any
+      edit): **2453 run, 2452 passed, 1 failed, 1 skipped**. After:
+      **2459 run, 2459 passed, 0 failed, 1 skipped** (`cargo nextest run`,
+      workspace-wide; +6 is the six tests added here). `cargo test --doc`:
+      0 failures. `cargo fmt --all --check` and
+      `cargo clippy --all-targets -- -D warnings` clean, run after
+      `git add -A`.
 
 Rule 6: you do not tick "looks right". The user does.
+
+## What was built
+
+**Mechanism: the conductor's first candidate, widened.** Merges are filtered
+out of the replayed range — but not by post-filtering a `commits_between`
+result, and not inside `commits_between` itself. A new reader,
+`graft_git::history_reads::replayed_commits`, asks git for **the list git
+rebase will actually replay**:
+
+```
+git rev-list --reverse --topo-order --no-merges --cherry-pick --right-only
+             --date=raw --max-count=<cap+1> --format=… <onto>...<branch>
+```
+
+That is git's own todo-list walk (`sequencer.c`: `max_parents = 1`,
+`cherry_mark`, `right_only`, `topo_order`, `reverse`). `preview::kinds::rebase`
+now draws one ghost per entry of that list. The property holds by
+construction rather than by a filter that has to be kept in step.
+
+**Why not inside `commits_between`:** see the caller tick above — the stash
+planner would silently get the wrong commit.
+
+**Why not `--rebase-merges`:** agreed with the ticket. `Fix: rebase instead`
+exists to linearise a foxtrot; keeping the merge would defeat the verb. It
+would also change what the operation *does*, which is a spec change, not a
+preview fix.
+
+**Three things the walk had not caught**, each now covered:
+
+1. **A change already on `onto` under another id.** git prints "skipped
+   previously applied commit" and does not replay it; the preview drew a
+   ghost for it. Same lie, different cause — nobody had noticed because no
+   scenario has a cherry-pick-then-rebase shape. Proved by running git
+   (`git rebase` reported `Rebasing (1/1)` where the range held 2 commits).
+   Test: `a_rebase_draws_no_ghost_for_a_change_already_on_onto`,
+   `replayed_commits_leaves_out_what_git_rebase_drops`.
+2. **Nothing left to replay is not nothing happening.** With the merge and
+   the duplicates gone the list can be empty while the branch still moves:
+   git checks `onto` out and leaves the branch there. Verified by running
+   `git rebase` on two merges of the same two parents — the rebased branch
+   ended *equal to* `onto`. The old code drew `NotUndoable("nothing would
+   be replayed")` and **no ref move at all**, hiding both the ref move and
+   the rewritten tree. Now it draws `RefMove { branch → Real(onto) }` plus
+   the worktree effect. Tests:
+   `a_rebase_with_nothing_to_replay_still_draws_the_branch_moving`,
+   `a_rebase_of_a_branch_behind_onto_draws_the_fast_forward`.
+3. **Rebasing onto the same commit** really is a no-op and keeps the old
+   `NotUndoable` wording. Test: `a_rebase_onto_the_same_commit_is_not_undoable`.
+
+Also fixed a stale caption: `rebase_instead_holds`'s doc comment said
+`ghost_equals_git` "fails today". It no longer does.
+
+## NOTES
+
+- **Not compacted.** No scout: the ticket named every line and left a
+  failing scenario, as it said.
+- **`--cherry-pick` only sees duplicates when `onto` is not an ancestor of
+  the branch.** A symmetric difference with an empty left side has nothing
+  to compare patch-ids against, so an already-applied commit is kept. That
+  is not a hole in the preview — **git's own rebase behaves identically**,
+  because it uses the same walk; the preview still equals what git writes.
+  Found the hard way: the first version of
+  `replayed_commits_leaves_out_what_git_rebase_drops` built that shape and
+  failed, and the test now builds a shape where `onto` really has diverged.
+- **Unverified (not broken):** git's `--reapply-cherry-picks` /
+  `--rebase-merges` defaults were checked against **git 2.54.0 only** (the
+  machine's git). graft's floor is 2.38. If an older git in that range
+  defaulted the other way the preview would over-report rather than
+  under-report; nothing in CI pins an old git, so this is stated, not
+  claimed.
+- **Cost:** `--cherry-pick` makes the walk `--limited`, so git computes
+  patch-ids over the symmetric difference instead of stopping at
+  `--max-count`. That is one rev-list; the same planner already spends one
+  `merge-tree` spawn *per replayed commit* in `replay_forecast`, so this is
+  not the expensive part. Not measured — no perf run in a builder's
+  context.
+- **Conflict forecast follows the range**, so a merge commit in the range no
+  longer contributes a meaningless `merge-tree` against its own first
+  parent. Fewer spawns, same wording.
 
 ## Gates
 

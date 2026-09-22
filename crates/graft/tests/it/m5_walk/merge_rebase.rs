@@ -7,11 +7,13 @@ use graft_core::journal::OperationKind;
 use graft_fixtures::Shape;
 
 use super::claim::{ghost_equals_git, patch_id};
-use super::fixture::{Fixture, conflicting, fast_forwardable, forked, forked_on_main};
+use super::fixture::{
+    Fixture, already_up_to_date, conflicting, fast_forwardable, forked, forked_on_main,
+};
 use super::steps::{Capture, Scenario, Step, Wait, When};
 use super::vocabulary::{
-    box_says, branch, ch, chain, claim_and_confirm, key, last_entry_committed, plain, redo,
-    same_files, status_containing, undo,
+    box_choices, box_says, branch, ch, chain, claim_and_confirm, key, last_entry_committed,
+    nothing_open, plain, redo, same_files, same_refs, status_containing, undo,
 };
 use crate::repo_truth::check;
 
@@ -20,6 +22,7 @@ pub(super) fn merging() -> Vec<Scenario> {
         merge_ff_preview_equals_git(),
         merge_no_ff_ghost_equals_git(),
         merge_forecast_names_the_conflicting_path(),
+        merge_already_up_to_date_offers_close(),
     ]
 }
 
@@ -158,6 +161,67 @@ fn merge_forecast_names_the_conflicting_path() -> Scenario {
     }
 }
 
+/// `m` on a branch that is already an ancestor: the box says `nothing to
+/// do` and offers **only** `Close`. An enabled `Confirm` that does nothing
+/// is how a user learns to stop reading the box
+/// (`update::preview::nothing_to_do`).
+///
+/// This is the one merge scenario `ghost_equals_git` cannot judge: the plan
+/// moves no ref, and that function's first line refuses a plan with nothing
+/// to judge. The refs are asserted here instead.
+fn merge_already_up_to_date_offers_close() -> Scenario {
+    Scenario {
+        name: "merge-already-up-to-date-offers-close",
+        shape: Shape::Trivial,
+        remote: false,
+        size: (80, 24),
+        setup: already_up_to_date,
+        steps: vec![
+            Step::WaitFor(Wait::Ready),
+            Step::CursorTo("feature"),
+            key(ch('m')),
+            Step::WaitFor(Wait::PreviewReady),
+            Step::See("the box says there is nothing to do", |state| {
+                box_says(state, "nothing to do")
+            }),
+            Step::See("the only button is Close", |state| {
+                let choices = box_choices(state)?;
+                check(choices == ["Close"], || {
+                    format!("the buttons are {choices:?}")
+                })
+            }),
+            Step::Claim,
+            // `→` then `⏎`: on a one-button box `→` has nowhere to go, and
+            // `⏎` closes rather than confirming.
+            Step::Confirm,
+            Step::Settle("Enter on the Close box"),
+            Step::See("the box is gone and nothing ran", nothing_open),
+            Step::Mark("closed"),
+        ],
+        expect: |_, marks| {
+            check(marks.claim()?.plan.plan.ref_moves.is_empty(), || {
+                "an up-to-date merge planned a ref move".to_owned()
+            })?;
+            check(marks.claim()?.plan.plan.ghosts.is_empty(), || {
+                "an up-to-date merge drew a ghost".to_owned()
+            })?;
+            let closed = marks.get("closed")?;
+            same_refs("the up-to-date merge", &marks.before, closed)?;
+            same_files("the up-to-date merge", &marks.before, closed)?;
+            check(closed.in_progress.is_none(), || {
+                format!(
+                    "git says {:?} after a box that ran nothing",
+                    closed.in_progress
+                )
+            })?;
+            check(closed.journal.is_empty(), || {
+                format!("the box journaled {} entries", closed.journal.len())
+            })
+        },
+        capture: None,
+    }
+}
+
 fn rebase_two_commits_ghost_equals_git() -> Scenario {
     Scenario {
         name: "rebase-two-commits-ghost-equals-git",
@@ -221,7 +285,7 @@ fn rebase_holds(fixture: &Fixture, marks: &super::truth::Marks) -> Result<(), St
         (new_first.trim(), old_first.trim()),
     ] {
         check(
-            patch_id(fixture, new, false)? == patch_id(fixture, old, false)?,
+            patch_id(fixture, new, None)? == patch_id(fixture, old, None)?,
             || format!("{new}'s patch-id is not {old}'s"),
         )?;
     }

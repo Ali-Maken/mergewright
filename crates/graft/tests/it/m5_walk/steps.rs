@@ -50,6 +50,26 @@ pub enum Wait {
     /// `stash-b-branches-from-stash`, the one scenario that opens the
     /// overlay before typing a name into it.
     StashReady,
+    /// The Mistake Radar's default-branch context has landed. `.` builds a
+    /// row's verbs from the findings it can see *at that moment*
+    /// (`context_menu::open_selected` → `view::radar::findings_for`), and
+    /// that function answers "no findings" while the context is still
+    /// `Pending` — so the `Fix:` rows are simply absent if the key is
+    /// pressed too early, with nothing on screen saying why. `Ready`'s own
+    /// predicate never looks at the radar.
+    RadarReady,
+    /// The app has re-read git's in-progress state and found none: the
+    /// operation the banner was about is over as far as the app knows.
+    /// `Ready`'s own predicate never looks at `in_progress`, and the read
+    /// that clears it lands after the write's own answer — so `u` straight
+    /// after a `--continue` that finished is refused with `finish or abort
+    /// the merge first` for an operation git has already finished.
+    NotInProgress,
+    /// The working tree, re-read, has no unmerged path left: what `c`
+    /// checks before it will resume (`banner::continue_refusal`). Marking a
+    /// file resolved is a write like any other, and the banner decides from
+    /// the last read, not from the write.
+    Resolved,
 }
 
 /// One thing the walk does to the running app, in order.

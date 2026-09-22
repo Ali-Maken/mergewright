@@ -236,6 +236,15 @@ impl Walk<'_> {
             Wait::StashReady => self.pump(state, "the stash list", |state| {
                 matches!(state.stash.entries, Loading::Ready(_))
             }),
+            Wait::RadarReady => self.pump(state, "the radar's context", |state| {
+                matches!(state.radar.context, Loading::Ready(_))
+            }),
+            Wait::NotInProgress => self.pump(state, "the in-progress re-read", |state| {
+                state.in_progress.is_none() && state.operating.is_none()
+            }),
+            Wait::Resolved => self.pump(state, "the resolved tree", |state| {
+                state.operating.is_none() && graft::update::banner::unmerged_paths(state).is_empty()
+            }),
         }
     }
 

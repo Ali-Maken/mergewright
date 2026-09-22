@@ -98,6 +98,66 @@ pub fn commits_between(
     cap: usize,
     stop: &dyn Stop,
 ) -> Result<Range, RunError> {
+    rev_list(
+        repo,
+        cap,
+        vec![GitArg::Oid(include), GitArg::Word(format!("^{exclude}"))],
+        stop,
+    )
+}
+
+/// The commits `git rebase <onto>` would replay from `branch`, oldest
+/// first, capped at `cap` entries.
+///
+/// This is **not** `commits_between(onto, branch)`. `git rebase` builds its
+/// todo list from a narrower walk than `branch ^onto`, and the Ghost
+/// Preview draws one ghost per entry in that list, so the two must agree or
+/// the box promises commits git will not write (m5/43):
+///
+/// - `--no-merges`: without `--rebase-merges`, git drops merge commits from
+///   the range instead of recreating them. graft never passes
+///   `--rebase-merges` (`operation::history::plan_rebase`).
+/// - `--cherry-pick --right-only`: git skips a commit whose change is
+///   already on `onto` under a different id — the "skipped previously
+///   applied commit" hint. That is git's default; only
+///   `--reapply-cherry-picks` turns it off, and graft never passes it.
+/// - `--topo-order`: git walks the todo list in graph order, not in commit
+///   date order, so a clock skew cannot reorder the ghosts.
+///
+/// # Errors
+/// [`RunError`] from the runner: git missing, stopped, or either id naming
+/// no commit in this repository.
+pub fn replayed_commits(
+    repo: &RepoHandle,
+    onto: Oid,
+    branch: Oid,
+    cap: usize,
+    stop: &dyn Stop,
+) -> Result<Range, RunError> {
+    rev_list(
+        repo,
+        cap,
+        vec![
+            GitArg::Flag("--topo-order"),
+            GitArg::Flag("--no-merges"),
+            GitArg::Flag("--cherry-pick"),
+            GitArg::Flag("--right-only"),
+            GitArg::Word(format!("{onto}...{branch}")),
+        ],
+        stop,
+    )
+}
+
+/// One `rev-list` in the shape [`parse_rev_list`] reads, `revs` naming what
+/// to walk and how. Capped by fetching one more than `cap` so the caller
+/// learns whether more exist; `--reverse` is applied after `--max-count`,
+/// so the entries kept are the ones nearest the tip.
+fn rev_list(
+    repo: &RepoHandle,
+    cap: usize,
+    revs: Vec<GitArg>,
+    stop: &dyn Stop,
+) -> Result<Range, RunError> {
     let max_count = cap.saturating_add(1);
     let output = GitInvocation::new(repo)
         .args([
@@ -106,9 +166,8 @@ pub fn commits_between(
             GitArg::Word("--date=raw".to_owned()),
             GitArg::Word(format!("--max-count={max_count}")),
             GitArg::Word("--format=%H%x00%P%x00%an%x00%ae%x00%ad%x00%s".to_owned()),
-            GitArg::Oid(include),
-            GitArg::Word(format!("^{exclude}")),
         ])
+        .args(revs)
         .run(stop)?;
 
     let mut commits = parse_rev_list(&output.stdout).map_err(|why| {

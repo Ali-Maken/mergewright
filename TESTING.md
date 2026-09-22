@@ -1607,7 +1607,7 @@ you killed — goes in the table at the top of this file, dated, the same day
 
 M5's acceptance ticket (m5-history-and-ghost-preview/11). M5 promises that
 **you see the result before you confirm**. The walk is how a person checks
-that: one command, 30 scenarios (the ticket asks for 45 or more; the rest
+that: one command, 38 scenarios (the ticket asks for 45 or more; the rest
 are listed under "Not yet walked"), each a scratch copy of a corpus shape
 with a history scripted by git, the real app driven by keys and a mouse
 drag over the real job pool and real `git`, and then **the truth read back
@@ -1637,8 +1637,20 @@ refs, HEAD, index tree, files, journal length, the claim's own words), exit
 scenario (`tests/it/m5_walk/`, `m5_walk::every_scenario::*`). Every
 scenario ends with `git fsck --no-dangling` saying nothing but notices.
 
-**All 35 scenarios pass.** The five the acceptance walk left failing on
-purpose were fixed in m5/32:
+**37 of the 38 scenarios pass; one fails on purpose** —
+`fix-rebase-instead`, left failing by m5/38 as a finding: the rebase plan
+draws a ghost for a **merge commit** inside the replayed range
+(`graft-ops/src/preview/kinds.rs:113`, one ghost per commit in the range
+`graft-git/src/history_reads.rs:94` hands back — `rev-list` with no
+`--no-merges`), and `git rebase` without `--rebase-merges` drops it. So the
+box promises two new commits where git makes one, and the branch's
+predicted tip is a commit that never exists. `ghost_equals_git` says it in
+one line: ``ghost 1: subject `Merge branch 'main' into feature`, git wrote
+`feature: work` ``. Not fixed here — the walk found it, and it is the
+conductor's to schedule.
+
+The five the acceptance walk left failing on purpose before that were fixed
+in m5/32:
 
 - `merge-no-ff-ghost-equals-git`, `rebase-two-commits-ghost-equals-git`,
   `rebase-via-drop-menu`, `cherry-pick-via-menu-ghost-equals-git` — the
@@ -1745,81 +1757,138 @@ and the exact git command are from the captures only.
    no journal entry.
 5. **preview-too-small-never-confirms** (38x10) — the box does not fit;
    `Enter` leaves the preview open, nothing ran, no entry.
-6. **merge-ff-preview-equals-git** — `forked_on_main`; `m` on `feature`,
+6. **preview-refused-during-an-operation** — `conflicting`; `m` on
+   `feature`, confirm, the merge stops; `Esc` off the banner, then `m` and
+   then `r`: each says `finish or abort the merge first`, neither opens a
+   box. `MERGE_HEAD` still present, refs and files byte-identical to the
+   stop, journal length unchanged.
+7. **merge-ff-preview-equals-git** — `forked_on_main`; `m` on `feature`,
    confirm: `main` equals old `feature`, tree matches; `u` puts `main`
    back.
-7. **merge-no-ff-ghost-equals-git** — `m` on `feature` from `main`:
-   `ghost_equals_git` (**FAIL**, worktree line), `u` restores, `U` redoes.
-8. **merge-forecast-names-the-conflicting-path** — `conflicting`; box says
+8. **merge-no-ff-ghost-equals-git** — `m` on `feature` from `main`:
+   `ghost_equals_git`, `u` restores, `U` redoes.
+9. **merge-forecast-names-the-conflicting-path** — `conflicting`; box says
    `may conflict` and `shared.txt`.
-9. **rebase-two-commits-ghost-equals-git** — `r` on `main` from `feature`:
-   `ghost_equals_git`, the two new commits' patch-ids equal the old tips'
-   (**FAIL**, worktree line).
-10. **rebase-dirty-tree-refused-offers-stash** — a dirty `base.txt`;
+10. **merge-already-up-to-date-offers-close** — `feature` left at the fork
+    while `main` moved twice; `m` on `feature`: the box says `nothing to
+    do` and its buttons are exactly `["Close"]`. `→` then `Enter` closes
+    it: the plan moved no ref and drew no ghost, refs and files are as
+    before, git is mid-nothing, the journal is empty. The one merge
+    scenario `ghost_equals_git` cannot judge — it refuses a plan with no
+    ref move — so the refs are asserted directly.
+11. **rebase-two-commits-ghost-equals-git** — `r` on `main` from `feature`:
+    `ghost_equals_git`, the two new commits' patch-ids equal the old tips'.
+12. **rebase-dirty-tree-refused-offers-stash** — a dirty `base.txt`;
     confirm: `rebase needs a clean tree`, `S stash 1 changed file`; nothing
     moved.
-11. **rebase-via-drop-menu** — drag `feature`'s badge onto `main`'s row,
-    pick `Rebase`: same holds as 9 (**FAIL**, worktree line).
-12. **cherry-pick-via-menu-ghost-equals-git** — `.` on `finish the
-    feature` from `main`, `Cherry-pick`: one ghost, patch-id equal
-    (**FAIL**, worktree line).
-13. **revert-via-menu-ghost-equals-git** — `.` on `main moves again`,
+13. **rebase-via-drop-menu** — drag `feature`'s badge onto `main`'s row,
+    pick `Rebase`: same holds as 11.
+14. **cherry-pick-via-menu-ghost-equals-git** — `.` on `finish the
+    feature` from `main`, `Cherry-pick`: one ghost, patch-id equal.
+15. **revert-via-menu-ghost-equals-git** — `.` on `main moves again`,
     `Revert`: one ghost whose patch is the reverse.
-14. **reset-hard-says-loses-and-u-brings-it-back** — dirty `base.txt`; `.`
+16. **revert-merge-uses-mainline** — `forked_on_main` with `feature`
+    merged in by git; `.` on `main`'s tip (the merge), the row
+    `Revert <sha7>, -m 1`: the plan's command starts `git revert ` and
+    carries `-m 1`, one ghost, `ghost_equals_git` (the ghost's patch is the
+    merge's reversed **against parent 1**); after it `work-one.txt` and
+    `work-two.txt` are out of the tree, `base.txt`, `main-one.txt` and
+    `main-two.txt` are still in it, `main~1` is the merge, last entry
+    `Revert` `Committed`.
+17. **reset-hard-says-loses-and-u-brings-it-back** — dirty `base.txt`; `.`
     on `main moves on`, `Reset main to here, hard`: box `working tree:
     LOSES base.txt (backup saved)`; confirm: `main` at `main moves on`,
     the tree clean; `u`: `main` back, `base.txt` bytes back.
-15. **reset-mixed-keeps-the-tree** — same row, `mixed`: `main` moved, the
+18. **reset-mixed-keeps-the-tree** — same row, `mixed`: `main` moved, the
     file bytes untouched.
-16. **checkout-branch-via-menu** — `Checkout main`: `HEAD` symbolic to
+19. **checkout-branch-via-menu** — `Checkout main`: `HEAD` symbolic to
     `refs/heads/main`, files are main's; `u` puts `feature` back.
-17. **checkout-detached-via-menu** — `Checkout <sha>, detached`: `HEAD`
+20. **checkout-detached-via-menu** — `Checkout <sha>, detached`: `HEAD`
     detached at the row.
-18. **conflict-focuses-banner-and-lists-files** — `conflicting`; `m` on
+21. **fix-revert-the-merge** — `Shape::FoxtrotMerge` (the shape the radar's
+    own tests use), `main` checked out on the foxtrot; wait for the radar's
+    context, then `.` on `main`: the row `Fix: revert the merge, -m 2`.
+    Confirm: the plan's command carries `-m 2`, `ghost_equals_git`,
+    `feature.txt` is out of the tree, `base.txt` and `main.txt` are still
+    in it, `main~1` is the merge, last entry `Revert` `Committed`.
+22. **fix-reset-to-before-the-merge** — the same row, `Fix: reset main to
+    before the merge`: `ghost_equals_git`, `main` is the merge's **second**
+    parent (`<merge>^2`, its real previous tip), `feature.txt` out of the
+    tree, last entry `Reset` `Committed`; `u` puts `main` back on the
+    merge.
+23. **fix-rebase-instead** — the same row, `Fix: rebase instead`: the
+    replayed tip has exactly one parent and it is `<merge>^2`,
+    `base.txt`/`main.txt`/`feature.txt` all still in the tree, last entry
+    `Rebase` `Committed`, `u` puts `main` back on the merge — and then
+    **`ghost_equals_git` FAILS**, on purpose and left failing (m5/38's
+    finding): the plan draws a ghost for the merge commit inside the
+    replayed range and `git rebase` without `--rebase-merges` drops it, so
+    the box promises two new commits where git makes one. The claim is
+    judged **last** in this scenario so the eight checks above it are
+    reached and proven.
+24. **conflict-focuses-banner-and-lists-files** — `conflicting`; `m` on
     `feature`, confirm: `MERGE_HEAD` present, journal `Merge` `Pending`,
     banner focused, `unmerged_paths` is `[shared.txt]`, the file starts
     `<<<<<<<`.
-19. **banner-a-aborts-and-restores** — `a`: choices `["Cancel", "Abort"]`;
+25. **banner-a-aborts-and-restores** — `a`: choices `["Cancel", "Abort"]`;
     `Abort`: no `MERGE_HEAD`, `shared.txt` is main's, entry
     `Aborted("aborted")`.
-20. **conflict-survives-relaunch** — close and reopen the app mid-merge:
+26. **conflict-survives-relaunch** — close and reopen the app mid-merge:
     the line says `still in progress from a previous run`, git still
     merging.
-21. **time-machine-three-steps** — `three_to_stage`; stage three files;
+27. **continue-refuses-until-resolved-then-one-entry-undoes** — the stopped
+    merge; `c` at once: `1 file still conflicted · M mergetool  e edit
+    space marks resolved`, `MERGE_HEAD` still there and `write-tree`
+    still refusing the index (an unmerged entry is what it refuses). Then
+    `Esc`, `shared.txt` written as `resolved by hand\n`, `space` on it in
+    the changes pane, `⇥` back to the banner, `c` again: git has **one**
+    `Merge` entry and it is `Committed`, the new tip's parents are old
+    `main` then old `feature`, `shared.txt` is `resolved by hand\n`. One
+    `u` takes the whole thing back: `main` at its old commit,
+    `shared.txt` back to `main's line\n`.
+28. **rebase-stops-twice-same-entry** — `main` and `feature` both rewrote
+    `shared.txt`, `feature` twice; `r` on `main` from `feature`, confirm:
+    git stops, is resolved as `resolved once\n`, `c`, **stops again** at a
+    different `HEAD`, is resolved as `resolved twice\n`, `c`. At both
+    stops there is exactly **one** `Rebase` entry and it is `Pending`;
+    after the second `c` that same one entry is `Committed` — one entry
+    across two stops. The replayed branch's `~2` is `main`'s tip and
+    `shared.txt` is `resolved twice\n`. One `u` puts `feature` back at its
+    old commit with every file byte-identical to before the rebase.
+29. **time-machine-three-steps** — `three_to_stage`; stage three files;
     `J`, down to the first entry, `Enter`: title `Preview: revert to before
     "stage one.txt" (3 steps)`, box `restored from backup`; confirm: the
     index tree equals the tree before the first stage; three `Undo`
     entries; `U` ×3 stages them again.
-22. **time-machine-esc-returns-to-journal** — `Esc` on that box: the
+30. **time-machine-esc-returns-to-journal** — `Esc` on that box: the
     journal browser is back, shown and ready.
-23. **pull-diverged-offers-m-and-r** — `Shape::Linear` with a bare; the
+31. **pull-diverged-offers-m-and-r** — `Shape::Linear` with a bare; the
     teammate commits on the bare, `ours locally`; `p`: `main and
     origin/main have diverged · m merge it  r rebase onto it`, no ref
     moved; `r`, confirm: one ghost, `ghost_equals_git`, `main~1` is
-    `origin/main`, the bare untouched (**FAIL**: the remembered tip is
-    pre-fetch, `r` is refused once).
-24. **b-creates-and-checks-out** — `forked`; cursor on `main`, `b`,
+    `origin/main`, the bare untouched.
+32. **b-creates-and-checks-out** — `forked`; cursor on `main`, `b`,
     `release`, `⇥` (checkout), `Enter`: `refs/heads/release` is `main`'s
     commit, `HEAD` symbolic to it, one journal entry naming `release`. No
     preview — a create moves no history.
-25. **b-refuses-bad-and-existing-names** — `b`, `bad name` (a space):
+33. **b-refuses-bad-and-existing-names** — `b`, `bad name` (a space):
     `name_refusal` starts `bad name:`; `Ctrl+U`, `main` (already a
     branch): `name_refusal` is `exists`; `Esc`: the prompt closes, refs
     and files unchanged, nothing journaled.
-26. **t-creates-a-tag** — cursor on `feature`, `t`, `v2.0.0`, `Enter`:
+34. **t-creates-a-tag** — cursor on `feature`, `t`, `v2.0.0`, `Enter`:
     `refs/tags/v2.0.0` is `feature`'s commit, `cat-file -t` says `commit`
     (lightweight, no tag object), one journal entry.
-27. **delete-branch-then-u-restores** — `.` on `main`, `Delete branch
+35. **delete-branch-then-u-restores** — `.` on `main`, `Delete branch
     main`, confirm: `ghost_equals_git`, `refs/heads/main` gone, one
     `BranchDelete` entry; `u`: `main` back at its old commit.
-28. **delete-tag-then-u-restores** — a tag `v1` on `main`'s tip; `.` on
+36. **delete-tag-then-u-restores** — a tag `v1` on `main`'s tip; `.` on
     `v1`'s row, `Delete tag v1`, confirm: `ghost_equals_git`,
     `refs/tags/v1` gone, one `TagDelete` entry; `u`: `v1` back.
-29. **stash-b-branches-from-stash** — one stashed entry `wip`; `S`, `b`,
+37. **stash-b-branches-from-stash** — one stashed entry `wip`; `S`, `b`,
     `rescued`, `Enter` opens the Ghost Preview, confirm: `ghost_equals_git`,
     `HEAD` symbolic to `refs/heads/rescued`, `stash list` empty, one
     `BranchFromStash` entry; `u`: the stash (`wip`) is back.
-30. **move-a-branch-not-checked-out** — `forked_on_main`; drag `feature`'s
+38. **move-a-branch-not-checked-out** — `forked_on_main`; drag `feature`'s
     badge (not current) onto `main`'s row: the drop menu offers `Move
     feature to here`, not a `Reset` row; pick it, confirm:
     `ghost_equals_git`, `refs/heads/feature` equals `main`'s old commit,
@@ -1829,9 +1898,6 @@ and the exact git command are from the captures only.
 ### Not yet walked
 
 The ticket lists these; none is built, so none is ticked:
-`preview-refused-during-an-operation`, `merge-already-up-to-date-offers-close`,
-`revert-merge-uses-mainline`, the `Fix:`
-verbs, `continue-refuses-until-resolved`, `rebase-stops-twice`,
 `mergetool-absent`, `e-opens-editor`, `u-refused-during-an-operation`,
 `journal-row-says-in-progress`, `u-after-push` ×3, `esc-cancels-undo`,
 `ctrl-r-twice`, `password-field-is-secret`, `hints-at-80`. **NOT in any
@@ -1855,7 +1921,8 @@ What each capture shows; 120x40 is `not run` except for the banner.
 
 ### Per terminal: walk the history group
 
-Run `cargo run -p graft --example m5_walk` (expect `ok` for all 30), then
+Run `cargo run -p graft --example m5_walk` (expect `37 ok, 1 failed` —
+`fix-rebase-instead` is the known finding above), then
 in a clone of your own: `r` on a branch
 row, look at the ghost rows and the box, `Esc`; `m` on a branch that
 conflicts, confirm, resolve in your editor, `c`; `.` on a commit, `Reset …

@@ -8,7 +8,7 @@ use std::process::{Command, Output};
 use graft_core::oid::Oid;
 use graft_fixtures::Scratch;
 use graft_git::history_reads::{
-    Forecast, changed_paths, commits_between, forecast_merge, merge_base,
+    Forecast, changed_paths, commits_between, forecast_merge, merge_base, replayed_commits,
 };
 use graft_git::repo::RepoHandle;
 use graft_git::version;
@@ -146,6 +146,90 @@ fn commits_between_is_oldest_first_and_caps_to_the_commits_nearest_the_tip() {
     assert_eq!(
         capped.commits.iter().map(|c| c.id).collect::<Vec<_>>(),
         vec![c3, c4]
+    );
+}
+
+/// The whole point of `replayed_commits` next to `commits_between`: the
+/// range holds commits `git rebase` will not write, and only the first of
+/// the two leaves them out. Judged against `git rebase` itself, not against
+/// a second reading of the same rev-list (m5/43).
+/// `topic` holds a merge and a commit whose change `onto` already has under
+/// another id; `onto` is not an ancestor of it. Hands back `(onto, topic)`.
+fn merge_and_already_applied(dir: &Path) -> (Oid, Oid) {
+    init(dir);
+    write_and_commit(dir, "base.txt", "0\n", "base");
+    let base = rev_parse(dir, "HEAD");
+    git_ok(dir, &["checkout", "-q", "-b", "side"]);
+    write_and_commit(dir, "side.txt", "s\n", "side work");
+    git_ok(dir, &["checkout", "-q", "-b", "topic", &base.to_string()]);
+    write_and_commit(dir, "one.txt", "one\n", "one on topic");
+    let one = rev_parse(dir, "HEAD");
+    git_ok(
+        dir,
+        &["merge", "--no-ff", "-m", "merge side into topic", "side"],
+    );
+    write_and_commit(dir, "two.txt", "two\n", "two on topic");
+    let tip = rev_parse(dir, "HEAD");
+    // `onto` advances, and takes `one on topic`'s change under its own id:
+    // the range gains a merge and an already-applied commit, and git will
+    // replay neither.
+    git_ok(dir, &["checkout", "-q", "-b", "onto", &base.to_string()]);
+    write_and_commit(dir, "onto.txt", "o\n", "onto moves");
+    git_ok(dir, &["cherry-pick", "--no-edit", &one.to_string()]);
+    let onto = rev_parse(dir, "HEAD");
+    git_ok(dir, &["checkout", "-q", "topic"]);
+    (onto, tip)
+}
+
+fn subjects(range: &graft_git::history_reads::Range) -> Vec<String> {
+    range
+        .commits
+        .iter()
+        .map(|commit| commit.subject.clone())
+        .collect()
+}
+
+#[test]
+fn replayed_commits_leaves_out_what_git_rebase_drops() {
+    let scratch = scratch();
+    let dir = scratch.path();
+    let (onto, tip) = merge_and_already_applied(dir);
+
+    let repo = open(dir);
+    let between = commits_between(&repo, onto, tip, 10, &()).expect("rev-list runs");
+    let mut kept = subjects(&between);
+    kept.sort();
+    assert_eq!(
+        kept,
+        vec![
+            "merge side into topic",
+            "one on topic",
+            "side work",
+            "two on topic"
+        ],
+        "the plain range keeps the merge and the already-applied commit"
+    );
+
+    let replayed = replayed_commits(&repo, onto, tip, 10, &()).expect("rev-list runs");
+    assert!(!replayed.capped);
+    assert_eq!(subjects(&replayed), vec!["side work", "two on topic"]);
+
+    // What git itself replays, read back from the repository.
+    git_ok(dir, &["rebase", &onto.to_string()]);
+    let listed = git(dir, &["rev-list", "--reverse", "HEAD", &format!("^{onto}")]);
+    assert!(listed.status.success(), "rev-list after the rebase");
+    let written: Vec<String> = String::from_utf8_lossy(&listed.stdout)
+        .lines()
+        .map(|line| {
+            let shown = git(dir, &["log", "-1", "--format=%s", line]);
+            assert!(shown.status.success(), "log of {line}");
+            String::from_utf8_lossy(&shown.stdout).trim().to_owned()
+        })
+        .collect();
+    assert_eq!(
+        written,
+        subjects(&replayed),
+        "the reader's list is the list git wrote"
     );
 }
 

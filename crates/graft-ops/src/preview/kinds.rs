@@ -104,10 +104,35 @@ pub(super) fn rebase(
     stop: &dyn Stop,
 ) -> Result<PreviewPlan, PreviewError> {
     let onto = params.onto_tip;
-    let range = history_reads::commits_between(repo, onto, params.branch.oid, FORECAST_CAP, stop)?;
+    // Not `commits_between`: the ghosts must be the commits git will write,
+    // and `git rebase` replays a narrower list than `onto..branch` — merges
+    // and changes already on `onto` are dropped (m5/43). See
+    // `replayed_commits`.
+    let range = history_reads::replayed_commits(repo, onto, params.branch.oid, FORECAST_CAP, stop)?;
     let mut plan = blank();
     if range.commits.is_empty() {
-        plan.undo = UndoNote::NotUndoable("nothing would be replayed".to_owned());
+        if params.branch.oid == onto {
+            plan.undo = UndoNote::NotUndoable("nothing would be replayed".to_owned());
+            return Ok(plan);
+        }
+        // Nothing to replay, but the branch still moves: git checks `onto`
+        // out and leaves the branch there — a fast-forward when the branch
+        // is behind, and a plain move when everything it had was a merge or
+        // was already applied. Proved by running `git rebase` on both
+        // shapes (m5/43). Drawing "nothing would be replayed" here would
+        // hide a ref move and a rewritten tree.
+        plan.ref_moves = vec![RefMove {
+            name: params.branch.name.clone(),
+            from: Some(params.branch.oid),
+            to: Some(Target::Real(onto)),
+        }];
+        plan.worktree = worktree(
+            repo,
+            &Landing::At {
+                from: params.branch.oid,
+                to: onto,
+            },
+        )?;
         return Ok(plan);
     }
     for (index, commit) in range.commits.iter().enumerate() {
