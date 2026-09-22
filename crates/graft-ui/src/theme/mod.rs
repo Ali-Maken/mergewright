@@ -45,8 +45,11 @@ use graft_graph::identity::BranchIdentity;
 
 use crate::syntax::SyntaxRole;
 
-/// The number of chrome tokens PROMPT.md §5 names, lanes excluded.
-const TOKEN_COUNT: usize = 11;
+/// The number of chrome tokens PROMPT.md §5 names, lanes excluded, plus
+/// [`Token::Selection`] (m5-history-and-ghost-preview/44): PROMPT.md §5 does
+/// not name it, but `surface-raised` cannot keep doing both jobs (see
+/// [`Token::Selection`]'s doc), so the count grew by one to hold the split.
+const TOKEN_COUNT: usize = 12;
 
 /// The number of lane hues. Lanes beyond this reuse them ([`Theme::lane`]).
 pub const LANE_COUNT: usize = 12;
@@ -63,8 +66,17 @@ pub enum Token {
     Bg,
     /// A pane's fill, a step up from `bg`.
     Surface,
-    /// Something floating over a pane: the palette, a dialog, a selected row.
+    /// Something floating over a pane: the palette, a dialog.
     SurfaceRaised,
+    /// "You are here": the cursor row in a list or the graph. A step deliberately
+    /// larger than `surface-raised`'s — m5-history-and-ghost-preview/44:
+    /// `surface-raised` used to draw this too, at a ~6% lightness step that
+    /// measured 1.1:1–1.3:1 against `bg`, under the WCAG 1.4.11 non-text floor
+    /// of 3:1. A raised panel wants a quiet step; the row that answers "where
+    /// am I" needs to shout, and one token cannot do both without one of its
+    /// two jobs failing. `surface-raised` keeps its own (smaller) contrast
+    /// floor; this token's floor is asserted separately in `theme::tests`.
+    Selection,
     /// Pane rules. Thin, faint, and not a text colour.
     Border,
     /// Body text.
@@ -90,6 +102,7 @@ impl Token {
         Token::Bg,
         Token::Surface,
         Token::SurfaceRaised,
+        Token::Selection,
         Token::Border,
         Token::Text,
         Token::TextMuted,
@@ -106,6 +119,7 @@ impl Token {
             Token::Bg => "bg",
             Token::Surface => "surface",
             Token::SurfaceRaised => "surface-raised",
+            Token::Selection => "selection",
             Token::Border => "border",
             Token::Text => "text",
             Token::TextMuted => "text-muted",

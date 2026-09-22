@@ -128,13 +128,17 @@ fn code(buffer: &Buffer, x: u16, y: u16) -> char {
 /// have kept every snapshot here green.
 ///
 /// The style *was* applied (`graph_screen/render.rs`'s `row_emphasis`
-/// painted `Token::SurfaceRaised` across the row, and still does), and it
-/// was applied too faintly to find: `#14161B` → `#232730` in the dark
-/// theme, about a six-percent step in lightness, with the foreground colour
-/// unchanged. Which half of that is legible in his terminal is his call and
-/// is not ticked here (rule 6). What this test holds is the half a test can:
-/// that the row differs from its neighbours by three **named** attributes,
-/// and that one of them is a shape rather than a colour.
+/// painted `Token::SurfaceRaised` across the row), and it was applied too
+/// faintly to find: `#14161B` → `#232730` in the dark theme, about a
+/// six-percent step in lightness, with the foreground colour unchanged.
+/// m5-history-and-ghost-preview/44 gave the row its own token
+/// (`Token::Selection`) with a contrast floor `surface-raised` was never
+/// held to, and moved this row (and the graph's, the stash's, the
+/// journal's, the files pane's) onto it. Which half of that is legible in
+/// his terminal is his call and is not ticked here (rule 6). What this test
+/// holds is the half a test can: that the row differs from its neighbours
+/// by three **named** attributes, and that one of them is a shape rather
+/// than a colour.
 ///
 /// Rule 5 says a *capture* cannot prove colour, and that is true — the
 /// `.txt` grids drop attributes. It does not say colour cannot be tested.
@@ -158,21 +162,26 @@ fn the_cursor_row_differs_from_its_neighbours_by_three_named_attributes() {
 
     // 1. The background fill, across the whole row — the attribute this
     //    file never asserted.
-    let raised = color(theme.token(Token::SurfaceRaised));
+    //
+    //    m5-history-and-ghost-preview/44: this used to be `Token::SurfaceRaised`,
+    //    which measured 1.21:1 against `bg` here — under the WCAG 1.4.11 floor
+    //    (3:1). `Token::Selection` carries this job now; `SurfaceRaised` keeps
+    //    its own, smaller step for a raised panel's background.
+    let selection = color(theme.token(Token::Selection));
     for x in [0u16, 20, 40, COLUMNS - 1] {
         assert_eq!(
             buffer[(x, cursor)].bg,
-            raised,
-            "column {x} of the cursor row is filled with surface-raised"
+            selection,
+            "column {x} of the cursor row is filled with selection"
         );
         assert_ne!(
             buffer[(x, above)].bg,
-            raised,
+            selection,
             "column {x} of the row above is not"
         );
         assert_ne!(
             buffer[(x, below)].bg,
-            raised,
+            selection,
             "column {x} of the row below is not"
         );
     }

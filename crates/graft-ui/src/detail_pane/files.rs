@@ -85,7 +85,7 @@ pub(crate) fn render_files(view: &DetailView, area: Rect, theme: &Theme, buf: &m
     } else {
         foreground(theme, Token::TextMuted)
     };
-    let cursor_bg = color(theme.token(Token::SurfaceRaised));
+    let cursor_bg = color(theme.token(Token::Selection));
 
     for (offset, (index, row)) in (0_u16..).zip(files.visible().skip(files.top)) {
         if offset >= area.height {

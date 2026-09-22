@@ -278,7 +278,7 @@ impl GraphScreen<'_> {
             style = style.add_modifier(Modifier::BOLD);
             trailing_style = trailing_style.add_modifier(Modifier::BOLD);
             if !no_background {
-                let fill = color(self.theme.token(Token::SurfaceRaised));
+                let fill = color(self.theme.token(Token::Selection));
                 buf.set_style(
                     Rect {
                         y,
