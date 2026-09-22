@@ -588,6 +588,13 @@ fn core_event(next: &mut AppState, commands: &mut Vec<Command>, event: Event) {
             }
         }
         Event::Resize { columns, rows } => {
+            // Ticket 10 piece 4: a resize cancels a drag, the same as any
+            // other event that moves the badge out from under the pointer.
+            // Harmless today (the next `Drag` re-reads `over` against the
+            // new layout), but a resize mid-drag is cheap to get right and
+            // leaving it in the air is one more state the next reader has
+            // to reason about (review m5-10-30-31 m2).
+            next.drag = None;
             next.size = Size { columns, rows };
             let height = next.graph_rows();
             if let Some(history) = next.history.as_mut()

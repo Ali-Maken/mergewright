@@ -443,7 +443,7 @@ fn capture_hint_bar_for_docs_shots() {
         (
             "detail",
             &detail,
-            "the pane is open on the tip with its diff focused: at 80 the              Detail tab owns the screen, wider it sits beside the graph",
+            "the pane is open on the tip with its diff focused: at 80 the Detail tab owns the screen, wider it sits beside the graph",
         ),
     ] {
         for (label, columns, rows) in [

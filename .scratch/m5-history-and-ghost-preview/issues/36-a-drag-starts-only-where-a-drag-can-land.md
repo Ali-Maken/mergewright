@@ -1,6 +1,6 @@
 # a-drag-starts-only-where-a-drag-can-land
 
-Status: ready
+Status: done
 Blocked by: **33** (shares `graft`, `graft-ui`).
 Crates: `graft`, `graft-ui`.
 Build with: **Sonnet.** Every item below arrives with the line that proves it
@@ -131,25 +131,88 @@ is a design call, not yours.
 
 ## Acceptance (every tick names its verifying test inline, at tick time)
 
-- [ ] A drag cannot start while the search prompt or a focused banner owns the
-      keyboard — test: name it. **Must fail before the fix.**
-- [ ] A resize either cancels the drag or is a disclosed deviation — say which,
-      and name the test or the NOTES line.
-- [ ] A press at a graph row's height but in the detail pane's columns gives
-      `over = None` — test: name it. **Must fail before the fix.**
-- [ ] The 14-space run is gone from `hint_bar.rs:446` and from all three
-      captures and the contact sheet — quote the corrected sentence.
-- [ ] Both stale doc references name tests that exist — quote the new wording,
-      and say if 33 had already fixed `hit.rs:10`.
-- [ ] A name typed into the stash-branch prompt survives a refused preview —
-      test: name it. **Must fail before the fix.**
-- [ ] `border_row`'s cut-label branch has a direct test — name it.
-- [ ] `selected_refusal` cannot panic — name the test or the type-level reason.
-- [ ] Q1 answered with a line: which keys the overlay claims and which the
-      graph does. If any bar key is dead there, it is fixed or reported.
-- [ ] Whole suite green; report before and after.
+- [x] A drag cannot start while the search prompt or a focused banner owns the
+      keyboard — tests: `update::drag::tests::drag_cannot_start_while_the_search_prompt_is_open`,
+      `update::drag::tests::drag_cannot_start_while_a_banner_has_focus`.
+      **Failed before the fix**, confirmed by reverting `can_start` and
+      re-running: both panicked ("no badge was picked up over the
+      prompt"/"...under the focused banner").
+- [x] A resize either cancels the drag or is a disclosed deviation — **fixed**
+      (cleared `state.drag` on `Event::Resize`, `update/mod.rs`), not
+      disclosed as a deviation — test: `update::drag::tests::resize_cancels_a_drag`.
+- [x] A press at a graph row's height but in the detail pane's columns gives
+      `over = None` — test: `update::drag::tests::dragging_into_the_detail_pane_gives_no_target`.
+      **Failed before the fix**: reverting `drag_mouse`'s Drag arm to the old
+      `geometry::graph_row_at(state, mouse.row)` call reproduced `over =
+      Some(0)` at 160 columns with the detail pane split beside the graph.
+- [x] The 14-space run is gone from `hint_bar.rs:446` and from all three
+      captures and the contact sheet — corrected sentence: "the pane is open
+      on the tip with its diff focused: at 80 the Detail tab owns the screen,
+      wider it sits beside the graph."
+- [x] Both stale doc references name tests that exist — `crates/graft/MAP.md`
+      (`bound_actions` entry, was `every_hinted_key_is_bound` twice) now says
+      `every_key_the_bar_draws_is_answered`, the test's real name
+      (`update/tests.rs:3376`). `hit.rs:10` **was already fixed by ticket
+      33** — it already reads
+      `graft_ui::graph_screen::tests::badge_spans_match_the_drawn_cells`,
+      which exists (`crates/graft-ui/src/graph_screen/tests.rs:1756`); no
+      change needed there.
+- [x] A name typed into the stash-branch prompt survives a refused preview —
+      test: `update::name_prompt::tests::a_refused_preview_keeps_the_typed_name`.
+      **Failed before the fix**: reverting `create`'s `!opened` branch to
+      drop `reopen` reproduced the prompt closed with `typed(&after)` panicking
+      ("the prompt is open").
+- [x] `border_row`'s cut-label branch has a direct test — test:
+      `frame_box::tests::border_row_reserves_a_blank_cell_before_a_cut_labels_corner`.
+- [x] `selected_refusal` cannot panic — test:
+      `context_menu::tests::selected_refusal_on_an_out_of_range_cursor_is_none_not_a_panic`
+      (also the type-level reason in the doc comment: `.get`, not indexing).
+- [x] Q1 answered with a line, **and it is a real defect, filed as a
+      question because fixing it is a design call**: see "Q1 — answered"
+      below. Not fixed by me.
+- [x] Whole suite green; report before and after — see report.
 
 Rule 6: you do not tick "looks right". The user does.
+
+## Q1 — answered, with lines, not fixed
+
+**Yes, the bar lies in this state.** With `state.map.shown` (or
+`state.journal.shown`/`state.stash.shown`) true and the Detail tab holding
+focus (`state.detail.focus != Graph`, `size.0 < 160` so the panes sit
+side-by-side rather than a Tab strip is irrelevant — reproduced at 80
+columns, the Tab layout `render_overlay_with_detail` uses), the pane's own
+bar (`view/frame.rs:433`, `pane_hint_context` → `PlainRow` →
+`plain_row_list`, `graft-ui/src/graph_screen/hints.rs:736-748`) draws `b
+branch`, `r rebase`, `t tag`, `c commit`, `y sha`, `m merge`, `S stash`, `J
+journal`, `/ search`. None of them do anything: `update/keys.rs:180`
+(`pane_and_overlay_key`) tries `detail::detail_key` first (claims `v w W [ ]
+L` and cursor motion in the diff, none of these nine), then
+`super::map::map_key`, whose `shown_key` (`update/map.rs:157-176`) claims
+**every** key while `map.shown` — including these — and does nothing with
+them (`_ => true` at `map.rs:176`). `journal::shown_key`
+(`update/journal.rs:198-234`, `_ => {}` at 234, still returns `true`) and
+`stash::shown_key` (`update/stash.rs:184-219`, `_ => {}` at 219) do the same,
+except for `Tab`/`BackTab`.
+
+Verified empirically, not just read: a throwaway test built exactly this
+state (`AppState { size: 80x24, map.shown: true, detail.shown: true,
+detail.focus: Diff, ..default() }`) and pressed each of the nine keys
+through `update::update`. Every one left the state and the command list
+unchanged. (Not committed — a scratch probe, per the ticket's "not yours to
+fix".)
+
+**Why I did not fix it.** Ticket 31's rule is "every key the bar draws is
+answered by the handler that has focus" — but *which* handler has focus
+here is exactly the ambiguity: `detail.focus != Graph` says the pane has it,
+yet the bar drawn is the graph's own `PlainRow` context (branch/tag/merge/
+etc.), which belongs to a row on a graph that is not even the visible
+screen (the overlay is). Two different fixes are both plausible and neither
+is mine to pick: (a) route these nine keys through to the graph's own
+handlers even while an overlay+pane share the Tab layout, or (b) stop
+`pane_hint_context` from drawing graph-row hints in this state and give the
+pane its own (probably empty, or overlay-aware) bar instead. Reporting per
+the ticket's own instruction: "if answering it needs a decision about which
+bar the Detail tab should draw, stop and report."
 
 ## Gates
 

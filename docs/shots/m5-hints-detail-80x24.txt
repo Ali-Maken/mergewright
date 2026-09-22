@@ -7,7 +7,7 @@
 # repository's temporary path is replaced by `/code/api` so the capture is
 # the same from one run to the next; nothing else is touched.
 #
-# Here the pane is open on the tip with its diff focused: at 80 the              Detail tab owns the screen, wider it sits beside the graph.
+# Here the pane is open on the tip with its diff focused: at 80 the Detail tab owns the screen, wider it sits beside the graph.
 #
 # Judge by eye: the hint bar is the bottom row of whatever owns the
 # screen — the graph's, or (below 100 columns, with the Detail tab up)

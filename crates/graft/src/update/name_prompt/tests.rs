@@ -335,3 +335,45 @@ fn stash_b_opens_the_prompt_then_a_preview() {
         "nothing ran: {commands:?}"
     );
 }
+
+/// A name typed into the stash-branch prompt survives a refused preview: the
+/// refusal is transient (a write already running) and has nothing to do
+/// with the name, so the box — and what was typed into it — comes back
+/// rather than making the user retype it (review m5-10-30-31 m6).
+#[test]
+fn a_refused_preview_keeps_the_typed_name() {
+    let mut state = fixture();
+    state.stash.entries = crate::update::detail::Loading::Ready(std::sync::Arc::new(vec![
+        graft_git::stash::StashEntry {
+            index: 0,
+            commit: oid(7),
+            message: "WIP on main: 0202020 Commit 2".to_owned(),
+            at: graft_core::commit::Timestamp {
+                seconds: 1,
+                offset_seconds: 0,
+            },
+            paths: vec![std::path::PathBuf::from("src/main.rs")],
+        },
+    ]));
+    state.stash.shown = true;
+
+    let (state, _) = press(&state, key(KeyCode::Char('b')));
+    let mut state = state;
+    type_in(&mut state, "rescued");
+    // A write already running is what `open_preview` refuses on — nothing
+    // about the name itself.
+    state.operating = Some(graft_core::job::JobId::new(1));
+
+    let (after, commands) = press(&state, key(KeyCode::Enter));
+    assert_eq!(
+        typed(&after),
+        "rescued",
+        "the box reopened with what was typed, not empty"
+    );
+    assert!(after.stash.shown, "the overlay came back with the box");
+    assert!(after.preview.is_none(), "the write really was refused");
+    assert!(
+        commands.is_empty(),
+        "nothing was planned or run: {commands:?}"
+    );
+}

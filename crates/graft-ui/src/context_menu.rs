@@ -230,9 +230,21 @@ impl ContextMenu {
     }
 
     /// Why the item under the cursor cannot act, or `None` when it can.
+    ///
+    /// `.get`, not indexing: every constructor today guarantees a non-empty
+    /// `items` (`for_drop` is only reached with non-empty `verbs`, `drop_menu`
+    /// returns `None` otherwise — this widget crate has no way to check
+    /// that from here), so an out-of-range `cursor` is not reachable. `None`
+    /// on a miss reads exactly as "no refusal", the same as a real item with
+    /// nothing disabled — the call site already handles that, so this
+    /// costs nothing and removes a panic path from a widget crate rather
+    /// than turning an out-of-range cursor into a silent wrong answer
+    /// (review m5-10-30-31 m8).
     #[must_use]
     pub fn selected_refusal(&self) -> Option<&SanitizedText> {
-        self.items[self.cursor].disabled.as_ref()
+        self.items
+            .get(self.cursor)
+            .and_then(|item| item.disabled.as_ref())
     }
 
     /// Move the cursor by `delta` items, clamped to the ends (the files
@@ -468,6 +480,17 @@ mod tests {
                 ContextAction::Undo,
             ]
         );
+    }
+
+    /// `cursor` is a public field, so nothing in this crate stops a caller
+    /// setting it out of range; `selected_refusal` must not panic if one
+    /// does (review m5-10-30-31 m8) — `.get` over indexing, and `None`
+    /// reads as "no refusal", same as a real item with nothing disabled.
+    #[test]
+    fn selected_refusal_on_an_out_of_range_cursor_is_none_not_a_panic() {
+        let mut menu = ContextMenu::for_row(true, Vec::new());
+        menu.cursor = menu.items.len() + 5;
+        assert_eq!(menu.selected_refusal(), None);
     }
 
     #[test]

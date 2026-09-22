@@ -429,6 +429,112 @@ fn drag_cannot_start_over_a_preview() {
     assert!(after.drag.is_none(), "no badge was picked up over the box");
 }
 
+/// A drag cannot start while the search prompt owns the keyboard: ticket 10
+/// piece 4 is explicit that a prompt open rules a drag out, and a hand-listed
+/// `can_start` omitted it (review m5-10-30-31 m1) — the prompt then claimed
+/// every key, so `Esc` mid-drag never reached `drag_key` and the footer kept
+/// advertising `release drop on a row` to someone typing a search.
+#[test]
+fn drag_cannot_start_while_the_search_prompt_is_open() {
+    let mut state = on_main();
+    let (column, row) = badge_cell(&state, 0);
+    state.search_prompt = Some(String::new());
+
+    let (after, _) = send(
+        &state,
+        mouse(MouseKind::Down(MouseButton::Left), column, row),
+    );
+    assert!(
+        after.drag.is_none(),
+        "no badge was picked up over the prompt"
+    );
+}
+
+/// Same rule for a focused banner: it owns every key while it has focus
+/// (`update::banner`), so a drag started under it would strand `Esc` the
+/// same way the search prompt did.
+#[test]
+fn drag_cannot_start_while_a_banner_has_focus() {
+    let mut state = on_main();
+    let (column, row) = badge_cell(&state, 0);
+    state.banner_focus = true;
+
+    let (after, _) = send(
+        &state,
+        mouse(MouseKind::Down(MouseButton::Left), column, row),
+    );
+    assert!(
+        after.drag.is_none(),
+        "no badge was picked up under the focused banner"
+    );
+}
+
+/// Dragging sideways into the detail pane at the same screen row must not
+/// keep the graph row as the target: `over` used to come from `row` alone
+/// (`geometry::graph_row_at`), so releasing over the pane opened the drop
+/// menu for a row the pointer was never on (review m5-10-30-31 m3).
+#[test]
+fn dragging_into_the_detail_pane_gives_no_target() {
+    let mut state = on_main();
+    state.detail.shown = true;
+    // 160+ columns is `DetailLayout::Right` (`detail_pane/layout.rs`): the
+    // pane sits beside the graph, not below it, so the same screen row has
+    // graph columns and pane columns to tell apart. Below 160 the pane is a
+    // strip under the graph or a full-width tab, and every column on a
+    // graph row's height is still the graph.
+    state.size = crate::update::Size {
+        columns: 160,
+        rows: 24,
+    };
+    let (column, row) = badge_cell(&state, 0);
+    let (state, _) = send(
+        &state,
+        mouse(MouseKind::Down(MouseButton::Left), column, row),
+    );
+    assert!(state.drag.is_some(), "the press picked up a badge");
+
+    let graph = crate::update::geometry::context_menu_graph_bounds(&state)
+        .expect("the graph has a rectangle while it is on screen");
+    let pane_column = graph.x + graph.width;
+    assert!(
+        pane_column < state.size.columns,
+        "there is room for a detail pane beside the graph at this width"
+    );
+
+    let (after, _) = send(
+        &state,
+        mouse(MouseKind::Drag(MouseButton::Left), pane_column, row),
+    );
+    assert_eq!(
+        after.drag.expect("still dragging").over,
+        None,
+        "the pane's columns at the graph's row height are not a graph target"
+    );
+}
+
+/// A resize cancels a drag (ticket 10 piece 4, review m5-10-30-31 m2): the
+/// badge's row and column are read off the layout the pointer moved over,
+/// and a resize is exactly the event that changes what that layout is.
+#[test]
+fn resize_cancels_a_drag() {
+    let state = on_main();
+    let (column, row) = badge_cell(&state, 0);
+    let (state, _) = send(
+        &state,
+        mouse(MouseKind::Down(MouseButton::Left), column, row),
+    );
+    assert!(state.drag.is_some(), "the press picked up a badge");
+
+    let (after, _) = send(
+        &state,
+        Event::Resize {
+            columns: state.size.columns,
+            rows: state.size.rows,
+        },
+    );
+    assert!(after.drag.is_none(), "the resize dropped the badge");
+}
+
 /// Only a local branch is draggable: §2.15 says a branch badge, and the
 /// other four badge kinds name nothing this repository may move.
 #[test]

@@ -7,7 +7,7 @@
 # repository's temporary path is replaced by `/code/api` so the capture is
 # the same from one run to the next; nothing else is touched.
 #
-# Here the pane is open on the tip with its diff focused: at 80 the              Detail tab owns the screen, wider it sits beside the graph.
+# Here the pane is open on the tip with its diff focused: at 80 the Detail tab owns the screen, wider it sits beside the graph.
 #
 # Judge by eye: the hint bar is the bottom row of whatever owns the
 # screen — the graph's, or (below 100 columns, with the Detail tab up)
@@ -51,7 +51,7 @@
 
  graft /code/api  5 commits  date order, sorting…
 ◌   Uncommitted changes (1 unstaged)
-◆   [◆ main] add second                                                                                  GF 8m   29a1432
+◆ ▏ [◆ main] add second                                                                                  GF 8m   29a1432
 ●   add first                                                                                            GF 9m   3d9496e
 ●   Correct the note                                                                                     GF 1y   a82960b
 ●   Add the first note                                                                                   GF 1y   fadcfb3

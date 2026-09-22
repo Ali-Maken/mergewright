@@ -7,7 +7,7 @@
 # repository's temporary path is replaced by `/code/api` so the capture is
 # the same from one run to the next; nothing else is touched.
 #
-# Here the pane is open on the tip with its diff focused: at 80 the              Detail tab owns the screen, wider it sits beside the graph.
+# Here the pane is open on the tip with its diff focused: at 80 the Detail tab owns the screen, wider it sits beside the graph.
 #
 # Judge by eye: the hint bar is the bottom row of whatever owns the
 # screen — the graph's, or (below 100 columns, with the Detail tab up)
@@ -51,7 +51,7 @@
 
  graft /code/api  5 commits  da… COMMIT 29a1432
 ◌   Uncommitted changes (1 unstaged)                                                         Graft Fixture <fixture@example.invalid> · 2021-01-01 00:02 +0000 ·…
-◆   [◆ main] add second                                                         8m   29a1432 parents 3d9496e · diff vs first parent
+◆ ▏ [◆ main] add second                                                         8m   29a1432 parents 3d9496e · diff vs first parent
 ●   add first                                                                   9m   3d9496e Contained in: checking…
 ●   Correct the note                                                            1y   a82960b
 ●   Add the first note                                                          1y   fadcfb3 reading…
