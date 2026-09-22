@@ -802,7 +802,14 @@ const BOUND_ACTIONS: &[(&str, &str)] = &[
     ("⏎", "resolve"), // `banner_key`, `detail::keys` → `resolver::open_resolver`
     ("space", "resolved"), // `detail::keys` → `operate::stage_selected` on an unmerged path
     // Inside the resolver (`resolver::resolver_key`). `B base` and
-    // `d start over` are m6-conflicts/05's and are not bound here.
+    // `d start over` (`toggle_base`/`restart_box`, m6-conflicts/05) act the
+    // moment they are pressed but are deliberately **not** listed here yet:
+    // `every_planned_hint_is_still_unbound` fails the build the moment a
+    // `Planned` hint's pair shows up in this table, and `graft-ui`'s
+    // `resolver_list` still hard-codes both `Planned` — flipping that is
+    // outside this crate's set. Add `("B", "base")` and `("d", "start
+    // over")` here in the same change that flips them to `hint(..)` in
+    // `graph_screen::hints::resolver_list` (m6-conflicts/05 NOTES).
     ("o", "ours"),     // `take_side`, `Take::Ours`
     ("t", "theirs"),   // the same, `Take::Theirs`
     ("b", "both"),     // the same, `Take::Both`
